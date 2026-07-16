@@ -4,7 +4,11 @@
 // resume against it (JD handoff → the home scanner), or apply on the
 // company's own site. We never fake an in-house "apply".
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+// The same structured salary parser the edge uses (pure TS, no Deno deps) —
+// the detail panel parses the posting's stated pay client-side to compare it
+// against the field's live benchmark in the SAME currency, never across.
+import { parseSalaryStructured } from "../../supabase/functions/_shared/salary-extract";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Activity, AlertTriangle, Bookmark, BookmarkCheck, Briefcase, ChevronDown, Clock, Copy, ExternalLink, FileText, Flag, Loader2, MapPin, MessageSquare, RefreshCw, Search, ShieldCheck, SlidersHorizontal, Sparkles, Target } from "lucide-react";
@@ -107,6 +111,26 @@ function daysAgo(iso: string | null): number | null {
   return Number.isFinite(d) && d >= 0 ? d : null;
 }
 
+// Stored descriptions occasionally carry residual HTML entities the ingest
+// text-extraction missed (&#xa0; was rendering literally in the panel) —
+// decode the common ones at display time so every stored row is fixed at
+// once, no re-ingest needed.
+const decodeEntities = (s: string) =>
+  s
+    .replace(/&#x?[0-9a-f]+;/gi, (m) => {
+      try {
+        const hex = m[2]?.toLowerCase() === "x";
+        const code = parseInt(m.slice(hex ? 3 : 2, -1), hex ? 16 : 10);
+        return Number.isFinite(code) ? String.fromCodePoint(code) : " ";
+      } catch { return " "; }
+    })
+    .replace(/&nbsp;/g, " ")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;|&apos;/g, "'")
+    .replace(/&amp;/g, "&");
+
 // Company-initial avatar: an honest visual anchor per card. We don't store
 // company domains, so real logos aren't possible without guessing — a
 // deterministic colored monogram scans just as fast and never shows the
@@ -194,6 +218,24 @@ export default function Jobs() {
       return new Set(Array.isArray(raw) ? raw.filter((x): x is string => typeof x === "string") : []);
     } catch { return new Set(); }
   });
+  // Session continuity: postings you've opened dim on subsequent visits
+  // (device-local), and the board remembers when you last looked so it can
+  // mark what's new since then. Job searching is a daily ritual — the board
+  // should visibly remember yesterday.
+  const [viewedIds, setViewedIds] = useState<Set<string>>(() => {
+    try {
+      const raw = JSON.parse(localStorage.getItem("rb_viewed_jobs") ?? "[]");
+      return new Set(Array.isArray(raw) ? raw.filter((x): x is string => typeof x === "string") : []);
+    } catch { return new Set(); }
+  });
+  const lastVisitRef = useRef<number | null>(null);
+  useEffect(() => {
+    try {
+      const prev = Number(localStorage.getItem("rb_board_last_visit"));
+      lastVisitRef.current = Number.isFinite(prev) && prev > 0 ? prev : null;
+      localStorage.setItem("rb_board_last_visit", String(Date.now()));
+    } catch { /* private mode — session-only */ }
+  }, []);
   // True while a filter change refetches over an already-loaded list — the list
   // stays visible (locally filtered) instead of blanking behind a spinner.
   const [refreshing, setRefreshing] = useState(false);
@@ -445,7 +487,9 @@ export default function Jobs() {
   const [benchmarks, setBenchmarks] = useState<Record<string, { n: number; median: number; currency: string }> | null>(null);
   const benchmarksAttempted = useRef(false);
   useEffect(() => {
-    if (!category || benchmarksAttempted.current) return;
+    // Once per session, on mount: the category line needs it when a field is
+    // selected, and the detail panel's salary context needs it for ANY posting.
+    if (benchmarksAttempted.current) return;
     benchmarksAttempted.current = true;
     (async () => {
       // Promise.resolve assimilates the PostgREST builder (a thenable WITHOUT
@@ -469,7 +513,7 @@ export default function Jobs() {
       }
       setBenchmarks(map);
     })();
-  }, [category]);
+  }, []);
 
   // Debounced re-query on filter change (immediate on first mount).
   const first = useRef(true);
@@ -512,14 +556,32 @@ export default function Jobs() {
   const [detailJob, setDetailJob] = useState<BoardJob | null>(null);
   const [detailDesc, setDetailDesc] = useState<string | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
-  const openDetail = useCallback(async (job: BoardJob, pushUrl = true) => {
+  // URL mode per selection: an explicit card click PUSHES history (back button
+  // closes the panel); keyboard/auto-selection REPLACES (arrowing through 30
+  // postings must not create 30 history entries). Close undoes whichever the
+  // current selection used.
+  const detailPushed = useRef(false);
+  const swipeStartY = useRef<number | null>(null); // mobile sheet swipe-down-to-close
+  const openDetail = useCallback(async (job: BoardJob, urlMode: "push" | "replace" | "none" = "push") => {
     setDetailJob(job);
     setDetailDesc(null);
     setDetailLoading(true);
-    if (pushUrl) {
+    setViewedIds((prev) => {
+      if (prev.has(job.id)) return prev;
+      const next = new Set(prev).add(job.id);
+      try { localStorage.setItem("rb_viewed_jobs", JSON.stringify([...next].slice(-1000))); } catch { /* session-only */ }
+      return next;
+    });
+    if (urlMode !== "none") {
       const p = new URLSearchParams(window.location.search);
       p.set("job", job.id);
-      window.history.pushState({ job: job.id }, "", `${window.location.pathname}?${p.toString()}`);
+      const url = `${window.location.pathname}?${p.toString()}`;
+      if (urlMode === "push" && !detailPushed.current) {
+        window.history.pushState({ job: job.id }, "", url);
+        detailPushed.current = true;
+      } else {
+        window.history.replaceState({ job: job.id }, "", url);
+      }
     }
     try {
       const { data: res } = await invokeBoard<{ description?: string }>({ action: "detail", id: job.id });
@@ -531,8 +593,17 @@ export default function Jobs() {
   const closeDetail = useCallback((viaHistory = false) => {
     setDetailJob(null);
     if (!viaHistory && new URLSearchParams(window.location.search).has("job")) {
-      window.history.back(); // pops the ?job entry we pushed
+      if (detailPushed.current) {
+        detailPushed.current = false;
+        window.history.back(); // pops the ?job entry we pushed
+      } else {
+        const p = new URLSearchParams(window.location.search);
+        p.delete("job");
+        const qs = p.toString();
+        window.history.replaceState({}, "", `${window.location.pathname}${qs ? `?${qs}` : ""}`);
+      }
     }
+    if (viaHistory) detailPushed.current = false;
   }, []);
   // Back button closes the panel; Escape too. Deep link opens it on load.
   useEffect(() => {
@@ -552,7 +623,7 @@ export default function Jobs() {
     const inList = jobs.find((j) => j.id === id);
     if (inList) {
       deepLinkTried.current = true;
-      void openDetail(inList, false);
+      void openDetail(inList, "none");
     } else if (jobs.length > 0) {
       // Loaded list doesn't contain it — the detail action resolves the row.
       deepLinkTried.current = true;
@@ -1018,6 +1089,61 @@ export default function Jobs() {
   }, [displayJobs]);
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
+  // New-since-last-visit: where the divider goes in the (recency-sorted) list —
+  // the first posting dated before your previous visit. Only meaningful on the
+  // default sort with no fit re-ordering; -1 disables the divider.
+  const newSinceIndex = useMemo(() => {
+    const last = lastVisitRef.current;
+    if (!last || sortMode !== "newest" || fitRanking) return -1;
+    const idx = groupedJobs.findIndex((g) => {
+      const p = g.primary.postedAt ? new Date(g.primary.postedAt).getTime() : 0;
+      return p <= last;
+    });
+    return idx > 0 ? idx : -1; // 0 = nothing new; -1 = everything new / unknown
+  }, [groupedJobs, sortMode, fitRanking]);
+
+  // Split-pane auto-select: on wide screens the right column should never sit
+  // empty — select the top result once the list settles. replace-mode URL so
+  // browsing never piles up history entries.
+  useEffect(() => {
+    if (loading || refreshing || detailJob || groupedJobs.length === 0) return;
+    if (!window.matchMedia("(min-width: 1024px)").matches) return;
+    void openDetail(groupedJobs[0].primary, "replace");
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, refreshing, detailJob, groupedJobs]);
+
+  // Keyboard browsing: ↑/↓ (or j/k) move the selection through the list,
+  // Enter opens Apply for the selected posting (desktop split-pane only).
+  // Never intercepts keys while the user is typing in a field.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement;
+      if (["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName) || el.isContentEditable) return;
+      const list = groupedJobs.map((g) => g.primary);
+      if (list.length === 0) return;
+      const isDown = e.key === "ArrowDown" || e.key === "j";
+      const isUp = e.key === "ArrowUp" || e.key === "k";
+      if (isDown || isUp) {
+        e.preventDefault();
+        const idx = detailJob ? list.findIndex((j) => j.id === detailJob.id) : -1;
+        const next = isDown ? Math.min(idx + 1, list.length - 1) : Math.max(idx - 1, 0);
+        const job = list[next];
+        if (job && job.id !== detailJob?.id) {
+          void openDetail(job, "replace");
+          document.querySelector(`[data-job-id="${CSS.escape(job.id)}"]`)?.scrollIntoView({ block: "nearest" });
+        }
+      } else if (e.key === "Enter" && detailJob && window.matchMedia("(min-width: 1024px)").matches) {
+        window.open(detailJob.applyUrl, "_blank", "noopener,noreferrer");
+        trackApply(detailJob);
+        void promoteApplied(detailJob);
+        void verifyJob(detailJob);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [groupedJobs, detailJob]);
+
   // Aggregate the per-card tiers into one motivating headline for the personalized
   // view — the reason a returning seeker stays. Counts only SCORED postings among
   // the ones loaded (same thresholds as the card tiers), so "these openings" is
@@ -1118,6 +1244,260 @@ export default function Jobs() {
     [location, category, experience, company, salaryFloor, remoteOnly, freshness],
   );
 
+  // Removable chips for every active filter — what's narrowing your results
+  // should be visible and one click to undo, not buried in the controls.
+  const activeFilters = useMemo(() => {
+    const f: Array<{ key: string; label: string; clear: () => void }> = [];
+    if (q) f.push({ key: "q", label: `“${q}”`, clear: () => setQ("") });
+    if (location) f.push({ key: "location", label: location, clear: () => setLocation("") });
+    if (category) f.push({ key: "category", label: t(`jobsPage.categories.${category}`, category), clear: () => setCategory("") });
+    if (experience) f.push({ key: "experience", label: t(`jobsPage.experience.${experience}`, experience), clear: () => setExperience("") });
+    if (company) f.push({ key: "company", label: companies.find((c) => c.token === company)?.name ?? company, clear: () => setCompany("") });
+    if (salaryFloor > 0) f.push({ key: "salaryFloor", label: `$${salaryFloor / 1000}k+`, clear: () => setSalaryFloor(0) });
+    if (remoteOnly) f.push({ key: "remote", label: t("jobsPage.remoteBadge", "Remote"), clear: () => setRemoteOnly(false) });
+    if (freshness) f.push({ key: "freshness", label: freshness === "day" ? t("jobsPage.freshDay", "Today") : t("jobsPage.freshWeek", "This week"), clear: () => setFreshness("") });
+    return f;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [q, location, category, experience, company, salaryFloor, remoteOnly, freshness, companies, t]);
+
+  // Smart zero-result help: when the server really has nothing for this
+  // combination, measure which single relaxation helps most (a few cheap
+  // countOnly calls, cached per filter signature) and offer it as a button —
+  // an actionable exit instead of a dead end. Feeds the same honest instinct
+  // as the zero-result telemetry: never pad results, just say what would work.
+  const [zeroHelp, setZeroHelp] = useState<Array<{ key: string; label: string; count: number; clear: () => void }> | null>(null);
+  const zeroSigRef = useRef("");
+  useEffect(() => {
+    if (loading || refreshing || error || !data || data.total !== 0) { setZeroHelp(null); return; }
+    const sig = JSON.stringify([q, location, category, experience, company, salaryFloor, remoteOnly, freshness]);
+    if (zeroSigRef.current === sig) return;
+    zeroSigRef.current = sig;
+    const base: Record<string, unknown> = {
+      action: "list", countOnly: true, includeFacets: false,
+      q: q || undefined, location: location || undefined, remote: remoteOnly || undefined,
+      category: category || undefined, experience: experience || undefined,
+      companies: company ? [company] : undefined, salaryFloor: salaryFloor || undefined,
+      postedAfter: freshness ? new Date(Date.now() - (freshness === "day" ? 1 : 7) * 86_400_000).toISOString() : undefined,
+    };
+    const OVERRIDES: Record<string, Record<string, unknown>> = {
+      q: { q: undefined }, location: { location: undefined }, category: { category: undefined },
+      experience: { experience: undefined }, company: { companies: undefined },
+      salaryFloor: { salaryFloor: undefined }, remote: { remote: undefined }, freshness: { postedAfter: undefined },
+    };
+    const candidates = activeFilters.slice(0, 4);
+    let cancelled = false;
+    (async () => {
+      const results = await Promise.all(candidates.map(async (c) => {
+        try {
+          const { data: r } = await invokeBoard<{ total?: number }>({ ...base, ...OVERRIDES[c.key] });
+          return { ...c, count: r?.total ?? 0 };
+        } catch { return { ...c, count: 0 }; }
+      }));
+      if (!cancelled) setZeroHelp(results.filter((r) => r.count > 0).sort((a, b) => b.count - a.count));
+    })();
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, refreshing, error, data, activeFilters]);
+
+  // Inline keyword highlighting: the posting's own text with the fit
+  // keywords marked in place — green for terms the resume covers, amber for
+  // gaps. Only possible because we hold both sides; no other board can.
+  const highlightedDesc = useMemo(() => {
+    if (!detailDesc || !detailJob) return null;
+    const clean = decodeEntities(detailDesc);
+    const hitList = (hits[detailJob.id] ?? []).filter((k) => k.length > 1);
+    const missList = (misses[detailJob.id] ?? []).filter((k) => k.length > 1);
+    if (hitList.length + missList.length === 0) return <>{clean}</>;
+    const esc = (k: string) => k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const re = new RegExp(`(${[...hitList, ...missList].map(esc).join("|")})`, "gi");
+    const hitSet = new Set(hitList.map((k) => k.toLowerCase()));
+    const missSet = new Set(missList.map((k) => k.toLowerCase()));
+    return (
+      <>
+        {clean.split(re).map((part, i) => {
+          const lower = part.toLowerCase();
+          if (hitSet.has(lower)) return <mark key={i} className="bg-success/20 text-success rounded px-0.5">{part}</mark>;
+          if (missSet.has(lower)) return <mark key={i} className="bg-warning/20 text-warning rounded px-0.5">{part}</mark>;
+          return part;
+        })}
+      </>
+    );
+  }, [detailDesc, detailJob, hits, misses]);
+  const descHasHighlights = !!detailJob && ((hits[detailJob.id]?.length ?? 0) + (misses[detailJob.id]?.length ?? 0)) > 0;
+
+  // Salary context: the posting's own stated pay vs the field's live median —
+  // shown only when the currencies MATCH (never converted, never mixed) and a
+  // real benchmark exists (n>=30 gate lives in the RPC).
+  const detailSalaryContext = useMemo(() => {
+    if (!detailJob?.salary || !detailJob.category || !benchmarks) return null;
+    const b = benchmarks[detailJob.category];
+    if (!b) return null;
+    const p = parseSalaryStructured(detailJob.salary);
+    if (!p?.annualMin || !p.currency || p.currency !== b.currency) return null;
+    const pct = Math.round(((p.annualMin - b.median) / b.median) * 100);
+    return { median: b.median, currency: b.currency, n: b.n, pct };
+  }, [detailJob, benchmarks]);
+
+  // Detail content rendered by BOTH containers — the overlay drawer below
+  // lg and the inline split-pane column on lg+. Only one is visible at a
+  // time (responsive classes), so duplicate mounting is harmless.
+  const detailInner = detailJob ? (
+    <>
+            <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border px-5 py-3 flex items-start gap-3">
+              <div className="flex-1 min-w-0">
+                <h2 className="text-lg font-bold leading-snug">{detailJob.title}</h2>
+                <p className="text-sm text-muted-foreground">
+                  <Link to={`/jobs/company/${detailJob.token}`} className="text-primary hover:underline" onClick={() => closeDetail()}>
+                    {detailJob.company}
+                  </Link>
+                  {detailJob.location ? <> · {detailJob.location}</> : null}
+                </p>
+              </div>
+              <button
+                type="button"
+                aria-label={t("jobsPage.detailClose", "Close")}
+                className="text-muted-foreground hover:text-foreground text-lg leading-none px-1"
+                onClick={() => closeDetail()}
+              >
+                ✕
+              </button>
+            </div>
+            <div className="px-5 py-4 space-y-4">
+              <div className="flex flex-wrap items-center gap-2 text-[11px]">
+                <span className="inline-flex items-center gap-1 text-success">
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  {t("jobsPage.trustBadge", "Verified direct from {{company}}", { company: detailJob.company })}
+                </span>
+                {detailJob.remote && <Badge variant="secondary" className="text-[10px]">{t("jobsPage.remoteBadge", "Remote")}</Badge>}
+                {detailJob.experienceBand && detailJob.experienceBand !== "unspecified" && (
+                  <span className="px-2 py-0.5 rounded-full border border-border text-muted-foreground">
+                    {t(`jobsPage.experience.${detailJob.experienceBand}`, detailJob.experienceBand)}
+                  </span>
+                )}
+                {daysAgo(detailJob.postedAt) !== null && (
+                  <span className="text-muted-foreground">
+                    {daysAgo(detailJob.postedAt) === 0
+                      ? t("jobsPage.postedToday", "today")
+                      : t("jobsPage.postedDaysAgo", "{{count}}d ago", { count: daysAgo(detailJob.postedAt) })}
+                  </span>
+                )}
+                {isActivelyHiring(detailJob.token) && (
+                  <span className="inline-flex items-center gap-1 text-success">
+                    <Activity className="w-3 h-3" />
+                    {t("jobsPage.hhActive", "Actively hiring")}
+                  </span>
+                )}
+              </div>
+              {detailJob.salary && (
+                <div>
+                  <p className="text-sm font-semibold text-foreground">
+                    {detailJob.salary}
+                    <span className="text-[11px] font-normal text-muted-foreground"> · {t("jobsPage.salaryVerbatim", "as stated in the posting")}</span>
+                  </p>
+                  {detailSalaryContext && (
+                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                      {t("jobsPage.salaryContext", "Field median floor: {{sym}}{{median}} ({{currency}}, from {{n}} postings that state pay)", {
+                        sym: { USD: "$", EUR: "€", GBP: "£" }[detailSalaryContext.currency] ?? "",
+                        median: Math.round(detailSalaryContext.median).toLocaleString(),
+                        currency: detailSalaryContext.currency,
+                        n: detailSalaryContext.n,
+                      })}
+                      {detailSalaryContext.pct !== 0 && (
+                        <span className={detailSalaryContext.pct > 0 ? "text-success" : "text-warning"}>
+                          {" · "}
+                          {detailSalaryContext.pct > 0
+                            ? t("jobsPage.salaryAbove", "{{pct}}% above the median floor", { pct: detailSalaryContext.pct })
+                            : t("jobsPage.salaryBelow", "{{pct}}% below the median floor", { pct: Math.abs(detailSalaryContext.pct) })}
+                        </span>
+                      )}
+                    </p>
+                  )}
+                </div>
+              )}
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" className="gap-1.5" asChild>
+                  <a
+                    href={detailJob.applyUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => { trackApply(detailJob); void promoteApplied(detailJob); void verifyJob(detailJob); }}
+                  >
+                    {t("jobsPage.applyShort", "Apply on company site")}
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                </Button>
+                <Button size="sm" variant="outline" className="gap-1.5" disabled={fitFetching === detailJob.id} onClick={() => checkFit(detailJob)}>
+                  {fitFetching === detailJob.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Target className="w-3.5 h-3.5" />}
+                  {t("jobsPage.checkFit", "Check my fit — free scan")}
+                </Button>
+                {detailJob.id.startsWith("greenhouse:") && (
+                  <Button size="sm" variant="outline" className="gap-1.5" disabled={preparingId === detailJob.id} onClick={() => prepareApplication(detailJob)}>
+                    {preparingId === detailJob.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <MessageSquare className="w-3.5 h-3.5" />}
+                    {t("jobsPage.prepAnswers", "Prep answers")}
+                  </Button>
+                )}
+                <Button size="sm" variant="ghost" className="px-2" aria-label={t("jobsPage.saveJob", "Save")} onClick={() => saveJob(detailJob)}>
+                  {savedIds.has(detailJob.id) ? <BookmarkCheck className="w-4 h-4 text-primary" /> : <Bookmark className="w-4 h-4" />}
+                </Button>
+              </div>
+              {typeof fits[detailJob.id] === "number" && (
+                <div className="rounded-xl border border-border bg-card p-3 text-sm">
+                  <p className="font-semibold mb-1">
+                    {t("jobsPage.detailFit", "Your keyword fit: {{pct}}%", { pct: fits[detailJob.id] })}
+                  </p>
+                  {(hits[detailJob.id]?.length ?? 0) > 0 && (
+                    <p className="text-[12px] text-muted-foreground">
+                      {t("jobsPage.matchedKeywords", "You already have:")} {hits[detailJob.id]!.slice(0, 6).join(", ")}
+                    </p>
+                  )}
+                  {(misses[detailJob.id]?.length ?? 0) > 0 && (
+                    <p className="text-[12px] text-muted-foreground">
+                      {t("jobsPage.missingKeywords", "Missing from your resume:")} {misses[detailJob.id]!.slice(0, 6).join(", ")}
+                    </p>
+                  )}
+                </div>
+              )}
+              {detailLoading ? (
+                <div className="py-8 text-center text-muted-foreground">
+                  <Loader2 className="w-5 h-5 animate-spin mx-auto" />
+                </div>
+              ) : detailDesc ? (
+                <div>
+                  {descHasHighlights && (
+                    <p className="text-[11px] text-muted-foreground mb-2">
+                      <mark className="bg-success/20 text-success rounded px-1">{t("jobsPage.hlHave", "in your resume")}</mark>{" · "}
+                      <mark className="bg-warning/20 text-warning rounded px-1">{t("jobsPage.hlMissing", "missing from it")}</mark>
+                    </p>
+                  )}
+                  <div className="text-sm text-muted-foreground whitespace-pre-line leading-relaxed">{highlightedDesc}</div>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground italic">
+                  {t("jobsPage.detailNoDesc", "This company's feed doesn't publish the full description — the complete posting is on their own site via Apply.")}
+                </p>
+              )}
+              {jobs.filter((j) => j.category === detailJob.category && j.id !== detailJob.id).length > 0 && (
+                <div className="pt-2 border-t border-border">
+                  <p className="text-[12px] font-semibold text-muted-foreground mb-2">{t("jobsPage.detailSimilar", "Similar openings on the board")}</p>
+                  <ul className="space-y-1.5">
+                    {jobs
+                      .filter((j) => j.category === detailJob.category && j.id !== detailJob.id)
+                      .slice(0, 4)
+                      .map((j) => (
+                        <li key={j.id}>
+                          <button type="button" className="text-left text-sm text-primary hover:underline" onClick={() => void openDetail(j)}>
+                            {j.title}
+                          </button>
+                          <span className="text-[11px] text-muted-foreground"> · {j.company}</span>
+                        </li>
+                      ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+    </>
+  ) : null;
+
   return (
     <div className="min-h-screen bg-background">
       <SEO
@@ -1135,7 +1515,7 @@ export default function Jobs() {
       />
       <Header />
       <main className="pt-20 pb-20">
-        <div className="container max-w-4xl">
+        <div className="container max-w-4xl lg:max-w-[1400px]">
           {/* P0 compressed hero: one headline, one live-count line, three tiny
               trust badges, everything else folded — the first posting must be
               visible without scrolling (the old four-paragraph hero measured a
@@ -1395,6 +1775,33 @@ export default function Jobs() {
             )}
           </div>
 
+          {/* Active-filter chips: everything narrowing the results, one click
+              to undo each. Hidden while nothing is active. */}
+          {activeFilters.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5 mb-3">
+              {activeFilters.map((f) => (
+                <button
+                  key={f.key}
+                  type="button"
+                  onClick={f.clear}
+                  className="inline-flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-full bg-primary/10 text-primary border border-primary/30 hover:bg-primary/20 transition-colors"
+                >
+                  {f.label}
+                  <span aria-hidden="true">×</span>
+                </button>
+              ))}
+              {activeFilters.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => activeFilters.forEach((f) => f.clear())}
+                  className="text-[11px] text-muted-foreground hover:text-foreground underline-offset-2 hover:underline ml-1"
+                >
+                  {t("jobsPage.clearAll", "Clear all")}
+                </button>
+              )}
+            </div>
+          )}
+
           {/* Freshness + fit-ranking row */}
           <div className="flex flex-wrap items-center gap-2 mb-5 -mt-2">
             {([["", t("jobsPage.freshAll", "Any date")], ["day", t("jobsPage.freshDay", "Today")], ["week", t("jobsPage.freshWeek", "This week")]] as const).map(([v, label]) => (
@@ -1485,6 +1892,9 @@ export default function Jobs() {
             </div>
           )}
 
+          {/* Split-pane on lg+: list column left, detail column right. */}
+          <div className="lg:grid lg:grid-cols-[minmax(0,46%)_minmax(0,54%)] lg:gap-6 lg:items-start">
+          <div className="min-w-0">
           {/* Results */}
           {loading ? (
             // Skeleton cards: the page keeps its shape while the first load
@@ -1515,9 +1925,24 @@ export default function Jobs() {
               </Button>
             </div>
           ) : jobs.length === 0 ? (
-            <p className="py-16 text-center text-sm text-muted-foreground">
-              {t("jobsPage.empty", "No openings match those filters. Loosen one and try again.")}
-            </p>
+            /* Server-zero: an actionable exit, never a dead end. Each button is
+               a measured single relaxation with its real result count. */
+            <div className="rounded-2xl border border-border bg-card p-6 text-center my-4">
+              <p className="font-semibold text-foreground mb-1">
+                {t("jobsPage.zeroTitle", "No verified openings match all of that")}
+              </p>
+              <p className="text-sm text-muted-foreground mb-3">
+                {t("jobsPage.zeroBody", "We only list postings verified from companies' own systems — nothing gets padded in. Loosening one filter helps:")}
+              </p>
+              <div className="flex flex-wrap justify-center gap-2">
+                {(zeroHelp ?? []).map((s) => (
+                  <Button key={s.key} size="sm" variant="outline" onClick={s.clear}>
+                    {t("jobsPage.zeroRemove", "Remove {{label}} — {{n}} openings", { label: s.label, n: s.count.toLocaleString() })}
+                  </Button>
+                ))}
+                {zeroHelp === null && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
+              </div>
+            </div>
           ) : (
             <>
               {fitSummary && (fitSummary.strong > 0 || fitSummary.possible > 0) && (
@@ -1600,7 +2025,7 @@ export default function Jobs() {
                 </p>
               )}
               <ul className="space-y-3">
-                {groupedJobs.map(({ primary: job, siblings }) => {
+                {groupedJobs.map(({ primary: job, siblings }, gi) => {
                   const d = daysAgo(job.postedAt);
                   const openRoles = job.token ? companyCounts.get(job.token) : undefined;
                   const fit = fitRanking ? fits[job.id] : undefined;
@@ -1613,9 +2038,28 @@ export default function Jobs() {
                   // read as a bad match to a layperson.
                   const tier = typeof fit === "number" ? (fit >= 20 ? "strong" : fit >= 10 ? "possible" : "stretch") : null;
                   return (
+                    <Fragment key={job.id}>
+                    {gi === newSinceIndex && (
+                      <li aria-hidden="true" className="flex items-center gap-3 py-1">
+                        <span className="flex-1 h-px bg-border" />
+                        <span className="text-[11px] text-muted-foreground whitespace-nowrap">
+                          {t("jobsPage.seenLastVisit", "posted before your last visit")}
+                        </span>
+                        <span className="flex-1 h-px bg-border" />
+                      </li>
+                    )}
                     <li
-                      key={job.id}
-                      className="rounded-2xl border border-border bg-card p-4 cursor-pointer transition-colors hover:border-primary/40"
+                      data-job-id={job.id}
+                      className={`rounded-2xl border bg-card p-4 cursor-pointer transition-all duration-150 hover:-translate-y-px hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 ${
+                        detailJob?.id === job.id ? "border-primary/60 bg-primary/5" : "border-border hover:border-primary/40"
+                      }`}
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && e.target === e.currentTarget) {
+                          e.preventDefault();
+                          void openDetail(job);
+                        }
+                      }}
                       onClick={(e) => {
                         // The whole card opens the detail panel — except clicks
                         // on its own controls (apply/save/fit/report/etc.).
@@ -1632,7 +2076,7 @@ export default function Jobs() {
                           {(job.company || "?").charAt(0).toUpperCase()}
                         </div>
                         <div className="flex-1 min-w-[220px]">
-                          <p className="font-semibold text-foreground leading-snug">{job.title}</p>
+                          <p className={`font-semibold leading-snug ${viewedIds.has(job.id) && detailJob?.id !== job.id ? "text-muted-foreground" : "text-foreground"}`}>{job.title}</p>
                           <p className="text-sm text-muted-foreground mt-0.5">
                             {job.token
                               ? <Link to={`/jobs/company/${job.token}`} className="hover:text-primary hover:underline">{job.company}</Link>
@@ -1868,6 +2312,7 @@ export default function Jobs() {
                         </div>
                       )}
                     </li>
+                    </Fragment>
                   );
                 })}
               </ul>
@@ -1882,149 +2327,70 @@ export default function Jobs() {
             </>
           )}
 
+          </div>
+          <div className="hidden lg:block sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto rounded-2xl border border-border bg-card min-w-0">
+            {detailJob ? detailInner : (
+              <div className="p-10 text-center text-sm text-muted-foreground">
+                {t("jobsPage.paneEmpty", "Select a posting — or use the ↑ ↓ keys to move through the list.")}
+              </div>
+            )}
+          </div>
+          </div>
+
           <p className="text-[11px] text-muted-foreground mt-10">
             {t("jobsPage.sourceNote", "Sources: the official public job-board APIs companies publish on Greenhouse, Lever, Ashby, SmartRecruiters, Workable, BambooHR, Recruitee, Teamtailor, Personio, and Breezy. The largest boards are re-checked about every 10–15 minutes and the whole catalog rotates continuously — every feed is re-verified within a few hours, and postings a company takes down disappear on the next pass. A feed that stops responding drops off the board rather than breaking it.")}
           </p>
         </div>
       </main>
 
-      {/* P1 slide-over detail panel: full JD + fit + health + actions, in-board.
-          Backdrop/Escape/back-button close; ?job=id deep-links it. */}
+      {/* Detail panel, overlay mode (below lg): slide-over drawer. On lg+ the
+          same content renders inline in the split-pane column instead. */}
       {detailJob && (
-        <>
-          <div className="fixed inset-0 z-40 bg-black/50" onClick={() => closeDetail()} />
+        <div className="lg:hidden">
+          <div className="fixed inset-0 z-40 bg-black/50 animate-in fade-in duration-150" onClick={() => closeDetail()} />
           <aside
             role="dialog"
             aria-modal="true"
             aria-label={detailJob.title}
-            className="fixed right-0 top-0 bottom-0 z-50 w-full sm:w-[560px] sm:max-w-[92vw] bg-background border-l border-border overflow-y-auto"
+            className="fixed right-0 top-0 bottom-0 z-50 w-full sm:w-[560px] sm:max-w-[92vw] bg-background border-l border-border overflow-y-auto animate-in slide-in-from-right duration-200"
+            onTouchStart={(e) => { swipeStartY.current = e.currentTarget.scrollTop === 0 ? e.touches[0].clientY : null; }}
+            onTouchMove={(e) => {
+              // Swipe-down-to-close, only from the very top of the sheet so it
+              // never fights with scrolling the description.
+              if (swipeStartY.current === null) return;
+              if (e.touches[0].clientY - swipeStartY.current > 90) {
+                swipeStartY.current = null;
+                closeDetail();
+              }
+            }}
           >
-            <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border px-5 py-3 flex items-start gap-3">
-              <div className="flex-1 min-w-0">
-                <h2 className="text-lg font-bold leading-snug">{detailJob.title}</h2>
-                <p className="text-sm text-muted-foreground">
-                  <Link to={`/jobs/company/${detailJob.token}`} className="text-primary hover:underline" onClick={() => closeDetail()}>
-                    {detailJob.company}
-                  </Link>
-                  {detailJob.location ? <> · {detailJob.location}</> : null}
-                </p>
-              </div>
-              <button
-                type="button"
-                aria-label={t("jobsPage.detailClose", "Close")}
-                className="text-muted-foreground hover:text-foreground text-lg leading-none px-1"
-                onClick={() => closeDetail()}
+            {detailInner}
+            {/* Thumb-reach action bar: Apply and Save stay pinned while the
+                description scrolls (mobile overlay only — the desktop pane
+                keeps actions at the top where the cursor already is). */}
+            <div className="sticky bottom-0 bg-background/95 backdrop-blur border-t border-border px-4 py-3 flex gap-2">
+              <Button className="flex-1 gap-1.5" asChild>
+                <a
+                  href={detailJob.applyUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => { trackApply(detailJob); void promoteApplied(detailJob); void verifyJob(detailJob); }}
+                >
+                  {t("jobsPage.applyShort", "Apply on company site")}
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              </Button>
+              <Button
+                variant="outline"
+                className="px-3"
+                aria-label={savedIds.has(detailJob.id) ? t("jobsPage.savedBadge", "Saved") : t("jobsPage.saveJob", "Save")}
+                onClick={() => saveJob(detailJob)}
               >
-                ✕
-              </button>
-            </div>
-            <div className="px-5 py-4 space-y-4">
-              <div className="flex flex-wrap items-center gap-2 text-[11px]">
-                <span className="inline-flex items-center gap-1 text-success">
-                  <ShieldCheck className="w-3.5 h-3.5" />
-                  {t("jobsPage.trustBadge", "Verified direct from {{company}}", { company: detailJob.company })}
-                </span>
-                {detailJob.remote && <Badge variant="secondary" className="text-[10px]">{t("jobsPage.remoteBadge", "Remote")}</Badge>}
-                {detailJob.experienceBand && detailJob.experienceBand !== "unspecified" && (
-                  <span className="px-2 py-0.5 rounded-full border border-border text-muted-foreground">
-                    {t(`jobsPage.experience.${detailJob.experienceBand}`, detailJob.experienceBand)}
-                  </span>
-                )}
-                {daysAgo(detailJob.postedAt) !== null && (
-                  <span className="text-muted-foreground">
-                    {daysAgo(detailJob.postedAt) === 0
-                      ? t("jobsPage.postedToday", "today")
-                      : t("jobsPage.postedDaysAgo", "{{count}}d ago", { count: daysAgo(detailJob.postedAt) })}
-                  </span>
-                )}
-                {isActivelyHiring(detailJob.token) && (
-                  <span className="inline-flex items-center gap-1 text-success">
-                    <Activity className="w-3 h-3" />
-                    {t("jobsPage.hhActive", "Actively hiring")}
-                  </span>
-                )}
-              </div>
-              {detailJob.salary && (
-                <p className="text-sm font-semibold text-foreground">
-                  {detailJob.salary}
-                  <span className="text-[11px] font-normal text-muted-foreground"> · {t("jobsPage.salaryVerbatim", "as stated in the posting")}</span>
-                </p>
-              )}
-              <div className="flex flex-wrap gap-2">
-                <Button size="sm" className="gap-1.5" asChild>
-                  <a
-                    href={detailJob.applyUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={() => { trackApply(detailJob); void promoteApplied(detailJob); void verifyJob(detailJob); }}
-                  >
-                    {t("jobsPage.applyShort", "Apply on company site")}
-                    <ExternalLink className="w-3.5 h-3.5" />
-                  </a>
-                </Button>
-                <Button size="sm" variant="outline" className="gap-1.5" disabled={fitFetching === detailJob.id} onClick={() => checkFit(detailJob)}>
-                  {fitFetching === detailJob.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Target className="w-3.5 h-3.5" />}
-                  {t("jobsPage.checkFit", "Check my fit — free scan")}
-                </Button>
-                {detailJob.id.startsWith("greenhouse:") && (
-                  <Button size="sm" variant="outline" className="gap-1.5" disabled={preparingId === detailJob.id} onClick={() => prepareApplication(detailJob)}>
-                    {preparingId === detailJob.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <MessageSquare className="w-3.5 h-3.5" />}
-                    {t("jobsPage.prepAnswers", "Prep answers")}
-                  </Button>
-                )}
-                <Button size="sm" variant="ghost" className="px-2" aria-label={t("jobsPage.saveJob", "Save")} onClick={() => saveJob(detailJob)}>
-                  {savedIds.has(detailJob.id) ? <BookmarkCheck className="w-4 h-4 text-primary" /> : <Bookmark className="w-4 h-4" />}
-                </Button>
-              </div>
-              {typeof fits[detailJob.id] === "number" && (
-                <div className="rounded-xl border border-border bg-card p-3 text-sm">
-                  <p className="font-semibold mb-1">
-                    {t("jobsPage.detailFit", "Your keyword fit: {{pct}}%", { pct: fits[detailJob.id] })}
-                  </p>
-                  {(hits[detailJob.id]?.length ?? 0) > 0 && (
-                    <p className="text-[12px] text-muted-foreground">
-                      {t("jobsPage.matchedKeywords", "You already have:")} {hits[detailJob.id]!.slice(0, 6).join(", ")}
-                    </p>
-                  )}
-                  {(misses[detailJob.id]?.length ?? 0) > 0 && (
-                    <p className="text-[12px] text-muted-foreground">
-                      {t("jobsPage.missingKeywords", "Missing from your resume:")} {misses[detailJob.id]!.slice(0, 6).join(", ")}
-                    </p>
-                  )}
-                </div>
-              )}
-              {detailLoading ? (
-                <div className="py-8 text-center text-muted-foreground">
-                  <Loader2 className="w-5 h-5 animate-spin mx-auto" />
-                </div>
-              ) : detailDesc ? (
-                <div className="text-sm text-muted-foreground whitespace-pre-line leading-relaxed">{detailDesc}</div>
-              ) : (
-                <p className="text-sm text-muted-foreground italic">
-                  {t("jobsPage.detailNoDesc", "This company's feed doesn't publish the full description — the complete posting is on their own site via Apply.")}
-                </p>
-              )}
-              {jobs.filter((j) => j.category === detailJob.category && j.id !== detailJob.id).length > 0 && (
-                <div className="pt-2 border-t border-border">
-                  <p className="text-[12px] font-semibold text-muted-foreground mb-2">{t("jobsPage.detailSimilar", "Similar openings on the board")}</p>
-                  <ul className="space-y-1.5">
-                    {jobs
-                      .filter((j) => j.category === detailJob.category && j.id !== detailJob.id)
-                      .slice(0, 4)
-                      .map((j) => (
-                        <li key={j.id}>
-                          <button type="button" className="text-left text-sm text-primary hover:underline" onClick={() => void openDetail(j)}>
-                            {j.title}
-                          </button>
-                          <span className="text-[11px] text-muted-foreground"> · {j.company}</span>
-                        </li>
-                      ))}
-                  </ul>
-                </div>
-              )}
+                {savedIds.has(detailJob.id) ? <BookmarkCheck className="w-4 h-4 text-primary" /> : <Bookmark className="w-4 h-4" />}
+              </Button>
             </div>
           </aside>
-        </>
+        </div>
       )}
 
       {/* Apply-agent: draft grounded answers to a Greenhouse posting's real
