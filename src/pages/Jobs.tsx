@@ -41,6 +41,8 @@ interface BoardJob {
   salary?: string | null;
   experienceBand?: string | null;
   minYears?: number | null;
+  /** Board category slug (serveList returns it; drives detail-panel "similar openings"). */
+  category?: string | null;
 }
 
 // A company with several fresh, still-open roles is demonstrably hiring — the
