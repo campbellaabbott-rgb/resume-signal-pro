@@ -344,6 +344,33 @@ serve(async (req) => {
         }
       }
 
+      // Published-stat plausibility: the Ghost Job Index's headline median once
+      // collapsed to 2.8d because it measured OUR discovery age, not the
+      // company's stated post date — a user spotted it before we did. With a
+      // 30-day cap, a stated-date median outside 4-25d means a basis or
+      // ingestion skew; a stated-date coverage collapse means a vendor parser
+      // stopped extracting dates. Catch both before the public page does.
+      try {
+        const { data: gs } = await supabase.rpc('get_ghost_job_index_stats');
+        const g = Array.isArray(gs) ? gs[0] : gs;
+        if (g && typeof g.median_days_open === 'number') {
+          const implausibleMedian = g.median_days_open < 4 || g.median_days_open > 25;
+          const coverageCollapse = typeof g.posted_coverage_pct === 'number' && g.posted_coverage_pct < 50;
+          checks.push({
+            name: 'job_board_stat_plausibility',
+            passed: !implausibleMedian && !coverageCollapse,
+            responseTimeMs: 0,
+            error: implausibleMedian
+              ? `Ghost Index median posting age is ${g.median_days_open}d — implausible under the 30-day cap; check the median's date basis and recent ingestion`
+              : coverageCollapse ? `only ${g.posted_coverage_pct}% of postings carry a company-stated post date (was ~77%) — a vendor date parser likely regressed` : undefined,
+          });
+          if (implausibleMedian || coverageCollapse) {
+            if (overallStatus === 'healthy') overallStatus = 'degraded';
+            errorMessage = errorMessage || `Ghost Index stat plausibility: median ${g.median_days_open}d, stated-date coverage ${g.posted_coverage_pct ?? '?'}%`;
+          }
+        }
+      } catch { /* RPC not applied yet */ }
+
       // Verification ceiling: boards that still hold live postings but weren't
       // re-verified in 24h — a widening count means a cursor/selection gap the
       // 48h sweep is about to start deleting around.

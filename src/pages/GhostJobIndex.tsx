@@ -19,6 +19,10 @@ interface Stats {
   closed_90d: number;
   median_days_open: number | null;
   median_days_to_close: number | null;
+  // Share of open postings whose company states its own post date — the
+  // measured basis for every age stat on this page. Optional: absent until
+  // the stated-date-medians migration is applied.
+  posted_coverage_pct?: number | null;
 }
 interface Leader {
   company: string;
@@ -133,7 +137,12 @@ export default function GhostJobIndex() {
             <div className="text-2xl font-bold text-foreground">
               {stats?.median_days_open != null ? `${stats.median_days_open}d` : "—"}
             </div>
-            <div className="text-[11px] text-muted-foreground mt-0.5">median age of an open posting</div>
+            <div className="text-[11px] text-muted-foreground mt-0.5">
+              median age of an open posting, by the company's own stated post date
+              {stats?.posted_coverage_pct != null && (
+                <> — {Math.round(stats.posted_coverage_pct)}% of postings state one; the rest are excluded, never estimated</>
+              )}
+            </div>
           </div>
         </div>
 
@@ -210,7 +219,8 @@ export default function GhostJobIndex() {
               In the last 90 days we've watched <b className="text-foreground">{fmt(stats?.closed_90d)}</b> roles get
               filled or closed across the board
               {stats?.median_days_to_close != null && (
-                <> — a typical role closes in about <b className="text-foreground">{Math.round(stats.median_days_to_close)} days</b></>
+                <> — a typical role closes in about <b className="text-foreground">{Math.round(stats.median_days_to_close)} days</b> of
+                the company posting it (measured only where the company states its post date)</>
               )}. Postings that never close are exactly the ghost jobs we drop.
             </p>
           ) : (

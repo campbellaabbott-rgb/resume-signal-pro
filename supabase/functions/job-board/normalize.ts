@@ -126,7 +126,10 @@ export function normalizeGreenhouse(raw: { jobs?: GreenhouseJob[] }, company: st
       location,
       remote: looksRemote(location) || looksRemote(j.title ?? ""),
       department: j.departments?.[0]?.name ?? null,
-      postedAt: j.first_published ?? j.updated_at ?? null,
+      // first_published only — updated_at re-stamps on any edit, so using it
+      // as a posting date silently biases every age stat young. Undated is
+      // honest; mis-dated is not.
+      postedAt: j.first_published ?? null,
       category: categorize(j.title ?? "", j.departments?.[0]?.name),
       salary: null,
       applyUrl: safeUrl(j.absolute_url),

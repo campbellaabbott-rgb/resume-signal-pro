@@ -38,7 +38,8 @@ const GH_FIXTURE = {
       location: { name: "Remote, US" },
       title: "Staff Engineer",
       updated_at: "2026-07-01T00:00:00-04:00",
-      // no first_published — must fall back to updated_at
+      // no first_published — stays undated (updated_at re-stamps on edits,
+      // so treating it as a posting date would bias every age stat young)
     },
   ],
 };
@@ -108,8 +109,8 @@ describe("normalizers", () => {
       postedAt: "2026-06-02T08:58:57-04:00",
       applyUrl: "https://stripe.com/jobs/search?gh_jid=7954688",
     });
-    // fallback to updated_at + remote inferred from location text
-    expect(jobs[1].postedAt).toBe("2026-07-01T00:00:00-04:00");
+    // no first_published -> undated (never updated_at) + remote inferred from location text
+    expect(jobs[1].postedAt).toBeNull();
     expect(jobs[1].remote).toBe(true);
   });
 
@@ -463,9 +464,12 @@ describe("filter + sort", () => {
 
   it("sorts newest first with undated postings last", () => {
     const sorted = sortJobs(all);
-    expect(sorted[0].id).toBe("greenhouse:stripe:100"); // 2026-07-01 is the newest fixture
+    // stripe:100 has only updated_at, so it's undated now — it must sort LAST,
+    // and the newest genuinely dated posting leads.
+    expect(sorted[sorted.length - 1].id).toBe("greenhouse:stripe:100");
     const dates = sorted.map((j) => j.postedAt);
     const dated = dates.filter(Boolean) as string[];
+    expect(dated.length).toBeGreaterThan(0);
     expect([...dated].sort().reverse()).toEqual(dated);
   });
 });
