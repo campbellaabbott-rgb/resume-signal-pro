@@ -2271,6 +2271,7 @@ export type Database = {
           closed_90d: number
           median_days_open: number
           median_days_to_close: number
+          posted_coverage_pct: number
           total_companies: number
           total_open: number
         }[]
