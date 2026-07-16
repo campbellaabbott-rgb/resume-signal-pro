@@ -782,6 +782,7 @@ export type Database = {
           category: string
           company: string
           company_token: string
+          country: string | null
           department: string | null
           description: string | null
           effective_posted: string | null
@@ -791,6 +792,7 @@ export type Database = {
           last_seen: string
           location: string
           min_years: number | null
+          missing_since: string | null
           posted_at: string | null
           remote: boolean
           salary: string | null
@@ -805,6 +807,7 @@ export type Database = {
           category?: string
           company: string
           company_token: string
+          country?: string | null
           department?: string | null
           description?: string | null
           effective_posted?: string | null
@@ -814,6 +817,7 @@ export type Database = {
           last_seen?: string
           location?: string
           min_years?: number | null
+          missing_since?: string | null
           posted_at?: string | null
           remote?: boolean
           salary?: string | null
@@ -828,6 +832,7 @@ export type Database = {
           category?: string
           company?: string
           company_token?: string
+          country?: string | null
           department?: string | null
           description?: string | null
           effective_posted?: string | null
@@ -837,6 +842,7 @@ export type Database = {
           last_seen?: string
           location?: string
           min_years?: number | null
+          missing_since?: string | null
           posted_at?: string | null
           remote?: boolean
           salary?: string | null
@@ -2134,6 +2140,21 @@ export type Database = {
           open_roles: number
           superseded_90d: number
           tracking_days: number
+        }[]
+      }
+      get_country_facet: {
+        Args: never
+        Returns: {
+          country: string
+          n: number
+        }[]
+      }
+      get_date_coverage: {
+        Args: never
+        Returns: {
+          dated: number
+          source: string
+          total: number
         }[]
       }
       get_db_size_stats: { Args: never; Returns: Json }
