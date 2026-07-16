@@ -67,7 +67,7 @@ export interface ParsedSalary {
 }
 
 // Explicit ISO codes beat symbols; dollar-prefix variants beat the bare $.
-const P_ISO = /\b(USD|EUR|GBP|CAD|AUD|NZD|CHF|SEK|DKK|NOK|PLN|INR|SGD|JPY|BRL|MXN)\b/i;
+const P_ISO = /\b(USD|EUR|GBP|CAD|AUD|NZD|CHF|SEK|DKK|NOK|PLN|INR|SGD|JPY|BRL|MXN|PHP)\b/i;
 const P_CAD = /C(?:A)?\$/;
 const P_AUD = /A(?:U)?\$/;
 function detectCurrency(s: string): string | null {
@@ -77,6 +77,11 @@ function detectCurrency(s: string): string | null {
   if (P_AUD.test(s)) return "AUD";
   if (s.includes("€")) return "EUR";
   if (s.includes("£")) return "GBP";
+  if (s.includes("₹")) return "INR";
+  if (s.includes("₱")) return "PHP";
+  if (/zł/i.test(s)) return "PLN";
+  // ¥ stays unmapped: JPY vs CNY is a ~20x difference and guessing wrong
+  // would misrank those postings badly — unlabeled is honest, mislabeled isn't.
   if (s.includes("$")) return "USD";
   return null;
 }

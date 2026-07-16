@@ -55,7 +55,7 @@ const json = (body: unknown, status = 200) =>
 // counts. catalogSize (JOB_SOURCES.length) is the automatic companion signal: it
 // moves with every catalog change with no discipline required. Sortable string so
 // a future check can tell "prod is behind" from "prod is ahead".
-const BUILD_VERSION = "2026-07-16.1";
+const BUILD_VERSION = "2026-07-16.2";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -350,7 +350,7 @@ const EXPERIENCE_VERSION = 1;
 // ingest alone never reaches postings that predate the parser). v2: currency
 // capture — the sweep targets salary_currency IS NULL, which also re-covers
 // rows v1 already parsed (they have a floor but no currency).
-const SALARY_PARSE_VERSION = 2;
+const SALARY_PARSE_VERSION = 3; // v3: detector learned PHP + ₹/₱/zł symbols — resweep fills currencies the v2 pass left NULL
 const CHAIN_CAP = Math.ceil(HOT_SIZE / HOT_SLICE) + COLD_SLICES_PER_PASS + 4; // pass length + stall headroom
 
 // Capacity governor: keep the corpus under a ceiling with headroom; when a
@@ -1941,19 +1941,26 @@ async function serveList(
   }
 
   // Stable pagination: recency desc (nulls last) by default, or highest
-  // STATED salary first (annualized floor; unsalaried postings sort last —
-  // never excluded, never estimated). id tiebreaker so equal keys can't
+  // STATED salary first. Salary ordering uses salary_rank_usd — an
+  // approximate-FX rank column that exists only so ₹2M/yr doesn't outrank
+  // $300k by raw digits; displayed salaries stay the posting's own text.
+  // Unranked postings (no identifiable currency) sort after ranked ones —
+  // never excluded, never estimated. id tiebreaker so equal keys can't
   // shuffle between "load more" pages.
   const sortSalary = body.sort === "salary";
-  const page = (dateCol: string) =>
+  const page = (dateCol: string, salaryCol: string) =>
     (sortSalary
-      ? buildQuery(dateCol).order("salary_min_annual", { ascending: false, nullsFirst: false })
+      ? buildQuery(dateCol).order(salaryCol, { ascending: false, nullsFirst: false })
       : buildQuery(dateCol).order(dateCol, { ascending: false, nullsFirst: false })
     )
       .order("id", { ascending: true })
       .range(offset, offset + limit - 1);
-  let { data, error, count } = await page("effective_posted");
-  if (missingColumn(error)) ({ data, error, count } = await page("posted_at"));
+  let { data, error, count } = await page("effective_posted", "salary_rank_usd");
+  // Graceful degrade until the rank-column migration applies: raw numeric order.
+  if (sortSalary && error?.message?.includes("salary_rank_usd")) {
+    ({ data, error, count } = await page("effective_posted", "salary_min_annual"));
+  }
+  if (missingColumn(error)) ({ data, error, count } = await page("posted_at", "salary_min_annual"));
   if (error) throw error;
 
   // Zero-result telemetry: a first-page search that found nothing is the

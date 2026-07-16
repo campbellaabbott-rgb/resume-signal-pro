@@ -105,4 +105,13 @@ describe("parseSalaryStructured", () => {
     // no currency stated -> null, so aggregates can exclude it honestly
     expect(parseSalaryStructured("120,000 - 150,000 per year")?.currency).toBeNull();
   });
+
+  it("recognizes high-nominal currencies so salary ranking can normalize them", () => {
+    expect(parseSalaryStructured("PHP 1,600,000 per year")?.currency).toBe("PHP");
+    expect(parseSalaryStructured("₱1,538,062 per year")?.currency).toBe("PHP");
+    expect(parseSalaryStructured("₹1,500,000 - 2,000,000 per year")?.currency).toBe("INR");
+    expect(parseSalaryStructured("15,000 zł per month")?.currency).toBe("PLN");
+    // ¥ stays null: JPY vs CNY is ~20x — a wrong guess would misrank badly
+    expect(parseSalaryStructured("¥8,000,000 per year")?.currency).toBeNull();
+  });
 });
