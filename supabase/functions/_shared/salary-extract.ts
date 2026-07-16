@@ -67,14 +67,24 @@ export interface ParsedSalary {
 }
 
 // Explicit ISO codes beat symbols; dollar-prefix variants beat the bare $.
-const P_ISO = /\b(USD|EUR|GBP|CAD|AUD|NZD|CHF|SEK|DKK|NOK|PLN|INR|SGD|JPY|BRL|MXN|PHP)\b/i;
+// Every known non-US dollar sign (MX$, R$, NZ$, HK$, S$…) MUST be checked
+// before the bare-$ fallback — otherwise a peso or real posting gets labeled
+// USD and its high nominal value tops the salary ranking (live incident:
+// MX$1,152,000 ≈ $63k ranked as $1.15M).
+const P_ISO = /\b(USD|EUR|GBP|CAD|AUD|NZD|CHF|SEK|DKK|NOK|PLN|INR|SGD|JPY|BRL|MXN|PHP|HKD)\b/i;
 const P_CAD = /C(?:A)?\$/;
 const P_AUD = /A(?:U)?\$/;
 function detectCurrency(s: string): string | null {
   const iso = s.match(P_ISO);
   if (iso) return iso[1].toUpperCase();
+  if (/(?<![A-Za-z])US\$/i.test(s)) return "USD";
   if (P_CAD.test(s)) return "CAD";
   if (P_AUD.test(s)) return "AUD";
+  if (/(?<![A-Za-z])NZ\$/i.test(s)) return "NZD";
+  if (/(?<![A-Za-z])MX\$/i.test(s)) return "MXN";
+  if (/(?<![A-Za-z])HK\$/i.test(s)) return "HKD";
+  if (/(?<![A-Za-z])R\$/i.test(s)) return "BRL";
+  if (/(?<![A-Za-z])S\$/i.test(s)) return "SGD";
   if (s.includes("€")) return "EUR";
   if (s.includes("£")) return "GBP";
   if (s.includes("₹")) return "INR";
@@ -85,6 +95,14 @@ function detectCurrency(s: string): string | null {
   if (s.includes("$")) return "USD";
   return null;
 }
+
+// Currencies roughly at dollar parity (within ~2x). For these, a "monthly"
+// figure above 35k (≥$420k/yr annualized) is almost always an annual salary
+// someone mislabeled — annualizing it would amplify the posting's own typo
+// 12x and crown it the board's top job. High-nominal currencies (INR, MXN,
+// PHP, JPY…) keep the wide cap: ₱90,000/month is a normal wage.
+const PARITY_CURRENCIES = new Set(["USD", "EUR", "GBP", "CAD", "AUD", "NZD", "CHF", "SGD"]);
+const PARITY_MONTHLY_MAX = 35_000;
 
 // Separator-grouped form first ("120,000" / "50.000"), else plain digits with
 // optional decimal ("4000", "22.5") — a bare "4000" must parse whole, not "400".
@@ -122,18 +140,23 @@ export function parseSalaryStructured(text: string | null | undefined): ParsedSa
   }
   if (min === null || min <= 0) return null;
 
+  const currency = detectCurrency(s);
   const MULT = { hour: 2080, week: 52, month: 12, year: 1 } as const;
   let annualMin: number | null = null;
   if (period) {
     annualMin = min * MULT[period];
     // magnitude sanity per period — a "$5/hour" or "$9,000/hour" is bad data
     const lo = period === "hour" ? 7 : period === "week" ? 200 : period === "month" ? 800 : 10_000;
-    const hi = period === "hour" ? 500 : period === "week" ? 20_000 : period === "month" ? 90_000 : 2_000_000;
+    const hi =
+      period === "hour" ? 500
+      : period === "week" ? 20_000
+      : period === "month" ? (currency && PARITY_CURRENCIES.has(currency) ? PARITY_MONTHLY_MAX : 90_000)
+      : 2_000_000;
     if (min < lo || min > hi) annualMin = null;
   } else if (min >= 20_000 && min <= 2_000_000) {
     annualMin = min; // unlabeled but unambiguously annual
   }
-  return { min, max, period, annualMin, currency: detectCurrency(s) };
+  return { min, max, period, annualMin, currency };
 }
 
 /** Extract the posting's own pay text, or null when nothing clearly stated. */

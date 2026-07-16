@@ -114,4 +114,23 @@ describe("parseSalaryStructured", () => {
     // ¥ stays null: JPY vs CNY is ~20x — a wrong guess would misrank badly
     expect(parseSalaryStructured("¥8,000,000 per year")?.currency).toBeNull();
   });
+
+  it("never labels a non-US dollar sign as USD (live incident: MX$ ranked as $1.15M)", () => {
+    expect(parseSalaryStructured("MX$1,152,000 – MX$1,440,000 per year")?.currency).toBe("MXN");
+    expect(parseSalaryStructured("R$180,000 per year")?.currency).toBe("BRL");
+    expect(parseSalaryStructured("HK$720,000 per year")?.currency).toBe("HKD");
+    expect(parseSalaryStructured("NZ$110,000 per year")?.currency).toBe("NZD");
+    expect(parseSalaryStructured("S$96,000 per year")?.currency).toBe("SGD");
+    expect(parseSalaryStructured("US$150,000 per year")?.currency).toBe("USD");
+  });
+
+  it("refuses to annualize implausible parity-currency monthlies (mislabeled annuals)", () => {
+    // "$90,000 Monthly" is an annual salary someone mislabeled — annualizing
+    // ×12 would crown the posting's own typo the board's top job.
+    expect(parseSalaryStructured("$90,000-$110,000 Monthly")?.annualMin ?? null).toBeNull();
+    // a genuinely high USD monthly under the cap still annualizes
+    expect(parseSalaryStructured("$20,000 per month")?.annualMin).toBe(240_000);
+    // high-nominal currencies keep the wide cap: ₱90,000/month is a normal wage
+    expect(parseSalaryStructured("₱90,000 per month")?.annualMin).toBe(1_080_000);
+  });
 });

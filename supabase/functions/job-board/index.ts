@@ -55,7 +55,7 @@ const json = (body: unknown, status = 200) =>
 // counts. catalogSize (JOB_SOURCES.length) is the automatic companion signal: it
 // moves with every catalog change with no discipline required. Sortable string so
 // a future check can tell "prod is behind" from "prod is ahead".
-const BUILD_VERSION = "2026-07-16.2";
+const BUILD_VERSION = "2026-07-16.3";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -350,7 +350,7 @@ const EXPERIENCE_VERSION = 1;
 // ingest alone never reaches postings that predate the parser). v2: currency
 // capture — the sweep targets salary_currency IS NULL, which also re-covers
 // rows v1 already parsed (they have a floor but no currency).
-const SALARY_PARSE_VERSION = 3; // v3: detector learned PHP + ₹/₱/zł symbols — resweep fills currencies the v2 pass left NULL
+const SALARY_PARSE_VERSION = 4; // v4: $-variant currencies (MX$/R$/HK$/S$/NZ$) + parity monthly cap — full re-parse corrects mislabeled rows
 const CHAIN_CAP = Math.ceil(HOT_SIZE / HOT_SLICE) + COLD_SLICES_PER_PASS + 4; // pass length + stall headroom
 
 // Capacity governor: keep the corpus under a ceiling with headroom; when a
@@ -1441,16 +1441,18 @@ Deno.serve(async (req) => {
       let cursor = typeof body.cursor === "string" ? body.cursor : "";
       let scanned = 0;
       // Group by the (annualMin, currency) pair so each distinct patch is one
-      // chunked update. v2 pages on salary_currency IS NULL — that covers both
-      // never-parsed rows AND rows the v1 sweep parsed before currency existed.
-      const groups = new Map<string, { annualMin: number | null; currency: string; ids: string[] }>();
+      // chunked update. v4 re-parses EVERY salaried row (not just currency-NULL
+      // ones): earlier detector versions mislabeled MX$/R$/HK$ postings as USD
+      // and annualized mislabeled monthlies — those rows hold wrong values, not
+      // NULLs. Rows whose stored values already match the current parse are
+      // skipped, so a re-sweep only writes actual corrections.
+      const groups = new Map<string, { annualMin: number | null; currency: string | null; ids: string[] }>();
       const PAGES = 6;
       for (let page = 0; page < PAGES; page++) {
         let q = client
           .from("job_board_postings")
-          .select("id,salary")
+          .select("id,salary,salary_min_annual,salary_currency")
           .not("salary", "is", null)
-          .is("salary_currency", null)
           .order("id")
           .limit(1000);
         if (cursor) q = q.gt("id", cursor);
@@ -1458,11 +1460,16 @@ Deno.serve(async (req) => {
         if (error) throw error;
         for (const r of rows ?? []) {
           scanned++;
-          const p = parseSalaryStructured((r as { salary?: string | null }).salary);
-          if (!p || p.currency === null) continue; // nothing stated — cursor walks past, stamp stops rescans
-          const key = `${p.annualMin ?? ""}|${p.currency}`;
-          const g = groups.get(key) ?? { annualMin: p.annualMin, currency: p.currency, ids: [] };
-          g.ids.push(r.id as string);
+          const row = r as { id: string; salary?: string | null; salary_min_annual?: number | string | null; salary_currency?: string | null };
+          const p = parseSalaryStructured(row.salary);
+          const nextMin = p?.annualMin ?? null;
+          const nextCur = p?.currency ?? null;
+          const curMin = row.salary_min_annual == null ? null : Number(row.salary_min_annual);
+          const curCur = row.salary_currency ?? null;
+          if (nextMin === curMin && nextCur === curCur) continue; // already correct — no write
+          const key = `${nextMin ?? ""}|${nextCur ?? ""}`;
+          const g = groups.get(key) ?? { annualMin: nextMin, currency: nextCur, ids: [] };
+          g.ids.push(row.id);
           groups.set(key, g);
         }
         if (!rows || rows.length < 1000) { cursor = ""; break; }
