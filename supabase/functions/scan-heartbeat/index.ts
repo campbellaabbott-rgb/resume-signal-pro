@@ -283,6 +283,34 @@ serve(async (req) => {
         errorMessage = errorMessage || `Job board cold-tail freshness behind SLA (${rotAgeMin} min)`;
       }
 
+      // Honest-claim guard: the adaptive rotation SLA above scales with the
+      // catalog, so it FOLLOWS slow drift instead of flagging it (rotation
+      // slipped 1h→3h across rung 3 with zero alarms). The public claim is
+      // fixed — "every feed re-verified within a few hours" — so this check is
+      // an ABSOLUTE bound on the measured stamp-age distribution: P95 past 5h
+      // means the published claim is about to be false. Skips silently until
+      // the freshness-stats migration lands.
+      try {
+        const { data: fRows } = await supabase.rpc('get_freshness_stats');
+        const f = Array.isArray(fRows) ? (fRows[0] as { boards?: number; p50_min?: number; p95_min?: number } | undefined) : undefined;
+        if (f && typeof f.p95_min === 'number' && (f.boards ?? 0) > 1000) {
+          const CLAIM_P95_MIN = 300; // "a few hours", with margin
+          const claimBreach = f.p95_min > CLAIM_P95_MIN;
+          checks.push({
+            name: 'job_board_freshness_claim',
+            passed: !claimBreach,
+            responseTimeMs: 0,
+            error: claimBreach
+              ? `measured re-verification P95 is ${(f.p95_min / 60).toFixed(1)}h (median ${Math.round(f.p50_min ?? 0)}m) — the public "within a few hours" claim is drifting false; raise rotation throughput or fix failing slices`
+              : undefined,
+          });
+          if (claimBreach) {
+            if (overallStatus === 'healthy') overallStatus = 'degraded';
+            errorMessage = errorMessage || `Board freshness P95 ${(f.p95_min / 60).toFixed(1)}h exceeds the published claim`;
+          }
+        }
+      } catch { /* RPC not applied yet */ }
+
       // Ground-truth accuracy: the daily audit samples ~100 served postings and
       // confirms each live at the vendor source. A dip below threshold means the
       // pipeline is serving dead listings RIGHT NOW — the one failure users feel
@@ -290,16 +318,24 @@ serve(async (req) => {
       const { data: audit } = await supabase
         .from('job_board_meta').select('v, updated_at').eq('k', 'audit').maybeSingle();
       if (audit) {
-        const aV = (audit.v ?? {}) as { accuracyPct?: number | null; live?: number; gone?: number; at?: string };
+        const aV = (audit.v ?? {}) as { accuracyPct?: number | null; live?: number; gone?: number; at?: string; byVendor?: Record<string, { sampled?: number; accuracyPct?: number | null }> };
         const auditAgeH = Math.round((Date.now() - new Date(audit.updated_at).getTime()) / 3600_000);
-        const lowAccuracy = typeof aV.accuracyPct === 'number' && aV.accuracyPct < 97;
+        // Per-vendor floor: the stratified audit samples every vendor, so one
+        // broken vendor can't hide inside a healthy blended number. A vendor
+        // with a real sample below 80% is an incident even at 99% overall.
+        const badVendors = Object.entries(aV.byVendor ?? {})
+          .filter(([, b]) => (b.sampled ?? 0) >= 5 && typeof b.accuracyPct === 'number' && b.accuracyPct < 80)
+          .map(([v, b]) => `${v} ${b.accuracyPct}%`);
+        const lowAccuracy = (typeof aV.accuracyPct === 'number' && aV.accuracyPct < 97) || badVendors.length > 0;
         const auditStale = auditAgeH > 48;
         checks.push({
           name: 'job_board_accuracy',
           passed: !lowAccuracy && !auditStale,
           responseTimeMs: 0,
           error: lowAccuracy
-            ? `ground-truth audit: only ${aV.accuracyPct}% of sampled postings confirmed live at the source (${aV.live}/${(aV.live ?? 0) + (aV.gone ?? 0)}) — the board is serving dead listings; check refresh/prune`
+            ? (badVendors.length > 0
+                ? `ground-truth audit: vendor(s) below the 80% floor — ${badVendors.join(', ')} (overall ${aV.accuracyPct}%) — that vendor is serving dead listings; check its feed/fetcher`
+                : `ground-truth audit: only ${aV.accuracyPct}% of sampled postings confirmed live at the source (${aV.live}/${(aV.live ?? 0) + (aV.gone ?? 0)}) — the board is serving dead listings; check refresh/prune`)
             : auditStale ? `ground-truth audit hasn't run in ${auditAgeH}h — accuracy unmeasured; check the job-board-audit cron` : undefined,
         });
         if (lowAccuracy || auditStale) {
@@ -332,6 +368,34 @@ serve(async (req) => {
           }
         }
       } catch { /* RPC not applied yet — check appears once the migration lands */ }
+
+      // Vendor circuit breaker: the refresh quarantines a vendor whose feeds
+      // go mass-empty (API/shape break) instead of pruning its corpus. That
+      // quarantine is safe but means the vendor's zero-feed boards are frozen —
+      // a human needs to look at the vendor's API and ship a fetcher fix.
+      const { data: vh } = await supabase
+        .from('job_board_meta').select('v, updated_at').eq('k', 'vendor_breaker').maybeSingle();
+      const vhV = (vh?.v ?? {}) as { quarantined?: string[]; vendors?: Record<string, { a?: number; z?: number }> };
+      const quarantined = Array.isArray(vhV.quarantined) ? vhV.quarantined : [];
+      if (quarantined.length > 0) {
+        const detail = quarantined
+          .map((v) => {
+            const st = vhV.vendors?.[v];
+            const rate = st && st.a ? Math.round(((st.z ?? 0) / st.a) * 100) : null;
+            return `${v}${rate !== null ? ` (${rate}% zero feeds)` : ''}`;
+          })
+          .join(', ');
+        checks.push({
+          name: 'job_board_vendor_quarantine',
+          passed: false,
+          responseTimeMs: 0,
+          error: `vendor(s) quarantined after mass-empty feeds: ${detail} — prunes suspended for their zero boards; likely a vendor API change, check the fetcher`,
+        });
+        if (overallStatus === 'healthy') overallStatus = 'degraded';
+        errorMessage = errorMessage || `Job-board vendor quarantined: ${quarantined.join(', ')}`;
+      } else {
+        checks.push({ name: 'job_board_vendor_quarantine', passed: true, responseTimeMs: 0 });
+      }
 
       // Capacity headroom: the corpus is bounded by the free-tier DB (~100k).
       // Warn BEFORE the governor has to evict live postings — a shrinking

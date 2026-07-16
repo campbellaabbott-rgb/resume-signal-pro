@@ -57,6 +57,28 @@ export interface ParsedSalary {
   period: "hour" | "week" | "month" | "year" | null;
   /** Annualized lower bound, null when the period can't be honestly determined. */
   annualMin: number | null;
+  /**
+   * Currency as the posting states it: an explicit ISO code wins; else the
+   * symbol maps € → EUR, £ → GBP, and a bare $ → USD (documented heuristic —
+   * explicit CA$/A$/CAD/AUD are caught first). null when nothing is stated,
+   * so aggregates can group by currency instead of mixing € with $.
+   */
+  currency: string | null;
+}
+
+// Explicit ISO codes beat symbols; dollar-prefix variants beat the bare $.
+const P_ISO = /\b(USD|EUR|GBP|CAD|AUD|NZD|CHF|SEK|DKK|NOK|PLN|INR|SGD|JPY|BRL|MXN)\b/i;
+const P_CAD = /C(?:A)?\$/;
+const P_AUD = /A(?:U)?\$/;
+function detectCurrency(s: string): string | null {
+  const iso = s.match(P_ISO);
+  if (iso) return iso[1].toUpperCase();
+  if (P_CAD.test(s)) return "CAD";
+  if (P_AUD.test(s)) return "AUD";
+  if (s.includes("€")) return "EUR";
+  if (s.includes("£")) return "GBP";
+  if (s.includes("$")) return "USD";
+  return null;
 }
 
 // Separator-grouped form first ("120,000" / "50.000"), else plain digits with
@@ -106,7 +128,7 @@ export function parseSalaryStructured(text: string | null | undefined): ParsedSa
   } else if (min >= 20_000 && min <= 2_000_000) {
     annualMin = min; // unlabeled but unambiguously annual
   }
-  return { min, max, period, annualMin };
+  return { min, max, period, annualMin, currency: detectCurrency(s) };
 }
 
 /** Extract the posting's own pay text, or null when nothing clearly stated. */

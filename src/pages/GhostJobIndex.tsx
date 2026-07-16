@@ -34,6 +34,8 @@ interface AuditResult {
   accuracyPct: number | null;
   /** Rolling ~30-day history of daily audits, oldest first. */
   history?: Array<{ at: string; sampled: number; accuracyPct: number | null }>;
+  /** Stratified per-vendor results (the audit samples every hiring system). */
+  byVendor?: Record<string, { sampled: number; accuracyPct: number | null }>;
 }
 
 const rpc = (fn: string, args?: Record<string, unknown>) =>
@@ -41,20 +43,32 @@ const rpc = (fn: string, args?: Record<string, unknown>) =>
 
 const fmt = (n: number | null | undefined) => (typeof n === "number" ? n.toLocaleString() : "—");
 
+interface FreshnessStats {
+  boards: number;
+  p50_min: number | null;
+  p95_min: number | null;
+}
+
 export default function GhostJobIndex() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [leaders, setLeaders] = useState<Leader[]>([]);
   const [audit, setAudit] = useState<AuditResult | null>(null);
+  const [freshness, setFreshness] = useState<FreshnessStats | null>(null);
 
   useEffect(() => {
     (async () => {
       try {
-        const [s, l, a] = await Promise.all([
+        const [s, l, a, f] = await Promise.all([
           rpc("get_ghost_job_index_stats"),
           rpc("get_actively_hiring_companies", { p_limit: 20 }),
           // The daily self-audit result (job_board_meta is public-read).
           (supabase as unknown as { from: (t: string) => { select: (c: string) => { eq: (k: string, v: string) => { maybeSingle: () => Promise<{ data: unknown }> } } } })
             .from("job_board_meta").select("v").eq("k", "audit").maybeSingle(),
+          // PostgREST builders are thenables WITHOUT .catch — calling .catch on
+          // one throws synchronously and would kill this whole Promise.all
+          // (verified live: every tile went "—"). Promise.resolve assimilates
+          // the thenable into a real Promise first.
+          Promise.resolve(rpc("get_freshness_stats")).catch(() => ({ data: null })),
         ]);
         let srow = Array.isArray(s.data) ? (s.data[0] as Stats) : null;
         // The stats RPC can time out on a cold cache and succeed warm — one
@@ -66,6 +80,8 @@ export default function GhostJobIndex() {
         }
         if (srow) setStats(srow);
         if (Array.isArray(l.data)) setLeaders(l.data as Leader[]);
+        const frow = Array.isArray(f.data) ? (f.data[0] as FreshnessStats) : null;
+        if (frow && typeof frow.p50_min === "number") setFreshness(frow);
         const av = (a.data as { v?: AuditResult } | null)?.v;
         if (av && typeof av.accuracyPct === "number") setAudit(av);
       } catch {
@@ -120,6 +136,20 @@ export default function GhostJobIndex() {
           </div>
         </div>
 
+        {/* Measured freshness — the live number behind the "re-verified within a
+            few hours" claim, computed from per-board verification stamps at page
+            load. Shown only when measured; never an aspiration. */}
+        {freshness && (
+          <p className="text-xs text-muted-foreground -mt-5 mb-8">
+            Measured right now across {freshness.boards.toLocaleString()} company feeds: the median feed was re-checked{" "}
+            <b className="text-foreground">{Math.round(freshness.p50_min ?? 0)} minutes ago</b>
+            {typeof freshness.p95_min === "number" && (
+              <> — 95% of all feeds within <b className="text-foreground">{(freshness.p95_min / 60).toFixed(1)} hours</b></>
+            )}
+            .
+          </p>
+        )}
+
         {/* The measured accuracy stat — we audit ourselves daily and publish the
             number. Shown only when a real audit result exists; never estimated. */}
         {audit && (
@@ -134,6 +164,19 @@ export default function GhostJobIndex() {
               {" "}({audit.live} live, {audit.gone} already taken down{audit.unknown > 0 ? `, ${audit.unknown} unreachable` : ""}).
               The handful already taken down are pruned by the next refresh cycle. We run this audit every day.
             </p>
+            {/* Per-vendor accuracy — the audit samples every hiring system
+                (stratified), so a single broken vendor can't hide inside a
+                healthy blended number. Shown only for real samples. */}
+            {audit.byVendor && Object.keys(audit.byVendor).length > 1 && (
+              <p className="text-[11px] text-muted-foreground mt-2">
+                By hiring system:{" "}
+                {Object.entries(audit.byVendor)
+                  .filter(([, b]) => b.sampled >= 4 && typeof b.accuracyPct === "number")
+                  .sort(([a], [b]) => a.localeCompare(b))
+                  .map(([v, b]) => `${v} ${b.accuracyPct}%`)
+                  .join(" · ")}
+              </p>
+            )}
             {/* The daily-audit trend — only once there are at least two real
                 audits to show. Every bar is a published, dated measurement. */}
             {(audit.history?.length ?? 0) >= 2 && (

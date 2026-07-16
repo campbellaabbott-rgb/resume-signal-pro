@@ -93,4 +93,16 @@ describe("parseSalaryStructured", () => {
     expect(parseSalaryStructured(null)).toBeNull();
     expect(parseSalaryStructured("Competitive")).toBeNull();
   });
+
+  it("captures the stated currency — never guesses across symbols", () => {
+    expect(parseSalaryStructured("$136k–227k/per-year-salary")?.currency).toBe("USD");
+    expect(parseSalaryStructured("€50.000 – €65.000 annually")?.currency).toBe("EUR");
+    expect(parseSalaryStructured("£45,000 to £55,000 per annum")?.currency).toBe("GBP");
+    // explicit ISO code beats the bare symbol; CA$/A$ beat plain $
+    expect(parseSalaryStructured("CAD 90,000 - 110,000 per year")?.currency).toBe("CAD");
+    expect(parseSalaryStructured("CA$90,000 per year")?.currency).toBe("CAD");
+    expect(parseSalaryStructured("A$120,000 per year")?.currency).toBe("AUD");
+    // no currency stated -> null, so aggregates can exclude it honestly
+    expect(parseSalaryStructured("120,000 - 150,000 per year")?.currency).toBeNull();
+  });
 });

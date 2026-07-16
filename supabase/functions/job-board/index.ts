@@ -55,7 +55,7 @@ const json = (body: unknown, status = 200) =>
 // counts. catalogSize (JOB_SOURCES.length) is the automatic companion signal: it
 // moves with every catalog change with no discipline required. Sortable string so
 // a future check can tell "prod is behind" from "prod is ahead".
-const BUILD_VERSION = "2026-07-15.7";
+const BUILD_VERSION = "2026-07-15.8";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -72,7 +72,15 @@ const FETCH_TIMEOUT_MS = 20_000;
 // boards and advances a cursor in job_board_meta; the 10-minute cron and
 // read-triggered SWR calls walk the full list continuously. Facets swap in
 // when a cycle completes; until then the previous complete cycle serves.
-const CONCURRENCY = 4;
+// Cold-slice concurrency: cold boards are SMALL feeds (the giants are all
+// hot-tier, fetched at HOT_CONCURRENCY), so eight concurrent light fetches
+// stay far from the memory ceiling that limits hot slices. Raised 4→8
+// 2026-07-15: measured full-tail rotation had drifted to ~3h at 14.9k boards
+// (9,014 boards >1h stale) while the public copy said "about an hour" —
+// halving cold hop wall-time is the honest fix's first half; the second is
+// measured, not aspirational, copy. Vendor interleaving bounds any single
+// vendor to ~1 in-flight fetch per hop at this width.
+const CONCURRENCY = 8;
 const HOT_CONCURRENCY = 2; // hot boards are giants — two multi-MB parses at once is the memory ceiling
 // Slice sizes are calibrated to the per-invocation compute budget. Hot
 // slices are UNIFORMLY giant boards (that's what makes them hot), so they
@@ -80,7 +88,7 @@ const HOT_CONCURRENCY = 2; // hot boards are giants — two multi-MB parses at o
 // died mid-slice at HOT=30 (one upsert chunk of carvana landed, then the
 // worker hit the ceiling and the cron retried the same slice forever).
 const HOT_SLICE = 10;
-const COLD_SLICE = 80; // cold boards are small (that's why they're cold) — bigger slices keep full-tail rotation inside the hour even at ~2,300 boards (still 20 sequential rounds at CONCURRENCY=4, well under the edge wall-time limit)
+const COLD_SLICE = 80; // cold boards are small (that's why they're cold); 80/hop at CONCURRENCY=8 is 10 sequential rounds — well under the edge wall-time limit. Rotation speed comes from concurrency + hops-per-pass, never bigger slices (proven-safe size).
 const SLICE_LOCK_MS = 3 * 60_000; // min gap between slices
 const DESC_CAP = 14_000; // matches the scanner's own input bounds
 
@@ -99,11 +107,32 @@ const waitUntil = (p: Promise<unknown>) => {
 
 // ── board fetching ─────────────────────────────────────────────────────────
 
+// Self-tuning light mode: the static LIGHT_DESC_TOKENS set plus a dynamic,
+// meta-persisted set of Greenhouse boards whose content payloads measured
+// past the auto-enroll threshold. stripe (3.9MB) and zscaler (4.9MB) were
+// hardcoded only after their heavy parses starved them of verification
+// stamps for days — the NEXT giant enrolls itself the first time its volume
+// is measured instead of waiting for a human to notice missing stamps.
+// Descriptions for light boards arrive via the daily backfill-desc sweep
+// (Greenhouse per-job endpoint, its own compute budget).
+const DYNAMIC_LIGHT = new Set<string>();
+const AUTO_LIGHT_THRESHOLD_CHARS = 2_500_000; // ~2.5MB of raw content HTML
+const AUTO_LIGHT_CAP = 50; // bound the meta row; realistically a handful
+const isLight = (token: string) => LIGHT_DESC_TOKENS.has(token) || DYNAMIC_LIGHT.has(token);
+async function loadDynamicLight(client: SupabaseClient): Promise<void> {
+  try {
+    const { data } = await client.from("job_board_meta").select("v").eq("k", "light_desc_dynamic").maybeSingle();
+    const tokens = (data?.v as { tokens?: unknown } | null)?.tokens;
+    DYNAMIC_LIGHT.clear();
+    if (Array.isArray(tokens)) for (const t of tokens) if (typeof t === "string") DYNAMIC_LIGHT.add(t);
+  } catch { /* meta unreadable — static set still applies */ }
+}
+
 const listUrl = (s: JobSource) =>
   s.source === "greenhouse"
     // content=true costs a bigger payload but delivers every description in
     // ONE call — fit-ranking coverage for GH boards, plus real departments.
-    ? `https://boards-api.greenhouse.io/v1/boards/${s.token}/jobs${LIGHT_DESC_TOKENS.has(s.token) ? "" : "?content=true"}`
+    ? `https://boards-api.greenhouse.io/v1/boards/${s.token}/jobs${isLight(s.token) ? "" : "?content=true"}`
     : s.source === "lever"
       ? `https://api.lever.co/v0/postings/${s.token}?mode=json`
       : s.source === "ashby"
@@ -144,13 +173,27 @@ async function fetchSmartRecruiters(s: JobSource): Promise<{ content: unknown[] 
 }
 
 async function fetchWithTimeout(url: string): Promise<Response> {
-  const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
-  try {
-    return await fetch(url, { signal: ctrl.signal, headers: { "User-Agent": "resumebooster.work job board (contact: support@resumebooster.work)" } });
-  } finally {
-    clearTimeout(t);
+  const once = async () => {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
+    try {
+      return await fetch(url, { signal: ctrl.signal, headers: { "User-Agent": "resumebooster.work job board (contact: support@resumebooster.work)" } });
+    } finally {
+      clearTimeout(t);
+    }
+  };
+  const res = await once();
+  // Rate limits: honor Retry-After with one short, capped retry (personio
+  // 429s observed under burst; vendor interleaving spreads the load but a
+  // vendor can still throttle). Waits longer than 4s aren't worth a slice's
+  // budget — the board simply retries next rotation.
+  if (res.status === 429) {
+    const ra = Number(res.headers.get("retry-after"));
+    const waitMs = Number.isFinite(ra) && ra > 0 ? Math.min(ra * 1000, 4000) : 1500;
+    await new Promise((r) => setTimeout(r, waitMs));
+    return await once();
   }
+  return res;
 }
 
 // Personio publishes the same official feed on two hosts depending on the
@@ -263,7 +306,13 @@ async function tierLists(client: SupabaseClient): Promise<{ hotList: JobSource[]
     coldList: interleaveByVendor(JOB_SOURCES.filter((s) => !hot.has(s.token))),
   };
 }
-const COLD_SLICES_PER_PASS = 24; // widened for the Common Crawl round: 80×24 = 1,920 cold boards/pass keeps a ~11.8k-board tail re-verifying in ~6.1 passes (~61 min — inside the 90-min freshness SLA and honest to the "about an hour" copy); more hops of the proven-safe slice size, not bigger slices. SR_CAP bounds any single board's fetch so mixing SR boards into cold slices stays under the edge wall-time limit.
+// 80×48 = 3,840 cold boards/pass: at the 14.9k-board catalog (rung 3) the
+// tail rotates in ~3.9 passes, and doubling cold hops per pass halves how
+// often the ~10-min hot phase interrupts the tail. Combined with CONCURRENCY
+// 4→8 this targets a measured full-tail rotation under ~2h (it had drifted
+// to ~3h, past the published claim). Slice size stays the proven-safe 80 —
+// more hops, never bigger hops. SR_CAP still bounds any single board's fetch.
+const COLD_SLICES_PER_PASS = 48;
 
 // Dormancy skip-list (throughput): a feed dead for DEAD_BOARD_THRESHOLD straight
 // rotations has its postings pruned and is marked dormant — future cold slices
@@ -276,14 +325,32 @@ const DEAD_BOARD_THRESHOLD = 6; // consecutive failures before prune + dormancy 
 const DORMANT_RECHECK_MS = 12 * 60 * 60_000; // recovery probe cadence for a dormant board
 const DORMANT_CAP = 3_000; // max tracked dormant boards (keeps most-recently-detected)
 
+// Vendor circuit breaker: a vendor-wide API/shape change can make every board
+// return 200-with-empty — which per-board looks like "this company has zero
+// jobs" and would prune the vendor's whole corpus in one rotation while
+// flooding the closure log with fake closures. We track FEED-level zero rates
+// per vendor (decayed across slices; feed-level, before the freshness window,
+// because a healthy board's feed almost never goes empty — catalog admission
+// required >=3 postings). Past the trip threshold, zero-feed boards of that
+// vendor are skipped entirely: no prune, no closure, no stamp, and no failure
+// streak (a long quarantine must not convert into streak-prunes). Fail-safe
+// direction: a few stale postings beat mass-deleting live ones. Boards that
+// still return jobs keep processing, so a recovering vendor resumes itself.
+const VENDOR_ZERO_TRIP = 0.5; // zero-feed fraction that trips the breaker
+const VENDOR_ZERO_RESET = 0.3; // hysteresis: quarantine lifts below this
+const VENDOR_MIN_ATTEMPTS = 20; // never judge a vendor on a handful of fetches
+const VENDOR_STATS_DECAY = 0.8; // per-slice decay — recent slices dominate
+
 // Experience-band rules version: bump to re-derive bands from richer text later.
 // The one-time backfill fills existing rows (experience_band IS NULL) once; new
 // rows carry a band from ingestion, so this only fires the sweep on first deploy.
 const EXPERIENCE_VERSION = 1;
 // Bump when parseSalaryStructured's rules change — re-sweeps stored salary
-// text into salary_min_annual (rows are insert-only, so ingest alone never
-// reaches postings that predate the parser).
-const SALARY_PARSE_VERSION = 1;
+// text into salary_min_annual + salary_currency (rows are insert-only, so
+// ingest alone never reaches postings that predate the parser). v2: currency
+// capture — the sweep targets salary_currency IS NULL, which also re-covers
+// rows v1 already parsed (they have a floor but no currency).
+const SALARY_PARSE_VERSION = 2;
 const CHAIN_CAP = Math.ceil(HOT_SIZE / HOT_SLICE) + COLD_SLICES_PER_PASS + 4; // pass length + stall headroom
 
 // Capacity governor: keep the corpus under a ceiling with headroom; when a
@@ -347,6 +414,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
     return { ok: true, detail: "skipped — a slice ran moments ago" };
   }
   const { hotList: HOT_LIST, coldList: COLD_LIST } = await tierLists(client);
+  await loadDynamicLight(client); // auto-enrolled giant boards fetch without content
   const pv = (prog?.v ?? {}) as { hot?: number; cold?: number; coldDone?: number; failedAcc?: string[] };
   let hot = Math.max(0, Number(pv.hot) || 0);
   let cold = Math.max(0, Number(pv.cold) || 0) % Math.max(1, COLD_LIST.length);
@@ -395,6 +463,16 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
   const { data: bfMeta } = await client.from("job_board_meta").select("v").eq("k", "board_failures").maybeSingle();
   const bfV = (bfMeta?.v ?? {}) as Partial<BoardFailureState>;
   const boardFailures: BoardFailureState = { streaks: { ...(bfV.streaks ?? {}) }, dormant: { ...(bfV.dormant ?? {}) } };
+
+  // Vendor circuit-breaker state (see constants above): decayed per-vendor
+  // feed-zero counters + the currently quarantined vendor set. Key is
+  // vendor_breaker — vendor_health belongs to the schema-drift canary action.
+  const { data: vhMeta } = await client.from("job_board_meta").select("v").eq("k", "vendor_breaker").maybeSingle();
+  const vhV = (vhMeta?.v ?? {}) as { vendors?: Record<string, { a: number; z: number }>; quarantined?: string[] };
+  const vendorPrev: Record<string, { a: number; z: number }> = { ...(vhV.vendors ?? {}) };
+  const quarantinedVendors = new Set<string>(Array.isArray(vhV.quarantined) ? vhV.quarantined.filter((x): x is string => typeof x === "string") : []);
+  const vendorStats = new Map<string, { a: number; z: number }>();
+  const quarantineSkipped = new Set<string>();
   let skipTokens = new Set<string>();
   let recheckTokens = new Set<string>();
   if (!inHotPhase) {
@@ -440,6 +518,19 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
           failed.push(s.name);
           continue;
         }
+        // Vendor circuit breaker: count every feed observation (quarantined or
+        // not — the rate must keep updating so recovery lifts the quarantine),
+        // then gate zero-feeds of quarantined vendors out of ALL processing.
+        {
+          const vs = vendorStats.get(s.source) ?? { a: 0, z: 0 };
+          vs.a += 1;
+          if (r.jobs.length === 0) vs.z += 1;
+          vendorStats.set(s.source, vs);
+          if (r.jobs.length === 0 && quarantinedVendors.has(s.source)) {
+            quarantineSkipped.add(s.token); // excluded from failure streaks below
+            continue;
+          }
+        }
         const descs = new Map<string, string>();
         if (s.source === "lever") {
           for (const j of (Array.isArray(r.raw) ? r.raw : []) as Array<{ id: string; descriptionPlain?: string; descriptionBodyPlain?: string }>) {
@@ -451,10 +542,28 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
             const text = (j.descriptionPlain ?? (j.descriptionHtml ? htmlToText(j.descriptionHtml) : "")).trim();
             if (text) descs.set(`ashby:${s.token}:${j.id}`, text.slice(0, 4000));
           }
-        } else if (s.source === "greenhouse" && !LIGHT_DESC_TOKENS.has(s.token)) {
-          for (const j of ((r.raw as { jobs?: Array<{ id: number; content?: string }> }).jobs ?? [])) {
-            const text = j.content ? htmlToText(String(j.content).slice(0, 12000)).trim() : "";
-            if (text) descs.set(`greenhouse:${s.token}:${j.id}`, text.slice(0, 4000));
+        } else if (s.source === "greenhouse" && !isLight(s.token)) {
+          const ghJobs = (r.raw as { jobs?: Array<{ id: number; content?: string }> }).jobs ?? [];
+          // Self-tuning light mode: measure the raw content volume BEFORE the
+          // htmlToText pass — that pass is what kills the isolate on giants.
+          // Past the threshold: enroll the board (persisted), skip extraction
+          // this pass; postings land desc-less and backfill-desc fills them.
+          const contentChars = ghJobs.reduce((n, j) => n + (j.content?.length ?? 0), 0);
+          if (contentChars >= AUTO_LIGHT_THRESHOLD_CHARS) {
+            DYNAMIC_LIGHT.add(s.token);
+            console.warn(`[JOB-BOARD] auto-light: ${s.token} content payload ${(contentChars / 1e6).toFixed(1)}MB >= threshold — enrolled in light mode (descs via backfill)`);
+            try {
+              const { error: alErr } = await client.from("job_board_meta").upsert(
+                { k: "light_desc_dynamic", v: { tokens: [...DYNAMIC_LIGHT].slice(-AUTO_LIGHT_CAP), updatedAt: new Date().toISOString() }, updated_at: new Date().toISOString() },
+                { onConflict: "k" },
+              );
+              if (alErr) console.warn(`[JOB-BOARD] auto-light persist failed for ${s.token} (re-enrolls next fetch):`, alErr.message?.slice(0, 120));
+            } catch { /* re-enrolls on the next fetch — never blocks the slice */ }
+          } else {
+            for (const j of ghJobs) {
+              const text = j.content ? htmlToText(String(j.content).slice(0, 12000)).trim() : "";
+              if (text) descs.set(`greenhouse:${s.token}:${j.id}`, text.slice(0, 4000));
+            }
           }
         } else if (s.source === "recruitee") {
           for (const o of ((r.raw as { offers?: Array<{ id: string | number; description?: string; requirements?: string }> }).offers ?? [])) {
@@ -482,7 +591,9 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
           }
         }
         const clean = (x: string | null | undefined) => (x == null ? null : x.replace(/\u0000/g, ""));
-        const lightDescs = LIGHT_DESC_TOKENS.has(s.token);
+        // isLight covers the static set, prior auto-enrollments, AND a board
+        // enrolled seconds ago in this very iteration (descs skipped above).
+        const lightDescs = isLight(s.token);
         const rowsById = new Map<string, Record<string, unknown>>();
         for (const j of r.jobs) {
           const posted = sanePostedAt(j.postedAt); // reject garbage feed dates at the door
@@ -515,7 +626,10 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
             // the company's verbatim words, never an estimate. `|| null` (not ??):
             // an empty-string vendor salary must not block extraction.
             salary: salaryText,
-            salary_min_annual: parseSalaryStructured(salaryText)?.annualMin ?? null,
+            ...(() => {
+              const p = parseSalaryStructured(salaryText);
+              return { salary_min_annual: p?.annualMin ?? null, salary_currency: p?.currency ?? null };
+            })(),
             experience_band: exp.band ?? "unspecified",
             min_years: exp.minYears,
             // Light boards omit the column so previously stored descriptions
@@ -701,7 +815,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
     const okSet = new Set(okTokens);
     const failedTokens = slice
       .map((s) => s.token)
-      .filter((tk) => !skipTokens.has(tk) && !okSet.has(tk));
+      .filter((tk) => !skipTokens.has(tk) && !quarantineSkipped.has(tk) && !okSet.has(tk));
     if (okTokens.length > 0 || failedTokens.length > 0 || recheckTokens.size > 0) {
       const { streaks, dormant, toPrune } = updateBoardFailures({
         okTokens,
@@ -719,6 +833,38 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
       }
       await client.from("job_board_meta").upsert({ k: "board_failures", v: { streaks, dormant }, updated_at: new Date().toISOString() }, { onConflict: "k" });
     }
+  }
+
+  // Vendor circuit-breaker bookkeeping: decay-merge this slice's feed counts
+  // and recompute the quarantine set (trip at VENDOR_ZERO_TRIP, lift below
+  // VENDOR_ZERO_RESET). Hop-end placement is fine HERE — losing a heavy hop's
+  // counters delays the trend by a slice, it never corrupts per-board state
+  // (which is why stamps write at the success site but this doesn't have to).
+  if (vendorStats.size > 0 || quarantinedVendors.size > 0) {
+    const merged: Record<string, { a: number; z: number }> = {};
+    const names = new Set([...Object.keys(vendorPrev), ...vendorStats.keys()]);
+    for (const v of names) {
+      const prev = vendorPrev[v] ?? { a: 0, z: 0 };
+      const cur = vendorStats.get(v) ?? { a: 0, z: 0 };
+      merged[v] = {
+        a: Math.round(prev.a * VENDOR_STATS_DECAY) + cur.a,
+        z: Math.round(prev.z * VENDOR_STATS_DECAY) + cur.z,
+      };
+    }
+    const nextQuarantined: string[] = [];
+    for (const [v, st] of Object.entries(merged)) {
+      const rate = st.a > 0 ? st.z / st.a : 0;
+      const wasQ = quarantinedVendors.has(v);
+      const isQ = st.a >= VENDOR_MIN_ATTEMPTS && rate >= (wasQ ? VENDOR_ZERO_RESET : VENDOR_ZERO_TRIP);
+      if (isQ) nextQuarantined.push(v);
+      if (isQ && !wasQ) console.error(`[JOB-BOARD] VENDOR QUARANTINE: ${v} feed-zero rate ${(rate * 100).toFixed(0)}% over ${st.a} recent fetches — zero-feed boards skipped (no prunes) until it recovers`);
+      if (!isQ && wasQ) console.log(`[JOB-BOARD] vendor ${v} left quarantine (feed-zero rate ${(rate * 100).toFixed(0)}%)`);
+    }
+    const { error: vhErr } = await client.from("job_board_meta").upsert(
+      { k: "vendor_breaker", v: { vendors: merged, quarantined: nextQuarantined, updatedAt: new Date().toISOString() }, updated_at: new Date().toISOString() },
+      { onConflict: "k" },
+    );
+    if (vhErr) console.warn("[JOB-BOARD] vendor_breaker write failed (non-fatal):", vhErr.message?.slice(0, 120));
   }
 
   if (passDone) {
@@ -887,6 +1033,38 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
         body: JSON.stringify({ action: "backfill-experience", chainKey: key }),
       })).then((r) => r.text()).catch(() => {}));
     }
+    // One-time name sync: ~48 rung-3 census names shipped HTML-escaped
+    // ("Bob's Main Street Auto &amp; Towing") and were decoded in the catalog —
+    // but the refresh is INSERT-ONLY by design (existing rows are never
+    // rewritten), so stored rows can never heal on their own. Find rows still
+    // carrying escaped names and sync them (postings + closures, which feed
+    // the actively-hiring leaderboard) to the decoded catalog name. Stamped.
+    const { data: nsVer } = await client.from("job_board_meta").select("v").eq("k", "name_sync_version").maybeSingle();
+    if ((nsVer?.v as { version?: number } | null)?.version !== 1) {
+      try {
+        const tokens = new Set<string>();
+        for (const pat of ["%&amp;%", "%&#039;%"]) {
+          const { data: escRows } = await client.from("job_board_postings").select("company_token").like("company", pat).limit(1000);
+          for (const r of escRows ?? []) tokens.add(r.company_token as string);
+        }
+        let fixed = 0;
+        for (const tk of tokens) {
+          const src = JOB_SOURCES.find((s) => s.token === tk);
+          if (!src) continue;
+          const { error: e1 } = await client.from("job_board_postings").update({ company: src.name }).eq("company_token", tk);
+          const { error: e2 } = await client.from("job_board_closures").update({ company: src.name }).eq("company_token", tk);
+          if (!e1 && !e2) fixed++;
+        }
+        await client.from("job_board_meta").upsert(
+          { k: "name_sync_version", v: { version: 1, fixed, sweptAt: new Date().toISOString() }, updated_at: new Date().toISOString() },
+          { onConflict: "k" },
+        );
+        if (fixed > 0) console.log(`[JOB-BOARD] name sync: decoded stored names for ${fixed} boards`);
+      } catch (e) {
+        console.warn("[JOB-BOARD] name sync failed (retries next pass):", String(e).slice(0, 150));
+      }
+    }
+
     // Same deal for salary_min_annual: rows are insert-only, so postings that
     // predate the structured parser need one sweep. Stamped on completion.
     const { data: salVer } = await client.from("job_board_meta").select("v").eq("k", "salary_parse_version").maybeSingle();
@@ -924,7 +1102,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
       // missing on the light boards, run regardless of the stamp — this
       // recovers from a stamp written by an older/buggy sweep without any
       // manual reset. One cheap capped count per pass (indexed).
-      const lightTokens = JOB_SOURCES.filter((s) => LIGHT_DESC_TOKENS.has(s.token)).map((s) => s.token);
+      const lightTokens = JOB_SOURCES.filter((s) => isLight(s.token)).map((s) => s.token); // static + auto-enrolled (loaded at runRefresh start)
       let missingCoverage = false;
       if (lightTokens.length > 0 && bfAge > 30 * 60_000) {
         const { count } = await client.from("job_board_postings").select("id", { count: "exact", head: true }).in("company_token", lightTokens).is("description", null);
@@ -1068,12 +1246,15 @@ Deno.serve(async (req) => {
       // bundle, so a stale/failed publish is visible in ONE call instead of being
       // inferred from posting counts over hours (the rung-2 "did it deploy?" pain).
       // Also the source of truth for the heartbeat's job_board_deploy check.
-      const [prog, rot, refreshMeta, bf, hotMeta] = await Promise.all([
+      const [prog, rot, refreshMeta, bf, hotMeta, fresh, breaker] = await Promise.all([
         client.from("job_board_meta").select("v, updated_at").eq("k", "refresh_progress").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "cold_rotation").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "refresh").maybeSingle(),
         client.from("job_board_meta").select("v").eq("k", "board_failures").maybeSingle(),
         client.from("job_board_meta").select("v").eq("k", "hot_tokens").maybeSingle(),
+        // Measured re-verification age distribution (null until the migration lands)
+        client.rpc("get_freshness_stats").then((r) => r, () => ({ data: null })),
+        client.from("job_board_meta").select("v").eq("k", "vendor_breaker").maybeSingle(),
       ]);
       const pgV = (prog.data?.v ?? {}) as { hot?: number; cold?: number; coldDone?: number; failedAcc?: string[] };
       const rotV = (rot.data?.v ?? {}) as { completedAt?: string; coldBoards?: number };
@@ -1096,6 +1277,12 @@ Deno.serve(async (req) => {
         lastSliceAgeMin: ageMin(prog.data?.updated_at),
         lastRotationAgeMin: ageMin(rotV.completedAt ?? rot.data?.updated_at ?? null),
         recentFailures: Array.isArray(pgV.failedAcc) ? pgV.failedAcc.slice(-10) : [],
+        // Measured freshness: re-verification age across all stamped boards.
+        // THE number behind the public "within a few hours" claim.
+        freshness: Array.isArray((fresh as { data?: unknown }).data) && ((fresh as { data: unknown[] }).data)[0]
+          ? ((fresh as { data: unknown[] }).data)[0]
+          : null,
+        quarantinedVendors: (((breaker.data?.v ?? {}) as { quarantined?: string[] }).quarantined ?? []),
         at: new Date().toISOString(),
       });
     }
@@ -1253,14 +1440,17 @@ Deno.serve(async (req) => {
       }
       let cursor = typeof body.cursor === "string" ? body.cursor : "";
       let scanned = 0;
-      const groups = new Map<number, string[]>(); // annualMin -> ids
+      // Group by the (annualMin, currency) pair so each distinct patch is one
+      // chunked update. v2 pages on salary_currency IS NULL — that covers both
+      // never-parsed rows AND rows the v1 sweep parsed before currency existed.
+      const groups = new Map<string, { annualMin: number | null; currency: string; ids: string[] }>();
       const PAGES = 6;
       for (let page = 0; page < PAGES; page++) {
         let q = client
           .from("job_board_postings")
           .select("id,salary")
           .not("salary", "is", null)
-          .is("salary_min_annual", null)
+          .is("salary_currency", null)
           .order("id")
           .limit(1000);
         if (cursor) q = q.gt("id", cursor);
@@ -1268,20 +1458,24 @@ Deno.serve(async (req) => {
         if (error) throw error;
         for (const r of rows ?? []) {
           scanned++;
-          const annualMin = parseSalaryStructured((r as { salary?: string | null }).salary)?.annualMin ?? null;
-          if (annualMin === null) continue;
-          if (!groups.has(annualMin)) groups.set(annualMin, []);
-          groups.get(annualMin)!.push(r.id as string);
+          const p = parseSalaryStructured((r as { salary?: string | null }).salary);
+          if (!p || p.currency === null) continue; // nothing stated — cursor walks past, stamp stops rescans
+          const key = `${p.annualMin ?? ""}|${p.currency}`;
+          const g = groups.get(key) ?? { annualMin: p.annualMin, currency: p.currency, ids: [] };
+          g.ids.push(r.id as string);
+          groups.set(key, g);
         }
         if (!rows || rows.length < 1000) { cursor = ""; break; }
         cursor = rows[rows.length - 1].id as string;
       }
       let updated = 0;
-      for (const [annualMin, ids] of groups) {
-        for (let i = 0; i < ids.length; i += 200) {
-          const { error } = await client.from("job_board_postings").update({ salary_min_annual: annualMin }).in("id", ids.slice(i, i + 200));
+      for (const g of groups.values()) {
+        for (let i = 0; i < g.ids.length; i += 200) {
+          const { error } = await client.from("job_board_postings")
+            .update({ salary_min_annual: g.annualMin, salary_currency: g.currency })
+            .in("id", g.ids.slice(i, i + 200));
           if (error) throw error;
-          updated += Math.min(200, ids.length - i);
+          updated += Math.min(200, g.ids.length - i);
         }
       }
       if (cursor) {
@@ -1389,7 +1583,8 @@ Deno.serve(async (req) => {
       if (typeof body.chainKey !== "string" || body.chainKey !== await chainKey()) {
         return json({ error: "backfill-desc is a maintenance action" }, 403);
       }
-      const BOARDS = JOB_SOURCES.filter((s) => LIGHT_DESC_TOKENS.has(s.token));
+      await loadDynamicLight(client); // fresh invocation — auto-enrolled boards need their descs filled too
+      const BOARDS = JOB_SOURCES.filter((s) => isLight(s.token));
       const PER_HOP = 50; // small per-job fetches; keeps each invocation light
       let ti = Math.max(0, Number(body.ti) || 0);
       // Touch meta each hop so the 24h staleness trigger can't spawn an
@@ -1439,10 +1634,11 @@ Deno.serve(async (req) => {
             // (GH giants fetch without content, so ingest-time mining never saw
             // it). Only set when extraction finds the company's own pay text.
             const minedSalary = extractSalary(text);
+            const minedParse = minedSalary ? parseSalaryStructured(minedSalary) : null;
             const { error } = await client.from("job_board_postings")
               .update({
                 description: text,
-                ...(minedSalary ? { salary: minedSalary, salary_min_annual: parseSalaryStructured(minedSalary)?.annualMin ?? null } : {}),
+                ...(minedSalary ? { salary: minedSalary, salary_min_annual: minedParse?.annualMin ?? null, salary_currency: minedParse?.currency ?? null } : {}),
               })
               .eq("id", row.id);
             if (!error) updated++;
@@ -1536,39 +1732,58 @@ Deno.serve(async (req) => {
       if (prevAge < 20 * 3600_000 && body.force !== true) {
         return json({ ...(prevAudit?.v as Record<string, unknown>), cached: true });
       }
-      // Random sample without an ORDER BY random() table scan: N small
-      // id-ordered pages at random offsets across the corpus.
+      // STRATIFIED sample: ~equal draws per vendor, not pure random. A pure
+      // random sample is dominated by the biggest vendors — a small vendor
+      // could serve 100% dead listings and barely dent the blended number.
+      // Stratifying makes any single vendor's break visible within one audit,
+      // and produces the per-vendor accuracy published alongside the headline.
       const { count: totalRows } = await client.from("job_board_postings").select("id", { count: "exact", head: true });
       const corpus = totalRows ?? 0;
+      const VENDORS = [...new Set(JOB_SOURCES.map((s) => s.source))];
+      const PER_VENDOR = Math.max(4, Math.floor(AUDIT_SAMPLE / Math.max(1, VENDORS.length)));
       const sampleIds: string[] = [];
-      if (corpus > AUDIT_SAMPLE) {
-        const pages = 10, per = AUDIT_SAMPLE / pages;
+      for (const v of VENDORS) {
+        const { count } = await client.from("job_board_postings").select("id", { count: "exact", head: true }).eq("source", v);
+        const n = count ?? 0;
+        if (n === 0) continue;
+        const want = Math.min(PER_VENDOR, n);
+        const pages = want > 4 ? 2 : 1; // two random offsets per vendor beats one cluster
+        const per = Math.ceil(want / pages);
         for (let p = 0; p < pages; p++) {
-          const off = Math.floor(Math.random() * Math.max(1, corpus - per));
-          const { data: page } = await client.from("job_board_postings").select("id").order("id").range(off, off + per - 1);
+          const off = Math.floor(Math.random() * Math.max(1, n - per));
+          const { data: page } = await client.from("job_board_postings").select("id").eq("source", v).order("id").range(off, off + per - 1);
           for (const r of page ?? []) if (!sampleIds.includes(r.id as string)) sampleIds.push(r.id as string);
         }
       }
       let live = 0, gone = 0, unknown = 0;
+      const byVendor: Record<string, { sampled: number; live: number; gone: number; unknown: number; accuracyPct: number | null }> = {};
       liveBoardMemo.clear();
       // Small parallel batches: bounded fan-out, memoized board fetches.
       for (let i = 0; i < sampleIds.length; i += 8) {
-        const results = await Promise.all(sampleIds.slice(i, i + 8).map(async (id) => {
+        const batch = sampleIds.slice(i, i + 8);
+        const results = await Promise.all(batch.map(async (id) => {
           const [source, token, ...rest] = id.split(":");
           const src = JOB_SOURCES.find((s) => s.source === source && s.token === token);
           if (!src || rest.length === 0) return null; // deselected board — can't ground-truth
           return await checkLive(src, rest.join(":"));
         }));
-        for (const r of results) {
-          if (r === true) live++;
-          else if (r === false) gone++;
-          else unknown++;
-        }
+        results.forEach((r, j) => {
+          const v = batch[j].split(":")[0];
+          const bucket = byVendor[v] ?? (byVendor[v] = { sampled: 0, live: 0, gone: 0, unknown: 0, accuracyPct: null });
+          bucket.sampled++;
+          if (r === true) { live++; bucket.live++; }
+          else if (r === false) { gone++; bucket.gone++; }
+          else { unknown++; bucket.unknown++; }
+        });
+      }
+      for (const b of Object.values(byVendor)) {
+        const d = b.live + b.gone;
+        b.accuracyPct = d > 0 ? Math.round((b.live / d) * 1000) / 10 : null;
       }
       const decided = live + gone;
       const accuracyPct = decided > 0 ? Math.round((live / decided) * 1000) / 10 : null;
       const prevHistory = ((prevAudit?.v as { history?: Array<Record<string, unknown>> } | null)?.history ?? []).slice(-29);
-      const result = { at: new Date().toISOString(), sampled: sampleIds.length, live, gone, unknown, accuracyPct, corpus };
+      const result = { at: new Date().toISOString(), sampled: sampleIds.length, live, gone, unknown, accuracyPct, corpus, byVendor };
       await client.from("job_board_meta").upsert(
         { k: "audit", v: { ...result, history: [...prevHistory, result] }, updated_at: new Date().toISOString() },
         { onConflict: "k" },

@@ -747,7 +747,7 @@ export { COUNTRY_SLUGS, CV_LOCALES, EN_TEMPLATE, fill, hreflangCluster } from ".
         content: `
           <h1>Live ${label} jobs</h1>
           <p>${countPhrase[0].toUpperCase()}${countPhrase.slice(1)}${boardTotal ? ` — part of ${fmt(boardTotal)} live postings across ${fmt(boardCompanies)} companies` : ""}, pulled directly from the official job boards companies publish on Greenhouse, Lever, Ashby, SmartRecruiters, Workable, and BambooHR. No scraped listings, no aggregators, no reposts: every opening belongs to the company that published it, and applying happens on the company's own site.</p>
-          <p>The largest boards are re-checked about every 10–15 minutes and the whole catalog is re-verified within about an hour, so postings a company takes down disappear on the next pass. Counts on this page were measured when it was last built; the live board always shows the current number.</p>
+          <p>The largest boards are re-checked about every 10–15 minutes and the whole catalog rotates continuously — every feed re-verified within a few hours — so postings a company takes down disappear on the next pass. Counts on this page were measured when it was last built; the live board always shows the current number.</p>
           <p><a href="/jobs/field/${slug}">Browse ${label} openings on the live board</a> — filter by keyword, location, remote, and company; save searches with a free account; and check any posting against your resume with the <a href="/">free resume scan</a> before you spend an application on it.</p>
           <p>Other fields: ${siblings} — or see <a href="/jobs">the full job board</a>.</p>
         `,
@@ -929,7 +929,7 @@ export { COUNTRY_SLUGS, CV_LOCALES, EN_TEMPLATE, fill, hreflangCluster } from ".
     lines.push("> Free diagnostic resume scanner (resumebooster.work): ATS score with a point-by-point audit trail, every quoted finding verified against the actual document, per-vendor parsing checks (Workday, Greenhouse, Lever, iCIMS), keyword expectations sourced from the U.S. Department of Labor's O*NET database. 58 industries, 10 languages including native Spanish detection. Free scan, no signup, resumes never stored. See /llms.txt for the short overview.");
     if (boardFacets?.total) {
       lines.push("");
-      lines.push(`> Live job board (/jobs): ${Number(boardFacets.total).toLocaleString("en-US")} postings from ${Array.isArray(boardFacets.companiesFacet) ? boardFacets.companiesFacet.length : "3,000+"} companies' OFFICIAL job-board APIs (Greenhouse, Lever, Ashby, SmartRecruiters, Workable, BambooHR) — no scraping, no aggregators; the largest boards re-check every 10-15 minutes and the whole catalog re-verifies within about an hour. Per-field pages at /jobs/field/{engineering,healthcare,finance,...}. Free deterministic resume-fit scoring against any posting.`);
+      lines.push(`> Live job board (/jobs): ${Number(boardFacets.total).toLocaleString("en-US")} postings from ${Array.isArray(boardFacets.companiesFacet) ? boardFacets.companiesFacet.length : "3,000+"} companies' OFFICIAL job-board APIs (Greenhouse, Lever, Ashby, SmartRecruiters, Workable, BambooHR) — no scraping, no aggregators; the largest boards re-check every 10-15 minutes and the whole catalog re-verifies within a few hours. Per-field pages at /jobs/field/{engineering,healthcare,finance,...}. Free deterministic resume-fit scoring against any posting.`);
     }
     lines.push("");
     lines.push("## Guides (full text)");
@@ -1009,6 +1009,21 @@ export { COUNTRY_SLUGS, CV_LOCALES, EN_TEMPLATE, fill, hreflangCluster } from ".
       entries.push({ path: wp, changefreq: jobsPage ? "daily" : "monthly", priority: "0.7" });
     }
     if (entries.length < 100) throw new Error(`sitemap suspiciously small (${entries.length} URLs) — refusing to overwrite`);
+    // Ratchet guard: a transient facets/board fetch failure mid-build silently
+    // produced a 375-URL sitemap where 875 stood (500 company pages skipped) —
+    // and public/sitemap.xml is committed, so the shrink would have shipped.
+    // Never overwrite with >20% fewer URLs than the sitemap already has; a
+    // REAL catalog shrink that big should be a deliberate edit, not a flake.
+    try {
+      const prev = readFileSync(join(root, "public/sitemap.xml"), "utf8");
+      const prevCount = (prev.match(/<loc>/g) ?? []).length;
+      if (prevCount > 0 && entries.length < prevCount * 0.8) {
+        throw new Error(`sitemap would shrink ${prevCount} → ${entries.length} URLs — transient data-fetch failure? refusing to overwrite`);
+      }
+    } catch (e) {
+      if (String(e).includes("refusing to overwrite")) throw e;
+      /* no previous sitemap — first build, proceed */
+    }
     const xml = [
       `<?xml version="1.0" encoding="UTF-8"?>`,
       `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">`,

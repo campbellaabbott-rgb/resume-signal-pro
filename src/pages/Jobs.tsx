@@ -417,13 +417,15 @@ export default function Jobs() {
   // Category salary benchmarks: median advertised pay floor per field, computed
   // live from postings that state pay (RPC self-gates at n>=30 — a thin sample
   // returns no row and we show nothing). Fetched once, on first category view.
-  const [benchmarks, setBenchmarks] = useState<Record<string, { n: number; median: number }> | null>(null);
+  const [benchmarks, setBenchmarks] = useState<Record<string, { n: number; median: number; currency: string }> | null>(null);
   const benchmarksAttempted = useRef(false);
   useEffect(() => {
     if (!category || benchmarksAttempted.current) return;
     benchmarksAttempted.current = true;
     (async () => {
-      const call = () => (supabase as unknown as { rpc: (fn: string) => Promise<{ data: unknown }> }).rpc("get_salary_benchmarks");
+      // Promise.resolve assimilates the PostgREST builder (a thenable WITHOUT
+      // .catch — calling .catch on it throws) into a real Promise.
+      const call = () => Promise.resolve((supabase as unknown as { rpc: (fn: string) => Promise<{ data: unknown }> }).rpc("get_salary_benchmarks"));
       let { data: rows } = await call().catch(() => ({ data: null }));
       // Cold-cache RPCs can time out once and succeed warm — one spaced retry.
       if (!Array.isArray(rows) || rows.length === 0) {
@@ -431,10 +433,13 @@ export default function Jobs() {
         ({ data: rows } = await call().catch(() => ({ data: null })));
       }
       if (!Array.isArray(rows)) return;
-      const map: Record<string, { n: number; median: number }> = {};
-      for (const r of rows as Array<{ category: string; n: number; median_annual_min: number }>) {
+      const map: Record<string, { n: number; median: number; currency: string }> = {};
+      for (const r of rows as Array<{ category: string; currency?: string; n: number; median_annual_min: number }>) {
         if (r.category && r.n >= 30 && Number.isFinite(Number(r.median_annual_min))) {
-          map[r.category] = { n: r.n, median: Number(r.median_annual_min) };
+          // Pre-currency RPC rows (no currency column yet) default to USD —
+          // the dominant bucket — until the migration lands; post-migration
+          // rows carry the real dominant currency per category.
+          map[r.category] = { n: r.n, median: Number(r.median_annual_min), currency: r.currency ?? "USD" };
         }
       }
       setBenchmarks(map);
@@ -1380,10 +1385,12 @@ export default function Jobs() {
               {category && benchmarks?.[category] && (
                 <p
                   className="text-xs text-muted-foreground mb-3 -mt-2"
-                  title={t("jobsPage.benchmarkTip", "Median of the annualized lower bounds companies publish themselves (hourly and monthly rates annualized, currencies not converted). Live from this board — not a survey or an estimate.")}
+                  title={t("jobsPage.benchmarkTip", "Median of the annualized lower bounds companies publish themselves (hourly and monthly rates annualized), computed over this field's dominant stated currency only — never converted, never mixed. Live from this board — not a survey or an estimate.")}
                 >
-                  {t("jobsPage.benchmarkLine", "Advertised pay in this field: median floor ${{median}} — from {{n}} postings here that state pay", {
+                  {t("jobsPage.benchmarkLine", "Advertised pay in this field: median floor {{symbol}}{{median}} ({{currency}}) — from {{n}} postings here that state pay", {
+                    symbol: { USD: "$", EUR: "€", GBP: "£" }[benchmarks[category].currency] ?? "",
                     median: Math.round(benchmarks[category].median).toLocaleString(),
+                    currency: benchmarks[category].currency,
                     n: benchmarks[category].n,
                   })}
                 </p>
@@ -1650,7 +1657,7 @@ export default function Jobs() {
           )}
 
           <p className="text-[11px] text-muted-foreground mt-10">
-            {t("jobsPage.sourceNote", "Sources: the official public job-board APIs companies publish on Greenhouse, Lever, Ashby, SmartRecruiters, Workable, BambooHR, Recruitee, Teamtailor, Personio, and Breezy. The largest boards are re-checked about every 10–15 minutes and the whole catalog rotates continuously — every feed is re-verified within about an hour, and postings a company takes down disappear on the next pass. A feed that stops responding drops off the board rather than breaking it.")}
+            {t("jobsPage.sourceNote", "Sources: the official public job-board APIs companies publish on Greenhouse, Lever, Ashby, SmartRecruiters, Workable, BambooHR, Recruitee, Teamtailor, Personio, and Breezy. The largest boards are re-checked about every 10–15 minutes and the whole catalog rotates continuously — every feed is re-verified within a few hours, and postings a company takes down disappear on the next pass. A feed that stops responding drops off the board rather than breaking it.")}
           </p>
         </div>
       </main>
