@@ -3392,6 +3392,14 @@
     "seekerToolkit": {
       "title": "Salary floors, live pay benchmarks, entry-level rankings, weekly trends — and you can talk back to the board",
       "description": "You can now filter by a pay floor using only what postings themselves state (hourly and monthly rates annualised, never estimated), and category pages show the live median advertised pay floor once at least 30 postings state pay. Two new public pages: the Entry-Level Index ranks who's actually hiring early-career right now, and Weekly Hiring Trends counts real postings per week — coverage growth can never fake a spike. On the board itself: a skill-unlock insight shows the one missing keyword blocking the most matches, urgency chips flag companies that typically fill fast, repost flags mark serial relisters, you can watch a company, hide postings, and search filters as you type. And if a posting looks wrong, report it — a 'gone' report re-checks it against the company's own board on the spot."
+    },
+    "boardDestination": {
+      "title": "The job board is now the front door — and postings open right on the board",
+      "description": "Resume Booster now leads with the job board: the homepage opens on live counts and a straight path into 185,000+ verified openings. On the board itself, clicking any posting opens a full detail panel — complete description, stated salary, your fit score with the exact keywords you match and miss, company hiring-health, and one-click apply — and every posting now has its own shareable link. The first job is visible without scrolling (on your phone too — filters live behind one button now), cards got company monograms and a cleaner layout, 'For you' ranks the whole board against your CV as a first-class mode, and you can sort by highest stated salary — real published pay only, never estimates."
+    },
+    "measuredTrust": {
+      "title": "Freshness you can check, not just trust — measured and published live",
+      "description": "The Ghost Job Index now publishes the board's freshness as a live measurement: right now the median company feed was re-checked under an hour ago, with 95% of all feeds within about two hours — computed from per-feed verification stamps at the moment you load the page, never a marketing claim. The daily accuracy audit now samples every hiring system separately and publishes per-system results, so a problem with any one system can't hide inside a healthy average. Salary benchmarks are now computed per currency (a €50,000 posting no longer averages with a $50,000 one), and the pipeline gained a circuit breaker: if a hiring system's API ever breaks, the board freezes that system's data instead of showing — or deleting — the wrong thing."
     }
   },
   "sampleReportPreview": {
