@@ -11,6 +11,7 @@ import { SEO } from "@/components/seo/SEO";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { supabase } from "@/integrations/supabase/client";
+import { VIZ_SERIES_A } from "@/components/DataViz";
 
 interface Stats {
   total_open: number;
@@ -181,12 +182,12 @@ export default function GhostJobIndex() {
                 audits to show. Every bar is a published, dated measurement. */}
             {(audit.history?.length ?? 0) >= 2 && (
               <div className="mt-3">
-                <div className="flex items-end gap-1">
+                <div className="flex items-end gap-0.5">
                   {audit.history!.slice(-14).map((h) => (
                     <div
                       key={h.at}
-                      className="w-6 rounded-t bg-success/70"
-                      style={{ height: `${Math.max(6, Math.round((h.accuracyPct ?? 0) * 0.4))}px` }}
+                      className="w-5 rounded-t"
+                      style={{ height: `${Math.max(6, Math.round((h.accuracyPct ?? 0) * 0.4))}px`, backgroundColor: VIZ_SERIES_A }}
                       title={`${new Date(h.at).toLocaleDateString()}: ${h.accuracyPct ?? "—"}% of ${h.sampled} sampled confirmed live`}
                     />
                   ))}

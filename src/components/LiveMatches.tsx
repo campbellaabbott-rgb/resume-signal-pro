@@ -85,9 +85,23 @@ export function LiveMatches({ resumeText, industry }: { resumeText: string; indu
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [industry]);
 
-  // Quietly absent on failure — the report must never look broken because
-  // the board hiccupped.
-  if (failed || (matches !== null && matches.length === 0)) return null;
+  // On failure (board hiccup, or the daily fit-ranking rate limit a heavy
+  // user can genuinely hit) the MATCHES go quietly absent — but the board
+  // handoff must survive: it makes no per-posting claims, and losing the
+  // report's strongest next step over a scoring hiccup is a worse failure.
+  if (failed || (matches !== null && matches.length === 0)) {
+    return (
+      <div className="mb-4">
+        <Link
+          to="/jobs"
+          className="flex items-center justify-center gap-2 w-full rounded-xl bg-gradient-to-r from-primary via-primary to-blue-500 text-primary-foreground font-bold px-5 py-3.5 shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/35 active:scale-[0.99] transition-all"
+        >
+          {t("freeResults.matches.openBoardFallback", "Open the live job board — 185,000+ verified openings, ranked against your resume")}
+          <ArrowRight className="w-4 h-4 shrink-0" />
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="rounded-2xl border border-primary/25 bg-primary/5 p-5 mb-4">
@@ -134,10 +148,19 @@ export function LiveMatches({ resumeText, industry }: { resumeText: string; indu
               </li>
             ))}
           </ul>
-          <Link to="/jobs" className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
-            {t("freeResults.matches.seeAll", "See all matches on the job board — save searches, track applications")}
-            <ArrowRight className="w-4 h-4" />
+          {/* The flywheel moment: the scan just finished and the board already
+              knows this resume — For-you mode auto-enables on arrival. Make the
+              handoff a destination, not a footnote link. */}
+          <Link
+            to="/jobs"
+            className="flex items-center justify-center gap-2 w-full rounded-xl bg-gradient-to-r from-primary via-primary to-blue-500 text-primary-foreground font-bold px-5 py-3.5 shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/35 active:scale-[0.99] transition-all"
+          >
+            {t("freeResults.matches.openBoard", "Open your ranked board — every opening scored against this resume")}
+            <ArrowRight className="w-4 h-4 shrink-0" />
           </Link>
+          <p className="text-[11px] text-muted-foreground text-center mt-2">
+            {t("freeResults.matches.openBoardNote", "185,000+ verified openings · save searches, watch companies, track applications")}
+          </p>
         </>
       )}
     </div>

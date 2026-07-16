@@ -456,6 +456,40 @@ export default function Account() {
           </button>
         </div>
 
+        {/* Job Search HQ: the pipeline at a glance — the account is mission
+            control for a daily ritual, not a list of features. Tiles read
+            straight from the tracker; the board CTA lands in For-you mode. */}
+        {applications.length > 0 && (
+          <div className="mb-6">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-2">
+              {([
+                ["saved", "Saved", "text-foreground"],
+                ["applied", "Applied", "text-primary"],
+                ["interviewing", "Interviewing", "text-warning"],
+                ["offer", "Offers", "text-success"],
+              ] as const).map(([key, label, color]) => (
+                <div key={key} className="rounded-xl border border-border bg-card p-3">
+                  <p className={`text-2xl font-bold ${color}`}>{applications.filter((a) => a.status === key).length}</p>
+                  <p className="text-[11px] text-muted-foreground">{label}</p>
+                </div>
+              ))}
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Link
+                to="/jobs"
+                className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
+              >
+                Open your ranked board — new postings score themselves against your resume →
+              </Link>
+              {skillGap && skillGap.top.length > 0 && (
+                <span className="text-[11px] text-muted-foreground">
+                  · Top gap across your applications: <span className="text-warning font-medium">{skillGap.top[0][0]}</span>
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* First-visit activation checklist — an empty dashboard should feel
             like a starting line, not a broken page */}
         {scans.length === 0 && !fetching && (

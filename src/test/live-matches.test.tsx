@@ -1,5 +1,7 @@
 // The report's live-matches card: fit-ranked top 5 from mocked board
-// responses; hides quietly when the board fails or returns nothing.
+// responses; when the board fails or returns nothing it degrades to a plain
+// board CTA (no per-posting claims) instead of vanishing — the handoff to
+// the jobs board is the report's strongest next step and must survive.
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
@@ -34,16 +36,22 @@ describe("LiveMatches", () => {
     expect(screen.getAllByRole("link", { name: /Apply/i })[0]).toHaveAttribute("href", "https://x/2");
   });
 
-  it("renders nothing when the board returns no jobs", async () => {
+  it("falls back to a plain board CTA when the board returns no jobs", async () => {
     invoke.mockResolvedValue({ data: { jobs: [] } }); // both list calls return empty
-    const { container } = render(<MemoryRouter><LiveMatches resumeText="r" industry="healthcare" /></MemoryRouter>);
-    await waitFor(() => expect(container.firstChild).toBeNull());
+    render(<MemoryRouter><LiveMatches resumeText="r" industry="healthcare" /></MemoryRouter>);
+    const cta = await screen.findByRole("link", { name: /Open the live job board/i });
+    expect(cta).toHaveAttribute("href", "/jobs");
+    // No per-posting claims in the degraded state: no match list, no fit badges.
+    expect(screen.queryByRole("listitem")).toBeNull();
+    expect(screen.queryByText(/fit \d+%/)).toBeNull();
   });
 
-  it("renders nothing when the board errors — the report never looks broken", async () => {
+  it("falls back to a plain board CTA when the board errors — the report never looks broken", async () => {
     // supabase-js resolves with an error field rather than throwing.
     invoke.mockResolvedValue({ data: null, error: { message: "boom" } });
-    const { container } = render(<MemoryRouter><LiveMatches resumeText="r" industry="technology" /></MemoryRouter>);
-    await waitFor(() => expect(container.firstChild).toBeNull());
+    render(<MemoryRouter><LiveMatches resumeText="r" industry="technology" /></MemoryRouter>);
+    const cta = await screen.findByRole("link", { name: /Open the live job board/i });
+    expect(cta).toHaveAttribute("href", "/jobs");
+    expect(screen.queryByRole("listitem")).toBeNull();
   });
 });

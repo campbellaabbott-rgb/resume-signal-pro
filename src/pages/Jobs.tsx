@@ -562,6 +562,18 @@ export default function Jobs() {
   // current selection used.
   const detailPushed = useRef(false);
   const swipeStartY = useRef<number | null>(null); // mobile sheet swipe-down-to-close
+  // A11y focus contract for the overlay: focus moves INTO the dialog when it
+  // opens and returns to wherever the user was when it closes.
+  const overlayRef = useRef<HTMLElement | null>(null);
+  const lastFocusRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    if (detailJob) {
+      lastFocusRef.current = (document.activeElement as HTMLElement) ?? null;
+      overlayRef.current?.focus();
+    } else {
+      lastFocusRef.current?.focus?.();
+    }
+  }, [detailJob]);
   const openDetail = useCallback(async (job: BoardJob, urlMode: "push" | "replace" | "none" = "push") => {
     setDetailJob(job);
     setDetailDesc(null);
@@ -1440,6 +1452,28 @@ export default function Jobs() {
                   {savedIds.has(detailJob.id) ? <BookmarkCheck className="w-4 h-4 text-primary" /> : <Bookmark className="w-4 h-4" />}
                 </Button>
               </div>
+              {/* Inline fit: never leave the posting to learn your score. With
+                  a resume on file but ranking off, one click scores in place;
+                  while scores load, say so; without a resume the actions row's
+                  "Check my fit" owns the scan handoff. */}
+              {typeof fits[detailJob.id] !== "number" && resumeAvailable && !fitRanking && (
+                <button
+                  type="button"
+                  onClick={toggleFitRanking}
+                  className="w-full rounded-xl border border-primary/40 bg-primary/5 hover:bg-primary/10 transition-colors p-3 text-sm text-left flex items-center gap-2"
+                >
+                  <Target className="w-4 h-4 text-primary shrink-0" />
+                  <span className="text-foreground font-medium">
+                    {t("jobsPage.detailFitCta", "Show my fit score for this role — uses your saved resume")}
+                  </span>
+                </button>
+              )}
+              {fitRanking && fits[detailJob.id] === undefined && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  {t("jobsPage.detailFitLoading", "Scoring this posting against your resume…")}
+                </div>
+              )}
               {typeof fits[detailJob.id] === "number" && (
                 <div className="rounded-xl border border-border bg-card p-3 text-sm">
                   <p className="font-semibold mb-1">
@@ -1982,7 +2016,7 @@ export default function Jobs() {
                   </div>
                 </div>
               )}
-              <p className="text-xs text-muted-foreground mb-3">
+              <p className="text-xs text-muted-foreground mb-3" aria-live="polite">
                 {landerCompany
                   ? t("jobsPage.companyResultsSummary", "Showing {{shown}} of {{total}} open roles at {{company}}", {
                       shown: jobs.length,
@@ -2352,10 +2386,12 @@ export default function Jobs() {
         <div className="lg:hidden">
           <div className="fixed inset-0 z-40 bg-black/50 animate-in fade-in duration-150" onClick={() => closeDetail()} />
           <aside
+            ref={overlayRef}
+            tabIndex={-1}
             role="dialog"
             aria-modal="true"
             aria-label={detailJob.title}
-            className="fixed right-0 top-0 bottom-0 z-50 w-full sm:w-[560px] sm:max-w-[92vw] bg-background border-l border-border overflow-y-auto animate-in slide-in-from-right duration-200"
+            className="fixed right-0 top-0 bottom-0 z-50 w-full sm:w-[560px] sm:max-w-[92vw] bg-background border-l border-border overflow-y-auto animate-in slide-in-from-right duration-200 focus:outline-none"
             onTouchStart={(e) => { swipeStartY.current = e.currentTarget.scrollTop === 0 ? e.touches[0].clientY : null; }}
             onTouchMove={(e) => {
               // Swipe-down-to-close, only from the very top of the sheet so it

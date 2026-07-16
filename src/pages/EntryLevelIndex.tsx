@@ -12,6 +12,7 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { supabase } from "@/integrations/supabase/client";
 import { isBoardCategory } from "@/lib/job-board-categories";
+import { HBarList } from "@/components/DataViz";
 
 interface Stats {
   total_entry: number;
@@ -150,17 +151,18 @@ export default function EntryLevelIndex() {
             <h2 className="text-lg font-semibold flex items-center gap-2 mb-3">
               <MapPin className="w-4 h-4 text-primary" /> Where the entry-level jobs are
             </h2>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-              {topCategories.map(([cat, n]) => (
-                <Link
-                  key={cat}
-                  to={isBoardCategory(cat) ? `/jobs?category=${cat}&experience=entry` : `/jobs?experience=entry`}
-                  className="rounded-xl border border-border bg-card p-3 hover:bg-muted/40 transition-colors"
-                >
-                  <div className="text-lg font-bold text-foreground">{fmt(n)}</div>
-                  <div className="text-[11px] text-muted-foreground">{CAT_LABELS[cat] ?? cat}</div>
-                </Link>
-              ))}
+            <div className="rounded-2xl border border-border bg-card p-4">
+              <HBarList
+                items={topCategories.map(([cat, n]) => ({ key: cat, label: CAT_LABELS[cat] ?? cat, value: n }))}
+                renderLabel={(it) => (
+                  <Link
+                    to={isBoardCategory(it.key) ? `/jobs?category=${it.key}&experience=entry` : `/jobs?experience=entry`}
+                    className="hover:text-primary hover:underline"
+                  >
+                    {it.label}
+                  </Link>
+                )}
+              />
             </div>
           </div>
         )}

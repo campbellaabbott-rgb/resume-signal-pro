@@ -1,0 +1,20 @@
+{
+  "name": "Resume Booster — Live Job Board",
+  "short_name": "Resume Booster",
+  "description": "185,000+ verified openings direct from company career systems, matched to your resume. Zero ghost jobs.",
+  "id": "/",
+  "start_url": "/jobs",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0c1222",
+  "theme_color": "#0c1222",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Job board", "url": "/jobs", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Scan my resume", "url": "/#upload", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] }
+  ]
+}

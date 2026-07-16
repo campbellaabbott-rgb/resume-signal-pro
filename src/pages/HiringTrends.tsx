@@ -13,6 +13,7 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { supabase } from "@/integrations/supabase/client";
 import { isBoardCategory } from "@/lib/job-board-categories";
+import { WeeklyBars } from "@/components/DataViz";
 
 interface WeekRow {
   week_start: string;
@@ -69,7 +70,6 @@ export default function HiringTrends() {
   const current = weeks.length > 0 ? weeks[weeks.length - 1] : null;
   const lastFull = complete.length > 0 ? complete[complete.length - 1] : null;
   const prevFull = complete.length > 1 ? complete[complete.length - 2] : null;
-  const maxNew = Math.max(1, ...weeks.map((w) => w.new_postings));
   // Week-over-week ratios need BOTH weeks fully observed. Postings that
   // predate our tracking are excluded from counts (that's the honesty guard),
   // so a week we only partially observed has a structurally low count and any
@@ -147,25 +147,18 @@ export default function HiringTrends() {
             <h2 className="text-lg font-semibold flex items-center gap-2 mb-4">
               <CalendarDays className="w-4 h-4 text-primary" /> New postings by week
             </h2>
-            <div className="space-y-2.5">
-              {weeks.map((w, i) => (
-                <div key={w.week_start} className="flex items-center gap-3">
-                  <span className="text-[11px] text-muted-foreground w-24 shrink-0">
-                    {weekLabel(w.week_start)}{i === weeks.length - 1 ? " (so far)" : ""}
-                  </span>
-                  <div className="flex-1 h-5 bg-muted/40 rounded overflow-hidden">
-                    <div
-                      className={`h-full rounded ${i === weeks.length - 1 ? "bg-primary/40" : "bg-primary/70"}`}
-                      style={{ width: `${Math.max(2, Math.round((100 * w.new_postings) / maxNew))}%` }}
-                    />
-                  </div>
-                  <span className="text-xs font-semibold text-foreground w-16 text-right shrink-0">{fmt(w.new_postings)}</span>
-                  <span className="text-[11px] text-muted-foreground w-28 text-right shrink-0 hidden md:inline">
-                    {w.entry_new > 0 ? `${fmt(w.entry_new)} entry-level` : ""}
-                  </span>
-                </div>
-              ))}
-            </div>
+            <WeeklyBars
+              seriesA="New postings"
+              seriesB="Filled or closed"
+              data={weeks.map((w, i) => ({
+                label: `${weekLabel(w.week_start)}${i === weeks.length - 1 ? " (so far)" : ""}`,
+                a: w.new_postings,
+                b: w.closed,
+                aDetail: `${fmt(w.new_postings)} new${w.entry_new > 0 ? ` (${fmt(w.entry_new)} entry-level)` : ""}`,
+                bDetail: `${fmt(w.closed)} filled or closed`,
+                muted: i === weeks.length - 1,
+              }))}
+            />
             <p className="text-[11px] text-muted-foreground mt-3">
               {current ? "The newest week is partial — it fills in as companies post." : ""} Counts include only postings
               whose companies date them themselves; boards we added mid-window are excluded from that window.
