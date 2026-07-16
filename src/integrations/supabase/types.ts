@@ -794,6 +794,7 @@ export type Database = {
           posted_at: string | null
           remote: boolean
           salary: string | null
+          salary_currency: string | null
           salary_min_annual: number | null
           source: string
           title: string
@@ -815,6 +816,7 @@ export type Database = {
           posted_at?: string | null
           remote?: boolean
           salary?: string | null
+          salary_currency?: string | null
           salary_min_annual?: number | null
           source: string
           title: string
@@ -836,6 +838,7 @@ export type Database = {
           posted_at?: string | null
           remote?: boolean
           salary?: string | null
+          salary_currency?: string | null
           salary_min_annual?: number | null
           source?: string
           title?: string
@@ -2209,6 +2212,15 @@ export type Database = {
           stripe_session_id: string
         }[]
       }
+      get_freshness_stats: {
+        Args: never
+        Returns: {
+          boards: number
+          max_min: number
+          p50_min: number
+          p95_min: number
+        }[]
+      }
       get_function_error_rates: {
         Args: { p_hours_back?: number }
         Returns: {
@@ -2376,6 +2388,7 @@ export type Database = {
         Args: never
         Returns: {
           category: string
+          currency: string
           median_annual_min: number
           n: number
         }[]
