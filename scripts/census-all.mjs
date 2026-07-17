@@ -13,6 +13,9 @@
 import fs from "node:fs";
 
 const OUT = process.argv[2] || "census-all.json";
+// Optional: skip the N newest crawl indexes (deep pass over older snapshots —
+// different capture sets; the live-API verification step filters dead boards).
+const SKIP = Number(process.argv[3]) || 0;
 const CDX = "https://index.commoncrawl.org";
 
 // Subdomain labels / path segments that are vendor infrastructure, never a company board.
@@ -63,7 +66,7 @@ async function fetchTextRetry(url, tries = 5) {
 async function latestIndexes(n = 2) {
   const text = await fetchTextRetry(`${CDX}/collinfo.json`);
   if (!text) throw new Error("collinfo unreachable");
-  return JSON.parse(text).slice(0, n).map((c) => c.id);
+  return JSON.parse(text).slice(SKIP, SKIP + n).map((c) => c.id);
 }
 
 function tokenFrom(spec, url) {
