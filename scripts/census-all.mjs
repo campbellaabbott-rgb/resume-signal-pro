@@ -43,6 +43,7 @@ const VENDORS = [
   { vendor: "breezy", kind: "subdomain", pattern: "*.breezy.hr", hostSuffix: ".breezy.hr" },
   { vendor: "personio", kind: "subdomain", pattern: "*.jobs.personio.de", hostSuffix: ".jobs.personio.de", hostMark: "jobs.personio.de" },
   { vendor: "personio", kind: "subdomain", pattern: "*.jobs.personio.com", hostSuffix: ".jobs.personio.com", hostMark: "jobs.personio.com" },
+  { vendor: "rippling", kind: "path", pattern: "ats.rippling.com/*", host: "ats.rippling.com" },
 ];
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
