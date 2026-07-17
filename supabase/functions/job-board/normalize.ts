@@ -675,7 +675,12 @@ export function normalizeWorkday(items: WorkdayListItem[], company: string, toke
         location: loc,
         remote: looksRemote(loc) || looksRemote(String(j.title ?? "")),
         department: null,
-        postedAt: null, // list carries only a relative age — undated is honest
+        // Workday's list states a relative age ("Posted 3 Days Ago") — that IS
+        // the company's stated date, at day precision. Convert to absolute
+        // (fetch time − N days, ±1d) so these postings carry provenance and
+        // participate in date filters and the stated-date medians. "30+ Days
+        // Ago" is unbounded — never dated, dropped via _stale.
+        postedAt: days !== null && days <= 30 ? new Date(Date.now() - days * 86_400_000).toISOString() : null,
         category: categorize(String(j.title ?? ""), null),
         salary: null,
         country: detectCountry(loc),

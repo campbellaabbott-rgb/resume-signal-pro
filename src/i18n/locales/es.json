@@ -4147,6 +4147,7 @@
     "postedProvenance": "Antigüedad según la fecha que la empresa indica en su propio portal de empleo — las ofertas sin fecha no muestran antigüedad, nunca se estima",
     "companyStated": "fecha de la empresa",
     "allCountries": "Todos los países",
-    "countryTip": "País extraído del texto de ubicación de cada oferta — las que no podemos ubicar se excluyen con este filtro activo, nunca se adivina."
+    "countryTip": "País extraído del texto de ubicación de cada oferta — las que no podemos ubicar se excluyen con este filtro activo, nunca se adivina.",
+    "freshHint": "Solo cuenta fechas de publicación indicadas por la empresa"
   }
 }

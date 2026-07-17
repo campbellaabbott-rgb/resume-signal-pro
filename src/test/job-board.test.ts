@@ -110,16 +110,20 @@ describe("normalizeWorkday + workdayPostedDays", () => {
     expect(workdayPostedDays("Posted 30+ Days Ago")).toBe(31);
     expect(workdayPostedDays("nonsense")).toBeNull();
   });
-  it("maps CXS list items, drops the 30+day tail, stays honest-undated", () => {
+  it("maps CXS list items, drops the 30+day tail, dates from the stated relative age", () => {
     const jobs = normalizeWorkday(WD_ITEMS as never, "NVIDIA", "nvidia~wd5~NVIDIAExternalCareerSite");
     expect(jobs).toHaveLength(2); // the 30+day posting is dropped by the freshness filter
     expect(jobs[0]).toMatchObject({
       id: "workday:nvidia~wd5~NVIDIAExternalCareerSite:JR2014785",
       title: "Senior Software Engineer, AI Storage",
-      postedAt: null, // list carries only a relative age — never stored as a date
       country: "US",
       applyUrl: "https://nvidia.wd5.myworkdayjobs.com/en-US/NVIDIAExternalCareerSite/job/US-CA-Santa-Clara/Senior-Software-Engineer--AI-Storage_JR2014785",
     });
+    // "Posted Today" → dated now (±ms); "Posted 5 Days Ago" → ~5d back. The
+    // relative age IS the company's stated date, converted at day precision.
+    expect(Math.abs(Date.parse(jobs[0].postedAt!) - Date.now())).toBeLessThan(60_000);
+    const fiveDays = Date.now() - 5 * 86_400_000;
+    expect(Math.abs(Date.parse(jobs[1].postedAt!) - fiveDays)).toBeLessThan(60_000);
     expect(jobs[1].remote).toBe(true); // "Remote Solutions Architect"
     expect(jobs.some((j) => j.title === "Ancient Role")).toBe(false);
   });

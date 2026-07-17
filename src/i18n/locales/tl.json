@@ -4147,6 +4147,7 @@
     "postedProvenance": "Edad ng posting mula sa petsang sinabi ng kumpanya sa sarili nitong careers page — walang ipinapakitang edad ang mga walang petsa, hindi kailanman hinuhulaan",
     "companyStated": "sinabi ng kumpanya",
     "allCountries": "Lahat ng bansa",
-    "countryTip": "Bansa mula sa location text ng bawat posting — ang hindi namin matukoy ay hindi kasama habang naka-on ito, hindi hinuhulaan."
+    "countryTip": "Bansa mula sa location text ng bawat posting — ang hindi namin matukoy ay hindi kasama habang naka-on ito, hindi hinuhulaan.",
+    "freshHint": "Binibilang lang ang mga petsa ng posting na sinabi ng kompanya"
   }
 }

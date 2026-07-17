@@ -4147,6 +4147,7 @@
     "postedProvenance": "Leeftijd van de vacature volgens de datum die het bedrijf op zijn eigen carrièrepagina vermeldt — ongedateerde vacatures tonen geen leeftijd, nooit een schatting",
     "companyStated": "door bedrijf vermeld",
     "allCountries": "Alle landen",
-    "countryTip": "Land afgeleid uit de locatietekst van elke vacature — vacatures die we niet kunnen plaatsen worden met dit filter uitgesloten, nooit geraden."
+    "countryTip": "Land afgeleid uit de locatietekst van elke vacature — vacatures die we niet kunnen plaatsen worden met dit filter uitgesloten, nooit geraden.",
+    "freshHint": "Telt alleen door het bedrijf opgegeven publicatiedatums"
   }
 }

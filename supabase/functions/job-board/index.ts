@@ -60,7 +60,7 @@ const json = (body: unknown, status = 200) =>
 // counts. catalogSize (JOB_SOURCES.length) is the automatic companion signal: it
 // moves with every catalog change with no discipline required. Sortable string so
 // a future check can tell "prod is behind" from "prod is ahead".
-const BUILD_VERSION = "2026-07-17.3";
+const BUILD_VERSION = "2026-07-17.4";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -418,6 +418,18 @@ const EXPERIENCE_VERSION = 1;
 // rows v1 already parsed (they have a floor but no currency).
 const SALARY_PARSE_VERSION = 4; // v4: $-variant currencies (MX$/R$/HK$/S$/NZ$) + parity monthly cap — full re-parse corrects mislabeled rows
 const COUNTRY_VERSION = 1; // v1: deterministic country from location text (names + US/CA state patterns)
+// Date-the-undated sweep: greenhouse rows predating first_published capture
+// (insert-only rows never re-see the feed). Vendors whose feeds carry no date
+// at all (bamboohr/rippling) are structurally undated — no sweep can date
+// them; provenance labels stay the honest treatment. Measured backlog at v1:
+// ~480 greenhouse rows.
+const POSTED_BACKFILL_VERSION = 1;
+// Velocity tier: boards that ADDED postings recently earn hot cadence even if
+// small — a 40-role startup posting daily deserves faster revisits than a
+// 4,000-role giant that hasn't posted in a month. Blend: velocity leaders get
+// guaranteed slots, size leaders fill the rest of HOT_SIZE.
+const VELOCITY_HOT_SLOTS = 40;
+const VELOCITY_WINDOW_DAYS = 7;
 const CHAIN_CAP = Math.ceil(HOT_SIZE / HOT_SLICE) + COLD_SLICES_PER_PASS + 4; // pass length + stall headroom
 
 // Capacity governor: keep the corpus under a ceiling with headroom; when a
@@ -1172,12 +1184,28 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
       refreshedAt: startIso,
     };
     await client.from("job_board_meta").upsert({ k: "refresh", v, updated_at: new Date().toISOString() }, { onConflict: "k" });
-    // Re-rank the hot tier from what the corpus actually holds now.
-    const ranked = [...companies]
+    // Re-rank the hot tier from what the corpus actually holds now: velocity
+    // leaders (most postings first_seen inside the window — the boards where
+    // new jobs actually appear) take guaranteed slots, size leaders fill the
+    // rest. RPC missing (migration lag) degrades to pure size ranking.
+    const sizeRanked = [...companies]
       .filter((c): c is { token: string; count: number } => typeof (c as { token?: unknown }).token === "string" && typeof (c as { count?: unknown }).count === "number")
       .sort((a, b) => b.count - a.count)
-      .slice(0, HOT_SIZE)
       .map((c) => c.token);
+    const hotSet = new Set<string>();
+    try {
+      const { data: velo, error: veloErr } = await client.rpc("get_board_velocity", { days: VELOCITY_WINDOW_DAYS, top_n: VELOCITY_HOT_SLOTS });
+      if (!veloErr && Array.isArray(velo)) {
+        for (const r of velo as Array<{ company_token?: string }>) {
+          if (typeof r.company_token === "string" && hotSet.size < VELOCITY_HOT_SLOTS) hotSet.add(r.company_token);
+        }
+      }
+    } catch { /* velocity unavailable — size-only ranking */ }
+    for (const t of sizeRanked) {
+      if (hotSet.size >= HOT_SIZE) break;
+      hotSet.add(t);
+    }
+    const ranked = [...hotSet];
     if (ranked.length >= 50) {
       await client.from("job_board_meta").upsert(
         { k: "hot_tokens", v: { tokens: ranked }, updated_at: new Date().toISOString() },
@@ -1206,6 +1234,16 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "backfill-country", chainKey: key }),
+      })).then((r) => r.text()).catch(() => {}));
+    }
+    // Undated rows whose vendor feed DOES carry dates? Date them once.
+    const { data: pbVer } = await client.from("job_board_meta").select("v").eq("k", "posted_backfill").maybeSingle();
+    if ((pbVer?.v as { version?: number } | null)?.version !== POSTED_BACKFILL_VERSION) {
+      const url = `${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`;
+      waitUntil(chainKey().then((key) => fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "backfill-posted", chainKey: key }),
       })).then((r) => r.text()).catch(() => {}));
     }
     // One-time name sync: ~48 rung-3 census names shipped HTML-escaped
@@ -1688,6 +1726,75 @@ Deno.serve(async (req) => {
       );
       console.log(`[JOB-BOARD] country backfill complete: ${scanned} scanned, ${updated} filled (v${COUNTRY_VERSION})`);
       return json({ ok: true, scanned, updated, done: true });
+    }
+
+    if (action === "backfill-posted") {
+      // Date the undated (see POSTED_BACKFILL_VERSION): re-fetch each board's
+      // official list once and stamp posted_at from the feed's own date. Rows
+      // the feed no longer lists (or that carry no date) stay NULL; the id
+      // cursor walks past them and the completion stamp stops re-scans.
+      if (typeof body.chainKey !== "string" || body.chainKey !== await chainKey()) {
+        return json({ error: "backfill-posted is a maintenance action" }, 403);
+      }
+      const BOARDS_PER_HOP = 40;
+      let cursor = typeof body.cursor === "string" ? body.cursor : "";
+      const byBoard = new Map<string, string[]>(); // token -> row ids
+      let scanned = 0;
+      let exhausted = false;
+      while (byBoard.size <= BOARDS_PER_HOP && !exhausted) {
+        let q = client
+          .from("job_board_postings")
+          .select("id,company_token")
+          .eq("source", "greenhouse")
+          .is("posted_at", null)
+          .order("id")
+          .limit(500);
+        if (cursor) q = q.gt("id", cursor);
+        const { data: rows, error } = await q;
+        if (error) throw error;
+        for (const r of rows ?? []) {
+          const tk = r.company_token as string;
+          if (!byBoard.has(tk) && byBoard.size >= BOARDS_PER_HOP) continue; // next hop
+          scanned++;
+          byBoard.set(tk, [...(byBoard.get(tk) ?? []), r.id as string]);
+          cursor = r.id as string;
+        }
+        if (!rows || rows.length < 500) exhausted = true;
+      }
+      let dated = 0;
+      for (const [tk, ids] of byBoard) {
+        try {
+          const res = await fetchWithTimeout(`https://boards-api.greenhouse.io/v1/boards/${encodeURIComponent(tk)}/jobs`);
+          if (!res.ok) { await res.body?.cancel(); continue; }
+          const feed = await res.json() as { jobs?: Array<{ id?: number | string; first_published?: string }> };
+          const dates = new Map<string, string>();
+          for (const j of feed.jobs ?? []) {
+            const iso = sanePostedAt(j.first_published ?? null);
+            if (j.id != null && iso) dates.set(`greenhouse:${tk}:${j.id}`, iso);
+          }
+          for (const id of ids) {
+            const iso = dates.get(id);
+            if (!iso) continue;
+            const { error } = await client.from("job_board_postings").update({ posted_at: iso }).eq("id", id);
+            if (!error) dated++;
+          }
+        } catch { /* board fetch failed — rows stay NULL, next version retries */ }
+      }
+      if (!exhausted) {
+        const url = `${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`;
+        waitUntil(chainKey().then((key) => fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "backfill-posted", chainKey: key, cursor }),
+        })).then((r) => r.text()).catch(() => {}));
+        return json({ ok: true, scanned, dated, cursor });
+      }
+      await client.from("job_board_meta").upsert(
+        { k: "posted_backfill", v: { version: POSTED_BACKFILL_VERSION, sweptAt: new Date().toISOString() }, updated_at: new Date().toISOString() },
+        { onConflict: "k" },
+      );
+      console.log(`[JOB-BOARD] posted-date backfill complete: ${scanned} scanned, ${dated} dated (v${POSTED_BACKFILL_VERSION})`);
+      return json({ ok: true, scanned, dated, done: true });
     }
 
     if (action === "backfill-salary") {
@@ -2238,6 +2345,7 @@ async function serveList(
     !String(body.experience ?? "").trim() &&
     !(Number(body.salaryFloor) > 0) &&
     !(Array.isArray(body.companies) && body.companies.length) &&
+    !(Number(body.maxAgeDays) >= 1) &&
     typeof body.postedAfter !== "string";
   const wantCount = !(unfiltered && Number.isFinite(metaTotal) && metaTotal > 0);
   const buildQuery = (dateCol: string) => {
@@ -2278,6 +2386,13 @@ async function serveList(
     // Saved searches ask "how many NEW since I last looked" — a cheap count.
     if (typeof body.postedAfter === "string" && !Number.isNaN(Date.parse(body.postedAfter))) {
       q = q.gt(dateCol, body.postedAfter);
+    }
+    // "Posted this week" quick filter: company-stated dates ONLY (posted_at,
+    // never first_seen — our discovery time can't make a posting fresh).
+    // Undated postings are excluded by the filter, honestly; the UI says so.
+    const maxAge = Number(body.maxAgeDays);
+    if (Number.isFinite(maxAge) && maxAge >= 1) {
+      q = q.gte("posted_at", new Date(Date.now() - Math.min(maxAge, 30) * 86_400_000).toISOString());
     }
     return q;
   };

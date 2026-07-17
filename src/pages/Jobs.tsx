@@ -454,7 +454,9 @@ export default function Jobs() {
           companies: company ? [company] : undefined,
           salaryFloor: salaryFloor || undefined,
           sort: sortMode === "salary" ? "salary" : undefined,
-          postedAfter: freshness ? new Date(Date.now() - (freshness === "day" ? 1 : 7) * 86_400_000).toISOString() : undefined,
+          // Company-stated dates only (maxAgeDays), never our discovery time —
+          // "Today" must mean the company posted it today.
+          maxAgeDays: freshness ? (freshness === "day" ? 1 : 7) : undefined,
           limit: PAGE,
           offset,
           includeFacets: companiesCache.current.length === 0,
@@ -1328,12 +1330,12 @@ export default function Jobs() {
       q: q || undefined, location: location || undefined, remote: remoteOnly || undefined,
       category: category || undefined, experience: experience || undefined,
       companies: company ? [company] : undefined, salaryFloor: salaryFloor || undefined,
-      postedAfter: freshness ? new Date(Date.now() - (freshness === "day" ? 1 : 7) * 86_400_000).toISOString() : undefined,
+      maxAgeDays: freshness ? (freshness === "day" ? 1 : 7) : undefined,
     };
     const OVERRIDES: Record<string, Record<string, unknown>> = {
       q: { q: undefined }, location: { location: undefined }, category: { category: undefined },
       experience: { experience: undefined }, company: { companies: undefined },
-      salaryFloor: { salaryFloor: undefined }, remote: { remote: undefined }, freshness: { postedAfter: undefined },
+      salaryFloor: { salaryFloor: undefined }, remote: { remote: undefined }, freshness: { maxAgeDays: undefined },
     };
     const candidates = activeFilters.slice(0, 4);
     let cancelled = false;
@@ -1903,6 +1905,7 @@ export default function Jobs() {
                 key={v}
                 type="button"
                 onClick={() => setFreshness(v)}
+                title={v ? t("jobsPage.freshHint", "Counts company-stated posting dates only") : undefined}
                 className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
                   freshness === v ? "border-primary bg-primary/10 text-primary font-semibold" : "border-border text-muted-foreground hover:text-foreground"
                 }`}
@@ -1910,6 +1913,11 @@ export default function Jobs() {
                 {label}
               </button>
             ))}
+            {freshness && (
+              <span className="text-[11px] text-muted-foreground">
+                {t("jobsPage.freshHint", "Counts company-stated posting dates only")}
+              </span>
+            )}
             {/* For you | All jobs — the board's differentiator as a first-class
                 mode, not a pill to discover. "For you" without a resume routes
                 to the free scan (toggleFitRanking owns that flow). */}

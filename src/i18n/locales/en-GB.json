@@ -4147,6 +4147,7 @@
     "postedProvenance": "Posting age from the date the company states on its own careers feed — undated postings show no age, never a guess",
     "companyStated": "company-stated",
     "allCountries": "All countries",
-    "countryTip": "Country read from each posting's own location text — postings we can't place are excluded while this is on, never guessed."
+    "countryTip": "Country read from each posting's own location text — postings we can't place are excluded while this is on, never guessed.",
+    "freshHint": "Counts company-stated posting dates only"
   }
 }

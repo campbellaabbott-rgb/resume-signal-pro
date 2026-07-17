@@ -4147,6 +4147,7 @@
     "postedProvenance": "Ancienneté calculée à partir de la date indiquée par l'entreprise sur son propre site carrières — les offres non datées n'affichent aucune ancienneté, jamais d'estimation",
     "companyStated": "date de l'entreprise",
     "allCountries": "Tous les pays",
-    "countryTip": "Pays extrait du texte de localisation de chaque offre — celles que nous ne pouvons pas situer sont exclues quand ce filtre est actif, jamais devinées."
+    "countryTip": "Pays extrait du texte de localisation de chaque offre — celles que nous ne pouvons pas situer sont exclues quand ce filtre est actif, jamais devinées.",
+    "freshHint": "Ne compte que les dates de publication indiquées par l'entreprise"
   }
 }
