@@ -22,6 +22,9 @@ export interface JobPosting {
   category: JobCategory;
   /** Freeform salary summary when the feed provides one; null otherwise. */
   salary: string | null;
+  /** ISO-3166 alpha-2 when the FEED states it structurally (Rippling does);
+      absent → ingest falls back to detectCountry(location). */
+  country?: string | null;
   /** The company's own posting/application page — where Apply goes. */
   applyUrl: string;
 }
@@ -545,6 +548,74 @@ export function normalizeBreezy(raw: BreezyPosition[], company: string, token: s
       };
     })
     .filter((j) => j.applyUrl !== "" && j.title !== "" && j.id !== `breezy:${token}:`);
+}
+
+// ── Rippling ATS ────────────────────────────────────────────────────────────
+// Rippling publishes no documented list API; the public board page embeds the
+// job list as first-party structured JSON (Next.js __NEXT_DATA__, react-query
+// dehydratedState). That's still the vendor's own data channel — user decision
+// 2026-07-16 to include it — but it's an implementation detail that can move,
+// so the vendor canary watches it and the breaker quarantines on drift.
+// List items carry NO posted date and NO description (undated postings stay
+// honest-undated; boards are light by nature), but DO carry structured
+// country codes — better than location-text detection.
+export interface RipplingJobItem {
+  id?: string | number;
+  name?: string;
+  url?: string;
+  department?: { name?: string } | null;
+  locations?: Array<{
+    name?: string;
+    country?: string;
+    countryCode?: string;
+    city?: string;
+    workplaceType?: string; // ON_SITE | REMOTE | HYBRID
+  }> | null;
+}
+
+/** Pull the job-posts page out of a Rippling board page's __NEXT_DATA__.
+ *  Returns null when the payload shape isn't recognizable (drift signal —
+ *  distinct from a legitimately empty items array). */
+export function extractRipplingJobPosts(html: string): { items: RipplingJobItem[]; totalPages: number } | null {
+  const m = html.match(/__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/);
+  if (!m) return null;
+  try {
+    const data = JSON.parse(m[1]) as {
+      props?: { pageProps?: { dehydratedState?: { queries?: Array<{ queryKey?: unknown[]; state?: { data?: { items?: unknown[]; totalPages?: number } } }> } } };
+    };
+    const queries = data.props?.pageProps?.dehydratedState?.queries ?? [];
+    const q = queries.find((x) => Array.isArray(x.queryKey) && x.queryKey[2] === "job-posts");
+    if (!q?.state?.data || !Array.isArray(q.state.data.items)) return null;
+    return { items: q.state.data.items as RipplingJobItem[], totalPages: Number(q.state.data.totalPages) || 1 };
+  } catch {
+    return null;
+  }
+}
+
+export function normalizeRippling(items: RipplingJobItem[], company: string, token: string): JobPosting[] {
+  return (Array.isArray(items) ? items : [])
+    .map((j) => {
+      const locs = Array.isArray(j.locations) ? j.locations : [];
+      const first = locs[0] ?? {};
+      const location = [first.name, locs.length > 1 ? `+${locs.length - 1} more` : ""].filter(Boolean).join(" ");
+      const cc = typeof first.countryCode === "string" && /^[A-Z]{2}$/.test(first.countryCode) ? first.countryCode : null;
+      return {
+        id: `rippling:${token}:${j.id ?? ""}`,
+        source: "rippling" as const,
+        token,
+        company,
+        title: j.name ?? "",
+        location,
+        remote: locs.some((l) => l.workplaceType === "REMOTE") || looksRemote(location) || looksRemote(j.name ?? ""),
+        department: j.department?.name ?? null,
+        postedAt: null, // the board payload carries no dates — undated is honest
+        category: categorize(j.name ?? "", j.department?.name),
+        salary: null,
+        country: cc,
+        applyUrl: safeUrl(j.url ?? ""),
+      };
+    })
+    .filter((j) => j.applyUrl !== "" && j.title !== "" && j.id !== `rippling:${token}:`);
 }
 
 /** Teamtailor career-site RSS ({token}.teamtailor.com/jobs.rss). The feed is

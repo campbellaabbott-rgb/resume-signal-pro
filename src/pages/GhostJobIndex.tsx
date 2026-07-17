@@ -117,7 +117,7 @@ export default function GhostJobIndex() {
         </p>
         <p className="text-xs text-muted-foreground mb-8">
           Every figure below is computed from the full lifecycle of postings on companies' <b>official</b> job boards
-          (Greenhouse, Lever, Ashby, SmartRecruiters, Workable, BambooHR, Recruitee, Teamtailor, Personio, Breezy) — never an aggregator or a scrape.
+          (Greenhouse, Lever, Ashby, SmartRecruiters, Workable, BambooHR, Recruitee, Teamtailor, Personio, Breezy, Rippling) — never an aggregator or a scrape.
         </p>
 
         {/* Headline stats — always true */}
@@ -212,11 +212,11 @@ export default function GhostJobIndex() {
 
         <HowWeMeasure
           items={[
-            { term: "Verified open roles", method: "A live count of postings currently served from companies' official hiring systems (Greenhouse, Lever, Ashby and 7 more) — never aggregators or scrapes. Postings a feed stops serving are removed after a confirmation pass." },
+            { term: "Verified open roles", method: "A live count of postings currently served from companies' official hiring systems (Greenhouse, Lever, Ashby and 8 more) — never aggregators or scrapes. Postings a feed stops serving are removed after a confirmation pass." },
             { term: "30-day freshness cap", method: "Postings whose company-stated date is older than 30 days are dropped at ingestion AND filtered at read time — the board cannot serve a stale posting even mid-sweep. Undated postings can't be judged old, so they're kept and simply show no age." },
             { term: "Median posting age", method: "Computed only from postings whose company states its own post date (the coverage share is shown next to the number). Undated postings are excluded from age stats, never estimated. We never use our own discovery time as a posting age." },
             { term: "Typical time to close", method: "Days between the company's stated post date and the moment its feed stopped serving the posting — measured only where the post date is stated. Same-title relistings are classified as churn, not fills, and excluded." },
-            { term: "Confirmed-live accuracy", method: "Every day we sample ~100 random served postings, stratified across all 10 hiring systems, and re-check each one at the company's own system. The blended and per-vendor results are published above, unedited." },
+            { term: "Confirmed-live accuracy", method: "Every day we sample ~100 random served postings, stratified across all 11 hiring systems, and re-check each one at the company's own system. The blended and per-vendor results are published above, unedited." },
             { term: "Re-verification freshness", method: "Every board carries a verification stamp from the refresh loop; the median and 95th-percentile ages shown are computed from those stamps at page load — a measurement, not a promise." },
           ]}
         />

@@ -13,6 +13,7 @@
 // Pure helpers here; the fetch + caching live in index.ts so this is unit-testable.
 
 import type { JobSource } from "./sources.ts";
+import { extractRipplingJobPosts } from "./normalize.ts";
 
 export type VendorKind = JobSource["source"];
 
@@ -40,6 +41,11 @@ export const CANARIES: readonly Canary[] = [
   { vendor: "workable", token: "rokt", name: "Rokt" },
   { vendor: "bamboohr", token: "bitrise", name: "Bitrise" },
   { vendor: "bamboohr", token: "flo", name: "Flo" },
+  // Rippling reference boards (57 + 26 postings, live-verified 2026-07-16).
+  // Rippling's board data is an embedded page payload, not a documented API —
+  // exactly the vendor where the drift canary earns its keep.
+  { vendor: "rippling", token: "aalo-atomics", name: "Aalo Atomics" },
+  { vendor: "rippling", token: "aalyria-careers", name: "Aalyria" },
 ];
 
 // Count raw feed items in a vendor's payload (pre-normalization), matching each
@@ -58,6 +64,10 @@ export function rawItemCount(vendor: VendorKind, raw: unknown): number {
       return Array.isArray(r.content) ? r.content.length : 0;
     case "bamboohr":
       return Array.isArray(r.result) ? r.result.length : 0;
+    case "rippling": {
+      const page = extractRipplingJobPosts(String(raw));
+      return page ? page.items.length : 0;
+    }
     default:
       return 0;
   }

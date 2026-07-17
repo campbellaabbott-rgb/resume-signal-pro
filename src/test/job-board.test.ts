@@ -15,7 +15,7 @@ import { normalizeSmartRecruiters, normalizeWorkable } from "../../supabase/func
 import { searchName, searchToQuery } from "../../src/lib/job-search-params";
 import { computeFit } from "../../supabase/functions/_shared/fit-score";
 import { normalizeBambooHR } from "../../supabase/functions/job-board/normalize";
-import { leverSalary, sanePostedAt, isDatedBefore, safeIso, normalizeCloseTitle, detectCountry } from "../../supabase/functions/job-board/normalize";
+import { leverSalary, sanePostedAt, isDatedBefore, safeIso, normalizeCloseTitle, detectCountry, normalizeRippling, extractRipplingJobPosts } from "../../supabase/functions/job-board/normalize";
 import { classifyDormancy, updateBoardFailures } from "../../supabase/functions/job-board/dormancy";
 import { rawItemCount, aggregateVendorHealth, CANARIES, type CanaryResult } from "../../supabase/functions/job-board/vendor-canary";
 
@@ -95,6 +95,56 @@ const ASHBY_FIXTURE = {
     },
   ],
 };
+
+describe("normalizeRippling + extractRipplingJobPosts", () => {
+  // Real captured item shapes from ats.rippling.com/aalo-atomics/jobs (2026-07-16),
+  // one mutated to REMOTE to lock the workplaceType mapping.
+  const RIPPLING_ITEMS = [
+    {
+      id: "8d4783fb-b22c-4cfd-ae34-81d4b2ad628f",
+      name: "AI Platform Architect",
+      url: "https://ats.rippling.com/aalo-atomics/jobs/8d4783fb-b22c-4cfd-ae34-81d4b2ad628f",
+      department: { name: "Engineering" },
+      locations: [{ name: "Austin, TX", country: "United States", countryCode: "US", city: "Austin", workplaceType: "ON_SITE" }],
+    },
+    {
+      id: "7f01827b-9bb6-4bb1-9e2e-8769c118211e",
+      name: "Staff Software Engineer",
+      url: "https://ats.rippling.com/aalo-atomics/jobs/7f01827b-9bb6-4bb1-9e2e-8769c118211e",
+      department: { name: "Engineering" },
+      locations: [
+        { name: "Remote (US)", country: "United States", countryCode: "US", workplaceType: "REMOTE" },
+        { name: "Austin, TX", country: "United States", countryCode: "US", workplaceType: "ON_SITE" },
+      ],
+    },
+  ];
+  it("maps the embedded board items — undated, feed-stated country, remote from workplaceType", () => {
+    const jobs = normalizeRippling(RIPPLING_ITEMS as never, "Aalo Atomics", "aalo-atomics");
+    expect(jobs).toHaveLength(2);
+    expect(jobs[0]).toMatchObject({
+      id: "rippling:aalo-atomics:8d4783fb-b22c-4cfd-ae34-81d4b2ad628f",
+      title: "AI Platform Architect",
+      location: "Austin, TX",
+      remote: false,
+      postedAt: null, // the board payload carries no dates — never invented
+      country: "US",  // feed-stated ISO code, no location-text guessing needed
+      applyUrl: "https://ats.rippling.com/aalo-atomics/jobs/8d4783fb-b22c-4cfd-ae34-81d4b2ad628f",
+    });
+    expect(jobs[1].remote).toBe(true);
+    expect(jobs[1].location).toBe("Remote (US) +1 more");
+  });
+  it("extracts items + totalPages from __NEXT_DATA__, null on unrecognizable shape", () => {
+    const html = `<html><script id="__NEXT_DATA__" type="application/json">${JSON.stringify({
+      props: { pageProps: { dehydratedState: { queries: [
+        { queryKey: ["board", "aalo-atomics", "job-posts", false, {}], state: { data: { items: RIPPLING_ITEMS, totalPages: 3 } } },
+      ] } } },
+    })}</script></html>`;
+    const page = extractRipplingJobPosts(html);
+    expect(page?.items).toHaveLength(2);
+    expect(page?.totalPages).toBe(3);
+    expect(extractRipplingJobPosts("<html>no payload</html>")).toBeNull(); // drift signal, not empty board
+  });
+});
 
 describe("detectCountry (deterministic, never guesses)", () => {
   it("resolves explicit country names and US/CA state patterns", () => {
@@ -753,11 +803,11 @@ describe("vendor schema-drift canary", () => {
     expect(vendors[0].drift).toBe(false); // no fetchOk → can't be drift
   });
 
-  it("ships two stable canaries for every one of the six vendors", () => {
-    const vendors = ["greenhouse", "lever", "ashby", "smartrecruiters", "workable", "bamboohr"];
+  it("ships two stable canaries for every canaried vendor", () => {
+    const vendors = ["greenhouse", "lever", "ashby", "smartrecruiters", "workable", "bamboohr", "rippling"];
     for (const v of vendors) {
       expect(CANARIES.filter((c) => c.vendor === v).length).toBe(2);
     }
-    expect(CANARIES.length).toBe(12);
+    expect(CANARIES.length).toBe(14);
   });
 });

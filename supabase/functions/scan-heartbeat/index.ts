@@ -396,6 +396,31 @@ serve(async (req) => {
         }
       }
 
+      // Storage headroom: the scale program pushes the corpus past 300k
+      // postings on an 8GB plan. Alert at 75% database usage — the one
+      // failure mode that takes every feature down at once is out-of-disk.
+      try {
+        const { data: sf } = await supabase.rpc('get_storage_footprint');
+        const row = Array.isArray(sf) ? sf[0] : sf;
+        if (row && typeof row.db_bytes === 'number') {
+          const PLAN_BYTES = 8 * 1024 ** 3;
+          const usedPct = Math.round(100 * row.db_bytes / PLAN_BYTES);
+          const tight = usedPct >= 75;
+          checks.push({
+            name: 'job_board_storage',
+            passed: !tight,
+            responseTimeMs: 0,
+            error: tight
+              ? `database at ${usedPct}% of the 8GB plan (postings ${Math.round(row.postings_bytes / 1024 ** 2)}MB, closures ${Math.round(row.closures_bytes / 1024 ** 2)}MB) — upgrade the plan or lower the corpus governor before ingest stalls`
+              : undefined,
+          });
+          if (tight && overallStatus === 'healthy') {
+            overallStatus = 'degraded';
+            errorMessage = errorMessage || `Database storage at ${usedPct}% of plan`;
+          }
+        }
+      } catch { /* RPC not applied yet */ }
+
       // Per-vendor date-parser canary: a vendor whose stated-date coverage
       // collapses means its date mapping regressed (the Lever evergreen bug
       // was found by hand; this catches the next one). BambooHR is exempt —
@@ -404,7 +429,7 @@ serve(async (req) => {
         const { data: cov } = await supabase.rpc('get_date_coverage');
         if (Array.isArray(cov)) {
           const broken = (cov as Array<{ source: string; total: number; dated: number }>)
-            .filter((r) => r.source !== 'bamboohr' && Number(r.total) >= 1000)
+            .filter((r) => r.source !== 'bamboohr' && r.source !== 'rippling' && Number(r.total) >= 1000)
             .map((r) => ({ source: r.source, pct: Math.round(100 * Number(r.dated) / Math.max(Number(r.total), 1)) }))
             .filter((r) => r.pct < 50);
           checks.push({

@@ -33,6 +33,8 @@ import {
   sanePostedAt,
   isDatedBefore,
   normalizeCloseTitle,
+  normalizeRippling,
+  extractRipplingJobPosts,
   detectCountry,
   type JobPosting,
 } from "./normalize.ts";
@@ -57,7 +59,7 @@ const json = (body: unknown, status = 200) =>
 // counts. catalogSize (JOB_SOURCES.length) is the automatic companion signal: it
 // moves with every catalog change with no discipline required. Sortable string so
 // a future check can tell "prod is behind" from "prod is ahead".
-const BUILD_VERSION = "2026-07-16.4";
+const BUILD_VERSION = "2026-07-16.5";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -215,8 +217,35 @@ async function fetchPersonio(s: JobSource): Promise<{ xml: string; host: string 
 }
 
 /** Fetch + normalize one board. Returns null on failure (caller decides). */
+// Rippling: the board page embeds page 0 of the job list as structured JSON;
+// further pages come from the same page URL with ?page=N. Capped at 10 pages
+// (200 jobs) — Rippling boards are small-company boards; a board past the cap
+// still ingests its first 200 postings rather than failing.
+const RIPPLING_PAGE_CAP = 10;
+async function fetchRippling(s: JobSource): Promise<{ items: unknown[]; raw: string }> {
+  const first = await fetchWithTimeout(`https://ats.rippling.com/${s.token}/jobs`);
+  if (!first.ok) throw new Error(`HTTP ${first.status}`);
+  const html = await first.text();
+  const page0 = extractRipplingJobPosts(html);
+  if (!page0) throw new Error("rippling payload shape unrecognized");
+  const items = [...page0.items];
+  const pages = Math.min(page0.totalPages, RIPPLING_PAGE_CAP);
+  for (let p = 1; p < pages; p++) {
+    const res = await fetchWithTimeout(`https://ats.rippling.com/${s.token}/jobs?page=${p}`);
+    if (!res.ok) break;
+    const more = extractRipplingJobPosts(await res.text());
+    if (!more || more.items.length === 0) break;
+    items.push(...more.items);
+  }
+  return { items, raw: html };
+}
+
 async function fetchBoard(s: JobSource): Promise<{ jobs: JobPosting[]; raw: unknown } | null> {
   try {
+    if (s.source === "rippling") {
+      const { items, raw } = await fetchRippling(s);
+      return { jobs: normalizeRippling(items as never, s.name, s.token), raw };
+    }
     // XML vendors first — their raw payload is text, not JSON.
     if (s.source === "personio") {
       const { xml, host } = await fetchPersonio(s);
@@ -623,7 +652,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
             company: j.company,
             title: clean(j.title.trim().slice(0, 300)),
             location: clean(j.location.trim().slice(0, 300)),
-            country: detectCountry(j.location),
+            country: j.country ?? detectCountry(j.location),
             remote: j.remote,
             department: clean(j.department?.slice(0, 200) ?? null),
             category: j.category,
