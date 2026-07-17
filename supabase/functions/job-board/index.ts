@@ -1730,22 +1730,28 @@ Deno.serve(async (req) => {
 
     if (action === "backfill-posted") {
       // Date the undated (see POSTED_BACKFILL_VERSION): re-fetch each board's
-      // official list once and stamp posted_at from the feed's own date. Rows
-      // the feed no longer lists (or that carry no date) stay NULL; the id
-      // cursor walks past them and the completion stamp stops re-scans.
+      // official feed once and stamp posted_at from the feed's own date. Two
+      // phases — greenhouse (first_published from the list API), then workday
+      // (~79k rows ingested before dated-ingest shipped; the CXS relative age
+      // via the production fetcher+normalizer). Rows the feed no longer lists
+      // (or that carry no date) stay NULL; the id cursor walks past them and
+      // the completion stamp stops re-scans.
       if (typeof body.chainKey !== "string" || body.chainKey !== await chainKey()) {
         return json({ error: "backfill-posted is a maintenance action" }, 403);
       }
-      const BOARDS_PER_HOP = 40;
+      const phase = body.phase === "workday" ? "workday" : "greenhouse";
+      // Workday hops fetch up to WORKDAY_PAGE_CAP list pages per board — keep
+      // the per-hop board count low so a hop stays inside the compute budget.
+      const BOARDS_PER_HOP = phase === "workday" ? 8 : 40;
       let cursor = typeof body.cursor === "string" ? body.cursor : "";
-      const byBoard = new Map<string, string[]>(); // token -> row ids
+      const byBoard = new Map<string, { company: string; ids: string[] }>();
       let scanned = 0;
       let exhausted = false;
       while (byBoard.size <= BOARDS_PER_HOP && !exhausted) {
         let q = client
           .from("job_board_postings")
-          .select("id,company_token")
-          .eq("source", "greenhouse")
+          .select("id,company_token,company")
+          .eq("source", phase)
           .is("posted_at", null)
           .order("id")
           .limit(500);
@@ -1756,21 +1762,33 @@ Deno.serve(async (req) => {
           const tk = r.company_token as string;
           if (!byBoard.has(tk) && byBoard.size >= BOARDS_PER_HOP) continue; // next hop
           scanned++;
-          byBoard.set(tk, [...(byBoard.get(tk) ?? []), r.id as string]);
+          const g = byBoard.get(tk) ?? { company: (r.company as string) ?? tk, ids: [] };
+          g.ids.push(r.id as string);
+          byBoard.set(tk, g);
           cursor = r.id as string;
         }
         if (!rows || rows.length < 500) exhausted = true;
       }
       let dated = 0;
-      for (const [tk, ids] of byBoard) {
+      for (const [tk, { company, ids }] of byBoard) {
         try {
-          const res = await fetchWithTimeout(`https://boards-api.greenhouse.io/v1/boards/${encodeURIComponent(tk)}/jobs`);
-          if (!res.ok) { await res.body?.cancel(); continue; }
-          const feed = await res.json() as { jobs?: Array<{ id?: number | string; first_published?: string }> };
           const dates = new Map<string, string>();
-          for (const j of feed.jobs ?? []) {
-            const iso = sanePostedAt(j.first_published ?? null);
-            if (j.id != null && iso) dates.set(`greenhouse:${tk}:${j.id}`, iso);
+          if (phase === "greenhouse") {
+            const res = await fetchWithTimeout(`https://boards-api.greenhouse.io/v1/boards/${encodeURIComponent(tk)}/jobs`);
+            if (!res.ok) { await res.body?.cancel(); continue; }
+            const feed = await res.json() as { jobs?: Array<{ id?: number | string; first_published?: string }> };
+            for (const j of feed.jobs ?? []) {
+              const iso = sanePostedAt(j.first_published ?? null);
+              if (j.id != null && iso) dates.set(`greenhouse:${tk}:${j.id}`, iso);
+            }
+          } else {
+            // Production fetcher + normalizer: emits dated postings from the
+            // stated relative age; stale (>30d) come back undated and are
+            // skipped here — those rows age out via the freshness cap anyway.
+            const { jobPostings } = await fetchWorkday({ name: company, source: "workday", token: tk } as JobSource);
+            for (const p of normalizeWorkday(jobPostings as never, company, tk)) {
+              if (p.postedAt) dates.set(p.id, p.postedAt);
+            }
           }
           for (const id of ids) {
             const iso = dates.get(id);
@@ -1780,21 +1798,28 @@ Deno.serve(async (req) => {
           }
         } catch { /* board fetch failed — rows stay NULL, next version retries */ }
       }
-      if (!exhausted) {
+      const chain = (nextBody: Record<string, unknown>) => {
         const url = `${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`;
         waitUntil(chainKey().then((key) => fetch(url, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "backfill-posted", chainKey: key, cursor }),
+          body: JSON.stringify({ action: "backfill-posted", chainKey: key, ...nextBody }),
         })).then((r) => r.text()).catch(() => {}));
-        return json({ ok: true, scanned, dated, cursor });
+      };
+      if (!exhausted) {
+        chain({ phase, cursor });
+        return json({ ok: true, phase, scanned, dated, cursor });
+      }
+      if (phase === "greenhouse") {
+        chain({ phase: "workday" }); // fresh cursor for the next source
+        return json({ ok: true, phase, scanned, dated, next: "workday" });
       }
       await client.from("job_board_meta").upsert(
         { k: "posted_backfill", v: { version: POSTED_BACKFILL_VERSION, sweptAt: new Date().toISOString() }, updated_at: new Date().toISOString() },
         { onConflict: "k" },
       );
       console.log(`[JOB-BOARD] posted-date backfill complete: ${scanned} scanned, ${dated} dated (v${POSTED_BACKFILL_VERSION})`);
-      return json({ ok: true, scanned, dated, done: true });
+      return json({ ok: true, phase, scanned, dated, done: true });
     }
 
     if (action === "backfill-salary") {

@@ -882,7 +882,7 @@ export { COUNTRY_SLUGS, CV_LOCALES, EN_TEMPLATE, fill, hreflangCluster } from ".
         content: `
           <h1>The Entry-Level Index</h1>
           <p>"Entry-level, 5 years' experience required" is a running joke for a reason. This page counts the real thing: openings whose own titles and requirements say early-career — internships, junior, graduate, and 0–2 year roles — and ranks the companies that post the most of them.</p>
-          <p>Every count comes live from companies' official job boards (Greenhouse, Lever, Ashby, SmartRecruiters, Workable, BambooHR, Recruitee, Teamtailor, Personio, Breezy, Rippling) — never an aggregator or a scrape, and nothing older than 30 days. A role counts as entry-level when its own title or stated requirements say so; we never guess.</p>
+          <p>Every count comes live from companies' official job boards (Greenhouse, Lever, Ashby, SmartRecruiters, Workable, BambooHR, Recruitee, Teamtailor, Personio, Breezy, Rippling, Workday) — never an aggregator or a scrape, and nothing older than 30 days. A role counts as entry-level when its own title or stated requirements say so; we never guess.</p>
           <p><a href="/jobs?experience=entry">Browse all verified entry-level openings</a>, check the <a href="/hiring-trends">weekly hiring trends</a>, or scan your resume against any posting with the <a href="/">free resume scan</a>.</p>
         `,
         jsonLd: [{
