@@ -60,7 +60,7 @@ const json = (body: unknown, status = 200) =>
 // counts. catalogSize (JOB_SOURCES.length) is the automatic companion signal: it
 // moves with every catalog change with no discipline required. Sortable string so
 // a future check can tell "prod is behind" from "prod is ahead".
-const BUILD_VERSION = "2026-07-16.6";
+const BUILD_VERSION = "2026-07-16.7";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -431,12 +431,16 @@ const CHAIN_CAP = Math.ceil(HOT_SIZE / HOT_SLICE) + COLD_SLICES_PER_PASS + 4; //
 // Ceiling sizing (2026-07-13): the database moved off the free tier to an 8GB
 // plan (~6.6GB free at the time of the raise). A posting row costs ~5-6KB all
 // in (≤4KB description + metadata + indexes), so 300k rows ≈ ~1.7GB — well
-// inside headroom while leaving most of the disk for everything else. Raised
-// from the old free-tier 97k in one measured step, NOT straight to the
-// theoretical max: watch write latency and disk at this level before stepping
-// again (500k ≈ ~2.8GB would be the next stop).
-const CORPUS_CEILING = 300_000; // arm eviction above this
-const CORPUS_TARGET = 290_000;  // evict down to this
+// inside headroom while leaving most of the disk for everything else. Stepped
+// 97k → 300k → 500k, each raise on measured evidence (runbook bar). The 500k
+// step (2026-07-16): corpus at 202k with point-reads 0.44-0.58s, writes
+// flowing, insert-only design (no dead-tuple bloat), and the storage heartbeat
+// passing well under 75% of the 8GB plan — 500k ≈ ~2.75GB ≈ 34% of plan. The
+// vendor pipeline (Workday #12 + ongoing census yields) needs the headroom;
+// eviction was about to bind at 300k and cap net growth. Next stop (1M) only
+// after a bigger DB plan — the storage check will flag the ceiling first.
+const CORPUS_CEILING = 500_000; // arm eviction above this
+const CORPUS_TARGET = 480_000;  // evict down to this
 
 // Freshness cap: the board shows only roles posted within this window. Dated
 // postings past it are dropped at ingestion (never stored) and swept from the
