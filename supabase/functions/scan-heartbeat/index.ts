@@ -373,25 +373,38 @@ serve(async (req) => {
 
       // Label integrity: the daily audit cross-checks our experience_band and
       // remote labels against each posting's own text. A contradiction rate
-      // above 15% means the detector is mislabeling a filterable field —
-      // users are filtering on claims the postings themselves dispute.
+      // above 15% means the detector is mislabeling a filterable field — users
+      // filter on claims the postings themselves dispute. Requires a MEANINGFUL
+      // sample per band: the 300-row audit only lands ~10-15 entry-band rows,
+      // and at n=11 one posting swings the rate 9 points — so a band must have
+      // ≥30 checked AND ≥5 absolute contradictions before its rate can flag,
+      // or the check fires on pure sampling noise (2/11 = 18% is not a signal).
       if (audit) {
         const la = ((audit.v ?? {}) as { labelAudit?: { entryChecked?: number; entryContradicted?: number; remoteChecked?: number; remoteContradicted?: number } }).labelAudit;
-        if (la && ((la.entryChecked ?? 0) >= 10 || (la.remoteChecked ?? 0) >= 10)) {
-          const entryRate = (la.entryChecked ?? 0) >= 10 ? (la.entryContradicted ?? 0) / (la.entryChecked ?? 1) : 0;
-          const remoteRate = (la.remoteChecked ?? 0) >= 10 ? (la.remoteContradicted ?? 0) / (la.remoteChecked ?? 1) : 0;
-          const bad = entryRate > 0.15 || remoteRate > 0.15;
-          checks.push({
-            name: 'job_board_label_integrity',
-            passed: !bad,
-            responseTimeMs: 0,
-            error: bad
-              ? `label audit: ${Math.round(entryRate * 100)}% of sampled entry-band postings state 3+ years required, ${Math.round(remoteRate * 100)}% of remote-flagged state on-site only — tighten the detector; demotions only patch the sampled rows`
-              : undefined,
-          });
-          if (bad && overallStatus === 'healthy') {
-            overallStatus = 'degraded';
-            errorMessage = errorMessage || 'Board label integrity: contradiction rate above 15%';
+        if (la) {
+          const MIN_BAND = 30, MIN_HITS = 5, RATE = 0.15;
+          const bandBad = (checked?: number, hits?: number) =>
+            (checked ?? 0) >= MIN_BAND && (hits ?? 0) >= MIN_HITS && (hits ?? 0) / (checked ?? 1) > RATE;
+          const entryBad = bandBad(la.entryChecked, la.entryContradicted);
+          const remoteBad = bandBad(la.remoteChecked, la.remoteContradicted);
+          const bad = entryBad || remoteBad;
+          // Only emit the check when at least one band had a judgeable sample,
+          // so a thin-sample day is silent rather than a spurious pass/fail.
+          if ((la.entryChecked ?? 0) >= MIN_BAND || (la.remoteChecked ?? 0) >= MIN_BAND) {
+            const entryPct = Math.round(100 * (la.entryContradicted ?? 0) / Math.max(la.entryChecked ?? 1, 1));
+            const remotePct = Math.round(100 * (la.remoteContradicted ?? 0) / Math.max(la.remoteChecked ?? 1, 1));
+            checks.push({
+              name: 'job_board_label_integrity',
+              passed: !bad,
+              responseTimeMs: 0,
+              error: bad
+                ? `label audit: entry ${entryPct}% (${la.entryContradicted}/${la.entryChecked}) state 3+ years, remote ${remotePct}% (${la.remoteContradicted}/${la.remoteChecked}) state on-site — tighten the detector; demotions only patch sampled rows`
+                : undefined,
+            });
+            if (bad && overallStatus === 'healthy') {
+              overallStatus = 'degraded';
+              errorMessage = errorMessage || 'Board label integrity: contradiction rate above 15%';
+            }
           }
         }
       }
