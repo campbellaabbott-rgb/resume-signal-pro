@@ -2114,6 +2114,13 @@ export type Database = {
           share_id: string
         }[]
       }
+      get_board_velocity: {
+        Args: { days?: number; top_n?: number }
+        Returns: {
+          company_token: string
+          recent: number
+        }[]
+      }
       get_cached_response: {
         Args: { p_cache_key: string; p_function_name: string }
         Returns: Json
