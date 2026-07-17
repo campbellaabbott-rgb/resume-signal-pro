@@ -17,12 +17,13 @@ const MIN_POSTINGS = 3;
 const UA = { "User-Agent": "resumebooster.work job board (contact: support@resumebooster.work)" };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-async function fetchTextRetry(url, tries = 5) {
+async function fetchTextRetry(url, tries = 8) {
   for (let i = 0; i < tries; i++) {
     try {
       const res = await fetch(url, { headers: UA });
-      if (res.status === 503 || res.status === 429) { await sleep(3000 * (i + 1)); continue; }
-      if (!res.ok) return null;
+      // Retry on ANY non-2xx (CDX rate-limits bursts with 403/500, not just
+      // 429) — a single transient status must not abort the whole census.
+      if (!res.ok) { await sleep(3000 * (i + 1)); continue; }
       return await res.text();
     } catch { await sleep(2000 * (i + 1)); }
   }
