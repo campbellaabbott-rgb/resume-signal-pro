@@ -429,7 +429,7 @@ serve(async (req) => {
         const { data: cov } = await supabase.rpc('get_date_coverage');
         if (Array.isArray(cov)) {
           const broken = (cov as Array<{ source: string; total: number; dated: number }>)
-            .filter((r) => r.source !== 'bamboohr' && r.source !== 'rippling' && Number(r.total) >= 1000)
+            .filter((r) => r.source !== 'bamboohr' && r.source !== 'rippling' && r.source !== 'workday' && Number(r.total) >= 1000)
             .map((r) => ({ source: r.source, pct: Math.round(100 * Number(r.dated) / Math.max(Number(r.total), 1)) }))
             .filter((r) => r.pct < 50);
           checks.push({

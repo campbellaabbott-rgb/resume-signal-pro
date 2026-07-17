@@ -46,6 +46,9 @@ export const CANARIES: readonly Canary[] = [
   // exactly the vendor where the drift canary earns its keep.
   { vendor: "rippling", token: "aalo-atomics", name: "Aalo Atomics" },
   { vendor: "rippling", token: "aalyria-careers", name: "Aalyria" },
+  // Workday CXS reference tenants (compound token tenant~dc~site).
+  { vendor: "workday", token: "nvidia~wd5~NVIDIAExternalCareerSite", name: "NVIDIA" },
+  { vendor: "workday", token: "salesforce~wd12~External_Career_Site", name: "Salesforce" },
 ];
 
 // Count raw feed items in a vendor's payload (pre-normalization), matching each
@@ -68,6 +71,8 @@ export function rawItemCount(vendor: VendorKind, raw: unknown): number {
       const page = extractRipplingJobPosts(String(raw));
       return page ? page.items.length : 0;
     }
+    case "workday":
+      return Array.isArray(r.jobPostings) ? r.jobPostings.length : 0;
     default:
       return 0;
   }

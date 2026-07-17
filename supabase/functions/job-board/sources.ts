@@ -14,7 +14,7 @@
 
 export type JobSourceKind =
   | "greenhouse" | "lever" | "ashby" | "smartrecruiters" | "workable" | "bamboohr"
-  | "recruitee" | "teamtailor" | "personio" | "breezy" | "rippling";
+  | "recruitee" | "teamtailor" | "personio" | "breezy" | "rippling" | "workday";
 
 export interface JobSource {
   name: string; // display name

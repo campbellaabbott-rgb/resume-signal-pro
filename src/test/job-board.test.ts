@@ -15,7 +15,7 @@ import { normalizeSmartRecruiters, normalizeWorkable } from "../../supabase/func
 import { searchName, searchToQuery } from "../../src/lib/job-search-params";
 import { computeFit } from "../../supabase/functions/_shared/fit-score";
 import { normalizeBambooHR } from "../../supabase/functions/job-board/normalize";
-import { leverSalary, sanePostedAt, isDatedBefore, safeIso, normalizeCloseTitle, detectCountry, normalizeRippling, extractRipplingJobPosts } from "../../supabase/functions/job-board/normalize";
+import { leverSalary, sanePostedAt, isDatedBefore, safeIso, normalizeCloseTitle, detectCountry, normalizeRippling, extractRipplingJobPosts, normalizeWorkday, workdayPostedDays } from "../../supabase/functions/job-board/normalize";
 import { classifyDormancy, updateBoardFailures } from "../../supabase/functions/job-board/dormancy";
 import { rawItemCount, aggregateVendorHealth, CANARIES, type CanaryResult } from "../../supabase/functions/job-board/vendor-canary";
 
@@ -95,6 +95,38 @@ const ASHBY_FIXTURE = {
     },
   ],
 };
+
+describe("normalizeWorkday + workdayPostedDays", () => {
+  // Real captured list items from nvidia.wd5.myworkdayjobs.com (2026-07-16).
+  const WD_ITEMS = [
+    { title: "Senior Software Engineer, AI Storage", externalPath: "/job/US-CA-Santa-Clara/Senior-Software-Engineer--AI-Storage_JR2014785", locationsText: "US, CA, Santa Clara", postedOn: "Posted Today", bulletFields: ["JR2014785"] },
+    { title: "Remote Solutions Architect", externalPath: "/job/Remote/Remote-Solutions-Architect_JR2010101", locationsText: "United States", postedOn: "Posted 5 Days Ago", bulletFields: ["JR2010101"] },
+    { title: "Ancient Role", externalPath: "/job/US/Ancient-Role_JR9", locationsText: "US, TX, Austin", postedOn: "Posted 30+ Days Ago", bulletFields: ["JR9"] },
+  ];
+  it("parses the relative posting age", () => {
+    expect(workdayPostedDays("Posted Today")).toBe(0);
+    expect(workdayPostedDays("Posted Yesterday")).toBe(1);
+    expect(workdayPostedDays("Posted 5 Days Ago")).toBe(5);
+    expect(workdayPostedDays("Posted 30+ Days Ago")).toBe(31);
+    expect(workdayPostedDays("nonsense")).toBeNull();
+  });
+  it("maps CXS list items, drops the 30+day tail, stays honest-undated", () => {
+    const jobs = normalizeWorkday(WD_ITEMS as never, "NVIDIA", "nvidia~wd5~NVIDIAExternalCareerSite");
+    expect(jobs).toHaveLength(2); // the 30+day posting is dropped by the freshness filter
+    expect(jobs[0]).toMatchObject({
+      id: "workday:nvidia~wd5~NVIDIAExternalCareerSite:JR2014785",
+      title: "Senior Software Engineer, AI Storage",
+      postedAt: null, // list carries only a relative age — never stored as a date
+      country: "US",
+      applyUrl: "https://nvidia.wd5.myworkdayjobs.com/en-US/NVIDIAExternalCareerSite/job/US-CA-Santa-Clara/Senior-Software-Engineer--AI-Storage_JR2014785",
+    });
+    expect(jobs[1].remote).toBe(true); // "Remote Solutions Architect"
+    expect(jobs.some((j) => j.title === "Ancient Role")).toBe(false);
+  });
+  it("rejects a malformed compound token rather than emitting broken ids", () => {
+    expect(normalizeWorkday(WD_ITEMS as never, "X", "just-a-tenant")).toEqual([]);
+  });
+});
 
 describe("normalizeRippling + extractRipplingJobPosts", () => {
   // Real captured item shapes from ats.rippling.com/aalo-atomics/jobs (2026-07-16),
@@ -804,10 +836,10 @@ describe("vendor schema-drift canary", () => {
   });
 
   it("ships two stable canaries for every canaried vendor", () => {
-    const vendors = ["greenhouse", "lever", "ashby", "smartrecruiters", "workable", "bamboohr", "rippling"];
+    const vendors = ["greenhouse", "lever", "ashby", "smartrecruiters", "workable", "bamboohr", "rippling", "workday"];
     for (const v of vendors) {
       expect(CANARIES.filter((c) => c.vendor === v).length).toBe(2);
     }
-    expect(CANARIES.length).toBe(14);
+    expect(CANARIES.length).toBe(16);
   });
 });

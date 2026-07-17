@@ -618,6 +618,75 @@ export function normalizeRippling(items: RipplingJobItem[], company: string, tok
     .filter((j) => j.applyUrl !== "" && j.title !== "" && j.id !== `rippling:${token}:`);
 }
 
+// ── Workday CXS ───────────────────────────────────────────────────────────
+// Workday hosts a large share of enterprise employers. Each tenant's own
+// career site is powered by a public first-party JSON endpoint
+// (POST /wday/cxs/{tenant}/{site}/jobs) — the same data the tenant serves its
+// own applicants, no auth, no scraping. Undocumented (a Rippling-class source:
+// vendor canary + breaker watch the shape). Token is a compound
+// `tenant~dc~site` (three pieces the URL needs). The LIST payload carries only
+// a RELATIVE posting age ("Posted 5 Days Ago"); we never store that as a date
+// (it would pollute the company-stated median), but we DO honor it as a
+// freshness filter — Workday's own statement that a posting is 30+ days old is
+// authority to drop it. Kept postings are honest-undated (like BambooHR).
+export interface WorkdayListItem {
+  title?: string;
+  externalPath?: string;
+  locationsText?: string;
+  postedOn?: string;
+  bulletFields?: string[];
+}
+
+/** Relative Workday age → days, or null when unparseable. "Posted Today"=0,
+ *  "Posted Yesterday"=1, "Posted N Days Ago"=N, "Posted 30+ Days Ago"=31. */
+export function workdayPostedDays(postedOn: string | null | undefined): number | null {
+  if (!postedOn) return null;
+  const s = postedOn.toLowerCase();
+  if (/posted\s+today/.test(s)) return 0;
+  if (/posted\s+yesterday/.test(s)) return 1;
+  const plus = s.match(/posted\s+(\d+)\+\s*days?\s+ago/);
+  if (plus) return Number(plus[1]) + 1; // "30+ Days Ago" → 31 (past the cap)
+  const n = s.match(/posted\s+(\d+)\s+days?\s+ago/);
+  if (n) return Number(n[1]);
+  return null;
+}
+
+export function normalizeWorkday(items: WorkdayListItem[], company: string, token: string): JobPosting[] {
+  // token = tenant~dc~site
+  const [tenant, dc, site] = token.split("~");
+  if (!tenant || !dc || !site) return [];
+  const base = `https://${tenant}.${dc}.myworkdayjobs.com/en-US/${site}`;
+  return (Array.isArray(items) ? items : [])
+    .map((j) => {
+      const path = String(j.externalPath ?? "");
+      // Requisition id: the `_JR…` suffix on the path, else the first bulletField.
+      const reqId = path.split("_").pop() || (Array.isArray(j.bulletFields) ? j.bulletFields[0] : "") || "";
+      const loc = String(j.locationsText ?? "").trim();
+      // "2 Locations" is a multi-site placeholder, not a place — keep it as
+      // display text but it won't resolve to a country (honest).
+      const days = workdayPostedDays(j.postedOn);
+      const stale = days !== null && days > 30; // Workday says it's past our cap
+      return {
+        id: `workday:${token}:${reqId}`,
+        source: "workday" as const,
+        token,
+        company,
+        title: String(j.title ?? "").trim(),
+        location: loc,
+        remote: looksRemote(loc) || looksRemote(String(j.title ?? "")),
+        department: null,
+        postedAt: null, // list carries only a relative age — undated is honest
+        category: categorize(String(j.title ?? ""), null),
+        salary: null,
+        country: detectCountry(loc),
+        applyUrl: safeUrl(path ? `${base}${path}` : ""),
+        _stale: stale, // consumed + stripped by the fetcher's freshness filter
+      } as JobPosting & { _stale?: boolean };
+    })
+    .filter((j) => j.applyUrl !== "" && j.title !== "" && !(j as { _stale?: boolean })._stale && j.id !== `workday:${token}:`)
+    .map(({ _stale: _drop, ...j }) => j as JobPosting);
+}
+
 /** Teamtailor career-site RSS ({token}.teamtailor.com/jobs.rss). The feed is
  *  title/link/pubDate only — location isn't structured, so it stays honest-empty
  *  unless the title itself says remote. External id = the numeric slug prefix. */

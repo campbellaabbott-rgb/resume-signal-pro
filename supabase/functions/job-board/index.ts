@@ -35,6 +35,7 @@ import {
   normalizeCloseTitle,
   normalizeRippling,
   extractRipplingJobPosts,
+  normalizeWorkday,
   detectCountry,
   type JobPosting,
 } from "./normalize.ts";
@@ -59,7 +60,7 @@ const json = (body: unknown, status = 200) =>
 // counts. catalogSize (JOB_SOURCES.length) is the automatic companion signal: it
 // moves with every catalog change with no discipline required. Sortable string so
 // a future check can tell "prod is behind" from "prod is ahead".
-const BUILD_VERSION = "2026-07-16.5";
+const BUILD_VERSION = "2026-07-16.6";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -176,12 +177,16 @@ async function fetchSmartRecruiters(s: JobSource): Promise<{ content: unknown[] 
   return { content };
 }
 
-async function fetchWithTimeout(url: string): Promise<Response> {
+async function fetchWithTimeout(url: string, init?: RequestInit): Promise<Response> {
   const once = async () => {
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
     try {
-      return await fetch(url, { signal: ctrl.signal, headers: { "User-Agent": "resumebooster.work job board (contact: support@resumebooster.work)" } });
+      return await fetch(url, {
+        ...init,
+        signal: ctrl.signal,
+        headers: { "User-Agent": "resumebooster.work job board (contact: support@resumebooster.work)", ...(init?.headers ?? {}) },
+      });
     } finally {
       clearTimeout(t);
     }
@@ -240,11 +245,41 @@ async function fetchRippling(s: JobSource): Promise<{ items: unknown[]; raw: str
   return { items, raw: html };
 }
 
+// Workday CXS: POST-paginated first-party list endpoint. Compound token
+// tenant~dc~site. Bounded to WORKDAY_PAGE_CAP pages (enterprise tenants can
+// hold thousands; the cap keeps one board's fetch from monopolizing a slice —
+// the rest rotate in on later passes, and the freshness filter drops the aged
+// tail regardless). Undated, description-less (list-only), like BambooHR.
+const WORKDAY_PAGE_CAP = 25; // 25 × 20 = up to 500 postings/board/pass
+async function fetchWorkday(s: JobSource): Promise<{ jobPostings: unknown[]; raw: unknown }> {
+  const [tenant, dc, site] = s.token.split("~");
+  if (!tenant || !dc || !site) throw new Error("bad workday token");
+  const url = `https://${tenant}.${dc}.myworkdayjobs.com/wday/cxs/${tenant}/${site}/jobs`;
+  const all: unknown[] = [];
+  for (let page = 0; page < WORKDAY_PAGE_CAP; page++) {
+    const res = await fetchWithTimeout(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Accept": "application/json" },
+      body: JSON.stringify({ limit: 20, offset: page * 20, searchText: "", appliedFacets: {} }),
+    });
+    if (!res.ok) { if (page === 0) throw new Error(`HTTP ${res.status}`); break; }
+    const body = await res.json();
+    const items = Array.isArray((body as { jobPostings?: unknown[] }).jobPostings) ? (body as { jobPostings: unknown[] }).jobPostings : [];
+    all.push(...items);
+    if (items.length < 20) break; // last page
+  }
+  return { jobPostings: all, raw: { jobPostings: all } };
+}
+
 async function fetchBoard(s: JobSource): Promise<{ jobs: JobPosting[]; raw: unknown } | null> {
   try {
     if (s.source === "rippling") {
       const { items, raw } = await fetchRippling(s);
       return { jobs: normalizeRippling(items as never, s.name, s.token), raw };
+    }
+    if (s.source === "workday") {
+      const { jobPostings, raw } = await fetchWorkday(s);
+      return { jobs: normalizeWorkday(jobPostings as never, s.name, s.token), raw };
     }
     // XML vendors first — their raw payload is text, not JSON.
     if (s.source === "personio") {
@@ -1287,6 +1322,22 @@ async function checkLive(src: JobSource, externalId: string): Promise<boolean | 
     if (src.source === "smartrecruiters") {
       const res = await fetchWithTimeout(`https://api.smartrecruiters.com/v1/companies/${src.token}/postings/${externalId}`);
       return res.status === 404 ? false : res.ok ? true : null;
+    }
+    if (src.source === "workday") {
+      // Cheap per-job detail: 200 live / 404 gone. externalId is the reqId; the
+      // detail path needs the full externalPath, so probe the tenant search for
+      // the reqId instead — a targeted list query returns it iff still posted.
+      const [tenant, dc, site] = src.token.split("~");
+      if (!tenant || !dc || !site) return null;
+      const res = await fetchWithTimeout(`https://${tenant}.${dc}.myworkdayjobs.com/wday/cxs/${tenant}/${site}/jobs`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Accept": "application/json" },
+        body: JSON.stringify({ limit: 20, offset: 0, searchText: externalId, appliedFacets: {} }),
+      });
+      if (!res.ok) return null;
+      const body = await res.json();
+      const items = (body as { jobPostings?: Array<{ externalPath?: string; bulletFields?: string[] }> }).jobPostings ?? [];
+      return items.some((j) => String(j.externalPath ?? "").includes(externalId) || (j.bulletFields ?? []).includes(externalId));
     }
     // ashby / workable / bamboohr have no cheap per-job endpoint — fetch the
     // board once (memoized per request) and check membership.
