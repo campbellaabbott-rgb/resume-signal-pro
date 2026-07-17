@@ -2468,6 +2468,14 @@ export type Database = {
       }
       get_scan_totals: { Args: never; Returns: Json }
       get_stale_board_count: { Args: never; Returns: number }
+      get_storage_footprint: {
+        Args: never
+        Returns: {
+          closures_bytes: number
+          db_bytes: number
+          postings_bytes: number
+        }[]
+      }
       get_temp_resume: {
         Args: { p_session_id: string }
         Returns: {
