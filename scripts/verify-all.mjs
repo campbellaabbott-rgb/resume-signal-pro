@@ -23,6 +23,11 @@ const existing = new Set();
 for (const m of srcText.matchAll(/s\("(?:[^"\\]|\\.)*",\s*"([a-z]+)",\s*"([^"]+)"/g)) {
   existing.add(`${m[1]}:${m[2].toLowerCase()}`);
 }
+// Object-literal entries (rung 3 + census merges) — missing this format cost
+// ~2.7k wasted probes in round 3.
+for (const m of srcText.matchAll(/source:\s*"(\w+)",\s*token:\s*"([^"]+)"/g)) {
+  existing.add(`${m[1]}:${m[2].toLowerCase()}`);
+}
 console.log(`catalog holds ${existing.size} boards — deduping candidates against it`);
 
 const prettify = (t) => t.replace(/[-_]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()).trim().slice(0, 60);
