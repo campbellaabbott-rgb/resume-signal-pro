@@ -54,7 +54,7 @@
     "headline": {
       "get": "The job board with",
       "recruiterGrade": "zero ghost jobs",
-      "feedback": "— 185,000+ verified openings, matched to your CV"
+      "feedback": "— 300,000+ verified openings, matched to your CV"
     },
     "description": "Upload your CV and get ATS-optimised rewrites, red-flag warnings, and keyword improvements — written the way hiring managers actually review CVs.",
     "benefits": {
@@ -145,7 +145,7 @@
     "factNoStorage": "Never stored, never shared",
     "measureStrip": "Measurements, not opinions · Every quote verified · A score that shows its work",
     "jobsCta": "Live job board — check your fit before you apply →",
-    "browseJobs": "Browse 185,000+ verified jobs"
+    "browseJobs": "Browse 300,000+ verified jobs"
   },
   "footer": {
     "copyright": "© {{year}} CV Booster. All rights reserved.",
@@ -2837,6 +2837,18 @@
     }
   },
   "changelogEntries": {
+    "board300k": {
+      "title": "300,000+ verified openings — Workday joins as the 12th hiring system",
+      "description": "The board tripled in a week: 300,000+ live openings from 16,000+ companies, every one pulled straight from the company's own hiring system. New this round: Workday — the system used by many of the world's largest employers — plus thousands of newly discovered company boards across all twelve systems."
+    },
+    "freshFirst": {
+      "title": "Fresh jobs first: honest date filters and faster discovery of new postings",
+      "description": "The Today and This-week filters now count only dates the company itself stated — never our discovery time. Boards that post new roles frequently are now re-checked more often, so new openings appear here sooner. Workday postings carry the company's stated posting age from the moment they arrive."
+    },
+    "accurateDates": {
+      "title": "Posting ages you can trust — plus a country filter",
+      "description": "Every posting-age stat now uses only company-stated dates, and each card says where its date came from. Salary sorting is currency-aware, so a peso figure can't outrank a pound one. And you can now filter the board by country — 60+ countries, matched only when the posting itself says so."
+    },
     "matchingResume": {
       "title": "Pin the exact CV the whole platform matches against",
       "description": "Your account now holds an explicit matching CV: pin any scan that saved its document, or paste the exact CV you're sending out, and the job board's fit ranking, your match-alert emails, and the apply agent's drafts all ground against that document. If you don't pin anything, nothing changes — everything keeps using your latest scan, as it always has."

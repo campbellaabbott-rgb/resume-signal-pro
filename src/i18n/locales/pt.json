@@ -54,7 +54,7 @@
     "headline": {
       "get": "O quadro de vagas com",
       "recruiterGrade": "zero vagas fantasma",
-      "feedback": "— mais de 185.000 vagas verificadas, combinadas com o seu currículo"
+      "feedback": "— mais de 300.000 vagas verificadas, combinadas com o seu currículo"
     },
     "description": "Carregue o seu currículo e receba reescritas otimizadas para ATS, alertas de red flags e melhorias de palavras‑chave — como recrutadores realmente avaliam currículos.",
     "benefits": {
@@ -145,7 +145,7 @@
     "factNoStorage": "Nunca armazenados, nunca compartilhados",
     "measureStrip": "Medições, não opiniões · Cada citação verificada · Uma pontuação que mostra seu trabalho",
     "jobsCta": "Mural de vagas ao vivo — cheque seu encaixe antes de se candidatar →",
-    "browseJobs": "Ver mais de 185.000 vagas verificadas"
+    "browseJobs": "Ver mais de 300.000 vagas verificadas"
   },
   "footer": {
     "copyright": "© {{year}} Resume Booster. Todos os direitos reservados.",
@@ -2837,6 +2837,18 @@
     }
   },
   "changelogEntries": {
+    "board300k": {
+      "title": "Mais de 300.000 vagas verificadas — Workday é o 12.º sistema",
+      "description": "O quadro triplicou numa semana: mais de 300.000 vagas ativas de mais de 16.000 empresas, todas obtidas diretamente do sistema de contratação de cada empresa. Novidade desta rodada: Workday — o sistema usado por muitos dos maiores empregadores do mundo — mais milhares de quadros recém-descobertos nos doze sistemas."
+    },
+    "freshFirst": {
+      "title": "Vagas recentes primeiro: filtros de data honestos e descoberta mais rápida",
+      "description": "Os filtros Hoje e Esta semana agora contam apenas datas informadas pela própria empresa — nunca o nosso momento de descoberta. Quadros que publicam com frequência são verificados mais vezes, então vagas novas aparecem antes. As vagas do Workday chegam com a idade informada pela empresa desde o início."
+    },
+    "accurateDates": {
+      "title": "Idades de vagas confiáveis — e um filtro por país",
+      "description": "Todas as estatísticas de idade usam apenas datas informadas pela empresa, e cada cartão mostra de onde veio a sua data. A ordenação por salário reconhece a moeda, então um valor em pesos não supera um em dólares. E agora dá para filtrar por país — mais de 60 países, apenas quando a própria vaga informa."
+    },
     "matchingResume": {
       "title": "Fixe o currículo exato que toda a plataforma usa para comparar",
       "description": "Sua conta agora guarda um currículo de referência explícito: fixe qualquer escaneamento que salvou o documento, ou cole o currículo exato que você está enviando, e o ranking de compatibilidade do mural, seus alertas por e-mail e os rascunhos do agente de candidatura passam a se basear nesse documento. Se você não fixar nada, nada muda — tudo continua usando seu último escaneamento, como sempre."

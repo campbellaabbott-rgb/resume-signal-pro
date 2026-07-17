@@ -54,7 +54,7 @@
     "headline": {
       "get": "Le site d'emploi avec",
       "recruiterGrade": "zéro offre fantôme",
-      "feedback": "— plus de 185 000 offres vérifiées, adaptées à votre CV"
+      "feedback": "— plus de 300 000 offres vérifiées, adaptées à votre CV"
     },
     "description": "Téléchargez votre CV et obtenez des réécritures optimisées ATS, des alertes red flags et des améliorations de mots-clés — comme les recruteurs évaluent réellement les CV.",
     "benefits": {
@@ -145,7 +145,7 @@
     "factNoStorage": "Jamais stockés, jamais partagés",
     "measureStrip": "Des mesures, pas des opinions · Chaque citation vérifiée · Un score qui montre son travail",
     "jobsCta": "Offres en direct — vérifiez votre adéquation avant de candidater →",
-    "browseJobs": "Parcourir 185 000+ offres vérifiées"
+    "browseJobs": "Parcourir 300 000+ offres vérifiées"
   },
   "footer": {
     "copyright": "© {{year}} Resume Booster. Tous droits réservés.",
@@ -2837,6 +2837,18 @@
     }
   },
   "changelogEntries": {
+    "board300k": {
+      "title": "Plus de 300 000 offres vérifiées — Workday devient le 12e système",
+      "description": "Le tableau a triplé en une semaine : plus de 300 000 offres actives de plus de 16 000 entreprises, toutes récupérées directement depuis le système de recrutement de chaque entreprise. Nouveauté : Workday — le système utilisé par nombre des plus grands employeurs mondiaux — plus des milliers de nouveaux tableaux sur les douze systèmes."
+    },
+    "freshFirst": {
+      "title": "Les offres récentes d'abord : filtres de date honnêtes et détection plus rapide",
+      "description": "Les filtres Aujourd'hui et Cette semaine ne comptent plus que les dates indiquées par l'entreprise elle-même — jamais notre date de découverte. Les tableaux qui publient souvent sont revérifiés plus fréquemment, donc les nouvelles offres apparaissent plus tôt. Les offres Workday arrivent avec l'ancienneté indiquée par l'entreprise."
+    },
+    "accurateDates": {
+      "title": "Des anciennetés d'offres fiables — et un filtre par pays",
+      "description": "Toutes les statistiques d'ancienneté n'utilisent que des dates indiquées par l'entreprise, et chaque carte précise l'origine de sa date. Le tri par salaire reconnaît la devise : un montant en pesos ne peut plus dépasser un montant en dollars. Et vous pouvez désormais filtrer par pays — plus de 60 pays, uniquement quand l'offre le précise."
+    },
     "matchingResume": {
       "title": "Épinglez le CV exact utilisé par toute la plateforme pour le matching",
       "description": "Votre compte contient désormais un CV de référence explicite : épinglez un scan ayant conservé son document, ou collez le CV exact que vous envoyez, et le classement par affinité du tableau, vos alertes par e-mail et les brouillons de l'agent de candidature s'appuieront tous sur ce document. Sans épinglage, rien ne change : tout continue d'utiliser votre dernier scan, comme avant."

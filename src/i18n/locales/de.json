@@ -60,7 +60,7 @@
     "headline": {
       "get": "Die Jobbörse mit",
       "recruiterGrade": "null Geisterjobs",
-      "feedback": "— über 185.000 verifizierte Stellen, abgeglichen mit Ihrem Lebenslauf"
+      "feedback": "— über 300.000 verifizierte Stellen, abgeglichen mit Ihrem Lebenslauf"
     },
     "description": "Laden Sie Ihren Lebenslauf hoch und erhalten Sie ATS-optimierte Umschreibungen, Red-Flag-Warnungen und Keyword-Verbesserungen — so wie Personalverantwortliche Lebensläufe wirklich prüfen.",
     "benefits": {
@@ -145,7 +145,7 @@
     "factNoStorage": "Nie gespeichert, nie geteilt",
     "measureStrip": "Messungen statt Meinungen · Jedes Zitat verifiziert · Ein Score, der seine Arbeit zeigt",
     "jobsCta": "Live-Jobbörse — Passung prüfen, bevor Sie sich bewerben →",
-    "browseJobs": "185.000+ verifizierte Jobs ansehen"
+    "browseJobs": "300.000+ verifizierte Jobs ansehen"
   },
   "footer": {
     "copyright": "© {{year}} Resume Booster. Alle Rechte vorbehalten.",
@@ -2837,6 +2837,18 @@
     }
   },
   "changelogEntries": {
+    "board300k": {
+      "title": "Über 300.000 verifizierte Stellen — Workday wird das 12. System",
+      "description": "Die Jobbörse hat sich in einer Woche verdreifacht: über 300.000 aktive Stellen von über 16.000 Unternehmen, alle direkt aus dem Bewerbungssystem des jeweiligen Unternehmens. Neu in dieser Runde: Workday — das System vieler der größten Arbeitgeber der Welt — plus Tausende neu entdeckte Karriereseiten über alle zwölf Systeme."
+    },
+    "freshFirst": {
+      "title": "Frische Jobs zuerst: ehrliche Datumsfilter und schnellere Erkennung",
+      "description": "Die Filter Heute und Diese Woche zählen jetzt nur noch vom Unternehmen selbst angegebene Daten — nie unseren Entdeckungszeitpunkt. Karriereseiten, die häufig neue Stellen veröffentlichen, werden öfter geprüft, sodass neue Stellen früher erscheinen. Workday-Stellen tragen von Anfang an das vom Unternehmen angegebene Alter."
+    },
+    "accurateDates": {
+      "title": "Verlässliche Stellenalter — plus ein Länderfilter",
+      "description": "Alle Altersstatistiken nutzen nur noch vom Unternehmen angegebene Daten, und jede Karte zeigt, woher ihr Datum stammt. Die Gehaltssortierung erkennt Währungen, sodass ein Peso-Betrag keinen Dollar-Betrag überholen kann. Und die Börse lässt sich jetzt nach Land filtern — über 60 Länder, nur wenn die Stelle es selbst angibt."
+    },
     "matchingResume": {
       "title": "Genau der Lebenslauf, mit dem die ganze Plattform abgleicht — jetzt anpinnbar",
       "description": "Dein Konto führt jetzt einen expliziten Matching-Lebenslauf: Pinne einen Scan mit gespeichertem Dokument an oder füge genau den Lebenslauf ein, den du verschickst — das Fit-Ranking des Boards, deine Match-Benachrichtigungen und die Entwürfe des Bewerbungsagenten stützen sich dann alle auf dieses Dokument. Ohne Pin ändert sich nichts: Alles nutzt weiterhin deinen letzten Scan, wie bisher."

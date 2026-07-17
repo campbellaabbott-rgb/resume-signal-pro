@@ -54,7 +54,7 @@
     "headline": {
       "get": "El tablón de empleo con",
       "recruiterGrade": "cero ofertas fantasma",
-      "feedback": "— más de 185.000 vacantes verificadas, emparejadas con tu currículum"
+      "feedback": "— más de 300.000 vacantes verificadas, emparejadas con tu currículum"
     },
     "description": "Sube tu CV y obtén reescrituras optimizadas para ATS, alertas de red flags y mejoras de palabras clave — como lo revisan los reclutadores.",
     "benefits": {
@@ -145,7 +145,7 @@
     "factNoStorage": "Nunca almacenados, nunca compartidos",
     "measureStrip": "Mediciones, no opiniones · Cada cita verificada · Una puntuación que muestra su trabajo",
     "jobsCta": "Bolsa de empleo en vivo — comprueba tu encaje antes de postularte →",
-    "browseJobs": "Ver más de 185.000 empleos verificados"
+    "browseJobs": "Ver más de 300.000 empleos verificados"
   },
   "footer": {
     "copyright": "© {{year}} Resume Booster. Todos los derechos reservados.",
@@ -2837,6 +2837,18 @@
     }
   },
   "changelogEntries": {
+    "board300k": {
+      "title": "Más de 300.000 vacantes verificadas — Workday se une como el 12.º sistema",
+      "description": "El tablón se triplicó en una semana: más de 300.000 vacantes activas de más de 16.000 empresas, todas obtenidas directamente del sistema de contratación de cada empresa. Novedad de esta ronda: Workday — el sistema que usan muchos de los mayores empleadores del mundo — más miles de tablones nuevos en los doce sistemas."
+    },
+    "freshFirst": {
+      "title": "Empleos recientes primero: filtros de fecha honestos y detección más rápida",
+      "description": "Los filtros de Hoy y Esta semana ahora solo cuentan fechas indicadas por la propia empresa — nunca nuestro momento de descubrimiento. Los tablones que publican con frecuencia se revisan más a menudo, así que las vacantes nuevas aparecen antes. Las vacantes de Workday llegan con la antigüedad indicada por la empresa desde el primer momento."
+    },
+    "accurateDates": {
+      "title": "Antigüedad de las vacantes fiable — y un filtro por país",
+      "description": "Todas las estadísticas de antigüedad usan solo fechas indicadas por la empresa, y cada tarjeta indica de dónde viene su fecha. El orden por salario reconoce la moneda, así que una cifra en pesos no puede superar a una en dólares. Y ya puedes filtrar por país — más de 60 países, solo cuando la propia vacante lo indica."
+    },
     "matchingResume": {
       "title": "Fija el currículum exacto contra el que se compara toda la plataforma",
       "description": "Tu cuenta ahora guarda un currículum de referencia explícito: fija cualquier escaneo que haya guardado su documento, o pega el currículum exacto que estás enviando, y el ranking de afinidad del tablero, tus alertas por correo y los borradores del agente de solicitud se basarán en ese documento. Si no fijas nada, nada cambia: todo sigue usando tu último escaneo, como siempre."

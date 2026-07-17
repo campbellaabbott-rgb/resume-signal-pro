@@ -52,13 +52,25 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 // retry loop on purpose: CDX regularly drops connections mid-body
 // ("terminated" from undici), and an unguarded res.text() outside the
 // try/catch killed the whole census run.
-async function fetchTextRetry(url, tries = 5) {
+// curl-backed: node's fetch gets ECONNREFUSED from background contexts in
+// this environment; curl subprocesses always have network. Retries any
+// non-2xx with backoff (CDX rate-limits bursts with 403/500, not just 429).
+import { execFile as _execFile } from "node:child_process";
+import { promisify as _promisify } from "node:util";
+const _execFileP = _promisify(_execFile);
+async function fetchTextRetry(url, tries = 6) {
   for (let i = 0; i < tries; i++) {
     try {
-      const res = await fetch(url, { headers: { "User-Agent": "resumebooster.work census (contact: support@resumebooster.work)" } });
-      if (res.status === 503 || res.status === 429) { await sleep(3000 * (i + 1)); continue; }
-      if (!res.ok) return null;
-      return await res.text();
+      const { stdout } = await _execFileP(
+        "/usr/bin/curl",
+        ["-s", "-m", "45", "-H", "User-Agent: resumebooster.work census (contact: support@resumebooster.work)", "-w", "\n__STATUS__%{http_code}", url],
+        { maxBuffer: 64 * 1024 * 1024 },
+      );
+      const cut = stdout.lastIndexOf("\n__STATUS__");
+      if (cut < 0) { await sleep(2000 * (i + 1)); continue; }
+      const status = Number(stdout.slice(cut + 11));
+      if (status < 200 || status >= 300) { await sleep(3000 * (i + 1)); continue; }
+      return stdout.slice(0, cut);
     } catch { await sleep(2000 * (i + 1)); }
   }
   return null;

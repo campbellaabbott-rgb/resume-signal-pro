@@ -146,6 +146,11 @@ const verifiers = {
     const cn = d[0]?.company?.name;
     return { name: ((typeof cn === "string" && cn) || prettify(t)).slice(0, 60), count: d.length };
   },
+  lever: async (t) => {
+    const d = await probe(`https://api.lever.co/v0/postings/${encodeURIComponent(t)}?mode=json`);
+    if (!Array.isArray(d) || d.length < MIN_POSTINGS) return null;
+    return { name: prettify(t), count: d.length };
+  },
   rippling: async (t) => {
     // Embedded __NEXT_DATA__ payload (same extraction the board fetcher uses).
     const html = await probe(`https://ats.rippling.com/${t}/jobs`, true);
@@ -161,8 +166,8 @@ const verifiers = {
   },
 };
 
-const CONCURRENCY = { greenhouse: 14, ashby: 14, smartrecruiters: 8, workable: 8, bamboohr: 14, recruitee: 14, teamtailor: 14, breezy: 14, personio: 2, rippling: 10 };
-const SPACING_MS = { greenhouse: 60, ashby: 60, smartrecruiters: 150, workable: 150, bamboohr: 60, recruitee: 60, teamtailor: 60, breezy: 60, personio: 1600, rippling: 120 };
+const CONCURRENCY = { greenhouse: 14, ashby: 14, smartrecruiters: 8, workable: 8, bamboohr: 14, recruitee: 14, teamtailor: 14, breezy: 14, personio: 2, rippling: 10, lever: 14 };
+const SPACING_MS = { greenhouse: 60, ashby: 60, smartrecruiters: 150, workable: 150, bamboohr: 60, recruitee: 60, teamtailor: 60, breezy: 60, personio: 1600, rippling: 120, lever: 60 };
 
 async function run(vendor, tokens) {
   const verified = [];

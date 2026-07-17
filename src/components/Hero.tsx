@@ -265,7 +265,7 @@ export function Hero({ onFileSelect }: { onFileSelect?: (file: File) => void | P
           className={`group relative w-full sm:w-auto inline-flex items-center justify-center gap-3 rounded-2xl bg-gradient-to-r from-primary via-primary to-blue-500 text-primary-foreground font-bold shadow-xl shadow-primary/30 hover:shadow-2xl hover:shadow-primary/40 active:scale-[0.98] transition-all duration-300 touch-manipulation ${sizeClasses[size]}`}
         >
           <Briefcase className={iconSize[size]} />
-          <span>{t('hero.browseJobs', 'Browse 185,000+ verified jobs')}</span>
+          <span>{t('hero.browseJobs', 'Browse 300,000+ verified jobs')}</span>
         </Link>
         <button
           onClick={handleFreeScanClick}
@@ -406,7 +406,7 @@ export function Hero({ onFileSelect }: { onFileSelect?: (file: File) => void | P
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-success via-emerald-400 to-success">
                   {t('hero.headline.recruiterGrade', 'zero ghost jobs')}
                 </span>{" "}
-                {t('hero.headline.feedback', '— 185,000+ verified openings, matched to your resume')}
+                {t('hero.headline.feedback', '— 300,000+ verified openings, matched to your resume')}
               </h1>
               <p className="text-sm sm:text-base text-muted-foreground max-w-xl mx-auto">
                 {t('hero.socialFirst.subheading')}
@@ -540,7 +540,7 @@ export function Hero({ onFileSelect }: { onFileSelect?: (file: File) => void | P
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-success via-emerald-400 to-success">
                 {t('hero.headline.recruiterGrade', 'zero ghost jobs')}
               </span>{" "}
-              {t('hero.headline.feedback', '— 185,000+ verified openings, matched to your resume')}
+              {t('hero.headline.feedback', '— 300,000+ verified openings, matched to your resume')}
             </h1>
             
             {/* Description - shorter for ultra-compact */}

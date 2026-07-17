@@ -54,7 +54,7 @@
     "headline": {
       "get": "Het vacaturebord met",
       "recruiterGrade": "nul spookvacatures",
-      "feedback": "— 185.000+ geverifieerde vacatures, gematcht met je cv"
+      "feedback": "— 300.000+ geverifieerde vacatures, gematcht met je cv"
     },
     "description": "Upload je cv en krijg ATS-geoptimaliseerde herschrijvingen, red-flag waarschuwingen en keyword-verbeteringen — zoals hiring managers cv’s echt beoordelen.",
     "benefits": {
@@ -145,7 +145,7 @@
     "factNoStorage": "Nooit opgeslagen, nooit gedeeld",
     "measureStrip": "Metingen, geen meningen · Elk citaat geverifieerd · Een score die zijn werk laat zien",
     "jobsCta": "Live vacaturebank — check je match vóór je solliciteert →",
-    "browseJobs": "Bekijk 185.000+ geverifieerde vacatures"
+    "browseJobs": "Bekijk 300.000+ geverifieerde vacatures"
   },
   "footer": {
     "copyright": "© {{year}} Resume Booster. Alle rechten voorbehouden.",
@@ -2837,6 +2837,18 @@
     }
   },
   "changelogEntries": {
+    "board300k": {
+      "title": "300.000+ geverifieerde vacatures — Workday is het 12e systeem",
+      "description": "Het vacaturebord is in een week verdrievoudigd: 300.000+ actieve vacatures van 16.000+ bedrijven, allemaal rechtstreeks uit het wervingssysteem van het bedrijf zelf. Nieuw deze ronde: Workday — het systeem van veel van 's werelds grootste werkgevers — plus duizenden nieuw ontdekte vacatureborden over alle twaalf systemen."
+    },
+    "freshFirst": {
+      "title": "Verse vacatures eerst: eerlijke datumfilters en snellere detectie",
+      "description": "De filters Vandaag en Deze week tellen nu alleen datums die het bedrijf zelf opgeeft — nooit ons ontdekkingsmoment. Borden die vaak nieuwe vacatures plaatsen worden vaker gecontroleerd, dus nieuwe vacatures verschijnen hier eerder. Workday-vacatures dragen vanaf het begin de door het bedrijf opgegeven leeftijd."
+    },
+    "accurateDates": {
+      "title": "Betrouwbare vacatureleeftijden — plus een landenfilter",
+      "description": "Alle leeftijdsstatistieken gebruiken alleen nog door het bedrijf opgegeven datums, en elke kaart vermeldt waar de datum vandaan komt. Salarissortering herkent valuta, dus een bedrag in peso's kan een dollarbedrag niet passeren. En je kunt nu filteren op land — 60+ landen, alleen wanneer de vacature het zelf vermeldt."
+    },
     "matchingResume": {
       "title": "Pin het exacte cv waarmee het hele platform matcht",
       "description": "Je account heeft nu een expliciet matching-cv: pin een scan die zijn document heeft bewaard, of plak het exacte cv dat je verstuurt, en de fit-ranking van het jobboard, je matchmeldingen per e-mail en de concepten van de sollicitatie-agent baseren zich allemaal op dat document. Pin je niets, dan verandert er niets: alles blijft je laatste scan gebruiken, zoals altijd."

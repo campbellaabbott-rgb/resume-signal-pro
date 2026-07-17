@@ -54,7 +54,7 @@
     "headline": {
       "get": "Ang job board na may",
       "recruiterGrade": "zero ghost jobs",
-      "feedback": "— 185,000+ verified na trabaho, tugma sa resume mo"
+      "feedback": "— 300,000+ verified na trabaho, tugma sa resume mo"
     },
     "description": "I-upload ang iyong resume at makakuha ng ATS-optimized rewrites, red-flag warnings, at keyword improvements — gaya ng tunay na pag-review ng hiring managers.",
     "benefits": {
@@ -145,7 +145,7 @@
     "factNoStorage": "Hindi kailanman iniimbak o ibinabahagi",
     "measureStrip": "Sukat, hindi opinyon · Bawat sipi beripikado · Iskor na nagpapakita ng trabaho nito",
     "jobsCta": "Live na job board — i-check ang fit mo bago mag-apply →",
-    "browseJobs": "Tingnan ang 185,000+ verified na trabaho"
+    "browseJobs": "Tingnan ang 300,000+ verified na trabaho"
   },
   "footer": {
     "copyright": "© {{year}} Resume Booster. Lahat ng karapatan ay nakalaan.",
@@ -2837,6 +2837,18 @@
     }
   },
   "changelogEntries": {
+    "board300k": {
+      "title": "300,000+ verified na trabaho — Workday na ang ika-12 hiring system",
+      "description": "Triple ang laki ng board sa isang linggo: 300,000+ aktibong trabaho mula sa 16,000+ kompanya, lahat direktang kinuha mula sa sariling hiring system ng kompanya. Bago ngayong round: Workday — ang system na ginagamit ng marami sa pinakamalalaking employer sa mundo — at libu-libong bagong natuklasang board sa lahat ng labindalawang system."
+    },
+    "freshFirst": {
+      "title": "Mga sariwang trabaho muna: tapat na date filter at mas mabilis na pagtuklas",
+      "description": "Ang mga filter na Ngayon at Ngayong linggo ay bumibilang na lang ng mga petsang sinabi mismo ng kompanya — hindi kailanman ang oras ng aming pagkatuklas. Ang mga board na madalas mag-post ay mas madalas nang sinusuri, kaya mas maaga nang lumalabas ang mga bagong trabaho. Ang mga trabaho sa Workday ay may edad na sinabi ng kompanya mula sa simula."
+    },
+    "accurateDates": {
+      "title": "Mapagkakatiwalaang edad ng posting — at country filter",
+      "description": "Lahat ng estadistika ng edad ay gumagamit na lang ng mga petsang sinabi ng kompanya, at sinasabi ng bawat card kung saan galing ang petsa nito. Kinikilala ng salary sorting ang currency, kaya hindi malalampasan ng halagang piso ang halagang dolyar. At puwede ka nang mag-filter ayon sa bansa — 60+ bansa, kapag sinabi mismo ng posting."
+    },
     "matchingResume": {
       "title": "I-pin ang eksaktong resume na ginagamit ng buong platform sa pagtutugma",
       "description": "May explicit matching resume na ngayon ang account mo: i-pin ang alinmang scan na nag-save ng dokumento nito, o i-paste ang eksaktong resume na ipinapadala mo, at ang fit ranking ng job board, ang iyong match-alert emails, at ang mga draft ng apply agent ay ibabatay lahat sa dokumentong iyon. Kung walang i-pin, walang magbabago — patuloy na gagamitin ang pinakabago mong scan, gaya ng dati."
