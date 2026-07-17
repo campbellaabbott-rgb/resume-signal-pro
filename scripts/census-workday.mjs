@@ -12,6 +12,14 @@ import fs from "node:fs";
 
 const OUT = process.argv[2] || "workday-verified.json";
 const SKIP = Number(process.argv[3]) || 0;
+// Bounded-slice controls (env): background jobs lost network mid-session, so
+// the census must complete inside a single ~10-min FOREGROUND window. One
+// index + a page cap keeps enumeration short; the probe budget bounds the
+// verify phase. A slice appends to any existing output so runs accumulate.
+const N_INDEXES = Number(process.env.WD_INDEXES) || 2;
+const PAGE_CAP = Number(process.env.WD_PAGE_CAP) || 0;      // 0 = all pages
+const PROBE_CAP = Number(process.env.WD_PROBE_CAP) || 0;    // 0 = all candidates
+const DEADLINE = Date.now() + (Number(process.env.WD_DEADLINE_S) || 540) * 1000;
 const CDX = "https://index.commoncrawl.org";
 const MIN_POSTINGS = 3;
 const UA = { "User-Agent": "resumebooster.work job board (contact: support@resumebooster.work)" };
@@ -51,7 +59,7 @@ function parse(urlStr) {
 
 const collinfoText = await fetchTextRetry(`${CDX}/collinfo.json`, 8);
 if (!collinfoText) { console.error("CDX collinfo unreachable (likely overloaded) — retry later"); process.exit(1); }
-const indexes = JSON.parse(collinfoText).slice(SKIP, SKIP + 2).map((c) => c.id);
+const indexes = JSON.parse(collinfoText).slice(SKIP, SKIP + N_INDEXES).map((c) => c.id);
 console.log("indexes:", indexes.join(", "));
 
 const candidates = new Map(); // "tenant~dc~site" -> {tenant,dc,site}
@@ -61,7 +69,9 @@ for (const idx of indexes) {
   if (!np) continue;
   let pages = 0;
   try { pages = Number(JSON.parse(np).pages) || 0; } catch { continue; }
+  if (PAGE_CAP > 0) pages = Math.min(pages, PAGE_CAP);
   for (let p = 0; p < pages; p++) {
+    if (Date.now() > DEADLINE) { console.log("  deadline hit during enumeration"); break; }
     const text = await fetchTextRetry(`${base}&page=${p}`);
     if (!text) continue;
     for (const line of text.split("\n")) {
@@ -85,12 +95,17 @@ const existing = new Set([
 ]);
 
 const prettify = (t) => t.replace(/[-_]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()).slice(0, 60);
+// Accumulate across slices: seed from any existing output so foreground runs add up.
 const verified = [];
-const queue = [...candidates.entries()].filter(([tok]) => !existing.has(tok.toLowerCase()));
-console.log(`${queue.length} new after catalog dedupe`);
+const already = new Set();
+try { for (const b of (JSON.parse(fs.readFileSync(OUT, "utf8")).workday ?? [])) { verified.push(b); already.add(b.token.toLowerCase()); } } catch { /* first slice */ }
+let queue = [...candidates.entries()].filter(([tok]) => !existing.has(tok.toLowerCase()) && !already.has(tok.toLowerCase()));
+if (PROBE_CAP > 0) queue = queue.slice(0, PROBE_CAP);
+console.log(`${queue.length} new to probe this slice (${verified.length} already verified from prior slices)`);
 let done = 0;
 await Promise.all(Array.from({ length: 10 }, async () => {
   for (;;) {
+    if (Date.now() > DEADLINE) return;
     const next = queue.shift();
     if (!next) return;
     const [tok, { tenant, dc, site }] = next;
