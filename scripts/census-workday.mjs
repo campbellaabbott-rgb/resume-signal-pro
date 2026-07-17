@@ -48,8 +48,9 @@ function parse(urlStr) {
   } catch { return null; }
 }
 
-const collinfo = JSON.parse(await fetchTextRetry(`${CDX}/collinfo.json`));
-const indexes = collinfo.slice(SKIP, SKIP + 2).map((c) => c.id);
+const collinfoText = await fetchTextRetry(`${CDX}/collinfo.json`, 8);
+if (!collinfoText) { console.error("CDX collinfo unreachable (likely overloaded) — retry later"); process.exit(1); }
+const indexes = JSON.parse(collinfoText).slice(SKIP, SKIP + 2).map((c) => c.id);
 console.log("indexes:", indexes.join(", "));
 
 const candidates = new Map(); // "tenant~dc~site" -> {tenant,dc,site}
