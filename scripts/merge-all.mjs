@@ -16,7 +16,7 @@ const files = args.filter((a) => a !== "--apply");
 const SOURCES = "supabase/functions/job-board/sources.ts";
 const src = fs.readFileSync(SOURCES, "utf8");
 
-const VENDORS = ["greenhouse", "lever", "ashby", "smartrecruiters", "workable", "bamboohr", "recruitee", "teamtailor", "personio", "breezy", "rippling", "workday"];
+const VENDORS = ["greenhouse", "lever", "ashby", "smartrecruiters", "workable", "bamboohr", "recruitee", "teamtailor", "personio", "breezy", "rippling", "workday", "pinpoint"];
 const verified = Object.fromEntries(VENDORS.map((v) => [v, []]));
 for (const f of files) {
   const data = JSON.parse(fs.readFileSync(f, "utf8"));

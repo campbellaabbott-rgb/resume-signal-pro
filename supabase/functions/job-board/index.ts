@@ -34,6 +34,7 @@ import {
   isDatedBefore,
   normalizeCloseTitle,
   normalizeRippling,
+  normalizePinpoint,
   extractRipplingJobPosts,
   normalizeWorkday,
   detectCountry,
@@ -60,7 +61,7 @@ const json = (body: unknown, status = 200) =>
 // counts. catalogSize (JOB_SOURCES.length) is the automatic companion signal: it
 // moves with every catalog change with no discipline required. Sortable string so
 // a future check can tell "prod is behind" from "prod is ahead".
-const BUILD_VERSION = "2026-07-17.4";
+const BUILD_VERSION = "2026-07-17.5";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -276,6 +277,14 @@ async function fetchBoard(s: JobSource): Promise<{ jobs: JobPosting[]; raw: unkn
     if (s.source === "rippling") {
       const { items, raw } = await fetchRippling(s);
       return { jobs: normalizeRippling(items as never, s.name, s.token), raw };
+    }
+    if (s.source === "pinpoint") {
+      // Documented public JSON — single unpaginated list.
+      const res = await fetchWithTimeout(`https://${s.token}.pinpointhq.com/postings.json`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const body = await res.json();
+      const data = Array.isArray((body as { data?: unknown[] }).data) ? (body as { data: unknown[] }).data : [];
+      return { jobs: normalizePinpoint(data as never, s.name, s.token), raw: body };
     }
     if (s.source === "workday") {
       const { jobPostings, raw } = await fetchWorkday(s);
@@ -1421,6 +1430,15 @@ async function getDescription(src: JobSource, id: string, externalId: string): P
     }
   } else if (src.source === "bamboohr") {
     text = null; // detail endpoint is unreliable (observed 500s) — honest null
+  } else if (src.source === "pinpoint") {
+    // Descriptions ship in the list payload — one board fetch, extract the row.
+    const r = await fetchBoard(src);
+    const data = ((r?.raw as { data?: Array<{ id?: string | number; description?: string; skills_knowledge_expertise?: string }> })?.data) ?? [];
+    const job = data.find((x) => `pinpoint:${src.token}:${x.id}` === id);
+    if (job) {
+      const html = [job.description, job.skills_knowledge_expertise].filter(Boolean).join("\n");
+      text = htmlToText(html).slice(0, DESC_CAP) || null;
+    }
   } else if (src.source === "greenhouse") {
     const res = await fetchWithTimeout(`https://boards-api.greenhouse.io/v1/boards/${src.token}/jobs/${externalId}?questions=false`);
     if (res.ok) {

@@ -15,7 +15,7 @@ import { normalizeSmartRecruiters, normalizeWorkable } from "../../supabase/func
 import { searchName, searchToQuery } from "../../src/lib/job-search-params";
 import { computeFit } from "../../supabase/functions/_shared/fit-score";
 import { normalizeBambooHR } from "../../supabase/functions/job-board/normalize";
-import { leverSalary, sanePostedAt, isDatedBefore, safeIso, normalizeCloseTitle, detectCountry, normalizeRippling, extractRipplingJobPosts, normalizeWorkday, workdayPostedDays } from "../../supabase/functions/job-board/normalize";
+import { leverSalary, sanePostedAt, isDatedBefore, safeIso, normalizeCloseTitle, detectCountry, normalizeRippling, extractRipplingJobPosts, normalizeWorkday, workdayPostedDays, normalizePinpoint } from "../../supabase/functions/job-board/normalize";
 import { classifyDormancy, updateBoardFailures } from "../../supabase/functions/job-board/dormancy";
 import { rawItemCount, aggregateVendorHealth, CANARIES, type CanaryResult } from "../../supabase/functions/job-board/vendor-canary";
 
@@ -129,6 +129,43 @@ describe("normalizeWorkday + workdayPostedDays", () => {
   });
   it("rejects a malformed compound token rather than emitting broken ids", () => {
     expect(normalizeWorkday(WD_ITEMS as never, "X", "just-a-tenant")).toEqual([]);
+  });
+});
+
+describe("normalizePinpoint", () => {
+  // Live-captured shape from agencyanalytics.pinpointhq.com/postings.json (2026-07-17).
+  const PP_ITEMS = [
+    {
+      id: "509212", title: "Head of Engineering",
+      url: "https://agencyanalytics.pinpointhq.com/en/postings/910be08b-c49d-4052-925a-29373b1e3820",
+      workplace_type: "hybrid", compensation_visible: false, compensation_minimum: null,
+      location: { city: "Toronto", name: "Hybrid - Toronto ", province: "Ontario" },
+      job: { department: { name: "Engineering" } },
+    },
+    {
+      id: "600001", title: "Remote Data Analyst",
+      url: "https://agencyanalytics.pinpointhq.com/en/postings/abc",
+      workplace_type: "remote", compensation_visible: true,
+      compensation_minimum: 90000, compensation_maximum: 110000,
+      compensation_currency: "CAD", compensation_frequency: "annually",
+      location: { name: "Remote - Canada" }, job: { department: { name: "Data" } },
+    },
+    { id: "", title: "No Url Role", url: "", workplace_type: "onsite" },
+  ];
+  it("maps postings: undated-honest, salary only when visible, remote from workplace_type", () => {
+    const jobs = normalizePinpoint(PP_ITEMS as never, "AgencyAnalytics", "agencyanalytics");
+    expect(jobs).toHaveLength(2); // empty url/id row dropped
+    expect(jobs[0]).toMatchObject({
+      id: "pinpoint:agencyanalytics:509212",
+      title: "Head of Engineering",
+      postedAt: null,
+      salary: null, // compensation_visible false — never invented
+      department: "Engineering",
+      country: "CA",
+    });
+    expect(jobs[0].location).toBe("Hybrid - Toronto");
+    expect(jobs[1].remote).toBe(true);
+    expect(jobs[1].salary).toBe("CAD 90,000\u2013110,000 per year");
   });
 });
 
@@ -844,6 +881,6 @@ describe("vendor schema-drift canary", () => {
     for (const v of vendors) {
       expect(CANARIES.filter((c) => c.vendor === v).length).toBe(2);
     }
-    expect(CANARIES.length).toBe(16);
+    expect(CANARIES.length).toBe(18);
   });
 });

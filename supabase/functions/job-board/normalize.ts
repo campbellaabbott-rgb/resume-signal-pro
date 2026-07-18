@@ -618,6 +618,68 @@ export function normalizeRippling(items: RipplingJobItem[], company: string, tok
     .filter((j) => j.applyUrl !== "" && j.title !== "" && j.id !== `rippling:${token}:`);
 }
 
+// ── Pinpoint ──────────────────────────────────────────────────────────────
+// Documented public first-party JSON: https://{token}.pinpointhq.com/postings.json
+// → { data: [...] }. Structured compensation (min/max/currency/frequency,
+// gated by compensation_visible) and a workplace_type enum; NO posted date —
+// undated is honest, like BambooHR. Live-captured shape 2026-07-17
+// (agencyanalytics).
+export interface PinpointPosting {
+  id?: string | number;
+  title?: string;
+  url?: string;
+  workplace_type?: string; // "onsite" | "hybrid" | "remote"
+  employment_type_text?: string;
+  compensation_visible?: boolean;
+  compensation_minimum?: number | string | null;
+  compensation_maximum?: number | string | null;
+  compensation_currency?: string | null;
+  compensation_frequency?: string | null; // "annually" | "monthly" | "hourly"
+  location?: { name?: string; city?: string; province?: string; country?: string } | null;
+  job?: { department?: { name?: string } | null } | null;
+}
+
+const PINPOINT_FREQ: Record<string, string> = { annually: "per year", monthly: "per month", hourly: "per hour" };
+function pinpointSalary(j: PinpointPosting): string | null {
+  if (!j.compensation_visible) return null;
+  const min = Number(j.compensation_minimum);
+  const max = Number(j.compensation_maximum);
+  if (!Number.isFinite(min) || min <= 0) return null;
+  const cur = typeof j.compensation_currency === "string" && /^[A-Z]{3}$/.test(j.compensation_currency) ? j.compensation_currency : "";
+  const freq = PINPOINT_FREQ[String(j.compensation_frequency ?? "")] ?? "";
+  const range = Number.isFinite(max) && max > min ? `${min.toLocaleString("en-US")}–${max.toLocaleString("en-US")}` : min.toLocaleString("en-US");
+  return [cur, range, freq].filter(Boolean).join(" ") || null;
+}
+
+export function normalizePinpoint(items: PinpointPosting[], company: string, token: string): JobPosting[] {
+  return (Array.isArray(items) ? items : [])
+    .map((j) => {
+      const loc = j.location ?? {};
+      const location = String(loc.name || [loc.city, loc.province].filter(Boolean).join(", ") || "").trim();
+      // Detect from ALL location fields — the display name alone often lacks
+      // the province/country ("Hybrid - Toronto").
+      const locFull = [loc.name, loc.city, loc.province, loc.country].filter(Boolean).join(", ");
+      const title = String(j.title ?? "").trim();
+      const dept = j.job?.department?.name ?? null;
+      return {
+        id: `pinpoint:${token}:${j.id ?? ""}`,
+        source: "pinpoint" as const,
+        token,
+        company,
+        title,
+        location,
+        remote: j.workplace_type === "remote" || looksRemote(location) || looksRemote(title),
+        department: dept,
+        postedAt: null, // no date in the payload — undated is honest
+        category: categorize(title, dept),
+        salary: pinpointSalary(j),
+        country: detectCountry(locFull),
+        applyUrl: safeUrl(String(j.url ?? "")),
+      };
+    })
+    .filter((j) => j.applyUrl !== "" && j.title !== "" && j.id !== `pinpoint:${token}:`);
+}
+
 // ── Workday CXS ───────────────────────────────────────────────────────────
 // Workday hosts a large share of enterprise employers. Each tenant's own
 // career site is powered by a public first-party JSON endpoint

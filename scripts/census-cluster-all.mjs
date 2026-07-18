@@ -53,6 +53,9 @@ const SURTS = [
   { vendor: "personio", kind: "subdomain", surt: "com,personio,jobs,", hostSuffix: ".jobs.personio.com", personioHost: "jobs.personio.com" },
   { vendor: "rippling", kind: "path", surt: "com,rippling,ats)/", host: "ats.rippling.com" },
   { vendor: "workday", kind: "workday", surt: "com,myworkdayjobs,", hostSuffix: ".myworkdayjobs.com" },
+  // Discovery-only until the Pinpoint vendor ships: merge/verify ignore
+  // unknown vendors, so this just measures the candidate pool for rung 5.
+  { vendor: "pinpoint", kind: "subdomain", surt: "com,pinpointhq,", hostSuffix: ".pinpointhq.com" },
 ];
 
 async function curlBuf(url, range) {

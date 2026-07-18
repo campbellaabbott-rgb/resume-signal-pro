@@ -86,6 +86,11 @@ async function sampleTexts(vendor, token) {
       return (q?.state?.data?.items ?? []).slice(0, 20).map((j) => String(j.name ?? ""));
     } catch { return []; }
   }
+  if (vendor === "pinpoint") {
+    // postings.json carries full description HTML — real text screen.
+    const d = await get(`https://${token}.pinpointhq.com/postings.json`);
+    return (d?.data ?? []).slice(0, 12).map((j) => strip(String(j.description ?? j.title ?? "")));
+  }
   return [];
 }
 

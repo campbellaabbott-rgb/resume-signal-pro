@@ -49,6 +49,10 @@ export const CANARIES: readonly Canary[] = [
   // Workday CXS reference tenants (compound token tenant~dc~site).
   { vendor: "workday", token: "nvidia~wd5~NVIDIAExternalCareerSite", name: "NVIDIA" },
   { vendor: "workday", token: "salesforce~wd12~External_Career_Site", name: "Salesforce" },
+  // Pinpoint reference boards (live-verified 2026-07-17; small vendor — these
+  // are its steadier tenants).
+  { vendor: "pinpoint", token: "agencyanalytics", name: "AgencyAnalytics" },
+  { vendor: "pinpoint", token: "airtanker", name: "AirTanker" },
 ];
 
 // Count raw feed items in a vendor's payload (pre-normalization), matching each
@@ -73,6 +77,8 @@ export function rawItemCount(vendor: VendorKind, raw: unknown): number {
     }
     case "workday":
       return Array.isArray(r.jobPostings) ? r.jobPostings.length : 0;
+    case "pinpoint":
+      return Array.isArray(r.data) ? r.data.length : 0;
     default:
       return 0;
   }
