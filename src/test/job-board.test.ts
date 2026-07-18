@@ -638,7 +638,11 @@ describe("filter + sort", () => {
 });
 
 describe("tiered refresh invariants", () => {
-  it("every HOT token matches a real source token (silent-shrink guard)", async () => {
+  // 30s timeout: this test dynamically imports the multi-MB sources.ts
+  // catalog; under parallel-suite load the parse alone can blow the 5s
+  // default, reporting a "failure" with no assertion diff (recurring
+  // pre-push flake, root-caused 2026-07-18).
+  it("every HOT token matches a real source token (silent-shrink guard)", { timeout: 30_000 }, async () => {
     const { HOT_TOKENS, JOB_SOURCES } = await import("../../supabase/functions/job-board/sources");
     const tokens = new Set(JOB_SOURCES.map((s) => s.token));
     const missing = [...HOT_TOKENS].filter((t) => !tokens.has(t));
