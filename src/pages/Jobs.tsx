@@ -26,6 +26,7 @@ import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { searchName, searchToQuery } from "@/lib/job-search-params";
 import { displaySalary } from "@/lib/salary-display";
+import { JobsCommandPalette, ShortcutsOverlay, useGlobalPaletteKeys, type PaletteAction } from "@/components/JobsCommandPalette";
 import { isBoardCategory } from "@/lib/job-board-categories";
 
 // user_applications gained board columns after the last typegen — untyped
@@ -214,6 +215,15 @@ export default function Jobs() {
   });
   const [freshness, setFreshness] = useState<"" | "day" | "week">("");
   const [companyQuery, setCompanyQuery] = useState<string | null>(null);
+  const [companyIdx, setCompanyIdx] = useState(-1);
+  // ⌘K palette + "?" shortcuts overlay + "/" search focus.
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
+  useGlobalPaletteKeys({
+    onPalette: () => setPaletteOpen((v) => !v),
+    onHelp: () => setHelpOpen((v) => !v),
+    onSlash: () => (document.getElementById("board-search") as HTMLInputElement | null)?.focus(),
+  });
   // E3: last few viewed jobs, restored across visits (localStorage snapshot).
   const [recentJobs, setRecentJobs] = useState<Array<{ id: string; title: string; company: string }>>(() => {
     try { return JSON.parse(localStorage.getItem("rb_recent_jobs") ?? "[]"); } catch { return []; }
@@ -1367,6 +1377,21 @@ export default function Jobs() {
     return f;
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [q, location, category, experience, company, country, salaryFloor, remoteOnly, freshness, companies, t]);
+  const paletteActions: PaletteAction[] = useMemo(() => [
+    { id: "search", label: t("jobsPage.paFocusSearch", "Search postings"), hint: "/", run: () => (document.getElementById("board-search") as HTMLInputElement | null)?.focus() },
+    { id: "remote", label: remoteOnly ? t("jobsPage.paRemoteOff", "Show all locations") : t("jobsPage.paRemoteOn", "Remote only"), run: () => setRemoteOnly((v) => !v) },
+    { id: "week", label: t("jobsPage.paWeek", "Posted this week"), run: () => setFreshness("week") },
+    { id: "today", label: t("jobsPage.paToday", "Posted today"), run: () => setFreshness("day") },
+    { id: "entry", label: t("jobsPage.paEntry", "Entry-level roles"), run: () => setExperience("entry") },
+    { id: "salary100", label: t("jobsPage.paSalary", "Stated pay $100k+"), run: () => setSalaryFloor(100000) },
+    { id: "clear", label: t("jobsPage.paClear", "Clear all filters"), run: () => activeFilters.forEach((f) => f.clear()) },
+    { id: "saved", label: t("jobsPage.paSaved", "My saved jobs & tracker"), run: () => { window.location.href = "/account"; } },
+    { id: "ghost", label: t("jobsPage.paGhost", "Ghost Job Index"), run: () => { window.location.href = "/ghost-job-index"; } },
+    { id: "scan", label: t("jobsPage.paScan", "Scan my resume (free)"), run: () => { window.location.href = "/#scan"; } },
+    { id: "help", label: t("jobsPage.paHelp", "Keyboard shortcuts"), hint: "?", run: () => setHelpOpen(true) },
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  ], [remoteOnly, activeFilters, t]);
+
 
   // Smart zero-result help: when the server really has nothing for this
   // combination, measure which single relaxation helps most (a few cheap
@@ -1826,6 +1851,7 @@ export default function Jobs() {
                   type="text"
                   value={q}
                   onChange={(e) => setQ(e.target.value)}
+                  id="board-search"
                   placeholder={t("jobsPage.searchPlaceholder", "Title or keyword — e.g. product designer")}
                   className="w-full pl-9 pr-3 py-2 rounded-lg bg-background border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
                 />
@@ -1916,16 +1942,29 @@ export default function Jobs() {
             <div className="relative">
               <input
                 type="text"
+                role="combobox"
+                aria-expanded={companyQuery !== null}
+                aria-controls="company-typeahead-list"
+                aria-activedescendant={companyQuery !== null && companyIdx >= 0 ? `company-opt-${companyIdx}` : undefined}
                 value={companyQuery !== null ? companyQuery : (companies.find((c) => c.token === company)?.name ?? "")}
-                onChange={(e) => setCompanyQuery(e.target.value)}
+                onChange={(e) => { setCompanyQuery(e.target.value); setCompanyIdx(-1); }}
                 onFocus={() => setCompanyQuery(companyQuery ?? "")}
-                onBlur={() => setTimeout(() => setCompanyQuery(null), 150)}
+                onBlur={() => setTimeout(() => { setCompanyQuery(null); setCompanyIdx(-1); }, 150)}
+                onKeyDown={(e) => {
+                  if (companyQuery === null) return;
+                  const opts = companies.filter((c) => c.name.toLowerCase().includes(companyQuery.toLowerCase())).slice(0, 12);
+                  if (e.key === "ArrowDown") { e.preventDefault(); setCompanyIdx((i) => Math.min(i + 1, opts.length - 1)); }
+                  else if (e.key === "ArrowUp") { e.preventDefault(); setCompanyIdx((i) => Math.max(i - 1, -1)); }
+                  else if (e.key === "Enter" && companyIdx >= 0 && opts[companyIdx]) {
+                    e.preventDefault(); setCompany(opts[companyIdx].token); setCompanyQuery(null); setCompanyIdx(-1);
+                  } else if (e.key === "Escape") { setCompanyQuery(null); setCompanyIdx(-1); }
+                }}
                 placeholder={t("jobsPage.companySearch", "Company…")}
                 className="px-3 py-2 rounded-lg bg-background border border-border text-sm w-36 focus:outline-none focus:ring-2 focus:ring-primary/40"
                 aria-label={t("jobsPage.allCompanies", "All companies")}
               />
               {companyQuery !== null && (
-                <div className="absolute z-30 mt-1 w-64 max-h-72 overflow-auto rounded-lg border border-border bg-background shadow-lg text-sm">
+                <div id="company-typeahead-list" role="listbox" className="absolute z-30 mt-1 w-64 max-h-72 overflow-auto rounded-lg border border-border bg-background shadow-lg text-sm">
                   {company && (
                     <button type="button" className="block w-full text-left px-3 py-2 hover:bg-muted text-muted-foreground" onMouseDown={() => { setCompany(""); setCompanyQuery(null); }}>
                       {t("jobsPage.allCompanies", "All companies")}
@@ -1934,12 +1973,15 @@ export default function Jobs() {
                   {companies
                     .filter((c) => c.name.toLowerCase().includes(companyQuery.toLowerCase()))
                     .slice(0, 12)
-                    .map((c) => (
+                    .map((c, ci) => (
                       <button
                         key={c.token}
+                        id={`company-opt-${ci}`}
+                        role="option"
+                        aria-selected={ci === companyIdx}
                         type="button"
-                        className="block w-full text-left px-3 py-2 hover:bg-muted"
-                        onMouseDown={() => { setCompany(c.token); setCompanyQuery(null); }}
+                        className={`block w-full text-left px-3 py-2 hover:bg-muted ${ci === companyIdx ? "bg-muted" : ""}`}
+                        onMouseDown={() => { setCompany(c.token); setCompanyQuery(null); setCompanyIdx(-1); }}
                       >
                         {c.name} <span className="text-muted-foreground">({c.count})</span>
                       </button>
@@ -2778,6 +2820,8 @@ export default function Jobs() {
         </DialogContent>
       </Dialog>
 
+      <JobsCommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} actions={paletteActions} />
+      <ShortcutsOverlay open={helpOpen} onClose={() => setHelpOpen(false)} />
       <Footer />
     </div>
   );
