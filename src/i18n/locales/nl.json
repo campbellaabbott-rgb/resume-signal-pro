@@ -4226,6 +4226,38 @@
     "densityTip": "Lijstdichtheid wisselen",
     "densityCompact": "Compacte weergave",
     "densityComfortable": "Ruime weergave",
-    "backToTop": "Naar boven"
+    "backToTop": "Naar boven",
+    "savedTip": "In je tracker — klik om te openen"
+  },
+  "accountPage": {
+    "statActive": "Actieve sollicitaties",
+    "statWeek": "Deze week verstuurd",
+    "statInterviews": "In gesprek",
+    "statResponse": "Responspercentage",
+    "statOffers": "Aanbiedingen",
+    "laneAll": "Alle",
+    "advanceTip": "Door naar {{stage}}",
+    "statusLabel": "Sollicitatiestatus",
+    "tracked": "{{count}} bijgehouden",
+    "tracker": "Sollicitatietracker",
+    "scoreHistory": "Scoregeschiedenis",
+    "targetScore": "Doelscore",
+    "fixChecklist": "Je verbeterlijst",
+    "matchingResume": "Referentie-cv",
+    "credits": "Scantegoed",
+    "purchases": "Aankopen",
+    "settings": "Accountinstellingen",
+    "deleteAccount": "Account verwijderen",
+    "welcome": "Welkom! Laten we je eerste score halen 🎯",
+    "trackerEmpty": "Volg waar je hebt gesolliciteerd — status, datums en de verzonden score, op één plek.",
+    "trackerEmptyCta": "Bekijk 450.000+ geverifieerde vacatures — er één opslaan start je tracker",
+    "status": {
+      "saved": "Opgeslagen",
+      "applied": "Verstuurd",
+      "interviewing": "In gesprek",
+      "offer": "Aanbod",
+      "rejected": "Afgewezen",
+      "no_response": "Geen reactie"
+    }
   }
 }

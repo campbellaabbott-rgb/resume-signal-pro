@@ -4226,6 +4226,38 @@
     "densityTip": "सूची घनत्व बदलें",
     "densityCompact": "संक्षिप्त दृश्य",
     "densityComfortable": "आरामदायक दृश्य",
-    "backToTop": "ऊपर जाएं"
+    "backToTop": "ऊपर जाएं",
+    "savedTip": "आपके ट्रैकर में — खोलने के लिए क्लिक करें"
+  },
+  "accountPage": {
+    "statActive": "सक्रिय आवेदन",
+    "statWeek": "इस हफ्ते भेजे",
+    "statInterviews": "इंटरव्यू में",
+    "statResponse": "जवाब दर",
+    "statOffers": "ऑफ़र",
+    "laneAll": "सभी",
+    "advanceTip": "{{stage}} पर बढ़ाएं",
+    "statusLabel": "आवेदन स्थिति",
+    "tracked": "{{count}} दर्ज",
+    "tracker": "आवेदन ट्रैकर",
+    "scoreHistory": "स्कोर इतिहास",
+    "targetScore": "लक्ष्य स्कोर",
+    "fixChecklist": "आपकी सुधार सूची",
+    "matchingResume": "संदर्भ रिज़्यूमे",
+    "credits": "स्कैन क्रेडिट",
+    "purchases": "खरीदारी",
+    "settings": "खाता सेटिंग्स",
+    "deleteAccount": "खाता हटाएं",
+    "welcome": "स्वागत है! पहला स्कोर पाएं 🎯",
+    "trackerEmpty": "जहां आवेदन किया उसे ट्रैक करें — स्थिति, तारीखें और भेजा गया स्कोर, एक जगह।",
+    "trackerEmptyCta": "450,000+ सत्यापित नौकरियां देखें — एक सहेजते ही ट्रैकर शुरू",
+    "status": {
+      "saved": "सहेजा",
+      "applied": "भेजा",
+      "interviewing": "इंटरव्यू",
+      "offer": "ऑफ़र",
+      "rejected": "अस्वीकृत",
+      "no_response": "कोई जवाब नहीं"
+    }
   }
 }

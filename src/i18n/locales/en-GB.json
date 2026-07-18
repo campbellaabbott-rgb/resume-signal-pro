@@ -4226,6 +4226,38 @@
     "densityTip": "Switch list density",
     "densityCompact": "Compact view",
     "densityComfortable": "Comfortable view",
-    "backToTop": "Back to top"
+    "backToTop": "Back to top",
+    "savedTip": "In your application tracker — click to open it"
+  },
+  "accountPage": {
+    "statActive": "Active applications",
+    "statWeek": "Applied this week",
+    "statInterviews": "Interviewing",
+    "statResponse": "Response rate",
+    "statOffers": "Offers",
+    "laneAll": "All",
+    "advanceTip": "Advance to {{stage}}",
+    "statusLabel": "Application status",
+    "tracked": "{{count}} tracked",
+    "tracker": "Application tracker",
+    "scoreHistory": "Score history",
+    "targetScore": "Target score",
+    "fixChecklist": "Your fix checklist",
+    "matchingResume": "Matching CV",
+    "credits": "Scan credits",
+    "purchases": "Purchases",
+    "settings": "Account settings",
+    "deleteAccount": "Delete account",
+    "welcome": "Welcome! Let's get your first score 🎯",
+    "trackerEmpty": "Track where you've applied — status, dates, and the score you applied with, all in one place.",
+    "trackerEmptyCta": "Browse 450,000+ verified openings — saving one starts your tracker",
+    "status": {
+      "saved": "Saved",
+      "applied": "Applied",
+      "interviewing": "Interviewing",
+      "offer": "Offer",
+      "rejected": "Rejected",
+      "no_response": "No response"
+    }
   }
 }

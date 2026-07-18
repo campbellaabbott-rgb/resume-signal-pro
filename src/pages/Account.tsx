@@ -5,6 +5,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import {
   TrendingUp, Coins, ShoppingBag, LogOut, Loader2, ScanSearch, Target,
   ListChecks, GitCompare, Briefcase, Plus, Trash2, AlertTriangle, ExternalLink,
@@ -93,6 +94,8 @@ const mapScanRow = (row: { id: string; ats_score: number; projected_score: numbe
 const fixPlanToJson = (items: FixItem[]): Json => items.map((item) => ({ step: item.step, done: item.done }));
 
 const APP_STATUSES = ["saved", "applied", "interviewing", "offer", "rejected", "no_response"] as const;
+// Pipeline quick-advance: the natural next stage per status (one-tap ➜).
+const NEXT_STATUS: Record<string, string> = { saved: "applied", applied: "interviewing", interviewing: "offer" };
 const STATUS_STYLES: Record<string, string> = {
   saved: "bg-secondary text-secondary-foreground",
   applied: "bg-primary/10 text-primary",
@@ -103,6 +106,7 @@ const STATUS_STYLES: Record<string, string> = {
 };
 
 export default function Account() {
+  const { t } = useTranslation();
   const { session, user, loading, signOut } = useAuth();
   const { pro } = useProSubscription();
   const navigate = useNavigate();
@@ -169,6 +173,27 @@ export default function Account() {
     if (withFit < 3) return null;
     const top = [...counts.entries()].sort((a, b) => b[1] - a[1]).filter(([, n]) => n >= 2).slice(0, 3);
     return top.length > 0 ? { top, withFit } : null;
+  }, [applications]);
+  // ACC1: pipeline lane filter over the tracker ("" = all stages).
+  const [appFilter, setAppFilter] = useState<string>("");
+  const stageCounts = useMemo(() => {
+    const c: Record<string, number> = {};
+    for (const a of applications) c[a.status] = (c[a.status] ?? 0) + 1;
+    return c;
+  }, [applications]);
+  // ACC2: the HQ stat band — measured from the tracker, no estimates.
+  const hqStats = useMemo(() => {
+    const nonSaved = applications.filter((a) => a.status !== "saved");
+    const weekAgo = Date.now() - 7 * 86_400_000;
+    const appliedThisWeek = nonSaved.filter((a) => a.applied_at && Date.parse(a.applied_at) > weekAgo).length;
+    const interviews = applications.filter((a) => a.status === "interviewing").length;
+    const offers = applications.filter((a) => a.status === "offer").length;
+    const responded = applications.filter((a) => a.status === "interviewing" || a.status === "offer").length;
+    return {
+      active: applications.filter((a) => a.status === "saved" || a.status === "applied" || a.status === "interviewing").length,
+      appliedThisWeek, interviews, offers,
+      responseRate: nonSaved.length >= 5 ? Math.round((responded / nonSaved.length) * 100) : null,
+    };
   }, [applications]);
   const [targetScore, setTargetScore] = useState<number | null>(null);
   const [fetching, setFetching] = useState(true);
@@ -494,7 +519,7 @@ export default function Account() {
             like a starting line, not a broken page */}
         {scans.length === 0 && !fetching && (
           <div className="rounded-2xl border border-primary/25 bg-gradient-to-br from-primary/10 to-transparent p-6 mb-6">
-            <h2 className="text-lg font-bold text-foreground mb-1">Welcome! Let's get your first score 🎯</h2>
+            <h2 className="text-lg font-bold text-foreground mb-1">{t("accountPage.welcome", "Welcome! Let's get your first score 🎯")}</h2>
             <p className="text-xs text-muted-foreground mb-4">Three steps and your dashboard comes alive:</p>
             <div className="space-y-2 mb-4">
               {[
@@ -540,7 +565,7 @@ export default function Account() {
         <div className={`rounded-2xl border p-5 mb-6 ${goalHit ? "border-success/40 bg-success/5" : "border-border bg-card"}`}>
           <div className="flex items-center gap-2 mb-2">
             <Target className={`w-4 h-4 ${goalHit ? "text-success" : "text-primary"}`} />
-            <h2 className="font-semibold text-foreground text-sm">Target score</h2>
+            <h2 className="font-semibold text-foreground text-sm">{t("accountPage.targetScore", "Target score")}</h2>
             <div className="ml-auto flex items-center gap-1.5">
               <input
                 type="number"
@@ -581,7 +606,7 @@ export default function Account() {
           <div className="rounded-2xl border border-border bg-card p-5 mb-6">
             <div className="flex items-center gap-2 mb-1">
               <ListChecks className="w-4 h-4 text-primary" />
-              <h2 className="font-semibold text-foreground text-sm">Your fix checklist</h2>
+              <h2 className="font-semibold text-foreground text-sm">{t("accountPage.fixChecklist", "Your fix checklist")}</h2>
               <span className="ml-auto text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary font-semibold">
                 {doneFixes}/{latestFixPlan.fix_plan.length} done
               </span>
@@ -612,7 +637,7 @@ export default function Account() {
         <div className="rounded-2xl border border-border bg-card p-5 mb-6">
           <div className="flex items-center gap-2 mb-3">
             <TrendingUp className="w-4 h-4 text-primary" />
-            <h2 className="font-semibold text-foreground text-sm">Score history</h2>
+            <h2 className="font-semibold text-foreground text-sm">{t("accountPage.scoreHistory", "Score history")}</h2>
             <span className="ml-auto text-xs text-muted-foreground">{scans.length} scan{scans.length !== 1 ? "s" : ""}</span>
           </div>
           {scans.length === 0 ? (
@@ -760,7 +785,7 @@ export default function Account() {
         <div className="rounded-2xl border border-border bg-card p-5 mb-6">
           <div className="flex flex-wrap items-center gap-2">
             <ScanSearch className="w-4 h-4 text-primary" />
-            <h2 className="font-semibold text-foreground text-sm">Matching résumé</h2>
+            <h2 className="font-semibold text-foreground text-sm">{t("accountPage.matchingResume", "Matching résumé")}</h2>
             <span className="text-xs text-muted-foreground truncate">
               {matching.text
                 ? `Pasted résumé (${matching.text.length.toLocaleString()} chars)`
@@ -817,6 +842,23 @@ export default function Account() {
           onStatus={updateAppStatus}
         />
 
+        {applications.length > 0 && (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+            {[
+              { label: t("accountPage.statActive", "Active applications"), value: hqStats.active },
+              { label: t("accountPage.statWeek", "Applied this week"), value: hqStats.appliedThisWeek },
+              { label: t("accountPage.statInterviews", "Interviewing"), value: hqStats.interviews },
+              hqStats.responseRate !== null
+                ? { label: t("accountPage.statResponse", "Response rate"), value: `${hqStats.responseRate}%` }
+                : { label: t("accountPage.statOffers", "Offers"), value: hqStats.offers },
+            ].map((st) => (
+              <div key={st.label} className="rounded-2xl border border-border bg-card px-4 py-3">
+                <p className="text-2xl font-bold text-foreground">{st.value}</p>
+                <p className="text-[11px] text-muted-foreground">{st.label}</p>
+              </div>
+            ))}
+          </div>
+        )}
         {(() => {
           const closed = applications.filter((a) => a.posting_closed_at);
           const rolesKey = [...new Set(closed.map((a) => a.role).filter(Boolean))].slice(0, 3).join("|");
@@ -826,8 +868,8 @@ export default function Account() {
         <div className="rounded-2xl border border-border bg-card p-5 mb-6">
           <div className="flex items-center gap-2 mb-3">
             <Briefcase className="w-4 h-4 text-primary" />
-            <h2 className="font-semibold text-foreground text-sm">Application tracker</h2>
-            <span className="ml-auto text-xs text-muted-foreground">{applications.length} tracked</span>
+            <h2 className="font-semibold text-foreground text-sm">{t("accountPage.tracker", "Application tracker")}</h2>
+            <span className="ml-auto text-xs text-muted-foreground">{t("accountPage.tracked", "{{count}} tracked", { count: applications.length })}</span>
           </div>
           <div className="flex gap-2 mb-3">
             <input
@@ -916,10 +958,28 @@ export default function Account() {
             </div>
           )}
           {applications.length === 0 ? (
-            <p className="text-xs text-muted-foreground">Track where you've applied — status, dates, and the score you applied with, all in one place.</p>
+            <div className="text-center py-4">
+              <p className="text-xs text-muted-foreground mb-2">{t("accountPage.trackerEmpty", "Track where you've applied — status, dates, and the score you applied with, all in one place.")}</p>
+              <Link to="/jobs" className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border border-primary/40 text-primary hover:bg-primary/10 transition-colors">
+                {t("accountPage.trackerEmptyCta", "Browse 450,000+ verified openings — saving one starts your tracker")}
+              </Link>
+            </div>
           ) : (
+            <>
+            <div className="flex flex-wrap items-center gap-1.5 mb-3">
+              <button type="button" onClick={() => setAppFilter("")}
+                className={`text-[11px] px-2.5 py-1 rounded-full border transition-colors ${appFilter === "" ? "border-primary bg-primary/10 text-primary font-semibold" : "border-border text-muted-foreground hover:text-foreground"}`}>
+                {t("accountPage.laneAll", "All")} {applications.length}
+              </button>
+              {APP_STATUSES.filter((st) => (stageCounts[st] ?? 0) > 0).map((st) => (
+                <button key={st} type="button" onClick={() => setAppFilter(appFilter === st ? "" : st)}
+                  className={`text-[11px] px-2.5 py-1 rounded-full border transition-colors ${appFilter === st ? "border-primary bg-primary/10 text-primary font-semibold" : "border-border text-muted-foreground hover:text-foreground"}`}>
+                  {t(`accountPage.status.${st}`, st)} {stageCounts[st]}
+                </button>
+              ))}
+            </div>
             <div className="space-y-1.5 max-h-96 overflow-y-auto">
-              {applications.map((a) => {
+              {applications.filter((a) => !appFilter || a.status === appFilter).map((a) => {
                 const version = a.scan_id ? scans.find(s => s.id === a.scan_id) : null;
                 return (
                 <div key={a.id} className="border border-border/50 rounded-lg px-3 py-2">
@@ -959,13 +1019,23 @@ export default function Account() {
                       <ExternalLink className="w-3.5 h-3.5" />
                     </a>
                   )}
+                  {NEXT_STATUS[a.status] && (
+                    <button
+                      type="button"
+                      onClick={() => updateAppStatus(a.id, NEXT_STATUS[a.status])}
+                      title={t("accountPage.advanceTip", "Advance to {{stage}}", { stage: t(`accountPage.status.${NEXT_STATUS[a.status]}`, NEXT_STATUS[a.status]) })}
+                      className="text-[11px] px-2 py-1 rounded-full border border-border text-muted-foreground hover:text-primary hover:border-primary/50 shrink-0 transition-colors"
+                    >
+                      ➜ {t(`accountPage.status.${NEXT_STATUS[a.status]}`, NEXT_STATUS[a.status])}
+                    </button>
+                  )}
                   <select
                     value={a.status}
                     onChange={(e) => updateAppStatus(a.id, e.target.value)}
                     className={`text-xs px-2 py-1 rounded-full border-0 font-semibold cursor-pointer ${STATUS_STYLES[a.status] ?? STATUS_STYLES.applied}`}
-                    aria-label="Application status"
+                    aria-label={t("accountPage.statusLabel", "Application status")}
                   >
-                    {APP_STATUSES.map(st => <option key={st} value={st}>{st}</option>)}
+                    {APP_STATUSES.map(st => <option key={st} value={st}>{t(`accountPage.status.${st}`, st)}</option>)}
                   </select>
                   <button onClick={() => deleteApplication(a.id)} aria-label="Delete application" className="text-muted-foreground/50 hover:text-destructive transition-colors">
                     <Trash2 className="w-3.5 h-3.5" />
@@ -1013,6 +1083,7 @@ export default function Account() {
                 );
               })}
             </div>
+            </>
           )}
 
           {/* Which resume gets interviews: outcomes grouped by the version sent */}
@@ -1101,7 +1172,7 @@ export default function Account() {
           <div className="rounded-2xl border border-border bg-card p-5">
             <div className="flex items-center gap-2 mb-2">
               <Coins className="w-4 h-4 text-warning" />
-              <h2 className="font-semibold text-foreground text-sm">Scan credits</h2>
+              <h2 className="font-semibold text-foreground text-sm">{t("accountPage.credits", "Scan credits")}</h2>
             </div>
             <p className="text-3xl font-bold text-foreground mb-1">{fetching ? "…" : account?.credits ?? 0}</p>
             <p className="text-xs text-muted-foreground mb-3">Credits are linked to your email and never expire.</p>
@@ -1112,7 +1183,7 @@ export default function Account() {
           <div className="rounded-2xl border border-border bg-card p-5">
             <div className="flex items-center gap-2 mb-2">
               <ShoppingBag className="w-4 h-4 text-primary" />
-              <h2 className="font-semibold text-foreground text-sm">Purchases</h2>
+              <h2 className="font-semibold text-foreground text-sm">{t("accountPage.purchases", "Purchases")}</h2>
             </div>
             {fetching ? (
               <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
@@ -1144,7 +1215,7 @@ export default function Account() {
 
         {/* Settings: password / email / export */}
         <div className="rounded-2xl border border-border bg-card p-5 mb-6">
-          <h2 className="font-semibold text-foreground text-sm mb-3">⚙️ Account settings</h2>
+          <h2 className="font-semibold text-foreground text-sm mb-3">⚙️ {t("accountPage.settings", "Account settings")}</h2>
           <div className="grid sm:grid-cols-2 gap-4 mb-3">
             <div>
               <label className="block text-xs text-muted-foreground mb-1">Change password</label>
@@ -1183,7 +1254,7 @@ export default function Account() {
         <div className="rounded-2xl border border-destructive/20 bg-destructive/[0.03] p-5">
           <div className="flex items-center gap-2 mb-2">
             <AlertTriangle className="w-4 h-4 text-destructive" />
-            <h2 className="font-semibold text-foreground text-sm">Delete account</h2>
+            <h2 className="font-semibold text-foreground text-sm">{t("accountPage.deleteAccount", "Delete account")}</h2>
           </div>
           <p className="text-xs text-muted-foreground mb-3">
             Permanently deletes your account, scan history, checklist, goal, and applications. Purchase records are retained for accounting. This cannot be undone.

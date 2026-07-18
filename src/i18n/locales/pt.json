@@ -4226,6 +4226,38 @@
     "densityTip": "Alternar densidade da lista",
     "densityCompact": "Visão compacta",
     "densityComfortable": "Visão confortável",
-    "backToTop": "Voltar ao topo"
+    "backToTop": "Voltar ao topo",
+    "savedTip": "No seu rastreador — clique para abrir"
+  },
+  "accountPage": {
+    "statActive": "Candidaturas ativas",
+    "statWeek": "Enviadas esta semana",
+    "statInterviews": "Em entrevista",
+    "statResponse": "Taxa de resposta",
+    "statOffers": "Ofertas",
+    "laneAll": "Todas",
+    "advanceTip": "Avançar para {{stage}}",
+    "statusLabel": "Status da candidatura",
+    "tracked": "{{count}} registradas",
+    "tracker": "Rastreador de candidaturas",
+    "scoreHistory": "Histórico de pontuações",
+    "targetScore": "Pontuação alvo",
+    "fixChecklist": "Sua lista de melhorias",
+    "matchingResume": "Currículo de referência",
+    "credits": "Créditos de escaneamento",
+    "purchases": "Compras",
+    "settings": "Configurações da conta",
+    "deleteAccount": "Excluir conta",
+    "welcome": "Bem-vindo! Vamos à sua primeira pontuação 🎯",
+    "trackerEmpty": "Acompanhe onde você se candidatou — status, datas e a pontuação enviada, tudo em um lugar.",
+    "trackerEmptyCta": "Explore mais de 450.000 vagas verificadas — salvar uma inicia seu rastreador",
+    "status": {
+      "saved": "Salva",
+      "applied": "Enviada",
+      "interviewing": "Entrevista",
+      "offer": "Oferta",
+      "rejected": "Rejeitada",
+      "no_response": "Sem resposta"
+    }
   }
 }

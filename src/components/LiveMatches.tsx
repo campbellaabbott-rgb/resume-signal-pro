@@ -5,6 +5,8 @@
 // jobs you can act on today.
 
 import { useEffect, useState } from "react";
+import { displaySalary } from "@/lib/salary-display";
+import { accentFor } from "@/lib/category-accent";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { ArrowRight, Briefcase, ExternalLink, Loader2 } from "lucide-react";
@@ -122,13 +124,13 @@ export function LiveMatches({ resumeText, industry }: { resumeText: string; indu
         <>
           <ul className="space-y-2 mb-3">
             {matches.map((m) => (
-              <li key={m.id} className="flex flex-wrap items-center gap-2 rounded-lg border border-border/60 bg-card px-3 py-2">
+              <li key={m.id} style={{ borderLeft: `3px solid ${accentFor((m as { category?: string | null }).category)}` }} className="flex flex-wrap items-center gap-2 rounded-lg border border-border/60 bg-card px-3 py-2">
                 <div className="flex-1 min-w-[200px]">
                   <p className="text-sm font-medium text-foreground leading-snug">{m.title}</p>
                   <p className="text-xs text-muted-foreground">
                     {m.company}
                     {m.location ? ` · ${m.location}` : ""}
-                    {m.salary ? <span className="text-success font-medium"> · {m.salary}</span> : null}
+                    {m.salary ? <span className="text-success font-medium" title={m.salary}> · {displaySalary(m.salary)}</span> : null}
                   </p>
                 </div>
                 {typeof m.fit === "number" && (

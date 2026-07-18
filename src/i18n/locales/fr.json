@@ -4226,6 +4226,38 @@
     "densityTip": "Changer la densité de la liste",
     "densityCompact": "Vue compacte",
     "densityComfortable": "Vue confortable",
-    "backToTop": "Haut de page"
+    "backToTop": "Haut de page",
+    "savedTip": "Dans votre suivi — cliquez pour l'ouvrir"
+  },
+  "accountPage": {
+    "statActive": "Candidatures actives",
+    "statWeek": "Envoyées cette semaine",
+    "statInterviews": "En entretien",
+    "statResponse": "Taux de réponse",
+    "statOffers": "Offres",
+    "laneAll": "Toutes",
+    "advanceTip": "Passer à {{stage}}",
+    "statusLabel": "Statut de la candidature",
+    "tracked": "{{count}} suivies",
+    "tracker": "Suivi des candidatures",
+    "scoreHistory": "Historique des scores",
+    "targetScore": "Score cible",
+    "fixChecklist": "Votre liste d'améliorations",
+    "matchingResume": "CV de référence",
+    "credits": "Crédits de scan",
+    "purchases": "Achats",
+    "settings": "Paramètres du compte",
+    "deleteAccount": "Supprimer le compte",
+    "welcome": "Bienvenue ! Obtenons votre premier score 🎯",
+    "trackerEmpty": "Suivez vos candidatures — statut, dates et score d'envoi, au même endroit.",
+    "trackerEmptyCta": "Parcourez plus de 450 000 offres vérifiées — en sauvegarder une lance votre suivi",
+    "status": {
+      "saved": "Sauvegardée",
+      "applied": "Envoyée",
+      "interviewing": "Entretien",
+      "offer": "Offre",
+      "rejected": "Refusée",
+      "no_response": "Sans réponse"
+    }
   }
 }

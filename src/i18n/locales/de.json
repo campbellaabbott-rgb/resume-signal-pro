@@ -4226,6 +4226,38 @@
     "densityTip": "Listendichte wechseln",
     "densityCompact": "Kompakte Ansicht",
     "densityComfortable": "Komfortable Ansicht",
-    "backToTop": "Nach oben"
+    "backToTop": "Nach oben",
+    "savedTip": "In Ihrem Tracker — zum Öffnen klicken"
+  },
+  "accountPage": {
+    "statActive": "Aktive Bewerbungen",
+    "statWeek": "Diese Woche gesendet",
+    "statInterviews": "Im Gespräch",
+    "statResponse": "Antwortquote",
+    "statOffers": "Angebote",
+    "laneAll": "Alle",
+    "advanceTip": "Weiter zu {{stage}}",
+    "statusLabel": "Bewerbungsstatus",
+    "tracked": "{{count}} erfasst",
+    "tracker": "Bewerbungs-Tracker",
+    "scoreHistory": "Score-Verlauf",
+    "targetScore": "Ziel-Score",
+    "fixChecklist": "Ihre Verbesserungsliste",
+    "matchingResume": "Referenz-Lebenslauf",
+    "credits": "Scan-Guthaben",
+    "purchases": "Käufe",
+    "settings": "Kontoeinstellungen",
+    "deleteAccount": "Konto löschen",
+    "welcome": "Willkommen! Holen wir Ihren ersten Score 🎯",
+    "trackerEmpty": "Verfolgen Sie Ihre Bewerbungen — Status, Daten und der gesendete Score an einem Ort.",
+    "trackerEmptyCta": "Über 450.000 verifizierte Stellen durchsuchen — eine zu speichern startet Ihren Tracker",
+    "status": {
+      "saved": "Gespeichert",
+      "applied": "Beworben",
+      "interviewing": "Im Gespräch",
+      "offer": "Angebot",
+      "rejected": "Abgelehnt",
+      "no_response": "Keine Antwort"
+    }
   }
 }

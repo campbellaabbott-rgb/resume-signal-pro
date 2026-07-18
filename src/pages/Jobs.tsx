@@ -26,6 +26,7 @@ import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { searchName, searchToQuery } from "@/lib/job-search-params";
 import { displaySalary } from "@/lib/salary-display";
+import { accentFor } from "@/lib/category-accent";
 import { JobsCommandPalette, ShortcutsOverlay, useGlobalPaletteKeys, type PaletteAction } from "@/components/JobsCommandPalette";
 import { isBoardCategory } from "@/lib/job-board-categories";
 
@@ -119,29 +120,6 @@ function countryLabel(code: string): string {
   }
 }
 
-// D1: one deterministic accent per category — thin card border, pill dot,
-// panel dot. Hues chosen for dark-bg legibility; "other" stays neutral.
-const CATEGORY_ACCENT: Record<string, string> = {
-  engineering: "hsl(217 91% 60%)",
-  data_ai: "hsl(262 83% 66%)",
-  design: "hsl(330 81% 60%)",
-  product: "hsl(43 96% 56%)",
-  marketing: "hsl(25 95% 53%)",
-  sales: "hsl(142 71% 45%)",
-  customer: "hsl(173 80% 40%)",
-  finance: "hsl(160 84% 39%)",
-  legal: "hsl(215 20% 65%)",
-  people_hr: "hsl(292 84% 61%)",
-  operations: "hsl(199 89% 48%)",
-  healthcare: "hsl(0 84% 60%)",
-  science: "hsl(188 86% 53%)",
-  education: "hsl(48 96% 53%)",
-  hospitality_retail: "hsl(31 97% 72%)",
-  security: "hsl(0 72% 51%)",
-  admin: "hsl(240 5% 65%)",
-  other: "hsl(240 5% 45%)",
-};
-const accentFor = (c?: string | null) => CATEGORY_ACCENT[c ?? "other"] ?? CATEGORY_ACCENT.other;
 
 function daysAgo(iso: string | null): number | null {
   if (!iso) return null;
@@ -2669,6 +2647,14 @@ export default function Jobs() {
                             </span>
                           )}
                           {job.remote && <Badge variant="secondary" className="text-[10px]">{t("jobsPage.remoteBadge", "Remote")}</Badge>}
+                          {savedIds.has(job.id) && (
+                            <Link to="/account" onClick={(e) => e.stopPropagation()}
+                              className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline"
+                              title={t("jobsPage.savedTip", "In your application tracker — click to open it")}>
+                              <BookmarkCheck className="w-3 h-3" />
+                              {t("jobsPage.savedBadge", "Saved")}
+                            </Link>
+                          )}
                           {d !== null && (
                             <span
                               className={`text-[11px] whitespace-nowrap ${d <= 2 ? "text-success font-medium" : "text-muted-foreground"}`}

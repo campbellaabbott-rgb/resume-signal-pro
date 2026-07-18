@@ -4226,6 +4226,38 @@
     "densityTip": "Palitan ang densidad ng listahan",
     "densityCompact": "Compact na view",
     "densityComfortable": "Komportableng view",
-    "backToTop": "Bumalik sa taas"
+    "backToTop": "Bumalik sa taas",
+    "savedTip": "Nasa tracker mo — i-click para buksan"
+  },
+  "accountPage": {
+    "statActive": "Aktibong aplikasyon",
+    "statWeek": "Naipasa ngayong linggo",
+    "statInterviews": "Nag-iinterview",
+    "statResponse": "Response rate",
+    "statOffers": "Mga alok",
+    "laneAll": "Lahat",
+    "advanceTip": "Isulong sa {{stage}}",
+    "statusLabel": "Status ng aplikasyon",
+    "tracked": "{{count}} naka-track",
+    "tracker": "Application tracker",
+    "scoreHistory": "Kasaysayan ng score",
+    "targetScore": "Target na score",
+    "fixChecklist": "Listahan ng ayusin",
+    "matchingResume": "Reference na resume",
+    "credits": "Scan credits",
+    "purchases": "Mga binili",
+    "settings": "Mga setting ng account",
+    "deleteAccount": "Burahin ang account",
+    "welcome": "Welcome! Kunin natin ang unang score mo 🎯",
+    "trackerEmpty": "I-track kung saan ka nag-apply — status, petsa, at score na ipinadala, sa isang lugar.",
+    "trackerEmptyCta": "Tingnan ang 450,000+ verified na trabaho — ang pag-save ng isa ay magsisimula ng tracker mo",
+    "status": {
+      "saved": "Naka-save",
+      "applied": "Naipasa",
+      "interviewing": "Interview",
+      "offer": "Alok",
+      "rejected": "Tinanggihan",
+      "no_response": "Walang sagot"
+    }
   }
 }
