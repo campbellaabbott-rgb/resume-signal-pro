@@ -1601,10 +1601,21 @@ export default function Jobs() {
                   type="button"
                   onClick={() => {
                     const url = `${window.location.origin}/jobs?job=${encodeURIComponent(detailJob.id)}`;
-                    navigator.clipboard?.writeText(url).then(
-                      () => toast({ title: t("jobsPage.shareCopied", "Link copied — anyone can open this posting") }),
-                      () => toast({ title: t("jobsPage.shareFailed", "Couldn't copy the link") }),
-                    );
+                    const done = (ok: boolean) => toast({ title: ok
+                      ? t("jobsPage.shareCopied", "Link copied — anyone can open this posting")
+                      : t("jobsPage.shareFailed", "Couldn't copy the link") });
+                    try {
+                      if (navigator.clipboard?.writeText) {
+                        navigator.clipboard.writeText(url).then(() => done(true), () => done(false));
+                      } else {
+                        // Clipboard API unavailable (e.g. embedded preview) — legacy path.
+                        const ta = document.createElement("textarea");
+                        ta.value = url; ta.style.position = "fixed"; ta.style.opacity = "0";
+                        document.body.appendChild(ta); ta.select();
+                        const ok = document.execCommand("copy");
+                        ta.remove(); done(ok);
+                      }
+                    } catch { done(false); }
                   }}
                   className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors"
                   title={t("jobsPage.shareTip", "Copy a direct link to this posting")}
@@ -2194,8 +2205,8 @@ export default function Jobs() {
             )}
             {/* S2: the board's breadth, visible — live per-category counts as
                 one-tap pills (facet data the dropdown was hiding). */}
-            <div className="basis-full overflow-x-auto pb-1 -mb-1 relative [mask-image:linear-gradient(to_right,black_92%,transparent)]">
-              <div className="flex items-center gap-2 w-max">
+            <div className="basis-full overflow-x-auto md:overflow-visible pb-1 -mb-1 relative [mask-image:linear-gradient(to_right,black_92%,transparent)] md:[mask-image:none]">
+              <div className="flex items-center gap-2 w-max md:w-auto md:flex-wrap">
                 {CATEGORY_IDS
                   .filter((c) => (data?.categories?.[c] ?? 0) > 0)
                   .sort((a, b) => {
