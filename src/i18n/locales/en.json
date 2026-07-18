@@ -3424,6 +3424,18 @@
     "measuredTrust": {
       "title": "Freshness you can check, not just trust — measured and published live",
       "description": "The Ghost Job Index now publishes the board's freshness as a live measurement: right now the median company feed was re-checked under an hour ago, with 95% of all feeds within about two hours — computed from per-feed verification stamps at the moment you load the page, never a marketing claim. The daily accuracy audit now samples every hiring system separately and publishes per-system results, so a problem with any one system can't hide inside a healthy average. Salary benchmarks are now computed per currency (a €50,000 posting no longer averages with a $50,000 one), and the pipeline gained a circuit breaker: if a hiring system's API ever breaks, the board freezes that system's data instead of showing — or deleting — the wrong thing."
+    },
+    "searchAliases": {
+      "title": "Search that speaks your shorthand — and shows its work",
+      "description": "Type “swe”, “rn”, “sdr” or 30 other common role abbreviations and the board now also searches the spelled-out role — always disclosed right under the search box (“also matching: software engineer”). And when a niche search matches inside a job description rather than the title, the card now shows the exact matching sentence, so you can see why every result is there. Plus: every job panel now links to the company's other open roles and to genuinely similar roles across the whole board."
+    },
+    "pipelineRhythm": {
+      "title": "Your pipeline now tells you what to do next",
+      "description": "The account dashboard opens with a “Do next” strip built from your own tracker: upcoming interviews first, then applications that have gone quiet for 7+ days (one tap marks them followed up), then saved jobs aging toward closure. Interviewing rows take an interview date, and the stat band now shows your applies-per-week momentum over the last 8 weeks — all from your own data, nothing invented."
+    },
+    "fresherFaster": {
+      "title": "New companies' jobs appear within minutes, not a day",
+      "description": "When we add newly discovered company boards, their postings used to wait a full rotation before first appearing. New boards now jump the queue and start flowing in minutes after a release. We also began dating BambooHR and Rippling postings from those companies' own detail feeds (their list feeds don't state dates), and published a per-vendor table on the Ghost Job Index showing exactly which hiring systems state post dates — because a date filter should tell you what it covers."
     }
   },
   "sampleReportPreview": {
@@ -4227,7 +4239,10 @@
     "densityCompact": "Compact view",
     "densityComfortable": "Comfortable view",
     "backToTop": "Back to top",
-    "savedTip": "In your application tracker — click to open it"
+    "savedTip": "In your application tracker — click to open it",
+    "aliasLine": "also matching: {{terms}}",
+    "matchedInDesc": "In the description:",
+    "moreAtCompany": "{{n}} more open roles at {{company}} — see them all"
   },
   "accountPage": {
     "statActive": "Active applications",
@@ -4258,6 +4273,17 @@
       "offer": "Offer",
       "rejected": "Rejected",
       "no_response": "No response"
-    }
+    },
+    "doNext": "Do next",
+    "doInterviewToday": "Interview with {{company}} today — {{role}}",
+    "doInterviewDays": "Interview with {{company}} in {{n}} day(s) — {{role}}",
+    "doFollowUp": "{{company}} has been quiet for {{n}} days — a short follow-up on “{{role}}” keeps it warm",
+    "markFollowedUp": "Mark followed up",
+    "doSaved": "Saved {{n}} days ago and not applied yet: {{role}} at {{company}}",
+    "doApplyNow": "Apply now",
+    "momentumTip": "Applications per week, last 8 weeks — {{total}} total",
+    "quietChip": "quiet for {{n}} days",
+    "followedUpOn": "followed up {{date}}",
+    "interviewOn": "Interview date:"
   }
 }

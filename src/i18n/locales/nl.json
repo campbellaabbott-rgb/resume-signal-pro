@@ -3424,6 +3424,18 @@
     "measuredTrust": {
       "title": "Versheid die je kunt controleren, niet alleen geloven — live gemeten en gepubliceerd",
       "description": "De Ghost Job Index publiceert de versheid van het bord nu als live meting: op dit moment is de mediane bedrijfsfeed minder dan een uur geleden opnieuw gecheckt, en 95% van alle feeds binnen ongeveer twee uur — berekend uit verificatiestempels per feed op het moment dat je de pagina laadt, nooit een marketingclaim. De dagelijkse nauwkeurigheidsaudit bemonstert nu elk wervingssysteem apart en publiceert resultaten per systeem — een probleem bij één systeem kan zich niet meer verstoppen in een gezond gemiddelde. Salarisbenchmarks worden nu per valuta berekend (een vacature van €50.000 middelt niet meer met één van $50.000), en de pijplijn kreeg een stroomonderbreker: als de API van een systeem ooit breekt, bevriest het bord de data van dat systeem in plaats van het verkeerde te tonen — of te verwijderen."
+    },
+    "searchAliases": {
+      "title": "Zoeken begrijpt je afkortingen — en laat het zien",
+      "description": "Typ “swe”, “rn”, “sdr” of 30 andere gangbare functie-afkortingen en het board zoekt ook op de voluit geschreven rol — altijd vermeld onder de zoekbalk (“zoekt ook: software engineer”). En wanneer een nichezoekopdracht in de functieomschrijving matcht in plaats van de titel, toont de kaart de exacte zin die matcht. Bovendien: elk vacaturepaneel linkt naar de overige openstaande functies van het bedrijf en naar echt vergelijkbare rollen op het hele board."
+    },
+    "pipelineRhythm": {
+      "title": "Je pipeline vertelt je nu wat je moet doen",
+      "description": "Het accountdashboard opent met een “Nu doen”-strook uit je eigen tracker: aankomende gesprekken eerst, dan sollicitaties die 7+ dagen stil zijn (één tik markeert ze als opgevolgd), dan opgeslagen vacatures die verouderen. Gespreksregels accepteren een datum, en de statistiekband toont je sollicitatietempo van de afgelopen 8 weken — alles uit je eigen gegevens, niets verzonnen."
+    },
+    "fresherFaster": {
+      "title": "Vacatures van nieuwe bedrijven verschijnen binnen minuten, niet een dag",
+      "description": "Nieuw ontdekte bedrijfsboards moesten voorheen een volledige rotatie wachten voordat hun vacatures verschenen. Nu springen ze de wachtrij voorbij en stromen ze minuten na een release binnen. We dateren nu ook BambooHR- en Rippling-vacatures via de detailfeeds van die bedrijven, en publiceren op de Ghost Job Index een tabel per wervingssysteem die laat zien welke een publicatiedatum vermelden."
     }
   },
   "sampleReportPreview": {
@@ -4227,7 +4239,10 @@
     "densityCompact": "Compacte weergave",
     "densityComfortable": "Ruime weergave",
     "backToTop": "Naar boven",
-    "savedTip": "In je tracker — klik om te openen"
+    "savedTip": "In je tracker — klik om te openen",
+    "aliasLine": "zoekt ook: {{terms}}",
+    "matchedInDesc": "In de omschrijving:",
+    "moreAtCompany": "Nog {{n}} open functies bij {{company}} — bekijk ze allemaal"
   },
   "accountPage": {
     "statActive": "Actieve sollicitaties",
@@ -4258,6 +4273,17 @@
       "offer": "Aanbod",
       "rejected": "Afgewezen",
       "no_response": "Geen reactie"
-    }
+    },
+    "doNext": "Nu doen",
+    "doInterviewToday": "Sollicitatiegesprek bij {{company}} vandaag — {{role}}",
+    "doInterviewDays": "Sollicitatiegesprek bij {{company}} over {{n}} dag(en) — {{role}}",
+    "doFollowUp": "{{company}} is al {{n}} dagen stil — een korte opvolging over “{{role}}” houdt het contact warm",
+    "markFollowedUp": "Opvolging gemarkeerd",
+    "doSaved": "{{n}} dagen geleden opgeslagen, nog niet gesolliciteerd: {{role}} bij {{company}}",
+    "doApplyNow": "Nu solliciteren",
+    "momentumTip": "Sollicitaties per week, afgelopen 8 weken — {{total}} totaal",
+    "quietChip": "{{n}} dagen stil",
+    "followedUpOn": "opgevolgd op {{date}}",
+    "interviewOn": "Gespreksdatum:"
   }
 }

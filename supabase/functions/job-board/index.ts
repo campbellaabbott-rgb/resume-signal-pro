@@ -46,6 +46,7 @@ import { extractSalary, parseSalaryStructured } from "../_shared/salary-extract.
 import { classifyDormancy, updateBoardFailures, type BoardFailureState } from "./dormancy.ts";
 import { CANARIES, rawItemCount, aggregateVendorHealth, type CanaryResult } from "./vendor-canary.ts";
 import { detectExperience, isExperienceBand } from "./experience.ts";
+import { expandQuery } from "./search-alias.ts";
 import { classifyQuestion } from "../_shared/application-questions.ts";
 
 const corsHeaders = {
@@ -61,7 +62,7 @@ const json = (body: unknown, status = 200) =>
 // counts. catalogSize (JOB_SOURCES.length) is the automatic companion signal: it
 // moves with every catalog change with no discipline required. Sortable string so
 // a future check can tell "prod is behind" from "prod is ahead".
-const BUILD_VERSION = "2026-07-18.3";
+const BUILD_VERSION = "2026-07-19.1";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -95,6 +96,7 @@ const HOT_CONCURRENCY = 2; // hot boards are giants — two multi-MB parses at o
 // worker hit the ceiling and the cron retried the same slice forever).
 const HOT_SLICE = 10;
 const COLD_SLICE = 80; // cold boards are small (that's why they're cold); 80/hop at CONCURRENCY=8 is 10 sequential rounds — well under the edge wall-time limit. Rotation speed comes from concurrency + hops-per-pass, never bigger slices (proven-safe size).
+const BOOTSTRAP_PER_SLICE = 25; // zero-row boards prepended per cold slice after a deploy — +31% slice load, still ~3 rounds under the wall-time margin; a 1,900-board merge drains in ~1.5 passes instead of waiting a full rotation for its FIRST ingest
 const SLICE_LOCK_MS = 3 * 60_000; // min gap between slices
 const DESC_CAP = 14_000; // matches the scanner's own input bounds
 
@@ -442,7 +444,7 @@ const COUNTRY_VERSION = 1; // v1: deterministic country from location text (name
 // at all (bamboohr/rippling) are structurally undated — no sweep can date
 // them; provenance labels stay the honest treatment. Measured backlog at v1:
 // ~480 greenhouse rows.
-const POSTED_BACKFILL_VERSION = 1;
+const POSTED_BACKFILL_VERSION = 2; // v2: + bamboohr (datePosted) and rippling (createdOn) per-posting phases
 // Velocity tier: boards that ADDED postings recently earn hot cadence even if
 // small — a 40-role startup posting daily deserves faster revisits than a
 // 4,000-role giant that hasn't posted in a month. Blend: velocity leaders get
@@ -566,7 +568,42 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
       .map((x) => JOB_SOURCES.find((s) => s.token === x.t))
       .filter((s): s is JobSource => !!s));
   }
-  const slice = [...demandBoards, ...baseSlice];
+  // Bootstrap lane: boards with ZERO rows (fresh catalog merges) jump the
+  // queue instead of waiting a full rotation at the catalog tail. The queue
+  // is computed once per deploy (keyed on BUILD_VERSION) via get_empty_boards
+  // and drained BOOTSTRAP_PER_SLICE per cold slice through the same prepend
+  // path as demand boards — so failure streaks, the vendor breaker, and
+  // cursor accounting (advance by baseSlice only) all apply unchanged.
+  let bootstrapBoards: JobSource[] = [];
+  if (!inHotPhase) {
+    try {
+      const { data: bsMeta } = await client.from("job_board_meta").select("v").eq("k", "bootstrap").maybeSingle();
+      let bs = (bsMeta?.v ?? {}) as { queue?: string[]; version?: string };
+      if (bs.version !== BUILD_VERSION) {
+        const { data: empty, error } = await client.rpc("get_empty_boards", { p_tokens: JOB_SOURCES.map((s) => s.token) });
+        if (error) throw error;
+        bs = { queue: Array.isArray(empty) ? empty : [], version: BUILD_VERSION };
+      }
+      const queue = Array.isArray(bs.queue) ? bs.queue : [];
+      if (queue.length > 0) {
+        const sliceTokens = new Set([...baseSlice, ...demandBoards].map((s) => s.token));
+        bootstrapBoards = queue
+          .slice(0, BOOTSTRAP_PER_SLICE)
+          .filter((t) => !sliceTokens.has(t))
+          .map((t) => JOB_SOURCES.find((s) => s.token === t))
+          .filter((s): s is JobSource => !!s);
+      }
+      if (queue.length > 0 || bs.version !== (bsMeta?.v as { version?: string } | null)?.version) {
+        // Optimistic drain (same rule as the cursors): a died slice skips
+        // ahead rather than wedging on the same bootstrap boards.
+        await client.from("job_board_meta").upsert(
+          { k: "bootstrap", v: { queue: queue.slice(BOOTSTRAP_PER_SLICE), version: bs.version }, updated_at: new Date().toISOString() },
+          { onConflict: "k" },
+        );
+      }
+    } catch { /* bootstrap is an accelerator — on any error the rotation still reaches every board */ }
+  }
+  const slice = [...demandBoards, ...bootstrapBoards, ...baseSlice];
   const startIso = new Date().toISOString();
   const freshCutoffMs = Date.now() - FRESH_WINDOW_DAYS * 86_400_000; // roles older than this are dropped
 
@@ -1549,7 +1586,7 @@ Deno.serve(async (req) => {
       // bundle, so a stale/failed publish is visible in ONE call instead of being
       // inferred from posting counts over hours (the rung-2 "did it deploy?" pain).
       // Also the source of truth for the heartbeat's job_board_deploy check.
-      const [prog, rot, refreshMeta, bf, hotMeta, fresh, breaker, dateCov] = await Promise.all([
+      const [prog, rot, refreshMeta, bf, hotMeta, fresh, breaker, dateCov, bsMeta] = await Promise.all([
         client.from("job_board_meta").select("v, updated_at").eq("k", "refresh_progress").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "cold_rotation").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "refresh").maybeSingle(),
@@ -1560,6 +1597,7 @@ Deno.serve(async (req) => {
         client.from("job_board_meta").select("v").eq("k", "vendor_breaker").maybeSingle(),
         // Per-vendor stated-date coverage (null until the migration lands)
         client.rpc("get_date_coverage").then((r) => r, () => ({ data: null })),
+        client.from("job_board_meta").select("v").eq("k", "bootstrap").maybeSingle(),
       ]);
       const pgV = (prog.data?.v ?? {}) as { hot?: number; cold?: number; coldDone?: number; failedAcc?: string[] };
       const rotV = (rot.data?.v ?? {}) as { completedAt?: string; coldBoards?: number };
@@ -1579,6 +1617,7 @@ Deno.serve(async (req) => {
         coldBoards: rotV.coldBoards ?? null,
         dormantBoards: Object.keys(dormant).length,
         cursor: { hot: pgV.hot ?? 0, cold: pgV.cold ?? 0, coldDone: pgV.coldDone ?? 0 },
+        bootstrapQueue: (() => { const b = (bsMeta.data?.v ?? {}) as { queue?: unknown[]; version?: string }; return { pending: Array.isArray(b.queue) ? b.queue.length : 0, forVersion: b.version ?? null }; })(),
         lastSliceAgeMin: ageMin(prog.data?.updated_at),
         lastRotationAgeMin: ageMin(rotV.completedAt ?? rot.data?.updated_at ?? null),
         recentFailures: Array.isArray(pgV.failedAcc) ? pgV.failedAcc.slice(-10) : [],
@@ -1813,15 +1852,21 @@ Deno.serve(async (req) => {
       if (typeof body.chainKey !== "string" || body.chainKey !== await chainKey()) {
         return json({ error: "backfill-posted is a maintenance action" }, 403);
       }
-      const phase = body.phase === "workday" ? "workday" : "greenhouse";
+      const phase = ["workday", "bamboohr", "rippling"].includes(String(body.phase)) ? String(body.phase) as "workday" | "bamboohr" | "rippling" : "greenhouse";
       // Workday hops fetch up to WORKDAY_PAGE_CAP list pages per board — keep
       // the per-hop board count low so a hop stays inside the compute budget.
+      // BambooHR/Rippling date via ONE detail call PER POSTING (their list
+      // feeds are dateless, but /careers/{id}/detail states datePosted and
+      // /jobs/{uuid} states createdOn — both official, both company-stated),
+      // so those hops budget by posting count, not board count.
+      const perPosting = phase === "bamboohr" || phase === "rippling";
       const BOARDS_PER_HOP = phase === "workday" ? 8 : 40;
+      const IDS_PER_HOP = 120;
       let cursor = typeof body.cursor === "string" ? body.cursor : "";
       const byBoard = new Map<string, { company: string; ids: string[] }>();
       let scanned = 0;
       let exhausted = false;
-      while (byBoard.size <= BOARDS_PER_HOP && !exhausted) {
+      while ((perPosting ? scanned <= IDS_PER_HOP : byBoard.size <= BOARDS_PER_HOP) && !exhausted) {
         let q = client
           .from("job_board_postings")
           .select("id,company_token,company")
@@ -1832,16 +1877,20 @@ Deno.serve(async (req) => {
         if (cursor) q = q.gt("id", cursor);
         const { data: rows, error } = await q;
         if (error) throw error;
+        let brokeEarly = false;
         for (const r of rows ?? []) {
           const tk = r.company_token as string;
-          if (!byBoard.has(tk) && byBoard.size >= BOARDS_PER_HOP) continue; // next hop
+          if (!perPosting && !byBoard.has(tk) && byBoard.size >= BOARDS_PER_HOP) continue; // next hop
+          if (perPosting && scanned >= IDS_PER_HOP) { brokeEarly = true; break; }
           scanned++;
           const g = byBoard.get(tk) ?? { company: (r.company as string) ?? tk, ids: [] };
           g.ids.push(r.id as string);
           byBoard.set(tk, g);
           cursor = r.id as string;
         }
-        if (!rows || rows.length < 500) exhausted = true;
+        // A short page only exhausts the phase if we CONSUMED it fully — a
+        // budget break mid-page must leave the remainder for the next hop.
+        if (!brokeEarly && (!rows || rows.length < 500)) exhausted = true;
       }
       let dated = 0;
       for (const [tk, { company, ids }] of byBoard) {
@@ -1855,6 +1904,28 @@ Deno.serve(async (req) => {
             for (const j of feed.jobs ?? []) {
               const iso = sanePostedAt(j.first_published ?? null);
               if (j.id != null && iso) dates.set(`greenhouse:${tk}:${j.id}`, iso);
+            }
+          } else if (phase === "bamboohr" || phase === "rippling") {
+            // Per-posting official detail endpoints (both company-stated):
+            //   bamboohr: /careers/{id}/detail → result.jobOpening.datePosted
+            //   rippling: /jobs/{uuid} → createdOn (uuid verified == board id)
+            // Small concurrent pool; a 404/parse miss leaves the row NULL.
+            const pool = 5;
+            for (let i = 0; i < ids.length; i += pool) {
+              await Promise.all(ids.slice(i, i + pool).map(async (rowId) => {
+                const pid = rowId.split(":")[2];
+                if (!pid) return;
+                try {
+                  const url = phase === "bamboohr"
+                    ? `https://${tk}.bamboohr.com/careers/${encodeURIComponent(pid)}/detail`
+                    : `https://api.rippling.com/platform/api/ats/v1/board/${encodeURIComponent(tk)}/jobs/${encodeURIComponent(pid)}`;
+                  const res = await fetchWithTimeout(url);
+                  if (!res.ok) { await res.body?.cancel(); return; }
+                  const j = await res.json() as { result?: { jobOpening?: { datePosted?: string } }; createdOn?: string };
+                  const iso = sanePostedAt(phase === "bamboohr" ? j.result?.jobOpening?.datePosted ?? null : j.createdOn ?? null);
+                  if (iso) dates.set(rowId, iso);
+                } catch { /* row stays NULL */ }
+              }));
             }
           } else {
             // Production fetcher + normalizer: emits dated postings from the
@@ -1885,9 +1956,10 @@ Deno.serve(async (req) => {
         chain({ phase, cursor });
         return json({ ok: true, phase, scanned, dated, cursor });
       }
-      if (phase === "greenhouse") {
-        chain({ phase: "workday" }); // fresh cursor for the next source
-        return json({ ok: true, phase, scanned, dated, next: "workday" });
+      const NEXT_PHASE: Record<string, string> = { greenhouse: "workday", workday: "bamboohr", bamboohr: "rippling" };
+      if (NEXT_PHASE[phase]) {
+        chain({ phase: NEXT_PHASE[phase] }); // fresh cursor for the next source
+        return json({ ok: true, phase, scanned, dated, next: NEXT_PHASE[phase] });
       }
       await client.from("job_board_meta").upsert(
         { k: "posted_backfill", v: { version: POSTED_BACKFILL_VERSION, sweptAt: new Date().toISOString() }, updated_at: new Date().toISOString() },
@@ -2406,6 +2478,9 @@ const rowToJob = (r: any) => ({
   experienceBand: r.experience_band && r.experience_band !== "unspecified" ? r.experience_band : null,
   minYears: typeof r.min_years === "number" ? r.min_years : null,
   lastSeen: r.last_seen ?? null,
+  // Tier-2 ranked searches only: the ts_headline fragment showing WHERE a
+  // description-matched result matched ([[ ]] delimiters, client-rendered).
+  ...(typeof r.snippet === "string" && r.snippet.includes("[[") ? { snippet: r.snippet } : {}),
 });
 
 async function serveList(
@@ -2526,8 +2601,13 @@ async function serveList(
         ? body.companies.filter((c): c is string => typeof c === "string").slice(0, JOB_SOURCES.length)
         : [];
       const maxAgeNum = Number(body.maxAgeDays);
+      // Role-alias expansion (disclosed): "swe" also searches "software
+      // engineer" etc. The expanded websearch string keeps the original
+      // spelling as its own OR-branch, and the response names every added
+      // phrase so the UI can show "also matching: …".
+      const { q: expandedQ, expansions } = expandQuery(qText);
       const { data: ranked, error: rankErr } = await client.rpc("search_jobs", {
-        p_q: qText,
+        p_q: expandedQ,
         p_fresh_cutoff: freshCutoffIso,
         p_location: sanitizeTerm(String(body.location ?? "")) || null,
         p_remote: body.remote === true ? true : null,
@@ -2556,6 +2636,7 @@ async function serveList(
           failedSources: (v0.failedSources as string[]) ?? [],
           refreshedAt: (v0.refreshedAt as string) ?? null,
           ranked: true,
+          ...(expansions.length ? { aliases: expansions } : {}),
         });
       }
     } catch { /* fall through to recency path */ }

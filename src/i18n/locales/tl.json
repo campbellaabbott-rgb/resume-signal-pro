@@ -3424,6 +3424,18 @@
     "measuredTrust": {
       "title": "Freshness na kaya mong i-check, hindi lang paniwalaan — sinusukat at inilalathala nang live",
       "description": "Inilalathala na ngayon ng Ghost Job Index ang freshness ng board bilang live na sukat: sa ngayon, ang median na feed ng kumpanya ay muling na-check wala pang isang oras ang nakalipas, at 95% ng lahat ng feed sa loob ng humigit-kumulang dalawang oras — kinukuwenta mula sa verification stamp ng bawat feed sa mismong sandaling i-load mo ang pahina, hindi kailanman marketing claim. Ang pang-araw-araw na accuracy audit ay kumukuha na ngayon ng sample sa bawat hiring system nang hiwalay at naglalathala ng resulta bawat sistema — hindi na makakapagtago ang problema ng isang sistema sa loob ng malusog na average. Ang salary benchmark ay kinukuwenta na bawat currency (ang €50,000 na posting ay hindi na ina-average kasama ng $50,000), at nagkaroon ng circuit breaker ang pipeline: kung masira man ang API ng isang hiring system, ipi-freeze ng board ang data ng sistemang iyon sa halip na magpakita — o magbura — ng mali."
+    },
+    "searchAliases": {
+      "title": "Naiintindihan na ng paghahanap ang iyong mga daglat — at ipinapakita ito",
+      "description": "I-type ang “swe”, “rn”, “sdr” o 30 pang karaniwang daglat ng trabaho at hahanapin din ng board ang buong pangalan ng posisyon — laging nakasaad sa ilalim ng search box (“tumutugma rin sa: software engineer”). At kapag ang isang partikular na paghahanap ay tumugma sa loob ng deskripsyon sa halip na sa pamagat, ipinapakita ng card ang eksaktong pangungusap na tumugma. Dagdag pa: bawat job panel ay naka-link sa iba pang bukas na posisyon ng kumpanya at sa talagang katulad na mga posisyon sa buong board."
+    },
+    "pipelineRhythm": {
+      "title": "Sinasabi na ng iyong pipeline kung ano ang susunod",
+      "description": "Nagbubukas ang account dashboard sa isang “Susunod na gawin” na strip mula sa sarili mong tracker: mga paparating na interview muna, tapos ang mga aplikasyong 7+ araw nang tahimik (isang tap para markahang nag-follow-up), tapos ang mga naka-save na trabahong tumatanda na. Tumatanggap ng petsa ang mga interviewing na row, at ipinapakita ng stat band ang bilis ng iyong pag-apply sa nakaraang 8 linggo — lahat mula sa sarili mong data, walang imbento."
+    },
+    "fresherFaster": {
+      "title": "Lumalabas ang mga trabaho ng bagong kumpanya sa loob ng ilang minuto, hindi isang araw",
+      "description": "Kapag nagdagdag kami ng mga bagong natuklasang company board, dating naghihintay ng buong rotation ang kanilang mga posting bago lumabas. Ngayon ay lumulusot na sila sa pila at dumadaloy ilang minuto pagkatapos ng release. Sinimulan na rin naming lagyan ng petsa ang mga posting ng BambooHR at Rippling mula sa sariling detail feeds ng mga kumpanyang iyon, at naglathala kami sa Ghost Job Index ng talahanayan kada sistema na nagpapakita kung aling mga hiring system ang nagsasaad ng petsa ng pag-post."
     }
   },
   "sampleReportPreview": {
@@ -4227,7 +4239,10 @@
     "densityCompact": "Compact na view",
     "densityComfortable": "Komportableng view",
     "backToTop": "Bumalik sa taas",
-    "savedTip": "Nasa tracker mo — i-click para buksan"
+    "savedTip": "Nasa tracker mo — i-click para buksan",
+    "aliasLine": "tumutugma rin sa: {{terms}}",
+    "matchedInDesc": "Sa deskripsyon:",
+    "moreAtCompany": "{{n}} pa ang bukas na posisyon sa {{company}} — tingnan lahat"
   },
   "accountPage": {
     "statActive": "Aktibong aplikasyon",
@@ -4258,6 +4273,17 @@
       "offer": "Alok",
       "rejected": "Tinanggihan",
       "no_response": "Walang sagot"
-    }
+    },
+    "doNext": "Susunod na gawin",
+    "doInterviewToday": "Interview sa {{company}} ngayon — {{role}}",
+    "doInterviewDays": "Interview sa {{company}} sa loob ng {{n}} araw — {{role}}",
+    "doFollowUp": "{{n}} araw nang tahimik ang {{company}} — makakatulong ang maikling follow-up tungkol sa “{{role}}”",
+    "markFollowedUp": "Markahang nag-follow-up",
+    "doSaved": "Na-save {{n}} araw na ang nakalipas, hindi pa nag-a-apply: {{role}} sa {{company}}",
+    "doApplyNow": "Mag-apply na",
+    "momentumTip": "Mga aplikasyon bawat linggo, nakaraang 8 linggo — {{total}} lahat",
+    "quietChip": "{{n}} araw nang tahimik",
+    "followedUpOn": "nag-follow-up noong {{date}}",
+    "interviewOn": "Petsa ng interview:"
   }
 }

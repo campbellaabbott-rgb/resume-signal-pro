@@ -60,6 +60,10 @@ export default function GhostJobIndex() {
   const [leaders, setLeaders] = useState<Leader[]>([]);
   const [audit, setAudit] = useState<AuditResult | null>(null);
   const [freshness, setFreshness] = useState<FreshnessStats | null>(null);
+  // Per-vendor company-stated date coverage — the same probe the ops
+  // heartbeat reads, published as a trust stat: it names exactly which
+  // hiring systems state post dates and how much of the corpus that covers.
+  const [dateCov, setDateCov] = useState<Array<{ source: string; total: number; datedPct: number }>>([]);
 
   useEffect(() => {
     (async () => {
@@ -90,6 +94,14 @@ export default function GhostJobIndex() {
         if (frow && typeof frow.p50_min === "number") setFreshness(frow);
         const av = (a.data as { v?: AuditResult } | null)?.v;
         if (av && typeof av.accuracyPct === "number") setAudit(av);
+        // RPC shape is (source, total, dated) — the pct is ours to compute.
+        const dc = await Promise.resolve(rpc("get_date_coverage")).catch(() => ({ data: null }));
+        if (Array.isArray(dc.data)) {
+          setDateCov((dc.data as Array<{ source: string; total: number; dated: number }>)
+            .filter((r) => r && typeof r.total === "number" && r.total > 0)
+            .map((r) => ({ source: r.source, total: r.total, datedPct: (Number(r.dated) / Number(r.total)) * 100 }))
+            .sort((x, y) => y.total - x.total));
+        }
       } catch {
         /* RPCs not deployed yet — page still renders its explainer */
       }
@@ -281,6 +293,39 @@ export default function GhostJobIndex() {
             <li>· When a company removes a role, it disappears here within one refresh cycle — and we log the closure, which is how the "actually fills roles" figures are built.</li>
             <li>· Every posting is re-checked live the moment you click Apply.</li>
           </ul>
+          {/* Date-provenance table: which hiring systems state their own post
+              dates, measured live from the corpus. Undated postings never show
+              an age here — and the "posted today / this week" filters cover
+              only the date-stating share below. Saying so IS the feature. */}
+          {dateCov.length > 0 && (
+            <div className="mt-4">
+              <p className="text-[13px] font-semibold text-foreground mb-1.5">Which postings carry a real posted date?</p>
+              <p className="text-[11px] text-muted-foreground mb-2">
+                Only dates companies state themselves count — we never invent one from when we first saw a posting.
+                Postings without a stated date show no age anywhere on the board, and date filters simply don't include them.
+              </p>
+              <div className="overflow-x-auto">
+                <table className="text-[12px] text-muted-foreground w-full max-w-md">
+                  <thead>
+                    <tr className="text-left border-b border-border/60">
+                      <th className="py-1 pr-4 font-medium">Hiring system</th>
+                      <th className="py-1 pr-4 font-medium text-right">Open postings</th>
+                      <th className="py-1 font-medium text-right">State a post date</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {dateCov.map((r) => (
+                      <tr key={r.source} className="border-b border-border/30 last:border-0">
+                        <td className="py-1 pr-4 capitalize text-foreground">{r.source}</td>
+                        <td className="py-1 pr-4 text-right">{r.total.toLocaleString()}</td>
+                        <td className="py-1 text-right">{Math.round(r.datedPct)}%</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
           <div className="mt-4 flex flex-wrap gap-4">
             <Link to="/jobs" className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline">
               Browse the live board →

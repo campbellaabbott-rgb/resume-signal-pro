@@ -3424,6 +3424,18 @@
     "measuredTrust": {
       "title": "Une fraîcheur vérifiable, pas seulement promise — mesurée et publiée en direct",
       "description": "Le Ghost Job Index publie désormais la fraîcheur du tableau comme une mesure en direct : en ce moment, le flux médian a été re-vérifié il y a moins d'une heure, et 95 % de tous les flux en deux heures environ — calculé à partir des horodatages de vérification par flux au moment où vous chargez la page, jamais une promesse marketing. L'audit quotidien de précision échantillonne désormais chaque système de recrutement séparément et publie les résultats par système : un problème sur l'un ne peut plus se cacher dans une moyenne saine. Les repères salariaux sont désormais calculés par devise (une offre à 50 000 € ne se moyenne plus avec une à 50 000 $), et le pipeline a gagné un disjoncteur : si l'API d'un système casse un jour, le tableau gèle les données de ce système au lieu d'afficher — ou de supprimer — des données fausses."
+    },
+    "searchAliases": {
+      "title": "La recherche comprend vos abréviations — et le montre",
+      "description": "Tapez « swe », « rn », « sdr » ou 30 autres abréviations courantes : le tableau cherche aussi l'intitulé complet du poste — toujours indiqué sous la barre de recherche (« recherche aussi : software engineer »). Et quand une recherche pointue correspond dans la description plutôt que dans le titre, la carte affiche la phrase exacte qui correspond. En plus : chaque panneau d'offre renvoie aux autres postes ouverts de l'entreprise et à des rôles vraiment similaires sur tout le tableau."
+    },
+    "pipelineRhythm": {
+      "title": "Votre pipeline vous dit quoi faire ensuite",
+      "description": "Le tableau de bord du compte s'ouvre sur une bande « À faire ensuite » construite depuis votre propre suivi : entretiens à venir d'abord, puis candidatures silencieuses depuis 7 jours ou plus (un geste les marque comme relancées), puis offres enregistrées qui vieillissent. Les lignes en entretien acceptent une date, et le bandeau de statistiques montre votre rythme de candidatures sur 8 semaines — uniquement vos données, rien d'inventé."
+    },
+    "fresherFaster": {
+      "title": "Les offres des nouvelles entreprises arrivent en minutes, pas en un jour",
+      "description": "Quand nous ajoutons des tableaux d'entreprises récemment découvertes, leurs offres attendaient une rotation complète avant d'apparaître. Elles passent désormais en tête de file et arrivent quelques minutes après une mise en production. Nous datons aussi les offres BambooHR et Rippling depuis les flux de détail de ces entreprises, et publions sur le Ghost Job Index un tableau par système montrant lesquels déclarent une date de publication."
     }
   },
   "sampleReportPreview": {
@@ -4227,7 +4239,10 @@
     "densityCompact": "Vue compacte",
     "densityComfortable": "Vue confortable",
     "backToTop": "Haut de page",
-    "savedTip": "Dans votre suivi — cliquez pour l'ouvrir"
+    "savedTip": "Dans votre suivi — cliquez pour l'ouvrir",
+    "aliasLine": "recherche aussi : {{terms}}",
+    "matchedInDesc": "Dans la description :",
+    "moreAtCompany": "{{n}} autres postes ouverts chez {{company}} — tout voir"
   },
   "accountPage": {
     "statActive": "Candidatures actives",
@@ -4258,6 +4273,17 @@
       "offer": "Offre",
       "rejected": "Refusée",
       "no_response": "Sans réponse"
-    }
+    },
+    "doNext": "À faire ensuite",
+    "doInterviewToday": "Entretien avec {{company}} aujourd'hui — {{role}}",
+    "doInterviewDays": "Entretien avec {{company}} dans {{n}} jour(s) — {{role}}",
+    "doFollowUp": "{{company}} est silencieux depuis {{n}} jours — une courte relance sur « {{role}} » entretient le contact",
+    "markFollowedUp": "Marquer comme relancé",
+    "doSaved": "Enregistré il y a {{n}} jours sans candidature : {{role}} chez {{company}}",
+    "doApplyNow": "Postuler maintenant",
+    "momentumTip": "Candidatures par semaine, 8 dernières semaines — {{total}} au total",
+    "quietChip": "silencieux depuis {{n}} jours",
+    "followedUpOn": "relancé le {{date}}",
+    "interviewOn": "Date d'entretien :"
   }
 }

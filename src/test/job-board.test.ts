@@ -888,3 +888,58 @@ describe("vendor schema-drift canary", () => {
     expect(CANARIES.length).toBe(18);
   });
 });
+
+// Role-alias expansion: curated shorthand → disclosed OR-branches. The
+// original spelling must ALWAYS survive as its own branch, advanced syntax
+// must never be touched, and branch count stays bounded.
+import { expandQuery, ROLE_ALIASES } from "../../supabase/functions/job-board/search-alias";
+
+describe("expandQuery (role aliases)", () => {
+  it("expands a bare alias and keeps the original spelling", () => {
+    const r = expandQuery("swe");
+    expect(r.q).toBe("swe OR software engineer");
+    expect(r.expansions).toEqual(["software engineer"]);
+  });
+
+  it("keeps surrounding tokens in every OR-branch", () => {
+    const r = expandQuery("senior swe");
+    expect(r.q).toBe("senior swe OR senior software engineer");
+  });
+
+  it("caps multi-reading aliases at 3 total branches", () => {
+    const r = expandQuery("pm");
+    expect(r.q).toBe("pm OR product manager OR project manager");
+    expect(r.expansions).toHaveLength(2);
+  });
+
+  it("expands only the first aliased token", () => {
+    const r = expandQuery("rn np");
+    expect(r.expansions).toEqual(["registered nurse"]);
+    expect(r.q).toBe("rn np OR registered nurse np");
+  });
+
+  it("never touches advanced syntax or long queries", () => {
+    for (const raw of ['"swe"', "swe OR sde", "-swe intern", "front-end swe", "a b c d e f swe"]) {
+      const r = expandQuery(raw);
+      expect(r.q).toBe(raw);
+      expect(r.expansions).toEqual([]);
+    }
+  });
+
+  it("passes non-alias queries through unchanged", () => {
+    const r = expandQuery("product manager");
+    expect(r.q).toBe("product manager");
+    expect(r.expansions).toEqual([]);
+  });
+
+  it("is case-insensitive on input", () => {
+    expect(expandQuery("RN").q).toBe("rn OR registered nurse");
+  });
+
+  it("keeps the curated map free of ambiguous collisions", () => {
+    // Guard: these context-dependent shorthands must never be added.
+    for (const banned of ["pt", "ot", "cs", "ds", "em", "ts"]) {
+      expect(ROLE_ALIASES[banned]).toBeUndefined();
+    }
+  });
+});

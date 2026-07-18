@@ -58,7 +58,31 @@ interface Application {
   posting_closed_at?: string | null;
   posting_checked_at?: string | null;
   kit?: unknown;
+  /** Stamped on every stage change; older rows fall back to applied_at (the user's own stated date). */
+  status_changed_at?: string | null;
+  /** "I nudged them" marker — resets the quiet clock on the follow-up chip. */
+  followed_up_at?: string | null;
+  /** Scheduled interview date (drives the Do-next strip's upcoming entries). */
+  interview_at?: string | null;
 }
+
+// Days since the row last MOVED (stage change, follow-up, or the user's own
+// applied date as the honest fallback for rows predating the rhythm columns).
+const daysQuiet = (a: Application): number => {
+  const basis = Math.max(
+    Date.parse(a.status_changed_at ?? "") || 0,
+    Date.parse(a.followed_up_at ?? "") || 0,
+    Date.parse(a.applied_at ?? "") || 0,
+  );
+  if (!basis) return 0;
+  return Math.floor((Date.now() - basis) / 86_400_000);
+};
+// Follow-up nudge threshold: an application quiet this long has measurably
+// worse odds of a cold reply — a polite nudge is the standard play.
+const QUIET_NUDGE_DAYS = 7;
+// Saved-but-never-applied staleness: postings close; after this long the
+// honest prompt is "apply or archive".
+const SAVED_STALE_DAYS = 5;
 
 // Display name for a saved scan acting as a resume version.
 const versionName = (s: UserScan) =>
@@ -194,6 +218,41 @@ export default function Account() {
       appliedThisWeek, interviews, offers,
       responseRate: nonSaved.length >= 5 ? Math.round((responded / nonSaved.length) * 100) : null,
     };
+  }, [applications]);
+  // ACC3 "Do next": ONE synthesized answer to "what should I do right now",
+  // from data already on the tracker — upcoming interviews first (a date you
+  // must not miss), then quiet applications worth a nudge, then saved jobs
+  // aging toward closure. Capped at 3; empty when the pipeline needs nothing.
+  const doNext = useMemo(() => {
+    const items: Array<{ kind: "interview" | "followup" | "saved"; app: Application; n: number }> = [];
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const upcoming = applications
+      .filter((a) => a.interview_at && Date.parse(a.interview_at) >= today.getTime())
+      .sort((a, b) => Date.parse(a.interview_at!) - Date.parse(b.interview_at!));
+    for (const a of upcoming) items.push({ kind: "interview", app: a, n: Math.round((Date.parse(a.interview_at!) - today.getTime()) / 86_400_000) });
+    const quiet = applications
+      .filter((a) => a.status === "applied" && daysQuiet(a) >= QUIET_NUDGE_DAYS)
+      .sort((a, b) => daysQuiet(b) - daysQuiet(a));
+    for (const a of quiet) items.push({ kind: "followup", app: a, n: daysQuiet(a) });
+    const agingSaved = applications
+      .filter((a) => a.status === "saved" && daysQuiet(a) >= SAVED_STALE_DAYS)
+      .sort((a, b) => daysQuiet(b) - daysQuiet(a));
+    for (const a of agingSaved) items.push({ kind: "saved", app: a, n: daysQuiet(a) });
+    return items.slice(0, 3);
+  }, [applications]);
+  // ACC4 momentum: applies per ISO week over the last 8 weeks (saved rows
+  // excluded — saving isn't applying). Real personal data, no estimates.
+  const momentum = useMemo(() => {
+    const weeks = new Array(8).fill(0);
+    const now = Date.now();
+    for (const a of applications) {
+      if (a.status === "saved" || !a.applied_at) continue;
+      const age = now - Date.parse(a.applied_at);
+      if (age < 0) continue;
+      const w = Math.floor(age / (7 * 86_400_000));
+      if (w < 8) weeks[7 - w]++;
+    }
+    return { weeks, max: Math.max(...weeks, 1), total: weeks.reduce((s, n) => s + n, 0) };
   }, [applications]);
   const [targetScore, setTargetScore] = useState<number | null>(null);
   const [fetching, setFetching] = useState(true);
@@ -352,8 +411,23 @@ export default function Account() {
   };
 
   const updateAppStatus = async (id: string, status: string) => {
-    setApplications(applications.map(a => a.id === id ? { ...a, status } : a));
-    await supabase.from("user_applications").update({ status }).eq("id", id);
+    const now = new Date().toISOString();
+    setApplications(applications.map(a => a.id === id ? { ...a, status, status_changed_at: now } : a));
+    // status_changed_at may lag the migration one publish — status still lands.
+    const { error } = await supabase.from("user_applications").update({ status, status_changed_at: now }).eq("id", id);
+    if (error) await supabase.from("user_applications").update({ status }).eq("id", id);
+  };
+
+  const markFollowedUp = async (id: string) => {
+    const now = new Date().toISOString();
+    setApplications(applications.map(a => a.id === id ? { ...a, followed_up_at: now } : a));
+    await supabase.from("user_applications").update({ followed_up_at: now }).eq("id", id);
+  };
+
+  const setInterviewDate = async (id: string, date: string) => {
+    const v = date || null;
+    setApplications(applications.map(a => a.id === id ? { ...a, interview_at: v } : a));
+    await supabase.from("user_applications").update({ interview_at: v }).eq("id", id);
   };
 
   const deleteApplication = async (id: string) => {
@@ -842,19 +916,79 @@ export default function Account() {
           onStatus={updateAppStatus}
         />
 
+        {/* ACC3: ONE synthesized "what should I do right now" — interviews
+            first, then quiet applications, then aging saved jobs. Rendered
+            only when the pipeline actually needs something. */}
+        {doNext.length > 0 && (
+          <div className="rounded-2xl border border-primary/30 bg-primary/5 p-4 mb-4">
+            <p className="text-[11px] font-semibold text-primary uppercase tracking-wide mb-2">{t("accountPage.doNext", "Do next")}</p>
+            <ul className="space-y-2">
+              {doNext.map(({ kind, app, n }) => (
+                <li key={`${kind}-${app.id}`} className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-foreground">
+                  {kind === "interview" && (
+                    <span>
+                      {n === 0
+                        ? t("accountPage.doInterviewToday", "Interview with {{company}} today — {{role}}", { company: app.company, role: app.role })
+                        : t("accountPage.doInterviewDays", "Interview with {{company}} in {{n}} day(s) — {{role}}", { company: app.company, role: app.role, n })}
+                    </span>
+                  )}
+                  {kind === "followup" && (
+                    <>
+                      <span>{t("accountPage.doFollowUp", "{{company}} has been quiet for {{n}} days — a short follow-up on “{{role}}” keeps it warm", { company: app.company, role: app.role, n })}</span>
+                      <button
+                        type="button"
+                        className="text-xs text-primary border border-primary/40 rounded-full px-2 py-0.5 hover:bg-primary/10"
+                        onClick={() => markFollowedUp(app.id)}
+                      >
+                        {t("accountPage.markFollowedUp", "Mark followed up")}
+                      </button>
+                    </>
+                  )}
+                  {kind === "saved" && (
+                    <>
+                      <span>{t("accountPage.doSaved", "Saved {{n}} days ago and not applied yet: {{role}} at {{company}}", { company: app.company, role: app.role, n })}</span>
+                      {app.apply_url && (
+                        <a href={app.apply_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary border border-primary/40 rounded-full px-2 py-0.5 hover:bg-primary/10">
+                          {t("accountPage.doApplyNow", "Apply now")}
+                        </a>
+                      )}
+                    </>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
         {applications.length > 0 && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
             {[
               { label: t("accountPage.statActive", "Active applications"), value: hqStats.active },
-              { label: t("accountPage.statWeek", "Applied this week"), value: hqStats.appliedThisWeek },
+              // ACC4: the week tile carries the 8-week momentum bars — applies
+              // per ISO week from the tracker's own rows, no estimates.
+              { label: t("accountPage.statWeek", "Applied this week"), value: hqStats.appliedThisWeek, spark: momentum.total > 0 ? momentum.weeks : undefined },
               { label: t("accountPage.statInterviews", "Interviewing"), value: hqStats.interviews },
               hqStats.responseRate !== null
                 ? { label: t("accountPage.statResponse", "Response rate"), value: `${hqStats.responseRate}%` }
                 : { label: t("accountPage.statOffers", "Offers"), value: hqStats.offers },
-            ].map((st) => (
+            ].map((st: { label: string; value: number | string; spark?: number[] }) => (
               <div key={st.label} className="rounded-2xl border border-border bg-card px-4 py-3">
                 <p className="text-2xl font-bold text-foreground">{st.value}</p>
                 <p className="text-[11px] text-muted-foreground">{st.label}</p>
+                {st.spark && (
+                  <div
+                    className="flex items-end gap-0.5 h-4 mt-1.5"
+                    title={t("accountPage.momentumTip", "Applications per week, last 8 weeks — {{total}} total", { total: momentum.total })}
+                    aria-label={t("accountPage.momentumTip", "Applications per week, last 8 weeks — {{total}} total", { total: momentum.total })}
+                  >
+                    {st.spark.map((v, i) => (
+                      <span
+                        key={i}
+                        className={`flex-1 rounded-sm ${i === 7 ? "bg-primary" : "bg-primary/30"}`}
+                        style={{ height: v === 0 ? "3px" : `${Math.max(18, Math.round((v / momentum.max) * 100))}%` }}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -998,6 +1132,37 @@ export default function Account() {
                       ) : (
                         <p className="text-[11px] text-success/80 mt-0.5">● Posting still open</p>
                       )
+                    )}
+                    {/* Follow-up rhythm: quiet-clock chip + one-tap nudge marker.
+                        Basis is the row's own dates (stage change / follow-up /
+                        the user's stated applied date) — never a guess. */}
+                    {a.status === "applied" && daysQuiet(a) >= QUIET_NUDGE_DAYS && (
+                      <p className="text-[11px] text-warning/90 mt-0.5">
+                        {t("accountPage.quietChip", "quiet for {{n}} days", { n: daysQuiet(a) })}
+                        {" · "}
+                        <button type="button" className="underline hover:text-warning" onClick={() => markFollowedUp(a.id)}>
+                          {t("accountPage.markFollowedUp", "Mark followed up")}
+                        </button>
+                      </p>
+                    )}
+                    {a.status === "applied" && a.followed_up_at && daysQuiet(a) < QUIET_NUDGE_DAYS && (
+                      <p className="text-[11px] text-muted-foreground/80 mt-0.5">
+                        {t("accountPage.followedUpOn", "followed up {{date}}", { date: new Date(a.followed_up_at).toLocaleDateString() })}
+                      </p>
+                    )}
+                    {/* Interview date: only meaningful at the interviewing/offer
+                        stages; feeds the Do-next strip's upcoming entries. */}
+                    {(a.status === "interviewing" || a.status === "offer") && (
+                      <p className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-1.5">
+                        <label htmlFor={`iv-${a.id}`}>{t("accountPage.interviewOn", "Interview date:")}</label>
+                        <input
+                          id={`iv-${a.id}`}
+                          type="date"
+                          value={a.interview_at ?? ""}
+                          onChange={(e) => setInterviewDate(a.id, e.target.value)}
+                          className="bg-background border border-border/60 rounded px-1.5 py-0.5 text-[11px] text-foreground [color-scheme:dark]"
+                        />
+                      </p>
                     )}
                   </div>
                   {version?.resume_text && (

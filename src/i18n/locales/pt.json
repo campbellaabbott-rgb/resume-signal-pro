@@ -3424,6 +3424,18 @@
     "measuredTrust": {
       "title": "Atualidade que você pode conferir, não só acreditar — medida e publicada ao vivo",
       "description": "O Índice de Vagas Fantasma agora publica a atualidade do quadro como medição ao vivo: neste momento, o feed mediano foi re-verificado há menos de uma hora, com 95% de todos os feeds em cerca de duas horas — calculado a partir de carimbos de verificação por feed no momento em que você carrega a página, nunca uma alegação de marketing. A auditoria diária de precisão agora amostra cada sistema de contratação separadamente e publica resultados por sistema — um problema em qualquer um não consegue mais se esconder numa média saudável. As referências salariais agora são calculadas por moeda (uma vaga de €50.000 não faz mais média com uma de $50.000), e o pipeline ganhou um disjuntor: se a API de um sistema quebrar, o quadro congela os dados daquele sistema em vez de mostrar — ou apagar — o que está errado."
+    },
+    "searchAliases": {
+      "title": "A busca entende suas abreviações — e mostra isso",
+      "description": "Digite “swe”, “rn”, “sdr” ou outras 30 abreviações comuns de cargos e o painel também busca o nome completo do cargo — sempre indicado sob a busca (“também busca: software engineer”). E quando uma busca específica encontra algo na descrição em vez do título, o cartão mostra a frase exata que corresponde. Além disso: cada painel de vaga leva às outras vagas abertas da empresa e a cargos realmente semelhantes em todo o painel."
+    },
+    "pipelineRhythm": {
+      "title": "Seu pipeline agora diz o que fazer em seguida",
+      "description": "O painel da conta abre com uma faixa “Próximo passo” construída do seu próprio acompanhamento: entrevistas próximas primeiro, depois candidaturas em silêncio há 7+ dias (um toque marca o follow-up feito) e vagas salvas envelhecendo. Linhas em entrevista aceitam data, e a faixa de estatísticas mostra seu ritmo de candidaturas das últimas 8 semanas — tudo dos seus dados, nada inventado."
+    },
+    "fresherFaster": {
+      "title": "Vagas de empresas novas aparecem em minutos, não em um dia",
+      "description": "Quando adicionamos painéis de empresas recém-descobertas, as vagas esperavam uma rotação completa antes de aparecer. Agora elas furam a fila e começam a fluir minutos após um lançamento. Também passamos a datar vagas do BambooHR e do Rippling pelos feeds de detalhe dessas empresas, e publicamos no Ghost Job Index uma tabela por sistema mostrando quais declaram data de publicação."
     }
   },
   "sampleReportPreview": {
@@ -4227,7 +4239,10 @@
     "densityCompact": "Visão compacta",
     "densityComfortable": "Visão confortável",
     "backToTop": "Voltar ao topo",
-    "savedTip": "No seu rastreador — clique para abrir"
+    "savedTip": "No seu rastreador — clique para abrir",
+    "aliasLine": "também busca: {{terms}}",
+    "matchedInDesc": "Na descrição:",
+    "moreAtCompany": "Mais {{n}} vagas abertas na {{company}} — ver todas"
   },
   "accountPage": {
     "statActive": "Candidaturas ativas",
@@ -4258,6 +4273,17 @@
       "offer": "Oferta",
       "rejected": "Rejeitada",
       "no_response": "Sem resposta"
-    }
+    },
+    "doNext": "Próximo passo",
+    "doInterviewToday": "Entrevista com {{company}} hoje — {{role}}",
+    "doInterviewDays": "Entrevista com {{company}} em {{n}} dia(s) — {{role}}",
+    "doFollowUp": "{{company}} está em silêncio há {{n}} dias — um follow-up curto sobre “{{role}}” mantém o contato ativo",
+    "markFollowedUp": "Marcar follow-up feito",
+    "doSaved": "Salvo há {{n}} dias sem candidatura: {{role}} na {{company}}",
+    "doApplyNow": "Candidatar-se agora",
+    "momentumTip": "Candidaturas por semana, últimas 8 semanas — {{total}} no total",
+    "quietChip": "{{n}} dias sem novidades",
+    "followedUpOn": "follow-up em {{date}}",
+    "interviewOn": "Data da entrevista:"
   }
 }

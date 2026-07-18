@@ -3424,6 +3424,18 @@
     "measuredTrust": {
       "title": "Frische, die Sie nachprüfen können — live gemessen und veröffentlicht",
       "description": "Der Ghost Job Index veröffentlicht die Frische des Boards jetzt als Live-Messung: aktuell wurde der mittlere Unternehmens-Feed vor weniger als einer Stunde erneut geprüft, 95 % aller Feeds innerhalb von etwa zwei Stunden — berechnet aus den Prüfstempeln jedes Feeds in dem Moment, in dem Sie die Seite laden, nie eine Marketingaussage. Das tägliche Genauigkeits-Audit prüft jetzt jedes Bewerbungssystem separat und veröffentlicht Ergebnisse pro System — ein Problem in einem System kann sich nicht mehr in einem gesunden Durchschnitt verstecken. Gehalts-Benchmarks werden jetzt pro Währung berechnet (eine 50.000-€-Stelle wird nicht mehr mit einer 50.000-$-Stelle gemittelt), und die Pipeline hat einen Sicherungsschalter: Bricht die API eines Systems, friert das Board dessen Daten ein, statt Falsches anzuzeigen — oder zu löschen."
+    },
+    "searchAliases": {
+      "title": "Die Suche versteht Ihre Kürzel — und zeigt es",
+      "description": "Tippen Sie „swe“, „rn“, „sdr“ oder 30 weitere gängige Rollen-Kürzel: das Board sucht auch die ausgeschriebene Rolle — immer offen ausgewiesen unter dem Suchfeld („sucht auch: software engineer“). Und wenn eine Nischensuche in der Stellenbeschreibung statt im Titel trifft, zeigt die Karte den exakt passenden Satz. Außerdem: Jedes Stellen-Panel verlinkt auf die weiteren offenen Stellen des Unternehmens und auf wirklich ähnliche Rollen im ganzen Board."
+    },
+    "pipelineRhythm": {
+      "title": "Ihre Pipeline sagt Ihnen, was als Nächstes ansteht",
+      "description": "Das Konto-Dashboard beginnt mit einer „Als Nächstes“-Leiste aus Ihrem eigenen Tracker: anstehende Gespräche zuerst, dann Bewerbungen, die seit 7+ Tagen still sind (ein Tipp markiert sie als nachgefasst), dann alternde gespeicherte Stellen. Gesprächszeilen nehmen einen Termin auf, und das Statistikband zeigt Ihr Bewerbungstempo der letzten 8 Wochen — alles aus Ihren Daten, nichts erfunden."
+    },
+    "fresherFaster": {
+      "title": "Stellen neuer Unternehmen erscheinen in Minuten statt in einem Tag",
+      "description": "Neu entdeckte Unternehmens-Boards mussten bisher eine volle Rotation warten, bevor ihre Stellen erschienen. Jetzt überspringen sie die Warteschlange und fließen Minuten nach einem Release ein. Außerdem datieren wir BambooHR- und Rippling-Stellen jetzt aus den Detail-Feeds dieser Unternehmen und veröffentlichen im Ghost Job Index eine Tabelle, welche Bewerbungssysteme ein Veröffentlichungsdatum angeben."
     }
   },
   "sampleReportPreview": {
@@ -4227,7 +4239,10 @@
     "densityCompact": "Kompakte Ansicht",
     "densityComfortable": "Komfortable Ansicht",
     "backToTop": "Nach oben",
-    "savedTip": "In Ihrem Tracker — zum Öffnen klicken"
+    "savedTip": "In Ihrem Tracker — zum Öffnen klicken",
+    "aliasLine": "sucht auch: {{terms}}",
+    "matchedInDesc": "In der Beschreibung:",
+    "moreAtCompany": "{{n}} weitere offene Stellen bei {{company}} — alle ansehen"
   },
   "accountPage": {
     "statActive": "Aktive Bewerbungen",
@@ -4258,6 +4273,17 @@
       "offer": "Angebot",
       "rejected": "Abgelehnt",
       "no_response": "Keine Antwort"
-    }
+    },
+    "doNext": "Als Nächstes",
+    "doInterviewToday": "Vorstellungsgespräch bei {{company}} heute — {{role}}",
+    "doInterviewDays": "Vorstellungsgespräch bei {{company}} in {{n}} Tag(en) — {{role}}",
+    "doFollowUp": "{{company}} ist seit {{n}} Tagen still — eine kurze Nachfrage zu „{{role}}“ hält den Kontakt warm",
+    "markFollowedUp": "Nachfrage vermerken",
+    "doSaved": "Vor {{n}} Tagen gespeichert, noch nicht beworben: {{role}} bei {{company}}",
+    "doApplyNow": "Jetzt bewerben",
+    "momentumTip": "Bewerbungen pro Woche, letzte 8 Wochen — insgesamt {{total}}",
+    "quietChip": "seit {{n}} Tagen still",
+    "followedUpOn": "nachgefragt am {{date}}",
+    "interviewOn": "Gesprächstermin:"
   }
 }

@@ -3424,6 +3424,18 @@
     "measuredTrust": {
       "title": "Frescura que puedes comprobar, no solo creer — medida y publicada en vivo",
       "description": "El Índice de Empleos Fantasma ahora publica la frescura del tablón como una medición en vivo: ahora mismo la fuente mediana se re-verificó hace menos de una hora, y el 95% de todas las fuentes en unas dos horas — calculado a partir de sellos de verificación por fuente en el momento en que cargas la página, nunca una afirmación de marketing. La auditoría diaria de precisión ahora muestrea cada sistema de contratación por separado y publica resultados por sistema, así un problema en cualquiera no puede esconderse dentro de un promedio sano. Las referencias salariales ahora se calculan por moneda (una oferta de 50.000 € ya no se promedia con una de 50.000 $), y el pipeline ganó un cortacircuitos: si la API de un sistema de contratación se rompe, el tablón congela los datos de ese sistema en lugar de mostrar — o borrar — lo incorrecto."
+    },
+    "searchAliases": {
+      "title": "La búsqueda entiende tus abreviaturas — y lo muestra",
+      "description": "Escribe “swe”, “rn”, “sdr” u otras 30 abreviaturas comunes de puestos y el tablero también busca el nombre completo del rol — siempre indicado bajo el buscador (“también busca: software engineer”). Y cuando una búsqueda específica coincide dentro de la descripción y no en el título, la tarjeta muestra la frase exacta que coincide. Además: cada panel de empleo enlaza a las demás vacantes de la empresa y a roles realmente similares en todo el tablero."
+    },
+    "pipelineRhythm": {
+      "title": "Tu pipeline ahora te dice qué hacer",
+      "description": "El panel de cuenta abre con una franja “Próximo paso” creada desde tu propio seguimiento: primero las entrevistas próximas, luego las candidaturas en silencio 7+ días (un toque las marca con seguimiento hecho) y los empleos guardados que envejecen. Las filas en entrevista aceptan fecha, y la banda de estadísticas muestra tu ritmo de postulaciones de las últimas 8 semanas — todo con tus datos, nada inventado."
+    },
+    "fresherFaster": {
+      "title": "Los empleos de empresas nuevas aparecen en minutos, no en un día",
+      "description": "Cuando añadimos tableros de empresas recién descubiertas, sus vacantes esperaban una rotación completa antes de aparecer. Ahora saltan la cola y empiezan a fluir minutos después de un lanzamiento. También empezamos a fechar las vacantes de BambooHR y Rippling desde los propios feeds de detalle de esas empresas, y publicamos en el Ghost Job Index una tabla por proveedor que muestra qué sistemas de contratación declaran fechas de publicación."
     }
   },
   "sampleReportPreview": {
@@ -4227,7 +4239,10 @@
     "densityCompact": "Vista compacta",
     "densityComfortable": "Vista cómoda",
     "backToTop": "Volver arriba",
-    "savedTip": "En tu seguimiento — haz clic para abrirlo"
+    "savedTip": "En tu seguimiento — haz clic para abrirlo",
+    "aliasLine": "también busca: {{terms}}",
+    "matchedInDesc": "En la descripción:",
+    "moreAtCompany": "{{n}} vacantes más en {{company}} — ver todas"
   },
   "accountPage": {
     "statActive": "Postulaciones activas",
@@ -4258,6 +4273,17 @@
       "offer": "Oferta",
       "rejected": "Rechazada",
       "no_response": "Sin respuesta"
-    }
+    },
+    "doNext": "Próximo paso",
+    "doInterviewToday": "Entrevista con {{company}} hoy — {{role}}",
+    "doInterviewDays": "Entrevista con {{company}} en {{n}} día(s) — {{role}}",
+    "doFollowUp": "{{company}} lleva {{n}} días en silencio — un breve seguimiento sobre «{{role}}» mantiene viva la candidatura",
+    "markFollowedUp": "Marcar seguimiento hecho",
+    "doSaved": "Guardado hace {{n}} días sin postular: {{role}} en {{company}}",
+    "doApplyNow": "Postular ahora",
+    "momentumTip": "Postulaciones por semana, últimas 8 semanas — {{total}} en total",
+    "quietChip": "{{n}} días sin novedades",
+    "followedUpOn": "seguimiento el {{date}}",
+    "interviewOn": "Fecha de entrevista:"
   }
 }

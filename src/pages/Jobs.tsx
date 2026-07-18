@@ -52,6 +52,8 @@ interface BoardJob {
   category?: string | null;
   /** Last re-verification against the company's own feed (serveList last_seen). */
   lastSeen?: string | null;
+  /** Tier-2 ranked search only: ts_headline fragment showing where a description-matched result matched ([[term]] delimiters). */
+  snippet?: string;
 }
 
 // A company with several fresh, still-open roles is demonstrably hiring — the
@@ -93,6 +95,8 @@ interface BoardResponse {
   categories: Record<string, number>;
   failedSources: string[];
   refreshedAt: string | null;
+  /** Ranked path: role-alias phrases the server also searched (disclosed in the UI). */
+  aliases?: string[];
 }
 
 // Mirrors JOB_CATEGORIES in the edge function — the filterable fields.
@@ -734,6 +738,36 @@ export default function Jobs() {
     }
     if (viaHistory) detailPushed.current = false;
   }, []);
+  // S3 in-panel discovery: real similar-roles via the ranked search (title
+  // stripped of seniority/location noise), not just same-category rows from
+  // the currently loaded page. Same-company rows are excluded — the
+  // more-at-company drill-down owns those. Race-guarded per panel open.
+  const [similarJobs, setSimilarJobs] = useState<BoardJob[]>([]);
+  const similarSeq = useRef(0);
+  useEffect(() => {
+    setSimilarJobs([]);
+    if (!detailJob) return;
+    const seq = ++similarSeq.current;
+    const NOISE = new Set(["senior", "sr", "junior", "jr", "staff", "lead", "principal", "associate", "assistant", "head", "director", "vp", "intern", "i", "ii", "iii", "iv", "v", "remote", "hybrid", "onsite", "contract", "temporary", "the", "of", "and", "for", "a", "an"]);
+    const terms = detailJob.title
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, " ")
+      .split(/\s+/)
+      .filter((w) => w.length > 1 && !NOISE.has(w))
+      .slice(0, 4)
+      .join(" ");
+    if (!terms) return;
+    invokeBoard<{ jobs?: BoardJob[] }>({ action: "list", q: terms, limit: 12, includeFacets: false })
+      .then(({ data }) => {
+        if (seq !== similarSeq.current || !Array.isArray(data?.jobs)) return;
+        setSimilarJobs(
+          data.jobs
+            .filter((j) => j.id !== detailJob.id && j.token !== detailJob.token)
+            .slice(0, 5),
+        );
+      })
+      .catch(() => { /* the same-category fallback still renders */ });
+  }, [detailJob?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   // Back button closes the panel; Escape too. Deep link opens it on load.
   useEffect(() => {
     const onPop = () => {
@@ -1678,6 +1712,21 @@ export default function Jobs() {
                   {savedIds.has(detailJob.id) ? <BookmarkCheck className="w-4 h-4 text-primary" /> : <Bookmark className="w-4 h-4" />}
                 </Button>
               </div>
+              {/* Company drill-down: every posting viewed is a jumping-off
+                  point — the count comes from the same live facet the company
+                  filter uses. Shown from 2 roles (1 = just this posting). */}
+              {(() => {
+                const cnt = detailJob.token ? companies.find((c) => c.token === detailJob.token)?.count : undefined;
+                return typeof cnt === "number" && cnt >= 2 ? (
+                  <button
+                    type="button"
+                    className="text-[12px] text-primary hover:underline text-left"
+                    onClick={() => { setCompany(detailJob.token!); closeDetail(); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                  >
+                    {t("jobsPage.moreAtCompany", "{{n}} more open roles at {{company}} — see them all", { n: cnt - 1, company: detailJob.company })}
+                  </button>
+                ) : null;
+              })()}
               {/* Inline fit: never leave the posting to learn your score. With
                   a resume on file but ranking off, one click scores in place;
                   while scores load, say so; without a resume the actions row's
@@ -1736,14 +1785,18 @@ export default function Jobs() {
                   {t("jobsPage.detailNoDesc", "This company's feed doesn't publish the full description — the complete posting is on their own site via Apply.")}
                 </p>
               )}
-              {jobs.filter((j) => j.category === detailJob.category && j.id !== detailJob.id).length > 0 && (
-                <div className="pt-2 border-t border-border">
-                  <p className="text-[12px] font-semibold text-muted-foreground mb-2">{t("jobsPage.detailSimilar", "Similar openings on the board")}</p>
-                  <ul className="space-y-1.5">
-                    {jobs
-                      .filter((j) => j.category === detailJob.category && j.id !== detailJob.id)
-                      .slice(0, 4)
-                      .map((j) => (
+              {/* Similar roles: title-similarity from the ranked search across
+                  the WHOLE board (excluding this company); while that loads —
+                  or when it finds nothing — fall back to same-category rows
+                  from the loaded page, which is what this list always was. */}
+              {(() => {
+                const fallback = jobs.filter((j) => j.category === detailJob.category && j.id !== detailJob.id).slice(0, 4);
+                const list = similarJobs.length > 0 ? similarJobs : fallback;
+                return list.length > 0 ? (
+                  <div className="pt-2 border-t border-border">
+                    <p className="text-[12px] font-semibold text-muted-foreground mb-2">{t("jobsPage.detailSimilar", "Similar openings on the board")}</p>
+                    <ul className="space-y-1.5">
+                      {list.map((j) => (
                         <li key={j.id}>
                           <button type="button" className="text-left text-sm text-primary hover:underline" onClick={() => void openDetail(j)}>
                             {j.title}
@@ -1751,9 +1804,10 @@ export default function Jobs() {
                           <span className="text-[11px] text-muted-foreground"> · {j.company}</span>
                         </li>
                       ))}
-                  </ul>
-                </div>
-              )}
+                    </ul>
+                  </div>
+                ) : null;
+              })()}
             </div>
     </>
   ) : null;
@@ -2464,6 +2518,12 @@ export default function Jobs() {
                   <span title={t("jobsPage.phraseTipLong", "Search also looks inside job descriptions. Wrap words in quotes to match an exact phrase.")}>
                     {t("jobsPage.phraseTip", 'tip: "quotes" match exact phrases')}
                   </span>
+                  {!searchNewestFirst && data?.aliases && data.aliases.length > 0 && (
+                    <span className="text-foreground/80">
+                      {" · "}
+                      {t("jobsPage.aliasLine", "also matching: {{terms}}", { terms: data.aliases.join(", ") })}
+                    </span>
+                  )}
                 </p>
               )}
               {category && benchmarks?.[category] && (
@@ -2542,6 +2602,17 @@ export default function Jobs() {
                           </p>
                           {job.salary && (
                             <p className="text-xs text-success font-medium mt-0.5" title={job.salary}>{displaySalary(job.salary)}</p>
+                          )}
+                          {/* Niche searches match inside descriptions — without showing
+                              WHERE, a title that lacks the search term reads as a broken
+                              result. The server sends a ts_headline fragment with [[ ]]
+                              around matched words; split client-side, no HTML injected. */}
+                          {job.snippet && (
+                            <p className="text-xs text-muted-foreground mt-1 italic line-clamp-2">
+                              {t("jobsPage.matchedInDesc", "In the description:")}{" "}
+                              …{job.snippet.split(/\[\[|\]\]/).map((part, i) =>
+                                i % 2 === 1 ? <mark key={i} className="bg-primary/20 text-foreground rounded px-0.5 not-italic">{part}</mark> : part)}…
+                            </p>
                           )}
                           {/* Experience level: the cited minimum years when the posting
                               states one (the precise fact), else the band's range. */}
