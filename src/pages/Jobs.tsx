@@ -1817,8 +1817,14 @@ export default function Jobs() {
               ? t("jobsPage.countLine", "{{total}} live openings from {{companies}} companies — every one straight from the company's own hiring system.", {
                   total: data.totalAllCompanies.toLocaleString(),
                   companies: (data.companiesCount ?? companies.length).toLocaleString(),
-                }) + (newToday ? " " + t("jobsPage.newTodayLine", "{{n}} posted today.", { n: newToday.toLocaleString() }) : "")
+                })
               : t("jobsPage.subtitleShort", "Every job straight from the company's own careers system — verified, fresh, re-checked when you apply.")}
+            {!landerCompany && newToday !== null && (
+              <span className="inline-flex items-center gap-1.5 ml-2 text-success whitespace-nowrap">
+                <span aria-hidden="true" className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
+                {t("jobsPage.newTodayLine", "{{n}} posted today.", { n: newToday.toLocaleString() })}
+              </span>
+            )}
           </p>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-3 text-[11px] text-muted-foreground">
             <span className="inline-flex items-center gap-1">
@@ -2186,47 +2192,20 @@ export default function Jobs() {
                 {t("jobsPage.freshHint", "Counts company-stated posting dates only")}
               </span>
             )}
-            {recentJobs.length > 0 && !detailJob && (
-              <span className="inline-flex flex-wrap items-center gap-2 basis-full mt-1">
-                <span className="text-[11px] text-muted-foreground">{t("jobsPage.jumpBackIn", "Jump back in:")}</span>
-                {recentJobs.slice(0, 3).map((r) => (
-                  <button key={r.id} type="button" onClick={() => void openRecent(r.id)}
-                    className="text-xs px-3 py-1.5 rounded-full border border-border text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors max-w-[220px] truncate">
-                    {r.title} · {r.company}
-                  </button>
-                ))}
-              </span>
-            )}
-            {/* U5: guided starting points — one-tap honest filter combos for the
-                blank-page moment. Hidden once any filter is active. */}
-            {!q && !location && !category && !experience && !company && !remoteOnly && !freshness && !salaryFloor && !country && (
-              <span className="inline-flex flex-wrap items-center gap-2 ml-1">
-                <span className="text-[11px] text-muted-foreground">{t("jobsPage.tryLabel", "Try:")}</span>
-                <button type="button" onClick={() => { setRemoteOnly(true); setExperience("entry"); setCountry("US"); }}
-                  className="text-xs px-3 py-1.5 rounded-full border border-dashed border-border text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors">
-                  {t("jobsPage.presetRemoteEntry", "Remote · Entry-level · US")}
-                </button>
-                <button type="button" onClick={() => { setCategory("engineering"); setFreshness("week"); }}
-                  className="text-xs px-3 py-1.5 rounded-full border border-dashed border-border text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors">
-                  {t("jobsPage.presetEngWeek", "Engineering · This week")}
-                </button>
-                <button type="button" onClick={() => { setSalaryFloor(100000); setFreshness("week"); }}
-                  className="text-xs px-3 py-1.5 rounded-full border border-dashed border-border text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors">
-                  {t("jobsPage.presetSalary", "$100k+ · This week")}
-                </button>
-                <button type="button" onClick={() => { setCategory("healthcare"); setCountry("US"); }}
-                  className="text-xs px-3 py-1.5 rounded-full border border-dashed border-border text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors">
-                  {t("jobsPage.presetHealth", "Healthcare · US")}
-                </button>
-              </span>
-            )}
             {/* S2: the board's breadth, visible — live per-category counts as
                 one-tap pills (facet data the dropdown was hiding). */}
-            <div className="basis-full overflow-x-auto pb-1 -mb-1">
+            <div className="basis-full overflow-x-auto pb-1 -mb-1 relative [mask-image:linear-gradient(to_right,black_92%,transparent)]">
               <div className="flex items-center gap-2 w-max">
                 {CATEGORY_IDS
                   .filter((c) => (data?.categories?.[c] ?? 0) > 0)
-                  .sort((a, b) => (data?.categories?.[b] ?? 0) - (data?.categories?.[a] ?? 0))
+                  .sort((a, b) => {
+                    // "Other" is the biggest bucket but the least useful pill —
+                    // always last regardless of count.
+                    if (a === "other") return 1;
+                    if (b === "other") return -1;
+                    return (data?.categories?.[b] ?? 0) - (data?.categories?.[a] ?? 0);
+                  })
+                  .slice(0, 10)
                   .map((c) => (
                     <button
                       key={c}
@@ -2300,6 +2279,41 @@ export default function Jobs() {
                 {t("jobsPage.salaryFloorNote", "Only postings that state pay of ${{amount}}k+ (annualized) — most companies don't publish pay, so this hides them.", { amount: salaryFloor / 1000 })}
               </span>
             )}
+            {recentJobs.length > 0 && !detailJob && (
+              <span className="inline-flex flex-wrap items-center gap-2 basis-full mt-1">
+                <span className="text-[11px] text-muted-foreground">{t("jobsPage.jumpBackIn", "Jump back in:")}</span>
+                {recentJobs.slice(0, 3).map((r) => (
+                  <button key={r.id} type="button" onClick={() => void openRecent(r.id)}
+                    className="text-xs px-3 py-1.5 rounded-full border border-border text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors max-w-[220px] truncate">
+                    {r.title} · {r.company}
+                  </button>
+                ))}
+              </span>
+            )}
+            {/* U5: guided starting points — one-tap honest filter combos for the
+                blank-page moment. Hidden once any filter is active. */}
+            {recentJobs.length === 0 && !q && !location && !category && !experience && !company && !remoteOnly && !freshness && !salaryFloor && !country && (
+              <span className="inline-flex flex-wrap items-center gap-2 ml-1">
+                <span className="text-[11px] text-muted-foreground">{t("jobsPage.tryLabel", "Try:")}</span>
+                <button type="button" onClick={() => { setRemoteOnly(true); setExperience("entry"); setCountry("US"); }}
+                  className="text-xs px-3 py-1.5 rounded-full border border-dashed border-border text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors">
+                  {t("jobsPage.presetRemoteEntry", "Remote · Entry-level · US")}
+                </button>
+                <button type="button" onClick={() => { setCategory("engineering"); setFreshness("week"); }}
+                  className="text-xs px-3 py-1.5 rounded-full border border-dashed border-border text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors">
+                  {t("jobsPage.presetEngWeek", "Engineering · This week")}
+                </button>
+                <button type="button" onClick={() => { setSalaryFloor(100000); setFreshness("week"); }}
+                  className="text-xs px-3 py-1.5 rounded-full border border-dashed border-border text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors">
+                  {t("jobsPage.presetSalary", "$100k+ · This week")}
+                </button>
+                <button type="button" onClick={() => { setCategory("healthcare"); setCountry("US"); }}
+                  className="text-xs px-3 py-1.5 rounded-full border border-dashed border-border text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors">
+                  {t("jobsPage.presetHealth", "Healthcare · US")}
+                </button>
+              </span>
+            )}
+
             {activelyHiringOnly && displayJobs.length === 0 && (
               <span className="text-[11px] text-muted-foreground">
                 {t("jobsPage.activelyHiringEmpty", "No proven-active companies in these results yet — hiring-health data is still accruing. Turn this off to see all verified roles.")}
@@ -2503,7 +2517,7 @@ export default function Jobs() {
                     <li
                       data-job-id={job.id}
                       style={{ borderLeft: `3px solid ${accentFor(job.category)}` }}
-                      className={`rounded-2xl border bg-card ${density === "compact" ? "px-4 py-2" : "p-4"} cursor-pointer transition-all duration-150 hover:-translate-y-px hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 ${
+                      className={`animate-in fade-in slide-in-from-bottom-1 duration-200 rounded-2xl border bg-card ${density === "compact" ? "px-4 py-2" : "p-4"} cursor-pointer transition-all duration-150 hover:-translate-y-px hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 ${
                         detailJob?.id === job.id ? "border-primary/60 bg-primary/5" : "border-border hover:border-primary/40"
                       }`}
                       tabIndex={0}
