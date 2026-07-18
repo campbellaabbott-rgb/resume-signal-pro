@@ -802,6 +802,7 @@ export type Database = {
           search_tsv: unknown
           source: string
           title: string
+          title_tsv: unknown
         }
         Insert: {
           apply_url: string
@@ -828,6 +829,7 @@ export type Database = {
           search_tsv?: unknown
           source: string
           title: string
+          title_tsv?: unknown
         }
         Update: {
           apply_url?: string
@@ -854,6 +856,7 @@ export type Database = {
           search_tsv?: unknown
           source?: string
           title?: string
+          title_tsv?: unknown
         }
         Relationships: []
       }
