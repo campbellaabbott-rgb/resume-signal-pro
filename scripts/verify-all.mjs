@@ -79,11 +79,14 @@ function roleMixOk(titles) {
 
 const verifiers = {
   greenhouse: async (t) => {
-    const d = await probe(`https://boards-api.greenhouse.io/v1/boards/${t}/jobs`);
+    const eu = t.startsWith("eu~");
+    const host = eu ? "boards.eu.greenhouse.io" : "boards-api.greenhouse.io";
+    const tok = eu ? t.slice(3) : t;
+    const d = await probe(`https://${host}/v1/boards/${tok}/jobs`);
     const jobs = d?.jobs;
     if (!Array.isArray(jobs) || jobs.length < MIN_POSTINGS) return null;
-    const meta = await probe(`https://boards-api.greenhouse.io/v1/boards/${t}`);
-    return { name: (meta?.name || prettify(t)).slice(0, 60), count: jobs.length };
+    const meta = await probe(`https://${host}/v1/boards/${tok}`);
+    return { name: (meta?.name || prettify(tok)).slice(0, 60), count: jobs.length };
   },
   ashby: async (t) => {
     const d = await probe(`https://api.ashbyhq.com/posting-api/job-board/${t}`);

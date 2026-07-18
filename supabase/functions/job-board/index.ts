@@ -134,11 +134,21 @@ async function loadDynamicLight(client: SupabaseClient): Promise<void> {
   } catch { /* meta unreadable — static set still applies */ }
 }
 
+// Greenhouse runs separate EU infrastructure (job-boards.eu.greenhouse.io)
+// with its own API host. EU boards carry an `eu~` token prefix (compound
+// token, same pattern as workday's `tenant~dc~site`); everything downstream
+// (ids, catalog, closure log) keeps the full prefixed token.
+export function greenhouseApi(token: string): { host: string; token: string } {
+  return token.startsWith("eu~")
+    ? { host: "boards.eu.greenhouse.io", token: token.slice(3) }
+    : { host: "boards-api.greenhouse.io", token };
+}
+
 const listUrl = (s: JobSource) =>
   s.source === "greenhouse"
     // content=true costs a bigger payload but delivers every description in
     // ONE call — fit-ranking coverage for GH boards, plus real departments.
-    ? `https://boards-api.greenhouse.io/v1/boards/${s.token}/jobs${isLight(s.token) ? "" : "?content=true"}`
+    ? (({ host, token }) => `https://${host}/v1/boards/${token}/jobs${isLight(s.token) ? "" : "?content=true"}`)(greenhouseApi(s.token))
     : s.source === "lever"
       ? `https://api.lever.co/v0/postings/${s.token}?mode=json`
       : s.source === "ashby"
@@ -1363,7 +1373,8 @@ const liveBoardMemo = new Map<string, Set<string>>();
 async function checkLive(src: JobSource, externalId: string): Promise<boolean | null> {
   try {
     if (src.source === "greenhouse") {
-      const res = await fetchWithTimeout(`https://boards-api.greenhouse.io/v1/boards/${src.token}/jobs/${externalId}?questions=false`);
+      const gh = greenhouseApi(src.token);
+      const res = await fetchWithTimeout(`https://${gh.host}/v1/boards/${gh.token}/jobs/${externalId}?questions=false`);
       return res.status === 404 ? false : res.ok ? true : null;
     }
     if (src.source === "lever") {
@@ -1440,7 +1451,8 @@ async function getDescription(src: JobSource, id: string, externalId: string): P
       text = htmlToText(html).slice(0, DESC_CAP) || null;
     }
   } else if (src.source === "greenhouse") {
-    const res = await fetchWithTimeout(`https://boards-api.greenhouse.io/v1/boards/${src.token}/jobs/${externalId}?questions=false`);
+    const gh = greenhouseApi(src.token);
+    const res = await fetchWithTimeout(`https://${gh.host}/v1/boards/${gh.token}/jobs/${externalId}?questions=false`);
     if (res.ok) {
       const j = await res.json();
       text = htmlToText(String(j.content ?? "")).slice(0, DESC_CAP) || null;
@@ -1792,7 +1804,8 @@ Deno.serve(async (req) => {
         try {
           const dates = new Map<string, string>();
           if (phase === "greenhouse") {
-            const res = await fetchWithTimeout(`https://boards-api.greenhouse.io/v1/boards/${encodeURIComponent(tk)}/jobs`);
+            const gh = greenhouseApi(tk);
+            const res = await fetchWithTimeout(`https://${gh.host}/v1/boards/${encodeURIComponent(gh.token)}/jobs`);
             if (!res.ok) { await res.body?.cancel(); continue; }
             const feed = await res.json() as { jobs?: Array<{ id?: number | string; first_published?: string }> };
             for (const j of feed.jobs ?? []) {

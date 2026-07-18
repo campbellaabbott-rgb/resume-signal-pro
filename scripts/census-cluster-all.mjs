@@ -56,6 +56,11 @@ const SURTS = [
   // Discovery-only until the Pinpoint vendor ships: merge/verify ignore
   // unknown vendors, so this just measures the candidate pool for rung 5.
   { vendor: "pinpoint", kind: "subdomain", surt: "com,pinpointhq,", hostSuffix: ".pinpointhq.com" },
+  // EU-region hosts (separate infrastructure, separate companies — mostly
+  // European employers). Measurement-only until EU API routing ships in the
+  // fetchers: distinct vendor keys keep them out of merge/verify.
+  { vendor: "greenhouse-eu", kind: "path", surt: "io,greenhouse,eu,job-boards)/", host: "job-boards.eu.greenhouse.io" },
+  { vendor: "lever-eu", kind: "path", surt: "co,lever,eu,jobs)/", host: "jobs.eu.lever.co" },
 ];
 
 async function curlBuf(url, range) {
