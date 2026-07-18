@@ -24,6 +24,12 @@ for (const f of files) {
 }
 
 const NAME_BLOCK = /\b(staffing|recruit(ing|ment|er)?s?|talent\s|talents\b|headhunt|personnel|manpower|workforce|employment\s+(agency|services)|temp\s|outsourc|bpo\b|demo|test|sample|sandbox|placeholder)\b/i;
+// Corporate-only policy: public-sector entities never enter the catalog
+// (mobile audit 2026-07-18 found City of Baltimore et al. had slipped in
+// through census waves — 22 boards curated out, these patterns keep the
+// door shut). Word-boundary specific to avoid nuking "Gibson County Coal
+// LLC"-style private names: require the GOVERNMENTAL phrase, not the word.
+const GOV_BLOCK = /\b(city of|county of|state of|commonwealth of|government of|unified school|school district|public schools|public library|court of appeals|county commissioners|conservation district|health district|sheriff|police department|fire department|township of|municipality)\b/i;
 const TOKEN_BLOCK = /(demo|test|sample|sandbox|staging)/i;
 
 // Existing catalog in BOTH entry formats: object literals ({ name, source,
@@ -55,7 +61,7 @@ for (const vendor of VENDORS) {
     const tokenKey = `${vendor}:${b.token.toLowerCase()}`;
     const nameKey = name.toLowerCase();
     if (TOKEN_BLOCK.test(b.token)) { dropped.blockedToken++; continue; }
-    if (!name || NAME_BLOCK.test(name)) { dropped.blockedName++; continue; }
+    if (!name || NAME_BLOCK.test(name) || GOV_BLOCK.test(name)) { dropped.blockedName++; continue; }
     if (seen.has(tokenKey) || existingTokens.has(tokenKey)) { dropped.dupe++; continue; }
     if (existingNames.has(nameKey)) { dropped.nameCollision++; continue; }
     seen.add(tokenKey);

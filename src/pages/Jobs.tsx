@@ -2291,11 +2291,11 @@ export default function Jobs() {
               </span>
             )}
             {recentJobs.length > 0 && !detailJob && (
-              <span className="inline-flex flex-wrap items-center gap-2 basis-full mt-1">
-                <span className="text-[11px] text-muted-foreground">{t("jobsPage.jumpBackIn", "Jump back in:")}</span>
+              <span className="flex items-center gap-2 basis-full mt-1 overflow-x-auto md:overflow-visible md:flex-wrap [mask-image:linear-gradient(to_right,black_92%,transparent)] md:[mask-image:none]">
+                <span className="text-[11px] text-muted-foreground shrink-0">{t("jobsPage.jumpBackIn", "Jump back in:")}</span>
                 {recentJobs.slice(0, 3).map((r) => (
                   <button key={r.id} type="button" onClick={() => void openRecent(r.id)}
-                    className="text-xs px-3 py-1.5 rounded-full border border-border text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors max-w-[220px] truncate">
+                    className="text-xs px-3 py-1.5 rounded-full border border-border text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors max-w-[220px] truncate shrink-0">
                     {r.title} · {r.company}
                   </button>
                 ))}
