@@ -47,6 +47,8 @@ interface BoardJob {
   minYears?: number | null;
   /** Board category slug (serveList returns it; drives detail-panel "similar openings"). */
   category?: string | null;
+  /** Last re-verification against the company's own feed (serveList last_seen). */
+  lastSeen?: string | null;
 }
 
 // A company with several fresh, still-open roles is demonstrably hiring — the
@@ -119,6 +121,19 @@ function daysAgo(iso: string | null): number | null {
   if (!iso) return null;
   const d = Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
   return Number.isFinite(d) && d >= 0 ? d : null;
+}
+
+// Human re-verification age for the detail panel ("re-checked 43m ago").
+// Coarse buckets — the point is trust, not a stopwatch.
+function agoLabel(iso: string, t: (k: string, d: string, o?: Record<string, unknown>) => string): string {
+  const ms = Date.now() - Date.parse(iso);
+  if (!Number.isFinite(ms) || ms < 0) return t("jobsPage.agoJustNow", "just now");
+  const min = Math.floor(ms / 60_000);
+  if (min < 2) return t("jobsPage.agoJustNow", "just now");
+  if (min < 60) return t("jobsPage.agoMinutes", "{{count}}m ago", { count: min });
+  const h = Math.floor(min / 60);
+  if (h < 48) return t("jobsPage.agoHours", "{{count}}h ago", { count: h });
+  return t("jobsPage.agoDays", "{{count}}d ago", { count: Math.floor(h / 24) });
 }
 
 // Stored descriptions occasionally carry residual HTML entities the ingest
@@ -197,6 +212,17 @@ export default function Jobs() {
     return Number.isFinite(n) && n > 0 ? n : 0;
   });
   const [freshness, setFreshness] = useState<"" | "day" | "week">("");
+  const [companyQuery, setCompanyQuery] = useState<string | null>(null);
+  // U2: honest "posted today" headline count (company-stated dates only).
+  const [newToday, setNewToday] = useState<number | null>(null);
+  useEffect(() => {
+    let alive = true;
+    invokeBoard<{ total?: number }>({ action: "list", countOnly: true, includeFacets: false, maxAgeDays: 1 })
+      .then(({ data }) => { if (alive && typeof data?.total === "number" && data.total > 0) setNewToday(data.total); })
+      .catch(() => {});
+    return () => { alive = false; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   // Sort: newest (default) or highest STATED salary (annualized floor, server-
   // side; unsalaried postings sort last). Fit ordering is owned by "For you".
   const [sortMode, setSortMode] = useState<"newest" | "salary">("newest");
@@ -634,6 +660,12 @@ export default function Jobs() {
       } else {
         window.history.replaceState({ job: job.id }, "", url);
       }
+    }
+    // Verify-on-view: a posting not re-checked in 24h+ gets a background live
+    // re-verify the moment someone actually looks at it — the postings people
+    // SEE are the freshest, regardless of rotation position. Fire-and-forget.
+    if (!job.lastSeen || Date.now() - Date.parse(job.lastSeen) > 24 * 3600_000) {
+      invokeBoard({ action: "verify", ids: [job.id] }).catch(() => {});
     }
     try {
       const { data: res } = await invokeBoard<{ description?: string }>({ action: "detail", id: job.id });
@@ -1421,6 +1453,14 @@ export default function Jobs() {
                   <ShieldCheck className="w-3.5 h-3.5" />
                   {t("jobsPage.trustBadge", "Verified direct from {{company}}", { company: detailJob.company })}
                 </span>
+                {detailJob.lastSeen && (
+                  <span
+                    className="text-muted-foreground"
+                    title={t("jobsPage.recheckedTip", "When this posting was last re-verified against the company's own feed")}
+                  >
+                    {t("jobsPage.rechecked", "re-checked {{ago}}", { ago: agoLabel(detailJob.lastSeen, t) })}
+                  </span>
+                )}
                 {detailJob.remote && <Badge variant="secondary" className="text-[10px]">{t("jobsPage.remoteBadge", "Remote")}</Badge>}
                 {detailJob.experienceBand && detailJob.experienceBand !== "unspecified" && (
                   <span className="px-2 py-0.5 rounded-full border border-border text-muted-foreground">
@@ -1626,7 +1666,7 @@ export default function Jobs() {
               ? t("jobsPage.countLine", "{{total}} live openings from {{companies}} companies — every one straight from the company's own hiring system.", {
                   total: data.totalAllCompanies.toLocaleString(),
                   companies: (data.companiesCount ?? companies.length).toLocaleString(),
-                })
+                }) + (newToday ? " " + t("jobsPage.newTodayLine", "{{n}} posted today.", { n: newToday.toLocaleString() }) : "")
               : t("jobsPage.subtitleShort", "Every job straight from the company's own careers system — verified, fresh, re-checked when you apply.")}
           </p>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-3 text-[11px] text-muted-foreground">
@@ -1832,19 +1872,43 @@ export default function Jobs() {
                 ))}
               </select>
             )}
-            <select
-              value={company}
-              onChange={(e) => setCompany(e.target.value)}
-              className="px-3 py-2 rounded-lg bg-background border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-              aria-label={t("jobsPage.allCompanies", "All companies")}
-            >
-              <option value="">{t("jobsPage.allCompanies", "All companies")}</option>
-              {companies.map((c) => (
-                <option key={c.token} value={c.token}>
-                  {c.name} ({c.count})
-                </option>
-              ))}
-            </select>
+            {/* U4: at ~25k companies a dropdown is unusable — type-ahead over the
+                served facet (top slice by count; the full set stays searchable
+                through the q box, which matches company names server-side). */}
+            <div className="relative">
+              <input
+                type="text"
+                value={companyQuery !== null ? companyQuery : (companies.find((c) => c.token === company)?.name ?? "")}
+                onChange={(e) => setCompanyQuery(e.target.value)}
+                onFocus={() => setCompanyQuery(companyQuery ?? "")}
+                onBlur={() => setTimeout(() => setCompanyQuery(null), 150)}
+                placeholder={t("jobsPage.companySearch", "Company…")}
+                className="px-3 py-2 rounded-lg bg-background border border-border text-sm w-36 focus:outline-none focus:ring-2 focus:ring-primary/40"
+                aria-label={t("jobsPage.allCompanies", "All companies")}
+              />
+              {companyQuery !== null && (
+                <div className="absolute z-30 mt-1 w-64 max-h-72 overflow-auto rounded-lg border border-border bg-background shadow-lg text-sm">
+                  {company && (
+                    <button type="button" className="block w-full text-left px-3 py-2 hover:bg-muted text-muted-foreground" onMouseDown={() => { setCompany(""); setCompanyQuery(null); }}>
+                      {t("jobsPage.allCompanies", "All companies")}
+                    </button>
+                  )}
+                  {companies
+                    .filter((c) => c.name.toLowerCase().includes(companyQuery.toLowerCase()))
+                    .slice(0, 12)
+                    .map((c) => (
+                      <button
+                        key={c.token}
+                        type="button"
+                        className="block w-full text-left px-3 py-2 hover:bg-muted"
+                        onMouseDown={() => { setCompany(c.token); setCompanyQuery(null); }}
+                      >
+                        {c.name} <span className="text-muted-foreground">({c.count})</span>
+                      </button>
+                    ))}
+                </div>
+              )}
+            </div>
             <select
               value={salaryFloor || ""}
               onChange={(e) => setSalaryFloor(Number(e.target.value) || 0)}
@@ -1916,6 +1980,29 @@ export default function Jobs() {
             {freshness && (
               <span className="text-[11px] text-muted-foreground">
                 {t("jobsPage.freshHint", "Counts company-stated posting dates only")}
+              </span>
+            )}
+            {/* U5: guided starting points — one-tap honest filter combos for the
+                blank-page moment. Hidden once any filter is active. */}
+            {!q && !location && !category && !experience && !company && !remoteOnly && !freshness && !salaryFloor && !country && (
+              <span className="inline-flex flex-wrap items-center gap-2 ml-1">
+                <span className="text-[11px] text-muted-foreground">{t("jobsPage.tryLabel", "Try:")}</span>
+                <button type="button" onClick={() => { setRemoteOnly(true); setExperience("entry"); setCountry("US"); }}
+                  className="text-xs px-3 py-1.5 rounded-full border border-dashed border-border text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors">
+                  {t("jobsPage.presetRemoteEntry", "Remote · Entry-level · US")}
+                </button>
+                <button type="button" onClick={() => { setCategory("engineering"); setFreshness("week"); }}
+                  className="text-xs px-3 py-1.5 rounded-full border border-dashed border-border text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors">
+                  {t("jobsPage.presetEngWeek", "Engineering · This week")}
+                </button>
+                <button type="button" onClick={() => { setSalaryFloor(100000); setFreshness("week"); }}
+                  className="text-xs px-3 py-1.5 rounded-full border border-dashed border-border text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors">
+                  {t("jobsPage.presetSalary", "$100k+ · This week")}
+                </button>
+                <button type="button" onClick={() => { setCategory("healthcare"); setCountry("US"); }}
+                  className="text-xs px-3 py-1.5 rounded-full border border-dashed border-border text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors">
+                  {t("jobsPage.presetHealth", "Healthcare · US")}
+                </button>
               </span>
             )}
             {/* For you | All jobs — the board's differentiator as a first-class

@@ -646,7 +646,12 @@ function pinpointSalary(j: PinpointPosting): string | null {
   const max = Number(j.compensation_maximum);
   if (!Number.isFinite(min) || min <= 0) return null;
   const cur = typeof j.compensation_currency === "string" && /^[A-Z]{3}$/.test(j.compensation_currency) ? j.compensation_currency : "";
-  const freq = PINPOINT_FREQ[String(j.compensation_frequency ?? "")] ?? "";
+  const rawFreq = String(j.compensation_frequency ?? "");
+  const freq = PINPOINT_FREQ[rawFreq] ?? (rawFreq ? `per ${rawFreq}` : "");
+  // A small figure with NO stated frequency ("31.25") is almost certainly an
+  // hourly rate we can't prove — displaying it bare would be ambiguous and
+  // the salary parser could mis-annualize it. When in doubt, leave it out.
+  if (!freq && min < 1_000) return null;
   const range = Number.isFinite(max) && max > min ? `${min.toLocaleString("en-US")}–${max.toLocaleString("en-US")}` : min.toLocaleString("en-US");
   return [cur, range, freq].filter(Boolean).join(" ") || null;
 }

@@ -61,7 +61,7 @@ const json = (body: unknown, status = 200) =>
 // counts. catalogSize (JOB_SOURCES.length) is the automatic companion signal: it
 // moves with every catalog change with no discipline required. Sortable string so
 // a future check can tell "prod is behind" from "prod is ahead".
-const BUILD_VERSION = "2026-07-17.5";
+const BUILD_VERSION = "2026-07-18.1";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -408,7 +408,7 @@ const COLD_SLICES_PER_PASS = 48;
 // removed. DORMANT_CAP bounds the meta row against a mass die-off.
 const DEAD_BOARD_THRESHOLD = 6; // consecutive failures before prune + dormancy (unchanged bar from the prior prune)
 const DORMANT_RECHECK_MS = 12 * 60 * 60_000; // recovery probe cadence for a dormant board
-const DORMANT_CAP = 3_000; // max tracked dormant boards (keeps most-recently-detected)
+const DORMANT_CAP = 8_000; // max tracked dormant boards (raised with the 26k-board catalog — census waves include older-crawl boards that die over time)
 
 // Vendor circuit breaker: a vendor-wide API/shape change can make every board
 // return 200-with-empty — which per-board looks like "this company has zero
@@ -449,6 +449,11 @@ const POSTED_BACKFILL_VERSION = 1;
 // guaranteed slots, size leaders fill the rest of HOT_SIZE.
 const VELOCITY_HOT_SLOTS = 40;
 const VELOCITY_WINDOW_DAYS = 7;
+// Quiet lane: a board with no NEW posting in this window skips every other
+// rotation (see the cold-phase skip logic). Computed at pass end from
+// get_quiet_boards(); most of the catalog is quiet at any moment, so this
+// roughly doubles the effective rotation budget for active boards.
+const QUIET_WINDOW_DAYS = 14;
 const CHAIN_CAP = Math.ceil(HOT_SIZE / HOT_SLICE) + COLD_SLICES_PER_PASS + 4; // pass length + stall headroom
 
 // Capacity governor: keep the corpus under a ceiling with headroom; when a
@@ -523,10 +528,11 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
   }
   const { hotList: HOT_LIST, coldList: COLD_LIST } = await tierLists(client);
   await loadDynamicLight(client); // auto-enrolled giant boards fetch without content
-  const pv = (prog?.v ?? {}) as { hot?: number; cold?: number; coldDone?: number; failedAcc?: string[] };
+  const pv = (prog?.v ?? {}) as { hot?: number; cold?: number; coldDone?: number; rot?: number; failedAcc?: string[] };
   let hot = Math.max(0, Number(pv.hot) || 0);
   let cold = Math.max(0, Number(pv.cold) || 0) % Math.max(1, COLD_LIST.length);
   let coldDone = Math.max(0, Number(pv.coldDone) || 0);
+  const rot = Math.max(0, Number(pv.rot) || 0);
   // Hop 0 RESUMES a recent incomplete pass rather than resetting: when a
   // slice dies on the resource ceiling, the re-run must move FORWARD, not
   // re-die on the same boards (the 13:04-13:38 wedge re-ran slice 0
@@ -587,6 +593,23 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
     const demandSet = new Set(demandBoards.map((s) => s.token));
     const eligible = baseSlice.map((s) => s.token).filter((t) => !demandSet.has(t));
     ({ skip: skipTokens, recheck: recheckTokens } = classifyDormancy(eligible, boardFailures.dormant, Date.now(), DORMANT_RECHECK_MS));
+    // Quiet lane (change-rate-aware rotation): boards with no NEW posting in
+    // QUIET_WINDOW_DAYS skip every other rotation — their feeds barely change,
+    // so the fetch budget concentrates on boards where postings actually
+    // appear and close. Cadence cost: quiet boards re-verify at 2× the
+    // rotation time (still inside the published claim; the freshness-claim
+    // heartbeat check watches the measured number). Demand-injected boards
+    // are never quiet-skipped, and skipped boards aren't counted as failures.
+    if (rot % 2 === 1) {
+      try {
+        const { data: qMeta } = await client.from("job_board_meta").select("v").eq("k", "quiet_tokens").maybeSingle();
+        const quiet = (qMeta?.v as { tokens?: unknown } | null)?.tokens;
+        if (Array.isArray(quiet)) {
+          const quietSet = new Set(quiet.filter((t): t is string => typeof t === "string"));
+          for (const t of eligible) if (quietSet.has(t) && !recheckTokens.has(t)) skipTokens.add(t);
+        }
+      } catch { /* quiet meta unreadable — full rotation, never less coverage */ }
+    }
   }
 
   // Cursors advance BEFORE processing (optimistic): if this invocation dies
@@ -601,8 +624,11 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
     // long tail would rotate unevenly (some boards re-checked late).
     const nextCold = inHotPhase ? cold : (cold + baseSlice.length) % Math.max(1, COLD_LIST.length);
     const nextColdDone = inHotPhase ? coldDone : coldDone + 1;
+    // Rotation counter: increments when the cold cursor wraps the tail — the
+    // quiet lane keys off its parity (quiet boards skip odd rotations).
+    const nextRot = !inHotPhase && nextCold < cold ? rot + 1 : rot;
     await client.from("job_board_meta").upsert(
-      { k: "refresh_progress", v: { hot: nextHot, cold: nextCold, coldDone: nextColdDone, failedAcc: Array.isArray(pv.failedAcc) ? pv.failedAcc : [] }, updated_at: new Date().toISOString() },
+      { k: "refresh_progress", v: { hot: nextHot, cold: nextCold, coldDone: nextColdDone, rot: nextRot, failedAcc: Array.isArray(pv.failedAcc) ? pv.failedAcc : [] }, updated_at: new Date().toISOString() },
       { onConflict: "k" },
     );
   }
@@ -1231,6 +1257,18 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
       hotSet.add(t);
     }
     const ranked = [...hotSet];
+    // Refresh the quiet set for the rotation's slow lane (RPC missing —
+    // migration lag — leaves the previous set in place; never fails the pass).
+    try {
+      const { data: quiet, error: qErr } = await client.rpc("get_quiet_boards", { days: QUIET_WINDOW_DAYS });
+      if (!qErr && Array.isArray(quiet)) {
+        const tokens = quiet.map((r: { company_token?: string }) => r.company_token).filter((t): t is string => typeof t === "string").slice(0, 30_000);
+        await client.from("job_board_meta").upsert(
+          { k: "quiet_tokens", v: { tokens, at: new Date().toISOString() }, updated_at: new Date().toISOString() },
+          { onConflict: "k" },
+        );
+      }
+    } catch { /* keep previous quiet set */ }
     if (ranked.length >= 50) {
       await client.from("job_board_meta").upsert(
         { k: "hot_tokens", v: { tokens: ranked }, updated_at: new Date().toISOString() },
@@ -2367,6 +2405,7 @@ const rowToJob = (r: any) => ({
   salary: r.salary ?? null,
   experienceBand: r.experience_band && r.experience_band !== "unspecified" ? r.experience_band : null,
   minYears: typeof r.min_years === "number" ? r.min_years : null,
+  lastSeen: r.last_seen ?? null,
 });
 
 async function serveList(
@@ -2414,7 +2453,7 @@ async function serveList(
     let q = client
       .from("job_board_postings")
       .select(
-        "id,source,company_token,company,title,location,remote,department,category,posted_at,apply_url,salary,experience_band,min_years",
+        "id,source,company_token,company,title,location,remote,department,category,posted_at,apply_url,salary,experience_band,min_years,last_seen",
         wantCount ? { count: "exact" } : {},
       )
       .gte(dateCol, freshCutoffIso);
@@ -2475,6 +2514,52 @@ async function serveList(
   // Unranked postings (no identifiable currency) sort after ranked ones —
   // never excluded, never estimated. id tiebreaker so equal keys can't
   // shuffle between "load more" pages.
+  // Relevance-ranked search: with a query present (and not salary-sorted),
+  // the search_jobs RPC orders by ts_rank (title > company > department),
+  // recency as tiebreak — composed with every active filter. Any error
+  // (migration lag, malformed query) falls back to the recency path below.
+  const qText = String(body.q ?? "").trim().slice(0, 200);
+  if (qText && body.sort !== "salary" && !countOnly) {
+    try {
+      const expArr = String(body.experience ?? "").split(",").map((x) => x.trim()).filter(isExperienceBand);
+      const compArr = Array.isArray(body.companies)
+        ? body.companies.filter((c): c is string => typeof c === "string").slice(0, JOB_SOURCES.length)
+        : [];
+      const maxAgeNum = Number(body.maxAgeDays);
+      const { data: ranked, error: rankErr } = await client.rpc("search_jobs", {
+        p_q: qText,
+        p_fresh_cutoff: freshCutoffIso,
+        p_location: sanitizeTerm(String(body.location ?? "")) || null,
+        p_remote: body.remote === true ? true : null,
+        p_country: /^[A-Za-z]{2}$/.test(String(body.country ?? "")) ? String(body.country).toUpperCase() : null,
+        p_category: (JOB_CATEGORIES as readonly string[]).includes(String(body.category ?? "")) ? String(body.category) : null,
+        p_experience: expArr.length ? expArr : null,
+        p_salary_floor: Number(body.salaryFloor) > 0 ? Math.min(Number(body.salaryFloor), 2_000_000) : null,
+        p_companies: compArr.length ? compArr : null,
+        p_posted_after: typeof body.postedAfter === "string" && !Number.isNaN(Date.parse(body.postedAfter)) ? body.postedAfter : null,
+        p_max_age_days: Number.isFinite(maxAgeNum) && maxAgeNum >= 1 ? Math.min(maxAgeNum, 30) : null,
+        p_limit: limit,
+        p_offset: offset,
+      });
+      if (!rankErr && Array.isArray(ranked)) {
+        const total = ranked.length ? Number((ranked[0] as { total_rows?: number }).total_rows) || ranked.length : 0;
+        const v0 = (meta?.v ?? {}) as Record<string, unknown>;
+        const includeFacets0 = (body as { includeFacets?: boolean }).includeFacets !== false;
+        const fullCompanies0 = (v0.companiesFacet as Array<{ count?: number }>) ?? [];
+        return json({
+          jobs: (ranked as unknown[]).map(rowToJob),
+          total,
+          totalAllCompanies: (v0.total as number) ?? total,
+          companies: includeFacets0 ? [...fullCompanies0].sort((a, b) => (b.count ?? 0) - (a.count ?? 0)).slice(0, 1_500) : [],
+          companiesCount: fullCompanies0.length,
+          categories: (v0.categoriesFacet as Record<string, number>) ?? {},
+          failedSources: (v0.failedSources as string[]) ?? [],
+          refreshedAt: (v0.refreshedAt as string) ?? null,
+          ranked: true,
+        });
+      }
+    } catch { /* fall through to recency path */ }
+  }
   const sortSalary = body.sort === "salary";
   const page = (dateCol: string, salaryCol: string) =>
     (sortSalary

@@ -4160,6 +4160,19 @@
     "companyStated": "date de l'entreprise",
     "allCountries": "Tous les pays",
     "countryTip": "Pays extrait du texte de localisation de chaque offre — celles que nous ne pouvons pas situer sont exclues quand ce filtre est actif, jamais devinées.",
-    "freshHint": "Ne compte que les dates de publication indiquées par l'entreprise"
+    "freshHint": "Ne compte que les dates de publication indiquées par l'entreprise",
+    "rechecked": "revérifié {{ago}}",
+    "recheckedTip": "Dernière revérification de cette offre auprès du flux de l'entreprise",
+    "agoJustNow": "à l'instant",
+    "agoMinutes": "il y a {{count}} min",
+    "agoHours": "il y a {{count}} h",
+    "agoDays": "il y a {{count}} j",
+    "newTodayLine": "{{n}} publiées aujourd'hui.",
+    "companySearch": "Entreprise…",
+    "tryLabel": "Essayez :",
+    "presetRemoteEntry": "Télétravail · Débutant · É.-U.",
+    "presetEngWeek": "Ingénierie · Cette semaine",
+    "presetSalary": "100k$+ · Cette semaine",
+    "presetHealth": "Santé · É.-U."
   }
 }

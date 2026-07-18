@@ -4160,6 +4160,19 @@
     "companyStated": "door bedrijf vermeld",
     "allCountries": "Alle landen",
     "countryTip": "Land afgeleid uit de locatietekst van elke vacature — vacatures die we niet kunnen plaatsen worden met dit filter uitgesloten, nooit geraden.",
-    "freshHint": "Telt alleen door het bedrijf opgegeven publicatiedatums"
+    "freshHint": "Telt alleen door het bedrijf opgegeven publicatiedatums",
+    "rechecked": "opnieuw gecheckt {{ago}}",
+    "recheckedTip": "Wanneer deze vacature voor het laatst is geverifieerd tegen de feed van het bedrijf",
+    "agoJustNow": "zojuist",
+    "agoMinutes": "{{count}}m geleden",
+    "agoHours": "{{count}}u geleden",
+    "agoDays": "{{count}}d geleden",
+    "newTodayLine": "{{n}} vandaag geplaatst.",
+    "companySearch": "Bedrijf…",
+    "tryLabel": "Probeer:",
+    "presetRemoteEntry": "Remote · Starter · VS",
+    "presetEngWeek": "Engineering · Deze week",
+    "presetSalary": "$100k+ · Deze week",
+    "presetHealth": "Zorg · VS"
   }
 }

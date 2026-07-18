@@ -4160,6 +4160,19 @@
     "companyStated": "company-stated",
     "allCountries": "All countries",
     "countryTip": "Country read from each posting's own location text — postings we can't place are excluded while this is on, never guessed.",
-    "freshHint": "Counts company-stated posting dates only"
+    "freshHint": "Counts company-stated posting dates only",
+    "rechecked": "re-checked {{ago}}",
+    "recheckedTip": "When this posting was last re-verified against the company's own feed",
+    "agoJustNow": "just now",
+    "agoMinutes": "{{count}}m ago",
+    "agoHours": "{{count}}h ago",
+    "agoDays": "{{count}}d ago",
+    "newTodayLine": "{{n}} posted today.",
+    "companySearch": "Company…",
+    "tryLabel": "Try:",
+    "presetRemoteEntry": "Remote · Entry-level · US",
+    "presetEngWeek": "Engineering · This week",
+    "presetSalary": "$100k+ · This week",
+    "presetHealth": "Healthcare · US"
   }
 }

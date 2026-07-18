@@ -4160,6 +4160,19 @@
     "companyStated": "Firmenangabe",
     "allCountries": "Alle Länder",
     "countryTip": "Land aus dem Standorttext der Anzeige gelesen — nicht zuordenbare Anzeigen werden bei aktivem Filter ausgeschlossen, nie geraten.",
-    "freshHint": "Zählt nur vom Unternehmen angegebene Veröffentlichungsdaten"
+    "freshHint": "Zählt nur vom Unternehmen angegebene Veröffentlichungsdaten",
+    "rechecked": "erneut geprüft {{ago}}",
+    "recheckedTip": "Wann diese Stelle zuletzt gegen den Feed des Unternehmens geprüft wurde",
+    "agoJustNow": "gerade eben",
+    "agoMinutes": "vor {{count}} Min.",
+    "agoHours": "vor {{count}} Std.",
+    "agoDays": "vor {{count}} T.",
+    "newTodayLine": "{{n}} heute veröffentlicht.",
+    "companySearch": "Unternehmen…",
+    "tryLabel": "Probieren:",
+    "presetRemoteEntry": "Remote · Einstieg · USA",
+    "presetEngWeek": "Engineering · Diese Woche",
+    "presetSalary": "$100k+ · Diese Woche",
+    "presetHealth": "Gesundheit · USA"
   }
 }

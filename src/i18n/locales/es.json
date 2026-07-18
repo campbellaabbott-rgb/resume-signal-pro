@@ -4160,6 +4160,19 @@
     "companyStated": "fecha de la empresa",
     "allCountries": "Todos los países",
     "countryTip": "País extraído del texto de ubicación de cada oferta — las que no podemos ubicar se excluyen con este filtro activo, nunca se adivina.",
-    "freshHint": "Solo cuenta fechas de publicación indicadas por la empresa"
+    "freshHint": "Solo cuenta fechas de publicación indicadas por la empresa",
+    "rechecked": "reverificado {{ago}}",
+    "recheckedTip": "Cuándo se reverificó esta vacante por última vez contra el propio feed de la empresa",
+    "agoJustNow": "ahora mismo",
+    "agoMinutes": "hace {{count}}m",
+    "agoHours": "hace {{count}}h",
+    "agoDays": "hace {{count}}d",
+    "newTodayLine": "{{n}} publicadas hoy.",
+    "companySearch": "Empresa…",
+    "tryLabel": "Prueba:",
+    "presetRemoteEntry": "Remoto · Inicial · EE. UU.",
+    "presetEngWeek": "Ingeniería · Esta semana",
+    "presetSalary": "$100k+ · Esta semana",
+    "presetHealth": "Salud · EE. UU."
   }
 }
