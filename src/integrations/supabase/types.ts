@@ -799,6 +799,7 @@ export type Database = {
           salary_currency: string | null
           salary_min_annual: number | null
           salary_rank_usd: number | null
+          search_tsv: unknown
           source: string
           title: string
         }
@@ -824,6 +825,7 @@ export type Database = {
           salary_currency?: string | null
           salary_min_annual?: number | null
           salary_rank_usd?: number | null
+          search_tsv?: unknown
           source: string
           title: string
         }
@@ -849,6 +851,7 @@ export type Database = {
           salary_currency?: string | null
           salary_min_annual?: number | null
           salary_rank_usd?: number | null
+          search_tsv?: unknown
           source?: string
           title?: string
         }
@@ -2398,6 +2401,12 @@ export type Database = {
           product_type: string
         }[]
       }
+      get_quiet_boards: {
+        Args: { days?: number }
+        Returns: {
+          company_token: string
+        }[]
+      }
       get_rate_limit_stats: {
         Args: { p_hours_back?: number }
         Returns: {
@@ -2770,6 +2779,41 @@ export type Database = {
           p_stripe_session_id: string
         }
         Returns: string
+      }
+      search_jobs: {
+        Args: {
+          p_category?: string
+          p_companies?: string[]
+          p_country?: string
+          p_experience?: string[]
+          p_fresh_cutoff: string
+          p_limit?: number
+          p_location?: string
+          p_max_age_days?: number
+          p_offset?: number
+          p_posted_after?: string
+          p_q: string
+          p_remote?: boolean
+          p_salary_floor?: number
+        }
+        Returns: {
+          apply_url: string
+          category: string
+          company: string
+          company_token: string
+          department: string
+          experience_band: string
+          id: string
+          last_seen: string
+          location: string
+          min_years: number
+          posted_at: string
+          remote: boolean
+          salary: string
+          source: string
+          title: string
+          total_rows: number
+        }[]
       }
       should_generate_weekly_report: { Args: never; Returns: boolean }
       should_send_alert: {
