@@ -1703,8 +1703,8 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
         offers: { "@type": "Offer", price: "0", priceCurrency: "USD", description: "Free resume scan — no signup required" },
       }) }} />
       <SEO
-        title={landing?.title ?? "Resume Booster — Live Job Board: 300,000+ Verified Openings, Zero Ghost Jobs"}
-        description={landing?.description ?? "A live job board with zero ghost jobs: 300,000+ openings pulled straight from companies' own career systems, re-verified all day. Scan your resume free and see your match score on every posting."}
+        title={landing?.title ?? "Resume Booster — Live Job Board: 450,000+ Verified Openings, Zero Ghost Jobs"}
+        description={landing?.description ?? "A live job board with zero ghost jobs: 450,000+ openings pulled straight from companies' own career systems, re-verified all day. Scan your resume free and see your match score on every posting."}
         path={landing?.path ?? "/"}
       />
       {landing?.alternates && (

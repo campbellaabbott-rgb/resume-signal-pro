@@ -60,7 +60,7 @@
     "headline": {
       "get": "The job board with",
       "recruiterGrade": "zero ghost jobs",
-      "feedback": "— 300,000+ verified openings, matched to your resume"
+      "feedback": "— 450,000+ verified openings, matched to your resume"
     },
     "description": "Upload your resume and get ATS-optimized rewrites, red-flag warnings, and keyword improvements — written the way hiring managers actually review resumes.",
     "benefits": {
@@ -145,7 +145,7 @@
     "factNoStorage": "Never stored, never shared",
     "measureStrip": "Measurements, not opinions · Every quote verified · A score that shows its work",
     "jobsCta": "Live job board — check your fit before you apply →",
-    "browseJobs": "Browse 300,000+ verified jobs"
+    "browseJobs": "Browse 450,000+ verified jobs"
   },
   "footer": {
     "copyright": "© {{year}} Resume Booster. All rights reserved.",
@@ -2837,6 +2837,18 @@
     }
   },
   "changelogEntries": {
+    "board450k": {
+      "title": "450,000+ verified openings — Pinpoint joins as the 13th hiring system",
+      "description": "Another growth wave: 450,000+ live openings from 20,000+ companies, all straight from each company's own hiring system. New this round: Pinpoint as the 13th system, Greenhouse's separate EU platform (hundreds of European employers), and thousands more boards found in deeper archive sweeps. We also tightened the door: this is a corporate board, and a handful of government job boards that had slipped in were removed — public-sector listings don't belong here and won't get in again."
+    },
+    "smartSearch": {
+      "title": "Search that understands what you're looking for",
+      "description": "Search got a brain. Results are ranked by relevance — title matches first, company and team next — and searches now look inside full job descriptions too, so niche skills surface even when they're not in the title. The search box suggests as you type (your recent searches, companies, categories, common roles), quoted \"exact phrases\" work, one tap flips between relevance and newest-first, and category pills with live counts show the board's whole breadth at a glance."
+    },
+    "boardCraft": {
+      "title": "A faster, friendlier board — on every device",
+      "description": "A pile of quality-of-life upgrades: press ⌘K anywhere for quick actions, ? shows all keyboard shortcuts, and / jumps to search. The company filter is a type-ahead now, a compact view fits three times more postings per screen, \"Jump back in\" brings back your recently viewed roles, and every posting has a share link. Each posting also shows when it was last re-verified against the company's feed, pay displays consistently (the company's exact wording one hover away), and the mobile layout got a full pass."
+    },
     "board300k": {
       "title": "300,000+ verified openings — Workday joins as the 12th hiring system",
       "description": "The board tripled in a week: 300,000+ live openings from 16,000+ companies, every one pulled straight from the company's own hiring system. New this round: Workday — the system used by many of the world's largest employers — plus thousands of newly discovered company boards across all twelve systems."

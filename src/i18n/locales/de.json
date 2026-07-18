@@ -60,7 +60,7 @@
     "headline": {
       "get": "Die Jobbörse mit",
       "recruiterGrade": "null Geisterjobs",
-      "feedback": "— über 300.000 verifizierte Stellen, abgeglichen mit Ihrem Lebenslauf"
+      "feedback": "— über 450.000 verifizierte Stellen, abgeglichen mit Ihrem Lebenslauf"
     },
     "description": "Laden Sie Ihren Lebenslauf hoch und erhalten Sie ATS-optimierte Umschreibungen, Red-Flag-Warnungen und Keyword-Verbesserungen — so wie Personalverantwortliche Lebensläufe wirklich prüfen.",
     "benefits": {
@@ -145,7 +145,7 @@
     "factNoStorage": "Nie gespeichert, nie geteilt",
     "measureStrip": "Messungen statt Meinungen · Jedes Zitat verifiziert · Ein Score, der seine Arbeit zeigt",
     "jobsCta": "Live-Jobbörse — Passung prüfen, bevor Sie sich bewerben →",
-    "browseJobs": "300.000+ verifizierte Jobs ansehen"
+    "browseJobs": "450.000+ verifizierte Jobs ansehen"
   },
   "footer": {
     "copyright": "© {{year}} Resume Booster. Alle Rechte vorbehalten.",
@@ -2837,6 +2837,18 @@
     }
   },
   "changelogEntries": {
+    "board450k": {
+      "title": "Über 450.000 verifizierte Stellen — Pinpoint wird das 13. System",
+      "description": "Die nächste Wachstumswelle: über 450.000 aktive Stellen von über 20.000 Unternehmen, alle direkt aus dem Bewerbungssystem des jeweiligen Unternehmens. Neu: Pinpoint als 13. System, Greenhouses separate EU-Plattform (Hunderte europäische Arbeitgeber) und Tausende weitere Karriereseiten aus tieferen Archiv-Durchläufen. Außerdem: Dies ist eine Unternehmens-Jobbörse — einige versehentlich aufgenommene Behörden-Boards wurden entfernt."
+    },
+    "smartSearch": {
+      "title": "Eine Suche, die versteht, was Sie suchen",
+      "description": "Die Suche ist jetzt intelligent. Ergebnisse werden nach Relevanz sortiert — Titeltreffer zuerst — und die Suche durchsucht auch die vollständigen Stellenbeschreibungen, sodass Nischen-Skills auftauchen, auch wenn sie nicht im Titel stehen. Das Suchfeld schlägt beim Tippen vor, \"exakte Phrasen\" in Anführungszeichen funktionieren, ein Tipp wechselt zwischen Relevanz und Neueste, und Kategorie-Pillen mit Live-Zählern zeigen die ganze Breite der Börse."
+    },
+    "boardCraft": {
+      "title": "Eine schnellere, freundlichere Jobbörse — auf jedem Gerät",
+      "description": "Viele Verbesserungen: ⌘K öffnet Schnellaktionen, ? zeigt alle Tastenkürzel, / springt zur Suche. Der Unternehmensfilter ist jetzt eine Vorschlagssuche, die kompakte Ansicht zeigt dreimal mehr Stellen pro Bildschirm, \"Weitermachen\" bringt zuletzt angesehene Stellen zurück, und jede Stelle hat einen Teilen-Link. Jede Stelle zeigt zudem ihre letzte Überprüfung, Gehälter werden einheitlich dargestellt, und das mobile Layout wurde komplett überarbeitet."
+    },
     "board300k": {
       "title": "Über 300.000 verifizierte Stellen — Workday wird das 12. System",
       "description": "Die Jobbörse hat sich in einer Woche verdreifacht: über 300.000 aktive Stellen von über 16.000 Unternehmen, alle direkt aus dem Bewerbungssystem des jeweiligen Unternehmens. Neu in dieser Runde: Workday — das System vieler der größten Arbeitgeber der Welt — plus Tausende neu entdeckte Karriereseiten über alle zwölf Systeme."

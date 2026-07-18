@@ -54,7 +54,7 @@
     "headline": {
       "get": "Het vacaturebord met",
       "recruiterGrade": "nul spookvacatures",
-      "feedback": "— 300.000+ geverifieerde vacatures, gematcht met je cv"
+      "feedback": "— 450.000+ geverifieerde vacatures, gematcht met je cv"
     },
     "description": "Upload je cv en krijg ATS-geoptimaliseerde herschrijvingen, red-flag waarschuwingen en keyword-verbeteringen — zoals hiring managers cv’s echt beoordelen.",
     "benefits": {
@@ -145,7 +145,7 @@
     "factNoStorage": "Nooit opgeslagen, nooit gedeeld",
     "measureStrip": "Metingen, geen meningen · Elk citaat geverifieerd · Een score die zijn werk laat zien",
     "jobsCta": "Live vacaturebank — check je match vóór je solliciteert →",
-    "browseJobs": "Bekijk 300.000+ geverifieerde vacatures"
+    "browseJobs": "Bekijk 450.000+ geverifieerde vacatures"
   },
   "footer": {
     "copyright": "© {{year}} Resume Booster. Alle rechten voorbehouden.",
@@ -2837,6 +2837,18 @@
     }
   },
   "changelogEntries": {
+    "board450k": {
+      "title": "450.000+ geverifieerde vacatures — Pinpoint is het 13e systeem",
+      "description": "Weer een groeigolf: 450.000+ actieve vacatures van 20.000+ bedrijven, allemaal rechtstreeks uit het wervingssysteem van elk bedrijf. Nieuw: Pinpoint als 13e systeem, Greenhouses aparte EU-platform (honderden Europese werkgevers) en duizenden extra borden uit diepere archiefrondes. Ook aangescherpt: dit is een bedrijvenbord, en enkele overheidsborden die waren binnengeslopen zijn verwijderd."
+    },
+    "smartSearch": {
+      "title": "Zoeken dat begrijpt wat je zoekt",
+      "description": "Zoeken is slim geworden. Resultaten worden op relevantie gerangschikt — titels eerst — en de zoekfunctie kijkt ook in volledige vacatureteksten, dus nichevaardigheden duiken op ook als ze niet in de titel staan. Het zoekveld doet suggesties tijdens het typen, \"exacte zinnen\" tussen aanhalingstekens werken, één tik wisselt tussen relevantie en nieuwste, en categoriepillen met live tellingen tonen de volle breedte van het bord."
+    },
+    "boardCraft": {
+      "title": "Een sneller, vriendelijker bord — op elk apparaat",
+      "description": "Veel verbeteringen: ⌘K opent snelle acties, ? toont sneltoetsen, / springt naar zoeken. Het bedrijfsfilter is nu een typeahead, de compacte weergave toont drie keer zoveel vacatures per scherm, \"Ga verder\" haalt je bekeken vacatures terug, en elke vacature heeft een deellink. Elke vacature toont ook wanneer die voor het laatst is geverifieerd, salarissen worden consistent weergegeven, en de mobiele layout kreeg een volledige beurt."
+    },
     "board300k": {
       "title": "300.000+ geverifieerde vacatures — Workday is het 12e systeem",
       "description": "Het vacaturebord is in een week verdrievoudigd: 300.000+ actieve vacatures van 16.000+ bedrijven, allemaal rechtstreeks uit het wervingssysteem van het bedrijf zelf. Nieuw deze ronde: Workday — het systeem van veel van 's werelds grootste werkgevers — plus duizenden nieuw ontdekte vacatureborden over alle twaalf systemen."

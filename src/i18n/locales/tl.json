@@ -54,7 +54,7 @@
     "headline": {
       "get": "Ang job board na may",
       "recruiterGrade": "zero ghost jobs",
-      "feedback": "— 300,000+ verified na trabaho, tugma sa resume mo"
+      "feedback": "— 450,000+ verified na trabaho, tugma sa resume mo"
     },
     "description": "I-upload ang iyong resume at makakuha ng ATS-optimized rewrites, red-flag warnings, at keyword improvements — gaya ng tunay na pag-review ng hiring managers.",
     "benefits": {
@@ -145,7 +145,7 @@
     "factNoStorage": "Hindi kailanman iniimbak o ibinabahagi",
     "measureStrip": "Sukat, hindi opinyon · Bawat sipi beripikado · Iskor na nagpapakita ng trabaho nito",
     "jobsCta": "Live na job board — i-check ang fit mo bago mag-apply →",
-    "browseJobs": "Tingnan ang 300,000+ verified na trabaho"
+    "browseJobs": "Tingnan ang 450,000+ verified na trabaho"
   },
   "footer": {
     "copyright": "© {{year}} Resume Booster. Lahat ng karapatan ay nakalaan.",
@@ -2837,6 +2837,18 @@
     }
   },
   "changelogEntries": {
+    "board450k": {
+      "title": "450,000+ verified na trabaho — Pinpoint na ang ika-13 hiring system",
+      "description": "Isa na namang growth wave: 450,000+ aktibong trabaho mula sa 20,000+ kompanya, lahat direkta mula sa sariling hiring system ng bawat kompanya. Bago ngayong round: Pinpoint bilang ika-13 system, ang hiwalay na EU platform ng Greenhouse (daan-daang European employer), at libu-libong dagdag na board mula sa mas malalim na archive sweeps. Hinigpitan din namin ang pinto: corporate board ito, at inalis ang ilang government board na nakapasok."
+    },
+    "smartSearch": {
+      "title": "Search na nakakaintindi ng hinahanap mo",
+      "description": "Naging matalino ang search. Naka-rank ang resulta ayon sa relevance — title matches muna — at hinahanap na rin ng search ang loob ng buong job description, kaya lumalabas ang niche skills kahit wala sa title. Nagmumungkahi ang search box habang nagta-type, gumagana ang \"eksaktong parirala\" sa quotes, isang tap ang paglipat sa relevance at pinakabago, at ipinapakita ng category pills na may live na bilang ang buong lawak ng board."
+    },
+    "boardCraft": {
+      "title": "Mas mabilis at mas friendly na board — sa kahit anong device",
+      "description": "Maraming pagpapahusay: ⌘K para sa mabilisang aksyon, ? para sa mga shortcut, / papunta sa search. Type-ahead na ang company filter, ang compact view ay nagpapakita ng triple na trabaho bawat screen, ibinabalik ng \"Bumalik sa\" ang mga tiningnan mong trabaho, at may share link ang bawat posting. Ipinapakita rin ng bawat posting kung kailan ito huling na-verify, pare-pareho na ang pagpapakita ng sahod, at dumaan sa buong pagsusuri ang mobile layout."
+    },
     "board300k": {
       "title": "300,000+ verified na trabaho — Workday na ang ika-12 hiring system",
       "description": "Triple ang laki ng board sa isang linggo: 300,000+ aktibong trabaho mula sa 16,000+ kompanya, lahat direktang kinuha mula sa sariling hiring system ng kompanya. Bago ngayong round: Workday — ang system na ginagamit ng marami sa pinakamalalaking employer sa mundo — at libu-libong bagong natuklasang board sa lahat ng labindalawang system."

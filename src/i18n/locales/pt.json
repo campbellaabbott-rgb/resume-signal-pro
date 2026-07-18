@@ -54,7 +54,7 @@
     "headline": {
       "get": "O quadro de vagas com",
       "recruiterGrade": "zero vagas fantasma",
-      "feedback": "— mais de 300.000 vagas verificadas, combinadas com o seu currículo"
+      "feedback": "— mais de 450.000 vagas verificadas, combinadas com o seu currículo"
     },
     "description": "Carregue o seu currículo e receba reescritas otimizadas para ATS, alertas de red flags e melhorias de palavras‑chave — como recrutadores realmente avaliam currículos.",
     "benefits": {
@@ -145,7 +145,7 @@
     "factNoStorage": "Nunca armazenados, nunca compartilhados",
     "measureStrip": "Medições, não opiniões · Cada citação verificada · Uma pontuação que mostra seu trabalho",
     "jobsCta": "Mural de vagas ao vivo — cheque seu encaixe antes de se candidatar →",
-    "browseJobs": "Ver mais de 300.000 vagas verificadas"
+    "browseJobs": "Ver mais de 450.000 vagas verificadas"
   },
   "footer": {
     "copyright": "© {{year}} Resume Booster. Todos os direitos reservados.",
@@ -2837,6 +2837,18 @@
     }
   },
   "changelogEntries": {
+    "board450k": {
+      "title": "Mais de 450.000 vagas verificadas — Pinpoint é o 13.º sistema",
+      "description": "Mais uma onda de crescimento: mais de 450.000 vagas ativas de mais de 20.000 empresas, todas direto do sistema de contratação de cada empresa. Novidades: Pinpoint como 13.º sistema, a plataforma europeia do Greenhouse (centenas de empregadores europeus) e milhares de quadros a mais de varreduras profundas. Também apertamos a porta: este é um quadro corporativo, e alguns quadros governamentais que haviam entrado foram removidos."
+    },
+    "smartSearch": {
+      "title": "Uma busca que entende o que você procura",
+      "description": "A busca ficou inteligente. Os resultados são ordenados por relevância — títulos primeiro — e a busca também examina as descrições completas, então habilidades de nicho aparecem mesmo fora do título. O campo sugere enquanto você digita, \"frases exatas\" entre aspas funcionam, um toque alterna entre relevância e mais recentes, e as pílulas de categoria com contagens ao vivo mostram toda a amplitude do quadro."
+    },
+    "boardCraft": {
+      "title": "Um quadro mais rápido e amigável — em qualquer dispositivo",
+      "description": "Várias melhorias: ⌘K abre ações rápidas, ? mostra os atalhos, / vai para a busca. O filtro de empresa agora é preditivo, a visão compacta mostra o triplo de vagas por tela, \"Continuar de onde parou\" traz de volta as vagas vistas, e cada vaga tem link de compartilhamento. Cada vaga também mostra quando foi reverificada, salários aparecem de forma consistente, e o layout móvel passou por revisão completa."
+    },
     "board300k": {
       "title": "Mais de 300.000 vagas verificadas — Workday é o 12.º sistema",
       "description": "O quadro triplicou numa semana: mais de 300.000 vagas ativas de mais de 16.000 empresas, todas obtidas diretamente do sistema de contratação de cada empresa. Novidade desta rodada: Workday — o sistema usado por muitos dos maiores empregadores do mundo — mais milhares de quadros recém-descobertos nos doze sistemas."

@@ -54,7 +54,7 @@
     "headline": {
       "get": "El tablón de empleo con",
       "recruiterGrade": "cero ofertas fantasma",
-      "feedback": "— más de 300.000 vacantes verificadas, emparejadas con tu currículum"
+      "feedback": "— más de 450.000 vacantes verificadas, emparejadas con tu currículum"
     },
     "description": "Sube tu CV y obtén reescrituras optimizadas para ATS, alertas de red flags y mejoras de palabras clave — como lo revisan los reclutadores.",
     "benefits": {
@@ -145,7 +145,7 @@
     "factNoStorage": "Nunca almacenados, nunca compartidos",
     "measureStrip": "Mediciones, no opiniones · Cada cita verificada · Una puntuación que muestra su trabajo",
     "jobsCta": "Bolsa de empleo en vivo — comprueba tu encaje antes de postularte →",
-    "browseJobs": "Ver más de 300.000 empleos verificados"
+    "browseJobs": "Ver más de 450.000 empleos verificados"
   },
   "footer": {
     "copyright": "© {{year}} Resume Booster. Todos los derechos reservados.",
@@ -2837,6 +2837,18 @@
     }
   },
   "changelogEntries": {
+    "board450k": {
+      "title": "Más de 450.000 vacantes verificadas — Pinpoint es el 13.º sistema",
+      "description": "Otra ola de crecimiento: más de 450.000 vacantes activas de más de 20.000 empresas, todas directas del sistema de contratación de cada empresa. Novedades: Pinpoint como 13.º sistema, la plataforma europea de Greenhouse (cientos de empleadores europeos) y miles de tablones más de barridos de archivo más profundos. También cerramos la puerta: este es un tablón corporativo, y se eliminaron algunos tablones gubernamentales que se habían colado — lo público no entra aquí."
+    },
+    "smartSearch": {
+      "title": "Una búsqueda que entiende lo que buscas",
+      "description": "La búsqueda ahora es inteligente. Los resultados se ordenan por relevancia — coincidencias de título primero — y la búsqueda también revisa las descripciones completas, así que las habilidades de nicho aparecen aunque no estén en el título. El buscador sugiere mientras escribes, las \"frases exactas\" entre comillas funcionan, un toque alterna entre relevancia y más recientes, y las píldoras de categoría con conteos en vivo muestran toda la amplitud del tablón."
+    },
+    "boardCraft": {
+      "title": "Un tablón más rápido y amable — en cualquier dispositivo",
+      "description": "Muchas mejoras de calidad: pulsa ⌘K para acciones rápidas, ? muestra los atajos de teclado y / va al buscador. El filtro de empresa es ahora predictivo, la vista compacta muestra el triple de vacantes por pantalla, \"Continuar donde ibas\" recupera tus vacantes vistas, y cada vacante tiene enlace para compartir. Además cada vacante muestra cuándo se reverificó por última vez, el salario se muestra de forma consistente, y el diseño móvil recibió una revisión completa."
+    },
     "board300k": {
       "title": "Más de 300.000 vacantes verificadas — Workday se une como el 12.º sistema",
       "description": "El tablón se triplicó en una semana: más de 300.000 vacantes activas de más de 16.000 empresas, todas obtenidas directamente del sistema de contratación de cada empresa. Novedad de esta ronda: Workday — el sistema que usan muchos de los mayores empleadores del mundo — más miles de tablones nuevos en los doce sistemas."

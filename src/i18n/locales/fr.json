@@ -54,7 +54,7 @@
     "headline": {
       "get": "Le site d'emploi avec",
       "recruiterGrade": "zéro offre fantôme",
-      "feedback": "— plus de 300 000 offres vérifiées, adaptées à votre CV"
+      "feedback": "— plus de 450 000 offres vérifiées, adaptées à votre CV"
     },
     "description": "Téléchargez votre CV et obtenez des réécritures optimisées ATS, des alertes red flags et des améliorations de mots-clés — comme les recruteurs évaluent réellement les CV.",
     "benefits": {
@@ -145,7 +145,7 @@
     "factNoStorage": "Jamais stockés, jamais partagés",
     "measureStrip": "Des mesures, pas des opinions · Chaque citation vérifiée · Un score qui montre son travail",
     "jobsCta": "Offres en direct — vérifiez votre adéquation avant de candidater →",
-    "browseJobs": "Parcourir 300 000+ offres vérifiées"
+    "browseJobs": "Parcourir 450 000+ offres vérifiées"
   },
   "footer": {
     "copyright": "© {{year}} Resume Booster. Tous droits réservés.",
@@ -2837,6 +2837,18 @@
     }
   },
   "changelogEntries": {
+    "board450k": {
+      "title": "Plus de 450 000 offres vérifiées — Pinpoint devient le 13e système",
+      "description": "Nouvelle vague de croissance : plus de 450 000 offres actives de plus de 20 000 entreprises, toutes issues du système de recrutement de chaque entreprise. Nouveautés : Pinpoint comme 13e système, la plateforme européenne de Greenhouse (des centaines d'employeurs européens) et des milliers de tableaux supplémentaires. Nous avons aussi resserré l'entrée : c'est un tableau d'entreprises, et quelques tableaux gouvernementaux qui s'étaient glissés ont été retirés."
+    },
+    "smartSearch": {
+      "title": "Une recherche qui comprend ce que vous cherchez",
+      "description": "La recherche est devenue intelligente. Les résultats sont classés par pertinence — titres d'abord — et la recherche parcourt aussi les descriptions complètes, donc les compétences de niche remontent même hors du titre. Le champ suggère pendant la frappe, les \"phrases exactes\" entre guillemets fonctionnent, un geste bascule entre pertinence et plus récent, et les pastilles de catégories avec compteurs en direct montrent toute l'étendue du tableau."
+    },
+    "boardCraft": {
+      "title": "Un tableau plus rapide et plus agréable — sur tous les appareils",
+      "description": "Plein d'améliorations : ⌘K ouvre les actions rapides, ? affiche les raccourcis, / va à la recherche. Le filtre entreprise est en saisie prédictive, la vue compacte affiche trois fois plus d'offres, \"Reprendre\" retrouve vos offres consultées, et chaque offre a un lien de partage. Chaque offre indique aussi sa dernière revérification, les salaires s'affichent de façon cohérente, et la mise en page mobile a été entièrement revue."
+    },
     "board300k": {
       "title": "Plus de 300 000 offres vérifiées — Workday devient le 12e système",
       "description": "Le tableau a triplé en une semaine : plus de 300 000 offres actives de plus de 16 000 entreprises, toutes récupérées directement depuis le système de recrutement de chaque entreprise. Nouveauté : Workday — le système utilisé par nombre des plus grands employeurs mondiaux — plus des milliers de nouveaux tableaux sur les douze systèmes."

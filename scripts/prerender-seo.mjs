@@ -574,7 +574,7 @@ export { COUNTRY_SLUGS, CV_LOCALES, EN_TEMPLATE, fill, hreflangCluster } from ".
   write({
     isFallback: true,
     path: "/",
-    title: "Resume Booster — Live Job Board: 300,000+ Verified Openings, Zero Ghost Jobs",
+    title: "Resume Booster — Live Job Board: 450,000+ Verified Openings, Zero Ghost Jobs",
     description: "Live openings pulled straight from companies' own career pages — then ranked against your resume, so you apply where you'll actually win. Free ATS resume scan included: measured, not guessed.",
     jsonLd: [
       {
