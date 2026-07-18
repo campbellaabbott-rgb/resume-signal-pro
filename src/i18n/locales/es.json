@@ -4173,6 +4173,11 @@
     "presetRemoteEntry": "Remoto · Inicial · EE. UU.",
     "presetEngWeek": "Ingeniería · Esta semana",
     "presetSalary": "$100k+ · Esta semana",
-    "presetHealth": "Salud · EE. UU."
+    "presetHealth": "Salud · EE. UU.",
+    "jumpBackIn": "Continuar donde ibas:",
+    "share": "Compartir",
+    "shareTip": "Copiar un enlace directo a esta vacante",
+    "shareCopied": "Enlace copiado — cualquiera puede abrir esta vacante",
+    "shareFailed": "No se pudo copiar el enlace"
   }
 }

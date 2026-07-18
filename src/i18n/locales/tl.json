@@ -4173,6 +4173,11 @@
     "presetRemoteEntry": "Remote · Entry-level · US",
     "presetEngWeek": "Engineering · Ngayong linggo",
     "presetSalary": "$100k+ · Ngayong linggo",
-    "presetHealth": "Healthcare · US"
+    "presetHealth": "Healthcare · US",
+    "jumpBackIn": "Bumalik sa:",
+    "share": "I-share",
+    "shareTip": "Kopyahin ang direktang link sa posting na ito",
+    "shareCopied": "Nakopya ang link — kahit sino ay makakabukas ng posting na ito",
+    "shareFailed": "Hindi makopya ang link"
   }
 }

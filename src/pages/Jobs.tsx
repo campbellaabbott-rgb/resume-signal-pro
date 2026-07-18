@@ -11,7 +11,7 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import { parseSalaryStructured } from "../../supabase/functions/_shared/salary-extract";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Activity, AlertTriangle, Bookmark, BookmarkCheck, Briefcase, ChevronDown, Clock, Copy, ExternalLink, FileText, Flag, Loader2, MapPin, MessageSquare, RefreshCw, Search, ShieldCheck, SlidersHorizontal, Sparkles, Target } from "lucide-react";
+import { Activity, AlertTriangle, Bookmark, BookmarkCheck, Briefcase, ChevronDown, Clock, Copy, ExternalLink, FileText, Flag, Link2, Loader2, MapPin, MessageSquare, RefreshCw, Search, ShieldCheck, SlidersHorizontal, Sparkles, Target } from "lucide-react";
 import { SEO } from "@/components/seo/SEO";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -25,6 +25,7 @@ import { postTrackEvent } from "@/lib/track-transport";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { searchName, searchToQuery } from "@/lib/job-search-params";
+import { displaySalary } from "@/lib/salary-display";
 import { isBoardCategory } from "@/lib/job-board-categories";
 
 // user_applications gained board columns after the last typegen — untyped
@@ -213,6 +214,10 @@ export default function Jobs() {
   });
   const [freshness, setFreshness] = useState<"" | "day" | "week">("");
   const [companyQuery, setCompanyQuery] = useState<string | null>(null);
+  // E3: last few viewed jobs, restored across visits (localStorage snapshot).
+  const [recentJobs, setRecentJobs] = useState<Array<{ id: string; title: string; company: string }>>(() => {
+    try { return JSON.parse(localStorage.getItem("rb_recent_jobs") ?? "[]"); } catch { return []; }
+  });
   // U2: honest "posted today" headline count (company-stated dates only).
   const [newToday, setNewToday] = useState<number | null>(null);
   useEffect(() => {
@@ -650,6 +655,15 @@ export default function Jobs() {
       try { localStorage.setItem("rb_viewed_jobs", JSON.stringify([...next].slice(-1000))); } catch { /* session-only */ }
       return next;
     });
+    // Jump-back-in strip: keep a tiny snapshot of the last few viewed jobs.
+    try {
+      const prevRecent: Array<{ id: string; title: string; company: string }> =
+        JSON.parse(localStorage.getItem("rb_recent_jobs") ?? "[]");
+      const nextRecent = [{ id: job.id, title: job.title, company: job.company },
+        ...prevRecent.filter((r) => r.id !== job.id)].slice(0, 4);
+      localStorage.setItem("rb_recent_jobs", JSON.stringify(nextRecent));
+      setRecentJobs(nextRecent);
+    } catch { /* cosmetic */ }
     if (urlMode !== "none") {
       const p = new URLSearchParams(window.location.search);
       p.set("job", job.id);
@@ -674,6 +688,15 @@ export default function Jobs() {
     setDetailLoading(false);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  const openRecent = useCallback(async (id: string) => {
+    const inList = jobs.find((j) => j.id === id);
+    if (inList) { void openDetail(inList); return; }
+    try {
+      const { data: res } = await invokeBoard<{ job?: BoardJob | null }>({ action: "detail", id });
+      if (res?.job) void openDetail(res.job);
+    } catch { /* posting may have closed — honest no-op */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jobs]);
   const closeDetail = useCallback((viaHistory = false) => {
     setDetailJob(null);
     if (!viaHistory && new URLSearchParams(window.location.search).has("job")) {
@@ -1461,6 +1484,21 @@ export default function Jobs() {
                     {t("jobsPage.rechecked", "re-checked {{ago}}", { ago: agoLabel(detailJob.lastSeen, t) })}
                   </span>
                 )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const url = `${window.location.origin}/jobs?job=${encodeURIComponent(detailJob.id)}`;
+                    navigator.clipboard?.writeText(url).then(
+                      () => toast({ title: t("jobsPage.shareCopied", "Link copied — anyone can open this posting") }),
+                      () => toast({ title: t("jobsPage.shareFailed", "Couldn't copy the link") }),
+                    );
+                  }}
+                  className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors"
+                  title={t("jobsPage.shareTip", "Copy a direct link to this posting")}
+                >
+                  <Link2 className="w-3.5 h-3.5" />
+                  {t("jobsPage.share", "Share")}
+                </button>
                 {detailJob.remote && <Badge variant="secondary" className="text-[10px]">{t("jobsPage.remoteBadge", "Remote")}</Badge>}
                 {detailJob.experienceBand && detailJob.experienceBand !== "unspecified" && (
                   <span className="px-2 py-0.5 rounded-full border border-border text-muted-foreground">
@@ -1489,7 +1527,7 @@ export default function Jobs() {
               {detailJob.salary && (
                 <div>
                   <p className="text-sm font-semibold text-foreground">
-                    {detailJob.salary}
+                    <span title={detailJob.salary}>{displaySalary(detailJob.salary)}</span>
                     <span className="text-[11px] font-normal text-muted-foreground"> · {t("jobsPage.salaryVerbatim", "as stated in the posting")}</span>
                   </p>
                   {detailSalaryContext && (
@@ -1982,6 +2020,17 @@ export default function Jobs() {
                 {t("jobsPage.freshHint", "Counts company-stated posting dates only")}
               </span>
             )}
+            {recentJobs.length > 0 && !detailJob && (
+              <span className="inline-flex flex-wrap items-center gap-2 basis-full mt-1">
+                <span className="text-[11px] text-muted-foreground">{t("jobsPage.jumpBackIn", "Jump back in:")}</span>
+                {recentJobs.slice(0, 3).map((r) => (
+                  <button key={r.id} type="button" onClick={() => void openRecent(r.id)}
+                    className="text-xs px-3 py-1.5 rounded-full border border-border text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors max-w-[220px] truncate">
+                    {r.title} · {r.company}
+                  </button>
+                ))}
+              </span>
+            )}
             {/* U5: guided starting points — one-tap honest filter combos for the
                 blank-page moment. Hidden once any filter is active. */}
             {!q && !location && !category && !experience && !company && !remoteOnly && !freshness && !salaryFloor && !country && (
@@ -2274,7 +2323,7 @@ export default function Jobs() {
                             {job.department ? ` · ${job.department}` : ""}
                           </p>
                           {job.salary && (
-                            <p className="text-xs text-success font-medium mt-0.5">{job.salary}</p>
+                            <p className="text-xs text-success font-medium mt-0.5" title={job.salary}>{displaySalary(job.salary)}</p>
                           )}
                           {/* Experience level: the cited minimum years when the posting
                               states one (the precise fact), else the band's range. */}

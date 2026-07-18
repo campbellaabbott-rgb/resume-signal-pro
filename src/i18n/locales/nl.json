@@ -4173,6 +4173,11 @@
     "presetRemoteEntry": "Remote · Starter · VS",
     "presetEngWeek": "Engineering · Deze week",
     "presetSalary": "$100k+ · Deze week",
-    "presetHealth": "Zorg · VS"
+    "presetHealth": "Zorg · VS",
+    "jumpBackIn": "Ga verder:",
+    "share": "Delen",
+    "shareTip": "Directe link naar deze vacature kopiëren",
+    "shareCopied": "Link gekopieerd — iedereen kan deze vacature openen",
+    "shareFailed": "Link kopiëren mislukt"
   }
 }

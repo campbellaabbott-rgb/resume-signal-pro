@@ -4173,6 +4173,11 @@
     "presetRemoteEntry": "रिमोट · एंट्री-लेवल · US",
     "presetEngWeek": "इंजीनियरिंग · इस हफ्ते",
     "presetSalary": "$100k+ · इस हफ्ते",
-    "presetHealth": "हेल्थकेयर · US"
+    "presetHealth": "हेल्थकेयर · US",
+    "jumpBackIn": "वहीं से जारी रखें:",
+    "share": "शेयर करें",
+    "shareTip": "इस पोस्टिंग का सीधा लिंक कॉपी करें",
+    "shareCopied": "लिंक कॉपी हुआ — कोई भी यह पोस्टिंग खोल सकता है",
+    "shareFailed": "लिंक कॉपी नहीं हो सका"
   }
 }

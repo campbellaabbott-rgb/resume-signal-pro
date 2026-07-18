@@ -4173,6 +4173,11 @@
     "presetRemoteEntry": "Télétravail · Débutant · É.-U.",
     "presetEngWeek": "Ingénierie · Cette semaine",
     "presetSalary": "100k$+ · Cette semaine",
-    "presetHealth": "Santé · É.-U."
+    "presetHealth": "Santé · É.-U.",
+    "jumpBackIn": "Reprendre :",
+    "share": "Partager",
+    "shareTip": "Copier un lien direct vers cette offre",
+    "shareCopied": "Lien copié — tout le monde peut ouvrir cette offre",
+    "shareFailed": "Impossible de copier le lien"
   }
 }

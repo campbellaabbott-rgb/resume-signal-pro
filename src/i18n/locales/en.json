@@ -4173,6 +4173,11 @@
     "presetRemoteEntry": "Remote · Entry-level · US",
     "presetEngWeek": "Engineering · This week",
     "presetSalary": "$100k+ · This week",
-    "presetHealth": "Healthcare · US"
+    "presetHealth": "Healthcare · US",
+    "jumpBackIn": "Jump back in:",
+    "share": "Share",
+    "shareTip": "Copy a direct link to this posting",
+    "shareCopied": "Link copied — anyone can open this posting",
+    "shareFailed": "Couldn't copy the link"
   }
 }
