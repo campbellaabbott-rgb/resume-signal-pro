@@ -470,8 +470,14 @@ const CHAIN_CAP = Math.ceil(HOT_SIZE / HOT_SLICE) + COLD_SLICES_PER_PASS + 4; //
 // vendor pipeline (Workday #12 + ongoing census yields) needs the headroom;
 // eviction was about to bind at 300k and cap net growth. Next stop (1M) only
 // after a bigger DB plan — the storage check will flag the ceiling first.
-const CORPUS_CEILING = 500_000; // arm eviction above this
-const CORPUS_TARGET = 480_000;  // evict down to this
+// 750k step (2026-07-17): the snapshot 7-14 census wave (5-7k verified new
+// boards incl. two Workday batches) projects the corpus into the 420-500k+
+// range — at 500k the governor would evict fresh inventory on arrival. Row
+// math: ~5-6KB all-in → 750k ≈ 4.1GB ≈ 51% of the 8GB plan; the storage
+// heartbeat (75% alarm) passes at 307k and flags the true ceiling before it
+// binds. Next stop (1M) only after a bigger DB plan.
+const CORPUS_CEILING = 750_000; // arm eviction above this
+const CORPUS_TARGET = 720_000;  // evict down to this
 
 // Freshness cap: the board shows only roles posted within this window. Dated
 // postings past it are dropped at ingestion (never stored) and swept from the
