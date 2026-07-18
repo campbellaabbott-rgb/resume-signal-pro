@@ -61,7 +61,7 @@ const json = (body: unknown, status = 200) =>
 // counts. catalogSize (JOB_SOURCES.length) is the automatic companion signal: it
 // moves with every catalog change with no discipline required. Sortable string so
 // a future check can tell "prod is behind" from "prod is ahead".
-const BUILD_VERSION = "2026-07-18.1";
+const BUILD_VERSION = "2026-07-18.2";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -2519,7 +2519,7 @@ async function serveList(
   // recency as tiebreak — composed with every active filter. Any error
   // (migration lag, malformed query) falls back to the recency path below.
   const qText = String(body.q ?? "").trim().slice(0, 200);
-  if (qText && body.sort !== "salary" && !countOnly) {
+  if (qText && body.sort !== "salary" && body.sort !== "newest" && !countOnly) {
     try {
       const expArr = String(body.experience ?? "").split(",").map((x) => x.trim()).filter(isExperienceBand);
       const compArr = Array.isArray(body.companies)

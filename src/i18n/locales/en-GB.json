@@ -4200,6 +4200,20 @@
     "scClose": "Close the posting panel",
     "scSearch": "Focus the search box",
     "scPalette": "Open quick actions",
-    "scHelp": "Show or hide this help"
+    "scHelp": "Show or hide this help",
+    "sortedRelevance": "Sorted by relevance — title matches first",
+    "sortedNewest": "Sorted by newest first",
+    "switchRelevance": "switch to relevance",
+    "switchNewest": "switch to newest",
+    "phraseTip": "tip: \"quotes\" match exact phrases",
+    "phraseTipLong": "Search also looks inside job descriptions. Wrap words in quotes to match an exact phrase.",
+    "sugRecent": "recent",
+    "sugCompany": "company",
+    "sugCategory": "category",
+    "sugRole": "role",
+    "densityTip": "Switch list density",
+    "densityCompact": "Compact view",
+    "densityComfortable": "Comfortable view",
+    "backToTop": "Back to top"
   }
 }

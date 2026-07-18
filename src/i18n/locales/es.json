@@ -4200,6 +4200,20 @@
     "scClose": "Cerrar el panel",
     "scSearch": "Enfocar el buscador",
     "scPalette": "Abrir acciones rápidas",
-    "scHelp": "Mostrar u ocultar esta ayuda"
+    "scHelp": "Mostrar u ocultar esta ayuda",
+    "sortedRelevance": "Ordenado por relevancia — coincidencias de título primero",
+    "sortedNewest": "Ordenado por más recientes",
+    "switchRelevance": "cambiar a relevancia",
+    "switchNewest": "cambiar a más recientes",
+    "phraseTip": "consejo: \"comillas\" para frases exactas",
+    "phraseTipLong": "La búsqueda también revisa las descripciones. Usa comillas para frases exactas.",
+    "sugRecent": "reciente",
+    "sugCompany": "empresa",
+    "sugCategory": "categoría",
+    "sugRole": "puesto",
+    "densityTip": "Cambiar densidad de la lista",
+    "densityCompact": "Vista compacta",
+    "densityComfortable": "Vista cómoda",
+    "backToTop": "Volver arriba"
   }
 }

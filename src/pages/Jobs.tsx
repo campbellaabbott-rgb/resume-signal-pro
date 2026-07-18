@@ -119,6 +119,30 @@ function countryLabel(code: string): string {
   }
 }
 
+// D1: one deterministic accent per category — thin card border, pill dot,
+// panel dot. Hues chosen for dark-bg legibility; "other" stays neutral.
+const CATEGORY_ACCENT: Record<string, string> = {
+  engineering: "hsl(217 91% 60%)",
+  data_ai: "hsl(262 83% 66%)",
+  design: "hsl(330 81% 60%)",
+  product: "hsl(43 96% 56%)",
+  marketing: "hsl(25 95% 53%)",
+  sales: "hsl(142 71% 45%)",
+  customer: "hsl(173 80% 40%)",
+  finance: "hsl(160 84% 39%)",
+  legal: "hsl(215 20% 65%)",
+  people_hr: "hsl(292 84% 61%)",
+  operations: "hsl(199 89% 48%)",
+  healthcare: "hsl(0 84% 60%)",
+  science: "hsl(188 86% 53%)",
+  education: "hsl(48 96% 53%)",
+  hospitality_retail: "hsl(31 97% 72%)",
+  security: "hsl(0 72% 51%)",
+  admin: "hsl(240 5% 65%)",
+  other: "hsl(240 5% 45%)",
+};
+const accentFor = (c?: string | null) => CATEGORY_ACCENT[c ?? "other"] ?? CATEGORY_ACCENT.other;
+
 function daysAgo(iso: string | null): number | null {
   if (!iso) return null;
   const d = Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
@@ -219,6 +243,12 @@ export default function Jobs() {
   // ⌘K palette + "?" shortcuts overlay + "/" search focus.
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [showTop, setShowTop] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setShowTop(window.scrollY > 1400);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
   useGlobalPaletteKeys({
     onPalette: () => setPaletteOpen((v) => !v),
     onHelp: () => setHelpOpen((v) => !v),
@@ -241,6 +271,9 @@ export default function Jobs() {
   // Sort: newest (default) or highest STATED salary (annualized floor, server-
   // side; unsalaried postings sort last). Fit ordering is owned by "For you".
   const [sortMode, setSortMode] = useState<"newest" | "salary">("newest");
+  // S3: search results default to relevance ranking; this flips them to
+  // strict newest-first (server bypasses the ranked path).
+  const [searchNewestFirst, setSearchNewestFirst] = useState(false);
   const [fitRanking, setFitRanking] = useState(false);
   const [fits, setFits] = useState<Record<string, number | null>>({});
   // Top missing keywords per posting id — the "add these to compete" signal
@@ -494,7 +527,8 @@ export default function Jobs() {
           experience: experience || undefined,
           companies: company ? [company] : undefined,
           salaryFloor: salaryFloor || undefined,
-          sort: sortMode === "salary" ? "salary" : undefined,
+          // Searches default to relevance ranking; the toggle bypasses it.
+          sort: sortMode === "salary" ? "salary" : q && searchNewestFirst ? "newest" : undefined,
           // Company-stated dates only (maxAgeDays), never our discovery time —
           // "Today" must mean the company posted it today.
           maxAgeDays: freshness ? (freshness === "day" ? 1 : 7) : undefined,
@@ -530,7 +564,7 @@ export default function Jobs() {
         }
       }
     },
-    [q, location, remoteOnly, company, category, experience, country, salaryFloor, sortMode, freshness],
+    [q, location, remoteOnly, company, category, experience, country, salaryFloor, sortMode, freshness, searchNewestFirst],
   );
 
   // Keep the URL shareable — filters in, defaults out. A category lander
@@ -1377,6 +1411,60 @@ export default function Jobs() {
     return f;
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [q, location, category, experience, company, country, salaryFloor, remoteOnly, freshness, companies, t]);
+  // S1: search suggestions — recent searches (local), matching companies
+  // (served facet), matching category pages, and a curated common-role list.
+  // Everything suggested is real and clickable; nothing invented.
+  // D2: list density — compact triples postings per screen for power scanning.
+  const [density, setDensity] = useState<"comfortable" | "compact">(() =>
+    (localStorage.getItem("rb_density") === "compact" ? "compact" : "comfortable"));
+  const toggleDensity = () => setDensity((d) => {
+    const next = d === "comfortable" ? "compact" : "comfortable";
+    try { localStorage.setItem("rb_density", next); } catch { /* session-only */ }
+    return next;
+  });
+  const [suggestOpen, setSuggestOpen] = useState(false);
+  const [suggestIdx, setSuggestIdx] = useState(-1);
+  const [recentSearches, setRecentSearches] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem("rb_recent_searches") ?? "[]"); } catch { return []; }
+  });
+  useEffect(() => {
+    const term = q.trim();
+    if (term.length < 3) return;
+    const id = setTimeout(() => {
+      setRecentSearches((prev) => {
+        const next = [term, ...prev.filter((x) => x.toLowerCase() !== term.toLowerCase())].slice(0, 6);
+        try { localStorage.setItem("rb_recent_searches", JSON.stringify(next)); } catch { /* cosmetic */ }
+        return next;
+      });
+    }, 2500); // only remember searches the user actually dwelt on
+    return () => clearTimeout(id);
+  }, [q]);
+  const COMMON_ROLES = ["software engineer", "product manager", "data analyst", "registered nurse", "project manager", "account executive", "customer success", "marketing manager", "designer", "accountant", "devops", "recruiter"];
+  const suggestions = useMemo(() => {
+    const term = q.trim().toLowerCase();
+    const recents = (term ? recentSearches.filter((r) => r.toLowerCase().includes(term) && r.toLowerCase() !== term) : recentSearches).slice(0, 4);
+    const comps = term.length >= 2 ? companies.filter((c) => c.name.toLowerCase().includes(term)).slice(0, 4) : [];
+    const cats = term.length >= 2
+      ? CATEGORY_IDS.filter((c) => t(`jobsPage.categories.${c}`, c).toLowerCase().includes(term)).slice(0, 3)
+      : [];
+    const roles = term.length >= 2 ? COMMON_ROLES.filter((r) => r.includes(term) && r !== term).slice(0, 4) : COMMON_ROLES.slice(0, 6);
+    return { recents, comps, cats, roles, count: recents.length + comps.length + cats.length + roles.length };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [q, recentSearches, companies, t]);
+  const flatSuggestions = useMemo(() => [
+    ...suggestions.recents.map((v) => ({ kind: "recent" as const, value: v, label: v })),
+    ...suggestions.roles.map((v) => ({ kind: "role" as const, value: v, label: v })),
+    ...suggestions.comps.map((c) => ({ kind: "company" as const, value: c.token, label: c.name })),
+    ...suggestions.cats.map((c) => ({ kind: "category" as const, value: c, label: t(`jobsPage.categories.${c}`, c) })),
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  ], [suggestions, t]);
+  const applySuggestion = useCallback((sug: { kind: string; value: string }) => {
+    if (sug.kind === "company") { setCompany(sug.value); setQ(""); }
+    else if (sug.kind === "category") { setCategory(sug.value); setQ(""); }
+    else setQ(sug.value);
+    setSuggestOpen(false); setSuggestIdx(-1);
+  }, []);
+
   const paletteActions: PaletteAction[] = useMemo(() => [
     { id: "search", label: t("jobsPage.paFocusSearch", "Search postings"), hint: "/", run: () => (document.getElementById("board-search") as HTMLInputElement | null)?.focus() },
     { id: "remote", label: remoteOnly ? t("jobsPage.paRemoteOff", "Show all locations") : t("jobsPage.paRemoteOn", "Remote only"), run: () => setRemoteOnly((v) => !v) },
@@ -1575,7 +1663,7 @@ export default function Jobs() {
                   )}
                 </div>
               )}
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2 sticky top-0 z-10 bg-card/95 backdrop-blur-sm py-2 -mt-2">
                 <Button size="sm" className="gap-1.5" asChild>
                   <a
                     href={detailJob.applyUrl}
@@ -1652,7 +1740,7 @@ export default function Jobs() {
                       <mark className="bg-warning/20 text-warning rounded px-1">{t("jobsPage.hlMissing", "missing from it")}</mark>
                     </p>
                   )}
-                  <div className="text-sm text-muted-foreground whitespace-pre-line leading-relaxed">{highlightedDesc}</div>
+                  <div className="text-sm text-muted-foreground whitespace-pre-line leading-7 max-w-[72ch]">{highlightedDesc}</div>
                 </div>
               ) : (
                 <p className="text-sm text-muted-foreground italic">
@@ -1850,11 +1938,47 @@ export default function Jobs() {
                 <input
                   type="text"
                   value={q}
-                  onChange={(e) => setQ(e.target.value)}
+                  onChange={(e) => { setQ(e.target.value); setSuggestOpen(true); setSuggestIdx(-1); }}
+                  onFocus={() => setSuggestOpen(true)}
+                  onBlur={() => setTimeout(() => { setSuggestOpen(false); setSuggestIdx(-1); }, 150)}
+                  onKeyDown={(e) => {
+                    if (!suggestOpen || flatSuggestions.length === 0) return;
+                    if (e.key === "ArrowDown") { e.preventDefault(); setSuggestIdx((i) => Math.min(i + 1, flatSuggestions.length - 1)); }
+                    else if (e.key === "ArrowUp") { e.preventDefault(); setSuggestIdx((i) => Math.max(i - 1, -1)); }
+                    else if (e.key === "Enter" && suggestIdx >= 0 && flatSuggestions[suggestIdx]) { e.preventDefault(); applySuggestion(flatSuggestions[suggestIdx]); }
+                    else if (e.key === "Escape") { setSuggestOpen(false); setSuggestIdx(-1); }
+                  }}
+                  role="combobox"
+                  aria-expanded={suggestOpen && flatSuggestions.length > 0}
+                  aria-controls="search-suggest-list"
+                  aria-activedescendant={suggestIdx >= 0 ? `search-sug-${suggestIdx}` : undefined}
                   id="board-search"
                   placeholder={t("jobsPage.searchPlaceholder", "Title or keyword — e.g. product designer")}
                   className="w-full pl-9 pr-3 py-2 rounded-lg bg-background border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
                 />
+                {suggestOpen && flatSuggestions.length > 0 && (
+                  <div id="search-suggest-list" role="listbox" className="absolute z-30 mt-1 left-0 right-0 max-h-80 overflow-auto rounded-lg border border-border bg-background shadow-lg text-sm py-1">
+                    {flatSuggestions.map((sug, si) => (
+                      <button
+                        key={`${sug.kind}:${sug.value}`}
+                        id={`search-sug-${si}`}
+                        role="option"
+                        aria-selected={si === suggestIdx}
+                        type="button"
+                        className={`w-full flex items-center justify-between text-left px-3 py-2 ${si === suggestIdx ? "bg-muted" : "hover:bg-muted/60"}`}
+                        onMouseDown={() => applySuggestion(sug)}
+                      >
+                        <span className="truncate">{sug.label}</span>
+                        <span className="text-[10px] text-muted-foreground ml-3 shrink-0">
+                          {sug.kind === "recent" ? t("jobsPage.sugRecent", "recent")
+                            : sug.kind === "company" ? t("jobsPage.sugCompany", "company")
+                            : sug.kind === "category" ? t("jobsPage.sugCategory", "category")
+                            : t("jobsPage.sugRole", "role")}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
               <div className="relative hidden md:block w-[180px]">
                 <MapPin className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -2096,6 +2220,29 @@ export default function Jobs() {
                 </button>
               </span>
             )}
+            {/* S2: the board's breadth, visible — live per-category counts as
+                one-tap pills (facet data the dropdown was hiding). */}
+            <div className="basis-full overflow-x-auto pb-1 -mb-1">
+              <div className="flex items-center gap-2 w-max">
+                {CATEGORY_IDS
+                  .filter((c) => (data?.categories?.[c] ?? 0) > 0)
+                  .sort((a, b) => (data?.categories?.[b] ?? 0) - (data?.categories?.[a] ?? 0))
+                  .map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => setCategory(category === c ? "" : c)}
+                      className={`inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border whitespace-nowrap transition-colors ${
+                        category === c ? "border-primary bg-primary/10 text-primary font-semibold" : "border-border text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      <span aria-hidden="true" className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: accentFor(c) }} />
+                      {t(`jobsPage.categories.${c}`, c)}
+                      <span className="opacity-70">{(data?.categories?.[c] ?? 0).toLocaleString()}</span>
+                    </button>
+                  ))}
+              </div>
+            </div>
             {/* For you | All jobs — the board's differentiator as a first-class
                 mode, not a pill to discover. "For you" without a resume routes
                 to the free scan (toggleFitRanking owns that flow). */}
@@ -2130,6 +2277,14 @@ export default function Jobs() {
             >
               <Activity className="w-3 h-3" />
               {t("jobsPage.activelyHiringFilter", "Actively hiring")}
+            </button>
+            <button
+              type="button"
+              onClick={toggleDensity}
+              className="px-3 py-2 rounded-lg border border-border text-xs text-muted-foreground hover:text-foreground transition-colors"
+              title={t("jobsPage.densityTip", "Switch list density")}
+            >
+              {density === "compact" ? t("jobsPage.densityComfortable", "Comfortable view") : t("jobsPage.densityCompact", "Compact view")}
             </button>
             <select
               value={sortMode}
@@ -2291,6 +2446,23 @@ export default function Jobs() {
                   </span>
                 )}
               </p>
+              {q.trim() && sortMode !== "salary" && (
+                <p className="text-[11px] text-muted-foreground mb-2 -mt-1">
+                  {searchNewestFirst
+                    ? t("jobsPage.sortedNewest", "Sorted by newest first")
+                    : t("jobsPage.sortedRelevance", "Sorted by relevance — title matches first")}
+                  {" · "}
+                  <button type="button" className="text-primary hover:underline" onClick={() => setSearchNewestFirst((v) => !v)}>
+                    {searchNewestFirst
+                      ? t("jobsPage.switchRelevance", "switch to relevance")
+                      : t("jobsPage.switchNewest", "switch to newest")}
+                  </button>
+                  {" · "}
+                  <span title={t("jobsPage.phraseTipLong", "Search also looks inside job descriptions. Wrap words in quotes to match an exact phrase.")}>
+                    {t("jobsPage.phraseTip", 'tip: "quotes" match exact phrases')}
+                  </span>
+                </p>
+              )}
               {category && benchmarks?.[category] && (
                 <p
                   className="text-xs text-muted-foreground mb-3 -mt-2"
@@ -2330,7 +2502,8 @@ export default function Jobs() {
                     )}
                     <li
                       data-job-id={job.id}
-                      className={`rounded-2xl border bg-card p-4 cursor-pointer transition-all duration-150 hover:-translate-y-px hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 ${
+                      style={{ borderLeft: `3px solid ${accentFor(job.category)}` }}
+                      className={`rounded-2xl border bg-card ${density === "compact" ? "px-4 py-2" : "p-4"} cursor-pointer transition-all duration-150 hover:-translate-y-px hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 ${
                         detailJob?.id === job.id ? "border-primary/60 bg-primary/5" : "border-border hover:border-primary/40"
                       }`}
                       tabIndex={0}
@@ -2481,7 +2654,7 @@ export default function Jobs() {
                           )}
                         </div>
                       </div>
-                      <div className="flex flex-wrap items-center gap-2 mt-3">
+                      <div className={`flex flex-wrap items-center gap-2 mt-3 ${density === "compact" ? "hidden" : ""}`}>
                         <Button size="sm" variant="outline" className="gap-1.5" disabled={fitFetching === job.id} onClick={() => checkFit(job)}>
                           {fitFetching === job.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Target className="w-3.5 h-3.5" />}
                           {t("jobsPage.checkFit", "Check my fit — free scan")}
@@ -2820,6 +2993,16 @@ export default function Jobs() {
         </DialogContent>
       </Dialog>
 
+      {showTop && (
+        <button
+          type="button"
+          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          className="fixed bottom-20 lg:bottom-6 right-4 z-40 rounded-full border border-border bg-card/95 backdrop-blur px-3 py-2 text-xs shadow-lg hover:border-primary/50 transition-colors"
+          aria-label={t("jobsPage.backToTop", "Back to top")}
+        >
+          ↑ {t("jobsPage.backToTop", "Back to top")}
+        </button>
+      )}
       <JobsCommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} actions={paletteActions} />
       <ShortcutsOverlay open={helpOpen} onClose={() => setHelpOpen(false)} />
       <Footer />

@@ -4200,6 +4200,20 @@
     "scClose": "Isara ang panel",
     "scSearch": "I-focus ang search box",
     "scPalette": "Buksan ang mabilisang aksyon",
-    "scHelp": "Ipakita o itago ang tulong na ito"
+    "scHelp": "Ipakita o itago ang tulong na ito",
+    "sortedRelevance": "Ayon sa relevance — title matches muna",
+    "sortedNewest": "Ayon sa pinakabago",
+    "switchRelevance": "lumipat sa relevance",
+    "switchNewest": "lumipat sa pinakabago",
+    "phraseTip": "tip: \"quotes\" para sa eksaktong parirala",
+    "phraseTipLong": "Hinahanap din ng search ang loob ng job description. Gumamit ng quotes para sa eksaktong parirala.",
+    "sugRecent": "kamakailan",
+    "sugCompany": "kompanya",
+    "sugCategory": "kategorya",
+    "sugRole": "trabaho",
+    "densityTip": "Palitan ang densidad ng listahan",
+    "densityCompact": "Compact na view",
+    "densityComfortable": "Komportableng view",
+    "backToTop": "Bumalik sa taas"
   }
 }

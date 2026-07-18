@@ -4200,6 +4200,20 @@
     "scClose": "Fechar o painel",
     "scSearch": "Focar a busca",
     "scPalette": "Abrir ações rápidas",
-    "scHelp": "Mostrar ou ocultar esta ajuda"
+    "scHelp": "Mostrar ou ocultar esta ajuda",
+    "sortedRelevance": "Ordenado por relevância — títulos primeiro",
+    "sortedNewest": "Ordenado por mais recentes",
+    "switchRelevance": "mudar para relevância",
+    "switchNewest": "mudar para mais recentes",
+    "phraseTip": "dica: \"aspas\" para frases exatas",
+    "phraseTipLong": "A busca também examina as descrições. Use aspas para frases exatas.",
+    "sugRecent": "recente",
+    "sugCompany": "empresa",
+    "sugCategory": "categoria",
+    "sugRole": "cargo",
+    "densityTip": "Alternar densidade da lista",
+    "densityCompact": "Visão compacta",
+    "densityComfortable": "Visão confortável",
+    "backToTop": "Voltar ao topo"
   }
 }

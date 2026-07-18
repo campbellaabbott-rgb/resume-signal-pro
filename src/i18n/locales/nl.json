@@ -4200,6 +4200,20 @@
     "scClose": "Paneel sluiten",
     "scSearch": "Zoekveld focussen",
     "scPalette": "Snelle acties openen",
-    "scHelp": "Deze hulp tonen of verbergen"
+    "scHelp": "Deze hulp tonen of verbergen",
+    "sortedRelevance": "Gesorteerd op relevantie — titels eerst",
+    "sortedNewest": "Gesorteerd op nieuwste",
+    "switchRelevance": "naar relevantie",
+    "switchNewest": "naar nieuwste",
+    "phraseTip": "tip: \"aanhalingstekens\" voor exacte zinnen",
+    "phraseTipLong": "De zoekfunctie doorzoekt ook vacatureteksten. Gebruik aanhalingstekens voor exacte zinnen.",
+    "sugRecent": "recent",
+    "sugCompany": "bedrijf",
+    "sugCategory": "categorie",
+    "sugRole": "functie",
+    "densityTip": "Lijstdichtheid wisselen",
+    "densityCompact": "Compacte weergave",
+    "densityComfortable": "Ruime weergave",
+    "backToTop": "Naar boven"
   }
 }

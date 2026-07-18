@@ -4200,6 +4200,20 @@
     "scClose": "Fermer le panneau",
     "scSearch": "Activer la recherche",
     "scPalette": "Ouvrir les actions rapides",
-    "scHelp": "Afficher ou masquer cette aide"
+    "scHelp": "Afficher ou masquer cette aide",
+    "sortedRelevance": "Trié par pertinence — titres d'abord",
+    "sortedNewest": "Trié du plus récent",
+    "switchRelevance": "passer à la pertinence",
+    "switchNewest": "passer au plus récent",
+    "phraseTip": "astuce : \"guillemets\" pour une phrase exacte",
+    "phraseTipLong": "La recherche parcourt aussi les descriptions. Utilisez des guillemets pour une phrase exacte.",
+    "sugRecent": "récent",
+    "sugCompany": "entreprise",
+    "sugCategory": "catégorie",
+    "sugRole": "poste",
+    "densityTip": "Changer la densité de la liste",
+    "densityCompact": "Vue compacte",
+    "densityComfortable": "Vue confortable",
+    "backToTop": "Haut de page"
   }
 }

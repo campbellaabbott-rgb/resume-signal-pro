@@ -4200,6 +4200,20 @@
     "scClose": "पैनल बंद करें",
     "scSearch": "खोज बॉक्स चुनें",
     "scPalette": "त्वरित क्रियाएं खोलें",
-    "scHelp": "यह मदद दिखाएं/छिपाएं"
+    "scHelp": "यह मदद दिखाएं/छिपाएं",
+    "sortedRelevance": "प्रासंगिकता से क्रमित — शीर्षक मिलान पहले",
+    "sortedNewest": "नवीनतम पहले",
+    "switchRelevance": "प्रासंगिकता पर जाएं",
+    "switchNewest": "नवीनतम पर जाएं",
+    "phraseTip": "सुझाव: सटीक वाक्यांश के लिए \"उद्धरण\"",
+    "phraseTipLong": "खोज विवरण के अंदर भी देखती है। सटीक वाक्यांश के लिए उद्धरण चिह्न लगाएं।",
+    "sugRecent": "हालिया",
+    "sugCompany": "कंपनी",
+    "sugCategory": "श्रेणी",
+    "sugRole": "भूमिका",
+    "densityTip": "सूची घनत्व बदलें",
+    "densityCompact": "संक्षिप्त दृश्य",
+    "densityComfortable": "आरामदायक दृश्य",
+    "backToTop": "ऊपर जाएं"
   }
 }

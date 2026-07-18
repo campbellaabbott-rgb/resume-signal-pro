@@ -4200,6 +4200,20 @@
     "scClose": "Panel schließen",
     "scSearch": "Suche fokussieren",
     "scPalette": "Schnellaktionen öffnen",
-    "scHelp": "Diese Hilfe ein-/ausblenden"
+    "scHelp": "Diese Hilfe ein-/ausblenden",
+    "sortedRelevance": "Nach Relevanz sortiert — Titeltreffer zuerst",
+    "sortedNewest": "Nach Neueste sortiert",
+    "switchRelevance": "zu Relevanz wechseln",
+    "switchNewest": "zu Neueste wechseln",
+    "phraseTip": "Tipp: \"Anführungszeichen\" für exakte Phrasen",
+    "phraseTipLong": "Die Suche durchsucht auch Stellenbeschreibungen. Anführungszeichen finden exakte Phrasen.",
+    "sugRecent": "zuletzt",
+    "sugCompany": "Unternehmen",
+    "sugCategory": "Kategorie",
+    "sugRole": "Rolle",
+    "densityTip": "Listendichte wechseln",
+    "densityCompact": "Kompakte Ansicht",
+    "densityComfortable": "Komfortable Ansicht",
+    "backToTop": "Nach oben"
   }
 }
