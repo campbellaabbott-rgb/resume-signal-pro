@@ -4285,5 +4285,20 @@
     "quietChip": "silencieux depuis {{n}} jours",
     "followedUpOn": "relancé le {{date}}",
     "interviewOn": "Date d'entretien :"
+  },
+  "applyAgent": {
+    "badge": "Votre agent IA de candidature",
+    "headline": "Un agent IA fait le gros du travail à chaque candidature",
+    "subhead": "Il rédige, adapte, vous prépare et suit le tout — vous relisez et envoyez. Les employeurs filtrent les candidatures envoyées en masse par des bots ; la vôtre n'en sera pas une.",
+    "f1Title": "Rédige votre candidature sur mesure",
+    "f1Body": "Une lettre de motivation et des réponses écrites pour cette offre précise, tirées de votre vrai CV — en quelques secondes, dans votre langue.",
+    "f2Title": "Répond aux vraies questions de l'employeur",
+    "f2Body": "Sur les plateformes prises en charge, l'agent récupère les vraies questions du formulaire et rédige une réponse à chacune — pas de remplissage générique.",
+    "f3Title": "Tenu à l'honnêteté",
+    "f3Body": "L'agent n'invente jamais une expérience que vous n'avez pas. Chaque affirmation est vérifiée contre votre CV avant que vous ne voyiez le brouillon.",
+    "f4Title": "Vous prépare, suit et vous relance",
+    "f4Body": "Préparation d'entretien par candidature, un pipeline qui vous dit quoi faire ensuite, et un rappel quand il est temps de relancer.",
+    "control": "Vous gardez le contrôle : l'agent rédige, vous validez, et vous envoyez depuis le site de l'entreprise elle-même.",
+    "cta": "Choisissez une offre et regardez-le travailler"
   }
 }

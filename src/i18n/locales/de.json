@@ -4285,5 +4285,20 @@
     "quietChip": "seit {{n}} Tagen still",
     "followedUpOn": "nachgefragt am {{date}}",
     "interviewOn": "Gesprächstermin:"
+  },
+  "applyAgent": {
+    "badge": "Ihr KI-Bewerbungsagent",
+    "headline": "Ein KI-Agent übernimmt die Schwerarbeit bei jeder Bewerbung",
+    "subhead": "Er schreibt, passt an, bereitet vor und behält alles im Blick — Sie prüfen und senden. Arbeitgeber filtern massenhaft automatisch verschickte Bewerbungen aus; Ihre wird keine davon sein.",
+    "f1Title": "Schreibt Ihre maßgeschneiderte Bewerbung",
+    "f1Body": "Anschreiben und Antworten, geschrieben für genau diese Stelle, auf Basis Ihres echten Lebenslaufs — in Sekunden, in Ihrer Sprache.",
+    "f2Title": "Beantwortet die echten Fragen des Arbeitgebers",
+    "f2Body": "Bei unterstützten Job-Systemen holt der Agent die tatsächlichen Formularfragen und entwirft zu jeder eine Antwort — kein generischer Fülltext.",
+    "f3Title": "Der Ehrlichkeit verpflichtet",
+    "f3Body": "Der Agent erfindet nie Erfahrung, die Sie nicht haben. Jede Aussage wird gegen Ihren Lebenslauf geprüft, bevor Sie den Entwurf sehen.",
+    "f4Title": "Bereitet vor, verfolgt, erinnert",
+    "f4Body": "Interview-Vorbereitung je Bewerbung, eine Pipeline, die sagt, was als Nächstes ansteht, und eine Erinnerung, wenn eine Nachfrage fällig ist.",
+    "control": "Sie behalten die Kontrolle: der Agent entwirft, Sie geben frei und senden auf der Website des Unternehmens selbst.",
+    "cta": "Wählen Sie einen Job und sehen Sie ihn arbeiten"
   }
 }

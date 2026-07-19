@@ -4285,5 +4285,20 @@
     "quietChip": "{{n}} dagen stil",
     "followedUpOn": "opgevolgd op {{date}}",
     "interviewOn": "Gespreksdatum:"
+  },
+  "applyAgent": {
+    "badge": "Je AI-sollicitatieagent",
+    "headline": "Een AI-agent doet het zware werk bij elke sollicitatie",
+    "subhead": "Hij schrijft, stemt af, bereidt voor en volgt op — jij controleert en verstuurt. Werkgevers filteren massaal automatisch verstuurde sollicitaties eruit; die van jou hoort daar niet bij.",
+    "f1Title": "Schrijft je sollicitatie op maat",
+    "f1Body": "Een sollicitatiebrief en antwoorden geschreven voor precies die vacature, op basis van je echte cv — in seconden, in jouw taal.",
+    "f2Title": "Beantwoordt de echte vragen van de werkgever",
+    "f2Body": "Bij ondersteunde systemen haalt de agent de werkelijke formuliervragen op en schrijft voor elk een antwoord — geen generieke vulling.",
+    "f3Title": "Gebonden aan eerlijkheid",
+    "f3Body": "De agent verzint nooit ervaring die je niet hebt. Elke bewering wordt tegen je cv gecontroleerd voordat je het concept ziet.",
+    "f4Title": "Bereidt voor, volgt op, herinnert je",
+    "f4Body": "Interviewvoorbereiding per sollicitatie, een pipeline die zegt wat je nu moet doen, en een herinnering wanneer het tijd is voor een follow-up.",
+    "control": "Jij houdt de regie: de agent schrijft, jij keurt goed en verstuurt op de site van het bedrijf zelf.",
+    "cta": "Kies een vacature en zie hem aan het werk"
   }
 }

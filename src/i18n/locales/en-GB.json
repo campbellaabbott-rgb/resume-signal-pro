@@ -4285,5 +4285,20 @@
     "quietChip": "quiet for {{n}} days",
     "followedUpOn": "followed up {{date}}",
     "interviewOn": "Interview date:"
+  },
+  "applyAgent": {
+    "badge": "Your AI apply agent",
+    "headline": "An AI agent does the heavy lifting on every application",
+    "subhead": "It writes, tailors, preps, and tracks — you review and hit send. Employers filter out auto-blasted applications; yours won't be one of them.",
+    "f1Title": "Writes your tailored application",
+    "f1Body": "A cover letter and application answers written for that specific posting, drawn from your actual CV — in seconds, in your language.",
+    "f2Title": "Answers the employer's real questions",
+    "f2Body": "For supported job boards the agent pulls the application form's actual questions and drafts an answer to each one — not generic filler.",
+    "f3Title": "Sworn to honesty",
+    "f3Body": "The agent never invents experience you don't have. Every claim it writes is checked against your CV before you ever see the draft.",
+    "f4Title": "Preps you, tracks it, nudges you",
+    "f4Body": "Interview prep for each application, a pipeline that tells you what to do next, and a quiet-application reminder when it's time to follow up.",
+    "control": "You stay in control: the agent drafts, you approve, and you press send on the company's own site.",
+    "cta": "Pick a job and watch it work"
   }
 }

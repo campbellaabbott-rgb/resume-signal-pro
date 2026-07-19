@@ -4285,5 +4285,20 @@
     "quietChip": "{{n}} araw nang tahimik",
     "followedUpOn": "nag-follow-up noong {{date}}",
     "interviewOn": "Petsa ng interview:"
+  },
+  "applyAgent": {
+    "badge": "Ang iyong AI apply agent",
+    "headline": "Isang AI agent ang gumagawa ng mabigat na trabaho sa bawat aplikasyon",
+    "subhead": "Nagsusulat, nag-aangkop, naghahanda, at sumusubaybay ito — ikaw ang magrerepaso at magpapadala. Sinasala ng mga employer ang mga aplikasyong pinadala nang maramihan ng bot; hindi kasama roon ang sa iyo.",
+    "f1Title": "Isinusulat ang iyong aplikasyong akma sa trabaho",
+    "f1Body": "Cover letter at mga sagot na isinulat para sa mismong posting na iyon, hango sa totoo mong resume — sa loob ng ilang segundo, sa wika mo.",
+    "f2Title": "Sinasagot ang tunay na mga tanong ng employer",
+    "f2Body": "Sa mga suportadong job board, kinukuha ng agent ang aktwal na mga tanong ng form at gumagawa ng draft na sagot sa bawat isa — hindi generic na palaman.",
+    "f3Title": "Nakatali sa katapatan",
+    "f3Body": "Hindi kailanman nag-iimbento ang agent ng karanasang wala ka. Bawat pahayag ay sinusuri laban sa resume mo bago mo pa makita ang draft.",
+    "f4Title": "Naghahanda, sumusubaybay, nagpapaalala",
+    "f4Body": "Paghahanda sa interview kada aplikasyon, pipeline na nagsasabi ng susunod na hakbang, at paalala kapag oras na para mag-follow-up.",
+    "control": "Ikaw ang may kontrol: nagdadraft ang agent, ikaw ang nag-aapruba, at ikaw ang nagpapadala sa sariling site ng kumpanya.",
+    "cta": "Pumili ng trabaho at panoorin itong gumana"
   }
 }

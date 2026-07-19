@@ -43,6 +43,7 @@ import { LazySection } from "@/components/LazySection";
 import { type JobEntry } from "@/components/JobSelector";
 
 import { HowItWorks } from "@/components/HowItWorks";
+import { ApplyAgentShowcase } from "@/components/ApplyAgentShowcase";
 import { MiniPricingCards } from "@/components/MiniPricingCards";
 import { TrustIndicators } from "@/components/TrustIndicators";
 import { WhatYouGetSection } from "@/components/WhatYouGetSection";
@@ -1859,6 +1860,9 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
         {/* Trust Indicators + How It Works — moved below the uploader so the
             free scan is the first thing visitors can act on */}
         <TrustIndicators />
+        {/* AI apply agent showcase — the co-pilot story, told honestly:
+            drafts + real questions + honesty check + rhythm; you hit send. */}
+        {!freeKeywordResult && <ApplyAgentShowcase />}
         <HowItWorks />
 
         {/* Mini Pricing Cards - Featured packages */}

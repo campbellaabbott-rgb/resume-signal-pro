@@ -4285,5 +4285,20 @@
     "quietChip": "{{n}} días sin novedades",
     "followedUpOn": "seguimiento el {{date}}",
     "interviewOn": "Fecha de entrevista:"
+  },
+  "applyAgent": {
+    "badge": "Tu agente de IA para postular",
+    "headline": "Un agente de IA hace el trabajo pesado de cada candidatura",
+    "subhead": "Redacta, adapta, te prepara y hace seguimiento — tú revisas y envías. Las empresas filtran las candidaturas enviadas en masa por bots; la tuya no será una de ellas.",
+    "f1Title": "Redacta tu candidatura a medida",
+    "f1Body": "Una carta de presentación y respuestas escritas para esa vacante concreta, basadas en tu currículum real — en segundos y en tu idioma.",
+    "f2Title": "Responde las preguntas reales del empleador",
+    "f2Body": "En los portales compatibles, el agente obtiene las preguntas reales del formulario y redacta una respuesta para cada una — nada de relleno genérico.",
+    "f3Title": "Comprometido con la honestidad",
+    "f3Body": "El agente nunca inventa experiencia que no tienes. Cada afirmación se verifica contra tu currículum antes de que veas el borrador.",
+    "f4Title": "Te prepara, hace seguimiento y te avisa",
+    "f4Body": "Preparación de entrevista por candidatura, un pipeline que te dice qué hacer y un recordatorio cuando toca dar seguimiento.",
+    "control": "Tú tienes el control: el agente redacta, tú apruebas y envías desde el sitio de la propia empresa.",
+    "cta": "Elige un empleo y míralo en acción"
   }
 }
