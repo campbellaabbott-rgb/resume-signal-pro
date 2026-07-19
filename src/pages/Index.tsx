@@ -1736,6 +1736,9 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
         {!landing && !freeKeywordResult && (
           <>
             <JobBoardHero />
+            {/* AI apply agent — literally on the front page, right under the
+                board hero: the second thing every visitor sees. */}
+            <ApplyAgentShowcase />
             <div className="container">
               <div className="max-w-3xl mx-auto flex items-center gap-3 py-2">
                 <div className="h-px flex-1 bg-border/60" />
@@ -1860,9 +1863,6 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
         {/* Trust Indicators + How It Works — moved below the uploader so the
             free scan is the first thing visitors can act on */}
         <TrustIndicators />
-        {/* AI apply agent showcase — the co-pilot story, told honestly:
-            drafts + real questions + honesty check + rhythm; you hit send. */}
-        {!freeKeywordResult && <ApplyAgentShowcase />}
         <HowItWorks />
 
         {/* Mini Pricing Cards - Featured packages */}

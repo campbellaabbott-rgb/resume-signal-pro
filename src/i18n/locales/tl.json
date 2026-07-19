@@ -4300,5 +4300,9 @@
     "f4Body": "Paghahanda sa interview kada aplikasyon, pipeline na nagsasabi ng susunod na hakbang, at paalala kapag oras na para mag-follow-up.",
     "control": "Ikaw ang may kontrol: nagdadraft ang agent, ikaw ang nag-aapruba, at ikaw ang nagpapadala sa sariling site ng kumpanya.",
     "cta": "Pumili ng trabaho at panoorin itong gumana"
+  },
+  "boardHero": {
+    "agentLead": "Kasama mong nag-a-apply ang iyong AI agent:",
+    "agentLine": "isinusulat nito ang cover letter, sinasagot ang tunay na mga tanong, inihahanda ka — ikaw ang magpapadala"
   }
 }

@@ -4300,5 +4300,9 @@
     "f4Body": "Interviewvoorbereiding per sollicitatie, een pipeline die zegt wat je nu moet doen, en een herinnering wanneer het tijd is voor een follow-up.",
     "control": "Jij houdt de regie: de agent schrijft, jij keurt goed en verstuurt op de site van het bedrijf zelf.",
     "cta": "Kies een vacature en zie hem aan het werk"
+  },
+  "boardHero": {
+    "agentLead": "Je AI-agent solliciteert met je mee:",
+    "agentLine": "hij schrijft de brief, beantwoordt de echte vragen, bereidt je voor — jij verstuurt"
   }
 }

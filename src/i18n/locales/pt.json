@@ -4300,5 +4300,9 @@
     "f4Body": "Preparação de entrevista por candidatura, um pipeline que diz o próximo passo e um lembrete quando é hora do follow-up.",
     "control": "Você no controle: o agente rascunha, você aprova e envia no site da própria empresa.",
     "cta": "Escolha uma vaga e veja-o trabalhar"
+  },
+  "boardHero": {
+    "agentLead": "Seu agente de IA se candidata com você:",
+    "agentLine": "ele escreve a carta, responde às perguntas reais, prepara você — você envia"
   }
 }

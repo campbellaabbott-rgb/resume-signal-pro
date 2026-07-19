@@ -4300,5 +4300,9 @@
     "f4Body": "Preparación de entrevista por candidatura, un pipeline que te dice qué hacer y un recordatorio cuando toca dar seguimiento.",
     "control": "Tú tienes el control: el agente redacta, tú apruebas y envías desde el sitio de la propia empresa.",
     "cta": "Elige un empleo y míralo en acción"
+  },
+  "boardHero": {
+    "agentLead": "Tu agente de IA postula contigo:",
+    "agentLine": "escribe la carta, responde las preguntas reales, te prepara — tú envías"
   }
 }

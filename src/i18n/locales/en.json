@@ -4300,5 +4300,9 @@
     "f4Body": "Interview prep for each application, a pipeline that tells you what to do next, and a quiet-application reminder when it's time to follow up.",
     "control": "You stay in control: the agent drafts, you approve, and you press send on the company's own site.",
     "cta": "Pick a job and watch it work"
+  },
+  "boardHero": {
+    "agentLead": "Your AI agent applies with you:",
+    "agentLine": "it writes the cover letter, answers the real questions, preps you — you hit send"
   }
 }

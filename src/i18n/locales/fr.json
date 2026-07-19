@@ -4300,5 +4300,9 @@
     "f4Body": "Préparation d'entretien par candidature, un pipeline qui vous dit quoi faire ensuite, et un rappel quand il est temps de relancer.",
     "control": "Vous gardez le contrôle : l'agent rédige, vous validez, et vous envoyez depuis le site de l'entreprise elle-même.",
     "cta": "Choisissez une offre et regardez-le travailler"
+  },
+  "boardHero": {
+    "agentLead": "Votre agent IA candidate avec vous :",
+    "agentLine": "il rédige la lettre, répond aux vraies questions, vous prépare — vous envoyez"
   }
 }

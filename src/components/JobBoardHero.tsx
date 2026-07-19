@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Briefcase, Target, ShieldCheck, ArrowRight, Sparkles, CalendarClock } from "lucide-react";
+import { Briefcase, Target, ShieldCheck, ArrowRight, Sparkles, CalendarClock, Bot } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 // Page-leading hero for the live job board. The board is the destination; the
@@ -121,6 +121,23 @@ export function JobBoardHero() {
               <Target className="w-5 h-5" />
               {t("boardHero.rankCta", "Rank them to my resume")}
             </Link>
+          </div>
+
+          {/* AI apply agent — front and center, above the fold. The claim is
+              exactly what ships: the agent drafts and preps; the user sends. */}
+          <div className="flex justify-center mb-5 animate-fade-in" style={{ animationDelay: "0.18s" }}>
+            <button
+              type="button"
+              onClick={() => document.getElementById("apply-agent-heading")?.scrollIntoView({ behavior: "smooth", block: "center" })}
+              className="inline-flex items-center gap-2 rounded-full border border-success/40 bg-success/10 px-4 py-2 text-sm text-foreground hover:bg-success/15 transition-colors"
+            >
+              <Bot className="w-4 h-4 text-success shrink-0" />
+              <span>
+                <span className="font-semibold">{t("boardHero.agentLead", "Your AI agent applies with you:")}</span>{" "}
+                {t("boardHero.agentLine", "it writes the cover letter, answers the real questions, preps you — you hit send")}
+              </span>
+              <ArrowRight className="w-3.5 h-3.5 shrink-0" />
+            </button>
           </div>
 
           {/* Trust: what makes this board different — always true. */}

@@ -4300,5 +4300,9 @@
     "f4Body": "Interview-Vorbereitung je Bewerbung, eine Pipeline, die sagt, was als Nächstes ansteht, und eine Erinnerung, wenn eine Nachfrage fällig ist.",
     "control": "Sie behalten die Kontrolle: der Agent entwirft, Sie geben frei und senden auf der Website des Unternehmens selbst.",
     "cta": "Wählen Sie einen Job und sehen Sie ihn arbeiten"
+  },
+  "boardHero": {
+    "agentLead": "Ihr KI-Agent bewirbt sich mit Ihnen:",
+    "agentLine": "er schreibt das Anschreiben, beantwortet die echten Fragen, bereitet Sie vor — Sie senden ab"
   }
 }
