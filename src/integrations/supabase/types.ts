@@ -1698,11 +1698,14 @@ export type Database = {
           created_at: string
           fit_missing: Json | null
           fit_pct: number | null
+          followed_up_at: string | null
           id: string
+          interview_at: string | null
           job_id: string | null
           job_posting: string | null
           kit: Json | null
           kit_generated_at: string | null
+          label: string | null
           location: string | null
           posting_checked_at: string | null
           posting_closed_at: string | null
@@ -1711,6 +1714,7 @@ export type Database = {
           scan_id: string | null
           scan_score: number | null
           status: string
+          status_changed_at: string | null
           user_id: string
         }
         Insert: {
@@ -1720,11 +1724,14 @@ export type Database = {
           created_at?: string
           fit_missing?: Json | null
           fit_pct?: number | null
+          followed_up_at?: string | null
           id?: string
+          interview_at?: string | null
           job_id?: string | null
           job_posting?: string | null
           kit?: Json | null
           kit_generated_at?: string | null
+          label?: string | null
           location?: string | null
           posting_checked_at?: string | null
           posting_closed_at?: string | null
@@ -1733,6 +1740,7 @@ export type Database = {
           scan_id?: string | null
           scan_score?: number | null
           status?: string
+          status_changed_at?: string | null
           user_id: string
         }
         Update: {
@@ -1742,11 +1750,14 @@ export type Database = {
           created_at?: string
           fit_missing?: Json | null
           fit_pct?: number | null
+          followed_up_at?: string | null
           id?: string
+          interview_at?: string | null
           job_id?: string | null
           job_posting?: string | null
           kit?: Json | null
           kit_generated_at?: string | null
+          label?: string | null
           location?: string | null
           posting_checked_at?: string | null
           posting_closed_at?: string | null
@@ -1755,6 +1766,7 @@ export type Database = {
           scan_id?: string | null
           scan_score?: number | null
           status?: string
+          status_changed_at?: string | null
           user_id?: string
         }
         Relationships: [
