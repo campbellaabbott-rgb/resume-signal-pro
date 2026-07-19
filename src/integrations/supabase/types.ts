@@ -2216,6 +2216,7 @@ export type Database = {
           total_emails: number
         }[]
       }
+      get_empty_boards: { Args: { p_tokens: string[] }; Returns: string[] }
       get_entry_level_companies: {
         Args: { p_limit?: number }
         Returns: {
@@ -2825,6 +2826,7 @@ export type Database = {
           posted_at: string
           remote: boolean
           salary: string
+          snippet: string
           source: string
           title: string
           total_rows: number
