@@ -1697,14 +1697,15 @@ export type Database = {
           company: string
           created_at: string
           fit_missing: Json | null
-          followed_up_at: string | null
           fit_pct: number | null
+          followed_up_at: string | null
           id: string
           interview_at: string | null
           job_id: string | null
           job_posting: string | null
           kit: Json | null
           kit_generated_at: string | null
+          label: string | null
           location: string | null
           posting_checked_at: string | null
           posting_closed_at: string | null
@@ -1722,14 +1723,15 @@ export type Database = {
           company: string
           created_at?: string
           fit_missing?: Json | null
-          followed_up_at?: string | null
           fit_pct?: number | null
+          followed_up_at?: string | null
           id?: string
           interview_at?: string | null
           job_id?: string | null
           job_posting?: string | null
           kit?: Json | null
           kit_generated_at?: string | null
+          label?: string | null
           location?: string | null
           posting_checked_at?: string | null
           posting_closed_at?: string | null
@@ -1747,14 +1749,15 @@ export type Database = {
           company?: string
           created_at?: string
           fit_missing?: Json | null
-          followed_up_at?: string | null
           fit_pct?: number | null
+          followed_up_at?: string | null
           id?: string
           interview_at?: string | null
           job_id?: string | null
           job_posting?: string | null
           kit?: Json | null
           kit_generated_at?: string | null
+          label?: string | null
           location?: string | null
           posting_checked_at?: string | null
           posting_closed_at?: string | null
