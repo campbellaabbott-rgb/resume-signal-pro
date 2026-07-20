@@ -3437,6 +3437,18 @@
     "fresherFaster": {
       "title": "Vacatures van nieuwe bedrijven verschijnen binnen minuten, niet een dag",
       "description": "Nieuw ontdekte bedrijfsboards moesten voorheen een volledige rotatie wachten voordat hun vacatures verschenen. Nu springen ze de wachtrij voorbij en stromen ze minuten na een release binnen. We dateren nu ook BambooHR- en Rippling-vacatures via de detailfeeds van die bedrijven, en publiceren op de Ghost Job Index een tabel per wervingssysteem die laat zien welke een publicatiedatum vermelden."
+    },
+    "plainLanguageSearch": {
+      "title": "Doorzoek het board in gewone taal",
+      "description": "Beschrijf gewoon wat je wilt — “remote productfuncties boven $150k deze week geplaatst” — en het board vertaalt het naar echte filters en past ze toe. Het laat precies zien hoe het je zoekopdracht las (“Remote · Product · $150k+ · Deze week”) zodat je alles kunt bijstellen, en het is eerlijk over zijn grenzen: vraag om “startups” en het zegt dat daar nog geen filter voor is, in plaats van het stil te negeren."
+    },
+    "smarterFinds": {
+      "title": "Zoeken dat nabije functies voorstelt — en typefouten vergeeft",
+      "description": "Zoek een functie en het board stelt nu de aangrenzende functies voor — zoek “registered nurse” en zie care coordinator, clinical educator, charge nurse met één tik — want de baan die bij je past is vaak er een waar je niet aan dacht. En een typefout loopt niet meer dood: typ “desinger” en je krijgt designer-functies, duidelijk gemarkeerd als de dichtstbijzijnde treffers."
+    },
+    "exploreBoard": {
+      "title": "Een nieuwe manier om te ontdekken — blader op wie echt aanneemt",
+      "description": "Niet zeker wat te zoeken? De nieuwe Ontdek-pagina laat je bladeren op echte signalen, live berekend uit de boards van bedrijven: wie deze week het snelst aanneemt, bedrijven die vacatures echt vervullen (niet alleen plaatsen), net toegevoegde boards, startervriendelijke werkgevers en waar het salaris per vakgebied het hoogst is. Elke lijst is echt en leidt direct naar het board."
     }
   },
   "sampleReportPreview": {

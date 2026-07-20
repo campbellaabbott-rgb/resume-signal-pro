@@ -3437,6 +3437,18 @@
     "fresherFaster": {
       "title": "Les offres des nouvelles entreprises arrivent en minutes, pas en un jour",
       "description": "Quand nous ajoutons des tableaux d'entreprises récemment découvertes, leurs offres attendaient une rotation complète avant d'apparaître. Elles passent désormais en tête de file et arrivent quelques minutes après une mise en production. Nous datons aussi les offres BambooHR et Rippling depuis les flux de détail de ces entreprises, et publions sur le Ghost Job Index un tableau par système montrant lesquels déclarent une date de publication."
+    },
+    "plainLanguageSearch": {
+      "title": "Cherchez sur le tableau en langage naturel",
+      "description": "Décrivez simplement ce que vous voulez — « postes produit en télétravail à plus de 150k$ publiés cette semaine » — et le tableau le traduit en filtres réels et les applique. Il montre exactement comment il a compris votre recherche (« Télétravail · Produit · 150k$+ · Cette semaine ») pour que vous ajustiez tout, et il est honnête sur ses limites : demandez « startups » et il vous dit qu'il n'y a pas encore de filtre pour ça, au lieu de l'ignorer en silence."
+    },
+    "smarterFinds": {
+      "title": "Une recherche qui suggère des postes proches — et pardonne les fautes",
+      "description": "Cherchez un poste et le tableau suggère désormais les postes voisins — cherchez « registered nurse » et voyez care coordinator, clinical educator, charge nurse à un clic — car l'emploi qui vous convient est souvent celui auquel vous n'aviez pas pensé. Et une faute de frappe n'est plus une impasse : tapez « desinger » et vous obtenez des postes de designer, clairement indiqués comme les plus proches."
+    },
+    "exploreBoard": {
+      "title": "Une nouvelle façon d'explorer — parcourez qui recrute vraiment",
+      "description": "Vous ne savez pas quoi chercher ? La nouvelle page Explorer vous laisse parcourir des signaux réels calculés en direct depuis les tableaux des entreprises : qui recrute le plus vite cette semaine, les entreprises qui pourvoient vraiment leurs postes (pas seulement les publient), les tableaux récemment ajoutés, les employeurs ouverts aux débutants et où les salaires sont les plus élevés par domaine. Chaque liste est réelle et mène directement au tableau."
     }
   },
   "sampleReportPreview": {

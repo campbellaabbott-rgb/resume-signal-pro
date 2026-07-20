@@ -3437,6 +3437,18 @@
     "fresherFaster": {
       "title": "Los empleos de empresas nuevas aparecen en minutos, no en un día",
       "description": "Cuando añadimos tableros de empresas recién descubiertas, sus vacantes esperaban una rotación completa antes de aparecer. Ahora saltan la cola y empiezan a fluir minutos después de un lanzamiento. También empezamos a fechar las vacantes de BambooHR y Rippling desde los propios feeds de detalle de esas empresas, y publicamos en el Ghost Job Index una tabla por proveedor que muestra qué sistemas de contratación declaran fechas de publicación."
+    },
+    "plainLanguageSearch": {
+      "title": "Busca en el tablero con lenguaje natural",
+      "description": "Solo describe lo que quieres — «puestos de producto remotos de más de $150k publicados esta semana» — y el tablero lo convierte en filtros reales y los aplica. Muestra exactamente cómo interpretó tu búsqueda («Remoto · Producto · $150k+ · Esta semana») para que ajustes lo que quieras, y es honesto sobre lo que no puede: si pides «startups», te dice que aún no hay filtro para eso en vez de ignorarlo en silencio."
+    },
+    "smarterFinds": {
+      "title": "Una búsqueda que sugiere puestos cercanos — y perdona erratas",
+      "description": "Busca un puesto y el tablero ahora sugiere los puestos contiguos — busca «registered nurse» y verás care coordinator, clinical educator, charge nurse a un toque — porque el empleo que te encaja suele ser uno que no pensaste buscar. Y una errata ya no es un callejón sin salida: escribe «desinger» y verás puestos de designer, claramente marcados como las coincidencias más cercanas."
+    },
+    "exploreBoard": {
+      "title": "Una nueva forma de explorar — navega por quién contrata de verdad",
+      "description": "¿No sabes qué buscar? La nueva página Explorar te deja navegar por señales reales calculadas en vivo desde los tableros de las empresas: quién contrata más rápido esta semana, empresas que de verdad cubren vacantes (no solo las publican), tableros recién añadidos, empleadores aptos para principiantes y dónde está el mejor sueldo por campo. Cada lista es real y lleva directo al tablero."
     }
   },
   "sampleReportPreview": {

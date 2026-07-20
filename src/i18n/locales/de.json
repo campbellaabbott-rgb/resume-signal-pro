@@ -3437,6 +3437,18 @@
     "fresherFaster": {
       "title": "Stellen neuer Unternehmen erscheinen in Minuten statt in einem Tag",
       "description": "Neu entdeckte Unternehmens-Boards mussten bisher eine volle Rotation warten, bevor ihre Stellen erschienen. Jetzt überspringen sie die Warteschlange und fließen Minuten nach einem Release ein. Außerdem datieren wir BambooHR- und Rippling-Stellen jetzt aus den Detail-Feeds dieser Unternehmen und veröffentlichen im Ghost Job Index eine Tabelle, welche Bewerbungssysteme ein Veröffentlichungsdatum angeben."
+    },
+    "plainLanguageSearch": {
+      "title": "Durchsuche das Board in natürlicher Sprache",
+      "description": "Beschreibe einfach, was du suchst — „Remote-Produktstellen über 150k, diese Woche veröffentlicht“ — und das Board übersetzt es in echte Filter und wendet sie an. Es zeigt genau, wie es deine Suche gelesen hat („Remote · Produkt · 150k+ · Diese Woche“), damit du alles anpassen kannst, und ist ehrlich über seine Grenzen: Frag nach „Startups“ und es sagt dir, dass es dafür noch keinen Filter gibt, statt es stillschweigend zu ignorieren."
+    },
+    "smarterFinds": {
+      "title": "Eine Suche, die nahe Rollen vorschlägt — und Tippfehler verzeiht",
+      "description": "Suche eine Rolle und das Board schlägt jetzt die benachbarten Rollen vor — suche „registered nurse“ und sieh care coordinator, clinical educator, charge nurse mit einem Tipp — denn der passende Job ist oft einer, an den du nicht gedacht hast. Und ein Tippfehler ist keine Sackgasse mehr: Tippe „desinger“ und du bekommst Designer-Stellen, klar als die nächstliegenden Treffer gekennzeichnet."
+    },
+    "exploreBoard": {
+      "title": "Eine neue Art zu entdecken — stöbere nach echten Einstellern",
+      "description": "Unsicher, wonach suchen? Die neue Entdecken-Seite lässt dich nach echten Signalen stöbern, live aus den Boards der Unternehmen berechnet: wer diese Woche am schnellsten einstellt, Unternehmen, die Stellen wirklich besetzen (nicht nur ausschreiben), neu hinzugefügte Boards, einsteigerfreundliche Arbeitgeber und wo die Bezahlung je Bereich am höchsten ist. Jede Liste ist echt und führt direkt ins Board."
     }
   },
   "sampleReportPreview": {

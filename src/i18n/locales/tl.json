@@ -3437,6 +3437,18 @@
     "fresherFaster": {
       "title": "Lumalabas ang mga trabaho ng bagong kumpanya sa loob ng ilang minuto, hindi isang araw",
       "description": "Kapag nagdagdag kami ng mga bagong natuklasang company board, dating naghihintay ng buong rotation ang kanilang mga posting bago lumabas. Ngayon ay lumulusot na sila sa pila at dumadaloy ilang minuto pagkatapos ng release. Sinimulan na rin naming lagyan ng petsa ang mga posting ng BambooHR at Rippling mula sa sariling detail feeds ng mga kumpanyang iyon, at naglathala kami sa Ghost Job Index ng talahanayan kada sistema na nagpapakita kung aling mga hiring system ang nagsasaad ng petsa ng pag-post."
+    },
+    "plainLanguageSearch": {
+      "title": "Maghanap sa job board sa payak na wika",
+      "description": "Ilarawan lang kung ano ang gusto mo — “remote na trabaho sa produkto na higit $150k na na-post ngayong linggo” — at isasalin ito ng board sa totoong filter at ilalapat. Ipinapakita nito nang eksakto kung paano binasa ang paghahanap mo (“Remote · Produkto · $150k+ · Ngayong linggo”) para ma-adjust mo ang kahit ano, at tapat ito sa hindi nito kaya: humingi ng “startups” at sasabihin nitong wala pang filter para diyan, sa halip na tahimik na balewalain."
+    },
+    "smarterFinds": {
+      "title": "Paghahanap na nagmumungkahi ng kalapit na posisyon — at pinapatawad ang typo",
+      "description": "Maghanap ng posisyon at magmumungkahi na ngayon ang board ng mga katabing posisyon — hanapin ang “registered nurse” at makikita mo ang care coordinator, clinical educator, charge nurse sa isang tap — dahil ang trabahong bagay sa iyo ay kadalasang hindi mo naisipang hanapin. At ang maling baybay ay hindi na dead-end: i-type ang “desinger” at makakakuha ka ng designer na posisyon, malinaw na nakatatak bilang pinakamalapit na tugma."
+    },
+    "exploreBoard": {
+      "title": "Bagong paraan ng pagtuklas — mag-browse ayon sa kung sino talaga ang nag-hi-hire",
+      "description": "Hindi sigurado kung ano hahanapin? Ang bagong Explore page ay nagbibigay-daan mag-browse ayon sa totoong senyales na live na kinuwenta mula sa mga board mismo ng kumpanya: sino ang pinakamabilis mag-hire ngayong linggo, mga kumpanyang talagang nakakapuno ng posisyon (hindi lang nagpo-post), kadadagdag na board, mga employer na angkop sa baguhan, at kung saan pinakamataas ang sahod bawat larangan. Bawat listahan ay totoo at diretso sa board."
     }
   },
   "sampleReportPreview": {

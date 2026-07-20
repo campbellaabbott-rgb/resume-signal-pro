@@ -3437,6 +3437,18 @@
     "fresherFaster": {
       "title": "New companies' jobs appear within minutes, not a day",
       "description": "When we add newly discovered company boards, their postings used to wait a full rotation before first appearing. New boards now jump the queue and start flowing in minutes after a release. We also began dating BambooHR and Rippling postings from those companies' own detail feeds (their list feeds don't state dates), and published a per-vendor table on the Ghost Job Index showing exactly which hiring systems state post dates — because a date filter should tell you what it covers."
+    },
+    "plainLanguageSearch": {
+      "title": "Search the job board in plain English",
+      "description": "Just describe what you want — “remote product roles over $150k posted this week” — and the board translates it into real filters and applies them. It shows exactly how it read your search (“Remote · Product · $150k+ · This week”) so you can adjust anything, and it's honest about what it can't do: ask for “startups” and it tells you there's no filter for that yet rather than quietly ignoring it."
+    },
+    "smarterFinds": {
+      "title": "Search that suggests nearby roles — and forgives typos",
+      "description": "Search a role and the board now suggests the roles right next to it — search “registered nurse” and see care coordinator, clinical educator, charge nurse, one tap away — because the job that fits you is often one you didn't think to search. And a misspelling no longer dead-ends: type “desinger” and you'll get designer roles, clearly labelled as the closest matches."
+    },
+    "exploreBoard": {
+      "title": "A new way to explore — browse by who's actually hiring",
+      "description": "Not sure what to search? The new Explore page lets you browse by real signals computed live from companies' own boards: who's hiring fastest this week, companies that actually fill roles (not just post them), boards just added, entry-level-friendly employers, and where the pay is highest by field. Every list is real and clickable straight into the board."
     }
   },
   "sampleReportPreview": {

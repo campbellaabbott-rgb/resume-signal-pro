@@ -3437,6 +3437,18 @@
     "fresherFaster": {
       "title": "Vagas de empresas novas aparecem em minutos, não em um dia",
       "description": "Quando adicionamos painéis de empresas recém-descobertas, as vagas esperavam uma rotação completa antes de aparecer. Agora elas furam a fila e começam a fluir minutos após um lançamento. Também passamos a datar vagas do BambooHR e do Rippling pelos feeds de detalhe dessas empresas, e publicamos no Ghost Job Index uma tabela por sistema mostrando quais declaram data de publicação."
+    },
+    "plainLanguageSearch": {
+      "title": "Busque no painel em linguagem natural",
+      "description": "Basta descrever o que você quer — “vagas de produto remotas acima de $150k publicadas esta semana” — e o painel converte em filtros reais e os aplica. Ele mostra exatamente como interpretou sua busca (“Remoto · Produto · $150k+ · Esta semana”) para você ajustar tudo, e é honesto sobre seus limites: peça “startups” e ele avisa que ainda não há filtro para isso, em vez de ignorar em silêncio."
+    },
+    "smarterFinds": {
+      "title": "Uma busca que sugere cargos próximos — e perdoa erros de digitação",
+      "description": "Busque um cargo e o painel agora sugere os cargos ao lado — busque “registered nurse” e veja care coordinator, clinical educator, charge nurse a um toque — porque a vaga que encaixa em você costuma ser uma que você não pensou em buscar. E um erro de digitação não trava mais: digite “desinger” e verá vagas de designer, claramente marcadas como as correspondências mais próximas."
+    },
+    "exploreBoard": {
+      "title": "Uma nova forma de explorar — navegue por quem realmente contrata",
+      "description": "Não sabe o que buscar? A nova página Explorar deixa você navegar por sinais reais calculados ao vivo dos painéis das empresas: quem contrata mais rápido esta semana, empresas que realmente preenchem vagas (não só publicam), painéis recém-adicionados, empregadores amigáveis para iniciantes e onde o salário é mais alto por área. Cada lista é real e leva direto ao painel."
     }
   },
   "sampleReportPreview": {
