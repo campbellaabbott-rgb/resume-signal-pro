@@ -4243,7 +4243,9 @@
     "savedTip": "In Ihrem Tracker — zum Öffnen klicken",
     "aliasLine": "sucht auch: {{terms}}",
     "matchedInDesc": "In der Beschreibung:",
-    "moreAtCompany": "{{n}} weitere offene Stellen bei {{company}} — alle ansehen"
+    "moreAtCompany": "{{n}} weitere offene Stellen bei {{company}} — alle ansehen",
+    "relatedRoles": "Verwandte Rollen:",
+    "fuzzyLine": "Keine exakten Treffer für „{{q}}“ — es werden die ähnlichsten Titel gezeigt."
   },
   "accountPage": {
     "statActive": "Aktive Bewerbungen",

@@ -4243,7 +4243,9 @@
     "savedTip": "In je tracker — klik om te openen",
     "aliasLine": "zoekt ook: {{terms}}",
     "matchedInDesc": "In de omschrijving:",
-    "moreAtCompany": "Nog {{n}} open functies bij {{company}} — bekijk ze allemaal"
+    "moreAtCompany": "Nog {{n}} open functies bij {{company}} — bekijk ze allemaal",
+    "relatedRoles": "Verwante functies:",
+    "fuzzyLine": "Geen exacte resultaten voor “{{q}}” — dit zijn de dichtstbijzijnde functies."
   },
   "accountPage": {
     "statActive": "Actieve sollicitaties",

@@ -4243,7 +4243,9 @@
     "savedTip": "No seu rastreador — clique para abrir",
     "aliasLine": "também busca: {{terms}}",
     "matchedInDesc": "Na descrição:",
-    "moreAtCompany": "Mais {{n}} vagas abertas na {{company}} — ver todas"
+    "moreAtCompany": "Mais {{n}} vagas abertas na {{company}} — ver todas",
+    "relatedRoles": "Cargos relacionados:",
+    "fuzzyLine": "Sem correspondências exatas para “{{q}}” — mostrando os cargos mais próximos."
   },
   "accountPage": {
     "statActive": "Candidaturas ativas",

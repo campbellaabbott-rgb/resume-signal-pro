@@ -26,6 +26,7 @@ import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { searchName, searchToQuery } from "@/lib/job-search-params";
 import { displaySalary } from "@/lib/salary-display";
+import { adjacentRoles } from "@/lib/role-adjacency";
 import { accentFor } from "@/lib/category-accent";
 import { JobsCommandPalette, ShortcutsOverlay, useGlobalPaletteKeys, type PaletteAction } from "@/components/JobsCommandPalette";
 import { isBoardCategory } from "@/lib/job-board-categories";
@@ -97,6 +98,8 @@ interface BoardResponse {
   refreshedAt: string | null;
   /** Ranked path: role-alias phrases the server also searched (disclosed in the UI). */
   aliases?: string[];
+  /** Typo fallback: the original query these are the CLOSEST (not exact) matches for. */
+  fuzzy?: string;
 }
 
 // Mirrors JOB_CATEGORIES in the edge function — the filterable fields.
@@ -2503,6 +2506,13 @@ export default function Jobs() {
                   </span>
                 )}
               </p>
+              {/* Typo fallback disclosure: never pass fuzzy matches off as
+                  exact — say plainly these are the closest titles we found. */}
+              {data?.fuzzy && (
+                <p className="text-xs text-warning/90 mb-2 -mt-1">
+                  {t("jobsPage.fuzzyLine", "No exact matches for “{{q}}” — showing the closest job titles instead.", { q: data.fuzzy })}
+                </p>
+              )}
               {q.trim() && sortMode !== "salary" && (
                 <p className="text-[11px] text-muted-foreground mb-2 -mt-1">
                   {searchNewestFirst
@@ -2526,6 +2536,28 @@ export default function Jobs() {
                   )}
                 </p>
               )}
+              {/* Adjacent-role discovery: the roles next to the one searched are
+                  often a wider real market than people realize. Curated, honest,
+                  one-tap — never a silent rewrite. Shown whenever a query maps to
+                  a seed role (most valuable exactly when results are thin). */}
+              {q.trim() && (() => {
+                const adj = adjacentRoles(q);
+                return adj.length > 0 ? (
+                  <p className="text-xs text-muted-foreground mb-2 -mt-1 flex flex-wrap items-center gap-1.5">
+                    <span>{t("jobsPage.relatedRoles", "Related roles:")}</span>
+                    {adj.map((r) => (
+                      <button
+                        key={r}
+                        type="button"
+                        onClick={() => { setQ(r); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                        className="inline-flex items-center rounded-full border border-border bg-card/60 px-2.5 py-0.5 text-[11px] text-foreground hover:border-primary/50 hover:text-primary transition-colors"
+                      >
+                        {r}
+                      </button>
+                    ))}
+                  </p>
+                ) : null;
+              })()}
               {category && benchmarks?.[category] && (
                 <p
                   className="text-xs text-muted-foreground mb-3 -mt-2"

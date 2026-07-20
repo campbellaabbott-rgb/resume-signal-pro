@@ -943,3 +943,30 @@ describe("expandQuery (role aliases)", () => {
     }
   });
 });
+
+// Adjacent-role discovery: curated lateral-move suggestions. Longest seed
+// wins, query's own role is never re-suggested, short/unknown → empty.
+import { adjacentRoles } from "../../src/lib/role-adjacency";
+
+describe("adjacentRoles", () => {
+  it("suggests real adjacent roles for a known seed", () => {
+    const r = adjacentRoles("product manager");
+    expect(r.length).toBeGreaterThan(0);
+    expect(r).toContain("product owner");
+    expect(r).not.toContain("product manager");
+  });
+  it("matches a seed inside a longer query", () => {
+    expect(adjacentRoles("senior product manager")).toContain("product owner");
+  });
+  it("prefers the most specific (longest) seed", () => {
+    // 'registered nurse' is more specific than 'nurse' — its list must win.
+    expect(adjacentRoles("registered nurse")).toContain("charge nurse");
+  });
+  it("returns [] for unknown or too-short queries", () => {
+    expect(adjacentRoles("xyzzy")).toEqual([]);
+    expect(adjacentRoles("ab")).toEqual([]);
+  });
+  it("respects the max cap", () => {
+    expect(adjacentRoles("software engineer", 2).length).toBeLessThanOrEqual(2);
+  });
+});

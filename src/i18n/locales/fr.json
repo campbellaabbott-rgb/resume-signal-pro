@@ -4243,7 +4243,9 @@
     "savedTip": "Dans votre suivi — cliquez pour l'ouvrir",
     "aliasLine": "recherche aussi : {{terms}}",
     "matchedInDesc": "Dans la description :",
-    "moreAtCompany": "{{n}} autres postes ouverts chez {{company}} — tout voir"
+    "moreAtCompany": "{{n}} autres postes ouverts chez {{company}} — tout voir",
+    "relatedRoles": "Rôles proches :",
+    "fuzzyLine": "Aucun résultat exact pour « {{q}} » — voici les intitulés les plus proches."
   },
   "accountPage": {
     "statActive": "Candidatures actives",

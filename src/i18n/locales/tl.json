@@ -4243,7 +4243,9 @@
     "savedTip": "Nasa tracker mo — i-click para buksan",
     "aliasLine": "tumutugma rin sa: {{terms}}",
     "matchedInDesc": "Sa deskripsyon:",
-    "moreAtCompany": "{{n}} pa ang bukas na posisyon sa {{company}} — tingnan lahat"
+    "moreAtCompany": "{{n}} pa ang bukas na posisyon sa {{company}} — tingnan lahat",
+    "relatedRoles": "Kaugnay na posisyon:",
+    "fuzzyLine": "Walang eksaktong tugma para sa “{{q}}” — ipinapakita ang pinakamalapit na posisyon."
   },
   "accountPage": {
     "statActive": "Aktibong aplikasyon",

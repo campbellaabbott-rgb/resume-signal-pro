@@ -62,7 +62,7 @@ const json = (body: unknown, status = 200) =>
 // counts. catalogSize (JOB_SOURCES.length) is the automatic companion signal: it
 // moves with every catalog change with no discipline required. Sortable string so
 // a future check can tell "prod is behind" from "prod is ahead".
-const BUILD_VERSION = "2026-07-19.1";
+const BUILD_VERSION = "2026-07-19.2";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -2677,6 +2677,33 @@ async function serveList(
         src: "list",
       }).then(({ error: e }) => { if (e) console.warn("[JOB-BOARD] search-miss log failed:", e.message); }),
     ));
+  }
+
+  // Typo-tolerant last resort: a real search that found nothing gets one
+  // trigram fuzzy pass on the title before we return empty ("enginer" →
+  // engineer). First page of an actual query only, never countOnly. The
+  // response flags `fuzzy` so the UI can say "closest matches", never
+  // passing these off as exact hits.
+  if (qText && offset === 0 && !countOnly && (data?.length ?? 0) === 0) {
+    try {
+      const { data: fuzzy, error: fErr } = await client.rpc("fuzzy_title_search", {
+        p_q: qText, p_fresh_cutoff: freshCutoffIso, p_limit: limit,
+      });
+      if (!fErr && Array.isArray(fuzzy) && fuzzy.length > 0) {
+        const vf = (meta?.v ?? {}) as Record<string, unknown>;
+        return json({
+          jobs: (fuzzy as unknown[]).map(rowToJob),
+          total: Number((fuzzy[0] as { total_rows?: number }).total_rows) || fuzzy.length,
+          totalAllCompanies: (vf.total as number) ?? 0,
+          companies: [],
+          companiesCount: ((vf.companiesFacet as unknown[]) ?? []).length,
+          categories: (vf.categoriesFacet as Record<string, number>) ?? {},
+          failedSources: (vf.failedSources as string[]) ?? [],
+          refreshedAt: (vf.refreshedAt as string) ?? null,
+          fuzzy: qText,
+        });
+      }
+    } catch { /* fuzzy is a bonus — fall through to the honest empty result */ }
   }
 
   const v = (meta?.v ?? {}) as Record<string, unknown>;
