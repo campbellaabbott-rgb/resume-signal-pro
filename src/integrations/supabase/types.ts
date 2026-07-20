@@ -2373,6 +2373,15 @@ export type Database = {
         }[]
       }
       get_job_board_facets: { Args: never; Returns: Json }
+      get_newest_companies: {
+        Args: { p_limit?: number }
+        Returns: {
+          company: string
+          company_token: string
+          first_added: string
+          open_roles: number
+        }[]
+      }
       get_parse_failure_stats: {
         Args: { p_hours_back?: number }
         Returns: {
@@ -2523,6 +2532,15 @@ export type Database = {
           category: string
           last7: number
           prior7: number
+        }[]
+      }
+      get_trending_companies: {
+        Args: { p_limit?: number }
+        Returns: {
+          company: string
+          company_token: string
+          open_roles: number
+          recent: number
         }[]
       }
       get_user_score_trend: {
