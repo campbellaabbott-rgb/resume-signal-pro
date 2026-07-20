@@ -62,7 +62,7 @@ const json = (body: unknown, status = 200) =>
 // counts. catalogSize (JOB_SOURCES.length) is the automatic companion signal: it
 // moves with every catalog change with no discipline required. Sortable string so
 // a future check can tell "prod is behind" from "prod is ahead".
-const BUILD_VERSION = "2026-07-19.2";
+const BUILD_VERSION = "2026-07-19.3";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -2621,8 +2621,12 @@ async function serveList(
         p_limit: limit,
         p_offset: offset,
       });
-      if (!rankErr && Array.isArray(ranked)) {
-        const total = ranked.length ? Number((ranked[0] as { total_rows?: number }).total_rows) || ranked.length : 0;
+      // Empty ranked result falls THROUGH (not an early return) so the
+      // recency path and, ultimately, the typo-fuzzy fallback downstream get
+      // a chance — a real query that the ranked path can't match is exactly
+      // when "did you mean" matters. Non-empty returns here as before.
+      if (!rankErr && Array.isArray(ranked) && ranked.length > 0) {
+        const total = Number((ranked[0] as { total_rows?: number }).total_rows) || ranked.length;
         const v0 = (meta?.v ?? {}) as Record<string, unknown>;
         const includeFacets0 = (body as { includeFacets?: boolean }).includeFacets !== false;
         const fullCompanies0 = (v0.companiesFacet as Array<{ count?: number }>) ?? [];
