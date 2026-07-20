@@ -2055,6 +2055,27 @@ export type Database = {
         Args: { delay_seconds: number; payload: Json; queue_name: string }
         Returns: number
       }
+      fuzzy_title_search: {
+        Args: { p_fresh_cutoff: string; p_limit?: number; p_q: string }
+        Returns: {
+          apply_url: string
+          category: string
+          company: string
+          company_token: string
+          department: string
+          experience_band: string
+          id: string
+          last_seen: string
+          location: string
+          min_years: number
+          posted_at: string
+          remote: boolean
+          salary: string
+          source: string
+          title: string
+          total_rows: number
+        }[]
+      }
       get_ab_test_stats: {
         Args: { p_test_name: string }
         Returns: {
@@ -2859,6 +2880,8 @@ export type Database = {
         }
         Returns: boolean
       }
+      show_limit: { Args: never; Returns: number }
+      show_trgm: { Args: { "": string }; Returns: string[] }
       store_cached_response: {
         Args: {
           p_cache_key: string
