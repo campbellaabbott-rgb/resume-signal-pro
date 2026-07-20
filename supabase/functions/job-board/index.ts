@@ -62,7 +62,7 @@ const json = (body: unknown, status = 200) =>
 // counts. catalogSize (JOB_SOURCES.length) is the automatic companion signal: it
 // moves with every catalog change with no discipline required. Sortable string so
 // a future check can tell "prod is behind" from "prod is ahead".
-const BUILD_VERSION = "2026-07-19.3";
+const BUILD_VERSION = "2026-07-19.4";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -2621,13 +2621,35 @@ async function serveList(
         p_limit: limit,
         p_offset: offset,
       });
-      // Empty ranked result falls THROUGH (not an early return) so the
-      // recency path and, ultimately, the typo-fuzzy fallback downstream get
-      // a chance — a real query that the ranked path can't match is exactly
-      // when "did you mean" matters. Non-empty returns here as before.
-      if (!rankErr && Array.isArray(ranked) && ranked.length > 0) {
-        const total = Number((ranked[0] as { total_rows?: number }).total_rows) || ranked.length;
+      if (!rankErr && Array.isArray(ranked)) {
+        const total = ranked.length ? Number((ranked[0] as { total_rows?: number }).total_rows) || ranked.length : 0;
         const v0 = (meta?.v ?? {}) as Record<string, unknown>;
+        // Empty ranked result: try the FAST trigram fuzzy fallback right here
+        // ("desinger" → designer), then return an honest empty. Critically we
+        // do NOT fall through to the recency path — its OR-of-ILIKE with an
+        // exact count seq-scans 550k rows for a no-match term and times out
+        // (measured 9.7s → "temporarily unavailable"). The ranked + fuzzy
+        // paths are both index-backed and fast.
+        if (total === 0 && offset === 0 && !countOnly) {
+          try {
+            const { data: fuzzy, error: fErr } = await client.rpc("fuzzy_title_search", {
+              p_q: qText, p_fresh_cutoff: freshCutoffIso, p_limit: limit,
+            });
+            if (!fErr && Array.isArray(fuzzy) && fuzzy.length > 0) {
+              return json({
+                jobs: (fuzzy as unknown[]).map(rowToJob),
+                total: Number((fuzzy[0] as { total_rows?: number }).total_rows) || fuzzy.length,
+                totalAllCompanies: (v0.total as number) ?? 0,
+                companies: [],
+                companiesCount: ((v0.companiesFacet as unknown[]) ?? []).length,
+                categories: (v0.categoriesFacet as Record<string, number>) ?? {},
+                failedSources: (v0.failedSources as string[]) ?? [],
+                refreshedAt: (v0.refreshedAt as string) ?? null,
+                fuzzy: qText,
+              });
+            }
+          } catch { /* fuzzy is a bonus — fall to the honest empty below */ }
+        }
         const includeFacets0 = (body as { includeFacets?: boolean }).includeFacets !== false;
         const fullCompanies0 = (v0.companiesFacet as Array<{ count?: number }>) ?? [];
         return json({
@@ -2683,32 +2705,10 @@ async function serveList(
     ));
   }
 
-  // Typo-tolerant last resort: a real search that found nothing gets one
-  // trigram fuzzy pass on the title before we return empty ("enginer" →
-  // engineer). First page of an actual query only, never countOnly. The
-  // response flags `fuzzy` so the UI can say "closest matches", never
-  // passing these off as exact hits.
-  if (qText && offset === 0 && !countOnly && (data?.length ?? 0) === 0) {
-    try {
-      const { data: fuzzy, error: fErr } = await client.rpc("fuzzy_title_search", {
-        p_q: qText, p_fresh_cutoff: freshCutoffIso, p_limit: limit,
-      });
-      if (!fErr && Array.isArray(fuzzy) && fuzzy.length > 0) {
-        const vf = (meta?.v ?? {}) as Record<string, unknown>;
-        return json({
-          jobs: (fuzzy as unknown[]).map(rowToJob),
-          total: Number((fuzzy[0] as { total_rows?: number }).total_rows) || fuzzy.length,
-          totalAllCompanies: (vf.total as number) ?? 0,
-          companies: [],
-          companiesCount: ((vf.companiesFacet as unknown[]) ?? []).length,
-          categories: (vf.categoriesFacet as Record<string, number>) ?? {},
-          failedSources: (vf.failedSources as string[]) ?? [],
-          refreshedAt: (vf.refreshedAt as string) ?? null,
-          fuzzy: qText,
-        });
-      }
-    } catch { /* fuzzy is a bonus — fall through to the honest empty result */ }
-  }
+  // (Typo-tolerant fuzzy fallback lives in the ranked path above, where an
+  // empty result is caught on the fast index-backed path — never here, since
+  // reaching this point for a no-match term already means the recency
+  // ILIKE-count is in play, which is exactly what times out.)
 
   const v = (meta?.v ?? {}) as Record<string, unknown>;
   // The company facet grows with the catalog (~60 bytes/company); refetches
