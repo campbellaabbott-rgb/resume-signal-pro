@@ -4266,7 +4266,8 @@
     "nlInterpreted": "Gelezen als:",
     "nlDismiss": "sluiten",
     "nlNotMapped": "Kon niet filteren op: {{terms}} — daar is nog geen filter voor, dus niet toegepast.",
-    "nlFailed": "Kon dat niet lezen — gebruik de filters hieronder."
+    "nlFailed": "Kon dat niet lezen — gebruik de filters hieronder.",
+    "backToExplore": "Terug naar Ontdek"
   },
   "accountPage": {
     "statActive": "Actieve sollicitaties",

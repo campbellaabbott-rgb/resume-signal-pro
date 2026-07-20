@@ -4266,7 +4266,8 @@
     "nlInterpreted": "Binasa bilang:",
     "nlDismiss": "i-dismiss",
     "nlNotMapped": "Hindi ma-filter ayon sa: {{terms}} — wala pang filter para diyan, kaya hindi na-apply.",
-    "nlFailed": "Hindi ito nabasa — subukan ang mga filter sa ibaba."
+    "nlFailed": "Hindi ito nabasa — subukan ang mga filter sa ibaba.",
+    "backToExplore": "Bumalik sa Tuklasin"
   },
   "accountPage": {
     "statActive": "Aktibong aplikasyon",

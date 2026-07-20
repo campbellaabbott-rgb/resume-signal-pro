@@ -39,7 +39,7 @@ function CompanyGrid({ rows, badge }: { rows: CompanyRow[]; badge?: (r: CompanyR
         return (
           <Link
             key={r.company_token}
-            to={`/jobs?company=${encodeURIComponent(r.company_token)}`}
+            to={`/jobs/company/${encodeURIComponent(r.company_token)}?from=explore`}
             className="group flex items-center gap-3 rounded-xl border border-border bg-card/60 px-4 py-3 hover:border-primary/50 hover:bg-card transition-colors"
           >
             <span className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-primary/10 text-primary font-bold text-sm shrink-0">
@@ -156,7 +156,7 @@ export default function Explore() {
               {salary.map((s) => (
                 <Link
                   key={`${s.category}-${s.currency}`}
-                  to={`/jobs?category=${s.category}&sort=salary`}
+                  to={`/jobs/field/${s.category}?sort=salary&from=explore`}
                   className="group flex items-center gap-3 rounded-xl border border-border bg-card/60 px-4 py-3 hover:border-primary/50 hover:bg-card transition-colors"
                 >
                   <TrendingUp className="w-4 h-4 text-success shrink-0" />
@@ -179,7 +179,7 @@ export default function Explore() {
             {Object.entries(CATEGORY_LABELS).filter(([id]) => id !== "other").map(([id, label]) => (
               <Link
                 key={id}
-                to={`/jobs?category=${id}`}
+                to={`/jobs/field/${id}?from=explore`}
                 className="inline-flex items-center px-3.5 py-1.5 rounded-full border border-border bg-card/60 text-sm text-muted-foreground hover:border-primary/50 hover:text-foreground transition-colors"
               >
                 {t(`jobsPage.categories.${id}`, label)}

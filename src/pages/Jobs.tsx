@@ -188,6 +188,10 @@ export default function Jobs() {
   const landerCompany = companyToken || undefined;
   const [company, setCompany] = useState(initial.get("company") ?? landerCompany ?? "");
   const [category, setCategory] = useState(initial.get("category") ?? landerCategory ?? "");
+  // Arrived from the Explore page? Captured once on mount (the URL-sync effect
+  // strips unknown params), so we can offer a "Back to Explore" link instead
+  // of leaving the user on a filtered board with no way back.
+  const [cameFromExplore] = useState(() => initial.get("from") === "explore");
   const [experience, setExperience] = useState(initial.get("experience") ?? "");
   // Country: exact match on the deterministically extracted code. Postings
   // whose location can't be placed are excluded while active — disclosed, not
@@ -287,7 +291,9 @@ export default function Jobs() {
   }, []);
   // Sort: newest (default) or highest STATED salary (annualized floor, server-
   // side; unsalaried postings sort last). Fit ordering is owned by "For you".
-  const [sortMode, setSortMode] = useState<"newest" | "salary">("newest");
+  // Honors ?sort=salary from the URL (e.g. Explore's "Where the pay is" cards),
+  // otherwise defaults to newest.
+  const [sortMode, setSortMode] = useState<"newest" | "salary">(() => (initial.get("sort") === "salary" ? "salary" : "newest"));
   // S3: search results default to relevance ranking; this flips them to
   // strict newest-first (server bypasses the ranked path).
   const [searchNewestFirst, setSearchNewestFirst] = useState(false);
@@ -1865,6 +1871,14 @@ export default function Jobs() {
       <Header />
       <main className="pt-20 pb-20">
         <div className="container max-w-4xl lg:max-w-[1400px]">
+          {/* Back to Explore: when the user arrived from a discovery collection,
+              give them a clear way back so the board isn't a one-way dead end. */}
+          {cameFromExplore && (
+            <Link to="/explore" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary mb-2 -mt-2">
+              <ChevronDown className="w-3.5 h-3.5 rotate-90" />
+              {t("jobsPage.backToExplore", "Back to Explore")}
+            </Link>
+          )}
           {/* P0 compressed hero: one headline, one live-count line, three tiny
               trust badges, everything else folded — the first posting must be
               visible without scrolling (the old four-paragraph hero measured a

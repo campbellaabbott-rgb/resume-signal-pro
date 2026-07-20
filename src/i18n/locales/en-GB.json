@@ -4266,7 +4266,8 @@
     "nlInterpreted": "Read as:",
     "nlDismiss": "dismiss",
     "nlNotMapped": "Couldn't filter by: {{terms}} — no filter for that yet, so it wasn't applied.",
-    "nlFailed": "Couldn't read that — try the filters below instead."
+    "nlFailed": "Couldn't read that — try the filters below instead.",
+    "backToExplore": "Back to Explore"
   },
   "accountPage": {
     "statActive": "Active applications",

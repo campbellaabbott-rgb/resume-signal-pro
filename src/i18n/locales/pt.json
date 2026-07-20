@@ -4266,7 +4266,8 @@
     "nlInterpreted": "Interpretado como:",
     "nlDismiss": "dispensar",
     "nlNotMapped": "Não foi possível filtrar por: {{terms}} — ainda não há filtro para isso, então não foi aplicado.",
-    "nlFailed": "Não foi possível interpretar — use os filtros abaixo."
+    "nlFailed": "Não foi possível interpretar — use os filtros abaixo.",
+    "backToExplore": "Voltar a Explorar"
   },
   "accountPage": {
     "statActive": "Candidaturas ativas",

@@ -4266,7 +4266,8 @@
     "nlInterpreted": "Verstanden als:",
     "nlDismiss": "verwerfen",
     "nlNotMapped": "Konnte nicht filtern nach: {{terms}} — dafür gibt es noch keinen Filter, also nicht angewendet.",
-    "nlFailed": "Konnte das nicht lesen — nutze die Filter unten."
+    "nlFailed": "Konnte das nicht lesen — nutze die Filter unten.",
+    "backToExplore": "Zurück zu Entdecken"
   },
   "accountPage": {
     "statActive": "Aktive Bewerbungen",

@@ -4266,7 +4266,8 @@
     "nlInterpreted": "Interpretado como:",
     "nlDismiss": "descartar",
     "nlNotMapped": "No se pudo filtrar por: {{terms}} — aún no hay filtro para eso, así que no se aplicó.",
-    "nlFailed": "No se pudo interpretar — usa los filtros de abajo."
+    "nlFailed": "No se pudo interpretar — usa los filtros de abajo.",
+    "backToExplore": "Volver a Explorar"
   },
   "accountPage": {
     "statActive": "Postulaciones activas",
