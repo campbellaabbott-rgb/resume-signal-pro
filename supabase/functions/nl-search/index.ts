@@ -73,17 +73,20 @@ RULES:
           function: {
             name: "apply_search",
             description: "Apply the parsed job search",
+            // No `enum` in the schema (some gateways reject it in tool params);
+            // valid values are stated in the prompt and enforced by the
+            // server-side validation below, which is the real guard anyway.
             parameters: {
               type: "object",
               properties: {
                 q: { type: "string", description: "Role/title/skill keywords" },
-                category: { type: "string", enum: [...CATEGORIES] },
-                experience: { type: "string", enum: [...EXPERIENCE] },
+                category: { type: "string", description: `One of: ${CATEGORIES.join(", ")}` },
+                experience: { type: "string", description: `One of: ${EXPERIENCE.join(", ")}` },
                 remote: { type: "boolean" },
-                salaryFloor: { type: "number" },
+                salaryFloor: { type: "number", description: "Annual minimum, no currency symbol" },
                 country: { type: "string", description: "2-letter ISO code" },
-                location: { type: "string" },
-                maxAgeDays: { type: "number", enum: [1, 7] },
+                location: { type: "string", description: "City or region (not a country)" },
+                maxAgeDays: { type: "number", description: "1 for today, 7 for this week/recent" },
                 interpreted: { type: "array", items: { type: "string" }, description: "2-6 short chips of what was understood" },
                 notMapped: { type: "array", items: { type: "string" }, description: "Concepts with no matching filter" },
               },
@@ -96,8 +99,12 @@ RULES:
     });
 
     if (!response.ok) {
+      const errText = await response.text().catch(() => "");
+      console.error("[NL-SEARCH] gateway error:", response.status, errText.slice(0, 300));
       const status = response.status === 429 ? 429 : 502;
-      return new Response(JSON.stringify({ error: "Parse unavailable" }), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      // Surface the gateway status so failures are diagnosable from the client
+      // (the detail is a status code + short reason, never sensitive).
+      return new Response(JSON.stringify({ error: "Parse unavailable", gatewayStatus: response.status, detail: errText.slice(0, 200) }), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
     const data = await response.json();
     const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
