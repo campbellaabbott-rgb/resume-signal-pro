@@ -1,4 +1,4 @@
-import { Sparkles, CreditCard, Package, Shield, Megaphone, BookOpen, Briefcase } from "lucide-react";
+import { Sparkles, CreditCard, Package, Shield, Megaphone, BookOpen, Briefcase, Compass } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useLocation } from "react-router-dom";
@@ -76,6 +76,17 @@ export function Header() {
                 <Link to="/jobs">
                   <Briefcase className="w-3.5 h-3.5" />
                   {t('header.jobs', 'Jobs')}
+                </Link>
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                asChild
+                className="gap-1.5 text-muted-foreground hover:text-foreground"
+              >
+                <Link to="/explore">
+                  <Compass className="w-3.5 h-3.5" />
+                  {t('header.explore', 'Explore')}
                 </Link>
               </Button>
               <Button

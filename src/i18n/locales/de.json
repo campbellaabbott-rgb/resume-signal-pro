@@ -24,7 +24,8 @@
     "getStartedAriaLabel": "Jetzt starten - zum Upload-Bereich scrollen",
     "mainNavAriaLabel": "Hauptnavigation",
     "guides": "Ratgeber",
-    "jobs": "Jobs"
+    "jobs": "Jobs",
+    "explore": "Entdecken"
   },
   "hero": {
     "badge": "Live-Jobbörse — jede Stelle direkt im System des Unternehmens verifiziert",
@@ -4304,5 +4305,31 @@
   "boardHero": {
     "agentLead": "Ihr KI-Agent bewirbt sich mit Ihnen:",
     "agentLine": "er schreibt das Anschreiben, beantwortet die echten Fragen, bereitet Sie vor — Sie senden ab"
+  },
+  "explore": {
+    "badge": "Das Board entdecken",
+    "headline": "Finde deine nächste Stelle nach dem, was wirklich zählt",
+    "subhead": "Unsicher, wonach suchen? Stöbere nach echten Signalen — wer am schnellsten einstellt, wer Stellen wirklich besetzt, wer neu ist und wo die Bezahlung stimmt — jede Liste live aus den Boards der Unternehmen berechnet.",
+    "trendingTitle": "Stellt diese Woche am schnellsten ein",
+    "trendingBlurb": "Unternehmen mit den meisten neuen Stellen in den letzten 7 Tagen.",
+    "trendingBadge": "+{{n}} neu diese Woche",
+    "hiringTitle": "Unternehmen, die Stellen wirklich besetzen",
+    "hiringBlurb": "Nachweislich aktive Einsteller — gemessen an in den letzten 90 Tagen besetzten oder geschlossenen Stellen, nicht nur offenen Anzeigen.",
+    "hiringBadge": "{{filled}} besetzt / 90T · {{open}} offen",
+    "newestTitle": "Neu auf dem Board",
+    "newestBlurb": "Unternehmens-Boards, die wir in den letzten zwei Wochen aufgenommen haben — sei früh dran.",
+    "openRoles": "{{n}} offene Stellen",
+    "entryTitle": "Einsteigerfreundlich",
+    "entryBlurb": "Unternehmen mit den meisten Stellen für Berufseinsteiger.",
+    "entryBadge": "{{n}} Einstiegsstellen",
+    "salaryTitle": "Wo die Bezahlung stimmt",
+    "salaryBlurb": "Felder nach dem medianen ausgeschriebenen Gehaltsuntergrenze sortiert — aus Anzeigen mit Gehaltsangabe, in der dominanten Währung des Felds. Nie umgerechnet, nie vermischt.",
+    "salaryBadge": "Median-Untergrenze {{sym}}{{median}} ({{ccy}}) · {{n}} Anzeigen",
+    "fieldsTitle": "Nach Bereich stöbern",
+    "fieldsBlurb": "Direkt zu den Live-Stellen eines Bereichs.",
+    "ctaLine": "Weißt du, was du suchst? Durchsuche das gesamte Live-Board.",
+    "ctaButton": "Alle Jobs durchsuchen",
+    "seoTitle": "Jobs entdecken — Trend-Unternehmen, schnelle Einsteller & bestbezahlte Bereiche",
+    "seoDescription": "Entdecke Jobs nach dem, was zählt: Unternehmen, die am schnellsten einstellen, Stellen wirklich besetzen, neu hinzugefügte Boards, einsteigerfreundliche Arbeitgeber und die bestbezahlten Bereiche — alles live aus den Boards der Unternehmen berechnet."
   }
 }

@@ -24,7 +24,8 @@
     "getStartedAriaLabel": "Magsimula - mag-scroll sa upload section",
     "mainNavAriaLabel": "Main navigation",
     "guides": "Mga Gabay",
-    "jobs": "Trabaho"
+    "jobs": "Trabaho",
+    "explore": "Tuklasin"
   },
   "hero": {
     "badge": "Live job board — bawat posting verified mula sa sariling sistema ng kumpanya",
@@ -4304,5 +4305,31 @@
   "boardHero": {
     "agentLead": "Kasama mong nag-a-apply ang iyong AI agent:",
     "agentLine": "isinusulat nito ang cover letter, sinasagot ang tunay na mga tanong, inihahanda ka — ikaw ang magpapadala"
+  },
+  "explore": {
+    "badge": "Tuklasin ang board",
+    "headline": "Hanapin ang susunod mong trabaho base sa tunay na mahalaga",
+    "subhead": "Hindi sigurado kung ano hahanapin? Mag-browse base sa tunay na senyales — sino ang pinakamabilis mag-hire, sino ang talagang nakakapuno ng posisyon, sino ang bago, at nasaan ang sahod — bawat listahan ay live na kinuwenta mula sa mga board mismo ng kumpanya.",
+    "trendingTitle": "Pinakamabilis mag-hire ngayong linggo",
+    "trendingBlurb": "Mga kumpanyang nagdagdag ng pinakamaraming bagong posisyon sa nakaraang 7 araw.",
+    "trendingBadge": "+{{n}} bago ngayong linggo",
+    "hiringTitle": "Mga kumpanyang talagang nakakapuno ng posisyon",
+    "hiringBlurb": "Napatunayang aktibong nag-hire — sinukat sa mga posisyong napuno o nagsara sa nakaraang 90 araw, hindi lang bukas na listing.",
+    "hiringBadge": "{{filled}} napuno / 90d · {{open}} bukas ngayon",
+    "newestTitle": "Kadadagdag lang sa board",
+    "newestBlurb": "Mga company board na sinimulan naming subaybayan nitong dalawang linggo — magpauna ka.",
+    "openRoles": "{{n}} bukas na posisyon",
+    "entryTitle": "Angkop sa baguhan",
+    "entryBlurb": "Mga kumpanyang may pinakamaraming posisyong bukas sa mga nagsisimula pa lang.",
+    "entryBadge": "{{n}} entry-level na posisyon",
+    "salaryTitle": "Nasaan ang sahod",
+    "salaryBlurb": "Mga larangan na inayos ayon sa median na ini-advertise na sahod-floor — mula sa mga listing na nagsasaad ng bayad, sa nangingibabaw na currency ng bawat larangan. Hindi kailanman kino-convert o hinahalo.",
+    "salaryBadge": "median floor {{sym}}{{median}} ({{ccy}}) · {{n}} listing",
+    "fieldsTitle": "Mag-browse ayon sa larangan",
+    "fieldsBlurb": "Diretso sa live na posisyon ng anumang larangan.",
+    "ctaLine": "Alam mo na ang hinahanap? Hanapin sa buong live board.",
+    "ctaButton": "Hanapin lahat ng trabaho",
+    "seoTitle": "Tuklasin ang mga Trabaho — Trending na Kumpanya, Mabilis mag-Hire at Pinakamataas na Sahod",
+    "seoDescription": "Tuklasin ang trabaho base sa mahalaga: mga kumpanyang pinakamabilis mag-hire, talagang nakakapuno ng posisyon, kadadagdag na board, angkop sa baguhan, at ang pinakamataas na sahod na larangan — lahat live na kinuwenta mula sa mga board mismo ng kumpanya."
   }
 }

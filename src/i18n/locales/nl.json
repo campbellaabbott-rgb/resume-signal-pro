@@ -24,7 +24,8 @@
     "getStartedAriaLabel": "Aan de slag - scroll naar de uploadsectie",
     "mainNavAriaLabel": "Hoofdnavigatie",
     "guides": "Gidsen",
-    "jobs": "Vacatures"
+    "jobs": "Vacatures",
+    "explore": "Ontdek"
   },
   "hero": {
     "badge": "Live vacaturebord — elke vacature geverifieerd in het systeem van het bedrijf zelf",
@@ -4304,5 +4305,31 @@
   "boardHero": {
     "agentLead": "Je AI-agent solliciteert met je mee:",
     "agentLine": "hij schrijft de brief, beantwoordt de echte vragen, bereidt je voor — jij verstuurt"
+  },
+  "explore": {
+    "badge": "Verken het board",
+    "headline": "Vind je volgende baan op wat echt telt",
+    "subhead": "Niet zeker wat te zoeken? Blader op echte signalen — wie het snelst aanneemt, wie vacatures echt vervult, wie nieuw is en waar het salaris zit — elke lijst live berekend uit de boards van bedrijven.",
+    "trendingTitle": "Neemt deze week het snelst aan",
+    "trendingBlurb": "Bedrijven die de meeste nieuwe vacatures toevoegden in de laatste 7 dagen.",
+    "trendingBadge": "+{{n}} nieuw deze week",
+    "hiringTitle": "Bedrijven die vacatures echt vervullen",
+    "hiringBlurb": "Bewezen actieve aannemers — gemeten aan vervulde of gesloten vacatures in de laatste 90 dagen, niet alleen open advertenties.",
+    "hiringBadge": "{{filled}} vervuld / 90d · {{open}} nu open",
+    "newestTitle": "Net toegevoegd aan het board",
+    "newestBlurb": "Bedrijfsboards die we de laatste twee weken zijn gaan volgen — wees er vroeg bij.",
+    "openRoles": "{{n}} open functies",
+    "entryTitle": "Geschikt voor starters",
+    "entryBlurb": "Bedrijven met de meeste functies open voor wie net begint.",
+    "entryBadge": "{{n}} startersfuncties",
+    "salaryTitle": "Waar het salaris zit",
+    "salaryBlurb": "Vakgebieden gerangschikt op de mediane geadverteerde ondergrens — uit vacatures die betaling vermelden, in de dominante valuta van het vakgebied. Nooit omgerekend, nooit gemengd.",
+    "salaryBadge": "mediane ondergrens {{sym}}{{median}} ({{ccy}}) · {{n}} vacatures",
+    "fieldsTitle": "Blader op vakgebied",
+    "fieldsBlurb": "Spring direct naar de live vacatures van een vakgebied.",
+    "ctaLine": "Weet je wat je zoekt? Doorzoek het volledige live board.",
+    "ctaButton": "Alle banen zoeken",
+    "seoTitle": "Banen Verkennen — Trending Bedrijven, Snelle Aannemers & Best Betaalde Vakgebieden",
+    "seoDescription": "Ontdek banen op wat telt: bedrijven die het snelst aannemen, die vacatures echt vervullen, net toegevoegde boards, startervriendelijke werkgevers en de best betaalde vakgebieden — alles live berekend uit de boards van bedrijven."
   }
 }

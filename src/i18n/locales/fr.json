@@ -24,7 +24,8 @@
     "getStartedAriaLabel": "Commencer - défiler vers la section de téléversement",
     "mainNavAriaLabel": "Navigation principale",
     "guides": "Guides",
-    "jobs": "Offres"
+    "jobs": "Offres",
+    "explore": "Explorer"
   },
   "hero": {
     "badge": "Tableau d'offres en direct — chaque annonce vérifiée sur le système de l'entreprise",
@@ -4304,5 +4305,31 @@
   "boardHero": {
     "agentLead": "Votre agent IA candidate avec vous :",
     "agentLine": "il rédige la lettre, répond aux vraies questions, vous prépare — vous envoyez"
+  },
+  "explore": {
+    "badge": "Explorer le tableau",
+    "headline": "Trouvez votre prochain poste selon ce qui compte vraiment",
+    "subhead": "Vous ne savez pas quoi chercher ? Parcourez par signaux réels — qui recrute le plus vite, qui pourvoit vraiment ses postes, qui est nouveau, et où sont les salaires — chaque liste calculée en direct depuis les tableaux des entreprises.",
+    "trendingTitle": "Recrute le plus vite cette semaine",
+    "trendingBlurb": "Entreprises ayant ajouté le plus de postes ces 7 derniers jours.",
+    "trendingBadge": "+{{n}} nouveaux cette semaine",
+    "hiringTitle": "Entreprises qui pourvoient vraiment",
+    "hiringBlurb": "Recruteurs actifs prouvés — mesuré par postes pourvus ou fermés ces 90 derniers jours, pas juste des annonces ouvertes.",
+    "hiringBadge": "{{filled}} pourvus / 90j · {{open}} ouverts",
+    "newestTitle": "Vient d'être ajouté",
+    "newestBlurb": "Tableaux d'entreprises suivis depuis deux semaines — arrivez tôt.",
+    "openRoles": "{{n}} postes ouverts",
+    "entryTitle": "Ouvert aux débutants",
+    "entryBlurb": "Entreprises avec le plus de postes ouverts aux débuts de carrière.",
+    "entryBadge": "{{n}} postes débutants",
+    "salaryTitle": "Où sont les salaires",
+    "salaryBlurb": "Domaines classés par salaire plancher médian annoncé — des annonces indiquant la paie, dans la devise dominante du domaine. Jamais converti, jamais mélangé.",
+    "salaryBadge": "plancher médian {{sym}}{{median}} ({{ccy}}) · {{n}} annonces",
+    "fieldsTitle": "Parcourir par domaine",
+    "fieldsBlurb": "Accédez directement aux offres en direct d'un domaine.",
+    "ctaLine": "Vous savez ce que vous cherchez ? Cherchez dans tout le tableau en direct.",
+    "ctaButton": "Chercher tous les emplois",
+    "seoTitle": "Explorer les Emplois — Entreprises Tendance, Recruteurs Rapides et Domaines les Mieux Payés",
+    "seoDescription": "Découvrez les emplois selon ce qui compte : entreprises qui recrutent le plus vite, qui pourvoient vraiment, tableaux récemment ajoutés, employeurs ouverts aux débutants et domaines les mieux payés — le tout calculé en direct depuis les tableaux des entreprises."
   }
 }

@@ -24,7 +24,8 @@
     "getStartedAriaLabel": "Comece agora - role até a secção de envio",
     "mainNavAriaLabel": "Navegação principal",
     "guides": "Guias",
-    "jobs": "Vagas"
+    "jobs": "Vagas",
+    "explore": "Explorar"
   },
   "hero": {
     "badge": "Quadro de vagas ao vivo — cada vaga verificada no sistema da própria empresa",
@@ -4304,5 +4305,31 @@
   "boardHero": {
     "agentLead": "Seu agente de IA se candidata com você:",
     "agentLine": "ele escreve a carta, responde às perguntas reais, prepara você — você envia"
+  },
+  "explore": {
+    "badge": "Explore o painel",
+    "headline": "Encontre sua próxima vaga pelo que realmente importa",
+    "subhead": "Sem saber o que buscar? Navegue por sinais reais — quem contrata mais rápido, quem realmente preenche vagas, quem é novo e onde está o salário — cada lista calculada ao vivo dos painéis das empresas.",
+    "trendingTitle": "Contratando mais rápido esta semana",
+    "trendingBlurb": "Empresas que adicionaram mais vagas nos últimos 7 dias.",
+    "trendingBadge": "+{{n}} novas esta semana",
+    "hiringTitle": "Empresas que realmente preenchem vagas",
+    "hiringBlurb": "Contratadores ativos comprovados — medido por vagas preenchidas ou fechadas nos últimos 90 dias, não apenas anúncios abertos.",
+    "hiringBadge": "{{filled}} preenchidas / 90d · {{open}} abertas",
+    "newestTitle": "Recém-adicionadas ao painel",
+    "newestBlurb": "Painéis de empresas que começamos a acompanhar nas últimas duas semanas — chegue cedo.",
+    "openRoles": "{{n}} vagas abertas",
+    "entryTitle": "Amigável para iniciantes",
+    "entryBlurb": "Empresas com mais vagas abertas a quem está começando a carreira.",
+    "entryBadge": "{{n}} vagas de nível inicial",
+    "salaryTitle": "Onde está o salário",
+    "salaryBlurb": "Áreas ordenadas pelo piso salarial mediano anunciado — de vagas que indicam pagamento, na moeda dominante de cada área. Nunca convertido, nunca misturado.",
+    "salaryBadge": "piso mediano {{sym}}{{median}} ({{ccy}}) · {{n}} vagas",
+    "fieldsTitle": "Navegar por área",
+    "fieldsBlurb": "Vá direto às vagas ao vivo de qualquer área.",
+    "ctaLine": "Sabe o que procura? Busque no painel completo ao vivo.",
+    "ctaButton": "Buscar todas as vagas",
+    "seoTitle": "Explorar Vagas — Empresas em Alta, Contratadores Rápidos e Áreas Mais Bem Pagas",
+    "seoDescription": "Descubra vagas pelo que importa: empresas que contratam mais rápido, que realmente preenchem vagas, painéis recém-adicionados, empregadores amigáveis para iniciantes e as áreas mais bem pagas — tudo calculado ao vivo dos painéis das empresas."
   }
 }

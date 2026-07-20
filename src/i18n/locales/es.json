@@ -24,7 +24,8 @@
     "getStartedAriaLabel": "Empezar - desplazarse a la sección de carga",
     "mainNavAriaLabel": "Navegación principal",
     "guides": "Guías",
-    "jobs": "Empleo"
+    "jobs": "Empleo",
+    "explore": "Explorar"
   },
   "hero": {
     "badge": "Tablón de empleo en vivo — cada oferta verificada en el sistema de la propia empresa",
@@ -4304,5 +4305,31 @@
   "boardHero": {
     "agentLead": "Tu agente de IA postula contigo:",
     "agentLine": "escribe la carta, responde las preguntas reales, te prepara — tú envías"
+  },
+  "explore": {
+    "badge": "Explora el tablero",
+    "headline": "Encuentra tu próximo empleo por lo que realmente importa",
+    "subhead": "¿No sabes qué buscar? Explora por señales reales — quién contrata más rápido, quién realmente cubre vacantes, quién es nuevo y dónde está el sueldo — cada lista calculada en vivo desde los tableros de las empresas.",
+    "trendingTitle": "Contratando más rápido esta semana",
+    "trendingBlurb": "Empresas que añadieron más vacantes en los últimos 7 días.",
+    "trendingBadge": "+{{n}} nuevas esta semana",
+    "hiringTitle": "Empresas que sí cubren vacantes",
+    "hiringBlurb": "Contratadores activos comprobados — medido por vacantes cubiertas o cerradas en los últimos 90 días, no solo anuncios abiertos.",
+    "hiringBadge": "{{filled}} cubiertas / 90d · {{open}} abiertas ahora",
+    "newestTitle": "Recién añadidas al tablero",
+    "newestBlurb": "Tableros de empresas que empezamos a seguir en las últimas dos semanas — llega temprano.",
+    "openRoles": "{{n}} vacantes abiertas",
+    "entryTitle": "Aptas para principiantes",
+    "entryBlurb": "Empresas con más vacantes abiertas a quienes empiezan su carrera.",
+    "entryBadge": "{{n}} vacantes de nivel inicial",
+    "salaryTitle": "Dónde está el sueldo",
+    "salaryBlurb": "Campos ordenados por el piso salarial medio anunciado — de vacantes que indican pago, en la moneda dominante de cada campo. Nunca convertido, nunca mezclado.",
+    "salaryBadge": "piso medio {{sym}}{{median}} ({{ccy}}) · {{n}} vacantes",
+    "fieldsTitle": "Explorar por campo",
+    "fieldsBlurb": "Entra directo a las vacantes en vivo de cualquier campo.",
+    "ctaLine": "¿Sabes qué buscas? Busca en el tablero completo en vivo.",
+    "ctaButton": "Buscar todos los empleos",
+    "seoTitle": "Explorar Empleos — Empresas en Tendencia, Contratadores Rápidos y Campos Mejor Pagados",
+    "seoDescription": "Descubre empleos por lo que importa: empresas que contratan más rápido, que realmente cubren vacantes, tableros recién añadidos, empleadores aptos para principiantes y los campos mejor pagados — todo calculado en vivo desde los tableros de las empresas."
   }
 }

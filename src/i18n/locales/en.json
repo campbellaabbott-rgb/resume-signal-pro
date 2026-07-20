@@ -24,7 +24,8 @@
     "getStartedAriaLabel": "Get started - scroll to upload section",
     "mainNavAriaLabel": "Main navigation",
     "guides": "Guides",
-    "jobs": "Jobs"
+    "jobs": "Jobs",
+    "explore": "Explore"
   },
   "hero": {
     "badge": "Live job board — every posting verified from the company's own system",
@@ -4304,5 +4305,31 @@
   "boardHero": {
     "agentLead": "Your AI agent applies with you:",
     "agentLine": "it writes the cover letter, answers the real questions, preps you — you hit send"
+  },
+  "explore": {
+    "badge": "Explore the board",
+    "headline": "Find your next role by what actually matters",
+    "subhead": "Not sure what to search? Browse by real signals — who's hiring fastest, who actually fills roles, who's new, and where the pay is — every list computed live from companies' own boards.",
+    "trendingTitle": "Hiring fastest this week",
+    "trendingBlurb": "Companies that added the most new roles in the last 7 days.",
+    "trendingBadge": "+{{n}} new this week",
+    "hiringTitle": "Companies that actually fill roles",
+    "hiringBlurb": "Proven active hirers — measured by roles filled or closed in the last 90 days, not just open listings.",
+    "hiringBadge": "{{filled}} filled / 90d · {{open}} open now",
+    "newestTitle": "Just added to the board",
+    "newestBlurb": "Company boards we started tracking in the last two weeks — get in early.",
+    "openRoles": "{{n}} open roles",
+    "entryTitle": "Entry-level friendly",
+    "entryBlurb": "Companies with the most roles open to people early in their careers.",
+    "entryBadge": "{{n}} entry-level roles",
+    "salaryTitle": "Where the pay is",
+    "salaryBlurb": "Fields ranked by the median advertised floor — from postings that state pay, in each field's dominant currency. Never converted, never mixed.",
+    "salaryBadge": "median floor {{sym}}{{median}} ({{ccy}}) · {{n}} postings",
+    "fieldsTitle": "Browse by field",
+    "fieldsBlurb": "Jump straight into any field's live openings.",
+    "ctaLine": "Know what you're looking for? Search the full live board.",
+    "ctaButton": "Search all jobs",
+    "seoTitle": "Explore Jobs — Trending Companies, Fast Hirers & Top-Paying Fields",
+    "seoDescription": "Discover jobs by what matters: companies hiring fastest right now, businesses that actually fill roles, newly added company boards, entry-level friendly employers, and the highest-paying fields — all computed live from companies' own job boards."
   }
 }

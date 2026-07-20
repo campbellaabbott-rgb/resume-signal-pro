@@ -25,6 +25,7 @@ const Terms = lazy(() => import("./pages/Terms"));
 const Jobs = lazy(() => import("./pages/Jobs"));
 const GhostJobIndex = lazy(() => import("./pages/GhostJobIndex"));
 const EntryLevelIndex = lazy(() => import("./pages/EntryLevelIndex"));
+const Explore = lazy(() => import("./pages/Explore"));
 const HiringTrends = lazy(() => import("./pages/HiringTrends"));
 const Privacy = lazy(() => import("./pages/Privacy"));
 const Pricing = lazy(() => import("./pages/Pricing"));
@@ -76,6 +77,7 @@ const App = () => (
           <Route path="/jobs" element={<Jobs />} />
           <Route path="/jobs/field/:category" element={<Jobs />} />
           <Route path="/jobs/company/:companyToken" element={<Jobs />} />
+          <Route path="/explore" element={<Explore />} />
           <Route path="/ghost-job-index" element={<GhostJobIndex />} />
           <Route path="/entry-level-index" element={<EntryLevelIndex />} />
           <Route path="/hiring-trends" element={<HiringTrends />} />
