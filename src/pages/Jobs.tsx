@@ -223,6 +223,38 @@ export default function Jobs() {
     return Number.isFinite(n) && n > 0 ? n : 0;
   });
   const [freshness, setFreshness] = useState<"" | "day" | "week">("");
+  // Natural-language search: the user describes what they want, an LLM maps
+  // it to the board's REAL filters (never inventing one), and we show exactly
+  // how it read the query with anything it couldn't map disclosed plainly.
+  const [nlOpen, setNlOpen] = useState(false);
+  const [nlQuery, setNlQuery] = useState("");
+  const [nlLoading, setNlLoading] = useState(false);
+  const [nlResult, setNlResult] = useState<{ interpreted: string[]; notMapped: string[] } | null>(null);
+  const applyNlSearch = useCallback(async () => {
+    const raw = nlQuery.trim();
+    if (raw.length < 3 || nlLoading) return;
+    setNlLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("nl-search", { body: { query: raw } });
+      const f = (data as { filters?: Record<string, unknown> } | null)?.filters;
+      if (error || !f) { toast({ title: t("jobsPage.nlFailed", "Couldn't read that — try the filters below instead.") }); return; }
+      // Apply the parsed filters through the existing setters; reset the ones
+      // NOT returned so the applied state matches the interpretation exactly.
+      setQ(typeof f.q === "string" ? f.q : "");
+      setCategory(typeof f.category === "string" ? f.category : "");
+      setExperience(typeof f.experience === "string" ? f.experience : "");
+      setRemoteOnly(f.remote === true);
+      setSalaryFloor(typeof f.salaryFloor === "number" ? f.salaryFloor : 0);
+      setCountry(typeof f.country === "string" ? f.country : "");
+      setLocation(typeof f.location === "string" ? f.location : "");
+      setFreshness(f.maxAgeDays === 1 ? "day" : f.maxAgeDays === 7 ? "week" : "");
+      const d = data as { interpreted?: string[]; notMapped?: string[] };
+      setNlResult({ interpreted: Array.isArray(d.interpreted) ? d.interpreted : [], notMapped: Array.isArray(d.notMapped) ? d.notMapped : [] });
+      setNlOpen(false);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch { toast({ title: t("jobsPage.nlFailed", "Couldn't read that — try the filters below instead.") }); }
+    finally { setNlLoading(false); }
+  }, [nlQuery, nlLoading, t]);
   const [companyQuery, setCompanyQuery] = useState<string | null>(null);
   const [companyIdx, setCompanyIdx] = useState(-1);
   // ⌘K palette + "?" shortcuts overlay + "/" search focus.
@@ -1979,6 +2011,45 @@ export default function Jobs() {
             </div>
           )}
 
+          {/* Natural-language search: describe the search in plain words; an
+              LLM maps it to the board's real filters and shows how it read it. */}
+          <div className="mb-2">
+            {!nlOpen ? (
+              <button
+                type="button"
+                onClick={() => setNlOpen(true)}
+                className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                {t("jobsPage.nlOpen", "Search in plain language")}
+              </button>
+            ) : (
+              <div className="rounded-xl border border-primary/40 bg-primary/5 p-2.5">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={nlQuery}
+                    autoFocus
+                    onChange={(e) => setNlQuery(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") { e.preventDefault(); void applyNlSearch(); }
+                      else if (e.key === "Escape") setNlOpen(false);
+                    }}
+                    placeholder={t("jobsPage.nlPlaceholder", "e.g. remote product roles over $150k posted this week")}
+                    className="flex-1 min-w-0 px-3 py-1.5 rounded-lg bg-background border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  />
+                  <Button size="sm" disabled={nlLoading || nlQuery.trim().length < 3} onClick={() => void applyNlSearch()}>
+                    {nlLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : t("jobsPage.nlGo", "Search")}
+                  </Button>
+                  <Button size="sm" variant="ghost" className="px-2" aria-label={t("jobsPage.nlClose", "Close")} onClick={() => setNlOpen(false)}>✕</Button>
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-1.5">
+                  {t("jobsPage.nlHint", "We map it to real filters and show exactly how we read it — adjust anything below.")}
+                </p>
+              </div>
+            )}
+          </div>
+
           {/* P0 filter bar: the primary search row stays put (sticky) while the
               list scrolls; on mobile the secondary controls collapse behind one
               "Filters" button with an active-count badge, so the first posting
@@ -1990,7 +2061,7 @@ export default function Jobs() {
                 <input
                   type="text"
                   value={q}
-                  onChange={(e) => { setQ(e.target.value); setSuggestOpen(true); setSuggestIdx(-1); }}
+                  onChange={(e) => { setQ(e.target.value); setSuggestOpen(true); setSuggestIdx(-1); setNlResult(null); }}
                   onFocus={() => setSuggestOpen(true)}
                   onBlur={() => setTimeout(() => { setSuggestOpen(false); setSuggestIdx(-1); }, 150)}
                   onKeyDown={(e) => {
@@ -2506,6 +2577,30 @@ export default function Jobs() {
                   </span>
                 )}
               </p>
+              {/* NL-search interpretation: show exactly how the plain-language
+                  query was read (chips = applied filters) and disclose anything
+                  we couldn't map — never silently drop a concept. */}
+              {nlResult && (nlResult.interpreted.length > 0 || nlResult.notMapped.length > 0) && (
+                <div className="mb-2 -mt-1 text-xs">
+                  {nlResult.interpreted.length > 0 && (
+                    <p className="text-muted-foreground flex flex-wrap items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-primary shrink-0" />
+                      <span>{t("jobsPage.nlInterpreted", "Read as:")}</span>
+                      {nlResult.interpreted.map((c) => (
+                        <span key={c} className="inline-flex items-center rounded-full bg-primary/10 text-primary px-2 py-0.5">{c}</span>
+                      ))}
+                      <button type="button" className="text-muted-foreground hover:text-foreground underline ml-1" onClick={() => setNlResult(null)}>
+                        {t("jobsPage.nlDismiss", "dismiss")}
+                      </button>
+                    </p>
+                  )}
+                  {nlResult.notMapped.length > 0 && (
+                    <p className="text-warning/90 mt-1">
+                      {t("jobsPage.nlNotMapped", "Couldn't filter by: {{terms}} — no filter for that yet, so it wasn't applied.", { terms: nlResult.notMapped.join(", ") })}
+                    </p>
+                  )}
+                </div>
+              )}
               {/* Typo fallback disclosure: never pass fuzzy matches off as
                   exact — say plainly these are the closest titles we found. */}
               {data?.fuzzy && (

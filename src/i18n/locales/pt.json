@@ -4245,7 +4245,16 @@
     "matchedInDesc": "Na descrição:",
     "moreAtCompany": "Mais {{n}} vagas abertas na {{company}} — ver todas",
     "relatedRoles": "Cargos relacionados:",
-    "fuzzyLine": "Sem correspondências exatas para “{{q}}” — mostrando os cargos mais próximos."
+    "fuzzyLine": "Sem correspondências exatas para “{{q}}” — mostrando os cargos mais próximos.",
+    "nlOpen": "Buscar em linguagem natural",
+    "nlPlaceholder": "ex. vagas de produto remotas acima de $150k publicadas esta semana",
+    "nlGo": "Buscar",
+    "nlClose": "Fechar",
+    "nlHint": "Convertemos em filtros reais e mostramos exatamente como interpretamos — ajuste abaixo.",
+    "nlInterpreted": "Interpretado como:",
+    "nlDismiss": "dispensar",
+    "nlNotMapped": "Não foi possível filtrar por: {{terms}} — ainda não há filtro para isso, então não foi aplicado.",
+    "nlFailed": "Não foi possível interpretar — use os filtros abaixo."
   },
   "accountPage": {
     "statActive": "Candidaturas ativas",

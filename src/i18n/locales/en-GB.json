@@ -4245,7 +4245,16 @@
     "matchedInDesc": "In the description:",
     "moreAtCompany": "{{n}} more open roles at {{company}} — see them all",
     "relatedRoles": "Related roles:",
-    "fuzzyLine": "No exact matches for “{{q}}” — showing the closest job titles instead."
+    "fuzzyLine": "No exact matches for “{{q}}” — showing the closest job titles instead.",
+    "nlOpen": "Search in plain language",
+    "nlPlaceholder": "e.g. remote product roles over £150k posted this week",
+    "nlGo": "Search",
+    "nlClose": "Close",
+    "nlHint": "We map it to real filters and show exactly how we read it — adjust anything below.",
+    "nlInterpreted": "Read as:",
+    "nlDismiss": "dismiss",
+    "nlNotMapped": "Couldn't filter by: {{terms}} — no filter for that yet, so it wasn't applied.",
+    "nlFailed": "Couldn't read that — try the filters below instead."
   },
   "accountPage": {
     "statActive": "Active applications",

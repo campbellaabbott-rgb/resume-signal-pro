@@ -11,6 +11,8 @@ project_id = "bwhdazbotpblihdxcmho"
     verify_jwt = false
   [functions.check-alerts]
     verify_jwt = false
+  [functions.nl-search]
+    verify_jwt = false
   [functions.check-error-spikes]
     verify_jwt = false
   [functions.industry-corrections-digest]

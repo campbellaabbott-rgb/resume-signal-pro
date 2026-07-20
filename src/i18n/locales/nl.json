@@ -4245,7 +4245,16 @@
     "matchedInDesc": "In de omschrijving:",
     "moreAtCompany": "Nog {{n}} open functies bij {{company}} — bekijk ze allemaal",
     "relatedRoles": "Verwante functies:",
-    "fuzzyLine": "Geen exacte resultaten voor “{{q}}” — dit zijn de dichtstbijzijnde functies."
+    "fuzzyLine": "Geen exacte resultaten voor “{{q}}” — dit zijn de dichtstbijzijnde functies.",
+    "nlOpen": "Zoeken in gewone taal",
+    "nlPlaceholder": "bijv. remote productfuncties boven $150k deze week geplaatst",
+    "nlGo": "Zoeken",
+    "nlClose": "Sluiten",
+    "nlHint": "We vertalen het naar echte filters en laten precies zien hoe we het lazen — pas hieronder aan.",
+    "nlInterpreted": "Gelezen als:",
+    "nlDismiss": "sluiten",
+    "nlNotMapped": "Kon niet filteren op: {{terms}} — daar is nog geen filter voor, dus niet toegepast.",
+    "nlFailed": "Kon dat niet lezen — gebruik de filters hieronder."
   },
   "accountPage": {
     "statActive": "Actieve sollicitaties",

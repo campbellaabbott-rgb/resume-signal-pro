@@ -4245,7 +4245,16 @@
     "matchedInDesc": "Sa deskripsyon:",
     "moreAtCompany": "{{n}} pa ang bukas na posisyon sa {{company}} — tingnan lahat",
     "relatedRoles": "Kaugnay na posisyon:",
-    "fuzzyLine": "Walang eksaktong tugma para sa “{{q}}” — ipinapakita ang pinakamalapit na posisyon."
+    "fuzzyLine": "Walang eksaktong tugma para sa “{{q}}” — ipinapakita ang pinakamalapit na posisyon.",
+    "nlOpen": "Maghanap sa payak na wika",
+    "nlPlaceholder": "hal. remote na trabaho sa produkto na higit $150k na na-post ngayong linggo",
+    "nlGo": "Maghanap",
+    "nlClose": "Isara",
+    "nlHint": "Isinasalin namin ito sa totoong filter at ipinapakita kung paano namin ito binasa — i-adjust ang kahit ano sa ibaba.",
+    "nlInterpreted": "Binasa bilang:",
+    "nlDismiss": "i-dismiss",
+    "nlNotMapped": "Hindi ma-filter ayon sa: {{terms}} — wala pang filter para diyan, kaya hindi na-apply.",
+    "nlFailed": "Hindi ito nabasa — subukan ang mga filter sa ibaba."
   },
   "accountPage": {
     "statActive": "Aktibong aplikasyon",

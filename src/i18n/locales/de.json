@@ -4245,7 +4245,16 @@
     "matchedInDesc": "In der Beschreibung:",
     "moreAtCompany": "{{n}} weitere offene Stellen bei {{company}} — alle ansehen",
     "relatedRoles": "Verwandte Rollen:",
-    "fuzzyLine": "Keine exakten Treffer für „{{q}}“ — es werden die ähnlichsten Titel gezeigt."
+    "fuzzyLine": "Keine exakten Treffer für „{{q}}“ — es werden die ähnlichsten Titel gezeigt.",
+    "nlOpen": "In natürlicher Sprache suchen",
+    "nlPlaceholder": "z. B. Remote-Produktstellen über 150k, diese Woche veröffentlicht",
+    "nlGo": "Suchen",
+    "nlClose": "Schließen",
+    "nlHint": "Wir übersetzen es in echte Filter und zeigen genau, wie wir es gelesen haben — unten anpassbar.",
+    "nlInterpreted": "Verstanden als:",
+    "nlDismiss": "verwerfen",
+    "nlNotMapped": "Konnte nicht filtern nach: {{terms}} — dafür gibt es noch keinen Filter, also nicht angewendet.",
+    "nlFailed": "Konnte das nicht lesen — nutze die Filter unten."
   },
   "accountPage": {
     "statActive": "Aktive Bewerbungen",
