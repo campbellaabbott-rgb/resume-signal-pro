@@ -32,6 +32,35 @@ const NAME_BLOCK = /\b(staffing|recruit(ing|ment|er)?s?|talent\s|talents\b|headh
 const GOV_BLOCK = /\b(city of|county of|state of|commonwealth of|government of|unified school|school district|public schools|public library|court of appeals|county commissioners|conservation district|health district|sheriff|police department|fire department|township of|municipality)\b/i;
 const TOKEN_BLOCK = /(demo|test|sample|sandbox|staging)/i;
 
+// Vendor test/demo tenants: an exact, curated blocklist of `vendor:token`
+// (lowercased). These are the ATS vendors' own demo/sandbox orgs and stray
+// {company}sandbox non-production boards (Lever "Lever Test 23", Ashby
+// "Playground", Greenhouse "Example Corp"/"AlixPartners test board",
+// SmartRecruiters "Acme Corp. 091614", Recruitee "Your Company", …). Their
+// add/remove churn inflated closed_90d and floated them to the top of the
+// /explore + Ghost Job Index "actively hiring" surfaces (data-quality
+// cleanup 2026-07-20). Curated by exact token — NOT a broad name regex — so a
+// real firm that merely shares a word survives: "Sandbox Mutual Insurance"
+// (real Saskatoon insurer), "Sandboxx", "SandboxAQ", "Testlio", "Altius Test
+// Prep", "ACT Group"(testendouble), "NISC"(testnisc) all stay in.
+const DEMO_BOARDS = new Set([
+  "lever:levertest", "lever:leverdemo", "lever:leverdemo-8",
+  "ashby:playground", "ashby:ashby-embed-demo-org", "ashby:demo.uipath.com",
+  "ashby:demo.talentlink", "ashby:krakensandbox",
+  "greenhouse:example", "greenhouse:examplecorpsandbox", "greenhouse:alixpartnerssandbox",
+  "greenhouse:testcanonical123", "greenhouse:jamyrintegrationsandbox",
+  "greenhouse:simplifyjobsintegrationsandbox", "greenhouse:testestone",
+  "greenhouse:seisandbox", "greenhouse:newglobesandbox", "greenhouse:rohansrecruiterssandbox",
+  "smartrecruiters:acmecorp091614",
+  "recruitee:yourcompany",
+]);
+// Belt-and-suspenders for demos we haven't catalogued yet: placeholder NAMES
+// no real employer uses. Phrase-specific on purpose — bare "test"/"sandbox"/
+// "acme" would nuke the legit firms listed above, so match the demo-y phrase,
+// not the word ("Test Board" not "Test Prep"; "acme"/"sandbox" names are left
+// to the exact curated set above so real firms are never caught).
+const DEMO_NAME = /\b(demo(?:\s|$)|test\s*board|example\s*corp|your\s+company|implementation\s+(?:training|environment)|integration\s+sandbox|recruiters?\s+sandbox)\b/i;
+
 // Existing catalog in BOTH entry formats: object literals ({ name, source,
 // token }) from rung 3+, and the legacy s("Name", "vendor", "token") helper.
 // The round-3 verify pass missed the object format and re-verified ~3k known
@@ -51,7 +80,7 @@ const decodeEntities = (s) => s
   .replace(/&lt;/g, "<").replace(/&gt;/g, ">");
 
 const keep = {};
-const dropped = { blockedName: 0, blockedToken: 0, dupe: 0, nameCollision: 0 };
+const dropped = { blockedName: 0, blockedToken: 0, blockedDemo: 0, dupe: 0, nameCollision: 0 };
 const millWorklist = [];
 for (const vendor of VENDORS) {
   keep[vendor] = [];
@@ -61,6 +90,7 @@ for (const vendor of VENDORS) {
     const tokenKey = `${vendor}:${b.token.toLowerCase()}`;
     const nameKey = name.toLowerCase();
     if (TOKEN_BLOCK.test(b.token)) { dropped.blockedToken++; continue; }
+    if (DEMO_BOARDS.has(tokenKey) || DEMO_NAME.test(name)) { dropped.blockedDemo++; continue; }
     if (!name || NAME_BLOCK.test(name) || GOV_BLOCK.test(name)) { dropped.blockedName++; continue; }
     if (seen.has(tokenKey) || existingTokens.has(tokenKey)) { dropped.dupe++; continue; }
     if (existingNames.has(nameKey)) { dropped.nameCollision++; continue; }
