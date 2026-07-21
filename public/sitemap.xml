@@ -1896,11 +1896,6 @@
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://resumebooster.work/jobs/company/AECOM2</loc>
-    <changefreq>daily</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
     <loc>https://resumebooster.work/jobs/company/AbbVie</loc>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
@@ -1911,12 +1906,12 @@
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://resumebooster.work/jobs/company/BoschGroup</loc>
+    <loc>https://resumebooster.work/jobs/company/AECOM2</loc>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://resumebooster.work/jobs/company/VeoliaEnvironnementSA</loc>
+    <loc>https://resumebooster.work/jobs/company/BoschGroup</loc>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
   </url>
@@ -1946,12 +1941,17 @@
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://resumebooster.work/jobs/company/equipmentsharecom</loc>
+    <loc>https://resumebooster.work/jobs/company/VeoliaEnvironnementSA</loc>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://resumebooster.work/jobs/company/centriaautism</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://resumebooster.work/jobs/company/equipmentsharecom</loc>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
   </url>

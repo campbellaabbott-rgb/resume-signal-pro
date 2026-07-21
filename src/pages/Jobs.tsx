@@ -65,20 +65,25 @@ const HIRING_INTENT_MIN = 8;
 // Per-company hiring-health, from get_company_hiring_health (lifecycle data).
 interface HiringHealth {
   open_roles: number;
+  /** Genuine-tenure fills in the tracked window (≤90d): non-superseded closures
+   *  that stayed posted 7+ days before coming down. NOT raw closures — churn
+   *  (BoxLunch: 3093 closures, zero real fills) never counts here. */
   closed_90d: number;
-  /** Same-title relistings in 90d — repost churn (absent until the RPC ships it). */
+  /** Same-title relistings in the tracked window — repost churn (absent until the RPC ships it). */
   superseded_90d?: number;
   median_days_open: number | null;
   median_days_to_close: number | null;
+  /** Days of closure-log observation behind the counts (capped at 90). */
   tracking_days: number;
 }
-// Closures needed before we'll call a company "actively hiring" — enough that
-// it's a real pattern, not one data point. Below it we show only neutral facts.
+// Genuine fills needed before we'll call a company "actively hiring" — enough
+// that it's a real pattern, not one data point (same bar as Explore's list).
+// Below it we show only neutral facts.
 const ACTIVELY_HIRING_MIN_CLOSED = 3;
-// Urgency chip: only when the fill pattern is both proven (>= the closure floor)
+// Urgency chip: only when the fill pattern is both proven (>= the fills floor)
 // and actually fast — a 25-day median is not "apply early".
 const URGENT_FILL_MAX_DAYS = 14;
-// Repost caution: relisting the same titles this often in 90d is a pattern.
+// Repost caution: relisting the same titles this often in the tracked window is a pattern.
 const REPOST_FLAG_MIN = 3;
 
 // Experience bands mirror EXPERIENCE_BANDS in the edge function's experience.ts.
@@ -1965,14 +1970,16 @@ export default function Jobs() {
 
           {/* Company-page Hiring-Health: the lifecycle signal aggregators can't
               build — open roles now + how fast this company actually fills roles.
-              Honest + staged: the "actively hiring" label needs real closure volume,
-              and with no closures yet we say we're still gathering, never "doesn't hire". */}
+              Honest + staged: the "actively hiring" label needs genuine fills
+              (tenure-vetted closures) PLUS live openings — a dead board is not
+              hiring — and with no fills yet we say we're still gathering, never
+              "doesn't hire". */}
           {landerCompany && hiringHealth && (hiringHealth.open_roles > 0 || hiringHealth.closed_90d > 0) && (
             <div className="rounded-xl border border-border bg-card p-4 mb-6 max-w-xl">
               <div className="flex items-center gap-2 mb-2">
                 <Activity className="w-4 h-4 text-primary shrink-0" />
                 <h2 className="text-sm font-semibold text-foreground">{t("jobsPage.hhTitle", "Hiring Health")}</h2>
-                {hiringHealth.closed_90d >= ACTIVELY_HIRING_MIN_CLOSED && (
+                {hiringHealth.open_roles > 0 && hiringHealth.closed_90d >= ACTIVELY_HIRING_MIN_CLOSED && (
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-success/10 text-success">
                     {t("jobsPage.hhActive", "Actively hiring")}
                   </span>
@@ -1987,9 +1994,11 @@ export default function Jobs() {
                 )}
                 {hiringHealth.closed_90d > 0 ? (
                   <li>
-                    {t("jobsPage.hhClosedPre", "Filled or closed")}{" "}
+                    {t("jobsPage.hhFilledPre", "Filled")}{" "}
                     <span className="text-foreground font-semibold">{hiringHealth.closed_90d}</span>{" "}
-                    {t("jobsPage.hhClosedPost", "in the last 90 days")}
+                    {hiringHealth.tracking_days > 0
+                      ? t("jobsPage.hhFilledPost", "roles in {{d}}d of tracking — each stayed posted a week or more, then came down", { d: hiringHealth.tracking_days })
+                      : t("jobsPage.hhFilledPostUntracked", "roles since we began tracking — each stayed posted a week or more, then came down")}
                     {hiringHealth.median_days_to_close != null && (
                       <> · {t("jobsPage.hhSpeed", "typically within ~{{d}} days", { d: Math.round(hiringHealth.median_days_to_close) })}</>
                     )}
@@ -2001,7 +2010,7 @@ export default function Jobs() {
                 )}
                 {(hiringHealth.superseded_90d ?? 0) >= REPOST_FLAG_MIN && (
                   <li className="text-warning/90">
-                    {t("jobsPage.hhReposts", "Relisted the same role title {{n}} times in the last 90 days — routine reposting or roles that keep reopening.", { n: hiringHealth.superseded_90d })}
+                    {t("jobsPage.hhRepostsTracked", "Relisted the same role title {{n}} times during our tracking — routine reposting or roles that keep reopening.", { n: hiringHealth.superseded_90d })}
                   </li>
                 )}
               </ul>
@@ -2793,7 +2802,7 @@ export default function Jobs() {
                           {job.token && (healthByToken[job.token]?.closed_90d ?? 0) >= ACTIVELY_HIRING_MIN_CLOSED && (
                             <span
                               className="inline-flex items-center gap-1 text-[11px] font-medium text-success mt-1 ml-2"
-                              title={t("jobsPage.hhBadgeTip", "This company has filled or closed {{n}} roles in the last 90 days — a proven, active hiring pattern, not just open listings.", { n: healthByToken[job.token].closed_90d })}
+                              title={t("jobsPage.hhBadgeTipFills", "This company has filled {{n}} roles in our tracking so far — each stayed posted at least a week before coming down. A proven, active hiring pattern, not just open listings.", { n: healthByToken[job.token].closed_90d })}
                             >
                               <Activity className="w-3 h-3 shrink-0" />
                               {t("jobsPage.hhBadge", "Actively hiring")}
@@ -2809,7 +2818,7 @@ export default function Jobs() {
                             return (
                               <span
                                 className="inline-flex items-center gap-1 text-[11px] font-medium text-warning mt-1 ml-2"
-                                title={t("jobsPage.urgencyTip", "Based on {{n}} roles this company filled or closed in the last 90 days, a typical role here closes in about {{d}} days — worth applying early.", { n: hh.closed_90d, d: Math.round(m) })}
+                                title={t("jobsPage.urgencyTipFills", "Based on {{n}} genuine fills in our tracking (roles that stayed posted a week or more, then closed), a typical role here closes in about {{d}} days — worth applying early.", { n: hh.closed_90d, d: Math.round(m) })}
                               >
                                 <Clock className="w-3 h-3 shrink-0" />
                                 {t("jobsPage.urgencyChip", "Typically fills in ~{{d}}d", { d: Math.round(m) })}
@@ -2821,10 +2830,10 @@ export default function Jobs() {
                           {job.token && (healthByToken[job.token]?.superseded_90d ?? 0) >= REPOST_FLAG_MIN && (
                             <span
                               className="inline-flex items-center gap-1 text-[11px] text-muted-foreground mt-1 ml-2"
-                              title={t("jobsPage.repostTip", "This company relisted the same role title {{n}} times in the last 90 days. That can mean routine reposting or roles that keep reopening — worth knowing before you invest in an application.", { n: healthByToken[job.token].superseded_90d })}
+                              title={t("jobsPage.repostTipTracked", "This company relisted the same role title {{n}} times during our tracking. That can mean routine reposting or roles that keep reopening — worth knowing before you invest in an application.", { n: healthByToken[job.token].superseded_90d })}
                             >
                               <RefreshCw className="w-3 h-3 shrink-0" />
-                              {t("jobsPage.repostChip", "Relists roles often ({{n}}× / 90d)", { n: healthByToken[job.token].superseded_90d })}
+                              {t("jobsPage.repostChipTracked", "Relists roles often ({{n}}×)", { n: healthByToken[job.token].superseded_90d })}
                             </span>
                           )}
                           {/* Explainable fit — the "why you match" half: the posting's
