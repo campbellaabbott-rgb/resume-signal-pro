@@ -139,8 +139,8 @@ export default function Explore() {
         </div>
 
         {trending.length > 0 && (
-          <Section icon={Flame} title={t("explore.trendingTitle", "Hiring fastest this week")} blurb={t("explore.trendingBlurb", "Companies that added the most new roles in the last 7 days.")}>
-            <CompanyGrid rows={trending} badge={(r) => t("explore.trendingBadge", "+{{n}} new this week", { n: r.recent ?? 0 })} />
+          <Section icon={Flame} title={t("explore.trendingTitle", "Fastest-growing boards")} blurb={t("explore.trendingBlurb", "Biggest net increase in open roles — counted from our own daily snapshots, so reposts can't inflate it.")}>
+            <CompanyGrid rows={trending} badge={(r) => t("explore.trendingBadge", "+{{n}} net-new roles", { n: r.recent ?? 0 })} />
           </Section>
         )}
 
