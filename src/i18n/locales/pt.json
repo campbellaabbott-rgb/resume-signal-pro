@@ -4365,7 +4365,8 @@
     "segSmall": "Startups e equipes pequenas — 3–49 vagas abertas",
     "segStats": "{{companies}} empresas · {{roles}} vagas abertas · {{remote}}% remoto · {{entry}}% júnior",
     "segSalary": "piso salarial mediano US$ {{m}} ({{n}} vagas em USD)",
-    "segOpen": "{{n}}{{plus}} vagas abertas"
+    "segOpen": "{{n}} vagas abertas",
+    "segOpenBoth": "{{n}} no nosso quadro · {{total}} na empresa toda"
   },
   "agentQueue": {
     "title": "Fila da manhã",

@@ -23076,7 +23076,9 @@ export const JOB_SOURCES: JobSource[] = [
   { name: "Telana", source: "greenhouse", token: "ancoris" },
   { name: "PHENOGY AG", source: "greenhouse", token: "phenogyag" },
   { name: "PlanOmatic HQ", source: "greenhouse", token: "planomatichq" },
-  { name: "Globalelitecareers", source: "lever", token: "globalelitecareers" },
+  // globalelitecareers removed 2026-07-21: "Work From Home - Break Free of the
+  // 9-5" posted hundreds of times — MLM-style recruiting spam, violates the
+  // Zero Ghost Jobs promise (legitimacy bar).
   { name: "Usasurveyjob", source: "lever", token: "usasurveyjob" },
   { name: "Shieldai", source: "lever", token: "shieldai" },
   { name: "Binance", source: "lever", token: "binance" },

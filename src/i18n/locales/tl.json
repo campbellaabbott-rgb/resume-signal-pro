@@ -4365,7 +4365,8 @@
     "segSmall": "Mga startup at maliliit na team — 3–49 bukas na posisyon",
     "segStats": "{{companies}} kumpanya · {{roles}} bukas na posisyon · {{remote}}% remote · {{entry}}% entry-level",
     "segSalary": "median na nakasaad na sahod ${{m}} ({{n}} USD na posting)",
-    "segOpen": "{{n}}{{plus}} bukas na posisyon"
+    "segOpen": "{{n}} bukas na posisyon",
+    "segOpenBoth": "{{n}} sa aming board · {{total}} sa buong kumpanya"
   },
   "agentQueue": {
     "title": "Morning Queue",

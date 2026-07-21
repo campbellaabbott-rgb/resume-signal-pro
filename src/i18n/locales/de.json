@@ -4365,7 +4365,8 @@
     "segSmall": "Startups & kleine Teams — 3–49 offene Stellen",
     "segStats": "{{companies}} Unternehmen · {{roles}} offene Stellen · {{remote}} % remote · {{entry}} % Einstieg",
     "segSalary": "medianes genanntes Mindestgehalt {{m}} $ ({{n}} USD-Stellen)",
-    "segOpen": "{{n}}{{plus}} offene Stellen"
+    "segOpen": "{{n}} offene Stellen",
+    "segOpenBoth": "{{n}} auf unserem Board · {{total}} unternehmensweit"
   },
   "agentQueue": {
     "title": "Morgen-Queue",

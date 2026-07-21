@@ -4365,7 +4365,8 @@
     "segSmall": "Startups & small teams — 3–49 open roles",
     "segStats": "{{companies}} companies · {{roles}} open roles · {{remote}}% remote · {{entry}}% entry-level",
     "segSalary": "median stated floor ${{m}} ({{n}} USD postings)",
-    "segOpen": "{{n}}{{plus}} open roles"
+    "segOpen": "{{n}} open roles",
+    "segOpenBoth": "{{n}} on our board · {{total}} company-wide"
   },
   "agentQueue": {
     "title": "Morning Queue",

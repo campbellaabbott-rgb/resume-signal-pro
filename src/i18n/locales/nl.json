@@ -4365,7 +4365,8 @@
     "segSmall": "Startups & kleine teams — 3–49 open vacatures",
     "segStats": "{{companies}} bedrijven · {{roles}} open vacatures · {{remote}}% remote · {{entry}}% instapniveau",
     "segSalary": "mediane vermelde ondergrens ${{m}} ({{n}} USD-vacatures)",
-    "segOpen": "{{n}}{{plus}} open vacatures"
+    "segOpen": "{{n}} open vacatures",
+    "segOpenBoth": "{{n}} op ons board · {{total}} bedrijfsbreed"
   },
   "agentQueue": {
     "title": "Ochtendwachtrij",

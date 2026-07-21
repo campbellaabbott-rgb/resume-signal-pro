@@ -16,7 +16,7 @@ import { supabase } from "@/integrations/supabase/client";
 const rpc = (fn: string, args?: Record<string, unknown>) =>
   (supabase as unknown as { rpc: (f: string, a?: Record<string, unknown>) => Promise<{ data: unknown }> }).rpc(fn, args);
 
-interface CompanyRow { company: string; company_token: string; open_roles?: number; recent?: number; closed_90d?: number; entry_roles?: number; tracking_days?: number; repost_events?: number; reposted_roles?: number; worst_title?: string; worst_count?: number; feed_total?: number | null }
+interface CompanyRow { company: string; company_token: string; open_roles?: number; recent?: number; closed_90d?: number; entry_roles?: number; tracking_days?: number; repost_events?: number; reposted_roles?: number; worst_title?: string; worst_count?: number; feed_total?: number | null; on_board?: number; company_total?: number | null }
 interface SalaryRow { category: string; currency: string; n: number; median_annual_min: number }
 interface Segment { companies: number; open_roles: number; remote_pct: number; entry_pct: number; median_usd_floor: number | null; usd_n: number | null; top: CompanyRow[] }
 type Segments = Partial<Record<"enterprise" | "mid" | "small", Segment>>;
@@ -202,11 +202,17 @@ export default function Explore() {
                         <> · {t("explore.segSalary", "median stated floor ${{m}} ({{n}} USD postings)", { m: Math.round(s.median_usd_floor).toLocaleString(), n: s.usd_n })}</>
                       )}
                     </p>
-                    <CompanyGrid rows={s.top} badge={(r) =>
-                      t("explore.segOpen", "{{n}}{{plus}} open roles", {
-                        n: r.open_roles ?? 0,
-                        plus: (r.feed_total ?? 0) > (r.open_roles ?? 0) ? "+" : "",
-                      })} />
+                    {/* Two-number badge: our verified count and the company's own
+                        advertised total when it exceeds it — the band label and
+                        badge can never contradict each other. (Fallback fields
+                        cover a frontend-before-migration deploy window.) */}
+                    <CompanyGrid rows={s.top} badge={(r) => {
+                      const onBoard = r.on_board ?? r.open_roles ?? 0;
+                      const total = r.company_total ?? r.feed_total ?? 0;
+                      return total > onBoard
+                        ? t("explore.segOpenBoth", "{{n}} on our board · {{total}} company-wide", { n: onBoard, total: total.toLocaleString() })
+                        : t("explore.segOpen", "{{n}} open roles", { n: onBoard });
+                    }} />
                   </div>
                 );
               })}

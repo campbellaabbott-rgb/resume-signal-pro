@@ -4365,7 +4365,8 @@
     "segSmall": "Startups y equipos pequeños — 3–49 vacantes",
     "segStats": "{{companies}} empresas · {{roles}} vacantes · {{remote}}% remoto · {{entry}}% nivel inicial",
     "segSalary": "suelo salarial mediano ${{m}} ({{n}} vacantes en USD)",
-    "segOpen": "{{n}}{{plus}} vacantes"
+    "segOpen": "{{n}} vacantes",
+    "segOpenBoth": "{{n}} en nuestro tablero · {{total}} en toda la empresa"
   },
   "agentQueue": {
     "title": "Cola matinal",
