@@ -296,6 +296,24 @@ export type Database = {
         }
         Relationships: []
       }
+      company_name_overrides: {
+        Row: {
+          added_at: string
+          display_name: string
+          slug: string
+        }
+        Insert: {
+          added_at?: string
+          display_name: string
+          slug: string
+        }
+        Update: {
+          added_at?: string
+          display_name?: string
+          slug?: string
+        }
+        Relationships: []
+      }
       daily_scan_stats: {
         Row: {
           date: string
@@ -728,6 +746,27 @@ export type Database = {
           source?: string
           superseded?: boolean
           title?: string
+        }
+        Relationships: []
+      }
+      job_board_company_snapshots: {
+        Row: {
+          company: string
+          company_token: string
+          open_roles: number
+          snapshot_date: string
+        }
+        Insert: {
+          company?: string
+          company_token: string
+          open_roles?: number
+          snapshot_date: string
+        }
+        Update: {
+          company?: string
+          company_token?: string
+          open_roles?: number
+          snapshot_date?: string
         }
         Relationships: []
       }
@@ -2886,6 +2925,7 @@ export type Database = {
       }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
+      snapshot_company_counts: { Args: never; Returns: undefined }
       store_cached_response: {
         Args: {
           p_cache_key: string
