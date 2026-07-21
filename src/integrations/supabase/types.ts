@@ -2270,6 +2270,7 @@ export type Database = {
           unique_users: number
         }[]
       }
+      get_explore_cache: { Args: never; Returns: Json }
       get_failed_deliveries_for_retry: {
         Args: { p_limit?: number }
         Returns: {
@@ -2816,6 +2817,7 @@ export type Database = {
         Args: { p_ip: string; p_outcome: string; p_report_id: string }
         Returns: boolean
       }
+      refresh_explore_cache: { Args: never; Returns: undefined }
       register_affiliate: {
         Args: { p_email: string; p_password: string }
         Returns: Json
