@@ -2720,6 +2720,7 @@ export type Database = {
         }[]
       }
       get_scan_totals: { Args: never; Returns: Json }
+      get_size_segments: { Args: never; Returns: Json }
       get_stale_board_count: { Args: never; Returns: number }
       get_stats_cache: { Args: never; Returns: Json }
       get_storage_footprint: {
