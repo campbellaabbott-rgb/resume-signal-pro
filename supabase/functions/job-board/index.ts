@@ -62,7 +62,7 @@ const json = (body: unknown, status = 200) =>
 // counts. catalogSize (JOB_SOURCES.length) is the automatic companion signal: it
 // moves with every catalog change with no discipline required. Sortable string so
 // a future check can tell "prod is behind" from "prod is ahead".
-const BUILD_VERSION = "2026-07-21.3";
+const BUILD_VERSION = "2026-07-21.4";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -283,6 +283,12 @@ async function fetchWorkday(s: JobSource): Promise<{ jobPostings: unknown[]; raw
     all.push(...items);
     if (items.length < 20) break; // last page
   }
+  // Empty page with a non-zero advertised total = the tenant refused/failed us
+  // (rate-limit, transient) — NOT an empty board. Throwing marks the board
+  // failed so nothing is pruned. Without this, persistent empty responses
+  // eventually pass the two-pass + shrink-ratchet guards and delete the whole
+  // board (live case: Four Seasons pruned to 0 while advertising 1,963 jobs).
+  if (all.length === 0 && feedTotal > 0) throw new Error(`empty page but total=${feedTotal}`);
   // windowed: the tenant holds more postings than the page cap lets us fetch.
   // Membership then ROTATES — newer postings push older ones past the window,
   // and a role "vanishing" proves nothing about it being filled (verified live:
