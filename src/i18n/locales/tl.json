@@ -4341,7 +4341,7 @@
     "repostBlurb": "Mga kumpanyang tinatanggal at muling inilalathala ang parehong posisyon nang paulit-ulit — sinukat mula sa sarili naming lifecycle tracking. Ang muling paglalathala ay nagre-reset ng petsa ng post, kaya maaaring magmukhang bago ang isang opening kahit matagal na itong unang lumabas.",
     "repostBadge": "“{{title}}” muling inilista {{n}}× · {{events}} kabuuan sa {{d}} araw",
     "hiringTitle": "Mga kumpanyang talagang nakakapuno ng posisyon",
-    "hiringBlurb": "Mga posisyong nanatiling nakapaskil nang hindi bababa sa isang linggo at pagkatapos ay tinanggal — tunay na senyales ng pag-hire mula sa sarili naming pagsubaybay, salang ang mga repost.",
+    "hiringBlurb": "Mga posisyong nanatiling nakapaskil nang hindi bababa sa isang linggo at pagkatapos ay tinanggal — tunay na senyales ng pag-hire mula sa sarili naming pagsubaybay. Ang mga kumpanyang ang mga pagtanggal ay kadalasang muling paglalathala ay diskuwalipikado (makikita sila sa Paulit-ulit mag-repost).",
     "hiringBadge": "{{filled}} napuno sa {{d}}d na pagsubaybay · {{open}} bukas ngayon",
     "newestTitle": "Kadadagdag lang sa board",
     "newestBlurb": "Mga board na bagong lumitaw sa aming pang-araw-araw na pagsubaybay — beripikadong bagong dating, magpauna ka.",

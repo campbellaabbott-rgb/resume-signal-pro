@@ -4341,7 +4341,7 @@
     "repostBlurb": "Entreprises qui retirent puis republient sans cesse les mêmes postes — mesuré par notre propre suivi du cycle de vie. Republier réinitialise la date de publication : une offre peut sembler toute neuve longtemps après sa première apparition.",
     "repostBadge": "« {{title}} » republié {{n}}× · {{events}} au total en {{d}}j",
     "hiringTitle": "Entreprises qui pourvoient vraiment",
-    "hiringBlurb": "Postes restés en ligne au moins une semaine puis retirés — un vrai signal de recrutement issu de notre propre suivi, republications filtrées.",
+    "hiringBlurb": "Postes restés en ligne au moins une semaine puis retirés — un vrai signal de recrutement issu de notre propre suivi. Les entreprises dont les retraits sont surtout des republications sont disqualifiées (elles figurent dans Republieurs en série).",
     "hiringBadge": "{{filled}} pourvus en {{d}}j de suivi · {{open}} ouverts",
     "newestTitle": "Vient d'être ajouté",
     "newestBlurb": "Tableaux apparus pour la première fois dans notre suivi quotidien — nouvelles arrivées vérifiées, arrivez tôt.",

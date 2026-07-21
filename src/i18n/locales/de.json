@@ -4341,7 +4341,7 @@
     "repostBlurb": "Unternehmen, die Stellen immer wieder zurückziehen und neu einstellen — gemessen mit unserem eigenen Lifecycle-Tracking. Neu einstellen setzt das Veröffentlichungsdatum zurück, sodass eine Stelle lange nach ihrem ersten Erscheinen brandneu wirken kann.",
     "repostBadge": "„{{title}}“ {{n}}× neu eingestellt · {{events}} gesamt in {{d}} T.",
     "hiringTitle": "Unternehmen, die Stellen wirklich besetzen",
-    "hiringBlurb": "Stellen, die mindestens eine Woche online waren und dann verschwanden — ein echtes Besetzungssignal aus unserem eigenen Tracking, ohne Repost-Rauschen.",
+    "hiringBlurb": "Stellen, die mindestens eine Woche online waren und dann verschwanden — ein echtes Besetzungssignal aus unserem eigenen Tracking. Unternehmen, deren Rücknahmen überwiegend Wiedereinstellungen sind, werden disqualifiziert (sie erscheinen stattdessen unter Serien-Wiedereinsteller).",
     "hiringBadge": "{{filled}} besetzt in {{d}}T Tracking · {{open}} offen",
     "newestTitle": "Neu auf dem Board",
     "newestBlurb": "Boards, die neu in unserem täglichen Tracking aufgetaucht sind — verifizierte Neuzugänge, sei früh dran.",

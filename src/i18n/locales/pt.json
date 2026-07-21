@@ -4341,7 +4341,7 @@
     "repostBlurb": "Empresas que retiram e republicam as mesmas vagas repetidamente — medido pelo nosso próprio acompanhamento de ciclo de vida. Republicar reinicia a data de publicação, então uma vaga pode parecer nova muito depois de aparecer pela primeira vez.",
     "repostBadge": "“{{title}}” republicada {{n}}× · {{events}} no total em {{d}}d",
     "hiringTitle": "Empresas que realmente preenchem vagas",
-    "hiringBlurb": "Vagas que ficaram publicadas pelo menos uma semana e depois saíram — um sinal real de contratação do nosso próprio acompanhamento, com reposts filtrados.",
+    "hiringBlurb": "Vagas que ficaram publicadas pelo menos uma semana e depois saíram — um sinal real de contratação do nosso próprio acompanhamento. Empresas cujas retiradas são majoritariamente republicações ficam desqualificadas (aparecem em Republicadores em série).",
     "hiringBadge": "{{filled}} preenchidas em {{d}}d de acompanhamento · {{open}} abertas",
     "newestTitle": "Recém-adicionadas ao painel",
     "newestBlurb": "Painéis que apareceram pela primeira vez no nosso acompanhamento diário — chegadas novas verificadas, chegue cedo.",

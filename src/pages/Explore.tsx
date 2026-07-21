@@ -149,7 +149,7 @@ export default function Explore() {
         )}
 
         {hiring.length > 0 && (
-          <Section icon={Activity} title={t("explore.hiringTitle", "Companies that actually fill roles")} blurb={t("explore.hiringBlurb", "Roles that stayed posted at least a week and then came down — a real fill signal from our own tracking, with repost churn filtered out.")}>
+          <Section icon={Activity} title={t("explore.hiringTitle", "Companies that actually fill roles")} blurb={t("explore.hiringBlurb", "Roles that stayed posted at least a week and then came down — a real fill signal from our own tracking. Companies whose takedowns are mostly re-listings are disqualified (they appear under Serial re-posters instead).")}>
             {/* tracking_days ships with the rebuilt RPC; rows from the old cache
                 lack it — show only the open count then, never an unbacked claim. */}
             <CompanyGrid rows={hiring} badge={(r) => r.tracking_days

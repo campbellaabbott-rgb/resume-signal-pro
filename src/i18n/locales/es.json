@@ -4341,7 +4341,7 @@
     "repostBlurb": "Empresas que retiran y vuelven a publicar los mismos puestos una y otra vez — medido con nuestro propio seguimiento del ciclo de vida. Re-publicar reinicia la fecha de publicación, así que una vacante puede parecer nueva mucho después de aparecer por primera vez.",
     "repostBadge": "«{{title}}» re-publicado {{n}}× · {{events}} en total en {{d}}d",
     "hiringTitle": "Empresas que sí cubren vacantes",
-    "hiringBlurb": "Vacantes que estuvieron publicadas al menos una semana y luego se retiraron — una señal real de contratación de nuestro propio seguimiento, con las republicaciones filtradas.",
+    "hiringBlurb": "Vacantes que estuvieron publicadas al menos una semana y luego se retiraron — una señal real de contratación de nuestro propio seguimiento. Las empresas cuyas retiradas son mayormente republicaciones quedan descalificadas (aparecen en Re-publicadores en serie).",
     "hiringBadge": "{{filled}} cubiertas en {{d}}d de seguimiento · {{open}} abiertas ahora",
     "newestTitle": "Recién añadidas al tablero",
     "newestBlurb": "Tableros que aparecieron por primera vez en nuestro seguimiento diario — llegadas nuevas verificadas, llega temprano.",
