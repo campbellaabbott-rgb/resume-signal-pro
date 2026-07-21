@@ -2531,6 +2531,7 @@ export type Database = {
       }
       get_scan_totals: { Args: never; Returns: Json }
       get_stale_board_count: { Args: never; Returns: number }
+      get_stats_cache: { Args: never; Returns: Json }
       get_storage_footprint: {
         Args: never
         Returns: {
@@ -2818,6 +2819,7 @@ export type Database = {
         Returns: boolean
       }
       refresh_explore_cache: { Args: never; Returns: undefined }
+      refresh_stats_cache: { Args: never; Returns: undefined }
       register_affiliate: {
         Args: { p_email: string; p_password: string }
         Returns: Json
