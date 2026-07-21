@@ -62,7 +62,7 @@ const json = (body: unknown, status = 200) =>
 // counts. catalogSize (JOB_SOURCES.length) is the automatic companion signal: it
 // moves with every catalog change with no discipline required. Sortable string so
 // a future check can tell "prod is behind" from "prod is ahead".
-const BUILD_VERSION = "2026-07-20.1";
+const BUILD_VERSION = "2026-07-21.1";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -264,11 +264,12 @@ async function fetchRippling(s: JobSource): Promise<{ items: unknown[]; raw: str
 // the rest rotate in on later passes, and the freshness filter drops the aged
 // tail regardless). Undated, description-less (list-only), like BambooHR.
 const WORKDAY_PAGE_CAP = 25; // 25 × 20 = up to 500 postings/board/pass
-async function fetchWorkday(s: JobSource): Promise<{ jobPostings: unknown[]; raw: unknown }> {
+async function fetchWorkday(s: JobSource): Promise<{ jobPostings: unknown[]; raw: unknown; windowed: boolean }> {
   const [tenant, dc, site] = s.token.split("~");
   if (!tenant || !dc || !site) throw new Error("bad workday token");
   const url = `https://${tenant}.${dc}.myworkdayjobs.com/wday/cxs/${tenant}/${site}/jobs`;
   const all: unknown[] = [];
+  let feedTotal = 0;
   for (let page = 0; page < WORKDAY_PAGE_CAP; page++) {
     const res = await fetchWithTimeout(url, {
       method: "POST",
@@ -277,14 +278,19 @@ async function fetchWorkday(s: JobSource): Promise<{ jobPostings: unknown[]; raw
     });
     if (!res.ok) { if (page === 0) throw new Error(`HTTP ${res.status}`); break; }
     const body = await res.json();
+    if (page === 0) feedTotal = Number((body as { total?: number }).total ?? 0) || 0;
     const items = Array.isArray((body as { jobPostings?: unknown[] }).jobPostings) ? (body as { jobPostings: unknown[] }).jobPostings : [];
     all.push(...items);
     if (items.length < 20) break; // last page
   }
-  return { jobPostings: all, raw: { jobPostings: all } };
+  // windowed: the tenant holds more postings than the page cap lets us fetch.
+  // Membership then ROTATES — newer postings push older ones past the window,
+  // and a role "vanishing" proves nothing about it being filled (verified live:
+  // 7 of 8 sampled Caterpillar "closures" were still open on the company site).
+  return { jobPostings: all, raw: { jobPostings: all }, windowed: feedTotal > all.length };
 }
 
-async function fetchBoard(s: JobSource): Promise<{ jobs: JobPosting[]; raw: unknown } | null> {
+async function fetchBoard(s: JobSource): Promise<{ jobs: JobPosting[]; raw: unknown; windowed?: boolean } | null> {
   try {
     if (s.source === "rippling") {
       const { items, raw } = await fetchRippling(s);
@@ -299,8 +305,8 @@ async function fetchBoard(s: JobSource): Promise<{ jobs: JobPosting[]; raw: unkn
       return { jobs: normalizePinpoint(data as never, s.name, s.token), raw: body };
     }
     if (s.source === "workday") {
-      const { jobPostings, raw } = await fetchWorkday(s);
-      return { jobs: normalizeWorkday(jobPostings as never, s.name, s.token), raw };
+      const { jobPostings, raw, windowed } = await fetchWorkday(s);
+      return { jobs: normalizeWorkday(jobPostings as never, s.name, s.token), raw, windowed };
     }
     // XML vendors first — their raw payload is text, not JSON.
     if (s.source === "personio") {
@@ -938,15 +944,18 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
         // must never be blocked by the history write, so a failed log still deletes.
         //
         // Accuracy guards — a "closure" must mean the company took the role down:
-        //  (a) truncated fetches log NOTHING: an SR board at the SR_CAP ceiling has
-        //      postings displaced past the cap "vanish" while still live;
+        //  (a) truncated fetches log NOTHING: an SR board at the SR_CAP ceiling, or
+        //      a Workday tenant whose feed total exceeds the page cap (windowed),
+        //      has postings displaced past the cap "vanish" while still live —
+        //      proven live 2026-07-21: 7/8 sampled "closures" on a windowed board
+        //      were still open on the company's own site;
         //  (b) age-outs are skipped: a posting crossing the 30-day freshness window
         //      is dropped at ingest and lands in `vanished` — we removed it, nobody
         //      filled it;
         //  (c) a closure whose exact title is still live at the same company is
         //      marked superseded (repost/relisting churn, not a fill) and excluded
         //      from hiring-health stats.
-        const truncatedFetch = s.source === "smartrecruiters" && rowsById.size >= SR_CAP;
+        const truncatedFetch = (s.source === "smartrecruiters" && rowsById.size >= SR_CAP) || r.windowed === true;
         if (vanished.length && !truncatedFetch) {
           const closedAt = new Date().toISOString();
           const liveTitles = new Set(
