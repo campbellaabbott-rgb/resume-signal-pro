@@ -62,7 +62,7 @@ const json = (body: unknown, status = 200) =>
 // counts. catalogSize (JOB_SOURCES.length) is the automatic companion signal: it
 // moves with every catalog change with no discipline required. Sortable string so
 // a future check can tell "prod is behind" from "prod is ahead".
-const BUILD_VERSION = "2026-07-21.2";
+const BUILD_VERSION = "2026-07-21.3";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -264,7 +264,7 @@ async function fetchRippling(s: JobSource): Promise<{ items: unknown[]; raw: str
 // the rest rotate in on later passes, and the freshness filter drops the aged
 // tail regardless). Undated, description-less (list-only), like BambooHR.
 const WORKDAY_PAGE_CAP = 25; // 25 × 20 = up to 500 postings/board/pass
-async function fetchWorkday(s: JobSource): Promise<{ jobPostings: unknown[]; raw: unknown; windowed: boolean }> {
+async function fetchWorkday(s: JobSource): Promise<{ jobPostings: unknown[]; raw: unknown; windowed: boolean; feedTotal: number }> {
   const [tenant, dc, site] = s.token.split("~");
   if (!tenant || !dc || !site) throw new Error("bad workday token");
   const url = `https://${tenant}.${dc}.myworkdayjobs.com/wday/cxs/${tenant}/${site}/jobs`;
@@ -287,10 +287,13 @@ async function fetchWorkday(s: JobSource): Promise<{ jobPostings: unknown[]; raw
   // Membership then ROTATES — newer postings push older ones past the window,
   // and a role "vanishing" proves nothing about it being filled (verified live:
   // 7 of 8 sampled Caterpillar "closures" were still open on the company site).
-  return { jobPostings: all, raw: { jobPostings: all }, windowed: feedTotal > all.length };
+  // feedTotal is the company's own advertised count — stored on the
+  // verification stamp so the UI can say "500+" instead of a false-precision
+  // floor (Caterpillar showed "503 open" while advertising 942).
+  return { jobPostings: all, raw: { jobPostings: all }, windowed: feedTotal > all.length, feedTotal };
 }
 
-async function fetchBoard(s: JobSource): Promise<{ jobs: JobPosting[]; raw: unknown; windowed?: boolean } | null> {
+async function fetchBoard(s: JobSource): Promise<{ jobs: JobPosting[]; raw: unknown; windowed?: boolean; feedTotal?: number } | null> {
   try {
     if (s.source === "rippling") {
       const { items, raw } = await fetchRippling(s);
@@ -305,8 +308,8 @@ async function fetchBoard(s: JobSource): Promise<{ jobs: JobPosting[]; raw: unkn
       return { jobs: normalizePinpoint(data as never, s.name, s.token), raw: body };
     }
     if (s.source === "workday") {
-      const { jobPostings, raw, windowed } = await fetchWorkday(s);
-      return { jobs: normalizeWorkday(jobPostings as never, s.name, s.token), raw, windowed };
+      const { jobPostings, raw, windowed, feedTotal } = await fetchWorkday(s);
+      return { jobs: normalizeWorkday(jobPostings as never, s.name, s.token), raw, windowed, feedTotal };
     }
     // XML vendors first — their raw payload is text, not JSON.
     if (s.source === "personio") {
@@ -1029,10 +1032,20 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
         // light cold hops stamped fine (the 397-stale-boards incident). One tiny
         // upsert per successful board; failure is surfaced but never blocks.
         try {
-          const { error: stampErr } = await client.from("job_board_verifications").upsert(
-            { company_token: s.token, verified_at: new Date().toISOString() },
+          // feed_total: the company's own advertised count (Workday), so the UI
+          // can render floors as "N+". Deploy-before-migration tolerance: if
+          // the column doesn't exist yet, retry without it — the stamp itself
+          // must never be lost to a new optional column (country-column rule).
+          let { error: stampErr } = await client.from("job_board_verifications").upsert(
+            { company_token: s.token, verified_at: new Date().toISOString(), feed_total: r.feedTotal ?? null },
             { onConflict: "company_token" },
           );
+          if (stampErr?.message?.includes("feed_total")) {
+            ({ error: stampErr } = await client.from("job_board_verifications").upsert(
+              { company_token: s.token, verified_at: new Date().toISOString() },
+              { onConflict: "company_token" },
+            ));
+          }
           if (stampErr) {
             console.warn(`[JOB-BOARD] stamp failed for ${s.token} (non-fatal):`, stampErr.message?.slice(0, 120));
             await client.from("job_board_meta").upsert(

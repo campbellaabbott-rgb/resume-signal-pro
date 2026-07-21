@@ -65,6 +65,11 @@ const HIRING_INTENT_MIN = 8;
 // Per-company hiring-health, from get_company_hiring_health (lifecycle data).
 interface HiringHealth {
   open_roles: number;
+  /** The company's own advertised posting total at last fetch (Workday feeds).
+      When it exceeds our stored rows the fetch was windowed and open_roles is a
+      floor — display "N+". Absent until the feed_total migration + function
+      redeploy have both landed. */
+  feed_total?: number | null;
   /** Genuine-tenure fills in the tracked window (≤90d): non-superseded closures
    *  that stayed posted 7+ days before coming down. NOT raw closures — churn
    *  (BoxLunch: 3093 closures, zero real fills) never counts here. */
@@ -1246,7 +1251,13 @@ export default function Jobs() {
   }, [jobs]);
 
   const isActivelyHiring = useCallback(
-    (tok?: string) => !!tok && (healthByToken[tok]?.closed_90d ?? 0) >= ACTIVELY_HIRING_MIN_CLOSED,
+    (tok?: string) => {
+      if (!tok) return false;
+      const h = healthByToken[tok];
+      // Churn-dominated boards (more re-lists than fills) don't qualify — same
+      // disqualifier the Explore fills list applies.
+      return !!h && h.closed_90d >= ACTIVELY_HIRING_MIN_CLOSED && (h.superseded_90d ?? 0) <= h.closed_90d;
+    },
     [healthByToken],
   );
 
@@ -1979,7 +1990,8 @@ export default function Jobs() {
               <div className="flex items-center gap-2 mb-2">
                 <Activity className="w-4 h-4 text-primary shrink-0" />
                 <h2 className="text-sm font-semibold text-foreground">{t("jobsPage.hhTitle", "Hiring Health")}</h2>
-                {hiringHealth.open_roles > 0 && hiringHealth.closed_90d >= ACTIVELY_HIRING_MIN_CLOSED && (
+                {hiringHealth.open_roles > 0 && hiringHealth.closed_90d >= ACTIVELY_HIRING_MIN_CLOSED
+                  && (hiringHealth.superseded_90d ?? 0) <= hiringHealth.closed_90d && (
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-success/10 text-success">
                     {t("jobsPage.hhActive", "Actively hiring")}
                   </span>
@@ -1988,7 +2000,9 @@ export default function Jobs() {
               <ul className="space-y-1 text-[13px] text-muted-foreground">
                 {hiringHealth.open_roles > 0 && (
                   <li>
-                    <span className="text-foreground font-semibold">{hiringHealth.open_roles}</span>{" "}
+                    {/* feed_total > stored rows = windowed fetch: our count is a floor,
+                        so say "N+" rather than claim false precision. */}
+                    <span className="text-foreground font-semibold">{hiringHealth.open_roles}{(hiringHealth.feed_total ?? 0) > hiringHealth.open_roles ? "+" : ""}</span>{" "}
                     {t("jobsPage.hhOpen", "open roles verified on the board right now")}
                   </li>
                 )}
@@ -1999,7 +2013,9 @@ export default function Jobs() {
                     {hiringHealth.tracking_days > 0
                       ? t("jobsPage.hhFilledPost", "roles in {{d}}d of tracking — each stayed posted a week or more, then came down", { d: hiringHealth.tracking_days })
                       : t("jobsPage.hhFilledPostUntracked", "roles since we began tracking — each stayed posted a week or more, then came down")}
-                    {hiringHealth.median_days_to_close != null && (
+                    {/* Right-censored early: a young record can't contain slow closes,
+                        so the median reads fake-fast. Withheld until >= 21d tracked. */}
+                    {hiringHealth.median_days_to_close != null && hiringHealth.tracking_days >= 21 && (
                       <> · {t("jobsPage.hhSpeed", "typically within ~{{d}} days", { d: Math.round(hiringHealth.median_days_to_close) })}</>
                     )}
                   </li>
@@ -2799,7 +2815,7 @@ export default function Jobs() {
                           {/* Hiring-Health: proven-active companies (from the closure
                               log) — the signal aggregators can't build. Self-activates
                               as closures accrue; silent until a real pattern exists. */}
-                          {job.token && (healthByToken[job.token]?.closed_90d ?? 0) >= ACTIVELY_HIRING_MIN_CLOSED && (
+                          {job.token && isActivelyHiring(job.token) && (
                             <span
                               className="inline-flex items-center gap-1 text-[11px] font-medium text-success mt-1 ml-2"
                               title={t("jobsPage.hhBadgeTipFills", "This company has filled {{n}} roles in our tracking so far — each stayed posted at least a week before coming down. A proven, active hiring pattern, not just open listings.", { n: healthByToken[job.token].closed_90d })}
