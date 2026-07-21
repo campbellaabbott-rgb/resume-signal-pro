@@ -2386,6 +2386,7 @@ export type Database = {
           posted_coverage_pct: number
           total_companies: number
           total_open: number
+          tracking_days: number
         }[]
       }
       get_hiring_trends: {
