@@ -197,6 +197,138 @@ export type Database = {
         }
         Relationships: []
       }
+      agent_mandates: {
+        Row: {
+          active: boolean
+          category: string
+          created_at: string
+          daily_count: number
+          email: string
+          last_run_at: string | null
+          last_run_summary: Json | null
+          location: string
+          q: string
+          remote_only: boolean
+          resume_text: string
+          salary_min: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          active?: boolean
+          category?: string
+          created_at?: string
+          daily_count?: number
+          email?: string
+          last_run_at?: string | null
+          last_run_summary?: Json | null
+          location?: string
+          q?: string
+          remote_only?: boolean
+          resume_text?: string
+          salary_min?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          active?: boolean
+          category?: string
+          created_at?: string
+          daily_count?: number
+          email?: string
+          last_run_at?: string | null
+          last_run_summary?: Json | null
+          location?: string
+          q?: string
+          remote_only?: boolean
+          resume_text?: string
+          salary_min?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      agent_queue: {
+        Row: {
+          apply_url: string
+          category: string
+          company: string
+          company_token: string
+          created_at: string
+          decided_at: string | null
+          fit_pct: number | null
+          id: number
+          location: string
+          posted_at: string | null
+          posting_id: string
+          reasons: Json
+          salary: string
+          status: string
+          title: string
+          user_id: string
+        }
+        Insert: {
+          apply_url?: string
+          category?: string
+          company?: string
+          company_token?: string
+          created_at?: string
+          decided_at?: string | null
+          fit_pct?: number | null
+          id?: never
+          location?: string
+          posted_at?: string | null
+          posting_id: string
+          reasons?: Json
+          salary?: string
+          status?: string
+          title?: string
+          user_id: string
+        }
+        Update: {
+          apply_url?: string
+          category?: string
+          company?: string
+          company_token?: string
+          created_at?: string
+          decided_at?: string | null
+          fit_pct?: number | null
+          id?: never
+          location?: string
+          posted_at?: string | null
+          posting_id?: string
+          reasons?: Json
+          salary?: string
+          status?: string
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      agent_subscribers: {
+        Row: {
+          current_period_end: string | null
+          email: string
+          status: string
+          stripe_customer_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          current_period_end?: string | null
+          email: string
+          status?: string
+          stripe_customer_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          current_period_end?: string | null
+          email?: string
+          status?: string
+          stripe_customer_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ai_response_cache: {
         Row: {
           cache_key: string
