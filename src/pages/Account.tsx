@@ -17,6 +17,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { SavedSearchesCard } from "@/components/account/SavedSearchesCard";
 import { ApplyKitPanel } from "@/components/account/ApplyKitPanel";
 import { ApplyCopilotPanel } from "@/components/account/ApplyCopilotPanel";
+import { MorningQueuePanel } from "@/components/account/MorningQueuePanel";
 import { ClosedReplacementsPanel } from "@/components/account/ClosedReplacementsPanel";
 import { useProSubscription } from "@/hooks/use-pro-subscription";
 import { supabase } from "@/integrations/supabase/client";
@@ -904,6 +905,14 @@ export default function Account() {
             </div>
           )}
         </div>
+
+        {user && (
+          <MorningQueuePanel
+            userId={user.id}
+            email={user.email ?? null}
+            defaultResume={matchingResume ?? scans[0]?.resume_text ?? null}
+          />
+        )}
 
         <ApplyCopilotPanel
           apps={applications}
