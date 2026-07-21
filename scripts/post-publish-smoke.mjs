@@ -213,6 +213,19 @@ const dbObjects = {
   "table scan_outcomes": await tableState("scan_outcomes"),
   "table job_board_postings": await tableState("job_board_postings"),
   "table user_job_searches": await tableState("user_job_searches"),
+  // Behavioral, not just reachable: 20260721230000 redefined closed_90d as
+  // genuine-tenure fills and made tracking_days the global log span, so even a
+  // token with zero closures gets tracking_days >= 1; the old definition
+  // returned 0 for it. Old definition live = repost churn is wearing the
+  // "Actively hiring" badge with copy that claims tenure-vetted fills.
+  "get_company_hiring_health() real-fills def": await (async () => {
+    try {
+      const r = await fetch(`${URL_BASE}/rest/v1/rpc/get_company_hiring_health`, { method: "POST", headers: hdrs, body: JSON.stringify({ p_tokens: ["deploy-verify-no-such-company"] }), signal: AbortSignal.timeout(15000) });
+      const j = await r.json().catch(() => null);
+      if (j?.code === "PGRST202") return "MISSING";
+      return Array.isArray(j) && (j[0]?.tracking_days ?? 0) >= 1 ? "ok" : "MISSING";
+    } catch { return "error"; }
+  })(),
 };
 const dbMissing = Object.entries(dbObjects).filter(([, v]) => v === "MISSING").map(([k]) => k);
 record("migrations applied (critical DB objects)", dbMissing.length === 0,
