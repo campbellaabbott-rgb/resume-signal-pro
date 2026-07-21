@@ -52,6 +52,15 @@ export default function EntryLevelIndex() {
   useEffect(() => {
     (async () => {
       try {
+        // Fast path: the hourly stats cache (the live aggregates are ~12s and
+        // ~11s). Falls through to the live RPCs if the cache row isn't there.
+        const { data: cacheRaw } = await Promise.resolve(rpc("get_stats_cache")).catch(() => ({ data: null }));
+        const cache = (cacheRaw && typeof cacheRaw === "object" && !Array.isArray(cacheRaw)) ? (cacheRaw as Record<string, unknown>) : null;
+        if (cache && cache.entry_stats && Array.isArray(cache.entry_companies)) {
+          setStats(cache.entry_stats as Stats);
+          setLeaders(cache.entry_companies as Leader[]);
+          return;
+        }
         const [s, l] = await Promise.all([
           rpc("get_entry_level_stats"),
           rpc("get_entry_level_companies", { p_limit: 25 }),

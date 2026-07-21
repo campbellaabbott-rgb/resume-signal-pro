@@ -50,6 +50,15 @@ export default function HiringTrends() {
   useEffect(() => {
     (async () => {
       try {
+        // Fast path: the hourly stats cache (the live aggregates are ~11s and
+        // ~4s). Falls through to the live RPCs if the cache row isn't there.
+        const { data: cacheRaw } = await Promise.resolve(rpc("get_stats_cache")).catch(() => ({ data: null }));
+        const cache = (cacheRaw && typeof cacheRaw === "object" && !Array.isArray(cacheRaw)) ? (cacheRaw as Record<string, unknown>) : null;
+        if (cache && Array.isArray(cache.hiring_trends) && (cache.hiring_trends as unknown[]).length > 0) {
+          setWeeks(cache.hiring_trends as WeekRow[]);
+          if (Array.isArray(cache.trending_categories)) setCats(cache.trending_categories as CatTrend[]);
+          return;
+        }
         const [w, c] = await Promise.all([rpc("get_hiring_trends"), rpc("get_trending_categories")]);
         let wrows = Array.isArray(w.data) ? (w.data as WeekRow[]) : [];
         if (wrows.length === 0) {

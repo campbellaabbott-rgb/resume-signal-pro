@@ -68,8 +68,13 @@ export default function GhostJobIndex() {
   useEffect(() => {
     (async () => {
       try {
+        // Fast path: the hourly stats cache supplies the two slow aggregates
+        // (ghost_stats ~4.9s live, date_coverage which otherwise 500s). The
+        // fast calls (leaders, freshness, audit) always run live below.
+        const { data: cacheRaw } = await Promise.resolve(rpc("get_stats_cache")).catch(() => ({ data: null }));
+        const cache = (cacheRaw && typeof cacheRaw === "object" && !Array.isArray(cacheRaw)) ? (cacheRaw as Record<string, unknown>) : null;
         const [s, l, a, f] = await Promise.all([
-          rpc("get_ghost_job_index_stats"),
+          cache?.ghost_stats ? Promise.resolve({ data: [cache.ghost_stats] }) : rpc("get_ghost_job_index_stats"),
           rpc("get_actively_hiring_companies", { p_limit: 20 }),
           // The daily self-audit result (job_board_meta is public-read).
           (supabase as unknown as { from: (t: string) => { select: (c: string) => { eq: (k: string, v: string) => { maybeSingle: () => Promise<{ data: unknown }> } } } })
@@ -95,7 +100,10 @@ export default function GhostJobIndex() {
         const av = (a.data as { v?: AuditResult } | null)?.v;
         if (av && typeof av.accuracyPct === "number") setAudit(av);
         // RPC shape is (source, total, dated) — the pct is ours to compute.
-        const dc = await Promise.resolve(rpc("get_date_coverage")).catch(() => ({ data: null }));
+        // Prefer the cache (the live RPC full-scans 557k rows); fall back live.
+        const dc = cache?.date_coverage
+          ? { data: cache.date_coverage }
+          : await Promise.resolve(rpc("get_date_coverage")).catch(() => ({ data: null }));
         if (Array.isArray(dc.data)) {
           setDateCov((dc.data as Array<{ source: string; total: number; dated: number }>)
             .filter((r) => r && typeof r.total === "number" && r.total > 0)
