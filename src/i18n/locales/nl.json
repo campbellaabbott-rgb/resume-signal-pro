@@ -4357,7 +4357,15 @@
     "ctaLine": "Weet je wat je zoekt? Doorzoek het volledige live board.",
     "ctaButton": "Alle banen zoeken",
     "seoTitle": "Banen Verkennen — Trending Bedrijven, Snelle Aannemers & Best Betaalde Vakgebieden",
-    "seoDescription": "Ontdek banen op wat telt: bedrijven die het snelst aannemen, die vacatures echt vervullen, net toegevoegde boards, startervriendelijke werkgevers en de best betaalde vakgebieden — alles live berekend uit de boards van bedrijven."
+    "seoDescription": "Ontdek banen op wat telt: bedrijven die het snelst aannemen, die vacatures echt vervullen, net toegevoegde boards, startervriendelijke werkgevers en de best betaalde vakgebieden — alles live berekend uit de boards van bedrijven.",
+    "segTitle": "Op bedrijfsschaal",
+    "segBlurb": "Gesegmenteerd op hiring-voetafdruk — vacatures die nu openstaan op het eigen board van elk bedrijf. We gokken geen personeelsaantallen; de definitie is het getal dat je ziet.",
+    "segEnterprise": "Enterprise-schaal — 500+ open vacatures",
+    "segMid": "Mid-market — 50–499 open vacatures",
+    "segSmall": "Startups & kleine teams — 3–49 open vacatures",
+    "segStats": "{{companies}} bedrijven · {{roles}} open vacatures · {{remote}}% remote · {{entry}}% instapniveau",
+    "segSalary": "mediane vermelde ondergrens ${{m}} ({{n}} USD-vacatures)",
+    "segOpen": "{{n}}{{plus}} open vacatures"
   },
   "agentQueue": {
     "title": "Ochtendwachtrij",

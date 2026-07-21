@@ -4357,7 +4357,15 @@
     "ctaLine": "Vous savez ce que vous cherchez ? Cherchez dans tout le tableau en direct.",
     "ctaButton": "Chercher tous les emplois",
     "seoTitle": "Explorer les Emplois — Entreprises Tendance, Recruteurs Rapides et Domaines les Mieux Payés",
-    "seoDescription": "Découvrez les emplois selon ce qui compte : entreprises qui recrutent le plus vite, qui pourvoient vraiment, tableaux récemment ajoutés, employeurs ouverts aux débutants et domaines les mieux payés — le tout calculé en direct depuis les tableaux des entreprises."
+    "seoDescription": "Découvrez les emplois selon ce qui compte : entreprises qui recrutent le plus vite, qui pourvoient vraiment, tableaux récemment ajoutés, employeurs ouverts aux débutants et domaines les mieux payés — le tout calculé en direct depuis les tableaux des entreprises.",
+    "segTitle": "Par taille de recrutement",
+    "segBlurb": "Segmenté par empreinte de recrutement — postes ouverts en ce moment sur le tableau de chaque entreprise. Nous ne devinons pas les effectifs ; la définition est le nombre affiché.",
+    "segEnterprise": "Échelle enterprise — 500+ postes ouverts",
+    "segMid": "Mid-market — 50–499 postes ouverts",
+    "segSmall": "Startups et petites équipes — 3–49 postes ouverts",
+    "segStats": "{{companies}} entreprises · {{roles}} postes ouverts · {{remote}} % télétravail · {{entry}} % junior",
+    "segSalary": "salaire plancher médian {{m}} $ ({{n}} offres en USD)",
+    "segOpen": "{{n}}{{plus}} postes ouverts"
   },
   "agentQueue": {
     "title": "File du matin",

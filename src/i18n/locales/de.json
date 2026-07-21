@@ -4357,7 +4357,15 @@
     "ctaLine": "Weißt du, was du suchst? Durchsuche das gesamte Live-Board.",
     "ctaButton": "Alle Jobs durchsuchen",
     "seoTitle": "Jobs entdecken — Trend-Unternehmen, schnelle Einsteller & bestbezahlte Bereiche",
-    "seoDescription": "Entdecke Jobs nach dem, was zählt: Unternehmen, die am schnellsten einstellen, Stellen wirklich besetzen, neu hinzugefügte Boards, einsteigerfreundliche Arbeitgeber und die bestbezahlten Bereiche — alles live aus den Boards der Unternehmen berechnet."
+    "seoDescription": "Entdecke Jobs nach dem, was zählt: Unternehmen, die am schnellsten einstellen, Stellen wirklich besetzen, neu hinzugefügte Boards, einsteigerfreundliche Arbeitgeber und die bestbezahlten Bereiche — alles live aus den Boards der Unternehmen berechnet.",
+    "segTitle": "Nach Unternehmensgröße",
+    "segBlurb": "Segmentiert nach Hiring-Fußabdruck — offene Stellen auf dem eigenen Board jedes Unternehmens, jetzt gerade. Wir raten keine Mitarbeiterzahlen; die Definition ist die Zahl, die du siehst.",
+    "segEnterprise": "Enterprise — 500+ offene Stellen",
+    "segMid": "Mid-Market — 50–499 offene Stellen",
+    "segSmall": "Startups & kleine Teams — 3–49 offene Stellen",
+    "segStats": "{{companies}} Unternehmen · {{roles}} offene Stellen · {{remote}} % remote · {{entry}} % Einstieg",
+    "segSalary": "medianes genanntes Mindestgehalt {{m}} $ ({{n}} USD-Stellen)",
+    "segOpen": "{{n}}{{plus}} offene Stellen"
   },
   "agentQueue": {
     "title": "Morgen-Queue",

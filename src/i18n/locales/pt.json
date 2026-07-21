@@ -4357,7 +4357,15 @@
     "ctaLine": "Sabe o que procura? Busque no painel completo ao vivo.",
     "ctaButton": "Buscar todas as vagas",
     "seoTitle": "Explorar Vagas — Empresas em Alta, Contratadores Rápidos e Áreas Mais Bem Pagas",
-    "seoDescription": "Descubra vagas pelo que importa: empresas que contratam mais rápido, que realmente preenchem vagas, painéis recém-adicionados, empregadores amigáveis para iniciantes e as áreas mais bem pagas — tudo calculado ao vivo dos painéis das empresas."
+    "seoDescription": "Descubra vagas pelo que importa: empresas que contratam mais rápido, que realmente preenchem vagas, painéis recém-adicionados, empregadores amigáveis para iniciantes e as áreas mais bem pagas — tudo calculado ao vivo dos painéis das empresas.",
+    "segTitle": "Por porte de contratação",
+    "segBlurb": "Segmentado por pegada de contratação — vagas abertas agora no quadro próprio de cada empresa. Não adivinhamos quadro de funcionários; a definição é o número que você vê.",
+    "segEnterprise": "Escala enterprise — 500+ vagas abertas",
+    "segMid": "Mid-market — 50–499 vagas abertas",
+    "segSmall": "Startups e equipes pequenas — 3–49 vagas abertas",
+    "segStats": "{{companies}} empresas · {{roles}} vagas abertas · {{remote}}% remoto · {{entry}}% júnior",
+    "segSalary": "piso salarial mediano US$ {{m}} ({{n}} vagas em USD)",
+    "segOpen": "{{n}}{{plus}} vagas abertas"
   },
   "agentQueue": {
     "title": "Fila da manhã",

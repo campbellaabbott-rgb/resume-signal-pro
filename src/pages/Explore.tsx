@@ -7,7 +7,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Compass, Flame, Sparkles, TrendingUp, GraduationCap, DollarSign, Activity, ArrowRight, Briefcase, Repeat } from "lucide-react";
+import { Compass, Flame, Sparkles, TrendingUp, GraduationCap, DollarSign, Activity, ArrowRight, Briefcase, Repeat, Building2 } from "lucide-react";
 import { SEO } from "@/components/seo/SEO";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -16,8 +16,10 @@ import { supabase } from "@/integrations/supabase/client";
 const rpc = (fn: string, args?: Record<string, unknown>) =>
   (supabase as unknown as { rpc: (f: string, a?: Record<string, unknown>) => Promise<{ data: unknown }> }).rpc(fn, args);
 
-interface CompanyRow { company: string; company_token: string; open_roles?: number; recent?: number; closed_90d?: number; entry_roles?: number; tracking_days?: number; repost_events?: number; reposted_roles?: number; worst_title?: string; worst_count?: number }
+interface CompanyRow { company: string; company_token: string; open_roles?: number; recent?: number; closed_90d?: number; entry_roles?: number; tracking_days?: number; repost_events?: number; reposted_roles?: number; worst_title?: string; worst_count?: number; feed_total?: number | null }
 interface SalaryRow { category: string; currency: string; n: number; median_annual_min: number }
+interface Segment { companies: number; open_roles: number; remote_pct: number; entry_pct: number; median_usd_floor: number | null; usd_n: number | null; top: CompanyRow[] }
+type Segments = Partial<Record<"enterprise" | "mid" | "small", Segment>>;
 
 const CATEGORY_LABELS: Record<string, string> = {
   engineering: "Engineering & IT", data_ai: "Data & AI", design: "Design", product: "Product",
@@ -82,6 +84,7 @@ export default function Explore() {
   const [reposters, setReposters] = useState<CompanyRow[]>([]);
   const [entry, setEntry] = useState<CompanyRow[]>([]);
   const [salary, setSalary] = useState<SalaryRow[]>([]);
+  const [segments, setSegments] = useState<Segments | null>(null);
 
   useEffect(() => {
     const applySalary = (rows: SalaryRow[]) =>
@@ -100,6 +103,7 @@ export default function Explore() {
           if (Array.isArray(c.reposters)) setReposters(c.reposters as CompanyRow[]);
           if (Array.isArray(c.entry)) setEntry(c.entry as CompanyRow[]);
           if (Array.isArray(c.salary)) applySalary(c.salary as SalaryRow[]);
+          if (c.segments && typeof c.segments === "object" && !Array.isArray(c.segments)) setSegments(c.segments as Segments);
           return;
         }
       } catch { /* fall through to live RPCs */ }
@@ -111,6 +115,11 @@ export default function Explore() {
         Promise.resolve(rpc("get_entry_level_companies", { p_limit: 12 })).catch(() => ({ data: null })),
         Promise.resolve(rpc("get_salary_benchmarks")).catch(() => ({ data: null })),
       ]);
+      // Segments live-fallback fires separately: its full-table aggregate is the
+      // slowest collection and must never delay the five above.
+      void Promise.resolve(rpc("get_size_segments")).then((r: { data: unknown }) => {
+        if (r.data && typeof r.data === "object" && !Array.isArray(r.data)) setSegments(r.data as Segments);
+      }).catch(() => { /* section hides */ });
       if (Array.isArray(tr.data)) setTrending(tr.data as CompanyRow[]);
       if (Array.isArray(nw.data)) setNewest(nw.data as CompanyRow[]);
       if (Array.isArray(hi.data)) setHiring(hi.data as CompanyRow[]);
@@ -167,6 +176,41 @@ export default function Explore() {
         {newest.length > 0 && (
           <Section icon={Sparkles} title={t("explore.newestTitle", "Just added to the board")} blurb={t("explore.newestBlurb", "Boards that newly appeared in our daily tracking — verified new arrivals, get in early.")}>
             <CompanyGrid rows={newest} badge={(r) => t("explore.openRoles", "{{n}} open roles", { n: r.open_roles ?? 0 })} />
+          </Section>
+        )}
+
+        {segments && (["enterprise", "mid", "small"] as const).some((b) => (segments[b]?.companies ?? 0) > 0) && (
+          <Section icon={Building2} title={t("explore.segTitle", "By company scale")} blurb={t("explore.segBlurb", "Segmented by hiring footprint — open roles on each company's own board right now. We don't guess headcount; the definition is the number you see.")}>
+            <div className="space-y-6">
+              {(["enterprise", "mid", "small"] as const).map((band) => {
+                const s = segments[band];
+                if (!s || !s.companies) return null;
+                const label = band === "enterprise"
+                  ? t("explore.segEnterprise", "Enterprise scale — 500+ open roles")
+                  : band === "mid"
+                    ? t("explore.segMid", "Mid-market — 50–499 open roles")
+                    : t("explore.segSmall", "Startups & small teams — 3–49 open roles");
+                return (
+                  <div key={band}>
+                    <h3 className="text-sm font-bold text-foreground mb-1">{label}</h3>
+                    <p className="text-[11px] text-muted-foreground mb-2.5">
+                      {t("explore.segStats", "{{companies}} companies · {{roles}} open roles · {{remote}}% remote · {{entry}}% entry-level", {
+                        companies: s.companies.toLocaleString(), roles: s.open_roles.toLocaleString(),
+                        remote: s.remote_pct, entry: s.entry_pct,
+                      })}
+                      {s.median_usd_floor != null && (s.usd_n ?? 0) >= 50 && (
+                        <> · {t("explore.segSalary", "median stated floor ${{m}} ({{n}} USD postings)", { m: Math.round(s.median_usd_floor).toLocaleString(), n: s.usd_n })}</>
+                      )}
+                    </p>
+                    <CompanyGrid rows={s.top} badge={(r) =>
+                      t("explore.segOpen", "{{n}}{{plus}} open roles", {
+                        n: r.open_roles ?? 0,
+                        plus: (r.feed_total ?? 0) > (r.open_roles ?? 0) ? "+" : "",
+                      })} />
+                  </div>
+                );
+              })}
+            </div>
           </Section>
         )}
 

@@ -4357,7 +4357,15 @@
     "ctaLine": "Alam mo na ang hinahanap? Hanapin sa buong live board.",
     "ctaButton": "Hanapin lahat ng trabaho",
     "seoTitle": "Tuklasin ang mga Trabaho — Trending na Kumpanya, Mabilis mag-Hire at Pinakamataas na Sahod",
-    "seoDescription": "Tuklasin ang trabaho base sa mahalaga: mga kumpanyang pinakamabilis mag-hire, talagang nakakapuno ng posisyon, kadadagdag na board, angkop sa baguhan, at ang pinakamataas na sahod na larangan — lahat live na kinuwenta mula sa mga board mismo ng kumpanya."
+    "seoDescription": "Tuklasin ang trabaho base sa mahalaga: mga kumpanyang pinakamabilis mag-hire, talagang nakakapuno ng posisyon, kadadagdag na board, angkop sa baguhan, at ang pinakamataas na sahod na larangan — lahat live na kinuwenta mula sa mga board mismo ng kumpanya.",
+    "segTitle": "Ayon sa laki ng kumpanya",
+    "segBlurb": "Hinati ayon sa hiring footprint — mga bukas na posisyon ngayon mismo sa sariling board ng bawat kumpanya. Hindi kami nanghuhula ng bilang ng empleyado; ang depinisyon ay ang numerong nakikita mo.",
+    "segEnterprise": "Enterprise scale — 500+ bukas na posisyon",
+    "segMid": "Mid-market — 50–499 bukas na posisyon",
+    "segSmall": "Mga startup at maliliit na team — 3–49 bukas na posisyon",
+    "segStats": "{{companies}} kumpanya · {{roles}} bukas na posisyon · {{remote}}% remote · {{entry}}% entry-level",
+    "segSalary": "median na nakasaad na sahod ${{m}} ({{n}} USD na posting)",
+    "segOpen": "{{n}}{{plus}} bukas na posisyon"
   },
   "agentQueue": {
     "title": "Morning Queue",

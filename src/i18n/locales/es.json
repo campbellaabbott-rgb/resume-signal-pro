@@ -4357,7 +4357,15 @@
     "ctaLine": "¿Sabes qué buscas? Busca en el tablero completo en vivo.",
     "ctaButton": "Buscar todos los empleos",
     "seoTitle": "Explorar Empleos — Empresas en Tendencia, Contratadores Rápidos y Campos Mejor Pagados",
-    "seoDescription": "Descubre empleos por lo que importa: empresas que contratan más rápido, que realmente cubren vacantes, tableros recién añadidos, empleadores aptos para principiantes y los campos mejor pagados — todo calculado en vivo desde los tableros de las empresas."
+    "seoDescription": "Descubre empleos por lo que importa: empresas que contratan más rápido, que realmente cubren vacantes, tableros recién añadidos, empleadores aptos para principiantes y los campos mejor pagados — todo calculado en vivo desde los tableros de las empresas.",
+    "segTitle": "Por tamaño de contratación",
+    "segBlurb": "Segmentado por huella de contratación — vacantes abiertas ahora en el tablero propio de cada empresa. No adivinamos plantillas; la definición es el número que ves.",
+    "segEnterprise": "Escala enterprise — 500+ vacantes",
+    "segMid": "Mid-market — 50–499 vacantes",
+    "segSmall": "Startups y equipos pequeños — 3–49 vacantes",
+    "segStats": "{{companies}} empresas · {{roles}} vacantes · {{remote}}% remoto · {{entry}}% nivel inicial",
+    "segSalary": "suelo salarial mediano ${{m}} ({{n}} vacantes en USD)",
+    "segOpen": "{{n}}{{plus}} vacantes"
   },
   "agentQueue": {
     "title": "Cola matinal",
