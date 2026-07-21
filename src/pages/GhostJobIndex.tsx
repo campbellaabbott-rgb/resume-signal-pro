@@ -30,6 +30,9 @@ interface Leader {
   company_token: string;
   closed_90d: number;
   open_roles: number;
+  /** Actual measured window in days (ships with the genuine-fills RPC rebuild;
+      absent from older cached rows — omit the fill claim then). */
+  tracking_days?: number;
 }
 interface AuditResult {
   at: string;
@@ -248,8 +251,8 @@ export default function GhostJobIndex() {
           </h2>
           {hasClosureData ? (
             <p className="text-sm text-muted-foreground">
-              In the last 90 days we've watched <b className="text-foreground">{fmt(stats?.closed_90d)}</b> roles get
-              filled or closed across the board
+              Since we started keeping this record we've watched <b className="text-foreground">{fmt(stats?.closed_90d)}</b> roles
+              come down across the board
               {stats?.median_days_to_close != null && (
                 <> — a typical role closes in about <b className="text-foreground">{Math.round(stats.median_days_to_close)} days</b> of
                 the company posting it (measured only where the company states its post date)</>
@@ -279,13 +282,16 @@ export default function GhostJobIndex() {
                 >
                   <span className="text-xs text-muted-foreground w-5 shrink-0">{i + 1}</span>
                   <span className="flex-1 text-sm font-medium text-foreground truncate">{c.company}</span>
-                  <span className="text-[11px] text-success font-semibold shrink-0">{c.closed_90d} filled / 90d</span>
+                  {c.tracking_days ? (
+                    <span className="text-[11px] text-success font-semibold shrink-0">{c.closed_90d} filled in {c.tracking_days}d tracked</span>
+                  ) : null}
                   <span className="text-[11px] text-muted-foreground shrink-0 w-24 text-right">{c.open_roles} open now</span>
                 </Link>
               ))}
             </div>
             <p className="text-[11px] text-muted-foreground mt-2">
-              Ranked by roles actually filled or closed in the last 90 days — proof of hiring, not just open listings.
+              Ranked by roles that stayed posted at least a week and then came down — a real fill signal with
+              repost churn filtered out, counted over the days we've actually tracked.
             </p>
           </div>
         )}

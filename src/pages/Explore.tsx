@@ -16,7 +16,7 @@ import { supabase } from "@/integrations/supabase/client";
 const rpc = (fn: string, args?: Record<string, unknown>) =>
   (supabase as unknown as { rpc: (f: string, a?: Record<string, unknown>) => Promise<{ data: unknown }> }).rpc(fn, args);
 
-interface CompanyRow { company: string; company_token: string; open_roles?: number; recent?: number; closed_90d?: number; entry_roles?: number }
+interface CompanyRow { company: string; company_token: string; open_roles?: number; recent?: number; closed_90d?: number; entry_roles?: number; tracking_days?: number }
 interface SalaryRow { category: string; currency: string; n: number; median_annual_min: number }
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -145,13 +145,17 @@ export default function Explore() {
         )}
 
         {hiring.length > 0 && (
-          <Section icon={Activity} title={t("explore.hiringTitle", "Companies that actually fill roles")} blurb={t("explore.hiringBlurb", "Proven active hirers — measured by roles filled or closed in the last 90 days, not just open listings.")}>
-            <CompanyGrid rows={hiring} badge={(r) => t("explore.hiringBadge", "{{filled}} filled / 90d · {{open}} open now", { filled: r.closed_90d ?? 0, open: r.open_roles ?? 0 })} />
+          <Section icon={Activity} title={t("explore.hiringTitle", "Companies that actually fill roles")} blurb={t("explore.hiringBlurb", "Roles that stayed posted at least a week and then came down — a real fill signal from our own tracking, with repost churn filtered out.")}>
+            {/* tracking_days ships with the rebuilt RPC; rows from the old cache
+                lack it — show only the open count then, never an unbacked claim. */}
+            <CompanyGrid rows={hiring} badge={(r) => r.tracking_days
+              ? t("explore.hiringBadge", "{{filled}} filled in {{d}}d tracked · {{open}} open now", { filled: r.closed_90d ?? 0, d: r.tracking_days, open: r.open_roles ?? 0 })
+              : t("explore.openRoles", "{{n}} open roles", { n: r.open_roles ?? 0 })} />
           </Section>
         )}
 
         {newest.length > 0 && (
-          <Section icon={Sparkles} title={t("explore.newestTitle", "Just added to the board")} blurb={t("explore.newestBlurb", "Company boards we started tracking in the last two weeks — get in early.")}>
+          <Section icon={Sparkles} title={t("explore.newestTitle", "Just added to the board")} blurb={t("explore.newestBlurb", "Boards that newly appeared in our daily tracking — verified new arrivals, get in early.")}>
             <CompanyGrid rows={newest} badge={(r) => t("explore.openRoles", "{{n}} open roles", { n: r.open_roles ?? 0 })} />
           </Section>
         )}

@@ -2136,12 +2136,12 @@
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://resumebooster.work/jobs/company/fluidstack</loc>
+    <loc>https://resumebooster.work/jobs/company/mineralystherapeutics</loc>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://resumebooster.work/jobs/company/mineralystherapeutics</loc>
+    <loc>https://resumebooster.work/jobs/company/fluidstack</loc>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
   </url>
@@ -2701,12 +2701,12 @@
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://resumebooster.work/jobs/company/fira-health</loc>
+    <loc>https://resumebooster.work/jobs/company/UniversityHealthNetwork</loc>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://resumebooster.work/jobs/company/UniversityHealthNetwork</loc>
+    <loc>https://resumebooster.work/jobs/company/fira-health</loc>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
   </url>
@@ -2732,6 +2732,11 @@
   </url>
   <url>
     <loc>https://resumebooster.work/jobs/company/Nagarro1</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://resumebooster.work/jobs/company/stranger-soccer-1</loc>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
   </url>
@@ -2966,11 +2971,6 @@
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://resumebooster.work/jobs/company/stranger-soccer-1</loc>
-    <changefreq>daily</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
     <loc>https://resumebooster.work/jobs/company/datavant2</loc>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
@@ -3156,11 +3156,6 @@
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://resumebooster.work/jobs/company/qodeworld</loc>
-    <changefreq>daily</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
     <loc>https://resumebooster.work/jobs/company/urbancompass</loc>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
@@ -3172,6 +3167,11 @@
   </url>
   <url>
     <loc>https://resumebooster.work/jobs/company/otterbein</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://resumebooster.work/jobs/company/qodeworld</loc>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
   </url>
@@ -3481,6 +3481,11 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://resumebooster.work/jobs/company/hunt-st</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://resumebooster.work/jobs/company/waymo</loc>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
@@ -3547,11 +3552,6 @@
   </url>
   <url>
     <loc>https://resumebooster.work/jobs/company/groupeetam</loc>
-    <changefreq>daily</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://resumebooster.work/jobs/company/hunt-st</loc>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
   </url>
@@ -3941,6 +3941,16 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://resumebooster.work/jobs/company/ampersandbrands</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://resumebooster.work/jobs/company/brandttractor</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://resumebooster.work/jobs/company/EBreuningerGmbHCo</loc>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
@@ -3977,16 +3987,6 @@
   </url>
   <url>
     <loc>https://resumebooster.work/jobs/company/affirm</loc>
-    <changefreq>daily</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://resumebooster.work/jobs/company/ampersandbrands</loc>
-    <changefreq>daily</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://resumebooster.work/jobs/company/brandttractor</loc>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
   </url>
@@ -4346,17 +4346,17 @@
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://resumebooster.work/jobs/company/tpaction</loc>
-    <changefreq>daily</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
     <loc>https://resumebooster.work/jobs/company/apexcompanies</loc>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://resumebooster.work/jobs/company/BarmeniaGothaerAG</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://resumebooster.work/jobs/company/cogep</loc>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
   </url>
