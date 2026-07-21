@@ -2395,6 +2395,7 @@ export type Database = {
         }[]
       }
       get_job_board_facets: { Args: never; Returns: Json }
+      get_job_board_facets_cached: { Args: never; Returns: Json }
       get_newest_companies: {
         Args: { p_limit?: number }
         Returns: {

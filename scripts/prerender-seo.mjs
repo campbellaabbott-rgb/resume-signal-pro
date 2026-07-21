@@ -68,26 +68,32 @@ export { COUNTRY_SLUGS, CV_LOCALES, EN_TEMPLATE, fill, hreflangCluster } from ".
         signal: AbortSignal.timeout(8000),
       });
       if (r.ok) insights = await r.json();
-      // Retry + shape-validate: the facets RPC is heavy over 160k+ rows and
-      // occasionally returns a transient error body or times out cold. Company
-      // landing pages depend on companiesFacet, so accept only a real payload and
-      // give it a few tries before falling back to countless landers.
-      // 5 spaced tries: since the cold-rotation throughput bump the DB has
-      // busier windows, and this RPC flaked twice in one day at 3 tries (the
-      // sitemap ratchet caught both — this makes the flake rare again).
+      // Facets: shape-validate, accept only a real payload — company landing
+      // pages depend on companiesFacet.
+      const fetchFacets = async (rpc, timeoutMs) => {
+        const fr = await fetch(`${supaUrl}/rest/v1/rpc/${rpc}`, {
+          method: "POST",
+          headers: { apikey: supaKey, Authorization: `Bearer ${supaKey}`, "Content-Type": "application/json" },
+          body: "{}",
+          signal: AbortSignal.timeout(timeoutMs),
+        });
+        if (!fr.ok) return null;
+        const j = await fr.json();
+        return j && typeof j.total === "number" && Array.isArray(j.companiesFacet) ? j : null;
+      };
+      // Prefer the maintained facet cached in job_board_meta (single indexed
+      // row the refresh pass rewrites every pass — a microsecond PK lookup that
+      // cannot time out). The live get_job_board_facets does three full-table
+      // aggregates over 557k+ rows: it measured 17.3s and grows with the
+      // catalog, so on the anon build path it's a statement-timeout 500 waiting
+      // to happen. Fall back to it only if the cache is missing (fresh DB
+      // before its first refresh), retried a few spaced times since that path
+      // is heavy and occasionally flakes cold.
+      try { boardFacets = await fetchFacets("get_job_board_facets_cached", 8000); } catch { /* fall through to live RPC */ }
       for (let attempt = 0; attempt < 5 && !boardFacets; attempt++) {
         try {
           if (attempt) await new Promise((r) => setTimeout(r, 3500));
-          const fr = await fetch(`${supaUrl}/rest/v1/rpc/get_job_board_facets`, {
-            method: "POST",
-            headers: { apikey: supaKey, Authorization: `Bearer ${supaKey}`, "Content-Type": "application/json" },
-            body: "{}",
-            signal: AbortSignal.timeout(20000),
-          });
-          if (fr.ok) {
-            const j = await fr.json();
-            if (j && typeof j.total === "number" && Array.isArray(j.companiesFacet)) boardFacets = j;
-          }
+          boardFacets = await fetchFacets("get_job_board_facets", 20000);
         } catch { /* retry; offline/slow build ships landers with fallback counts */ }
       }
     }
