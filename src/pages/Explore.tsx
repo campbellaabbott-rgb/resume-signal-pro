@@ -7,7 +7,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Compass, Flame, Sparkles, TrendingUp, GraduationCap, DollarSign, Activity, ArrowRight, Briefcase } from "lucide-react";
+import { Compass, Flame, Sparkles, TrendingUp, GraduationCap, DollarSign, Activity, ArrowRight, Briefcase, Repeat } from "lucide-react";
 import { SEO } from "@/components/seo/SEO";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -16,7 +16,7 @@ import { supabase } from "@/integrations/supabase/client";
 const rpc = (fn: string, args?: Record<string, unknown>) =>
   (supabase as unknown as { rpc: (f: string, a?: Record<string, unknown>) => Promise<{ data: unknown }> }).rpc(fn, args);
 
-interface CompanyRow { company: string; company_token: string; open_roles?: number; recent?: number; closed_90d?: number; entry_roles?: number; tracking_days?: number }
+interface CompanyRow { company: string; company_token: string; open_roles?: number; recent?: number; closed_90d?: number; entry_roles?: number; tracking_days?: number; repost_events?: number; reposted_roles?: number; worst_title?: string; worst_count?: number }
 interface SalaryRow { category: string; currency: string; n: number; median_annual_min: number }
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -79,6 +79,7 @@ export default function Explore() {
   const [trending, setTrending] = useState<CompanyRow[]>([]);
   const [newest, setNewest] = useState<CompanyRow[]>([]);
   const [hiring, setHiring] = useState<CompanyRow[]>([]);
+  const [reposters, setReposters] = useState<CompanyRow[]>([]);
   const [entry, setEntry] = useState<CompanyRow[]>([]);
   const [salary, setSalary] = useState<SalaryRow[]>([]);
 
@@ -96,21 +97,24 @@ export default function Explore() {
           if (Array.isArray(c.trending)) setTrending(c.trending as CompanyRow[]);
           if (Array.isArray(c.newest)) setNewest(c.newest as CompanyRow[]);
           if (Array.isArray(c.hiring)) setHiring(c.hiring as CompanyRow[]);
+          if (Array.isArray(c.reposters)) setReposters(c.reposters as CompanyRow[]);
           if (Array.isArray(c.entry)) setEntry(c.entry as CompanyRow[]);
           if (Array.isArray(c.salary)) applySalary(c.salary as SalaryRow[]);
           return;
         }
       } catch { /* fall through to live RPCs */ }
-      const [tr, nw, hi, en, sa] = await Promise.all([
+      const [tr, nw, hi, rp, en, sa] = await Promise.all([
         Promise.resolve(rpc("get_trending_companies", { p_limit: 12 })).catch(() => ({ data: null })),
         Promise.resolve(rpc("get_newest_companies", { p_limit: 12 })).catch(() => ({ data: null })),
         Promise.resolve(rpc("get_actively_hiring_companies", { p_limit: 12 })).catch(() => ({ data: null })),
+        Promise.resolve(rpc("get_repost_churn_companies", { p_limit: 12 })).catch(() => ({ data: null })),
         Promise.resolve(rpc("get_entry_level_companies", { p_limit: 12 })).catch(() => ({ data: null })),
         Promise.resolve(rpc("get_salary_benchmarks")).catch(() => ({ data: null })),
       ]);
       if (Array.isArray(tr.data)) setTrending(tr.data as CompanyRow[]);
       if (Array.isArray(nw.data)) setNewest(nw.data as CompanyRow[]);
       if (Array.isArray(hi.data)) setHiring(hi.data as CompanyRow[]);
+      if (Array.isArray(rp.data)) setReposters(rp.data as CompanyRow[]);
       if (Array.isArray(en.data)) setEntry(en.data as CompanyRow[]);
       if (Array.isArray(sa.data)) applySalary(sa.data as SalaryRow[]);
     })();
@@ -151,6 +155,12 @@ export default function Explore() {
             <CompanyGrid rows={hiring} badge={(r) => r.tracking_days
               ? t("explore.hiringBadge", "{{filled}} filled in {{d}}d tracked · {{open}} open now", { filled: r.closed_90d ?? 0, d: r.tracking_days, open: r.open_roles ?? 0 })
               : t("explore.openRoles", "{{n}} open roles", { n: r.open_roles ?? 0 })} />
+          </Section>
+        )}
+
+        {reposters.length > 0 && (
+          <Section icon={Repeat} title={t("explore.repostTitle", "Serial re-posters")} blurb={t("explore.repostBlurb", "Companies that take roles down and re-list them again and again — measured from our own lifecycle tracking. Re-listing resets the posted date, so an opening can look brand-new long after it first appeared.")}>
+            <CompanyGrid rows={reposters} badge={(r) => t("explore.repostBadge", "“{{title}}” re-listed {{n}}× · {{events}} total in {{d}}d", { title: (r.worst_title ?? "").slice(0, 34), n: r.worst_count ?? 0, events: r.repost_events ?? 0, d: r.tracking_days ?? 0 })} />
           </Section>
         )}
 
