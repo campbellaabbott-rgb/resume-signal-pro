@@ -929,14 +929,17 @@ export type Database = {
       job_board_verifications: {
         Row: {
           company_token: string
+          feed_total: number | null
           verified_at: string
         }
         Insert: {
           company_token: string
+          feed_total?: number | null
           verified_at?: string
         }
         Update: {
           company_token?: string
+          feed_total?: number | null
           verified_at?: string
         }
         Relationships: []
@@ -2221,6 +2224,7 @@ export type Database = {
         Returns: {
           closed_90d: number
           company_token: string
+          feed_total: number
           median_days_open: number
           median_days_to_close: number
           open_roles: number
