@@ -2131,6 +2131,7 @@ export type Database = {
           company: string
           company_token: string
           open_roles: number
+          tracking_days: number
         }[]
       }
       get_affiliate_clicks: {
