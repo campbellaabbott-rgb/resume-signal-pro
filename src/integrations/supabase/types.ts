@@ -2513,6 +2513,18 @@ export type Database = {
           p75: number
         }[]
       }
+      get_repost_churn_companies: {
+        Args: { p_limit?: number }
+        Returns: {
+          company: string
+          company_token: string
+          repost_events: number
+          reposted_roles: number
+          tracking_days: number
+          worst_count: number
+          worst_title: string
+        }[]
+      }
       get_salary_benchmarks: {
         Args: never
         Returns: {
