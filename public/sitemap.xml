@@ -1896,17 +1896,12 @@
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://resumebooster.work/jobs/company/AECOM2</loc>
+    <loc>https://resumebooster.work/jobs/company/VeoliaEnvironnementSA</loc>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://resumebooster.work/jobs/company/BoschGroup</loc>
-    <changefreq>daily</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://resumebooster.work/jobs/company/VeoliaEnvironnementSA</loc>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
   </url>
@@ -1917,6 +1912,11 @@
   </url>
   <url>
     <loc>https://resumebooster.work/jobs/company/AbbVie</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://resumebooster.work/jobs/company/AECOM2</loc>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
   </url>
@@ -2571,12 +2571,12 @@
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://resumebooster.work/jobs/company/Grab</loc>
+    <loc>https://resumebooster.work/jobs/company/theweitzcompany</loc>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://resumebooster.work/jobs/company/theweitzcompany</loc>
+    <loc>https://resumebooster.work/jobs/company/Grab</loc>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
   </url>

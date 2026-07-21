@@ -24,6 +24,9 @@ interface Stats {
   // measured basis for every age stat on this page. Optional: absent until
   // the stated-date-medians migration is applied.
   posted_coverage_pct?: number | null;
+  // Days the closure record actually spans. Optional: absent until the
+  // datapage-accuracy migration is applied (and in older cached rows).
+  tracking_days?: number;
 }
 interface Leader {
   company: string;
@@ -251,9 +254,13 @@ export default function GhostJobIndex() {
           </h2>
           {hasClosureData ? (
             <p className="text-sm text-muted-foreground">
-              Since we started keeping this record we've watched <b className="text-foreground">{fmt(stats?.closed_90d)}</b> roles
+              {stats?.tracking_days ? `In the ${stats.tracking_days} days we've kept this record` : "Since we started keeping this record"} we've
+              watched <b className="text-foreground">{fmt(stats?.closed_90d)}</b> roles
               come down across the board
-              {stats?.median_days_to_close != null && (
+              {/* The time-to-close median is right-censored early on: a young
+                  record can't yet contain slow closes, so the number would read
+                  artificially fast. Withheld until the record spans >= 21 days. */}
+              {stats?.median_days_to_close != null && (stats?.tracking_days ?? 0) >= 21 && (
                 <> — a typical role closes in about <b className="text-foreground">{Math.round(stats.median_days_to_close)} days</b> of
                 the company posting it (measured only where the company states its post date)</>
               )}. Postings that never close are exactly the ghost jobs we drop.

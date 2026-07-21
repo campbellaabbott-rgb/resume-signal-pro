@@ -112,7 +112,7 @@ export default function HiringTrends() {
         </div>
         <p className="text-muted-foreground mb-1">
           Is hiring up or down this week? This page answers with counted postings, not vibes: every new role companies
-          dated this week on their own boards, which fields they're in, and how many roles actually got filled.
+          dated this week on their own boards, which fields they're in, and how many roles came down — filled or closed.
         </p>
         <p className="text-xs text-muted-foreground mb-8">
           Counted from companies' <b>official</b> job boards only, using each posting's own stated date. Postings from
@@ -195,7 +195,7 @@ export default function HiringTrends() {
                     <span className="flex-1 text-sm font-medium text-foreground truncate">{CAT_LABELS[c.category] ?? c.category}</span>
                     <span className="text-[11px] text-foreground font-semibold shrink-0">{fmt(c.last7)} new / 7d</span>
                     <span className={`text-[11px] font-semibold shrink-0 w-20 text-right ${delta == null ? "text-muted-foreground" : delta > 0 ? "text-success" : delta < 0 ? "text-destructive" : "text-muted-foreground"}`}>
-                      {delta == null ? "new" : `${delta > 0 ? "+" : ""}${delta}%`}
+                      {delta == null ? "—" : `${delta > 0 ? "+" : ""}${delta}%`}
                     </span>
                   </Link>
                 );
