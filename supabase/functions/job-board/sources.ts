@@ -988,7 +988,7 @@ export const JOB_SOURCES: JobSource[] = [
   s("Reddit", "greenhouse", "reddit"),
   s("Redwood Materials", "greenhouse", "redwoodmaterials"),
   s("Relativity Space", "greenhouse", "relativity"),
-  s("Remote", "greenhouse", "remotecom"),
+  s("Remote.com", "greenhouse", "remotecom"),
   s("Replit", "ashby", "replit"),
   s("Robinhood", "greenhouse", "robinhood"),
   s("Roofstock", "greenhouse", "roofstock"),
@@ -26247,7 +26247,7 @@ export const JOB_SOURCES: JobSource[] = [
   { name: "Resulting Careers", source: "rippling", token: "resulting-careers" },
   { name: "Trilongroup", source: "pinpoint", token: "trilongroup" },
   { name: "Princesscruises", source: "pinpoint", token: "princesscruises" },
-  { name: "10kbi", source: "pinpoint", token: "10kbi" },
+  { name: "10,000 Black Interns", source: "pinpoint", token: "10kbi" },
   { name: "Nfamilyclub", source: "pinpoint", token: "nfamilyclub" },
   { name: "Mountainwarehouse", source: "pinpoint", token: "mountainwarehouse" },
   { name: "Innovetivepetcare", source: "pinpoint", token: "innovetivepetcare" },
@@ -26796,7 +26796,8 @@ export const JOB_SOURCES: JobSource[] = [
   { name: "Wellstar", source: "workday", token: "wellstar~wd1~wellstarprovidercareers" },
   { name: "Welocalize", source: "workday", token: "welocalize~wd1~Welocalize" },
   { name: "Ymcaatlanta", source: "workday", token: "ymcaatlanta~wd1~YMCA-Careers" },
-  { name: "Sggovterp", source: "workday", token: "sggovterp~wd102~PublicServiceCareers" },
+  // sggovterp~wd102~PublicServiceCareers removed 2026-07-21: Singapore Public
+  // Service Careers — government board, violates the corporate-only catalog rule.
   { name: "Canarywharf", source: "workday", token: "canarywharf~wd103~CanaryWharf" },
   { name: "Circles", source: "workday", token: "circles~wd103~Circles" },
   { name: "Dsvgruppe", source: "workday", token: "dsvgruppe~wd103~DSV" },

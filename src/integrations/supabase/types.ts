@@ -929,14 +929,17 @@ export type Database = {
       job_board_verifications: {
         Row: {
           company_token: string
+          feed_total: number | null
           verified_at: string
         }
         Insert: {
           company_token: string
+          feed_total?: number | null
           verified_at?: string
         }
         Update: {
           company_token?: string
+          feed_total?: number | null
           verified_at?: string
         }
         Relationships: []
@@ -2221,6 +2224,7 @@ export type Database = {
         Returns: {
           closed_90d: number
           company_token: string
+          feed_total: number
           median_days_open: number
           median_days_to_close: number
           open_roles: number
@@ -2386,6 +2390,7 @@ export type Database = {
           posted_coverage_pct: number
           total_companies: number
           total_open: number
+          tracking_days: number
         }[]
       }
       get_hiring_trends: {
@@ -2511,6 +2516,18 @@ export type Database = {
           n: number
           p25: number
           p75: number
+        }[]
+      }
+      get_repost_churn_companies: {
+        Args: { p_limit?: number }
+        Returns: {
+          company: string
+          company_token: string
+          repost_events: number
+          reposted_roles: number
+          tracking_days: number
+          worst_count: number
+          worst_title: string
         }[]
       }
       get_salary_benchmarks: {
