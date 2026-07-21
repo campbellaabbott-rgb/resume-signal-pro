@@ -83,7 +83,24 @@ export default function Explore() {
   const [salary, setSalary] = useState<SalaryRow[]>([]);
 
   useEffect(() => {
+    const applySalary = (rows: SalaryRow[]) =>
+      setSalary(rows.filter((r) => r && r.median_annual_min > 0).sort((a, b) => b.median_annual_min - a.median_annual_min).slice(0, 8));
     (async () => {
+      // Fast path: the hourly-cached collections — one row read instead of five
+      // full-table aggregates (measured 13s → <0.5s). Falls through to the live
+      // RPCs only if the cache row doesn't exist yet (fresh deploy / miss).
+      try {
+        const { data: cache } = await Promise.resolve(rpc("get_explore_cache")).catch(() => ({ data: null }));
+        const c = cache as Record<string, unknown> | null;
+        if (c && (Array.isArray(c.trending) || Array.isArray(c.hiring) || Array.isArray(c.entry))) {
+          if (Array.isArray(c.trending)) setTrending(c.trending as CompanyRow[]);
+          if (Array.isArray(c.newest)) setNewest(c.newest as CompanyRow[]);
+          if (Array.isArray(c.hiring)) setHiring(c.hiring as CompanyRow[]);
+          if (Array.isArray(c.entry)) setEntry(c.entry as CompanyRow[]);
+          if (Array.isArray(c.salary)) applySalary(c.salary as SalaryRow[]);
+          return;
+        }
+      } catch { /* fall through to live RPCs */ }
       const [tr, nw, hi, en, sa] = await Promise.all([
         Promise.resolve(rpc("get_trending_companies", { p_limit: 12 })).catch(() => ({ data: null })),
         Promise.resolve(rpc("get_newest_companies", { p_limit: 12 })).catch(() => ({ data: null })),
@@ -95,12 +112,7 @@ export default function Explore() {
       if (Array.isArray(nw.data)) setNewest(nw.data as CompanyRow[]);
       if (Array.isArray(hi.data)) setHiring(hi.data as CompanyRow[]);
       if (Array.isArray(en.data)) setEntry(en.data as CompanyRow[]);
-      if (Array.isArray(sa.data)) {
-        setSalary((sa.data as SalaryRow[])
-          .filter((r) => r && r.median_annual_min > 0)
-          .sort((a, b) => b.median_annual_min - a.median_annual_min)
-          .slice(0, 8));
-      }
+      if (Array.isArray(sa.data)) applySalary(sa.data as SalaryRow[]);
     })();
   }, []);
 
