@@ -348,8 +348,88 @@ export default function Jobs() {
     setShowOrientation(false);
     try { localStorage.setItem("rb_board_oriented", "1"); } catch { /* session-only */ }
   }, []);
+  // Batch 3: compare tray (client-side only — every compared field is already
+  // loaded: fit/hits/misses, salary, age, company hiring-health).
+  const [compareIds, setCompareIds] = useState<string[]>([]);
+  const [compareOpen, setCompareOpen] = useState(false);
+  const toggleCompare = useCallback((id: string) => {
+    setCompareIds((prev) => prev.includes(id)
+      ? prev.filter((x) => x !== id)
+      : prev.length >= 3 ? [...prev.slice(1), id] : [...prev, id]);
+  }, []);
+  // Batch 3: live activity strip — real measured numbers only.
+  const [takedownsToday, setTakedownsToday] = useState<number | null>(null);
+  const [recheckP50Min, setRecheckP50Min] = useState<number | null>(null);
+  // Batch 4: hover prefetch — descriptions load per-open; warming the cache on
+  // hover makes the panel open instantly. Map value: null = in flight.
+  const descCache = useRef<Map<string, string | null>>(new Map());
+  const prefetchDesc = useCallback((job: BoardJob) => {
+    if (descCache.current.has(job.id)) return;
+    descCache.current.set(job.id, null);
+    invokeBoard<{ description?: string }>({ action: "detail", id: job.id })
+      .then(({ data: res }) => descCache.current.set(job.id, res?.description ?? ""))
+      .catch(() => descCache.current.delete(job.id));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  // Batch 4: swipe triage on touch — right saves, left dismisses. Only engages
+  // when the gesture is clearly horizontal, so scrolling is never hijacked.
+  const swipeRef = useRef<{ id: string; x: number; y: number; el: HTMLElement | null } | null>(null);
+  const onCardTouchStart = (job: BoardJob) => (e: React.TouchEvent<HTMLLIElement>) => {
+    const t0 = e.touches[0];
+    swipeRef.current = { id: job.id, x: t0.clientX, y: t0.clientY, el: e.currentTarget };
+  };
+  const onCardTouchMove = (e: React.TouchEvent<HTMLLIElement>) => {
+    const s = swipeRef.current;
+    if (!s || !s.el) return;
+    const t0 = e.touches[0];
+    const dx = t0.clientX - s.x, dy = t0.clientY - s.y;
+    if (Math.abs(dx) > 24 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      s.el.style.transform = `translateX(${dx}px)`;
+      s.el.style.opacity = String(Math.max(0.5, 1 - Math.abs(dx) / 400));
+    }
+  };
+  const onCardTouchEnd = (job: BoardJob) => (e: React.TouchEvent<HTMLLIElement>) => {
+    const s = swipeRef.current;
+    swipeRef.current = null;
+    if (!s || !s.el) return;
+    const t0 = e.changedTouches[0];
+    const dx = t0.clientX - s.x, dy = t0.clientY - s.y;
+    s.el.style.transform = ""; s.el.style.opacity = "";
+    if (Math.abs(dy) > 60 || Math.abs(dx) < 96) return;
+    if (dx > 0) void saveJob(job); else dismissJob(job);
+  };
+  // Batch 4: scroll restore — coming back to the board lands where you left.
+  // (The restore effect lives below the `jobs` declaration.)
+  const scrollRestored = useRef(false);
+  useEffect(() => () => {
+    try { sessionStorage.setItem("rb_board_scroll", String(window.scrollY)); } catch { /* cosmetic */ }
+  }, []);
+  // Activity strip data — lazy, non-blocking, real numbers or nothing.
+  useEffect(() => {
+    let alive = true;
+    const sb = supabase as unknown as { rpc: (f: string) => Promise<{ data: unknown }> };
+    void sb.rpc("get_takedowns_today").then(({ data }) => {
+      if (alive && typeof data === "number" && data > 0) setTakedownsToday(data);
+    }).catch(() => { /* strip clause hides */ });
+    void sb.rpc("get_freshness_stats").then(({ data }) => {
+      const row = Array.isArray(data) ? (data[0] as { p50_min?: number } | undefined) : undefined;
+      if (alive && typeof row?.p50_min === "number") setRecheckP50Min(Math.round(row.p50_min));
+    }).catch(() => { /* strip clause hides */ });
+    return () => { alive = false; };
+  }, []);
   const [data, setData] = useState<BoardResponse | null>(null);
   const [jobs, setJobs] = useState<BoardJob[]>([]);
+  // Scroll restore (Batch 4): once the first page of results is in, jump back
+  // to where the visitor left — unless they deep-linked straight to a job.
+  useEffect(() => {
+    if (scrollRestored.current || jobs.length === 0 || initial.get("job")) return;
+    scrollRestored.current = true;
+    try {
+      const y = Number(sessionStorage.getItem("rb_board_scroll"));
+      if (y > 200) window.scrollTo({ top: y });
+    } catch { /* cosmetic */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jobs.length]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [fitFetching, setFitFetching] = useState<string | null>(null);
@@ -783,9 +863,18 @@ export default function Jobs() {
     if (!job.lastSeen || Date.now() - Date.parse(job.lastSeen) > 24 * 3600_000) {
       invokeBoard({ action: "verify", ids: [job.id] }).catch(() => {});
     }
+    // Hover-prefetch cache first: a warmed description opens the panel with
+    // zero wait. Empty string = fetched-and-none; null = fetch in flight.
+    const cached = descCache.current.get(job.id);
+    if (typeof cached === "string") {
+      setDetailDesc(cached || null);
+      setDetailLoading(false);
+      return;
+    }
     try {
       const { data: res } = await invokeBoard<{ description?: string }>({ action: "detail", id: job.id });
       setDetailDesc(res?.description ?? null);
+      descCache.current.set(job.id, res?.description ?? "");
     } catch { /* panel still shows metadata + actions */ }
     setDetailLoading(false);
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1861,6 +1950,47 @@ export default function Jobs() {
                   </button>
                 ) : null;
               })()}
+              {/* Decision synthesis — "should I apply?" from data we OWN: fit
+                  score, the company's stated posting age, its genuine-fill
+                  record, and its re-listing churn. Every clause renders only
+                  when its data exists; the close-time clause stays gated on
+                  >= 21d of tracking (right-censoring rule). */}
+              {(() => {
+                const hh = detailJob.token ? healthByToken[detailJob.token] : undefined;
+                const f = fits[detailJob.id];
+                const age = daysAgo(detailJob.postedAt);
+                const fills = hh?.closed_90d ?? 0;
+                const churn = hh?.superseded_90d ?? 0;
+                const clauses: string[] = [];
+                if (typeof f === "number") {
+                  clauses.push(f >= 20
+                    ? t("jobsPage.verdictFitStrong", "strong keyword fit for your résumé")
+                    : f >= 10
+                      ? t("jobsPage.verdictFitPossible", "possible fit — check the gaps below")
+                      : t("jobsPage.verdictFitStretch", "a stretch for your current résumé"));
+                }
+                if (typeof age === "number" && age <= 3) clauses.push(t("jobsPage.verdictFresh", "posted {{d}}d ago — early applicants get read", { d: age }));
+                if (hh && fills >= 3 && churn <= fills) clauses.push(t("jobsPage.verdictFills", "this company genuinely fills roles ({{n}} in our tracking)", { n: fills }));
+                if (hh && churn > fills && churn >= 10) clauses.push(t("jobsPage.verdictChurn", "re-lists roles often ({{n}}×) — responses may be slow", { n: churn }));
+                if (hh && hh.median_days_to_close != null && hh.tracking_days >= 21 && hh.median_days_to_close <= 14) {
+                  clauses.push(t("jobsPage.verdictSpeed", "typically fills within ~{{d}} days", { d: Math.round(hh.median_days_to_close) }));
+                }
+                if (clauses.length === 0) return null;
+                const caution = churn > fills && churn >= 10;
+                const go = !caution && typeof f === "number" && f >= 20 && fills >= 3 && typeof age === "number" && age <= 7;
+                return (
+                  <div className={`rounded-xl border p-3 text-sm ${go ? "border-success/40 bg-success/5" : caution ? "border-warning/40 bg-warning/5" : "border-border bg-muted/30"}`}>
+                    <p className={`font-semibold mb-0.5 ${go ? "text-success" : caution ? "text-warning" : "text-foreground"}`}>
+                      {go
+                        ? t("jobsPage.verdictGo", "Worth applying now")
+                        : caution
+                          ? t("jobsPage.verdictCaution", "Apply with expectations")
+                          : t("jobsPage.verdictNeutral", "What the data says")}
+                    </p>
+                    <p className="text-[13px] text-muted-foreground">{clauses.join(" · ")}</p>
+                  </div>
+                );
+              })()}
               {/* Inline fit: never leave the posting to learn your score. With
                   a resume on file but ranking off, one click scores in place;
                   while scores load, say so; without a resume the actions row's
@@ -2004,6 +2134,15 @@ export default function Jobs() {
                   companies: (data.companiesCount ?? companies.length).toLocaleString(),
                 })
               : t("jobsPage.subtitleShort", "Every job straight from the company's own careers system — verified, fresh, re-checked when you apply.")}
+            {/* Live activity strip: the board IS alive — say so with measured
+                numbers only (each clause renders only when its data exists). */}
+            {!landerCompany && (takedownsToday !== null || recheckP50Min !== null) && (
+              <span className="block text-[12px] text-muted-foreground mt-0.5">
+                {takedownsToday !== null && t("jobsPage.takedownsToday", "{{n}} roles filled or closed today", { n: takedownsToday.toLocaleString() })}
+                {takedownsToday !== null && recheckP50Min !== null && " · "}
+                {recheckP50Min !== null && t("jobsPage.recheckLine", "median feed re-checked {{m}} min ago", { m: recheckP50Min })}
+              </span>
+            )}
             {!landerCompany && newToday !== null && (
               <span className="inline-flex items-center gap-1.5 ml-2 text-success whitespace-nowrap">
                 <span aria-hidden="true" className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
@@ -2572,6 +2711,27 @@ export default function Jobs() {
             )}
           </div>
 
+          {/* Mobile quick filters: the board's best weapons as one-tap chips —
+              on desktop the sidebar owns these, so lg:hidden. */}
+          <div className="flex lg:hidden flex-wrap gap-2 mb-3">
+            {([
+              { key: "week", active: freshness === "week", label: t("jobsPage.chipWeek", "Posted this week"), toggle: () => setFreshness(freshness === "week" ? "" : "week") },
+              { key: "remote", active: remoteOnly, label: t("jobsPage.chipRemote", "Remote"), toggle: () => setRemoteOnly(!remoteOnly) },
+              { key: "pay", active: salaryFloor >= 100000, label: t("jobsPage.chip100k", "$100k+"), toggle: () => setSalaryFloor(salaryFloor >= 100000 ? 0 : 100000) },
+              { key: "hiring", active: activelyHiringOnly, label: t("jobsPage.chipHiring", "Actively hiring"), toggle: () => setActivelyHiringOnly(!activelyHiringOnly) },
+            ] as const).map((c) => (
+              <button
+                key={c.key}
+                onClick={c.toggle}
+                className={`px-3 py-1.5 rounded-full border text-[13px] font-medium transition-colors ${
+                  c.active ? "bg-primary text-primary-foreground border-primary" : "bg-background text-muted-foreground border-border hover:border-primary/50"
+                }`}
+              >
+                {c.label}
+              </button>
+            ))}
+          </div>
+
           {/* Adaptive landing: a zero-intent first visit gets orientation, not a
               560k-row newest-first firehose. Every path out of this block IS an
               intent signal, so it never shows twice. */}
@@ -2896,6 +3056,10 @@ export default function Jobs() {
                     )}
                     <li
                       data-job-id={job.id}
+                      onMouseEnter={() => prefetchDesc(job)}
+                      onTouchStart={onCardTouchStart(job)}
+                      onTouchMove={onCardTouchMove}
+                      onTouchEnd={onCardTouchEnd(job)}
                       style={{ borderLeft: `3px solid ${accentFor(job.category)}` }}
                       className={`animate-in fade-in slide-in-from-bottom-1 duration-200 rounded-2xl border bg-card ${density === "compact" ? "px-4 py-2" : "p-4"} cursor-pointer transition-all duration-150 hover:-translate-y-px hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 ${
                         detailJob?.id === job.id ? "border-primary/60 bg-primary/5" : "border-border hover:border-primary/40"
@@ -3140,6 +3304,19 @@ export default function Jobs() {
                         >
                           ✕
                         </Button>
+                        {/* Compare tray toggle: pick up to 3, see them side by side. */}
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); toggleCompare(job.id); }}
+                          className={`text-[11px] px-1.5 py-0.5 rounded border transition-colors ${
+                            compareIds.includes(job.id)
+                              ? "bg-primary text-primary-foreground border-primary"
+                              : "text-muted-foreground border-border hover:border-primary/50"
+                          }`}
+                          title={t("jobsPage.compareTip", "Add to compare (up to 3)")}
+                        >
+                          {t("jobsPage.compareToggle", "⇄")}
+                        </button>
                       </div>
                       {/* Near-identical siblings: the same role at other locations,
                           collapsed under this card — each still a real, applyable
@@ -3418,6 +3595,77 @@ export default function Jobs() {
       )}
       <JobsCommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} actions={paletteActions} />
       <ShortcutsOverlay open={helpOpen} onClose={() => setHelpOpen(false)} />
+      {/* Compare tray: fixed bar while picking; side-by-side sheet on open.
+          Every compared field is data already on the client — nothing fetched. */}
+      {compareIds.length > 0 && !compareOpen && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 rounded-full border border-border bg-card shadow-lg px-4 py-2">
+          <span className="text-sm text-foreground font-medium">
+            {t("jobsPage.compareCount", "Comparing {{n}} of 3", { n: compareIds.length })}
+          </span>
+          <button
+            onClick={() => setCompareOpen(true)}
+            disabled={compareIds.length < 2}
+            className="rounded-full bg-primary text-primary-foreground text-sm font-semibold px-3 py-1 disabled:opacity-50"
+          >
+            {t("jobsPage.compareOpen", "Compare")}
+          </button>
+          <button onClick={() => setCompareIds([])} className="text-sm text-muted-foreground hover:text-foreground">
+            {t("jobsPage.compareClear", "Clear")}
+          </button>
+        </div>
+      )}
+      {compareOpen && (
+        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setCompareOpen(false)}>
+          <div className="bg-card border border-border rounded-2xl shadow-xl max-w-4xl w-full max-h-[85vh] overflow-auto p-5" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-base font-bold text-foreground">{t("jobsPage.compareTitle", "Side by side")}</h2>
+              <button onClick={() => setCompareOpen(false)} className="text-muted-foreground hover:text-foreground text-lg leading-none">✕</button>
+            </div>
+            <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${Math.min(compareIds.length, 3)}, minmax(220px, 1fr))` }}>
+              {compareIds.map((id) => {
+                const j = jobs.find((x) => x.id === id);
+                if (!j) return null;
+                const f = fits[id];
+                const hh = j.token ? healthByToken[j.token] : undefined;
+                const age = daysAgo(j.postedAt);
+                return (
+                  <div key={id} className="rounded-xl border border-border p-3 min-w-0">
+                    <p className="text-sm font-semibold text-foreground leading-tight">{j.title}</p>
+                    <p className="text-[12px] text-muted-foreground mb-2">{j.company}{j.location ? ` · ${j.location}` : ""}</p>
+                    <ul className="space-y-1.5 text-[12px] text-muted-foreground">
+                      {typeof f === "number" && (
+                        <li><span className="text-foreground font-semibold">{f}%</span> {t("jobsPage.compareFit", "keyword fit")}</li>
+                      )}
+                      {(hits[id]?.length ?? 0) > 0 && (
+                        <li>{t("jobsPage.matchedKeywords", "You already have:")} {hits[id]!.slice(0, 4).join(", ")}</li>
+                      )}
+                      {(misses[id]?.length ?? 0) > 0 && (
+                        <li>{t("jobsPage.missingKeywords", "Missing from your resume:")} {misses[id]!.slice(0, 4).join(", ")}</li>
+                      )}
+                      {j.salary && <li>{j.salary}</li>}
+                      {age !== null && (
+                        <li>{age === 0 ? t("jobsPage.postedToday", "today") : t("jobsPage.postedDaysAgo", "{{count}}d ago", { count: age })}</li>
+                      )}
+                      {hh && (hh.closed_90d ?? 0) >= 3 && (hh.superseded_90d ?? 0) <= (hh.closed_90d ?? 0) && (
+                        <li className="text-success">{t("jobsPage.verdictFills", "this company genuinely fills roles ({{n}} in our tracking)", { n: hh.closed_90d })}</li>
+                      )}
+                      {hh && (hh.superseded_90d ?? 0) > (hh.closed_90d ?? 0) && (hh.superseded_90d ?? 0) >= 10 && (
+                        <li className="text-warning">{t("jobsPage.verdictChurn", "re-lists roles often ({{n}}×) — responses may be slow", { n: hh.superseded_90d })}</li>
+                      )}
+                    </ul>
+                    <button
+                      onClick={() => { setCompareOpen(false); void openDetail(j); }}
+                      className="mt-3 w-full rounded-lg bg-primary text-primary-foreground text-[12px] font-semibold py-1.5 hover:bg-primary/90"
+                    >
+                      {t("jobsPage.compareView", "View & apply")}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
       <Footer />
     </div>
   );
