@@ -20,6 +20,8 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { ApplicationAnswers } from "@/components/apply/ApplicationAnswers";
 import { CompanyClaim } from "@/components/jobs/CompanyClaim";
+import { CompanyIntelPanel } from "@/components/jobs/CompanyIntelPanel";
+import { SimilarCompanies } from "@/components/jobs/SimilarCompanies";
 import { TailoredResumeModal, type TailoredResumeContent } from "@/components/TailoredResumeModal";
 import { supabase } from "@/integrations/supabase/client";
 import { postTrackEvent } from "@/lib/track-transport";
@@ -2151,8 +2153,10 @@ export default function Jobs() {
               </span>
             )}
           </p>
-          {/* Claim-your-profile: verified-employer chip / claim CTA — company
-              landers only. Identity verification, never data editing. */}
+          {/* Lander intel: sourced headcount/band, weekly net-new, salary
+              median, top fields — each clause renders only when its data
+              exists. Then claim-your-profile (identity, never data editing). */}
+          {landerCompany && <CompanyIntelPanel companyToken={landerCompany} />}
           {landerCompany && (
             <CompanyClaim companyToken={landerCompany} companyName={landerCompanyName ?? landerCompany} />
           )}
@@ -3672,6 +3676,8 @@ export default function Jobs() {
           </div>
         </div>
       )}
+      {/* Lander hub: other companies hiring in this company's dominant field. */}
+      {landerCompany && <SimilarCompanies companyToken={landerCompany} />}
       <Footer />
     </div>
   );

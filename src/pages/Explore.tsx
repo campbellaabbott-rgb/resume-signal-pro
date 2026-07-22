@@ -93,6 +93,27 @@ export default function Explore() {
   const [entry, setEntry] = useState<CompanyRow[]>([]);
   const [salary, setSalary] = useState<SalaryRow[]>([]);
   const [segments, setSegments] = useState<Segments | null>(null);
+  // Drill-through: full verified-headcount list per band, loaded on demand
+  // ("See all N"), paged 60 at a time via get_size_segment_companies.
+  const [segAll, setSegAll] = useState<Record<string, { total: number; rows: CompanyRow[] }>>({});
+  const [segAllLoading, setSegAllLoading] = useState<string | null>(null);
+
+  const loadSegAll = async (band: string) => {
+    if (segAllLoading) return;
+    setSegAllLoading(band);
+    try {
+      const offset = segAll[band]?.rows.length ?? 0;
+      const { data } = await Promise.resolve(rpc("get_size_segment_companies", { p_band: band, p_limit: 60, p_offset: offset }));
+      const d = data as { total?: number; rows?: CompanyRow[] } | null;
+      if (d && Array.isArray(d.rows)) {
+        setSegAll((prev) => ({
+          ...prev,
+          [band]: { total: d.total ?? d.rows!.length, rows: [...(prev[band]?.rows ?? []), ...d.rows!] },
+        }));
+      }
+    } catch { /* button stays; retry on next click */ }
+    finally { setSegAllLoading(null); }
+  };
 
   useEffect(() => {
     const applySalary = (rows: SalaryRow[]) =>
@@ -221,25 +242,57 @@ export default function Explore() {
                         advertised total when it exceeds it — the band label and
                         badge can never contradict each other. (Fallback fields
                         cover a frontend-before-migration deploy window.) */}
-                    <CompanyGrid rows={s.top} badge={(r) => {
-                      const onBoard = r.on_board ?? r.open_roles ?? 0;
-                      const total = r.company_total ?? r.feed_total ?? 0;
-                      const openTxt = total > onBoard
-                        ? t("explore.segOpenBoth", "{{n}} on our board · {{total}} company-wide", { n: onBoard, total: total.toLocaleString() })
-                        : t("explore.segOpen", "{{n}} open roles", { n: onBoard });
-                      const parts: string[] = [];
-                      if (r.employees != null) {
-                        parts.push(t("explore.segEmp", "≈{{n}} employees ({{basis}})", {
-                          n: r.employees.toLocaleString(),
-                          basis: r.employee_basis === "yc_self_reported"
-                            ? t("explore.segBasisYc", "YC profile")
-                            : t("explore.segBasisPr", "public records"),
-                        }));
-                      }
-                      if (r.yc_batch) parts.push(t("explore.segYcChip", "YC {{b}}", { b: ycAbbrev(r.yc_batch) }));
-                      parts.push(openTxt);
-                      return parts.join(" · ");
-                    }} />
+                    {(() => {
+                      const segBadge = (r: CompanyRow) => {
+                        const onBoard = r.on_board ?? r.open_roles ?? 0;
+                        const total = r.company_total ?? r.feed_total ?? 0;
+                        const openTxt = total > onBoard
+                          ? t("explore.segOpenBoth", "{{n}} on our board · {{total}} company-wide", { n: onBoard, total: total.toLocaleString() })
+                          : t("explore.segOpen", "{{n}} open roles", { n: onBoard });
+                        const parts: string[] = [];
+                        if (r.employees != null) {
+                          parts.push(t("explore.segEmp", "≈{{n}} employees ({{basis}})", {
+                            n: r.employees.toLocaleString(),
+                            basis: r.employee_basis === "yc_self_reported"
+                              ? t("explore.segBasisYc", "YC profile")
+                              : t("explore.segBasisPr", "public records"),
+                          }));
+                        }
+                        if (r.yc_batch) parts.push(t("explore.segYcChip", "YC {{b}}", { b: ycAbbrev(r.yc_batch) }));
+                        parts.push(openTxt);
+                        return parts.join(" · ");
+                      };
+                      const expanded = segAll[band];
+                      return (
+                        <>
+                          <CompanyGrid rows={expanded ? expanded.rows : s.top} badge={segBadge} />
+                          {!expanded && s.companies > (s.top?.length ?? 0) && (
+                            <button
+                              type="button"
+                              onClick={() => void loadSegAll(band)}
+                              disabled={segAllLoading !== null}
+                              className="mt-2.5 text-[12px] text-primary hover:underline disabled:opacity-50"
+                            >
+                              {segAllLoading === band
+                                ? t("explore.segLoading", "Loading…")
+                                : t("explore.segSeeAll", "See all {{n}} companies", { n: s.companies.toLocaleString() })}
+                            </button>
+                          )}
+                          {expanded && expanded.rows.length < expanded.total && (
+                            <button
+                              type="button"
+                              onClick={() => void loadSegAll(band)}
+                              disabled={segAllLoading !== null}
+                              className="mt-2.5 text-[12px] text-primary hover:underline disabled:opacity-50"
+                            >
+                              {segAllLoading === band
+                                ? t("explore.segLoading", "Loading…")
+                                : t("explore.segShowMore", "Show more ({{shown}} of {{total}})", { shown: expanded.rows.length, total: expanded.total.toLocaleString() })}
+                            </button>
+                          )}
+                        </>
+                      );
+                    })()}
                   </div>
                 );
               })}

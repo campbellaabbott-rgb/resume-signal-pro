@@ -1023,7 +1023,7 @@ export const JOB_SOURCES: JobSource[] = [
   s("Zocdoc", "greenhouse", "zocdoc"),
   s("Zoox", "lever", "zoox"),
   // ── Pool expansion 2026-07-13: +1427 live-verified official boards (CDX census, 200 + >0 postings). ──
-  s("Bjakcareer", "ashby", "bjakcareer"),
+  s("BJAK", "ashby", "bjakcareer"),
   s("Airwallex", "ashby", "airwallex"),
   s("Airapps", "ashby", "airapps"),
   s("Aisle And Abroad", "lever", "aisle_and_abroad"),

@@ -19,6 +19,7 @@ interface Props {
 export function CompanyClaim({ companyToken, companyName }: Props) {
   const { t } = useTranslation();
   const [verified, setVerified] = useState<boolean | null>(null);
+  const [website, setWebsite] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [sending, setSending] = useState(false);
@@ -31,7 +32,11 @@ export function CompanyClaim({ companyToken, companyName }: Props) {
         const { data } = await (supabase as unknown as {
           rpc: (f: string, a?: Record<string, unknown>) => Promise<{ data: unknown }>;
         }).rpc("get_company_claim_status", { p_token: companyToken });
-        if (!cancelled) setVerified(Boolean((data as { verified?: boolean } | null)?.verified));
+        const status = data as { verified?: boolean; website?: string | null } | null;
+        if (!cancelled) {
+          setVerified(Boolean(status?.verified));
+          setWebsite(typeof status?.website === "string" && /^https?:\/\//.test(status.website) ? status.website : null);
+        }
       } catch {
         if (!cancelled) setVerified(false);
       }
@@ -92,13 +97,25 @@ export function CompanyClaim({ companyToken, companyName }: Props) {
 
   if (verified) {
     return (
-      <span
-        className="inline-flex items-center gap-1.5 rounded-full bg-success/10 border border-success/30 text-success text-[12px] font-medium px-2.5 py-1 mb-2"
-        title={t("jobsPage.claim.verifiedTip", "A contact at this company verified a work email at its domain. Verification confirms identity only — it never changes the hiring data shown here.")}
-      >
-        <BadgeCheck className="w-3.5 h-3.5" />
-        {t("jobsPage.claim.verifiedChip", "Verified employer")}
-      </span>
+      <div className="flex flex-wrap items-center gap-2 mb-2">
+        <span
+          className="inline-flex items-center gap-1.5 rounded-full bg-success/10 border border-success/30 text-success text-[12px] font-medium px-2.5 py-1"
+          title={t("jobsPage.claim.verifiedTip", "A contact at this company verified a work email at its domain. Verification confirms identity only — it never changes the hiring data shown here.")}
+        >
+          <BadgeCheck className="w-3.5 h-3.5" />
+          {t("jobsPage.claim.verifiedChip", "Verified employer")}
+        </span>
+        {website && (
+          <a
+            href={website}
+            target="_blank"
+            rel="noopener noreferrer nofollow"
+            className="text-[12px] text-primary hover:underline"
+          >
+            {t("jobsPage.claim.websiteLink", "Website (employer-provided)")}
+          </a>
+        )}
+      </div>
     );
   }
 

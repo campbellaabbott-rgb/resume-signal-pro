@@ -4350,7 +4350,25 @@
       "verifiedTip": "Ein Kontakt dieses Unternehmens hat eine Arbeits-E-Mail an dessen Domain bestätigt. Die Verifizierung bestätigt nur die Identität — sie ändert nie die hier gezeigten Einstellungsdaten.",
       "verifyOk": "Anspruch bestätigt — {{company}} erscheint jetzt als verifizierter Arbeitgeber.",
       "verifyPending": "E-Mail bestätigt. Deine Domain passt nicht eindeutig zu diesem Unternehmen, daher prüfen wir den Anspruch manuell — meist innerhalb eines Tages.",
-      "verifyFail": "Dieser Bestätigungslink hat nicht funktioniert — er ist womöglich abgelaufen. Fordere unten einen neuen an."
+      "verifyFail": "Dieser Bestätigungslink hat nicht funktioniert — er ist womöglich abgelaufen. Fordere unten einen neuen an.",
+      "websiteLink": "Website (vom Arbeitgeber angegeben)"
+    },
+    "intel": {
+      "bandEnterprise": "Konzern",
+      "bandMid": "Mittelstand",
+      "bandSmall": "Startup-Größe",
+      "employees": "≈{{n}} Mitarbeitende ({{basis}}) · {{band}}",
+      "basisYc": "YC-Profil",
+      "basisPr": "öffentliche Register",
+      "net7d": "+{{n}} netto neue Stellen diese Woche",
+      "salary": "medianes genanntes Einstiegsgehalt {{m}} $ ({{n}} USD-Anzeigen)",
+      "fields": "stellt vor allem ein in {{fields}}"
+    },
+    "similar": {
+      "title": "Stellen ebenfalls ein in {{field}}",
+      "blurb": "Unternehmen mit aktiven Stellen im selben Feld, aus ihren eigenen Karrieresystemen.",
+      "openRoles": "{{n}} offene Stellen",
+      "employees": "≈{{n}} Mitarbeitende"
     }
   },
   "accountPage": {
@@ -4455,7 +4473,10 @@
     "segBasisYc": "YC-Profil",
     "segBasisPr": "öffentliche Register",
     "segYcChip": "YC {{b}}",
-    "segHeadcountStat": "{{k}} mit angegebener Mitarbeiterzahl"
+    "segHeadcountStat": "{{k}} mit angegebener Mitarbeiterzahl",
+    "segSeeAll": "Alle {{n}} Unternehmen ansehen",
+    "segShowMore": "Mehr anzeigen ({{shown}} von {{total}})",
+    "segLoading": "Lädt…"
   },
   "agentQueue": {
     "title": "Morgen-Queue",

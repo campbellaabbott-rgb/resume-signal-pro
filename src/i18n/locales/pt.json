@@ -4350,7 +4350,25 @@
       "verifiedTip": "Um contato desta empresa verificou um e-mail de trabalho no domínio dela. A verificação confirma identidade apenas — nunca altera os dados de contratação mostrados aqui.",
       "verifyOk": "Reivindicação verificada — {{company}} agora aparece como empregador verificado.",
       "verifyPending": "E-mail confirmado. Seu domínio não corresponde claramente a esta empresa, então revisaremos a reivindicação manualmente — geralmente em um dia.",
-      "verifyFail": "Esse link de verificação não funcionou — pode estar vencido. Solicite um novo abaixo."
+      "verifyFail": "Esse link de verificação não funcionou — pode estar vencido. Solicite um novo abaixo.",
+      "websiteLink": "Site (fornecido pelo empregador)"
+    },
+    "intel": {
+      "bandEnterprise": "grande empresa",
+      "bandMid": "médio porte",
+      "bandSmall": "porte startup",
+      "employees": "≈{{n}} funcionários ({{basis}}) · {{band}}",
+      "basisYc": "perfil YC",
+      "basisPr": "registros públicos",
+      "net7d": "+{{n}} vagas líquidas novas esta semana",
+      "salary": "piso salarial declarado mediano ${{m}} ({{n}} vagas em USD)",
+      "fields": "contrata principalmente em {{fields}}"
+    },
+    "similar": {
+      "title": "Também contratando em {{field}}",
+      "blurb": "Empresas com vagas ativas no mesmo campo, direto de seus próprios sistemas de carreira.",
+      "openRoles": "{{n}} vagas abertas",
+      "employees": "≈{{n}} funcionários"
     }
   },
   "accountPage": {
@@ -4455,7 +4473,10 @@
     "segBasisYc": "perfil YC",
     "segBasisPr": "registros públicos",
     "segYcChip": "YC {{b}}",
-    "segHeadcountStat": "{{k}} com quadro declarado"
+    "segHeadcountStat": "{{k}} com quadro declarado",
+    "segSeeAll": "Ver todas as {{n}} empresas",
+    "segShowMore": "Mostrar mais ({{shown}} de {{total}})",
+    "segLoading": "Carregando…"
   },
   "agentQueue": {
     "title": "Fila da manhã",

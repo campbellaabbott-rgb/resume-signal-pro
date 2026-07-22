@@ -4350,7 +4350,25 @@
       "verifiedTip": "Een contactpersoon van dit bedrijf heeft een werk-e-mail op het eigen domein geverifieerd. Verificatie bevestigt alleen identiteit — het verandert nooit de hier getoonde wervingsdata.",
       "verifyOk": "Claim geverifieerd — {{company}} staat nu als geverifieerde werkgever.",
       "verifyPending": "E-mail bevestigd. Je domein komt niet duidelijk overeen met dit bedrijf, dus we beoordelen de claim handmatig — meestal binnen een dag.",
-      "verifyFail": "Die verificatielink werkte niet — mogelijk verlopen. Vraag hieronder een nieuwe aan."
+      "verifyFail": "Die verificatielink werkte niet — mogelijk verlopen. Vraag hieronder een nieuwe aan.",
+      "websiteLink": "Website (door werkgever opgegeven)"
+    },
+    "intel": {
+      "bandEnterprise": "enterprise",
+      "bandMid": "middenbedrijf",
+      "bandSmall": "startup-formaat",
+      "employees": "≈{{n}} medewerkers ({{basis}}) · {{band}}",
+      "basisYc": "YC-profiel",
+      "basisPr": "openbare registers",
+      "net7d": "+{{n}} netto nieuwe vacatures deze week",
+      "salary": "mediaan vermeld salarisminimum ${{m}} ({{n}} USD-vacatures)",
+      "fields": "werft vooral in {{fields}}"
+    },
+    "similar": {
+      "title": "Werven ook in {{field}}",
+      "blurb": "Bedrijven met actieve vacatures in hetzelfde veld, uit hun eigen carrièresystemen.",
+      "openRoles": "{{n}} open vacatures",
+      "employees": "≈{{n}} medewerkers"
     }
   },
   "accountPage": {
@@ -4455,7 +4473,10 @@
     "segBasisYc": "YC-profiel",
     "segBasisPr": "openbare registers",
     "segYcChip": "YC {{b}}",
-    "segHeadcountStat": "{{k}} met opgegeven personeelsaantal"
+    "segHeadcountStat": "{{k}} met opgegeven personeelsaantal",
+    "segSeeAll": "Alle {{n}} bedrijven bekijken",
+    "segShowMore": "Meer tonen ({{shown}} van {{total}})",
+    "segLoading": "Laden…"
   },
   "agentQueue": {
     "title": "Ochtendwachtrij",

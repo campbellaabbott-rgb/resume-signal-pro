@@ -4350,7 +4350,25 @@
       "verifiedTip": "Isang contact sa kumpanyang ito ang nag-verify ng work email sa domain nito. Pagkakakilanlan lang ang kinukumpirma ng beripikasyon — hinding-hindi nito binabago ang hiring data na ipinapakita rito.",
       "verifyOk": "Na-verify ang claim — lumalabas na ngayon ang {{company}} bilang beripikadong employer.",
       "verifyPending": "Nakumpirma ang email. Hindi malinaw na tugma ang iyong domain sa kumpanyang ito, kaya mano-mano naming susuriin ang claim — kadalasan sa loob ng isang araw.",
-      "verifyFail": "Hindi gumana ang verification link — maaaring luma na ito. Humiling ng bago sa ibaba."
+      "verifyFail": "Hindi gumana ang verification link — maaaring luma na ito. Humiling ng bago sa ibaba.",
+      "websiteLink": "Website (bigay ng employer)"
+    },
+    "intel": {
+      "bandEnterprise": "enterprise",
+      "bandMid": "mid-market",
+      "bandSmall": "sukat-startup",
+      "employees": "≈{{n}} empleyado ({{basis}}) · {{band}}",
+      "basisYc": "YC profile",
+      "basisPr": "pampublikong rekord",
+      "net7d": "+{{n}} netong bagong posisyon ngayong linggo",
+      "salary": "median ng nakasaad na salary floor ${{m}} ({{n}} USD na posting)",
+      "fields": "pangunahing kumukuha sa {{fields}}"
+    },
+    "similar": {
+      "title": "Kumukuha rin sa {{field}}",
+      "blurb": "Mga kumpanyang may aktibong bakante sa parehong larangan, mula sa sarili nilang career system.",
+      "openRoles": "{{n}} bukas na posisyon",
+      "employees": "≈{{n}} empleyado"
     }
   },
   "accountPage": {
@@ -4455,7 +4473,10 @@
     "segBasisYc": "YC profile",
     "segBasisPr": "pampublikong rekord",
     "segYcChip": "YC {{b}}",
-    "segHeadcountStat": "{{k}} na may deklaradong bilang"
+    "segHeadcountStat": "{{k}} na may deklaradong bilang",
+    "segSeeAll": "Tingnan lahat ng {{n}} kumpanya",
+    "segShowMore": "Magpakita pa ({{shown}} sa {{total}})",
+    "segLoading": "Naglo-load…"
   },
   "agentQueue": {
     "title": "Morning Queue",

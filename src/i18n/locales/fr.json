@@ -4350,7 +4350,25 @@
       "verifiedTip": "Un contact de cette entreprise a vérifié un e-mail professionnel à son domaine. La vérification confirme l'identité uniquement — elle ne change jamais les données de recrutement affichées ici.",
       "verifyOk": "Revendication vérifiée — {{company}} apparaît désormais comme employeur vérifié.",
       "verifyPending": "E-mail confirmé. Votre domaine ne correspond pas clairement à cette entreprise, nous examinerons donc la revendication à la main — généralement sous un jour.",
-      "verifyFail": "Ce lien de vérification n'a pas fonctionné — il est peut-être périmé. Demandez-en un nouveau ci-dessous."
+      "verifyFail": "Ce lien de vérification n'a pas fonctionné — il est peut-être périmé. Demandez-en un nouveau ci-dessous.",
+      "websiteLink": "Site web (fourni par l'employeur)"
+    },
+    "intel": {
+      "bandEnterprise": "grande entreprise",
+      "bandMid": "ETI",
+      "bandSmall": "taille startup",
+      "employees": "≈{{n}} salariés ({{basis}}) · {{band}}",
+      "basisYc": "profil YC",
+      "basisPr": "registres publics",
+      "net7d": "+{{n}} postes nets cette semaine",
+      "salary": "plancher salarial déclaré médian {{m}} $ ({{n}} offres en USD)",
+      "fields": "recrute surtout en {{fields}}"
+    },
+    "similar": {
+      "title": "Recrutent aussi en {{field}}",
+      "blurb": "Des entreprises avec des offres actives dans le même domaine, depuis leurs propres systèmes carrière.",
+      "openRoles": "{{n}} postes ouverts",
+      "employees": "≈{{n}} salariés"
     }
   },
   "accountPage": {
@@ -4455,7 +4473,10 @@
     "segBasisYc": "profil YC",
     "segBasisPr": "registres publics",
     "segYcChip": "YC {{b}}",
-    "segHeadcountStat": "{{k}} avec effectif déclaré"
+    "segHeadcountStat": "{{k}} avec effectif déclaré",
+    "segSeeAll": "Voir les {{n}} entreprises",
+    "segShowMore": "Afficher plus ({{shown}} sur {{total}})",
+    "segLoading": "Chargement…"
   },
   "agentQueue": {
     "title": "File du matin",

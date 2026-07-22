@@ -4350,7 +4350,25 @@
       "verifiedTip": "A contact at this company verified a work email at its domain. Verification confirms identity only — it never changes the hiring data shown here.",
       "verifyOk": "Claim verified — {{company}} now shows as a verified employer.",
       "verifyPending": "Email confirmed. Your domain doesn't obviously match this company, so we'll review the claim by hand — usually within a day.",
-      "verifyFail": "That verification link didn't work — it may be stale. Request a fresh one below."
+      "verifyFail": "That verification link didn't work — it may be stale. Request a fresh one below.",
+      "websiteLink": "Website (employer-provided)"
+    },
+    "intel": {
+      "bandEnterprise": "enterprise",
+      "bandMid": "mid-market",
+      "bandSmall": "startup-size",
+      "employees": "≈{{n}} employees ({{basis}}) · {{band}}",
+      "basisYc": "YC profile",
+      "basisPr": "public records",
+      "net7d": "+{{n}} net-new roles this week",
+      "salary": "median stated salary floor ${{m}} ({{n}} USD postings)",
+      "fields": "hires mostly in {{fields}}"
+    },
+    "similar": {
+      "title": "Also hiring in {{field}}",
+      "blurb": "Companies with live openings in the same field, from their own career systems.",
+      "openRoles": "{{n}} open roles",
+      "employees": "≈{{n}} employees"
     }
   },
   "accountPage": {
@@ -4455,7 +4473,10 @@
     "segBasisYc": "YC profile",
     "segBasisPr": "public records",
     "segYcChip": "YC {{b}}",
-    "segHeadcountStat": "{{k}} with stated headcount"
+    "segHeadcountStat": "{{k}} with stated headcount",
+    "segSeeAll": "See all {{n}} companies",
+    "segShowMore": "Show more ({{shown}} of {{total}})",
+    "segLoading": "Loading…"
   },
   "agentQueue": {
     "title": "Morning Queue",
