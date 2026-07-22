@@ -3465,6 +3465,10 @@
     "dataYouCanBelieve": {
       "title": "Cijfers die je kunt controleren — volledige nauwkeurigheidsronde",
       "description": "We hebben elke publieke statistiek op bewijs herbouwd. 'Bedrijven die echt vervullen' telt alleen nog vacatures die minstens een week online stonden en daarna verdwenen — herplaatsing is gediskwalificeerd en zichtbaar in de eigen lijst 'Serie-herplaatsers' (een retailer herplaatste dezelfde vacature 289 keer in een week). Gefabriceerde tellingen zijn weg, 70+ bedrijven kregen hun echte naam terug, uitzendbureaus staan niet meer als werkgever in de schijnwerpers, een spam-board is verwijderd, en elke metriek vermeldt precies hoe lang we hem meten. Waar data te jong is, tonen we liever niets dan een gok."
+    },
+    "premiumLook": {
+      "title": "Een scherpere look voor het hele platform",
+      "description": "Een volledige designronde: een onderscheidend nieuw koplettertype, diepere gelaagde vlakken, verfijnde kleuren en spacing, glasnavigatie en stille details overal — uitgelijnde cijfers, zachtere hoeken, een subtiele kenmerkende gloed. Dezelfde eerlijke data, nu passend gekleed."
     }
   },
   "sampleReportPreview": {

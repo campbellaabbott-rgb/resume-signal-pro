@@ -3465,6 +3465,10 @@
     "dataYouCanBelieve": {
       "title": "Zahlen zum Nachprüfen — kompletter Genauigkeits-Durchgang",
       "description": "Wir haben jede öffentliche Statistik auf Beweise umgebaut. 'Unternehmen, die wirklich besetzen' zählt nur noch Stellen, die mindestens eine Woche online waren und dann verschwanden — Repost-Rauschen ist disqualifiziert und in der eigenen Liste 'Serien-Wiedereinsteller' sichtbar (ein Händler stellte dieselbe Stelle 289-mal in einer Woche neu ein). Fabrizierte Zählwerte sind weg, 70+ Unternehmen haben ihre echten Namen zurück, Personalvermittler werden nicht mehr als Arbeitgeber präsentiert, ein Spam-Board wurde entfernt, und jede Metrik nennt exakt, wie lange wir sie messen. Wo Daten zu jung sind, zeigen wir lieber nichts als eine Schätzung."
+    },
+    "premiumLook": {
+      "title": "Ein schärferer Look für die ganze Plattform",
+      "description": "Ein kompletter Design-Durchgang: markante neue Display-Schrift, tiefere Ebenen, verfeinerte Farben und Abstände, Glas-Navigation und leise Details überall — ausgerichtete Zahlen, weichere Ecken, ein dezentes Signatur-Leuchten. Dieselben ehrlichen Daten, jetzt passend gekleidet."
     }
   },
   "sampleReportPreview": {

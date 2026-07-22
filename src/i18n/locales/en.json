@@ -3465,6 +3465,10 @@
     "dataYouCanBelieve": {
       "title": "Numbers you can check — a top-to-bottom accuracy pass",
       "description": "We rebuilt every public stat on evidence. 'Companies that actually fill roles' now counts only roles that stayed posted a week or more and then came down — repost churn is disqualified and exposed in its own 'Serial re-posters' list (one retailer re-listed the same job 289 times in a week). Fabricated counts from capped feeds are gone, 70+ companies got their real names back, staffing agencies are no longer showcased as employers, a spam board was removed entirely, and every metric now states exactly how long we've been tracking it. Where the data is too young to support a claim, we show nothing rather than a guess."
+    },
+    "premiumLook": {
+      "title": "A sharper look for the whole platform",
+      "description": "A full design pass: a distinctive new display typeface, deeper layered surfaces, refined color and spacing, glass navigation, and quiet touches everywhere — aligned numbers, softer corners, a subtle signature glow. Same honest data, now dressed for it."
     }
   },
   "sampleReportPreview": {

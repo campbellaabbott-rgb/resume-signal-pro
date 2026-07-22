@@ -3465,6 +3465,10 @@
     "dataYouCanBelieve": {
       "title": "Mga numerong maaari mong suriin — buong accuracy pass",
       "description": "Muling itinayo namin ang bawat pampublikong estadistika sa ebidensya. Ang 'mga kumpanyang totoong nagpupuno ng posisyon' ay bumibilang na lang ng mga role na nanatiling nakapaskil nang isang linggo o higit pa at pagkatapos ay tinanggal — ang repost churn ay diskuwalipikado at nakalantad sa sariling listahan ng 'Paulit-ulit mag-repost' (isang retailer ang nag-repost ng parehong trabaho nang 289 beses sa isang linggo). Wala na ang mga gawa-gawang bilang, 70+ kumpanya ang nakabawi ng tunay na pangalan, hindi na itinatampok ang mga staffing agency bilang employer, tinanggal ang isang spam board, at sinasabi ng bawat sukatan kung gaano na katagal namin itong sinusukat. Kapag masyadong bago ang datos, wala kaming ipinapakita kaysa manghula."
+    },
+    "premiumLook": {
+      "title": "Mas matalas na itsura para sa buong platform",
+      "description": "Buong design pass: bagong display typeface na may sariling karakter, mas malalim na patong-patong na surface, pinong kulay at espasyo, glass navigation, at tahimik na detalye kahit saan — nakahanay na numero, mas malambot na kanto, banayad na signature glow. Parehong tapat na datos, ngayon ay bagay na ang bihis."
     }
   },
   "sampleReportPreview": {

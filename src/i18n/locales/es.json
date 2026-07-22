@@ -3465,6 +3465,10 @@
     "dataYouCanBelieve": {
       "title": "Números que puedes comprobar — revisión de precisión total",
       "description": "Reconstruimos cada estadística pública sobre evidencia. 'Empresas que realmente cubren puestos' ahora cuenta solo roles que estuvieron publicados una semana o más y luego se retiraron — la republicación queda descalificada y expuesta en su propia lista de 'Re-publicadores en serie' (un minorista republicó el mismo puesto 289 veces en una semana). Los conteos fabricados desaparecieron, 70+ empresas recuperaron su nombre real, las agencias de empleo ya no se muestran como empleadores, se eliminó un tablero de spam y cada métrica indica exactamente cuánto llevamos midiéndola. Donde los datos son demasiado jóvenes, no mostramos nada antes que adivinar."
+    },
+    "premiumLook": {
+      "title": "Un aspecto más pulido en toda la plataforma",
+      "description": "Un repaso de diseño completo: nueva tipografía de titulares con carácter, superficies con más profundidad, color y espaciado refinados, navegación tipo cristal y detalles silenciosos en todas partes — números alineados, esquinas más suaves, un sutil brillo distintivo. Los mismos datos honestos, ahora bien vestidos."
     }
   },
   "sampleReportPreview": {

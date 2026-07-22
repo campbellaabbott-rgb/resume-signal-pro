@@ -3465,6 +3465,10 @@
     "dataYouCanBelieve": {
       "title": "Des chiffres vérifiables — passe de précision complète",
       "description": "Nous avons reconstruit chaque statistique publique sur des preuves. « Entreprises qui pourvoient vraiment » ne compte plus que les postes restés en ligne au moins une semaine puis retirés — la republication est disqualifiée et exposée dans sa propre liste « Republieurs en série » (un détaillant a republié le même poste 289 fois en une semaine). Les comptes fabriqués ont disparu, 70+ entreprises ont retrouvé leur vrai nom, les agences d'intérim ne sont plus présentées comme employeurs, un tableau de spam a été supprimé, et chaque métrique indique depuis combien de temps nous la mesurons. Quand les données sont trop récentes, nous n'affichons rien plutôt qu'une estimation."
+    },
+    "premiumLook": {
+      "title": "Une allure plus soignée sur toute la plateforme",
+      "description": "Une passe de design complète : nouvelle typographie de titres avec du caractère, surfaces plus profondes, couleurs et espacements raffinés, navigation en verre et touches discrètes partout — chiffres alignés, coins adoucis, un léger halo signature. Les mêmes données honnêtes, désormais bien habillées."
     }
   },
   "sampleReportPreview": {

@@ -3465,6 +3465,10 @@
     "dataYouCanBelieve": {
       "title": "Números que você pode conferir — passagem completa de precisão",
       "description": "Reconstruímos cada estatística pública sobre evidências. 'Empresas que realmente preenchem vagas' agora conta só roles que ficaram publicados uma semana ou mais e depois saíram — republicação é desqualificada e exposta na própria lista de 'Republicadores em série' (um varejista republicou a mesma vaga 289 vezes em uma semana). Contagens fabricadas sumiram, 70+ empresas recuperaram seus nomes reais, agências de recrutamento não aparecem mais como empregadores, um quadro de spam foi removido, e cada métrica informa exatamente há quanto tempo medimos. Onde os dados são jovens demais, preferimos não mostrar nada a chutar."
+    },
+    "premiumLook": {
+      "title": "Um visual mais refinado em toda a plataforma",
+      "description": "Uma revisão completa de design: nova tipografia de títulos com personalidade, superfícies em camadas mais profundas, cor e espaçamento refinados, navegação de vidro e toques discretos por toda parte — números alinhados, cantos mais suaves, um brilho sutil de assinatura. Os mesmos dados honestos, agora bem vestidos."
     }
   },
   "sampleReportPreview": {

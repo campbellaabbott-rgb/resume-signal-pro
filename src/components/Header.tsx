@@ -40,7 +40,7 @@ export function Header() {
     return (
     <>
       <div className="fixed top-0 left-0 right-0 z-[60]">
-        <header className="bg-background border-b border-border/50" role="banner">
+        <header className="bg-background/70 backdrop-blur-xl border-b border-border/60" role="banner">
         <div className="container">
         <nav className="flex items-center justify-between h-16" aria-label={t('header.mainNavAriaLabel')}>
           {/* Left: Logo + Nav Links */}
