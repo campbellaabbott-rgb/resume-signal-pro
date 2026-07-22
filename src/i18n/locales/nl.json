@@ -3449,6 +3449,22 @@
     "exploreBoard": {
       "title": "Een nieuwe manier om te ontdekken — blader op wie echt aanneemt",
       "description": "Niet zeker wat te zoeken? De nieuwe Ontdek-pagina laat je bladeren op echte signalen, live berekend uit de boards van bedrijven: wie deze week het snelst aanneemt, bedrijven die vacatures echt vervullen (niet alleen plaatsen), net toegevoegde boards, startervriendelijke werkgevers en waar het salaris per vakgebied het hoogst is. Elke lijst is echt en leidt direct naar het board."
+    },
+    "morningQueue": {
+      "title": "De Sollicitatie-agent: word wakker met een beoordeelde shortlist",
+      "description": "Stel je zoekopdracht één keer in — trefwoorden, vakgebied, salarisondergrens, je cv. Elke nacht scant de agent de écht nieuwe vacatures van de dag, scoort ze tegen je cv, slaat bedrijven over die herplaatsingen rondpompen, geeft bewezen werkgevers voorrang en zet de beste klaar — elke keuze met redenen. Jij beoordeelt, jij verstuurt; de agent verstuurt nooit namens jou en verzint nooit antwoorden. $99/maand in je account, alles van Pro inbegrepen."
+    },
+    "boardFirstFive": {
+      "title": "Het board ontmoet je waar je bent",
+      "description": "Eerste bezoek zonder idee waar te beginnen? Je krijgt nu een oriëntatie — live totalen, de grootste vakgebieden en duidelijke ingangen — in plaats van een half miljoen vacatures op datum. Sleep je cv direct op het board en elke vacature toont meteen je match-score. En de zoekbalk begrijpt zinnen: typ 'remote senior data boven $150k' en één tik op AI-analyse maakt er echte filters van — hij begrijpt zelfs 'bedrijven die echt aannemen' en 'best betaald eerst'."
+    },
+    "companyScale": {
+      "title": "Verken op bedrijfsschaal — enterprise, mid-market, startups",
+      "description": "Een nieuwe Explore-sectie segmenteert het board op hiring-voetafdruk: Enterprise (500+ vacatures), Mid-market (50–499) en Startups & kleine teams (3–49) — elk met echte cijfers: bedrijven, open vacatures, remote-aandeel, instap-aandeel en mediaan vermeld salaris. We gokken geen personeelsaantallen; de definitie is het getal dat je ziet, en enorme boards tonen zowel onze geverifieerde telling als het eigen totaal van het bedrijf."
+    },
+    "dataYouCanBelieve": {
+      "title": "Cijfers die je kunt controleren — volledige nauwkeurigheidsronde",
+      "description": "We hebben elke publieke statistiek op bewijs herbouwd. 'Bedrijven die echt vervullen' telt alleen nog vacatures die minstens een week online stonden en daarna verdwenen — herplaatsing is gediskwalificeerd en zichtbaar in de eigen lijst 'Serie-herplaatsers' (een retailer herplaatste dezelfde vacature 289 keer in een week). Gefabriceerde tellingen zijn weg, 70+ bedrijven kregen hun echte naam terug, uitzendbureaus staan niet meer als werkgever in de schijnwerpers, een spam-board is verwijderd, en elke metriek vermeldt precies hoe lang we hem meten. Waar data te jong is, tonen we liever niets dan een gok."
     }
   },
   "sampleReportPreview": {

@@ -3449,6 +3449,22 @@
     "exploreBoard": {
       "title": "Una nueva forma de explorar — navega por quién contrata de verdad",
       "description": "¿No sabes qué buscar? La nueva página Explorar te deja navegar por señales reales calculadas en vivo desde los tableros de las empresas: quién contrata más rápido esta semana, empresas que de verdad cubren vacantes (no solo las publican), tableros recién añadidos, empleadores aptos para principiantes y dónde está el mejor sueldo por campo. Cada lista es real y lleva directo al tablero."
+    },
+    "morningQueue": {
+      "title": "El Agente de solicitudes: despierta con una lista ya revisada",
+      "description": "Configura tu búsqueda una vez — palabras clave, campo, salario mínimo, tu currículum. Cada noche el agente analiza las vacantes realmente nuevas del día, las puntúa contra tu currículum, omite empresas que republican en bucle, prioriza a quienes de verdad contratan y pone en cola las mejores — cada selección con sus razones. Tú revisas, tú envías; el agente nunca envía por ti ni inventa respuestas. 99 $/mes en tu cuenta, con todo Pro incluido."
+    },
+    "boardFirstFive": {
+      "title": "El tablero te recibe donde estés",
+      "description": "¿Primera visita sin saber por dónde empezar? Ahora ves una vista de orientación — totales en vivo, los campos más grandes y caminos claros — en lugar de medio millón de vacantes por fecha. Suelta tu currículum directamente en el tablero y cada vacante muestra tu puntuación de encaje al instante. Y el buscador entiende frases: escribe 'roles remotos senior de datos por más de $150k' y un toque en Interpretar con IA lo convierte en filtros reales — incluso entiende 'empresas que realmente contratan' y 'mejor pagadas primero'."
+    },
+    "companyScale": {
+      "title": "Explora por tamaño — enterprise, mid-market, startups",
+      "description": "Una nueva sección de Explorar segmenta el tablero por huella de contratación: Enterprise (500+ vacantes), Mid-market (50–499) y Startups y equipos pequeños (3–49) — cada una con estadísticas reales: empresas, vacantes, porcentaje remoto, nivel inicial y salario mediano declarado. No adivinamos plantillas; la definición es el número que ves, y los tableros gigantes muestran nuestro conteo verificado y el total de la propia empresa."
+    },
+    "dataYouCanBelieve": {
+      "title": "Números que puedes comprobar — revisión de precisión total",
+      "description": "Reconstruimos cada estadística pública sobre evidencia. 'Empresas que realmente cubren puestos' ahora cuenta solo roles que estuvieron publicados una semana o más y luego se retiraron — la republicación queda descalificada y expuesta en su propia lista de 'Re-publicadores en serie' (un minorista republicó el mismo puesto 289 veces en una semana). Los conteos fabricados desaparecieron, 70+ empresas recuperaron su nombre real, las agencias de empleo ya no se muestran como empleadores, se eliminó un tablero de spam y cada métrica indica exactamente cuánto llevamos midiéndola. Donde los datos son demasiado jóvenes, no mostramos nada antes que adivinar."
     }
   },
   "sampleReportPreview": {

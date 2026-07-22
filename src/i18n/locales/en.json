@@ -3449,6 +3449,22 @@
     "exploreBoard": {
       "title": "A new way to explore — browse by who's actually hiring",
       "description": "Not sure what to search? The new Explore page lets you browse by real signals computed live from companies' own boards: who's hiring fastest this week, companies that actually fill roles (not just post them), boards just added, entry-level-friendly employers, and where the pay is highest by field. Every list is real and clickable straight into the board."
+    },
+    "morningQueue": {
+      "title": "The Apply Agent: wake up to a reviewed shortlist",
+      "description": "Set your search once — keywords, field, salary floor, your résumé. Every night the agent scans the day's genuinely new postings, scores each one against your résumé, skips companies that churn re-listings, prioritizes proven hirers, and queues the best few — each pick labeled with its reasons. You review, you send; the agent never submits for you and never invents answers. $99/month in your account, everything in Pro included."
+    },
+    "boardFirstFive": {
+      "title": "The board meets you where you are",
+      "description": "First visit with no idea where to start? You now get an orientation view — live totals, the biggest fields, and clear paths in — instead of half a million roles newest-first. Drop your résumé straight onto the board and every opening shows your match score instantly. And the search bar now understands sentences: type 'remote senior data roles over $150k' and one tap on AI parse turns it into real filters — it even understands 'companies that actually hire' and 'highest paying first'."
+    },
+    "companyScale": {
+      "title": "Explore by company scale — enterprise, mid-market, startups",
+      "description": "A new Explore section segments the board by hiring footprint: Enterprise (500+ open roles), Mid-market (50–499), and Startups & small teams (3–49) — each with real stats: companies, open roles, remote share, entry-level share, and median stated pay. We don't guess headcount; the definition is the number you see, and giant boards show both our verified count and the company's own total."
+    },
+    "dataYouCanBelieve": {
+      "title": "Numbers you can check — a top-to-bottom accuracy pass",
+      "description": "We rebuilt every public stat on evidence. 'Companies that actually fill roles' now counts only roles that stayed posted a week or more and then came down — repost churn is disqualified and exposed in its own 'Serial re-posters' list (one retailer re-listed the same job 289 times in a week). Fabricated counts from capped feeds are gone, 70+ companies got their real names back, staffing agencies are no longer showcased as employers, a spam board was removed entirely, and every metric now states exactly how long we've been tracking it. Where the data is too young to support a claim, we show nothing rather than a guess."
     }
   },
   "sampleReportPreview": {

@@ -3449,6 +3449,22 @@
     "exploreBoard": {
       "title": "Une nouvelle façon d'explorer — parcourez qui recrute vraiment",
       "description": "Vous ne savez pas quoi chercher ? La nouvelle page Explorer vous laisse parcourir des signaux réels calculés en direct depuis les tableaux des entreprises : qui recrute le plus vite cette semaine, les entreprises qui pourvoient vraiment leurs postes (pas seulement les publient), les tableaux récemment ajoutés, les employeurs ouverts aux débutants et où les salaires sont les plus élevés par domaine. Chaque liste est réelle et mène directement au tableau."
+    },
+    "morningQueue": {
+      "title": "L'Agent de candidature : réveillez-vous avec une sélection déjà triée",
+      "description": "Configurez votre recherche une fois — mots-clés, domaine, salaire plancher, votre CV. Chaque nuit, l'agent analyse les offres réellement nouvelles du jour, les note contre votre CV, écarte les entreprises qui republient en boucle, priorise celles qui recrutent vraiment et met en file les meilleures — chaque sélection avec ses raisons. Vous relisez, vous envoyez ; l'agent n'envoie jamais à votre place et n'invente jamais de réponses. 99 $/mois dans votre compte, tout Pro inclus."
+    },
+    "boardFirstFive": {
+      "title": "Le tableau vous accueille où que vous soyez",
+      "description": "Première visite sans savoir par où commencer ? Vous voyez désormais une vue d'orientation — totaux en direct, plus grands domaines, chemins clairs — au lieu d'un demi-million d'offres par date. Déposez votre CV directement sur le tableau et chaque offre affiche instantanément votre score d'adéquation. Et la barre de recherche comprend les phrases : tapez « postes data senior en télétravail à plus de 150k$ » et un clic sur Analyse IA les transforme en vrais filtres — elle comprend même « entreprises qui recrutent vraiment » et « mieux payés d'abord »."
+    },
+    "companyScale": {
+      "title": "Explorer par taille — enterprise, mid-market, startups",
+      "description": "Une nouvelle section Explorer segmente le tableau par empreinte de recrutement : Enterprise (500+ postes), Mid-market (50–499) et Startups et petites équipes (3–49) — chacune avec de vraies statistiques : entreprises, postes ouverts, part de télétravail, part junior et salaire médian déclaré. Nous ne devinons pas les effectifs ; la définition est le nombre affiché, et les tableaux géants montrent notre décompte vérifié et le total annoncé par l'entreprise."
+    },
+    "dataYouCanBelieve": {
+      "title": "Des chiffres vérifiables — passe de précision complète",
+      "description": "Nous avons reconstruit chaque statistique publique sur des preuves. « Entreprises qui pourvoient vraiment » ne compte plus que les postes restés en ligne au moins une semaine puis retirés — la republication est disqualifiée et exposée dans sa propre liste « Republieurs en série » (un détaillant a republié le même poste 289 fois en une semaine). Les comptes fabriqués ont disparu, 70+ entreprises ont retrouvé leur vrai nom, les agences d'intérim ne sont plus présentées comme employeurs, un tableau de spam a été supprimé, et chaque métrique indique depuis combien de temps nous la mesurons. Quand les données sont trop récentes, nous n'affichons rien plutôt qu'une estimation."
     }
   },
   "sampleReportPreview": {

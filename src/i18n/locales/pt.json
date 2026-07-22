@@ -3449,6 +3449,22 @@
     "exploreBoard": {
       "title": "Uma nova forma de explorar — navegue por quem realmente contrata",
       "description": "Não sabe o que buscar? A nova página Explorar deixa você navegar por sinais reais calculados ao vivo dos painéis das empresas: quem contrata mais rápido esta semana, empresas que realmente preenchem vagas (não só publicam), painéis recém-adicionados, empregadores amigáveis para iniciantes e onde o salário é mais alto por área. Cada lista é real e leva direto ao painel."
+    },
+    "morningQueue": {
+      "title": "O Agente de candidatura: acorde com uma lista já revisada",
+      "description": "Configure sua busca uma vez — palavras-chave, área, piso salarial, seu currículo. Toda noite o agente varre as vagas realmente novas do dia, pontua cada uma contra seu currículo, pula empresas que republicam em ciclo, prioriza quem realmente contrata e enfileira as melhores — cada escolha com suas razões. Você revisa, você envia; o agente nunca envia por você nem inventa respostas. US$ 99/mês na sua conta, com tudo do Pro incluído."
+    },
+    "boardFirstFive": {
+      "title": "O quadro encontra você onde você está",
+      "description": "Primeira visita sem saber por onde começar? Agora você vê uma visão de orientação — totais ao vivo, as maiores áreas e caminhos claros — em vez de meio milhão de vagas por data. Solte seu currículo direto no quadro e cada vaga mostra sua pontuação de encaixe na hora. E a busca entende frases: digite 'vagas remotas senior de dados acima de $150k' e um toque em Análise por IA vira filtros reais — ela entende até 'empresas que realmente contratam' e 'melhores salários primeiro'."
+    },
+    "companyScale": {
+      "title": "Explore por porte — enterprise, mid-market, startups",
+      "description": "Uma nova seção do Explorar segmenta o quadro por pegada de contratação: Enterprise (500+ vagas), Mid-market (50–499) e Startups e equipes pequenas (3–49) — cada uma com estatísticas reais: empresas, vagas abertas, parcela remota, parcela júnior e salário mediano declarado. Não adivinhamos quadro de funcionários; a definição é o número que você vê, e quadros gigantes mostram nossa contagem verificada e o total da própria empresa."
+    },
+    "dataYouCanBelieve": {
+      "title": "Números que você pode conferir — passagem completa de precisão",
+      "description": "Reconstruímos cada estatística pública sobre evidências. 'Empresas que realmente preenchem vagas' agora conta só roles que ficaram publicados uma semana ou mais e depois saíram — republicação é desqualificada e exposta na própria lista de 'Republicadores em série' (um varejista republicou a mesma vaga 289 vezes em uma semana). Contagens fabricadas sumiram, 70+ empresas recuperaram seus nomes reais, agências de recrutamento não aparecem mais como empregadores, um quadro de spam foi removido, e cada métrica informa exatamente há quanto tempo medimos. Onde os dados são jovens demais, preferimos não mostrar nada a chutar."
     }
   },
   "sampleReportPreview": {

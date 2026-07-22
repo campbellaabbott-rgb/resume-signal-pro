@@ -3449,6 +3449,22 @@
     "exploreBoard": {
       "title": "Bagong paraan ng pagtuklas — mag-browse ayon sa kung sino talaga ang nag-hi-hire",
       "description": "Hindi sigurado kung ano hahanapin? Ang bagong Explore page ay nagbibigay-daan mag-browse ayon sa totoong senyales na live na kinuwenta mula sa mga board mismo ng kumpanya: sino ang pinakamabilis mag-hire ngayong linggo, mga kumpanyang talagang nakakapuno ng posisyon (hindi lang nagpo-post), kadadagdag na board, mga employer na angkop sa baguhan, at kung saan pinakamataas ang sahod bawat larangan. Bawat listahan ay totoo at diretso sa board."
+    },
+    "morningQueue": {
+      "title": "Ang Apply Agent: gumising na may nirepasong shortlist",
+      "description": "Itakda ang paghahanap mo nang isang beses — mga keyword, larangan, pinakamababang sahod, ang resume mo. Gabi-gabi, ini-scan ng agent ang mga tunay na bagong posting ng araw, sinusukat laban sa resume mo, nilalaktawan ang mga kumpanyang paulit-ulit nag-re-repost, inuuna ang mga subok na kumukuha, at ipinipila ang pinakamahusay — bawat pili may dahilan. Ikaw ang magrerepaso, ikaw ang magpapadala; hinding-hindi nagsusumite ang agent para sa iyo at hindi nag-iimbento ng sagot. $99/buwan sa account mo, kasama lahat ng Pro."
+    },
+    "boardFirstFive": {
+      "title": "Sinasalubong ka ng board kung nasaan ka",
+      "description": "Unang bisita at hindi alam kung saan magsisimula? Makikita mo na ngayon ang orientation view — live na kabuuan, pinakamalalaking larangan, at malinaw na daan — sa halip na kalahating milyong bakante ayon sa petsa. Ihulog ang resume mo mismo sa board at agad ipapakita ng bawat bakante ang match score mo. At nauunawaan na ng search bar ang pangungusap: i-type ang 'remote senior data roles over $150k' at isang tap sa AI parse ay ginagawa itong tunay na filter — naiintindihan pa nito ang 'mga kumpanyang totoong kumukuha' at 'pinakamataas ang sahod muna'."
+    },
+    "companyScale": {
+      "title": "Mag-explore ayon sa laki — enterprise, mid-market, startup",
+      "description": "Hinahati ng bagong seksyon ng Explore ang board ayon sa hiring footprint: Enterprise (500+ bukas na posisyon), Mid-market (50–499), at Mga startup at maliliit na team (3–49) — bawat isa may tunay na estadistika: mga kumpanya, bukas na posisyon, bahagdan ng remote, bahagdan ng entry-level, at median na nakasaad na sahod. Hindi kami nanghuhula ng bilang ng empleyado; ang depinisyon ay ang numerong nakikita mo, at ipinapakita ng malalaking board ang aming beripikadong bilang at ang sariling kabuuan ng kumpanya."
+    },
+    "dataYouCanBelieve": {
+      "title": "Mga numerong maaari mong suriin — buong accuracy pass",
+      "description": "Muling itinayo namin ang bawat pampublikong estadistika sa ebidensya. Ang 'mga kumpanyang totoong nagpupuno ng posisyon' ay bumibilang na lang ng mga role na nanatiling nakapaskil nang isang linggo o higit pa at pagkatapos ay tinanggal — ang repost churn ay diskuwalipikado at nakalantad sa sariling listahan ng 'Paulit-ulit mag-repost' (isang retailer ang nag-repost ng parehong trabaho nang 289 beses sa isang linggo). Wala na ang mga gawa-gawang bilang, 70+ kumpanya ang nakabawi ng tunay na pangalan, hindi na itinatampok ang mga staffing agency bilang employer, tinanggal ang isang spam board, at sinasabi ng bawat sukatan kung gaano na katagal namin itong sinusukat. Kapag masyadong bago ang datos, wala kaming ipinapakita kaysa manghula."
     }
   },
   "sampleReportPreview": {

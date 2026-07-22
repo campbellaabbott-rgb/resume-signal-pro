@@ -1901,17 +1901,12 @@
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://resumebooster.work/jobs/company/AbbVie</loc>
+    <loc>https://resumebooster.work/jobs/company/AECOM2</loc>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://resumebooster.work/jobs/company/JYSK</loc>
-    <changefreq>daily</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://resumebooster.work/jobs/company/VeoliaEnvironnementSA</loc>
+    <loc>https://resumebooster.work/jobs/company/SGS</loc>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
   </url>
@@ -1921,7 +1916,7 @@
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://resumebooster.work/jobs/company/BoschGroup</loc>
+    <loc>https://resumebooster.work/jobs/company/VeoliaEnvironnementSA</loc>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
   </url>
@@ -1936,12 +1931,17 @@
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://resumebooster.work/jobs/company/SGS</loc>
+    <loc>https://resumebooster.work/jobs/company/AbbVie</loc>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://resumebooster.work/jobs/company/AECOM2</loc>
+    <loc>https://resumebooster.work/jobs/company/BoschGroup</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://resumebooster.work/jobs/company/JYSK</loc>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
   </url>
@@ -1996,12 +1996,12 @@
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://resumebooster.work/jobs/company/weekday-1</loc>
+    <loc>https://resumebooster.work/jobs/company/SopraSteria1</loc>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://resumebooster.work/jobs/company/SopraSteria1</loc>
+    <loc>https://resumebooster.work/jobs/company/weekday-1</loc>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
   </url>

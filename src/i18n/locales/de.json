@@ -3449,6 +3449,22 @@
     "exploreBoard": {
       "title": "Eine neue Art zu entdecken — stöbere nach echten Einstellern",
       "description": "Unsicher, wonach suchen? Die neue Entdecken-Seite lässt dich nach echten Signalen stöbern, live aus den Boards der Unternehmen berechnet: wer diese Woche am schnellsten einstellt, Unternehmen, die Stellen wirklich besetzen (nicht nur ausschreiben), neu hinzugefügte Boards, einsteigerfreundliche Arbeitgeber und wo die Bezahlung je Bereich am höchsten ist. Jede Liste ist echt und führt direkt ins Board."
+    },
+    "morningQueue": {
+      "title": "Der Bewerbungs-Agent: aufwachen mit geprüfter Auswahl",
+      "description": "Suche einmal einstellen — Stichwörter, Bereich, Gehaltsuntergrenze, dein Lebenslauf. Jede Nacht scannt der Agent die wirklich neuen Stellen des Tages, bewertet jede gegen deinen Lebenslauf, überspringt Unternehmen mit Dauer-Neueinstellungen, priorisiert nachweisliche Einsteller und stellt die besten in die Queue — jede Auswahl mit Begründung. Du prüfst, du sendest; der Agent sendet nie für dich und erfindet nie Antworten. 99 $/Monat im Konto, alles aus Pro inklusive."
+    },
+    "boardFirstFive": {
+      "title": "Das Board holt dich dort ab, wo du bist",
+      "description": "Erster Besuch ohne Plan? Statt einer halben Million Stellen nach Datum siehst du jetzt eine Orientierung — Live-Zahlen, die größten Bereiche, klare Einstiege. Zieh deinen Lebenslauf direkt aufs Board und jede Stelle zeigt sofort deinen Match-Score. Und die Suche versteht Sätze: tippe 'Remote Senior Data über 150k' und ein Klick auf KI-Analyse macht daraus echte Filter — sie versteht sogar 'Unternehmen, die wirklich einstellen' und 'bestbezahlt zuerst'."
+    },
+    "companyScale": {
+      "title": "Nach Unternehmensgröße erkunden — Enterprise, Mid-Market, Startups",
+      "description": "Eine neue Explore-Sektion segmentiert das Board nach Hiring-Fußabdruck: Enterprise (500+ offene Stellen), Mid-Market (50–499) und Startups & kleine Teams (3–49) — jede mit echten Zahlen: Unternehmen, offene Stellen, Remote-Anteil, Einstiegsanteil, medianes genanntes Gehalt. Wir raten keine Mitarbeiterzahlen; die Definition ist die Zahl, die du siehst, und Riesen-Boards zeigen unseren verifizierten Zählwert und die eigene Gesamtzahl des Unternehmens."
+    },
+    "dataYouCanBelieve": {
+      "title": "Zahlen zum Nachprüfen — kompletter Genauigkeits-Durchgang",
+      "description": "Wir haben jede öffentliche Statistik auf Beweise umgebaut. 'Unternehmen, die wirklich besetzen' zählt nur noch Stellen, die mindestens eine Woche online waren und dann verschwanden — Repost-Rauschen ist disqualifiziert und in der eigenen Liste 'Serien-Wiedereinsteller' sichtbar (ein Händler stellte dieselbe Stelle 289-mal in einer Woche neu ein). Fabrizierte Zählwerte sind weg, 70+ Unternehmen haben ihre echten Namen zurück, Personalvermittler werden nicht mehr als Arbeitgeber präsentiert, ein Spam-Board wurde entfernt, und jede Metrik nennt exakt, wie lange wir sie messen. Wo Daten zu jung sind, zeigen wir lieber nichts als eine Schätzung."
     }
   },
   "sampleReportPreview": {
