@@ -4262,7 +4262,7 @@
     "nlPlaceholder": "p. ej. puestos de producto remotos de más de $150k publicados esta semana",
     "nlGo": "Buscar",
     "nlClose": "Cerrar",
-    "nlHint": "Lo convertimos en filtros reales y mostramos exactamente cómo lo interpretamos — ajusta lo que quieras abajo.",
+    "nlHint": "Interpretar con IA",
     "nlInterpreted": "Interpretado como:",
     "nlDismiss": "descartar",
     "nlNotMapped": "No se pudo filtrar por: {{terms}} — aún no hay filtro para eso, así que no se aplicó.",
@@ -4279,7 +4279,9 @@
     "dropParsed": "Currículum cargado — ordenando cada vacante para ti.",
     "dropFailed": "No se pudo leer ese archivo. El escaneo completo maneja formatos más difíciles.",
     "dropTooShort": "No pudimos leer suficiente texto de ese archivo — prueba el escáner completo.",
-    "dropTooLarge": "Ese archivo supera los 10 MB — exporta una copia más ligera e inténtalo de nuevo."
+    "dropTooLarge": "Ese archivo supera los 10 MB — exporta una copia más ligera e inténtalo de nuevo.",
+    "nlHintTip": "Entiende sueldo, remoto, fechas, campos y 'empresas que realmente contratan' — convierte tu frase en filtros reales.",
+    "queueBridge": "¿Prefieres selecciones listas para revisar cada mañana? El Agente ejecuta tu búsqueda cada noche — Cola matinal, en tu cuenta."
   },
   "accountPage": {
     "statActive": "Postulaciones activas",

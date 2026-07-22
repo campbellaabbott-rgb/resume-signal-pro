@@ -4262,7 +4262,7 @@
     "nlPlaceholder": "ex. postes produit en télétravail à plus de 150k€ publiés cette semaine",
     "nlGo": "Rechercher",
     "nlClose": "Fermer",
-    "nlHint": "Nous le traduisons en filtres réels et montrons exactement comment nous l'avons compris — ajustez ci-dessous.",
+    "nlHint": "Analyse IA",
     "nlInterpreted": "Compris comme :",
     "nlDismiss": "ignorer",
     "nlNotMapped": "Impossible de filtrer par : {{terms}} — pas encore de filtre pour cela, donc non appliqué.",
@@ -4279,7 +4279,9 @@
     "dropParsed": "CV chargé — classement de chaque offre autour de vous.",
     "dropFailed": "Impossible de lire ce fichier. Le scan complet gère les formats plus complexes.",
     "dropTooShort": "Pas assez de texte lisible dans ce fichier — essayez le scanner complet.",
-    "dropTooLarge": "Ce fichier dépasse 10 Mo — exportez une copie plus légère et réessayez."
+    "dropTooLarge": "Ce fichier dépasse 10 Mo — exportez une copie plus légère et réessayez.",
+    "nlHintTip": "Comprend salaire, télétravail, dates, domaines et « entreprises qui recrutent vraiment » — transforme votre phrase en vrais filtres.",
+    "queueBridge": "Envie de sélections prêtes à relire chaque matin ? L'Agent exécute votre recherche chaque nuit — File du matin, dans votre compte."
   },
   "accountPage": {
     "statActive": "Candidatures actives",

@@ -53,6 +53,8 @@ The board has EXACTLY these filters — never invent others:
 - country: a 2-letter ISO code only if a country is named (US, GB, CA, DE...).
 - location: a city/region string if a specific place is named (not a country).
 - maxAgeDays: 1 for "today", 7 for "this week"/"recent"/"new".
+- activelyHiring: true when the user asks for companies that really hire / actually fill roles / proven hirers / no ghost jobs.
+- sort: "salary" when they ask for highest-paying/best-paid first; "newest" when they explicitly ask newest-first.
 
 RULES:
 - Only set a filter when the query clearly implies it. When unsure, leave it out and let it fall into q or notMapped.
@@ -87,6 +89,8 @@ RULES:
                 country: { type: "string", description: "2-letter ISO code" },
                 location: { type: "string", description: "City or region (not a country)" },
                 maxAgeDays: { type: "number", description: "1 for today, 7 for this week/recent" },
+                activelyHiring: { type: "boolean", description: "true only when the user wants companies with a proven fill record" },
+                sort: { type: "string", description: "salary for highest-paying first, newest for newest first" },
                 interpreted: { type: "array", items: { type: "string" }, description: "2-6 short chips of what was understood" },
                 notMapped: { type: "array", items: { type: "string" }, description: "Concepts with no matching filter" },
               },
@@ -124,6 +128,8 @@ RULES:
     if (typeof parsed.country === "string" && /^[A-Za-z]{2}$/.test(parsed.country)) filters.country = parsed.country.toUpperCase();
     if (typeof parsed.location === "string" && parsed.location.trim()) filters.location = parsed.location.trim().slice(0, 80);
     if (parsed.maxAgeDays === 1 || parsed.maxAgeDays === 7) filters.maxAgeDays = parsed.maxAgeDays;
+    if (parsed.activelyHiring === true) filters.activelyHiring = true;
+    if (parsed.sort === "salary" || parsed.sort === "newest") filters.sort = parsed.sort;
 
     const interpreted = Array.isArray(parsed.interpreted) ? parsed.interpreted.filter((x): x is string => typeof x === "string").slice(0, 6) : [];
     const notMapped = Array.isArray(parsed.notMapped) ? parsed.notMapped.filter((x): x is string => typeof x === "string").slice(0, 4) : [];

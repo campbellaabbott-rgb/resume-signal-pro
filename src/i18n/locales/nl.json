@@ -4262,7 +4262,7 @@
     "nlPlaceholder": "bijv. remote productfuncties boven $150k deze week geplaatst",
     "nlGo": "Zoeken",
     "nlClose": "Sluiten",
-    "nlHint": "We vertalen het naar echte filters en laten precies zien hoe we het lazen — pas hieronder aan.",
+    "nlHint": "AI-analyse",
     "nlInterpreted": "Gelezen als:",
     "nlDismiss": "sluiten",
     "nlNotMapped": "Kon niet filteren op: {{terms}} — daar is nog geen filter voor, dus niet toegepast.",
@@ -4279,7 +4279,9 @@
     "dropParsed": "Cv geladen — elke vacature wordt om jou heen gerangschikt.",
     "dropFailed": "Kon dat bestand niet lezen. De volledige scan kan lastigere formaten aan.",
     "dropTooShort": "Niet genoeg leesbare tekst in dat bestand — probeer de volledige scanner.",
-    "dropTooLarge": "Dat bestand is groter dan 10 MB — exporteer een lichtere kopie en probeer opnieuw."
+    "dropTooLarge": "Dat bestand is groter dan 10 MB — exporteer een lichtere kopie en probeer opnieuw.",
+    "nlHintTip": "Begrijpt salaris, remote, datums, vakgebieden en 'bedrijven die echt aannemen' — maakt van je zin echte filters.",
+    "queueBridge": "Liever elke ochtend beoordeelde keuzes? De Agent draait je zoekopdracht 's nachts — Ochtendwachtrij, in je account."
   },
   "accountPage": {
     "statActive": "Actieve sollicitaties",

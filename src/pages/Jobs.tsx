@@ -244,8 +244,8 @@ export default function Jobs() {
   const [nlQuery, setNlQuery] = useState("");
   const [nlLoading, setNlLoading] = useState(false);
   const [nlResult, setNlResult] = useState<{ interpreted: string[]; notMapped: string[] } | null>(null);
-  const applyNlSearch = useCallback(async () => {
-    const raw = nlQuery.trim();
+  const applyNlSearch = useCallback(async (override?: string) => {
+    const raw = (override ?? nlQuery).trim();
     if (raw.length < 3 || nlLoading) return;
     setNlLoading(true);
     try {
@@ -262,6 +262,11 @@ export default function Jobs() {
       setCountry(typeof f.country === "string" ? f.country : "");
       setLocation(typeof f.location === "string" ? f.location : "");
       setFreshness(f.maxAgeDays === 1 ? "day" : f.maxAgeDays === 7 ? "week" : "");
+      // Board CONTROLS the parser can now drive too (a query is a command):
+      // "companies that actually hire" → the proven-fills filter; "highest
+      // paying first" → salary sort. Reset like the other fields.
+      setActivelyHiringOnly(f.activelyHiring === true);
+      setSortMode(f.sort === "salary" ? "salary" : "newest");
       const d = data as { interpreted?: string[]; notMapped?: string[] };
       setNlResult({ interpreted: Array.isArray(d.interpreted) ? d.interpreted : [], notMapped: Array.isArray(d.notMapped) ? d.notMapped : [] });
       setNlOpen(false);
@@ -544,7 +549,7 @@ export default function Jobs() {
     }
     toast({
       title: t("jobsPage.searchSaved", "Search saved"),
-      description: t("jobsPage.searchSavedDesc", "Your account shows how many new postings match since your last look."),
+      description: `${t("jobsPage.searchSavedDesc", "Your account shows how many new postings match since your last look.")} ${t("jobsPage.queueBridge", "Want ready-to-review picks every morning instead? The Apply Agent runs your search nightly — Morning Queue, in your account.")}`,
     });
   };
 
@@ -932,7 +937,7 @@ export default function Jobs() {
     }
     toast({
       title: t("jobsPage.watchSaved", "Watching {{company}}", { company: landerCompanyName }),
-      description: t("jobsPage.watchSavedDesc", "Your account now shows how many new roles they've posted since your last look."),
+      description: `${t("jobsPage.watchSavedDesc", "Your account now shows how many new roles they've posted since your last look.")} ${t("jobsPage.queueBridge", "Want ready-to-review picks every morning instead? The Apply Agent runs your search nightly — Morning Queue, in your account.")}`,
     });
   };
 
@@ -2190,6 +2195,19 @@ export default function Jobs() {
                   placeholder={t("jobsPage.searchPlaceholder", "Title or keyword — e.g. product designer")}
                   className="w-full pl-9 pr-3 py-2 rounded-lg bg-background border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
                 />
+                {/* Long queries read like sentences — offer the AI parse right
+                    where they typed it (salary, remote, dates, sort, proven
+                    hirers all become real filters, visibly). */}
+                {q.trim().split(/\s+/).length >= 4 && !nlLoading && (
+                  <button
+                    type="button"
+                    onClick={() => { setNlQuery(q); void applyNlSearch(q); }}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex items-center gap-1 text-[11px] font-semibold text-primary bg-primary/10 rounded-full px-2 py-0.5 hover:bg-primary/20"
+                    title={t("jobsPage.nlHintTip", "Understands pay, remote, dates, fields, and 'companies that actually hire' — turns your sentence into real filters.")}
+                  >
+                    <Sparkles className="w-3 h-3" /> {t("jobsPage.nlHint", "AI parse")}
+                  </button>
+                )}
                 {suggestOpen && flatSuggestions.length > 0 && (
                   <div id="search-suggest-list" role="listbox" className="absolute z-30 mt-1 left-0 right-0 max-h-80 overflow-auto rounded-lg border border-border bg-background shadow-lg text-sm py-1">
                     {flatSuggestions.map((sug, si) => (

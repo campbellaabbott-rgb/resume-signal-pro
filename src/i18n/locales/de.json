@@ -4262,7 +4262,7 @@
     "nlPlaceholder": "z. B. Remote-Produktstellen über 150k, diese Woche veröffentlicht",
     "nlGo": "Suchen",
     "nlClose": "Schließen",
-    "nlHint": "Wir übersetzen es in echte Filter und zeigen genau, wie wir es gelesen haben — unten anpassbar.",
+    "nlHint": "KI-Analyse",
     "nlInterpreted": "Verstanden als:",
     "nlDismiss": "verwerfen",
     "nlNotMapped": "Konnte nicht filtern nach: {{terms}} — dafür gibt es noch keinen Filter, also nicht angewendet.",
@@ -4279,7 +4279,9 @@
     "dropParsed": "Lebenslauf geladen — jede Stelle wird um dich herum sortiert.",
     "dropFailed": "Datei nicht lesbar. Der volle Scan kommt mit schwierigeren Formaten klar.",
     "dropTooShort": "Zu wenig lesbarer Text in der Datei — probier den vollen Scanner.",
-    "dropTooLarge": "Die Datei ist über 10 MB — exportiere eine leichtere Kopie und versuch es erneut."
+    "dropTooLarge": "Die Datei ist über 10 MB — exportiere eine leichtere Kopie und versuch es erneut.",
+    "nlHintTip": "Versteht Gehalt, Remote, Daten, Bereiche und 'Unternehmen, die wirklich einstellen' — macht aus deinem Satz echte Filter.",
+    "queueBridge": "Lieber jeden Morgen geprüfte Vorschläge? Der Agent führt deine Suche nächtlich aus — Morgen-Queue, in deinem Konto."
   },
   "accountPage": {
     "statActive": "Aktive Bewerbungen",

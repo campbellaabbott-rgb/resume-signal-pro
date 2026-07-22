@@ -4262,7 +4262,7 @@
     "nlPlaceholder": "e.g. remote product roles over $150k posted this week",
     "nlGo": "Search",
     "nlClose": "Close",
-    "nlHint": "We map it to real filters and show exactly how we read it — adjust anything below.",
+    "nlHint": "AI parse",
     "nlInterpreted": "Read as:",
     "nlDismiss": "dismiss",
     "nlNotMapped": "Couldn't filter by: {{terms}} — no filter for that yet, so it wasn't applied.",
@@ -4279,7 +4279,9 @@
     "dropParsed": "Résumé loaded — ranking every opening around you.",
     "dropFailed": "Couldn't parse that file. The full free scan handles trickier formats.",
     "dropTooShort": "We couldn't read enough text from that file — try the full scanner instead.",
-    "dropTooLarge": "That file is over 10 MB — export a lighter copy and try again."
+    "dropTooLarge": "That file is over 10 MB — export a lighter copy and try again.",
+    "nlHintTip": "Understands pay, remote, dates, fields, and 'companies that actually hire' — turns your sentence into real filters.",
+    "queueBridge": "Want ready-to-review picks every morning instead? The Apply Agent runs your search nightly — Morning Queue, in your account."
   },
   "accountPage": {
     "statActive": "Active applications",

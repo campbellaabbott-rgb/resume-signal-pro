@@ -4262,7 +4262,7 @@
     "nlPlaceholder": "ex. vagas de produto remotas acima de $150k publicadas esta semana",
     "nlGo": "Buscar",
     "nlClose": "Fechar",
-    "nlHint": "Convertemos em filtros reais e mostramos exatamente como interpretamos — ajuste abaixo.",
+    "nlHint": "Análise por IA",
     "nlInterpreted": "Interpretado como:",
     "nlDismiss": "dispensar",
     "nlNotMapped": "Não foi possível filtrar por: {{terms}} — ainda não há filtro para isso, então não foi aplicado.",
@@ -4279,7 +4279,9 @@
     "dropParsed": "Currículo carregado — ordenando cada vaga em torno de você.",
     "dropFailed": "Não foi possível ler esse arquivo. O escaneamento completo lida com formatos mais difíceis.",
     "dropTooShort": "Não conseguimos ler texto suficiente desse arquivo — tente o scanner completo.",
-    "dropTooLarge": "Esse arquivo passa de 10 MB — exporte uma cópia mais leve e tente de novo."
+    "dropTooLarge": "Esse arquivo passa de 10 MB — exporte uma cópia mais leve e tente de novo.",
+    "nlHintTip": "Entende salário, remoto, datas, áreas e 'empresas que realmente contratam' — transforma sua frase em filtros reais.",
+    "queueBridge": "Prefere escolhas prontas para revisar toda manhã? O Agente roda sua busca à noite — Fila da manhã, na sua conta."
   },
   "accountPage": {
     "statActive": "Candidaturas ativas",

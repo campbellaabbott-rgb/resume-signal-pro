@@ -4262,7 +4262,7 @@
     "nlPlaceholder": "hal. remote na trabaho sa produkto na higit $150k na na-post ngayong linggo",
     "nlGo": "Maghanap",
     "nlClose": "Isara",
-    "nlHint": "Isinasalin namin ito sa totoong filter at ipinapakita kung paano namin ito binasa — i-adjust ang kahit ano sa ibaba.",
+    "nlHint": "AI parse",
     "nlInterpreted": "Binasa bilang:",
     "nlDismiss": "i-dismiss",
     "nlNotMapped": "Hindi ma-filter ayon sa: {{terms}} — wala pang filter para diyan, kaya hindi na-apply.",
@@ -4279,7 +4279,9 @@
     "dropParsed": "Na-load ang resume — inaayos ang bawat bakante para sa iyo.",
     "dropFailed": "Hindi mabasa ang file na iyon. Kaya ng buong scan ang mas mahirap na format.",
     "dropTooShort": "Kulang ang nabasang teksto sa file — subukan ang buong scanner.",
-    "dropTooLarge": "Lampas 10 MB ang file — mag-export ng mas magaan na kopya at subukang muli."
+    "dropTooLarge": "Lampas 10 MB ang file — mag-export ng mas magaan na kopya at subukang muli.",
+    "nlHintTip": "Naiintindihan ang sahod, remote, petsa, larangan, at 'mga kumpanyang totoong kumukuha' — ginagawang tunay na filter ang pangungusap mo.",
+    "queueBridge": "Gusto mo bang may handa nang pili tuwing umaga? Pinapatakbo ng Agent ang paghahanap mo gabi-gabi — Morning Queue, sa account mo."
   },
   "accountPage": {
     "statActive": "Aktibong aplikasyon",
