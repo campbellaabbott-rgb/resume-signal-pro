@@ -19,6 +19,11 @@ project_id = "bwhdazbotpblihdxcmho"
     verify_jwt = false
   [functions.check-subscription]
     verify_jwt = false
+  # Public: anonymous employers request claims; the email-link click carries
+  # no JWT. Safe: rate-limited, work-email-domain gated, service-role writes
+  # touch only company_claims.
+  [functions.company-claim]
+    verify_jwt = false
   [functions.create-checkout]
     verify_jwt = false
   [functions.create-portal-session]

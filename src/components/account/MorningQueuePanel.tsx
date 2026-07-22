@@ -140,10 +140,10 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
       {agentActive === false && (
         <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 mb-4">
           <p className="text-sm text-foreground font-medium mb-1">{t("agentQueue.payPitch", "Wake up to a reviewed shortlist instead of another hour of scrolling.")}</p>
-          <p className="text-[12px] text-muted-foreground mb-3">{t("agentQueue.payBoundary", "The agent prepares and explains — it never submits for you, and it never invents answers. $99/month, everything in Pro included.")}</p>
+          <p className="text-[12px] text-muted-foreground mb-3">{t("agentQueue.payBoundary", "The agent prepares and explains — it never submits for you, and it never invents answers. 7 mornings free, then $99/month — everything in Pro included. Cancel anytime.")}</p>
           <button onClick={() => void subscribe()} disabled={busy || !email}
             className="inline-flex items-center gap-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold px-4 py-2 hover:bg-primary/90 disabled:opacity-50">
-            <Sparkles className="w-4 h-4" /> {t("agentQueue.payCta", "Start the Apply Agent — $99/mo")}
+            <Sparkles className="w-4 h-4" /> {t("agentQueue.payCta", "Try the Apply Agent free for 7 days")}
           </button>
         </div>
       )}

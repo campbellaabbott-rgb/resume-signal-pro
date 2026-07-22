@@ -2541,7 +2541,15 @@
     "trustedBySubtitle": "Ginagamit ng mga propesyonal mula sa nangungunang kumpanya ang Resume Booster upang makuha ang trabahong kanilang pinangarap.",
     "ctaTitle": "Handa na Pahusayin ang Iyong Resume?",
     "ctaSubtitle": "Sumali sa libu-libong job seeker na nagpahusay ng kanilang resume gamit ang aming AI-powered analysis.",
-    "ctaButton": "Kunin ang Iyong Libreng Scan"
+    "ctaButton": "Kunin ang Iyong Libreng Scan",
+    "dataFence": {
+      "badge": "Kalayaan ng datos",
+      "title": "Walang kumpanyang makakabayad para baguhin ang sinasabi ng aming datos",
+      "subtitle": "Ang mga hiring track record sa site na ito — mga napunang posisyon, paulit-ulit na pag-post, bilis ng pagsasara — ay kinukuwenta mula sa naoobserbahan namin sa sariling career sites ng mga kumpanya. Hindi ito ipinagbibili.",
+      "notForSale": "Ang fill rate, churn flag, at badge ay hindi mabibili, mababago, o matatanggal kapalit ng bayad. Hindi ng mga advertiser, hindi ng mga partner, ninuman.",
+      "sameRules": "Bawat kumpanya ay sinusukat sa parehong panuntunan, magbayad man sila o hindi. Ang mga verified na employer ay may identity check — hindi kailanman mas magandang numero.",
+      "labeled": "Kung may listing o placement mang naka-sponsor, malinaw itong nilalagyan ng label. Ang datos na walang label ay palaging ang organikong naobserbahang rekord."
+    }
   },
   "methodologyPage": {
     "metaTitle": "Methodology — Paano Sino-score ng Resume Booster ang mga Resume",
@@ -2838,6 +2846,10 @@
     }
   },
   "changelogEntries": {
+    "fairDataPromise": {
+      "title": "Pangako ng patas na datos, beripikadong employer, at 7 libreng umaga ng Agent",
+      "description": "Tatlong bagay nang sabay. Una, nakasulat na patakaran: walang kumpanyang makakabayad para baguhin ang sinasabi ng aming datos — ang fill rate, churn flag, at badge ay kinukuwenta mula sa mga naobserbahang posting at hindi ipinagbibili (tingnan ang Trust page). Pangalawa, maaari nang i-claim ng mga employer ang kanilang company page sa pag-verify ng work email sa sarili nilang domain para sa badge na Beripikadong employer — pagkakakilanlan lang, hindi kailanman karapatang mag-edit. Pangatlo, ang Apply Agent ay nagsisimula na sa 7 libreng umaga: gumising na may totoong shortlist bago magbayad ng kahit ano."
+    },
     "board450k": {
       "title": "450,000+ verified na trabaho — Pinpoint na ang ika-13 hiring system",
       "description": "Isa na namang growth wave: 450,000+ aktibong trabaho mula sa 20,000+ kompanya, lahat direkta mula sa sariling hiring system ng bawat kompanya. Bago ngayong round: Pinpoint bilang ika-13 system, ang hiwalay na EU platform ng Greenhouse (daan-daang European employer), at libu-libong dagdag na board mula sa mas malalim na archive sweeps. Hinigpitan din namin ang pinto: corporate board ito, at inalis ang ilang government board na nakapasok."
@@ -4325,7 +4337,21 @@
     "compareClear": "I-clear",
     "compareTitle": "Magkatabi",
     "compareFit": "keyword na tugma",
-    "compareView": "Tingnan at mag-apply"
+    "compareView": "Tingnan at mag-apply",
+    "claim": {
+      "cta": "Nagtatrabaho sa {{company}}? I-claim ang profile na ito",
+      "boundary": "Mag-verify ng work email sa domain ng {{company}} para magpakita rito ng badge na Beripikadong employer. Pinapatunayan lang ng beripikasyon ang pagkakakilanlan — hinding-hindi nito binabago ang hiring data na kinukuwenta namin.",
+      "policyLink": "Bakit?",
+      "emailPlaceholder": "ikaw@kumpanya.com",
+      "send": "Ipadala ang link",
+      "sentNote": "Tingnan ang iyong inbox — nagpadala kami ng verification link sa {{email}}. I-click ito at tapos na ang claim.",
+      "sendFail": "Hindi maipadala ang verification email — pakisubukan muli.",
+      "verifiedChip": "Beripikadong employer",
+      "verifiedTip": "Isang contact sa kumpanyang ito ang nag-verify ng work email sa domain nito. Pagkakakilanlan lang ang kinukumpirma ng beripikasyon — hinding-hindi nito binabago ang hiring data na ipinapakita rito.",
+      "verifyOk": "Na-verify ang claim — lumalabas na ngayon ang {{company}} bilang beripikadong employer.",
+      "verifyPending": "Nakumpirma ang email. Hindi malinaw na tugma ang iyong domain sa kumpanyang ito, kaya mano-mano naming susuriin ang claim — kadalasan sa loob ng isang araw.",
+      "verifyFail": "Hindi gumana ang verification link — maaaring luma na ito. Humiling ng bago sa ibaba."
+    }
   },
   "accountPage": {
     "statActive": "Aktibong aplikasyon",
@@ -4436,8 +4462,8 @@
     "badge": "Apply Agent",
     "subtitle": "Itakda ang paghahanap mo nang isang beses. Gabi-gabi, ini-scan ng agent ang mga bagong posting, sinusukat laban sa resume mo, nilalaktawan ang mga kumpanyang paulit-ulit nag-re-repost, at ipinipila ang pinakamahusay — bawat isa may dahilan. Ikaw ang magrerepaso, ikaw ang magpapadala.",
     "payPitch": "Gumising na may nirepasong shortlist sa halip na isa pang oras ng pag-scroll.",
-    "payBoundary": "Naghahanda at nagpapaliwanag ang agent — hinding-hindi ito nagsusumite para sa iyo at hindi nag-iimbento ng sagot. $99/buwan, kasama ang lahat ng Pro.",
-    "payCta": "Simulan ang Apply Agent — $99/buwan",
+    "payBoundary": "Naghahanda at nagpapaliwanag ang agent — hinding-hindi ito nagsusumite para sa iyo at hindi nag-iimbento ng sagot. 7 umagang libre, pagkatapos $99/buwan — kasama ang lahat ng Pro. Kanselahin anumang oras.",
+    "payCta": "Subukan ang Apply Agent nang libre sa 7 araw",
     "checkoutError": "Hindi mabuksan ang checkout — subukang muli.",
     "needResume": "Mag-save muna ng resume para sa matching (sa itaas) — doon sinusukat ng agent ang bawat posting.",
     "saveError": "Hindi ma-save — subukang muli.",

@@ -37,6 +37,7 @@ export function Footer() {
           <Link to="/freelance-boost" className="hover:text-foreground transition-colors">Freelance Boost</Link>
           <Link to="/builder" className="hover:text-foreground transition-colors">Resume Builder</Link>
           <Link to="/methodology" className="hover:text-foreground transition-colors">Methodology</Link>
+          <Link to="/data-api" className="hover:text-foreground transition-colors">Hiring Data &amp; API</Link>
         </nav>
 
         <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-foreground px-2 sm:px-0">

@@ -1,9 +1,9 @@
 import { useTranslation } from "react-i18next";
 import { SEO } from "@/components/seo/SEO";
-import { 
-  Shield, Lock, Clock, CloudOff, Zap, Users, 
-  CheckCircle2, BookOpen, Award, FileCheck, 
-  Eye, Server, Globe, Sparkles
+import {
+  Shield, Lock, Clock, CloudOff, Zap, Users,
+  CheckCircle2, BookOpen, Award, FileCheck,
+  Eye, Server, Globe, Sparkles, Scale
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Header } from "@/components/Header";
@@ -146,6 +146,34 @@ export default function Trust() {
                   </div>
                 );
               })}
+            </div>
+          </div>
+        </section>
+
+        {/* Data-integrity fence: the constraint IS the positioning. Company
+            track records (fills, re-listing churn, closing speed) are computed
+            from observed postings and are never purchasable — stated as policy. */}
+        <section className="py-16 border-y border-border bg-muted/20">
+          <div className="container">
+            <div className="max-w-3xl mx-auto text-center">
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 mb-6">
+                <Scale className="w-4 h-4 text-primary" />
+                <span className="text-sm font-medium text-primary">{t('trustPage.dataFence.badge')}</span>
+              </div>
+              <h2 className="text-3xl md:text-4xl font-display font-bold mb-6">
+                {t('trustPage.dataFence.title')}
+              </h2>
+              <p className="text-lg text-muted-foreground mb-8">
+                {t('trustPage.dataFence.subtitle')}
+              </p>
+              <div className="grid sm:grid-cols-3 gap-4 text-left">
+                {(['notForSale', 'sameRules', 'labeled'] as const).map((k) => (
+                  <div key={k} className="p-4 rounded-xl bg-card border border-border">
+                    <CheckCircle2 className="w-5 h-5 text-primary mb-2" />
+                    <p className="text-sm text-muted-foreground">{t(`trustPage.dataFence.${k}`)}</p>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </section>

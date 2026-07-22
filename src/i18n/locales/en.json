@@ -2541,7 +2541,15 @@
     "trustedBySubtitle": "Professionals from leading companies use Resume Booster to land their dream roles.",
     "ctaTitle": "Ready to Boost Your Resume?",
     "ctaSubtitle": "Join thousands of job seekers who've improved their resumes with our AI-powered analysis.",
-    "ctaButton": "Get Your Free Scan"
+    "ctaButton": "Get Your Free Scan",
+    "dataFence": {
+      "badge": "Data independence",
+      "title": "No company can pay to change what our data says",
+      "subtitle": "Hiring track records on this site — roles filled, re-listing churn, closing speed — are computed from what we observe on companies' own career sites. They are not for sale.",
+      "notForSale": "Fill rates, churn flags, and badges cannot be bought, edited, or removed for a fee. Not by advertisers, not by partners, not by anyone.",
+      "sameRules": "Every company is measured by the same rules, whether they ever pay us or not. Verified employers get an identity check — never a better number.",
+      "labeled": "If a listing or placement is ever sponsored, it is labeled as such. Unlabeled data is always the organic, observed record."
+    }
   },
   "methodologyPage": {
     "metaTitle": "Methodology — How Resume Booster Scores Resumes",
@@ -2838,6 +2846,10 @@
     }
   },
   "changelogEntries": {
+    "fairDataPromise": {
+      "title": "A fair-data promise, verified employers, and 7 free Agent mornings",
+      "description": "Three things shipped together. First, policy in writing: no company can pay to change what our data says — fill rates, churn flags, and badges are computed from observed postings and are not for sale (see the Trust page). Second, employers can now claim their company page by verifying a work email at their own domain, earning a Verified employer badge — identity only, never editing rights. Third, the Apply Agent now starts with 7 free mornings, so you can wake up to a real shortlist before paying anything."
+    },
     "board450k": {
       "title": "450,000+ verified openings — Pinpoint joins as the 13th hiring system",
       "description": "Another growth wave: 450,000+ live openings from 20,000+ companies, all straight from each company's own hiring system. New this round: Pinpoint as the 13th system, Greenhouse's separate EU platform (hundreds of European employers), and thousands more boards found in deeper archive sweeps. We also tightened the door: this is a corporate board, and a handful of government job boards that had slipped in were removed — public-sector listings don't belong here and won't get in again."
@@ -4325,7 +4337,21 @@
     "compareClear": "Clear",
     "compareTitle": "Side by side",
     "compareFit": "keyword fit",
-    "compareView": "View & apply"
+    "compareView": "View & apply",
+    "claim": {
+      "cta": "Work at {{company}}? Claim this profile",
+      "boundary": "Verify a work email at {{company}}'s domain to show a Verified employer badge here. Verification proves identity only — it never changes the hiring data we compute.",
+      "policyLink": "Why?",
+      "emailPlaceholder": "you@company.com",
+      "send": "Send link",
+      "sentNote": "Check your inbox — we sent a verification link to {{email}}. Click it and the claim is done.",
+      "sendFail": "Could not send the verification email — please try again.",
+      "verifiedChip": "Verified employer",
+      "verifiedTip": "A contact at this company verified a work email at its domain. Verification confirms identity only — it never changes the hiring data shown here.",
+      "verifyOk": "Claim verified — {{company}} now shows as a verified employer.",
+      "verifyPending": "Email confirmed. Your domain doesn't obviously match this company, so we'll review the claim by hand — usually within a day.",
+      "verifyFail": "That verification link didn't work — it may be stale. Request a fresh one below."
+    }
   },
   "accountPage": {
     "statActive": "Active applications",
@@ -4436,8 +4462,8 @@
     "badge": "Apply Agent",
     "subtitle": "Set your search once. Every night the agent scans new postings, scores them against your résumé, skips companies that churn re-listings, and queues the best few — each with its reasons. You review, you send.",
     "payPitch": "Wake up to a reviewed shortlist instead of another hour of scrolling.",
-    "payBoundary": "The agent prepares and explains — it never submits for you, and it never invents answers. $99/month, everything in Pro included.",
-    "payCta": "Start the Apply Agent — $99/mo",
+    "payBoundary": "The agent prepares and explains — it never submits for you, and it never invents answers. 7 mornings free, then $99/month — everything in Pro included. Cancel anytime.",
+    "payCta": "Try the Apply Agent free for 7 days",
     "checkoutError": "Couldn't open checkout — please try again.",
     "needResume": "Save a résumé for matching first (above) — the agent scores every posting against it.",
     "saveError": "Couldn't save — please try again.",

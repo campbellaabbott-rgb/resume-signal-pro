@@ -2541,7 +2541,15 @@
     "trustedBySubtitle": "Professionals van toonaangevende bedrijven gebruiken Resume Booster om hun droombaan te bemachtigen.",
     "ctaTitle": "Klaar om je cv te verbeteren?",
     "ctaSubtitle": "Sluit je aan bij duizenden werkzoekenden die hun cv hebben verbeterd met onze AI-gestuurde analyse.",
-    "ctaButton": "Krijg je gratis scan"
+    "ctaButton": "Krijg je gratis scan",
+    "dataFence": {
+      "badge": "Data-onafhankelijkheid",
+      "title": "Geen enkel bedrijf kan betalen om onze data te veranderen",
+      "subtitle": "De wervingsstatistieken op deze site — vervulde vacatures, herplaatsingen, sluitingssnelheid — worden berekend uit wat we op de carrièresites van bedrijven zelf waarnemen. Ze zijn niet te koop.",
+      "notForSale": "Vervullingspercentages, churn-signalen en badges zijn niet te koop, aan te passen of tegen betaling te verwijderen. Niet door adverteerders, niet door partners, door niemand.",
+      "sameRules": "Elk bedrijf wordt langs dezelfde meetlat gelegd, of het ons ooit betaalt of niet. Geverifieerde werkgevers krijgen een identiteitscontrole — nooit een beter cijfer.",
+      "labeled": "Als een vacature of plaatsing ooit gesponsord is, wordt dat vermeld. Ongelabelde data is altijd het organisch waargenomen beeld."
+    }
   },
   "methodologyPage": {
     "metaTitle": "Methodologie — Hoe Resume Booster cv's scoort",
@@ -2838,6 +2846,10 @@
     }
   },
   "changelogEntries": {
+    "fairDataPromise": {
+      "title": "Een eerlijke-databelofte, geverifieerde werkgevers en 7 gratis Agent-ochtenden",
+      "description": "Drie dingen tegelijk. Ten eerste, beleid op papier: geen enkel bedrijf kan betalen om onze data te veranderen — vervullingspercentages, churn-signalen en badges worden berekend uit waargenomen vacatures en zijn niet te koop (zie de Vertrouwenspagina). Ten tweede kunnen werkgevers nu hun bedrijfspagina claimen door een werk-e-mail op hun eigen domein te verifiëren en de badge Geverifieerde werkgever verdienen — alleen identiteit, nooit bewerkingsrechten. Ten derde begint de Sollicitatie-Agent nu met 7 gratis ochtenden: word wakker met een echte shortlist voordat je iets betaalt."
+    },
     "board450k": {
       "title": "450.000+ geverifieerde vacatures — Pinpoint is het 13e systeem",
       "description": "Weer een groeigolf: 450.000+ actieve vacatures van 20.000+ bedrijven, allemaal rechtstreeks uit het wervingssysteem van elk bedrijf. Nieuw: Pinpoint als 13e systeem, Greenhouses aparte EU-platform (honderden Europese werkgevers) en duizenden extra borden uit diepere archiefrondes. Ook aangescherpt: dit is een bedrijvenbord, en enkele overheidsborden die waren binnengeslopen zijn verwijderd."
@@ -4325,7 +4337,21 @@
     "compareClear": "Wissen",
     "compareTitle": "Naast elkaar",
     "compareFit": "keyword-match",
-    "compareView": "Bekijk & solliciteer"
+    "compareView": "Bekijk & solliciteer",
+    "claim": {
+      "cta": "Werk je bij {{company}}? Claim dit profiel",
+      "boundary": "Verifieer een werk-e-mail op het domein van {{company}} om hier een badge Geverifieerde werkgever te tonen. Verificatie bewijst alleen identiteit — het verandert nooit de wervingsdata die wij berekenen.",
+      "policyLink": "Waarom?",
+      "emailPlaceholder": "jij@bedrijf.com",
+      "send": "Link versturen",
+      "sentNote": "Check je inbox — we hebben een verificatielink gestuurd naar {{email}}. Eén klik en de claim is rond.",
+      "sendFail": "De verificatiemail kon niet worden verzonden — probeer het opnieuw.",
+      "verifiedChip": "Geverifieerde werkgever",
+      "verifiedTip": "Een contactpersoon van dit bedrijf heeft een werk-e-mail op het eigen domein geverifieerd. Verificatie bevestigt alleen identiteit — het verandert nooit de hier getoonde wervingsdata.",
+      "verifyOk": "Claim geverifieerd — {{company}} staat nu als geverifieerde werkgever.",
+      "verifyPending": "E-mail bevestigd. Je domein komt niet duidelijk overeen met dit bedrijf, dus we beoordelen de claim handmatig — meestal binnen een dag.",
+      "verifyFail": "Die verificatielink werkte niet — mogelijk verlopen. Vraag hieronder een nieuwe aan."
+    }
   },
   "accountPage": {
     "statActive": "Actieve sollicitaties",
@@ -4436,8 +4462,8 @@
     "badge": "Sollicitatie-agent",
     "subtitle": "Stel je zoekopdracht één keer in. Elke nacht scant de agent nieuwe vacatures, scoort ze tegen je cv, slaat bedrijven over die herplaatsingen rondpompen en zet de beste klaar — elk met redenen. Jij beoordeelt, jij verstuurt.",
     "payPitch": "Word wakker met een beoordeelde shortlist in plaats van nóg een uur scrollen.",
-    "payBoundary": "De agent bereidt voor en legt uit — hij verstuurt nooit namens jou en verzint nooit antwoorden. $99/maand, alles van Pro inbegrepen.",
-    "payCta": "Start de Agent — $99/mnd",
+    "payBoundary": "De agent bereidt voor en legt uit — hij verstuurt nooit namens jou en verzint nooit antwoorden. 7 ochtenden gratis, daarna $99/maand — alles van Pro inbegrepen. Altijd opzegbaar.",
+    "payCta": "Probeer de Agent 7 dagen gratis",
     "checkoutError": "Checkout kon niet openen — probeer opnieuw.",
     "needResume": "Sla eerst een cv op voor matching (hierboven) — de agent scoort elke vacature ertegen.",
     "saveError": "Opslaan mislukt — probeer opnieuw.",

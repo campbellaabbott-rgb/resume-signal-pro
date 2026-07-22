@@ -918,6 +918,30 @@ export { COUNTRY_SLUGS, CV_LOCALES, EN_TEMPLATE, fill, hreflangCluster } from ".
         }],
       });
     }
+
+    // Hiring Data & API — the B2B data-licensing page. Static shell; the few
+    // live stats hydrate client-side.
+    {
+      write({
+        path: "/data-api",
+        title: "Hiring Data & API — lifecycle-tracked job posting data",
+        description: "License the dataset behind our live board: lifecycle-tracked postings from official company career sites, genuine fills vs re-listing churn, stated salary ranges, and daily accuracy audits. Free for journalists with attribution.",
+        content: `
+          <h1>Hiring Data &amp; API</h1>
+          <p>Most job data stops at "posted." Ours follows every posting to the end: when it closed, whether it was genuinely filled or quietly re-listed under a new ID, and what the company itself said it paid. Everything is collected from companies' own official career sites — never aggregators — and audited against them daily.</p>
+          <p>The dataset contains zero jobseeker data: resumes are never stored on Resume Booster, so there is nothing about job seekers to license. And no license, at any price, changes what the data says about any company — including the licensee.</p>
+          <p>Access is free for journalists with attribution, at cost for academic and nonprofit research, and custom-priced for commercial feeds. A live slice is already public: see the <a href="/ghost-job-index">Ghost Job Index</a>, <a href="/hiring-trends">Weekly Hiring Trends</a>, and the <a href="/entry-level-index">Entry-Level Index</a>.</p>
+        `,
+        jsonLd: [{
+          "@context": "https://schema.org",
+          "@type": "WebPage",
+          name: "Hiring Data & API",
+          description: "Lifecycle-tracked job posting data from official company career sites: fills vs re-listing churn, stated salaries, daily audits. Free for journalists with attribution.",
+          url: `${SITE}/data-api`,
+          isPartOf: { "@type": "WebSite", name: "Resume Booster", url: SITE },
+        }],
+      });
+    }
   }
 
   // ---- /llms-full.txt: complete citable text in one fetch ----

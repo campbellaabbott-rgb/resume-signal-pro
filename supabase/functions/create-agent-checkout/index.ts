@@ -63,6 +63,11 @@ serve(async (req) => {
         },
       ],
       allow_promotion_codes: true,
+      // The Agent sells an experience ("wake up to a shortlist") that has to
+      // be FELT once — 7 free mornings before the first charge.
+      // checkAgentByEmail already treats 'trialing' as active, so the
+      // entitlement (and the nightly runner) work from day one.
+      subscription_data: { trial_period_days: 7 },
       success_url: `${origin}/account?agent=success`,
       cancel_url: `${origin}/account?agent=cancelled`,
       metadata: { product_type: "apply_agent", customer_email: email },

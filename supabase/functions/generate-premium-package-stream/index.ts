@@ -12,12 +12,12 @@ const corsHeaders = {
   "Connection": "keep-alive",
 };
 
-// This endpoint is public (verify_jwt=false) and streams an expensive LLM call
-// with no payment/JWT gate, so without a throttle anyone could burn AI credits
+// This endpoint is public (verify_jwt=false) and streams an expensive LLM call,
+// so without a throttle anyone could loop it to burn AI credits
 // (and pull premium content) in a loop. Per-IP rate limit as an abuse backstop,
 // matching the pattern used across the other generators. NOTE: this caps burst
-// abuse but does not verify the purchase — closing the revenue leak fully needs
-// a session/entitlement check on the paid streaming path.
+// abuse; assertPaidSession below verifies the actual purchase (used_stripe_sessions
+// membership, written only by the payment-validating functions) — leak closed.
 const RATE_LIMIT = { p_max_requests: 20, p_window_minutes: 60 };
 
 const logStep = (step: string, details?: Record<string, unknown>) => {

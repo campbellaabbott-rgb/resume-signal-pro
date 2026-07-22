@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { ApplicationAnswers } from "@/components/apply/ApplicationAnswers";
+import { CompanyClaim } from "@/components/jobs/CompanyClaim";
 import { TailoredResumeModal, type TailoredResumeContent } from "@/components/TailoredResumeModal";
 import { supabase } from "@/integrations/supabase/client";
 import { postTrackEvent } from "@/lib/track-transport";
@@ -2150,6 +2151,11 @@ export default function Jobs() {
               </span>
             )}
           </p>
+          {/* Claim-your-profile: verified-employer chip / claim CTA — company
+              landers only. Identity verification, never data editing. */}
+          {landerCompany && (
+            <CompanyClaim companyToken={landerCompany} companyName={landerCompanyName ?? landerCompany} />
+          )}
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-3 text-[11px] text-muted-foreground">
             <span className="inline-flex items-center gap-1">
               <ShieldCheck className="w-3.5 h-3.5 text-success shrink-0" />

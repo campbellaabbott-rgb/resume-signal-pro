@@ -2541,7 +2541,15 @@
     "trustedBySubtitle": "Profesionales de empresas líderes usan Resume Booster para conseguir el trabajo de sus sueños.",
     "ctaTitle": "¿Listo para mejorar tu currículum?",
     "ctaSubtitle": "Únete a miles de candidatos que han mejorado sus currículums con nuestro análisis basado en IA.",
-    "ctaButton": "Obtén tu escaneo gratuito"
+    "ctaButton": "Obtén tu escaneo gratuito",
+    "dataFence": {
+      "badge": "Independencia de los datos",
+      "title": "Ninguna empresa puede pagar para cambiar lo que dicen nuestros datos",
+      "subtitle": "Los historiales de contratación de este sitio — puestos cubiertos, republicaciones, velocidad de cierre — se calculan a partir de lo que observamos en las páginas de empleo de las propias empresas. No están en venta.",
+      "notForSale": "Las tasas de cobertura, las señales de rotación y las insignias no se pueden comprar, editar ni eliminar pagando. Ni anunciantes, ni socios, ni nadie.",
+      "sameRules": "Todas las empresas se miden con las mismas reglas, paguen o no. Los empleadores verificados obtienen una verificación de identidad — nunca un número mejor.",
+      "labeled": "Si algún anuncio o posición está patrocinado, se etiqueta como tal. Los datos sin etiqueta son siempre el registro orgánico observado."
+    }
   },
   "methodologyPage": {
     "metaTitle": "Metodología — Cómo Resume Booster puntúa los currículums",
@@ -2838,6 +2846,10 @@
     }
   },
   "changelogEntries": {
+    "fairDataPromise": {
+      "title": "Promesa de datos justos, empleadores verificados y 7 mañanas gratis del Agente",
+      "description": "Tres cosas a la vez. Primero, política por escrito: ninguna empresa puede pagar para cambiar lo que dicen nuestros datos — tasas de cobertura, señales de rotación e insignias se calculan de anuncios observados y no están en venta (ver la página de Confianza). Segundo, los empleadores ya pueden reclamar su página verificando un correo de trabajo en su propio dominio y obtener la insignia de Empleador verificado — solo identidad, nunca derechos de edición. Tercero, el Agente de Postulación ahora empieza con 7 mañanas gratis: despierta con una lista real antes de pagar nada."
+    },
     "board450k": {
       "title": "Más de 450.000 vacantes verificadas — Pinpoint es el 13.º sistema",
       "description": "Otra ola de crecimiento: más de 450.000 vacantes activas de más de 20.000 empresas, todas directas del sistema de contratación de cada empresa. Novedades: Pinpoint como 13.º sistema, la plataforma europea de Greenhouse (cientos de empleadores europeos) y miles de tablones más de barridos de archivo más profundos. También cerramos la puerta: este es un tablón corporativo, y se eliminaron algunos tablones gubernamentales que se habían colado — lo público no entra aquí."
@@ -4325,7 +4337,21 @@
     "compareClear": "Limpiar",
     "compareTitle": "Lado a lado",
     "compareFit": "encaje de palabras clave",
-    "compareView": "Ver y aplicar"
+    "compareView": "Ver y aplicar",
+    "claim": {
+      "cta": "¿Trabajas en {{company}}? Reclama este perfil",
+      "boundary": "Verifica un correo de trabajo en el dominio de {{company}} para mostrar aquí una insignia de Empleador verificado. La verificación solo prueba identidad — nunca cambia los datos de contratación que calculamos.",
+      "policyLink": "¿Por qué?",
+      "emailPlaceholder": "tu@empresa.com",
+      "send": "Enviar enlace",
+      "sentNote": "Revisa tu bandeja — enviamos un enlace de verificación a {{email}}. Haz clic y el reclamo queda hecho.",
+      "sendFail": "No se pudo enviar el correo de verificación — inténtalo de nuevo.",
+      "verifiedChip": "Empleador verificado",
+      "verifiedTip": "Un contacto de esta empresa verificó un correo de trabajo en su dominio. La verificación confirma identidad solamente — nunca cambia los datos de contratación mostrados aquí.",
+      "verifyOk": "Reclamo verificado — {{company}} ahora aparece como empleador verificado.",
+      "verifyPending": "Correo confirmado. Tu dominio no coincide claramente con esta empresa, así que revisaremos el reclamo manualmente — normalmente en un día.",
+      "verifyFail": "Ese enlace de verificación no funcionó — puede estar vencido. Solicita uno nuevo abajo."
+    }
   },
   "accountPage": {
     "statActive": "Postulaciones activas",
@@ -4436,8 +4462,8 @@
     "badge": "Agente de solicitudes",
     "subtitle": "Configura tu búsqueda una vez. Cada noche el agente analiza las vacantes nuevas, las puntúa contra tu currículum, omite empresas que republican en bucle y pone en cola las mejores — cada una con sus razones. Tú revisas, tú envías.",
     "payPitch": "Despierta con una lista revisada en lugar de otra hora de scroll.",
-    "payBoundary": "El agente prepara y explica — nunca envía por ti y nunca inventa respuestas. 99 $/mes, todo Pro incluido.",
-    "payCta": "Iniciar el Agente — 99 $/mes",
+    "payBoundary": "El agente prepara y explica — nunca envía por ti y nunca inventa respuestas. 7 mañanas gratis, luego 99 $/mes — todo Pro incluido. Cancela cuando quieras.",
+    "payCta": "Prueba el Agente gratis 7 días",
     "checkoutError": "No se pudo abrir el pago — inténtalo de nuevo.",
     "needResume": "Guarda primero un currículum para matching (arriba) — el agente puntúa cada vacante contra él.",
     "saveError": "No se pudo guardar — inténtalo de nuevo.",

@@ -2541,7 +2541,15 @@
     "trustedBySubtitle": "Les professionnels des grandes entreprises utilisent Resume Booster pour décrocher le poste de leurs rêves.",
     "ctaTitle": "Prêt à améliorer votre CV ?",
     "ctaSubtitle": "Rejoignez des milliers de candidats qui ont amélioré leur CV grâce à notre analyse alimentée par l'IA.",
-    "ctaButton": "Obtenez votre scan gratuit"
+    "ctaButton": "Obtenez votre scan gratuit",
+    "dataFence": {
+      "badge": "Indépendance des données",
+      "title": "Aucune entreprise ne peut payer pour changer ce que disent nos données",
+      "subtitle": "Les historiques de recrutement de ce site — postes pourvus, republications, vitesse de clôture — sont calculés à partir de ce que nous observons sur les sites carrières des entreprises elles-mêmes. Ils ne sont pas à vendre.",
+      "notForSale": "Les taux de pourvoi, signaux de rotation et badges ne peuvent être ni achetés, ni modifiés, ni supprimés contre paiement. Ni par des annonceurs, ni par des partenaires, ni par personne.",
+      "sameRules": "Chaque entreprise est mesurée selon les mêmes règles, qu'elle nous paie ou non. Les employeurs vérifiés obtiennent un contrôle d'identité — jamais un meilleur chiffre.",
+      "labeled": "Si une offre ou un placement est sponsorisé, c'est indiqué. Les données non étiquetées sont toujours le relevé organique observé."
+    }
   },
   "methodologyPage": {
     "metaTitle": "Méthodologie — Comment Resume Booster note les CV",
@@ -2838,6 +2846,10 @@
     }
   },
   "changelogEntries": {
+    "fairDataPromise": {
+      "title": "Promesse de données justes, employeurs vérifiés et 7 matins d'Agent gratuits",
+      "description": "Trois choses en même temps. D'abord, une politique écrite : aucune entreprise ne peut payer pour changer ce que disent nos données — taux de pourvoi, signaux de rotation et badges sont calculés à partir des offres observées et ne sont pas à vendre (voir la page Confiance). Ensuite, les employeurs peuvent revendiquer leur page en vérifiant un e-mail professionnel à leur propre domaine et obtenir le badge Employeur vérifié — identité seulement, jamais de droits d'édition. Enfin, l'Agent de candidature commence désormais par 7 matins gratuits : réveillez-vous avec une vraie sélection avant de payer quoi que ce soit."
+    },
     "board450k": {
       "title": "Plus de 450 000 offres vérifiées — Pinpoint devient le 13e système",
       "description": "Nouvelle vague de croissance : plus de 450 000 offres actives de plus de 20 000 entreprises, toutes issues du système de recrutement de chaque entreprise. Nouveautés : Pinpoint comme 13e système, la plateforme européenne de Greenhouse (des centaines d'employeurs européens) et des milliers de tableaux supplémentaires. Nous avons aussi resserré l'entrée : c'est un tableau d'entreprises, et quelques tableaux gouvernementaux qui s'étaient glissés ont été retirés."
@@ -4325,7 +4337,21 @@
     "compareClear": "Effacer",
     "compareTitle": "Côte à côte",
     "compareFit": "adéquation mots-clés",
-    "compareView": "Voir et postuler"
+    "compareView": "Voir et postuler",
+    "claim": {
+      "cta": "Vous travaillez chez {{company}} ? Revendiquez ce profil",
+      "boundary": "Vérifiez un e-mail professionnel au domaine de {{company}} pour afficher ici un badge Employeur vérifié. La vérification prouve l'identité uniquement — elle ne change jamais les données de recrutement que nous calculons.",
+      "policyLink": "Pourquoi ?",
+      "emailPlaceholder": "vous@entreprise.com",
+      "send": "Envoyer le lien",
+      "sentNote": "Vérifiez votre boîte de réception — nous avons envoyé un lien de vérification à {{email}}. Cliquez dessus et la revendication est faite.",
+      "sendFail": "Impossible d'envoyer l'e-mail de vérification — réessayez.",
+      "verifiedChip": "Employeur vérifié",
+      "verifiedTip": "Un contact de cette entreprise a vérifié un e-mail professionnel à son domaine. La vérification confirme l'identité uniquement — elle ne change jamais les données de recrutement affichées ici.",
+      "verifyOk": "Revendication vérifiée — {{company}} apparaît désormais comme employeur vérifié.",
+      "verifyPending": "E-mail confirmé. Votre domaine ne correspond pas clairement à cette entreprise, nous examinerons donc la revendication à la main — généralement sous un jour.",
+      "verifyFail": "Ce lien de vérification n'a pas fonctionné — il est peut-être périmé. Demandez-en un nouveau ci-dessous."
+    }
   },
   "accountPage": {
     "statActive": "Candidatures actives",
@@ -4436,8 +4462,8 @@
     "badge": "Agent de candidature",
     "subtitle": "Configurez votre recherche une fois. Chaque nuit, l'agent analyse les nouvelles offres, les note contre votre CV, écarte les entreprises qui republient en boucle et met en file les meilleures — chacune avec ses raisons. Vous relisez, vous envoyez.",
     "payPitch": "Réveillez-vous avec une sélection déjà triée plutôt qu'une heure de défilement.",
-    "payBoundary": "L'agent prépare et explique — il n'envoie jamais à votre place et n'invente jamais de réponses. 99 $/mois, tout Pro inclus.",
-    "payCta": "Lancer l'Agent — 99 $/mois",
+    "payBoundary": "L'agent prépare et explique — il n'envoie jamais à votre place et n'invente jamais de réponses. 7 matins gratuits, puis 99 $/mois — tout Pro inclus. Annulez à tout moment.",
+    "payCta": "Essayez l'Agent gratuitement 7 jours",
     "checkoutError": "Impossible d'ouvrir le paiement — réessayez.",
     "needResume": "Enregistrez d'abord un CV pour le matching (ci-dessus) — l'agent note chaque offre contre lui.",
     "saveError": "Enregistrement impossible — réessayez.",

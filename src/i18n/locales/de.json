@@ -2541,7 +2541,15 @@
     "trustedBySubtitle": "Fachkräfte führender Unternehmen nutzen Resume Booster, um ihre Traumjobs zu bekommen.",
     "ctaTitle": "Bereit, deinen Lebenslauf zu verbessern?",
     "ctaSubtitle": "Schließe dich Tausenden von Bewerbern an, die ihre Lebensläufe mit unserer KI-gestützten Analyse verbessert haben.",
-    "ctaButton": "Hol dir deinen kostenlosen Scan"
+    "ctaButton": "Hol dir deinen kostenlosen Scan",
+    "dataFence": {
+      "badge": "Datenunabhängigkeit",
+      "title": "Kein Unternehmen kann dafür bezahlen, unsere Daten zu ändern",
+      "subtitle": "Die Einstellungsbilanzen auf dieser Seite — besetzte Stellen, Wiederausschreibungen, Besetzungstempo — werden aus dem berechnet, was wir auf den Karriereseiten der Unternehmen selbst beobachten. Sie stehen nicht zum Verkauf.",
+      "notForSale": "Besetzungsquoten, Churn-Hinweise und Abzeichen lassen sich nicht kaufen, bearbeiten oder gegen Gebühr entfernen. Nicht von Werbekunden, nicht von Partnern, von niemandem.",
+      "sameRules": "Jedes Unternehmen wird nach denselben Regeln gemessen — ob es uns je bezahlt oder nicht. Verifizierte Arbeitgeber erhalten eine Identitätsprüfung, nie eine bessere Zahl.",
+      "labeled": "Sollte eine Anzeige oder Platzierung je gesponsert sein, wird sie entsprechend gekennzeichnet. Unmarkierte Daten sind immer der organisch beobachtete Stand."
+    }
   },
   "methodologyPage": {
     "metaTitle": "Methodik — Wie Resume Booster Lebensläufe bewertet",
@@ -2838,6 +2846,10 @@
     }
   },
   "changelogEntries": {
+    "fairDataPromise": {
+      "title": "Faire-Daten-Versprechen, verifizierte Arbeitgeber und 7 gratis Agent-Morgen",
+      "description": "Drei Dinge auf einmal. Erstens, Richtlinie schriftlich: Kein Unternehmen kann dafür bezahlen, unsere Daten zu ändern — Besetzungsquoten, Churn-Hinweise und Abzeichen werden aus beobachteten Anzeigen berechnet und stehen nicht zum Verkauf (siehe Vertrauensseite). Zweitens können Arbeitgeber jetzt ihre Firmenseite beanspruchen, indem sie eine Arbeits-E-Mail an der eigenen Domain bestätigen — nur Identität, nie Bearbeitungsrechte. Drittens startet der Bewerbungs-Agent jetzt mit 7 gratis Morgen: Wach mit einer echten Auswahl auf, bevor du irgendetwas zahlst."
+    },
     "board450k": {
       "title": "Über 450.000 verifizierte Stellen — Pinpoint wird das 13. System",
       "description": "Die nächste Wachstumswelle: über 450.000 aktive Stellen von über 20.000 Unternehmen, alle direkt aus dem Bewerbungssystem des jeweiligen Unternehmens. Neu: Pinpoint als 13. System, Greenhouses separate EU-Plattform (Hunderte europäische Arbeitgeber) und Tausende weitere Karriereseiten aus tieferen Archiv-Durchläufen. Außerdem: Dies ist eine Unternehmens-Jobbörse — einige versehentlich aufgenommene Behörden-Boards wurden entfernt."
@@ -4325,7 +4337,21 @@
     "compareClear": "Leeren",
     "compareTitle": "Nebeneinander",
     "compareFit": "Keyword-Passung",
-    "compareView": "Ansehen & bewerben"
+    "compareView": "Ansehen & bewerben",
+    "claim": {
+      "cta": "Du arbeitest bei {{company}}? Profil beanspruchen",
+      "boundary": "Bestätige eine Arbeits-E-Mail an der Domain von {{company}}, um hier ein Abzeichen als verifizierter Arbeitgeber zu zeigen. Die Verifizierung belegt nur die Identität — sie ändert nie die von uns berechneten Einstellungsdaten.",
+      "policyLink": "Warum?",
+      "emailPlaceholder": "du@firma.com",
+      "send": "Link senden",
+      "sentNote": "Sieh in dein Postfach — wir haben einen Bestätigungslink an {{email}} gesendet. Ein Klick, und der Anspruch steht.",
+      "sendFail": "Die Bestätigungs-E-Mail konnte nicht gesendet werden — bitte erneut versuchen.",
+      "verifiedChip": "Verifizierter Arbeitgeber",
+      "verifiedTip": "Ein Kontakt dieses Unternehmens hat eine Arbeits-E-Mail an dessen Domain bestätigt. Die Verifizierung bestätigt nur die Identität — sie ändert nie die hier gezeigten Einstellungsdaten.",
+      "verifyOk": "Anspruch bestätigt — {{company}} erscheint jetzt als verifizierter Arbeitgeber.",
+      "verifyPending": "E-Mail bestätigt. Deine Domain passt nicht eindeutig zu diesem Unternehmen, daher prüfen wir den Anspruch manuell — meist innerhalb eines Tages.",
+      "verifyFail": "Dieser Bestätigungslink hat nicht funktioniert — er ist womöglich abgelaufen. Fordere unten einen neuen an."
+    }
   },
   "accountPage": {
     "statActive": "Aktive Bewerbungen",
@@ -4436,8 +4462,8 @@
     "badge": "Bewerbungs-Agent",
     "subtitle": "Suche einmal einstellen. Jede Nacht scannt der Agent neue Stellen, bewertet sie gegen deinen Lebenslauf, überspringt Unternehmen mit Dauer-Neueinstellungen und stellt die besten in die Queue — jede mit Begründung. Du prüfst, du sendest.",
     "payPitch": "Wach mit einer geprüften Auswahl auf statt einer weiteren Stunde Scrollen.",
-    "payBoundary": "Der Agent bereitet vor und begründet — er sendet nie für dich und erfindet nie Antworten. 99 $/Monat, alles aus Pro inklusive.",
-    "payCta": "Agent starten — 99 $/Monat",
+    "payBoundary": "Der Agent bereitet vor und begründet — er sendet nie für dich und erfindet nie Antworten. 7 Morgen gratis, danach 99 $/Monat — alles aus Pro inklusive. Jederzeit kündbar.",
+    "payCta": "Agent 7 Tage gratis testen",
     "checkoutError": "Checkout konnte nicht geöffnet werden — bitte erneut versuchen.",
     "needResume": "Speichere zuerst einen Lebenslauf fürs Matching (oben) — der Agent bewertet jede Stelle dagegen.",
     "saveError": "Speichern fehlgeschlagen — bitte erneut versuchen.",
