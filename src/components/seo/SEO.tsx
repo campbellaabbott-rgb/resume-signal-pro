@@ -7,17 +7,20 @@ interface SEOProps {
   description: string;
   path: string;
   image?: string;
+  /** Internal pages (admin dashboards) that must never be indexed. */
+  noIndex?: boolean;
 }
 
 // Per-route head metadata: title, description, canonical, og:* and twitter:* tags.
 // Keep title ≤ 60 chars and description ≤ 160 chars.
-export function SEO({ title, description, path, image }: SEOProps) {
+export function SEO({ title, description, path, image, noIndex }: SEOProps) {
   const url = `${SITE}${path}`;
   const ogImage = image ?? `${SITE}/og-image.png`;
   return (
     <Helmet>
       <title>{title}</title>
       <meta name="description" content={description} />
+      {noIndex && <meta name="robots" content="noindex,nofollow" />}
       <link rel="canonical" href={url} />
 
       <meta property="og:title" content={title} />

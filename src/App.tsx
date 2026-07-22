@@ -36,6 +36,7 @@ const Affiliates = lazy(() => import("./pages/Affiliates"));
 const AffiliateRedirect = lazy(() => import("./pages/AffiliateRedirect"));
 const AnalyticsDashboard = lazy(() => import("./pages/AnalyticsDashboard"));
 const ErrorDashboard = lazy(() => import("./pages/ErrorDashboard"));
+const AdminClaims = lazy(() => import("./pages/AdminClaims"));
 const HealthCheck = lazy(() => import("./pages/HealthCheck"));
 const ScanMetrics = lazy(() => import("./pages/ScanMetrics"));
 const Trust = lazy(() => import("./pages/Trust"));
@@ -91,6 +92,7 @@ const App = () => (
           <Route path="/dev/checkout-test" element={<DevCheckoutTest />} />
           <Route path="/analytics" element={<AnalyticsDashboard />} />
           <Route path="/errors" element={<ErrorDashboard />} />
+          <Route path="/admin/claims" element={<AdminClaims />} />
           <Route path="/health-check" element={<HealthCheck />} />
           <Route path="/scan-metrics" element={<ScanMetrics />} />
           <Route path="/trust" element={<Trust />} />

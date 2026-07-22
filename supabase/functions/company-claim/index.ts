@@ -58,13 +58,80 @@ serve(async (req) => {
       { auth: { persistSession: false } },
     );
 
+    const body = await req.json().catch(() => ({}));
+
+    // Admin review actions — gated by ADMIN_API_KEY (same x-admin-key pattern
+    // as the analytics/error dashboards), and exempt from the public IP rate
+    // limit so reviewing a batch of claims can't lock the owner out.
+    if (body.action === "admin-list" || body.action === "admin-decide") {
+      const adminApiKey = Deno.env.get("ADMIN_API_KEY");
+      const provided = req.headers.get("x-admin-key");
+      if (!adminApiKey || provided !== adminApiKey) {
+        return json({ error: "Unauthorized." }, 401);
+      }
+
+      if (body.action === "admin-list") {
+        const { data, error } = await supabase
+          .from("company_claims")
+          .select("id, company_token, company_name, work_email, contact_name, website, domain_match, status, created_at, verified_at")
+          .order("created_at", { ascending: false })
+          .limit(200);
+        if (error) {
+          console.error("[COMPANY-CLAIM] admin-list failed:", error);
+          return json({ error: "Could not load claims." }, 500);
+        }
+        return json({ claims: data ?? [] });
+      }
+
+      // admin-decide
+      const id = typeof body.id === "string" ? body.id : "";
+      const decision = body.decision;
+      if (!/^[0-9a-f-]{36}$/i.test(id) || (decision !== "verified" && decision !== "rejected")) {
+        return json({ error: "Need a claim id and a decision of verified or rejected." }, 400);
+      }
+      const { data: claim } = await supabase
+        .from("company_claims")
+        .select("id, status, work_email, company_name, company_token")
+        .eq("id", id).maybeSingle();
+      if (!claim) return json({ error: "Claim not found." }, 404);
+
+      const { error: updateError } = await supabase
+        .from("company_claims")
+        .update({ status: decision, verified_at: decision === "verified" ? new Date().toISOString() : null })
+        .eq("id", id);
+      if (updateError) {
+        console.error("[COMPANY-CLAIM] admin-decide failed:", updateError);
+        return json({ error: "Could not update the claim." }, 500);
+      }
+
+      // Tell the claimant when they're approved (best effort — the decision
+      // stands even if the email fails). Rejections stay silent.
+      if (decision === "verified") {
+        const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+        if (RESEND_API_KEY) {
+          const displayName = claim.company_name || claim.company_token;
+          await new Resend(RESEND_API_KEY).emails.send({
+            from: "Resume Booster <reports@resumebooster.work>",
+            to: [claim.work_email],
+            subject: `Your claim of ${displayName} is verified`,
+            html: `<div style="font-family:Helvetica,Arial,sans-serif;font-size:14px;color:#111;max-width:520px">
+              <p>Your claim of <b>${displayName}</b> on resumebooster.work has been reviewed and verified. The company page now shows a Verified employer badge:</p>
+              <p><a href="${SITE}/jobs/company/${encodeURIComponent(claim.company_token)}">${SITE}/jobs/company/${claim.company_token}</a></p>
+              <p style="font-size:12px;color:#64748b">Verification confirms identity only — the hiring data shown is computed from public postings and is not editable by anyone, including verified employers.</p>
+            </div>`,
+          }).catch((e) => console.error("[COMPANY-CLAIM] approval notify failed:", e));
+        }
+      }
+
+      console.log(`[COMPANY-CLAIM] admin decision: claim ${id} -> ${decision}`);
+      return json({ status: decision });
+    }
+
     const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("x-real-ip") || "unknown";
     const { data: allowed } = await supabase.rpc("check_rate_limit", {
       p_function: "company-claim", p_ip: clientIp, p_max_requests: 10, p_window_minutes: 60,
     });
     if (!allowed) return json({ error: "Rate limit exceeded." }, 429);
-
-    const body = await req.json().catch(() => ({}));
 
     if (body.action === "verify") {
       const token = typeof body.token === "string" ? body.token.trim() : "";
@@ -170,6 +237,7 @@ serve(async (req) => {
           <p><b>${displayName}</b> (token: ${companyToken})</p>
           <p>From: ${workEmail}${contactName ? ` (${contactName})` : ""}${website ? ` · ${website}` : ""}</p>
           <p>Domain match: <b>${match ? "yes — auto-verifies on click" : "NO — needs manual review after email confirm"}</b></p>
+          <p><a href="${SITE}/admin/claims">Review claims</a></p>
         </div>`,
       }).catch((e) => console.error("[COMPANY-CLAIM] owner notify failed:", e));
 
