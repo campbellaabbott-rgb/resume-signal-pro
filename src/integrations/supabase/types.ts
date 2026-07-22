@@ -1034,12 +1034,15 @@ export type Database = {
           remote: boolean
           salary: string | null
           salary_currency: string | null
+          salary_max_annual: number | null
           salary_min_annual: number | null
+          salary_period: string | null
           salary_rank_usd: number | null
           search_tsv: unknown
           source: string
           title: string
           title_tsv: unknown
+          work_mode: string | null
         }
         Insert: {
           apply_url: string
@@ -1061,12 +1064,15 @@ export type Database = {
           remote?: boolean
           salary?: string | null
           salary_currency?: string | null
+          salary_max_annual?: number | null
           salary_min_annual?: number | null
+          salary_period?: string | null
           salary_rank_usd?: number | null
           search_tsv?: unknown
           source: string
           title: string
           title_tsv?: unknown
+          work_mode?: string | null
         }
         Update: {
           apply_url?: string
@@ -1088,12 +1094,15 @@ export type Database = {
           remote?: boolean
           salary?: string | null
           salary_currency?: string | null
+          salary_max_annual?: number | null
           salary_min_annual?: number | null
+          salary_period?: string | null
           salary_rank_usd?: number | null
           search_tsv?: unknown
           source?: string
           title?: string
           title_tsv?: unknown
+          work_mode?: string | null
         }
         Relationships: []
       }
@@ -2676,6 +2685,7 @@ export type Database = {
           total_failures: number
         }[]
       }
+      get_pay_transparency: { Args: never; Returns: Json }
       get_payment_health: {
         Args: { p_hours_back?: number }
         Returns: {
@@ -2832,6 +2842,8 @@ export type Database = {
         }[]
       }
       get_today_scan_count: { Args: never; Returns: number }
+      get_transparency_coverage: { Args: never; Returns: Json }
+      get_transparent_employers: { Args: { p_limit?: number }; Returns: Json }
       get_trending_categories: {
         Args: never
         Returns: {
