@@ -2446,6 +2446,7 @@ export type Database = {
           tracking_days: number
         }[]
       }
+      get_company_intel: { Args: { p_token: string }; Returns: Json }
       get_country_facet: {
         Args: never
         Returns: {
@@ -2802,6 +2803,14 @@ export type Database = {
         }[]
       }
       get_scan_totals: { Args: never; Returns: Json }
+      get_similar_companies: {
+        Args: { p_limit?: number; p_token: string }
+        Returns: Json
+      }
+      get_size_segment_companies: {
+        Args: { p_band: string; p_limit?: number; p_offset?: number }
+        Returns: Json
+      }
       get_size_segments: { Args: never; Returns: Json }
       get_stale_board_count: { Args: never; Returns: number }
       get_stats_cache: { Args: never; Returns: Json }
