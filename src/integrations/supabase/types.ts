@@ -446,6 +446,27 @@ export type Database = {
         }
         Relationships: []
       }
+      company_profiles: {
+        Row: {
+          company_token: string
+          employee_basis: string
+          employee_count: number
+          yc_batch: string | null
+        }
+        Insert: {
+          company_token: string
+          employee_basis: string
+          employee_count: number
+          yc_batch?: string | null
+        }
+        Update: {
+          company_token?: string
+          employee_basis?: string
+          employee_count?: number
+          yc_batch?: string | null
+        }
+        Relationships: []
+      }
       daily_scan_stats: {
         Row: {
           date: string
