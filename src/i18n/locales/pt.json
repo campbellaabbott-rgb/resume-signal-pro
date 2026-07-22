@@ -2846,6 +2846,10 @@
     }
   },
   "changelogEntries": {
+    "secFilings": {
+      "title": "Conheça a empresa: relatórios SEC nas páginas de vagas",
+      "description": "As páginas de 178 empregadores listados nos EUA agora mostram a que tipo de empresa você se juntaria: receita dos últimos três anos fiscais com mini tendência, se a empresa é lucrativa e seu ticker — tudo dos próprios relatórios SEC da empresa (10-K/20-F), com link para a fonte. Conforme arquivado, nunca estimado."
+    },
     "payTransparency": {
       "title": "Tags definitivas de modo de trabalho, faixas salariais completas e o Índice de Transparência Salarial",
       "description": "Remoto, híbrido e presencial agora são três tags definitivas, vindas do campo do próprio ATS do empregador ou do texto explícito da vaga — exibidas só quando o empregador realmente diz. O salário agora guarda e mostra a faixa declarada completa com o período original, e o novo Índice de Transparência Salarial classifica áreas, sistemas e grandes empregadores pela parcela de vagas com salário. O Explore ganhou uma coleção de empregadores transparentes que nenhuma empresa pode comprar."
@@ -4381,7 +4385,17 @@
       "hybrid": "Híbrido",
       "onsite": "Presencial"
     },
-    "salaryAnnualized": "≈{{range}}/ano conforme declarado"
+    "salaryAnnualized": "≈{{range}}/ano conforme declarado",
+    "publicCo": {
+      "chip": "Empresa listada",
+      "viewFilings": "Relatórios SEC",
+      "revenueLabel": "Receita FY{{y}}",
+      "vsPrior": "vs FY{{y}}",
+      "profitable": "Lucrativa — lucro líquido {{v}} (FY{{y}})",
+      "netLoss": "Prejuízo líquido {{v}} (FY{{y}})",
+      "trendAria": "Receita por ano fiscal",
+      "sourceLine": "Fonte: os próprios relatórios de {{name}} à SEC (10-K/20-F). Números conforme arquivados; não é aconselhamento de investimento."
+    }
   },
   "accountPage": {
     "statActive": "Candidaturas ativas",

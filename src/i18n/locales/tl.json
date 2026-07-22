@@ -2846,6 +2846,10 @@
     }
   },
   "changelogEntries": {
+    "secFilings": {
+      "title": "Kilalanin ang kumpanya: SEC filings sa mga hiring page",
+      "description": "Ang mga pahina ng 178 nakalistang employer sa US ay nagpapakita na ngayon kung anong klaseng kumpanya ang sasalihan mo — kita sa huling tatlong fiscal year na may mini trend, kung kumikita ang kumpanya, at ang ticker nito — lahat mula sa sariling SEC filings ng kumpanya (10-K/20-F), may link sa pinagmulan. Ayon sa isinampa, hindi kailanman tinantiya."
+    },
     "payTransparency": {
       "title": "Tiyak na work-mode tag, buong salary range, at ang Pay Transparency Index",
       "description": "Ang remote, hybrid, at on-site ay tatlong tiyak na tag na ngayon, mula sa ATS field mismo ng employer o tahasang teksto ng posting — ipinapakita lang kapag talagang sinabi ng employer. Iniimbak at ipinapakita na ngayon ng sahod ang buong nakasaad na range kasama ang orihinal na period, at ang bagong Pay Transparency Index ay nagraranggo ng mga larangan, sistema, at malalaking employer ayon sa bahagi ng mga posting na nagsasaad ng sahod. Nagkaroon ang Explore ng koleksyong transparent-sa-sahod na hindi mabibili ng kahit anong kumpanya."
@@ -4381,7 +4385,17 @@
       "hybrid": "Hybrid",
       "onsite": "On-site"
     },
-    "salaryAnnualized": "≈{{range}}/taon ayon sa nakasaad"
+    "salaryAnnualized": "≈{{range}}/taon ayon sa nakasaad",
+    "publicCo": {
+      "chip": "Nakalistang kumpanya",
+      "viewFilings": "SEC filings",
+      "revenueLabel": "Kita FY{{y}}",
+      "vsPrior": "vs FY{{y}}",
+      "profitable": "Kumikita — netong kita {{v}} (FY{{y}})",
+      "netLoss": "Netong lugi {{v}} (FY{{y}})",
+      "trendAria": "Kita ayon sa fiscal year",
+      "sourceLine": "Pinagmulan: sariling SEC filings ni {{name}} (10-K/20-F). Mga bilang ayon sa isinampa; hindi payo sa pamumuhunan."
+    }
   },
   "accountPage": {
     "statActive": "Aktibong aplikasyon",

@@ -21,6 +21,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { ApplicationAnswers } from "@/components/apply/ApplicationAnswers";
 import { CompanyClaim } from "@/components/jobs/CompanyClaim";
 import { CompanyIntelPanel } from "@/components/jobs/CompanyIntelPanel";
+import { PublicCompanyCard } from "@/components/jobs/PublicCompanyCard";
 import { SimilarCompanies } from "@/components/jobs/SimilarCompanies";
 import { TailoredResumeModal, type TailoredResumeContent } from "@/components/TailoredResumeModal";
 import { supabase } from "@/integrations/supabase/client";
@@ -2192,6 +2193,8 @@ export default function Jobs() {
               median, top fields — each clause renders only when its data
               exists. Then claim-your-profile (identity, never data editing). */}
           {landerCompany && <CompanyIntelPanel companyToken={landerCompany} />}
+          {/* SEC-sourced financial context for US-listed employers. */}
+          {landerCompany && <PublicCompanyCard companyToken={landerCompany} />}
           {landerCompany && (
             <CompanyClaim companyToken={landerCompany} companyName={landerCompanyName ?? landerCompany} />
           )}

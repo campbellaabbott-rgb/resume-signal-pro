@@ -2846,6 +2846,10 @@
     }
   },
   "changelogEntries": {
+    "secFilings": {
+      "title": "Connaître l'entreprise : dépôts SEC sur les pages d'embauche",
+      "description": "Les pages de 178 employeurs cotés aux États-Unis montrent désormais quel type d'entreprise vous rejoindriez : le chiffre d'affaires des trois derniers exercices avec une mini tendance, la rentabilité et le ticker — tirés des propres dépôts SEC de l'entreprise (10-K/20-F), avec lien vers la source. Tels que déposés, jamais estimés."
+    },
     "payTransparency": {
       "title": "Étiquettes de mode de travail définitives, fourchettes complètes et l'Indice de Transparence Salariale",
       "description": "Télétravail, hybride et sur site sont désormais trois étiquettes définitives, tirées du champ de l'ATS de l'employeur ou du texte explicite de l'annonce — affichées seulement quand l'employeur le dit vraiment. Le salaire stocke et affiche maintenant la fourchette complète avec sa période d'origine, et le nouvel Indice de Transparence Salariale classe métiers, systèmes et grands employeurs selon leur part d'annonces avec salaire. Explore gagne une collection d'employeurs transparents qu'aucune entreprise ne peut acheter."
@@ -4381,7 +4385,17 @@
       "hybrid": "Hybride",
       "onsite": "Sur site"
     },
-    "salaryAnnualized": "≈{{range}}/an selon l'annonce"
+    "salaryAnnualized": "≈{{range}}/an selon l'annonce",
+    "publicCo": {
+      "chip": "Société cotée",
+      "viewFilings": "Dépôts SEC",
+      "revenueLabel": "Chiffre d'affaires FY{{y}}",
+      "vsPrior": "vs FY{{y}}",
+      "profitable": "Rentable — résultat net {{v}} (FY{{y}})",
+      "netLoss": "Perte nette {{v}} (FY{{y}})",
+      "trendAria": "Chiffre d'affaires par exercice",
+      "sourceLine": "Source : les propres dépôts SEC de {{name}} (10-K/20-F). Chiffres tels que déposés ; pas un conseil en investissement."
+    }
   },
   "accountPage": {
     "statActive": "Candidatures actives",

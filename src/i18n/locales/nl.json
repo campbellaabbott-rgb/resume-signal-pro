@@ -2846,6 +2846,10 @@
     }
   },
   "changelogEntries": {
+    "secFilings": {
+      "title": "Ken het bedrijf: SEC-rapporten op vacaturepagina's",
+      "description": "Bedrijfspagina's van 178 Amerikaanse beursgenoteerde werkgevers tonen nu bij wat voor bedrijf je echt zou komen: omzet van de laatste drie boekjaren met mini-trend, of het bedrijf winstgevend is en de ticker — alles uit de eigen SEC-rapporten van het bedrijf (10-K/20-F), met bronlink. Zoals ingediend, nooit geschat."
+    },
     "payTransparency": {
       "title": "Definitieve werkmodus-tags, volledige salarisranges en de Salaristransparantie-index",
       "description": "Remote, hybride en op kantoor zijn nu drie definitieve tags, uit het ATS-veld van de werkgever of expliciete vacaturetekst — alleen getoond als de werkgever het echt zegt. Salaris slaat nu de volledige vermelde range met originele periode op, en de nieuwe Salaristransparantie-index rangschikt velden, systemen en grote werkgevers naar hun aandeel vacatures met salaris. Explore kreeg een transparantiecollectie waar geen bedrijf zich in kan kopen."
@@ -4381,7 +4385,17 @@
       "hybrid": "Hybride",
       "onsite": "Op kantoor"
     },
-    "salaryAnnualized": "≈{{range}}/jaar zoals vermeld"
+    "salaryAnnualized": "≈{{range}}/jaar zoals vermeld",
+    "publicCo": {
+      "chip": "Beursgenoteerd",
+      "viewFilings": "SEC-rapporten",
+      "revenueLabel": "Omzet FY{{y}}",
+      "vsPrior": "vs FY{{y}}",
+      "profitable": "Winstgevend — nettowinst {{v}} (FY{{y}})",
+      "netLoss": "Nettoverlies {{v}} (FY{{y}})",
+      "trendAria": "Omzet per boekjaar",
+      "sourceLine": "Bron: {{name}}s eigen SEC-rapporten (10-K/20-F). Cijfers zoals ingediend; geen beleggingsadvies."
+    }
   },
   "accountPage": {
     "statActive": "Actieve sollicitaties",

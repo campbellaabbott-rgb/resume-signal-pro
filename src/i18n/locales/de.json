@@ -2846,6 +2846,10 @@
     }
   },
   "changelogEntries": {
+    "secFilings": {
+      "title": "Das Unternehmen kennen: SEC-Berichte auf den Jobseiten",
+      "description": "Die Seiten von 178 US-börsennotierten Arbeitgebern zeigen jetzt, welchem Unternehmen man wirklich beitreten würde: Umsatz der letzten drei Geschäftsjahre mit Mini-Trend, Profitabilität und Ticker — alles aus den eigenen SEC-Berichten des Unternehmens (10-K/20-F), mit Quellenlink. Wie eingereicht, nie geschätzt."
+    },
     "payTransparency": {
       "title": "Eindeutige Arbeitsmodus-Tags, volle Gehaltsspannen und der Gehaltstransparenz-Index",
       "description": "Remote, Hybrid und Vor-Ort sind jetzt drei eindeutige Tags aus dem ATS-Feld des Arbeitgebers oder explizitem Anzeigentext — angezeigt nur, wenn der Arbeitgeber es wirklich sagt. Gehälter speichern und zeigen jetzt die volle genannte Spanne mit Originalperiode, und der neue Gehaltstransparenz-Index rankt Felder, Systeme und große Arbeitgeber nach ihrem Anteil an Anzeigen mit Gehalt. Explore hat eine Transparenz-Kollektion, in die sich kein Unternehmen einkaufen kann."
@@ -4381,7 +4385,17 @@
       "hybrid": "Hybrid",
       "onsite": "Vor Ort"
     },
-    "salaryAnnualized": "≈{{range}}/Jahr laut Anzeige"
+    "salaryAnnualized": "≈{{range}}/Jahr laut Anzeige",
+    "publicCo": {
+      "chip": "Börsennotiert",
+      "viewFilings": "SEC-Berichte",
+      "revenueLabel": "Umsatz GJ{{y}}",
+      "vsPrior": "vs. GJ{{y}}",
+      "profitable": "Profitabel — Nettogewinn {{v}} (GJ{{y}})",
+      "netLoss": "Nettoverlust {{v}} (GJ{{y}})",
+      "trendAria": "Umsatz nach Geschäftsjahr",
+      "sourceLine": "Quelle: {{name}}s eigene SEC-Berichte (10-K/20-F). Zahlen wie eingereicht; keine Anlageberatung."
+    }
   },
   "accountPage": {
     "statActive": "Aktive Bewerbungen",

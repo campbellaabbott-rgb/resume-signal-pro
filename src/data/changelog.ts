@@ -18,6 +18,7 @@ export interface ChangelogEntry {
 }
 
 export const changelog: ChangelogEntry[] = [
+  { id: "secFilings", date: "2026-07-23", tags: ["new"] },
   { id: "payTransparency", date: "2026-07-22", tags: ["new", "improved"] },
   { id: "fairDataPromise", date: "2026-07-22", tags: ["new"] },
   { id: "premiumLook", date: "2026-07-22", tags: ["improved"] },

@@ -2846,6 +2846,10 @@
     }
   },
   "changelogEntries": {
+    "secFilings": {
+      "title": "Know the company: SEC filings on hiring pages",
+      "description": "Company pages for 178 US-listed employers now show what kind of company you'd actually be joining — revenue over the last three fiscal years with a mini trend, whether the company is profitable, and its ticker — all pulled from the company's own SEC filings (10-K/20-F), with a link to the source. As filed, never estimated."
+    },
     "payTransparency": {
       "title": "Definitive work-mode tags, full salary ranges, and the Pay Transparency Index",
       "description": "Remote, hybrid, and on-site are now three definitive tags, taken from the employer's own ATS field or explicit posting text — and shown only when the employer actually says. Salary now stores and shows the full stated range with its original period, and the new Pay Transparency Index ranks fields, hiring systems, and large employers by how much of their postings state pay. Explore gained a Transparent-about-pay collection no company can buy its way into."
@@ -4381,7 +4385,17 @@
       "hybrid": "Hybrid",
       "onsite": "On-site"
     },
-    "salaryAnnualized": "≈{{range}}/year as stated"
+    "salaryAnnualized": "≈{{range}}/year as stated",
+    "publicCo": {
+      "chip": "Public company",
+      "viewFilings": "SEC filings",
+      "revenueLabel": "FY{{y}} revenue",
+      "vsPrior": "vs FY{{y}}",
+      "profitable": "Profitable — net income {{v}} (FY{{y}})",
+      "netLoss": "Net loss {{v}} (FY{{y}})",
+      "trendAria": "Revenue by fiscal year",
+      "sourceLine": "Source: {{name}}'s own SEC filings (10-K/20-F). Figures as filed; not investment advice."
+    }
   },
   "accountPage": {
     "statActive": "Active applications",

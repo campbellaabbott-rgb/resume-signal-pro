@@ -2846,6 +2846,10 @@
     }
   },
   "changelogEntries": {
+    "secFilings": {
+      "title": "Conoce la empresa: informes SEC en las páginas de empleo",
+      "description": "Las páginas de 178 empleadores cotizados en EE. UU. ahora muestran a qué tipo de empresa te unirías: ingresos de los últimos tres años fiscales con una mini tendencia, si la empresa es rentable y su ticker — todo de los propios informes SEC de la empresa (10-K/20-F), con enlace a la fuente. Tal como se presentó, nunca estimado."
+    },
     "payTransparency": {
       "title": "Etiquetas definitivas de modalidad, rangos salariales completos y el Índice de Transparencia Salarial",
       "description": "Remoto, híbrido y presencial son ahora tres etiquetas definitivas, tomadas del campo del propio ATS del empleador o del texto explícito del anuncio — y se muestran solo cuando el empleador realmente lo dice. El salario ahora guarda y muestra el rango declarado completo con su período original, y el nuevo Índice de Transparencia Salarial clasifica campos, sistemas y grandes empleadores según cuánto declaran. Explore ganó una colección de empresas transparentes que ninguna puede comprar."
@@ -4381,7 +4385,17 @@
       "hybrid": "Híbrido",
       "onsite": "Presencial"
     },
-    "salaryAnnualized": "≈{{range}}/año según lo declarado"
+    "salaryAnnualized": "≈{{range}}/año según lo declarado",
+    "publicCo": {
+      "chip": "Empresa cotizada",
+      "viewFilings": "Informes SEC",
+      "revenueLabel": "Ingresos FY{{y}}",
+      "vsPrior": "vs FY{{y}}",
+      "profitable": "Rentable — beneficio neto {{v}} (FY{{y}})",
+      "netLoss": "Pérdida neta {{v}} (FY{{y}})",
+      "trendAria": "Ingresos por año fiscal",
+      "sourceLine": "Fuente: informes de {{name}} ante la SEC (10-K/20-F). Cifras según lo presentado; no es asesoramiento de inversión."
+    }
   },
   "accountPage": {
     "statActive": "Postulaciones activas",
