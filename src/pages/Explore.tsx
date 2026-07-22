@@ -188,16 +188,16 @@ export default function Explore() {
         )}
 
         {segments && (["enterprise", "mid", "small"] as const).some((b) => (segments[b]?.companies ?? 0) > 0) && (
-          <Section icon={Building2} title={t("explore.segTitle", "By company scale")} blurb={t("explore.segBlurb", "Where a company states its own headcount — its Y Combinator profile or public records — we band by that. Otherwise we band by open roles on its board. Every number names its basis; nothing is guessed.")}>
+          <Section icon={Building2} title={t("explore.segTitle", "By company scale")} blurb={t("explore.segBlurb", "Every company here states its own headcount — on its Y Combinator profile or in public records — and is banded by that number. Companies without a sourced count aren't shown, and counts the board itself contradicts are dropped. Nothing is guessed.")}>
             <div className="space-y-6">
               {(["enterprise", "mid", "small"] as const).map((band) => {
                 const s = segments[band];
                 if (!s || !s.companies) return null;
                 const label = band === "enterprise"
-                  ? t("explore.segEnterprise", "Enterprise — 1,000+ employees (or 500+ open roles)")
+                  ? t("explore.segEnterprise", "Enterprise — 1,000+ employees")
                   : band === "mid"
-                    ? t("explore.segMid", "Mid-market — 100–999 employees (or 50–499 open roles)")
-                    : t("explore.segSmall", "Startups & small teams — under 100 employees (or 3–49 open roles)");
+                    ? t("explore.segMid", "Mid-market — 100–999 employees")
+                    : t("explore.segSmall", "Startups & small teams — under 100 employees");
                 return (
                   <div key={band}>
                     <h3 className="text-sm font-bold text-foreground mb-1">{label}</h3>
@@ -209,7 +209,11 @@ export default function Explore() {
                       {s.median_usd_floor != null && (s.usd_n ?? 0) >= 50 && (
                         <> · {t("explore.segSalary", "median stated floor ${{m}} ({{n}} USD postings)", { m: Math.round(s.median_usd_floor).toLocaleString(), n: s.usd_n })}</>
                       )}
-                      {(s.with_headcount ?? 0) > 0 && (
+                      {/* v4 segments are headcount-only, so this clause is
+                          redundant there (with_headcount == companies); it
+                          still renders against a pre-v4 RPC during the
+                          frontend-before-migration deploy window. */}
+                      {(s.with_headcount ?? 0) > 0 && s.with_headcount !== s.companies && (
                         <> · {t("explore.segHeadcountStat", "{{k}} with stated headcount", { k: s.with_headcount })}</>
                       )}
                     </p>
