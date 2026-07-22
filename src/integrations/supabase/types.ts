@@ -428,6 +428,51 @@ export type Database = {
         }
         Relationships: []
       }
+      company_claims: {
+        Row: {
+          company_name: string | null
+          company_token: string
+          contact_name: string | null
+          created_at: string
+          domain_match: boolean
+          id: string
+          note: string | null
+          status: string
+          verified_at: string | null
+          verify_token: string
+          website: string | null
+          work_email: string
+        }
+        Insert: {
+          company_name?: string | null
+          company_token: string
+          contact_name?: string | null
+          created_at?: string
+          domain_match?: boolean
+          id?: string
+          note?: string | null
+          status?: string
+          verified_at?: string | null
+          verify_token?: string
+          website?: string | null
+          work_email: string
+        }
+        Update: {
+          company_name?: string | null
+          company_token?: string
+          contact_name?: string | null
+          created_at?: string
+          domain_match?: boolean
+          id?: string
+          note?: string | null
+          status?: string
+          verified_at?: string | null
+          verify_token?: string
+          website?: string | null
+          work_email?: string
+        }
+        Relationships: []
+      }
       company_name_overrides: {
         Row: {
           added_at: string
@@ -2387,6 +2432,7 @@ export type Database = {
           payments_completed: number
         }[]
       }
+      get_company_claim_status: { Args: { p_token: string }; Returns: Json }
       get_company_hiring_health: {
         Args: { p_tokens: string[] }
         Returns: {
