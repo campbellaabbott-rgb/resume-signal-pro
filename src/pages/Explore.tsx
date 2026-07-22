@@ -16,9 +16,17 @@ import { supabase } from "@/integrations/supabase/client";
 const rpc = (fn: string, args?: Record<string, unknown>) =>
   (supabase as unknown as { rpc: (f: string, a?: Record<string, unknown>) => Promise<{ data: unknown }> }).rpc(fn, args);
 
-interface CompanyRow { company: string; company_token: string; open_roles?: number; recent?: number; closed_90d?: number; entry_roles?: number; tracking_days?: number; repost_events?: number; reposted_roles?: number; worst_title?: string; worst_count?: number; feed_total?: number | null; on_board?: number; company_total?: number | null }
+interface CompanyRow { company: string; company_token: string; open_roles?: number; recent?: number; closed_90d?: number; entry_roles?: number; tracking_days?: number; repost_events?: number; reposted_roles?: number; worst_title?: string; worst_count?: number; feed_total?: number | null; on_board?: number; company_total?: number | null; employees?: number | null; employee_basis?: string | null; yc_batch?: string | null }
 interface SalaryRow { category: string; currency: string; n: number; median_annual_min: number }
-interface Segment { companies: number; open_roles: number; remote_pct: number; entry_pct: number; median_usd_floor: number | null; usd_n: number | null; top: CompanyRow[] }
+interface Segment { companies: number; with_headcount?: number; open_roles: number; remote_pct: number; entry_pct: number; median_usd_floor: number | null; usd_n: number | null; top: CompanyRow[] }
+
+// YC batch shorthand ("Winter 2024" → "W24") — the notation YC itself uses.
+const ycAbbrev = (b: string): string => {
+  const m = b.match(/^(Winter|Summer|Spring|Fall)\s+(\d{4})$/);
+  if (!m) return b;
+  const season = { Winter: "W", Summer: "S", Spring: "X", Fall: "F" }[m[1] as "Winter"];
+  return `${season}${m[2].slice(2)}`;
+};
 type Segments = Partial<Record<"enterprise" | "mid" | "small", Segment>>;
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -180,16 +188,16 @@ export default function Explore() {
         )}
 
         {segments && (["enterprise", "mid", "small"] as const).some((b) => (segments[b]?.companies ?? 0) > 0) && (
-          <Section icon={Building2} title={t("explore.segTitle", "By company scale")} blurb={t("explore.segBlurb", "Segmented by hiring footprint — open roles on each company's own board right now. We don't guess headcount; the definition is the number you see.")}>
+          <Section icon={Building2} title={t("explore.segTitle", "By company scale")} blurb={t("explore.segBlurb", "Where a company states its own headcount — its Y Combinator profile or public records — we band by that. Otherwise we band by open roles on its board. Every number names its basis; nothing is guessed.")}>
             <div className="space-y-6">
               {(["enterprise", "mid", "small"] as const).map((band) => {
                 const s = segments[band];
                 if (!s || !s.companies) return null;
                 const label = band === "enterprise"
-                  ? t("explore.segEnterprise", "Enterprise scale — 500+ open roles")
+                  ? t("explore.segEnterprise", "Enterprise — 1,000+ employees (or 500+ open roles)")
                   : band === "mid"
-                    ? t("explore.segMid", "Mid-market — 50–499 open roles")
-                    : t("explore.segSmall", "Startups & small teams — 3–49 open roles");
+                    ? t("explore.segMid", "Mid-market — 100–999 employees (or 50–499 open roles)")
+                    : t("explore.segSmall", "Startups & small teams — under 100 employees (or 3–49 open roles)");
                 return (
                   <div key={band}>
                     <h3 className="text-sm font-bold text-foreground mb-1">{label}</h3>
@@ -201,6 +209,9 @@ export default function Explore() {
                       {s.median_usd_floor != null && (s.usd_n ?? 0) >= 50 && (
                         <> · {t("explore.segSalary", "median stated floor ${{m}} ({{n}} USD postings)", { m: Math.round(s.median_usd_floor).toLocaleString(), n: s.usd_n })}</>
                       )}
+                      {(s.with_headcount ?? 0) > 0 && (
+                        <> · {t("explore.segHeadcountStat", "{{k}} with stated headcount", { k: s.with_headcount })}</>
+                      )}
                     </p>
                     {/* Two-number badge: our verified count and the company's own
                         advertised total when it exceeds it — the band label and
@@ -209,9 +220,21 @@ export default function Explore() {
                     <CompanyGrid rows={s.top} badge={(r) => {
                       const onBoard = r.on_board ?? r.open_roles ?? 0;
                       const total = r.company_total ?? r.feed_total ?? 0;
-                      return total > onBoard
+                      const openTxt = total > onBoard
                         ? t("explore.segOpenBoth", "{{n}} on our board · {{total}} company-wide", { n: onBoard, total: total.toLocaleString() })
                         : t("explore.segOpen", "{{n}} open roles", { n: onBoard });
+                      const parts: string[] = [];
+                      if (r.employees != null) {
+                        parts.push(t("explore.segEmp", "≈{{n}} employees ({{basis}})", {
+                          n: r.employees.toLocaleString(),
+                          basis: r.employee_basis === "yc_self_reported"
+                            ? t("explore.segBasisYc", "YC profile")
+                            : t("explore.segBasisPr", "public records"),
+                        }));
+                      }
+                      if (r.yc_batch) parts.push(t("explore.segYcChip", "YC {{b}}", { b: ycAbbrev(r.yc_batch) }));
+                      parts.push(openTxt);
+                      return parts.join(" · ");
                     }} />
                   </div>
                 );
