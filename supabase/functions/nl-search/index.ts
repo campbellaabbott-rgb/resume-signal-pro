@@ -49,6 +49,7 @@ The board has EXACTLY these filters — never invent others:
 - category: one of [${CATEGORIES.join(", ")}]. Map only when the field is unambiguous.
 - experience: one of [${EXPERIENCE.join(", ")}]. "entry"=junior/new-grad, "senior"=6-9y, "expert"=10y+/principal.
 - remote: true only if the user clearly wants remote.
+- workMode: "remote", "hybrid", or "onsite" when the user names a work mode ("hybrid roles in Berlin", "in-office jobs"). Set remote true as well when workMode is "remote".
 - salaryFloor: a number (annual, no currency symbol) when the user states a minimum pay.
 - country: a 2-letter ISO code only if a country is named (US, GB, CA, DE...).
 - location: a city/region string if a specific place is named (not a country).
@@ -85,6 +86,7 @@ RULES:
                 category: { type: "string", description: `One of: ${CATEGORIES.join(", ")}` },
                 experience: { type: "string", description: `One of: ${EXPERIENCE.join(", ")}` },
                 remote: { type: "boolean" },
+                workMode: { type: "string", description: "remote, hybrid, or onsite - only when the user names one" },
                 salaryFloor: { type: "number", description: "Annual minimum, no currency symbol" },
                 country: { type: "string", description: "2-letter ISO code" },
                 location: { type: "string", description: "City or region (not a country)" },
@@ -124,6 +126,7 @@ RULES:
     if (typeof parsed.category === "string" && (CATEGORIES as readonly string[]).includes(parsed.category)) filters.category = parsed.category;
     if (typeof parsed.experience === "string" && (EXPERIENCE as readonly string[]).includes(parsed.experience)) filters.experience = parsed.experience;
     if (parsed.remote === true) filters.remote = true;
+    if (parsed.workMode === "remote" || parsed.workMode === "hybrid" || parsed.workMode === "onsite") filters.workMode = parsed.workMode;
     if (typeof parsed.salaryFloor === "number" && parsed.salaryFloor > 0) filters.salaryFloor = Math.min(Math.round(parsed.salaryFloor), 2_000_000);
     if (typeof parsed.country === "string" && /^[A-Za-z]{2}$/.test(parsed.country)) filters.country = parsed.country.toUpperCase();
     if (typeof parsed.location === "string" && parsed.location.trim()) filters.location = parsed.location.trim().slice(0, 80);

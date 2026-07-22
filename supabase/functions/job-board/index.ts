@@ -62,7 +62,7 @@ const json = (body: unknown, status = 200) =>
 // counts. catalogSize (JOB_SOURCES.length) is the automatic companion signal: it
 // moves with every catalog change with no discipline required. Sortable string so
 // a future check can tell "prod is behind" from "prod is ahead".
-const BUILD_VERSION = "2026-07-22.2";
+const BUILD_VERSION = "2026-07-22.3";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -452,7 +452,7 @@ const EXPERIENCE_VERSION = 1;
 // ingest alone never reaches postings that predate the parser). v2: currency
 // capture — the sweep targets salary_currency IS NULL, which also re-covers
 // rows v1 already parsed (they have a floor but no currency).
-const SALARY_PARSE_VERSION = 4; // v4: $-variant currencies (MX$/R$/HK$/S$/NZ$) + parity monthly cap — full re-parse corrects mislabeled rows
+const SALARY_PARSE_VERSION = 5; // v5: annualMax + period stored (full range display) — re-sweep fills salary_max_annual/salary_period on stored rows
 const COUNTRY_VERSION = 1; // v1: deterministic country from location text (names + US/CA state patterns)
 // Date-the-undated sweep: greenhouse rows predating first_published capture
 // (insert-only rows never re-see the feed). Vendors whose feeds carry no date
@@ -808,6 +808,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
             location: clean(j.location.trim().slice(0, 300)),
             country: j.country ?? detectCountry(j.location),
             remote: j.remote,
+            work_mode: j.workMode ?? null,
             department: clean(j.department?.slice(0, 200) ?? null),
             category: j.category,
             posted_at: posted,
@@ -819,7 +820,12 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
             salary: salaryText,
             ...(() => {
               const p = parseSalaryStructured(salaryText);
-              return { salary_min_annual: p?.annualMin ?? null, salary_currency: p?.currency ?? null };
+              return {
+                salary_min_annual: p?.annualMin ?? null,
+                salary_max_annual: p?.annualMax ?? null,
+                salary_period: p?.period ?? null,
+                salary_currency: p?.currency ?? null,
+              };
             })(),
             experience_band: exp.band ?? "unspecified",
             min_years: exp.minYears,
@@ -2014,12 +2020,12 @@ Deno.serve(async (req) => {
       // and annualized mislabeled monthlies — those rows hold wrong values, not
       // NULLs. Rows whose stored values already match the current parse are
       // skipped, so a re-sweep only writes actual corrections.
-      const groups = new Map<string, { annualMin: number | null; currency: string | null; ids: string[] }>();
+      const groups = new Map<string, { annualMin: number | null; annualMax: number | null; period: string | null; currency: string | null; ids: string[] }>();
       const PAGES = 6;
       for (let page = 0; page < PAGES; page++) {
         let q = client
           .from("job_board_postings")
-          .select("id,salary,salary_min_annual,salary_currency")
+          .select("id,salary,salary_min_annual,salary_max_annual,salary_period,salary_currency")
           .not("salary", "is", null)
           .order("id")
           .limit(1000);
@@ -2028,15 +2034,19 @@ Deno.serve(async (req) => {
         if (error) throw error;
         for (const r of rows ?? []) {
           scanned++;
-          const row = r as { id: string; salary?: string | null; salary_min_annual?: number | string | null; salary_currency?: string | null };
+          const row = r as { id: string; salary?: string | null; salary_min_annual?: number | string | null; salary_max_annual?: number | string | null; salary_period?: string | null; salary_currency?: string | null };
           const p = parseSalaryStructured(row.salary);
           const nextMin = p?.annualMin ?? null;
+          const nextMax = p?.annualMax ?? null;
+          const nextPer = p?.period ?? null;
           const nextCur = p?.currency ?? null;
           const curMin = row.salary_min_annual == null ? null : Number(row.salary_min_annual);
+          const curMax = row.salary_max_annual == null ? null : Number(row.salary_max_annual);
+          const curPer = row.salary_period ?? null;
           const curCur = row.salary_currency ?? null;
-          if (nextMin === curMin && nextCur === curCur) continue; // already correct — no write
-          const key = `${nextMin ?? ""}|${nextCur ?? ""}`;
-          const g = groups.get(key) ?? { annualMin: nextMin, currency: nextCur, ids: [] };
+          if (nextMin === curMin && nextMax === curMax && nextPer === curPer && nextCur === curCur) continue; // already correct — no write
+          const key = `${nextMin ?? ""}|${nextMax ?? ""}|${nextPer ?? ""}|${nextCur ?? ""}`;
+          const g = groups.get(key) ?? { annualMin: nextMin, annualMax: nextMax, period: nextPer, currency: nextCur, ids: [] };
           g.ids.push(row.id);
           groups.set(key, g);
         }
@@ -2047,7 +2057,7 @@ Deno.serve(async (req) => {
       for (const g of groups.values()) {
         for (let i = 0; i < g.ids.length; i += 200) {
           const { error } = await client.from("job_board_postings")
-            .update({ salary_min_annual: g.annualMin, salary_currency: g.currency })
+            .update({ salary_min_annual: g.annualMin, salary_max_annual: g.annualMax, salary_period: g.period, salary_currency: g.currency })
             .in("id", g.ids.slice(i, i + 200));
           if (error) throw error;
           updated += Math.min(200, g.ids.length - i);
@@ -2213,7 +2223,13 @@ Deno.serve(async (req) => {
             const { error } = await client.from("job_board_postings")
               .update({
                 description: text,
-                ...(minedSalary ? { salary: minedSalary, salary_min_annual: minedParse?.annualMin ?? null, salary_currency: minedParse?.currency ?? null } : {}),
+                ...(minedSalary ? {
+                  salary: minedSalary,
+                  salary_min_annual: minedParse?.annualMin ?? null,
+                  salary_max_annual: minedParse?.annualMax ?? null,
+                  salary_period: minedParse?.period ?? null,
+                  salary_currency: minedParse?.currency ?? null,
+                } : {}),
               })
               .eq("id", row.id);
             if (!error) updated++;
@@ -2405,7 +2421,7 @@ Deno.serve(async (req) => {
         }
         for (let i = 0; i < remoteDemote.length; i += 100) {
           const { error: dErr } = await client.from("job_board_postings")
-            .update({ remote: false }).in("id", remoteDemote.slice(i, i + 100));
+            .update({ remote: false, work_mode: null }).in("id", remoteDemote.slice(i, i + 100));
           if (!dErr) labelAudit.demoted += Math.min(100, remoteDemote.length - i);
         }
       } catch (e) {
@@ -2498,11 +2514,16 @@ const rowToJob = (r: any) => ({
   title: r.title,
   location: r.location,
   remote: r.remote,
+  workMode: r.work_mode ?? null,
   department: r.department,
   category: r.category,
   postedAt: r.posted_at,
   applyUrl: r.apply_url,
   salary: r.salary ?? null,
+  salaryMinAnnual: typeof r.salary_min_annual === "number" ? r.salary_min_annual : (r.salary_min_annual != null ? Number(r.salary_min_annual) : null),
+  salaryMaxAnnual: typeof r.salary_max_annual === "number" ? r.salary_max_annual : (r.salary_max_annual != null ? Number(r.salary_max_annual) : null),
+  salaryPeriod: r.salary_period ?? null,
+  salaryCurrency: r.salary_currency ?? null,
   experienceBand: r.experience_band && r.experience_band !== "unspecified" ? r.experience_band : null,
   minYears: typeof r.min_years === "number" ? r.min_years : null,
   lastSeen: r.last_seen ?? null,
@@ -2545,6 +2566,7 @@ async function serveList(
     !String(body.location ?? "").trim() &&
     !/^[A-Za-z]{2}$/.test(String(body.country ?? "")) &&
     body.remote !== true &&
+    !["remote", "hybrid", "onsite"].includes(String(body.workMode ?? "")) &&
     !(JOB_CATEGORIES as readonly string[]).includes(String(body.category ?? "")) &&
     !String(body.experience ?? "").trim() &&
     !(Number(body.salaryFloor) > 0) &&
@@ -2556,7 +2578,7 @@ async function serveList(
     let q = client
       .from("job_board_postings")
       .select(
-        "id,source,company_token,company,title,location,remote,department,category,posted_at,apply_url,salary,experience_band,min_years,last_seen",
+        "id,source,company_token,company,title,location,remote,work_mode,department,category,posted_at,apply_url,salary,salary_min_annual,salary_max_annual,salary_period,salary_currency,experience_band,min_years,last_seen",
         wantCount ? { count: "exact" } : {},
       )
       .gte(dateCol, freshCutoffIso);
@@ -2565,6 +2587,11 @@ async function serveList(
     const loc = sanitizeTerm(String(body.location ?? ""));
     if (loc) q = q.ilike("location", `%${loc}%`);
     if (body.remote === true) q = q.eq("remote", true);
+    // Work-mode filter: definitive vendor/text-stated tags only. Postings that
+    // don't state a mode have work_mode NULL and are excluded by the filter —
+    // honestly, never guessed (the UI says so).
+    const wm = String(body.workMode ?? "");
+    if (wm === "remote" || wm === "hybrid" || wm === "onsite") q = q.eq("work_mode", wm);
     // Country filter: exact match on the deterministically extracted code.
     // Postings whose location we couldn't place have country NULL and are
     // excluded by the filter — honestly, never guessed (the UI says so).

@@ -919,6 +919,30 @@ export { COUNTRY_SLUGS, CV_LOCALES, EN_TEMPLATE, fill, hreflangCluster } from ".
       });
     }
 
+    // Pay Transparency Index — live ranking of fields/systems/employers by
+    // stated-pay share. Static shell; stats hydrate client-side.
+    {
+      write({
+        path: "/pay-transparency",
+        title: "Pay Transparency Index — who actually states salaries?",
+        description: "A live ranking of fields, hiring systems, and large employers by the share of job postings that state pay — counted from companies' own posting text and ATS fields. No estimates, no modeled ranges.",
+        content: `
+          <h1>The Pay Transparency Index</h1>
+          <p>Which employers actually state salaries? This page counts it: the share of live postings whose own text or ATS compensation field states pay, ranked by field, by hiring system, and across large employers. Every figure is the company's verbatim words — never an estimate, never a modeled range.</p>
+          <p>The same rules apply to work modes: a posting is tagged remote, hybrid, or on-site only when the employer's own ATS field or explicit posting text says so. Postings that don't say carry no tag — we show nothing rather than a guess.</p>
+          <p>Placement on this page cannot be bought. Browse <a href="/jobs?mode=remote">remote roles</a>, check the <a href="/ghost-job-index">Ghost Job Index</a>, or license the underlying data at <a href="/data-api">Hiring Data &amp; API</a>.</p>
+        `,
+        jsonLd: [{
+          "@context": "https://schema.org",
+          "@type": "WebPage",
+          name: "Pay Transparency Index",
+          description: "Live ranking of fields, hiring systems, and large employers by the share of job postings stating pay, computed from official company job boards.",
+          url: `${SITE}/pay-transparency`,
+          isPartOf: { "@type": "WebSite", name: "Resume Booster", url: SITE },
+        }],
+      });
+    }
+
     // Hiring Data & API — the B2B data-licensing page. Static shell; the few
     // live stats hydrate client-side.
     {

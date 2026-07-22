@@ -50,6 +50,12 @@ interface BoardJob {
   postedAt: string | null;
   applyUrl: string;
   salary?: string | null;
+  /** Definitive employer-stated work mode; null = the posting doesn't say (no tag shown). */
+  workMode?: "remote" | "hybrid" | "onsite" | null;
+  salaryMinAnnual?: number | null;
+  salaryMaxAnnual?: number | null;
+  salaryPeriod?: string | null;
+  salaryCurrency?: string | null;
   experienceBand?: string | null;
   minYears?: number | null;
   /** Board category slug (serveList returns it; drives detail-panel "similar openings"). */
@@ -195,6 +201,13 @@ export default function Jobs() {
   const [q, setQ] = useState(initial.get("q") ?? "");
   const [location, setLocation] = useState(initial.get("location") ?? "");
   const [remoteOnly, setRemoteOnly] = useState(initial.get("remote") === "1");
+  // Definitive work-mode filter (remote/hybrid/onsite; "" = any). The legacy
+  // remote=1 URL param maps to "remote" so old links keep working.
+  const [workMode, setWorkMode] = useState<"" | "remote" | "hybrid" | "onsite">(() => {
+    const m = initial.get("mode");
+    if (m === "remote" || m === "hybrid" || m === "onsite") return m;
+    return initial.get("remote") === "1" ? "remote" : "";
+  });
   const { category: pathCategory, companyToken } = useParams<{ category?: string; companyToken?: string }>();
   const landerCategory = isBoardCategory(pathCategory) ? pathCategory : undefined;
   // /jobs/company/:token — the board scoped to one employer's verified openings.
@@ -260,7 +273,9 @@ export default function Jobs() {
       setQ(typeof f.q === "string" ? f.q : "");
       setCategory(typeof f.category === "string" ? f.category : "");
       setExperience(typeof f.experience === "string" ? f.experience : "");
-      setRemoteOnly(f.remote === true);
+      setRemoteOnly(false);
+      setWorkMode(f.workMode === "remote" || f.workMode === "hybrid" || f.workMode === "onsite"
+        ? f.workMode : f.remote === true ? "remote" : "");
       setSalaryFloor(typeof f.salaryFloor === "number" ? f.salaryFloor : 0);
       setCountry(typeof f.country === "string" ? f.country : "");
       setLocation(typeof f.location === "string" ? f.location : "");
@@ -612,7 +627,8 @@ export default function Jobs() {
       category: category || undefined,
       experience: experience || undefined,
       location: location || undefined,
-      remote: remoteOnly || undefined,
+      remote: remoteOnly || workMode === "remote" || undefined,
+      workMode: workMode || undefined,
       company: company || undefined,
       salaryFloor: salaryFloor || undefined,
     };
@@ -662,7 +678,8 @@ export default function Jobs() {
           action: "list",
           q: q || undefined,
           location: location || undefined,
-          remote: remoteOnly || undefined,
+          remote: remoteOnly || workMode === "remote" || undefined,
+      workMode: workMode || undefined,
           category: category || undefined,
           country: country || undefined,
           experience: experience || undefined,
@@ -705,7 +722,7 @@ export default function Jobs() {
         }
       }
     },
-    [q, location, remoteOnly, company, category, experience, country, salaryFloor, sortMode, freshness, searchNewestFirst],
+    [q, location, remoteOnly, workMode, company, category, experience, country, salaryFloor, sortMode, freshness, searchNewestFirst],
   );
 
   // Keep the URL shareable — filters in, defaults out. A category lander
@@ -716,6 +733,7 @@ export default function Jobs() {
     if (q) p.set("q", q);
     if (location) p.set("location", location);
     if (remoteOnly) p.set("remote", "1");
+    if (workMode) p.set("mode", workMode);
     if (company) p.set("company", company);
     if (category) p.set("category", category);
     if (experience) p.set("experience", experience);
@@ -735,7 +753,7 @@ export default function Jobs() {
       return;
     }
     window.history.replaceState({}, "", qs ? `/jobs?${qs}` : "/jobs");
-  }, [q, location, remoteOnly, company, category, experience, country, salaryFloor, landerCategory, landerCompany]);
+  }, [q, location, remoteOnly, workMode, company, category, experience, country, salaryFloor, landerCategory, landerCompany]);
 
   // Category salary benchmarks: median advertised pay floor per field, computed
   // live from postings that state pay (RPC self-gates at n>=30 — a thin sample
@@ -1629,8 +1647,8 @@ export default function Jobs() {
   // Badge on the mobile Filters button: how many secondary filters are active
   // (q lives in the always-visible search bar, so it doesn't count).
   const activeFilterCount = useMemo(
-    () => [location, category, experience, company, salaryFloor > 0, remoteOnly, freshness].filter(Boolean).length,
-    [location, category, experience, company, salaryFloor, remoteOnly, freshness],
+    () => [location, category, experience, company, salaryFloor > 0, remoteOnly || workMode, freshness].filter(Boolean).length,
+    [location, category, experience, company, salaryFloor, remoteOnly, workMode, freshness],
   );
 
   // Removable chips for every active filter — what's narrowing your results
@@ -1644,11 +1662,12 @@ export default function Jobs() {
     if (company) f.push({ key: "company", label: companies.find((c) => c.token === company)?.name ?? company, clear: () => setCompany("") });
     if (country) f.push({ key: "country", label: country, clear: () => setCountry("") });
     if (salaryFloor > 0) f.push({ key: "salaryFloor", label: `$${salaryFloor / 1000}k+`, clear: () => setSalaryFloor(0) });
-    if (remoteOnly) f.push({ key: "remote", label: t("jobsPage.remoteBadge", "Remote"), clear: () => setRemoteOnly(false) });
+    if (remoteOnly && !workMode) f.push({ key: "remote", label: t("jobsPage.remoteBadge", "Remote"), clear: () => setRemoteOnly(false) });
+    if (workMode) f.push({ key: "mode", label: t(`jobsPage.workMode.${workMode}`, workMode), clear: () => { setWorkMode(""); setRemoteOnly(false); } });
     if (freshness) f.push({ key: "freshness", label: freshness === "day" ? t("jobsPage.freshDay", "Today") : t("jobsPage.freshWeek", "This week"), clear: () => setFreshness("") });
     return f;
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [q, location, category, experience, company, country, salaryFloor, remoteOnly, freshness, companies, t]);
+  }, [q, location, category, experience, company, country, salaryFloor, remoteOnly, workMode, freshness, companies, t]);
   // S1: search suggestions — recent searches (local), matching companies
   // (served facet), matching category pages, and a curated common-role list.
   // Everything suggested is real and clickable; nothing invented.
@@ -1705,7 +1724,7 @@ export default function Jobs() {
 
   const paletteActions: PaletteAction[] = useMemo(() => [
     { id: "search", label: t("jobsPage.paFocusSearch", "Search postings"), hint: "/", run: () => (document.getElementById("board-search") as HTMLInputElement | null)?.focus() },
-    { id: "remote", label: remoteOnly ? t("jobsPage.paRemoteOff", "Show all locations") : t("jobsPage.paRemoteOn", "Remote only"), run: () => setRemoteOnly((v) => !v) },
+    { id: "remote", label: workMode === "remote" ? t("jobsPage.paRemoteOff", "Show all locations") : t("jobsPage.paRemoteOn", "Remote only"), run: () => { setWorkMode(workMode === "remote" ? "" : "remote"); setRemoteOnly(false); } },
     { id: "week", label: t("jobsPage.paWeek", "Posted this week"), run: () => setFreshness("week") },
     { id: "today", label: t("jobsPage.paToday", "Posted today"), run: () => setFreshness("day") },
     { id: "entry", label: t("jobsPage.paEntry", "Entry-level roles"), run: () => setExperience("entry") },
@@ -1716,7 +1735,7 @@ export default function Jobs() {
     { id: "scan", label: t("jobsPage.paScan", "Scan my resume (free)"), run: () => { window.location.href = "/#scan"; } },
     { id: "help", label: t("jobsPage.paHelp", "Keyboard shortcuts"), hint: "?", run: () => setHelpOpen(true) },
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  ], [remoteOnly, activeFilters, t]);
+  ], [remoteOnly, workMode, activeFilters, t]);
 
 
   // Smart zero-result help: when the server really has nothing for this
@@ -1861,7 +1880,11 @@ export default function Jobs() {
                   <Link2 className="w-3.5 h-3.5" />
                   {t("jobsPage.share", "Share")}
                 </button>
-                {detailJob.remote && <Badge variant="secondary" className="text-[10px]">{t("jobsPage.remoteBadge", "Remote")}</Badge>}
+                {(detailJob.workMode || (detailJob.remote ? "remote" : null)) && (
+                  <Badge variant="secondary" className="text-[10px]">
+                    {t(`jobsPage.workMode.${detailJob.workMode ?? "remote"}`, detailJob.workMode ?? "remote")}
+                  </Badge>
+                )}
                 {detailJob.experienceBand && detailJob.experienceBand !== "unspecified" && (
                   <span className="px-2 py-0.5 rounded-full border border-border text-muted-foreground">
                     {t(`jobsPage.experience.${detailJob.experienceBand}`, detailJob.experienceBand)}
@@ -1889,7 +1912,19 @@ export default function Jobs() {
               {detailJob.salary && (
                 <div>
                   <p className="text-sm font-semibold text-foreground">
-                    <span title={detailJob.salary}>{displaySalary(detailJob.salary)}</span>
+                    <span title={detailJob.salary}>
+                      {displaySalary(detailJob.salary)}
+                      {detailJob.salaryMinAnnual != null && detailJob.salaryPeriod && detailJob.salaryPeriod !== "year" && (
+                        <span className="text-muted-foreground font-normal">
+                          {" · "}
+                          {t("jobsPage.salaryAnnualized", "≈{{range}}/year as stated", {
+                            range: detailJob.salaryMaxAnnual && detailJob.salaryMaxAnnual > detailJob.salaryMinAnnual
+                              ? `${Math.round(detailJob.salaryMinAnnual / 1000)}k–${Math.round(detailJob.salaryMaxAnnual / 1000)}k`
+                              : `${Math.round(detailJob.salaryMinAnnual / 1000)}k`,
+                          })}
+                        </span>
+                      )}
+                    </span>
                     <span className="text-[11px] font-normal text-muted-foreground"> · {t("jobsPage.salaryVerbatim", "as stated in the posting")}</span>
                   </p>
                   {detailSalaryContext && (
@@ -2528,11 +2563,20 @@ export default function Jobs() {
                 </option>
               ))}
             </select>
-            <label className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-border text-sm cursor-pointer select-none">
-              <input type="checkbox" checked={remoteOnly} onChange={(e) => setRemoteOnly(e.target.checked)} className="accent-primary" />
-              {t("jobsPage.remoteOnly", "Remote only")}
-            </label>
-            {(q || location || remoteOnly || company || category || experience || salaryFloor > 0) && (
+            {/* Definitive work-mode filter: only employer-stated tags match;
+                postings that don't say are excluded by the filter, honestly. */}
+            <select
+              value={workMode}
+              onChange={(e) => { const v = e.target.value as "" | "remote" | "hybrid" | "onsite"; setWorkMode(v); setRemoteOnly(false); }}
+              className="px-3 py-2 rounded-lg border border-border bg-background text-sm"
+              aria-label={t("jobsPage.workMode.label", "Work mode")}
+            >
+              <option value="">{t("jobsPage.workMode.any", "Any work mode")}</option>
+              <option value="remote">{t("jobsPage.workMode.remote", "Remote")}</option>
+              <option value="hybrid">{t("jobsPage.workMode.hybrid", "Hybrid")}</option>
+              <option value="onsite">{t("jobsPage.workMode.onsite", "On-site")}</option>
+            </select>
+            {(q || location || remoteOnly || workMode || company || category || experience || salaryFloor > 0) && (
               <Button size="sm" variant="ghost" className="gap-1.5" onClick={saveCurrentSearch}>
                 <BookmarkCheck className="w-3.5 h-3.5" />
                 {t("jobsPage.saveSearch", "Save this search")}
@@ -2726,7 +2770,8 @@ export default function Jobs() {
           <div className="flex lg:hidden flex-wrap gap-2 mb-3">
             {([
               { key: "week", active: freshness === "week", label: t("jobsPage.chipWeek", "Posted this week"), toggle: () => setFreshness(freshness === "week" ? "" : "week") },
-              { key: "remote", active: remoteOnly, label: t("jobsPage.chipRemote", "Remote"), toggle: () => setRemoteOnly(!remoteOnly) },
+              { key: "remote", active: workMode === "remote", label: t("jobsPage.workMode.remote", "Remote"), toggle: () => { setWorkMode(workMode === "remote" ? "" : "remote"); setRemoteOnly(false); } },
+              { key: "hybrid", active: workMode === "hybrid", label: t("jobsPage.workMode.hybrid", "Hybrid"), toggle: () => { setWorkMode(workMode === "hybrid" ? "" : "hybrid"); setRemoteOnly(false); } },
               { key: "pay", active: salaryFloor >= 100000, label: t("jobsPage.chip100k", "$100k+"), toggle: () => setSalaryFloor(salaryFloor >= 100000 ? 0 : 100000) },
               { key: "hiring", active: activelyHiringOnly, label: t("jobsPage.chipHiring", "Actively hiring"), toggle: () => setActivelyHiringOnly(!activelyHiringOnly) },
             ] as const).map((c) => (
@@ -3222,7 +3267,11 @@ export default function Jobs() {
                                 : t("jobsPage.matchStretch", "Stretch")}
                             </span>
                           )}
-                          {job.remote && <Badge variant="secondary" className="text-[10px]">{t("jobsPage.remoteBadge", "Remote")}</Badge>}
+                          {(job.workMode || (job.remote ? "remote" : null)) && (
+                            <Badge variant="secondary" className="text-[10px]">
+                              {t(`jobsPage.workMode.${job.workMode ?? "remote"}`, job.workMode ?? "remote")}
+                            </Badge>
+                          )}
                           {savedIds.has(job.id) && (
                             <Link to="/account" onClick={(e) => e.stopPropagation()}
                               className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline"

@@ -57,6 +57,9 @@ export interface ParsedSalary {
   period: "hour" | "week" | "month" | "year" | null;
   /** Annualized lower bound, null when the period can't be honestly determined. */
   annualMin: number | null;
+  /** Annualized upper bound — only when a real range parsed AND the spread is
+      plausible (max ≤ 6× min); otherwise null, never a guess. */
+  annualMax: number | null;
   /**
    * Currency as the posting states it: an explicit ISO code wins; else the
    * symbol maps € → EUR, £ → GBP, and a bare $ → USD (documented heuristic —
@@ -156,7 +159,16 @@ export function parseSalaryStructured(text: string | null | undefined): ParsedSa
   } else if (min >= 20_000 && min <= 2_000_000) {
     annualMin = min; // unlabeled but unambiguously annual
   }
-  return { min, max, period, annualMin, currency };
+  // Upper bound follows the SAME honesty rules as the floor: annualized with
+  // the floor's multiplier, dropped when the floor was dropped, and dropped
+  // when the spread is implausible (a "$50k–$900k" text is not a pay range).
+  let annualMax: number | null = null;
+  if (annualMin !== null && max !== null && max >= min) {
+    const mult = period ? { hour: 2080, week: 52, month: 12, year: 1 }[period] : 1;
+    const am = max * mult;
+    if (max / Math.max(min, 1) <= 6 && am <= 4_000_000) annualMax = am;
+  }
+  return { min, max, period, annualMin, annualMax, currency };
 }
 
 /** Extract the posting's own pay text, or null when nothing clearly stated. */

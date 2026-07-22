@@ -2846,6 +2846,10 @@
     }
   },
   "changelogEntries": {
+    "payTransparency": {
+      "title": "Tags definitivas de modo de trabalho, faixas salariais completas e o Índice de Transparência Salarial",
+      "description": "Remoto, híbrido e presencial agora são três tags definitivas, vindas do campo do próprio ATS do empregador ou do texto explícito da vaga — exibidas só quando o empregador realmente diz. O salário agora guarda e mostra a faixa declarada completa com o período original, e o novo Índice de Transparência Salarial classifica áreas, sistemas e grandes empregadores pela parcela de vagas com salário. O Explore ganhou uma coleção de empregadores transparentes que nenhuma empresa pode comprar."
+    },
     "fairDataPromise": {
       "title": "Promessa de dados justos, empregadores verificados e 7 manhãs grátis do Agente",
       "description": "Três coisas de uma vez. Primeiro, política por escrito: nenhuma empresa pode pagar para mudar o que nossos dados dizem — taxas de preenchimento, sinais de rotatividade e selos são calculados de anúncios observados e não estão à venda (veja a página de Confiança). Segundo, empregadores já podem reivindicar sua página verificando um e-mail de trabalho no próprio domínio e ganhar o selo de Empregador verificado — só identidade, nunca direitos de edição. Terceiro, o Agente de Candidatura agora começa com 7 manhãs grátis: acorde com uma lista real antes de pagar qualquer coisa."
@@ -4369,7 +4373,15 @@
       "blurb": "Empresas com vagas ativas no mesmo campo, direto de seus próprios sistemas de carreira.",
       "openRoles": "{{n}} vagas abertas",
       "employees": "≈{{n}} funcionários"
-    }
+    },
+    "workMode": {
+      "label": "Modo de trabalho",
+      "any": "Qualquer modo",
+      "remote": "Remoto",
+      "hybrid": "Híbrido",
+      "onsite": "Presencial"
+    },
+    "salaryAnnualized": "≈{{range}}/ano conforme declarado"
   },
   "accountPage": {
     "statActive": "Candidaturas ativas",
@@ -4476,7 +4488,11 @@
     "segHeadcountStat": "{{k}} com quadro declarado",
     "segSeeAll": "Ver todas as {{n}} empresas",
     "segShowMore": "Mostrar mais ({{shown}} de {{total}})",
-    "segLoading": "Carregando…"
+    "segLoading": "Carregando…",
+    "transparentTitle": "Transparentes com salário",
+    "transparentBlurb": "Empresas que declaram salário em pelo menos 80% de suas vagas abertas — contado do próprio texto e dos campos do ATS delas. Um selo que ninguém pode comprar: o único caminho é realmente declarar salário.",
+    "transparentBadge": "{{pct}}% de {{n}} vagas declaram salário",
+    "transparentMedian": "piso mediano ${{m}}"
   },
   "agentQueue": {
     "title": "Fila da manhã",

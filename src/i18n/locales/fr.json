@@ -2846,6 +2846,10 @@
     }
   },
   "changelogEntries": {
+    "payTransparency": {
+      "title": "Étiquettes de mode de travail définitives, fourchettes complètes et l'Indice de Transparence Salariale",
+      "description": "Télétravail, hybride et sur site sont désormais trois étiquettes définitives, tirées du champ de l'ATS de l'employeur ou du texte explicite de l'annonce — affichées seulement quand l'employeur le dit vraiment. Le salaire stocke et affiche maintenant la fourchette complète avec sa période d'origine, et le nouvel Indice de Transparence Salariale classe métiers, systèmes et grands employeurs selon leur part d'annonces avec salaire. Explore gagne une collection d'employeurs transparents qu'aucune entreprise ne peut acheter."
+    },
     "fairDataPromise": {
       "title": "Promesse de données justes, employeurs vérifiés et 7 matins d'Agent gratuits",
       "description": "Trois choses en même temps. D'abord, une politique écrite : aucune entreprise ne peut payer pour changer ce que disent nos données — taux de pourvoi, signaux de rotation et badges sont calculés à partir des offres observées et ne sont pas à vendre (voir la page Confiance). Ensuite, les employeurs peuvent revendiquer leur page en vérifiant un e-mail professionnel à leur propre domaine et obtenir le badge Employeur vérifié — identité seulement, jamais de droits d'édition. Enfin, l'Agent de candidature commence désormais par 7 matins gratuits : réveillez-vous avec une vraie sélection avant de payer quoi que ce soit."
@@ -4369,7 +4373,15 @@
       "blurb": "Des entreprises avec des offres actives dans le même domaine, depuis leurs propres systèmes carrière.",
       "openRoles": "{{n}} postes ouverts",
       "employees": "≈{{n}} salariés"
-    }
+    },
+    "workMode": {
+      "label": "Mode de travail",
+      "any": "Tout mode de travail",
+      "remote": "Télétravail",
+      "hybrid": "Hybride",
+      "onsite": "Sur site"
+    },
+    "salaryAnnualized": "≈{{range}}/an selon l'annonce"
   },
   "accountPage": {
     "statActive": "Candidatures actives",
@@ -4476,7 +4488,11 @@
     "segHeadcountStat": "{{k}} avec effectif déclaré",
     "segSeeAll": "Voir les {{n}} entreprises",
     "segShowMore": "Afficher plus ({{shown}} sur {{total}})",
-    "segLoading": "Chargement…"
+    "segLoading": "Chargement…",
+    "transparentTitle": "Transparentes sur les salaires",
+    "transparentBlurb": "Entreprises indiquant le salaire sur au moins 80% de leurs postes ouverts — compté depuis leur propre texte et les champs de leur ATS. Un badge que personne ne peut acheter : la seule façon d'y figurer est d'indiquer les salaires.",
+    "transparentBadge": "{{pct}}% de {{n}} postes indiquent le salaire",
+    "transparentMedian": "plancher médian {{m}} $"
   },
   "agentQueue": {
     "title": "File du matin",

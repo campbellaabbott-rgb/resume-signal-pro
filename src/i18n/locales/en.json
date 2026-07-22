@@ -2846,6 +2846,10 @@
     }
   },
   "changelogEntries": {
+    "payTransparency": {
+      "title": "Definitive work-mode tags, full salary ranges, and the Pay Transparency Index",
+      "description": "Remote, hybrid, and on-site are now three definitive tags, taken from the employer's own ATS field or explicit posting text — and shown only when the employer actually says (no tag is honest, a guessed tag is not). Salary now stores and shows the full stated range with its original period, hourly and monthly figures get an annualized line, and filters match only stated pay. And it's all public: the new Pay Transparency Index ranks fields, hiring systems, and large employers by how much of their postings state pay, and Explore gained a Transparent-about-pay collection no company can buy its way into."
+    },
     "fairDataPromise": {
       "title": "A fair-data promise, verified employers, and 7 free Agent mornings",
       "description": "Three things shipped together. First, policy in writing: no company can pay to change what our data says — fill rates, churn flags, and badges are computed from observed postings and are not for sale (see the Trust page). Second, employers can now claim their company page by verifying a work email at their own domain, earning a Verified employer badge — identity only, never editing rights. Third, the Apply Agent now starts with 7 free mornings, so you can wake up to a real shortlist before paying anything."
@@ -4369,7 +4373,15 @@
       "blurb": "Companies with live openings in the same field, from their own career systems.",
       "openRoles": "{{n}} open roles",
       "employees": "≈{{n}} employees"
-    }
+    },
+    "workMode": {
+      "label": "Work mode",
+      "any": "Any work mode",
+      "remote": "Remote",
+      "hybrid": "Hybrid",
+      "onsite": "On-site"
+    },
+    "salaryAnnualized": "≈{{range}}/year as stated"
   },
   "accountPage": {
     "statActive": "Active applications",
@@ -4476,7 +4488,11 @@
     "segHeadcountStat": "{{k}} with stated headcount",
     "segSeeAll": "See all {{n}} companies",
     "segShowMore": "Show more ({{shown}} of {{total}})",
-    "segLoading": "Loading…"
+    "segLoading": "Loading…",
+    "transparentTitle": "Transparent about pay",
+    "transparentBlurb": "Companies stating pay on at least 80% of their open roles — counted from their own posting text and ATS fields. A badge no one can buy: the only way in is to actually state pay.",
+    "transparentBadge": "{{pct}}% of {{n}} roles state pay",
+    "transparentMedian": "median floor ${{m}}"
   },
   "agentQueue": {
     "title": "Morning Queue",

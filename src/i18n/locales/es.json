@@ -2846,6 +2846,10 @@
     }
   },
   "changelogEntries": {
+    "payTransparency": {
+      "title": "Etiquetas definitivas de modalidad, rangos salariales completos y el Índice de Transparencia Salarial",
+      "description": "Remoto, híbrido y presencial son ahora tres etiquetas definitivas, tomadas del campo del propio ATS del empleador o del texto explícito del anuncio — y se muestran solo cuando el empleador realmente lo dice. El salario ahora guarda y muestra el rango declarado completo con su período original, y el nuevo Índice de Transparencia Salarial clasifica campos, sistemas y grandes empleadores según cuánto declaran. Explore ganó una colección de empresas transparentes que ninguna puede comprar."
+    },
     "fairDataPromise": {
       "title": "Promesa de datos justos, empleadores verificados y 7 mañanas gratis del Agente",
       "description": "Tres cosas a la vez. Primero, política por escrito: ninguna empresa puede pagar para cambiar lo que dicen nuestros datos — tasas de cobertura, señales de rotación e insignias se calculan de anuncios observados y no están en venta (ver la página de Confianza). Segundo, los empleadores ya pueden reclamar su página verificando un correo de trabajo en su propio dominio y obtener la insignia de Empleador verificado — solo identidad, nunca derechos de edición. Tercero, el Agente de Postulación ahora empieza con 7 mañanas gratis: despierta con una lista real antes de pagar nada."
@@ -4369,7 +4373,15 @@
       "blurb": "Empresas con vacantes activas en el mismo campo, desde sus propios sistemas de empleo.",
       "openRoles": "{{n}} vacantes",
       "employees": "≈{{n}} empleados"
-    }
+    },
+    "workMode": {
+      "label": "Modalidad",
+      "any": "Cualquier modalidad",
+      "remote": "Remoto",
+      "hybrid": "Híbrido",
+      "onsite": "Presencial"
+    },
+    "salaryAnnualized": "≈{{range}}/año según lo declarado"
   },
   "accountPage": {
     "statActive": "Postulaciones activas",
@@ -4476,7 +4488,11 @@
     "segHeadcountStat": "{{k}} con plantilla declarada",
     "segSeeAll": "Ver las {{n}} empresas",
     "segShowMore": "Mostrar más ({{shown}} de {{total}})",
-    "segLoading": "Cargando…"
+    "segLoading": "Cargando…",
+    "transparentTitle": "Transparentes con el salario",
+    "transparentBlurb": "Empresas que declaran el salario en al menos el 80% de sus vacantes — contado desde su propio texto y campos de su ATS. Una insignia que nadie puede comprar: la única forma de entrar es declarar el salario.",
+    "transparentBadge": "{{pct}}% de {{n}} vacantes declaran salario",
+    "transparentMedian": "piso mediano ${{m}}"
   },
   "agentQueue": {
     "title": "Cola matinal",

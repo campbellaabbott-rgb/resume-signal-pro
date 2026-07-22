@@ -2846,6 +2846,10 @@
     }
   },
   "changelogEntries": {
+    "payTransparency": {
+      "title": "Tiyak na work-mode tag, buong salary range, at ang Pay Transparency Index",
+      "description": "Ang remote, hybrid, at on-site ay tatlong tiyak na tag na ngayon, mula sa ATS field mismo ng employer o tahasang teksto ng posting — ipinapakita lang kapag talagang sinabi ng employer. Iniimbak at ipinapakita na ngayon ng sahod ang buong nakasaad na range kasama ang orihinal na period, at ang bagong Pay Transparency Index ay nagraranggo ng mga larangan, sistema, at malalaking employer ayon sa bahagi ng mga posting na nagsasaad ng sahod. Nagkaroon ang Explore ng koleksyong transparent-sa-sahod na hindi mabibili ng kahit anong kumpanya."
+    },
     "fairDataPromise": {
       "title": "Pangako ng patas na datos, beripikadong employer, at 7 libreng umaga ng Agent",
       "description": "Tatlong bagay nang sabay. Una, nakasulat na patakaran: walang kumpanyang makakabayad para baguhin ang sinasabi ng aming datos — ang fill rate, churn flag, at badge ay kinukuwenta mula sa mga naobserbahang posting at hindi ipinagbibili (tingnan ang Trust page). Pangalawa, maaari nang i-claim ng mga employer ang kanilang company page sa pag-verify ng work email sa sarili nilang domain para sa badge na Beripikadong employer — pagkakakilanlan lang, hindi kailanman karapatang mag-edit. Pangatlo, ang Apply Agent ay nagsisimula na sa 7 libreng umaga: gumising na may totoong shortlist bago magbayad ng kahit ano."
@@ -4369,7 +4373,15 @@
       "blurb": "Mga kumpanyang may aktibong bakante sa parehong larangan, mula sa sarili nilang career system.",
       "openRoles": "{{n}} bukas na posisyon",
       "employees": "≈{{n}} empleyado"
-    }
+    },
+    "workMode": {
+      "label": "Work mode",
+      "any": "Anumang work mode",
+      "remote": "Remote",
+      "hybrid": "Hybrid",
+      "onsite": "On-site"
+    },
+    "salaryAnnualized": "≈{{range}}/taon ayon sa nakasaad"
   },
   "accountPage": {
     "statActive": "Aktibong aplikasyon",
@@ -4476,7 +4488,11 @@
     "segHeadcountStat": "{{k}} na may deklaradong bilang",
     "segSeeAll": "Tingnan lahat ng {{n}} kumpanya",
     "segShowMore": "Magpakita pa ({{shown}} sa {{total}})",
-    "segLoading": "Naglo-load…"
+    "segLoading": "Naglo-load…",
+    "transparentTitle": "Transparent sa sahod",
+    "transparentBlurb": "Mga kumpanyang nagsasaad ng sahod sa hindi bababa sa 80% ng kanilang bukas na posisyon — binilang mula sa sarili nilang teksto at ATS field. Badge na hindi mabibili ninuman: ang tanging daan ay talagang magsaad ng sahod.",
+    "transparentBadge": "{{pct}}% ng {{n}} posisyon ang nagsasaad ng sahod",
+    "transparentMedian": "median na floor ${{m}}"
   },
   "agentQueue": {
     "title": "Morning Queue",

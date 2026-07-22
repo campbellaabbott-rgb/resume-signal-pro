@@ -14,7 +14,11 @@ export interface JobPosting {
   company: string;
   title: string;
   location: string;
+  /** True only when workMode is definitively "remote" (kept for filters/stats). */
   remote: boolean;
+  /** Definitive work mode: vendor structured field first, explicit title/location
+      text second, null when the posting doesn't say — and the UI shows nothing. */
+  workMode: "remote" | "hybrid" | "onsite" | null;
   department: string | null;
   /** ISO date, null when the ATS doesn't expose one in the list payload. */
   postedAt: string | null;
@@ -133,6 +137,32 @@ export function htmlToText(html: string): string {
 
 const looksRemote = (s: string) => /\bremote\b/i.test(s);
 
+// Trinary work-mode detection from explicit title/location text — the same
+// precision bar as looksRemote (clear words only; descriptions are never
+// inferred from). Hybrid outranks remote ("Hybrid remote" is hybrid); onsite
+// needs the explicit phrase. null = the posting doesn't say, and the board
+// shows nothing rather than a guess. Multilingual: the board carries DE/FR/
+// ES/NL/PT postings.
+const P_HYBRID = /\bhybrid\b|\bhybride\b|\bh[íi]brido?\b/i;
+const P_REMOTE = /\bremote\b|\bwork from home\b|\bwfh\b|\bt[ée]l[ée]travail\b|\bhome\s?office\b|\bremoto\b|\bthuiswerken\b|\bteletrabajo\b/i;
+const P_ONSITE = /\bon-?site\b|\bin-?office\b|\bvor ort\b|\bpresencial\b|\bsur site\b/i;
+export function detectWorkMode(...parts: Array<string | null | undefined>): "remote" | "hybrid" | "onsite" | null {
+  const s = parts.filter(Boolean).join(" · ");
+  if (!s) return null;
+  if (P_HYBRID.test(s)) return "hybrid";
+  if (P_REMOTE.test(s)) return "remote";
+  if (P_ONSITE.test(s)) return "onsite";
+  return null;
+}
+const VENDOR_MODE: Record<string, "remote" | "hybrid" | "onsite"> = {
+  remote: "remote", hybrid: "hybrid", onsite: "onsite", on_site: "onsite",
+};
+/** Map a vendor's workplace enum (any casing, ON_SITE variants) to our trinary. */
+export function vendorWorkMode(v: string | null | undefined): "remote" | "hybrid" | "onsite" | null {
+  if (typeof v !== "string") return null;
+  return VENDOR_MODE[v.toLowerCase().replace(/[\s-]+/g, "_")] ?? null;
+}
+
 // Country from free-text location — deterministic and CONSERVATIVE: an explicit
 // country name, a comma-prefixed US state / Canadian province code, or a full
 // state/province name. No city geocoding, no guessing: a location we can't
@@ -222,7 +252,8 @@ export function normalizeGreenhouse(raw: { jobs?: GreenhouseJob[] }, company: st
       company,
       title: j.title ?? "",
       location,
-      remote: looksRemote(location) || looksRemote(j.title ?? ""),
+      workMode: detectWorkMode(location, j.title),
+      remote: detectWorkMode(location, j.title) === "remote",
       department: j.departments?.[0]?.name ?? null,
       // first_published only — updated_at re-stamps on any edit, so using it
       // as a posting date silently biases every age stat young. Undated is
@@ -270,7 +301,8 @@ export function normalizeLever(raw: LeverJob[], company: string, token: string):
       company,
       title: j.text ?? "",
       location,
-      remote: j.workplaceType === "remote" || looksRemote(location),
+      workMode: vendorWorkMode(j.workplaceType) ?? detectWorkMode(location, j.text),
+      remote: (vendorWorkMode(j.workplaceType) ?? detectWorkMode(location, j.text)) === "remote",
       department: j.categories?.team ?? null,
       postedAt: safeIso(j.createdAt),
       category: categorize(j.text ?? "", j.categories?.team),
@@ -289,6 +321,7 @@ interface AshbyJob {
   department?: string;
   team?: string;
   isRemote?: boolean;
+  workplaceType?: string; // "Remote" | "Hybrid" | "Onsite"
   isListed?: boolean;
   publishedAt?: string;
   jobUrl?: string;
@@ -308,7 +341,8 @@ export function normalizeAshby(raw: { jobs?: AshbyJob[] }, company: string, toke
         company,
         title: j.title ?? "",
         location,
-        remote: j.isRemote === true || looksRemote(location),
+        workMode: vendorWorkMode(j.workplaceType) ?? (j.isRemote === true ? "remote" : detectWorkMode(location, j.title)),
+        remote: (vendorWorkMode(j.workplaceType) ?? (j.isRemote === true ? "remote" : detectWorkMode(location, j.title))) === "remote",
         department: j.department ?? j.team ?? null,
         postedAt: j.publishedAt ?? null,
         category: categorize(j.title ?? "", j.department ?? j.team),
@@ -323,7 +357,7 @@ interface SmartRecruitersPosting {
   id: string | number;
   name: string;
   releasedDate?: string;
-  location?: { city?: string; region?: string; country?: string; remote?: boolean; fullLocation?: string };
+  location?: { city?: string; region?: string; country?: string; remote?: boolean; hybrid?: boolean; fullLocation?: string };
   function?: { label?: string };
   department?: { label?: string };
 }
@@ -342,7 +376,10 @@ export function normalizeSmartRecruiters(raw: { content?: SmartRecruitersPosting
         company,
         title: p.name ?? "",
         location,
-        remote: p.location?.remote === true || looksRemote(location),
+        workMode: p.location?.remote === true ? "remote" as const
+          : p.location?.hybrid === true ? "hybrid" as const
+          : detectWorkMode(location, p.name),
+        remote: (p.location?.remote === true) || detectWorkMode(location, p.name) === "remote",
         department,
         postedAt: p.releasedDate ?? null,
         category: categorize(p.name ?? "", department),
@@ -379,7 +416,8 @@ export function normalizeWorkable(raw: { jobs?: WorkableJob[] }, company: string
         company,
         title: j.title ?? "",
         location,
-        remote: j.telecommuting === true || looksRemote(location),
+        workMode: j.telecommuting === true ? "remote" as const : detectWorkMode(location, j.title),
+        remote: j.telecommuting === true || detectWorkMode(location, j.title) === "remote",
         department: j.department ?? null,
         postedAt: safeIso(posted),
         category: categorize(j.title ?? "", j.department),
@@ -414,7 +452,8 @@ export function normalizeBambooHR(raw: { result?: BambooJob[] }, company: string
         company,
         title: j.jobOpeningName ?? "",
         location,
-        remote: j.isRemote === true || looksRemote(location) || looksRemote(j.jobOpeningName ?? ""),
+        workMode: j.isRemote === true ? "remote" as const : detectWorkMode(location, j.jobOpeningName),
+        remote: j.isRemote === true || detectWorkMode(location, j.jobOpeningName) === "remote",
         department: j.departmentLabel ?? null,
         postedAt: null, // the list feed carries no dates
         category: categorize(j.jobOpeningName ?? "", j.departmentLabel),
@@ -456,6 +495,8 @@ interface RecruiteeOffer {
   country?: string | null;
   location?: string | null;
   remote?: boolean | null;
+  hybrid?: boolean | null;
+  on_site?: boolean | null;
   careers_url?: string | null;
   published_at?: string | null;
   created_at?: string | null;
@@ -477,7 +518,11 @@ export function normalizeRecruitee(raw: { offers?: RecruiteeOffer[] }, company: 
         company,
         title: o.title ?? "",
         location,
-        remote: o.remote === true || looksRemote(location) || looksRemote(o.title ?? ""),
+        workMode: o.remote === true ? "remote" as const
+          : o.hybrid === true ? "hybrid" as const
+          : o.on_site === true ? "onsite" as const
+          : detectWorkMode(location, o.title),
+        remote: o.remote === true || detectWorkMode(location, o.title) === "remote",
         department: o.department ?? null,
         postedAt: safeIso(o.published_at ?? o.created_at),
         category: categorize(o.title ?? "", o.department),
@@ -505,7 +550,8 @@ export function normalizePersonio(xml: string, company: string, token: string, h
         company,
         title,
         location: office,
-        remote: looksRemote(office) || looksRemote(title) || /remote/i.test(schedule),
+        workMode: detectWorkMode(office, title, schedule),
+        remote: detectWorkMode(office, title, schedule) === "remote",
         department,
         postedAt: safeIso(xmlValue(block, "createdAt")),
         category: categorize(title, department),
@@ -539,7 +585,8 @@ export function normalizeBreezy(raw: BreezyPosition[], company: string, token: s
         company,
         title: p.name ?? "",
         location,
-        remote: p.location?.is_remote === true || looksRemote(location) || looksRemote(p.name ?? ""),
+        workMode: p.location?.is_remote === true ? "remote" as const : detectWorkMode(location, p.name),
+        remote: p.location?.is_remote === true || detectWorkMode(location, p.name) === "remote",
         department: p.department ?? null,
         postedAt: safeIso(p.published_date ?? p.creation_date),
         category: categorize(p.name ?? "", p.department),
@@ -606,7 +653,11 @@ export function normalizeRippling(items: RipplingJobItem[], company: string, tok
         company,
         title: j.name ?? "",
         location,
-        remote: locs.some((l) => l.workplaceType === "REMOTE") || looksRemote(location) || looksRemote(j.name ?? ""),
+        workMode: locs.some((l) => l.workplaceType === "REMOTE") ? "remote" as const
+          : locs.some((l) => l.workplaceType === "HYBRID") ? "hybrid" as const
+          : locs.length > 0 && locs.every((l) => l.workplaceType === "ON_SITE") ? "onsite" as const
+          : detectWorkMode(location, j.name),
+        remote: locs.some((l) => l.workplaceType === "REMOTE") || detectWorkMode(location, j.name) === "remote",
         department: j.department?.name ?? null,
         postedAt: null, // the board payload carries no dates — undated is honest
         category: categorize(j.name ?? "", j.department?.name),
@@ -673,7 +724,8 @@ export function normalizePinpoint(items: PinpointPosting[], company: string, tok
         company,
         title,
         location,
-        remote: j.workplace_type === "remote" || looksRemote(location) || looksRemote(title),
+        workMode: vendorWorkMode(j.workplace_type) ?? detectWorkMode(location, title),
+        remote: (vendorWorkMode(j.workplace_type) ?? detectWorkMode(location, title)) === "remote",
         department: dept,
         postedAt: null, // no date in the payload — undated is honest
         category: categorize(title, dept),
@@ -740,7 +792,8 @@ export function normalizeWorkday(items: WorkdayListItem[], company: string, toke
         company,
         title: String(j.title ?? "").trim(),
         location: loc,
-        remote: looksRemote(loc) || looksRemote(String(j.title ?? "")),
+        workMode: detectWorkMode(loc, String(j.title ?? "")),
+        remote: detectWorkMode(loc, String(j.title ?? "")) === "remote",
         department: null,
         // Workday's list states a relative age ("Posted 3 Days Ago") — that IS
         // the company's stated date, at day precision. Convert to absolute
@@ -776,7 +829,8 @@ export function normalizeTeamtailor(rss: string, company: string, token: string)
         company,
         title,
         location: "",
-        remote: looksRemote(title),
+        workMode: detectWorkMode(title),
+        remote: detectWorkMode(title) === "remote",
         department: null,
         postedAt: safeIso(xmlValue(item, "pubDate")),
         category: categorize(title, null),

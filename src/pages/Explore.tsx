@@ -7,7 +7,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Compass, Flame, Sparkles, TrendingUp, GraduationCap, DollarSign, Activity, ArrowRight, Briefcase, Repeat, Building2 } from "lucide-react";
+import { Compass, Flame, Sparkles, TrendingUp, GraduationCap, DollarSign, Activity, ArrowRight, Briefcase, Repeat, Building2, BadgeDollarSign } from "lucide-react";
 import { SEO } from "@/components/seo/SEO";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -16,7 +16,7 @@ import { supabase } from "@/integrations/supabase/client";
 const rpc = (fn: string, args?: Record<string, unknown>) =>
   (supabase as unknown as { rpc: (f: string, a?: Record<string, unknown>) => Promise<{ data: unknown }> }).rpc(fn, args);
 
-interface CompanyRow { company: string; company_token: string; open_roles?: number; recent?: number; closed_90d?: number; entry_roles?: number; tracking_days?: number; repost_events?: number; reposted_roles?: number; worst_title?: string; worst_count?: number; feed_total?: number | null; on_board?: number; company_total?: number | null; employees?: number | null; employee_basis?: string | null; yc_batch?: string | null }
+interface CompanyRow { company: string; company_token: string; open_roles?: number; pay_pct?: number; median_usd_floor?: number | null; recent?: number; closed_90d?: number; entry_roles?: number; tracking_days?: number; repost_events?: number; reposted_roles?: number; worst_title?: string; worst_count?: number; feed_total?: number | null; on_board?: number; company_total?: number | null; employees?: number | null; employee_basis?: string | null; yc_batch?: string | null }
 interface SalaryRow { category: string; currency: string; n: number; median_annual_min: number }
 interface Segment { companies: number; with_headcount?: number; open_roles: number; remote_pct: number; entry_pct: number; median_usd_floor: number | null; usd_n: number | null; top: CompanyRow[] }
 
@@ -93,6 +93,9 @@ export default function Explore() {
   const [entry, setEntry] = useState<CompanyRow[]>([]);
   const [salary, setSalary] = useState<SalaryRow[]>([]);
   const [segments, setSegments] = useState<Segments | null>(null);
+  // Transparent employers: companies stating pay on >=80% of a meaningful
+  // board. Fetched live (not in the hourly cache yet); section hides on empty.
+  const [transparent, setTransparent] = useState<CompanyRow[]>([]);
   // Drill-through: full verified-headcount list per band, loaded on demand
   // ("See all N"), paged 60 at a time via get_size_segment_companies.
   const [segAll, setSegAll] = useState<Record<string, { total: number; rows: CompanyRow[] }>>({});
@@ -133,6 +136,9 @@ export default function Explore() {
           if (Array.isArray(c.entry)) setEntry(c.entry as CompanyRow[]);
           if (Array.isArray(c.salary)) applySalary(c.salary as SalaryRow[]);
           if (c.segments && typeof c.segments === "object" && !Array.isArray(c.segments)) setSegments(c.segments as Segments);
+          void Promise.resolve(rpc("get_transparent_employers", { p_limit: 12 })).then((r: { data: unknown }) => {
+            if (Array.isArray(r.data)) setTransparent(r.data as CompanyRow[]);
+          }).catch(() => { /* section hides */ });
           return;
         }
       } catch { /* fall through to live RPCs */ }
@@ -144,6 +150,9 @@ export default function Explore() {
         Promise.resolve(rpc("get_entry_level_companies", { p_limit: 12 })).catch(() => ({ data: null })),
         Promise.resolve(rpc("get_salary_benchmarks")).catch(() => ({ data: null })),
       ]);
+      void Promise.resolve(rpc("get_transparent_employers", { p_limit: 12 })).then((r: { data: unknown }) => {
+        if (Array.isArray(r.data)) setTransparent(r.data as CompanyRow[]);
+      }).catch(() => { /* section hides */ });
       // Segments live-fallback fires separately: its full-table aggregate is the
       // slowest collection and must never delay the five above.
       void Promise.resolve(rpc("get_size_segments")).then((r: { data: unknown }) => {
@@ -193,6 +202,16 @@ export default function Explore() {
             <CompanyGrid rows={hiring} badge={(r) => r.tracking_days
               ? t("explore.hiringBadge", "{{filled}} filled in {{d}}d tracked · {{open}} open now", { filled: r.closed_90d ?? 0, d: r.tracking_days, open: r.open_roles ?? 0 })
               : t("explore.openRoles", "{{n}} open roles", { n: r.open_roles ?? 0 })} />
+          </Section>
+        )}
+
+        {transparent.length > 0 && (
+          <Section icon={BadgeDollarSign} title={t("explore.transparentTitle", "Transparent about pay")} blurb={t("explore.transparentBlurb", "Companies stating pay on at least 80% of their open roles — counted from their own posting text and ATS fields. A badge no one can buy: the only way in is to actually state pay.")}>
+            <CompanyGrid rows={transparent} badge={(r) => {
+              const parts = [t("explore.transparentBadge", "{{pct}}% of {{n}} roles state pay", { pct: r.pay_pct ?? 0, n: r.open_roles ?? 0 })];
+              if (r.median_usd_floor != null) parts.push(t("explore.transparentMedian", "median floor ${{m}}", { m: Math.round(r.median_usd_floor).toLocaleString() }));
+              return parts.join(" · ");
+            }} />
           </Section>
         )}
 

@@ -2846,6 +2846,10 @@
     }
   },
   "changelogEntries": {
+    "payTransparency": {
+      "title": "Definitieve werkmodus-tags, volledige salarisranges en de Salaristransparantie-index",
+      "description": "Remote, hybride en op kantoor zijn nu drie definitieve tags, uit het ATS-veld van de werkgever of expliciete vacaturetekst — alleen getoond als de werkgever het echt zegt. Salaris slaat nu de volledige vermelde range met originele periode op, en de nieuwe Salaristransparantie-index rangschikt velden, systemen en grote werkgevers naar hun aandeel vacatures met salaris. Explore kreeg een transparantiecollectie waar geen bedrijf zich in kan kopen."
+    },
     "fairDataPromise": {
       "title": "Een eerlijke-databelofte, geverifieerde werkgevers en 7 gratis Agent-ochtenden",
       "description": "Drie dingen tegelijk. Ten eerste, beleid op papier: geen enkel bedrijf kan betalen om onze data te veranderen — vervullingspercentages, churn-signalen en badges worden berekend uit waargenomen vacatures en zijn niet te koop (zie de Vertrouwenspagina). Ten tweede kunnen werkgevers nu hun bedrijfspagina claimen door een werk-e-mail op hun eigen domein te verifiëren en de badge Geverifieerde werkgever verdienen — alleen identiteit, nooit bewerkingsrechten. Ten derde begint de Sollicitatie-Agent nu met 7 gratis ochtenden: word wakker met een echte shortlist voordat je iets betaalt."
@@ -4369,7 +4373,15 @@
       "blurb": "Bedrijven met actieve vacatures in hetzelfde veld, uit hun eigen carrièresystemen.",
       "openRoles": "{{n}} open vacatures",
       "employees": "≈{{n}} medewerkers"
-    }
+    },
+    "workMode": {
+      "label": "Werkmodus",
+      "any": "Elke werkmodus",
+      "remote": "Remote",
+      "hybrid": "Hybride",
+      "onsite": "Op kantoor"
+    },
+    "salaryAnnualized": "≈{{range}}/jaar zoals vermeld"
   },
   "accountPage": {
     "statActive": "Actieve sollicitaties",
@@ -4476,7 +4488,11 @@
     "segHeadcountStat": "{{k}} met opgegeven personeelsaantal",
     "segSeeAll": "Alle {{n}} bedrijven bekijken",
     "segShowMore": "Meer tonen ({{shown}} van {{total}})",
-    "segLoading": "Laden…"
+    "segLoading": "Laden…",
+    "transparentTitle": "Transparant over salaris",
+    "transparentBlurb": "Bedrijven die bij minstens 80% van hun vacatures het salaris vermelden — geteld uit hun eigen vacaturetekst en ATS-velden. Een badge die niemand kan kopen: de enige weg erin is echt salaris vermelden.",
+    "transparentBadge": "{{pct}}% van {{n}} vacatures vermeldt salaris",
+    "transparentMedian": "mediaan minimum ${{m}}"
   },
   "agentQueue": {
     "title": "Ochtendwachtrij",

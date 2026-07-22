@@ -2846,6 +2846,10 @@
     }
   },
   "changelogEntries": {
+    "payTransparency": {
+      "title": "Eindeutige Arbeitsmodus-Tags, volle Gehaltsspannen und der Gehaltstransparenz-Index",
+      "description": "Remote, Hybrid und Vor-Ort sind jetzt drei eindeutige Tags aus dem ATS-Feld des Arbeitgebers oder explizitem Anzeigentext — angezeigt nur, wenn der Arbeitgeber es wirklich sagt. Gehälter speichern und zeigen jetzt die volle genannte Spanne mit Originalperiode, und der neue Gehaltstransparenz-Index rankt Felder, Systeme und große Arbeitgeber nach ihrem Anteil an Anzeigen mit Gehalt. Explore hat eine Transparenz-Kollektion, in die sich kein Unternehmen einkaufen kann."
+    },
     "fairDataPromise": {
       "title": "Faire-Daten-Versprechen, verifizierte Arbeitgeber und 7 gratis Agent-Morgen",
       "description": "Drei Dinge auf einmal. Erstens, Richtlinie schriftlich: Kein Unternehmen kann dafür bezahlen, unsere Daten zu ändern — Besetzungsquoten, Churn-Hinweise und Abzeichen werden aus beobachteten Anzeigen berechnet und stehen nicht zum Verkauf (siehe Vertrauensseite). Zweitens können Arbeitgeber jetzt ihre Firmenseite beanspruchen, indem sie eine Arbeits-E-Mail an der eigenen Domain bestätigen — nur Identität, nie Bearbeitungsrechte. Drittens startet der Bewerbungs-Agent jetzt mit 7 gratis Morgen: Wach mit einer echten Auswahl auf, bevor du irgendetwas zahlst."
@@ -4369,7 +4373,15 @@
       "blurb": "Unternehmen mit aktiven Stellen im selben Feld, aus ihren eigenen Karrieresystemen.",
       "openRoles": "{{n}} offene Stellen",
       "employees": "≈{{n}} Mitarbeitende"
-    }
+    },
+    "workMode": {
+      "label": "Arbeitsmodus",
+      "any": "Jeder Arbeitsmodus",
+      "remote": "Remote",
+      "hybrid": "Hybrid",
+      "onsite": "Vor Ort"
+    },
+    "salaryAnnualized": "≈{{range}}/Jahr laut Anzeige"
   },
   "accountPage": {
     "statActive": "Aktive Bewerbungen",
@@ -4476,7 +4488,11 @@
     "segHeadcountStat": "{{k}} mit angegebener Mitarbeiterzahl",
     "segSeeAll": "Alle {{n}} Unternehmen ansehen",
     "segShowMore": "Mehr anzeigen ({{shown}} von {{total}})",
-    "segLoading": "Lädt…"
+    "segLoading": "Lädt…",
+    "transparentTitle": "Transparent beim Gehalt",
+    "transparentBlurb": "Unternehmen, die bei mindestens 80% ihrer offenen Stellen das Gehalt nennen — gezählt aus ihrem eigenen Anzeigentext und ATS-Feldern. Ein Abzeichen, das niemand kaufen kann: Der einzige Weg hinein ist, Gehälter zu nennen.",
+    "transparentBadge": "{{pct}}% von {{n}} Stellen nennen das Gehalt",
+    "transparentMedian": "medianes Minimum {{m}} $"
   },
   "agentQueue": {
     "title": "Morgen-Queue",

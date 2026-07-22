@@ -28,6 +28,7 @@ const EntryLevelIndex = lazy(() => import("./pages/EntryLevelIndex"));
 const Explore = lazy(() => import("./pages/Explore"));
 const HiringTrends = lazy(() => import("./pages/HiringTrends"));
 const DataApi = lazy(() => import("./pages/DataApi"));
+const PayTransparencyIndex = lazy(() => import("./pages/PayTransparencyIndex"));
 const Privacy = lazy(() => import("./pages/Privacy"));
 const Pricing = lazy(() => import("./pages/Pricing"));
 const Methodology = lazy(() => import("./pages/Methodology"));
@@ -84,6 +85,7 @@ const App = () => (
           <Route path="/entry-level-index" element={<EntryLevelIndex />} />
           <Route path="/hiring-trends" element={<HiringTrends />} />
           <Route path="/data-api" element={<DataApi />} />
+          <Route path="/pay-transparency" element={<PayTransparencyIndex />} />
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/pricing" element={<Pricing />} />
           <Route path="/methodology" element={<Methodology />} />
