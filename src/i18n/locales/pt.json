@@ -4267,7 +4267,19 @@
     "nlDismiss": "dispensar",
     "nlNotMapped": "Não foi possível filtrar por: {{terms}} — ainda não há filtro para isso, então não foi aplicado.",
     "nlFailed": "Não foi possível interpretar — use os filtros abaixo.",
-    "backToExplore": "Voltar a Explorar"
+    "backToExplore": "Voltar a Explorar",
+    "orientTitle": "{{total}} vagas verificadas — por onde você quer começar?",
+    "orientSub": "Escolha uma área, solte seu currículo abaixo para um ranking pessoal, ou apenas veja as mais novas.",
+    "orientBrowse": "Ver as vagas mais novas →",
+    "orientExplore": "Ou explore por sinais — quem contrata, quem preenche, onde está o salário",
+    "dropTitle": "Solte seu currículo aqui — veja sua pontuação de encaixe em cada vaga, na hora.",
+    "dropParsing": "Lendo seu currículo…",
+    "dropBrowse": "Escolher arquivo",
+    "dropScannerLink": "ou rode o escaneamento gratuito completo",
+    "dropParsed": "Currículo carregado — ordenando cada vaga em torno de você.",
+    "dropFailed": "Não foi possível ler esse arquivo. O escaneamento completo lida com formatos mais difíceis.",
+    "dropTooShort": "Não conseguimos ler texto suficiente desse arquivo — tente o scanner completo.",
+    "dropTooLarge": "Esse arquivo passa de 10 MB — exporte uma cópia mais leve e tente de novo."
   },
   "accountPage": {
     "statActive": "Candidaturas ativas",

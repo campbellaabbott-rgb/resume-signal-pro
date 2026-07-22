@@ -4267,7 +4267,19 @@
     "nlDismiss": "ignorer",
     "nlNotMapped": "Impossible de filtrer par : {{terms}} — pas encore de filtre pour cela, donc non appliqué.",
     "nlFailed": "Impossible de comprendre — utilisez les filtres ci-dessous.",
-    "backToExplore": "Retour à Explorer"
+    "backToExplore": "Retour à Explorer",
+    "orientTitle": "{{total}} offres vérifiées — par où voulez-vous commencer ?",
+    "orientSub": "Choisissez un domaine, déposez votre CV ci-dessous pour un classement personnel, ou parcourez simplement les plus récentes.",
+    "orientBrowse": "Voir les offres les plus récentes →",
+    "orientExplore": "Ou explorez par signal — qui recrute, qui pourvoit, où sont les salaires",
+    "dropTitle": "Déposez votre CV ici — votre score d'adéquation sur chaque offre, instantanément.",
+    "dropParsing": "Lecture de votre CV…",
+    "dropBrowse": "Choisir un fichier",
+    "dropScannerLink": "ou lancez le scan gratuit complet",
+    "dropParsed": "CV chargé — classement de chaque offre autour de vous.",
+    "dropFailed": "Impossible de lire ce fichier. Le scan complet gère les formats plus complexes.",
+    "dropTooShort": "Pas assez de texte lisible dans ce fichier — essayez le scanner complet.",
+    "dropTooLarge": "Ce fichier dépasse 10 Mo — exportez une copie plus légère et réessayez."
   },
   "accountPage": {
     "statActive": "Candidatures actives",

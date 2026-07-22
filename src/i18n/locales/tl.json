@@ -4267,7 +4267,19 @@
     "nlDismiss": "i-dismiss",
     "nlNotMapped": "Hindi ma-filter ayon sa: {{terms}} — wala pang filter para diyan, kaya hindi na-apply.",
     "nlFailed": "Hindi ito nabasa — subukan ang mga filter sa ibaba.",
-    "backToExplore": "Bumalik sa Tuklasin"
+    "backToExplore": "Bumalik sa Tuklasin",
+    "orientTitle": "{{total}} beripikadong bakante — saan mo gustong magsimula?",
+    "orientSub": "Pumili ng larangan, ihulog ang resume mo sa ibaba para sa personal na ranking, o mag-browse lang ng pinakabago.",
+    "orientBrowse": "Tingnan ang pinakabagong bakante →",
+    "orientExplore": "O mag-explore ayon sa senyales — sino ang kumukuha, sino ang nagpupuno, nasaan ang sahod",
+    "dropTitle": "Ihulog ang resume mo rito — makita agad ang match score mo sa bawat bakante.",
+    "dropParsing": "Binabasa ang resume mo…",
+    "dropBrowse": "Pumili ng file",
+    "dropScannerLink": "o patakbuhin ang buong libreng scan",
+    "dropParsed": "Na-load ang resume — inaayos ang bawat bakante para sa iyo.",
+    "dropFailed": "Hindi mabasa ang file na iyon. Kaya ng buong scan ang mas mahirap na format.",
+    "dropTooShort": "Kulang ang nabasang teksto sa file — subukan ang buong scanner.",
+    "dropTooLarge": "Lampas 10 MB ang file — mag-export ng mas magaan na kopya at subukang muli."
   },
   "accountPage": {
     "statActive": "Aktibong aplikasyon",

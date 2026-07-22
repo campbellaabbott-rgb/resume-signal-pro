@@ -11,7 +11,7 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import { parseSalaryStructured } from "../../supabase/functions/_shared/salary-extract";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Activity, AlertTriangle, Bookmark, BookmarkCheck, Briefcase, ChevronDown, Clock, Copy, ExternalLink, FileText, Flag, Link2, Loader2, MapPin, MessageSquare, RefreshCw, Search, ShieldCheck, SlidersHorizontal, Sparkles, Target } from "lucide-react";
+import { Activity, AlertTriangle, Bookmark, BookmarkCheck, Briefcase, ChevronDown, Clock, Compass, Copy, ExternalLink, FileText, Flag, Link2, Loader2, MapPin, MessageSquare, RefreshCw, Search, ShieldCheck, SlidersHorizontal, Sparkles, Target, Upload } from "lucide-react";
 import { SEO } from "@/components/seo/SEO";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -323,6 +323,26 @@ export default function Jobs() {
   // The resume available for ranking: this tab's scan first, else the
   // signed-in user's latest saved version (fetched lazily on toggle).
   const fitResume = useRef<string | null>(null);
+  // Inline résumé drop on the board (Batch 1): parse state + drag highlight.
+  const [parsingResume, setParsingResume] = useState(false);
+  const [resumeDragOver, setResumeDragOver] = useState(false);
+  // Adaptive landing: first visit with zero intent signals gets an orientation
+  // block instead of a raw newest-first firehose. Any expressed intent (params,
+  // résumé, prior visit, explicit dismiss) suppresses it permanently.
+  const [showOrientation, setShowOrientation] = useState<boolean>(() => {
+    try {
+      if (localStorage.getItem("rb_board_last_visit") || localStorage.getItem("rb_board_oriented")) return false;
+      if (sessionStorage.getItem("rb_board_resume")) return false;
+    } catch { /* storage blocked — treat as returning visitor */ return false; }
+    for (const k of ["q", "category", "location", "remote", "country", "minSalary", "job", "from", "sort"]) {
+      if (initial.get(k)) return false;
+    }
+    return true;
+  });
+  const dismissOrientation = useCallback(() => {
+    setShowOrientation(false);
+    try { localStorage.setItem("rb_board_oriented", "1"); } catch { /* session-only */ }
+  }, []);
   const [data, setData] = useState<BoardResponse | null>(null);
   const [jobs, setJobs] = useState<BoardJob[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1102,8 +1122,60 @@ export default function Jobs() {
     });
   };
 
+  // Résumé dropped straight onto the board: parse (same server parsers the
+  // scanner uses), stash for this tab, and flip the board into fit-ranked mode
+  // immediately — browsing becomes personal in one gesture.
+  const handleBoardResumeFile = async (file: File) => {
+    if (parsingResume) return;
+    if (file.size > 10 * 1024 * 1024) {
+      toast({ title: t("jobsPage.dropTooLarge", "That file is over 10 MB — export a lighter copy and try again."), variant: "destructive" });
+      return;
+    }
+    setParsingResume(true);
+    try {
+      const name = file.name.toLowerCase();
+      let text = "";
+      if (file.type === "text/plain" || name.endsWith(".txt")) {
+        text = await file.text();
+      } else {
+        const fn = file.type === "application/pdf" || name.endsWith(".pdf") ? "parse-pdf" : "parse-docx";
+        const fd = new FormData();
+        fd.append("file", file);
+        const { data: parsed, error } = await supabase.functions.invoke(fn, { body: fd });
+        const p = parsed as { success?: boolean; text?: string } | null;
+        if (error || !p?.text) throw new Error("parse failed");
+        text = p.text;
+      }
+      text = text.trim();
+      if (text.length < 100) {
+        toast({ title: t("jobsPage.dropTooShort", "We couldn't read enough text from that file — try the full scanner instead."), variant: "destructive" });
+        return;
+      }
+      fitResume.current = text;
+      try { sessionStorage.setItem("rb_board_resume", text); } catch { /* tab-only */ }
+      fitAutoChecked.current = true;
+      setResumeAvailable(true);
+      setFitRanking(true);
+      setShowOrientation(false);
+      toast({ title: t("jobsPage.dropParsed", "Résumé loaded — ranking every opening around you.") });
+    } catch {
+      toast({ title: t("jobsPage.dropFailed", "Couldn't parse that file. The full free scan handles trickier formats."), variant: "destructive" });
+    } finally {
+      setParsingResume(false);
+    }
+  };
+
   const resolveFitResume = async (): Promise<string | null> => {
     if (fitResume.current) return fitResume.current;
+    // 0) A résumé dropped directly on the board this session (the inline
+    //    strip) — most immediate signal, survives reloads within the tab.
+    try {
+      const dropped = (sessionStorage.getItem("rb_board_resume") ?? "").trim();
+      if (dropped.length >= 100) {
+        fitResume.current = dropped;
+        return dropped;
+      }
+    } catch { /* storage blocked — fall through */ }
     // 1) The account's PINNED matching résumé — an explicit choice beats every
     //    implicit source (matching_* columns postdate typegen → untyped access).
     if (session) {
@@ -2482,18 +2554,93 @@ export default function Jobs() {
             )}
           </div>
 
-          {/* The one thing no other board offers on arrival: match scores on
-              every opening. Shown only to visitors we KNOW have no resume yet
-              (never nags someone who deliberately switched to All jobs). */}
-          {resumeAvailable === false && !fitRanking && (
-            <div className="rounded-xl border border-primary/30 bg-primary/5 px-4 py-3 mb-4 flex flex-wrap items-center gap-3">
-              <Sparkles className="w-4 h-4 text-primary shrink-0" />
-              <p className="text-sm text-foreground flex-1 min-w-[220px]">
-                {t("jobsPage.forYouUpsell", "See your match score on every opening — scan your resume once, free, and the board ranks itself around you.")}
+          {/* Adaptive landing: a zero-intent first visit gets orientation, not a
+              560k-row newest-first firehose. Every path out of this block IS an
+              intent signal, so it never shows twice. */}
+          {showOrientation && !landerCompany && !q && !category && !fitRanking && (
+            <div className="rounded-2xl border border-border bg-card p-5 mb-4">
+              <div className="flex items-center gap-2 mb-1">
+                <Compass className="w-5 h-5 text-primary shrink-0" />
+                <h2 className="text-base font-bold text-foreground">
+                  {t("jobsPage.orientTitle", "{{total}} verified openings — where do you want to start?", {
+                    total: data?.totalAllCompanies ? data.totalAllCompanies.toLocaleString() : "500,000+",
+                  })}
+                </h2>
+              </div>
+              <p className="text-[13px] text-muted-foreground mb-3">
+                {t("jobsPage.orientSub", "Pick a field, drop your résumé below for personal ranking, or just browse the newest.")}
               </p>
-              <Button size="sm" onClick={() => navigate("/#upload")}>
-                {t("jobsPage.forYouUpsellCta", "Scan my resume")}
-              </Button>
+              <div className="flex flex-wrap gap-2 mb-3">
+                {Object.entries(data?.categories ?? {})
+                  .filter(([c]) => c !== "other")
+                  .sort(([, a], [, b]) => (b as number) - (a as number))
+                  .slice(0, 8)
+                  .map(([c, n]) => (
+                    <button
+                      key={c}
+                      onClick={() => { setCategory(c); dismissOrientation(); }}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-border bg-background text-sm text-foreground hover:border-primary/50 transition-colors"
+                    >
+                      {t(`jobsPage.categories.${c}`, c)}
+                      <span className="text-[11px] text-muted-foreground">{(n as number).toLocaleString()}</span>
+                    </button>
+                  ))}
+              </div>
+              <div className="flex flex-wrap items-center gap-3">
+                <button onClick={dismissOrientation} className="text-sm font-semibold text-primary hover:underline">
+                  {t("jobsPage.orientBrowse", "Browse newest openings →")}
+                </button>
+                <Link to="/explore" className="text-sm text-muted-foreground hover:text-foreground hover:underline">
+                  {t("jobsPage.orientExplore", "Or explore by signal — who's hiring, who fills, where the pay is")}
+                </Link>
+              </div>
+            </div>
+          )}
+
+          {/* The one thing no other board offers on arrival: match scores on
+              every opening — now one gesture away. Drop a résumé HERE (parsed by
+              the same server parsers as the scanner) and the board re-ranks
+              itself instantly; the full scan stays one link away. Shown only to
+              visitors we KNOW have no résumé yet. */}
+          {resumeAvailable === false && !fitRanking && (
+            <div
+              onDragOver={(e) => { e.preventDefault(); setResumeDragOver(true); }}
+              onDragLeave={() => setResumeDragOver(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setResumeDragOver(false);
+                const f = e.dataTransfer.files?.[0];
+                if (f) void handleBoardResumeFile(f);
+              }}
+              className={`rounded-xl border px-4 py-3 mb-4 flex flex-wrap items-center gap-3 transition-colors ${
+                resumeDragOver ? "border-primary bg-primary/10 border-dashed" : "border-primary/30 bg-primary/5"
+              }`}
+            >
+              {parsingResume ? <Loader2 className="w-4 h-4 text-primary shrink-0 animate-spin" /> : <Upload className="w-4 h-4 text-primary shrink-0" />}
+              <p className="text-sm text-foreground flex-1 min-w-[220px]">
+                {parsingResume
+                  ? t("jobsPage.dropParsing", "Reading your résumé…")
+                  : t("jobsPage.dropTitle", "Drop your résumé here — see your match score on every opening, instantly.")}
+              </p>
+              <label className="inline-flex">
+                <input
+                  type="file"
+                  accept=".pdf,.docx,.txt"
+                  className="hidden"
+                  disabled={parsingResume}
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) void handleBoardResumeFile(f);
+                    e.target.value = "";
+                  }}
+                />
+                <span className="cursor-pointer inline-flex items-center rounded-lg bg-primary text-primary-foreground text-sm font-semibold px-3 py-1.5 hover:bg-primary/90">
+                  {t("jobsPage.dropBrowse", "Choose file")}
+                </span>
+              </label>
+              <button onClick={() => navigate("/#upload")} className="text-[12px] text-muted-foreground hover:text-foreground hover:underline">
+                {t("jobsPage.dropScannerLink", "or run the full free scan")}
+              </button>
             </div>
           )}
 

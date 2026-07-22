@@ -4267,7 +4267,19 @@
     "nlDismiss": "dismiss",
     "nlNotMapped": "Couldn't filter by: {{terms}} — no filter for that yet, so it wasn't applied.",
     "nlFailed": "Couldn't read that — try the filters below instead.",
-    "backToExplore": "Back to Explore"
+    "backToExplore": "Back to Explore",
+    "orientTitle": "{{total}} verified openings — where do you want to start?",
+    "orientSub": "Pick a field, drop your résumé below for personal ranking, or just browse the newest.",
+    "orientBrowse": "Browse newest openings →",
+    "orientExplore": "Or explore by signal — who's hiring, who fills, where the pay is",
+    "dropTitle": "Drop your résumé here — see your match score on every opening, instantly.",
+    "dropParsing": "Reading your résumé…",
+    "dropBrowse": "Choose file",
+    "dropScannerLink": "or run the full free scan",
+    "dropParsed": "Résumé loaded — ranking every opening around you.",
+    "dropFailed": "Couldn't parse that file. The full free scan handles trickier formats.",
+    "dropTooShort": "We couldn't read enough text from that file — try the full scanner instead.",
+    "dropTooLarge": "That file is over 10 MB — export a lighter copy and try again."
   },
   "accountPage": {
     "statActive": "Active applications",

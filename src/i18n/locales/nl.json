@@ -4267,7 +4267,19 @@
     "nlDismiss": "sluiten",
     "nlNotMapped": "Kon niet filteren op: {{terms}} — daar is nog geen filter voor, dus niet toegepast.",
     "nlFailed": "Kon dat niet lezen — gebruik de filters hieronder.",
-    "backToExplore": "Terug naar Ontdek"
+    "backToExplore": "Terug naar Ontdek",
+    "orientTitle": "{{total}} geverifieerde vacatures — waar wil je beginnen?",
+    "orientSub": "Kies een vakgebied, sleep hieronder je cv voor een persoonlijke ranking, of blader gewoon door het nieuwste.",
+    "orientBrowse": "Nieuwste vacatures bekijken →",
+    "orientExplore": "Of verken op signaal — wie werft, wie vervult, waar het salaris zit",
+    "dropTitle": "Sleep je cv hierheen — direct je match-score op elke vacature.",
+    "dropParsing": "Je cv wordt gelezen…",
+    "dropBrowse": "Bestand kiezen",
+    "dropScannerLink": "of start de volledige gratis scan",
+    "dropParsed": "Cv geladen — elke vacature wordt om jou heen gerangschikt.",
+    "dropFailed": "Kon dat bestand niet lezen. De volledige scan kan lastigere formaten aan.",
+    "dropTooShort": "Niet genoeg leesbare tekst in dat bestand — probeer de volledige scanner.",
+    "dropTooLarge": "Dat bestand is groter dan 10 MB — exporteer een lichtere kopie en probeer opnieuw."
   },
   "accountPage": {
     "statActive": "Actieve sollicitaties",
