@@ -2767,6 +2767,7 @@ export type Database = {
           postings_bytes: number
         }[]
       }
+      get_takedowns_today: { Args: never; Returns: number }
       get_temp_resume: {
         Args: { p_session_id: string }
         Returns: {
