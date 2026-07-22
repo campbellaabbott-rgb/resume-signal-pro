@@ -1816,6 +1816,21 @@ export type Database = {
         }
         Relationships: []
       }
+      showcase_excluded: {
+        Row: {
+          company_token: string
+          reason: string
+        }
+        Insert: {
+          company_token: string
+          reason?: string
+        }
+        Update: {
+          company_token?: string
+          reason?: string
+        }
+        Relationships: []
+      }
       suppressed_emails: {
         Row: {
           created_at: string
