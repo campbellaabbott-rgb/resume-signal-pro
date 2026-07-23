@@ -2846,6 +2846,10 @@
     }
   },
   "changelogEntries": {
+    "boardContinuity": {
+      "title": "Tableau plus fluide : badges de candidature, meilleure première visite, polissage mobile",
+      "description": "Les offres auxquelles vous avez déjà candidaté portent désormais une coche discrète sur les cartes et dans la comparaison — vous ne relirez plus une offre déjà traitée sans le savoir. Votre suivi de candidatures montre aussi le comportement de chaque employeur (pourvoit vraiment, ou republie souvent) là où vous attendez une réponse. Les nouveaux visiteurs reçoivent trois points de départ en un clic — publiées aujourd'hui, entreprises qui pourvoient, salaire indiqué uniquement. Sur mobile, la description passe en premier et les sections démarrent repliées ; les faits employeur se chargent avec un indicateur au lieu d'apparaître en retard."
+    },
     "decisionPanel": {
       "title": "Les faits sur l'entreprise là où vous décidez — et des descriptions plus lisibles",
       "description": "Le panneau de détail montre désormais qui vous rejoindriez vraiment : effectif vérifié, chiffre d'affaires et rentabilité des sociétés cotées et (pour les déposants H-1B) salaires déclarés — les mêmes faits sourcés que sur les pages entreprise, désormais à côté de chaque offre. Les longues descriptions se replient en sections quand l'offre a des titres clairs, avec vos surlignages conservés. La comparaison inclut désormais le mode de travail, la taille et les finances ; le tableau indique son ordre de tri ; et les utilisateurs connectés retrouvent leurs recherches en un clic."

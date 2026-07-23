@@ -2846,6 +2846,10 @@
     }
   },
   "changelogEntries": {
+    "boardContinuity": {
+      "title": "Quadro mais fluido: selos de candidatura, melhor primeira visita, polimento móvel",
+      "description": "As vagas às quais você já se candidatou agora levam uma marca discreta nos cartões e na comparação — você nunca mais relerá uma vaga já tratada sem saber. Seu rastreador de candidaturas também mostra o padrão de cada empregador (preenche de verdade, ou republica com frequência) bem onde você espera resposta. Visitantes de primeira viagem recebem três pontos de partida de um toque — publicadas hoje, empresas que preenchem vagas, só com salário declarado. No celular, a descrição vem primeiro e as seções começam dobradas; e os fatos do empregador carregam com um indicador em vez de aparecer tarde."
+    },
     "decisionPanel": {
       "title": "Fatos da empresa onde você decide — e descrições mais organizadas",
       "description": "O painel de detalhes agora mostra a quem você realmente se juntaria: quadro de funcionários verificado, receita e lucratividade de empresas listadas e (para requerentes H-1B) salários declarados — os mesmos fatos com fonte das páginas de empresa, agora ao lado de cada vaga. Descrições longas se dobram em seções quando a própria vaga tem títulos claros, preservando seus destaques. Comparar vagas agora inclui modo de trabalho, porte e finanças; o quadro diz como está ordenado; e usuários logados veem suas buscas salvas como chips de um toque."

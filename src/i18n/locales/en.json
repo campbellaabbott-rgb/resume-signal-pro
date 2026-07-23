@@ -2846,6 +2846,10 @@
     }
   },
   "changelogEntries": {
+    "boardContinuity": {
+      "title": "Smoother board: applied badges, a better first visit, mobile polish",
+      "description": "Postings you've already applied to now wear a quiet check on cards and in compare — you'll never re-read a job you already acted on without knowing it. Your application tracker also shows each employer's pattern (genuinely fills roles, or re-lists often) right where you're waiting to hear back. First-time visitors get three one-tap starting points — posted today, companies that fill roles, stated pay only. On phones, descriptions lead and sections start folded; and employer facts now load with a placeholder instead of popping in late."
+    },
     "decisionPanel": {
       "title": "Company facts where you decide — plus tidier job descriptions",
       "description": "The job detail panel now shows who you'd actually be joining: verified headcount, public-company revenue and profitability, and (for H-1B filers) declared wages — the same sourced facts from company pages, now beside every posting. Long descriptions fold into collapsible sections when the posting itself has clear headings, with your keyword highlights preserved. Comparing jobs now includes work mode, company size and financials; the board says how it's ordered; and signed-in users get their saved searches as one-tap chips."

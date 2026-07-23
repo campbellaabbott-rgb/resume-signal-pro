@@ -2846,6 +2846,10 @@
     }
   },
   "changelogEntries": {
+    "boardContinuity": {
+      "title": "Runderes Board: Beworben-Abzeichen, besserer erster Besuch, Mobil-Politur",
+      "description": "Anzeigen, auf die du dich schon beworben hast, tragen jetzt ein dezentes Häkchen auf Karten und im Vergleich — du liest nie wieder unwissend eine Stelle, die du schon bearbeitet hast. Dein Bewerbungs-Tracker zeigt zudem das Muster jedes Arbeitgebers (besetzt wirklich, oder schreibt oft neu aus) genau dort, wo du auf Antwort wartest. Erstbesucher bekommen drei Ein-Klick-Startpunkte — heute ausgeschrieben, Firmen, die Stellen besetzen, nur mit Gehaltsangabe. Auf dem Handy führt die Beschreibung und Abschnitte starten eingeklappt; Arbeitgeberfakten laden mit Platzhalter statt verspätet aufzutauchen."
+    },
     "decisionPanel": {
       "title": "Unternehmensfakten dort, wo du entscheidest — plus aufgeräumte Stellenbeschreibungen",
       "description": "Das Detailpanel zeigt jetzt, wem du wirklich beitreten würdest: verifizierte Mitarbeiterzahl, Umsatz und Profitabilität börsennotierter Firmen und (bei H-1B-Antragstellern) deklarierte Gehälter — dieselben belegten Fakten der Firmenseiten, jetzt neben jeder Anzeige. Lange Beschreibungen falten sich in Abschnitte, wenn die Anzeige selbst klare Überschriften hat, mit erhaltenen Keyword-Markierungen. Der Vergleich umfasst jetzt Arbeitsmodus, Größe und Finanzen; das Board sagt, wie es sortiert; angemeldete Nutzer bekommen ihre gespeicherten Suchen als Ein-Klick-Chips."

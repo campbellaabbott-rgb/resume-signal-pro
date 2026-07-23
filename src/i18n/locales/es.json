@@ -2846,6 +2846,10 @@
     }
   },
   "changelogEntries": {
+    "boardContinuity": {
+      "title": "Tablón más fluido: insignias de postulado, mejor primera visita, pulido móvil",
+      "description": "Los anuncios a los que ya postulaste ahora llevan una marca discreta en las tarjetas y en comparar — nunca releerás un empleo sobre el que ya actuaste sin saberlo. Tu registro de postulaciones también muestra el patrón de cada empleador (cubre puestos de verdad, o republica a menudo) justo donde esperas respuesta. Quien visita por primera vez recibe tres puntos de partida de un toque — publicado hoy, empresas que cubren puestos, solo salario declarado. En el móvil, la descripción va primero y las secciones empiezan plegadas; y los datos del empleador cargan con un indicador en vez de aparecer tarde."
+    },
     "decisionPanel": {
       "title": "Datos de la empresa donde decides — y descripciones más ordenadas",
       "description": "El panel de detalle ahora muestra a quién te unirías realmente: plantilla verificada, ingresos y rentabilidad de empresas cotizadas y (para solicitantes H-1B) salarios declarados — los mismos datos con fuente de las páginas de empresa, ahora junto a cada anuncio. Las descripciones largas se pliegan en secciones cuando el propio anuncio tiene encabezados claros, conservando tus resaltados. Comparar empleos ahora incluye modo de trabajo, tamaño y finanzas; el tablón dice cómo está ordenado; y los usuarios con sesión ven sus búsquedas guardadas como chips de un toque."

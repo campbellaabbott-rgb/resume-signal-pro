@@ -2846,6 +2846,10 @@
     }
   },
   "changelogEntries": {
+    "boardContinuity": {
+      "title": "Soepeler bord: sollicitatie-badges, betere eerste indruk, mobiele polish",
+      "description": "Vacatures waarop je al gesolliciteerd hebt dragen nu een subtiel vinkje op kaarten en in vergelijken — je leest nooit meer onwetend een vacature terug waar je al actie op ondernam. Je sollicitatietracker toont ook het patroon van elke werkgever (vervult echt, of herplaatst vaak) precies waar je op antwoord wacht. Nieuwe bezoekers krijgen drie startpunten met één tik — vandaag geplaatst, bedrijven die vacatures vervullen, alleen met vermeld salaris. Op mobiel gaat de beschrijving voorop en starten secties ingeklapt; werkgeversfeiten laden met een placeholder in plaats van laat te verschijnen."
+    },
     "decisionPanel": {
       "title": "Bedrijfsfeiten waar je beslist — plus overzichtelijkere vacatureteksten",
       "description": "Het detailpaneel toont nu bij wie je echt zou komen: geverifieerd personeelsaantal, omzet en winstgevendheid van beursgenoteerde bedrijven en (voor H-1B-indieners) opgegeven lonen — dezelfde onderbouwde feiten van bedrijfspagina's, nu naast elke vacature. Lange teksten vouwen in secties wanneer de vacature zelf duidelijke koppen heeft, met behoud van je markeringen. Vergelijken omvat nu werkmodus, omvang en financiën; het bord vertelt hoe het gesorteerd is; ingelogde gebruikers krijgen hun opgeslagen zoekopdrachten als chips."
