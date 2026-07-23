@@ -2846,6 +2846,10 @@
     }
   },
   "changelogEntries": {
+    "decisionPanel": {
+      "title": "Les faits sur l'entreprise là où vous décidez — et des descriptions plus lisibles",
+      "description": "Le panneau de détail montre désormais qui vous rejoindriez vraiment : effectif vérifié, chiffre d'affaires et rentabilité des sociétés cotées et (pour les déposants H-1B) salaires déclarés — les mêmes faits sourcés que sur les pages entreprise, désormais à côté de chaque offre. Les longues descriptions se replient en sections quand l'offre a des titres clairs, avec vos surlignages conservés. La comparaison inclut désormais le mode de travail, la taille et les finances ; le tableau indique son ordre de tri ; et les utilisateurs connectés retrouvent leurs recherches en un clic."
+    },
     "secFilings": {
       "title": "Connaître l'entreprise : dépôts SEC sur les pages d'embauche",
       "description": "Les pages de 178 employeurs cotés aux États-Unis montrent désormais quel type d'entreprise vous rejoindriez : le chiffre d'affaires des trois derniers exercices avec une mini tendance, la rentabilité et le ticker — tirés des propres dépôts SEC de l'entreprise (10-K/20-F), avec lien vers la source. Tels que déposés, jamais estimés."
@@ -2857,6 +2861,10 @@
     "fairDataPromise": {
       "title": "Promesse de données justes, employeurs vérifiés et 7 matins d'Agent gratuits",
       "description": "Trois choses en même temps. D'abord, une politique écrite : aucune entreprise ne peut payer pour changer ce que disent nos données — taux de pourvoi, signaux de rotation et badges sont calculés à partir des offres observées et ne sont pas à vendre (voir la page Confiance). Ensuite, les employeurs peuvent revendiquer leur page en vérifiant un e-mail professionnel à leur propre domaine et obtenir le badge Employeur vérifié — identité seulement, jamais de droits d'édition. Enfin, l'Agent de candidature commence désormais par 7 matins gratuits : réveillez-vous avec une vraie sélection avant de payer quoi que ce soit."
+    },
+    "companyIntel": {
+      "title": "Des pages entreprise qui parlent vraiment de l'entreprise",
+      "description": "Chaque page entreprise s'ouvre désormais sur des faits sourcés : effectif vérifié avec sa base, postes nets ajoutés cette semaine, médiane salariale déclarée par l'entreprise elle-même et ses principaux domaines de recrutement. Sous les offres, une section « entreprises similaires » montre qui recrute aussi dans le même domaine. Les segments par taille d'Explorer ont gagné des centaines d'effectifs vérifiés (Bosch, H&M, GM, Tyson…) et chaque bande s'étend désormais à sa liste complète."
     },
     "board450k": {
       "title": "Plus de 450 000 offres vérifiées — Pinpoint devient le 13e système",

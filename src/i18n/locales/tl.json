@@ -2846,6 +2846,10 @@
     }
   },
   "changelogEntries": {
+    "decisionPanel": {
+      "title": "Mga fact ng kumpanya kung saan ka nagpapasya — at mas maayos na deskripsyon",
+      "description": "Ipinapakita na ngayon ng detail panel kung kanino ka talaga sasali: beripikadong bilang ng empleyado, kita at kakayahang kumita ng mga nakalistang kumpanya, at (para sa mga H-1B filer) idineklarang sahod — ang parehong may-pinagmulang facts ng mga company page, ngayon ay katabi ng bawat posting. Ang mahahabang deskripsyon ay natutupi sa mga seksyon kapag may malinaw na heading ang posting mismo, buo pa rin ang iyong mga highlight. Kasama na sa paghahambing ang work mode, laki at pananalapi; sinasabi ng board kung paano ito nakaayos; at ang mga naka-sign in ay may one-tap chips ng kanilang mga naka-save na paghahanap."
+    },
     "secFilings": {
       "title": "Kilalanin ang kumpanya: SEC filings sa mga hiring page",
       "description": "Ang mga pahina ng 178 nakalistang employer sa US ay nagpapakita na ngayon kung anong klaseng kumpanya ang sasalihan mo — kita sa huling tatlong fiscal year na may mini trend, kung kumikita ang kumpanya, at ang ticker nito — lahat mula sa sariling SEC filings ng kumpanya (10-K/20-F), may link sa pinagmulan. Ayon sa isinampa, hindi kailanman tinantiya."
@@ -2857,6 +2861,10 @@
     "fairDataPromise": {
       "title": "Pangako ng patas na datos, beripikadong employer, at 7 libreng umaga ng Agent",
       "description": "Tatlong bagay nang sabay. Una, nakasulat na patakaran: walang kumpanyang makakabayad para baguhin ang sinasabi ng aming datos — ang fill rate, churn flag, at badge ay kinukuwenta mula sa mga naobserbahang posting at hindi ipinagbibili (tingnan ang Trust page). Pangalawa, maaari nang i-claim ng mga employer ang kanilang company page sa pag-verify ng work email sa sarili nilang domain para sa badge na Beripikadong employer — pagkakakilanlan lang, hindi kailanman karapatang mag-edit. Pangatlo, ang Apply Agent ay nagsisimula na sa 7 libreng umaga: gumising na may totoong shortlist bago magbayad ng kahit ano."
+    },
+    "companyIntel": {
+      "title": "Mga company page na totoong nagsasabi tungkol sa kumpanya",
+      "description": "Bawat company page ay nagsisimula na ngayon sa may-pinagmulang facts: beripikadong bilang ng empleyado kasama ang batayan, netong bagong posisyon ngayong linggo, ang median ng sahod na idineklara mismo ng kumpanya, at ang mga pangunahing larangan ng hiring nito. Sa ibaba ng mga posting, ipinapakita ng seksyong 'katulad na kumpanya' kung sino pa ang kumukuha sa parehong larangan. Nadagdagan ng daan-daang beripikadong bilang ang mga scale segment ng Explore (Bosch, H&M, GM, Tyson at iba pa) at bawat band ay bumubukas na sa buong listahan."
     },
     "board450k": {
       "title": "450,000+ verified na trabaho — Pinpoint na ang ika-13 hiring system",

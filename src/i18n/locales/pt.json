@@ -2846,6 +2846,10 @@
     }
   },
   "changelogEntries": {
+    "decisionPanel": {
+      "title": "Fatos da empresa onde você decide — e descrições mais organizadas",
+      "description": "O painel de detalhes agora mostra a quem você realmente se juntaria: quadro de funcionários verificado, receita e lucratividade de empresas listadas e (para requerentes H-1B) salários declarados — os mesmos fatos com fonte das páginas de empresa, agora ao lado de cada vaga. Descrições longas se dobram em seções quando a própria vaga tem títulos claros, preservando seus destaques. Comparar vagas agora inclui modo de trabalho, porte e finanças; o quadro diz como está ordenado; e usuários logados veem suas buscas salvas como chips de um toque."
+    },
     "secFilings": {
       "title": "Conheça a empresa: relatórios SEC nas páginas de vagas",
       "description": "As páginas de 178 empregadores listados nos EUA agora mostram a que tipo de empresa você se juntaria: receita dos últimos três anos fiscais com mini tendência, se a empresa é lucrativa e seu ticker — tudo dos próprios relatórios SEC da empresa (10-K/20-F), com link para a fonte. Conforme arquivado, nunca estimado."
@@ -2857,6 +2861,10 @@
     "fairDataPromise": {
       "title": "Promessa de dados justos, empregadores verificados e 7 manhãs grátis do Agente",
       "description": "Três coisas de uma vez. Primeiro, política por escrito: nenhuma empresa pode pagar para mudar o que nossos dados dizem — taxas de preenchimento, sinais de rotatividade e selos são calculados de anúncios observados e não estão à venda (veja a página de Confiança). Segundo, empregadores já podem reivindicar sua página verificando um e-mail de trabalho no próprio domínio e ganhar o selo de Empregador verificado — só identidade, nunca direitos de edição. Terceiro, o Agente de Candidatura agora começa com 7 manhãs grátis: acorde com uma lista real antes de pagar qualquer coisa."
+    },
+    "companyIntel": {
+      "title": "Páginas de empresa que realmente falam da empresa",
+      "description": "Cada página de empresa agora abre com fatos com fonte: quadro verificado com sua base, vagas líquidas novas da semana, a mediana salarial declarada pela própria empresa e suas principais áreas de contratação. Abaixo das vagas, uma seção de 'empresas similares' mostra quem mais contrata no mesmo campo. Os segmentos por porte do Explorar ganharam centenas de quadros verificados a mais (Bosch, H&M, GM, Tyson e outros) e cada faixa agora se expande para a lista completa."
     },
     "board450k": {
       "title": "Mais de 450.000 vagas verificadas — Pinpoint é o 13.º sistema",

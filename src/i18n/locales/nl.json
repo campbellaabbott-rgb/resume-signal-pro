@@ -2846,6 +2846,10 @@
     }
   },
   "changelogEntries": {
+    "decisionPanel": {
+      "title": "Bedrijfsfeiten waar je beslist — plus overzichtelijkere vacatureteksten",
+      "description": "Het detailpaneel toont nu bij wie je echt zou komen: geverifieerd personeelsaantal, omzet en winstgevendheid van beursgenoteerde bedrijven en (voor H-1B-indieners) opgegeven lonen — dezelfde onderbouwde feiten van bedrijfspagina's, nu naast elke vacature. Lange teksten vouwen in secties wanneer de vacature zelf duidelijke koppen heeft, met behoud van je markeringen. Vergelijken omvat nu werkmodus, omvang en financiën; het bord vertelt hoe het gesorteerd is; ingelogde gebruikers krijgen hun opgeslagen zoekopdrachten als chips."
+    },
     "secFilings": {
       "title": "Ken het bedrijf: SEC-rapporten op vacaturepagina's",
       "description": "Bedrijfspagina's van 178 Amerikaanse beursgenoteerde werkgevers tonen nu bij wat voor bedrijf je echt zou komen: omzet van de laatste drie boekjaren met mini-trend, of het bedrijf winstgevend is en de ticker — alles uit de eigen SEC-rapporten van het bedrijf (10-K/20-F), met bronlink. Zoals ingediend, nooit geschat."
@@ -2857,6 +2861,10 @@
     "fairDataPromise": {
       "title": "Een eerlijke-databelofte, geverifieerde werkgevers en 7 gratis Agent-ochtenden",
       "description": "Drie dingen tegelijk. Ten eerste, beleid op papier: geen enkel bedrijf kan betalen om onze data te veranderen — vervullingspercentages, churn-signalen en badges worden berekend uit waargenomen vacatures en zijn niet te koop (zie de Vertrouwenspagina). Ten tweede kunnen werkgevers nu hun bedrijfspagina claimen door een werk-e-mail op hun eigen domein te verifiëren en de badge Geverifieerde werkgever verdienen — alleen identiteit, nooit bewerkingsrechten. Ten derde begint de Sollicitatie-Agent nu met 7 gratis ochtenden: word wakker met een echte shortlist voordat je iets betaalt."
+    },
+    "companyIntel": {
+      "title": "Bedrijfspagina's die echt iets over het bedrijf vertellen",
+      "description": "Elke bedrijfspagina opent nu met onderbouwde feiten: geverifieerd personeelsaantal met bron, netto nieuwe vacatures deze week, de door het bedrijf zelf vermelde salarismediaan en zijn belangrijkste wervingsvelden. Onder de vacatures toont een sectie 'vergelijkbare bedrijven' wie er nog meer werft in hetzelfde veld. De groottesegmenten in Explore kregen honderden extra geverifieerde aantallen (Bosch, H&M, GM, Tyson en meer) en elke band klapt nu uit naar de volledige lijst."
     },
     "board450k": {
       "title": "450.000+ geverifieerde vacatures — Pinpoint is het 13e systeem",

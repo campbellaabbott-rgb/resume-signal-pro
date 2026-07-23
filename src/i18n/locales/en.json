@@ -2846,6 +2846,10 @@
     }
   },
   "changelogEntries": {
+    "decisionPanel": {
+      "title": "Company facts where you decide — plus tidier job descriptions",
+      "description": "The job detail panel now shows who you'd actually be joining: verified headcount, public-company revenue and profitability, and (for H-1B filers) declared wages — the same sourced facts from company pages, now beside every posting. Long descriptions fold into collapsible sections when the posting itself has clear headings, with your keyword highlights preserved. Comparing jobs now includes work mode, company size and financials; the board says how it's ordered; and signed-in users get their saved searches as one-tap chips."
+    },
     "secFilings": {
       "title": "Know the company: SEC filings on hiring pages",
       "description": "Company pages for 178 US-listed employers now show what kind of company you'd actually be joining — revenue over the last three fiscal years with a mini trend, whether the company is profitable, and its ticker — all pulled from the company's own SEC filings (10-K/20-F), with a link to the source. As filed, never estimated."
@@ -2857,6 +2861,10 @@
     "fairDataPromise": {
       "title": "A fair-data promise, verified employers, and 7 free Agent mornings",
       "description": "Three things shipped together. First, policy in writing: no company can pay to change what our data says — fill rates, churn flags, and badges are computed from observed postings and are not for sale (see the Trust page). Second, employers can now claim their company page by verifying a work email at their own domain, earning a Verified employer badge — identity only, never editing rights. Third, the Apply Agent now starts with 7 free mornings, so you can wake up to a real shortlist before paying anything."
+    },
+    "companyIntel": {
+      "title": "Company pages that actually tell you about the company",
+      "description": "Every company page now leads with sourced facts: verified headcount with its basis, this week's net-new roles, the company's own stated-salary median, and its top hiring fields. Below the postings, a 'similar companies' section shows who else is hiring in the same field. The Explore scale segments got hundreds more verified headcounts (Bosch, H&M, GM, Tyson and more) and every band now expands to its full company list."
     },
     "board450k": {
       "title": "450,000+ verified openings — Pinpoint joins as the 13th hiring system",

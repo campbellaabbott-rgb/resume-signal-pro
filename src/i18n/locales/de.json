@@ -2846,6 +2846,10 @@
     }
   },
   "changelogEntries": {
+    "decisionPanel": {
+      "title": "Unternehmensfakten dort, wo du entscheidest — plus aufgeräumte Stellenbeschreibungen",
+      "description": "Das Detailpanel zeigt jetzt, wem du wirklich beitreten würdest: verifizierte Mitarbeiterzahl, Umsatz und Profitabilität börsennotierter Firmen und (bei H-1B-Antragstellern) deklarierte Gehälter — dieselben belegten Fakten der Firmenseiten, jetzt neben jeder Anzeige. Lange Beschreibungen falten sich in Abschnitte, wenn die Anzeige selbst klare Überschriften hat, mit erhaltenen Keyword-Markierungen. Der Vergleich umfasst jetzt Arbeitsmodus, Größe und Finanzen; das Board sagt, wie es sortiert; angemeldete Nutzer bekommen ihre gespeicherten Suchen als Ein-Klick-Chips."
+    },
     "secFilings": {
       "title": "Das Unternehmen kennen: SEC-Berichte auf den Jobseiten",
       "description": "Die Seiten von 178 US-börsennotierten Arbeitgebern zeigen jetzt, welchem Unternehmen man wirklich beitreten würde: Umsatz der letzten drei Geschäftsjahre mit Mini-Trend, Profitabilität und Ticker — alles aus den eigenen SEC-Berichten des Unternehmens (10-K/20-F), mit Quellenlink. Wie eingereicht, nie geschätzt."
@@ -2857,6 +2861,10 @@
     "fairDataPromise": {
       "title": "Faire-Daten-Versprechen, verifizierte Arbeitgeber und 7 gratis Agent-Morgen",
       "description": "Drei Dinge auf einmal. Erstens, Richtlinie schriftlich: Kein Unternehmen kann dafür bezahlen, unsere Daten zu ändern — Besetzungsquoten, Churn-Hinweise und Abzeichen werden aus beobachteten Anzeigen berechnet und stehen nicht zum Verkauf (siehe Vertrauensseite). Zweitens können Arbeitgeber jetzt ihre Firmenseite beanspruchen, indem sie eine Arbeits-E-Mail an der eigenen Domain bestätigen — nur Identität, nie Bearbeitungsrechte. Drittens startet der Bewerbungs-Agent jetzt mit 7 gratis Morgen: Wach mit einer echten Auswahl auf, bevor du irgendetwas zahlst."
+    },
+    "companyIntel": {
+      "title": "Firmenseiten, die wirklich etwas über die Firma sagen",
+      "description": "Jede Firmenseite beginnt jetzt mit belegten Fakten: verifizierte Mitarbeiterzahl samt Basis, netto neue Stellen dieser Woche, der vom Unternehmen selbst genannte Gehaltsmedian und seine wichtigsten Einstellungsfelder. Unter den Anzeigen zeigt eine Sektion „ähnliche Unternehmen“, wer noch im selben Feld einstellt. Die Größensegmente in Explore erhielten hunderte weitere verifizierte Zahlen (Bosch, H&M, GM, Tyson u. a.) und jede Gruppe lässt sich jetzt zur vollen Liste ausklappen."
     },
     "board450k": {
       "title": "Über 450.000 verifizierte Stellen — Pinpoint wird das 13. System",
