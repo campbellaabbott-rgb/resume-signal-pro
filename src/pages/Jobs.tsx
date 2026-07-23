@@ -22,6 +22,10 @@ import { ApplicationAnswers } from "@/components/apply/ApplicationAnswers";
 import { CompanyClaim } from "@/components/jobs/CompanyClaim";
 import { CompanyIntelPanel } from "@/components/jobs/CompanyIntelPanel";
 import { PublicCompanyCard } from "@/components/jobs/PublicCompanyCard";
+import { DeclaredWagesCard } from "@/components/jobs/DeclaredWagesCard";
+import { EmployerContext } from "@/components/jobs/EmployerContext";
+import { SavedSearchPills } from "@/components/jobs/SavedSearchPills";
+import { getEmployerCtx, type EmployerCtx } from "@/lib/employer-context";
 import { SimilarCompanies } from "@/components/jobs/SimilarCompanies";
 import { TailoredResumeModal, type TailoredResumeContent } from "@/components/TailoredResumeModal";
 import { supabase } from "@/integrations/supabase/client";
@@ -370,7 +374,21 @@ export default function Jobs() {
   // Batch 3: compare tray (client-side only — every compared field is already
   // loaded: fit/hits/misses, salary, age, company hiring-health).
   const [compareIds, setCompareIds] = useState<string[]>([]);
+  // Employer context per compared company (slug-keyed, shared promise cache) —
+  // fills the compare cards with headcount/public-co facts when they exist.
+  const [compareCtx, setCompareCtx] = useState<Record<string, EmployerCtx>>({});
   const [compareOpen, setCompareOpen] = useState(false);
+  useEffect(() => {
+    if (!compareOpen) return;
+    for (const id of compareIds) {
+      const j = jobs.find((x) => x.id === id);
+      if (!j?.token) continue;
+      const slug = j.token.split("~")[0];
+      if (compareCtx[slug]) continue;
+      void getEmployerCtx(j.token).then((c) => setCompareCtx((prev) => ({ ...prev, [slug]: c })));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [compareOpen, compareIds]);
   const toggleCompare = useCallback((id: string) => {
     setCompareIds((prev) => prev.includes(id)
       ? prev.filter((x) => x !== id)
@@ -1781,26 +1799,56 @@ export default function Jobs() {
   // Inline keyword highlighting: the posting's own text with the fit
   // keywords marked in place — green for terms the resume covers, amber for
   // gaps. Only possible because we hold both sides; no other board can.
-  const highlightedDesc = useMemo(() => {
+  // JD headings that mark a section start. Conservative: a short standalone
+  // line matching a known heading — anything else renders as before. EN plus
+  // the highest-frequency DE/FR/ES equivalents on the board.
+  const JD_HEADING = /^\s*(what you(?:'|’)ll (?:do|be doing)|responsibilities|your (?:role|mission|profile|tasks)|the role|role overview|requirements|qualifications|what (?:you(?:'|’)ll|we(?:'|’)re looking for|you bring|we offer|we expect)|about (?:you|us|the role|the team|the job)|who you are|nice to have(?:s)?|bonus points|benefits|perks|compensation|why (?:join|you(?:'|’)ll love it)|skills(?: (?:&|and) experience)?|duties|deine aufgaben|dein profil|wir bieten|vos missions|votre profil|tus funciones|requisitos|beneficios|ofrecemos)\s*:?\s*$/i;
+
+  const descContent = useMemo(() => {
     if (!detailDesc || !detailJob) return null;
     const clean = decodeEntities(detailDesc);
     const hitList = (hits[detailJob.id] ?? []).filter((k) => k.length > 1);
     const missList = (misses[detailJob.id] ?? []).filter((k) => k.length > 1);
-    if (hitList.length + missList.length === 0) return <>{clean}</>;
-    const esc = (k: string) => k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const re = new RegExp(`(${[...hitList, ...missList].map(esc).join("|")})`, "gi");
     const hitSet = new Set(hitList.map((k) => k.toLowerCase()));
     const missSet = new Set(missList.map((k) => k.toLowerCase()));
-    return (
-      <>
-        {clean.split(re).map((part, i) => {
-          const lower = part.toLowerCase();
-          if (hitSet.has(lower)) return <mark key={i} className="bg-success/20 text-success rounded px-0.5">{part}</mark>;
-          if (missSet.has(lower)) return <mark key={i} className="bg-warning/20 text-warning rounded px-0.5">{part}</mark>;
-          return part;
-        })}
-      </>
-    );
+    const esc = (k: string) => k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const re = hitList.length + missList.length > 0
+      ? new RegExp(`(${[...hitList, ...missList].map(esc).join("|")})`, "gi")
+      : null;
+    const renderText = (text: string, keyBase: string) => {
+      if (!re) return <>{text}</>;
+      return (
+        <>
+          {text.split(re).map((part, i) => {
+            const lower = part.toLowerCase();
+            if (hitSet.has(lower)) return <mark key={`${keyBase}-${i}`} className="bg-success/20 text-success rounded px-0.5">{part}</mark>;
+            if (missSet.has(lower)) return <mark key={`${keyBase}-${i}`} className="bg-warning/20 text-warning rounded px-0.5">{part}</mark>;
+            return part;
+          })}
+        </>
+      );
+    };
+    // Sectionize: split on heading lines; needs >=2 real headings to engage.
+    const lines = clean.split("\n");
+    const sections: Array<{ title: string | null; body: string[] }> = [{ title: null, body: [] }];
+    for (const line of lines) {
+      if (line.trim().length <= 60 && JD_HEADING.test(line)) {
+        sections.push({ title: line.trim().replace(/:\s*$/, ""), body: [] });
+      } else {
+        sections[sections.length - 1].body.push(line);
+      }
+    }
+    const titled = sections.filter((sec) => sec.title);
+    if (titled.length < 2) {
+      return { sections: null, plain: renderText(clean, "p") };
+    }
+    return {
+      plain: null,
+      sections: sections
+        .map((sec) => ({ title: sec.title, text: sec.body.join("\n").trim() }))
+        .filter((sec) => sec.title !== null ? true : sec.text.length > 0)
+        .map((sec, si) => ({ title: sec.title, node: renderText(sec.text, `s${si}`) })),
+    };
   }, [detailDesc, detailJob, hits, misses]);
   const descHasHighlights = !!detailJob && ((hits[detailJob.id]?.length ?? 0) + (misses[detailJob.id]?.length ?? 0)) > 0;
 
@@ -2030,6 +2078,10 @@ export default function Jobs() {
                   </div>
                 );
               })()}
+              {/* About this employer: the sourced company facts (headcount,
+                  SEC financials, declared H-1B wages) at the decision point —
+                  previously lander-only. */}
+              <EmployerContext companyToken={detailJob.token} companyName={detailJob.company} postingTitle={detailJob.title} />
               {/* Inline fit: never leave the posting to learn your score. With
                   a resume on file but ranking off, one click scores in place;
                   while scores load, say so; without a resume the actions row's
@@ -2081,7 +2133,23 @@ export default function Jobs() {
                       <mark className="bg-warning/20 text-warning rounded px-1">{t("jobsPage.hlMissing", "missing from it")}</mark>
                     </p>
                   )}
-                  <div className="text-sm text-muted-foreground whitespace-pre-line leading-7 max-w-[72ch]">{highlightedDesc}</div>
+                  {descContent?.sections ? (
+                    <div className="max-w-[72ch] space-y-1">
+                      {descContent.sections.map((sec, i) => sec.title ? (
+                        <details key={i} open={i <= 2} className="group rounded-lg border border-border/60">
+                          <summary className="cursor-pointer select-none px-3 py-2 text-sm font-semibold text-foreground list-none flex items-center justify-between focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary rounded-lg">
+                            {sec.title}
+                            <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform group-open:rotate-180 motion-reduce:transition-none" />
+                          </summary>
+                          <div className="px-3 pb-3 text-sm text-muted-foreground whitespace-pre-line leading-7">{sec.node}</div>
+                        </details>
+                      ) : (
+                        <div key={i} className="text-sm text-muted-foreground whitespace-pre-line leading-7">{sec.node}</div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-sm text-muted-foreground whitespace-pre-line leading-7 max-w-[72ch]">{descContent?.plain}</div>
+                  )}
                 </div>
               ) : (
                 <p className="text-sm text-muted-foreground italic">
@@ -2184,7 +2252,7 @@ export default function Jobs() {
             )}
             {!landerCompany && newToday !== null && (
               <span className="inline-flex items-center gap-1.5 ml-2 text-success whitespace-nowrap">
-                <span aria-hidden="true" className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
+                <span aria-hidden="true" className="w-1.5 h-1.5 rounded-full bg-success animate-pulse motion-reduce:animate-none" />
                 {t("jobsPage.newTodayLine", "{{n}} posted today.", { n: newToday.toLocaleString() })}
               </span>
             )}
@@ -2195,6 +2263,11 @@ export default function Jobs() {
           {landerCompany && <CompanyIntelPanel companyToken={landerCompany} />}
           {/* SEC-sourced financial context for US-listed employers. */}
           {landerCompany && <PublicCompanyCard companyToken={landerCompany} />}
+          {/* DOL-sourced declared wages (H-1B filings) — labeled, never
+              presented as company-wide pay. */}
+          {landerCompany && (
+            <DeclaredWagesCard companyToken={landerCompany} companyName={landerCompanyName ?? landerCompany} />
+          )}
           {landerCompany && (
             <CompanyClaim companyToken={landerCompany} companyName={landerCompanyName ?? landerCompany} />
           )}
@@ -2716,10 +2789,24 @@ export default function Jobs() {
               <option value="newest">{t("jobsPage.sortNewest", "Newest first")}</option>
               <option value="salary">{t("jobsPage.sortSalary", "Highest stated salary")}</option>
             </select>
+            {/* Why this order: the board explains its data everywhere else —
+                the ranking shouldn't be the one unexplained thing. */}
+            <span className="text-[11px] text-muted-foreground">
+              {fitRanking
+                ? t("jobsPage.orderFit", "ordered by fit to your résumé")
+                : sortMode === "salary"
+                  ? t("jobsPage.orderSalary", "ordered by stated salary floor — postings without stated pay sort last")
+                  : q
+                    ? t("jobsPage.orderRelevance", "ordered by relevance to your search")
+                    : t("jobsPage.orderNewest", "newest first, company-stated dates before undated")}
+            </span>
             {salaryFloor > 0 && (
               <span className="text-[11px] text-muted-foreground">
                 {t("jobsPage.salaryFloorNote", "Only postings that state pay of ${{amount}}k+ (annualized) — most companies don't publish pay, so this hides them.", { amount: salaryFloor / 1000 })}
               </span>
+            )}
+            {!q && !company && (
+              <span className="basis-full"><SavedSearchPills /></span>
             )}
             {recentJobs.length > 0 && !detailJob && (
               <span className="flex items-center gap-2 basis-full mt-1 overflow-x-auto md:overflow-visible md:flex-wrap [mask-image:linear-gradient(to_right,black_92%,transparent)] md:[mask-image:none]">
@@ -3376,6 +3463,7 @@ export default function Jobs() {
                               : "text-muted-foreground border-border hover:border-primary/50"
                           }`}
                           title={t("jobsPage.compareTip", "Add to compare (up to 3)")}
+                          aria-label={t("jobsPage.compareTip", "Add to compare (up to 3)")}
                         >
                           {t("jobsPage.compareToggle", "⇄")}
                         </button>
@@ -3705,6 +3793,35 @@ export default function Jobs() {
                         <li>{t("jobsPage.missingKeywords", "Missing from your resume:")} {misses[id]!.slice(0, 4).join(", ")}</li>
                       )}
                       {j.salary && <li>{j.salary}</li>}
+                      {j.workMode && (
+                        <li>{t(`jobsPage.workMode.${j.workMode}`, j.workMode)}</li>
+                      )}
+                      {(() => {
+                        const ctx = j.token ? compareCtx[j.token.split("~")[0]] : undefined;
+                        if (!ctx) return null;
+                        return (
+                          <>
+                            {ctx.employees != null && (
+                              <li>{t("jobsPage.employerCtx.employees", "≈{{n}} employees ({{basis}})", {
+                                n: ctx.employees.toLocaleString(),
+                                basis: ctx.employeeBasis === "yc_self_reported"
+                                  ? t("jobsPage.intel.basisYc", "YC profile")
+                                  : t("jobsPage.intel.basisPr", "public records"),
+                              })}</li>
+                            )}
+                            {ctx.ticker && ctx.revenue != null && (
+                              <li>
+                                {ctx.exchange}: {ctx.ticker} · {ctx.revenue >= 1e9 ? `$${(ctx.revenue / 1e9).toFixed(1)}B` : `$${Math.round(ctx.revenue / 1e6)}M`}
+                                {ctx.netIncome != null && (
+                                  <span className={ctx.netIncome > 0 ? " text-success" : " text-destructive"}>
+                                    {" "}· {ctx.netIncome > 0 ? t("jobsPage.employerCtx.profitable", "profitable") : t("jobsPage.employerCtx.unprofitable", "operating at a loss")}
+                                  </span>
+                                )}
+                              </li>
+                            )}
+                          </>
+                        );
+                      })()}
                       {age !== null && (
                         <li>{age === 0 ? t("jobsPage.postedToday", "today") : t("jobsPage.postedDaysAgo", "{{count}}d ago", { count: age })}</li>
                       )}

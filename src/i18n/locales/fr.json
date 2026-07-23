@@ -4395,6 +4395,29 @@
       "netLoss": "Perte nette {{v}} (FY{{y}})",
       "trendAria": "Chiffre d'affaires par exercice",
       "sourceLine": "Source : les propres dépôts SEC de {{name}} (10-K/20-F). Chiffres tels que déposés ; pas un conseil en investissement."
+    },
+    "h1b": {
+      "chip": "Salaires déclarés · dossiers H-1B {{fy}}",
+      "summary": "{{company}} a déclaré des salaires de base pour {{n}} postes H-1B certifiés — médiane {{m}}/an.",
+      "range": "{{lo}}–{{hi}} · {{n}} dossiers",
+      "sourceLine": "Source : fichiers publics LCA du Département du Travail américain — salaires de base déclarés par l'employeur, annualisés. Postes H-1B uniquement ; pas la paie de toute l'entreprise."
+    },
+    "employerCtx": {
+      "title": "À propos de cet employeur",
+      "employees": "≈{{n}} salariés ({{basis}})",
+      "publicCo": "Société cotée ({{ex}} : {{tk}}) — {{rev}} de chiffre d'affaires FY{{y}}",
+      "profitable": "rentable",
+      "unprofitable": "en perte",
+      "declared": "Médiane déclarée de {{m}}/an pour « {{role}} » dans les dossiers H-1B ({{n}} dossiers, {{fy}}) — registres publics du DOL américain.",
+      "declaredCompany": "Médiane déclarée de {{m}}/an sur {{n}} dossiers H-1B ({{fy}}) — registres publics du DOL ; postes H-1B uniquement.",
+      "companyPage": "Profil de recrutement complet de {{company}}"
+    },
+    "orderFit": "trié par adéquation avec votre CV",
+    "orderSalary": "trié par plancher salarial déclaré — les offres sans salaire en dernier",
+    "orderRelevance": "trié par pertinence pour votre recherche",
+    "orderNewest": "les plus récentes d'abord, dates déclarées avant non datées",
+    "pills": {
+      "label": "Vos recherches :"
     }
   },
   "accountPage": {

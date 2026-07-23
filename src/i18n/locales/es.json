@@ -4395,6 +4395,29 @@
       "netLoss": "Pérdida neta {{v}} (FY{{y}})",
       "trendAria": "Ingresos por año fiscal",
       "sourceLine": "Fuente: informes de {{name}} ante la SEC (10-K/20-F). Cifras según lo presentado; no es asesoramiento de inversión."
+    },
+    "h1b": {
+      "chip": "Salarios declarados · solicitudes H-1B {{fy}}",
+      "summary": "{{company}} declaró salarios base para {{n}} puestos H-1B certificados — mediana {{m}}/año.",
+      "range": "{{lo}}–{{hi}} · {{n}} solicitudes",
+      "sourceLine": "Fuente: archivos públicos LCA del Departamento de Trabajo de EE. UU. — salarios base declarados por el empleador, anualizados. Solo puestos H-1B; no es el salario de toda la empresa."
+    },
+    "employerCtx": {
+      "title": "Sobre este empleador",
+      "employees": "≈{{n}} empleados ({{basis}})",
+      "publicCo": "Empresa cotizada ({{ex}}: {{tk}}) — ingresos de {{rev}} FY{{y}}",
+      "profitable": "rentable",
+      "unprofitable": "opera con pérdidas",
+      "declared": "Declaró una mediana de {{m}}/año para “{{role}}” en solicitudes H-1B ({{n}} solicitudes, {{fy}}) — registros públicos del DOL de EE. UU.",
+      "declaredCompany": "Mediana declarada de {{m}}/año en {{n}} solicitudes H-1B ({{fy}}) — registros públicos del DOL; solo puestos H-1B.",
+      "companyPage": "Perfil completo de contratación de {{company}}"
+    },
+    "orderFit": "ordenado por ajuste a tu currículum",
+    "orderSalary": "ordenado por piso salarial declarado — los anuncios sin salario van al final",
+    "orderRelevance": "ordenado por relevancia para tu búsqueda",
+    "orderNewest": "más recientes primero, fechas declaradas antes que sin fecha",
+    "pills": {
+      "label": "Tus búsquedas:"
     }
   },
   "accountPage": {

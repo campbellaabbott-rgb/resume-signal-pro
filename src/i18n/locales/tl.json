@@ -4395,6 +4395,29 @@
       "netLoss": "Netong lugi {{v}} (FY{{y}})",
       "trendAria": "Kita ayon sa fiscal year",
       "sourceLine": "Pinagmulan: sariling SEC filings ni {{name}} (10-K/20-F). Mga bilang ayon sa isinampa; hindi payo sa pamumuhunan."
+    },
+    "h1b": {
+      "chip": "Idineklarang sahod · H-1B filings {{fy}}",
+      "summary": "Nagdeklara ang {{company}} ng batayang sahod para sa {{n}} sertipikadong H-1B na posisyon — median {{m}}/taon.",
+      "range": "{{lo}}–{{hi}} · {{n}} filing",
+      "sourceLine": "Pinagmulan: pampublikong LCA files ng US Department of Labor — batayang sahod ayon sa deklarasyon ng employer, taunan. H-1B na posisyon lamang; hindi sahod ng buong kumpanya."
+    },
+    "employerCtx": {
+      "title": "Tungkol sa employer na ito",
+      "employees": "≈{{n}} empleyado ({{basis}})",
+      "publicCo": "Nakalistang kumpanya ({{ex}}: {{tk}}) — {{rev}} kita FY{{y}}",
+      "profitable": "kumikita",
+      "unprofitable": "lugi ang operasyon",
+      "declared": "Idineklarang median na {{m}}/taon para sa “{{role}}” sa H-1B filings ({{n}} filing, {{fy}}) — pampublikong rekord ng US DOL.",
+      "declaredCompany": "Idineklarang median na {{m}}/taon sa {{n}} H-1B filings ({{fy}}) — pampublikong rekord ng DOL; H-1B lamang.",
+      "companyPage": "Buong hiring profile ng {{company}}"
+    },
+    "orderFit": "nakaayos ayon sa tugma sa iyong resume",
+    "orderSalary": "nakaayos ayon sa nakasaad na salary floor — huli ang walang sahod",
+    "orderRelevance": "nakaayos ayon sa kaugnayan sa iyong paghahanap",
+    "orderNewest": "pinakabago muna, may nakasaad na petsa bago ang wala",
+    "pills": {
+      "label": "Iyong mga paghahanap:"
     }
   },
   "accountPage": {

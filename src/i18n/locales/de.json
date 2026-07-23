@@ -4395,6 +4395,29 @@
       "netLoss": "Nettoverlust {{v}} (GJ{{y}})",
       "trendAria": "Umsatz nach Geschäftsjahr",
       "sourceLine": "Quelle: {{name}}s eigene SEC-Berichte (10-K/20-F). Zahlen wie eingereicht; keine Anlageberatung."
+    },
+    "h1b": {
+      "chip": "Deklarierte Gehälter · H-1B-Anträge {{fy}}",
+      "summary": "{{company}} hat Grundgehälter für {{n}} zertifizierte H-1B-Stellen deklariert — Median {{m}}/Jahr.",
+      "range": "{{lo}}–{{hi}} · {{n}} Anträge",
+      "sourceLine": "Quelle: öffentliche LCA-Daten des US-Arbeitsministeriums — vom Arbeitgeber deklarierte Grundgehälter, annualisiert. Nur H-1B-Stellen; nicht die unternehmensweite Bezahlung."
+    },
+    "employerCtx": {
+      "title": "Über diesen Arbeitgeber",
+      "employees": "≈{{n}} Mitarbeitende ({{basis}})",
+      "publicCo": "Börsennotiert ({{ex}}: {{tk}}) — {{rev}} Umsatz GJ{{y}}",
+      "profitable": "profitabel",
+      "unprofitable": "schreibt Verluste",
+      "declared": "Deklarierter Median {{m}}/Jahr für „{{role}}“ in H-1B-Anträgen ({{n}} Anträge, {{fy}}) — öffentliche US-DOL-Daten.",
+      "declaredCompany": "Deklarierter Median {{m}}/Jahr über {{n}} H-1B-Anträge ({{fy}}) — öffentliche DOL-Daten; nur H-1B-Stellen.",
+      "companyPage": "Vollständiges Einstellungsprofil von {{company}}"
+    },
+    "orderFit": "sortiert nach Passung zu deinem Lebenslauf",
+    "orderSalary": "sortiert nach genanntem Mindestgehalt — Anzeigen ohne Gehalt zuletzt",
+    "orderRelevance": "sortiert nach Relevanz für deine Suche",
+    "orderNewest": "Neueste zuerst, genannte Daten vor undatierten",
+    "pills": {
+      "label": "Deine Suchen:"
     }
   },
   "accountPage": {

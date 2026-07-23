@@ -4395,6 +4395,29 @@
       "netLoss": "Prejuízo líquido {{v}} (FY{{y}})",
       "trendAria": "Receita por ano fiscal",
       "sourceLine": "Fonte: os próprios relatórios de {{name}} à SEC (10-K/20-F). Números conforme arquivados; não é aconselhamento de investimento."
+    },
+    "h1b": {
+      "chip": "Salários declarados · pedidos H-1B {{fy}}",
+      "summary": "{{company}} declarou salários-base para {{n}} posições H-1B certificadas — mediana {{m}}/ano.",
+      "range": "{{lo}}–{{hi}} · {{n}} pedidos",
+      "sourceLine": "Fonte: arquivos públicos LCA do Departamento do Trabalho dos EUA — salários-base declarados pelo empregador, anualizados. Apenas posições H-1B; não é o salário de toda a empresa."
+    },
+    "employerCtx": {
+      "title": "Sobre este empregador",
+      "employees": "≈{{n}} funcionários ({{basis}})",
+      "publicCo": "Empresa listada ({{ex}}: {{tk}}) — receita de {{rev}} FY{{y}}",
+      "profitable": "lucrativa",
+      "unprofitable": "opera com prejuízo",
+      "declared": "Mediana declarada de {{m}}/ano para “{{role}}” em pedidos H-1B ({{n}} pedidos, {{fy}}) — registros públicos do DOL dos EUA.",
+      "declaredCompany": "Mediana declarada de {{m}}/ano em {{n}} pedidos H-1B ({{fy}}) — registros públicos do DOL; apenas posições H-1B.",
+      "companyPage": "Perfil completo de contratação da {{company}}"
+    },
+    "orderFit": "ordenado por adequação ao seu currículo",
+    "orderSalary": "ordenado pelo piso salarial declarado — vagas sem salário vão por último",
+    "orderRelevance": "ordenado por relevância para sua busca",
+    "orderNewest": "mais recentes primeiro, datas declaradas antes das sem data",
+    "pills": {
+      "label": "Suas buscas:"
     }
   },
   "accountPage": {

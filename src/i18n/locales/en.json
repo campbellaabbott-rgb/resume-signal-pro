@@ -4395,6 +4395,29 @@
       "netLoss": "Net loss {{v}} (FY{{y}})",
       "trendAria": "Revenue by fiscal year",
       "sourceLine": "Source: {{name}}'s own SEC filings (10-K/20-F). Figures as filed; not investment advice."
+    },
+    "h1b": {
+      "chip": "Declared wages · H-1B filings {{fy}}",
+      "summary": "{{company}} declared base wages for {{n}} certified H-1B positions — median {{m}}/year.",
+      "range": "{{lo}}–{{hi}} · {{n}} filings",
+      "sourceLine": "Source: US Department of Labor LCA disclosure files — base wages as declared by the employer, annualized. H-1B roles only; not company-wide pay."
+    },
+    "employerCtx": {
+      "title": "About this employer",
+      "employees": "≈{{n}} employees ({{basis}})",
+      "publicCo": "Public company ({{ex}}: {{tk}}) — {{rev}} revenue FY{{y}}",
+      "profitable": "profitable",
+      "unprofitable": "operating at a loss",
+      "declared": "Declared {{m}}/yr median for “{{role}}” in H-1B filings ({{n}} filings, {{fy}}) — US DOL public records.",
+      "declaredCompany": "Declared {{m}}/yr median across {{n}} H-1B filings ({{fy}}) — US DOL public records; H-1B roles only.",
+      "companyPage": "Full {{company}} hiring profile"
+    },
+    "orderFit": "ordered by fit to your résumé",
+    "orderSalary": "ordered by stated salary floor — postings without stated pay sort last",
+    "orderRelevance": "ordered by relevance to your search",
+    "orderNewest": "newest first, company-stated dates before undated",
+    "pills": {
+      "label": "Your searches:"
     }
   },
   "accountPage": {

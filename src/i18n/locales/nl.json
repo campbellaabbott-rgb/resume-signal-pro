@@ -4395,6 +4395,29 @@
       "netLoss": "Nettoverlies {{v}} (FY{{y}})",
       "trendAria": "Omzet per boekjaar",
       "sourceLine": "Bron: {{name}}s eigen SEC-rapporten (10-K/20-F). Cijfers zoals ingediend; geen beleggingsadvies."
+    },
+    "h1b": {
+      "chip": "Opgegeven lonen · H-1B-aanvragen {{fy}}",
+      "summary": "{{company}} gaf basislonen op voor {{n}} gecertificeerde H-1B-posities — mediaan {{m}}/jaar.",
+      "range": "{{lo}}–{{hi}} · {{n}} aanvragen",
+      "sourceLine": "Bron: openbare LCA-bestanden van het Amerikaanse ministerie van Arbeid — basislonen zoals opgegeven door de werkgever, op jaarbasis. Alleen H-1B-posities; niet het bedrijfsbrede loon."
+    },
+    "employerCtx": {
+      "title": "Over deze werkgever",
+      "employees": "≈{{n}} medewerkers ({{basis}})",
+      "publicCo": "Beursgenoteerd ({{ex}}: {{tk}}) — {{rev}} omzet FY{{y}}",
+      "profitable": "winstgevend",
+      "unprofitable": "draait verlies",
+      "declared": "Opgegeven mediaan {{m}}/jaar voor “{{role}}” in H-1B-aanvragen ({{n}} aanvragen, {{fy}}) — openbare US DOL-gegevens.",
+      "declaredCompany": "Opgegeven mediaan {{m}}/jaar over {{n}} H-1B-aanvragen ({{fy}}) — openbare DOL-gegevens; alleen H-1B-posities.",
+      "companyPage": "Volledig wervingsprofiel van {{company}}"
+    },
+    "orderFit": "gesorteerd op match met je cv",
+    "orderSalary": "gesorteerd op vermeld minimumsalaris — vacatures zonder salaris als laatste",
+    "orderRelevance": "gesorteerd op relevantie voor je zoekopdracht",
+    "orderNewest": "nieuwste eerst, vermelde datums vóór ongedateerd",
+    "pills": {
+      "label": "Jouw zoekopdrachten:"
     }
   },
   "accountPage": {
