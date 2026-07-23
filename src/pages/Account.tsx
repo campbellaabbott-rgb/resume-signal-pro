@@ -19,6 +19,12 @@ import { ApplyKitPanel } from "@/components/account/ApplyKitPanel";
 import { ApplyCopilotPanel } from "@/components/account/ApplyCopilotPanel";
 import { MorningQueuePanel } from "@/components/account/MorningQueuePanel";
 import { ClosedReplacementsPanel } from "@/components/account/ClosedReplacementsPanel";
+import { AccountNav } from "@/components/account/AccountNav";
+import { GapReport } from "@/components/account/GapReport";
+import { InterviewsHub } from "@/components/account/InterviewsHub";
+import { SetupChecklist } from "@/components/account/SetupChecklist";
+import { AgentBridgeCard } from "@/components/account/AgentBridgeCard";
+import { NotificationsPanel } from "@/components/account/NotificationsPanel";
 import { useProSubscription } from "@/hooks/use-pro-subscription";
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
@@ -200,7 +206,7 @@ export default function Account() {
       for (const k of miss) counts.set(k, (counts.get(k) ?? 0) + 1);
     }
     if (withFit < 3) return null;
-    const top = [...counts.entries()].sort((a, b) => b[1] - a[1]).filter(([, n]) => n >= 2).slice(0, 3);
+    const top = [...counts.entries()].sort((a, b) => b[1] - a[1]).filter(([, n]) => n >= 2).slice(0, 5);
     return top.length > 0 ? { top, withFit } : null;
   }, [applications]);
   // ACC1: pipeline lane filter over the tracker ("" = all stages).
@@ -575,6 +581,8 @@ export default function Account() {
           </button>
         </div>
 
+        <AccountNav />
+        <div id="hq" className="scroll-mt-28" />
         {/* Job Search HQ: the pipeline at a glance — the account is mission
             control for a daily ritual, not a list of features. Tiles read
             straight from the tracker; the board CTA lands in For-you mode. */}
@@ -609,6 +617,21 @@ export default function Account() {
           </div>
         )}
 
+        {/* Overview layer: interviews first (highest urgency), then the
+            aggregated gap report, the search-setup checklist, and the bridge
+            to the Morning Queue. Every card renders only when it has
+            something real to say. */}
+        <InterviewsHub applications={applications} />
+        {skillGap && (
+          <GapReport
+            gaps={skillGap.top}
+            withFit={skillGap.withFit}
+            resumeText={matchingResume ?? scans[0]?.resume_text ?? null}
+          />
+        )}
+        <SetupChecklist hasScan={scans.length > 0} hasApplication={applications.length > 0} />
+        {user && <AgentBridgeCard topGap={skillGap?.top[0]?.[0] ?? null} />}
+
         {/* First-visit activation checklist — an empty dashboard should feel
             like a starting line, not a broken page */}
         {scans.length === 0 && !fetching && (
@@ -636,6 +659,7 @@ export default function Account() {
         )}
 
         {/* Stat tiles */}
+        <div id="resume-tools" className="scroll-mt-28" />
         <div className="grid grid-cols-3 gap-3 mb-6">
           <div className="rounded-2xl border border-border bg-card p-4 text-center">
             <p className={`text-3xl font-bold ${latest ? (latest.ats_score >= 70 ? "text-success" : latest.ats_score >= 50 ? "text-warning" : "text-destructive") : "text-muted-foreground/40"}`}>
@@ -870,8 +894,10 @@ export default function Account() {
           )}
         </div>
 
-        {/* Application tracker */}
+        {/* Saved searches + email controls */}
+        <div id="searches" className="scroll-mt-28" />
         <SavedSearchesCard />
+        <NotificationsPanel />
 
         {/* Matching résumé: the explicit choice every matcher references —
             board fit ranking, threshold digests, and apply-agent grounding.
@@ -925,6 +951,7 @@ export default function Account() {
           )}
         </div>
 
+        <div id="agent" className="scroll-mt-28" />
         {user && (
           <MorningQueuePanel
             userId={user.id}
@@ -1027,6 +1054,7 @@ export default function Account() {
           return <ClosedReplacementsPanel closedCount={closed.length} rolesKey={rolesKey} />;
         })()}
 
+        <div id="pipeline" className="scroll-mt-28" />
         <div className="rounded-2xl border border-border bg-card p-5 mb-6">
           <div className="flex items-center gap-2 mb-3">
             <Briefcase className="w-4 h-4 text-primary" />
