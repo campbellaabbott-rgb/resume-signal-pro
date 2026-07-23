@@ -2846,6 +2846,10 @@
     }
   },
   "changelogEntries": {
+    "accountHq": {
+      "title": "Your account is now mission control",
+      "description": "The account got a real overhaul: a sticky section nav (Overview, Pipeline, Searches, Résumé) so nothing is buried; a 'What to fix next' report showing the skills most often missing from your résumé across your target roles — with counts, and one click to work them in via the builder; upcoming interviews stitched into one glance; a setup checklist that walks new accounts into the full search loop; a clear path into the Morning Queue; and every weekly email toggle in a single Emails & alerts panel."
+    },
     "boardContinuity": {
       "title": "Smoother board: applied badges, a better first visit, mobile polish",
       "description": "Postings you've already applied to now wear a quiet check on cards and in compare — you'll never re-read a job you already acted on without knowing it. Your application tracker also shows each employer's pattern (genuinely fills roles, or re-lists often) right where you're waiting to hear back. First-time visitors get three one-tap starting points — posted today, companies that fill roles, stated pay only. On phones, descriptions lead and sections start folded; and employer facts now load with a placeholder instead of popping in late."

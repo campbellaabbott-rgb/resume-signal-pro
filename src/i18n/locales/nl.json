@@ -2846,6 +2846,10 @@
     }
   },
   "changelogEntries": {
+    "accountHq": {
+      "title": "Je account is nu missiecontrole",
+      "description": "Het account kreeg een echte opknapbeurt: een vaste sectienavigatie (Overzicht, Pipeline, Zoekopdrachten, Cv) zodat niets begraven raakt; een 'Wat nu te verbeteren'-rapport met de vaardigheden die het vaakst in je cv ontbreken over je doelrollen — met aantallen en één klik om ze via de builder te verwerken; komende gesprekken in één oogopslag; een checklist die nieuwe accounts de volledige zoeklus in leidt; een duidelijke weg naar de Morning Queue; en elke wekelijkse e-mailschakelaar in één paneel E-mails & meldingen."
+    },
     "boardContinuity": {
       "title": "Soepeler bord: sollicitatie-badges, betere eerste indruk, mobiele polish",
       "description": "Vacatures waarop je al gesolliciteerd hebt dragen nu een subtiel vinkje op kaarten en in vergelijken — je leest nooit meer onwetend een vacature terug waar je al actie op ondernam. Je sollicitatietracker toont ook het patroon van elke werkgever (vervult echt, of herplaatst vaak) precies waar je op antwoord wacht. Nieuwe bezoekers krijgen drie startpunten met één tik — vandaag geplaatst, bedrijven die vacatures vervullen, alleen met vermeld salaris. Op mobiel gaat de beschrijving voorop en starten secties ingeklapt; werkgeversfeiten laden met een placeholder in plaats van laat te verschijnen."

@@ -2846,6 +2846,10 @@
     }
   },
   "changelogEntries": {
+    "accountHq": {
+      "title": "Votre compte devient le centre de contrôle",
+      "description": "Le compte a eu droit à une vraie refonte : une navigation fixe par sections (Aperçu, Pipeline, Recherches, CV) pour que rien ne soit enfoui ; un rapport « Quoi corriger ensuite » montrant les compétences les plus souvent absentes de votre CV parmi vos postes cibles — avec les comptes et un clic pour les intégrer via le builder ; les entretiens à venir réunis en un coup d'œil ; une checklist qui guide les nouveaux comptes vers la boucle de recherche complète ; un accès clair à la file du matin ; et chaque e-mail hebdomadaire dans un seul panneau E-mails et alertes."
+    },
     "boardContinuity": {
       "title": "Tableau plus fluide : badges de candidature, meilleure première visite, polissage mobile",
       "description": "Les offres auxquelles vous avez déjà candidaté portent désormais une coche discrète sur les cartes et dans la comparaison — vous ne relirez plus une offre déjà traitée sans le savoir. Votre suivi de candidatures montre aussi le comportement de chaque employeur (pourvoit vraiment, ou republie souvent) là où vous attendez une réponse. Les nouveaux visiteurs reçoivent trois points de départ en un clic — publiées aujourd'hui, entreprises qui pourvoient, salaire indiqué uniquement. Sur mobile, la description passe en premier et les sections démarrent repliées ; les faits employeur se chargent avec un indicateur au lieu d'apparaître en retard."

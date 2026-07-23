@@ -2846,6 +2846,10 @@
     }
   },
   "changelogEntries": {
+    "accountHq": {
+      "title": "Sua conta agora é o centro de comando",
+      "description": "A conta ganhou uma reforma de verdade: navegação fixa por seções (Visão geral, Pipeline, Buscas, Currículo) para nada ficar enterrado; um relatório de 'O que corrigir agora' com as habilidades que mais faltam no seu currículo entre as vagas-alvo — com contagens e um clique para trabalhá-las no builder; as próximas entrevistas reunidas num olhar; uma lista de configuração que leva contas novas ao ciclo completo de busca; um caminho claro para a Fila da Manhã; e todos os e-mails semanais num único painel de E-mails e alertas."
+    },
     "boardContinuity": {
       "title": "Quadro mais fluido: selos de candidatura, melhor primeira visita, polimento móvel",
       "description": "As vagas às quais você já se candidatou agora levam uma marca discreta nos cartões e na comparação — você nunca mais relerá uma vaga já tratada sem saber. Seu rastreador de candidaturas também mostra o padrão de cada empregador (preenche de verdade, ou republica com frequência) bem onde você espera resposta. Visitantes de primeira viagem recebem três pontos de partida de um toque — publicadas hoje, empresas que preenchem vagas, só com salário declarado. No celular, a descrição vem primeiro e as seções começam dobradas; e os fatos do empregador carregam com um indicador em vez de aparecer tarde."

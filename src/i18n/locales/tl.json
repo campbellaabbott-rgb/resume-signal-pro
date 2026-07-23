@@ -2846,6 +2846,10 @@
     }
   },
   "changelogEntries": {
+    "accountHq": {
+      "title": "Ang iyong account ay mission control na ngayon",
+      "description": "Tunay na na-overhaul ang account: nakapirming section nav (Pangkalahatan, Pipeline, Mga paghahanap, Resume) para walang nababaon; isang ulat na 'Ano ang susunod na aayusin' na nagpapakita ng mga kasanayang pinakamadalas nawawala sa iyong resume sa mga target na posisyon — may bilang, at isang click para isama ang mga ito gamit ang builder; ang mga paparating na interview sa iisang sulyap; isang setup checklist na gumagabay sa mga bagong account sa buong search loop; malinaw na daan sa Morning Queue; at bawat lingguhang email toggle sa iisang panel ng Mga email at alerto."
+    },
     "boardContinuity": {
       "title": "Mas maayos na board: applied badge, mas magandang unang bisita, mobile polish",
       "description": "Ang mga posting na na-applyan mo na ay may tahimik na check sa mga card at sa paghahambing — hinding-hindi mo na mababasa muli nang hindi alam ang trabahong naaksyunan mo na. Ipinapakita rin ng iyong application tracker ang pattern ng bawat employer (totoong pumupuno, o madalas mag-relist) mismo kung saan ka naghihintay ng sagot. Ang mga unang bisita ay may tatlong one-tap na panimulang punto — na-post ngayong araw, mga kumpanyang pumupuno ng posisyon, may nakasaad na sahod lamang. Sa telepono, nauuna ang deskripsyon at nakatupi ang mga seksyon; at ang mga fact ng employer ay naglo-load na may placeholder sa halip na lumitaw nang huli."

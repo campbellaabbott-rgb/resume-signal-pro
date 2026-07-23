@@ -2846,6 +2846,10 @@
     }
   },
   "changelogEntries": {
+    "accountHq": {
+      "title": "Dein Konto ist jetzt die Kommandozentrale",
+      "description": "Das Konto bekam eine echte Überarbeitung: eine feste Bereichsnavigation (Überblick, Pipeline, Suchen, Lebenslauf), damit nichts vergraben bleibt; ein Bericht „Was als Nächstes zu beheben ist“ mit den Fähigkeiten, die deinem Lebenslauf über deine Zielrollen am häufigsten fehlen — mit Zählern und einem Klick, um sie im Builder einzuarbeiten; anstehende Interviews auf einen Blick; eine Checkliste, die neue Konten in den vollen Suchkreislauf führt; ein klarer Weg zur Morning Queue; und jeder Wochen-E-Mail-Schalter in einem einzigen Bereich E-Mails & Alerts."
+    },
     "boardContinuity": {
       "title": "Runderes Board: Beworben-Abzeichen, besserer erster Besuch, Mobil-Politur",
       "description": "Anzeigen, auf die du dich schon beworben hast, tragen jetzt ein dezentes Häkchen auf Karten und im Vergleich — du liest nie wieder unwissend eine Stelle, die du schon bearbeitet hast. Dein Bewerbungs-Tracker zeigt zudem das Muster jedes Arbeitgebers (besetzt wirklich, oder schreibt oft neu aus) genau dort, wo du auf Antwort wartest. Erstbesucher bekommen drei Ein-Klick-Startpunkte — heute ausgeschrieben, Firmen, die Stellen besetzen, nur mit Gehaltsangabe. Auf dem Handy führt die Beschreibung und Abschnitte starten eingeklappt; Arbeitgeberfakten laden mit Platzhalter statt verspätet aufzutauchen."
