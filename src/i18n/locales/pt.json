@@ -4426,7 +4426,13 @@
     "orderNewest": "mais recentes primeiro, datas declaradas antes das sem data",
     "pills": {
       "label": "Suas buscas:"
-    }
+    },
+    "appliedBadge": "Candidatado",
+    "welcomeLine": "Cada vaga aqui é verificada ao vivo no próprio sistema da empresa. Comece onde este quadro é mais forte:",
+    "welcomePostedToday": "Publicadas hoje",
+    "welcomeFillers": "Empresas que preenchem vagas",
+    "welcomeStatedPay": "Só com salário declarado",
+    "welcomeDismiss": "Dispensar"
   },
   "accountPage": {
     "statActive": "Candidaturas ativas",

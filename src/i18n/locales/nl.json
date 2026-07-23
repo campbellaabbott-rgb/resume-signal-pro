@@ -4426,7 +4426,13 @@
     "orderNewest": "nieuwste eerst, vermelde datums vóór ongedateerd",
     "pills": {
       "label": "Jouw zoekopdrachten:"
-    }
+    },
+    "appliedBadge": "Gesolliciteerd",
+    "welcomeLine": "Elke vacature hier wordt live geverifieerd vanuit het systeem van het bedrijf zelf. Begin waar dit bord het sterkst is:",
+    "welcomePostedToday": "Vandaag geplaatst",
+    "welcomeFillers": "Bedrijven die vacatures vervullen",
+    "welcomeStatedPay": "Alleen met vermeld salaris",
+    "welcomeDismiss": "Sluiten"
   },
   "accountPage": {
     "statActive": "Actieve sollicitaties",

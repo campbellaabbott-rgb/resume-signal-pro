@@ -4426,7 +4426,13 @@
     "orderNewest": "newest first, company-stated dates before undated",
     "pills": {
       "label": "Your searches:"
-    }
+    },
+    "appliedBadge": "Applied",
+    "welcomeLine": "Every posting here is verified live from the company's own system. Start where this board is strongest:",
+    "welcomePostedToday": "Posted today",
+    "welcomeFillers": "Companies that fill roles",
+    "welcomeStatedPay": "Stated pay only",
+    "welcomeDismiss": "Dismiss"
   },
   "accountPage": {
     "statActive": "Active applications",

@@ -10,6 +10,7 @@ import { Link } from "react-router-dom";
 import { Building2, Landmark, FileText, TrendingUp, TrendingDown, ArrowRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { getEmployerCtx, matchDeclaredRole, type EmployerCtx } from "@/lib/employer-context";
+import { postTrackEvent } from "@/lib/track-transport";
 
 const fmtMoney = (n: number, currency?: string | null): string => {
   const prefix = currency === "EUR" ? "€" : currency === "GBP" ? "£" : "$";
@@ -22,17 +23,39 @@ export function EmployerContext({ companyToken, companyName, postingTitle }: {
 }) {
   const { t } = useTranslation();
   const [ctx, setCtx] = useState<EmployerCtx | null>(null);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     setCtx(null);
+    setLoading(true);
     // Small dwell so arrowing through the list doesn't fire a fetch per stop.
     const timer = setTimeout(() => {
-      void getEmployerCtx(companyToken).then((c) => { if (!cancelled) setCtx(c); });
+      void getEmployerCtx(companyToken).then((c) => {
+        if (cancelled) return;
+        setCtx(c);
+        setLoading(false);
+        if (c.employees != null || c.ticker || c.h1bTotal) {
+          let visitorId = "unknown";
+          try { visitorId = localStorage.getItem("rb_visitor_id") ?? "unknown"; } catch { /* ignore */ }
+          postTrackEvent({ testName: "job_board", variant: "employer_ctx_view", eventType: "view", visitorId, metadata: { token: companyToken.split("~")[0] } });
+        }
+      });
     }, 350);
     return () => { cancelled = true; clearTimeout(timer); };
   }, [companyToken]);
 
+  // Shimmer while the sourced facts load — prevents both the late pop-in and
+  // the "did anything happen?" gap (the RPCs take a couple of seconds).
+  if (loading && !ctx) {
+    return (
+      <div className="rounded-xl border border-border bg-muted/30 p-3 space-y-2" aria-hidden="true">
+        <div className="h-3.5 w-40 rounded bg-muted animate-pulse motion-reduce:animate-none" />
+        <div className="h-3 w-64 rounded bg-muted/70 animate-pulse motion-reduce:animate-none" />
+        <div className="h-3 w-52 rounded bg-muted/70 animate-pulse motion-reduce:animate-none" />
+      </div>
+    );
+  }
   if (!ctx) return null;
   const declared = matchDeclaredRole(postingTitle, ctx.h1bRoles);
   const hasAnything = ctx.employees != null || ctx.ticker || ctx.h1bTotal;

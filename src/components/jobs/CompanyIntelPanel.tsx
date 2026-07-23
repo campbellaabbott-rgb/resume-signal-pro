@@ -22,9 +22,11 @@ interface Intel {
 export function CompanyIntelPanel({ companyToken }: { companyToken: string }) {
   const { t } = useTranslation();
   const [intel, setIntel] = useState<Intel | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
+    setLoading(true);
     (async () => {
       try {
         const { data } = await (supabase as unknown as {
@@ -32,10 +34,20 @@ export function CompanyIntelPanel({ companyToken }: { companyToken: string }) {
         }).rpc("get_company_intel", { p_token: companyToken });
         if (!cancelled && data && typeof data === "object") setIntel(data as Intel);
       } catch { /* intel is additive; the lander stands without it */ }
+      if (!cancelled) setLoading(false);
     })();
     return () => { cancelled = true; };
   }, [companyToken]);
 
+  // Shimmer during the fetch — the intel line otherwise pops in seconds late.
+  if (loading && !intel) {
+    return (
+      <div className="flex items-center gap-3 mb-2" aria-hidden="true">
+        <div className="h-3 w-44 rounded bg-muted animate-pulse motion-reduce:animate-none" />
+        <div className="h-3 w-32 rounded bg-muted/70 animate-pulse motion-reduce:animate-none hidden sm:block" />
+      </div>
+    );
+  }
   if (!intel) return null;
 
   const band = intel.employees == null ? null

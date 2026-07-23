@@ -474,6 +474,35 @@ export default function Jobs() {
   const reqSeq = useRef(0);
   const { session } = useAuth();
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
+  // Postings the user has ALREADY APPLIED to (tracker status beyond saved) —
+  // rendered as a quiet check on cards/compare so no one re-reads a job they
+  // already acted on without knowing it.
+  const [appliedIds, setAppliedIds] = useState<Set<string>>(new Set());
+  // Live small-screen check: drives mobile-only ordering and collapsed-by-
+  // default JD sections. Must be a LISTENER, not a mount-time snapshot — a
+  // hidden/prerendered tab measures 0px wide at mount and a snapshot would
+  // lock the mobile layout in permanently (live incident during verification).
+  const [isSmallScreen, setIsSmallScreen] = useState<boolean>(() =>
+    typeof window !== "undefined" && window.innerWidth > 0
+      ? window.matchMedia("(max-width: 640px)").matches
+      : false,
+  );
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 640px)");
+    const onChange = () => setIsSmallScreen(window.innerWidth > 0 ? mq.matches : false);
+    onChange();
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+  // Anonymous first-visit welcome: three one-tap entries into the board's
+  // distinctive muscle. Dissolves permanently once used or dismissed.
+  const [showWelcome, setShowWelcome] = useState<boolean>(() => {
+    try { return localStorage.getItem("rb_board_welcomed") !== "1"; } catch { return false; }
+  });
+  const dismissWelcome = () => {
+    setShowWelcome(false);
+    try { localStorage.setItem("rb_board_welcomed", "1"); } catch { /* ignore */ }
+  };
   // Company-page hiring-health (lifecycle-derived; only fetched on a company page).
   const [hiringHealth, setHiringHealth] = useState<HiringHealth | null>(null);
   // Board-card hiring-health, batched per visible company token → "Actively hiring"
@@ -547,10 +576,11 @@ export default function Jobs() {
   useEffect(() => {
     if (!session) return;
     appsTable()
-      .select("job_id")
+      .select("job_id,status")
       .not("job_id", "is", null)
-      .then(({ data }: { data: Array<{ job_id: string }> | null }) => {
+      .then(({ data }: { data: Array<{ job_id: string; status: string }> | null }) => {
         setSavedIds(new Set((data ?? []).map((r) => r.job_id)));
+        setAppliedIds(new Set((data ?? []).filter((r) => r.status && r.status !== "saved").map((r) => r.job_id)));
       }, () => {});
   }, [session]);
 
@@ -1242,6 +1272,14 @@ export default function Jobs() {
     }
   };
 
+  // Funnel events on the new decision surfaces — so the NEXT UX round is
+  // picked by evidence, not judgment. Fire-and-forget, production-only
+  // (postTrackEvent no-ops on localhost).
+  const trackBoard = (variant: string, metadata?: Record<string, unknown>) => {
+    let visitorId = "unknown";
+    try { visitorId = localStorage.getItem("rb_visitor_id") ?? "unknown"; } catch { /* ignore */ }
+    postTrackEvent({ testName: "job_board", variant, eventType: "view", visitorId, metadata });
+  };
   const trackApply = (job: BoardJob) => {
     let visitorId = "unknown";
     try {
@@ -2080,8 +2118,11 @@ export default function Jobs() {
               })()}
               {/* About this employer: the sourced company facts (headcount,
                   SEC financials, declared H-1B wages) at the decision point —
-                  previously lander-only. */}
-              <EmployerContext companyToken={detailJob.token} companyName={detailJob.company} postingTitle={detailJob.title} />
+                  previously lander-only. On small screens it renders after the
+                  description instead, so the JD leads. */}
+              {!isSmallScreen && (
+                <EmployerContext companyToken={detailJob.token} companyName={detailJob.company} postingTitle={detailJob.title} />
+              )}
               {/* Inline fit: never leave the posting to learn your score. With
                   a resume on file but ranking off, one click scores in place;
                   while scores load, say so; without a resume the actions row's
@@ -2136,7 +2177,8 @@ export default function Jobs() {
                   {descContent?.sections ? (
                     <div className="max-w-[72ch] space-y-1">
                       {descContent.sections.map((sec, i) => sec.title ? (
-                        <details key={i} open={i <= 2} className="group rounded-lg border border-border/60">
+                        <details key={i} open={!isSmallScreen && i <= 2} className="group rounded-lg border border-border/60"
+                          onToggle={(e) => { if ((e.target as HTMLDetailsElement).open) trackBoard("jd_section_open", { title: sec.title?.slice(0, 40) }); }}>
                           <summary className="cursor-pointer select-none px-3 py-2 text-sm font-semibold text-foreground list-none flex items-center justify-between focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary rounded-lg">
                             {sec.title}
                             <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform group-open:rotate-180 motion-reduce:transition-none" />
@@ -2149,6 +2191,11 @@ export default function Jobs() {
                     </div>
                   ) : (
                     <div className="text-sm text-muted-foreground whitespace-pre-line leading-7 max-w-[72ch]">{descContent?.plain}</div>
+                  )}
+                  {isSmallScreen && (
+                    <div className="mt-3">
+                      <EmployerContext companyToken={detailJob.token} companyName={detailJob.company} postingTitle={detailJob.title} />
+                    </div>
                   )}
                 </div>
               ) : (
@@ -3175,6 +3222,29 @@ export default function Jobs() {
                   })}
                 </p>
               )}
+              {showWelcome && !session && !q && !category && !company && !workMode && (
+                <div className="rounded-xl border border-primary/25 bg-primary/5 px-4 py-3 mb-3 flex flex-wrap items-center gap-2">
+                  <p className="text-[13px] text-foreground basis-full sm:basis-auto sm:flex-1">
+                    {t("jobsPage.welcomeLine", "Every posting here is verified live from the company's own system. Start where this board is strongest:")}
+                  </p>
+                  <button type="button" onClick={() => { trackBoard("welcome_posted_today"); dismissWelcome(); setFreshness("day"); }}
+                    className="text-xs px-3 py-1.5 rounded-full border border-border text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary">
+                    {t("jobsPage.welcomePostedToday", "Posted today")}
+                  </button>
+                  <button type="button" onClick={() => { trackBoard("welcome_actively_hiring"); dismissWelcome(); setActivelyHiringOnly(true); }}
+                    className="text-xs px-3 py-1.5 rounded-full border border-border text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary">
+                    {t("jobsPage.welcomeFillers", "Companies that fill roles")}
+                  </button>
+                  <button type="button" onClick={() => { trackBoard("welcome_stated_pay"); dismissWelcome(); setSalaryFloor(1); }}
+                    className="text-xs px-3 py-1.5 rounded-full border border-border text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary">
+                    {t("jobsPage.welcomeStatedPay", "Stated pay only")}
+                  </button>
+                  <button type="button" onClick={dismissWelcome} aria-label={t("jobsPage.welcomeDismiss", "Dismiss")}
+                    className="text-muted-foreground/60 hover:text-foreground text-sm px-1 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary rounded">
+                    ×
+                  </button>
+                </div>
+              )}
               <ul className="space-y-3">
                 {groupedJobs.map(({ primary: job, siblings }, gi) => {
                   const d = daysAgo(job.postedAt);
@@ -3361,6 +3431,11 @@ export default function Jobs() {
                             <Badge variant="secondary" className="text-[10px]">
                               {t(`jobsPage.workMode.${job.workMode ?? "remote"}`, job.workMode ?? "remote")}
                             </Badge>
+                          )}
+                          {appliedIds.has(job.id) && (
+                            <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-success shrink-0">
+                              ✓ {t("jobsPage.appliedBadge", "Applied")}
+                            </span>
                           )}
                           {savedIds.has(job.id) && (
                             <Link to="/account" onClick={(e) => e.stopPropagation()}
@@ -3753,7 +3828,7 @@ export default function Jobs() {
             {t("jobsPage.compareCount", "Comparing {{n}} of 3", { n: compareIds.length })}
           </span>
           <button
-            onClick={() => setCompareOpen(true)}
+            onClick={() => { trackBoard("compare_open", { n: compareIds.length }); setCompareOpen(true); }}
             disabled={compareIds.length < 2}
             className="rounded-full bg-primary text-primary-foreground text-sm font-semibold px-3 py-1 disabled:opacity-50"
           >
@@ -3771,7 +3846,10 @@ export default function Jobs() {
               <h2 className="text-base font-bold text-foreground">{t("jobsPage.compareTitle", "Side by side")}</h2>
               <button onClick={() => setCompareOpen(false)} className="text-muted-foreground hover:text-foreground text-lg leading-none">✕</button>
             </div>
-            <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${Math.min(compareIds.length, 3)}, minmax(220px, 1fr))` }}>
+            <div
+              className="grid gap-3 grid-cols-1 sm:[grid-template-columns:var(--cmp-cols)]"
+              style={{ "--cmp-cols": `repeat(${Math.min(compareIds.length, 3)}, minmax(220px, 1fr))` } as React.CSSProperties}
+            >
               {compareIds.map((id) => {
                 const j = jobs.find((x) => x.id === id);
                 if (!j) return null;
@@ -3795,6 +3873,9 @@ export default function Jobs() {
                       {j.salary && <li>{j.salary}</li>}
                       {j.workMode && (
                         <li>{t(`jobsPage.workMode.${j.workMode}`, j.workMode)}</li>
+                      )}
+                      {appliedIds.has(id) && (
+                        <li className="text-success">✓ {t("jobsPage.appliedBadge", "Applied")}</li>
                       )}
                       {(() => {
                         const ctx = j.token ? compareCtx[j.token.split("~")[0]] : undefined;

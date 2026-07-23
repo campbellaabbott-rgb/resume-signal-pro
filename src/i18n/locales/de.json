@@ -4426,7 +4426,13 @@
     "orderNewest": "Neueste zuerst, genannte Daten vor undatierten",
     "pills": {
       "label": "Deine Suchen:"
-    }
+    },
+    "appliedBadge": "Beworben",
+    "welcomeLine": "Jede Anzeige hier wird live aus dem System des Unternehmens verifiziert. Starte dort, wo dieses Board am stärksten ist:",
+    "welcomePostedToday": "Heute ausgeschrieben",
+    "welcomeFillers": "Firmen, die Stellen besetzen",
+    "welcomeStatedPay": "Nur mit Gehaltsangabe",
+    "welcomeDismiss": "Schließen"
   },
   "accountPage": {
     "statActive": "Aktive Bewerbungen",

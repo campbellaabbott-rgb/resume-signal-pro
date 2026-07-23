@@ -138,6 +138,10 @@ export default function Account() {
   const [scans, setScans] = useState<UserScan[]>([]);
   const [account, setAccount] = useState<AccountData | null>(null);
   const [applications, setApplications] = useState<Application[]>([]);
+  // Employer lifecycle facts (fills vs re-listing churn) for tracked rows —
+  // most actionable exactly where you're waiting to hear back. Token comes
+  // from the board posting id embedded in job_id (source:token:externalId).
+  const [appHealth, setAppHealth] = useState<Record<string, { closed_90d?: number; superseded_90d?: number }>>({});
   // The account's MATCHING RÉSUMÉ: an explicit, durable choice of which résumé
   // every matcher uses (board fit ranking, threshold digests, apply-agent
   // grounding). Either a pinned scan or pasted text; null/null = the default
@@ -360,6 +364,21 @@ export default function Account() {
   // safer than pinging the board on every visit. Best-effort; never blocks load.
   const checkPostingFreshness = async (apps: Application[]) => {
     const toCheck = apps.filter((a) => a.job_id && !a.posting_closed_at).map((a) => a.job_id as string);
+    // Batch the lifecycle facts for these rows' companies (single RPC).
+    const tokens = [...new Set(apps.map((a) => (a.job_id ?? "").split(":")[1]).filter(Boolean))].slice(0, 50);
+    if (tokens.length) {
+      void Promise.resolve((supabase as unknown as { rpc: (f: string, a?: Record<string, unknown>) => Promise<{ data: unknown }> })
+        .rpc("get_company_hiring_health", { p_tokens: tokens }))
+        .then(({ data }) => {
+          if (!Array.isArray(data)) return;
+          const map: Record<string, { closed_90d?: number; superseded_90d?: number }> = {};
+          for (const r of data as Array<{ company_token: string; closed_90d?: number; superseded_90d?: number }>) {
+            map[r.company_token] = { closed_90d: r.closed_90d, superseded_90d: r.superseded_90d };
+          }
+          setAppHealth(map);
+        })
+        .catch(() => { /* chips are additive */ });
+    }
     if (toCheck.length === 0) return;
     try {
       const { data } = await supabase.functions.invoke("job-board", { body: { action: "exists", ids: toCheck } });
@@ -1142,6 +1161,20 @@ export default function Account() {
                         <p className="text-[11px] text-success/80 mt-0.5">● Posting still open</p>
                       )
                     )}
+                    {(() => {
+                      const hhToken = (a.job_id ?? "").split(":")[1];
+                      const hh = hhToken ? appHealth[hhToken] : undefined;
+                      if (!hh) return null;
+                      const fills = hh.closed_90d ?? 0;
+                      const churn = hh.superseded_90d ?? 0;
+                      if (churn > fills && churn >= 10) {
+                        return <p className="text-[11px] text-warning/90 mt-0.5">{t("jobsPage.verdictChurn", "re-lists roles often ({{n}}×) — responses may be slow", { n: churn })}</p>;
+                      }
+                      if (fills >= 3 && churn <= fills) {
+                        return <p className="text-[11px] text-success/80 mt-0.5">{t("jobsPage.verdictFills", "this company genuinely fills roles ({{n}} in our tracking)", { n: fills })}</p>;
+                      }
+                      return null;
+                    })()}
                     {/* Follow-up rhythm: quiet-clock chip + one-tap nudge marker.
                         Basis is the row's own dates (stage change / follow-up /
                         the user's stated applied date) — never a guess. */}

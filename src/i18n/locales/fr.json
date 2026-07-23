@@ -4426,7 +4426,13 @@
     "orderNewest": "les plus récentes d'abord, dates déclarées avant non datées",
     "pills": {
       "label": "Vos recherches :"
-    }
+    },
+    "appliedBadge": "Candidature envoyée",
+    "welcomeLine": "Chaque offre ici est vérifiée en direct depuis le système de l'entreprise. Commencez là où ce tableau est le plus fort :",
+    "welcomePostedToday": "Publiées aujourd'hui",
+    "welcomeFillers": "Entreprises qui pourvoient",
+    "welcomeStatedPay": "Salaire indiqué uniquement",
+    "welcomeDismiss": "Fermer"
   },
   "accountPage": {
     "statActive": "Candidatures actives",

@@ -4426,7 +4426,13 @@
     "orderNewest": "pinakabago muna, may nakasaad na petsa bago ang wala",
     "pills": {
       "label": "Iyong mga paghahanap:"
-    }
+    },
+    "appliedBadge": "Nag-apply na",
+    "welcomeLine": "Bawat posting dito ay live na bineberipika mula sa sariling system ng kumpanya. Magsimula kung saan pinakamalakas ang board na ito:",
+    "welcomePostedToday": "Na-post ngayong araw",
+    "welcomeFillers": "Mga kumpanyang pumupuno ng posisyon",
+    "welcomeStatedPay": "May nakasaad na sahod lamang",
+    "welcomeDismiss": "Isara"
   },
   "accountPage": {
     "statActive": "Aktibong aplikasyon",

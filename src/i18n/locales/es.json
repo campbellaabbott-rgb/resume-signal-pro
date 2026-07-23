@@ -4426,7 +4426,13 @@
     "orderNewest": "más recientes primero, fechas declaradas antes que sin fecha",
     "pills": {
       "label": "Tus búsquedas:"
-    }
+    },
+    "appliedBadge": "Postulado",
+    "welcomeLine": "Cada anuncio aquí se verifica en vivo desde el propio sistema de la empresa. Empieza donde este tablón es más fuerte:",
+    "welcomePostedToday": "Publicado hoy",
+    "welcomeFillers": "Empresas que cubren puestos",
+    "welcomeStatedPay": "Solo con salario declarado",
+    "welcomeDismiss": "Descartar"
   },
   "accountPage": {
     "statActive": "Postulaciones activas",
