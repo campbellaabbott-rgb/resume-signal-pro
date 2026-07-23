@@ -473,6 +473,39 @@ export type Database = {
         }
         Relationships: []
       }
+      company_financials: {
+        Row: {
+          cik: number
+          currency: string
+          exchange: string
+          sec_name: string
+          series: Json
+          slug: string
+          ticker: string
+          updated_at: string
+        }
+        Insert: {
+          cik: number
+          currency?: string
+          exchange?: string
+          sec_name?: string
+          series?: Json
+          slug: string
+          ticker: string
+          updated_at?: string
+        }
+        Update: {
+          cik?: number
+          currency?: string
+          exchange?: string
+          sec_name?: string
+          series?: Json
+          slug?: string
+          ticker?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       company_name_overrides: {
         Row: {
           added_at: string
@@ -2442,6 +2475,7 @@ export type Database = {
         }[]
       }
       get_company_claim_status: { Args: { p_token: string }; Returns: Json }
+      get_company_financials: { Args: { p_token: string }; Returns: Json }
       get_company_hiring_health: {
         Args: { p_tokens: string[] }
         Returns: {
