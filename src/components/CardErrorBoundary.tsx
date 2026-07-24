@@ -2,7 +2,7 @@
 // degrade to nothing (or a small notice) — never blank the other 25 sections.
 
 import { Component, type ReactNode } from "react";
-import { postTrackEvent } from "@/lib/track-transport";
+import { postTrackEvent, getVisitorId } from "@/lib/track-transport";
 
 interface Props {
   children: ReactNode;
@@ -27,8 +27,7 @@ export class CardErrorBoundary extends Component<Props, State> {
   componentDidCatch(error: Error, info: { componentStack: string }) {
     console.error(`[CardErrorBoundary] section "${this.props.section ?? 'unknown'}" crashed:`, error);
     try {
-      let visitorId = "unknown";
-      try { visitorId = localStorage.getItem("rb_visitor_id") ?? "unknown"; } catch { /* ignore */ }
+      const visitorId = getVisitorId();
       postTrackEvent({
         testName: "client_error",
         variant: `${this.props.section ?? "section"}: ${(error?.message ?? "unknown").slice(0, 100)}`,

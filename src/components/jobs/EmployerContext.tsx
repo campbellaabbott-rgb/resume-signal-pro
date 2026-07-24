@@ -10,7 +10,7 @@ import { Link } from "react-router-dom";
 import { Building2, Landmark, FileText, TrendingUp, TrendingDown, ArrowRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { getEmployerCtx, matchDeclaredRole, type EmployerCtx } from "@/lib/employer-context";
-import { postTrackEvent } from "@/lib/track-transport";
+import { postTrackEvent, getVisitorId } from "@/lib/track-transport";
 
 const fmtMoney = (n: number, currency?: string | null): string => {
   const prefix = currency === "EUR" ? "€" : currency === "GBP" ? "£" : "$";
@@ -36,8 +36,7 @@ export function EmployerContext({ companyToken, companyName, postingTitle }: {
         setCtx(c);
         setLoading(false);
         if (c.employees != null || c.ticker || c.h1bTotal) {
-          let visitorId = "unknown";
-          try { visitorId = localStorage.getItem("rb_visitor_id") ?? "unknown"; } catch { /* ignore */ }
+          const visitorId = getVisitorId();
           postTrackEvent({ testName: "job_board", variant: "employer_ctx_view", eventType: "view", visitorId, metadata: { token: companyToken.split("~")[0] } });
         }
       });

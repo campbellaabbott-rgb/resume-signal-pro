@@ -1,5 +1,5 @@
 import { Component, ReactNode } from "react";
-import { postTrackEvent } from "@/lib/track-transport";
+import { postTrackEvent, getVisitorId } from "@/lib/track-transport";
 
 interface Props {
   children: ReactNode;
@@ -26,8 +26,7 @@ export class ErrorBoundary extends Component<Props, State> {
     // Fire-and-forget telemetry so crashes are diagnosable without asking
     // users to open devtools. No PII: message + trimmed stacks only.
     try {
-      let visitorId = "unknown";
-      try { visitorId = localStorage.getItem("rb_visitor_id") ?? "unknown"; } catch { /* ignore */ }
+      const visitorId = getVisitorId();
       postTrackEvent({
         testName: "client_error",
         variant: (error?.message ?? "unknown").slice(0, 120),

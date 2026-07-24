@@ -47,3 +47,41 @@ export function postTrackEvent(body: unknown): void {
     /* ditto */
   }
 }
+
+// ── Visitor id ──────────────────────────────────────────────────────────────
+// ONE definition, because three competing ones silently broke every funnel.
+// track-ab-event rejects any visitorId whose length isn't exactly 36 (a UUID)
+// with a 400, and postTrackEvent swallows failures by design — so a bad id
+// drops events invisibly. Measured 2026-07-24: the board sent the literal
+// string "unknown" (7 chars) when the key was unset, and the error-tracking
+// hooks minted `v_<epoch>_<rand>` (~25 chars); BOTH were rejected. Result: zero
+// job_board events ever recorded, and the same for anything else on this path.
+//
+// Self-healing: a stored id that isn't a UUID is REPLACED, so visitors carrying
+// a legacy `v_…` id start reporting instead of silently failing forever. That
+// resets error-history continuity for those visitors — an acceptable trade
+// against a pipeline that records nothing.
+const VISITOR_KEY = "rb_visitor_id";
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Stable per-browser id, always a valid UUID. Never throws. */
+export function getVisitorId(): string {
+  const mint = () => (typeof crypto !== "undefined" && crypto.randomUUID
+    ? crypto.randomUUID()
+    // Fallback for non-secure contexts where randomUUID is unavailable.
+    : "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+        const r = (Math.random() * 16) | 0;
+        return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
+      }));
+  try {
+    const existing = localStorage.getItem(VISITOR_KEY);
+    if (existing && UUID_RE.test(existing)) return existing;
+    const fresh = mint();
+    localStorage.setItem(VISITOR_KEY, fresh);
+    return fresh;
+  } catch {
+    // localStorage blocked (private mode, embedded webview) — still return a
+    // well-formed id so the event is accepted rather than 400'd away.
+    return mint();
+  }
+}

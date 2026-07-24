@@ -29,7 +29,7 @@ import { getEmployerCtx, type EmployerCtx } from "@/lib/employer-context";
 import { SimilarCompanies } from "@/components/jobs/SimilarCompanies";
 import { TailoredResumeModal, type TailoredResumeContent } from "@/components/TailoredResumeModal";
 import { supabase } from "@/integrations/supabase/client";
-import { postTrackEvent } from "@/lib/track-transport";
+import { postTrackEvent, getVisitorId } from "@/lib/track-transport";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { searchName, searchToQuery } from "@/lib/job-search-params";
@@ -1296,15 +1296,11 @@ export default function Jobs() {
   // picked by evidence, not judgment. Fire-and-forget, production-only
   // (postTrackEvent no-ops on localhost).
   const trackBoard = (variant: string, metadata?: Record<string, unknown>) => {
-    let visitorId = "unknown";
-    try { visitorId = localStorage.getItem("rb_visitor_id") ?? "unknown"; } catch { /* ignore */ }
+    const visitorId = getVisitorId();
     postTrackEvent({ testName: "job_board", variant, eventType: "view", visitorId, metadata });
   };
   const trackApply = (job: BoardJob) => {
-    let visitorId = "unknown";
-    try {
-      visitorId = localStorage.getItem("rb_visitor_id") ?? "unknown";
-    } catch { /* ignore */ }
+    const visitorId = getVisitorId();
     postTrackEvent({
       testName: "job_board",
       variant: "apply_click",

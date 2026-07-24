@@ -1,18 +1,9 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { getVisitorId } from '@/lib/track-transport';
 
 // Get or create a persistent visitor ID
-const getVisitorId = (): string => {
-  const storageKey = 'rb_visitor_id';
-  let visitorId = localStorage.getItem(storageKey);
-  
-  if (!visitorId) {
-    visitorId = `v_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
-    localStorage.setItem(storageKey, visitorId);
-  }
-  
-  return visitorId;
-};
+
 
 interface ErrorContext {
   page?: string;

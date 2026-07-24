@@ -49,8 +49,13 @@ serve(async (req) => {
       );
     }
 
-    // OPTIMIZATION: Simplified regex checks - less strict for speed
-    if (testName.length > 50 || variant.length > 30 || visitorId.length !== 36) {
+    // Length guards. visitorId was `!== 36` (exact UUID) — which silently 400'd
+    // EVERY event from three different client id formats and left the funnel
+    // recording nothing for months (diagnosed 2026-07-24: the board sent
+    // "unknown", the error hooks sent `v_<epoch>_<rand>`). The client now always
+    // sends a UUID, but this stays a RANGE so a future format change degrades
+    // into slightly messier data instead of total, invisible data loss.
+    if (testName.length > 50 || variant.length > 30 || visitorId.length < 8 || visitorId.length > 64) {
       return new Response(
         JSON.stringify({ error: 'Invalid input format' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

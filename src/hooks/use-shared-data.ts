@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { getVisitorId } from '@/lib/track-transport';
 import { postTrackEvent } from '@/lib/track-transport';
 
 // =============================================================================
@@ -120,17 +121,7 @@ const DEFAULT_ERROR_HISTORY: ErrorHistory = {
 };
 
 // Get visitor ID (same as error tracking)
-const getVisitorId = (): string => {
-  const storageKey = 'rb_visitor_id';
-  let visitorId = localStorage.getItem(storageKey);
-  
-  if (!visitorId) {
-    visitorId = `v_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
-    localStorage.setItem(storageKey, visitorId);
-  }
-  
-  return visitorId;
-};
+
 
 // Cached error history - deduplicates calls
 export function useVisitorErrorHistory() {
