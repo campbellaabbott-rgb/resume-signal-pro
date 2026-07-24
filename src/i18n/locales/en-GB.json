@@ -4443,7 +4443,10 @@
     "welcomeDismiss": "Dismiss",
     "prepHaveReady": "Have these ready — this form asks for them",
     "appliedMarkedTitle": "Marked as applied in your tracker",
-    "appliedMarkedBody": "{{role}} at {{company}} — if you didn't submit, change its status in your account."
+    "appliedMarkedBody": "{{role}} at {{company}} — if you didn't submit, change its status in your account.",
+    "discSalary": "{{shown}} of these employers publish pay. Another {{hidden}} openings match everything else you asked for, but don't state a salary — so this filter hides them.",
+    "discWorkMode": "{{shown}} of these employers state where the work happens. Another {{hidden}} openings match everything else, but don't say remote, hybrid, or on-site — so this filter hides them.",
+    "discShowAll": "Show those too"
   },
   "accountPage": {
     "statActive": "Active applications",

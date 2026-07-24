@@ -11,7 +11,7 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import { parseSalaryStructured } from "../../supabase/functions/_shared/salary-extract";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Activity, AlertTriangle, Bookmark, BookmarkCheck, Briefcase, ChevronDown, Clock, Compass, Copy, ExternalLink, FileText, Flag, Link2, Loader2, MapPin, MessageSquare, RefreshCw, Search, ShieldCheck, SlidersHorizontal, Sparkles, Target, Upload } from "lucide-react";
+import { Activity, AlertTriangle, Bookmark, BookmarkCheck, Briefcase, ChevronDown, Clock, Compass, Copy, ExternalLink, FileText, Flag, Link2, Loader2, MapPin, MessageSquare, RefreshCw, Search, ShieldCheck, SlidersHorizontal, Sparkles, Target, Upload, Info} from "lucide-react";
 import { SEO } from "@/components/seo/SEO";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -1854,6 +1854,53 @@ export default function Jobs() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, refreshing, error, data, activeFilters]);
 
+  // Disclosure-aware filtering: some filters can only match postings whose
+  // employer DISCLOSED the field, so switching one on silently drops every
+  // posting that simply didn't say. Measured on the live board: a $80k floor
+  // takes 572,348 postings to 10,374 — a 98% collapse that is mostly silence,
+  // not low pay (only ~4% of postings state salary at all; work mode ~8%).
+  // Without this the user reads a small number as "this board is empty" instead
+  // of "this many employers were willing to tell me". One extra countOnly with
+  // the disclosure filter dropped gives the honest denominator; it only fires
+  // while such a filter is active, so the common path costs nothing.
+  const [disclosure, setDisclosure] = useState<{ kind: "salary" | "workMode"; shown: number; hidden: number } | null>(null);
+  const discSigRef = useRef("");
+  useEffect(() => {
+    const kind: "salary" | "workMode" | null = salaryFloor ? "salary" : (workMode || remoteOnly) ? "workMode" : null;
+    if (!kind || loading || refreshing || error || !data || typeof data.total !== "number" || data.total === 0) {
+      setDisclosure(null);
+      discSigRef.current = "";
+      return;
+    }
+    const sig = JSON.stringify([kind, q, location, category, experience, company, salaryFloor, remoteOnly, workMode, freshness, country, data.total]);
+    if (discSigRef.current === sig) return;
+    discSigRef.current = sig;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data: r } = await invokeBoard<{ total?: number }>({
+          action: "list", countOnly: true, includeFacets: false,
+          q: q || undefined, location: location || undefined,
+          category: category || undefined, experience: experience || undefined,
+          companies: company ? [company] : undefined, country: country || undefined,
+          maxAgeDays: freshness ? (freshness === "day" ? 1 : 7) : undefined,
+          // Drop ONLY the disclosure-dependent filter; every other constraint stays.
+          ...(kind === "salary"
+            ? { remote: remoteOnly || undefined, workMode: workMode || undefined }
+            : {}),
+          ...(kind === "workMode" ? { salaryFloor: salaryFloor || undefined } : {}),
+        });
+        const without = r?.total;
+        if (cancelled || typeof without !== "number") return;
+        const hidden = without - data.total;
+        // Only worth saying when the silent majority is actually large.
+        setDisclosure(hidden > data.total ? { kind, shown: data.total, hidden } : null);
+      } catch { /* advisory only — never block the board */ }
+    })();
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, refreshing, error, data, salaryFloor, workMode, remoteOnly, q, location, category, experience, company, country, freshness]);
+
   // Inline keyword highlighting: the posting's own text with the fit
   // keywords marked in place — green for terms the resume covers, amber for
   // gaps. Only possible because we hold both sides; no other board can.
@@ -3087,6 +3134,25 @@ export default function Jobs() {
             </div>
           ) : (
             <>
+              {disclosure && (
+                <div className="flex items-start gap-2.5 rounded-xl border border-border bg-muted/40 px-3.5 py-2.5 mb-4">
+                  <Info className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
+                  <div className="text-[13px] min-w-0">
+                    <p className="text-foreground">
+                      {disclosure.kind === "salary"
+                        ? t("jobsPage.discSalary", "{{shown}} of these employers publish pay. Another {{hidden}} openings match everything else you asked for, but don't state a salary — so this filter hides them.", { shown: disclosure.shown.toLocaleString(), hidden: disclosure.hidden.toLocaleString() })
+                        : t("jobsPage.discWorkMode", "{{shown}} of these employers state where the work happens. Another {{hidden}} openings match everything else, but don't say remote, hybrid, or on-site — so this filter hides them.", { shown: disclosure.shown.toLocaleString(), hidden: disclosure.hidden.toLocaleString() })}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => { if (disclosure.kind === "salary") setSalaryFloor(0); else { setWorkMode(""); setRemoteOnly(false); } }}
+                      className="mt-1 text-[13px] font-semibold text-primary hover:underline"
+                    >
+                      {t("jobsPage.discShowAll", "Show those too")}
+                    </button>
+                  </div>
+                </div>
+              )}
               {fitSummary && (fitSummary.strong > 0 || fitSummary.possible > 0) && (
                 <div className="flex items-start gap-2.5 rounded-xl border border-success/30 bg-success/5 px-3.5 py-2.5 mb-4">
                   <Target className="w-4 h-4 text-success shrink-0 mt-0.5" />

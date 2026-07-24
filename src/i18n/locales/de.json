@@ -4443,7 +4443,10 @@
     "welcomeDismiss": "Schließen",
     "prepHaveReady": "Halte das bereit — dieses Formular fragt danach",
     "appliedMarkedTitle": "Im Tracker als beworben markiert",
-    "appliedMarkedBody": "{{role}} bei {{company}} — falls du nicht abgeschickt hast, ändere den Status in deinem Konto."
+    "appliedMarkedBody": "{{role}} bei {{company}} — falls du nicht abgeschickt hast, ändere den Status in deinem Konto.",
+    "discSalary": "{{shown}} dieser Arbeitgeber nennen das Gehalt. Weitere {{hidden}} Stellen erfüllen alle anderen Kriterien, machen aber keine Gehaltsangabe – dieser Filter blendet sie daher aus.",
+    "discWorkMode": "{{shown}} dieser Arbeitgeber geben an, wo gearbeitet wird. Weitere {{hidden}} Stellen erfüllen alle anderen Kriterien, sagen aber nicht, ob remote, hybrid oder vor Ort – dieser Filter blendet sie daher aus.",
+    "discShowAll": "Diese ebenfalls anzeigen"
   },
   "accountPage": {
     "statActive": "Aktive Bewerbungen",

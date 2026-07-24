@@ -4443,7 +4443,10 @@
     "welcomeDismiss": "Isara",
     "prepHaveReady": "Ihanda ang mga ito — hihingin ng form na ito",
     "appliedMarkedTitle": "Namarkahan bilang nag-apply sa iyong tracker",
-    "appliedMarkedBody": "{{role}} sa {{company}} — kung hindi ka nagsumite, palitan ang status nito sa iyong account."
+    "appliedMarkedBody": "{{role}} sa {{company}} — kung hindi ka nagsumite, palitan ang status nito sa iyong account.",
+    "discSalary": "{{shown}} sa mga employer na ito ang naglalathala ng sahod. May {{hidden}} pang trabaho na tumutugma sa lahat ng iba mong hinanap, pero hindi nagsasabi ng sahod — kaya itinatago sila ng filter na ito.",
+    "discWorkMode": "{{shown}} sa mga employer na ito ang nagsasabi kung saan gagawin ang trabaho. May {{hidden}} pang trabaho na tumutugma sa lahat ng iba, pero hindi sinasabi kung remote, hybrid, o on-site — kaya itinatago sila ng filter na ito.",
+    "discShowAll": "Ipakita rin ang mga iyon"
   },
   "accountPage": {
     "statActive": "Aktibong aplikasyon",

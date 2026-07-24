@@ -4443,7 +4443,10 @@
     "welcomeDismiss": "Descartar",
     "prepHaveReady": "Ten esto listo — este formulario lo pedirá",
     "appliedMarkedTitle": "Marcado como aplicado en tu seguimiento",
-    "appliedMarkedBody": "{{role}} en {{company}} — si no enviaste la solicitud, cambia su estado en tu cuenta."
+    "appliedMarkedBody": "{{role}} en {{company}} — si no enviaste la solicitud, cambia su estado en tu cuenta.",
+    "discSalary": "{{shown}} de estas empresas publican el salario. Otras {{hidden}} vacantes cumplen todo lo demás que pediste, pero no indican salario, así que este filtro las oculta.",
+    "discWorkMode": "{{shown}} de estas empresas indican dónde se trabaja. Otras {{hidden}} vacantes cumplen todo lo demás, pero no dicen si es remoto, híbrido o presencial, así que este filtro las oculta.",
+    "discShowAll": "Mostrarlas también"
   },
   "accountPage": {
     "statActive": "Postulaciones activas",

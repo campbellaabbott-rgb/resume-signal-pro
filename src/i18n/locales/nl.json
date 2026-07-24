@@ -4443,7 +4443,10 @@
     "welcomeDismiss": "Sluiten",
     "prepHaveReady": "Houd dit klaar — dit formulier vraagt erom",
     "appliedMarkedTitle": "Gemarkeerd als gesolliciteerd in je tracker",
-    "appliedMarkedBody": "{{role}} bij {{company}} — als je niet hebt verzonden, wijzig dan de status in je account."
+    "appliedMarkedBody": "{{role}} bij {{company}} — als je niet hebt verzonden, wijzig dan de status in je account.",
+    "discSalary": "{{shown}} van deze werkgevers vermelden het salaris. Nog eens {{hidden}} vacatures voldoen aan al het andere, maar noemen geen salaris — dit filter verbergt ze daarom.",
+    "discWorkMode": "{{shown}} van deze werkgevers vermelden waar het werk plaatsvindt. Nog eens {{hidden}} vacatures voldoen aan al het andere, maar zeggen niet of het remote, hybride of op locatie is — dit filter verbergt ze daarom.",
+    "discShowAll": "Toon die ook"
   },
   "accountPage": {
     "statActive": "Actieve sollicitaties",
