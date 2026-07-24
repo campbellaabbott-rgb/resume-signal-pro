@@ -1,15 +1,19 @@
 // The apply agent's screening-answer step, shared by the account co-pilot and the
 // live board. Drafts grounded answers to an application's questions — the REAL ones
-// when the ATS exposes them (Greenhouse ?questions=true), else the likely questions
+// when the ATS exposes them (Greenhouse, Ashby, Recruitee), else the likely questions
 // inferred from the JD (clearly labeled). Every answer is grounded strictly in the
 // resume; unsupported ones are flagged for the candidate, never fabricated. The human
 // reviews, edits, and pastes into the company's own form — we never auto-submit.
 import { useEffect, useRef, useState } from "react";
-import { Loader2, Copy, AlertTriangle, MessageSquare, ShieldCheck } from "lucide-react";
+import { Loader2, Copy, AlertTriangle, MessageSquare, ShieldCheck, ClipboardList } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 export interface DraftedAnswer { question: string; answer: string; supported: boolean; note: string; anticipated?: boolean; }
+
+/** Vendors whose REAL application form the board function can fetch. */
+const REAL_QUESTION_PREFIXES = ["greenhouse:", "ashby:", "recruitee:"];
 
 export function ApplicationAnswers({
   resumeText,
@@ -17,50 +21,65 @@ export function ApplicationAnswers({
   jobCompany,
   jobDescription,
   jobId,
+  jobCategory,
+  experienceBand,
   autoStart = false,
 }: {
   resumeText: string | null;
   jobTitle: string;
   jobCompany: string;
   jobDescription?: string | null;
-  /** Board posting id (e.g. "greenhouse:stripe:123"). Greenhouse ids unlock the
-   *  posting's REAL questions; anything else falls back to JD-inference. */
+  /** Board posting id (e.g. "greenhouse:stripe:123"). Greenhouse/Ashby/Recruitee
+   *  ids unlock the posting's REAL questions; anything else falls back to
+   *  JD-inference. */
   jobId?: string | null;
+  /** Board category slug — steers role-aware drafting emphasis server-side. */
+  jobCategory?: string | null;
+  /** Board experience band — same purpose. */
+  experienceBand?: string | null;
   /** Kick off drafting on mount (e.g. a board modal that opens straight into it). */
   autoStart?: boolean;
 }) {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [answers, setAnswers] = useState<DraftedAnswer[] | null>(null);
   const [inferred, setInferred] = useState(false);
   const [skipped, setSkipped] = useState<Array<{ question: string; class: string }>>([]);
+  /** Documents the real form demands (from the ATS form config) — shown as a
+   *  pre-flight so the candidate has them ready before they start. */
+  const [requirements, setRequirements] = useState<string[]>([]);
   const started = useRef(false);
 
   const draft = async () => {
     if (loading || !resumeText) return;
     setLoading(true);
     try {
-      // For Greenhouse postings we can fetch the posting's REAL application
-      // questions (labels, required, field types) and draft to those exact
-      // questions. Every other ATS doesn't publish its form, so we pass no
-      // questions and the function infers the likely ones from the JD.
+      // For Greenhouse/Ashby/Recruitee postings we can fetch the posting's REAL
+      // application form (question labels, required flags, document demands)
+      // and draft to those exact questions. Other vendors don't publish their
+      // forms, so we pass no questions and the function infers likely ones
+      // from the JD.
       let questions: Array<{ label: string; required?: boolean; type?: string }> | undefined;
-      if (jobId?.startsWith("greenhouse:")) {
+      if (jobId && REAL_QUESTION_PREFIXES.some((p) => jobId.startsWith(p))) {
         try {
           const { data: q } = await supabase.functions.invoke("job-board", {
             body: { action: "application-questions", id: jobId },
           });
-          const qd = q as { supported?: boolean; questions?: Array<{ label?: string; required?: boolean; type?: string }> } | null;
+          const qd = q as { supported?: boolean; questions?: Array<{ label?: string; required?: boolean; type?: string }>; requirements?: string[] } | null;
           if (qd?.supported && Array.isArray(qd.questions) && qd.questions.length) {
             questions = qd.questions
               .filter((x): x is { label: string; required?: boolean; type?: string } => typeof x?.label === "string" && !!x.label.trim())
               .map((x) => ({ label: x.label, required: x.required, type: x.type }));
+          }
+          if (qd?.supported && Array.isArray(qd.requirements) && qd.requirements.length) {
+            setRequirements(qd.requirements.filter((r): r is string => typeof r === "string" && !!r.trim()).slice(0, 6));
           }
         } catch {
           // Real-questions fetch is best-effort; fall through to JD-inference.
         }
       }
       const { data, error } = await supabase.functions.invoke("generate-application-answers", {
-        body: { resumeText, jobTitle, jobCompany, jobDescription, questions },
+        body: { resumeText, jobTitle, jobCompany, jobDescription, questions, jobCategory, experienceBand },
       });
       if (error || !data) {
         const status = (error as { context?: { status?: number } })?.context?.status;
@@ -107,14 +126,31 @@ export function ApplicationAnswers({
 
   if (answers === null) {
     return (
-      <button
-        onClick={draft}
-        disabled={loading}
-        className="mt-3 inline-flex items-center gap-1.5 text-[11px] px-2.5 py-1.5 rounded-full border border-primary/40 text-primary hover:bg-primary/10 disabled:opacity-60"
-      >
-        {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <MessageSquare className="w-3 h-3" />}
-        Draft this application's questions
-      </button>
+      <div className="mt-3 space-y-2">
+        {/* The form's document demands render the moment the ATS form loads —
+            while the answers are still drafting. */}
+        {requirements.length > 0 && (
+          <div className="rounded-lg border border-primary/25 bg-primary/5 p-2.5">
+            <p className="inline-flex items-center gap-1 text-[11px] font-medium text-foreground">
+              <ClipboardList className="w-3 h-3 shrink-0 text-primary" />
+              {t("jobsPage.prepHaveReady", "Have these ready — this form asks for them")}
+            </p>
+            <ul className="mt-1 flex flex-wrap gap-1.5">
+              {requirements.map((r, i) => (
+                <li key={i} className="text-[11px] px-2 py-0.5 rounded-full bg-background border border-border text-muted-foreground">{r}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+        <button
+          onClick={draft}
+          disabled={loading}
+          className="inline-flex items-center gap-1.5 text-[11px] px-2.5 py-1.5 rounded-full border border-primary/40 text-primary hover:bg-primary/10 disabled:opacity-60"
+        >
+          {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <MessageSquare className="w-3 h-3" />}
+          Draft this application's questions
+        </button>
+      </div>
     );
   }
 
@@ -126,6 +162,19 @@ export function ApplicationAnswers({
 
   return (
     <div className="mt-3 space-y-2">
+      {requirements.length > 0 && (
+        <div className="rounded-lg border border-primary/25 bg-primary/5 p-2.5">
+          <p className="inline-flex items-center gap-1 text-[11px] font-medium text-foreground">
+            <ClipboardList className="w-3 h-3 shrink-0 text-primary" />
+            {t("jobsPage.prepHaveReady", "Have these ready — this form asks for them")}
+          </p>
+          <ul className="mt-1 flex flex-wrap gap-1.5">
+            {requirements.map((r, i) => (
+              <li key={i} className="text-[11px] px-2 py-0.5 rounded-full bg-background border border-border text-muted-foreground">{r}</li>
+            ))}
+          </ul>
+        </div>
+      )}
       {answers.length > 0 && (
         <>
           {/* The honesty guarantee, made visible: this is the anti-spray-bot moat —

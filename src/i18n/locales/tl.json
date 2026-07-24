@@ -4440,7 +4440,10 @@
     "welcomePostedToday": "Na-post ngayong araw",
     "welcomeFillers": "Mga kumpanyang pumupuno ng posisyon",
     "welcomeStatedPay": "May nakasaad na sahod lamang",
-    "welcomeDismiss": "Isara"
+    "welcomeDismiss": "Isara",
+    "prepHaveReady": "Ihanda ang mga ito — hihingin ng form na ito",
+    "appliedMarkedTitle": "Namarkahan bilang nag-apply sa iyong tracker",
+    "appliedMarkedBody": "{{role}} sa {{company}} — kung hindi ka nagsumite, palitan ang status nito sa iyong account."
   },
   "accountPage": {
     "statActive": "Aktibong aplikasyon",

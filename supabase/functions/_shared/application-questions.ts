@@ -19,7 +19,7 @@ export interface AppQuestion {
   type?: string;
 }
 
-const IDENTITY = /\b(first\s*name|last\s*name|full\s*name|preferred\s*name|middle\s*name|e-?mail|phone|mobile|street|address|city|state|province|zip|postal|country|linkedin|github|portfolio|personal\s*website|website|twitter|url)\b/i;
+const IDENTITY = /\b(first\s*name|last\s*name|full\s*name|legal\s*name|preferred\s*name|middle\s*name|e-?mail|phone|mobile|street|address|city|state|province|zip|postal|country|linkedin|github|portfolio|personal\s*website|website|twitter|url)\b/i;
 const FILE = /\b(resume|résumé|cv|cover\s*letter|upload|attach|transcript|portfolio\s*file)\b/i;
 // Protected/voluntary self-ID — never auto-answered. Stems match suffixed forms
 // ("disability", "pronouns") so no trailing word-boundary can slip them through.
@@ -33,6 +33,10 @@ export function classifyQuestion(label: string, fieldType?: string): QuestionCla
   // Protected self-ID wins over everything — even if phrased oddly.
   if (DEMOGRAPHIC.test(l)) return "demographic";
   if (t.includes("file") || FILE.test(l)) return "file";
+  // Structured contact/location field types (Ashby: Email/Phone/Location) are
+  // identity regardless of label — "Where do you plan on working from?" has no
+  // identity keyword but is the candidate's own to fill.
+  if (t === "email" || t === "phone" || t === "location" || t.includes("email") || t.includes("phone")) return "identity";
   if (IDENTITY.test(l)) return "identity";
   if (FACTUAL.test(l)) return "factual";
   return "draftable";
@@ -42,4 +46,48 @@ export function classifyQuestion(label: string, fieldType?: string): QuestionCla
  *  the candidate or is autofilled). */
 export function selectDraftable(questions: readonly AppQuestion[]): AppQuestion[] {
   return questions.filter((q) => classifyQuestion(q.label ?? "", q.type) === "draftable");
+}
+
+// ── Role-aware drafting guidance ────────────────────────────────────────────
+// What "a good answer" emphasizes differs by field: a hiring manager reading a
+// nurse's screening answers wants licenses and patient populations; one reading
+// a sales answer wants quota facts. Every line is fenced with "as stated in the
+// resume" — this steers emphasis, it never licenses invention. Keys are the
+// board's category slugs (categories.ts); unknown/absent categories get "".
+
+const ROLE_EMPHASIS: Record<string, string> = {
+  engineering: "Name the candidate's actual languages, systems, and scale from the resume; a linked portfolio/GitHub only if the resume lists one.",
+  data_ai: "Emphasize the datasets, models, tools, and measurable analyses the resume actually describes.",
+  design: "Lead with the portfolio if the resume lists one, and the shipped work/design process it actually describes.",
+  product: "Emphasize shipped products, user/business outcomes, and cross-functional scope exactly as the resume states them.",
+  marketing: "Emphasize channels, campaigns, and measurable results exactly as stated in the resume.",
+  sales: "Quota, attainment, deal size, and book-of-business figures ONLY as literally stated in the resume — these are the most-verified claims in hiring.",
+  customer: "Emphasize volumes handled, tools/CRMs used, satisfaction outcomes, and languages spoken as the resume states them.",
+  finance: "Credentials (CPA, CFA…) exactly as held; emphasize regulatory scope, reporting cadence, and systems from the resume.",
+  legal: "Bar admissions and jurisdictions exactly as held; practice areas and matter types from the resume only.",
+  people_hr: "Emphasize programs run, headcount supported, and HRIS tooling as the resume states them.",
+  operations: "Emphasize process scope, volumes, safety/quality certifications, and systems exactly as the resume states them.",
+  healthcare: "Licenses, certifications, and patient populations EXACTLY as held per the resume — never imply a credential it doesn't state.",
+  science: "Techniques, instruments, and publications exactly as the resume lists them.",
+  education: "Teaching certifications, grade levels, and subjects exactly as held per the resume.",
+  hospitality_retail: "Emphasize service volumes, POS/systems, and scheduling/leadership scope as the resume states them.",
+  security: "Clearances and security certifications EXACTLY as held per the resume — never imply a clearance it doesn't state.",
+  admin: "Emphasize the tools, calendars/logistics scope, and stakeholders supported as the resume states them.",
+};
+
+/**
+ * Optional prompt block steering answer emphasis by role category and
+ * seniority. Returns "" when there's nothing useful to add.
+ */
+export function roleGuidance(category?: string | null, experienceBand?: string | null): string {
+  const parts: string[] = [];
+  const emphasis = ROLE_EMPHASIS[(category ?? "").toLowerCase()];
+  if (emphasis) parts.push(emphasis);
+  const band = (experienceBand ?? "").toLowerCase();
+  if (band === "entry") {
+    parts.push("Entry-level posting: internships, coursework, and transferable experience the resume actually lists are fair material — never inflate them into professional experience.");
+  } else if (band === "senior" || band === "lead" || band === "executive") {
+    parts.push("Senior posting: emphasize ownership, scope, and leadership the resume actually states — team sizes and budgets only if written there.");
+  }
+  return parts.length ? `ROLE FOCUS: ${parts.join(" ")}` : "";
 }

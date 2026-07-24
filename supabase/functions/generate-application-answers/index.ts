@@ -16,7 +16,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { callAIWithModelFallback, chainFrom } from "../_shared/ai-fallback.ts";
 import { buildLanguageInstruction } from "../_shared/language-instruction.ts";
 import { checkInputLimits } from "../_shared/input-limits.ts";
-import { classifyQuestion, selectDraftable, type AppQuestion } from "../_shared/application-questions.ts";
+import { classifyQuestion, selectDraftable, roleGuidance, type AppQuestion } from "../_shared/application-questions.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -35,9 +35,9 @@ serve(async (req) => {
 
   try {
     const body = await req.json();
-    const { resumeText, jobTitle, jobCompany, jobDescription, questions, language } = body as {
+    const { resumeText, jobTitle, jobCompany, jobDescription, questions, language, jobCategory, experienceBand } = body as {
       resumeText?: string; jobTitle?: string; jobCompany?: string; jobDescription?: string;
-      questions?: AppQuestion[]; language?: string;
+      questions?: AppQuestion[]; language?: string; jobCategory?: string; experienceBand?: string;
     };
 
     const limitError = checkInputLimits({ resumeText, jobDescription });
@@ -68,6 +68,7 @@ serve(async (req) => {
 - If the resume does NOT contain enough to answer truthfully, DO NOT fabricate. Set "supported": false, put a short honest scaffold in "answer" the candidate can complete, and in "note" say exactly what they must add. Flagging a gap always beats inventing a claim they cannot defend in an interview.
 - GAP RULE: if the truthful answer is that the candidate LACKS the experience, skill, tool, certification, or qualification the question asks about (i.e. the honest reply is essentially "no" / "I don't have that"), treat it as a gap: keep the answer honest and never fabricated, but set "supported": false and in "note" tell the candidate how to strengthen it — the closest transferable experience from their resume to lean on, or that they should add it if they in fact have it. Never mark a missing qualification "supported": true.
 - Keep answers tight and professional: 2–5 sentences unless the question implies otherwise. No clichés, no fluff, no fabricated numbers.
+${roleGuidance(jobCategory, experienceBand)}
 ${langInstruction}`;
 
     const systemPrompt = inferred

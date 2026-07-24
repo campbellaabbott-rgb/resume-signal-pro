@@ -4440,7 +4440,10 @@
     "welcomePostedToday": "आज पोस्ट हुईं",
     "welcomeFillers": "भूमिकाएँ भरने वाली कंपनियाँ",
     "welcomeStatedPay": "केवल घोषित वेतन",
-    "welcomeDismiss": "हटाएँ"
+    "welcomeDismiss": "हटाएँ",
+    "prepHaveReady": "ये तैयार रखें — यह फ़ॉर्म इन्हें मांगेगा",
+    "appliedMarkedTitle": "आपके ट्रैकर में आवेदन किया गया के रूप में दर्ज",
+    "appliedMarkedBody": "{{company}} में {{role}} — अगर आपने आवेदन नहीं भेजा, तो अपने खाते में स्थिति बदलें।"
   },
   "accountPage": {
     "statActive": "सक्रिय आवेदन",

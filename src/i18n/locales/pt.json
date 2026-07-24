@@ -4440,7 +4440,10 @@
     "welcomePostedToday": "Publicadas hoje",
     "welcomeFillers": "Empresas que preenchem vagas",
     "welcomeStatedPay": "Só com salário declarado",
-    "welcomeDismiss": "Dispensar"
+    "welcomeDismiss": "Dispensar",
+    "prepHaveReady": "Tenha isto pronto — este formulário vai pedir",
+    "appliedMarkedTitle": "Marcado como aplicado no seu acompanhamento",
+    "appliedMarkedBody": "{{role}} na {{company}} — se você não enviou, altere o status na sua conta."
   },
   "accountPage": {
     "statActive": "Candidaturas ativas",

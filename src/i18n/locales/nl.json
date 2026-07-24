@@ -4440,7 +4440,10 @@
     "welcomePostedToday": "Vandaag geplaatst",
     "welcomeFillers": "Bedrijven die vacatures vervullen",
     "welcomeStatedPay": "Alleen met vermeld salaris",
-    "welcomeDismiss": "Sluiten"
+    "welcomeDismiss": "Sluiten",
+    "prepHaveReady": "Houd dit klaar — dit formulier vraagt erom",
+    "appliedMarkedTitle": "Gemarkeerd als gesolliciteerd in je tracker",
+    "appliedMarkedBody": "{{role}} bij {{company}} — als je niet hebt verzonden, wijzig dan de status in je account."
   },
   "accountPage": {
     "statActive": "Actieve sollicitaties",

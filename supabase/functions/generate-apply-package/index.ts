@@ -4,6 +4,7 @@ import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getServiceClient } from "../_shared/supabase-client.ts";
 import { validateTailoredResume, type TailoredResumeShape } from "../_shared/resume-grounding.ts";
+import { roleGuidance } from "../_shared/application-questions.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -116,7 +117,7 @@ serve(async (req) => {
     // actually applying in could quietly damage their real application. The
     // AI naturally preserves the input resume's own language by default,
     // which is the safer behavior here.
-    const { resumeText, jobPostingText, jobTitle, jobCompany, sessionId } = await req.json();
+    const { resumeText, jobPostingText, jobTitle, jobCompany, sessionId, jobCategory, experienceBand } = await req.json();
 
     if (!resumeText || typeof resumeText !== 'string' || resumeText.trim().length < 50) {
       return new Response(
@@ -195,6 +196,7 @@ serve(async (req) => {
 - Rewrite bullets/summary to emphasize what's most relevant to THIS specific job, using language and keywords from the job posting where the candidate's actual experience genuinely supports it.
 - If the candidate is missing a skill the job requires, do not fabricate it — note it as a gap instead.
 - Extract job metadata (company, role title) directly from the job posting text. If the posting describes how to apply (a portal, an email, a specific instruction), summarize it in applyMethodHint; if it doesn't say, leave applyMethodHint as an empty string rather than guessing.
+${roleGuidance(typeof jobCategory === "string" ? jobCategory : null, typeof experienceBand === "string" ? experienceBand : null)}
 
 ## OUTPUT FORMAT (JSON)
 Return a structured resume (contact, summary, experience[], education[], skills[], certifications[]) tailored for this job, plus job metadata and a human-action checklist.`;

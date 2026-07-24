@@ -2,7 +2,7 @@
 // grounded free-text answers. It must NEVER draft demographics, work-authorization/
 // salary/status facts (not in a resume), identity fields, or file uploads.
 import { describe, it, expect } from "vitest";
-import { classifyQuestion, selectDraftable } from "../../supabase/functions/_shared/application-questions";
+import { classifyQuestion, selectDraftable, roleGuidance } from "../../supabase/functions/_shared/application-questions";
 
 describe("classifyQuestion", () => {
   it("routes identity/contact fields to autofill (not AI)", () => {
@@ -54,6 +54,28 @@ describe("classifyQuestion", () => {
     }
   });
 
+  // Real form fields captured live from Ramp's Ashby application form
+  // (2026-07-24, jobs.ashbyhq.com GraphQL) — the exact shapes the board's
+  // application-questions action now returns for ashby: postings.
+  it("classifies a real Ashby form correctly (Ramp fixture)", () => {
+    expect(classifyQuestion("Legal Name", "String")).toBe("identity");
+    expect(classifyQuestion("Email", "Email")).toBe("identity");
+    expect(classifyQuestion("Phone", "Phone")).toBe("identity");
+    // No identity keyword in the label — the Location TYPE must catch it.
+    expect(classifyQuestion("Where do you plan on working from (for payroll tax purposes)?", "Location")).toBe("identity");
+    expect(classifyQuestion("Resume", "File")).toBe("file");
+    expect(classifyQuestion("LinkedIn Profile", "String")).toBe("identity");
+    expect(classifyQuestion("Cover Letter", "File")).toBe("file");
+    expect(classifyQuestion("Do you have a minimum of 7 years of experience building software?", "Boolean")).toBe("draftable");
+    expect(classifyQuestion("Please elaborate on your experience building software in AWS (with Terraform)", "LongText")).toBe("draftable");
+  });
+
+  // Real open_questions shape from Recruitee's public offers API (Sendcloud,
+  // 2026-07-24): {body, kind, required}.
+  it("classifies a real Recruitee open question (Sendcloud fixture)", () => {
+    expect(classifyQuestion("What do you consider to be your top 5 core strengths?", "text")).toBe("draftable");
+  });
+
   it("selectDraftable keeps only the draftable questions", () => {
     const qs = [
       { label: "First Name", type: "input_text" },
@@ -67,5 +89,29 @@ describe("classifyQuestion", () => {
       "Why do you want to join our team?",
       "Describe your leadership style.",
     ]);
+  });
+});
+
+describe("roleGuidance", () => {
+  it("returns emphasis for known categories and stays honest-fenced", () => {
+    const g = roleGuidance("sales", "senior");
+    expect(g).toContain("ROLE FOCUS");
+    expect(g.toLowerCase()).toContain("stated in the resume");
+    expect(g.toLowerCase()).toContain("senior");
+  });
+
+  it("covers licensure-sensitive categories with an exact-credentials fence", () => {
+    expect(roleGuidance("healthcare").toLowerCase()).toContain("exactly as held");
+    expect(roleGuidance("security").toLowerCase()).toContain("clearance");
+  });
+
+  it("returns an empty string when there is nothing to add", () => {
+    expect(roleGuidance(null, null)).toBe("");
+    expect(roleGuidance("other", "mid")).toBe("");
+    expect(roleGuidance("nonexistent-category")).toBe("");
+  });
+
+  it("entry band leans on real transferable material only", () => {
+    expect(roleGuidance(undefined, "entry").toLowerCase()).toContain("never inflate");
   });
 });

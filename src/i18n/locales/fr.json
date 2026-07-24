@@ -4440,7 +4440,10 @@
     "welcomePostedToday": "Publiées aujourd'hui",
     "welcomeFillers": "Entreprises qui pourvoient",
     "welcomeStatedPay": "Salaire indiqué uniquement",
-    "welcomeDismiss": "Fermer"
+    "welcomeDismiss": "Fermer",
+    "prepHaveReady": "À préparer — ce formulaire les demandera",
+    "appliedMarkedTitle": "Marqué comme postulé dans votre suivi",
+    "appliedMarkedBody": "{{role}} chez {{company}} — si vous n'avez pas envoyé la candidature, changez son statut dans votre compte."
   },
   "accountPage": {
     "statActive": "Candidatures actives",

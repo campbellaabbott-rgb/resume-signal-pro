@@ -4440,7 +4440,10 @@
     "welcomePostedToday": "Heute ausgeschrieben",
     "welcomeFillers": "Firmen, die Stellen besetzen",
     "welcomeStatedPay": "Nur mit Gehaltsangabe",
-    "welcomeDismiss": "Schließen"
+    "welcomeDismiss": "Schließen",
+    "prepHaveReady": "Halte das bereit — dieses Formular fragt danach",
+    "appliedMarkedTitle": "Im Tracker als beworben markiert",
+    "appliedMarkedBody": "{{role}} bei {{company}} — falls du nicht abgeschickt hast, ändere den Status in deinem Konto."
   },
   "accountPage": {
     "statActive": "Aktive Bewerbungen",

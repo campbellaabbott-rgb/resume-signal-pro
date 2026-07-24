@@ -4440,7 +4440,10 @@
     "welcomePostedToday": "Posted today",
     "welcomeFillers": "Companies that fill roles",
     "welcomeStatedPay": "Stated pay only",
-    "welcomeDismiss": "Dismiss"
+    "welcomeDismiss": "Dismiss",
+    "prepHaveReady": "Have these ready — this form asks for them",
+    "appliedMarkedTitle": "Marked as applied in your tracker",
+    "appliedMarkedBody": "{{role}} at {{company}} — if you didn't submit, change its status in your account."
   },
   "accountPage": {
     "statActive": "Active applications",

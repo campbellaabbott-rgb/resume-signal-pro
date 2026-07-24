@@ -648,10 +648,30 @@ export default function Jobs() {
     } catch { /* enrichment is a bonus — the save already landed */ }
   };
 
+  // The tracker fills itself on Apply clicks (below) but did so silently —
+  // surface it when the user comes back from the company's site, so they know
+  // the row exists and can fix it if they didn't actually submit.
+  const appliedNotice = useRef<{ company: string; role: string; ts: number } | null>(null);
+  useEffect(() => {
+    const onVisible = () => {
+      const n = appliedNotice.current;
+      if (document.visibilityState !== "visible" || !n) return;
+      if (Date.now() - n.ts > 45 * 60_000) { appliedNotice.current = null; return; }
+      appliedNotice.current = null;
+      toast({
+        title: t("jobsPage.appliedMarkedTitle", "Marked as applied in your tracker"),
+        description: t("jobsPage.appliedMarkedBody", "{{role}} at {{company}} — if you didn't submit, change its status in your account.", { role: n.role, company: n.company }),
+      });
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [t]);
+
   // Signed-in Apply clicks promote the row to 'applied' (never downgrading
   // a richer status) — the tracker fills itself.
   const promoteApplied = async (job: BoardJob) => {
     if (!session) return;
+    appliedNotice.current = { company: job.company, role: job.title, ts: Date.now() };
     if (savedIds.has(job.id)) {
       await appsTable().update({ status: "applied", applied_at: new Date().toISOString().slice(0, 10) })
         .eq("user_id", session.user.id).eq("job_id", job.id).eq("status", "saved");
@@ -3712,6 +3732,8 @@ export default function Jobs() {
                 jobCompany={prepareJob.job.company}
                 jobDescription={prepareJob.description}
                 jobId={prepareJob.job.id}
+                jobCategory={prepareJob.job.category}
+                experienceBand={prepareJob.job.experienceBand}
                 autoStart
               />
               <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-border/60 pt-4">

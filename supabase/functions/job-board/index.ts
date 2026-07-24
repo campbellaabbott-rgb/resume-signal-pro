@@ -62,7 +62,7 @@ const json = (body: unknown, status = 200) =>
 // counts. catalogSize (JOB_SOURCES.length) is the automatic companion signal: it
 // moves with every catalog change with no discipline required. Sortable string so
 // a future check can tell "prod is behind" from "prod is ahead".
-const BUILD_VERSION = "2026-07-22.3";
+const BUILD_VERSION = "2026-07-24.1";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -2474,28 +2474,98 @@ Deno.serve(async (req) => {
     }
 
     if (action === "application-questions") {
-      // Apply agent: fetch a posting's REAL application questions. Only Greenhouse
-      // exposes them publicly (?questions=true); other vendors return supported:
-      // false so the client falls back to JD-inferred questions. Each question is
-      // classified so the UI/answer-drafter knows what may be auto-drafted vs. what
-      // the candidate must answer (identity, demographics, work-auth, salary).
+      // Apply agent: fetch a posting's REAL application questions where the ATS
+      // exposes its form publicly — Greenhouse (?questions=true), Ashby (the
+      // public GraphQL endpoint its own hosted apply pages call; `field` is a
+      // raw JSON scalar), and Recruitee (open_questions + document config on
+      // the offers API). Everything else returns supported:false so the client
+      // falls back to JD-inferred questions. Each question is classified so the
+      // UI/answer-drafter knows what may be auto-drafted vs. what the candidate
+      // must answer (identity, demographics, work-auth, salary). `requirements`
+      // lists the documents the form demands, so the candidate can have them
+      // ready BEFORE they start.
       const id = String(body.id ?? "");
       const [source, token, ...rest] = id.split(":");
       const externalId = rest.join(":");
       const src = JOB_SOURCES.find((s) => s.source === source && s.token === token);
       if (!src || !externalId) return json({ error: "Unknown job id" }, 404);
-      if (source !== "greenhouse") return json({ vendor: source, supported: false, questions: [] });
-      const res = await fetchWithTimeout(`https://boards-api.greenhouse.io/v1/boards/${token}/jobs/${externalId}?questions=true`);
-      if (!res.ok) return json({ vendor: source, supported: false, questions: [] });
-      const gh = await res.json() as { questions?: Array<{ label?: string; required?: boolean; fields?: Array<{ type?: string }> }> };
-      const questions = (gh.questions ?? [])
-        .map((q) => {
-          const label = (q.label ?? "").trim();
-          const type = q.fields?.[0]?.type ?? "";
-          return { label, required: !!q.required, type, class: classifyQuestion(label, type) };
-        })
-        .filter((q) => q.label);
-      return json({ vendor: source, supported: true, questions });
+      const unsupported = () => json({ vendor: source, supported: false, questions: [] });
+      type Q = { label: string; required: boolean; type: string; class: string };
+      const docsFrom = (questions: Q[]) =>
+        questions.filter((q) => q.class === "file").map((q) => `${q.label}${q.required ? " (required)" : " (optional)"}`);
+
+      if (source === "greenhouse") {
+        const res = await fetchWithTimeout(`https://boards-api.greenhouse.io/v1/boards/${token}/jobs/${externalId}?questions=true`);
+        if (!res.ok) return unsupported();
+        const gh = await res.json() as { questions?: Array<{ label?: string; required?: boolean; fields?: Array<{ type?: string }> }> };
+        const questions: Q[] = (gh.questions ?? [])
+          .map((q) => {
+            const label = (q.label ?? "").trim();
+            const type = q.fields?.[0]?.type ?? "";
+            return { label, required: !!q.required, type, class: classifyQuestion(label, type) };
+          })
+          .filter((q) => q.label);
+        return json({ vendor: source, supported: true, questions, requirements: docsFrom(questions) });
+      }
+
+      if (source === "ashby") {
+        // token = the org's hosted-jobs-page name, externalId = posting UUID —
+        // the same pair the apply URL uses (jobs.ashbyhq.com/{token}/{id}).
+        const res = await fetchWithTimeout("https://jobs.ashbyhq.com/api/non-user-graphql?op=ApiJobPosting", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            operationName: "ApiJobPosting",
+            variables: { organizationHostedJobsPageName: token, jobPostingId: externalId },
+            query: "query ApiJobPosting($organizationHostedJobsPageName: String!, $jobPostingId: String!) { jobPosting(organizationHostedJobsPageName: $organizationHostedJobsPageName, jobPostingId: $jobPostingId) { id applicationForm { sections { title fieldEntries { isRequired field } } } } }",
+          }),
+        });
+        if (!res.ok) return unsupported();
+        // deno-lint-ignore no-explicit-any
+        const gql = await res.json() as any;
+        const sections = gql?.data?.jobPosting?.applicationForm?.sections;
+        if (!Array.isArray(sections)) return unsupported();
+        const questions: Q[] = [];
+        for (const s of sections) {
+          for (const fe of (s?.fieldEntries ?? [])) {
+            const f = fe?.field ?? {};
+            const label = String(f.title ?? "").trim();
+            if (!label) continue;
+            const type = String(f.type ?? "");
+            questions.push({ label, required: !!fe?.isRequired, type, class: classifyQuestion(label, type) });
+          }
+        }
+        if (questions.length === 0) return unsupported();
+        return json({ vendor: source, supported: true, questions, requirements: docsFrom(questions) });
+      }
+
+      if (source === "recruitee") {
+        const res = await fetchWithTimeout(`https://${token}.recruitee.com/api/offers/${externalId}`);
+        if (!res.ok) return unsupported();
+        // deno-lint-ignore no-explicit-any
+        const rec = await res.json() as any;
+        const offer = rec?.offer ?? rec;
+        if (!offer || typeof offer !== "object") return unsupported();
+        const questions: Q[] = (Array.isArray(offer.open_questions) ? offer.open_questions : [])
+          // deno-lint-ignore no-explicit-any
+          .map((q: any) => {
+            const label = String(q?.body ?? "").trim();
+            const type = String(q?.kind ?? "");
+            return { label, required: !!q?.required, type, class: classifyQuestion(label, type) };
+          })
+          .filter((q: Q) => q.label);
+        // Document config lives beside the questions ("required"/"optional"/"off").
+        const requirements: string[] = [];
+        for (const [key, name] of [["options_cv", "Resume / CV"], ["options_cover_letter", "Cover letter"], ["options_photo", "Photo"]] as const) {
+          const v = String(offer[key] ?? "off");
+          if (v === "required" || v === "optional") requirements.push(`${name} (${v})`);
+        }
+        // supported means "we saw the real form" — a form with no custom
+        // questions is still real, and its document list still helps.
+        return json({ vendor: source, supported: true, questions, requirements });
+      }
+
+      return unsupported();
     }
 
     return json({ error: "Unknown action" }, 400);
