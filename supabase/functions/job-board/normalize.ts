@@ -812,6 +812,72 @@ export function normalizeWorkday(items: WorkdayListItem[], company: string, toke
     .map(({ _stale: _drop, ...j }) => j as JobPosting);
 }
 
+// ── Oracle Recruiting Cloud (Oracle Fusion HCM) ───────────────────────────
+// Large enterprises that run Oracle Fusion HCM publish their careers site off a
+// first-party public REST API — the same data the tenant serves its own
+// applicants, no auth, no scraping:
+//   GET /hcmRestApi/resources/latest/recruitingCEJobRequisitions
+//       ?onlyData=true&expand=requisitionList&finder=findReqs;siteNumber=CX_1,limit=N,offset=M
+// Token is a compound `tenant~region~site` (the three pieces the host and
+// finder need); the host is {tenant}.fa.{region}.oraclecloud.com.
+//
+// Census note (2026-07-24): identity is NOT in this feed — the tenant is an
+// opaque 4-letter code and only ~41% of tenants name themselves anywhere. So
+// ORC boards are added ONLY as hand-verified sources.ts entries whose display
+// name was confirmed against that tenant's own postings; there is no automatic
+// discovery path. One tenant (eubt.fa.us6) serves 78k system-generated template
+// requisitions — never add a tenant without reading its titles first.
+export interface OracleReq {
+  Id?: number | string;
+  Title?: string;
+  PostedDate?: string;
+  PrimaryLocation?: string;
+  PrimaryLocationCountry?: string;
+  WorkplaceTypeCode?: string;
+  JobFamily?: string;
+  ShortDescriptionStr?: string;
+}
+
+export function normalizeOracle(items: OracleReq[], company: string, token: string): JobPosting[] {
+  const [tenant, region, site] = token.split("~");
+  if (!tenant || !region || !site) return [];
+  const base = `https://${tenant}.fa.${region}.oraclecloud.com/hcmUI/CandidateExperience/en/sites/${site}`;
+  return (Array.isArray(items) ? items : [])
+    .map((j) => {
+      const title = String(j.Title ?? "").trim();
+      const location = String(j.PrimaryLocation ?? "").trim();
+      const id = String(j.Id ?? "").trim();
+      // PostedDate is a plain YYYY-MM-DD the employer stated — keep it as a
+      // real date (unlike Workday's relative "Posted 3 Days Ago").
+      const posted = /^\d{4}-\d{2}-\d{2}/.test(String(j.PostedDate ?? ""))
+        ? new Date(`${String(j.PostedDate).slice(0, 10)}T00:00:00Z`).toISOString()
+        : null;
+      const mode = vendorWorkMode(j.WorkplaceTypeCode) ?? detectWorkMode(location, title);
+      const dept = j.JobFamily ? String(j.JobFamily).trim() || null : null;
+      return {
+        id: `oracle:${token}:${id}`,
+        source: "oracle" as const,
+        token,
+        company,
+        title,
+        location,
+        workMode: mode,
+        remote: mode === "remote",
+        department: dept,
+        postedAt: posted,
+        category: categorize(title, dept),
+        salary: null, // ORC exposes no structured compensation on the list payload
+        // PrimaryLocationCountry is a 2-letter ISO code straight from the
+        // employer — trust it over parsing the free-text location.
+        country: (typeof j.PrimaryLocationCountry === "string" && /^[A-Za-z]{2}$/.test(j.PrimaryLocationCountry))
+          ? j.PrimaryLocationCountry.toUpperCase()
+          : detectCountry(location),
+        applyUrl: safeUrl(id ? `${base}/job/${id}` : ""),
+      };
+    })
+    .filter((j) => j.applyUrl !== "" && j.title !== "" && j.id !== `oracle:${token}:`);
+}
+
 /** Teamtailor career-site RSS ({token}.teamtailor.com/jobs.rss). The feed is
  *  title/link/pubDate only — location isn't structured, so it stays honest-empty
  *  unless the title itself says remote. External id = the numeric slug prefix. */

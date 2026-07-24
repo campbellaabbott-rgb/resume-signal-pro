@@ -14,7 +14,8 @@
 
 export type JobSourceKind =
   | "greenhouse" | "lever" | "ashby" | "smartrecruiters" | "workable" | "bamboohr"
-  | "recruitee" | "teamtailor" | "personio" | "breezy" | "rippling" | "workday" | "pinpoint";
+  | "recruitee" | "teamtailor" | "personio" | "breezy" | "rippling" | "workday" | "pinpoint"
+  | "oracle";
 
 export interface JobSource {
   name: string; // display name
@@ -69,6 +70,17 @@ export const LIGHT_DESC_TOKENS: Set<string> = new Set(["stripe", "zscaler"]);
 const s = (name: string, source: JobSourceKind, token: string): JobSource => ({ name, source, token });
 
 export const JOB_SOURCES: JobSource[] = [
+  // Oracle Recruiting Cloud, first tranche (2026-07-24). Token = tenant~region~site.
+  // ORC's tenant code is opaque and the feed does NOT name the employer, so every
+  // entry here was identified by reading that tenant's own postings and its
+  // CorporateDescriptionStr, then live-verified (feed 200 + >0 postings + the
+  // apply URL resolving 200). Deliberately limited to professional/office-heavy
+  // employers — the consumer-chain ORC tenants (Albertsons, Hilton) are ~half
+  // hourly frontline roles and were left out of this tranche by decision.
+  s("Fortinet", "oracle", "edel~us2~CX_1"),
+  s("DTCC", "oracle", "ebxr~us2~CX_1"),
+  s("Texas Instruments", "oracle", "edbz~us2~CX_1"),
+  s("BDO", "oracle", "ebqb~us2~CX_1"),
   // Corporate re-weighting sweep (2026-07-12): 69 tech/professional
   // employers (Greenhouse/Lever/Ashby), big and very small, ~38716 postings.
   s("Speechify", "greenhouse", "speechify"),

@@ -37,6 +37,7 @@ import {
   normalizePinpoint,
   extractRipplingJobPosts,
   normalizeWorkday,
+  normalizeOracle,
   detectCountry,
   type JobPosting,
 } from "./normalize.ts";
@@ -69,7 +70,7 @@ const json = (body: unknown, status = 200) =>
 // while this file was untouched). Always bump BUILD_VERSION here when a shared
 // module this function imports changes — it forces the diff AND gives the
 // deploy a verifiable tell.
-const BUILD_VERSION = "2026-07-24.2";
+const BUILD_VERSION = "2026-07-24.3";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -271,6 +272,10 @@ async function fetchRippling(s: JobSource): Promise<{ items: unknown[]; raw: str
 // the rest rotate in on later passes, and the freshness filter drops the aged
 // tail regardless). Undated, description-less (list-only), like BambooHR.
 const WORKDAY_PAGE_CAP = 25; // 25 × 20 = up to 500 postings/board/pass
+// Oracle CE REST accepts a larger page than Workday; 20 × 100 = up to 2000
+// postings/board/pass, which exhausts every tenant in the first tranche.
+const ORACLE_PAGE_SIZE = 100;
+const ORACLE_PAGE_CAP = 20;
 async function fetchWorkday(s: JobSource): Promise<{ jobPostings: unknown[]; raw: unknown; windowed: boolean; feedTotal: number }> {
   const [tenant, dc, site] = s.token.split("~");
   if (!tenant || !dc || !site) throw new Error("bad workday token");
@@ -306,8 +311,48 @@ async function fetchWorkday(s: JobSource): Promise<{ jobPostings: unknown[]; raw
   return { jobPostings: all, raw: { jobPostings: all }, windowed: feedTotal > all.length, feedTotal };
 }
 
+// Oracle Recruiting Cloud: paginated public CE REST. The finder carries the
+// site number and paging; items[0].TotalJobsCount is the tenant's own advertised
+// total, so (like Workday) we can tell a windowed fetch from an exhaustive one
+// and refuse to prune on a partial read.
+async function fetchOracle(s: JobSource): Promise<{ items: unknown[]; raw: unknown; windowed: boolean; feedTotal: number }> {
+  const [tenant, region, site] = s.token.split("~");
+  if (!tenant || !region || !site) throw new Error("bad oracle token");
+  const base = `https://${tenant}.fa.${region}.oraclecloud.com/hcmRestApi/resources/latest/recruitingCEJobRequisitions`;
+  const all: unknown[] = [];
+  let feedTotal = 0;
+  // Exhaustive = we stopped because the feed ran out (a short page), not because
+  // we hit OUR page cap. This is the honest windowing signal: measured live,
+  // tenants advertise a TotalJobsCount 1 higher than they actually serve
+  // (Fortinet 918 advertised / 917 returned, DTCC 406/405), so comparing counts
+  // would mark a fully-read board "windowed" forever — and windowed boards are
+  // barred from closure logging, so they'd never contribute fill data.
+  let exhausted = false;
+  for (let page = 0; page < ORACLE_PAGE_CAP; page++) {
+    const finder = `findReqs;siteNumber=${site},limit=${ORACLE_PAGE_SIZE},offset=${page * ORACLE_PAGE_SIZE},sortBy=POSTING_DATES_DESC`;
+    const res = await fetchWithTimeout(`${base}?onlyData=true&expand=requisitionList&finder=${encodeURIComponent(finder)}`);
+    if (!res.ok) { if (page === 0) throw new Error(`HTTP ${res.status}`); break; }
+    const body = await res.json();
+    const item = (Array.isArray((body as { items?: unknown[] }).items) ? (body as { items: Record<string, unknown>[] }).items[0] : null) ?? null;
+    if (!item) { exhausted = true; break; }
+    if (page === 0) feedTotal = Number(item.TotalJobsCount ?? 0) || 0;
+    const reqs = Array.isArray(item.requisitionList) ? item.requisitionList as unknown[] : [];
+    all.push(...reqs);
+    if (reqs.length < ORACLE_PAGE_SIZE) { exhausted = true; break; } // last page
+  }
+  // Same guard as Workday: an empty read against a non-zero advertised total is
+  // a refusal (rate-limit/transient), NOT an empty board. Throwing marks the
+  // board failed so the orphan prune never deletes a live tenant.
+  if (all.length === 0 && feedTotal > 0) throw new Error(`empty page but total=${feedTotal}`);
+  return { items: all, raw: { items: all }, windowed: !exhausted, feedTotal };
+}
+
 async function fetchBoard(s: JobSource): Promise<{ jobs: JobPosting[]; raw: unknown; windowed?: boolean; feedTotal?: number } | null> {
   try {
+    if (s.source === "oracle") {
+      const { items, raw, windowed, feedTotal } = await fetchOracle(s);
+      return { jobs: normalizeOracle(items as never, s.name, s.token), raw, windowed, feedTotal };
+    }
     if (s.source === "rippling") {
       const { items, raw } = await fetchRippling(s);
       return { jobs: normalizeRippling(items as never, s.name, s.token), raw };
@@ -1507,6 +1552,22 @@ async function checkLive(src: JobSource, externalId: string): Promise<boolean | 
       const res = await fetchWithTimeout(`https://api.smartrecruiters.com/v1/companies/${src.token}/postings/${externalId}`);
       return res.status === 404 ? false : res.ok ? true : null;
     }
+    if (src.source === "oracle") {
+      // Per-requisition detail: a pulled posting returns an empty items array
+      // rather than a 404, so treat "no item" as gone and a bad status as
+      // unknown (never as closed).
+      const [tenant, region, site] = src.token.split("~");
+      if (!tenant || !region || !site) return null;
+      const finder = `ById;Id=${externalId},siteNumber=${site}`;
+      const res = await fetchWithTimeout(
+        `https://${tenant}.fa.${region}.oraclecloud.com/hcmRestApi/resources/latest/recruitingCEJobRequisitionDetails?onlyData=true&finder=${encodeURIComponent(finder)}`,
+      );
+      if (res.status === 404) return false;
+      if (!res.ok) return null;
+      const body = await res.json().catch(() => null);
+      const items = (body as { items?: unknown[] } | null)?.items;
+      return Array.isArray(items) ? items.length > 0 : null;
+    }
     if (src.source === "workday") {
       // Cheap per-job detail: 200 live / 404 gone. externalId is the reqId; the
       // detail path needs the full externalPath, so probe the tenant search for
@@ -1560,6 +1621,27 @@ async function getDescription(src: JobSource, id: string, externalId: string): P
       const j = await res.json();
       const job = (j.jobs ?? []).find((x: { shortcode: string }) => x.shortcode === externalId);
       if (job?.description) text = htmlToText(String(job.description)).slice(0, DESC_CAP) || null;
+    }
+  } else if (src.source === "oracle") {
+    // Per-requisition detail carries the full posting: description +
+    // qualifications + responsibilities as separate HTML fields.
+    const [tenant, region, site] = src.token.split("~");
+    if (tenant && region && site) {
+      const finder = `ById;Id=${externalId},siteNumber=${site}`;
+      const res = await fetchWithTimeout(
+        `https://${tenant}.fa.${region}.oraclecloud.com/hcmRestApi/resources/latest/recruitingCEJobRequisitionDetails?expand=all&onlyData=true&finder=${encodeURIComponent(finder)}`,
+      );
+      if (res.ok) {
+        const j = await res.json().catch(() => null);
+        const it = (j as { items?: Array<Record<string, unknown>> } | null)?.items?.[0] ?? null;
+        if (it) {
+          const html = ["ExternalDescriptionStr", "ExternalResponsibilitiesStr", "ExternalQualificationsStr"]
+            .map((k) => (typeof it[k] === "string" ? it[k] as string : ""))
+            .filter(Boolean)
+            .join("\n");
+          text = htmlToText(html).slice(0, DESC_CAP) || null;
+        }
+      }
     }
   } else if (src.source === "bamboohr") {
     text = null; // detail endpoint is unreliable (observed 500s) — honest null
