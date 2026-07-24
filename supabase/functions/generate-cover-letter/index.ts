@@ -332,14 +332,49 @@ Write something that sounds like this specific person wrote it - confident, spec
       };
     }
 
-    // Grounding gate: refuse to deliver a letter whose figures aren't on the
-    // resume — same honesty fence as the tailored-resume validator.
-    const proseIssues = validateProseClaims(resumeText ?? "", String(result.coverLetter ?? ""));
+    // Grounding gate: every figure in the letter must come from the resume or
+    // the job posting (letters legitimately cite the employer's own numbers).
+    // Same shape as generate-apply-package: one retry with explicit fact-check
+    // feedback, then refuse rather than deliver decorated claims.
+    const groundingContext = [jobDescription, jobTitle, jobCompany].filter(Boolean).join("\n");
+    let proseIssues = validateProseClaims(resumeText ?? "", String(result.coverLetter ?? ""), groundingContext);
+    if (proseIssues.length > 0) {
+      logStep("Cover letter failed grounding, retrying with feedback", { issues: proseIssues.slice(0, 5) });
+      try {
+        const retry = await callAIWithFallback(
+          apiKey,
+          {
+            messages: [
+              { role: "system", content: systemPrompt },
+              { role: "user", content: userPrompt },
+              { role: "assistant", content: JSON.stringify(result) },
+              {
+                role: "user",
+                content: `Your draft was REJECTED by an automated fact check for citing figures the candidate never claimed:\n- ${proseIssues.slice(0, 5).join("\n- ")}\nRewrite the letter using ONLY numbers that appear in the resume or the job posting. Rephrasing is fine; new figures are not. Return the same JSON format.`,
+              },
+            ],
+            max_completion_tokens: 4000,
+          },
+          "Cover letter grounding retry"
+        );
+        if (retry.response.ok) {
+          const retryJson = await retry.response.json();
+          const retryContent = retryJson.choices?.[0]?.message?.content;
+          const retryMatch = typeof retryContent === "string" ? retryContent.match(/\{[\s\S]*\}/) : null;
+          if (retryMatch) {
+            result = JSON.parse(retryMatch[0]);
+            proseIssues = validateProseClaims(resumeText ?? "", String(result.coverLetter ?? ""), groundingContext);
+          }
+        }
+      } catch (retryError) {
+        logStep("Grounding retry failed", { error: String(retryError) });
+      }
+    }
     if (proseIssues.length > 0) {
       logStep("Cover letter rejected by grounding", { issues: proseIssues.slice(0, 5) });
       return new Response(
         JSON.stringify({
-          error: "The draft cited figures that aren't on your resume, so we refused to deliver it. Try again — regeneration is free.",
+          error: "The draft cited figures that appear on neither your resume nor the posting, so we refused to deliver it. Try again — regeneration is free.",
           retryable: true,
           groundingIssues: proseIssues.slice(0, 5),
         }),

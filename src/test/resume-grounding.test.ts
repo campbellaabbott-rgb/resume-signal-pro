@@ -172,4 +172,20 @@ describe("validateProseClaims", () => {
     expect(issues.join(" ")).toContain("250%");
     expect(issues.join(" ")).toContain("$4M");
   });
+
+  it("allows figures grounded in the job posting when passed as context", () => {
+    const src = "Marketing manager. Grew newsletter subscribers 25% in one year.";
+    const jd = "Acme Robotics is growing 300% year over year. We are a team of 45 people.";
+    expect(
+      validateProseClaims(src, "Acme's 300% growth caught my attention; I grew subscribers 25% myself.", jd),
+    ).toEqual([]);
+  });
+
+  it("still rejects invented figures even with job-posting context present", () => {
+    const src = "Marketing manager. Grew newsletter subscribers 25% in one year.";
+    const jd = "Acme Robotics is growing 300% year over year.";
+    const issues = validateProseClaims(src, "I grew revenue 847% in my last role.", jd);
+    expect(issues.join(" ")).toContain("847%");
+    expect(issues.join(" ")).toContain("neither the resume nor the job posting");
+  });
 });

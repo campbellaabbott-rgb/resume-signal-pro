@@ -133,13 +133,21 @@ export function unsupportedNumericClaims(sourceResume: string, text: string): st
 
 /**
  * Grounding for free-prose application text (cover letters, summaries).
- * Numeric claims must be sourced; "N years of experience" claims must use a
- * number the resume itself contains. Returns issue strings, empty when clean.
+ * Every figure must come from the resume — or, when `supportingContext` is
+ * provided (the job posting), from that context: letters legitimately cite
+ * the employer's own numbers ("your 300% year-over-year growth"). Live
+ * probing showed honest letters do this constantly, so resume-only grounding
+ * here would reject good drafts. Resume BULLETS stay resume-only grounded in
+ * validateTailoredResume — those are first-person candidate claims, and a JD
+ * figure appearing there would be a lifted achievement, not context.
  */
-export function validateProseClaims(sourceResume: string, text: string): string[] {
+export function validateProseClaims(sourceResume: string, text: string, supportingContext = ""): string[] {
+  const source = supportingContext ? `${sourceResume}\n${supportingContext}` : sourceResume;
   const issues: string[] = [];
-  for (const n of unsupportedNumericClaims(sourceResume, text)) {
-    issues.push(`Figure "${n}" does not appear in the source resume`);
+  for (const n of unsupportedNumericClaims(source, text)) {
+    issues.push(supportingContext
+      ? `Figure "${n}" appears in neither the resume nor the job posting`
+      : `Figure "${n}" does not appear in the source resume`);
   }
   return issues;
 }
