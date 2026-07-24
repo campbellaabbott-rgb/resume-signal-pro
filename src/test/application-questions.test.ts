@@ -76,6 +76,16 @@ describe("classifyQuestion", () => {
     expect(classifyQuestion("What do you consider to be your top 5 core strengths?", "text")).toBe("draftable");
   });
 
+  // Misses found in production data (BJAK's live Ashby form, 2026-07-24) —
+  // pinned so they never regress.
+  it("catches the live-form misses: bare Name and Nationality", () => {
+    expect(classifyQuestion("Name", "String")).toBe("identity");
+    expect(classifyQuestion("Nationality", "String")).toBe("demographic"); // national origin is protected
+    expect(classifyQuestion("Citizenship", "String")).toBe("demographic");
+    // The exact-label guard must not swallow substantive questions.
+    expect(classifyQuestion("Name a project you're proud of", "textarea")).toBe("draftable");
+  });
+
   it("selectDraftable keeps only the draftable questions", () => {
     const qs = [
       { label: "First Name", type: "input_text" },
