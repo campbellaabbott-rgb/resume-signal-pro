@@ -62,7 +62,14 @@ const json = (body: unknown, status = 200) =>
 // counts. catalogSize (JOB_SOURCES.length) is the automatic companion signal: it
 // moves with every catalog change with no discipline required. Sortable string so
 // a future check can tell "prod is behind" from "prod is ahead".
-const BUILD_VERSION = "2026-07-24.1";
+// NOTE: a change to ../_shared/* alone does NOT get this function redeployed —
+// the deploy only picks up functions whose OWN directory changed, so the stale
+// bundle keeps its old copy of the shared module (confirmed twice, 2026-07-24:
+// two classifier fixes in _shared/application-questions.ts never reached prod
+// while this file was untouched). Always bump BUILD_VERSION here when a shared
+// module this function imports changes — it forces the diff AND gives the
+// deploy a verifiable tell.
+const BUILD_VERSION = "2026-07-24.2";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes

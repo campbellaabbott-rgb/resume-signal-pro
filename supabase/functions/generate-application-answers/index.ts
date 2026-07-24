@@ -1,3 +1,7 @@
+// deploy-stamp: 2026-07-24.2 — bump on ANY change to ../_shared/* that this
+// function imports. The deploy only ships functions whose own directory
+// changed, so a shared-module-only commit leaves this function running a stale
+// bundled copy (confirmed twice on 2026-07-24 with the question classifier).
 // Apply-agent brain: draft answers to a job application's screening questions,
 // grounded STRICTLY in the candidate's resume. This is the moat vs. every blind
 // mass-apply bot — it refuses to invent, exaggerate, or assume anything the resume
