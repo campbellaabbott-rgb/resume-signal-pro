@@ -1,6 +1,7 @@
 // deploy-stamp: 2026-07-04T18:44Z
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { validateProseClaims } from "../_shared/resume-grounding.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -331,7 +332,22 @@ Write something that sounds like this specific person wrote it - confident, spec
       };
     }
 
-    logStep("Cover letter generated", { 
+    // Grounding gate: refuse to deliver a letter whose figures aren't on the
+    // resume — same honesty fence as the tailored-resume validator.
+    const proseIssues = validateProseClaims(resumeText ?? "", String(result.coverLetter ?? ""));
+    if (proseIssues.length > 0) {
+      logStep("Cover letter rejected by grounding", { issues: proseIssues.slice(0, 5) });
+      return new Response(
+        JSON.stringify({
+          error: "The draft cited figures that aren't on your resume, so we refused to deliver it. Try again — regeneration is free.",
+          retryable: true,
+          groundingIssues: proseIssues.slice(0, 5),
+        }),
+        { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    logStep("Cover letter generated", {
       letterLength: result.coverLetter?.length,
       skillsCount: result.keySkillsHighlighted?.length,
       modelUsed 

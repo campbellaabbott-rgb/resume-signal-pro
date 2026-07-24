@@ -4,6 +4,14 @@
 // their significant tokens with it; skills and certifications that aren't in
 // the source are stripped and reported rather than shipped. Pure module —
 // unit-tested from vitest, no Deno APIs.
+//
+// POLICY — validated vs streaming paths: the non-stream functions
+// (generate-apply-package, generate-cover-letter, generate-application-answers)
+// run these validators server-side and REFUSE ungrounded output (422). The
+// *-stream variants cannot (tokens are already delivered as they stream), so
+// they are prompt-guarded only and remain interactive/human-reviewed surfaces.
+// Anything autonomous — overnight kit pre-drafting, the apply agent — MUST
+// call the validated non-stream paths, never the stream variants.
 
 export interface TailoredExperience {
   company: string;
@@ -77,6 +85,65 @@ function tokensSupported(hay: string, needle: string, ratio: number): boolean {
 
 const yearsIn = (s: string) => [...s.matchAll(/\b(19|20)\d{2}\b/g)].map((m) => m[0]);
 
+// ── Numeric claim grounding ─────────────────────────────────────────────────
+// The structural validator above catches invented employers/titles/dates, but
+// a model can still decorate a bullet or cover letter with a metric the
+// candidate never claimed ("boosted conversion 32%"). Numbers are the
+// highest-stakes tokens in application material — every impact-shaped figure
+// in the OUTPUT must literally exist in the SOURCE resume.
+//
+// Impact-shaped = percentages, currency amounts, multipliers (3x), suffixed
+// magnitudes (10k/2M/1B), and bare integers >= 13. Small bare integers (team
+// of 4, 3 stakeholders) are allowed: they're usually structural phrasing, and
+// flagging them would reject harmless drafts far more often than it would
+// catch lies. Years are already validated structurally where they matter.
+
+const NUM_CLAIM = /\$\s?\d[\d,.]*\s?[kKmMbB]?|\d+(?:[.,]\d+)?\s?%|\d+(?:\.\d+)?x\b|\b\d+(?:[.,]\d+)?\s?[kKmMbB]\b|\b\d{2,}\b/g;
+
+/** Canonical digit-string for matching: "1,200" == "1200", "32 %" == "32%". */
+const canonNum = (s: string) => s.replace(/[\s,]/g, "").toLowerCase();
+
+const numClaims = (text: string): string[] =>
+  [...(text.matchAll(NUM_CLAIM))].map((m) => m[0]).filter((raw) => {
+    const bare = raw.replace(/[^0-9.]/g, "");
+    const isBareInt = /^\d+$/.test(raw.trim());
+    if (isBareInt && Number(bare) < 13) return false;      // small counts: allowed
+    if (isBareInt && /^(19|20)\d{2}$/.test(raw.trim())) return false; // years: handled elsewhere
+    return true;
+  });
+
+/**
+ * Every impact-shaped number in `text` must appear in `sourceResume`
+ * (canonicalized). Returns the unsupported claims, empty when clean.
+ */
+export function unsupportedNumericClaims(sourceResume: string, text: string): string[] {
+  const sourceNums = new Set(numClaims(sourceResume).map(canonNum));
+  // Also index every raw digit-run in the source, so "32%" in the output is
+  // supported by "32 percent" or "increased by 32" in the source.
+  for (const m of sourceResume.matchAll(/\d[\d,.]*/g)) sourceNums.add(canonNum(m[0]));
+  const bad: string[] = [];
+  for (const claim of numClaims(text)) {
+    const canon = canonNum(claim);
+    const digits = canon.replace(/[^0-9.]/g, "");
+    if (sourceNums.has(canon) || sourceNums.has(digits)) continue;
+    bad.push(claim.trim());
+  }
+  return [...new Set(bad)];
+}
+
+/**
+ * Grounding for free-prose application text (cover letters, summaries).
+ * Numeric claims must be sourced; "N years of experience" claims must use a
+ * number the resume itself contains. Returns issue strings, empty when clean.
+ */
+export function validateProseClaims(sourceResume: string, text: string): string[] {
+  const issues: string[] = [];
+  for (const n of unsupportedNumericClaims(sourceResume, text)) {
+    issues.push(`Figure "${n}" does not appear in the source resume`);
+  }
+  return issues;
+}
+
 export function validateTailoredResume(sourceResume: string, resume: TailoredResumeShape): GroundingReport {
   const hay = " " + normalizeForMatch(sourceResume) + " ";
   const hayYears = new Set(yearsIn(sourceResume));
@@ -93,6 +160,14 @@ export function validateTailoredResume(sourceResume: string, resume: TailoredRes
     for (const y of [...yearsIn(exp.startDate ?? ""), ...yearsIn(exp.endDate ?? "")]) {
       if (!hayYears.has(y)) issues.push(`Year ${y} on "${exp.company}" does not appear in the source resume`);
     }
+    // Bullets: rephrasing is fine, new impact figures are not.
+    for (const n of unsupportedNumericClaims(sourceResume, (exp.bullets ?? []).join("\n"))) {
+      issues.push(`Figure "${n}" in a "${exp.company}" bullet does not appear in the source resume`);
+    }
+  }
+
+  for (const n of unsupportedNumericClaims(sourceResume, resume.summary ?? "")) {
+    issues.push(`Figure "${n}" in the summary does not appear in the source resume`);
   }
 
   for (const edu of resume.education ?? []) {
