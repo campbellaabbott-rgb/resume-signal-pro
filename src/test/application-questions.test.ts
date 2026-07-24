@@ -86,6 +86,23 @@ describe("classifyQuestion", () => {
     expect(classifyQuestion("Name a project you're proud of", "textarea")).toBe("draftable");
   });
 
+  // Work-authorization phrasings the original regex missed — found on the same
+  // live form. These are status facts a resume cannot establish; drafting one
+  // would put a guess about someone's legal right to work into their
+  // application, which is the worst possible thing to get wrong.
+  it("never drafts work-authorization questions in any phrasing", () => {
+    for (const l of [
+      "Do you need a work visa?",
+      "Are you eligible to work in Malaysia?",
+      "Do you have the right to work in the UK?",
+      "Do you hold a valid work permit?",
+      "Will you require a visa to work here?",
+      "Please confirm your employment eligibility",
+    ]) {
+      expect(classifyQuestion(l, "Boolean")).toBe("factual");
+    }
+  });
+
   it("selectDraftable keeps only the draftable questions", () => {
     const qs = [
       { label: "First Name", type: "input_text" },

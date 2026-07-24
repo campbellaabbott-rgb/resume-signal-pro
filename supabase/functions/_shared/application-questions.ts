@@ -25,7 +25,7 @@ const FILE = /\b(resume|résumé|cv|cover\s*letter|upload|attach|transcript|port
 // ("disability", "pronouns") so no trailing word-boundary can slip them through.
 const DEMOGRAPHIC = /\b(gender|sex|race|ethnic\w*|hispanic|latin[ox]|veteran|disab\w*|sexual\s+orientation|pronoun\w*|date\s+of\s+birth|marital|religio\w*|nationalit\w*|citizenship|national\s+origin)/i;
 // Facts a resume can't establish — must come from the candidate.
-const FACTUAL = /(authoriz\w*\s*to\s*work|work\s*authoriz|require\s*(?:visa\s*)?sponsor|sponsorship|need\s*sponsor|require\s*a\s*visa|salary|compensation|desired\s*pay|expected\s*(?:pay|salary|compensation)|pay\s*expectation|notice\s*period|start\s*date|available\s*to\s*start|when\s*can\s*you\s*start|willing\s*to\s*relocate|relocat|able\s*to\s*commute|are\s*you\s*(?:at\s*least\s*)?18|legally\s*(?:eligible|authorized)|do\s*you\s*now\s*or\s*in\s*the\s*future)/i;
+const FACTUAL = /(authoriz\w*\s*to\s*work|work\s*authoriz|require\s*(?:visa\s*)?sponsor|sponsorship|need\s*sponsor|work\s*(?:visa|permit)|(?:need|require|hold|have)\s*(?:a\s*)?(?:valid\s*)?(?:work\s*|employment\s*)?visa|eligible\s*to\s*work|right\s*to\s*work|employment\s*eligib\w*|salary|compensation|desired\s*pay|expected\s*(?:pay|salary|compensation)|pay\s*expectation|notice\s*period|start\s*date|available\s*to\s*start|when\s*can\s*you\s*start|willing\s*to\s*relocate|relocat|able\s*to\s*commute|are\s*you\s*(?:at\s*least\s*)?18|legally\s*(?:eligible|authorized)|do\s*you\s*now\s*or\s*in\s*the\s*future)/i;
 
 export function classifyQuestion(label: string, fieldType?: string): QuestionClass {
   const l = label ?? "";
