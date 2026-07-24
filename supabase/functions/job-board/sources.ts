@@ -80,6 +80,26 @@ export const JOB_SOURCES: JobSource[] = [
   s("Fortinet", "oracle", "edel~us2~CX_1"),
   s("DTCC", "oracle", "ebxr~us2~CX_1"),
   s("Texas Instruments", "oracle", "edbz~us2~CX_1"),
+  // Tranche 2 (2026-07-24): the professional-heavy tail. All 90 remaining named
+  // ORC tenants were classified by sampling 20 live titles each; only 29 came
+  // back >=60% professional and <=15% frontline, and these are that tier's top
+  // 10 by volume (~5,200 postings — 81% of the tier's value). Deliberately
+  // skipped: the frontline-heavy tenants (~19,600 postings of hourly retail and
+  // hospitality) and 14 public-sector/university tenants that fail
+  // corporate-only. Every name below came from the tenant's OWN careers-page
+  // title (a first-party source that also independently confirmed "BDO USA"),
+  // and each was collision-checked against the catalog — "Oracle Law Global"
+  // and "Woodthilsted" are unrelated companies that merely share a prefix.
+  s("Oracle", "oracle", "eeho~us2~CX_1"),
+  s("Wood", "oracle", "ehif~em2~CX_1"),
+  s("McDermott", "oracle", "edsv~us2~CX_1"),
+  s("Fortive", "oracle", "ejta~us6~CX_1"),
+  s("Oceaneering", "oracle", "ebfr~us2~CX_1"),
+  s("DNV", "oracle", "ecyq~em2~CX_1"),
+  s("Ipsos", "oracle", "ecqf~em2~CX_1"),
+  s("Euroclear", "oracle", "don~em2~CX_1"),
+  s("MUFG Pension & Market Services", "oracle", "hcmn~ap1~CX_1"),
+  s("Canon", "oracle", "ejqe~em2~CX_1"),
   // "BDO USA", not "BDO": the board already carries other BDO member firms
   // (BDO4 on SmartRecruiters, bdoau, bdozambia). BDO is a network of legally
   // separate firms, and a bare "BDO" here would silently merge four of them
