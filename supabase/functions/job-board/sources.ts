@@ -80,7 +80,12 @@ export const JOB_SOURCES: JobSource[] = [
   s("Fortinet", "oracle", "edel~us2~CX_1"),
   s("DTCC", "oracle", "ebxr~us2~CX_1"),
   s("Texas Instruments", "oracle", "edbz~us2~CX_1"),
-  s("BDO", "oracle", "ebqb~us2~CX_1"),
+  // "BDO USA", not "BDO": the board already carries other BDO member firms
+  // (BDO4 on SmartRecruiters, bdoau, bdozambia). BDO is a network of legally
+  // separate firms, and a bare "BDO" here would silently merge four of them
+  // into one company page, count, and Hiring-Health score. This tenant's
+  // postings are 100% US (sampled 60/60), which grounds the name.
+  s("BDO USA", "oracle", "ebqb~us2~CX_1"),
   // Corporate re-weighting sweep (2026-07-12): 69 tech/professional
   // employers (Greenhouse/Lever/Ashby), big and very small, ~38716 postings.
   s("Speechify", "greenhouse", "speechify"),
