@@ -82,3 +82,75 @@ describe("categorize — regressions the new trades tier could have caused", () 
     expect(categorize("Operator Robot", "Production")).toBe("operations");
   });
 });
+
+// ── v5: rules from a fresh 3,000-row sample of the remaining "other" pile ──
+// After v4 the pile was still 178,972 rows (31.4% of the board). The sample's
+// top single word was "technician" (431) and its top bigram "cdl drivers"
+// (136) — trucking and field service, not exotic roles.
+describe("categorize v5 — real titles from the remaining uncategorised pile", () => {
+  it("routes trucking to operations (plural 'drivers' could never match before)", () => {
+    // The v4 rule listed `driver`, which inside \b(...)\b cannot match "Drivers".
+    // The largest single cluster in the pile was invisible to it.
+    for (const t of [
+      "CDL-A Drivers needed for yard driver home DAILY! $28 HOURLY",
+      "CDL A Truck Driver - Home Weekly",
+      "Owner Operator - Flatbed",
+      "OTR Drivers Needed",
+      "Dispatcher",
+    ]) {
+      expect(categorize(t), t).toBe("operations");
+    }
+  });
+
+  it("routes field/service technicians to operations", () => {
+    expect(categorize("Service Technician")).toBe("operations");
+    expect(categorize("Auto Body Technician")).toBe("operations");
+    expect(categorize("Brand Enhancement Technician")).toBe("operations");
+  });
+
+  it("does NOT steal technicians that already had a home", () => {
+    // The bare-technician rule sits after healthcare, engineering and security
+    // on purpose — this is the regression it could have caused.
+    expect(categorize("IT Technician")).toBe("engineering");
+    expect(categorize("Network Technician")).toBe("engineering");
+    expect(categorize("Pharmacy Technician")).toBe("healthcare");
+    expect(categorize("Patient Care Technician")).toBe("healthcare");
+    expect(categorize("Behavior Technician")).toBe("healthcare");
+  });
+
+  it("routes community and behavioural care to healthcare", () => {
+    for (const t of [
+      "Case Manager",
+      "Direct Support Professional",
+      "Mental Health Associate",
+      "Hospice Aide",
+      "Caregiver",
+      "Home Health Aide",
+    ]) {
+      expect(categorize(t), t).toBe("healthcare");
+    }
+  });
+
+  it("routes construction leadership to operations", () => {
+    expect(categorize("Construction Superintendent")).toBe("operations");
+    expect(categorize("Construction Manager")).toBe("operations");
+    expect(categorize("Superintendent")).toBe("operations");
+  });
+
+  it("routes a bare adjuster to finance", () => {
+    // "Independent Property Field Adjuster" never contains the word "claims",
+    // so the claims-prefixed v4 rule could not reach it.
+    expect(categorize("Independent Property Field Adjuster")).toBe("finance");
+    expect(categorize("Field Adjuster")).toBe("finance");
+  });
+
+  it("keeps every v4 precedence intact", () => {
+    expect(categorize("Data Scientist")).toBe("data_ai");
+    expect(categorize("Security Engineer")).toBe("engineering");
+    expect(categorize("SOC Analyst")).toBe("security");
+    expect(categorize("Barista")).toBe("hospitality_retail");
+    expect(categorize("Product Manager")).toBe("product");
+    expect(categorize("Technical Program Manager")).toBe("product");
+    expect(categorize("Zorbleflarg Wrangler")).toBe("other");
+  });
+});
