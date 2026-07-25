@@ -143,6 +143,10 @@ interface BoardResponse {
   aliases?: string[];
   /** Typo fallback: the original query these are the CLOSEST (not exact) matches for. */
   fuzzy?: string;
+  /** Set when results came from the SEMANTIC tier (nearest-by-meaning after
+   *  every keyword tier found nothing). The UI must disclose it — these are
+   *  related roles, never presented as exact matches. */
+  semantic?: string;
 }
 
 // Mirrors JOB_CATEGORIES in the edge function — the filterable fields.
@@ -3293,7 +3297,15 @@ export default function Jobs() {
                   {t("jobsPage.fuzzyLine", "No exact matches for “{{q}}” — showing the closest job titles instead.", { q: data.fuzzy })}
                 </p>
               )}
-              {q.trim() && sortMode !== "salary" && (
+              {/* Semantic-tier disclosure: same honesty rule as the fuzzy line —
+                  nearest-by-meaning results are labeled, never passed off as
+                  keyword matches. */}
+              {data?.semantic && (
+                <p className="text-xs text-warning/90 mb-2 -mt-1">
+                  {t("jobsPage.semanticLine", "No title matches for “{{q}}” — showing the closest roles by meaning.", { q: data.semantic })}
+                </p>
+              )}
+              {q.trim() && sortMode !== "salary" && !data?.fuzzy && !data?.semantic && (
                 <p className="text-[11px] text-muted-foreground mb-2 -mt-1">
                   {searchNewestFirst
                     ? t("jobsPage.sortedNewest", "Sorted by newest first")

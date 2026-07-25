@@ -4321,6 +4321,7 @@
     "moreAtCompany": "Mais {{n}} vagas abertas na {{company}} — ver todas",
     "relatedRoles": "Cargos relacionados:",
     "fuzzyLine": "Sem correspondências exatas para “{{q}}” — mostrando os cargos mais próximos.",
+    "semanticLine": "Nenhum título corresponde a “{{q}}” — mostrando as vagas mais próximas por significado.",
     "nlOpen": "Buscar em linguagem natural",
     "nlPlaceholder": "ex. vagas de produto remotas acima de $150k publicadas esta semana",
     "nlGo": "Buscar",

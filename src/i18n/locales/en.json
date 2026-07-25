@@ -4321,6 +4321,7 @@
     "moreAtCompany": "{{n}} more open roles at {{company}} — see them all",
     "relatedRoles": "Related roles:",
     "fuzzyLine": "No exact matches for “{{q}}” — showing the closest job titles instead.",
+    "semanticLine": "No title matches for “{{q}}” — showing the closest roles by meaning.",
     "nlOpen": "Search in plain language",
     "nlPlaceholder": "e.g. remote product roles over $150k posted this week",
     "nlGo": "Search",

@@ -4321,6 +4321,7 @@
     "moreAtCompany": "{{n}} pa ang bukas na posisyon sa {{company}} — tingnan lahat",
     "relatedRoles": "Kaugnay na posisyon:",
     "fuzzyLine": "Walang eksaktong tugma para sa “{{q}}” — ipinapakita ang pinakamalapit na posisyon.",
+    "semanticLine": "Walang pamagat na tumutugma sa “{{q}}” — ipinapakita ang pinakamalapit na tungkulin ayon sa kahulugan.",
     "nlOpen": "Maghanap sa payak na wika",
     "nlPlaceholder": "hal. remote na trabaho sa produkto na higit $150k na na-post ngayong linggo",
     "nlGo": "Maghanap",

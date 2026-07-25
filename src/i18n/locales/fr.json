@@ -4321,6 +4321,7 @@
     "moreAtCompany": "{{n}} autres postes ouverts chez {{company}} — tout voir",
     "relatedRoles": "Rôles proches :",
     "fuzzyLine": "Aucun résultat exact pour « {{q}} » — voici les intitulés les plus proches.",
+    "semanticLine": "Aucun intitulé ne correspond à « {{q}} » — voici les postes les plus proches par le sens.",
     "nlOpen": "Rechercher en langage naturel",
     "nlPlaceholder": "ex. postes produit en télétravail à plus de 150k€ publiés cette semaine",
     "nlGo": "Rechercher",

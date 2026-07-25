@@ -15,7 +15,7 @@
 
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { HOT_TOKENS, JOB_SOURCES, LIGHT_DESC_TOKENS, type JobSource } from "./sources.ts";
-import { BOARD_DESC_SOURCES, DETAIL_DESC_SOURCES, clusterKey, jobPostingLdDescription, workdayCxsUrl } from "./descriptions.ts";
+import { BOARD_DESC_SOURCES, buildEmbedInput, DETAIL_DESC_SOURCES, clusterKey, jobPostingLdDescription, workdayCxsUrl } from "./descriptions.ts";
 import {
   COUNTRY_MAP_VERSION,
   detectWorkMode,
@@ -73,7 +73,7 @@ const json = (body: unknown, status = 200) =>
 // while this file was untouched). Always bump BUILD_VERSION here when a shared
 // module this function imports changes — it forces the diff AND gives the
 // deploy a verifiable tell.
-const BUILD_VERSION = "2026-07-25.9";
+const BUILD_VERSION = "2026-07-25.10";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -1582,6 +1582,20 @@ async function maybeKickMaintenance(client: SupabaseClient): Promise<void> {
       return;
     }
 
+    // Embedding sweep — the second independent track. In-runtime inference +
+    // DB writes, no vendor fetches, so like country it must not queue behind
+    // the fetch-heavy ladder. "Done" only means the backlog is empty RIGHT NOW
+    // (new postings arrive around the clock, and desc-sweep keeps upgrading
+    // title-only rows), so a completed sweep re-kicks on a 60-minute cadence
+    // rather than settling for good.
+    const es = await alive("embed_sweep");
+    const esDoneAt = typeof es.v?.doneAt === "string" ? Date.parse(es.v.doneAt as string) : NaN;
+    const esSettled = Number.isFinite(esDoneAt) && Date.now() - esDoneAt < 60 * 60_000;
+    if (!es.alive && !esSettled) {
+      await kick("embed-sweep");
+      return;
+    }
+
     // Categorization rules changed since the corpus was stamped? Sweep the
     // stored "other" rows through the current rules in a fresh invocation
     // (own compute budget). Idempotent: the stamp is written only when the
@@ -1643,6 +1657,33 @@ async function maybeKickMaintenance(client: SupabaseClient): Promise<void> {
 
 const detailCache = new Map<string, { at: number; text: string }>();
 const DETAIL_TTL_MS = 60 * 60_000;
+
+// ── semantic embeddings (gte-small, in-runtime) ────────────────────────────
+// One session per isolate, created lazily: the docs' own examples construct it
+// at module scope for reuse, and the defensive global access means local
+// tooling (deno check, vitest) that lacks the Supabase global still parses.
+// Each embedding costs ~100-200ms of the 2s per-request CPU budget — that cap,
+// not wall time, is what sizes EMBED_PER_HOP.
+// Review-corrected from 10: ten embeddings at the stated ~200ms worst case is
+// 100% of the 2s CPU cap — zero headroom, and an over-budget hop is killed
+// mid-loop with its chain continuation never issued. Six embeds plus an
+// in-loop elapsed guard keeps the worst case near half the budget.
+const EMBED_PER_HOP = 6;
+const EMBED_HOP_WALL_MS = 1_100; // inference is synchronous CPU, so wall ~ CPU here
+let aiSession: { run: (input: string, opts: Record<string, unknown>) => Promise<unknown> } | null = null;
+async function embedText(text: string): Promise<number[] | null> {
+  try {
+    if (!aiSession) {
+      const S = (globalThis as unknown as { Supabase?: { ai?: { Session?: new (m: string) => NonNullable<typeof aiSession> } } }).Supabase;
+      if (!S?.ai?.Session) return null; // runtime without inference — callers degrade
+      aiSession = new S.ai.Session("gte-small");
+    }
+    const out = await aiSession.run(text, { mean_pool: true, normalize: true });
+    return Array.isArray(out) && out.length === 384 ? out as number[] : null;
+  } catch {
+    return null;
+  }
+}
 
 // Single-posting liveness against the vendor RIGHT NOW — the moment-of-apply
 // freshness check. Uses cheap per-job endpoints where they exist (never the
@@ -2146,65 +2187,6 @@ Deno.serve(async (req) => {
       return json({ ok: true, scanned, updated, done: true });
     }
 
-    if (action === "backfill-country") {
-      // Fill country on rows that predate the column — chainKey-gated,
-      // self-chaining, stamped on completion (same shape as backfill-salary).
-      // Rows whose location we can't place stay NULL; the cursor walks past
-      // them and the stamp stops re-scans.
-      if (typeof body.chainKey !== "string" || body.chainKey !== await chainKey()) {
-        return json({ error: "backfill-country is a maintenance action" }, 403);
-      }
-      let cursor = typeof body.cursor === "string" ? body.cursor : "";
-      let scanned = 0;
-      const groups = new Map<string, string[]>(); // country -> ids
-      const PAGES = 6;
-      for (let page = 0; page < PAGES; page++) {
-        let q = client
-          .from("job_board_postings")
-          .select("id,location")
-          .is("country", null)
-          .order("id")
-          .limit(1000);
-        if (cursor) q = q.gt("id", cursor);
-        const { data: rows, error } = await q;
-        if (error) throw error;
-        for (const r of rows ?? []) {
-          scanned++;
-          const c = detectCountry((r as { location?: string | null }).location);
-          if (!c) continue;
-          const g = groups.get(c) ?? [];
-          g.push(r.id as string);
-          groups.set(c, g);
-        }
-        if (!rows || rows.length < 1000) { cursor = ""; break; }
-        cursor = rows[rows.length - 1].id as string;
-      }
-      let updated = 0;
-      for (const [c, ids] of groups) {
-        for (let i = 0; i < ids.length; i += 200) {
-          const { error } = await client.from("job_board_postings")
-            .update({ country: c }).in("id", ids.slice(i, i + 200));
-          if (error) throw error;
-          updated += Math.min(200, ids.length - i);
-        }
-      }
-      if (cursor) {
-        const url = `${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`;
-        waitUntil(chainKey().then((key) => fetch(url, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "backfill-country", chainKey: key, cursor }),
-        })).then((r) => r.text()).catch(() => {}));
-        return json({ ok: true, scanned, updated, cursor });
-      }
-      await client.from("job_board_meta").upsert(
-        { k: "country_version", v: { version: COUNTRY_VERSION, sweptAt: new Date().toISOString() }, updated_at: new Date().toISOString() },
-        { onConflict: "k" },
-      );
-      console.log(`[JOB-BOARD] country backfill complete: ${scanned} scanned, ${updated} filled (v${COUNTRY_VERSION})`);
-      return json({ ok: true, scanned, updated, done: true });
-    }
-
     if (action === "backfill-posted") {
       // Date the undated (see POSTED_BACKFILL_VERSION): re-fetch each board's
       // official feed once and stamp posted_at from the feed's own date. Two
@@ -2578,6 +2560,75 @@ Deno.serve(async (req) => {
       return json({ ok: true, board: s.token, updated, remaining: (rows ?? []).length === PER_HOP ? "more" : "board-done", nextTi: ti });
     }
 
+    if (action === "embed-sweep") {
+      // Vector fill for semantic search. Reads its batch from get_embed_batch
+      // (description-bearing rows first, newest first, including rows whose
+      // description arrived AFTER a title-only embedding), embeds in-runtime,
+      // upserts. Ten per hop: each embedding costs ~100-200ms of the 2-second
+      // per-request CPU budget, and blowing that budget kills the isolate
+      // mid-batch rather than failing politely.
+      if (typeof body.chainKey !== "string" || body.chainKey !== await chainKey()) {
+        return json({ error: "embed-sweep is a maintenance action" }, 403);
+      }
+      // Liveness restamp; resume is data-driven (embedded rows leave the batch).
+      await client.from("job_board_meta").upsert(
+        { k: "embed_sweep", v: { at: new Date().toISOString() }, updated_at: new Date().toISOString() },
+        { onConflict: "k" },
+      );
+      const { data: batch, error: bErr } = await client.rpc("get_embed_batch", { p_limit: EMBED_PER_HOP });
+      if (bErr) {
+        // Migration not applied yet (or transient). Stamp a settle so the kick
+        // loop retries on the settle cadence instead of burning a kick every cycle.
+        await client.from("job_board_meta").upsert(
+          { k: "embed_sweep", v: { doneAt: new Date().toISOString(), note: `batch error: ${bErr.message?.slice(0, 80)}` }, updated_at: new Date().toISOString() },
+          { onConflict: "k" },
+        );
+        return json({ ok: false, error: "get_embed_batch unavailable" });
+      }
+      const rows = (batch ?? []) as Array<{ id: string; title: string | null; company: string | null; location: string | null; descr: string | null; has_desc: boolean }>;
+      if (rows.length === 0) {
+        await client.from("job_board_meta").upsert(
+          { k: "embed_sweep", v: { doneAt: new Date().toISOString() }, updated_at: new Date().toISOString() },
+          { onConflict: "k" },
+        );
+        return json({ ok: true, done: true });
+      }
+      let embedded = 0;
+      const hopStart = Date.now();
+      for (const r of rows) {
+        // Budget guard: stop BEFORE the embed that would blow the CPU cap.
+        // A partial batch still chains below; unfinished rows simply remain
+        // in the queue for the next hop.
+        if (Date.now() - hopStart > EMBED_HOP_WALL_MS) break;
+        const input = buildEmbedInput(r.title, r.company, r.location, r.descr);
+        if (!input) continue;
+        const vec = await embedText(input);
+        if (!vec) continue; // inference unavailable/failed — row retried next batch
+        const { error: uErr } = await client.from("job_board_embeddings").upsert(
+          // pgvector accepts the bracketed text form; PostgREST casts on write.
+          { id: r.id, embedding: JSON.stringify(vec), embedded_desc: r.has_desc === true, updated_at: new Date().toISOString() },
+          { onConflict: "id" },
+        );
+        if (!uErr) embedded++;
+      }
+      // Zero embedded from a non-empty batch means inference is unavailable in
+      // this runtime — settle instead of chaining a no-op loop forever.
+      if (embedded === 0) {
+        await client.from("job_board_meta").upsert(
+          { k: "embed_sweep", v: { doneAt: new Date().toISOString(), note: "inference unavailable" }, updated_at: new Date().toISOString() },
+          { onConflict: "k" },
+        );
+        return json({ ok: false, embedded: 0, note: "inference unavailable" });
+      }
+      const url = `${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`;
+      waitUntil(chainKey().then((key) => fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "embed-sweep", chainKey: key }),
+      })).then((rr) => rr.text()).catch(() => {}));
+      return json({ ok: true, embedded, batch: rows.length });
+    }
+
     if (action === "backfill-country") {
       // Country for rows whose location never carried one (61.7% coverage when
       // built; the country filter was blind to 218k postings). Pure DB work —
@@ -2633,6 +2684,16 @@ Deno.serve(async (req) => {
       }
       await client.from("job_board_meta").upsert(
         { k: "country_backfill", v: { doneAt: new Date().toISOString(), mapVersion: COUNTRY_MAP_VERSION }, updated_at: new Date().toISOString() },
+        { onConflict: "k" },
+      );
+      // Also satisfy the LEGACY pass-complete watcher (country_version): the
+      // original rollout's handler stamped that key, this handler replaced it
+      // (2026-07-25 — two handlers shared the action name; the legacy one
+      // shadowed this one AND stamped a key this track never read, which kept
+      // re-kicking country and starving desc-sweep of its recovery kicks).
+      // Stamping both keys settles every watcher.
+      await client.from("job_board_meta").upsert(
+        { k: "country_version", v: { version: COUNTRY_VERSION, sweptAt: new Date().toISOString() }, updated_at: new Date().toISOString() },
         { onConflict: "k" },
       );
       console.log(`[JOB-BOARD] country backfill complete: ${scanned} scanned, ${updated} filled (map v${COUNTRY_MAP_VERSION})`);
@@ -3017,6 +3078,29 @@ Deno.serve(async (req) => {
         for (const r of data ?? []) openMap[r.id as string] = true;
       }
       return json({ open: openMap });
+    }
+
+    if (action === "semantic-search") {
+      // Read-only probe of the semantic tier, used to verify result quality
+      // against real queries before (and after) the tier is user-visible.
+      // Bounded and cache-free; returns similarity scores so quality is
+      // inspectable, not guessed at.
+      const q = String(body.q ?? "").trim().slice(0, 200);
+      if (q.length < 3) return json({ error: "q too short" }, 400);
+      const qVec = await embedText(q);
+      if (!qVec) return json({ error: "inference unavailable in this runtime" }, 503);
+      const { data: sem, error: sErr } = await client.rpc("search_jobs_semantic", {
+        p_embedding: JSON.stringify(qVec),
+        p_limit: Math.min(Math.max(Number(body.limit) || 10, 1), 30),
+      });
+      if (sErr) return json({ error: `semantic search unavailable: ${sErr.message?.slice(0, 80)}` }, 503);
+      return json({
+        q,
+        results: (sem as Array<Record<string, unknown>> ?? []).map((r) => ({
+          ...rowToJob(r),
+          similarity: typeof r.similarity === "number" ? r.similarity : Number(r.similarity),
+        })),
+      });
     }
 
     if (action === "detail") {
@@ -3541,6 +3625,63 @@ async function serveList(
               });
             }
           } catch { /* fuzzy is a bonus — fall to the honest empty below */ }
+          // Tier 3 — semantic. Only reachable when BOTH full-text tiers and the
+          // trigram fuzzy fallback found nothing, so it strictly ADDS results
+          // where the user currently gets an empty page. The response carries
+          // `semantic: <query>` and the client shows a disclosure line (like
+          // the fuzzy one) — these are nearest-by-meaning, never passed off as
+          // keyword matches. Every failure falls through to the honest empty.
+          //
+          // FILTER GATE (review finding): search_jobs_semantic carries no
+          // filter parameters, so firing it while any filter is active would
+          // silently ignore that filter — a company lander would show OTHER
+          // companies' jobs under "open roles at Acme". This file's own
+          // invariant is that a filter is honoured on every route, so with any
+          // restrictive filter active the semantic tier stands down and the
+          // honest empty (which respects the filters) is the answer.
+          const filtersActive =
+            !!sanitizeTerm(String(body.location ?? "")) ||
+            body.remote === true ||
+            ["remote", "hybrid", "onsite"].includes(String(body.workMode ?? "")) ||
+            /^[A-Za-z]{2}$/.test(String(body.country ?? "")) ||
+            (JOB_CATEGORIES as readonly string[]).includes(String(body.category ?? "")) ||
+            String(body.experience ?? "").trim() !== "" ||
+            Number(body.salaryFloor) > 0 ||
+            (Array.isArray(body.companies) && body.companies.length > 0) ||
+            Number(body.maxAgeDays) >= 1 ||
+            typeof body.postedAfter === "string";
+          if (qText.length >= 3 && !filtersActive) {
+            try {
+              const qVec = await embedText(qText);
+              if (qVec) {
+                const { data: sem, error: sErr } = await client.rpc("search_jobs_semantic", {
+                  p_embedding: JSON.stringify(qVec),
+                  p_limit: fetchLimit,
+                });
+                if (!sErr && Array.isArray(sem) && sem.length > 0) {
+                  // Same-role-many-locations clones are mutually nearest in
+                  // embedding space, so the top-k is especially prone to being
+                  // one job repeated — collapse exactly like the other tiers.
+                  const semRows = (sem as unknown[]).map(rowToJob) as Array<Record<string, unknown>>;
+                  const semGrouped = groupSimilar
+                    ? collapseClusters(semRows, limit)
+                    : { jobs: semRows.slice(0, limit), rawConsumed: Math.min(semRows.length, limit) };
+                  return json({
+                    jobs: semGrouped.jobs,
+                    total: semGrouped.jobs.length,
+                    hasMore: false,
+                    totalAllCompanies: (v0.total as number) ?? 0,
+                    companies: [],
+                    companiesCount: ((v0.companiesFacet as unknown[]) ?? []).length,
+                    categories: (v0.categoriesFacet as Record<string, number>) ?? {},
+                    failedSources: (v0.failedSources as string[]) ?? [],
+                    refreshedAt: (v0.refreshedAt as string) ?? null,
+                    semantic: qText,
+                  });
+                }
+              }
+            } catch { /* semantic is a bonus — the honest empty below stands */ }
+          }
         }
         const includeFacets0 = (body as { includeFacets?: boolean }).includeFacets !== false;
         const fullCompanies0 = (v0.companiesFacet as Array<{ count?: number }>) ?? [];

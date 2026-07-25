@@ -38,6 +38,32 @@ export const BOARD_DESC_SOURCES = ["workable", "pinpoint"] as const;
 export const NO_DESC_SOURCES = ["rippling"] as const;
 
 /**
+ * The text a posting is embedded FROM (gte-small, 384-dim, run in the edge
+ * runtime). The model truncates at 512 tokens and is English-only, so this is
+ * deliberately title-forward: title and company lead, then location, then the
+ * OPENING slice of the description — the part that states what the role is.
+ * Feeding a whole 14KB JD would just push the informative text past the
+ * truncation point.
+ *
+ * Kept pure so tests can pin the shape; the caller records whether a
+ * description was present (embedded_desc) so the row is re-embedded when one
+ * lands later.
+ */
+export function buildEmbedInput(
+  title: string | null | undefined,
+  company: string | null | undefined,
+  location: string | null | undefined,
+  description: string | null | undefined,
+): string {
+  const parts = [
+    (title ?? "").trim(),
+    [company, location].filter((x) => (x ?? "").trim()).join(" — ").trim(),
+    (description ?? "").replace(/\s+/g, " ").trim().slice(0, 1200),
+  ].filter(Boolean);
+  return parts.join("\n").slice(0, 1600);
+}
+
+/**
  * Grouping key for "this is the same job, posted again in another location".
  *
  * Measured on production 2026-07-25: searching `driver` returned ONE posting

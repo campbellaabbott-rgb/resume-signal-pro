@@ -4321,6 +4321,7 @@
     "moreAtCompany": "Nog {{n}} open functies bij {{company}} — bekijk ze allemaal",
     "relatedRoles": "Verwante functies:",
     "fuzzyLine": "Geen exacte resultaten voor “{{q}}” — dit zijn de dichtstbijzijnde functies.",
+    "semanticLine": "Geen titels gevonden voor “{{q}}” — we tonen de qua betekenis dichtstbijzijnde functies.",
     "nlOpen": "Zoeken in gewone taal",
     "nlPlaceholder": "bijv. remote productfuncties boven $150k deze week geplaatst",
     "nlGo": "Zoeken",

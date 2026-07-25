@@ -4321,6 +4321,7 @@
     "moreAtCompany": "{{n}} weitere offene Stellen bei {{company}} — alle ansehen",
     "relatedRoles": "Verwandte Rollen:",
     "fuzzyLine": "Keine exakten Treffer für „{{q}}“ — es werden die ähnlichsten Titel gezeigt.",
+    "semanticLine": "Keine Titel-Treffer für „{{q}}“ – wir zeigen die inhaltlich ähnlichsten Stellen.",
     "nlOpen": "In natürlicher Sprache suchen",
     "nlPlaceholder": "z. B. Remote-Produktstellen über 150k, diese Woche veröffentlicht",
     "nlGo": "Suchen",
