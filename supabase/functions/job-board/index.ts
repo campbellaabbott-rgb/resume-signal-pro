@@ -74,7 +74,7 @@ const json = (body: unknown, status = 200) =>
 // while this file was untouched). Always bump BUILD_VERSION here when a shared
 // module this function imports changes — it forces the diff AND gives the
 // deploy a verifiable tell.
-const BUILD_VERSION = "2026-07-25.13";
+const BUILD_VERSION = "2026-07-25.14";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -3508,7 +3508,7 @@ async function serveList(
   // leaves the existing exact-count path in charge.
   const COUNT_CAP = 10_000;
   const cappedCount = async (): Promise<{ n: number; capped: boolean } | null> => {
-    const expArr = String(body.experience ?? "").split(",").map((x) => x.trim()).filter(isExperienceBand);
+    const expArr = String(body.experience ?? "").toLowerCase().split(",").map((x) => x.trim()).filter(isExperienceBand);
     const compArr = Array.isArray(body.companies)
       ? body.companies.filter((c): c is string => typeof c === "string").slice(0, JOB_SOURCES.length)
       : [];
@@ -3530,7 +3530,7 @@ async function serveList(
         p_location: sanitizeTerm(String(body.location ?? "")) || null,
         p_remote: body.remote === true ? true : null,
         p_country: /^[A-Za-z]{2}$/.test(String(body.country ?? "")) ? String(body.country).toUpperCase() : null,
-        p_category: (JOB_CATEGORIES as readonly string[]).includes(String(body.category ?? "")) ? String(body.category) : null,
+        p_category: (JOB_CATEGORIES as readonly string[]).includes(String(body.category ?? "").toLowerCase()) ? String(body.category).toLowerCase() : null,
         p_experience: expArr.length ? expArr : null,
         p_salary_floor: Number(body.salaryFloor) > 0 ? Math.min(Number(body.salaryFloor), 2_000_000) : null,
         p_companies: compArr.length ? compArr : null,
@@ -3550,6 +3550,43 @@ async function serveList(
 
   if (countOnly) {
     if (!wantCount) return json({ total: metaTotal }); // unfiltered — the maintained catalog total
+    // With a query present, count what the LIST path would actually serve —
+    // the FTS ranked tiers — not the ILIKE approximation. Measured
+    // 2026-07-25: the two disagreed up to 4.3x on the same body, so
+    // relaxation buttons advertised counts that clicking couldn't reproduce
+    // and the disclosure denominator went negative.
+    const qTextC = String(body.q ?? "").trim().slice(0, 200);
+    if (qTextC && body.sort !== "salary" && body.sort !== "newest") {
+      try {
+        const expArrC = String(body.experience ?? "").toLowerCase().split(",").map((x) => x.trim()).filter(isExperienceBand);
+        const compArrC = Array.isArray(body.companies)
+          ? body.companies.filter((c): c is string => typeof c === "string").slice(0, JOB_SOURCES.length)
+          : [];
+        const maxAgeC = Number(body.maxAgeDays);
+        const wmC = String(body.workMode ?? "").toLowerCase();
+        const { q: expQC } = expandQuery(qTextC);
+        const { data: rc, error: ec } = await client.rpc("search_jobs", {
+          p_q: expQC,
+          p_fresh_cutoff: freshCutoffIso,
+          p_location: sanitizeTerm(String(body.location ?? "")) || null,
+          p_remote: body.remote === true ? true : null,
+          p_country: /^[A-Za-z]{2}$/.test(String(body.country ?? "")) ? String(body.country).toUpperCase() : null,
+          p_category: (JOB_CATEGORIES as readonly string[]).includes(String(body.category ?? "").toLowerCase()) ? String(body.category).toLowerCase() : null,
+          p_experience: expArrC.length ? expArrC : null,
+          p_salary_floor: Number(body.salaryFloor) > 0 ? Math.min(Number(body.salaryFloor), 2_000_000) : null,
+          p_companies: compArrC.length ? compArrC : null,
+          p_posted_after: typeof body.postedAfter === "string" && !Number.isNaN(Date.parse(body.postedAfter)) ? body.postedAfter : null,
+          p_max_age_days: Number.isFinite(maxAgeC) && maxAgeC >= 1 ? Math.min(maxAgeC, 30) : null,
+          ...(["remote", "hybrid", "onsite"].includes(wmC) ? { p_work_mode: wmC } : {}),
+          p_limit: 1,
+          p_offset: 0,
+        });
+        if (!ec && Array.isArray(rc)) {
+          const tC = rc.length ? Number((rc[0] as { total_rows?: number }).total_rows) || rc.length : 0;
+          return json({ total: tC, ...(tC >= 10_000 ? { countCapped: true } : {}) });
+        }
+      } catch { /* migration lag or malformed query — the capped/ILIKE path below still answers */ }
+    }
     const capped = await cappedCount();
     if (capped) return json({ total: capped.n, ...(capped.capped ? { countCapped: true } : {}) });
     let { count, error } = await buildQuery("effective_posted").range(0, 0);
@@ -3576,12 +3613,12 @@ async function serveList(
   const qText = String(body.q ?? "").trim().slice(0, 200);
   if (qText && body.sort !== "salary" && body.sort !== "newest" && !countOnly) {
     try {
-      const expArr = String(body.experience ?? "").split(",").map((x) => x.trim()).filter(isExperienceBand);
+      const expArr = String(body.experience ?? "").toLowerCase().split(",").map((x) => x.trim()).filter(isExperienceBand);
       const compArr = Array.isArray(body.companies)
         ? body.companies.filter((c): c is string => typeof c === "string").slice(0, JOB_SOURCES.length)
         : [];
       const maxAgeNum = Number(body.maxAgeDays);
-      const wmParam = String(body.workMode ?? "");
+      const wmParam = String(body.workMode ?? "").toLowerCase();
       // Role-alias expansion (disclosed): "swe" also searches "software
       // engineer" etc. The expanded websearch string keeps the original
       // spelling as its own OR-branch, and the response names every added
@@ -3593,7 +3630,7 @@ async function serveList(
         p_location: sanitizeTerm(String(body.location ?? "")) || null,
         p_remote: body.remote === true ? true : null,
         p_country: /^[A-Za-z]{2}$/.test(String(body.country ?? "")) ? String(body.country).toUpperCase() : null,
-        p_category: (JOB_CATEGORIES as readonly string[]).includes(String(body.category ?? "")) ? String(body.category) : null,
+        p_category: (JOB_CATEGORIES as readonly string[]).includes(String(body.category ?? "").toLowerCase()) ? String(body.category).toLowerCase() : null,
         p_experience: expArr.length ? expArr : null,
         p_salary_floor: Number(body.salaryFloor) > 0 ? Math.min(Number(body.salaryFloor), 2_000_000) : null,
         p_companies: compArr.length ? compArr : null,

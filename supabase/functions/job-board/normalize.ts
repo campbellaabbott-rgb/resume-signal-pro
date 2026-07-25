@@ -119,7 +119,12 @@ const unescapeEntities = (s: string) =>
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
     .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
+    // Numeric entities — audit 2026-07-25: workday descriptions shipped raw
+    // &#160;/&#8217; to users because only the named set was decoded. NUL and
+    // out-of-range code points become spaces (a NUL here would make the row
+    // grep-invisible and break downstream matching).
+    .replace(/&#x([0-9a-f]+);/gi, (_, h) => { const c = parseInt(h, 16); return c > 0 && c < 0x110000 ? String.fromCodePoint(c) : " "; })
+    .replace(/&#(\d+);/g, (_, d) => { const c = parseInt(d, 10); return c > 0 && c < 0x110000 ? String.fromCodePoint(c) : " "; })
     .replace(/&nbsp;/g, " ")
     .replace(/&amp;/g, "&"); // last, so &amp;lt; needs the second pass, not this one
 
