@@ -4470,6 +4470,7 @@
     "discCategory": "Par ailleurs, {{hidden}} offres sur l'ensemble du tableau ont un intitulé qui n'indique jamais leur domaine : aucun filtre par domaine ne peut les atteindre."
   },
   "accountPage": {
+    "statusSaveFailed": "Impossible d'enregistrer ce statut — réessayez.",
     "statActive": "Candidatures actives",
     "statWeek": "Envoyées cette semaine",
     "statInterviews": "En entretien",

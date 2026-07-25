@@ -4470,6 +4470,7 @@
     "discCategory": "Aparte, {{hidden}} vacantes de todo el tablero tienen un título que no indica a qué área pertenecen, así que ningún filtro de área puede alcanzarlas."
   },
   "accountPage": {
+    "statusSaveFailed": "No se pudo guardar ese estado; inténtalo de nuevo.",
     "statActive": "Postulaciones activas",
     "statWeek": "Enviadas esta semana",
     "statInterviews": "En entrevista",

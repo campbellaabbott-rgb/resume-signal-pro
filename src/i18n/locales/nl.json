@@ -4470,6 +4470,7 @@
     "discCategory": "Daarnaast hebben {{hidden}} vacatures op het hele bord een titel die nooit zegt in welk vakgebied ze vallen, dus geen enkel vakgebiedfilter bereikt ze."
   },
   "accountPage": {
+    "statusSaveFailed": "Kon die status niet opslaan — probeer het opnieuw.",
     "statActive": "Actieve sollicitaties",
     "statWeek": "Deze week verstuurd",
     "statInterviews": "In gesprek",

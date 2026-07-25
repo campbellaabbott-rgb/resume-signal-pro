@@ -81,7 +81,10 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
   }, [email, t]);
 
   const saveMandate = useCallback(async (activate: boolean) => {
-    const resume = mandate?.resume_text?.trim() || defaultResume?.trim() || "";
+    // Current pinned/default resume FIRST — the old order preferred the
+    // mandate's stale snapshot forever, so re-saving never picked up a new
+    // resume (audit 2026-07-25).
+    const resume = defaultResume?.trim() || mandate?.resume_text?.trim() || "";
     if (activate && resume.length < 100) {
       toast.error(t("agentQueue.needResume", "Save a résumé for matching first (above) — the agent scores every posting against it."));
       return;

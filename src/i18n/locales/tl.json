@@ -4470,6 +4470,7 @@
     "discCategory": "Bukod pa rito, {{hidden}} trabaho sa buong board ang may pamagat na hindi sinasabi ang larangan, kaya walang filter ng larangan ang makakaabot sa kanila."
   },
   "accountPage": {
+    "statusSaveFailed": "Hindi na-save ang status na iyon — pakisubukan muli.",
     "statActive": "Aktibong aplikasyon",
     "statWeek": "Naipasa ngayong linggo",
     "statInterviews": "Nag-iinterview",

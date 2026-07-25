@@ -59,6 +59,22 @@ serve(async (req) => {
     .limit(MANDATES_PER_RUN);
   if (mErr) return json({ error: mErr.message }, 500);
 
+  // The account UI promises "the apply agent now matches against this
+  // résumé" when a user pins one — honor it: prefer the profile's CURRENT
+  // matching resume over the mandate's creation-time snapshot (audit
+  // 2026-07-25: the snapshot was frozen forever and no UI path refreshed it).
+  const userIds = [...new Set((mandates ?? []).map((m) => m.user_id).filter(Boolean))];
+  const pinnedByUser = new Map<string, string>();
+  if (userIds.length) {
+    const { data: profs } = await client
+      .from("user_profiles")
+      .select("user_id, matching_resume_text")
+      .in("user_id", userIds);
+    for (const p of (profs ?? []) as Array<{ user_id: string; matching_resume_text: string | null }>) {
+      if (p.matching_resume_text && p.matching_resume_text.trim().length >= 100) pinnedByUser.set(p.user_id, p.matching_resume_text);
+    }
+  }
+
   const emails = [...new Set((mandates ?? []).map((m) => m.email).filter(Boolean))];
   const entitled = new Set<string>();
   if (emails.length) {
@@ -121,7 +137,7 @@ serve(async (req) => {
         continue;
       }
       const postingText = `${c.title}\n${(c.description ?? "").slice(0, 6000)}`;
-      const fit = computeFit(postingText, m.resume_text);
+      const fit = computeFit(postingText, pinnedByUser.get(m.user_id) ?? m.resume_text);
       if (fit.pct == null || fit.pct < MIN_FIT_PCT) { skippedLowfit++; continue; }
 
       const reasons: unknown[] = [{ k: "fit", pct: fit.pct, top: fit.matched.slice(0, 3) }];

@@ -4470,6 +4470,7 @@
     "discCategory": "Außerdem haben {{hidden}} Stellen im gesamten Board einen Titel, der den Bereich nie nennt – kein Bereichsfilter kann sie erreichen."
   },
   "accountPage": {
+    "statusSaveFailed": "Status konnte nicht gespeichert werden — bitte erneut versuchen.",
     "statActive": "Aktive Bewerbungen",
     "statWeek": "Diese Woche gesendet",
     "statInterviews": "Im Gespräch",

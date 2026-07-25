@@ -4470,6 +4470,7 @@
     "discCategory": "Além disso, {{hidden}} vagas em todo o quadro têm um título que nunca diz a qual área pertencem, então nenhum filtro de área as alcança."
   },
   "accountPage": {
+    "statusSaveFailed": "Não foi possível salvar esse status — tente novamente.",
     "statActive": "Candidaturas ativas",
     "statWeek": "Enviadas esta semana",
     "statInterviews": "Em entrevista",

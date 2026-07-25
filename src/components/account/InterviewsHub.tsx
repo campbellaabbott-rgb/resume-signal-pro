@@ -39,7 +39,7 @@ export function InterviewsHub({ applications }: { applications: AppRow[] }) {
               {a.company}{a.role ? <span className="text-muted-foreground"> · {a.role}</span> : null}
             </span>
             <span className="shrink-0 text-[11px] font-semibold text-primary">
-              {dayLabel(a.interview_at!)} · {new Date(a.interview_at!).toLocaleDateString()}
+              {dayLabel(a.interview_at!.slice(0, 10) + "T00:00:00")} · {new Date(a.interview_at!.slice(0, 10) + "T00:00:00").toLocaleDateString()}
             </span>
           </li>
         ))}

@@ -4470,6 +4470,7 @@
     "discCategory": "Separately, {{hidden}} openings across the whole board have a job title that never says which field they're in, so no field filter can reach them."
   },
   "accountPage": {
+    "statusSaveFailed": "Couldn't save that status — please try again.",
     "statActive": "Active applications",
     "statWeek": "Applied this week",
     "statInterviews": "Interviewing",

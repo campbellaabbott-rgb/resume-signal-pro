@@ -186,7 +186,9 @@ export default function Account() {
       const pct = a.fit_pct as number;
       const tier = pct >= 20 ? "strong" : pct >= 10 ? "possible" : "stretch";
       tiers[tier].n++;
-      if (a.status === "interviewing" || a.status === "offer") tiers[tier].adv++;
+      // Ever-interviewed: a later rejection must not erase the interview
+      // from the stats (audit 2026-07-25).
+      if (a.status === "interviewing" || a.status === "offer" || a.interview_at != null) tiers[tier].adv++;
     }
     const shown = (["strong", "possible", "stretch"] as const).filter((t) => tiers[t].n >= 3);
     if (shown.length === 0) return null;
@@ -223,9 +225,11 @@ export default function Account() {
     const appliedThisWeek = nonSaved.filter((a) => a.applied_at && Date.parse(a.applied_at) > weekAgo).length;
     const interviews = applications.filter((a) => a.status === "interviewing").length;
     const offers = applications.filter((a) => a.status === "offer").length;
-    const responded = applications.filter((a) => a.status === "interviewing" || a.status === "offer").length;
+    // A recorded rejection IS a response — excluding it punished honest
+    // logging (audit 2026-07-25).
+    const responded = applications.filter((a) => a.status === "interviewing" || a.status === "offer" || a.status === "rejected").length;
     return {
-      active: applications.filter((a) => a.status === "saved" || a.status === "applied" || a.status === "interviewing").length,
+      active: applications.filter((a) => a.status === "applied" || a.status === "interviewing").length,
       appliedThisWeek, interviews, offers,
       responseRate: nonSaved.length >= 5 ? Math.round((responded / nonSaved.length) * 100) : null,
     };
@@ -237,10 +241,13 @@ export default function Account() {
   const doNext = useMemo(() => {
     const items: Array<{ kind: "interview" | "followup" | "saved"; app: Application; n: number }> = [];
     const today = new Date(); today.setHours(0, 0, 0, 0);
+    // interview_at is stored as a UTC-midnight timestamp; parse the DATE part
+    // at local midnight or today's interview disappears west of UTC (audit).
+    const ivMs = (iso: string) => Date.parse(iso.slice(0, 10) + "T00:00:00");
     const upcoming = applications
-      .filter((a) => a.interview_at && Date.parse(a.interview_at) >= today.getTime())
-      .sort((a, b) => Date.parse(a.interview_at!) - Date.parse(b.interview_at!));
-    for (const a of upcoming) items.push({ kind: "interview", app: a, n: Math.round((Date.parse(a.interview_at!) - today.getTime()) / 86_400_000) });
+      .filter((a) => a.interview_at && ivMs(a.interview_at) >= today.getTime())
+      .sort((a, b) => ivMs(a.interview_at!) - ivMs(b.interview_at!));
+    for (const a of upcoming) items.push({ kind: "interview", app: a, n: Math.round((ivMs(a.interview_at!) - today.getTime()) / 86_400_000) });
     const quiet = applications
       .filter((a) => a.status === "applied" && daysQuiet(a) >= QUIET_NUDGE_DAYS)
       .sort((a, b) => daysQuiet(b) - daysQuiet(a));
@@ -441,7 +448,15 @@ export default function Account() {
     setApplications(applications.map(a => a.id === id ? { ...a, status, status_changed_at: now } : a));
     // status_changed_at may lag the migration one publish — status still lands.
     const { error } = await supabase.from("user_applications").update({ status, status_changed_at: now }).eq("id", id);
-    if (error) await supabase.from("user_applications").update({ status }).eq("id", id);
+    if (error) {
+      const { error: e2 } = await supabase.from("user_applications").update({ status }).eq("id", id);
+      if (e2) {
+        // Both writes failed — revert the optimistic UI and say so, instead
+        // of showing a status the DB refused (audit 2026-07-25).
+        setApplications((prev) => prev.map((a) => a.id === id ? { ...a, status: applications.find((x) => x.id === id)?.status ?? a.status } : a));
+        toast.error(t("accountPage.statusSaveFailed", "Couldn't save that status — please try again."));
+      }
+    }
   };
 
   const markFollowedUp = async (id: string) => {
@@ -1228,7 +1243,7 @@ export default function Account() {
                         <input
                           id={`iv-${a.id}`}
                           type="date"
-                          value={a.interview_at ?? ""}
+                          value={(a.interview_at ?? "").slice(0, 10)}
                           onChange={(e) => setInterviewDate(a.id, e.target.value)}
                           className="bg-background border border-border/60 rounded px-1.5 py-0.5 text-[11px] text-foreground [color-scheme:dark]"
                         />
@@ -1329,7 +1344,7 @@ export default function Account() {
             for (const a of linked) {
               const stat = byVersion.get(a.scan_id!) ?? { sent: 0, interviews: 0, offers: 0 };
               stat.sent += 1;
-              if (a.status === "interviewing" || a.status === "offer") stat.interviews += 1;
+              if (a.status === "interviewing" || a.status === "offer" || a.interview_at != null) stat.interviews += 1;
               if (a.status === "offer") stat.offers += 1;
               byVersion.set(a.scan_id!, stat);
             }
@@ -1361,7 +1376,7 @@ export default function Account() {
               the outcome dataset paying each user back individually. Only
               shown once there's enough signal to mean anything. */}
           {(() => {
-            const decided = applications.filter(a => a.scan_score != null && a.status !== "applied");
+            const decided = applications.filter(a => a.scan_score != null && a.status !== "applied" && a.status !== "saved");
             if (decided.length < 5) return null;
             const bands: Array<{ label: string; min: number; max: number }> = [
               { label: "80+", min: 80, max: 101 },
@@ -1372,7 +1387,7 @@ export default function Account() {
             const rows = bands
               .map(b => {
                 const apps = decided.filter(a => (a.scan_score as number) >= b.min && (a.scan_score as number) < b.max);
-                const wins = apps.filter(a => a.status === "interviewing" || a.status === "offer").length;
+                const wins = apps.filter(a => a.status === "interviewing" || a.status === "offer" || a.interview_at != null).length;
                 return { ...b, sent: apps.length, wins };
               })
               .filter(r => r.sent > 0);
