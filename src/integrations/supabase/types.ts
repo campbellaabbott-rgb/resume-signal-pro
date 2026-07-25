@@ -1007,6 +1007,35 @@ export type Database = {
         }
         Relationships: []
       }
+      job_board_embeddings: {
+        Row: {
+          embedded_desc: boolean
+          embedding: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          embedded_desc?: boolean
+          embedding: string
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          embedded_desc?: boolean
+          embedding?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_board_embeddings_id_fkey"
+            columns: ["id"]
+            isOneToOne: true
+            referencedRelation: "job_board_postings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_board_meta: {
         Row: {
           k: string
@@ -2566,6 +2595,17 @@ export type Database = {
           total_emails: number
         }[]
       }
+      get_embed_batch: {
+        Args: { p_limit?: number }
+        Returns: {
+          company: string
+          descr: string
+          has_desc: boolean
+          id: string
+          location: string
+          title: string
+        }[]
+      }
       get_employer_benchmarks: {
         Args: { p_days?: number; p_limit?: number; p_min_closures?: number }
         Returns: {
@@ -3243,6 +3283,32 @@ export type Database = {
           source: string
           title: string
           total_rows: number
+          work_mode: string
+        }[]
+      }
+      search_jobs_semantic: {
+        Args: { p_embedding: string; p_limit?: number; p_max_distance?: number }
+        Returns: {
+          apply_url: string
+          category: string
+          company: string
+          company_token: string
+          department: string
+          experience_band: string
+          id: string
+          last_seen: string
+          location: string
+          min_years: number
+          posted_at: string
+          remote: boolean
+          salary: string
+          salary_currency: string
+          salary_max_annual: number
+          salary_min_annual: number
+          salary_period: string
+          similarity: number
+          source: string
+          title: string
           work_mode: string
         }[]
       }
