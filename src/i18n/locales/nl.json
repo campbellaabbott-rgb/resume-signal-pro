@@ -2846,6 +2846,18 @@
     }
   },
   "changelogEntries": {
+    "countryDetectionFix": {
+      "title": "Opgelost: sommige cv's werden aan de verkeerde landenmarkt gekoppeld",
+      "description": "Een detectiefout kon cloudtermen zoals “EC2” lezen als een Londense postcode en Amerikaanse telefoonnummers zonder +1 missen — sommige Amerikaanse cv's kregen daardoor vol vertrouwen advies voor de Britse markt. Precies de fout die dit product moet voorkomen, en hij is opgelost: 22 regressietests leggen de gevallen vast, dubbelzinnige cv's volgen nu je werkelijke locatie in plaats van het toeval, en elk rapport legt vast hoe je markt is gekozen — je keuze, aanwijzingen in het cv of je locatie — zodat een gok zich nooit meer als zekerheid kan voordoen."
+    },
+    "semanticSearch": {
+      "title": "Zoeken begrijpt nu betekenis, niet alleen woorden",
+      "description": "Vindt een zoekopdracht geen titeltreffers, dan zoekt het board nu naar functies met dezelfde betekenis: “infosec-analist” kan security-engineervacatures tonen, ook als geen enkele advertentie je exacte woorden bevat. De pagina geeft duidelijk aan wanneer resultaten betekenis-matches zijn, en je filters worden daarvoor nooit stilletjes genegeerd."
+    },
+    "morningEmails": {
+      "title": "De e-mails waarvoor je je aanmeldde worden nu echt verstuurd",
+      "description": "Twee e-mailstromen waren gebouwd en geaccepteerd, maar nooit aan een schema gekoppeld — niemand heeft ze ooit ontvangen. Opgelost: de nachtelijke selectie van de Apply Agent valt nu elke ochtend binnen met dezelfde redenen als in de wachtrij, en market-pulse-abonnees krijgen eindelijk hun maandelijkse overzicht. Beide zijn opt-in — hooguit één ochtendmail per dag en één pulse per maand — met afmelden in één klik."
+    },
     "fullJobDescriptions": {
       "title": "Functieomschrijvingen laden nu bij veel meer vacatures",
       "description": "Sommige werkgevers publiceren hun vacaturetekst via een aparte feed die wij niet uitlazen, waardoor veel vacatures opengingen zonder tekst en de matchscore niets had om mee te werken. We halen die tekst nu op voor Workday, BambooHR, SmartRecruiters, Breezy en Oracle, en omschrijvingen van Workable en Pinpoint komen direct met de vacature mee. Alles wat je opent wordt bewaard, dus de volgende keer laadt het meteen. Publiceert een werkgever echt geen omschrijving, dan tonen we nog steeds niets in plaats van een schatting."

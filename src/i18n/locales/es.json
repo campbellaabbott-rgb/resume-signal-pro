@@ -2846,6 +2846,18 @@
     }
   },
   "changelogEntries": {
+    "countryDetectionFix": {
+      "title": "Corregido: algunos currículums se asociaban al mercado de otro país",
+      "description": "Un error de detección podía leer términos de nube como “EC2” como un código postal de Londres y no reconocer teléfonos de EE. UU. escritos sin +1, de modo que algunos currículums estadounidenses recibían consejos del mercado del Reino Unido, presentados con seguridad. Es justo el fallo que este producto existe para evitar, y está corregido: 22 pruebas de regresión fijan los casos, los currículums ambiguos ahora se resuelven con tu ubicación real en vez de al azar, y cada informe registra cómo se eligió tu mercado — tu selección, la evidencia del currículum o tu ubicación — para que una suposición nunca vuelva a disfrazarse de certeza."
+    },
+    "semanticSearch": {
+      "title": "La búsqueda ahora entiende el significado, no solo las palabras",
+      "description": "Cuando una búsqueda no encuentra coincidencias de título, el tablero busca puestos que significan lo mismo: “analista de infosec” puede mostrar vacantes de ingeniería de seguridad aunque ningún anuncio contenga tus palabras exactas. La página indica claramente cuándo los resultados son coincidencias por significado, y tus filtros nunca se descartan en silencio."
+    },
+    "morningEmails": {
+      "title": "Los correos a los que te suscribiste por fin se envían",
+      "description": "Dos circuitos de correo estaban construidos y aceptados, pero nunca conectados a un calendario, así que nadie los recibió. Corregido: la lista matutina del Apply Agent llega cada mañana con las mismas razones que muestra la cola, y los suscriptores del pulso de mercado por fin reciben su resumen mensual. Ambos son opcionales — como máximo un correo matutino al día y un pulso al mes — con baja en un clic."
+    },
     "fullJobDescriptions": {
       "title": "Las descripciones de empleo ya se cargan en muchos más puestos",
       "description": "Algunas empresas publican el texto de sus ofertas en un feed aparte que no estábamos leyendo, así que muchas ofertas se abrían sin nada que leer y el cálculo de compatibilidad no tenía texto con el que trabajar. Ahora obtenemos ese texto en los portales de Workday, BambooHR, SmartRecruiters, Breezy y Oracle, y las descripciones de Workable y Pinpoint llegan ya con la oferta. Todo lo que abras queda guardado, así que la próxima vez carga al instante. Cuando una empresa realmente no publica descripción, seguimos sin mostrar nada en lugar de inventar una estimación."

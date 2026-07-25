@@ -2846,6 +2846,18 @@
     }
   },
   "changelogEntries": {
+    "countryDetectionFix": {
+      "title": "Naayos: may mga resume na naitutugma sa maling bansa",
+      "description": "May bug sa detection na nababasa ang mga cloud term tulad ng “EC2” bilang postcode ng London at hindi nakikilala ang mga US phone number na walang +1 — kaya may mga resumeng Amerikano na nakatanggap ng payo para sa merkado ng United Kingdom, na kumpiyansang inilahad. Ito mismo ang pagkakamaling iniiwasan ng produktong ito, at naayos na: 22 regression test ang nagbabantay sa mga kaso, ang mga malabong resume ay sumusunod na ngayon sa tunay mong lokasyon sa halip na sa hula, at bawat ulat ay nagtatala kung paano napili ang iyong merkado — ang pinili mo, ebidensiya sa resume, o lokasyon — para hindi na muling magpanggap na katiyakan ang isang hula."
+    },
+    "semanticSearch": {
+      "title": "Nauunawaan na ng paghahanap ang kahulugan, hindi lang mga salita",
+      "description": "Kapag walang tumugmang titulo ang paghahanap, hahanap na ang board ng mga trabahong pareho ang kahulugan — ang “infosec analyst” ay maaaring maglabas ng mga security engineer na opening kahit walang posting na naglalaman ng eksaktong salita mo. Malinaw na sinasabi ng pahina kapag ang mga resulta ay tugma ayon sa kahulugan, at hindi kailanman tahimik na inaalis ang iyong mga filter."
+    },
+    "morningEmails": {
+      "title": "Ang mga email na sinalihan mo ay tunay nang ipinapadala",
+      "description": "Dalawang email loop ang nabuo at pinili ng mga user, pero hindi kailanman naikabit sa iskedyul — kaya walang nakatanggap. Naayos na: ang magdamag na shortlist ng Apply Agent ay dumarating na tuwing umaga kasama ang parehong mga dahilan na ipinapakita ng queue, at sa wakas ay natatanggap na ng mga market-pulse subscriber ang kanilang buwanang buod. Parehong opt-in — hindi hihigit sa isang email tuwing umaga at isang pulse kada buwan — na may one-click unsubscribe."
+    },
     "fullJobDescriptions": {
       "title": "Lumalabas na ang mga paglalarawan ng trabaho sa mas maraming posisyon",
       "description": "May mga employer na inilalathala ang teksto ng kanilang trabaho sa hiwalay na feed na hindi namin binabasa, kaya maraming posting ang nabubuksan nang walang laman at walang teksto ang fit scoring na masusuri. Kinukuha na namin ngayon ang tekstong iyon para sa Workday, BambooHR, SmartRecruiters, Breezy at Oracle, at kasama na agad ng listing ang mga paglalarawan mula sa Workable at Pinpoint. Naka-save ang anumang binuksan mo, kaya agad itong lumalabas sa susunod. Kung talagang walang inilathalang paglalarawan ang employer, wala pa rin kaming ipinapakita sa halip na manghula."

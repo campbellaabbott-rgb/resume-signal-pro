@@ -2846,6 +2846,18 @@
     }
   },
   "changelogEntries": {
+    "countryDetectionFix": {
+      "title": "Corrigido: alguns currículos eram associados ao mercado do país errado",
+      "description": "Um erro de detecção podia ler termos de nuvem como “EC2” como um código postal de Londres e não reconhecer telefones dos EUA escritos sem +1 — assim, alguns currículos americanos recebiam conselhos do mercado do Reino Unido, apresentados com confiança. É exatamente a falha que este produto existe para evitar, e está corrigida: 22 testes de regressão fixam os casos, currículos ambíguos agora usam a sua localização real em vez de um sorteio, e cada relatório registra como o seu mercado foi escolhido — sua seleção, evidências do currículo ou localização — para que um palpite nunca mais se vista de certeza."
+    },
+    "semanticSearch": {
+      "title": "A busca agora entende significado, não só palavras",
+      "description": "Quando uma busca não encontra títulos correspondentes, o quadro procura vagas com o mesmo significado: “analista de infosec” pode mostrar vagas de engenharia de segurança mesmo que nenhum anúncio contenha suas palavras exatas. A página indica claramente quando os resultados são por significado, e seus filtros nunca são descartados em silêncio."
+    },
+    "morningEmails": {
+      "title": "Os e-mails que você assinou agora são enviados de verdade",
+      "description": "Dois fluxos de e-mail foram construídos e aceitos, mas nunca ligados a um agendamento — ninguém jamais os recebeu. Corrigido: a lista noturna do Apply Agent chega toda manhã com as mesmas razões da fila, e os assinantes do pulso de mercado finalmente recebem seu resumo mensal. Ambos são opcionais — no máximo um e-mail matinal por dia e um pulso por mês — com cancelamento em um clique."
+    },
     "fullJobDescriptions": {
       "title": "As descrições das vagas agora carregam em muito mais posições",
       "description": "Algumas empresas publicam o texto das vagas em um feed separado que não estávamos lendo, então muitas vagas abriam sem nada para ler e o cálculo de compatibilidade ficava sem texto para analisar. Agora buscamos esse texto nos portais Workday, BambooHR, SmartRecruiters, Breezy e Oracle, e as descrições do Workable e do Pinpoint já chegam junto com a vaga. Tudo o que você abre fica salvo, então carrega na hora da próxima vez. Quando uma empresa realmente não publica descrição, continuamos sem mostrar nada em vez de apresentar um palpite."

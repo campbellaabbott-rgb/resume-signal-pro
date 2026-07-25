@@ -2846,6 +2846,18 @@
     }
   },
   "changelogEntries": {
+    "countryDetectionFix": {
+      "title": "Fixed: some CVs were matched to the wrong country's market",
+      "description": "A detection bug could read cloud terms like “EC2” as a London postcode and miss US phone numbers written without +1, so some US CVs received market advice for the United Kingdom — presented confidently. That is exactly the failure this product exists to avoid, and it is fixed: 22 regression tests now pin the failure cases, ambiguous CVs defer to your actual location instead of a coin flip, and every report now records how your market was chosen — your selection, CV evidence, or location — so a guess can never again dress up as certainty."
+    },
+    "semanticSearch": {
+      "title": "Search now understands meaning, not just words",
+      "description": "When a search finds no title matches, the board now looks for roles that mean the same thing — “infosec analyst” can surface security engineer openings even when no posting contains your exact words. The page says clearly when results are meaning-based matches, and your filters are never silently dropped to make it happen."
+    },
+    "morningEmails": {
+      "title": "The emails you signed up for now actually send",
+      "description": "Two email loops were built, opted into, and never wired to a schedule — so nobody ever received them. Fixed: Apply Agent's overnight shortlist now arrives each morning with the same reasons the queue shows, and market-pulse subscribers finally get their monthly digest. Both are opt-in — at most one morning email a day and one pulse a month — with one-click unsubscribe."
+    },
     "fullJobDescriptions": {
       "title": "Job descriptions now load on far more roles",
       "description": "Some employers publish their job text through a separate feed we were not reading, so a large share of postings opened with nothing to read and fit scoring had no text to work with. We now pull that text for Workday, BambooHR, SmartRecruiters, Breezy and Oracle boards, and Workable and Pinpoint descriptions now arrive with the listing itself. Anything you open is saved, so it loads instantly next time. Where an employer genuinely publishes no description, we still show nothing rather than a guess."

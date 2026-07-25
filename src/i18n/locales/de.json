@@ -2846,6 +2846,18 @@
     }
   },
   "changelogEntries": {
+    "countryDetectionFix": {
+      "title": "Behoben: Manche Lebensläufe wurden dem falschen Ländermarkt zugeordnet",
+      "description": "Ein Erkennungsfehler konnte Cloud-Begriffe wie „EC2“ als Londoner Postleitzahl lesen und US-Telefonnummern ohne +1 übersehen — manche US-Lebensläufe erhielten dadurch selbstbewusst präsentierte Ratschläge für den britischen Markt. Genau diesen Fehler soll dieses Produkt verhindern, und er ist behoben: 22 Regressionstests sichern die Fälle ab, mehrdeutige Lebensläufe richten sich nun nach Ihrem tatsächlichen Standort statt nach dem Zufall, und jeder Bericht dokumentiert, wie Ihr Markt gewählt wurde — Ihre Auswahl, Hinweise im Lebenslauf oder Ihr Standort —, damit eine Vermutung nie wieder als Gewissheit auftritt."
+    },
+    "semanticSearch": {
+      "title": "Die Suche versteht jetzt Bedeutung, nicht nur Wörter",
+      "description": "Findet eine Suche keine Titeltreffer, sucht das Board nun nach Stellen mit gleicher Bedeutung: „Infosec-Analyst“ kann Security-Engineer-Stellen zeigen, auch wenn keine Anzeige Ihre exakten Wörter enthält. Die Seite kennzeichnet klar, wenn Ergebnisse Bedeutungstreffer sind, und Ihre Filter werden dafür niemals stillschweigend verworfen."
+    },
+    "morningEmails": {
+      "title": "Die abonnierten E-Mails werden jetzt wirklich versendet",
+      "description": "Zwei E-Mail-Strecken waren gebaut und abonniert, aber nie mit einem Zeitplan verbunden — niemand hat sie je erhalten. Behoben: Die nächtliche Auswahl des Apply Agent kommt jetzt jeden Morgen mit denselben Begründungen wie in der Warteschlange an, und Market-Pulse-Abonnenten erhalten endlich ihre monatliche Übersicht. Beides ist opt-in — höchstens eine Morgen-E-Mail pro Tag und ein Pulse pro Monat — mit Ein-Klick-Abmeldung."
+    },
     "fullJobDescriptions": {
       "title": "Stellenbeschreibungen laden jetzt bei deutlich mehr Stellen",
       "description": "Manche Arbeitgeber veröffentlichen ihren Anzeigentext über einen separaten Feed, den wir nicht ausgelesen haben. Dadurch öffneten sich viele Anzeigen ohne Inhalt, und der Passgenauigkeitswert hatte keinen Text zur Auswertung. Diesen Text holen wir jetzt für Workday, BambooHR, SmartRecruiters, Breezy und Oracle, und Beschreibungen von Workable und Pinpoint kommen direkt mit der Anzeige. Alles, was du öffnest, wird gespeichert und lädt beim nächsten Mal sofort. Wenn ein Arbeitgeber tatsächlich keine Beschreibung veröffentlicht, zeigen wir weiterhin nichts an statt einer Schätzung."

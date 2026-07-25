@@ -2846,6 +2846,18 @@
     }
   },
   "changelogEntries": {
+    "countryDetectionFix": {
+      "title": "Corrigé : certains CV étaient associés au marché du mauvais pays",
+      "description": "Un bug de détection pouvait lire des termes cloud comme “EC2” comme un code postal londonien et ignorer les numéros américains écrits sans +1 : certains CV américains recevaient donc des conseils pour le marché britannique, présentés avec assurance. C'est exactement l'erreur que ce produit existe pour éviter, et c'est corrigé : 22 tests de régression verrouillent les cas, les CV ambigus s'appuient désormais sur votre localisation réelle plutôt que sur un tirage au sort, et chaque rapport indique comment votre marché a été choisi — votre sélection, les indices du CV ou votre localisation — pour qu'une supposition ne puisse plus se faire passer pour une certitude."
+    },
+    "semanticSearch": {
+      "title": "La recherche comprend désormais le sens, pas seulement les mots",
+      "description": "Quand une recherche ne trouve aucun titre correspondant, le tableau cherche des postes au sens équivalent : “analyste infosec” peut faire remonter des offres d'ingénieur sécurité même si aucune annonce ne contient vos mots exacts. La page indique clairement quand les résultats sont des correspondances par le sens, et vos filtres ne sont jamais ignorés en silence."
+    },
+    "morningEmails": {
+      "title": "Les e-mails auxquels vous étiez inscrit partent enfin",
+      "description": "Deux boucles d'e-mails étaient construites et acceptées, mais jamais reliées à un planning — personne ne les a donc reçues. Corrigé : la sélection nocturne de l'Apply Agent arrive chaque matin avec les mêmes raisons que la file, et les abonnés au pouls du marché reçoivent enfin leur synthèse mensuelle. Les deux sont opt-in — au plus un e-mail matinal par jour et un pouls par mois — avec désinscription en un clic."
+    },
     "fullJobDescriptions": {
       "title": "Les descriptions de poste se chargent désormais sur bien plus d offres",
       "description": "Certaines entreprises publient le texte de leurs offres via un flux distinct que nous ne lisions pas: de nombreuses annonces s ouvraient donc sans aucun contenu, et le score de correspondance ne disposait d aucun texte. Nous récupérons maintenant ce texte pour les portails Workday, BambooHR, SmartRecruiters, Breezy et Oracle, et les descriptions Workable et Pinpoint arrivent directement avec l annonce. Tout ce que vous ouvrez est enregistré et se charge instantanément la fois suivante. Lorsqu une entreprise ne publie réellement aucune description, nous continuons à ne rien afficher plutôt qu une estimation."
