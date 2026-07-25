@@ -2563,7 +2563,7 @@ Deno.serve(async (req) => {
       if (!id || !["gone", "misleading", "other"].includes(reason)) {
         return json({ error: "id and a valid reason are required" }, 400);
       }
-      const note = String(body.note ?? "").replace(/ /g, "").slice(0, 280);
+      const note = String(body.note ?? "").replace(/\u0000/g, "").slice(0, 280);
       const { data: row } = await client.from("job_board_postings").select("id,company_token").eq("id", id).maybeSingle();
       const { error: repErr } = await client.from("job_board_posting_reports").insert({
         posting_id: id,
