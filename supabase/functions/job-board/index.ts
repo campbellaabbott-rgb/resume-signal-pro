@@ -17,6 +17,7 @@ import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supa
 import { HOT_TOKENS, JOB_SOURCES, LIGHT_DESC_TOKENS, type JobSource } from "./sources.ts";
 import { BOARD_DESC_SOURCES, DETAIL_DESC_SOURCES, clusterKey, jobPostingLdDescription, workdayCxsUrl } from "./descriptions.ts";
 import {
+  detectWorkMode,
   htmlToText,
   normalizeAshby,
   normalizeBambooHR,
@@ -71,7 +72,7 @@ const json = (body: unknown, status = 200) =>
 // while this file was untouched). Always bump BUILD_VERSION here when a shared
 // module this function imports changes — it forces the diff AND gives the
 // deploy a verifiable tell.
-const BUILD_VERSION = "2026-07-25.2";
+const BUILD_VERSION = "2026-07-25.3";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -1660,7 +1661,7 @@ async function checkLive(src: JobSource, externalId: string): Promise<boolean | 
 async function getDescription(src: JobSource, id: string, externalId: string, applyUrl?: string | null): Promise<string | null> {
   const hit = detailCache.get(id);
   if (hit && Date.now() - hit.at < DETAIL_TTL_MS) return hit.text;
-  const text = await fetchVendorDescription(src, id, externalId, applyUrl);
+  const { text } = await fetchVendorDetail(src, id, externalId, applyUrl);
   if (text) {
     if (detailCache.size > 300) detailCache.clear();
     detailCache.set(id, { at: Date.now(), text });
@@ -1706,13 +1707,20 @@ function listPayloadDescriptions(s: JobSource, raw: unknown): Map<string, string
  * returned null — which is why ~313k Workday postings had no description on the
  * detail panel, not just in storage.
  */
-async function fetchVendorDescription(
+async function fetchVendorDetail(
   src: JobSource,
   id: string,
   externalId: string,
   applyUrl?: string | null,
-): Promise<string | null> {
+): Promise<{ text: string | null; postedAt: string | null }> {
   let text: string | null = null;
+  // Absolute posting date, where the SAME payload happens to carry one. Free:
+  // no extra request. Workday's list only exposes a relative bucket ("Posted
+  // 30+ Days Ago") which floors at 30 days — measured as an exactly-30.0-day
+  // median gap for Workday against ~18 for every other vendor — so its
+  // absolute startDate is strictly better than what we store. BambooHR's
+  // 43,943 postings are 0% dated and its detail carries datePosted.
+  let postedAt: string | null = null;
   if (src.source === "smartrecruiters") {
     const res = await fetchWithTimeout(`https://api.smartrecruiters.com/v1/companies/${src.token}/postings/${externalId}`);
     if (res.ok) {
@@ -1758,9 +1766,10 @@ async function fetchVendorDescription(
     if (cxs) {
       const res = await fetchWithTimeout(cxs);
       if (res.ok) {
-        const j = await res.json().catch(() => null) as { jobPostingInfo?: { jobDescription?: string } } | null;
+        const j = await res.json().catch(() => null) as { jobPostingInfo?: { jobDescription?: string; startDate?: string } } | null;
         const html = j?.jobPostingInfo?.jobDescription ?? "";
         text = html ? htmlToText(String(html)).slice(0, DESC_CAP) || null : null;
+        postedAt = isoDateOnly(j?.jobPostingInfo?.startDate);
       }
     }
   } else if (src.source === "bamboohr") {
@@ -1770,9 +1779,10 @@ async function fetchVendorDescription(
     // written off on it.
     const res = await fetchWithTimeout(`https://${src.token}.bamboohr.com/careers/${externalId}/detail`);
     if (res.ok) {
-      const j = await res.json().catch(() => null) as { result?: { jobOpening?: { description?: string } } } | null;
+      const j = await res.json().catch(() => null) as { result?: { jobOpening?: { description?: string; datePosted?: string } } } | null;
       const html = j?.result?.jobOpening?.description ?? "";
       text = html ? htmlToText(String(html)).slice(0, DESC_CAP) || null : null;
+      postedAt = isoDateOnly(j?.result?.jobOpening?.datePosted);
     }
   } else if (src.source === "breezy") {
     // No description on the /json list — it only exists on the posting page,
@@ -1817,7 +1827,21 @@ async function fetchVendorDescription(
   }
   // Everything else — rippling today — has no public description source.
   // Returning null here is a measured fact, not an unfinished branch.
-  return text;
+  return { text, postedAt };
+}
+
+/**
+ * A vendor date string accepted ONLY if it parses to a sane absolute date
+ * inside the window we serve. Anything ambiguous is dropped rather than
+ * guessed — a wrong posting date is worse than no posting date.
+ */
+function isoDateOnly(v: unknown): string | null {
+  if (typeof v !== "string" || !v.trim()) return null;
+  const t = Date.parse(v.length <= 10 ? `${v}T00:00:00Z` : v);
+  if (!Number.isFinite(t)) return null;
+  // Not in the future, not absurdly old.
+  if (t > Date.now() + 86_400_000 || t < Date.now() - 400 * 86_400_000) return null;
+  return new Date(t).toISOString();
 }
 
 // ── list: SQL reads + SWR background refresh ───────────────────────────────
@@ -2575,13 +2599,16 @@ Deno.serve(async (req) => {
       );
       const { data: rows, error: readErr } = await client
         .from("job_board_postings")
-        .select("id, company_token, apply_url")
+        .select("id, company_token, apply_url, title, location, posted_at, work_mode")
         .eq("source", vendor)
         .is("description", null)
         .order("posted_at", { ascending: false, nullsFirst: false })
         .limit(DESC_SWEEP_PER_HOP);
       if (readErr) throw readErr;
-      const queue = [...(rows ?? [])] as Array<{ id: string; company_token: string; apply_url: string | null }>;
+      const queue = [...(rows ?? [])] as Array<{
+        id: string; company_token: string; apply_url: string | null;
+        title: string | null; location: string | null; posted_at: string | null; work_mode: string | null;
+      }>;
       const pending = [...queue];
       let updated = 0;
       await Promise.all(Array.from({ length: DESC_SWEEP_CONCURRENCY }, async () => {
@@ -2593,7 +2620,7 @@ Deno.serve(async (req) => {
           const externalId = String(row.id).split(":").slice(2).join(":");
           if (!externalId) continue;
           try {
-            const text = await fetchVendorDescription(src, row.id, externalId, row.apply_url);
+            const { text, postedAt } = await fetchVendorDetail(src, row.id, externalId, row.apply_url);
             if (!text) continue;
             const clean = text.replace(/\u0000/g, "").slice(0, 4000);
             if (!clean) continue;
@@ -2602,9 +2629,25 @@ Deno.serve(async (req) => {
             // company's own words — never an estimate.
             const minedSalary = extractSalary(clean);
             const minedParse = minedSalary ? parseSalaryStructured(minedSalary) : null;
+            // The three fields below are DERIVED FROM DESCRIPTION TEXT but were
+            // only ever computed at ingest, so the description backfill left
+            // them stale — measured coverage was experience 26.4%, work mode
+            // 9.7%, salary 4.0%. Re-deriving here costs nothing: the text is
+            // already in hand.
+            const exp = detectExperience(row.title ?? "", clean);
+            // Work mode is only ever FILLED IN, never overwritten: a vendor's
+            // own structured field outranks anything we infer from prose.
+            const wm = row.work_mode ? null : detectWorkMode(row.location, row.title, clean);
+            // Dates: Workday's stored value is a relative bucket floored at 30
+            // days, so an absolute startDate is strictly better and replaces
+            // it. For every other vendor we only fill a gap.
+            const betterDate = postedAt && (vendor === "workday" || !row.posted_at) ? postedAt : null;
             const { error } = await client.from("job_board_postings")
               .update({
                 description: clean,
+                ...(exp.band ? { experience_band: exp.band, min_years: exp.minYears } : {}),
+                ...(wm ? { work_mode: wm } : {}),
+                ...(betterDate ? { posted_at: betterDate } : {}),
                 ...(minedSalary ? {
                   salary: minedSalary,
                   salary_min_annual: minedParse?.annualMin ?? null,
@@ -2862,10 +2905,18 @@ Deno.serve(async (req) => {
       if (!stored && description && jobRow) {
         const minedSalary = jobRow.salary ? null : extractSalary(description);
         const minedParse = minedSalary ? parseSalaryStructured(minedSalary) : null;
+        // Same re-derivation as the sweep: these fields come from description
+        // text, so a row that gains a description here should gain them too,
+        // rather than waiting for the sweep to reach it. Fill-only for work
+        // mode — a vendor's structured field always outranks inference.
+        const expRead = detectExperience(String(jobRow.title ?? ""), description);
+        const wmRead = jobRow.work_mode ? null : detectWorkMode(jobRow.location as string | null, jobRow.title as string | null, description);
         waitUntil((async () => {
           try {
             await client.from("job_board_postings").update({
               description: description.replace(/\u0000/g, "").slice(0, 4000),
+              ...(expRead.band ? { experience_band: expRead.band, min_years: expRead.minYears } : {}),
+              ...(wmRead ? { work_mode: wmRead } : {}),
               ...(minedSalary ? {
                 salary: minedSalary,
                 salary_min_annual: minedParse?.annualMin ?? null,
