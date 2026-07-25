@@ -25,7 +25,7 @@ const table = () => (supabase as unknown as { from: (t: string) => any }).from("
 export function SavedSearchesCard() {
   const navigate = useNavigate();
   const [searches, setSearches] = useState<SavedSearch[]>([]);
-  const [newCounts, setNewCounts] = useState<Record<string, number>>({});
+  const [newCounts, setNewCounts] = useState<Record<string, { n: number; capped: boolean }>>({});
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
@@ -41,9 +41,12 @@ export function SavedSearchesCard() {
             const { data: res } = await supabase.functions.invoke("job-board", {
               body: { action: "list", ...s.params, countOnly: true, postedAfter: s.last_seen_at },
             });
-            return [s.id, (res as { total?: number })?.total ?? 0] as const;
+            // countCapped means "at least this many" — the badge shows 10,000+
+            // rather than passing the board's cap off as an exact figure.
+            const r = res as { total?: number; countCapped?: boolean } | null;
+            return [s.id, { n: r?.total ?? 0, capped: r?.countCapped === true }] as const;
           } catch {
-            return [s.id, 0] as const;
+            return [s.id, { n: 0, capped: false }] as const;
           }
         }),
       );
@@ -81,7 +84,7 @@ export function SavedSearchesCard() {
 
   // Aggregate the per-search "new since last visit" counts into one headline —
   // the strongest reason to come back is knowing there's something new waiting.
-  const totalNew = Object.values(newCounts).reduce((sum, n) => sum + n, 0);
+  const totalNew = Object.values(newCounts).reduce((sum, c) => sum + c.n, 0);
 
   return (
     <div className="rounded-2xl border border-border bg-card p-5 mb-6">
@@ -94,7 +97,7 @@ export function SavedSearchesCard() {
         <button
           onClick={() => {
             // Open the search with the most new matches (most worth the click).
-            const top = [...searches].sort((a, b) => (newCounts[b.id] ?? 0) - (newCounts[a.id] ?? 0))[0];
+            const top = [...searches].sort((a, b) => (newCounts[b.id]?.n ?? 0) - (newCounts[a.id]?.n ?? 0))[0];
             if (top) open(top);
           }}
           className="w-full flex items-center gap-2 mb-3 rounded-xl border border-primary/25 bg-primary/5 px-3 py-2.5 text-left hover:bg-primary/10 transition-colors"
@@ -115,9 +118,9 @@ export function SavedSearchesCard() {
                 {s.name}
               </span>
             </button>
-            {(newCounts[s.id] ?? 0) > 0 && (
+            {(newCounts[s.id]?.n ?? 0) > 0 && (
               <span className="shrink-0 text-[11px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-semibold">
-                {newCounts[s.id]} new
+                {newCounts[s.id].n.toLocaleString()}{newCounts[s.id].capped ? "+" : ""} new
               </span>
             )}
             {s.digest_opt_in && (

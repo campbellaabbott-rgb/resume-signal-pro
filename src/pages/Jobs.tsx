@@ -338,10 +338,19 @@ export default function Jobs() {
   });
   // U2: honest "posted today" headline count (company-stated dates only).
   const [newToday, setNewToday] = useState<number | null>(null);
+  // The board caps counting for speed, so a broad window comes back as exactly
+  // the cap. "Posted today" measured 33,328 — far above it — so printing the
+  // bare number would understate it as an exact 10,000.
+  const [newTodayCapped, setNewTodayCapped] = useState(false);
   useEffect(() => {
     let alive = true;
-    invokeBoard<{ total?: number }>({ action: "list", countOnly: true, includeFacets: false, maxAgeDays: 1 })
-      .then(({ data }) => { if (alive && typeof data?.total === "number" && data.total > 0) setNewToday(data.total); })
+    invokeBoard<{ total?: number; countCapped?: boolean }>({ action: "list", countOnly: true, includeFacets: false, maxAgeDays: 1 })
+      .then(({ data }) => {
+        if (alive && typeof data?.total === "number" && data.total > 0) {
+          setNewToday(data.total);
+          setNewTodayCapped(data.countCapped === true);
+        }
+      })
       .catch(() => {});
     return () => { alive = false; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -2388,7 +2397,7 @@ export default function Jobs() {
             {!landerCompany && newToday !== null && (
               <span className="inline-flex items-center gap-1.5 ml-2 text-success whitespace-nowrap">
                 <span aria-hidden="true" className="w-1.5 h-1.5 rounded-full bg-success animate-pulse motion-reduce:animate-none" />
-                {t("jobsPage.newTodayLine", "{{n}} posted today.", { n: newToday.toLocaleString() })}
+                {t("jobsPage.newTodayLine", "{{n}} posted today.", { n: `${newToday.toLocaleString()}${newTodayCapped ? "+" : ""}` })}
               </span>
             )}
           </p>

@@ -104,6 +104,11 @@ Deno.serve(async (req) => {
 
       const countRes = await callBoard({ countOnly: true, postedAfter: since });
       const rawNew = (countRes as { total?: number } | null)?.total ?? 0;
+      // The board caps counting for speed (count_jobs_capped, 2026-07-25), so a
+      // broad saved search comes back as exactly the cap with countCapped set.
+      // Rendering that bare would email "10,000 new openings" as though it were
+      // exact when the real figure is higher — so the copy says "10,000+".
+      const rawCapped = (countRes as { countCapped?: boolean } | null)?.countCapped === true;
       if (rawNew === 0) {
         await supabase.from("user_job_searches").update({ digest_last_sent_at: new Date().toISOString() }).eq("id", s.id);
         skipped++;
@@ -117,6 +122,7 @@ Deno.serve(async (req) => {
       const threshold = Number((s as { fit_threshold?: number }).fit_threshold) || 0;
       let jobs: Array<{ id?: string; company: string; title: string; location: string; applyUrl: string; fit?: number }>;
       let newCount: number;
+      let countIsLowerBound = false;
       let strongMode = false;
 
       let resumeText = "";
@@ -170,12 +176,15 @@ Deno.serve(async (req) => {
         jobs = passing.slice(0, 5);
       } else {
         newCount = rawNew;
+        countIsLowerBound = rawCapped;
         const listRes = await callBoard({ limit: 5, offset: 0 });
         jobs = ((listRes as { jobs?: Array<{ company: string; title: string; location: string; applyUrl: string }> } | null)?.jobs) ?? [];
         if (jobs.length === 0) { skipped++; continue; } // count said new but list empty (transient) — retry next run, don't stamp
       }
 
       const token = await hmacToken(s.id as string);
+      // "10,000+" when the board could only tell us "at least this many".
+      const shownCount = countIsLowerBound ? `${newCount.toLocaleString()}+` : String(newCount);
       const unsubUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/send-search-digest?action=unsubscribe&id=${encodeURIComponent(s.id as string)}&token=${token}`;
       const viewUrl = `${boardUrl(p)}${boardUrl(p).includes("?") ? "&" : "?"}utm_source=email&utm_medium=search_digest`;
 
@@ -195,11 +204,11 @@ Deno.serve(async (req) => {
       <div style="font-size:11px;color:#94a3b8;margin-top:2px">Saved search · ${escapeHtml(s.name as string)}</div>
     </div>
     <div style="background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:22px">
-      <p style="font-size:15px;color:#0f172a;margin:0 0 4px"><b>${escapeHtml(newCount)}</b> new ${strongMode ? (newCount === 1 ? "match for you" : "matches for you") : (newCount === 1 ? "opening" : "openings")} since we last checked</p>
+      <p style="font-size:15px;color:#0f172a;margin:0 0 4px"><b>${escapeHtml(shownCount)}</b> new ${strongMode ? (newCount === 1 ? "match for you" : "matches for you") : (newCount === 1 ? "opening" : "openings")} since we last checked</p>
       <p style="font-size:13px;color:#64748b;margin:0 0 16px">${strongMode ? `that clear your fit bar for` : `matching`} “${escapeHtml(s.name as string)}”, pulled from companies' official job boards.</p>
       <table style="width:100%;border-collapse:collapse">${rows}</table>
       <div style="text-align:center;margin:20px 0 4px">
-        <a href="${escapeHtml(viewUrl)}" style="display:inline-block;background:#2563eb;color:#fff;font-size:14px;font-weight:700;padding:11px 22px;border-radius:10px;text-decoration:none">See all ${escapeHtml(newCount)} on the board</a>
+        <a href="${escapeHtml(viewUrl)}" style="display:inline-block;background:#2563eb;color:#fff;font-size:14px;font-weight:700;padding:11px 22px;border-radius:10px;text-decoration:none">See all ${escapeHtml(shownCount)} on the board</a>
       </div>
       <p style="font-size:12px;color:#94a3b8;text-align:center;margin:10px 0 0">Tip: <a href="${SITE_URL}" style="color:#2563eb;text-decoration:none">scan your resume</a> against any posting before you apply.</p>
     </div>
@@ -211,8 +220,8 @@ Deno.serve(async (req) => {
 
       try {
         const subject = strongMode
-          ? `${newCount} new strong ${newCount === 1 ? "match" : "matches"} for you — ${s.name}`
-          : `${newCount} new ${p.category || p.q || "job"} ${newCount === 1 ? "match" : "matches"} — ${s.name}`;
+          ? `${shownCount} new strong ${newCount === 1 ? "match" : "matches"} for you — ${s.name}`
+          : `${shownCount} new ${p.category || p.q || "job"} ${newCount === 1 ? "match" : "matches"} — ${s.name}`;
         await resend.emails.send({ from: "Resume Booster <reports@resumebooster.work>", to: email, subject, html });
         await supabase.from("user_job_searches").update({ digest_last_sent_at: new Date().toISOString() }).eq("id", s.id);
         sent++;
