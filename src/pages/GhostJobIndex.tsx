@@ -326,8 +326,9 @@ export default function GhostJobIndex() {
             </div>
             <p className="text-[11px] text-muted-foreground mt-2">
               Median days from the company's stated post date (or our first sighting, where no date is published) to
-              the posting coming down, measured over the last {benchmarks[0]?.window_days ?? 90} days. Employers with
-              fewer than 25 observed closures are excluded so a single quick fill can't crown anyone. Measured from
+              the posting coming down, among roles that stayed posted at least a week — same-day churn and reposts
+              don't count as fills. Measured over the last {benchmarks[0]?.window_days ?? 90} days; employers with
+              fewer than 25 qualifying closures are excluded so a single quick fill can't crown anyone. Measured from
               our closure log — never an estimate.
             </p>
           </div>
