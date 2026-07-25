@@ -71,7 +71,7 @@ const json = (body: unknown, status = 200) =>
 // while this file was untouched). Always bump BUILD_VERSION here when a shared
 // module this function imports changes — it forces the diff AND gives the
 // deploy a verifiable tell.
-const BUILD_VERSION = "2026-07-24.8";
+const BUILD_VERSION = "2026-07-25.1";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -3051,12 +3051,22 @@ async function serveList(
     !(Number(body.maxAgeDays) >= 1) &&
     typeof body.postedAfter !== "string";
   const wantCount = !(unfiltered && Number.isFinite(metaTotal) && metaTotal > 0);
-  const buildQuery = (dateCol: string) => {
+  // withCount is separable from wantCount so a page can be re-run WITHOUT the
+  // count when the count is what failed. Measured 2026-07-25 on the 570k table:
+  // the page itself returns in 0.2-0.4s, while the exact count over a broad
+  // window takes 3.2s+ and trips the statement timeout. Because both rode the
+  // same query, that timeout 500'd the whole request — "Posted this week"
+  // (maxAgeDays=7) was hard-broken, along with maxAgeDays=5. The failure is a
+  // planner crossover, not size: 1-3d and 10-30d both plan well, the middle
+  // band (~150-190k rows) picks an index scan with random heap access and
+  // crawls. Dropping the redundant effective_posted predicate was measured and
+  // does NOT help, so the fix is to never let the count kill the page.
+  const buildQuery = (dateCol: string, withCount = wantCount) => {
     let q = client
       .from("job_board_postings")
       .select(
         "id,source,company_token,company,title,location,remote,work_mode,department,category,posted_at,apply_url,salary,salary_min_annual,salary_max_annual,salary_period,salary_currency,experience_band,min_years,last_seen",
-        wantCount ? { count: "exact" } : {},
+        withCount ? { count: "exact" } : {},
       )
       .gte(dateCol, freshCutoffIso);
     const terms = String(body.q ?? "").toLowerCase().split(/\s+/).map(sanitizeTerm).filter(Boolean).slice(0, 8);
@@ -3110,7 +3120,11 @@ async function serveList(
     if (!wantCount) return json({ total: metaTotal }); // unfiltered — the maintained catalog total
     let { count, error } = await buildQuery("effective_posted").range(0, 0);
     if (missingColumn(error)) ({ count, error } = await buildQuery("posted_at").range(0, 0));
-    if (error) throw error;
+    // Same rule as the list path: a count that can't be computed is reported as
+    // unknown, never as 0. Callers (the disclosure hook, saved-search "new
+    // since" badges) treat a non-number as "no answer" and show nothing, which
+    // is right — a 0 here would claim the filter matches nothing.
+    if (error) return json({ total: null, countUnavailable: true });
     return json({ total: count ?? 0 });
   }
 
@@ -3213,6 +3227,30 @@ async function serveList(
     ({ data, error, count } = await page("effective_posted", "salary_min_annual"));
   }
   if (missingColumn(error)) ({ data, error, count } = await page("posted_at", "salary_min_annual"));
+  // Last resort before failing the board: if the query still errored AND we
+  // asked for an exact count, re-run the identical page with the count OFF.
+  // The count is the expensive half (0.3s page vs 3.2s+ count), so this turns
+  // a 500 into a served page with an honest "we don't know the total".
+  // countUnavailable tells the client to stop trusting `total` rather than
+  // render a wrong number, and hasMore keeps pagination working without it.
+  let countUnavailable = false;
+  if (error && wantCount) {
+    const noCount = (dateCol: string, salaryCol: string) =>
+      (sortSalary
+        ? buildQuery(dateCol, false).order(salaryCol, { ascending: false, nullsFirst: false })
+        : buildQuery(dateCol, false).order(dateCol, { ascending: false, nullsFirst: false })
+      ).order("id", { ascending: true }).range(offset, offset + limit - 1);
+    let retry = await noCount("effective_posted", "salary_rank_usd");
+    if (sortSalary && retry.error?.message?.includes("salary_rank_usd")) retry = await noCount("effective_posted", "salary_min_annual");
+    if (missingColumn(retry.error)) retry = await noCount("posted_at", "salary_min_annual");
+    if (!retry.error) {
+      data = retry.data;
+      error = null;
+      count = null;
+      countUnavailable = true;
+      console.warn(`[JOB-BOARD] exact count timed out; served page without it (maxAgeDays=${String(body.maxAgeDays ?? "")} category=${String(body.category ?? "")})`);
+    }
+  }
   if (error) throw error;
 
   // Zero-result telemetry: a first-page search that found nothing is the
@@ -3258,7 +3296,13 @@ async function serveList(
     : [];
   return json({
     jobs: (data ?? []).map(rowToJob),
-    total: wantCount ? (count ?? 0) : metaTotal,
+    // null (not 0) when the count timed out — 0 would read as "no matches" and
+    // trip the zero-state on a page that is visibly full of results.
+    total: countUnavailable ? null : (wantCount ? (count ?? 0) : metaTotal),
+    ...(countUnavailable ? { countUnavailable: true } : {}),
+    // A full page means there is at least one more; the client needs this to
+    // keep "load more" alive when it has no total to compare against.
+    hasMore: (data ?? []).length === limit,
     totalAllCompanies: (v.total as number) ?? count ?? 0,
     companies: servedCompanies,
     companiesCount: fullCompanies.length,

@@ -4172,6 +4172,7 @@
     "retry": "फिर कोशिश करें",
     "empty": "इन फ़िल्टरों से कोई ओपनिंग नहीं मिली। एक फ़िल्टर हल्का करके दोबारा देखें।",
     "resultsSummary": "{{companies}} कंपनियों की {{total}} मिलती ओपनिंग में से {{shown}} दिख रही हैं",
+    "resultsSummaryNoTotal": "{{shown}} मिलती-जुलती नौकरियाँ दिखाई जा रही हैं",
     "sourcesDown": "{{count}} कंपनी फ़ीड अभी उपलब्ध नहीं हैं",
     "postedToday": "आज",
     "postedDaysAgo": "{{count}} दिन पहले",

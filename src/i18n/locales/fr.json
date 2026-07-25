@@ -4172,6 +4172,7 @@
     "retry": "Réessayer",
     "empty": "Aucune offre ne correspond à ces filtres. Assouplissez-en un et réessayez.",
     "resultsSummary": "{{shown}} offres affichées sur {{total}} dans {{companies}} entreprises",
+    "resultsSummaryNoTotal": "Affichage de {{shown}} offres correspondantes",
     "sourcesDown": "{{count}} flux d'entreprises sont injoignables pour le moment",
     "postedToday": "aujourd'hui",
     "postedDaysAgo": "il y a {{count}} j",

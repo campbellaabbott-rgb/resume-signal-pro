@@ -4172,6 +4172,7 @@
     "retry": "Try again",
     "empty": "No openings match those filters. Loosen one and try again.",
     "resultsSummary": "Showing {{shown}} of {{total}} matching openings across {{companies}} companies",
+    "resultsSummaryNoTotal": "Showing {{shown}} matching openings",
     "sourcesDown": "{{count}} company feeds are unreachable right now",
     "postedToday": "today",
     "postedDaysAgo": "{{count}}d ago",

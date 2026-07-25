@@ -4172,6 +4172,7 @@
     "retry": "Opnieuw proberen",
     "empty": "Geen vacature past bij deze filters. Versoepel er één en probeer opnieuw.",
     "resultsSummary": "{{shown}} van {{total}} passende vacatures bij {{companies}} bedrijven",
+    "resultsSummaryNoTotal": "{{shown}} overeenkomende vacatures worden getoond",
     "sourcesDown": "{{count}} bedrijfsfeeds zijn nu onbereikbaar",
     "postedToday": "vandaag",
     "postedDaysAgo": "{{count}} d geleden",

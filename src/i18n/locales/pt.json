@@ -4172,6 +4172,7 @@
     "retry": "Tentar de novo",
     "empty": "Nenhuma vaga corresponde a esses filtros. Afrouxe um deles e tente de novo.",
     "resultsSummary": "Mostrando {{shown}} de {{total}} vagas em {{companies}} empresas",
+    "resultsSummaryNoTotal": "Exibindo {{shown}} vagas correspondentes",
     "sourcesDown": "{{count}} feeds de empresas estão fora do ar agora",
     "postedToday": "hoje",
     "postedDaysAgo": "há {{count}} d",

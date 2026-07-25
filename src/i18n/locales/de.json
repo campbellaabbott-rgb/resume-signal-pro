@@ -4172,6 +4172,7 @@
     "retry": "Erneut versuchen",
     "empty": "Keine Stelle passt zu diesen Filtern. Lockern Sie einen und versuchen Sie es erneut.",
     "resultsSummary": "{{shown}} von {{total}} passenden Stellen aus {{companies}} Unternehmen",
+    "resultsSummaryNoTotal": "{{shown}} passende Stellen werden angezeigt",
     "sourcesDown": "{{count}} Unternehmens-Feeds sind gerade nicht erreichbar",
     "postedToday": "heute",
     "postedDaysAgo": "vor {{count}} T",

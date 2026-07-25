@@ -4172,6 +4172,7 @@
     "retry": "Reintentar",
     "empty": "Ninguna oferta coincide con esos filtros. Relaja alguno e inténtalo de nuevo.",
     "resultsSummary": "Mostrando {{shown}} de {{total}} ofertas en {{companies}} empresas",
+    "resultsSummaryNoTotal": "Mostrando {{shown}} ofertas coincidentes",
     "sourcesDown": "{{count}} fuentes de empresas no responden ahora mismo",
     "postedToday": "hoy",
     "postedDaysAgo": "hace {{count}} d",

@@ -111,7 +111,13 @@ const EXPERIENCE_IDS = ["entry", "mid", "senior", "expert"] as const;
 
 interface BoardResponse {
   jobs: BoardJob[];
-  total: number;
+  // null when the exact count timed out server-side (broad freshness windows on
+  // the 570k table trip the statement limit). Never render a number from this
+  // without a typeof check — the server sends null rather than a wrong 0.
+  total: number | null;
+  countUnavailable?: boolean;
+  // Server-computed "a full page came back", so pagination survives a missing total.
+  hasMore?: boolean;
   totalAllCompanies: number;
   // Untrimmed company count — the served `companies` array is capped (top-N by
   // count) for payload weight, so stat displays must use this, not .length.
@@ -3196,7 +3202,13 @@ export default function Jobs() {
                 </div>
               )}
               <p className="text-xs text-muted-foreground mb-3" aria-live="polite">
-                {landerCompany
+                {data?.countUnavailable
+                  // The server couldn't compute an exact total for this filter.
+                  // Say what we actually know instead of printing jobs.length as
+                  // if it were the total — that would claim 20 matches when the
+                  // filter really matches six figures.
+                  ? t("jobsPage.resultsSummaryNoTotal", "Showing {{shown}} matching openings", { shown: jobs.length })
+                  : landerCompany
                   ? t("jobsPage.companyResultsSummary", "Showing {{shown}} of {{total}} open roles at {{company}}", {
                       shown: jobs.length,
                       total: data?.total ?? jobs.length,
@@ -3678,7 +3690,7 @@ export default function Jobs() {
                   );
                 })}
               </ul>
-              {data && jobs.length < data.total && (
+              {data && (typeof data.total === "number" ? jobs.length < data.total : !!data.hasMore) && (
                 <div className="text-center mt-6">
                   <Button variant="outline" disabled={loadingMore} onClick={() => fetchJobs(jobs.length)} className="gap-2">
                     {loadingMore && <Loader2 className="w-4 h-4 animate-spin" />}
