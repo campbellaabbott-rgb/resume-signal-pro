@@ -4452,7 +4452,9 @@
     "discSalary": "{{shown}} sa mga employer na ito ang naglalathala ng sahod. May {{hidden}} pang trabaho na tumutugma sa lahat ng iba mong hinanap, pero hindi nagsasabi ng sahod — kaya itinatago sila ng filter na ito.",
     "discWorkMode": "{{shown}} sa mga employer na ito ang nagsasabi kung saan gagawin ang trabaho. May {{hidden}} pang trabaho na tumutugma sa lahat ng iba, pero hindi sinasabi kung remote, hybrid, o on-site — kaya itinatago sila ng filter na ito.",
     "discShowAll": "Ipakita rin ang mga iyon",
-    "discCategory": "Bukod pa rito, {{hidden}} trabaho sa buong board ang may pamagat na hindi sinasabi ang larangan, kaya walang filter ng larangan ang makakaabot sa kanila."
+    "discCategory": "Bukod pa rito, {{hidden}} trabaho sa buong board ang may pamagat na hindi sinasabi ang larangan, kaya walang filter ng larangan ang makakaabot sa kanila.",
+    "alsoInLocations": "Kumukuha rin sa {{count}} pang lokasyon",
+    "alsoInLocations_plural": "Kumukuha rin sa {{count}} pang mga lokasyon"
   },
   "accountPage": {
     "statActive": "Aktibong aplikasyon",

@@ -4452,7 +4452,9 @@
     "discSalary": "{{shown}} van deze werkgevers vermelden het salaris. Nog eens {{hidden}} vacatures voldoen aan al het andere, maar noemen geen salaris — dit filter verbergt ze daarom.",
     "discWorkMode": "{{shown}} van deze werkgevers vermelden waar het werk plaatsvindt. Nog eens {{hidden}} vacatures voldoen aan al het andere, maar zeggen niet of het remote, hybride of op locatie is — dit filter verbergt ze daarom.",
     "discShowAll": "Toon die ook",
-    "discCategory": "Daarnaast hebben {{hidden}} vacatures op het hele bord een titel die nooit zegt in welk vakgebied ze vallen, dus geen enkel vakgebiedfilter bereikt ze."
+    "discCategory": "Daarnaast hebben {{hidden}} vacatures op het hele bord een titel die nooit zegt in welk vakgebied ze vallen, dus geen enkel vakgebiedfilter bereikt ze.",
+    "alsoInLocations": "Werft ook op {{count}} andere locatie",
+    "alsoInLocations_plural": "Werft ook op {{count}} andere locaties"
   },
   "accountPage": {
     "statActive": "Actieve sollicitaties",

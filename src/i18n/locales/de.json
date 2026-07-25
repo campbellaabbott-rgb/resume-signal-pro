@@ -4452,7 +4452,9 @@
     "discSalary": "{{shown}} dieser Arbeitgeber nennen das Gehalt. Weitere {{hidden}} Stellen erfüllen alle anderen Kriterien, machen aber keine Gehaltsangabe – dieser Filter blendet sie daher aus.",
     "discWorkMode": "{{shown}} dieser Arbeitgeber geben an, wo gearbeitet wird. Weitere {{hidden}} Stellen erfüllen alle anderen Kriterien, sagen aber nicht, ob remote, hybrid oder vor Ort – dieser Filter blendet sie daher aus.",
     "discShowAll": "Diese ebenfalls anzeigen",
-    "discCategory": "Außerdem haben {{hidden}} Stellen im gesamten Board einen Titel, der den Bereich nie nennt – kein Bereichsfilter kann sie erreichen."
+    "discCategory": "Außerdem haben {{hidden}} Stellen im gesamten Board einen Titel, der den Bereich nie nennt – kein Bereichsfilter kann sie erreichen.",
+    "alsoInLocations": "Stellt auch an {{count}} weiterem Standort ein",
+    "alsoInLocations_plural": "Stellt auch an {{count}} weiteren Standorten ein"
   },
   "accountPage": {
     "statActive": "Aktive Bewerbungen",

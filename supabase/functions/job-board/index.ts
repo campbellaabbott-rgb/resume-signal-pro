@@ -15,7 +15,7 @@
 
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { HOT_TOKENS, JOB_SOURCES, LIGHT_DESC_TOKENS, type JobSource } from "./sources.ts";
-import { BOARD_DESC_SOURCES, DETAIL_DESC_SOURCES, jobPostingLdDescription, workdayCxsUrl } from "./descriptions.ts";
+import { BOARD_DESC_SOURCES, DETAIL_DESC_SOURCES, clusterKey, jobPostingLdDescription, workdayCxsUrl } from "./descriptions.ts";
 import {
   htmlToText,
   normalizeAshby,
@@ -71,7 +71,7 @@ const json = (body: unknown, status = 200) =>
 // while this file was untouched). Always bump BUILD_VERSION here when a shared
 // module this function imports changes — it forces the diff AND gives the
 // deploy a verifiable tell.
-const BUILD_VERSION = "2026-07-25.1";
+const BUILD_VERSION = "2026-07-25.2";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -3009,6 +3009,58 @@ const rowToJob = (r: any) => ({
   ...(typeof r.snippet === "string" && r.snippet.includes("[[") ? { snippet: r.snippet } : {}),
 });
 
+// One employer's role, reposted per location, was eating up to 35% of a
+// results page (measured 2026-07-25). Collapse those into a single result that
+// says how many locations it covers, instead of spending 13 slots on it.
+const GROUP_OVERFETCH = 3;
+const GROUP_SAMPLE_LOCATIONS = 6;
+
+/**
+ * Fold rows sharing a cluster key into one, carrying a location count.
+ *
+ * `rawConsumed` is the number of SOURCE rows this page swallowed, which is what
+ * the next page must offset by — the displayed row count no longer equals the
+ * rows read, so paginating by jobs.length would re-show siblings as if they
+ * were new results. Consumption deliberately continues past the limit for rows
+ * that join an ALREADY-emitted cluster, and stops at the first row that would
+ * open a new one, so no row is ever skipped or shown twice.
+ */
+function collapseClusters(
+  rows: Array<Record<string, unknown>>,
+  limit: number,
+): { jobs: Array<Record<string, unknown>>; rawConsumed: number } {
+  const out: Array<Record<string, unknown>> = [];
+  const byKey = new Map<string, Record<string, unknown>>();
+  let rawConsumed = 0;
+  for (const r of rows) {
+    const key = clusterKey(String(r.token ?? ""), String(r.title ?? ""));
+    const hit = byKey.get(key);
+    if (!hit && out.length >= limit) break; // next page starts exactly here
+    rawConsumed++;
+    if (hit) {
+      hit.locationCount = (Number(hit.locationCount) || 1) + 1;
+      const locs = hit.otherLocations as string[];
+      const loc = typeof r.location === "string" ? r.location.trim() : "";
+      // Distinct locations only — the same town genuinely recurs (one employer
+      // had the same role twice in Pueblo, CO), and listing it twice would be
+      // noise. locationCount above still counts every posting.
+      if (loc && loc !== hit.location && locs.length < GROUP_SAMPLE_LOCATIONS && !locs.includes(loc)) locs.push(loc);
+      continue;
+    }
+    const row = { ...r, locationCount: 1, otherLocations: [] as string[] };
+    byKey.set(key, row);
+    out.push(row);
+  }
+  // Only surface the grouping fields when there is actually a group.
+  for (const row of out) {
+    if ((Number(row.locationCount) || 1) < 2) {
+      delete row.locationCount;
+      delete row.otherLocations;
+    }
+  }
+  return { jobs: out, rawConsumed };
+}
+
 async function serveList(
   client: SupabaseClient,
   body: Record<string, unknown>,
@@ -3017,6 +3069,11 @@ async function serveList(
   const limit = Math.min(Math.max(Number(body.limit) || 60, 1), 200);
   const offset = Math.max(Number(body.offset) || 0, 0);
   const countOnly = body.countOnly === true;
+  // Location-cluster collapsing is on unless a caller opts out (the lander and
+  // company views WANT every location listed). Over-fetch so there is material
+  // to fold: a page of 25 reads up to 75 rows, which is still one indexed page.
+  const groupSimilar = body.groupSimilar !== false && !countOnly;
+  const fetchLimit = groupSimilar ? Math.min(limit * GROUP_OVERFETCH, 200) : limit;
 
   // effective_posted = coalesce(posted_at, first_seen): undated feeds
   // (BambooHR) participate in freshness filters and recency sort. If the
@@ -3116,8 +3173,49 @@ async function serveList(
   };
   const missingColumn = (e: { message?: string } | null) => !!e?.message?.includes("effective_posted");
 
+  // Capped count: stops at COUNT_CAP+1 rows, so cost is bounded by the cap
+  // instead of by how many rows match. Replaces the exact count that was
+  // costing 3-9s on broad filters (page itself: ~0.3s) and exceeding the
+  // statement timeout outright between roughly 150k and 190k matches.
+  // Returns null when the RPC isn't available (migration not applied), which
+  // leaves the existing exact-count path in charge.
+  const COUNT_CAP = 10_000;
+  const cappedCount = async (): Promise<{ n: number; capped: boolean } | null> => {
+    const expArr = String(body.experience ?? "").split(",").map((x) => x.trim()).filter(isExperienceBand);
+    const compArr = Array.isArray(body.companies)
+      ? body.companies.filter((c): c is string => typeof c === "string").slice(0, JOB_SOURCES.length)
+      : [];
+    const maxAgeNum = Number(body.maxAgeDays);
+    const wm = String(body.workMode ?? "");
+    try {
+      const { data, error } = await client.rpc("count_jobs_capped", {
+        p_fresh_cutoff: freshCutoffIso,
+        p_q: String(body.q ?? "").trim() ? sanitizeTerm(String(body.q ?? "")) : null,
+        p_location: sanitizeTerm(String(body.location ?? "")) || null,
+        p_remote: body.remote === true ? true : null,
+        p_country: /^[A-Za-z]{2}$/.test(String(body.country ?? "")) ? String(body.country).toUpperCase() : null,
+        p_category: (JOB_CATEGORIES as readonly string[]).includes(String(body.category ?? "")) ? String(body.category) : null,
+        p_experience: expArr.length ? expArr : null,
+        p_salary_floor: Number(body.salaryFloor) > 0 ? Math.min(Number(body.salaryFloor), 2_000_000) : null,
+        p_companies: compArr.length ? compArr : null,
+        p_posted_after: typeof body.postedAfter === "string" && !Number.isNaN(Date.parse(body.postedAfter)) ? body.postedAfter : null,
+        p_max_age_days: Number.isFinite(maxAgeNum) && maxAgeNum >= 1 ? Math.min(maxAgeNum, 30) : null,
+        p_work_mode: ["remote", "hybrid", "onsite"].includes(wm) ? wm : null,
+        p_cap: COUNT_CAP,
+      });
+      if (error || !Array.isArray(data) || !data.length) return null;
+      const row = data[0] as { n?: number | string; capped?: boolean };
+      const n = Number(row.n);
+      return Number.isFinite(n) ? { n, capped: row.capped === true } : null;
+    } catch {
+      return null; // RPC missing — caller keeps the old exact-count behaviour
+    }
+  };
+
   if (countOnly) {
     if (!wantCount) return json({ total: metaTotal }); // unfiltered — the maintained catalog total
+    const capped = await cappedCount();
+    if (capped) return json({ total: capped.n, ...(capped.capped ? { countCapped: true } : {}) });
     let { count, error } = await buildQuery("effective_posted").range(0, 0);
     if (missingColumn(error)) ({ count, error } = await buildQuery("posted_at").range(0, 0));
     // Same rule as the list path: a count that can't be computed is reported as
@@ -3147,6 +3245,7 @@ async function serveList(
         ? body.companies.filter((c): c is string => typeof c === "string").slice(0, JOB_SOURCES.length)
         : [];
       const maxAgeNum = Number(body.maxAgeDays);
+      const wmParam = String(body.workMode ?? "");
       // Role-alias expansion (disclosed): "swe" also searches "software
       // engineer" etc. The expanded websearch string keeps the original
       // spelling as its own OR-branch, and the response names every added
@@ -3164,7 +3263,19 @@ async function serveList(
         p_companies: compArr.length ? compArr : null,
         p_posted_after: typeof body.postedAfter === "string" && !Number.isNaN(Date.parse(body.postedAfter)) ? body.postedAfter : null,
         p_max_age_days: Number.isFinite(maxAgeNum) && maxAgeNum >= 1 ? Math.min(maxAgeNum, 30) : null,
-        p_limit: limit,
+        // Measured 2026-07-25: without this the ranked path silently dropped
+        // the work-mode filter — workMode=remote + q=engineer returned 30 rows
+        // that ALL had work_mode NULL, the exact opposite of the request.
+        //
+        // Sent ONLY when a work mode is actually selected. That matters while
+        // the migration adding p_work_mode may not have applied yet: omitting
+        // the argument keeps every ordinary search working against the OLD
+        // function signature, and the one case that would error (a work-mode
+        // filter against an old signature) falls through to the recency path
+        // below, which filters work mode correctly. The filter is honoured on
+        // every route; it is never quietly ignored again.
+        ...(["remote", "hybrid", "onsite"].includes(wmParam) ? { p_work_mode: wmParam } : {}),
+        p_limit: fetchLimit,
         p_offset: offset,
       });
       if (!rankErr && Array.isArray(ranked)) {
@@ -3198,8 +3309,14 @@ async function serveList(
         }
         const includeFacets0 = (body as { includeFacets?: boolean }).includeFacets !== false;
         const fullCompanies0 = (v0.companiesFacet as Array<{ count?: number }>) ?? [];
+        const rankedRows = (ranked as unknown[]).map(rowToJob) as Array<Record<string, unknown>>;
+        const rankedGrouped = groupSimilar
+          ? collapseClusters(rankedRows, limit)
+          : { jobs: rankedRows.slice(0, limit), rawConsumed: Math.min(rankedRows.length, limit) };
         return json({
-          jobs: (ranked as unknown[]).map(rowToJob),
+          jobs: rankedGrouped.jobs,
+          nextOffset: offset + rankedGrouped.rawConsumed,
+          hasMore: rankedRows.length > rankedGrouped.rawConsumed || rankedRows.length === fetchLimit,
           total,
           totalAllCompanies: (v0.total as number) ?? total,
           companies: includeFacets0 ? [...fullCompanies0].sort((a, b) => (b.count ?? 0) - (a.count ?? 0)).slice(0, 1_500) : [],
@@ -3214,14 +3331,29 @@ async function serveList(
     } catch { /* fall through to recency path */ }
   }
   const sortSalary = body.sort === "salary";
-  const page = (dateCol: string, salaryCol: string) =>
+  const pageWith = (dateCol: string, salaryCol: string, withCount: boolean) =>
     (sortSalary
-      ? buildQuery(dateCol).order(salaryCol, { ascending: false, nullsFirst: false })
-      : buildQuery(dateCol).order(dateCol, { ascending: false, nullsFirst: false })
+      ? buildQuery(dateCol, withCount).order(salaryCol, { ascending: false, nullsFirst: false })
+      : buildQuery(dateCol, withCount).order(dateCol, { ascending: false, nullsFirst: false })
     )
       .order("id", { ascending: true })
-      .range(offset, offset + limit - 1);
-  let { data, error, count } = await page("effective_posted", "salary_rank_usd");
+      .range(offset, offset + fetchLimit - 1);
+
+  // Page and count run CONCURRENTLY and independently: the page never waits on
+  // a count, and a count that fails can't take the page down with it. The page
+  // is consistently ~0.3s; it was the exact count riding the same query that
+  // made broad filters take 3-9s.
+  const [firstPage, cappedRes] = await Promise.all([
+    pageWith("effective_posted", "salary_rank_usd", false),
+    wantCount ? cappedCount() : Promise.resolve(null),
+  ]);
+  // Only fall back to the old inline exact count when the capped RPC isn't
+  // there (migration not applied yet).
+  const needInlineCount = wantCount && !cappedRes;
+  const page = (dateCol: string, salaryCol: string) => pageWith(dateCol, salaryCol, needInlineCount);
+  let { data, error, count } = needInlineCount
+    ? await page("effective_posted", "salary_rank_usd")
+    : { data: firstPage.data, error: firstPage.error, count: cappedRes?.n ?? null };
   // Graceful degrade until the rank-column migration applies: raw numeric order.
   if (sortSalary && error?.message?.includes("salary_rank_usd")) {
     ({ data, error, count } = await page("effective_posted", "salary_min_annual"));
@@ -3239,7 +3371,7 @@ async function serveList(
       (sortSalary
         ? buildQuery(dateCol, false).order(salaryCol, { ascending: false, nullsFirst: false })
         : buildQuery(dateCol, false).order(dateCol, { ascending: false, nullsFirst: false })
-      ).order("id", { ascending: true }).range(offset, offset + limit - 1);
+      ).order("id", { ascending: true }).range(offset, offset + fetchLimit - 1);
     let retry = await noCount("effective_posted", "salary_rank_usd");
     if (sortSalary && retry.error?.message?.includes("salary_rank_usd")) retry = await noCount("effective_posted", "salary_min_annual");
     if (missingColumn(retry.error)) retry = await noCount("posted_at", "salary_min_annual");
@@ -3294,15 +3426,26 @@ async function serveList(
   const servedCompanies = includeFacets
     ? [...fullCompanies].sort((a, b) => (b.count ?? 0) - (a.count ?? 0)).slice(0, FACET_COMPANY_LIMIT)
     : [];
+  const mappedRows = (data ?? []).map(rowToJob) as Array<Record<string, unknown>>;
+  const grouped = groupSimilar
+    ? collapseClusters(mappedRows, limit)
+    : { jobs: mappedRows.slice(0, limit), rawConsumed: Math.min(mappedRows.length, limit) };
   return json({
-    jobs: (data ?? []).map(rowToJob),
+    jobs: grouped.jobs,
+    // Raw rows this page swallowed. The client MUST page by this rather than by
+    // jobs.length once clusters are folded, or the siblings of a collapsed
+    // result reappear on the next page as if they were new.
+    nextOffset: offset + grouped.rawConsumed,
     // null (not 0) when the count timed out — 0 would read as "no matches" and
     // trip the zero-state on a page that is visibly full of results.
     total: countUnavailable ? null : (wantCount ? (count ?? 0) : metaTotal),
     ...(countUnavailable ? { countUnavailable: true } : {}),
+    // The count stopped at the cap: the real figure is higher, so the client
+    // renders "10,000+" rather than presenting the cap as an exact total.
+    ...(cappedRes?.capped ? { countCapped: true } : {}),
     // A full page means there is at least one more; the client needs this to
     // keep "load more" alive when it has no total to compare against.
-    hasMore: (data ?? []).length === limit,
+    hasMore: (data ?? []).length > grouped.rawConsumed || (data ?? []).length === fetchLimit,
     totalAllCompanies: (v.total as number) ?? count ?? 0,
     companies: servedCompanies,
     companiesCount: fullCompanies.length,

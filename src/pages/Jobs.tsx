@@ -67,6 +67,12 @@ interface BoardJob {
   category?: string | null;
   /** Last re-verification against the company's own feed (serveList last_seen). */
   lastSeen?: string | null;
+  /** >1 when the server folded the same role posted in several locations into
+   *  this row. The siblings are real, separately-applyable postings — they are
+   *  collapsed for readability, never dropped. */
+  locationCount?: number;
+  /** A few of the other locations this role is open in (server-capped). */
+  otherLocations?: string[];
   /** Tier-2 ranked search only: ts_headline fragment showing where a description-matched result matched ([[term]] delimiters). */
   snippet?: string;
 }
@@ -116,8 +122,15 @@ interface BoardResponse {
   // without a typeof check — the server sends null rather than a wrong 0.
   total: number | null;
   countUnavailable?: boolean;
+  // The count stopped at the server's cap: the true figure is higher, so render
+  // it as "10,000+" rather than as an exact total.
+  countCapped?: boolean;
   // Server-computed "a full page came back", so pagination survives a missing total.
   hasMore?: boolean;
+  // Raw rows the server consumed for this page. Once same-role-different-location
+  // clusters are folded, displayed rows no longer equal rows read, so paging by
+  // jobs.length would re-show a collapsed result's siblings as new hits.
+  nextOffset?: number;
   totalAllCompanies: number;
   // Untrimmed company count — the served `companies` array is capped (top-N by
   // count) for payload weight, so stat displays must use this, not .length.
@@ -3216,7 +3229,11 @@ export default function Jobs() {
                     })
                   : t("jobsPage.resultsSummary", "Showing {{shown}} of {{total}} matching openings across {{companies}} companies", {
                   shown: jobs.length,
-                  total: data?.total ?? jobs.length,
+                  // The server caps counting for speed; above the cap it says so,
+                  // and we render "10,000+" rather than passing the cap off as exact.
+                  total: data?.countCapped
+                    ? `${(data?.total ?? 0).toLocaleString()}+`
+                    : (data?.total ?? jobs.length),
                   companies: data?.companiesCount ?? companies.length,
                 })}
                 {data?.refreshedAt && (
@@ -3413,6 +3430,21 @@ export default function Jobs() {
                             {job.location ? ` · ${job.location}` : ""}
                             {job.department ? ` · ${job.department}` : ""}
                           </p>
+                          {/* Same role, several locations. The siblings are real
+                              postings we folded for readability, so say how many
+                              and name a few — never imply the others vanished. */}
+                          {(job.locationCount ?? 1) > 1 && (
+                            <p
+                              className="text-xs text-muted-foreground mt-0.5"
+                              title={(job.otherLocations ?? []).join(" · ")}
+                            >
+                              {t("jobsPage.alsoInLocations", "Also hiring in {{count}} more location", {
+                                count: (job.locationCount ?? 1) - 1,
+                                count_plural: (job.locationCount ?? 1) - 1,
+                              })}
+                              {(job.otherLocations ?? []).length > 0 && `: ${(job.otherLocations ?? []).slice(0, 3).join(", ")}`}
+                            </p>
+                          )}
                           {job.salary && (
                             <p className="text-xs text-success font-medium mt-0.5" title={job.salary}>{displaySalary(job.salary)}</p>
                           )}
@@ -3692,7 +3724,7 @@ export default function Jobs() {
               </ul>
               {data && (typeof data.total === "number" ? jobs.length < data.total : !!data.hasMore) && (
                 <div className="text-center mt-6">
-                  <Button variant="outline" disabled={loadingMore} onClick={() => fetchJobs(jobs.length)} className="gap-2">
+                  <Button variant="outline" disabled={loadingMore} onClick={() => fetchJobs(data?.nextOffset ?? jobs.length)} className="gap-2">
                     {loadingMore && <Loader2 className="w-4 h-4 animate-spin" />}
                     {t("jobsPage.loadMore", "Load more")}
                   </Button>
