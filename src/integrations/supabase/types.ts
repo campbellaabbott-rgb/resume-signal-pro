@@ -2325,6 +2325,27 @@ export type Database = {
           metric: string
         }[]
       }
+      count_jobs_capped: {
+        Args: {
+          p_cap?: number
+          p_category?: string
+          p_companies?: string[]
+          p_country?: string
+          p_experience?: string[]
+          p_fresh_cutoff: string
+          p_location?: string
+          p_max_age_days?: number
+          p_posted_after?: string
+          p_q?: string
+          p_remote?: boolean
+          p_salary_floor?: number
+          p_work_mode?: string
+        }
+        Returns: {
+          capped: boolean
+          n: number
+        }[]
+      }
       delete_analysis_by_share_id: {
         Args: { p_share_id: string }
         Returns: boolean
@@ -3189,6 +3210,7 @@ export type Database = {
           p_q: string
           p_remote?: boolean
           p_salary_floor?: number
+          p_work_mode?: string
         }
         Returns: {
           apply_url: string
@@ -3204,10 +3226,15 @@ export type Database = {
           posted_at: string
           remote: boolean
           salary: string
+          salary_currency: string
+          salary_max_annual: number
+          salary_min_annual: number
+          salary_period: string
           snippet: string
           source: string
           title: string
           total_rows: number
+          work_mode: string
         }[]
       }
       should_generate_weekly_report: { Args: never; Returns: boolean }
