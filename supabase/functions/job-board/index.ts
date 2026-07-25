@@ -72,7 +72,7 @@ const json = (body: unknown, status = 200) =>
 // while this file was untouched). Always bump BUILD_VERSION here when a shared
 // module this function imports changes — it forces the diff AND gives the
 // deploy a verifiable tell.
-const BUILD_VERSION = "2026-07-25.6";
+const BUILD_VERSION = "2026-07-25.7";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -1533,20 +1533,30 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
 // and every slice, so it carries its own throttle: without one, recategorize —
 // which has no age gate of its own and re-fires until its stamp is written at
 // COMPLETION — would spawn a new chain on every slice.
-const MAINTENANCE_ANY_GAP_MS = 10 * 60_000;   // any kick at all
-const MAINTENANCE_SAME_GAP_MS = 2 * 60 * 60_000; // the same action again
+const MAINTENANCE_ANY_GAP_MS = 10 * 60_000; // floor between any two kicks
+// A maintenance chain restamps its progress row every invocation/hop. If that
+// row hasn't moved in this long, the chain is DEAD (waitUntil self-invocation
+// is best-effort; measured 2026-07-25 when the v5 recategorise died ~15.5k rows
+// in and, under the old flat 2-hour same-action gap, would have restarted from
+// scratch hours later — putting desc-sweep's ~460k rows weeks out). Liveness by
+// stamp age means: fresh stamp -> chain alive, skip; stale -> re-kick NOW and
+// resume from stored progress. Recovery rides the refresh heartbeat, which is
+// the one reliably-scheduled thing in this system.
+const MAINTENANCE_STALL_MS = 12 * 60_000;
 
 async function maybeKickMaintenance(client: SupabaseClient): Promise<void> {
   try {
     const { data: mk } = await client.from("job_board_meta").select("v, updated_at").eq("k", "maintenance_kick").maybeSingle();
     const lastAge = mk ? Date.now() - new Date(mk.updated_at).getTime() : Infinity;
-    const lastAction = (mk?.v as { action?: string } | null)?.action ?? "";
     if (lastAge < MAINTENANCE_ANY_GAP_MS) return;
+    // Fresh progress on a chain's own stamp = it is alive; leave it alone.
+    const alive = async (k: string): Promise<{ alive: boolean; v: Record<string, unknown> | null }> => {
+      const { data } = await client.from("job_board_meta").select("v, updated_at").eq("k", k).maybeSingle();
+      if (!data) return { alive: false, v: null };
+      return { alive: Date.now() - new Date(data.updated_at).getTime() < MAINTENANCE_STALL_MS, v: (data.v as Record<string, unknown>) ?? null };
+    };
     const url = `${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`;
     const kick = async (action: string, extra: Record<string, unknown> = {}) => {
-      // Never re-kick the SAME long-running chain inside its window: a
-      // recategorise over ~180k rows outlives the 10-minute general gap.
-      if (action === lastAction && lastAge < MAINTENANCE_SAME_GAP_MS) return;
       await client.from("job_board_meta").upsert(
         { k: "maintenance_kick", v: { action, at: new Date().toISOString() }, updated_at: new Date().toISOString() },
         { onConflict: "k" },
@@ -1564,7 +1574,13 @@ async function maybeKickMaintenance(client: SupabaseClient): Promise<void> {
     // sweep completes, so a died sweep retries later.
     const { data: catVer } = await client.from("job_board_meta").select("v").eq("k", "category_rules_version").maybeSingle();
     if ((catVer?.v as { version?: number } | null)?.version !== CATEGORIZE_VERSION) {
-      await kick("recategorize");
+      const prog = await alive("recategorize_progress");
+      if (!prog.alive) {
+        // Resume from the dead chain's frontier — rows before it were already
+        // judged by the current rules, so rescanning them buys nothing.
+        const cursor = typeof prog.v?.cursor === "string" ? prog.v.cursor as string : "";
+        await kick("recategorize", cursor ? { cursor } : {});
+      }
       return;
     }
     // Light boards' descriptions (they arrive description-less on the refresh
@@ -1593,9 +1609,13 @@ async function maybeKickMaintenance(client: SupabaseClient): Promise<void> {
     // Restarting from vi:0 is deliberate — rows filled since last time have
     // dropped out of the `description is null` filter, so a fresh run resumes
     // where the DATA left off rather than where a cursor did.
-    const { data: ds } = await client.from("job_board_meta").select("v, updated_at").eq("k", "desc_sweep").maybeSingle();
-    const dsAge = ds ? Date.now() - new Date(ds.updated_at).getTime() : Infinity;
-    if (dsAge > 6 * 60 * 60_000) await kick("desc-sweep", { vi: 0 });
+    const ds = await alive("desc_sweep");
+    const doneAt = typeof ds.v?.doneAt === "string" ? Date.parse(ds.v.doneAt as string) : NaN;
+    // Completed runs settle to a 6-hour cadence (only the delta needs work);
+    // a dead chain — stale stamp, no doneAt — re-kicks within minutes. vi:0 is
+    // self-resuming: filled rows have left the description-is-null filter.
+    const settled = Number.isFinite(doneAt) && Date.now() - doneAt < 6 * 60 * 60_000;
+    if (!ds.alive && !settled) await kick("desc-sweep", { vi: 0 });
   } catch (e) {
     // Maintenance is best-effort; it must never break a refresh slice.
     console.warn("[JOB-BOARD] maintenance kick skipped:", String(e).slice(0, 120));
@@ -1984,6 +2004,19 @@ Deno.serve(async (req) => {
         return json({ error: "recategorize is a maintenance action" }, 403);
       }
       let cursor = typeof body.cursor === "string" ? body.cursor : "";
+      // Liveness + resume point. Measured 2026-07-25: the v5 sweep chain died
+      // silently ~15.5k rows in (waitUntil self-invocation is best-effort, not
+      // guaranteed), and with no stamp a dead chain looked identical to a live
+      // one — so the re-kick waited hours and then STARTED OVER. Stamping the
+      // cursor each invocation lets maybeKickMaintenance both detect death
+      // within minutes and resume from the frontier instead of rescanning.
+      // Rows before the cursor were already judged by the CURRENT rules
+      // (updates remove them from the 'other' pile; survivors stay judged), so
+      // resuming is correct, not just cheap.
+      await client.from("job_board_meta").upsert(
+        { k: "recategorize_progress", v: { cursor, at: new Date().toISOString() }, updated_at: new Date().toISOString() },
+        { onConflict: "k" },
+      );
       let scanned = 0;
       const changed = new Map<string, string[]>(); // new category -> ids
       const PAGES = 8;
@@ -2030,6 +2063,7 @@ Deno.serve(async (req) => {
         { k: "category_rules_version", v: { version: CATEGORIZE_VERSION, sweptAt: new Date().toISOString() }, updated_at: new Date().toISOString() },
         { onConflict: "k" },
       );
+      await client.from("job_board_meta").delete().eq("k", "recategorize_progress");
       console.log(`[JOB-BOARD] recategorize sweep complete: ${scanned} scanned, ${updated} refiled (rules v${CATEGORIZE_VERSION})`);
       return json({ ok: true, scanned, updated, done: true });
     }
