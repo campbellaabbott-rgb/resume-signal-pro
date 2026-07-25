@@ -96,13 +96,83 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
     }
   } catch { /* offline build — llms-full ships without the live-numbers section */ }
 
+  // ---- Facets resilience ladder (2026-07-25 incident) ----
+  // The get_job_board_facets RPC is a heavy live query; during a busy
+  // maintenance window it failed all 5 tries ON THE HOSTED BUILDER and the
+  // publish shipped ZERO company pages — 500 sitemap URLs served the home
+  // shell. Two fallbacks, tried in order:
+  //   1. The board FUNCTION's list response — the same facets, served from
+  //      the meta cache production traffic reads all day. Cheap and warm.
+  //   2. The committed snapshot of the last successful bake — counts are
+  //      that bake's measurements (the lander copy already says counts are
+  //      as-of-last-build).
+  // Every successful live fetch refreshes the snapshot, trimmed to what the
+  // pages actually consume.
+  try {
+    const envText2 = (() => { try { return readFileSync(join(root, ".env"), "utf8"); } catch { return ""; } })();
+    const grab2 = (k) => process.env[k] || (envText2.match(new RegExp(`^${k}=(.*)$`, "m")) || [])[1]?.trim().replace(/^["']|["']$/g, "");
+    const supaUrl2 = grab2("VITE_SUPABASE_URL");
+    const supaKey2 = grab2("VITE_SUPABASE_PUBLISHABLE_KEY");
+    if (!boardFacets && supaUrl2 && supaKey2) {
+      const fr = await fetch(`${supaUrl2}/functions/v1/job-board`, {
+        method: "POST",
+        headers: { apikey: supaKey2, Authorization: `Bearer ${supaKey2}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "list", limit: 1, includeFacets: true }),
+        signal: AbortSignal.timeout(15000),
+      });
+      if (fr.ok) {
+        const j = await fr.json();
+        if (j && typeof j.totalAllCompanies === "number" && Array.isArray(j.companies) && j.companies.length > 100) {
+          boardFacets = {
+            total: j.totalAllCompanies,
+            companiesFacet: j.companies,
+            companiesCount: typeof j.companiesCount === "number" ? j.companiesCount : j.companies.length,
+            categoriesFacet: j.categories ?? {},
+          };
+          console.log("[prerender-seo] facets RPC unavailable — using the board function's cached facets");
+        }
+      }
+    }
+  } catch { /* fall through to the snapshot */ }
+  const FACETS_SNAPSHOT = join(root, "scripts", "board-facets-snapshot.json");
+  if (!boardFacets) {
+    try {
+      const snap = JSON.parse(readFileSync(FACETS_SNAPSHOT, "utf8"));
+      if (snap && typeof snap.total === "number" && Array.isArray(snap.companiesFacet) && snap.companiesFacet.length > 100) {
+        boardFacets = snap;
+        console.log(`[prerender-seo] live facets unreachable — committed snapshot from ${snap.savedAt} (counts are that bake's measurements)`);
+      }
+    } catch { /* no snapshot yet — pages fall back to countless copy, sitemap ratchet guards */ }
+  } else {
+    try {
+      const trimmed = [...(boardFacets.companiesFacet ?? [])]
+        .filter((c) => c && typeof c.count === "number")
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 600)
+        .map((c) => ({ token: c.token, name: c.name, count: c.count }));
+      writeFileSync(FACETS_SNAPSHOT, JSON.stringify({
+        total: boardFacets.total,
+        companiesCount: typeof boardFacets.companiesCount === "number"
+          ? boardFacets.companiesCount
+          : (Array.isArray(boardFacets.companiesFacet) ? boardFacets.companiesFacet.length : null),
+        categoriesFacet: boardFacets.categoriesFacet ?? {},
+        companiesFacet: trimmed,
+        savedAt: new Date().toISOString().slice(0, 10),
+      }));
+    } catch { /* snapshot refresh is best-effort */ }
+  }
+
   // ---- Shared live-count constants: ONE derivation for every surface that
   // states a headline number (home title, llms.txt, jobs page uses its own
   // local copy). plusClaim rounds DOWN to a "+" claim that stays literally
   // true through churn between bakes — the audit found the home title 120k
   // behind the /jobs prerender from the same deploy.
   const BOARD_TOTAL = typeof boardFacets?.total === "number" ? boardFacets.total : null;
-  const BOARD_COMPANIES = Array.isArray(boardFacets?.companiesFacet) ? boardFacets.companiesFacet.length : null;
+  // companiesCount is the FULL number even when the facet array is a capped
+  // slice (the function fallback serves top-1500; the RPC serves everything).
+  const BOARD_COMPANIES = typeof boardFacets?.companiesCount === "number"
+    ? boardFacets.companiesCount
+    : (Array.isArray(boardFacets?.companiesFacet) ? boardFacets.companiesFacet.length : null);
   const plusClaim = (n, step) => `${(Math.floor(n / step) * step).toLocaleString("en-US")}+`;
 
   const template = readFileSync(join(dist, "index.html"), "utf8");
@@ -761,7 +831,9 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
   {
     const catCounts = boardFacets?.categoriesFacet ?? {};
     const boardTotal = typeof boardFacets?.total === "number" ? boardFacets.total : null;
-    const boardCompanies = Array.isArray(boardFacets?.companiesFacet) ? boardFacets.companiesFacet.length : null;
+    const boardCompanies = typeof boardFacets?.companiesCount === "number"
+      ? boardFacets.companiesCount
+      : (Array.isArray(boardFacets?.companiesFacet) ? boardFacets.companiesFacet.length : null);
     const fmt = (n) => n.toLocaleString("en-US");
     for (const [slug, label] of CATEGORY_LANDERS) {
       const n = typeof catCounts[slug] === "number" ? catCounts[slug] : null;
