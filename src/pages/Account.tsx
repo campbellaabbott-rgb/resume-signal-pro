@@ -1264,6 +1264,22 @@ export default function Account() {
                         />
                       </p>
                     )}
+                    {a.status === "interviewing" && a.interview_at
+                      && Date.parse(a.interview_at.slice(0, 10) + "T00:00:00") < Date.now() - 86_400_000 && (
+                      /* The interview date has passed — one tap records the
+                         outcome, which is what feeds every analytics widget
+                         (2026-07-25 audit upgrade). Rejected keeps the
+                         interview in the stats via interview_at. */
+                      <p className="text-[11px] mt-1 flex items-center gap-2.5">
+                        <span className="text-muted-foreground">{t("accountPage.ivOutcomeQ", "How did the interview go?")}</span>
+                        <button onClick={() => void updateAppStatus(a.id, "offer")} className="text-success font-medium hover:underline">
+                          {t("accountPage.ivOutcomeOffer", "Got an offer")}
+                        </button>
+                        <button onClick={() => void updateAppStatus(a.id, "rejected")} className="text-muted-foreground hover:underline">
+                          {t("accountPage.ivOutcomeNo", "No offer")}
+                        </button>
+                      </p>
+                    )}
                   </div>
                   {version?.resume_text && (
                     <button

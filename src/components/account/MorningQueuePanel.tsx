@@ -129,7 +129,26 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
   const decide = useCallback(async (id: number, status: "approved" | "dismissed") => {
     const { error } = await sb.from("agent_queue").update({ status, decided_at: new Date().toISOString() }).eq("id", id);
     if (!error) setQueue((prev) => prev.map((it) => (it.id === id ? { ...it, status } : it)));
-  }, []);
+    // Keep means "this enters my pipeline" — create the tracker row the rest
+    // of the account already works from, instead of the pick evaporating
+    // (2026-07-25 audit upgrade). Duplicates are silently fine; a failed
+    // insert never blocks the Keep itself.
+    if (!error && status === "approved") {
+      const it = queue.find((q) => q.id === id);
+      if (it) {
+        const { error: insErr } = await sb.from("user_applications").insert({
+          user_id: userId,
+          company: it.company,
+          role: it.title,
+          status: "saved",
+          job_id: it.posting_id,
+          location: it.location,
+          fit_pct: it.fit_pct,
+        });
+        if (!insErr) toast.success(t("agentQueue.keptTracked", "Kept — added to your tracker below."));
+      }
+    }
+  }, [queue, userId, t]);
 
   const reasonLabel = (r: QueueItem["reasons"][number]): string | null => {
     if (r.k === "fit" && r.pct != null) return t("agentQueue.reasonFit", "{{pct}}% match{{terms}}", { pct: r.pct, terms: r.top?.length ? ` · ${r.top.join(", ")}` : "" });
