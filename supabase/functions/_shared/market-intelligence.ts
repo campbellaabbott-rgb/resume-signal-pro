@@ -1,136 +1,26 @@
 /**
  * Market Intelligence Module
  *
- * Five capabilities:
- * 1. Geo/country detection from resume text (phone, address, institutions, currency)
- * 2. Country + industry market insights injected into AI prompt
- * 3. Skills recency scoring (aging vs fresh skills per industry)
- * 4. Career trajectory analysis (upward / lateral / transition / regression)
- * 5. ATS system detection from job description text
+ * Capabilities:
+ * 1. Country + industry market insights injected into AI prompt
+ * 2. Skills recency scoring (aging vs fresh skills per industry)
+ * 3. Career trajectory analysis (upward / lateral / transition / regression)
+ * 4. ATS system detection from job description text
+ *
+ * Geo/country detection deliberately does NOT live here — use the per-function
+ * copies (free-keyword-scan/market-intelligence.ts and the -stream fork), which
+ * carry fixes this shared copy never received. Do not re-add a detector here.
  *
  * All functions are pure / synchronous — no network calls.
  */
 
-// ─── 1. GEO DETECTION ────────────────────────────────────────────────────────
-
-const PHONE_TO_COUNTRY: Array<{ pattern: RegExp; country: string }> = [
-  { pattern: /\+44[\s\-]?\d/, country: 'GB' },
-  { pattern: /\+61[\s\-]?\d/, country: 'AU' },
-  { pattern: /\+64[\s\-]?\d/, country: 'NZ' },
-  { pattern: /\+49[\s\-]?\d/, country: 'DE' },
-  { pattern: /\+33[\s\-]?\d/, country: 'FR' },
-  { pattern: /\+31[\s\-]?\d/, country: 'NL' },
-  { pattern: /\+32[\s\-]?\d/, country: 'BE' },
-  { pattern: /\+41[\s\-]?\d/, country: 'CH' },
-  { pattern: /\+43[\s\-]?\d/, country: 'AT' },
-  { pattern: /\+46[\s\-]?\d/, country: 'SE' },
-  { pattern: /\+47[\s\-]?\d/, country: 'NO' },
-  { pattern: /\+45[\s\-]?\d/, country: 'DK' },
-  { pattern: /\+358[\s\-]?\d/, country: 'FI' },
-  { pattern: /\+353[\s\-]?\d/, country: 'IE' },
-  { pattern: /\+34[\s\-]?\d/, country: 'ES' },
-  { pattern: /\+39[\s\-]?\d/, country: 'IT' },
-  { pattern: /\+48[\s\-]?\d/, country: 'PL' },
-  { pattern: /\+91[\s\-]?\d/, country: 'IN' },
-  { pattern: /\+65[\s\-]?\d/, country: 'SG' },
-  { pattern: /\+852[\s\-]?\d/, country: 'HK' },
-  { pattern: /\+81[\s\-]?\d/, country: 'JP' },
-  { pattern: /\+82[\s\-]?\d/, country: 'KR' },
-  { pattern: /\+86[\s\-]?\d/, country: 'CN' },
-  { pattern: /\+971[\s\-]?\d/, country: 'AE' },
-  { pattern: /\+972[\s\-]?\d/, country: 'IL' },
-  { pattern: /\+27[\s\-]?\d/, country: 'ZA' },
-  { pattern: /\+55[\s\-]?\d/, country: 'BR' },
-  { pattern: /\+52[\s\-]?\d/, country: 'MX' },
-  { pattern: /\+1[\s\-]?\(?\d{3}\)?[\s\-]\d{3}[\s\-]\d{4}/, country: 'US' }, // US format last — most common
-  { pattern: /\+1[\s\-]?\d{3}[\s\-]\d{3}[\s\-]\d{4}/, country: 'US' },
-];
-
-// UK-specific city/postcode patterns
-const UK_SIGNALS = /\b(london|manchester|birmingham|leeds|edinburgh|glasgow|bristol|cardiff|belfast|sheffield|liverpool|EC\d|WC\d|SW\d|SE\d|N\d|NW\d|W\d|E\d|EC\d|WC\d|[A-Z]{1,2}\d{1,2}\s\d[A-Z]{2})\b/i;
-const AU_SIGNALS = /\b(sydney|melbourne|brisbane|perth|adelaide|canberra|darwin|hobart|NSW|VIC|QLD|WA|SA|ACT|TAS|NT)\b/;
-const DE_SIGNALS = /\b(berlin|munich|münchen|hamburg|frankfurt|cologne|köln|düsseldorf|stuttgart|dortmund|essen|GmbH|AG)\b/i;
-const IN_SIGNALS = /\b(mumbai|delhi|bangalore|bengaluru|chennai|hyderabad|pune|kolkata|ahmedabad|india)\b/i;
-const SG_SIGNALS = /\b(singapore|\bSGD\b|buona vista|one-north|raffles|central business district cbd)\b/i;
-const CA_SIGNALS = /\b(toronto|vancouver|montreal|calgary|ottawa|edmonton|winnipeg|ontario|british columbia|alberta|quebec|canada|GIC|TFSA|RRSP)\b/i;
-const UAE_SIGNALS = /\b(dubai|abu dhabi|sharjah|uae|united arab emirates|\bAED\b|free zone|dafza|difc)\b/i;
-
-// Currency symbols used in resume (salary mentions, etc.)
-const CURRENCY_TO_COUNTRY: Record<string, string> = {
-  '£': 'GB', '€': 'EU', '₹': 'IN', 'A\\$': 'AU', 'C\\$': 'CA',
-  'S\\$': 'SG', 'HK\\$': 'HK', '¥': 'JP', '₩': 'KR', 'R ': 'ZA',
-};
+// ─── 1. GEO DETECTION TYPES ──────────────────────────────────────────────────
 
 export interface GeoDetectionResult {
   country: string | null;
   confidence: 'high' | 'medium' | 'low';
   signals: string[];
   source: 'phone' | 'address' | 'institution' | 'currency' | 'ip' | 'none';
-}
-
-/**
- * Detect country from resume text using phone format, city names, currency, and institutions.
- * Returns null country if nothing is found — caller uses IP-based country as fallback.
- */
-export function detectCountryFromResume(resumeText: string): GeoDetectionResult {
-  const text = resumeText;
-  const lower = text.toLowerCase();
-  const signals: string[] = [];
-
-  // 1. Phone number format (highest confidence)
-  for (const { pattern, country } of PHONE_TO_COUNTRY) {
-    if (pattern.test(text)) {
-      signals.push(`Phone prefix matches ${country}`);
-      return { country, confidence: 'high', signals, source: 'phone' };
-    }
-  }
-
-  // 2. Address / city patterns (medium-high)
-  if (UK_SIGNALS.test(text)) {
-    signals.push('UK city or postcode detected');
-    return { country: 'GB', confidence: 'medium', signals, source: 'address' };
-  }
-  if (CA_SIGNALS.test(text)) {
-    signals.push('Canadian city/province detected');
-    return { country: 'CA', confidence: 'medium', signals, source: 'address' };
-  }
-  if (AU_SIGNALS.test(text)) {
-    signals.push('Australian city/state detected');
-    return { country: 'AU', confidence: 'medium', signals, source: 'address' };
-  }
-  if (DE_SIGNALS.test(text)) {
-    signals.push('German city or company suffix detected');
-    return { country: 'DE', confidence: 'medium', signals, source: 'address' };
-  }
-  if (IN_SIGNALS.test(text)) {
-    signals.push('Indian city detected');
-    return { country: 'IN', confidence: 'medium', signals, source: 'address' };
-  }
-  if (SG_SIGNALS.test(text)) {
-    signals.push('Singapore location detected');
-    return { country: 'SG', confidence: 'medium', signals, source: 'address' };
-  }
-  if (UAE_SIGNALS.test(text)) {
-    signals.push('UAE location detected');
-    return { country: 'AE', confidence: 'medium', signals, source: 'address' };
-  }
-
-  // 3. Currency symbols (medium)
-  for (const [symbol, country] of Object.entries(CURRENCY_TO_COUNTRY)) {
-    if (new RegExp(symbol).test(text)) {
-      signals.push(`Currency symbol "${symbol}" detected`);
-      return { country, confidence: 'medium', signals, source: 'currency' };
-    }
-  }
-
-  // 4. US fallback — no international signals, US is most common
-  const hasUSCity = /\b(new york|san francisco|los angeles|chicago|boston|seattle|austin|denver|atlanta|miami|brooklyn|manhattan|bay area|silicon valley)\b/i.test(text);
-  if (hasUSCity) {
-    signals.push('US city detected');
-    return { country: 'US', confidence: 'medium', signals, source: 'address' };
-  }
-
-  return { country: null, confidence: 'low', signals: ['No country signals found in resume'], source: 'none' };
 }
 
 // ─── 2. MARKET INTELLIGENCE DATA ─────────────────────────────────────────────
