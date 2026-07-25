@@ -2566,6 +2566,15 @@ export type Database = {
           total_emails: number
         }[]
       }
+      get_employer_benchmarks: {
+        Args: { p_days?: number; p_limit?: number; p_min_closures?: number }
+        Returns: {
+          closures: number
+          company: string
+          median_days_open: number
+          window_days: number
+        }[]
+      }
       get_empty_boards: { Args: { p_tokens: string[] }; Returns: string[] }
       get_entry_level_companies: {
         Args: { p_limit?: number }
