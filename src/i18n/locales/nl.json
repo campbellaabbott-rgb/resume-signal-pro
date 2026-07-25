@@ -2846,6 +2846,10 @@
     }
   },
   "changelogEntries": {
+    "fullJobDescriptions": {
+      "title": "Functieomschrijvingen laden nu bij veel meer vacatures",
+      "description": "Sommige werkgevers publiceren hun vacaturetekst via een aparte feed die wij niet uitlazen, waardoor veel vacatures opengingen zonder tekst en de matchscore niets had om mee te werken. We halen die tekst nu op voor Workday, BambooHR, SmartRecruiters, Breezy en Oracle, en omschrijvingen van Workable en Pinpoint komen direct met de vacature mee. Alles wat je opent wordt bewaard, dus de volgende keer laadt het meteen. Publiceert een werkgever echt geen omschrijving, dan tonen we nog steeds niets in plaats van een schatting."
+    },
     "accountHq": {
       "title": "Je account is nu missiecontrole",
       "description": "Het account kreeg een echte opknapbeurt: een vaste sectienavigatie (Overzicht, Pipeline, Zoekopdrachten, Cv) zodat niets begraven raakt; een 'Wat nu te verbeteren'-rapport met de vaardigheden die het vaakst in je cv ontbreken over je doelrollen — met aantallen en één klik om ze via de builder te verwerken; komende gesprekken in één oogopslag; een checklist die nieuwe accounts de volledige zoeklus in leidt; een duidelijke weg naar de Morning Queue; en elke wekelijkse e-mailschakelaar in één paneel E-mails & meldingen."

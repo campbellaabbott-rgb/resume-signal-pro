@@ -2846,6 +2846,10 @@
     }
   },
   "changelogEntries": {
+    "fullJobDescriptions": {
+      "title": "Stellenbeschreibungen laden jetzt bei deutlich mehr Stellen",
+      "description": "Manche Arbeitgeber veröffentlichen ihren Anzeigentext über einen separaten Feed, den wir nicht ausgelesen haben. Dadurch öffneten sich viele Anzeigen ohne Inhalt, und der Passgenauigkeitswert hatte keinen Text zur Auswertung. Diesen Text holen wir jetzt für Workday, BambooHR, SmartRecruiters, Breezy und Oracle, und Beschreibungen von Workable und Pinpoint kommen direkt mit der Anzeige. Alles, was du öffnest, wird gespeichert und lädt beim nächsten Mal sofort. Wenn ein Arbeitgeber tatsächlich keine Beschreibung veröffentlicht, zeigen wir weiterhin nichts an statt einer Schätzung."
+    },
     "accountHq": {
       "title": "Dein Konto ist jetzt die Kommandozentrale",
       "description": "Das Konto bekam eine echte Überarbeitung: eine feste Bereichsnavigation (Überblick, Pipeline, Suchen, Lebenslauf), damit nichts vergraben bleibt; ein Bericht „Was als Nächstes zu beheben ist“ mit den Fähigkeiten, die deinem Lebenslauf über deine Zielrollen am häufigsten fehlen — mit Zählern und einem Klick, um sie im Builder einzuarbeiten; anstehende Interviews auf einen Blick; eine Checkliste, die neue Konten in den vollen Suchkreislauf führt; ein klarer Weg zur Morning Queue; und jeder Wochen-E-Mail-Schalter in einem einzigen Bereich E-Mails & Alerts."

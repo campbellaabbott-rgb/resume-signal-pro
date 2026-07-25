@@ -2846,6 +2846,10 @@
     }
   },
   "changelogEntries": {
+    "fullJobDescriptions": {
+      "title": "As descrições das vagas agora carregam em muito mais posições",
+      "description": "Algumas empresas publicam o texto das vagas em um feed separado que não estávamos lendo, então muitas vagas abriam sem nada para ler e o cálculo de compatibilidade ficava sem texto para analisar. Agora buscamos esse texto nos portais Workday, BambooHR, SmartRecruiters, Breezy e Oracle, e as descrições do Workable e do Pinpoint já chegam junto com a vaga. Tudo o que você abre fica salvo, então carrega na hora da próxima vez. Quando uma empresa realmente não publica descrição, continuamos sem mostrar nada em vez de apresentar um palpite."
+    },
     "accountHq": {
       "title": "Sua conta agora é o centro de comando",
       "description": "A conta ganhou uma reforma de verdade: navegação fixa por seções (Visão geral, Pipeline, Buscas, Currículo) para nada ficar enterrado; um relatório de 'O que corrigir agora' com as habilidades que mais faltam no seu currículo entre as vagas-alvo — com contagens e um clique para trabalhá-las no builder; as próximas entrevistas reunidas num olhar; uma lista de configuração que leva contas novas ao ciclo completo de busca; um caminho claro para a Fila da Manhã; e todos os e-mails semanais num único painel de E-mails e alertas."

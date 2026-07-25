@@ -2846,6 +2846,10 @@
     }
   },
   "changelogEntries": {
+    "fullJobDescriptions": {
+      "title": "Job descriptions now load on far more roles",
+      "description": "Some employers publish their job text through a separate feed we were not reading, so a large share of postings opened with nothing to read and fit scoring had no text to work with. We now pull that text for Workday, BambooHR, SmartRecruiters, Breezy and Oracle boards, and Workable and Pinpoint descriptions now arrive with the listing itself. Anything you open is saved, so it loads instantly next time. Where an employer genuinely publishes no description, we still show nothing rather than a guess."
+    },
     "accountHq": {
       "title": "Your account is now mission control",
       "description": "The account got a real overhaul: a sticky section nav (Overview, Pipeline, Searches, Résumé) so nothing is buried; a 'What to fix next' report showing the skills most often missing from your résumé across your target roles — with counts, and one click to work them in via the builder; upcoming interviews stitched into one glance; a setup checklist that walks new accounts into the full search loop; a clear path into the Morning Queue; and every weekly email toggle in a single Emails & alerts panel."

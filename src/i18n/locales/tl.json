@@ -2846,6 +2846,10 @@
     }
   },
   "changelogEntries": {
+    "fullJobDescriptions": {
+      "title": "Lumalabas na ang mga paglalarawan ng trabaho sa mas maraming posisyon",
+      "description": "May mga employer na inilalathala ang teksto ng kanilang trabaho sa hiwalay na feed na hindi namin binabasa, kaya maraming posting ang nabubuksan nang walang laman at walang teksto ang fit scoring na masusuri. Kinukuha na namin ngayon ang tekstong iyon para sa Workday, BambooHR, SmartRecruiters, Breezy at Oracle, at kasama na agad ng listing ang mga paglalarawan mula sa Workable at Pinpoint. Naka-save ang anumang binuksan mo, kaya agad itong lumalabas sa susunod. Kung talagang walang inilathalang paglalarawan ang employer, wala pa rin kaming ipinapakita sa halip na manghula."
+    },
     "accountHq": {
       "title": "Ang iyong account ay mission control na ngayon",
       "description": "Tunay na na-overhaul ang account: nakapirming section nav (Pangkalahatan, Pipeline, Mga paghahanap, Resume) para walang nababaon; isang ulat na 'Ano ang susunod na aayusin' na nagpapakita ng mga kasanayang pinakamadalas nawawala sa iyong resume sa mga target na posisyon — may bilang, at isang click para isama ang mga ito gamit ang builder; ang mga paparating na interview sa iisang sulyap; isang setup checklist na gumagabay sa mga bagong account sa buong search loop; malinaw na daan sa Morning Queue; at bawat lingguhang email toggle sa iisang panel ng Mga email at alerto."

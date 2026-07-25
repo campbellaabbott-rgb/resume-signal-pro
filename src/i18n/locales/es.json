@@ -2846,6 +2846,10 @@
     }
   },
   "changelogEntries": {
+    "fullJobDescriptions": {
+      "title": "Las descripciones de empleo ya se cargan en muchos más puestos",
+      "description": "Algunas empresas publican el texto de sus ofertas en un feed aparte que no estábamos leyendo, así que muchas ofertas se abrían sin nada que leer y el cálculo de compatibilidad no tenía texto con el que trabajar. Ahora obtenemos ese texto en los portales de Workday, BambooHR, SmartRecruiters, Breezy y Oracle, y las descripciones de Workable y Pinpoint llegan ya con la oferta. Todo lo que abras queda guardado, así que la próxima vez carga al instante. Cuando una empresa realmente no publica descripción, seguimos sin mostrar nada en lugar de inventar una estimación."
+    },
     "accountHq": {
       "title": "Tu cuenta ahora es el centro de mando",
       "description": "La cuenta recibió una renovación de verdad: navegación fija por secciones (Resumen, Pipeline, Búsquedas, Currículum) para que nada quede enterrado; un informe de 'Qué arreglar ahora' con las habilidades que más faltan en tu currículum entre tus puestos objetivo — con conteos y un clic para incorporarlas con el builder; las próximas entrevistas reunidas en un vistazo; una lista de configuración que guía a las cuentas nuevas al ciclo completo de búsqueda; un camino claro a la Cola Matutina; y todos los correos semanales en un único panel de Correos y alertas."

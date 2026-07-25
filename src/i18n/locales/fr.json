@@ -2846,6 +2846,10 @@
     }
   },
   "changelogEntries": {
+    "fullJobDescriptions": {
+      "title": "Les descriptions de poste se chargent désormais sur bien plus d offres",
+      "description": "Certaines entreprises publient le texte de leurs offres via un flux distinct que nous ne lisions pas: de nombreuses annonces s ouvraient donc sans aucun contenu, et le score de correspondance ne disposait d aucun texte. Nous récupérons maintenant ce texte pour les portails Workday, BambooHR, SmartRecruiters, Breezy et Oracle, et les descriptions Workable et Pinpoint arrivent directement avec l annonce. Tout ce que vous ouvrez est enregistré et se charge instantanément la fois suivante. Lorsqu une entreprise ne publie réellement aucune description, nous continuons à ne rien afficher plutôt qu une estimation."
+    },
     "accountHq": {
       "title": "Votre compte devient le centre de contrôle",
       "description": "Le compte a eu droit à une vraie refonte : une navigation fixe par sections (Aperçu, Pipeline, Recherches, CV) pour que rien ne soit enfoui ; un rapport « Quoi corriger ensuite » montrant les compétences les plus souvent absentes de votre CV parmi vos postes cibles — avec les comptes et un clic pour les intégrer via le builder ; les entretiens à venir réunis en un coup d'œil ; une checklist qui guide les nouveaux comptes vers la boucle de recherche complète ; un accès clair à la file du matin ; et chaque e-mail hebdomadaire dans un seul panneau E-mails et alertes."
