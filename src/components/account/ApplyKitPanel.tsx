@@ -4,6 +4,7 @@
 // pre-stored server-side so post-purchase delivery has everything.
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { FileText, Loader2, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { ProductPreview } from "@/components/ProductPreview";
@@ -18,6 +19,7 @@ interface ApplyKitPanelProps {
 }
 
 export function ApplyKitPanel({ jobPosting, resumeText, proActive }: ApplyKitPanelProps) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [kit, setKit] = useState<ApplyPackageData | null>(null);
@@ -45,7 +47,7 @@ export function ApplyKitPanel({ jobPosting, resumeText, proActive }: ApplyKitPan
         body: { resumeText, jobPostingText: jobPosting },
       });
       if (error || !data?.success) {
-        const msg = (data as { error?: string })?.error ?? "Generation failed — try again.";
+        const msg = (data as { error?: string })?.error ?? t("accountPage.akGenFailed", "Generation failed — try again.");
         toast.error(msg);
         return;
       }
@@ -54,7 +56,7 @@ export function ApplyKitPanel({ jobPosting, resumeText, proActive }: ApplyKitPan
         tailoredResume: normalizeBuilderResume((data as { tailoredResume: Record<string, unknown> }).tailoredResume),
       });
     } catch {
-      toast.error("Generation failed — try again.");
+      toast.error(t("accountPage.akGenFailed", "Generation failed — try again."));
     } finally {
       setGenerating(false);
     }
@@ -69,7 +71,7 @@ export function ApplyKitPanel({ jobPosting, resumeText, proActive }: ApplyKitPan
         className="inline-flex items-center gap-1.5 text-[11px] px-2 py-1 rounded-full border border-primary/40 text-primary hover:bg-primary/10 transition-colors"
       >
         <FileText className="w-3 h-3" />
-        Application kit — tailored resume for this job
+        {t("accountPage.akButton", "Application kit — tailored resume for this job")}
       </button>
 
       {open && (
@@ -84,10 +86,10 @@ export function ApplyKitPanel({ jobPosting, resumeText, proActive }: ApplyKitPan
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold disabled:opacity-50"
               >
                 {generating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
-                {generating ? "Tailoring your resume… (~30s)" : "Generate kit (included in Pro)"}
+                {generating ? t("accountPage.akGenerating", "Tailoring your resume… (~30s)") : t("accountPage.akGenerate", "Generate kit (included in Pro)")}
               </button>
               <span className="text-[11px] text-muted-foreground">
-                Tailored resume + gap list + checklist, fact-checked against your real resume.
+                {t("accountPage.akBlurb", "Tailored resume + gap list + checklist, fact-checked against your real resume.")}
               </span>
             </div>
           ) : (

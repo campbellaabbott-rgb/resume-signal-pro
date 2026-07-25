@@ -7,6 +7,7 @@
 // parent don't re-fire the board queries — only an actual change in the set of
 // closed roles does.
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { ExternalLink, RefreshCw } from "lucide-react";
 
@@ -19,6 +20,7 @@ interface Replacement {
 }
 
 export function ClosedReplacementsPanel({ closedCount, rolesKey, excludeKey = "" }: { closedCount: number; rolesKey: string; excludeKey?: string }) {
+  const { t } = useTranslation();
   const [reps, setReps] = useState<Replacement[]>([]);
   const [loaded, setLoaded] = useState(false);
 
@@ -71,11 +73,11 @@ export function ClosedReplacementsPanel({ closedCount, rolesKey, excludeKey = ""
       <div className="flex items-center gap-2 mb-1">
         <RefreshCw className="w-4 h-4 text-primary shrink-0" />
         <h2 className="font-semibold text-foreground text-sm">
-          {closedCount} of your applied {closedCount === 1 ? "jobs has" : "jobs have"} closed — here are fresh openings
+          {t("accountPage.closedHeading", "{{count}} of your applied jobs have closed — here are fresh openings", { count: closedCount })}
         </h2>
       </div>
       <p className="text-[11px] text-muted-foreground mb-3">
-        Same roles, live on the board right now — don't lose momentum.
+        {t("accountPage.closedBlurb", "Same roles, live on the board right now — don't lose momentum.")}
       </p>
       <div className="space-y-1.5">
         {reps.map((j) => (
@@ -92,7 +94,7 @@ export function ClosedReplacementsPanel({ closedCount, rolesKey, excludeKey = ""
               rel="noopener noreferrer"
               className="shrink-0 inline-flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-lg bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors"
             >
-              Apply <ExternalLink className="w-3 h-3" />
+              {t("accountPage.closedApply", "Apply")} <ExternalLink className="w-3 h-3" />
             </a>
           </div>
         ))}

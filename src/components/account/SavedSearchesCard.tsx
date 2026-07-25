@@ -4,6 +4,7 @@
 // watermark and lands on /jobs with the filters applied.
 
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { BellRing, ExternalLink, Search, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -23,6 +24,7 @@ interface SavedSearch {
 const table = () => (supabase as unknown as { from: (t: string) => any }).from("user_job_searches");
 
 export function SavedSearchesCard() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [searches, setSearches] = useState<SavedSearch[]>([]);
   const [newCounts, setNewCounts] = useState<Record<string, { n: number; capped: boolean }>>({});
@@ -90,8 +92,8 @@ export function SavedSearchesCard() {
     <div className="rounded-2xl border border-border bg-card p-5 mb-6">
       <div className="flex items-center gap-2 mb-3">
         <BellRing className="w-4 h-4 text-primary" />
-        <h2 className="font-semibold text-foreground text-sm">Saved job searches</h2>
-        <span className="ml-auto text-xs text-muted-foreground">{searches.length} saved</span>
+        <h2 className="font-semibold text-foreground text-sm">{t("accountPage.ssTitle", "Saved job searches")}</h2>
+        <span className="ml-auto text-xs text-muted-foreground">{t("accountPage.ssSavedCount", "{{count}} saved", { count: searches.length })}</span>
       </div>
       {totalNew > 0 && (
         <button
@@ -104,9 +106,9 @@ export function SavedSearchesCard() {
         >
           <BellRing className="w-4 h-4 text-primary shrink-0" />
           <span className="text-sm text-foreground font-medium">
-            {totalNew} new {totalNew === 1 ? "job matches" : "jobs match"} your saved searches since your last visit
+            {t("accountPage.ssNewHeadline", "{{count}} new jobs match your saved searches since your last visit", { count: totalNew })}
           </span>
-          <span className="ml-auto text-[11px] text-primary font-semibold shrink-0 whitespace-nowrap">View →</span>
+          <span className="ml-auto text-[11px] text-primary font-semibold shrink-0 whitespace-nowrap">{t("accountPage.ssView", "View →")}</span>
         </button>
       )}
       <div className="space-y-1.5">
@@ -120,42 +122,42 @@ export function SavedSearchesCard() {
             </button>
             {(newCounts[s.id]?.n ?? 0) > 0 && (
               <span className="shrink-0 text-[11px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-semibold">
-                {newCounts[s.id].n.toLocaleString()}{newCounts[s.id].capped ? "+" : ""} new
+                {t("accountPage.ssNewBadge", "{{n}} new", { n: `${newCounts[s.id].n.toLocaleString()}${newCounts[s.id].capped ? "+" : ""}` })}
               </span>
             )}
             {s.digest_opt_in && (
               <select
                 value={s.fit_threshold ?? 0}
                 onChange={(e) => setThreshold(s, Number(e.target.value))}
-                aria-label={`Minimum fit for ${s.name} email alerts`}
-                title="Only email me about roles that clear this résumé-fit bar (scored against your latest scan)"
+                aria-label={t("accountPage.ssFitAria", "Minimum fit for {{name}} email alerts", { name: s.name })}
+                title={t("accountPage.ssFitTitle", "Only email me about roles that clear this résumé-fit bar (scored against your latest scan)")}
                 className="shrink-0 text-[11px] rounded-md border border-border bg-background px-1.5 py-1 text-muted-foreground"
               >
-                <option value={0}>Any new</option>
-                <option value={10}>Possible fit+</option>
-                <option value={20}>Strong fit only</option>
+                <option value={0}>{t("accountPage.ssFitAny", "Any new")}</option>
+                <option value={10}>{t("accountPage.ssFitPossible", "Possible fit+")}</option>
+                <option value={20}>{t("accountPage.ssFitStrong", "Strong fit only")}</option>
               </select>
             )}
             <button
               onClick={() => toggleDigest(s)}
-              aria-label={s.digest_opt_in ? `Turn off weekly email for ${s.name}` : `Email me weekly about ${s.name}`}
-              title={s.digest_opt_in ? "Weekly email on — click to turn off" : "Email me weekly when new jobs match"}
+              aria-label={s.digest_opt_in ? t("accountPage.ssBellOffAria", "Turn off weekly email for {{name}}", { name: s.name }) : t("accountPage.ssBellOnAria", "Email me weekly about {{name}}", { name: s.name })}
+              title={s.digest_opt_in ? t("accountPage.ssBellOnTitle", "Weekly email on — click to turn off") : t("accountPage.ssBellOffTitle", "Email me weekly when new jobs match")}
               className={`shrink-0 transition-colors ${s.digest_opt_in ? "text-primary" : "text-muted-foreground/40 hover:text-muted-foreground"}`}
             >
               <BellRing className="w-3.5 h-3.5" />
             </button>
-            <button onClick={() => open(s)} aria-label={`Open search ${s.name}`} className="text-muted-foreground hover:text-foreground shrink-0">
+            <button onClick={() => open(s)} aria-label={t("accountPage.ssOpenAria", "Open search {{name}}", { name: s.name })} className="text-muted-foreground hover:text-foreground shrink-0">
               <ExternalLink className="w-3.5 h-3.5" />
             </button>
-            <button onClick={() => remove(s.id)} aria-label={`Delete search ${s.name}`} className="text-muted-foreground/50 hover:text-destructive shrink-0">
+            <button onClick={() => remove(s.id)} aria-label={t("accountPage.ssDeleteAria", "Delete search {{name}}", { name: s.name })} className="text-muted-foreground/50 hover:text-destructive shrink-0">
               <Trash2 className="w-3.5 h-3.5" />
             </button>
           </div>
         ))}
       </div>
       <p className="text-[11px] text-muted-foreground mt-2">
-        "New" counts postings published since you last opened each search. Tap the
-        <BellRing className="w-3 h-3 inline mx-0.5 align-text-bottom" /> to get a weekly email when fresh jobs match.
+        {t("accountPage.ssFootnoteA", "“New” counts postings published since you last opened each search. Tap the")}
+        <BellRing className="w-3 h-3 inline mx-0.5 align-text-bottom" /> {t("accountPage.ssFootnoteB", "to get a weekly email when fresh jobs match.")}
       </p>
     </div>
   );

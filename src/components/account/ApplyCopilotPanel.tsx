@@ -5,6 +5,7 @@
 // vendors' terms and hurt the candidate. Pro feature; per-item prep for
 // everyone lives in ApplyKitPanel.
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { Sparkles, Loader2, ExternalLink, ChevronDown, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -32,11 +33,11 @@ export interface CopilotApp {
 // Same qualitative buckets as the board: full JDs are keyword-dense, so a
 // strong same-field resume covers ~20%+ of recognized terms. Show a word, not
 // a raw percentage that reads as "bad" to a layperson.
-function fitTier(pct: number | null | undefined): { label: string; cls: string } | null {
+function fitTier(pct: number | null | undefined): { key: string; label: string; cls: string } | null {
   if (typeof pct !== "number") return null;
-  if (pct >= 20) return { label: "Strong match", cls: "bg-success/10 text-success" };
-  if (pct >= 10) return { label: "Possible match", cls: "bg-warning/10 text-warning" };
-  return { label: "Stretch", cls: "bg-muted text-muted-foreground" };
+  if (pct >= 20) return { key: "accountPage.acStrong", label: "Strong match", cls: "bg-success/10 text-success" };
+  if (pct >= 10) return { key: "accountPage.acPossible", label: "Possible match", cls: "bg-warning/10 text-warning" };
+  return { key: "accountPage.acStretch", label: "Stretch", cls: "bg-muted text-muted-foreground" };
 }
 
 const appsTable = () => (supabase as unknown as { from: (t: string) => any }).from("user_applications");
@@ -75,6 +76,7 @@ export function ApplyCopilotPanel({
   onKit: (appId: string, kit: unknown) => void;
   onStatus: (appId: string, status: string) => void;
 }) {
+  const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState<{ done: number; total: number; company: string } | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
@@ -112,8 +114,8 @@ export function ApplyCopilotPanel({
           // On a non-2xx the SDK nulls `data` and puts the Response on
           // error.context — that's the only place the real status lives.
           const status = (error as { context?: { status?: number } })?.context?.status;
-          if (status === 402) { toast.error("Batch prep needs Pro. Upgrade to prep applications in bulk."); break; }
-          if (status === 429) { toast.error("Daily generation limit reached — the ones prepped so far are saved. Try the rest tomorrow."); break; }
+          if (status === 402) { toast.error(t("accountPage.acNeedsPro", "Batch prep needs Pro. Upgrade to prep applications in bulk.")); break; }
+          if (status === 429) { toast.error(t("accountPage.acDailyLimit", "Daily generation limit reached — the ones prepped so far are saved. Try the rest tomorrow.")); break; }
           continue; // 422 grounding refusal or transient — skip this one, keep going
         }
         if (!(data as { success?: boolean } | null)?.success) continue;
@@ -129,9 +131,9 @@ export function ApplyCopilotPanel({
     setProgress(null);
     setBusy(false);
     if (succeeded > 0) {
-      toast.success(`Prepped ${succeeded} application${succeeded === 1 ? "" : "s"} — review and apply below.`);
+      toast.success(t("accountPage.acPreppedToast", "Prepped {{count}} applications — review and apply below.", { count: succeeded }));
     } else {
-      toast("Nothing new to prep — the saved postings couldn't be tailored (missing description or grounding check). Add a job posting and try again.");
+      toast(t("accountPage.acNothingNew", "Nothing new to prep — the saved postings couldn't be tailored (missing description or grounding check). Add a job posting and try again."));
     }
   };
 
@@ -139,12 +141,11 @@ export function ApplyCopilotPanel({
     <div className="rounded-2xl border border-primary/25 bg-primary/5 p-5 mb-6">
       <div className="flex items-center gap-2 mb-1">
         <Sparkles className="w-4 h-4 text-primary" />
-        <h2 className="font-semibold text-foreground text-sm">Application co-pilot</h2>
-        <span className="ml-auto text-xs text-muted-foreground">{prepped.length}/{preppable.length} prepped</span>
+        <h2 className="font-semibold text-foreground text-sm">{t("accountPage.acTitle", "Application co-pilot")}</h2>
+        <span className="ml-auto text-xs text-muted-foreground">{t("accountPage.acPreppedCount", "{{done}}/{{total}} prepped", { done: prepped.length, total: preppable.length })}</span>
       </div>
       <p className="text-[11px] text-muted-foreground mb-3">
-        We tailor a resume + cover letter to each saved posting — grounded against your real resume, no invented facts.
-        You review and apply on the company's own site.
+        {t("accountPage.acBlurb", "We tailor a resume + cover letter to each saved posting — grounded against your real resume, no invented facts. You review and apply on the company's own site.")}
       </p>
 
       {pending.length > 0 && (
@@ -156,13 +157,13 @@ export function ApplyCopilotPanel({
           >
             {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
             {busy && progress
-              ? `Prepping ${progress.done + 1} of ${progress.total} — ${progress.company}…`
-              : `Prep ${pending.length} tailored application${pending.length === 1 ? "" : "s"}`}
+              ? t("accountPage.acPrepProgress", "Prepping {{i}} of {{total}} — {{company}}…", { i: progress.done + 1, total: progress.total, company: progress.company })
+              : t("accountPage.acPrepAll", "Prep {{count}} tailored applications", { count: pending.length })}
           </button>
         ) : (
           <Link to="/pricing" className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-primary/40 text-primary text-sm font-semibold hover:bg-primary/10 transition-colors">
             <Sparkles className="w-4 h-4" />
-            Go Pro to batch-prep {pending.length} saved job{pending.length === 1 ? "" : "s"}
+            {t("accountPage.acGoPro", "Go Pro to batch-prep {{count}} saved jobs", { count: pending.length })}
           </Link>
         )
       )}
@@ -183,8 +184,8 @@ export function ApplyCopilotPanel({
                     </span>
                   </button>
                   {tier && (
-                    <span className={`shrink-0 text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${tier.cls}`} title={`${a.fit_pct}% of the posting's recognized keywords are in your resume`}>
-                      {tier.label}
+                    <span className={`shrink-0 text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${tier.cls}`} title={t("accountPage.acFitTitle", "{{pct}}% of the posting's recognized keywords are in your resume", { pct: a.fit_pct })}>
+                      {t(tier.key, tier.label)}
                     </span>
                   )}
                   {a.apply_url && (
@@ -195,10 +196,10 @@ export function ApplyCopilotPanel({
                       onClick={() => a.status === "saved" && onStatus(a.id, "applied")}
                       className="shrink-0 inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-full bg-primary text-primary-foreground font-semibold"
                     >
-                      Apply <ExternalLink className="w-3 h-3" />
+                      {t("accountPage.acApply", "Apply")} <ExternalLink className="w-3 h-3" />
                     </a>
                   )}
-                  <button onClick={() => setOpenId(isOpen ? null : a.id)} aria-label="Toggle kit" className="text-muted-foreground shrink-0">
+                  <button onClick={() => setOpenId(isOpen ? null : a.id)} aria-label={t("accountPage.acToggleKit", "Toggle kit")} className="text-muted-foreground shrink-0">
                     <ChevronDown className={`w-4 h-4 transition-transform ${isOpen ? "rotate-180" : ""}`} />
                   </button>
                 </div>
@@ -219,7 +220,7 @@ export function ApplyCopilotPanel({
                   </div>
                 )}
                 {isOpen && !kit && (
-                  <p className="px-3 pb-3 text-[11px] text-muted-foreground">This kit couldn't be read — regenerate it from the tracker row below.</p>
+                  <p className="px-3 pb-3 text-[11px] text-muted-foreground">{t("accountPage.acKitUnreadable", "This kit couldn't be read — regenerate it from the tracker row below.")}</p>
                 )}
               </div>
             );
