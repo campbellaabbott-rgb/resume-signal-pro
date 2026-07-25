@@ -55,7 +55,7 @@
     "headline": {
       "get": "The job board with",
       "recruiterGrade": "zero ghost jobs",
-      "feedback": "— 450,000+ verified openings, matched to your CV"
+      "feedback": "— 550,000+ verified openings, matched to your CV"
     },
     "description": "Upload your CV and get ATS-optimised rewrites, red-flag warnings, and keyword improvements — written the way hiring managers actually review CVs.",
     "benefits": {
@@ -146,7 +146,7 @@
     "factNoStorage": "Never stored, never shared",
     "measureStrip": "Measurements, not opinions · Every quote verified · A score that shows its work",
     "jobsCta": "Live job board — check your fit before you apply →",
-    "browseJobs": "Browse 450,000+ verified jobs"
+    "browseJobs": "Browse 550,000+ verified jobs"
   },
   "footer": {
     "copyright": "© {{year}} CV Booster. All rights reserved.",
@@ -4491,7 +4491,7 @@
     "deleteAccount": "Delete account",
     "welcome": "Welcome! Let's get your first score 🎯",
     "trackerEmpty": "Track where you've applied — status, dates, and the score you applied with, all in one place.",
-    "trackerEmptyCta": "Browse 450,000+ verified openings — saving one starts your tracker",
+    "trackerEmptyCta": "Browse 550,000+ verified openings — saving one starts your tracker",
     "status": {
       "saved": "Saved",
       "applied": "Applied",
@@ -4537,7 +4537,7 @@
     "bridgeCta": "Open the queue ↓",
     "notifTitle": "Emails & alerts",
     "notifSummary": "{{on}} of {{total}} weekly digests on",
-    "notifBlurb": "Everything we can email you, in one place. Weekly digests send only when a search has new matches; every email has a one-click unsubscribe.",
+    "notifBlurb": "Your saved-search digests, in one place. They send only when a search has new matches; every email has a one-click unsubscribe. The Apply Agent's morning email is managed in its own panel below.",
     "notifToggle": "Weekly email for {{name}}",
     "notifWeekly": "weekly digest"
   },

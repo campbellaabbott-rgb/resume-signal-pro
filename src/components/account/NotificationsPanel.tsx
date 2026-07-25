@@ -34,7 +34,9 @@ export function NotificationsPanel() {
     try { await table().update({ digest_opt_in: next }).eq("id", id); } catch { /* optimistic; digest cron re-reads */ }
   };
 
-  if (!loaded || rows.length === 0) return null;
+  // Always render once loaded — the one panel claiming to show every email
+  // must not vanish for users whose only email is the agent digest (audit).
+  if (!loaded) return null;
   const on = rows.filter((r) => r.digest_opt_in).length;
 
   return (

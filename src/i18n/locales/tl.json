@@ -55,7 +55,7 @@
     "headline": {
       "get": "Ang job board na may",
       "recruiterGrade": "zero ghost jobs",
-      "feedback": "— 450,000+ verified na trabaho, tugma sa resume mo"
+      "feedback": "— 550,000+ verified na trabaho, tugma sa resume mo"
     },
     "description": "I-upload ang iyong resume at makakuha ng ATS-optimized rewrites, red-flag warnings, at keyword improvements — gaya ng tunay na pag-review ng hiring managers.",
     "benefits": {
@@ -146,7 +146,7 @@
     "factNoStorage": "Hindi kailanman iniimbak o ibinabahagi",
     "measureStrip": "Sukat, hindi opinyon · Bawat sipi beripikado · Iskor na nagpapakita ng trabaho nito",
     "jobsCta": "Live na job board — i-check ang fit mo bago mag-apply →",
-    "browseJobs": "Tingnan ang 450,000+ verified na trabaho"
+    "browseJobs": "Tingnan ang 550,000+ verified na trabaho"
   },
   "footer": {
     "copyright": "© {{year}} Resume Booster. Lahat ng karapatan ay nakalaan.",
@@ -4491,7 +4491,7 @@
     "deleteAccount": "Burahin ang account",
     "welcome": "Welcome! Kunin natin ang unang score mo 🎯",
     "trackerEmpty": "I-track kung saan ka nag-apply — status, petsa, at score na ipinadala, sa isang lugar.",
-    "trackerEmptyCta": "Tingnan ang 450,000+ verified na trabaho — ang pag-save ng isa ay magsisimula ng tracker mo",
+    "trackerEmptyCta": "Tingnan ang 550,000+ verified na trabaho — ang pag-save ng isa ay magsisimula ng tracker mo",
     "status": {
       "saved": "Naka-save",
       "applied": "Naipasa",
@@ -4537,7 +4537,7 @@
     "bridgeCta": "Buksan ang queue ↓",
     "notifTitle": "Mga email at alerto",
     "notifSummary": "{{on}} sa {{total}} lingguhang digest ang naka-on",
-    "notifBlurb": "Lahat ng maaari naming i-email sa iyo, sa iisang lugar. Ang lingguhang digest ay ipinapadala lang kapag may bagong tugma ang isang paghahanap; bawat email ay may one-click unsubscribe.",
+    "notifBlurb": "Ang mga digest ng iyong naka-save na paghahanap, sa iisang lugar. Ipinapadala lang ang mga ito kapag may bagong tugma ang isang paghahanap; bawat email ay may one-click unsubscribe. Ang pang-umagang email ng Apply Agent ay pinamamahalaan sa sarili nitong panel sa ibaba.",
     "notifToggle": "Lingguhang email para sa {{name}}",
     "notifWeekly": "lingguhang digest"
   },

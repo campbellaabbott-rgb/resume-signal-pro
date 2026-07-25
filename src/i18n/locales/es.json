@@ -55,7 +55,7 @@
     "headline": {
       "get": "El tablón de empleo con",
       "recruiterGrade": "cero ofertas fantasma",
-      "feedback": "— más de 450.000 vacantes verificadas, emparejadas con tu currículum"
+      "feedback": "— más de 550.000 vacantes verificadas, emparejadas con tu currículum"
     },
     "description": "Sube tu CV y obtén reescrituras optimizadas para ATS, alertas de red flags y mejoras de palabras clave — como lo revisan los reclutadores.",
     "benefits": {
@@ -146,7 +146,7 @@
     "factNoStorage": "Nunca almacenados, nunca compartidos",
     "measureStrip": "Mediciones, no opiniones · Cada cita verificada · Una puntuación que muestra su trabajo",
     "jobsCta": "Bolsa de empleo en vivo — comprueba tu encaje antes de postularte →",
-    "browseJobs": "Ver más de 450.000 empleos verificados"
+    "browseJobs": "Ver más de 550.000 empleos verificados"
   },
   "footer": {
     "copyright": "© {{year}} Resume Booster. Todos los derechos reservados.",
@@ -4491,7 +4491,7 @@
     "deleteAccount": "Eliminar cuenta",
     "welcome": "¡Bienvenido! Consigamos tu primer puntaje 🎯",
     "trackerEmpty": "Registra dónde postulaste — estado, fechas y el puntaje con el que aplicaste, todo en un lugar.",
-    "trackerEmptyCta": "Explora más de 450.000 vacantes verificadas — guardar una inicia tu seguimiento",
+    "trackerEmptyCta": "Explora más de 550.000 vacantes verificadas — guardar una inicia tu seguimiento",
     "status": {
       "saved": "Guardada",
       "applied": "Enviada",
@@ -4537,7 +4537,7 @@
     "bridgeCta": "Abrir la cola ↓",
     "notifTitle": "Correos y alertas",
     "notifSummary": "{{on}} de {{total}} resúmenes semanales activos",
-    "notifBlurb": "Todo lo que podemos enviarte por correo, en un solo lugar. Los resúmenes semanales solo se envían cuando una búsqueda tiene coincidencias nuevas; cada correo tiene baja en un clic.",
+    "notifBlurb": "Tus resúmenes de búsquedas guardadas, en un solo lugar. Solo se envían cuando una búsqueda tiene nuevas coincidencias; cada correo tiene baja en un clic. El correo matutino del Apply Agent se gestiona en su propio panel más abajo.",
     "notifToggle": "Correo semanal de {{name}}",
     "notifWeekly": "resumen semanal"
   },

@@ -55,7 +55,7 @@
     "headline": {
       "get": "O quadro de vagas com",
       "recruiterGrade": "zero vagas fantasma",
-      "feedback": "— mais de 450.000 vagas verificadas, combinadas com o seu currículo"
+      "feedback": "— mais de 550.000 vagas verificadas, combinadas com o seu currículo"
     },
     "description": "Carregue o seu currículo e receba reescritas otimizadas para ATS, alertas de red flags e melhorias de palavras‑chave — como recrutadores realmente avaliam currículos.",
     "benefits": {
@@ -146,7 +146,7 @@
     "factNoStorage": "Nunca armazenados, nunca compartilhados",
     "measureStrip": "Medições, não opiniões · Cada citação verificada · Uma pontuação que mostra seu trabalho",
     "jobsCta": "Mural de vagas ao vivo — cheque seu encaixe antes de se candidatar →",
-    "browseJobs": "Ver mais de 450.000 vagas verificadas"
+    "browseJobs": "Ver mais de 550.000 vagas verificadas"
   },
   "footer": {
     "copyright": "© {{year}} Resume Booster. Todos os direitos reservados.",
@@ -4491,7 +4491,7 @@
     "deleteAccount": "Excluir conta",
     "welcome": "Bem-vindo! Vamos à sua primeira pontuação 🎯",
     "trackerEmpty": "Acompanhe onde você se candidatou — status, datas e a pontuação enviada, tudo em um lugar.",
-    "trackerEmptyCta": "Explore mais de 450.000 vagas verificadas — salvar uma inicia seu rastreador",
+    "trackerEmptyCta": "Explore mais de 550.000 vagas verificadas — salvar uma inicia seu rastreador",
     "status": {
       "saved": "Salva",
       "applied": "Enviada",
@@ -4537,7 +4537,7 @@
     "bridgeCta": "Abrir a fila ↓",
     "notifTitle": "E-mails e alertas",
     "notifSummary": "{{on}} de {{total}} resumos semanais ativos",
-    "notifBlurb": "Tudo o que podemos enviar por e-mail, em um só lugar. Resumos semanais só saem quando uma busca tem novas correspondências; todo e-mail tem cancelamento em um clique.",
+    "notifBlurb": "Seus resumos de buscas salvas, em um só lugar. Só são enviados quando uma busca tem novas correspondências; cada e-mail tem cancelamento em um clique. O e-mail matinal do Apply Agent é gerenciado no próprio painel abaixo.",
     "notifToggle": "E-mail semanal de {{name}}",
     "notifWeekly": "resumo semanal"
   },

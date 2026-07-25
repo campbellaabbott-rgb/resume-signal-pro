@@ -55,7 +55,7 @@
     "headline": {
       "get": "Le site d'emploi avec",
       "recruiterGrade": "zéro offre fantôme",
-      "feedback": "— plus de 450 000 offres vérifiées, adaptées à votre CV"
+      "feedback": "— plus de 550 000 offres vérifiées, adaptées à votre CV"
     },
     "description": "Téléchargez votre CV et obtenez des réécritures optimisées ATS, des alertes red flags et des améliorations de mots-clés — comme les recruteurs évaluent réellement les CV.",
     "benefits": {
@@ -146,7 +146,7 @@
     "factNoStorage": "Jamais stockés, jamais partagés",
     "measureStrip": "Des mesures, pas des opinions · Chaque citation vérifiée · Un score qui montre son travail",
     "jobsCta": "Offres en direct — vérifiez votre adéquation avant de candidater →",
-    "browseJobs": "Parcourir 450 000+ offres vérifiées"
+    "browseJobs": "Parcourir 550 000+ offres vérifiées"
   },
   "footer": {
     "copyright": "© {{year}} Resume Booster. Tous droits réservés.",
@@ -4491,7 +4491,7 @@
     "deleteAccount": "Supprimer le compte",
     "welcome": "Bienvenue ! Obtenons votre premier score 🎯",
     "trackerEmpty": "Suivez vos candidatures — statut, dates et score d'envoi, au même endroit.",
-    "trackerEmptyCta": "Parcourez plus de 450 000 offres vérifiées — en sauvegarder une lance votre suivi",
+    "trackerEmptyCta": "Parcourez plus de 550 000 offres vérifiées — en sauvegarder une lance votre suivi",
     "status": {
       "saved": "Sauvegardée",
       "applied": "Envoyée",
@@ -4537,7 +4537,7 @@
     "bridgeCta": "Ouvrir la file ↓",
     "notifTitle": "E-mails et alertes",
     "notifSummary": "{{on}} sur {{total}} digests hebdo actifs",
-    "notifBlurb": "Tout ce que nous pouvons vous envoyer, au même endroit. Les digests hebdomadaires ne partent que si une recherche a de nouvelles correspondances ; chaque e-mail a une désinscription en un clic.",
+    "notifBlurb": "Vos synthèses de recherches enregistrées, au même endroit. Elles ne partent que lorsqu'une recherche a de nouveaux résultats ; chaque e-mail a une désinscription en un clic. L'e-mail matinal de l'Apply Agent se gère dans son propre panneau ci-dessous.",
     "notifToggle": "E-mail hebdomadaire pour {{name}}",
     "notifWeekly": "digest hebdo"
   },

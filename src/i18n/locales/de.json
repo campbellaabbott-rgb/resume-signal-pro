@@ -61,7 +61,7 @@
     "headline": {
       "get": "Die Jobbörse mit",
       "recruiterGrade": "null Geisterjobs",
-      "feedback": "— über 450.000 verifizierte Stellen, abgeglichen mit Ihrem Lebenslauf"
+      "feedback": "— über 550.000 verifizierte Stellen, abgeglichen mit Ihrem Lebenslauf"
     },
     "description": "Laden Sie Ihren Lebenslauf hoch und erhalten Sie ATS-optimierte Umschreibungen, Red-Flag-Warnungen und Keyword-Verbesserungen — so wie Personalverantwortliche Lebensläufe wirklich prüfen.",
     "benefits": {
@@ -146,7 +146,7 @@
     "factNoStorage": "Nie gespeichert, nie geteilt",
     "measureStrip": "Messungen statt Meinungen · Jedes Zitat verifiziert · Ein Score, der seine Arbeit zeigt",
     "jobsCta": "Live-Jobbörse — Passung prüfen, bevor Sie sich bewerben →",
-    "browseJobs": "450.000+ verifizierte Jobs ansehen"
+    "browseJobs": "550.000+ verifizierte Jobs ansehen"
   },
   "footer": {
     "copyright": "© {{year}} Resume Booster. Alle Rechte vorbehalten.",
@@ -4491,7 +4491,7 @@
     "deleteAccount": "Konto löschen",
     "welcome": "Willkommen! Holen wir Ihren ersten Score 🎯",
     "trackerEmpty": "Verfolgen Sie Ihre Bewerbungen — Status, Daten und der gesendete Score an einem Ort.",
-    "trackerEmptyCta": "Über 450.000 verifizierte Stellen durchsuchen — eine zu speichern startet Ihren Tracker",
+    "trackerEmptyCta": "Über 550.000 verifizierte Stellen durchsuchen — eine zu speichern startet Ihren Tracker",
     "status": {
       "saved": "Gespeichert",
       "applied": "Beworben",
@@ -4537,7 +4537,7 @@
     "bridgeCta": "Queue öffnen ↓",
     "notifTitle": "E-Mails & Alerts",
     "notifSummary": "{{on}} von {{total}} Wochen-Digests aktiv",
-    "notifBlurb": "Alles, was wir dir mailen können, an einem Ort. Wochen-Digests gehen nur raus, wenn eine Suche neue Treffer hat; jede E-Mail hat Ein-Klick-Abmeldung.",
+    "notifBlurb": "Ihre Digest-Mails für gespeicherte Suchen an einem Ort. Sie werden nur versendet, wenn eine Suche neue Treffer hat; jede E-Mail hat eine Ein-Klick-Abmeldung. Die Morgen-E-Mail des Apply Agent wird unten in ihrem eigenen Bereich verwaltet.",
     "notifToggle": "Wöchentliche E-Mail für {{name}}",
     "notifWeekly": "Wochen-Digest"
   },

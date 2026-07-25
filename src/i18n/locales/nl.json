@@ -55,7 +55,7 @@
     "headline": {
       "get": "Het vacaturebord met",
       "recruiterGrade": "nul spookvacatures",
-      "feedback": "— 450.000+ geverifieerde vacatures, gematcht met je cv"
+      "feedback": "— 550.000+ geverifieerde vacatures, gematcht met je cv"
     },
     "description": "Upload je cv en krijg ATS-geoptimaliseerde herschrijvingen, red-flag waarschuwingen en keyword-verbeteringen — zoals hiring managers cv’s echt beoordelen.",
     "benefits": {
@@ -146,7 +146,7 @@
     "factNoStorage": "Nooit opgeslagen, nooit gedeeld",
     "measureStrip": "Metingen, geen meningen · Elk citaat geverifieerd · Een score die zijn werk laat zien",
     "jobsCta": "Live vacaturebank — check je match vóór je solliciteert →",
-    "browseJobs": "Bekijk 450.000+ geverifieerde vacatures"
+    "browseJobs": "Bekijk 550.000+ geverifieerde vacatures"
   },
   "footer": {
     "copyright": "© {{year}} Resume Booster. Alle rechten voorbehouden.",
@@ -4491,7 +4491,7 @@
     "deleteAccount": "Account verwijderen",
     "welcome": "Welkom! Laten we je eerste score halen 🎯",
     "trackerEmpty": "Volg waar je hebt gesolliciteerd — status, datums en de verzonden score, op één plek.",
-    "trackerEmptyCta": "Bekijk 450.000+ geverifieerde vacatures — er één opslaan start je tracker",
+    "trackerEmptyCta": "Bekijk 550.000+ geverifieerde vacatures — er één opslaan start je tracker",
     "status": {
       "saved": "Opgeslagen",
       "applied": "Verstuurd",
@@ -4537,7 +4537,7 @@
     "bridgeCta": "Open de wachtrij ↓",
     "notifTitle": "E-mails & meldingen",
     "notifSummary": "{{on}} van {{total}} weekdigests aan",
-    "notifBlurb": "Alles wat we je kunnen mailen, op één plek. Weekdigests gaan alleen uit als een zoekopdracht nieuwe matches heeft; elke e-mail heeft één-klik afmelden.",
+    "notifBlurb": "Je digests voor opgeslagen zoekopdrachten, op één plek. Ze worden alleen verstuurd als een zoekopdracht nieuwe matches heeft; elke e-mail heeft afmelden in één klik. De ochtendmail van de Apply Agent beheer je in het eigen paneel hieronder.",
     "notifToggle": "Wekelijkse e-mail voor {{name}}",
     "notifWeekly": "weekdigest"
   },

@@ -18,7 +18,7 @@ interface Replacement {
   applyUrl: string;
 }
 
-export function ClosedReplacementsPanel({ closedCount, rolesKey }: { closedCount: number; rolesKey: string }) {
+export function ClosedReplacementsPanel({ closedCount, rolesKey, excludeKey = "" }: { closedCount: number; rolesKey: string; excludeKey?: string }) {
   const [reps, setReps] = useState<Replacement[]>([]);
   const [loaded, setLoaded] = useState(false);
 
@@ -46,7 +46,8 @@ export function ClosedReplacementsPanel({ closedCount, rolesKey }: { closedCount
       );
       if (cancelled) return;
       // Dedupe by id, keep the first few, only rows with a working apply link.
-      const seen = new Set<string>();
+      // Never recommend a "fresh opening" the user already tracks (audit).
+      const seen = new Set<string>(excludeKey ? excludeKey.split("|").filter(Boolean) : []);
       const merged: Replacement[] = [];
       for (const j of perRole.flat()) {
         if (j?.id && j.applyUrl && !seen.has(j.id)) {
@@ -61,7 +62,7 @@ export function ClosedReplacementsPanel({ closedCount, rolesKey }: { closedCount
     return () => {
       cancelled = true;
     };
-  }, [rolesKey]);
+  }, [rolesKey, excludeKey]);
 
   if (!loaded || closedCount === 0 || reps.length === 0) return null;
 

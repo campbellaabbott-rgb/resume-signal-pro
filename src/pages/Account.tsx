@@ -498,13 +498,26 @@ export default function Account() {
     if (!error) setNewEmail("");
   };
 
-  const exportData = () => {
+  const exportData = async () => {
+    // "All my data" must mean all of it (audit: searches, mandate, queue,
+    // and the pinned matching resume were missing from the export).
+    const uid = user?.id ?? "";
+    const [searches, mandates, queue, profile] = await Promise.all([
+      supabase.from("user_job_searches").select("*").eq("user_id", uid).then((r) => r.data ?? []),
+      supabase.from("agent_mandates").select("*").eq("user_id", uid).then((r) => r.data ?? []),
+      supabase.from("agent_queue").select("*").eq("user_id", uid).then((r) => r.data ?? []),
+      supabase.from("user_profiles").select("matching_resume_text").eq("user_id", uid).maybeSingle().then((r) => r.data ?? null),
+    ]);
     const payload = {
       exportedAt: new Date().toISOString(),
       account: { email: user?.email, memberSince: user?.created_at },
       targetScore,
       scans,
       applications,
+      savedSearches: searches,
+      agentMandates: mandates,
+      agentQueue: queue,
+      matchingResume: profile?.matching_resume_text ?? null,
       credits: account?.credits ?? 0,
       purchases: account?.purchases ?? [],
     };
@@ -1064,9 +1077,11 @@ export default function Account() {
           </div>
         )}
         {(() => {
-          const closed = applications.filter((a) => a.posting_closed_at);
+          // Saved-but-never-applied rows are not "applied jobs" (audit).
+          const closed = applications.filter((a) => a.posting_closed_at && a.status !== "saved");
           const rolesKey = [...new Set(closed.map((a) => a.role).filter(Boolean))].slice(0, 3).join("|");
-          return <ClosedReplacementsPanel closedCount={closed.length} rolesKey={rolesKey} />;
+          const trackedIds = applications.map((a) => a.job_id).filter(Boolean).join("|");
+          return <ClosedReplacementsPanel closedCount={closed.length} rolesKey={rolesKey} excludeKey={trackedIds} />;
         })()}
 
         <div id="pipeline" className="scroll-mt-28" />

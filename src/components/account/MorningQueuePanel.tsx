@@ -193,7 +193,7 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
               className="w-16 rounded-lg border border-border bg-background px-2 py-1 text-sm" />
           </label>
           <div className="sm:col-span-2 flex gap-2">
-            <button onClick={() => void saveMandate(true)} disabled={busy || agentActive === false}
+            <button onClick={() => void saveMandate(true)} disabled={busy || agentActive !== true}
               className="inline-flex items-center gap-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold px-4 py-2 hover:bg-primary/90 disabled:opacity-50">
               <Play className="w-3.5 h-3.5" /> {t("agentQueue.activate", "Activate mandate")}
             </button>
@@ -207,7 +207,11 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
       ) : (
         <div className="flex flex-wrap items-center gap-2 mb-4 text-[13px] text-muted-foreground">
           <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${mandate.active ? "bg-success/10 text-success" : "bg-muted text-muted-foreground"}`}>
-            {mandate.active ? t("agentQueue.statusActive", "Active") : t("agentQueue.statusPaused", "Paused")}
+            {mandate.active
+              ? (agentActive === false
+                ? t("agentQueue.statusAwaiting", "Active — awaiting subscription")
+                : t("agentQueue.statusActive", "Active"))
+              : t("agentQueue.statusPaused", "Paused")}
           </span>
           <span className="truncate">
             {[mandate.q, mandate.category && t(`jobsPage.categories.${mandate.category}`, mandate.category), mandate.location, mandate.remote_only ? t("agentQueue.fieldRemote", "Remote only") : "", mandate.salary_min ? `$${mandate.salary_min.toLocaleString()}+` : ""].filter(Boolean).join(" · ")}
