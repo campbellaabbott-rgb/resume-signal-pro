@@ -48,6 +48,7 @@ import { categorize, CATEGORIZE_VERSION, JOB_CATEGORIES } from "./categories.ts"
 import { computeFit } from "../_shared/fit-score.ts";
 import { extractSalary, parseSalaryStructured } from "../_shared/salary-extract.ts";
 import { classifyDormancy, updateBoardFailures, type BoardFailureState } from "./dormancy.ts";
+import { advanceProgress, isPassDone, type RefreshProgress } from "./rotation.ts";
 import { CANARIES, rawItemCount, aggregateVendorHealth, type CanaryResult } from "./vendor-canary.ts";
 import { detectExperience, isExperienceBand } from "./experience.ts";
 import { expandQuery } from "./search-alias.ts";
@@ -73,7 +74,7 @@ const json = (body: unknown, status = 200) =>
 // while this file was untouched). Always bump BUILD_VERSION here when a shared
 // module this function imports changes — it forces the diff AND gives the
 // deploy a verifiable tell.
-const BUILD_VERSION = "2026-07-25.11";
+const BUILD_VERSION = "2026-07-25.12";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -474,13 +475,22 @@ async function tierLists(client: SupabaseClient): Promise<{ hotList: JobSource[]
     coldList: interleaveByVendor(JOB_SOURCES.filter((s) => !hot.has(s.token))),
   };
 }
-// 80×48 = 3,840 cold boards/pass: at the 14.9k-board catalog (rung 3) the
-// tail rotates in ~3.9 passes, and doubling cold hops per pass halves how
-// often the ~10-min hot phase interrupts the tail. Combined with CONCURRENCY
-// 4→8 this targets a measured full-tail rotation under ~2h (it had drifted
-// to ~3h, past the published claim). Slice size stays the proven-safe 80 —
-// more hops, never bigger hops. SR_CAP still bounds any single board's fetch.
-const COLD_SLICES_PER_PASS = 48;
+// 80×120 = 9,600 cold boards/pass. Slice size stays the proven-safe 80 — more
+// hops, never bigger hops. SR_CAP still bounds any single board's fetch.
+//
+// Sized from measurement, not intuition (2026-07-25, 28,055-board catalog):
+// a cold hop takes ~12-18s, so 48 hops is only ~12 min of work — yet a full
+// pass measured ~46 min end to end. The other ~34 min is FIXED per-pass cost:
+// the 12-hop hot phase (giants at HOT_CONCURRENCY=2), the pass-end block
+// (facets RPC, orphan prune, freshness sweep, exact-count capacity governor),
+// and the idle gap after the chain returns at pass end until the next cron
+// kick lands (the crons are 10 min apart, offset 5). That overhead is paid per
+// PASS, not per board, so the cold tail was getting ~26% of the wall clock.
+// 48→120 pays it 2.5x less often: ~64 min per pass covering 9,600 boards =
+// ~187 min for the full 28k wrap, against ~333 min at 48 (after the cursor fix
+// below stopped over-advancing). The cost is hot-tier cadence going ~46→~64
+// min, which the giants can afford; the claim is bounded by the COLD tail.
+const COLD_SLICES_PER_PASS = 120;
 
 // Dormancy skip-list (throughput): a feed dead for DEAD_BOARD_THRESHOLD straight
 // rotations has its postings pruned and is marked dormant — future cold slices
@@ -532,11 +542,6 @@ const POSTED_BACKFILL_VERSION = 2; // v2: + bamboohr (datePosted) and rippling (
 // guaranteed slots, size leaders fill the rest of HOT_SIZE.
 const VELOCITY_HOT_SLOTS = 40;
 const VELOCITY_WINDOW_DAYS = 7;
-// Quiet lane: a board with no NEW posting in this window skips every other
-// rotation (see the cold-phase skip logic). Computed at pass end from
-// get_quiet_boards(); most of the catalog is quiet at any moment, so this
-// roughly doubles the effective rotation budget for active boards.
-const QUIET_WINDOW_DAYS = 14;
 const CHAIN_CAP = Math.ceil(HOT_SIZE / HOT_SLICE) + COLD_SLICES_PER_PASS + 4; // pass length + stall headroom
 
 // Capacity governor: keep the corpus under a ceiling with headroom; when a
@@ -574,7 +579,11 @@ const CORPUS_TARGET = 720_000;  // evict down to this
 // dropped dated posting can't re-enter. One constant to dial (30d ≈ 31k live
 // board, 45d ≈ 43k, 60d ≈ 50k on the current selection).
 const FRESH_WINDOW_DAYS = 30;
-const FRESH_PRUNE_MAX = 6_000; // cap the aged-tail sweep per pass so a big backlog drains without a giant delete
+// Cap the aged-tail sweep per pass so a big backlog drains without a giant
+// delete (still batched 200/delete below). Raised 6k→15k with
+// COLD_SLICES_PER_PASS 48→120: the sweep is per-PASS, so a 2.5x longer pass
+// would otherwise cut the drain rate 2.5x and let the >30d tail accumulate.
+const FRESH_PRUNE_MAX = 15_000;
 
 // force=true bypasses the slice lock, so it must not be reachable from the
 // open internet (the function serves anonymous traffic): chain hops carry a
@@ -611,11 +620,10 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
   }
   const { hotList: HOT_LIST, coldList: COLD_LIST } = await tierLists(client);
   await loadDynamicLight(client); // auto-enrolled giant boards fetch without content
-  const pv = (prog?.v ?? {}) as { hot?: number; cold?: number; coldDone?: number; rot?: number; failedAcc?: string[] };
+  const pv = (prog?.v ?? {}) as { hot?: number; cold?: number; coldDone?: number; failedAcc?: string[] };
   let hot = Math.max(0, Number(pv.hot) || 0);
   let cold = Math.max(0, Number(pv.cold) || 0) % Math.max(1, COLD_LIST.length);
   let coldDone = Math.max(0, Number(pv.coldDone) || 0);
-  const rot = Math.max(0, Number(pv.rot) || 0);
   // Hop 0 RESUMES a recent incomplete pass rather than resetting: when a
   // slice dies on the resource ceiling, the re-run must move FORWARD, not
   // re-die on the same boards (the 13:04-13:38 wedge re-ran slice 0
@@ -711,42 +719,44 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
     const demandSet = new Set(demandBoards.map((s) => s.token));
     const eligible = baseSlice.map((s) => s.token).filter((t) => !demandSet.has(t));
     ({ skip: skipTokens, recheck: recheckTokens } = classifyDormancy(eligible, boardFailures.dormant, Date.now(), DORMANT_RECHECK_MS));
-    // Quiet lane (change-rate-aware rotation): boards with no NEW posting in
-    // QUIET_WINDOW_DAYS skip every other rotation — their feeds barely change,
-    // so the fetch budget concentrates on boards where postings actually
-    // appear and close. Cadence cost: quiet boards re-verify at 2× the
-    // rotation time (still inside the published claim; the freshness-claim
-    // heartbeat check watches the measured number). Demand-injected boards
-    // are never quiet-skipped, and skipped boards aren't counted as failures.
-    if (rot % 2 === 1) {
-      try {
-        const { data: qMeta } = await client.from("job_board_meta").select("v").eq("k", "quiet_tokens").maybeSingle();
-        const quiet = (qMeta?.v as { tokens?: unknown } | null)?.tokens;
-        if (Array.isArray(quiet)) {
-          const quietSet = new Set(quiet.filter((t): t is string => typeof t === "string"));
-          for (const t of eligible) if (quietSet.has(t) && !recheckTokens.has(t)) skipTokens.add(t);
-        }
-      } catch { /* quiet meta unreadable — full rotation, never less coverage */ }
-    }
   }
+  // REMOVED 2026-07-25 — the "quiet lane" (boards with no new posting in 14d
+  // skip every other rotation, keyed on a `rot` parity counter). Two reasons,
+  // either one sufficient:
+  //   1. It never ran. The post-slice refresh_progress write omitted `rot`, and
+  //      an upsert replaces the whole v JSON — so `rot` was wiped every hop and
+  //      read back as 0. The parity test was never true in production.
+  //   2. It must not run. It doubles re-verification age for "most of the
+  //      catalog at any moment", and the published claim ("every feed
+  //      re-verified within a few hours") is an ABSOLUTE bound on P95, not a
+  //      median. At any wrap time that keeps the claim true, 2x the wrap
+  //      breaks it — the lane can only ever buy throughput by spending the
+  //      exact budget the claim owns.
+  // Throughput now comes from covering the tail faster (COLD_SLICES_PER_PASS),
+  // which costs no board its cadence. get_quiet_boards stays in the DB, unused.
+
+  // The cursor rule (advanceProgress) is shared with the post-slice write
+  // below — see rotation.ts for why it is one function and not two hand-kept
+  // copies. Both writes emit the WHOLE row it returns.
+  const advanceArgs = {
+    inHotPhase,
+    hotSlice: HOT_SLICE,
+    baseSliceLen: baseSlice.length,
+    coldListLen: COLD_LIST.length,
+  };
+  const progressBefore: RefreshProgress = {
+    hot, cold, coldDone,
+    failedAcc: Array.isArray(pv.failedAcc) ? pv.failedAcc : [],
+  };
 
   // Cursors advance BEFORE processing (optimistic): if this invocation dies
   // on the resource ceiling, the next attempt continues with the NEXT
   // slice — a died slice's boards go one rotation stale instead of wedging
   // the whole pipeline. Failure accounting is finalized after the slice.
   {
-    const nextHot = inHotPhase ? hot + HOT_SLICE : hot;
-    // Advance by the COLD_LIST boards actually consumed (baseSlice) — NOT
-    // slice.length, which includes prepended demand boards. Counting the demand
-    // extras would skip that many cold boards each demand-injected hop, so the
-    // long tail would rotate unevenly (some boards re-checked late).
-    const nextCold = inHotPhase ? cold : (cold + baseSlice.length) % Math.max(1, COLD_LIST.length);
-    const nextColdDone = inHotPhase ? coldDone : coldDone + 1;
-    // Rotation counter: increments when the cold cursor wraps the tail — the
-    // quiet lane keys off its parity (quiet boards skip odd rotations).
-    const nextRot = !inHotPhase && nextCold < cold ? rot + 1 : rot;
+    const { next } = advanceProgress({ prev: progressBefore, ...advanceArgs });
     await client.from("job_board_meta").upsert(
-      { k: "refresh_progress", v: { hot: nextHot, cold: nextCold, coldDone: nextColdDone, rot: nextRot, failedAcc: Array.isArray(pv.failedAcc) ? pv.failedAcc : [] }, updated_at: new Date().toISOString() },
+      { k: "refresh_progress", v: next, updated_at: new Date().toISOString() },
       { onConflict: "k" },
     );
   }
@@ -1159,30 +1169,35 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
     }),
   );
 
-  // Advance cursors. Cold advances by the ACTUAL slice length — the tail
-  // slice is short, and advancing by a full COLD_SLICE would skip the boards
-  // just past the wrap point on every rotation.
-  if (inHotPhase) hot += HOT_SLICE;
-  else {
-    const before = cold;
-    cold = (cold + slice.length) % Math.max(1, COLD_LIST.length);
-    coldDone += 1;
-    // The cold cursor just wrapped past the end → the ENTIRE cold tail has
-    // now been re-verified. Stamp it: this is the direct measurement of
-    // freshness (max staleness of any cold posting = time since this stamp).
-    // The heartbeat alerts if it ever falls behind the SLA.
-    if (cold < before) {
-      await client.from("job_board_meta").upsert(
-        { k: "cold_rotation", v: { completedAt: new Date().toISOString(), coldBoards: COLD_LIST.length }, updated_at: new Date().toISOString() },
-        { onConflict: "k" },
-      );
-    }
-  }
-  const passDone = hot >= HOT_LIST.length && coldDone >= COLD_SLICES_PER_PASS;
-
+  // Advance cursors — SAME rule as the optimistic write above, because it is
+  // literally the same function (rotation.ts). This write lands last and wins,
+  // so any divergence here is what production actually does: on 2026-07-25 this
+  // site advanced by `slice.length` (base 80 + up to 25 bootstrap + 5 demand
+  // boards, which come from elsewhere in the catalog and consume no cursor),
+  // skipping 24% of the cold list every rotation and pushing measured P95
+  // re-verification past the published claim while the median looked healthy.
   const failedAcc = [...(Array.isArray(pv.failedAcc) ? pv.failedAcc : []), ...failed].slice(-120);
+  const { next: progressAfter, wrapped } = advanceProgress({
+    prev: { ...progressBefore, failedAcc },
+    ...advanceArgs,
+  });
+  hot = progressAfter.hot;
+  cold = progressAfter.cold;
+  coldDone = progressAfter.coldDone;
+  // The cold cursor just wrapped past the end → the ENTIRE cold tail has now
+  // been re-verified. Stamp it: this is the direct measurement of freshness
+  // (max staleness of any cold posting = time since this stamp). The heartbeat
+  // alerts if it ever falls behind the SLA.
+  if (wrapped) {
+    await client.from("job_board_meta").upsert(
+      { k: "cold_rotation", v: { completedAt: new Date().toISOString(), coldBoards: COLD_LIST.length }, updated_at: new Date().toISOString() },
+      { onConflict: "k" },
+    );
+  }
+  const passDone = isPassDone(progressAfter, HOT_LIST.length, COLD_SLICES_PER_PASS);
+
   await client.from("job_board_meta").upsert(
-    { k: "refresh_progress", v: { hot, cold, coldDone, failedAcc }, updated_at: new Date().toISOString() },
+    { k: "refresh_progress", v: progressAfter, updated_at: new Date().toISOString() },
     { onConflict: "k" },
   );
 
@@ -1416,18 +1431,9 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
       hotSet.add(t);
     }
     const ranked = [...hotSet];
-    // Refresh the quiet set for the rotation's slow lane (RPC missing —
-    // migration lag — leaves the previous set in place; never fails the pass).
-    try {
-      const { data: quiet, error: qErr } = await client.rpc("get_quiet_boards", { days: QUIET_WINDOW_DAYS });
-      if (!qErr && Array.isArray(quiet)) {
-        const tokens = quiet.map((r: { company_token?: string }) => r.company_token).filter((t): t is string => typeof t === "string").slice(0, 30_000);
-        await client.from("job_board_meta").upsert(
-          { k: "quiet_tokens", v: { tokens, at: new Date().toISOString() }, updated_at: new Date().toISOString() },
-          { onConflict: "k" },
-        );
-      }
-    } catch { /* keep previous quiet set */ }
+    // (The quiet-set refresh that used to live here went with the quiet lane —
+    // see the removal note in the cold-phase skip logic. One fewer heavy RPC
+    // per pass.)
     if (ranked.length >= 50) {
       await client.from("job_board_meta").upsert(
         { k: "hot_tokens", v: { tokens: ranked }, updated_at: new Date().toISOString() },
