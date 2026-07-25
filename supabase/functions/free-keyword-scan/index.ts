@@ -1192,11 +1192,17 @@ const countryCache = new Map<string, { country: string; timestamp: number }>();
 const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
 
 const getCountryFromHeaders = (req: Request): string | null => {
-  // Cloudflare/CDN provides country code in cf-ipcountry header
-  return req.headers.get('cf-ipcountry') || 
-         req.headers.get('x-vercel-ip-country') || 
+  // Cloudflare/CDN provides country code in cf-ipcountry header. Sanitized
+  // (review-caught 2026-07-25): Cloudflare emits pseudo-codes XX (unknown)
+  // and T1 (Tor), and x-country-code is client-settable — only a real
+  // two-letter code may enter the country precedence chain, where it can
+  // now WIN over a tied resume detection.
+  const raw = req.headers.get('cf-ipcountry') ||
+         req.headers.get('x-vercel-ip-country') ||
          req.headers.get('x-country-code') ||
-         null;
+         '';
+  const cc = raw.trim().toUpperCase();
+  return /^[A-Z]{2}$/.test(cc) && cc !== 'XX' && cc !== 'T1' ? cc : null;
 };
 
 // Fetch country from ipinfo.io API (fallback when headers missing)
@@ -1585,7 +1591,10 @@ serve(async (req) => {
     // Identical resume + JD + stated context + engine version → serve the
     // finished report instantly (rescans, repeat uploads, shared samples).
     // Rule-based-fallback and partial reports are never cached.
-    const REPORT_ENGINE_VERSION = 'scan-v2026-07-12m';
+    // Bumped 2026-07-25: country-detection fix — without the bump, resumes
+    // scanned in the prior 7 days (including the wrong-country incident
+    // hashes) would keep hitting their cached pre-fix reports.
+    const REPORT_ENGINE_VERSION = 'scan-v2026-07-25';
     const reportCacheKey = await (async () => {
       const ctx = (body.userContext ?? {}) as Record<string, unknown>;
       const ctxPart = ['situation', 'targetRole', 'confirmedIndustry', 'confirmedExperience']
@@ -2204,8 +2213,24 @@ This resume must be judged as ${seniorityDetection.level === 'executive' ? 'a C-
     // 1. Geo: detect country from resume text; fall back to IP country
     const resumeGeo = detectCountryFromResume(resumeText);
     // Precedence: target country (applying-to) → resume-detected → IP → US.
-    const effectiveCountry = validTargetCountry || resumeGeo.country || country || 'US';
-    const geoHint = formatGeoContextForPrompt(effectiveCountry, industryDetection.industry, resumeGeo);
+    // A LOW-confidence resume detection (an exact evidence tie — one London
+    // mention vs one Seattle mention) defers to IP geolocation, which at
+    // least knows where the candidate is; it is still used when no IP
+    // country is available.
+    const effectiveCountry = validTargetCountry
+      || (resumeGeo.confidence !== 'low' ? resumeGeo.country : null)
+      || country || resumeGeo.country || 'US';
+    // How that choice was made — derived ONCE and threaded into the prompt
+    // hint, marketIntelligence.countrySource, and the geo response block, so
+    // the three can never disagree (review-caught 2026-07-25: the prompt
+    // hint re-derived its own country and could narrate a different market
+    // than the standards card in the same report).
+    const geoBasis: 'target' | 'resume' | 'ip' | 'default' =
+      validTargetCountry ? 'target'
+      : (resumeGeo.country && resumeGeo.confidence !== 'low') ? 'resume'
+      : country ? 'ip'
+      : resumeGeo.country ? 'resume' : 'default';
+    const geoHint = formatGeoContextForPrompt(effectiveCountry, industryDetection.industry, resumeGeo, geoBasis);
     // Deterministic structure scaffold — grounds the model so it can't hallucinate
     // a missing section/contact/role that the raw text actually contains.
     const structureHint = formatStructureForPrompt(parseResumeStructure(resumeText));
@@ -3711,7 +3736,7 @@ ${resumeText.substring(0, 20000)}
     responseData.marketIntelligence = {
       country: effectiveCountry,
       countryName: marketInsight.countryName,
-      countrySource: resumeGeo.source,
+      countrySource: geoBasis === 'resume' ? resumeGeo.source : geoBasis,
       hotSkills: marketInsight.hotSkills.slice(0, 6),
       risingKeywords: marketInsight.risingKeywords.slice(0, 4),
       cvNorms: marketInsight.cvNorms,
@@ -4213,6 +4238,24 @@ ${resumeText.substring(0, 20000)}
     // no AI cost. Null when country unknown or not covered.
     try {
       responseData.countryStandards = evaluateCountryStandards(resumeText, effectiveCountry);
+      // How the country was CHOSEN, next to the standards for it. The
+      // standards block's own `confidence` grades our DATA for that market —
+      // without this, a mis-detected country wore the GB entry's "high" as
+      // if it described the detection (2026-07-25 audit: a Seattle resume
+      // got a full UK report presented as high-confidence). Same `geo`
+      // shape the stream fallback has exposed since its build; geoBasis is
+      // the single derivation shared with the prompt hint and countrySource.
+      responseData.geo = {
+        country: effectiveCountry,
+        source: geoBasis === 'resume' ? resumeGeo.source : geoBasis,
+        basis: geoBasis,
+        targetCountry: validTargetCountry,
+        detectedCountry: resumeGeo.country,
+        confidence: geoBasis === 'target' ? 'high'
+          : geoBasis === 'ip' ? 'medium'
+          : geoBasis === 'default' ? 'low'
+          : resumeGeo.confidence,
+      };
     } catch (e) {
       console.warn('[FREE-KEYWORD-SCAN] Country standards evaluation failed:', e);
       responseData.countryStandards = null;

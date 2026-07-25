@@ -48,11 +48,44 @@ const PHONE_TO_COUNTRY: Array<{ pattern: RegExp; country: string }> = [
   // US / Canada (NANP) — last; +1 is shared, resolved to US, CA split by city
   { pattern: /\+1[\s\-]?\(?\d{3}\)?[\s\-]\d{3}[\s\-]\d{4}/, country: 'US' },
   { pattern: /\+1[\s\-]?\d{3}[\s\-]\d{3}[\s\-]\d{4}/, country: 'US' },
+  // Domestic NANP — most US resumes write "(206) 555-0148" or "206-555-0148"
+  // with no +1 (measured 2026-07-25: such a resume matched NO phone pattern
+  // and lost the country contest to an AWS "EC2" mention). Kept last so any
+  // explicit +CC above wins first; US/CA shared, same as the +1 entries.
+  // [2-9] on area code AND exchange: NANP never starts either with 0/1, and
+  // the loose \d{3} shape matched Israeli 05X-XXX-XXXX, Irish/NZ (0XX), and
+  // similar leading-zero national formats (review-caught 2026-07-25 — an
+  // in-country Israeli resume scored US|high and IP could not rescue it).
+  { pattern: /\([2-9]\d{2}\)\s?[2-9]\d{2}[-.\s]\d{4}/, country: 'US' },
+  { pattern: /\b[2-9]\d{2}[-.][2-9]\d{2}[-.]\d{4}\b/, country: 'US' },
 ];
 
-// UK-specific city/postcode patterns
-const UK_SIGNALS = /\b(london|manchester|birmingham|leeds|edinburgh|glasgow|bristol|cardiff|belfast|sheffield|liverpool|EC\d|WC\d|SW\d|SE\d|N\d|NW\d|W\d|E\d|EC\d|WC\d|[A-Z]{1,2}\d{1,2}\s\d[A-Z]{2})\b/i;
-const AU_SIGNALS = /\b(sydney|melbourne|brisbane|perth|adelaide|canberra|darwin|hobart|NSW|VIC|QLD|WA|SA|ACT|TAS|NT)\b/;
+// UK-specific city/postcode patterns. Bare London district codes (EC2, SW1,
+// N1...) are GONE — measured 2026-07-25: \bEC\d\b matched AWS "EC2" on a
+// Seattle cloud engineer's resume and won the country contest, shipping a
+// full UK market report to a US candidate. Only a FULL postcode (outward +
+// inward, "EC2A 4BX") is UK-specific enough to score.
+// The inward part guards against ordinals AND unit bigrams: without them,
+// /i lets "B2B 2nd-largest" parse as outward "B2B" + inward "2ND", and
+// "EC2 8GB" / "S3 4TB" spec lines parse as postcodes (review-caught
+// 2026-07-25 — the exact phone-less cloud-resume slice this fix targets).
+// A real inward code ending in ST/ND/RD/TH/GB/TB/FA... is vanishingly
+// rare; city names still carry GB.
+const UK_SIGNALS = /\b(london|manchester|birmingham|leeds|edinburgh|glasgow|bristol|cardiff|belfast|sheffield|liverpool|[A-Z]{1,2}\d{1,2}[A-Z]?\s+\d(?!(?:st|nd|rd|th|[kmgtp]b|fa|yr|hr)\b)[A-Z]{2})\b/i;
+// Australian cities, case-INsensitive — the old single case-sensitive regex
+// could never match "Sydney" as resumes actually write it. "darwin" is
+// omitted (Charles Darwin on science resumes); "australia" itself counts,
+// like "india"/"france" do for their markets.
+const AU_CITY_SIGNALS = /\b(sydney|melbourne|brisbane|perth|adelaide|canberra|hobart|gold coast|wollongong|geelong|australia)\b/i;
+// Bare state codes are DISTINCTIVE-ONLY and case-sensitive: WA and SA match
+// "Seattle, WA"-style US addresses, NT matches "Windows NT", ACT matches the
+// US ACT test score. Those four count only with a 4-digit AU postcode
+// attached (AU_STATE_POSTCODE — address-grade evidence, like US_STATE_ZIP).
+const AU_STATE_SIGNALS = /\b(NSW|VIC|QLD|TAS)\b/;
+// Each state is pinned to its real postcode range: the flat \d{4} form let
+// "Acme SA 2019" (a Societe-Anonyme company suffix + a start year) and
+// similar year collisions score as Australian addresses.
+const AU_STATE_POSTCODE = /\b(?:NSW\s+2\d{3}|VIC\s+3\d{3}|QLD\s+4\d{3}|SA\s+5\d{3}|WA\s+6\d{3}|TAS\s+7\d{3}|NT\s+0[89]\d{2}|ACT\s+2[69]\d{2})\b/;
 const DE_SIGNALS = /\b(berlin|munich|münchen|hamburg|frankfurt|cologne|köln|düsseldorf|stuttgart|dortmund|essen|GmbH|AG)\b/i;
 const IN_SIGNALS = /\b(mumbai|delhi|bangalore|bengaluru|chennai|hyderabad|pune|kolkata|ahmedabad|india)\b/i;
 const SG_SIGNALS = /\b(singapore|\bSGD\b|buona vista|one-north|raffles|central business district cbd)\b/i;
@@ -69,7 +102,10 @@ const NL_SIGNALS = /\b(amsterdam|rotterdam|den haag|the hague|utrecht|eindhoven|
 const JP_SIGNALS = /\b(tokyo|osaka|kyoto|yokohama|nagoya|japan)\b/i;
 const KR_SIGNALS = /\b(seoul|busan|incheon|daejeon|south korea|korea)\b/i;
 const MX_SIGNALS = /\b(mexico city|cdmx|ciudad de méxico|guadalajara|monterrey|méxico)\b/i;
-const BR_SIGNALS = /\b(são paulo|sao paulo|rio de janeiro|brasília|brasilia|belo horizonte|fortaleza|brazil|brasil)\b/i;
+// Extended 2026-07-25 (review): Brazilian resumes write "Florianópolis, SC"
+// and SC/PA/AL/MT/MS are ALSO US state codes — the city must score BR so the
+// tie machinery (tie -> low -> IP) engages instead of a lone US signal winning.
+const BR_SIGNALS = /\b(são paulo|sao paulo|rio de janeiro|brasília|brasilia|belo horizonte|fortaleza|florianópolis|florianopolis|curitiba|campinas|porto alegre|recife|brazil|brasil)\b/i;
 
 // Currency symbols used in resume (salary mentions, etc.). Euro is deliberately
 // omitted: it is shared across ~20 countries, so a bare € identifies no single
@@ -96,7 +132,8 @@ export interface GeoDetectionResult {
 const CITY_SIGNALS: Array<{ re: RegExp; country: string; label: string }> = [
   { re: UK_SIGNALS, country: 'GB', label: 'UK city or postcode' },
   { re: CA_SIGNALS, country: 'CA', label: 'Canadian city/province' },
-  { re: AU_SIGNALS, country: 'AU', label: 'Australian city/state' },
+  { re: AU_CITY_SIGNALS, country: 'AU', label: 'Australian city' },
+  { re: AU_STATE_SIGNALS, country: 'AU', label: 'Australian state abbreviation' },
   { re: DE_SIGNALS, country: 'DE', label: 'German city or company suffix' },
   { re: IN_SIGNALS, country: 'IN', label: 'Indian city' },
   { re: SG_SIGNALS, country: 'SG', label: 'Singapore location' },
@@ -144,7 +181,11 @@ const CITY_SIGNALS: Array<{ re: RegExp; country: string; label: string }> = [
   { re: /\b(athens|thessaloniki)\b/i, country: 'GR', label: 'Greek city' },
   { re: /\b(kyiv|kiev|lviv|kharkiv)\b/i, country: 'UA', label: 'Ukrainian city' },
   { re: /\b(buenos aires|rosario|mendoza)\b/i, country: 'AR', label: 'Argentine city' },
-  { re: /\b(bogotá|bogota|medellín|medellin|barranquilla)\b/i, country: 'CO', label: 'Colombian city' },
+  // Trailing \b after an accented character can never assert (á is a
+  // non-word char in ASCII regex semantics), so the accented spellings were
+  // unreachable — "Bogotá" as actually written never matched. Accent-safe
+  // boundary via lookahead; 'colombia' added like other country names.
+  { re: /\b(bogot[aá]|medell[ií]n|barranquilla|colombia)(?![a-zà-ÿ0-9])/i, country: 'CO', label: 'Colombian city' },
   { re: /\b(arequipa|cusco|trujillo)\b/i, country: 'PE', label: 'Peruvian city' },
   { re: /\b(valparaíso|valparaiso|concepción|viña del mar)\b/i, country: 'CL', label: 'Chilean city' },
 ];
@@ -203,6 +244,12 @@ const PLACE_TO_COUNTRY: Array<{ re: RegExp; country: string }> = [
 // US "City, ST 12345" — the most common location format on American resumes.
 // Comma + 2-letter state code + ZIP is near-zero false-positive.
 const US_STATE_ZIP = /,\s*(A[LKZR]|C[AOT]|D[EC]|FL|GA|HI|I[DLNA]|K[SY]|LA|M[EDAINSOT]|N[EVHJMYCD]|O[HKR]|PA|RI|S[CD]|T[NX]|UT|V[TA]|W[AVIY])\s+\d{5}(?:-\d{4})?\b/;
+// "City, ST" with NO ZIP — the second-most-common US format ("Seattle, WA").
+// Case-sensitive, and codes that double as English words or degree
+// abbreviations are excluded (IN OR DE LA ME OK HI OH ID MA — "English, MA
+// 2015" is a degree line, not Massachusetts). Weighted like a city mention,
+// not like a full address: it is one line of a header, not a postal address.
+const US_CITY_STATE = /,\s*(AL|AK|AZ|AR|CA|CO|CT|DC|FL|GA|IL|IA|KS|KY|MD|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY)\b/;
 
 // Canadian postal code — LDL DLD with valid first letters; unambiguous.
 const CA_POSTAL = /\b[ABCEGHJ-NPRSTVXY]\d[A-Z]\s?\d[A-Z]\d\b/;
@@ -215,6 +262,7 @@ const POSTCODE_CITY: Array<{ re: RegExp; country: string; label: string }> = [
   { re: /\b\d{5}\s+(madrid|barcelona|valencia|sevilla|bilbao|zaragoza)\b/i, country: 'ES', label: 'Spanish postal address' },
   { re: /\b\d{5}\s+(roma|milano|napoli|torino|firenze|bologna)\b/i, country: 'IT', label: 'Italian postal address' },
   { re: /\b\d{4}\s?[A-Z]{2}\s+(amsterdam|rotterdam|den haag|utrecht|eindhoven)\b/i, country: 'NL', label: 'Dutch postal address' },
+  { re: AU_STATE_POSTCODE, country: 'AU', label: 'Australian state + postcode address' },
 ];
 
 // Education-system terms — highly diagnostic of where someone studied, and they
@@ -308,6 +356,7 @@ export function detectCountryFromResume(resumeText: string): GeoDetectionResult 
     if (re.test(text)) add(country, 2, 'address', `${label} detected`);
   }
   if (US_CITY.test(text)) add('US', 2, 'address', 'US city detected');
+  if (US_CITY_STATE.test(text)) add('US', 2, 'address', 'US "City, ST" location format');
 
   // 5. Currency symbols
   for (const [symbol, country] of Object.entries(CURRENCY_TO_COUNTRY)) {
@@ -340,8 +389,15 @@ export function detectCountryFromResume(resumeText: string): GeoDetectionResult 
     }
   }
 
-  // Resolve — highest score wins; a near-tie with another country lowers confidence
-  const ranked = Object.entries(scores).filter(([, s]) => s > 0).sort((a, b) => b[1] - a[1]);
+  // Resolve — highest score wins; a near-tie with another country lowers
+  // confidence. Ties break DETERMINISTICALLY: stronger best-signal first,
+  // then platform traffic share — never map insertion order (measured
+  // 2026-07-25: a 2-2-2 tie resolved GB-over-US purely because UK_SIGNALS
+  // happens to be the first CITY_SIGNALS entry).
+  const PRIORITY = ['US', 'GB', 'CA', 'AU', 'IN', 'DE', 'FR', 'ES', 'NL', 'IE', 'NZ', 'SG'];
+  const prio = (c: string) => { const i = PRIORITY.indexOf(c); return i === -1 ? PRIORITY.length : i; };
+  const ranked = Object.entries(scores).filter(([, s]) => s > 0)
+    .sort((a, b) => b[1] - a[1] || (best[b[0]]?.w ?? 0) - (best[a[0]]?.w ?? 0) || prio(a[0]) - prio(b[0]));
   if (ranked.length === 0) {
     return { country: null, confidence: 'low', signals: ['No country signals found in resume'], source: 'none' };
   }
@@ -350,7 +406,9 @@ export function detectCountryFromResume(resumeText: string): GeoDetectionResult 
 
   let confidence: 'high' | 'medium' | 'low' = topScore >= 5 ? 'high' : 'medium';
   if (ranked[1] && (topScore - secondScore) <= 1) {
-    if (confidence === 'high') confidence = 'medium';
+    // An EXACT tie identifies no single country — report 'low' so the
+    // caller prefers IP geolocation over what is at best a coin flip.
+    confidence = topScore === secondScore ? 'low' : 'medium';
     signals.push(`Conflicting location signals (${topCountry} vs ${ranked[1][0]}) — confidence lowered`);
   }
 
@@ -594,13 +652,26 @@ export function formatGeoContextForPrompt(
   country: string | null,
   industry: string,
   resumeCountry: GeoDetectionResult,
+  basis?: 'target' | 'resume' | 'ip' | 'default',
 ): string {
-  const effectiveCountry = resumeCountry.country || country;
-  if (!effectiveCountry && !country) return '';
+  // The CALLER's country wins — it already applied the full precedence
+  // (selected target market, low-confidence-tie defers to IP, fallbacks).
+  // Review-caught 2026-07-25: this line used to re-prefer the raw resume
+  // detection, so the AI narrative could be written for a DIFFERENT country
+  // than the countryStandards/geo blocks in the same response, and a
+  // user-selected target country never reached the prompt at all.
+  const effectiveCountry = country || resumeCountry.country;
+  if (!effectiveCountry) return '';
+  const b = basis ?? (effectiveCountry === resumeCountry.country ? 'resume' : 'ip');
 
   const insight = getMarketInsight(effectiveCountry, industry);
+  const provenance = b === 'target' ? 'the market the candidate selected'
+    : b === 'resume'
+      ? (resumeCountry.source === 'phone' ? 'confirmed from phone number' : `inferred from resume (${resumeCountry.source.replace(/_/g, ' ')})`)
+    : b === 'ip' ? 'inferred from IP'
+    : 'default market';
   const lines = ['\n\n<geo_market_context>'];
-  lines.push(`Candidate Location: ${insight.countryName} (${resumeCountry.source === 'phone' ? 'confirmed from phone number' : resumeCountry.source === 'address' ? 'inferred from address' : 'inferred from IP'})`);
+  lines.push(`Candidate Location: ${insight.countryName} (${provenance})`);
   lines.push(`Market Summary: ${insight.marketSummary}`);
   if (insight.hotSkills.length > 0) lines.push(`Hot Skills in ${insight.countryName} ${industry} market: ${insight.hotSkills.join(', ')}`);
   if (insight.risingKeywords.length > 0) lines.push(`Rising Keywords: ${insight.risingKeywords.join(', ')}`);

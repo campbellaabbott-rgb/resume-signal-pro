@@ -6462,12 +6462,16 @@ const FUNCTION_NAME = 'free-keyword-scan';
 const ADMIN_EMAIL = Deno.env.get('ADMIN_EMAIL') || 'admin@resumebooster.com';
 
 const getCountryFromHeaders = (req: Request): string | null => {
-  return (
-    req.headers.get('cf-ipcountry') ||
+  // Sanitized (review-caught 2026-07-25): Cloudflare emits pseudo-codes XX
+  // (unknown) and T1 (Tor), and x-country-code is client-settable — only a
+  // real two-letter code may enter the country precedence chain, where it
+  // can now WIN over a tied resume detection.
+  const raw = req.headers.get('cf-ipcountry') ||
     req.headers.get('x-vercel-ip-country') ||
     req.headers.get('x-country-code') ||
-    null
-  );
+    '';
+  const cc = raw.trim().toUpperCase();
+  return /^[A-Z]{2}$/.test(cc) && cc !== 'XX' && cc !== 'T1' ? cc : null;
 };
 
 
@@ -8415,14 +8419,27 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
       let geoResult = null;
       try {
         const resumeGeo = detectCountryFromResume(resumeText);
-        const effectiveCountry = validTargetCountry || resumeGeo.country || ipCountry || 'US';
+        // Low-confidence resume detection (an exact evidence tie) defers to
+        // IP geolocation — parity with the primary path, 2026-07-25.
+        const effectiveCountry = validTargetCountry
+          || (resumeGeo.confidence !== 'low' ? resumeGeo.country : null)
+          || ipCountry || resumeGeo.country || 'US';
         countryStandardsResult = evaluateCountryStandards(resumeText, effectiveCountry);
+        // Single basis derivation — same shape as the primary fork's geoBasis.
+        const geoBasis = validTargetCountry ? 'target'
+          : (resumeGeo.country && resumeGeo.confidence !== 'low') ? 'resume'
+          : ipCountry ? 'ip'
+          : resumeGeo.country ? 'resume' : 'default';
         geoResult = {
           country: effectiveCountry,
-          source: validTargetCountry ? 'target' : resumeGeo.source,
+          source: geoBasis === 'resume' ? resumeGeo.source : geoBasis,
+          basis: geoBasis,
           targetCountry: validTargetCountry,
           detectedCountry: resumeGeo.country,
-          confidence: validTargetCountry ? 'high' : resumeGeo.confidence,
+          confidence: geoBasis === 'target' ? 'high'
+            : geoBasis === 'ip' ? 'medium'
+            : geoBasis === 'default' ? 'low'
+            : resumeGeo.confidence,
         };
       } catch (geoErr) {
         console.warn('[FREE-KEYWORD-SCAN-STREAM] Geo/country-standards failed:', (geoErr as Error).message);

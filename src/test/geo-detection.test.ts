@@ -4,7 +4,7 @@
 // masquerading as country codes (+20 Egypt, +30 Greece), plus the euro
 // dead-end removal.
 import { describe, it, expect } from "vitest";
-import { detectCountryFromResume } from "../../supabase/functions/free-keyword-scan/market-intelligence";
+import { detectCountryFromResume, formatGeoContextForPrompt } from "../../supabase/functions/free-keyword-scan/market-intelligence";
 
 describe("detectCountryFromResume — phone codes", () => {
   it("detects newly-added dialing codes", () => {
@@ -169,5 +169,162 @@ describe("detectCountryFromResume — education-system signals", () => {
     expect(detectCountryFromResume("Klaus Weber — Berlin. Software Engineer. Abitur 2010.").country).toBe("DE");
     expect(detectCountryFromResume("Priya Sharma — Bengaluru. Data Engineer. B.Tech from IIT.").country).toBe("IN");
     expect(detectCountryFromResume("James Carter. Marketing Manager. A-Levels, University of Manchester.").country).toBe("GB");
+  });
+});
+
+// ─── 2026-07-25 live-audit regression: a US cloud engineer's resume received
+// a full UK market report at stated high confidence. Root causes, each pinned
+// below: bare "EC2" matched the UK postcode-district signal, "Seattle, WA"
+// matched the case-sensitive AU state list, the US phone patterns demanded a
+// literal "+1" that domestic resumes never write, the US address pattern
+// demanded a ZIP, and the resulting 2-2-2 tie broke toward GB purely by map
+// insertion order.
+describe("detectCountryFromResume — 2026-07-25 US-resume-got-UK-report regression", () => {
+  const AUDIT_RESUME = [
+    "Jordan Lee — Seattle, WA",
+    "(206) 555-0148 · jordan.lee@example.com",
+    "Cloud Engineer. Built and operated AWS EC2, S3, and Lambda infrastructure.",
+    "AWS Certified Solutions Architect - Associate.",
+    "B.S. Computer Science, University of Washington.",
+  ].join("\n");
+
+  it("the exact audit resume resolves US at high confidence", () => {
+    const r = detectCountryFromResume(AUDIT_RESUME);
+    expect(r.country).toBe("US");
+    expect(r.confidence).toBe("high");
+  });
+
+  it("bare AWS service names carry no UK signal", () => {
+    const r = detectCountryFromResume("Migrated workloads to EC2 and set up SW1 and N1 node pools.");
+    expect(r.country).not.toBe("GB");
+  });
+
+  it("a REAL full UK postcode still resolves GB", () => {
+    const r = detectCountryFromResume("Amara Okafor — 14 Finsbury Square, EC2A 1AH. Data analyst.");
+    expect(r.country).toBe("GB");
+  });
+
+  it("'B2B 2nd-largest' does not parse as a UK postcode", () => {
+    expect(detectCountryFromResume("Scaled the B2B 2nd-largest vertical.").country).not.toBe("GB");
+  });
+
+  it("domestic US phone formats count as US without +1", () => {
+    expect(detectCountryFromResume("Contact: (206) 555-0148").country).toBe("US");
+    expect(detectCountryFromResume("Cell 206-555-0148, references available").country).toBe("US");
+  });
+
+  it("'City, ST' with no ZIP is a US signal", () => {
+    const r = detectCountryFromResume("Priya Patel — Columbus, GA. Supply chain analyst.");
+    expect(r.country).toBe("US");
+  });
+
+  it("a degree line 'English, MA 2015' is NOT Massachusetts", () => {
+    expect(detectCountryFromResume("B.A. English, MA 2015, cum laude").country).not.toBe("US");
+  });
+});
+
+describe("detectCountryFromResume — Australian signals after the WA/SA fix", () => {
+  it("capitalized Australian cities now match (old regex was case-sensitive)", () => {
+    expect(detectCountryFromResume("Liam O'Brien — Sydney, NSW. Operations manager.").country).toBe("AU");
+    expect(detectCountryFromResume("Based in Melbourne, available immediately.").country).toBe("AU");
+  });
+
+  it("state + real postcode is address-grade AU evidence", () => {
+    const r = detectCountryFromResume("42 George St, Perth WA 6000. Mining engineer.");
+    expect(r.country).toBe("AU");
+    expect(r.confidence).toBe("high");
+  });
+
+  it("'Seattle, WA' carries no AU signal", () => {
+    const r = detectCountryFromResume("Software engineer in Seattle, WA since 2019.");
+    expect(r.country).toBe("US");
+  });
+
+  it("'Windows NT' and an ACT test score carry no AU signal", () => {
+    expect(detectCountryFromResume("Administered Windows NT and Solaris estates.").country).not.toBe("AU");
+    expect(detectCountryFromResume("SAT 1490, ACT 34. Recent graduate.").country).not.toBe("AU");
+  });
+
+  it("'Acme SA 2019' (company suffix + year) is not an Australian address", () => {
+    expect(detectCountryFromResume("Consultant, Acme SA 2019-2023, led EMEA rollouts.").country).not.toBe("AU");
+  });
+});
+
+describe("detectCountryFromResume — deterministic ties", () => {
+  it("an exact one-city-each tie reports LOW confidence (caller defers to IP)", () => {
+    const r = detectCountryFromResume("Coordinated the London and Seattle launch events.");
+    expect(r.confidence).toBe("low");
+    expect(r.country).toBe("US"); // traffic-priority order, not map insertion order
+  });
+});
+
+// ─── Adversarial-review round (2026-07-25): each block pins a confirmed
+// finding from the pre-ship review of the country-detection fix.
+describe("detectCountryFromResume — NANP shape rejects foreign domestic formats", () => {
+  it("Israeli 05X-XXX-XXXX is not a US phone", () => {
+    const r = detectCountryFromResume("Noa Cohen — Tel Aviv\n054-123-4567\nBackend engineer.");
+    expect(r.country).toBe("IL");
+  });
+
+  it("Irish (0XX) XXX XXXX is not a US phone", () => {
+    const r = detectCountryFromResume("Aoife Murphy — Cork, Ireland\n(021) 496 1234\nAccountant.");
+    expect(r.country).toBe("IE");
+  });
+
+  it("Colombian 300-1XX-XXXX is not a US phone (exchange starts with 1)", () => {
+    const r = detectCountryFromResume("Camila Rojas — Bogotá\n300-123-4567\nProduct designer.");
+    expect(r.country).toBe("CO");
+  });
+
+  it("real US formats still match after the [2-9] tightening", () => {
+    expect(detectCountryFromResume("Contact: (206) 555-0148").country).toBe("US");
+    expect(detectCountryFromResume("Cell 206-555-0148").country).toBe("US");
+  });
+});
+
+describe("detectCountryFromResume — UK postcode vs hardware/spec bigrams", () => {
+  it("'EC2 8GB' and 'S3 4TB' spec lines carry no UK signal", () => {
+    const r = detectCountryFromResume(
+      "Alex Rivera — Cloud Engineer\nProvisioned EC2 8GB instances behind ALB.\nMigrated S3 4TB data lake.",
+    );
+    expect(r.country).not.toBe("GB");
+  });
+});
+
+describe("detectCountryFromResume — Brazilian state codes vs US 'City, ST'", () => {
+  it("'Florianópolis, SC' ties BR vs US at LOW confidence instead of scoring US outright", () => {
+    const r = detectCountryFromResume("Lucas Ferreira — Florianópolis, SC\nSenior Software Engineer.");
+    expect(r.confidence).toBe("low"); // the caller's IP fallback decides
+  });
+});
+
+describe("detectCountryFromResume — full AU postcode ranges", () => {
+  it("Tuggeranong-district Canberra (ACT 29xx) is address-grade AU", () => {
+    const r = detectCountryFromResume("12 Smith St, Kambah ACT 2902. APS6 policy officer.");
+    expect(r.country).toBe("AU");
+    expect(r.confidence).toBe("high");
+  });
+});
+
+describe("formatGeoContextForPrompt — honors the caller's resolved country", () => {
+  const tieGeo = {
+    country: "GB" as const,
+    confidence: "low" as const,
+    signals: [],
+    source: "address" as const,
+  };
+
+  it("prompt names the caller's country, not the raw tie winner", () => {
+    const hint = formatGeoContextForPrompt("US", "technology", tieGeo, "ip");
+    expect(hint).toContain("United States");
+    expect(hint).not.toContain("Candidate Location: United Kingdom");
+    expect(hint).toContain("inferred from IP");
+  });
+
+  it("a selected target market reaches the prompt with target provenance", () => {
+    const usGeo = { country: "US" as const, confidence: "high" as const, signals: [], source: "phone" as const };
+    const hint = formatGeoContextForPrompt("GB", "finance", usGeo, "target");
+    expect(hint).toContain("United Kingdom");
+    expect(hint).toContain("the market the candidate selected");
   });
 });
