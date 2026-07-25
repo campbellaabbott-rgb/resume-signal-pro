@@ -73,7 +73,7 @@ const json = (body: unknown, status = 200) =>
 // while this file was untouched). Always bump BUILD_VERSION here when a shared
 // module this function imports changes — it forces the diff AND gives the
 // deploy a verifiable tell.
-const BUILD_VERSION = "2026-07-25.10";
+const BUILD_VERSION = "2026-07-25.11";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -1572,28 +1572,36 @@ async function maybeKickMaintenance(client: SupabaseClient): Promise<void> {
     // Country backfill runs as an INDEPENDENT track: it is pure DB work (no
     // vendor fetches), so it does not queue behind the fetch-heavy ladder.
     // Re-runs when the city table version bumps; resumes a dead chain from its
-    // cursor. When it needs a kick, it takes this cycle's kick and the ladder
-    // waits for the next one (10 minutes) — a bounded politeness cost.
+    // cursor.
+    //
+    // Track kicks are NON-EXCLUSIVE — kick and fall through, never return.
+    // The original return-after-kick was framed as "a bounded politeness
+    // cost", and for country (hours of DB work) it was. The embed track
+    // broke the bound: its chain is days of CPU-heavy inference whose hops
+    // die on every isolate recycle, so it needed a revival on essentially
+    // every 10-minute cycle — and each revival returned, starving desc-sweep
+    // of its own recovery kicks. Measured 2026-07-25: desc_sweep stamp went
+    // 150 minutes stale mid-workday (refresh loop alive the whole time)
+    // starting exactly at the deploy that introduced the embed track. A track
+    // revival is one waitUntil fetch; running it alongside a ladder kick is
+    // exactly the concurrency these tracks were designed for.
     const cb = await alive("country_backfill");
     const cbDone = Number(cb.v?.mapVersion) === COUNTRY_MAP_VERSION && typeof cb.v?.doneAt === "string";
     if (!cbDone && !cb.alive) {
       const cbCursor = Number(cb.v?.mapVersion) === COUNTRY_MAP_VERSION && typeof cb.v?.cursor === "string" ? cb.v.cursor as string : "";
       await kick("backfill-country", cbCursor ? { cursor: cbCursor } : {});
-      return;
     }
 
     // Embedding sweep — the second independent track. In-runtime inference +
-    // DB writes, no vendor fetches, so like country it must not queue behind
-    // the fetch-heavy ladder. "Done" only means the backlog is empty RIGHT NOW
-    // (new postings arrive around the clock, and desc-sweep keeps upgrading
-    // title-only rows), so a completed sweep re-kicks on a 60-minute cadence
-    // rather than settling for good.
+    // DB writes, no vendor fetches. "Done" only means the backlog is empty
+    // RIGHT NOW (new postings arrive around the clock, and desc-sweep keeps
+    // upgrading title-only rows), so a completed sweep re-kicks on a
+    // 60-minute cadence rather than settling for good.
     const es = await alive("embed_sweep");
     const esDoneAt = typeof es.v?.doneAt === "string" ? Date.parse(es.v.doneAt as string) : NaN;
     const esSettled = Number.isFinite(esDoneAt) && Date.now() - esDoneAt < 60 * 60_000;
     if (!es.alive && !esSettled) {
       await kick("embed-sweep");
-      return;
     }
 
     // Categorization rules changed since the corpus was stamped? Sweep the
@@ -1968,7 +1976,7 @@ Deno.serve(async (req) => {
       // bundle, so a stale/failed publish is visible in ONE call instead of being
       // inferred from posting counts over hours (the rung-2 "did it deploy?" pain).
       // Also the source of truth for the heartbeat's job_board_deploy check.
-      const [prog, rot, refreshMeta, bf, hotMeta, fresh, breaker, dateCov, bsMeta, dsMeta] = await Promise.all([
+      const [prog, rot, refreshMeta, bf, hotMeta, fresh, breaker, dateCov, bsMeta, dsMeta, esMeta] = await Promise.all([
         client.from("job_board_meta").select("v, updated_at").eq("k", "refresh_progress").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "cold_rotation").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "refresh").maybeSingle(),
@@ -1981,6 +1989,7 @@ Deno.serve(async (req) => {
         client.rpc("get_date_coverage").then((r) => r, () => ({ data: null })),
         client.from("job_board_meta").select("v").eq("k", "bootstrap").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "desc_sweep").maybeSingle(),
+        client.from("job_board_meta").select("v, updated_at").eq("k", "embed_sweep").maybeSingle(),
       ]);
       const pgV = (prog.data?.v ?? {}) as { hot?: number; cold?: number; coldDone?: number; failedAcc?: string[] };
       const rotV = (rot.data?.v ?? {}) as { completedAt?: string; coldBoards?: number };
@@ -2002,6 +2011,15 @@ Deno.serve(async (req) => {
           vendor: ((dsMeta.data?.v ?? {}) as { vendor?: string }).vendor ?? null,
           doneAt: ((dsMeta.data?.v ?? {}) as { doneAt?: string }).doneAt ?? null,
           ageMin: dsMeta.data?.updated_at ? Math.round((Date.now() - new Date(dsMeta.data.updated_at).getTime()) / 60000) : null,
+        },
+        // Embedding sweep liveness — same shape as descSweep. Added 2026-07-25
+        // when the corpus fill had NO anon-visible progress signal (the meta
+        // row and the embeddings table are both RLS-hidden), so "is it
+        // filling?" needed dashboard SQL. A fresh ageMin = chain alive.
+        embedSweep: {
+          doneAt: ((esMeta.data?.v ?? {}) as { doneAt?: string }).doneAt ?? null,
+          note: ((esMeta.data?.v ?? {}) as { note?: string }).note ?? null,
+          ageMin: esMeta.data?.updated_at ? Math.round((Date.now() - new Date(esMeta.data.updated_at).getTime()) / 60000) : null,
         },
         // live pipeline health (meta-derived)
         totalPostings: rfV.total ?? null,
