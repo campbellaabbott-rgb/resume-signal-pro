@@ -4173,6 +4173,8 @@
     "empty": "Keine Stelle passt zu diesen Filtern. Lockern Sie einen und versuchen Sie es erneut.",
     "resultsSummary": "{{shown}} von {{total}} passenden Stellen aus {{companies}} Unternehmen",
     "resultsSummaryNoTotal": "{{shown}} passende Stellen werden angezeigt",
+    "alsoInLocations_one": "Stellt auch an {{count}} weiterem Standort ein",
+    "alsoInLocations_other": "Stellt auch an {{count}} weiteren Standorten ein",
     "sourcesDown": "{{count}} Unternehmens-Feeds sind gerade nicht erreichbar",
     "postedToday": "heute",
     "postedDaysAgo": "vor {{count}} T",
@@ -4452,9 +4454,7 @@
     "discSalary": "{{shown}} dieser Arbeitgeber nennen das Gehalt. Weitere {{hidden}} Stellen erfüllen alle anderen Kriterien, machen aber keine Gehaltsangabe – dieser Filter blendet sie daher aus.",
     "discWorkMode": "{{shown}} dieser Arbeitgeber geben an, wo gearbeitet wird. Weitere {{hidden}} Stellen erfüllen alle anderen Kriterien, sagen aber nicht, ob remote, hybrid oder vor Ort – dieser Filter blendet sie daher aus.",
     "discShowAll": "Diese ebenfalls anzeigen",
-    "discCategory": "Außerdem haben {{hidden}} Stellen im gesamten Board einen Titel, der den Bereich nie nennt – kein Bereichsfilter kann sie erreichen.",
-    "alsoInLocations": "Stellt auch an {{count}} weiterem Standort ein",
-    "alsoInLocations_plural": "Stellt auch an {{count}} weiteren Standorten ein"
+    "discCategory": "Außerdem haben {{hidden}} Stellen im gesamten Board einen Titel, der den Bereich nie nennt – kein Bereichsfilter kann sie erreichen."
   },
   "accountPage": {
     "statActive": "Aktive Bewerbungen",

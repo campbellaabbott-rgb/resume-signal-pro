@@ -4173,6 +4173,8 @@
     "empty": "Walang opening na tumutugma sa mga filter. Luwagan ang isa at subukan ulit.",
     "resultsSummary": "Ipinapakita ang {{shown}} sa {{total}} tumutugmang opening sa {{companies}} kumpanya",
     "resultsSummaryNoTotal": "Ipinapakita ang {{shown}} tugmang bakante",
+    "alsoInLocations_one": "Kumukuha rin sa {{count}} pang lokasyon",
+    "alsoInLocations_other": "Kumukuha rin sa {{count}} pang mga lokasyon",
     "sourcesDown": "{{count}} feed ng kumpanya ang hindi maabot ngayon",
     "postedToday": "ngayon",
     "postedDaysAgo": "{{count}} araw na nakalipas",
@@ -4452,9 +4454,7 @@
     "discSalary": "{{shown}} sa mga employer na ito ang naglalathala ng sahod. May {{hidden}} pang trabaho na tumutugma sa lahat ng iba mong hinanap, pero hindi nagsasabi ng sahod — kaya itinatago sila ng filter na ito.",
     "discWorkMode": "{{shown}} sa mga employer na ito ang nagsasabi kung saan gagawin ang trabaho. May {{hidden}} pang trabaho na tumutugma sa lahat ng iba, pero hindi sinasabi kung remote, hybrid, o on-site — kaya itinatago sila ng filter na ito.",
     "discShowAll": "Ipakita rin ang mga iyon",
-    "discCategory": "Bukod pa rito, {{hidden}} trabaho sa buong board ang may pamagat na hindi sinasabi ang larangan, kaya walang filter ng larangan ang makakaabot sa kanila.",
-    "alsoInLocations": "Kumukuha rin sa {{count}} pang lokasyon",
-    "alsoInLocations_plural": "Kumukuha rin sa {{count}} pang mga lokasyon"
+    "discCategory": "Bukod pa rito, {{hidden}} trabaho sa buong board ang may pamagat na hindi sinasabi ang larangan, kaya walang filter ng larangan ang makakaabot sa kanila."
   },
   "accountPage": {
     "statActive": "Aktibong aplikasyon",

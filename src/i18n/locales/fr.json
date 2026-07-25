@@ -4173,6 +4173,8 @@
     "empty": "Aucune offre ne correspond à ces filtres. Assouplissez-en un et réessayez.",
     "resultsSummary": "{{shown}} offres affichées sur {{total}} dans {{companies}} entreprises",
     "resultsSummaryNoTotal": "Affichage de {{shown}} offres correspondantes",
+    "alsoInLocations_one": "Recrute aussi dans {{count}} autre lieu",
+    "alsoInLocations_other": "Recrute aussi dans {{count}} autres lieux",
     "sourcesDown": "{{count}} flux d'entreprises sont injoignables pour le moment",
     "postedToday": "aujourd'hui",
     "postedDaysAgo": "il y a {{count}} j",
@@ -4452,9 +4454,7 @@
     "discSalary": "{{shown}} de ces employeurs publient la rémunération. {{hidden}} autres offres correspondent à tout le reste, mais n'indiquent pas de salaire : ce filtre les masque donc.",
     "discWorkMode": "{{shown}} de ces employeurs précisent où le travail s'effectue. {{hidden}} autres offres correspondent à tout le reste, mais ne disent pas si c'est à distance, hybride ou sur site : ce filtre les masque donc.",
     "discShowAll": "Les afficher aussi",
-    "discCategory": "Par ailleurs, {{hidden}} offres sur l'ensemble du tableau ont un intitulé qui n'indique jamais leur domaine : aucun filtre par domaine ne peut les atteindre.",
-    "alsoInLocations": "Recrute aussi dans {{count}} autre lieu",
-    "alsoInLocations_plural": "Recrute aussi dans {{count}} autres lieux"
+    "discCategory": "Par ailleurs, {{hidden}} offres sur l'ensemble du tableau ont un intitulé qui n'indique jamais leur domaine : aucun filtre par domaine ne peut les atteindre."
   },
   "accountPage": {
     "statActive": "Candidatures actives",

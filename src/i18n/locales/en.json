@@ -4173,6 +4173,8 @@
     "empty": "No openings match those filters. Loosen one and try again.",
     "resultsSummary": "Showing {{shown}} of {{total}} matching openings across {{companies}} companies",
     "resultsSummaryNoTotal": "Showing {{shown}} matching openings",
+    "alsoInLocations_one": "Also hiring in {{count}} more location",
+    "alsoInLocations_other": "Also hiring in {{count}} more locations",
     "sourcesDown": "{{count}} company feeds are unreachable right now",
     "postedToday": "today",
     "postedDaysAgo": "{{count}}d ago",
@@ -4452,9 +4454,7 @@
     "discSalary": "{{shown}} of these employers publish pay. Another {{hidden}} openings match everything else you asked for, but don't state a salary — so this filter hides them.",
     "discWorkMode": "{{shown}} of these employers state where the work happens. Another {{hidden}} openings match everything else, but don't say remote, hybrid, or on-site — so this filter hides them.",
     "discShowAll": "Show those too",
-    "discCategory": "Separately, {{hidden}} openings across the whole board have a job title that never says which field they're in, so no field filter can reach them.",
-    "alsoInLocations": "Also hiring in {{count}} more location",
-    "alsoInLocations_plural": "Also hiring in {{count}} more locations"
+    "discCategory": "Separately, {{hidden}} openings across the whole board have a job title that never says which field they're in, so no field filter can reach them."
   },
   "accountPage": {
     "statActive": "Active applications",

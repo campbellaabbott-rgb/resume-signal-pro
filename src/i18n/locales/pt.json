@@ -4173,6 +4173,8 @@
     "empty": "Nenhuma vaga corresponde a esses filtros. Afrouxe um deles e tente de novo.",
     "resultsSummary": "Mostrando {{shown}} de {{total}} vagas em {{companies}} empresas",
     "resultsSummaryNoTotal": "Exibindo {{shown}} vagas correspondentes",
+    "alsoInLocations_one": "Também contratando em mais {{count}} local",
+    "alsoInLocations_other": "Também contratando em mais {{count}} locais",
     "sourcesDown": "{{count}} feeds de empresas estão fora do ar agora",
     "postedToday": "hoje",
     "postedDaysAgo": "há {{count}} d",
@@ -4452,9 +4454,7 @@
     "discSalary": "{{shown}} destes empregadores divulgam a remuneração. Outras {{hidden}} vagas atendem a todo o resto, mas não informam salário — por isso este filtro as oculta.",
     "discWorkMode": "{{shown}} destes empregadores informam onde o trabalho acontece. Outras {{hidden}} vagas atendem a todo o resto, mas não dizem se é remoto, híbrido ou presencial — por isso este filtro as oculta.",
     "discShowAll": "Mostrar essas também",
-    "discCategory": "Além disso, {{hidden}} vagas em todo o quadro têm um título que nunca diz a qual área pertencem, então nenhum filtro de área as alcança.",
-    "alsoInLocations": "Também contratando em mais {{count}} local",
-    "alsoInLocations_plural": "Também contratando em mais {{count}} locais"
+    "discCategory": "Além disso, {{hidden}} vagas em todo o quadro têm um título que nunca diz a qual área pertencem, então nenhum filtro de área as alcança."
   },
   "accountPage": {
     "statActive": "Candidaturas ativas",

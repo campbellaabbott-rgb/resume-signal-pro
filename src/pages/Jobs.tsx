@@ -3447,9 +3447,8 @@ export default function Jobs() {
                               className="text-xs text-muted-foreground mt-0.5"
                               title={(job.otherLocations ?? []).join(" · ")}
                             >
-                              {t("jobsPage.alsoInLocations", "Also hiring in {{count}} more location", {
+                              {t("jobsPage.alsoInLocations", "Also hiring in {{count}} more locations", {
                                 count: (job.locationCount ?? 1) - 1,
-                                count_plural: (job.locationCount ?? 1) - 1,
                               })}
                               {(job.otherLocations ?? []).length > 0 && `: ${(job.otherLocations ?? []).slice(0, 3).join(", ")}`}
                             </p>

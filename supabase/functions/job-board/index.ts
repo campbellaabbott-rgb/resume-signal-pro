@@ -72,7 +72,7 @@ const json = (body: unknown, status = 200) =>
 // while this file was untouched). Always bump BUILD_VERSION here when a shared
 // module this function imports changes — it forces the diff AND gives the
 // deploy a verifiable tell.
-const BUILD_VERSION = "2026-07-25.7";
+const BUILD_VERSION = "2026-07-25.8";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -1576,9 +1576,12 @@ async function maybeKickMaintenance(client: SupabaseClient): Promise<void> {
     if ((catVer?.v as { version?: number } | null)?.version !== CATEGORIZE_VERSION) {
       const prog = await alive("recategorize_progress");
       if (!prog.alive) {
-        // Resume from the dead chain's frontier — rows before it were already
-        // judged by the current rules, so rescanning them buys nothing.
-        const cursor = typeof prog.v?.cursor === "string" ? prog.v.cursor as string : "";
+        // Resume from the dead chain's frontier — but ONLY if that frontier was
+        // cut under the CURRENT rules. A leftover stamp from a v(N-1) sweep that
+        // never completed would otherwise make the v(N) sweep skip everything
+        // before its cursor, leaving rows judged only by the old rules.
+        const sameVersion = Number(prog.v?.version) === CATEGORIZE_VERSION;
+        const cursor = sameVersion && typeof prog.v?.cursor === "string" ? prog.v.cursor as string : "";
         await kick("recategorize", cursor ? { cursor } : {});
       }
       return;
@@ -2014,7 +2017,7 @@ Deno.serve(async (req) => {
       // (updates remove them from the 'other' pile; survivors stay judged), so
       // resuming is correct, not just cheap.
       await client.from("job_board_meta").upsert(
-        { k: "recategorize_progress", v: { cursor, at: new Date().toISOString() }, updated_at: new Date().toISOString() },
+        { k: "recategorize_progress", v: { cursor, version: CATEGORIZE_VERSION, at: new Date().toISOString() }, updated_at: new Date().toISOString() },
         { onConflict: "k" },
       );
       let scanned = 0;
@@ -3293,10 +3296,19 @@ async function serveList(
       : [];
     const maxAgeNum = Number(body.maxAgeDays);
     const wm = String(body.workMode ?? "");
+    // Multi-term queries: the page ANDs each term (any of title/company/dept per
+    // term) while the RPC treats p_q as ONE contiguous ILIKE. "senior nurse"
+    // matches "Senior Registered Nurse" on the page but not in that count — the
+    // summary could read "Showing 60 of 12". Only single terms match the page's
+    // semantics; multi-term falls back (null) to the inline exact count, which
+    // uses the identical buildQuery filter. Rare path: it is reached only when
+    // the ranked search (which carries its own total) has already failed.
+    const qTerms = String(body.q ?? "").toLowerCase().split(/\s+/).map(sanitizeTerm).filter(Boolean);
+    if (qTerms.length > 1) return null;
     try {
       const { data, error } = await client.rpc("count_jobs_capped", {
         p_fresh_cutoff: freshCutoffIso,
-        p_q: String(body.q ?? "").trim() ? sanitizeTerm(String(body.q ?? "")) : null,
+        p_q: qTerms.length === 1 ? qTerms[0] : null,
         p_location: sanitizeTerm(String(body.location ?? "")) || null,
         p_remote: body.remote === true ? true : null,
         p_country: /^[A-Za-z]{2}$/.test(String(body.country ?? "")) ? String(body.country).toUpperCase() : null,

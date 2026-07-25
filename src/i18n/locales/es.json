@@ -4173,6 +4173,8 @@
     "empty": "Ninguna oferta coincide con esos filtros. Relaja alguno e inténtalo de nuevo.",
     "resultsSummary": "Mostrando {{shown}} de {{total}} ofertas en {{companies}} empresas",
     "resultsSummaryNoTotal": "Mostrando {{shown}} ofertas coincidentes",
+    "alsoInLocations_one": "También contrata en {{count}} ubicación más",
+    "alsoInLocations_other": "También contrata en {{count}} ubicaciones más",
     "sourcesDown": "{{count}} fuentes de empresas no responden ahora mismo",
     "postedToday": "hoy",
     "postedDaysAgo": "hace {{count}} d",
@@ -4452,9 +4454,7 @@
     "discSalary": "{{shown}} de estas empresas publican el salario. Otras {{hidden}} vacantes cumplen todo lo demás que pediste, pero no indican salario, así que este filtro las oculta.",
     "discWorkMode": "{{shown}} de estas empresas indican dónde se trabaja. Otras {{hidden}} vacantes cumplen todo lo demás, pero no dicen si es remoto, híbrido o presencial, así que este filtro las oculta.",
     "discShowAll": "Mostrarlas también",
-    "discCategory": "Aparte, {{hidden}} vacantes de todo el tablero tienen un título que no indica a qué área pertenecen, así que ningún filtro de área puede alcanzarlas.",
-    "alsoInLocations": "También contrata en {{count}} ubicación más",
-    "alsoInLocations_plural": "También contrata en {{count}} ubicaciones más"
+    "discCategory": "Aparte, {{hidden}} vacantes de todo el tablero tienen un título que no indica a qué área pertenecen, así que ningún filtro de área puede alcanzarlas."
   },
   "accountPage": {
     "statActive": "Postulaciones activas",
