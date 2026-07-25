@@ -64,6 +64,7 @@ interface FreshnessStats {
 export default function GhostJobIndex() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [leaders, setLeaders] = useState<Leader[]>([]);
+  const [benchmarks, setBenchmarks] = useState<Array<{ company: string; closures: number; median_days_open: number; window_days: number }>>([]);
   const [audit, setAudit] = useState<AuditResult | null>(null);
   const [freshness, setFreshness] = useState<FreshnessStats | null>(null);
   // Per-vendor company-stated date coverage — the same probe the ops
@@ -79,7 +80,7 @@ export default function GhostJobIndex() {
         // fast calls (leaders, freshness, audit) always run live below.
         const { data: cacheRaw } = await Promise.resolve(rpc("get_stats_cache")).catch(() => ({ data: null }));
         const cache = (cacheRaw && typeof cacheRaw === "object" && !Array.isArray(cacheRaw)) ? (cacheRaw as Record<string, unknown>) : null;
-        const [s, l, a, f] = await Promise.all([
+        const [s, l, a, f, b] = await Promise.all([
           cache?.ghost_stats ? Promise.resolve({ data: [cache.ghost_stats] }) : rpc("get_ghost_job_index_stats"),
           rpc("get_actively_hiring_companies", { p_limit: 20 }),
           // The daily self-audit result (job_board_meta is public-read).
@@ -90,6 +91,9 @@ export default function GhostJobIndex() {
           // (verified live: every tile went "—"). Promise.resolve assimilates
           // the thenable into a real Promise first.
           Promise.resolve(rpc("get_freshness_stats")).catch(() => ({ data: null })),
+          // Hiring-speed benchmarks from the closure log — returns [] until the
+          // migration lands, and the section simply doesn't render.
+          Promise.resolve(rpc("get_employer_benchmarks", { p_days: 90, p_min_closures: 25, p_limit: 20 })).catch(() => ({ data: null })),
         ]);
         let srow = Array.isArray(s.data) ? (s.data[0] as Stats) : null;
         // The stats RPC can time out on a cold cache and succeed warm — one
@@ -101,6 +105,7 @@ export default function GhostJobIndex() {
         }
         if (srow) setStats(srow);
         if (Array.isArray(l.data)) setLeaders(l.data as Leader[]);
+        if (Array.isArray(b.data)) setBenchmarks(b.data as Array<{ company: string; closures: number; median_days_open: number; window_days: number }>);
         const frow = Array.isArray(f.data) ? (f.data[0] as FreshnessStats) : null;
         if (frow && typeof frow.p50_min === "number") setFreshness(frow);
         const av = (a.data as { v?: AuditResult } | null)?.v;
@@ -299,6 +304,31 @@ export default function GhostJobIndex() {
             <p className="text-[11px] text-muted-foreground mt-2">
               Ranked by roles that stayed posted at least a week and then came down — a real fill signal with
               repost churn filtered out, counted over the days we've actually tracked.
+            </p>
+          </div>
+        )}
+
+        {/* Hiring-speed benchmarks — measured closure log, never an estimate */}
+        {benchmarks.length > 0 && (
+          <div className="mb-8">
+            <h2 className="text-lg font-semibold flex items-center gap-2 mb-3">
+              <Briefcase className="w-4 h-4 text-primary" /> Fastest measured fills
+            </h2>
+            <div className="rounded-2xl border border-border bg-card overflow-hidden">
+              {benchmarks.map((r, i) => (
+                <div key={r.company} className={`flex items-center gap-3 px-4 py-2.5 ${i > 0 ? "border-t border-border/60" : ""}`}>
+                  <span className="text-xs text-muted-foreground w-5 shrink-0">{i + 1}</span>
+                  <span className="flex-1 text-sm font-medium text-foreground truncate">{r.company}</span>
+                  <span className="text-[11px] text-success font-semibold shrink-0">median {r.median_days_open}d open</span>
+                  <span className="text-[11px] text-muted-foreground shrink-0 w-28 text-right">{r.closures.toLocaleString()} fills observed</span>
+                </div>
+              ))}
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-2">
+              Median days from the company's stated post date (or our first sighting, where no date is published) to
+              the posting coming down, measured over the last {benchmarks[0]?.window_days ?? 90} days. Employers with
+              fewer than 25 observed closures are excluded so a single quick fill can't crown anyone. Measured from
+              our closure log — never an estimate.
             </p>
           </div>
         )}

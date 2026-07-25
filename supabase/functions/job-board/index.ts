@@ -17,6 +17,7 @@ import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supa
 import { HOT_TOKENS, JOB_SOURCES, LIGHT_DESC_TOKENS, type JobSource } from "./sources.ts";
 import { BOARD_DESC_SOURCES, DETAIL_DESC_SOURCES, clusterKey, jobPostingLdDescription, workdayCxsUrl } from "./descriptions.ts";
 import {
+  COUNTRY_MAP_VERSION,
   detectWorkMode,
   htmlToText,
   normalizeAshby,
@@ -72,7 +73,7 @@ const json = (body: unknown, status = 200) =>
 // while this file was untouched). Always bump BUILD_VERSION here when a shared
 // module this function imports changes — it forces the diff AND gives the
 // deploy a verifiable tell.
-const BUILD_VERSION = "2026-07-25.8";
+const BUILD_VERSION = "2026-07-25.9";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -1568,6 +1569,19 @@ async function maybeKickMaintenance(client: SupabaseClient): Promise<void> {
       })).then((r) => r.text()).catch(() => {}));
     };
 
+    // Country backfill runs as an INDEPENDENT track: it is pure DB work (no
+    // vendor fetches), so it does not queue behind the fetch-heavy ladder.
+    // Re-runs when the city table version bumps; resumes a dead chain from its
+    // cursor. When it needs a kick, it takes this cycle's kick and the ladder
+    // waits for the next one (10 minutes) — a bounded politeness cost.
+    const cb = await alive("country_backfill");
+    const cbDone = Number(cb.v?.mapVersion) === COUNTRY_MAP_VERSION && typeof cb.v?.doneAt === "string";
+    if (!cbDone && !cb.alive) {
+      const cbCursor = Number(cb.v?.mapVersion) === COUNTRY_MAP_VERSION && typeof cb.v?.cursor === "string" ? cb.v.cursor as string : "";
+      await kick("backfill-country", cbCursor ? { cursor: cbCursor } : {});
+      return;
+    }
+
     // Categorization rules changed since the corpus was stamped? Sweep the
     // stored "other" rows through the current rules in a fresh invocation
     // (own compute budget). Idempotent: the stamp is written only when the
@@ -2564,6 +2578,67 @@ Deno.serve(async (req) => {
       return json({ ok: true, board: s.token, updated, remaining: (rows ?? []).length === PER_HOP ? "more" : "board-done", nextTi: ti });
     }
 
+    if (action === "backfill-country") {
+      // Country for rows whose location never carried one (61.7% coverage when
+      // built; the country filter was blind to 218k postings). Pure DB work —
+      // read location, run the same detectCountry ingest uses (now with the
+      // exact-segment city table), write back. No network, so it is allowed to
+      // run alongside desc-sweep instead of queueing behind it.
+      if (typeof body.chainKey !== "string" || body.chainKey !== await chainKey()) {
+        return json({ error: "backfill-country is a maintenance action" }, 403);
+      }
+      let cursor = typeof body.cursor === "string" ? body.cursor : "";
+      // Liveness restamp every invocation; cursor lets a dead chain resume.
+      await client.from("job_board_meta").upsert(
+        { k: "country_backfill", v: { cursor, mapVersion: COUNTRY_MAP_VERSION, at: new Date().toISOString() }, updated_at: new Date().toISOString() },
+        { onConflict: "k" },
+      );
+      const PAGES = 4;
+      let scanned = 0, updated = 0;
+      for (let page = 0; page < PAGES; page++) {
+        let q = client.from("job_board_postings")
+          .select("id,location")
+          .is("country", null)
+          .order("id")
+          .limit(2000);
+        if (cursor) q = q.gt("id", cursor);
+        const { data: rows, error } = await q;
+        if (error) throw error;
+        const byCountry = new Map<string, string[]>();
+        for (const r of rows ?? []) {
+          scanned++;
+          const c = detectCountry(r.location as string | null);
+          if (c) {
+            if (!byCountry.has(c)) byCountry.set(c, []);
+            byCountry.get(c)!.push(r.id as string);
+          }
+        }
+        for (const [c, ids] of byCountry) {
+          for (let i = 0; i < ids.length; i += 200) {
+            const { error: uErr } = await client.from("job_board_postings").update({ country: c }).in("id", ids.slice(i, i + 200));
+            if (!uErr) updated += Math.min(200, ids.length - i);
+          }
+        }
+        if (!rows || rows.length < 2000) { cursor = ""; break; }
+        cursor = rows[rows.length - 1].id as string;
+      }
+      if (cursor) {
+        const url = `${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`;
+        waitUntil(chainKey().then((key) => fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "backfill-country", chainKey: key, cursor }),
+        })).then((rr) => rr.text()).catch(() => {}));
+        return json({ ok: true, scanned, updated, nextCursor: cursor });
+      }
+      await client.from("job_board_meta").upsert(
+        { k: "country_backfill", v: { doneAt: new Date().toISOString(), mapVersion: COUNTRY_MAP_VERSION }, updated_at: new Date().toISOString() },
+        { onConflict: "k" },
+      );
+      console.log(`[JOB-BOARD] country backfill complete: ${scanned} scanned, ${updated} filled (map v${COUNTRY_MAP_VERSION})`);
+      return json({ ok: true, scanned, updated, done: true });
+    }
+
     if (action === "desc-sweep") {
       // Bulk description fill for the vendors whose text needs a PER-POSTING
       // fetch. Measured 2026-07-24: workday, smartrecruiters, bamboohr, oracle
@@ -3142,7 +3217,11 @@ function collapseClusters(
   const byKey = new Map<string, Record<string, unknown>>();
   let rawConsumed = 0;
   for (const r of rows) {
-    const key = clusterKey(String(r.token ?? ""), String(r.title ?? ""));
+    // Keyed on the display NAME, not the feed token: PwC's five sub-boards
+    // must fold together. Two different employers sharing an identical display
+    // name AND an identical title is the residual risk, accepted — users could
+    // not tell those cards apart anyway.
+    const key = clusterKey(String(r.company ?? r.token ?? ""), String(r.title ?? ""));
     const hit = byKey.get(key);
     if (!hit && out.length >= limit) break; // next page starts exactly here
     rawConsumed++;
@@ -3168,6 +3247,34 @@ function collapseClusters(
     }
   }
   return { jobs: out, rawConsumed };
+}
+
+// One employer, several feed tokens (PwC ships five Workday sub-sites; 76 such
+// employers in the top 1,500 alone, 43k postings). Serving the facet raw put
+// "PwC" in the company dropdown five times, each filtering to a fifth of the
+// real roles. Merge by display name: one row, counts summed, every token
+// carried so the filter can cover them all. The primary token is the largest
+// sub-board's (stable for links).
+function mergeCompanyFacet(rows: Array<{ token?: string; name?: string; count?: number }>): Array<{ token?: string; name?: string; count?: number; tokens?: string[] }> {
+  const byName = new Map<string, { token?: string; name?: string; count: number; tokens: string[]; top: number }>();
+  const out: Array<{ token?: string; name?: string; count?: number; tokens?: string[] }> = [];
+  for (const r of rows) {
+    const key = (r.name ?? "").trim().toLowerCase();
+    if (!key) { out.push(r); continue; }
+    const hit = byName.get(key);
+    const n = r.count ?? 0;
+    if (!hit) {
+      byName.set(key, { token: r.token, name: r.name, count: n, tokens: r.token ? [r.token] : [], top: n });
+    } else {
+      hit.count += n;
+      if (r.token) hit.tokens.push(r.token);
+      if (n > hit.top) { hit.top = n; hit.token = r.token; }
+    }
+  }
+  for (const v of byName.values()) {
+    out.push(v.tokens.length > 1 ? { token: v.token, name: v.name, count: v.count, tokens: v.tokens } : { token: v.token, name: v.name, count: v.count });
+  }
+  return out;
 }
 
 async function serveList(
@@ -3448,7 +3555,10 @@ async function serveList(
           total,
           ...(rankedCapped ? { countCapped: true } : {}),
           totalAllCompanies: (v0.total as number) ?? total,
-          companies: includeFacets0 ? [...fullCompanies0].sort((a, b) => (b.count ?? 0) - (a.count ?? 0)).slice(0, 1_500) : [],
+          companies: includeFacets0
+            ? mergeCompanyFacet([...fullCompanies0].sort((a, b) => (b.count ?? 0) - (a.count ?? 0)).slice(0, 1_500) as Array<{ token?: string; name?: string; count?: number }>)
+                .sort((a, b) => (b.count ?? 0) - (a.count ?? 0))
+            : [],
           companiesCount: fullCompanies0.length,
           categories: (v0.categoriesFacet as Record<string, number>) ?? {},
           failedSources: (v0.failedSources as string[]) ?? [],
@@ -3553,7 +3663,8 @@ async function serveList(
   const FACET_COMPANY_LIMIT = 1_500;
   const fullCompanies = (v.companiesFacet as Array<{ count?: number }>) ?? [];
   const servedCompanies = includeFacets
-    ? [...fullCompanies].sort((a, b) => (b.count ?? 0) - (a.count ?? 0)).slice(0, FACET_COMPANY_LIMIT)
+    ? mergeCompanyFacet([...fullCompanies].sort((a, b) => (b.count ?? 0) - (a.count ?? 0)).slice(0, FACET_COMPANY_LIMIT) as Array<{ token?: string; name?: string; count?: number }>)
+        .sort((a, b) => (b.count ?? 0) - (a.count ?? 0))
     : [];
   const mappedRows = (data ?? []).map(rowToJob) as Array<Record<string, unknown>>;
   const grouped = groupSimilar

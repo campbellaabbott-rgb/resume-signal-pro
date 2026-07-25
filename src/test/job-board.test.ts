@@ -232,8 +232,21 @@ describe("detectCountry (deterministic, never guesses)", () => {
     expect(detectCountry("Warszawa, Polska")).toBe("PL");
     expect(detectCountry("Manila, Philippines")).toBe("PH");
   });
+  it("resolves bare major cities — state/province checks run FIRST, which is what makes this safe", () => {
+    // North American feeds essentially always qualify their cities ("London,
+    // ON", "Melbourne, FL", "Dublin, OH"), and those resolve via the state and
+    // province checks BEFORE the city table is consulted. A bare segment is
+    // therefore the non-NA reading. Contract changed 2026-07-25 (was: null).
+    expect(detectCountry("London")).toBe("GB");
+    expect(detectCountry("London, ON")).toBe("CA");        // province wins first
+    expect(detectCountry("Melbourne")).toBe("AU");
+    expect(detectCountry("Melbourne, FL")).toBe("US");     // state wins first
+    expect(detectCountry("Kuala Lumpur")).toBe("MY");
+    expect(detectCountry("Pune, Maharashtra")).toBe("IN");
+    // Exact SEGMENT matching, never substring:
+    expect(detectCountry("Santiago de Compostela, Spain")).toBe("ES");
+  });
   it("returns null for ambiguous or unplaceable locations", () => {
-    expect(detectCountry("London")).toBeNull();          // Ontario or England
     expect(detectCountry("Tbilisi, Georgia")).toBeNull(); // country vs US state
     expect(detectCountry("Remote")).toBeNull();
     expect(detectCountry("EMEA")).toBeNull();
