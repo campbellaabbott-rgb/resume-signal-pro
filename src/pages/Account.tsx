@@ -483,18 +483,18 @@ export default function Account() {
   const [labelDraft, setLabelDraft] = useState("");
 
   const changePassword = async () => {
-    if (newPassword.length < 8) { setSettingsMsg("Password must be at least 8 characters."); return; }
+    if (newPassword.length < 8) { setSettingsMsg(t("accountPage.pwTooShort", "Password must be at least 8 characters.")); return; }
     const { error } = await supabase.auth.updateUser({ password: newPassword });
-    setSettingsMsg(error ? error.message : "Password updated ✓");
+    setSettingsMsg(error ? error.message : t("accountPage.pwUpdated", "Password updated ✓"));
     if (!error) setNewPassword("");
   };
 
   const changeEmail = async () => {
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(newEmail.trim())) { setSettingsMsg("Enter a valid new email address."); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(newEmail.trim())) { setSettingsMsg(t("accountPage.emailInvalid", "Enter a valid new email address.")); return; }
     const { error } = await supabase.auth.updateUser({ email: newEmail.trim() });
     setSettingsMsg(error
       ? error.message
-      : "Email change requested — check BOTH inboxes for confirmation links. Note: credits and purchases stay linked to your old email.");
+      : t("accountPage.emailChangeRequested", "Email change requested — check BOTH inboxes for confirmation links. Note: credits and purchases stay linked to your old email."));
     if (!error) setNewEmail("");
   };
 
@@ -598,14 +598,14 @@ export default function Account() {
           <div className="flex-1 min-w-0">
             <h1 className="text-xl font-bold text-foreground truncate">{user?.email}</h1>
             <p className="text-xs text-muted-foreground">
-              Member since {user?.created_at ? new Date(user.created_at).toLocaleDateString(undefined, { month: "long", year: "numeric" }) : "today"}
+              {t("accountPage.memberSince", "Member since {{when}}", { when: user?.created_at ? new Date(user.created_at).toLocaleDateString(undefined, { month: "long", year: "numeric" }) : t("accountPage.memberToday", "today") })}
             </p>
           </div>
           <button
             onClick={async () => { await signOut(); navigate("/"); }}
             className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
           >
-            <LogOut className="w-3.5 h-3.5" /> Sign out
+            <LogOut className="w-3.5 h-3.5" /> {t("accountPage.signOut", "Sign out")}
           </button>
         </div>
 
@@ -618,10 +618,10 @@ export default function Account() {
           <div className="mb-6">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-2">
               {([
-                ["saved", "Saved", "text-foreground"],
-                ["applied", "Applied", "text-primary"],
-                ["interviewing", "Interviewing", "text-warning"],
-                ["offer", "Offers", "text-success"],
+                ["saved", t("accountPage.hqSaved", "Saved"), "text-foreground"],
+                ["applied", t("accountPage.hqApplied", "Applied"), "text-primary"],
+                ["interviewing", t("accountPage.hqInterviewing", "Interviewing"), "text-warning"],
+                ["offer", t("accountPage.hqOffers", "Offers"), "text-success"],
               ] as const).map(([key, label, color]) => (
                 <div key={key} className="rounded-xl border border-border bg-card p-3">
                   <p className={`text-2xl font-bold ${color}`}>{applications.filter((a) => a.status === key).length}</p>
@@ -634,11 +634,11 @@ export default function Account() {
                 to="/jobs"
                 className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
               >
-                Open your ranked board — new postings score themselves against your resume →
+                {t("accountPage.rankedBoardCta", "Open your ranked board — new postings score themselves against your resume →")}
               </Link>
               {skillGap && skillGap.top.length > 0 && (
                 <span className="text-[11px] text-muted-foreground">
-                  · Top gap across your applications: <span className="text-warning font-medium">{skillGap.top[0][0]}</span>
+                  · {t("accountPage.topGapLabel", "Top gap across your applications:")} <span className="text-warning font-medium">{skillGap.top[0][0]}</span>
                 </span>
               )}
             </div>
@@ -665,12 +665,12 @@ export default function Account() {
         {scans.length === 0 && !fetching && (
           <div className="rounded-2xl border border-primary/25 bg-gradient-to-br from-primary/10 to-transparent p-6 mb-6">
             <h2 className="text-lg font-bold text-foreground mb-1">{t("accountPage.welcome", "Welcome! Let's get your first score 🎯")}</h2>
-            <p className="text-xs text-muted-foreground mb-4">Three steps and your dashboard comes alive:</p>
+            <p className="text-xs text-muted-foreground mb-4">{t("accountPage.welcomeSteps", "Three steps and your dashboard comes alive:")}</p>
             <div className="space-y-2 mb-4">
               {[
-                { n: 1, text: "Run a free scan — it saves here automatically", done: false },
-                { n: 2, text: "Set your target score (we've suggested 80)", done: targetScore != null },
-                { n: 3, text: "Work the fix checklist, then rescan to watch your score climb", done: false },
+                { n: 1, text: t("accountPage.welcomeStep1", "Run a free scan — it saves here automatically"), done: false },
+                { n: 2, text: t("accountPage.welcomeStep2", "Set your target score (we've suggested 80)"), done: targetScore != null },
+                { n: 3, text: t("accountPage.welcomeStep3", "Work the fix checklist, then rescan to watch your score climb"), done: false },
               ].map(step => (
                 <div key={step.n} className="flex items-center gap-2.5 text-sm">
                   <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 ${step.done ? "bg-success text-success-foreground" : "bg-primary/15 text-primary"}`}>
@@ -681,7 +681,7 @@ export default function Account() {
               ))}
             </div>
             <Link to="/#upload" className="inline-block px-5 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors">
-              Scan my resume free →
+              {t("accountPage.welcomeCta", "Scan my resume free →")}
             </Link>
           </div>
         )}
@@ -693,17 +693,17 @@ export default function Account() {
             <p className={`text-3xl font-bold ${latest ? (latest.ats_score >= 70 ? "text-success" : latest.ats_score >= 50 ? "text-warning" : "text-destructive") : "text-muted-foreground/40"}`}>
               {latest ? latest.ats_score : "?"}
             </p>
-            <p className="text-[11px] text-muted-foreground mt-0.5">Latest score{delta != null && (
+            <p className="text-[11px] text-muted-foreground mt-0.5">{t("accountPage.statLatest", "Latest score")}{delta != null && (
               <span className={delta >= 0 ? "text-success font-semibold" : "text-destructive font-semibold"}> ({delta >= 0 ? "+" : ""}{delta})</span>
             )}</p>
           </div>
           <div className="rounded-2xl border border-border bg-card p-4 text-center">
             <p className={`text-3xl font-bold ${best != null ? "text-foreground" : "text-muted-foreground/40"}`}>{best ?? "?"}</p>
-            <p className="text-[11px] text-muted-foreground mt-0.5">🏆 Best score</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">🏆 {t("accountPage.statBest", "Best score")}</p>
           </div>
           <div className={`rounded-2xl border p-4 text-center ${(account?.credits ?? 0) > 0 ? "border-warning/25 bg-warning/5" : "border-border bg-card"}`}>
             <p className="text-3xl font-bold text-foreground">{fetching ? "…" : account?.credits ?? 0}</p>
-            <p className="text-[11px] text-muted-foreground mt-0.5">🪙 Scan credits</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">🪙 {t("accountPage.statCredits", "Scan credits")}</p>
           </div>
         </div>
 
@@ -1114,14 +1114,14 @@ export default function Account() {
             <input
               value={newApp.company}
               onChange={(e) => setNewApp({ ...newApp, company: e.target.value })}
-              placeholder="Company"
+              placeholder={t("accountPage.phCompany", "Company")}
               className="flex-1 min-w-0 px-3 py-2 rounded-lg bg-background border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
             />
             <input
               value={newApp.role}
               onChange={(e) => setNewApp({ ...newApp, role: e.target.value })}
               onKeyDown={(e) => { if (e.key === "Enter") addApplication(); }}
-              placeholder="Role"
+              placeholder={t("accountPage.phRole", "Role")}
               className="flex-1 min-w-0 px-3 py-2 rounded-lg bg-background border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
             />
             <button
@@ -1151,7 +1151,7 @@ export default function Account() {
           {appIntel && (
             <div className="rounded-xl border border-primary/30 bg-primary/5 p-3 mb-3">
               <h3 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
-                <TrendingUp className="w-4 h-4 text-primary" /> Application intelligence
+                <TrendingUp className="w-4 h-4 text-primary" /> {t("accountPage.appIntelTitle", "Application intelligence")}
               </h3>
               <p className="text-[11px] text-muted-foreground mt-0.5">
                 Interview/offer rate by the fit you applied with, across your {appIntel.applied} tracked applications.
@@ -1405,7 +1405,7 @@ export default function Account() {
             if (rows.length === 0) return null;
             return (
               <div className="mt-4 rounded-xl border border-primary/25 bg-primary/5 p-4">
-                <p className="text-xs font-semibold text-foreground mb-2">Which resume gets interviews</p>
+                <p className="text-xs font-semibold text-foreground mb-2">{t("accountPage.whichResumeTitle", "Which resume gets interviews")}</p>
                 <div className="space-y-1.5">
                   {rows.map((r) => (
                     <div key={r.scan.id} className="flex items-center gap-2 text-xs">
