@@ -4446,7 +4446,8 @@
     "appliedMarkedBody": "{{role}} chez {{company}} — si vous n'avez pas envoyé la candidature, changez son statut dans votre compte.",
     "discSalary": "{{shown}} de ces employeurs publient la rémunération. {{hidden}} autres offres correspondent à tout le reste, mais n'indiquent pas de salaire : ce filtre les masque donc.",
     "discWorkMode": "{{shown}} de ces employeurs précisent où le travail s'effectue. {{hidden}} autres offres correspondent à tout le reste, mais ne disent pas si c'est à distance, hybride ou sur site : ce filtre les masque donc.",
-    "discShowAll": "Les afficher aussi"
+    "discShowAll": "Les afficher aussi",
+    "discCategory": "Par ailleurs, {{hidden}} offres sur l'ensemble du tableau ont un intitulé qui n'indique jamais leur domaine : aucun filtre par domaine ne peut les atteindre."
   },
   "accountPage": {
     "statActive": "Candidatures actives",

@@ -4446,7 +4446,8 @@
     "appliedMarkedBody": "{{role}} at {{company}} — if you didn't submit, change its status in your account.",
     "discSalary": "{{shown}} of these employers publish pay. Another {{hidden}} openings match everything else you asked for, but don't state a salary — so this filter hides them.",
     "discWorkMode": "{{shown}} of these employers state where the work happens. Another {{hidden}} openings match everything else, but don't say remote, hybrid, or on-site — so this filter hides them.",
-    "discShowAll": "Show those too"
+    "discShowAll": "Show those too",
+    "discCategory": "Separately, {{hidden}} openings across the whole board have a job title that never says which field they're in, so no field filter can reach them."
   },
   "accountPage": {
     "statActive": "Active applications",

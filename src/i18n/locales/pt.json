@@ -4446,7 +4446,8 @@
     "appliedMarkedBody": "{{role}} na {{company}} — se você não enviou, altere o status na sua conta.",
     "discSalary": "{{shown}} destes empregadores divulgam a remuneração. Outras {{hidden}} vagas atendem a todo o resto, mas não informam salário — por isso este filtro as oculta.",
     "discWorkMode": "{{shown}} destes empregadores informam onde o trabalho acontece. Outras {{hidden}} vagas atendem a todo o resto, mas não dizem se é remoto, híbrido ou presencial — por isso este filtro as oculta.",
-    "discShowAll": "Mostrar essas também"
+    "discShowAll": "Mostrar essas também",
+    "discCategory": "Além disso, {{hidden}} vagas em todo o quadro têm um título que nunca diz a qual área pertencem, então nenhum filtro de área as alcança."
   },
   "accountPage": {
     "statActive": "Candidaturas ativas",

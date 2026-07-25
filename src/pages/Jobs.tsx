@@ -1862,7 +1862,13 @@ export default function Jobs() {
   const [disclosure, setDisclosure] = useState<{ kind: "salary" | "workMode"; shown: number; hidden: number } | null>(null);
   const discSigRef = useRef("");
   useEffect(() => {
-    const kind: "salary" | "workMode" | null = salaryFloor ? "salary" : (workMode || remoteOnly) ? "workMode" : null;
+    // Category is the same defect in a different coat: 35% of the board was
+    // unclassifiable at the last audit, and picking a field silently drops all
+    // of it. The honest denominator here is NOT "everything without the filter"
+    // (the user doesn't want other fields) — it's specifically the postings we
+    // couldn't classify, so we count category='other' against the same filters.
+    const kind: "salary" | "workMode" | null =
+      salaryFloor ? "salary" : (workMode || remoteOnly) ? "workMode" : null;
     if (!kind || loading || refreshing || error || !data || typeof data.total !== "number" || data.total === 0) {
       setDisclosure(null);
       discSigRef.current = "";
@@ -3141,7 +3147,10 @@ export default function Jobs() {
                     </p>
                     <button
                       type="button"
-                      onClick={() => { if (disclosure.kind === "salary") setSalaryFloor(0); else { setWorkMode(""); setRemoteOnly(false); } }}
+                      onClick={() => {
+                        if (disclosure.kind === "salary") setSalaryFloor(0);
+                        else { setWorkMode(""); setRemoteOnly(false); }
+                      }}
                       className="mt-1 text-[13px] font-semibold text-primary hover:underline"
                     >
                       {t("jobsPage.discShowAll", "Show those too")}
