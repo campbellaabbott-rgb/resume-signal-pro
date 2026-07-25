@@ -74,7 +74,7 @@ const json = (body: unknown, status = 200) =>
 // while this file was untouched). Always bump BUILD_VERSION here when a shared
 // module this function imports changes — it forces the diff AND gives the
 // deploy a verifiable tell.
-const BUILD_VERSION = "2026-07-25.12";
+const BUILD_VERSION = "2026-07-25.13";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -3458,19 +3458,22 @@ async function serveList(
     // Work-mode filter: definitive vendor/text-stated tags only. Postings that
     // don't state a mode have work_mode NULL and are excluded by the filter —
     // honestly, never guessed (the UI says so).
-    const wm = String(body.workMode ?? "");
+    // Case-normalized (audit: {workMode:"Remote"} silently served the full
+    // unfiltered board to API callers — the fence says filters are never
+    // silently ignored, so at minimum every casing of a real value binds).
+    const wm = String(body.workMode ?? "").toLowerCase();
     if (wm === "remote" || wm === "hybrid" || wm === "onsite") q = q.eq("work_mode", wm);
     // Country filter: exact match on the deterministically extracted code.
     // Postings whose location we couldn't place have country NULL and are
     // excluded by the filter — honestly, never guessed (the UI says so).
     const country = String(body.country ?? "").toUpperCase();
     if (/^[A-Z]{2}$/.test(country)) q = q.eq("country", country);
-    const category = String(body.category ?? "");
+    const category = String(body.category ?? "").toLowerCase();
     if ((JOB_CATEGORIES as readonly string[]).includes(category)) q = q.eq("category", category);
     // Experience filter: one of entry/mid/senior/expert. "unspecified" rows are
     // never returned by a band filter — we only surface postings we can honestly
     // place. Accepts a comma list so a user can widen (e.g. "senior,expert").
-    const expParam = String(body.experience ?? "").split(",").map((s) => s.trim()).filter(isExperienceBand);
+    const expParam = String(body.experience ?? "").toLowerCase().split(",").map((s) => s.trim()).filter(isExperienceBand);
     if (expParam.length === 1) q = q.eq("experience_band", expParam[0]);
     else if (expParam.length > 1) q = q.in("experience_band", expParam);
     // Salary floor filters the annualized lower bound of the posting's OWN
@@ -3612,7 +3615,11 @@ async function serveList(
         p_offset: offset,
       });
       if (!rankErr && Array.isArray(ranked)) {
-        const total = ranked.length ? Number((ranked[0] as { total_rows?: number }).total_rows) || ranked.length : 0;
+        // A load-more just past an exactly-full final page must not overwrite
+        // the client's header with 0 — null is "count unavailable", which the
+        // client already renders honestly (2026-07-25 audit: a 180-match
+        // search flipped to "0 matching" above 180 visible results).
+        const total = ranked.length ? Number((ranked[0] as { total_rows?: number }).total_rows) || ranked.length : (offset > 0 ? null : 0);
         // search_jobs counts inside a LIMIT — 10,000 on the title tier, 3,000 on
         // the sampled description tier — so a broad term like "engineer" or
         // "nurse" comes back as EXACTLY the ceiling. Reported bare that reads as
@@ -3622,7 +3629,7 @@ async function serveList(
         // only the description tier populates.
         const rankedTier2 = (ranked as Array<{ snippet?: unknown }>).some((r) => typeof r.snippet === "string" && r.snippet.length > 0);
         const rankedCap = rankedTier2 ? 3_000 : 10_000;
-        const rankedCapped = total >= rankedCap;
+        const rankedCapped = (total ?? 0) >= rankedCap;
         const v0 = (meta?.v ?? {}) as Record<string, unknown>;
         // Empty ranked result: try the FAST trigram fuzzy fallback right here
         // ("desinger" → designer), then return an honest empty. Critically we
@@ -3631,14 +3638,39 @@ async function serveList(
         // (measured 9.7s → "temporarily unavailable"). The ranked + fuzzy
         // paths are both index-backed and fast.
         if (total === 0 && offset === 0 && !countOnly) {
-          try {
+          // FILTER GATE — shared by the fuzzy AND semantic tiers below. Moved
+          // above fuzzy 2026-07-25 (audit): fuzzy_title_search carries no
+          // filter parameters either, and ungated it was measured serving
+          // OTHER companies' jobs on a company lander for a typo'd query —
+          // the exact breach the semantic gate's own comment warned about.
+          // With any restrictive filter active, both fallback tiers stand
+          // down and the honest empty (which respects the filters) answers.
+          const filtersActive =
+            !!sanitizeTerm(String(body.location ?? "")) ||
+            body.remote === true ||
+            ["remote", "hybrid", "onsite"].includes(String(body.workMode ?? "").toLowerCase()) ||
+            /^[A-Za-z]{2}$/.test(String(body.country ?? "")) ||
+            (JOB_CATEGORIES as readonly string[]).includes(String(body.category ?? "").toLowerCase()) ||
+            String(body.experience ?? "").trim() !== "" ||
+            Number(body.salaryFloor) > 0 ||
+            (Array.isArray(body.companies) && body.companies.length > 0) ||
+            Number(body.maxAgeDays) >= 1 ||
+            typeof body.postedAfter === "string";
+          if (!filtersActive) try {
             const { data: fuzzy, error: fErr } = await client.rpc("fuzzy_title_search", {
               p_q: qText, p_fresh_cutoff: freshCutoffIso, p_limit: limit,
             });
             if (!fErr && Array.isArray(fuzzy) && fuzzy.length > 0) {
+              // Same-company+title clones flood trigram results exactly like
+              // the other tiers — collapse them the same way (audit: adjacent
+              // duplicate cards were measured on typo queries).
+              const fuzzyRows = (fuzzy as unknown[]).map(rowToJob) as Array<Record<string, unknown>>;
+              const fuzzyGrouped = groupSimilar
+                ? collapseClusters(fuzzyRows, limit)
+                : { jobs: fuzzyRows.slice(0, limit), rawConsumed: Math.min(fuzzyRows.length, limit) };
               return json({
-                jobs: (fuzzy as unknown[]).map(rowToJob),
-                total: Number((fuzzy[0] as { total_rows?: number }).total_rows) || fuzzy.length,
+                jobs: fuzzyGrouped.jobs,
+                total: Number((fuzzy[0] as { total_rows?: number }).total_rows) || fuzzyGrouped.jobs.length,
                 totalAllCompanies: (v0.total as number) ?? 0,
                 companies: [],
                 companiesCount: ((v0.companiesFacet as unknown[]) ?? []).length,
@@ -3663,17 +3695,7 @@ async function serveList(
           // invariant is that a filter is honoured on every route, so with any
           // restrictive filter active the semantic tier stands down and the
           // honest empty (which respects the filters) is the answer.
-          const filtersActive =
-            !!sanitizeTerm(String(body.location ?? "")) ||
-            body.remote === true ||
-            ["remote", "hybrid", "onsite"].includes(String(body.workMode ?? "")) ||
-            /^[A-Za-z]{2}$/.test(String(body.country ?? "")) ||
-            (JOB_CATEGORIES as readonly string[]).includes(String(body.category ?? "")) ||
-            String(body.experience ?? "").trim() !== "" ||
-            Number(body.salaryFloor) > 0 ||
-            (Array.isArray(body.companies) && body.companies.length > 0) ||
-            Number(body.maxAgeDays) >= 1 ||
-            typeof body.postedAfter === "string";
+          // (filtersActive computed once above, shared with the fuzzy tier.)
           if (qText.length >= 3 && !filtersActive) {
             try {
               const qVec = await embedText(qText);

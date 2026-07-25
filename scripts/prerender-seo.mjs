@@ -846,7 +846,7 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
         description: `Browse ${countPhrase}, pulled from ${boardCompanies ? `${boardCompanies}` : "3,000+"} companies' official job boards and re-verified all day. Check your resume's fit free before you apply.`,
         content: `
           <h1>Live ${label} jobs</h1>
-          <p>${countPhrase[0].toUpperCase()}${countPhrase.slice(1)}${boardTotal ? ` — part of ${fmt(boardTotal)} live postings across ${fmt(boardCompanies)} companies` : ""}, pulled directly from the official job boards companies publish on Greenhouse, Lever, Ashby, SmartRecruiters, Workable, and BambooHR. No scraped listings, no aggregators, no reposts: every opening belongs to the company that published it, and applying happens on the company's own site.</p>
+          <p>${countPhrase[0].toUpperCase()}${countPhrase.slice(1)}${boardTotal ? ` — part of ${fmt(boardTotal)} live postings across ${fmt(boardCompanies)} companies` : ""}, pulled directly from the official job boards companies publish on Greenhouse, Workday, Lever, Ashby, SmartRecruiters, Oracle, Workable, BambooHR, Recruitee, Teamtailor, Personio, Breezy, Rippling, and Pinpoint. No scraped listings, no aggregators, no reposts: every opening belongs to the company that published it, and applying happens on the company's own site.</p>
           <p>The largest boards are re-checked about every 10–15 minutes and the whole catalog rotates continuously — every feed re-verified within a few hours — so postings a company takes down disappear on the next pass. Counts on this page were measured when it was last built; the live board always shows the current number.</p>
           <p><a href="/jobs/field/${slug}">Browse ${label} openings on the live board</a> — filter by keyword, location, remote, and company; save searches with a free account; and check any posting against your resume with the <a href="/">free resume scan</a> before you spend an application on it.</p>
           <p>Other fields: ${siblings} — or see <a href="/jobs">the full job board</a>.</p>
@@ -889,7 +889,7 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
           description: `Browse ${fmt(c.count)} open roles at ${nm}, pulled straight from ${nm}'s own job board and re-verified all day — no aggregators, no reposts. Check your resume's fit free, then apply on ${nm}'s own site.`,
           content: `
             <h1>Open roles at ${esc(nm)}</h1>
-            <p>${fmt(c.count)} verified ${esc(nm)} openings right now, pulled straight from ${esc(nm)}'s own official job board (Greenhouse, Lever, Ashby, SmartRecruiters, Workable, or BambooHR) and re-verified all day. No aggregators, no reposts, no scraped copies — every role belongs to ${esc(nm)}, and applying happens on ${esc(nm)}'s own site. Counts were measured when this page was last built; the live board always shows the current number.</p>
+            <p>${fmt(c.count)} verified ${esc(nm)} openings right now, pulled straight from ${esc(nm)}'s own official job board (Greenhouse, Workday, Lever, Ashby, SmartRecruiters, Oracle, Workable, BambooHR, Recruitee, Teamtailor, Personio, Breezy, Rippling, or Pinpoint) and re-verified all day. No aggregators, no reposts, no scraped copies — every role belongs to ${esc(nm)}, and applying happens on ${esc(nm)}'s own site. Counts were measured when this page was last built; the live board always shows the current number.</p>
             <p><a href="/jobs/company/${c.token}">Browse all ${esc(nm)} openings on the live board</a> — filter by role, location, experience, and remote, and check any posting against your resume with the <a href="/">free resume scan</a> before you spend an application on it.</p>
             <p>See <a href="/jobs">the full job board</a>${boardCompanies ? ` for openings across ${fmt(boardCompanies)} companies` : ""}.</p>
           `,
@@ -929,7 +929,7 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
         description: `Browse ${jobsPhrase} — straight from official company job boards. No aggregators; nothing older than 30 days.`,
         content: `
           <h1>Live job board</h1>
-          <p>${jobsPhrase[0].toUpperCase()}${jobsPhrase.slice(1)}, pulled directly from the official job boards companies publish on Greenhouse, Lever, Ashby, SmartRecruiters, Workable, and BambooHR. No scraped listings, no aggregators, no reposts — every opening belongs to the company that published it, applying happens on the company's own site, and nothing older than 30 days stays on the board.</p>
+          <p>${jobsPhrase[0].toUpperCase()}${jobsPhrase.slice(1)}, pulled directly from the official job boards companies publish on Greenhouse, Workday, Lever, Ashby, SmartRecruiters, Oracle, Workable, BambooHR, Recruitee, Teamtailor, Personio, Breezy, Rippling, and Pinpoint. No scraped listings, no aggregators, no reposts — every opening belongs to the company that published it, applying happens on the company's own site, and nothing older than 30 days stays on the board. Counts were measured when this page was last built; the live board always shows the current number.</p>
           <p>Browse by field: ${CATEGORY_LANDERS.map(([s, l]) => `<a href="/jobs/field/${s}">${l} jobs</a>`).join(" · ")}.</p>
           <p>Check any posting against your resume with the <a href="/">free resume scan</a> before you spend an application on it, and save searches with a free account.</p>
         `,
@@ -1171,7 +1171,7 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
     lines.push(`> Free diagnostic resume scanner (resumebooster.work): ATS score with a point-by-point audit trail, every quoted finding verified against the actual document, per-vendor parsing checks (Workday, Greenhouse, Lever, iCIMS), keyword expectations sourced from the U.S. Department of Labor's O*NET database. ${NIND} industries, 10 languages including native Spanish detection. Free scan, no signup, resumes never stored. See /llms.txt for the short overview.`);
     if (boardFacets?.total) {
       lines.push("");
-      lines.push(`> Live job board (/jobs): ${Number(boardFacets.total).toLocaleString("en-US")} postings from ${Array.isArray(boardFacets.companiesFacet) ? boardFacets.companiesFacet.length : "3,000+"} companies' OFFICIAL job-board APIs (Greenhouse, Lever, Ashby, SmartRecruiters, Workable, BambooHR) — no scraping, no aggregators; the largest boards re-check every 10-15 minutes and the whole catalog re-verifies within a few hours. Per-field pages at /jobs/field/{engineering,healthcare,finance,...}. Free deterministic resume-fit scoring against any posting.`);
+      lines.push(`> Live job board (/jobs): ${Number(boardFacets.total).toLocaleString("en-US")} postings from ${BOARD_COMPANIES ? BOARD_COMPANIES.toLocaleString("en-US") : "3,000+"} companies' OFFICIAL job-board APIs (Greenhouse, Lever, Ashby, SmartRecruiters, Workable, BambooHR) — no scraping, no aggregators; the largest boards re-check every 10-15 minutes and the whole catalog re-verifies within a few hours. Per-field pages at /jobs/field/{engineering,healthcare,finance,...}. Free deterministic resume-fit scoring against any posting.`);
     }
     lines.push("");
     lines.push("## Guides (full text)");
@@ -1199,7 +1199,7 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
     lines.push("");
     lines.push("## Data pages (from the scanner's live detection tables)");
     lines.push(`- Live ATS score benchmarks: ${SITE}/research/ats-score-benchmarks — real score distributions (median, quartiles, per-industry, per-experience-level) computed from the scan corpus over a rolling 180-day window; k-anonymous aggregates only.`);
-    lines.push(`- Industry keyword pages (58): ${SITE}/industries/{slug} — keywords, recognized titles, certifications, O*NET-sourced skills per industry. Index: ${SITE}/industries`);
+    lines.push(`- Industry keyword pages (${NIND}): ${SITE}/industries/{slug} — keywords, recognized titles, certifications, O*NET-sourced skills per industry. Index: ${SITE}/industries`);
     lines.push(`- Role keyword pages (${Object.keys(D.ROLE_PAGES).length}): ${SITE}/roles/{slug} — per-job-title keyword and certification data.`);
     lines.push(`- Spanish industry pages (15): ${SITE}/es/industrias/{slug} — native Spanish keyword data with English ATS terms.`);
     lines.push(`- ATS vendor guides: ${Object.keys(D.VENDORS).map((v) => `${SITE}/ats/${v}`).join(", ")} — documented parsing behaviors.`);
