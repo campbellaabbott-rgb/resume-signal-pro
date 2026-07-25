@@ -72,7 +72,7 @@ const json = (body: unknown, status = 200) =>
 // while this file was untouched). Always bump BUILD_VERSION here when a shared
 // module this function imports changes — it forces the diff AND gives the
 // deploy a verifiable tell.
-const BUILD_VERSION = "2026-07-25.5";
+const BUILD_VERSION = "2026-07-25.6";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -1511,74 +1511,95 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
       })).then((r) => r.text()).catch(() => {}));
     }
 
-    // Categorization rules changed since the corpus was stamped? Sweep the
-    // stored "other" rows through the current rules in a fresh invocation
-    // (own compute budget). Idempotent: the stamp is written only when the
-    // sweep completes, so a died sweep retries after the next pass.
-    const { data: catVer } = await client.from("job_board_meta").select("v").eq("k", "category_rules_version").maybeSingle();
-    if ((catVer?.v as { version?: number } | null)?.version !== CATEGORIZE_VERSION) {
-      const url = `${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`;
-      waitUntil(chainKey().then((key) => fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "recategorize", chainKey: key }),
-      })).then((r) => r.text()).catch(() => {}));
-    }
-    // Feature 1: refresh the light boards' descriptions daily (they arrive
-    // description-less on the refresh path). Only when the last backfill is
-    // stale, and never concurrent with recategorize — stagger by requiring
-    // the category stamp to be current first.
-    else {
-      const { data: bf } = await client.from("job_board_meta").select("v, updated_at").eq("k", "desc_backfill").maybeSingle();
-      const bfAge = bf ? Date.now() - new Date(bf.updated_at).getTime() : Infinity;
-      const bfIncomplete = !!(bf?.v as { incompleteAt?: string } | null)?.incompleteAt;
-      // Self-healing override: if meaningful description coverage is still
-      // missing on the light boards, run regardless of the stamp — this
-      // recovers from a stamp written by an older/buggy sweep without any
-      // manual reset. One cheap capped count per pass (indexed).
-      const lightTokens = JOB_SOURCES.filter((s) => isLight(s.token)).map((s) => s.token); // static + auto-enrolled (loaded at runRefresh start)
-      let missingCoverage = false;
-      if (lightTokens.length > 0 && bfAge > 30 * 60_000) {
-        const { count } = await client.from("job_board_postings").select("id", { count: "exact", head: true }).in("company_token", lightTokens).is("description", null);
-        missingCoverage = (count ?? 0) > 50;
-      }
-      // Incomplete sweeps (a board failed) retry within the hour; complete
-      // ones wait a day (descriptions persist, so only the delta needs work).
-      if (missingCoverage || bfAge > (bfIncomplete ? 60 * 60_000 : 24 * 60 * 60_000)) {
-        const url = `${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`;
-        waitUntil(chainKey().then((key) => fetch(url, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "backfill-desc", chainKey: key, ti: 0, off: 0 }),
-        })).then((r) => r.text()).catch(() => {}));
-      } else {
-        // desc-sweep: the per-posting vendors (workday/SR/bamboohr/oracle/breezy).
-        // Only once the light-board backfill has settled, so at most one heavy
-        // maintenance chain runs at a time. Every hop restamps desc_sweep, so a
-        // live chain keeps the age small and can't be double-started; a chain
-        // that dies gets picked up again after six hours.
-        //
-        // Restarting from vi:0 is deliberate — rows filled since last time have
-        // dropped out of the `description is null` filter, so a fresh run
-        // resumes where the DATA left off rather than where a cursor did.
-        const { data: ds } = await client.from("job_board_meta").select("v, updated_at").eq("k", "desc_sweep").maybeSingle();
-        const dsAge = ds ? Date.now() - new Date(ds.updated_at).getTime() : Infinity;
-        if (dsAge > 6 * 60 * 60_000) {
-          const url = `${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`;
-          waitUntil(chainKey().then((key) => fetch(url, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ action: "desc-sweep", chainKey: key, vi: 0 }),
-          })).then((r) => r.text()).catch(() => {}));
-        }
-      }
-    }
+    await maybeKickMaintenance(client);
     return { ok: true, detail: `pass complete — corpus ${f.total} postings from ${companies.length} boards; cold rotation at ${cold}/${COLD_LIST.length}${lastUpsertError ? ` — last upsert error: ${String(lastUpsertError).slice(0, 120)}` : ""}` };
   }
 
+  // Maintenance also gets a chance on EVERY slice, not only at pass end.
+  // Measured 2026-07-25: desc-sweep and the v5 recategorise had never run once,
+  // because both were gated behind a completed cold rotation — 27,997 boards,
+  // many hours — and every deploy resets the bootstrap lane that runs ahead of
+  // it. The result was ~460k postings still without descriptions and ~81k still
+  // in "other" despite the work being built and deployed. maybeKickMaintenance
+  // throttles itself, so a slice cadence costs one small meta read per slice.
+  await maybeKickMaintenance(client);
   if (chainHop < CHAIN_CAP) chainNextSlice(chainHop);
   const phase = inHotPhase ? `hot ${Math.min(hot, HOT_LIST.length)}/${HOT_LIST.length}` : `cold slice ${coldDone}/${COLD_SLICES_PER_PASS} (rotation ${cold}/${COLD_LIST.length})`;
   return { ok: true, detail: `slice done (${sliceTotal} postings, ${failed.length} failed) — ${phase}` };
+}
+
+// ── maintenance kicks ──────────────────────────────────────────────────────
+// Same rules as before, just reachable. Called from BOTH the pass-complete path
+// and every slice, so it carries its own throttle: without one, recategorize —
+// which has no age gate of its own and re-fires until its stamp is written at
+// COMPLETION — would spawn a new chain on every slice.
+const MAINTENANCE_ANY_GAP_MS = 10 * 60_000;   // any kick at all
+const MAINTENANCE_SAME_GAP_MS = 2 * 60 * 60_000; // the same action again
+
+async function maybeKickMaintenance(client: SupabaseClient): Promise<void> {
+  try {
+    const { data: mk } = await client.from("job_board_meta").select("v, updated_at").eq("k", "maintenance_kick").maybeSingle();
+    const lastAge = mk ? Date.now() - new Date(mk.updated_at).getTime() : Infinity;
+    const lastAction = (mk?.v as { action?: string } | null)?.action ?? "";
+    if (lastAge < MAINTENANCE_ANY_GAP_MS) return;
+    const url = `${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`;
+    const kick = async (action: string, extra: Record<string, unknown> = {}) => {
+      // Never re-kick the SAME long-running chain inside its window: a
+      // recategorise over ~180k rows outlives the 10-minute general gap.
+      if (action === lastAction && lastAge < MAINTENANCE_SAME_GAP_MS) return;
+      await client.from("job_board_meta").upsert(
+        { k: "maintenance_kick", v: { action, at: new Date().toISOString() }, updated_at: new Date().toISOString() },
+        { onConflict: "k" },
+      );
+      waitUntil(chainKey().then((key) => fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, chainKey: key, ...extra }),
+      })).then((r) => r.text()).catch(() => {}));
+    };
+
+    // Categorization rules changed since the corpus was stamped? Sweep the
+    // stored "other" rows through the current rules in a fresh invocation
+    // (own compute budget). Idempotent: the stamp is written only when the
+    // sweep completes, so a died sweep retries later.
+    const { data: catVer } = await client.from("job_board_meta").select("v").eq("k", "category_rules_version").maybeSingle();
+    if ((catVer?.v as { version?: number } | null)?.version !== CATEGORIZE_VERSION) {
+      await kick("recategorize");
+      return;
+    }
+    // Light boards' descriptions (they arrive description-less on the refresh
+    // path). Only when the last backfill is stale, and never concurrent with
+    // recategorize — staggered by requiring the category stamp to be current.
+    const { data: bf } = await client.from("job_board_meta").select("v, updated_at").eq("k", "desc_backfill").maybeSingle();
+    const bfAge = bf ? Date.now() - new Date(bf.updated_at).getTime() : Infinity;
+    const bfIncomplete = !!(bf?.v as { incompleteAt?: string } | null)?.incompleteAt;
+    // Self-healing override: if meaningful description coverage is still
+    // missing on the light boards, run regardless of the stamp — recovers from
+    // a stamp written by an older/buggy sweep without a manual reset.
+    const lightTokens = JOB_SOURCES.filter((s) => isLight(s.token)).map((s) => s.token);
+    let missingCoverage = false;
+    if (lightTokens.length > 0 && bfAge > 30 * 60_000) {
+      const { count } = await client.from("job_board_postings").select("id", { count: "exact", head: true }).in("company_token", lightTokens).is("description", null);
+      missingCoverage = (count ?? 0) > 50;
+    }
+    if (missingCoverage || bfAge > (bfIncomplete ? 60 * 60_000 : 24 * 60 * 60_000)) {
+      await kick("backfill-desc", { ti: 0, off: 0 });
+      return;
+    }
+    // desc-sweep: the per-posting vendors (workday/SR/bamboohr/oracle/breezy).
+    // Every hop restamps desc_sweep, so a live chain keeps the age small and
+    // can't be double-started; a chain that dies is picked up after six hours.
+    //
+    // Restarting from vi:0 is deliberate — rows filled since last time have
+    // dropped out of the `description is null` filter, so a fresh run resumes
+    // where the DATA left off rather than where a cursor did.
+    const { data: ds } = await client.from("job_board_meta").select("v, updated_at").eq("k", "desc_sweep").maybeSingle();
+    const dsAge = ds ? Date.now() - new Date(ds.updated_at).getTime() : Infinity;
+    if (dsAge > 6 * 60 * 60_000) await kick("desc-sweep", { vi: 0 });
+  } catch (e) {
+    // Maintenance is best-effort; it must never break a refresh slice.
+    console.warn("[JOB-BOARD] maintenance kick skipped:", String(e).slice(0, 120));
+  }
 }
 
 // ── detail: one posting's description (bounded memo, no bulk caching) ─────
