@@ -3242,8 +3242,8 @@ export default function Jobs() {
                   // and we render "10,000+" rather than passing the cap off as exact.
                   total: data?.countCapped
                     ? `${(data?.total ?? 0).toLocaleString()}+`
-                    : (data?.total ?? jobs.length),
-                  companies: data?.companiesCount ?? companies.length,
+                    : (data?.total ?? jobs.length).toLocaleString(),
+                  companies: (data?.companiesCount ?? companies.length).toLocaleString(),
                 })}
                 {data?.refreshedAt && (
                   <span> · {t("jobsPage.updatedAgo", "updated {{min}} min ago", { min: Math.max(0, Math.round((Date.now() - new Date(data.refreshedAt).getTime()) / 60000)) })}</span>

@@ -72,7 +72,7 @@ const json = (body: unknown, status = 200) =>
 // while this file was untouched). Always bump BUILD_VERSION here when a shared
 // module this function imports changes — it forces the diff AND gives the
 // deploy a verifiable tell.
-const BUILD_VERSION = "2026-07-25.4";
+const BUILD_VERSION = "2026-07-25.5";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -3331,6 +3331,16 @@ async function serveList(
       });
       if (!rankErr && Array.isArray(ranked)) {
         const total = ranked.length ? Number((ranked[0] as { total_rows?: number }).total_rows) || ranked.length : 0;
+        // search_jobs counts inside a LIMIT — 10,000 on the title tier, 3,000 on
+        // the sampled description tier — so a broad term like "engineer" or
+        // "nurse" comes back as EXACTLY the ceiling. Reported bare that reads as
+        // an exact figure ("10000 matching openings") when the truth is higher.
+        // Flag it so the client renders "10,000+", same contract the recency
+        // path already uses. Tier is inferred from the snippet column, which
+        // only the description tier populates.
+        const rankedTier2 = (ranked as Array<{ snippet?: unknown }>).some((r) => typeof r.snippet === "string" && r.snippet.length > 0);
+        const rankedCap = rankedTier2 ? 3_000 : 10_000;
+        const rankedCapped = total >= rankedCap;
         const v0 = (meta?.v ?? {}) as Record<string, unknown>;
         // Empty ranked result: try the FAST trigram fuzzy fallback right here
         // ("desinger" → designer), then return an honest empty. Critically we
@@ -3369,6 +3379,7 @@ async function serveList(
           nextOffset: offset + rankedGrouped.rawConsumed,
           hasMore: rankedRows.length > rankedGrouped.rawConsumed || rankedRows.length === fetchLimit,
           total,
+          ...(rankedCapped ? { countCapped: true } : {}),
           totalAllCompanies: (v0.total as number) ?? total,
           companies: includeFacets0 ? [...fullCompanies0].sort((a, b) => (b.count ?? 0) - (a.count ?? 0)).slice(0, 1_500) : [],
           companiesCount: fullCompanies0.length,
