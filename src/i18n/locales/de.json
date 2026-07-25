@@ -4623,6 +4623,8 @@
     "open": "Öffnen & Bewerbung vorbereiten",
     "keep": "Behalten",
     "skip": "Nichts für mich",
-    "expiryNote": "Ungeprüfte Vorschläge verfallen nach 48 Stunden — die Queue bleibt frisch, nie ein Rückstau."
+    "expiryNote": "Ungeprüfte Vorschläge verfallen nach 48 Stunden — die Queue bleibt frisch, nie ein Rückstau.",
+    "emailToggle": "Schick mir die Auswahl jeden Morgen per E-Mail – nur wenn es etwas Neues gibt, nie eine leere Liste.",
+    "emailSaveError": "Änderung fehlgeschlagen – bitte erneut versuchen."
   }
 }

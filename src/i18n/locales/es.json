@@ -4623,6 +4623,8 @@
     "open": "Abrir y preparar solicitud",
     "keep": "Guardar",
     "skip": "No es para mí",
-    "expiryNote": "Las selecciones sin revisar caducan a las 48 horas — la cola se mantiene fresca, nunca un atasco."
+    "expiryNote": "Las selecciones sin revisar caducan a las 48 horas — la cola se mantiene fresca, nunca un atasco.",
+    "emailToggle": "Envíame la lista cada mañana por correo, solo cuando haya algo nuevo; nunca una lista vacía.",
+    "emailSaveError": "No se pudo cambiar. Inténtalo de nuevo."
   }
 }

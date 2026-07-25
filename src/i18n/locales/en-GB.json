@@ -4623,6 +4623,8 @@
     "open": "Open & prep application",
     "keep": "Keep",
     "skip": "Not for me",
-    "expiryNote": "Unreviewed picks expire after 48 hours — the queue stays fresh, never a backlog."
+    "expiryNote": "Unreviewed picks expire after 48 hours — the queue stays fresh, never a backlog.",
+    "emailToggle": "Email me the shortlist each morning — only when there's something new, never an empty list.",
+    "emailSaveError": "Couldn't change that — please try again."
   }
 }

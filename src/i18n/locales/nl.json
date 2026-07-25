@@ -4623,6 +4623,8 @@
     "open": "Openen & sollicitatie voorbereiden",
     "keep": "Bewaren",
     "skip": "Niets voor mij",
-    "expiryNote": "Onbeoordeelde keuzes vervallen na 48 uur — de wachtrij blijft vers, nooit een achterstand."
+    "expiryNote": "Onbeoordeelde keuzes vervallen na 48 uur — de wachtrij blijft vers, nooit een achterstand.",
+    "emailToggle": "Mail me elke ochtend de shortlist — alleen als er iets nieuws is, nooit een lege lijst.",
+    "emailSaveError": "Wijzigen is niet gelukt — probeer het opnieuw."
   }
 }

@@ -4623,6 +4623,8 @@
     "open": "Abrir e preparar candidatura",
     "keep": "Manter",
     "skip": "Não é para mim",
-    "expiryNote": "Escolhas não revisadas expiram em 48 horas — a fila fica fresca, nunca um acúmulo."
+    "expiryNote": "Escolhas não revisadas expiram em 48 horas — a fila fica fresca, nunca um acúmulo.",
+    "emailToggle": "Envie-me a lista todas as manhãs por e-mail, só quando houver novidades; nunca uma lista vazia.",
+    "emailSaveError": "Não foi possível alterar — tente novamente."
   }
 }

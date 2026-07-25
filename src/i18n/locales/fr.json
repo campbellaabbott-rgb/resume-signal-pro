@@ -4623,6 +4623,8 @@
     "open": "Ouvrir et préparer la candidature",
     "keep": "Garder",
     "skip": "Pas pour moi",
-    "expiryNote": "Les sélections non revues expirent après 48 h — la file reste fraîche, jamais un arriéré."
+    "expiryNote": "Les sélections non revues expirent après 48 h — la file reste fraîche, jamais un arriéré.",
+    "emailToggle": "Envoyez-moi la sélection chaque matin par e-mail, uniquement s'il y a du nouveau, jamais une liste vide.",
+    "emailSaveError": "Modification impossible — réessayez."
   }
 }

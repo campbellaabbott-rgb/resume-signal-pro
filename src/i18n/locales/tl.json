@@ -4623,6 +4623,8 @@
     "open": "Buksan at ihanda ang aplikasyon",
     "keep": "Itago",
     "skip": "Hindi para sa akin",
-    "expiryNote": "Mag-e-expire ang hindi nirepasong pili pagkatapos ng 48 oras — laging sariwa ang pila, hindi backlog."
+    "expiryNote": "Mag-e-expire ang hindi nirepasong pili pagkatapos ng 48 oras — laging sariwa ang pila, hindi backlog.",
+    "emailToggle": "I-email sa akin ang shortlist tuwing umaga — kapag may bago lang, hindi kailanman walang laman na listahan.",
+    "emailSaveError": "Hindi na-update — subukan muli."
   }
 }

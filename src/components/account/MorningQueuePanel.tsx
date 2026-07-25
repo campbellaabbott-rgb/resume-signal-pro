@@ -21,7 +21,7 @@ const sb = supabase as unknown as {
 interface Mandate {
   user_id: string; email: string; active: boolean; q: string; category: string;
   location: string; remote_only: boolean; salary_min: number | null; daily_count: number;
-  resume_text: string; last_run_at: string | null;
+  resume_text: string; last_run_at: string | null; email_opt_in?: boolean;
   last_run_summary: { scanned: number; picked: number; skipped_churn: number; skipped_lowfit: number } | null;
 }
 interface QueueItem {
@@ -109,6 +109,19 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
       ? t("agentQueue.activated", "Mandate active — your first queue arrives after tonight's run.")
       : t("agentQueue.paused", "Mandate paused — no new picks until you resume."));
   }, [mandate, defaultResume, userId, email, form, t]);
+
+  // The morning email is the agent's whole point — it's on by default, but it
+  // must be one click to stop, from the same place the mandate lives (not only
+  // the unsubscribe link buried in the mail).
+  const toggleEmail = useCallback(async (next: boolean) => {
+    if (!userId) return;
+    setMandate((prev) => (prev ? { ...prev, email_opt_in: next } : prev));
+    const { error } = await sb.from("agent_mandates").update({ email_opt_in: next }).eq("user_id", userId);
+    if (error) {
+      setMandate((prev) => (prev ? { ...prev, email_opt_in: !next } : prev));
+      toast.error(t("agentQueue.emailSaveError", "Couldn't change that — please try again."));
+    }
+  }, [userId, t]);
 
   const decide = useCallback(async (id: number, status: "approved" | "dismissed") => {
     const { error } = await sb.from("agent_queue").update({ status, decided_at: new Date().toISOString() }).eq("id", id);
@@ -214,6 +227,21 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
             lowfit: mandate.last_run_summary.skipped_lowfit,
           })}
         </p>
+      )}
+
+      {/* Morning email control — same place the mandate lives. */}
+      {mandate && (
+        <label className="flex items-start gap-2 mb-3 text-[11px] text-muted-foreground cursor-pointer">
+          <input
+            type="checkbox"
+            checked={mandate.email_opt_in !== false}
+            onChange={(e) => void toggleEmail(e.target.checked)}
+            className="mt-0.5 accent-[hsl(var(--primary))]"
+          />
+          <span>
+            {t("agentQueue.emailToggle", "Email me the shortlist each morning — only when there's something new, never an empty list.")}
+          </span>
+        </label>
       )}
 
       {/* The queue */}
