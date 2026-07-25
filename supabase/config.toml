@@ -134,3 +134,9 @@ project_id = "bwhdazbotpblihdxcmho"
   # unsubscribe requires a valid HMAC token.
   [functions.send-search-digest]
     verify_jwt = false
+  # Same rationale as send-search-digest: the cron trigger posts without auth,
+  # {action:send} is opt-in-only (email_opt_in), self-throttled to one send
+  # per ~20h, and entitlement is re-checked at send time — a stray trigger
+  # cannot spam anyone.
+  [functions.send-agent-digest]
+    verify_jwt = false
