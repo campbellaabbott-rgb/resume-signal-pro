@@ -43,6 +43,9 @@ export { GUIDES } from "../src/data/guides";
 export { buildIndustryFaqs } from "../src/data/industry-faqs";
 export { COUNTRY_STANDARDS } from "../supabase/functions/free-keyword-scan/country-standards";
 export { COUNTRY_SLUGS, CV_LOCALES, EN_TEMPLATE, fill, hreflangCluster } from "../src/data/cv-standards-content";
+export { getAllProducts } from "../src/config/products";
+export { changelog } from "../src/data/changelog";
+export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
 `);
   const bundle = join(root, "scripts", ".prerender-data.mjs");
   execSync(`npx esbuild "${entry}" --bundle --format=esm --outfile="${bundle}" --log-level=error`, { cwd: root, stdio: "inherit" });
@@ -93,6 +96,15 @@ export { COUNTRY_SLUGS, CV_LOCALES, EN_TEMPLATE, fill, hreflangCluster } from ".
     }
   } catch { /* offline build — llms-full ships without the live-numbers section */ }
 
+  // ---- Shared live-count constants: ONE derivation for every surface that
+  // states a headline number (home title, llms.txt, jobs page uses its own
+  // local copy). plusClaim rounds DOWN to a "+" claim that stays literally
+  // true through churn between bakes — the audit found the home title 120k
+  // behind the /jobs prerender from the same deploy.
+  const BOARD_TOTAL = typeof boardFacets?.total === "number" ? boardFacets.total : null;
+  const BOARD_COMPANIES = Array.isArray(boardFacets?.companiesFacet) ? boardFacets.companiesFacet.length : null;
+  const plusClaim = (n, step) => `${(Math.floor(n / step) * step).toLocaleString("en-US")}+`;
+
   const template = readFileSync(join(dist, "index.html"), "utf8");
   if (!template.includes('<div id="root"></div>')) {
     throw new Error('dist/index.html does not contain <div id="root"></div> — template shape changed');
@@ -103,6 +115,30 @@ export { COUNTRY_SLUGS, CV_LOCALES, EN_TEMPLATE, fill, hreflangCluster } from ".
   const label = (slug) => slug.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
   const displayKeyword = (k) => (k.length <= 4 && !k.includes(" ") ? k.toUpperCase() : k);
   const uniq = (a) => [...new Set(a)];
+  // The ONLY industry count: every surface computes from the engine's actual
+  // table (the audit found 58 and 59 hardcoded on the same page).
+  const NIND = Object.keys(D.INDUSTRY_KEYWORDS).length;
+  // Hoisted from the jobs-lander block: the /explore prerender links the same
+  // field pages.
+  const CATEGORY_LANDERS = [
+    ["engineering", "Engineering & IT"],
+    ["data_ai", "Data & AI"],
+    ["design", "Design"],
+    ["product", "Product"],
+    ["marketing", "Marketing & Comms"],
+    ["sales", "Sales & Partnerships"],
+    ["customer", "Customer Success & Support"],
+    ["finance", "Finance & Accounting"],
+    ["legal", "Legal & Compliance"],
+    ["people_hr", "People & Recruiting"],
+    ["operations", "Operations & Logistics"],
+    ["healthcare", "Healthcare & Clinical"],
+    ["science", "Science & Research"],
+    ["education", "Education"],
+    ["hospitality_retail", "Hospitality & Retail"],
+    ["security", "Security & Trust"],
+    ["admin", "Administrative"],
+  ];
 
   const chip = (text, cls = "px-2.5 py-1 rounded-lg bg-card border border-border text-sm text-foreground capitalize") =>
     `<span class="${cls}">${esc(text)}</span>`;
@@ -197,6 +233,12 @@ export { COUNTRY_SLUGS, CV_LOCALES, EN_TEMPLATE, fill, hreflangCluster } from ".
     html = html.replace(/(<meta property="og:description" content=")[^"]*(")/, `$1${esc(description)}$2`);
     html = html.replace(/(<meta name="twitter:title" content=")[^"]*(")/, `$1${esc(title)}$2`);
     html = html.replace(/(<meta name="twitter:description" content=")[^"]*(")/, `$1${esc(description)}$2`);
+    // Route-true share URLs: the template hardcodes the homepage, so every
+    // page's og:url/twitter:url contradicted its own canonical and shares
+    // canonicalized to "/" (audit 2026-07-25).
+    const pageUrl = path === "/" ? `${SITE}/` : `${SITE}${path}`;
+    html = html.replace(/(<meta property="og:url" content=")[^"]*(")/, `$1${pageUrl}$2`);
+    html = html.replace(/(<meta name="twitter:url" content=")[^"]*(")/, `$1${pageUrl}$2`);
     if (lang) html = html.replace(/<html lang="[^"]*"/, `<html lang="${lang}"`);
 
     let headExtra = `${isFallback ? "" : `<link rel="canonical" href="${SITE}${path}" />\n`}<meta name="x-prerendered" content="1" />\n`;
@@ -239,8 +281,8 @@ export { COUNTRY_SLUGS, CV_LOCALES, EN_TEMPLATE, fill, hreflangCluster } from ".
     const slugs = Object.keys(D.INDUSTRY_KEYWORDS).sort();
     write({
       path: "/industries",
-      title: "Resume Keywords by Industry — 59 Fields Covered",
-      description: "ATS keywords, recognized job titles, and expected certifications for 59 industries — straight from the detection engine of a real resume scanner. Nursing to software to skilled trades.",
+      title: `Resume Keywords by Industry — ${NIND} Fields Covered`,
+      description: `ATS keywords, recognized job titles, and expected certifications for ${NIND} industries — straight from the detection engine of a real resume scanner.`,
       content: `
         <h1 class="text-3xl font-bold mb-3">Resume keywords, by industry</h1>
         <p class="text-muted-foreground mb-8">Every page below is generated from the live data our scanner uses — the keywords it weights, the titles it recognizes, the certifications it anchors on, and (where available) skills sourced from the U.S. Department of Labor's O*NET database. ${slugs.length} industries, updated whenever the engine improves.</p>
@@ -574,8 +616,10 @@ export { COUNTRY_SLUGS, CV_LOCALES, EN_TEMPLATE, fill, hreflangCluster } from ".
   write({
     isFallback: true,
     path: "/",
-    title: "Resume Booster — Live Job Board: 450,000+ Verified Openings, Zero Ghost Jobs",
-    description: "Live openings pulled straight from companies' own career pages — then ranked against your resume, so you apply where you'll actually win. Free ATS resume scan included: measured, not guessed.",
+    title: BOARD_TOTAL
+      ? `Resume Booster — Live Job Board: ${plusClaim(BOARD_TOTAL, 50000)} Verified Openings, Zero Ghost Jobs`
+      : "Resume Booster — Live Job Board: 450,000+ Verified Openings, Zero Ghost Jobs",
+    description: "Live openings pulled straight from companies' own career pages, ranked against your resume so you apply where you can win. Free ATS resume scan included.",
     jsonLd: [
       {
         "@context": "https://schema.org",
@@ -584,7 +628,7 @@ export { COUNTRY_SLUGS, CV_LOCALES, EN_TEMPLATE, fill, hreflangCluster } from ".
         url: SITE,
         applicationCategory: "BusinessApplication",
         operatingSystem: "Web",
-        description: "Free diagnostic resume scan: ATS score with a full audit trail, verified quotes, per-vendor parsing checks, and a fix plan — across 59 industries and 10 languages.",
+        description: `Free diagnostic resume scan: ATS score with a full audit trail, verified quotes, per-vendor parsing checks, and a fix plan — across ${NIND} industries and 10 languages.`,
         offers: { "@type": "Offer", price: "0", priceCurrency: "USD", description: "Free resume scan — no signup required" },
       },
     ],
@@ -599,7 +643,7 @@ export { COUNTRY_SLUGS, CV_LOCALES, EN_TEMPLATE, fill, hreflangCluster } from ".
           <li class="text-sm text-muted-foreground">✓ Score with its modeling band and a point-by-point audit trail</li>
           <li class="text-sm text-muted-foreground">✓ Missing keywords from your job posting, or your occupation's O*NET profile</li>
           <li class="text-sm text-muted-foreground">✓ Weakest bullets identified and rewritten</li>
-          <li class="text-sm text-muted-foreground">✓ Industry detection across 58 fields, including Spanish-language resumes</li>
+          <li class="text-sm text-muted-foreground">✓ Industry detection across ${NIND} fields, including Spanish-language resumes</li>
           <li class="text-sm text-muted-foreground">✓ Red flags: gaps, vague duties, date inconsistencies, credential visibility</li>
         </ul>
       </section>
@@ -617,7 +661,7 @@ export { COUNTRY_SLUGS, CV_LOCALES, EN_TEMPLATE, fill, hreflangCluster } from ".
           ${pill("/resume-checker", "Free resume checker →")}
           ${pill("/ats-resume-test", "ATS resume test →")}
           ${pill("/resume-score", "Resume score →")}
-          ${pill("/industries", "Keywords for 58 industries →")}
+          ${pill("/industries", `Keywords for ${NIND} industries →`)}
           ${pill("/guides", "Resume & ATS guides →")}
           ${pill("/es/revisar-curriculum", "Revisar currículum (español) →")}
           ${pill("/builder", "Free resume builder →")}
@@ -715,25 +759,6 @@ export { COUNTRY_SLUGS, CV_LOCALES, EN_TEMPLATE, fill, hreflangCluster } from ".
   // from the live corpus at build time (omitted gracefully offline), copy
   // limited to what the board verifiably does.
   {
-    const CATEGORY_LANDERS = [
-      ["engineering", "Engineering & IT"],
-      ["data_ai", "Data & AI"],
-      ["design", "Design"],
-      ["product", "Product"],
-      ["marketing", "Marketing & Comms"],
-      ["sales", "Sales & Partnerships"],
-      ["customer", "Customer Success & Support"],
-      ["finance", "Finance & Accounting"],
-      ["legal", "Legal & Compliance"],
-      ["people_hr", "People & Recruiting"],
-      ["operations", "Operations & Logistics"],
-      ["healthcare", "Healthcare & Clinical"],
-      ["science", "Science & Research"],
-      ["education", "Education"],
-      ["hospitality_retail", "Hospitality & Retail"],
-      ["security", "Security & Trust"],
-      ["admin", "Administrative"],
-    ];
     const catCounts = boardFacets?.categoriesFacet ?? {};
     const boardTotal = typeof boardFacets?.total === "number" ? boardFacets.total : null;
     const boardCompanies = Array.isArray(boardFacets?.companiesFacet) ? boardFacets.companiesFacet.length : null;
@@ -829,7 +854,7 @@ export { COUNTRY_SLUGS, CV_LOCALES, EN_TEMPLATE, fill, hreflangCluster } from ".
         title: boardTotal
           ? `Live Job Board — ${fmt(boardTotal)} Openings Direct From Company Career Pages`
           : "Live Job Board — Openings Direct From Company Career Pages",
-        description: `Browse ${jobsPhrase}, pulled from official job boards on Greenhouse, Lever, Ashby, SmartRecruiters, Workable, and BambooHR — no aggregators, nothing older than 30 days. Check your resume's fit against any posting free, then apply on the company's own site.`,
+        description: `Browse ${jobsPhrase} — straight from official company job boards. No aggregators; nothing older than 30 days.`,
         content: `
           <h1>Live job board</h1>
           <p>${jobsPhrase[0].toUpperCase()}${jobsPhrase.slice(1)}, pulled directly from the official job boards companies publish on Greenhouse, Lever, Ashby, SmartRecruiters, Workable, and BambooHR. No scraped listings, no aggregators, no reposts — every opening belongs to the company that published it, applying happens on the company's own site, and nothing older than 30 days stays on the board.</p>
@@ -854,7 +879,7 @@ export { COUNTRY_SLUGS, CV_LOCALES, EN_TEMPLATE, fill, hreflangCluster } from ".
       write({
         path: "/ghost-job-index",
         title: "The Ghost Job Index — how many job postings are actually real?",
-        description: "A live, honest look at job-posting freshness: how many roles are open right now, how long postings stay up, how fast roles actually get filled, and which companies are actively hiring — computed from companies' official job boards and audited daily.",
+        description: "A live measure of job-posting reality: how many roles are open, how long postings stay up, how fast they fill, and who is actively hiring — audited daily.",
         content: `
           <h1>The Ghost Job Index</h1>
           <p>Ghost jobs — postings that are stale, already filled, or never real — waste job seekers' time everywhere. This page is our live, honest measure of the opposite: postings that are verified, fresh, and from companies actually hiring.</p>
@@ -968,6 +993,100 @@ export { COUNTRY_SLUGS, CV_LOCALES, EN_TEMPLATE, fill, hreflangCluster } from ".
     }
   }
 
+  // ---- /pricing, /changelog, /explore ----
+  // All three previously served the HOMEPAGE fallback prerender byte-for-byte
+  // (audit 2026-07-25): the money page had no pricing title/description/
+  // canonical in served HTML, and /explore wasn't in the sitemap at all.
+  {
+    const paid = D.getAllProducts().filter((p) => typeof p.priceUsd === "number" && p.priceUsd > 0);
+    const minP = Math.min(...paid.map((p) => p.priceUsd));
+    const maxP = Math.max(...paid.map((p) => p.priceUsd));
+    write({
+      path: "/pricing",
+      title: `Pricing — Free Resume Scan, One-Time Tools from $${minP}`,
+      description: `The diagnostic resume scan is free forever — 7 scans a day, no signup. Paid tools are one-time purchases ($${minP}–$${maxP}), plus an optional all-access Pro plan.`,
+      jsonLd: [
+        breadcrumbLd([{ name: "Home", path: "/" }, { name: "Pricing", path: "/pricing" }]),
+        {
+          "@context": "https://schema.org",
+          "@type": "SoftwareApplication",
+          name: "Resume Booster",
+          url: `${SITE}/pricing`,
+          applicationCategory: "BusinessApplication",
+          operatingSystem: "Web",
+          offers: {
+            "@type": "AggregateOffer",
+            priceCurrency: "USD",
+            lowPrice: "0",
+            highPrice: String(maxP),
+            offerCount: paid.length + 1,
+          },
+        },
+      ],
+      content: `
+        ${breadcrumbNav([{ name: "Home", href: "/" }, { name: "Pricing" }])}
+        <h1 class="text-3xl font-bold mb-3">Pricing</h1>
+        <p class="text-muted-foreground mb-6">The core product is free: the full diagnostic resume scan — score with audit trail, missing keywords, weakest bullets rewritten, ATS vendor checks — costs nothing, 7 scans a day with no signup (15 with a free account). The job board and its filters are free too. Paid tools are one-time purchases, not subscriptions; an optional Pro plan covers everything for people applying at volume.</p>
+        <section class="mb-8"><h2 class="text-xl font-bold mb-3">One-time tools</h2>
+          <div class="space-y-2">${paid.map((p) => `<div class="rounded-xl border border-border bg-card p-4 flex items-start justify-between gap-4"><div><p class="text-sm font-semibold text-foreground">${esc(p.name)}</p><p class="text-xs text-muted-foreground mt-0.5">${esc(p.description || "")}</p></div><p class="text-sm font-bold text-foreground whitespace-nowrap">$${p.priceUsd}</p></div>`).join("")}</div>
+        </section>
+        <p class="text-sm text-muted-foreground mb-8">Current bundle discounts and the Pro all-access price are shown live on this page in the app.</p>
+        ${cta("Start with the free scan", "See the full diagnostic before spending anything — most people need nothing else.", "Scan my resume free")}`,
+    });
+
+    const tEn = (D.EN_LOCALE && D.EN_LOCALE.changelogEntries) || {};
+    const clItems = D.changelog
+      .slice(0, 30)
+      .map((e) => ({ ...e, title: tEn[e.id]?.title, desc: tEn[e.id]?.description }))
+      .filter((e) => e.title);
+    const TAG_LABEL = { new: "New", improved: "Improved", fixed: "Fixed" };
+    write({
+      path: "/changelog",
+      title: "Changelog — Every Ship, Dated and Honest",
+      description: clItems[0]
+        ? `What changed and when, newest first — including honest postmortems. Latest (${clItems[0].date}): ${clItems[0].title}.`
+        : "What changed and when, newest first — features, fixes, and honest postmortems.",
+      jsonLd: [breadcrumbLd([{ name: "Home", path: "/" }, { name: "Changelog", path: "/changelog" }])],
+      content: `
+        ${breadcrumbNav([{ name: "Home", href: "/" }, { name: "Changelog" }])}
+        <h1 class="text-3xl font-bold mb-3">Changelog</h1>
+        <p class="text-muted-foreground mb-8">Every user-facing change, newest first. When something breaks, the postmortem ships here too.</p>
+        <div class="space-y-4">${clItems.map((e) => `<article class="rounded-xl border border-border bg-card p-4"><p class="text-xs text-muted-foreground mb-1">${esc(e.date)} · ${e.tags.map((t) => TAG_LABEL[t] || t).join(" · ")}</p><h2 class="text-sm font-semibold text-foreground mb-1">${esc(e.title)}</h2>${e.desc ? `<p class="text-xs text-muted-foreground">${esc(e.desc)}</p>` : ""}</article>`).join("")}</div>`,
+    });
+
+    write({
+      path: "/explore",
+      title: "Explore Jobs — Trending Companies, Fast Hirers, Pay Transparency",
+      description: "Browse the board by measured signal: fastest-growing employers, companies that truly fill roles, pay transparency, and where the pay is.",
+      jsonLd: [
+        breadcrumbLd([{ name: "Home", path: "/" }, { name: "Explore", path: "/explore" }]),
+        {
+          "@context": "https://schema.org",
+          "@type": "CollectionPage",
+          name: "Explore jobs",
+          description: "Discovery collections computed from the board's own daily tracking: trending boards, real fill signals, pay transparency, re-poster flags, and salary-by-field.",
+          url: `${SITE}/explore`,
+          isPartOf: { "@type": "WebSite", name: "Resume Booster", url: SITE },
+        },
+      ],
+      content: `
+        ${breadcrumbNav([{ name: "Home", href: "/" }, { name: "Explore" }])}
+        <h1 class="text-3xl font-bold mb-3">Explore the board by measured signal</h1>
+        <p class="text-muted-foreground mb-8">Every collection below is computed from our own daily tracking of companies' official job boards — never bought, never guessed. The live lists load when the page opens in a browser.</p>
+        <div class="space-y-3 mb-8">
+          <div class="rounded-xl border border-border bg-card p-4"><h2 class="text-sm font-semibold text-foreground mb-1">Fastest-growing boards</h2><p class="text-xs text-muted-foreground">Biggest net increase in open roles, counted from daily snapshots so reposts can't inflate it.</p></div>
+          <div class="rounded-xl border border-border bg-card p-4"><h2 class="text-sm font-semibold text-foreground mb-1">Companies that actually fill roles</h2><p class="text-xs text-muted-foreground">Roles that stayed posted at least a week and then came down — a real fill signal from lifecycle tracking. Serial re-listers are disqualified.</p></div>
+          <div class="rounded-xl border border-border bg-card p-4"><h2 class="text-sm font-semibold text-foreground mb-1">Transparent about pay</h2><p class="text-xs text-muted-foreground">Companies stating pay on at least 80% of their open roles — a badge no one can buy.</p></div>
+          <div class="rounded-xl border border-border bg-card p-4"><h2 class="text-sm font-semibold text-foreground mb-1">Serial re-posters</h2><p class="text-xs text-muted-foreground">Companies that take roles down and re-list them again and again, making stale openings look brand-new.</p></div>
+          <div class="rounded-xl border border-border bg-card p-4"><h2 class="text-sm font-semibold text-foreground mb-1">Where the pay is</h2><p class="text-xs text-muted-foreground">Fields ranked by median advertised salary floor, from postings that state pay — never converted, never mixed across currencies.</p></div>
+        </div>
+        <section class="mb-8"><h2 class="text-xl font-bold mb-3">Browse by field</h2>
+          <div class="flex flex-wrap gap-2 text-xs">${CATEGORY_LANDERS.map(([slug, l]) => pill(`/jobs/field/${slug}`, `${l} jobs →`)).join("")}</div>
+        </section>
+        <p class="text-sm text-muted-foreground">See also the <a href="/jobs" class="text-primary">live board</a> and the <a href="/ghost-job-index" class="text-primary">Ghost Job Index</a>.</p>`,
+    });
+  }
+
   // ---- /llms-full.txt: complete citable text in one fetch ----
   // Companion to the hand-written public/llms.txt overview. AI engines that
   // find llms.txt can pull this for full guide text and the data-page map
@@ -977,7 +1096,7 @@ export { COUNTRY_SLUGS, CV_LOCALES, EN_TEMPLATE, fill, hreflangCluster } from ".
     const lines = [];
     lines.push("# Resume Booster — full text for AI/answer engines");
     lines.push("");
-    lines.push("> Free diagnostic resume scanner (resumebooster.work): ATS score with a point-by-point audit trail, every quoted finding verified against the actual document, per-vendor parsing checks (Workday, Greenhouse, Lever, iCIMS), keyword expectations sourced from the U.S. Department of Labor's O*NET database. 58 industries, 10 languages including native Spanish detection. Free scan, no signup, resumes never stored. See /llms.txt for the short overview.");
+    lines.push(`> Free diagnostic resume scanner (resumebooster.work): ATS score with a point-by-point audit trail, every quoted finding verified against the actual document, per-vendor parsing checks (Workday, Greenhouse, Lever, iCIMS), keyword expectations sourced from the U.S. Department of Labor's O*NET database. ${NIND} industries, 10 languages including native Spanish detection. Free scan, no signup, resumes never stored. See /llms.txt for the short overview.`);
     if (boardFacets?.total) {
       lines.push("");
       lines.push(`> Live job board (/jobs): ${Number(boardFacets.total).toLocaleString("en-US")} postings from ${Array.isArray(boardFacets.companiesFacet) ? boardFacets.companiesFacet.length : "3,000+"} companies' OFFICIAL job-board APIs (Greenhouse, Lever, Ashby, SmartRecruiters, Workable, BambooHR) — no scraping, no aggregators; the largest boards re-check every 10-15 minutes and the whole catalog re-verifies within a few hours. Per-field pages at /jobs/field/{engineering,healthcare,finance,...}. Free deterministic resume-fit scoring against any posting.`);
@@ -1031,6 +1150,22 @@ export { COUNTRY_SLUGS, CV_LOCALES, EN_TEMPLATE, fill, hreflangCluster } from ".
     }
     lines.push("Citation policy: everything above is publishable product truth — keyword tables are the scanner's real detection data, O*NET data is U.S. public domain, and vendor behaviors are the documented checks the scanner runs. Cite freely with a link.");
     writeFileSync(join(dist, "llms-full.txt"), lines.join("\n"));
+
+    // llms.txt headline counts: rewritten from live data each bake so the
+    // hand-written overview can't drift 100k+ behind the board again
+    // (audit 2026-07-25: it claimed 450,000+/20,000+ against a live
+    // 569k/23k). Patterns are deliberately narrow; on any miss the file
+    // ships unchanged.
+    try {
+      let lt = readFileSync(join(root, "public/llms.txt"), "utf8");
+      if (BOARD_TOTAL && BOARD_COMPANIES) {
+        lt = lt.replace(/[\d,]+\+ openings from [\d,]+\+ companies/, `${plusClaim(BOARD_TOTAL, 50000)} openings from ${plusClaim(BOARD_COMPANIES, 1000)} companies`);
+      }
+      lt = lt.replace(/\b\d+ industries, 10 languages\b/, `${NIND} industries, 10 languages`);
+      lt = lt.replace(/\b\d+ industry pages\b/, `${NIND} industry pages`);
+      writeFileSync(join(root, "public/llms.txt"), lt);
+      writeFileSync(join(dist, "llms.txt"), lt);
+    } catch { /* llms.txt absent — nothing to refresh */ }
   }
 
   // ---- sitemap.xml: single source of truth ----
@@ -1049,6 +1184,7 @@ export { COUNTRY_SLUGS, CV_LOCALES, EN_TEMPLATE, fill, hreflangCluster } from ".
       { path: "/affiliates", changefreq: "monthly", priority: "0.6" },
       { path: "/shortlist", changefreq: "monthly", priority: "0.6" },
       { path: "/jobs", changefreq: "daily", priority: "0.8" },
+      { path: "/explore", changefreq: "daily", priority: "0.8" },
       { path: "/changelog", changefreq: "weekly", priority: "0.5" },
     ];
     const seen = new Set(STATIC_ROUTES.map((r) => r.path));
@@ -1075,10 +1211,15 @@ export { COUNTRY_SLUGS, CV_LOCALES, EN_TEMPLATE, fill, hreflangCluster } from ".
       if (String(e).includes("refusing to overwrite")) throw e;
       /* no previous sitemap — first build, proceed */
     }
+    // lastmod = bake date, honestly: every prerendered page regenerates each
+    // build with fresh live counts, so the bake date IS the modification
+    // date. The audit found zero lastmod across all 877 URLs — discarding
+    // recrawl-priority signal on a board whose selling point is freshness.
+    const LASTMOD = new Date().toISOString().slice(0, 10);
     const xml = [
       `<?xml version="1.0" encoding="UTF-8"?>`,
       `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">`,
-      ...entries.map((e) => `  <url>\n    <loc>${SITE}${e.path}</loc>\n    <changefreq>${e.changefreq}</changefreq>\n    <priority>${e.priority}</priority>\n  </url>`),
+      ...entries.map((e) => `  <url>\n    <loc>${SITE}${e.path}</loc>\n    <lastmod>${LASTMOD}</lastmod>\n    <changefreq>${e.changefreq}</changefreq>\n    <priority>${e.priority}</priority>\n  </url>`),
       `</urlset>`,
     ].join("\n");
     writeFileSync(join(root, "public/sitemap.xml"), xml);
