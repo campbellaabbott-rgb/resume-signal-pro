@@ -81,6 +81,18 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Explicit action gate, same contract as send-search-digest/send-market-
+    // pulse: this function is verify_jwt=false so the cron can trigger it,
+    // which means ANY anonymous POST reaches here — without the gate, a
+    // stray POST ran a real send sweep (the ~20h throttle bounded the blast,
+    // but the send hour became attacker-choosable). The cron posts
+    // {"action":"send"}.
+    let body: { action?: string } = {};
+    try { body = await req.json(); } catch { /* empty body → gated below */ }
+    if (body.action !== "send") {
+      return new Response(JSON.stringify({ error: "POST { action: 'send' } to run a digest batch" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
     const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
     if (!RESEND_API_KEY) {
       return new Response(JSON.stringify({ error: "RESEND_API_KEY not configured" }),
