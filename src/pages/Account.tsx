@@ -1021,6 +1021,25 @@ export default function Account() {
                       <button
                         type="button"
                         className="text-xs text-primary border border-primary/40 rounded-full px-2 py-0.5 hover:bg-primary/10"
+                        onClick={() => {
+                          /* Grounded in stored fields only — company, role,
+                             and the tracked date; nothing invented (2026-07-25
+                             audit upgrade). */
+                          const when = app.status_changed_at ? new Date(app.status_changed_at).toLocaleDateString() : "";
+                          const draft = t("accountPage.followUpDraft",
+                            "Subject: Following up on my {{role}} application\n\nHi {{company}} team,\n\nI applied for the {{role}} role{{when}} and remain very interested. I'd welcome any update on where the process stands — and I'm happy to provide anything further that would be useful.\n\nThank you for your time.",
+                            { role: app.role ?? "", company: app.company ?? "", when: when ? ` on ${when}` : "" });
+                          void navigator.clipboard.writeText(draft).then(
+                            () => toast.success(t("accountPage.followUpCopied", "Follow-up draft copied — paste it into your email.")),
+                            () => toast.error(t("accountPage.followUpCopyFailed", "Couldn't copy — select and copy manually.")),
+                          );
+                        }}
+                      >
+                        {t("accountPage.draftFollowUp", "Copy follow-up draft")}
+                      </button>
+                      <button
+                        type="button"
+                        className="text-xs text-primary border border-primary/40 rounded-full px-2 py-0.5 hover:bg-primary/10"
                         onClick={() => markFollowedUp(app.id)}
                       >
                         {t("accountPage.markFollowedUp", "Mark followed up")}
