@@ -15,6 +15,7 @@
 
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { HOT_TOKENS, JOB_SOURCES, LIGHT_DESC_TOKENS, type JobSource } from "./sources.ts";
+import { DETAIL_DESC_SOURCES, jobPostingLdDescription, workdayCxsUrl } from "./descriptions.ts";
 import {
   htmlToText,
   normalizeAshby,
@@ -70,7 +71,7 @@ const json = (body: unknown, status = 200) =>
 // while this file was untouched). Always bump BUILD_VERSION here when a shared
 // module this function imports changes — it forces the diff AND gives the
 // deploy a verifiable tell.
-const BUILD_VERSION = "2026-07-24.6";
+const BUILD_VERSION = "2026-07-24.7";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -97,6 +98,11 @@ const FETCH_TIMEOUT_MS = 20_000;
 // vendor to ~1 in-flight fetch per hop at this width.
 const CONCURRENCY = 8;
 const HOT_CONCURRENCY = 2; // hot boards are giants — two multi-MB parses at once is the memory ceiling
+// desc-sweep: per-posting description backfill. 8 concurrent detail fetches
+// matches CONCURRENCY for board fetches; 120/hop keeps a hop well inside the
+// edge wall-time limit while still clearing ~406k rows in a few thousand hops.
+const DESC_SWEEP_PER_HOP = 120;
+const DESC_SWEEP_CONCURRENCY = 8;
 // Slice sizes are calibrated to the per-invocation compute budget. Hot
 // slices are UNIFORMLY giant boards (that's what makes them hot), so they
 // must be much smaller than the old mixed slices: the first tiered deploy
@@ -166,7 +172,13 @@ const listUrl = (s: JobSource) =>
         : s.source === "smartrecruiters"
           ? `https://api.smartrecruiters.com/v1/companies/${s.token}/postings?limit=100`
           : s.source === "workable"
-            ? `https://apply.workable.com/api/v1/widget/accounts/${s.token}?details=false`
+            // details=true returns every posting's FULL description in the SAME
+            // single call (measured 2026-07-24: 88KB vs 8KB on a 20-job board) —
+            // complete coverage for Workable boards at zero extra requests.
+            // Light boards fall back for the same reason Greenhouse giants drop
+            // content=true: the bulk htmlToText pass is what wedges the isolate.
+            // Their descriptions arrive via the backfill sweep instead.
+            ? `https://apply.workable.com/api/v1/widget/accounts/${s.token}?details=${isLight(s.token) ? "false" : "true"}`
             : s.source === "recruitee"
               ? `https://${s.token}.recruitee.com/api/offers/`
               : s.source === "breezy"
@@ -808,12 +820,45 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
             const text = htmlToText([o.description, o.requirements].filter(Boolean).join("\n").slice(0, 12000)).trim();
             if (text) descs.set(`recruitee:${s.token}:${o.id}`, text.slice(0, 4000));
           }
-        } else if (s.source === "breezy") {
-          for (const p of ((Array.isArray(r.raw) ? r.raw : []) as Array<{ id?: string; friendly_id?: string; description?: string }>)) {
-            const externalId = p.friendly_id || p.id || "";
-            const text = p.description ? htmlToText(String(p.description).slice(0, 12000)).trim() : "";
-            if (externalId && text) descs.set(`breezy:${s.token}:${externalId}`, text.slice(0, 4000));
+        } else if (s.source === "workable" && !isLight(s.token)) {
+          // Same self-tuning guard as Greenhouse: details=true payloads are ~10x
+          // bigger, and it's the bulk htmlToText pass — not the fetch — that kills
+          // the isolate on a giant board. Measure first, enroll, fill via backfill.
+          const wkJobs = (r.raw as { jobs?: Array<{ shortcode?: string; description?: string }> }).jobs ?? [];
+          const contentChars = wkJobs.reduce((n, j) => n + (j.description?.length ?? 0), 0);
+          if (contentChars >= AUTO_LIGHT_THRESHOLD_CHARS) {
+            DYNAMIC_LIGHT.add(s.token);
+            console.warn(`[JOB-BOARD] auto-light: ${s.token} workable payload ${(contentChars / 1e6).toFixed(1)}MB >= threshold — enrolled (descs via backfill)`);
+            try {
+              const { error: alErr } = await client.from("job_board_meta").upsert(
+                { k: "light_desc_dynamic", v: { tokens: [...DYNAMIC_LIGHT].slice(-AUTO_LIGHT_CAP), updatedAt: new Date().toISOString() }, updated_at: new Date().toISOString() },
+                { onConflict: "k" },
+              );
+              if (alErr) console.warn(`[JOB-BOARD] auto-light persist failed for ${s.token}:`, alErr.message?.slice(0, 120));
+            } catch { /* re-enrolls on the next fetch — never blocks the slice */ }
+          } else {
+            for (const j of wkJobs) {
+              const ext = j.shortcode ?? "";
+              const text = j.description ? htmlToText(String(j.description).slice(0, 12000)).trim() : "";
+              if (ext && text) descs.set(`workable:${s.token}:${ext}`, text.slice(0, 4000));
+            }
           }
+        } else if (s.source === "pinpoint") {
+          // postings.json — which we already fetch for the listing — carries the
+          // full posting body. We were parsing it for titles and throwing the
+          // description away, storing null on every row.
+          for (const p of (((r.raw as { data?: Array<Record<string, unknown>> }).data) ?? [])) {
+            const ext = p.id == null ? "" : String(p.id);
+            const html = [p.description, p.key_responsibilities, p.skills_knowledge_expertise]
+              .filter((x): x is string => typeof x === "string" && x.length > 0)
+              .join("\n");
+            const text = html ? htmlToText(html.slice(0, 12000)).trim() : "";
+            if (ext && text) descs.set(`pinpoint:${s.token}:${ext}`, text.slice(0, 4000));
+          }
+        // Breezy has NO description field on its /json list (verified against the
+        // live API 2026-07-24) — the branch that used to sit here could never
+        // fire, which is why every Breezy row stored null. Its text lives only on
+        // the posting page, so it is a backfill-sweep vendor now.
         } else if (s.source === "personio" && typeof r.raw === "string") {
           for (const block of xmlBlocks(r.raw, "position")) {
             const pid = xmlValue(block, "id");
@@ -1516,6 +1561,26 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ action: "backfill-desc", chainKey: key, ti: 0, off: 0 }),
         })).then((r) => r.text()).catch(() => {}));
+      } else {
+        // desc-sweep: the per-posting vendors (workday/SR/bamboohr/oracle/breezy).
+        // Only once the light-board backfill has settled, so at most one heavy
+        // maintenance chain runs at a time. Every hop restamps desc_sweep, so a
+        // live chain keeps the age small and can't be double-started; a chain
+        // that dies gets picked up again after six hours.
+        //
+        // Restarting from vi:0 is deliberate — rows filled since last time have
+        // dropped out of the `description is null` filter, so a fresh run
+        // resumes where the DATA left off rather than where a cursor did.
+        const { data: ds } = await client.from("job_board_meta").select("v, updated_at").eq("k", "desc_sweep").maybeSingle();
+        const dsAge = ds ? Date.now() - new Date(ds.updated_at).getTime() : Infinity;
+        if (dsAge > 6 * 60 * 60_000) {
+          const url = `${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`;
+          waitUntil(chainKey().then((key) => fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "desc-sweep", chainKey: key, vi: 0 }),
+          })).then((r) => r.text()).catch(() => {}));
+        }
       }
     }
     return { ok: true, detail: `pass complete — corpus ${f.total} postings from ${companies.length} boards; cold rotation at ${cold}/${COLD_LIST.length}${lastUpsertError ? ` — last upsert error: ${String(lastUpsertError).slice(0, 120)}` : ""}` };
@@ -1603,9 +1668,33 @@ async function checkLive(src: JobSource, externalId: string): Promise<boolean | 
   }
 }
 
-async function getDescription(src: JobSource, id: string, externalId: string): Promise<string | null> {
+async function getDescription(src: JobSource, id: string, externalId: string, applyUrl?: string | null): Promise<string | null> {
   const hit = detailCache.get(id);
   if (hit && Date.now() - hit.at < DETAIL_TTL_MS) return hit.text;
+  const text = await fetchVendorDescription(src, id, externalId, applyUrl);
+  if (text) {
+    if (detailCache.size > 300) detailCache.clear();
+    detailCache.set(id, { at: Date.now(), text });
+  }
+  return text;
+}
+
+/**
+ * One posting's description straight from the vendor. Shared by the on-demand
+ * `detail` read and the backfill sweep so the two can never drift apart.
+ *
+ * Every vendor is matched EXPLICITLY and anything unrecognised returns null.
+ * The previous shape ended in a bare `else` that assumed the Ashby payload, so
+ * workday/breezy/rippling silently parsed the wrong structure and always
+ * returned null — which is why ~313k Workday postings had no description on the
+ * detail panel, not just in storage.
+ */
+async function fetchVendorDescription(
+  src: JobSource,
+  id: string,
+  externalId: string,
+  applyUrl?: string | null,
+): Promise<string | null> {
   let text: string | null = null;
   if (src.source === "smartrecruiters") {
     const res = await fetchWithTimeout(`https://api.smartrecruiters.com/v1/companies/${src.token}/postings/${externalId}`);
@@ -1643,8 +1732,40 @@ async function getDescription(src: JobSource, id: string, externalId: string): P
         }
       }
     }
+  } else if (src.source === "workday") {
+    // The list payload has no description and the stored id is a bare
+    // requisition number, so the CXS detail endpoint is derived from the
+    // apply_url. Sampled 2026-07-24: 30/30 boards returned a real body,
+    // median 5,731 chars.
+    const cxs = applyUrl ? workdayCxsUrl(applyUrl) : null;
+    if (cxs) {
+      const res = await fetchWithTimeout(cxs);
+      if (res.ok) {
+        const j = await res.json().catch(() => null) as { jobPostingInfo?: { jobDescription?: string } } | null;
+        const html = j?.jobPostingInfo?.jobDescription ?? "";
+        text = html ? htmlToText(String(html)).slice(0, DESC_CAP) || null : null;
+      }
+    }
   } else if (src.source === "bamboohr") {
-    text = null; // detail endpoint is unreliable (observed 500s) — honest null
+    // Was hard-coded to null on a note that the detail endpoint threw 500s.
+    // Re-measured 2026-07-24 across 40 distinct boards: 40/40 succeeded,
+    // median 6,271 chars. The note was stale; 43,956 postings were being
+    // written off on it.
+    const res = await fetchWithTimeout(`https://${src.token}.bamboohr.com/careers/${externalId}/detail`);
+    if (res.ok) {
+      const j = await res.json().catch(() => null) as { result?: { jobOpening?: { description?: string } } } | null;
+      const html = j?.result?.jobOpening?.description ?? "";
+      text = html ? htmlToText(String(html)).slice(0, DESC_CAP) || null : null;
+    }
+  } else if (src.source === "breezy") {
+    // No description on the /json list — it only exists on the posting page,
+    // as the schema.org JobPosting block Breezy emits for Google Jobs.
+    const url = applyUrl || `https://${src.token}.breezy.hr/p/${externalId}`;
+    const res = await fetchWithTimeout(url);
+    if (res.ok) {
+      const html = jobPostingLdDescription(await res.text());
+      text = html ? htmlToText(html).slice(0, DESC_CAP) || null : null;
+    }
   } else if (src.source === "pinpoint") {
     // Descriptions ship in the list payload — one board fetch, extract the row.
     const r = await fetchBoard(src);
@@ -1661,9 +1782,9 @@ async function getDescription(src: JobSource, id: string, externalId: string): P
       const j = await res.json();
       text = htmlToText(String(j.content ?? "")).slice(0, DESC_CAP) || null;
     }
-  } else {
-    // Lever/Ashby ship descriptions in the board payload — fetch the board,
-    // extract the one posting, keep nothing else in memory.
+  } else if (src.source === "lever" || src.source === "ashby") {
+    // Both ship descriptions in the board payload — fetch the board, extract
+    // the one posting, keep nothing else in memory.
     const r = await fetchBoard(src);
     if (r) {
       if (src.source === "lever") {
@@ -1677,10 +1798,8 @@ async function getDescription(src: JobSource, id: string, externalId: string): P
       }
     }
   }
-  if (text) {
-    if (detailCache.size > 300) detailCache.clear();
-    detailCache.set(id, { at: Date.now(), text });
-  }
+  // Everything else — rippling today — has no public description source.
+  // Returning null here is a measured fact, not an unfinished branch.
   return text;
 }
 
@@ -1709,7 +1828,7 @@ Deno.serve(async (req) => {
       // bundle, so a stale/failed publish is visible in ONE call instead of being
       // inferred from posting counts over hours (the rung-2 "did it deploy?" pain).
       // Also the source of truth for the heartbeat's job_board_deploy check.
-      const [prog, rot, refreshMeta, bf, hotMeta, fresh, breaker, dateCov, bsMeta] = await Promise.all([
+      const [prog, rot, refreshMeta, bf, hotMeta, fresh, breaker, dateCov, bsMeta, dsMeta] = await Promise.all([
         client.from("job_board_meta").select("v, updated_at").eq("k", "refresh_progress").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "cold_rotation").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "refresh").maybeSingle(),
@@ -1721,6 +1840,7 @@ Deno.serve(async (req) => {
         // Per-vendor stated-date coverage (null until the migration lands)
         client.rpc("get_date_coverage").then((r) => r, () => ({ data: null })),
         client.from("job_board_meta").select("v").eq("k", "bootstrap").maybeSingle(),
+        client.from("job_board_meta").select("v, updated_at").eq("k", "desc_sweep").maybeSingle(),
       ]);
       const pgV = (prog.data?.v ?? {}) as { hot?: number; cold?: number; coldDone?: number; failedAcc?: string[] };
       const rotV = (rot.data?.v ?? {}) as { completedAt?: string; coldBoards?: number };
@@ -1735,6 +1855,14 @@ Deno.serve(async (req) => {
         catalogSize: JOB_SOURCES.length,
         categorizeVersion: CATEGORIZE_VERSION,
         hotTier: Array.isArray(hotTokens) && hotTokens.length >= 50 ? hotTokens.length : HOT_SIZE,
+        // Per-posting description sweep: which vendor it's on, and how long
+        // since it last moved. Lets a deploy be verified without waiting a day
+        // for coverage numbers to shift.
+        descSweep: {
+          vendor: ((dsMeta.data?.v ?? {}) as { vendor?: string }).vendor ?? null,
+          doneAt: ((dsMeta.data?.v ?? {}) as { doneAt?: string }).doneAt ?? null,
+          ageMin: dsMeta.data?.updated_at ? Math.round((Date.now() - new Date(dsMeta.data.updated_at).getTime()) / 60000) : null,
+        },
         // live pipeline health (meta-derived)
         totalPostings: rfV.total ?? null,
         coldBoards: rotV.coldBoards ?? null,
@@ -2337,6 +2465,94 @@ Deno.serve(async (req) => {
       return json({ ok: true, board: s.token, updated, remaining: (rows ?? []).length === PER_HOP ? "more" : "board-done", nextTi: ti });
     }
 
+    if (action === "desc-sweep") {
+      // Bulk description fill for the vendors whose text needs a PER-POSTING
+      // fetch. Measured 2026-07-24: workday, smartrecruiters, bamboohr, oracle
+      // and breezy held ~406k of the ~457k postings with no description — all
+      // of them at exactly 0% coverage, because nothing had ever fetched them.
+      // (backfill-desc above is a different job: Greenhouse giants that skip
+      // content=true on the refresh path.)
+      //
+      // Ordered NEWEST-FIRST so the postings people actually see fill first.
+      // The `detail` read path fills anything a user opens ahead of the sweep,
+      // so this is the tail, not the primary mechanism.
+      if (typeof body.chainKey !== "string" || body.chainKey !== await chainKey()) {
+        return json({ error: "desc-sweep is a maintenance action" }, 403);
+      }
+      let vi = Math.max(0, Number(body.vi) || 0);
+      if (vi >= DETAIL_DESC_SOURCES.length) {
+        await client.from("job_board_meta").upsert(
+          { k: "desc_sweep", v: { doneAt: new Date().toISOString() }, updated_at: new Date().toISOString() },
+          { onConflict: "k" },
+        );
+        return json({ ok: true, done: true });
+      }
+      const vendor = DETAIL_DESC_SOURCES[vi];
+      await client.from("job_board_meta").upsert(
+        { k: "desc_sweep", v: { runningVi: vi, vendor }, updated_at: new Date().toISOString() },
+        { onConflict: "k" },
+      );
+      const { data: rows, error: readErr } = await client
+        .from("job_board_postings")
+        .select("id, company_token, apply_url")
+        .eq("source", vendor)
+        .is("description", null)
+        .order("posted_at", { ascending: false, nullsFirst: false })
+        .limit(DESC_SWEEP_PER_HOP);
+      if (readErr) throw readErr;
+      const queue = [...(rows ?? [])] as Array<{ id: string; company_token: string; apply_url: string | null }>;
+      const pending = [...queue];
+      let updated = 0;
+      await Promise.all(Array.from({ length: DESC_SWEEP_CONCURRENCY }, async () => {
+        for (;;) {
+          const row = pending.shift();
+          if (!row) return;
+          const src = JOB_SOURCES.find((s) => s.source === vendor && s.token === row.company_token);
+          if (!src) continue; // board left the catalog — leave the row alone
+          const externalId = String(row.id).split(":").slice(2).join(":");
+          if (!externalId) continue;
+          try {
+            const text = await fetchVendorDescription(src, row.id, externalId, row.apply_url);
+            if (!text) continue;
+            const clean = text.replace(/\u0000/g, "").slice(0, 4000);
+            if (!clean) continue;
+            // Same rule as ingest: the description is also the salary source
+            // where the vendor gave us no structured pay field. Only ever the
+            // company's own words — never an estimate.
+            const minedSalary = extractSalary(clean);
+            const minedParse = minedSalary ? parseSalaryStructured(minedSalary) : null;
+            const { error } = await client.from("job_board_postings")
+              .update({
+                description: clean,
+                ...(minedSalary ? {
+                  salary: minedSalary,
+                  salary_min_annual: minedParse?.annualMin ?? null,
+                  salary_max_annual: minedParse?.annualMax ?? null,
+                  salary_period: minedParse?.period ?? null,
+                  salary_currency: minedParse?.currency ?? null,
+                } : {}),
+              })
+              .eq("id", row.id)
+              .is("description", null); // never clobber a description a reader already stored
+            if (!error) updated++;
+          } catch { /* transient — the row stays null and is retried next sweep */ }
+        }
+      }));
+      // Advance when this vendor has no more null rows (short page), OR when a
+      // full page yielded nothing. Without that second condition a vendor whose
+      // rows all fail permanently would re-select the same page forever: failed
+      // rows stay null, so they'd come straight back on the next hop.
+      const exhausted = queue.length < DESC_SWEEP_PER_HOP || updated === 0;
+      if (exhausted) vi += 1;
+      const url = `${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`;
+      waitUntil(chainKey().then((key) => fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "desc-sweep", chainKey: key, vi }),
+      })).then((rr) => rr.text()).catch(() => {}));
+      return json({ ok: true, vendor, scanned: queue.length, updated, nextVi: vi });
+    }
+
     if (action === "report") {
       // Report-a-posting: a user flags a listing as gone/misleading/other.
       // We log it (service-role-only table, no client write surface) and the
@@ -2554,11 +2770,32 @@ Deno.serve(async (req) => {
       const src = JOB_SOURCES.find((s) => s.source === source && s.token === token);
       if (!src || !externalId) return json({ error: "Unknown job id" }, 404);
       const { data: jobRow } = await client.from("job_board_postings").select("*").eq("id", id).maybeSingle();
-      // Stored description first (Lever/Ashby); live fetch covers the rest.
-      const description = (jobRow?.description && jobRow.description.length > 200)
-        ? jobRow.description
-        : await getDescription(src, id, externalId);
+      const stored = (jobRow?.description && jobRow.description.length > 200) ? jobRow.description as string : null;
+      const description = stored ?? await getDescription(src, id, externalId, jobRow?.apply_url as string | undefined);
       if (!description && !jobRow) return json({ error: "Posting not found (it may have closed)" }, 404);
+      // Demand-weighted fill: a posting someone actually opened is worth more
+      // than a random row in the sweep, and we've already paid for the fetch.
+      // Persisting it means the next reader (and fit scoring, and the apply kit)
+      // gets it for free instead of re-fetching forever. Best-effort — a failed
+      // write must never break the read.
+      if (!stored && description && jobRow) {
+        const minedSalary = jobRow.salary ? null : extractSalary(description);
+        const minedParse = minedSalary ? parseSalaryStructured(minedSalary) : null;
+        waitUntil((async () => {
+          try {
+            await client.from("job_board_postings").update({
+              description: description.replace(/\u0000/g, "").slice(0, 4000),
+              ...(minedSalary ? {
+                salary: minedSalary,
+                salary_min_annual: minedParse?.annualMin ?? null,
+                salary_max_annual: minedParse?.annualMax ?? null,
+                salary_period: minedParse?.period ?? null,
+                salary_currency: minedParse?.currency ?? null,
+              } : {}),
+            }).eq("id", id).is("description", null);
+          } catch { /* best effort - a failed write must never break the read */ }
+        })());
+      }
       return json({ job: jobRow ? rowToJob(jobRow) : null, description });
     }
 
