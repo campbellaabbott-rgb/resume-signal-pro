@@ -204,6 +204,8 @@ export type Database = {
           created_at: string
           daily_count: number
           email: string
+          email_last_sent_at: string | null
+          email_opt_in: boolean
           last_run_at: string | null
           last_run_summary: Json | null
           location: string
@@ -220,6 +222,8 @@ export type Database = {
           created_at?: string
           daily_count?: number
           email?: string
+          email_last_sent_at?: string | null
+          email_opt_in?: boolean
           last_run_at?: string | null
           last_run_summary?: Json | null
           location?: string
@@ -236,6 +240,8 @@ export type Database = {
           created_at?: string
           daily_count?: number
           email?: string
+          email_last_sent_at?: string | null
+          email_opt_in?: boolean
           last_run_at?: string | null
           last_run_summary?: Json | null
           location?: string
