@@ -21,6 +21,16 @@
 export const DETAIL_DESC_SOURCES = ["workday", "smartrecruiters", "bamboohr", "oracle", "breezy"] as const;
 
 /**
+ * Vendors whose description rides along in the LIST payload, so ingest stores it
+ * for free — but ingest is INSERT-ONLY (postings are immutable in practice, so
+ * unchanged rows are never rewritten). Rows that predate the extraction keep
+ * their null forever, and they must NOT go in the per-posting sweep: one row
+ * there would re-fetch the whole board. They get a board-level lane instead —
+ * one fetch fills every null row on that board.
+ */
+export const BOARD_DESC_SOURCES = ["workable", "pinpoint"] as const;
+
+/**
  * Vendors with no public description source. A null here is a measured fact, not
  * a hole to be filled later — keep them out of the sweep so it doesn't burn
  * requests re-failing on them every pass.

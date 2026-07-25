@@ -15,7 +15,7 @@
 
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { HOT_TOKENS, JOB_SOURCES, LIGHT_DESC_TOKENS, type JobSource } from "./sources.ts";
-import { DETAIL_DESC_SOURCES, jobPostingLdDescription, workdayCxsUrl } from "./descriptions.ts";
+import { BOARD_DESC_SOURCES, DETAIL_DESC_SOURCES, jobPostingLdDescription, workdayCxsUrl } from "./descriptions.ts";
 import {
   htmlToText,
   normalizeAshby,
@@ -71,7 +71,7 @@ const json = (body: unknown, status = 200) =>
 // while this file was untouched). Always bump BUILD_VERSION here when a shared
 // module this function imports changes — it forces the diff AND gives the
 // deploy a verifiable tell.
-const BUILD_VERSION = "2026-07-24.7";
+const BUILD_VERSION = "2026-07-24.8";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -837,24 +837,13 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
               if (alErr) console.warn(`[JOB-BOARD] auto-light persist failed for ${s.token}:`, alErr.message?.slice(0, 120));
             } catch { /* re-enrolls on the next fetch — never blocks the slice */ }
           } else {
-            for (const j of wkJobs) {
-              const ext = j.shortcode ?? "";
-              const text = j.description ? htmlToText(String(j.description).slice(0, 12000)).trim() : "";
-              if (ext && text) descs.set(`workable:${s.token}:${ext}`, text.slice(0, 4000));
-            }
+            for (const [k, v] of listPayloadDescriptions(s, r.raw)) descs.set(k, v);
           }
         } else if (s.source === "pinpoint") {
           // postings.json — which we already fetch for the listing — carries the
           // full posting body. We were parsing it for titles and throwing the
           // description away, storing null on every row.
-          for (const p of (((r.raw as { data?: Array<Record<string, unknown>> }).data) ?? [])) {
-            const ext = p.id == null ? "" : String(p.id);
-            const html = [p.description, p.key_responsibilities, p.skills_knowledge_expertise]
-              .filter((x): x is string => typeof x === "string" && x.length > 0)
-              .join("\n");
-            const text = html ? htmlToText(html.slice(0, 12000)).trim() : "";
-            if (ext && text) descs.set(`pinpoint:${s.token}:${ext}`, text.slice(0, 4000));
-          }
+          for (const [k, v] of listPayloadDescriptions(s, r.raw)) descs.set(k, v);
         // Breezy has NO description field on its /json list (verified against the
         // live API 2026-07-24) — the branch that used to sit here could never
         // fire, which is why every Breezy row stored null. Its text lives only on
@@ -1680,6 +1669,34 @@ async function getDescription(src: JobSource, id: string, externalId: string, ap
 }
 
 /**
+ * Descriptions carried in a board's LIST payload, keyed by our posting id.
+ *
+ * Used by BOTH the ingest path (which stores them on insert) and the board-level
+ * lane of desc-sweep (which fills rows inserted before the extraction existed),
+ * so the two can never disagree about how a vendor's payload is read.
+ */
+function listPayloadDescriptions(s: JobSource, raw: unknown): Map<string, string> {
+  const out = new Map<string, string>();
+  if (s.source === "workable") {
+    for (const j of ((raw as { jobs?: Array<{ shortcode?: string; description?: string }> }).jobs ?? [])) {
+      const ext = j.shortcode ?? "";
+      const text = j.description ? htmlToText(String(j.description).slice(0, 12000)).trim() : "";
+      if (ext && text) out.set(`workable:${s.token}:${ext}`, text.slice(0, 4000));
+    }
+  } else if (s.source === "pinpoint") {
+    for (const p of (((raw as { data?: Array<Record<string, unknown>> }).data) ?? [])) {
+      const ext = p.id == null ? "" : String(p.id);
+      const html = [p.description, p.key_responsibilities, p.skills_knowledge_expertise]
+        .filter((x): x is string => typeof x === "string" && x.length > 0)
+        .join("\n");
+      const text = html ? htmlToText(html.slice(0, 12000)).trim() : "";
+      if (ext && text) out.set(`pinpoint:${s.token}:${ext}`, text.slice(0, 4000));
+    }
+  }
+  return out;
+}
+
+/**
  * One posting's description straight from the vendor. Shared by the on-demand
  * `detail` read and the backfill sweep so the two can never drift apart.
  *
@@ -2481,11 +2498,75 @@ Deno.serve(async (req) => {
       }
       let vi = Math.max(0, Number(body.vi) || 0);
       if (vi >= DETAIL_DESC_SOURCES.length) {
+        // ── Phase 2: board-level lane ────────────────────────────────────────
+        // workable/pinpoint carry their descriptions in the LIST payload, so
+        // ingest stores them on insert — but ingest is INSERT-ONLY, so the ~25k
+        // rows that predate the extraction keep their null forever. One board
+        // fetch fills every null row on that board, where routing them through
+        // the per-posting phase would re-fetch the whole board PER ROW.
+        const BOARDS = JOB_SOURCES.filter((s) => (BOARD_DESC_SOURCES as readonly string[]).includes(s.source));
+        let bi = Math.max(0, Number(body.bi) || 0);
+        if (bi >= BOARDS.length) {
+          await client.from("job_board_meta").upsert(
+            { k: "desc_sweep", v: { doneAt: new Date().toISOString() }, updated_at: new Date().toISOString() },
+            { onConflict: "k" },
+          );
+          return json({ ok: true, done: true });
+        }
+        const b = BOARDS[bi];
         await client.from("job_board_meta").upsert(
-          { k: "desc_sweep", v: { doneAt: new Date().toISOString() }, updated_at: new Date().toISOString() },
+          { k: "desc_sweep", v: { phase: "boards", bi, token: b.token }, updated_at: new Date().toISOString() },
           { onConflict: "k" },
         );
-        return json({ ok: true, done: true });
+        // Cheap check first: no null rows means no board fetch at all. After the
+        // initial fill that's the case for nearly every board, so a full pass
+        // over ~1,700 boards costs almost nothing.
+        const { data: nullRows } = await client
+          .from("job_board_postings")
+          .select("id")
+          .eq("company_token", b.token)
+          .is("description", null)
+          .limit(DESC_SWEEP_PER_HOP);
+        let filled = 0;
+        if ((nullRows ?? []).length > 0) {
+          try {
+            const r = await fetchBoard(b);
+            if (r) {
+              const map = listPayloadDescriptions(b, r.raw);
+              for (const row of nullRows ?? []) {
+                const text = map.get(String(row.id));
+                if (!text) continue;
+                const clean = text.replace(/\u0000/g, "").slice(0, 4000);
+                if (!clean) continue;
+                const minedSalary = extractSalary(clean);
+                const minedParse = minedSalary ? parseSalaryStructured(minedSalary) : null;
+                const { error } = await client.from("job_board_postings")
+                  .update({
+                    description: clean,
+                    ...(minedSalary ? {
+                      salary: minedSalary,
+                      salary_min_annual: minedParse?.annualMin ?? null,
+                      salary_max_annual: minedParse?.annualMax ?? null,
+                      salary_period: minedParse?.period ?? null,
+                      salary_currency: minedParse?.currency ?? null,
+                    } : {}),
+                  })
+                  .eq("id", row.id)
+                  .is("description", null);
+                if (!error) filled++;
+              }
+            }
+          } catch { /* transient — rows stay null and are retried next sweep */ }
+        }
+        // Always advance: a board whose feed is down must not stall the lane.
+        bi += 1;
+        const bUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`;
+        waitUntil(chainKey().then((key) => fetch(bUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "desc-sweep", chainKey: key, vi, bi }),
+        })).then((rr) => rr.text()).catch(() => {}));
+        return json({ ok: true, phase: "boards", token: b.token, filled, nextBi: bi });
       }
       const vendor = DETAIL_DESC_SOURCES[vi];
       await client.from("job_board_meta").upsert(

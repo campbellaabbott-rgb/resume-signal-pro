@@ -11,6 +11,7 @@
 // audit, not invented.
 import { describe, it, expect } from "vitest";
 import {
+  BOARD_DESC_SOURCES,
   DETAIL_DESC_SOURCES,
   NO_DESC_SOURCES,
   jobPostingLdDescription,
@@ -131,5 +132,21 @@ describe("vendor description classification", () => {
     for (const v of ["greenhouse", "lever", "ashby", "recruitee", "teamtailor", "personio", "workable", "pinpoint"]) {
       expect([...DETAIL_DESC_SOURCES], v).not.toContain(v);
     }
+  });
+
+  it("routes list-payload vendors to the board lane, never the per-posting one", () => {
+    // Ingest is insert-only, so rows predating the extraction keep their null
+    // and still need a backfill — but sending them through the per-posting
+    // phase would re-fetch the ENTIRE board for every single row.
+    expect([...BOARD_DESC_SOURCES].sort()).toEqual(["pinpoint", "workable"]);
+    for (const v of BOARD_DESC_SOURCES) {
+      expect([...DETAIL_DESC_SOURCES], v).not.toContain(v);
+      expect([...NO_DESC_SOURCES], v).not.toContain(v);
+    }
+  });
+
+  it("keeps the three vendor lanes mutually exclusive", () => {
+    const all = [...DETAIL_DESC_SOURCES, ...BOARD_DESC_SOURCES, ...NO_DESC_SOURCES];
+    expect(new Set(all).size, "a vendor must belong to exactly one lane").toBe(all.length);
   });
 });
