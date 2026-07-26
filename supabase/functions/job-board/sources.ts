@@ -28307,7 +28307,20 @@ export const JOB_SOURCES: JobSource[] = [
   { name: "Web", source: "workday", token: "web~wd1~HostGator" },
   { name: "Wfscorp", source: "workday", token: "wfscorp~wd5~wfscareers-uk" },
   { name: "Wilhelmsen", source: "workday", token: "wilhelmsen~wd3~Norsea_Norway" },
+  // Wayback-CDX census 2026-07-26: 13 tenants the Common Crawl sweeps never saw,
+  // each live-verified against the official CXS API and named from the employer's
+  // own posting data (996 postings at verification).
+  { name: "ACS Auto Club Services", source: "workday", token: "acg~wd1~Careers" },
+  { name: "Advance Polybag", source: "workday", token: "apicorp~wd1~Accredo-External-Careers" },
+  { name: "Alta Performance Materials", source: "workday", token: "altapm~wd1~ALTACareers" },
+  { name: "Alto Pharmacy", source: "workday", token: "alto~wd1~Alto_External_Career_Site" },
+  { name: "Andela", source: "workday", token: "andela~wd1~External" },
+  { name: "Aramsco", source: "workday", token: "aramsco~wd1~aramscocareers" },
+  { name: "Blue Cross & Blue Shield of Rhode Island", source: "workday", token: "bcbsri~wd1~bcbsricareers" },
+  { name: "Bullhorn", source: "workday", token: "bullhorn~wd1~BullhornCareers" },
+  { name: "CHAS Health", source: "workday", token: "chas~wd1~CHASHealth" },
+  { name: "Chevron Stations", source: "workday", token: "chevronstations~wd1~CSI" },
+  { name: "Columbus State Community College", source: "workday", token: "cscc~wd1~CSCC_ext" },
+  { name: "Easterseals Northern California", source: "workday", token: "catalight~wd1~catalight" },
+  { name: "Freedom Mortgage", source: "workday", token: "archwellessentials~wd1~careers" },
 ];
-
-
-
