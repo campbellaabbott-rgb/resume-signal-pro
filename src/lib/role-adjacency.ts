@@ -43,18 +43,24 @@ const ADJACENCY: Record<string, string[]> = {
 // Returns up to `max` adjacent role searches for a query, or [] if none.
 // Longest key match wins so a specific seed ("registered nurse") beats a
 // generic one ("nurse") when both would match.
+// Whole-word containment: "nurse" must NOT match inside "nursery worker" —
+// substring matching suggested clinical roles for a childcare search
+// (live-walk finding). Seeds are plain words, so only "&" needs escaping.
+const containsPhrase = (haystack: string, phrase: string) =>
+  new RegExp(`(?:^|[^a-z])${phrase.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?:[^a-z]|$)`).test(haystack);
+
 export function adjacentRoles(query: string, max = 4): string[] {
   const q = query.trim().toLowerCase();
   if (q.length < 3) return [];
   let best: string[] | null = null;
   let bestLen = 0;
   for (const [seed, roles] of Object.entries(ADJACENCY)) {
-    if (q.includes(seed) && seed.length > bestLen) {
+    if (containsPhrase(q, seed) && seed.length > bestLen) {
       best = roles;
       bestLen = seed.length;
     }
   }
   if (!best) return [];
   // Never suggest a role the query already contains.
-  return best.filter((r) => !q.includes(r)).slice(0, max);
+  return best.filter((r) => !containsPhrase(q, r)).slice(0, max);
 }

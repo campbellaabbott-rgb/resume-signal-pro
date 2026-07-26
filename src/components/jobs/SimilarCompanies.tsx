@@ -62,7 +62,14 @@ export function SimilarCompanies({ companyToken }: { companyToken: string }) {
               <span className="block text-[11px] text-muted-foreground">
                 {t("jobsPage.similar.openRoles", "{{n}} open roles", { n: r.open_roles })}
                 {r.employees != null && (
-                  <> · {t("jobsPage.similar.employees", "≈{{n}} employees", { n: r.employees.toLocaleString() })}</>
+                  // Basis label rides along (same keys the intel panel uses) —
+                  // an unattributed headcount reads as our claim; it isn't.
+                  <>
+                    {" · "}{t("jobsPage.similar.employees", "≈{{n}} employees", { n: r.employees.toLocaleString() })}
+                    {" ("}{r.employee_basis === "yc_self_reported"
+                      ? t("jobsPage.intel.basisYc", "YC profile")
+                      : t("jobsPage.intel.basisPr", "public records")}{")"}
+                  </>
                 )}
               </span>
             </span>

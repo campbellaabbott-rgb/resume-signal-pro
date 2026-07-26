@@ -31,6 +31,14 @@ function fixToken(token: string): string {
 
 const capitalize = (s: string) => (s ? s[0].toUpperCase() + s.slice(1) : s);
 
+// Names the feed stores as a title-cased vendor slug, verified against the
+// employer's own careers site (2026-07-26 browser walk). Keyed by the exact
+// mangled form — anything else passes through untouched. This list only grows
+// from confirmed sightings, never guesses.
+const NAME_FIXES: Record<string, string> = {
+  modernatx: "Moderna",
+};
+
 /**
  * Display form of an employer name. Idempotent, and a no-op for the ~99% of
  * names that already read correctly.
@@ -38,9 +46,40 @@ const capitalize = (s: string) => (s ? s[0].toUpperCase() + s.slice(1) : s);
 export function companyDisplayName(name: string | null | undefined): string {
   const raw = (name ?? "").trim();
   if (!raw) return "";
+  const fixed = NAME_FIXES[raw.toLowerCase()];
+  if (fixed) return fixed;
   // Split on spaces but keep separators like "&" and "-" intact.
   return raw
     .split(/(\s+)/)
     .map((part) => (/^\s+$/.test(part) ? part : fixToken(part)))
     .join("");
+}
+
+// Feeds occasionally double-escape HTML ("Bob's Auto &amp; Towing") — the
+// catalog decodes at write time now, but rows stored before that fix (and any
+// vendor that re-escapes) still carry entities. Same map as the JD decoder.
+export function decodeNameEntities(s: string): string {
+  if (!s.includes("&")) return s;
+  return s
+    .replace(/&#0?39;|&apos;|&rsquo;/g, "'")
+    .replace(/&quot;|&#0?34;/g, '"')
+    .replace(/&nbsp;/g, " ")
+    .replace(/&ndash;|&mdash;/g, "–")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&amp;/g, "&");
+}
+
+/**
+ * Collapse a vendor artifact where the posting title repeats its own leading
+ * phrase ("Registered Nurse Registered Nurse RN" — seen live on multi-field
+ * ATS exports that concatenate title + display-title). Conservative: only an
+ * IMMEDIATE, case-insensitive repeat of a 4+ char leading phrase on a word
+ * boundary collapses ("Sales Salesforce Admin" is untouched — "force" doesn't
+ * start a new word after the would-be repeat).
+ */
+export function cleanJobTitle(title: string): string {
+  const t = decodeNameEntities(title).replace(/\s+/g, " ").trim();
+  const m = t.match(/^(.{4,}?)\s+\1(\s.*|$)/i);
+  return m ? `${m[1]}${m[2]}`.trim() : t;
 }

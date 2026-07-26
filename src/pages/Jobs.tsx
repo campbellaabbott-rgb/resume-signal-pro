@@ -34,7 +34,7 @@ import { postTrackEvent, getVisitorId } from "@/lib/track-transport";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { searchName, searchToQuery } from "@/lib/job-search-params";
-import { companyDisplayName } from "@/lib/company-display";
+import { companyDisplayName, cleanJobTitle, decodeNameEntities } from "@/lib/company-display";
 import { displaySalary } from "@/lib/salary-display";
 import { adjacentRoles } from "@/lib/role-adjacency";
 import { accentFor } from "@/lib/category-accent";
@@ -227,6 +227,17 @@ const decodeEntities = (s: string) =>
     .replace(/&quot;/g, '"')
     .replace(/&#39;|&apos;/g, "'")
     .replace(/&amp;/g, "&");
+
+// Rows are normalized ONCE as they land in state, so every render site (cards,
+// panel, JSON-LD, kits) inherits the same fixes: residual HTML entities in
+// titles/company names, and the duplicated-leading-phrase title artifact some
+// ATS exports produce ("Registered Nurse Registered Nurse RN"). Pure display
+// hygiene — nothing is invented, only vendor escaping/concatenation undone.
+const normalizeRow = <T extends { title: string; company: string | null }>(j: T): T => {
+  const title = cleanJobTitle(j.title);
+  const company = j.company ? decodeNameEntities(j.company) : j.company;
+  return title === j.title && company === j.company ? j : { ...j, title, company };
+};
 
 // Company-initial avatar: an honest visual anchor per card. We don't store
 // company domains, so real logos aren't possible without guessing — a
@@ -875,6 +886,7 @@ export default function Jobs() {
         if (br.companies?.length) companiesCache.current = br.companies;
         else br.companies = companiesCache.current;
         servedQuery.current = { q, location };
+        br.jobs = br.jobs.map(normalizeRow);
         setData(br);
         setJobs((prev) => (offset === 0 ? br.jobs : [...prev, ...br.jobs]));
       } catch (e) {
@@ -1196,7 +1208,8 @@ export default function Jobs() {
         setSimilarJobs(
           data.jobs
             .filter((j) => j.id !== detailJob.id && j.token !== detailJob.token)
-            .slice(0, 5),
+            .slice(0, 5)
+            .map(normalizeRow),
         );
       })
       .catch(() => { /* the same-category fallback still renders */ });
@@ -1231,7 +1244,7 @@ export default function Jobs() {
         try {
           const { data: res } = await invokeBoard<{ job?: BoardJob | null; description?: string; closed?: { title: string; company: string | null; closedAt: string } }>({ action: "detail", id });
           if (res?.job) {
-            setDetailJob(res.job);
+            setDetailJob(normalizeRow(res.job));
             setDetailDesc(res.description ?? null);
           } else if (res?.closed) {
             // The link's posting closed and we watched it happen — say so,
@@ -1925,6 +1938,32 @@ export default function Jobs() {
     return () => { cancelled = true; };
   }, [landerCompany]);
 
+  // Category-lander intel: how fast roles in THIS field actually close, from
+  // the closure log (get_category_fill_speed, n>=300 per category — the RPC
+  // returns no row below the floor, and we show nothing rather than a guess).
+  const [fillSpeed, setFillSpeed] = useState<{ median: number; p75: number; n: number; window: number } | null>(null);
+  useEffect(() => {
+    if (!landerCategory) { setFillSpeed(null); return; }
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data: rows } = await (supabase as unknown as {
+          rpc: (fn: string, args?: Record<string, unknown>) => Promise<{ data: unknown }>;
+        }).rpc("get_category_fill_speed");
+        const row = Array.isArray(rows)
+          ? (rows as Array<{ category: string; closures: number; median_days_open: number; p75_days_open: number; window_days: number }>)
+              .find((r) => r.category === landerCategory)
+          : undefined;
+        if (!cancelled) {
+          setFillSpeed(row ? { median: Number(row.median_days_open), p75: Number(row.p75_days_open), n: Number(row.closures), window: Number(row.window_days) } : null);
+        }
+      } catch {
+        if (!cancelled) setFillSpeed(null); // additive — the lander stands without it
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [landerCategory]);
+
   const companies = useMemo(
     () => (data?.companies ?? []).filter((c) => c.count > 0 || c.token === company).sort((a, b) => a.name.localeCompare(b.name)),
     [data, company],
@@ -2197,7 +2236,11 @@ export default function Jobs() {
   // time (responsive classes), so duplicate mounting is harmless.
   const detailInner = detailJob ? (
     <>
-            <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border px-5 py-3 flex items-start gap-3">
+            {/* Below lg the header sticks (the bottom bar owns actions there);
+                on lg+ it scrolls and the actions row sticks instead — two
+                bars both pinned to top-0 painted over each other (live-walk
+                a11y finding: the actions bar covered the title mid-scroll). */}
+            <div className="sticky lg:static top-0 z-20 bg-background/95 backdrop-blur border-b border-border px-5 py-3 flex items-start gap-3">
               <div className="flex-1 min-w-0">
                 <h2 className="text-lg font-bold leading-snug">{detailJob.title}</h2>
                 <p className="text-sm text-muted-foreground">
@@ -2207,10 +2250,12 @@ export default function Jobs() {
                   {detailJob.location ? <> · {detailJob.location}</> : null}
                 </p>
               </div>
+              {/* 40px tap target with a visible resting state — the bare 20px
+                  glyph was effectively invisible on phones (a11y finding). */}
               <button
                 type="button"
                 aria-label={t("jobsPage.detailClose", "Close")}
-                className="text-muted-foreground hover:text-foreground text-lg leading-none px-1"
+                className="shrink-0 inline-flex items-center justify-center w-10 h-10 -mr-2 -mt-1 rounded-lg text-foreground/70 hover:text-foreground hover:bg-muted text-xl leading-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                 onClick={() => closeDetail()}
               >
                 ✕
@@ -2311,6 +2356,10 @@ export default function Jobs() {
                         currency: detailSalaryContext.currency,
                         n: detailSalaryContext.n,
                       })}
+                      {/* Basis suffix: the median blends hourly/monthly rates
+                          annualized (hourly ×2080) — without saying so the
+                          number reads as a pure annual-salary median. */}
+                      {" · "}{t("jobsPage.salaryContextBasis", "hourly and monthly rates annualized (hourly ×2080)")}
                       {detailSalaryContext.pct !== 0 && (
                         <span className={detailSalaryContext.pct > 0 ? "text-success" : "text-warning"}>
                           {" · "}
@@ -2323,7 +2372,12 @@ export default function Jobs() {
                   )}
                 </div>
               )}
-              <div className="flex flex-wrap gap-2 sticky top-0 z-10 bg-card/95 backdrop-blur-sm py-2 -mt-2">
+              {/* Sticky on the lg+ pane only. Below lg this row scrolls with
+                  the content: it and the sticky title header were both pinned
+                  to top-0 and painted over each other (live-walk a11y
+                  finding) — and the pinned bottom bar keeps Apply/Save in
+                  thumb reach there anyway. */}
+              <div className="flex flex-wrap gap-2 lg:sticky top-0 z-10 bg-card/95 backdrop-blur-sm py-2 -mt-2">
                 <Button size="sm" className="gap-1.5" asChild>
                   <a
                     href={detailJob.applyUrl}
@@ -2611,6 +2665,20 @@ export default function Jobs() {
           {/* Lander intel: sourced headcount/band, weekly net-new, salary
               median, top fields — each clause renders only when its data
               exists. Then claim-your-profile (identity, never data editing). */}
+          {/* Field fill-speed: lifecycle-measured, labeled with its sample size
+              and window — renders only when the RPC clears its 300-closure
+              floor for this category. */}
+          {landerCategory && fillSpeed && (
+            <p className="inline-flex items-center gap-1.5 text-[12px] text-muted-foreground mb-2">
+              <Clock className="w-3.5 h-3.5 text-primary shrink-0" />
+              {t("jobsPage.fillSpeedLine", "Roles in this field typically stay open ~{{median}} days (75% close within {{p75}}) — measured from {{n}} tracked closings over the last {{window}} days.", {
+                median: fillSpeed.median,
+                p75: fillSpeed.p75,
+                n: fillSpeed.n.toLocaleString(),
+                window: fillSpeed.window,
+              })}
+            </p>
+          )}
           {landerCompany && <CompanyIntelPanel companyToken={landerCompany} />}
           {/* SEC-sourced financial context for US-listed employers. */}
           {landerCompany && <PublicCompanyCard companyToken={landerCompany} />}
@@ -2622,8 +2690,10 @@ export default function Jobs() {
           {landerCompany && (
             <CompanyClaim companyToken={landerCompany} companyName={landerCompanyName ?? landerCompany} />
           )}
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-3 text-[11px] text-muted-foreground">
-            <span className="inline-flex items-center gap-1">
+          {/* Single row on phones (scrolls; mask hints overflow) — wrapped to
+              two rows this band cost 24px of the 812px mobile fold. */}
+          <div className="flex flex-nowrap sm:flex-wrap overflow-x-auto sm:overflow-visible [mask-image:linear-gradient(to_right,black_92%,transparent)] sm:[mask-image:none] items-center gap-x-3 gap-y-1 mb-3 text-[11px] text-muted-foreground whitespace-nowrap sm:whitespace-normal">
+            <span className="inline-flex items-center gap-1 shrink-0">
               <ShieldCheck className="w-3.5 h-3.5 text-success shrink-0" />
               {t("jobsPage.badgeOfficial", "Official feeds only")}
             </span>
@@ -2771,7 +2841,7 @@ export default function Jobs() {
                   <Button size="sm" variant="ghost" className="px-2" aria-label={t("jobsPage.nlClose", "Close")} onClick={() => setNlOpen(false)}>✕</Button>
                 </div>
                 <p className="text-[11px] text-muted-foreground mt-1.5">
-                  {t("jobsPage.nlHint", "We map it to real filters and show exactly how we read it — adjust anything below.")}
+                  {t("jobsPage.nlHintLong", "We map it to real filters and show exactly how we read it — adjust anything below.")}
                 </p>
               </div>
             )}
@@ -3039,7 +3109,7 @@ export default function Jobs() {
           )}
 
           {/* Freshness + fit-ranking row */}
-          <div className="flex flex-wrap items-center gap-2 mb-5 -mt-2">
+          <div className="flex flex-wrap items-center gap-2 mb-3 -mt-2">
             {([["", t("jobsPage.freshAll", "Any date")], ["day", t("jobsPage.freshDay", "Today")], ["week", t("jobsPage.freshWeek", "This week")]] as const).map(([v, label]) => (
               <button
                 key={v}
@@ -3060,8 +3130,12 @@ export default function Jobs() {
             )}
             {/* S2: the board's breadth, visible — live per-category counts as
                 one-tap pills (facet data the dropdown was hiding). */}
-            <div className="basis-full overflow-x-auto md:overflow-visible pb-1 -mb-1 relative [mask-image:linear-gradient(to_right,black_92%,transparent)] md:[mask-image:none]">
-              <div className="flex items-center gap-2 w-max md:w-auto md:flex-wrap">
+            {/* One row on EVERY breakpoint: the wrap-to-two-rows desktop cloud
+                pushed the first job card below a 720px fold (measured y=820,
+                2026-07-26) — the edge mask signals the scroll, nothing is
+                dropped. */}
+            <div className="basis-full overflow-x-auto pb-1 -mb-1 relative [mask-image:linear-gradient(to_right,black_92%,transparent)]">
+              <div className="flex items-center gap-2 w-max">
                 {CATEGORY_IDS
                   .filter((c) => (data?.categories?.[c] ?? 0) > 0)
                   .sort((a, b) => {
@@ -3112,10 +3186,12 @@ export default function Jobs() {
                 {t("jobsPage.allJobs", "All jobs")}
               </button>
             </div>
+            {/* Below lg the quick-chip row already carries this exact toggle —
+                rendering it twice cost a wrapped row of the mobile fold. */}
             <button
               type="button"
               onClick={() => setActivelyHiringOnly((v) => !v)}
-              className={`inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border transition-colors ${
+              className={`hidden lg:inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border transition-colors ${
                 activelyHiringOnly ? "border-success bg-success/10 text-success font-semibold" : "border-border text-muted-foreground hover:text-foreground"
               }`}
               title={t("jobsPage.activelyHiringTip", "Show only companies with a proven recent hiring pattern — roles they've actually filled or closed, from our lifecycle tracking (not just open listings).")}
@@ -3126,7 +3202,7 @@ export default function Jobs() {
             <button
               type="button"
               onClick={toggleDensity}
-              className="px-3 py-2 rounded-lg border border-border text-xs text-muted-foreground hover:text-foreground transition-colors"
+              className="hidden lg:block px-3 py-2 rounded-lg border border-border text-xs text-muted-foreground hover:text-foreground transition-colors"
               title={t("jobsPage.densityTip", "Switch list density")}
             >
               {density === "compact" ? t("jobsPage.densityComfortable", "Comfortable view") : t("jobsPage.densityCompact", "Compact view")}
@@ -3219,19 +3295,23 @@ export default function Jobs() {
           </div>
 
           {/* Mobile quick filters: the board's best weapons as one-tap chips —
-              on desktop the sidebar owns these, so lg:hidden. */}
-          <div className="flex lg:hidden flex-wrap gap-2 mb-3">
+              on desktop the sidebar owns these, so lg:hidden. Single scrollable
+              row: wrapped, this block alone cost 96px of a 812px mobile fold. */}
+          <div className="flex lg:hidden flex-nowrap gap-2 mb-3 overflow-x-auto pb-1 [mask-image:linear-gradient(to_right,black_92%,transparent)]">
             {([
               { key: "week", active: freshness === "week", label: t("jobsPage.chipWeek", "Posted this week"), toggle: () => setFreshness(freshness === "week" ? "" : "week") },
               { key: "remote", active: workMode === "remote", label: t("jobsPage.workMode.remote", "Remote"), toggle: () => { setWorkMode(workMode === "remote" ? "" : "remote"); setRemoteOnly(false); } },
               { key: "hybrid", active: workMode === "hybrid", label: t("jobsPage.workMode.hybrid", "Hybrid"), toggle: () => { setWorkMode(workMode === "hybrid" ? "" : "hybrid"); setRemoteOnly(false); } },
               { key: "pay", active: salaryFloor >= 100000, label: t("jobsPage.chip100k", "$100k+"), toggle: () => setSalaryFloor(salaryFloor >= 100000 ? 0 : 100000) },
               { key: "hiring", active: activelyHiringOnly, label: t("jobsPage.chipHiring", "Actively hiring"), toggle: () => setActivelyHiringOnly(!activelyHiringOnly) },
+              // Density lives here below lg (its standalone button is desktop-
+              // only) so the controls row above stops wrapping on phones.
+              { key: "density", active: density === "compact", label: density === "compact" ? t("jobsPage.densityComfortable", "Comfortable view") : t("jobsPage.densityCompact", "Compact view"), toggle: toggleDensity },
             ] as const).map((c) => (
               <button
                 key={c.key}
                 onClick={c.toggle}
-                className={`px-3 py-1.5 rounded-full border text-[13px] font-medium transition-colors ${
+                className={`shrink-0 whitespace-nowrap px-3 py-1.5 rounded-full border text-[13px] font-medium transition-colors ${
                   c.active ? "bg-primary text-primary-foreground border-primary" : "bg-background text-muted-foreground border-border hover:border-primary/50"
                 }`}
               >
@@ -3298,12 +3378,12 @@ export default function Jobs() {
                 const f = e.dataTransfer.files?.[0];
                 if (f) void handleBoardResumeFile(f);
               }}
-              className={`rounded-xl border px-4 py-3 mb-4 flex flex-wrap items-center gap-3 transition-colors ${
+              className={`rounded-xl border px-3 py-2 mb-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 transition-colors ${
                 resumeDragOver ? "border-primary bg-primary/10 border-dashed" : "border-primary/30 bg-primary/5"
               }`}
             >
               {parsingResume ? <Loader2 className="w-4 h-4 text-primary shrink-0 animate-spin" /> : <Upload className="w-4 h-4 text-primary shrink-0" />}
-              <p className="text-sm text-foreground flex-1 min-w-[220px]">
+              <p className="text-[13px] text-foreground flex-1 min-w-[200px]">
                 {parsingResume
                   ? t("jobsPage.dropParsing", "Reading your résumé…")
                   : t("jobsPage.dropTitle", "Drop your résumé here — see your match score on every opening, instantly.")}
@@ -3320,11 +3400,13 @@ export default function Jobs() {
                     e.target.value = "";
                   }}
                 />
-                <span className="cursor-pointer inline-flex items-center rounded-lg bg-primary text-primary-foreground text-sm font-semibold px-3 py-1.5 hover:bg-primary/90">
+                <span className="cursor-pointer inline-flex items-center rounded-lg bg-primary text-primary-foreground text-[13px] font-semibold px-3 py-1 hover:bg-primary/90">
                   {t("jobsPage.dropBrowse", "Choose file")}
                 </span>
               </label>
-              <button onClick={() => navigate("/#upload")} className="text-[12px] text-muted-foreground hover:text-foreground hover:underline">
+              {/* Secondary link folds away below sm — it wrapped the banner to
+                  a third row on 375px screens; the primary path stays. */}
+              <button onClick={() => navigate("/#upload")} className="hidden sm:block text-[12px] text-muted-foreground hover:text-foreground hover:underline">
                 {t("jobsPage.dropScannerLink", "or run the full free scan")}
               </button>
             </div>
@@ -3726,7 +3808,19 @@ export default function Jobs() {
                           {(job.company || "?").charAt(0).toUpperCase()}
                         </div>
                         <div className="flex-1 min-w-[220px]">
-                          <p className={`font-semibold leading-snug ${viewedIds.has(job.id) && detailJob?.id !== job.id ? "text-muted-foreground" : "text-foreground"}`}>{job.title}</p>
+                          {/* The title IS the open-details control: a real
+                              button screen readers can find (the li's Enter
+                              handler was invisible to them), clamped to two
+                              lines so multi-segment ATS titles can't wall the
+                              list (full text in the tooltip). */}
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); void openDetail(job); }}
+                            title={job.title}
+                            className={`block text-left font-semibold leading-snug line-clamp-2 focus-visible:outline-none focus-visible:underline ${viewedIds.has(job.id) && detailJob?.id !== job.id ? "text-muted-foreground" : "text-foreground"}`}
+                          >
+                            {job.title}
+                          </button>
                           <p className="text-sm text-muted-foreground mt-0.5">
                             {job.token
                               ? <Link to={`/jobs/company/${job.token}`} className="hover:text-primary hover:underline">{job.company}</Link>
@@ -4021,7 +4115,7 @@ export default function Jobs() {
                                     onClick={() => { trackApply(sib); void promoteApplied(sib); void verifyJob(sib); }}
                                     className="shrink-0 text-primary font-medium hover:underline"
                                   >
-                                    {t("jobsPage.applyShort", "Apply →")}
+                                    {t("jobsPage.applyArrow", "Apply →")}
                                   </a>
                                 </li>
                               ))}
