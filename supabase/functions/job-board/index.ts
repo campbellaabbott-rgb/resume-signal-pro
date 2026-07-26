@@ -75,7 +75,7 @@ const json = (body: unknown, status = 200) =>
 // while this file was untouched). Always bump BUILD_VERSION here when a shared
 // module this function imports changes — it forces the diff AND gives the
 // deploy a verifiable tell.
-const BUILD_VERSION = "2026-07-26.3";
+const BUILD_VERSION = "2026-07-26.4";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -1718,6 +1718,15 @@ const DETAIL_TTL_MS = 60 * 60_000;
 // in-loop elapsed guard keeps the worst case near half the budget.
 const EMBED_PER_HOP = 6;
 const EMBED_HOP_WALL_MS = 1_100; // inference is synchronous CPU, so wall ~ CPU here
+// Pause between chain hops. Without it the sweep ran back-to-back around the
+// clock, and with the old corpus-scanning batch picker that held a continuous
+// full-table load on Postgres — the 2026-07-26 board saturation (filtered
+// lists and search timing out at 25s+ while unfiltered status still answered).
+// The picker is now O(batch) off a seeded queue, but the pause stays: a fill
+// that takes days at low duty is invisible; a fill that takes hours by
+// monopolizing the DB is an outage. ~570k rows / 6 per hop at ~5s cadence
+// ≈ 5-6 days to full fill, then the hourly settle cadence takes over.
+const EMBED_HOP_PAUSE_MS = 4_000;
 let aiSession: { run: (input: string, opts: Record<string, unknown>) => Promise<unknown> } | null = null;
 async function embedText(text: string): Promise<number[] | null> {
   try {
@@ -2700,11 +2709,16 @@ Deno.serve(async (req) => {
         return json({ ok: false, embedded: 0, note: "inference unavailable" });
       }
       const url = `${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`;
-      waitUntil(chainKey().then((key) => fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "embed-sweep", chainKey: key }),
-      })).then((rr) => rr.text()).catch(() => {}));
+      // Paced chain: sleep BEFORE the next hop. Back-to-back hops turned this
+      // sweep into a continuous DB load (2026-07-26 saturation incident) —
+      // the pause caps the duty cycle so user queries always outrank the fill.
+      waitUntil(new Promise((r) => setTimeout(r, EMBED_HOP_PAUSE_MS))
+        .then(() => chainKey())
+        .then((key) => fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "embed-sweep", chainKey: key }),
+        })).then((rr) => rr.text()).catch(() => {}));
       return json({ ok: true, embedded, batch: rows.length });
     }
 
