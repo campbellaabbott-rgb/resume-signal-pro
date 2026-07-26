@@ -3938,7 +3938,7 @@
     "coachSubtitle": "Basadas en tu currículum para este puesto — practícalas antes de postularte, para que la entrevista no sea la primera vez que las respondes.",
     "coachLoading": "Preparando tus preguntas…",
     "coachWhy": "Por qué lo preguntan:",
-    "fillSpeedLine": "Las vacantes de este sector suelen permanecer abiertas ~{{median}} días (el 75% cierra en {{p75}}) — medido sobre {{n}} cierres rastreados en los últimos {{window}} días.",
+    "fillSpeedLine": "Las vacantes de este sector suelen permanecer abiertas ~{{median}} días (el 75% cierra en {{p75}} días) — medido sobre {{n}} cierres rastreados en los últimos {{window}} días.",
     "salaryContextBasis": "tarifas por hora y mensuales anualizadas (por hora ×2080)"
   },
   "accountPage": {

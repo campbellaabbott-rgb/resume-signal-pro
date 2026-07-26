@@ -3938,7 +3938,7 @@
     "coachSubtitle": "Nakabatay sa résumé mo para sa role na ito — praktisin ang mga ito bago ka mag-apply, para hindi sa mismong interview ka unang sasagot sa mga ito.",
     "coachLoading": "Inihahanda ang mga tanong mo…",
     "coachWhy": "Bakit nila tinatanong:",
-    "fillSpeedLine": "Ang mga role sa larangang ito ay karaniwang bukas nang ~{{median}} araw (75% nagsasara sa loob ng {{p75}}) — sinukat mula sa {{n}} na-track na pagsasara sa nakaraang {{window}} araw.",
+    "fillSpeedLine": "Ang mga role sa larangang ito ay karaniwang bukas nang ~{{median}} araw (75% nagsasara sa loob ng {{p75}} araw) — sinukat mula sa {{n}} na-track na pagsasara sa nakaraang {{window}} araw.",
     "salaryContextBasis": "ang mga oras-oras at buwanang rate ay ginawang taunan (oras-oras ×2080)"
   },
   "accountPage": {

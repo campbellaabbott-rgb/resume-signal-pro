@@ -2671,7 +2671,7 @@ export default function Jobs() {
           {landerCategory && fillSpeed && (
             <p className="inline-flex items-center gap-1.5 text-[12px] text-muted-foreground mb-2">
               <Clock className="w-3.5 h-3.5 text-primary shrink-0" />
-              {t("jobsPage.fillSpeedLine", "Roles in this field typically stay open ~{{median}} days (75% close within {{p75}}) — measured from {{n}} tracked closings over the last {{window}} days.", {
+              {t("jobsPage.fillSpeedLine", "Roles in this field typically stay open ~{{median}} days (75% close within {{p75}} days) — measured from {{n}} tracked closings over the last {{window}} days.", {
                 median: fillSpeed.median,
                 p75: fillSpeed.p75,
                 n: fillSpeed.n.toLocaleString(),

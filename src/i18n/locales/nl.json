@@ -3938,7 +3938,7 @@
     "coachSubtitle": "Gebaseerd op je cv voor deze functie — oefen ze voordat je solliciteert, zodat het gesprek niet de eerste keer is dat je ze beantwoordt.",
     "coachLoading": "Je vragen worden voorbereid…",
     "coachWhy": "Waarom ze dit vragen:",
-    "fillSpeedLine": "Vacatures in dit vakgebied staan doorgaans ~{{median}} dagen open (75% sluit binnen {{p75}}) — gemeten over {{n}} gevolgde sluitingen in de afgelopen {{window}} dagen.",
+    "fillSpeedLine": "Vacatures in dit vakgebied staan doorgaans ~{{median}} dagen open (75% sluit binnen {{p75}} dagen) — gemeten over {{n}} gevolgde sluitingen in de afgelopen {{window}} dagen.",
     "salaryContextBasis": "uur- en maandtarieven omgerekend naar jaarbasis (per uur ×2080)"
   },
   "accountPage": {

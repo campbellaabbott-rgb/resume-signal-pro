@@ -3938,7 +3938,7 @@
     "coachSubtitle": "Fondées sur votre CV pour ce poste — entraînez-vous avant de postuler, pour que l'entretien ne soit pas la première fois que vous y répondez.",
     "coachLoading": "Préparation de vos questions…",
     "coachWhy": "Pourquoi cette question :",
-    "fillSpeedLine": "Les postes de ce domaine restent généralement ouverts ~{{median}} jours (75 % ferment sous {{p75}}) — mesuré sur {{n}} clôtures suivies au cours des {{window}} derniers jours.",
+    "fillSpeedLine": "Les postes de ce domaine restent généralement ouverts ~{{median}} jours (75 % ferment sous {{p75}} jours) — mesuré sur {{n}} clôtures suivies au cours des {{window}} derniers jours.",
     "salaryContextBasis": "taux horaires et mensuels annualisés (horaire ×2080)"
   },
   "accountPage": {

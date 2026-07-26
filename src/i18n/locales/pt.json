@@ -3938,7 +3938,7 @@
     "coachSubtitle": "Baseadas no seu currículo para esta vaga — pratique antes de se candidatar, para que a entrevista não seja a primeira vez que responde a estas perguntas.",
     "coachLoading": "A preparar as suas perguntas…",
     "coachWhy": "Porque perguntam:",
-    "fillSpeedLine": "As vagas desta área costumam ficar abertas ~{{median}} dias (75% fecham em {{p75}}) — medido a partir de {{n}} encerramentos registados nos últimos {{window}} dias.",
+    "fillSpeedLine": "As vagas desta área costumam ficar abertas ~{{median}} dias (75% fecham em {{p75}} dias) — medido a partir de {{n}} encerramentos registados nos últimos {{window}} dias.",
     "salaryContextBasis": "valores à hora e mensais anualizados (à hora ×2080)"
   },
   "accountPage": {
