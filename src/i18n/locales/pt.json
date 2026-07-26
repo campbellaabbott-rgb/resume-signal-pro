@@ -3775,7 +3775,8 @@
     "orderRelevance": "ordenado por relevância para sua busca",
     "orderNewest": "mais recentes primeiro, datas declaradas antes das sem data",
     "pills": {
-      "label": "Suas buscas:"
+      "label": "Suas buscas:",
+      "newBadge": "+{{n}} novas"
     },
     "appliedBadge": "Candidatado",
     "welcomeLine": "Cada vaga aqui é verificada ao vivo no próprio sistema da empresa. Comece onde este quadro é mais forte:",
@@ -3799,7 +3800,11 @@
     "deadLinkAt": "na",
     "deadLinkUnknown": "A vaga desse link já não está ativa — foi preenchida ou retirada.",
     "deadLinkSearch": "Encontrar vagas semelhantes ativas",
-    "deadLinkDismiss": "Dispensar"
+    "deadLinkDismiss": "Dispensar",
+    "tailorLimitTitle": "Limite por hora atingido",
+    "tailorLimit": "Usou os ajustes de currículo desta hora — repõem-se dentro de uma hora. Tudo o que gerou fica guardado.",
+    "savedMilestone": "Já são {{n}} vagas no seu pipeline",
+    "savedMilestoneDesc": "O Apply Agent pode preparar respostas personalizadas para todas de uma vez — teste grátis de 7 dias, e é sempre você quem envia."
   },
   "accountPage": {
     "statusSaveFailed": "Não foi possível salvar esse status — tente novamente.",
@@ -3945,7 +3950,9 @@
     "phCompany": "Empresa",
     "phRole": "Cargo",
     "appIntelTitle": "Inteligência de candidaturas",
-    "whichResumeTitle": "Qual currículo consegue entrevistas"
+    "whichResumeTitle": "Qual currículo consegue entrevistas",
+    "replyWindow": "candidatou-se há {{d}} dias — este empregador costuma preencher em ~{{m}} dias (de {{n}} preenchimentos registados)",
+    "replyWindowPast": "candidatou-se há {{d}} dias — já passou a janela típica de ~{{m}} dias deste empregador (de {{n}} preenchimentos); faz sentido dar seguimento"
   },
   "applyAgent": {
     "badge": "Seu agente de IA para candidaturas",

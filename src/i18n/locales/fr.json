@@ -3775,7 +3775,8 @@
     "orderRelevance": "trié par pertinence pour votre recherche",
     "orderNewest": "les plus récentes d'abord, dates déclarées avant non datées",
     "pills": {
-      "label": "Vos recherches :"
+      "label": "Vos recherches :",
+      "newBadge": "+{{n}} nouv."
     },
     "appliedBadge": "Candidature envoyée",
     "welcomeLine": "Chaque offre ici est vérifiée en direct depuis le système de l'entreprise. Commencez là où ce tableau est le plus fort :",
@@ -3799,7 +3800,11 @@
     "deadLinkAt": "chez",
     "deadLinkUnknown": "L'offre de ce lien n'est plus en ligne — le poste a été pourvu ou retiré.",
     "deadLinkSearch": "Trouver des postes similaires en ligne",
-    "deadLinkDismiss": "Ignorer"
+    "deadLinkDismiss": "Ignorer",
+    "tailorLimitTitle": "Limite horaire atteinte",
+    "tailorLimit": "Vous avez utilisé les adaptations de CV de cette heure — elles se réinitialisent dans l'heure. Tout ce qui a été généré est conservé.",
+    "savedMilestone": "Ça fait {{n}} offres dans votre pipeline",
+    "savedMilestoneDesc": "L'Apply Agent peut préparer des réponses sur mesure pour toutes en un seul lot — essai gratuit de 7 jours, et c'est toujours vous qui envoyez."
   },
   "accountPage": {
     "statusSaveFailed": "Impossible d'enregistrer ce statut — réessayez.",
@@ -3945,7 +3950,9 @@
     "phCompany": "Entreprise",
     "phRole": "Poste",
     "appIntelTitle": "Intelligence des candidatures",
-    "whichResumeTitle": "Quel CV décroche des entretiens"
+    "whichResumeTitle": "Quel CV décroche des entretiens",
+    "replyWindow": "candidature il y a {{d}} j — cet employeur pourvoit généralement en ~{{m}} j (sur {{n}} recrutements suivis)",
+    "replyWindowPast": "candidature il y a {{d}} j — au-delà de la fenêtre typique de ~{{m}} j de cet employeur (sur {{n}} recrutements) ; une relance est raisonnable"
   },
   "applyAgent": {
     "badge": "Votre agent IA de candidature",

@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { ApplicationAnswers, REAL_QUESTION_PREFIXES } from "@/components/apply/ApplicationAnswers";
+import { useProSubscription } from "@/hooks/use-pro-subscription";
 import { CompanyClaim } from "@/components/jobs/CompanyClaim";
 import { CompanyIntelPanel } from "@/components/jobs/CompanyIntelPanel";
 import { PublicCompanyCard } from "@/components/jobs/PublicCompanyCard";
@@ -237,6 +238,11 @@ const avatarHue = (s: string) => AVATAR_HUES[[...s].reduce((n, c) => n + c.charC
 export default function Jobs() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  // Pro state for the board's honest upgrade moments (milestone toasts etc.).
+  // `pro.active` false-while-loading errs toward showing free users the
+  // pitch, never toward pitching a paying user.
+  const { pro: proSub } = useProSubscription();
+  const isPro = proSub.active;
   // Deep-linkable filters: /jobs?q=nurse&category=healthcare&remote=1&company=oscar
   const initial = new URLSearchParams(window.location.search);
   const [q, setQ] = useState(initial.get("q") ?? "");
@@ -675,7 +681,20 @@ export default function Jobs() {
       }
       return;
     }
-    toast({ title: t("jobsPage.jobSaved", "Saved to your application tracker") });
+    // Milestone moments: save #1 and save #12 are different situations — by
+    // the 5th/12th save the user is assembling a PIPELINE, which is exactly
+    // the workload batch prep and the Morning Queue exist for. The claims are
+    // factual (the trial is a real 7-day trial; the agent never auto-submits)
+    // and Pro users never see the pitch. Counts land on 5 and 12 once each.
+    const savedCount = savedIds.size + 1;
+    if (!isPro && (savedCount === 5 || savedCount === 12)) {
+      toast({
+        title: t("jobsPage.savedMilestone", "That's {{n}} jobs in your pipeline", { n: savedCount }),
+        description: t("jobsPage.savedMilestoneDesc", "The Apply Agent can prep tailored answers for all of them in one batch — 7-day free trial, and you always hit send yourself."),
+      });
+    } else {
+      toast({ title: t("jobsPage.jobSaved", "Saved to your application tracker") });
+    }
     try {
       const { data: res } = await invokeBoard<{ description?: string }>({ action: "detail", id: job.id });
       const description = (res as { description?: string })?.description;

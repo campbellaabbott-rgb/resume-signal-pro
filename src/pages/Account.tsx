@@ -147,7 +147,7 @@ export default function Account() {
   // Employer lifecycle facts (fills vs re-listing churn) for tracked rows —
   // most actionable exactly where you're waiting to hear back. Token comes
   // from the board posting id embedded in job_id (source:token:externalId).
-  const [appHealth, setAppHealth] = useState<Record<string, { closed_90d?: number; superseded_90d?: number }>>({});
+  const [appHealth, setAppHealth] = useState<Record<string, { closed_90d?: number; superseded_90d?: number; median_days_to_close?: number | null; tracking_days?: number }>>({});
   // The account's MATCHING RÉSUMÉ: an explicit, durable choice of which résumé
   // every matcher uses (board fit ranking, threshold digests, apply-agent
   // grounding). Either a pinned scan or pasted text; null/null = the default
@@ -384,9 +384,11 @@ export default function Account() {
         .rpc("get_company_hiring_health", { p_tokens: tokens }))
         .then(({ data }) => {
           if (!Array.isArray(data)) return;
-          const map: Record<string, { closed_90d?: number; superseded_90d?: number }> = {};
-          for (const r of data as Array<{ company_token: string; closed_90d?: number; superseded_90d?: number }>) {
-            map[r.company_token] = { closed_90d: r.closed_90d, superseded_90d: r.superseded_90d };
+          const map: Record<string, { closed_90d?: number; superseded_90d?: number; median_days_to_close?: number | null; tracking_days?: number }> = {};
+          for (const r of data as Array<{ company_token: string; closed_90d?: number; superseded_90d?: number; median_days_to_close?: number | null; tracking_days?: number }>) {
+            // median_days_to_close/tracking_days were fetched and DISCARDED —
+            // they power the reply-window chip below at zero extra backend.
+            map[r.company_token] = { closed_90d: r.closed_90d, superseded_90d: r.superseded_90d, median_days_to_close: r.median_days_to_close, tracking_days: r.tracking_days };
           }
           setAppHealth(map);
         })
@@ -1251,6 +1253,30 @@ export default function Account() {
                         return <p className="text-[11px] text-success/80 mt-0.5">{t("jobsPage.verdictFills", "this company genuinely fills roles ({{n}} in our tracking)", { n: fills })}</p>;
                       }
                       return null;
+                    })()}
+                    {/* Reply-window chip: the checkable clock. "Applied 9d ago
+                        — this employer typically fills in ~12d" comes straight
+                        from OUR closure log via the medians this page already
+                        fetches. Same publish floors the Ghost Index uses
+                        (21 tracked days, 5 genuine fills) — below them, the
+                        median is one anecdote and we show nothing. */}
+                    {(() => {
+                      if (a.status !== "applied" || !a.applied_at) return null;
+                      const hhToken = (a.job_id ?? "").split(":")[1];
+                      const hh = hhToken ? appHealth[hhToken] : undefined;
+                      const median = hh?.median_days_to_close;
+                      if (typeof median !== "number" || median <= 0) return null;
+                      if ((hh?.tracking_days ?? 0) < 21 || (hh?.closed_90d ?? 0) < 5) return null;
+                      const daysIn = Math.floor((Date.now() - new Date(a.applied_at).getTime()) / 86_400_000);
+                      if (daysIn < 1) return null;
+                      const past = daysIn > Math.ceil(median);
+                      return (
+                        <p className={`text-[11px] mt-0.5 ${past ? "text-warning/90" : "text-muted-foreground/80"}`}>
+                          {past
+                            ? t("accountPage.replyWindowPast", "applied {{d}}d ago — past this employer's typical ~{{m}}d fill window (from {{n}} tracked fills); a follow-up is reasonable", { d: daysIn, m: Math.round(median), n: hh?.closed_90d ?? 0 })
+                            : t("accountPage.replyWindow", "applied {{d}}d ago — this employer typically fills in ~{{m}}d (from {{n}} tracked fills)", { d: daysIn, m: Math.round(median), n: hh?.closed_90d ?? 0 })}
+                        </p>
+                      );
                     })()}
                     {/* Follow-up rhythm: quiet-clock chip + one-tap nudge marker.
                         Basis is the row's own dates (stage change / follow-up /

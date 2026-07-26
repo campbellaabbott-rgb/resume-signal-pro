@@ -3775,7 +3775,8 @@
     "orderRelevance": "sortiert nach Relevanz für deine Suche",
     "orderNewest": "Neueste zuerst, genannte Daten vor undatierten",
     "pills": {
-      "label": "Deine Suchen:"
+      "label": "Deine Suchen:",
+      "newBadge": "+{{n}} neu"
     },
     "appliedBadge": "Beworben",
     "welcomeLine": "Jede Anzeige hier wird live aus dem System des Unternehmens verifiziert. Starte dort, wo dieses Board am stärksten ist:",
@@ -3799,7 +3800,11 @@
     "deadLinkAt": "bei",
     "deadLinkUnknown": "Die Stelle hinter diesem Link ist nicht mehr online — sie wurde besetzt oder zurückgezogen.",
     "deadLinkSearch": "Ähnliche offene Stellen finden",
-    "deadLinkDismiss": "Ausblenden"
+    "deadLinkDismiss": "Ausblenden",
+    "tailorLimitTitle": "Stundenlimit erreicht",
+    "tailorLimit": "Die Lebenslauf-Anpassungen dieser Stunde sind aufgebraucht — sie werden innerhalb der Stunde zurückgesetzt. Alles Erstellte bleibt gespeichert.",
+    "savedMilestone": "Das sind {{n}} Jobs in deiner Pipeline",
+    "savedMilestoneDesc": "Der Apply Agent kann für alle auf einmal maßgeschneiderte Antworten vorbereiten — 7 Tage kostenlos testen, abgeschickt wird immer von dir."
   },
   "accountPage": {
     "statusSaveFailed": "Status konnte nicht gespeichert werden — bitte erneut versuchen.",
@@ -3945,7 +3950,9 @@
     "phCompany": "Unternehmen",
     "phRole": "Rolle",
     "appIntelTitle": "Bewerbungs-Insights",
-    "whichResumeTitle": "Welcher Lebenslauf bekommt Interviews"
+    "whichResumeTitle": "Welcher Lebenslauf bekommt Interviews",
+    "replyWindow": "vor {{d}} T. beworben — dieser Arbeitgeber besetzt üblicherweise in ~{{m}} T. (aus {{n}} erfassten Besetzungen)",
+    "replyWindowPast": "vor {{d}} T. beworben — über dem üblichen ~{{m}}-T.-Fenster dieses Arbeitgebers (aus {{n}} Besetzungen); nachzufassen ist angemessen"
   },
   "applyAgent": {
     "badge": "Ihr KI-Bewerbungsagent",

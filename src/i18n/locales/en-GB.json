@@ -3775,7 +3775,8 @@
     "orderRelevance": "ordered by relevance to your search",
     "orderNewest": "newest first, company-stated dates before undated",
     "pills": {
-      "label": "Your searches:"
+      "label": "Your searches:",
+      "newBadge": "+{{n}} new"
     },
     "appliedBadge": "Applied",
     "welcomeLine": "Every posting here is verified live from the company's own system. Start where this board is strongest:",
@@ -3799,7 +3800,11 @@
     "deadLinkAt": "at",
     "deadLinkUnknown": "The posting in that link is no longer live — it was filled or taken down.",
     "deadLinkSearch": "Find similar live roles",
-    "deadLinkDismiss": "Dismiss"
+    "deadLinkDismiss": "Dismiss",
+    "tailorLimitTitle": "Hourly limit reached",
+    "tailorLimit": "You’ve used this hour’s CV-tailoring runs — they reset within the hour. Everything you’ve generated is saved.",
+    "savedMilestone": "That's {{n}} jobs in your pipeline",
+    "savedMilestoneDesc": "The Apply Agent can prep tailored answers for all of them in one batch — 7-day free trial, and you always hit send yourself."
   },
   "accountPage": {
     "statusSaveFailed": "Couldn't save that status — please try again.",
@@ -3945,7 +3950,9 @@
     "phCompany": "Company",
     "phRole": "Role",
     "appIntelTitle": "Application intelligence",
-    "whichResumeTitle": "Which CV gets interviews"
+    "whichResumeTitle": "Which CV gets interviews",
+    "replyWindow": "applied {{d}}d ago — this employer typically fills in ~{{m}}d (from {{n}} tracked fills)",
+    "replyWindowPast": "applied {{d}}d ago — past this employer's typical ~{{m}}d fill window (from {{n}} tracked fills); a follow-up is reasonable"
   },
   "applyAgent": {
     "badge": "Your AI apply agent",

@@ -3775,7 +3775,8 @@
     "orderRelevance": "gesorteerd op relevantie voor je zoekopdracht",
     "orderNewest": "nieuwste eerst, vermelde datums vóór ongedateerd",
     "pills": {
-      "label": "Jouw zoekopdrachten:"
+      "label": "Jouw zoekopdrachten:",
+      "newBadge": "+{{n}} nieuw"
     },
     "appliedBadge": "Gesolliciteerd",
     "welcomeLine": "Elke vacature hier wordt live geverifieerd vanuit het systeem van het bedrijf zelf. Begin waar dit bord het sterkst is:",
@@ -3799,7 +3800,11 @@
     "deadLinkAt": "bij",
     "deadLinkUnknown": "De vacature in die link is niet meer live — deze is vervuld of verwijderd.",
     "deadLinkSearch": "Vind vergelijkbare open functies",
-    "deadLinkDismiss": "Sluiten"
+    "deadLinkDismiss": "Sluiten",
+    "tailorLimitTitle": "Uurlimiet bereikt",
+    "tailorLimit": "Je hebt de cv-aanpassingen van dit uur gebruikt — ze resetten binnen het uur. Alles wat je hebt gegenereerd blijft bewaard.",
+    "savedMilestone": "Dat zijn {{n}} vacatures in je pijplijn",
+    "savedMilestoneDesc": "De Apply Agent kan voor allemaal tegelijk antwoorden op maat voorbereiden — 7 dagen gratis proberen, en verzenden doe je altijd zelf."
   },
   "accountPage": {
     "statusSaveFailed": "Kon die status niet opslaan — probeer het opnieuw.",
@@ -3945,7 +3950,9 @@
     "phCompany": "Bedrijf",
     "phRole": "Functie",
     "appIntelTitle": "Sollicitatie-inzichten",
-    "whichResumeTitle": "Welk cv levert gesprekken op"
+    "whichResumeTitle": "Welk cv levert gesprekken op",
+    "replyWindow": "{{d}} dgn geleden gesolliciteerd — deze werkgever vult doorgaans in ~{{m}} dgn (uit {{n}} gevolgde invullingen)",
+    "replyWindowPast": "{{d}} dgn geleden gesolliciteerd — voorbij het gebruikelijke ~{{m}}-dgn-venster van deze werkgever (uit {{n}} invullingen); opvolgen is redelijk"
   },
   "applyAgent": {
     "badge": "Je AI-sollicitatieagent",

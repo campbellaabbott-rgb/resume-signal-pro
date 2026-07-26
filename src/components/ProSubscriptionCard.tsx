@@ -6,7 +6,12 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { useProSubscription } from "@/hooks/use-pro-subscription";
 
+// Scanner-era list predated the job board entirely — the Morning Queue and
+// Apply Agent (the subscription's two biggest features) were absent from the
+// one surface that sells it. Every line is a shipped, factual capability.
 const PRO_PERKS = [
+  "Morning Queue — the Apply Agent triages the live job board overnight and hands you ready-to-review picks with reasons",
+  "Batch application prep — tailored answers drafted for every saved job at once (you always hit send yourself)",
   "Unlimited scans — tailor a resume version to every job you apply to",
   "Track every application against the exact resume version you sent",
   "See which of your resume versions actually lands interviews",

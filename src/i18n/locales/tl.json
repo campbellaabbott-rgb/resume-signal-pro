@@ -3775,7 +3775,8 @@
     "orderRelevance": "nakaayos ayon sa kaugnayan sa iyong paghahanap",
     "orderNewest": "pinakabago muna, may nakasaad na petsa bago ang wala",
     "pills": {
-      "label": "Iyong mga paghahanap:"
+      "label": "Iyong mga paghahanap:",
+      "newBadge": "+{{n}} bago"
     },
     "appliedBadge": "Nag-apply na",
     "welcomeLine": "Bawat posting dito ay live na bineberipika mula sa sariling system ng kumpanya. Magsimula kung saan pinakamalakas ang board na ito:",
@@ -3799,7 +3800,11 @@
     "deadLinkAt": "sa",
     "deadLinkUnknown": "Ang posting sa link na iyon ay hindi na live — napunan na o tinanggal.",
     "deadLinkSearch": "Maghanap ng katulad na live na trabaho",
-    "deadLinkDismiss": "I-dismiss"
+    "deadLinkDismiss": "I-dismiss",
+    "tailorLimitTitle": "Naabot na ang limitasyon kada oras",
+    "tailorLimit": "Nagamit mo na ang mga resume-tailoring run ngayong oras — magre-reset ito sa loob ng isang oras. Naka-save ang lahat ng nagawa mo.",
+    "savedMilestone": "{{n}} trabaho na sa pipeline mo",
+    "savedMilestoneDesc": "Kayang ihanda ng Apply Agent ang mga naka-angkop na sagot para sa lahat nang sabay-sabay — 7-araw na libreng trial, at ikaw pa rin ang laging magpapadala."
   },
   "accountPage": {
     "statusSaveFailed": "Hindi na-save ang status na iyon — pakisubukan muli.",
@@ -3945,7 +3950,9 @@
     "phCompany": "Kumpanya",
     "phRole": "Posisyon",
     "appIntelTitle": "Katalinuhan sa aplikasyon",
-    "whichResumeTitle": "Aling resume ang nakakakuha ng interview"
+    "whichResumeTitle": "Aling resume ang nakakakuha ng interview",
+    "replyWindow": "nag-apply {{d}} araw na — karaniwang napupunan ng employer na ito sa ~{{m}} araw (mula sa {{n}} na-track na pagpuno)",
+    "replyWindowPast": "nag-apply {{d}} araw na — lampas na sa karaniwang ~{{m}}-araw na fill window ng employer na ito (mula sa {{n}} pagpuno); makatuwirang mag-follow-up"
   },
   "applyAgent": {
     "badge": "Ang iyong AI apply agent",

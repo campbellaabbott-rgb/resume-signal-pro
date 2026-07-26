@@ -3775,7 +3775,8 @@
     "orderRelevance": "ordenado por relevancia para tu búsqueda",
     "orderNewest": "más recientes primero, fechas declaradas antes que sin fecha",
     "pills": {
-      "label": "Tus búsquedas:"
+      "label": "Tus búsquedas:",
+      "newBadge": "+{{n}} nuevas"
     },
     "appliedBadge": "Postulado",
     "welcomeLine": "Cada anuncio aquí se verifica en vivo desde el propio sistema de la empresa. Empieza donde este tablón es más fuerte:",
@@ -3799,7 +3800,11 @@
     "deadLinkAt": "en",
     "deadLinkUnknown": "La oferta de ese enlace ya no está activa: se cubrió o se retiró.",
     "deadLinkSearch": "Buscar puestos similares activos",
-    "deadLinkDismiss": "Descartar"
+    "deadLinkDismiss": "Descartar",
+    "tailorLimitTitle": "Límite por hora alcanzado",
+    "tailorLimit": "Has usado los ajustes de currículum de esta hora; se restablecen en menos de una hora. Todo lo generado queda guardado.",
+    "savedMilestone": "Ya llevas {{n}} empleos en tu proceso",
+    "savedMilestoneDesc": "El Apply Agent puede preparar respuestas a medida para todos en un solo lote: prueba gratis de 7 días, y el envío siempre lo haces tú."
   },
   "accountPage": {
     "statusSaveFailed": "No se pudo guardar ese estado; inténtalo de nuevo.",
@@ -3945,7 +3950,9 @@
     "phCompany": "Empresa",
     "phRole": "Puesto",
     "appIntelTitle": "Inteligencia de candidaturas",
-    "whichResumeTitle": "Qué currículum consigue entrevistas"
+    "whichResumeTitle": "Qué currículum consigue entrevistas",
+    "replyWindow": "postulaste hace {{d}} días — este empleador suele cubrir puestos en ~{{m}} días (según {{n}} cierres registrados)",
+    "replyWindowPast": "postulaste hace {{d}} días — ya superó la ventana típica de ~{{m}} días de este empleador (según {{n}} cierres); un seguimiento es razonable"
   },
   "applyAgent": {
     "badge": "Tu agente de IA para postular",
