@@ -2522,6 +2522,16 @@ export type Database = {
         Args: { p_cache_key: string; p_function_name: string }
         Returns: Json
       }
+      get_category_fill_speed: {
+        Args: { p_days?: number; p_min_closures?: number }
+        Returns: {
+          category: string
+          closures: number
+          median_days_open: number
+          p75_days_open: number
+          window_days: number
+        }[]
+      }
       get_checkout_funnel: {
         Args: { p_hours_back?: number }
         Returns: {
