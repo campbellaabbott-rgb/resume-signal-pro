@@ -3804,7 +3804,10 @@
     "tailorLimitTitle": "Stundenlimit erreicht",
     "tailorLimit": "Die Lebenslauf-Anpassungen dieser Stunde sind aufgebraucht — sie werden innerhalb der Stunde zurückgesetzt. Alles Erstellte bleibt gespeichert.",
     "savedMilestone": "Das sind {{n}} Jobs in deiner Pipeline",
-    "savedMilestoneDesc": "Der Apply Agent kann für alle auf einmal maßgeschneiderte Antworten vorbereiten — 7 Tage kostenlos testen, abgeschickt wird immer von dir."
+    "savedMilestoneDesc": "Der Apply Agent kann für alle auf einmal maßgeschneiderte Antworten vorbereiten — 7 Tage kostenlos testen, abgeschickt wird immer von dir.",
+    "sortRelevance": "Relevanz",
+    "companyNotHiring": "Gerade nicht — {{company}} hat aktuell keine offenen Stellen auf dem eigenen Jobportal. Beobachte das Unternehmen unten und wir mailen dir, sobald neue Stellen erscheinen.",
+    "companyYesHiringCapped": "Ja — über {{n}} verifizierte offene Stellen, direkt vom Jobportal von {{company}}."
   },
   "accountPage": {
     "statusSaveFailed": "Status konnte nicht gespeichert werden — bitte erneut versuchen.",

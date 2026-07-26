@@ -19,7 +19,13 @@ const RANGE_RE = new RegExp(`(${MONEY})${RANGE_SEP}(${MONEY})(\\s*${PERIOD})?`, 
 const SINGLE_RE = new RegExp(`(${MONEY})(\\s*${PERIOD})`, "i");
 
 // Figures near these words are one-offs, not compensation.
-const NOT_PAY = /bonus|sign[- ]?on|stipend|reimburse|referral|allowance|credit|deposit|discount|401|gift/i;
+// Context words that mean the nearby dollar figure is NOT this job's pay.
+// Extended 2026-07-26 after live mining incidents: "$500,000 annually" from a
+// company's CHARITY boilerplate ("we donate…"), a "£500k quota" (sales target)
+// mined as salary, and revenue/funding brags — all of which topped the
+// highest-pay sort. The window check runs against ±40 chars of the match, so
+// these words only suppress figures they actually describe.
+const NOT_PAY = /bonus|sign[- ]?on|stipend|reimburse|referral|allowance|credit|deposit|discount|401|gift|donat\w*|charit\w*|quota|revenue|bookings|funding|raised|valuation|in sales|sales target|budget\w*|grant\w*|scholarship|prize|fundrais\w*/i;
 
 function parseMoney(raw: string): number | null {
   const k = /k\s*$/i.test(raw.trim());
@@ -77,7 +83,16 @@ export interface ParsedSalary {
 const P_ISO = /\b(USD|EUR|GBP|CAD|AUD|NZD|CHF|SEK|DKK|NOK|PLN|INR|SGD|JPY|BRL|MXN|PHP|HKD)\b/i;
 const P_CAD = /C(?:A)?\$/;
 const P_AUD = /A(?:U)?\$/;
-function detectCurrency(s: string): string | null {
+// Bare-$ countries whose local currency ALSO writes plain "$". A Toronto
+// posting saying "$120,000" means CAD — labeling it USD both inflates its
+// rank (~1.37x) and lies about the offer. When the caller knows the posting's
+// country, the bare $ resolves to that country's dollar; US and unknown stay
+// USD (the documented heuristic — most bare-$ postings are US).
+const BARE_DOLLAR_BY_COUNTRY: Record<string, string> = {
+  CA: "CAD", AU: "AUD", NZ: "NZD", MX: "MXN", SG: "SGD", HK: "HKD",
+};
+
+function detectCurrency(s: string, country?: string | null): string | null {
   const iso = s.match(P_ISO);
   if (iso) return iso[1].toUpperCase();
   if (/(?<![A-Za-z])US\$/i.test(s)) return "USD";
@@ -95,7 +110,7 @@ function detectCurrency(s: string): string | null {
   if (/zł/i.test(s)) return "PLN";
   // ¥ stays unmapped: JPY vs CNY is a ~20x difference and guessing wrong
   // would misrank those postings badly — unlabeled is honest, mislabeled isn't.
-  if (s.includes("$")) return "USD";
+  if (s.includes("$")) return BARE_DOLLAR_BY_COUNTRY[String(country ?? "").toUpperCase()] ?? "USD";
   return null;
 }
 
@@ -116,7 +131,7 @@ const P_WEEK = /per[\s-]?week|\/\s?wk\b|\/\s?week|weekly/i;
 const P_MONTH = /per[\s-]?month|\/\s?mo\b|\/\s?month|monthly/i;
 const P_YEAR = /per[\s-]?(?:year|annum)|\/\s?yr\b|\/\s?year|annual|yearly|year-?salary/i;
 
-export function parseSalaryStructured(text: string | null | undefined): ParsedSalary | null {
+export function parseSalaryStructured(text: string | null | undefined, country?: string | null): ParsedSalary | null {
   if (!text) return null;
   const s = String(text).slice(0, 300);
   const num = (raw: string, k?: string): number | null => {
@@ -143,7 +158,7 @@ export function parseSalaryStructured(text: string | null | undefined): ParsedSa
   }
   if (min === null || min <= 0) return null;
 
-  const currency = detectCurrency(s);
+  const currency = detectCurrency(s, country);
   const MULT = { hour: 2080, week: 52, month: 12, year: 1 } as const;
   let annualMin: number | null = null;
   if (period) {

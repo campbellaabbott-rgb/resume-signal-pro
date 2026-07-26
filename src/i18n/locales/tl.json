@@ -3804,7 +3804,10 @@
     "tailorLimitTitle": "Naabot na ang limitasyon kada oras",
     "tailorLimit": "Nagamit mo na ang mga resume-tailoring run ngayong oras — magre-reset ito sa loob ng isang oras. Naka-save ang lahat ng nagawa mo.",
     "savedMilestone": "{{n}} trabaho na sa pipeline mo",
-    "savedMilestoneDesc": "Kayang ihanda ng Apply Agent ang mga naka-angkop na sagot para sa lahat nang sabay-sabay — 7-araw na libreng trial, at ikaw pa rin ang laging magpapadala."
+    "savedMilestoneDesc": "Kayang ihanda ng Apply Agent ang mga naka-angkop na sagot para sa lahat nang sabay-sabay — 7-araw na libreng trial, at ikaw pa rin ang laging magpapadala.",
+    "sortRelevance": "Kaugnayan",
+    "companyNotHiring": "Hindi sa ngayon — walang bukas na posisyon ang {{company}} sa kanilang job board. I-watch ang kumpanya sa ibaba at mag-eemail kami kapag may lumabas na bagong posisyon.",
+    "companyYesHiringCapped": "Oo — mahigit {{n}} verified na bukas na posisyon ngayon mismo, direkta mula sa job board ng {{company}}."
   },
   "accountPage": {
     "statusSaveFailed": "Hindi na-save ang status na iyon — pakisubukan muli.",

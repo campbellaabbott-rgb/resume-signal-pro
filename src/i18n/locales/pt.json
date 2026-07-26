@@ -3804,7 +3804,10 @@
     "tailorLimitTitle": "Limite por hora atingido",
     "tailorLimit": "Usou os ajustes de currículo desta hora — repõem-se dentro de uma hora. Tudo o que gerou fica guardado.",
     "savedMilestone": "Já são {{n}} vagas no seu pipeline",
-    "savedMilestoneDesc": "O Apply Agent pode preparar respostas personalizadas para todas de uma vez — teste grátis de 7 dias, e é sempre você quem envia."
+    "savedMilestoneDesc": "O Apply Agent pode preparar respostas personalizadas para todas de uma vez — teste grátis de 7 dias, e é sempre você quem envia.",
+    "sortRelevance": "Relevância",
+    "companyNotHiring": "Agora não — a {{company}} não tem vagas abertas no seu portal neste momento. Siga a empresa abaixo e enviaremos um e-mail quando surgirem novas vagas.",
+    "companyYesHiringCapped": "Sim — mais de {{n}} vagas abertas verificadas agora mesmo, diretamente do portal da {{company}}."
   },
   "accountPage": {
     "statusSaveFailed": "Não foi possível salvar esse status — tente novamente.",

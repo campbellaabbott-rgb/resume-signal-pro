@@ -75,7 +75,7 @@ const json = (body: unknown, status = 200) =>
 // while this file was untouched). Always bump BUILD_VERSION here when a shared
 // module this function imports changes — it forces the diff AND gives the
 // deploy a verifiable tell.
-const BUILD_VERSION = "2026-07-26.8";
+const BUILD_VERSION = "2026-07-26.9";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -952,7 +952,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
             // an empty-string vendor salary must not block extraction.
             salary: salaryText,
             ...(() => {
-              const p = parseSalaryStructured(salaryText);
+              const p = parseSalaryStructured(salaryText, j.country ?? detectCountry(j.location));
               return {
                 salary_min_annual: p?.annualMin ?? null,
                 salary_max_annual: p?.annualMax ?? null,
@@ -2583,7 +2583,7 @@ Deno.serve(async (req) => {
       for (let page = 0; page < PAGES; page++) {
         let q = client
           .from("job_board_postings")
-          .select("id,salary,salary_min_annual,salary_max_annual,salary_period,salary_currency")
+          .select("id,salary,country,salary_min_annual,salary_max_annual,salary_period,salary_currency")
           .not("salary", "is", null)
           .order("id")
           .limit(1000);
@@ -2592,8 +2592,8 @@ Deno.serve(async (req) => {
         if (error) throw error;
         for (const r of rows ?? []) {
           scanned++;
-          const row = r as { id: string; salary?: string | null; salary_min_annual?: number | string | null; salary_max_annual?: number | string | null; salary_period?: string | null; salary_currency?: string | null };
-          const p = parseSalaryStructured(row.salary);
+          const row = r as { id: string; salary?: string | null; country?: string | null; salary_min_annual?: number | string | null; salary_max_annual?: number | string | null; salary_period?: string | null; salary_currency?: string | null };
+          const p = parseSalaryStructured(row.salary, row.country);
           const nextMin = p?.annualMin ?? null;
           const nextMax = p?.annualMax ?? null;
           const nextPer = p?.period ?? null;
@@ -3123,7 +3123,7 @@ Deno.serve(async (req) => {
       );
       const { data: rows, error: readErr } = await client
         .from("job_board_postings")
-        .select("id, company_token, apply_url, title, location, posted_at, work_mode")
+        .select("id, company_token, apply_url, title, location, country, posted_at, work_mode")
         .eq("source", vendor)
         .is("description", null)
         .order("posted_at", { ascending: false, nullsFirst: false })
@@ -3152,7 +3152,7 @@ Deno.serve(async (req) => {
             // where the vendor gave us no structured pay field. Only ever the
             // company's own words — never an estimate.
             const minedSalary = extractSalary(clean);
-            const minedParse = minedSalary ? parseSalaryStructured(minedSalary) : null;
+            const minedParse = minedSalary ? parseSalaryStructured(minedSalary, (row as { country?: string | null }).country) : null;
             // The three fields below are DERIVED FROM DESCRIPTION TEXT but were
             // only ever computed at ingest, so the description backfill left
             // them stale — measured coverage was experience 26.4%, work mode
@@ -3475,7 +3475,7 @@ Deno.serve(async (req) => {
       // write must never break the read.
       if (!stored && description && jobRow) {
         const minedSalary = jobRow.salary ? null : extractSalary(description);
-        const minedParse = minedSalary ? parseSalaryStructured(minedSalary) : null;
+        const minedParse = minedSalary ? parseSalaryStructured(minedSalary, jobRow.country as string | null) : null;
         // Same re-derivation as the sweep: these fields come from description
         // text, so a row that gains a description here should gain them too,
         // rather than waiting for the sweep to reach it. Fill-only for work

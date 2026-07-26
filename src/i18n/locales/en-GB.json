@@ -3804,7 +3804,10 @@
     "tailorLimitTitle": "Hourly limit reached",
     "tailorLimit": "You’ve used this hour’s CV-tailoring runs — they reset within the hour. Everything you’ve generated is saved.",
     "savedMilestone": "That's {{n}} jobs in your pipeline",
-    "savedMilestoneDesc": "The Apply Agent can prep tailored answers for all of them in one batch — 7-day free trial, and you always hit send yourself."
+    "savedMilestoneDesc": "The Apply Agent can prep tailored answers for all of them in one batch — 7-day free trial, and you always hit send yourself.",
+    "sortRelevance": "Relevance",
+    "companyNotHiring": "Not right now — {{company}} has no open roles on their job board at the moment. Watch the company below and we'll email you when new roles appear.",
+    "companyYesHiringCapped": "Yes — {{n}}+ verified open roles right now, straight from {{company}}'s own job board."
   },
   "accountPage": {
     "statusSaveFailed": "Couldn't save that status — please try again.",

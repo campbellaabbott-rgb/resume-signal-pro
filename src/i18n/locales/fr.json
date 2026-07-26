@@ -3804,7 +3804,10 @@
     "tailorLimitTitle": "Limite horaire atteinte",
     "tailorLimit": "Vous avez utilisé les adaptations de CV de cette heure — elles se réinitialisent dans l'heure. Tout ce qui a été généré est conservé.",
     "savedMilestone": "Ça fait {{n}} offres dans votre pipeline",
-    "savedMilestoneDesc": "L'Apply Agent peut préparer des réponses sur mesure pour toutes en un seul lot — essai gratuit de 7 jours, et c'est toujours vous qui envoyez."
+    "savedMilestoneDesc": "L'Apply Agent peut préparer des réponses sur mesure pour toutes en un seul lot — essai gratuit de 7 jours, et c'est toujours vous qui envoyez.",
+    "sortRelevance": "Pertinence",
+    "companyNotHiring": "Pas pour l'instant — {{company}} n'a aucun poste ouvert sur son site carrières. Suivez l'entreprise ci-dessous et nous vous préviendrons par e-mail dès que de nouveaux postes paraîtront.",
+    "companyYesHiringCapped": "Oui — plus de {{n}} postes ouverts vérifiés en ce moment, directement depuis le site carrières de {{company}}."
   },
   "accountPage": {
     "statusSaveFailed": "Impossible d'enregistrer ce statut — réessayez.",

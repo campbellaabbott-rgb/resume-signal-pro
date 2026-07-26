@@ -35,7 +35,9 @@ describe("normalizeIcims", () => {
     expect(j.company).toBe("AccentCare");
     expect(j.title).toBe("Admissions Director RN, Hospice");
     expect(j.location).toBe("Tampa, Florida");
-    expect(j.applyUrl).toBe("https://careers-accentcare.icims.com/jobs/85865/login");
+    // /login is the vendor's email-collection wall (verified live: no job
+    // content); ingest rewrites to the sibling /job page, which IS the posting.
+    expect(j.applyUrl).toBe("https://careers-accentcare.icims.com/jobs/85865/job");
   });
 
   it("keeps the feed's real posted date", () => {

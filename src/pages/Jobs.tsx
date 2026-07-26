@@ -288,7 +288,26 @@ export default function Jobs() {
             .map((r) => ({ country: String(r.country), n: Number(r.n) || 0 }))
             .slice(0, 20),
         );
-      } catch { /* facet RPC not applied yet — the picker simply stays hidden */ }
+      } catch { /* retry below covers the transient case */ }
+      // Live-walk finding (rank 3): on deep-link entries the country picker
+      // was observed missing — a transient facet failure hides a FILTER,
+      // which the fence forbids. One delayed retry heals it.
+      if (!cancelled) {
+        await new Promise((r) => setTimeout(r, 3000));
+        if (cancelled) return;
+        try {
+          const { data: again } = await (supabase as unknown as {
+            rpc: (fn: string) => Promise<{ data: unknown }>;
+          }).rpc("get_country_facet");
+          if (!cancelled && Array.isArray(again) && again.length > 0) {
+            setCountryFacet((prev) => prev.length > 0 ? prev :
+              (again as Array<{ country?: string; n?: number }>)
+                .filter((r) => typeof r.country === "string" && r.country.length === 2)
+                .map((r) => ({ country: String(r.country), n: Number(r.n) || 0 }))
+                .slice(0, 20));
+          }
+        } catch { /* picker stays hidden this session — next mount retries */ }
+      }
     })();
     return () => { cancelled = true; };
   }, []);
@@ -1026,7 +1045,12 @@ export default function Jobs() {
       "@type": "JobPosting",
       title: detailJob.title,
       description: detailDesc.slice(0, 4000),
-      datePosted: detailJob.postedAt!.slice(0, 10),
+      // Clamp to today (UTC): Workday date-only stamps parse as a future UTC
+      // midnight for western timezones, and Google rejects future datePosted.
+      // A company-stated "tomorrow" is, for every honest purpose, "today".
+      datePosted: (detailJob.postedAt!.slice(0, 10) > new Date().toISOString().slice(0, 10)
+        ? new Date().toISOString().slice(0, 10)
+        : detailJob.postedAt!.slice(0, 10)),
       hiringOrganization: { "@type": "Organization", name: detailJob.company },
       url: `https://resumebooster.work/jobs?job=${encodeURIComponent(detailJob.id)}`,
       directApply: false,
@@ -2534,14 +2558,29 @@ export default function Jobs() {
               : t("jobsPage.h1", "Live job board")}</h1>
           </div>
           {/* Direct answer to "is {company} hiring?" — the exact high-intent query
-              this page targets. Only shown with a real count, so it's always true. */}
+              this page targets. Three honesty rules (live-walk finding, rank 5):
+              a capped count renders "10,000+", never as an exact figure; zero
+              open roles gets a plain honest "No … right now" instead of the
+              question hanging unanswered; and counts are locale-formatted. */}
           {landerCompany && typeof data?.total === "number" && data.total > 0 && (
             <p className="text-sm font-semibold text-success mb-1">
-              {t("jobsPage.companyYesHiring", "Yes — {{count}} verified open {{roleWord}} right now, straight from {{company}}'s own job board.", {
-                count: data.total,
-                roleWord: data.total === 1 ? "role" : "roles",
-                company: landerCompanyName,
-              })}
+              {data.countCapped
+                // Past the count cap the true figure is HIGHER — "10,000+" is
+                // the honest rendering; the exact-looking bare number was not.
+                ? t("jobsPage.companyYesHiringCapped", "Yes — {{n}}+ verified open roles right now, straight from {{company}}'s own job board.", {
+                    n: data.total.toLocaleString(),
+                    company: landerCompanyName,
+                  })
+                : t("jobsPage.companyYesHiring", "Yes — {{count}} verified open {{roleWord}} right now, straight from {{company}}'s own job board.", {
+                    count: data.total,
+                    roleWord: data.total === 1 ? "role" : "roles",
+                    company: landerCompanyName,
+                  })}
+            </p>
+          )}
+          {landerCompany && data?.total === 0 && !loading && !refreshing && (
+            <p className="text-sm font-semibold text-muted-foreground mb-1">
+              {t("jobsPage.companyNotHiring", "Not right now — {{company}} has no open roles on their job board at the moment. Watch the company below and we'll email you when new roles appear.", { company: landerCompanyName })}
             </p>
           )}
           <p className="text-sm text-muted-foreground mb-2">
@@ -3092,12 +3131,24 @@ export default function Jobs() {
             >
               {density === "compact" ? t("jobsPage.densityComfortable", "Comfortable view") : t("jobsPage.densityCompact", "Compact view")}
             </button>
+            {/* The select must SHOW the order actually applied. With a query
+                active the board ranks by relevance, but this control kept
+                displaying "Newest first" — a wrong displayed fact (live-walk
+                finding, rank 4). A Relevance option now appears and is
+                selected whenever it is what's happening; choosing Newest
+                routes through the existing searchNewestFirst toggle. */}
             <select
-              value={sortMode}
-              onChange={(e) => setSortMode(e.target.value === "salary" ? "salary" : "newest")}
+              value={sortMode === "salary" ? "salary" : (q.trim() && !searchNewestFirst ? "relevance" : "newest")}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (v === "salary") { setSortMode("salary"); return; }
+                setSortMode("newest");
+                if (q.trim()) setSearchNewestFirst(v === "newest");
+              }}
               className="text-xs px-2.5 py-1.5 rounded-full border border-border bg-background text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
               aria-label={t("jobsPage.sortLabel", "Sort")}
             >
+              {q.trim() && <option value="relevance">{t("jobsPage.sortRelevance", "Relevance")}</option>}
               <option value="newest">{t("jobsPage.sortNewest", "Newest first")}</option>
               <option value="salary">{t("jobsPage.sortSalary", "Highest stated salary")}</option>
             </select>

@@ -1041,7 +1041,11 @@ export function normalizeIcims(raw: IcimsJobItem[], company: string, token: stri
         // country_code is the FEED's own ISO-2 — better than location-text
         // detection, same treatment Rippling gets.
         country: /^[A-Za-z]{2}$/.test(String(d.country_code ?? "")) ? String(d.country_code).toUpperCase() : null,
-        applyUrl: safeUrl(d.apply_url ?? (externalId ? `https://${token}/jobs/${externalId}` : "")),
+        // The feed's apply_url ends in /login — an email-collection wall with
+        // NO job content (verified live 2026-07-26: 9/9 sampled). The sibling
+        // /job path renders the actual posting; never send a seeker to a
+        // data-capture page before they can even read the role.
+        applyUrl: safeUrl(String(d.apply_url ?? (externalId ? `https://${token}/jobs/${externalId}/job` : "")).replace(/\/login$/, "/job")),
       };
     })
     .filter((j) => j.applyUrl !== "" && j.title !== "" && !j.id.endsWith(":"));
