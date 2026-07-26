@@ -58,6 +58,8 @@ interface BoardJob {
   salary?: string | null;
   /** Definitive employer-stated work mode; null = the posting doesn't say (no tag shown). */
   workMode?: "remote" | "hybrid" | "onsite" | null;
+  /** ISO-2 country when the feed or location text states one (serveList sends it). */
+  country?: string | null;
   salaryMinAnnual?: number | null;
   salaryMaxAnnual?: number | null;
   salaryPeriod?: string | null;
@@ -974,29 +976,62 @@ export default function Jobs() {
   useEffect(() => {
     const TAG_ID = "job-posting-ld";
     document.getElementById(TAG_ID)?.remove();
-    if (!detailJob || !detailDesc || detailDesc.length < 100) return;
+
+    // CANONICAL: the prerendered /jobs page ships canonical=/jobs, which told
+    // Google every ?job=<id> deep link — all ~70k sitemap URLs — was the same
+    // page, silently defeating the per-posting sitemaps. While a posting is
+    // open, the canonical points at ITS deep link; on close it is restored,
+    // so filter/browse states still fold into /jobs as intended.
+    const canonical = document.querySelector<HTMLLinkElement>('link[rel="canonical"]');
+    const originalCanonical = canonical?.getAttribute("href") ?? null;
+    if (canonical && detailJob) {
+      canonical.setAttribute("href", `https://resumebooster.work/jobs?job=${encodeURIComponent(detailJob.id)}`);
+    }
+    const restoreCanonical = () => {
+      if (canonical && originalCanonical) canonical.setAttribute("href", originalCanonical);
+    };
+
+    // JSON-LD gate: Google REQUIRES title, description, datePosted,
+    // hiringOrganization, and a location (physical or TELECOMMUTE). A posting
+    // missing any of them emits NOTHING — invalid markup is worse than none,
+    // and inventing a date or place to satisfy the schema is off the table.
+    const hasDate = !!detailJob?.postedAt;
+    const hasPlace = detailJob?.workMode === "remote"
+      ? !!(detailJob?.country || detailJob?.location)
+      : !!detailJob?.location;
+    if (!detailJob || !detailDesc || detailDesc.length < 100 || !hasDate || !hasPlace) {
+      return restoreCanonical;
+    }
     const ld: Record<string, unknown> = {
       "@context": "https://schema.org",
       "@type": "JobPosting",
       title: detailJob.title,
       description: detailDesc.slice(0, 4000),
+      datePosted: detailJob.postedAt!.slice(0, 10),
       hiringOrganization: { "@type": "Organization", name: detailJob.company },
       url: `https://resumebooster.work/jobs?job=${encodeURIComponent(detailJob.id)}`,
       directApply: false,
       identifier: { "@type": "PropertyValue", name: detailJob.company, value: detailJob.id },
-      ...(detailJob.postedAt ? { datePosted: detailJob.postedAt.slice(0, 10) } : {}),
       ...(detailJob.workMode === "remote"
-        ? { jobLocationType: "TELECOMMUTE" }
-        : detailJob.location
-          ? { jobLocation: { "@type": "Place", address: { "@type": "PostalAddress", addressLocality: detailJob.location.slice(0, 120) } } }
-          : {}),
+        ? {
+            jobLocationType: "TELECOMMUTE",
+            // TELECOMMUTE requires applicantLocationRequirements when no
+            // physical jobLocation is given — emit it only from a KNOWN
+            // country; without one, fall back to the location text as a Place.
+            ...(detailJob.country
+              ? { applicantLocationRequirements: { "@type": "Country", name: detailJob.country } }
+              : detailJob.location
+                ? { jobLocation: { "@type": "Place", address: { "@type": "PostalAddress", addressLocality: detailJob.location.slice(0, 120) } } }
+                : {}),
+          }
+        : { jobLocation: { "@type": "Place", address: { "@type": "PostalAddress", addressLocality: detailJob.location.slice(0, 120) } } }),
     };
     const tag = document.createElement("script");
     tag.type = "application/ld+json";
     tag.id = TAG_ID;
     tag.textContent = JSON.stringify(ld);
     document.head.appendChild(tag);
-    return () => { document.getElementById(TAG_ID)?.remove(); };
+    return () => { document.getElementById(TAG_ID)?.remove(); restoreCanonical(); };
   }, [detailJob, detailDesc]);
   const [detailLoading, setDetailLoading] = useState(false);
   // URL mode per selection: an explicit card click PUSHES history (back button
@@ -1337,9 +1372,11 @@ export default function Jobs() {
       if (error || !d?.success) {
         const status = (error as { context?: { status?: number } })?.context?.status;
         toast({
-          title: status === 429 ? t("jobsPage.tailorBusyTitle", "Busy right now") : t("jobsPage.tailorErrorTitle", "Couldn't tailor your résumé"),
+          title: status === 429 ? t("jobsPage.tailorLimitTitle", "Hourly limit reached") : t("jobsPage.tailorErrorTitle", "Couldn't tailor your résumé"),
           description: status === 429
-            ? t("jobsPage.tailorBusy", "The résumé tailor is busy — try again in a moment.")
+            // Honest 429: it's YOUR per-hour tailoring limit resetting, not
+            // "the tailor is busy" — a personal quota misdescribed as load.
+            ? t("jobsPage.tailorLimit", "You\u2019ve used this hour\u2019s résumé-tailoring runs \u2014 they reset within the hour. Everything you\u2019ve generated is saved.")
             : t("jobsPage.tailorError", "Something went wrong tailoring your résumé. Please try again."),
         });
         setTailoredOpen(false);

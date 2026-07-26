@@ -75,7 +75,7 @@ const json = (body: unknown, status = 200) =>
 // while this file was untouched). Always bump BUILD_VERSION here when a shared
 // module this function imports changes — it forces the diff AND gives the
 // deploy a verifiable tell.
-const BUILD_VERSION = "2026-07-26.6";
+const BUILD_VERSION = "2026-07-26.7";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -1122,6 +1122,29 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
                 .from("job_board_postings")
                 .select("id, source, company_token, company, title, category, first_seen, posted_at")
                 .in("id", chunk);
+              // (b) aged out, not closed — excluded from the CLOSURE log, but
+              // recorded in the EXIT ledger: "still advertised at our 30-day
+              // cap" is exactly the event the ghost-rate stat counts, and it
+              // was previously deleted without any trace.
+              const agedRows = ((toLog ?? []) as Array<Record<string, unknown>>).filter((r) => {
+                const posted = r.posted_at ? new Date(String(r.posted_at)).getTime() : NaN;
+                return Number.isFinite(posted) && posted < freshCutoffMs;
+              });
+              if (agedRows.length) {
+                waitUntil(Promise.resolve(client.from("job_board_exits").insert(
+                  agedRows.map((r) => ({
+                    posting_id: String(r.id),
+                    source: String(r.source ?? s.source),
+                    company_token: String(r.company_token ?? s.token),
+                    category: String(r.category ?? "other"),
+                    exit_reason: "aged_out",
+                    days_on_board: r.posted_at
+                      ? Math.round((Date.now() - new Date(String(r.posted_at)).getTime()) / 8_640_000) / 10
+                      : null,
+                    exited_at: closedAt,
+                  })),
+                )).then(() => {}).catch(() => {}));
+              }
               const rows = ((toLog ?? []) as Array<Record<string, unknown>>).filter((r) => {
                 const posted = r.posted_at ? new Date(String(r.posted_at)).getTime() : NaN;
                 if (Number.isFinite(posted) && posted < freshCutoffMs) return false; // (b) aged out, not closed
@@ -1147,6 +1170,23 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
                   })),
                 );
                 if (clErr) console.warn(`[JOB-BOARD] closure insert failed for ${s.token} (non-fatal):`, clErr.message?.slice(0, 150));
+                // Exit ledger, 'removed' side: the same events, tagged, into the
+                // table the ghost-rate stat will read once accrual clears its
+                // floor. Best-effort — the closures row above is the record of
+                // record; this must never make a prune fail.
+                waitUntil(Promise.resolve(client.from("job_board_exits").insert(
+                  rows.map((r) => ({
+                    posting_id: r.id,
+                    source: r.source,
+                    company_token: r.company_token,
+                    category: r.category ?? "other",
+                    exit_reason: "removed",
+                    days_on_board: (r.posted_at ?? r.first_seen)
+                      ? Math.round((Date.parse(closedAt) - Date.parse(String(r.posted_at ?? r.first_seen))) / 8_640_000) / 10
+                      : null,
+                    exited_at: closedAt,
+                  })),
+                )).then(() => {}).catch(() => {}));
               }
             } catch (e) {
               console.warn(`[JOB-BOARD] closure log failed for ${s.token} (non-fatal):`, String(e).slice(0, 150));
@@ -2053,6 +2093,26 @@ Deno.serve(async (req) => {
   // still returns a valid empty urlset (never a 500 to a crawler).
   if (req.method === "GET") {
     const u = new URL(req.url);
+    // No page param → a sitemapindex sized from a LIVE count, so coverage
+    // grows with the dated corpus instead of being frozen by a static list
+    // (robots.txt used to hard-code pages 0-6 = 70k URLs while the route
+    // could serve 60 pages — a silent cap as date-backfill v3 fills).
+    if (u.searchParams.get("action") === "sitemap" && !u.searchParams.has("page")) {
+      const client = db();
+      const cutoff = new Date(Date.now() - 30 * 86_400_000).toISOString();
+      const { count } = await client
+        .from("job_board_postings")
+        .select("id", { count: "planned", head: true })
+        .gte("posted_at", cutoff);
+      const pages = Math.max(1, Math.min(60, Math.ceil((count ?? 0) / 10_000)));
+      const self = `${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`;
+      const entries = Array.from({ length: pages }, (_, i) =>
+        `<sitemap><loc>${self}?action=sitemap&amp;page=${i}</loc></sitemap>`).join("");
+      const xml = `<?xml version="1.0" encoding="UTF-8"?><sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${entries}</sitemapindex>`;
+      return new Response(xml, {
+        headers: { "Content-Type": "application/xml; charset=utf-8", "Cache-Control": "public, max-age=21600" },
+      });
+    }
     if (u.searchParams.get("action") === "sitemap") {
       const page = Math.max(0, Math.min(60, Number(u.searchParams.get("page")) || 0));
       const client = db();
@@ -3952,32 +4012,33 @@ async function serveList(
         // (measured 9.7s → "temporarily unavailable"). The ranked + fuzzy
         // paths are both index-backed and fast.
         if (total === 0 && offset === 0 && !countOnly) {
-          // Demand telemetry, ranked path. This logging lived only on the
-          // recency path, but ranked serves nearly all typed searches — so the
-          // job_board_search_misses table meant to steer census waves was
-          // recording only rare fallback traffic while the real misses went
-          // uncounted. A rescue tier below may still save the user's screen;
-          // the catalog gap the miss reveals is real either way.
-          {
+          // Demand telemetry, ranked path — logged AT EACH TERMINAL with its
+          // rescue outcome. The single up-front insert counted typo queries
+          // that fuzzy then rescued as if they were catalog gaps, so the
+          // steering signal conflated "we lack this" with "they misspelled
+          // this". `rescued` tells the census which is which: 'none' is a real
+          // gap; 'fuzzy'/'semantic' means the user was served something and
+          // the gap is softer.
+          const logMiss = (rescued: "none" | "fuzzy" | "semantic") => {
             const missQ0 = qText.slice(0, 120);
             const missLoc0 = sanitizeTerm(String(body.location ?? "")).slice(0, 120);
-            if (missQ0 || missLoc0) {
-              waitUntil(Promise.resolve(
-                client.from("job_board_search_misses").insert({
-                  q: missQ0,
-                  location: missLoc0,
-                  filters: {
-                    route: "ranked",
-                    category: String(body.category ?? "") || undefined,
-                    experience: String(body.experience ?? "") || undefined,
-                    remote: body.remote === true || undefined,
-                    workMode: ["remote", "hybrid", "onsite"].includes(wmParam) ? wmParam : undefined,
-                    country: /^[A-Za-z]{2}$/.test(String(body.country ?? "")) ? String(body.country).toUpperCase() : undefined,
-                  },
-                }),
-              ).then(() => {}).catch(() => {}));
-            }
-          }
+            if (!missQ0 && !missLoc0) return;
+            waitUntil(Promise.resolve(
+              client.from("job_board_search_misses").insert({
+                q: missQ0,
+                location: missLoc0,
+                filters: {
+                  route: "ranked",
+                  rescued,
+                  category: String(body.category ?? "") || undefined,
+                  experience: String(body.experience ?? "") || undefined,
+                  remote: body.remote === true || undefined,
+                  workMode: ["remote", "hybrid", "onsite"].includes(wmParam) ? wmParam : undefined,
+                  country: /^[A-Za-z]{2}$/.test(String(body.country ?? "")) ? String(body.country).toUpperCase() : undefined,
+                },
+              }),
+            ).then(() => {}).catch(() => {}));
+          };
           // (filtersActive hoisted above — shared with the augmentation tier.)
           if (!filtersActive) try {
             const { data: fuzzy, error: fErr } = await client.rpc("fuzzy_title_search", {
@@ -3991,6 +4052,7 @@ async function serveList(
               const fuzzyGrouped = groupSimilar
                 ? collapseClusters(fuzzyRows, limit)
                 : { jobs: fuzzyRows.slice(0, limit), rawConsumed: Math.min(fuzzyRows.length, limit) };
+              logMiss("fuzzy");
               return json({
                 jobs: fuzzyGrouped.jobs,
                 total: Number((fuzzy[0] as { total_rows?: number }).total_rows) || fuzzyGrouped.jobs.length,
@@ -4035,6 +4097,7 @@ async function serveList(
                   const semGrouped = groupSimilar
                     ? collapseClusters(semRows, limit)
                     : { jobs: semRows.slice(0, limit), rawConsumed: Math.min(semRows.length, limit) };
+                  logMiss("semantic");
                   return json({
                     jobs: semGrouped.jobs,
                     total: semGrouped.jobs.length,
@@ -4051,6 +4114,9 @@ async function serveList(
               }
             } catch { /* semantic is a bonus — the honest empty below stands */ }
           }
+          // Neither rescue tier answered (or filters kept them fenced out):
+          // this is the real "we lack it" signal the census steers by.
+          logMiss("none");
         }
         const includeFacets0 = (body as { includeFacets?: boolean }).includeFacets !== false;
         const fullCompanies0 = (v0.companiesFacet as Array<{ count?: number }>) ?? [];

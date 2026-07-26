@@ -71,14 +71,9 @@ Disallow: /product-success
 Disallow: /payment-failed
 
 Sitemap: https://resumebooster.work/sitemap.xml
-# Per-posting sitemap, served live by the board function (cross-host sitemaps
-# are valid when referenced from this robots.txt). Only postings with a
-# company-stated date inside the 30-day serving window are listed — pages
-# 0-6 cover the dated corpus at 10k URLs per page.
-Sitemap: https://bwhdazbotpblihdxcmho.supabase.co/functions/v1/job-board?action=sitemap&page=0
-Sitemap: https://bwhdazbotpblihdxcmho.supabase.co/functions/v1/job-board?action=sitemap&page=1
-Sitemap: https://bwhdazbotpblihdxcmho.supabase.co/functions/v1/job-board?action=sitemap&page=2
-Sitemap: https://bwhdazbotpblihdxcmho.supabase.co/functions/v1/job-board?action=sitemap&page=3
-Sitemap: https://bwhdazbotpblihdxcmho.supabase.co/functions/v1/job-board?action=sitemap&page=4
-Sitemap: https://bwhdazbotpblihdxcmho.supabase.co/functions/v1/job-board?action=sitemap&page=5
-Sitemap: https://bwhdazbotpblihdxcmho.supabase.co/functions/v1/job-board?action=sitemap&page=6
+# Per-posting sitemap INDEX, served live by the board function (cross-host
+# sitemaps are valid when referenced from this robots.txt). The index sizes
+# itself from a live count of company-dated postings inside the 30-day
+# serving window, so coverage grows with the catalog instead of being frozen
+# by a hard-coded page list.
+Sitemap: https://bwhdazbotpblihdxcmho.supabase.co/functions/v1/job-board?action=sitemap

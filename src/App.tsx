@@ -13,7 +13,12 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 // imported. Every other route is lazy-loaded so visitors to "/" aren't downloading
 // code for /pricing, /terms, internal dashboards, etc. — these were all previously
 // bundled into one ~3.3MB chunk regardless of which route was actually visited.
-import Index from "./pages/Index";
+// Index is now lazy like every other route: the homepage chain (Hero,
+// ResumeUploader, AnalysisPreview, CheckoutOverlay — measured ~60-70KB gz)
+// was riding the entry bundle to every /jobs visitor and all 872 SEO landers.
+// First paint on / is covered by the prerendered HTML, so the tradeoff is
+// a spinner-flash on client-side nav to the homepage, not a blank landing.
+const Index = lazy(() => import("./pages/Index"));
 import { TOOL_LANDINGS } from "@/data/tool-landings";
 const Auth = lazy(() => import("./pages/Auth"));
 const Account = lazy(() => import("./pages/Account"));

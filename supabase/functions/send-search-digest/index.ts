@@ -137,7 +137,7 @@ Deno.serve(async (req) => {
       // actually clear the bar — so the email is "3 strong matches for you", not
       // "40 new postings". Falls back to the plain digest if no résumé is on file.
       const threshold = Number((s as { fit_threshold?: number }).fit_threshold) || 0;
-      let jobs: Array<{ id?: string; company: string; title: string; location: string; applyUrl: string; fit?: number }>;
+      let jobs: Array<{ id?: string; company: string; title: string; location: string; applyUrl: string; fit?: number; postedAt?: string | null }>;
       let newCount: number;
       let countIsLowerBound = false;
       let strongMode = false;
@@ -194,8 +194,11 @@ Deno.serve(async (req) => {
       } else {
         newCount = rawNew;
         countIsLowerBound = rawCapped;
-        const listRes = await callBoard({ limit: 5, offset: 0 });
-        jobs = ((listRes as { jobs?: Array<{ company: string; title: string; location: string; applyUrl: string }> } | null)?.jobs) ?? [];
+        // postedAfter matches the count's window — the headline says "new
+        // since we last checked", so the rows below it must actually BE that
+        // (they were fetched unwindowed: newest overall, not newest-since).
+        const listRes = await callBoard({ limit: 5, offset: 0, postedAfter: since });
+        jobs = ((listRes as { jobs?: Array<{ id?: string; company: string; title: string; location: string; applyUrl: string; postedAt?: string | null }> } | null)?.jobs) ?? [];
         if (jobs.length === 0) { skipped++; continue; } // count said new but list empty (transient) — retry next run, don't stamp
       }
 
@@ -205,13 +208,26 @@ Deno.serve(async (req) => {
       const unsubUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/send-search-digest?action=unsubscribe&id=${encodeURIComponent(s.id as string)}&token=${token}`;
       const viewUrl = `${boardUrl(p)}${boardUrl(p).includes("?") ? "&" : "?"}utm_source=email&utm_medium=search_digest`;
 
-      const rows = jobs.map((j) => `
+      const fmtPosted = (iso?: string | null) => {
+        if (!iso) return "";
+        const d = Math.max(0, Math.round((Date.now() - Date.parse(iso)) / 86_400_000));
+        return d === 0 ? "posted today" : d === 1 ? "posted yesterday" : `posted ${d}d ago`;
+      };
+      const rows = jobs.map((j) => {
+        // Deep-link to OUR posting page (fit scan, live verify, prep answers
+        // all live there); the bare ATS exit is the fallback for rows the
+        // board can't resolve.
+        const rowUrl = j.id
+          ? `${SITE_URL}/jobs?job=${encodeURIComponent(j.id)}&utm_source=email&utm_medium=search_digest`
+          : j.applyUrl;
+        return `
         <tr><td style="padding:10px 0;border-bottom:1px solid #eef2f7">
-          <div style="font-size:14px;font-weight:600;color:#0f172a">${escapeHtml(j.title)}</div>
-          <div style="font-size:12px;color:#64748b">${escapeHtml(j.company)}${j.location ? " · " + escapeHtml(j.location) : ""}${typeof j.fit === "number" ? ` · <span style="color:#16a34a;font-weight:600">${escapeHtml(j.fit)}% match</span>` : ""}</div>
+          <div style="font-size:14px;font-weight:600;color:#0f172a"><a href="${escapeHtml(rowUrl)}" style="color:#0f172a;text-decoration:none">${escapeHtml(j.title)}</a></div>
+          <div style="font-size:12px;color:#64748b">${escapeHtml(j.company)}${j.location ? " · " + escapeHtml(j.location) : ""}${j.postedAt ? ` · ${escapeHtml(fmtPosted(j.postedAt))}` : ""}${typeof j.fit === "number" ? ` · <span style="color:#16a34a;font-weight:600">${escapeHtml(j.fit)}% match</span>` : ""}</div>
         </td><td style="padding:10px 0;border-bottom:1px solid #eef2f7;text-align:right;vertical-align:middle">
-          <a href="${escapeHtml(j.applyUrl)}" style="font-size:12px;color:#2563eb;text-decoration:none;font-weight:600">Apply&nbsp;→</a>
-        </td></tr>`).join("");
+          <a href="${escapeHtml(rowUrl)}" style="font-size:12px;color:#2563eb;text-decoration:none;font-weight:600">View&nbsp;→</a>
+        </td></tr>`;
+      }).join("");
 
       const html = `
 <!DOCTYPE html><html><body style="margin:0;padding:0;background:#f1f5f9;font-family:Helvetica,Arial,sans-serif">
@@ -236,9 +252,24 @@ Deno.serve(async (req) => {
 </body></html>`;
 
       try {
-        const subject = strongMode
-          ? `${shownCount} new strong ${newCount === 1 ? "match" : "matches"} for you — ${s.name}`
-          : `${shownCount} new ${p.category || p.q || "job"} ${newCount === 1 ? "match" : "matches"} — ${s.name}`;
+        const CATEGORY_LABELS: Record<string, string> = {
+          engineering: "engineering", data_ai: "data & AI", design: "design", product: "product",
+          marketing: "marketing", sales: "sales", customer: "customer", finance: "finance",
+          legal: "legal", people_hr: "people & HR", operations: "operations", healthcare: "healthcare",
+          science: "science", education: "education", hospitality_retail: "retail & hospitality",
+          security: "security", admin: "admin", other: "job",
+        };
+        const catLabel = p.category ? (CATEGORY_LABELS[p.category] ?? "job") : (p.q || "job");
+        // First-ever send on a daily-cadence search = the user clicked "Alert
+        // me when this exists" (or watch-company) and this is the moment it
+        // exists. Say that, plainly — it's the single most awaited email the
+        // board sends.
+        const firstMatch = !s.digest_last_sent_at && String((s as { digest_cadence?: string }).digest_cadence ?? "") === "daily";
+        const subject = firstMatch
+          ? `We found it: ${shownCount} ${newCount === 1 ? "match" : "matches"} for “${s.name}”`
+          : strongMode
+            ? `${shownCount} new strong ${newCount === 1 ? "match" : "matches"} for you — ${s.name}`
+            : `${shownCount} new ${catLabel} ${newCount === 1 ? "match" : "matches"} — ${s.name}`;
         await resend.emails.send({ from: "Resume Booster <reports@resumebooster.work>", to: email, subject, html });
         await supabase.from("user_job_searches").update({ digest_last_sent_at: new Date().toISOString() }).eq("id", s.id);
         sent++;
