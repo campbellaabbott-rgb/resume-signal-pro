@@ -75,7 +75,7 @@ const json = (body: unknown, status = 200) =>
 // while this file was untouched). Always bump BUILD_VERSION here when a shared
 // module this function imports changes — it forces the diff AND gives the
 // deploy a verifiable tell.
-const BUILD_VERSION = "2026-07-26.7";
+const BUILD_VERSION = "2026-07-26.8";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -559,7 +559,18 @@ const COUNTRY_VERSION = 1; // v1: deterministic country from location text (name
 // at all (bamboohr/rippling) are structurally undated — no sweep can date
 // them; provenance labels stay the honest treatment. Measured backlog at v1:
 // ~480 greenhouse rows.
-const POSTED_BACKFILL_VERSION = 3; // v3: cheap-first phase order + hop-persisted resume (v2's bamboohr/rippling phases never ran — the chain died inside the workday wall and every revival restarted from scratch; measured: bamboohr 0% dated of 43,813)
+// v4 (2026-07-26): the WORKDAY PHASE IS GONE. v3 fixed the chain so the
+// phases actually ran — and the workday phase's burst of full list re-fetches
+// (8 boards/hop of paginated CXS lists, on top of the normal refresh cadence)
+// got Supabase's egress IPs throttled by Workday's CDN: the vendor breaker
+// measured 34% zero feeds and QUARANTINED workday — half the corpus in safe
+// mode. Verified from an outside network at the same minute: 6/6 boards
+// answered normally, so the block was on our IPs, self-inflicted. Workday
+// rows are already 75% dated and dated-ingest has been live for a week; the
+// marginal dates were not worth half the catalog. The remaining phases also
+// gain an inter-hop pause — the embed-sweep lesson, applied before it bites.
+const POSTED_BACKFILL_VERSION = 4;
+const BACKFILL_HOP_PAUSE_MS = 3_000;
 // Velocity tier: boards that ADDED postings recently earn hot cadence even if
 // small — a 40-role startup posting daily deserves faster revisits than a
 // 4,000-role giant that hasn't posted in a month. Blend: velocity leaders get
@@ -2419,7 +2430,7 @@ Deno.serve(async (req) => {
       // 75%. The bounded phases now run first, so a chain that dies mid-wall
       // has already banked the cheap wins — and the hop-persisted cursor below
       // means a revival resumes inside the wall instead of at the start.
-      const phase = ["workday", "greenhouse", "rippling"].includes(String(body.phase)) ? String(body.phase) as "workday" | "greenhouse" | "rippling" : "bamboohr";
+      const phase = ["greenhouse", "rippling"].includes(String(body.phase)) ? String(body.phase) as "greenhouse" | "rippling" : "bamboohr";
       // Workday hops fetch up to WORKDAY_PAGE_CAP list pages per board — keep
       // the per-hop board count low so a hop stays inside the compute budget.
       // BambooHR/Rippling date via ONE detail call PER POSTING (their list
@@ -2427,7 +2438,7 @@ Deno.serve(async (req) => {
       // /jobs/{uuid} states createdOn — both official, both company-stated),
       // so those hops budget by posting count, not board count.
       const perPosting = phase === "bamboohr" || phase === "rippling";
-      const BOARDS_PER_HOP = phase === "workday" ? 8 : 40;
+      const BOARDS_PER_HOP = 40; // workday (the 8-board case) is retired
       const IDS_PER_HOP = 120;
       let cursor = typeof body.cursor === "string" ? body.cursor : "";
       // Resume state, stamped EVERY hop. Without it a died chain restarted the
@@ -2523,17 +2534,21 @@ Deno.serve(async (req) => {
       }
       const chain = (nextBody: Record<string, unknown>) => {
         const url = `${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`;
-        waitUntil(chainKey().then((key) => fetch(url, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "backfill-posted", chainKey: key, ...nextBody }),
-        })).then((r) => r.text()).catch(() => {}));
+        // Paced like the embed chain: back-to-back per-posting hops are a
+        // burst the vendors' CDNs eventually answer with throttling.
+        waitUntil(new Promise((r) => setTimeout(r, BACKFILL_HOP_PAUSE_MS))
+          .then(() => chainKey())
+          .then((key) => fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "backfill-posted", chainKey: key, ...nextBody }),
+          })).then((r) => r.text()).catch(() => {}));
       };
       if (!exhausted) {
         chain({ phase, cursor });
         return json({ ok: true, phase, scanned, dated, cursor });
       }
-      const NEXT_PHASE: Record<string, string> = { bamboohr: "rippling", rippling: "greenhouse", greenhouse: "workday" };
+      const NEXT_PHASE: Record<string, string> = { bamboohr: "rippling", rippling: "greenhouse" }; // greenhouse is terminal — the workday phase is retired (see POSTED_BACKFILL_VERSION)
       if (NEXT_PHASE[phase]) {
         chain({ phase: NEXT_PHASE[phase] }); // fresh cursor for the next source
         return json({ ok: true, phase, scanned, dated, next: NEXT_PHASE[phase] });
