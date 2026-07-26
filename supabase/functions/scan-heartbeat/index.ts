@@ -485,6 +485,65 @@ serve(async (req) => {
         }
       } catch { /* RPC not applied yet — check appears once the migration lands */ }
 
+      // FILTER CONTRACT: the board's core promise is that a filter is never
+      // silently ignored — ask for remote roles in the US and every row you get
+      // is remote and in the US, or the board honestly returns nothing. That
+      // promise has broken twice in code review (the ranked path once dropped
+      // work-mode; the fuzzy tier once dropped every filter and served other
+      // companies' jobs on a company lander), and both times nothing alerted:
+      // the response looked perfectly healthy, it was the ROWS that lied.
+      //
+      // So this check reads the rows. Three probes, each asserting the
+      // constraint on every returned row, and a typo'd company-scoped query —
+      // the exact shape of the fuzzy-tier leak. Cheap (the board's own list
+      // path, ~1s) and it fails loudly with the offending row named.
+      // Full sweep with every filter: scripts/verify-board-search.mjs.
+      try {
+        const boardUrl = `${supabaseUrl}/functions/v1/job-board`;
+        const probe = async (body: Record<string, unknown>) => {
+          const r = await fetch(boardUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${supabaseServiceKey}` },
+            body: JSON.stringify(body),
+            signal: AbortSignal.timeout(20_000),
+          });
+          if (!r.ok) return null;
+          const j = await r.json();
+          return Array.isArray(j?.jobs) ? j.jobs as Array<Record<string, unknown>> : null;
+        };
+
+        const violations: string[] = [];
+        const check = async (label: string, body: Record<string, unknown>, holds: (j: Record<string, unknown>) => boolean) => {
+          const jobs = await probe(body);
+          if (jobs === null) return; // transient/unavailable — the refresh checks own that
+          const bad = jobs.find((j) => !holds(j));
+          if (bad) violations.push(`${label}: "${String(bad.title ?? '').slice(0, 40)}" @ ${String(bad.company ?? '')}`);
+        };
+
+        await check('remote+US', { action: 'list', workMode: 'remote', country: 'US', limit: 15 },
+          (j) => j.workMode === 'remote' && (!j.country || j.country === 'US'));
+        await check('salaryFloor 100k', { action: 'list', salaryFloor: 100000, limit: 15 },
+          (j) => typeof j.salaryMinAnnual === 'number' && (j.salaryMinAnnual as number) >= 100000);
+        await check('category=healthcare', { action: 'list', category: 'healthcare', limit: 15 },
+          (j) => j.category === 'healthcare');
+        // A typo'd query scoped to one employer must never surface another's.
+        await check('company lander + typo', { action: 'list', companies: ['stripe'], q: 'desinger', limit: 10 },
+          (j) => String(j.token ?? '').toLowerCase() === 'stripe');
+
+        checks.push({
+          name: 'job_board_filter_contract',
+          passed: violations.length === 0,
+          responseTimeMs: 0,
+          error: violations.length ? `filters returned rows that violate them — ${violations.join(' | ')}` : undefined,
+        });
+        if (violations.length) {
+          // A filter serving wrong rows is worse than an outage: the user
+          // can't tell, and applies to jobs that don't match what they asked.
+          overallStatus = 'unhealthy';
+          errorMessage = errorMessage || `Job-board filter contract broken: ${violations[0]}`;
+        }
+      } catch { /* board unreachable — the refresh/deploy checks above own that */ }
+
       // Vendor circuit breaker: the refresh quarantines a vendor whose feeds
       // go mass-empty (API/shape break) instead of pruning its corpus. That
       // quarantine is safe but means the vendor's zero-feed boards are frozen —
