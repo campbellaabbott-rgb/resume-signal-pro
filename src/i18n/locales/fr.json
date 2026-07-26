@@ -3789,7 +3789,17 @@
     "discSalary": "{{shown}} de ces employeurs publient la rémunération. {{hidden}} autres offres correspondent à tout le reste, mais n'indiquent pas de salaire : ce filtre les masque donc.",
     "discWorkMode": "{{shown}} de ces employeurs précisent où le travail s'effectue. {{hidden}} autres offres correspondent à tout le reste, mais ne disent pas si c'est à distance, hybride ou sur site : ce filtre les masque donc.",
     "discShowAll": "Les afficher aussi",
-    "discCategory": "Par ailleurs, {{hidden}} offres sur l'ensemble du tableau ont un intitulé qui n'indique jamais leur domaine : aucun filtre par domaine ne peut les atteindre."
+    "discCategory": "Par ailleurs, {{hidden}} offres sur l'ensemble du tableau ont un intitulé qui n'indique jamais leur domaine : aucun filtre par domaine ne peut les atteindre.",
+    "sortedNewestFallback": "Trié du plus récent au plus ancien (classement par pertinence momentanément indisponible)",
+    "fuzzyExtraLine": "Peu de correspondances exactes pour « {{q}} » — {{count}} intitulés proches sont inclus ci-dessous, signalés.",
+    "closeMatchChip": "correspondance proche",
+    "zeroAlertHint": "De nouvelles offres arrivent chaque jour. Recevez un e-mail quand des postes correspondant à cette recherche apparaissent :",
+    "zeroAlertCta": "M'alerter quand ça existe",
+    "deadLinkKnown": "« {{title}} »{{at}} n'est plus en ligne — le poste a été pourvu ou retiré.",
+    "deadLinkAt": "chez",
+    "deadLinkUnknown": "L'offre de ce lien n'est plus en ligne — le poste a été pourvu ou retiré.",
+    "deadLinkSearch": "Trouver des postes similaires en ligne",
+    "deadLinkDismiss": "Ignorer"
   },
   "accountPage": {
     "statusSaveFailed": "Impossible d'enregistrer ce statut — réessayez.",

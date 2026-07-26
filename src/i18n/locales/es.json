@@ -3789,7 +3789,17 @@
     "discSalary": "{{shown}} de estas empresas publican el salario. Otras {{hidden}} vacantes cumplen todo lo demás que pediste, pero no indican salario, así que este filtro las oculta.",
     "discWorkMode": "{{shown}} de estas empresas indican dónde se trabaja. Otras {{hidden}} vacantes cumplen todo lo demás, pero no dicen si es remoto, híbrido o presencial, así que este filtro las oculta.",
     "discShowAll": "Mostrarlas también",
-    "discCategory": "Aparte, {{hidden}} vacantes de todo el tablero tienen un título que no indica a qué área pertenecen, así que ningún filtro de área puede alcanzarlas."
+    "discCategory": "Aparte, {{hidden}} vacantes de todo el tablero tienen un título que no indica a qué área pertenecen, así que ningún filtro de área puede alcanzarlas.",
+    "sortedNewestFallback": "Ordenado por más recientes (el orden por relevancia no está disponible temporalmente)",
+    "fuzzyExtraLine": "Pocas coincidencias exactas para «{{q}}»: se incluyen {{count}} títulos aproximados abajo, etiquetados.",
+    "closeMatchChip": "coincidencia aproximada",
+    "zeroAlertHint": "Cada día llegan nuevas ofertas. Recibe un correo cuando aparezcan puestos que coincidan con esta búsqueda:",
+    "zeroAlertCta": "Avisarme cuando exista",
+    "deadLinkKnown": "«{{title}}»{{at}} ya no está activa: se cubrió o se retiró.",
+    "deadLinkAt": "en",
+    "deadLinkUnknown": "La oferta de ese enlace ya no está activa: se cubrió o se retiró.",
+    "deadLinkSearch": "Buscar puestos similares activos",
+    "deadLinkDismiss": "Descartar"
   },
   "accountPage": {
     "statusSaveFailed": "No se pudo guardar ese estado; inténtalo de nuevo.",

@@ -3789,7 +3789,17 @@
     "discSalary": "{{shown}} of these employers publish pay. Another {{hidden}} openings match everything else you asked for, but don't state a salary — so this filter hides them.",
     "discWorkMode": "{{shown}} of these employers state where the work happens. Another {{hidden}} openings match everything else, but don't say remote, hybrid, or on-site — so this filter hides them.",
     "discShowAll": "Show those too",
-    "discCategory": "Separately, {{hidden}} openings across the whole board have a job title that never says which field they're in, so no field filter can reach them."
+    "discCategory": "Separately, {{hidden}} openings across the whole board have a job title that never says which field they're in, so no field filter can reach them.",
+    "sortedNewestFallback": "Sorted by newest first (relevance ranking briefly unavailable)",
+    "fuzzyExtraLine": "Only a few exact matches for “{{q}}” — {{count}} close-match titles are included below, labeled.",
+    "closeMatchChip": "close match",
+    "zeroAlertHint": "New postings land here every day. Get an email when roles matching this search appear:",
+    "zeroAlertCta": "Alert me when this exists",
+    "deadLinkKnown": "“{{title}}”{{at}} is no longer live — it was filled or taken down.",
+    "deadLinkAt": "at",
+    "deadLinkUnknown": "The posting in that link is no longer live — it was filled or taken down.",
+    "deadLinkSearch": "Find similar live roles",
+    "deadLinkDismiss": "Dismiss"
   },
   "accountPage": {
     "statusSaveFailed": "Couldn't save that status — please try again.",

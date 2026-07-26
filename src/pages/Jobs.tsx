@@ -734,7 +734,10 @@ export default function Jobs() {
     }
   };
 
-  const saveCurrentSearch = async () => {
+  // `alert` = the caller promised the user an email ("Alert me when this
+  // exists"). A plain save stays email-silent — clicking Save is not consent
+  // to be mailed; clicking an alert CTA is, and it gets the daily cadence.
+  const saveCurrentSearch = async (alert = false) => {
     if (!session) return requireAuth();
     const params = {
       q: q || undefined,
@@ -751,7 +754,10 @@ export default function Jobs() {
       category ? t(`jobsPage.categories.${category}`, category) : undefined,
       experience ? t(`jobsPage.experience.${experience}`, experience) : undefined,
     );
-    const { error: err } = await searchesTable().insert({ user_id: session.user.id, name, params });
+    const { error: err } = await searchesTable().insert({
+      user_id: session.user.id, name, params,
+      ...(alert ? { digest_opt_in: true, digest_cadence: "daily" } : {}),
+    });
     if (err && err.code === "23505") {
       toast({ title: t("jobsPage.searchExists", "You already saved this search.") });
       return;
@@ -949,6 +955,42 @@ export default function Jobs() {
   // the currently loaded list.
   const [detailJob, setDetailJob] = useState<BoardJob | null>(null);
   const [detailDesc, setDetailDesc] = useState<string | null>(null);
+  // Google for Jobs: schema.org JobPosting JSON-LD for the OPEN posting.
+  // Client-rendered structured data is officially supported (Google indexes
+  // after JS execution), and posting deep links are now in a sitemap, so a
+  // crawler landing on /jobs?job=<id> renders the panel and finds this tag.
+  // HONESTY FENCE: only fields we actually hold go into the markup —
+  // datePosted only when the COMPANY stated a date, description only when
+  // the real JD text is loaded (Google requires it, so no-desc postings emit
+  // nothing), no invented validThrough/salary. The tag is removed when the
+  // panel closes so stale markup never lingers on other views.
+  useEffect(() => {
+    const TAG_ID = "job-posting-ld";
+    document.getElementById(TAG_ID)?.remove();
+    if (!detailJob || !detailDesc || detailDesc.length < 100) return;
+    const ld: Record<string, unknown> = {
+      "@context": "https://schema.org",
+      "@type": "JobPosting",
+      title: detailJob.title,
+      description: detailDesc.slice(0, 4000),
+      hiringOrganization: { "@type": "Organization", name: detailJob.company },
+      url: `https://resumebooster.work/jobs?job=${encodeURIComponent(detailJob.id)}`,
+      directApply: false,
+      identifier: { "@type": "PropertyValue", name: detailJob.company, value: detailJob.id },
+      ...(detailJob.postedAt ? { datePosted: detailJob.postedAt.slice(0, 10) } : {}),
+      ...(detailJob.workMode === "remote"
+        ? { jobLocationType: "TELECOMMUTE" }
+        : detailJob.location
+          ? { jobLocation: { "@type": "Place", address: { "@type": "PostalAddress", addressLocality: detailJob.location.slice(0, 120) } } }
+          : {}),
+    };
+    const tag = document.createElement("script");
+    tag.type = "application/ld+json";
+    tag.id = TAG_ID;
+    tag.textContent = JSON.stringify(ld);
+    document.head.appendChild(tag);
+    return () => { document.getElementById(TAG_ID)?.remove(); };
+  }, [detailJob, detailDesc]);
   const [detailLoading, setDetailLoading] = useState(false);
   // URL mode per selection: an explicit card click PUSHES history (back button
   // closes the panel); keyboard/auto-selection REPLACES (arrowing through 30
@@ -1167,10 +1209,17 @@ export default function Jobs() {
   const watchCompany = async () => {
     if (!landerCompany) return;
     if (!session) return requireAuth();
+    // digest_opt_in was never set here, so "watching" fed the account counts
+    // but produced NO email, ever — the watch list had no outbound consumer.
+    // A watch click is an explicit ask to hear about new roles: opt the
+    // search into the DAILY alert loop (per-search unsubscribe in every
+    // email), and the toast below says exactly that.
     const { error: err } = await searchesTable().insert({
       user_id: session.user.id,
       name: t("jobsPage.watchName", "New roles at {{company}}", { company: landerCompanyName }),
       params: { company: landerCompany },
+      digest_opt_in: true,
+      digest_cadence: "daily",
     });
     if (err && err.code === "23505") {
       toast({ title: t("jobsPage.watchExists", "You're already watching {{company}}.", { company: landerCompanyName }) });
@@ -1182,7 +1231,7 @@ export default function Jobs() {
     }
     toast({
       title: t("jobsPage.watchSaved", "Watching {{company}}", { company: landerCompanyName }),
-      description: `${t("jobsPage.watchSavedDesc", "Your account now shows how many new roles they've posted since your last look.")} ${t("jobsPage.queueBridge", "Want ready-to-review picks every morning instead? The Apply Agent runs your search nightly — Morning Queue, in your account.")}`,
+      description: `${t("jobsPage.watchSavedDescAlert", "We'll email you when they post new roles (daily at most — unsubscribe any time), and your account shows the new-since-last-look count.")} ${t("jobsPage.queueBridge", "Want ready-to-review picks every morning instead? The Apply Agent runs your search nightly — Morning Queue, in your account.")}`,
     });
   };
 
@@ -2842,7 +2891,7 @@ export default function Jobs() {
               <option value="onsite">{t("jobsPage.workMode.onsite", "On-site")}</option>
             </select>
             {(q || location || remoteOnly || workMode || company || category || experience || salaryFloor > 0) && (
-              <Button size="sm" variant="ghost" className="gap-1.5" onClick={saveCurrentSearch}>
+              <Button size="sm" variant="ghost" className="gap-1.5" onClick={() => saveCurrentSearch()}>
                 <BookmarkCheck className="w-3.5 h-3.5" />
                 {t("jobsPage.saveSearch", "Save this search")}
               </Button>
@@ -3224,7 +3273,7 @@ export default function Jobs() {
                   <p className="text-xs text-muted-foreground mb-2">
                     {t("jobsPage.zeroAlertHint", "New postings land here every day. Get an email when roles matching this search appear:")}
                   </p>
-                  <Button size="sm" variant="default" className="gap-1.5" onClick={saveCurrentSearch}>
+                  <Button size="sm" variant="default" className="gap-1.5" onClick={() => saveCurrentSearch(true)}>
                     <Bell className="w-3.5 h-3.5" />
                     {t("jobsPage.zeroAlertCta", "Alert me when this exists")}
                   </Button>

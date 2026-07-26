@@ -2043,6 +2043,36 @@ const sanitizeTerm = (t: string) => t.replace(/[,()%\\]/g, "").trim();
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  // GET sitemap route — the ONE crawler-facing surface this function serves.
+  // Google accepts cross-host sitemaps when robots.txt on the target host
+  // references them, which resumebooster.work's robots.txt now does. Each
+  // page lists up to 10,000 posting deep links (/jobs?job=<id>) restricted to
+  // rows with a COMPANY-STATED posting date inside the serving window — the
+  // same honesty bar the maxAgeDays filter uses; discovery-time freshness is
+  // never presented to a crawler as a posting date. Page 0 with no results
+  // still returns a valid empty urlset (never a 500 to a crawler).
+  if (req.method === "GET") {
+    const u = new URL(req.url);
+    if (u.searchParams.get("action") === "sitemap") {
+      const page = Math.max(0, Math.min(60, Number(u.searchParams.get("page")) || 0));
+      const client = db();
+      const cutoff = new Date(Date.now() - 30 * 86_400_000).toISOString();
+      const { data: rows } = await client
+        .from("job_board_postings")
+        .select("id, posted_at")
+        .gte("posted_at", cutoff)
+        .order("posted_at", { ascending: false })
+        .range(page * 10_000, page * 10_000 + 9_999);
+      const urls = (rows ?? []).map((r) =>
+        `<url><loc>https://resumebooster.work/jobs?job=${encodeURIComponent(String(r.id))}</loc><lastmod>${String(r.posted_at).slice(0, 10)}</lastmod></url>`
+      ).join("");
+      const xml = `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls}</urlset>`;
+      return new Response(xml, {
+        headers: { "Content-Type": "application/xml; charset=utf-8", "Cache-Control": "public, max-age=3600" },
+      });
+    }
+    return json({ error: "POST only" }, 405);
+  }
   if (req.method !== "POST") return json({ error: "POST only" }, 405);
 
   let body: Record<string, unknown>;

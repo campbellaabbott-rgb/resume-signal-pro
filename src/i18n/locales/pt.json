@@ -3789,7 +3789,17 @@
     "discSalary": "{{shown}} destes empregadores divulgam a remuneração. Outras {{hidden}} vagas atendem a todo o resto, mas não informam salário — por isso este filtro as oculta.",
     "discWorkMode": "{{shown}} destes empregadores informam onde o trabalho acontece. Outras {{hidden}} vagas atendem a todo o resto, mas não dizem se é remoto, híbrido ou presencial — por isso este filtro as oculta.",
     "discShowAll": "Mostrar essas também",
-    "discCategory": "Além disso, {{hidden}} vagas em todo o quadro têm um título que nunca diz a qual área pertencem, então nenhum filtro de área as alcança."
+    "discCategory": "Além disso, {{hidden}} vagas em todo o quadro têm um título que nunca diz a qual área pertencem, então nenhum filtro de área as alcança.",
+    "sortedNewestFallback": "Ordenado por mais recentes (classificação por relevância temporariamente indisponível)",
+    "fuzzyExtraLine": "Poucas correspondências exatas para “{{q}}” — {{count}} títulos aproximados incluídos abaixo, identificados.",
+    "closeMatchChip": "correspondência aproximada",
+    "zeroAlertHint": "Novas vagas chegam todos os dias. Receba um e-mail quando surgirem vagas que correspondam a esta pesquisa:",
+    "zeroAlertCta": "Avisar-me quando existir",
+    "deadLinkKnown": "“{{title}}”{{at}} já não está ativa — foi preenchida ou retirada.",
+    "deadLinkAt": "na",
+    "deadLinkUnknown": "A vaga desse link já não está ativa — foi preenchida ou retirada.",
+    "deadLinkSearch": "Encontrar vagas semelhantes ativas",
+    "deadLinkDismiss": "Dispensar"
   },
   "accountPage": {
     "statusSaveFailed": "Não foi possível salvar esse status — tente novamente.",

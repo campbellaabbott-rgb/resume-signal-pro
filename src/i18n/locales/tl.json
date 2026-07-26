@@ -3789,7 +3789,17 @@
     "discSalary": "{{shown}} sa mga employer na ito ang naglalathala ng sahod. May {{hidden}} pang trabaho na tumutugma sa lahat ng iba mong hinanap, pero hindi nagsasabi ng sahod — kaya itinatago sila ng filter na ito.",
     "discWorkMode": "{{shown}} sa mga employer na ito ang nagsasabi kung saan gagawin ang trabaho. May {{hidden}} pang trabaho na tumutugma sa lahat ng iba, pero hindi sinasabi kung remote, hybrid, o on-site — kaya itinatago sila ng filter na ito.",
     "discShowAll": "Ipakita rin ang mga iyon",
-    "discCategory": "Bukod pa rito, {{hidden}} trabaho sa buong board ang may pamagat na hindi sinasabi ang larangan, kaya walang filter ng larangan ang makakaabot sa kanila."
+    "discCategory": "Bukod pa rito, {{hidden}} trabaho sa buong board ang may pamagat na hindi sinasabi ang larangan, kaya walang filter ng larangan ang makakaabot sa kanila.",
+    "sortedNewestFallback": "Nakaayos mula sa pinakabago (pansamantalang hindi available ang relevance ranking)",
+    "fuzzyExtraLine": "Iilan lang ang eksaktong tugma para sa “{{q}}” — {{count}} malapit na tugmang titulo ang kasama sa ibaba, may label.",
+    "closeMatchChip": "malapit na tugma",
+    "zeroAlertHint": "May mga bagong posting araw-araw. Makatanggap ng email kapag may lumabas na tugmang trabaho sa paghahanap na ito:",
+    "zeroAlertCta": "Abisuhan ako kapag mayroon na",
+    "deadLinkKnown": "Ang “{{title}}”{{at}} ay hindi na live — napunan na o tinanggal.",
+    "deadLinkAt": "sa",
+    "deadLinkUnknown": "Ang posting sa link na iyon ay hindi na live — napunan na o tinanggal.",
+    "deadLinkSearch": "Maghanap ng katulad na live na trabaho",
+    "deadLinkDismiss": "I-dismiss"
   },
   "accountPage": {
     "statusSaveFailed": "Hindi na-save ang status na iyon — pakisubukan muli.",

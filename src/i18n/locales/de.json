@@ -3789,7 +3789,17 @@
     "discSalary": "{{shown}} dieser Arbeitgeber nennen das Gehalt. Weitere {{hidden}} Stellen erfüllen alle anderen Kriterien, machen aber keine Gehaltsangabe – dieser Filter blendet sie daher aus.",
     "discWorkMode": "{{shown}} dieser Arbeitgeber geben an, wo gearbeitet wird. Weitere {{hidden}} Stellen erfüllen alle anderen Kriterien, sagen aber nicht, ob remote, hybrid oder vor Ort – dieser Filter blendet sie daher aus.",
     "discShowAll": "Diese ebenfalls anzeigen",
-    "discCategory": "Außerdem haben {{hidden}} Stellen im gesamten Board einen Titel, der den Bereich nie nennt – kein Bereichsfilter kann sie erreichen."
+    "discCategory": "Außerdem haben {{hidden}} Stellen im gesamten Board einen Titel, der den Bereich nie nennt – kein Bereichsfilter kann sie erreichen.",
+    "sortedNewestFallback": "Sortiert nach Neuestem zuerst (Relevanz-Sortierung vorübergehend nicht verfügbar)",
+    "fuzzyExtraLine": "Nur wenige exakte Treffer für „{{q}}“ — {{count}} ähnliche Titel sind unten enthalten, gekennzeichnet.",
+    "closeMatchChip": "ähnlicher Treffer",
+    "zeroAlertHint": "Täglich kommen neue Stellen dazu. Erhalte eine E-Mail, sobald passende Stellen zu dieser Suche erscheinen:",
+    "zeroAlertCta": "Benachrichtigen, sobald es das gibt",
+    "deadLinkKnown": "„{{title}}“{{at}} ist nicht mehr online — die Stelle wurde besetzt oder zurückgezogen.",
+    "deadLinkAt": "bei",
+    "deadLinkUnknown": "Die Stelle hinter diesem Link ist nicht mehr online — sie wurde besetzt oder zurückgezogen.",
+    "deadLinkSearch": "Ähnliche offene Stellen finden",
+    "deadLinkDismiss": "Ausblenden"
   },
   "accountPage": {
     "statusSaveFailed": "Status konnte nicht gespeichert werden — bitte erneut versuchen.",

@@ -12,7 +12,15 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 const SITE_URL = "https://resumebooster.work";
-const MIN_DAYS_BETWEEN_SENDS = 6; // weekly-ish; never faster than every 6 days
+// Per-search cadence floors. The old single 6-day gate meant "watch this
+// company" and threshold alerts couldn't email faster than weekly on a board
+// that re-verifies feeds every 10-15 minutes. daily = a 20-hour floor (one
+// email a day, drift-proof against cron jitter); weekly keeps the old rhythm.
+// A search with no cadence column yet (migration not applied) behaves weekly.
+const CADENCE_FLOOR_MS: Record<string, number> = {
+  daily: 20 * 3600 * 1000,
+  weekly: 6 * 24 * 3600 * 1000,
+};
 
 function escapeHtml(text: string | number | undefined | null): string {
   if (text === undefined || text === null) return "";
@@ -71,13 +79,22 @@ Deno.serve(async (req) => {
     const boardBase = `${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`;
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 
-    const cutoff = new Date(Date.now() - MIN_DAYS_BETWEEN_SENDS * 24 * 3600 * 1000).toISOString();
-    const { data: searches, error } = await supabase
+    // Fetch with the LOOSEST gate (the daily floor), then enforce each
+    // search's own cadence in code — one query, per-search rhythm.
+    const cutoff = new Date(Date.now() - CADENCE_FLOOR_MS.daily).toISOString();
+    const { data: fetched, error } = await supabase
       .from("user_job_searches")
-      .select("id, user_id, name, params, digest_last_sent_at, fit_threshold")
+      .select("id, user_id, name, params, digest_last_sent_at, fit_threshold, digest_cadence")
       .eq("digest_opt_in", true)
       .or(`digest_last_sent_at.is.null,digest_last_sent_at.lt.${cutoff}`)
-      .limit(200);
+      .limit(400);
+    const searches = (fetched ?? []).filter((s) => {
+      const last = (s as { digest_last_sent_at?: string | null }).digest_last_sent_at;
+      if (!last) return true;
+      const cad = String((s as { digest_cadence?: string }).digest_cadence ?? "weekly");
+      const floor = CADENCE_FLOOR_MS[cad] ?? CADENCE_FLOOR_MS.weekly;
+      return Date.now() - Date.parse(last) >= floor;
+    });
     if (error) throw error;
 
     // Suppressed addresses (global unsubscribes) are honored too.
