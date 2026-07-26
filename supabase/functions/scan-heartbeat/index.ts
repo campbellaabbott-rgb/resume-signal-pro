@@ -45,6 +45,20 @@ interface HealthCheckResult {
   error?: string;
 }
 
+// Analytics RPCs that aggregate over the whole 569k-row postings table are
+// slow while the sweeps write to it (measured 2026-07-26: the status action
+// awaiting two of them took 17-19s). The heartbeat calls SIX of them, which is
+// how a run of entirely-passing checks reached 64s and then degraded ITSELF on
+// a "High latency" rule — an alert about nothing, which is how alerting dies.
+// Each is now bounded: a stat that can't be computed in time is skipped, and
+// its check reports nothing rather than delaying every check behind it.
+async function rpcWithin<T>(p: PromiseLike<{ data: T | null }>, ms = 6_000): Promise<{ data: T | null }> {
+  return await Promise.race([
+    Promise.resolve(p).then((r) => r, () => ({ data: null })),
+    new Promise<{ data: null }>((res) => setTimeout(() => res({ data: null }), ms)),
+  ]);
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -291,7 +305,7 @@ serve(async (req) => {
       // means the published claim is about to be false. Skips silently until
       // the freshness-stats migration lands.
       try {
-        const { data: fRows } = await supabase.rpc('get_freshness_stats');
+        const { data: fRows } = await rpcWithin(supabase.rpc('get_freshness_stats'));
         const f = Array.isArray(fRows) ? (fRows[0] as { boards?: number; p50_min?: number; p95_min?: number } | undefined) : undefined;
         if (f && typeof f.p95_min === 'number' && (f.boards ?? 0) > 1000) {
           const CLAIM_P95_MIN = 300; // "a few hours", with margin
@@ -351,7 +365,7 @@ serve(async (req) => {
       // ingestion skew; a stated-date coverage collapse means a vendor parser
       // stopped extracting dates. Catch both before the public page does.
       try {
-        const { data: gs } = await supabase.rpc('get_ghost_job_index_stats');
+        const { data: gs } = await rpcWithin(supabase.rpc('get_ghost_job_index_stats'));
         const g = Array.isArray(gs) ? gs[0] : gs;
         if (g && typeof g.median_days_open === 'number') {
           const implausibleMedian = g.median_days_open < 4 || g.median_days_open > 25;
@@ -413,7 +427,7 @@ serve(async (req) => {
       // postings on an 8GB plan. Alert at 75% database usage — the one
       // failure mode that takes every feature down at once is out-of-disk.
       try {
-        const { data: sf } = await supabase.rpc('get_storage_footprint');
+        const { data: sf } = await rpcWithin(supabase.rpc('get_storage_footprint'));
         const row = Array.isArray(sf) ? sf[0] : sf;
         if (row && typeof row.db_bytes === 'number') {
           const PLAN_BYTES = 8 * 1024 ** 3;
@@ -439,7 +453,7 @@ serve(async (req) => {
       // was found by hand; this catches the next one). BambooHR is exempt —
       // its feed carries no dates at all, disclosed as such.
       try {
-        const { data: cov } = await supabase.rpc('get_date_coverage');
+        const { data: cov } = await rpcWithin(supabase.rpc('get_date_coverage'));
         if (Array.isArray(cov)) {
           const broken = (cov as Array<{ source: string; total: number; dated: number }>)
             .filter((r) => r.source !== 'bamboohr' && r.source !== 'rippling' && r.source !== 'pinpoint' && r.source !== 'workday' && Number(r.total) >= 1000)
@@ -464,7 +478,7 @@ serve(async (req) => {
       // re-verified in 24h — a widening count means a cursor/selection gap the
       // 48h sweep is about to start deleting around.
       try {
-        const { data: staleCount } = await supabase.rpc('get_stale_board_count');
+        const { data: staleCount } = await rpcWithin(supabase.rpc('get_stale_board_count'));
         if (typeof staleCount === 'number') {
           // Bootstrap guard: right after the verifications table ships, EVERY board
           // is unstamped (~10k) until the rotation stamps them over ~3h — that's
@@ -609,7 +623,7 @@ serve(async (req) => {
       // 8GB plan — approach disk pressure blind and you discover it under load.
       // Warn at 70% so the tier gets widened deliberately. If the size RPC isn't
       // migrated yet, skip silently (not an incident).
-      const { data: sizeStats, error: sizeErr } = await supabase.rpc('get_db_size_stats');
+      const { data: sizeStats, error: sizeErr } = await rpcWithin(supabase.rpc('get_db_size_stats')) as { data: unknown; error?: unknown };
       if (!sizeErr && sizeStats) {
         const sz = sizeStats as { db_bytes?: number; postings_bytes?: number };
         const dbBytes = typeof sz.db_bytes === 'number' ? sz.db_bytes : 0;
