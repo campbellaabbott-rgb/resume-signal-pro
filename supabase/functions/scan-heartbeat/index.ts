@@ -45,13 +45,17 @@ interface HealthCheckResult {
   error?: string;
 }
 
-// Analytics RPCs that aggregate over the whole 569k-row postings table are
-// slow while the sweeps write to it (measured 2026-07-26: the status action
-// awaiting two of them took 17-19s). The heartbeat calls SIX of them, which is
-// how a run of entirely-passing checks reached 64s and then degraded ITSELF on
-// a "High latency" rule — an alert about nothing, which is how alerting dies.
-// Each is now bounded: a stat that can't be computed in time is skipped, and
-// its check reports nothing rather than delaying every check behind it.
+// Analytics RPCs that aggregate over the whole ~570k-row postings table are slow
+// while the sweeps write to it (measured 2026-07-26: the status action awaiting
+// two of them took 17-19s). The heartbeat awaited six, one after another, which
+// is how a run of entirely-passing checks reached 83s and then degraded ITSELF
+// on a "High latency" rule — an alert about nothing, which is how alerting dies.
+//
+// Two of the six (ghost stats, date coverage) can't finish inside their own 20s
+// statement_timeout at all, so they now come from the cron-built stats_cache
+// instead. The remaining four are fired concurrently and bounded by this helper:
+// a stat that can't be computed in time yields no data, and its check is
+// recorded in `skipped` — reported as unmeasured, never as passing.
 async function rpcWithin<T>(p: PromiseLike<{ data: T | null }>, ms = 6_000): Promise<{ data: T | null }> {
   return await Promise.race([
     Promise.resolve(p).then((r) => r, () => ({ data: null })),
@@ -68,6 +72,21 @@ serve(async (req) => {
   const checks: HealthCheckResult[] = [];
   let overallStatus = 'healthy';
   let errorMessage: string | null = null;
+
+  // A check that cannot be evaluated must SAY SO, not disappear. Several checks
+  // sit inside `try { ... } catch {}` around a stats RPC, and when that RPC
+  // errored the check silently vanished from the payload — on 2026-07-26 four
+  // checks (including the filter contract) were absent from a response that
+  // read "15 checks, all passing", which is the most flattering possible way to
+  // report that we had stopped looking. Absence is indistinguishable from
+  // health to every consumer of this endpoint.
+  //
+  // So unevaluated checks are recorded here and surfaced as `skipped`. They
+  // deliberately do NOT fail the run — a transient stats hiccup is not an
+  // outage, and crying wolf is what this whole pass is fixing — but they are
+  // never again invisible.
+  const skipped: Array<{ name: string; reason: string }> = [];
+  const skip = (name: string, reason: string) => { skipped.push({ name, reason }); };
 
   // Initialize Supabase
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
@@ -255,11 +274,27 @@ serve(async (req) => {
       // table, so concurrent seq-scans share physical reads instead of repeating them.
       const RPC_MS = 10_000;
       const freshnessP = rpcWithin(supabase.rpc('get_freshness_stats'), RPC_MS);
-      const ghostP = rpcWithin(supabase.rpc('get_ghost_job_index_stats'), RPC_MS);
       const storageP = rpcWithin(supabase.rpc('get_storage_footprint'), RPC_MS);
-      const coverageP = rpcWithin(supabase.rpc('get_date_coverage'), RPC_MS);
       const staleBoardsP = rpcWithin(supabase.rpc('get_stale_board_count'), RPC_MS);
       const dbSizeP = rpcWithin(supabase.rpc('get_db_size_stats'), RPC_MS);
+
+      // ghost-index stats and per-vendor date coverage are NOT read live here.
+      // Both carry `SET statement_timeout = '20s'` and both exceed it against
+      // the ~570k-row postings table, so each call burned the full 20s and then
+      // threw — which the surrounding `catch { /* RPC not applied yet */ }`
+      // swallowed, deleting the check. That comment was true when written and
+      // is not any more: the RPCs exist, they just can't finish. Two aborted
+      // 20s queries plus a third (stale-board count) is ~60s of the 82.6s this
+      // endpoint was measured taking while reporting everything green.
+      //
+      // The project already solved this: refresh_stats_cache() precomputes both
+      // under cron — its own migration notes the combined compute is ~35s, which
+      // is precisely why no request path should be running it — and parks the
+      // result in job_board_meta. Reading that row is a single indexed lookup.
+      // The heartbeat is a monitor; it should observe the numbers the platform
+      // publishes, not recompute them more expensively than the pages do.
+      const statsCacheP = supabase
+        .from('job_board_meta').select('v, updated_at').eq('k', 'stats_cache').maybeSingle();
 
       const { data: prog, error } = await supabase
         .from('job_board_meta')
@@ -339,6 +374,11 @@ serve(async (req) => {
       try {
         const { data: fRows } = await freshnessP;
         const f = Array.isArray(fRows) ? (fRows[0] as { boards?: number; p50_min?: number; p95_min?: number } | undefined) : undefined;
+        if (!f || typeof f.p95_min !== 'number') {
+          skip('job_board_freshness_claim', 'get_freshness_stats returned nothing within its deadline');
+        } else if ((f.boards ?? 0) <= 1000) {
+          skip('job_board_freshness_claim', `only ${f.boards ?? 0} stamped boards — too thin a sample to judge the published claim`);
+        }
         if (f && typeof f.p95_min === 'number' && (f.boards ?? 0) > 1000) {
           const CLAIM_P95_MIN = 300; // "a few hours", with margin
           const claimBreach = f.p95_min > CLAIM_P95_MIN;
@@ -355,7 +395,9 @@ serve(async (req) => {
             errorMessage = errorMessage || `Board freshness P95 ${(f.p95_min / 60).toFixed(1)}h exceeds the published claim`;
           }
         }
-      } catch { /* RPC not applied yet */ }
+      } catch (e) {
+        skip('job_board_freshness_claim', e instanceof Error ? e.message : 'get_freshness_stats unavailable');
+      }
 
       // Ground-truth accuracy: the daily audit samples ~100 served postings and
       // confirms each live at the vendor source. A dip below threshold means the
@@ -396,9 +438,25 @@ serve(async (req) => {
       // 30-day cap, a stated-date median outside 4-25d means a basis or
       // ingestion skew; a stated-date coverage collapse means a vendor parser
       // stopped extracting dates. Catch both before the public page does.
+      // One read serves both cache-backed checks below. Staleness is treated as
+      // absence: the cron refresh is hourly, so a row older than 3h means the
+      // numbers no longer describe the board and judging them would be worse
+      // than not judging at all — we skip loudly instead of alerting on stale
+      // inputs (and the skip reason names the stall, which is the real fault).
+      const { data: scRow } = await statsCacheP;
+      const scAgeMin = scRow ? Math.round((Date.now() - new Date(scRow.updated_at).getTime()) / 60000) : null;
+      const scFresh = scAgeMin !== null && scAgeMin <= 180;
+      const statsCache = (scFresh ? (scRow?.v ?? null) : null) as
+        | { ghost_stats?: Record<string, unknown>; date_coverage?: Array<Record<string, unknown>> }
+        | null;
+      const scWhy = scRow === null || scRow === undefined
+        ? 'stats_cache row missing — refresh_stats_cache() has never run'
+        : `stats_cache is ${scAgeMin} min old (hourly cron; 180 min bound) — the refresh-stats-cache job looks stalled`;
+
       try {
-        const { data: gs } = await ghostP;
-        const g = Array.isArray(gs) ? gs[0] : gs;
+        const g = (statsCache?.ghost_stats ?? null) as
+          { median_days_open?: number; posted_coverage_pct?: number } | null;
+        if (!g) skip('job_board_stat_plausibility', scWhy);
         if (g && typeof g.median_days_open === 'number') {
           const implausibleMedian = g.median_days_open < 4 || g.median_days_open > 25;
           const coverageCollapse = typeof g.posted_coverage_pct === 'number' && g.posted_coverage_pct < 50;
@@ -414,8 +472,12 @@ serve(async (req) => {
             if (overallStatus === 'healthy') overallStatus = 'degraded';
             errorMessage = errorMessage || `Ghost Index stat plausibility: median ${g.median_days_open}d, stated-date coverage ${g.posted_coverage_pct ?? '?'}%`;
           }
+        } else if (g) {
+          skip('job_board_stat_plausibility', 'stats_cache holds no median_days_open — get_ghost_job_index_stats returned nothing on the last cron run');
         }
-      } catch { /* RPC not applied yet */ }
+      } catch (e) {
+        skip('job_board_stat_plausibility', e instanceof Error ? e.message : 'unreadable stats_cache');
+      }
 
       // Label integrity: the daily audit cross-checks our experience_band and
       // remote labels against each posting's own text. A contradiction rate
@@ -478,15 +540,18 @@ serve(async (req) => {
             errorMessage = errorMessage || `Database storage at ${usedPct}% of plan`;
           }
         }
-      } catch { /* RPC not applied yet */ }
+      } catch (e) {
+        skip('job_board_storage', e instanceof Error ? e.message : 'get_storage_footprint unavailable');
+      }
 
       // Per-vendor date-parser canary: a vendor whose stated-date coverage
       // collapses means its date mapping regressed (the Lever evergreen bug
       // was found by hand; this catches the next one). BambooHR is exempt —
       // its feed carries no dates at all, disclosed as such.
       try {
-        const { data: cov } = await coverageP;
-        if (Array.isArray(cov)) {
+        const cov = statsCache?.date_coverage ?? null;
+        if (!Array.isArray(cov) || cov.length === 0) skip('job_board_date_coverage', cov ? 'stats_cache date_coverage is empty' : scWhy);
+        if (Array.isArray(cov) && cov.length > 0) {
           const broken = (cov as Array<{ source: string; total: number; dated: number }>)
             .filter((r) => r.source !== 'bamboohr' && r.source !== 'rippling' && r.source !== 'pinpoint' && r.source !== 'workday' && Number(r.total) >= 1000)
             .map((r) => ({ source: r.source, pct: Math.round(100 * Number(r.dated) / Math.max(Number(r.total), 1)) }))
@@ -504,7 +569,9 @@ serve(async (req) => {
             errorMessage = errorMessage || `Vendor date coverage collapsed: ${broken.map((b) => b.source).join(', ')}`;
           }
         }
-      } catch { /* RPC not applied yet */ }
+      } catch (e) {
+        skip('job_board_date_coverage', e instanceof Error ? e.message : 'unreadable stats_cache');
+      }
 
       // Verification ceiling: boards that still hold live postings but weren't
       // re-verified in 24h — a widening count means a cursor/selection gap the
@@ -529,7 +596,9 @@ serve(async (req) => {
             errorMessage = errorMessage || `${staleCount} boards behind the verification ceiling`;
           }
         }
-      } catch { /* RPC not applied yet — check appears once the migration lands */ }
+      } catch (e) {
+        skip('job_board_verification_ceiling', e instanceof Error ? e.message : 'get_stale_board_count unavailable');
+      }
 
       // FILTER CONTRACT: the board's core promise is that a filter is never
       // silently ignored — ask for remote roles in the US and every row you get
@@ -562,9 +631,19 @@ serve(async (req) => {
         };
 
         const violations: string[] = [];
+        let probed = 0, unreachable = 0;
         const check = async (label: string, body: Record<string, unknown>, holds: (j: Record<string, unknown>) => boolean) => {
-          const jobs = await probe(body);
-          if (jobs === null) return; // transient/unavailable — the refresh checks own that
+          // Swallow HERE, per probe. A timed-out fetch used to reject out of
+          // Promise.all and get caught by this block's outer catch, which
+          // deleted the ENTIRE contract check — so the board's core promise
+          // went unverified and the payload simply didn't mention it. One slow
+          // probe must cost us one probe, never the whole check.
+          let jobs: Array<Record<string, unknown>> | null = null;
+          try {
+            jobs = await probe(body);
+          } catch { jobs = null; }
+          if (jobs === null) { unreachable++; return; } // transient — the refresh checks own that
+          probed++;
           const bad = jobs.find((j) => !holds(j));
           if (bad) violations.push(`${label}: "${String(bad.title ?? '').slice(0, 40)}" @ ${String(bad.company ?? '')}`);
         };
@@ -583,19 +662,32 @@ serve(async (req) => {
             (j) => String(j.token ?? '').toLowerCase() === 'stripe'),
         ]);
 
-        checks.push({
-          name: 'job_board_filter_contract',
-          passed: violations.length === 0,
-          responseTimeMs: 0,
-          error: violations.length ? `filters returned rows that violate them — ${violations.join(' | ')}` : undefined,
-        });
+        if (probed === 0) {
+          // Nothing actually got verified. Reporting a pass here would be a
+          // clean bill of health issued without an examination.
+          skip('job_board_filter_contract', `all ${unreachable} filter probes were unreachable or timed out — the contract went unverified this run`);
+        } else {
+          checks.push({
+            name: 'job_board_filter_contract',
+            passed: violations.length === 0,
+            responseTimeMs: 0,
+            error: violations.length
+              ? `filters returned rows that violate them — ${violations.join(' | ')}`
+              : undefined,
+          });
+          // Partial coverage still counts as a real check on what it did read,
+          // but say which probes never ran rather than implying full coverage.
+          if (unreachable > 0) skip('job_board_filter_contract:partial', `${probed}/${probed + unreachable} probes ran; ${unreachable} timed out`);
+        }
         if (violations.length) {
           // A filter serving wrong rows is worse than an outage: the user
           // can't tell, and applies to jobs that don't match what they asked.
           overallStatus = 'unhealthy';
           errorMessage = errorMessage || `Job-board filter contract broken: ${violations[0]}`;
         }
-      } catch { /* board unreachable — the refresh/deploy checks above own that */ }
+      } catch (e) {
+        skip('job_board_filter_contract', e instanceof Error ? e.message : 'board unreachable — the refresh/deploy checks above own that');
+      }
 
       // Vendor circuit breaker: the refresh quarantines a vendor whose feeds
       // go mass-empty (API/shape break) instead of pruning its corpus. That
@@ -656,6 +748,7 @@ serve(async (req) => {
       // Warn at 70% so the tier gets widened deliberately. If the size RPC isn't
       // migrated yet, skip silently (not an incident).
       const { data: sizeStats, error: sizeErr } = await dbSizeP as { data: unknown; error?: unknown };
+      if (sizeErr || !sizeStats) skip('job_board_disk', 'get_db_size_stats returned nothing within its deadline');
       if (!sizeErr && sizeStats) {
         const sz = sizeStats as { db_bytes?: number; postings_bytes?: number };
         const dbBytes = typeof sz.db_bytes === 'number' ? sz.db_bytes : 0;
@@ -884,7 +977,7 @@ serve(async (req) => {
       p_metadata: { ai_model: AI_MODEL, test_time: new Date().toISOString() }
     });
 
-    console.log(`[SCAN-HEARTBEAT] ${overallStatus} | Total: ${totalTime}ms | Checks: ${checks.map(c => `${c.name}:${c.passed}`).join(', ')}`);
+    console.log(`[SCAN-HEARTBEAT] ${overallStatus} | Total: ${totalTime}ms | Checks: ${checks.map(c => `${c.name}:${c.passed}`).join(', ')}${skipped.length ? ` | SKIPPED: ${skipped.map(s => s.name).join(', ')}` : ''}`);
 
     // Send alert if status is not healthy
     if (overallStatus !== 'healthy') {
@@ -897,6 +990,7 @@ serve(async (req) => {
         timestamp: new Date().toISOString(),
         responseTimeMs: totalTime,
         checks,
+        skipped,
         errorMessage
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -925,6 +1019,7 @@ serve(async (req) => {
         timestamp: new Date().toISOString(),
         responseTimeMs: totalTime,
         checks,
+        skipped,
         errorMessage: error instanceof Error ? error.message : 'Unknown error'
       }),
       { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
