@@ -75,7 +75,7 @@ const json = (body: unknown, status = 200) =>
 // while this file was untouched). Always bump BUILD_VERSION here when a shared
 // module this function imports changes — it forces the diff AND gives the
 // deploy a verifiable tell.
-const BUILD_VERSION = "2026-07-26.5";
+const BUILD_VERSION = "2026-07-26.6";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -2057,13 +2057,24 @@ Deno.serve(async (req) => {
       const page = Math.max(0, Math.min(60, Number(u.searchParams.get("page")) || 0));
       const client = db();
       const cutoff = new Date(Date.now() - 30 * 86_400_000).toISOString();
-      const { data: rows } = await client
-        .from("job_board_postings")
-        .select("id, posted_at")
-        .gte("posted_at", cutoff)
-        .order("posted_at", { ascending: false })
-        .range(page * 10_000, page * 10_000 + 9_999);
-      const urls = (rows ?? []).map((r) =>
+      // PostgREST caps any single select at 1,000 rows regardless of range()
+      // — measured live: the first ship of this route silently served 1,000
+      // URLs per "10k" page. Chunk explicitly; ten bounded reads per page.
+      const rows: Array<{ id: string; posted_at: string }> = [];
+      for (let c = 0; c < 10; c++) {
+        const from = page * 10_000 + c * 1_000;
+        const { data: chunk } = await client
+          .from("job_board_postings")
+          .select("id, posted_at")
+          .gte("posted_at", cutoff)
+          .order("posted_at", { ascending: false })
+          .order("id", { ascending: true })
+          .range(from, from + 999);
+        if (!chunk?.length) break;
+        rows.push(...(chunk as Array<{ id: string; posted_at: string }>));
+        if (chunk.length < 1_000) break;
+      }
+      const urls = rows.map((r) =>
         `<url><loc>https://resumebooster.work/jobs?job=${encodeURIComponent(String(r.id))}</loc><lastmod>${String(r.posted_at).slice(0, 10)}</lastmod></url>`
       ).join("");
       const xml = `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls}</urlset>`;
@@ -2735,10 +2746,76 @@ Deno.serve(async (req) => {
         { k: "embed_sweep", v: { at: new Date().toISOString() }, updated_at: new Date().toISOString() },
         { onConflict: "k" },
       );
+      // QUEUE SELF-SEED. The migration's one-shot seed INSERT (a full anti-join
+      // in one statement) evidently never completed in the hosted migration
+      // runner — measured live 2026-07-26: the sweep settling on "batch error:
+      // canceling statement due to statement timeout", the signature of an
+      // EMPTY fill queue pushing get_embed_batch into its heavy phase-2 walk.
+      // So the seed happens HERE instead, in bounded chunks riding the same
+      // paced chain: 2,000 candidate ids per hop by id-cursor, an .in() lookup
+      // to skip already-present rows, plain inserts of the rest. No anti-join
+      // ever runs on a request path. ~570k rows / 2k per ~5s hop ≈ 25 minutes
+      // to fully seed, once. Harmless when the queue is healthy (one cheap
+      // no-op read once done=true).
+      const { data: seedMeta } = await client.from("job_board_meta").select("v").eq("k", "embed_seed").maybeSingle();
+      const seedV = (seedMeta?.v ?? {}) as { cursor?: string; done?: boolean };
+      let seeded = 0;
+      if (!seedV.done) {
+        try {
+          const { data: cand } = await client
+            .from("job_board_postings")
+            .select("id, effective_posted")
+            .gt("id", seedV.cursor ?? "")
+            .order("id", { ascending: true })
+            .limit(1_000);
+          const ids = (cand ?? []).map((r) => String(r.id));
+          if (ids.length === 0) {
+            await client.from("job_board_meta").upsert(
+              { k: "embed_seed", v: { done: true, doneAt: new Date().toISOString() }, updated_at: new Date().toISOString() },
+              { onConflict: "k" },
+            );
+          } else {
+            const { data: have } = await client.from("job_board_embeddings").select("id").in("id", ids);
+            const haveSet = new Set((have ?? []).map((r) => String(r.id)));
+            const missing = (cand ?? []).filter((r) => !haveSet.has(String(r.id)));
+            if (missing.length > 0) {
+              const { error: insErr } = await client.from("job_board_embeddings").upsert(
+                missing.map((r) => ({ id: String(r.id), embedding: null, embedded_desc: false, updated_at: (r.effective_posted as string | null) ?? new Date().toISOString() })),
+                { onConflict: "id", ignoreDuplicates: true },
+              );
+              if (!insErr) seeded = missing.length;
+              // A NOT NULL violation here means the embedding-nullable ALTER
+              // itself never applied — nothing to do function-side; leave the
+              // cursor so the seed retries after the migration truly lands.
+              if (insErr) console.warn(`[JOB-BOARD] embed seed insert failed: ${insErr.message?.slice(0, 100)}`);
+            }
+            if (!(missing.length > 0) || seeded > 0) {
+              await client.from("job_board_meta").upsert(
+                { k: "embed_seed", v: { cursor: ids[ids.length - 1] }, updated_at: new Date().toISOString() },
+                { onConflict: "k" },
+              );
+            }
+          }
+        } catch { /* seeding is best-effort; the embed batch below still runs */ }
+      }
+
       const { data: batch, error: bErr } = await client.rpc("get_embed_batch", { p_limit: EMBED_PER_HOP });
       if (bErr) {
-        // Migration not applied yet (or transient). Stamp a settle so the kick
-        // loop retries on the settle cadence instead of burning a kick every cycle.
+        // While the seed is still filling the queue, a batch error (the empty
+        // queue's phase-2 timeout) must NOT settle the chain for an hour —
+        // keep chaining so the seed finishes; the settle only happens once
+        // seeding is complete and the batch still errors.
+        if (!seedV.done && seeded > 0) {
+          const url0 = `${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`;
+          waitUntil(new Promise((r) => setTimeout(r, EMBED_HOP_PAUSE_MS))
+            .then(() => chainKey())
+            .then((key) => fetch(url0, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ action: "embed-sweep", chainKey: key }),
+            })).then((rr) => rr.text()).catch(() => {}));
+          return json({ ok: true, seeding: true, seeded });
+        }
         await client.from("job_board_meta").upsert(
           { k: "embed_sweep", v: { doneAt: new Date().toISOString(), note: `batch error: ${bErr.message?.slice(0, 80)}` }, updated_at: new Date().toISOString() },
           { onConflict: "k" },
@@ -2747,6 +2824,19 @@ Deno.serve(async (req) => {
       }
       const rows = (batch ?? []) as Array<{ id: string; title: string | null; company: string | null; location: string | null; descr: string | null; has_desc: boolean }>;
       if (rows.length === 0) {
+        // Same guard on the empty path: an empty batch during seeding just
+        // means the queue hasn't caught up to the picker yet.
+        if (!seedV.done && seeded > 0) {
+          const url0 = `${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`;
+          waitUntil(new Promise((r) => setTimeout(r, EMBED_HOP_PAUSE_MS))
+            .then(() => chainKey())
+            .then((key) => fetch(url0, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ action: "embed-sweep", chainKey: key }),
+            })).then((rr) => rr.text()).catch(() => {}));
+          return json({ ok: true, seeding: true, seeded });
+        }
         await client.from("job_board_meta").upsert(
           { k: "embed_sweep", v: { doneAt: new Date().toISOString() }, updated_at: new Date().toISOString() },
           { onConflict: "k" },

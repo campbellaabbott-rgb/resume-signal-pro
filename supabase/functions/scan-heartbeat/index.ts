@@ -653,8 +653,18 @@ serve(async (req) => {
         await Promise.all([
           check('remote+US', { action: 'list', workMode: 'remote', country: 'US', limit: 15 },
             (j) => j.workMode === 'remote' && (!j.country || j.country === 'US')),
+          // The floor compares in APPROXIMATE USD (salary_rank_usd semantics,
+          // 2026-07-26): a EUR 95,000 row legitimately clears a $100k floor.
+          // This predicate mirrors the migration's FX table — asserting the raw
+          // number here would flag the fixed filter as broken (it did, once:
+          // this check correctly fired the moment the semantics shipped).
           check('salaryFloor 100k', { action: 'list', salaryFloor: 100000, limit: 15 },
-            (j) => typeof j.salaryMinAnnual === 'number' && (j.salaryMinAnnual as number) >= 100000),
+            (j) => {
+              const fx: Record<string, number> = { USD: 1, EUR: 1.08, GBP: 1.27, CAD: 0.73, AUD: 0.66, NZD: 0.61, CHF: 1.12, SEK: 0.095, DKK: 0.145, NOK: 0.094, PLN: 0.25, INR: 0.012, SGD: 0.74, JPY: 0.0066, BRL: 0.18, MXN: 0.055, PHP: 0.017 };
+              const rate = fx[String(j.salaryCurrency ?? 'USD').toUpperCase()];
+              return typeof j.salaryMinAnnual === 'number' && typeof rate === 'number'
+                && (j.salaryMinAnnual as number) * rate >= 100000 * 0.999;
+            }),
           check('category=healthcare', { action: 'list', category: 'healthcare', limit: 15 },
             (j) => j.category === 'healthcare'),
           // A typo'd query scoped to one employer must never surface another's.

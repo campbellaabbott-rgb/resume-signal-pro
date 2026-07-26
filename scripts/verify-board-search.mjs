@@ -94,11 +94,18 @@ async function filterContracts() {
     assertEveryRow(`experience=${band}`, r?.jobs, (j) => j.experienceBand === band, `a row is not ${band}`);
   }
 
+  // The floor binds in APPROXIMATE USD (salary_rank_usd, 2026-07-26): EUR/GBP
+  // rows that genuinely clear the bar pass; INR/SEK rows whose figures merely
+  // LOOK large do not. Mirror of the migration's FX table — a currency we
+  // can't rate has a NULL rank server-side and must not have passed.
+  const FX = { USD: 1, EUR: 1.08, GBP: 1.27, CAD: 0.73, AUD: 0.66, NZD: 0.61, CHF: 1.12, SEK: 0.095, DKK: 0.145, NOK: 0.094, PLN: 0.25, INR: 0.012, SGD: 0.74, JPY: 0.0066, BRL: 0.18, MXN: 0.055, PHP: 0.017 };
   const floor = 100_000;
   const sal = await board({ action: "list", salaryFloor: floor, limit: 25 });
-  assertEveryRow(`salaryFloor=${floor.toLocaleString()}`, sal?.jobs,
-    (j) => typeof j.salaryMinAnnual === "number" && j.salaryMinAnnual >= floor,
-    "a row states no pay or pays below the floor");
+  assertEveryRow(`salaryFloor=${floor.toLocaleString()} (approx-USD)`, sal?.jobs,
+    (j) => typeof j.salaryMinAnnual === "number"
+      && typeof FX[String(j.salaryCurrency ?? "USD").toUpperCase()] === "number"
+      && j.salaryMinAnnual * FX[String(j.salaryCurrency ?? "USD").toUpperCase()] >= floor * 0.999,
+    "a row states no pay, an unrateable currency, or pays below the floor in approx USD");
 
   const loc = await board({ action: "list", location: "London", limit: 25 });
   assertEveryRow("location=London", loc?.jobs, (j) => /london/i.test(j.location ?? ""), "a row is not in London");
