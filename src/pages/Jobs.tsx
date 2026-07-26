@@ -754,10 +754,17 @@ export default function Jobs() {
       category ? t(`jobsPage.categories.${category}`, category) : undefined,
       experience ? t(`jobsPage.experience.${experience}`, experience) : undefined,
     );
-    const { error: err } = await searchesTable().insert({
+    let { error: err } = await searchesTable().insert({
       user_id: session.user.id, name, params,
       ...(alert ? { digest_opt_in: true, digest_cadence: "daily" } : {}),
     });
+    // Deploy-skew guard (same as watchCompany): a missing cadence column must
+    // not fail the save — fall back to opt-in without it.
+    if (err && alert && /digest_cadence/.test(err.message ?? "")) {
+      ({ error: err } = await searchesTable().insert({
+        user_id: session.user.id, name, params, digest_opt_in: true,
+      }));
+    }
     if (err && err.code === "23505") {
       toast({ title: t("jobsPage.searchExists", "You already saved this search.") });
       return;
@@ -1214,13 +1221,24 @@ export default function Jobs() {
     // A watch click is an explicit ask to hear about new roles: opt the
     // search into the DAILY alert loop (per-search unsubscribe in every
     // email), and the toast below says exactly that.
-    const { error: err } = await searchesTable().insert({
+    let { error: err } = await searchesTable().insert({
       user_id: session.user.id,
       name: t("jobsPage.watchName", "New roles at {{company}}", { company: landerCompanyName }),
       params: { company: landerCompany },
       digest_opt_in: true,
       digest_cadence: "daily",
     });
+    // Deploy-skew guard: if the cadence migration hasn't applied yet the
+    // column doesn't exist — save the watch WITHOUT it rather than failing
+    // the user's click on our own rollout gap (weekly emails until it lands).
+    if (err && /digest_cadence/.test(err.message ?? "")) {
+      ({ error: err } = await searchesTable().insert({
+        user_id: session.user.id,
+        name: t("jobsPage.watchName", "New roles at {{company}}", { company: landerCompanyName }),
+        params: { company: landerCompany },
+        digest_opt_in: true,
+      }));
+    }
     if (err && err.code === "23505") {
       toast({ title: t("jobsPage.watchExists", "You're already watching {{company}}.", { company: landerCompanyName }) });
       return;
