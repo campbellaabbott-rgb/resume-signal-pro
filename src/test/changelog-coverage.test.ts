@@ -5,10 +5,13 @@
 // have rendered a raw-key fallback.
 import { describe, it, expect } from "vitest";
 import { changelog } from "../data/changelog";
-import en from "../i18n/locales/en.json";
-import es from "../i18n/locales/es.json";
-import hi from "../i18n/locales/hi.json";
+import en from "../i18n/changelog/en.json";
+import es from "../i18n/changelog/es.json";
+import hi from "../i18n/changelog/hi.json";
 
+// Changelog copy moved OUT of the main locale bundle 2026-07-26 (81KB that
+// every visitor downloaded for a page almost nobody opens); it now lives in
+// src/i18n/changelog/ and loads on demand. The completeness rule is unchanged.
 const locales = { en, es, hi } as const; // parity test guarantees the rest match en
 
 describe("changelog ↔ locale coverage", () => {

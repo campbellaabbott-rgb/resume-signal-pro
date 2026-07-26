@@ -97,3 +97,44 @@ describe("locale files", () => {
     });
   }
 });
+
+// Changelog strings live OUTSIDE the eagerly-bundled locale files (2026-07-26:
+// they were 81KB of a 270KB en.json that every visitor downloaded on every
+// route, for a page almost nobody opens). They still have to stay in lockstep
+// across languages, and every id in src/data/changelog.ts must have copy — a
+// missing entry renders the raw key to a user.
+describe("changelog string files (lazy-loaded, still must be complete)", () => {
+  const clDir = join(dirname(fileURLToPath(import.meta.url)), "changelog");
+  const clFiles = readdirSync(clDir).filter((f) => f.endsWith(".json"));
+  const enCl = JSON.parse(readFileSync(join(clDir, "en.json"), "utf8")) as { changelogEntries: Record<string, { title: string; description: string }> };
+
+  it("ships one file per shipped locale", () => {
+    expect(clFiles.length).toBeGreaterThanOrEqual(9);
+    expect(clFiles).toContain("en.json");
+  });
+
+  it("every locale has the same entry ids as English", () => {
+    const enIds = Object.keys(enCl.changelogEntries).sort();
+    for (const file of clFiles) {
+      const d = JSON.parse(readFileSync(join(clDir, file), "utf8")) as typeof enCl;
+      expect({ file, ids: Object.keys(d.changelogEntries).sort() }).toEqual({ file, ids: enIds });
+    }
+  });
+
+  it("every entry has a non-empty title and description in every locale", () => {
+    for (const file of clFiles) {
+      const d = JSON.parse(readFileSync(join(clDir, file), "utf8")) as typeof enCl;
+      for (const [id, e] of Object.entries(d.changelogEntries)) {
+        expect({ file, id, ok: !!e.title?.trim() && !!e.description?.trim() }).toEqual({ file, id, ok: true });
+      }
+    }
+  });
+
+  it("no changelog copy is left behind in the main locale bundle", () => {
+    const localesDir2 = join(dirname(fileURLToPath(import.meta.url)), "locales");
+    for (const file of readdirSync(localesDir2).filter((f) => f.endsWith(".json"))) {
+      const d = JSON.parse(readFileSync(join(localesDir2, file), "utf8")) as Record<string, unknown>;
+      expect({ file, hasChangelog: "changelogEntries" in d }).toEqual({ file, hasChangelog: false });
+    }
+  });
+});

@@ -877,7 +877,11 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
     {
       const companyFacet = Array.isArray(boardFacets?.companiesFacet) ? boardFacets.companiesFacet : [];
       const topCompanies = companyFacet
-        .filter((c) => c && typeof c.token === "string" && /^[A-Za-z0-9._-]+$/.test(c.token)
+        // Tilde is allowed: Oracle/Workday compound tokens (tenant~dc~site) are
+        // valid URL path segments, the list API accepts them, and the SPA route
+        // serves them 200 — verified live 2026-07-26 on Hilton (efet~us2~CX_1,
+        // 2,001 postings), which had no lander at all under the old filter.
+        .filter((c) => c && typeof c.token === "string" && /^[A-Za-z0-9._~-]+$/.test(c.token)
           && typeof c.count === "number" && c.count >= 8 && typeof c.name === "string" && c.name.trim())
         .sort((a, b) => b.count - a.count)
         .slice(0, 500);

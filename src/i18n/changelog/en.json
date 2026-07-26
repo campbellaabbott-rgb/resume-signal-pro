@@ -1,0 +1,680 @@
+{
+  "changelogEntries": {
+    "countryDetectionFix": {
+      "title": "Fixed: some resumes were matched to the wrong country's market",
+      "description": "A detection bug could read cloud terms like “EC2” as a London postcode and miss US phone numbers written without +1, so some US resumes received market advice for the United Kingdom — presented confidently. That is exactly the failure this product exists to avoid, and it is fixed: 22 regression tests now pin the failure cases, ambiguous resumes defer to your actual location instead of a coin flip, and every report now records how your market was chosen — your selection, resume evidence, or location — so a guess can never again dress up as certainty."
+    },
+    "semanticSearch": {
+      "title": "Search now understands meaning, not just words",
+      "description": "When a search finds no title matches, the board now looks for roles that mean the same thing — “infosec analyst” can surface security engineer openings even when no posting contains your exact words. The page says clearly when results are meaning-based matches, and your filters are never silently dropped to make it happen."
+    },
+    "morningEmails": {
+      "title": "The emails you signed up for now actually send",
+      "description": "Two email loops were built, opted into, and never wired to a schedule — so nobody ever received them. Fixed: Apply Agent's overnight shortlist now arrives each morning with the same reasons the queue shows, and market-pulse subscribers finally get their monthly digest. Both are opt-in — at most one morning email a day and one pulse a month — with one-click unsubscribe."
+    },
+    "fullJobDescriptions": {
+      "title": "Job descriptions now load on far more roles",
+      "description": "Some employers publish their job text through a separate feed we were not reading, so a large share of postings opened with nothing to read and fit scoring had no text to work with. We now pull that text for Workday, BambooHR, SmartRecruiters, Breezy and Oracle boards, and Workable and Pinpoint descriptions now arrive with the listing itself. Anything you open is saved, so it loads instantly next time. Where an employer genuinely publishes no description, we still show nothing rather than a guess."
+    },
+    "accountHq": {
+      "title": "Your account is now mission control",
+      "description": "The account got a real overhaul: a sticky section nav (Overview, Pipeline, Searches, Résumé) so nothing is buried; a 'What to fix next' report showing the skills most often missing from your résumé across your target roles — with counts, and one click to work them in via the builder; upcoming interviews stitched into one glance; a setup checklist that walks new accounts into the full search loop; a clear path into the Morning Queue; and every weekly email toggle in a single Emails & alerts panel."
+    },
+    "boardContinuity": {
+      "title": "Smoother board: applied badges, a better first visit, mobile polish",
+      "description": "Postings you've already applied to now wear a quiet check on cards and in compare — you'll never re-read a job you already acted on without knowing it. Your application tracker also shows each employer's pattern (genuinely fills roles, or re-lists often) right where you're waiting to hear back. First-time visitors get three one-tap starting points — posted today, companies that fill roles, stated pay only. On phones, descriptions lead and sections start folded; and employer facts now load with a placeholder instead of popping in late."
+    },
+    "decisionPanel": {
+      "title": "Company facts where you decide — plus tidier job descriptions",
+      "description": "The job detail panel now shows who you'd actually be joining: verified headcount, public-company revenue and profitability, and (for H-1B filers) declared wages — the same sourced facts from company pages, now beside every posting. Long descriptions fold into collapsible sections when the posting itself has clear headings, with your keyword highlights preserved. Comparing jobs now includes work mode, company size and financials; the board says how it's ordered; and signed-in users get their saved searches as one-tap chips."
+    },
+    "secFilings": {
+      "title": "Know the company: SEC filings on hiring pages",
+      "description": "Company pages for 178 US-listed employers now show what kind of company you'd actually be joining — revenue over the last three fiscal years with a mini trend, whether the company is profitable, and its ticker — all pulled from the company's own SEC filings (10-K/20-F), with a link to the source. As filed, never estimated."
+    },
+    "payTransparency": {
+      "title": "Definitive work-mode tags, full salary ranges, and the Pay Transparency Index",
+      "description": "Remote, hybrid, and on-site are now three definitive tags, taken from the employer's own ATS field or explicit posting text — and shown only when the employer actually says (no tag is honest, a guessed tag is not). Salary now stores and shows the full stated range with its original period, hourly and monthly figures get an annualized line, and filters match only stated pay. And it's all public: the new Pay Transparency Index ranks fields, hiring systems, and large employers by how much of their postings state pay, and Explore gained a Transparent-about-pay collection no company can buy its way into."
+    },
+    "fairDataPromise": {
+      "title": "A fair-data promise, verified employers, and 7 free Agent mornings",
+      "description": "Three things shipped together. First, policy in writing: no company can pay to change what our data says — fill rates, churn flags, and badges are computed from observed postings and are not for sale (see the Trust page). Second, employers can now claim their company page by verifying a work email at their own domain, earning a Verified employer badge — identity only, never editing rights. Third, the Apply Agent now starts with 7 free mornings, so you can wake up to a real shortlist before paying anything."
+    },
+    "companyIntel": {
+      "title": "Company pages that actually tell you about the company",
+      "description": "Every company page now leads with sourced facts: verified headcount with its basis, this week's net-new roles, the company's own stated-salary median, and its top hiring fields. Below the postings, a 'similar companies' section shows who else is hiring in the same field. The Explore scale segments got hundreds more verified headcounts (Bosch, H&M, GM, Tyson and more) and every band now expands to its full company list."
+    },
+    "board450k": {
+      "title": "450,000+ verified openings — Pinpoint joins as the 13th hiring system",
+      "description": "Another growth wave: 450,000+ live openings from 20,000+ companies, all straight from each company's own hiring system. New this round: Pinpoint as the 13th system, Greenhouse's separate EU platform (hundreds of European employers), and thousands more boards found in deeper archive sweeps. We also tightened the door: this is a corporate board, and a handful of government job boards that had slipped in were removed — public-sector listings don't belong here and won't get in again."
+    },
+    "smartSearch": {
+      "title": "Search that understands what you're looking for",
+      "description": "Search got a brain. Results are ranked by relevance — title matches first, company and team next — and searches now look inside full job descriptions too, so niche skills surface even when they're not in the title. The search box suggests as you type (your recent searches, companies, categories, common roles), quoted \"exact phrases\" work, one tap flips between relevance and newest-first, and category pills with live counts show the board's whole breadth at a glance."
+    },
+    "boardCraft": {
+      "title": "A faster, friendlier board — on every device",
+      "description": "A pile of quality-of-life upgrades: press ⌘K anywhere for quick actions, ? shows all keyboard shortcuts, and / jumps to search. The company filter is a type-ahead now, a compact view fits three times more postings per screen, \"Jump back in\" brings back your recently viewed roles, and every posting has a share link. Each posting also shows when it was last re-verified against the company's feed, pay displays consistently (the company's exact wording one hover away), and the mobile layout got a full pass."
+    },
+    "board300k": {
+      "title": "300,000+ verified openings — Workday joins as the 12th hiring system",
+      "description": "The board tripled in a week: 300,000+ live openings from 16,000+ companies, every one pulled straight from the company's own hiring system. New this round: Workday — the system used by many of the world's largest employers — plus thousands of newly discovered company boards across all twelve systems."
+    },
+    "freshFirst": {
+      "title": "Fresh jobs first: honest date filters and faster discovery of new postings",
+      "description": "The Today and This-week filters now count only dates the company itself stated — never our discovery time. Boards that post new roles frequently are now re-checked more often, so new openings appear here sooner. Workday postings carry the company's stated posting age from the moment they arrive."
+    },
+    "accurateDates": {
+      "title": "Posting ages you can trust — plus a country filter",
+      "description": "Every posting-age stat now uses only company-stated dates, and each card says where its date came from. Salary sorting is currency-aware, so a peso figure can't outrank a dollar one. And you can now filter the board by country — 60+ countries, matched only when the posting itself says so."
+    },
+    "matchingResume": {
+      "title": "Pin the exact resume the whole platform matches against",
+      "description": "Your account now holds an explicit matching resume: pin any scan that saved its document, or paste the exact resume you're sending out, and the job board's fit ranking, your match-alert emails, and the apply agent's drafts all ground against that document. If you don't pin anything, nothing changes — everything keeps using your latest scan, as it always has."
+    },
+    "ghostJobIndex": {
+      "title": "The Ghost Job Index: we audit our own board and publish the number",
+      "description": "A new public page shows the live, honest numbers behind the board: how many verified roles are open right now, the median age of a posting, how fast roles actually get filled, and which companies are hiring most actively. Behind it, the board now audits itself every day — sampling about a hundred random listings and re-checking each one against the company's own system — and publishes the confirmed-live percentage for everyone to see. The guarantees that were always true are now stated up front too: nothing older than 30 days stays listed, and every posting is re-checked live the moment you click Apply."
+    },
+    "hiringHealth": {
+      "title": "Hiring Health: see which companies actually fill roles",
+      "description": "The board now follows the full lifecycle of every posting — when it opens and when the company takes it down — and turns that into a signal no aggregator can offer. Company pages show how many roles a company filled or closed in the last 90 days and how quickly, an \"Actively hiring\" badge marks companies with a proven recent pattern, and a board filter lets you browse only those. Built honestly: where there isn't enough data yet, the panel says it's still gathering rather than guessing."
+    },
+    "salaryAndDedupe": {
+      "title": "Salary on more postings, and the same role no longer floods the list",
+      "description": "Many companies state the pay range in the posting text even when their hiring system has no salary field — the board now reads it from the posting's own words, never an estimate, so salary appears on more and more cards over the coming weeks. When a company posts the same role across many locations, you now see one card with a \"same role in N more locations\" expander instead of a wall of near-identical listings — every location stays applyable. And company pages now answer the question people actually search — \"is this company hiring?\" — with a live, verified count."
+    },
+    "applyAgent": {
+      "title": "The apply agent: real application questions, answered from your resume — never invented",
+      "description": "Greenhouse postings now carry a \"Prep answers\" button. The agent pulls the application's real questions from the company's own system, drafts answers grounded strictly in your resume, and flags anything it can't support instead of inventing it — identity, salary, and demographic questions are always left to you. The same panel tailors your resume for the role, drafts a cover letter, preps likely interview questions, warns you if you already applied, and states the honesty guarantee up front. You review everything and submit on the company's own site — it never applies for you."
+    },
+    "explainableFit": {
+      "title": "Fit you can read — what you have, what to add, and alerts only for strong matches",
+      "description": "Fit-ranked cards now show both sides of the score: \"You already have:\" alongside \"Add to compete:\", so the ranking explains itself instead of being a bare number. Saved-search emails gain a fit bar — choose \"strong fit only\" and we email you only about new roles that clear it, scored against your resume, staying silent otherwise. And once you have enough tracked applications, your account shows your interview rate by the fit you applied with — so you can see where your applications actually convert."
+    },
+    "boardScaleUp": {
+      "title": "Company pool more than doubles: 8,600+ verified employers on the board",
+      "description": "A database upgrade removed the board's old capacity ceiling, so every remaining clean employer from our census of the major hiring platforms came aboard — the pool grew from about 3,900 to more than 8,600 companies, each one live-verified against its platform's official public API and named from the platform's own records. Live postings are climbing as the new boards stream in, under the same rules as always: every job comes straight from the company's own board, aggregators and staffing mills are excluded, and nothing older than 30 days stays listed. The board got cleaner and faster in the same pass — a handful of companies that appeared twice under differently-cased board names were deduplicated, misfiled roles (optometrists, art directors, preschool teachers) moved out of “Other” into their proper fields, and the jobs page payload slimmed by half so filtering feels snappier."
+    },
+    "comeBackSignals": {
+      "title": "Your account now tells you when it's worth coming back",
+      "description": "Three quieter upgrades that turn the board into a loop instead of a one-time visit. The weekly email digest for saved searches now actually sends — it had an opt-in toggle but nothing scheduled behind it, so opted-in searches silently got nothing; now they get a weekly-ish email when new postings match, with a working one-click unsubscribe. Your account's saved-search card leads with the total that matters: how many new jobs match your saved searches since your last visit, one click from the search with the most. And when a posting you applied to gets taken down, the tracker no longer leaves you at a dead end — it pulls live openings for the same role straight off the board so you keep momentum."
+    },
+    "fitFirstBoard": {
+      "title": "The board now opens ranked to your resume",
+      "description": "Scan your resume once and the board opens already sorted by fit — no extra click. Each listing shows a plain-language match tier (Strong match, Possible match, or Stretch) rather than a raw percentage, with the exact keyword coverage on hover and the specific terms to add to compete. Every card is marked as pulled straight from that company's official careers feed — never an aggregator or a scraped copy — and re-checked live the moment you click Apply. In your account, the application co-pilot now preps your strongest-matched saved jobs first, so if you reach the daily limit the best ones are already done."
+    },
+    "fieldPages": {
+      "title": "Browse the job board by field: 17 dedicated pages with live counts",
+      "description": "Every field on the board — Engineering & IT, Healthcare & Clinical, Finance & Accounting, Hospitality & Retail, and 13 more — now has its own page at /jobs/field with that field's live openings and the filter already set. Each page shows the field's real posting count, measured from the live corpus when the site was last built (Engineering & IT: 21,610 at this writing). Our 59 industry keyword guides link straight to their matching field, in English and Spanish. Same rules as everywhere on the board: official company feeds only, and applying happens on the company's own site."
+    },
+    "boardSelfTuning": {
+      "title": "The board now tunes and monitors itself",
+      "description": "Three quieter upgrades behind the 90,000-posting board. The fast lane re-ranks itself: after every refresh pass, the boards with the most live openings automatically get the fastest re-check cadence, so a company on a hiring spree speeds up without anyone touching a setting. Postings that arrive without a published date (some feeds never include one) now use their first-seen time for sorting and freshness filters, so they can't sink to the bottom unseen — displayed dates remain only what the company actually published. And the refresh pipeline watches itself: if it ever stalls, we're alerted within the hour, before the board goes stale enough for anyone to notice. Categorization got sharper too — corporate IT, service desk, research, investor relations, district management, and French retail roles arriving now file into their proper fields instead of Other."
+    },
+    "board90k": {
+      "title": "Job board doubles: ~90,000 live postings across nearly 900 companies",
+      "description": "The board grew from roughly 40,000 to roughly 90,000 live postings. New this round: major employers like AECOM, Domino's, SGS, Veolia, Carvana, Turner & Townsend, Eurofins, Sopra Steria, Greene King, BAYADA Home Health Care, CROSSMARK, EōS Fitness and BoxLunch — heavy on healthcare, engineering, food service, retail, hospitality and lab work, not just tech. Every company joined the same way: found in a census of the major hiring platforms, then verified against the platform's official public API and named from the platform's own records. We also found aggregators and reposted-listing feeds in that census and excluded them — every posting here belongs to the company that published it. The refresh got smarter with the size: the largest boards are re-checked about every 10–15 minutes and the whole catalog is re-verified within a few hours, so postings a company takes down keep disappearing on the next pass."
+    },
+    "suiteV2": {
+      "title": "Simpler pricing, a real guarantee, and apply-for-this-job help",
+      "description": "Three changes to how the paid tools work. Pricing now leads with three clear choices instead of a wall of thirteen — the full catalog is still there, one click away. Every paid tool now carries a make-it-right promise: not happy with the output? We'll regenerate it free. And after you check your resume against a real posting, the report can now prepare that exact application — resume tailored to the job, matching cover letter, honest gap list — with a free preview from your own resume before you pay."
+    },
+    "roleTargeting": {
+      "title": "Your report now tells you what to apply for",
+      "description": "Every free scan now ends with a game plan, not just a grade. A new card lists the roles your resume actually screens for — drawn from the same detection your score used, with search links pre-aimed at your target market — plus the roles within reach through your secondary strength, with an honest note on what the gap really is. And if you scanned without a job posting, the report now leads with the single highest-leverage next step: paste a real opening and rescan against its exact requirements, free."
+    },
+    "countryCvPages": {
+      "title": "CV rules for 56 countries — free, in 6 languages",
+      "description": "New: a per-country guide to what a CV actually looks like in 56 markets — photo norms (with the real stats and laws), expected length, personal-data conventions, and the local document's name. Built from the same engine the scanner uses when your resume targets that market, with pages in English, Spanish, French, German, Portuguese, and Dutch. Start at /cv-standards."
+    },
+    "sharperGeo": {
+      "title": "The scan now follows where you're going, not just where you've been",
+      "description": "Write \"relocating to London\" or \"seeking roles in Germany\" and the scan now benchmarks against your destination market — previously it judged you by your current location. It also reads real addresses (a US state + ZIP, a Canadian postal code, a German street address) as stronger evidence than a city name in a bullet, detects ~34 more countries, and a specialist second field (like a nurse who builds machine-learning models) now shows up instead of being drowned out by the primary profession."
+    },
+    "resumeLanguageReports": {
+      "title": "Your report now speaks your résumé's language",
+      "description": "Scan a résumé written in French, Spanish, German, Portuguese, Dutch, Italian, Hindi or Tagalog and the entire report — tips, red flags, rewrites, keyword suggestions — comes back in that language. This worked only sometimes before; now the language is detected reliably before the analysis starts, so it's no longer a coin flip. Bonus: the language your résumé is written in also helps pin down which job market you're in, so location-specific advice lands on the right country."
+    },
+    "sharperDetection": {
+      "title": "Sharper location & industry detection",
+      "description": "Your report now follows the market you're actually in — even if your résumé name-drops other cities. We weigh real signals (where you're authorized to work, your education system, your phone number) over a passing city mention, so a US candidate who \"led the London launch\" is still benchmarked against the US market. Cross-functional résumés also surface a genuine second field — a Sales Director who was also a Marketing Manager gets both covered."
+    },
+    "previewBeforePay": {
+      "title": "See a real sample of any paid tool before you buy",
+      "description": "No more buying blind. Every paid tool now generates a real slice of what you'd get — built from your own résumé — before you pay. Interview Coach shows one real question, the rewrite tools show a true before-and-after of one of your own bullets, and Freelance Boost turns one of your projects into a recruiter-grade line. Same integrity as the paid version: if your résumé doesn't support a metric, we won't invent one."
+    },
+    "sharperPaidProducts": {
+      "title": "Sharper Freelance Boost & Interview Coach",
+      "description": "Both now generate with our most capable model — noticeably stronger, more specific output on the resume sections and interview prep you pay for. Same grounded, nothing-invented approach; better engine behind it."
+    },
+    "smarterIndustryConfirm": {
+      "title": "The scan now asks when your field is a genuine toss-up",
+      "description": "If your resume straddles two fields — say marketing and business development, or clinical work and data science — the scan now flags the industry for you to confirm before committing, instead of quietly picking one and risking the wrong call."
+    },
+    "liveBenchmarks": {
+      "title": "See how real resumes score: live ATS benchmarks",
+      "description": "The benchmarks page now shows live ATS-score distributions from our real scan corpus — overall median and quartiles, per-industry benchmarks, and experience-level medians, each labeled with its sample size. The homepage scan counter now reflects the real all-time total too."
+    },
+    "reportCardsFix": {
+      "title": "Fixed: parts of your report weren't showing",
+      "description": "A display bug quietly hid several report sections on some scans — country-specific resume standards, the ATS parsing breakdown, quick wins, and the ATS-vs-recruiter score among them. They're all back. We also added an automated safeguard so a whole section can't silently go missing again."
+    },
+    "targetMarketScan": {
+      "title": "Applying abroad? Your report now follows the job, not your home country",
+      "description": "Targeting a role in another country? Choose where you're applying and the scan checks your resume against that market's norms — photo and personal-data expectations, references, and more — instead of assuming your current location. We also expanded automatic country detection so more resumes get the right local rules on their own."
+    },
+    "groundedAnalysis": {
+      "title": "Fewer false 'you're missing this' flags",
+      "description": "Before analyzing, the scanner now maps your resume's real structure — sections, dated roles, contact details — so it's much less likely to tell you something is missing when it's actually there. And when a PDF doesn't extract cleanly, we now warn you the results may be unreliable instead of scoring scrambled text."
+    },
+    "guidesTab": {
+      "title": "All our guides in one place",
+      "description": "A new Guides tab collects every how-to we've written — why resumes get rejected, choosing the right keywords, career-change and freelance resumes, and more. 'How It Works' now lives on the Trust page next to our methodology."
+    },
+    "honestClaims": {
+      "title": "Our claims now match our own research",
+      "description": "We reviewed the whole site and rewrote anything that overstated how resume screening works. No invented statistics and no scare tactics — what we tell you lines up with what our own analysis of ATS behavior actually shows."
+    },
+    "countryStandards": {
+      "title": "Your report now knows local rules: 52-country resume standards",
+      "description": "Scanning from Germany, Japan, or the Gulf? Your report now includes your market's norms — photo rules (the highest-stakes difference: a photo is expected in Tokyo and gets you discarded in Toronto), personal-data expectations, and market-specific checks like Poland's RODO clause, Italy's privacy consent, and Gulf visa-status lines. Verified July 2026; softer markets are labeled as directional."
+    },
+    "fractionalMode": {
+      "title": "Fractional leaders: concurrent roles are a portfolio, not job-hopping",
+      "description": "The scanner now recognizes fractional and interim leadership — overlapping senior engagements no longer get misread as instability. And Freelance Boost gained a fractional mode: an umbrella portfolio entry with per-engagement scope (P&L, headcount, stage), built only from figures you provide. Plus a new guide on structuring fractional roles."
+    },
+    "freelanceUpgrades": {
+      "title": "Freelance Boost: see the transformation before you pay",
+      "description": "The intake page now shows a labeled before/after example of what the translation actually produces. Paste an Upwork-style profile into the free scanner and it says the honest thing — 'this is a profile, not a resume' — and routes you to the right tool. And results now insert directly into the builder as real experience entries, ready for typeset export."
+    },
+    "honestMetricsFix": {
+      "title": "Fixed: some report tiles showed defaults instead of your data",
+      "description": "An internal audit found that when the analysis omitted certain metrics, the report quietly filled them with identical defaults for everyone — including a per-ATS compatibility list that was never real. All of it is gone: those metrics are now required from the analysis, word/page counts derive from your actual document, and anything we can't measure is hidden instead of invented. We publish this because trust is the product."
+    },
+    "coachButtonFix": {
+      "title": "Fixed: the $5 Interview Coach button opened the $25 checkout",
+      "description": "The 'Interview Coach — $5' offer at the end of the report was routing into the $25 Full Analysis checkout. It now buys exactly what it says. If this happened to you, contact us for a refund — no questions."
+    },
+    "shareCards": {
+      "title": "Share your before/after — and your roast",
+      "description": "One tap now opens your phone's share sheet with a clean image attached. Rescanned after fixing? The card becomes your improvement: '58 → 74, same rubric both times.' And the Resume Roast finally gets the shareable image it deserves — burn quote, spice level, no resume content ever on any card."
+    },
+    "fallbackParity": {
+      "title": "The backup scanner is now as good as the main one",
+      "description": "Our emergency fallback scanner had drifted: older detection tables and a slower model (about 32s vs 20s). It now runs the exact same detection data as the primary — Spanish included — and the faster model order. You'd only ever meet it during an outage; now it would be a much better meeting."
+    },
+    "paidDeliverablesAudit": {
+      "title": "We audited our own paid products like a ruthless editor",
+      "description": "We generated and reviewed every flagship deliverable. Findings, fixed the same day: cover letters could contain [bracketed placeholders] — now banned; letters must arrive send-ready. The premium rewrite once invented a LinkedIn URL — now a code-level contact-integrity guard strips any contact detail not present in your original, on top of stricter prompts. Interview-coach sample answers now stay grounded in your real resume."
+    },
+    "typesetDelivery": {
+      "title": "Premium rewrites now become real documents",
+      "description": "The Premium Package's rewritten resume can now open directly in the free builder — one click and it's a professionally typeset PDF or Word document, ready to send, instead of text on a webpage."
+    },
+    "rescanRitual": {
+      "title": "See your before/after — fix, export, rescan",
+      "description": "Export from the builder and you're offered a one-click rescan of that exact version. The new report opens with the delta: '58 → 74, red flags 5 → 2 — same rubric both times.' Improvement you can measure, not just feel."
+    },
+    "applicationFit": {
+      "title": "Check any application's fit against the version you actually sent",
+      "description": "In your application tracker, paste the job posting and see which recognized keywords the resume version you sent covers — and which are missing. Deterministic and reproducible: the dictionary is our scanner's own detection tables, no AI involved."
+    },
+    "fixPlanDrip": {
+      "title": "Your fix plan as a 7-day sequence — strictly opt-in",
+      "description": "A new unchecked-by-default option when you email yourself a report: your top fixes on day 2, the rest on day 4, a rescan reminder on day 6. Three emails total, built from your actual fix roadmap, with one-click unsubscribe that cancels the remaining ones too."
+    },
+    "personalOutcomeAnalytics": {
+      "title": "Your own interview rate, by score band",
+      "description": "Once you've tracked 5+ applications with statuses, your account shows the interview rate of your own applications grouped by resume score — your personal evidence of what works, with honest small-sample framing."
+    },
+    "emailSuppressionFix": {
+      "title": "Fixed: unsubscribing now cancels queued emails too",
+      "description": "Our email queue wasn't checking the suppression list before sending — so bounces, complaints, and unsubscribes weren't fully enforced for queued mail. Now every non-security email checks the list at send time. Found while building the fix-plan sequence; fixed for everything."
+    },
+    "outcomeTracking": {
+      "title": "Tell us how it went — outcome tracking begins",
+      "description": "After every scan you can now report — anonymously — whether that resume got interviews, right in the report or from your emailed summary. As answers accumulate we'll publish measured score-to-interview data instead of the folklore this industry usually sells."
+    },
+    "savedVersions": {
+      "title": "Save resume versions — and see which one lands interviews",
+      "description": "Signed-in users can save the exact document behind any scan (only when you ask — the free scan still never stores your resume). Tag each application with the version you sent, and your account shows which version actually gets interviews."
+    },
+    "builderFixHandoff": {
+      "title": "One click from diagnosis to a fixed resume",
+      "description": "The report now ends with 'Open in builder with fixes applied': your resume lands in the free builder with the report's bullet rewrites already in place and missing keywords suggested alongside. We never auto-insert keywords — only you can honestly claim a skill."
+    },
+    "transitionProTier": {
+      "title": "Transition Pro: the complete career-change kit",
+      "description": "The $59 tier is now genuinely more than the $29 one: everything in Freelance Boost, plus a complete transition cover letter and a LinkedIn About section — built from your real projects under the same no-invention rules."
+    },
+    "spanishCoverLetters": {
+      "title": "Spanish job posting? Spanish cover letter",
+      "description": "Cover letters now detect the language of the job posting and write natural, professional Spanish when the posting is Spanish. Scan reports have always answered in your resume's language."
+    },
+    "scanLimitDoubleCountFix": {
+      "title": "Fixed: scans were counting twice against your daily limit",
+      "description": "A background pre-scan was quietly consuming a second daily slot — and running a full analysis whose results were never shown. If you ever hit the scan limit faster than expected, this was why. Your free scans per day are now exactly what we advertise."
+    },
+    "guidesLaunch": {
+      "title": "Six guides that tell you the truth about ATS",
+      "description": "New guides grounded in the checks our scanner actually runs — including one debunking the '75% of resumes are rejected by bots' myth our industry loves. Each opens with a short, direct answer. No recycled folklore."
+    },
+    "outageSentinel": {
+      "title": "Outages now get caught in minutes, not hours",
+      "description": "A monitoring sentinel runs a real scan through the live system every 10 minutes and alerts us the moment anything breaks, with an independent backstop outside our own infrastructure. After the July 4th outage we promised structural fixes — this is them."
+    },
+    "homepageLiveStats": {
+      "title": "Real scan statistics, right on the front page",
+      "description": "The homepage now shows how real resumes actually score: live median, middle-half range, share scoring 80 or higher, and the full score distribution — drawn from the same public data as our benchmark study. If the live data can't be loaded, the section shows nothing rather than invented numbers."
+    },
+    "scoreBenchmarksStudy": {
+      "title": "What's a good ATS score? Now answered with live data",
+      "description": "A new research page publishes real score benchmarks computed live from scans on this site: overall median and quartiles, per-industry distributions, and experience-level medians over a rolling 180-day window. Aggregates only — at least 25 scans per bucket, and no individual resume data is ever exposed."
+    },
+    "syntheticScanExclusion": {
+      "title": "Our own test scans no longer count in the stats",
+      "description": "The monitoring probes and load tests we run to keep the scanner healthy are now tagged as test traffic and excluded from every published statistic, and past test scans were retroactively removed. The benchmarks you see reflect real resumes only."
+    },
+    "scanOutageFix": {
+      "title": "Fixed: a brief scan outage — and the gap that allowed it",
+      "description": "For a short window today, free scans returned an error due to a defect in a new release. It's fixed, and we've added a deeper automated check to our release process that catches this entire class of bug before it ships — plus, in the process, we found and fixed a long-standing flaw in our garbled-text detector. Transparency is the product; that includes our mistakes."
+    },
+    "freelanceBoostLaunch": {
+      "title": "New product: Freelance Boost",
+      "description": "Turn freelance projects, gig work, and side hustles into recruiter-grade resume experience. A guided intake (no resume needed), your projects translated into the target field's language, the right structure chosen for your situation, honest gap handling, and keyword coverage against your target posting. Import your Upwork/Fiverr profile text or LinkedIn PDF to pre-fill the form. $29, one-time."
+    },
+    "roastUpgrade": {
+      "title": "Resume Roast actually roasts now",
+      "description": "The Roast was rebuilt around real roast-comedy craft: every burn quotes your actual resume verbatim and dismantles exactly those words — and any roast built on an invented quote is thrown out before you see it. The serious recruiter insight still follows every hit."
+    },
+    "reliabilityAtScale": {
+      "title": "Built for crowds",
+      "description": "Under heavy traffic the platform now degrades gracefully instead of slowing down: past capacity, scans instantly receive the full deterministic report with a free AI-enhanced rescan minutes later — no timeouts, no multi-minute waits, ever."
+    },
+    "diagnosticReport": {
+      "title": "Your free scan is now a diagnostic report",
+      "description": "The report has been redesigned around a diagnostic structure: a specimen header with a unique report ID (rescanning the same document reproduces it), a findings summary — critical, warnings, passed — before any detail, findings that run uninterrupted, and all offers consolidated in one clearly-marked Next Steps section at the end."
+    },
+    "onetSourcing": {
+      "title": "Keyword expectations, sourced from the U.S. Department of Labor",
+      "description": "Resume-only scans now draw expected skills and technologies from O*NET — the Department of Labor's occupational database — with the source and occupation code shown in your report. A pasted job posting still overrides everything: the employer's actual ask beats any database."
+    },
+    "honestScoring": {
+      "title": "Honest scoring: bands, provenance, and real extraction",
+      "description": "Your score now shows its modeling band instead of false single-point precision. Every report states where its expectations came from — the exact job posting, O*NET, or our model. And when you upload a file, the parse preview is labeled for what it is: the actual text extracted from your document, the same operation an ATS performs."
+    },
+    "reportEverywhere": {
+      "title": "The same report on screen, in PDF, and in your inbox",
+      "description": "The downloadable PDF and the emailed report now carry the full diagnostic structure — same report ID, findings summary, score band, and source attributions as the on-screen version. One consistent document you can save, print, or forward."
+    },
+    "fasterScans": {
+      "title": "Faster scans — and instant rescans",
+      "description": "Two engine upgrades: repeat scans of the same resume now return in about a second, and the analysis pipeline was rebuilt to run its AI passes in parallel on a faster model, cutting fresh-scan wait times substantially."
+    },
+    "freelanceGuidance": {
+      "title": "Freelancers get their own playbook",
+      "description": "The scan now detects freelance and project-based careers (or tell it with the new Freelancing chip) and shows how to position client work as one coherent track — your actual projects turned into experience bullets, plus advice for moving into employment."
+    },
+    "spanishDetection": {
+      "title": "Full Spanish resume support",
+      "description": "Industry detection now reads fully Spanish resumes natively — around 200 Spanish job titles and industry terms across 15 fields (enfermería, contabilidad, ventas, obra civil and more), not just translated headings."
+    },
+    "industryScreenerChecks": {
+      "title": "What screeners in YOUR field look for",
+      "description": "New field-specific checks: portfolio links for creative roles, GitHub for engineers, publications for researchers, security clearance for government work, and license visibility for healthcare, legal, trades and 8 more licensed fields — each with exactly what to fix."
+    },
+    "realBenchmarks": {
+      "title": "Benchmarks from real scans",
+      "description": "As each industry accumulates enough scans on our platform, your score comparison switches from estimates to the actual distribution of real resumes scanned here — and the report tells you when that's the case."
+    },
+    "builderExports": {
+      "title": "Resume Builder exports, professionally typeset",
+      "description": "DOCX exports now use clean black section headings with hairline rules (no more default Word styling), dates aligned to the true right margin, and a consistent type scale. PDF exports fixed page-break orphans and bullet indentation."
+    },
+    "proSubscription": {
+      "title": "Resume Booster Pro — every tool, one subscription",
+      "description": "New $45/month all-access plan: every paid tool included (Full Analysis, Keyword Fix, Cover Letters, Interview Coach, and more), unlimited daily scans, and every new tool we launch — included automatically. Cancel anytime."
+    },
+    "scoreSimulator": {
+      "title": "See your score before you fix anything",
+      "description": "The report now includes an interactive simulator: check off the fixes you plan to make and watch your projected ATS score update instantly — so you know which fixes are worth your time before you touch your resume."
+    },
+    "weakestBullets": {
+      "title": "Your 3 weakest bullets, graded and rewritten",
+      "description": "The scan now quotes your three weakest bullet points verbatim, grades each one A–F on metrics, verbs, and scope, and shows an improved rewrite built only from what's already on your resume."
+    },
+    "atsVendorChecks": {
+      "title": "How Workday, Greenhouse, Lever & iCIMS read your resume",
+      "description": "Each major ATS parses resumes differently. Your report now shows a vendor-by-vendor check of how your specific formatting survives each system — and what to change if it doesn't."
+    },
+    "careerChangeBridge": {
+      "title": "Career changers get a transfer map",
+      "description": "Switching fields? The report now detects transitions and shows which of your skills carry over as-is, which lines to reword for the new field, and the single biggest credibility gap to close."
+    },
+    "scoreAuditTrail": {
+      "title": "Why this score? Every point accounted for",
+      "description": "A new expandable audit shows exactly where your ATS score comes from — keyword coverage, format, quantified impact, and content signals, each with earned points that sum to your total."
+    },
+    "shareScoreCard": {
+      "title": "Share your score",
+      "description": "One click downloads a clean score-card image — your score, industry, and percentile, with no resume content on it — ready to share anywhere."
+    },
+    "verifiedReportClaims": {
+      "title": "Every quote in your report is now verified",
+      "description": "Before your report is shown, every claimed quote from your resume is checked against the actual text — anything that doesn't match is removed and rebuilt from verified analysis. What the report says about your resume is really in your resume."
+    },
+    "smarterIndustryDetection": {
+      "title": "Sharper industry detection",
+      "description": "133 new job-title variants across 45 industries, a tiebreaker for close calls, automatic career-transition detection, and a feedback loop that learns from your corrections — plus benchmarks that calibrate to your target job's industry when you paste a job description."
+    },
+    "fasterFrontPage": {
+      "title": "A faster front page with instant upload",
+      "description": "The homepage now loads dramatically less code up front, and you can drop your resume directly in the hero — no scrolling, no hunting for the upload box."
+    },
+    "tenNewIndustries": {
+      "title": "10 new industries now fully supported",
+      "description": "The scanner now has dedicated keyword libraries, job-title recognition, certification tables, and scoring benchmarks for 10 more fields: cybersecurity, logistics & supply chain, real estate, insurance, nonprofit & fundraising, biotech & lab science, aviation, energy, skilled trades (electricians, plumbers, HVAC, welders and more), and customer support. If you work in one of these fields, your scan is no longer squeezed into a loosely-related category — keywords, red flags, and benchmarks are now specific to your actual profession."
+    },
+    "specializationDetection": {
+      "title": "Specialization-level industry detection",
+      "description": "Broad industries hide very different jobs — a nurse, a medical biller, and a pharma sales rep are all \"healthcare\" but need completely different resumes. The scanner now detects your specialization within the industry (clinical care vs. healthcare administration vs. pharma vs. health tech; frontend vs. backend vs. DevOps; accounting vs. FP&A vs. investment banking, and more) and tailors every recommendation to it. Professional licenses like RN, CPA, PE, CISSP, or a journeyman card now anchor the classification, and when you paste a job description, the analysis is framed around the field you're applying INTO. Cross-functional resumes get an honest blend readout (e.g. \"60% data / 40% marketing\") instead of being forced into one box."
+    },
+    "interviewLikelihoodFixPlan": {
+      "title": "Interview likelihood and a minute-by-minute fix plan",
+      "description": "Three new results tell you where you stand and exactly what to do next. An interview callback likelihood band combines your ATS pass rate, peer percentile, and critical red flags into one honest verdict — with the single biggest factor holding you back named explicitly. A side-by-side comparison shows how your resume stacks up against a top-quartile candidate in your field on quantified bullets, leadership signals, and keyword coverage. And a numbered fix plan sequences everything into a single work session, ordered by points gained per minute, with a running projected score after each step."
+    },
+    "deeperScoreReporting": {
+      "title": "See exactly what drives your score",
+      "description": "Your ATS score is no longer a single opaque number. A score breakdown shows the three components — keyword match, format, and quantification — as separate bars. Quick wins now carry explicit point values and are sorted by impact. You get three bullet rewrites instead of one, a severity ranking on every red flag (critical / moderate / minor), the specific issues that drove your format grade, quality ratings for each resume section, a recruiter first-pass verdict written as a 6-second scan, and one clear next best action to take."
+    },
+    "atsPreviewComparisons": {
+      "title": "See your resume the way an ATS does",
+      "description": "A new parse preview shows the raw text an applicant tracking system actually extracts from your resume — formatting, columns, and icons stripped away — so you can spot content that gets lost before a human ever sees it. Alongside it: your percentile against other candidates in your industry, an estimated ATS pass rate, a keyword gap heat map that shows how often each missing keyword appears in real job postings (with advice on which section to add it to), a tone & voice audit that counts passive phrases and first-person pronouns, and a section length audit comparing each section against ideal word-count targets."
+    },
+    "trulyPersonalReports": {
+      "title": "Every scan is now written specifically about you",
+      "description": "Generic advice is now treated as a failure. Every red flag, weak phrase, and quick win must quote your actual resume text verbatim — not \"your bullets lack metrics\" but exactly which bullet, quoted back to you. Advice is calibrated to your seniority: executives are never told to \"add more keywords,\" and entry-level candidates are never asked about P&L ownership. Career changers get transferable-skills mapping, veterans get military-to-civilian translation, returners get gap-framing language, and recent grads get project elevation advice. Your name and role now run throughout the report."
+    },
+    "industryDetectionAccuracy8Fixes": {
+      "title": "8 accuracy upgrades to industry detection",
+      "description": "We identified and fixed every known category of industry misclassification. (1) Unambiguous role titles — registered nurse, attorney, product manager, ML engineer, and 50+ others — now hard-lock the industry regardless of keyword scores, so a nurse with Python in her skills section is never classified as a data scientist. (2) Each industry now requires at least one anchor term to be present before high confidence is granted — eliminating false positives caused by long skills lists. (3) Very short resumes (under 80 words) skip keyword scoring entirely and rely only on your job titles. (4) The employer name boost is now guarded — a finance analyst at Google no longer gets a technology boost. (5) Implausible industry + seniority combinations (e.g. entry-level consulting, executive retail) are flagged and confidence is capped. (6) The skills section contribution is now hard-capped at 6 points regardless of how many skills are listed — your most recent job titles always outweigh a 60-item skills list. (7) When you paste a job description alongside your resume, the AI now classifies your industry from your resume titles, not the company you're applying to. (8) User corrections now compound logarithmically — the more times a pattern is corrected, the stronger the learning signal."
+    },
+    "marketIntelligenceCards": {
+      "title": "Live market intelligence in your scan results",
+      "description": "Your scan now includes five new data cards below your main results. The Market Intelligence card shows the job market conditions for your industry in your country — hot skills right now, rising keywords appearing in job postings, local CV norms, and salary context. The Skills Recency card flags skills that are declining in job postings (strikethrough, amber) and highlights skills in high current demand (green). The Career Trajectory card reads your title progression and tells you whether you're on an upward, lateral, or transitional path. The Competitive Keyword Gap card shows the percentage of top-quartile keywords you're covering and lists the highest-frequency ones you're missing. The ATS System card appears when we detect from your job description which ATS the company uses, and tailors parsing advice to that specific system."
+    },
+    "resumeTimelineAnalysis": {
+      "title": "Employment gap and short tenure detection",
+      "description": "The scanner now parses the date ranges in your work history to detect employment gaps longer than 6 months and roles shorter than 12 months — both of which get flagged by many ATS systems and recruiter screening tools. If gaps or short tenures are found, a new card appears in your results with the specific gap duration, which role it followed, and concrete advice on how to address it (adding a consulting entry, a brief explanation in your summary, or contract role context). Total experience and average tenure are also surfaced."
+    },
+    "gatedKeywordGap": {
+      "title": "Top keywords now sorted by how often they actually appear in job postings",
+      "description": "Missing keywords in your scan are now ranked by how frequently they appear in real job postings for your role — so the most impactful gaps always appear first. The top 3 are shown in full. Additional high-priority keywords (those appearing in 50–80% of postings for your level) are shown as a blurred preview with a count, so you can see there's more without getting the full list for free."
+    },
+    "phraseAwareKeywordMatching": {
+      "title": "Fewer false 'missing keyword' reports",
+      "description": "The keyword gap detector now understands compound phrases, abbreviations, and spacing variants. 'Machine learning' and 'ML' are treated as the same keyword. 'CI/CD', 'ci-cd', and 'cicd' all match. 'P&L' matches 'profit and loss'. 'Full-stack', 'full stack', and 'fullstack' are equivalent. This eliminates a whole class of false positives where a skill you clearly had was being reported as missing because it was written slightly differently."
+    },
+    "roleLockDetection": {
+      "title": "Role-specific detection for 50+ job titles",
+      "description": "Added a role-lock system that recognises over 50 unambiguous job titles and forces the correct industry classification regardless of what else appears on the resume. Covered roles include clinical titles (registered nurse, NP, physician, surgeon, pharmacist, EMT), legal titles (attorney, counsel, paralegal), education (teacher, professor, principal), product management (PM, APM, CPO), data engineering (data pipeline engineer, analytics engineer), ML/AI (ML engineer, applied scientist, LLM engineer), and more. Previously, a nurse with SQL in her skills section could be misclassified as technology — this is now impossible."
+    },
+    "linkedInInsights": {
+      "title": "LinkedIn profile analysis — see how you look to recruiters",
+      "description": "Add your LinkedIn profile alongside your resume and get a combined analysis: a LinkedIn score, a breakdown of inconsistencies between your resume and profile, resume highlights that should be on LinkedIn, an improved headline and About section opening you can copy in one click, and specific tips to hit LinkedIn's All-Star ranking."
+    },
+    "bulletQualityAnalysis": {
+      "title": "Quick wins now target your actual weak bullets",
+      "description": "Before calling the AI, the scanner now pre-reads every bullet point and identifies which ones start with weak, passive phrases (\"Responsible for\", \"Helped with\", \"Assisted in\") and which ones have no measurable metric. Those specific bullets are handed directly to the AI — so the rewrite suggestions and quick wins in your report are now based on your actual words, not generic advice."
+    },
+    "industryDetectionSweep2": {
+      "title": "Sharper industry detection across 20+ roles",
+      "description": "Second-pass bug sweep of the industry detection engine: removed generic false-positive keywords that caused supply chain, operations, and analytics roles to mis-classify; added 30+ missing role-specific keywords for manufacturing, HR, creative, and consulting; expanded the employer lookup table with 30 new companies (fintech, GenAI, Asian tech, collab tools); lowered the secondary industry threshold so cross-functional roles surface their second industry more reliably; and added 15 new co-occurrence patterns to disambiguate analytics engineers, ML engineers, and product designers."
+    },
+    "scanFeedback": {
+      "title": "Tell us if your scan was helpful",
+      "description": "A quick thumbs up / thumbs down now appears at the bottom of every free scan. Your responses go directly into our improvement pipeline — we use them to identify which recommendation types are systematically off and fix them in future updates."
+    },
+    "sectionAwareAnalysis": {
+      "title": "Smarter section-by-section analysis",
+      "description": "The free scan now pre-parses your resume into labeled sections (Experience, Education, Skills, etc.) before sending it to the AI. This means advice can target specific sections — \"add this keyword to your Skills section\" — instead of treating your resume as an undifferentiated block of text."
+    },
+    "sparseResumeDetection": {
+      "title": "Better advice for short or sparse resumes",
+      "description": "Resumes with fewer than 300 words or 5 bullet points now get expansion-focused advice first — what sections are missing, how to add detail, and how to quantify experience — rather than keyword optimization suggestions that don't apply until there's enough content to work with."
+    },
+    "fasterPremiumGeneration": {
+      "title": "Premium resume + cover letter generates twice as fast",
+      "description": "We parallelised the two AI calls that build your rewritten resume and cover letter so they run simultaneously instead of back-to-back. Most premium packages now complete in 15–25 seconds instead of 30–50 seconds."
+    },
+    "employerAwareIndustryDetection": {
+      "title": "Industry detection now recognises your employers",
+      "description": "We added a database of ~200 well-known companies so the engine can use your employer history as a direct industry signal — Goldman Sachs, McKinsey, Kaiser Permanente, and hundreds more are now recognised instantly. We also fixed how recently-held jobs are weighted: your current role now counts significantly more than jobs from 5+ years ago, so career changers get correctly classified based on where they are today, not where they started."
+    },
+    "scanAiReliability": {
+      "title": "More reliable scans when AI is slow",
+      "description": "Added a 55-second timeout to the primary AI call during resume scanning. If the first AI model stalls, the engine now automatically switches to a faster backup model instead of hanging for up to 2.5 minutes. Most users won't notice — but if you've ever seen the scan spinner run unusually long, this fixes that."
+    },
+    "industryDetectionAccuracy": {
+      "title": "Sharper, more accurate industry detection",
+      "description": "We overhauled how we identify your industry from your resume. Six rounds of testing and fixes corrected misclassifications for roles like Growth Hacker (was incorrectly scoring as Data Science), Salesforce Administrator (was scoring as Sales), Quantitative Researcher at a hedge fund (was scoring as Data Science), and Software Engineers working at AI companies (were incorrectly scoring as ML Engineers). We also fixed a scoring logic bug where keyword co-occurrence patterns could fire before any industry signal was established — the main cause of false positives for DevOps engineers and SREs. The result is more accurate industry-specific tips, keyword suggestions, and ATS scoring weights that actually match your role."
+    },
+    "dataAiIndustrySplit": {
+      "title": "Data Engineering, Data Science, and AI/ML are now separate industries",
+      "description": "Previously, data engineers, data scientists, and machine learning engineers all received the same generic feedback under a single 'Technology' category. We've split these into three distinct industry tracks. Data Engineers now get feedback focused on pipeline tools (Airflow, dbt, Snowflake, Kafka), modeling approaches, and data volume metrics. Data Scientists get guidance on statistical rigor, A/B testing methodology, and business impact quantification. ML and AI Engineers get feedback specific to production deployment, inference optimization, LLM frameworks (LangChain, vLLM, Hugging Face), and modern techniques like RAG, fine-tuning, and QLoRA. Each track has its own ATS scoring weights, keyword gap analysis, and resume tips."
+    },
+    "everythingTranslated": {
+      "title": "Every screen is now translated",
+      "description": "Completed full translation coverage across all 9 supported languages. Every user-facing screen — the resume builder, industry and role keyword panels, job match analysis, recruiter simulation, score cards, elevator pitch generator, resume roast, live activity indicators, scan credit counter, and more — now displays in your chosen language. Previously, many of these screens defaulted to English regardless of your language setting."
+    },
+    "yourReportsSpeakYourLanguage": {
+      "title": "Your reports now speak your language",
+      "description": "All of our paid reports — Resume Score, Career Snapshot, Graduate Game Plan, Interview Coach, Career Path Simulator, and Apply Assistant — now generate their AI content and on-screen text in whichever of our 9 supported languages you've selected, instead of always defaulting to English. Tailored resumes and cover letters you submit to employers still stay in their original language by design, since translating an actual job application without asking could do more harm than good."
+    },
+    "translatedHomepageAndScanFlow": {
+      "title": "Translated the homepage and core scan flow",
+      "description": "The homepage, upload flow, pricing comparisons, and the full free-scan results page are now translated across all 9 supported languages — previously much of this only displayed in English regardless of your language setting."
+    },
+    "fixedAtsDefenseDelivery": {
+      "title": "Fixed ATS Defense report delivery",
+      "description": "Fixed a bug where ATS Defense reports could fail to generate automatically after purchase. If this affected you, your report should now generate correctly — please reach out if you still don't see it."
+    },
+    "moreReliableDownloads": {
+      "title": "More reliable PDF and Word downloads",
+      "description": "Fixed an issue where a name with certain special characters could produce a broken download filename. Also added a clear heads-up if your resume or report contains characters our PDF export can't fully render yet (mainly non-Latin scripts), instead of silently leaving them out."
+    },
+    "clearerMessagesHighDemand": {
+      "title": "Clearer messages when demand is high",
+      "description": "If our AI is briefly overloaded while generating your Interview Coach, Career Path, Career Snapshot, Graduate Game Plan, or Keyword Fix results, you'll now see a clear 'try again shortly' message across all of them, instead of a generic error on some."
+    },
+    "realIndustryComparisons": {
+      "title": "Real industry comparisons",
+      "description": "Your score is now compared against real data from actual resumes scanned in your industry, instead of a fixed estimate — so 'better than X% of similar resumes' actually means what it says."
+    },
+    "moreSpecificKeywordBulletInsights": {
+      "title": "More specific keyword and bullet point insights",
+      "description": "We now point to your actual bullet points that are missing measurable impact, and show real counts of missing keywords for your industry — specific to your resume, not generic examples."
+    },
+    "fixedWordUploads": {
+      "title": "Fixed Word document uploads",
+      "description": "Fixed a bug that caused .docx resume uploads to fail. If you tried uploading a Word document recently and it didn't work, please try again — it's fixed now. We also added a clear message for older .doc files (which need to be saved as .docx first) and for any other unsupported file type, instead of leaving you stuck with no explanation."
+    },
+    "purchaseRecoveryFix": {
+      "title": "Purchase recovery fix",
+      "description": "Fixed an issue where recovering a previous purchase (if you closed the tab before seeing your results) could fail. You can now recover your results using the link or session ID from your confirmation email."
+    },
+    "checkoutReliabilityFixes": {
+      "title": "Checkout reliability fixes",
+      "description": "Fixed a pricing bug in the custom scan-credit purchase flow that could charge more than the displayed price, and fixed an issue where Interview Coach and Career Path Simulator purchases could fail to deliver their content after payment. If you were affected by either, reach out and we'll make it right."
+    },
+    "moreMechanicalAtsChecks": {
+      "title": "More mechanical ATS checks",
+      "description": "Added two more deterministic checks to the ATS Parse Simulator: detection of icon-font characters (common in templates that use an icon font for the phone/email/LinkedIn symbols, which can leave gaps next to your contact info) and detection of flattened text from table-based layouts."
+    },
+    "faqSectionTranslationFixes": {
+      "title": "FAQ section and translation fixes",
+      "description": "Fixed an issue where the FAQ section showed raw placeholder text instead of real answers in every language but one, and filled in a handful of untranslated strings so every supported language is fully translated."
+    },
+    "publicChangelog": {
+      "title": "Public changelog",
+      "description": "Added this page, linked from the header and footer, so you can always see what's new, improved, or fixed."
+    },
+    "applyAssistant": {
+      "title": "Apply Assistant",
+      "description": "Paste a job posting and get a resume tailored to that specific role, a matching cover letter, an honest list of skill gaps (we don't fabricate experience you don't have), and a step-by-step checklist — reviewed and submitted by you, never auto-submitted on your behalf."
+    },
+    "atsParseSimulation": {
+      "title": "ATS Parse Simulation",
+      "description": "Added a second, fully mechanical check alongside the AI score: we detect missing section headers, unextractable contact info, missing dates, broken character encoding from PDF font issues, and even multi-column layouts that get scrambled by real ATS text parsers — all deterministic, reproducible findings, not a model's guess."
+    },
+    "realSemanticJobMatching": {
+      "title": "Real semantic job matching",
+      "description": "Replaced literal keyword pattern-matching with genuine AI judgment that reads your resume and the job description together — so a skill phrased differently (or demonstrated through related experience) is now recognized correctly instead of requiring an exact text match."
+    },
+    "resumeBuilder": {
+      "title": "Resume Builder",
+      "description": "A structured resume editor with editable sections, a live preview, and one-click export to PDF or Word — prefilled automatically from your most recent scan."
+    },
+    "deeperInterviewCoachCareerPath": {
+      "title": "Deeper Interview Coach and Career Path Simulator",
+      "description": "The paid versions now go further than the free preview: 14 interview questions with full model answers using the STAR method, a 90-day action plan for each career path, and downloadable PDF reports for both."
+    },
+    "moreHonestScoring": {
+      "title": "More honest scoring",
+      "description": "Removed a scoring bug that let resumes inflate toward the middle of the scale, and tightened the AI's instructions so a genuinely weak resume now scores low — encouragement in the feedback no longer softens the actual number."
+    },
+    "fasterPageLoads": {
+      "title": "Faster page loads",
+      "description": "Cut the initial page size by more than half by only loading what each page actually needs — exports, less-common languages, and other pages no longer slow down your first visit."
+    },
+    "scannedPdfDetection": {
+      "title": "Scanned PDF detection",
+      "description": "If you upload a scanned image-based PDF with no selectable text, we now tell you immediately instead of silently analyzing blank content — with a clear suggestion to upload a text-based version or paste your resume directly."
+    },
+    "fiftyNineIndustries": {
+      "title": "59 industries — including the ones everyone else ignores",
+      "description": "Coverage now includes the job categories most resume tools skip entirely: administrative and office support (executive assistants, office managers, receptionists), drivers (truck, CDL, delivery, bus), library science, clergy and ministry, mining, maritime, landscaping, and janitorial services. Each comes with its own keyword library, job-title recognition, license detection, and score benchmarks. An 'Executive Assistant to the CFO' is now correctly read as administrative — not finance."
+    },
+    "resumeXray": {
+      "title": "Resume X-Ray: your actual document, annotated",
+      "description": "The report now shows your resume itself, line by line, with the analysis drawn directly on it: weak bullets get a red underline with the reason on hover, bullets with no numbers get an amber flag, and your strongest power words are highlighted green. It stops feeling like advice and starts feeling like an X-ray of your document."
+    },
+    "emailMyReport": {
+      "title": "Email me my report",
+      "description": "One click sends your scan summary — verdict, score, breakdown bars, top issues, and your minute-by-minute fix plan — to your inbox as a cleanly designed email, so you can work through the fixes later. Only the analysis results are sent, never your resume, and there are no follow-up emails unless you ask."
+    },
+    "scanReliability": {
+      "title": "Scans that never fail — and never change their mind",
+      "description": "Two reliability upgrades. First, if our AI reviewer is ever unavailable, you now get a full automated report (score, issues, quick wins) with a note and a free rescan hint — never an error page. Second, the same resume now gets the same industry classification every single time: high-confidence detections are remembered, so rescanning can't flip the answer."
+    },
+    "multilingualDetection": {
+      "title": "Industry detection in 8 languages",
+      "description": "Job titles in Spanish, German, French, Portuguese, Dutch, Hindi, and Tagalog now anchor industry detection just like English ones — a 'Krankenschwester' locks healthcare, an 'electricista' locks skilled trades, a 'नर्स' locks nursing, a 'guro' locks education. Coverage spans healthcare, legal, education, trades, hospitality, drivers, admin, childcare, beauty, and cleaning roles."
+    },
+    "reportVisualPolish": {
+      "title": "A report that reads like a dashboard",
+      "description": "Your score now counts up with color shifting from red through amber to green as it climbs. Your percentile is drawn on a real distribution curve with the top-25% zone shaded. Every bullet rewrite shows exactly what changed — deletions struck in red, additions highlighted in green, like a code review. And a one-page PDF summary of your whole report is one click away."
+    },
+    "freeAccounts": {
+      "title": "Free accounts: your scores, credits and purchases in one place",
+      "description": "Create a free account and every scan you run is saved to your personal dashboard: latest and best score, a score-over-time chart, your scan credit balance, and your full purchase history — past purchases appear automatically if you register with the same email. Sign in with a password or a one-click magic link. Your resume itself is still never stored, and the free scan works exactly the same without an account."
+    },
+    "accountToolkit": {
+      "title": "A job-search toolkit built into your account",
+      "description": "Signed-in users now get 15 free scans a day (up from 7) plus four new tools: a persistent fix checklist that saves your scan's fix plan and lets you tick items off before rescanning; a target score goal with a progress bar drawn right on your score chart; an application tracker for logging where you've applied, with status updates and the score you applied with; and scan compare — pick any two scans to see exactly what improved."
+    },
+    "jobBoard": {
+      "title": "Live job board with a fit check built in",
+      "description": "A new Jobs page pulls live openings straight from official company job boards (Greenhouse, Lever, and Ashby — 56 companies at launch) and adds the thing no job board offers: scan your resume against a posting before you spend an application on it. One click loads the posting into the free scanner; applying always happens on the company's own site. Find it in the footer or from your scan report's role suggestions."
+    },
+    "jobBoardV2": {
+      "title": "Job board: 146 companies, field filters, 10-minute freshness",
+      "description": "The live job board now pulls from 146 verified company boards — around 15,000 openings — and reaches far beyond tech: healthcare, finance, food and logistics, education, aerospace, retail and more. A new “All fields” filter routes you to your lane (nurse, accountant, warehouse lead — not just engineer), searches are shareable links, and your scan report opens the board pre-searched for your detected role. Under the hood the board refreshes every 10 minutes, and postings a company takes down disappear on the next pass — no dead listings."
+    },
+    "oneClickCapture": {
+      "title": "One-click email capture and the day-14 question",
+      "description": "Emailing yourself the report is now one click: if your address appears on your resume, the box comes pre-filled — clearly labeled, and nothing is sent unless you press Send. The optional fix-plan sequence gained a fourth email: two weeks after your scan we ask one question — did it get you interviews? — and every anonymous answer sharpens the public benchmarks. The sequence description now appears in all nine languages (it was English-only before)."
+    },
+    "jobTracker": {
+      "title": "Save jobs, track applications, watch searches — from your free account",
+      "description": "The job board grew again — 159 companies and about 20,000 openings, now including major employers on SmartRecruiters and Workable (Bosch, JYSK, Accor, Continental, Experian, Ubisoft). And your free account learned to work with it: bookmark any posting and it lands in your application tracker with the job description attached, ready for a one-click fit check. Click Apply while signed in and the row marks itself applied, with the date. Save a search — say, remote healthcare roles — and your account shows how many new postings match since you last looked. Job hunting, with a memory."
+    },
+    "fitRankedBoard": {
+      "title": "The job board now ranks 25,000 openings against your resume",
+      "description": "Scan your resume, open the board, and hit “Rank by my fit”: every posting gets a fit score — deterministic keyword coverage against your actual resume, fully reproducible, no AI guesswork — and the list sorts best-first. In our live test, a nurse's resume scored 17–24% on nursing roles and 3% on everything else; that gap is the point. Also new: salary on the card where company feeds publish it, “Today / This week” freshness filters, and 35 more companies — SpaceX, OpenAI, Securitas, ServiceNow, Rocket Lab, Sodexo — bringing the board to 194 companies and roughly 25,000 live openings."
+    },
+    "groundedApplyKits": {
+      "title": "Application kits: tailored resumes that are fact-checked, in templates worth submitting",
+      "description": "The Apply Assistant's tailored resume is now verified, not just instructed: every employer, job title, school, and date in the output is checked against your original resume, unsupported skills are removed and disclosed, and if generation invents anything twice we refuse to deliver rather than ship fiction — you'll see the fact-check banner on every kit. Choose from three ATS-safe templates (Modern, Classic, Compact) for both PDF and Word downloads. And the application tracker got smarter: saving a job from the board now attaches your latest resume version and computes your fit score automatically, and every tracked application offers a one-click kit — included with Pro."
+    },
+    "boardExpansion": {
+      "title": "609 companies, nearly 40,000 live openings",
+      "description": "The job board grew from 194 to 609 companies in one sweep — just under 40,000 live postings. We probed thousands of company career feeds across six official ATS providers (BambooHR is new), kept the 415 that answered with real openings, and unlocked full depth on the giants we already carried: Bosch, JYSK, Accor and Securitas now list thousands of roles each instead of their first 500. Accuracy scaled with volume: every new board's display name comes from the ATS provider itself — not our guess — and ten boards whose identity couldn't be verified were dropped rather than shipped mislabeled. Salary coverage more than doubled along the way. Same board, same fit-ranking, same 10-minute refresh loop — four times the jobs it launched with this morning."
+    },
+    "reportMatches": {
+      "title": "Your scan report now ends with live job matches",
+      "description": "The free scan no longer stops at a score and a fix plan — every report now closes with the top live openings matching your resume, ranked by the same deterministic fit scoring the report itself uses, drawn from the job board's ~40,000 postings and refreshed every ~10 minutes. Salary appears where companies publish it; Apply goes straight to the company's own page. And a free account keeps the whole thing alive between visits: save your resume version and the board ranks every opening against it whenever you return, saved searches count what's new since you last looked, and bookmarked jobs land in your application tracker with fit scores attached."
+    },
+    "boardTenVendors": {
+      "title": "185,000+ verified openings from 12,600+ companies — four new hiring systems added",
+      "description": "The board now reads companies' official feeds on ten hiring systems (Recruitee, Teamtailor, Personio and Breezy join Greenhouse, Lever, Ashby, SmartRecruiters, Workable and BambooHR). Every new company passed the same bar as the rest of the catalog: real corporate employers, verified against their own systems — no aggregators, no staffing mills. Same freshness rules too: nothing older than 30 days, re-checked live when you apply."
+    },
+    "seekerToolkit": {
+      "title": "Salary floors, live pay benchmarks, entry-level rankings, weekly trends — and you can talk back to the board",
+      "description": "You can now filter by a pay floor using only what postings themselves state (hourly and monthly rates annualized, never estimated), and category pages show the live median advertised pay floor once at least 30 postings state pay. Two new public pages: the Entry-Level Index ranks who's actually hiring early-career right now, and Weekly Hiring Trends counts real postings per week — coverage growth can never fake a spike. On the board itself: a skill-unlock insight shows the one missing keyword blocking the most matches, urgency chips flag companies that typically fill fast, repost flags mark serial relisters, you can watch a company, hide postings, and search filters as you type. And if a posting looks wrong, report it — a 'gone' report re-checks it against the company's own board on the spot."
+    },
+    "boardDestination": {
+      "title": "The job board is now the front door — and postings open right on the board",
+      "description": "Resume Booster now leads with the job board: the homepage opens on live counts and a straight path into 185,000+ verified openings. On the board itself, clicking any posting opens a full detail panel — complete description, stated salary, your fit score with the exact keywords you match and miss, company hiring-health, and one-click apply — and every posting now has its own shareable link. The first job is visible without scrolling (on your phone too — filters live behind one button now), cards got company monograms and a cleaner layout, 'For you' ranks the whole board against your resume as a first-class mode, and you can sort by highest stated salary — real published pay only, never estimates."
+    },
+    "measuredTrust": {
+      "title": "Freshness you can check, not just trust — measured and published live",
+      "description": "The Ghost Job Index now publishes the board's freshness as a live measurement: right now the median company feed was re-checked under an hour ago, with 95% of all feeds within about two hours — computed from per-feed verification stamps at the moment you load the page, never a marketing claim. The daily accuracy audit now samples every hiring system separately and publishes per-system results, so a problem with any one system can't hide inside a healthy average. Salary benchmarks are now computed per currency (a €50,000 posting no longer averages with a $50,000 one), and the pipeline gained a circuit breaker: if a hiring system's API ever breaks, the board freezes that system's data instead of showing — or deleting — the wrong thing."
+    },
+    "searchAliases": {
+      "title": "Search that speaks your shorthand — and shows its work",
+      "description": "Type “swe”, “rn”, “sdr” or 30 other common role abbreviations and the board now also searches the spelled-out role — always disclosed right under the search box (“also matching: software engineer”). And when a niche search matches inside a job description rather than the title, the card now shows the exact matching sentence, so you can see why every result is there. Plus: every job panel now links to the company's other open roles and to genuinely similar roles across the whole board."
+    },
+    "pipelineRhythm": {
+      "title": "Your pipeline now tells you what to do next",
+      "description": "The account dashboard opens with a “Do next” strip built from your own tracker: upcoming interviews first, then applications that have gone quiet for 7+ days (one tap marks them followed up), then saved jobs aging toward closure. Interviewing rows take an interview date, and the stat band now shows your applies-per-week momentum over the last 8 weeks — all from your own data, nothing invented."
+    },
+    "fresherFaster": {
+      "title": "New companies' jobs appear within minutes, not a day",
+      "description": "When we add newly discovered company boards, their postings used to wait a full rotation before first appearing. New boards now jump the queue and start flowing in minutes after a release. We also began dating BambooHR and Rippling postings from those companies' own detail feeds (their list feeds don't state dates), and published a per-vendor table on the Ghost Job Index showing exactly which hiring systems state post dates — because a date filter should tell you what it covers."
+    },
+    "plainLanguageSearch": {
+      "title": "Search the job board in plain English",
+      "description": "Just describe what you want — “remote product roles over $150k posted this week” — and the board translates it into real filters and applies them. It shows exactly how it read your search (“Remote · Product · $150k+ · This week”) so you can adjust anything, and it's honest about what it can't do: ask for “startups” and it tells you there's no filter for that yet rather than quietly ignoring it."
+    },
+    "smarterFinds": {
+      "title": "Search that suggests nearby roles — and forgives typos",
+      "description": "Search a role and the board now suggests the roles right next to it — search “registered nurse” and see care coordinator, clinical educator, charge nurse, one tap away — because the job that fits you is often one you didn't think to search. And a misspelling no longer dead-ends: type “desinger” and you'll get designer roles, clearly labelled as the closest matches."
+    },
+    "exploreBoard": {
+      "title": "A new way to explore — browse by who's actually hiring",
+      "description": "Not sure what to search? The new Explore page lets you browse by real signals computed live from companies' own boards: who's hiring fastest this week, companies that actually fill roles (not just post them), boards just added, entry-level-friendly employers, and where the pay is highest by field. Every list is real and clickable straight into the board."
+    },
+    "morningQueue": {
+      "title": "The Apply Agent: wake up to a reviewed shortlist",
+      "description": "Set your search once — keywords, field, salary floor, your résumé. Every night the agent scans the day's genuinely new postings, scores each one against your résumé, skips companies that churn re-listings, prioritizes proven hirers, and queues the best few — each pick labeled with its reasons. You review, you send; the agent never submits for you and never invents answers. $99/month in your account, everything in Pro included."
+    },
+    "boardFirstFive": {
+      "title": "The board meets you where you are",
+      "description": "First visit with no idea where to start? You now get an orientation view — live totals, the biggest fields, and clear paths in — instead of half a million roles newest-first. Drop your résumé straight onto the board and every opening shows your match score instantly. And the search bar now understands sentences: type 'remote senior data roles over $150k' and one tap on AI parse turns it into real filters — it even understands 'companies that actually hire' and 'highest paying first'."
+    },
+    "companyScale": {
+      "title": "Explore by company scale — enterprise, mid-market, startups",
+      "description": "A new Explore section segments the board by hiring footprint: Enterprise (500+ open roles), Mid-market (50–499), and Startups & small teams (3–49) — each with real stats: companies, open roles, remote share, entry-level share, and median stated pay. We don't guess headcount; the definition is the number you see, and giant boards show both our verified count and the company's own total."
+    },
+    "dataYouCanBelieve": {
+      "title": "Numbers you can check — a top-to-bottom accuracy pass",
+      "description": "We rebuilt every public stat on evidence. 'Companies that actually fill roles' now counts only roles that stayed posted a week or more and then came down — repost churn is disqualified and exposed in its own 'Serial re-posters' list (one retailer re-listed the same job 289 times in a week). Fabricated counts from capped feeds are gone, 70+ companies got their real names back, staffing agencies are no longer showcased as employers, a spam board was removed entirely, and every metric now states exactly how long we've been tracking it. Where the data is too young to support a claim, we show nothing rather than a guess."
+    },
+    "premiumLook": {
+      "title": "A sharper look for the whole platform",
+      "description": "A full design pass: a distinctive new display typeface, deeper layered surfaces, refined color and spacing, glass navigation, and quiet touches everywhere — aligned numbers, softer corners, a subtle signature glow. Same honest data, now dressed for it."
+    }
+  }
+}

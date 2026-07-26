@@ -217,7 +217,21 @@ export default function Explore() {
 
         {reposters.length > 0 && (
           <Section icon={Repeat} title={t("explore.repostTitle", "Serial re-posters")} blurb={t("explore.repostBlurb", "Companies that take roles down and re-list them again and again — measured from our own lifecycle tracking. Re-listing resets the posted date, so an opening can look brand-new long after it first appeared.")}>
-            <CompanyGrid rows={reposters} badge={(r) => t("explore.repostBadge", "“{{title}}” re-listed {{n}}× · {{events}} total in {{d}}d", { title: (r.worst_title ?? "").slice(0, 34), n: r.worst_count ?? 0, events: r.repost_events ?? 0, d: r.tracking_days ?? 0 })} />
+            <CompanyGrid rows={reposters} badge={(r) => {
+              // A re-list count far above the tracking window is a data artifact
+              // (bulk feed churn re-stamping ids), not something a reader should
+              // take literally — audit 2026-07-26 measured "289× in 8d". Cap the
+              // stated count at one re-list per tracked day and mark it as a
+              // floor rather than printing an impossible number.
+              const days = Math.max(1, r.tracking_days ?? 0);
+              const raw = r.worst_count ?? 0;
+              const capped = Math.min(raw, days);
+              return t(capped < raw ? "explore.repostBadgeCapped" : "explore.repostBadge",
+                capped < raw
+                  ? "“{{title}}” re-listed {{n}}+× · {{events}} total in {{d}}d"
+                  : "“{{title}}” re-listed {{n}}× · {{events}} total in {{d}}d",
+                { title: (r.worst_title ?? "").slice(0, 34), n: capped, events: r.repost_events ?? 0, d: r.tracking_days ?? 0 });
+            }} />
           </Section>
         )}
 

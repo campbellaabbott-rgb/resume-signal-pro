@@ -33,6 +33,7 @@ import { postTrackEvent, getVisitorId } from "@/lib/track-transport";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { searchName, searchToQuery } from "@/lib/job-search-params";
+import { companyDisplayName } from "@/lib/company-display";
 import { displaySalary } from "@/lib/salary-display";
 import { adjacentRoles } from "@/lib/role-adjacency";
 import { accentFor } from "@/lib/category-accent";
@@ -503,6 +504,8 @@ export default function Jobs() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [fitFetching, setFitFetching] = useState<string | null>(null);
   const [error, setError] = useState(false);
+  // "query" = the CDN WAF rejected the search string; "load" = anything else.
+  const [errorKind, setErrorKind] = useState<"load" | "query">("load");
   const reqSeq = useRef(0);
   const { session } = useAuth();
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
@@ -814,6 +817,12 @@ export default function Jobs() {
       } catch (e) {
         if (seq !== reqSeq.current) return; // superseded request failed — not user-visible, don't log or flag
         console.error("[Jobs] list failed:", e);
+        // A query carrying SQL-ish metacharacters is bounced by the CDN WAF
+        // BEFORE it reaches the function, and the reply is an HTML challenge
+        // page the client can't parse (audit 2026-07-26). Blaming "the board"
+        // sends the user to retry the same doomed query; naming the real cause
+        // lets them fix it in one edit.
+        setErrorKind(/['";\\]|--|\/\*|\bunion\b|\bselect\b/i.test(q) ? "query" : "load");
         setError(true);
       } finally {
         if (seq === reqSeq.current) {
@@ -2032,7 +2041,7 @@ export default function Jobs() {
               <div className="flex flex-wrap items-center gap-2 text-[11px]">
                 <span className="inline-flex items-center gap-1 text-success">
                   <ShieldCheck className="w-3.5 h-3.5" />
-                  {t("jobsPage.trustBadge", "Verified direct from {{company}}", { company: detailJob.company })}
+                  {t("jobsPage.trustBadge", "Verified direct from {{company}}", { company: companyDisplayName(detailJob.company) })}
                 </span>
                 {detailJob.lastSeen && (
                   <span
@@ -3142,10 +3151,20 @@ export default function Jobs() {
             </ul>
           ) : error ? (
             <div className="py-16 text-center">
-              <p className="text-sm text-muted-foreground mb-3">{t("jobsPage.error", "The board couldn't load right now.")}</p>
-              <Button variant="outline" size="sm" onClick={() => fetchJobs(0)}>
-                {t("jobsPage.retry", "Try again")}
-              </Button>
+              <p className="text-sm text-muted-foreground mb-3">
+                {errorKind === "query"
+                  ? t("jobsPage.errorQuery", "That search contains characters our security filter blocks (quotes, semicolons, slashes). Try the words on their own.")
+                  : t("jobsPage.error", "The board couldn't load right now.")}
+              </p>
+              {errorKind === "query" ? (
+                <Button variant="outline" size="sm" onClick={() => setQ("")}>
+                  {t("jobsPage.clearSearch", "Clear the search")}
+                </Button>
+              ) : (
+                <Button variant="outline" size="sm" onClick={() => fetchJobs(0)}>
+                  {t("jobsPage.retry", "Try again")}
+                </Button>
+              )}
             </div>
           ) : jobs.length === 0 ? (
             /* Server-zero: an actionable exit, never a dead end. Each button is
@@ -3497,7 +3516,7 @@ export default function Jobs() {
                             title={t("jobsPage.trustBadgeTip", "Pulled directly from this company's official applicant-tracking feed — not an aggregator or a scraped copy. Re-checked live when you click Apply.")}
                           >
                             <ShieldCheck className="w-3 h-3 text-success shrink-0" />
-                            {t("jobsPage.trustBadge", "Verified direct from {{company}}", { company: job.company })}
+                            {t("jobsPage.trustBadge", "Verified direct from {{company}}", { company: companyDisplayName(job.company) })}
                           </span>
                           {/* Hiring-intent signal: a company with many fresh, still-open
                               roles is demonstrably hiring — the anti-ghost-job tell. The

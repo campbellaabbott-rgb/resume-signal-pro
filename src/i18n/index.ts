@@ -91,6 +91,45 @@ const lazyLocaleLoaders: Record<string, () => Promise<{ default: Record<string, 
   pt: () => import('./locales/pt.json'),
 };
 
+// Changelog entries are ~80KB per locale — 30% of the whole file — and only
+// /changelog ever renders them. They load on demand instead of riding in the
+// bundle every visitor downloads before the board can paint (measured
+// 2026-07-26: 270KB en.json, 81KB of it release notes).
+const changelogLoaders: Record<string, () => Promise<{ default: Record<string, unknown> }>> = {
+  en: () => import('../i18n/changelog/en.json'),
+  'en-GB': () => import('../i18n/changelog/en-GB.json'),
+  es: () => import('../i18n/changelog/es.json'),
+  hi: () => import('../i18n/changelog/hi.json'),
+  tl: () => import('../i18n/changelog/tl.json'),
+  de: () => import('../i18n/changelog/de.json'),
+  fr: () => import('../i18n/changelog/fr.json'),
+  'fr-CA': () => import('../i18n/changelog/fr.json'),
+  nl: () => import('../i18n/changelog/nl.json'),
+  pt: () => import('../i18n/changelog/pt.json'),
+};
+const changelogLoaded = new Set<string>();
+
+/** Pull in the changelog strings for a language. Called by the /changelog
+ *  route; safe to call repeatedly and safe to fail (the page falls back to
+ *  English, and English itself is one small fetch). */
+export async function loadChangelogStrings(lng?: string): Promise<void> {
+  const target = lng ?? i18n.language ?? 'en';
+  for (const code of [target, 'en']) {
+    if (!code || changelogLoaded.has(code)) continue;
+    const loader = changelogLoaders[code];
+    if (!loader) continue;
+    try {
+      const mod = await loader();
+      // deep merge: the bundle already holds this locale's other namespaces
+      i18n.addResourceBundle(code, 'translation', mod.default, true, true);
+      changelogLoaded.add(code);
+    } catch (e) {
+      console.warn(`[i18n] changelog strings failed for "${code}":`, e);
+    }
+  }
+  if (i18n.language === target) i18n.emit('languageChanged', target);
+}
+
 async function loadLocale(lng: string): Promise<void> {
   if (lng === 'en' || i18n.hasResourceBundle(lng, 'translation')) return;
 

@@ -1,9 +1,11 @@
+import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Header } from "@/components/Header";
 import { SEO } from "@/components/seo/SEO";
 import { Footer } from "@/components/Footer";
 import { cn } from "@/lib/utils";
 import { changelog, ChangelogTag } from "@/data/changelog";
+import { loadChangelogStrings } from "@/i18n";
 import { Sparkles, TrendingUp, Wrench } from "lucide-react";
 
 const tagIcons: Record<ChangelogTag, typeof Sparkles> = {
@@ -27,6 +29,9 @@ function formatEntryDate(iso: string, locale: string): string {
 }
 
 export default function Changelog() {
+  // Release-note strings are not in the main bundle — fetch them here.
+  useEffect(() => { void loadChangelogStrings(); }, []);
+
   const { t, i18n } = useTranslation();
 
   return (

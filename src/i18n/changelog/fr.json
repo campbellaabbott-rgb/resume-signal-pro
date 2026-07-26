@@ -1,0 +1,680 @@
+{
+  "changelogEntries": {
+    "countryDetectionFix": {
+      "title": "Corrigé : certains CV étaient associés au marché du mauvais pays",
+      "description": "Un bug de détection pouvait lire des termes cloud comme “EC2” comme un code postal londonien et ignorer les numéros américains écrits sans +1 : certains CV américains recevaient donc des conseils pour le marché britannique, présentés avec assurance. C'est exactement l'erreur que ce produit existe pour éviter, et c'est corrigé : 22 tests de régression verrouillent les cas, les CV ambigus s'appuient désormais sur votre localisation réelle plutôt que sur un tirage au sort, et chaque rapport indique comment votre marché a été choisi — votre sélection, les indices du CV ou votre localisation — pour qu'une supposition ne puisse plus se faire passer pour une certitude."
+    },
+    "semanticSearch": {
+      "title": "La recherche comprend désormais le sens, pas seulement les mots",
+      "description": "Quand une recherche ne trouve aucun titre correspondant, le tableau cherche des postes au sens équivalent : “analyste infosec” peut faire remonter des offres d'ingénieur sécurité même si aucune annonce ne contient vos mots exacts. La page indique clairement quand les résultats sont des correspondances par le sens, et vos filtres ne sont jamais ignorés en silence."
+    },
+    "morningEmails": {
+      "title": "Les e-mails auxquels vous étiez inscrit partent enfin",
+      "description": "Deux boucles d'e-mails étaient construites et acceptées, mais jamais reliées à un planning — personne ne les a donc reçues. Corrigé : la sélection nocturne de l'Apply Agent arrive chaque matin avec les mêmes raisons que la file, et les abonnés au pouls du marché reçoivent enfin leur synthèse mensuelle. Les deux sont opt-in — au plus un e-mail matinal par jour et un pouls par mois — avec désinscription en un clic."
+    },
+    "fullJobDescriptions": {
+      "title": "Les descriptions de poste se chargent désormais sur bien plus d offres",
+      "description": "Certaines entreprises publient le texte de leurs offres via un flux distinct que nous ne lisions pas: de nombreuses annonces s ouvraient donc sans aucun contenu, et le score de correspondance ne disposait d aucun texte. Nous récupérons maintenant ce texte pour les portails Workday, BambooHR, SmartRecruiters, Breezy et Oracle, et les descriptions Workable et Pinpoint arrivent directement avec l annonce. Tout ce que vous ouvrez est enregistré et se charge instantanément la fois suivante. Lorsqu une entreprise ne publie réellement aucune description, nous continuons à ne rien afficher plutôt qu une estimation."
+    },
+    "accountHq": {
+      "title": "Votre compte devient le centre de contrôle",
+      "description": "Le compte a eu droit à une vraie refonte : une navigation fixe par sections (Aperçu, Pipeline, Recherches, CV) pour que rien ne soit enfoui ; un rapport « Quoi corriger ensuite » montrant les compétences les plus souvent absentes de votre CV parmi vos postes cibles — avec les comptes et un clic pour les intégrer via le builder ; les entretiens à venir réunis en un coup d'œil ; une checklist qui guide les nouveaux comptes vers la boucle de recherche complète ; un accès clair à la file du matin ; et chaque e-mail hebdomadaire dans un seul panneau E-mails et alertes."
+    },
+    "boardContinuity": {
+      "title": "Tableau plus fluide : badges de candidature, meilleure première visite, polissage mobile",
+      "description": "Les offres auxquelles vous avez déjà candidaté portent désormais une coche discrète sur les cartes et dans la comparaison — vous ne relirez plus une offre déjà traitée sans le savoir. Votre suivi de candidatures montre aussi le comportement de chaque employeur (pourvoit vraiment, ou republie souvent) là où vous attendez une réponse. Les nouveaux visiteurs reçoivent trois points de départ en un clic — publiées aujourd'hui, entreprises qui pourvoient, salaire indiqué uniquement. Sur mobile, la description passe en premier et les sections démarrent repliées ; les faits employeur se chargent avec un indicateur au lieu d'apparaître en retard."
+    },
+    "decisionPanel": {
+      "title": "Les faits sur l'entreprise là où vous décidez — et des descriptions plus lisibles",
+      "description": "Le panneau de détail montre désormais qui vous rejoindriez vraiment : effectif vérifié, chiffre d'affaires et rentabilité des sociétés cotées et (pour les déposants H-1B) salaires déclarés — les mêmes faits sourcés que sur les pages entreprise, désormais à côté de chaque offre. Les longues descriptions se replient en sections quand l'offre a des titres clairs, avec vos surlignages conservés. La comparaison inclut désormais le mode de travail, la taille et les finances ; le tableau indique son ordre de tri ; et les utilisateurs connectés retrouvent leurs recherches en un clic."
+    },
+    "secFilings": {
+      "title": "Connaître l'entreprise : dépôts SEC sur les pages d'embauche",
+      "description": "Les pages de 178 employeurs cotés aux États-Unis montrent désormais quel type d'entreprise vous rejoindriez : le chiffre d'affaires des trois derniers exercices avec une mini tendance, la rentabilité et le ticker — tirés des propres dépôts SEC de l'entreprise (10-K/20-F), avec lien vers la source. Tels que déposés, jamais estimés."
+    },
+    "payTransparency": {
+      "title": "Étiquettes de mode de travail définitives, fourchettes complètes et l'Indice de Transparence Salariale",
+      "description": "Télétravail, hybride et sur site sont désormais trois étiquettes définitives, tirées du champ de l'ATS de l'employeur ou du texte explicite de l'annonce — affichées seulement quand l'employeur le dit vraiment. Le salaire stocke et affiche maintenant la fourchette complète avec sa période d'origine, et le nouvel Indice de Transparence Salariale classe métiers, systèmes et grands employeurs selon leur part d'annonces avec salaire. Explore gagne une collection d'employeurs transparents qu'aucune entreprise ne peut acheter."
+    },
+    "fairDataPromise": {
+      "title": "Promesse de données justes, employeurs vérifiés et 7 matins d'Agent gratuits",
+      "description": "Trois choses en même temps. D'abord, une politique écrite : aucune entreprise ne peut payer pour changer ce que disent nos données — taux de pourvoi, signaux de rotation et badges sont calculés à partir des offres observées et ne sont pas à vendre (voir la page Confiance). Ensuite, les employeurs peuvent revendiquer leur page en vérifiant un e-mail professionnel à leur propre domaine et obtenir le badge Employeur vérifié — identité seulement, jamais de droits d'édition. Enfin, l'Agent de candidature commence désormais par 7 matins gratuits : réveillez-vous avec une vraie sélection avant de payer quoi que ce soit."
+    },
+    "companyIntel": {
+      "title": "Des pages entreprise qui parlent vraiment de l'entreprise",
+      "description": "Chaque page entreprise s'ouvre désormais sur des faits sourcés : effectif vérifié avec sa base, postes nets ajoutés cette semaine, médiane salariale déclarée par l'entreprise elle-même et ses principaux domaines de recrutement. Sous les offres, une section « entreprises similaires » montre qui recrute aussi dans le même domaine. Les segments par taille d'Explorer ont gagné des centaines d'effectifs vérifiés (Bosch, H&M, GM, Tyson…) et chaque bande s'étend désormais à sa liste complète."
+    },
+    "board450k": {
+      "title": "Plus de 450 000 offres vérifiées — Pinpoint devient le 13e système",
+      "description": "Nouvelle vague de croissance : plus de 450 000 offres actives de plus de 20 000 entreprises, toutes issues du système de recrutement de chaque entreprise. Nouveautés : Pinpoint comme 13e système, la plateforme européenne de Greenhouse (des centaines d'employeurs européens) et des milliers de tableaux supplémentaires. Nous avons aussi resserré l'entrée : c'est un tableau d'entreprises, et quelques tableaux gouvernementaux qui s'étaient glissés ont été retirés."
+    },
+    "smartSearch": {
+      "title": "Une recherche qui comprend ce que vous cherchez",
+      "description": "La recherche est devenue intelligente. Les résultats sont classés par pertinence — titres d'abord — et la recherche parcourt aussi les descriptions complètes, donc les compétences de niche remontent même hors du titre. Le champ suggère pendant la frappe, les \"phrases exactes\" entre guillemets fonctionnent, un geste bascule entre pertinence et plus récent, et les pastilles de catégories avec compteurs en direct montrent toute l'étendue du tableau."
+    },
+    "boardCraft": {
+      "title": "Un tableau plus rapide et plus agréable — sur tous les appareils",
+      "description": "Plein d'améliorations : ⌘K ouvre les actions rapides, ? affiche les raccourcis, / va à la recherche. Le filtre entreprise est en saisie prédictive, la vue compacte affiche trois fois plus d'offres, \"Reprendre\" retrouve vos offres consultées, et chaque offre a un lien de partage. Chaque offre indique aussi sa dernière revérification, les salaires s'affichent de façon cohérente, et la mise en page mobile a été entièrement revue."
+    },
+    "board300k": {
+      "title": "Plus de 300 000 offres vérifiées — Workday devient le 12e système",
+      "description": "Le tableau a triplé en une semaine : plus de 300 000 offres actives de plus de 16 000 entreprises, toutes récupérées directement depuis le système de recrutement de chaque entreprise. Nouveauté : Workday — le système utilisé par nombre des plus grands employeurs mondiaux — plus des milliers de nouveaux tableaux sur les douze systèmes."
+    },
+    "freshFirst": {
+      "title": "Les offres récentes d'abord : filtres de date honnêtes et détection plus rapide",
+      "description": "Les filtres Aujourd'hui et Cette semaine ne comptent plus que les dates indiquées par l'entreprise elle-même — jamais notre date de découverte. Les tableaux qui publient souvent sont revérifiés plus fréquemment, donc les nouvelles offres apparaissent plus tôt. Les offres Workday arrivent avec l'ancienneté indiquée par l'entreprise."
+    },
+    "accurateDates": {
+      "title": "Des anciennetés d'offres fiables — et un filtre par pays",
+      "description": "Toutes les statistiques d'ancienneté n'utilisent que des dates indiquées par l'entreprise, et chaque carte précise l'origine de sa date. Le tri par salaire reconnaît la devise : un montant en pesos ne peut plus dépasser un montant en dollars. Et vous pouvez désormais filtrer par pays — plus de 60 pays, uniquement quand l'offre le précise."
+    },
+    "matchingResume": {
+      "title": "Épinglez le CV exact utilisé par toute la plateforme pour le matching",
+      "description": "Votre compte contient désormais un CV de référence explicite : épinglez un scan ayant conservé son document, ou collez le CV exact que vous envoyez, et le classement par affinité du tableau, vos alertes par e-mail et les brouillons de l'agent de candidature s'appuieront tous sur ce document. Sans épinglage, rien ne change : tout continue d'utiliser votre dernier scan, comme avant."
+    },
+    "ghostJobIndex": {
+      "title": "Le Ghost Job Index : nous auditons notre propre tableau et publions le chiffre",
+      "description": "Une nouvelle page publique présente les chiffres réels et honnêtes du tableau : combien de postes vérifiés sont ouverts en ce moment, l'âge médian d'une annonce, la vitesse réelle à laquelle les postes sont pourvus et quelles entreprises recrutent le plus activement. En coulisses, le tableau s'audite désormais chaque jour — une centaine d'annonces tirées au hasard, chacune revérifiée auprès du système de l'entreprise — et publie le pourcentage confirmé actif. Les garanties de toujours sont désormais affichées d'emblée : rien de plus de 30 jours ne reste listé, et chaque annonce est revérifiée en direct au moment où vous cliquez sur Postuler."
+    },
+    "hiringHealth": {
+      "title": "Santé du recrutement : voyez quelles entreprises pourvoient vraiment leurs postes",
+      "description": "Le tableau suit désormais le cycle de vie complet de chaque annonce — son ouverture et le moment où l'entreprise la retire — et en fait un signal qu'aucun agrégateur ne peut offrir. Les pages entreprise montrent combien de postes une entreprise a pourvus ou fermés au cours des 90 derniers jours et à quelle vitesse, un badge « Recrute activement » distingue les entreprises au comportement récent avéré, et un filtre du tableau permet de ne parcourir que celles-ci. Construit honnêtement : quand les données manquent encore, le panneau dit qu'il collecte toujours plutôt que de deviner."
+    },
+    "salaryAndDedupe": {
+      "title": "Le salaire sur plus d'annonces, et le même poste n'inonde plus la liste",
+      "description": "Beaucoup d'entreprises indiquent la fourchette de salaire dans le texte de l'annonce même quand leur système n'a pas de champ salaire — le tableau la lit désormais dans les mots mêmes de l'annonce, jamais une estimation, si bien que le salaire apparaîtra sur de plus en plus de cartes dans les prochaines semaines. Quand une entreprise publie le même poste dans plusieurs villes, vous voyez maintenant une seule carte avec un volet « même poste dans N autres lieux » au lieu d'un mur d'annonces quasi identiques — chaque lieu reste ouvert à candidature. Et les pages entreprise répondent désormais à la question que les gens cherchent vraiment — « cette entreprise recrute-t-elle ? » — avec un décompte vérifié en direct."
+    },
+    "applyAgent": {
+      "title": "L'agent de candidature : les vraies questions du formulaire, répondues depuis votre CV — jamais inventées",
+      "description": "Les annonces Greenhouse portent désormais un bouton « Préparer les réponses ». L'agent récupère les vraies questions de la candidature depuis le système de l'entreprise, rédige des réponses strictement ancrées dans votre CV et signale ce qu'il ne peut pas étayer au lieu de l'inventer — les questions d'identité, de salaire et démographiques vous restent toujours réservées. Le même panneau adapte votre CV au poste, rédige une lettre de motivation, prépare les questions d'entretien probables, vous prévient si vous avez déjà candidaté et affiche la garantie d'honnêteté d'emblée. Vous relisez tout et envoyez sur le site de l'entreprise — il ne candidate jamais à votre place."
+    },
+    "explainableFit": {
+      "title": "Une affinité lisible : ce que vous avez, quoi ajouter, et des alertes réservées aux fortes correspondances",
+      "description": "Les cartes classées par affinité montrent désormais les deux faces du score : « Vous avez déjà : » à côté de « À ajouter pour rivaliser : », de sorte que le classement s'explique de lui-même au lieu d'être un simple chiffre. Les e-mails de recherches enregistrées gagnent un seuil d'affinité — choisissez « forte affinité uniquement » et nous ne vous écrivons que pour les nouveaux postes qui le franchissent, évalués contre votre CV, en restant silencieux sinon. Et avec assez de candidatures suivies, votre compte affiche votre taux d'entretien selon l'affinité de candidature — pour voir où vos candidatures convertissent vraiment."
+    },
+    "boardScaleUp": {
+      "title": "Le vivier d'entreprises fait plus que doubler : plus de 8 600 employeurs vérifiés sur le job board",
+      "description": "Une mise à niveau de la base de données a levé l'ancien plafond de capacité du job board : tous les employeurs propres restants de notre recensement des grandes plateformes de recrutement sont montés à bord. Le vivier est passé d'environ 3 900 à plus de 8 600 entreprises, chacune vérifiée en direct via l'API publique officielle de sa plateforme et nommée d'après les données de la plateforme elle-même. Les offres actives grimpent à mesure que les nouveaux boards arrivent, selon les mêmes règles que toujours : chaque offre vient directement du board de l'entreprise, les agrégateurs et les cabinets d'intérim sont exclus, et rien ne reste listé plus de 30 jours. Le board est aussi devenu plus propre et plus rapide : quelques entreprises qui apparaissaient deux fois sous des noms à casse différente ont été dédupliquées, des rôles mal classés (optométristes, directeurs artistiques, enseignants de maternelle) sont sortis d'« Autres » vers leurs bons domaines, et la page emplois charge deux fois moins de données — le filtrage est plus réactif."
+    },
+    "comeBackSignals": {
+      "title": "Votre compte vous dit désormais quand ça vaut la peine de revenir",
+      "description": "Trois améliorations discrètes qui transforment le board en boucle plutôt qu'en visite unique. Le récapitulatif hebdomadaire par e-mail des recherches enregistrées est désormais réellement envoyé — il y avait un bouton d'inscription mais rien de planifié derrière, donc les recherches inscrites ne recevaient rien ; désormais un e-mail part environ chaque semaine quand de nouvelles offres correspondent, avec une désinscription en un clic qui fonctionne. La carte des recherches enregistrées de votre compte affiche d'abord le total qui compte : combien de nouvelles offres correspondent à vos recherches depuis votre dernière visite, à un clic de la recherche la plus fournie. Et quand une offre à laquelle vous avez postulé est retirée, le suivi ne vous laisse plus dans une impasse : il ramène des offres actives pour le même rôle directement depuis le board, pour garder votre élan."
+    },
+    "fitFirstBoard": {
+      "title": "Le tableau s'ouvre désormais classé selon votre CV",
+      "description": "Analysez votre CV une seule fois et le tableau s'ouvre déjà trié par pertinence, sans clic supplémentaire. Chaque offre affiche un niveau de correspondance en langage clair (Bonne correspondance, Correspondance possible ou Peu probable) plutôt qu'un pourcentage brut, avec la couverture exacte des mots-clés au survol et les termes précis à ajouter pour être compétitif. Chaque carte indique qu'elle provient directement du système de recrutement officiel de l'entreprise — jamais d'un agrégateur ni d'une copie récupérée — et elle est revérifiée en direct dès que vous cliquez sur Postuler. Dans votre compte, le copilote de candidatures prépare désormais en priorité vos offres enregistrées les mieux notées : si vous atteignez la limite quotidienne, les meilleures sont déjà prêtes."
+    },
+    "fieldPages": {
+      "title": "Parcourez le board par domaine : 17 pages dédiées avec compteurs en direct",
+      "description": "Chaque domaine du board — Ingénierie & IT, Santé & Clinique, Finance & Comptabilité, Hôtellerie & Commerce, et 13 autres — a désormais sa propre page sur /jobs/field avec les offres actives du domaine et le filtre déjà appliqué. Chaque page affiche le nombre réel d'offres du domaine, mesuré sur le corpus en direct à la dernière compilation du site (Ingénierie & IT : 21 610 à l'heure où nous écrivons). Nos 59 guides de mots-clés par industrie renvoient directement vers leur domaine, en anglais et en espagnol. Mêmes règles que partout : uniquement les flux officiels des entreprises, et la candidature se fait sur le site de l'entreprise."
+    },
+    "boardSelfTuning": {
+      "title": "Le board s'ajuste et se surveille désormais tout seul",
+      "description": "Trois améliorations discrètes derrière le board de 90 000 offres. La voie rapide se reclasse toute seule : après chaque passe de rafraîchissement, les tableaux avec le plus d'offres actives reçoivent automatiquement la cadence de re-vérification la plus rapide — une entreprise en pleine embauche accélère sans qu'on touche à rien. Les offres qui arrivent sans date de publication (certains flux n'en incluent jamais) utilisent désormais leur heure de première apparition pour le tri et les filtres de fraîcheur, donc elles ne peuvent plus couler au fond sans être vues — les dates affichées restent uniquement celles publiées par l'entreprise. Et le rafraîchissement se surveille lui-même : s'il s'arrête, nous sommes alertés en moins d'une heure, avant que quiconque remarque un board périmé. La catégorisation s'est aussi affinée — les postes IT interne, service desk, recherche, relations investisseurs, direction de district et vente au détail en français qui arrivent maintenant se classent dans leur bon domaine au lieu d'Autres."
+    },
+    "board90k": {
+      "title": "Le job board double : ~90 000 offres actives de près de 900 entreprises",
+      "description": "Le board est passé d'environ 40 000 à environ 90 000 offres actives. Nouveaux cette fois : de grands employeurs comme AECOM, Domino's, SGS, Veolia, Carvana, Turner & Townsend, Eurofins, Sopra Steria, Greene King, BAYADA Home Health Care, CROSSMARK, EōS Fitness et BoxLunch — avec beaucoup de santé, d'ingénierie, de restauration, de commerce, d'hôtellerie et de laboratoire, pas seulement de la tech. Chaque entreprise est entrée de la même façon : trouvée dans un recensement des grandes plateformes de recrutement, vérifiée auprès de l'API publique officielle de la plateforme et nommée d'après les registres de la plateforme elle-même. Ce recensement a aussi révélé des agrégateurs et des flux d'offres republiées : nous les avons exclus — chaque offre ici appartient à l'entreprise qui l'a publiée. Le rafraîchissement s'est adapté à la taille : les plus gros tableaux sont re-vérifiés toutes les 10–15 minutes et tout le catalogue est re-vérifié en quelques heures, donc les offres retirées continuent de disparaître à la passe suivante."
+    },
+    "suiteV2": {
+      "title": "Des prix plus simples, une vraie garantie et de l'aide pour postuler",
+      "description": "Trois changements dans les outils payants. La page tarifs présente désormais trois choix clairs au lieu d'un mur de treize — le catalogue complet reste accessible en un clic. Chaque outil payant inclut désormais un engagement : pas satisfait du résultat ? Nous le régénérons gratuitement. Et après avoir comparé votre CV à une vraie offre, le rapport peut préparer cette candidature précise — CV adapté, lettre assortie, liste honnête des écarts — avec un aperçu gratuit depuis votre propre CV avant de payer."
+    },
+    "roleTargeting": {
+      "title": "Votre rapport vous dit désormais à quoi postuler",
+      "description": "Chaque scan gratuit se termine maintenant par un plan d'action, pas seulement une note. Une nouvelle carte liste les postes pour lesquels votre CV passe réellement le filtre — issus de la même détection que votre score, avec des recherches orientées vers votre marché cible — plus les postes à votre portée via votre force secondaire, avec une note honnête sur l'écart réel. Et si vous avez scanné sans offre d'emploi, le rapport propose désormais l'étape la plus rentable : collez une vraie offre et rescannez selon ses exigences exactes, gratuitement."
+    },
+    "countryCvPages": {
+      "title": "Les règles du CV dans 56 pays — gratuit, en 6 langues",
+      "description": "Nouveau : un guide par pays de ce à quoi ressemble vraiment un CV dans 56 marchés — normes de photo (avec statistiques et lois réelles), longueur attendue, données personnelles et nom du document local. Généré par le même moteur que le scanner applique quand votre CV vise ce marché, avec des pages en français, anglais, espagnol, allemand, portugais et néerlandais. Commencez sur /cv-standards."
+    },
+    "sharperGeo": {
+      "title": "Le scan suit désormais votre destination, pas seulement votre passé",
+      "description": "Écrivez « relocating to London » ou « seeking roles in Germany » et le scan se compare à votre marché de destination — avant, il vous jugeait sur votre lieu actuel. Il lit aussi les vraies adresses (état + ZIP américain, code postal canadien, adresse allemande) comme une preuve plus forte qu'une ville citée en passant, détecte ~34 pays de plus, et un second domaine spécialisé (comme infirmière + machine learning) apparaît désormais au lieu d'être noyé par la profession principale."
+    },
+    "resumeLanguageReports": {
+      "title": "Votre rapport parle désormais la langue de votre CV",
+      "description": "Analysez un CV rédigé en français, espagnol, allemand, portugais, néerlandais, italien, hindi ou tagalog et l'intégralité du rapport — conseils, points d'alerte, réécritures, suggestions de mots-clés — revient dans cette langue. Avant, cela ne fonctionnait que parfois ; désormais la langue est détectée de façon fiable avant le début de l'analyse, ce n'est plus une question de chance. Bonus : la langue de votre CV aide aussi à identifier votre marché de l'emploi, pour que les conseils par pays visent le bon endroit."
+    },
+    "sharperDetection": {
+      "title": "Détection de localisation et de secteur plus précise",
+      "description": "Votre rapport suit désormais le marché où vous êtes réellement, même si votre CV cite d'autres villes. Nous privilégions les vrais signaux (où vous êtes autorisé à travailler, votre système éducatif, votre téléphone) à une simple mention de ville, si bien qu'un candidat américain qui a « piloté le lancement à Londres » reste comparé au marché américain. Les CV polyvalents révèlent aussi un véritable second domaine : un directeur commercial qui fut aussi responsable marketing voit les deux couverts."
+    },
+    "previewBeforePay": {
+      "title": "Voyez un vrai échantillon de chaque outil payant avant d'acheter",
+      "description": "Fini d'acheter à l'aveugle. Chaque outil payant génère désormais un véritable extrait de ce que vous obtiendriez — à partir de votre propre CV — avant de payer. Interview Coach affiche une vraie question, les outils de réécriture montrent un avant-après authentique de l'une de vos lignes, et Freelance Boost transforme l'un de vos projets en une ligne de niveau recruteur. La même intégrité que la version payante : si votre CV ne justifie pas un chiffre, nous ne l'inventons pas."
+    },
+    "sharperPaidProducts": {
+      "title": "Freelance Boost et Interview Coach plus pointus",
+      "description": "Les deux sont désormais générés avec notre modèle le plus performant — des résultats nettement plus solides et précis pour les sections de CV et la préparation aux entretiens que vous payez. Même approche fondée et sans détails inventés ; un meilleur moteur derrière."
+    },
+    "smarterIndustryConfirm": {
+      "title": "L'analyse vous consulte quand votre domaine est vraiment incertain",
+      "description": "Si votre CV chevauche deux domaines — par exemple marketing et développement commercial, ou travail clinique et science des données —, l'analyse vous demande désormais de confirmer le secteur avant de trancher, au lieu d'en choisir un en silence au risque de se tromper."
+    },
+    "liveBenchmarks": {
+      "title": "Voyez comment les vrais CV se classent : benchmarks ATS en direct",
+      "description": "La page de benchmarks affiche désormais des distributions de scores ATS en direct issues de notre corpus réel d'analyses — médiane et quartiles globaux, benchmarks par secteur et médianes par niveau d'expérience, chacun avec sa taille d'échantillon. Et le compteur d'analyses de la page d'accueil reflète maintenant le vrai total cumulé."
+    },
+    "reportCardsFix": {
+      "title": "Corrigé : certaines parties de votre rapport ne s'affichaient pas",
+      "description": "Un bug d'affichage masquait discrètement plusieurs sections du rapport sur certains scans : les standards de CV par pays, l'analyse du parsing ATS, les gains rapides et le score ATS/recruteur, entre autres. Elles sont toutes de retour. Nous avons aussi ajouté une protection automatique pour qu'une section entière ne puisse plus disparaître silencieusement."
+    },
+    "targetMarketScan": {
+      "title": "Vous postulez à l'étranger ? Votre rapport suit l'emploi, pas votre pays",
+      "description": "Vous visez un poste dans un autre pays ? Indiquez où vous postulez et l'analyse évalue votre CV selon les normes de ce marché — attentes sur la photo et les données personnelles, références, etc. — au lieu de supposer votre localisation actuelle. Nous avons aussi étendu la détection automatique du pays pour que davantage de CV obtiennent d'eux-mêmes les bonnes règles locales."
+    },
+    "groundedAnalysis": {
+      "title": "Moins de fausses alertes « il vous manque ceci »",
+      "description": "Avant l'analyse, l'outil cartographie désormais la vraie structure de votre CV — sections, postes datés, coordonnées — il est donc bien moins susceptible de signaler comme manquant un élément qui est en réalité présent. Et quand un PDF ne s'extrait pas correctement, nous vous prévenons désormais que les résultats peuvent être peu fiables plutôt que de noter un texte illisible."
+    },
+    "guidesTab": {
+      "title": "Tous nos guides au même endroit",
+      "description": "Un nouvel onglet Guides rassemble tous nos tutoriels — pourquoi les CV sont rejetés, comment choisir les bons mots-clés, les CV de reconversion et de freelance, et plus encore. « Comment ça marche » se trouve désormais sur la page Confiance, à côté de notre méthodologie."
+    },
+    "honestClaims": {
+      "title": "Nos affirmations correspondent désormais à nos propres recherches",
+      "description": "Nous avons passé en revue tout le site et réécrit tout ce qui exagérait le fonctionnement du tri des CV. Aucune statistique inventée ni tactique alarmiste : ce que nous vous disons correspond à ce que notre propre analyse du comportement des ATS montre réellement."
+    },
+    "countryStandards": {
+      "title": "Votre rapport connaît désormais les règles locales : standards de 52 pays",
+      "description": "Vous scannez depuis l'Allemagne, le Japon ou le Golfe ? Votre rapport inclut désormais les normes de votre marché — règles de photo (la différence la plus sensible : attendue à Tokyo, éliminatoire à Toronto), attentes en données personnelles et vérifications spécifiques comme la clause RODO polonaise, le consentement italien et la ligne de statut de visa du Golfe. Vérifié en juillet 2026 ; les marchés moins documentés sont marqués comme indicatifs."
+    },
+    "fractionalMode": {
+      "title": "Dirigeants fractionnés : des rôles simultanés forment un portefeuille, pas de l'instabilité",
+      "description": "Le scanner reconnaît désormais le leadership fractionné et intérimaire — les mandats seniors qui se chevauchent ne sont plus lus comme de l'instabilité. Et Freelance Boost gagne un mode fractionné : une entrée portefeuille avec le périmètre par mandat (P&L, effectifs, stade), bâtie uniquement sur vos chiffres. Plus un nouveau guide pour structurer ces rôles."
+    },
+    "freelanceUpgrades": {
+      "title": "Freelance Boost : voyez la transformation avant de payer",
+      "description": "La page d'accueil montre désormais un exemple étiqueté avant/après de ce que produit la traduction. Collez un profil type Upwork dans le scanner gratuit et il dit la vérité — « ceci est un profil, pas un CV » — et vous oriente vers le bon outil. Et les résultats s'insèrent directement dans l'éditeur comme de vraies expériences, prêtes à exporter."
+    },
+    "honestMetricsFix": {
+      "title": "Corrigé : certaines tuiles du rapport affichaient des valeurs par défaut au lieu de vos données",
+      "description": "Un audit interne a révélé que lorsque l'analyse omettait certaines métriques, le rapport les remplissait en silence avec des valeurs identiques pour tous — y compris une liste de compatibilité par ATS qui n'a jamais été réelle. Tout cela a disparu : ces métriques sont désormais exigées de l'analyse, les comptes de mots/pages dérivent de votre document réel, et ce que nous ne pouvons pas mesurer est masqué plutôt qu'inventé. Nous le publions parce que la confiance est le produit."
+    },
+    "coachButtonFix": {
+      "title": "Corrigé : le bouton Interview Coach à 5 $ ouvrait le paiement à 25 $",
+      "description": "L'offre « Interview Coach — 5 $ » en fin de rapport menait au paiement de l'Analyse Complète à 25 $. Elle achète désormais exactement ce qu'elle annonce. Si cela vous est arrivé, contactez-nous pour un remboursement — sans questions."
+    },
+    "shareCards": {
+      "title": "Partagez votre avant/après — et votre roast",
+      "description": "Un geste ouvre désormais la feuille de partage de votre téléphone avec une image propre en pièce jointe. Rescanné après correction ? La carte devient votre progression : « 58 → 74, même grille les deux fois. » Et le Resume Roast reçoit enfin l'image partageable qu'il mérite — la punchline et le niveau de piquant, sans jamais aucun contenu de votre CV sur les cartes."
+    },
+    "fallbackParity": {
+      "title": "Le scanner de secours est désormais aussi bon que le principal",
+      "description": "Notre scanner de secours avait dérivé : tables de détection anciennes et modèle plus lent (environ 32 s contre 20 s). Il utilise désormais exactement les mêmes données de détection que le principal — espagnol compris — et l'ordre de modèles le plus rapide. Vous ne le rencontreriez qu'en cas de panne ; la rencontre serait désormais bien meilleure."
+    },
+    "paidDeliverablesAudit": {
+      "title": "Nous avons audité nos propres produits payants comme un éditeur impitoyable",
+      "description": "Nous avons généré et relu chaque livrable phare. Constats, corrigés le jour même : les lettres pouvaient contenir des [espaces réservés entre crochets] — désormais bannis ; les lettres doivent arriver prêtes à envoyer. La réécriture premium a un jour inventé une URL LinkedIn — une garde d'intégrité au niveau du code supprime désormais tout contact absent de votre original, en plus de consignes plus strictes. Les réponses types du coach d'entretien restent désormais ancrées dans votre vrai CV."
+    },
+    "typesetDelivery": {
+      "title": "Les réécritures premium deviennent de vrais documents",
+      "description": "Le CV réécrit du Pack Premium peut désormais s'ouvrir directement dans l'éditeur gratuit — un clic et c'est un PDF ou un document Word professionnellement mis en page, prêt à envoyer, au lieu de texte sur une page web."
+    },
+    "rescanRitual": {
+      "title": "Voyez votre avant/après — corrigez, exportez, rescannez",
+      "description": "En exportant depuis l'éditeur, un rescan en un clic de cette version exacte vous est proposé. Le nouveau rapport s'ouvre sur le delta : « 58 → 74, signaux d'alerte 5 → 2 — même grille les deux fois. » Une amélioration mesurée, pas seulement ressentie."
+    },
+    "applicationFit": {
+      "title": "Vérifiez l'adéquation de chaque candidature avec la version envoyée",
+      "description": "Dans votre suivi de candidatures, collez l'offre d'emploi et voyez quels mots-clés reconnus la version envoyée couvre — et lesquels manquent. Déterministe et reproductible : le dictionnaire est celui de nos tables de détection, sans IA."
+    },
+    "fixPlanDrip": {
+      "title": "Votre plan de correctifs en séquence de 7 jours — strictement opt-in",
+      "description": "Nouvelle option décochée par défaut à l'envoi du rapport par e-mail : vos correctifs majeurs au jour 2, le reste au jour 4, un rappel de rescan au jour 6. Trois e-mails au total, bâtis sur votre vrai plan, avec désinscription en un clic qui annule aussi les e-mails restants."
+    },
+    "personalOutcomeAnalytics": {
+      "title": "Votre propre taux d'entretiens, par tranche de score",
+      "description": "Après 5+ candidatures avec statuts, votre compte affiche le taux d'entretiens de vos propres candidatures groupé par score de CV — votre preuve personnelle de ce qui fonctionne, présentée avec l'honnêteté qu'imposent les petits échantillons."
+    },
+    "emailSuppressionFix": {
+      "title": "Corrigé : la désinscription annule désormais aussi les e-mails en file",
+      "description": "Notre file d'e-mails ne vérifiait pas la liste de suppression avant envoi — désinscriptions, rebonds et plaintes n'étaient pas pleinement appliqués au courrier en file. Désormais chaque e-mail non critique vérifie la liste au moment de l'envoi. Découvert en construisant la séquence du plan ; corrigé pour tout."
+    },
+    "outcomeTracking": {
+      "title": "Dites-nous comment ça s'est passé — le suivi des résultats commence",
+      "description": "Après chaque scan, vous pouvez signaler — anonymement — si ce CV a décroché des entretiens, depuis le rapport ou votre résumé par e-mail. Avec assez de réponses, nous publierons des données mesurées score-entretien, plutôt que le folklore que vend habituellement ce secteur."
+    },
+    "savedVersions": {
+      "title": "Enregistrez des versions de CV — et voyez laquelle décroche des entretiens",
+      "description": "Avec un compte, vous pouvez enregistrer le document exact de chaque scan (uniquement à votre demande — le scan gratuit ne stocke toujours pas votre CV). Étiquetez chaque candidature avec la version envoyée et votre compte montre laquelle décroche des entretiens."
+    },
+    "builderFixHandoff": {
+      "title": "Un clic du diagnostic au CV corrigé",
+      "description": "Le rapport se termine désormais par « Ouvrir dans l'éditeur avec les corrections appliquées » : votre CV arrive dans l'éditeur gratuit avec les puces réécrites déjà en place et les mots-clés manquants suggérés à côté. Nous n'insérons jamais de mots-clés automatiquement — vous seul pouvez revendiquer honnêtement une compétence."
+    },
+    "transitionProTier": {
+      "title": "Transition Pro : le kit complet de reconversion",
+      "description": "Le niveau à 59 $ est désormais réellement supérieur à celui à 29 $ : tout Freelance Boost, plus une lettre de motivation de transition complète et une section « À propos » LinkedIn — construites à partir de vos vrais projets, sans rien inventer."
+    },
+    "spanishCoverLetters": {
+      "title": "Offre d'emploi en espagnol ? Lettre de motivation en espagnol",
+      "description": "Les lettres de motivation détectent désormais la langue de l'offre et écrivent un espagnol naturel et professionnel quand l'offre est en espagnol. Les rapports de scan ont toujours répondu dans la langue de votre CV."
+    },
+    "scanLimitDoubleCountFix": {
+      "title": "Corrigé : les scans comptaient double dans votre limite quotidienne",
+      "description": "Un pré-scan en arrière-plan consommait discrètement un second crédit quotidien — et exécutait une analyse complète dont les résultats n'étaient jamais affichés. Si vous avez déjà atteint la limite plus vite que prévu, c'était la raison. Vos scans gratuits quotidiens correspondent désormais exactement à ce que nous annonçons."
+    },
+    "guidesLaunch": {
+      "title": "Six guides qui disent la vérité sur les ATS",
+      "description": "Nouveaux guides fondés sur les vérifications que notre scanner exécute réellement — dont un qui démonte le mythe des « 75 % de CV rejetés par des robots ». Chacun s'ouvre sur une réponse courte et directe. Pas de folklore recyclé."
+    },
+    "outageSentinel": {
+      "title": "Les pannes sont désormais détectées en minutes, pas en heures",
+      "description": "Une sentinelle de surveillance exécute un vrai scan sur le système en production toutes les 10 minutes et nous alerte dès qu'un problème survient, avec un dispositif de secours indépendant de notre infrastructure. Après la panne du 4 juillet, nous avions promis des correctifs structurels — les voici."
+    },
+    "homepageLiveStats": {
+      "title": "Les vraies statistiques de scan, directement sur la page d'accueil",
+      "description": "La page d'accueil montre désormais comment les CV réels sont notés : médiane en direct, plage médiane, part des scores de 80 ou plus et distribution complète des scores — issues des mêmes données publiques que notre étude de référence. Si les données en direct ne peuvent pas être chargées, la section n'affiche rien plutôt que des chiffres inventés."
+    },
+    "scoreBenchmarksStudy": {
+      "title": "Qu'est-ce qu'un bon score ATS ? Désormais répondu avec des données en direct",
+      "description": "Une nouvelle page de recherche publie de vrais référentiels de scores calculés en direct à partir des scans de ce site : médiane et quartiles globaux, distributions par secteur et médianes par niveau d'expérience sur une fenêtre glissante de 180 jours. Uniquement des agrégats — au moins 25 scans par groupe, et aucune donnée de CV individuel n'est jamais exposée."
+    },
+    "syntheticScanExclusion": {
+      "title": "Nos propres scans de test ne comptent plus dans les statistiques",
+      "description": "Les sondes de surveillance et les tests de charge que nous exécutons pour garder le scanner en bonne santé sont désormais marqués comme trafic de test et exclus de toutes les statistiques publiées ; les anciens scans de test ont aussi été retirés rétroactivement. Les référentiels affichés ne reflètent que de vrais CV."
+    },
+    "scanOutageFix": {
+      "title": "Corrigé : une brève panne du scanner — et la faille qui l'a permise",
+      "description": "Pendant une courte période aujourd'hui, les scans gratuits renvoyaient une erreur due à un défaut d'une nouvelle version. C'est corrigé, et nous avons ajouté à notre processus de publication une vérification automatique plus profonde qui intercepte toute cette classe de bugs avant la mise en ligne — et au passage, nous avons trouvé et corrigé un défaut ancien de notre détecteur de texte corrompu. La transparence est le produit ; cela inclut nos erreurs."
+    },
+    "freelanceBoostLaunch": {
+      "title": "Nouveau produit : Freelance Boost",
+      "description": "Transformez projets freelance, missions et side projects en expérience de CV de niveau recruteur. Questionnaire guidé (sans CV), vos projets traduits dans le langage du domaine visé, la bonne structure pour votre situation, une gestion honnête des trous et la couverture des mots-clés de votre offre cible. Importez votre profil Upwork/Fiverr ou le PDF LinkedIn pour préremplir. 29 $, paiement unique."
+    },
+    "roastUpgrade": {
+      "title": "Le Resume Roast pique vraiment désormais",
+      "description": "Le Roast a été reconstruit avec un vrai savoir-faire comique : chaque pique cite votre CV mot pour mot et démonte exactement ces mots — et toute pique fondée sur une citation inventée est écartée avant que vous la voyiez. Le conseil sérieux de recruteur suit chaque coup."
+    },
+    "reliabilityAtScale": {
+      "title": "Conçu pour la foule",
+      "description": "Sous forte affluence, la plateforme se dégrade désormais avec élégance au lieu de ralentir : au-delà de la capacité, les scans reçoivent instantanément le rapport déterministe complet avec un re-scan IA gratuit quelques minutes après — jamais de délais interminables."
+    },
+    "diagnosticReport": {
+      "title": "Votre scan gratuit est désormais un rapport de diagnostic",
+      "description": "Le rapport a été repensé en structure diagnostique : en-tête avec identifiant unique (rescanner le même document le reproduit), synthèse des constats — critiques, avertissements, validés — avant tout détail, constats sans interruption et toutes les offres regroupées dans une section finale clairement identifiée."
+    },
+    "onetSourcing": {
+      "title": "Des attentes de mots-clés sourcées : le Département du Travail américain",
+      "description": "Les scans sans offre d'emploi tirent désormais les compétences attendues d'O*NET — la base de données professionnelle du Département du Travail — avec la source et le code affichés dans votre rapport. Une offre collée garde la priorité sur tout."
+    },
+    "honestScoring": {
+      "title": "Notation honnête : fourchettes, provenance et extraction réelle",
+      "description": "Votre score affiche désormais sa fourchette de modélisation plutôt qu'une fausse précision. Chaque rapport indique d'où viennent ses attentes — l'offre exacte, O*NET ou notre modèle. Et à l'upload d'un fichier, l'aperçu est étiqueté pour ce qu'il est : le texte réellement extrait de votre document."
+    },
+    "reportEverywhere": {
+      "title": "Le même rapport à l'écran, en PDF et dans votre boîte mail",
+      "description": "Le PDF téléchargeable et le rapport par e-mail portent désormais la structure diagnostique complète — même identifiant, synthèse des constats, fourchette de score et attributions de sources que la version à l'écran."
+    },
+    "fasterScans": {
+      "title": "Des scans plus rapides — et des rescans instantanés",
+      "description": "Deux améliorations du moteur : rescanner le même CV répond désormais en une seconde environ, et l'analyse exécute ses passes d'IA en parallèle sur un modèle plus rapide — attente nettement réduite."
+    },
+    "freelanceGuidance": {
+      "title": "Les freelances ont leur propre guide",
+      "description": "Le scan détecte désormais les carrières freelance et par projets (ou indiquez-le avec la nouvelle puce Freelance) et montre comment présenter le travail client comme un parcours cohérent — vos vrais projets transformés en puces d'expérience."
+    },
+    "spanishDetection": {
+      "title": "Prise en charge complète des CV en espagnol",
+      "description": "La détection de secteur lit désormais nativement les CV entièrement en espagnol — environ 200 intitulés et termes espagnols dans 15 secteurs."
+    },
+    "industryScreenerChecks": {
+      "title": "Ce que recherchent les recruteurs de VOTRE secteur",
+      "description": "Nouvelles vérifications par domaine : portfolio pour les créatifs, GitHub pour les ingénieurs, publications pour les chercheurs, habilitation de sécurité pour le public et visibilité des licences dans 11 domaines réglementés."
+    },
+    "realBenchmarks": {
+      "title": "Des références issues de vrais scans",
+      "description": "Dès qu'un secteur accumule assez de scans sur notre plateforme, votre comparaison de score passe des estimations à la distribution réelle des CV scannés ici — et le rapport vous le précise."
+    },
+    "builderExports": {
+      "title": "Exports du Créateur de CV, typographie professionnelle",
+      "description": "Les exports DOCX utilisent désormais des titres noirs épurés avec filet fin (fini le style Word par défaut), des dates alignées sur la vraie marge droite et une échelle typographique cohérente. Le PDF corrige les veuves et les retraits."
+    },
+    "proSubscription": {
+      "title": "Resume Booster Pro — tous les outils, un seul abonnement",
+      "description": "Nouveau forfait tout accès à 45 $/mois : tous les outils payants inclus (Analyse Complète, Correction de Mots-Clés, Lettres de Motivation, Coach d'Entretien et plus), scans quotidiens illimités et chaque nouvel outil inclus automatiquement. Résiliable à tout moment."
+    },
+    "scoreSimulator": {
+      "title": "Voyez votre score avant de corriger quoi que ce soit",
+      "description": "Le rapport inclut désormais un simulateur interactif : cochez les corrections prévues et regardez votre score ATS projeté se mettre à jour instantanément — pour savoir quelles corrections valent votre temps."
+    },
+    "weakestBullets": {
+      "title": "Vos 3 puces les plus faibles, notées et réécrites",
+      "description": "Le scan cite désormais mot pour mot vos trois puces les plus faibles, note chacune de A à F selon les chiffres, les verbes et la portée, et propose une réécriture améliorée fondée uniquement sur votre CV."
+    },
+    "atsVendorChecks": {
+      "title": "Comment Workday, Greenhouse, Lever et iCIMS lisent votre CV",
+      "description": "Chaque grand ATS analyse les CV différemment. Votre rapport montre désormais, fournisseur par fournisseur, comment votre mise en forme traverse chaque système — et quoi changer sinon."
+    },
+    "careerChangeBridge": {
+      "title": "Une carte de transfert pour les reconversions",
+      "description": "Vous changez de domaine ? Le rapport détecte désormais les transitions et montre quelles compétences se transfèrent telles quelles, quelles lignes reformuler et le principal écart de crédibilité à combler."
+    },
+    "scoreAuditTrail": {
+      "title": "Pourquoi ce score ? Chaque point justifié",
+      "description": "Un nouvel audit dépliable montre exactement d'où vient votre score ATS — couverture des mots-clés, mise en forme, impact chiffré et signaux de contenu, dont les points s'additionnent jusqu'à votre total."
+    },
+    "shareScoreCard": {
+      "title": "Partagez votre score",
+      "description": "Un clic télécharge une carte de score épurée — score, secteur et percentile, sans aucun contenu de votre CV — prête à partager."
+    },
+    "verifiedReportClaims": {
+      "title": "Chaque citation de votre rapport est désormais vérifiée",
+      "description": "Avant l'affichage de votre rapport, chaque citation supposée de votre CV est confrontée au texte réel — ce qui ne correspond pas est retiré et reconstruit à partir d'une analyse vérifiée."
+    },
+    "smarterIndustryDetection": {
+      "title": "Détection de secteur plus précise",
+      "description": "133 nouvelles variantes d'intitulés dans 45 secteurs, un départage des cas serrés, la détection automatique des reconversions et une boucle de retour qui apprend de vos corrections — plus des références calibrées sur le secteur du poste visé."
+    },
+    "fasterFrontPage": {
+      "title": "Une page d'accueil plus rapide avec dépôt instantané",
+      "description": "La page d'accueil charge désormais beaucoup moins de code, et vous pouvez déposer votre CV directement en haut de page — sans défilement."
+    },
+    "tenNewIndustries": {
+      "title": "10 nouveaux secteurs désormais entièrement pris en charge",
+      "description": "Le scanner dispose désormais de bibliothèques de mots-clés dédiées, de reconnaissance des intitulés de poste, de tables de certifications et de référentiels de notation pour 10 domaines supplémentaires : cybersécurité, logistique et chaîne d'approvisionnement, immobilier, assurance, associatif et collecte de fonds, biotech et sciences de laboratoire, aviation, énergie, métiers spécialisés (électriciens, plombiers, CVC, soudeurs et plus) et support client. Si vous travaillez dans l'un de ces domaines, votre analyse n'est plus forcée dans une catégorie vaguement liée — mots-clés, alertes et référentiels sont désormais propres à votre métier réel."
+    },
+    "specializationDetection": {
+      "title": "Détection sectorielle au niveau de la spécialisation",
+      "description": "Les grands secteurs cachent des métiers très différents — une infirmière, un facturier médical et un délégué pharmaceutique relèvent tous de la « santé » mais ont besoin de CV totalement différents. Le scanner détecte désormais votre spécialisation au sein du secteur et adapte chaque recommandation. Les licences professionnelles comme RN, CPA, PE ou CISSP ancrent désormais la classification, et lorsque vous collez une offre d'emploi, l'analyse est cadrée sur le domaine visé. Les CV transversaux reçoivent une lecture honnête du mélange (p. ex. « 60 % data / 40 % marketing ») au lieu d'être rangés dans une seule case."
+    },
+    "interviewLikelihoodFixPlan": {
+      "title": "Probabilité d'entretien et plan d'action minute par minute",
+      "description": "Trois nouveaux résultats vous disent où vous en êtes et quoi faire ensuite. Une jauge de probabilité de rappel combine taux de passage ATS, percentile et alertes critiques en un verdict honnête — avec le principal frein nommé explicitement. Une comparaison côte à côte montre votre CV face à un candidat du quartile supérieur de votre domaine. Et un plan d'action numéroté organise tout en une seule session de travail, trié par points gagnés par minute, avec un score projeté après chaque étape."
+    },
+    "deeperScoreReporting": {
+      "title": "Voyez exactement ce qui détermine votre score",
+      "description": "Votre score ATS n'est plus un chiffre opaque. Une ventilation montre les trois composantes — correspondance de mots-clés, format et quantification — sous forme de barres distinctes. Les gains rapides portent désormais des valeurs en points explicites et sont triés par impact. Vous obtenez trois réécritures de puces au lieu d'une, un niveau de gravité pour chaque alerte, les problèmes précis qui ont déterminé votre note de format, des évaluations de qualité par section, un verdict de première lecture du recruteur en 6 secondes et une prochaine action claire."
+    },
+    "atsPreviewComparisons": {
+      "title": "Voyez votre CV comme le voit un ATS",
+      "description": "Un nouvel aperçu d'analyse montre le texte brut qu'un système de suivi des candidatures extrait réellement de votre CV — mise en forme, colonnes et icônes supprimées — pour repérer le contenu perdu avant qu'un humain ne le voie. En complément : votre percentile face aux autres candidats de votre secteur, un taux de passage ATS estimé, une carte thermique des mots-clés manquants avec conseils de placement, un audit de ton et de voix, et un audit de longueur des sections par rapport aux cibles idéales."
+    },
+    "trulyPersonalReports": {
+      "title": "Chaque analyse est désormais écrite spécifiquement sur vous",
+      "description": "Le conseil générique est désormais considéré comme un échec. Chaque alerte et gain rapide doit citer mot pour mot le texte réel de votre CV. Les conseils sont calibrés selon votre séniorité : on ne dit jamais à un dirigeant d'« ajouter des mots-clés » et on ne demande jamais à un débutant sa gestion de budget. Les personnes en reconversion reçoivent une cartographie des compétences transférables, les vétérans une traduction militaire-civil, les personnes de retour à l'emploi un langage pour cadrer les pauses, et les jeunes diplômés des conseils pour valoriser leurs projets. Votre nom et votre rôle traversent désormais tout le rapport."
+    },
+    "linkedInInsights": {
+      "title": "Analyse de profil LinkedIn — comment vous apparaissez aux recruteurs",
+      "description": "Ajoutez votre profil LinkedIn avec votre CV et obtenez une analyse combinée: un score LinkedIn, des incohérences entre votre CV et profil, un titre amélioré et une ouverture de section À propos que vous pouvez copier en un clic."
+    },
+    "bulletQualityAnalysis": {
+      "title": "Les améliorations rapides ciblent maintenant vos vraies faiblesses",
+      "description": "Avant d'appeler l'IA, le scanner pré-lit chaque point et identifie ceux qui commencent par des phrases passives faibles et ceux qui n'ont pas de métrique mesurable. Ces points spécifiques sont transmis directement à l'IA."
+    },
+    "industryDetectionSweep2": {
+      "title": "Détection d'industrie plus précise pour 20+ rôles",
+      "description": "Deuxième passage de correction du moteur de détection d'industrie: suppression des mots-clés faux positifs génériques, ajout de 30+ mots-clés manquants pour la fabrication, RH, créatif et conseil, expansion de la table des employeurs avec 30 nouvelles entreprises, et ajout de 15 nouveaux patterns de co-occurrence."
+    },
+    "scanFeedback": {
+      "title": "Dites-nous si votre analyse a été utile",
+      "description": "Un rapide pouce en haut / bas apparaît désormais au bas de chaque analyse gratuite. Vos réponses alimentent directement notre pipeline d'amélioration — nous les utilisons pour identifier les types de recommandations systématiquement erronés et les corriger dans les futures mises à jour."
+    },
+    "sectionAwareAnalysis": {
+      "title": "Analyse section par section plus intelligente",
+      "description": "L'analyse gratuite pré-analyse maintenant votre CV en sections étiquetées (Expérience, Formation, Compétences, etc.) avant de l'envoyer à l'IA. Cela permet aux conseils de cibler des sections spécifiques plutôt que de traiter votre CV comme un bloc de texte indifférencié."
+    },
+    "sparseResumeDetection": {
+      "title": "Meilleurs conseils pour les CV courts ou peu fournis",
+      "description": "Les CV de moins de 300 mots ou 5 puces reçoivent désormais des conseils axés sur l'expansion en premier — quelles sections manquent, comment ajouter des détails — plutôt que des suggestions d'optimisation de mots-clés qui ne s'appliquent pas encore."
+    },
+    "fasterPremiumGeneration": {
+      "title": "Le package premium CV + lettre de motivation se génère deux fois plus vite",
+      "description": "Nous avons parallélisé les deux appels IA qui génèrent votre CV réécrit et votre lettre de motivation pour qu'ils s'exécutent simultanément plutôt que l'un après l'autre. La plupart des packages premium sont maintenant prêts en 15 à 25 secondes au lieu de 30 à 50 secondes."
+    },
+    "employerAwareIndustryDetection": {
+      "title": "La détection de secteur reconnaît maintenant vos employeurs",
+      "description": "Nous avons ajouté une base de données d'environ 200 entreprises connues pour que le moteur puisse utiliser votre historique d'employeurs comme signal direct de secteur — Goldman Sachs, McKinsey, Kaiser Permanente et des centaines d'autres sont maintenant reconnus instantanément. Nous avons également amélioré la pondération des emplois récents : votre poste actuel compte désormais bien plus que des emplois d'il y a 5 ans ou plus, afin que les personnes en reconversion soient correctement classées selon leur situation actuelle."
+    },
+    "scanAiReliability": {
+      "title": "Analyses plus fiables lorsque l'IA est lente",
+      "description": "Ajout d'un délai d'expiration de 55 secondes pour l'appel IA principal lors de l'analyse de CV. Si le premier modèle IA se bloque, le moteur bascule maintenant automatiquement vers un modèle de secours plus rapide au lieu d'attendre jusqu'à 2,5 minutes."
+    },
+    "industryDetectionAccuracy": {
+      "title": "Sharper, more accurate industry detection",
+      "description": "We overhauled how we identify your industry from your resume. Six rounds of testing and fixes corrected misclassifications for roles like Growth Hacker, Salesforce Administrator, Quantitative Researcher, and Software Engineers at AI companies. We also fixed a scoring logic bug that caused false positives for DevOps engineers. The result is more accurate industry-specific tips, keyword suggestions, and ATS scoring weights that match your actual role."
+    },
+    "dataAiIndustrySplit": {
+      "title": "Data Engineering, Data Science, and AI/ML are now separate industries",
+      "description": "Previously, data engineers, data scientists, and machine learning engineers all received the same generic feedback under a single Technology category. We have split these into three distinct industry tracks with their own ATS scoring weights, keyword gap analysis, and resume tips tailored to each role."
+    },
+    "everythingTranslated": {
+      "title": "Chaque écran est maintenant traduit",
+      "description": "Couverture de traduction complète achevée dans les 9 langues prises en charge. Chaque écran visible par l'utilisateur — le générateur de CV, les panneaux de mots-clés sectoriels et par rôle, l'analyse de correspondance d'emploi, la simulation de recruteur, les cartes de score, le générateur de pitch d'ascenseur, la critique de CV, les indicateurs d'activité en direct, le compteur de crédits de scan et plus encore — s'affiche désormais dans la langue choisie. Auparavant, de nombreux écrans s'affichaient en anglais quelle que soit la langue sélectionnée."
+    },
+    "yourReportsSpeakYourLanguage": {
+      "title": "Vos rapports parlent désormais votre langue",
+      "description": "Tous nos rapports payants — Score de CV, Career Snapshot, Graduate Game Plan, Interview Coach, Career Path Simulator et Apply Assistant — génèrent désormais leur contenu IA et leur texte à l'écran dans l'une des 9 langues que nous prenons en charge, selon celle que vous avez sélectionnée, au lieu de toujours basculer sur l'anglais par défaut. Les CV personnalisés et les lettres de motivation que vous envoyez aux employeurs restent volontairement dans leur langue d'origine, car traduire une vraie candidature sans le demander pourrait faire plus de mal que de bien."
+    },
+    "translatedHomepageAndScanFlow": {
+      "title": "Page d'accueil et parcours d'analyse traduits",
+      "description": "La page d'accueil, le parcours de téléversement, les comparaisons de tarifs et la page complète des résultats du scan gratuit sont désormais traduits dans les 9 langues prises en charge — auparavant, une grande partie de ce contenu ne s'affichait qu'en anglais, quel que soit votre paramètre de langue."
+    },
+    "fixedAtsDefenseDelivery": {
+      "title": "Correction de la livraison du rapport ATS Defense",
+      "description": "Correction d'un bug empêchant parfois la génération automatique des rapports ATS Defense après l'achat. Si vous avez été concerné, votre rapport devrait désormais se générer correctement — contactez-nous si vous ne le voyez toujours pas."
+    },
+    "moreReliableDownloads": {
+      "title": "Téléchargements PDF et Word plus fiables",
+      "description": "Correction d'un problème où un nom contenant certains caractères spéciaux pouvait produire un nom de fichier de téléchargement corrompu. Ajout également d'un avertissement clair si votre CV ou rapport contient des caractères que notre export PDF ne peut pas encore restituer entièrement (principalement les écritures non latines), au lieu de les omettre silencieusement."
+    },
+    "clearerMessagesHighDemand": {
+      "title": "Messages plus clairs en cas de forte demande",
+      "description": "Si notre IA est brièvement surchargée lors de la génération de vos résultats Interview Coach, Career Path, Career Snapshot, Graduate Game Plan ou Keyword Fix, vous verrez désormais un message clair « réessayez dans un instant » pour chacun d'eux, au lieu d'une erreur générique pour certains."
+    },
+    "realIndustryComparisons": {
+      "title": "Comparaisons sectorielles réelles",
+      "description": "Votre score est désormais comparé à des données réelles issues de CV réellement analysés dans votre secteur, plutôt qu'à une estimation fixe — ainsi, « meilleur que X % de CV similaires » signifie réellement ce que cela dit."
+    },
+    "moreSpecificKeywordBulletInsights": {
+      "title": "Analyses plus précises des mots-clés et des puces",
+      "description": "Nous pointons désormais vos puces réelles auxquelles il manque un impact mesurable, et affichons des nombres réels de mots-clés manquants pour votre secteur — propres à votre CV, et non des exemples génériques."
+    },
+    "fixedWordUploads": {
+      "title": "Correction des téléversements de documents Word",
+      "description": "Correction d'un bug provoquant l'échec des téléversements de CV .docx. Si vous avez récemment essayé de téléverser un document Word sans succès, veuillez réessayer — c'est désormais corrigé. Nous avons également ajouté un message clair pour les anciens fichiers .doc (qui doivent d'abord être enregistrés en .docx) et pour tout autre type de fichier non pris en charge, au lieu de vous laisser sans aucune explication."
+    },
+    "purchaseRecoveryFix": {
+      "title": "Correction de la récupération d'achat",
+      "description": "Correction d'un problème où la récupération d'un achat précédent (si vous avez fermé l'onglet avant de voir vos résultats) pouvait échouer. Vous pouvez désormais récupérer vos résultats à l'aide du lien ou de l'identifiant de session figurant dans votre e-mail de confirmation."
+    },
+    "checkoutReliabilityFixes": {
+      "title": "Corrections de fiabilité du paiement",
+      "description": "Correction d'un bug de tarification dans le parcours d'achat personnalisé de crédits de scan, qui pouvait facturer plus que le prix affiché, ainsi que d'un problème où les achats Interview Coach et Career Path Simulator pouvaient ne pas livrer leur contenu après paiement. Si vous avez été concerné par l'un ou l'autre, contactez-nous et nous y remédierons."
+    },
+    "moreMechanicalAtsChecks": {
+      "title": "Plus de vérifications mécaniques ATS",
+      "description": "Ajout de deux vérifications déterministes supplémentaires au simulateur d'analyse ATS : détection des caractères de police d'icônes (courants dans les modèles utilisant une police d'icônes pour les symboles téléphone/e-mail/LinkedIn, ce qui peut laisser des trous près de vos coordonnées) et détection du texte aplati issu de mises en page basées sur des tableaux."
+    },
+    "faqSectionTranslationFixes": {
+      "title": "Corrections de la section FAQ et des traductions",
+      "description": "Correction d'un problème où la section FAQ affichait un texte d'espace réservé brut au lieu de vraies réponses dans toutes les langues sauf une, et ajout de quelques chaînes non traduites afin que chaque langue prise en charge soit entièrement traduite."
+    },
+    "publicChangelog": {
+      "title": "Journal des modifications public",
+      "description": "Ajout de cette page, accessible depuis l'en-tête et le pied de page, pour que vous puissiez toujours voir les nouveautés, améliorations ou corrections."
+    },
+    "applyAssistant": {
+      "title": "Apply Assistant",
+      "description": "Collez une offre d'emploi et obtenez un CV adapté à ce poste précis, une lettre de motivation correspondante, une liste honnête des lacunes de compétences (nous n'inventons jamais d'expérience que vous n'avez pas) et une liste de tâches étape par étape — relue et soumise par vous, jamais soumise automatiquement en votre nom."
+    },
+    "atsParseSimulation": {
+      "title": "Simulation d'analyse ATS",
+      "description": "Ajout d'une seconde vérification entièrement mécanique en complément du score IA : nous détectons les en-têtes de section manquants, les coordonnées non extractibles, les dates manquantes, l'encodage de caractères corrompu dû à des problèmes de police PDF, et même les mises en page à plusieurs colonnes brouillées par les véritables analyseurs de texte ATS — toutes des constatations déterministes et reproductibles, pas une supposition de modèle."
+    },
+    "realSemanticJobMatching": {
+      "title": "Véritable correspondance sémantique avec le poste",
+      "description": "Remplacement de la correspondance littérale de mots-clés par un véritable jugement de l'IA qui lit ensemble votre CV et la description de poste — ainsi, une compétence formulée différemment (ou démontrée par une expérience connexe) est désormais correctement reconnue au lieu d'exiger une correspondance exacte du texte."
+    },
+    "resumeBuilder": {
+      "title": "Créateur de CV",
+      "description": "Un éditeur de CV structuré avec des sections modifiables, un aperçu en direct et une exportation en un clic vers PDF ou Word — pré-rempli automatiquement à partir de votre analyse la plus récente."
+    },
+    "deeperInterviewCoachCareerPath": {
+      "title": "Interview Coach et Career Path Simulator approfondis",
+      "description": "Les versions payantes vont désormais plus loin que l'aperçu gratuit : 14 questions d'entretien avec des réponses modèles complètes selon la méthode STAR, un plan d'action de 90 jours pour chaque parcours de carrière, et des rapports PDF téléchargeables pour les deux."
+    },
+    "moreHonestScoring": {
+      "title": "Notation plus honnête",
+      "description": "Suppression d'un bug de notation qui permettait aux CV de gonfler vers le milieu de l'échelle, et durcissement des instructions de l'IA pour qu'un CV réellement faible obtienne désormais un score bas — l'encouragement dans les retours n'atténue plus le chiffre réel."
+    },
+    "fasterPageLoads": {
+      "title": "Chargement de pages plus rapide",
+      "description": "Réduction de plus de moitié de la taille initiale de la page en ne chargeant que ce dont chaque page a réellement besoin — exports, langues moins courantes et autres pages ne ralentissent plus votre première visite."
+    },
+    "scannedPdfDetection": {
+      "title": "Détection des PDF scannés",
+      "description": "Si vous téléversez un PDF scanné basé sur une image sans texte sélectionnable, nous vous en informons désormais immédiatement au lieu d'analyser silencieusement un contenu vide — avec une suggestion claire de téléverser une version basée sur du texte ou de coller votre CV directement."
+    },
+    "industryDetectionAccuracy8Fixes": {
+      "title": "8 accuracy upgrades to industry detection",
+      "description": "We identified and fixed every known category of industry misclassification. Unambiguous role titles now hard-lock the industry, anchor terms prevent skills-list false positives, very short resumes rely only on job titles, the employer boost is guarded, implausible industry/seniority combos are flagged, skills section contribution is capped, the AI classifies from resume titles not the target job, and user corrections now compound the more they repeat."
+    },
+    "marketIntelligenceCards": {
+      "title": "Live market intelligence in your scan results",
+      "description": "Five new data cards now appear in your scan results: Market Intelligence (hot skills, rising keywords, local CV norms, salary context), Skills Recency (aging vs in-demand skills), Career Trajectory (upward/lateral/transition path), Competitive Keyword Gap (top-quartile keyword coverage), and ATS System detection (when we can identify which ATS the company uses)."
+    },
+    "resumeTimelineAnalysis": {
+      "title": "Employment gap and short tenure detection",
+      "description": "The scanner now parses your work history date ranges to detect gaps longer than 6 months and roles shorter than 12 months. If found, a new card appears with the specific gap duration and concrete advice on how to address it before applying."
+    },
+    "gatedKeywordGap": {
+      "title": "Keywords now sorted by how often they appear in job postings",
+      "description": "Missing keywords are ranked by real posting frequency for your role — the highest-impact gaps appear first. The top 3 are shown in full; additional high-priority keywords are previewed so you know there's more."
+    },
+    "phraseAwareKeywordMatching": {
+      "title": "Fewer false 'missing keyword' reports",
+      "description": "The keyword detector now understands compound phrases and abbreviations. 'Machine learning' and 'ML' match. 'CI/CD', 'ci-cd', and 'cicd' match. 'P&L' matches 'profit and loss'. 'Full-stack' and 'fullstack' are equivalent. This eliminates false positives where skills you clearly had were reported as missing."
+    },
+    "roleLockDetection": {
+      "title": "Role-specific detection for 50+ job titles",
+      "description": "Over 50 unambiguous job titles now hard-lock the correct industry regardless of what else appears on the resume — registered nurses, attorneys, teachers, product managers, data engineers, ML engineers, and many more. A nurse with SQL in her skills can no longer be classified as a data scientist."
+    },
+    "fiftyNineIndustries": {
+      "title": "59 secteurs — y compris ceux que les autres ignorent",
+      "description": "La couverture inclut désormais les catégories que la plupart des outils sautent entièrement : administration et support de bureau (assistantes de direction, office managers, réceptionnistes), conducteurs (camion, livraison, bus), bibliothéconomie, ministère religieux, mines, maritime, paysagisme et entretien. Chacune avec sa bibliothèque de mots-clés, sa reconnaissance de titres, sa détection de licences et ses référentiels. Une 'Assistante de direction du CFO' est désormais correctement lue comme administrative — pas comme finance."
+    },
+    "resumeXray": {
+      "title": "Radiographie du CV : votre document, annoté",
+      "description": "Le rapport affiche désormais votre CV lui-même, ligne par ligne, avec l'analyse dessinée dessus : les puces faibles sont soulignées en rouge (raison au survol), les puces sans chiffres marquées en orange, et vos mots forts surlignés en vert."
+    },
+    "emailMyReport": {
+      "title": "Recevoir mon rapport par e-mail",
+      "description": "Un clic envoie votre synthèse — verdict, score, ventilation, problèmes principaux et plan d'action minute par minute — dans votre boîte mail sous forme d'e-mail soigné. Seuls les résultats d'analyse sont envoyés, jamais votre CV, et aucun e-mail de suivi sans votre demande."
+    },
+    "scanReliability": {
+      "title": "Des analyses qui n’échouent jamais — et ne changent pas d’avis",
+      "description": "Deux améliorations de fiabilité : si le relecteur IA est indisponible, vous recevez désormais un rapport automatisé complet au lieu d'une page d'erreur. Et le même CV reçoit désormais la même classification sectorielle à chaque fois : les détections à haute confiance sont mémorisées."
+    },
+    "multilingualDetection": {
+      "title": "Détection sectorielle en 8 langues",
+      "description": "Les intitulés de poste en espagnol, allemand, français, portugais, néerlandais, hindi et tagalog ancrent désormais la détection comme les intitulés anglais — une 'Krankenschwester' verrouille la santé, un 'electricista' les métiers spécialisés."
+    },
+    "reportVisualPolish": {
+      "title": "Un rapport qui se lit comme un tableau de bord",
+      "description": "Votre score s'anime en montant, la couleur passant du rouge à l'orange au vert. Votre percentile est tracé sur une vraie courbe de distribution avec la zone des 25 % supérieurs ombrée. Chaque réécriture montre exactement ce qui a changé — suppressions barrées en rouge, ajouts en vert. Et un résumé PDF d'une page est à un clic."
+    },
+    "freeAccounts": {
+      "title": "Comptes gratuits : scores, crédits et achats au même endroit",
+      "description": "Créez un compte gratuit et chaque analyse est enregistrée dans votre tableau de bord : dernier et meilleur score, courbe d'évolution, solde de crédits et historique d'achats — vos achats passés apparaissent automatiquement si vous vous inscrivez avec le même e-mail. Connexion par mot de passe ou lien magique en un clic. Votre CV n'est toujours jamais stocké, et l'analyse gratuite fonctionne à l'identique sans compte."
+    },
+    "accountToolkit": {
+      "title": "Une boîte à outils de recherche d'emploi intégrée au compte",
+      "description": "Les utilisateurs connectés ont désormais 15 analyses gratuites par jour (au lieu de 7) plus quatre nouveaux outils : une check-list de corrections persistante à cocher avant de réanalyser ; un objectif de score avec barre de progression tracée sur votre courbe ; un suivi de candidatures avec statut et le score au moment de postuler ; et la comparaison d'analyses — choisissez-en deux pour voir ce qui s'est amélioré."
+    },
+    "jobBoard": {
+      "title": "Job board en direct avec vérification d'adéquation intégrée",
+      "description": "La nouvelle page Offres tire des postes en direct des job boards officiels des entreprises (Greenhouse, Lever et Ashby — 56 entreprises au lancement) et ajoute ce qu'aucun job board n'offre : scanner votre CV contre une offre avant d'y consacrer une candidature. Un clic charge l'offre dans le scanner gratuit ; la candidature se fait toujours sur le site de l'entreprise. À retrouver dans le pied de page ou via les suggestions de rôles de votre rapport."
+    },
+    "jobBoardV2": {
+      "title": "Job board : 146 entreprises, filtres par domaine, fraîcheur de 10 minutes",
+      "description": "Le job board en direct puise désormais dans 146 job boards d'entreprises vérifiés — environ 15 000 offres — et dépasse largement la tech : santé, finance, alimentation et logistique, éducation, aérospatial, commerce et plus. Un nouveau filtre “Tous les domaines” vous mène à votre voie (infirmier, comptable, magasinier — pas seulement ingénieur), les recherches sont des liens partageables et votre rapport ouvre le board pré-recherché sur votre rôle détecté. En coulisses, le board se rafraîchit toutes les 10 minutes et les offres retirées disparaissent à la passe suivante — aucune annonce morte."
+    },
+    "oneClickCapture": {
+      "title": "Capture d'e-mail en un clic et la question du 14e jour",
+      "description": "Recevoir le rapport par e-mail ne prend plus qu'un clic : si votre adresse figure sur votre CV, le champ arrive pré-rempli — clairement signalé, et rien n'est envoyé sans appuyer sur Envoyer. La séquence optionnelle du plan gagne un quatrième e-mail : deux semaines après votre scan, une seule question — avez-vous décroché des entretiens ? — et chaque réponse anonyme affine les référentiels publics. La description de la séquence existe désormais dans les neuf langues (anglais uniquement auparavant)."
+    },
+    "jobTracker": {
+      "title": "Enregistrez des offres, suivez vos candidatures, surveillez des recherches — depuis votre compte gratuit",
+      "description": "Le job board a encore grandi — 159 entreprises et environ 20 000 offres, incluant désormais de grands employeurs sur SmartRecruiters et Workable (Bosch, JYSK, Accor, Continental, Experian, Ubisoft). Et votre compte gratuit a appris à travailler avec : enregistrez une offre et elle rejoint votre suivi de candidatures avec la description attachée, prête pour une vérification d'adéquation en un clic. Cliquez Candidater en étant connecté et la ligne se marque envoyée, avec la date. Enregistrez une recherche — par exemple, santé en télétravail — et votre compte affiche combien de nouvelles offres correspondent depuis votre dernier passage. La recherche d'emploi, avec de la mémoire."
+    },
+    "fitRankedBoard": {
+      "title": "Le job board classe désormais 25 000 offres selon votre CV",
+      "description": "Scannez votre CV, ouvrez le board et activez « Classer selon mon adéquation » : chaque offre reçoit un score — couverture déterministe des mots-clés contre votre CV réel, entièrement reproductible, sans divination d'IA — et la liste se trie du meilleur au moins bon. Dans notre test en direct, le CV d'une infirmière a obtenu 17–24 % sur les postes de soins et 3 % sur tout le reste ; cet écart est le but. Aussi : salaire sur la carte quand l'entreprise le publie, filtres « Aujourd'hui / Cette semaine », et 35 entreprises de plus — SpaceX, OpenAI, Securitas, ServiceNow, Rocket Lab, Sodexo — soit 194 entreprises et environ 25 000 offres en direct."
+    },
+    "groundedApplyKits": {
+      "title": "Kits de candidature : des CV adaptés vérifiés, dans des modèles dignes d'être envoyés",
+      "description": "Le CV adapté de l'Apply Assistant est désormais vérifié, pas seulement consigné : chaque employeur, poste, école et date est contrôlé contre votre CV original, les compétences non étayées sont retirées et signalées, et si la génération invente deux fois, nous refusons de livrer plutôt que d'expédier de la fiction — le bandeau de vérification apparaît sur chaque kit. Choisissez parmi trois modèles compatibles ATS (Moderne, Classique, Compact) en PDF et Word. Et le suivi de candidatures s'est affûté : enregistrer une offre depuis le board attache votre dernière version de CV et calcule votre adéquation automatiquement, et chaque candidature offre un kit en un clic — inclus avec Pro."
+    },
+    "boardExpansion": {
+      "title": "609 entreprises, près de 40 000 offres en direct",
+      "description": "Le job board est passé de 194 à 609 entreprises en une seule passe — un peu moins de 40 000 offres en direct. Nous avons sondé des milliers de flux carrières sur six fournisseurs ATS officiels (BambooHR est nouveau), gardé les 415 qui répondaient avec de vraies offres, et débloqué toute la profondeur des géants déjà présents : Bosch, JYSK, Accor et Securitas listent désormais des milliers de postes chacun au lieu de leurs 500 premiers. La précision a suivi le volume : le nom affiché de chaque nouveau board vient du fournisseur ATS lui-même — pas de notre supposition — et dix boards dont l'identité n'a pas pu être vérifiée ont été écartés plutôt que publiés mal étiquetés. La couverture salariale a plus que doublé au passage. Même board, même classement par adéquation, même cycle de 10 minutes — quatre fois plus d'offres que ce matin."
+    },
+    "reportMatches": {
+      "title": "Votre rapport de scan se termine désormais par des offres en direct",
+      "description": "Le scan gratuit ne s'arrête plus à un score et un plan de correction — chaque rapport se clôt désormais sur les meilleures offres en direct correspondant à votre CV, classées avec le même score d'adéquation déterministe que le rapport lui-même, tirées des ~40 000 offres du job board et rafraîchies toutes les ~10 minutes. Le salaire apparaît quand l'entreprise le publie ; Candidater mène directement à la page de l'entreprise. Et un compte gratuit garde tout cela vivant entre vos visites : enregistrez votre version de CV et le board classe chaque offre contre elle à chaque retour, les recherches enregistrées comptent les nouveautés depuis votre dernier passage, et les offres enregistrées atterrissent dans votre suivi de candidatures avec leur score d'adéquation."
+    },
+    "boardTenVendors": {
+      "title": "Plus de 185 000 offres vérifiées de plus de 12 600 entreprises — quatre nouveaux systèmes de recrutement",
+      "description": "Le tableau lit désormais les flux officiels des entreprises sur dix systèmes de recrutement (Recruitee, Teamtailor, Personio et Breezy rejoignent Greenhouse, Lever, Ashby, SmartRecruiters, Workable et BambooHR). Chaque nouvelle entreprise a passé le même filtre que le reste du catalogue : de vrais employeurs, vérifiés via leurs propres systèmes — sans agrégateurs ni cabinets de placement de masse. Mêmes règles de fraîcheur : rien de plus de 30 jours, re-vérifié en direct au moment de postuler."
+    },
+    "seekerToolkit": {
+      "title": "Salaire plancher, repères de paie en direct, classement junior, tendances hebdo — et vous pouvez répondre au tableau",
+      "description": "Vous pouvez désormais filtrer par salaire plancher en n'utilisant que ce que les offres déclarent elles-mêmes (taux horaires et mensuels annualisés, jamais estimés), et les pages par domaine affichent la médiane du salaire plancher publié dès que 30 offres au moins déclarent une paie. Deux nouvelles pages publiques : l'Index Junior classe qui recrute vraiment en début de carrière en ce moment, et les Tendances Hebdomadaires comptent les vraies offres par semaine — la croissance de notre couverture ne peut jamais simuler un pic. Sur le tableau : l'analyse de compétence clé montre le mot-clé manquant qui bloque le plus de correspondances, des pastilles d'urgence signalent les entreprises qui pourvoient vite, des marqueurs de republication repèrent les relisteurs en série, vous pouvez suivre une entreprise, masquer des offres, et la recherche filtre pendant la frappe. Et si une offre semble fausse, signalez-la — un signalement « disparue » la re-vérifie immédiatement auprès du site de l'entreprise."
+    },
+    "boardDestination": {
+      "title": "Le site d'emploi est désormais la porte d'entrée — et les offres s'ouvrent directement sur le tableau",
+      "description": "Resume Booster met désormais le tableau d'offres en tête : la page d'accueil s'ouvre sur des compteurs en direct et un accès direct à plus de 185 000 offres vérifiées. Sur le tableau, cliquer sur une offre ouvre un panneau de détail complet — description intégrale, salaire déclaré, votre score de correspondance avec les mots-clés exacts que vous avez et ceux qui manquent, la santé d'embauche de l'entreprise et candidature en un clic — et chaque offre a désormais son propre lien partageable. La première offre est visible sans défiler (sur mobile aussi — les filtres tiennent derrière un seul bouton), les cartes ont des monogrammes d'entreprise et une mise en page plus claire, « Pour vous » classe tout le tableau selon votre CV, et vous pouvez trier par salaire déclaré le plus élevé — uniquement des salaires réellement publiés, jamais d'estimations."
+    },
+    "measuredTrust": {
+      "title": "Une fraîcheur vérifiable, pas seulement promise — mesurée et publiée en direct",
+      "description": "Le Ghost Job Index publie désormais la fraîcheur du tableau comme une mesure en direct : en ce moment, le flux médian a été re-vérifié il y a moins d'une heure, et 95 % de tous les flux en deux heures environ — calculé à partir des horodatages de vérification par flux au moment où vous chargez la page, jamais une promesse marketing. L'audit quotidien de précision échantillonne désormais chaque système de recrutement séparément et publie les résultats par système : un problème sur l'un ne peut plus se cacher dans une moyenne saine. Les repères salariaux sont désormais calculés par devise (une offre à 50 000 € ne se moyenne plus avec une à 50 000 $), et le pipeline a gagné un disjoncteur : si l'API d'un système casse un jour, le tableau gèle les données de ce système au lieu d'afficher — ou de supprimer — des données fausses."
+    },
+    "searchAliases": {
+      "title": "La recherche comprend vos abréviations — et le montre",
+      "description": "Tapez « swe », « rn », « sdr » ou 30 autres abréviations courantes : le tableau cherche aussi l'intitulé complet du poste — toujours indiqué sous la barre de recherche (« recherche aussi : software engineer »). Et quand une recherche pointue correspond dans la description plutôt que dans le titre, la carte affiche la phrase exacte qui correspond. En plus : chaque panneau d'offre renvoie aux autres postes ouverts de l'entreprise et à des rôles vraiment similaires sur tout le tableau."
+    },
+    "pipelineRhythm": {
+      "title": "Votre pipeline vous dit quoi faire ensuite",
+      "description": "Le tableau de bord du compte s'ouvre sur une bande « À faire ensuite » construite depuis votre propre suivi : entretiens à venir d'abord, puis candidatures silencieuses depuis 7 jours ou plus (un geste les marque comme relancées), puis offres enregistrées qui vieillissent. Les lignes en entretien acceptent une date, et le bandeau de statistiques montre votre rythme de candidatures sur 8 semaines — uniquement vos données, rien d'inventé."
+    },
+    "fresherFaster": {
+      "title": "Les offres des nouvelles entreprises arrivent en minutes, pas en un jour",
+      "description": "Quand nous ajoutons des tableaux d'entreprises récemment découvertes, leurs offres attendaient une rotation complète avant d'apparaître. Elles passent désormais en tête de file et arrivent quelques minutes après une mise en production. Nous datons aussi les offres BambooHR et Rippling depuis les flux de détail de ces entreprises, et publions sur le Ghost Job Index un tableau par système montrant lesquels déclarent une date de publication."
+    },
+    "plainLanguageSearch": {
+      "title": "Cherchez sur le tableau en langage naturel",
+      "description": "Décrivez simplement ce que vous voulez — « postes produit en télétravail à plus de 150k$ publiés cette semaine » — et le tableau le traduit en filtres réels et les applique. Il montre exactement comment il a compris votre recherche (« Télétravail · Produit · 150k$+ · Cette semaine ») pour que vous ajustiez tout, et il est honnête sur ses limites : demandez « startups » et il vous dit qu'il n'y a pas encore de filtre pour ça, au lieu de l'ignorer en silence."
+    },
+    "smarterFinds": {
+      "title": "Une recherche qui suggère des postes proches — et pardonne les fautes",
+      "description": "Cherchez un poste et le tableau suggère désormais les postes voisins — cherchez « registered nurse » et voyez care coordinator, clinical educator, charge nurse à un clic — car l'emploi qui vous convient est souvent celui auquel vous n'aviez pas pensé. Et une faute de frappe n'est plus une impasse : tapez « desinger » et vous obtenez des postes de designer, clairement indiqués comme les plus proches."
+    },
+    "exploreBoard": {
+      "title": "Une nouvelle façon d'explorer — parcourez qui recrute vraiment",
+      "description": "Vous ne savez pas quoi chercher ? La nouvelle page Explorer vous laisse parcourir des signaux réels calculés en direct depuis les tableaux des entreprises : qui recrute le plus vite cette semaine, les entreprises qui pourvoient vraiment leurs postes (pas seulement les publient), les tableaux récemment ajoutés, les employeurs ouverts aux débutants et où les salaires sont les plus élevés par domaine. Chaque liste est réelle et mène directement au tableau."
+    },
+    "morningQueue": {
+      "title": "L'Agent de candidature : réveillez-vous avec une sélection déjà triée",
+      "description": "Configurez votre recherche une fois — mots-clés, domaine, salaire plancher, votre CV. Chaque nuit, l'agent analyse les offres réellement nouvelles du jour, les note contre votre CV, écarte les entreprises qui republient en boucle, priorise celles qui recrutent vraiment et met en file les meilleures — chaque sélection avec ses raisons. Vous relisez, vous envoyez ; l'agent n'envoie jamais à votre place et n'invente jamais de réponses. 99 $/mois dans votre compte, tout Pro inclus."
+    },
+    "boardFirstFive": {
+      "title": "Le tableau vous accueille où que vous soyez",
+      "description": "Première visite sans savoir par où commencer ? Vous voyez désormais une vue d'orientation — totaux en direct, plus grands domaines, chemins clairs — au lieu d'un demi-million d'offres par date. Déposez votre CV directement sur le tableau et chaque offre affiche instantanément votre score d'adéquation. Et la barre de recherche comprend les phrases : tapez « postes data senior en télétravail à plus de 150k$ » et un clic sur Analyse IA les transforme en vrais filtres — elle comprend même « entreprises qui recrutent vraiment » et « mieux payés d'abord »."
+    },
+    "companyScale": {
+      "title": "Explorer par taille — enterprise, mid-market, startups",
+      "description": "Une nouvelle section Explorer segmente le tableau par empreinte de recrutement : Enterprise (500+ postes), Mid-market (50–499) et Startups et petites équipes (3–49) — chacune avec de vraies statistiques : entreprises, postes ouverts, part de télétravail, part junior et salaire médian déclaré. Nous ne devinons pas les effectifs ; la définition est le nombre affiché, et les tableaux géants montrent notre décompte vérifié et le total annoncé par l'entreprise."
+    },
+    "dataYouCanBelieve": {
+      "title": "Des chiffres vérifiables — passe de précision complète",
+      "description": "Nous avons reconstruit chaque statistique publique sur des preuves. « Entreprises qui pourvoient vraiment » ne compte plus que les postes restés en ligne au moins une semaine puis retirés — la republication est disqualifiée et exposée dans sa propre liste « Republieurs en série » (un détaillant a republié le même poste 289 fois en une semaine). Les comptes fabriqués ont disparu, 70+ entreprises ont retrouvé leur vrai nom, les agences d'intérim ne sont plus présentées comme employeurs, un tableau de spam a été supprimé, et chaque métrique indique depuis combien de temps nous la mesurons. Quand les données sont trop récentes, nous n'affichons rien plutôt qu'une estimation."
+    },
+    "premiumLook": {
+      "title": "Une allure plus soignée sur toute la plateforme",
+      "description": "Une passe de design complète : nouvelle typographie de titres avec du caractère, surfaces plus profondes, couleurs et espacements raffinés, navigation en verre et touches discrètes partout — chiffres alignés, coins adoucis, un léger halo signature. Les mêmes données honnêtes, désormais bien habillées."
+    }
+  }
+}

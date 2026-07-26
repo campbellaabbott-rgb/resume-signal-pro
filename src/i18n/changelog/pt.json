@@ -1,0 +1,680 @@
+{
+  "changelogEntries": {
+    "countryDetectionFix": {
+      "title": "Corrigido: alguns currículos eram associados ao mercado do país errado",
+      "description": "Um erro de detecção podia ler termos de nuvem como “EC2” como um código postal de Londres e não reconhecer telefones dos EUA escritos sem +1 — assim, alguns currículos americanos recebiam conselhos do mercado do Reino Unido, apresentados com confiança. É exatamente a falha que este produto existe para evitar, e está corrigida: 22 testes de regressão fixam os casos, currículos ambíguos agora usam a sua localização real em vez de um sorteio, e cada relatório registra como o seu mercado foi escolhido — sua seleção, evidências do currículo ou localização — para que um palpite nunca mais se vista de certeza."
+    },
+    "semanticSearch": {
+      "title": "A busca agora entende significado, não só palavras",
+      "description": "Quando uma busca não encontra títulos correspondentes, o quadro procura vagas com o mesmo significado: “analista de infosec” pode mostrar vagas de engenharia de segurança mesmo que nenhum anúncio contenha suas palavras exatas. A página indica claramente quando os resultados são por significado, e seus filtros nunca são descartados em silêncio."
+    },
+    "morningEmails": {
+      "title": "Os e-mails que você assinou agora são enviados de verdade",
+      "description": "Dois fluxos de e-mail foram construídos e aceitos, mas nunca ligados a um agendamento — ninguém jamais os recebeu. Corrigido: a lista noturna do Apply Agent chega toda manhã com as mesmas razões da fila, e os assinantes do pulso de mercado finalmente recebem seu resumo mensal. Ambos são opcionais — no máximo um e-mail matinal por dia e um pulso por mês — com cancelamento em um clique."
+    },
+    "fullJobDescriptions": {
+      "title": "As descrições das vagas agora carregam em muito mais posições",
+      "description": "Algumas empresas publicam o texto das vagas em um feed separado que não estávamos lendo, então muitas vagas abriam sem nada para ler e o cálculo de compatibilidade ficava sem texto para analisar. Agora buscamos esse texto nos portais Workday, BambooHR, SmartRecruiters, Breezy e Oracle, e as descrições do Workable e do Pinpoint já chegam junto com a vaga. Tudo o que você abre fica salvo, então carrega na hora da próxima vez. Quando uma empresa realmente não publica descrição, continuamos sem mostrar nada em vez de apresentar um palpite."
+    },
+    "accountHq": {
+      "title": "Sua conta agora é o centro de comando",
+      "description": "A conta ganhou uma reforma de verdade: navegação fixa por seções (Visão geral, Pipeline, Buscas, Currículo) para nada ficar enterrado; um relatório de 'O que corrigir agora' com as habilidades que mais faltam no seu currículo entre as vagas-alvo — com contagens e um clique para trabalhá-las no builder; as próximas entrevistas reunidas num olhar; uma lista de configuração que leva contas novas ao ciclo completo de busca; um caminho claro para a Fila da Manhã; e todos os e-mails semanais num único painel de E-mails e alertas."
+    },
+    "boardContinuity": {
+      "title": "Quadro mais fluido: selos de candidatura, melhor primeira visita, polimento móvel",
+      "description": "As vagas às quais você já se candidatou agora levam uma marca discreta nos cartões e na comparação — você nunca mais relerá uma vaga já tratada sem saber. Seu rastreador de candidaturas também mostra o padrão de cada empregador (preenche de verdade, ou republica com frequência) bem onde você espera resposta. Visitantes de primeira viagem recebem três pontos de partida de um toque — publicadas hoje, empresas que preenchem vagas, só com salário declarado. No celular, a descrição vem primeiro e as seções começam dobradas; e os fatos do empregador carregam com um indicador em vez de aparecer tarde."
+    },
+    "decisionPanel": {
+      "title": "Fatos da empresa onde você decide — e descrições mais organizadas",
+      "description": "O painel de detalhes agora mostra a quem você realmente se juntaria: quadro de funcionários verificado, receita e lucratividade de empresas listadas e (para requerentes H-1B) salários declarados — os mesmos fatos com fonte das páginas de empresa, agora ao lado de cada vaga. Descrições longas se dobram em seções quando a própria vaga tem títulos claros, preservando seus destaques. Comparar vagas agora inclui modo de trabalho, porte e finanças; o quadro diz como está ordenado; e usuários logados veem suas buscas salvas como chips de um toque."
+    },
+    "secFilings": {
+      "title": "Conheça a empresa: relatórios SEC nas páginas de vagas",
+      "description": "As páginas de 178 empregadores listados nos EUA agora mostram a que tipo de empresa você se juntaria: receita dos últimos três anos fiscais com mini tendência, se a empresa é lucrativa e seu ticker — tudo dos próprios relatórios SEC da empresa (10-K/20-F), com link para a fonte. Conforme arquivado, nunca estimado."
+    },
+    "payTransparency": {
+      "title": "Tags definitivas de modo de trabalho, faixas salariais completas e o Índice de Transparência Salarial",
+      "description": "Remoto, híbrido e presencial agora são três tags definitivas, vindas do campo do próprio ATS do empregador ou do texto explícito da vaga — exibidas só quando o empregador realmente diz. O salário agora guarda e mostra a faixa declarada completa com o período original, e o novo Índice de Transparência Salarial classifica áreas, sistemas e grandes empregadores pela parcela de vagas com salário. O Explore ganhou uma coleção de empregadores transparentes que nenhuma empresa pode comprar."
+    },
+    "fairDataPromise": {
+      "title": "Promessa de dados justos, empregadores verificados e 7 manhãs grátis do Agente",
+      "description": "Três coisas de uma vez. Primeiro, política por escrito: nenhuma empresa pode pagar para mudar o que nossos dados dizem — taxas de preenchimento, sinais de rotatividade e selos são calculados de anúncios observados e não estão à venda (veja a página de Confiança). Segundo, empregadores já podem reivindicar sua página verificando um e-mail de trabalho no próprio domínio e ganhar o selo de Empregador verificado — só identidade, nunca direitos de edição. Terceiro, o Agente de Candidatura agora começa com 7 manhãs grátis: acorde com uma lista real antes de pagar qualquer coisa."
+    },
+    "companyIntel": {
+      "title": "Páginas de empresa que realmente falam da empresa",
+      "description": "Cada página de empresa agora abre com fatos com fonte: quadro verificado com sua base, vagas líquidas novas da semana, a mediana salarial declarada pela própria empresa e suas principais áreas de contratação. Abaixo das vagas, uma seção de 'empresas similares' mostra quem mais contrata no mesmo campo. Os segmentos por porte do Explorar ganharam centenas de quadros verificados a mais (Bosch, H&M, GM, Tyson e outros) e cada faixa agora se expande para a lista completa."
+    },
+    "board450k": {
+      "title": "Mais de 450.000 vagas verificadas — Pinpoint é o 13.º sistema",
+      "description": "Mais uma onda de crescimento: mais de 450.000 vagas ativas de mais de 20.000 empresas, todas direto do sistema de contratação de cada empresa. Novidades: Pinpoint como 13.º sistema, a plataforma europeia do Greenhouse (centenas de empregadores europeus) e milhares de quadros a mais de varreduras profundas. Também apertamos a porta: este é um quadro corporativo, e alguns quadros governamentais que haviam entrado foram removidos."
+    },
+    "smartSearch": {
+      "title": "Uma busca que entende o que você procura",
+      "description": "A busca ficou inteligente. Os resultados são ordenados por relevância — títulos primeiro — e a busca também examina as descrições completas, então habilidades de nicho aparecem mesmo fora do título. O campo sugere enquanto você digita, \"frases exatas\" entre aspas funcionam, um toque alterna entre relevância e mais recentes, e as pílulas de categoria com contagens ao vivo mostram toda a amplitude do quadro."
+    },
+    "boardCraft": {
+      "title": "Um quadro mais rápido e amigável — em qualquer dispositivo",
+      "description": "Várias melhorias: ⌘K abre ações rápidas, ? mostra os atalhos, / vai para a busca. O filtro de empresa agora é preditivo, a visão compacta mostra o triplo de vagas por tela, \"Continuar de onde parou\" traz de volta as vagas vistas, e cada vaga tem link de compartilhamento. Cada vaga também mostra quando foi reverificada, salários aparecem de forma consistente, e o layout móvel passou por revisão completa."
+    },
+    "board300k": {
+      "title": "Mais de 300.000 vagas verificadas — Workday é o 12.º sistema",
+      "description": "O quadro triplicou numa semana: mais de 300.000 vagas ativas de mais de 16.000 empresas, todas obtidas diretamente do sistema de contratação de cada empresa. Novidade desta rodada: Workday — o sistema usado por muitos dos maiores empregadores do mundo — mais milhares de quadros recém-descobertos nos doze sistemas."
+    },
+    "freshFirst": {
+      "title": "Vagas recentes primeiro: filtros de data honestos e descoberta mais rápida",
+      "description": "Os filtros Hoje e Esta semana agora contam apenas datas informadas pela própria empresa — nunca o nosso momento de descoberta. Quadros que publicam com frequência são verificados mais vezes, então vagas novas aparecem antes. As vagas do Workday chegam com a idade informada pela empresa desde o início."
+    },
+    "accurateDates": {
+      "title": "Idades de vagas confiáveis — e um filtro por país",
+      "description": "Todas as estatísticas de idade usam apenas datas informadas pela empresa, e cada cartão mostra de onde veio a sua data. A ordenação por salário reconhece a moeda, então um valor em pesos não supera um em dólares. E agora dá para filtrar por país — mais de 60 países, apenas quando a própria vaga informa."
+    },
+    "matchingResume": {
+      "title": "Fixe o currículo exato que toda a plataforma usa para comparar",
+      "description": "Sua conta agora guarda um currículo de referência explícito: fixe qualquer escaneamento que salvou o documento, ou cole o currículo exato que você está enviando, e o ranking de compatibilidade do mural, seus alertas por e-mail e os rascunhos do agente de candidatura passam a se basear nesse documento. Se você não fixar nada, nada muda — tudo continua usando seu último escaneamento, como sempre."
+    },
+    "ghostJobIndex": {
+      "title": "O Índice de Vagas Fantasma: auditamos nosso próprio mural e publicamos o número",
+      "description": "Uma nova página pública mostra os números reais e honestos por trás do mural: quantas vagas verificadas estão abertas agora, a idade mediana de uma vaga, a velocidade real de preenchimento e quais empresas estão contratando mais ativamente. Por trás disso, o mural agora se audita todos os dias — amostra cerca de cem vagas aleatórias e reconfere cada uma no sistema da própria empresa — e publica o percentual confirmado como ativo. As garantias de sempre agora aparecem de frente: nada com mais de 30 dias permanece listado, e cada vaga é reverificada ao vivo no momento em que você clica em Candidatar-se."
+    },
+    "hiringHealth": {
+      "title": "Saúde de contratação: veja quais empresas realmente preenchem vagas",
+      "description": "O mural agora acompanha o ciclo de vida completo de cada vaga — quando abre e quando a empresa a retira — e transforma isso em um sinal que nenhum agregador pode oferecer. As páginas de empresa mostram quantas vagas uma empresa preencheu ou fechou nos últimos 90 dias e com que rapidez, um selo de \"Contratando ativamente\" marca empresas com padrão recente comprovado, e um filtro do mural permite navegar só por essas. Construído com honestidade: onde ainda não há dados suficientes, o painel diz que continua coletando, em vez de adivinhar."
+    },
+    "salaryAndDedupe": {
+      "title": "Salário em mais vagas, e a mesma função não inunda mais a lista",
+      "description": "Muitas empresas informam a faixa salarial no texto da vaga mesmo quando o sistema não tem campo de salário — o mural agora a lê das próprias palavras da vaga, nunca uma estimativa, então o salário aparecerá em cada vez mais cartões nas próximas semanas. Quando uma empresa publica a mesma função em várias localidades, você agora vê um só cartão com \"mesma função em mais N localidades\" em vez de um muro de vagas quase idênticas — cada localidade continua disponível para candidatura. E as páginas de empresa agora respondem à pergunta que as pessoas realmente pesquisam — \"essa empresa está contratando?\" — com uma contagem verificada ao vivo."
+    },
+    "applyAgent": {
+      "title": "O agente de candidatura: perguntas reais da vaga, respondidas a partir do seu currículo — nunca inventadas",
+      "description": "As vagas do Greenhouse agora têm um botão de \"Preparar respostas\". O agente busca as perguntas reais da candidatura no próprio sistema da empresa, rascunha respostas estritamente baseadas no seu currículo e sinaliza o que não pode sustentar em vez de inventar — perguntas de identidade, salário e demografia ficam sempre com você. O mesmo painel adapta seu currículo à função, rascunha uma carta de apresentação, prepara prováveis perguntas de entrevista, avisa se você já se candidatou e mostra a garantia de honestidade logo de início. Você revisa tudo e envia no site da própria empresa — ele nunca se candidata por você."
+    },
+    "explainableFit": {
+      "title": "Compatibilidade que dá para ler — o que você tem, o que adicionar, e alertas só para matches fortes",
+      "description": "Os cartões ordenados por compatibilidade agora mostram os dois lados da pontuação: \"Você já tem:\" ao lado de \"Adicione para competir:\", então o ranking se explica sozinho em vez de ser um número solto. Os e-mails de buscas salvas ganham uma régua de compatibilidade — escolha \"só compatibilidade forte\" e escrevemos apenas sobre vagas novas que a superem, pontuadas contra o seu currículo, ficando em silêncio caso contrário. E com candidaturas registradas suficientes, sua conta mostra sua taxa de entrevistas pela compatibilidade com que você se candidatou — para ver onde suas candidaturas realmente convertem."
+    },
+    "boardScaleUp": {
+      "title": "O grupo de empresas mais que dobra: mais de 8.600 empregadores verificados no mural",
+      "description": "Uma atualização do banco de dados removeu o antigo teto de capacidade do mural, então todos os empregadores limpos restantes do nosso censo das grandes plataformas de recrutamento entraram a bordo — o grupo cresceu de cerca de 3.900 para mais de 8.600 empresas, cada uma verificada ao vivo na API pública oficial da sua plataforma e nomeada pelos registros da própria plataforma. As vagas ativas seguem subindo à medida que os novos murais chegam, com as mesmas regras de sempre: cada vaga vem direto do mural da própria empresa, agregadores e agências de recrutamento em massa ficam de fora, e nada permanece listado por mais de 30 dias. O mural ficou mais limpo e mais rápido na mesma leva: algumas empresas que apareciam duas vezes sob nomes com capitalização diferente foram deduplicadas, cargos mal classificados (optometristas, diretores de arte, professores de pré-escola) saíram de “Outros” para seus campos corretos, e a página de vagas carrega metade dos dados — filtrar ficou mais ágil."
+    },
+    "comeBackSignals": {
+      "title": "Sua conta agora avisa quando vale a pena voltar",
+      "description": "Três melhorias discretas que transformam o mural em um ciclo, não em uma visita única. O resumo semanal por e-mail das buscas salvas agora é enviado de verdade — havia um botão de inscrição, mas nada agendado por trás, então as buscas inscritas não recebiam nada; agora chega um e-mail mais ou menos semanal quando novas vagas combinam, com cancelamento em um clique que funciona. O cartão de buscas salvas da sua conta mostra primeiro o total que importa: quantas vagas novas combinam com suas buscas desde a última visita, a um clique da busca com mais resultados. E quando uma vaga em que você se candidatou sai do ar, o rastreador não deixa você num beco sem saída: ele traz vagas ativas do mesmo cargo direto do mural, para você manter o ritmo."
+    },
+    "fitFirstBoard": {
+      "title": "O painel agora abre ordenado pelo seu currículo",
+      "description": "Analise seu currículo uma vez e o painel abre já ordenado por afinidade — sem cliques extras. Cada vaga mostra um nível de correspondência em linguagem clara (Boa correspondência, Correspondência possível ou Pouco provável) em vez de uma porcentagem crua, com a cobertura exata de palavras-chave ao passar o cursor e os termos específicos a adicionar para competir. Cada cartão é marcado como vindo diretamente do sistema de recrutamento oficial da empresa — nunca de um agregador ou de uma cópia rastreada — e é verificado ao vivo assim que você clica em Candidatar-se. Na sua conta, o copiloto de candidaturas agora prepara primeiro as vagas salvas com melhor correspondência, então, se você atingir o limite diário, as melhores já estão prontas."
+    },
+    "fieldPages": {
+      "title": "Navegue o mural por área: 17 páginas dedicadas com contagens ao vivo",
+      "description": "Cada área do mural — Engenharia e TI, Saúde e Clínica, Finanças e Contabilidade, Hotelaria e Varejo, e mais 13 — agora tem página própria em /jobs/field com as vagas ativas da área e o filtro já aplicado. Cada página mostra a contagem real de vagas da área, medida no corpus ao vivo na última compilação do site (Engenharia e TI: 21.610 no momento em que escrevemos). Nossos 59 guias de palavras-chave por setor apontam direto para a área correspondente, em inglês e espanhol. As mesmas regras de sempre: só feeds oficiais das empresas, e a candidatura acontece no site da empresa."
+    },
+    "boardSelfTuning": {
+      "title": "O mural agora se ajusta e se monitora sozinho",
+      "description": "Três melhorias silenciosas por trás do mural de 90.000 vagas. A via rápida se reordena sozinha: após cada passada de atualização, os murais com mais vagas ativas recebem automaticamente o ritmo de verificação mais rápido — uma empresa em ritmo forte de contratação acelera sem ninguém mexer em nada. Vagas que chegam sem data de publicação (alguns feeds nunca incluem) agora usam a hora em que foram vistas pela primeira vez para ordenação e filtros de frescor, então não afundam mais sem serem vistas — as datas exibidas continuam sendo só as que a empresa publicou. E a atualização se vigia sozinha: se algum dia parar, somos alertados em menos de uma hora, antes de alguém notar o mural desatualizado. A categorização também ficou mais precisa — vagas de TI corporativa, service desk, pesquisa, relações com investidores, gerência distrital e varejo em francês que chegam agora entram na área certa em vez de Outros."
+    },
+    "board90k": {
+      "title": "O mural de vagas dobra: ~90.000 vagas ativas de quase 900 empresas",
+      "description": "O mural cresceu de cerca de 40.000 para cerca de 90.000 vagas ativas. Novidades desta rodada: grandes empregadores como AECOM, Domino's, SGS, Veolia, Carvana, Turner & Townsend, Eurofins, Sopra Steria, Greene King, BAYADA Home Health Care, CROSSMARK, EōS Fitness e BoxLunch — com muito peso em saúde, engenharia, alimentação, varejo, hotelaria e laboratório, não só tecnologia. Cada empresa entrou do mesmo jeito: encontrada em um censo das principais plataformas de contratação, verificada contra a API pública oficial da plataforma e nomeada pelos registros da própria plataforma. Nesse censo também encontramos agregadores e feeds de vagas republicadas — e os excluímos. Cada vaga aqui pertence à empresa que a publicou. A atualização ficou mais inteligente com o tamanho: os murais maiores são reverificados a cada 10–15 minutos e o catálogo inteiro é reverificado em algumas horas, então vagas retiradas continuam sumindo na próxima passada."
+    },
+    "suiteV2": {
+      "title": "Preços mais simples, garantia de verdade e ajuda para se candidatar àquela vaga",
+      "description": "Três mudanças nas ferramentas pagas. A página de preços agora apresenta três escolhas claras em vez de um muro de treze — o catálogo completo continua lá, a um clique. Toda ferramenta paga agora carrega um compromisso: não gostou do resultado? Regeneramos grátis. E depois de comparar seu currículo com uma vaga real, o relatório pode preparar essa candidatura exata — currículo adaptado, carta combinando, lista honesta de lacunas — com uma amostra grátis do seu próprio currículo antes de pagar."
+    },
+    "roleTargeting": {
+      "title": "Seu relatório agora diz para o que você deve se candidatar",
+      "description": "Cada escaneamento gratuito agora termina com um plano de ação, não só uma nota. Um novo cartão lista os cargos para os quais seu currículo realmente passa na triagem — da mesma detecção que sua pontuação usou, com buscas apontadas para seu mercado-alvo — mais os cargos ao seu alcance pela sua força secundária, com uma nota honesta sobre qual é a lacuna real. E se você escaneou sem uma vaga, o relatório agora propõe o passo de maior impacto: cole uma vaga real e reescaneie contra os requisitos exatos, grátis."
+    },
+    "countryCvPages": {
+      "title": "Regras de currículo para 56 países — grátis, em 6 idiomas",
+      "description": "Novo: um guia por país de como um currículo realmente é em 56 mercados — normas de foto (com estatísticas e leis reais), extensão esperada, dados pessoais e o nome do documento local. Gerado pelo mesmo motor que o scanner aplica quando seu currículo mira aquele mercado, com páginas em português, inglês, espanhol, francês, alemão e holandês. Comece em /cv-standards."
+    },
+    "sharperGeo": {
+      "title": "O escaneamento agora segue para onde você vai, não só onde esteve",
+      "description": "Escreva \"relocating to London\" ou \"seeking roles in Germany\" e o escaneamento compara com o mercado de destino — antes, você era julgado pela localização atual. Endereços reais (estado + ZIP dos EUA, código postal canadense, endereço alemão) agora pesam mais que uma cidade citada de passagem, ~34 países a mais são detectados, e uma segunda área especializada (como enfermagem + machine learning) agora aparece em vez de ser abafada pela profissão principal."
+    },
+    "resumeLanguageReports": {
+      "title": "Seu relatório agora fala o idioma do seu currículo",
+      "description": "Escaneie um currículo escrito em português, francês, espanhol, alemão, holandês, italiano, hindi ou tagalo e o relatório inteiro — dicas, alertas, reescritas, sugestões de palavras-chave — volta nesse idioma. Antes isso funcionava só às vezes; agora o idioma é detectado de forma confiável antes de a análise começar, então não é mais questão de sorte. Bônus: o idioma do seu currículo também ajuda a identificar seu mercado de trabalho, para que os conselhos por país cheguem ao lugar certo."
+    },
+    "sharperDetection": {
+      "title": "Detecção mais precisa de localização e setor",
+      "description": "Seu relatório agora segue o mercado em que você realmente está, mesmo que seu currículo cite outras cidades. Damos mais peso a sinais reais (onde você está autorizado a trabalhar, seu sistema de ensino, seu telefone) do que a uma menção passageira de cidade, então um candidato dos EUA que \"liderou o lançamento em Londres\" continua sendo comparado ao mercado americano. Currículos multifuncionais também revelam um segundo campo real — um Diretor de Vendas que também foi Gerente de Marketing tem os dois cobertos."
+    },
+    "previewBeforePay": {
+      "title": "Veja uma amostra real de qualquer ferramenta paga antes de comprar",
+      "description": "Chega de comprar às cegas. Cada ferramenta paga agora gera uma amostra real do que você receberia — criada a partir do seu próprio currículo — antes de pagar. O Interview Coach mostra uma pergunta real, as ferramentas de reescrita mostram um antes e depois autêntico de uma das suas linhas, e o Freelance Boost transforma um dos seus projetos em uma linha de nível profissional. A mesma integridade da versão paga: se o seu currículo não sustenta uma métrica, não a inventamos."
+    },
+    "sharperPaidProducts": {
+      "title": "Freelance Boost e Interview Coach mais afiados",
+      "description": "Ambos agora são gerados com nosso modelo mais capaz — resultados visivelmente mais fortes e específicos nas seções de currículo e na preparação para entrevistas que você paga. A mesma abordagem fundamentada e sem detalhes inventados; com um motor melhor por trás."
+    },
+    "smarterIndustryConfirm": {
+      "title": "A análise agora pergunta quando sua área é realmente incerta",
+      "description": "Se seu currículo abrange duas áreas — por exemplo, marketing e desenvolvimento de negócios, ou trabalho clínico e ciência de dados —, a análise agora pede que você confirme o setor antes de decidir, em vez de escolher um silenciosamente e arriscar errar."
+    },
+    "liveBenchmarks": {
+      "title": "Veja como currículos reais pontuam: benchmarks de ATS ao vivo",
+      "description": "A página de benchmarks agora mostra distribuições de pontuação de ATS ao vivo do nosso corpus real de análises — mediana e quartis gerais, benchmarks por setor e medianas por nível de experiência, cada um com seu tamanho de amostra. E o contador de análises da página inicial agora reflete o total real acumulado."
+    },
+    "reportCardsFix": {
+      "title": "Corrigido: partes do seu relatório não apareciam",
+      "description": "Um erro de exibição ocultava silenciosamente várias seções do relatório em alguns scans — os padrões de currículo por país, a análise de parsing ATS, as melhorias rápidas e a pontuação ATS vs. recrutador, entre outras. Todas voltaram. Também adicionamos uma proteção automática para que uma seção inteira não desapareça de novo sem aviso."
+    },
+    "targetMarketScan": {
+      "title": "Candidatando-se no exterior? Seu relatório agora segue a vaga, não seu país",
+      "description": "Mirando uma vaga em outro país? Escolha onde está se candidatando e a análise avalia seu currículo pelas normas daquele mercado — expectativas de foto e dados pessoais, referências e mais — em vez de supor sua localização atual. Também ampliamos a detecção automática de país para que mais currículos recebam as regras locais certas sozinhos."
+    },
+    "groundedAnalysis": {
+      "title": "Menos alertas falsos de «está faltando isto»",
+      "description": "Antes de analisar, o scanner agora mapeia a estrutura real do seu currículo — seções, cargos com datas, dados de contato — então é bem menos provável que diga que algo está faltando quando na verdade está lá. E quando um PDF não é extraído corretamente, agora avisamos que os resultados podem não ser confiáveis em vez de pontuar um texto embaralhado."
+    },
+    "guidesTab": {
+      "title": "Todos os nossos guias em um só lugar",
+      "description": "Uma nova aba de Guias reúne todos os tutoriais que escrevemos — por que currículos são rejeitados, como escolher as palavras-chave certas, currículos para mudança de carreira e freelance, e mais. «Como funciona» agora fica na página de Confiança, ao lado da nossa metodologia."
+    },
+    "honestClaims": {
+      "title": "Nossas afirmações agora coincidem com nossa própria pesquisa",
+      "description": "Revisamos o site inteiro e reescrevemos tudo o que exagerava como funciona a triagem de currículos. Sem estatísticas inventadas e sem táticas de medo — o que dizemos a você corresponde ao que nossa própria análise do comportamento dos ATS realmente mostra."
+    },
+    "countryStandards": {
+      "title": "Seu relatório agora conhece as regras locais: padrões de 52 países",
+      "description": "Escaneando da Alemanha, do Japão ou do Golfo? Seu relatório agora inclui as normas do seu mercado — regras de foto (a diferença mais delicada: esperada em Tóquio, eliminatória em Toronto), expectativas de dados pessoais e verificações específicas como a cláusula RODO da Polônia, o consentimento de privacidade da Itália e a linha de status de visto do Golfo. Verificado em julho de 2026; mercados com menos fontes são marcados como direcionais."
+    },
+    "fractionalMode": {
+      "title": "Líderes fracionais: papéis simultâneos são um portfólio, não instabilidade",
+      "description": "O scanner agora reconhece liderança fracional e interina — compromissos seniores sobrepostos não são mais lidos como instabilidade. E o Freelance Boost ganhou um modo fracional: uma entrada guarda-chuva de portfólio com escopo por compromisso (P&L, equipe, estágio), construída apenas com os números que você fornece. Mais um novo guia para estruturar esses papéis."
+    },
+    "freelanceUpgrades": {
+      "title": "Freelance Boost: veja a transformação antes de pagar",
+      "description": "A página agora mostra um exemplo rotulado de antes/depois do que a tradução produz. Cole um perfil estilo Upwork no scanner gratuito e ele diz a verdade — 'isto é um perfil, não um currículo' — e direciona à ferramenta certa. E os resultados agora se inserem direto no editor como experiência real, prontos para exportação formatada."
+    },
+    "honestMetricsFix": {
+      "title": "Corrigido: alguns cartões do relatório mostravam padrões em vez dos seus dados",
+      "description": "Uma auditoria interna descobriu que, quando a análise omitia certas métricas, o relatório as preenchia em silêncio com valores idênticos para todos — incluindo uma lista de compatibilidade por ATS que nunca foi real. Tudo isso sumiu: essas métricas agora são obrigatórias na análise, contagens de palavras/páginas derivam do seu documento real, e o que não podemos medir fica oculto em vez de inventado. Publicamos isso porque confiança é o produto."
+    },
+    "coachButtonFix": {
+      "title": "Corrigido: o botão do Interview Coach de US$ 5 abria o checkout de US$ 25",
+      "description": "A oferta 'Interview Coach — US$ 5' no fim do relatório levava ao checkout da Análise Completa de US$ 25. Agora compra exatamente o que diz. Se aconteceu com você, fale conosco para reembolso — sem perguntas."
+    },
+    "shareCards": {
+      "title": "Compartilhe seu antes/depois — e seu roast",
+      "description": "Um toque agora abre a folha de compartilhamento do seu celular com uma imagem limpa anexada. Reescaneou depois de corrigir? O cartão vira sua melhoria: '58 → 74, mesma régua nas duas vezes.' E o Resume Roast finalmente ganha a imagem compartilhável que merece — a frase e o nível de pimenta, sem nunca haver conteúdo do currículo em nenhum cartão."
+    },
+    "fallbackParity": {
+      "title": "O scanner reserva agora é tão bom quanto o principal",
+      "description": "Nosso scanner de emergência tinha ficado para trás: tabelas de detecção antigas e um modelo mais lento (cerca de 32s contra 20s). Agora usa exatamente os mesmos dados de detecção do principal — espanhol incluído — e a ordem de modelos mais rápida. Você só o encontraria durante uma queda; agora seria um encontro bem melhor."
+    },
+    "paidDeliverablesAudit": {
+      "title": "Auditamos nossos próprios produtos pagos como um editor implacável",
+      "description": "Geramos e revisamos cada entregável principal. Achados, corrigidos no mesmo dia: as cartas podiam conter [marcadores entre colchetes] — agora banidos; as cartas devem chegar prontas para enviar. A reescrita premium chegou a inventar uma URL do LinkedIn — agora uma proteção em nível de código remove qualquer contato ausente do seu original, além de instruções mais rígidas. As respostas de exemplo do coach de entrevistas agora permanecem fiéis ao seu currículo real."
+    },
+    "typesetDelivery": {
+      "title": "Reescritas premium agora viram documentos de verdade",
+      "description": "O currículo reescrito do Pacote Premium agora pode abrir diretamente no editor gratuito — um clique e vira um PDF ou documento Word com formatação profissional, pronto para enviar, em vez de texto numa página web."
+    },
+    "rescanRitual": {
+      "title": "Veja seu antes/depois — corrija, exporte, reescaneie",
+      "description": "Ao exportar do editor, você recebe a oferta de reescanear essa versão exata com um clique. O novo relatório abre com o delta: '58 → 74, alertas 5 → 2 — mesma régua nas duas vezes.' Melhoria medida, não presumida."
+    },
+    "applicationFit": {
+      "title": "Verifique o encaixe de cada candidatura com a versão que você enviou",
+      "description": "No seu rastreador de candidaturas, cole a vaga e veja quais palavras-chave reconhecidas a versão enviada cobre — e quais faltam. Determinístico e reproduzível: o dicionário são as próprias tabelas de detecção do nosso scanner, sem IA."
+    },
+    "fixPlanDrip": {
+      "title": "Seu plano de correções em sequência de 7 dias — estritamente opcional",
+      "description": "Nova opção desmarcada por padrão ao enviar o relatório por e-mail: suas principais correções no dia 2, o restante no dia 4 e um lembrete de reescaneio no dia 6. Três e-mails no total, construídos do seu plano real, com cancelamento em um clique que anula também os restantes."
+    },
+    "personalOutcomeAnalytics": {
+      "title": "Sua própria taxa de entrevistas, por faixa de pontuação",
+      "description": "Com 5+ candidaturas com status, sua conta mostra a taxa de entrevistas das suas próprias candidaturas agrupada por pontuação do currículo — sua evidência pessoal do que funciona, com a honestidade que amostras pequenas exigem."
+    },
+    "emailSuppressionFix": {
+      "title": "Corrigido: cancelar inscrição agora anula também e-mails na fila",
+      "description": "Nossa fila de e-mails não consultava a lista de supressão antes de enviar — cancelamentos, devoluções e reclamações não valiam plenamente para a fila. Agora todo e-mail não crítico consulta a lista na hora do envio. Encontrado ao construir a sequência do plano; corrigido para tudo."
+    },
+    "outcomeTracking": {
+      "title": "Conte como foi — começa a medição de resultados",
+      "description": "Após cada análise você pode informar — anonimamente — se aquele currículo rendeu entrevistas, no próprio relatório ou no resumo por e-mail. Com respostas suficientes, publicaremos dados medidos de pontuação-para-entrevista, em vez do folclore que este setor costuma vender."
+    },
+    "savedVersions": {
+      "title": "Salve versões do currículo — e veja qual consegue entrevistas",
+      "description": "Com uma conta, você pode salvar o documento exato de qualquer análise (só quando você pedir — a análise grátis continua sem armazenar seu currículo). Marque cada candidatura com a versão enviada e sua conta mostra qual versão realmente consegue entrevistas."
+    },
+    "builderFixHandoff": {
+      "title": "Um clique do diagnóstico ao currículo corrigido",
+      "description": "O relatório agora termina com 'Abrir no editor com as correções aplicadas': seu currículo chega ao editor gratuito com os tópicos reescritos já no lugar e as palavras-chave ausentes sugeridas ao lado. Nunca inserimos palavras-chave automaticamente — só você pode afirmar uma habilidade com honestidade."
+    },
+    "transitionProTier": {
+      "title": "Transition Pro: o kit completo de transição de carreira",
+      "description": "O nível de US$ 59 agora é genuinamente mais que o de US$ 29: tudo do Freelance Boost, mais uma carta de apresentação de transição completa e uma seção 'Sobre' do LinkedIn — construídas com seus projetos reais, sob as mesmas regras de não inventar nada."
+    },
+    "spanishCoverLetters": {
+      "title": "Vaga em espanhol? Carta de apresentação em espanhol",
+      "description": "As cartas de apresentação agora detectam o idioma da vaga e escrevem espanhol natural e profissional quando a vaga está em espanhol. Os relatórios de análise sempre responderam no idioma do seu currículo."
+    },
+    "scanLimitDoubleCountFix": {
+      "title": "Corrigido: análises contavam em dobro no seu limite diário",
+      "description": "Uma pré-análise em segundo plano consumia silenciosamente uma segunda vaga diária — executando uma análise completa cujos resultados nunca eram exibidos. Se você já atingiu o limite mais rápido que o esperado, era por isso. Suas análises grátis diárias agora são exatamente as que anunciamos."
+    },
+    "guidesLaunch": {
+      "title": "Seis guias que dizem a verdade sobre ATS",
+      "description": "Novos guias baseados nas verificações que nosso scanner realmente executa — incluindo um que desmente o mito de que '75% dos currículos são rejeitados por robôs'. Cada um abre com uma resposta curta e direta. Sem folclore reciclado."
+    },
+    "outageSentinel": {
+      "title": "Quedas agora são detectadas em minutos, não em horas",
+      "description": "Um sentinela de monitoramento executa uma análise real no sistema em produção a cada 10 minutos e nos alerta assim que algo quebra, com um reforço independente fora da nossa própria infraestrutura. Após a queda de 4 de julho prometemos correções estruturais — aqui estão."
+    },
+    "homepageLiveStats": {
+      "title": "Estatísticas reais de escaneamento, direto na página inicial",
+      "description": "A página inicial agora mostra como os currículos reais pontuam: mediana ao vivo, faixa central, percentual com 80 ou mais e a distribuição completa de pontuações — dos mesmos dados públicos do nosso estudo de referência. Se os dados ao vivo não puderem ser carregados, a seção não mostra nada em vez de números inventados."
+    },
+    "scoreBenchmarksStudy": {
+      "title": "O que é uma boa pontuação ATS? Agora respondido com dados ao vivo",
+      "description": "Uma nova página de pesquisa publica referências reais de pontuação calculadas ao vivo a partir dos escaneamentos deste site: mediana e quartis gerais, distribuições por setor e medianas por nível de experiência numa janela móvel de 180 dias. Apenas agregados — no mínimo 25 escaneamentos por grupo, e nenhum dado de currículo individual é exposto."
+    },
+    "syntheticScanExclusion": {
+      "title": "Nossos próprios escaneamentos de teste não contam mais nas estatísticas",
+      "description": "As sondas de monitoramento e os testes de carga que executamos para manter o scanner saudável agora são marcados como tráfego de teste e excluídos de todas as estatísticas publicadas; escaneamentos de teste antigos também foram removidos retroativamente. As referências refletem apenas currículos reais."
+    },
+    "scanOutageFix": {
+      "title": "Corrigido: uma breve interrupção do escaneamento — e a brecha que a permitiu",
+      "description": "Por um curto período hoje, escaneamentos gratuitos retornavam erro devido a um defeito em uma nova versão. Está corrigido, e adicionamos uma verificação automática mais profunda ao nosso processo de lançamento que captura toda essa classe de bug antes de publicar — e, no processo, encontramos e corrigimos uma falha antiga no nosso detector de texto corrompido. Transparência é o produto; isso inclui nossos erros."
+    },
+    "freelanceBoostLaunch": {
+      "title": "Novo produto: Freelance Boost",
+      "description": "Transforme projetos freelance, trabalhos de gig e side hustles em experiência de currículo de nível recrutador. Formulário guiado (sem currículo), seus projetos traduzidos para a linguagem da área-alvo, a estrutura certa para sua situação, tratamento honesto de lacunas e cobertura de palavras-chave contra a vaga-alvo. Importe seu perfil do Upwork/Fiverr ou o PDF do LinkedIn para preencher automaticamente. US$ 29, pagamento único."
+    },
+    "roastUpgrade": {
+      "title": "O Resume Roast agora queima de verdade",
+      "description": "O Roast foi reconstruído com ofício real de comédia: cada crítica cita seu currículo literalmente e desmonta exatamente essas palavras — e qualquer roast baseado em citação inventada é descartado antes de você ver. O conselho sério de recrutador segue cada golpe."
+    },
+    "reliabilityAtScale": {
+      "title": "Feito para multidões",
+      "description": "Sob tráfego pesado a plataforma agora degrada com elegância em vez de ficar lenta: acima da capacidade, escaneamentos recebem na hora o relatório determinístico completo com reescaneamento por IA grátis minutos depois — sem timeouts nem esperas de minutos."
+    },
+    "diagnosticReport": {
+      "title": "Seu escaneamento gratuito agora é um relatório diagnóstico",
+      "description": "O relatório foi redesenhado com estrutura de diagnóstico: cabeçalho com ID único (reescanear o mesmo documento o reproduz), resumo de achados — críticos, avisos, aprovados — antes de qualquer detalhe, achados sem interrupções e todas as ofertas consolidadas numa seção final claramente marcada."
+    },
+    "onetSourcing": {
+      "title": "Expectativas de palavras-chave com fonte: o Departamento do Trabalho dos EUA",
+      "description": "Escaneamentos sem vaga agora extraem habilidades esperadas do O*NET — o banco de dados ocupacional do Departamento do Trabalho — com fonte e código exibidos no relatório. Uma vaga colada continua tendo prioridade sobre tudo."
+    },
+    "honestScoring": {
+      "title": "Pontuação honesta: faixas, procedência e extração real",
+      "description": "Sua pontuação agora mostra sua faixa de modelagem em vez de falsa precisão pontual. Cada relatório informa de onde vêm suas expectativas — a vaga exata, O*NET ou nosso modelo. E ao enviar um arquivo, a prévia é rotulada pelo que é: o texto realmente extraído do documento."
+    },
+    "reportEverywhere": {
+      "title": "O mesmo relatório na tela, em PDF e no seu e-mail",
+      "description": "O PDF para download e o relatório por e-mail agora carregam a estrutura diagnóstica completa — mesmo ID, resumo de achados, faixa de pontuação e atribuições de fonte da versão na tela."
+    },
+    "fasterScans": {
+      "title": "Escaneamentos mais rápidos — e reescaneamentos instantâneos",
+      "description": "Duas melhorias no motor: repetir o escaneamento do mesmo currículo agora responde em cerca de um segundo, e a análise executa suas passagens de IA em paralelo num modelo mais rápido — espera bem menor."
+    },
+    "freelanceGuidance": {
+      "title": "Freelancers ganham seu próprio manual",
+      "description": "O escaneamento agora detecta carreiras freelance e por projetos (ou indique com o novo chip Freelance) e mostra como apresentar o trabalho com clientes como uma trajetória coerente — seus projetos reais viram bullets de experiência."
+    },
+    "spanishDetection": {
+      "title": "Suporte completo a currículos em espanhol",
+      "description": "A detecção de setor agora lê currículos totalmente em espanhol de forma nativa — cerca de 200 cargos e termos em espanhol em 15 setores."
+    },
+    "industryScreenerChecks": {
+      "title": "O que os recrutadores do SEU setor procuram",
+      "description": "Novas verificações por área: portfólio para criativos, GitHub para engenheiros, publicações para pesquisadores, credencial de segurança para governo e visibilidade de licenças em 11 áreas regulamentadas."
+    },
+    "realBenchmarks": {
+      "title": "Comparativos de escaneamentos reais",
+      "description": "Conforme cada setor acumula escaneamentos suficientes na plataforma, sua comparação de pontuação passa de estimativas para a distribuição real de currículos escaneados aqui — e o relatório avisa quando isso acontece."
+    },
+    "builderExports": {
+      "title": "Exportações do Criador de Currículos com tipografia profissional",
+      "description": "As exportações DOCX agora usam títulos pretos limpos com fio fino (chega do estilo padrão do Word), datas alinhadas à margem direita real e escala tipográfica consistente. O PDF corrige quebras de página e recuos."
+    },
+    "proSubscription": {
+      "title": "Resume Booster Pro — todas as ferramentas, uma assinatura",
+      "description": "Novo plano de acesso total por US$ 45/mês: todas as ferramentas pagas incluídas (Análise Completa, Correção de Palavras-Chave, Cartas de Apresentação, Coach de Entrevista e mais), escaneamentos diários ilimitados e cada nova ferramenta incluída automaticamente. Cancele quando quiser."
+    },
+    "scoreSimulator": {
+      "title": "Veja sua pontuação antes de corrigir qualquer coisa",
+      "description": "O relatório agora inclui um simulador interativo: marque as correções que pretende fazer e veja sua pontuação ATS projetada atualizar na hora — para saber quais correções valem seu tempo."
+    },
+    "weakestBullets": {
+      "title": "Seus 3 bullets mais fracos, avaliados e reescritos",
+      "description": "O escaneamento agora cita literalmente seus três bullets mais fracos, avalia cada um de A a F em métricas, verbos e escopo, e mostra uma reescrita melhorada baseada apenas no que já está no seu currículo."
+    },
+    "atsVendorChecks": {
+      "title": "Como Workday, Greenhouse, Lever e iCIMS leem seu currículo",
+      "description": "Cada grande ATS processa currículos de forma diferente. Seu relatório agora mostra, fornecedor por fornecedor, como sua formatação sobrevive a cada sistema — e o que mudar caso contrário."
+    },
+    "careerChangeBridge": {
+      "title": "Quem muda de carreira ganha um mapa de transferência",
+      "description": "Mudando de área? O relatório agora detecta transições e mostra quais habilidades se transferem como estão, quais linhas reformular e a maior lacuna de credibilidade a fechar."
+    },
+    "scoreAuditTrail": {
+      "title": "Por que essa pontuação? Cada ponto justificado",
+      "description": "Uma nova auditoria expansível mostra exatamente de onde vem sua pontuação ATS — cobertura de palavras-chave, formatação, impacto quantificado e sinais de conteúdo, com pontos que somam seu total."
+    },
+    "shareScoreCard": {
+      "title": "Compartilhe sua pontuação",
+      "description": "Um clique baixa um cartão de pontuação limpo — pontuação, setor e percentil, sem conteúdo do currículo — pronto para compartilhar."
+    },
+    "verifiedReportClaims": {
+      "title": "Cada citação do seu relatório agora é verificada",
+      "description": "Antes de exibir seu relatório, cada citação do seu currículo é comparada com o texto real — o que não corresponde é removido e reconstruído a partir de análise verificada."
+    },
+    "smarterIndustryDetection": {
+      "title": "Detecção de setor mais precisa",
+      "description": "133 novas variantes de cargos em 45 setores, desempate para casos apertados, detecção automática de transição de carreira e um ciclo de feedback que aprende com suas correções — além de comparativos calibrados ao setor da vaga desejada."
+    },
+    "fasterFrontPage": {
+      "title": "Página inicial mais rápida com envio instantâneo",
+      "description": "A página inicial agora carrega muito menos código e você pode soltar seu currículo direto no topo — sem rolar a página."
+    },
+    "tenNewIndustries": {
+      "title": "10 novos setores agora totalmente suportados",
+      "description": "O scanner agora tem bibliotecas de palavras-chave dedicadas, reconhecimento de cargos, tabelas de certificações e benchmarks de pontuação para mais 10 áreas: cibersegurança, logística e cadeia de suprimentos, imóveis, seguros, organizações sem fins lucrativos, biotecnologia e ciência de laboratório, aviação, energia, ofícios especializados (eletricistas, encanadores, HVAC, soldadores e mais) e atendimento ao cliente. Se você trabalha em uma dessas áreas, sua análise não é mais espremida em uma categoria vagamente relacionada — palavras-chave, alertas e benchmarks agora são específicos da sua profissão real."
+    },
+    "specializationDetection": {
+      "title": "Detecção de setor em nível de especialização",
+      "description": "Setores amplos escondem trabalhos muito diferentes — uma enfermeira, um faturista médico e um representante farmacêutico são todos \"saúde\", mas precisam de currículos completamente diferentes. O scanner agora detecta sua especialização dentro do setor e adapta cada recomendação a ela. Licenças profissionais como RN, CPA, PE ou CISSP agora ancoram a classificação, e quando você cola uma descrição de vaga, a análise é enquadrada no campo para o qual você está se candidatando. Currículos multidisciplinares recebem uma leitura honesta da mistura (ex.: \"60% dados / 40% marketing\") em vez de serem forçados em uma única caixa."
+    },
+    "interviewLikelihoodFixPlan": {
+      "title": "Probabilidade de entrevista e um plano de melhoria minuto a minuto",
+      "description": "Três novos resultados mostram onde você está e exatamente o que fazer. Uma faixa de probabilidade de retorno combina taxa de aprovação ATS, percentil e alertas críticos em um veredito honesto — nomeando o fator que mais te segura. Uma comparação lado a lado mostra seu currículo frente a um candidato do quartil superior da sua área. E um plano numerado organiza tudo em uma única sessão de trabalho, ordenado por pontos ganhos por minuto, com pontuação projetada após cada etapa."
+    },
+    "deeperScoreReporting": {
+      "title": "Veja exatamente o que determina sua pontuação",
+      "description": "Sua pontuação ATS não é mais um número opaco. Um detalhamento mostra os três componentes — correspondência de palavras-chave, formato e quantificação — como barras separadas. As melhorias rápidas agora têm valores de pontos explícitos e são ordenadas por impacto. Você recebe três reescritas de bullets em vez de uma, classificação de gravidade em cada alerta, os problemas específicos por trás da sua nota de formato, avaliações de qualidade por seção, um veredito de primeira impressão do recrutador em 6 segundos e uma próxima ação clara."
+    },
+    "atsPreviewComparisons": {
+      "title": "Veja seu currículo como um ATS o vê",
+      "description": "Uma nova pré-visualização mostra o texto bruto que um sistema de rastreamento de candidatos realmente extrai do seu currículo — sem formatação, colunas e ícones — para você identificar conteúdo que se perde antes que um humano o veja. Além disso: seu percentil frente a outros candidatos do seu setor, uma taxa estimada de aprovação ATS, um mapa de calor de lacunas de palavras-chave com conselhos de posicionamento, uma auditoria de tom e voz, e uma auditoria de comprimento de seções frente a metas ideais."
+    },
+    "trulyPersonalReports": {
+      "title": "Cada análise agora é escrita especificamente sobre você",
+      "description": "Conselho genérico agora é tratado como falha. Cada alerta e melhoria rápida deve citar literalmente o texto real do seu currículo. Os conselhos são calibrados pela sua senioridade: executivos nunca ouvem \"adicione mais palavras-chave\" e iniciantes nunca são questionados sobre orçamentos. Quem muda de carreira recebe mapeamento de habilidades transferíveis, veteranos recebem tradução militar-civil, quem retorna ao trabalho recebe linguagem para enquadrar pausas, e recém-formados recebem dicas para valorizar projetos. Seu nome e cargo agora percorrem todo o relatório."
+    },
+    "linkedInInsights": {
+      "title": "Análise de perfil LinkedIn — como os recrutadores te veem",
+      "description": "Adicione seu perfil LinkedIn junto ao currículo e obtenha uma análise combinada: pontuação LinkedIn, inconsistências entre currículo e perfil, um título melhorado e abertura da seção Sobre que você pode copiar com um clique."
+    },
+    "bulletQualityAnalysis": {
+      "title": "Melhorias rápidas agora visam seus pontos fracos reais",
+      "description": "Antes de chamar a IA, o scanner pré-lê cada ponto e identifica quais começam com frases passivas fracas e quais não têm métricas mensuráveis. Esses pontos específicos são entregues diretamente à IA."
+    },
+    "industryDetectionSweep2": {
+      "title": "Detecção de indústria mais precisa para 20+ funções",
+      "description": "Segunda varredura de bugs do motor de detecção de indústrias: remoção de palavras-chave falsas positivas genéricas, adição de 30+ palavras-chave ausentes para manufatura, RH, criativo e consultoria, expansão da tabela de empregadores com 30 novas empresas, e adição de 15 novos padrões de co-ocorrência."
+    },
+    "scanFeedback": {
+      "title": "Diga-nos se sua análise foi útil",
+      "description": "Um rápido polegar para cima / baixo agora aparece na parte inferior de cada análise gratuita. Suas respostas vão diretamente para nosso pipeline de melhoria — usamos para identificar quais tipos de recomendações estão sistematicamente errados e corrigi-los em atualizações futuras."
+    },
+    "sectionAwareAnalysis": {
+      "title": "Análise seção por seção mais inteligente",
+      "description": "A análise gratuita agora pré-analisa seu currículo em seções rotuladas (Experiência, Educação, Habilidades, etc.) antes de enviá-lo à IA. Isso significa que os conselhos podem ter como alvo seções específicas, em vez de tratar seu currículo como um bloco de texto indiferenciado."
+    },
+    "sparseResumeDetection": {
+      "title": "Melhores conselhos para currículos curtos ou escassos",
+      "description": "Currículos com menos de 300 palavras ou 5 marcadores agora recebem primeiro conselhos focados em expansão — quais seções estão faltando, como adicionar detalhes — em vez de sugestões de otimização de palavras-chave que ainda não se aplicam."
+    },
+    "fasterPremiumGeneration": {
+      "title": "Pacote premium de currículo + carta de apresentação gerado duas vezes mais rápido",
+      "description": "Paralelizamos as duas chamadas de IA que geram seu currículo reescrito e carta de apresentação para que sejam executadas simultaneamente em vez de uma após a outra. A maioria dos pacotes premium agora é concluída em 15 a 25 segundos em vez de 30 a 50 segundos."
+    },
+    "employerAwareIndustryDetection": {
+      "title": "Detecção de setor agora reconhece seus empregadores",
+      "description": "Adicionamos um banco de dados de ~200 empresas conhecidas para que o motor possa usar seu histórico de empregadores como sinal direto de setor — Goldman Sachs, McKinsey, Kaiser Permanente e centenas de outras agora são reconhecidas instantaneamente. Também melhoramos como os empregos recentes são ponderados: sua função atual agora conta significativamente mais do que empregos de 5+ anos atrás, para que quem mudou de carreira seja classificado corretamente com base em onde está hoje."
+    },
+    "scanAiReliability": {
+      "title": "Verificações mais confiáveis quando a IA é lenta",
+      "description": "Adicionamos um timeout de 55 segundos para a chamada de IA primária durante a verificação de currículos. Se o primeiro modelo de IA travar, o motor agora muda automaticamente para um modelo de backup mais rápido em vez de aguardar até 2,5 minutos."
+    },
+    "industryDetectionAccuracy": {
+      "title": "Sharper, more accurate industry detection",
+      "description": "We overhauled how we identify your industry from your resume. Six rounds of testing and fixes corrected misclassifications for roles like Growth Hacker, Salesforce Administrator, Quantitative Researcher, and Software Engineers at AI companies. We also fixed a scoring logic bug that caused false positives for DevOps engineers. The result is more accurate industry-specific tips, keyword suggestions, and ATS scoring weights that match your actual role."
+    },
+    "dataAiIndustrySplit": {
+      "title": "Data Engineering, Data Science, and AI/ML are now separate industries",
+      "description": "Previously, data engineers, data scientists, and machine learning engineers all received the same generic feedback under a single Technology category. We have split these into three distinct industry tracks with their own ATS scoring weights, keyword gap analysis, and resume tips tailored to each role."
+    },
+    "everythingTranslated": {
+      "title": "Todas as telas agora estão traduzidas",
+      "description": "Cobertura de tradução completa concluída em todos os 9 idiomas suportados. Cada tela visível ao usuário — o construtor de currículo, painéis de palavras-chave de setor e função, análise de correspondência de emprego, simulação de recrutador, cartões de pontuação, gerador de discurso de elevador, crítica de currículo, indicadores de atividade ao vivo, contador de créditos de digitalização e mais — agora é exibida no idioma escolhido. Anteriormente, muitas dessas telas eram exibidas em inglês independentemente do idioma selecionado."
+    },
+    "yourReportsSpeakYourLanguage": {
+      "title": "Os seus relatórios agora falam o seu idioma",
+      "description": "Todos os nossos relatórios pagos — Pontuação do Currículo, Career Snapshot, Graduate Game Plan, Interview Coach, Career Path Simulator e Apply Assistant — agora geram o seu conteúdo de IA e o texto no ecrã num dos 9 idiomas que suportamos, conforme o que selecionou, em vez de usar sempre inglês por defeito. Currículos personalizados e cartas de apresentação que envia a empregadores continuam propositadamente no idioma original, já que traduzir uma candidatura real sem perguntar poderia causar mais mal do que bem."
+    },
+    "translatedHomepageAndScanFlow": {
+      "title": "Traduzimos a página inicial e o fluxo principal de verificação",
+      "description": "A página inicial, o fluxo de envio, as comparações de preços e a página completa de resultados da verificação gratuita estão agora traduzidos nos 9 idiomas suportados — anteriormente, grande parte disto era exibido apenas em inglês, independentemente da sua definição de idioma."
+    },
+    "fixedAtsDefenseDelivery": {
+      "title": "Corrigimos a entrega do relatório ATS Defense",
+      "description": "Corrigimos um erro em que os relatórios do ATS Defense podiam falhar ao gerar-se automaticamente após a compra. Se isto o afetou, o seu relatório deve agora gerar-se corretamente — contacte-nos se ainda não o vir."
+    },
+    "moreReliableDownloads": {
+      "title": "Downloads de PDF e Word mais fiáveis",
+      "description": "Corrigimos um problema em que um nome com certos caracteres especiais podia gerar um nome de ficheiro de download danificado. Também adicionámos um aviso claro se o seu currículo ou relatório contiver caracteres que a nossa exportação para PDF ainda não consegue renderizar totalmente (principalmente escritas não latinas), em vez de os omitir silenciosamente."
+    },
+    "clearerMessagesHighDemand": {
+      "title": "Mensagens mais claras quando a procura é elevada",
+      "description": "Se a nossa IA estiver brevemente sobrecarregada ao gerar os seus resultados de Interview Coach, Career Path, Career Snapshot, Graduate Game Plan ou Keyword Fix, verá agora uma mensagem clara de 'tente novamente em breve' em todos eles, em vez de um erro genérico em alguns."
+    },
+    "realIndustryComparisons": {
+      "title": "Comparações reais por indústria",
+      "description": "A sua pontuação é agora comparada com dados reais de currículos efetivamente verificados na sua indústria, em vez de uma estimativa fixa — pelo que 'melhor do que X% de currículos semelhantes' significa realmente o que diz."
+    },
+    "moreSpecificKeywordBulletInsights": {
+      "title": "Informações mais específicas sobre palavras-chave e tópicos",
+      "description": "Agora apontamos para os seus tópicos reais que carecem de impacto mensurável, e mostramos contagens reais de palavras-chave em falta para a sua indústria — específicas para o seu currículo, não exemplos genéricos."
+    },
+    "fixedWordUploads": {
+      "title": "Corrigimos os envios de documentos Word",
+      "description": "Corrigimos um erro que fazia com que os envios de currículos .docx falhassem. Se tentou enviar um documento Word recentemente e não funcionou, tente novamente — já está corrigido. Também adicionámos uma mensagem clara para ficheiros .doc mais antigos (que precisam de ser guardados primeiro como .docx) e para qualquer outro tipo de ficheiro não suportado, em vez de o deixar sem qualquer explicação."
+    },
+    "purchaseRecoveryFix": {
+      "title": "Correção na recuperação de compras",
+      "description": "Corrigimos um problema em que recuperar uma compra anterior (se fechou o separador antes de ver os seus resultados) podia falhar. Agora pode recuperar os seus resultados usando o link ou o ID de sessão do seu e-mail de confirmação."
+    },
+    "checkoutReliabilityFixes": {
+      "title": "Correções de fiabilidade no checkout",
+      "description": "Corrigimos um erro de preços no fluxo de compra personalizada de créditos de verificação que podia cobrar mais do que o preço exibido, e corrigimos um problema em que as compras de Interview Coach e Career Path Simulator podiam não entregar o seu conteúdo após o pagamento. Se foi afetado por algum destes, contacte-nos e resolveremos a situação."
+    },
+    "moreMechanicalAtsChecks": {
+      "title": "Mais verificações mecânicas de ATS",
+      "description": "Adicionámos mais duas verificações deterministas ao Simulador de Análise ATS: deteção de carateres de fontes de ícones (comuns em modelos que usam uma fonte de ícones para os símbolos de telefone/e-mail/LinkedIn, o que pode deixar lacunas junto às suas informações de contacto) e deteção de texto achatado proveniente de layouts baseados em tabelas."
+    },
+    "faqSectionTranslationFixes": {
+      "title": "Correções na secção de FAQ e nas traduções",
+      "description": "Corrigimos um problema em que a secção de FAQ mostrava texto de marcador de posição em vez de respostas reais em todos os idiomas exceto um, e preenchemos algumas cadeias não traduzidas para que todos os idiomas suportados estejam totalmente traduzidos."
+    },
+    "publicChangelog": {
+      "title": "Registo de alterações público",
+      "description": "Adicionámos esta página, ligada a partir do cabeçalho e do rodapé, para que possa ver sempre o que é novo, melhorado ou corrigido."
+    },
+    "applyAssistant": {
+      "title": "Apply Assistant",
+      "description": "Cole uma oferta de emprego e obtenha um currículo personalizado para esse cargo específico, uma carta de apresentação correspondente, uma lista honesta de lacunas de competências (não inventamos experiência que não tenha) e uma lista de verificação passo a passo — revista e submetida por si, nunca submetida automaticamente em seu nome."
+    },
+    "atsParseSimulation": {
+      "title": "Simulação de Análise ATS",
+      "description": "Adicionámos uma segunda verificação, totalmente mecânica, juntamente com a pontuação de IA: detetamos cabeçalhos de secção em falta, informações de contacto não extraíveis, datas em falta, codificação de caracteres danificada devido a problemas de fontes em PDF, e até layouts de várias colunas que são confundidos por analisadores de texto ATS reais — tudo descobertas deterministas e reprodutíveis, não uma suposição de um modelo."
+    },
+    "realSemanticJobMatching": {
+      "title": "Correspondência semântica real com a vaga",
+      "description": "Substituímos a correspondência literal de palavras-chave por um julgamento de IA genuíno que lê o seu currículo e a descrição da vaga em conjunto — assim, uma competência formulada de forma diferente (ou demonstrada através de experiência relacionada) é agora reconhecida corretamente, em vez de exigir uma correspondência exata de texto."
+    },
+    "resumeBuilder": {
+      "title": "Construtor de Currículo",
+      "description": "Um editor de currículo estruturado com secções editáveis, uma pré-visualização em tempo real e exportação com um clique para PDF ou Word — pré-preenchido automaticamente a partir da sua verificação mais recente."
+    },
+    "deeperInterviewCoachCareerPath": {
+      "title": "Interview Coach e Career Path Simulator mais aprofundados",
+      "description": "As versões pagas vão agora mais longe do que a pré-visualização gratuita: 14 perguntas de entrevista com respostas-modelo completas usando o método STAR, um plano de ação de 90 dias para cada percurso de carreira, e relatórios em PDF transferíveis para ambos."
+    },
+    "moreHonestScoring": {
+      "title": "Pontuação mais honesta",
+      "description": "Removemos um erro de pontuação que permitia que os currículos inflacionassem em direção ao meio da escala, e reforçámos as instruções da IA para que um currículo genuinamente fraco obtenha agora uma pontuação baixa — o encorajamento no feedback já não suaviza o número real."
+    },
+    "fasterPageLoads": {
+      "title": "Carregamento de páginas mais rápido",
+      "description": "Reduzimos o tamanho inicial da página em mais de metade, carregando apenas o que cada página realmente precisa — exportações, idiomas menos comuns e outras páginas já não atrasam a sua primeira visita."
+    },
+    "scannedPdfDetection": {
+      "title": "Deteção de PDF digitalizados",
+      "description": "Se enviar um PDF digitalizado baseado em imagem sem texto selecionável, agora avisamo-lo imediatamente em vez de analisar silenciosamente conteúdo vazio — com uma sugestão clara para enviar uma versão baseada em texto ou colar o seu currículo diretamente."
+    },
+    "industryDetectionAccuracy8Fixes": {
+      "title": "8 accuracy upgrades to industry detection",
+      "description": "We identified and fixed every known category of industry misclassification. Unambiguous role titles now hard-lock the industry, anchor terms prevent skills-list false positives, very short resumes rely only on job titles, the employer boost is guarded, implausible industry/seniority combos are flagged, skills section contribution is capped, the AI classifies from resume titles not the target job, and user corrections now compound the more they repeat."
+    },
+    "marketIntelligenceCards": {
+      "title": "Live market intelligence in your scan results",
+      "description": "Five new data cards now appear in your scan results: Market Intelligence (hot skills, rising keywords, local CV norms, salary context), Skills Recency (aging vs in-demand skills), Career Trajectory (upward/lateral/transition path), Competitive Keyword Gap (top-quartile keyword coverage), and ATS System detection (when we can identify which ATS the company uses)."
+    },
+    "resumeTimelineAnalysis": {
+      "title": "Employment gap and short tenure detection",
+      "description": "The scanner now parses your work history date ranges to detect gaps longer than 6 months and roles shorter than 12 months. If found, a new card appears with the specific gap duration and concrete advice on how to address it before applying."
+    },
+    "gatedKeywordGap": {
+      "title": "Keywords now sorted by how often they appear in job postings",
+      "description": "Missing keywords are ranked by real posting frequency for your role — the highest-impact gaps appear first. The top 3 are shown in full; additional high-priority keywords are previewed so you know there's more."
+    },
+    "phraseAwareKeywordMatching": {
+      "title": "Fewer false 'missing keyword' reports",
+      "description": "The keyword detector now understands compound phrases and abbreviations. 'Machine learning' and 'ML' match. 'CI/CD', 'ci-cd', and 'cicd' match. 'P&L' matches 'profit and loss'. 'Full-stack' and 'fullstack' are equivalent. This eliminates false positives where skills you clearly had were reported as missing."
+    },
+    "roleLockDetection": {
+      "title": "Role-specific detection for 50+ job titles",
+      "description": "Over 50 unambiguous job titles now hard-lock the correct industry regardless of what else appears on the resume — registered nurses, attorneys, teachers, product managers, data engineers, ML engineers, and many more. A nurse with SQL in her skills can no longer be classified as a data scientist."
+    },
+    "fiftyNineIndustries": {
+      "title": "59 setores — incluindo os que todos ignoram",
+      "description": "A cobertura agora inclui categorias que a maioria das ferramentas pula completamente: administração e suporte de escritório (assistentes executivas, gerentes de escritório, recepcionistas), motoristas (caminhão, entrega, ônibus), biblioteconomia, ministério religioso, mineração, marítimo, paisagismo e limpeza. Cada uma com sua biblioteca de palavras-chave, reconhecimento de cargos, detecção de licenças e benchmarks. Uma 'Assistente Executiva do CFO' agora é lida corretamente como administrativa — não como finanças."
+    },
+    "resumeXray": {
+      "title": "Raio-X do currículo: seu documento, anotado",
+      "description": "O relatório agora mostra seu próprio currículo, linha por linha, com a análise desenhada nele: bullets fracos recebem sublinhado vermelho (motivo ao passar o mouse), bullets sem números recebem marcação âmbar, e suas palavras mais fortes são destacadas em verde."
+    },
+    "emailMyReport": {
+      "title": "Enviar meu relatório por e-mail",
+      "description": "Um clique envia seu resumo — veredito, pontuação, detalhamento, principais problemas e seu plano de melhorias — para sua caixa de entrada em um e-mail bem desenhado. Apenas os resultados da análise são enviados, nunca seu currículo, e sem e-mails de acompanhamento a menos que você peça."
+    },
+    "scanReliability": {
+      "title": "Análises que nunca falham — e não mudam de ideia",
+      "description": "Duas melhorias de confiabilidade: se o revisor de IA estiver indisponível, você agora recebe um relatório automatizado completo em vez de uma página de erro. E o mesmo currículo recebe a mesma classificação de setor toda vez: detecções de alta confiança são lembradas."
+    },
+    "multilingualDetection": {
+      "title": "Detecção de setor em 8 idiomas",
+      "description": "Cargos em espanhol, alemão, francês, português, holandês, hindi e tagalo agora ancoram a detecção como os em inglês — uma 'Krankenschwester' trava saúde, um 'electricista' trava ofícios especializados."
+    },
+    "reportVisualPolish": {
+      "title": "Um relatório que parece um painel",
+      "description": "Sua pontuação agora sobe animada com a cor passando de vermelho para âmbar e verde. Seu percentil é desenhado em uma curva de distribuição real com a zona dos 25% superiores sombreada. Cada reescrita mostra exatamente o que mudou — exclusões riscadas em vermelho, adições em verde. E um resumo em PDF de uma página está a um clique."
+    },
+    "freeAccounts": {
+      "title": "Contas grátis: suas pontuações, créditos e compras em um só lugar",
+      "description": "Crie uma conta grátis e cada análise é salva no seu painel pessoal: última e melhor pontuação, gráfico de evolução, saldo de créditos e histórico de compras — compras anteriores aparecem automaticamente se você se registrar com o mesmo e-mail. Entre com senha ou com um link mágico de um clique. Seu currículo continua nunca sendo armazenado, e a análise grátis funciona igual sem conta."
+    },
+    "accountToolkit": {
+      "title": "Um kit de busca de emprego dentro da sua conta",
+      "description": "Usuários registrados agora têm 15 análises grátis por dia (antes 7) mais quatro novas ferramentas: uma checklist de correções persistente para marcar antes de reescanear; uma meta de pontuação com barra de progresso no seu gráfico; um rastreador de candidaturas com status e a pontuação com que você aplicou; e comparação de análises — escolha duas e veja exatamente o que melhorou."
+    },
+    "jobBoard": {
+      "title": "Mural de vagas ao vivo com checagem de encaixe integrada",
+      "description": "A nova página de vagas puxa oportunidades ao vivo direto dos murais oficiais das empresas (Greenhouse, Lever e Ashby — 56 empresas no lançamento) e adiciona o que nenhum mural oferece: escanear seu currículo contra uma vaga antes de gastar uma candidatura. Um clique carrega a vaga no escâner gratuito; a candidatura sempre acontece no site da empresa. Encontre no rodapé ou nas sugestões de cargos do seu relatório."
+    },
+    "jobBoardV2": {
+      "title": "Mural de vagas: 146 empresas, filtros por área e frescor de 10 minutos",
+      "description": "O mural de vagas ao vivo agora puxa de 146 murais de empresas verificados — cerca de 15.000 vagas — e vai muito além de tecnologia: saúde, finanças, alimentação e logística, educação, aeroespacial, varejo e mais. Um novo filtro de “Todas as áreas” leva você à sua pista (enfermagem, contabilidade, armazém — não só engenharia), as buscas viram links compartilháveis e seu relatório abre o mural já pesquisado com seu cargo detectado. Por trás, o mural se atualiza a cada 10 minutos e vagas retiradas somem na próxima passada — sem anúncios mortos."
+    },
+    "oneClickCapture": {
+      "title": "Captura de e-mail em um clique e a pergunta do dia 14",
+      "description": "Enviar o relatório para seu e-mail agora é um clique: se seu endereço aparece no currículo, o campo vem preenchido — claramente sinalizado, e nada é enviado sem apertar Enviar. A sequência opcional do plano ganhou um quarto e-mail: duas semanas após o escaneio fazemos uma pergunta — conseguiu entrevistas? — e cada resposta anônima refina os dados públicos. A descrição da sequência agora existe nos nove idiomas (antes só em inglês)."
+    },
+    "jobTracker": {
+      "title": "Salve vagas, acompanhe candidaturas, vigie buscas — da sua conta gratuita",
+      "description": "O mural de vagas cresceu de novo — 159 empresas e cerca de 20.000 vagas, agora incluindo grandes empregadores no SmartRecruiters e Workable (Bosch, JYSK, Accor, Continental, Experian, Ubisoft). E sua conta gratuita aprendeu a trabalhar com ele: salve qualquer vaga e ela cai no seu rastreador de candidaturas com a descrição anexada, pronta para checar o encaixe em um clique. Clique em Candidatar-se logado e a linha se marca sozinha como enviada, com data. Salve uma busca — digamos, saúde remota — e sua conta mostra quantas vagas novas surgiram desde sua última olhada. Busca de emprego, com memória."
+    },
+    "fitRankedBoard": {
+      "title": "O mural de vagas agora classifica 25.000 vagas contra o seu currículo",
+      "description": "Escaneie seu currículo, abra o mural e acione “Ordenar pelo meu encaixe”: cada vaga recebe uma pontuação — cobertura determinística de palavras-chave contra seu currículo real, totalmente reproduzível, sem adivinhação de IA — e a lista ordena do melhor para o pior. No teste ao vivo, o currículo de uma enfermeira pontuou 17–24% em vagas de enfermagem e 3% no resto; essa distância é o objetivo. Também: salário no cartão quando a empresa publica, filtros “Hoje / Esta semana”, e mais 35 empresas — SpaceX, OpenAI, Securitas, ServiceNow, Rocket Lab, Sodexo — chegando a 194 empresas e cerca de 25.000 vagas ao vivo."
+    },
+    "groundedApplyKits": {
+      "title": "Kits de candidatura: currículos adaptados com checagem de fatos, em modelos dignos de envio",
+      "description": "O currículo adaptado do Apply Assistant agora é verificado, não apenas instruído: cada empregador, cargo, escola e data é conferido contra seu currículo original, habilidades sem respaldo são removidas e declaradas, e se a geração inventar algo duas vezes, recusamos entregar em vez de enviar ficção — você verá o selo de verificação em cada kit. Escolha entre três modelos seguros para ATS (Moderno, Clássico, Compacto) em PDF e Word. E o rastreador de candidaturas ficou mais esperto: salvar uma vaga do mural anexa sua versão mais recente do currículo e calcula seu encaixe automaticamente, e cada candidatura oferece um kit em um clique — incluído no Pro."
+    },
+    "boardExpansion": {
+      "title": "609 empresas, quase 40.000 vagas ao vivo",
+      "description": "O mural de vagas foi de 194 a 609 empresas em uma única varredura — pouco menos de 40.000 vagas ao vivo. Sondamos milhares de feeds de carreiras em seis provedores ATS oficiais (BambooHR é novo), mantivemos as 415 que responderam com vagas reais e liberamos a profundidade completa dos gigantes que já tínhamos: Bosch, JYSK, Accor e Securitas agora listam milhares de vagas cada em vez das primeiras 500. A precisão escalou com o volume: o nome de cada novo mural vem do próprio provedor ATS — não do nosso palpite — e dez murais cuja identidade não pôde ser verificada foram descartados em vez de publicados com rótulo errado. A cobertura salarial mais que dobrou no caminho. O mesmo mural, o mesmo ranking por encaixe, o mesmo ciclo de 10 minutos — quatro vezes mais vagas do que esta manhã."
+    },
+    "reportMatches": {
+      "title": "Seu relatório de escaneio agora termina com vagas ao vivo",
+      "description": "O escaneio grátis não para mais na pontuação e no plano de ajustes — cada relatório agora fecha com as melhores vagas ao vivo que combinam com seu currículo, classificadas com a mesma pontuação determinística que o próprio relatório usa, tiradas das ~40.000 vagas do mural e atualizadas a cada ~10 minutos. O salário aparece quando a empresa publica; Candidatar leva direto à página da empresa. E uma conta gratuita mantém tudo vivo entre as visitas: salve sua versão do currículo e o mural classifica cada vaga contra ela quando você voltar, buscas salvas contam o que há de novo desde a última olhada, e vagas salvas caem no seu rastreador de candidaturas com a pontuação de encaixe."
+    },
+    "boardTenVendors": {
+      "title": "Mais de 185.000 vagas verificadas de mais de 12.600 empresas — quatro novos sistemas de contratação",
+      "description": "O quadro agora lê os feeds oficiais das empresas em dez sistemas de contratação (Recruitee, Teamtailor, Personio e Breezy juntam-se a Greenhouse, Lever, Ashby, SmartRecruiters, Workable e BambooHR). Cada nova empresa passou pelo mesmo critério do resto do catálogo: empregadores corporativos reais, verificados nos próprios sistemas — sem agregadores, sem agências de recrutamento em massa. Mesmas regras de atualidade: nada com mais de 30 dias, re-verificado ao vivo quando você se candidata."
+    },
+    "seekerToolkit": {
+      "title": "Piso salarial, referências de pagamento ao vivo, ranking de nível inicial, tendências semanais — e você pode responder ao quadro",
+      "description": "Agora você pode filtrar por um piso salarial usando apenas o que as próprias vagas declaram (valores por hora e por mês anualizados, nunca estimados), e as páginas por área mostram a mediana do piso salarial anunciado quando pelo menos 30 vagas declaram remuneração. Duas novas páginas públicas: o Índice de Nível Inicial classifica quem está de fato contratando início de carreira agora, e as Tendências Semanais de Contratação contam vagas reais por semana — o crescimento da cobertura nunca pode simular um pico. No próprio quadro: o insight de habilidade-chave mostra a palavra que desbloquearia mais matches, selos de urgência sinalizam empresas que preenchem rápido, marcações de repostagem apontam quem relista em série, você pode acompanhar uma empresa, ocultar vagas, e a busca filtra enquanto digita. E se uma vaga parecer errada, denuncie — uma denúncia de 'não existe mais' re-verifica na hora contra o quadro da própria empresa."
+    },
+    "boardDestination": {
+      "title": "O quadro de vagas agora é a porta de entrada — e as vagas abrem no próprio quadro",
+      "description": "O Resume Booster agora lidera com o quadro de vagas: a página inicial abre com números ao vivo e um caminho direto para mais de 185.000 vagas verificadas. No quadro, clicar em qualquer vaga abre um painel de detalhes completo — descrição integral, salário declarado, sua pontuação de compatibilidade com as palavras-chave exatas que você tem e as que faltam, a saúde de contratação da empresa e candidatura em um clique — e cada vaga agora tem seu próprio link compartilhável. A primeira vaga aparece sem rolar (no celular também — os filtros agora ficam atrás de um botão), os cartões ganharam monogramas de empresa e um layout mais limpo, 'Para você' classifica todo o quadro pelo seu currículo, e você pode ordenar pelo maior salário declarado — apenas remuneração realmente publicada, nunca estimativas."
+    },
+    "measuredTrust": {
+      "title": "Atualidade que você pode conferir, não só acreditar — medida e publicada ao vivo",
+      "description": "O Índice de Vagas Fantasma agora publica a atualidade do quadro como medição ao vivo: neste momento, o feed mediano foi re-verificado há menos de uma hora, com 95% de todos os feeds em cerca de duas horas — calculado a partir de carimbos de verificação por feed no momento em que você carrega a página, nunca uma alegação de marketing. A auditoria diária de precisão agora amostra cada sistema de contratação separadamente e publica resultados por sistema — um problema em qualquer um não consegue mais se esconder numa média saudável. As referências salariais agora são calculadas por moeda (uma vaga de €50.000 não faz mais média com uma de $50.000), e o pipeline ganhou um disjuntor: se a API de um sistema quebrar, o quadro congela os dados daquele sistema em vez de mostrar — ou apagar — o que está errado."
+    },
+    "searchAliases": {
+      "title": "A busca entende suas abreviações — e mostra isso",
+      "description": "Digite “swe”, “rn”, “sdr” ou outras 30 abreviações comuns de cargos e o painel também busca o nome completo do cargo — sempre indicado sob a busca (“também busca: software engineer”). E quando uma busca específica encontra algo na descrição em vez do título, o cartão mostra a frase exata que corresponde. Além disso: cada painel de vaga leva às outras vagas abertas da empresa e a cargos realmente semelhantes em todo o painel."
+    },
+    "pipelineRhythm": {
+      "title": "Seu pipeline agora diz o que fazer em seguida",
+      "description": "O painel da conta abre com uma faixa “Próximo passo” construída do seu próprio acompanhamento: entrevistas próximas primeiro, depois candidaturas em silêncio há 7+ dias (um toque marca o follow-up feito) e vagas salvas envelhecendo. Linhas em entrevista aceitam data, e a faixa de estatísticas mostra seu ritmo de candidaturas das últimas 8 semanas — tudo dos seus dados, nada inventado."
+    },
+    "fresherFaster": {
+      "title": "Vagas de empresas novas aparecem em minutos, não em um dia",
+      "description": "Quando adicionamos painéis de empresas recém-descobertas, as vagas esperavam uma rotação completa antes de aparecer. Agora elas furam a fila e começam a fluir minutos após um lançamento. Também passamos a datar vagas do BambooHR e do Rippling pelos feeds de detalhe dessas empresas, e publicamos no Ghost Job Index uma tabela por sistema mostrando quais declaram data de publicação."
+    },
+    "plainLanguageSearch": {
+      "title": "Busque no painel em linguagem natural",
+      "description": "Basta descrever o que você quer — “vagas de produto remotas acima de $150k publicadas esta semana” — e o painel converte em filtros reais e os aplica. Ele mostra exatamente como interpretou sua busca (“Remoto · Produto · $150k+ · Esta semana”) para você ajustar tudo, e é honesto sobre seus limites: peça “startups” e ele avisa que ainda não há filtro para isso, em vez de ignorar em silêncio."
+    },
+    "smarterFinds": {
+      "title": "Uma busca que sugere cargos próximos — e perdoa erros de digitação",
+      "description": "Busque um cargo e o painel agora sugere os cargos ao lado — busque “registered nurse” e veja care coordinator, clinical educator, charge nurse a um toque — porque a vaga que encaixa em você costuma ser uma que você não pensou em buscar. E um erro de digitação não trava mais: digite “desinger” e verá vagas de designer, claramente marcadas como as correspondências mais próximas."
+    },
+    "exploreBoard": {
+      "title": "Uma nova forma de explorar — navegue por quem realmente contrata",
+      "description": "Não sabe o que buscar? A nova página Explorar deixa você navegar por sinais reais calculados ao vivo dos painéis das empresas: quem contrata mais rápido esta semana, empresas que realmente preenchem vagas (não só publicam), painéis recém-adicionados, empregadores amigáveis para iniciantes e onde o salário é mais alto por área. Cada lista é real e leva direto ao painel."
+    },
+    "morningQueue": {
+      "title": "O Agente de candidatura: acorde com uma lista já revisada",
+      "description": "Configure sua busca uma vez — palavras-chave, área, piso salarial, seu currículo. Toda noite o agente varre as vagas realmente novas do dia, pontua cada uma contra seu currículo, pula empresas que republicam em ciclo, prioriza quem realmente contrata e enfileira as melhores — cada escolha com suas razões. Você revisa, você envia; o agente nunca envia por você nem inventa respostas. US$ 99/mês na sua conta, com tudo do Pro incluído."
+    },
+    "boardFirstFive": {
+      "title": "O quadro encontra você onde você está",
+      "description": "Primeira visita sem saber por onde começar? Agora você vê uma visão de orientação — totais ao vivo, as maiores áreas e caminhos claros — em vez de meio milhão de vagas por data. Solte seu currículo direto no quadro e cada vaga mostra sua pontuação de encaixe na hora. E a busca entende frases: digite 'vagas remotas senior de dados acima de $150k' e um toque em Análise por IA vira filtros reais — ela entende até 'empresas que realmente contratam' e 'melhores salários primeiro'."
+    },
+    "companyScale": {
+      "title": "Explore por porte — enterprise, mid-market, startups",
+      "description": "Uma nova seção do Explorar segmenta o quadro por pegada de contratação: Enterprise (500+ vagas), Mid-market (50–499) e Startups e equipes pequenas (3–49) — cada uma com estatísticas reais: empresas, vagas abertas, parcela remota, parcela júnior e salário mediano declarado. Não adivinhamos quadro de funcionários; a definição é o número que você vê, e quadros gigantes mostram nossa contagem verificada e o total da própria empresa."
+    },
+    "dataYouCanBelieve": {
+      "title": "Números que você pode conferir — passagem completa de precisão",
+      "description": "Reconstruímos cada estatística pública sobre evidências. 'Empresas que realmente preenchem vagas' agora conta só roles que ficaram publicados uma semana ou mais e depois saíram — republicação é desqualificada e exposta na própria lista de 'Republicadores em série' (um varejista republicou a mesma vaga 289 vezes em uma semana). Contagens fabricadas sumiram, 70+ empresas recuperaram seus nomes reais, agências de recrutamento não aparecem mais como empregadores, um quadro de spam foi removido, e cada métrica informa exatamente há quanto tempo medimos. Onde os dados são jovens demais, preferimos não mostrar nada a chutar."
+    },
+    "premiumLook": {
+      "title": "Um visual mais refinado em toda a plataforma",
+      "description": "Uma revisão completa de design: nova tipografia de títulos com personalidade, superfícies em camadas mais profundas, cor e espaçamento refinados, navegação de vidro e toques discretos por toda parte — números alinhados, cantos mais suaves, um brilho sutil de assinatura. Os mesmos dados honestos, agora bem vestidos."
+    }
+  }
+}
