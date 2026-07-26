@@ -75,7 +75,7 @@ const json = (body: unknown, status = 200) =>
 // while this file was untouched). Always bump BUILD_VERSION here when a shared
 // module this function imports changes — it forces the diff AND gives the
 // deploy a verifiable tell.
-const BUILD_VERSION = "2026-07-26.2";
+const BUILD_VERSION = "2026-07-26.3";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -1691,6 +1691,16 @@ async function maybeKickMaintenance(client: SupabaseClient): Promise<void> {
   }
 }
 
+/** Resolve to `{ data: null }` if a query outruns its deadline. Used for the
+ *  optional analytics on the status action: a stat that is slow to compute is
+ *  worth omitting, never worth delaying the deploy answer for. */
+function withDeadline<T>(p: PromiseLike<T>, ms: number): Promise<T | { data: null }> {
+  return Promise.race([
+    Promise.resolve(p).then((r) => r, () => ({ data: null } as { data: null })),
+    new Promise<{ data: null }>((resolve) => setTimeout(() => resolve({ data: null }), ms)),
+  ]);
+}
+
 // ── detail: one posting's description (bounded memo, no bulk caching) ─────
 
 const detailCache = new Map<string, { at: number; text: string }>();
@@ -2025,10 +2035,19 @@ Deno.serve(async (req) => {
         client.from("job_board_meta").select("v").eq("k", "board_failures").maybeSingle(),
         client.from("job_board_meta").select("v").eq("k", "hot_tokens").maybeSingle(),
         // Measured re-verification age distribution (null until the migration lands)
-        client.rpc("get_freshness_stats").then((r) => r, () => ({ data: null })),
+        // BOUNDED (2026-07-26): these two aggregate over the whole 569k-row
+        // postings table while the sweeps write to it continuously, and status
+        // had degraded to a measured 17-19s — long enough that the heartbeat's
+        // own deploy check ABORTED and reported the board unreachable. That is
+        // a false alarm on the one endpoint whose job is answering "did my
+        // deploy land?", and a slow status also masks a real outage behind an
+        // ambiguous timeout. Both fields are already documented as null-until-
+        // available and every consumer renders nothing for null, so a slow
+        // stat is simply omitted rather than allowed to stall the answer.
+        withDeadline(client.rpc("get_freshness_stats"), 2_500),
         client.from("job_board_meta").select("v").eq("k", "vendor_breaker").maybeSingle(),
         // Per-vendor stated-date coverage (null until the migration lands)
-        client.rpc("get_date_coverage").then((r) => r, () => ({ data: null })),
+        withDeadline(client.rpc("get_date_coverage"), 2_500),
         client.from("job_board_meta").select("v").eq("k", "bootstrap").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "desc_sweep").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "embed_sweep").maybeSingle(),

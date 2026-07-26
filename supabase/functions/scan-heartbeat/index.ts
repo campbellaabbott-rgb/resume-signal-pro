@@ -505,7 +505,10 @@ serve(async (req) => {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${supabaseServiceKey}` },
             body: JSON.stringify(body),
-            signal: AbortSignal.timeout(20_000),
+            // Tight: list queries measure 1-3s, and this check must never be
+            // the reason the heartbeat runs long (2026-07-26: a 17s status
+            // action pushed a heartbeat run to 70s and aborted another check).
+            signal: AbortSignal.timeout(8_000),
           });
           if (!r.ok) return null;
           const j = await r.json();
@@ -520,15 +523,19 @@ serve(async (req) => {
           if (bad) violations.push(`${label}: "${String(bad.title ?? '').slice(0, 40)}" @ ${String(bad.company ?? '')}`);
         };
 
-        await check('remote+US', { action: 'list', workMode: 'remote', country: 'US', limit: 15 },
-          (j) => j.workMode === 'remote' && (!j.country || j.country === 'US'));
-        await check('salaryFloor 100k', { action: 'list', salaryFloor: 100000, limit: 15 },
-          (j) => typeof j.salaryMinAnnual === 'number' && (j.salaryMinAnnual as number) >= 100000);
-        await check('category=healthcare', { action: 'list', category: 'healthcare', limit: 15 },
-          (j) => j.category === 'healthcare');
-        // A typo'd query scoped to one employer must never surface another's.
-        await check('company lander + typo', { action: 'list', companies: ['stripe'], q: 'desinger', limit: 10 },
-          (j) => String(j.token ?? '').toLowerCase() === 'stripe');
+        // In parallel: four independent reads, ~1-3s each, so the whole
+        // contract check costs about one probe's wall time.
+        await Promise.all([
+          check('remote+US', { action: 'list', workMode: 'remote', country: 'US', limit: 15 },
+            (j) => j.workMode === 'remote' && (!j.country || j.country === 'US')),
+          check('salaryFloor 100k', { action: 'list', salaryFloor: 100000, limit: 15 },
+            (j) => typeof j.salaryMinAnnual === 'number' && (j.salaryMinAnnual as number) >= 100000),
+          check('category=healthcare', { action: 'list', category: 'healthcare', limit: 15 },
+            (j) => j.category === 'healthcare'),
+          // A typo'd query scoped to one employer must never surface another's.
+          check('company lander + typo', { action: 'list', companies: ['stripe'], q: 'desinger', limit: 10 },
+            (j) => String(j.token ?? '').toLowerCase() === 'stripe'),
+        ]);
 
         checks.push({
           name: 'job_board_filter_contract',
