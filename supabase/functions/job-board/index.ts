@@ -36,6 +36,7 @@ import {
   sanePostedAt,
   isDatedBefore,
   normalizeCloseTitle,
+  normalizeIcims,
   normalizeRippling,
   normalizePinpoint,
   extractRipplingJobPosts,
@@ -74,7 +75,7 @@ const json = (body: unknown, status = 200) =>
 // while this file was untouched). Always bump BUILD_VERSION here when a shared
 // module this function imports changes — it forces the diff AND gives the
 // deploy a verifiable tell.
-const BUILD_VERSION = "2026-07-25.14";
+const BUILD_VERSION = "2026-07-26.1";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -367,6 +368,29 @@ async function fetchBoard(s: JobSource): Promise<{ jobs: JobPosting[]; raw: unkn
     if (s.source === "oracle") {
       const { items, raw, windowed, feedTotal } = await fetchOracle(s);
       return { jobs: normalizeOracle(items as never, s.name, s.token), raw, windowed, feedTotal };
+    }
+    if (s.source === "icims") {
+      // The employer's own career-site JSON (token IS the host). Paginated at
+      // 100/page; bounded so one giant board can't wedge a refresh slice.
+      const ICIMS_PAGE = 100, ICIMS_MAX_PAGES = 12;
+      const all: unknown[] = [];
+      let feedTotal = 0, exhausted = false;
+      for (let page = 1; page <= ICIMS_MAX_PAGES; page++) {
+        const res = await fetchWithTimeout(`https://${s.token}/api/jobs?page=${page}&limit=${ICIMS_PAGE}`, {
+          headers: { Accept: "application/json" },
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const body = await res.json() as { jobs?: unknown[]; totalCount?: number };
+        const batch = Array.isArray(body.jobs) ? body.jobs : [];
+        if (page === 1) feedTotal = Number(body.totalCount) || 0;
+        all.push(...batch);
+        if (batch.length < ICIMS_PAGE) { exhausted = true; break; }
+      }
+      // Same guard as the other paginated vendors: a page-1 failure that
+      // returns empty while the feed claims postings must NOT read as "board
+      // emptied" (the orphan prune would delete a live tenant).
+      if (all.length === 0 && feedTotal > 0) throw new Error(`empty page but total=${feedTotal}`);
+      return { jobs: normalizeIcims(all as never, s.name, s.token), raw: { items: all }, windowed: !exhausted, feedTotal };
     }
     if (s.source === "rippling") {
       const { items, raw } = await fetchRippling(s);
@@ -1796,6 +1820,18 @@ function listPayloadDescriptions(s: JobSource, raw: unknown): Map<string, string
       const ext = j.shortcode ?? "";
       const text = j.description ? htmlToText(String(j.description).slice(0, 12000)).trim() : "";
       if (ext && text) out.set(`workable:${s.token}:${ext}`, text.slice(0, 4000));
+    }
+  } else if (s.source === "icims") {
+    // iCIMS ships the full description (plus responsibilities/qualifications)
+    // on every LIST item — no per-posting fetch is ever needed for this vendor.
+    for (const it of (((raw as { items?: Array<{ data?: Record<string, unknown> }> }).items) ?? [])) {
+      const d = it?.data ?? {};
+      const ext = String(d.req_id ?? d.slug ?? "").trim();
+      const html = [d.description, d.responsibilities, d.qualifications]
+        .filter((x): x is string => typeof x === "string" && x.length > 0)
+        .join("\n");
+      const text = html ? htmlToText(html.slice(0, 12000)).trim() : "";
+      if (ext && text) out.set(`icims:${s.token}:${ext}`, text.slice(0, 4000));
     }
   } else if (s.source === "pinpoint") {
     for (const p of (((raw as { data?: Array<Record<string, unknown>> }).data) ?? [])) {

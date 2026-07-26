@@ -31,6 +31,13 @@ export const DETAIL_DESC_SOURCES = ["workday", "smartrecruiters", "bamboohr", "o
 export const BOARD_DESC_SOURCES = ["workable", "pinpoint"] as const;
 
 /**
+ * Vendors whose list payload ALREADY carries the full description, so ingest
+ * stores it for free and no sweep is needed: iCIMS ships `data.description`
+ * (plus qualifications/responsibilities) on every list item.
+ */
+export const LIST_DESC_SOURCES = ["icims"] as const;
+
+/**
  * Vendors with no public description source. A null here is a measured fact, not
  * a hole to be filled later — keep them out of the sweep so it doesn't burn
  * requests re-failing on them every pass.

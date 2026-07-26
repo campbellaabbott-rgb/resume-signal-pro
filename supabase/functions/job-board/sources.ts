@@ -15,7 +15,7 @@
 export type JobSourceKind =
   | "greenhouse" | "lever" | "ashby" | "smartrecruiters" | "workable" | "bamboohr"
   | "recruitee" | "teamtailor" | "personio" | "breezy" | "rippling" | "workday" | "pinpoint"
-  | "oracle";
+  | "oracle" | "icims";
 
 export interface JobSource {
   name: string; // display name
@@ -28323,4 +28323,18 @@ export const JOB_SOURCES: JobSource[] = [
   { name: "Columbus State Community College", source: "workday", token: "cscc~wd1~CSCC_ext" },
   { name: "Easterseals Northern California", source: "workday", token: "catalight~wd1~catalight" },
   { name: "Freedom Mortgage", source: "workday", token: "archwellessentials~wd1~careers" },
+  // iCIMS, vendor #15 (census + live verification 2026-07-26). Token is the
+  // employer's own career-site host — the JSON API lives at {token}/api/jobs.
+  // Richest feed we ingest: real posted dates, ISO country codes, stated
+  // salary, and full descriptions in the list payload (2,852 postings at
+  // verification). AIDT excluded: state workforce agency, corporate-only bar.
+  { name: "84 Lumber", source: "icims", token: "careers.84lumber.com" },
+  { name: "AARP", source: "icims", token: "careers.aarp.org" },
+  { name: "AccentCare", source: "icims", token: "careers.accentcare.com" },
+  { name: "Acentra Health", source: "icims", token: "careers.acentra.com" },
+  { name: "Agape Care Group", source: "icims", token: "careers.agapecaregroup.com" },
+  { name: "Akima", source: "icims", token: "careers.akima.com" },
+  { name: "Alera Group", source: "icims", token: "careers.aleragroup.com" },
+  { name: "American Integrity Insurance", source: "icims", token: "careers.americanintegrityinsurance.com" },
+  { name: "Aurobindo Pharma USA", source: "icims", token: "careers.acrotechbiopharma.com" },
 ];

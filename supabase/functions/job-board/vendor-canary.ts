@@ -53,6 +53,10 @@ export const CANARIES: readonly Canary[] = [
   // are its steadier tenants).
   { vendor: "pinpoint", token: "agencyanalytics", name: "AgencyAnalytics" },
   { vendor: "pinpoint", token: "airtanker", name: "AirTanker" },
+  // iCIMS reference boards (live-verified 2026-07-26). The token IS the
+  // employer's career-site host; these two are its steadiest large tenants.
+  { vendor: "icims", token: "careers.accentcare.com", name: "AccentCare" },
+  { vendor: "icims", token: "careers.84lumber.com", name: "84 Lumber" },
 ];
 
 // Count raw feed items in a vendor's payload (pre-normalization), matching each
@@ -79,6 +83,11 @@ export function rawItemCount(vendor: VendorKind, raw: unknown): number {
       return Array.isArray(r.jobPostings) ? r.jobPostings.length : 0;
     case "pinpoint":
       return Array.isArray(r.data) ? r.data.length : 0;
+    case "icims":
+      // fetchBoard hands the canary { items: [...] } (its own envelope), and
+      // the vendor's own shape is { jobs: [...] } — accept either so a raw
+      // count is never mistaken for drift.
+      return Array.isArray(r.items) ? r.items.length : Array.isArray(r.jobs) ? r.jobs.length : 0;
     default:
       return 0;
   }

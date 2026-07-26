@@ -949,6 +949,104 @@ export function normalizeBreezy(raw: BreezyPosition[], company: string, token: s
     .filter((j) => j.applyUrl !== "" && j.title !== "" && j.id !== `breezy:${token}:`);
 }
 
+// ── iCIMS ───────────────────────────────────────────────────────────────────
+// iCIMS hosts each employer's modern career site on the employer's OWN domain
+// (careers.company.com), and that site's frontend calls a public JSON endpoint:
+//   GET https://{careersite-domain}/api/jobs?page={n}&limit=100
+// No auth, no cookies, no JS. Each item nests its fields under `data`.
+//
+// Richest feed of any vendor we ingest: real posted_date (ISO), structured
+// city/state/country, employment_type, AND stated salary min/max — the only
+// source besides description-mined text that gives us pay directly.
+//
+// Discovery is two-hop (2026-07-26 census): CDX/CT enumeration finds the
+// classic careers-{tenant}.icims.com portal, whose /jobs/search?ss=1&in_iframe=1
+// returns a tiny JS redirect naming the modern domain, which is what we store
+// as the token. Token = the career-site host itself (dots and all), so the
+// fetcher needs no separate mapping.
+export interface IcimsJobData {
+  req_id?: string | number | null;
+  title?: string | null;
+  description?: string | null;
+  posted_date?: string | null;
+  create_date?: string | null;
+  city?: string | null;
+  state?: string | null;
+  country?: string | null;
+  country_code?: string | null;
+  full_location?: string | null;
+  short_location?: string | null;
+  location_type?: string | null;
+  category?: string[] | string | null;
+  department?: string | null;
+  employment_type?: string | null;
+  salary_min_value?: number | string | null;
+  salary_max_value?: number | string | null;
+  salary_value?: number | string | null;
+  hiring_organization?: string | null;
+  apply_url?: string | null;
+  slug?: string | null;
+}
+export interface IcimsJobItem { data?: IcimsJobData | null }
+
+/** iCIMS stated pay → the board's freeform salary string. Zeros mean "the
+ *  feed carries the field but this posting states nothing" — never rendered
+ *  as "$0", the same honesty rule the salary miner follows. */
+function icimsSalary(d: IcimsJobData): string | null {
+  const num = (v: unknown): number | null => {
+    const n = typeof v === "string" ? Number(v.replace(/[^0-9.]/g, "")) : typeof v === "number" ? v : NaN;
+    return Number.isFinite(n) && n > 0 ? n : null;
+  };
+  const lo = num(d.salary_min_value), hi = num(d.salary_max_value), one = num(d.salary_value);
+  const fmt = (n: number) => n.toLocaleString("en-US", { maximumFractionDigits: 0 });
+  if (lo && hi && hi >= lo) return lo === hi ? `$${fmt(lo)}` : `$${fmt(lo)} - $${fmt(hi)}`;
+  if (lo) return `$${fmt(lo)}`;
+  if (hi) return `$${fmt(hi)}`;
+  if (one) return `$${fmt(one)}`;
+  return null;
+}
+
+export function normalizeIcims(raw: IcimsJobItem[], company: string, token: string): JobPosting[] {
+  return (Array.isArray(raw) ? raw : [])
+    .map((item) => {
+      const d = (item?.data ?? {}) as IcimsJobData;
+      const externalId = String(d.req_id ?? d.slug ?? "").trim();
+      const location = String(
+        d.full_location || d.short_location || [d.city, d.state, d.country].filter(Boolean).join(", ") || "",
+      ).trim();
+      const dept = typeof d.department === "string" && d.department.trim() ? d.department.trim() : null;
+      const cat = Array.isArray(d.category) ? d.category.filter(Boolean).map((c) => String(c).trim()).join(", ")
+        : typeof d.category === "string" ? d.category.trim() : "";
+      // location_type is the vendor's own structured field; text detection only
+      // fills in when the feed doesn't state one (never guessed from prose).
+      const lt = String(d.location_type ?? "").toLowerCase();
+      const structuredMode = lt.includes("remote") ? "remote" as const
+        : lt.includes("hybrid") ? "hybrid" as const
+        : lt.includes("onsite") || lt.includes("on-site") || lt.includes("office") ? "onsite" as const
+        : null;
+      const workMode = structuredMode ?? detectWorkMode(location, d.title, cat);
+      return {
+        id: `icims:${token}:${externalId}`,
+        source: "icims" as const,
+        token,
+        company,
+        title: String(d.title ?? "").trim(),
+        location,
+        workMode,
+        remote: workMode === "remote",
+        department: dept ?? (cat || null),
+        postedAt: safeIso(d.posted_date ?? d.create_date),
+        category: categorize(String(d.title ?? ""), dept ?? cat),
+        salary: icimsSalary(d),
+        // country_code is the FEED's own ISO-2 — better than location-text
+        // detection, same treatment Rippling gets.
+        country: /^[A-Za-z]{2}$/.test(String(d.country_code ?? "")) ? String(d.country_code).toUpperCase() : null,
+        applyUrl: safeUrl(d.apply_url ?? (externalId ? `https://${token}/jobs/${externalId}` : "")),
+      };
+    })
+    .filter((j) => j.applyUrl !== "" && j.title !== "" && !j.id.endsWith(":"));
+}
+
 // ── Rippling ATS ────────────────────────────────────────────────────────────
 // Rippling publishes no documented list API; the public board page embeds the
 // job list as first-party structured JSON (Next.js __NEXT_DATA__, react-query

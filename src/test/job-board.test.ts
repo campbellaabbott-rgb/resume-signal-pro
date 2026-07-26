@@ -894,11 +894,14 @@ describe("vendor schema-drift canary", () => {
   });
 
   it("ships two stable canaries for every canaried vendor", () => {
-    const vendors = ["greenhouse", "lever", "ashby", "smartrecruiters", "workable", "bamboohr", "rippling", "workday"];
+    // Every vendor whose payload we parse gets exactly two reference boards —
+    // one flake can't fake drift, and a real API change trips both. iCIMS
+    // joined 2026-07-26 (vendor #15).
+    const vendors = ["greenhouse", "lever", "ashby", "smartrecruiters", "workable", "bamboohr", "rippling", "workday", "pinpoint", "icims"];
     for (const v of vendors) {
       expect(CANARIES.filter((c) => c.vendor === v).length).toBe(2);
     }
-    expect(CANARIES.length).toBe(18);
+    expect(CANARIES.length).toBe(20);
   });
 });
 
