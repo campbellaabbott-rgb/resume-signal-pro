@@ -28449,6 +28449,22 @@ export const JOB_SOURCES: JobSource[] = [
   { name: "Velosio", source: "icims", token: "careers.velosio.com" },
   { name: "Verbal Beginnings", source: "icims", token: "careers.verbalbeginnings.com" },
   { name: "YMCA of Greater Kansas City", source: "icims", token: "careers.kansascityymca.org" },
+  // iCIMS census close-out (2026-07-26): the 1,296 remaining Wayback tokens
+  // probed live — 1 answered (Xactly, below); the tail is dead tenants. These
+  // are the census-verified hosts the rung-5 merge missed, after the standard
+  // screens: same-instance dedupe dropped Reyes×4/Chick-fil-A×2/Exelon×1/
+  // Busy Bees×1 (already carried under their primary domains), harrow.gov.uk
+  // and AIDT fell to the corporate-only fence, and careers.reliance.com was
+  // excluded because neither its feed nor its site names the employer. Names
+  // below are from each site's own title/og tags.
+  { name: "UHS", source: "icims", token: "jobs.uhsinc.com" },
+  { name: "Landry's", source: "icims", token: "careers.landrysinc.com" },
+  { name: "WakeMed", source: "icims", token: "jobs.wakemed.org" },
+  { name: "ZS Associates", source: "icims", token: "jobs.zs.com" },
+  { name: "YNV Group", source: "icims", token: "careers.ynvgroup.com" },
+  { name: "Xactly", source: "icims", token: "careers.xactlycorp.com" },
+  { name: "DataBank", source: "icims", token: "careers.databankimx.com" },
+  { name: "Sarnova", source: "icims", token: "careers.sarnova.com" },
   // Found by mining Phenom career sites for the Workday board their apply
   // links point at (2026-07-26). Phenom is a career-site LAYER over an ATS,
   // so it is a discovery channel, not a vendor to ingest — 9 of 11 Phenom

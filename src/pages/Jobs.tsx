@@ -11,14 +11,14 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import { parseSalaryStructured } from "../../supabase/functions/_shared/salary-extract";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Activity, AlertTriangle, Bookmark, BookmarkCheck, Briefcase, ChevronDown, Clock, Compass, Copy, ExternalLink, FileText, Flag, Link2, Loader2, MapPin, MessageSquare, RefreshCw, Search, ShieldCheck, SlidersHorizontal, Sparkles, Target, Upload, Info} from "lucide-react";
+import { Activity, AlertTriangle, Bell, Bookmark, BookmarkCheck, Briefcase, ChevronDown, Clock, Compass, Copy, ExternalLink, FileText, Flag, Link2, Loader2, MapPin, MessageSquare, RefreshCw, Search, ShieldCheck, SlidersHorizontal, Sparkles, Target, Upload, Info} from "lucide-react";
 import { SEO } from "@/components/seo/SEO";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { ApplicationAnswers } from "@/components/apply/ApplicationAnswers";
+import { ApplicationAnswers, REAL_QUESTION_PREFIXES } from "@/components/apply/ApplicationAnswers";
 import { CompanyClaim } from "@/components/jobs/CompanyClaim";
 import { CompanyIntelPanel } from "@/components/jobs/CompanyIntelPanel";
 import { PublicCompanyCard } from "@/components/jobs/PublicCompanyCard";
@@ -76,6 +76,9 @@ interface BoardJob {
   otherLocations?: string[];
   /** Tier-2 ranked search only: ts_headline fragment showing where a description-matched result matched ([[term]] delimiters). */
   snippet?: string;
+  /** True on rows the trigram tier APPENDED to a thin exact-match page — the
+   *  card labels these "close match"; they are never passed off as exact. */
+  closeMatch?: boolean;
 }
 
 // A company with several fresh, still-open roles is demonstrably hiring — the
@@ -148,6 +151,13 @@ interface BoardResponse {
    *  every keyword tier found nothing). The UI must disclose it — these are
    *  related roles, never presented as exact matches. */
   semantic?: string;
+  /** Ranked path served the page ordered by relevance. When absent on a typed
+   *  search, the recency fallback answered — the sort line must not claim
+   *  relevance ordering it didn't do. */
+  ranked?: boolean;
+  /** Set when close-match rows were APPENDED to a thin exact page (the rows
+   *  themselves carry closeMatch: true). Disclosed above the list. */
+  fuzzyExtra?: { q: string; count: number };
 }
 
 // Mirrors JOB_CATEGORIES in the edge function — the filterable fields.
@@ -1075,6 +1085,10 @@ export default function Jobs() {
     return () => { window.removeEventListener("popstate", onPop); window.removeEventListener("keydown", onKey); };
   }, [closeDetail]);
   const deepLinkTried = useRef(false);
+  // A shared ?job= link whose posting has closed. null = no dead link; title
+  // present when the closure log knew the posting, so we can offer a search
+  // for live siblings instead of a shrug.
+  const [deadLink, setDeadLink] = useState<{ title: string | null; company: string | null } | null>(null);
   useEffect(() => {
     if (deepLinkTried.current) return;
     const id = new URLSearchParams(window.location.search).get("job");
@@ -1088,12 +1102,23 @@ export default function Jobs() {
       deepLinkTried.current = true;
       (async () => {
         try {
-          const { data: res } = await invokeBoard<{ job?: BoardJob | null; description?: string }>({ action: "detail", id });
+          const { data: res } = await invokeBoard<{ job?: BoardJob | null; description?: string; closed?: { title: string; company: string | null; closedAt: string } }>({ action: "detail", id });
           if (res?.job) {
             setDetailJob(res.job);
             setDetailDesc(res.description ?? null);
+          } else if (res?.closed) {
+            // The link's posting closed and we watched it happen — say so,
+            // with what it was, and offer the search for live siblings.
+            setDeadLink({ title: res.closed.title, company: res.closed.company });
+          } else {
+            setDeadLink({ title: null, company: null });
           }
-        } catch { /* dead link — board renders normally */ }
+        } catch {
+          // Dead link with no closure record: still tell the user their link
+          // went somewhere real that is gone now, not just render the board
+          // as if they never clicked anything.
+          setDeadLink({ title: null, company: null });
+        }
       })();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1861,12 +1886,18 @@ export default function Jobs() {
   const zeroSigRef = useRef("");
   useEffect(() => {
     if (loading || refreshing || error || !data || data.total !== 0) { setZeroHelp(null); return; }
-    const sig = JSON.stringify([q, location, category, experience, company, salaryFloor, remoteOnly, freshness]);
+    const sig = JSON.stringify([q, location, category, experience, company, salaryFloor, remoteOnly, workMode, country, freshness]);
     if (zeroSigRef.current === sig) return;
     zeroSigRef.current = sig;
+    // The probe must carry EVERY active filter. It used to omit workMode and
+    // country, so each "remove X → N results" button was counted against a
+    // looser query than the one on screen — the promised N could land on
+    // another zero. A rescue count that overstates is a broken promise at the
+    // exact moment the user is most likely to give up.
     const base: Record<string, unknown> = {
       action: "list", countOnly: true, includeFacets: false,
       q: q || undefined, location: location || undefined, remote: remoteOnly || undefined,
+      workMode: workMode || undefined, country: country || undefined,
       category: category || undefined, experience: experience || undefined,
       companies: company ? [company] : undefined, salaryFloor: salaryFloor || undefined,
       maxAgeDays: freshness ? (freshness === "day" ? 1 : 7) : undefined,
@@ -1875,6 +1906,7 @@ export default function Jobs() {
       q: { q: undefined }, location: { location: undefined }, category: { category: undefined },
       experience: { experience: undefined }, company: { companies: undefined },
       salaryFloor: { salaryFloor: undefined }, remote: { remote: undefined }, freshness: { maxAgeDays: undefined },
+      mode: { workMode: undefined, remote: undefined }, country: { country: undefined },
     };
     const candidates = activeFilters.slice(0, 4);
     let cancelled = false;
@@ -2160,7 +2192,7 @@ export default function Jobs() {
                   {fitFetching === detailJob.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Target className="w-3.5 h-3.5" />}
                   {t("jobsPage.checkFit", "Check my fit — free scan")}
                 </Button>
-                {detailJob.id.startsWith("greenhouse:") && (
+                {REAL_QUESTION_PREFIXES.some((p) => detailJob.id.startsWith(p)) && (
                   <Button size="sm" variant="outline" className="gap-1.5" disabled={preparingId === detailJob.id} onClick={() => prepareApplication(detailJob)}>
                     {preparingId === detailJob.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <MessageSquare className="w-3.5 h-3.5" />}
                     {t("jobsPage.prepAnswers", "Prep answers")}
@@ -3184,9 +3216,52 @@ export default function Jobs() {
                 ))}
                 {zeroHelp === null && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
               </div>
+              {/* The catalog turns over daily — "nothing today" is not
+                  "nothing ever". Saving the search wires it into the existing
+                  alert loop, so the dead end becomes the reason to come back. */}
+              {(q || location || category || company) && (
+                <div className="mt-4 pt-3 border-t border-border">
+                  <p className="text-xs text-muted-foreground mb-2">
+                    {t("jobsPage.zeroAlertHint", "New postings land here every day. Get an email when roles matching this search appear:")}
+                  </p>
+                  <Button size="sm" variant="default" className="gap-1.5" onClick={saveCurrentSearch}>
+                    <Bell className="w-3.5 h-3.5" />
+                    {t("jobsPage.zeroAlertCta", "Alert me when this exists")}
+                  </Button>
+                </div>
+              )}
             </div>
           ) : (
             <>
+              {/* Dead deep link: the shared posting closed. Say what it was
+                  (when the closure log knows) and offer live siblings — a
+                  visible answer where there used to be silence. */}
+              {deadLink && (
+                <div className="flex items-start gap-2.5 rounded-xl border border-warning/40 bg-warning/5 px-3.5 py-2.5 mb-4">
+                  <Info className="w-4 h-4 text-warning shrink-0 mt-0.5" />
+                  <div className="text-[13px] min-w-0">
+                    <p className="text-foreground">
+                      {deadLink.title
+                        ? t("jobsPage.deadLinkKnown", "“{{title}}”{{at}} is no longer live — it was filled or taken down.", { title: deadLink.title, at: deadLink.company ? ` ${t("jobsPage.deadLinkAt", "at")} ${deadLink.company}` : "" })
+                        : t("jobsPage.deadLinkUnknown", "The posting in that link is no longer live — it was filled or taken down.")}
+                    </p>
+                    <div className="mt-1 flex flex-wrap gap-3">
+                      {deadLink.title && (
+                        <button
+                          type="button"
+                          className="text-[13px] font-semibold text-primary hover:underline"
+                          onClick={() => { setQ(deadLink.title ?? ""); setDeadLink(null); }}
+                        >
+                          {t("jobsPage.deadLinkSearch", "Find similar live roles")}
+                        </button>
+                      )}
+                      <button type="button" className="text-[13px] text-muted-foreground hover:underline" onClick={() => setDeadLink(null)}>
+                        {t("jobsPage.deadLinkDismiss", "Dismiss")}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
               {disclosure && (
                 <div className="flex items-start gap-2.5 rounded-xl border border-border bg-muted/40 px-3.5 py-2.5 mb-4">
                   <Info className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
@@ -3324,11 +3399,26 @@ export default function Jobs() {
                   {t("jobsPage.semanticLine", "No title matches for “{{q}}” — showing the closest roles by meaning.", { q: data.semantic })}
                 </p>
               )}
+              {/* +N close matches appended to a thin exact-match page: same
+                  honesty rule — the appended rows carry their own chip, and
+                  this line says why they're there. */}
+              {data?.fuzzyExtra && (
+                <p className="text-xs text-warning/90 mb-2 -mt-1">
+                  {t("jobsPage.fuzzyExtraLine", "Only a few exact matches for “{{q}}” — {{count}} close-match titles are included below, labeled.", { q: data.fuzzyExtra.q, count: data.fuzzyExtra.count })}
+                </p>
+              )}
               {q.trim() && sortMode !== "salary" && !data?.fuzzy && !data?.semantic && (
                 <p className="text-[11px] text-muted-foreground mb-2 -mt-1">
+                  {/* The relevance claim is only made when the ranked path
+                      actually served this page. If it errored, the recency
+                      fallback answered — saying "sorted by relevance" over
+                      recency-ordered rows would be a lie about the one thing
+                      this line exists to disclose. */}
                   {searchNewestFirst
                     ? t("jobsPage.sortedNewest", "Sorted by newest first")
-                    : t("jobsPage.sortedRelevance", "Sorted by relevance — title matches first")}
+                    : data?.ranked
+                      ? t("jobsPage.sortedRelevance", "Sorted by relevance — title matches first")
+                      : t("jobsPage.sortedNewestFallback", "Sorted by newest first (relevance ranking briefly unavailable)")}
                   {" · "}
                   <button type="button" className="text-primary hover:underline" onClick={() => setSearchNewestFirst((v) => !v)}>
                     {searchNewestFirst
@@ -3498,6 +3588,15 @@ export default function Jobs() {
                                 i % 2 === 1 ? <mark key={i} className="bg-primary/20 text-foreground rounded px-0.5 not-italic">{part}</mark> : part)}…
                             </p>
                           )}
+                          {/* Appended by the trigram tier onto a thin exact
+                              page — labeled so it is never mistaken for an
+                              exact match (the disclosure line above the list
+                              explains why it's here). */}
+                          {job.closeMatch && (
+                            <span className="inline-flex items-center text-[11px] text-warning mt-1 mr-1.5 border border-warning/40 rounded-full px-2 py-0.5">
+                              {t("jobsPage.closeMatchChip", "close match")}
+                            </span>
+                          )}
                           {/* Experience level: the cited minimum years when the posting
                               states one (the precise fact), else the band's range. */}
                           {job.experienceBand && (
@@ -3634,7 +3733,7 @@ export default function Jobs() {
                           {fitFetching === job.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Target className="w-3.5 h-3.5" />}
                           {t("jobsPage.checkFit", "Check my fit — free scan")}
                         </Button>
-                        {job.id.startsWith("greenhouse:") && (
+                        {REAL_QUESTION_PREFIXES.some((p) => job.id.startsWith(p)) && (
                           <Button size="sm" variant="outline" className="gap-1.5" disabled={preparingId === job.id} onClick={() => prepareApplication(job)}>
                             {preparingId === job.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <MessageSquare className="w-3.5 h-3.5" />}
                             {t("jobsPage.prepAnswers", "Prep answers")}

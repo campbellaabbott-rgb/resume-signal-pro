@@ -75,7 +75,7 @@ const json = (body: unknown, status = 200) =>
 // while this file was untouched). Always bump BUILD_VERSION here when a shared
 // module this function imports changes — it forces the diff AND gives the
 // deploy a verifiable tell.
-const BUILD_VERSION = "2026-07-26.4";
+const BUILD_VERSION = "2026-07-26.5";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -559,7 +559,7 @@ const COUNTRY_VERSION = 1; // v1: deterministic country from location text (name
 // at all (bamboohr/rippling) are structurally undated — no sweep can date
 // them; provenance labels stay the honest treatment. Measured backlog at v1:
 // ~480 greenhouse rows.
-const POSTED_BACKFILL_VERSION = 2; // v2: + bamboohr (datePosted) and rippling (createdOn) per-posting phases
+const POSTED_BACKFILL_VERSION = 3; // v3: cheap-first phase order + hop-persisted resume (v2's bamboohr/rippling phases never ran — the chain died inside the workday wall and every revival restarted from scratch; measured: bamboohr 0% dated of 43,813)
 // Velocity tier: boards that ADDED postings recently earn hot cadence even if
 // small — a 40-role startup posting daily deserves faster revisits than a
 // 4,000-role giant that hasn't posted in a month. Blend: velocity leaders get
@@ -1489,13 +1489,23 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
       })).then((r) => r.text()).catch(() => {}));
     }
     // Undated rows whose vendor feed DOES carry dates? Date them once.
+    // The kick now (a) stands down while a chain is demonstrably alive
+    // (hop stamp < 5 min old) instead of spawning a concurrent duplicate,
+    // and (b) revives a DEAD chain at its stored phase+cursor rather than
+    // from the beginning — restart-from-scratch is why v2's late phases
+    // never ran.
     const { data: pbVer } = await client.from("job_board_meta").select("v").eq("k", "posted_backfill").maybeSingle();
-    if ((pbVer?.v as { version?: number } | null)?.version !== POSTED_BACKFILL_VERSION) {
+    const pbV = (pbVer?.v ?? {}) as { version?: number; phase?: string; cursor?: string; at?: string };
+    const pbAlive = typeof pbV.at === "string" && Date.now() - Date.parse(pbV.at) < 5 * 60_000;
+    if (pbV.version !== POSTED_BACKFILL_VERSION && !pbAlive) {
       const url = `${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`;
+      const resume = typeof pbV.phase === "string" && typeof pbV.cursor === "string"
+        ? { phase: pbV.phase, cursor: pbV.cursor }
+        : {};
       waitUntil(chainKey().then((key) => fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "backfill-posted", chainKey: key }),
+        body: JSON.stringify({ action: "backfill-posted", chainKey: key, ...resume }),
       })).then((r) => r.text()).catch(() => {}));
     }
     // One-time name sync: ~48 rung-3 census names shipped HTML-escaped
@@ -1880,8 +1890,12 @@ async function fetchVendorDetail(
   id: string,
   externalId: string,
   applyUrl?: string | null,
-): Promise<{ text: string | null; postedAt: string | null }> {
+): Promise<{ text: string | null; postedAt: string | null; workMode: "remote" | "hybrid" | "onsite" | null }> {
   let text: string | null = null;
+  // Vendor-STRUCTURED work mode, when the same detail payload states one
+  // (today: workday remoteType). Callers write it as authoritative — a
+  // structured field always outranks text inference. null = not stated.
+  let workMode: "remote" | "hybrid" | "onsite" | null = null;
   // Absolute posting date, where the SAME payload happens to carry one. Free:
   // no extra request. Workday's list only exposes a relative bucket ("Posted
   // 30+ Days Ago") which floors at 30 days — measured as an exactly-30.0-day
@@ -1934,10 +1948,20 @@ async function fetchVendorDetail(
     if (cxs) {
       const res = await fetchWithTimeout(cxs);
       if (res.ok) {
-        const j = await res.json().catch(() => null) as { jobPostingInfo?: { jobDescription?: string; startDate?: string } } | null;
+        const j = await res.json().catch(() => null) as { jobPostingInfo?: { jobDescription?: string; startDate?: string; remoteType?: string } } | null;
         const html = j?.jobPostingInfo?.jobDescription ?? "";
         text = html ? htmlToText(String(html)).slice(0, DESC_CAP) || null : null;
         postedAt = isoDateOnly(j?.jobPostingInfo?.startDate);
+        // Workday's LIST payload carries no work-mode field, so every workday
+        // row's work_mode is text-inferred at ingest — but the detail we're
+        // already holding states remoteType outright. The vendor's structured
+        // field always outranks inference, so carry it back to the caller for
+        // the same free-ride treatment startDate gets.
+        const rt = String(j?.jobPostingInfo?.remoteType ?? "").toLowerCase();
+        workMode = rt.includes("remote") && !rt.includes("hybrid") ? "remote"
+          : rt.includes("hybrid") ? "hybrid"
+          : rt.includes("on-site") || rt.includes("onsite") || rt.includes("on site") ? "onsite"
+          : null;
       }
     }
   } else if (src.source === "bamboohr") {
@@ -1995,7 +2019,7 @@ async function fetchVendorDetail(
   }
   // Everything else — rippling today — has no public description source.
   // Returning null here is a measured fact, not an unfinished branch.
-  return { text, postedAt };
+  return { text, postedAt, workMode };
 }
 
 /**
@@ -2286,7 +2310,15 @@ Deno.serve(async (req) => {
       if (typeof body.chainKey !== "string" || body.chainKey !== await chainKey()) {
         return json({ error: "backfill-posted is a maintenance action" }, 403);
       }
-      const phase = ["workday", "bamboohr", "rippling"].includes(String(body.phase)) ? String(body.phase) as "workday" | "bamboohr" | "rippling" : "greenhouse";
+      // Phase order is cheap-first (2026-07-26 fix): bamboohr → rippling →
+      // greenhouse → workday. It used to START with greenhouse and put the
+      // per-posting phases after the workday wall (~75k rows at 8 boards/hop),
+      // and the chain never survived long enough to reach them — measured in
+      // production as bamboohr 0% dated of 43,813 rows while workday sat at
+      // 75%. The bounded phases now run first, so a chain that dies mid-wall
+      // has already banked the cheap wins — and the hop-persisted cursor below
+      // means a revival resumes inside the wall instead of at the start.
+      const phase = ["workday", "greenhouse", "rippling"].includes(String(body.phase)) ? String(body.phase) as "workday" | "greenhouse" | "rippling" : "bamboohr";
       // Workday hops fetch up to WORKDAY_PAGE_CAP list pages per board — keep
       // the per-hop board count low so a hop stays inside the compute budget.
       // BambooHR/Rippling date via ONE detail call PER POSTING (their list
@@ -2297,6 +2329,16 @@ Deno.serve(async (req) => {
       const BOARDS_PER_HOP = phase === "workday" ? 8 : 40;
       const IDS_PER_HOP = 120;
       let cursor = typeof body.cursor === "string" ? body.cursor : "";
+      // Resume state, stamped EVERY hop. Without it a died chain restarted the
+      // whole phase sequence from scratch on the next maintenance kick, and the
+      // long phases never finished. `at` doubles as the liveness signal the
+      // kick uses to avoid spawning a second concurrent chain.
+      const { data: pbPrev } = await client.from("job_board_meta").select("v").eq("k", "posted_backfill").maybeSingle();
+      const pbDone = (pbPrev?.v as { version?: number } | null)?.version;
+      await client.from("job_board_meta").upsert(
+        { k: "posted_backfill", v: { ...(typeof pbDone === "number" ? { version: pbDone } : {}), phase, cursor, at: new Date().toISOString() }, updated_at: new Date().toISOString() },
+        { onConflict: "k" },
+      );
       const byBoard = new Map<string, { company: string; ids: string[] }>();
       let scanned = 0;
       let exhausted = false;
@@ -2390,7 +2432,7 @@ Deno.serve(async (req) => {
         chain({ phase, cursor });
         return json({ ok: true, phase, scanned, dated, cursor });
       }
-      const NEXT_PHASE: Record<string, string> = { greenhouse: "workday", workday: "bamboohr", bamboohr: "rippling" };
+      const NEXT_PHASE: Record<string, string> = { bamboohr: "rippling", rippling: "greenhouse", greenhouse: "workday" };
       if (NEXT_PHASE[phase]) {
         chain({ phase: NEXT_PHASE[phase] }); // fresh cursor for the next source
         return json({ ok: true, phase, scanned, dated, next: NEXT_PHASE[phase] });
@@ -2907,7 +2949,7 @@ Deno.serve(async (req) => {
           const externalId = String(row.id).split(":").slice(2).join(":");
           if (!externalId) continue;
           try {
-            const { text, postedAt } = await fetchVendorDetail(src, row.id, externalId, row.apply_url);
+            const { text, postedAt, workMode: wmVendor } = await fetchVendorDetail(src, row.id, externalId, row.apply_url);
             if (!text) continue;
             const clean = text.replace(/\u0000/g, "").slice(0, 4000);
             if (!clean) continue;
@@ -2922,9 +2964,13 @@ Deno.serve(async (req) => {
             // 9.7%, salary 4.0%. Re-deriving here costs nothing: the text is
             // already in hand.
             const exp = detectExperience(row.title ?? "", clean);
-            // Work mode is only ever FILLED IN, never overwritten: a vendor's
-            // own structured field outranks anything we infer from prose.
-            const wm = row.work_mode ? null : detectWorkMode(row.location, row.title, clean);
+            // Work-mode precedence: a vendor's own STRUCTURED field (workday
+            // remoteType, arriving with the same detail payload) outranks
+            // everything, including a previously stored inferred value —
+            // workday rows only ever had text inference at ingest, so the
+            // structured statement corrects them. Prose inference stays
+            // fill-only: it never overwrites.
+            const wm = wmVendor ?? (row.work_mode ? null : detectWorkMode(row.location, row.title, clean));
             // Dates: Workday's stored value is a relative bucket floored at 30
             // days, so an absolute startDate is strictly better and replaces
             // it. For every other vendor we only fill a gap.
@@ -3206,7 +3252,27 @@ Deno.serve(async (req) => {
       const { data: jobRow } = await client.from("job_board_postings").select("*").eq("id", id).maybeSingle();
       const stored = (jobRow?.description && jobRow.description.length > 200) ? jobRow.description as string : null;
       const description = stored ?? await getDescription(src, id, externalId, jobRow?.apply_url as string | undefined);
-      if (!description && !jobRow) return json({ error: "Posting not found (it may have closed)" }, 404);
+      if (!description && !jobRow) {
+        // Dead deep link. Before answering with a bare 404 (which the client
+        // can only render as a shrug), check the closure log: if we WATCHED
+        // this posting close, we know its title and company and when — enough
+        // for the client to say what happened and offer a search for similar
+        // live roles instead of a silent dead end.
+        const { data: closure } = await client
+          .from("job_board_closures")
+          .select("title, company, closed_at")
+          .eq("posting_id", id)
+          .order("closed_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (closure?.title) {
+          return json({
+            job: null,
+            closed: { title: closure.title, company: closure.company || null, closedAt: closure.closed_at },
+          });
+        }
+        return json({ error: "Posting not found (it may have closed)" }, 404);
+      }
       // Demand-weighted fill: a posting someone actually opened is worth more
       // than a random row in the sweep, and we've already paid for the fetch.
       // Persisting it means the next reader (and fit scoring, and the apply kit)
@@ -3546,10 +3612,15 @@ async function serveList(
     if (expParam.length === 1) q = q.eq("experience_band", expParam[0]);
     else if (expParam.length > 1) q = q.in("experience_band", expParam);
     // Salary floor filters the annualized lower bound of the posting's OWN
-    // stated pay (no estimates, no currency conversion) — postings without a
-    // stated salary are excluded by the filter, honestly, not guessed at.
+    // stated pay, compared in APPROXIMATE USD via salary_rank_usd — the same
+    // generated column salary sorting uses. The raw-number comparison this
+    // replaced passed SEK/JPY rows whose figures merely LOOK large (SEK 1M ≈
+    // $95k cleared a $100k floor) and failed EUR/GBP rows that genuinely
+    // clear it. Postings without a stated salary, or whose currency we can't
+    // identify (rank NULL), are excluded by the filter, honestly, not
+    // guessed at. Displayed salaries stay exactly as the posting states them.
     const floor = Number(body.salaryFloor);
-    if (Number.isFinite(floor) && floor > 0) q = q.gte("salary_min_annual", Math.min(floor, 2_000_000));
+    if (Number.isFinite(floor) && floor > 0) q = q.gte("salary_rank_usd", Math.min(floor, 2_000_000));
     if (Array.isArray(body.companies)) {
       const tokens = body.companies.filter((c): c is string => typeof c === "string").slice(0, JOB_SOURCES.length);
       if (tokens.length) q = q.in("company_token", tokens);
@@ -3737,6 +3808,23 @@ async function serveList(
         const rankedCap = rankedTier2 ? 3_000 : 10_000;
         const rankedCapped = (total ?? 0) >= rankedCap;
         const v0 = (meta?.v ?? {}) as Record<string, unknown>;
+        // FILTER GATE — shared by every rescue tier (fuzzy replacement,
+        // semantic, and the low-result fuzzy augmentation below). None of the
+        // rescue RPCs carry filter parameters, so with any restrictive filter
+        // active they all stand down: the filtered (possibly empty) answer IS
+        // the honest answer. This gate is the fence that once broke on a
+        // company lander serving other companies' jobs for a typo'd query.
+        const filtersActive =
+          !!sanitizeTerm(String(body.location ?? "")) ||
+          body.remote === true ||
+          ["remote", "hybrid", "onsite"].includes(String(body.workMode ?? "").toLowerCase()) ||
+          /^[A-Za-z]{2}$/.test(String(body.country ?? "")) ||
+          (JOB_CATEGORIES as readonly string[]).includes(String(body.category ?? "").toLowerCase()) ||
+          String(body.experience ?? "").trim() !== "" ||
+          Number(body.salaryFloor) > 0 ||
+          (Array.isArray(body.companies) && body.companies.length > 0) ||
+          Number(body.maxAgeDays) >= 1 ||
+          typeof body.postedAfter === "string";
         // Empty ranked result: try the FAST trigram fuzzy fallback right here
         // ("desinger" → designer), then return an honest empty. Critically we
         // do NOT fall through to the recency path — its OR-of-ILIKE with an
@@ -3744,24 +3832,33 @@ async function serveList(
         // (measured 9.7s → "temporarily unavailable"). The ranked + fuzzy
         // paths are both index-backed and fast.
         if (total === 0 && offset === 0 && !countOnly) {
-          // FILTER GATE — shared by the fuzzy AND semantic tiers below. Moved
-          // above fuzzy 2026-07-25 (audit): fuzzy_title_search carries no
-          // filter parameters either, and ungated it was measured serving
-          // OTHER companies' jobs on a company lander for a typo'd query —
-          // the exact breach the semantic gate's own comment warned about.
-          // With any restrictive filter active, both fallback tiers stand
-          // down and the honest empty (which respects the filters) answers.
-          const filtersActive =
-            !!sanitizeTerm(String(body.location ?? "")) ||
-            body.remote === true ||
-            ["remote", "hybrid", "onsite"].includes(String(body.workMode ?? "").toLowerCase()) ||
-            /^[A-Za-z]{2}$/.test(String(body.country ?? "")) ||
-            (JOB_CATEGORIES as readonly string[]).includes(String(body.category ?? "").toLowerCase()) ||
-            String(body.experience ?? "").trim() !== "" ||
-            Number(body.salaryFloor) > 0 ||
-            (Array.isArray(body.companies) && body.companies.length > 0) ||
-            Number(body.maxAgeDays) >= 1 ||
-            typeof body.postedAfter === "string";
+          // Demand telemetry, ranked path. This logging lived only on the
+          // recency path, but ranked serves nearly all typed searches — so the
+          // job_board_search_misses table meant to steer census waves was
+          // recording only rare fallback traffic while the real misses went
+          // uncounted. A rescue tier below may still save the user's screen;
+          // the catalog gap the miss reveals is real either way.
+          {
+            const missQ0 = qText.slice(0, 120);
+            const missLoc0 = sanitizeTerm(String(body.location ?? "")).slice(0, 120);
+            if (missQ0 || missLoc0) {
+              waitUntil(Promise.resolve(
+                client.from("job_board_search_misses").insert({
+                  q: missQ0,
+                  location: missLoc0,
+                  filters: {
+                    route: "ranked",
+                    category: String(body.category ?? "") || undefined,
+                    experience: String(body.experience ?? "") || undefined,
+                    remote: body.remote === true || undefined,
+                    workMode: ["remote", "hybrid", "onsite"].includes(wmParam) ? wmParam : undefined,
+                    country: /^[A-Za-z]{2}$/.test(String(body.country ?? "")) ? String(body.country).toUpperCase() : undefined,
+                  },
+                }),
+              ).then(() => {}).catch(() => {}));
+            }
+          }
+          // (filtersActive hoisted above — shared with the augmentation tier.)
           if (!filtersActive) try {
             const { data: fuzzy, error: fErr } = await client.rpc("fuzzy_title_search", {
               p_q: qText, p_fresh_cutoff: freshCutoffIso, p_limit: limit,
@@ -3841,6 +3938,34 @@ async function serveList(
         const rankedGrouped = groupSimilar
           ? collapseClusters(rankedRows, limit)
           : { jobs: rankedRows.slice(0, limit), rawConsumed: Math.min(rankedRows.length, limit) };
+        // LOW-RESULT AUGMENTATION. The rescue tiers used to fire only on
+        // total === 0, so ONE posting that happened to share the user's typo
+        // ("desinger" appearing verbatim in a single title) suppressed the
+        // hundreds of corrected matches fuzzy would have found. When a typed
+        // query lands 1-4 exact matches unfiltered, run the trigram tier too
+        // and APPEND its novel rows — each marked closeMatch:true and the
+        // response carrying fuzzyExtra, so the client labels them as close
+        // matches instead of passing them off as exact ones. Exact matches
+        // keep their position; nothing is reordered or replaced.
+        let fuzzyExtraOut: { q: string; count: number } | null = null;
+        if (total !== null && total > 0 && total < 5 && offset === 0 && !countOnly && !filtersActive && qText.length >= 3) {
+          try {
+            const { data: fz, error: fzErr } = await client.rpc("fuzzy_title_search", {
+              p_q: qText, p_fresh_cutoff: freshCutoffIso, p_limit: limit,
+            });
+            if (!fzErr && Array.isArray(fz) && fz.length > 0) {
+              const have = new Set(rankedGrouped.jobs.map((j) => String((j as { id?: unknown }).id ?? "")));
+              const extra = (fz as unknown[]).map(rowToJob)
+                .filter((j) => !have.has(String((j as { id?: unknown }).id ?? "")))
+                .slice(0, Math.max(0, limit - rankedGrouped.jobs.length))
+                .map((j) => ({ ...(j as Record<string, unknown>), closeMatch: true }));
+              if (extra.length > 0) {
+                rankedGrouped.jobs.push(...extra);
+                fuzzyExtraOut = { q: qText, count: extra.length };
+              }
+            }
+          } catch { /* augmentation is a bonus — exact matches alone stand */ }
+        }
         return json({
           jobs: rankedGrouped.jobs,
           nextOffset: offset + rankedGrouped.rawConsumed,
@@ -3858,6 +3983,7 @@ async function serveList(
           refreshedAt: (v0.refreshedAt as string) ?? null,
           ranked: true,
           ...(expansions.length ? { aliases: expansions } : {}),
+          ...(fuzzyExtraOut ? { fuzzyExtra: fuzzyExtraOut } : {}),
         });
       }
     } catch { /* fall through to recency path */ }

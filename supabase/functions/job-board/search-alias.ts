@@ -43,32 +43,62 @@ export const ROLE_ALIASES: Record<string, string[]> = {
   fullstack: ["full stack"],
 };
 
-// Expands the FIRST aliased token into websearch OR-branches that keep the
-// rest of the query intact: "senior pm" → "senior pm OR senior product
-// manager OR senior project manager". websearch_to_tsquery has no grouping
-// parens, but OR between full AND-groups gives exactly the right semantics
-// (and the original spelling stays a branch — titles like "SWE II" still
-// match). Queries already using advanced syntax (quotes, OR, exclusion,
-// hyphens) are never touched. Bounded: ≤3 branches, ≤6 tokens.
+// Expands EVERY aliased token into websearch OR-branches that keep the rest
+// of the query intact: "senior pm" → "senior pm OR senior product manager OR
+// senior project manager"; "sre k8s" → branches covering both expansions AT
+// ONCE ("site reliability engineer kubernetes"), which the original
+// first-token-only version half-missed — "sre k8s" expanded sre and left k8s
+// literal, so titles saying "kubernetes" in full never matched.
+// websearch_to_tsquery has no grouping parens, but OR between full AND-groups
+// gives exactly the right semantics (and the original spelling stays a branch
+// — titles like "SWE II" still match). Branch order is deliberate: original
+// first, then the all-tokens-expanded reading (the one multi-abbreviation
+// queries actually mean), then partial substitutions until the cap.
+// Queries already using advanced syntax (quotes, OR, exclusion) are never
+// touched; a plain hyphenated word ("front-end") no longer disables
+// expansion — only a leading-minus exclusion does. Bounded: ≤4 branches,
+// ≤6 tokens.
 export function expandQuery(raw: string): { q: string; expansions: string[] } {
   const trimmed = raw.trim();
-  if (!trimmed || /["'-]|\bOR\b/.test(trimmed)) return { q: raw, expansions: [] };
+  if (!trimmed || /["']|\bOR\b|(^|\s)-\S/.test(trimmed)) return { q: raw, expansions: [] };
   const tokens = trimmed.toLowerCase().split(/\s+/);
   if (tokens.length > 6) return { q: raw, expansions: [] };
-  const branches: string[][] = [tokens];
+  // Per-position alternatives: the original token plus up to 2 alias phrases.
+  const alts = tokens.map((t) => [t, ...(ROLE_ALIASES[t] ?? []).slice(0, 2)]);
+  if (!alts.some((a) => a.length > 1)) return { q: raw, expansions: [] };
+
+  const MAX_BRANCHES = 4;
+  const seen = new Set<string>();
+  const branches: string[][] = [];
   const expansions: string[] = [];
-  for (let i = 0; i < tokens.length; i++) {
-    const aliases = ROLE_ALIASES[tokens[i]];
-    if (!aliases) continue;
-    for (const phrase of aliases) {
-      if (branches.length >= 3) break;
-      const branch = [...tokens];
-      branch.splice(i, 1, ...phrase.split(" "));
-      branches.push(branch);
-      expansions.push(phrase);
+  const push = (choice: number[]) => {
+    if (branches.length >= MAX_BRANCHES) return;
+    const words: string[] = [];
+    for (let i = 0; i < tokens.length; i++) words.push(...alts[i][choice[i]].split(" "));
+    const key = words.join(" ");
+    if (seen.has(key)) return;
+    seen.add(key);
+    branches.push(words);
+    for (let i = 0; i < tokens.length; i++) {
+      if (choice[i] > 0 && !expansions.includes(alts[i][choice[i]])) expansions.push(alts[i][choice[i]]);
     }
-    break;
+  };
+
+  // 1. The original spelling.
+  push(tokens.map(() => 0));
+  // 2. Everything expanded to its first alias — what a multi-abbreviation
+  //    query means ("sre k8s" → "site reliability engineer kubernetes").
+  push(alts.map((a) => (a.length > 1 ? 1 : 0)));
+  // 3. Single substitutions (covers "pm" alone in "senior pm"), then second
+  //    readings ("pm" → project manager), until the branch cap.
+  for (let i = 0; i < tokens.length && branches.length < MAX_BRANCHES; i++) {
+    for (let v = 1; v < alts[i].length && branches.length < MAX_BRANCHES; v++) {
+      const choice = tokens.map(() => 0);
+      choice[i] = v;
+      push(choice);
+    }
   }
+
   if (expansions.length === 0) return { q: raw, expansions: [] };
   return { q: branches.map((b) => b.join(" ")).join(" OR "), expansions };
 }

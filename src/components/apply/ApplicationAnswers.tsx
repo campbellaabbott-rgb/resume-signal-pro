@@ -12,8 +12,11 @@ import { toast } from "sonner";
 
 export interface DraftedAnswer { question: string; answer: string; supported: boolean; note: string; anticipated?: boolean; }
 
-/** Vendors whose REAL application form the board function can fetch. */
-const REAL_QUESTION_PREFIXES = ["greenhouse:", "ashby:", "recruitee:"];
+/** Vendors whose REAL application form the board function can fetch.
+ * Exported so the board page gates its "Prep answers" button on the SAME
+ * list — it was hardcoded to greenhouse: there, hiding the feature on Ashby
+ * and Recruitee postings the backend had supported since task #201. */
+export const REAL_QUESTION_PREFIXES = ["greenhouse:", "ashby:", "recruitee:"];
 
 export function ApplicationAnswers({
   resumeText,

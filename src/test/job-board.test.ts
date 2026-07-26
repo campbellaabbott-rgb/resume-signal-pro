@@ -928,18 +928,29 @@ describe("expandQuery (role aliases)", () => {
     expect(r.expansions).toHaveLength(2);
   });
 
-  it("expands only the first aliased token", () => {
+  it("expands EVERY aliased token — the all-expanded reading comes right after the original", () => {
+    // The old first-token-only behavior half-expanded "sre k8s": titles
+    // saying "kubernetes" in full never matched. Both must expand, and the
+    // combined reading must be a branch.
     const r = expandQuery("rn np");
-    expect(r.expansions).toEqual(["registered nurse"]);
-    expect(r.q).toBe("rn np OR registered nurse np");
+    expect(r.expansions).toEqual(expect.arrayContaining(["registered nurse", "nurse practitioner"]));
+    const branches = r.q.split(" OR ");
+    expect(branches[0]).toBe("rn np"); // the original spelling always survives, first
+    expect(branches).toContain("registered nurse nurse practitioner"); // the combined reading
+    expect(branches.length).toBeLessThanOrEqual(4); // bounded
   });
 
   it("never touches advanced syntax or long queries", () => {
-    for (const raw of ['"swe"', "swe OR sde", "-swe intern", "front-end swe", "a b c d e f swe"]) {
+    // A plain hyphenated word ("front-end") NO LONGER disables expansion —
+    // only genuine operator syntax does: quotes, OR, leading-minus exclusion.
+    for (const raw of ['"swe"', "swe OR sde", "-swe intern", "a b c d e f swe"]) {
       const r = expandQuery(raw);
       expect(r.q).toBe(raw);
       expect(r.expansions).toEqual([]);
     }
+    const hyphen = expandQuery("front-end swe");
+    expect(hyphen.q.split(" OR ")[0]).toBe("front-end swe"); // original intact
+    expect(hyphen.expansions).toContain("software engineer"); // and expansion now works
   });
 
   it("passes non-alias queries through unchanged", () => {
