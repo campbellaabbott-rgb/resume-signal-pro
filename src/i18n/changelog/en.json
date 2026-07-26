@@ -1,5 +1,17 @@
 {
   "changelogEntries": {
+    "boardInYourLanguage": {
+      "title": "The job board now fully speaks your language",
+      "description": "130 pieces of the board's interface — closure notices, salary context, alert confirmations, interview-prep buttons, error messages and more — were still showing in English for Spanish, French, German, Portuguese, Dutch, Hindi, Filipino and British English users. All of them are now properly translated, so the whole board reads naturally in the language you chose."
+    },
+    "fieldFillSpeed": {
+      "title": "New: how fast roles in your field actually fill",
+      "description": "Field pages now show a measured fill-speed line — for example, engineering roles typically stay open about 15 days, with 75% closing within 22. It's computed from thousands of real posting closures we tracked over the last 90 days, never an estimate, and it only appears for fields with at least 300 tracked closings. Use it to judge how quickly you need to apply."
+    },
+    "fasterHonestBoard": {
+      "title": "Jobs above the fold, clearer numbers, better accessibility",
+      "description": "The first job posting now appears higher on every screen — filter chips fit on one scrollable row instead of stacking. Job titles are real buttons screen readers can use, the close button is easier to tap, duplicate words in vendor-mangled titles are cleaned up, and salary medians now say exactly how hourly rates were annualized. Company headcounts also carry their source label everywhere they appear."
+    },
     "countryDetectionFix": {
       "title": "Fixed: some resumes were matched to the wrong country's market",
       "description": "A detection bug could read cloud terms like “EC2” as a London postcode and miss US phone numbers written without +1, so some US resumes received market advice for the United Kingdom — presented confidently. That is exactly the failure this product exists to avoid, and it is fixed: 22 regression tests now pin the failure cases, ambiguous resumes defer to your actual location instead of a coin flip, and every report now records how your market was chosen — your selection, resume evidence, or location — so a guess can never again dress up as certainty."

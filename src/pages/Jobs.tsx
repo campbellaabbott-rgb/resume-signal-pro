@@ -2640,7 +2640,15 @@ export default function Jobs() {
           <p className="text-sm text-muted-foreground mb-2">
             {landerCompany
               ? t("jobsPage.companySubtitle", "Every {{company}} opening here comes straight from {{company}}'s own careers system — verified, still open, and re-checked the moment you apply.", { company: landerCompanyName })
-              : data?.totalAllCompanies
+              // A category lander's headline count must be THAT category's —
+              // the board-wide 574k under an "Engineering jobs" H1 claimed
+              // 574k engineering openings (scope-integrity finding).
+              : landerCategory && (data?.categories?.[landerCategory] ?? 0) > 0
+              ? t("jobsPage.landerCountLine", "{{total}} live {{category}} openings — every one straight from the company's own hiring system.", {
+                  total: (data?.categories?.[landerCategory] ?? 0).toLocaleString(),
+                  category: t(`jobsPage.categories.${landerCategory}`, landerCategory),
+                })
+              : !landerCategory && data?.totalAllCompanies
               ? t("jobsPage.countLine", "{{total}} live openings from {{companies}} companies — every one straight from the company's own hiring system.", {
                   total: data.totalAllCompanies.toLocaleString(),
                   companies: (data.companiesCount ?? companies.length).toLocaleString(),
@@ -3133,7 +3141,10 @@ export default function Jobs() {
             {/* One row on EVERY breakpoint: the wrap-to-two-rows desktop cloud
                 pushed the first job card below a 720px fold (measured y=820,
                 2026-07-26) — the edge mask signals the scroll, nothing is
-                dropped. */}
+                dropped. Hidden on company pages: the counts are BOARD-wide,
+                and under "Open roles at {company}" they read as that
+                company's (scope-integrity finding). */}
+            {!landerCompany && (
             <div className="basis-full overflow-x-auto pb-1 -mb-1 relative [mask-image:linear-gradient(to_right,black_92%,transparent)]">
               <div className="flex items-center gap-2 w-max">
                 {CATEGORY_IDS
@@ -3162,6 +3173,7 @@ export default function Jobs() {
                   ))}
               </div>
             </div>
+            )}
             {/* For you | All jobs — the board's differentiator as a first-class
                 mode, not a pill to discover. "For you" without a resume routes
                 to the free scan (toggleFitRanking owns that flow). */}
@@ -3590,6 +3602,19 @@ export default function Jobs() {
                       total: data?.total ?? jobs.length,
                       company: landerCompanyName,
                     })
+                  // "across N companies" only when nothing narrows the list:
+                  // companiesCount is BOARD-WIDE (measured: a category filter
+                  // matching 1,429 companies still reported 22,944), and the
+                  // client's company facet is cached from the first load — so
+                  // under any filter the honest move is to drop the clause,
+                  // not to print a wrong number.
+                  : (q.trim() || country || activeFilterCount > 0)
+                  ? t("jobsPage.resultsSummaryFiltered", "Showing {{shown}} of {{total}} matching openings", {
+                  shown: jobs.length,
+                  total: data?.countCapped
+                    ? `${(data?.total ?? 0).toLocaleString()}+`
+                    : (data?.total ?? jobs.length).toLocaleString(),
+                })
                   : t("jobsPage.resultsSummary", "Showing {{shown}} of {{total}} matching openings across {{companies}} companies", {
                   shown: jobs.length,
                   // The server caps counting for speed; above the cap it says so,
@@ -3602,7 +3627,9 @@ export default function Jobs() {
                 {data?.refreshedAt && (
                   <span> · {t("jobsPage.updatedAgo", "updated {{min}} min ago", { min: Math.max(0, Math.round((Date.now() - new Date(data.refreshedAt).getTime()) / 60000)) })}</span>
                 )}
-                {data && data.failedSources.length > 0 && (
+                {/* Board-wide feed-health note — on a single-company page it
+                    reads as a claim about THAT company, so it stays off there. */}
+                {!landerCompany && data && data.failedSources.length > 0 && (
                   <span> · {t("jobsPage.sourcesDown", "{{count}} company feeds are unreachable right now", { count: data.failedSources.length })}</span>
                 )}
                 {refreshing && <span className="text-primary"> · {t("jobsPage.updating", "updating…")}</span>}

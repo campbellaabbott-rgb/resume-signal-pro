@@ -1,5 +1,17 @@
 {
   "changelogEntries": {
+    "boardInYourLanguage": {
+      "title": "O portal de emprego já fala totalmente a sua língua",
+      "description": "130 elementos da interface do portal — avisos de encerramento de vagas, contexto salarial, confirmações de alertas, botões de preparação para entrevistas, mensagens de erro e muito mais — ainda apareciam em inglês para os utilizadores de espanhol, francês, alemão, português, neerlandês, hindi, filipino e inglês britânico. Todos estão agora devidamente traduzidos, para que todo o portal se leia com naturalidade na língua que escolheu."
+    },
+    "fieldFillSpeed": {
+      "title": "Novo: a rapidez com que as vagas na sua área são realmente preenchidas",
+      "description": "As páginas de área profissional mostram agora uma linha com a velocidade de preenchimento medida — por exemplo, as vagas de engenharia ficam normalmente abertas cerca de 15 dias, e 75% fecham em 22. É calculada a partir de milhares de encerramentos reais de anúncios que acompanhámos nos últimos 90 dias — nunca uma estimativa — e só aparece em áreas com pelo menos 300 encerramentos registados. Use-a para avaliar a rapidez com que precisa de se candidatar."
+    },
+    "fasterHonestBoard": {
+      "title": "Vagas logo no topo do ecrã, números mais claros, melhor acessibilidade",
+      "description": "O primeiro anúncio de emprego aparece agora mais acima em todos os ecrãs — os filtros cabem numa única linha deslizante em vez de se empilharem. Os títulos das vagas são botões verdadeiros que os leitores de ecrã conseguem usar, o botão de fechar é mais fácil de tocar, as palavras duplicadas em títulos deturpados pelos fornecedores são limpas, e as medianas salariais indicam agora exatamente como os valores à hora foram anualizados. Os números de trabalhadores das empresas também passam a apresentar a etiqueta da respetiva fonte em todos os locais onde aparecem."
+    },
     "countryDetectionFix": {
       "title": "Corrigido: alguns currículos eram associados ao mercado do país errado",
       "description": "Um erro de detecção podia ler termos de nuvem como “EC2” como um código postal de Londres e não reconhecer telefones dos EUA escritos sem +1 — assim, alguns currículos americanos recebiam conselhos do mercado do Reino Unido, apresentados com confiança. É exatamente a falha que este produto existe para evitar, e está corrigida: 22 testes de regressão fixam os casos, currículos ambíguos agora usam a sua localização real em vez de um sorteio, e cada relatório registra como o seu mercado foi escolhido — sua seleção, evidências do currículo ou localização — para que um palpite nunca mais se vista de certeza."

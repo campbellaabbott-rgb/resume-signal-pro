@@ -1,5 +1,17 @@
 {
   "changelogEntries": {
+    "boardInYourLanguage": {
+      "title": "De vacaturebank spreekt nu volledig jouw taal",
+      "description": "130 onderdelen van de interface van de vacaturebank — sluitingsmeldingen, salariscontext, bevestigingen van vacaturealerts, knoppen voor sollicitatievoorbereiding, foutmeldingen en meer — werden voor gebruikers in het Spaans, Frans, Duits, Portugees, Nederlands, Hindi, Filipijns en Brits-Engels nog in het Engels getoond. Ze zijn nu allemaal netjes vertaald, zodat de hele vacaturebank natuurlijk leest in de taal die je hebt gekozen."
+    },
+    "fieldFillSpeed": {
+      "title": "Nieuw: hoe snel vacatures in jouw vakgebied echt worden vervuld",
+      "description": "Vakgebiedpagina's tonen nu een gemeten vervullingssnelheid — engineeringvacatures staan bijvoorbeeld doorgaans zo'n 15 dagen open, en 75% sluit binnen 22 dagen. Het cijfer is berekend op basis van duizenden echte vacaturesluitingen die we de afgelopen 90 dagen hebben gevolgd — nooit een schatting — en verschijnt alleen voor vakgebieden met minstens 300 gevolgde sluitingen. Gebruik het om in te schatten hoe snel je moet solliciteren."
+    },
+    "fasterHonestBoard": {
+      "title": "Vacatures direct in beeld, duidelijkere cijfers, betere toegankelijkheid",
+      "description": "De eerste vacature staat nu op elk scherm hoger in beeld — filterchips passen op één scrollbare rij in plaats van dat ze stapelen. Vacaturetitels zijn echte knoppen die schermlezers kunnen gebruiken, de sluitknop is makkelijker aan te tikken, dubbele woorden in door leveranciers verhaspelde titels worden opgeschoond, en bij mediaansalarissen staat nu precies hoe uurlonen naar een jaarbedrag zijn omgerekend. Bedrijfsgroottes tonen bovendien overal hun bronvermelding."
+    },
     "countryDetectionFix": {
       "title": "Opgelost: sommige cv's werden aan de verkeerde landenmarkt gekoppeld",
       "description": "Een detectiefout kon cloudtermen zoals “EC2” lezen als een Londense postcode en Amerikaanse telefoonnummers zonder +1 missen — sommige Amerikaanse cv's kregen daardoor vol vertrouwen advies voor de Britse markt. Precies de fout die dit product moet voorkomen, en hij is opgelost: 22 regressietests leggen de gevallen vast, dubbelzinnige cv's volgen nu je werkelijke locatie in plaats van het toeval, en elk rapport legt vast hoe je markt is gekozen — je keuze, aanwijzingen in het cv of je locatie — zodat een gok zich nooit meer als zekerheid kan voordoen."

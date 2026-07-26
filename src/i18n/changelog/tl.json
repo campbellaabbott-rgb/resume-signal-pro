@@ -1,5 +1,17 @@
 {
   "changelogEntries": {
+    "boardInYourLanguage": {
+      "title": "Ganap nang nagsasalita sa wika mo ang job board",
+      "description": "130 bahagi ng interface ng board — mga abiso ng pagsasara, konteksto ng sahod, kumpirmasyon ng alerto, mga button para sa paghahanda sa interview, mga mensahe ng error, at iba pa — ang lumalabas pa rin noon sa Ingles para sa mga user na gumagamit ng Espanyol, Pranses, Aleman, Portuges, Dutch, Hindi, Filipino, at British English. Maayos nang naisalin ang lahat ng ito, kaya natural nang mababasa ang buong board sa wikang pinili mo."
+    },
+    "fieldFillSpeed": {
+      "title": "Bago: gaano talaga kabilis napupunan ang mga trabaho sa larangan mo",
+      "description": "Nagpapakita na ngayon ang mga field page ng sinukat na bilis ng pagkapuno — halimbawa, karaniwang nananatiling bukas ang mga engineering role nang mga 15 araw, at 75% ang nagsasara sa loob ng 22. Kinalkula ito mula sa libu-libong tunay na pagsasara ng job posting na sinubaybayan namin sa nakalipas na 90 araw — hindi ito kailanman tantiya — at lumalabas lang ito para sa mga larangang may hindi bababa sa 300 nasubaybayang pagsasara. Gamitin ito para matantiya kung gaano kabilis mo kailangang mag-apply."
+    },
+    "fasterHonestBoard": {
+      "title": "Mga trabahong agad makikita, mas malinaw na mga numero, mas mahusay na accessibility",
+      "description": "Mas mataas na ngayon lumalabas ang unang job posting sa bawat screen — kasya na sa isang scrollable na hilera ang mga filter chip sa halip na magpatung-patong. Tunay nang mga button ang mga job title na magagamit ng mga screen reader, mas madali nang pindutin ang close button, nililinis na ang mga paulit-ulit na salita sa mga title na ginulo ng vendor, at eksakto nang sinasabi ng mga median ng sahod kung paano ginawang taunan ang mga hourly rate. May kasama na ring label ng pinagmulan ang bilang ng empleyado ng kompanya saanman ito lumabas."
+    },
     "countryDetectionFix": {
       "title": "Naayos: may mga resume na naitutugma sa maling bansa",
       "description": "May bug sa detection na nababasa ang mga cloud term tulad ng “EC2” bilang postcode ng London at hindi nakikilala ang mga US phone number na walang +1 — kaya may mga resumeng Amerikano na nakatanggap ng payo para sa merkado ng United Kingdom, na kumpiyansang inilahad. Ito mismo ang pagkakamaling iniiwasan ng produktong ito, at naayos na: 22 regression test ang nagbabantay sa mga kaso, ang mga malabong resume ay sumusunod na ngayon sa tunay mong lokasyon sa halip na sa hula, at bawat ulat ay nagtatala kung paano napili ang iyong merkado — ang pinili mo, ebidensiya sa resume, o lokasyon — para hindi na muling magpanggap na katiyakan ang isang hula."

@@ -1,5 +1,17 @@
 {
   "changelogEntries": {
+    "boardInYourLanguage": {
+      "title": "Die Jobbörse spricht jetzt komplett deine Sprache",
+      "description": "130 Elemente der Board-Oberfläche — Hinweise zu geschlossenen Stellen, Gehaltskontext, Bestätigungen für Job-Alerts, Buttons zur Interview-Vorbereitung, Fehlermeldungen und mehr — waren für Nutzer, die die Seite auf Spanisch, Französisch, Deutsch, Portugiesisch, Niederländisch, Hindi, Filipino oder britischem Englisch verwenden, noch auf Englisch. Jetzt sind sie alle sauber übersetzt, sodass sich die ganze Jobbörse natürlich in der Sprache liest, die du gewählt hast."
+    },
+    "fieldFillSpeed": {
+      "title": "Neu: Wie schnell Stellen in deinem Bereich wirklich besetzt werden",
+      "description": "Auf den Bereichsseiten steht jetzt eine gemessene Angabe zur Besetzungsgeschwindigkeit — zum Beispiel bleiben Engineering-Stellen typischerweise rund 15 Tage offen, und 75 % schließen innerhalb von 22 Tagen. Der Wert wird aus Tausenden echten Anzeigen-Schließungen berechnet, die wir in den letzten 90 Tagen verfolgt haben — nie eine Schätzung — und er erscheint nur für Bereiche mit mindestens 300 erfassten Schließungen. So kannst du einschätzen, wie schnell du dich bewerben musst."
+    },
+    "fasterHonestBoard": {
+      "title": "Jobs direkt im Blick, klarere Zahlen, bessere Barrierefreiheit",
+      "description": "Die erste Stellenanzeige erscheint jetzt auf jedem Bildschirm weiter oben — die Filter-Chips passen in eine scrollbare Zeile, statt sich zu stapeln. Jobtitel sind echte Buttons, die Screenreader bedienen können, der Schließen-Button lässt sich leichter antippen, doppelte Wörter in Titeln, die von Anbieter-Systemen verunstaltet wurden, werden bereinigt, und Gehaltsmediane sagen jetzt genau, wie Stundenlöhne aufs Jahr hochgerechnet wurden. Mitarbeiterzahlen von Unternehmen tragen außerdem überall, wo sie auftauchen, ihre Quellenangabe."
+    },
     "countryDetectionFix": {
       "title": "Behoben: Manche Lebensläufe wurden dem falschen Ländermarkt zugeordnet",
       "description": "Ein Erkennungsfehler konnte Cloud-Begriffe wie „EC2“ als Londoner Postleitzahl lesen und US-Telefonnummern ohne +1 übersehen — manche US-Lebensläufe erhielten dadurch selbstbewusst präsentierte Ratschläge für den britischen Markt. Genau diesen Fehler soll dieses Produkt verhindern, und er ist behoben: 22 Regressionstests sichern die Fälle ab, mehrdeutige Lebensläufe richten sich nun nach Ihrem tatsächlichen Standort statt nach dem Zufall, und jeder Bericht dokumentiert, wie Ihr Markt gewählt wurde — Ihre Auswahl, Hinweise im Lebenslauf oder Ihr Standort —, damit eine Vermutung nie wieder als Gewissheit auftritt."

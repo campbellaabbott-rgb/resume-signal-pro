@@ -3939,7 +3939,9 @@
     "coachLoading": "Preparing your questions…",
     "coachWhy": "Why they ask:",
     "fillSpeedLine": "Roles in this field typically stay open ~{{median}} days (75% close within {{p75}} days) — measured from {{n}} tracked closings over the last {{window}} days.",
-    "salaryContextBasis": "hourly and monthly rates annualized (hourly ×2080)"
+    "salaryContextBasis": "hourly and monthly rates annualized (hourly ×2080)",
+    "landerCountLine": "{{total}} live {{category}} openings — every one straight from the company's own hiring system.",
+    "resultsSummaryFiltered": "Showing {{shown}} of {{total}} matching openings"
   },
   "accountPage": {
     "statusSaveFailed": "Couldn't save that status — please try again.",

@@ -3939,7 +3939,9 @@
     "coachLoading": "Preparando tus preguntas…",
     "coachWhy": "Por qué lo preguntan:",
     "fillSpeedLine": "Las vacantes de este sector suelen permanecer abiertas ~{{median}} días (el 75% cierra en {{p75}} días) — medido sobre {{n}} cierres rastreados en los últimos {{window}} días.",
-    "salaryContextBasis": "tarifas por hora y mensuales anualizadas (por hora ×2080)"
+    "salaryContextBasis": "tarifas por hora y mensuales anualizadas (por hora ×2080)",
+    "landerCountLine": "{{total}} vacantes activas de {{category}} — todas directo del sistema de contratación de cada empresa.",
+    "resultsSummaryFiltered": "Mostrando {{shown}} de {{total}} vacantes que coinciden"
   },
   "accountPage": {
     "statusSaveFailed": "No se pudo guardar ese estado; inténtalo de nuevo.",

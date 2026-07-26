@@ -3939,7 +3939,9 @@
     "coachLoading": "Deine Fragen werden vorbereitet…",
     "coachWhy": "Warum sie das fragen:",
     "fillSpeedLine": "Stellen in diesem Bereich bleiben typischerweise ~{{median}} Tage offen (75 % schließen innerhalb von {{p75}} Tagen) — gemessen an {{n}} erfassten Schließungen der letzten {{window}} Tage.",
-    "salaryContextBasis": "Stunden- und Monatssätze aufs Jahr hochgerechnet (stündlich ×2080)"
+    "salaryContextBasis": "Stunden- und Monatssätze aufs Jahr hochgerechnet (stündlich ×2080)",
+    "landerCountLine": "{{total}} aktive Stellen in {{category}} — jede direkt aus dem Bewerbungssystem des Unternehmens.",
+    "resultsSummaryFiltered": "{{shown}} von {{total}} passenden Stellen angezeigt"
   },
   "accountPage": {
     "statusSaveFailed": "Status konnte nicht gespeichert werden — bitte erneut versuchen.",

@@ -1,5 +1,17 @@
 {
   "changelogEntries": {
+    "boardInYourLanguage": {
+      "title": "La bolsa de empleo ahora habla tu idioma por completo",
+      "description": "130 elementos de la interfaz de la bolsa — avisos de cierre, contexto salarial, confirmaciones de alertas, botones de preparación para entrevistas, mensajes de error y más — seguían apareciendo en inglés para los usuarios de español, francés, alemán, portugués, neerlandés, hindi, filipino e inglés británico. Todos ya están correctamente traducidos, así que toda la bolsa se lee con naturalidad en el idioma que elegiste."
+    },
+    "fieldFillSpeed": {
+      "title": "Nuevo: qué tan rápido se cubren realmente las vacantes en tu campo",
+      "description": "Las páginas de cada campo ahora muestran una línea con la velocidad de cobertura medida — por ejemplo, las vacantes de ingeniería suelen permanecer abiertas unos 15 días, y el 75% se cierra en menos de 22. Se calcula a partir de miles de cierres reales de publicaciones que rastreamos durante los últimos 90 días, nunca es una estimación, y solo aparece en campos con al menos 300 cierres registrados. Úsala para saber qué tan rápido necesitas postularte."
+    },
+    "fasterHonestBoard": {
+      "title": "Empleos visibles sin desplazarte, números más claros, mejor accesibilidad",
+      "description": "La primera vacante ahora aparece más arriba en todas las pantallas: los filtros caben en una sola fila deslizable en lugar de apilarse. Los títulos de los empleos son botones reales que los lectores de pantalla pueden usar, el botón de cerrar es más fácil de tocar, se limpian las palabras duplicadas en los títulos deformados por los proveedores, y las medianas salariales ahora indican exactamente cómo se anualizaron las tarifas por hora. Además, las cifras de empleados de cada empresa muestran su fuente en todos los lugares donde aparecen."
+    },
     "countryDetectionFix": {
       "title": "Corregido: algunos currículums se asociaban al mercado de otro país",
       "description": "Un error de detección podía leer términos de nube como “EC2” como un código postal de Londres y no reconocer teléfonos de EE. UU. escritos sin +1, de modo que algunos currículums estadounidenses recibían consejos del mercado del Reino Unido, presentados con seguridad. Es justo el fallo que este producto existe para evitar, y está corregido: 22 pruebas de regresión fijan los casos, los currículums ambiguos ahora se resuelven con tu ubicación real en vez de al azar, y cada informe registra cómo se eligió tu mercado — tu selección, la evidencia del currículum o tu ubicación — para que una suposición nunca vuelva a disfrazarse de certeza."

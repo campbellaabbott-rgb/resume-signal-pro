@@ -120,7 +120,9 @@ export default function Explore() {
 
   useEffect(() => {
     const applySalary = (rows: SalaryRow[]) =>
-      setSalary(rows.filter((r) => r && r.median_annual_min > 0).sort((a, b) => b.median_annual_min - a.median_annual_min).slice(0, 8));
+      // "other" is excluded everywhere else on this page (it's a catch-all,
+      // not a field) — its card linked to a junk /jobs/field/other lander.
+      setSalary(rows.filter((r) => r && r.median_annual_min > 0 && r.category !== "other").sort((a, b) => b.median_annual_min - a.median_annual_min).slice(0, 8));
     (async () => {
       // Fast path: the hourly-cached collections — one row read instead of five
       // full-table aggregates (measured 13s → <0.5s). Falls through to the live

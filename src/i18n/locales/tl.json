@@ -3939,7 +3939,9 @@
     "coachLoading": "Inihahanda ang mga tanong mo…",
     "coachWhy": "Bakit nila tinatanong:",
     "fillSpeedLine": "Ang mga role sa larangang ito ay karaniwang bukas nang ~{{median}} araw (75% nagsasara sa loob ng {{p75}} araw) — sinukat mula sa {{n}} na-track na pagsasara sa nakaraang {{window}} araw.",
-    "salaryContextBasis": "ang mga oras-oras at buwanang rate ay ginawang taunan (oras-oras ×2080)"
+    "salaryContextBasis": "ang mga oras-oras at buwanang rate ay ginawang taunan (oras-oras ×2080)",
+    "landerCountLine": "{{total}} aktibong opening sa {{category}} — bawat isa ay direkta mula sa sariling hiring system ng kumpanya.",
+    "resultsSummaryFiltered": "Ipinapakita ang {{shown}} sa {{total}} tumutugmang opening"
   },
   "accountPage": {
     "statusSaveFailed": "Hindi na-save ang status na iyon — pakisubukan muli.",

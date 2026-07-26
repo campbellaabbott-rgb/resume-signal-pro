@@ -1,5 +1,17 @@
 {
   "changelogEntries": {
+    "boardInYourLanguage": {
+      "title": "Le site d'emploi parle désormais entièrement votre langue",
+      "description": "130 éléments de l'interface du site — avis de clôture des offres, contexte salarial, confirmations d'alerte, boutons de préparation aux entretiens, messages d'erreur et plus encore — s'affichaient encore en anglais pour les utilisateurs en espagnol, français, allemand, portugais, néerlandais, hindi, filipino et anglais britannique. Ils sont désormais tous correctement traduits : l'ensemble du site se lit naturellement dans la langue que vous avez choisie."
+    },
+    "fieldFillSpeed": {
+      "title": "Nouveau : la vitesse réelle à laquelle les postes de votre secteur se pourvoient",
+      "description": "Les pages par secteur affichent désormais une ligne de vitesse de pourvoi mesurée — par exemple, les postes en ingénierie restent généralement ouverts environ 15 jours, et 75 % sont clôturés en moins de 22 jours. Elle est calculée à partir de milliers de clôtures d'offres réelles que nous avons suivies sur les 90 derniers jours — jamais une estimation — et elle n'apparaît que pour les secteurs comptant au moins 300 clôtures suivies. Utilisez-la pour évaluer à quelle vitesse vous devez postuler."
+    },
+    "fasterHonestBoard": {
+      "title": "Des offres visibles sans défiler, des chiffres plus clairs, une meilleure accessibilité",
+      "description": "La première offre d'emploi apparaît désormais plus haut sur chaque écran — les puces de filtre tiennent sur une seule ligne défilante au lieu de s'empiler. Les titres des offres sont de vrais boutons utilisables par les lecteurs d'écran, le bouton de fermeture est plus facile à toucher, les mots en double dans les titres déformés par certains fournisseurs sont nettoyés, et les salaires médians précisent désormais exactement comment les taux horaires ont été annualisés. Les effectifs des entreprises affichent aussi l'étiquette de leur source partout où ils apparaissent."
+    },
     "countryDetectionFix": {
       "title": "Corrigé : certains CV étaient associés au marché du mauvais pays",
       "description": "Un bug de détection pouvait lire des termes cloud comme “EC2” comme un code postal londonien et ignorer les numéros américains écrits sans +1 : certains CV américains recevaient donc des conseils pour le marché britannique, présentés avec assurance. C'est exactement l'erreur que ce produit existe pour éviter, et c'est corrigé : 22 tests de régression verrouillent les cas, les CV ambigus s'appuient désormais sur votre localisation réelle plutôt que sur un tirage au sort, et chaque rapport indique comment votre marché a été choisi — votre sélection, les indices du CV ou votre localisation — pour qu'une supposition ne puisse plus se faire passer pour une certitude."

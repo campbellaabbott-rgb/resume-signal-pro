@@ -3939,7 +3939,9 @@
     "coachLoading": "Je vragen worden voorbereid…",
     "coachWhy": "Waarom ze dit vragen:",
     "fillSpeedLine": "Vacatures in dit vakgebied staan doorgaans ~{{median}} dagen open (75% sluit binnen {{p75}} dagen) — gemeten over {{n}} gevolgde sluitingen in de afgelopen {{window}} dagen.",
-    "salaryContextBasis": "uur- en maandtarieven omgerekend naar jaarbasis (per uur ×2080)"
+    "salaryContextBasis": "uur- en maandtarieven omgerekend naar jaarbasis (per uur ×2080)",
+    "landerCountLine": "{{total}} actieve vacatures in {{category}} — allemaal rechtstreeks uit het wervingssysteem van het bedrijf.",
+    "resultsSummaryFiltered": "{{shown}} van {{total}} passende vacatures getoond"
   },
   "accountPage": {
     "statusSaveFailed": "Kon die status niet opslaan — probeer het opnieuw.",

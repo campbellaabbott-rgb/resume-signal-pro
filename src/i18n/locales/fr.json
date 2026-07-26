@@ -3939,7 +3939,9 @@
     "coachLoading": "Préparation de vos questions…",
     "coachWhy": "Pourquoi cette question :",
     "fillSpeedLine": "Les postes de ce domaine restent généralement ouverts ~{{median}} jours (75 % ferment sous {{p75}} jours) — mesuré sur {{n}} clôtures suivies au cours des {{window}} derniers jours.",
-    "salaryContextBasis": "taux horaires et mensuels annualisés (horaire ×2080)"
+    "salaryContextBasis": "taux horaires et mensuels annualisés (horaire ×2080)",
+    "landerCountLine": "{{total}} offres actives en {{category}} — toutes issues directement du système de recrutement de l'entreprise.",
+    "resultsSummaryFiltered": "Affichage de {{shown}} sur {{total}} offres correspondantes"
   },
   "accountPage": {
     "statusSaveFailed": "Impossible d'enregistrer ce statut — réessayez.",
