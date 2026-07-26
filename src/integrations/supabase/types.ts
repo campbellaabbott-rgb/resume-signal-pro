@@ -2114,6 +2114,7 @@ export type Database = {
       user_job_searches: {
         Row: {
           created_at: string
+          digest_cadence: string
           digest_last_sent_at: string | null
           digest_opt_in: boolean
           fit_threshold: number
@@ -2125,6 +2126,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          digest_cadence?: string
           digest_last_sent_at?: string | null
           digest_opt_in?: boolean
           fit_threshold?: number
@@ -2136,6 +2138,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          digest_cadence?: string
           digest_last_sent_at?: string | null
           digest_opt_in?: boolean
           fit_threshold?: number
