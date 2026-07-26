@@ -2310,6 +2310,7 @@ export type Database = {
         Args: { p_credits: number; p_email: string }
         Returns: boolean
       }
+      build_speed_indexes_oneshot: { Args: never; Returns: undefined }
       check_global_rate_limit: {
         Args: {
           p_ip: string
