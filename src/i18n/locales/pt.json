@@ -390,7 +390,7 @@
       },
       "subscription": {
         "question": "Isto é uma subscrição?",
-        "answer": "Não. O Resume Booster é um pagamento único de $25. Não há subscrições, cobranças recorrentes ou vendas adicionais."
+        "answer": "As duas opções existem, e você escolhe. Cada relatório e ferramenta é um pagamento único que nunca se renova. Separadamente, há dois planos mensais opcionais: o Pro por ${{proPrice}}/mês, com verificações ilimitadas e todas as ferramentas, e a Fila da Manhã por ${{agentPrice}}/mês, em que o agente de candidatura prepara uma lista de vagas selecionadas para você durante a noite. A verificação de currículo e o quadro de vagas continuam gratuitos de qualquer forma, e nada faz upgrade da sua conta automaticamente."
       },
       "share": {
         "question": "Posso partilhar a minha análise com outros?",

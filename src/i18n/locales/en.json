@@ -389,7 +389,7 @@
       },
       "subscription": {
         "question": "Is this a subscription?",
-        "answer": "No. Resume Booster is a one-time payment of $25. There are no subscriptions, recurring charges, or upsells."
+        "answer": "Both options exist, and you choose. Every report and tool is a one-time payment that never renews. Separately, two optional monthly plans are available: Pro at ${{proPrice}}/month for unlimited scans and every tool, and the Morning Queue at ${{agentPrice}}/month, where the apply agent prepares a shortlist for you overnight. The resume scan and the job board stay free either way, and nothing upgrades you automatically."
       },
       "share": {
         "question": "Can I share my analysis with others?",

@@ -389,7 +389,7 @@
       },
       "subscription": {
         "question": "Ito ba ay subscription?",
-        "answer": "Hindi. Ang Resume Booster ay isang beses na bayad na $25. Walang subscriptions, paulit-ulit na charges, o upsells."
+        "answer": "Meron parehong opsyon, at ikaw ang pipili. Ang bawat report at tool ay isang beses na bayad na hindi na uulit. Bukod dito, may dalawang optional na monthly plan: ang Pro sa ${{proPrice}}/buwan para sa walang limitasyong resume scan at lahat ng tool, at ang Morning Queue sa ${{agentPrice}}/buwan, kung saan inihahanda ng Apply Agent ang isang shortlist para sa iyo magdamag. Libre pa rin ang resume scan at ang job board sa dalawang paraan, at walang awtomatikong nag-a-upgrade sa iyo."
       },
       "share": {
         "question": "Maaari ko bang ibahagi ang aking pagsusuri sa iba?",

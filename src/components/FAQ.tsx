@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { useCurrency } from "@/hooks/use-currency";
-import { PRODUCTS } from "@/config/products";
+import { PRODUCTS, SUBSCRIPTIONS } from "@/config/products";
 import {
   Accordion,
   AccordionContent,
@@ -26,7 +26,13 @@ export function FAQ() {
   // Replace $25 with local currency in answers (using actual product price)
   const fullAnalysisPrice = PRODUCTS.fullAnalysis.priceUsd;
   const getLocalizedAnswer = (key: string) => {
-    let answer = t(`faq.questions.${key}.answer`);
+    // Subscription prices are interpolated rather than written into the copy:
+    // the "is this a subscription?" answer used to deny that any recurring
+    // charge existed while Pro and the Morning Queue were both on sale.
+    let answer = t(`faq.questions.${key}.answer`, {
+      proPrice: SUBSCRIPTIONS.pro.priceUsd,
+      agentPrice: SUBSCRIPTIONS.agent.priceUsd,
+    });
     // Replace any hardcoded $25 references with actual price
     if (answer.includes('$25')) {
       const priceDisplay = isLocalCurrency 

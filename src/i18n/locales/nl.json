@@ -389,7 +389,7 @@
       },
       "subscription": {
         "question": "Is dit een abonnement?",
-        "answer": "Nee. Resume Booster is een eenmalige betaling van $ 25. Geen abonnementen, geen terugkerende kosten."
+        "answer": "Beide opties bestaan, en jij kiest. Elk rapport en elke tool is een eenmalige betaling die nooit wordt verlengd. Daarnaast zijn er twee optionele maandabonnementen: Pro voor ${{proPrice}}/maand voor onbeperkte scans en alle tools, en de Ochtendwachtrij voor ${{agentPrice}}/maand, waarbij de sollicitatie-agent 's nachts een shortlist voor je klaarzet. De cv-scan en de vacaturebank blijven in beide gevallen gratis, en je wordt nooit automatisch geüpgraded."
       },
       "share": {
         "question": "Kan ik mijn analyse delen?",

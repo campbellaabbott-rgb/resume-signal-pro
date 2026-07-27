@@ -1,5 +1,8 @@
 // Product configuration with Stripe price IDs
-// All products are one-time purchases (no auth required)
+// Everything in PRODUCTS is a one-time purchase (no auth required).
+// The two RECURRING plans are separate — see SUBSCRIPTIONS below. Copy that
+// describes what we charge must account for both, or it is untrue: the FAQ
+// denied subscriptions existed while both were on sale.
 
 export const PRODUCTS = {
   // Current products
@@ -257,3 +260,14 @@ export function getPremiumProducts() {
     PRODUCTS.applyAssistant,
   ];
 }
+
+// The recurring plans. These MUST mirror the checkout functions, which are the
+// only thing that actually charges anyone:
+//   supabase/functions/_shared/pro.ts    PRO_PRICE_CENTS   = 4500
+//   supabase/functions/_shared/agent.ts  AGENT_PRICE_CENTS = 9900
+// src/test/pricing-truth.test.ts reads both Deno files and fails if these drift,
+// so billing copy can never quietly describe a price we do not charge.
+export const SUBSCRIPTIONS = {
+  pro: { key: 'pro', name: 'Pro', priceUsd: 45, interval: 'month' as const },
+  agent: { key: 'agent', name: 'Morning Queue', priceUsd: 99, interval: 'month' as const },
+};

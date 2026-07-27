@@ -389,7 +389,7 @@
       },
       "subscription": {
         "question": "Est-ce un abonnement ?",
-        "answer": "Non. Resume Booster est un paiement unique de 25 $. Pas d'abonnements, pas de frais récurrents."
+        "answer": "Les deux options existent, à vous de choisir. Chaque rapport et outil correspond à un paiement unique qui ne se renouvelle jamais. Séparément, deux formules mensuelles facultatives sont proposées : Pro à ${{proPrice}}/mois pour des analyses illimitées et tous les outils, et Morning Queue à ${{agentPrice}}/mois, où l'agent de candidature prépare une présélection pour vous pendant la nuit. L'analyse de CV et la bourse à l'emploi restent gratuites dans les deux cas, et rien ne vous fait passer à une formule payante automatiquement."
       },
       "share": {
         "question": "Puis-je partager mon analyse ?",

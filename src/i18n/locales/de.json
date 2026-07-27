@@ -389,7 +389,7 @@
       },
       "subscription": {
         "question": "Ist das ein Abo?",
-        "answer": "Nein. Resume Booster ist eine einmalige Zahlung von 25 $. Keine Abos, keine wiederkehrenden Kosten."
+        "answer": "Beide Optionen gibt es, und du entscheidest. Jeder Bericht und jedes Tool ist eine einmalige Zahlung, die sich nie automatisch verlängert. Separat gibt es zwei optionale monatliche Pläne: Pro für ${{proPrice}}/Monat mit unbegrenzten Scans und allen Tools, sowie die Morning Queue für ${{agentPrice}}/Monat, bei der der Bewerbungs-Agent über Nacht eine Vorauswahl für dich vorbereitet. Der Lebenslauf-Scan und die Jobbörse bleiben in jedem Fall kostenlos, und nichts stuft dich automatisch hoch."
       },
       "share": {
         "question": "Kann ich meine Analyse teilen?",
