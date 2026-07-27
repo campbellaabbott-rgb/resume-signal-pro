@@ -2626,6 +2626,7 @@ export type Database = {
           closures: number
           company: string
           median_days_open: number
+          observed_days: number
           window_days: number
         }[]
       }
