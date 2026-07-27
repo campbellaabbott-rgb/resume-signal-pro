@@ -1865,11 +1865,15 @@ export default function Jobs() {
   useEffect(() => {
     if (loading || refreshing || detailJob || groupedJobs.length === 0) return;
     if (!window.matchMedia("(min-width: 1024px)").matches) return;
-    // Never steal a pending deep link: auto-select used to fire while the
-    // ?job= fetch was still in flight, replaceState-ing the top card's id over
-    // the shared URL and racing its description into the deep-linked posting's
-    // panel AND its JSON-LD (reproduced in production 2026-07-26).
-    if (!deepLinkTried.current) return;
+    // Never steal a pending deep link. Gating on deepLinkTried was NOT enough
+    // (measured in production after the first fix): effects run in declaration
+    // order, so the deep-link effect above flips that flag synchronously before
+    // its async fetch resolves, and auto-select still replaceState'd the top
+    // card's id over the shared URL. The live check is "does the URL name a
+    // posting we haven't opened yet" — true from load until the deep link
+    // resolves, dead-ends, or the user opens something themselves.
+    const pendingJob = new URLSearchParams(window.location.search).get("job");
+    if (pendingJob && pendingJob !== detailJob?.id) return;
     // Never re-summon a panel the user closed — the ✕/Escape/Back used to be
     // instantly undone here, so the pane could not be closed at all on desktop.
     if (userClosed.current) return;
