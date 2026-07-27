@@ -944,6 +944,48 @@ export type Database = {
         }
         Relationships: []
       }
+      job_board_closure_rollup: {
+        Row: {
+          category: string
+          company: string
+          company_token: string
+          fills: number
+          first_closed_at: string | null
+          last_closed_at: string | null
+          month: string
+          p50_days_open: number | null
+          p75_days_open: number | null
+          relists: number
+          rolled_at: string
+        }
+        Insert: {
+          category?: string
+          company?: string
+          company_token: string
+          fills?: number
+          first_closed_at?: string | null
+          last_closed_at?: string | null
+          month: string
+          p50_days_open?: number | null
+          p75_days_open?: number | null
+          relists?: number
+          rolled_at?: string
+        }
+        Update: {
+          category?: string
+          company?: string
+          company_token?: string
+          fills?: number
+          first_closed_at?: string | null
+          last_closed_at?: string | null
+          month?: string
+          p50_days_open?: number | null
+          p75_days_open?: number | null
+          relists?: number
+          rolled_at?: string
+        }
+        Relationships: []
+      }
       job_board_closures: {
         Row: {
           category: string
@@ -2511,6 +2553,16 @@ export type Database = {
           share_id: string
         }[]
       }
+      get_application_lifecycle: {
+        Args: { p_job_ids: string[] }
+        Returns: {
+          closed_at: string
+          days_standing: number
+          job_id: string
+          outcome: string
+          relisted: boolean
+        }[]
+      }
       get_board_velocity: {
         Args: { days?: number; top_n?: number }
         Returns: {
@@ -3245,6 +3297,13 @@ export type Database = {
         Returns: Json
       }
       release_scan_slot: { Args: { p_id: string }; Returns: undefined }
+      roll_up_and_prune_closures: {
+        Args: { p_keep_days?: number }
+        Returns: {
+          months_rolled: number
+          rows_pruned: number
+        }[]
+      }
       save_free_scan_lead: {
         Args: { p_ats_score?: number; p_email: string; p_industry?: string }
         Returns: boolean
