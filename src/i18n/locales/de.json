@@ -458,7 +458,7 @@
   "trustIndicators": {
     "badges": {
       "resumes": {
-        "label": "10.000+ Lebensläufe",
+        "label": "{{total}} Lebensläufe",
         "description": "Analysiert & verbessert"
       },
       "ssl": {
@@ -1187,8 +1187,7 @@
         },
         "scarcity": {
           "button": "Sichere dir dein Paket — begrenzt",
-          "headline": "Premium-Lebenslaufpaket",
-          "subtext": "Schließe dich 10.000+ an, die diesen Monat Vorstellungsgespräche bekommen haben"
+          "headline": "Premium-Lebenslaufpaket"
         }
       },
       "tailoredResume": {
@@ -1582,7 +1581,7 @@
       "footnote": "Komplettes Paket: ATS-optimierter Lebenslauf + personalisiertes Anschreiben, bereit zum Versenden"
     },
     "emailCapture": {
-      "joinMessage": "Schließe dich 10.000+ Jobsuchenden an, die wöchentliche Tipps bekommen, um ATS zu schlagen und Vorstellungsgespräche zu landen.",
+      "joinMessage": "Schließe dich Jobsuchenden an, die wöchentliche Tipps bekommen, um ATS zu schlagen und Vorstellungsgespräche zu landen.",
       "noSpam": "Kein Spam. Jederzeit abbestellen."
     },
     "coverLetterCta": {
@@ -2559,7 +2558,7 @@
     "titleHighlight": "Methodik",
     "heroSubtitle": "Wir haben zurückentwickelt, wie über 50 Bewerbermanagementsysteme (ATS) Lebensläufe analysieren und bewerten. So funktioniert unsere Analyse genau.",
     "platformsAnalyzed": "50+ ATS-Plattformen analysiert",
-    "resumesProcessed": "10.000+ Lebensläufe verarbeitet",
+    "resumesProcessed": "{{total}} Lebensläufe verarbeitet",
     "updatedMonthly": "Monatlich aktualisiert",
     "howAnalysisWorks": "Wie unsere Analyse funktioniert",
     "step": "SCHRITT {{number}}",
@@ -2668,9 +2667,7 @@
     "validatedByResultsTitle": "Durch Ergebnisse validiert",
     "validatedByResultsSubtitle": "Unsere Methodik wird durch echte Ergebnisse von Tausenden von Bewerbern validiert, die ihre Lebensläufe mit unserer Analyse verbessert haben.",
     "validatedByResults": {
-      "interviewRates": "89 % berichten von besseren Vorstellungsgesprächsraten",
-      "resumesAnalyzed": "10.000+ Lebensläufe analysiert",
-      "scoreImprovement": "Durchschnittliche Verbesserung um 23 Punkte"
+      "resumesAnalyzed": "{{total}} Lebensläufe analysiert"
     },
     "ctaTitle": "Bereit, deinen ATS-Score zu sehen?",
     "ctaSubtitle": "Erhalte eine kostenlose Analyse deines Lebenslaufs mit unserer bewährten Methodik.",

@@ -1,8 +1,9 @@
 import { useTranslation } from "react-i18next";
 import { SEO } from "@/components/seo/SEO";
+import { useScanTotals } from "@/hooks/use-scan-totals";
 import {
   Shield, Lock, Clock, CloudOff, Zap, Users,
-  CheckCircle2, BookOpen, Award, FileCheck,
+  CheckCircle2, BookOpen, FileCheck,
   Eye, Server, Globe, Sparkles, Scale
 } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -49,15 +50,20 @@ export default function Trust() {
     }
   ];
 
+  // Measured or omitted — nothing here may be typed in by hand. This page
+  // exists to be believed, so it held the two worst claims on the site:
+  //   "10,000+ Resumes Analyzed" while get_scan_totals returned 1,052 (~9.5x),
+  //     and while the homepage showed the real number from the same RPC; and
+  //   "89% Report Better Results", which has no source anywhere in the repo.
+  // The scan count is now live, and renders only once the RPC answers. The
+  // 89% band is gone: there is no outcome survey, so there is no number.
+  const totals = useScanTotals();
   const trustStats = [
-    { value: "10,000+", label: t('trustPage.stats.resumesAnalyzed'), icon: FileCheck },
-    { value: "89%", label: t('trustPage.stats.betterResults'), icon: Award },
+    ...(totals
+      ? [{ value: totals.total_scans.toLocaleString(), label: t('trustPage.stats.resumesAnalyzed'), icon: FileCheck }]
+      : []),
     { value: "30s", label: t('trustPage.stats.avgDelivery'), icon: Zap },
     { value: "0", label: t('trustPage.stats.dataBreaches'), icon: Shield },
-  ];
-
-  const companyLogos = [
-    "Google", "Microsoft", "Amazon", "Meta", "Apple", "Netflix"
   ];
 
   return (
@@ -105,7 +111,7 @@ export default function Trust() {
         {/* Trust Stats */}
         <section className="py-12 border-y border-border bg-muted/20">
           <div className="container">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+            <div className={`grid grid-cols-2 gap-8 ${trustStats.length >= 3 ? "md:grid-cols-3" : "md:grid-cols-2"}`}>
               {trustStats.map((stat) => {
                 const Icon = stat.icon;
                 return (
@@ -218,25 +224,16 @@ export default function Trust() {
           </div>
         </section>
 
-        {/* Trusted By Section */}
-        <section className="py-16 border-t border-border">
-          <div className="container">
-            <div className="text-center mb-12">
-              <h2 className="text-2xl font-bold mb-4">{t('trustPage.trustedByTitle')}</h2>
-              <p className="text-muted-foreground">
-                {t('trustPage.trustedBySubtitle')}
-              </p>
-            </div>
-            
-            <div className="flex flex-wrap justify-center items-center gap-8 md:gap-12 opacity-60">
-              {companyLogos.map((company) => (
-                <div key={company} className="text-xl font-bold text-muted-foreground">
-                  {company}
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
+        {/* REMOVED 2026-07-27 — "Trusted by Job Seekers at Top Companies",
+            over a wall reading Google / Microsoft / Amazon / Meta / Apple /
+            Netflix. Those six names were a hardcoded array, not data: no
+            migration in this repo defines an employer field of any kind, so
+            the claim was not stale, it was unfalsifiable by construction —
+            and it named six real companies as endorsers on the page whose
+            entire job is to be trusted. Real testimonials live in the
+            <SocialProof /> section immediately below; that is what belongs
+            here. Do not reinstate a logo wall without a source column and a
+            way for a reader to check it. */}
 
         {/* Social Proof / Testimonials */}
         <SocialProof />

@@ -1,4 +1,5 @@
 import { Header } from "@/components/Header";
+import { useScanTotals } from "@/hooks/use-scan-totals";
 import { SEO } from "@/components/seo/SEO";
 import { Footer } from "@/components/Footer";
 import { Link } from "react-router-dom";
@@ -25,6 +26,10 @@ const atsPlatformNames = [
 ];
 
 export default function Methodology() {
+  // Both counts on this page were the hardcoded "10,000+" while
+  // get_scan_totals reported 1,052. They are live now, and each line is
+  // omitted entirely until the RPC answers.
+  const scanTotals = useScanTotals();
   const { t } = useTranslation();
 
   const atsPlaftorms = atsPlatformNames.map((name, i) => ({
@@ -112,10 +117,12 @@ export default function Methodology() {
                   <Building2 className="w-4 h-4 text-primary" />
                   {t('methodologyPage.platformsAnalyzed')}
                 </span>
-                <span className="flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-primary" />
-                  {t('methodologyPage.resumesProcessed')}
-                </span>
+                {scanTotals && (
+                  <span className="flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-primary" />
+                    {t('methodologyPage.resumesProcessed', { total: scanTotals.total_scans.toLocaleString() })}
+                  </span>
+                )}
                 <span className="flex items-center gap-2">
                   <Clock className="w-4 h-4 text-primary" />
                   {t('methodologyPage.updatedMonthly')}
@@ -274,18 +281,17 @@ export default function Methodology() {
                     {t('methodologyPage.validatedByResultsSubtitle')}
                   </p>
                   <ul className="space-y-2 text-sm">
-                    <li className="flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-primary" />
-                      <span>{t('methodologyPage.validatedByResults.interviewRates')}</span>
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-primary" />
-                      <span>{t('methodologyPage.validatedByResults.resumesAnalyzed')}</span>
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-primary" />
-                      <span>{t('methodologyPage.validatedByResults.scoreImprovement')}</span>
-                    </li>
+                    {/* "89% report better interview rates" and "Average
+                        23-point score improvement" were removed 2026-07-27:
+                        there is no outcome survey and no score-delta aggregate
+                        anywhere in this repo, so neither number had a source.
+                        What remains is measured. */}
+                    {scanTotals && (
+                      <li className="flex items-center gap-2">
+                        <CheckCircle2 className="w-4 h-4 text-primary" />
+                        <span>{t('methodologyPage.validatedByResults.resumesAnalyzed', { total: scanTotals.total_scans.toLocaleString() })}</span>
+                      </li>
+                    )}
                   </ul>
                 </div>
               </div>

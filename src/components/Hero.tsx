@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { FileText, Zap, Target, AlertTriangle, Shield, Clock, Star, Sparkles, Info, X, ArrowRight, Package, Award, Check, ScanSearch, Globe2, Briefcase } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useScanTotals } from "@/hooks/use-scan-totals";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useTranslation } from "react-i18next";
 import { useCurrency } from "@/hooks/use-currency";
@@ -38,50 +39,6 @@ function AnimatedResultPreview() {
       </div>
     </div>
   );
-}
-
-// Live scan totals from the corpus (all-time scans conducted + countries),
-// via the aggregate-only get_scan_totals RPC. Fetched on mount, refreshed
-// every 30s while the tab is visible, and immediately when a scan completes
-// on this page (Index dispatches "scan-completed"). Renders nothing until
-// real numbers arrive — no hardcoded or invented counts, ever.
-function useScanTotals() {
-  const [totals, setTotals] = useState<{ total_scans: number; countries: number } | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    // When the RPC doesn't exist yet (migration not published), every visitor
-    // would otherwise re-poll a guaranteed 404 every 30s for their whole
-    // session — stop permanently on the first "function not found".
-    let gone = false;
-    const load = () => {
-      if (document.hidden || gone) return;
-      // RPC created in migration 20260706200000; not yet in generated client types.
-      (supabase.rpc as unknown as (fn: string) => PromiseLike<{ data: unknown; error: unknown }>)(
-        "get_scan_totals"
-      ).then(
-        ({ data, error }) => {
-          const err = error as { code?: string } | null;
-          if (err?.code === "PGRST202") { gone = true; return; }
-          const d = data as { total_scans?: number; countries?: number } | null;
-          if (!cancelled && !error && typeof d?.total_scans === "number" && d.total_scans > 0) {
-            setTotals({ total_scans: d.total_scans, countries: d.countries ?? 0 });
-          }
-        },
-        () => {}
-      );
-    };
-    load();
-    const interval = setInterval(load, 30_000);
-    window.addEventListener("scan-completed", load);
-    return () => {
-      cancelled = true;
-      clearInterval(interval);
-      window.removeEventListener("scan-completed", load);
-    };
-  }, []);
-
-  return totals;
 }
 
 // Hero stats bar — verifiable product facts, not manufactured social proof.

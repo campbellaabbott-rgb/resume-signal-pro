@@ -458,7 +458,7 @@
   "trustIndicators": {
     "badges": {
       "resumes": {
-        "label": "10,000+ Currículums",
+        "label": "{{total}} Currículums",
         "description": "Analizados y mejorados"
       },
       "ssl": {
@@ -1187,8 +1187,7 @@
         },
         "scarcity": {
           "button": "Reclama tu paquete — Limitado",
-          "headline": "Paquete Premium de Currículum",
-          "subtext": "Únete a más de 10,000 personas que consiguieron entrevistas este mes"
+          "headline": "Paquete Premium de Currículum"
         }
       },
       "tailoredResume": {
@@ -2559,7 +2558,7 @@
     "titleHighlight": "análisis ATS",
     "heroSubtitle": "Hemos realizado ingeniería inversa de cómo más de 50 sistemas de seguimiento de candidatos (ATS) analizan y puntúan los currículums. Así es exactamente cómo funciona nuestro análisis.",
     "platformsAnalyzed": "Más de 50 plataformas ATS analizadas",
-    "resumesProcessed": "Más de 10,000 currículums procesados",
+    "resumesProcessed": "{{total}} currículums procesados",
     "updatedMonthly": "Actualizado mensualmente",
     "howAnalysisWorks": "Cómo funciona nuestro análisis",
     "step": "PASO {{number}}",
@@ -2668,9 +2667,7 @@
     "validatedByResultsTitle": "Validado por resultados",
     "validatedByResultsSubtitle": "Nuestra metodología está validada por resultados reales de miles de candidatos que mejoraron sus currículums usando nuestro análisis.",
     "validatedByResults": {
-      "interviewRates": "El 89% reporta mejores tasas de entrevistas",
-      "resumesAnalyzed": "Más de 10,000 currículums analizados",
-      "scoreImprovement": "Mejora promedio de 23 puntos en la puntuación"
+      "resumesAnalyzed": "{{total}} currículums analizados"
     },
     "ctaTitle": "¿Listo para ver tu puntuación ATS?",
     "ctaSubtitle": "Obtén un análisis gratuito de tu currículum usando nuestra metodología comprobada.",

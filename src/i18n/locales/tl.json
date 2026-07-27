@@ -458,7 +458,7 @@
   "trustIndicators": {
     "badges": {
       "resumes": {
-        "label": "10,000+ Resume",
+        "label": "{{total}} Resume",
         "description": "Nasuri at napabuti"
       },
       "ssl": {
@@ -1187,8 +1187,7 @@
         },
         "scarcity": {
           "button": "I-claim ang Package Mo — Limitado",
-          "headline": "Premium Resume Package",
-          "subtext": "Sumali sa 10,000+ na nakakuha ng interview ngayong buwan"
+          "headline": "Premium Resume Package"
         }
       },
       "tailoredResume": {
@@ -2559,7 +2558,7 @@
     "titleHighlight": "Methodology",
     "heroSubtitle": "Aming nireverse-engineer kung paano nina-parse at sino-score ng 50+ Applicant Tracking System (ATS) ang mga resume. Ito mismo ang eksaktong paggana ng aming pagsusuri.",
     "platformsAnalyzed": "50+ ATS platform na na-analyze",
-    "resumesProcessed": "10,000+ resume na naproseso",
+    "resumesProcessed": "{{total}} resume na naproseso",
     "updatedMonthly": "Buwanang in-update",
     "howAnalysisWorks": "Paano Gumagana ang Aming Pagsusuri",
     "step": "HAKBANG {{number}}",
@@ -2668,9 +2667,7 @@
     "validatedByResultsTitle": "Pinagtibay ng mga Resulta",
     "validatedByResultsSubtitle": "Ang aming methodology ay pinagtibay ng tunay na resulta mula sa libu-libong job seeker na nagpahusay ng kanilang resume gamit ang aming pagsusuri.",
     "validatedByResults": {
-      "interviewRates": "89% ay nag-report ng mas magandang interview rate",
-      "resumesAnalyzed": "10,000+ resume na na-analyze",
-      "scoreImprovement": "Average na 23-puntos na pagpapahusay sa score"
+      "resumesAnalyzed": "{{total}} resume na na-analyze"
     },
     "ctaTitle": "Handa na Makita ang Iyong ATS Score?",
     "ctaSubtitle": "Kumuha ng libreng pagsusuri ng iyong resume gamit ang aming napatunayang methodology.",

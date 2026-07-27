@@ -458,7 +458,7 @@
   "trustIndicators": {
     "badges": {
       "resumes": {
-        "label": "10 000+ CV",
+        "label": "{{total}} CV",
         "description": "Analysés et améliorés"
       },
       "ssl": {
@@ -1187,8 +1187,7 @@
         },
         "scarcity": {
           "button": "Réservez votre forfait — Offre limitée",
-          "headline": "Forfait CV Premium",
-          "subtext": "Rejoignez plus de 10 000 personnes ayant décroché un entretien ce mois-ci"
+          "headline": "Forfait CV Premium"
         }
       },
       "tailoredResume": {
@@ -2559,7 +2558,7 @@
     "titleHighlight": "analyse ATS",
     "heroSubtitle": "Nous avons fait de l'ingénierie inverse sur la façon dont plus de 50 systèmes de suivi des candidatures (ATS) analysent et notent les CV. Voici exactement comment fonctionne notre analyse.",
     "platformsAnalyzed": "Plus de 50 plateformes ATS analysées",
-    "resumesProcessed": "Plus de 10 000 CV traités",
+    "resumesProcessed": "{{total}} CV traités",
     "updatedMonthly": "Mis à jour chaque mois",
     "howAnalysisWorks": "Comment fonctionne notre analyse",
     "step": "ÉTAPE {{number}}",
@@ -2668,9 +2667,7 @@
     "validatedByResultsTitle": "Validé par les résultats",
     "validatedByResultsSubtitle": "Notre méthodologie est validée par les résultats réels de milliers de candidats qui ont amélioré leur CV grâce à notre analyse.",
     "validatedByResults": {
-      "interviewRates": "89 % signalent de meilleurs taux d'entretien",
-      "resumesAnalyzed": "Plus de 10 000 CV analysés",
-      "scoreImprovement": "Amélioration moyenne du score de 23 points"
+      "resumesAnalyzed": "{{total}} CV analysés"
     },
     "ctaTitle": "Prêt à découvrir votre score ATS ?",
     "ctaSubtitle": "Obtenez une analyse gratuite de votre CV grâce à notre méthodologie éprouvée.",
