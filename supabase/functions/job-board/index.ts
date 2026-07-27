@@ -79,7 +79,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-07-27.1";
+const BUILD_VERSION = "2026-07-27.2";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -3354,16 +3354,42 @@ Deno.serve(async (req) => {
       const VENDORS = [...new Set(JOB_SOURCES.map((s) => s.source))];
       const PER_VENDOR = Math.max(4, Math.floor(AUDIT_SAMPLE / Math.max(1, VENDORS.length)));
       const sampleIds: string[] = [];
+      // Per-vendor corpus sizes, kept so an omitted stratum can be reported
+      // with its real weight rather than just disappearing.
+      const vendorRows: Record<string, number> = {};
+      const drawErrors: Record<string, string> = {};
       for (const v of VENDORS) {
-        const { count } = await client.from("job_board_postings").select("id", { count: "exact", head: true }).eq("source", v);
+        const { count, error: cErr } = await client.from("job_board_postings").select("id", { count: "exact", head: true }).eq("source", v);
+        if (cErr) { drawErrors[v] = `count: ${cErr.message}`; continue; }
         const n = count ?? 0;
+        vendorRows[v] = n;
         if (n === 0) continue;
         const want = Math.min(PER_VENDOR, n);
-        const pages = want > 4 ? 2 : 1; // two random offsets per vendor beats one cluster
+        const pages = want > 4 ? 2 : 1;
         const per = Math.ceil(want / pages);
-        for (let p = 0; p < pages; p++) {
-          const off = Math.floor(Math.random() * Math.max(1, n - per));
-          const { data: page } = await client.from("job_board_postings").select("id").eq("source", v).order("id").range(off, off + per - 1);
+        // KEYSET, not OFFSET. The old draw was
+        //   .order("id").range(off, off+per-1)  with off up to n-per
+        // which is a deep OFFSET. On workday — 303,098 rows, 52.1% of the
+        // whole board — that query never returned, and because `error` was
+        // destructured away the failure read as an empty page. Workday
+        // therefore contributed ZERO ids and vanished from byVendor entirely,
+        // while the blended headline still published as the board's accuracy.
+        // Verified live 2026-07-27: 14 strata present, workday absent.
+        // Same fix already applied to the sitemap today: anchor on a random
+        // board for this vendor and seek forward on the indexed id.
+        const toks = JOB_SOURCES.filter((s) => s.source === v);
+        for (let p = 0; p < pages && toks.length > 0; p++) {
+          const anchor = toks[Math.floor(Math.random() * toks.length)];
+          let q = client.from("job_board_postings").select("id").eq("source", v)
+            .gt("id", `${v}:${anchor.token}:`).order("id").limit(per);
+          let { data: page, error: pErr } = await q;
+          // A board at the end of the id range yields nothing; wrap to the
+          // vendor's start rather than silently contributing zero.
+          if (!pErr && (!page || page.length === 0)) {
+            ({ data: page, error: pErr } = await client.from("job_board_postings")
+              .select("id").eq("source", v).order("id").limit(per));
+          }
+          if (pErr) { drawErrors[v] = `draw: ${pErr.message}`; continue; }
           for (const r of page ?? []) if (!sampleIds.includes(r.id as string)) sampleIds.push(r.id as string);
         }
       }
@@ -3450,12 +3476,42 @@ Deno.serve(async (req) => {
       }
 
       const prevHistory = ((prevAudit?.v as { history?: Array<Record<string, unknown>> } | null)?.history ?? []).slice(-29);
-      const result = { at: new Date().toISOString(), sampled: sampleIds.length, live, gone, unknown, accuracyPct, corpus, byVendor, labelAudit };
+      // COVERAGE. A stratified audit that silently drops a stratum publishes a
+      // number about a different board than the one it names. On 2026-07-27 the
+      // stored result carried 14 strata and no workday — 303,098 postings,
+      // 52.1% of the corpus — because the deep-OFFSET draw above failed and
+      // its error was discarded. The headline still read "98.8% confirmed
+      // live". Coverage is computed here so the omission travels WITH the
+      // number and the page can disclose it instead of the reader having to
+      // notice a missing table row.
+      const sampledSources = new Set(Object.keys(byVendor));
+      const missingSources = Object.entries(vendorRows)
+        .filter(([v, n]) => n > 0 && !sampledSources.has(v))
+        .map(([v, n]) => ({
+          source: v,
+          postings: n,
+          sharePct: corpus > 0 ? Math.round((n / corpus) * 1000) / 10 : null,
+          reason: drawErrors[v] ?? "no rows drawn",
+        }))
+        .sort((a, b) => b.postings - a.postings);
+      const coveredPostings = Object.entries(vendorRows)
+        .filter(([v, n]) => n > 0 && sampledSources.has(v))
+        .reduce((t, [, n]) => t + n, 0);
+      const coverage = {
+        coveredSharePct: corpus > 0 ? Math.round((coveredPostings / corpus) * 1000) / 10 : null,
+        sourcesSampled: sampledSources.size,
+        sourcesWithRows: Object.values(vendorRows).filter((n) => n > 0).length,
+        missingSources,
+      };
+      const result = { at: new Date().toISOString(), sampled: sampleIds.length, live, gone, unknown, accuracyPct, corpus, byVendor, coverage, labelAudit };
       await client.from("job_board_meta").upsert(
         { k: "audit", v: { ...result, history: [...prevHistory, result] }, updated_at: new Date().toISOString() },
         { onConflict: "k" },
       );
-      console.log(`[JOB-BOARD] audit: ${live}/${decided} live (${accuracyPct}%), ${unknown} unknown of ${sampleIds.length} sampled`);
+      console.log(`[JOB-BOARD] audit: ${live}/${decided} live (${accuracyPct}%), ${unknown} unknown of ${sampleIds.length} sampled; covered ${coverage.coveredSharePct}% of corpus across ${coverage.sourcesSampled}/${coverage.sourcesWithRows} sources`);
+      if (missingSources.length > 0) {
+        console.error(`[JOB-BOARD] audit COVERAGE GAP: ${missingSources.map((m) => `${m.source} (${m.sharePct}%, ${m.reason})`).join("; ")}`);
+      }
       return json(result);
     }
 

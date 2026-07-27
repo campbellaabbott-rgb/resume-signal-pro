@@ -162,3 +162,44 @@ describe("windows, denominators and units are never asserted by hand", () => {
     expect(sql).toMatch(/CASE WHEN sum\(disclosed_n\) > 0/);
   });
 });
+
+// The self-audit is the platform's flagship honesty artifact and is syndicated
+// to the data-licensing page. On 2026-07-27, once get_audit_result() made it
+// readable for the first time, the stored payload showed 14 strata and NO
+// workday — 303,098 postings, 52.1% of the corpus — while still publishing
+// "98.8% confirmed live" as the board's accuracy. Cause: the per-vendor draw
+// used a deep OFFSET that fails on a 303k slice, and discarded the error.
+describe("the self-audit cannot silently drop a hiring system", () => {
+  const fn = readFileSync(
+    resolve(root, "supabase/functions/job-board/index.ts"), "utf8");
+
+  it("draws by keyset, never by deep OFFSET", () => {
+    // .range(off, ...) with off scaled to the vendor's row count is the exact
+    // shape that failed. The draw must seek on the indexed id instead.
+    expect(fn).toMatch(/\.gt\("id", `\$\{v\}:\$\{anchor\.token\}:`\)/);
+    expect(fn).not.toMatch(/\.eq\("source", v\)\.order\("id"\)\.range\(off/);
+  });
+
+  it("keeps the error from every draw query", () => {
+    expect(fn).toMatch(/error: pErr/);
+    expect(fn).toMatch(/error: cErr/);
+    expect(fn).toMatch(/drawErrors\[v\]/);
+  });
+
+  it("publishes coverage alongside the accuracy figure", () => {
+    expect(fn).toMatch(/coveredSharePct/);
+    expect(fn).toMatch(/missingSources/);
+    // Coverage must be part of the stored result, not just logged.
+    expect(fn).toMatch(/accuracyPct, corpus, byVendor, coverage, labelAudit/);
+  });
+
+  it("logs a dropped stratum at error level", () => {
+    expect(fn).toMatch(/audit COVERAGE GAP/);
+  });
+
+  it("the page discloses a gap instead of leaving a hole in the table", () => {
+    const page = readFileSync(resolve(root, "src/pages/GhostJobIndex.tsx"), "utf8");
+    expect(page).toMatch(/missingSources\.length > 0/);
+    expect(page).toMatch(/Read this number narrowly/);
+  });
+});

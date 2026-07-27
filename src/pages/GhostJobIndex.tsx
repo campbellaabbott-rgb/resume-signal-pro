@@ -46,6 +46,13 @@ interface AuditResult {
   accuracyPct: number | null;
   /** Rolling ~30-day history of daily audits, oldest first. */
   history?: Array<{ at: string; sampled: number; accuracyPct: number | null }>;
+  /** What share of the corpus the sample actually reached, and what it missed. */
+  coverage?: {
+    coveredSharePct: number | null;
+    sourcesSampled: number;
+    sourcesWithRows: number;
+    missingSources: Array<{ source: string; postings: number; sharePct: number | null; reason: string }>;
+  };
   /** Stratified per-vendor results (the audit samples every hiring system). */
   byVendor?: Record<string, { sampled: number; accuracyPct: number | null }>;
 }
@@ -234,6 +241,32 @@ export default function GhostJobIndex() {
               {" "}({audit.live} live, {audit.gone} already taken down{audit.unknown > 0 ? `, ${audit.unknown} unreachable` : ""}).
               The handful already taken down are pruned by the next refresh cycle. We run this audit every day.
             </p>
+            {/* An accuracy figure that quietly skips a hiring system is a figure
+                about a different board. If a stratum was missed, the number
+                says so itself rather than leaving the reader to spot a gap in
+                the table below. */}
+            {audit.coverage && audit.coverage.missingSources.length > 0 && (
+              <p className="text-sm mt-3 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3">
+                <b className="text-foreground">Read this number narrowly.</b> This run reached{" "}
+                <b className="text-foreground">{audit.coverage.coveredSharePct}%</b> of the board
+                ({audit.coverage.sourcesSampled} of {audit.coverage.sourcesWithRows} hiring systems).
+                Not covered:{" "}
+                {audit.coverage.missingSources.map((m, i) => (
+                  <span key={m.source}>
+                    {i > 0 && ", "}
+                    <b className="text-foreground">{m.source}</b> ({m.sharePct}% of postings)
+                  </span>
+                ))}
+                . The figure above describes only the systems that were sampled, so treat it as a
+                floor for those and as unmeasured for the rest.
+              </p>
+            )}
+            {audit.coverage && audit.coverage.missingSources.length === 0 && (
+              <p className="text-xs text-muted-foreground mt-2">
+                This run reached every hiring system with postings on the board
+                ({audit.coverage.sourcesSampled} of {audit.coverage.sourcesWithRows}).
+              </p>
+            )}
             {/* Per-vendor accuracy — the audit samples every hiring system
                 (stratified), so a single broken vendor can't hide inside a
                 healthy blended number. Shown only for real samples. */}
