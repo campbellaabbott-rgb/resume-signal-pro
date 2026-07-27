@@ -4089,7 +4089,12 @@
     "appIntelTitle": "Sollicitatie-inzichten",
     "whichResumeTitle": "Welk cv levert gesprekken op",
     "replyWindow": "{{d}} dgn geleden gesolliciteerd — deze werkgever vult doorgaans in ~{{m}} dgn (uit {{n}} gevolgde invullingen)",
-    "replyWindowPast": "{{d}} dgn geleden gesolliciteerd — voorbij het gebruikelijke ~{{m}}-dgn-venster van deze werkgever (uit {{n}} invullingen); opvolgen is redelijk"
+    "replyWindowPast": "{{d}} dgn geleden gesolliciteerd — voorbij het gebruikelijke ~{{m}}-dgn-venster van deze werkgever (uit {{n}} invullingen); opvolgen is redelijk",
+    "lifecycleRelisted": "⟳ Op {{when}} verwijderd{{stood}} — en dezelfde functie staat er sindsdien weer op.",
+    "lifecycleCameDown": "⚠ Op {{when}} verwijderd{{stood}}. Hij is niet teruggekomen.",
+    "lifecycleUnobserved": "Deze vacature staat niet meer op het bord, maar we hebben niet gezien wanneer hij verdween — dus we gokken geen datum.",
+    "lifecycleStanding": "● Staat er nog — dag {{d}}",
+    "lifecycleCameDownBare": "⚠ Op {{when}} verwijderd."
   },
   "applyAgent": {
     "badge": "Je AI-sollicitatieagent",

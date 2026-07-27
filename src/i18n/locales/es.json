@@ -4089,7 +4089,12 @@
     "appIntelTitle": "Inteligencia de candidaturas",
     "whichResumeTitle": "Qué currículum consigue entrevistas",
     "replyWindow": "postulaste hace {{d}} días — este empleador suele cubrir puestos en ~{{m}} días (según {{n}} cierres registrados)",
-    "replyWindowPast": "postulaste hace {{d}} días — ya superó la ventana típica de ~{{m}} días de este empleador (según {{n}} cierres); un seguimiento es razonable"
+    "replyWindowPast": "postulaste hace {{d}} días — ya superó la ventana típica de ~{{m}} días de este empleador (según {{n}} cierres); un seguimiento es razonable",
+    "lifecycleRelisted": "⟳ Se retiró el {{when}}{{stood}} — y el mismo puesto volvió a publicarse después.",
+    "lifecycleCameDown": "⚠ Se retiró el {{when}}{{stood}}. No ha vuelto a aparecer.",
+    "lifecycleUnobserved": "Esta vacante ya no está en el tablero, pero no vimos cuándo se retiró — así que no vamos a inventar una fecha.",
+    "lifecycleStanding": "● Sigue publicada — día {{d}}",
+    "lifecycleCameDownBare": "⚠ Se retiró el {{when}}."
   },
   "applyAgent": {
     "badge": "Tu agente de IA para postular",

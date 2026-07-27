@@ -4089,7 +4089,12 @@
     "appIntelTitle": "Katalinuhan sa aplikasyon",
     "whichResumeTitle": "Aling resume ang nakakakuha ng interview",
     "replyWindow": "nag-apply {{d}} araw na — karaniwang napupunan ng employer na ito sa ~{{m}} araw (mula sa {{n}} na-track na pagpuno)",
-    "replyWindowPast": "nag-apply {{d}} araw na — lampas na sa karaniwang ~{{m}}-araw na fill window ng employer na ito (mula sa {{n}} pagpuno); makatuwirang mag-follow-up"
+    "replyWindowPast": "nag-apply {{d}} araw na — lampas na sa karaniwang ~{{m}}-araw na fill window ng employer na ito (mula sa {{n}} pagpuno); makatuwirang mag-follow-up",
+    "lifecycleRelisted": "⟳ Inalis noong {{when}}{{stood}} — at muling na-post ang parehong role pagkatapos.",
+    "lifecycleCameDown": "⚠ Inalis noong {{when}}{{stood}}. Hindi na ito muling lumabas.",
+    "lifecycleUnobserved": "Wala na ang posting na ito sa board, pero hindi namin nakita kung kailan ito inalis — kaya hindi kami huhula ng petsa.",
+    "lifecycleStanding": "● Nakapost pa rin — araw {{d}}",
+    "lifecycleCameDownBare": "⚠ Inalis noong {{when}}."
   },
   "applyAgent": {
     "badge": "Ang iyong AI apply agent",

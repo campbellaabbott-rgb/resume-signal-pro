@@ -4089,7 +4089,12 @@
     "appIntelTitle": "Application intelligence",
     "whichResumeTitle": "Which resume gets interviews",
     "replyWindow": "applied {{d}}d ago — this employer typically fills in ~{{m}}d (from {{n}} tracked fills)",
-    "replyWindowPast": "applied {{d}}d ago — past this employer's typical ~{{m}}d fill window (from {{n}} tracked fills); a follow-up is reasonable"
+    "replyWindowPast": "applied {{d}}d ago — past this employer's typical ~{{m}}d fill window (from {{n}} tracked fills); a follow-up is reasonable",
+    "lifecycleRelisted": "⟳ Came down {{when}}{{stood}} — and the same role went back up since.",
+    "lifecycleCameDown": "⚠ Came down on {{when}}{{stood}}. It has not reappeared.",
+    "lifecycleUnobserved": "This posting is no longer on the board, but we never saw it come down — so we won't guess a date.",
+    "lifecycleStanding": "● Still posted — day {{d}}",
+    "lifecycleCameDownBare": "⚠ Came down on {{when}}."
   },
   "applyAgent": {
     "badge": "Your AI apply agent",

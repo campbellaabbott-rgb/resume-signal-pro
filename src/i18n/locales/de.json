@@ -4089,7 +4089,12 @@
     "appIntelTitle": "Bewerbungs-Insights",
     "whichResumeTitle": "Welcher Lebenslauf bekommt Interviews",
     "replyWindow": "vor {{d}} T. beworben — dieser Arbeitgeber besetzt üblicherweise in ~{{m}} T. (aus {{n}} erfassten Besetzungen)",
-    "replyWindowPast": "vor {{d}} T. beworben — über dem üblichen ~{{m}}-T.-Fenster dieses Arbeitgebers (aus {{n}} Besetzungen); nachzufassen ist angemessen"
+    "replyWindowPast": "vor {{d}} T. beworben — über dem üblichen ~{{m}}-T.-Fenster dieses Arbeitgebers (aus {{n}} Besetzungen); nachzufassen ist angemessen",
+    "lifecycleRelisted": "⟳ Am {{when}} entfernt{{stood}} — und dieselbe Stelle wurde seitdem neu ausgeschrieben.",
+    "lifecycleCameDown": "⚠ Am {{when}} entfernt{{stood}}. Sie ist nicht wieder aufgetaucht.",
+    "lifecycleUnobserved": "Diese Anzeige steht nicht mehr auf dem Board, aber wir haben ihr Verschwinden nicht beobachtet — deshalb raten wir kein Datum.",
+    "lifecycleStanding": "● Weiterhin online — Tag {{d}}",
+    "lifecycleCameDownBare": "⚠ Am {{when}} entfernt."
   },
   "applyAgent": {
     "badge": "Ihr KI-Bewerbungsagent",

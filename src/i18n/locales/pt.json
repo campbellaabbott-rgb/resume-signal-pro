@@ -4089,7 +4089,12 @@
     "appIntelTitle": "Inteligência de candidaturas",
     "whichResumeTitle": "Qual currículo consegue entrevistas",
     "replyWindow": "candidatou-se há {{d}} dias — este empregador costuma preencher em ~{{m}} dias (de {{n}} preenchimentos registados)",
-    "replyWindowPast": "candidatou-se há {{d}} dias — já passou a janela típica de ~{{m}} dias deste empregador (de {{n}} preenchimentos); faz sentido dar seguimento"
+    "replyWindowPast": "candidatou-se há {{d}} dias — já passou a janela típica de ~{{m}} dias deste empregador (de {{n}} preenchimentos); faz sentido dar seguimento",
+    "lifecycleRelisted": "⟳ Retirada a {{when}}{{stood}} — e a mesma vaga voltou a ser publicada desde então.",
+    "lifecycleCameDown": "⚠ Retirada a {{when}}{{stood}}. Não voltou a aparecer.",
+    "lifecycleUnobserved": "Esta vaga já não está no portal, mas não vimos quando foi retirada — por isso não vamos adivinhar uma data.",
+    "lifecycleStanding": "● Ainda publicada — dia {{d}}",
+    "lifecycleCameDownBare": "⚠ Retirada a {{when}}."
   },
   "applyAgent": {
     "badge": "Seu agente de IA para candidaturas",

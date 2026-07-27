@@ -4089,7 +4089,12 @@
     "appIntelTitle": "Intelligence des candidatures",
     "whichResumeTitle": "Quel CV décroche des entretiens",
     "replyWindow": "candidature il y a {{d}} j — cet employeur pourvoit généralement en ~{{m}} j (sur {{n}} recrutements suivis)",
-    "replyWindowPast": "candidature il y a {{d}} j — au-delà de la fenêtre typique de ~{{m}} j de cet employeur (sur {{n}} recrutements) ; une relance est raisonnable"
+    "replyWindowPast": "candidature il y a {{d}} j — au-delà de la fenêtre typique de ~{{m}} j de cet employeur (sur {{n}} recrutements) ; une relance est raisonnable",
+    "lifecycleRelisted": "⟳ Retirée le {{when}}{{stood}} — et le même poste a été republié depuis.",
+    "lifecycleCameDown": "⚠ Retirée le {{when}}{{stood}}. Elle n'est pas réapparue.",
+    "lifecycleUnobserved": "Cette offre n'est plus sur le tableau, mais nous n'avons pas vu son retrait — nous ne devinerons donc pas de date.",
+    "lifecycleStanding": "● Toujours en ligne — jour {{d}}",
+    "lifecycleCameDownBare": "⚠ Retirée le {{when}}."
   },
   "applyAgent": {
     "badge": "Votre agent IA de candidature",

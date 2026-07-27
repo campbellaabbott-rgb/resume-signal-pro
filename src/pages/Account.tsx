@@ -63,6 +63,9 @@ interface Application {
   apply_url?: string | null;
   location?: string | null;
   posting_closed_at?: string | null;
+  // Measured lifecycle (get_application_lifecycle), not inferred from a visit.
+  lifecycle_outcome?: string | null;
+  days_standing?: number | null;
   posting_checked_at?: string | null;
   kit?: unknown;
   /** Stamped on every stage change; older rows fall back to applied_at (the user's own stated date). */
@@ -396,19 +399,37 @@ export default function Account() {
     }
     if (toCheck.length === 0) return;
     try {
-      const { data } = await supabase.functions.invoke("job-board", { body: { action: "exists", ids: toCheck } });
-      const open = (data as { open?: Record<string, boolean> })?.open;
-      if (!open) return;
-      const nowIso = new Date().toISOString();
-      const closedIds = Object.entries(open).filter(([, isOpen]) => !isOpen).map(([id]) => id);
-      if (closedIds.length === 0) return;
-      setApplications((prev) => prev.map((a) => (a.job_id && closedIds.includes(a.job_id) ? { ...a, posting_closed_at: nowIso, posting_checked_at: nowIso } : a)));
-      // Persist the closed stamps (RLS restricts to the owner's rows).
-      // Untyped access: these columns postdate the generated types.ts, same
-      // pattern as user_job_searches until Lovable regenerates types.
+      // The MEASURED lifecycle of each posting, not a guess. This used to call
+      // action:"exists" and stamp new Date() — the moment the user happened to
+      // open this page — as the posting's closure date, so someone returning
+      // after three weeks was told it closed the day they came back. The real
+      // closed_at has been sitting in job_board_closures keyed by this exact
+      // job_id the whole time.
+      const { data: lc } = await (supabase as unknown as {
+        rpc: (f: string, a?: Record<string, unknown>) => Promise<{ data: unknown }>;
+      }).rpc("get_application_lifecycle", { p_job_ids: toCheck });
+      if (!Array.isArray(lc)) return;
+      const rows = lc as Array<{ job_id: string; outcome: string; closed_at: string | null; days_standing: number | null; relisted: boolean }>;
+      const byId = new Map(rows.map((r) => [r.job_id, r]));
+      setApplications((prev) => prev.map((a) => {
+        const r = a.job_id ? byId.get(a.job_id) : undefined;
+        if (!r) return a;
+        return {
+          ...a,
+          posting_closed_at: r.closed_at ?? a.posting_closed_at ?? null,
+          posting_checked_at: new Date().toISOString(),
+          lifecycle_outcome: r.outcome,
+          days_standing: r.days_standing,
+        };
+      }));
+      // Persist ONLY measured closures (RLS restricts to the owner's rows).
+      // 'not_observed' is never written: a posting we can't account for must
+      // not acquire a closure date just because someone loaded the page.
       const appsTable = (supabase as unknown as { from: (t: string) => { update: (v: Record<string, unknown>) => { eq: (c: string, v: string) => { is: (c: string, v: null) => Promise<unknown> } } } }).from("user_applications");
-      for (const jobId of closedIds) {
-        await appsTable.update({ posting_closed_at: nowIso, posting_checked_at: nowIso }).eq("job_id", jobId).is("posting_closed_at", null);
+      for (const r of rows) {
+        if (!r.closed_at) continue;
+        await appsTable.update({ posting_closed_at: r.closed_at, posting_checked_at: new Date().toISOString() })
+          .eq("job_id", r.job_id).is("posting_closed_at", null);
       }
     } catch { /* freshness is a bonus signal — never surface an error for it */ }
   };
@@ -1231,15 +1252,56 @@ export default function Account() {
                       {new Date(a.applied_at).toLocaleDateString()}
                       {version ? ` · sent "${versionName(version)}" (score ${a.scan_score ?? version.ats_score})` : (a.scan_score ? ` · applied with score ${a.scan_score}` : "")}
                     </p>
-                    {a.job_id && (
-                      a.posting_closed_at ? (
+                    {/* What ACTUALLY happened to this exact posting, from the
+                        closure log — not inferred from when the user last
+                        loaded this page. The 'not_observed' branch is the
+                        point of the whole thing: on a windowed or capped feed
+                        we cannot see a takedown, so we say that instead of
+                        inventing a date. */}
+                    {a.job_id && (() => {
+                      const outcome = a.lifecycle_outcome;
+                      const days = typeof a.days_standing === "number" ? Math.round(a.days_standing) : null;
+                      const when = a.posting_closed_at ? new Date(a.posting_closed_at).toLocaleDateString() : null;
+                      if (outcome === "came_down_relisted" && when) {
+                        return (
+                          <p className="text-[11px] text-warning/90 mt-0.5">
+                            {t("accountPage.lifecycleRelisted", "⟳ Came down {{when}}{{stood}} — and the same role went back up since.", {
+                              when, stood: days != null ? `, after ${days} days posted` : "",
+                            })}
+                          </p>
+                        );
+                      }
+                      if (outcome === "came_down" && when) {
+                        return (
+                          <p className="text-[11px] text-muted-foreground/80 mt-0.5">
+                            {t("accountPage.lifecycleCameDown", "⚠ Came down on {{when}}{{stood}}. It has not reappeared.", {
+                              when, stood: days != null ? `, after ${days} days posted` : "",
+                            })}
+                          </p>
+                        );
+                      }
+                      if (outcome === "not_observed") {
+                        return (
+                          <p className="text-[11px] text-muted-foreground/70 mt-0.5">
+                            {t("accountPage.lifecycleUnobserved", "This posting is no longer on the board, but we never saw it come down — so we won't guess a date.")}
+                          </p>
+                        );
+                      }
+                      if (outcome === "still_standing" || !a.posting_closed_at) {
+                        return (
+                          <p className="text-[11px] text-success/80 mt-0.5">
+                            {days != null
+                              ? t("accountPage.lifecycleStanding", "● Still posted — day {{d}}", { d: days })
+                              : t("accountPage.postingOpen", "● Posting still open")}
+                          </p>
+                        );
+                      }
+                      return (
                         <p className="text-[11px] text-muted-foreground/80 mt-0.5">
-                          ⚠ This posting closed by {new Date(a.posting_closed_at).toLocaleDateString()} — no longer on the company's board
+                          {t("accountPage.lifecycleCameDownBare", "⚠ Came down on {{when}}.", { when })}
                         </p>
-                      ) : (
-                        <p className="text-[11px] text-success/80 mt-0.5">● Posting still open</p>
-                      )
-                    )}
+                      );
+                    })()}
                     {(() => {
                       const hhToken = (a.job_id ?? "").split(":")[1];
                       const hh = hhToken ? appHealth[hhToken] : undefined;
