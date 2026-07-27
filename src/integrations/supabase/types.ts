@@ -2563,6 +2563,7 @@ export type Database = {
           relisted: boolean
         }[]
       }
+      get_audit_result: { Args: never; Returns: Json }
       get_board_velocity: {
         Args: { days?: number; top_n?: number }
         Returns: {
@@ -2788,10 +2789,10 @@ export type Database = {
           closed_90d: number
           median_days_open: number
           median_days_to_close: number
-          posted_coverage_pct: number
+          observed_days: number
           total_companies: number
+          total_company_names: number
           total_open: number
-          tracking_days: number
         }[]
       }
       get_hiring_trends: {
