@@ -56,7 +56,10 @@ serve(async (req) => {
     while (events.length < maxRows) {
       let query = supabase
         .from('ab_test_events')
-        .select('id, test_name, variant, event_type, metadata, created_at')
+        // visitor_id is REQUIRED to count people rather than events. Without it
+        // one visitor reloading forty times reads as forty. It is a pseudonymous
+        // UUID and is aggregated below — raw ids never leave this function.
+        .select('id, test_name, variant, event_type, metadata, created_at, visitor_id')
         .gte('created_at', startDate)
         .lte('created_at', endDate)
         .order('created_at', { ascending: true })
@@ -91,6 +94,60 @@ serve(async (req) => {
     }
 
     console.log(`[Analytics] Found ${events.length} events`);
+
+    // AUDIENCE — the numbers that answer "does anyone use this?". Everything
+    // else on this dashboard measures events; these measure PEOPLE.
+    const allVisitors = new Set<string>();
+    const visitorsByDay = new Map<string, Set<string>>();
+    const eventsByDay = new Map<string, number>();
+    const visitorFirstSeen = new Map<string, string>(); // id -> earliest day seen
+    const surfaceVisitors = new Map<string, Set<string>>(); // test_name -> visitors
+
+    for (const e of events) {
+      const vid = (e as { visitor_id?: string }).visitor_id;
+      const day = String(e.created_at).slice(0, 10);
+      eventsByDay.set(day, (eventsByDay.get(day) ?? 0) + 1);
+      if (!vid) continue;
+      allVisitors.add(vid);
+      if (!visitorsByDay.has(day)) visitorsByDay.set(day, new Set());
+      visitorsByDay.get(day)!.add(vid);
+      if (!surfaceVisitors.has(e.test_name)) surfaceVisitors.set(e.test_name, new Set());
+      surfaceVisitors.get(e.test_name)!.add(vid);
+      const prev = visitorFirstSeen.get(vid);
+      if (!prev || day < prev) visitorFirstSeen.set(vid, day);
+    }
+
+    // A returning visitor is one seen on more than one distinct day — the
+    // cheapest honest signal that the product is worth coming back to.
+    const daysPerVisitor = new Map<string, Set<string>>();
+    for (const [day, ids] of visitorsByDay) {
+      for (const id of ids) {
+        if (!daysPerVisitor.has(id)) daysPerVisitor.set(id, new Set());
+        daysPerVisitor.get(id)!.add(day);
+      }
+    }
+    let returningVisitors = 0;
+    for (const days of daysPerVisitor.values()) if (days.size > 1) returningVisitors++;
+
+    const audience = {
+      uniqueVisitors: allVisitors.size,
+      totalEvents: events.length,
+      returningVisitors,
+      eventsPerVisitor: allVisitors.size ? Math.round((events.length / allVisitors.size) * 10) / 10 : 0,
+      // Ascending by day so the dashboard can render a trend directly.
+      daily: [...visitorsByDay.keys()].sort().map((day) => ({
+        day,
+        visitors: visitorsByDay.get(day)!.size,
+        events: eventsByDay.get(day) ?? 0,
+        newVisitors: [...visitorsByDay.get(day)!].filter((id) => visitorFirstSeen.get(id) === day).length,
+      })),
+      bySurface: [...surfaceVisitors.entries()]
+        .map(([surface, ids]) => ({ surface, visitors: ids.size }))
+        .sort((a, b) => b.visitors - a.visitors)
+        .slice(0, 25),
+      // Honest caveat the UI must surface: above the cap these are undercounts.
+      truncated: events.length >= maxRows,
+    };
 
     // Process events into metrics
     const metrics: Record<string, Record<string, { views: number; conversions: number }>> = {};
@@ -174,6 +231,7 @@ serve(async (req) => {
     });
 
     const result = {
+      audience, // people, not events — see the AUDIENCE block above
       scrollDepth: transformMetrics('scroll_depth'),
       timeOnPage: transformMetrics('time_on_page'),
       conversions: transformMetrics('product_conversion'),

@@ -27,7 +27,18 @@ interface PageMetrics {
   timeOnPage: MetricData[];
 }
 
+interface AudienceData {
+  uniqueVisitors: number;
+  totalEvents: number;
+  returningVisitors: number;
+  eventsPerVisitor: number;
+  daily: Array<{ day: string; visitors: number; events: number; newVisitors: number }>;
+  bySurface: Array<{ surface: string; visitors: number }>;
+  truncated: boolean;
+}
+
 interface EngagementData {
+  audience?: AudienceData;
   scrollDepth: MetricData[];
   timeOnPage: MetricData[];
   conversions: MetricData[];
@@ -230,6 +241,81 @@ function AnalyticsDashboardContent() {
             </Button>
           ))}
         </div>
+
+        {/* AUDIENCE — people, not events. Everything below this measures
+            interactions; this measures how many humans produced them. Kept
+            first because "does anyone use this?" outranks every A/B split. */}
+        {data.audience && (
+          <div className="mb-8 rounded-2xl border border-border bg-card p-5">
+            <div className="flex items-baseline justify-between mb-3 flex-wrap gap-2">
+              <h2 className="text-lg font-semibold text-foreground">Audience</h2>
+              <span className="text-[11px] text-muted-foreground">
+                distinct browsers, de-duplicated by visitor id — not page loads
+              </span>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div>
+                <p className="text-3xl font-bold text-foreground">{data.audience.uniqueVisitors.toLocaleString()}</p>
+                <p className="text-xs text-muted-foreground">unique visitors</p>
+              </div>
+              <div>
+                <p className="text-3xl font-bold text-foreground">{data.audience.returningVisitors.toLocaleString()}</p>
+                <p className="text-xs text-muted-foreground">came back on another day</p>
+              </div>
+              <div>
+                <p className="text-3xl font-bold text-foreground">{data.audience.totalEvents.toLocaleString()}</p>
+                <p className="text-xs text-muted-foreground">events recorded</p>
+              </div>
+              <div>
+                <p className="text-3xl font-bold text-foreground">{data.audience.eventsPerVisitor}</p>
+                <p className="text-xs text-muted-foreground">events per visitor</p>
+              </div>
+            </div>
+
+            {data.audience.uniqueVisitors === 0 && (
+              <p className="mt-4 text-sm text-muted-foreground">
+                No visitors recorded in this range. That is a real measurement, not a broken chart —
+                the pipeline is verified working, so this means nobody arrived.
+              </p>
+            )}
+
+            {data.audience.daily.length > 0 && (
+              <div className="mt-5">
+                <p className="text-xs font-semibold text-muted-foreground mb-2">Visitors per day (new shown separately)</p>
+                <div className="flex items-end gap-1 h-24">
+                  {data.audience.daily.map((d) => {
+                    const peak = Math.max(...data.audience!.daily.map((x) => x.visitors), 1);
+                    return (
+                      <div key={d.day} className="flex-1 flex flex-col justify-end items-center gap-1" title={`${d.day}: ${d.visitors} visitors (${d.newVisitors} new), ${d.events} events`}>
+                        <div className="w-full bg-primary/70 rounded-t" style={{ height: `${(d.visitors / peak) * 100}%` }} />
+                        <span className="text-[9px] text-muted-foreground">{d.day.slice(5)}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {data.audience.bySurface.length > 0 && (
+              <div className="mt-5">
+                <p className="text-xs font-semibold text-muted-foreground mb-2">Visitors by surface</p>
+                <div className="flex flex-wrap gap-2">
+                  {data.audience.bySurface.map((s2) => (
+                    <span key={s2.surface} className="text-[11px] rounded-full border border-border px-2.5 py-1">
+                      {s2.surface} <strong className="text-foreground">{s2.visitors.toLocaleString()}</strong>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {data.audience.truncated && (
+              <p className="mt-4 text-[11px] text-warning">
+                Hit the 50,000-event read cap — these counts are a FLOOR, not a total. Narrow the date range for exact figures.
+              </p>
+            )}
+          </div>
+        )}
 
         <Tabs defaultValue="overview" className="space-y-6">
           <TabsList className="grid w-full grid-cols-5 max-w-2xl">
