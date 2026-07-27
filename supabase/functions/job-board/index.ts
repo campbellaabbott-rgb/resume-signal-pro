@@ -75,7 +75,11 @@ const json = (body: unknown, status = 200) =>
 // while this file was untouched). Always bump BUILD_VERSION here when a shared
 // module this function imports changes — it forces the diff AND gives the
 // deploy a verifiable tell.
-const BUILD_VERSION = "2026-07-26.10";
+// Sitemap pagination unit: one file per day of the 30-day freshness window.
+// Matches the window the board itself serves, and keeps every page an indexed
+// range scan rather than a deep OFFSET.
+const SITEMAP_DAYS = 30;
+const BUILD_VERSION = "2026-07-27.1";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -2134,18 +2138,16 @@ Deno.serve(async (req) => {
   // still returns a valid empty urlset (never a 500 to a crawler).
   if (req.method === "GET") {
     const u = new URL(req.url);
-    // No page param → a sitemapindex sized from a LIVE count, so coverage
-    // grows with the dated corpus instead of being frozen by a static list
-    // (robots.txt used to hard-code pages 0-6 = 70k URLs while the route
-    // could serve 60 pages — a silent cap as date-backfill v3 fills).
+    // No page param → a sitemapindex with one entry per day of the freshness
+    // window. Coverage still tracks the dated corpus (every dated posting
+    // falls in exactly one day), but the page count no longer depends on a
+    // live COUNT and no page depends on a deep OFFSET.
     if (u.searchParams.get("action") === "sitemap" && !u.searchParams.has("page")) {
-      const client = db();
-      const cutoff = new Date(Date.now() - 30 * 86_400_000).toISOString();
-      const { count } = await client
-        .from("job_board_postings")
-        .select("id", { count: "planned", head: true })
-        .gte("posted_at", cutoff);
-      const pages = Math.max(1, Math.min(60, Math.ceil((count ?? 0) / 10_000)));
+      // One page per DAY of the freshness window, not count/10k. Offset-based
+      // paging made page N cost a scan of N*10,000 rows, and the deep pages
+      // timed out — silently, see the page handler below. A day is a bounded,
+      // indexed slice that never gets more expensive as the corpus grows.
+      const pages = SITEMAP_DAYS;
       const self = `${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`;
       const entries = Array.from({ length: pages }, (_, i) =>
         `<sitemap><loc>${self}?action=sitemap&amp;page=${i}</loc></sitemap>`).join("");
@@ -2155,24 +2157,45 @@ Deno.serve(async (req) => {
       });
     }
     if (u.searchParams.get("action") === "sitemap") {
-      const page = Math.max(0, Math.min(60, Number(u.searchParams.get("page")) || 0));
+      const page = Math.max(0, Math.min(SITEMAP_DAYS - 1, Number(u.searchParams.get("page")) || 0));
       const client = db();
-      const cutoff = new Date(Date.now() - 30 * 86_400_000).toISOString();
+      // Page N = postings whose COMPANY-STATED date falls in day N of the
+      // window. Bounded by an indexed range instead of a growing OFFSET, so
+      // every page costs the same and the last page is as cheap as the first.
+      const dayEnd = new Date(Date.now() - page * 86_400_000).toISOString();
+      const dayStart = new Date(Date.now() - (page + 1) * 86_400_000).toISOString();
       // PostgREST caps any single select at 1,000 rows regardless of range()
       // — measured live: the first ship of this route silently served 1,000
-      // URLs per "10k" page. Chunk explicitly; ten bounded reads per page.
+      // URLs per "10k" page. Page through with a KEYSET cursor on id: no
+      // offset ever, so a deep chunk is no more expensive than the first.
       const rows: Array<{ id: string; posted_at: string }> = [];
-      for (let c = 0; c < 10; c++) {
-        const from = page * 10_000 + c * 1_000;
-        const { data: chunk } = await client
+      let lastId = "";
+      for (let c = 0; c < 50; c++) { // 50k = the sitemap-protocol ceiling per file
+        let q = client
           .from("job_board_postings")
           .select("id, posted_at")
-          .gte("posted_at", cutoff)
-          .order("posted_at", { ascending: false })
+          .gte("posted_at", dayStart)
+          .lt("posted_at", dayEnd)
           .order("id", { ascending: true })
-          .range(from, from + 999);
+          .limit(1_000);
+        if (lastId) q = q.gt("id", lastId);
+        const { data: chunk, error: chunkErr } = await q;
+        // NEVER swallow this. The old code destructured the error away, so a
+        // failed read was indistinguishable from "no more rows" — it broke the
+        // loop and served a PARTIAL or EMPTY urlset as a confident 200 with an
+        // hour of caching. Measured 2026-07-27: the same page returned 10,000,
+        // 8,000 and 0 URLs on consecutive requests. Telling a crawler "this
+        // site has no jobs" is the same class of lie as a wrong count.
+        if (chunkErr) {
+          console.error("[JOB-BOARD] sitemap page", page, "read failed:", chunkErr.message);
+          return new Response("sitemap temporarily unavailable", {
+            status: 503,
+            headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" },
+          });
+        }
         if (!chunk?.length) break;
         rows.push(...(chunk as Array<{ id: string; posted_at: string }>));
+        lastId = String(chunk[chunk.length - 1].id);
         if (chunk.length < 1_000) break;
       }
       const urls = rows.map((r) =>
