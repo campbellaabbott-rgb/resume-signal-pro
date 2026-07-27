@@ -45,9 +45,12 @@ const ADJACENCY: Record<string, string[]> = {
 // generic one ("nurse") when both would match.
 // Whole-word containment: "nurse" must NOT match inside "nursery worker" —
 // substring matching suggested clinical roles for a childcare search
-// (live-walk finding). Seeds are plain words, so only "&" needs escaping.
+// (live-walk finding). The trailing (?:s|es)? keeps PLURAL queries working:
+// people type "nurses" and "software engineers" constantly, and a bare
+// word-boundary silently dropped every suggestion for them (bug sweep
+// 2026-07-26). Seeds are plain words, so only "&" needs escaping.
 const containsPhrase = (haystack: string, phrase: string) =>
-  new RegExp(`(?:^|[^a-z])${phrase.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?:[^a-z]|$)`).test(haystack);
+  new RegExp(`(?:^|[^a-z])${phrase.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?:s|es)?(?:[^a-z]|$)`).test(haystack);
 
 export function adjacentRoles(query: string, max = 4): string[] {
   const q = query.trim().toLowerCase();

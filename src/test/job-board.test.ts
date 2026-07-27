@@ -996,4 +996,18 @@ describe("adjacentRoles", () => {
   it("respects the max cap", () => {
     expect(adjacentRoles("software engineer", 2).length).toBeLessThanOrEqual(2);
   });
+  it("matches PLURAL queries — people type them constantly", () => {
+    // A word-boundary tightening (2026-07-26) silently killed every suggestion
+    // for plural searches until the (?:s|es)? suffix was added back.
+    expect(adjacentRoles("nurses").length).toBeGreaterThan(0);
+    expect(adjacentRoles("registered nurses")).toContain("charge nurse");
+    expect(adjacentRoles("software engineers")).toContain("backend engineer");
+    expect(adjacentRoles("teachers").length).toBeGreaterThan(0);
+    expect(adjacentRoles("recruiters").length).toBeGreaterThan(0);
+  });
+  it("does not match a seed buried inside an unrelated word", () => {
+    // "nursery worker" is childcare, not nursing — substring matching used to
+    // suggest clinical roles for it.
+    expect(adjacentRoles("nursery worker")).toEqual([]);
+  });
 });

@@ -75,7 +75,7 @@ const json = (body: unknown, status = 200) =>
 // while this file was untouched). Always bump BUILD_VERSION here when a shared
 // module this function imports changes — it forces the diff AND gives the
 // deploy a verifiable tell.
-const BUILD_VERSION = "2026-07-26.9";
+const BUILD_VERSION = "2026-07-26.10";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -1202,7 +1202,8 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
             } catch (e) {
               console.warn(`[JOB-BOARD] closure log failed for ${s.token} (non-fatal):`, String(e).slice(0, 150));
             }
-            await client.from("job_board_postings").delete().in("id", chunk);
+            const { error: delErr } = await client.from("job_board_postings").delete().in("id", chunk);
+            if (delErr) console.warn(`[JOB-BOARD] closure prune delete failed for ${s.token} (non-fatal):`, delErr.message?.slice(0, 150));
           }
         } else if (vanished.length) {
           // Truncated fetch: prune without logging — can't distinguish closed from displaced.
@@ -1426,6 +1427,35 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
         if (error) { console.warn("[JOB-BOARD] freshness sweep select error:", error.message); break; }
         ids.push(...(page ?? []).map((r) => r.id as string));
         if (!page || page.length < take) break;
+      }
+      // Ledger BEFORE deleting: this sweep runs every pass while a board is only
+      // re-fetched on rotation, so it wins the race for most age-outs. Writing
+      // nothing here meant the aged_out side of the ghost-rate stat counted a
+      // small minority of real events (bug sweep 2026-07-26). Best-effort: the
+      // prune itself must never fail because the ledger did.
+      if (ids.length > 0) {
+        const exitedAt = new Date().toISOString();
+        for (let i = 0; i < ids.length; i += 200) {
+          const slice = ids.slice(i, i + 200);
+          const { data: agedRows } = await client
+            .from("job_board_postings")
+            .select("id, source, company_token, category, posted_at, first_seen")
+            .in("id", slice);
+          if (!agedRows?.length) continue;
+          waitUntil(Promise.resolve(client.from("job_board_exits").insert(
+            agedRows.map((r) => ({
+              posting_id: r.id as string,
+              source: r.source as string,
+              company_token: r.company_token as string,
+              category: (r.category as string) ?? "other",
+              exit_reason: "aged_out",
+              days_on_board: (r.posted_at ?? r.first_seen)
+                ? Math.round((Date.parse(exitedAt) - Date.parse(String(r.posted_at ?? r.first_seen))) / 8_640_000) / 10
+                : null,
+              exited_at: exitedAt,
+            })),
+          )).then(() => {}).catch(() => {}));
+        }
       }
       let dropped = 0;
       for (let i = 0; i < ids.length; i += 200) {
@@ -2727,7 +2757,12 @@ Deno.serve(async (req) => {
         return json({ error: "backfill-desc is a maintenance action" }, 403);
       }
       await loadDynamicLight(client); // fresh invocation — auto-enrolled boards need their descs filled too
-      const BOARDS = JOB_SOURCES.filter((s) => isLight(s.token));
+      // Greenhouse ONLY: this lane fetches the GH per-job endpoint, and the
+      // light set is vendor-agnostic (Workable boards auto-enrol into
+      // DYNAMIC_LIGHT), so every non-GH board here 404s forever. Other
+      // vendors fill via the desc-sweep board lane, which uses their own
+      // list payloads.
+      const BOARDS = JOB_SOURCES.filter((s) => s.source === "greenhouse" && isLight(s.token));
       const PER_HOP = 50; // small per-job fetches; keeps each invocation light
       let ti = Math.max(0, Number(body.ti) || 0);
       // Touch meta each hop so the 24h staleness trigger can't spawn an
@@ -2756,7 +2791,10 @@ Deno.serve(async (req) => {
       // Next PER_HOP postings for this board that still lack a description.
       const { data: rows, error: readErr } = await client
         .from("job_board_postings")
-        .select("id")
+        // country rides along: parseSalaryStructured resolves a bare "$" by
+        // country, so without it a Toronto posting saying "$120,000" is stored
+        // as USD — inflating its rank ~1.37x and misstating the offer.
+        .select("id, country")
         .eq("company_token", s.token)
         .is("description", null)
         .order("id")
@@ -2768,7 +2806,8 @@ Deno.serve(async (req) => {
         const ghId = String(row.id).split(":")[2] ?? "";
         if (!ghId) continue;
         try {
-          const res = await fetchWithTimeout(`https://boards-api.greenhouse.io/v1/boards/${s.token}/jobs/${ghId}?questions=false`);
+          const gh = greenhouseApi(s.token); // eu~ boards live on a different host under a stripped token
+          const res = await fetchWithTimeout(`https://${gh.host}/v1/boards/${gh.token}/jobs/${ghId}?questions=false`);
           if (!res.ok) continue;
           const job = (await res.json()) as { content?: string };
           const text = job.content ? clean(htmlToText(String(job.content).slice(0, 12000)).trim()).slice(0, 4000) : "";
@@ -2777,7 +2816,7 @@ Deno.serve(async (req) => {
             // (GH giants fetch without content, so ingest-time mining never saw
             // it). Only set when extraction finds the company's own pay text.
             const minedSalary = extractSalary(text);
-            const minedParse = minedSalary ? parseSalaryStructured(minedSalary) : null;
+            const minedParse = minedSalary ? parseSalaryStructured(minedSalary, (row as { country?: string | null }).country ?? undefined) : null;
             const { error } = await client.from("job_board_postings")
               .update({
                 description: text,
@@ -2794,9 +2833,11 @@ Deno.serve(async (req) => {
           }
         } catch { /* transient — row stays null, retried next run */ }
       }
-      // Fewer than a full page means this board has no more null rows to
-      // fill — advance to the next board. A full page means keep going here.
-      if (!rows || rows.length < PER_HOP) ti += 1;
+      // Advance when the board is drained (short page) OR when a full page
+      // produced nothing: those rows are permanently unfillable (deleted from
+      // the vendor, wrong id shape), and staying put re-fetched the same 50
+      // dead ids every hop forever — a livelock that stalled the whole sweep.
+      if (!rows || rows.length < PER_HOP || updated === 0) ti += 1;
       const url = `${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`;
       waitUntil(chainKey().then((key) => fetch(url, {
         method: "POST",
@@ -3071,7 +3112,7 @@ Deno.serve(async (req) => {
         // over ~1,700 boards costs almost nothing.
         const { data: nullRows } = await client
           .from("job_board_postings")
-          .select("id")
+          .select("id, country") // country → correct bare-$ currency (see backfill-desc)
           .eq("company_token", b.token)
           .is("description", null)
           .limit(DESC_SWEEP_PER_HOP);
@@ -3087,7 +3128,7 @@ Deno.serve(async (req) => {
                 const clean = text.replace(/\u0000/g, "").slice(0, 4000);
                 if (!clean) continue;
                 const minedSalary = extractSalary(clean);
-                const minedParse = minedSalary ? parseSalaryStructured(minedSalary) : null;
+                const minedParse = minedSalary ? parseSalaryStructured(minedSalary, (row as { country?: string | null }).country ?? undefined) : null;
                 const { error } = await client.from("job_board_postings")
                   .update({
                     description: clean,
@@ -3918,7 +3959,11 @@ async function serveList(
         });
         if (!ec && Array.isArray(rc)) {
           const tC = rc.length ? Number((rc[0] as { total_rows?: number }).total_rows) || rc.length : 0;
-          return json({ total: tC, ...(tC >= 10_000 ? { countCapped: true } : {}) });
+          // Tier-aware ceiling, same contract as the list path: the description
+          // tier caps at 3,000, so a bare "3000" here was presented as an exact
+          // figure when the truth is higher (bug sweep 2026-07-26).
+          const tier2C = (rc as Array<{ snippet?: unknown }>).some((r) => typeof r.snippet === "string" && r.snippet.length > 0);
+          return json({ total: tC, ...(tC >= (tier2C ? 3_000 : 10_000) ? { countCapped: true } : {}) });
         }
       } catch { /* migration lag or malformed query — the capped/ILIKE path below still answers */ }
     }
@@ -4026,6 +4071,8 @@ async function serveList(
         // exact count seq-scans 550k rows for a no-match term and times out
         // (measured 9.7s → "temporarily unavailable"). The ranked + fuzzy
         // paths are both index-backed and fast.
+        // `total === 0` only — a null total means "count unavailable", which is
+        // not the same claim as "nothing matches" (see the recency-path twin).
         if (total === 0 && offset === 0 && !countOnly) {
           // Demand telemetry, ranked path — logged AT EACH TERMINAL with its
           // rescue outcome. The single up-front insert counted typo queries
@@ -4155,10 +4202,21 @@ async function serveList(
               p_q: qText, p_fresh_cutoff: freshCutoffIso, p_limit: limit,
             });
             if (!fzErr && Array.isArray(fz) && fz.length > 0) {
-              const have = new Set(rankedGrouped.jobs.map((j) => String((j as { id?: unknown }).id ?? "")));
-              const extra = (fz as unknown[]).map(rowToJob)
-                .filter((j) => !have.has(String((j as { id?: unknown }).id ?? "")))
-                .slice(0, Math.max(0, limit - rankedGrouped.jobs.length))
+              // Dedupe by CLUSTER, not by id. An id-only check let a fuzzy row
+              // that is a collapsed sibling of an exact match through (different
+              // id, same company+title), re-showing a job the grouped card above
+              // already represents — and the appended rows themselves were never
+              // collapsed, so one role reposted per location could fill the page
+              // with near-identical closeMatch cards.
+              const haveKeys = new Set(rankedGrouped.jobs.map((j) => {
+                const r = j as Record<string, unknown>;
+                return clusterKey(String(r.company ?? r.token ?? ""), String(r.title ?? ""));
+              }));
+              const fuzzyRows = (fz as unknown[]).map(rowToJob) as Array<Record<string, unknown>>;
+              const room = Math.max(0, limit - rankedGrouped.jobs.length);
+              const novel = fuzzyRows.filter((r) =>
+                !haveKeys.has(clusterKey(String(r.company ?? r.token ?? ""), String(r.title ?? ""))));
+              const extra = (groupSimilar ? collapseClusters(novel, room).jobs : novel.slice(0, room))
                 .map((j) => ({ ...(j as Record<string, unknown>), closeMatch: true }));
               if (extra.length > 0) {
                 rankedGrouped.jobs.push(...extra);
@@ -4250,7 +4308,11 @@ async function serveList(
   // response, and only when the user actually typed something.
   const missQ = String(body.q ?? "").slice(0, 120).trim();
   const missLoc = String(body.location ?? "").slice(0, 120).trim();
-  if ((count ?? 0) === 0 && offset === 0 && (missQ || missLoc)) {
+  // `count === 0`, never `count ?? 0`: null means the exact count timed out
+  // (see the countUnavailable branch above), and calling that "zero results"
+  // logged a catalog-gap miss for searches that served a full page —
+  // poisoning the demand census the pool is steered by (bug sweep 2026-07-26).
+  if (count === 0 && offset === 0 && (missQ || missLoc)) {
     waitUntil(Promise.resolve(
       client.from("job_board_search_misses").insert({
         q: missQ,

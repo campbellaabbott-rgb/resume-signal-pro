@@ -267,11 +267,20 @@ export default function Jobs() {
     return initial.get("remote") === "1" ? "remote" : "";
   });
   const { category: pathCategory, companyToken } = useParams<{ category?: string; companyToken?: string }>();
-  const landerCategory = isBoardCategory(pathCategory) ? pathCategory : undefined;
+  const routeCategory = isBoardCategory(pathCategory) ? pathCategory : undefined;
   // /jobs/company/:token — the board scoped to one employer's verified openings.
-  const landerCompany = companyToken || undefined;
-  const [company, setCompany] = useState(initial.get("company") ?? landerCompany ?? "");
-  const [category, setCategory] = useState(initial.get("category") ?? landerCategory ?? "");
+  const routeCompany = companyToken || undefined;
+  const [company, setCompany] = useState(initial.get("company") ?? routeCompany ?? "");
+  const [category, setCategory] = useState(initial.get("category") ?? routeCategory ?? "");
+  // Lander identity tracks the LIVE filter, not the route param. The URL-sync
+  // effect rewrites the address with history.replaceState, which React Router
+  // does not observe — so useParams keeps returning the lander token forever.
+  // Keying the H1, the "Yes — N verified open roles" answer, the count line
+  // and the employer intel panels off the raw param meant that clearing the
+  // company chip left "Open roles at Foo" rendered over the whole 573k board,
+  // with the board-wide total presented as Foo's (bug sweep 2026-07-26).
+  const landerCompany = routeCompany && company === routeCompany ? routeCompany : undefined;
+  const landerCategory = routeCategory && category === routeCategory ? routeCategory : undefined;
   // Arrived from the Explore page? Captured once on mount (the URL-sync effect
   // strips unknown params), so we can offer a "Back to Explore" link instead
   // of leaving the user on a filtered board with no way back.
@@ -349,6 +358,10 @@ export default function Jobs() {
       // NOT returned so the applied state matches the interpretation exactly.
       setQ(typeof f.q === "string" ? f.q : "");
       setCategory(typeof f.category === "string" ? f.category : "");
+      // Company was the one filter this reset missed: an NL search run while a
+      // company filter was active stayed silently scoped to that employer
+      // while the interpretation chips said nothing about it.
+      setCompany(typeof f.company === "string" ? f.company : "");
       setExperience(typeof f.experience === "string" ? f.experience : "");
       setRemoteOnly(false);
       setWorkMode(f.workMode === "remote" || f.workMode === "hybrid" || f.workMode === "onsite"
@@ -790,6 +803,10 @@ export default function Jobs() {
   // to be mailed; clicking an alert CTA is, and it gets the daily cadence.
   const saveCurrentSearch = async (alert = false) => {
     if (!session) return requireAuth();
+    // Every active filter must ride along: a saved search is a promise to mail
+    // THIS query. country and the freshness window were dropped, so a US-only
+    // zero-result "Alert me when this exists" saved an all-countries search
+    // and mailed postings the user's screen excluded (bug sweep 2026-07-26).
     const params = {
       q: q || undefined,
       category: category || undefined,
@@ -798,7 +815,9 @@ export default function Jobs() {
       remote: remoteOnly || workMode === "remote" || undefined,
       workMode: workMode || undefined,
       company: company || undefined,
+      country: country || undefined,
       salaryFloor: salaryFloor || undefined,
+      maxAgeDays: freshness ? (freshness === "day" ? 1 : 7) : undefined,
     };
     const name = searchName(
       params,
@@ -846,6 +865,9 @@ export default function Jobs() {
   const fetchJobs = useCallback(
     async (offset: number) => {
       const seq = ++reqSeq.current;
+      // A new result set is a new context: the user's "I closed the pane"
+      // intent applied to the list they were looking at, not this one.
+      if (offset === 0) userClosed.current = false;
       // A filter change over an already-loaded list refreshes in place (the
       // visible list locally filters meanwhile); only a true first load or
       // recovery-from-error blanks to the spinner.
@@ -929,11 +951,13 @@ export default function Jobs() {
     const jobParam = new URLSearchParams(window.location.search).get("job");
     if (jobParam) p.set("job", jobParam);
     const qs = p.toString();
-    if (landerCompany && company === landerCompany && !q && !location && !remoteOnly && !category && !experience && !salaryFloor && !country) {
+    // !workMode belongs in both gates: without it, picking Hybrid on a lander
+    // kept the bare lander URL and reload/share silently dropped the filter.
+    if (landerCompany && company === landerCompany && !q && !location && !remoteOnly && !workMode && !category && !experience && !salaryFloor && !country) {
       window.history.replaceState({}, "", `/jobs/company/${landerCompany}${jobParam ? `?job=${encodeURIComponent(jobParam)}` : ""}`);
       return;
     }
-    if (landerCategory && category === landerCategory && !q && !location && !remoteOnly && !company && !experience && !salaryFloor && !country) {
+    if (landerCategory && category === landerCategory && !q && !location && !remoteOnly && !workMode && !company && !experience && !salaryFloor && !country) {
       window.history.replaceState({}, "", `/jobs/field/${landerCategory}${jobParam ? `?job=${encodeURIComponent(jobParam)}` : ""}`);
       return;
     }
@@ -1094,6 +1118,11 @@ export default function Jobs() {
   // postings must not create 30 history entries). Close undoes whichever the
   // current selection used.
   const detailPushed = useRef(false);
+  // Per-open sequence for the detail fetch, and a flag recording that the user
+  // deliberately closed the pane — desktop auto-select must not re-summon a
+  // panel the user just dismissed (bug sweep 2026-07-26).
+  const detailSeq = useRef(0);
+  const userClosed = useRef(false);
   const swipeStartY = useRef<number | null>(null); // mobile sheet swipe-down-to-close
   // A11y focus contract for the overlay: focus moves INTO the dialog when it
   // opens and returns to wherever the user was when it closes.
@@ -1108,6 +1137,12 @@ export default function Jobs() {
     }
   }, [detailJob]);
   const openDetail = useCallback(async (job: BoardJob, urlMode: "push" | "replace" | "none" = "push") => {
+    // Race guard (same contract as similarSeq): arrowing down the list fires
+    // openDetail per keystroke, and invokeBoard retries after 1.2s — so a slow
+    // response for job A could land after the user moved to job B and paint
+    // A's description under B's title (and into B's JSON-LD).
+    const seq = ++detailSeq.current;
+    userClosed.current = false; // an explicit open clears the "don't re-open" flag
     setDetailJob(job);
     setDetailDesc(null);
     setDetailLoading(true);
@@ -1147,15 +1182,18 @@ export default function Jobs() {
     // zero wait. Empty string = fetched-and-none; null = fetch in flight.
     const cached = descCache.current.get(job.id);
     if (typeof cached === "string") {
+      if (seq !== detailSeq.current) return;
       setDetailDesc(cached || null);
       setDetailLoading(false);
       return;
     }
     try {
       const { data: res } = await invokeBoard<{ description?: string }>({ action: "detail", id: job.id });
-      setDetailDesc(res?.description ?? null);
       descCache.current.set(job.id, res?.description ?? "");
+      if (seq !== detailSeq.current) return; // superseded — never paint a stale JD
+      setDetailDesc(res?.description ?? null);
     } catch { /* panel still shows metadata + actions */ }
+    if (seq !== detailSeq.current) return;
     setDetailLoading(false);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -1164,11 +1202,12 @@ export default function Jobs() {
     if (inList) { void openDetail(inList); return; }
     try {
       const { data: res } = await invokeBoard<{ job?: BoardJob | null }>({ action: "detail", id });
-      if (res?.job) void openDetail(res.job);
+      if (res?.job) void openDetail(normalizeRow(res.job)); // last entry point that skipped hygiene
     } catch { /* posting may have closed — honest no-op */ }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [jobs]);
   const closeDetail = useCallback((viaHistory = false) => {
+    userClosed.current = true; // suppress desktop auto-select until the list changes
     setDetailJob(null);
     if (!viaHistory && new URLSearchParams(window.location.search).has("job")) {
       if (detailPushed.current) {
@@ -1237,19 +1276,31 @@ export default function Jobs() {
     if (inList) {
       deepLinkTried.current = true;
       void openDetail(inList, "none");
-    } else if (jobs.length > 0) {
+    } else if (!loading) {
       // Loaded list doesn't contain it — the detail action resolves the row.
+      // Gated on the FIRST LOAD SETTLING, not on jobs.length: a shared link
+      // whose other filters happen to match nothing left the visitor with a
+      // generic zero-state and no answer about the posting they clicked.
       deepLinkTried.current = true;
       (async () => {
+        // Owns the panel from here — stamp the sequence so no concurrent
+        // openDetail can paint its description under this posting.
+        const seq = ++detailSeq.current;
         try {
           const { data: res } = await invokeBoard<{ job?: BoardJob | null; description?: string; closed?: { title: string; company: string | null; closedAt: string } }>({ action: "detail", id });
+          if (seq !== detailSeq.current) return;
           if (res?.job) {
             setDetailJob(normalizeRow(res.job));
             setDetailDesc(res.description ?? null);
           } else if (res?.closed) {
             // The link's posting closed and we watched it happen — say so,
-            // with what it was, and offer the search for live siblings.
-            setDeadLink({ title: res.closed.title, company: res.closed.company });
+            // with what it was, and offer the search for live siblings. Closure
+            // rows are stored verbatim from the feed, so they need the same
+            // display hygiene every live row gets.
+            setDeadLink({
+              title: res.closed.title ? cleanJobTitle(res.closed.title) : res.closed.title,
+              company: res.closed.company ? decodeNameEntities(res.closed.company) : res.closed.company,
+            });
           } else {
             setDeadLink({ title: null, company: null });
           }
@@ -1262,7 +1313,7 @@ export default function Jobs() {
       })();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [jobs]);
+  }, [jobs, loading]);
 
   // Report-a-posting: log the report, then honor it honestly — a "gone" report
   // triggers the same live re-check applying does, so a confirmed-dead posting
@@ -1814,6 +1865,14 @@ export default function Jobs() {
   useEffect(() => {
     if (loading || refreshing || detailJob || groupedJobs.length === 0) return;
     if (!window.matchMedia("(min-width: 1024px)").matches) return;
+    // Never steal a pending deep link: auto-select used to fire while the
+    // ?job= fetch was still in flight, replaceState-ing the top card's id over
+    // the shared URL and racing its description into the deep-linked posting's
+    // panel AND its JSON-LD (reproduced in production 2026-07-26).
+    if (!deepLinkTried.current) return;
+    // Never re-summon a panel the user closed — the ✕/Escape/Back used to be
+    // instantly undone here, so the pane could not be closed at all on desktop.
+    if (userClosed.current) return;
     void openDetail(groupedJobs[0].primary, "replace");
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, refreshing, detailJob, groupedJobs]);
@@ -1825,6 +1884,12 @@ export default function Jobs() {
     const onKey = (e: KeyboardEvent) => {
       const el = e.target as HTMLElement;
       if (["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName) || el.isContentEditable) return;
+      // Enter on a focused CONTROL belongs to that control. Without this the
+      // window handler also fired for every button/link keypress — activating
+      // "Save" or a card title by keyboard opened the selected job's apply tab
+      // AND wrote a tracker row marked applied for a job the user never
+      // applied to (bug sweep 2026-07-26).
+      if (typeof el?.closest === "function" && el.closest("button, a, [role='button'], summary, label")) return;
       const list = groupedJobs.map((g) => g.primary);
       if (list.length === 0) return;
       const isDown = e.key === "ArrowDown" || e.key === "j";
@@ -1972,8 +2037,8 @@ export default function Jobs() {
   // Badge on the mobile Filters button: how many secondary filters are active
   // (q lives in the always-visible search bar, so it doesn't count).
   const activeFilterCount = useMemo(
-    () => [location, category, experience, company, salaryFloor > 0, remoteOnly || workMode, freshness].filter(Boolean).length,
-    [location, category, experience, company, salaryFloor, remoteOnly, workMode, freshness],
+    () => [location, category, experience, company, country, salaryFloor > 0, remoteOnly || workMode, freshness].filter(Boolean).length,
+    [location, category, experience, company, country, salaryFloor, remoteOnly, workMode, freshness],
   );
 
   // Removable chips for every active filter — what's narrowing your results
@@ -2401,6 +2466,18 @@ export default function Jobs() {
                 )}
                 <Button size="sm" variant="ghost" className="px-2" aria-label={t("jobsPage.saveJob", "Save")} onClick={() => saveJob(detailJob)}>
                   {savedIds.has(detailJob.id) ? <BookmarkCheck className="w-4 h-4 text-primary" /> : <Bookmark className="w-4 h-4" />}
+                </Button>
+                {/* Desktop-only close: this row is the part that stays pinned
+                    on lg+, so without it the pane's only ✕ (in the header)
+                    scrolls out of reach and the pane can't be dismissed. */}
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="hidden lg:inline-flex px-2 ml-auto"
+                  aria-label={t("jobsPage.detailClose", "Close")}
+                  onClick={() => closeDetail()}
+                >
+                  <span aria-hidden="true" className="text-base leading-none">✕</span>
                 </Button>
               </div>
               {/* Company drill-down: every posting viewed is a jumping-off

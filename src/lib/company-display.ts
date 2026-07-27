@@ -37,6 +37,7 @@ const capitalize = (s: string) => (s ? s[0].toUpperCase() + s.slice(1) : s);
 // from confirmed sightings, never guesses.
 const NAME_FIXES: Record<string, string> = {
   modernatx: "Moderna",
+  drivenbrands: "Driven Brands",
 };
 
 /**
@@ -64,7 +65,8 @@ export function decodeNameEntities(s: string): string {
     .replace(/&#0?39;|&apos;|&rsquo;/g, "'")
     .replace(/&quot;|&#0?34;/g, '"')
     .replace(/&nbsp;/g, " ")
-    .replace(/&ndash;|&mdash;/g, "–")
+    .replace(/&ndash;/g, "–")
+    .replace(/&mdash;/g, "—")
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
     .replace(/&amp;/g, "&");
@@ -73,13 +75,24 @@ export function decodeNameEntities(s: string): string {
 /**
  * Collapse a vendor artifact where the posting title repeats its own leading
  * phrase ("Registered Nurse Registered Nurse RN" — seen live on multi-field
- * ATS exports that concatenate title + display-title). Conservative: only an
- * IMMEDIATE, case-insensitive repeat of a 4+ char leading phrase on a word
- * boundary collapses ("Sales Salesforce Admin" is untouched — "force" doesn't
- * start a new word after the would-be repeat).
+ * ATS exports that concatenate title + display-title). Deliberately narrow: the
+ * repeated phrase must be multi-word AND at least TITLE_REPEAT_MIN characters.
+ *
+ * Both guards exist because reduplication is how real proper nouns are spelled
+ * — "Walla Walla School District Nurse", "Sing Sing Correctional Officer",
+ * "New York New York Host" — and this text reaches the cards, the apply kits
+ * and the JobPosting JSON-LD that Google indexes, so a false positive
+ * PUBLISHES a wrong job title. Genuine artifacts repeat a whole job title
+ * ("Registered Nurse Registered Nurse RN"), which clears both bars; short
+ * reduplicated place names never do. The asymmetry is intentional: missing an
+ * artifact just shows the vendor's text unchanged, which is honest, while
+ * over-collapsing invents a title no employer wrote.
  */
+const TITLE_REPEAT_MIN = 12;
+
 export function cleanJobTitle(title: string): string {
   const t = decodeNameEntities(title).replace(/\s+/g, " ").trim();
-  const m = t.match(/^(.{4,}?)\s+\1(\s.*|$)/i);
-  return m ? `${m[1]}${m[2]}`.trim() : t;
+  const m = t.match(/^(\S+(?: \S+)+?)\s+\1(\s.*|$)/i);
+  if (!m || m[1].length < TITLE_REPEAT_MIN) return t;
+  return `${m[1]}${m[2]}`.trim();
 }

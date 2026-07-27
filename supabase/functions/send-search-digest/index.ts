@@ -34,16 +34,23 @@ async function hmacToken(id: string): Promise<string> {
   return Array.from(new Uint8Array(sig)).slice(0, 16).map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-type SearchParams = { q?: string; category?: string; location?: string; remote?: boolean; company?: string; experience?: string; salaryFloor?: number };
+// Every field the board can filter on must be represented here: the digest
+// promises "matches for THIS search", so any param the query carries but the
+// digest drops widens the email past what the user saw. country, workMode and
+// the freshness window were missing — a US-only alert mailed worldwide roles
+// (bug sweep 2026-07-26).
+type SearchParams = { q?: string; category?: string; location?: string; remote?: boolean; workMode?: string; company?: string; experience?: string; country?: string; salaryFloor?: number; maxAgeDays?: number };
 
 function boardUrl(p: SearchParams): string {
   const qs = new URLSearchParams();
   if (p.q) qs.set("q", p.q);
   if (p.location) qs.set("location", p.location);
   if (p.remote) qs.set("remote", "1");
+  if (p.workMode) qs.set("mode", p.workMode);
   if (p.company) qs.set("company", p.company);
   if (p.category) qs.set("category", p.category);
   if (p.experience) qs.set("experience", p.experience);
+  if (p.country) qs.set("country", p.country);
   if (p.salaryFloor) qs.set("salaryFloor", String(p.salaryFloor));
   const s = qs.toString();
   return `${SITE_URL}/jobs${s ? `?${s}` : ""}`;
@@ -116,7 +123,7 @@ Deno.serve(async (req) => {
         fetch(boardBase, {
           method: "POST",
           headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "list", q: p.q || undefined, category: p.category || undefined, location: p.location || undefined, remote: p.remote || undefined, companies: p.company ? [p.company] : undefined, experience: p.experience || undefined, salaryFloor: p.salaryFloor || undefined, includeFacets: false, ...extra }),
+          body: JSON.stringify({ action: "list", q: p.q || undefined, category: p.category || undefined, location: p.location || undefined, remote: p.remote || undefined, workMode: p.workMode || undefined, companies: p.company ? [p.company] : undefined, experience: p.experience || undefined, country: p.country || undefined, salaryFloor: p.salaryFloor || undefined, maxAgeDays: p.maxAgeDays || undefined, includeFacets: false, ...extra }),
         }).then((r) => r.json()).catch(() => null);
 
       const countRes = await callBoard({ countOnly: true, postedAfter: since });
