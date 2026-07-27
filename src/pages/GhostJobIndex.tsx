@@ -64,7 +64,7 @@ interface FreshnessStats {
 export default function GhostJobIndex() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [leaders, setLeaders] = useState<Leader[]>([]);
-  const [benchmarks, setBenchmarks] = useState<Array<{ company: string; closures: number; median_days_open: number; window_days: number }>>([]);
+  const [benchmarks, setBenchmarks] = useState<Array<{ company: string; closures: number; median_days_open: number; window_days: number; observed_days?: number }>>([]);
   const [audit, setAudit] = useState<AuditResult | null>(null);
   const [freshness, setFreshness] = useState<FreshnessStats | null>(null);
   // Per-vendor company-stated date coverage — the same probe the ops
@@ -105,7 +105,7 @@ export default function GhostJobIndex() {
         }
         if (srow) setStats(srow);
         if (Array.isArray(l.data)) setLeaders(l.data as Leader[]);
-        if (Array.isArray(b.data)) setBenchmarks(b.data as Array<{ company: string; closures: number; median_days_open: number; window_days: number }>);
+        if (Array.isArray(b.data)) setBenchmarks(b.data as Array<{ company: string; closures: number; median_days_open: number; window_days: number; observed_days?: number }>);
         const frow = Array.isArray(f.data) ? (f.data[0] as FreshnessStats) : null;
         if (frow && typeof frow.p50_min === "number") setFreshness(frow);
         const av = (a.data as { v?: AuditResult } | null)?.v;
@@ -326,10 +326,18 @@ export default function GhostJobIndex() {
             </div>
             <p className="text-[11px] text-muted-foreground mt-2">
               Median days from the company's stated post date (or our first sighting, where no date is published) to
-              the posting coming down, among roles that stayed posted at least a week — same-day churn and reposts
-              don't count as fills. Measured over the last {benchmarks[0]?.window_days ?? 90} days; employers with
-              fewer than 25 qualifying closures are excluded so a single quick fill can't crown anyone. Measured from
-              our closure log — never an estimate.
+              the posting coming down, among roles that stayed posted at least a week. Re-listed roles are excluded:
+              a requisition that goes back up is a re-list, not a fill. Employers with fewer than 25 qualifying
+              closures are excluded so a single quick fill can't crown anyone.{" "}
+              {(benchmarks[0]?.observed_days ?? benchmarks[0]?.window_days) != null && (
+                <>
+                  Our closure log has been running for{" "}
+                  <strong>{benchmarks[0]?.observed_days ?? benchmarks[0]?.window_days} days</strong>, so this reflects
+                  what we have watched since then — not a company's whole hiring history. A role that takes longer
+                  than that to fill cannot appear here yet, which biases these medians short.{" "}
+                </>
+              )}
+              Measured from our closure log — never an estimate.
             </p>
           </div>
         )}
