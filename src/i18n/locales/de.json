@@ -35,7 +35,7 @@
     "subheading": "Gleiches Dokument, gleicher Score, jedes Mal — verglichen mit echten Scans Ihrer Branche, jedes Zitat gegen Ihren Lebenslauf verifiziert. Keine ChatGPT- oder Claude-Meinung.",
     "price": "25 $",
     "oneTime": "einmalig",
-    "nofees": "Kein Abo • Keine versteckten Kosten • Sofortige Ergebnisse",
+    "nofees": "Einmalige Zahlung • Keine automatische Verlängerung • Sofortige Ergebnisse",
     "roi": "Ein Vorstellungsgespräch = 25 $ amortisiert",
     "trusted": "Vertrauen von",
     "jobSeekers": "Bewerbern",
@@ -67,7 +67,7 @@
     "benefits": {
       "seniorRoles": "Entwickelt für Senior-Positionen, Manager und kompetitive Rollen",
       "atsCompatible": "Funktioniert mit allen ATS-Systemen (Workday, Greenhouse, Lever & 50+ mehr)",
-      "oneTime": "Einmalige Zahlung (kein Abo)",
+      "oneTime": "Einmalige Zahlung (verlängert sich nie automatisch)",
       "private": "Lebensläufe werden nie gespeichert oder geteilt"
     },
     "stats": {
@@ -723,7 +723,7 @@
       "linkedin": "LinkedIn-Profil-Optimierung"
     },
     "oneTime": "einmalig",
-    "guarantee": "Sofortige Ergebnisse • Kein Abo",
+    "guarantee": "Sofortige Ergebnisse • Einmalige Zahlung",
     "button": "Jetzt Analyse erhalten",
     "roi": "Ein Vorstellungsgespräch = 25 $ amortisiert"
   },
@@ -2678,8 +2678,8 @@
   },
   "pricingPage": {
     "metaTitle": "Preise — Resume Booster",
-    "metaDescription": "Pläne vom 1-$-Keyword-Fix bis zum 25-$-Career-Snapshot. Einmalzahlung, kein Abo. Lebenslauf-Überarbeitungen auf Recruiter-Niveau.",
-    "noSubscriptions": "Einmalzahlungen • Keine Abos",
+    "metaDescription": "Pläne vom Keyword-Fix (${{keywordFixPrice}}) bis zum Career Snapshot (${{snapshotPrice}}). Einmalzahlung, verlängert sich nie automatisch. Lebenslauf auf Recruiter-Niveau.",
+    "noSubscriptions": "Einmalzahlungen • Verlängern sich nie automatisch",
     "titlePrefix": "Wähle deinen",
     "titleHighlight": "Lebenslauf-Boost",
     "subtitle": "Von schnellen Korrekturen bis zu kompletten Karrierepaketen. Einmal zahlen, für immer nutzen.",
@@ -2761,7 +2761,7 @@
     "companyLabel": "Unternehmen",
     "companyPlaceholder": "z. B. Google",
     "redirecting": "Weiterleitung zur Kasse...",
-    "secureCheckout": "Sicherer Checkout mit Stripe. Einmalige Zahlung, kein Abo."
+    "secureCheckout": "Sicherer Checkout mit Stripe. Einmalige Zahlung — dieser Kauf verlängert sich nie automatisch."
   },
   "checkoutOverlay": {
     "steps": {

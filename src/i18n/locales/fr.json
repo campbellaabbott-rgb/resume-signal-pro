@@ -35,7 +35,7 @@
     "subheading": "Même document, même score, à chaque fois — comparé à de vrais scans de votre secteur, chaque citation vérifiée contre votre CV. Pas l'avis de ChatGPT ou de Claude.",
     "price": "25 $",
     "oneTime": "paiement unique",
-    "nofees": "Sans abonnement • Sans frais cachés • Résultats instantanés",
+    "nofees": "Paiement unique • Sans renouvellement automatique • Résultats instantanés",
     "roi": "Un entretien = 25 $ rentabilisés",
     "trusted": "Fait confiance par",
     "jobSeekers": "chercheurs d'emploi",
@@ -61,7 +61,7 @@
     "benefits": {
       "seniorRoles": "Conçu pour les profils seniors, managers et postes compétitifs",
       "atsCompatible": "Fonctionne avec tous les ATS (Workday, Greenhouse, Lever et 50+ autres)",
-      "oneTime": "Paiement unique (sans abonnement)",
+      "oneTime": "Paiement unique (ne se renouvelle jamais automatiquement)",
       "private": "Les CV ne sont jamais stockés ni partagés"
     },
     "stats": {
@@ -723,7 +723,7 @@
       "linkedin": "Optimisation du profil LinkedIn"
     },
     "oneTime": "paiement unique",
-    "guarantee": "Résultats instantanés • Sans abonnement",
+    "guarantee": "Résultats instantanés • Paiement unique",
     "button": "Obtenir mon analyse",
     "roi": "Un entretien = 25 $ rentabilisés"
   },
@@ -2678,8 +2678,8 @@
   },
   "pricingPage": {
     "metaTitle": "Tarifs — Resume Booster",
-    "metaDescription": "Formules de 1$ pour la correction de mots-clés à 25$ pour Career Snapshot. Paiement unique, sans abonnement. Réécritures de CV au niveau recruteur.",
-    "noSubscriptions": "Paiements uniques • Sans abonnement",
+    "metaDescription": "Formules de ${{keywordFixPrice}} (correction de mots-clés) à ${{snapshotPrice}} (Career Snapshot). Paiement unique, ne se renouvelle jamais automatiquement. Réécritures niveau recruteur.",
+    "noSubscriptions": "Paiements uniques • Ne se renouvellent jamais automatiquement",
     "titlePrefix": "Choisissez votre",
     "titleHighlight": "Boost de CV",
     "subtitle": "Des corrections rapides aux forfaits de carrière complets. Payez une fois, utilisez pour toujours.",
@@ -2761,7 +2761,7 @@
     "companyLabel": "Entreprise",
     "companyPlaceholder": "ex. : Google",
     "redirecting": "Redirection vers le paiement...",
-    "secureCheckout": "Paiement sécurisé propulsé par Stripe. Paiement unique, sans abonnement."
+    "secureCheckout": "Paiement sécurisé propulsé par Stripe. Paiement unique — cet achat ne se renouvelle jamais automatiquement."
   },
   "checkoutOverlay": {
     "steps": {

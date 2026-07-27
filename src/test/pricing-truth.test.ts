@@ -79,3 +79,58 @@ describe("the subscription FAQ tells the truth in every language", () => {
     }
   });
 });
+
+// The FAQ was not the only place. Six more strings — including the homepage
+// hero and the meta description Google prints for /pricing — asserted flatly
+// that no subscriptions existed. They now say the honest thing instead: the
+// one-time purchase never auto-renews, which is true and keeps the promise
+// customers actually care about.
+describe("commerce copy never denies subscriptions, in any language", () => {
+  const localeDir = resolve(root, "src/i18n/locales");
+
+  // Written per language because a denial in Hindi is invisible to an English
+  // regex, and these files are edited by translators who do not see this test.
+  const DENIALS: Record<string, RegExp> = {
+    "en.json": /no subscription/i,
+    "en-GB.json": /no subscription/i,
+    "es.json": /sin suscripci|no hay suscripci/i,
+    "fr.json": /sans abonnement|pas d['’]abonnement/i,
+    "de.json": /kein abo|keine abos|kein abonnement/i,
+    "pt.json": /sem assinatura|nenhuma assinatura/i,
+    "nl.json": /geen abonnement/i,
+    "hi.json": /कोई सब्सक्रिप्शन नहीं|कोई सदस्यता नहीं/,
+    "tl.json": /walang subscription|walang subskripsiyon/i,
+  };
+
+  const KEYS = [
+    ["hero", "nofees"],
+    ["hero", "benefits", "oneTime"],
+    ["finalCta", "guarantee"],
+    ["pricingPage", "noSubscriptions"],
+    ["productSelectionModal", "secureCheckout"],
+    ["pricingPage", "metaDescription"],
+  ];
+
+  const read = (file: string, path: string[]): string =>
+    path.reduce<any>((o, k) => o?.[k], JSON.parse(readFileSync(resolve(localeDir, file), "utf8")));
+
+  for (const [file, denial] of Object.entries(DENIALS)) {
+    describe(file, () => {
+      for (const path of KEYS) {
+        it(`${path.join(".")} makes no categorical denial`, () => {
+          const v = read(file, path);
+          expect(typeof v).toBe("string");
+          expect(v).not.toMatch(denial);
+        });
+      }
+
+      // "$1 Keyword Fix" sat in this description while the product cost $3.
+      it("pricingPage.metaDescription interpolates prices instead of stating them", () => {
+        const v = read(file, ["pricingPage", "metaDescription"]);
+        expect(v.split("{{keywordFixPrice}}").length - 1).toBe(1);
+        expect(v.split("{{snapshotPrice}}").length - 1).toBe(1);
+        expect(v).not.toMatch(/[$£€₹]\s?\d/);
+      });
+    });
+  }
+});

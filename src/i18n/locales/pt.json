@@ -35,7 +35,7 @@
     "subheading": "Mesmo documento, mesma pontuação, sempre — comparada com escaneamentos reais do seu setor, com cada citação verificada contra o seu currículo. Não é a opinião do ChatGPT nem do Claude.",
     "price": "$25",
     "oneTime": "pagamento único",
-    "nofees": "Sem subscrições • Sem taxas ocultas • Resultados instantâneos",
+    "nofees": "Pagamento único • Sem renovação automática • Resultados instantâneos",
     "roi": "Uma entrevista = $25 que se paga sozinho",
     "trusted": "Confiado por",
     "jobSeekers": "candidatos",
@@ -61,7 +61,7 @@
     "benefits": {
       "seniorRoles": "Criado para perfis sénior, gestores e cargos competitivos",
       "atsCompatible": "Funciona em todos os ATS (Workday, Greenhouse, Lever e 50+ mais)",
-      "oneTime": "Pagamento único (sem subscrição)",
+      "oneTime": "Pagamento único (nunca renova automaticamente)",
       "private": "Currículos nunca são guardados nem partilhados"
     },
     "stats": {
@@ -723,7 +723,7 @@
       "linkedin": "Otimização do perfil LinkedIn"
     },
     "oneTime": "pagamento único",
-    "guarantee": "Resultados instantâneos • Sem subscrição",
+    "guarantee": "Resultados instantâneos • Pagamento único",
     "button": "Obter a Minha Análise Agora",
     "roi": "Uma entrevista = $25 que se paga sozinho"
   },
@@ -2678,8 +2678,8 @@
   },
   "pricingPage": {
     "metaTitle": "Preços — Resume Booster",
-    "metaDescription": "Planos desde $1 para a Correção de Palavras-chave até $25 para o Career Snapshot. Pagamento único, sem subscrição. Reescritas de currículo ao nível de recrutador.",
-    "noSubscriptions": "Pagamentos únicos • Sem subscrições",
+    "metaDescription": "Planos desde ${{keywordFixPrice}} (Keyword Fix) até ${{snapshotPrice}} (Career Snapshot). Pague uma vez — nunca renovam automaticamente. Reescritas de currículo ao nível de recrutador.",
+    "noSubscriptions": "Pagamentos únicos • Nunca renovam automaticamente",
     "titlePrefix": "Escolha o seu",
     "titleHighlight": "Impulso de Currículo",
     "subtitle": "De correções rápidas a pacotes de carreira completos. Pague uma vez, use para sempre.",
@@ -2761,7 +2761,7 @@
     "companyLabel": "Empresa",
     "companyPlaceholder": "ex.: Google",
     "redirecting": "A redirecionar para o pagamento...",
-    "secureCheckout": "Checkout seguro com tecnologia Stripe. Pagamento único, sem subscrição."
+    "secureCheckout": "Checkout seguro com tecnologia Stripe. Pagamento único — esta compra nunca renova automaticamente."
   },
   "checkoutOverlay": {
     "steps": {

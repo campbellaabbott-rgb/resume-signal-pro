@@ -35,7 +35,7 @@
     "subheading": "Zelfde document, zelfde score, elke keer — vergeleken met echte scans in jouw sector, elk citaat geverifieerd tegen je cv. Geen mening van ChatGPT of Claude.",
     "price": "$ 25",
     "oneTime": "eenmalig",
-    "nofees": "Geen abonnement • Geen verborgen kosten • Directe resultaten",
+    "nofees": "Eenmalige betaling • Geen automatische verlenging • Directe resultaten",
     "roi": "Eén gesprek = $ 25 terugverdiend",
     "trusted": "Vertrouwd door",
     "jobSeekers": "werkzoekenden",
@@ -61,7 +61,7 @@
     "benefits": {
       "seniorRoles": "Gemaakt voor senior profielen, managers en competitieve rollen",
       "atsCompatible": "Werkt op alle ATS-systemen (Workday, Greenhouse, Lever & 50+ meer)",
-      "oneTime": "Eenmalige betaling (geen abonnement)",
+      "oneTime": "Eenmalige betaling (verlengt nooit automatisch)",
       "private": "Cv’s worden nooit opgeslagen of gedeeld"
     },
     "stats": {
@@ -723,7 +723,7 @@
       "linkedin": "LinkedIn-profiel optimalisatie"
     },
     "oneTime": "eenmalig",
-    "guarantee": "Directe resultaten • Geen abonnement",
+    "guarantee": "Directe resultaten • Eenmalige betaling",
     "button": "Mijn analyse nu",
     "roi": "Eén gesprek = $ 25 terugverdiend"
   },
@@ -2678,8 +2678,8 @@
   },
   "pricingPage": {
     "metaTitle": "Prijzen — Resume Booster",
-    "metaDescription": "Pakketten vanaf $1 voor de Keyword Fix tot $25 voor Career Snapshot. Eenmalige betaling, geen abonnement. Cv-herschrijvingen op recruiterniveau.",
-    "noSubscriptions": "Eenmalige betalingen • Geen abonnementen",
+    "metaDescription": "Pakketten vanaf ${{keywordFixPrice}} (Keyword Fix) tot ${{snapshotPrice}} (Career Snapshot). Eenmalige betaling — verlengt nooit automatisch. Cv-herschrijvingen op recruiterniveau.",
+    "noSubscriptions": "Eenmalige betalingen • Verlengen nooit automatisch",
     "titlePrefix": "Kies je",
     "titleHighlight": "Cv-boost",
     "subtitle": "Van snelle correcties tot complete carrièrepakketten. Eenmaal betalen, voor altijd gebruiken.",
@@ -2761,7 +2761,7 @@
     "companyLabel": "Bedrijf",
     "companyPlaceholder": "bijv. Google",
     "redirecting": "Doorverwijzen naar afrekenen...",
-    "secureCheckout": "Veilig afrekenen via Stripe. Eenmalige betaling, geen abonnement."
+    "secureCheckout": "Veilig afrekenen via Stripe. Eenmalige betaling — deze aankoop wordt nooit automatisch verlengd."
   },
   "checkoutOverlay": {
     "steps": {

@@ -35,7 +35,7 @@
     "subheading": "Mismo documento, misma puntuación, siempre — comparada con escaneos reales de tu sector y con cada cita verificada contra tu currículum. No es la opinión de ChatGPT ni de Claude.",
     "price": "$25",
     "oneTime": "único pago",
-    "nofees": "Sin suscripciones • Sin tarifas ocultas • Resultados instantáneos",
+    "nofees": "Pago único • Sin renovación automática • Resultados instantáneos",
     "roi": "Una entrevista = $25 recuperados",
     "trusted": "Confiado por",
     "jobSeekers": "buscadores de empleo",
@@ -61,7 +61,7 @@
     "benefits": {
       "seniorRoles": "Hecho para perfiles senior, managers y roles competitivos",
       "atsCompatible": "Funciona en todos los ATS (Workday, Greenhouse, Lever y 50+ más)",
-      "oneTime": "Pago único (sin suscripción)",
+      "oneTime": "Pago único (nunca se renueva automáticamente)",
       "private": "Nunca guardamos ni compartimos tu CV"
     },
     "stats": {
@@ -723,7 +723,7 @@
       "linkedin": "Optimización del perfil de LinkedIn"
     },
     "oneTime": "pago único",
-    "guarantee": "Resultados instantáneos • Sin suscripción",
+    "guarantee": "Resultados instantáneos • Pago único",
     "button": "Obtener Mi Análisis Ahora",
     "roi": "Una entrevista = $25 recuperados"
   },
@@ -2678,8 +2678,8 @@
   },
   "pricingPage": {
     "metaTitle": "Precios — Resume Booster",
-    "metaDescription": "Planes desde $1 para corrección de palabras clave hasta $25 para Career Snapshot. Pago único, sin suscripción. Reescrituras de currículum de nivel reclutador.",
-    "noSubscriptions": "Pagos únicos • Sin suscripciones",
+    "metaDescription": "Planes desde ${{keywordFixPrice}} (corrección de palabras clave) hasta ${{snapshotPrice}} (Career Snapshot). Pago único, nunca se renueva automáticamente. Reescrituras de nivel reclutador.",
+    "noSubscriptions": "Pagos únicos • Nunca se renuevan automáticamente",
     "titlePrefix": "Elige tu",
     "titleHighlight": "Impulso de Currículum",
     "subtitle": "Desde correcciones rápidas hasta paquetes completos de carrera. Paga una vez, usa para siempre.",
@@ -2761,7 +2761,7 @@
     "companyLabel": "Empresa",
     "companyPlaceholder": "p. ej., Google",
     "redirecting": "Redirigiendo al pago...",
-    "secureCheckout": "Pago seguro impulsado por Stripe. Pago único, sin suscripción."
+    "secureCheckout": "Pago seguro impulsado por Stripe. Pago único — esta compra nunca se renueva automáticamente."
   },
   "checkoutOverlay": {
     "steps": {

@@ -35,7 +35,7 @@
     "subheading": "Parehong dokumento, parehong iskor, tuwing susubukan — ikinumpara sa tunay na mga scan sa iyong industriya, bawat sipi beripikado laban sa iyong resume. Hindi opinyon ng ChatGPT o Claude.",
     "price": "$25",
     "oneTime": "isang beses lang",
-    "nofees": "Walang subscription • Walang nakatagong bayad • Instant na resulta",
+    "nofees": "Isang beses na bayad • Walang auto-renew • Instant na resulta",
     "roi": "Isang interview = Bawi na ang $25",
     "trusted": "Pinagkakatiwalaan ng",
     "jobSeekers": "mga naghahanap ng trabaho",
@@ -61,7 +61,7 @@
     "benefits": {
       "seniorRoles": "Para sa senior roles, managers, at competitive positions",
       "atsCompatible": "Gumagana sa lahat ng ATS (Workday, Greenhouse, Lever at 50+ pa)",
-      "oneTime": "Isang beses na bayad (walang subscription)",
+      "oneTime": "Isang beses na bayad (hindi awtomatikong nagre-renew)",
       "private": "Hindi namin ini-store o sini-share ang resume"
     },
     "stats": {
@@ -723,7 +723,7 @@
       "linkedin": "LinkedIn profile optimization"
     },
     "oneTime": "isang beses lang",
-    "guarantee": "Instant na resulta • Walang subscription",
+    "guarantee": "Instant na resulta • Isang beses na bayad",
     "button": "Kunin ang Aking Analysis Ngayon",
     "roi": "Isang interview = $25 na-recover"
   },
@@ -2678,8 +2678,8 @@
   },
   "pricingPage": {
     "metaTitle": "Pagpepresyo — Resume Booster",
-    "metaDescription": "Mga plano mula $1 Keyword Fix hanggang $25 Career Snapshot. Magbayad isang beses, walang subscription. Mga resume rewrite sa antas ng recruiter.",
-    "noSubscriptions": "Isang-pagkakataong bayad • Walang subscription",
+    "metaDescription": "Mga plano mula ${{keywordFixPrice}} (Keyword Fix) hanggang ${{snapshotPrice}} (Career Snapshot). Isang beses lang, hindi awtomatikong nagre-renew. Mga resume rewrite sa antas ng recruiter.",
+    "noSubscriptions": "Isang-pagkakataong bayad • Hindi awtomatikong nagre-renew",
     "titlePrefix": "Piliin ang Iyong",
     "titleHighlight": "Resume Boost",
     "subtitle": "Mula sa mabilisang ayos hanggang kumpletong career package. Magbayad isang beses, gamitin habambuhay.",
@@ -2761,7 +2761,7 @@
     "companyLabel": "Kumpanya",
     "companyPlaceholder": "hal., Google",
     "redirecting": "Inireredirect sa checkout...",
-    "secureCheckout": "Secure na checkout na pinapagana ng Stripe. Isang-pagkakataong bayad, walang subscription."
+    "secureCheckout": "Secure na checkout na pinapagana ng Stripe. Isang beses na bayad — hindi awtomatikong nagre-renew ang pagbiling ito."
   },
   "checkoutOverlay": {
     "steps": {

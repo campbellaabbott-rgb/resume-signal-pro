@@ -79,7 +79,17 @@ export default function Pricing() {
 
   return (
     <div className="min-h-screen bg-background">
-      <SEO title={t('pricingPage.metaTitle')} description={t('pricingPage.metaDescription')} path="/pricing" />
+      {/* Prices come from the catalog, not the copy: this description advertised
+          a "$1 Keyword Fix" that had cost $3 for some time, on the snippet
+          Google shows for /pricing. */}
+      <SEO
+        title={t('pricingPage.metaTitle')}
+        description={t('pricingPage.metaDescription', {
+          keywordFixPrice: PRODUCTS.basicKeywordFix.priceUsd,
+          snapshotPrice: PRODUCTS.careerSnapshot.priceUsd,
+        })}
+        path="/pricing"
+      />
       {/* SoftwareApplication + AggregateOffer — eligible for price rich results
           on "resume scanner pricing"-type queries. Prices mirror PRODUCTS. */}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({

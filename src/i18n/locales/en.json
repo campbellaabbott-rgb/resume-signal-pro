@@ -35,7 +35,7 @@
     "subheading": "Same document, same score, every time — benchmarked against real scans in your industry, with every quote verified against your actual resume. Not a ChatGPT or Claude opinion.",
     "price": "$25",
     "oneTime": "one-time",
-    "nofees": "No subscriptions • No hidden fees • Instant results",
+    "nofees": "One-time payment • No auto-renewal • Instant results",
     "roi": "One interview = $25 paid for itself",
     "trusted": "Trusted by",
     "jobSeekers": "job seekers",
@@ -67,7 +67,7 @@
     "benefits": {
       "seniorRoles": "Built for senior ICs, managers, and competitive roles",
       "atsCompatible": "Works on all ATS systems (Workday, Greenhouse, Lever & 50+ more)",
-      "oneTime": "One-time payment (no subscription)",
+      "oneTime": "One-time payment (never auto-renews)",
       "private": "Resumes are never stored or shared"
     },
     "stats": {
@@ -723,7 +723,7 @@
       "linkedin": "LinkedIn profile optimization"
     },
     "oneTime": "one-time",
-    "guarantee": "Instant results • No subscription",
+    "guarantee": "Instant results • One-time payment",
     "button": "Get My Analysis Now",
     "roi": "One interview = $25 paid for itself"
   },
@@ -2678,8 +2678,8 @@
   },
   "pricingPage": {
     "metaTitle": "Pricing — Resume Booster",
-    "metaDescription": "Plans from $1 Keyword Fix to $25 Career Snapshot. Pay once, no subscription. Recruiter-grade resume rewrites.",
-    "noSubscriptions": "One-time payments • No subscriptions",
+    "metaDescription": "Plans from the ${{keywordFixPrice}} Keyword Fix to the ${{snapshotPrice}} Career Snapshot. Pay once — these never auto-renew. Recruiter-grade resume rewrites.",
+    "noSubscriptions": "One-time payments • Never auto-renew",
     "titlePrefix": "Choose Your",
     "titleHighlight": "Resume Boost",
     "subtitle": "From quick fixes to complete career packages. Pay once, use forever.",
@@ -2761,7 +2761,7 @@
     "companyLabel": "Company",
     "companyPlaceholder": "e.g., Google",
     "redirecting": "Redirecting to checkout...",
-    "secureCheckout": "Secure checkout powered by Stripe. One-time payment, no subscription."
+    "secureCheckout": "Secure checkout powered by Stripe. One-time payment — this purchase never auto-renews."
   },
   "checkoutOverlay": {
     "steps": {
