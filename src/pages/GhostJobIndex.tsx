@@ -66,6 +66,9 @@ export default function GhostJobIndex() {
   const [leaders, setLeaders] = useState<Leader[]>([]);
   const [benchmarks, setBenchmarks] = useState<Array<{ company: string; closures: number; median_days_open: number; window_days: number; observed_days?: number }>>([]);
   const [audit, setAudit] = useState<AuditResult | null>(null);
+  // Distinguishes "audit could not be read" from "not fetched yet", so the
+  // page can say which rather than showing a confident blank.
+  const [auditUnavailable, setAuditUnavailable] = useState(false);
   const [freshness, setFreshness] = useState<FreshnessStats | null>(null);
   // Per-vendor company-stated date coverage — the same probe the ops
   // heartbeat reads, published as a trust stat: it names exactly which
@@ -83,9 +86,15 @@ export default function GhostJobIndex() {
         const [s, l, a, f, b] = await Promise.all([
           cache?.ghost_stats ? Promise.resolve({ data: [cache.ghost_stats] }) : rpc("get_ghost_job_index_stats"),
           rpc("get_actively_hiring_companies", { p_limit: 20 }),
-          // The daily self-audit result (job_board_meta is public-read).
-          (supabase as unknown as { from: (t: string) => { select: (c: string) => { eq: (k: string, v: string) => { maybeSingle: () => Promise<{ data: unknown }> } } } })
-            .from("job_board_meta").select("v").eq("k", "audit").maybeSingle(),
+          // The daily self-audit result. This was a direct table read on
+          // job_board_meta, under a comment asserting the table was
+          // public-read. It is not — anon gets 42501 permission denied — so
+          // `audit` was ALWAYS null and the panel below (gated on `audit &&`)
+          // has never rendered for a single visitor, while the methodology
+          // section promised the results were "published above, unedited".
+          // get_stats_cache() exists for exactly this reason; the audit now
+          // has its own accessor (migration 20260727180000).
+          Promise.resolve(rpc("get_audit_result")).catch(() => ({ data: null })),
           // PostgREST builders are thenables WITHOUT .catch — calling .catch on
           // one throws synchronously and would kill this whole Promise.all
           // (verified live: every tile went "—"). Promise.resolve assimilates
@@ -108,8 +117,13 @@ export default function GhostJobIndex() {
         if (Array.isArray(b.data)) setBenchmarks(b.data as Array<{ company: string; closures: number; median_days_open: number; window_days: number; observed_days?: number }>);
         const frow = Array.isArray(f.data) ? (f.data[0] as FreshnessStats) : null;
         if (frow && typeof frow.p50_min === "number") setFreshness(frow);
-        const av = (a.data as { v?: AuditResult } | null)?.v;
+        // The RPC returns the stored value directly; the old table read
+        // returned a row wrapper. Accept either so a stale deploy of one half
+        // still renders rather than silently blanking again.
+        const araw = a.data as (AuditResult & { v?: AuditResult }) | null;
+        const av = araw?.v ?? araw;
         if (av && typeof av.accuracyPct === "number") setAudit(av);
+        else setAuditUnavailable(true);
         // RPC shape is (source, total, dated) — the pct is ours to compute.
         // Prefer the cache (the live RPC full-scans 557k rows); fall back live.
         const dc = cache?.date_coverage
@@ -194,14 +208,28 @@ export default function GhostJobIndex() {
 
         {/* The measured accuracy stat — we audit ourselves daily and publish the
             number. Shown only when a real audit result exists; never estimated. */}
+        {!audit && auditUnavailable && (
+          <div className="rounded-2xl border border-border bg-muted/20 p-5 mb-8">
+            <h2 className="text-lg font-semibold flex items-center gap-2 mb-1">
+              <ShieldCheck className="w-4 h-4 text-muted-foreground" /> Today's self-audit could not be loaded
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              The daily accuracy check runs regardless, but we could not read its result to show you just now.
+              We would rather say that than print a number we have not verified — so this space stays empty
+              until the real one is available.
+            </p>
+          </div>
+        )}
+
         {audit && (
           <div className="rounded-2xl border border-success/30 bg-success/5 p-5 mb-8">
             <h2 className="text-lg font-semibold flex items-center gap-2 mb-1">
               <ShieldCheck className="w-4 h-4 text-success" /> We audit ourselves — here's the number
             </h2>
             <p className="text-sm text-muted-foreground">
-              On {new Date(audit.at).toLocaleDateString()}, we sampled <b className="text-foreground">{audit.sampled}</b> random
-              listings from this board and re-checked each one against the company's own system:{" "}
+              On {new Date(audit.at).toLocaleDateString()}, we sampled <b className="text-foreground">{audit.sampled}</b>{" "}
+              listings from this board — drawn evenly across hiring systems, not at random, so a single
+              broken vendor cannot hide inside a large one — and re-checked each against the company's own system:{" "}
               <b className="text-success">{audit.accuracyPct}% were confirmed live at the source</b>
               {" "}({audit.live} live, {audit.gone} already taken down{audit.unknown > 0 ? `, ${audit.unknown} unreachable` : ""}).
               The handful already taken down are pruned by the next refresh cycle. We run this audit every day.
@@ -247,7 +275,7 @@ export default function GhostJobIndex() {
             { term: "30-day freshness cap", method: "Postings whose company-stated date is older than 30 days are dropped at ingestion AND filtered at read time — the board cannot serve a stale posting even mid-sweep. Undated postings can't be judged old, so they're kept and simply show no age." },
             { term: "Median posting age", method: "Computed only from postings whose company states its own post date (the coverage share is shown next to the number). Undated postings are excluded from age stats, never estimated. We never use our own discovery time as a posting age." },
             { term: "Typical time to close", method: "Days between the company's stated post date and the moment its feed stopped serving the posting — measured only where the post date is stated. Same-title relistings are classified as churn, not fills, and excluded." },
-            { term: "Confirmed-live accuracy", method: "Every day we sample ~100 random served postings, stratified across all 12 hiring systems, and re-check each one at the company's own system. The blended and per-vendor results are published above, unedited." },
+            { term: "Confirmed-live accuracy", method: "Every day we draw ~100 served postings and re-check each at the company's own system. Draws are spread evenly across hiring systems rather than taken at random from the corpus, so a small vendor is checked as hard as a large one — which also means the blended figure weights systems equally, not by how many postings each contributes. Per-vendor results are published unedited alongside it, including runs that fail or miss a system." },
             { term: "Re-verification freshness", method: "Every board carries a verification stamp from the refresh loop; the median and 95th-percentile ages shown are computed from those stamps at page load — a measurement, not a promise." },
           ]}
         />

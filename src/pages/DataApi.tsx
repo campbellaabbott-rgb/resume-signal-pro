@@ -23,13 +23,13 @@ const fmt = (n: number | null | undefined) => (typeof n === "number" ? n.toLocal
 const CONTACT = "resumeboostersupp@gmail.com";
 
 export default function DataApi() {
-  const [stats, setStats] = useState<{ total_open?: number; total_companies?: number; closed_90d?: number } | null>(null);
+  const [stats, setStats] = useState<{ total_open?: number; total_companies?: number; total_company_names?: number; closed_90d?: number; tracking_days?: number; observed_days?: number } | null>(null);
 
   useEffect(() => {
     (async () => {
       try {
         const { data } = await Promise.resolve(rpc("get_stats_cache")).catch(() => ({ data: null }));
-        const cache = data as { ghost_stats?: { total_open?: number; total_companies?: number; closed_90d?: number } } | null;
+        const cache = data as { ghost_stats?: { total_open?: number; total_companies?: number; total_company_names?: number; closed_90d?: number; tracking_days?: number; observed_days?: number } } | null;
         if (cache?.ghost_stats) setStats(cache.ghost_stats);
       } catch { /* stats are decorative here; the page stands without them */ }
     })();
@@ -107,12 +107,19 @@ export default function DataApi() {
                   <span className="text-muted-foreground">open postings tracked now</span>
                 </div>
                 <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-card border border-border">
-                  <span className="font-bold text-foreground">{fmt(stats?.total_companies)}</span>
-                  <span className="text-muted-foreground">companies</span>
+                  <span className="font-bold text-foreground">{fmt(stats?.total_company_names ?? stats?.total_companies)}</span>
+                  <span className="text-muted-foreground">
+                    {stats?.total_company_names ? "companies" : "employer feeds"}
+                  </span>
                 </div>
                 <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-card border border-border">
                   <span className="font-bold text-foreground">{fmt(stats?.closed_90d)}</span>
-                  <span className="text-muted-foreground">closures logged in 90 days</span>
+                  {/* 90 was the REQUESTED window; the log began 2026-07-14. The
+                      same payload carries the real depth, so use it and never
+                      print a window we did not watch. */}
+                  <span className="text-muted-foreground">
+                    closures logged in {fmt(stats?.observed_days ?? stats?.tracking_days)} days
+                  </span>
                 </div>
               </div>
             </div>

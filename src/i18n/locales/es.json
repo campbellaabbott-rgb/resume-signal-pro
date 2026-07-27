@@ -4146,6 +4146,8 @@
     "segMid": "Mediana empresa — 100–999 empleados",
     "segSmall": "Startups y equipos pequeños — menos de 100 empleados",
     "segStats": "{{companies}} empresas · {{roles}} vacantes · {{remote}}% remoto · {{entry}}% nivel inicial",
+    "segStatsBase": "{{companies}} empresas · {{roles}} vacantes · {{entry}}% nivel inicial",
+    "segRemoteDisclosed": "{{remote}}% remoto de {{n}} vacantes que indican modalidad de trabajo",
     "segSalary": "suelo salarial mediano ${{m}} ({{n}} vacantes en USD)",
     "segOpen": "{{n}} vacantes",
     "segOpenBoth": "{{n}} en nuestro tablero · {{total}} en toda la empresa",

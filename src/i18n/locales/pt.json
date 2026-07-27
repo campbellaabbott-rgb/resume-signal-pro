@@ -4146,6 +4146,8 @@
     "segMid": "Médio porte — 100–999 funcionários",
     "segSmall": "Startups e equipes pequenas — menos de 100 funcionários",
     "segStats": "{{companies}} empresas · {{roles}} vagas abertas · {{remote}}% remoto · {{entry}}% júnior",
+    "segStatsBase": "{{companies}} empresas · {{roles}} vagas abertas · {{entry}}% júnior",
+    "segRemoteDisclosed": "{{remote}}% remoto de {{n}} vagas que informam o modo de trabalho",
     "segSalary": "piso salarial mediano US$ {{m}} ({{n}} vagas em USD)",
     "segOpen": "{{n}} vagas abertas",
     "segOpenBoth": "{{n}} no nosso quadro · {{total}} na empresa toda",

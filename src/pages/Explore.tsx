@@ -18,7 +18,7 @@ const rpc = (fn: string, args?: Record<string, unknown>) =>
 
 interface CompanyRow { company: string; company_token: string; open_roles?: number; pay_pct?: number; median_usd_floor?: number | null; recent?: number; closed_90d?: number; entry_roles?: number; tracking_days?: number; repost_events?: number; reposted_roles?: number; worst_title?: string; worst_count?: number; feed_total?: number | null; on_board?: number; company_total?: number | null; employees?: number | null; employee_basis?: string | null; yc_batch?: string | null }
 interface SalaryRow { category: string; currency: string; n: number; median_annual_min: number }
-interface Segment { companies: number; with_headcount?: number; open_roles: number; remote_pct: number; entry_pct: number; median_usd_floor: number | null; usd_n: number | null; top: CompanyRow[] }
+interface Segment { companies: number; with_headcount?: number; open_roles: number; remote_pct: number | null; disclosed_pct?: number | null; disclosed_n?: number | null; entry_pct: number; median_usd_floor: number | null; usd_n: number | null; top: CompanyRow[] }
 
 // YC batch shorthand ("Winter 2024" → "W24") — the notation YC itself uses.
 const ycAbbrev = (b: string): string => {
@@ -258,10 +258,22 @@ export default function Explore() {
                   <div key={band}>
                     <h3 className="text-sm font-bold text-foreground mb-1">{label}</h3>
                     <p className="text-[11px] text-muted-foreground mb-2.5">
-                      {t("explore.segStats", "{{companies}} companies · {{roles}} open roles · {{remote}}% remote · {{entry}}% entry-level", {
+                      {t("explore.segStatsBase", "{{companies}} companies · {{roles}} open roles · {{entry}}% entry-level", {
                         companies: s.companies.toLocaleString(), roles: s.open_roles.toLocaleString(),
-                        remote: s.remote_pct, entry: s.entry_pct,
+                        entry: s.entry_pct,
                       })}
+                      {/* remote_pct now divides by postings that actually state
+                          a work mode — 87% of the corpus states none, and the
+                          old all-postings denominator made a segment that is
+                          ~60% remote among those who say read as ~8%, as if it
+                          were a fact about the employers. It is null when
+                          nobody in the band disclosed: "none are remote" and
+                          "nobody said" must not look the same. */}
+                      {s.remote_pct != null && (
+                        <> · {t("explore.segRemoteDisclosed", "{{remote}}% remote of the {{n}} that state a work mode", {
+                          remote: s.remote_pct, n: (s.disclosed_n ?? 0).toLocaleString(),
+                        })}</>
+                      )}
                       {s.median_usd_floor != null && (s.usd_n ?? 0) >= 50 && (
                         <> · {t("explore.segSalary", "median stated floor ${{m}} ({{n}} USD postings)", { m: Math.round(s.median_usd_floor).toLocaleString(), n: s.usd_n })}</>
                       )}

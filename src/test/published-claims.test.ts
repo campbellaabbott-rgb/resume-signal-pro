@@ -104,3 +104,61 @@ describe("the trust page names no employer it cannot evidence", () => {
     expect(code).not.toMatch(/value:\s*["'](\d{1,3}(,\d{3})+\+?|\d+\+)["']/);
   });
 });
+
+// Four more published-number defects, all verified live 2026-07-27 and fixed
+// in migration 20260727180000. Each guard pins the SHAPE of the fix, not the
+// value, because the values move every day.
+describe("windows, denominators and units are never asserted by hand", () => {
+  const read = (p: string) => readFileSync(resolve(root, p), "utf8");
+
+  it("/data-api prints the measured log depth, not a requested 90-day window", () => {
+    const src = read("src/pages/DataApi.tsx");
+    // The payload ships {"closed_90d": 91796, "tracking_days": 12} — the label
+    // used the 90 and ignored the 12. Earliest closure is 2026-07-14.
+    expect(src).not.toMatch(/closures logged in 90 days/);
+    expect(src).toMatch(/observed_days\s*\?\?\s*stats\?\.tracking_days/);
+  });
+
+  it("/data-api does not call feed tokens 'companies' without saying so", () => {
+    const src = read("src/pages/DataApi.tsx");
+    // count(DISTINCT company_token) counts PwC four times. The name-merged
+    // count is preferred; the token count may only render as "employer feeds".
+    expect(src).toMatch(/total_company_names/);
+    expect(src).toMatch(/employer feeds/);
+  });
+
+  it("the ghost index reads its audit through an RPC, not a blocked table", () => {
+    const src = read("src/pages/GhostJobIndex.tsx");
+    // Direct anon reads of job_board_meta return 42501, which silently left
+    // the whole self-audit panel unrendered for every visitor.
+    expect(src).toMatch(/get_audit_result/);
+    expect(src).not.toMatch(/from\("job_board_meta"\)/);
+  });
+
+  it("the ghost index never calls its stratified sample 'random'", () => {
+    const src = read("src/pages/GhostJobIndex.tsx");
+    const code = src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
+    // Ban the CLAIM, not the word — the honest copy has to be able to say
+    // "not at random" and "rather than taken at random from the corpus".
+    // The sample draws evenly per hiring system, which is the opposite of a
+    // corpus-random draw, so only the positive assertion is forbidden.
+    expect(code).not.toMatch(/\brandom\s+(listings|postings|sample|draws?)\b/i);
+    expect(code).not.toMatch(/\b(sampled?|drew|draws?)\s+[^.]{0,40}?\brandom\b(?!\s*,)/i);
+  });
+
+  it("Explore states the denominator behind its remote share", () => {
+    const src = read("src/pages/Explore.tsx");
+    // 87.3% of postings state no work mode; dividing by all of them turned a
+    // ~60% remote segment into ~8% and read as a fact about the employers.
+    expect(src).toMatch(/state a work mode/);
+    expect(src).toMatch(/s\.remote_pct != null/);
+  });
+
+  it("the segments RPC divides remote by disclosed rows only", () => {
+    const sql = read("supabase/migrations/20260727180000_published_counts_and_audit_access.sql");
+    expect(sql).toMatch(/work_mode IS NOT NULL\)::int AS disclosed_n/);
+    expect(sql).toMatch(/sum\(remote_n\) \/ sum\(disclosed_n\)/);
+    // A band where nobody disclosed must be null, never 0.
+    expect(sql).toMatch(/CASE WHEN sum\(disclosed_n\) > 0/);
+  });
+});

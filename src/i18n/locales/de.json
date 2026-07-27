@@ -4146,6 +4146,8 @@
     "segMid": "Mittelstand — 100–999 Mitarbeitende",
     "segSmall": "Startups & kleine Teams — unter 100 Mitarbeitende",
     "segStats": "{{companies}} Unternehmen · {{roles}} offene Stellen · {{remote}} % remote · {{entry}} % Einstieg",
+    "segStatsBase": "{{companies}} Unternehmen · {{roles}} offene Stellen · {{entry}} % Einstieg",
+    "segRemoteDisclosed": "{{remote}} % remote von {{n}} Stellen, die den Arbeitsmodus angeben",
     "segSalary": "medianes genanntes Mindestgehalt {{m}} $ ({{n}} USD-Stellen)",
     "segOpen": "{{n}} offene Stellen",
     "segOpenBoth": "{{n}} auf unserem Board · {{total}} unternehmensweit",

@@ -4146,6 +4146,8 @@
     "segMid": "Middenbedrijf — 100–999 medewerkers",
     "segSmall": "Startups & kleine teams — minder dan 100 medewerkers",
     "segStats": "{{companies}} bedrijven · {{roles}} open vacatures · {{remote}}% remote · {{entry}}% instapniveau",
+    "segStatsBase": "{{companies}} bedrijven · {{roles}} open vacatures · {{entry}}% instapniveau",
+    "segRemoteDisclosed": "{{remote}}% remote van {{n}} vacatures die de werkmodus vermelden",
     "segSalary": "mediane vermelde ondergrens ${{m}} ({{n}} USD-vacatures)",
     "segOpen": "{{n}} open vacatures",
     "segOpenBoth": "{{n}} op ons board · {{total}} bedrijfsbreed",

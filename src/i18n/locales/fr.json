@@ -4146,6 +4146,8 @@
     "segMid": "ETI — 100–999 salariés",
     "segSmall": "Startups et petites équipes — moins de 100 salariés",
     "segStats": "{{companies}} entreprises · {{roles}} postes ouverts · {{remote}} % télétravail · {{entry}} % junior",
+    "segStatsBase": "{{companies}} entreprises · {{roles}} postes ouverts · {{entry}} % junior",
+    "segRemoteDisclosed": "{{remote}} % télétravail parmi {{n}} postes qui précisent le mode de travail",
     "segSalary": "salaire plancher médian {{m}} $ ({{n}} offres en USD)",
     "segOpen": "{{n}} postes ouverts",
     "segOpenBoth": "{{n}} sur notre tableau · {{total}} dans l'entreprise",

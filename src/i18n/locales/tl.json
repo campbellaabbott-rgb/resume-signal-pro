@@ -4146,6 +4146,8 @@
     "segMid": "Mid-market — 100–999 empleyado",
     "segSmall": "Mga startup at maliliit na team — wala pang 100 empleyado",
     "segStats": "{{companies}} kumpanya · {{roles}} bukas na posisyon · {{remote}}% remote · {{entry}}% entry-level",
+    "segStatsBase": "{{companies}} kumpanya · {{roles}} bukas na posisyon · {{entry}}% entry-level",
+    "segRemoteDisclosed": "{{remote}}% remote ng {{n}} posisyon na nagsasaad ng work mode",
     "segSalary": "median na nakasaad na sahod ${{m}} ({{n}} USD na posting)",
     "segOpen": "{{n}} bukas na posisyon",
     "segOpenBoth": "{{n}} sa aming board · {{total}} sa buong kumpanya",

@@ -4146,6 +4146,8 @@
     "segMid": "Mid-market — 100–999 employees",
     "segSmall": "Startups & small teams — under 100 employees",
     "segStats": "{{companies}} companies · {{roles}} open roles · {{remote}}% remote · {{entry}}% entry-level",
+    "segStatsBase": "{{companies}} companies · {{roles}} open roles · {{entry}}% entry-level",
+    "segRemoteDisclosed": "{{remote}}% remote of the {{n}} that state a work mode",
     "segSalary": "median stated floor ${{m}} ({{n}} USD postings)",
     "segOpen": "{{n}} open roles",
     "segOpenBoth": "{{n}} on our board · {{total}} company-wide",
