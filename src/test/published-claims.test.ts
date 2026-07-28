@@ -450,7 +450,7 @@ describe("the posted-date backfill is reachable without a full rotation", () => 
 
   it("does not start a second chain while one is alive", () => {
     const mk = fn.slice(fn.indexOf("async function maybeKickMaintenance"));
-    expect(mk).toMatch(/if \(!pb\.alive && pbv\.version !== POSTED_BACKFILL_VERSION\)/);
+    expect(mk).toMatch(/if \(!pb\.alive && postedBackfillDue\(pbv\)\)/);
   });
 });
 
@@ -495,5 +495,34 @@ describe("exit ledger keeps learned age separate from observed age", () => {
       .map((f) => readFileSync(resolve(root, "supabase/migrations", f), "utf8"))
       .filter((t) => /FROM public\.job_board_exits/.test(t) && /CREATE (OR REPLACE )?FUNCTION/.test(t));
     for (const t of sql) expect(t).toMatch(/exit_reason\s*=\s*'aged_out'|exit_reason\s*<>\s*'backdated'|exit_reason\s+IN\s*\(/i);
+  });
+});
+
+// The sweep was one-shot: it stamped {version} on completion and both kicks
+// tested version equality, so it could never run again — while BambooHR and
+// Rippling keep ingesting undated postings daily. The backlog would regrow and
+// the only remedy would be a human bumping a constant.
+describe("the posted-date sweep re-arms instead of latching", () => {
+  const fn = readFileSync(resolve(root, "supabase/functions/job-board/index.ts"), "utf8");
+
+  it("neither kick compares the version directly any more", () => {
+    const code = fn.split("\n").filter((l) => !l.trim().startsWith("//")).join("\n");
+    expect(code).not.toMatch(/pbV?\.version !== POSTED_BACKFILL_VERSION/);
+    expect(code.match(/postedBackfillDue\((pbV|pbv)\)/g)?.length).toBe(2);
+  });
+
+  it("a completed sweep goes due again once the stamp ages out", () => {
+    const h = fn.slice(fn.indexOf("function postedBackfillDue"), fn.indexOf("function postedBackfillDue") + 400);
+    expect(h).toMatch(/Date\.now\(\) - swept > POSTED_BACKFILL_REARM_MS/);
+  });
+
+  it("an unreadable stamp reads as due, not as done", () => {
+    const h = fn.slice(fn.indexOf("function postedBackfillDue"), fn.indexOf("function postedBackfillDue") + 400);
+    expect(h).toMatch(/!Number\.isFinite\(swept\) \|\|/);
+  });
+
+  it("re-running stays cheap because the draw is undated-only", () => {
+    // If this filter ever goes, a weekly re-arm becomes a full re-scan.
+    expect(fn).toMatch(/\.eq\("source", phase\)\s*\n\s*\.is\("posted_at", null\)/);
   });
 });

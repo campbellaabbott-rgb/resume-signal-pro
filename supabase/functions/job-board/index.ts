@@ -79,7 +79,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-07-28.6";
+const BUILD_VERSION = "2026-07-28.7";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -586,6 +586,27 @@ const COUNTRY_VERSION = 1; // v1: deterministic country from location text (name
 // resumeVersion (4, or absent) also fails the new match, so the chain starts
 // clean at bamboohr with an empty cursor rather than inheriting v4 state.
 const POSTED_BACKFILL_VERSION = 5;
+
+// The completion stamp EXPIRES. Without this the sweep is strictly one-shot:
+// it stamps {version: 5} when the last phase drains, and both kicks test
+// `version !== POSTED_BACKFILL_VERSION`, so it can never run again — while
+// BambooHR and Rippling keep ingesting undated postings every day, forever.
+// The 43,687-row backlog this sweep is about to clear would simply regrow, and
+// the only way to date the new arrivals would be a human remembering to bump
+// the version constant. That is not a mechanism, it is a chore.
+//
+// Re-running is cheap precisely because the draw is `.is("posted_at", null)`:
+// after the first pass the population is one week's inflow, not 43,687 rows.
+//
+// A missing or unparseable sweptAt reads as DUE. It is the conservative
+// direction (one cheap extra sweep) and it self-corrects, because completing
+// writes a fresh stamp.
+const POSTED_BACKFILL_REARM_MS = 7 * 86_400_000;
+function postedBackfillDue(v: { version?: number; sweptAt?: string }): boolean {
+  if (v.version !== POSTED_BACKFILL_VERSION) return true;
+  const swept = v.sweptAt ? Date.parse(v.sweptAt) : NaN;
+  return !Number.isFinite(swept) || Date.now() - swept > POSTED_BACKFILL_REARM_MS;
+}
 const BACKFILL_HOP_PAUSE_MS = 3_000;
 // Velocity tier: boards that ADDED postings recently earn hot cadence even if
 // small — a 40-role startup posting daily deserves faster revisits than a
@@ -1622,7 +1643,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
     const { data: pbVer } = await client.from("job_board_meta").select("v").eq("k", "posted_backfill").maybeSingle();
     const pbV = (pbVer?.v ?? {}) as { version?: number; resumeVersion?: number; phase?: string; cursor?: string; at?: string };
     const pbAlive = typeof pbV.at === "string" && Date.now() - Date.parse(pbV.at) < 5 * 60_000;
-    if (pbV.version !== POSTED_BACKFILL_VERSION && !pbAlive) {
+    if (postedBackfillDue(pbV) && !pbAlive) {
       const url = `${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`;
       // Resume ONLY state written by this sweep version. v4 retired the
       // "workday" phase, but the stored v3 state was replayed verbatim:
@@ -1796,8 +1817,8 @@ async function maybeKickMaintenance(client: SupabaseClient): Promise<void> {
     // Resume state is version-keyed (see the kick in runRefresh) so stale v4
     // state can never be replayed.
     const pb = await alive("posted_backfill");
-    const pbv = (pb.v ?? {}) as { version?: number; resumeVersion?: number; phase?: string; cursor?: string };
-    if (!pb.alive && pbv.version !== POSTED_BACKFILL_VERSION) {
+    const pbv = (pb.v ?? {}) as { version?: number; sweptAt?: string; resumeVersion?: number; phase?: string; cursor?: string };
+    if (!pb.alive && postedBackfillDue(pbv)) {
       const pbResume = pbv.resumeVersion === POSTED_BACKFILL_VERSION
         && typeof pbv.phase === "string" && typeof pbv.cursor === "string"
         ? { phase: pbv.phase, cursor: pbv.cursor }
