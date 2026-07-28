@@ -1627,6 +1627,42 @@ export type Database = {
         }
         Relationships: []
       }
+      scan_feedback: {
+        Row: {
+          ats_score: number | null
+          created_at: string
+          feedback_text: string | null
+          had_job_description: boolean | null
+          id: string
+          industry: string | null
+          rating: boolean
+          resume_word_count: number | null
+          visitor_id: string | null
+        }
+        Insert: {
+          ats_score?: number | null
+          created_at?: string
+          feedback_text?: string | null
+          had_job_description?: boolean | null
+          id?: string
+          industry?: string | null
+          rating: boolean
+          resume_word_count?: number | null
+          visitor_id?: string | null
+        }
+        Update: {
+          ats_score?: number | null
+          created_at?: string
+          feedback_text?: string | null
+          had_job_description?: boolean | null
+          id?: string
+          industry?: string | null
+          rating?: boolean
+          resume_word_count?: number | null
+          visitor_id?: string | null
+        }
+        Relationships: []
+      }
       scan_industry_pins: {
         Row: {
           confidence: string
@@ -2824,6 +2860,7 @@ export type Database = {
           median_days_open: number
           median_days_to_close: number
           observed_days: number
+          posted_coverage_pct: number
           total_companies: number
           total_company_names: number
           total_open: number
@@ -2846,6 +2883,24 @@ export type Database = {
           corrections: number
           detected: string
           last_seen: string
+        }[]
+      }
+      get_industry_detection_breakdown: {
+        Args: { p_hours_back?: number }
+        Returns: {
+          final_confidence: string
+          final_industry: string
+        }[]
+      }
+      get_industry_detection_recent: {
+        Args: { p_limit?: number }
+        Returns: {
+          created_at: string
+          detection_source: string
+          final_confidence: string
+          final_industry: string
+          matched_skill_count: number
+          server_score: number
         }[]
       }
       get_industry_detection_stats: {
@@ -3321,6 +3376,18 @@ export type Database = {
             }
             Returns: boolean
           }
+      record_scan_feedback: {
+        Args: {
+          p_ats_score?: number
+          p_feedback_text?: string
+          p_had_job_description?: boolean
+          p_industry?: string
+          p_rating?: boolean
+          p_resume_word_count?: number
+          p_visitor_id?: string
+        }
+        Returns: undefined
+      }
       record_scan_outcome: {
         Args: { p_ip: string; p_outcome: string; p_report_id: string }
         Returns: boolean
