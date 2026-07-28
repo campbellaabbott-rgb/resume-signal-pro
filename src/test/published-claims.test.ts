@@ -782,3 +782,46 @@ describe("the sweep's hop outcome does not depend on the chain surviving", () =>
     expect(fn).toMatch(/note: `draw: \$\{error\.message \?\? error\}`/);
   });
 });
+
+// The draw loop was an INFINITE LOOP for the per-posting phases, and it is the
+// whole reason bamboohr and rippling sat at 0% dated for weeks while
+// greenhouse reached 99.2%. `scanned <= IDS_PER_HOP` stays true at exactly
+// IDS_PER_HOP, brokeEarly suppresses the exhausted flag, and the next pass
+// breaks on its first row without advancing scanned or cursor.
+describe("the posted-date draw loop always terminates", () => {
+  const fn = readFileSync(resolve(root, "supabase/functions/job-board/index.ts"), "utf8");
+
+  it("bounds the hop with a STRICT comparison", () => {
+    expect(fn).not.toMatch(/scanned <= IDS_PER_HOP/);
+    expect(fn).not.toMatch(/byBoard\.size <= BOARDS_PER_HOP/);
+    expect(fn).toMatch(/perPosting \? scanned < IDS_PER_HOP : byBoard\.size < BOARDS_PER_HOP/);
+  });
+
+  it("a page that advances nothing ends the loop", () => {
+    // The board-based branch can wedge the same way: rows for tokens beyond
+    // BOARDS_PER_HOP `continue` without advancing the cursor, so a full page of
+    // new tokens would redraw the same 500 rows forever.
+    expect(fn).toMatch(/if \(cursor === lastCursor && !brokeEarly\) exhausted = true;/);
+  });
+
+  it("simulating the old condition reproduces the hang", () => {
+    // Guard the REASONING, not just the character. IDS_PER_HOP=120, pages of
+    // 500: with <= the loop never terminates; with < it does.
+    const run = (strict: boolean) => {
+      const CAP = 120;
+      let scanned = 0, exhausted = false, turns = 0;
+      while ((strict ? scanned < CAP : scanned <= CAP) && !exhausted) {
+        if (++turns > 50) return "hung";
+        let brokeEarly = false;
+        for (let i = 0; i < 500; i++) {
+          if (scanned >= CAP) { brokeEarly = true; break; }
+          scanned++;
+        }
+        if (!brokeEarly && 500 < 500) exhausted = true;
+      }
+      return `terminated after ${turns}`;
+    };
+    expect(run(false)).toBe("hung");
+    expect(run(true)).toBe("terminated after 1");
+  });
+});

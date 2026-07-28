@@ -79,7 +79,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-07-28.13";
+const BUILD_VERSION = "2026-07-28.14";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -2641,7 +2641,31 @@ Deno.serve(async (req) => {
       const byBoard = new Map<string, { company: string; ids: string[] }>();
       let scanned = 0;
       let exhausted = false;
-      while ((perPosting ? scanned <= IDS_PER_HOP : byBoard.size <= BOARDS_PER_HOP) && !exhausted) {
+      // `<`, NOT `<=`. This was an INFINITE LOOP and it is why bamboohr and
+      // rippling sat at 0% dated while greenhouse reached 99.2%.
+      //
+      // Trace with IDS_PER_HOP = 120: iteration 1 consumes exactly 120 ids,
+      // the 121st row trips `scanned >= IDS_PER_HOP`, sets brokeEarly and
+      // breaks. brokeEarly then SUPPRESSES the `exhausted` flag below (by
+      // design — a budget break mid-page must leave the remainder for the next
+      // hop). The while test is now `120 <= 120`, still true, so it draws
+      // again; iteration 2 breaks on its FIRST row without advancing `scanned`
+      // or `cursor`; and it spins forever, issuing one 500-row query per turn
+      // until the isolate is killed.
+      //
+      // Everything measured follows from this and nothing else does: the hop
+      // stamped, the draw never errored, no vendor call was ever made, no row
+      // was ever written, the chain never fired, and the after-draw beacon
+      // never printed. The two phases that use this branch (perPosting =
+      // bamboohr, rippling) are precisely the two vendors at 0% dated;
+      // greenhouse takes the board-based branch and worked all along.
+      //
+      // The `noProgress` guard is the belt to that braces: the board-based
+      // branch can wedge the same way if a whole 500-row page is new tokens
+      // beyond BOARDS_PER_HOP, because those rows `continue` without advancing
+      // the cursor. A page that advances nothing can never advance anything.
+      let lastCursor = "";
+      while ((perPosting ? scanned < IDS_PER_HOP : byBoard.size < BOARDS_PER_HOP) && !exhausted) {
         let q = client
           .from("job_board_postings")
           .select("id,company_token,company")
@@ -2678,6 +2702,9 @@ Deno.serve(async (req) => {
         // A short page only exhausts the phase if we CONSUMED it fully — a
         // budget break mid-page must leave the remainder for the next hop.
         if (!brokeEarly && (!rows || rows.length < 500)) exhausted = true;
+        // Made no forward progress on this page? Then another draw cannot help.
+        if (cursor === lastCursor && !brokeEarly) exhausted = true;
+        lastCursor = cursor;
       }
       let dated = 0;
       let lastBoardError = "";
