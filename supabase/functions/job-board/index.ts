@@ -79,7 +79,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-07-27.2";
+const BUILD_VERSION = "2026-07-28.1";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -1580,11 +1580,23 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
     // from the beginning — restart-from-scratch is why v2's late phases
     // never ran.
     const { data: pbVer } = await client.from("job_board_meta").select("v").eq("k", "posted_backfill").maybeSingle();
-    const pbV = (pbVer?.v ?? {}) as { version?: number; phase?: string; cursor?: string; at?: string };
+    const pbV = (pbVer?.v ?? {}) as { version?: number; resumeVersion?: number; phase?: string; cursor?: string; at?: string };
     const pbAlive = typeof pbV.at === "string" && Date.now() - Date.parse(pbV.at) < 5 * 60_000;
     if (pbV.version !== POSTED_BACKFILL_VERSION && !pbAlive) {
       const url = `${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`;
-      const resume = typeof pbV.phase === "string" && typeof pbV.cursor === "string"
+      // Resume ONLY state written by this sweep version. v4 retired the
+      // "workday" phase, but the stored v3 state was replayed verbatim:
+      // line ~2486 coerced the unknown phase to "bamboohr" while the cursor
+      // below stayed "workday:..." — so hop 1 queried
+      //   source=bamboohr AND id > 'workday:...'
+      // and since 'b' < 'w' it matched 0 rows, was declared exhausted, and the
+      // sweep stamped itself complete having dated nothing. Measured
+      // 2026-07-28, 37h after v4 shipped: bamboohr 43,687/43,687 undated and
+      // rippling 8,991/8,991 undated (100%), against greenhouse 0.8% and
+      // ashby 0.0%. 52,678 postings that no freshness filter or day-partitioned
+      // sitemap can ever see.
+      const resume = pbV.resumeVersion === POSTED_BACKFILL_VERSION
+        && typeof pbV.phase === "string" && typeof pbV.cursor === "string"
         ? { phase: pbV.phase, cursor: pbV.cursor }
         : {};
       waitUntil(chainKey().then((key) => fetch(url, {
@@ -2493,7 +2505,11 @@ Deno.serve(async (req) => {
       const perPosting = phase === "bamboohr" || phase === "rippling";
       const BOARDS_PER_HOP = 40; // workday (the 8-board case) is retired
       const IDS_PER_HOP = 120;
-      let cursor = typeof body.cursor === "string" ? body.cursor : "";
+      // A cursor belongs to the phase that produced it. Ids are
+      // `source:token:externalId`, so a cursor from another source can only
+      // ever sort the whole phase out of range — silently, as an empty page
+      // that reads exactly like a finished one.
+      let cursor = typeof body.cursor === "string" && body.cursor.startsWith(`${phase}:`) ? body.cursor : "";
       // Resume state, stamped EVERY hop. Without it a died chain restarted the
       // whole phase sequence from scratch on the next maintenance kick, and the
       // long phases never finished. `at` doubles as the liveness signal the
@@ -2501,7 +2517,7 @@ Deno.serve(async (req) => {
       const { data: pbPrev } = await client.from("job_board_meta").select("v").eq("k", "posted_backfill").maybeSingle();
       const pbDone = (pbPrev?.v as { version?: number } | null)?.version;
       await client.from("job_board_meta").upsert(
-        { k: "posted_backfill", v: { ...(typeof pbDone === "number" ? { version: pbDone } : {}), phase, cursor, at: new Date().toISOString() }, updated_at: new Date().toISOString() },
+        { k: "posted_backfill", v: { ...(typeof pbDone === "number" ? { version: pbDone } : {}), resumeVersion: POSTED_BACKFILL_VERSION, phase, cursor, at: new Date().toISOString() }, updated_at: new Date().toISOString() },
         { onConflict: "k" },
       );
       const byBoard = new Map<string, { company: string; ids: string[] }>();
