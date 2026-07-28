@@ -79,7 +79,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-07-28.12";
+const BUILD_VERSION = "2026-07-28.13";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -2681,6 +2681,26 @@ Deno.serve(async (req) => {
       }
       let dated = 0;
       let lastBoardError = "";
+      // Progress beacon, written BEFORE any vendor call and again as the loop
+      // advances. Two rounds of end-of-hop instrumentation reported nothing,
+      // because the hop never reaches its end: measured on 2026-07-28.12, note
+      // stayed null while the draw is proven good (500 rows in 0.23s, and the
+      // draw-error path writes directly and never fired) and ZERO writes have
+      // ever landed (0 dated across bamboohr, rippling and pinpoint, all
+      // count=exact). A diagnostic that only speaks at the finish line cannot
+      // describe a run that never finishes.
+      const beacon = async (n: string) => {
+        await client.from("job_board_meta").upsert(
+          { k: "posted_backfill", v: {
+              resumeVersion: POSTED_BACKFILL_VERSION, phase, cursor,
+              datedTotal: (typeof body.datedTotal === "number" ? body.datedTotal : 0),
+              note: n.slice(0, 200), at: new Date().toISOString(),
+            }, updated_at: new Date().toISOString() },
+          { onConflict: "k" },
+        );
+      };
+      await beacon(`drew ${scanned} ids across ${byBoard.size} boards`);
+      let boardsDone = 0;
       for (const [tk, { company, ids }] of byBoard) {
         try {
           const dates = new Map<string, string>();
@@ -2734,6 +2754,10 @@ Deno.serve(async (req) => {
             // no dates". Capture the first one; it costs a string.
             if (!error) dated++;
             else if (!lastBoardError) lastBoardError = `update ${id.slice(0, 40)}: ${error.message ?? error}`.slice(0, 160);
+          }
+          boardsDone++;
+          if (boardsDone % 10 === 0) {
+            await beacon(`boards ${boardsDone}/${byBoard.size} dated=${dated}${lastBoardError ? ` last=${lastBoardError}` : ""}`);
           }
         } catch (e) {
           // Was silent. Keep the sweep resilient per board, but record the LAST
