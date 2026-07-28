@@ -3848,11 +3848,11 @@
     "countLine": "{{total}} offene Stellen von {{companies}} Unternehmen — jede einzelne direkt aus dem eigenen Recruiting-System des Unternehmens.",
     "subtitleShort": "Jeder Job direkt aus dem Karrieresystem des Unternehmens — verifiziert, aktuell, beim Bewerben erneut geprüft.",
     "badgeOfficial": "Nur offizielle Feeds",
-    "guaranteeFreshTip": "Jede Stelle, deren Anzeigedatum 30 Tage überschreitet, fliegt automatisch vom Board — die Ghost- und Pipeline-Anzeigen, die andere Boards monatelang stehen lassen, tauchen hier gar nicht erst auf.",
+    "guaranteeFreshTip": "Jede Anzeige, deren vom Unternehmen angegebenes Datum 30 Tage überschreitet, wird automatisch entfernt — bei der Aufnahme und erneut beim Abruf. Gibt ein Unternehmen gar kein Datum an, können wir die Anzeige nicht als alt einstufen, also behalten wir sie und zeigen kein Alter an, statt eines zu raten.",
     "badgeFresh": "Max. 30 Tage alt",
     "badgeLive": "Beim Bewerben erneut geprüft",
     "aboutToggle": "So funktioniert dieses Board",
-    "guaranteeFresh": "In den letzten 30 Tagen veröffentlicht — veraltete Anzeigen fliegen automatisch raus",
+    "guaranteeFresh": "Keine datierte Anzeige älter als 30 Tage",
     "dataPagesGhost": "Ghost-Job-Index",
     "dataPagesTrends": "Wöchentliche Einstellungstrends",
     "dataPagesEntry": "Entry-Level-Index",
@@ -4110,7 +4110,8 @@
   },
   "boardHero": {
     "agentLead": "Ihr KI-Agent bewirbt sich mit Ihnen:",
-    "agentLine": "er schreibt das Anschreiben, beantwortet die echten Fragen, bereitet Sie vor — Sie senden ab"
+    "agentLine": "er schreibt das Anschreiben, beantwortet die echten Fragen, bereitet Sie vor — Sie senden ab",
+    "trustFresh": "Keine datierte Anzeige älter als 30 Tage — undatierte zeigen kein Alter"
   },
   "explore": {
     "badge": "Das Board entdecken",

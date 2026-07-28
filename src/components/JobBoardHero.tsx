@@ -149,7 +149,11 @@ export function JobBoardHero() {
             <span className="w-1 h-1 rounded-full bg-muted-foreground/30 hidden sm:block" />
             <span className="inline-flex items-center gap-1.5">
               <CalendarClock className="w-4 h-4 text-success" />
-              {t("boardHero.trustFresh", "Nothing older than 30 days — stale listings removed automatically")}
+              {/* The cap applies to postings whose COMPANY states a date. 21.8% of the
+                  board states none and cannot be judged old, so it is kept — which
+                  the old wording denied. GhostJobIndex has said this correctly all
+                  along; the hero never inherited the second half. */}
+              {t("boardHero.trustFresh", "No dated posting older than 30 days — undated ones show no age")}
             </span>
             <span className="w-1 h-1 rounded-full bg-muted-foreground/30 hidden sm:block" />
             <span className="inline-flex items-center gap-1.5">

@@ -290,7 +290,10 @@ async function fetchRippling(s: JobSource): Promise<{ items: unknown[]; raw: str
 // tenant~dc~site. Bounded to WORKDAY_PAGE_CAP pages (enterprise tenants can
 // hold thousands; the cap keeps one board's fetch from monopolizing a slice —
 // the rest rotate in on later passes, and the freshness filter drops the aged
-// tail regardless). Undated, description-less (list-only), like BambooHR.
+// tail regardless). List-only, so no description at this stage — but NOT
+// undated: the relative list age converts to a real date when <= 30 days, and
+// the CXS detail payload later supplies an exact startDate that replaces it.
+// (The "like BambooHR" that used to sit here was wrong on both counts.)
 const WORKDAY_PAGE_CAP = 25; // 25 × 20 = up to 500 postings/board/pass
 // Oracle CE REST accepts a larger page than Workday; 20 × 100 = up to 2000
 // postings/board/pass, which exhausts every tenant in the first tranche.

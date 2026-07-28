@@ -3848,11 +3848,11 @@
     "countLine": "{{total}} ofertas ativas de {{companies}} empresas — todas diretamente do sistema de recrutamento de cada empresa.",
     "subtitleShort": "Todas as vagas vêm diretamente do sistema de carreiras de cada empresa — verificadas, recentes e reverificadas quando se candidata.",
     "badgeOfficial": "Só feeds oficiais",
-    "guaranteeFreshTip": "Qualquer vaga cuja data de publicação ultrapasse 30 dias sai automaticamente da plataforma — os anúncios fantasma ou de \"pipeline\" que outros sites deixam meses no ar nunca aparecem aqui.",
+    "guaranteeFreshTip": "Toda vaga cuja data informada pela empresa ultrapassa 30 dias é removida automaticamente — na entrada e novamente na exibição. Quando a empresa não informa nenhuma data, não podemos considerar a vaga antiga, então a mantemos e não mostramos idade em vez de adivinhar uma.",
     "badgeFresh": "Limite de 30 dias",
     "badgeLive": "Reverificado ao candidatar-se",
     "aboutToggle": "Como funciona esta plataforma",
-    "guaranteeFresh": "Publicado nos últimos 30 dias — anúncios antigos removidos automaticamente",
+    "guaranteeFresh": "Nenhuma vaga datada passa de 30 dias",
     "dataPagesGhost": "Índice de Empregos Fantasma",
     "dataPagesTrends": "Tendências semanais de contratação",
     "dataPagesEntry": "Índice de Início de Carreira",
@@ -4110,7 +4110,8 @@
   },
   "boardHero": {
     "agentLead": "Seu agente de IA se candidata com você:",
-    "agentLine": "ele escreve a carta, responde às perguntas reais, prepara você — você envia"
+    "agentLine": "ele escreve a carta, responde às perguntas reais, prepara você — você envia",
+    "trustFresh": "Nenhuma vaga datada passa de 30 dias — as sem data não mostram idade"
   },
   "explore": {
     "badge": "Explore o painel",

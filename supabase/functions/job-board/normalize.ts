@@ -1198,10 +1198,23 @@ export function normalizePinpoint(items: PinpointPosting[], company: string, tok
 // own applicants, no auth, no scraping. Undocumented (a Rippling-class source:
 // vendor canary + breaker watch the shape). Token is a compound
 // `tenant~dc~site` (three pieces the URL needs). The LIST payload carries only
-// a RELATIVE posting age ("Posted 5 Days Ago"); we never store that as a date
-// (it would pollute the company-stated median), but we DO honor it as a
-// freshness filter — Workday's own statement that a posting is 30+ days old is
-// authority to drop it. Kept postings are honest-undated (like BambooHR).
+// a RELATIVE posting age ("Posted 5 Days Ago").
+//
+// CORRECTED 2026-07-28. This header used to say we "never store that as a
+// date" and that "kept postings are honest-undated (like BambooHR)". Both
+// stopped being true one day after it was written, and the header was never
+// updated — the behaviour is inverted 50-odd lines below. Workday postings get
+// a date by TWO paths:
+//   1. the relative list age, converted to an absolute day-precision date
+//      (fetch time − N days, ±1d) when N <= 30. "30+ Days Ago" is unbounded, so
+//      it stays null AND is authority to drop the posting.
+//   2. an EXACT startDate from the CXS detail payload, which for workday
+//      REPLACES the converted value (see the precedence in index.ts).
+// Only the "30+ Days Ago" tail is genuinely undated. BambooHR is a different
+// case entirely: its list feed states no date at all, at any age.
+//
+// This exact drift is the claim-drift failure mode — a header like this is what
+// a methodology page, a coverage table or llms.txt gets written from.
 export interface WorkdayListItem {
   title?: string;
   externalPath?: string;

@@ -3848,11 +3848,11 @@
     "countLine": "{{total}} actuele vacatures van {{companies}} bedrijven — stuk voor stuk rechtstreeks uit het eigen wervingssysteem van het bedrijf.",
     "subtitleShort": "Elke vacature rechtstreeks uit het eigen carrièresysteem van het bedrijf — geverifieerd, actueel en opnieuw gecheckt wanneer je solliciteert.",
     "badgeOfficial": "Alleen officiële feeds",
-    "guaranteeFreshTip": "Elke vacature ouder dan 30 dagen verdwijnt automatisch van deze site — de spookvacatures die andere sites maandenlang laten staan, zie je hier nooit.",
+    "guaranteeFreshTip": "Elke vacature waarvan de door het bedrijf opgegeven datum ouder is dan 30 dagen wordt automatisch verwijderd — bij binnenkomst en opnieuw bij het tonen. Geeft een bedrijf geen datum op, dan kunnen we de vacature niet als verouderd beoordelen, dus houden we hem aan en tonen we geen leeftijd in plaats van er een te raden.",
     "badgeFresh": "Maximaal 30 dagen oud",
     "badgeLive": "Opnieuw gecheckt bij solliciteren",
     "aboutToggle": "Hoe deze site werkt",
-    "guaranteeFresh": "Geplaatst in de laatste 30 dagen — verouderde vacatures verdwijnen automatisch",
+    "guaranteeFresh": "Geen gedateerde vacature ouder dan 30 dagen",
     "dataPagesGhost": "Spookvacature-index",
     "dataPagesTrends": "Wekelijkse wervingstrends",
     "dataPagesEntry": "Startersindex",
@@ -4110,7 +4110,8 @@
   },
   "boardHero": {
     "agentLead": "Je AI-agent solliciteert met je mee:",
-    "agentLine": "hij schrijft de brief, beantwoordt de echte vragen, bereidt je voor — jij verstuurt"
+    "agentLine": "hij schrijft de brief, beantwoordt de echte vragen, bereidt je voor — jij verstuurt",
+    "trustFresh": "Geen gedateerde vacature ouder dan 30 dagen — vacatures zonder datum tonen geen leeftijd"
   },
   "explore": {
     "badge": "Verken het board",

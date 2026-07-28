@@ -313,3 +313,67 @@ describe("the re-check chip shows real re-verification, not insert time", () => 
     expect((fn.match(/await attachRecheckedAt\(client,/g) || []).length).toBe(3);
   });
 });
+
+// The 30-day cap applies only to postings whose COMPANY states a date. 21.8%
+// of the board (127,406 rows on 2026-07-28) states none, cannot be judged old,
+// and is deliberately kept — which three live strings flatly denied:
+//   jobsPage.guaranteeFresh    "Posted in the last 30 days — stale postings auto-dropped"
+//   jobsPage.guaranteeFreshTip "Any role whose posting date passes 30 days is..."
+//   boardHero.trustFresh       "Nothing older than 30 days — stale listings removed"
+// GhostJobIndex has carried the correct sentence all along; the hero and the
+// badge never inherited its second half.
+describe("the 30-day cap is never stated as covering the whole board", () => {
+  const ABSOLUTE = /(nothing|no postings?|no roles?|none)\s+older than 30 days/i;
+
+  for (const file of locales) {
+    it(`${file} does not claim the cap covers undated postings`, () => {
+      const jp = readJson(resolve(localeDir, file));
+      const offenders = [
+        ["jobsPage.guaranteeFresh", jp.jobsPage?.guaranteeFresh],
+        ["jobsPage.guaranteeFreshTip", jp.jobsPage?.guaranteeFreshTip],
+        ["boardHero.trustFresh", jp.boardHero?.trustFresh],
+      ]
+        .filter(([, v]) => typeof v === "string" && ABSOLUTE.test(v as string))
+        .map(([k, v]) => `${k} = ${v}`);
+      expect(offenders).toEqual([]);
+    });
+  }
+
+  it("the hero's inline default is honest too", () => {
+    const hero = readFileSync(resolve(root, "src/components/JobBoardHero.tsx"), "utf8");
+    expect(hero).not.toMatch(/Nothing older than 30 days/);
+    expect(hero).toMatch(/undated ones show no age/);
+  });
+});
+
+// normalize.ts's Workday header claimed "we never store that as a date" and
+// "kept postings are honest-undated (like BambooHR)". The behaviour was
+// inverted one day after the header was written and the header never caught
+// up — the claim-drift failure mode, on the comment a methodology page or
+// llms.txt would be written from.
+describe("the Workday date comments describe what the code does", () => {
+  const norm = readFileSync(resolve(root, "supabase/functions/job-board/normalize.ts"), "utf8");
+  const idx = readFileSync(resolve(root, "supabase/functions/job-board/index.ts"), "utf8");
+
+  it("normalize.ts no longer calls Workday postings undated", () => {
+    // Rippling's identical phrase is TRUE (its list states no date at any age)
+    // and must survive, so scope the assertion to the Workday block.
+    const wd = norm.slice(norm.indexOf("Workday"), norm.indexOf("export interface WorkdayListItem"));
+    expect(wd).not.toMatch(/we never store that as a date/);
+    expect(wd).toMatch(/CORRECTED 2026-07-28/);
+  });
+
+  it("both date paths are documented, not just the list conversion", () => {
+    const wd = norm.slice(norm.indexOf("Workday"), norm.indexOf("export interface WorkdayListItem"));
+    expect(wd).toMatch(/startDate/);
+    expect(wd).toMatch(/30\+ Days Ago/);
+  });
+
+  it("index.ts no longer calls the Workday list 'Undated ... like BambooHR'", () => {
+    expect(idx).not.toMatch(/Undated, description-less \(list-only\), like BambooHR/);
+  });
+
+  it("the CXS startDate precedence still exists to be described", () => {
+    expect(idx).toMatch(/postedAt = isoDateOnly\(j\?\.jobPostingInfo\?\.startDate\)/);
+  });
+});

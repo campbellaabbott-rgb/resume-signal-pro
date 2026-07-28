@@ -3848,11 +3848,11 @@
     "countLine": "{{total}} live na opening mula sa {{companies}} kumpanya — bawat isa'y direkta mula sa sariling hiring system ng kumpanya.",
     "subtitleShort": "Bawat trabaho direkta mula sa sariling careers system ng kumpanya — verified, sariwa, chine-check ulit kapag nag-apply ka.",
     "badgeOfficial": "Opisyal na feeds lang",
-    "guaranteeFreshTip": "Awtomatikong tinatanggal sa board ang anumang role na lampas 30 araw na ang posting date — ang mga ghost/pipeline posting na iniiwan ng ibang board nang ilang buwan ay hindi kailanman lumalabas dito.",
+    "guaranteeFreshTip": "Awtomatikong tinatanggal ang anumang posting na lampas 30 araw na ang petsang isinaad ng kumpanya — sa pagpasok pa lang at muli kapag binabasa. Kapag walang petsang isinaad ang kumpanya, hindi namin masasabing luma ang posting, kaya pinapanatili namin ito at walang ipinapakitang edad sa halip na manghula.",
     "badgeFresh": "30-araw na freshness cap",
     "badgeLive": "Chine-check ulit sa pag-apply",
     "aboutToggle": "Paano gumagana ang board na ito",
-    "guaranteeFresh": "Naka-post sa nakaraang 30 araw — awtomatikong tinatanggal ang mga lumang posting",
+    "guaranteeFresh": "Walang may petsang posting na lampas 30 araw",
     "dataPagesGhost": "Ghost Job Index",
     "dataPagesTrends": "Lingguhang hiring trends",
     "dataPagesEntry": "Entry-Level Index",
@@ -4110,7 +4110,8 @@
   },
   "boardHero": {
     "agentLead": "Kasama mong nag-a-apply ang iyong AI agent:",
-    "agentLine": "isinusulat nito ang cover letter, sinasagot ang tunay na mga tanong, inihahanda ka — ikaw ang magpapadala"
+    "agentLine": "isinusulat nito ang cover letter, sinasagot ang tunay na mga tanong, inihahanda ka — ikaw ang magpapadala",
+    "trustFresh": "Walang may petsang posting na lampas 30 araw — walang ipinapakitang edad ang mga walang petsa"
   },
   "explore": {
     "badge": "Tuklasin ang board",

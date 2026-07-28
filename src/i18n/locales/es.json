@@ -3848,11 +3848,11 @@
     "countLine": "{{total}} vacantes activas de {{companies}} empresas — todas directo del sistema de contratación de cada empresa.",
     "subtitleShort": "Cada empleo directo del sistema de carreras de la propia empresa — verificado, reciente y reverificado cuando te postulas.",
     "badgeOfficial": "Solo feeds oficiales",
-    "guaranteeFreshTip": "Toda vacante cuya fecha de publicación supera los 30 días se elimina automáticamente del tablero — las publicaciones fantasma o de reserva que otros portales dejan meses nunca aparecen aquí.",
+    "guaranteeFreshTip": "Toda vacante cuya fecha indicada por la empresa supera los 30 días se elimina automáticamente — al ingresarla y de nuevo al mostrarla. Cuando una empresa no indica ninguna fecha, no podemos considerar la vacante antigua, así que la mantenemos y no mostramos su antigüedad en lugar de adivinarla.",
     "badgeFresh": "Máximo 30 días de antigüedad",
     "badgeLive": "Reverificado al postularte",
     "aboutToggle": "Cómo funciona este tablero",
-    "guaranteeFresh": "Publicadas en los últimos 30 días — las vencidas se eliminan automáticamente",
+    "guaranteeFresh": "Ninguna vacante con fecha supera los 30 días",
     "dataPagesGhost": "Índice de Empleos Fantasma",
     "dataPagesTrends": "Tendencias semanales de contratación",
     "dataPagesEntry": "Índice de Nivel Inicial",
@@ -4110,7 +4110,8 @@
   },
   "boardHero": {
     "agentLead": "Tu agente de IA postula contigo:",
-    "agentLine": "escribe la carta, responde las preguntas reales, te prepara — tú envías"
+    "agentLine": "escribe la carta, responde las preguntas reales, te prepara — tú envías",
+    "trustFresh": "Ninguna vacante con fecha supera los 30 días — las que no tienen fecha no muestran antigüedad"
   },
   "explore": {
     "badge": "Explora el tablero",

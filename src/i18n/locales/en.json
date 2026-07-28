@@ -3848,11 +3848,11 @@
     "countLine": "{{total}} live openings from {{companies}} companies — every one straight from the company's own hiring system.",
     "subtitleShort": "Every job straight from the company's own careers system — verified, fresh, re-checked when you apply.",
     "badgeOfficial": "Official feeds only",
-    "guaranteeFreshTip": "Any role whose posting date passes 30 days is automatically dropped from the board — the ghost/pipeline postings other boards leave up for months never appear here.",
+    "guaranteeFreshTip": "Any posting whose company-stated date passes 30 days is dropped automatically — at ingestion and again at read time. Where a company states no date at all we can't judge the posting old, so we keep it and show no age rather than guess one.",
     "badgeFresh": "30-day freshness cap",
     "badgeLive": "Re-checked when you apply",
     "aboutToggle": "How this board works",
-    "guaranteeFresh": "Posted in the last 30 days — stale postings auto-dropped",
+    "guaranteeFresh": "No dated posting older than 30 days",
     "dataPagesGhost": "Ghost Job Index",
     "dataPagesTrends": "Weekly hiring trends",
     "dataPagesEntry": "Entry-Level Index",
@@ -4110,7 +4110,8 @@
   },
   "boardHero": {
     "agentLead": "Your AI agent applies with you:",
-    "agentLine": "it writes the cover letter, answers the real questions, preps you — you hit send"
+    "agentLine": "it writes the cover letter, answers the real questions, preps you — you hit send",
+    "trustFresh": "No dated posting older than 30 days — undated ones show no age"
   },
   "explore": {
     "badge": "Explore the board",
