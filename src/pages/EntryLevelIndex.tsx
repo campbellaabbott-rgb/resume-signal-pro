@@ -103,8 +103,14 @@ export default function EntryLevelIndex() {
           and ranks the companies that post the most of them.
         </p>
         <p className="text-xs text-muted-foreground mb-8">
-          Counted live from companies' <b>official</b> job boards (Greenhouse, Lever, Ashby, SmartRecruiters, Workable,
-          BambooHR, Recruitee, Teamtailor, Personio, Breezy) — never an aggregator or a scrape, and nothing older than 30 days.
+          {/* This list named 10 systems while the board serves 15. The five it
+              omitted — Workday, iCIMS, Oracle, Rippling, Pinpoint — include
+              Workday, which alone is 52.1% of postings (303,098 of 581,576 on
+              2026-07-27). A sources line that leaves out the majority source
+              is false by omission, however true each named item is. */}
+          Counted live from companies' <b>official</b> job boards (Workday, Greenhouse, SmartRecruiters, Ashby,
+          iCIMS, Oracle, Lever, Workable, BambooHR, Recruitee, Teamtailor, Personio, Breezy, Rippling and
+          Pinpoint) — never an aggregator or a scrape, and nothing older than 30 days.
         </p>
 
         {/* Headline stats */}

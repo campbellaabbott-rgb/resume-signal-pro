@@ -203,3 +203,69 @@ describe("the self-audit cannot silently drop a hiring system", () => {
     expect(page).toMatch(/Read this number narrowly/);
   });
 });
+
+// A sources line that omits the majority source is false by omission, however
+// true each named item is. The board serves 15 ATS platforms; the copy named
+// 10, leaving out workday — 303,098 postings, 52.1% of the corpus on
+// 2026-07-27 — plus icims, oracle, rippling and pinpoint.
+describe("published source lists name every system the board actually serves", () => {
+  // Derive the expected set from the edge function rather than restating it,
+  // so adding a vendor makes this fail until the public copy names it.
+  // normalize.ts is the authority — it holds a normalizer per vendor and is
+  // the only file carrying all 15 (sources.ts omits oracle; index.ts has only
+  // workday). Read all three so a future move between files cannot shrink the
+  // expected set and quietly make this guard vacuous.
+  const fnSrc = ["normalize.ts", "sources.ts", "index.ts"]
+    .map((f) => readFileSync(resolve(root, "supabase/functions/job-board", f), "utf8"))
+    .join("\n");
+  const SOURCES = [...new Set([...fnSrc.matchAll(/source:\s*"([a-z]+)"/g)].map((m) => m[1]))];
+
+  // How each source is spelled in prose.
+  const DISPLAY: Record<string, string> = {
+    workday: "Workday", greenhouse: "Greenhouse", smartrecruiters: "SmartRecruiters",
+    ashby: "Ashby", icims: "iCIMS", oracle: "Oracle", lever: "Lever",
+    workable: "Workable", bamboohr: "BambooHR", recruitee: "Recruitee",
+    teamtailor: "Teamtailor", personio: "Personio", breezy: "Breezy",
+    rippling: "Rippling", pinpoint: "Pinpoint",
+  };
+
+  it("the source set is non-trivial (guard would be vacuous otherwise)", () => {
+    expect(SOURCES.length).toBeGreaterThanOrEqual(15);
+  });
+
+  for (const file of locales) {
+    it(`${file} jobsPage.sourceNote names all ${SOURCES.length} systems`, () => {
+      const note: string = readJson(resolve(localeDir, file)).jobsPage.sourceNote;
+      const missing = SOURCES.filter((s) => !note.includes(DISPLAY[s] ?? s));
+      expect(missing).toEqual([]);
+    });
+  }
+
+  it("the entry-level index names them too", () => {
+    const page = readFileSync(resolve(root, "src/pages/EntryLevelIndex.tsx"), "utf8");
+    const missing = SOURCES.filter((s) => !page.includes(DISPLAY[s] ?? s));
+    expect(missing).toEqual([]);
+  });
+});
+
+describe("freshness and repost claims carry no false absolutes", () => {
+  for (const file of locales) {
+    const jp = () => readJson(resolve(localeDir, file)).jobsPage;
+
+    // Measured 2026-07-28 over 23,039 feeds: p50 1.6h, p95 3.3h, MAX 60.2h.
+    // "A few hours" describes the bulk; "every feed" was the false part.
+    it(`${file} does not promise EVERY feed inside a fixed window`, () => {
+      expect(jp().sourceNote).not.toMatch(/every feed is re-?verified|all feeds are re-?verified/i);
+    });
+
+    // No hardcoded hour count: the real p50/p95 move and are published live.
+    it(`${file} hardcodes no freshness hour count`, () => {
+      expect(jp().sourceNote).not.toMatch(/\d+\s*(hours?|hrs?)\b/i);
+    });
+
+    // "no reposts" sat beside a "Relists roles often (581x)" badge.
+    it(`${file} does not claim a bare "no reposts"`, () => {
+      expect(jp().subtitle).not.toMatch(/no reposts|sin republicaciones,|geen reposts/i);
+    });
+  }
+});
