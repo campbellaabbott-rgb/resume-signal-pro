@@ -1,5 +1,21 @@
 {
   "changelogEntries": {
+    "applyNeverDeletes": {
+      "title": "Op Solliciteren klikken laat geen actieve vacature meer verdwijnen",
+      "description": "Als je op Solliciteren klikte, controleerden we de vacature opnieuw bij het systeem van het bedrijf — en als die ene controle niets vond, verwijderden we de vermelding. Bij Workday zat die controle er in ongeveer 14% van de gevallen naast, omdat de zoekindex niet elke vacature bevat die de eigen pagina's nog tonen: echte, openstaande vacatures verdwenen juist door het solliciteren. Eén controle verwijdert nu niets meer; de vacature wordt gemarkeerd en pas verwijderd als ze na een volledige herlezing van de feed nog steeds ontbreekt."
+    },
+    "closedJobsFullyGone": {
+      "title": "Vacatures die de werkgever heeft ingetrokken zijn overal weg",
+      "description": "Zodra de feed van een bedrijf een vacature niet meer toont, stoppen wij ermee — maar twee routes glipten er nog doorheen: een vacature openen via de directe link, en de sitemap die we aan zoekmachines geven. Een al ingetrokken vacature was zo nog via Google te vinden en oogde actief, inclusief sollicitatieknop. Beide volgen nu dezelfde regel als de rest van het bord."
+    },
+    "straighterBoardNumbers": {
+      "title": "Rechtere cijfers op het bord en de transparantiepagina",
+      "description": "Verschillende gepubliceerde cijfers zeiden net iets meer dan de data toestond. Het bord toonde 'bijgewerkt 931 min geleden' op basis van een interne tijdstempel, terwijl de gemeten waarde onder de twee uur lag — er is nu één cijfer, het gemeten cijfer. Wat 'bedrijven' heette, heet nu 'bedrijfsfeeds', omdat een werkgever met meerdere borden meer dan eens werd geteld. De transparantiepagina noemt alle vijftien wervingssystemen achter haar cijfers in plaats van twaalf, en de 30-dagenregel zegt nu duidelijk dat die geldt voor vacatures waarvan het bedrijf een datum opgeeft. Vacatures met een iets vooruitlopende tijdstempel staan ook niet meer bovenaan zonder leeftijd."
+    },
+    "feedbackActuallySaved": {
+      "title": "Je feedback op een scan wordt nu echt opgeslagen",
+      "description": "De duim omhoog/omlaag bij een rapport zei elke keer 'Bedankt voor je feedback!' — ook wanneer er niets werd opgeslagen, en dat was altijd, omdat de plek waarheen werd geschreven niet bestond. Het wordt nu echt vastgelegd, en als dat een keer niet lukt, zegt het dat in plaats van je voor niets te bedanken."
+    },
     "boardInYourLanguage": {
       "title": "De vacaturebank spreekt nu volledig jouw taal",
       "description": "130 onderdelen van de interface van de vacaturebank — sluitingsmeldingen, salariscontext, bevestigingen van vacaturealerts, knoppen voor sollicitatievoorbereiding, foutmeldingen en meer — werden voor gebruikers in het Spaans, Frans, Duits, Portugees, Nederlands, Hindi, Filipijns en Brits-Engels nog in het Engels getoond. Ze zijn nu allemaal netjes vertaald, zodat de hele vacaturebank natuurlijk leest in de taal die je hebt gekozen."

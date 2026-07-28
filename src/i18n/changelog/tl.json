@@ -1,5 +1,21 @@
 {
   "changelogEntries": {
+    "applyNeverDeletes": {
+      "title": "Ang pag-click sa Apply ay hindi na makakapagpawala ng bukas na trabaho",
+      "description": "Kapag nag-click ka ng Apply, sinusuri naming muli ang posting sa sariling sistema ng kumpanya — at kung walang nakita ang iisang pagsusuring iyon, binubura namin ang listing. Sa Workday, mali ito nang humigit-kumulang 14% ng pagkakataon, dahil hindi taglay ng search index nito ang bawat trabahong inihahain pa rin ng sarili nitong mga pahina: totoo at bukas na trabaho ang nabubura mismo dahil sa pag-aapply. Hindi na makakabura ang iisang pagsusuri; minamarkahan ang posting at tinatanggal lamang kung wala pa rin ito matapos muling basahin nang buo ang feed ng kumpanya."
+    },
+    "closedJobsFullyGone": {
+      "title": "Ang mga trabahong binawi na ng employer ay wala na sa lahat ng ruta",
+      "description": "Kapag tumigil ang feed ng kumpanya sa paglista ng isang trabaho, tumitigil din kaming ipakita ito — ngunit may dalawang rutang nakakalusot pa: ang pagbukas ng posting sa direktang link nito, at ang sitemap na ibinibigay namin sa mga search engine. Ang trabahong binawi na ay makikita pa rin sa Google at mukhang bukas pa, pati ang apply button. Pareho na ngayong sumusunod sa parehong panuntunan ng iba pang bahagi ng board."
+    },
+    "straighterBoardNumbers": {
+      "title": "Mas tuwid na mga numero sa board at sa transparency page",
+      "description": "Ilang inilathalang numero ang nagsasabi ng bahagyang higit sa kayang patunayan ng datos. Ipinapakita ng board ang “na-update 931 min ang nakalipas” mula sa panloob na timestamp gayong wala pang dalawang oras ang aktuwal na sukat — iisa na lang ang numero ngayon, ang sinukat. Ang tinatawag na “mga kumpanya” ay “feed ng kumpanya” na ngayon, dahil ang employer na may ilang board ay nabibilang nang paulit-ulit. Pinapangalanan ng transparency page ang lahat ng labinlimang hiring system sa likod ng mga numero nito, hindi labindalawa, at malinaw nang sinasabi ng 30-araw na tuntunin nito na ito ay para sa mga posting na may petsang isinasaad ng kumpanya. Ang mga trabahong bahagyang nauuna sa orasan namin ay wala na rin sa tuktok nang walang ipinapakitang edad."
+    },
+    "feedbackActuallySaved": {
+      "title": "Talagang naitatala na ngayon ang feedback mo sa isang scan",
+      "description": "Ang thumbs up/down sa ulat ng scan ay nagsasabi ng “Salamat sa feedback!” sa tuwina — pati na kapag walang naitala, at iyon ay palagi, dahil wala talaga ang pinagsusulatan nito. Maayos na itong naitatala ngayon, at kung sakaling hindi kaya, sinasabi nito sa halip na pasalamatan ka nang walang naitala."
+    },
     "boardInYourLanguage": {
       "title": "Ganap nang nagsasalita sa wika mo ang job board",
       "description": "130 bahagi ng interface ng board — mga abiso ng pagsasara, konteksto ng sahod, kumpirmasyon ng alerto, mga button para sa paghahanda sa interview, mga mensahe ng error, at iba pa — ang lumalabas pa rin noon sa Ingles para sa mga user na gumagamit ng Espanyol, Pranses, Aleman, Portuges, Dutch, Hindi, Filipino, at British English. Maayos nang naisalin ang lahat ng ito, kaya natural nang mababasa ang buong board sa wikang pinili mo."

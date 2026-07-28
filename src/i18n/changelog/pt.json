@@ -1,5 +1,21 @@
 {
   "changelogEntries": {
+    "applyNeverDeletes": {
+      "title": "Clicar em Candidatar já não faz uma vaga ativa desaparecer",
+      "description": "Ao clicar em Candidatar, verificávamos de novo a vaga no sistema da empresa e, se essa única verificação não a encontrasse, apagávamos o anúncio. No Workday essa verificação errava cerca de 14% das vezes, porque o índice de pesquisa não inclui todas as vagas que as próprias páginas continuam a servir: vagas reais e abertas eram removidas no exato momento da candidatura. Uma verificação isolada já não apaga nada; a vaga é sinalizada e só é removida se continuar ausente após uma releitura completa do feed da empresa."
+    },
+    "closedJobsFullyGone": {
+      "title": "As vagas que a empresa já retirou desaparecem por completo",
+      "description": "Quando o feed de uma empresa deixa de listar uma vaga, deixamos de a mostrar — mas duas vias ainda escapavam: abrir o anúncio pelo link direto e o mapa do site que entregamos aos motores de busca. Uma vaga já retirada continuava a ser encontrada no Google e parecia ativa, botão de candidatura incluído. Ambas seguem agora a mesma regra do resto do quadro."
+    },
+    "straighterBoardNumbers": {
+      "title": "Números mais retos no quadro e na página de transparência",
+      "description": "Vários números publicados diziam um pouco mais do que os dados sustentavam. O quadro mostrava «atualizado há 931 min» a partir de uma marca interna, quando o valor medido era inferior a duas horas — passa a haver um só número, o medido. O que era descrito como «empresas» passa a «feeds de empresas», porque um empregador com vários quadros era contado mais do que uma vez. A página de transparência nomeia os quinze sistemas de recrutamento por trás dos seus números em vez de doze, e a regra dos 30 dias diz claramente que se aplica às vagas cuja empresa indica uma data. As vagas com data ligeiramente adiantada também já não ficam no topo sem mostrar idade."
+    },
+    "feedbackActuallySaved": {
+      "title": "A tua opinião sobre uma análise fica agora mesmo registada",
+      "description": "O polegar para cima/baixo do relatório respondia «Obrigado pela tua opinião!» sempre, mesmo quando nada era guardado — ou seja, sempre, porque o destino onde escrevia não existia. Agora fica de facto registada e, se alguma vez não conseguir, di-lo em vez de te agradecer por nada."
+    },
     "boardInYourLanguage": {
       "title": "O portal de emprego já fala totalmente a sua língua",
       "description": "130 elementos da interface do portal — avisos de encerramento de vagas, contexto salarial, confirmações de alertas, botões de preparação para entrevistas, mensagens de erro e muito mais — ainda apareciam em inglês para os utilizadores de espanhol, francês, alemão, português, neerlandês, hindi, filipino e inglês britânico. Todos estão agora devidamente traduzidos, para que todo o portal se leia com naturalidade na língua que escolheu."

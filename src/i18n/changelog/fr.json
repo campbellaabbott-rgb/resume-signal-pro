@@ -1,5 +1,21 @@
 {
   "changelogEntries": {
+    "applyNeverDeletes": {
+      "title": "Cliquer sur Postuler ne peut plus faire disparaître une offre active",
+      "description": "Quand vous cliquiez sur Postuler, nous revérifiions l'offre dans le système de l'entreprise et, si cette seule vérification ne la trouvait pas, nous supprimions l'annonce. Sur Workday elle se trompait dans environ 14% des cas, car son index de recherche ne contient pas toutes les offres que ses propres pages affichent encore : de vraies offres ouvertes disparaissaient au moment même où l'on postulait. Une seule vérification ne supprime plus rien : l'offre est signalée et n'est retirée que si elle reste absente après une relecture complète du flux de l'entreprise."
+    },
+    "closedJobsFullyGone": {
+      "title": "Les offres déjà retirées par l'employeur disparaissent partout",
+      "description": "Quand le flux d'une entreprise cesse de lister une offre, nous cessons de l'afficher — mais deux voies passaient encore : l'ouverture d'une annonce par son lien direct, et le plan de site remis aux moteurs de recherche. Une offre déjà retirée restait trouvable via Google et paraissait active, bouton Postuler compris. Les deux suivent désormais la même règle que le reste du tableau."
+    },
+    "straighterBoardNumbers": {
+      "title": "Des chiffres plus justes sur le tableau et la page transparence",
+      "description": "Plusieurs chiffres publiés disaient un peu plus que ce que les données permettaient. Le tableau affichait « mis à jour il y a 931 min » d'après un horodatage interne alors que la mesure réelle était inférieure à deux heures : il n'y a plus qu'un chiffre, le mesuré. Ce qui était décrit comme « entreprises » devient « flux d'entreprises », car un employeur disposant de plusieurs tableaux était compté plusieurs fois. La page transparence nomme les quinze systèmes de recrutement derrière ses chiffres au lieu de douze, et sa règle des 30 jours précise qu'elle s'applique aux offres dont l'entreprise indique une date. Les offres horodatées légèrement en avance ne trônent plus en tête sans afficher d'ancienneté."
+    },
+    "feedbackActuallySaved": {
+      "title": "Votre avis sur une analyse est désormais réellement enregistré",
+      "description": "Le pouce haut/bas du rapport répondait « Merci pour votre retour ! » à chaque fois, y compris quand rien n'était enregistré — c'est-à-dire toujours, car la destination d'écriture n'existait pas. L'avis est maintenant bien enregistré et, dans le cas contraire, il le dit au lieu de vous remercier pour rien."
+    },
     "boardInYourLanguage": {
       "title": "Le site d'emploi parle désormais entièrement votre langue",
       "description": "130 éléments de l'interface du site — avis de clôture des offres, contexte salarial, confirmations d'alerte, boutons de préparation aux entretiens, messages d'erreur et plus encore — s'affichaient encore en anglais pour les utilisateurs en espagnol, français, allemand, portugais, néerlandais, hindi, filipino et anglais britannique. Ils sont désormais tous correctement traduits : l'ensemble du site se lit naturellement dans la langue que vous avez choisie."

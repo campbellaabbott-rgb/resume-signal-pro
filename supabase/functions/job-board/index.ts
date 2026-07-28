@@ -79,7 +79,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-07-28.11";
+const BUILD_VERSION = "2026-07-28.12";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -2728,7 +2728,12 @@ Deno.serve(async (req) => {
             const iso = dates.get(id);
             if (!iso) continue;
             const { error } = await client.from("job_board_postings").update({ posted_at: iso }).eq("id", id);
+            // The error was DISCARDED. If every update failed — a constraint, a
+            // type coercion, anything — `dated` stayed 0 and nothing anywhere
+            // recorded why, which is indistinguishable from "the vendor gave us
+            // no dates". Capture the first one; it costs a string.
             if (!error) dated++;
+            else if (!lastBoardError) lastBoardError = `update ${id.slice(0, 40)}: ${error.message ?? error}`.slice(0, 160);
           }
         } catch (e) {
           // Was silent. Keep the sweep resilient per board, but record the LAST

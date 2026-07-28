@@ -1,5 +1,21 @@
 {
   "changelogEntries": {
+    "applyNeverDeletes": {
+      "title": "Ein Klick auf Bewerben lässt keine aktive Stelle mehr verschwinden",
+      "description": "Beim Klick auf Bewerben prüften wir die Anzeige erneut im System des Unternehmens — und wenn diese eine Prüfung nichts fand, löschten wir die Anzeige. Bei Workday lag sie in rund 14% der Fälle falsch, weil der dortige Suchindex nicht jede Stelle enthält, die die eigenen Seiten weiterhin ausliefern: Echte, offene Stellen verschwanden genau durch das Bewerben. Eine einzelne Prüfung löscht jetzt nichts mehr; die Anzeige wird markiert und erst entfernt, wenn sie nach einem vollständigen erneuten Einlesen des Feeds immer noch fehlt."
+    },
+    "closedJobsFullyGone": {
+      "title": "Bereits zurückgezogene Stellen sind auf allen Wegen verschwunden",
+      "description": "Wenn der Feed eines Unternehmens eine Stelle nicht mehr listet, zeigen wir sie nicht mehr — zwei Wege blieben jedoch offen: das Öffnen einer Anzeige über ihren Direktlink und die Sitemap, die wir an Suchmaschinen geben. Eine bereits zurückgezogene Stelle war so weiterhin über Google auffindbar und wirkte aktiv, inklusive Bewerben-Button. Beide folgen jetzt derselben Regel wie das übrige Board."
+    },
+    "straighterBoardNumbers": {
+      "title": "Geradere Zahlen auf dem Board und der Transparenzseite",
+      "description": "Mehrere veröffentlichte Zahlen sagten etwas mehr, als die Daten hergaben. Das Board zeigte „vor 931 Min. aktualisiert“ aus einem internen Zeitstempel, während der gemessene Wert unter zwei Stunden lag — jetzt gibt es nur noch eine Zahl, die gemessene. Was als „Unternehmen“ beschrieben wurde, heißt nun „Unternehmens-Feeds“, denn ein Arbeitgeber mit mehreren Boards wurde mehrfach gezählt. Die Transparenzseite nennt alle fünfzehn Recruiting-Systeme hinter ihren Zahlen statt zwölf, und ihre 30-Tage-Regel sagt klar, dass sie für Anzeigen mit vom Unternehmen angegebenem Datum gilt. Anzeigen mit leicht vorauseilendem Zeitstempel stehen zudem nicht mehr ganz oben ohne jede Altersangabe."
+    },
+    "feedbackActuallySaved": {
+      "title": "Ihre Rückmeldung zu einer Analyse wird jetzt wirklich gespeichert",
+      "description": "Der Daumen hoch/runter im Bericht antwortete jedes Mal „Danke für Ihr Feedback!“ — auch dann, wenn nichts gespeichert wurde, und das war immer der Fall, weil das Ziel zum Schreiben gar nicht existierte. Jetzt wird es tatsächlich gespeichert, und wenn das einmal nicht klappt, sagt es das, statt sich für nichts zu bedanken."
+    },
     "boardInYourLanguage": {
       "title": "Die Jobbörse spricht jetzt komplett deine Sprache",
       "description": "130 Elemente der Board-Oberfläche — Hinweise zu geschlossenen Stellen, Gehaltskontext, Bestätigungen für Job-Alerts, Buttons zur Interview-Vorbereitung, Fehlermeldungen und mehr — waren für Nutzer, die die Seite auf Spanisch, Französisch, Deutsch, Portugiesisch, Niederländisch, Hindi, Filipino oder britischem Englisch verwenden, noch auf Englisch. Jetzt sind sie alle sauber übersetzt, sodass sich die ganze Jobbörse natürlich in der Sprache liest, die du gewählt hast."

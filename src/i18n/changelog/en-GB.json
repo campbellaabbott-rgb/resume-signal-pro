@@ -1,5 +1,21 @@
 {
   "changelogEntries": {
+    "applyNeverDeletes": {
+      "title": "Clicking Apply can no longer make a live job disappear",
+      "description": "When you clicked Apply we re-checked the posting at the company's own system, and if that single check came back empty we deleted the listing. On Workday that check was wrong about 14% of the time, because Workday's search index doesn't contain every job its own pages still serve — so real, open roles were being removed by the act of applying to them. One check can no longer delete anything: a posting that looks gone is flagged, and only removed if it is still gone after a full re-read of the employer's feed."
+    },
+    "closedJobsFullyGone": {
+      "title": "Roles an employer has already pulled are gone from every route",
+      "description": "When a company's feed stops listing a role we stop showing it — but two routes still slipped through: opening a posting by its direct link, and the sitemap we hand to search engines. A role the employer had already withdrawn could still be found through Google and still looked live, apply button and all. Both now follow the same rule as the rest of the board."
+    },
+    "straighterBoardNumbers": {
+      "title": "Straighter numbers on the board and the transparency page",
+      "description": "Several published figures said a little more than the data supported. The board showed “updated 931 min ago” from an internal timestamp while the measured figure was under two hours — there is now one number, the measured one. Counts described as “companies” now read “company feeds”, because an employer with several hiring-system boards was being counted more than once. The transparency page names all fifteen hiring systems behind its figures instead of twelve, and its 30-day rule now says plainly that it applies to postings whose company states a date. Jobs stamped slightly ahead of our clock also no longer sit at the top of the board showing no age at all."
+    },
+    "feedbackActuallySaved": {
+      "title": "Your feedback on a scan is now actually recorded",
+      "description": "The thumbs up/down on a scan report said “Thanks for the feedback!” every time — including when nothing was saved, which was every time, because the place it wrote to did not exist. It records properly now, and on the rare occasion it cannot, it says so instead of thanking you for nothing."
+    },
     "boardInYourLanguage": {
       "title": "The job board now fully speaks your language",
       "description": "130 pieces of the board's interface — closure notices, salary context, alert confirmations, interview-prep buttons, error messages and more — were still showing in English for Spanish, French, German, Portuguese, Dutch, Hindi, Filipino and British English users. All of them are now properly translated, so the whole board reads naturally in the language you chose."

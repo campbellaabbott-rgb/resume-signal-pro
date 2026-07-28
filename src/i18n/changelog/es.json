@@ -1,5 +1,21 @@
 {
   "changelogEntries": {
+    "applyNeverDeletes": {
+      "title": "Pulsar Aplicar ya no puede hacer desaparecer una vacante activa",
+      "description": "Al pulsar Aplicar volvíamos a comprobar la vacante en el sistema de la empresa y, si esa única comprobación no la encontraba, borrábamos el anuncio. En Workday esa comprobación fallaba en torno al 14% de los casos, porque su buscador no incluye todas las vacantes que sus propias páginas siguen mostrando: vacantes reales y abiertas desaparecían justo al intentar aplicar. Ahora una sola comprobación no borra nada; la vacante se marca y solo se elimina si sigue sin aparecer tras releer el feed completo de la empresa."
+    },
+    "closedJobsFullyGone": {
+      "title": "Las vacantes que la empresa ya retiró desaparecen por completo",
+      "description": "Cuando el feed de una empresa deja de listar una vacante, dejamos de mostrarla, pero dos vías se escapaban: abrir el anuncio por su enlace directo y el mapa del sitio que entregamos a los buscadores. Una vacante ya retirada seguía encontrándose en Google y parecía activa, con botón de aplicar incluido. Ambas vías siguen ahora la misma regla que el resto del tablón."
+    },
+    "straighterBoardNumbers": {
+      "title": "Cifras más rectas en el tablón y en la página de transparencia",
+      "description": "Varias cifras publicadas decían algo más de lo que los datos sostenían. El tablón mostraba «actualizado hace 931 min» a partir de una marca interna, cuando lo medido era menos de dos horas: ahora hay una sola cifra, la medida. Lo que se describía como «empresas» pasa a ser «fuentes de empresas», porque un empleador con varios tableros contaba varias veces. La página de transparencia nombra los quince sistemas de contratación detrás de sus cifras en lugar de doce, y su regla de 30 días dice claramente que se aplica a las vacantes cuya empresa indica una fecha. Las vacantes con fecha ligeramente adelantada tampoco encabezan ya el tablón sin mostrar antigüedad."
+    },
+    "feedbackActuallySaved": {
+      "title": "Tu valoración de un análisis ahora sí queda registrada",
+      "description": "El pulgar arriba/abajo del informe respondía «¡Gracias por tu opinión!» siempre, incluso cuando no se guardaba nada — que era siempre, porque el destino donde escribía no existía. Ahora se registra de verdad y, si alguna vez no puede, lo dice en lugar de darte las gracias por nada."
+    },
     "boardInYourLanguage": {
       "title": "La bolsa de empleo ahora habla tu idioma por completo",
       "description": "130 elementos de la interfaz de la bolsa — avisos de cierre, contexto salarial, confirmaciones de alertas, botones de preparación para entrevistas, mensajes de error y más — seguían apareciendo en inglés para los usuarios de español, francés, alemán, portugués, neerlandés, hindi, filipino e inglés británico. Todos ya están correctamente traducidos, así que toda la bolsa se lee con naturalidad en el idioma que elegiste."
