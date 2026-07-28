@@ -269,3 +269,47 @@ describe("freshness and repost claims carry no false absolutes", () => {
     });
   }
 });
+
+// The posting panel rendered `last_seen` as "re-checked {ago}" under a tooltip
+// reading "when this posting was last re-verified against the company's own
+// feed". But index.ts writes `last_seen: startIso` at INSERT ONLY and never
+// rewrites it — measured 2026-07-28, two greenhouse rows carry a last_seen 5s
+// and 3s BEFORE their own first_seen. It is discovery time wearing a
+// re-verification label: the banned first_seen-as-freshness pattern, stated in
+// words, and understating the true feed p50 (~83 min) by roughly 100x.
+describe("the re-check chip shows real re-verification, not insert time", () => {
+  const jobs = readFileSync(resolve(root, "src/pages/Jobs.tsx"), "utf8");
+  const fn = readFileSync(resolve(root, "supabase/functions/job-board/index.ts"), "utf8");
+
+  it("the chip renders recheckedAt, never lastSeen", () => {
+    expect(jobs).toMatch(/detailJob\.recheckedAt &&/);
+    expect(jobs).not.toMatch(/\{detailJob\.lastSeen &&/);
+    expect(jobs).not.toMatch(/agoLabel\(detailJob\.lastSeen/);
+  });
+
+  it("recheckedAt is sourced from job_board_verifications", () => {
+    expect(fn).toMatch(/from\("job_board_verifications"\)[\s\S]{0,120}verified_at/);
+    expect(fn).toMatch(/j\.recheckedAt = v;/);
+  });
+
+  it("a posting the feed already dropped gets no chip", () => {
+    // verified_at says the FEED was read, not that this posting was in it.
+    expect(fn).toMatch(/if \(v && !j\.missingSince\) j\.recheckedAt = v;/);
+    expect(fn).toMatch(/min_years,last_seen,missing_since/);
+  });
+
+  it("a failed lookup leaves the field absent rather than falling back", () => {
+    expect(fn).toMatch(/if \(error \|\| !Array\.isArray\(data\)\) return jobs;/);
+  });
+
+  it("verify-on-view no longer fires on a missing value", () => {
+    // `!job.lastSeen ||` would become true for every posting once the field is
+    // gone, hitting the vendor on every panel open for every visitor.
+    expect(jobs).not.toMatch(/!job\.lastSeen \|\|/);
+    expect(jobs).toMatch(/job\.recheckedAt && Date\.now\(\) - Date\.parse\(job\.recheckedAt\)/);
+  });
+
+  it("every list return path attaches it", () => {
+    expect((fn.match(/await attachRecheckedAt\(client,/g) || []).length).toBe(3);
+  });
+});

@@ -79,7 +79,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-07-28.2";
+const BUILD_VERSION = "2026-07-28.3";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -3750,6 +3750,44 @@ Deno.serve(async (req) => {
 });
 
 // deno-lint-ignore no-explicit-any
+// last_seen is written at INSERT ONLY and never rewritten, so it is
+// semantically first_seen — two greenhouse rows measured 2026-07-28 carry a
+// last_seen 5s and 3s BEFORE their own first_seen. The UI rendered it as
+// "re-checked {ago}" under a tooltip claiming "last re-verified against the
+// company's own feed": the banned first_seen-as-freshness pattern, stated in
+// words. It also understated us ~100x — 92.6% of postings read as older than
+// 24h while the true feed p50 is ~83 minutes.
+//
+// job_board_verifications.verified_at is the honest value: when we last fetched
+// THAT BOARD's feed. Keyed by company_token, so one .in() over a page's
+// distinct tokens covers the page on the primary key.
+async function attachRecheckedAt(
+  client: SupabaseClient,
+  jobs: Array<Record<string, unknown>>,
+): Promise<Array<Record<string, unknown>>> {
+  const tokens = [...new Set(jobs.map((j) => String(j.companyToken ?? "")).filter(Boolean))].slice(0, 80);
+  if (tokens.length === 0) return jobs;
+  const { data, error } = await client
+    .from("job_board_verifications")
+    .select("company_token,verified_at")
+    .in("company_token", tokens);
+  // On failure leave the field ABSENT. Falling back to last_seen would restore
+  // the exact bug this removes.
+  if (error || !Array.isArray(data)) return jobs;
+  const byToken = new Map<string, string>();
+  for (const r of data) {
+    const t = (r as { company_token?: string }).company_token;
+    const v = (r as { verified_at?: string }).verified_at;
+    if (t && v) byToken.set(t, v);
+  }
+  for (const j of jobs) {
+    const v = byToken.get(String(j.companyToken ?? ""));
+    // verified_at says the FEED was fetched, not that this posting was in it.
+    if (v && !j.missingSince) j.recheckedAt = v;
+  }
+  return jobs;
+}
+
 const rowToJob = (r: any) => ({
   id: r.id,
   source: r.source,
@@ -3771,6 +3809,10 @@ const rowToJob = (r: any) => ({
   experienceBand: r.experience_band && r.experience_band !== "unspecified" ? r.experience_band : null,
   minYears: typeof r.min_years === "number" ? r.min_years : null,
   lastSeen: r.last_seen ?? null,
+  // Set when the employer's feed stopped listing this posting. Such a row must
+  // never show a "re-checked" chip: the feed WAS re-checked and the posting
+  // was not in it.
+  missingSince: r.missing_since ?? null,
   // Tier-2 ranked searches only: the ts_headline fragment showing WHERE a
   // description-matched result matched ([[ ]] delimiters, client-rendered).
   ...(typeof r.snippet === "string" && r.snippet.includes("[[") ? { snippet: r.snippet } : {}),
@@ -3921,7 +3963,7 @@ async function serveList(
     let q = client
       .from("job_board_postings")
       .select(
-        "id,source,company_token,company,title,location,remote,work_mode,department,category,posted_at,apply_url,salary,salary_min_annual,salary_max_annual,salary_period,salary_currency,experience_band,min_years,last_seen",
+        "id,source,company_token,company,title,location,remote,work_mode,department,category,posted_at,apply_url,salary,salary_min_annual,salary_max_annual,salary_period,salary_currency,experience_band,min_years,last_seen,missing_since",
         withCount ? { count: "exact" } : {},
       )
       .gte(dateCol, freshCutoffIso);
@@ -4220,7 +4262,7 @@ async function serveList(
                 : { jobs: fuzzyRows.slice(0, limit), rawConsumed: Math.min(fuzzyRows.length, limit) };
               logMiss("fuzzy");
               return json({
-                jobs: fuzzyGrouped.jobs,
+                jobs: await attachRecheckedAt(client, fuzzyGrouped.jobs),
                 total: Number((fuzzy[0] as { total_rows?: number }).total_rows) || fuzzyGrouped.jobs.length,
                 totalAllCompanies: (v0.total as number) ?? 0,
                 companies: [],
@@ -4265,7 +4307,7 @@ async function serveList(
                     : { jobs: semRows.slice(0, limit), rawConsumed: Math.min(semRows.length, limit) };
                   logMiss("semantic");
                   return json({
-                    jobs: semGrouped.jobs,
+                    jobs: await attachRecheckedAt(client, semGrouped.jobs),
                     total: semGrouped.jobs.length,
                     hasMore: false,
                     totalAllCompanies: (v0.total as number) ?? 0,
@@ -4457,7 +4499,7 @@ async function serveList(
     ? collapseClusters(mappedRows, limit)
     : { jobs: mappedRows.slice(0, limit), rawConsumed: Math.min(mappedRows.length, limit) };
   return json({
-    jobs: grouped.jobs,
+    jobs: await attachRecheckedAt(client, grouped.jobs),
     // Raw rows this page swallowed. The client MUST page by this rather than by
     // jobs.length once clusters are folded, or the siblings of a collapsed
     // result reappear on the next page as if they were new.

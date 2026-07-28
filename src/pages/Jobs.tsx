@@ -70,7 +70,12 @@ interface BoardJob {
   /** Board category slug (serveList returns it; drives detail-panel "similar openings"). */
   category?: string | null;
   /** Last re-verification against the company's own feed (serveList last_seen). */
+  /** INSERT-time only; semantically first_seen. Never render as freshness. */
   lastSeen?: string | null;
+  /** job_board_verifications.verified_at — when this board's feed was last read. */
+  recheckedAt?: string | null;
+  /** Set once the employer's feed stopped listing this posting. */
+  missingSince?: string | null;
   /** >1 when the server folded the same role posted in several locations into
    *  this row. The siblings are real, separately-applyable postings — they are
    *  collapsed for readability, never dropped. */
@@ -1175,7 +1180,13 @@ export default function Jobs() {
     // Verify-on-view: a posting not re-checked in 24h+ gets a background live
     // re-verify the moment someone actually looks at it — the postings people
     // SEE are the freshest, regardless of rotation position. Fire-and-forget.
-    if (!job.lastSeen || Date.now() - Date.parse(job.lastSeen) > 24 * 3600_000) {
+    // Re-specified against recheckedAt (real feed-fetch time) with a 6h
+    // threshold — the true feed p50 is ~1.5h, so 24h against a genuine value
+    // would essentially never fire. NOTE: `!recheckedAt` must NOT trigger a
+    // verify; the field is absent whenever the lookup failed or the posting is
+    // already flagged missing, and firing there would hit the vendor on every
+    // panel open for every visitor.
+    if (job.recheckedAt && Date.now() - Date.parse(job.recheckedAt) > 6 * 3600_000) {
       invokeBoard({ action: "verify", ids: [job.id] }).catch(() => {});
     }
     // Hover-prefetch cache first: a warmed description opens the panel with
@@ -2336,12 +2347,18 @@ export default function Jobs() {
                   <ShieldCheck className="w-3.5 h-3.5" />
                   {t("jobsPage.trustBadge", "Verified direct from {{company}}", { company: companyDisplayName(detailJob.company) })}
                 </span>
-                {detailJob.lastSeen && (
+                {/* recheckedAt comes from job_board_verifications.verified_at —
+                    when we last fetched THIS BOARD's feed. It replaces lastSeen,
+                    which is written at INSERT only and never rewritten, so the
+                    old chip was showing discovery time under a tooltip claiming
+                    re-verification. Absent => render nothing rather than
+                    substitute a weaker value. */}
+                {detailJob.recheckedAt && (
                   <span
                     className="text-muted-foreground"
-                    title={t("jobsPage.recheckedTip", "When this posting was last re-verified against the company's own feed")}
+                    title={t("jobsPage.recheckedTip", "When we last re-read this company's own feed")}
                   >
-                    {t("jobsPage.rechecked", "re-checked {{ago}}", { ago: agoLabel(detailJob.lastSeen, t) })}
+                    {t("jobsPage.rechecked", "feed re-read {{ago}}", { ago: agoLabel(detailJob.recheckedAt, t) })}
                   </span>
                 )}
                 <button
