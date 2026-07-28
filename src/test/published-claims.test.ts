@@ -763,3 +763,22 @@ describe("locale guards actually check every locale", () => {
     }
   });
 });
+
+// A diagnostic whose delivery depends on the thing it diagnoses reports
+// nothing. The first version passed the hop outcome to the NEXT hop via
+// chain(), but the failure being diagnosed is that the chain never reaches hop
+// 2 — so note stayed null on a live deploy while the sweep sat at 0% dated.
+describe("the sweep's hop outcome does not depend on the chain surviving", () => {
+  const fn = readFileSync(resolve(root, "supabase/functions/job-board/index.ts"), "utf8");
+
+  it("writes the outcome directly, not only through chain()", () => {
+    const hop = fn.slice(fn.indexOf("const datedTotal = (typeof body.datedTotal"));
+    expect(hop.slice(0, 1800)).toMatch(/job_board_meta"\)\.upsert\(/);
+    expect(hop.slice(0, 1800)).toMatch(/note: `hop: \$\{dated\}\/\$\{scanned\} boards=/);
+  });
+
+  it("the draw failure path also writes directly", () => {
+    // This one already worked, and its null told us the draw does NOT throw.
+    expect(fn).toMatch(/note: `draw: \$\{error\.message \?\? error\}`/);
+  });
+});

@@ -79,7 +79,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-07-28.10";
+const BUILD_VERSION = "2026-07-28.11";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -2744,6 +2744,26 @@ Deno.serve(async (req) => {
       // look "done" while bamboohr sat at 0% dated for weeks.
       const datedTotal = (typeof body.datedTotal === "number" ? body.datedTotal : 0) + dated;
       const scannedTotal = (typeof body.scannedTotal === "number" ? body.scannedTotal : 0) + scanned;
+      // END-OF-HOP stamp, written DIRECTLY rather than forwarded through
+      // chain(). The previous commit only passed the outcome to the NEXT hop —
+      // which is useless for diagnosing a chain that never reaches hop 2, and
+      // that is the exact failure being diagnosed. A diagnostic whose delivery
+      // depends on the thing it is diagnosing reports nothing: measured
+      // 2026-07-28 on 2026-07-28.10, note stayed null while the sweep sat at
+      // bamboohr 0% dated.
+      //
+      // What note=null DID prove is worth keeping: the draw-error path writes
+      // its note directly, so a null note means the draw did not throw —
+      // matching the direct measurement of 500 rows in 0.23s. The failure is
+      // therefore in the vendor/update stage, which this stamp now records.
+      await client.from("job_board_meta").upsert(
+        { k: "posted_backfill", v: {
+            resumeVersion: POSTED_BACKFILL_VERSION, phase, cursor, datedTotal, scannedTotal,
+            note: `hop: ${dated}/${scanned} boards=${byBoard.size}${lastBoardError ? ` last=${lastBoardError}` : ""}`.slice(0, 200),
+            at: new Date().toISOString(),
+          }, updated_at: new Date().toISOString() },
+        { onConflict: "k" },
+      );
       const chain = (nextBody: Record<string, unknown>) => {
         const url = `${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`;
         // Paced like the embed chain: back-to-back per-posting hops are a
