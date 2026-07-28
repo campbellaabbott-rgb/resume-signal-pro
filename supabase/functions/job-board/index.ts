@@ -79,7 +79,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-07-28.1";
+const BUILD_VERSION = "2026-07-28.2";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -573,7 +573,16 @@ const COUNTRY_VERSION = 1; // v1: deterministic country from location text (name
 // rows are already 75% dated and dated-ingest has been live for a week; the
 // marginal dates were not worth half the catalog. The remaining phases also
 // gain an inter-hop pause — the embed-sweep lesson, applied before it bites.
-const POSTED_BACKFILL_VERSION = 4;
+// v5 (2026-07-28): v4's guards stop the replay bug recurring but cannot free
+// the rows it already stranded. The broken v4 chain walked to completion and
+// wrote {version: 4}, and the maintenance kick fires only on
+// `pbV.version !== POSTED_BACKFILL_VERSION` — so 4 === 4 meant the sweep was
+// permanently, silently "done" with bamboohr 43,687/43,687 and rippling
+// 8,991/8,991 undated. Bumping the version is the ONLY thing that re-arms the
+// kick; it is what this constant is for. On the next kick the stored
+// resumeVersion (4, or absent) also fails the new match, so the chain starts
+// clean at bamboohr with an empty cursor rather than inheriting v4 state.
+const POSTED_BACKFILL_VERSION = 5;
 const BACKFILL_HOP_PAUSE_MS = 3_000;
 // Velocity tier: boards that ADDED postings recently earn hot cadence even if
 // small — a 40-role startup posting daily deserves faster revisits than a
