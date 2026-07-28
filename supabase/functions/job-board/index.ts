@@ -79,7 +79,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-07-28.3";
+const BUILD_VERSION = "2026-07-28.4";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -3969,7 +3969,17 @@ async function serveList(
         "id,source,company_token,company,title,location,remote,work_mode,department,category,posted_at,apply_url,salary,salary_min_annual,salary_max_annual,salary_period,salary_currency,experience_band,min_years,last_seen,missing_since",
         withCount ? { count: "exact" } : {},
       )
-      .gte(dateCol, freshCutoffIso);
+      .gte(dateCol, freshCutoffIso)
+      // A posting stamped missing_since failed to appear in a SUCCESSFUL fetch
+      // of its own company's feed (two-pass confirmed). Nothing in the serving
+      // path filtered it, so the postings the Ghost Job Index exists to name
+      // were being served as live results. Measured precision: of 1,000
+      // stamped ids, 117 confirmed deleted at the vendor within 21 minutes and
+      // only 2 flickered back (98.3%) — and a row that returns has the stamp
+      // cleared by the normal refresh, so this self-heals.
+      // Cheap here: it filters rows already fetched via the effective_posted
+      // index, and ~99% pass.
+      .is("missing_since", null);
     const terms = String(body.q ?? "").toLowerCase().split(/\s+/).map(sanitizeTerm).filter(Boolean).slice(0, 8);
     for (const t of terms) q = q.or(`title.ilike.%${t}%,company.ilike.%${t}%,department.ilike.%${t}%`);
     const loc = sanitizeTerm(String(body.location ?? ""));

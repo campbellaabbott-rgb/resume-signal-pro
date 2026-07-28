@@ -377,3 +377,40 @@ describe("the Workday date comments describe what the code does", () => {
     expect(idx).toMatch(/postedAt = isoDateOnly\(j\?\.jobPostingInfo\?\.startDate\)/);
   });
 });
+
+// missing_since is stamped when a posting fails to appear in a SUCCESSFUL
+// fetch of its own company's feed (two-pass confirmed). It is the strongest
+// "this is gone" signal the board has — and nothing in the serving path
+// filtered it, so the postings the Ghost Job Index exists to name were being
+// served as live results. Verified 2026-07-28: rows stamped that same hour
+// were still returnable.
+describe("postings the employer feed already dropped are not served", () => {
+  const fn = readFileSync(resolve(root, "supabase/functions/job-board/index.ts"), "utf8");
+  const mig = readFileSync(
+    resolve(root, "supabase/migrations/20260728120000_stop_serving_dropped_postings.sql"), "utf8");
+
+  it("the edge function's serving query excludes them", () => {
+    expect(fn).toMatch(/\.is\("missing_since", null\)/);
+  });
+
+  it("both serving RPCs exclude them too", () => {
+    // Each builds ONE shared `filters` string, so the base declaration covers
+    // the title tier, the description tier and the capped count alike.
+    expect((mig.match(/missing_since IS NULL/g) || []).length).toBe(2);
+    expect(mig).toMatch(/filters text := ' AND p\.effective_posted >= \$2 AND p\.missing_since IS NULL'/);
+    expect(mig).toMatch(/filters text := ' WHERE p\.effective_posted >= \$1 AND p\.missing_since IS NULL'/);
+  });
+
+  it("the observability index is PARTIAL, not a full-table build", () => {
+    // A full index here would take the write-blocking SHARE lock for minutes
+    // over 581k rows. Partial over the stamped rows only, it is seconds.
+    expect(mig).toMatch(/WHERE missing_since IS NOT NULL;/);
+    expect(mig).toMatch(/CREATE INDEX IF NOT EXISTS job_board_postings_missing_since_idx/);
+  });
+
+  it("the one-shot builder unschedules itself before building", () => {
+    // Otherwise a failure thrash-retries a write-blocking operation every minute.
+    const body = mig.slice(mig.indexOf("build_missing_since_index_oneshot"));
+    expect(body.indexOf("cron.unschedule")).toBeLessThan(body.indexOf("CREATE INDEX"));
+  });
+});
