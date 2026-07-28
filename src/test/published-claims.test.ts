@@ -526,3 +526,42 @@ describe("the posted-date sweep re-arms instead of latching", () => {
     expect(fn).toMatch(/\.eq\("source", phase\)\s*\n\s*\.is\("posted_at", null\)/);
   });
 });
+
+// The sweep sat at bamboohr 0% dated for 2h15m on a confirmed-live deploy and
+// there was NO way to tell which of three very different causes it was:
+// stamped-complete (so not due), a chain alive but dating nothing, or a kick
+// that never fired. job_board_meta is RLS-hidden (42501 for anon), so telling
+// them apart needed dashboard SQL — the exact gap embedSweep was added to close.
+describe("the posted-date sweep reports its own state", () => {
+  const fn = readFileSync(resolve(root, "supabase/functions/job-board/index.ts"), "utf8");
+  const status = fn.slice(fn.indexOf("postedBackfill: (() => {"), fn.indexOf("postedBackfill: (() => {") + 1200);
+
+  it("status publishes the sweep's meta row", () => {
+    expect(fn).toMatch(/client\.from\("job_board_meta"\)\.select\("v, updated_at"\)\.eq\("k", "posted_backfill"\)/);
+    expect(status).toMatch(/version:/);
+    expect(status).toMatch(/sweptAt:/);
+    expect(status).toMatch(/ageMin:/);
+  });
+
+  it("reports due-ness via the kick's OWN predicate, so it cannot drift", () => {
+    // A hand-rolled copy here would eventually disagree with the real kick and
+    // report "due: true" on a sweep that never fires — worse than no signal.
+    expect(status).toMatch(/due: postedBackfillDue\(v\)/);
+  });
+
+  it("a completion stamp records what the chain ACHIEVED, not just that it ended", () => {
+    // Without cumulative totals, a chain that walked 43,687 rows and dated none
+    // is indistinguishable from one that dated thousands.
+    expect(fn).toMatch(/version: POSTED_BACKFILL_VERSION, sweptAt: new Date\(\)\.toISOString\(\), datedTotal, scannedTotal/);
+  });
+
+  it("totals accumulate across hops rather than resetting each hop", () => {
+    expect(fn).toMatch(/const datedTotal = \(typeof body\.datedTotal === "number" \? body\.datedTotal : 0\) \+ dated/);
+    expect(fn).toMatch(/chain\(\{ phase, cursor, datedTotal, scannedTotal \}\)/);
+  });
+
+  it("a died chain still shows how far it got", () => {
+    const hop = fn.slice(fn.indexOf('k: "posted_backfill", v: { ...(typeof pbDone'));
+    expect(hop.slice(0, 400)).toMatch(/datedTotal:/);
+  });
+});

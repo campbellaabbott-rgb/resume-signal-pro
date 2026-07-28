@@ -79,7 +79,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-07-28.7";
+const BUILD_VERSION = "2026-07-28.8";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -2323,8 +2323,9 @@ Deno.serve(async (req) => {
       // bundle, so a stale/failed publish is visible in ONE call instead of being
       // inferred from posting counts over hours (the rung-2 "did it deploy?" pain).
       // Also the source of truth for the heartbeat's job_board_deploy check.
-      const [prog, rot, refreshMeta, bf, hotMeta, fresh, breaker, dateCov, bsMeta, dsMeta, esMeta] = await Promise.all([
+      const [prog, pbMeta, rot, refreshMeta, bf, hotMeta, fresh, breaker, dateCov, bsMeta, dsMeta, esMeta] = await Promise.all([
         client.from("job_board_meta").select("v, updated_at").eq("k", "refresh_progress").maybeSingle(),
+        client.from("job_board_meta").select("v, updated_at").eq("k", "posted_backfill").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "cold_rotation").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "refresh").maybeSingle(),
         client.from("job_board_meta").select("v").eq("k", "board_failures").maybeSingle(),
@@ -2377,6 +2378,27 @@ Deno.serve(async (req) => {
           note: ((esMeta.data?.v ?? {}) as { note?: string }).note ?? null,
           ageMin: esMeta.data?.updated_at ? Math.round((Date.now() - new Date(esMeta.data.updated_at).getTime()) / 60000) : null,
         },
+        // Posted-date backfill liveness. Added 2026-07-28 after the sweep sat
+        // at bamboohr 0% dated for 2h15m on a confirmed-live deploy and there
+        // was NO way to tell which of three very different causes it was:
+        // already-stamped-complete (so not due), a chain alive but dating
+        // nothing, or a kick that never fired. job_board_meta is RLS-hidden
+        // (42501 for anon), so diagnosing it needed dashboard SQL — the exact
+        // gap embedSweep was added to close for the embedding chain.
+        // `due` mirrors the kick's own predicate, so this cannot drift from it.
+        postedBackfill: (() => {
+          const v = (pbMeta.data?.v ?? {}) as { version?: number; sweptAt?: string; phase?: string; cursor?: string; datedTotal?: number; scannedTotal?: number };
+          return {
+            version: v.version ?? null,
+            sweptAt: v.sweptAt ?? null,
+            phase: v.phase ?? null,
+            cursor: typeof v.cursor === "string" ? v.cursor.slice(0, 60) : null,
+            datedTotal: v.datedTotal ?? null,
+            scannedTotal: v.scannedTotal ?? null,
+            ageMin: pbMeta.data?.updated_at ? Math.round((Date.now() - new Date(pbMeta.data.updated_at).getTime()) / 60000) : null,
+            due: postedBackfillDue(v),
+          };
+        })(),
         // live pipeline health (meta-derived)
         totalPostings: rfV.total ?? null,
         coldBoards: rotV.coldBoards ?? null,
@@ -2602,7 +2624,7 @@ Deno.serve(async (req) => {
       const { data: pbPrev } = await client.from("job_board_meta").select("v").eq("k", "posted_backfill").maybeSingle();
       const pbDone = (pbPrev?.v as { version?: number } | null)?.version;
       await client.from("job_board_meta").upsert(
-        { k: "posted_backfill", v: { ...(typeof pbDone === "number" ? { version: pbDone } : {}), resumeVersion: POSTED_BACKFILL_VERSION, phase, cursor, at: new Date().toISOString() }, updated_at: new Date().toISOString() },
+        { k: "posted_backfill", v: { ...(typeof pbDone === "number" ? { version: pbDone } : {}), resumeVersion: POSTED_BACKFILL_VERSION, phase, cursor, datedTotal: (typeof body.datedTotal === "number" ? body.datedTotal : 0), at: new Date().toISOString() }, updated_at: new Date().toISOString() },
         { onConflict: "k" },
       );
       const byBoard = new Map<string, { company: string; ids: string[] }>();
@@ -2686,6 +2708,13 @@ Deno.serve(async (req) => {
           }
         } catch { /* board fetch failed — rows stay NULL, next version retries */ }
       }
+      // Cumulative across the whole chain, threaded hop to hop. Without this a
+      // completion stamp records only the LAST hop's numbers, so a chain that
+      // walked 43,687 rows and dated none is indistinguishable from one that
+      // dated thousands — which is exactly the ambiguity that let this sweep
+      // look "done" while bamboohr sat at 0% dated for weeks.
+      const datedTotal = (typeof body.datedTotal === "number" ? body.datedTotal : 0) + dated;
+      const scannedTotal = (typeof body.scannedTotal === "number" ? body.scannedTotal : 0) + scanned;
       const chain = (nextBody: Record<string, unknown>) => {
         const url = `${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`;
         // Paced like the embed chain: back-to-back per-posting hops are a
@@ -2699,16 +2728,16 @@ Deno.serve(async (req) => {
           })).then((r) => r.text()).catch(() => {}));
       };
       if (!exhausted) {
-        chain({ phase, cursor });
-        return json({ ok: true, phase, scanned, dated, cursor });
+        chain({ phase, cursor, datedTotal, scannedTotal });
+        return json({ ok: true, phase, scanned, dated, datedTotal, scannedTotal, cursor });
       }
       const NEXT_PHASE: Record<string, string> = { bamboohr: "rippling", rippling: "greenhouse" }; // greenhouse is terminal — the workday phase is retired (see POSTED_BACKFILL_VERSION)
       if (NEXT_PHASE[phase]) {
-        chain({ phase: NEXT_PHASE[phase] }); // fresh cursor for the next source
-        return json({ ok: true, phase, scanned, dated, next: NEXT_PHASE[phase] });
+        chain({ phase: NEXT_PHASE[phase], datedTotal, scannedTotal }); // fresh cursor for the next source
+        return json({ ok: true, phase, scanned, dated, datedTotal, scannedTotal, next: NEXT_PHASE[phase] });
       }
       await client.from("job_board_meta").upsert(
-        { k: "posted_backfill", v: { version: POSTED_BACKFILL_VERSION, sweptAt: new Date().toISOString() }, updated_at: new Date().toISOString() },
+        { k: "posted_backfill", v: { version: POSTED_BACKFILL_VERSION, sweptAt: new Date().toISOString(), datedTotal, scannedTotal }, updated_at: new Date().toISOString() },
         { onConflict: "k" },
       );
       console.log(`[JOB-BOARD] posted-date backfill complete: ${scanned} scanned, ${dated} dated (v${POSTED_BACKFILL_VERSION})`);
