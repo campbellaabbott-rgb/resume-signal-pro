@@ -1078,6 +1078,39 @@ export type Database = {
           },
         ]
       }
+      job_board_exits: {
+        Row: {
+          category: string
+          company_token: string
+          days_on_board: number | null
+          event_id: number
+          exit_reason: string
+          exited_at: string
+          posting_id: string
+          source: string
+        }
+        Insert: {
+          category?: string
+          company_token: string
+          days_on_board?: number | null
+          event_id?: never
+          exit_reason: string
+          exited_at?: string
+          posting_id: string
+          source: string
+        }
+        Update: {
+          category?: string
+          company_token?: string
+          days_on_board?: number | null
+          event_id?: never
+          exit_reason?: string
+          exited_at?: string
+          posting_id?: string
+          source?: string
+        }
+        Relationships: []
+      }
       job_board_meta: {
         Row: {
           k: string
