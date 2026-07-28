@@ -79,7 +79,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-07-28.4";
+const BUILD_VERSION = "2026-07-28.5";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -1751,6 +1751,30 @@ async function maybeKickMaintenance(client: SupabaseClient): Promise<void> {
     const esSettled = Number.isFinite(esDoneAt) && Date.now() - esDoneAt < 60 * 60_000;
     if (!es.alive && !esSettled) {
       await kick("embed-sweep");
+    }
+
+    // Posted-date backfill — the SAME starvation desc-sweep and recategorise
+    // hit on 2026-07-25, except this one was left behind when they were moved
+    // to the slice cadence. Its only kick still sits in the FULL-PASS branch,
+    // which requires a completed 120-slice cold rotation, so in practice it
+    // never ran: measured 2026-07-28, bamboohr dated = 0 AND rippling dated = 0
+    // for 3h09 straight after the sweep was deliberately re-armed at
+    // POSTED_BACKFILL_VERSION 5 and confirmed deployed. The code was correct
+    // and simply unreachable.
+    //
+    // Independent track: it does fetch vendors, but self-paces at one detail
+    // call per posting with IDS_PER_HOP=120 and BACKFILL_HOP_PAUSE_MS between
+    // hops, so it must not queue behind the fetch-heavy exclusive ladder.
+    // Resume state is version-keyed (see the kick in runRefresh) so stale v4
+    // state can never be replayed.
+    const pb = await alive("posted_backfill");
+    const pbv = (pb.v ?? {}) as { version?: number; resumeVersion?: number; phase?: string; cursor?: string };
+    if (!pb.alive && pbv.version !== POSTED_BACKFILL_VERSION) {
+      const pbResume = pbv.resumeVersion === POSTED_BACKFILL_VERSION
+        && typeof pbv.phase === "string" && typeof pbv.cursor === "string"
+        ? { phase: pbv.phase, cursor: pbv.cursor }
+        : {};
+      await kick("backfill-posted", pbResume);
     }
 
     // Categorization rules changed since the corpus was stamped? Sweep the

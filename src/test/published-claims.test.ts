@@ -414,3 +414,42 @@ describe("postings the employer feed already dropped are not served", () => {
     expect(body.indexOf("cron.unschedule")).toBeLessThan(body.indexOf("CREATE INDEX"));
   });
 });
+
+// The posted-date backfill was STARVED, not broken. Its only kick sat in the
+// full-pass branch of runRefresh, which requires a completed 120-slice cold
+// rotation. Measured 2026-07-28: bamboohr dated = 0 AND rippling dated = 0 for
+// 3h09 after the sweep was deliberately re-armed at POSTED_BACKFILL_VERSION 5
+// and confirmed deployed — the code was correct and simply unreachable.
+//
+// This is the SAME starvation the comment above maybeKickMaintenance records
+// for desc-sweep and recategorise on 2026-07-25 ("~460k postings still without
+// descriptions"). Those two were moved to the slice cadence; the posted
+// backfill was left behind.
+describe("the posted-date backfill is reachable without a full rotation", () => {
+  const fn = readFileSync(resolve(root, "supabase/functions/job-board/index.ts"), "utf8");
+
+  it("runs as a maintenance track, not only at pass end", () => {
+    const mk = fn.slice(fn.indexOf("async function maybeKickMaintenance"));
+    expect(mk).toMatch(/alive\("posted_backfill"\)/);
+    expect(mk).toMatch(/kick\("backfill-posted"/);
+  });
+
+  it("maintenance is reachable from the SLICE path", () => {
+    // If maybeKickMaintenance itself were only called at pass end, moving the
+    // kick into it would change nothing.
+    const sliceTail = fn.slice(fn.indexOf("if (chainHop < CHAIN_CAP) chainNextSlice(chainHop);") - 400);
+    expect(sliceTail).toMatch(/await maybeKickMaintenance\(client\)/);
+  });
+
+  it("still refuses to replay resume state from an older sweep version", () => {
+    // The v4 bug: stale {phase,cursor} made the chain query
+    // source=bamboohr AND id > 'workday:...' -> 0 rows -> "complete".
+    const mk = fn.slice(fn.indexOf("async function maybeKickMaintenance"));
+    expect(mk).toMatch(/pbv\.resumeVersion === POSTED_BACKFILL_VERSION/);
+  });
+
+  it("does not start a second chain while one is alive", () => {
+    const mk = fn.slice(fn.indexOf("async function maybeKickMaintenance"));
+    expect(mk).toMatch(/if \(!pb\.alive && pbv\.version !== POSTED_BACKFILL_VERSION\)/);
+  });
+});
