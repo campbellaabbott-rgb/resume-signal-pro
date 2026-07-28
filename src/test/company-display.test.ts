@@ -138,3 +138,31 @@ describe("decodeNameEntities", () => {
     expect(decodeNameEntities("A &amp;amp; B")).toBe("A &amp; B");
   });
 });
+
+// Prototype-reachable lookups. A company literally named "Constructor"
+// (Constructor.io — 4 postings live on the board 2026-07-28) hit
+// NAME_FIXES["constructor"], which is inherited from Object.prototype and is
+// a FUNCTION. `if (fixed) return fixed` then returned it from a string-typed
+// API, and React renders that as "function Object() { [native code] }" or
+// throws "Functions are not valid as a React child".
+// TypeScript cannot catch this: Record<string, string> describes inherited
+// keys as strings.
+describe("companyDisplayName resists Object.prototype keys", () => {
+  for (const name of ["Constructor", "constructor", "toString", "valueOf",
+                      "hasOwnProperty", "__proto__", "isPrototypeOf"]) {
+    it(`returns a string for "${name}"`, () => {
+      const out = companyDisplayName(name);
+      expect(typeof out).toBe("string");
+      expect(out).not.toMatch(/\[native code\]/);
+    });
+  }
+
+  it("still applies the real overrides", () => {
+    expect(companyDisplayName("modernatx")).toBe("Moderna");
+    expect(companyDisplayName("drivenbrands")).toBe("Driven Brands");
+  });
+
+  it("leaves ordinary names alone", () => {
+    expect(companyDisplayName("Acme")).toBe("Acme");
+  });
+});

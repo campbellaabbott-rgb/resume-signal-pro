@@ -35,10 +35,20 @@ const capitalize = (s: string) => (s ? s[0].toUpperCase() + s.slice(1) : s);
 // employer's own careers site (2026-07-26 browser walk). Keyed by the exact
 // mangled form — anything else passes through untouched. This list only grows
 // from confirmed sightings, never guesses.
-const NAME_FIXES: Record<string, string> = {
-  modernatx: "Moderna",
-  drivenbrands: "Driven Brands",
-};
+// A Map, not an object literal. As a plain object this lookup reached
+// Object.prototype: companyDisplayName("Constructor") returned the Object
+// CONSTRUCTOR FUNCTION, because NAME_FIXES["constructor"] is inherited and a
+// function is truthy, so `if (fixed) return fixed` handed a function back from
+// a string-typed API. React renders that as "function Object() { [native
+// code] }" or throws "Functions are not valid as a React child".
+// This was live: 4 postings on the board are from a company named
+// Constructor (Constructor.io). "toString", "valueOf" and "hasOwnProperty"
+// would do the same. TypeScript cannot catch it — Record<string, string>
+// silently describes inherited keys as strings.
+const NAME_FIXES = new Map<string, string>([
+  ["modernatx", "Moderna"],
+  ["drivenbrands", "Driven Brands"],
+]);
 
 /**
  * Display form of an employer name. Idempotent, and a no-op for the ~99% of
@@ -47,7 +57,7 @@ const NAME_FIXES: Record<string, string> = {
 export function companyDisplayName(name: string | null | undefined): string {
   const raw = (name ?? "").trim();
   if (!raw) return "";
-  const fixed = NAME_FIXES[raw.toLowerCase()];
+  const fixed = NAME_FIXES.get(raw.toLowerCase());
   if (fixed) return fixed;
   // Split on spaces but keep separators like "&" and "-" intact.
   return raw

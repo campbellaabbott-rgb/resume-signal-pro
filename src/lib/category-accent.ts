@@ -21,4 +21,18 @@ export const CATEGORY_ACCENT: Record<string, string> = {
   admin: "hsl(240 5% 65%)",
   other: "hsl(240 5% 45%)",
 };
-export const accentFor = (c?: string | null): string => CATEGORY_ACCENT[c ?? "other"] ?? CATEGORY_ACCENT.other;
+// Own-property check, not a bare index. CATEGORY_ACCENT[c] reaches
+// Object.prototype, so accentFor("constructor") returned the Object
+// constructor FUNCTION — and `??` does not catch it, because a function is not
+// nullish. That value then landed in `border-left: 3px solid ${...}` and
+// `backgroundColor`, i.e. a function stringified into CSS. Category reaches
+// this from route params on the lander, so the key is not fully ours to trust.
+// Same class as the NAME_FIXES["constructor"] leak in company-display.ts.
+export const accentFor = (c?: string | null): string => {
+  const key = c ?? "other";
+  // hasOwnProperty.call, not Object.hasOwn: this project's tsconfig lib is
+  // below es2022, and widening it for one lookup is not worth the blast radius.
+  return Object.prototype.hasOwnProperty.call(CATEGORY_ACCENT, key)
+    ? CATEGORY_ACCENT[key]
+    : CATEGORY_ACCENT.other;
+};
