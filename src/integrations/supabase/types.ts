@@ -2352,6 +2352,7 @@ export type Database = {
         Args: { p_credits: number; p_email: string }
         Returns: boolean
       }
+      build_missing_since_index_oneshot: { Args: never; Returns: undefined }
       build_speed_indexes_oneshot: { Args: never; Returns: undefined }
       check_global_rate_limit: {
         Args: {
