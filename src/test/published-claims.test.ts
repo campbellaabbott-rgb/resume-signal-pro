@@ -453,3 +453,47 @@ describe("the posted-date backfill is reachable without a full rotation", () => 
     expect(mk).toMatch(/if \(!pb\.alive && pbv\.version !== POSTED_BACKFILL_VERSION\)/);
   });
 });
+
+// The exit ledger's whole value is that 'aged_out' means one specific thing:
+// a 30-day tenure THIS BOARD WATCHED elapse. A dating sweep that backfills
+// 43,687 BambooHR rows would otherwise file ~35,000 learned-after-the-fact
+// ages under that label, in a single day — manufacturing ghost-rate evidence
+// out of our own late knowledge. The stat hasn't shipped, so this is cheap to
+// get right now and expensive to unpick later.
+describe("exit ledger keeps learned age separate from observed age", () => {
+  const fn = readFileSync(resolve(root, "supabase/functions/job-board/index.ts"), "utf8");
+
+  it("no exit site hardcodes aged_out", () => {
+    expect(fn).not.toMatch(/exit_reason:\s*"aged_out"/);
+  });
+
+  it("both aged-out sites classify from the row", () => {
+    expect(fn.match(/exitReasonFor\(r\.posted_at, r\.first_seen\)/g)?.length).toBe(2);
+  });
+
+  it("classifies on posted_at vs first_seen, not on who called it", () => {
+    // A flag the dating sweep sets would be forgotten by the next backfill.
+    const h = fn.slice(fn.indexOf("function exitReasonFor"), fn.indexOf("function exitReasonFor") + 500);
+    expect(h).toMatch(/p < f - BACKDATE_SLACK_MS \? "backdated" : "aged_out"/);
+  });
+
+  it("falls back to aged_out when either date is missing", () => {
+    const h = fn.slice(fn.indexOf("function exitReasonFor"), fn.indexOf("function exitReasonFor") + 500);
+    expect(h).toMatch(/if \(!Number\.isFinite\(p\) \|\| !Number\.isFinite\(f\)\) return "aged_out"/);
+  });
+
+  it("the DB constraint admits the new reason", () => {
+    const mig = readFileSync(resolve(root, "supabase/migrations/20260728130000_exit_reason_backdated.sql"), "utf8");
+    expect(mig).toMatch(/CHECK \(exit_reason IN \('removed', 'aged_out', 'backdated'\)\)/);
+  });
+
+  it("nothing published reads the ledger without filtering to aged_out", () => {
+    // Guard for later: today no consumer exists. If one appears and reads the
+    // raw ledger, it must exclude backdated or the namesake stat goes false.
+    const sql = readdirSync(resolve(root, "supabase/migrations"))
+      .filter((f) => f.endsWith(".sql"))
+      .map((f) => readFileSync(resolve(root, "supabase/migrations", f), "utf8"))
+      .filter((t) => /FROM public\.job_board_exits/.test(t) && /CREATE (OR REPLACE )?FUNCTION/.test(t));
+    for (const t of sql) expect(t).toMatch(/exit_reason\s*=\s*'aged_out'|exit_reason\s*<>\s*'backdated'|exit_reason\s+IN\s*\(/i);
+  });
+});

@@ -79,7 +79,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-07-28.5";
+const BUILD_VERSION = "2026-07-28.6";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -630,6 +630,34 @@ const CORPUS_TARGET = 720_000;  // evict down to this
 // dropped dated posting can't re-enter. One constant to dial (30d ≈ 31k live
 // board, 45d ≈ 43k, 60d ≈ 50k on the current selection).
 const FRESH_WINDOW_DAYS = 30;
+
+// Which exit did this posting actually experience?
+//
+// 'aged_out' means what the exit ledger's header says it means: STILL
+// ADVERTISED WHEN IT CROSSED OUR 30-DAY CAP — a tenure our board watched
+// elapse. That is the event the ghost-rate stat counts.
+//
+// A posting whose employer-stated date predates our FIRST SIGHTING by more
+// than the serving window never gave us that observation. It was already old
+// when it arrived, or (the case that forces this) it sat here undated for
+// weeks and a later backfill told us its real date. We did not watch it age;
+// we found out it was aged. Calling that 'aged_out' would let a dating sweep
+// manufacture ghost-rate evidence out of nothing but our own late knowledge —
+// and it would land as a one-day spike, because a sweep drains in hours what
+// the board would otherwise emit over months.
+//
+// So: 'backdated'. Same row, same days_on_board (which is defined off the
+// employer's date and is still the employer's true tenure), different claim.
+// Written as a property of the DATA, not as a flag the dating sweep sets, so
+// every future backfill inherits it without anyone remembering this cohort.
+const BACKDATE_SLACK_MS = FRESH_WINDOW_DAYS * 86_400_000;
+function exitReasonFor(postedAt: unknown, firstSeen: unknown): "aged_out" | "backdated" {
+  const p = postedAt ? Date.parse(String(postedAt)) : NaN;
+  const f = firstSeen ? Date.parse(String(firstSeen)) : NaN;
+  if (!Number.isFinite(p) || !Number.isFinite(f)) return "aged_out";
+  return p < f - BACKDATE_SLACK_MS ? "backdated" : "aged_out";
+}
+
 // Cap the aged-tail sweep per pass so a big backlog drains without a giant
 // delete (still batched 200/delete below). Raised 6k→15k with
 // COLD_SLICES_PER_PASS 48→120: the sweep is per-PASS, so a 2.5x longer pass
@@ -1164,7 +1192,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
                     source: String(r.source ?? s.source),
                     company_token: String(r.company_token ?? s.token),
                     category: String(r.category ?? "other"),
-                    exit_reason: "aged_out",
+                    exit_reason: exitReasonFor(r.posted_at, r.first_seen),
                     days_on_board: r.posted_at
                       ? Math.round((Date.now() - new Date(String(r.posted_at)).getTime()) / 8_640_000) / 10
                       : null,
@@ -1464,7 +1492,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
               source: r.source as string,
               company_token: r.company_token as string,
               category: (r.category as string) ?? "other",
-              exit_reason: "aged_out",
+              exit_reason: exitReasonFor(r.posted_at, r.first_seen),
               days_on_board: (r.posted_at ?? r.first_seen)
                 ? Math.round((Date.parse(exitedAt) - Date.parse(String(r.posted_at ?? r.first_seen))) / 8_640_000) / 10
                 : null,
