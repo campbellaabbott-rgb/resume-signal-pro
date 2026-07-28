@@ -79,7 +79,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-07-28.9";
+const BUILD_VERSION = "2026-07-28.10";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -2397,13 +2397,14 @@ Deno.serve(async (req) => {
         // gap embedSweep was added to close for the embedding chain.
         // `due` mirrors the kick's own predicate, so this cannot drift from it.
         postedBackfill: (() => {
-          const v = (pbMeta.data?.v ?? {}) as { version?: number; sweptAt?: string; phase?: string; cursor?: string; datedTotal?: number; scannedTotal?: number };
+          const v = (pbMeta.data?.v ?? {}) as { version?: number; sweptAt?: string; phase?: string; cursor?: string; datedTotal?: number; scannedTotal?: number; note?: string };
           return {
             version: v.version ?? null,
             sweptAt: v.sweptAt ?? null,
             phase: v.phase ?? null,
             cursor: typeof v.cursor === "string" ? v.cursor.slice(0, 60) : null,
             datedTotal: v.datedTotal ?? null,
+            note: v.note ?? null,
             scannedTotal: v.scannedTotal ?? null,
             ageMin: pbMeta.data?.updated_at ? Math.round((Date.now() - new Date(pbMeta.data.updated_at).getTime()) / 60000) : null,
             due: postedBackfillDue(v),
@@ -2634,7 +2635,7 @@ Deno.serve(async (req) => {
       const { data: pbPrev } = await client.from("job_board_meta").select("v").eq("k", "posted_backfill").maybeSingle();
       const pbDone = (pbPrev?.v as { version?: number } | null)?.version;
       await client.from("job_board_meta").upsert(
-        { k: "posted_backfill", v: { ...(typeof pbDone === "number" ? { version: pbDone } : {}), resumeVersion: POSTED_BACKFILL_VERSION, phase, cursor, datedTotal: (typeof body.datedTotal === "number" ? body.datedTotal : 0), at: new Date().toISOString() }, updated_at: new Date().toISOString() },
+        { k: "posted_backfill", v: { ...(typeof pbDone === "number" ? { version: pbDone } : {}), resumeVersion: POSTED_BACKFILL_VERSION, phase, cursor, datedTotal: (typeof body.datedTotal === "number" ? body.datedTotal : 0), note: typeof body.note === "string" ? body.note.slice(0, 200) : null, at: new Date().toISOString() }, updated_at: new Date().toISOString() },
         { onConflict: "k" },
       );
       const byBoard = new Map<string, { company: string; ids: string[] }>();
@@ -2650,7 +2651,19 @@ Deno.serve(async (req) => {
           .limit(500);
         if (cursor) q = q.gt("id", cursor);
         const { data: rows, error } = await q;
-        if (error) throw error;
+        if (error) {
+          // Surface it. A thrown draw error left NO trace anywhere anon-visible:
+          // the hop stamped, died, and the next kick 10 minutes later repeated
+          // the whole thing, which is indistinguishable from "ran and found
+          // nothing to do". Measured 2026-07-28: 40 consecutive samples over
+          // 2h40m with bamboohr dated = 0, while the draw returns 500 rows in
+          // 0.23s and 6/6 vendor detail probes answered 200 with real dates —
+          // so the failure is inside the hop and nothing recorded which line.
+          await client.from("job_board_meta").upsert(
+            { k: "posted_backfill", v: { resumeVersion: POSTED_BACKFILL_VERSION, phase, cursor, note: `draw: ${error.message ?? error}`.slice(0, 200), at: new Date().toISOString() }, updated_at: new Date().toISOString() },
+          { onConflict: "k" });
+          throw error;
+        }
         let brokeEarly = false;
         for (const r of rows ?? []) {
           const tk = r.company_token as string;
@@ -2667,6 +2680,7 @@ Deno.serve(async (req) => {
         if (!brokeEarly && (!rows || rows.length < 500)) exhausted = true;
       }
       let dated = 0;
+      let lastBoardError = "";
       for (const [tk, { company, ids }] of byBoard) {
         try {
           const dates = new Map<string, string>();
@@ -2716,7 +2730,12 @@ Deno.serve(async (req) => {
             const { error } = await client.from("job_board_postings").update({ posted_at: iso }).eq("id", id);
             if (!error) dated++;
           }
-        } catch { /* board fetch failed — rows stay NULL, next version retries */ }
+        } catch (e) {
+          // Was silent. Keep the sweep resilient per board, but record the LAST
+          // failure so "dated 0 of 120" can be told apart from "every vendor
+          // call threw".
+          lastBoardError = `${tk}: ${e instanceof Error ? e.message : String(e)}`.slice(0, 160);
+        }
       }
       // Cumulative across the whole chain, threaded hop to hop. Without this a
       // completion stamp records only the LAST hop's numbers, so a chain that
@@ -2738,12 +2757,12 @@ Deno.serve(async (req) => {
           })).then((r) => r.text()).catch(() => {}));
       };
       if (!exhausted) {
-        chain({ phase, cursor, datedTotal, scannedTotal });
+        chain({ phase, cursor, datedTotal, scannedTotal, note: lastBoardError ? `board ${lastBoardError}` : `hop ok: ${dated}/${scanned}` });
         return json({ ok: true, phase, scanned, dated, datedTotal, scannedTotal, cursor });
       }
       const NEXT_PHASE: Record<string, string> = { bamboohr: "rippling", rippling: "greenhouse" }; // greenhouse is terminal — the workday phase is retired (see POSTED_BACKFILL_VERSION)
       if (NEXT_PHASE[phase]) {
-        chain({ phase: NEXT_PHASE[phase], datedTotal, scannedTotal }); // fresh cursor for the next source
+        chain({ phase: NEXT_PHASE[phase], datedTotal, scannedTotal, note: lastBoardError ? `board ${lastBoardError}` : `phase done: ${datedTotal}/${scannedTotal}` }); // fresh cursor for the next source
         return json({ ok: true, phase, scanned, dated, datedTotal, scannedTotal, next: NEXT_PHASE[phase] });
       }
       await client.from("job_board_meta").upsert(

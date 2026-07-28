@@ -557,7 +557,7 @@ describe("the posted-date sweep reports its own state", () => {
 
   it("totals accumulate across hops rather than resetting each hop", () => {
     expect(fn).toMatch(/const datedTotal = \(typeof body\.datedTotal === "number" \? body\.datedTotal : 0\) \+ dated/);
-    expect(fn).toMatch(/chain\(\{ phase, cursor, datedTotal, scannedTotal \}\)/);
+    expect(fn).toMatch(/chain\(\{ phase, cursor, datedTotal, scannedTotal[,}]/);
   });
 
   it("a died chain still shows how far it got", () => {
