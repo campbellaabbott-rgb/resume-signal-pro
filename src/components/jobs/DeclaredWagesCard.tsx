@@ -6,6 +6,7 @@
 // company-wide pay. Renders nothing for companies without filings.
 
 import { useEffect, useState } from "react";
+import { H1B_DATA_AVAILABLE } from "@/lib/h1b-availability";
 import { FileText } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
@@ -27,6 +28,8 @@ export function DeclaredWagesCard({ companyToken, companyName }: { companyToken:
   useEffect(() => {
     let cancelled = false;
     setData(null);
+    // No H1B_DATA_AVAILABLE → the RPC does not exist; don't 404 on every view.
+    if (!H1B_DATA_AVAILABLE) return;
     (async () => {
       try {
         const { data: d } = await (supabase as unknown as {

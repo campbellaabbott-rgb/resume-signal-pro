@@ -3502,11 +3502,10 @@
     "error": "Hindi ma-load ang board ngayon.",
     "retry": "Subukan ulit",
     "empty": "Walang opening na tumutugma sa mga filter. Luwagan ang isa at subukan ulit.",
-    "resultsSummary": "Ipinapakita ang {{shown}} sa {{total}} tumutugmang opening sa {{companies}} kumpanya",
+    "resultsSummary": "Ipinapakita ang {{shown}} sa {{total}} tumutugmang opening sa {{companyFeeds}} feed ng kumpanya",
     "resultsSummaryNoTotal": "Ipinapakita ang {{shown}} tugmang bakante",
     "alsoInLocations_one": "Kumukuha rin sa {{count}} pang lokasyon",
     "alsoInLocations_other": "Kumukuha rin sa {{count}} pang mga lokasyon",
-    "sourcesDown": "{{count}} feed ng kumpanya ang hindi maabot ngayon",
     "postedToday": "ngayon",
     "postedDaysAgo": "{{count}} araw na nakalipas",
     "checkFit": "I-check ang fit ko — libreng scan",
@@ -3537,7 +3536,6 @@
       "senior": "Senior (6–9 taon)",
       "expert": "Eksperto (10+ taon)"
     },
-    "updatedAgo": "na-update {{min}} min ang nakalipas",
     "categories": {
       "engineering": "Engineering at IT",
       "data_ai": "Data at AI",
@@ -3845,7 +3843,7 @@
     "detailNoDesc": "Hindi kasama sa feed ng kumpanyang ito ang buong deskripsyon — makikita ang kumpletong posting sa sarili nilang site sa pag-Apply.",
     "detailSimilar": "Mga katulad na opening sa board",
     "companyYesHiring": "Oo — {{count}} verified na bukas na {{roleWord}} ngayon mismo, direkta mula sa sariling job board ng {{company}}.",
-    "countLine": "{{total}} live na opening mula sa {{companies}} kumpanya — bawat isa'y direkta mula sa sariling hiring system ng kumpanya.",
+    "countLine": "{{total}} live na opening mula sa {{companyFeeds}} feed ng kumpanya — bawat isa'y direkta mula sa sariling hiring system ng kumpanya.",
     "subtitleShort": "Bawat trabaho direkta mula sa sariling careers system ng kumpanya — verified, sariwa, chine-check ulit kapag nag-apply ka.",
     "badgeOfficial": "Opisyal na feeds lang",
     "guaranteeFreshTip": "Awtomatikong tinatanggal ang anumang posting na lampas 30 araw na ang petsang isinaad ng kumpanya — sa pagpasok pa lang at muli kapag binabasa. Kapag walang petsang isinaad ang kumpanya, hindi namin masasabing luma ang posting, kaya pinapanatili namin ito at walang ipinapakitang edad sa halip na manghula.",
@@ -3938,7 +3936,10 @@
     "fillSpeedLine": "Ang mga role sa larangang ito ay karaniwang bukas nang ~{{median}} araw (75% nagsasara sa loob ng {{p75}} araw) — sinukat mula sa {{n}} na-track na pagsasara sa nakaraang {{window}} araw.",
     "salaryContextBasis": "ang mga oras-oras at buwanang rate ay ginawang taunan (oras-oras ×2080)",
     "landerCountLine": "{{total}} aktibong opening sa {{category}} — bawat isa ay direkta mula sa sariling hiring system ng kumpanya.",
-    "resultsSummaryFiltered": "Ipinapakita ang {{shown}} sa {{total}} tumutugmang opening"
+    "resultsSummaryFiltered": "Ipinapakita ang {{shown}} sa {{total}} tumutugmang opening",
+    "recheckedAgo": "median na feed, muling sinuri {{min}} min ang nakalipas",
+    "sourcesDown_one": "{{count}} feed ng kumpanya ang hindi maabot ngayon",
+    "sourcesDown_other": "{{count}} feed ng kumpanya ang hindi maabot ngayon"
   },
   "accountPage": {
     "statusSaveFailed": "Hindi na-save ang status na iyon — pakisubukan muli.",

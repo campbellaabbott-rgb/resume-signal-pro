@@ -2747,9 +2747,9 @@ export default function Jobs() {
                   category: t(`jobsPage.categories.${landerCategory}`, landerCategory),
                 })
               : !landerCategory && data?.totalAllCompanies
-              ? t("jobsPage.countLine", "{{total}} live openings from {{companies}} companies — every one straight from the company's own hiring system.", {
+              ? t("jobsPage.countLine", "{{total}} live openings from {{companyFeeds}} company feeds — every one straight from the company's own hiring system.", {
                   total: data.totalAllCompanies.toLocaleString(),
-                  companies: (data.companiesCount ?? companies.length).toLocaleString(),
+                  companyFeeds: (data.companiesCount ?? companies.length).toLocaleString(),
                 })
               : t("jobsPage.subtitleShort", "Every job straight from the company's own careers system — verified, fresh, re-checked when you apply.")}
             {/* Live activity strip: the board IS alive — say so with measured
@@ -3713,22 +3713,34 @@ export default function Jobs() {
                     ? `${(data?.total ?? 0).toLocaleString()}+`
                     : (data?.total ?? jobs.length).toLocaleString(),
                 })
-                  : t("jobsPage.resultsSummary", "Showing {{shown}} of {{total}} matching openings across {{companies}} companies", {
+                  : t("jobsPage.resultsSummary", "Showing {{shown}} of {{total}} matching openings across {{companyFeeds}} company feeds", {
                   shown: jobs.length,
                   // The server caps counting for speed; above the cap it says so,
                   // and we render "10,000+" rather than passing the cap off as exact.
                   total: data?.countCapped
                     ? `${(data?.total ?? 0).toLocaleString()}+`
                     : (data?.total ?? jobs.length).toLocaleString(),
-                  companies: (data?.companiesCount ?? companies.length).toLocaleString(),
+                  companyFeeds: (data?.companiesCount ?? companies.length).toLocaleString(),
                 })}
-                {data?.refreshedAt && (
-                  <span> · {t("jobsPage.updatedAgo", "updated {{min}} min ago", { min: Math.max(0, Math.round((Date.now() - new Date(data.refreshedAt).getTime()) / 60000)) })}</span>
+                {/* refreshedAt is the last FULL-ROTATION stamp, not "when this
+                    board was updated" — measured 2026-07-28 it read 931 min
+                    while the site's own measured re-check median was 112 min
+                    and the footer below promised 10-15 minutes. Three different
+                    freshness numbers across two pages of one product, and the
+                    biggest one carried the vaguest label. Publish the MEASURED
+                    stat (the same p50 the Ghost Job Index publishes) so the two
+                    pages cannot disagree, and say plainly what it measures. */}
+                {recheckP50Min !== null && (
+                  <span> · {t("jobsPage.recheckedAgo", "median feed re-checked {{min}} min ago", { min: recheckP50Min })}</span>
                 )}
                 {/* Board-wide feed-health note — on a single-company page it
                     reads as a claim about THAT company, so it stays off there. */}
                 {!landerCompany && data && data.failedSources.length > 0 && (
-                  <span> · {t("jobsPage.sourcesDown", "{{count}} company feeds are unreachable right now", { count: data.failedSources.length })}</span>
+                  <span> · {t("jobsPage.sourcesDown", {
+                    count: data.failedSources.length,
+                    defaultValue_one: "{{count}} company feed is unreachable right now",
+                    defaultValue_other: "{{count}} company feeds are unreachable right now",
+                  })}</span>
                 )}
                 {refreshing && <span className="text-primary"> · {t("jobsPage.updating", "updating…")}</span>}
                 {dismissedIds.size > 0 && (

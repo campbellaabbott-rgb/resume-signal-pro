@@ -3502,11 +3502,10 @@
     "error": "O mural não pôde carregar agora.",
     "retry": "Tentar de novo",
     "empty": "Nenhuma vaga corresponde a esses filtros. Afrouxe um deles e tente de novo.",
-    "resultsSummary": "Mostrando {{shown}} de {{total}} vagas em {{companies}} empresas",
+    "resultsSummary": "Mostrando {{shown}} de {{total}} vagas em {{companyFeeds}} feeds de empresas",
     "resultsSummaryNoTotal": "Exibindo {{shown}} vagas correspondentes",
     "alsoInLocations_one": "Também contratando em mais {{count}} local",
     "alsoInLocations_other": "Também contratando em mais {{count}} locais",
-    "sourcesDown": "{{count}} feeds de empresas estão fora do ar agora",
     "postedToday": "hoje",
     "postedDaysAgo": "há {{count}} d",
     "checkFit": "Checar meu encaixe — escaneio grátis",
@@ -3537,7 +3536,6 @@
       "senior": "Sênior (6–9 anos)",
       "expert": "Especialista (10+ anos)"
     },
-    "updatedAgo": "atualizado há {{min}} min",
     "categories": {
       "engineering": "Engenharia e TI",
       "data_ai": "Dados e IA",
@@ -3845,7 +3843,7 @@
     "detailNoDesc": "O feed desta empresa não publica a descrição completa — o anúncio completo está no site da própria empresa, através do botão Candidatar-se.",
     "detailSimilar": "Ofertas semelhantes na plataforma",
     "companyYesHiring": "Sim — {{count}} {{roleWord}} em aberto e verificadas neste momento, diretamente do portal de emprego da {{company}}.",
-    "countLine": "{{total}} ofertas ativas de {{companies}} empresas — todas diretamente do sistema de recrutamento de cada empresa.",
+    "countLine": "{{total}} ofertas ativas de {{companyFeeds}} feeds de empresas — todas diretamente do sistema de recrutamento de cada empresa.",
     "subtitleShort": "Todas as vagas vêm diretamente do sistema de carreiras de cada empresa — verificadas, recentes e reverificadas quando se candidata.",
     "badgeOfficial": "Só feeds oficiais",
     "guaranteeFreshTip": "Toda vaga cuja data informada pela empresa ultrapassa 30 dias é removida automaticamente — na entrada e novamente na exibição. Quando a empresa não informa nenhuma data, não podemos considerar a vaga antiga, então a mantemos e não mostramos idade em vez de adivinhar uma.",
@@ -3938,7 +3936,10 @@
     "fillSpeedLine": "As vagas desta área costumam ficar abertas ~{{median}} dias (75% fecham em {{p75}} dias) — medido a partir de {{n}} encerramentos registados nos últimos {{window}} dias.",
     "salaryContextBasis": "valores à hora e mensais anualizados (à hora ×2080)",
     "landerCountLine": "{{total}} vagas ativas em {{category}} — todas diretamente do sistema de recrutamento de cada empresa.",
-    "resultsSummaryFiltered": "A mostrar {{shown}} de {{total}} vagas correspondentes"
+    "resultsSummaryFiltered": "A mostrar {{shown}} de {{total}} vagas correspondentes",
+    "recheckedAgo": "feed mediano reverificado há {{min}} min",
+    "sourcesDown_one": "{{count}} feed de empresa está fora do ar agora",
+    "sourcesDown_other": "{{count}} feeds de empresas estão fora do ar agora"
   },
   "accountPage": {
     "statusSaveFailed": "Não foi possível salvar esse status — tente novamente.",

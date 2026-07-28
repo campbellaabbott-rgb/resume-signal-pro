@@ -401,9 +401,19 @@ describe("fit scoring + salary mapping", () => {
     expect(sanePostedAt("2026-07-01T00:00:00Z", now)).toBe("2026-07-01T00:00:00Z");
     // The live 2009 Palantir-style garbage date is rejected.
     expect(sanePostedAt("2009-12-05T00:00:00Z", now)).toBeNull();
-    // Future beyond clock-skew grace is rejected; within grace is kept.
+    // Future beyond clock-skew grace is rejected; WITHIN grace it is CLAMPED
+    // to now, not stored as given. Storing the future value had two visible
+    // consequences (measured 2026-07-28, 23 rows): default sort is
+    // effective_posted DESC so every one of them occupied the top of the
+    // board, and daysAgo() in Jobs.tsx returns null for a negative age, so
+    // those cards rendered with no posted-age label at all. 19 were Workday
+    // rows stamped 2026-07-29T00:00:00Z — a date-only value parsed as UTC
+    // midnight from AU/Asia boards running hours ahead. That is skew, and the
+    // honest reading of skew is "posted now", never "posted tomorrow".
     expect(sanePostedAt("2027-01-01T00:00:00Z", now)).toBeNull();
-    expect(sanePostedAt("2026-07-13T06:00:00Z", now)).toBe("2026-07-13T06:00:00Z");
+    expect(sanePostedAt("2026-07-13T06:00:00Z", now)).toBe(new Date(now).toISOString());
+    // A posting can never be newer than the moment we read it.
+    expect(Date.parse(sanePostedAt("2026-07-13T06:00:00Z", now)!)).toBeLessThanOrEqual(now);
     // Real-but-old dates PASS: the freshness cap drops those postings at
     // ingest. Nulling them here is what used to keep 3-year-old evergreens
     // alive undated past the 30-day promise.

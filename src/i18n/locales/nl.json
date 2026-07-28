@@ -3502,11 +3502,10 @@
     "error": "De vacaturebank kon nu niet laden.",
     "retry": "Opnieuw proberen",
     "empty": "Geen vacature past bij deze filters. Versoepel er één en probeer opnieuw.",
-    "resultsSummary": "{{shown}} van {{total}} passende vacatures bij {{companies}} bedrijven",
+    "resultsSummary": "{{shown}} van {{total}} passende vacatures uit {{companyFeeds}} bedrijfsfeeds",
     "resultsSummaryNoTotal": "{{shown}} overeenkomende vacatures worden getoond",
     "alsoInLocations_one": "Werft ook op {{count}} andere locatie",
     "alsoInLocations_other": "Werft ook op {{count}} andere locaties",
-    "sourcesDown": "{{count}} bedrijfsfeeds zijn nu onbereikbaar",
     "postedToday": "vandaag",
     "postedDaysAgo": "{{count}} d geleden",
     "checkFit": "Check mijn match — gratis scan",
@@ -3537,7 +3536,6 @@
       "senior": "Senior (6–9 jaar)",
       "expert": "Expert (10+ jaar)"
     },
-    "updatedAgo": "{{min}} min geleden bijgewerkt",
     "categories": {
       "engineering": "Engineering & IT",
       "data_ai": "Data & AI",
@@ -3845,7 +3843,7 @@
     "detailNoDesc": "De feed van dit bedrijf publiceert niet de volledige omschrijving — de complete vacature staat op hun eigen site via Solliciteer.",
     "detailSimilar": "Vergelijkbare vacatures op deze site",
     "companyYesHiring": "Ja — op dit moment {{count}} geverifieerde openstaande {{roleWord}}, rechtstreeks van de eigen vacaturesite van {{company}}.",
-    "countLine": "{{total}} actuele vacatures van {{companies}} bedrijven — stuk voor stuk rechtstreeks uit het eigen wervingssysteem van het bedrijf.",
+    "countLine": "{{total}} actuele vacatures uit {{companyFeeds}} bedrijfsfeeds — stuk voor stuk rechtstreeks uit het eigen wervingssysteem van het bedrijf.",
     "subtitleShort": "Elke vacature rechtstreeks uit het eigen carrièresysteem van het bedrijf — geverifieerd, actueel en opnieuw gecheckt wanneer je solliciteert.",
     "badgeOfficial": "Alleen officiële feeds",
     "guaranteeFreshTip": "Elke vacature waarvan de door het bedrijf opgegeven datum ouder is dan 30 dagen wordt automatisch verwijderd — bij binnenkomst en opnieuw bij het tonen. Geeft een bedrijf geen datum op, dan kunnen we de vacature niet als verouderd beoordelen, dus houden we hem aan en tonen we geen leeftijd in plaats van er een te raden.",
@@ -3938,7 +3936,10 @@
     "fillSpeedLine": "Vacatures in dit vakgebied staan doorgaans ~{{median}} dagen open (75% sluit binnen {{p75}} dagen) — gemeten over {{n}} gevolgde sluitingen in de afgelopen {{window}} dagen.",
     "salaryContextBasis": "uur- en maandtarieven omgerekend naar jaarbasis (per uur ×2080)",
     "landerCountLine": "{{total}} actieve vacatures in {{category}} — allemaal rechtstreeks uit het wervingssysteem van het bedrijf.",
-    "resultsSummaryFiltered": "{{shown}} van {{total}} passende vacatures getoond"
+    "resultsSummaryFiltered": "{{shown}} van {{total}} passende vacatures getoond",
+    "recheckedAgo": "mediane feed {{min}} min geleden opnieuw gecontroleerd",
+    "sourcesDown_one": "{{count}} bedrijfsfeed is nu onbereikbaar",
+    "sourcesDown_other": "{{count}} bedrijfsfeeds zijn nu onbereikbaar"
   },
   "accountPage": {
     "statusSaveFailed": "Kon die status niet opslaan — probeer het opnieuw.",

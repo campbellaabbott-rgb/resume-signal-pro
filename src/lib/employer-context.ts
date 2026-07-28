@@ -5,6 +5,7 @@
 // callers render only what exists (absent data shows nothing, never a guess).
 
 import { supabase } from "@/integrations/supabase/client";
+import { H1B_DATA_AVAILABLE } from "@/lib/h1b-availability";
 
 export interface EmployerCtx {
   employees?: number | null;
@@ -37,7 +38,10 @@ export function getEmployerCtx(companyToken: string): Promise<EmployerCtx> {
     const [intel, fin, h1b] = await Promise.all([
       Promise.resolve(rpc("get_company_intel", { p_token: companyToken })).catch(() => ({ data: null })),
       Promise.resolve(rpc("get_company_financials", { p_token: companyToken })).catch(() => ({ data: null })),
-      Promise.resolve(rpc("get_company_h1b", { p_token: companyToken })).catch(() => ({ data: null })),
+      // Defined by no migration — see h1b-availability.ts.
+      H1B_DATA_AVAILABLE
+        ? Promise.resolve(rpc("get_company_h1b", { p_token: companyToken })).catch(() => ({ data: null }))
+        : Promise.resolve({ data: null }),
     ]);
     const ctx: EmployerCtx = {};
     const i = intel.data as { employees?: number; employee_basis?: string } | null;

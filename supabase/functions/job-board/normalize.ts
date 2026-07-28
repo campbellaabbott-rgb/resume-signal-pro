@@ -69,6 +69,18 @@ export function sanePostedAt(iso: string | null | undefined, now: number = Date.
   const t = Date.parse(iso);
   if (!Number.isFinite(t)) return null;
   if (t > now + 2 * 86_400_000) return null;      // future beyond clock-skew grace
+  // Inside the grace window, CLAMP to now rather than storing a future date.
+  // The grace exists because vendors emit date-only values that parse as UTC
+  // midnight from boards several hours ahead (AU/Asia Workday) — that is skew,
+  // and the honest reading of skew is "posted now", not "posted tomorrow".
+  // Storing the future value had two visible consequences: default sort is
+  // effective_posted DESC so all 23 such rows occupied the entire top of the
+  // board, and daysAgo() in Jobs.tsx returns null for a negative age, so those
+  // cards rendered with no posted-age label at all. Measured 2026-07-28: 19
+  // Workday rows stamped 2026-07-29T00:00:00Z plus 4 Personio rows 1-57 min
+  // ahead. Nothing is invented here — a posting cannot have been posted later
+  // than the moment we read it.
+  if (t > now) return new Date(now).toISOString();
   if (t < POSTED_AT_GARBAGE_FLOOR_MS) return null; // epoch-zero / typo junk
   return iso;
 }

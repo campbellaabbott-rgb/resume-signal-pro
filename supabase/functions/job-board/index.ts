@@ -79,7 +79,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-07-28.8";
+const BUILD_VERSION = "2026-07-28.9";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -877,7 +877,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
         if (skipTokens.has(s.token)) continue;
         const r = await fetchBoard(s);
         if (!r) {
-          failed.push(s.name);
+          failed.push(`${s.name} (vendor)`);
           continue;
         }
         // Vendor circuit breaker: count every feed observation (quarantined or
@@ -1073,7 +1073,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
           if (!page || page.length < 1000) break;
         }
         if (!boardOk) {
-          failed.push(s.name);
+          failed.push(`${s.name} (db-read)`);
           continue;
         }
         const prefix = `${s.source}:`;
@@ -1148,7 +1148,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
           }
         }
         if (!boardOk) {
-          failed.push(s.name);
+          failed.push(`${s.name} (db-write)`);
           continue;
         }
         // Log closures BEFORE deleting: the live table hard-deletes, so this is
@@ -1732,6 +1732,13 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
 // and every slice, so it carries its own throttle: without one, recategorize —
 // which has no age gate of its own and re-fires until its stamp is written at
 // COMPLETION — would spawn a new chain on every slice.
+// Grace before a verify-on-apply miss is allowed to destroy a row. Deliberately
+// longer than the refresh prune's 5-minute GRACE_MS: that one corroborates a
+// miss against a FULL feed re-read, while this one has only a single-posting
+// probe whose false-negative rate is measured at 14% on Workday. One cold
+// rotation must be able to clear the stamp before anything is deleted.
+const VERIFY_GRACE_MS = 6 * 60 * 60_000;
+
 const MAINTENANCE_ANY_GAP_MS = 10 * 60_000; // floor between any two kicks
 // A maintenance chain restamps its progress row every invocation/hop. If that
 // row hasn't moved in this long, the chain is DEAD (waitUntil self-invocation
@@ -2271,6 +2278,9 @@ Deno.serve(async (req) => {
         let q = client
           .from("job_board_postings")
           .select("id, posted_at")
+          // Never submit a dropped posting to a search engine — the sitemap is
+          // the other surface 20260728120000 missed.
+          .is("missing_since", null)
           .gte("posted_at", dayStart)
           .lt("posted_at", dayEnd)
           .order("id", { ascending: true })
@@ -3445,9 +3455,40 @@ Deno.serve(async (req) => {
         if (live === false) { liveMap[id] = false; deadIds.push(id); }
         else liveMap[id] = true; // true OR null(unknown) → keep showing, never a false close
       }
+      // NEVER delete on a single probe. Measured 2026-07-28: checkLive reported
+      // GONE for 7 of 50 randomly sampled LIVE Workday postings — Workday's
+      // search index does not contain every externalId its own detail pages
+      // still serve, so one miss is not evidence of closure. This branch used to
+      // DELETE unconditionally, which is silent destruction of open jobs, and it
+      // contradicted the published audit that reports workday accuracy 100%
+      // (gone: 0). A user clicking Apply was the thing destroying the row.
+      //
+      // Same two-pass rule the refresh prune already uses (VERIFY_GRACE_MS):
+      // stamp missing_since on the first miss; only remove a row whose stamp has
+      // already survived the window. Rows that come back have the stamp cleared
+      // by the normal refresh, and missing_since is excluded from every serving
+      // path, so the user stops seeing it immediately either way — we just no
+      // longer destroy the evidence on one bad probe.
       if (deadIds.length > 0) {
-        for (let i = 0; i < deadIds.length; i += 50) {
-          await client.from("job_board_postings").delete().in("id", deadIds.slice(i, i + 50));
+        const { data: stamps } = await client
+          .from("job_board_postings").select("id, missing_since").in("id", deadIds);
+        const stampBy = new Map((stamps ?? []).map((r) => [String(r.id), r.missing_since as string | null]));
+        const nowMs = Date.now();
+        const confirmed: string[] = [];
+        const firstMiss: string[] = [];
+        for (const id of deadIds) {
+          const st = stampBy.get(id);
+          if (st && nowMs - Date.parse(st) >= VERIFY_GRACE_MS) confirmed.push(id);
+          else if (!st) firstMiss.push(id);
+          // stamped but still inside the grace window → leave it, re-probe later
+        }
+        const stampIso = new Date().toISOString();
+        for (let i = 0; i < firstMiss.length; i += 50) {
+          await client.from("job_board_postings")
+            .update({ missing_since: stampIso }).in("id", firstMiss.slice(i, i + 50));
+        }
+        for (let i = 0; i < confirmed.length; i += 50) {
+          await client.from("job_board_postings").delete().in("id", confirmed.slice(i, i + 50));
         }
       }
       // Demand signal: boards a user just looked at jump the refresh queue.
@@ -3457,7 +3498,7 @@ Deno.serve(async (req) => {
         const merged = [...prev.filter((x) => !demandTokens.has(x.t)), ...[...demandTokens].map((t) => ({ t, at: Date.now() }))].slice(-60);
         await client.from("job_board_meta").upsert({ k: "demand", v: { tokens: merged }, updated_at: new Date().toISOString() }, { onConflict: "k" });
       }
-      return json({ live: liveMap, pruned: deadIds.length });
+      return json({ live: liveMap, flagged: deadIds.length });
     }
 
     if (action === "audit") {
@@ -3694,7 +3735,13 @@ Deno.serve(async (req) => {
       // Allowlist gate — the token must be one of ours (no SSRF via crafted ids).
       const src = JOB_SOURCES.find((s) => s.source === source && s.token === token);
       if (!src || !externalId) return json({ error: "Unknown job id" }, 404);
-      const { data: jobRow } = await client.from("job_board_postings").select("*").eq("id", id).maybeSingle();
+      // missing_since IS NULL here too. 20260728120000 patched buildQuery and both
+      // search RPCs and its header claimed that "covers every query shape" — it
+      // did not cover this one, so a Google-indexed deep link to a posting the
+      // employer's feed already dropped still rendered as a live listing with a
+      // working apply button. That is precisely the posting the Ghost Job Index
+      // exists to name.
+      const { data: jobRow } = await client.from("job_board_postings").select("*").eq("id", id).is("missing_since", null).maybeSingle();
       const stored = (jobRow?.description && jobRow.description.length > 200) ? jobRow.description as string : null;
       const description = stored ?? await getDescription(src, id, externalId, jobRow?.apply_url as string | undefined);
       if (!description && !jobRow) {

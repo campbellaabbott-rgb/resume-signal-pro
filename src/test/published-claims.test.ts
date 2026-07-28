@@ -565,3 +565,201 @@ describe("the posted-date sweep reports its own state", () => {
     expect(hop.slice(0, 400)).toMatch(/datedTotal:/);
   });
 });
+
+// A guard that readFileSyncs ONE historical migration cannot see a later
+// redefinition, and redefinition-by-later-migration is this repo's norm:
+// get_date_coverage is defined in six separate migration files. The newest
+// definition is what the database runs, so a guard pinned to an older one is
+// asserting against dead text and passes regardless of production behaviour.
+function latestMigrationDefining(fnName: string): string {
+  const dir = resolve(root, "supabase/migrations");
+  const hit = readdirSync(dir)
+    .filter((f) => f.endsWith(".sql"))
+    .sort() // filenames are timestamp-prefixed, so lexical order IS apply order
+    .filter((f) => new RegExp(`FUNCTION\\s+public\\.${fnName}\\s*\\(`).test(readFileSync(resolve(dir, f), "utf8")))
+    .pop();
+  if (!hit) throw new Error(`no migration defines ${fnName}`);
+  return readFileSync(resolve(dir, hit), "utf8");
+}
+
+describe("Ghost Job Index age stats use the company's date, not our discovery time", () => {
+  const sql = latestMigrationDefining("get_ghost_job_index_stats");
+
+  it("median posting age has no first_seen fallback", () => {
+    // Rendered label: "by the company's own stated post date". It was computed
+    // as median(now() - first_seen) over EVERY row. Measured on 4,179 rows
+    // carrying both fields the bases differ by 17.6 days at the median, and the
+    // published number was the flattering one.
+    const body = sql.slice(sql.indexOf("median_days_open"));
+    expect(body).not.toMatch(/COALESCE\(posted_at, first_seen\)/);
+    expect(sql).toMatch(/ORDER BY GREATEST\(EXTRACT\(EPOCH FROM \(now\(\) - posted_at\)\)/);
+  });
+
+  it("time-to-close does not substitute first_seen either", () => {
+    // Published as "measured only where the post date is stated".
+    expect(sql).toMatch(/closed_at - posted_at/);
+    expect(sql).not.toMatch(/closed_at - COALESCE\(posted_at, first_seen\)/);
+  });
+
+  it("the coverage caveat the page renders actually exists in the signature", () => {
+    // GhostJobIndex.tsx gates the qualifier on stats?.posted_coverage_pct != null.
+    // It was absent from the deployed RETURNS TABLE, so the caveat had never
+    // rendered once — users saw only the unqualified claim.
+    expect(sql).toMatch(/posted_coverage_pct numeric/);
+    const page = readFileSync(resolve(root, "src/pages/GhostJobIndex.tsx"), "utf8");
+    expect(page).toMatch(/posted_coverage_pct/);
+  });
+
+  it("published counts exclude rows the board refuses to serve", () => {
+    // A column headed "Open postings" must mean postings we will actually show.
+    expect(sql).toMatch(/WHERE missing_since IS NULL/);
+    expect(latestMigrationDefining("get_date_coverage")).toMatch(/WHERE missing_since IS NULL/);
+  });
+});
+
+describe("dropped postings are unreachable by EVERY route", () => {
+  const fn = readFileSync(resolve(root, "supabase/functions/job-board/index.ts"), "utf8");
+
+  it("the detail action filters them", () => {
+    // 20260728120000 claimed to cover "every query shape" and missed this one,
+    // so a Google-indexed deep link still rendered a live listing with a
+    // working apply button.
+    expect(fn).toMatch(/\.eq\("id", id\)\.is\("missing_since", null\)/);
+  });
+
+  it("the sitemap does not submit them to search engines", () => {
+    const sm = fn.slice(fn.indexOf('.select("id, posted_at")'));
+    expect(sm.slice(0, 300)).toMatch(/\.is\("missing_since", null\)/);
+  });
+});
+
+describe("verify-on-apply cannot destroy a live posting on one probe", () => {
+  const fn = readFileSync(resolve(root, "supabase/functions/job-board/index.ts"), "utf8");
+  const verify = fn.slice(fn.indexOf("const deadIds: string[] = []"));
+
+  it("a first miss stamps, it does not delete", () => {
+    // checkLive reported GONE for 7 of 50 randomly sampled LIVE Workday
+    // postings — Workday's search index does not contain every externalId its
+    // own detail pages serve. The old branch deleted unconditionally, so a user
+    // clicking Apply was the thing destroying the row.
+    expect(verify.slice(0, 2600)).toMatch(/update\(\{ missing_since: stampIso \}\)/);
+    expect(verify.slice(0, 2600)).toMatch(/nowMs - Date\.parse\(st\) >= VERIFY_GRACE_MS/);
+  });
+
+  it("its grace outlasts a cold rotation", () => {
+    // The refresh prune's 5-minute GRACE_MS corroborates against a FULL feed
+    // re-read; this path has only a single-posting probe with a measured 14%
+    // false-negative rate, so one rotation must be able to clear the stamp.
+    expect(fn).toMatch(/const VERIFY_GRACE_MS = 6 \* 60 \* 60_000;/);
+  });
+});
+
+describe("published nouns match what was counted", () => {
+  const jobs = readFileSync(resolve(root, "src/pages/Jobs.tsx"), "utf8");
+  const ghost = readFileSync(resolve(root, "src/pages/GhostJobIndex.tsx"), "utf8");
+
+  it("/jobs says company feeds, because that is what companiesCount counts", () => {
+    // companiesCount is the company_token facet size — one employer with
+    // several ATS sub-boards counts several times, 869 more than the DB's own
+    // distinct-employer number.
+    expect(jobs).not.toMatch(/\{\{companies\}\} companies/);
+    expect(jobs).toMatch(/\{\{companyFeeds\}\} company feeds/);
+  });
+
+  it("the transparency page names every vendor inside its own figures", () => {
+    // It named 12 of 15 while the table below it listed all 15; iCIMS, Oracle
+    // and Pinpoint postings are inside total_open and inside the medians.
+    for (const v of ["iCIMS", "Oracle", "Pinpoint"]) expect(ghost).toContain(v);
+  });
+
+  it("the 30-day bullet is not an unqualified absolute", () => {
+    // Contradicted this page's own glossary, which says undated postings are
+    // kept and show no age.
+    expect(ghost).not.toMatch(/Any role whose posting date passes 30 days is automatically dropped, so ghost\/pipeline postings other boards leave up for months never appear\./);
+    expect(ghost).toMatch(/cannot be judged old/);
+  });
+
+  it("only one freshness number is published, and it is the measured one", () => {
+    // /jobs said "updated 931 min ago" off the full-rotation stamp while the
+    // measured re-check median was 112 min and the footer promised 10-15.
+    expect(jobs).not.toMatch(/jobsPage\.updatedAgo/);
+    expect(jobs).toMatch(/jobsPage\.recheckedAgo/);
+  });
+});
+
+describe("the scan-feedback control never thanks you for nothing", () => {
+  const c = readFileSync(resolve(root, "src/components/ScanFeedback.tsx"), "utf8");
+
+  it("checks the returned error instead of relying on a throw", () => {
+    // supabase-js .rpc() RESOLVES with {data,error} on a PostgREST 404, so the
+    // old catch was dead code and "Thanks for the feedback!" ran unconditionally
+    // against a function that does not exist in production.
+    expect(c).toMatch(/if \(res\?\.error\)/);
+    const idx = c.indexOf('setSubmitted(rating ? "up" : "down")');
+    expect(c.slice(0, idx)).toMatch(/return;/);
+  });
+
+  it("tells the user when nothing was recorded", () => {
+    expect(c).toMatch(/nothing was recorded/);
+  });
+});
+
+// Each of these iterates all 9 locale files, which READS as 9x coverage, but
+// the patterns only matched English, so a false claim introduced in any other
+// locale would ship green. Verified latent, not live — no locale violated them
+// at the time. Now every locale carries its own assertion.
+describe("locale guards actually check every locale", () => {
+  const LOCALES = ["en", "en-GB", "es", "fr", "de", "pt", "nl", "hi", "tl"];
+
+  it("the 30-day claim is qualified in all nine languages, not just English", () => {
+    // The old ABSOLUTE regex was English-only, so de "Keine datierte Anzeige
+    // älter als 30 Tage" and es "Ninguna vacante ... supera los 30 días" were
+    // never actually examined.
+    const QUALIFIER: Record<string, RegExp> = {
+      "en": /dated|stated/i,
+      "en-GB": /dated|stated/i,
+      "es": /fechada|con fecha|indicada|indica|informa/i,
+      "fr": /datée|datee|indiquée|indiquee|indique|précise|precise/i,
+      "de": /datierte|datiert|angegeben|angibt|nennt/i,
+      "pt": /datada|com data|indicada|indica|informada|informa/i,
+      "nl": /gedateerde|gedateerd|opgegeven|vermeldt|opgeeft/i,
+      "hi": /डेटेड|तारीख|तिथि|दिनांक|बताई|बताती/,
+      "tl": /petsa|nakasaad|ibinigay|sinabi/i,
+    };
+    for (const l of LOCALES) {
+      const j = JSON.parse(readFileSync(resolve(root, `src/i18n/locales/${l}.json`), "utf8"));
+      const hay = JSON.stringify(j);
+      const m = hay.match(/[^"]*30[^"]*/g) ?? [];
+      const thirtyDayClaims = m.filter((x) => /30\s*(days|días|dias|jours|Tagen|Tage|dagen|दिन|araw)/i.test(x));
+      for (const claim of thirtyDayClaims) {
+        // Any sentence promising nothing older than 30 days must say WHICH
+        // postings that covers — undated ones are kept and show no age.
+        if (/nothing|no postings?|ninguna|aucune|keine|nenhuma|geen|कोई|walang/i.test(claim)) {
+          expect(claim, `${l}: unqualified 30-day absolute -> ${claim}`).toMatch(QUALIFIER[l]);
+        }
+      }
+    }
+  });
+
+  it("every locale carries both plural forms of the feed-health line", () => {
+    // Rendered "1 company feeds are unreachable right now" — on the exact line
+    // users read to judge whether the board is being straight with them.
+    for (const l of LOCALES) {
+      const j = JSON.parse(readFileSync(resolve(root, `src/i18n/locales/${l}.json`), "utf8"));
+      expect(j.jobsPage.sourcesDown_one, `${l} missing sourcesDown_one`).toBeTruthy();
+      expect(j.jobsPage.sourcesDown_other, `${l} missing sourcesDown_other`).toBeTruthy();
+      expect(j.jobsPage.sourcesDown, `${l} still has the count-blind base key`).toBeUndefined();
+    }
+  });
+
+  it("every locale switched to the company-feeds noun together", () => {
+    for (const l of LOCALES) {
+      const j = JSON.parse(readFileSync(resolve(root, `src/i18n/locales/${l}.json`), "utf8"));
+      for (const k of ["countLine", "resultsSummary"]) {
+        expect(j.jobsPage[k], `${l}.${k}`).toContain("{{companyFeeds}}");
+        expect(j.jobsPage[k], `${l}.${k} still interpolates {{companies}}`).not.toContain("{{companies}}");
+      }
+      expect(j.jobsPage.recheckedAgo, `${l} missing recheckedAgo`).toBeTruthy();
+    }
+  });
+});

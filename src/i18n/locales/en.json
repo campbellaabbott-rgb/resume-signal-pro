@@ -3502,11 +3502,10 @@
     "error": "The board couldn't load right now.",
     "retry": "Try again",
     "empty": "No openings match those filters. Loosen one and try again.",
-    "resultsSummary": "Showing {{shown}} of {{total}} matching openings across {{companies}} companies",
+    "resultsSummary": "Showing {{shown}} of {{total}} matching openings across {{companyFeeds}} company feeds",
     "resultsSummaryNoTotal": "Showing {{shown}} matching openings",
     "alsoInLocations_one": "Also hiring in {{count}} more location",
     "alsoInLocations_other": "Also hiring in {{count}} more locations",
-    "sourcesDown": "{{count}} company feeds are unreachable right now",
     "postedToday": "today",
     "postedDaysAgo": "{{count}}d ago",
     "checkFit": "Check my fit — free scan",
@@ -3537,7 +3536,6 @@
       "senior": "Senior (6–9 yrs)",
       "expert": "Expert (10+ yrs)"
     },
-    "updatedAgo": "updated {{min}} min ago",
     "categories": {
       "engineering": "Engineering & IT",
       "data_ai": "Data & AI",
@@ -3845,7 +3843,7 @@
     "detailNoDesc": "This company's feed doesn't publish the full description — the complete posting is on their own site via Apply.",
     "detailSimilar": "Similar openings on the board",
     "companyYesHiring": "Yes — {{count}} verified open {{roleWord}} right now, straight from {{company}}'s own job board.",
-    "countLine": "{{total}} live openings from {{companies}} companies — every one straight from the company's own hiring system.",
+    "countLine": "{{total}} live openings from {{companyFeeds}} company feeds — every one straight from the company's own hiring system.",
     "subtitleShort": "Every job straight from the company's own careers system — verified, fresh, re-checked when you apply.",
     "badgeOfficial": "Official feeds only",
     "guaranteeFreshTip": "Any posting whose company-stated date passes 30 days is dropped automatically — at ingestion and again at read time. Where a company states no date at all we can't judge the posting old, so we keep it and show no age rather than guess one.",
@@ -3938,7 +3936,10 @@
     "fillSpeedLine": "Roles in this field typically stay open ~{{median}} days (75% close within {{p75}} days) — measured from {{n}} tracked closings over the last {{window}} days.",
     "salaryContextBasis": "hourly and monthly rates annualized (hourly ×2080)",
     "landerCountLine": "{{total}} live {{category}} openings — every one straight from the company's own hiring system.",
-    "resultsSummaryFiltered": "Showing {{shown}} of {{total}} matching openings"
+    "resultsSummaryFiltered": "Showing {{shown}} of {{total}} matching openings",
+    "recheckedAgo": "median feed re-checked {{min}} min ago",
+    "sourcesDown_one": "{{count}} company feed is unreachable right now",
+    "sourcesDown_other": "{{count}} company feeds are unreachable right now"
   },
   "accountPage": {
     "statusSaveFailed": "Couldn't save that status — please try again.",

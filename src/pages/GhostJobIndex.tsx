@@ -169,7 +169,7 @@ export default function GhostJobIndex() {
         </p>
         <p className="text-xs text-muted-foreground mb-8">
           Every figure below is computed from the full lifecycle of postings on companies' <b>official</b> job boards
-          (Greenhouse, Lever, Ashby, SmartRecruiters, Workable, BambooHR, Recruitee, Teamtailor, Personio, Breezy, Rippling, Workday) — never an aggregator or a scrape.
+          (Greenhouse, Lever, Ashby, SmartRecruiters, Workable, BambooHR, Recruitee, Teamtailor, Personio, Breezy, Rippling, Workday, iCIMS, Oracle, Pinpoint) — never an aggregator or a scrape.
         </p>
 
         {/* Headline stats — always true */}
@@ -410,7 +410,7 @@ export default function GhostJobIndex() {
           </h2>
           <ul className="text-[13px] text-muted-foreground space-y-1.5">
             <li>· Every posting is pulled straight from a company's official applicant-tracking feed — never an aggregator or a scraped copy.</li>
-            <li>· Any role whose posting date passes 30 days is automatically dropped, so ghost/pipeline postings other boards leave up for months never appear.</li>
+            <li>· Any role whose <em>stated</em> posting date passes 30 days is automatically dropped, so dated ghost/pipeline postings other boards leave up for months never appear. Postings whose company publishes no date cannot be judged old — those we keep, and they show no age rather than a guessed one.</li>
             <li>· When a company removes a role, it disappears here within one refresh cycle — and we log the closure, which is how the "actually fills roles" figures are built.</li>
             <li>· Every posting is re-checked live the moment you click Apply.</li>
           </ul>

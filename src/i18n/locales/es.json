@@ -3502,11 +3502,10 @@
     "error": "La bolsa no se pudo cargar ahora mismo.",
     "retry": "Reintentar",
     "empty": "Ninguna oferta coincide con esos filtros. Relaja alguno e inténtalo de nuevo.",
-    "resultsSummary": "Mostrando {{shown}} de {{total}} ofertas en {{companies}} empresas",
+    "resultsSummary": "Mostrando {{shown}} de {{total}} ofertas en {{companyFeeds}} fuentes de empresas",
     "resultsSummaryNoTotal": "Mostrando {{shown}} ofertas coincidentes",
     "alsoInLocations_one": "También contrata en {{count}} ubicación más",
     "alsoInLocations_other": "También contrata en {{count}} ubicaciones más",
-    "sourcesDown": "{{count}} fuentes de empresas no responden ahora mismo",
     "postedToday": "hoy",
     "postedDaysAgo": "hace {{count}} d",
     "checkFit": "Comprobar mi encaje — escaneo gratis",
@@ -3537,7 +3536,6 @@
       "senior": "Senior (6–9 años)",
       "expert": "Experto (10+ años)"
     },
-    "updatedAgo": "actualizado hace {{min}} min",
     "categories": {
       "engineering": "Ingeniería e IT",
       "data_ai": "Datos e IA",
@@ -3845,7 +3843,7 @@
     "detailNoDesc": "El feed de esta empresa no publica la descripción completa — la publicación entera está en su propio sitio, vía Postularme.",
     "detailSimilar": "Vacantes similares en el tablero",
     "companyYesHiring": "Sí — {{count}} {{roleWord}} abiertos y verificados ahora mismo, directo del portal de empleo de {{company}}.",
-    "countLine": "{{total}} vacantes activas de {{companies}} empresas — todas directo del sistema de contratación de cada empresa.",
+    "countLine": "{{total}} vacantes activas de {{companyFeeds}} fuentes de empresas — todas directo del sistema de contratación de cada empresa.",
     "subtitleShort": "Cada empleo directo del sistema de carreras de la propia empresa — verificado, reciente y reverificado cuando te postulas.",
     "badgeOfficial": "Solo feeds oficiales",
     "guaranteeFreshTip": "Toda vacante cuya fecha indicada por la empresa supera los 30 días se elimina automáticamente — al ingresarla y de nuevo al mostrarla. Cuando una empresa no indica ninguna fecha, no podemos considerar la vacante antigua, así que la mantenemos y no mostramos su antigüedad en lugar de adivinarla.",
@@ -3938,7 +3936,10 @@
     "fillSpeedLine": "Las vacantes de este sector suelen permanecer abiertas ~{{median}} días (el 75% cierra en {{p75}} días) — medido sobre {{n}} cierres rastreados en los últimos {{window}} días.",
     "salaryContextBasis": "tarifas por hora y mensuales anualizadas (por hora ×2080)",
     "landerCountLine": "{{total}} vacantes activas de {{category}} — todas directo del sistema de contratación de cada empresa.",
-    "resultsSummaryFiltered": "Mostrando {{shown}} de {{total}} vacantes que coinciden"
+    "resultsSummaryFiltered": "Mostrando {{shown}} de {{total}} vacantes que coinciden",
+    "recheckedAgo": "fuente mediana revisada hace {{min}} min",
+    "sourcesDown_one": "{{count}} fuente de empresa no responde ahora mismo",
+    "sourcesDown_other": "{{count}} fuentes de empresas no responden ahora mismo"
   },
   "accountPage": {
     "statusSaveFailed": "No se pudo guardar ese estado; inténtalo de nuevo.",

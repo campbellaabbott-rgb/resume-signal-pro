@@ -3502,11 +3502,10 @@
     "error": "Le tableau n'a pas pu se charger.",
     "retry": "Réessayer",
     "empty": "Aucune offre ne correspond à ces filtres. Assouplissez-en un et réessayez.",
-    "resultsSummary": "{{shown}} offres affichées sur {{total}} dans {{companies}} entreprises",
+    "resultsSummary": "{{shown}} offres affichées sur {{total}} dans {{companyFeeds}} flux d'entreprises",
     "resultsSummaryNoTotal": "Affichage de {{shown}} offres correspondantes",
     "alsoInLocations_one": "Recrute aussi dans {{count}} autre lieu",
     "alsoInLocations_other": "Recrute aussi dans {{count}} autres lieux",
-    "sourcesDown": "{{count}} flux d'entreprises sont injoignables pour le moment",
     "postedToday": "aujourd'hui",
     "postedDaysAgo": "il y a {{count}} j",
     "checkFit": "Vérifier mon adéquation — scan gratuit",
@@ -3537,7 +3536,6 @@
       "senior": "Senior (6–9 ans)",
       "expert": "Expert (10+ ans)"
     },
-    "updatedAgo": "mis à jour il y a {{min}} min",
     "categories": {
       "engineering": "Ingénierie & IT",
       "data_ai": "Data & IA",
@@ -3845,7 +3843,7 @@
     "detailNoDesc": "Le flux de cette entreprise ne publie pas la description complète — l'annonce intégrale est sur son propre site via Postuler.",
     "detailSimilar": "Offres similaires sur le site",
     "companyYesHiring": "Oui — {{count}} {{roleWord}} ouverts et vérifiés en ce moment, directement depuis le site carrières de {{company}}.",
-    "countLine": "{{total}} offres en ligne de {{companies}} entreprises — chacune issue directement du système de recrutement de l'entreprise.",
+    "countLine": "{{total}} offres en ligne de {{companyFeeds}} flux d'entreprises — chacune issue directement du système de recrutement de l'entreprise.",
     "subtitleShort": "Chaque offre vient directement du système carrières de l'entreprise — vérifiée, récente, revérifiée quand vous postulez.",
     "badgeOfficial": "Flux officiels uniquement",
     "guaranteeFreshTip": "Toute offre dont la date indiquée par l'entreprise dépasse 30 jours est retirée automatiquement — à l'ingestion et de nouveau à la lecture. Quand une entreprise n'indique aucune date, nous ne pouvons pas juger l'offre ancienne, donc nous la gardons et n'affichons aucune ancienneté plutôt que d'en deviner une.",
@@ -3938,7 +3936,10 @@
     "fillSpeedLine": "Les postes de ce domaine restent généralement ouverts ~{{median}} jours (75 % ferment sous {{p75}} jours) — mesuré sur {{n}} clôtures suivies au cours des {{window}} derniers jours.",
     "salaryContextBasis": "taux horaires et mensuels annualisés (horaire ×2080)",
     "landerCountLine": "{{total}} offres actives en {{category}} — toutes issues directement du système de recrutement de l'entreprise.",
-    "resultsSummaryFiltered": "Affichage de {{shown}} sur {{total}} offres correspondantes"
+    "resultsSummaryFiltered": "Affichage de {{shown}} sur {{total}} offres correspondantes",
+    "recheckedAgo": "flux médian revérifié il y a {{min}} min",
+    "sourcesDown_one": "{{count}} flux d'entreprise est injoignable pour le moment",
+    "sourcesDown_other": "{{count}} flux d'entreprises sont injoignables pour le moment"
   },
   "accountPage": {
     "statusSaveFailed": "Impossible d'enregistrer ce statut — réessayez.",

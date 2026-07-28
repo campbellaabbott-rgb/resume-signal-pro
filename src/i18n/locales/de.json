@@ -3502,11 +3502,10 @@
     "error": "Die Jobbörse konnte gerade nicht geladen werden.",
     "retry": "Erneut versuchen",
     "empty": "Keine Stelle passt zu diesen Filtern. Lockern Sie einen und versuchen Sie es erneut.",
-    "resultsSummary": "{{shown}} von {{total}} passenden Stellen aus {{companies}} Unternehmen",
+    "resultsSummary": "{{shown}} von {{total}} passenden Stellen aus {{companyFeeds}} Unternehmens-Feeds",
     "resultsSummaryNoTotal": "{{shown}} passende Stellen werden angezeigt",
     "alsoInLocations_one": "Stellt auch an {{count}} weiterem Standort ein",
     "alsoInLocations_other": "Stellt auch an {{count}} weiteren Standorten ein",
-    "sourcesDown": "{{count}} Unternehmens-Feeds sind gerade nicht erreichbar",
     "postedToday": "heute",
     "postedDaysAgo": "vor {{count}} T",
     "checkFit": "Passung prüfen — Gratis-Scan",
@@ -3537,7 +3536,6 @@
       "senior": "Senior (6–9 Jahre)",
       "expert": "Experte (10+ Jahre)"
     },
-    "updatedAgo": "aktualisiert vor {{min}} Min.",
     "categories": {
       "engineering": "Engineering & IT",
       "data_ai": "Daten & KI",
@@ -3845,7 +3843,7 @@
     "detailNoDesc": "Der Feed dieses Unternehmens liefert keine vollständige Beschreibung — die komplette Anzeige findest du über „Bewerben“ auf der eigenen Unternehmensseite.",
     "detailSimilar": "Ähnliche Stellen auf dem Board",
     "companyYesHiring": "Ja — aktuell {{count}} verifizierte offene {{roleWord}}, direkt vom eigenen Jobboard von {{company}}.",
-    "countLine": "{{total}} offene Stellen von {{companies}} Unternehmen — jede einzelne direkt aus dem eigenen Recruiting-System des Unternehmens.",
+    "countLine": "{{total}} offene Stellen aus {{companyFeeds}} Unternehmens-Feeds — jede einzelne direkt aus dem eigenen Recruiting-System des Unternehmens.",
     "subtitleShort": "Jeder Job direkt aus dem Karrieresystem des Unternehmens — verifiziert, aktuell, beim Bewerben erneut geprüft.",
     "badgeOfficial": "Nur offizielle Feeds",
     "guaranteeFreshTip": "Jede Anzeige, deren vom Unternehmen angegebenes Datum 30 Tage überschreitet, wird automatisch entfernt — bei der Aufnahme und erneut beim Abruf. Gibt ein Unternehmen gar kein Datum an, können wir die Anzeige nicht als alt einstufen, also behalten wir sie und zeigen kein Alter an, statt eines zu raten.",
@@ -3938,7 +3936,10 @@
     "fillSpeedLine": "Stellen in diesem Bereich bleiben typischerweise ~{{median}} Tage offen (75 % schließen innerhalb von {{p75}} Tagen) — gemessen an {{n}} erfassten Schließungen der letzten {{window}} Tage.",
     "salaryContextBasis": "Stunden- und Monatssätze aufs Jahr hochgerechnet (stündlich ×2080)",
     "landerCountLine": "{{total}} aktive Stellen in {{category}} — jede direkt aus dem Bewerbungssystem des Unternehmens.",
-    "resultsSummaryFiltered": "{{shown}} von {{total}} passenden Stellen angezeigt"
+    "resultsSummaryFiltered": "{{shown}} von {{total}} passenden Stellen angezeigt",
+    "recheckedAgo": "Median-Feed vor {{min}} Min. erneut geprüft",
+    "sourcesDown_one": "{{count}} Unternehmens-Feed ist gerade nicht erreichbar",
+    "sourcesDown_other": "{{count}} Unternehmens-Feeds sind gerade nicht erreichbar"
   },
   "accountPage": {
     "statusSaveFailed": "Status konnte nicht gespeichert werden — bitte erneut versuchen.",
