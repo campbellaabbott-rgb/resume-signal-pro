@@ -64,18 +64,28 @@ RETURNS TABLE (
 )
 LANGUAGE sql STABLE SECURITY INVOKER
 SET search_path = public
-SET statement_timeout = '25s'
+-- 60s, not 25s. Measured 2026-07-28 the PREVIOUS (cheaper) version already
+-- 57014s for anon at its 25s ceiling on every call, while the hourly cron
+-- succeeds as service_role — the cache is the path that actually populates the
+-- public numbers, and it must not start failing because this version does
+-- slightly more work. Anon still reads the cache first (GhostJobIndex.tsx
+-- prefers cache?.ghost_stats), so the live call is a fallback, not the norm.
+SET statement_timeout = '60s'
 AS $$
-  WITH served AS (
-    -- The board's own definition of servable, mirrored: index.ts buildQuery
-    -- and both search RPCs filter missing_since IS NULL.
-    SELECT posted_at FROM public.job_board_postings WHERE missing_since IS NULL
+  -- ONE pass for every count, using FILTER instead of re-scanning per subquery.
+  -- The medians need their own ordered scans and cannot share it.
+  WITH counts AS (
+    SELECT
+      count(*) FILTER (WHERE missing_since IS NULL)                        AS open_n,
+      count(posted_at) FILTER (WHERE missing_since IS NULL)                AS dated_n,
+      count(DISTINCT company_token) FILTER (WHERE missing_since IS NULL)   AS tokens_n,
+      count(DISTINCT company) FILTER (WHERE missing_since IS NULL AND company <> '') AS names_n
+    FROM public.job_board_postings
   )
   SELECT
-    (SELECT count(*) FROM served),
-    (SELECT count(DISTINCT company_token) FROM public.job_board_postings WHERE missing_since IS NULL),
-    (SELECT count(DISTINCT company)
-       FROM public.job_board_postings WHERE company <> '' AND missing_since IS NULL),
+    (SELECT open_n FROM counts),
+    (SELECT tokens_n FROM counts),
+    (SELECT names_n FROM counts),
     (SELECT count(*) FROM public.job_board_closures WHERE closed_at > now() - interval '90 days'),
     (SELECT GREATEST(1, CEIL(EXTRACT(epoch FROM (now() - MIN(closed_at))) / 86400.0))::integer
        FROM public.job_board_closures),
@@ -84,19 +94,18 @@ AS $$
     -- discovery time under the employer's name.
     (SELECT round((percentile_cont(0.5) WITHIN GROUP (
        ORDER BY GREATEST(EXTRACT(EPOCH FROM (now() - posted_at)) / 86400.0, 0)))::numeric, 1)
-     FROM served WHERE posted_at IS NOT NULL),
+     FROM public.job_board_postings
+     WHERE missing_since IS NULL AND posted_at IS NOT NULL),
     (SELECT round((percentile_cont(0.5) WITHIN GROUP (
        ORDER BY EXTRACT(EPOCH FROM (closed_at - posted_at)) / 86400.0))::numeric, 1)
      FROM public.job_board_closures
      WHERE closed_at > now() - interval '90 days'
        AND posted_at IS NOT NULL
        AND closed_at >= posted_at),
-    -- The denominator the reader needs to weigh the two medians above.
-    -- NULL, not 0, if nothing is served: the UI must distinguish "none state a
+    -- The denominator the reader needs to weigh the two medians above. NULL,
+    -- not 0, when nothing is served: the UI must be able to tell "none state a
     -- date" from "we have no idea".
-    (SELECT CASE WHEN count(*) > 0
-              THEN round(100.0 * count(posted_at) / count(*), 1) END
-       FROM served);
+    (SELECT CASE WHEN open_n > 0 THEN round(100.0 * dated_n / open_n, 1) END FROM counts);
 $$;
 
 GRANT EXECUTE ON FUNCTION public.get_ghost_job_index_stats() TO anon, authenticated;
