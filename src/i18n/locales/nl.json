@@ -3940,7 +3940,8 @@
     "recheckedAgo": "mediane feed {{min}} min geleden opnieuw gecontroleerd",
     "sourcesDown_one": "{{count}} bedrijfsfeed is nu onbereikbaar",
     "sourcesDown_other": "{{count}} bedrijfsfeeds zijn nu onbereikbaar",
-    "verifiedAgo": "gecontroleerd {{ago}}"
+    "verifiedAgo": "gecontroleerd {{ago}}",
+    "healthUnavailable": "gegevens over wervingstempo nu niet beschikbaar"
   },
   "accountPage": {
     "statusSaveFailed": "Kon die status niet opslaan — probeer het opnieuw.",

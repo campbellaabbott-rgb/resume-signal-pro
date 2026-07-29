@@ -3940,7 +3940,8 @@
     "recheckedAgo": "median feed re-checked {{min}} min ago",
     "sourcesDown_one": "{{count}} company feed is unreachable right now",
     "sourcesDown_other": "{{count}} company feeds are unreachable right now",
-    "verifiedAgo": "checked {{ago}}"
+    "verifiedAgo": "checked {{ago}}",
+    "healthUnavailable": "hiring-pace data unavailable right now"
   },
   "accountPage": {
     "statusSaveFailed": "Couldn't save that status — please try again.",

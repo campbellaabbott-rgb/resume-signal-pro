@@ -3940,7 +3940,8 @@
     "recheckedAgo": "feed mediano reverificado há {{min}} min",
     "sourcesDown_one": "{{count}} feed de empresa está fora do ar agora",
     "sourcesDown_other": "{{count}} feeds de empresas estão fora do ar agora",
-    "verifiedAgo": "verificado {{ago}}"
+    "verifiedAgo": "verificado {{ago}}",
+    "healthUnavailable": "dados de ritmo de contratação indisponíveis agora"
   },
   "accountPage": {
     "statusSaveFailed": "Não foi possível salvar esse status — tente novamente.",

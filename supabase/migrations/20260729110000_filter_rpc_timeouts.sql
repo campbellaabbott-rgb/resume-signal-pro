@@ -48,3 +48,61 @@ AS $$
 $$;
 
 GRANT EXECUTE ON FUNCTION public.get_country_facet() TO anon, authenticated, service_role;
+
+-- get_company_hiring_health: non-deterministic at the batch size the board
+-- actually sends. Measured — 26 tokens (a normal 60-row page) returned
+-- 500/57014 at 15.8s on one attempt and 200 at 7.1s on the retry; a 1-token
+-- call is 0.59s. When it fails the client swallows it, so the "Actively hiring"
+-- filter and every fill/relist badge silently vanish: 0 of 60 rows carried a
+-- badge after a failure.
+--
+-- Same two changes as the country facet above, for the same reasons: a ceiling
+-- that matches what the work actually costs, and the serving-rule filter so it
+-- stops scanning postings the board will never show. The second is not only
+-- cheaper — a hiring-health score computed over rows we refuse to serve is
+-- describing a different board than the one on screen.
+CREATE OR REPLACE FUNCTION public.get_company_hiring_health(p_tokens text[])
+RETURNS TABLE (
+  company_token text,
+  open_now integer,
+  closed_30d integer,
+  median_days_to_close numeric,
+  relisted_30d integer
+)
+LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path = public
+SET statement_timeout = '25s'
+AS $$
+  WITH toks AS (SELECT unnest(p_tokens) AS tok),
+  opens AS (
+    SELECT p.company_token, count(*)::int AS n
+    FROM public.job_board_postings p
+    JOIN toks ON toks.tok = p.company_token
+    WHERE p.missing_since IS NULL
+    GROUP BY p.company_token
+  ),
+  closes AS (
+    SELECT c.company_token,
+           count(*)::int AS n,
+           count(*) FILTER (WHERE c.superseded IS TRUE)::int AS relisted,
+           round((percentile_cont(0.5) WITHIN GROUP (
+             ORDER BY EXTRACT(epoch FROM (c.closed_at - COALESCE(c.posted_at, c.first_seen))) / 86400.0
+           ))::numeric, 1) AS med
+    FROM public.job_board_closures c
+    JOIN toks ON toks.tok = c.company_token
+    WHERE c.closed_at > now() - interval '30 days'
+      AND COALESCE(c.posted_at, c.first_seen) IS NOT NULL
+      AND c.closed_at >= COALESCE(c.posted_at, c.first_seen)
+    GROUP BY c.company_token
+  )
+  SELECT toks.tok,
+         COALESCE(opens.n, 0),
+         COALESCE(closes.n, 0),
+         closes.med,
+         COALESCE(closes.relisted, 0)
+  FROM toks
+  LEFT JOIN opens  ON opens.company_token  = toks.tok
+  LEFT JOIN closes ON closes.company_token = toks.tok;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.get_company_hiring_health(text[]) TO anon, authenticated, service_role;

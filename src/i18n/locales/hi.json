@@ -3940,7 +3940,8 @@
     "recheckedAgo": "औसत फ़ीड {{min}} मिनट पहले दोबारा जाँची गई",
     "sourcesDown_one": "{{count}} कंपनी फ़ीड अभी उपलब्ध नहीं है",
     "sourcesDown_other": "{{count}} कंपनी फ़ीड अभी उपलब्ध नहीं हैं",
-    "verifiedAgo": "{{ago}} जाँचा गया"
+    "verifiedAgo": "{{ago}} जाँचा गया",
+    "healthUnavailable": "हायरिंग गति का डेटा अभी उपलब्ध नहीं"
   },
   "accountPage": {
     "statusSaveFailed": "यह स्थिति सहेजी नहीं जा सकी — कृपया फिर से प्रयास करें।",

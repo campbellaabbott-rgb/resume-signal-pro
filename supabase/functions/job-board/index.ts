@@ -79,7 +79,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-07-29.6";
+const BUILD_VERSION = "2026-07-29.7";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -4350,6 +4350,33 @@ async function serveList(
   // Normalising at the door instead of at each use is the only version of this
   // fix that cannot rot: a future filter site cannot bind a value the gate
   // never saw, because there is now one value.
+  // Reject-by-reporting. A value we cannot honour must never pass silently:
+  // country="USA" (3 letters, not ISO-3166-alpha-2) and experience="bogus" were
+  // both dropped on the floor, and the board then answered the UNFILTERED
+  // question — 3,939 results, the entire design category, presented as though
+  // the filter had applied. The fence in this codebase is that a filter is
+  // never silently ignored, so anything we drop is named back to the caller in
+  // `ignoredFilters` and the UI can tell the user which constraint did nothing.
+  const ignoredFilters: string[] = [];
+  if (typeof body.country === "string" && body.country && !/^[A-Za-z]{2}$/.test(body.country)) {
+    ignoredFilters.push("country");
+    delete body.country;
+  }
+  if (typeof body.experience === "string" && body.experience &&
+      !["entry", "mid", "senior", "lead", "executive"].includes(body.experience.toLowerCase())) {
+    ignoredFilters.push("experience");
+    delete body.experience;
+  }
+  if (typeof body.category === "string" && body.category &&
+      !(JOB_CATEGORIES as readonly string[]).includes(body.category.toLowerCase())) {
+    ignoredFilters.push("category");
+    delete body.category;
+  }
+  if (typeof body.workMode === "string" && body.workMode &&
+      !["remote", "hybrid", "onsite"].includes(body.workMode.toLowerCase())) {
+    ignoredFilters.push("workMode");
+    delete body.workMode;
+  }
   if (typeof body.category === "string") body.category = body.category.toLowerCase();
   if (typeof body.workMode === "string") body.workMode = body.workMode.toLowerCase();
   const unfiltered =
@@ -4737,7 +4764,19 @@ async function serveList(
                   p_embedding: JSON.stringify(qVec),
                   p_limit: fetchLimit,
                 });
-                if (!sErr && Array.isArray(sem) && sem.length > 0) {
+                // A nearest neighbour is not a match. The vector tier always
+                // returns SOMETHING — it has no notion of "nothing is close" —
+                // so 'zzzqqxwv' came back with one confident, unrelated job
+                // (reproduced 2/2). Require a lexical anchor: at least one
+                // returned posting must share a real token with the query.
+                // A rescue tier that cannot say "no" is worse than no rescue,
+                // because the user cannot tell a match from a shrug.
+                const qTokens = qText.toLowerCase().split(/[^a-z0-9]+/i).filter((w) => w.length >= 3);
+                const anchored = Array.isArray(sem) && (sem as Array<Record<string, unknown>>).some((r) => {
+                  const hay = `${String(r.title ?? "")} ${String(r.company ?? "")}`.toLowerCase();
+                  return qTokens.some((w) => hay.includes(w));
+                });
+                if (!sErr && Array.isArray(sem) && sem.length > 0 && anchored) {
                   // Same-role-many-locations clones are mutually nearest in
                   // embedding space, so the top-k is especially prone to being
                   // one job repeated — collapse exactly like the other tiers.
@@ -4858,9 +4897,23 @@ async function serveList(
   // a count, and a count that fails can't take the page down with it. The page
   // is consistently ~0.3s; it was the exact count riding the same query that
   // made broad filters take 3-9s.
+  // The count gets a HARD deadline. Running it concurrently was never enough:
+  // Promise.all still waits, so a slow count holds the entire response and then
+  // takes it down with it — measured HTTP 500 at 35-79s on 24 of ~40 searches,
+  // and 20-29s with total:null on 3 of 4 broad queries under sort=newest, while
+  // the page half is consistently ~0.3s.
+  //
+  // A missing total is a small, honest degradation the client already handles
+  // (countUnavailable -> "Showing N" without a denominator). A 46-second wait
+  // ending in 500 is not. 4s is chosen above the measured p95 for counts that
+  // DO succeed (~1-3s) and far below the ceiling where they stop being useful.
+  const COUNT_DEADLINE_MS = 4_000;
   const [firstPage, cappedRes] = await Promise.all([
     pageWith("effective_posted", "salary_rank_usd", false),
-    wantCount ? cappedCount() : Promise.resolve(null),
+    wantCount
+      ? withDeadline(cappedCount() as unknown as PromiseLike<{ n: number; capped?: boolean } | null>, COUNT_DEADLINE_MS)
+          .then((r) => (r && typeof (r as { n?: number }).n === "number" ? r as { n: number; capped?: boolean } : null))
+      : Promise.resolve(null),
   ]);
   // Only fall back to the old inline exact count when the capped RPC isn't
   // there (migration not applied yet).
@@ -4973,6 +5026,8 @@ async function serveList(
   if (!sortSalary) grouped.jobs = interleaveByCompany(grouped.jobs);
   return json({
     jobs: await attachRecheckedAt(client, grouped.jobs),
+    // Named, never silent — see the validation block at the top of this action.
+    ...(ignoredFilters.length ? { ignoredFilters } : {}),
     // Raw rows this page swallowed. The client MUST page by this rather than by
     // jobs.length once clusters are folded, or the siblings of a collapsed
     // result reappear on the next page as if they were new.

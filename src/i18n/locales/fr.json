@@ -3940,7 +3940,8 @@
     "recheckedAgo": "flux médian revérifié il y a {{min}} min",
     "sourcesDown_one": "{{count}} flux d'entreprise est injoignable pour le moment",
     "sourcesDown_other": "{{count}} flux d'entreprises sont injoignables pour le moment",
-    "verifiedAgo": "vérifié {{ago}}"
+    "verifiedAgo": "vérifié {{ago}}",
+    "healthUnavailable": "données de rythme de recrutement indisponibles"
   },
   "accountPage": {
     "statusSaveFailed": "Impossible d'enregistrer ce statut — réessayez.",

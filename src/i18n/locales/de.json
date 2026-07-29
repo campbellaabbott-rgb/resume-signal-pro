@@ -3940,7 +3940,8 @@
     "recheckedAgo": "Median-Feed vor {{min}} Min. erneut geprüft",
     "sourcesDown_one": "{{count}} Unternehmens-Feed ist gerade nicht erreichbar",
     "sourcesDown_other": "{{count}} Unternehmens-Feeds sind gerade nicht erreichbar",
-    "verifiedAgo": "geprüft {{ago}}"
+    "verifiedAgo": "geprüft {{ago}}",
+    "healthUnavailable": "Einstellungstempo-Daten derzeit nicht verfügbar"
   },
   "accountPage": {
     "statusSaveFailed": "Status konnte nicht gespeichert werden — bitte erneut versuchen.",

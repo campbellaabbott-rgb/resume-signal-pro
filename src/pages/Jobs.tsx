@@ -611,6 +611,7 @@ export default function Jobs() {
   const [healthByToken, setHealthByToken] = useState<Record<string, HiringHealth>>({});
   const [activelyHiringOnly, setActivelyHiringOnly] = useState(false);
   const healthAttempted = useRef<Set<string>>(new Set());
+  const [healthFailed, setHealthFailed] = useState(false);
   // Apply-agent: the posting whose questions we're drafting (with its fetched JD
   // and whether the user already applied — the dedup guard), and which card is
   // currently loading its description.
@@ -1799,6 +1800,12 @@ export default function Jobs() {
       .slice(0, 200);
     if (batch.length === 0) return;
     batch.forEach((t) => healthAttempted.current.add(t));
+    // A failure here used to vanish: badges simply did not render and the
+    // "Actively hiring" filter quietly matched nothing, with the page giving no
+    // sign anything was missing. Measured non-deterministic at the batch size
+    // this very effect sends (26 tokens: 500 at 15.8s, then 200 at 7.1s on
+    // retry). Absent data must read as absent, not as "no employer is hiring".
+    setHealthFailed(false);
     let cancelled = false;
     (async () => {
       try {
@@ -1813,7 +1820,7 @@ export default function Jobs() {
           }
           return next;
         });
-      } catch { /* RPC not deployed yet — no badges, no error surfaced */ }
+      } catch { if (!cancelled) setHealthFailed(true); }
     })();
     return () => { cancelled = true; };
   }, [jobs]);
@@ -3784,7 +3791,12 @@ export default function Jobs() {
                 )}
                 {/* Board-wide feed-health note — on a single-company page it
                     reads as a claim about THAT company, so it stays off there. */}
-                {!landerCompany && data && data.failedSources.length > 0 && (
+                {healthFailed && (
+              <span className="text-muted-foreground">
+                {t("jobsPage.healthUnavailable", "hiring-pace data unavailable right now")}
+              </span>
+            )}
+            {!landerCompany && data && data.failedSources.length > 0 && (
                   <span> · {t("jobsPage.sourcesDown", {
                     count: data.failedSources.length,
                     defaultValue_one: "{{count}} company feed is unreachable right now",

@@ -1251,3 +1251,53 @@ describe("filters send and show one honest definition", () => {
     expect(mig).toMatch(/SECURITY DEFINER/);
   });
 });
+
+// Filter-audit batch 4 — the items I had deferred as "needs query plans". Most
+// did not: they needed a deadline, a ceiling, or an honest refusal.
+describe("slow work degrades instead of failing the request", () => {
+  const fn = readFileSync(resolve(root, "supabase/functions/job-board/index.ts"), "utf8");
+
+  it("the count cannot hold the response open", () => {
+    // Running it concurrently was never enough — Promise.all still WAITS, so a
+    // slow count held the whole response and then took it down: HTTP 500 at
+    // 35-79s on 24 of ~40 searches, while the page half is ~0.3s.
+    expect(fn).toMatch(/const COUNT_DEADLINE_MS = 4_000;/);
+    expect(fn).toMatch(/withDeadline\(cappedCount\(\)/);
+  });
+
+  it("the semantic tier can say no", () => {
+    // A vector search always returns SOMETHING; it has no notion of "nothing is
+    // close". 'zzzqqxwv' came back with one confident unrelated job, 2/2.
+    expect(fn).toMatch(/const anchored = Array\.isArray\(sem\)/);
+    expect(fn).toMatch(/sem\.length > 0 && anchored/);
+  });
+
+  it("an unhonourable filter value is named, not dropped", () => {
+    // country="USA" returned 3,939 — the whole design category — because the
+    // value was silently discarded and the board answered the unfiltered
+    // question instead.
+    expect(fn).toMatch(/const ignoredFilters: string\[\] = \[\];/);
+    expect(fn).toMatch(/ignoredFilters\.push\("country"\)/);
+    expect(fn).toMatch(/ignoredFilters\.push\("experience"\)/);
+    expect(fn).toMatch(/\.\.\.\(ignoredFilters\.length \? \{ ignoredFilters \} : \{\}\)/);
+  });
+
+  it("the two failing RPCs get ceilings and the serving rule", () => {
+    const mig = readFileSync(resolve(root, "supabase/migrations/20260729110000_filter_rpc_timeouts.sql"), "utf8");
+    expect(mig).toMatch(/get_country_facet/);
+    expect(mig).toMatch(/get_company_hiring_health/);
+    // Executable lines only — the header comments legitimately mention both
+    // phrases while explaining why they are there. This is the third time a
+    // guard of mine has matched its own explanation; scoping is the fix.
+    const sql = mig.split("\n").filter((l) => !l.trim().startsWith("--")).join("\n");
+    expect(sql.match(/SECURITY DEFINER/g)?.length).toBe(2);
+    expect(sql.match(/missing_since IS NULL/g)?.length).toBe(2);
+  });
+
+  it("a swallowed hiring-health failure now reads as absent, not as zero", () => {
+    const jobs = readFileSync(resolve(root, "src/pages/Jobs.tsx"), "utf8");
+    expect(jobs).toMatch(/setHealthFailed\(true\)/);
+    expect(jobs).toMatch(/jobsPage\.healthUnavailable/);
+    expect(jobs).not.toMatch(/RPC not deployed yet — no badges, no error surfaced/);
+  });
+});
