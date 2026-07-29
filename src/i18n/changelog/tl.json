@@ -1,5 +1,29 @@
 {
   "changelogEntries": {
+    "searchFixed": {
+      "title": "Gumagana na ulit ang search — karamihan ng paghahanap ay nabibigo",
+      "description": "Sa sample na humigit-kumulang 40 tunay na paghahanap, mga 60% ang nagbabalik ng error pagkalipas ng 35 hanggang 79 segundo. Simple lang ang dahilan: magkatabing tumatakbo ang mga resulta at ang bilang na «N resulta», pero naghihintay pa rin ang pahina sa bilang — kaya hinahawakan ng mabagal na bilang ang buong sagot at sa huli ay kinakaladkad ito pababa, gayong hindi kailanman ang mga resulta ang mabagal na bahagi. May limitasyon na sa oras ang bilang. Sumasagot ang paghahanap sa 1 hanggang 7 segundo; kung matagal ang kabuuan, ipinapakita namin ang mga trabaho nang wala ito sa halip na paghintayin ka sa isang numero."
+    },
+    "titleSearchFindsAll": {
+      "title": "Ang paghahanap ng job title ay natatagpuan na ang bawat posting na may titulong iyon",
+      "description": "Kapag wala pang 200 job title ang tumugma sa isang paghahanap, pinapalawak namin ito pati sa mga deskripsyon — at binubuo ang listahan ng kandidato mula sa 3,000 pinakabagong posting na tumutugma sa alinman sa dalawa, bago pa man may ma-ranggo. Kaya ang posting na eksaktong tugma ang titulo sa tinipa mo ay maaaring maalis bago pa man ang pagraranggo, dahil lang libu-libong mas bagong posting ang bumanggit ng mga salitang iyon kung saan sa teksto nila. Pagkatapos ay hindi na ito maabot gaano ka man mag-scroll. Palaging pumapasok na ngayon sa listahan ang mga tugma sa titulo. Live na sinukat muli: bumabalik na lahat, dati'y karamihan ang nawawala."
+    },
+    "filterNumbersTrue": {
+      "title": "Hindi na iniuulat ng mga na-filter na pahina ang bilang ng buong board",
+      "description": "Ang pagpili ng larangan mula sa link tulad ng /jobs?category=Engineering ay tamang nag-filter ng mga trabaho pero nag-print sa itaas ng kabuuan ng buong board — 587,793 sa halip na ang totoong bilang, dahil nakalusot ang naka-malaking titik na baybay sa tsek na nagpapasya kung magbibilang ba. May pangalawa at hiwalay na anyo ng parehong pagkakamali na nagpapakita ng 3,940 kapag pinagsama ang work-mode filter at larangan, gayong nasa 600 ang totoo. Naayos pareho. Ang mga halaga ng filter na hindi namin kayang tuparin — tatlong-titik na country code, antas ng karanasang wala — ay ipinapaalam na sa iyo sa halip na tahimik na itapon habang sinasagot namin ang tanong na walang filter."
+    },
+    "remoteAndCountryFilters": {
+      "title": "Itinatago ng Remote filter ang mga remote na trabaho, at hindi kailanman lumitaw ang country picker",
+      "description": "May dalawang column na nagtatala kung remote ang isang trabaho, at ang background na proseso na nagpapabuti ng work-mode na datos ay nag-a-update sa isa at hindi sa isa pa. Naghiwalay sila at tahimik na inihahain ng Remote filter ang mas maliit na set — libu-libong tunay na remote na posting na dapat sana ay natagpuan nito. Hiwalay dito, iginuguhit lang ang kontrol ng bansa kapag na-load na ang listahan nito ng mga bansa, at nag-ti-timeout ang paghahanap na iyon sa bawat pagsubok, kaya hindi kailanman lumitaw ang picker at walang bansang mapipili. Naayos pareho: magkasabay nang gumagalaw ang mga column, at lumilitaw na ang kontrol maabot man o hindi ang mga bilang sa tabi nito."
+    },
+    "noPostingsLostPaging": {
+      "title": "Ang pag-load ng mas maraming trabaho ay hindi na lumalaktaw o umuulit",
+      "description": "Kasisimula pa lang naming basagin ang mga sunod-sunod na kard mula sa iisang employer, para hindi paulit-ulit basahin ang unang pahina. Isang hakbang itong masyadong maaga — bago pa hiwain ang pahina — kaya nakakalipat ang mga posting sa hangganan ng isang pahina at ng susunod: may ilang lumilitaw nang dalawang beses, at may ilang nalalaktawan at hindi na muling naipapakita. Walang paghahanap ang dapat tahimik na mawalan ng trabaho. Sa loob na lang ng pahinang tinitingnan mo nangyayari ang muling pagkakaayos, kaya isang beses lang lumilitaw ang bawat posting. Mahigpit ding nananatili sa ayos ng sahod ang pag-sort ayon sa sahod, na saglit na hindi nangyari."
+    },
+    "recheckClaimCorrected": {
+      "title": "Sobra ang sinasabi namin kung gaano kadalas namin muling sinusuri ang pinakamalalaking board",
+      "description": "Sinasabi sa aming tala ng pinagkukunan na muling sinusuri ang pinakamalalaking board tuwing mga 10 hanggang 15 minuto. Sa sukat noong ika-29 ng Hulyo sa 23,136 board na may tatak ng pagpapatunay, mga dalawang oras ang median na agwat at ang 95% ay muling nasusuri sa loob ng mga apat na oras. Malamang totoo ang pahayag noong isinulat ito, sa kapiraso ng laki ngayon, at tahimik itong naluma habang lumalampas ang katalogo sa 28,000 board. Inalis namin ang nakatakdang bilang sa halip na palitan ng bago na matatandang gayundin — nakalathala sa Ghost Job Index ang live na median at ika-95 percentile, kung saan sila mismo ang sumasabay sa katalogo."
+    },
     "applyNeverDeletes": {
       "title": "Ang pag-click sa Apply ay hindi na makakapagpawala ng bukas na trabaho",
       "description": "Kapag nag-click ka ng Apply, sinusuri naming muli ang posting sa sariling sistema ng kumpanya — at kung walang nakita ang iisang pagsusuring iyon, binubura namin ang listing. Sa Workday, mali ito nang humigit-kumulang 14% ng pagkakataon, dahil hindi taglay ng search index nito ang bawat trabahong inihahain pa rin ng sarili nitong mga pahina: totoo at bukas na trabaho ang nabubura mismo dahil sa pag-aapply. Hindi na makakabura ang iisang pagsusuri; minamarkahan ang posting at tinatanggal lamang kung wala pa rin ito matapos muling basahin nang buo ang feed ng kumpanya."

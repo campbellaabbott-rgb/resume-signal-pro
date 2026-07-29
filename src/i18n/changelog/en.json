@@ -1,5 +1,29 @@
 {
   "changelogEntries": {
+    "searchFixed": {
+      "title": "Search works again — most searches were failing",
+      "description": "Measured across a sample of about 40 real queries, roughly 60% were returning an error after 35 to 79 seconds. The cause was mundane: the search results and the \"N results\" count ran side by side, but the page still waited for the count, so a slow count held the whole response and then took it down with it — even though the results themselves were never the slow part. The count now has a time limit. Searches return in 1 to 7 seconds; if the total takes too long we show the jobs without it rather than making you wait for a number."
+    },
+    "titleSearchFindsAll": {
+      "title": "Searching a job title now finds every posting with that title",
+      "description": "When a search matched fewer than 200 job titles we widened it to search descriptions too — and built the candidate list from the 3,000 most recent postings matching either, before ranking any of them. So a posting whose title was exactly what you typed could be discarded before ranking, simply because thousands of newer postings happened to mention those words somewhere in their text. It was then unreachable no matter how far you scrolled. Title matches now always enter the list. Re-measured live: every posting whose title matched now comes back, where before most were lost."
+    },
+    "filterNumbersTrue": {
+      "title": "Filtered pages no longer report the whole board's count",
+      "description": "Picking a field from a link like /jobs?category=Engineering filtered the jobs correctly but printed the entire board's total above them — 587,793 instead of the real number, because the capitalised spelling slipped past the check that decides whether to count at all. A second, separate version of the same slip made a work-mode filter combined with a field report 3,940 where the real figure was about 600. Both are fixed. Filter values we can't honour — a three-letter country code, an experience level that doesn't exist — are now named back to you instead of being quietly dropped while we answer the unfiltered question."
+    },
+    "remoteAndCountryFilters": {
+      "title": "The Remote filter was hiding remote jobs, and the country picker never appeared",
+      "description": "Two columns record whether a role is remote, and a background job that improves work-mode data updated one and not the other. They drifted apart, and the Remote filter quietly served the smaller set — thousands of genuinely remote postings it should have matched. Separately, the country control was only drawn once its list of countries loaded, and that lookup was timing out on every single attempt, so the picker never rendered at all and no country was selectable. Both fixed: the columns move together, and the control now appears whether or not the counts beside it do."
+    },
+    "noPostingsLostPaging": {
+      "title": "Loading more jobs no longer skips or repeats any of them",
+      "description": "We had just started breaking up runs where one employer held several cards in a row, to make the first page read less repetitively. It was applied a step too early — before the page was cut — so postings could shuffle across the boundary between one page and the next: a few appeared twice, and a few were skipped and never shown again. Nobody's search should quietly lose a job. The reordering now happens only within the page you're looking at, so every posting appears exactly once. Sorting by pay is also left strictly in pay order, which it briefly wasn't."
+    },
+    "recheckClaimCorrected": {
+      "title": "We were overstating how often we re-check the biggest job boards",
+      "description": "Our sources note said the largest boards are re-checked about every 10 to 15 minutes. Measured on 29 July across the 23,136 boards carrying a verification stamp, the median gap is about two hours and 95% are re-checked within about four hours. The claim was probably true when it was written, at a fraction of today's size, and quietly went stale as the catalogue grew past 28,000 boards. We've removed the fixed figure rather than replacing it with a new one that will age the same way — the live median and 95th percentile are published on the Ghost Job Index, where they move with the catalogue on their own."
+    },
     "applyNeverDeletes": {
       "title": "Clicking Apply can no longer make a live job disappear",
       "description": "When you clicked Apply we re-checked the posting at the company's own system, and if that single check came back empty we deleted the listing. On Workday that check was wrong about 14% of the time, because Workday's search index doesn't contain every job its own pages still serve — so real, open roles were being removed by the act of applying to them. One check can no longer delete anything: a posting that looks gone is flagged, and only removed if it is still gone after a full re-read of the employer's feed."

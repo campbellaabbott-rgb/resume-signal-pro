@@ -1,5 +1,29 @@
 {
   "changelogEntries": {
+    "searchFixed": {
+      "title": "Die Suche funktioniert wieder — die meisten Suchen schlugen fehl",
+      "description": "In einer Stichprobe von rund 40 echten Suchanfragen lieferten etwa 60% nach 35 bis 79 Sekunden einen Fehler. Die Ursache war banal: Ergebnisse und die Zählung „N Ergebnisse\" liefen nebeneinander, doch die Seite wartete trotzdem auf die Zählung — eine langsame Zählung hielt also die ganze Antwort auf und riss sie am Ende mit, obwohl die Ergebnisse nie der langsame Teil waren. Die Zählung hat jetzt ein Zeitlimit. Suchen antworten in 1 bis 7 Sekunden; dauert die Gesamtzahl zu lange, zeigen wir die Stellen ohne sie, statt dich auf eine Zahl warten zu lassen."
+    },
+    "titleSearchFindsAll": {
+      "title": "Die Suche nach einer Stellenbezeichnung findet jetzt jede Anzeige mit diesem Titel",
+      "description": "Traf eine Suche auf weniger als 200 Stellentitel, weiteten wir sie zusätzlich auf die Beschreibungen aus — und bildeten die Kandidatenliste aus den 3.000 neuesten Anzeigen, die auf eines von beidem passten, noch bevor irgendetwas sortiert wurde. Eine Anzeige, deren Titel genau dem entsprach, was du eingegeben hattest, konnte so vor der Sortierung ausscheiden, nur weil tausende neuere Anzeigen diese Wörter irgendwo im Text erwähnten. Danach war sie unerreichbar, egal wie weit man scrollte. Titeltreffer kommen jetzt immer in die Liste. Live nachgemessen: es kehren alle zurück, vorher ging der Großteil verloren."
+    },
+    "filterNumbersTrue": {
+      "title": "Gefilterte Seiten zeigen nicht mehr die Gesamtzahl des ganzen Boards",
+      "description": "Ein Bereich über einen Link wie /jobs?category=Engineering filterte die Stellen korrekt, druckte darüber aber die Gesamtzahl des kompletten Boards — 587.793 statt der echten Zahl, weil die großgeschriebene Variante an der Prüfung vorbeirutschte, die entscheidet, ob überhaupt gezählt wird. Eine zweite, eigenständige Ausprägung desselben Fehlers ließ einen Arbeitsmodus-Filter in Kombination mit einem Bereich 3.940 anzeigen, wo die echte Zahl bei etwa 600 lag. Beides behoben. Filterwerte, die wir nicht umsetzen können — ein dreibuchstabiger Ländercode, eine nicht existierende Erfahrungsstufe — werden dir jetzt genannt, statt still verworfen zu werden, während wir die ungefilterte Frage beantworten."
+    },
+    "remoteAndCountryFilters": {
+      "title": "Der Remote-Filter verbarg Remote-Stellen, und die Länderauswahl erschien nie",
+      "description": "Zwei Spalten halten fest, ob eine Stelle remote ist, und ein Hintergrundlauf, der die Arbeitsmodus-Daten verbessert, aktualisierte die eine und nicht die andere. Sie liefen auseinander, und der Remote-Filter lieferte stillschweigend die kleinere Menge — tausende tatsächlich remote ausgeschriebene Stellen, die er hätte finden müssen. Getrennt davon wurde die Länderauswahl erst gezeichnet, wenn ihre Länderliste geladen war, und diese Abfrage lief bei jedem einzelnen Versuch in einen Timeout — die Auswahl erschien also nie und kein Land war wählbar. Beides behoben: Die Spalten bewegen sich gemeinsam, und das Bedienelement erscheint, ob die Zahlen daneben eintreffen oder nicht."
+    },
+    "noPostingsLostPaging": {
+      "title": "Weitere Stellen laden überspringt und wiederholt jetzt keine mehr",
+      "description": "Wir hatten gerade begonnen, Serien aufzubrechen, in denen ein Arbeitgeber mehrere Karten hintereinander belegte, damit sich die erste Seite weniger eintönig liest. Das griff einen Schritt zu früh — vor dem Zuschnitt der Seite — sodass Anzeigen über die Grenze zwischen zwei Seiten wandern konnten: einige erschienen doppelt, andere wurden übersprungen und nie wieder gezeigt. Keine Suche sollte still eine Stelle verlieren. Die Umsortierung passiert jetzt nur noch innerhalb der Seite, die du siehst, sodass jede Anzeige genau einmal erscheint. Die Sortierung nach Gehalt bleibt zudem streng nach Gehalt, was sie kurzzeitig nicht war."
+    },
+    "recheckClaimCorrected": {
+      "title": "Wir haben übertrieben, wie oft wir die größten Boards erneut prüfen",
+      "description": "In unserem Quellenhinweis stand, die größten Boards würden etwa alle 10 bis 15 Minuten erneut geprüft. Gemessen am 29. Juli über die 23.136 Boards mit Prüfstempel liegt der mittlere Abstand bei rund zwei Stunden, und 95% werden innerhalb von etwa vier Stunden erneut geprüft. Die Aussage war vermutlich richtig, als sie geschrieben wurde, bei einem Bruchteil der heutigen Größe — und wurde still falsch, als der Katalog über 28.000 Boards hinauswuchs. Wir haben die feste Zahl entfernt, statt sie durch eine neue zu ersetzen, die genauso altern würde: Median und 95. Perzentil werden live auf dem Ghost Job Index veröffentlicht, wo sie sich von selbst mit dem Katalog bewegen."
+    },
     "applyNeverDeletes": {
       "title": "Ein Klick auf Bewerben lässt keine aktive Stelle mehr verschwinden",
       "description": "Beim Klick auf Bewerben prüften wir die Anzeige erneut im System des Unternehmens — und wenn diese eine Prüfung nichts fand, löschten wir die Anzeige. Bei Workday lag sie in rund 14% der Fälle falsch, weil der dortige Suchindex nicht jede Stelle enthält, die die eigenen Seiten weiterhin ausliefern: Echte, offene Stellen verschwanden genau durch das Bewerben. Eine einzelne Prüfung löscht jetzt nichts mehr; die Anzeige wird markiert und erst entfernt, wenn sie nach einem vollständigen erneuten Einlesen des Feeds immer noch fehlt."

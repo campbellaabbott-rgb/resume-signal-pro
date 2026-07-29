@@ -1,5 +1,29 @@
 {
   "changelogEntries": {
+    "searchFixed": {
+      "title": "La búsqueda vuelve a funcionar: la mayoría de las búsquedas fallaban",
+      "description": "En una muestra de unas 40 búsquedas reales, cerca del 60% devolvía un error tras 35 a 79 segundos. La causa era simple: los resultados y el recuento «N resultados» corrían en paralelo, pero la página seguía esperando al recuento, así que un recuento lento retenía toda la respuesta y acababa tumbándola, aunque los resultados nunca fueron la parte lenta. El recuento ahora tiene límite de tiempo. Las búsquedas responden en 1 a 7 segundos; si el total tarda demasiado, mostramos las vacantes sin él en vez de hacerte esperar por una cifra."
+    },
+    "titleSearchFindsAll": {
+      "title": "Buscar un puesto ahora encuentra todas las vacantes con ese título",
+      "description": "Cuando una búsqueda coincidía con menos de 200 títulos, la ampliábamos también a las descripciones — y construíamos la lista de candidatas con las 3.000 vacantes más recientes que coincidían con cualquiera de las dos, antes de ordenarlas. Así, una vacante cuyo título era exactamente lo que escribiste podía descartarse antes de ordenar, solo porque miles de vacantes más nuevas mencionaban esas palabras en su texto. Después era inalcanzable por mucho que bajaras. Ahora las coincidencias de título siempre entran en la lista. Medido en vivo: vuelven todas, cuando antes se perdía la mayoría."
+    },
+    "filterNumbersTrue": {
+      "title": "Las páginas filtradas ya no muestran el total de todo el tablón",
+      "description": "Elegir un sector desde un enlace como /jobs?category=Engineering filtraba bien las vacantes pero imprimía encima el total del tablón entero — 587.793 en vez de la cifra real, porque la grafía con mayúscula se colaba por la comprobación que decide si hay que contar. Una segunda variante del mismo desliz hacía que un filtro de modalidad combinado con un sector mostrara 3.940 cuando la cifra real rondaba las 600. Ambos corregidos. Los valores de filtro que no podemos aplicar — un código de país de tres letras, un nivel de experiencia inexistente — ahora se te indican en vez de descartarse en silencio mientras respondemos la pregunta sin filtrar."
+    },
+    "remoteAndCountryFilters": {
+      "title": "El filtro Remoto ocultaba vacantes remotas y el selector de país nunca aparecía",
+      "description": "Dos columnas registran si un puesto es remoto, y un proceso en segundo plano que mejora los datos de modalidad actualizaba una y no la otra. Se desincronizaron y el filtro Remoto servía en silencio el conjunto más pequeño: miles de vacantes realmente remotas que debía haber encontrado. Aparte, el control de país solo se dibujaba cuando cargaba su lista de países, y esa consulta fallaba por tiempo en todos los intentos, así que el selector no aparecía nunca y no se podía elegir ningún país. Ambos corregidos: las columnas van juntas y el control aparece aunque no lleguen los recuentos."
+    },
+    "noPostingsLostPaging": {
+      "title": "Cargar más vacantes ya no se salta ni repite ninguna",
+      "description": "Acabábamos de empezar a romper las rachas en que un mismo empleador ocupaba varias tarjetas seguidas, para que la primera página se leyera menos repetitiva. Se aplicaba un paso demasiado pronto — antes de cortar la página — así que las vacantes podían desplazarse entre una página y la siguiente: algunas aparecían dos veces y otras se saltaban y no volvían a mostrarse. Ninguna búsqueda debería perder una vacante en silencio. Ahora la reordenación ocurre solo dentro de la página que estás viendo, así que cada vacante aparece exactamente una vez. El orden por salario también queda estrictamente por salario, cosa que por un momento no fue así."
+    },
+    "recheckClaimCorrected": {
+      "title": "Estábamos exagerando con qué frecuencia revisamos los tablones más grandes",
+      "description": "Nuestra nota de fuentes decía que los tablones más grandes se revisan cada 10 o 15 minutos. Medido el 29 de julio sobre los 23.136 tablones con sello de verificación, el intervalo mediano es de unas dos horas y el 95% se revisa en unas cuatro horas. Es probable que la afirmación fuera cierta cuando se escribió, con una fracción del tamaño actual, y quedó obsoleta en silencio al crecer el catálogo por encima de 28.000 tablones. Hemos quitado la cifra fija en vez de sustituirla por otra que envejecería igual: la mediana y el percentil 95 en vivo se publican en el Ghost Job Index, donde se mueven solos con el catálogo."
+    },
     "applyNeverDeletes": {
       "title": "Pulsar Aplicar ya no puede hacer desaparecer una vacante activa",
       "description": "Al pulsar Aplicar volvíamos a comprobar la vacante en el sistema de la empresa y, si esa única comprobación no la encontraba, borrábamos el anuncio. En Workday esa comprobación fallaba en torno al 14% de los casos, porque su buscador no incluye todas las vacantes que sus propias páginas siguen mostrando: vacantes reales y abiertas desaparecían justo al intentar aplicar. Ahora una sola comprobación no borra nada; la vacante se marca y solo se elimina si sigue sin aparecer tras releer el feed completo de la empresa."

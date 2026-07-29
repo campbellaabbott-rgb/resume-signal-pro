@@ -1,5 +1,29 @@
 {
   "changelogEntries": {
+    "searchFixed": {
+      "title": "La recherche fonctionne de nouveau : la plupart des recherches échouaient",
+      "description": "Sur un échantillon d'environ 40 requêtes réelles, près de 60% renvoyaient une erreur après 35 à 79 secondes. La cause était banale : les résultats et le décompte « N résultats » s'exécutaient en parallèle, mais la page attendait quand même le décompte — un décompte lent bloquait donc toute la réponse puis la faisait échouer, alors que les résultats n'ont jamais été la partie lente. Le décompte a désormais une limite de temps. Les recherches répondent en 1 à 7 secondes ; si le total tarde, nous affichons les offres sans lui plutôt que de vous faire attendre un chiffre."
+    },
+    "titleSearchFindsAll": {
+      "title": "Chercher un intitulé de poste trouve désormais toutes les offres portant ce titre",
+      "description": "Quand une recherche correspondait à moins de 200 intitulés, nous l'élargissions aussi aux descriptions — et nous constituions la liste des candidates à partir des 3 000 offres les plus récentes correspondant à l'une ou l'autre, avant tout classement. Une offre dont l'intitulé était exactement ce que vous aviez tapé pouvait donc être écartée avant le classement, simplement parce que des milliers d'offres plus récentes mentionnaient ces mots quelque part dans leur texte. Elle devenait alors introuvable, quel que soit le défilement. Les correspondances d'intitulé entrent désormais toujours dans la liste. Mesuré en direct : toutes reviennent, alors qu'auparavant la plupart étaient perdues."
+    },
+    "filterNumbersTrue": {
+      "title": "Les pages filtrées n'affichent plus le total de tout le tableau",
+      "description": "Choisir un domaine via un lien comme /jobs?category=Engineering filtrait correctement les offres mais affichait au-dessus le total du tableau entier — 587 793 au lieu du vrai chiffre, car l'orthographe avec majuscule passait à travers le contrôle qui décide s'il faut compter. Une seconde variante du même défaut faisait qu'un filtre de mode de travail combiné à un domaine affichait 3 940 alors que le chiffre réel était d'environ 600. Les deux sont corrigés. Les valeurs de filtre que nous ne pouvons pas appliquer — un code pays à trois lettres, un niveau d'expérience inexistant — vous sont désormais signalées au lieu d'être discrètement ignorées pendant que nous répondons à la question non filtrée."
+    },
+    "remoteAndCountryFilters": {
+      "title": "Le filtre Télétravail masquait des offres à distance, et le sélecteur de pays n'apparaissait jamais",
+      "description": "Deux colonnes indiquent si un poste est à distance, et une tâche de fond qui améliore les données de mode de travail en mettait une à jour et pas l'autre. Elles ont divergé et le filtre servait discrètement le plus petit ensemble : des milliers d'offres réellement à distance qu'il aurait dû trouver. Par ailleurs, le sélecteur de pays n'était dessiné qu'une fois sa liste de pays chargée, et cette requête expirait à chaque tentative — le sélecteur n'apparaissait donc jamais et aucun pays n'était sélectionnable. Les deux sont corrigés : les colonnes évoluent ensemble, et le contrôle s'affiche que les décomptes arrivent ou non."
+    },
+    "noPostingsLostPaging": {
+      "title": "Charger plus d'offres n'en saute ni n'en répète plus aucune",
+      "description": "Nous venions de commencer à casser les séries où un même employeur occupait plusieurs cartes d'affilée, pour que la première page se lise de façon moins répétitive. C'était appliqué une étape trop tôt — avant la découpe de la page — si bien que des offres pouvaient se déplacer d'une page à l'autre : quelques-unes apparaissaient deux fois, d'autres étaient sautées et n'étaient plus jamais montrées. Aucune recherche ne devrait perdre une offre en silence. Le réordonnancement n'a plus lieu qu'à l'intérieur de la page affichée, donc chaque offre apparaît exactement une fois. Le tri par salaire reste aussi strictement par salaire, ce qui n'a brièvement pas été le cas."
+    },
+    "recheckClaimCorrected": {
+      "title": "Nous exagérions la fréquence de re-vérification des plus grands tableaux",
+      "description": "Notre note sur les sources indiquait que les plus grands tableaux sont re-vérifiés toutes les 10 à 15 minutes. Mesuré le 29 juillet sur les 23 136 tableaux portant un horodatage de vérification, l'écart médian est d'environ deux heures et 95% sont re-vérifiés en environ quatre heures. L'affirmation était probablement vraie à l'époque où elle a été écrite, à une fraction de la taille actuelle, et elle est devenue caduque sans bruit à mesure que le catalogue dépassait 28 000 tableaux. Nous avons retiré le chiffre fixe plutôt que de le remplacer par un autre qui vieillirait pareil : la médiane et le 95e centile en direct sont publiés sur le Ghost Job Index, où ils suivent le catalogue d'eux-mêmes."
+    },
     "applyNeverDeletes": {
       "title": "Cliquer sur Postuler ne peut plus faire disparaître une offre active",
       "description": "Quand vous cliquiez sur Postuler, nous revérifiions l'offre dans le système de l'entreprise et, si cette seule vérification ne la trouvait pas, nous supprimions l'annonce. Sur Workday elle se trompait dans environ 14% des cas, car son index de recherche ne contient pas toutes les offres que ses propres pages affichent encore : de vraies offres ouvertes disparaissaient au moment même où l'on postulait. Une seule vérification ne supprime plus rien : l'offre est signalée et n'est retirée que si elle reste absente après une relecture complète du flux de l'entreprise."

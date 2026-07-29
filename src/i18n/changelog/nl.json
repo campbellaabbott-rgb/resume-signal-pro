@@ -1,5 +1,29 @@
 {
   "changelogEntries": {
+    "searchFixed": {
+      "title": "Zoeken werkt weer — de meeste zoekopdrachten mislukten",
+      "description": "In een steekproef van zo'n 40 echte zoekopdrachten gaf ongeveer 60% een fout na 35 tot 79 seconden. De oorzaak was alledaags: de resultaten en de telling 'N resultaten' liepen naast elkaar, maar de pagina wachtte toch op de telling — een trage telling hield dus de hele reactie vast en sleepte die uiteindelijk mee, terwijl de resultaten nooit het trage deel waren. De telling heeft nu een tijdslimiet. Zoekopdrachten reageren in 1 tot 7 seconden; duurt het totaal te lang, dan tonen we de vacatures zonder dat getal in plaats van je te laten wachten."
+    },
+    "titleSearchFindsAll": {
+      "title": "Zoeken op een functietitel vindt nu elke vacature met die titel",
+      "description": "Als een zoekopdracht op minder dan 200 functietitels uitkwam, verbreedden we hem ook naar de omschrijvingen — en bouwden we de kandidatenlijst uit de 3.000 nieuwste vacatures die op een van beide pasten, nog vóór er iets gerangschikt werd. Een vacature waarvan de titel precies was wat je intypte, kon zo vóór het rangschikken afvallen, alleen omdat duizenden nieuwere vacatures die woorden ergens in hun tekst noemden. Daarna was ze onvindbaar, hoe ver je ook scrolde. Titeltreffers komen nu altijd in de lijst. Live opnieuw gemeten: ze komen allemaal terug, eerder ging het merendeel verloren."
+    },
+    "filterNumbersTrue": {
+      "title": "Gefilterde pagina's tonen niet langer het totaal van het hele bord",
+      "description": "Een vakgebied kiezen via een link als /jobs?category=Engineering filterde de vacatures correct, maar drukte er het totaal van het hele bord boven af — 587.793 in plaats van het echte getal, omdat de schrijfwijze met hoofdletter langs de controle glipte die bepaalt of er geteld wordt. Een tweede, losse variant van dezelfde misser liet een werkvorm-filter in combinatie met een vakgebied 3.940 tonen waar het echte getal rond de 600 lag. Beide verholpen. Filterwaarden die we niet kunnen toepassen — een landcode van drie letters, een niet-bestaand ervaringsniveau — worden nu aan je teruggemeld in plaats van stilletjes weggegooid terwijl wij de ongefilterde vraag beantwoorden."
+    },
+    "remoteAndCountryFilters": {
+      "title": "Het Remote-filter verborg remote vacatures en de landkiezer verscheen nooit",
+      "description": "Twee kolommen leggen vast of een functie remote is, en een achtergrondtaak die de werkvorm-gegevens verbetert werkte de ene bij en de andere niet. Ze liepen uiteen en het Remote-filter serveerde stilletjes de kleinere set — duizenden echt remote vacatures die het had moeten vinden. Los daarvan werd de landkiezer pas getekend zodra zijn landenlijst geladen was, en die opvraging liep bij élke poging vast, dus de kiezer verscheen nooit en geen enkel land was selecteerbaar. Beide verholpen: de kolommen bewegen samen, en het element verschijnt of de aantallen ernaast nu binnenkomen of niet."
+    },
+    "noPostingsLostPaging": {
+      "title": "Meer vacatures laden slaat er geen meer over en herhaalt er geen",
+      "description": "We waren net begonnen reeksen te doorbreken waarin één werkgever meerdere kaarten achter elkaar had, zodat de eerste pagina minder eentonig leest. Dat gebeurde één stap te vroeg — vóór de pagina werd afgesneden — waardoor vacatures over de grens tussen twee pagina's konden schuiven: sommige verschenen twee keer, andere werden overgeslagen en nooit meer getoond. Geen enkele zoekopdracht hoort stilletjes een vacature kwijt te raken. Het herschikken gebeurt nu alleen binnen de pagina die je bekijkt, dus elke vacature verschijnt precies één keer. Sorteren op salaris blijft ook strikt op salaris, wat het even niet was."
+    },
+    "recheckClaimCorrected": {
+      "title": "We overdreven hoe vaak we de grootste borden opnieuw controleren",
+      "description": "In onze bronnennotitie stond dat de grootste borden ongeveer elke 10 tot 15 minuten opnieuw worden gecheckt. Gemeten op 29 juli over de 23.136 borden met een verificatiestempel is het mediane interval zo'n twee uur, en 95% wordt binnen ongeveer vier uur opnieuw gecheckt. De bewering was waarschijnlijk waar toen ze werd geschreven, bij een fractie van de huidige omvang, en werd stilzwijgend onjuist toen de catalogus voorbij de 28.000 borden groeide. We hebben het vaste getal weggehaald in plaats van het te vervangen door een nieuw getal dat net zo zou verouderen — de live mediaan en het 95e percentiel staan op de Ghost Job Index, waar ze vanzelf met de catalogus meebewegen."
+    },
     "applyNeverDeletes": {
       "title": "Op Solliciteren klikken laat geen actieve vacature meer verdwijnen",
       "description": "Als je op Solliciteren klikte, controleerden we de vacature opnieuw bij het systeem van het bedrijf — en als die ene controle niets vond, verwijderden we de vermelding. Bij Workday zat die controle er in ongeveer 14% van de gevallen naast, omdat de zoekindex niet elke vacature bevat die de eigen pagina's nog tonen: echte, openstaande vacatures verdwenen juist door het solliciteren. Eén controle verwijdert nu niets meer; de vacature wordt gemarkeerd en pas verwijderd als ze na een volledige herlezing van de feed nog steeds ontbreekt."

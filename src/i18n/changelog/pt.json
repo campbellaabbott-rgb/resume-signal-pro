@@ -1,5 +1,29 @@
 {
   "changelogEntries": {
+    "searchFixed": {
+      "title": "A pesquisa voltou a funcionar — a maioria das pesquisas falhava",
+      "description": "Numa amostra de cerca de 40 pesquisas reais, aproximadamente 60% devolvia um erro após 35 a 79 segundos. A causa era simples: os resultados e a contagem «N resultados» corriam lado a lado, mas a página esperava na mesma pela contagem, por isso uma contagem lenta segurava toda a resposta e acabava por derrubá-la, embora os resultados nunca tenham sido a parte lenta. A contagem passou a ter limite de tempo. As pesquisas respondem em 1 a 7 segundos; se o total demorar, mostramos as vagas sem ele em vez de te fazer esperar por um número."
+    },
+    "titleSearchFindsAll": {
+      "title": "Procurar um cargo encontra agora todas as vagas com esse título",
+      "description": "Quando uma pesquisa correspondia a menos de 200 títulos, alargávamo-la também às descrições — e construíamos a lista de candidatas com as 3.000 vagas mais recentes que correspondiam a qualquer uma das duas, antes de ordenar seja o que for. Assim, uma vaga cujo título era exatamente o que escreveste podia ser descartada antes da ordenação, só porque milhares de vagas mais recentes mencionavam essas palavras algures no texto. Depois ficava inalcançável por muito que rolasses. As correspondências de título entram agora sempre na lista. Medido em direto: voltam todas, quando antes se perdia a maioria."
+    },
+    "filterNumbersTrue": {
+      "title": "As páginas filtradas já não mostram o total do quadro inteiro",
+      "description": "Escolher uma área a partir de um link como /jobs?category=Engineering filtrava bem as vagas mas imprimia por cima o total do quadro inteiro — 587.793 em vez do número real, porque a grafia com maiúscula escapava à verificação que decide se há contagem. Uma segunda variante do mesmo lapso fazia um filtro de modalidade combinado com uma área mostrar 3.940 quando o número real rondava os 600. Ambos corrigidos. Os valores de filtro que não conseguimos aplicar — um código de país com três letras, um nível de experiência inexistente — passam a ser-te indicados em vez de descartados em silêncio enquanto respondemos à pergunta sem filtro."
+    },
+    "remoteAndCountryFilters": {
+      "title": "O filtro Remoto escondia vagas remotas e o seletor de país nunca aparecia",
+      "description": "Duas colunas registam se uma vaga é remota, e um processo em segundo plano que melhora os dados de modalidade atualizava uma e não a outra. Desalinharam-se e o filtro Remoto servia em silêncio o conjunto mais pequeno — milhares de vagas genuinamente remotas que devia ter encontrado. À parte, o controlo de país só era desenhado depois de carregar a sua lista de países, e essa consulta expirava em todas as tentativas, por isso o seletor nunca aparecia e nenhum país era selecionável. Ambos corrigidos: as colunas andam juntas e o controlo aparece cheguem ou não as contagens ao lado."
+    },
+    "noPostingsLostPaging": {
+      "title": "Carregar mais vagas já não salta nem repete nenhuma",
+      "description": "Tínhamos acabado de começar a quebrar as sequências em que um mesmo empregador ocupava vários cartões seguidos, para a primeira página se ler de forma menos repetitiva. Era aplicado um passo cedo demais — antes de cortar a página — por isso as vagas podiam deslocar-se entre uma página e a seguinte: algumas apareciam duas vezes e outras eram saltadas e nunca mais mostradas. Nenhuma pesquisa deve perder uma vaga em silêncio. A reordenação passa a acontecer só dentro da página que estás a ver, por isso cada vaga aparece exatamente uma vez. A ordenação por salário fica também estritamente por salário, o que por breves momentos não aconteceu."
+    },
+    "recheckClaimCorrected": {
+      "title": "Estávamos a exagerar a frequência com que reverificamos os maiores murais",
+      "description": "A nossa nota de fontes dizia que os maiores murais são reverificados a cada 10 a 15 minutos. Medido a 29 de julho nos 23.136 murais com carimbo de verificação, o intervalo mediano ronda as duas horas e 95% são reverificados em cerca de quatro horas. A afirmação era provavelmente verdadeira quando foi escrita, com uma fração do tamanho atual, e ficou desatualizada em silêncio à medida que o catálogo passou os 28.000 murais. Retirámos o número fixo em vez de o substituir por outro que envelheceria igual — a mediana e o percentil 95 em direto são publicados no Ghost Job Index, onde acompanham o catálogo sozinhos."
+    },
     "applyNeverDeletes": {
       "title": "Clicar em Candidatar já não faz uma vaga ativa desaparecer",
       "description": "Ao clicar em Candidatar, verificávamos de novo a vaga no sistema da empresa e, se essa única verificação não a encontrasse, apagávamos o anúncio. No Workday essa verificação errava cerca de 14% das vezes, porque o índice de pesquisa não inclui todas as vagas que as próprias páginas continuam a servir: vagas reais e abertas eram removidas no exato momento da candidatura. Uma verificação isolada já não apaga nada; a vaga é sinalizada e só é removida se continuar ausente após uma releitura completa do feed da empresa."
