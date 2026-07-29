@@ -4962,9 +4962,30 @@ async function serveList(
                 ? collapseClusters(fuzzyRows, limit)
                 : { jobs: fuzzyRows.slice(0, limit), rawConsumed: Math.min(fuzzyRows.length, limit) };
               logMiss("fuzzy");
+              // The reported total here was the REQUEST LIMIT wearing a total's
+              // clothing. fuzzy_title_search computes total_rows inside its own
+              // LIMIT, so at p_limit=60 it returns 60 whenever 60 or more rows
+              // match, and the `|| jobs.length` fallback echoes the page size
+              // when it returns nothing at all. Measured on the live board:
+              //   q="nurse practicioner"  limit=5  -> total 5
+              //                           limit=20 -> total 20
+              //                           limit=60 -> total 60, 38 rows shown
+              // so the header read "Showing 38 of 60" — a figure that is neither
+              // the number of close matches nor anything else about the data,
+              // and that MOVES when the caller changes its page size. That is
+              // the same defect class as publishing 587,793 over a filtered
+              // page: a number presented as a total that is not one.
+              //
+              // total_rows is only trustworthy BELOW the cap. At or above it the
+              // honest answer is that we don't know, which the response already
+              // has a contract for — countUnavailable renders "Showing N
+              // matching openings" with no total rather than inventing one.
+              const fzTotal = Number((fuzzy[0] as { total_rows?: number }).total_rows);
+              const fzKnown = Number.isFinite(fzTotal) && fzTotal > 0 && fzTotal < limit;
               return json({
                 jobs: await attachRecheckedAt(client, fuzzyGrouped.jobs),
-                total: Number((fuzzy[0] as { total_rows?: number }).total_rows) || fuzzyGrouped.jobs.length,
+                total: fzKnown ? fzTotal : null,
+                ...(fzKnown ? {} : { countUnavailable: true }),
                 totalAllCompanies: (v0.total as number) ?? 0,
                 companies: [],
                 companiesCount: ((v0.companiesFacet as unknown[]) ?? []).length,
@@ -5067,24 +5088,27 @@ async function serveList(
         // matches instead of passing them off as exact ones. Exact matches
         // keep their position; nothing is reordered or replaced.
         //
-        // THE THRESHOLD WAS THE BUG, not the machinery. It read `total < 5`, and
-        // measured live 2026-07-29:
-        //   "nurse practitioner"  -> 1,771 results
-        //   "nurse practicioner"  ->     5 results   <- EXACTLY the boundary
-        // Five is not less than five, so the augmentation never ran and the user
-        // keeping 0.3% of the corpus got no close matches at all. The same
-        // machinery worked perfectly one result lower: "softwear engineer" had
-        // total=1 and returned 5 rows, four of them corrected.
+        // Raised from 5 to 20. THE ORIGINAL JUSTIFICATION FOR THIS WAS WRONG and
+        // the correction is worth keeping, because it nearly shipped as fact.
         //
-        // That is a boundary off-by-one, the same shape as the `<=` that spun the
-        // dating sweep forever this morning — and 5 was arbitrary besides. A
-        // 60-row page with 5, 12 or 19 exact matches is still mostly empty, and
-        // the trigram tier is index-backed (gin on title), offset-0 only, and
-        // gated on no filters being active, so the extra reach is cheap.
+        // I measured "nurse practicioner" returning EXACTLY 5 against 1,771 for
+        // the correct spelling, and concluded the gate `total < 5` was missing it
+        // by one. It was not. Every probe used limit=5, and for a query the
+        // EMPTY-path rescue handles, `total` was the fuzzy tier's row count —
+        // which is capped at p_limit. Re-measured across limits:
+        //   "nurse practicioner"  limit=5 -> 5   limit=20 -> 20   limit=60 -> 60
+        // The total tracked my page size. That query returns ZERO exact matches,
+        // the empty-path rescue already fires, and this gate never applied to it.
+        // A number that moves with the request is not a measurement of the data.
         //
-        // 20 is the point where exact matches start actually filling the page
-        // (a third of 60). Above it, padding with close matches would dilute a
-        // genuinely useful result set rather than rescue an empty one.
+        // What the change DOES reach are queries with genuinely low real totals —
+        // measured stable across limits: "bioinformatician" 18, "adminstrative
+        // assistant" 19. Those got no close matches before and do now. That is a
+        // real but modest win, and a weaker case than the one I first wrote down.
+        //
+        // 20 is where exact matches start filling a 60-row page. The trigram tier
+        // is index-backed (gin on title), offset-0 only, and stands down whenever
+        // a filter is active, so the extra reach is cheap.
         const FUZZY_AUGMENT_BELOW = 20;
         let fuzzyExtraOut: { q: string; count: number } | null = null;
         if (total !== null && total > 0 && total < FUZZY_AUGMENT_BELOW && offset === 0 && !countOnly && !filtersActive && qText.length >= 3) {
