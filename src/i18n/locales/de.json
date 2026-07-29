@@ -3939,7 +3939,8 @@
     "resultsSummaryFiltered": "{{shown}} von {{total}} passenden Stellen angezeigt",
     "recheckedAgo": "Median-Feed vor {{min}} Min. erneut geprüft",
     "sourcesDown_one": "{{count}} Unternehmens-Feed ist gerade nicht erreichbar",
-    "sourcesDown_other": "{{count}} Unternehmens-Feeds sind gerade nicht erreichbar"
+    "sourcesDown_other": "{{count}} Unternehmens-Feeds sind gerade nicht erreichbar",
+    "verifiedAgo": "geprüft {{ago}}"
   },
   "accountPage": {
     "statusSaveFailed": "Status konnte nicht gespeichert werden — bitte erneut versuchen.",

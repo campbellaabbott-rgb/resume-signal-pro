@@ -850,3 +850,155 @@ describe("no locale promises a fixed re-check interval", () => {
     });
   }
 });
+
+// "Newest first" was one refresh batch sorted alphabetically by employer.
+// effective_posted ties across a whole 250-row upsert chunk (first_seen
+// defaults to a transaction-stable now()), ingest runs per board, so a tie
+// group is ONE employer — and the `id ASC` tie-break then walks employers
+// alphabetically. Measured 2026-07-29: 13 of 60 first-page slots taken by two
+// employers, in runs of 7 and 6.
+describe("the board does not hand consecutive slots to one employer", () => {
+  const fn = readFileSync(resolve(root, "supabase/functions/job-board/index.ts"), "utf8");
+
+  it("caps consecutive same-employer cards", () => {
+    expect(fn).toMatch(/const MAX_CONSECUTIVE_PER_COMPANY = 2;/);
+    expect(fn).toMatch(/function interleaveByCompany/);
+  });
+
+  it("runs BEFORE the page is cut, not after", () => {
+    // Applying it to an already-truncated slice would cap nothing the user sees.
+    const m = fn.slice(fn.indexOf("const mappedRows = interleaveByCompany("));
+    expect(m.slice(0, 400)).toMatch(/const grouped = groupSimilar/);
+  });
+
+  it("defers rather than drops — every posting still appears", () => {
+    const h = fn.slice(fn.indexOf("function interleaveByCompany"), fn.indexOf("function interleaveByCompany") + 1400);
+    expect(h).toMatch(/return out\.concat\(deferred\);/);
+  });
+
+  it("simulating it breaks the measured 7-run and loses nothing", () => {
+    // Guard the behaviour, not the characters.
+    const CAP = 2;
+    const run = (rows: string[]) => {
+      const out: string[] = []; const deferred: string[] = [];
+      let runKey = "", runLen = 0;
+      for (const k of rows) {
+        if (k && k === runKey && runLen >= CAP) { deferred.push(k); continue; }
+        if (k === runKey) runLen++; else { runKey = k; runLen = 1; }
+        out.push(k);
+        if (deferred.length) {
+          const i = deferred.findIndex((d) => d !== runKey);
+          if (i >= 0) { const [d] = deferred.splice(i, 1); runKey = d; runLen = 1; out.push(d); }
+        }
+      }
+      return out.concat(deferred);
+    };
+    const input = [...Array(7).fill("A"), ...Array(6).fill("B"), "C", "D"];
+    const got = run(input);
+    expect(got).toHaveLength(input.length);                       // nothing lost
+    expect(got.filter((x) => x === "A")).toHaveLength(7);          // nothing duplicated
+    let worst = 0, cur = 0, prev = "";
+    for (const k of got) { cur = k === prev ? cur + 1 : 1; prev = k; worst = Math.max(worst, cur); }
+    expect(worst).toBeLessThan(7);                                 // the 7-run is broken
+  });
+});
+
+// Rows were written once and never corrected: `newRows` filters to ids we do
+// not already hold, so a title the employer edited kept our first-ever value
+// forever. Measured 2026-07-29 against live vendor payloads: title 1.16%,
+// location 0.57% disagreement. The structural cost was larger — every
+// normaliser improvement only ever reached rows inserted after it shipped.
+describe("ingest corrects existing rows without undoing enrichment", () => {
+  const fn = readFileSync(resolve(root, "supabase/functions/job-board/index.ts"), "utf8");
+  const block = fn.slice(fn.indexOf("const corrections: Array<Record<string, unknown>> = [];"),
+                         fn.indexOf("for (let i = 0; i < newRows.length; i += 250)"));
+
+  it("corrects vendor-authoritative fields on rows we already hold", () => {
+    for (const f of ["title", "location", "apply_url", "country"]) {
+      expect(block, `${f} not corrected`).toContain(`put("${f}"`);
+    }
+  });
+
+  it("NEVER touches fields owned by a later enrichment step", () => {
+    // posted_at belongs to the dating sweep, category to the categoriser,
+    // description and experience_band to the description fills. Writing an
+    // ingest-time null into any of them would undo work that took weeks.
+    for (const f of ["posted_at", "category", "description", "experience_band", "first_seen"]) {
+      expect(block, `${f} must not be written by the correction pass`).not.toContain(`put("${f}"`);
+      expect(block).not.toMatch(new RegExp(`patch\\.${f}\\s*=`));
+    }
+  });
+
+  it("an empty vendor value cannot erase a stored one", () => {
+    // The whole safety property in one line.
+    expect(block).toMatch(/if \(next === null \|\| next === undefined \|\| next === ""\) \{ if \(!allowNull\) return; \}/);
+  });
+
+  it("only writes rows that actually changed", () => {
+    expect(block).toMatch(/if \(Object\.keys\(patch\)\.length\) corrections\.push/);
+  });
+});
+
+// Oracle states a work mode on ~a third of its postings and we stored NULL for
+// every one, because ORA_REMOTE lowercases to ora_remote and the lookup table
+// only knew remote|hybrid|onsite|on_site. Measured 2026-07-29: where a vendor
+// STATES a mode we disagreed 72.3% of the time (598 of 915 NULL, 64 wrong).
+describe("vendor work modes are actually understood", () => {
+  const nz = readFileSync(resolve(root, "supabase/functions/job-board/normalize.ts"), "utf8");
+
+  it("knows Oracle's own vocabulary", () => {
+    for (const c of ["ora_remote", "ora_hybrid", "ora_onsite"]) expect(nz).toContain(`["${c}",`);
+  });
+
+  it("uses a Map, so the lookup cannot reach Object.prototype", () => {
+    // Third instance of this hazard in this codebase — NAME_FIXES and
+    // CATEGORY_ACCENT were the first two. `?? null` does not catch a function.
+    expect(nz).toMatch(/const VENDOR_MODE = new Map</);
+    expect(nz).toMatch(/VENDOR_MODE\.get\(/);
+    // Comments explaining the old bug legitimately contain "VENDOR_MODE[v]",
+    // so this must read executable lines only — the first version of this
+    // assertion failed on the comment describing the very defect it guards.
+    const code = nz.split("\n").filter((l) => !l.trim().startsWith("//")).join("\n");
+    expect(code).not.toMatch(/VENDOR_MODE\[/);
+  });
+});
+
+// The category fill-speed line printed the REQUESTED window (90 days) as
+// though it were the measured one. job_board_closures begins 2026-07-14 — the
+// log is 15 days deep. Same defect as get_employer_benchmarks (fixed
+// 20260727120000) and the ghost stats observed_days (20260727180000).
+describe("fill-speed reports the window it actually observed", () => {
+  it("clamps the published window to the log's real depth", () => {
+    const mig = readFileSync(resolve(root, "supabase/migrations/20260729090000_fill_speed_observed_window.sql"), "utf8");
+    expect(mig).toMatch(/LEAST\(\s*p_days,/);
+    expect(mig).toMatch(/MIN\(closed_at\)/);
+    expect(mig).toMatch(/GREATEST\(1,/); // a fresh log can never render as "0 days"
+  });
+});
+
+// The product's whole claim is "every posting is real and still open". Until
+// now the evidence for it lived only inside the detail panel — visible after
+// the user had already decided to click. recheckedAt is already in the list
+// payload (attachRecheckedAt), so putting it on the card costs no query.
+describe("the verification receipt is visible before the click", () => {
+  const jobs = readFileSync(resolve(root, "src/pages/Jobs.tsx"), "utf8");
+
+  it("renders on the card, not only in the detail panel", () => {
+    expect(jobs).toMatch(/job\.recheckedAt && !job\.missingSince/);
+    expect(jobs).toMatch(/jobsPage\.verifiedAgo/);
+  });
+
+  it("renders nothing when there is no stamp", () => {
+    // A missing stamp must never be dressed up as a weaker one — the same rule
+    // that replaced lastSeen (insert-time) with recheckedAt (feed-read time).
+    const blk = jobs.slice(jobs.indexOf("{job.recheckedAt && !job.missingSince"));
+    expect(blk.slice(0, 700)).not.toMatch(/lastSeen|firstSeen|postedAt/);
+  });
+
+  it("every locale can render it", () => {
+    for (const l of ["en", "en-GB", "es", "fr", "de", "pt", "nl", "hi", "tl"]) {
+      const j = JSON.parse(readFileSync(resolve(root, `src/i18n/locales/${l}.json`), "utf8"));
+      expect(j.jobsPage.verifiedAgo, `${l} missing verifiedAgo`).toContain("{{ago}}");
+    }
+  });
+});

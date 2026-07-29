@@ -3939,7 +3939,8 @@
     "resultsSummaryFiltered": "Mostrando {{shown}} de {{total}} vacantes que coinciden",
     "recheckedAgo": "fuente mediana revisada hace {{min}} min",
     "sourcesDown_one": "{{count}} fuente de empresa no responde ahora mismo",
-    "sourcesDown_other": "{{count}} fuentes de empresas no responden ahora mismo"
+    "sourcesDown_other": "{{count}} fuentes de empresas no responden ahora mismo",
+    "verifiedAgo": "comprobado {{ago}}"
   },
   "accountPage": {
     "statusSaveFailed": "No se pudo guardar ese estado; inténtalo de nuevo.",

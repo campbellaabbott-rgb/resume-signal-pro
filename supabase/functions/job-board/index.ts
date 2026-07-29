@@ -79,7 +79,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-07-28.14";
+const BUILD_VERSION = "2026-07-29.2";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -1045,12 +1045,20 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
         // Paginated: PostgREST caps responses at 1,000 rows, and the biggest
         // boards hold 3,000+ — a truncated id set would re-insert live rows
         // and never delete old ones.
-        const existingRows: Array<{ id: string; missing_since: string | null }> = [];
+        // Mutable fields come back with the id diff so an existing row can be
+        // CORRECTED rather than frozen at the moment it was first inserted.
+        type ExistingRow = {
+          id: string; missing_since: string | null;
+          title?: string | null; location?: string | null; country?: string | null;
+          apply_url?: string | null; work_mode?: string | null; remote?: boolean | null;
+          salary?: string | null;
+        };
+        const existingRows: Array<ExistingRow> = [];
         let missingColUnknown = false; // pre-migration: column absent → legacy single-pass behavior
         for (let from = 0; ; from += 1000) {
           let res = await client
             .from("job_board_postings")
-            .select("id,missing_since")
+            .select("id,missing_since,title,location,country,apply_url,work_mode,remote,salary")
             .eq("company_token", s.token)
             .order("id")
             .range(from, from + 999);
@@ -1069,7 +1077,12 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
             lastUpsertError = `${s.token}: ${readErr.message}`;
             break;
           }
-          existingRows.push(...((page ?? []) as Array<{ id: string; missing_since?: string | null }>).map((r) => ({ id: r.id, missing_since: r.missing_since ?? null })));
+          existingRows.push(...((page ?? []) as Array<ExistingRow>).map((r) => ({
+            id: r.id, missing_since: r.missing_since ?? null,
+            title: r.title ?? null, location: r.location ?? null, country: r.country ?? null,
+            apply_url: r.apply_url ?? null, work_mode: r.work_mode ?? null,
+            remote: r.remote ?? null, salary: r.salary ?? null,
+          })));
           if (!page || page.length < 1000) break;
         }
         if (!boardOk) {
@@ -1077,7 +1090,8 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
           continue;
         }
         const prefix = `${s.source}:`;
-        const missingSinceById = new Map(existingRows.filter((r) => r.id.startsWith(prefix)).map((r) => [r.id, r.missing_since]));
+        const existingById = new Map(existingRows.filter((r) => r.id.startsWith(prefix)).map((r) => [r.id, r]));
+        const missingSinceById = new Map([...existingById].map(([k, v]) => [k, v.missing_since]));
         const existing = new Set(missingSinceById.keys());
         const liveIds = new Set(rowsById.keys());
         const newRows = rows.filter((r) => !existing.has(r.id as string));
@@ -1130,6 +1144,54 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
             .update({ missing_since: null }).in("id", toUnstamp.slice(i, i + 200));
           if (unErr) console.warn(`[JOB-BOARD] missing-unstamp failed for ${s.token} (harmless until next miss):`, unErr.message?.slice(0, 120));
         }
+
+        // UNFREEZE. Until now a row was written once and never corrected:
+        // `newRows` filters to ids we do not already hold, so a title the
+        // employer edited, a location they fixed, or an apply_url they moved
+        // kept our first-ever value forever. Measured 2026-07-29 against live
+        // vendor payloads: 1.16% of titles and 0.57% of locations disagree —
+        // ~6,800 and ~3,350 rows at current size. The larger cost was
+        // structural: every normaliser improvement only ever reached rows
+        // inserted after it shipped, which is the same insert-only behaviour
+        // that left 70k Workday rows undated.
+        //
+        // THE SAFETY RULE, and the reason this is narrow: an ingest-time NULL
+        // must never overwrite an enriched value. posted_at belongs to the
+        // dating sweep, category to the categoriser, description and
+        // experience_band to the description fills — none of them appear here
+        // at all. work_mode, remote and salary DO appear, but only when the
+        // vendor states a value this pass; when the vendor is silent we keep
+        // whatever enrichment already found. Overwriting with null would have
+        // undone the sweep that took two weeks to get running.
+        const corrections: Array<Record<string, unknown>> = [];
+        for (const [id, row] of rowsById) {
+          const prev = existingById.get(id);
+          if (!prev) continue; // brand new — handled by newRows below
+          const patch: Record<string, unknown> = {};
+          const put = (k: string, next: unknown, cur: unknown, allowNull: boolean) => {
+            if (next === null || next === undefined || next === "") { if (!allowNull) return; }
+            if (next !== cur) patch[k] = next ?? null;
+          };
+          // Vendor-authoritative on every fetch: correct these even to null.
+          put("title", row.title, prev.title, false);
+          put("location", row.location, prev.location, false);
+          put("apply_url", row.apply_url, prev.apply_url, false);
+          put("country", row.country, prev.country, false);
+          // Stated-only: silence from the vendor must not erase enrichment.
+          put("work_mode", row.work_mode, prev.work_mode, false);
+          put("salary", row.salary, prev.salary, false);
+          if (typeof row.remote === "boolean" && row.remote !== prev.remote) patch.remote = row.remote;
+          if (Object.keys(patch).length) corrections.push({ id, ...patch });
+        }
+        for (let i = 0; i < corrections.length; i += 200) {
+          const chunk = corrections.slice(i, i + 200);
+          for (const c of chunk) {
+            const { id, ...patch } = c as { id: string };
+            const { error: cErr } = await client.from("job_board_postings").update(patch).eq("id", id);
+            if (cErr) { lastUpsertError = `${s.token} correct ${String(id).slice(0, 40)}: ${cErr.message}`; break; }
+          }
+        }
+        if (corrections.length) console.log(`[JOB-BOARD] ${s.token}: corrected ${corrections.length} existing rows`);
 
         for (let i = 0; i < newRows.length; i += 250) {
           let { error } = await client.from("job_board_postings").upsert(newRows.slice(i, i + 250), { onConflict: "id" });
@@ -4081,6 +4143,52 @@ const GROUP_SAMPLE_LOCATIONS = 6;
  * that join an ALREADY-emitted cluster, and stops at the first row that would
  * open a new one, so no row is ever skipped or shown twice.
  */
+// "Newest first" was, on the default board, one refresh batch sorted
+// alphabetically by employer.
+//
+// The serving sort is `effective_posted DESC, id ASC`. effective_posted is
+// coalesce(posted_at, first_seen), and first_seen defaults to now() — which is
+// transaction-stable, so every row in a 250-row upsert chunk shares one
+// timestamp. Ingest runs per board, so a tie group is ONE employer's postings.
+// The id tie-break is `source:token:externalId`, which then walks those
+// employers in alphabetical order.
+//
+// Measured 2026-07-29: 13 of the 60 first-page slots (22%) were taken by two
+// employers, in runs of 7 and 6. The data underneath is accurate; the page just
+// looks like a low-quality board, and page 1 is what every visitor judges us on.
+//
+// This does not re-sort — reordering by recency would be a lie about data whose
+// recency genuinely ties. It caps how many CONSECUTIVE cards one employer may
+// hold, deferring the overflow a little further down. Every posting still
+// appears, in the same tie group, so pagination stays stable and no card claims
+// to be newer than it is.
+const MAX_CONSECUTIVE_PER_COMPANY = 2;
+
+function interleaveByCompany(rows: Array<Record<string, unknown>>): Array<Record<string, unknown>> {
+  const out: Array<Record<string, unknown>> = [];
+  const deferred: Array<Record<string, unknown>> = [];
+  let runKey = "";
+  let runLen = 0;
+  const keyOf = (r: Record<string, unknown>) => String(r.company ?? r.company_token ?? "");
+  for (const r of rows) {
+    const k = keyOf(r);
+    if (k && k === runKey && runLen >= MAX_CONSECUTIVE_PER_COMPANY) { deferred.push(r); continue; }
+    // A deferred row is eligible again as soon as a different employer breaks
+    // the run, so nothing is pushed to the end of the page wholesale.
+    if (k === runKey) runLen++; else { runKey = k; runLen = 1; }
+    out.push(r);
+    if (deferred.length) {
+      const i = deferred.findIndex((d) => keyOf(d) !== runKey);
+      if (i >= 0) {
+        const [d] = deferred.splice(i, 1);
+        runKey = keyOf(d); runLen = 1;
+        out.push(d);
+      }
+    }
+  }
+  return out.concat(deferred);
+}
+
 function collapseClusters(
   rows: Array<Record<string, unknown>>,
   limit: number,
@@ -4751,7 +4859,14 @@ async function serveList(
     ? mergeCompanyFacet([...fullCompanies].sort((a, b) => (b.count ?? 0) - (a.count ?? 0)).slice(0, FACET_COMPANY_LIMIT) as Array<{ token?: string; name?: string; count?: number }>)
         .sort((a, b) => (b.count ?? 0) - (a.count ?? 0))
     : [];
-  const mappedRows = (data ?? []).map(rowToJob) as Array<Record<string, unknown>>;
+  // Break up same-employer runs BEFORE the page is cut, so the cap applies to
+  // what the user sees rather than to an already-truncated slice. Recency order
+  // is untouched — see interleaveByCompany. Only the recency sort needs this:
+  // a salary sort ties on money, not on ingest batch, and a ranked search is
+  // already ordered by relevance.
+  const mappedRows = interleaveByCompany(
+    (data ?? []).map(rowToJob) as Array<Record<string, unknown>>,
+  );
   const grouped = groupSimilar
     ? collapseClusters(mappedRows, limit)
     : { jobs: mappedRows.slice(0, limit), rawConsumed: Math.min(mappedRows.length, limit) };

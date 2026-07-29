@@ -171,13 +171,34 @@ export function detectWorkMode(...parts: Array<string | null | undefined>): "rem
   if (P_ONSITE.test(s)) return "onsite";
   return null;
 }
-const VENDOR_MODE: Record<string, "remote" | "hybrid" | "onsite"> = {
-  remote: "remote", hybrid: "hybrid", onsite: "onsite", on_site: "onsite",
-};
+// A Map, not an object literal — the third instance of this hazard in this
+// codebase (see NAME_FIXES in company-display.ts and CATEGORY_ACCENT in
+// category-accent.ts). `VENDOR_MODE[v]` reaches Object.prototype, so a vendor
+// sending WorkplaceTypeCode "constructor" or "toString" would return a
+// FUNCTION, and `?? null` does not catch it because a function is not nullish.
+// Record<string,...> describes inherited keys as valid values, so TypeScript
+// cannot see it.
+//
+// The ORA_* codes are Oracle Recruiting Cloud's own vocabulary. Measured
+// 2026-07-29: where a vendor STATES a work mode we disagreed 72.3% of the time
+// (598 of 915 stored NULL, 64 stored wrong) — and Oracle was a large share of
+// that, because `ORA_REMOTE`.toLowerCase() is `ora_remote`, which matched
+// nothing here and fell through to null. 14,678 oracle postings, ~33% of which
+// carry a stated code.
+const VENDOR_MODE = new Map<string, "remote" | "hybrid" | "onsite">([
+  ["remote", "remote"], ["hybrid", "hybrid"], ["onsite", "onsite"], ["on_site", "onsite"],
+  // Oracle Recruiting Cloud
+  ["ora_remote", "remote"], ["ora_hybrid", "hybrid"], ["ora_onsite", "onsite"],
+  ["ora_on_site", "onsite"], ["ora_office", "onsite"],
+  // Other spellings seen in vendor payloads
+  ["fully_remote", "remote"], ["remote_working", "remote"], ["work_from_home", "remote"],
+  ["telecommute", "remote"], ["in_office", "onsite"], ["in_person", "onsite"],
+  ["office", "onsite"], ["flexible", "hybrid"], ["partially_remote", "hybrid"],
+]);
 /** Map a vendor's workplace enum (any casing, ON_SITE variants) to our trinary. */
 export function vendorWorkMode(v: string | null | undefined): "remote" | "hybrid" | "onsite" | null {
   if (typeof v !== "string") return null;
-  return VENDOR_MODE[v.toLowerCase().replace(/[\s-]+/g, "_")] ?? null;
+  return VENDOR_MODE.get(v.toLowerCase().replace(/[\s-]+/g, "_")) ?? null;
 }
 
 // Country from free-text location — deterministic and CONSERVATIVE: an explicit

@@ -4131,6 +4131,25 @@ export default function Jobs() {
                               {d === 0 ? t("jobsPage.postedToday", "today") : t("jobsPage.postedDaysAgo", "{{count}}d ago", { count: d })}
                             </span>
                           )}
+                          {/* The receipt. The whole product rests on "every posting
+                              is real and still open", and until now the only place
+                              a user could see evidence of that was inside the
+                              detail panel — after they had already decided to
+                              click. recheckedAt is job_board_verifications
+                              .verified_at, the moment we last re-read THIS
+                              company's own feed, and it is already in the list
+                              payload (attachRecheckedAt), so this costs no extra
+                              query. Absent => render nothing; a missing stamp must
+                              never be dressed up as a weaker one. */}
+                          {job.recheckedAt && !job.missingSince && (
+                            <span
+                              className="text-[11px] whitespace-nowrap text-muted-foreground inline-flex items-center gap-1"
+                              title={t("jobsPage.recheckedTip", "When we last re-read this company's own feed")}
+                            >
+                              <ShieldCheck className="w-3 h-3 text-success" aria-hidden />
+                              {t("jobsPage.verifiedAgo", "checked {{ago}}", { ago: agoLabel(job.recheckedAt, t) })}
+                            </span>
+                          )}
                         </div>
                       </div>
                       <div className={`flex flex-wrap items-center gap-2 mt-3 ${density === "compact" ? "hidden" : ""}`}>

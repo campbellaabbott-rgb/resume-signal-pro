@@ -3939,7 +3939,8 @@
     "resultsSummaryFiltered": "Showing {{shown}} of {{total}} matching openings",
     "recheckedAgo": "median feed re-checked {{min}} min ago",
     "sourcesDown_one": "{{count}} company feed is unreachable right now",
-    "sourcesDown_other": "{{count}} company feeds are unreachable right now"
+    "sourcesDown_other": "{{count}} company feeds are unreachable right now",
+    "verifiedAgo": "checked {{ago}}"
   },
   "accountPage": {
     "statusSaveFailed": "Couldn't save that status — please try again.",

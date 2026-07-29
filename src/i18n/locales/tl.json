@@ -3939,7 +3939,8 @@
     "resultsSummaryFiltered": "Ipinapakita ang {{shown}} sa {{total}} tumutugmang opening",
     "recheckedAgo": "median na feed, muling sinuri {{min}} min ang nakalipas",
     "sourcesDown_one": "{{count}} feed ng kumpanya ang hindi maabot ngayon",
-    "sourcesDown_other": "{{count}} feed ng kumpanya ang hindi maabot ngayon"
+    "sourcesDown_other": "{{count}} feed ng kumpanya ang hindi maabot ngayon",
+    "verifiedAgo": "sinuri {{ago}}"
   },
   "accountPage": {
     "statusSaveFailed": "Hindi na-save ang status na iyon — pakisubukan muli.",
