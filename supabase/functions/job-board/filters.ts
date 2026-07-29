@@ -119,7 +119,12 @@ export function normalizeFilters(
       q: String(body.q ?? "").trim(),
       location: String(body.location ?? "").trim(),
       country,
-      remote: body.remote === true,
+      // An explicit workMode BEATS the legacy `remote` boolean, and that decision
+      // belongs here rather than at the query. It used to live only in buildQuery,
+      // so the row query dropped `remote` while the three count RPCs and the
+      // per-page self-check all still bound it — three consumers, three different
+      // questions, from one request. Deciding it once means they cannot disagree.
+      remote: body.remote === true && !workMode,
       workMode,
       category,
       experience,

@@ -80,7 +80,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-07-29.9";
+const BUILD_VERSION = "2026-07-29.10";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -2320,7 +2320,28 @@ function isoDateOnly(v: unknown): string | null {
 // ── list: SQL reads + SWR background refresh ───────────────────────────────
 
 // PostgREST or() syntax breaks on these — strip rather than reject.
-const sanitizeTerm = (t: string) => t.replace(/[,()%\\]/g, "").trim();
+// Strips ONLY the characters that are ILIKE metacharacters. It used to strip
+// commas and parentheses as well, which silently rewrote the user's location
+// into a different question:
+//   "San Francisco, CA" -> the literal substring "San Francisco CA"
+// and almost no stored location contains that, because they are stored WITH the
+// comma. Measured live 2026-07-29 against the true count under the serving rule:
+//   "San Francisco, CA"   38 served / 2,978 real   (1.3%)
+//   "New York, NY"        18 served / 3,070 real   (0.6%)
+//   "Berlin, Germany"      1 served /   438 real   (0.2%)
+// Proof it was the comma: "San Francisco, CA" and "San Francisco CA" both
+// returned exactly 38, byte for byte. Nothing appeared in ignoredFilters, so the
+// filter was neither honoured nor named — it was ALTERED, which is the fence
+// breach the other two cases cannot be excused as.
+//
+// "City, ST" is the format the board itself prints on every card, and the
+// natural-language parser emits it too (Jobs.tsx:376), so this was reachable
+// from the headline search bar.
+//
+// Commas and parens never needed stripping: the term is BOUND (.ilike() and a $3
+// parameter), never concatenated into SQL, so they are literal characters. Only
+// % _ and \ carry meaning to ILIKE.
+const sanitizeTerm = (t: string) => t.replace(/[%_\\]/g, "").trim();
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -4698,7 +4719,13 @@ async function serveList(
     // stricter one and silently narrows the user's own choice. Measured:
     // {workMode:remote,country:GB} 1,518 vs 1,403 UI-shaped (7.6% lost),
     // design 614 -> 582 (5.2%), data_ai 848 -> 752 (11.3%).
-    if (applied.remote && !applied.workMode) {
+    // The remote/workMode precedence now lives in normalizeFilters, so this is a
+    // plain read. It used to be decided HERE and nowhere else, which meant the
+    // count RPCs and the self-check each answered a different question:
+    // {remote:true, workMode:"hybrid"} returned 60 hybrid rows under a total of
+    // 36 (the count of hybrid AND remote), and the integrity sensor then flagged
+    // all 60 as violating a filter the query had deliberately dropped.
+    if (applied.remote) {
       q = q.eq("remote", true);
     }
     // Work-mode filter: definitive vendor/text-stated tags only. Postings that

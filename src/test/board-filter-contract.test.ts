@@ -373,3 +373,53 @@ describe("typo tolerance fires below a useful threshold", () => {
     expect(index).toMatch(/total < FUZZY_AUGMENT_BELOW[\s\S]{0,120}!filtersActive/);
   });
 });
+
+describe("location is not silently rewritten, and remote precedence is decided once", () => {
+  const index = readFileSync(
+    resolve(__dirname, "../../supabase/functions/job-board/index.ts"),
+    "utf8",
+  );
+
+  // Measured live 2026-07-29 on BUILD .9, before the fix:
+  //   "San Francisco, CA"   38 served / 2,978 real   (1.3%)
+  //   "New York, NY"        18 served / 3,070 real   (0.6%)
+  //   "Berlin, Germany"      1 served /   438 real   (0.2%)
+  // sanitizeTerm stripped the comma, so the board answered a question the user
+  // had not asked and reported a confident total for it. "City, ST" is the
+  // format the board prints on every card and the NL parser emits.
+  it("sanitizeTerm strips ONLY ILIKE metacharacters", () => {
+    const m = index.match(/const sanitizeTerm = \(t: string\) => t\.replace\(([^,]+), ""\)/);
+    expect(m, "sanitizeTerm should still exist").toBeTruthy();
+    const cls = m![1];
+    // A comma or paren in a bound term is a literal character, never a wildcard.
+    expect(cls, "must not strip commas — that rewrites the user's location").not.toContain(",");
+    expect(cls, "must not strip parens — 1,027 live rows carry a parenthesised location").not.toContain("(");
+    // % _ and \ DO carry meaning to ILIKE and must still go.
+    expect(cls).toContain("%");
+    expect(cls).toContain("_");
+  });
+
+  it("remote-vs-workMode precedence is decided in the normaliser, not at the query", () => {
+    // Deciding it at buildQuery alone gave three consumers three different
+    // questions: rows dropped `remote`, the count RPCs bound it, and the
+    // self-check flagged the rows for violating it. Live on .9,
+    // {remote:true, workMode:"hybrid"} returned 60 hybrid rows under a total of 36.
+    expect(normalizeFilters({ remote: true, workMode: "hybrid" }, 1).applied.remote).toBe(false);
+    expect(normalizeFilters({ remote: true, workMode: "onsite" }, 1).applied.remote).toBe(false);
+    expect(normalizeFilters({ remote: true }, 1).applied.remote).toBe(true);
+    // ...and the query must now be a plain read of that decision.
+    expect(index).not.toMatch(/applied\.remote && !applied\.workMode/);
+  });
+
+  it("a remote-only request still constrains the board", () => {
+    expect(isUnfiltered(normalizeFilters({ remote: true }, 1).applied)).toBe(false);
+    // remote+hybrid still filtered — by the work mode.
+    expect(isUnfiltered(normalizeFilters({ remote: true, workMode: "hybrid" }, 1).applied)).toBe(false);
+  });
+
+  it("the self-check no longer flags rows for the dropped remote filter", () => {
+    const a = normalizeFilters({ remote: true, workMode: "hybrid" }, 1).applied;
+    const rows = Array.from({ length: 60 }, () => ({ workMode: "hybrid", remote: false }));
+    expect(filterViolations(rows, a)).toEqual([]);
+  });
+});
