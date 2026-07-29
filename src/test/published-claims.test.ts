@@ -1301,3 +1301,43 @@ describe("slow work degrades instead of failing the request", () => {
     expect(jobs).not.toMatch(/RPC not deployed yet — no badges, no error surfaced/);
   });
 });
+
+// The last of the 26. A posting whose title is literally what the user typed
+// was unreachable at ANY offset, because the candidate pool was truncated by
+// RECENCY before anything was ranked. Measured on 'Patient Services Assistant':
+// 36 title matches, 12,923 description matches, 200 slots requested -> 5 of 36
+// returned (86% lost), 197 slots filled by description-only rows.
+describe("search cannot drop a title match before ranking", () => {
+  const mig = readFileSync(
+    resolve(root, "supabase/migrations/20260729120000_search_title_matches_always_reachable.sql"), "utf8");
+
+  it("every title match enters the candidate pool unconditionally", () => {
+    expect(mig).toMatch(/WITH title_hits AS \(/);
+    expect(mig).toMatch(/WHERE p\.title_tsv @@ \$1/);
+    expect(mig).toMatch(/SELECT sid FROM title_hits UNION SELECT sid FROM desc_hits/);
+  });
+
+  it("the title pool is NOT ordered by recency — that was the bug", () => {
+    // desc_hits keeps its recency sample (that is the rescue). title_hits must
+    // not, or a title match can still be cut before ranking.
+    const th = mig.slice(mig.indexOf("WITH title_hits AS ("), mig.indexOf("), desc_hits AS ("));
+    expect(th).not.toMatch(/ORDER BY p\.effective_posted DESC/);
+  });
+
+  it("the description rescue sample is preserved unchanged", () => {
+    const dh = mig.slice(mig.indexOf("), desc_hits AS ("), mig.indexOf("), sample AS ("));
+    expect(dh).toMatch(/ORDER BY p\.effective_posted DESC/);
+    expect(dh).toMatch(/LIMIT 3000/);
+  });
+
+  it("replaces rather than overloads — signature-identical to the live one", () => {
+    // A different arity creates an OVERLOAD, not a replacement, and every
+    // parameter here has a default — which is exactly how
+    // get_category_fill_speed became an ambiguous PGRST203 earlier today.
+    const params = mig.match(/FUNCTION public\.search_jobs\(([\s\S]*?)\)\s*RETURNS TABLE/)?.[1] ?? "";
+    expect(params.match(/DEFAULT/g)?.length).toBe(12);   // 14 params, 2 required
+    expect(params).toMatch(/p_q text,/);
+    expect(params).toMatch(/p_offset integer DEFAULT 0/);
+    expect(mig).toMatch(/GRANT EXECUTE ON FUNCTION public\.search_jobs\(text, timestamptz, text, boolean, text, text, text\[\], numeric, text\[\], timestamptz, integer, text, integer, integer\)/);
+  });
+});
