@@ -3511,7 +3511,7 @@
     "checkFit": "Checar meu encaixe — escaneio grátis",
     "apply": "Candidatar-se no site da {{company}}",
     "loadMore": "Carregar mais",
-    "sourceNote": "Fontes: as APIs públicas oficiais que as empresas publicam no Workday, Greenhouse, SmartRecruiters, Ashby, iCIMS, Oracle, Lever, Workable, BambooHR, Recruitee, Teamtailor, Personio, Breezy, Rippling e Pinpoint. Os murais maiores são reverificados a cada 10–15 minutos e o restante do catálogo gira continuamente — a maioria dos feeds é reverificada em algumas horas — a mediana e o percentil 95 de idade ao vivo são publicados no Ghost Job Index, e uma pequena cauda de feeds lentos ou limitados por taxa demora mais — e vagas retiradas somem na próxima passada. Um feed que para de responder sai do mural em vez de quebrá-lo.",
+    "sourceNote": "Fontes: as APIs públicas oficiais que as empresas publicam no Workday, Greenhouse, SmartRecruiters, Ashby, iCIMS, Oracle, Lever, Workable, BambooHR, Recruitee, Teamtailor, Personio, Breezy, Rippling e Pinpoint. Os murais maiores são reverificados com mais frequência e o restante do catálogo gira continuamente — a maioria dos feeds é reverificada em algumas horas — a mediana e o percentil 95 de idade ao vivo são publicados no Ghost Job Index, e uma pequena cauda de feeds lentos ou limitados por taxa demora mais — e vagas retiradas somem na próxima passada. Um feed que para de responder sai do mural em vez de quebrá-lo.",
     "fitFetchErrorTitle": "Não foi possível carregar essa vaga",
     "fitFetchError": "O feed da empresa não retornou a descrição. Abra a vaga e cole-a no escâner.",
     "fitLoadedTitle": "Descrição da vaga carregada",

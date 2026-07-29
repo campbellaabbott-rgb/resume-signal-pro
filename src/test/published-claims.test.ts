@@ -825,3 +825,28 @@ describe("the posted-date draw loop always terminates", () => {
     expect(run(true)).toBe("terminated after 1");
   });
 });
+
+// A hardcoded re-check interval is claim drift waiting to happen. "about every
+// 10-15 minutes" was plausibly true at ~90k postings and far fewer boards; at
+// 28,296 boards the measured figure is p50 81.6 min / p95 183.4 min (2026-07-29,
+// get_freshness_stats over 22,877 stamped boards) — a ~6x overstatement that
+// nothing caught, on the sentence whose whole job is to be believed.
+//
+// The rule is not "state a better number" — it is state NO fixed interval. The
+// live median and 95th percentile are already published on the Ghost Job Index
+// and move with the catalogue on their own.
+describe("no locale promises a fixed re-check interval", () => {
+  const LOCALES = ["en", "en-GB", "es", "fr", "de", "pt", "nl", "hi", "tl"];
+  // "every N minutes" in each language, including the transliterations.
+  const INTERVAL = /(\d+\s*[–-]\s*\d+|\bevery\s+\d+)\s*(minutes?|minutos?|minuto|minuten|min\b|मिनट)/i;
+
+  for (const l of LOCALES) {
+    it(`${l} states no fixed interval in board copy or changelog`, () => {
+      for (const f of [`src/i18n/locales/${l}.json`, `src/i18n/changelog/${l}.json`]) {
+        const raw = readFileSync(resolve(root, f), "utf8");
+        const hits = (JSON.parse(raw) && raw.split("\n").filter((line) => INTERVAL.test(line) && /re-?check|revisan|vérifi|geprüft|reverific|gecheckt|जांचे|sinusuri/i.test(line)));
+        expect(hits, `${f}: promises a fixed re-check interval -> ${hits[0]?.slice(0, 120)}`).toHaveLength(0);
+      }
+    });
+  }
+});
