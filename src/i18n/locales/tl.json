@@ -3941,7 +3941,19 @@
     "sourcesDown_one": "{{count}} feed ng kumpanya ang hindi maabot ngayon",
     "sourcesDown_other": "{{count}} feed ng kumpanya ang hindi maabot ngayon",
     "verifiedAgo": "sinuri {{ago}}",
-    "healthUnavailable": "hindi available ngayon ang datos ng bilis ng pagkuha"
+    "healthUnavailable": "hindi available ngayon ang datos ng bilis ng pagkuha",
+    "ignoredFilters": "Hindi namin nailapat ang {{filters}} — hindi na-filter dito ang mga resultang ito. Nailapat ang lahat ng iba mong pinili.",
+    "filterName": {
+      "category": "larangan",
+      "companies": "kumpanya",
+      "country": "bansa",
+      "experience": "antas ng karanasan",
+      "maxAgeDays": "petsa ng pag-post",
+      "postedAfter": "na-post pagkatapos ng",
+      "remote": "remote",
+      "salaryFloor": "pinakamababang sahod",
+      "workMode": "paraan ng trabaho"
+    }
   },
   "accountPage": {
     "statusSaveFailed": "Hindi na-save ang status na iyon — pakisubukan muli.",

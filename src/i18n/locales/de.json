@@ -3941,7 +3941,19 @@
     "sourcesDown_one": "{{count}} Unternehmens-Feed ist gerade nicht erreichbar",
     "sourcesDown_other": "{{count}} Unternehmens-Feeds sind gerade nicht erreichbar",
     "verifiedAgo": "geprüft {{ago}}",
-    "healthUnavailable": "Einstellungstempo-Daten derzeit nicht verfügbar"
+    "healthUnavailable": "Einstellungstempo-Daten derzeit nicht verfügbar",
+    "ignoredFilters": "Wir konnten {{filters}} nicht anwenden — diese Ergebnisse sind danach nicht gefiltert. Alles andere, was du gewählt hast, wurde angewendet.",
+    "filterName": {
+      "category": "Bereich",
+      "companies": "Unternehmen",
+      "country": "Land",
+      "experience": "Erfahrungsstufe",
+      "maxAgeDays": "Veröffentlichungsdatum",
+      "postedAfter": "veröffentlicht nach",
+      "remote": "Remote",
+      "salaryFloor": "Mindestgehalt",
+      "workMode": "Arbeitsmodus"
+    }
   },
   "accountPage": {
     "statusSaveFailed": "Status konnte nicht gespeichert werden — bitte erneut versuchen.",

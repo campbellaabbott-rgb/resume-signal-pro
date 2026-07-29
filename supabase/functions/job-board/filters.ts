@@ -110,6 +110,29 @@ export function normalizeFilters(
     ignored.push("companies");
   }
 
+  // `remote` and `companies` were the two fields that could be REQUESTED and
+  // dropped without ever being named — the exact breach this file exists to
+  // close, still open in the file that closes it.
+  //
+  //   remote:"true"  (the natural shape from a query string) -> `=== true` is
+  //     false, the filter evaporates, and the caller who asked for remote work
+  //     receives the entire 600k-row board.
+  //   companies:"tok" (a bare token instead of a one-element array) -> the
+  //     Array.isArray guard yields [], the employer scope evaporates, and the
+  //     caller receives every posting under a total they will read as that
+  //     employer's.
+  //
+  // Neither is reachable from a UI control today — every in-repo caller sends a
+  // boolean and an array respectively — but "no first-party surface can reach
+  // it" is a statement about today's callers, not about the contract. The data
+  // API is public, and query strings are where non-booleans come from.
+  if (body.remote !== undefined && body.remote !== null && typeof body.remote !== "boolean") {
+    ignored.push("remote");
+  }
+  if (body.companies !== undefined && body.companies !== null && !Array.isArray(body.companies)) {
+    ignored.push("companies");
+  }
+
   const paRaw = body.postedAfter;
   const postedAfter = typeof paRaw === "string" && !Number.isNaN(Date.parse(paRaw)) ? paRaw : null;
   if (sent(paRaw) && !postedAfter) ignored.push("postedAfter");

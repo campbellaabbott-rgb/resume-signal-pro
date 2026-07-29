@@ -3941,7 +3941,19 @@
     "sourcesDown_one": "{{count}} fuente de empresa no responde ahora mismo",
     "sourcesDown_other": "{{count}} fuentes de empresas no responden ahora mismo",
     "verifiedAgo": "comprobado {{ago}}",
-    "healthUnavailable": "datos de ritmo de contratación no disponibles ahora"
+    "healthUnavailable": "datos de ritmo de contratación no disponibles ahora",
+    "ignoredFilters": "No pudimos aplicar {{filters}}: esos resultados no están filtrados por ese criterio. Todo lo demás que elegiste sí se aplicó.",
+    "filterName": {
+      "category": "sector",
+      "companies": "empresa",
+      "country": "país",
+      "experience": "nivel de experiencia",
+      "maxAgeDays": "fecha de publicación",
+      "postedAfter": "publicado después de",
+      "remote": "remoto",
+      "salaryFloor": "salario mínimo",
+      "workMode": "modalidad"
+    }
   },
   "accountPage": {
     "statusSaveFailed": "No se pudo guardar ese estado; inténtalo de nuevo.",

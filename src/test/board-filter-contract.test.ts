@@ -252,8 +252,19 @@ describe("structural: the list action has ONE filter derivation", () => {
   it("wires the normaliser and the self-check into the response", () => {
     expect(code).toContain("normalizeFilters(body");
     expect(code).toContain("isUnfiltered(applied)");
-    expect(code).toContain("filterViolations(grouped.jobs, applied)");
     expect(code).toContain("filterIntegrity");
+  });
+
+  // The self-check used to be inline at the recency path's return, so the three
+  // EARLIER exits — ranked search, the fuzzy rescue, semantic — returned before
+  // it and carried neither ignoredFilters nor filterIntegrity. Search is the
+  // board's busiest surface, so the guarantee held on the path users take least.
+  // Property: every exit that returns jobs also returns the honesty fields.
+  it("every list exit that returns jobs carries the honesty fields", () => {
+    expect(code).toContain("const honesty = (jobs:");
+    expect(code).toContain("filterViolations(jobs, applied)");
+    const exits = (code.match(/\.\.\.honesty\(/g) ?? []).length;
+    expect(exits, "ranked, fuzzy, semantic and recency must all call it").toBeGreaterThanOrEqual(4);
   });
 });
 

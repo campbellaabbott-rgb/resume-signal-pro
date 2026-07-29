@@ -137,6 +137,7 @@ interface BoardResponse {
   // The count stopped at the server's cap: the true figure is higher, so render
   // it as "10,000+" rather than as an exact total.
   countCapped?: boolean;
+  ignoredFilters?: string[];
   // Server-computed "a full page came back", so pagination survives a missing total.
   hasMore?: boolean;
   // Raw rows the server consumed for this page. Once same-role-different-location
@@ -656,14 +657,6 @@ export default function Jobs() {
   // stays visible (locally filtered) instead of blanking behind a spinner.
   const [refreshing, setRefreshing] = useState(false);
   const jobsCount = useRef(0);
-  // Retains the last category facet we were given. The facet is only returned on
-  // UNFILTERED responses (deliberately — computing it under a filter was the
-  // 587,793 bug), so under a category filter there is nothing live to read.
-  // Keeping the last copy lets a capped total borrow a number we already have:
-  // measured 2026-07-29, /jobs?category=engineering printed "10,000+" while the
-  // facet six inches away read 67,929. Both honest; one is the vaguer of two
-  // figures already in hand.
-  const catFacetRef = useRef<Record<string, number> | null>(null);
   // The q/location the visible list actually came from: while the typed values
   // differ (debounce window + roundtrip), the list filters locally so typing
   // feels instant. Never applied to settled server results — the server also
@@ -1906,6 +1899,13 @@ export default function Jobs() {
     }
     return order;
   }, [displayJobs]);
+
+  // What the summary may honestly call "shown". `jobs.length` was the FETCHED
+  // page, but the rendered list is narrowed further by the Actively-hiring
+  // toggle and by dismissals — turning that toggle on left 6 cards on screen
+  // under a line reading "Showing 60". Counting grouped rows also matches what
+  // a user can actually point at, since collapsed duplicates render as one card.
+  const shownCount = groupedJobs.length;
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
   // New-since-last-visit: where the divider goes in the (recency-sorted) list —
@@ -2118,19 +2118,22 @@ export default function Jobs() {
   // work mode) the facet describes a DIFFERENT question than the results, and
   // substituting it would print a confidently wrong number in place of an
   // honestly vague one. That trade only goes one way.
-  useEffect(() => {
-    const c = data?.categories;
-    if (c && Object.keys(c).length > 0) catFacetRef.current = c;
-  }, [data]);
-  const exactCategoryTotal = useMemo(() => {
-    if (!data?.countCapped || !category) return null;
-    // Exactly one filter, and it is the category one.
-    if (activeFilterCount !== 1 || q.trim() || country) return null;
-    const n = (data.categories ?? catFacetRef.current)?.[category];
-    // Must actually exceed the cap it is replacing, or it is not the same number
-    // the cap was hiding.
-    return typeof n === "number" && n > (data.total ?? 0) ? n : null;
-  }, [data, category, activeFilterCount, q, country]);
+  // exactCategoryTotal REMOVED (added earlier today, reverted the same day).
+  //
+  // The idea was sound — a lone category filter makes the facet count the same
+  // question, so show 67,929 instead of a vague "10,000+". The facet is not that
+  // number. get_job_board_facets counts the whole table with NO serving-rule
+  // predicate, while every page the board actually serves is filtered by
+  // `missing_since IS NULL` and the 30-day window. So the figure includes
+  // postings the board itself refuses to show, and I published it as an EXACT
+  // total, in place of a caveated one.
+  //
+  // Trading an honestly vague number for a confidently wrong one is the wrong
+  // direction, and it is exactly what the fence forbids: we show nothing rather
+  // than a guess. "10,000+" is true. Restoring it.
+  //
+  // A correct version needs a serving-rule-filtered per-category count, which is
+  // a DB change, not a frontend one — worth doing, not worth faking meanwhile.
 
   // Removable chips for every active filter — what's narrowing your results
   // should be visible and one click to undo, not buried in the controls.
@@ -3776,16 +3779,30 @@ export default function Jobs() {
                   </div>
                 </div>
               )}
+              {/* The server names any filter it could not honour. Until now nothing
+                  read the field: the fence was satisfied in the payload and broken
+                  on screen — an active filter chip, results that ignore it, and no
+                  word to the user. A filter that did nothing has to SAY so where
+                  the results are, not only in the JSON. */}
+              {Array.isArray(data?.ignoredFilters) && data.ignoredFilters.length > 0 && (
+                <p className="text-xs text-warning mb-2" role="status">
+                  {t("jobsPage.ignoredFilters", "We couldn't apply {{filters}} — those results are unfiltered by it. Everything else you selected did apply.", {
+                    filters: data.ignoredFilters
+                      .map((f) => t(`jobsPage.filterName.${f}`, f))
+                      .join(", "),
+                  })}
+                </p>
+              )}
               <p className="text-xs text-muted-foreground mb-3" aria-live="polite">
                 {data?.countUnavailable
                   // The server couldn't compute an exact total for this filter.
                   // Say what we actually know instead of printing jobs.length as
                   // if it were the total — that would claim 20 matches when the
                   // filter really matches six figures.
-                  ? t("jobsPage.resultsSummaryNoTotal", "Showing {{shown}} matching openings", { shown: jobs.length })
+                  ? t("jobsPage.resultsSummaryNoTotal", "Showing {{shown}} matching openings", { shown: shownCount })
                   : landerCompany
                   ? t("jobsPage.companyResultsSummary", "Showing {{shown}} of {{total}} open roles at {{company}}", {
-                      shown: jobs.length,
+                      shown: shownCount,
                       total: data?.total ?? jobs.length,
                       company: landerCompanyName,
                     })
@@ -3797,18 +3814,13 @@ export default function Jobs() {
                   // not to print a wrong number.
                   : (q.trim() || country || activeFilterCount > 0)
                   ? t("jobsPage.resultsSummaryFiltered", "Showing {{shown}} of {{total}} matching openings", {
-                  shown: jobs.length,
-                  // Prefer the facet's exact figure when a lone category filter
-                  // makes it the same question (see exactCategoryTotal); only
-                  // fall back to "N+" when the true number really is unknown.
-                  total: exactCategoryTotal !== null
-                    ? exactCategoryTotal.toLocaleString()
-                    : data?.countCapped
+                  shown: shownCount,
+                  total: data?.countCapped
                     ? `${(data?.total ?? 0).toLocaleString()}+`
                     : (data?.total ?? jobs.length).toLocaleString(),
                 })
                   : t("jobsPage.resultsSummary", "Showing {{shown}} of {{total}} matching openings across {{companyFeeds}} company feeds", {
-                  shown: jobs.length,
+                  shown: shownCount,
                   // The server caps counting for speed; above the cap it says so,
                   // and we render "10,000+" rather than passing the cap off as exact.
                   total: data?.countCapped

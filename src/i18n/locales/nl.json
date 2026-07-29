@@ -3941,7 +3941,19 @@
     "sourcesDown_one": "{{count}} bedrijfsfeed is nu onbereikbaar",
     "sourcesDown_other": "{{count}} bedrijfsfeeds zijn nu onbereikbaar",
     "verifiedAgo": "gecontroleerd {{ago}}",
-    "healthUnavailable": "gegevens over wervingstempo nu niet beschikbaar"
+    "healthUnavailable": "gegevens over wervingstempo nu niet beschikbaar",
+    "ignoredFilters": "We konden {{filters}} niet toepassen — deze resultaten zijn daar niet op gefilterd. Al het andere dat je koos is wel toegepast.",
+    "filterName": {
+      "category": "vakgebied",
+      "companies": "bedrijf",
+      "country": "land",
+      "experience": "ervaringsniveau",
+      "maxAgeDays": "plaatsingsdatum",
+      "postedAfter": "geplaatst na",
+      "remote": "remote",
+      "salaryFloor": "minimumsalaris",
+      "workMode": "werkvorm"
+    }
   },
   "accountPage": {
     "statusSaveFailed": "Kon die status niet opslaan — probeer het opnieuw.",

@@ -3941,7 +3941,19 @@
     "sourcesDown_one": "{{count}} flux d'entreprise est injoignable pour le moment",
     "sourcesDown_other": "{{count}} flux d'entreprises sont injoignables pour le moment",
     "verifiedAgo": "vérifié {{ago}}",
-    "healthUnavailable": "données de rythme de recrutement indisponibles"
+    "healthUnavailable": "données de rythme de recrutement indisponibles",
+    "ignoredFilters": "Nous n'avons pas pu appliquer {{filters}} — ces résultats ne sont pas filtrés dessus. Tout le reste de votre sélection a bien été appliqué.",
+    "filterName": {
+      "category": "domaine",
+      "companies": "entreprise",
+      "country": "pays",
+      "experience": "niveau d'expérience",
+      "maxAgeDays": "date de publication",
+      "postedAfter": "publié après",
+      "remote": "télétravail",
+      "salaryFloor": "salaire minimum",
+      "workMode": "mode de travail"
+    }
   },
   "accountPage": {
     "statusSaveFailed": "Impossible d'enregistrer ce statut — réessayez.",

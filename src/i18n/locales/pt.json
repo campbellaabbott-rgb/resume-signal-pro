@@ -3941,7 +3941,19 @@
     "sourcesDown_one": "{{count}} feed de empresa está fora do ar agora",
     "sourcesDown_other": "{{count}} feeds de empresas estão fora do ar agora",
     "verifiedAgo": "verificado {{ago}}",
-    "healthUnavailable": "dados de ritmo de contratação indisponíveis agora"
+    "healthUnavailable": "dados de ritmo de contratação indisponíveis agora",
+    "ignoredFilters": "Não conseguimos aplicar {{filters}} — esses resultados não estão filtrados por isso. Tudo o resto que selecionaste foi aplicado.",
+    "filterName": {
+      "category": "área",
+      "companies": "empresa",
+      "country": "país",
+      "experience": "nível de experiência",
+      "maxAgeDays": "data de publicação",
+      "postedAfter": "publicado depois de",
+      "remote": "remoto",
+      "salaryFloor": "salário mínimo",
+      "workMode": "modalidade"
+    }
   },
   "accountPage": {
     "statusSaveFailed": "Não foi possível salvar esse status — tente novamente.",

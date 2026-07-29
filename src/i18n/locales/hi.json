@@ -3941,7 +3941,19 @@
     "sourcesDown_one": "{{count}} कंपनी फ़ीड अभी उपलब्ध नहीं है",
     "sourcesDown_other": "{{count}} कंपनी फ़ीड अभी उपलब्ध नहीं हैं",
     "verifiedAgo": "{{ago}} जाँचा गया",
-    "healthUnavailable": "हायरिंग गति का डेटा अभी उपलब्ध नहीं"
+    "healthUnavailable": "हायरिंग गति का डेटा अभी उपलब्ध नहीं",
+    "ignoredFilters": "हम {{filters}} लागू नहीं कर सके — ये नतीजे उससे फ़िल्टर नहीं हैं। आपने जो बाकी चुना, वह लागू हुआ है।",
+    "filterName": {
+      "category": "क्षेत्र",
+      "companies": "कंपनी",
+      "country": "देश",
+      "experience": "अनुभव स्तर",
+      "maxAgeDays": "पोस्ट की तारीख",
+      "postedAfter": "इसके बाद पोस्ट",
+      "remote": "रिमोट",
+      "salaryFloor": "न्यूनतम वेतन",
+      "workMode": "कार्य-प्रकार"
+    }
   },
   "accountPage": {
     "statusSaveFailed": "यह स्थिति सहेजी नहीं जा सकी — कृपया फिर से प्रयास करें।",

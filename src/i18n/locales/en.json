@@ -3941,7 +3941,19 @@
     "sourcesDown_one": "{{count}} company feed is unreachable right now",
     "sourcesDown_other": "{{count}} company feeds are unreachable right now",
     "verifiedAgo": "checked {{ago}}",
-    "healthUnavailable": "hiring-pace data unavailable right now"
+    "healthUnavailable": "hiring-pace data unavailable right now",
+    "ignoredFilters": "We couldn't apply {{filters}} — those results are unfiltered by it. Everything else you selected did apply.",
+    "filterName": {
+      "category": "field",
+      "companies": "company",
+      "country": "country",
+      "experience": "experience level",
+      "maxAgeDays": "date posted",
+      "postedAfter": "posted after",
+      "remote": "remote",
+      "salaryFloor": "pay floor",
+      "workMode": "work mode"
+    }
   },
   "accountPage": {
     "statusSaveFailed": "Couldn't save that status — please try again.",

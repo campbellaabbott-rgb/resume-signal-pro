@@ -2756,6 +2756,18 @@ Deno.serve(async (req) => {
         // RECALL — only where the count is exact. A capped total is honestly
         // "10,000+", so comparing it to a true figure would manufacture a
         // finding rather than detect one.
+        // A capped total was skipped entirely, so a count too LARGE by more than
+        // the cap went unreported — including the shape of the founding defect,
+        // where a filtered page published the whole catalogue's figure. Capped
+        // still cannot be compared to an exact number, but it CAN be falsified:
+        // if the true count is below the cap, the total had no business being
+        // capped at all.
+        if (c.col && c.val && r.body.countCapped === true) {
+          const truth = await exactCount(c.col, c.val);
+          if (truth !== null && truth < 10_000) {
+            findings.push({ case: c.name, kind: "false-cap", detail: `reported capped (10,000+) but the true count is ${truth}` });
+          }
+        }
         if (c.col && c.val && r.body.countCapped !== true && typeof r.body.total === "number") {
           const truth = await exactCount(c.col, c.val);
           // Rows shift under the maintenance track between the two reads, so a
@@ -2802,6 +2814,14 @@ Deno.serve(async (req) => {
         const label = Object.keys(shape).length ? JSON.stringify(shape) : "no-filter";
         for (let off = 0; off < 240; off += 60) {
           const r = await probe({ ...shape, offset: off });
+          // Fail LOUD, not open. Without this an outage reads as a clean walk:
+          // every request errors, jobs is [], the loop breaks at offset 0, the
+          // duplicate check trivially passes and the audit writes clean:true —
+          // a green light during exactly the failure it exists to catch.
+          if (!r.ok) {
+            findings.push({ case: `paging ${label}`, kind: "request-failed", detail: `offset ${off}: ${String(r.body.error ?? "").slice(0, 60)}` });
+            break;
+          }
           const jobs = Array.isArray(r.body.jobs) ? r.body.jobs as Array<Record<string, unknown>> : [];
           if (!jobs.length) break;
           seen.push(...jobs.map((j) => String(j.id ?? "")));
@@ -4679,6 +4699,54 @@ async function serveList(
   //     filtered one. Verified live before this change; see filters.ts.
   // A fourth site could not be kept in sync by discipline, so there is one.
   const { applied, ignored: ignoredFilters } = normalizeFilters(body, JOB_SOURCES.length);
+  // ONE honesty block, attached to EVERY exit from the list action.
+  //
+  // It used to live only at the recency path's return, so the three earlier
+  // exits — ranked search, the fuzzy rescue, and semantic — returned before it
+  // and carried neither ignoredFilters nor filterIntegrity. Search is the
+  // board's primary surface, so the guarantee "a filter is never silently
+  // ignored" held on the path users take least and not on the one they take
+  // most. Making it a helper called at each `return` is the same move as the
+  // filter normalisation itself: the property cannot hold in three places and
+  // lapse in a fourth if there is only one implementation of it.
+  const honesty = (jobs: Array<Record<string, unknown>>): Record<string, unknown> => {
+    const v = filterViolations(jobs, applied);
+    if (v.length) {
+      console.error(
+        `[JOB-BOARD] filter integrity: ${v.length} violation(s) on ${jobs.length} rows ` +
+          `— ${JSON.stringify(v.slice(0, 3))}`,
+      );
+    }
+    // Both outcomes recorded, and the asymmetry is the point: if only failures
+    // were written, "no incidents" and "the check stopped running" would look
+    // identical. Clean pages sampled ~2% so a healthy board pays almost nothing;
+    // violations unsampled, because they should be zero.
+    if (v.length || Math.random() < 0.02) {
+      const stamp = new Date().toISOString();
+      waitUntil(Promise.resolve(
+        client.from("job_board_meta").upsert({
+          k: v.length ? "filter_integrity_incident" : "filter_integrity_ok",
+          v: v.length
+            ? {
+              at: stamp,
+              violations: v.length,
+              rows: jobs.length,
+              fields: [...new Set(v.map((x) => x.field))],
+              sample: v.slice(0, 5),
+              filters: applied,
+            }
+            : { at: stamp, rows: jobs.length },
+          updated_at: stamp,
+        }, { onConflict: "k" }),
+      ).then(() => {}).catch(() => {}));
+    }
+    return {
+      ...(ignoredFilters.length ? { ignoredFilters } : {}),
+      ...(v.length
+        ? { filterIntegrity: { violations: v.length, rows: jobs.length, fields: [...new Set(v.map((x) => x.field))] } }
+        : {}),
+    };
+  };
   const unfiltered = isUnfiltered(applied);
   const wantCount = !(unfiltered && Number.isFinite(metaTotal) && metaTotal > 0);
   // withCount is separable from wantCount so a page can be re-run WITHOUT the
@@ -5011,6 +5079,16 @@ async function serveList(
               const fzKnown = Number.isFinite(fzTotal) && fzTotal > 0 && fzTotal < limit;
               return json({
                 jobs: await attachRecheckedAt(client, fuzzyGrouped.jobs),
+                ...honesty(fuzzyGrouped.jobs),
+                // This page is a RESCUE, not page 1 of a result set. It omitted
+                // hasMore/nextOffset, so the client's "Load more" issued the
+                // ordinary query at offset 60 — which returns the exact-match
+                // path (empty, since total was 0), and the merge dropped the
+                // closeMatch flags, re-labelling the rescued rows as exact
+                // matches. Saying there is no more explicitly keeps the
+                // disclosure attached to the only page that carries it.
+                hasMore: false,
+                nextOffset: 0,
                 total: fzKnown ? fzTotal : null,
                 ...(fzKnown ? {} : { countUnavailable: true }),
                 totalAllCompanies: (v0.total as number) ?? 0,
@@ -5075,6 +5153,7 @@ async function serveList(
                   logMiss("semantic");
                   return json({
                     jobs: await attachRecheckedAt(client, semGrouped.jobs),
+                    ...honesty(semGrouped.jobs),
                     total: semGrouped.jobs.length,
                     hasMore: false,
                     totalAllCompanies: (v0.total as number) ?? 0,
@@ -5167,8 +5246,23 @@ async function serveList(
             }
           } catch { /* augmentation is a bonus — exact matches alone stand */ }
         }
+        // Appending close matches makes `total` stop describing this page: it
+        // counts EXACT matches only, while the page now holds exact + close. The
+        // header rendered that as "Showing 40 of 18" — a shown figure larger
+        // than the total it is shown against, which is not a rounding problem
+        // but a claim that cannot be true. Raising FUZZY_AUGMENT_BELOW from 5 to
+        // 20 today widened the band this is reachable in, so it is partly mine.
+        //
+        // Rather than inventing a combined number (exact + close are not the same
+        // kind of match and adding them would assert they are), the page reports
+        // that it has no single honest total. countUnavailable already renders
+        // "Showing N matching openings" with no total, and fuzzyExtra still tells
+        // the client how many of the N are close matches.
+        const augmented = fuzzyExtraOut !== null;
         return json({
           jobs: rankedGrouped.jobs,
+          ...honesty(rankedGrouped.jobs),
+          ...(augmented ? { countUnavailable: true } : {}),
           nextOffset: offset + rankedGrouped.rawConsumed,
           hasMore: rankedRows.length > rankedGrouped.rawConsumed || rankedRows.length === fetchLimit,
           total,
@@ -5353,58 +5447,9 @@ async function serveList(
   // should not get a 500 because a badge field regressed. The count is surfaced
   // in the response so the property is externally testable, and logged so it is
   // visible without a client.
-  const integrity = filterViolations(grouped.jobs, applied);
-  if (integrity.length) {
-    console.error(
-      `[JOB-BOARD] filter integrity: ${integrity.length} violation(s) on ${grouped.jobs.length} rows ` +
-        `— ${JSON.stringify(integrity.slice(0, 3))}`,
-    );
-  }
-  // THE SENSOR NEEDS AN ALARM. A check that only logs is a check nobody reads:
-  // job_board_meta is RLS-hidden (anon gets 42501), and console output needs a
-  // dashboard, so the first version of this was invisible in exactly the
-  // situation it exists for.
-  //
-  // Both outcomes are recorded, and that asymmetry is the point. If only
-  // failures were written, silence would be ambiguous — "no incidents" and "the
-  // check stopped running" would look identical, which is the same trap as the
-  // hop diagnostic whose delivery depended on the thing it diagnosed. The clean
-  // path is sampled (~2%) so a healthy board pays almost nothing for the
-  // heartbeat, while `checkedAt` stays fresh enough to prove the check is alive.
-  // Violations are recorded EVERY time, unsampled — they should be zero, so
-  // there is no volume to protect against.
-  if (integrity.length || Math.random() < 0.02) {
-    const stamp = new Date().toISOString();
-    waitUntil(Promise.resolve(
-      client.from("job_board_meta").upsert({
-        k: integrity.length ? "filter_integrity_incident" : "filter_integrity_ok",
-        v: integrity.length
-          ? {
-            at: stamp,
-            violations: integrity.length,
-            rows: grouped.jobs.length,
-            fields: [...new Set(integrity.map((v) => v.field))],
-            sample: integrity.slice(0, 5),
-            filters: applied,
-          }
-          : { at: stamp, rows: grouped.jobs.length },
-        updated_at: stamp,
-      }, { onConflict: "k" }),
-    ).then(() => {}).catch(() => {}));
-  }
   return json({
     jobs: await attachRecheckedAt(client, grouped.jobs),
-    ...(integrity.length
-      ? {
-        filterIntegrity: {
-          violations: integrity.length,
-          rows: grouped.jobs.length,
-          fields: [...new Set(integrity.map((v) => v.field))],
-        },
-      }
-      : {}),
-    // Named, never silent — see the validation block at the top of this action.
-    ...(ignoredFilters.length ? { ignoredFilters } : {}),
+    ...honesty(grouped.jobs),
     // Raw rows this page swallowed. The client MUST page by this rather than by
     // jobs.length once clusters are folded, or the siblings of a collapsed
     // result reappear on the next page as if they were new.
@@ -5422,7 +5467,12 @@ async function serveList(
     totalAllCompanies: (v.total as number) ?? count ?? 0,
     companies: servedCompanies,
     companiesCount: fullCompanies.length,
-    categories: (v.categoriesFacet as Record<string, number>) ?? {},
+    // Gated like the other three. A board-wide facet printed beside a FILTERED
+    // result set promises more jobs than the filter can deliver — "Engineering
+    // 67,898" next to a country=GB page whose entire scope is 19,633. Today's fix
+    // covered three of the four response sites and its commit message claimed
+    // all of them; this is the fourth.
+    categories: unfiltered ? ((v.categoriesFacet as Record<string, number>) ?? {}) : undefined,
     failedSources: (v.failedSources as string[]) ?? [],
     refreshedAt: (v.refreshedAt as string) ?? null,
   });

@@ -1259,8 +1259,16 @@ describe("filters send and show one honest definition", () => {
   it("board-wide facet counts are not shown inside a filtered view", () => {
     // Correct on exactly one view and misleading on all others: sum 587,793
     // rendered beside a filtered total of 10,000 or less — 15.7x to 45x over.
-    expect(fn.match(/categories: unfiltered \?/g)?.length).toBe(3);
-    expect(fn).not.toMatch(/categories: \(v0\.categoriesFacet as Record<string, number>\) \?\? \{\},/);
+    // REWRITTEN. This asserted there were exactly THREE gated sites — a census
+    // of what existed when it was written, not a property. There were four, and
+    // the ungated fourth (index.ts:5450, reading `v` rather than `v0`) was
+    // invisible to this guard by construction: adding the gate BROKE it. A bug
+    // sweep found the site the guard was supposed to be watching.
+    //
+    // The property is that NO site emits the facet ungated, however many exist.
+    const ungated = fn.match(/categories: \((?:v|v0)\.categoriesFacet/g) ?? [];
+    expect(ungated, `ungated board-wide facet site(s): ${ungated.join(", ")}`).toEqual([]);
+    expect((fn.match(/categories: unfiltered \?/g) ?? []).length).toBeGreaterThanOrEqual(4);
   });
 
   it("the country facet RPC counts only servable rows", () => {
