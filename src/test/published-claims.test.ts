@@ -865,10 +865,17 @@ describe("the board does not hand consecutive slots to one employer", () => {
     expect(fn).toMatch(/function interleaveByCompany/);
   });
 
-  it("runs BEFORE the page is cut, not after", () => {
-    // Applying it to an already-truncated slice would cap nothing the user sees.
-    const m = fn.slice(fn.indexOf("const mappedRows = interleaveByCompany("));
-    expect(m.slice(0, 400)).toMatch(/const grouped = groupSimilar/);
+  it("runs AFTER the page is cut — the opposite of what this test first asserted", () => {
+    // This guard originally pinned "BEFORE the cut", encoding the buggy design
+    // as an invariant: applying it to an already-truncated slice seemed to cap
+    // nothing the user sees. It was wrong, and it would have blocked the fix.
+    // nextOffset advances in DB order over the PRE-slice buffer, so permuting
+    // that buffer moves rows across a page boundary the cursor cannot see —
+    // measured 1-2 duplicated and 1 dropped forever per boundary.
+    // A test can be confidently wrong; this one was.
+    const cut = fn.indexOf("const grouped = groupSimilar");
+    const mix = fn.indexOf("grouped.jobs = interleaveByCompany(grouped.jobs)");
+    expect(mix).toBeGreaterThan(cut);
   });
 
   it("defers rather than drops — every posting still appears", () => {
@@ -1052,5 +1059,70 @@ describe("the fill-speed repair replaces rather than overloads", () => {
   it("still reports observed depth, which was the point", () => {
     expect(fix).toMatch(/MIN\(closed_at\)/);
     expect(fix).toMatch(/GREATEST\(1,/);
+  });
+});
+
+// A filter audit found the same defect twice, independently: `category` and
+// `workMode` were case-folded at every site that BINDS the predicate but not at
+// the `unfiltered` gate that decides whether to count at all. So
+// category=Engineering filtered the page correctly and then returned the cached
+// board-wide total — 10 engineering cards under a headline of 587,793, against
+// a true 66,842. Reachable from the URL: Jobs.tsx passes ?category= through raw.
+describe("enum filters are case-folded once, at the door", () => {
+  const fn = readFileSync(resolve(root, "supabase/functions/job-board/index.ts"), "utf8");
+
+  it("normalises before anything reads them", () => {
+    expect(fn).toMatch(/if \(typeof body\.category === "string"\) body\.category = body\.category\.toLowerCase\(\);/);
+    expect(fn).toMatch(/if \(typeof body\.workMode === "string"\) body\.workMode = body\.workMode\.toLowerCase\(\);/);
+  });
+
+  it("the normalisation precedes the unfiltered gate", () => {
+    // If it lands after, the gate still sees the raw value and the bug returns.
+    const norm = fn.indexOf('body.category = body.category.toLowerCase()');
+    const gate = fn.indexOf('!(JOB_CATEGORIES as readonly string[]).includes(String(body.category ?? ""))');
+    expect(norm).toBeGreaterThan(-1);
+    expect(gate).toBeGreaterThan(-1);
+    expect(norm).toBeLessThan(gate);
+  });
+
+  it("cappedCount folds too — a second, independent instance", () => {
+    // This one dropped the work-mode predicate entirely on a mixed-case value:
+    // design+Remote reported 3,940, exactly the count with the predicate absent,
+    // against a true 616. It fires only when a SECOND filter is active, so it
+    // survives any fix to the gate above.
+    expect(fn).not.toMatch(/const wm = String\(body\.workMode \?\? ""\);\s*$/m);
+  });
+});
+
+// My own regression, shipped this session and caught by the audit I asked for.
+// interleaveByCompany ran BEFORE the page was cut, which read as the careful
+// choice. But nextOffset advances in DB order (grouped.rawConsumed), so
+// permuting the pre-slice buffer moved rows across a boundary the cursor knew
+// nothing about: measured 1-2 postings duplicated onto page 2 and 1 dropped
+// FOREVER per boundary, where the control scored 0/0.
+describe("the same-employer interleave cannot lose a posting", () => {
+  const fn = readFileSync(resolve(root, "supabase/functions/job-board/index.ts"), "utf8");
+
+  it("permutes only the page that is returned", () => {
+    expect(fn).toMatch(/if \(!sortSalary\) grouped\.jobs = interleaveByCompany\(grouped\.jobs\);/);
+  });
+
+  it("never touches the pre-slice buffer", () => {
+    // The buffer is what nextOffset counts. Reordering it is what dropped rows.
+    expect(fn).not.toMatch(/const mappedRows = interleaveByCompany\(/);
+  });
+
+  it("runs AFTER the page is cut", () => {
+    const cut = fn.indexOf("const grouped = groupSimilar");
+    const mix = fn.indexOf("grouped.jobs = interleaveByCompany(grouped.jobs)");
+    expect(cut).toBeGreaterThan(-1);
+    expect(mix).toBeGreaterThan(cut);
+  });
+
+  it("exempts the salary sort, which the old comment claimed but the code did not", () => {
+    // Salary ties on money, not on ingest batch: reordering produced 8
+    // inversions in 59 adjacent pairs, up to $70k out of order, directly
+    // contradicting "highest stated pay first".
+    expect(fn).toMatch(/if \(!sortSalary\)/);
   });
 });

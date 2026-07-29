@@ -79,7 +79,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-07-29.3";
+const BUILD_VERSION = "2026-07-29.4";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -4310,6 +4310,24 @@ async function serveList(
   // entirely. Filtered queries keep exact counts: their sets are small and
   // the zero-state logic depends on them.
   const metaTotal = Number((meta?.v as Record<string, unknown> | undefined)?.total);
+  // Case-fold the two enum-valued filters ONCE, before anything reads them.
+  //
+  // These were normalised at every site that BINDS the predicate (:4365, :4372,
+  // :4422 via its own path, the ranked paths) but NOT at the `unfiltered` gate
+  // below. So `category=Engineering` filtered the page correctly and then took
+  // the unfiltered branch, which returns the cached board-wide total: a page of
+  // 10 engineering jobs under a headline of 587,793 — 8.8x the true 66,842, and
+  // reachable from the URL, because Jobs.tsx passes ?category= through raw.
+  // workMode=Remote did the same. A second, independent instance lived in
+  // cappedCount, which dropped the work-mode predicate entirely unless the
+  // caller happened to send lowercase (design+Remote reported 3,940 instead of
+  // 616 — exactly the count with the predicate missing).
+  //
+  // Normalising at the door instead of at each use is the only version of this
+  // fix that cannot rot: a future filter site cannot bind a value the gate
+  // never saw, because there is now one value.
+  if (typeof body.category === "string") body.category = body.category.toLowerCase();
+  if (typeof body.workMode === "string") body.workMode = body.workMode.toLowerCase();
   const unfiltered =
     !String(body.q ?? "").trim() &&
     !String(body.location ?? "").trim() &&
@@ -4419,7 +4437,7 @@ async function serveList(
       ? body.companies.filter((c): c is string => typeof c === "string").slice(0, JOB_SOURCES.length)
       : [];
     const maxAgeNum = Number(body.maxAgeDays);
-    const wm = String(body.workMode ?? "");
+    const wm = String(body.workMode ?? "").toLowerCase(); // normalised at the door too; belt and braces
     // Multi-term queries: the page ANDs each term (any of title/company/dept per
     // term) while the RPC treats p_q as ONE contiguous ILIKE. "senior nurse"
     // matches "Senior Registered Nurse" on the page but not in that count — the
@@ -4878,17 +4896,31 @@ async function serveList(
     ? mergeCompanyFacet([...fullCompanies].sort((a, b) => (b.count ?? 0) - (a.count ?? 0)).slice(0, FACET_COMPANY_LIMIT) as Array<{ token?: string; name?: string; count?: number }>)
         .sort((a, b) => (b.count ?? 0) - (a.count ?? 0))
     : [];
-  // Break up same-employer runs BEFORE the page is cut, so the cap applies to
-  // what the user sees rather than to an already-truncated slice. Recency order
-  // is untouched — see interleaveByCompany. Only the recency sort needs this:
-  // a salary sort ties on money, not on ingest batch, and a ranked search is
-  // already ordered by relevance.
-  const mappedRows = interleaveByCompany(
-    (data ?? []).map(rowToJob) as Array<Record<string, unknown>>,
-  );
+  const mappedRows = (data ?? []).map(rowToJob) as Array<Record<string, unknown>>;
   const grouped = groupSimilar
     ? collapseClusters(mappedRows, limit)
     : { jobs: mappedRows.slice(0, limit), rawConsumed: Math.min(mappedRows.length, limit) };
+  // Interleave the RETURNED page only, never the pre-slice buffer.
+  //
+  // The first version of this ran before the cut, which read as the careful
+  // choice — cap what the user actually sees rather than an already-truncated
+  // slice. It was wrong, and a filter audit caught it: nextOffset advances in
+  // DB order (grouped.rawConsumed), so permuting the buffer BEFORE the cut
+  // moves rows across the page boundary that the cursor knows nothing about.
+  // Measured on a frozen snapshot: 1-2 postings duplicated onto page 2 and 1
+  // silently dropped FOREVER per boundary, where the control run scored 0/0.
+  // A cosmetic variety tweak was quietly costing users jobs.
+  //
+  // Permuting only the emitted array is a pure reordering of rows already
+  // committed to this page: rawConsumed is untouched, so no row can be skipped
+  // or repeated. Runs spanning a boundary are no longer capped — that is the
+  // honest trade, and it is worth strictly less than never losing a posting.
+  //
+  // Salary sort is EXEMPT, and the previous comment claimed that while the code
+  // did the opposite: it ties on money, not on ingest batch, so reordering
+  // there produced 8 inversions in 59 adjacent pairs, up to $70k out of order,
+  // directly contradicting "highest stated pay first".
+  if (!sortSalary) grouped.jobs = interleaveByCompany(grouped.jobs);
   return json({
     jobs: await attachRecheckedAt(client, grouped.jobs),
     // Raw rows this page swallowed. The client MUST page by this rather than by
