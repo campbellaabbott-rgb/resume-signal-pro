@@ -79,7 +79,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-07-29.7";
+const BUILD_VERSION = "2026-07-29.8";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -4406,7 +4406,7 @@ async function serveList(
     let q = client
       .from("job_board_postings")
       .select(
-        "id,source,company_token,company,title,location,remote,work_mode,department,category,posted_at,apply_url,salary,salary_min_annual,salary_max_annual,salary_period,salary_currency,experience_band,min_years,last_seen,missing_since",
+        "id,source,company_token,company,title,location,country,remote,work_mode,department,category,posted_at,apply_url,salary,salary_min_annual,salary_max_annual,salary_period,salary_currency,experience_band,min_years,last_seen,missing_since",
         withCount ? { count: "exact" } : {},
       )
       .gte(dateCol, freshCutoffIso)

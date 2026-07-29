@@ -1307,6 +1307,41 @@ describe("slow work degrades instead of failing the request", () => {
 // RECENCY before anything was ranked. Measured on 'Patient Services Assistant':
 // 36 title matches, 12,923 description matches, 200 slots requested -> 5 of 36
 // returned (86% lost), 197 slots filled by description-only rows.
+// The country fix shipped this morning did not work, and the test I wrote for
+// it passed anyway. It asserted that rowToJob EMITS country — which it did —
+// and could not see that no query ever SELECTS the column, so every row carried
+// undefined. Live probe: three rows matching country=DE came back country:null.
+// A mapper cannot invent a field the query did not ask for; assert the fetch.
+describe("country is fetched, not just mapped", () => {
+  const fn = readFileSync(resolve(root, "supabase/functions/job-board/index.ts"), "utf8");
+
+  it("the serving SELECT lists country", () => {
+    expect(fn).toMatch(/id,source,company_token,company,title,location,country,remote,work_mode/);
+  });
+
+  it("the mapper still emits it", () => {
+    expect(fn).toMatch(/country: r\.country \?\? null,/);
+  });
+
+  it("the search RPC PROJECTS it, not just filters on it", () => {
+    // search_jobs has always had `AND p.country = $4`; it never returned the
+    // column, so the ranked path served country:null even when filtering by it.
+    const mig = readFileSync(
+      resolve(root, "supabase/migrations/20260729130000_search_returns_country.sql"), "utf8");
+    expect(mig).toMatch(/location text, country text, remote boolean/);
+    expect(mig).toMatch(/p\.location, p\.country, p\.remote/);
+    // RETURNS TABLE cannot change under CREATE OR REPLACE — this must DROP, and
+    // the drop must name the exact 14-type signature or it replaces nothing.
+    expect(mig).toMatch(/DROP FUNCTION IF EXISTS public\.search_jobs\(text, timestamptz, text, boolean, text, text, text\[\], numeric, text\[\], timestamptz, integer, text, integer, integer\)/);
+  });
+
+  it("carries the title-match union through", () => {
+    const mig = readFileSync(
+      resolve(root, "supabase/migrations/20260729130000_search_returns_country.sql"), "utf8");
+    expect(mig).toMatch(/SELECT sid FROM title_hits UNION SELECT sid FROM desc_hits/);
+  });
+});
+
 describe("search cannot drop a title match before ranking", () => {
   const mig = readFileSync(
     resolve(root, "supabase/migrations/20260729120000_search_title_matches_always_reachable.sql"), "utf8");
