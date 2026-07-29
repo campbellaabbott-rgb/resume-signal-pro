@@ -189,3 +189,120 @@ describe("structural: the list action has ONE filter derivation", () => {
     expect(code).toContain("filterIntegrity");
   });
 });
+
+describe("the self-check has an alarm, not just a sensor", () => {
+  const index = readFileSync(
+    resolve(__dirname, "../../supabase/functions/job-board/index.ts"),
+    "utf8",
+  );
+  const code = index
+    .split("\n")
+    .filter((l) => !l.trim().startsWith("//") && !l.trim().startsWith("*"))
+    .join("\n");
+
+  // The property, not the plumbing: BOTH outcomes must be recorded. If only
+  // violations were written, "no incidents" and "the check stopped running"
+  // would be indistinguishable — and this board has already shipped a
+  // diagnostic whose delivery depended on the very thing it diagnosed, which
+  // reported nothing at all.
+  it("records clean checks as well as violations, so silence is not ambiguous", () => {
+    expect(code).toContain("filter_integrity_ok");
+    expect(code).toContain("filter_integrity_incident");
+  });
+
+  it("publishes proof-of-life through status, which anon can actually read", () => {
+    // job_board_meta returns 42501 to anon, so a sensor that only writes there
+    // is invisible in exactly the situation it exists for.
+    expect(code).toContain("filterContract");
+    expect(code).toContain("okAgeMin");
+    expect(code).toContain('eq("k", "filter_integrity_ok")');
+  });
+
+  it("never treats a missing clean-check record as healthy", () => {
+    // "unverified" and "fine" are different claims; the payload must not
+    // collapse them.
+    expect(index).toMatch(/never recorded a clean page/);
+  });
+});
+
+describe("the scheduled filter audit", () => {
+  const index = readFileSync(
+    resolve(__dirname, "../../supabase/functions/job-board/index.ts"),
+    "utf8",
+  );
+  const code = index
+    .split("\n")
+    .filter((l) => !l.trim().startsWith("//") && !l.trim().startsWith("*"))
+    .join("\n");
+
+  it("exists, is maintenance-gated, and self-schedules", () => {
+    expect(code).toContain('action === "filter-audit"');
+    expect(code).toContain("filter-audit is a maintenance action");
+    // chainKey is derived inside the function, so a pg_cron row cannot make one
+    // — the audit rides the sweep-kick path that is already proven to fire.
+    expect(code).toContain('action: "filter-audit", chainKey: key');
+  });
+
+  it("shares the live self-check's predicate instead of reimplementing it", () => {
+    // An audit that rebuilt the filter logic would agree with itself and prove
+    // nothing — the same error as a mapper test passing while the column is
+    // absent from the database.
+    const audit = code.slice(code.indexOf('action === "filter-audit"'), code.indexOf('action === "recategorize"'));
+    expect(audit).toContain("filterViolations(jobs, ap)");
+    expect(audit).toContain("normalizeFilters(c.body");
+    // It must ask the real endpoint, not a private copy of the query.
+    expect(audit).toContain("functions/v1/job-board");
+    expect(audit).toContain('action: "list"');
+  });
+
+  it("uses exact counts for recall, never estimated", () => {
+    // PostgREST's estimate returned a fabricated uniform 22.1% on this table
+    // where exact showed 100%. A recall check built on it would invent
+    // disagreements rather than detect them.
+    const audit = code.slice(code.indexOf('action === "filter-audit"'), code.indexOf('action === "recategorize"'));
+    expect(audit).toContain('count: "exact"');
+    expect(audit).not.toContain("estimated");
+  });
+
+  it("covers the shapes that actually broke, including the array form", () => {
+    const audit = code.slice(code.indexOf('action === "filter-audit"'), code.indexOf('action === "recategorize"'));
+    expect(audit).toContain('experience: ["bogus"]');       // silent-drop breach
+    expect(audit).toContain('experience: ["senior", "bogus"]'); // partial drop
+    expect(audit).toContain('category: "Design"');           // casing
+    expect(audit).toContain("duplicate-rows");               // paging integrity
+    expect(audit).toContain("nonsense-padded");              // must stay empty
+  });
+});
+
+describe("typo tolerance fires below a useful threshold", () => {
+  const index = readFileSync(
+    resolve(__dirname, "../../supabase/functions/job-board/index.ts"),
+    "utf8",
+  );
+
+  // The machinery was never broken; the boundary was. It read `total < 5`, and
+  // "nurse practicioner" returns EXACTLY 5 against 1,771 for the correct
+  // spelling — five is not less than five, so the rescue never ran. Guarding the
+  // property (a page with room gets close matches) rather than the literal
+  // number, but the old boundary specifically must not come back.
+  it("does not gate the fuzzy augmentation at the old boundary", () => {
+    expect(index).not.toMatch(/total < 5 &&/);
+  });
+
+  it("gates it high enough that a nearly-empty page is rescued", () => {
+    const m = index.match(/const FUZZY_AUGMENT_BELOW = (\d+);/);
+    expect(m, "FUZZY_AUGMENT_BELOW should exist and be a literal").toBeTruthy();
+    const n = Number(m![1]);
+    // Above the measured failure (5) and below a full page (60) — padding a
+    // genuinely useful result set would dilute it.
+    expect(n).toBeGreaterThan(5);
+    expect(n).toBeLessThanOrEqual(30);
+    expect(index).toContain("total < FUZZY_AUGMENT_BELOW");
+  });
+
+  it("still stands down when filters are active", () => {
+    // A typo'd query on a company lander must not surface other companies'
+    // jobs — the fence that broke once already.
+    expect(index).toMatch(/total < FUZZY_AUGMENT_BELOW[\s\S]{0,120}!filtersActive/);
+  });
+});

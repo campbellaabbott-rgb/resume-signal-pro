@@ -656,6 +656,14 @@ export default function Jobs() {
   // stays visible (locally filtered) instead of blanking behind a spinner.
   const [refreshing, setRefreshing] = useState(false);
   const jobsCount = useRef(0);
+  // Retains the last category facet we were given. The facet is only returned on
+  // UNFILTERED responses (deliberately — computing it under a filter was the
+  // 587,793 bug), so under a category filter there is nothing live to read.
+  // Keeping the last copy lets a capped total borrow a number we already have:
+  // measured 2026-07-29, /jobs?category=engineering printed "10,000+" while the
+  // facet six inches away read 67,929. Both honest; one is the vaguer of two
+  // figures already in hand.
+  const catFacetRef = useRef<Record<string, number> | null>(null);
   // The q/location the visible list actually came from: while the typed values
   // differ (debounce window + roundtrip), the list filters locally so typing
   // feels instant. Never applied to settled server results — the server also
@@ -2098,6 +2106,31 @@ export default function Jobs() {
     () => [location, category, experience, company, country, salaryFloor > 0, remoteOnly || workMode, freshness].filter(Boolean).length,
     [location, category, experience, company, country, salaryFloor, remoteOnly, workMode, freshness],
   );
+
+  // Keep the last facet we were handed, and use it to replace a vague capped
+  // total with the exact one when the ONLY thing narrowing the board is a single
+  // category. The facet is computed over the same serving rule as the results, so
+  // for `category=X and nothing else` the facet count IS that filter's true
+  // total — we were rendering "10,000+" beside a facet reading 67,929.
+  //
+  // Conditions are deliberately narrow. The facet knows counts per category and
+  // nothing else, so the moment a second filter is active (a country, a query, a
+  // work mode) the facet describes a DIFFERENT question than the results, and
+  // substituting it would print a confidently wrong number in place of an
+  // honestly vague one. That trade only goes one way.
+  useEffect(() => {
+    const c = data?.categories;
+    if (c && Object.keys(c).length > 0) catFacetRef.current = c;
+  }, [data]);
+  const exactCategoryTotal = useMemo(() => {
+    if (!data?.countCapped || !category) return null;
+    // Exactly one filter, and it is the category one.
+    if (activeFilterCount !== 1 || q.trim() || country) return null;
+    const n = (data.categories ?? catFacetRef.current)?.[category];
+    // Must actually exceed the cap it is replacing, or it is not the same number
+    // the cap was hiding.
+    return typeof n === "number" && n > (data.total ?? 0) ? n : null;
+  }, [data, category, activeFilterCount, q, country]);
 
   // Removable chips for every active filter — what's narrowing your results
   // should be visible and one click to undo, not buried in the controls.
@@ -3765,7 +3798,12 @@ export default function Jobs() {
                   : (q.trim() || country || activeFilterCount > 0)
                   ? t("jobsPage.resultsSummaryFiltered", "Showing {{shown}} of {{total}} matching openings", {
                   shown: jobs.length,
-                  total: data?.countCapped
+                  // Prefer the facet's exact figure when a lone category filter
+                  // makes it the same question (see exactCategoryTotal); only
+                  // fall back to "N+" when the true number really is unknown.
+                  total: exactCategoryTotal !== null
+                    ? exactCategoryTotal.toLocaleString()
+                    : data?.countCapped
                     ? `${(data?.total ?? 0).toLocaleString()}+`
                     : (data?.total ?? jobs.length).toLocaleString(),
                 })

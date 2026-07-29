@@ -1697,6 +1697,35 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
         body: JSON.stringify({ action: "backfill-country", chainKey: key }),
       })).then((r) => r.text()).catch(() => {}));
     }
+    // FILTER AUDIT KICK — the scheduled half of the filter contract.
+    //
+    // Self-invoked from the refresh path rather than driven by pg_cron, for a
+    // concrete reason: filter-audit is chainKey-gated, and chainKey is derived
+    // inside the function, so a cron row in Postgres cannot produce one. The
+    // sweeps here already solve that by having the function call itself with its
+    // own key, and reusing that path means the audit inherits a scheduler that
+    // is already proven to fire.
+    //
+    // Once every 6 hours is deliberate. The audit issues ~30 real HTTP requests
+    // against this same function, including a 4-page pagination walk; running it
+    // per refresh would put a measurable synthetic load on the board it is
+    // supposed to be watching. Six hours is frequent enough that a filter
+    // regression is caught the same day it ships — the defects it was built from
+    // had been live for an unknown period because nothing asked.
+    const FILTER_AUDIT_EVERY_MS = 6 * 60 * 60_000;
+    const { data: faRow } = await client.from("job_board_meta").select("updated_at").eq("k", "filter_audit").maybeSingle();
+    const faAge = faRow?.updated_at ? Date.now() - Date.parse(faRow.updated_at) : Infinity;
+    if (faAge > FILTER_AUDIT_EVERY_MS) {
+      const faUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`;
+      waitUntil(chainKey().then((key) =>
+        fetch(faUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "filter-audit", chainKey: key }),
+        })
+      ).then((r) => r.text()).then(() => {}).catch(() => {}));
+    }
+
     // Undated rows whose vendor feed DOES carry dates? Date them once.
     // The kick now (a) stands down while a chain is demonstrably alive
     // (hop stamp < 5 min old) instead of spawning a concurrent duplicate,
@@ -2396,7 +2425,7 @@ Deno.serve(async (req) => {
       // bundle, so a stale/failed publish is visible in ONE call instead of being
       // inferred from posting counts over hours (the rung-2 "did it deploy?" pain).
       // Also the source of truth for the heartbeat's job_board_deploy check.
-      const [prog, pbMeta, rot, refreshMeta, bf, hotMeta, fresh, breaker, dateCov, bsMeta, dsMeta, esMeta] = await Promise.all([
+      const [prog, pbMeta, rot, refreshMeta, bf, hotMeta, fresh, breaker, dateCov, bsMeta, dsMeta, esMeta, fiOk, fiBad, faMeta] = await Promise.all([
         client.from("job_board_meta").select("v, updated_at").eq("k", "refresh_progress").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "posted_backfill").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "cold_rotation").maybeSingle(),
@@ -2420,7 +2449,15 @@ Deno.serve(async (req) => {
         client.from("job_board_meta").select("v").eq("k", "bootstrap").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "desc_sweep").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "embed_sweep").maybeSingle(),
-      ]);
+              // The filter self-check's two halves. BOTH are read, because reading
+        // only incidents makes silence ambiguous: "no violations" and "the check
+        // stopped running" would be indistinguishable, and this board has
+        // already shipped one diagnostic whose delivery depended on the very
+        // thing it was diagnosing. `okAgeMin` is the proof of life.
+        client.from("job_board_meta").select("v, updated_at").eq("k", "filter_integrity_ok").maybeSingle(),
+        client.from("job_board_meta").select("v, updated_at").eq("k", "filter_integrity_incident").maybeSingle(),
+        client.from("job_board_meta").select("v, updated_at").eq("k", "filter_audit").maybeSingle(),
+]);
       const pgV = (prog.data?.v ?? {}) as { hot?: number; cold?: number; coldDone?: number; failedAcc?: string[] };
       const rotV = (rot.data?.v ?? {}) as { completedAt?: string; coldBoards?: number };
       const rfV = (refreshMeta.data?.v ?? {}) as { total?: number };
@@ -2459,6 +2496,43 @@ Deno.serve(async (req) => {
         // (42501 for anon), so diagnosing it needed dashboard SQL — the exact
         // gap embedSweep was added to close for the embedding chain.
         // `due` mirrors the kick's own predicate, so this cannot drift from it.
+        // FILTER CONTRACT — the self-check on every page, plus the scheduled
+        // audit. Published here because job_board_meta is RLS-hidden (anon gets
+        // 42501), so without this the sensor exists and nobody can read it.
+        filterContract: (() => {
+          const okAt = fiOk.data?.updated_at ? new Date(fiOk.data.updated_at).getTime() : null;
+          const badAt = fiBad.data?.updated_at ? new Date(fiBad.data.updated_at).getTime() : null;
+          const bad = (fiBad.data?.v ?? {}) as { at?: string; violations?: number; fields?: string[] };
+          return {
+            // Minutes since a page was checked and found clean. Sampled ~2% of
+            // requests, so on a live board this stays small; a large or null
+            // value means the check is NOT running, which is not the same as
+            // "no problems found".
+            okAgeMin: okAt === null ? null : Math.round((Date.now() - okAt) / 60000),
+            lastIncidentAt: bad.at ?? null,
+            lastIncidentAgeMin: badAt === null ? null : Math.round((Date.now() - badAt) / 60000),
+            lastIncidentFields: bad.fields ?? null,
+            lastIncidentViolations: bad.violations ?? null,
+            // An incident row is a tombstone, not a live state — it persists
+            // after the fault is fixed. Age is what tells you which.
+            note: okAt === null
+              ? "self-check has never recorded a clean page — treat as unverified, not as healthy"
+              : null,
+          };
+        })(),
+        filterAudit: (() => {
+          const v = (faMeta.data?.v ?? {}) as { at?: string; clean?: boolean; cases?: number; findings?: unknown[]; p95Ms?: number | null; slowCases?: number };
+          return {
+            at: v.at ?? null,
+            ageMin: faMeta.data?.updated_at ? Math.round((Date.now() - new Date(faMeta.data.updated_at).getTime()) / 60000) : null,
+            clean: v.clean ?? null,
+            cases: v.cases ?? null,
+            findings: Array.isArray(v.findings) ? v.findings.slice(0, 12) : null,
+            findingCount: Array.isArray(v.findings) ? v.findings.length : null,
+            p95Ms: v.p95Ms ?? null,
+            slowCases: v.slowCases ?? null,
+          };
+        })(),
         postedBackfill: (() => {
           const v = (pbMeta.data?.v ?? {}) as { version?: number; sweptAt?: string; phase?: string; cursor?: string; datedTotal?: number; scannedTotal?: number; note?: string };
           return {
@@ -2520,6 +2594,203 @@ Deno.serve(async (req) => {
       const health = aggregateVendorHealth(results);
       const payload = { ...health, at: new Date().toISOString() };
       await client.from("job_board_meta").upsert({ k: "vendor_health", v: payload, updated_at: new Date().toISOString() }, { onConflict: "k" });
+      return json(payload);
+    }
+
+    if (action === "filter-audit") {
+      // The audit I ran by hand on 2026-07-29, turned into something that runs
+      // itself. It found four real defects that 1,010 unit tests were green
+      // through, because every one of them lived in the gap between the code and
+      // the database: a case-folded filter the count didn't fold, a column the
+      // mapper emitted and the SELECT never fetched, an array shape the gate
+      // never inspected, and a page cut that dropped rows. None of those are
+      // visible to a test that imports a module — only to one that asks
+      // production a question and checks the bytes that come back.
+      //
+      // Two things it deliberately does NOT do:
+      //
+      // 1. It does not rebuild the query. Each case is a real HTTP request to
+      //    this function's own `list` action, so it exercises the same path a
+      //    user hits — normalisation, filters, count, grouping, mapping. An
+      //    audit that reimplemented buildQuery would agree with itself and prove
+      //    nothing, which is the same error as a mapper test that passes while
+      //    the column is missing from the database.
+      //
+      // 2. It does not use count=estimated for recall. PostgREST's estimate
+      //    returned a fabricated uniform figure on this table (22.1% where exact
+      //    showed 100%), so a recall comparison built on it would invent
+      //    disagreements. Exact only, with the serving rule applied.
+      if (typeof body.chainKey !== "string" || body.chainKey !== await chainKey()) {
+        return json({ error: "filter-audit is a maintenance action" }, 403);
+      }
+      const self = `${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`;
+      const svc = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+      const probe = async (payload: Record<string, unknown>) => {
+        const started = Date.now();
+        try {
+          const res = await fetch(self, {
+            method: "POST",
+            headers: { "content-type": "application/json", apikey: svc, Authorization: `Bearer ${svc}` },
+            body: JSON.stringify({ action: "list", limit: 60, groupSimilar: false, ...payload }),
+          });
+          const j = await res.json().catch(() => ({}));
+          return { ok: res.ok, ms: Date.now() - started, body: j as Record<string, unknown> };
+        } catch (e) {
+          return { ok: false, ms: Date.now() - started, body: { error: String(e).slice(0, 80) } };
+        }
+      };
+      const cutoff = new Date(Date.now() - FRESH_WINDOW_DAYS * 86_400_000).toISOString();
+      // Recall ground truth, straight at the table with the serving rule.
+      const exactCount = async (col: string, val: string) => {
+        const { count, error } = await client
+          .from("job_board_postings")
+          .select("id", { count: "exact", head: true })
+          .is("missing_since", null)
+          .gte("effective_posted", cutoff)
+          .eq(col, val);
+        return error ? null : (count ?? null);
+      };
+
+      const FILTER_CASES: Array<{ name: string; body: Record<string, unknown>; col?: string; val?: string }> = [
+        { name: "country=DE", body: { country: "DE" }, col: "country", val: "DE" },
+        { name: "country=GB", body: { country: "GB" }, col: "country", val: "GB" },
+        { name: "category=design", body: { category: "design" }, col: "category", val: "design" },
+        { name: "category=legal", body: { category: "legal" }, col: "category", val: "legal" },
+        { name: "workMode=hybrid", body: { workMode: "hybrid" }, col: "work_mode", val: "hybrid" },
+        { name: "experience=senior", body: { experience: ["senior"] } },
+        { name: "remote=true", body: { remote: true } },
+        { name: "maxAgeDays=7", body: { maxAgeDays: 7 } },
+        { name: "salaryFloor=100k", body: { salaryFloor: 100_000 } },
+        // Mixed casing and array shapes — the two forms that actually broke.
+        { name: "category=Design (case)", body: { category: "Design" }, col: "category", val: "design" },
+        { name: "workMode=HYBRID (case)", body: { workMode: "HYBRID" }, col: "work_mode", val: "hybrid" },
+        { name: "combo DE+design", body: { country: "DE", category: "design" } },
+      ];
+      // Filter values we must NEVER honour silently. The fence is that a filter
+      // is named or applied, never dropped — experience:["bogus"] breached it.
+      const IGNORE_CASES: Array<{ name: string; body: Record<string, unknown>; expect: string }> = [
+        { name: "country=USA", body: { country: "USA" }, expect: "country" },
+        { name: "experience=bogus", body: { experience: "bogus" }, expect: "experience" },
+        { name: "experience=[bogus]", body: { experience: ["bogus"] }, expect: "experience" },
+        { name: "experience=[senior,bogus]", body: { experience: ["senior", "bogus"] }, expect: "experience" },
+        { name: "category=nonsense", body: { category: "nonsense" }, expect: "category" },
+        { name: "workMode=hovering", body: { workMode: "hovering" }, expect: "workMode" },
+      ];
+      // Relevance corpus. Asserted as PROPERTIES, never as literal substrings:
+      // `swe` legitimately returns "Software Engineer" through alias expansion,
+      // and scoring that by looking for the token "swe" in the title graded a
+      // working feature 0/10 during the manual audit. `minTotal` is a floor a
+      // healthy catalogue clears, not an exact figure that would go stale.
+      const QUERY_CASES: Array<{ q: string; minTotal: number; note: string }> = [
+        { q: "registered nurse", minTotal: 200, note: "common clinical" },
+        { q: "software engineer", minTotal: 200, note: "common technical" },
+        { q: "data scientist", minTotal: 50, note: "common technical" },
+        { q: "occupational therapist", minTotal: 20, note: "mid-frequency" },
+        { q: "veterinary technician", minTotal: 5, note: "niche" },
+        { q: "patient services assistant", minTotal: 5, note: "niche multi-word" },
+        { q: "barista", minTotal: 5, note: "single word" },
+        { q: "swe", minTotal: 50, note: "alias expansion" },
+        { q: "nurse practicioner", minTotal: 1, note: "TYPO — fuzzy augmentation" },
+        { q: "zzzqqxnonsensequery", minTotal: 0, note: "must be empty, not padded" },
+      ];
+
+      const findings: Array<{ case: string; kind: string; detail: string }> = [];
+      const timings: Array<{ case: string; ms: number }> = [];
+
+      for (const c of FILTER_CASES) {
+        const r = await probe(c.body);
+        timings.push({ case: c.name, ms: r.ms });
+        if (!r.ok) { findings.push({ case: c.name, kind: "request-failed", detail: String(r.body.error ?? "").slice(0, 80) }); continue; }
+        const jobs = Array.isArray(r.body.jobs) ? r.body.jobs as Array<Record<string, unknown>> : [];
+        // PRECISION — reuse the SAME predicate the live self-check uses, so the
+        // audit and the request agree by construction rather than by discipline.
+        const { applied: ap } = normalizeFilters(c.body, JOB_SOURCES.length);
+        const bad = filterViolations(jobs, ap);
+        if (bad.length) {
+          findings.push({ case: c.name, kind: "precision", detail: `${bad.length}/${jobs.length} rows violate ${[...new Set(bad.map((b) => b.field))].join(",")}` });
+        }
+        if (!jobs.length) findings.push({ case: c.name, kind: "empty-page", detail: "a filter with matches returned no rows" });
+        // The response must never claim a filter applied that it dropped.
+        if (Array.isArray(r.body.ignoredFilters) && (r.body.ignoredFilters as string[]).length) {
+          findings.push({ case: c.name, kind: "unexpected-ignored", detail: (r.body.ignoredFilters as string[]).join(",") });
+        }
+        if (r.body.filterIntegrity) {
+          findings.push({ case: c.name, kind: "self-check-fired", detail: JSON.stringify(r.body.filterIntegrity).slice(0, 90) });
+        }
+        // RECALL — only where the count is exact. A capped total is honestly
+        // "10,000+", so comparing it to a true figure would manufacture a
+        // finding rather than detect one.
+        if (c.col && c.val && r.body.countCapped !== true && typeof r.body.total === "number") {
+          const truth = await exactCount(c.col, c.val);
+          // Rows shift under the maintenance track between the two reads, so a
+          // small delta is the measurement, not a defect. 1% or 50 rows.
+          if (truth !== null) {
+            const slack = Math.max(50, Math.round(truth * 0.01));
+            if (Math.abs(truth - (r.body.total as number)) > slack) {
+              findings.push({ case: c.name, kind: "recall", detail: `reported ${r.body.total} vs exact ${truth}` });
+            }
+          }
+        }
+      }
+
+      for (const c of IGNORE_CASES) {
+        const r = await probe(c.body);
+        const ig = Array.isArray(r.body.ignoredFilters) ? r.body.ignoredFilters as string[] : [];
+        if (!ig.includes(c.expect)) {
+          findings.push({ case: c.name, kind: "silent-drop", detail: `expected "${c.expect}" in ignoredFilters, got [${ig.join(",")}]` });
+        }
+      }
+
+      for (const c of QUERY_CASES) {
+        const r = await probe({ q: c.q, limit: 10 });
+        timings.push({ case: `q=${c.q}`, ms: r.ms });
+        if (!r.ok) { findings.push({ case: `q=${c.q}`, kind: "request-failed", detail: String(r.body.error ?? "").slice(0, 80) }); continue; }
+        const jobs = Array.isArray(r.body.jobs) ? r.body.jobs as unknown[] : [];
+        const total = typeof r.body.total === "number" ? r.body.total : null;
+        if (c.minTotal === 0) {
+          if (jobs.length > 0) findings.push({ case: `q=${c.q}`, kind: "nonsense-padded", detail: `${jobs.length} rows for a nonsense query` });
+        } else if (!jobs.length) {
+          findings.push({ case: `q=${c.q}`, kind: "no-results", detail: `${c.note}: returned nothing` });
+        } else if (total !== null && r.body.countCapped !== true && total < c.minTotal) {
+          findings.push({ case: `q=${c.q}`, kind: "thin-results", detail: `${c.note}: total ${total} < floor ${c.minTotal}` });
+        }
+      }
+
+      // PAGINATION INTEGRITY — the interleave regression duplicated rows onto
+      // page 2 and dropped others forever, and no unit test could see it because
+      // it only exists across two requests.
+      for (const shape of [{}, { category: "design" }, { q: "nurse" }]) {
+        const seen: string[] = [];
+        let label = Object.keys(shape).length ? JSON.stringify(shape) : "no-filter";
+        for (let off = 0; off < 240; off += 60) {
+          const r = await probe({ ...shape, offset: off });
+          const jobs = Array.isArray(r.body.jobs) ? r.body.jobs as Array<Record<string, unknown>> : [];
+          if (!jobs.length) break;
+          seen.push(...jobs.map((j) => String(j.id ?? "")));
+        }
+        const dupes = seen.length - new Set(seen).size;
+        if (dupes > 0) findings.push({ case: `paging ${label}`, kind: "duplicate-rows", detail: `${dupes} of ${seen.length} repeated across pages` });
+      }
+
+      const slow = timings.filter((t) => t.ms > 15_000);
+      const payload = {
+        at: new Date().toISOString(),
+        version: BUILD_VERSION,
+        cases: FILTER_CASES.length + IGNORE_CASES.length + QUERY_CASES.length + 3,
+        findings,
+        clean: findings.length === 0,
+        p95Ms: (() => {
+          const xs = timings.map((t) => t.ms).sort((a, b) => a - b);
+          return xs.length ? xs[Math.min(xs.length - 1, Math.floor(xs.length * 0.95))] : null;
+        })(),
+        slowest: timings.sort((a, b) => b.ms - a.ms).slice(0, 3),
+        slowCases: slow.length,
+      };
+      await client.from("job_board_meta").upsert(
+        { k: "filter_audit", v: payload, updated_at: payload.at },
+        { onConflict: "k" },
+      );
+      console.log(`[JOB-BOARD] filter-audit: ${findings.length} finding(s) across ${payload.cases} cases`);
       return json(payload);
     }
 
@@ -4778,8 +5049,28 @@ async function serveList(
         // response carrying fuzzyExtra, so the client labels them as close
         // matches instead of passing them off as exact ones. Exact matches
         // keep their position; nothing is reordered or replaced.
+        //
+        // THE THRESHOLD WAS THE BUG, not the machinery. It read `total < 5`, and
+        // measured live 2026-07-29:
+        //   "nurse practitioner"  -> 1,771 results
+        //   "nurse practicioner"  ->     5 results   <- EXACTLY the boundary
+        // Five is not less than five, so the augmentation never ran and the user
+        // keeping 0.3% of the corpus got no close matches at all. The same
+        // machinery worked perfectly one result lower: "softwear engineer" had
+        // total=1 and returned 5 rows, four of them corrected.
+        //
+        // That is a boundary off-by-one, the same shape as the `<=` that spun the
+        // dating sweep forever this morning — and 5 was arbitrary besides. A
+        // 60-row page with 5, 12 or 19 exact matches is still mostly empty, and
+        // the trigram tier is index-backed (gin on title), offset-0 only, and
+        // gated on no filters being active, so the extra reach is cheap.
+        //
+        // 20 is the point where exact matches start actually filling the page
+        // (a third of 60). Above it, padding with close matches would dilute a
+        // genuinely useful result set rather than rescue an empty one.
+        const FUZZY_AUGMENT_BELOW = 20;
         let fuzzyExtraOut: { q: string; count: number } | null = null;
-        if (total !== null && total > 0 && total < 5 && offset === 0 && !countOnly && !filtersActive && qText.length >= 3) {
+        if (total !== null && total > 0 && total < FUZZY_AUGMENT_BELOW && offset === 0 && !countOnly && !filtersActive && qText.length >= 3) {
           try {
             const { data: fz, error: fzErr } = await client.rpc("fuzzy_title_search", {
               p_q: qText, p_fresh_cutoff: freshCutoffIso, p_limit: limit,
@@ -5000,6 +5291,38 @@ async function serveList(
       `[JOB-BOARD] filter integrity: ${integrity.length} violation(s) on ${grouped.jobs.length} rows ` +
         `— ${JSON.stringify(integrity.slice(0, 3))}`,
     );
+  }
+  // THE SENSOR NEEDS AN ALARM. A check that only logs is a check nobody reads:
+  // job_board_meta is RLS-hidden (anon gets 42501), and console output needs a
+  // dashboard, so the first version of this was invisible in exactly the
+  // situation it exists for.
+  //
+  // Both outcomes are recorded, and that asymmetry is the point. If only
+  // failures were written, silence would be ambiguous — "no incidents" and "the
+  // check stopped running" would look identical, which is the same trap as the
+  // hop diagnostic whose delivery depended on the thing it diagnosed. The clean
+  // path is sampled (~2%) so a healthy board pays almost nothing for the
+  // heartbeat, while `checkedAt` stays fresh enough to prove the check is alive.
+  // Violations are recorded EVERY time, unsampled — they should be zero, so
+  // there is no volume to protect against.
+  if (integrity.length || Math.random() < 0.02) {
+    const stamp = new Date().toISOString();
+    waitUntil(Promise.resolve(
+      client.from("job_board_meta").upsert({
+        k: integrity.length ? "filter_integrity_incident" : "filter_integrity_ok",
+        v: integrity.length
+          ? {
+            at: stamp,
+            violations: integrity.length,
+            rows: grouped.jobs.length,
+            fields: [...new Set(integrity.map((v) => v.field))],
+            sample: integrity.slice(0, 5),
+            filters: applied,
+          }
+          : { at: stamp, rows: grouped.jobs.length },
+        updated_at: stamp,
+      }, { onConflict: "k" }),
+    ).then(() => {}).catch(() => {}));
   }
   return json({
     jobs: await attachRecheckedAt(client, grouped.jobs),
