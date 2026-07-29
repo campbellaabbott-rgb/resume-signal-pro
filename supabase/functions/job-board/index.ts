@@ -80,7 +80,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-07-29.10";
+const BUILD_VERSION = "2026-07-29.11";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -4883,7 +4883,15 @@ async function serveList(
   };
 
   if (countOnly) {
-    if (!wantCount) return json({ total: metaTotal }); // unfiltered — the maintained catalog total
+    // countOnly is the FIFTH exit, and I missed it when wiring the honesty
+    // helper into the other four. Verified live on .10: {remote:"true"} returned
+    // ignoredFilters correctly on the list path and NOTHING on this one, so the
+    // caller most likely to be a machine — countOnly exists for the relaxation
+    // buttons and the data API — was the caller least likely to be told a filter
+    // had been dropped. It publishes only a number, which makes naming the
+    // filters that number does not honour more important here, not less.
+    const countHonesty = ignoredFilters.length ? { ignoredFilters } : {};
+    if (!wantCount) return json({ total: metaTotal, ...countHonesty }); // unfiltered — the maintained catalog total
     // With a query present, count what the LIST path would actually serve —
     // the FTS ranked tiers — not the ILIKE approximation. Measured
     // 2026-07-25: the two disagreed up to 4.3x on the same body, so
@@ -4915,20 +4923,20 @@ async function serveList(
           // tier caps at 3,000, so a bare "3000" here was presented as an exact
           // figure when the truth is higher (bug sweep 2026-07-26).
           const tier2C = (rc as Array<{ snippet?: unknown }>).some((r) => typeof r.snippet === "string" && r.snippet.length > 0);
-          return json({ total: tC, ...(tC >= (tier2C ? 3_000 : 10_000) ? { countCapped: true } : {}) });
+          return json({ total: tC, ...(tC >= (tier2C ? 3_000 : 10_000) ? { countCapped: true } : {}), ...countHonesty });
         }
       } catch { /* migration lag or malformed query — the capped/ILIKE path below still answers */ }
     }
     const capped = await cappedCount();
-    if (capped) return json({ total: capped.n, ...(capped.capped ? { countCapped: true } : {}) });
+    if (capped) return json({ total: capped.n, ...(capped.capped ? { countCapped: true } : {}), ...countHonesty });
     let { count, error } = await buildQuery("effective_posted").range(0, 0);
     if (missingColumn(error)) ({ count, error } = await buildQuery("posted_at").range(0, 0));
     // Same rule as the list path: a count that can't be computed is reported as
     // unknown, never as 0. Callers (the disclosure hook, saved-search "new
     // since" badges) treat a non-number as "no answer" and show nothing, which
     // is right — a 0 here would claim the filter matches nothing.
-    if (error) return json({ total: null, countUnavailable: true });
-    return json({ total: count ?? 0 });
+    if (error) return json({ total: null, countUnavailable: true, ...countHonesty });
+    return json({ total: count ?? 0, ...countHonesty });
   }
 
   // Stable pagination: recency desc (nulls last) by default, or highest
@@ -5258,6 +5266,11 @@ async function serveList(
         // that it has no single honest total. countUnavailable already renders
         // "Showing N matching openings" with no total, and fuzzyExtra still tells
         // the client how many of the N are close matches.
+        // Setting countUnavailable while STILL publishing total:18 is a payload
+        // that contradicts itself: the frontend reads countUnavailable first and
+        // renders no total, so a user is unaffected, but an API consumer reading
+        // `total` sees a number the same response has just declared unknown.
+        // Verified live on .10 — rows=60 alongside total=18. Null it.
         const augmented = fuzzyExtraOut !== null;
         return json({
           jobs: rankedGrouped.jobs,
@@ -5265,7 +5278,11 @@ async function serveList(
           ...(augmented ? { countUnavailable: true } : {}),
           nextOffset: offset + rankedGrouped.rawConsumed,
           hasMore: rankedRows.length > rankedGrouped.rawConsumed || rankedRows.length === fetchLimit,
-          total,
+          // null once close matches are appended: `total` counts EXACT matches,
+          // and the page now holds exact + close, so it no longer describes what
+          // is on screen. Leaving it in beside countUnavailable published a
+          // payload that contradicted itself (rows=60, total=18).
+          total: augmented ? null : total,
           ...(rankedCapped ? { countCapped: true } : {}),
           totalAllCompanies: (v0.total as number) ?? total,
           companies: includeFacets0

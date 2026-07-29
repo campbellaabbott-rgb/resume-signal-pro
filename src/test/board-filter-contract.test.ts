@@ -434,3 +434,49 @@ describe("location is not silently rewritten, and remote precedence is decided o
     expect(filterViolations(rows, a)).toEqual([]);
   });
 });
+
+describe("the countOnly exit is not exempt from the honesty contract", () => {
+  const index = readFileSync(
+    resolve(__dirname, "../../supabase/functions/job-board/index.ts"),
+    "utf8",
+  );
+  const code = index.split("\n").filter((l) => !l.trim().startsWith("//")).join("\n");
+
+  // Found by verifying the .10 deploy, not by any test. I wired the honesty
+  // helper into four exits and missed the fifth: countOnly returned {total} and
+  // nothing else. Live on .10, {remote:"true"} named the dropped filter on the
+  // list path and said nothing on this one — so the caller most likely to be a
+  // machine (countOnly serves the relaxation buttons and the data API) was the
+  // one least likely to be told a filter had been dropped. A response that is
+  // ONLY a number needs the caveat more than one that ships rows, not less.
+  it("every countOnly return carries ignoredFilters", () => {
+    // Brace-matched, not anchored on a following marker. The first version
+    // sliced to `const buildQuery`, which is defined BEFORE this block — so
+    // indexOf returned -1 and the segment ran to the end of the file. It still
+    // caught the real gap, by luck rather than design: my patch regex could not
+    // match the two returns whose nested `...(cond ? {} : {})` spreads contain
+    // braces, so 3 of 5 carried the fields. Getting the boundary right matters
+    // for what this guard reports NEXT time.
+    const start = code.indexOf("if (countOnly) {");
+    expect(start).toBeGreaterThan(-1);
+    let depth = 0, end = start;
+    for (let i = start; i < code.length; i++) {
+      if (code[i] === "{") depth++;
+      else if (code[i] === "}" && --depth === 0) { end = i + 1; break; }
+    }
+    expect(end, "should have found the closing brace").toBeGreaterThan(start);
+    const seg = code.slice(start, end);
+    const returns = seg.match(/return json\(\{ total:/g) ?? [];
+    expect(returns.length, "countOnly should have several return sites").toBeGreaterThan(1);
+    const carried = seg.match(/\.\.\.countHonesty/g) ?? [];
+    expect(carried.length, `${returns.length} countOnly returns, ${carried.length} carry ignoredFilters`)
+      .toBe(returns.length);
+  });
+
+  it("an augmented page does not publish a total it has just called unknown", () => {
+    // rows=60 alongside total=18 AND countUnavailable:true, verified live on .10.
+    // The frontend reads countUnavailable first so a user saw no total, but the
+    // payload contradicted itself for anyone reading `total`.
+    expect(code).toContain("total: augmented ? null : total");
+  });
+});
