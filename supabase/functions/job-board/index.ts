@@ -79,7 +79,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-07-29.2";
+const BUILD_VERSION = "2026-07-29.3";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -2748,7 +2748,26 @@ Deno.serve(async (req) => {
           await client.from("job_board_meta").upsert(
             { k: "posted_backfill", v: { resumeVersion: POSTED_BACKFILL_VERSION, phase, cursor, note: `draw: ${error.message ?? error}`.slice(0, 200), at: new Date().toISOString() }, updated_at: new Date().toISOString() },
           { onConflict: "k" });
-          throw error;
+          // Do NOT throw. A draw timeout used to kill the hop, and because the
+          // resume stamp pins the chain to its phase, every kick then retried
+          // the same doomed query forever — leaving the EARLIER phases' rows
+          // untouched behind it.
+          //
+          // Measured 2026-07-29: greenhouse times out at 3.2s while the
+          // identical query shape on rippling returns in 0.34s. The reason is
+          // the opposite of intuition — greenhouse is 99.2% already dated, so
+          // `posted_at IS NULL ORDER BY id LIMIT 500` has to scan all 59,878
+          // rows to find its 482 matches, while rippling's undated rows are
+          // dense enough that the planner fills a page immediately. A phase
+          // gets EXPENSIVE precisely as it approaches done.
+          //
+          // So a draw failure means "this phase can give no more", not "the
+          // sweep is over": mark it exhausted and let the normal path advance
+          // to the next phase (or complete the sweep, which re-arms in 7 days
+          // and starts again at bamboohr). The note above survives for the
+          // operator either way.
+          exhausted = true;
+          break;
         }
         let brokeEarly = false;
         for (const r of rows ?? []) {

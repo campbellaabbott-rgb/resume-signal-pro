@@ -1002,3 +1002,55 @@ describe("the verification receipt is visible before the click", () => {
     }
   });
 });
+
+// A draw timeout used to kill the hop, and because the resume stamp pins the
+// chain to its phase, every kick then retried the same doomed query forever —
+// leaving the earlier phases' rows stranded behind it. Measured 2026-07-29:
+// greenhouse 3.2s -> 500, the identical query shape on rippling 0.34s -> 200,
+// because greenhouse is 99.2% dated and must scan 59,878 rows to find 482.
+describe("a slow phase cannot wedge the dating sweep", () => {
+  const fn = readFileSync(resolve(root, "supabase/functions/job-board/index.ts"), "utf8");
+  const draw = fn.slice(fn.indexOf("note: `draw: ${error.message ?? error}`") - 900,
+                        fn.indexOf("note: `draw: ${error.message ?? error}`") + 1600);
+
+  it("marks the phase exhausted instead of throwing", () => {
+    expect(draw).toMatch(/exhausted = true;\s*\n\s*break;/);
+  });
+
+  it("does not rethrow the draw error", () => {
+    // Throwing is what pinned the chain to a phase it could never finish.
+    expect(draw).not.toMatch(/throw error;/);
+  });
+
+  it("still records what happened", () => {
+    // Advancing silently would be the same blindness in a new place.
+    expect(draw).toMatch(/note: `draw: \$\{error\.message \?\? error\}`/);
+  });
+});
+
+// I created a function OVERLOAD instead of replacing the original: the live
+// signature takes (p_days, p_min_closures) and 20260729090000 wrote one arg.
+// Every parameter on both has a DEFAULT, so a no-arg call became ambiguous —
+// PGRST203 — and the fill-speed line stopped rendering on 18 landers. Worse
+// than the overstatement it was meant to fix.
+describe("the fill-speed repair replaces rather than overloads", () => {
+  const fix = readFileSync(resolve(root, "supabase/migrations/20260729100000_fix_fill_speed_overload.sql"), "utf8");
+
+  it("drops the accidental single-arg version", () => {
+    expect(fix).toMatch(/DROP FUNCTION IF EXISTS public\.get_category_fill_speed\(integer\);/);
+  });
+
+  it("redefines the REAL two-arg signature", () => {
+    expect(fix).toMatch(/p_days integer DEFAULT 90,\s*\n\s*p_min_closures integer DEFAULT 300/);
+  });
+
+  it("keeps what the original had — I dropped both of these the first time", () => {
+    expect(fix).toMatch(/SECURITY DEFINER/);
+    expect(fix).toMatch(/GREATEST\(p_min_closures, 50\)/);
+  });
+
+  it("still reports observed depth, which was the point", () => {
+    expect(fix).toMatch(/MIN\(closed_at\)/);
+    expect(fix).toMatch(/GREATEST\(1,/);
+  });
+});
