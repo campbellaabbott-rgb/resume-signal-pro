@@ -182,8 +182,25 @@ export function filterViolations(
       push("experience", a.experience.join("|"), r.experienceBand);
     }
     if (a.remote && r.remote !== true) push("remote", "true", r.remote);
-    if (a.companies.length && !a.companies.includes(String(r.companyToken ?? ""))) {
-      push("companies", `${a.companies.length} token(s)`, r.companyToken);
+    // `token` is what rowToJob actually emits for the company feed token — NOT
+    // `companyToken`, which is what this line read when it was first written.
+    // Consequence had it shipped: with a companies filter active every row would
+    // have compared undefined against the token list and been flagged, so every
+    // company lander page — a primary SEO surface — would have logged an error,
+    // written a false incident, and returned filterIntegrity to the client. A
+    // permanent red light on a board that was working.
+    //
+    // Caught by reading rowToJob's emitted keys, not by the tests: all 26 passed,
+    // because the fixtures were written with the same wrong name the code used.
+    // A test that invents its own field names only proves the code agrees with
+    // the test. The guard in board-filter-contract.test.ts now parses the real
+    // emitted names out of index.ts so this cannot drift again.
+    // No `?? r.companyToken` fallback: the guard rejected it, correctly. rowToJob
+    // is the only producer of these rows, it emits `token`, and a fallback to a
+    // name nothing emits is dead code that quietly re-legitimises the mistake.
+    const tok = String(r.token ?? "");
+    if (a.companies.length && !a.companies.includes(tok)) {
+      push("companies", `${a.companies.length} token(s)`, tok);
     }
     // Undated rows are EXCLUDED by the maxAgeDays predicate at the database, so
     // a row with no postedAt reaching us under that filter is itself the defect.

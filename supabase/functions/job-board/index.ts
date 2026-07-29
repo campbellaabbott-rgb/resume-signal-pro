@@ -2697,10 +2697,25 @@ Deno.serve(async (req) => {
       const findings: Array<{ case: string; kind: string; detail: string }> = [];
       const timings: Array<{ case: string; ms: number }> = [];
 
-      for (const c of FILTER_CASES) {
+      // BOUNDED PARALLELISM, not a nicety. Sequentially this issues ~40 HTTP
+      // probes at the 2-5s each measured on this board — 80-200s, past the
+      // wall clock, so the audit would die before writing its result and the
+      // status row would sit stale while looking merely "not run yet". Four at
+      // a time brings it to roughly 25-35s while keeping the synthetic load on
+      // the board it is watching modest.
+      const inBatches = async <T, R>(items: T[], size: number, fn: (t: T) => Promise<R>): Promise<R[]> => {
+        const out: R[] = [];
+        for (let i = 0; i < items.length; i += size) {
+          out.push(...await Promise.all(items.slice(i, i + size).map(fn)));
+        }
+        return out;
+      };
+      const BATCH = 4;
+
+      await inBatches(FILTER_CASES, BATCH, async (c) => {
         const r = await probe(c.body);
         timings.push({ case: c.name, ms: r.ms });
-        if (!r.ok) { findings.push({ case: c.name, kind: "request-failed", detail: String(r.body.error ?? "").slice(0, 80) }); continue; }
+        if (!r.ok) { findings.push({ case: c.name, kind: "request-failed", detail: String(r.body.error ?? "").slice(0, 80) }); return; }
         const jobs = Array.isArray(r.body.jobs) ? r.body.jobs as Array<Record<string, unknown>> : [];
         // PRECISION — reuse the SAME predicate the live self-check uses, so the
         // audit and the request agree by construction rather than by discipline.
@@ -2731,20 +2746,20 @@ Deno.serve(async (req) => {
             }
           }
         }
-      }
+      });
 
-      for (const c of IGNORE_CASES) {
+      await inBatches(IGNORE_CASES, BATCH, async (c) => {
         const r = await probe(c.body);
         const ig = Array.isArray(r.body.ignoredFilters) ? r.body.ignoredFilters as string[] : [];
         if (!ig.includes(c.expect)) {
           findings.push({ case: c.name, kind: "silent-drop", detail: `expected "${c.expect}" in ignoredFilters, got [${ig.join(",")}]` });
         }
-      }
+      });
 
-      for (const c of QUERY_CASES) {
+      await inBatches(QUERY_CASES, BATCH, async (c) => {
         const r = await probe({ q: c.q, limit: 10 });
         timings.push({ case: `q=${c.q}`, ms: r.ms });
-        if (!r.ok) { findings.push({ case: `q=${c.q}`, kind: "request-failed", detail: String(r.body.error ?? "").slice(0, 80) }); continue; }
+        if (!r.ok) { findings.push({ case: `q=${c.q}`, kind: "request-failed", detail: String(r.body.error ?? "").slice(0, 80) }); return; }
         const jobs = Array.isArray(r.body.jobs) ? r.body.jobs as unknown[] : [];
         const total = typeof r.body.total === "number" ? r.body.total : null;
         if (c.minTotal === 0) {
@@ -2754,14 +2769,16 @@ Deno.serve(async (req) => {
         } else if (total !== null && r.body.countCapped !== true && total < c.minTotal) {
           findings.push({ case: `q=${c.q}`, kind: "thin-results", detail: `${c.note}: total ${total} < floor ${c.minTotal}` });
         }
-      }
+      });
 
       // PAGINATION INTEGRITY — the interleave regression duplicated rows onto
       // page 2 and dropped others forever, and no unit test could see it because
       // it only exists across two requests.
-      for (const shape of [{}, { category: "design" }, { q: "nurse" }]) {
+      // Offsets within one shape must stay ordered; the three shapes are
+      // independent, so they walk concurrently.
+      await Promise.all([{}, { category: "design" }, { q: "nurse" }].map(async (shape) => {
         const seen: string[] = [];
-        let label = Object.keys(shape).length ? JSON.stringify(shape) : "no-filter";
+        const label = Object.keys(shape).length ? JSON.stringify(shape) : "no-filter";
         for (let off = 0; off < 240; off += 60) {
           const r = await probe({ ...shape, offset: off });
           const jobs = Array.isArray(r.body.jobs) ? r.body.jobs as Array<Record<string, unknown>> : [];
@@ -2770,7 +2787,7 @@ Deno.serve(async (req) => {
         }
         const dupes = seen.length - new Set(seen).size;
         if (dupes > 0) findings.push({ case: `paging ${label}`, kind: "duplicate-rows", detail: `${dupes} of ${seen.length} repeated across pages` });
-      }
+      }));
 
       const slow = timings.filter((t) => t.ms > 15_000);
       const payload = {

@@ -146,6 +146,73 @@ describe("filterViolations — the per-request self-check", () => {
     expect(filterViolations([{ location: "Remote - EU" }], { ...base, location: "Berlin" })).toEqual([]);
   });
 
+  // THE GUARD THAT WOULD HAVE CAUGHT THE REAL BUG.
+  //
+  // filterViolations read `r.companyToken`. rowToJob emits `token`. So with a
+  // companies filter active, every row compared undefined against the token list
+  // and was flagged — every company lander page would have logged an error,
+  // written a false incident, and returned filterIntegrity on a working board.
+  //
+  // All 26 tests here passed through that, because the fixtures used the same
+  // wrong name the implementation did. A test that invents its own field names
+  // proves only that the code agrees with the test. So this one does not invent
+  // them: it parses the keys rowToJob ACTUALLY emits out of index.ts and requires
+  // every field filterViolations reads to be one of them.
+  it("only reads fields rowToJob actually emits", () => {
+    const index = readFileSync(
+      resolve(__dirname, "../../supabase/functions/job-board/index.ts"),
+      "utf8",
+    );
+    const start = index.indexOf("const rowToJob");
+    expect(start, "rowToJob should exist").toBeGreaterThan(-1);
+    // rowToJob's keys sit at 2 spaces, not 4 — the first version of this regex
+    // assumed 4, parsed zero keys, and failed with "expected 0 to be greater
+    // than 10". Worth noting: it failed LOUDLY on an empty parse rather than
+    // quietly passing an empty set, which is the only reason it was a nuisance
+    // and not a second silent hole. Guards that scrape source have to assert
+    // they actually scraped something.
+    const end = index.indexOf("\n});", start);
+    const block = index.slice(start, end > start ? end : start + 3000);
+    const emitted = new Set(
+      [...block.matchAll(/^\s+([a-zA-Z][a-zA-Z0-9]*):/gm)].map((m) => m[1]),
+    );
+    expect(emitted.size, "should have parsed rowToJob's keys").toBeGreaterThan(10);
+    expect(emitted.has("token")).toBe(true);
+
+    const src = readFileSync(
+      resolve(__dirname, "../../supabase/functions/job-board/filters.ts"),
+      "utf8",
+    );
+    // EXECUTABLE LINES ONLY. The first version scanned the raw slice and matched
+    // its OWN comment — the line explaining why there is no `r.companyToken`
+    // fallback contains `r.companyToken`. That is the fourth guard this session
+    // to fail on its own explanation; scoping is the fix, every time.
+    const fnStart = src.indexOf("export function filterViolations");
+    const body = src.slice(fnStart)
+      .split("\n")
+      .filter((l) => !l.trim().startsWith("//"))
+      .join("\n");
+    const read = new Set(
+      [...body.matchAll(/\br\.([a-zA-Z][a-zA-Z0-9]*)/g)].map((m) => m[1]),
+    );
+    // Number helpers reached through `Number.` land in the same regex; drop them.
+    const fields = [...read].filter((f) => !["isFinite", "isNaN"].includes(f));
+    const unknown = fields.filter((f) => !emitted.has(f));
+    expect(
+      unknown,
+      `filterViolations reads field(s) rowToJob never emits: ${unknown.join(", ")} — ` +
+        `every row would be flagged whenever that filter is active`,
+    ).toEqual([]);
+  });
+
+  it("flags a company mismatch using the real field name", () => {
+    const a = { ...base, companies: ["gsknch~wd3~GSKCareers"] };
+    expect(filterViolations([{ token: "gsknch~wd3~GSKCareers" }], a)).toEqual([]);
+    expect(filterViolations([{ token: "someone-else" }], a)[0]?.field).toBe("companies");
+    // The bug: with the wrong key this row read undefined and was flagged.
+    expect(filterViolations([{ token: "gsknch~wd3~GSKCareers", companyToken: undefined }], a)).toEqual([]);
+  });
+
   it("is silent on a clean page", () => {
     const a = { ...base, country: "DE", category: "engineering", remote: true };
     const rows = Array.from({ length: 60 }, () => ({ country: "DE", category: "engineering", remote: true }));
