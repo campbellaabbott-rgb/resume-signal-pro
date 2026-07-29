@@ -817,7 +817,10 @@ export default function Jobs() {
       category: category || undefined,
       experience: experience || undefined,
       location: location || undefined,
-      remote: remoteOnly || workMode === "remote" || undefined,
+      // ONE definition of Remote — see the note at the other call site. Sending
+      // remote:true alongside workMode ANDed a strict subset onto the user's own
+      // choice and dropped matches (7.6% on {workMode:remote,country:GB}).
+      remote: (remoteOnly && !workMode) || undefined,
       workMode: workMode || undefined,
       company: company || undefined,
       country: country || undefined,
@@ -883,7 +886,13 @@ export default function Jobs() {
           action: "list",
           q: q || undefined,
           location: location || undefined,
-          remote: remoteOnly || workMode === "remote" || undefined,
+          // ONE definition of Remote. `remote:true` is a strict subset of
+          // work_mode='remote', so sending both ANDed them and silently dropped
+          // matches the user's own filter should include — 7.6% on
+          // {workMode:remote,country:GB}, 5.2% design, 11.3% data_ai. The legacy
+          // boolean now serves only the standalone "Remote only" toggle, the one
+          // case where the user picked no work mode at all.
+          remote: (remoteOnly && !workMode) || undefined,
       workMode: workMode || undefined,
           category: category || undefined,
           country: country || undefined,
@@ -955,19 +964,30 @@ export default function Jobs() {
     // this rewrite clobbers a shared link on mount before the panel can open.
     const jobParam = new URLSearchParams(window.location.search).get("job");
     if (jobParam) p.set("job", jobParam);
+    // Freshness and sort were never written, so "Today"/"This week" and a
+    // salary-sorted board both silently reverted on reload and could not be
+    // shared. Measured: freshness narrowed 3,940 -> 965 in-session and came back
+    // 3,940 after reloading the app's OWN url; ?sort=salary survived 0 of 1
+    // mounts, which also broke Explore's "Where the pay is" links.
+    if (freshness) p.set("fresh", freshness);
+    if (sortMode === "salary") p.set("sort", sortMode);
+    // `from` is only read into state at mount, so this rewrite stripped it and
+    // took the Back-to-Explore affordance with it.
+    const fromParam = new URLSearchParams(window.location.search).get("from");
+    if (fromParam) p.set("from", fromParam);
     const qs = p.toString();
     // !workMode belongs in both gates: without it, picking Hybrid on a lander
     // kept the bare lander URL and reload/share silently dropped the filter.
-    if (landerCompany && company === landerCompany && !q && !location && !remoteOnly && !workMode && !category && !experience && !salaryFloor && !country) {
+    if (landerCompany && company === landerCompany && !q && !location && !remoteOnly && !workMode && !category && !experience && !salaryFloor && !country && !freshness && sortMode !== "salary") {
       window.history.replaceState({}, "", `/jobs/company/${landerCompany}${jobParam ? `?job=${encodeURIComponent(jobParam)}` : ""}`);
       return;
     }
-    if (landerCategory && category === landerCategory && !q && !location && !remoteOnly && !workMode && !company && !experience && !salaryFloor && !country) {
+    if (landerCategory && category === landerCategory && !q && !location && !remoteOnly && !workMode && !company && !experience && !salaryFloor && !country && !freshness && sortMode !== "salary") {
       window.history.replaceState({}, "", `/jobs/field/${landerCategory}${jobParam ? `?job=${encodeURIComponent(jobParam)}` : ""}`);
       return;
     }
     window.history.replaceState({}, "", qs ? `/jobs?${qs}` : "/jobs");
-  }, [q, location, remoteOnly, workMode, company, category, experience, country, salaryFloor, landerCategory, landerCompany]);
+  }, [q, location, remoteOnly, workMode, company, category, experience, country, salaryFloor, freshness, sortMode, landerCategory, landerCompany]);
 
   // Category salary benchmarks: median advertised pay floor per field, computed
   // live from postings that state pay (RPC self-gates at n>=30 — a thin sample
@@ -1839,10 +1859,26 @@ export default function Jobs() {
   // (same company + same title) collapses into ONE card with a "+N more locations"
   // expander. Nothing is deleted — every posting is a real, distinct opening and
   // stays applyable inside the group; this only stops it flooding the list.
+  // Countries visible in the rows we already hold. Used only when the facet RPC
+  // fails; no counts are shown for these, because we genuinely do not know them.
+  const fallbackCountries = useMemo(
+    () => Array.from(new Set(jobs.map((j) => j.country).filter((c): c is string => !!c))).sort(),
+    [jobs],
+  );
+
   const groupedJobs = useMemo(() => {
     const map = new Map<string, { primary: BoardJob; siblings: BoardJob[] }>();
     const order: Array<{ primary: BoardJob; siblings: BoardJob[] }> = [];
+    // Drop repeated ids BEFORE grouping. Pages are appended, and the corpus
+    // shifts under a paginating reader (the cap deletes, ingest inserts), so the
+    // same posting can legitimately arrive twice — measured up to 14 repeats per
+    // 240 appended rows. Grouping keys on company+title, so a duplicate id
+    // became a phantom "+1 more locations" sibling AND inflated both the
+    // "Showing N" line and the load-more gate. One posting, one card.
+    const seenIds = new Set<string>();
     for (const j of displayJobs) {
+      if (seenIds.has(j.id)) continue;
+      seenIds.add(j.id);
       const key = `${(j.token ?? j.company).toLowerCase()}|${j.title.trim().toLowerCase()}`;
       const g = map.get(key);
       if (g) {
@@ -2219,7 +2255,7 @@ export default function Jobs() {
     let cancelled = false;
     (async () => {
       try {
-        const { data: r } = await invokeBoard<{ total?: number }>({
+        const { data: r } = await invokeBoard<{ total?: number; countCapped?: boolean }>({
           action: "list", countOnly: true, includeFacets: false,
           q: q || undefined, location: location || undefined,
           category: category || undefined, experience: experience || undefined,
@@ -2233,6 +2269,12 @@ export default function Jobs() {
         });
         const without = r?.total;
         if (cancelled || typeof without !== "number") return;
+        // The server caps this count at 10,000 and flags it. Subtracting the
+        // filtered total from a CAPPED total and presenting the difference as
+        // exact understates it without bound: measured hidden 9,863 against a
+        // true 19,361 — 49.1% short. If the denominator is capped we cannot
+        // state the gap, so we say nothing rather than a comfortable number.
+        if (r?.countCapped) { setDisclosure(null); return; }
         const hidden = without - data.total;
         // Only worth saying when the silent majority is actually large.
         setDisclosure(hidden > data.total ? { kind, shown: data.total, hidden } : null);
@@ -3083,7 +3125,14 @@ export default function Jobs() {
                 </option>
               ))}
             </select>
-            {countryFacet.length > 0 && (
+            {/* Not gated on the facet. get_country_facet returns 57014 on every
+                call in production (10 of 10, 3.20-3.32s), and the code's own
+                retry fails too — so this control rendered 0% of the time and no
+                country was reachable except by hand-editing the URL. Counts are
+                an enrichment; their absence must not remove the filter itself.
+                When the facet is empty we fall back to the countries actually
+                present in the current result set. */}
+            {(countryFacet.length > 0 || fallbackCountries.length > 0) && (
               <select
                 value={country}
                 onChange={(e) => setCountry(e.target.value)}
@@ -3092,7 +3141,7 @@ export default function Jobs() {
                 title={t("jobsPage.countryTip", "Country read from each posting's own location text — postings we can't place are excluded while this is on, never guessed.")}
               >
                 <option value="">{t("jobsPage.allCountries", "All countries")}</option>
-                {countryFacet.map((c) => (
+                {(countryFacet.length ? countryFacet : fallbackCountries.map((c) => ({ country: c, n: 0 }))).map((c) => (
                   <option key={c.country} value={c.country}>
                     {countryLabel(c.country)} ({c.n.toLocaleString()})
                   </option>

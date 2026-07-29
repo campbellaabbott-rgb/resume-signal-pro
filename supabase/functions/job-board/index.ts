@@ -79,7 +79,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-07-29.5";
+const BUILD_VERSION = "2026-07-29.6";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -4701,7 +4701,13 @@ async function serveList(
                 totalAllCompanies: (v0.total as number) ?? 0,
                 companies: [],
                 companiesCount: ((v0.companiesFacet as unknown[]) ?? []).length,
-                categories: (v0.categoriesFacet as Record<string, number>) ?? {},
+                // Board-wide, from the cached facet row — CORRECT only on the unfiltered
+          // view. Rendered inside a filtered view it overstated by 15.7x to 45x
+          // (sum 587,793 shown beside a filtered total of 10,000 or less), which
+          // is a wrong number on every filtered session. Omit rather than
+          // mislead: the UI already handles an absent facet, and a count we
+          // cannot scope to the query is a count we should not publish.
+          categories: unfiltered ? ((v0.categoriesFacet as Record<string, number>) ?? {}) : undefined,
                 failedSources: (v0.failedSources as string[]) ?? [],
                 refreshedAt: (v0.refreshedAt as string) ?? null,
                 fuzzy: qText,
@@ -4747,7 +4753,13 @@ async function serveList(
                     totalAllCompanies: (v0.total as number) ?? 0,
                     companies: [],
                     companiesCount: ((v0.companiesFacet as unknown[]) ?? []).length,
-                    categories: (v0.categoriesFacet as Record<string, number>) ?? {},
+                    // Board-wide, from the cached facet row — CORRECT only on the unfiltered
+          // view. Rendered inside a filtered view it overstated by 15.7x to 45x
+          // (sum 587,793 shown beside a filtered total of 10,000 or less), which
+          // is a wrong number on every filtered session. Omit rather than
+          // mislead: the UI already handles an absent facet, and a count we
+          // cannot scope to the query is a count we should not publish.
+          categories: unfiltered ? ((v0.categoriesFacet as Record<string, number>) ?? {}) : undefined,
                     failedSources: (v0.failedSources as string[]) ?? [],
                     refreshedAt: (v0.refreshedAt as string) ?? null,
                     semantic: qText,
@@ -4817,7 +4829,13 @@ async function serveList(
                 .sort((a, b) => (b.count ?? 0) - (a.count ?? 0))
             : [],
           companiesCount: fullCompanies0.length,
-          categories: (v0.categoriesFacet as Record<string, number>) ?? {},
+          // Board-wide, from the cached facet row — CORRECT only on the unfiltered
+          // view. Rendered inside a filtered view it overstated by 15.7x to 45x
+          // (sum 587,793 shown beside a filtered total of 10,000 or less), which
+          // is a wrong number on every filtered session. Omit rather than
+          // mislead: the UI already handles an absent facet, and a count we
+          // cannot scope to the query is a count we should not publish.
+          categories: unfiltered ? ((v0.categoriesFacet as Record<string, number>) ?? {}) : undefined,
           failedSources: (v0.failedSources as string[]) ?? [],
           refreshedAt: (v0.refreshedAt as string) ?? null,
           ranked: true,

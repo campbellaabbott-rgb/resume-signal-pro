@@ -1193,3 +1193,61 @@ describe("the same-employer interleave cannot lose a posting", () => {
     expect(fn).toMatch(/if \(!sortSalary\)/);
   });
 });
+
+// Filter-audit batch 3. Each of these was measured against production before
+// being changed; the numbers live in the commit message.
+describe("filters send and show one honest definition", () => {
+  const jobs = readFileSync(resolve(root, "src/pages/Jobs.tsx"), "utf8");
+  const fn = readFileSync(resolve(root, "supabase/functions/job-board/index.ts"), "utf8");
+
+  it("the UI sends ONE Remote predicate, not two that AND together", () => {
+    // remote=true is a strict subset of work_mode='remote', so sending both
+    // narrowed the user's own filter — 7.6% on {workMode:remote,country:GB}.
+    expect(jobs).toMatch(/remote: \(remoteOnly && !workMode\) \|\| undefined,/);
+    expect(jobs).not.toMatch(/remote: remoteOnly \|\| workMode === "remote"/);
+  });
+
+  it("freshness, sort and from survive a reload and a shared link", () => {
+    // Measured: freshness narrowed 3,940 -> 965 then reverted to 3,940 after
+    // reloading the app's OWN url; ?sort=salary survived 0 of 1 mounts.
+    expect(jobs).toMatch(/p\.set\("fresh", freshness\)/);
+    expect(jobs).toMatch(/p\.set\("sort", sortMode\)/);
+    expect(jobs).toMatch(/p\.set\("from", fromParam\)/);
+  });
+
+  it("a repeated id cannot become a phantom sibling", () => {
+    // Pages are appended and the corpus shifts under a paginating reader, so
+    // the same posting legitimately arrives twice — up to 14 per 240 rows. The
+    // grouping keys on company+title, so a duplicate became a "+1 more
+    // locations" sibling AND inflated the count and the load-more gate.
+    expect(jobs).toMatch(/const seenIds = new Set<string>\(\);/);
+    expect(jobs).toMatch(/if \(seenIds\.has\(j\.id\)\) continue;/);
+  });
+
+  it("the hidden-openings disclosure refuses a capped denominator", () => {
+    // Subtracting a filtered total from a CAPPED one understates without bound:
+    // rendered 9,863 against a true 19,361.
+    expect(jobs).toMatch(/if \(r\?\.countCapped\) \{ setDisclosure\(null\); return; \}/);
+  });
+
+  it("the country control does not vanish when its facet RPC fails", () => {
+    // get_country_facet returned 57014 on 10 of 10 calls, so the picker
+    // rendered 0% of the time and no country was selectable at all.
+    expect(jobs).toMatch(/countryFacet\.length > 0 \|\| fallbackCountries\.length > 0/);
+    expect(jobs).toMatch(/const fallbackCountries = useMemo\(/);
+  });
+
+  it("board-wide facet counts are not shown inside a filtered view", () => {
+    // Correct on exactly one view and misleading on all others: sum 587,793
+    // rendered beside a filtered total of 10,000 or less — 15.7x to 45x over.
+    expect(fn.match(/categories: unfiltered \?/g)?.length).toBe(3);
+    expect(fn).not.toMatch(/categories: \(v0\.categoriesFacet as Record<string, number>\) \?\? \{\},/);
+  });
+
+  it("the country facet RPC counts only servable rows", () => {
+    const mig = readFileSync(resolve(root, "supabase/migrations/20260729110000_filter_rpc_timeouts.sql"), "utf8");
+    expect(mig).toMatch(/SET statement_timeout = '20s'/);
+    expect(mig).toMatch(/AND missing_since IS NULL/);
+    expect(mig).toMatch(/SECURITY DEFINER/);
+  });
+});
