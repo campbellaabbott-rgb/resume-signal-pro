@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
+import { isUnfiltered, normalizeFilters } from "../../supabase/functions/job-board/filters.ts";
 
 // /trust and /methodology — the two pages whose entire purpose is to be
 // believed — carried the worst claims on the site until 2026-07-27:
@@ -1138,26 +1139,44 @@ describe("the fill-speed repair replaces rather than overloads", () => {
 describe("enum filters are case-folded once, at the door", () => {
   const fn = readFileSync(resolve(root, "supabase/functions/job-board/index.ts"), "utf8");
 
-  it("normalises before anything reads them", () => {
-    expect(fn).toMatch(/if \(typeof body\.category === "string"\) body\.category = body\.category\.toLowerCase\(\);/);
-    expect(fn).toMatch(/if \(typeof body\.workMode === "string"\) body\.workMode = body\.workMode\.toLowerCase\(\);/);
+  // REWRITTEN 2026-07-29, and the reason is worth keeping.
+  //
+  // The original three assertions matched the SOURCE TEXT of the morning's fix
+  // — `if (typeof body.category === "string") body.category = ...` — and its
+  // character offset relative to the gate. That guards one implementation, not
+  // the behaviour. When the fix was replaced by a stronger mechanism (a single
+  // normalisation in filters.ts feeding every site), all three went red while
+  // the property they exist to protect held BETTER than before.
+  //
+  // A guard that fails when the code improves teaches people to delete guards.
+  // These run the real normaliser instead, so any implementation that folds
+  // casing correctly passes, and any that stops folding fails.
+  it("folds every enum filter, whatever casing arrives", () => {
+    expect(normalizeFilters({ category: "Engineering" }, 1).applied.category).toBe("engineering");
+    expect(normalizeFilters({ category: "ENGINEERING" }, 1).applied.category).toBe("engineering");
+    expect(normalizeFilters({ workMode: "REMOTE" }, 1).applied.workMode).toBe("remote");
+    expect(normalizeFilters({ workMode: "Hybrid" }, 1).applied.workMode).toBe("hybrid");
+    expect(normalizeFilters({ country: "de" }, 1).applied.country).toBe("DE");
   });
 
-  it("the normalisation precedes the unfiltered gate", () => {
-    // If it lands after, the gate still sees the raw value and the bug returns.
-    const norm = fn.indexOf('body.category = body.category.toLowerCase()');
-    const gate = fn.indexOf('!(JOB_CATEGORIES as readonly string[]).includes(String(body.category ?? ""))');
-    expect(norm).toBeGreaterThan(-1);
-    expect(gate).toBeGreaterThan(-1);
-    expect(norm).toBeLessThan(gate);
+  it("the gate sees the FOLDED value — a mixed-case filter is never read as unfiltered", () => {
+    // This is the actual defect: `unfiltered` compared the raw casing, decided
+    // no count was needed, and published the whole catalogue's total — 587,793
+    // — above 3,949 correctly filtered results.
+    expect(isUnfiltered(normalizeFilters({ category: "Engineering" }, 1).applied)).toBe(false);
+    expect(isUnfiltered(normalizeFilters({ workMode: "REMOTE" }, 1).applied)).toBe(false);
+    expect(isUnfiltered(normalizeFilters({ country: "de" }, 1).applied)).toBe(false);
   });
 
-  it("cappedCount folds too — a second, independent instance", () => {
-    // This one dropped the work-mode predicate entirely on a mixed-case value:
-    // design+Remote reported 3,940, exactly the count with the predicate absent,
-    // against a true 616. It fires only when a SECOND filter is active, so it
-    // survives any fix to the gate above.
-    expect(fn).not.toMatch(/const wm = String\(body\.workMode \?\? ""\);\s*$/m);
+  it("the count cannot bind a different value than the page", () => {
+    // The second instance: cappedCount re-derived work mode with its own
+    // expression and dropped the predicate on a mixed-case value — design+Remote
+    // reported 3,940, exactly the count with the predicate absent. It fired only
+    // when a SECOND filter was active, so it survived the fix to the gate above.
+    // Both sites now read `applied`, so there is no second expression to drift.
+    expect(fn).not.toMatch(/const wm\w* = String\(body\.workMode/);
+    expect(fn).toContain("p_work_mode: applied.workMode");
+    expect(fn).toContain("normalizeFilters(body");
   });
 });
 
@@ -1276,9 +1295,17 @@ describe("slow work degrades instead of failing the request", () => {
     // country="USA" returned 3,939 — the whole design category — because the
     // value was silently discarded and the board answered the unfiltered
     // question instead.
-    expect(fn).toMatch(/const ignoredFilters: string\[\] = \[\];/);
-    expect(fn).toMatch(/ignoredFilters\.push\("country"\)/);
-    expect(fn).toMatch(/ignoredFilters\.push\("experience"\)/);
+    //
+    // Asserted by RUNNING the normaliser, not by matching the four source lines
+    // that used to implement it. The earlier version pinned
+    // `const ignoredFilters: string[] = [];` and two literal .push() calls, so
+    // it failed the moment the same behaviour moved into filters.ts — while
+    // simultaneously missing the array-shaped hole those very lines left open
+    // (experience:["bogus"] was reported by neither the code nor this guard).
+    expect(normalizeFilters({ country: "USA" }, 1).ignored).toContain("country");
+    expect(normalizeFilters({ experience: "bogus" }, 1).ignored).toContain("experience");
+    expect(normalizeFilters({ experience: ["bogus"] }, 1).ignored).toContain("experience");
+    // ...and it still has to reach the caller.
     expect(fn).toMatch(/\.\.\.\(ignoredFilters\.length \? \{ ignoredFilters \} : \{\}\)/);
   });
 

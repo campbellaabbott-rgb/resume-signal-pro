@@ -52,6 +52,7 @@ import { classifyDormancy, updateBoardFailures, type BoardFailureState } from ".
 import { advanceProgress, isPassDone, type RefreshProgress } from "./rotation.ts";
 import { CANARIES, rawItemCount, aggregateVendorHealth, type CanaryResult } from "./vendor-canary.ts";
 import { detectExperience, isExperienceBand } from "./experience.ts";
+import { filterViolations, isUnfiltered, normalizeFilters } from "./filters.ts";
 import { expandQuery } from "./search-alias.ts";
 import { classifyQuestion } from "../_shared/application-questions.ts";
 
@@ -79,7 +80,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-07-29.8";
+const BUILD_VERSION = "2026-07-29.9";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -4357,40 +4358,19 @@ async function serveList(
   // the filter had applied. The fence in this codebase is that a filter is
   // never silently ignored, so anything we drop is named back to the caller in
   // `ignoredFilters` and the UI can tell the user which constraint did nothing.
-  const ignoredFilters: string[] = [];
-  if (typeof body.country === "string" && body.country && !/^[A-Za-z]{2}$/.test(body.country)) {
-    ignoredFilters.push("country");
-    delete body.country;
-  }
-  if (typeof body.experience === "string" && body.experience &&
-      !["entry", "mid", "senior", "lead", "executive"].includes(body.experience.toLowerCase())) {
-    ignoredFilters.push("experience");
-    delete body.experience;
-  }
-  if (typeof body.category === "string" && body.category &&
-      !(JOB_CATEGORIES as readonly string[]).includes(body.category.toLowerCase())) {
-    ignoredFilters.push("category");
-    delete body.category;
-  }
-  if (typeof body.workMode === "string" && body.workMode &&
-      !["remote", "hybrid", "onsite"].includes(body.workMode.toLowerCase())) {
-    ignoredFilters.push("workMode");
-    delete body.workMode;
-  }
-  if (typeof body.category === "string") body.category = body.category.toLowerCase();
-  if (typeof body.workMode === "string") body.workMode = body.workMode.toLowerCase();
-  const unfiltered =
-    !String(body.q ?? "").trim() &&
-    !String(body.location ?? "").trim() &&
-    !/^[A-Za-z]{2}$/.test(String(body.country ?? "")) &&
-    body.remote !== true &&
-    !["remote", "hybrid", "onsite"].includes(String(body.workMode ?? "")) &&
-    !(JOB_CATEGORIES as readonly string[]).includes(String(body.category ?? "")) &&
-    !String(body.experience ?? "").trim() &&
-    !(Number(body.salaryFloor) > 0) &&
-    !(Array.isArray(body.companies) && body.companies.length) &&
-    !(Number(body.maxAgeDays) >= 1) &&
-    typeof body.postedAfter !== "string";
+  // ONE normalisation, in filters.ts, feeding the gate, the row query, the count
+  // and the per-page self-check. Three hand-maintained copies of this list used
+  // to exist — the validation ifs, the `unfiltered` conjunction, and buildQuery —
+  // and every filter bug shipped so far was two of them disagreeing:
+  //   * `unfiltered` compared the RAW casing while buildQuery lower-cased, so
+  //     category=Engineering published 587,793 over a filtered page.
+  //   * the gate read `typeof experience === "string"` while buildQuery read
+  //     String(experience).split(","), so experience=["bogus"] bound no
+  //     predicate AND reported nothing — the unfiltered board dressed as a
+  //     filtered one. Verified live before this change; see filters.ts.
+  // A fourth site could not be kept in sync by discipline, so there is one.
+  const { applied, ignored: ignoredFilters } = normalizeFilters(body, JOB_SOURCES.length);
+  const unfiltered = isUnfiltered(applied);
   const wantCount = !(unfiltered && Number.isFinite(metaTotal) && metaTotal > 0);
   // withCount is separable from wantCount so a page can be re-run WITHOUT the
   // count when the count is what failed. Measured 2026-07-25 on the 570k table:
@@ -4430,7 +4410,7 @@ async function serveList(
     // stricter one and silently narrows the user's own choice. Measured:
     // {workMode:remote,country:GB} 1,518 vs 1,403 UI-shaped (7.6% lost),
     // design 614 -> 582 (5.2%), data_ai 848 -> 752 (11.3%).
-    if (body.remote === true && !["remote", "hybrid", "onsite"].includes(String(body.workMode ?? "").toLowerCase())) {
+    if (applied.remote && !applied.workMode) {
       q = q.eq("remote", true);
     }
     // Work-mode filter: definitive vendor/text-stated tags only. Postings that
@@ -4439,21 +4419,19 @@ async function serveList(
     // Case-normalized (audit: {workMode:"Remote"} silently served the full
     // unfiltered board to API callers — the fence says filters are never
     // silently ignored, so at minimum every casing of a real value binds).
-    const wm = String(body.workMode ?? "").toLowerCase();
-    if (wm === "remote" || wm === "hybrid" || wm === "onsite") q = q.eq("work_mode", wm);
+    if (applied.workMode) q = q.eq("work_mode", applied.workMode);
     // Country filter: exact match on the deterministically extracted code.
     // Postings whose location we couldn't place have country NULL and are
     // excluded by the filter — honestly, never guessed (the UI says so).
-    const country = String(body.country ?? "").toUpperCase();
-    if (/^[A-Z]{2}$/.test(country)) q = q.eq("country", country);
-    const category = String(body.category ?? "").toLowerCase();
-    if ((JOB_CATEGORIES as readonly string[]).includes(category)) q = q.eq("category", category);
+    if (applied.country) q = q.eq("country", applied.country);
+    if (applied.category) q = q.eq("category", applied.category);
     // Experience filter: one of entry/mid/senior/expert. "unspecified" rows are
     // never returned by a band filter — we only surface postings we can honestly
-    // place. Accepts a comma list so a user can widen (e.g. "senior,expert").
-    const expParam = String(body.experience ?? "").toLowerCase().split(",").map((s) => s.trim()).filter(isExperienceBand);
-    if (expParam.length === 1) q = q.eq("experience_band", expParam[0]);
-    else if (expParam.length > 1) q = q.in("experience_band", expParam);
+    // place. Accepts a comma list or an array so a user can widen; anything that
+    // does not resolve to a real band is reported in ignoredFilters rather than
+    // dropped, which is the defect this normalisation exists to close.
+    if (applied.experience.length === 1) q = q.eq("experience_band", applied.experience[0]);
+    else if (applied.experience.length > 1) q = q.in("experience_band", applied.experience);
     // Salary floor filters the annualized lower bound of the posting's OWN
     // stated pay, compared in APPROXIMATE USD via salary_rank_usd — the same
     // generated column salary sorting uses. The raw-number comparison this
@@ -4462,22 +4440,15 @@ async function serveList(
     // clear it. Postings without a stated salary, or whose currency we can't
     // identify (rank NULL), are excluded by the filter, honestly, not
     // guessed at. Displayed salaries stay exactly as the posting states them.
-    const floor = Number(body.salaryFloor);
-    if (Number.isFinite(floor) && floor > 0) q = q.gte("salary_rank_usd", Math.min(floor, 2_000_000));
-    if (Array.isArray(body.companies)) {
-      const tokens = body.companies.filter((c): c is string => typeof c === "string").slice(0, JOB_SOURCES.length);
-      if (tokens.length) q = q.in("company_token", tokens);
-    }
+    if (applied.salaryFloor !== null) q = q.gte("salary_rank_usd", applied.salaryFloor);
+    if (applied.companies.length) q = q.in("company_token", applied.companies);
     // Saved searches ask "how many NEW since I last looked" — a cheap count.
-    if (typeof body.postedAfter === "string" && !Number.isNaN(Date.parse(body.postedAfter))) {
-      q = q.gt(dateCol, body.postedAfter);
-    }
+    if (applied.postedAfter) q = q.gt(dateCol, applied.postedAfter);
     // "Posted this week" quick filter: company-stated dates ONLY (posted_at,
     // never first_seen — our discovery time can't make a posting fresh).
     // Undated postings are excluded by the filter, honestly; the UI says so.
-    const maxAge = Number(body.maxAgeDays);
-    if (Number.isFinite(maxAge) && maxAge >= 1) {
-      q = q.gte("posted_at", new Date(Date.now() - Math.min(maxAge, 30) * 86_400_000).toISOString());
+    if (applied.maxAgeDays !== null) {
+      q = q.gte("posted_at", new Date(Date.now() - applied.maxAgeDays * 86_400_000).toISOString());
     }
     return q;
   };
@@ -4491,12 +4462,9 @@ async function serveList(
   // leaves the existing exact-count path in charge.
   const COUNT_CAP = 10_000;
   const cappedCount = async (): Promise<{ n: number; capped: boolean } | null> => {
-    const expArr = String(body.experience ?? "").toLowerCase().split(",").map((x) => x.trim()).filter(isExperienceBand);
-    const compArr = Array.isArray(body.companies)
-      ? body.companies.filter((c): c is string => typeof c === "string").slice(0, JOB_SOURCES.length)
-      : [];
-    const maxAgeNum = Number(body.maxAgeDays);
-    const wm = String(body.workMode ?? "").toLowerCase(); // normalised at the door too; belt and braces
+    // Bound from `applied`, the same object buildQuery reads. These four used to
+    // be re-derived here with their own expressions; when one of those drifted
+    // from the query's, the count described a different question than the page.
     // Multi-term queries: the page ANDs each term (any of title/company/dept per
     // term) while the RPC treats p_q as ONE contiguous ILIKE. "senior nurse"
     // matches "Senior Registered Nurse" on the page but not in that count — the
@@ -4510,16 +4478,16 @@ async function serveList(
       const { data, error } = await client.rpc("count_jobs_capped", {
         p_fresh_cutoff: freshCutoffIso,
         p_q: qTerms.length === 1 ? qTerms[0] : null,
-        p_location: sanitizeTerm(String(body.location ?? "")) || null,
-        p_remote: body.remote === true ? true : null,
-        p_country: /^[A-Za-z]{2}$/.test(String(body.country ?? "")) ? String(body.country).toUpperCase() : null,
-        p_category: (JOB_CATEGORIES as readonly string[]).includes(String(body.category ?? "").toLowerCase()) ? String(body.category).toLowerCase() : null,
-        p_experience: expArr.length ? expArr : null,
-        p_salary_floor: Number(body.salaryFloor) > 0 ? Math.min(Number(body.salaryFloor), 2_000_000) : null,
-        p_companies: compArr.length ? compArr : null,
-        p_posted_after: typeof body.postedAfter === "string" && !Number.isNaN(Date.parse(body.postedAfter)) ? body.postedAfter : null,
-        p_max_age_days: Number.isFinite(maxAgeNum) && maxAgeNum >= 1 ? Math.min(maxAgeNum, 30) : null,
-        p_work_mode: ["remote", "hybrid", "onsite"].includes(wm) ? wm : null,
+        p_location: sanitizeTerm(applied.location) || null,
+        p_remote: applied.remote ? true : null,
+        p_country: applied.country,
+        p_category: applied.category,
+        p_experience: applied.experience.length ? applied.experience : null,
+        p_salary_floor: applied.salaryFloor,
+        p_companies: applied.companies.length ? applied.companies : null,
+        p_posted_after: applied.postedAfter,
+        p_max_age_days: applied.maxAgeDays,
+        p_work_mode: applied.workMode,
         p_cap: COUNT_CAP,
       });
       if (error || !Array.isArray(data) || !data.length) return null;
@@ -4541,26 +4509,20 @@ async function serveList(
     const qTextC = String(body.q ?? "").trim().slice(0, 200);
     if (qTextC && body.sort !== "salary" && body.sort !== "newest") {
       try {
-        const expArrC = String(body.experience ?? "").toLowerCase().split(",").map((x) => x.trim()).filter(isExperienceBand);
-        const compArrC = Array.isArray(body.companies)
-          ? body.companies.filter((c): c is string => typeof c === "string").slice(0, JOB_SOURCES.length)
-          : [];
-        const maxAgeC = Number(body.maxAgeDays);
-        const wmC = String(body.workMode ?? "").toLowerCase();
         const { q: expQC } = expandQuery(qTextC);
         const { data: rc, error: ec } = await client.rpc("search_jobs", {
           p_q: expQC,
           p_fresh_cutoff: freshCutoffIso,
-          p_location: sanitizeTerm(String(body.location ?? "")) || null,
-          p_remote: body.remote === true ? true : null,
-          p_country: /^[A-Za-z]{2}$/.test(String(body.country ?? "")) ? String(body.country).toUpperCase() : null,
-          p_category: (JOB_CATEGORIES as readonly string[]).includes(String(body.category ?? "").toLowerCase()) ? String(body.category).toLowerCase() : null,
-          p_experience: expArrC.length ? expArrC : null,
-          p_salary_floor: Number(body.salaryFloor) > 0 ? Math.min(Number(body.salaryFloor), 2_000_000) : null,
-          p_companies: compArrC.length ? compArrC : null,
-          p_posted_after: typeof body.postedAfter === "string" && !Number.isNaN(Date.parse(body.postedAfter)) ? body.postedAfter : null,
-          p_max_age_days: Number.isFinite(maxAgeC) && maxAgeC >= 1 ? Math.min(maxAgeC, 30) : null,
-          ...(["remote", "hybrid", "onsite"].includes(wmC) ? { p_work_mode: wmC } : {}),
+          p_location: sanitizeTerm(applied.location) || null,
+          p_remote: applied.remote ? true : null,
+          p_country: applied.country,
+          p_category: applied.category,
+          p_experience: applied.experience.length ? applied.experience : null,
+          p_salary_floor: applied.salaryFloor,
+          p_companies: applied.companies.length ? applied.companies : null,
+          p_posted_after: applied.postedAfter,
+          p_max_age_days: applied.maxAgeDays,
+          ...(applied.workMode ? { p_work_mode: applied.workMode } : {}),
           p_limit: 1,
           p_offset: 0,
         });
@@ -4600,12 +4562,6 @@ async function serveList(
   const qText = String(body.q ?? "").trim().slice(0, 200);
   if (qText && body.sort !== "salary" && body.sort !== "newest" && !countOnly) {
     try {
-      const expArr = String(body.experience ?? "").toLowerCase().split(",").map((x) => x.trim()).filter(isExperienceBand);
-      const compArr = Array.isArray(body.companies)
-        ? body.companies.filter((c): c is string => typeof c === "string").slice(0, JOB_SOURCES.length)
-        : [];
-      const maxAgeNum = Number(body.maxAgeDays);
-      const wmParam = String(body.workMode ?? "").toLowerCase();
       // Role-alias expansion (disclosed): "swe" also searches "software
       // engineer" etc. The expanded websearch string keeps the original
       // spelling as its own OR-branch, and the response names every added
@@ -4614,15 +4570,15 @@ async function serveList(
       const { data: ranked, error: rankErr } = await client.rpc("search_jobs", {
         p_q: expandedQ,
         p_fresh_cutoff: freshCutoffIso,
-        p_location: sanitizeTerm(String(body.location ?? "")) || null,
-        p_remote: body.remote === true ? true : null,
-        p_country: /^[A-Za-z]{2}$/.test(String(body.country ?? "")) ? String(body.country).toUpperCase() : null,
-        p_category: (JOB_CATEGORIES as readonly string[]).includes(String(body.category ?? "").toLowerCase()) ? String(body.category).toLowerCase() : null,
-        p_experience: expArr.length ? expArr : null,
-        p_salary_floor: Number(body.salaryFloor) > 0 ? Math.min(Number(body.salaryFloor), 2_000_000) : null,
-        p_companies: compArr.length ? compArr : null,
-        p_posted_after: typeof body.postedAfter === "string" && !Number.isNaN(Date.parse(body.postedAfter)) ? body.postedAfter : null,
-        p_max_age_days: Number.isFinite(maxAgeNum) && maxAgeNum >= 1 ? Math.min(maxAgeNum, 30) : null,
+        p_location: sanitizeTerm(applied.location) || null,
+        p_remote: applied.remote ? true : null,
+        p_country: applied.country,
+        p_category: applied.category,
+        p_experience: applied.experience.length ? applied.experience : null,
+        p_salary_floor: applied.salaryFloor,
+        p_companies: applied.companies.length ? applied.companies : null,
+        p_posted_after: applied.postedAfter,
+        p_max_age_days: applied.maxAgeDays,
         // Measured 2026-07-25: without this the ranked path silently dropped
         // the work-mode filter — workMode=remote + q=engineer returned 30 rows
         // that ALL had work_mode NULL, the exact opposite of the request.
@@ -4634,7 +4590,7 @@ async function serveList(
         // filter against an old signature) falls through to the recency path
         // below, which filters work mode correctly. The filter is honoured on
         // every route; it is never quietly ignored again.
-        ...(["remote", "hybrid", "onsite"].includes(wmParam) ? { p_work_mode: wmParam } : {}),
+        ...(applied.workMode ? { p_work_mode: applied.workMode } : {}),
         p_limit: fetchLimit,
         p_offset: offset,
       });
@@ -4664,14 +4620,10 @@ async function serveList(
         const filtersActive =
           !!sanitizeTerm(String(body.location ?? "")) ||
           body.remote === true ||
-          ["remote", "hybrid", "onsite"].includes(String(body.workMode ?? "").toLowerCase()) ||
-          /^[A-Za-z]{2}$/.test(String(body.country ?? "")) ||
-          (JOB_CATEGORIES as readonly string[]).includes(String(body.category ?? "").toLowerCase()) ||
-          String(body.experience ?? "").trim() !== "" ||
-          Number(body.salaryFloor) > 0 ||
-          (Array.isArray(body.companies) && body.companies.length > 0) ||
-          Number(body.maxAgeDays) >= 1 ||
-          typeof body.postedAfter === "string";
+          !!applied.workMode || !!applied.country || !!applied.category ||
+          applied.experience.length > 0 || applied.salaryFloor !== null ||
+          applied.companies.length > 0 || applied.maxAgeDays !== null ||
+          !!applied.postedAfter;
         // Empty ranked result: try the FAST trigram fuzzy fallback right here
         // ("desinger" → designer), then return an honest empty. Critically we
         // do NOT fall through to the recency path — its OR-of-ILIKE with an
@@ -4699,11 +4651,11 @@ async function serveList(
                 filters: {
                   route: "ranked",
                   rescued,
-                  category: String(body.category ?? "") || undefined,
-                  experience: String(body.experience ?? "") || undefined,
+                  category: applied.category ?? undefined,
+                  experience: applied.experience.join(",") || undefined,
                   remote: body.remote === true || undefined,
-                  workMode: ["remote", "hybrid", "onsite"].includes(wmParam) ? wmParam : undefined,
-                  country: /^[A-Za-z]{2}$/.test(String(body.country ?? "")) ? String(body.country).toUpperCase() : undefined,
+                  workMode: applied.workMode ?? undefined,
+                  country: applied.country ?? undefined,
                 },
               }),
             ).then(() => {}).catch(() => {}));
@@ -4948,7 +4900,7 @@ async function serveList(
       error = null;
       count = null;
       countUnavailable = true;
-      console.warn(`[JOB-BOARD] exact count timed out; served page without it (maxAgeDays=${String(body.maxAgeDays ?? "")} category=${String(body.category ?? "")})`);
+      console.warn(`[JOB-BOARD] exact count timed out; served page without it (maxAgeDays=${String(applied.maxAgeDays ?? "")} category=${String(applied.category ?? "")})`);
     }
   }
   if (error) throw error;
@@ -4969,10 +4921,10 @@ async function serveList(
         q: missQ,
         location: missLoc,
         filters: {
-          category: String(body.category ?? "") || undefined,
-          experience: String(body.experience ?? "") || undefined,
+          category: applied.category ?? undefined,
+          experience: applied.experience.join(",") || undefined,
           remote: body.remote === true || undefined,
-          salaryFloor: Number(body.salaryFloor) || undefined,
+          salaryFloor: applied.salaryFloor ?? undefined,
         },
         src: "list",
       }).then(({ error: e }) => { if (e) console.warn("[JOB-BOARD] search-miss log failed:", e.message); }),
@@ -5024,8 +4976,42 @@ async function serveList(
   // there produced 8 inversions in 59 adjacent pairs, up to $70k out of order,
   // directly contradicting "highest stated pay first".
   if (!sortSalary) grouped.jobs = interleaveByCompany(grouped.jobs);
+  // Self-check EVERY page against the filters we just told the caller we applied.
+  //
+  // The rows are already in memory, so this costs one pass over at most 60
+  // objects and no query — cheap enough to run on every request rather than in
+  // a nightly job that discovers yesterday's breakage tomorrow.
+  //
+  // This is the check the unit suite could not be: 1,010 tests were green while
+  // production returned country=null on every row, because the test asserted
+  // that rowToJob emits `country` and never that the SELECT fetches it. It
+  // proved the last link of the chain and nothing about the first. A predicate
+  // evaluated against the bytes actually being returned cannot be fooled that
+  // way — if the column stops arriving, or a filter silently stops binding,
+  // the very next request says so.
+  //
+  // It reports rather than throws: a caller with a full page of usable results
+  // should not get a 500 because a badge field regressed. The count is surfaced
+  // in the response so the property is externally testable, and logged so it is
+  // visible without a client.
+  const integrity = filterViolations(grouped.jobs, applied);
+  if (integrity.length) {
+    console.error(
+      `[JOB-BOARD] filter integrity: ${integrity.length} violation(s) on ${grouped.jobs.length} rows ` +
+        `— ${JSON.stringify(integrity.slice(0, 3))}`,
+    );
+  }
   return json({
     jobs: await attachRecheckedAt(client, grouped.jobs),
+    ...(integrity.length
+      ? {
+        filterIntegrity: {
+          violations: integrity.length,
+          rows: grouped.jobs.length,
+          fields: [...new Set(integrity.map((v) => v.field))],
+        },
+      }
+      : {}),
     // Named, never silent — see the validation block at the top of this action.
     ...(ignoredFilters.length ? { ignoredFilters } : {}),
     // Raw rows this page swallowed. The client MUST page by this rather than by
