@@ -879,8 +879,75 @@ describe("the board does not hand consecutive slots to one employer", () => {
   });
 
   it("defers rather than drops — every posting still appears", () => {
-    const h = fn.slice(fn.indexOf("function interleaveByCompany"), fn.indexOf("function interleaveByCompany") + 1400);
-    expect(h).toMatch(/return out\.concat\(deferred\);/);
+    // Assert the PROPERTY (deferred rows are always flushed), not the exact
+    // return expression: the first version pinned `return out.concat(deferred)`
+    // and broke when the tie-group bound replaced it with flush(); return out.
+    const h = fn.slice(fn.indexOf("function interleaveByCompany"), fn.indexOf("function interleaveByCompany") + 2200);
+    expect(h).toMatch(/const flush = \(\) => \{ out\.push\(\.\.\.deferred\)/);
+    expect(h).toMatch(/\n  flush\(\);\n  return out;/);
+  });
+
+  it("never moves a row out of its tie group", () => {
+    // Rows sharing an effective_posted are equally recent, so permuting them
+    // carries no claim. Moving one ACROSS groups makes the page assert a
+    // recency it does not have — the previous version inverted 22 of 59
+    // adjacent pairs while its own comment promised the opposite.
+    const h = fn.slice(fn.indexOf("function interleaveByCompany"), fn.indexOf("function interleaveByCompany") + 2200);
+    expect(h).toMatch(/const tieOf =/);
+    expect(h).toMatch(/if \(t !== tie\) \{ flush\(\); tie = t; \}/);
+  });
+
+  it("simulating it: caps runs where possible, loses nothing, respects tie groups", () => {
+    const CAP = 2;
+    const run = (rows: Array<{ c: string; t: string }>) => {
+      const out: typeof rows = []; let deferred: typeof rows = [];
+      let runKey = "", runLen = 0;
+      let tie = rows.length ? rows[0].t : "";
+      const flush = () => { out.push(...deferred); deferred = []; runKey = ""; runLen = 0; };
+      for (const r of rows) {
+        if (r.t !== tie) { flush(); tie = r.t; }
+        if (r.c === runKey && runLen >= CAP) { deferred.push(r); continue; }
+        if (r.c === runKey) runLen++; else { runKey = r.c; runLen = 1; }
+        out.push(r);
+        if (deferred.length) {
+          const i = deferred.findIndex((d) => d.c !== runKey);
+          if (i >= 0) { const [d] = deferred.splice(i, 1); runKey = d.c; runLen = 1; out.push(d); }
+        }
+      }
+      flush();
+      return out;
+    };
+    const longestRun = (rows: Array<{ c: string }>) => {
+      let worst = 0, cur = 0, prev = "";
+      for (const r of rows) { cur = r.c === prev ? cur + 1 : 1; prev = r.c; worst = Math.max(worst, cur); }
+      return worst;
+    };
+
+    // THE REAL CASE the fix targets: 7 and 6 from two employers among 47 others,
+    // which is what page 1 actually looked like (13 of 60 slots, runs of 7 and 6).
+    const realistic = [
+      ...Array(7).fill(0).map(() => ({ c: "A", t: "T1" })),
+      ...Array(6).fill(0).map(() => ({ c: "B", t: "T1" })),
+      ...Array(47).fill(0).map((_, i) => ({ c: `C${i}`, t: "T1" })),
+    ];
+    const got = run(realistic);
+    expect(got).toHaveLength(realistic.length);        // nothing lost
+    expect(longestRun(got)).toBeLessThanOrEqual(CAP);  // and the runs are capped
+
+    // THE ADVERSARIAL CASE, asserted honestly rather than aspirationally: when a
+    // tie group is dominated by ONE employer there is nothing left to interleave
+    // with, so a run is arithmetically unavoidable. The guarantee that still
+    // holds is that nothing is lost and no row crosses a tie boundary — which is
+    // what protects pagination and recency. The cap is best-effort by design.
+    const dominated = [
+      ...Array(7).fill(0).map(() => ({ c: "A", t: "T1" })),
+      ...Array(3).fill(0).map(() => ({ c: "B", t: "T1" })),
+      ...Array(4).fill(0).map(() => ({ c: "A", t: "T2" })),
+    ];
+    const got2 = run(dominated);
+    expect(got2).toHaveLength(dominated.length);                       // nothing lost
+    expect(got2.slice(0, 10).every((r) => r.t === "T1")).toBe(true);   // no row crossed
+    expect(got2.filter((r) => r.t === "T2")).toHaveLength(4);
   });
 
   it("simulating it breaks the measured 7-run and loses nothing", () => {

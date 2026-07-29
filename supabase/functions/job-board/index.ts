@@ -79,7 +79,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-07-29.4";
+const BUILD_VERSION = "2026-07-29.5";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -3554,7 +3554,14 @@ Deno.serve(async (req) => {
               .update({
                 description: clean,
                 ...(exp.band ? { experience_band: exp.band, min_years: exp.minYears } : {}),
-                ...(wm ? { work_mode: wm } : {}),
+                // `remote` moves WITH work_mode, or the columns drift apart.
+                // normalize.ts:1069 sets remote = (workMode === "remote") at
+                // ingest and normalize.ts:17 documents it as "true only when
+                // workMode is definitively remote". These re-derive writes
+                // updated one and not the other, leaving 32/616 design,
+                // 43/479 security and 56/790 legal rows work_mode='remote'
+                // with remote=false — invisible to the board's Remote filter.
+                ...(wm ? { work_mode: wm, remote: wm === "remote" } : {}),
                 ...(betterDate ? { posted_at: betterDate } : {}),
                 ...(minedSalary ? {
                   salary: minedSalary,
@@ -3960,7 +3967,8 @@ Deno.serve(async (req) => {
             await client.from("job_board_postings").update({
               description: description.replace(/\u0000/g, "").slice(0, 4000),
               ...(expRead.band ? { experience_band: expRead.band, min_years: expRead.minYears } : {}),
-              ...(wmRead ? { work_mode: wmRead } : {}),
+              // Same invariant — see the desc-sweep write above.
+              ...(wmRead ? { work_mode: wmRead, remote: wmRead === "remote" } : {}),
               ...(minedSalary ? {
                 salary: minedSalary,
                 salary_min_annual: minedParse?.annualMin ?? null,
@@ -4125,6 +4133,10 @@ const rowToJob = (r: any) => ({
   location: r.location,
   remote: r.remote,
   workMode: r.work_mode ?? null,
+  // Filterable since the country filter shipped, never returned: 0 of 21
+  // emitted fields carried it, so the JSON-LD could not state
+  // applicantLocationRequirements and no card could show where a role is.
+  country: r.country ?? null,
   department: r.department,
   category: r.category,
   postedAt: r.posted_at,
@@ -4185,15 +4197,26 @@ const MAX_CONSECUTIVE_PER_COMPANY = 2;
 
 function interleaveByCompany(rows: Array<Record<string, unknown>>): Array<Record<string, unknown>> {
   const out: Array<Record<string, unknown>> = [];
-  const deferred: Array<Record<string, unknown>> = [];
+  let deferred: Array<Record<string, unknown>> = [];
   let runKey = "";
   let runLen = 0;
   const keyOf = (r: Record<string, unknown>) => String(r.company ?? r.company_token ?? "");
+  // The TIE GROUP a row belongs to. Reordering is only honest inside one:
+  // rows sharing an effective_posted are genuinely equally recent, so their
+  // relative order carries no information and may be permuted freely. Moving a
+  // row ACROSS groups would make the page claim a recency it does not have —
+  // which the previous version did, inverting 22 of 59 adjacent pairs (max
+  // 55.3s) while its own comment promised the opposite.
+  const tieOf = (r: Record<string, unknown>) => String(r.postedAt ?? r.effective_posted ?? r.firstSeen ?? "");
+  let tie = rows.length ? tieOf(rows[0]) : "";
+  const flush = () => { out.push(...deferred); deferred = []; runKey = ""; runLen = 0; };
   for (const r of rows) {
+    const t = tieOf(r);
+    if (t !== tie) { flush(); tie = t; }   // group boundary: nothing crosses it
     const k = keyOf(r);
     if (k && k === runKey && runLen >= MAX_CONSECUTIVE_PER_COMPANY) { deferred.push(r); continue; }
     // A deferred row is eligible again as soon as a different employer breaks
-    // the run, so nothing is pushed to the end of the page wholesale.
+    // the run, so nothing is pushed to the end of the group wholesale.
     if (k === runKey) runLen++; else { runKey = k; runLen = 1; }
     out.push(r);
     if (deferred.length) {
@@ -4205,7 +4228,8 @@ function interleaveByCompany(rows: Array<Record<string, unknown>>): Array<Record
       }
     }
   }
-  return out.concat(deferred);
+  flush();
+  return out;
 }
 
 function collapseClusters(
@@ -4373,7 +4397,15 @@ async function serveList(
     for (const t of terms) q = q.or(`title.ilike.%${t}%,company.ilike.%${t}%,department.ilike.%${t}%`);
     const loc = sanitizeTerm(String(body.location ?? ""));
     if (loc) q = q.ilike("location", `%${loc}%`);
-    if (body.remote === true) q = q.eq("remote", true);
+    // An explicit workMode WINS over the legacy `remote` boolean. These are not
+    // independent predicates: remote=true is a strict SUBSET of
+    // work_mode='remote' (normalize.ts:1069), so ANDing them equals the
+    // stricter one and silently narrows the user's own choice. Measured:
+    // {workMode:remote,country:GB} 1,518 vs 1,403 UI-shaped (7.6% lost),
+    // design 614 -> 582 (5.2%), data_ai 848 -> 752 (11.3%).
+    if (body.remote === true && !["remote", "hybrid", "onsite"].includes(String(body.workMode ?? "").toLowerCase())) {
+      q = q.eq("remote", true);
+    }
     // Work-mode filter: definitive vendor/text-stated tags only. Postings that
     // don't state a mode have work_mode NULL and are excluded by the filter —
     // honestly, never guessed (the UI says so).
