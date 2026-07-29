@@ -3442,6 +3442,7 @@ export type Database = {
           category: string
           company: string
           company_token: string
+          country: string
           department: string
           experience_band: string
           id: string
