@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 
 const root = resolve(__dirname, "../..");
@@ -86,7 +86,32 @@ describe("the panel tells the user what a blank field costs", () => {
 
 describe("the résumé file — the thing that blocks every application without it", () => {
   const panel = readFileSync(resolve(root, "src/components/account/ApplyProfilePanel.tsx"), "utf8");
-  const mig = readFileSync(resolve(root, "supabase/migrations/20260730040000_resume_storage.sql"), "utf8");
+
+  // Find the migration that creates the bucket instead of naming a file.
+  //
+  // This test previously read 20260730040000 by path, and broke the moment that
+  // migration was superseded — reporting a failure about bucket privacy when
+  // privacy was entirely intact and only the filename had moved. A guard that
+  // fails when the code is REORGANISED rather than when it is WRONG trains you
+  // to ignore it, which is worse than not having it.
+  //
+  // So: assert the property (somewhere in the migration set, the resumes bucket
+  // is created private, capped and owner-scoped), not the location.
+  const migDir = resolve(root, "supabase/migrations");
+  const bucketMigs = readdirSync(migDir)
+    .filter((f) => f.endsWith(".sql"))
+    .map((f) => readFileSync(resolve(migDir, f), "utf8"))
+    .filter((s) => /INSERT INTO storage\.buckets/.test(s));
+  // Later files win, so the last one is the definition actually in force.
+  const mig = bucketMigs[bucketMigs.length - 1] ?? "";
+
+  it("has exactly one live definition of the resumes bucket", () => {
+    // More than one is not automatically wrong — a supersede leaves the old one
+    // behind — but zero means the bucket is created nowhere, which is the
+    // failure that actually stops every application.
+    expect(bucketMigs.length, "no migration creates the resumes bucket").toBeGreaterThanOrEqual(1);
+    expect(mig).toMatch(/'resumes'/);
+  });
 
   // The gap this closes: resume_file_url was in the type and in the missing-list,
   // but no control rendered it — so it could never be set, and buildPacket would

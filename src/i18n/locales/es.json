@@ -4260,6 +4260,7 @@
     "tooBig": "Ese archivo supera 10 MB; la mayoría de los CV pesan menos de 1 MB",
     "unset": "Sin indicar",
     "uploadFailed": "Error al subir: inténtalo de nuevo",
+    "uploadBlocked": "El almacenamiento de currículums aún no está configurado en esta cuenta: reintentar no servirá. Lo hemos registrado.",
     "uploaded": "CV adjuntado: recuerda guardar",
     "website": "Web o portafolio",
     "yes": "Sí"

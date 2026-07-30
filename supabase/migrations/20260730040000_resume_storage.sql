@@ -1,64 +1,20 @@
--- Private storage for the résumé file the agent attaches to applications.
+-- SUPERSEDED by 20260730060000_resume_bucket_split.sql. Intentionally a no-op.
 --
--- WHY THIS BLOCKS EVERYTHING: buildPacket treats a required file question as a
--- blocker when there is no résumé, and the worker refuses to submit when any
--- required DOM field is empty. Nearly every application form has a résumé
--- upload. Without this bucket, the agent prepares packets, claims them, loads
--- the form, and stops at the last step on essentially every posting.
+-- This file originally created the `resumes` bucket and four owner-only policies
+-- on storage.objects in a single transaction. Post-deploy verification could not
+-- confirm the bucket existed, and the likeliest cause is that CREATE/DROP POLICY
+-- on storage.objects requires ownership of that table (it belongs to
+-- supabase_storage_admin). A privilege error on the policy statements at the end
+-- rolls back the bucket INSERT at the start, because it is all one transaction.
 --
--- The project had NO storage buckets at all before this — résumés lived only as
--- parsed text on scans, which is enough to score a match and useless for a file
--- input that wants an actual PDF.
-
-INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-VALUES (
-  'resumes',
-  'resumes',
-  -- PRIVATE. A résumé is a home address, a phone number, and an employment
-  -- history in one file. A public bucket would make every one of them
-  -- enumerable by URL forever, and the agent's own worker can read it with the
-  -- service key without the file ever being world-readable.
-  false,
-  10485760, -- 10 MB; a résumé over that is a scanned image, not a document
-  ARRAY[
-    'application/pdf',
-    'application/msword',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    'text/plain'
-  ]
-)
-ON CONFLICT (id) DO UPDATE
-  SET file_size_limit = EXCLUDED.file_size_limit,
-      allowed_mime_types = EXCLUDED.allowed_mime_types;
-
--- Objects are keyed {user_id}/{filename}, so ownership is the first path
--- segment. storage.foldername() splits the path; [1] is that segment.
-DROP POLICY IF EXISTS "resumes_owner_read" ON storage.objects;
-CREATE POLICY "resumes_owner_read" ON storage.objects
-  FOR SELECT TO authenticated
-  USING (bucket_id = 'resumes' AND (storage.foldername(name))[1] = auth.uid()::text);
-
-DROP POLICY IF EXISTS "resumes_owner_write" ON storage.objects;
-CREATE POLICY "resumes_owner_write" ON storage.objects
-  FOR INSERT TO authenticated
-  WITH CHECK (bucket_id = 'resumes' AND (storage.foldername(name))[1] = auth.uid()::text);
-
--- Replacing a résumé is routine; people update them constantly.
-DROP POLICY IF EXISTS "resumes_owner_update" ON storage.objects;
-CREATE POLICY "resumes_owner_update" ON storage.objects
-  FOR UPDATE TO authenticated
-  USING (bucket_id = 'resumes' AND (storage.foldername(name))[1] = auth.uid()::text)
-  WITH CHECK (bucket_id = 'resumes' AND (storage.foldername(name))[1] = auth.uid()::text);
-
-DROP POLICY IF EXISTS "resumes_owner_delete" ON storage.objects;
-CREATE POLICY "resumes_owner_delete" ON storage.objects
-  FOR DELETE TO authenticated
-  USING (bucket_id = 'resumes' AND (storage.foldername(name))[1] = auth.uid()::text);
-
--- No policy is granted to anon, and none to authenticated for OTHER users'
--- folders. The worker reads with the service role, which bypasses RLS — that is
--- the only path by which a résumé leaves its owner's control, and it goes
--- straight into an application that owner asked for.
-
-COMMENT ON COLUMN public.agent_mandates.resume_file_url IS
-  'Storage path inside the private `resumes` bucket, shaped {user_id}/{filename} — NOT a public URL. The worker downloads it with the service key at submit time.';
+-- It is emptied rather than fixed in place because its outcome is genuinely
+-- unknown: if it DID apply, the runner has already recorded it and this content
+-- is never read again; if it did NOT, it would be retried and would fail exactly
+-- as before, blocking every migration behind it — including its own replacement.
+-- A no-op is correct under both possibilities, which is the only reason to
+-- prefer it over an edit.
+--
+-- The real work now lives in 20260730060000, which creates the bucket in its own
+-- statement and attempts the policies inside an exception handler, so a
+-- privilege failure can no longer take the bucket down with it.
+SELECT 1;

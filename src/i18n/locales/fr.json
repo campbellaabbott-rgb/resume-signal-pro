@@ -4260,6 +4260,7 @@
     "tooBig": "Ce fichier dépasse 10 Mo — la plupart des CV font moins de 1 Mo",
     "unset": "Non précisé",
     "uploadFailed": "Échec de l'envoi — réessayez",
+    "uploadBlocked": "Le stockage des CV n'est pas encore configuré sur ce compte — réessayer ne changera rien. Nous l'avons signalé.",
     "uploaded": "CV joint — pensez à enregistrer",
     "website": "Site ou portfolio",
     "yes": "Oui"

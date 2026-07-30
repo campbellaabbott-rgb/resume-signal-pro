@@ -4260,6 +4260,7 @@
     "tooBig": "Lampas 10 MB ang file na iyan — karamihan ng résumé ay wala pang 1 MB",
     "unset": "Hindi isinaad",
     "uploadFailed": "Nabigo ang pag-upload — subukan muli",
+    "uploadBlocked": "Hindi pa naka-set up ang imbakan ng résumé sa account na ito — hindi makakatulong ang pag-ulit. Nai-log na namin ito.",
     "uploaded": "Nakakabit ang résumé — huwag kalimutang i-save",
     "website": "Website o portfolio",
     "yes": "Oo"

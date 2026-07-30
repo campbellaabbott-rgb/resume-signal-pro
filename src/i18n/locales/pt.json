@@ -4260,6 +4260,7 @@
     "tooBig": "Esse ficheiro passa dos 10 MB — a maioria dos CV tem menos de 1 MB",
     "unset": "Não indicado",
     "uploadFailed": "Falha no envio — tenta de novo",
+    "uploadBlocked": "O armazenamento de currículos ainda não está configurado nesta conta — tentar de novo não vai adiantar. Já registámos o problema.",
     "uploaded": "CV anexado — não te esqueças de guardar",
     "website": "Site ou portefólio",
     "yes": "Sim"

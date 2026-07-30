@@ -134,7 +134,18 @@ export function ApplyProfilePanel({ userId }: { userId: string }) {
     });
     setUploading(false);
     if (error) {
-      toast.error(t("applyProfile.uploadFailed", "Upload failed — try again"));
+      // "Try again" is the wrong advice for the two failures most likely here.
+      // A missing bucket and a missing storage policy are both permanent until
+      // someone changes the project, and telling a candidate to retry hides a
+      // broken deploy behind what looks like a flaky upload. Say which it is.
+      const msg = String((error as { message?: string })?.message ?? "");
+      const setupBroken = /bucket not found|not found|403|row-level security|policy/i.test(msg);
+      console.error("[resume upload]", msg);
+      toast.error(
+        setupBroken
+          ? t("applyProfile.uploadBlocked", "Résumé storage isn't set up on this account yet — retrying won't help. We've logged it.")
+          : t("applyProfile.uploadFailed", "Upload failed — try again"),
+      );
       return;
     }
     set("resume_file_url", path);

@@ -4260,6 +4260,7 @@
     "tooBig": "Diese Datei ist über 10 MB — die meisten Lebensläufe liegen unter 1 MB",
     "unset": "Nicht angegeben",
     "uploadFailed": "Upload fehlgeschlagen — erneut versuchen",
+    "uploadBlocked": "Der Lebenslauf-Speicher ist für dieses Konto noch nicht eingerichtet – ein erneuter Versuch hilft nicht. Wir haben es protokolliert.",
     "uploaded": "Lebenslauf angehängt — nicht vergessen zu speichern",
     "website": "Website oder Portfolio",
     "yes": "Ja"

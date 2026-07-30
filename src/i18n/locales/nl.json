@@ -4260,6 +4260,7 @@
     "tooBig": "Dat bestand is groter dan 10 MB — de meeste cv's blijven onder 1 MB",
     "unset": "Niet opgegeven",
     "uploadFailed": "Uploaden mislukt — probeer opnieuw",
+    "uploadBlocked": "Cv-opslag is nog niet ingesteld voor dit account — opnieuw proberen helpt niet. We hebben het gelogd.",
     "uploaded": "Cv toegevoegd — vergeet niet op te slaan",
     "website": "Website of portfolio",
     "yes": "Ja"

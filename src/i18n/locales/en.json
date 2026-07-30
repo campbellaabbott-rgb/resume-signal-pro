@@ -4260,6 +4260,7 @@
     "tooBig": "That file is over 10 MB — most résumés are under 1 MB",
     "unset": "Not stated",
     "uploadFailed": "Upload failed — try again",
+    "uploadBlocked": "Résumé storage isn't set up on this account yet — retrying won't help. We've logged it.",
     "uploaded": "Résumé attached — remember to save",
     "website": "Website or portfolio",
     "yes": "Yes"
