@@ -64,6 +64,51 @@ serve(async (req) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
     { auth: { persistSession: false } },
   );
+  // Create the résumé bucket from code, because the SQL path does not survive
+  // this project's deploy runner.
+  //
+  // EVIDENCE, not a guess: migration 20260730040000 contained one
+  // INSERT INTO storage.buckets and four CREATE POLICY statements on
+  // storage.objects. What the deploy actually emitted
+  // (20260730202622_67527859…) contains all four policies and no bucket insert
+  // at all. So the policies were permitted and applied; the bucket insert was
+  // dropped on the way through. Re-shipping the same INSERT would be dropped
+  // the same way.
+  //
+  // The consequence was invisible in the worst way: four RLS policies now guard
+  // a bucket that does not exist, so everything LOOKS configured, and the only
+  // symptom is that every résumé upload fails at the last step.
+  //
+  // createBucket with the service key goes through the storage API rather than
+  // SQL, which is the path that actually works here. It is idempotent — an
+  // existing bucket returns a duplicate error, which is success for our purpose.
+  async function ensureResumeBucket(): Promise<string> {
+    const { error } = await client.storage.createBucket("resumes", {
+      public: false, // a résumé is an address, a phone number and a work history
+      fileSizeLimit: 10 * 1024 * 1024,
+      allowedMimeTypes: [
+        "application/pdf",
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "text/plain",
+      ],
+    });
+    if (!error) return "created";
+    const msg = String(error.message ?? "");
+    if (/already exists|duplicate/i.test(msg)) return "already present";
+    return `FAILED: ${msg}`;
+  }
+
+  // Runnable on its own so the bucket can be fixed without releasing anything.
+  let body: { action?: string } = {};
+  try { body = await req.json(); } catch { /* no body is the normal run */ }
+  if (body.action === "ensure-storage") {
+    return new Response(JSON.stringify({ resumesBucket: await ensureResumeBucket() }), {
+      headers: { "content-type": "application/json" },
+    });
+  }
+  const bucketState = await ensureResumeBucket();
+
   const startedAt = Date.now();
   const outOfTime = () => Date.now() - startedAt > SOFT_DEADLINE_MS;
 
@@ -259,8 +304,11 @@ serve(async (req) => {
     }
   }
 
-  console.log(`[APPLY-AGENT] ${JSON.stringify(summary)}`);
-  return new Response(JSON.stringify({ ...summary, ms: Date.now() - startedAt }), {
+  // Reported on every run, not just the standalone action. A missing bucket
+  // blocks essentially every application at the résumé step, and that is far
+  // too quiet a failure to leave out of the summary.
+  console.log(`[APPLY-AGENT] resumesBucket=${bucketState} ${JSON.stringify(summary)}`);
+  return new Response(JSON.stringify({ ...summary, resumesBucket: bucketState, ms: Date.now() - startedAt }), {
     headers: { "content-type": "application/json" },
   });
 });

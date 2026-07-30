@@ -1,20 +1,15 @@
--- SUPERSEDED by 20260730060000_resume_bucket_split.sql. Intentionally a no-op.
+-- SUPERSEDED. Intentionally a no-op.
 --
 -- This file originally created the `resumes` bucket and four owner-only policies
--- on storage.objects in a single transaction. Post-deploy verification could not
--- confirm the bucket existed, and the likeliest cause is that CREATE/DROP POLICY
--- on storage.objects requires ownership of that table (it belongs to
--- supabase_storage_admin). A privilege error on the policy statements at the end
--- rolls back the bucket INSERT at the start, because it is all one transaction.
+-- on storage.objects. The deploy emitted 20260730202622_67527859… from it, which
+-- contains all four policies and no bucket insert — so the policies are live in
+-- production and the bucket was never created. The bucket is now created from
+-- code in the apply-agent function, which goes through the storage API rather
+-- than SQL.
 --
--- It is emptied rather than fixed in place because its outcome is genuinely
--- unknown: if it DID apply, the runner has already recorded it and this content
--- is never read again; if it did NOT, it would be retried and would fail exactly
--- as before, blocking every migration behind it — including its own replacement.
--- A no-op is correct under both possibilities, which is the only reason to
--- prefer it over an edit.
+-- Emptied rather than corrected in place: its outcome was unknown at the time,
+-- and a no-op is right either way — if the runner recorded it, this content is
+-- never read again; if it did not, this cannot fail and block what follows.
 --
--- The real work now lives in 20260730060000, which creates the bucket in its own
--- statement and attempts the policies inside an exception handler, so a
--- privilege failure can no longer take the bucket down with it.
+-- See 20260730060000 for the reasoning and the remaining SQL.
 SELECT 1;

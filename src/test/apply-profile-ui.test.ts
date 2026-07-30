@@ -98,18 +98,34 @@ describe("the résumé file — the thing that blocks every application without 
   // So: assert the property (somewhere in the migration set, the resumes bucket
   // is created private, capped and owner-scoped), not the location.
   const migDir = resolve(root, "supabase/migrations");
-  const bucketMigs = readdirSync(migDir)
-    .filter((f) => f.endsWith(".sql"))
-    .map((f) => readFileSync(resolve(migDir, f), "utf8"))
-    .filter((s) => /INSERT INTO storage\.buckets/.test(s));
+  const allMigs = readdirSync(migDir)
+    .filter((f) => f.endsWith(".sql")).sort()
+    .map((f) => readFileSync(resolve(migDir, f), "utf8"));
+  const bucketMigs = allMigs.filter((s) => /INSERT INTO storage\.buckets/.test(s));
   // Later files win, so the last one is the definition actually in force.
   const mig = bucketMigs[bucketMigs.length - 1] ?? "";
+  // The policies and the bucket insert do NOT have to live in the same file —
+  // the deploy split them across two, which is how the bucket went missing while
+  // the policies shipped. So look for each where it actually is.
+  const migSet = allMigs.join("\n");
+  const agentFn = readFileSync(resolve(root, "supabase/functions/apply-agent/index.ts"), "utf8");
 
-  it("has exactly one live definition of the resumes bucket", () => {
-    // More than one is not automatically wrong — a supersede leaves the old one
-    // behind — but zero means the bucket is created nowhere, which is the
-    // failure that actually stops every application.
-    expect(bucketMigs.length, "no migration creates the resumes bucket").toBeGreaterThanOrEqual(1);
+  it("creates the bucket from code, not only from SQL", () => {
+    // THE ACTUAL FAILURE THIS SUITE MISSED. Migration 20260730040000 declared
+    // the bucket and four policies; the deploy emitted the four policies and
+    // dropped the bucket insert. The result was four RLS policies guarding a
+    // bucket that did not exist — which looks fully configured and fails every
+    // upload at the last step.
+    //
+    // A SQL-only declaration is therefore not sufficient evidence that the
+    // bucket exists. The storage API call is what this project can rely on.
+    expect(agentFn).toMatch(/storage\.createBucket\(\s*"resumes"/);
+    expect(agentFn, "must not create it public").toMatch(/public:\s*false/);
+    expect(agentFn, "the run summary must report bucket state").toMatch(/resumesBucket/);
+  });
+
+  it("still declares the bucket in SQL for paths that honour it", () => {
+    expect(bucketMigs.length, "no migration declares the resumes bucket").toBeGreaterThanOrEqual(1);
     expect(mig).toMatch(/'resumes'/);
   });
 
@@ -137,9 +153,12 @@ describe("the résumé file — the thing that blocks every application without 
   });
 
   it("scopes every storage policy to the owner's own folder", () => {
-    const policies = mig.match(/CREATE POLICY "resumes_[a-z_]+"/g) ?? [];
+    // Searched across the whole migration set, not one file: the policies live
+    // in a different migration from the bucket declaration, and pinning this to
+    // one file is what made the earlier version of this test misfire.
+    const policies = [...new Set(migSet.match(/CREATE POLICY "resumes_[a-z_]+"/g) ?? [])];
     expect(policies.length, "read, write, update, delete").toBeGreaterThanOrEqual(4);
-    const owner = mig.match(/\(storage\.foldername\(name\)\)\[1\] = auth\.uid\(\)::text/g) ?? [];
+    const owner = migSet.match(/\(storage\.foldername\(name\)\)\[1\] = auth\.uid\(\)::text/g) ?? [];
     expect(owner.length, "every policy must check ownership").toBeGreaterThanOrEqual(5);
   });
 
