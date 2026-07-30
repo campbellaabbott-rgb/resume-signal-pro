@@ -124,3 +124,37 @@ describe("the in-function fallback actually excludes anon", () => {
     expect(fix).toMatch(/42501/);
   });
 });
+
+describe("anon-reachable ops functions do not hand out personal data", () => {
+  // WHY THIS EXISTS. I audited the definer surface and cleared get_email_health
+  // because src/pages/HealthCheck.tsx calls it — my rule was "a hand-written
+  // frontend file calls it, so the browser is meant to reach it".
+  //
+  // That rule conflates two different questions. An admin dashboard is frontend
+  // code too, so "a page calls it" says nothing about whether a STRANGER should.
+  // In this case /health-check has no auth gate either, so both readings failed
+  // at once, and production returned real customer email addresses to anon.
+  //
+  // Live probe of all sixteen ops/health RPCs showed only this one returns any
+  // address, so the guard is specific rather than a blanket ban on the word.
+  const latestDef = (fn: string) => {
+    const withFn = migs.filter((m) => m.sql.includes(`FUNCTION public.${fn}`));
+    return withFn.length ? withFn[withFn.length - 1].sql : "";
+  };
+
+  it("get_email_health masks recipient addresses", () => {
+    const def = latestDef("get_email_health");
+    expect(def, "get_email_health not found in any migration").toContain("get_email_health");
+    // The body must not emit the column straight into the payload.
+    expect(def, "recipient must not be returned raw").not.toMatch(/'recipient',\s*recipient\b/);
+    // and must actually mask it
+    expect(def, "expected a masked recipient").toMatch(/split_part\(recipient/);
+  });
+
+  it("keeps the aggregate counters intact — masking must not gut the dashboard", () => {
+    const def = latestDef("get_email_health");
+    for (const col of ["total_emails", "successful_emails", "failed_emails", "success_rate"]) {
+      expect(def, `${col} must survive`).toContain(col);
+    }
+  });
+});
