@@ -4222,6 +4222,7 @@
   "applyProfile": {
     "authorized": "Are you authorised to work where you're applying?",
     "cap": "Most applications per day",
+    "chooseResume": "Choose file",
     "city": "City",
     "country": "Country",
     "demographics": "Answer voluntary diversity questions myself. Left off, the agent declines them on your behalf — it never fills them in for you.",
@@ -4244,6 +4245,9 @@
     "no": "No",
     "phone": "Phone",
     "relocate": "Are you willing to relocate?",
+    "replaceResume": "Replace file",
+    "resumeIntro": "The actual file employers receive. Almost every application form requires one, so without it the agent prepares everything and then stops at the last step.",
+    "resumeTitle": "Résumé file",
     "salary": "Salary expectation",
     "salaryPh": "e.g. $120,000",
     "save": "Save apply profile",
@@ -4253,7 +4257,10 @@
     "start": "Earliest start",
     "startPh": "e.g. 2 weeks",
     "title": "Apply profile",
+    "tooBig": "That file is over 10 MB — most résumés are under 1 MB",
     "unset": "Not stated",
+    "uploadFailed": "Upload failed — try again",
+    "uploaded": "Résumé attached — remember to save",
     "website": "Website or portfolio",
     "yes": "Yes"
   },

@@ -4222,6 +4222,7 @@
   "applyProfile": {
     "authorized": "Êtes-vous autorisé à travailler là où vous postulez ?",
     "cap": "Candidatures maximum par jour",
+    "chooseResume": "Choisir un fichier",
     "city": "Ville",
     "country": "Pays",
     "demographics": "Répondre moi-même aux questions facultatives de diversité. Désactivé, l'agent les décline en votre nom — il ne les remplit jamais à votre place.",
@@ -4244,6 +4245,9 @@
     "no": "Non",
     "phone": "Téléphone",
     "relocate": "Êtes-vous prêt à déménager ?",
+    "replaceResume": "Remplacer le fichier",
+    "resumeIntro": "Le fichier que les employeurs reçoivent. Presque tous les formulaires l'exigent : sans lui, l'agent prépare tout puis s'arrête à la dernière étape.",
+    "resumeTitle": "Fichier CV",
     "salary": "Prétentions salariales",
     "salaryPh": "ex. 120 000 $",
     "save": "Enregistrer le profil",
@@ -4253,7 +4257,10 @@
     "start": "Disponibilité au plus tôt",
     "startPh": "ex. 2 semaines",
     "title": "Profil de candidature",
+    "tooBig": "Ce fichier dépasse 10 Mo — la plupart des CV font moins de 1 Mo",
     "unset": "Non précisé",
+    "uploadFailed": "Échec de l'envoi — réessayez",
+    "uploaded": "CV joint — pensez à enregistrer",
     "website": "Site ou portfolio",
     "yes": "Oui"
   },

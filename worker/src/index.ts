@@ -13,6 +13,9 @@
 //   - claim a row another worker holds
 import { chromium } from "playwright";
 import { createClient } from "@supabase/supabase-js";
+import { mkdtemp, writeFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { applyToPosting } from "./apply.js";
 
 const SUPABASE_URL = process.env.SUPABASE_URL ?? "";
@@ -42,6 +45,40 @@ type Packet = {
   fields: Record<string, { value: string; source: string }>;
 };
 
+// Stage the résumé to local disk. Playwright's setInputFiles needs a real path —
+// it cannot take a URL or a buffer for a file input, and a file input is the one
+// control on nearly every application form that cannot be typed into.
+//
+// The bucket is PRIVATE, so this reads with the service key. That is the only
+// path by which a résumé leaves its owner's control, and it goes straight into
+// an application that owner asked for.
+async function stageResume(userId: string): Promise<{ path: string; dir: string } | null> {
+  const { data: m } = await db.from("agent_mandates")
+    .select("resume_file_url").eq("user_id", userId).maybeSingle();
+  const key = String((m as { resume_file_url?: string } | null)?.resume_file_url ?? "").trim();
+  if (!key) return null;
+
+  // The stored value is a storage PATH, not a URL. A row still holding an http
+  // URL predates the bucket and cannot be downloaded this way — better to skip
+  // and let the form's required-field check block than to attach nothing and
+  // submit an application with no résumé.
+  if (/^https?:\/\//i.test(key)) {
+    console.warn(`[worker] ${userId} resume_file_url is a URL, not a storage path — skipping`);
+    return null;
+  }
+
+  const { data, error } = await db.storage.from("resumes").download(key);
+  if (error || !data) {
+    console.warn(`[worker] resume download failed for ${userId}: ${error?.message ?? "no data"}`);
+    return null;
+  }
+  const dir = await mkdtemp(join(tmpdir(), "rb-resume-"));
+  const name = key.split("/").pop() || "resume.pdf";
+  const path = join(dir, name);
+  await writeFile(path, Buffer.from(await data.arrayBuffer()));
+  return { path, dir };
+}
+
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 async function release(id: number, patch: Record<string, unknown>) {
@@ -60,9 +97,21 @@ async function runOne(browser: Awaited<ReturnType<typeof chromium.launch>>, p: P
     return `skipped ${src}`;
   }
 
-  const outcome = await applyToPosting(browser, {
-    applyUrl: p.apply_url, source: src, fields: p.fields ?? {},
-  });
+  // Staged per packet rather than cached per user: a candidate may replace their
+  // résumé mid-batch, and the file on disk must be the one their profile points
+  // at right now, not the one it pointed at when the worker started.
+  const staged = await stageResume(p.user_id);
+  let outcome;
+  try {
+    outcome = await applyToPosting(browser, {
+      applyUrl: p.apply_url, source: src, fields: p.fields ?? {},
+      resumePath: staged?.path,
+    });
+  } finally {
+    // Always clean up. A worker that runs for days would otherwise accumulate
+    // every résumé it has ever touched in /tmp.
+    if (staged) await rm(staged.dir, { recursive: true, force: true }).catch(() => {});
+  }
 
   if (outcome.kind === "submitted") {
     // The trigger on agent_submissions refuses `submitted` without both a

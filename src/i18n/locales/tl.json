@@ -4222,6 +4222,7 @@
   "applyProfile": {
     "authorized": "May pahintulot ka bang magtrabaho kung saan ka nag-a-apply?",
     "cap": "Pinakamaraming aplikasyon kada araw",
+    "chooseResume": "Pumili ng file",
     "city": "Lungsod",
     "country": "Bansa",
     "demographics": "Ako mismo ang sasagot sa boluntaryong mga tanong sa diversity. Kapag naka-off, tinatanggihan ito ng ahente sa ngalan mo — hindi niya ito pinupunan para sa iyo.",
@@ -4244,6 +4245,9 @@
     "no": "Hindi",
     "phone": "Telepono",
     "relocate": "Handa ka bang lumipat?",
+    "replaceResume": "Palitan ang file",
+    "resumeIntro": "Ang mismong file na natatanggap ng employer. Halos lahat ng form ay humihingi nito, kaya kung wala ito ay inihahanda ng ahente ang lahat at hihinto sa huling hakbang.",
+    "resumeTitle": "File ng résumé",
     "salary": "Inaasahang sahod",
     "salaryPh": "hal. $120,000",
     "save": "I-save ang profile",
@@ -4253,7 +4257,10 @@
     "start": "Pinakamaagang simula",
     "startPh": "hal. 2 linggo",
     "title": "Profile sa pag-apply",
+    "tooBig": "Lampas 10 MB ang file na iyan — karamihan ng résumé ay wala pang 1 MB",
     "unset": "Hindi isinaad",
+    "uploadFailed": "Nabigo ang pag-upload — subukan muli",
+    "uploaded": "Nakakabit ang résumé — huwag kalimutang i-save",
     "website": "Website o portfolio",
     "yes": "Oo"
   },

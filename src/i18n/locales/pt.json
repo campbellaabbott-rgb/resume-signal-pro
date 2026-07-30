@@ -4222,6 +4222,7 @@
   "applyProfile": {
     "authorized": "Tens autorização para trabalhar onde te candidatas?",
     "cap": "Máximo de candidaturas por dia",
+    "chooseResume": "Escolher ficheiro",
     "city": "Cidade",
     "country": "País",
     "demographics": "Responder eu às perguntas voluntárias de diversidade. Desligado, o agente recusa-as em teu nome — nunca as preenche por ti.",
@@ -4244,6 +4245,9 @@
     "no": "Não",
     "phone": "Telefone",
     "relocate": "Estás disposto a mudar-te?",
+    "replaceResume": "Substituir ficheiro",
+    "resumeIntro": "O ficheiro que os empregadores recebem. Quase todos os formulários exigem um, por isso sem ele o agente prepara tudo e para no último passo.",
+    "resumeTitle": "Ficheiro do CV",
     "salary": "Expectativa salarial",
     "salaryPh": "ex.: 120.000 $",
     "save": "Guardar perfil",
@@ -4253,7 +4257,10 @@
     "start": "Início mais cedo",
     "startPh": "ex.: 2 semanas",
     "title": "Perfil de candidatura",
+    "tooBig": "Esse ficheiro passa dos 10 MB — a maioria dos CV tem menos de 1 MB",
     "unset": "Não indicado",
+    "uploadFailed": "Falha no envio — tenta de novo",
+    "uploaded": "CV anexado — não te esqueças de guardar",
     "website": "Site ou portefólio",
     "yes": "Sim"
   },

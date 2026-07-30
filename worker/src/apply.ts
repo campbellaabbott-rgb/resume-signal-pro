@@ -117,11 +117,25 @@ export async function applyToPosting(browser: Browser, input: ApplyInput): Promi
       if (await fillByLabel(page, label, f.value)) filled++;
     }
 
-    if (input.resumePath) {
-      const fileInput = page.locator('input[type="file"]').first();
-      if (await fileInput.count()) {
-        await fileInput.setInputFiles(input.resumePath).catch(() => {});
+    // A file input the packet has no file for is a hard stop, not a shrug. The
+    // required-field check below would catch it on a well-marked form, but plenty
+    // of forms leave the résumé input unmarked and simply reject on submit — and
+    // a rejected submit is an ambiguous outcome, which costs a human's time to
+    // resolve. Better to refuse here where the reason is knowable.
+    const fileInput = page.locator('input[type="file"]').first();
+    const hasFileField = (await fileInput.count()) > 0;
+    if (hasFileField) {
+      if (!input.resumePath) {
+        return { kind: "not-submitted", reason: "this form wants a résumé file and none is attached to the profile" };
       }
+      try {
+        await fileInput.setInputFiles(input.resumePath, { timeout: 15_000 });
+      } catch (e) {
+        return { kind: "not-submitted", reason: `résumé upload failed: ${String(e).slice(0, 90)}` };
+      }
+      // Give the vendor's uploader a moment; several parse the file and rewrite
+      // the form's name/email fields from it, which would otherwise race us.
+      await page.waitForTimeout(SETTLE_MS);
     }
 
     // Refuse to submit a form we mostly failed to fill. A half-filled

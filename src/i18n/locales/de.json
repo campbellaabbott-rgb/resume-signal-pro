@@ -4222,6 +4222,7 @@
   "applyProfile": {
     "authorized": "Bist du berechtigt, dort zu arbeiten, wo du dich bewirbst?",
     "cap": "Höchstens Bewerbungen pro Tag",
+    "chooseResume": "Datei wählen",
     "city": "Stadt",
     "country": "Land",
     "demographics": "Freiwillige Diversitätsfragen selbst beantworten. Ausgeschaltet lehnt der Agent sie in deinem Namen ab — er füllt sie nie für dich aus.",
@@ -4244,6 +4245,9 @@
     "no": "Nein",
     "phone": "Telefon",
     "relocate": "Bist du umzugsbereit?",
+    "replaceResume": "Datei ersetzen",
+    "resumeIntro": "Die Datei, die Arbeitgeber erhalten. Fast jedes Formular verlangt eine, also bereitet der Agent ohne sie alles vor und bleibt im letzten Schritt stehen.",
+    "resumeTitle": "Lebenslauf-Datei",
     "salary": "Gehaltsvorstellung",
     "salaryPh": "z. B. 120.000 $",
     "save": "Profil speichern",
@@ -4253,7 +4257,10 @@
     "start": "Frühester Start",
     "startPh": "z. B. 2 Wochen",
     "title": "Bewerbungsprofil",
+    "tooBig": "Diese Datei ist über 10 MB — die meisten Lebensläufe liegen unter 1 MB",
     "unset": "Nicht angegeben",
+    "uploadFailed": "Upload fehlgeschlagen — erneut versuchen",
+    "uploaded": "Lebenslauf angehängt — nicht vergessen zu speichern",
     "website": "Website oder Portfolio",
     "yes": "Ja"
   },

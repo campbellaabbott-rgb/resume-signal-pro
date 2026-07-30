@@ -18,7 +18,13 @@ import { ShieldCheck, Loader2, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
-const sb = supabase as unknown as { from: (t: string) => any };
+const sb = supabase as unknown as {
+  from: (t: string) => any;
+  storage: { from: (b: string) => any };
+};
+
+const MAX_BYTES = 10 * 1024 * 1024;
+const ACCEPT = ".pdf,.doc,.docx,.txt";
 
 type Tri = boolean | null;
 
@@ -80,6 +86,7 @@ export function ApplyProfilePanel({ userId }: { userId: string }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [exists, setExists] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -107,6 +114,32 @@ export function ApplyProfilePanel({ userId }: { userId: string }) {
   if (!p.resume_file_url.trim()) missing.push(t("applyProfile.fResume", "a résumé file"));
   if (p.work_authorized === null) missing.push(t("applyProfile.fAuth", "work authorisation"));
   if (p.requires_sponsorship === null) missing.push(t("applyProfile.fSponsor", "sponsorship"));
+
+  // Uploads to the PRIVATE `resumes` bucket and stores the path, not a URL.
+  // The worker fetches it with the service key at submit time — the file is
+  // never world-readable, which matters because a résumé is a home address, a
+  // phone number and an employment history in one document.
+  const upload = useCallback(async (file: File) => {
+    if (file.size > MAX_BYTES) {
+      toast.error(t("applyProfile.tooBig", "That file is over 10 MB — most résumés are under 1 MB"));
+      return;
+    }
+    setUploading(true);
+    // Keyed by user id so the storage policy can prove ownership from the path.
+    // upsert so replacing a résumé is one step, which people do constantly.
+    const clean = file.name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-80);
+    const path = `${userId}/${clean}`;
+    const { error } = await sb.storage.from("resumes").upload(path, file, {
+      upsert: true, contentType: file.type || "application/octet-stream",
+    });
+    setUploading(false);
+    if (error) {
+      toast.error(t("applyProfile.uploadFailed", "Upload failed — try again"));
+      return;
+    }
+    set("resume_file_url", path);
+    toast.success(t("applyProfile.uploaded", "Résumé attached — remember to save"));
+  }, [userId, t]);
 
   const save = useCallback(async () => {
     setSaving(true);
@@ -173,6 +206,33 @@ export function ApplyProfilePanel({ userId }: { userId: string }) {
             />
           </label>
         ))}
+      </div>
+
+      <div className="border-t border-border pt-5 mb-5">
+        <h4 className="text-sm font-semibold text-foreground mb-1">
+          {t("applyProfile.resumeTitle", "Résumé file")}
+        </h4>
+        <p className="text-xs text-muted-foreground mb-3">
+          {t("applyProfile.resumeIntro",
+            "The actual file employers receive. Almost every application form requires one, so without it the agent prepares everything and then stops at the last step.")}
+        </p>
+        <div className="flex items-center gap-3 flex-wrap">
+          <label className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm cursor-pointer hover:border-foreground/40">
+            {uploading && <Loader2 className="w-4 h-4 animate-spin" />}
+            {p.resume_file_url
+              ? t("applyProfile.replaceResume", "Replace file")
+              : t("applyProfile.chooseResume", "Choose file")}
+            <input
+              type="file" accept={ACCEPT} className="hidden" disabled={uploading}
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) void upload(f); e.target.value = ""; }}
+            />
+          </label>
+          {p.resume_file_url && (
+            <span className="text-xs text-success truncate max-w-[18rem]">
+              {p.resume_file_url.split("/").slice(1).join("/")}
+            </span>
+          )}
+        </div>
       </div>
 
       <div className="border-t border-border pt-5">

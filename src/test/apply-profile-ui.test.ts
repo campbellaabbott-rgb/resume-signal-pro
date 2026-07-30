@@ -83,3 +83,44 @@ describe("the panel tells the user what a blank field costs", () => {
     }
   });
 });
+
+describe("the résumé file — the thing that blocks every application without it", () => {
+  const panel = readFileSync(resolve(root, "src/components/account/ApplyProfilePanel.tsx"), "utf8");
+  const mig = readFileSync(resolve(root, "supabase/migrations/20260730040000_resume_storage.sql"), "utf8");
+
+  // The gap this closes: resume_file_url was in the type and in the missing-list,
+  // but no control rendered it — so it could never be set, and buildPacket would
+  // block on the file question of essentially every posting forever.
+  it("renders an upload control, not just a field the user cannot reach", () => {
+    expect(panel).toContain('type="file"');
+    expect(panel).toContain("applyProfile.chooseResume");
+    expect(panel).toMatch(/storage\.from\("resumes"\)\.upload/);
+  });
+
+  it("stores a storage PATH keyed by user, never a public URL", () => {
+    // The path's first segment is what the storage policy checks ownership on.
+    expect(panel).toMatch(/const path = `\$\{userId\}\//);
+    expect(panel).toMatch(/set\("resume_file_url", path\)/);
+  });
+
+  it("keeps the bucket private", () => {
+    // A résumé is a home address, a phone number and an employment history in
+    // one file. Public would make every one of them enumerable by URL forever.
+    const bucketRow = mig.slice(mig.indexOf("INSERT INTO storage.buckets"), mig.indexOf("ON CONFLICT"));
+    expect(bucketRow).toMatch(/\bfalse\b/);
+    expect(mig).not.toMatch(/'resumes',\s*'resumes',\s*true/);
+  });
+
+  it("scopes every storage policy to the owner's own folder", () => {
+    const policies = mig.match(/CREATE POLICY "resumes_[a-z_]+"/g) ?? [];
+    expect(policies.length, "read, write, update, delete").toBeGreaterThanOrEqual(4);
+    const owner = mig.match(/\(storage\.foldername\(name\)\)\[1\] = auth\.uid\(\)::text/g) ?? [];
+    expect(owner.length, "every policy must check ownership").toBeGreaterThanOrEqual(5);
+  });
+
+  it("caps the file size and the accepted types", () => {
+    expect(mig).toContain("10485760");
+    expect(mig).toContain("application/pdf");
+    expect(panel).toContain("MAX_BYTES");
+  });
+});

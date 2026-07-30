@@ -4222,6 +4222,7 @@
   "applyProfile": {
     "authorized": "Mag je werken waar je solliciteert?",
     "cap": "Maximaal sollicitaties per dag",
+    "chooseResume": "Bestand kiezen",
     "city": "Stad",
     "country": "Land",
     "demographics": "Vrijwillige diversiteitsvragen zelf beantwoorden. Uit laten staan betekent dat de agent ze namens jou afwijst — hij vult ze nooit voor je in.",
@@ -4244,6 +4245,9 @@
     "no": "Nee",
     "phone": "Telefoon",
     "relocate": "Ben je bereid te verhuizen?",
+    "replaceResume": "Bestand vervangen",
+    "resumeIntro": "Het bestand dat werkgevers ontvangen. Bijna elk formulier vraagt erom, dus zonder dit bereidt de agent alles voor en stopt bij de laatste stap.",
+    "resumeTitle": "Cv-bestand",
     "salary": "Salarisverwachting",
     "salaryPh": "bijv. $120.000",
     "save": "Profiel opslaan",
@@ -4253,7 +4257,10 @@
     "start": "Vroegste startdatum",
     "startPh": "bijv. 2 weken",
     "title": "Sollicitatieprofiel",
+    "tooBig": "Dat bestand is groter dan 10 MB — de meeste cv's blijven onder 1 MB",
     "unset": "Niet opgegeven",
+    "uploadFailed": "Uploaden mislukt — probeer opnieuw",
+    "uploaded": "Cv toegevoegd — vergeet niet op te slaan",
     "website": "Website of portfolio",
     "yes": "Ja"
   },
