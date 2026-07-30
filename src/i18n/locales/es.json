@@ -4256,5 +4256,35 @@
     "unset": "Sin indicar",
     "website": "Web o portafolio",
     "yes": "Sí"
+  },
+  "applyQueue": {
+    "title": "Candidaturas preparadas",
+    "intro": "Todo lo que el agente ha rellenado por ti. Abre cualquiera para leer exactamente qué se enviaría antes de que salga.",
+    "loading": "Cargando lo que el agente ha preparado…",
+    "empty": "Aún no hay nada preparado. El agente trabaja de noche: aprueba selecciones en tu cola y aparecerán aquí listas.",
+    "cReady": "{{n}} listas",
+    "cBlocked": "{{n}} te necesitan",
+    "cSent": "{{n}} enviadas",
+    "sReady": "Lista: no necesita nada de ti",
+    "sBlocked": "Te necesita",
+    "sSent": "Enviada el {{when}}",
+    "sStale": "Ya te postulaste a esta",
+    "sPreparing": "Preparando…",
+    "sFailed": "No se pudo preparar esta",
+    "review": "Revisar",
+    "hide": "Ocultar",
+    "willSend": "Qué se enviaría",
+    "inferred": "Esta empresa no publica su formulario, así que estos son los campos que esperamos: el formulario real puede pedir más.",
+    "openForm": "Abrir la candidatura",
+    "markSent": "La envié",
+    "marked": "Registrada como enviada",
+    "markFailed": "No se pudo registrar: inténtalo de nuevo",
+    "src": {
+      "profile": "de tu perfil",
+      "standing": "tu respuesta guardada",
+      "resume": "tu CV",
+      "drafted": "redactado para ti",
+      "declined": "declinada"
+    }
   }
 }

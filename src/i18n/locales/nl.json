@@ -4256,5 +4256,35 @@
     "unset": "Niet opgegeven",
     "website": "Website of portfolio",
     "yes": "Ja"
+  },
+  "applyQueue": {
+    "title": "Voorbereide sollicitaties",
+    "intro": "Alles wat de agent voor je heeft ingevuld. Open er een om precies te lezen wat er verstuurd zou worden voordat het weggaat.",
+    "loading": "Laden wat de agent heeft voorbereid…",
+    "empty": "Nog niets voorbereid. De agent werkt 's nachts — keur keuzes goed in je wachtrij en ze verschijnen hier klaar voor gebruik.",
+    "cReady": "{{n}} klaar",
+    "cBlocked": "{{n}} hebben jou nodig",
+    "cSent": "{{n}} verstuurd",
+    "sReady": "Klaar — er is niets van jou nodig",
+    "sBlocked": "Heeft jou nodig",
+    "sSent": "Verstuurd op {{when}}",
+    "sStale": "Hier heb je al gesolliciteerd",
+    "sPreparing": "Voorbereiden…",
+    "sFailed": "Kon deze niet voorbereiden",
+    "review": "Bekijken",
+    "hide": "Verbergen",
+    "willSend": "Wat er verstuurd zou worden",
+    "inferred": "Deze werkgever publiceert zijn formulier niet, dus dit zijn de velden die we verwachten — het echte formulier vraagt mogelijk meer.",
+    "openForm": "Sollicitatie openen",
+    "markSent": "Ik heb deze verstuurd",
+    "marked": "Geregistreerd als verstuurd",
+    "markFailed": "Kon dat niet registreren — probeer opnieuw",
+    "src": {
+      "profile": "uit je profiel",
+      "standing": "je opgeslagen antwoord",
+      "resume": "je cv",
+      "drafted": "voor je opgesteld",
+      "declined": "afgewezen"
+    }
   }
 }

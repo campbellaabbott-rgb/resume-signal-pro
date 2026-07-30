@@ -4256,5 +4256,35 @@
     "unset": "Hindi isinaad",
     "website": "Website o portfolio",
     "yes": "Oo"
+  },
+  "applyQueue": {
+    "title": "Mga inihandang aplikasyon",
+    "intro": "Lahat ng pinunan ng ahente para sa iyo. Buksan ang alinman para basahin nang eksakto kung ano ang ipapadala bago ito umalis.",
+    "loading": "Nilo-load ang inihanda ng ahente…",
+    "empty": "Wala pang inihanda. Gumagana ang ahente sa gabi — aprubahan ang mga pili sa iyong queue at lilitaw sila rito nang handa.",
+    "cReady": "{{n}} handa",
+    "cBlocked": "{{n}} ang kailangan ka",
+    "cSent": "{{n}} naipadala",
+    "sReady": "Handa — walang kailangan sa iyo",
+    "sBlocked": "Kailangan ka",
+    "sSent": "Naipadala noong {{when}}",
+    "sStale": "Nag-apply ka na rito",
+    "sPreparing": "Inihahanda…",
+    "sFailed": "Hindi naihanda ito",
+    "review": "Suriin",
+    "hide": "Itago",
+    "willSend": "Ano ang ipapadala",
+    "inferred": "Hindi inilalathala ng employer na ito ang kanilang form, kaya ito ang mga inaasahang field — maaaring mas marami ang hingin ng totoong form.",
+    "openForm": "Buksan ang aplikasyon",
+    "markSent": "Naipadala ko ito",
+    "marked": "Naitala bilang naipadala",
+    "markFailed": "Hindi naitala — subukan muli",
+    "src": {
+      "profile": "mula sa profile mo",
+      "standing": "ang naka-save mong sagot",
+      "resume": "ang résumé mo",
+      "drafted": "isinulat para sa iyo",
+      "declined": "tinanggihan"
+    }
   }
 }

@@ -4256,5 +4256,35 @@
     "unset": "Nicht angegeben",
     "website": "Website oder Portfolio",
     "yes": "Ja"
+  },
+  "applyQueue": {
+    "title": "Vorbereitete Bewerbungen",
+    "intro": "Alles, was der Agent für dich ausgefüllt hat. Öffne eine, um vor dem Absenden genau zu lesen, was gesendet würde.",
+    "loading": "Lade, was der Agent vorbereitet hat…",
+    "empty": "Noch nichts vorbereitet. Der Agent arbeitet nachts — bestätige Vorschläge in deiner Liste, dann erscheinen sie hier startklar.",
+    "cReady": "{{n}} bereit",
+    "cBlocked": "{{n}} brauchen dich",
+    "cSent": "{{n}} gesendet",
+    "sReady": "Bereit — nichts hängt an dir",
+    "sBlocked": "Braucht dich",
+    "sSent": "Gesendet am {{when}}",
+    "sStale": "Hier hast du dich schon beworben",
+    "sPreparing": "Wird vorbereitet…",
+    "sFailed": "Konnte nicht vorbereitet werden",
+    "review": "Prüfen",
+    "hide": "Ausblenden",
+    "willSend": "Was gesendet würde",
+    "inferred": "Dieser Arbeitgeber veröffentlicht sein Formular nicht — das sind die erwarteten Felder; das echte Formular fragt möglicherweise mehr.",
+    "openForm": "Bewerbung öffnen",
+    "markSent": "Ich habe sie gesendet",
+    "marked": "Als gesendet erfasst",
+    "markFailed": "Konnte nicht erfasst werden — erneut versuchen",
+    "src": {
+      "profile": "aus deinem Profil",
+      "standing": "deine gespeicherte Antwort",
+      "resume": "dein Lebenslauf",
+      "drafted": "für dich entworfen",
+      "declined": "abgelehnt"
+    }
   }
 }

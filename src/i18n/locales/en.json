@@ -4256,5 +4256,35 @@
     "unset": "Not stated",
     "website": "Website or portfolio",
     "yes": "Yes"
+  },
+  "applyQueue": {
+    "title": "Prepared applications",
+    "intro": "Everything the agent has filled in for you. Open any one to read exactly what would be sent before it goes.",
+    "loading": "Loading what the agent has prepared…",
+    "empty": "Nothing prepared yet. The agent works overnight — approve picks in your queue and they'll appear here ready to go.",
+    "cReady": "{{n}} ready",
+    "cBlocked": "{{n}} need you",
+    "cSent": "{{n}} sent",
+    "sReady": "Ready — nothing needs you",
+    "sBlocked": "Needs you",
+    "sSent": "Sent {{when}}",
+    "sStale": "You already applied to this one",
+    "sPreparing": "Preparing…",
+    "sFailed": "Couldn't prepare this one",
+    "review": "Review",
+    "hide": "Hide",
+    "willSend": "What would be sent",
+    "inferred": "This employer doesn't publish its application form, so these are the fields we expect — the real form may ask more.",
+    "openForm": "Open the application",
+    "markSent": "I sent this",
+    "marked": "Recorded as sent",
+    "markFailed": "Could not record that — try again",
+    "src": {
+      "profile": "from your profile",
+      "standing": "your saved answer",
+      "resume": "your résumé",
+      "drafted": "drafted for you",
+      "declined": "declined"
+    }
   }
 }

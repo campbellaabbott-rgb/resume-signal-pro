@@ -19,6 +19,7 @@ import { ApplyKitPanel } from "@/components/account/ApplyKitPanel";
 import { ApplyCopilotPanel } from "@/components/account/ApplyCopilotPanel";
 import { MorningQueuePanel } from "@/components/account/MorningQueuePanel";
 import { ApplyProfilePanel } from "@/components/account/ApplyProfilePanel";
+import { ApplyQueuePanel } from "@/components/account/ApplyQueuePanel";
 import { ClosedReplacementsPanel } from "@/components/account/ClosedReplacementsPanel";
 import { AccountNav } from "@/components/account/AccountNav";
 import { GapReport } from "@/components/account/GapReport";
@@ -1016,6 +1017,11 @@ export default function Account() {
             pick can actually be finished. Blockers here are the single largest
             reason a packet never reaches `ready`. */}
         {user && <div className="mt-6"><ApplyProfilePanel userId={user.id} /></div>}
+
+        {/* What the agent actually produced from those answers. Sits below the
+            profile so the cause is above the effect: a blocked packet here is
+            usually a blank field up there. */}
+        {user && <div className="mt-6"><ApplyQueuePanel userId={user.id} /></div>}
 
         <ApplyCopilotPanel
           apps={applications}

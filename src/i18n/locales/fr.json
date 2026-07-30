@@ -4256,5 +4256,35 @@
     "unset": "Non précisé",
     "website": "Site ou portfolio",
     "yes": "Oui"
+  },
+  "applyQueue": {
+    "title": "Candidatures préparées",
+    "intro": "Tout ce que l'agent a rempli pour vous. Ouvrez-en une pour lire exactement ce qui serait envoyé avant l'envoi.",
+    "loading": "Chargement de ce que l'agent a préparé…",
+    "empty": "Rien de préparé pour l'instant. L'agent travaille la nuit : validez des offres dans votre file et elles apparaîtront ici, prêtes.",
+    "cReady": "{{n}} prêtes",
+    "cBlocked": "{{n}} vous attendent",
+    "cSent": "{{n}} envoyées",
+    "sReady": "Prête — rien ne dépend de vous",
+    "sBlocked": "Vous attend",
+    "sSent": "Envoyée le {{when}}",
+    "sStale": "Vous avez déjà postulé",
+    "sPreparing": "Préparation…",
+    "sFailed": "Impossible de préparer celle-ci",
+    "review": "Vérifier",
+    "hide": "Masquer",
+    "willSend": "Ce qui serait envoyé",
+    "inferred": "Cet employeur ne publie pas son formulaire ; voici les champs attendus — le vrai formulaire peut en demander plus.",
+    "openForm": "Ouvrir la candidature",
+    "markSent": "Je l'ai envoyée",
+    "marked": "Enregistrée comme envoyée",
+    "markFailed": "Enregistrement impossible — réessayez",
+    "src": {
+      "profile": "de votre profil",
+      "standing": "votre réponse enregistrée",
+      "resume": "votre CV",
+      "drafted": "rédigé pour vous",
+      "declined": "déclinée"
+    }
   }
 }
