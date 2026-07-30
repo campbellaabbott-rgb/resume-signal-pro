@@ -3605,6 +3605,7 @@ export type Database = {
         }
         Returns: string
       }
+      scrub_emails: { Args: { p_text: string }; Returns: string }
       search_jobs: {
         Args: {
           p_category?: string
