@@ -64,24 +64,26 @@ serve(async (req) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
     { auth: { persistSession: false } },
   );
-  // Create the résumé bucket from code, because the SQL path does not survive
-  // this project's deploy runner.
+  // Make sure the résumé bucket exists, and say so out loud on every run.
   //
-  // EVIDENCE, not a guess: migration 20260730040000 contained one
-  // INSERT INTO storage.buckets and four CREATE POLICY statements on
-  // storage.objects. What the deploy actually emitted
-  // (20260730202622_67527859…) contains all four policies and no bucket insert
-  // at all. So the policies were permitted and applied; the bucket insert was
-  // dropped on the way through. Re-shipping the same INSERT would be dropped
-  // the same way.
+  // The bucket DOES exist in production today — verified with a write probe,
+  // which is the only probe that distinguishes a missing bucket ("Bucket not
+  // found") from an existing one that refuses you ("violates row-level security
+  // policy"). Listing objects cannot tell those apart; it returns [] for both.
   //
-  // The consequence was invisible in the worst way: four RLS policies now guard
-  // a bucket that does not exist, so everything LOOKS configured, and the only
-  // symptom is that every résumé upload fails at the last step.
+  // This is kept anyway, for two reasons that are not hypothetical here:
   //
-  // createBucket with the service key goes through the storage API rather than
-  // SQL, which is the path that actually works here. It is idempotent — an
-  // existing bucket returns a duplicate error, which is success for our purpose.
+  //  1. The deploy path strips INSERT INTO storage.buckets from migrations —
+  //     20260730040000 declared the bucket and four policies, and the emitted
+  //     20260730202622 kept the policies and dropped the bucket. So SQL cannot
+  //     be trusted to reconstruct this bucket in a new environment, and the
+  //     storage API can.
+  //  2. A missing bucket is a nearly silent failure: the policies still exist,
+  //     everything looks configured, and the only symptom is that every résumé
+  //     upload dies at the last step. Reporting the state on every run is what
+  //     turns that into something noticeable.
+  //
+  // Idempotent — an existing bucket returns a duplicate error, which is success.
   async function ensureResumeBucket(): Promise<string> {
     const { error } = await client.storage.createBucket("resumes", {
       public: false, // a résumé is an address, a phone number and a work history

@@ -2,10 +2,12 @@
 --
 -- This file originally created the `resumes` bucket and four owner-only policies
 -- on storage.objects. The deploy emitted 20260730202622_67527859… from it, which
--- contains all four policies and no bucket insert — so the policies are live in
--- production and the bucket was never created. The bucket is now created from
--- code in the apply-agent function, which goes through the storage API rather
--- than SQL.
+-- contains all four policies and no bucket insert.
+--
+-- I concluded from that the bucket was never created. That was wrong — a live
+-- write probe shows the bucket exists, is private, and enforces its policies.
+-- See 20260730060000 for the evidence and for why my earlier probe could not
+-- have told me either way.
 --
 -- Emptied rather than corrected in place: its outcome was unknown at the time,
 -- and a no-op is right either way — if the runner recorded it, this content is
