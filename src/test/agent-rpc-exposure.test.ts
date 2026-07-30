@@ -151,6 +151,19 @@ describe("anon-reachable ops functions do not hand out personal data", () => {
     expect(def, "expected a masked recipient").toMatch(/split_part\(recipient/);
   });
 
+
+  it("scrubs addresses out of the provider's free-text error message too", () => {
+    // Masking `recipient` alone left the address exposed: the mail provider
+    // writes it into its own error copy ("You can only send testing emails to
+    // your own email address (x@y.com)"). Three of ten live records carried it
+    // AFTER the first fix shipped. Redacting a structured column does nothing
+    // about free text holding the same value.
+    const def = latestDef("get_email_health");
+    expect(def, "error_message must be scrubbed, not passed through")
+      .not.toMatch(/'error_message',\s*error_message\b/);
+    expect(def).toMatch(/scrub_emails\(error_message\)/);
+  });
+
   it("keeps the aggregate counters intact — masking must not gut the dashboard", () => {
     const def = latestDef("get_email_health");
     for (const col of ["total_emails", "successful_emails", "failed_emails", "success_rate"]) {
