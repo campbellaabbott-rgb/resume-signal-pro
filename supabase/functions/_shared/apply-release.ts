@@ -9,7 +9,7 @@
 // agent did nothing last night" must always be answerable. A silent no is
 // indistinguishable from a broken cron, which is the same trap as an alarm that
 // only records failures.
-import { automationFor } from "../job-board/apply-automation.ts";
+import { automationFor } from "./apply-automation.ts";
 
 export type ReleaseInput = {
   applyMode: "review" | "auto";

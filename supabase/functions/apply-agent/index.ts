@@ -21,7 +21,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { buildPacket, type PacketQuestion, type Profile, type StandingAnswers } from "../_shared/submission-packet.ts";
 import { decideRelease } from "../_shared/apply-release.ts";
-import { automationFor } from "../job-board/apply-automation.ts";
+import { automationFor } from "../_shared/apply-automation.ts";
 
 // Wall clock, not a row count. Question fetches and answer drafting are both
 // network-bound and wildly variable, so a fixed "20 packets" budget either wastes
