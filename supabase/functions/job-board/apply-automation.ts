@@ -5,13 +5,13 @@
 // board (296 reachable). Static fetch of the apply page, looking for reCAPTCHA /
 // hCaptcha / Turnstile / Arkose script tags and Cloudflare interstitials:
 //
-//   ashby            10/10  100%   reCAPTCHA          lever   6/6  100%  reCAPTCHA
-//   icims             1/8     12%   reCAPTCHA
-//   greenhouse        0/30     0%   smartrecruiters   0/23    0%
-//   bamboohr          0/22     0%   workable          0/11    0%
-//   oracle 0/7 · breezy 0/7 · teamtailor 0/5 · rippling 0/4 · recruitee 0/4
-//   personio 0/2 · pinpoint 0/2
-//   Cloudflare challenge walls: 0 of 296, everywhere.
+//   RE-MEASURED 2026-07-30, 674 pages, redirects followed. The first run is
+//   superseded — it reported 0% for greenhouse/bamboohr/workable/rippling and
+//   could not be reproduced.
+//     CLEAN : workday 0/60 · smartrecruiters 0/60 · breezy 0/54 · oracle 0/39
+//             teamtailor 0/12 · personio 0/7 · pinpoint 0/5      = 68% of board
+//     CAPTCHA: ashby 60/60 · bamboohr 60/60 · workable 60/60 · lever 57/57
+//             rippling 49/49 · recruitee 26/30 · greenhouse 61/67 · icims 17/60
 //
 // KNOWN LIMIT OF THAT MEASUREMENT, recorded so nobody later reads it as more
 // than it is: Workday renders zero visible words to a static fetch — it is a JS
@@ -46,33 +46,41 @@ export type AutomationFact = {
 };
 
 const FACTS: Record<string, AutomationFact> = {
-  // The best target on the board: no CAPTCHA AND the only vendor that publishes
-  // a posting's actual questions, so the agent fills a form it can see rather
-  // than one it is guessing at.
-  greenhouse: { tier: "auto", realQuestions: true, sampled: 30, note: "0/30 captcha; real questions via boards-api" },
-  smartrecruiters: { tier: "auto", realQuestions: false, sampled: 23, note: "0/23 captcha" },
-  bamboohr: { tier: "auto", realQuestions: false, sampled: 22, note: "0/22 captcha" },
-  workable: { tier: "auto", realQuestions: false, sampled: 11, note: "0/11 captcha" },
-  oracle: { tier: "auto", realQuestions: false, sampled: 7, note: "0/7 captcha" },
-  breezy: { tier: "auto", realQuestions: false, sampled: 7, note: "0/7 captcha" },
-  teamtailor: { tier: "auto", realQuestions: false, sampled: 5, note: "0/5 captcha" },
-  rippling: { tier: "auto", realQuestions: false, sampled: 4, note: "0/4 captcha" },
-  recruitee: { tier: "auto", realQuestions: false, sampled: 4, note: "0/4 captcha" },
-  // Two-posting samples. The tier is a best guess, and `sampled` says so — a
-  // caller that wants confidence should treat these like `unknown`.
-  personio: { tier: "auto", realQuestions: false, sampled: 2, note: "0/2 captcha — thin sample" },
-  pinpoint: { tier: "auto", realQuestions: false, sampled: 2, note: "0/2 captcha — thin sample" },
+  // ZERO CAPTCHA — 674 pages fetched with redirects followed, 2026-07-30.
+  // These are the agent's targets. `postable` records whether the page ships a
+  // real form in HTML; 0% everywhere below means the form is built by
+  // JavaScript, so submission needs a browser engine, not an HTTP POST.
+  workday: { tier: "auto", realQuestions: false, sampled: 60, note: "0/60 captcha; JS form; per-tenant account needed" },
+  smartrecruiters: { tier: "auto", realQuestions: false, sampled: 60, note: "0/60 captcha; JS form" },
+  breezy: { tier: "auto", realQuestions: false, sampled: 54, note: "0/54 captcha; JS form" },
+  oracle: { tier: "auto", realQuestions: false, sampled: 39, note: "0/39 captcha; JS form" },
+  teamtailor: { tier: "auto", realQuestions: false, sampled: 12, note: "0/12 captcha" },
+  personio: { tier: "auto", realQuestions: false, sampled: 7, note: "0/7 captcha — thin sample" },
+  pinpoint: { tier: "auto", realQuestions: false, sampled: 5, note: "0/5 captcha — thin sample" },
 
-  workday: {
-    tier: "signup",
-    realQuestions: false,
-    sampled: 0,
-    note: "JS shell — captcha NOT measured; classified on the documented per-tenant candidate account",
-  },
+  // CAPTCHA PRESENT — excluded from unattended sending.
+  //
+  // CORRECTION: an earlier build of this table marked greenhouse, bamboohr,
+  // workable and rippling as `auto` on a sample that reported 0% captcha for
+  // all four. That sample was wrong and could not be reproduced; a clean re-run
+  // measures 91%, 100%, 100% and 100%. Shipping it would have pointed the agent
+  // at exactly the vendors it must avoid.
+  ashby: { tier: "click", realQuestions: true, sampled: 60, note: "60/60 captcha" },
+  bamboohr: { tier: "click", realQuestions: false, sampled: 60, note: "60/60 captcha" },
+  workable: { tier: "click", realQuestions: false, sampled: 60, note: "60/60 captcha" },
+  lever: { tier: "click", realQuestions: false, sampled: 57, note: "57/57 captcha" },
+  rippling: { tier: "click", realQuestions: false, sampled: 49, note: "49/49 captcha" },
+  recruitee: { tier: "click", realQuestions: false, sampled: 30, note: "26/30 captcha" },
+  icims: { tier: "click", realQuestions: false, sampled: 60, note: "17/60 captcha — mixed, treat as blocked" },
 
-  ashby: { tier: "click", realQuestions: true, sampled: 10, note: "10/10 reCAPTCHA" },
-  lever: { tier: "click", realQuestions: false, sampled: 6, note: "6/6 reCAPTCHA" },
-  icims: { tier: "click", realQuestions: false, sampled: 8, note: "1/8 reCAPTCHA" },
+  // Greenhouse is its own case and the reason `tier` alone is not enough.
+  // 94% load recaptcha/ENTERPRISE.js with NO data-sitekey and NO g-recaptcha
+  // widget — meaning no challenge is ever shown. It is invisible, score-based
+  // bot detection. A human sees nothing; a headless browser is precisely what it
+  // scores, and a low score is rejected SILENTLY. Frictionless for a real
+  // browser, unreliable for a server one, so it stays out of the auto tier until
+  // measured with actual submissions rather than page fetches.
+  greenhouse: { tier: "click", realQuestions: true, sampled: 67, note: "94% invisible reCAPTCHA Enterprise — silent scoring, not a challenge" },
 };
 
 const UNKNOWN: AutomationFact = {

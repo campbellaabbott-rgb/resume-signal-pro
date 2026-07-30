@@ -12,8 +12,8 @@ const OK: ReleaseInput = {
   applyMode: "auto",
   packetReady: true,
   blockerCount: 0,
-  source: "greenhouse",
-  allowedSources: ["greenhouse", "workable", "bamboohr"],
+  source: "smartrecruiters",
+  allowedSources: ["smartrecruiters", "workday", "breezy"],
   sentToday: 0,
   dailyCap: 5,
   alreadySubmitted: false,
@@ -64,13 +64,15 @@ describe("the allow-list can narrow the measurement, never widen it", () => {
   it("refuses a CAPTCHA vendor even when the candidate listed it", () => {
     // The defence against an allow-list drifting from what was measured — a
     // stale default, a hand-edited row, a migration that added a vendor.
-    const d = r({ source: "ashby", allowedSources: ["ashby", "greenhouse"] });
+    const d = r({ source: "ashby", allowedSources: ["ashby", "smartrecruiters"] });
     expect(d.release).toBe(false);
     expect((d as { code: string }).code).toBe("vendor-needs-human");
   });
 
-  it("refuses Workday even when listed — its form was never measured", () => {
-    const d = r({ source: "workday", allowedSources: ["workday"] });
+  it("refuses Greenhouse even when listed — invisible scoring, not a challenge", () => {
+    // 94% load reCAPTCHA Enterprise with no widget: a headless submit is scored
+    // and rejected SILENTLY, which is the worst failure mode available.
+    const d = r({ source: "greenhouse", allowedSources: ["greenhouse"] });
     expect(d.release).toBe(false);
     expect((d as { code: string }).code).toBe("vendor-needs-human");
   });
@@ -81,8 +83,8 @@ describe("the allow-list can narrow the measurement, never widen it", () => {
   });
 
   it("still honours a narrower list than the measurement allows", () => {
-    // bamboohr is measured 'auto', but this candidate did not enable it.
-    const d = r({ source: "bamboohr", allowedSources: ["greenhouse"] });
+    // breezy is measured 'auto', but this candidate did not enable it.
+    const d = r({ source: "breezy", allowedSources: ["smartrecruiters"] });
     expect((d as { code: string }).code).toBe("vendor-not-allowed");
   });
 });

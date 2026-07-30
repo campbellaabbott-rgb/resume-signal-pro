@@ -58,8 +58,13 @@ ALTER TABLE public.agent_mandates
   -- the measured zero-CAPTCHA vendors. Stored rather than hardcoded so a
   -- candidate can narrow it further, and so widening it is a deliberate act.
   ADD COLUMN IF NOT EXISTS auto_apply_sources text[] NOT NULL
-    DEFAULT ARRAY['greenhouse','smartrecruiters','bamboohr','workable','oracle',
-                  'breezy','teamtailor','rippling','recruitee']::text[];
+    -- The measured zero-CAPTCHA set (674 pages, 2026-07-30). An earlier draft of
+    -- this default listed greenhouse, bamboohr, workable, rippling and recruitee
+    -- — all of which measure 87-100% CAPTCHA on a clean re-run. A default
+    -- allow-list pointing at the vendors the agent must avoid is worse than no
+    -- default, because decideRelease treats the list as permission.
+    DEFAULT ARRAY['workday','smartrecruiters','breezy','oracle',
+                  'teamtailor','personio','pinpoint']::text[];
 
 COMMENT ON COLUMN public.agent_mandates.work_authorized IS
   'Trinary: NULL means not stated. Never defaulted to false — telling an employer someone is not authorised to work because they did not answer is worse than blocking the packet.';

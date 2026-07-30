@@ -10,30 +10,51 @@ import {
 // These guards hold the two properties that keep it honest: an unmeasured vendor
 // never claims to be automatable, and a thin sample stays visibly thin.
 describe("apply automation tiers reflect what was actually measured", () => {
-  it("classifies the zero-CAPTCHA vendors as fully automatable", () => {
-    for (const v of ["greenhouse", "smartrecruiters", "bamboohr", "workable", "breezy", "recruitee"]) {
+  it("classifies the measured zero-CAPTCHA vendors as fully automatable", () => {
+    // 674 pages, redirects followed, 2026-07-30.
+    for (const v of ["workday", "smartrecruiters", "breezy", "oracle", "teamtailor"]) {
       expect(isFullyAutomatable(v), `${v} measured 0 captcha`).toBe(true);
     }
   });
 
+  // THE CORRECTION THAT MATTERS MOST. A first sample reported 0% captcha for
+  // these four and shipped them as `auto`. A clean re-run measures 91-100%.
+  // Had that stayed, the agent would have pointed unattended sending at exactly
+  // the vendors it must avoid — and on Greenhouse the rejection is silent, so
+  // nothing would have looked wrong.
+  it("never marks a CAPTCHA vendor automatable, however an old sample read", () => {
+    for (const v of ["greenhouse", "bamboohr", "workable", "rippling", "recruitee"]) {
+      expect(isFullyAutomatable(v), `${v} measures 87-100% captcha`).toBe(false);
+      expect(automationFor(v).sampled, `${v} must carry its sample size`).toBeGreaterThanOrEqual(30);
+    }
+  });
+
+  it("keeps Greenhouse out of auto because its protection is INVISIBLE", () => {
+    // 94% load recaptcha/enterprise.js with no sitekey and no widget: no
+    // challenge is shown, the session is scored, and a low score is rejected
+    // silently. Frictionless for a real browser, unreliable for a server one.
+    const f = automationFor("greenhouse");
+    expect(f.tier).toBe("click");
+    expect(f.note).toMatch(/invisible|enterprise/i);
+  });
+
   it("classifies the CAPTCHA vendors as needing one human click", () => {
-    // ashby 10/10 and lever 6/6 carried reCAPTCHA on every sampled posting.
+    // ashby 60/60 and lever 57/57 carried reCAPTCHA on every sampled posting.
     for (const v of ["ashby", "lever", "icims"]) {
       expect(automationFor(v).tier).toBe("click");
       expect(isFullyAutomatable(v)).toBe(false);
     }
   });
 
-  it("does NOT claim Workday is CAPTCHA-free, because that was never measured", () => {
-    // Workday renders 0 visible words to a static fetch — its "0%" was an
-    // artifact of the instrument, exactly like the count that tracked the page
-    // size earlier the same day. Recording it as `auto` would launder a
-    // non-measurement into a product promise on 52% of the board.
+  it("now carries a REAL Workday measurement instead of a non-measurement", () => {
+    // The first table recorded workday sampled:0 because a static fetch saw a JS
+    // shell. Re-measured properly it is 0/60 captcha — the largest clean vendor
+    // on the board — but it still needs a per-tenant candidate account, which the
+    // note has to keep saying.
     const f = automationFor("workday");
-    expect(f.tier).toBe("signup");
-    expect(f.sampled, "sampled must be 0 — the probe could not see the page").toBe(0);
-    expect(isFullyAutomatable("workday")).toBe(false);
-    expect(f.note).toMatch(/NOT measured/i);
+    expect(f.sampled).toBeGreaterThanOrEqual(60);
+    expect(f.tier).toBe("auto");
+    expect(f.note).toMatch(/account/i);
   });
 
   it("an unmeasured vendor claims nothing", () => {
@@ -58,7 +79,7 @@ describe("apply automation tiers reflect what was actually measured", () => {
   });
 
   it("normalises casing and whitespace like every other vendor lookup", () => {
-    expect(automationFor("  GreenHouse ").tier).toBe("auto");
+    expect(automationFor("  WorkDay ").tier).toBe("auto");
     expect(automationFor("ASHBY").tier).toBe("click");
   });
 
@@ -74,19 +95,19 @@ describe("apply automation tiers reflect what was actually measured", () => {
   });
 
   it("every label states the human step plainly, and unknown admits it", () => {
-    expect(automationLabel("greenhouse")).toMatch(/automatically/i);
-    expect(automationLabel("workday")).toMatch(/account/i);
+    expect(automationLabel("smartrecruiters")).toMatch(/automatically/i);
+    expect(automationLabel("greenhouse")).toMatch(/CAPTCHA/i);
     expect(automationLabel("lever")).toMatch(/CAPTCHA/i);
     expect(automationLabel("nope")).toMatch(/haven't measured/i);
   });
 
   it("thin samples stay visibly thin", () => {
-    // personio and pinpoint are 2-posting samples. The tier is a best guess and
+    // personio and pinpoint are single-digit samples. The tier is a best guess and
     // a caller wanting confidence should be able to see that from the data.
     for (const v of ["personio", "pinpoint"]) {
-      expect(automationFor(v).sampled).toBeLessThanOrEqual(2);
+      expect(automationFor(v).sampled).toBeLessThanOrEqual(7);
       expect(automationFor(v).note).toMatch(/thin sample/i);
     }
-    expect(automationFor("greenhouse").sampled).toBeGreaterThanOrEqual(30);
+    expect(automationFor("workday").sampled).toBeGreaterThanOrEqual(60);
   });
 });
