@@ -236,6 +236,14 @@ serve(async (req) => {
           questions, questions_are_real: real,
           answers: drafted, blockers: packet.blockers,
           fit_pct: q.fit_pct, prepared_at: new Date().toISOString(),
+          // PERSIST THE RELEASE DECISION. It used to exist only as a counter in
+          // the run summary and a log line, which meant the worker had no way to
+          // tell "prepared, awaiting review" from "prepared, approved, send it".
+          // released_at is the flag the worker gates on; the refusal code is
+          // stored so "why did nothing go out last night" is answerable from the
+          // row rather than from logs nobody reads.
+          released_at: decision.release ? new Date().toISOString() : null,
+          release_refusal: decision.release ? "" : decision.code,
         });
         if (error) { summary.failed++; continue; }
 
