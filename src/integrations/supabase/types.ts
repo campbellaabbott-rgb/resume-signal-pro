@@ -200,57 +200,105 @@ export type Database = {
       agent_mandates: {
         Row: {
           active: boolean
+          apply_mode: string
+          auto_apply_daily_cap: number
+          auto_apply_sources: string[]
           category: string
+          city: string
+          country: string
           created_at: string
           daily_count: number
+          earliest_start: string
           email: string
           email_last_sent_at: string | null
           email_opt_in: boolean
+          full_name: string
           last_run_at: string | null
           last_run_summary: Json | null
+          linkedin: string
           location: string
+          phone: string
           q: string
           remote_only: boolean
+          requires_sponsorship: boolean | null
+          resume_file_url: string
           resume_text: string
+          salary_expectation: string
           salary_min: number | null
+          share_demographics: boolean
           updated_at: string
           user_id: string
+          website: string
+          willing_to_relocate: boolean | null
+          work_authorized: boolean | null
         }
         Insert: {
           active?: boolean
+          apply_mode?: string
+          auto_apply_daily_cap?: number
+          auto_apply_sources?: string[]
           category?: string
+          city?: string
+          country?: string
           created_at?: string
           daily_count?: number
+          earliest_start?: string
           email?: string
           email_last_sent_at?: string | null
           email_opt_in?: boolean
+          full_name?: string
           last_run_at?: string | null
           last_run_summary?: Json | null
+          linkedin?: string
           location?: string
+          phone?: string
           q?: string
           remote_only?: boolean
+          requires_sponsorship?: boolean | null
+          resume_file_url?: string
           resume_text?: string
+          salary_expectation?: string
           salary_min?: number | null
+          share_demographics?: boolean
           updated_at?: string
           user_id: string
+          website?: string
+          willing_to_relocate?: boolean | null
+          work_authorized?: boolean | null
         }
         Update: {
           active?: boolean
+          apply_mode?: string
+          auto_apply_daily_cap?: number
+          auto_apply_sources?: string[]
           category?: string
+          city?: string
+          country?: string
           created_at?: string
           daily_count?: number
+          earliest_start?: string
           email?: string
           email_last_sent_at?: string | null
           email_opt_in?: boolean
+          full_name?: string
           last_run_at?: string | null
           last_run_summary?: Json | null
+          linkedin?: string
           location?: string
+          phone?: string
           q?: string
           remote_only?: boolean
+          requires_sponsorship?: boolean | null
+          resume_file_url?: string
           resume_text?: string
+          salary_expectation?: string
           salary_min?: number | null
+          share_demographics?: boolean
           updated_at?: string
           user_id?: string
+          website?: string
+          willing_to_relocate?: boolean | null
+          work_authorized?: boolean | null
         }
         Relationships: []
       }
@@ -307,6 +355,99 @@ export type Database = {
           salary?: string
           status?: string
           title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      agent_submissions: {
+        Row: {
+          answers: Json
+          apply_url: string
+          attempts: number
+          blockers: Json
+          claimed_at: string | null
+          claimed_by: string
+          company: string
+          company_token: string
+          cover_letter: string
+          created_at: string
+          error: string
+          fields: Json
+          fit_pct: number | null
+          id: number
+          posting_id: string
+          prepared_at: string | null
+          questions: Json
+          questions_are_real: boolean
+          release_refusal: string
+          released_at: string | null
+          resume_version_id: string | null
+          source: string
+          status: string
+          submitted_at: string | null
+          submitted_via: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          answers?: Json
+          apply_url?: string
+          attempts?: number
+          blockers?: Json
+          claimed_at?: string | null
+          claimed_by?: string
+          company?: string
+          company_token?: string
+          cover_letter?: string
+          created_at?: string
+          error?: string
+          fields?: Json
+          fit_pct?: number | null
+          id?: never
+          posting_id: string
+          prepared_at?: string | null
+          questions?: Json
+          questions_are_real?: boolean
+          release_refusal?: string
+          released_at?: string | null
+          resume_version_id?: string | null
+          source?: string
+          status?: string
+          submitted_at?: string | null
+          submitted_via?: string | null
+          title?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          answers?: Json
+          apply_url?: string
+          attempts?: number
+          blockers?: Json
+          claimed_at?: string | null
+          claimed_by?: string
+          company?: string
+          company_token?: string
+          cover_letter?: string
+          created_at?: string
+          error?: string
+          fields?: Json
+          fit_pct?: number | null
+          id?: never
+          posting_id?: string
+          prepared_at?: string | null
+          questions?: Json
+          questions_are_real?: boolean
+          release_refusal?: string
+          released_at?: string | null
+          resume_version_id?: string | null
+          source?: string
+          status?: string
+          submitted_at?: string | null
+          submitted_via?: string | null
+          title?: string
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
@@ -2421,6 +2562,50 @@ export type Database = {
         Args: { p_credits: number; p_email: string }
         Returns: boolean
       }
+      agent_claim_submission: {
+        Args: { p_lease_minutes?: number; p_worker: string }
+        Returns: {
+          answers: Json
+          apply_url: string
+          attempts: number
+          blockers: Json
+          claimed_at: string | null
+          claimed_by: string
+          company: string
+          company_token: string
+          cover_letter: string
+          created_at: string
+          error: string
+          fields: Json
+          fit_pct: number | null
+          id: number
+          posting_id: string
+          prepared_at: string | null
+          questions: Json
+          questions_are_real: boolean
+          release_refusal: string
+          released_at: string | null
+          resume_version_id: string | null
+          source: string
+          status: string
+          submitted_at: string | null
+          submitted_via: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "agent_submissions"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      agent_mark_uncertain: {
+        Args: { p_id: number; p_reason: string }
+        Returns: undefined
+      }
+      agent_sent_today: { Args: { p_user: string }; Returns: number }
       build_missing_since_index_oneshot: { Args: never; Returns: undefined }
       build_speed_indexes_oneshot: { Args: never; Returns: undefined }
       check_global_rate_limit: {
