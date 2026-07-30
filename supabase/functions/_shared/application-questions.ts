@@ -42,6 +42,16 @@ export function classifyQuestion(label: string, fieldType?: string): QuestionCla
   // of" stays draftable.
   const bare = l.toLowerCase().replace(/[^a-z ]/g, " ").replace(/\s+/g, " ").trim();
   if (bare === "name" || bare === "your name" || bare === "confirm your name") return "identity";
+  // A SHORT label ENDING in "name" is a name box: "Candidate name", "Applicant
+  // name", "Employee name". Found while wiring the packet builder — these fell
+  // through to `draftable`, which meant the agent would try to GENERATE A
+  // SENTENCE where a person's name belongs.
+  //
+  // Both halves of the rule earn their place. "Ends with" keeps the deliberate
+  // guard above intact, because "Name a project you're proud of" uses name as a
+  // verb and ends on "of". The three-word cap stops a long prompt that happens
+  // to trail off on the word name from being autofilled.
+  if (/\bname$/.test(bare) && bare.split(" ").length <= 3) return "identity";
   if (IDENTITY.test(l)) return "identity";
   if (FACTUAL.test(l)) return "factual";
   return "draftable";
