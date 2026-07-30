@@ -1,0 +1,258 @@
+// The orchestrator: queue row in, submission packet out.
+//
+// agent-runner decides WHAT to apply to and fills agent_queue. This function
+// decides HOW FAR each of those can be taken, and — in auto mode — whether it
+// goes out. It is the only place the two halves meet.
+//
+// Per queue row: dedupe, fetch the employer's real questions where the vendor
+// publishes them, draft answers grounded strictly in the résumé, assemble the
+// field map, and write a packet. buildPacket decides what can be filled and what
+// must block; decideRelease decides whether a ready packet is actually sent. Both
+// are pure and tested separately — this file is the plumbing around them, and it
+// deliberately contains no judgement of its own.
+//
+// WHAT IT WILL NEVER DO: submit. No vendor exposes a public submit endpoint
+// (measured 2026-07-29: Greenhouse 401, Lever 404, Ashby 401 — all gated behind
+// the EMPLOYER's credentials), so submission means driving the real form in the
+// candidate's own browser session. This function marks a packet released; the
+// hands report back and stamp submitted_at, which a database trigger refuses to
+// accept without a source.
+import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { buildPacket, type PacketQuestion, type Profile, type StandingAnswers } from "../_shared/submission-packet.ts";
+import { decideRelease } from "../_shared/apply-release.ts";
+import { automationFor } from "../job-board/apply-automation.ts";
+
+// Wall clock, not a row count. Question fetches and answer drafting are both
+// network-bound and wildly variable, so a fixed "20 packets" budget either wastes
+// the invocation or gets killed mid-write. Stopping on time and self-chaining is
+// the pattern the dating sweep needed after it spun forever on a row count.
+const SOFT_DEADLINE_MS = 100_000;
+const MANDATES_PER_RUN = 50;
+const PACKETS_PER_MANDATE = 10;
+const MIN_FIT_PCT = 55; // floor for unattended sending; review mode ignores it
+
+interface MandateRow {
+  user_id: string; email: string; resume_text: string;
+  full_name: string; phone: string; linkedin: string; website: string;
+  city: string; country: string; resume_file_url: string;
+  work_authorized: boolean | null; requires_sponsorship: boolean | null;
+  willing_to_relocate: boolean | null; salary_expectation: string; earliest_start: string;
+  share_demographics: boolean; apply_mode: "review" | "auto";
+  auto_apply_daily_cap: number; auto_apply_sources: string[];
+}
+interface QueueRow {
+  id: number; user_id: string; posting_id: string; title: string; company: string;
+  company_token: string; apply_url: string; fit_pct: number | null; status: string;
+}
+
+serve(async (req) => {
+  if (req.method !== "POST") return new Response("method not allowed", { status: 405 });
+
+  // Maintenance-gated. This function reads every mandate on the platform and can
+  // release applications; it is never reachable from a browser.
+  const key = req.headers.get("x-maintenance-key") ?? "";
+  const expected = Deno.env.get("MAINTENANCE_KEY") ?? "";
+  if (!expected || key !== expected) {
+    return new Response(JSON.stringify({ error: "apply-agent is a maintenance action" }), {
+      status: 403, headers: { "content-type": "application/json" },
+    });
+  }
+
+  const client = createClient(
+    Deno.env.get("SUPABASE_URL") ?? "",
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+    { auth: { persistSession: false } },
+  );
+  const startedAt = Date.now();
+  const outOfTime = () => Date.now() - startedAt > SOFT_DEADLINE_MS;
+
+  const summary = {
+    mandates: 0, prepared: 0, ready: 0, blocked: 0, released: 0,
+    skippedDuplicate: 0, failed: 0, refusals: {} as Record<string, number>,
+    stoppedEarly: false,
+  };
+
+  const { data: mandates } = await client
+    .from("agent_mandates")
+    .select("user_id,email,resume_text,full_name,phone,linkedin,website,city,country," +
+      "resume_file_url,work_authorized,requires_sponsorship,willing_to_relocate," +
+      "salary_expectation,earliest_start,share_demographics,apply_mode," +
+      "auto_apply_daily_cap,auto_apply_sources")
+    .eq("active", true)
+    .limit(MANDATES_PER_RUN);
+
+  for (const m of ((mandates ?? []) as unknown as MandateRow[])) {
+    if (outOfTime()) { summary.stoppedEarly = true; break; }
+    summary.mandates++;
+
+    // Entitlement is checked per mandate, not once per run: a lapsed subscriber
+    // must stop being applied for the same day their subscription ends.
+    const { data: sub } = await client
+      .from("agent_subscribers").select("email").eq("email", m.email).maybeSingle();
+    if (!sub) continue;
+
+    // In auto mode the agent works its own picks; in review mode it only
+    // prepares what the candidate approved. The queue is the same table either
+    // way — the mode decides which rows are its business.
+    const wanted = m.apply_mode === "auto" ? ["ready", "approved"] : ["approved"];
+    const { data: rows } = await client
+      .from("agent_queue")
+      .select("id,user_id,posting_id,title,company,company_token,apply_url,fit_pct,status")
+      .eq("user_id", m.user_id).in("status", wanted)
+      .order("created_at", { ascending: false })
+      .limit(PACKETS_PER_MANDATE);
+    if (!rows?.length) continue;
+
+    // Read the day's sends ONCE and count locally as we release. Re-reading per
+    // row would be correct but slower; recomputing from a stale read would let a
+    // cap of 5 send 30, which is exactly the bug decideBatch exists to prevent.
+    const { data: sentRow } = await client.rpc("agent_sent_today", { p_user: m.user_id });
+    let sentToday = Number(sentRow ?? 0);
+
+    const profile: Profile = {
+      fullName: m.full_name, email: m.email, phone: m.phone, linkedin: m.linkedin,
+      website: m.website, city: m.city, country: m.country, resumeFileUrl: m.resume_file_url,
+    };
+    const standing: StandingAnswers = {
+      workAuthorized: m.work_authorized, requiresSponsorship: m.requires_sponsorship,
+      willingToRelocate: m.willing_to_relocate, salaryExpectation: m.salary_expectation,
+      earliestStart: m.earliest_start, shareDemographics: m.share_demographics,
+    };
+
+    for (const q of (rows as unknown as QueueRow[])) {
+      if (outOfTime()) { summary.stoppedEarly = true; break; }
+
+      // A packet already exists for this posting. The unique index would reject
+      // the insert anyway; checking first keeps us from spending an LLM call to
+      // rediscover that.
+      const { data: existing } = await client
+        .from("agent_submissions").select("id,status")
+        .eq("user_id", m.user_id).eq("posting_id", q.posting_id).maybeSingle();
+      if (existing) { summary.skippedDuplicate++; continue; }
+
+      // ...and the candidate may have applied by hand. The tracker is the record
+      // of what a HUMAN did; agent_submissions only knows what the agent did.
+      //
+      // The table is `user_applications` and the board reference is `job_id`.
+      // My first draft queried job_applications.posting_id — a table that does
+      // not exist and a column that does not exist on the one that does
+      // (verified against production: 42703). Neither would have thrown: the
+      // client returns an error OBJECT, `tracked` would be falsy forever, and
+      // this guard would have been dead code that always answered "no, they have
+      // not applied". A silent always-false duplicate check on the one path that
+      // sends real applications is the worst possible way for that mistake to
+      // fail, because nothing would look broken.
+      const { data: tracked, error: trackErr } = await client
+        .from("user_applications").select("id")
+        .eq("user_id", m.user_id).eq("job_id", q.posting_id).maybeSingle();
+      if (trackErr) {
+        // Fail CLOSED. If the duplicate check itself is broken we do not get to
+        // assume the answer is "no" — that assumption is how someone applies to
+        // the same employer twice under an agent's name.
+        summary.failed++;
+        console.error(`[APPLY-AGENT] duplicate check failed for ${q.posting_id}: ${trackErr.message}`);
+        continue;
+      }
+      const duplicate = !!tracked;
+
+      const source = String(q.posting_id.split(":")[0] ?? "").toLowerCase();
+      const auto = automationFor(source);
+
+      try {
+        // Real questions where the vendor publishes them; inferred (and labelled
+        // as inferred) everywhere else. questionsAreReal travels with the packet
+        // so no surface can present a guess as the employer's actual form.
+        let questions: PacketQuestion[] = [];
+        let real = false;
+        if (auto.realQuestions) {
+          const { data: qr } = await client.functions.invoke("job-board", {
+            body: { action: "application-questions", id: q.posting_id },
+          });
+          const list = (qr as { questions?: Array<{ label: string; required?: boolean; type?: string }> })?.questions;
+          if (Array.isArray(list) && list.length) {
+            questions = list.map((x) => ({ label: x.label, required: x.required, fieldType: x.type, real: true }));
+            real = true;
+          }
+        }
+        if (!questions.length) {
+          // The floor every ATS form asks for. Deliberately minimal: inventing a
+          // long inferred form would produce blockers for questions that may not
+          // exist, and strand packets that could have gone out.
+          questions = [
+            { label: "Full name", required: true },
+            { label: "Email", required: true },
+            { label: "Phone", required: false },
+            { label: "Resume", required: true, fieldType: "file" },
+          ];
+        }
+
+        // Draft only the questions that need drafting — the classifier already
+        // knows identity/file/demographic/factual are not the LLM's business.
+        let drafted: Array<{ label: string; answer: string; supported: boolean; note?: string }> = [];
+        const needsDraft = questions.filter((x) => (x.label ?? "").length > 24);
+        if (needsDraft.length && m.resume_text) {
+          const { data: ans } = await client.functions.invoke("generate-application-answers", {
+            body: {
+              resumeText: m.resume_text, jobTitle: q.title, jobCompany: q.company,
+              questions: needsDraft.map((x) => ({ label: x.label, required: x.required })),
+            },
+          });
+          const list = (ans as { answers?: typeof drafted })?.answers;
+          if (Array.isArray(list)) drafted = list;
+        }
+
+        const packet = buildPacket({
+          questions, profile, standing, drafted, automationTier: auto.tier,
+        });
+
+        const decision = decideRelease({
+          applyMode: m.apply_mode,
+          packetReady: packet.ready,
+          blockerCount: packet.blockers.length,
+          source,
+          allowedSources: m.auto_apply_sources ?? [],
+          sentToday,
+          dailyCap: m.auto_apply_daily_cap,
+          alreadySubmitted: false,
+          fitPct: q.fit_pct,
+          minFitPct: MIN_FIT_PCT,
+          duplicate,
+        });
+        if (!decision.release) {
+          summary.refusals[decision.code] = (summary.refusals[decision.code] ?? 0) + 1;
+        }
+
+        // `released` is NOT `submitted`. It means the hands may pick this up. The
+        // send itself is stamped by the extension reporting back, and the trigger
+        // on agent_submissions refuses `submitted` without a timestamp AND a
+        // source — so nothing here can assert an application was sent.
+        const status = duplicate ? "stale" : packet.ready ? "ready" : "blocked";
+        const { error } = await client.from("agent_submissions").insert({
+          user_id: m.user_id, posting_id: q.posting_id, title: q.title,
+          company: q.company, company_token: q.company_token, apply_url: q.apply_url,
+          source, status,
+          fields: Object.fromEntries(packet.fields.map((f) => [f.key, { value: f.value, source: f.source }])),
+          questions, questions_are_real: real,
+          answers: drafted, blockers: packet.blockers,
+          fit_pct: q.fit_pct, prepared_at: new Date().toISOString(),
+        });
+        if (error) { summary.failed++; continue; }
+
+        summary.prepared++;
+        if (status === "ready") summary.ready++;
+        if (status === "blocked") summary.blocked++;
+        if (decision.release) { summary.released++; sentToday++; }
+      } catch (e) {
+        // One posting failing must never stop a candidate's whole batch.
+        summary.failed++;
+        console.error(`[APPLY-AGENT] ${q.posting_id}: ${String(e).slice(0, 140)}`);
+      }
+    }
+  }
+
+  console.log(`[APPLY-AGENT] ${JSON.stringify(summary)}`);
+  return new Response(JSON.stringify({ ...summary, ms: Date.now() - startedAt }), {
+    headers: { "content-type": "application/json" },
+  });
+});
