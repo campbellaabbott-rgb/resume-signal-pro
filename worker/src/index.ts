@@ -17,6 +17,8 @@ import { mkdtemp, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { applyToPosting } from "./apply.js";
+import { ADAPTERS, BLOCKED } from "./vendors/index.js";
+import type { PacketFieldKey } from "./vendors/types.js";
 
 const SUPABASE_URL = process.env.SUPABASE_URL ?? "";
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
@@ -32,9 +34,12 @@ const WORKER_VERSION = "2026-07-31.1";
 // The measured zero-CAPTCHA set. Duplicated here deliberately: the worker is the
 // last gate before a real submission and must not depend on a database row being
 // right about what it is allowed to touch.
-const AUTO_VENDORS = new Set([
-  "workday", "smartrecruiters", "breezy", "oracle", "teamtailor", "personio", "pinpoint",
-]);
+// Derived from the adapters, never hand-listed. A vendor is servable only when
+// someone has looked at its real form and written an adapter (worker/RECON.md).
+// The old hand-maintained list included workday, which needs a per-tenant
+// candidate account nobody has built, and four vendors that have had no recon —
+// so it claimed capability the driver did not have.
+const AUTO_VENDORS = new Set(Object.keys(ADAPTERS));
 
 if (!SUPABASE_URL || !SERVICE_KEY) {
   console.error("[worker] SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required");
@@ -82,6 +87,45 @@ async function stageResume(userId: string): Promise<{ path: string; dir: string 
   return { path, dir };
 }
 
+
+/**
+ * Packet answers arrive keyed by the QUESTION LABEL the vendor used. The driver
+ * wants a closed set of field keys so each adapter can decide where a value
+ * belongs on its own form.
+ *
+ * Anything unrecognised is dropped rather than guessed into a nearby field —
+ * putting a salary expectation into a cover-note box because both are text is
+ * the kind of "helpful" that reaches a real employer.
+ */
+const FIELD_ALIASES: Array<[RegExp, PacketFieldKey]> = [
+  [/^(full|your)?\s*name$/i, "fullName"],
+  [/first\s*name/i, "firstName"],
+  [/last\s*name|surname|family name/i, "lastName"],
+  [/^confirm.*email/i, "confirmEmail"],
+  [/e-?mail/i, "email"],
+  [/phone|mobile|telephone/i, "phone"],
+  [/^city|town$/i, "city"],
+  [/^country/i, "country"],
+  [/address/i, "address"],
+  [/linked\s*in/i, "linkedin"],
+  [/website|portfolio|personal site/i, "website"],
+  [/cover|message|why|summary|tell us/i, "coverNote"],
+  [/salary|compensation|expected pay/i, "salaryExpectation"],
+];
+
+function toFieldKeys(
+  raw: Record<string, { value: string; source: string }>,
+): Partial<Record<PacketFieldKey, { value: string; source: string }>> {
+  const out: Partial<Record<PacketFieldKey, { value: string; source: string }>> = {};
+  for (const [label, field] of Object.entries(raw ?? {})) {
+    const hit = FIELD_ALIASES.find(([re]) => re.test(label.trim()));
+    // First alias wins, and an already-filled key is not overwritten: the
+    // earliest label is the one the packet builder considered primary.
+    if (hit && !out[hit[1]]) out[hit[1]] = field;
+  }
+  return out;
+}
+
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 async function release(id: number, patch: Record<string, unknown>) {
@@ -96,7 +140,7 @@ async function runOne(browser: Awaited<ReturnType<typeof chromium.launch>>, p: P
   // was prepared. The worker is the last thing standing before a real send.
   if (!AUTO_VENDORS.has(src)) {
     await release(p.id, { status: "blocked", attempts: 99,
-      blockers: [{ kind: "vendor-not-auto", detail: `${src} is not in the measured zero-CAPTCHA set` }] });
+      blockers: [{ kind: "vendor-not-auto", detail: BLOCKED[src] ?? `${src} has no adapter — no recon has been done on it` }] });
     return `skipped ${src}`;
   }
 
@@ -107,7 +151,7 @@ async function runOne(browser: Awaited<ReturnType<typeof chromium.launch>>, p: P
   let outcome;
   try {
     outcome = await applyToPosting(browser, {
-      applyUrl: p.apply_url, source: src, fields: p.fields ?? {},
+      applyUrl: p.apply_url, source: src, fields: toFieldKeys(p.fields ?? {}),
       resumePath: staged?.path,
     });
   } finally {

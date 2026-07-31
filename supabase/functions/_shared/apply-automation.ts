@@ -45,6 +45,23 @@ export type AutomationFact = {
   note: string;
 };
 
+// TIER IS NOT CAPABILITY — added 2026-07-30 after recon on real forms.
+//
+// `auto` below means ONE thing: no CAPTCHA was observed in the sample. It does
+// NOT mean the worker can complete the form. Recon on three live postings
+// (worker/RECON.md) found all three CAPTCHA-free exactly as measured, and all
+// three would have defeated the generic driver — for three different reasons:
+// a form behind a link reading "I'm interested", fields with no name attributes
+// inside 1,806 shadow roots, and an apply button whose text the EMPLOYER writes.
+//
+// The worker keeps its own list, derived from which vendors have an adapter
+// written from observation, and refuses everything else — including vendors
+// marked `auto` here. Workday is the sharpest case: `auto`, the largest vendor
+// in the tier, and unservable, because it requires a per-tenant candidate
+// account nobody has built.
+//
+// Read this table as "is there a CAPTCHA in the way". Read worker/src/vendors/
+// as "can we actually do it".
 const FACTS: Record<string, AutomationFact> = {
   // ZERO CAPTCHA — 674 pages fetched with redirects followed, 2026-07-30.
   // These are the agent's targets. `postable` records whether the page ships a

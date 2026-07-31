@@ -1,0 +1,89 @@
+import type { Page, Locator } from "playwright";
+import type { VendorAdapter, Locatable, PacketFieldKey } from "./types.js";
+
+/**
+ * Breezy. The friendliest of the three examined.
+ *
+ * Observed on a live posting 2026-07-30 (see RECON.md): plain light DOM, no
+ * shadow roots, 40 of 50 fields carry a stable semantic `name`, and 30 set the
+ * `required` attribute honestly. The form is the job URL plus `/apply`, so it
+ * needs no clicking-through at all.
+ */
+const wrap = (l: Locator): Locatable => ({
+  fill: async (v) => { await l.fill(v, { timeout: 8_000 }); },
+  setFile: async (p) => { await l.setInputFiles(p, { timeout: 20_000 }); },
+  isVisible: () => l.isVisible({ timeout: 3_000 }).catch(() => false),
+});
+
+// Read off the real form. Breezy prefixes candidate fields with `c`, which is
+// stable across tenants because it is the vendor's own markup rather than
+// anything an employer edits.
+const FIELDS: Partial<Record<PacketFieldKey, string>> = {
+  fullName: 'input[name="cName"]',
+  email: 'input[name="cEmail"]',
+  phone: 'input[name="cPhoneNumber"]',
+  address: 'input[name="cAddress"]',
+  salaryExpectation: 'input[name="cSalary"]',
+  coverNote: 'textarea[name="cSummary"]',
+};
+
+export const breezy: VendorAdapter = {
+  key: "breezy",
+
+  // Breezy sets `required` on 30 of 50 fields, so the driver's empty-required
+  // check means something here.
+  requiredAttributeIsTrustworthy: true,
+
+  async resolveFormUrl(page, postingUrl) {
+    // Derived, not clicked. The apply control reads "Apply To Position" on this
+    // tenant, but the URL rule holds regardless of what an employer calls the
+    // button — which is the whole reason to prefer a rule over a click.
+    const base = postingUrl.replace(/[?#].*$/, "").replace(/\/+$/, "");
+    const url = base.endsWith("/apply") ? base : `${base}/apply`;
+    const resp = await page.goto(url, { waitUntil: "domcontentloaded", timeout: 45_000 })
+      .catch(() => null);
+    if (!resp || resp.status() >= 400) return null;
+    // Confirm we actually landed on a form rather than a soft 404 rendered 200.
+    const hasForm = await page.locator('input[name="cEmail"]').count().catch(() => 0);
+    return hasForm > 0 ? url : null;
+  },
+
+  async locate(page, field) {
+    const sel = FIELDS[field];
+    if (!sel) return null;
+    const l = page.locator(sel).first();
+    return (await l.count()) > 0 ? wrap(l) : null;
+  },
+
+  async locateResume(page) {
+    // Named explicitly: this form has three file inputs and only one is the CV.
+    const l = page.locator('input[name="cResume"]').first();
+    return (await l.count()) > 0 ? wrap(l) : null;
+  },
+
+  async proceed(page) {
+    const submit = page.getByRole("button", { name: /^submit application$/i }).first();
+    if (await submit.count() && await submit.isVisible().catch(() => false)) {
+      await submit.click({ timeout: 10_000 });
+      return "submitted";
+    }
+    const cont = page.getByRole("button", { name: /^continue$/i }).first();
+    if (await cont.count() && await cont.isVisible().catch(() => false)) {
+      await cont.click({ timeout: 10_000 });
+      return "advanced";
+    }
+    return "stuck";
+  },
+
+  async confirmed(page) {
+    const body = ((await page.textContent("body").catch(() => "")) ?? "").slice(0, 4_000);
+    if (/thank you|application (?:has been )?(?:received|submitted)|we(?:'ve| have) received/i.test(body)) {
+      return "yes";
+    }
+    // Still showing the form we just tried to submit is genuine evidence of NOT
+    // submitted — the one case where a negative can be asserted rather than
+    // guessed.
+    if (await page.locator('input[name="cEmail"]').count().catch(() => 0)) return "no";
+    return "unknown";
+  },
+};

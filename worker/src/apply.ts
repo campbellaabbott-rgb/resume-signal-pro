@@ -1,76 +1,60 @@
-// The form driver: load a real application page, fill it, submit it.
+// The form driver. Vendor-agnostic on purpose: everything that differs between
+// ATS platforms lives in src/vendors/, and what remains here is the set of rules
+// about CONSEQUENCES, which are the same everywhere.
 //
-// WHY A BROWSER AND NOT AN HTTP POST. Measured 2026-07-30 across 674 apply
-// pages: every zero-CAPTCHA vendor ships 0% postable forms — no
-// <input name=...> exists in the HTML at all, because the form is built by
-// JavaScript after load. There is nothing for an HTTP client to POST to. That is
-// the whole reason this worker exists as a separate service: Supabase edge
-// functions run Deno with no browser binary.
+// WHY THIS WAS REWRITTEN. The first version tried to fill any form by guessing
+// at labels, names, placeholders and aria-labels in turn. Recon on three live
+// vendors (worker/RECON.md) found it would have failed on all three, and not one
+// of those failures was a CAPTCHA:
+//   - SmartRecruiters: stored URL is a description page; the form is behind a
+//     link reading "I'm interested"; fields have no name attributes and live in
+//     1,806 shadow roots; the page ends in "Next", not submit.
+//   - Breezy: form is at {url}/apply; fields have names but no labels.
+//   - Teamtailor: apply control reads "Apply Here .xx" — written by the
+//     employer, so no vendor-level text pattern can match it.
 //
-// THE ONE RULE THIS FILE IS BUILT AROUND: an ambiguous outcome is never a
-// retry. If a submit times out we do not know whether the application landed.
-// Retrying "to be safe" is how one application becomes two under a real person's
-// name, at a real employer, with no way to take it back. Uncertainty is recorded
-// as uncertainty and handed to a human — it is never resolved by guessing.
+// The lesson is that a driver cannot be written from imagination. It can only be
+// written from observation, per vendor. What CAN be written once is this: the
+// rules about what must never happen.
 import type { Browser, Page } from "playwright";
+import { adapterFor, BLOCKED } from "./vendors/index.js";
+import type { PacketFieldKey, VendorAdapter } from "./vendors/types.js";
 
 export type PacketField = { value: string; source: string };
 
 export type ApplyInput = {
   applyUrl: string;
   source: string;
-  fields: Record<string, PacketField>;
+  /** Keyed by PacketFieldKey. Anything the adapter cannot place is reported, not guessed at. */
+  fields: Partial<Record<PacketFieldKey, PacketField>>;
   resumePath?: string;
 };
 
 export type ApplyOutcome =
-  /** The page showed a confirmation we recognised. Safe to stamp as sent. */
+  /** A confirmation was recognised. Safe to stamp as sent. */
   | { kind: "submitted"; evidence: string }
-  /** We never pressed submit. Nothing was sent; safe to try again later. */
+  /** Submit was never pressed. Nothing was sent; safe to try again later. */
   | { kind: "not-submitted"; reason: string }
-  /** We pressed submit and could not confirm. NEVER retried, always escalated. */
+  /** Submit was pressed and the result is unknown. NEVER retried, always escalated. */
   | { kind: "uncertain"; reason: string; screenshot?: Buffer };
 
 const SETTLE_MS = 2_500;
-const NAV_TIMEOUT = 45_000;
 const SUBMIT_WAIT = 20_000;
-
-// Confirmation language across the vendors in the auto tier. Deliberately
-// conservative: a phrase we are not sure about produces `uncertain`, which a
-// human resolves, rather than a false "sent" that hides a failed application.
-const CONFIRMED = [
-  /thank you for (?:your )?appl/i,
-  /application (?:has been )?(?:received|submitted|complete)/i,
-  /we(?:'ve| have) received your application/i,
-  /your application was sent/i,
-  /submission (?:was )?successful/i,
-];
-
-/** Match a form control to a packet field by label, name, placeholder or aria. */
-async function fillByLabel(page: Page, label: string, value: string): Promise<boolean> {
-  const escaped = label.replace(/["\\]/g, "").trim();
-  if (!escaped || !value) return false;
-  const attempts = [
-    () => page.getByLabel(new RegExp(escaped.slice(0, 40), "i")).first(),
-    () => page.locator(`input[name*="${(escaped.split(/\s+/)[0] ?? escaped).toLowerCase()}" i]`).first(),
-    () => page.getByPlaceholder(new RegExp(escaped.slice(0, 30), "i")).first(),
-    () => page.locator(`[aria-label*="${escaped.slice(0, 30)}" i]`).first(),
-  ];
-  for (const get of attempts) {
-    try {
-      const el = get();
-      if (await el.count() === 0) continue;
-      if (!(await el.isVisible({ timeout: 1_500 }).catch(() => false))) continue;
-      const tag = await el.evaluate((n: Element) => n.tagName.toLowerCase()).catch(() => "");
-      if (tag === "select") await el.selectOption({ label: value }).catch(() => el.selectOption(value));
-      else await el.fill(value, { timeout: 5_000 });
-      return true;
-    } catch { /* try the next strategy */ }
-  }
-  return false;
-}
+const MAX_STEPS = 6;
 
 export async function applyToPosting(browser: Browser, input: ApplyInput): Promise<ApplyOutcome> {
+  const source = String(input.source ?? "").toLowerCase();
+
+  if (BLOCKED[source]) {
+    return { kind: "not-submitted", reason: `${source}: ${BLOCKED[source]}` };
+  }
+  const adapter = adapterFor(source);
+  if (!adapter) {
+    // Refusing an un-examined vendor is the point, not a limitation. Shipping a
+    // guessed adapter is what this whole rewrite exists to prevent.
+    return { kind: "not-submitted", reason: `${source} has no adapter — no recon has been done on it` };
+  }
+
   const ctx = await browser.newContext({
     // A normal desktop browser. NOT a spoofed fingerprint — these vendors were
     // measured to carry no CAPTCHA and no challenge wall, so there is nothing to
@@ -81,91 +65,85 @@ export async function applyToPosting(browser: Browser, input: ApplyInput): Promi
   const page = await ctx.newPage();
 
   try {
-    const resp = await page.goto(input.applyUrl, { waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT });
-    if (!resp || resp.status() >= 400) {
-      return { kind: "not-submitted", reason: `page returned ${resp?.status() ?? "no response"}` };
+    const formUrl = await adapter.resolveFormUrl(page, input.applyUrl);
+    if (!formUrl) {
+      // Distinguished from "the form defeated us": we never found it. On the old
+      // driver this surfaced as "no submit control found", which read like a
+      // broken posting and hid a fixable URL problem.
+      return { kind: "not-submitted", reason: "could not find the application form from this posting URL" };
     }
-    await page.waitForTimeout(SETTLE_MS); // the form is JS-built; give it a beat
+    await page.waitForTimeout(SETTLE_MS);
 
-    // A posting that has come down since the packet was prepared. Common — the
-    // board's own 30-day rule means packets can outlive their postings.
     const body = (await page.textContent("body").catch(() => "")) ?? "";
     if (/no longer accepting|position (?:has been )?closed|posting (?:is )?closed|not found/i.test(body)) {
       return { kind: "not-submitted", reason: "posting is closed" };
     }
 
-    // Some vendors put the form behind an Apply button rather than on the page.
-    for (const name of [/^apply(?: now| for this job)?$/i, /^start (?:your )?application$/i]) {
-      const btn = page.getByRole("button", { name }).first();
-      if (await btn.count() && await btn.isVisible().catch(() => false)) {
-        await btn.click().catch(() => {});
-        await page.waitForTimeout(SETTLE_MS);
-        break;
-      }
-    }
-
-    // A CAPTCHA that appears despite the vendor measuring clean. Vendors change
-    // their protection; the measurement is a snapshot, not a guarantee. Stop —
-    // do not attempt, do not solve, do not evade.
-    const html = await page.content();
-    if (/recaptcha|hcaptcha|turnstile|arkoselabs/i.test(html)) {
+    // Vendors change their protection; the measurement is a snapshot, not a
+    // guarantee. Stop — do not attempt, do not solve, do not evade.
+    if (/recaptcha|hcaptcha|turnstile|arkoselabs/i.test(await page.content())) {
       return { kind: "not-submitted", reason: "captcha appeared on a vendor measured clean — needs a human" };
     }
 
-    let filled = 0;
-    for (const [label, f] of Object.entries(input.fields)) {
-      if (await fillByLabel(page, label, f.value)) filled++;
-    }
+    // ---- fill, stepping through the form as the adapter directs ----
+    const wanted = Object.keys(input.fields) as PacketFieldKey[];
+    const placed = new Set<PacketFieldKey>();
+    let resumeAttached = false;
+    let submittedAt = -1;
 
-    // A file input the packet has no file for is a hard stop, not a shrug. The
-    // required-field check below would catch it on a well-marked form, but plenty
-    // of forms leave the résumé input unmarked and simply reject on submit — and
-    // a rejected submit is an ambiguous outcome, which costs a human's time to
-    // resolve. Better to refuse here where the reason is knowable.
-    const fileInput = page.locator('input[type="file"]').first();
-    const hasFileField = (await fileInput.count()) > 0;
-    if (hasFileField) {
-      if (!input.resumePath) {
-        return { kind: "not-submitted", reason: "this form wants a résumé file and none is attached to the profile" };
+    for (let step = 0; step < MAX_STEPS; step++) {
+      for (const key of wanted) {
+        if (placed.has(key)) continue;
+        const field = input.fields[key];
+        if (!field?.value) continue;
+        const target = await adapter.locate(page, key).catch(() => null);
+        if (!target || !(await target.isVisible())) continue;
+        await target.fill(field.value).then(() => { placed.add(key); }, () => {});
       }
-      try {
-        await fileInput.setInputFiles(input.resumePath, { timeout: 15_000 });
-      } catch (e) {
-        return { kind: "not-submitted", reason: `résumé upload failed: ${String(e).slice(0, 90)}` };
+
+      if (!resumeAttached && input.resumePath) {
+        const file = await adapter.locateResume(page).catch(() => null);
+        if (file) {
+          await file.setFile(input.resumePath).then(() => { resumeAttached = true; }, () => {});
+          // Several vendors parse the CV and rewrite name/email from it, which
+          // would otherwise race the fields just filled.
+          await page.waitForTimeout(SETTLE_MS);
+        }
       }
-      // Give the vendor's uploader a moment; several parse the file and rewrite
-      // the form's name/email fields from it, which would otherwise race us.
+
+      // A form that wants a CV and has not got one is a hard stop. The old
+      // driver leaned on the required-field check for this; on SmartRecruiters
+      // that check is inert, so it is checked directly.
+      if (!resumeAttached && input.resumePath === undefined) {
+        const anyFile = await adapter.locateResume(page).catch(() => null);
+        if (anyFile) {
+          return { kind: "not-submitted", reason: "this form wants a résumé and none is attached to the profile" };
+        }
+      }
+
+      const unplaced = wanted.filter((k) => !placed.has(k) && input.fields[k]?.value);
+      const guard = await preSubmitGuard(page, adapter, wanted.length, placed.size, unplaced);
+      if (guard) return guard;
+
+      const step_result = await adapter.proceed(page).catch(() => "stuck" as const);
+      if (step_result === "stuck") {
+        return {
+          kind: "not-submitted",
+          reason: `stopped at step ${step + 1}: no way forward found (${placed.size}/${wanted.length} fields placed)`,
+        };
+      }
+      if (step_result === "submitted") { submittedAt = step; break; }
       await page.waitForTimeout(SETTLE_MS);
     }
 
-    // Refuse to submit a form we mostly failed to fill. A half-filled
-    // application is worse than none: it burns the posting for that candidate,
-    // and the duplicate guard will stop them applying properly later.
-    const expected = Object.keys(input.fields).length;
-    if (expected > 0 && filled < Math.ceil(expected * 0.6)) {
-      return { kind: "not-submitted", reason: `only filled ${filled}/${expected} fields — refusing to submit a partial application` };
+    if (submittedAt < 0) {
+      return { kind: "not-submitted", reason: `form still unfinished after ${MAX_STEPS} steps — not submitting a partial application` };
     }
 
-    // Required fields the packet had nothing for. The DOM is the authority here,
-    // not our expectation of the form.
-    const emptyRequired = await page.locator("input[required], select[required], textarea[required]")
-      .evaluateAll((els: Element[]) => els.filter((e) => !(e as HTMLInputElement).value).length).catch(() => 0);
-    if (emptyRequired > 0) {
-      return { kind: "not-submitted", reason: `${emptyRequired} required field(s) the packet could not answer` };
-    }
-
-    const submit = page.getByRole("button", { name: /^(submit|send) (?:application|now)?$|^submit$|^apply$/i }).first();
-    if (!(await submit.count())) {
-      return { kind: "not-submitted", reason: "no submit control found" };
-    }
-
-    // EVERYTHING BEFORE THIS LINE IS REVERSIBLE. Everything after is not.
-    await submit.click({ timeout: 10_000 });
-
+    // EVERYTHING BEFORE THIS POINT IS REVERSIBLE. Nothing after it is.
     try {
       await page.waitForLoadState("networkidle", { timeout: SUBMIT_WAIT });
     } catch {
-      // Timed out waiting. We pressed submit; it may or may not have landed.
       return {
         kind: "uncertain",
         reason: "submitted but the page never settled — outcome unknown, not retrying",
@@ -173,15 +151,18 @@ export async function applyToPosting(browser: Browser, input: ApplyInput): Promi
       };
     }
 
-    const after = ((await page.textContent("body").catch(() => "")) ?? "").slice(0, 4_000);
-    const hit = CONFIRMED.find((re) => re.test(after));
-    if (hit) return { kind: "submitted", evidence: (after.match(hit)?.[0] ?? "confirmed").slice(0, 120) };
-
-    // No confirmation we recognise. It may have worked; it may have failed
-    // validation. We do not know, so we say we do not know.
+    const verdict = await adapter.confirmed(page).catch(() => "unknown" as const);
+    if (verdict === "yes") {
+      return { kind: "submitted", evidence: `${adapter.key} confirmed after step ${submittedAt + 1}` };
+    }
+    if (verdict === "no") {
+      // Only asserted where an adapter has real evidence — e.g. Breezy still
+      // showing the same form. Nothing was sent, so this is safely retryable.
+      return { kind: "not-submitted", reason: "submit did not take; the form is still showing" };
+    }
     return {
       kind: "uncertain",
-      reason: "no confirmation message recognised after submit",
+      reason: "no confirmation recognised after submit",
       screenshot: await page.screenshot().catch(() => undefined),
     };
   } catch (e) {
@@ -189,4 +170,42 @@ export async function applyToPosting(browser: Browser, input: ApplyInput): Promi
   } finally {
     await ctx.close().catch(() => {});
   }
+}
+
+/**
+ * The two checks that must pass before any submit, and an honest account of what
+ * each is worth on this vendor.
+ */
+async function preSubmitGuard(
+  page: Page,
+  adapter: VendorAdapter,
+  expected: number,
+  placedCount: number,
+  unplaced: PacketFieldKey[],
+): Promise<ApplyOutcome | null> {
+  // A half-filled application is worse than none: it burns the posting for that
+  // candidate, and the duplicate guard then stops them applying properly later.
+  if (expected > 0 && placedCount < Math.ceil(expected * 0.6)) {
+    return {
+      kind: "not-submitted",
+      reason: `only placed ${placedCount}/${expected} fields (missing: ${unplaced.join(", ")}) — refusing to submit a partial application`,
+    };
+  }
+
+  // Only meaningful where the vendor actually sets the attribute. On
+  // SmartRecruiters it is absent on every field and requiredness lives in
+  // JavaScript, so running this there would return zero and be counted as
+  // protection it did not provide. Skipping it honestly is better than passing
+  // it hollowly.
+  if (adapter.requiredAttributeIsTrustworthy) {
+    const emptyRequired = await page
+      .locator("input[required], select[required], textarea[required]")
+      .evaluateAll((els: Element[]) => els.filter((e) => !(e as HTMLInputElement).value).length)
+      .catch(() => 0);
+    if (emptyRequired > 0) {
+      return { kind: "not-submitted", reason: `${emptyRequired} required field(s) the packet could not answer` };
+    }
+  }
+
+  return null;
 }
