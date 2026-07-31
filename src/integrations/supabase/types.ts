@@ -476,6 +476,27 @@ export type Database = {
         }
         Relationships: []
       }
+      agent_worker_heartbeat: {
+        Row: {
+          claimed_total: number
+          last_seen: string
+          version: string
+          worker_id: string
+        }
+        Insert: {
+          claimed_total?: number
+          last_seen?: string
+          version?: string
+          worker_id: string
+        }
+        Update: {
+          claimed_total?: number
+          last_seen?: string
+          version?: string
+          worker_id?: string
+        }
+        Relationships: []
+      }
       ai_response_cache: {
         Row: {
           cache_key: string
@@ -2605,7 +2626,15 @@ export type Database = {
         Args: { p_id: number; p_reason: string }
         Returns: undefined
       }
+      agent_sender_online: {
+        Args: { p_max_age_seconds?: number }
+        Returns: boolean
+      }
       agent_sent_today: { Args: { p_user: string }; Returns: number }
+      agent_worker_ping: {
+        Args: { p_claimed?: number; p_version?: string; p_worker: string }
+        Returns: undefined
+      }
       build_missing_since_index_oneshot: { Args: never; Returns: undefined }
       build_speed_indexes_oneshot: { Args: never; Returns: undefined }
       check_global_rate_limit: {
