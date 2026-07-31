@@ -2630,6 +2630,7 @@ export type Database = {
         Args: { p_max_age_seconds?: number }
         Returns: boolean
       }
+      agent_sender_public_status: { Args: never; Returns: boolean }
       agent_sent_today: { Args: { p_user: string }; Returns: number }
       agent_worker_ping: {
         Args: { p_claimed?: number; p_version?: string; p_worker: string }
