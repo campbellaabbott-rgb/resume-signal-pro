@@ -33,3 +33,5 @@ New Folder With Items/.claude/
 .github/
 scripts/.prerender-data-entry.ts
 scripts/.prerender-data.mjs
+worker/applicant.json
+worker/submit-*.png

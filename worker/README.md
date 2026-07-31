@@ -116,6 +116,38 @@ set -a && source .env && set +a
 HEADLESS=false SLOW_MO=400 npm run dev
 ```
 
+## The one live submission, when you have a posting to test on
+
+`src/dryrun.ts` drives a real posting with the real adapter code. Without
+`--submit` it stops before the click and is free to run against anything:
+
+```bash
+npx tsx src/dryrun.ts "<postingUrl>" breezy            # checks, sends nothing
+```
+
+With `--submit` it presses the button and **a real employer receives a real
+application that cannot be withdrawn**:
+
+```bash
+cp applicant.example.json applicant.json    # gitignored; fill in real details
+npx tsx src/dryrun.ts "<postingUrl>" breezy --submit --profile applicant.json --headed
+```
+
+Before anything is sent it requires a profile with real name, email and a résumé
+that exists; refuses any value still reading like an example; prints the posting,
+name, email and résumé path; and waits for the word `SUBMIT` to be typed. It also
+refuses if any earlier check failed — a partial application burns the posting for
+that person, and the duplicate guard then blocks them applying properly later.
+
+**Use a posting you own.** A Breezy or Personio free trial with a throwaway job
+gives a genuine end-to-end test — real vendor, real form, real confirmation page
+— and the application lands in your own inbox instead of a stranger's.
+
+WHAT IT ANSWERS. The confirmation phrases in each adapter's `confirmed()` were
+written from what vendors typically say, never from what one actually says. This
+is the only way to find out. On `unknown` it prints the page's real wording so
+the phrase can be added, and saves a screenshot either way.
+
 ## Deploy
 
 `fly.toml` is checked in. The Dockerfile uses Playwright's own image, so Chromium

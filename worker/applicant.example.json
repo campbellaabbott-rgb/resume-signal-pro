@@ -1,0 +1,28 @@
+{
+  "_README": [
+    "Real details for a real submission. Copy to applicant.json (gitignored) and",
+    "fill in. Used ONLY by `dryrun.ts --submit`.",
+    "",
+    "These go to an actual employer who will actually read them. The tool refuses",
+    "to send anything that still looks like an example, so replace every value —",
+    "a half-filled application wastes a stranger's time and burns the posting for",
+    "whoever the name belongs to.",
+    "",
+    "resumePath is a path on this machine. It is attached to the form directly;",
+    "nothing is uploaded anywhere else."
+  ],
+  "fullName": "",
+  "firstName": "",
+  "lastName": "",
+  "email": "",
+  "confirmEmail": "",
+  "phone": "",
+  "city": "",
+  "country": "",
+  "address": "",
+  "linkedin": "",
+  "website": "",
+  "coverNote": "",
+  "salaryExpectation": "",
+  "resumePath": ""
+}
