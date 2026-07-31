@@ -61,6 +61,15 @@ export const breezy: VendorAdapter = {
     return (await l.count()) > 0 ? wrap(l) : null;
   },
 
+  // `required` is honest here (30 of 50 fields), so this answer is real.
+  async unansweredRequired(page) {
+    const mapped = new Set([...Object.values(FIELDS).map((s) => s.replace(/^.*name="([^"]+)".*$/, "$1")), "cResume"]);
+    const names = await page.locator("input[required], select[required], textarea[required]")
+      .evaluateAll((els) => [...new Set(els.map((e) => (e as HTMLInputElement).name || "(unnamed)"))])
+      .catch(() => [] as string[]);
+    return names.filter((n) => !mapped.has(n));
+  },
+
   async canProceed(page) {
     const submit = page.getByRole("button", { name: /^submit application$/i }).first();
     if (await submit.count() && await submit.isVisible().catch(() => false)) return "would-submit";

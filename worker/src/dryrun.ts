@@ -229,6 +229,28 @@ async function main() {
     // 5. Ask the ADAPTER what proceed() would do. Never guess from button text:
     //    the first version of this checked for "submit application"/"continue"
     //    and called Personio stuck, because its button reads "Bewerbung senden".
+    // 4b. THE QUESTION THAT DECIDES WHETHER A POSTING IS COMPLETABLE.
+    //     Not CAPTCHAs — employer screening questions. Sampling eight live
+    //     Breezy postings on 2026-07-31, five carried required questions no
+    //     packet can answer and would be refused before submit; three had a bare
+    //     form and would have gone through.
+    const unanswered = await adapter.unansweredRequired(page).catch(() => null);
+    if (unanswered === null) {
+      // Not a clean bill of health. This vendor keeps requiredness in the label
+      // text, so the attribute is absent and counting it would return zero —
+      // which would read as "nothing missing" on exactly the question being
+      // asked. Saying so is the honest answer.
+      console.log(`  [4b] required check   CANNOT DETERMINE — ${adapter.key} does not use the required attribute`);
+    } else if (unanswered.length === 0) {
+      console.log("  [4b] required check   OK — every required field is one the agent can answer");
+    } else {
+      console.log(`  [4b] required check   ${unanswered.length} required field(s) the agent CANNOT answer:`);
+      for (const n of unanswered.slice(0, 8)) console.log(`         ${n}`);
+      if (unanswered.length > 8) console.log(`         …and ${unanswered.length - 8} more`);
+      console.log("       -> the worker would REFUSE this posting and send it to the queue");
+      bad++;
+    }
+
     const what = await adapter.canProceed(page).catch(() => "stuck" as const);
     console.log(`  [5] proceed() would ${what === "would-submit" ? "SUBMIT"
       : what === "would-advance" ? "ADVANCE a step (multi-step form)"

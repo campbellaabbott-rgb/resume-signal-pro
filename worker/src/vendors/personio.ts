@@ -72,6 +72,11 @@ export const personio: VendorAdapter = {
 
   // Located by TYPE and form membership, never by text: the control reads
   // "Bewerbung senden" on this tenant and something else on an English one.
+  // Cannot be answered here. Personio sets `required` on none of its twelve
+  // fields — requiredness is "*(erforderlich)" in the label text — so counting
+  // the attribute returns zero and would look like nothing is missing.
+  async unansweredRequired() { return null; },
+
   async canProceed(page) {
     const submit = page.locator('form button[type="submit"], form input[type="submit"]').last();
     if (await submit.count() && await submit.isVisible().catch(() => false)) return "would-submit";

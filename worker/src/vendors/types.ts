@@ -70,6 +70,23 @@ export interface VendorAdapter {
   canProceed(page: Page): Promise<"would-advance" | "would-submit" | "stuck">;
 
   /**
+   * Required fields on THIS form that this adapter has no answer for.
+   *
+   * The real ceiling on unattended applying, and it is not CAPTCHAs. Sampling
+   * eight live Breezy postings on 2026-07-31: three had a bare form and could
+   * have been completed; five carried employer screening questions — radio
+   * groups, checkbox groups, extra file uploads, consent boxes — that no packet
+   * can answer. Those five would be refused before submit, correctly.
+   *
+   * Returns NULL, never an empty array, when the vendor does not put requiredness
+   * in the `required` attribute. Personio and SmartRecruiters mark fields with an
+   * asterisk in the label and enforce in JavaScript, so counting the attribute
+   * there returns zero and would read as "nothing missing" — a false clean on
+   * exactly the question this exists to answer.
+   */
+  unansweredRequired(page: Page): Promise<string[] | null>;
+
+  /**
    * Did the application land? Vendor-specific because confirmation wording is.
    *
    * MUST return "unknown" when unsure. A false "yes" records a send that never

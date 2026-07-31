@@ -88,6 +88,9 @@ export const smartrecruiters: VendorAdapter = {
     return wrap(scoped.nth(n - 1));
   },
 
+  // Same trap as Personio: labels carry asterisks, no field sets `required`.
+  async unansweredRequired() { return null; },
+
   async canProceed(page) {
     for (const re of [/^submit application$/i, /^submit$/i, /^send application$/i]) {
       const b = page.getByRole("button", { name: re }).first();

@@ -125,6 +125,43 @@ now listed as a refusal we respect rather than a gap to close: working around it
 means spoofing the user agent or hiding behind a virtual display, which is the
 same line as solving a CAPTCHA.
 
+## The real ceiling is employer questions, not CAPTCHAs (2026-07-31)
+
+Sampled eight live Breezy postings for required fields the agent has no answer
+for:
+
+| required | unanswerable | outcome |
+|---|---|---|
+| 5 | 1 | refuse |
+| 9 | 1 | refuse |
+| 16 | 11 | refuse |
+| 2 | 0 | **could send** |
+| 2 | 0 | **could send** |
+| 2 | 0 | **could send** |
+| 10 | 5 | refuse |
+| 12 | 6 | refuse |
+
+**3 of 8.** One vendor, eight postings — an order of magnitude, not a rate. But
+it is the first number describing what a subscriber would actually get, and it is
+nothing like the "68% of apply pages had no CAPTCHA" figure that has been standing
+in for it.
+
+The pattern is clean: a bare form goes through; a form with employer screening
+questions does not. Radio groups, checkbox groups, extra file uploads, consent
+boxes. That is `buildPacket` working as designed — it blocks rather than invents
+an answer — but it means unattended applying works on the SIMPLEST postings, and
+roles with real screening fall to the review queue.
+
+`dryrun.ts` step 4b now answers this per posting, and refuses to `--submit` when
+anything is unanswerable. On vendors that keep requiredness in the label text
+rather than the attribute it reports CANNOT DETERMINE rather than zero, because
+zero would read as a clean bill of health on precisely the question being asked.
+
+**The ceiling is liftable.** Most of these questions are work authorisation,
+notice period, salary, right to work — things the standing-answers profile
+already captures. Matching common question PATTERNS rather than exact field names
+is the highest-value work left on the agent.
+
 ## Status
 
 **Adapters serving:** Breezy, Personio, Pinpoint — each verified against a live form.
