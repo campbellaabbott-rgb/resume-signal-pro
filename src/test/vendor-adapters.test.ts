@@ -169,3 +169,32 @@ describe("the rules that keep a real employer from getting nonsense", () => {
     }
   });
 });
+
+describe("a false 'not submitted' is the dangerous direction", () => {
+  /**
+   * FOUND BY A DRY RUN ON A LIVE BREEZY FORM, 2026-07-31.
+   *
+   * Breezy is a JS wizard: every step shares one <form>, and "Submit
+   * Application" sits in the DOM at zero size until the last step. So a field
+   * being PRESENT after a submit proves nothing — it survives, just hidden.
+   *
+   * The adapters asserted "no" on presence. A wrong "no" means not-submitted,
+   * which the driver treats as safely retryable, which is a SECOND application
+   * to the same employer under a real person's name. Neither can be withdrawn.
+   *
+   * A wrong "yes" loses an application. A wrong "no" creates one. Only the
+   * second is unrecoverable, so failure must be asserted from visibility and
+   * anything less must fall through to "unknown", which routes to a human.
+   */
+  for (const file of ["breezy.ts", "personio.ts", "pinpoint.ts"]) {
+    it(`${file} asserts failure only from visibility, never presence`, () => {
+      const code = codeOnly(src(file));
+      const confirmed = code.slice(code.indexOf("async confirmed"));
+      expect(confirmed, `${file} must not infer "no" from a element merely existing`)
+        .not.toMatch(/count\(\)[\s\S]{0,40}return "no"/);
+      expect(confirmed, `${file} must check visibility before asserting failure`)
+        .toMatch(/isVisible[\s\S]{0,120}return "no"/);
+      expect(confirmed, `${file} must fall through to unknown`).toMatch(/return "unknown"/);
+    });
+  }
+});

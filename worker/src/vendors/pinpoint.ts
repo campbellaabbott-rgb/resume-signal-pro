@@ -88,7 +88,17 @@ export const pinpoint: VendorAdapter = {
     if (/thank you|application (?:has been )?(?:received|submitted)|we(?:'ve| have) received/i.test(body)) {
       return "yes";
     }
-    if (await page.locator(f("email")).count().catch(() => 0)) return "no";
+    // Presence is NOT evidence the form is still showing. Breezy is a JS wizard:
+    // every step lives in ONE form, so after a successful submit these fields
+    // can remain in the DOM at zero size. Counting them would assert "not
+    // submitted", which is treated as safely retryable — and a retry is a second
+    // application under a real person's name, with no way to withdraw either.
+    //
+    // Visibility is the honest test. If the field is genuinely on screen the
+    // submit did not take; if it is merely present, we do not know, and "unknown"
+    // routes to a human.
+    const still = await page.locator(f("email")).first().isVisible({ timeout: 2_000 }).catch(() => false);
+    if (still) return "no";
     return "unknown";
   },
 };

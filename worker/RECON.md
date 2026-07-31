@@ -82,6 +82,24 @@ Had the recon stopped at the first measurement, SmartRecruiters would have been
 written off. Check whether the instrument can see the thing before concluding
 the thing is absent.
 
+## Dry run, 2026-07-31 — Breezy, nothing submitted
+
+Ran the adapter's own steps against a live Breezy form and stopped before the
+click. All six mapped fields matched exactly one element, visible and enabled;
+`cResume` is required and accepts .pdf/.doc/.docx/.txt.
+
+**Breezy is MULTI-STEP, and I had recorded it as a single page.** "Submit
+Application" is in the DOM at zero size; "Continue" is the visible control. Every
+step shares ONE `<form>`.
+
+That corrected a real bug. `confirmed()` asserted "no" whenever the email field
+was still PRESENT. In a wizard the field survives a successful submit, just
+hidden — so a real send would have been read as "not submitted", which is
+classified safely retryable, which is a SECOND application under a real person's
+name. A false negative is the dangerous direction here, and presence was the
+wrong test. All three name-matched adapters now require the field to be VISIBLE
+before asserting failure, and fall back to "unknown" otherwise.
+
 ## Status
 
 **Adapters written from observation:** Breezy, SmartRecruiters, Personio, Pinpoint.

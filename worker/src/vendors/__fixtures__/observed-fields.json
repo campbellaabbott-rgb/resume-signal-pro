@@ -21,7 +21,6 @@
     "cheap guard against the most likely breakage, not a substitute for watching a",
     "real submission."
   ],
-
   "breezy": {
     "observedAt": "2026-07-30",
     "formUrl": "https://bvn.breezy.hr/p/{posting}/apply",
@@ -31,14 +30,22 @@
     "fieldsWithName": 40,
     "fieldsWithRequiredAttr": 30,
     "names": [
-      "cResume", "cName", "cEmail", "cPhoneNumber", "cAddress",
-      "cSalary", "cLocation", "cSummary", "salaryCurrency"
+      "cResume",
+      "cName",
+      "cEmail",
+      "cPhoneNumber",
+      "cAddress",
+      "cSalary",
+      "cLocation",
+      "cSummary",
+      "salaryCurrency"
     ],
-    "submitControl": "Submit Application",
+    "submitControl": "Submit Application (HIDDEN on step 1; 'Continue' advances)",
     "captcha": false,
-    "honeypot": false
+    "honeypot": false,
+    "multiStep": true,
+    "dryRun2026-07-31": "All 6 mapped fields matched exactly 1, visible, enabled. cResume required, accept='.pdf, .doc, .docx, .txt, .rtd, .pages'. 'Submit Application' present but ZERO-SIZE on step 1; 'Continue' is the visible control. Same <form> for every step — so field presence after submit proves nothing."
   },
-
   "personio": {
     "observedAt": "2026-07-30",
     "formUrl": "https://{tenant}.jobs.personio.de/job/{id}?apply",
@@ -49,16 +56,23 @@
     "fieldsWithName": 12,
     "fieldsWithRequiredAttr": 0,
     "names": [
-      "first_name", "last_name", "email", "location", "phone",
-      "available_from", "salary_expectations", "gender",
-      "documents.cv", "documents.cover-letter",
-      "documents.employment-reference", "documents.other"
+      "first_name",
+      "last_name",
+      "email",
+      "location",
+      "phone",
+      "available_from",
+      "salary_expectations",
+      "gender",
+      "documents.cv",
+      "documents.cover-letter",
+      "documents.employment-reference",
+      "documents.other"
     ],
     "resumeField": "documents.cv",
     "captcha": false,
     "honeypot": false
   },
-
   "pinpoint": {
     "observedAt": "2026-07-30",
     "formUrl": "https://{tenant}.pinpointhq.com/en/postings/{id}/applications/new",
@@ -86,7 +100,6 @@
     "captcha": false,
     "honeypot": false
   },
-
   "smartrecruiters": {
     "observedAt": "2026-07-30",
     "formUrl": "reached via a link whose href contains /oneclick-ui/",
@@ -97,8 +110,15 @@
     "fieldsWithName": 0,
     "fieldsWithRequiredAttr": 0,
     "labels": [
-      "First name*", "Last name*", "Email*", "Confirm your email*",
-      "City", "LinkedIn", "Facebook", "X (fka Twitter)", "Website",
+      "First name*",
+      "Last name*",
+      "Email*",
+      "Confirm your email*",
+      "City",
+      "LinkedIn",
+      "Facebook",
+      "X (fka Twitter)",
+      "Website",
       "Choose a file or drop it here",
       "Let the company know about your interest"
     ],
@@ -106,12 +126,14 @@
     "captcha": false,
     "honeypot": false
   },
-
   "oracle": {
     "observedAt": "2026-07-30",
     "servable": false,
     "note": "NOT served. Email-first screen, no account needed, but a REQUIRED terms-and-conditions checkbox, and it ships a honeypot.",
-    "names": ["primary-email", "honey-pot"],
+    "names": [
+      "primary-email",
+      "honey-pot"
+    ],
     "honeypot": true,
     "honeypotField": "honey-pot",
     "captcha": false
