@@ -168,3 +168,55 @@ describe("the résumé file — the thing that blocks every application without 
     expect(panel).toContain("MAX_BYTES");
   });
 });
+
+describe("saving an apply profile survives a migration that has not landed", () => {
+  /**
+   * The bundle and the migrations do not ship together: Lovable deploys the
+   * frontend in seconds and applies migrations only during a session. So there
+   * is always a window where this panel knows about a column Postgres does not.
+   *
+   * Found live, not theoretically. `consent_to_processing` shipped in the
+   * bundle before its migration, and the panel's named-column select returned
+   * 42703 against the real database — which takes the ENTIRE apply profile
+   * down, read and write, with nothing on screen explaining why.
+   */
+  const undefinedColumn = (col: string) => ({
+    code: "42703",
+    message: `column agent_mandates.${col} does not exist`,
+  });
+
+  it("drops the column Postgres names and saves everything else", async () => {
+    const { saveTolerantly } = await import("../components/account/ApplyProfilePanel");
+    const seen: Array<Record<string, unknown>> = [];
+    const run = async (v: Record<string, unknown>) => {
+      seen.push({ ...v });
+      return { error: "consent_to_processing" in v ? undefinedColumn("consent_to_processing") : null };
+    };
+    const { error } = await saveTolerantly(run, {
+      full_name: "Alex Fairweather", consent_to_processing: true, apply_mode: "review",
+    });
+    expect(error).toBeNull();
+    expect(seen).toHaveLength(2);
+    // The rest of the profile still saved — one pending column must not take
+    // the whole form down.
+    expect(seen[1]).toEqual({ full_name: "Alex Fairweather", apply_mode: "review" });
+  });
+
+  it("surfaces a real failure instead of retrying it away", async () => {
+    const { saveTolerantly } = await import("../components/account/ApplyProfilePanel");
+    const run = async () => ({ error: { code: "23505", message: "duplicate key" } });
+    const { error } = await saveTolerantly(run, { full_name: "x" });
+    // Only undefined_column is tolerable. Swallowing anything else would hide
+    // genuine save failures behind a silent retry loop.
+    expect(error?.code).toBe("23505");
+  });
+
+  it("gives up rather than looping when the error names nothing it holds", async () => {
+    const { saveTolerantly } = await import("../components/account/ApplyProfilePanel");
+    let calls = 0;
+    const run = async () => { calls++; return { error: undefinedColumn("some_other_table_column") }; };
+    const { error } = await saveTolerantly(run, { full_name: "x" });
+    expect(error?.code).toBe("42703");
+    expect(calls, "must not retry a column it cannot remove").toBe(1);
+  });
+});

@@ -80,6 +80,45 @@ function TriToggle({ value, onChange, label, hint }: {
   );
 }
 
+type SaveError = { message?: string; code?: string } | null;
+
+/**
+ * Save, tolerating a column the database does not have yet.
+ *
+ * Same root cause as the `select("*")` above: the bundle ships in seconds and
+ * migrations apply during a Lovable session, so this panel routinely knows
+ * about a column Postgres does not. An ordinary upsert then fails with 42703
+ * and the person cannot save their apply profile AT ALL — one pending column
+ * takes the whole form down, and nothing on screen says why.
+ *
+ * Postgres names the offending column, so this drops it and retries. That value
+ * is lost until the migration lands, which is correct — there is nowhere to put
+ * it — and everything else saves.
+ *
+ * `consent_to_processing` is what exposed this. It defaults to false and gates
+ * the agent accepting notices on somebody's behalf, so losing it in the gap
+ * fails safe. A column whose absence failed the OTHER way would not be safe to
+ * treat this leniently.
+ */
+export async function saveTolerantly(
+  run: (values: Record<string, unknown>) => PromiseLike<{ error: SaveError }>,
+  values: Record<string, unknown>,
+): Promise<{ error: SaveError }> {
+  const attempt: Record<string, unknown> = { ...values };
+  for (let i = 0; i < 4; i++) {
+    const { error } = await run(attempt);
+    if (!error) return { error: null };
+    // 42703 = undefined_column. Anything else is a real failure to surface.
+    const missing = error.code === "42703"
+      ? /column "?(?:[a-z_]+\.)?([a-z_]+)"? does not exist/i.exec(error.message ?? "")?.[1]
+      : undefined;
+    if (!missing || !(missing in attempt)) return { error };
+    console.warn(`[applyProfile] "${missing}" is not in the database yet — saving without it`);
+    delete attempt[missing];
+  }
+  return { error: { message: "too many unknown columns", code: "42703" } };
+}
+
 export function ApplyProfilePanel({ userId }: { userId: string }) {
   const { t } = useTranslation();
   const [p, setP] = useState<ApplyProfile>(EMPTY);
@@ -92,9 +131,14 @@ export function ApplyProfilePanel({ userId }: { userId: string }) {
     let cancelled = false;
     (async () => {
       const { data } = await sb.from("agent_mandates")
-        .select("full_name,phone,linkedin,website,city,country,resume_file_url," +
-          "work_authorized,requires_sponsorship,willing_to_relocate,salary_expectation," +
-          "earliest_start,share_demographics,consent_to_processing,apply_mode,auto_apply_daily_cap")
+        // `*`, not a column list, on purpose. The bundle and the migrations do
+        // not ship together — Lovable deploys the frontend in seconds and
+        // applies migrations only during a session — so this panel routinely
+        // knows about a column Postgres does not yet have. A named column that
+        // is missing fails the whole query with 42703, and the person sees an
+        // empty apply profile with no explanation. With `*` the column is
+        // simply absent from the row and falls back to its EMPTY default.
+        .select("*")
         .eq("user_id", userId).maybeSingle();
       if (cancelled) return;
       if (data) { setP({ ...EMPTY, ...(data as ApplyProfile) }); setExists(true); }
@@ -154,10 +198,10 @@ export function ApplyProfilePanel({ userId }: { userId: string }) {
 
   const save = useCallback(async () => {
     setSaving(true);
-    const row = { user_id: userId, ...p };
-    const { error } = exists
-      ? await sb.from("agent_mandates").update(p).eq("user_id", userId)
-      : await sb.from("agent_mandates").upsert(row, { onConflict: "user_id" });
+    const { error } = await saveTolerantly((v) => (exists
+      ? sb.from("agent_mandates").update(v).eq("user_id", userId)
+      : sb.from("agent_mandates").upsert({ user_id: userId, ...v }, { onConflict: "user_id" })
+    ) as unknown as PromiseLike<{ error: SaveError }>, { ...p } as Record<string, unknown>);
     setSaving(false);
     if (error) { toast.error(t("applyProfile.saveFailed", "Could not save — try again")); return; }
     setExists(true);
