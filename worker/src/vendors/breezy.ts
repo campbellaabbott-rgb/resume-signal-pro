@@ -80,9 +80,6 @@ export const breezy: VendorAdapter = {
     if (/thank you|application (?:has been )?(?:received|submitted)|we(?:'ve| have) received/i.test(body)) {
       return "yes";
     }
-    // Still showing the form we just tried to submit is genuine evidence of NOT
-    // submitted — the one case where a negative can be asserted rather than
-    // guessed.
     // Presence is NOT evidence the form is still showing. Breezy is a JS wizard:
     // every step lives in ONE form, so after a successful submit these fields
     // can remain in the DOM at zero size. Counting them would assert "not
