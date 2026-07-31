@@ -26,17 +26,26 @@ const wrap = (l: Locator): Locatable => ({
   isVisible: () => l.isVisible({ timeout: 3_000 }).catch(() => false),
 });
 
-const f = (k: string) => `[name="application_form[application][${k}]"]`;
-
-const FIELDS: Partial<Record<PacketFieldKey, string>> = {
-  firstName: f("first_name"),
-  lastName: f("last_name"),
-  email: f("email"),
-  phone: f("phone"),
-  linkedin: f("linkedin_url"),
-  address: f("address1"),
-  coverNote: f("summary"),
+// The bare attribute names are the source of truth; selectors are derived from
+// them. Written this way so nothing has to parse a selector back into a name at
+// runtime — the regex that used to do that also confused the fixture test, which
+// read the pattern itself as a field the adapter targets.
+const KEYS: Partial<Record<PacketFieldKey, string>> = {
+  firstName: "first_name",
+  lastName: "last_name",
+  email: "email",
+  phone: "phone",
+  linkedin: "linkedin_url",
+  address: "address1",
+  coverNote: "summary",
 };
+const RESUME_KEY = "cv";
+const n = (k: string) => `application_form[application][${k}]`;
+const f = (k: string) => `[name="${n(k)}"]`;
+
+const FIELDS: Partial<Record<PacketFieldKey, string>> = Object.fromEntries(
+  Object.entries(KEYS).map(([k, v]) => [k, f(v)]),
+) as Partial<Record<PacketFieldKey, string>>;
 
 export const pinpoint: VendorAdapter = {
   key: "pinpoint",
@@ -66,15 +75,14 @@ export const pinpoint: VendorAdapter = {
   },
 
   async locateResume(page) {
-    const l = page.locator(f("cv")).first();
+    const l = page.locator(f(RESUME_KEY)).first();
     return (await l.count()) > 0 ? wrap(l) : null;
   },
 
   // `required` is set on 9 fields including the employer's custom questions,
   // so an unanswerable screening question shows up here rather than at submit.
   async unansweredRequired(page) {
-    const mapped = new Set([...Object.values(FIELDS), f("cv")]
-      .map((s) => s.replace(/^\[name="([^"]+)"\]$/, "$1")));
+    const mapped = new Set([...Object.values(KEYS), RESUME_KEY].map(n));
     const names = await page.locator("input[required], select[required], textarea[required]")
       .evaluateAll((els) => [...new Set(els.map((e) => (e as HTMLInputElement).name || "(unnamed)"))])
       .catch(() => [] as string[]);

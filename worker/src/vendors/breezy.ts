@@ -18,6 +18,18 @@ const wrap = (l: Locator): Locatable => ({
 // Read off the real form. Breezy prefixes candidate fields with `c`, which is
 // stable across tenants because it is the vendor's own markup rather than
 // anything an employer edits.
+// Bare names first, selectors derived — so nothing parses a selector back into
+// a name at runtime.
+const KEYS: Partial<Record<PacketFieldKey, string>> = {
+  fullName: "cName",
+  email: "cEmail",
+  phone: "cPhoneNumber",
+  address: "cAddress",
+  salaryExpectation: "cSalary",
+  coverNote: "cSummary",
+};
+const RESUME_KEY = "cResume";
+
 const FIELDS: Partial<Record<PacketFieldKey, string>> = {
   fullName: 'input[name="cName"]',
   email: 'input[name="cEmail"]',
@@ -63,7 +75,7 @@ export const breezy: VendorAdapter = {
 
   // `required` is honest here (30 of 50 fields), so this answer is real.
   async unansweredRequired(page) {
-    const mapped = new Set([...Object.values(FIELDS).map((s) => s.replace(/^.*name="([^"]+)".*$/, "$1")), "cResume"]);
+    const mapped = new Set([...Object.values(KEYS), RESUME_KEY]);
     const names = await page.locator("input[required], select[required], textarea[required]")
       .evaluateAll((els) => [...new Set(els.map((e) => (e as HTMLInputElement).name || "(unnamed)"))])
       .catch(() => [] as string[]);

@@ -47,13 +47,26 @@ const selectorsIn = (raw: string): string[] => {
   const code = codeOnly(raw);
   const out = new Set<string>();
 
-  // A template helper of the form: const f = (k: string) => `[name="PREFIX${k}SUFFIX"]`
-  const helper = code.match(/const\s+f\s*=\s*\([^)]*\)\s*=>\s*`\[name="([^$]*)\$\{k\}([^"]*)"\]`/);
-  if (helper) {
-    const [, prefix, suffix] = helper;
-    for (const m of code.matchAll(/\bf\("([^"]+)"\)/g)) out.add(`${prefix}${m[1]}${suffix}`);
+  // Adapters declare bare attribute names in a KEYS map and derive selectors
+  // from them, so this reads the names rather than parsing selectors back out.
+  //
+  // It has now been wrong twice in opposite directions. First it returned
+  // pinpoint's unresolved template `...[${k}]`. Then, when the adapters gained a
+  // regex to strip selectors at runtime, it read the regex's own
+  // `[name="([^"]+)"]` as a targeted field. Both times the adapter was right and
+  // the reader was wrong — which is why the adapters no longer parse selectors
+  // at runtime at all, and why this matches declarations instead of patterns.
+  const keysBlock = code.match(/const\s+(?:KEYS|FIELD_KEYS)\b[^=]*=\s*\{([\s\S]*?)\}/);
+  if (keysBlock) {
+    // An optional name template: const n = (k: string) => `prefix${k}suffix`
+    const tpl = code.match(/const\s+n\s*=\s*\([^)]*\)\s*=>\s*`([^$]*)\$\{k\}([^`]*)`/);
+    const wrap = (v: string) => (tpl ? `${tpl[1]}${v}${tpl[2]}` : v);
+    for (const m of keysBlock[1].matchAll(/:\s*"([^"]+)"/g)) out.add(wrap(m[1]));
+    const resume = code.match(/const\s+RESUME_KEY\s*=\s*"([^"]+)"/);
+    if (resume) out.add(wrap(resume[1]));
   }
 
+  // Literal selectors, for adapters that still write them out.
   for (const m of code.matchAll(/\[name="([^"$]+)"\]/g)) out.add(m[1]);
   return [...out];
 };
