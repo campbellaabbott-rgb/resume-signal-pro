@@ -17,12 +17,12 @@ the problems below is a CAPTCHA.
 | | SmartRecruiters | Breezy | Personio | Oracle | Pinpoint | Teamtailor |
 |---|---|---|---|---|---|---|
 | Apply control | `I'm interested` | `Apply To Position` | `Auf diese Stelle bewerben` | `Apply Now` | `Apply Now` | `Apply Here .xx` |
-| Form URL rule | link href has `/oneclick-ui/` | `{url}/apply` | `{url}?apply` | in-page screen | `{url}/application` | unknown |
+| Form URL rule | link href has `/oneclick-ui/` | `{url}/apply` | `{url}?apply` | in-page screen | `{url}/applications/new` | unknown |
 | Shadow DOM | **1,806 roots** | none | 1 | none | none | none |
-| Fields with `name` | **0 of 14** | **40 of 50** | **12 of 12** | 2 of 4 | not mapped | not mapped |
+| Fields with `name` | **0 of 14** | **40 of 50** | **12 of 12** | 2 of 4 | **40 of 56** | not mapped |
 | Fields with `label[for]` | **11 of 14** | **0 of 50** | 8 of 12 | 3 of 4 | — | — |
-| `required` attribute | **none** | **30 of 50** | **none** | 1 (consent) | — | — |
-| Match strategy | `label[for]` | `name` | `name` | `name` | — | — |
+| `required` attribute | **none** | **30 of 50** | **none** | 1 (consent) | **9 of 56** | — |
+| Match strategy | `label[for]` | `name` | `name` | `name` | `name` (nested) | — |
 | CAPTCHA | none | none | none | none | none | none |
 | Honeypot | no | no | no | **YES** | no | — |
 
@@ -84,11 +84,17 @@ the thing is absent.
 
 ## Status
 
-**Adapters written from observation:** Breezy, SmartRecruiters, Personio.
+**Adapters written from observation:** Breezy, SmartRecruiters, Personio, Pinpoint.
+
+**A truncation caught by navigating.** The first Pinpoint note recorded the form
+URL as `{posting}/application`, because the href in the probe output was cut at
+60 characters and I wrote down what I could see rather than what was there. The
+real path is `/applications/new`. It surfaced only because navigating to the
+guessed URL returned 404 — a probe that reads a value and a probe that USES it
+are different tests, and only the second one failed.
 
 **Reconnoitred, not yet servable** — each needs one more pass, and what is known
 is recorded in `vendors/index.ts` so the next pass starts from evidence:
-  - **Pinpoint** — form URL rule known (`{posting}/application`); fields unmapped.
   - **Oracle** — email-first screen, no account needed, but a REQUIRED
     terms-and-conditions checkbox. Accepting an employer's terms on a
     candidate's behalf is a product decision, not a coding one.

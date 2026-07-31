@@ -2,6 +2,7 @@ import type { VendorAdapter } from "./types.js";
 import { breezy } from "./breezy.js";
 import { smartrecruiters } from "./smartrecruiters.js";
 import { personio } from "./personio.js";
+import { pinpoint } from "./pinpoint.js";
 
 /**
  * The vendors the worker will act on, and only those.
@@ -20,6 +21,7 @@ export const ADAPTERS: Record<string, VendorAdapter> = {
   breezy,
   smartrecruiters,
   personio,
+  pinpoint,
 };
 
 /**
@@ -37,10 +39,6 @@ export const ADAPTERS: Record<string, VendorAdapter> = {
  * needs one more pass to map its fields.
  */
 export const NEEDS_RECON: Record<string, string> = {
-  // Form URL rule known: the apply link's href is `{postingUrl}/application`.
-  // Fields not yet mapped — the posting page itself carries none.
-  pinpoint: "form URL is {posting}/application; fields not yet mapped",
-
   // Reaching the form needs an email + a REQUIRED terms-and-conditions
   // checkbox, and it carries a `honey-pot` field (see HONEYPOTS below). No
   // account is needed — "simply using your email" — so it is servable, but
