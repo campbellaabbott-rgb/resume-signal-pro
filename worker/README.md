@@ -18,27 +18,43 @@ binary, which is why this lives outside `supabase/functions`.
 
 ## Scope
 
-Only the measured zero-CAPTCHA vendors — **68% of the board**:
+**Measured CAPTCHA-free is necessary and NOT sufficient.** A vendor is served
+only when someone has loaded a real posting and written an adapter from what the
+form actually does (see RECON.md). Six were examined; all six were CAPTCHA-free
+exactly as measured, and every one of them would have defeated a generic driver
+for a different reason.
+
+**Served** — adapter written from observation:
 
 | | |
 |---|---|
-| workday | 0/60 captcha (needs a per-tenant candidate account) |
-| smartrecruiters | 0/60 |
-| breezy | 0/54 |
-| oracle | 0/39 |
-| teamtailor | 0/12 |
-| personio, pinpoint | thin samples |
+| breezy | multi-step; `name` attrs; honest `required` |
+| smartrecruiters | 1,806 shadow roots; labels only; no `name`, no `required` |
+| personio | German labels, English `name` attrs; form at `{url}?apply` |
+| pinpoint | Rails-nested names; a draft-saving decoy beside submit |
 
-The list is duplicated in `src/index.ts` on purpose. The worker is the last gate
-before a real submission and must not depend on a database row being right about
-what it's allowed to touch.
+**Refused, with the reason in `src/vendors/index.ts`:**
 
-**Excluded:** ashby, bamboohr, workable, lever, rippling, recruitee, icims (87–100%
-CAPTCHA) and **greenhouse** — 94% load reCAPTCHA *Enterprise* with no widget and
-no sitekey, meaning invisible score-based detection. A human sees nothing; a
-headless browser is exactly what it scores, and a low score is rejected
-**silently**. That's the worst failure mode available, so Greenhouse stays out
-until measured with real submissions.
+- **oracle** — reachable, but ships a `honey-pot` field and requires accepting
+  the employer's terms on the candidate's behalf. That last part is a product
+  decision, not a coding one.
+- **teamtailor** — the apply control text is written by the employer, so the form
+  URL rule is still unknown.
+- **workday** — needs a per-tenant candidate account. A credential problem, not a
+  form problem, and the largest vendor in the tier. This is the single biggest
+  limit on coverage.
+
+**Never** — ashby, bamboohr, workable, lever, rippling, recruitee, icims (87–100%
+CAPTCHA) and **greenhouse**, where 94% load reCAPTCHA *Enterprise*: no widget, no
+sitekey, invisible score-based detection. A human sees nothing; a headless
+browser is exactly what it scores, and a low score is rejected **silently**.
+That is the worst failure mode available.
+
+There is deliberately **no "% of the board" figure** here. I tried to measure it
+and could not — sampling at different offsets answered 79%, 100% and 0.6% to the
+same question, because postings cluster by vendor. The "68%" that used to sit in
+this section was the share of sampled APPLY PAGES with no CAPTCHA, which is a
+different quantity that reads like this one.
 
 ## The rule this is built around
 
@@ -67,14 +83,6 @@ read the same ready row and both submit it. Leases expire after 10 minutes so a
 crashed worker doesn't strand a packet; the expiry is deliberately generous
 because a slow form is not a dead worker.
 
-## Run
-
-```bash
-cp .env.example .env   # add SUPABASE_SERVICE_ROLE_KEY
-npm install && npx playwright install chromium
-npm run dev
-```
-
 ## Run it locally — no hosting, no card
 
 For the first watched submission this is BETTER than deploying. You can see the
@@ -99,10 +107,14 @@ packet — never mid-application.
 refusals as production: a test that takes a different code path than production
 is not a test of production.
 
-The service-role key bypasses RLS and can read any candidate's résumé. Passing it
-inline like this leaves it in your shell history — `export` it from a file you do
-not commit, or prefix the command with a space if your shell is set to skip
-those.
+The service-role key bypasses RLS and can read any candidate's résumé. The inline
+form above leaves it in your shell history, so prefer the file:
+
+```bash
+cp .env.example .env      # .env is gitignored; put the key there
+set -a && source .env && set +a
+HEADLESS=false SLOW_MO=400 npm run dev
+```
 
 ## Deploy
 
