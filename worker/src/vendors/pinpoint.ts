@@ -1,5 +1,6 @@
 import type { Page, Locator } from "playwright";
 import { enumerateOn } from "./enumerate-dom.js";
+import { classifyConfirmation } from "./confirmed.js";
 import type { VendorAdapter, Locatable, PacketFieldKey } from "./types.js";
 
 /**
@@ -108,21 +109,15 @@ export const pinpoint: VendorAdapter = {
   },
 
   async confirmed(page) {
-    const body = ((await page.textContent("body").catch(() => "")) ?? "").slice(0, 4_000);
-    if (/thank you|application (?:has been )?(?:received|submitted)|we(?:'ve| have) received/i.test(body)) {
-      return "yes";
-    }
-    // Presence is NOT evidence the form is still showing. Breezy is a JS wizard:
-    // every step lives in ONE form, so after a successful submit these fields
-    // can remain in the DOM at zero size. Counting them would assert "not
-    // submitted", which is treated as safely retryable — and a retry is a second
-    // application under a real person's name, with no way to withdraw either.
+    // Visibility BEFORE words. See classifyConfirmation — checking the phrase
+    // list first recorded a failed submit as sent whenever the form page
+    // carried ordinary "thank you for your interest" copy.
     //
-    // Visibility is the honest test. If the field is genuinely on screen the
-    // submit did not take; if it is merely present, we do not know, and "unknown"
-    // routes to a human.
-    const still = await page.locator(f("email")).first().isVisible({ timeout: 2_000 }).catch(() => false);
-    if (still) return "no";
-    return "unknown";
+    // Visible, not merely present: these forms are JS wizards whose fields
+    // survive a successful submit at zero size.
+    const still = await page.locator(f("email")).first()
+      .isVisible({ timeout: 2_000 }).catch(() => false);
+    const body = ((await page.textContent("body").catch(() => "")) ?? "").slice(0, 4_000);
+    return classifyConfirmation(still, body);
   },
 };

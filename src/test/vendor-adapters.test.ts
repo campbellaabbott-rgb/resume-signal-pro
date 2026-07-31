@@ -217,14 +217,66 @@ describe("a false 'not submitted' is the dangerous direction", () => {
    * anything less must fall through to "unknown", which routes to a human.
    */
   for (const file of ["breezy.ts", "personio.ts", "pinpoint.ts"]) {
-    it(`${file} asserts failure only from visibility, never presence`, () => {
+    it(`${file} decides from visibility BEFORE it reads the page's words`, () => {
       const code = codeOnly(src(file));
       const confirmed = code.slice(code.indexOf("async confirmed"));
-      expect(confirmed, `${file} must not infer "no" from a element merely existing`)
+
+      // All three now delegate to one classifier, so the rule cannot drift
+      // between them — it drifted into all three identically once already.
+      expect(confirmed, `${file} must use the shared classifier`)
+        .toMatch(/classifyConfirmation\(\s*still\s*,\s*body\s*\)/);
+
+      // Visibility must be COMPUTED before the body text is read. This is the
+      // ordering that matters: see the shared classifier for why phrases-first
+      // recorded failed submits as sent.
+      const visAt = confirmed.indexOf("isVisible");
+      const bodyAt = confirmed.indexOf('textContent("body")');
+      expect(visAt, `${file} no longer checks visibility`).toBeGreaterThan(0);
+      expect(visAt, `${file} reads the page's words before checking the form is gone`)
+        .toBeLessThan(bodyAt);
+
+      // Presence is still not evidence.
+      expect(confirmed, `${file} must not infer from an element merely existing`)
         .not.toMatch(/count\(\)[\s\S]{0,40}return "no"/);
-      expect(confirmed, `${file} must check visibility before asserting failure`)
-        .toMatch(/isVisible[\s\S]{0,120}return "no"/);
-      expect(confirmed, `${file} must fall through to unknown`).toMatch(/return "unknown"/);
     });
   }
+});
+
+describe("classifying a submit outcome — the ordering that lost applications", () => {
+  it("a still-visible form means NOT SENT, whatever words are on the page", async () => {
+    const { classifyConfirmation } = await import("../../worker/src/vendors/confirmed.js");
+    // THE REGRESSION. "Thank you for your interest in this role" is ordinary
+    // job-ad copy sitting on the form itself. Testing phrases first matched it
+    // on a FAILED submit and recorded the application as sent — the candidate
+    // told they applied to a job they did not, and then blocked by the
+    // duplicate guard from applying properly.
+    expect(classifyConfirmation(true, "Thank you for your interest in this role!"))
+      .toBe("no");
+    expect(classifyConfirmation(true, "Your application has been received"))
+      .toBe("no");
+  });
+
+  it("recognises confirmations in the languages these vendors serve", async () => {
+    const { classifyConfirmation } = await import("../../worker/src/vendors/confirmed.js");
+    for (const said of [
+      "Thank you! Your application has been received.",
+      "Vielen Dank! Ihre Bewerbung ist bei uns eingegangen.",
+      "Merci, votre candidature a bien été reçue.",
+      "Gracias, hemos recibido su solicitud.",
+      "Bedankt! Je sollicitatie is ontvangen.",
+      "Obrigado — a sua candidatura foi recebida.",
+    ]) {
+      expect(classifyConfirmation(false, said), `should recognise: ${said}`).toBe("yes");
+    }
+  });
+
+  it("falls to unknown rather than guessing when nothing matches", async () => {
+    const { classifyConfirmation } = await import("../../worker/src/vendors/confirmed.js");
+    // Every phrase in the list is a guess until a real submission is watched,
+    // so a miss must park for a human. It must NOT read as not-submitted:
+    // that is treated as safely retryable, and a retry is a second application
+    // under a real person's name that cannot be withdrawn.
+    expect(classifyConfirmation(false, "All done. Reference #48213.")).toBe("unknown");
+    expect(classifyConfirmation(false, "")).toBe("unknown");
+  });
 });

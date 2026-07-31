@@ -218,9 +218,23 @@ export async function applyToPosting(browser: Browser, input: ApplyInput): Promi
       // showing the same form. Nothing was sent, so this is safely retryable.
       return { kind: "not-submitted", reason: "submit did not take; the form is still showing" };
     }
+    // CARRY WHAT THE PAGE ACTUALLY SAID.
+    //
+    // "no confirmation recognised after submit" gives a human nothing to act
+    // on, and this is the outcome most likely on a vendor nobody has watched —
+    // every phrase in CONFIRMED_RE is a guess until a real send happens.
+    // Without the wording, resolving an uncertain row means opening the
+    // employer's site and guessing too.
+    //
+    // With it, the FIRST real send teaches us the phrase: the reason carries
+    // the exact sentence to add, plus whether the URL moved, which is a strong
+    // hint the submit went through even when the words do not match.
+    const landedOn = page.url();
+    const said = ((await page.textContent("body").catch(() => "")) ?? "")
+      .replace(/\s+/g, " ").trim().slice(0, 220);
     return {
       kind: "uncertain",
-      reason: "no confirmation recognised after submit",
+      reason: `no confirmation recognised after submit — url: ${landedOn.slice(0, 90)} — page said: "${said}"`,
       screenshot: await page.screenshot().catch(() => undefined),
     };
   } catch (e) {

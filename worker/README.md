@@ -301,6 +301,12 @@ waiting for a sender that isn't there.
 
 - Workday's per-tenant account creation is not handled. Those packets reach the
   signup wall and come back `not-submitted`.
+- **The submit path is now exercised, but not by a vendor.** `src/harness.ts`
+  runs the real `applyToPosting` end to end against a local server — click,
+  settle, confirm, and all three outcomes — which is how the phrases-before-
+  visibility bug was found. It uses Breezy's real field names and control
+  labels, but it is NOT Breezy: an Angular wizard's confirmation wording cannot
+  be guessed, which is the whole reason a miss lands as `uncertain`.
 - **No submit has run against a real posting.** Dry runs now drive live forms
   end to end — a marex posting with 5 required screening questions reports
   DRY RUN CLEAN with every one answered — but nothing has been clicked.

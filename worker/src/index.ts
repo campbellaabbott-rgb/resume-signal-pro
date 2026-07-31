@@ -13,7 +13,7 @@
 //   - claim a row another worker holds
 import { chromium } from "playwright";
 import { createClient } from "@supabase/supabase-js";
-import { mkdtemp, writeFile, rm } from "node:fs/promises";
+import { mkdtemp, writeFile, rm, mkdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { applyToPosting } from "./apply.js";
@@ -40,7 +40,10 @@ const IDLE_MS = 30_000;
 const IDLE_EXIT_MS = Number(process.env.WORKER_IDLE_EXIT_MS ?? 0);
 // Reported in the heartbeat so two overlapping versions during a redeploy can be
 // told apart when one of them is the one misbehaving.
-const WORKER_VERSION = "2026-07-31.1";
+const WORKER_VERSION = "2026-07-31.2";
+// Where an unresolved submit leaves its evidence, for the human who has to
+// decide whether the application actually went out.
+const SHOT_DIR = process.env.WORKER_SHOT_DIR ?? join(process.cwd(), "mac", "uncertain");
 
 // The measured zero-CAPTCHA set. Duplicated here deliberately: the worker is the
 // last gate before a real submission and must not depend on a database row being
@@ -257,6 +260,20 @@ async function runOne(browser: Awaited<ReturnType<typeof chromium.launch>>, p: P
   }
 
   if (outcome.kind === "uncertain") {
+    // The screenshot was being discarded. It is the single most useful artefact
+    // for the one outcome a human has to resolve by hand, and it costs a file
+    // write to keep. Saved next to the worker rather than uploaded: it can show
+    // a candidate's own details, so it stays on the machine the operator
+    // already trusts with the service-role key instead of going to a bucket
+    // with its own access rules.
+    if (outcome.screenshot) {
+      const shot = join(SHOT_DIR, `uncertain-${p.id}-${p.company.replace(/[^a-zA-Z0-9]/g, "_").slice(0, 40)}.png`);
+      await mkdir(SHOT_DIR, { recursive: true }).catch(() => {});
+      await writeFile(shot, outcome.screenshot).then(
+        () => console.log(`[worker] screenshot: ${shot}`),
+        (e) => console.warn(`[worker] could not save screenshot: ${String(e).slice(0, 80)}`),
+      );
+    }
     // Never our call to resolve. The RPC parks it for a human AND pushes
     // attempts past the ceiling so nothing picks it up again.
     await db.rpc("agent_mark_uncertain", { p_id: p.id, p_reason: outcome.reason });

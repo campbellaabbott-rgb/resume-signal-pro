@@ -4,3 +4,4 @@ dist/
 
 # Local worker run artefacts
 mac/apply.log
+mac/uncertain/
