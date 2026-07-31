@@ -33,7 +33,7 @@ interface ApplyProfile {
   city: string; country: string; resume_file_url: string;
   work_authorized: Tri; requires_sponsorship: Tri; willing_to_relocate: Tri;
   salary_expectation: string; earliest_start: string;
-  share_demographics: boolean;
+  share_demographics: boolean; consent_to_processing: boolean;
   apply_mode: "review" | "auto"; auto_apply_daily_cap: number;
 }
 
@@ -41,7 +41,7 @@ const EMPTY: ApplyProfile = {
   full_name: "", phone: "", linkedin: "", website: "", city: "", country: "",
   resume_file_url: "", work_authorized: null, requires_sponsorship: null,
   willing_to_relocate: null, salary_expectation: "", earliest_start: "",
-  share_demographics: false, apply_mode: "review", auto_apply_daily_cap: 5,
+  share_demographics: false, consent_to_processing: false, apply_mode: "review", auto_apply_daily_cap: 5,
 };
 
 /** Three-way control. `null` is a first-class option, never an absent tick. */
@@ -94,7 +94,7 @@ export function ApplyProfilePanel({ userId }: { userId: string }) {
       const { data } = await sb.from("agent_mandates")
         .select("full_name,phone,linkedin,website,city,country,resume_file_url," +
           "work_authorized,requires_sponsorship,willing_to_relocate,salary_expectation," +
-          "earliest_start,share_demographics,apply_mode,auto_apply_daily_cap")
+          "earliest_start,share_demographics,consent_to_processing,apply_mode,auto_apply_daily_cap")
         .eq("user_id", userId).maybeSingle();
       if (cancelled) return;
       if (data) { setP({ ...EMPTY, ...(data as ApplyProfile) }); setExists(true); }
@@ -334,6 +334,18 @@ export function ApplyProfilePanel({ userId }: { userId: string }) {
             />
           </label>
         )}
+
+        <label className="flex items-start gap-2 text-sm text-muted-foreground">
+          <input
+            type="checkbox" checked={p.consent_to_processing}
+            onChange={(e) => set("consent_to_processing", e.target.checked)}
+            className="mt-1"
+          />
+          <span>
+            {t("applyProfile.consent",
+              "Let the agent accept employers' privacy notices and \u201Cthe information I have given is true\u201D declarations for me. Left off, any form asking one is sent to your queue so you can tick it yourself.")}
+          </span>
+        </label>
 
         <label className="flex items-start gap-2 text-sm text-muted-foreground">
           <input

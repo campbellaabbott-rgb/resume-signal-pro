@@ -1,4 +1,5 @@
 import type { Page, Locator } from "playwright";
+import { enumerateOn } from "./enumerate-dom.js";
 import type { VendorAdapter, Locatable, PacketFieldKey } from "./types.js";
 
 /**
@@ -28,20 +29,31 @@ const wrap = (l: Locator): Locatable => ({
 
 // Language-independent by construction: these are the vendor's own attribute
 // names, identical on a German, French or English tenant.
-const FIELDS: Partial<Record<PacketFieldKey, string>> = {
-  firstName: 'input[name="first_name"]',
-  lastName: 'input[name="last_name"]',
-  email: 'input[name="email"]',
-  phone: 'input[name="phone"]',
-  city: 'input[name="location"]',
-  salaryExpectation: 'input[name="salary_expectations"]',
+const KEYS: Partial<Record<PacketFieldKey, string>> = {
+  firstName: "first_name",
+  lastName: "last_name",
+  email: "email",
+  phone: "phone",
+  city: "location",
+  salaryExpectation: "salary_expectations",
 };
+const RESUME_KEY = "documents.cv";
+
+// Bare names above, selectors derived here — so `mappedNames` and the locators
+// can never disagree about which fields this adapter fills.
+const FIELDS = Object.fromEntries(
+  Object.entries(KEYS).map(([k, v]) => [k, `input[name="${v}"]`]),
+) as Partial<Record<PacketFieldKey, string>>;
 
 export const personio: VendorAdapter = {
   key: "personio",
 
   // Set on zero of twelve fields; requiredness lives in the label text.
   requiredAttributeIsTrustworthy: false,
+
+  mappedNames: new Set([...Object.values(KEYS), RESUME_KEY]),
+
+  enumerateQuestions: (page) => enumerateOn(page),
 
   async resolveFormUrl(page, postingUrl) {
     const base = postingUrl.replace(/[?#].*$/, "").replace(/\/+$/, "");
@@ -66,7 +78,7 @@ export const personio: VendorAdapter = {
     // Named explicitly. Three of the four file inputs are NOT the CV, and
     // putting a résumé into "employment reference" would submit an application
     // whose CV slot is empty while looking, to us, like it worked.
-    const l = page.locator('input[name="documents.cv"]').first();
+    const l = page.locator(`input[name="${RESUME_KEY}"]`).first();
     return (await l.count()) > 0 ? wrap(l) : null;
   },
 

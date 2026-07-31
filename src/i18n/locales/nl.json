@@ -4263,7 +4263,8 @@
     "uploadBlocked": "Cv-opslag is nog niet ingesteld voor dit account — opnieuw proberen helpt niet. We hebben het gelogd.",
     "uploaded": "Cv toegevoegd — vergeet niet op te slaan",
     "website": "Website of portfolio",
-    "yes": "Ja"
+    "yes": "Ja",
+    "consent": "Laat de agent privacyverklaringen van werkgevers en verklaringen “de verstrekte informatie is juist” namens mij accepteren. Uit gelaten gaat elk formulier dat hierom vraagt naar je wachtrij zodat je het zelf aanvinkt."
   },
   "applyQueue": {
     "title": "Voorbereide sollicitaties",

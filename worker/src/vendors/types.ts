@@ -1,3 +1,4 @@
+import type { DomQuestion } from "./enumerate-dom.js";
 import type { Page } from "playwright";
 
 /**
@@ -105,6 +106,27 @@ export interface VendorAdapter {
    * that always passes and counting it as protection.
    */
   readonly requiredAttributeIsTrustworthy: boolean;
+
+  /**
+   * The field names this adapter fills from the packet.
+   *
+   * DERIVED from the adapter's own map, never hand-listed. A hand-written copy
+   * drifts the moment a selector changes, and the two failures it produces are
+   * both silent: a mapped field re-answered by the question matcher, or an
+   * unmapped one counted as already handled and left blank.
+   *
+   * This is the same mistake as the old hand-maintained AUTO_VENDORS list, and
+   * it already bit once here — a measurement run against a hand-typed set
+   * reported "Full Name" as the top blocker on forms where the adapter had been
+   * filling it all along.
+   */
+  readonly mappedNames: ReadonlySet<string>;
+
+  /**
+   * Every control group on the current form, with its question label, type and
+   * options. `null` means enumeration FAILED — never "the form is empty".
+   */
+  enumerateQuestions(page: Page): Promise<DomQuestion[] | null>;
 }
 
 /** Anything the driver can fill or click, kept narrow so adapters stay simple. */

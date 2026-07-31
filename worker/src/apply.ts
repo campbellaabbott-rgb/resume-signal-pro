@@ -19,10 +19,16 @@
 import type { Browser, Page } from "playwright";
 import { adapterFor, BLOCKED } from "./vendors/index.js";
 import type { PacketFieldKey, VendorAdapter } from "./vendors/types.js";
+import { planAnswers, type StandingAnswers } from "./questions/match.js";
+import { applyResolution } from "./questions/answer.js";
 
 export type PacketField = { value: string; source: string };
 
 export type ApplyInput = {
+  /** The candidate's own standing answers to screening questions. Omitted =
+   *  no screening question can be answered, so any form that asks one is
+   *  refused rather than part-filled. */
+  answers?: StandingAnswers;
   applyUrl: string;
   source: string;
   /** Keyed by PacketFieldKey. Anything the adapter cannot place is reported, not guessed at. */
@@ -89,6 +95,10 @@ export async function applyToPosting(browser: Browser, input: ApplyInput): Promi
     const wanted = Object.keys(input.fields) as PacketFieldKey[];
     const placed = new Set<PacketFieldKey>();
     let resumeAttached = false;
+    // Answered questions persist across steps: a multi-step wizard keeps earlier
+    // steps in the DOM, and re-answering would re-click a radio (toggling
+    // nothing) or re-fill a field the vendor has since reformatted.
+    const answeredNames = new Set<string>();
     let submittedAt = -1;
 
     for (let step = 0; step < MAX_STEPS; step++) {
@@ -118,6 +128,54 @@ export async function applyToPosting(browser: Browser, input: ApplyInput): Promi
         const anyFile = await adapter.locateResume(page).catch(() => null);
         if (anyFile) {
           return { kind: "not-submitted", reason: "this form wants a résumé and none is attached to the profile" };
+        }
+      }
+
+      // ---- employer screening questions ----
+      //
+      // The binding constraint on unattended applying, measured: not CAPTCHAs.
+      // Across 8 live Breezy postings only 3 could be completed from the mapped
+      // identity fields alone; answering these questions from the candidate's
+      // own standing answers took it to 7.
+      //
+      // Everything here is an answer the candidate gave. Anything else refuses.
+      const asked = await adapter.enumerateQuestions(page).catch(() => null);
+      if (asked === null) {
+        // Could not read the form. NOT the same as "the form asks nothing" —
+        // treating a failed probe as a clean bill of health is how an
+        // unanswered required question reaches an employer.
+        return { kind: "not-submitted", reason: "could not read this form's questions — not submitting blind" };
+      }
+      if (asked.length > 0) {
+        const answers = input.answers;
+        if (!answers) {
+          const required = asked.filter((x) => x.required && !adapter.mappedNames.has(x.name));
+          if (required.length > 0) {
+            return { kind: "not-submitted", reason: `form asks ${required.length} question(s) and no standing answers are on file` };
+          }
+        } else {
+          const { answerable, blocking } = planAnswers(asked, answers, adapter.mappedNames);
+          if (blocking.length > 0) {
+            const why = blocking.slice(0, 3)
+              .map((b: { r: { kind: string; category?: string; why?: string } }) => (b.r.kind === "unanswerable" ? `${b.r.category}: ${b.r.why}` : ""))
+              .filter(Boolean).join("; ");
+            return {
+              kind: "not-submitted",
+              reason: `${blocking.length} required question(s) the agent cannot answer — ${why}`,
+            };
+          }
+          for (const { q: dq, r } of answerable) {
+            if (answeredNames.has(dq.name)) continue;
+            const res = await applyResolution(page, dq, r);
+            if (res.ok) { answeredNames.add(dq.name); continue; }
+            // A REQUIRED question that would not take its answer stops the run.
+            // Pressing on submits a form the vendor will reject, which burns the
+            // posting for this candidate and then trips the duplicate guard when
+            // they try to apply properly themselves.
+            if (dq.required) {
+              return { kind: "not-submitted", reason: `could not answer "${dq.label || dq.name}": ${res.why}` };
+            }
+          }
         }
       }
 

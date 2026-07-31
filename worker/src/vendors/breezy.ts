@@ -1,4 +1,5 @@
 import type { Page, Locator } from "playwright";
+import { enumerateOn } from "./enumerate-dom.js";
 import type { VendorAdapter, Locatable, PacketFieldKey } from "./types.js";
 
 /**
@@ -45,6 +46,11 @@ export const breezy: VendorAdapter = {
   // Breezy sets `required` on 30 of 50 fields, so the driver's empty-required
   // check means something here.
   requiredAttributeIsTrustworthy: true,
+
+  // Derived from the map above, so a rename cannot desynchronise them.
+  mappedNames: new Set([...Object.values(KEYS), RESUME_KEY]),
+
+  enumerateQuestions: (page) => enumerateOn(page),
 
   async resolveFormUrl(page, postingUrl) {
     // Derived, not clicked. The apply control reads "Apply To Position" on this

@@ -4263,7 +4263,8 @@
     "uploadBlocked": "Hindi pa naka-set up ang imbakan ng résumé sa account na ito — hindi makakatulong ang pag-ulit. Nai-log na namin ito.",
     "uploaded": "Nakakabit ang résumé — huwag kalimutang i-save",
     "website": "Website o portfolio",
-    "yes": "Oo"
+    "yes": "Oo",
+    "consent": "Hayaang tanggapin ng agent para sa iyo ang mga privacy notice ng employer at ang mga deklarasyong “totoo ang ibinigay kong impormasyon”. Kapag naka-off, ang anumang form na humihingi nito ay ipapadala sa iyong queue para ikaw mismo ang mag-tsek."
   },
   "applyQueue": {
     "title": "Mga inihandang aplikasyon",

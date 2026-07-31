@@ -56,6 +56,41 @@ same question, because postings cluster by vendor. The "68%" that used to sit in
 this section was the share of sampled APPLY PAGES with no CAPTCHA, which is a
 different quantity that reads like this one.
 
+## Screening questions — the actual binding constraint
+
+Not CAPTCHAs. Measured across 8 live Breezy postings (2026-07-31), only **3 of
+8** could be completed from the adapter's identity fields alone. The rest asked
+the employer's own questions.
+
+`src/questions/match.ts` answers those from the candidate's standing answers in
+`agent_mandates`, taking it to **7 of 8**. Every answer is something the person
+supplied; there is no branch that invents one. What it refuses, and why:
+
+| refuses | because |
+|---|---|
+| current salary | we hold an *expectation*; the two appeared on one form |
+| ID / passport / SSN | identity documents are never auto-filled |
+| nationality | not collected, and not the same question as work authorisation |
+| race / gender with no "prefer not to say" | we store neither, so declining is the only honest answer |
+| privacy notices, truthfulness declarations | need `consent_to_processing`, an explicit opt-in |
+| any question whose label cannot be read | there is no safe default for a question you cannot see |
+| anything unrecognised and required | guessing is the one thing this must never do |
+
+Trinary booleans matter here. `work_authorized` NULL means "never stated", and
+defaulting it to false would tell an employer a candidate is not allowed to work
+in a country when they simply had not answered.
+
+Two bugs found building this, both mine, both flattering:
+
+- The first measurement used a **hand-typed** list of already-mapped fields that
+  did not match the adapter's. It reported "Full Name" as the top blocker on
+  forms where the adapter had been filling it all along. `mappedNames` is now
+  derived from each adapter's own map.
+- The DOM enumerator let a label leak to any control sharing a container, so
+  marex's email, phone and address all read as "Full Name". That would have
+  typed the candidate's name into their phone box. A label shared by several
+  controls now identifies none of them.
+
 ## The rule this is built around
 
 **An ambiguous outcome is never a retry.** If a submit times out we do not know
@@ -184,7 +219,10 @@ waiting for a sender that isn't there.
 
 - Workday's per-tenant account creation is not handled. Those packets reach the
   signup wall and come back `not-submitted`.
-- **Nothing here has run against a real posting.** Confirmation-phrase matching
+- **No submit has run against a real posting.** Dry runs now drive live forms
+  end to end — a marex posting with 5 required screening questions reports
+  DRY RUN CLEAN with every one answered — but nothing has been clicked.
+  Confirmation-phrase matching
   in particular is guesswork until it meets real vendor pages. If the phrases
   don't match, sends land as `uncertain` and go to a human — the safe failure,
   but it means the unattended path does nothing. Watch one real submission end

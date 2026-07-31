@@ -4263,7 +4263,8 @@
     "uploadBlocked": "O armazenamento de currículos ainda não está configurado nesta conta — tentar de novo não vai adiantar. Já registámos o problema.",
     "uploaded": "CV anexado — não te esqueças de guardar",
     "website": "Site ou portefólio",
-    "yes": "Sim"
+    "yes": "Sim",
+    "consent": "Permitir que o agente aceite por mim os avisos de privacidade dos empregadores e as declarações de “as informações prestadas são verdadeiras”. Se ficar desligado, qualquer formulário que peça isso vai para a sua fila para o assinalar."
   },
   "applyQueue": {
     "title": "Candidaturas preparadas",

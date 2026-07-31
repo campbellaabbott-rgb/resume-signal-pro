@@ -4263,7 +4263,8 @@
     "uploadBlocked": "Der Lebenslauf-Speicher ist für dieses Konto noch nicht eingerichtet – ein erneuter Versuch hilft nicht. Wir haben es protokolliert.",
     "uploaded": "Lebenslauf angehängt — nicht vergessen zu speichern",
     "website": "Website oder Portfolio",
-    "yes": "Ja"
+    "yes": "Ja",
+    "consent": "Der Agent darf Datenschutzhinweise von Arbeitgebern und Erklärungen „Die gemachten Angaben sind wahr“ für mich akzeptieren. Ohne Haken landet jedes Formular mit einer solchen Abfrage in Ihrer Warteschlange, damit Sie sie selbst bestätigen."
   },
   "applyQueue": {
     "title": "Vorbereitete Bewerbungen",

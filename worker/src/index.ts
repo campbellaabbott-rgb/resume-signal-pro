@@ -19,6 +19,7 @@ import { join } from "node:path";
 import { applyToPosting } from "./apply.js";
 import { ADAPTERS, BLOCKED } from "./vendors/index.js";
 import type { PacketFieldKey } from "./vendors/types.js";
+import type { StandingAnswers } from "./questions/match.js";
 
 const SUPABASE_URL = process.env.SUPABASE_URL ?? "";
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
@@ -126,6 +127,72 @@ function toFieldKeys(
   return out;
 }
 
+/**
+ * The candidate's standing answers to employer screening questions.
+ *
+ * Read from the mandate at claim time rather than snapshotted into the packet:
+ * somebody who corrects "requires sponsorship" this morning must not have
+ * yesterday's answer sent to an employer this afternoon.
+ *
+ * Booleans stay TRINARY. `?? null` and never `?? false` — a missing row means
+ * the person never answered, and defaulting that to "no" would have the agent
+ * tell an employer a candidate is not authorised to work in a country when they
+ * simply had not said. That ends the application, and it is a false statement.
+ */
+async function loadAnswers(userId: string): Promise<StandingAnswers | undefined> {
+  // COLUMN NAMES ARE VERIFIED AGAINST THE SCHEMA, not guessed from the field
+  // names in StandingAnswers. My first version asked for first_name, last_name,
+  // address, linkedin_url and website_url; the table has none of those (it has
+  // linkedin and website, and no split name at all). PostgREST answers an
+  // unknown column with an error and no rows, so loadAnswers would have
+  // returned undefined every time and every screening form would have been
+  // refused — the feature silently absent, looking exactly like "no employer
+  // form is answerable".
+  const { data, error } = await db.from("agent_mandates")
+    .select("full_name, email, phone, city, country, location, linkedin, website, " +
+            "salary_expectation, earliest_start, work_authorized, requires_sponsorship, " +
+            "willing_to_relocate, share_demographics, consent_to_processing")
+    .eq("user_id", userId).maybeSingle();
+  if (error) {
+    // Loud, because the failure mode is invisible: no answers means every form
+    // with a screening question is refused, which reads as a hard market rather
+    // than a broken query.
+    console.error(`[worker] loadAnswers failed for ${userId}: ${error.message}`);
+    return undefined;
+  }
+  if (!data) return undefined;
+  const m = data as unknown as Record<string, unknown>;
+  const str = (k: string) => String(m[k] ?? "").trim();
+  // TRINARY. `?? null`, never `?? false` — a column the candidate never filled
+  // in means "not stated". Defaulting it to "no" would have the agent tell an
+  // employer someone is not authorised to work in a country when they simply
+  // had not said, which is both a false statement and an instant rejection.
+  const tri = (k: string) => (typeof m[k] === "boolean" ? (m[k] as boolean) : null);
+
+  // The table stores one name. Splitting it is a formatting choice about the
+  // candidate's own stated name, not an inference about a new fact.
+  const full = str("full_name");
+  const parts = full.split(/\s+/).filter(Boolean);
+  const firstName = parts.length > 0 ? parts[0]! : "";
+  const lastName = parts.length > 1 ? parts.slice(1).join(" ") : "";
+
+  return {
+    fullName: full, firstName, lastName,
+    email: str("email"), phone: str("phone"),
+    city: str("city") || str("location"), country: str("country"),
+    // No address column exists. Left empty on purpose so that a form requiring
+    // an address refuses rather than receiving a city where a street should be.
+    address: "",
+    linkedin: str("linkedin"), website: str("website"), coverNote: "",
+    salaryExpectation: str("salary_expectation"), earliestStart: str("earliest_start"),
+    workAuthorized: tri("work_authorized"),
+    requiresSponsorship: tri("requires_sponsorship"),
+    willingToRelocate: tri("willing_to_relocate"),
+    shareDemographics: m["share_demographics"] === true,
+    consentToProcessing: m["consent_to_processing"] === true,
+  };
+}
+
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 async function release(id: number, patch: Record<string, unknown>) {
@@ -148,11 +215,12 @@ async function runOne(browser: Awaited<ReturnType<typeof chromium.launch>>, p: P
   // résumé mid-batch, and the file on disk must be the one their profile points
   // at right now, not the one it pointed at when the worker started.
   const staged = await stageResume(p.user_id);
+  const answers = await loadAnswers(p.user_id);
   let outcome;
   try {
     outcome = await applyToPosting(browser, {
       applyUrl: p.apply_url, source: src, fields: toFieldKeys(p.fields ?? {}),
-      resumePath: staged?.path,
+      resumePath: staged?.path, answers,
     });
   } finally {
     // Always clean up. A worker that runs for days would otherwise accumulate

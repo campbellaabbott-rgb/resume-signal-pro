@@ -4263,7 +4263,8 @@
     "uploadBlocked": "Résumé storage isn't set up on this account yet — retrying won't help. We've logged it.",
     "uploaded": "Résumé attached — remember to save",
     "website": "Website or portfolio",
-    "yes": "Yes"
+    "yes": "Yes",
+    "consent": "Let the agent accept employers' privacy notices and “the information I have given is true” declarations for me. Left off, any form asking one is sent to your queue so you can tick it yourself."
   },
   "applyQueue": {
     "title": "Prepared applications",

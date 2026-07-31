@@ -4263,7 +4263,8 @@
     "uploadBlocked": "El almacenamiento de currículums aún no está configurado en esta cuenta: reintentar no servirá. Lo hemos registrado.",
     "uploaded": "CV adjuntado: recuerda guardar",
     "website": "Web o portafolio",
-    "yes": "Sí"
+    "yes": "Sí",
+    "consent": "Permitir que el agente acepte por mí los avisos de privacidad de las empresas y las declaraciones de “la información facilitada es veraz”. Si lo dejas desactivado, cualquier formulario que lo pida pasará a tu cola para que lo marques tú."
   },
   "applyQueue": {
     "title": "Candidaturas preparadas",

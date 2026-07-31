@@ -4263,7 +4263,8 @@
     "uploadBlocked": "Le stockage des CV n'est pas encore configuré sur ce compte — réessayer ne changera rien. Nous l'avons signalé.",
     "uploaded": "CV joint — pensez à enregistrer",
     "website": "Site ou portfolio",
-    "yes": "Oui"
+    "yes": "Oui",
+    "consent": "Autoriser l'agent à accepter à ma place les avis de confidentialité des employeurs et les déclarations « les informations fournies sont exactes ». Désactivé, tout formulaire concerné part dans votre file pour que vous le cochiez vous-même."
   },
   "applyQueue": {
     "title": "Candidatures préparées",

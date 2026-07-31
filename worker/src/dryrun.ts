@@ -29,6 +29,7 @@ import { createInterface } from "node:readline/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { adapterFor } from "./vendors/index.js";
+import { planAnswers, type StandingAnswers } from "./questions/match.js";
 import type { PacketFieldKey } from "./vendors/types.js";
 
 // Obvious placeholders. Nothing is submitted, but if a keystroke ever escaped
@@ -58,9 +59,14 @@ const SAMPLE: Partial<Record<PacketFieldKey, string>> = {
  */
 const PLACEHOLDER = /dry.?run|do.?not.?process|example\.invalid|^$|^changeme$|your.?name.?here/i;
 
-type Profile = Record<string, string>;
+// Strings AND booleans: the standing answers to work authorisation,
+// sponsorship and relocation are trinary booleans. An earlier version of this
+// type kept only strings, so those three were silently dropped on load and
+// every dry run reported "candidate has not stated…" for answers the file
+// plainly contained.
+type Profile = Record<string, string | boolean>;
 
-function loadProfile(path: string): Profile {
+function loadProfile(path: string, strict: boolean): Profile {
   if (!existsSync(path)) {
     console.error(`\n  profile not found: ${path}`);
     console.error("  cp applicant.example.json applicant.json  and fill it in\n");
@@ -69,7 +75,14 @@ function loadProfile(path: string): Profile {
   const raw = JSON.parse(readFileSync(path, "utf8")) as Record<string, unknown>;
   delete raw._README;
   const p: Profile = {};
-  for (const [k, v] of Object.entries(raw)) if (typeof v === "string" && v.trim()) p[k] = v.trim();
+  for (const [k, v] of Object.entries(raw)) {
+    if (typeof v === "boolean") p[k] = v;
+    else if (typeof v === "string" && v.trim()) p[k] = v.trim();
+  }
+
+  // Everything below is about being FIT TO SEND. A dry run is allowed to use a
+  // partial profile — that is how you find out which answers you still need.
+  if (!strict) return p;
 
   // Identity and contact are what an employer needs to reply. A submission
   // missing them is not an application, it is noise with someone's CV attached.
@@ -82,13 +95,13 @@ function loadProfile(path: string): Profile {
     process.exit(2);
   }
 
-  const fake = Object.entries(p).filter(([, v]) => PLACEHOLDER.test(v)).map(([k]) => k);
+  const fake = Object.entries(p).filter(([, v]) => typeof v === "string" && PLACEHOLDER.test(v)).map(([k]) => k);
   if (fake.length) {
     console.error(`\n  these still look like examples: ${fake.join(", ")}`);
     console.error("  a real employer reads this. Fill them in properly.\n");
     process.exit(2);
   }
-  const resumePath = p.resumePath ?? "";
+  const resumePath = typeof p.resumePath === "string" ? p.resumePath : "";
   if (!resumePath || !existsSync(resumePath)) {
     console.error(`\n  résumé not found at ${resumePath || "(unset)"}\n`);
     process.exit(2);
@@ -115,6 +128,36 @@ async function confirmOrExit(url: string, vendor: string, p: Profile) {
   }
 }
 
+/**
+ * Standing answers for a dry run.
+ *
+ * Without --profile there is nothing on file, so every screening question comes
+ * back unanswerable — which is exactly what a candidate with an empty mandate
+ * would get. A dry run that invented plausible answers would report a
+ * completability the product does not have.
+ */
+function profileAnswers(p: Profile | null): StandingAnswers {
+  const rec = p as Record<string, unknown> | null;
+  const g = (k: string) => String(rec?.[k] ?? "").trim();
+  const tri = (k: string) => (typeof rec?.[k] === "boolean" ? (rec[k] as boolean) : null);
+  const full = g("fullName");
+  const parts = full.split(/\s+/).filter(Boolean);
+  return {
+    fullName: full,
+    firstName: g("firstName") || (parts[0] ?? ""),
+    lastName: g("lastName") || parts.slice(1).join(" "),
+    email: g("email"), phone: g("phone"), city: g("city"), country: g("country"),
+    address: g("address"), linkedin: g("linkedin"), website: g("website"),
+    coverNote: g("coverNote"),
+    salaryExpectation: g("salaryExpectation"), earliestStart: g("earliestStart"),
+    workAuthorized: tri("workAuthorized"),
+    requiresSponsorship: tri("requiresSponsorship"),
+    willingToRelocate: tri("willingToRelocate"),
+    shareDemographics: rec?.["shareDemographics"] === true,
+    consentToProcessing: rec?.["consentToProcessing"] === true,
+  };
+}
+
 async function main() {
   const argv = process.argv.slice(2);
   const [postingUrl, vendor] = argv;
@@ -123,13 +166,16 @@ async function main() {
   const profilePath = argv[argv.indexOf("--profile") + 1];
 
   let profile: Profile | null = null;
-  if (doSubmit) {
-    if (!argv.includes("--profile") || !profilePath || profilePath.startsWith("--")) {
-      console.error("\n  --submit requires --profile <file> with real details\n");
-      process.exit(2);
-    }
-    profile = loadProfile(profilePath);
+  const hasProfileArg = argv.includes("--profile") && !!profilePath && !profilePath.startsWith("--");
+  if (doSubmit && !hasProfileArg) {
+    console.error("\n  --submit requires --profile <file> with real details\n");
+    process.exit(2);
   }
+  // Loaded for a plain dry run too. The whole point of step 4b is to say which
+  // questions THIS candidate can answer, and it cannot say that from an empty
+  // profile — it would report every form as unanswerable and look like a market
+  // finding rather than a missing argument.
+  if (hasProfileArg) profile = loadProfile(profilePath, doSubmit);
   if (!postingUrl || !vendor) {
     console.error("usage: tsx src/dryrun.ts <postingUrl> <vendor> [--headed]");
     process.exit(2);
@@ -168,7 +214,7 @@ async function main() {
     //    so shadow DOM, visibility and timeouts are all genuinely exercised.
     // Placeholders on a dry run; the real person's details on a real send.
     const values: Partial<Record<PacketFieldKey, string>> = profile
-      ? (profile as Partial<Record<PacketFieldKey, string>>)
+      ? (Object.fromEntries(Object.entries(profile).filter(([, v]) => typeof v === "string")) as Partial<Record<PacketFieldKey, string>>)
       : SAMPLE;
 
     console.log(`  [3] fields`);
@@ -234,21 +280,34 @@ async function main() {
     //     Breezy postings on 2026-07-31, five carried required questions no
     //     packet can answer and would be refused before submit; three had a bare
     //     form and would have gone through.
-    const unanswered = await adapter.unansweredRequired(page).catch(() => null);
-    if (unanswered === null) {
-      // Not a clean bill of health. This vendor keeps requiredness in the label
-      // text, so the attribute is absent and counting it would return zero —
-      // which would read as "nothing missing" on exactly the question being
-      // asked. Saying so is the honest answer.
-      console.log(`  [4b] required check   CANNOT DETERMINE — ${adapter.key} does not use the required attribute`);
-    } else if (unanswered.length === 0) {
-      console.log("  [4b] required check   OK — every required field is one the agent can answer");
-    } else {
-      console.log(`  [4b] required check   ${unanswered.length} required field(s) the agent CANNOT answer:`);
-      for (const n of unanswered.slice(0, 8)) console.log(`         ${n}`);
-      if (unanswered.length > 8) console.log(`         …and ${unanswered.length - 8} more`);
-      console.log("       -> the worker would REFUSE this posting and send it to the queue");
+    const asked = await adapter.enumerateQuestions(page).catch(() => null);
+    if (asked === null) {
+      // NOT a clean bill of health. A failed probe and an empty form are
+      // different states, and reporting them the same way is how an unanswered
+      // required question reaches an employer.
+      console.log(`  [4b] questions        CANNOT READ — enumeration failed; the worker would refuse rather than submit blind`);
       bad++;
+    } else {
+      const answers = profileAnswers(profile);
+      const { answerable, blocking } = planAnswers(asked, answers, adapter.mappedNames);
+      const req = asked.filter((x) => x.required && !adapter.mappedNames.has(x.name)).length;
+      console.log(`  [4b] questions        ${asked.length} control(s); ${req} required beyond the adapter's own fields`);
+      for (const { q, r } of answerable) {
+        const how = r.kind === "fill" ? `fill "${r.value.slice(0, 26)}"`
+          : r.kind === "choose" ? `choose "${r.option.slice(0, 32)}"` : "tick";
+        console.log(`         ANSWER [${r.category}] ${(q.label || q.name).slice(0, 44)} -> ${how}`);
+      }
+      for (const { q, r } of blocking) {
+        if (r.kind !== "unanswerable") continue;
+        console.log(`         BLOCK  [${r.category}] ${(q.label || q.name).slice(0, 44)}`);
+        console.log(`                ${r.why}`);
+      }
+      if (blocking.length > 0) {
+        console.log("       -> the worker would REFUSE this posting and send it to the queue");
+        bad++;
+      } else if (req > 0) {
+        console.log("       -> every required question resolves to an answer the candidate gave");
+      }
     }
 
     const what = await adapter.canProceed(page).catch(() => "stuck" as const);

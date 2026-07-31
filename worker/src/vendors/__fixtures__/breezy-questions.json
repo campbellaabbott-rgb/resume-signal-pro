@@ -1,0 +1,969 @@
+[
+  {
+    "host": "artifex-interior-systems-limited.breezy.hr",
+    "url": "https://artifex-interior-systems-limited.breezy.hr/p/2d2bdab2def101-infrastructure-and-operations-senior-manager/apply",
+    "questions": [
+      {
+        "name": "cResume",
+        "type": "file",
+        "required": true,
+        "label": "",
+        "options": []
+      },
+      {
+        "name": "cName",
+        "type": "text",
+        "required": true,
+        "label": "",
+        "options": []
+      },
+      {
+        "name": "cEmail",
+        "type": "email",
+        "required": true,
+        "label": "",
+        "options": []
+      },
+      {
+        "name": "cPhoneNumber",
+        "type": "text",
+        "required": true,
+        "label": "",
+        "options": []
+      },
+      {
+        "name": "smsConsent",
+        "type": "checkbox",
+        "required": false,
+        "label": "",
+        "options": []
+      },
+      {
+        "name": "cAddress",
+        "type": "text",
+        "required": false,
+        "label": "",
+        "options": []
+      },
+      {
+        "name": "salaryCurrency",
+        "type": "select",
+        "required": false,
+        "label": "",
+        "options": [
+          "US Dollar ($)",
+          "Canadian Dollar ($)",
+          "Euro (€)",
+          "United Arab Emirates Dirham (د.إ.‏)",
+          "Afghan Afghani (؋)",
+          "Albanian Lek (Lek)",
+          "Armenian Dram (դր.)",
+          "Argentine Peso ($)",
+          "Australian Dollar ($)",
+          "Azerbaijani Manat (ман.)",
+          "Bosnia-Herzegovina Convertible Mark (KM)",
+          "Bangladeshi Taka (৳)",
+          "Bulgarian Lev (лв.)",
+          "Bahraini Dinar (د.ب.‏)",
+          "Burundian Franc (FBu)",
+          "Brunei Dollar ($)",
+          "Bolivian Boliviano (Bs)",
+          "Brazilian Real (R$)",
+          "Botswanan Pula (P)",
+          "Belarusian Ruble (руб.)",
+          "Belize Dollar ($)",
+          "Congolese Franc (FrCD)",
+          "Swiss Franc (CHF)",
+          "Chilean Peso ($)"
+        ]
+      },
+      {
+        "name": "cSalary",
+        "type": "text",
+        "required": false,
+        "label": "",
+        "options": []
+      },
+      {
+        "name": "cSummary",
+        "type": "textarea",
+        "required": false,
+        "label": "Work History",
+        "options": []
+      },
+      {
+        "name": "cCoverLetter",
+        "type": "textarea",
+        "required": false,
+        "label": "Cover Letter",
+        "options": []
+      },
+      {
+        "name": "hp_7f2b",
+        "type": "text",
+        "required": false,
+        "label": "",
+        "options": []
+      },
+      {
+        "name": "gdprAgreement",
+        "type": "checkbox",
+        "required": true,
+        "label": "I've read the Privacy Notice below and consent the processing of my data as part of my job application.",
+        "options": []
+      }
+    ]
+  },
+  {
+    "host": "barloworldequipment.breezy.hr",
+    "url": "https://barloworldequipment.breezy.hr/p/64c2d9776e4b-service-engineer-global-grade-12/apply",
+    "questions": [
+      {
+        "name": "cResume",
+        "type": "file",
+        "required": true,
+        "label": "",
+        "options": []
+      },
+      {
+        "name": "cName",
+        "type": "text",
+        "required": true,
+        "label": "",
+        "options": []
+      },
+      {
+        "name": "cEmail",
+        "type": "email",
+        "required": true,
+        "label": "",
+        "options": []
+      },
+      {
+        "name": "cPhoneNumber",
+        "type": "text",
+        "required": true,
+        "label": "",
+        "options": []
+      },
+      {
+        "name": "cAddress",
+        "type": "text",
+        "required": true,
+        "label": "",
+        "options": []
+      },
+      {
+        "name": "salaryCurrency",
+        "type": "select",
+        "required": false,
+        "label": "",
+        "options": [
+          "US Dollar ($)",
+          "Canadian Dollar ($)",
+          "Euro (€)",
+          "United Arab Emirates Dirham (د.إ.‏)",
+          "Afghan Afghani (؋)",
+          "Albanian Lek (Lek)",
+          "Armenian Dram (դր.)",
+          "Argentine Peso ($)",
+          "Australian Dollar ($)",
+          "Azerbaijani Manat (ман.)",
+          "Bosnia-Herzegovina Convertible Mark (KM)",
+          "Bangladeshi Taka (৳)",
+          "Bulgarian Lev (лв.)",
+          "Bahraini Dinar (د.ب.‏)",
+          "Burundian Franc (FBu)",
+          "Brunei Dollar ($)",
+          "Bolivian Boliviano (Bs)",
+          "Brazilian Real (R$)",
+          "Botswanan Pula (P)",
+          "Belarusian Ruble (руб.)",
+          "Belize Dollar ($)",
+          "Congolese Franc (FrCD)",
+          "Swiss Franc (CHF)",
+          "Chilean Peso ($)"
+        ]
+      },
+      {
+        "name": "cSalary",
+        "type": "text",
+        "required": true,
+        "label": "",
+        "options": []
+      },
+      {
+        "name": "cLocation",
+        "type": "select",
+        "required": true,
+        "label": "Which location are you applying for",
+        "options": [
+          "Isando, ZA"
+        ]
+      },
+      {
+        "name": "cSummary",
+        "type": "textarea",
+        "required": true,
+        "label": "Work History",
+        "options": []
+      },
+      {
+        "name": "cCoverLetter",
+        "type": "textarea",
+        "required": false,
+        "label": "Cover Letter",
+        "options": []
+      },
+      {
+        "name": "hp_7f2b",
+        "type": "text",
+        "required": false,
+        "label": "",
+        "options": []
+      }
+    ]
+  },
+  {
+    "host": "bidvestbank.breezy.hr",
+    "url": "https://bidvestbank.breezy.hr/p/f3c7de2cc110-procurement-manager/apply",
+    "questions": [
+      {
+        "name": "cResume",
+        "type": "file",
+        "required": true,
+        "label": "",
+        "options": []
+      },
+      {
+        "name": "cName",
+        "type": "text",
+        "required": true,
+        "label": "",
+        "options": []
+      },
+      {
+        "name": "cEmail",
+        "type": "email",
+        "required": true,
+        "label": "",
+        "options": []
+      },
+      {
+        "name": "cPhoneNumber",
+        "type": "text",
+        "required": true,
+        "label": "",
+        "options": []
+      },
+      {
+        "name": "cAddress",
+        "type": "text",
+        "required": false,
+        "label": "",
+        "options": []
+      },
+      {
+        "name": "salaryCurrency",
+        "type": "select",
+        "required": false,
+        "label": "",
+        "options": [
+          "US Dollar ($)",
+          "Canadian Dollar ($)",
+          "Euro (€)",
+          "United Arab Emirates Dirham (د.إ.‏)",
+          "Afghan Afghani (؋)",
+          "Albanian Lek (Lek)",
+          "Armenian Dram (դր.)",
+          "Argentine Peso ($)",
+          "Australian Dollar ($)",
+          "Azerbaijani Manat (ман.)",
+          "Bosnia-Herzegovina Convertible Mark (KM)",
+          "Bangladeshi Taka (৳)",
+          "Bulgarian Lev (лв.)",
+          "Bahraini Dinar (د.ب.‏)",
+          "Burundian Franc (FBu)",
+          "Brunei Dollar ($)",
+          "Bolivian Boliviano (Bs)",
+          "Brazilian Real (R$)",
+          "Botswanan Pula (P)",
+          "Belarusian Ruble (руб.)",
+          "Belize Dollar ($)",
+          "Congolese Franc (FrCD)",
+          "Swiss Franc (CHF)",
+          "Chilean Peso ($)"
+        ]
+      },
+      {
+        "name": "cSalary",
+        "type": "text",
+        "required": true,
+        "label": "",
+        "options": []
+      },
+      {
+        "name": "cLocation",
+        "type": "select",
+        "required": false,
+        "label": "Which location are you applying for",
+        "options": [
+          "Johannesburg Sandton, ZA"
+        ]
+      },
+      {
+        "name": "cSummary",
+        "type": "textarea",
+        "required": false,
+        "label": "Work History",
+        "options": []
+      },
+      {
+        "name": "cCoverLetter",
+        "type": "textarea",
+        "required": false,
+        "label": "Cover Letter",
+        "options": []
+      },
+      {
+        "name": "hp_7f2b",
+        "type": "text",
+        "required": false,
+        "label": "",
+        "options": []
+      },
+      {
+        "name": "section_1677491008556_question_0",
+        "type": "text",
+        "required": true,
+        "label": "Preferred name",
+        "options": []
+      },
+      {
+        "name": "section_1677491008556_question_1",
+        "type": "text",
+        "required": true,
+        "label": "ID Number",
+        "options": []
+      },
+      {
+        "name": "section_1677491008556_question_2",
+        "type": "select",
+        "required": false,
+        "label": "Gender",
+        "options": [
+          "Male",
+          "Female"
+        ]
+      },
+      {
+        "name": "section_1677491008556_question_3",
+        "type": "text",
+        "required": true,
+        "label": "Nationality",
+        "options": []
+      },
+      {
+        "name": "section_1677491008556_question_4",
+        "type": "radio",
+        "required": true,
+        "label": "Race",
+        "options": [
+          "African",
+          "Coloured",
+          "Indian",
+          "White",
+          "Other"
+        ]
+      },
+      {
+        "name": "section_1677491008556_question_5",
+        "type": "file",
+        "required": true,
+        "label": "Qualifications Attachment",
+        "options": []
+      },
+      {
+        "name": "section_1677491008556_question_6",
+        "type": "text",
+        "required": false,
+        "label": "Do you have any relatives employed at Bidvest Bank",
+        "options": []
+      },
+      {
+        "name": "section_1677491008556_question_7",
+        "type": "select",
+        "required": true,
+        "label": "Are you an Internal Applicant?",
+        "options": [
+          "Yes",
+          "No"
+        ]
+      },
+      {
+        "name": "section_1677491731106_question_0",
+        "type": "text",
+        "required": true,
+        "label": "What is your current Total Cost To Company per annum",
+        "options": []
+      },
+      {
+        "name": "section_1677491731106_question_1",
+        "type": "text",
+        "required": true,
+        "label": "What is your salary expectation Total Cost To Company per annum",
+        "options": []
+      },
+      {
+        "name": "section_1677491731106_question_2",
+        "type": "text",
+        "required": true,
+        "label": "What is your notice period",
+        "options": []
+      },
+      {
+        "name": "section_1677491810369_question_0",
+        "type": "text",
+        "required": false,
+        "label": "Have you ever been convicted? (If yes, provide details)",
+        "options": []
+      },
+      {
+        "name": "section_1677491810369_question_1",
+        "type": "text",
+        "required": false,
+        "label": "Do you have a pending criminal case or investigation against you",
+        "options": []
+      },
+      {
+        "name": "section_1677491810369_question_2",
+        "type": "text",
+        "required": false,
+        "label": "Have you ever been dismissed (If yes, provide details)",
+        "options": []
+      },
+      {
+        "name": "section_1677491810369_question_3",
+        "type": "radio",
+        "required": true,
+        "label": "Do you declare that the information provided is correct and truthful.",
+        "options": [
+          "Yes I give my consent",
+          "No I do not give my consent"
+        ]
+      }
+    ]
+  },
+  {
+    "host": "gold-care-homes.breezy.hr",
+    "url": "https://gold-care-homes.breezy.hr/p/80773b6906ca01-senior-carer-full-time-day-night/apply",
+    "questions": [
+      {
+        "name": "cResume",
+        "type": "file",
+        "required": false,
+        "label": "",
+        "options": []
+      },
+      {
+        "name": "cName",
+        "type": "text",
+        "required": true,
+        "label": "",
+        "options": []
+      },
+      {
+        "name": "cEmail",
+        "type": "email",
+        "required": true,
+        "label": "",
+        "options": []
+      },
+      {
+        "name": "cPhoneNumber",
+        "type": "text",
+        "required": false,
+        "label": "",
+        "options": []
+      },
+      {
+        "name": "smsConsent",
+        "type": "checkbox",
+        "required": false,
+        "label": "",
+        "options": []
+      },
+      {
+        "name": "cSummary",
+        "type": "textarea",
+        "required": false,
+        "label": "Work History",
+        "options": []
+      },
+      {
+        "name": "cCoverLetter",
+        "type": "textarea",
+        "required": false,
+        "label": "Cover Letter",
+        "options": []
+      },
+      {
+        "name": "hp_7f2b",
+        "type": "text",
+        "required": false,
+        "label": "",
+        "options": []
+      }
+    ]
+  },
+  {
+    "host": "gold-care-homes.breezy.hr",
+    "url": "https://gold-care-homes.breezy.hr/p/c28bbb4b32a901-nurse-bank-day-night/apply",
+    "questions": [
+      {
+        "name": "cResume",
+        "type": "file",
+        "required": false,
+        "label": "",
+        "options": []
+      },
+      {
+        "name": "cName",
+        "type": "text",
+        "required": true,
+        "label": "",
+        "options": []
+      },
+      {
+        "name": "cEmail",
+        "type": "email",
+        "required": true,
+        "label": "",
+        "options": []
+      },
+      {
+        "name": "cPhoneNumber",
+        "type": "text",
+        "required": false,
+        "label": "",
+        "options": []
+      },
+      {
+        "name": "smsConsent",
+        "type": "checkbox",
+        "required": false,
+        "label": "",
+        "options": []
+      },
+      {
+        "name": "cSummary",
+        "type": "textarea",
+        "required": false,
+        "label": "Work History",
+        "options": []
+      },
+      {
+        "name": "cCoverLetter",
+        "type": "textarea",
+        "required": false,
+        "label": "Cover Letter",
+        "options": []
+      },
+      {
+        "name": "hp_7f2b",
+        "type": "text",
+        "required": false,
+        "label": "",
+        "options": []
+      }
+    ]
+  },
+  {
+    "host": "learn-corporation.breezy.hr",
+    "url": "https://learn-corporation.breezy.hr/p/e9870a821bf1-product-marketing-officer/apply",
+    "questions": [
+      {
+        "name": "cResume",
+        "type": "file",
+        "required": false,
+        "label": "",
+        "options": []
+      },
+      {
+        "name": "cName",
+        "type": "text",
+        "required": true,
+        "label": "",
+        "options": []
+      },
+      {
+        "name": "cEmail",
+        "type": "email",
+        "required": true,
+        "label": "",
+        "options": []
+      },
+      {
+        "name": "cPhoneNumber",
+        "type": "text",
+        "required": false,
+        "label": "",
+        "options": []
+      },
+      {
+        "name": "cSummary",
+        "type": "textarea",
+        "required": false,
+        "label": "Work History",
+        "options": []
+      },
+      {
+        "name": "cCoverLetter",
+        "type": "textarea",
+        "required": false,
+        "label": "Cover Letter",
+        "options": []
+      },
+      {
+        "name": "hp_7f2b",
+        "type": "text",
+        "required": false,
+        "label": "",
+        "options": []
+      }
+    ]
+  },
+  {
+    "host": "marex.breezy.hr",
+    "url": "https://marex.breezy.hr/p/4fd6282a9e3c01-compliance-officer-broker-dealer-advisor-equities-and-options-vn2750/apply",
+    "questions": [
+      {
+        "name": "cResume",
+        "type": "file",
+        "required": true,
+        "label": "",
+        "options": []
+      },
+      {
+        "name": "cName",
+        "type": "text",
+        "required": true,
+        "label": "",
+        "options": []
+      },
+      {
+        "name": "cEmail",
+        "type": "email",
+        "required": true,
+        "label": "",
+        "options": []
+      },
+      {
+        "name": "cPhoneNumber",
+        "type": "text",
+        "required": true,
+        "label": "",
+        "options": []
+      },
+      {
+        "name": "smsConsent",
+        "type": "checkbox",
+        "required": false,
+        "label": "",
+        "options": []
+      },
+      {
+        "name": "cAddress",
+        "type": "text",
+        "required": true,
+        "label": "",
+        "options": []
+      },
+      {
+        "name": "salaryCurrency",
+        "type": "select",
+        "required": false,
+        "label": "",
+        "options": [
+          "US Dollar ($)",
+          "Canadian Dollar ($)",
+          "Euro (€)",
+          "United Arab Emirates Dirham (د.إ.‏)",
+          "Afghan Afghani (؋)",
+          "Albanian Lek (Lek)",
+          "Armenian Dram (դր.)",
+          "Argentine Peso ($)",
+          "Australian Dollar ($)",
+          "Azerbaijani Manat (ман.)",
+          "Bosnia-Herzegovina Convertible Mark (KM)",
+          "Bangladeshi Taka (৳)",
+          "Bulgarian Lev (лв.)",
+          "Bahraini Dinar (د.ب.‏)",
+          "Burundian Franc (FBu)",
+          "Brunei Dollar ($)",
+          "Bolivian Boliviano (Bs)",
+          "Brazilian Real (R$)",
+          "Botswanan Pula (P)",
+          "Belarusian Ruble (руб.)",
+          "Belize Dollar ($)",
+          "Congolese Franc (FrCD)",
+          "Swiss Franc (CHF)",
+          "Chilean Peso ($)"
+        ]
+      },
+      {
+        "name": "cSalary",
+        "type": "text",
+        "required": false,
+        "label": "",
+        "options": []
+      },
+      {
+        "name": "cLocation",
+        "type": "select",
+        "required": false,
+        "label": "Which location are you applying for",
+        "options": [
+          "Chicago, IL"
+        ]
+      },
+      {
+        "name": "cSummary",
+        "type": "textarea",
+        "required": false,
+        "label": "Work History",
+        "options": []
+      },
+      {
+        "name": "cCoverLetter",
+        "type": "textarea",
+        "required": false,
+        "label": "Cover Letter",
+        "options": []
+      },
+      {
+        "name": "hp_7f2b",
+        "type": "text",
+        "required": false,
+        "label": "",
+        "options": []
+      },
+      {
+        "name": "section__question_0",
+        "type": "radio",
+        "required": true,
+        "label": "Are you legally authorized to work in the US?",
+        "options": [
+          "Yes",
+          "No"
+        ]
+      },
+      {
+        "name": "section__question_1",
+        "type": "radio",
+        "required": true,
+        "label": "Will you now or in the future require Marex to commence an immigration case in order to employ you (for example, H-1B or other employment- based immigration case)?",
+        "options": [
+          "Yes",
+          "No"
+        ]
+      },
+      {
+        "name": "section__question_2",
+        "type": "text",
+        "required": true,
+        "label": "What is your expected salary range for this role?",
+        "options": []
+      },
+      {
+        "name": "race_ethnicity",
+        "type": "radio",
+        "required": true,
+        "label": "White (not Hispanic or Latino)",
+        "options": [
+          "White (not Hispanic or Latino)",
+          "Black or African-American (not Hispanic or Latino)",
+          "Asian (not Hispanic or Latino)",
+          "American Indian or Alaskan Native (not Hispanic or Latino)",
+          "Native Hawaiian or other Pacific islander (not Hispanic or Latino)",
+          "Two or more races/ethnicities (not Hispanic or Latino)",
+          "Hispanic or Latino (including Black individuals whose origins are Hispanic)",
+          "I don't wish to answer"
+        ]
+      },
+      {
+        "name": "gender",
+        "type": "radio",
+        "required": true,
+        "label": "Male",
+        "options": [
+          "Male",
+          "Female",
+          "I don't wish to answer"
+        ]
+      }
+    ]
+  },
+  {
+    "host": "marex.breezy.hr",
+    "url": "https://marex.breezy.hr/p/c7fd0ab99a5701-head-of-broker-dealer-compliance-americas-and-chief-compliance-officer/apply",
+    "questions": [
+      {
+        "name": "cResume",
+        "type": "file",
+        "required": true,
+        "label": "",
+        "options": []
+      },
+      {
+        "name": "cName",
+        "type": "text",
+        "required": true,
+        "label": "",
+        "options": []
+      },
+      {
+        "name": "cEmail",
+        "type": "email",
+        "required": true,
+        "label": "",
+        "options": []
+      },
+      {
+        "name": "cPhoneNumber",
+        "type": "text",
+        "required": true,
+        "label": "",
+        "options": []
+      },
+      {
+        "name": "smsConsent",
+        "type": "checkbox",
+        "required": false,
+        "label": "",
+        "options": []
+      },
+      {
+        "name": "cAddress",
+        "type": "text",
+        "required": true,
+        "label": "",
+        "options": []
+      },
+      {
+        "name": "salaryCurrency",
+        "type": "select",
+        "required": false,
+        "label": "",
+        "options": [
+          "US Dollar ($)",
+          "Canadian Dollar ($)",
+          "Euro (€)",
+          "United Arab Emirates Dirham (د.إ.‏)",
+          "Afghan Afghani (؋)",
+          "Albanian Lek (Lek)",
+          "Armenian Dram (դր.)",
+          "Argentine Peso ($)",
+          "Australian Dollar ($)",
+          "Azerbaijani Manat (ман.)",
+          "Bosnia-Herzegovina Convertible Mark (KM)",
+          "Bangladeshi Taka (৳)",
+          "Bulgarian Lev (лв.)",
+          "Bahraini Dinar (د.ب.‏)",
+          "Burundian Franc (FBu)",
+          "Brunei Dollar ($)",
+          "Bolivian Boliviano (Bs)",
+          "Brazilian Real (R$)",
+          "Botswanan Pula (P)",
+          "Belarusian Ruble (руб.)",
+          "Belize Dollar ($)",
+          "Congolese Franc (FrCD)",
+          "Swiss Franc (CHF)",
+          "Chilean Peso ($)"
+        ]
+      },
+      {
+        "name": "cSalary",
+        "type": "text",
+        "required": true,
+        "label": "",
+        "options": []
+      },
+      {
+        "name": "cSummary",
+        "type": "textarea",
+        "required": false,
+        "label": "Work History",
+        "options": []
+      },
+      {
+        "name": "cCoverLetter",
+        "type": "textarea",
+        "required": false,
+        "label": "Cover Letter",
+        "options": []
+      },
+      {
+        "name": "hp_7f2b",
+        "type": "text",
+        "required": false,
+        "label": "",
+        "options": []
+      },
+      {
+        "name": "section__question_0",
+        "type": "radio",
+        "required": true,
+        "label": "Are you legally authorized to work in the US?",
+        "options": [
+          "Yes",
+          "No"
+        ]
+      },
+      {
+        "name": "section__question_1",
+        "type": "radio",
+        "required": true,
+        "label": "Will you now or in the future require Marex to commence an immigration case in order to employ you (for example, H-1B or other employment- based immigration case)?",
+        "options": [
+          "Yes",
+          "No"
+        ]
+      },
+      {
+        "name": "section__question_2",
+        "type": "text",
+        "required": true,
+        "label": "What is your expected salary range for this role?",
+        "options": []
+      },
+      {
+        "name": "race_ethnicity",
+        "type": "radio",
+        "required": true,
+        "label": "White (not Hispanic or Latino)",
+        "options": [
+          "White (not Hispanic or Latino)",
+          "Black or African-American (not Hispanic or Latino)",
+          "Asian (not Hispanic or Latino)",
+          "American Indian or Alaskan Native (not Hispanic or Latino)",
+          "Native Hawaiian or other Pacific islander (not Hispanic or Latino)",
+          "Two or more races/ethnicities (not Hispanic or Latino)",
+          "Hispanic or Latino (including Black individuals whose origins are Hispanic)",
+          "I don't wish to answer"
+        ]
+      },
+      {
+        "name": "gender",
+        "type": "radio",
+        "required": true,
+        "label": "Male",
+        "options": [
+          "Male",
+          "Female",
+          "I don't wish to answer"
+        ]
+      }
+    ]
+  }
+]

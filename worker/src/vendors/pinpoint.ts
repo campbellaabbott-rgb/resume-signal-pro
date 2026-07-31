@@ -1,4 +1,5 @@
 import type { Page, Locator } from "playwright";
+import { enumerateOn } from "./enumerate-dom.js";
 import type { VendorAdapter, Locatable, PacketFieldKey } from "./types.js";
 
 /**
@@ -53,6 +54,11 @@ export const pinpoint: VendorAdapter = {
   // Set on 9 fields including the employer's required custom questions, so a
   // packet that cannot answer one is genuinely caught before submit.
   requiredAttributeIsTrustworthy: true,
+
+  // Derived from the map above, so a rename cannot desynchronise them.
+  mappedNames: new Set([...Object.values(KEYS), RESUME_KEY].map(n)),
+
+  enumerateQuestions: (page) => enumerateOn(page),
 
   async resolveFormUrl(page, postingUrl) {
     const base = postingUrl.replace(/[?#].*$/, "").replace(/\/+$/, "");

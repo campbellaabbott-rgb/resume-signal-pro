@@ -1,4 +1,5 @@
 import type { Page, Locator } from "playwright";
+import { enumerateOn } from "./enumerate-dom.js";
 import type { VendorAdapter, Locatable, PacketFieldKey } from "./types.js";
 
 /**
@@ -40,6 +41,15 @@ const LABELS: Partial<Record<PacketFieldKey, RegExp>> = {
 
 export const smartrecruiters: VendorAdapter = {
   key: "smartrecruiters",
+
+  // Empty on purpose, and NOT a stand-in for "unknown". This vendor renders no
+  // `name` attributes at all, so there is nothing for a name-keyed matcher to
+  // exclude — every question would come back unmapped and the packet would be
+  // refused. Correct behaviour while the vendor 403s headless anyway; if it is
+  // ever served again, question matching here needs a label-keyed path.
+  mappedNames: new Set<string>(),
+
+  enumerateQuestions: (page) => enumerateOn(page),
 
   // Labels say "First name*" but no field sets the attribute. The driver must
   // NOT count its empty-required check as protection here.
