@@ -111,6 +111,21 @@ serve(async (req) => {
   }
   const bucketState = await ensureResumeBucket();
 
+  // Is there a worker alive to actually send? Read ONCE per run rather than per
+  // packet — it is the same answer for every packet in a run, and asking per row
+  // would add a round trip to each one.
+  //
+  // FAILS CLOSED. If the check itself errors we treat the sender as offline,
+  // because the alternative is releasing applications in a real person's name on
+  // the strength of a query that did not answer.
+  const { data: onlineRow, error: onlineErr } = await client.rpc("agent_sender_online", {
+    p_max_age_seconds: 900,
+  });
+  const senderOnline = !onlineErr && onlineRow === true;
+  if (!senderOnline) {
+    console.warn(`[APPLY-AGENT] sender OFFLINE (${onlineErr?.message ?? "no recent heartbeat"}) — preparing packets but releasing none`);
+  }
+
   const startedAt = Date.now();
   const outOfTime = () => Date.now() - startedAt > SOFT_DEADLINE_MS;
 
@@ -265,6 +280,7 @@ serve(async (req) => {
           fitPct: q.fit_pct,
           minFitPct: MIN_FIT_PCT,
           duplicate,
+          senderOnline,
         });
         if (!decision.release) {
           summary.refusals[decision.code] = (summary.refusals[decision.code] ?? 0) + 1;
@@ -309,8 +325,11 @@ serve(async (req) => {
   // Reported on every run, not just the standalone action. A missing bucket
   // blocks essentially every application at the résumé step, and that is far
   // too quiet a failure to leave out of the summary.
-  console.log(`[APPLY-AGENT] resumesBucket=${bucketState} ${JSON.stringify(summary)}`);
-  return new Response(JSON.stringify({ ...summary, resumesBucket: bucketState, ms: Date.now() - startedAt }), {
+  // senderOnline is in the summary because "0 released" has two very different
+  // meanings — nothing qualified, or nothing could be sent at all — and a run
+  // report that cannot tell them apart is the same trap as a silent refusal.
+  console.log(`[APPLY-AGENT] senderOnline=${senderOnline} resumesBucket=${bucketState} ${JSON.stringify(summary)}`);
+  return new Response(JSON.stringify({ ...summary, senderOnline, resumesBucket: bucketState, ms: Date.now() - startedAt }), {
     headers: { "content-type": "application/json" },
   });
 });

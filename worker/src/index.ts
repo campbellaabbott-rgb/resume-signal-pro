@@ -25,6 +25,9 @@ const WORKER_ID = process.env.WORKER_ID ?? `worker-${Math.random().toString(36).
 // and it keeps one candidate's batch from looking like a burst.
 const GAP_MS = Number(process.env.APPLY_GAP_MS ?? 20_000);
 const IDLE_MS = 30_000;
+// Reported in the heartbeat so two overlapping versions during a redeploy can be
+// told apart when one of them is the one misbehaving.
+const WORKER_VERSION = "2026-07-31.1";
 
 // The measured zero-CAPTCHA set. Duplicated here deliberately: the worker is the
 // last gate before a real submission and must not depend on a database row being
@@ -157,6 +160,13 @@ async function main() {
   }
 
   while (!stopping) {
+    // Check in BEFORE claiming, every loop including idle ones. An idle worker
+    // is still a working worker, and if the heartbeat only landed on successful
+    // claims then a healthy-but-idle sender would look dead and apply-agent
+    // would stop releasing to it — the system would talk itself into an outage.
+    await db.rpc("agent_worker_ping", { p_worker: WORKER_ID, p_version: WORKER_VERSION, p_claimed: 0 })
+      .then(() => {}, (e: unknown) => console.warn("[worker] ping failed:", String(e).slice(0, 120)));
+
     const { data, error } = await db.rpc("agent_claim_submission", {
       p_worker: WORKER_ID, p_lease_minutes: 10,
     });

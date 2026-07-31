@@ -3,6 +3,7 @@ import {
   decideBatch,
   decideRelease,
   type ReleaseInput,
+  type ReleaseDecision,
 } from "../../supabase/functions/_shared/apply-release.ts";
 
 // Sendable by default; each test breaks exactly one thing. Written this way on
@@ -20,6 +21,7 @@ const OK: ReleaseInput = {
   fitPct: 80,
   minFitPct: 60,
   duplicate: false,
+  senderOnline: true,
 };
 const r = (o: Partial<ReleaseInput> = {}) => decideRelease({ ...OK, ...o });
 
@@ -39,6 +41,7 @@ describe("it sends only when everything is true at once", () => {
       [{ sentToday: 5 }, "daily-cap"],
       [{ alreadySubmitted: true }, "already-submitted"],
       [{ duplicate: true }, "duplicate"],
+      [{ senderOnline: false }, "sender-offline"],
       [{ fitPct: 40 }, "fit-below-floor"],
       [{ fitPct: null }, "fit-unknown"],
     ];
@@ -165,5 +168,51 @@ describe("review mode is the default posture and is never bypassed", () => {
   it("a whole batch in review mode sends nothing", () => {
     const items = Array.from({ length: 8 }, () => ({ ...OK, applyMode: "review" as const }));
     expect(decideBatch(items, 0, 20).every((d) => !d.release)).toBe(true);
+  });
+});
+
+describe("nothing is released when there is no sender to release it to", () => {
+  // The worker runs as its own service because it needs a real browser, so it
+  // can be down while every other part of the system is up. Releasing then puts
+  // a packet into a state that reads as "on its way" with nobody to collect it.
+  //
+  // That is the one failure a paid product cannot have: the subscriber is
+  // charged, watches a queue that looks like it is about to act, and nothing is
+  // ever applied for. A refusal with a reason is recoverable; a promise that
+  // quietly does nothing is not.
+  const codeOf = (d: ReleaseDecision) => (d as { code?: string }).code;
+  const reasonOf = (d: ReleaseDecision) => (d as { reason?: string }).reason ?? "";
+
+  it("refuses a packet that is perfect in every other respect", () => {
+    expect(r({}).release, "the fixture must be sendable, or this proves nothing").toBe(true);
+    const d = r({ senderOnline: false });
+    expect(d.release).toBe(false);
+    expect(codeOf(d)).toBe("sender-offline");
+  });
+
+  it("says the sender is down rather than blaming the candidate's settings", () => {
+    // A candidate told "fit is under your floor" would go and lower their floor.
+    // The fit was never the problem, and sending someone to change a setting
+    // that was correct is worse than saying nothing at all.
+    const d = r({ senderOnline: false, fitPct: 10, minFitPct: 90 });
+    expect(d.release).toBe(false);
+    expect(codeOf(d), "offline must outrank the settings-shaped reasons").toBe("sender-offline");
+    expect(reasonOf(d)).toMatch(/offline/i);
+    expect(reasonOf(d), "must say plainly that nothing was sent").toMatch(/nothing was sent/i);
+  });
+
+  it("still refuses the two never-send rules ahead of it", () => {
+    // Offline is checked third on purpose. If a packet was already submitted or
+    // is a duplicate, that is the more important thing to say — those stay true
+    // whether or not the sender comes back.
+    const cases: Array<[Partial<ReleaseInput>, string]> = [
+      [{ senderOnline: false, alreadySubmitted: true }, "already-submitted"],
+      [{ senderOnline: false, duplicate: true }, "duplicate"],
+    ];
+    for (const [patch, code] of cases) {
+      const d = r(patch);
+      expect(d.release, JSON.stringify(patch)).toBe(false);
+      expect(codeOf(d), JSON.stringify(patch)).toBe(code);
+    }
   });
 });

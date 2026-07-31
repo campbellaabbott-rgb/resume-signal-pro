@@ -28,6 +28,20 @@ export type ReleaseInput = {
   minFitPct: number;
   /** True when the tracker already has an application to this posting. */
   duplicate: boolean;
+  /**
+   * Has a worker checked in recently enough to be trusted to send?
+   *
+   * The worker is a separate service — it needs a real browser, which edge
+   * functions do not have — so it can be down while everything here is up. If it
+   * is, releasing a packet moves it into a state that says "on its way" and
+   * nothing ever collects it.
+   *
+   * That is the worst failure this product can have now that it is sold: a
+   * subscriber pays, watches a queue that looks like it is about to act, and
+   * nothing is applied for. A refusal with a reason is recoverable; a promise
+   * that quietly does nothing is not.
+   */
+  senderOnline: boolean;
 };
 
 export type ReleaseDecision =
@@ -43,7 +57,8 @@ export type ReleaseRefusal =
   | "already-submitted"
   | "duplicate"
   | "fit-below-floor"
-  | "fit-unknown";
+  | "fit-unknown"
+  | "sender-offline";
 
 export function decideRelease(i: ReleaseInput): ReleaseDecision {
   // Order matters only for which reason a candidate sees first; each check is
@@ -57,6 +72,22 @@ export function decideRelease(i: ReleaseInput): ReleaseDecision {
       release: false,
       code: "duplicate",
       reason: "you already applied to this posting",
+    };
+  }
+
+  // Checked third, straight after the two "never send twice" rules, because
+  // when the sender is down this is the only true explanation and every reason
+  // below it would be a misleading one. A candidate told "fit is under your
+  // floor" would go and lower their floor; the fit was never the problem.
+  //
+  // Deliberately refuses rather than releasing optimistically. A packet left
+  // unreleased is picked up on the next run at no cost. A packet released to
+  // nobody looks sent and is not.
+  if (!i.senderOnline) {
+    return {
+      release: false,
+      code: "sender-offline",
+      reason: "our sender is offline right now — nothing was sent, and this is queued for when it is back",
     };
   }
   if (i.applyMode !== "auto") {
