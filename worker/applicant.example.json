@@ -1,16 +1,28 @@
 {
   "_README": [
     "Real details for a real submission. Copy to applicant.json (gitignored) and",
-    "fill in. Used ONLY by `dryrun.ts --submit`.",
+    "fill in. Used by `dryrun.ts`; with --submit it reaches an actual employer.",
     "",
-    "These go to an actual employer who will actually read them. The tool refuses",
-    "to send anything that still looks like an example, so replace every value —",
-    "a half-filled application wastes a stranger's time and burns the posting for",
+    "These go to someone who will actually read them. The tool refuses to send",
+    "anything that still looks like an example, so replace every value — a",
+    "half-filled application wastes a stranger's time and burns the posting for",
     "whoever the name belongs to.",
     "",
     "resumePath is a path on this machine. It is attached to the form directly;",
-    "nothing is uploaded anywhere else."
+    "nothing is uploaded anywhere else.",
+    "",
+    "THE BOOLEANS BELOW ARE NOT DECORATION. They are how the agent answers an",
+    "employer's screening questions, and they are TRINARY: true, false, or null",
+    "meaning 'not stated'. null is NOT 'no' — leaving workAuthorized null makes",
+    "the agent refuse a posting that asks about work authorisation rather than",
+    "guess, which is correct but useless as a test.",
+    "",
+    "This file omitted them entirely until 2026-07-31, so a dry run against a",
+    "posting with one screening question reported 'candidate has not stated",
+    "whether they are authorised to work' — the honest answer to a question the",
+    "profile could not answer, and a wasted run."
   ],
+
   "fullName": "",
   "firstName": "",
   "lastName": "",
@@ -24,5 +36,13 @@
   "website": "",
   "coverNote": "",
   "salaryExpectation": "",
-  "resumePath": ""
+  "earliestStart": "",
+  "resumePath": "",
+
+  "workAuthorized": null,
+  "requiresSponsorship": null,
+  "willingToRelocate": null,
+
+  "shareDemographics": false,
+  "consentToProcessing": false
 }
