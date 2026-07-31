@@ -205,6 +205,7 @@ export type Database = {
           auto_apply_sources: string[]
           category: string
           city: string
+          consent_to_processing: boolean
           country: string
           created_at: string
           daily_count: number
@@ -239,6 +240,7 @@ export type Database = {
           auto_apply_sources?: string[]
           category?: string
           city?: string
+          consent_to_processing?: boolean
           country?: string
           created_at?: string
           daily_count?: number
@@ -273,6 +275,7 @@ export type Database = {
           auto_apply_sources?: string[]
           category?: string
           city?: string
+          consent_to_processing?: boolean
           country?: string
           created_at?: string
           daily_count?: number
@@ -2632,6 +2635,7 @@ export type Database = {
       }
       agent_sender_public_status: { Args: never; Returns: boolean }
       agent_sent_today: { Args: { p_user: string }; Returns: number }
+      agent_work_pending: { Args: never; Returns: Json }
       agent_worker_ping: {
         Args: { p_claimed?: number; p_version?: string; p_worker: string }
         Returns: undefined
