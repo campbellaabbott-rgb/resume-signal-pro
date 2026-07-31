@@ -4217,7 +4217,9 @@
     "skip": "Nichts für mich",
     "expiryNote": "Ungeprüfte Vorschläge verfallen nach 48 Stunden — die Queue bleibt frisch, nie ein Rückstau.",
     "emailToggle": "Schick mir die Auswahl jeden Morgen per E-Mail – nur wenn es etwas Neues gibt, nie eine leere Liste.",
-    "emailSaveError": "Änderung fehlgeschlagen – bitte erneut versuchen."
+    "emailSaveError": "Änderung fehlgeschlagen – bitte erneut versuchen.",
+    "reasonSendable": "Diese Bewerbung kann der Agent für Sie absenden",
+    "subtitleAuto": "Suche einmal einrichten. Jede Nacht sichtet der Agent neue Stellen, bewertet sie anhand Ihres Lebenslaufs, überspringt Firmen mit ständigen Neuausschreibungen und stellt die besten in die Warteschlange – jeweils mit Begründung. Was er allein ausfüllen kann, sendet er; den Rest übergibt er Ihnen."
   },
   "applyProfile": {
     "authorized": "Bist du berechtigt, dort zu arbeiten, wo du dich bewirbst?",

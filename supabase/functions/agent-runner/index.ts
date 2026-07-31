@@ -17,15 +17,21 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { computeFit } from "../_shared/fit-score.ts";
+import { isSendableVendor, SENDABLE_VENDORS } from "../_shared/apply-automation.ts";
 
 const MANDATES_PER_RUN = 200;      // safety cap; batches long before this matters
 const CANDIDATES_PER_MANDATE = 400;
+// A separate, smaller pull for vendors the worker can submit to unattended.
+// Deliberately modest: it exists to guarantee representation in the pool, not
+// to flood the queue with them at the expense of better-fitting jobs.
+const SENDABLE_CANDIDATES = 120;
 const LOOKBACK_HOURS = 36;         // overlap across runs; dedupe is the unique key
 const MIN_FIT_PCT = 30;            // below this a pick would waste the user's morning
 
 interface MandateRow {
   user_id: string; email: string; q: string; category: string; location: string;
   remote_only: boolean; salary_min: number | null; daily_count: number; resume_text: string;
+  apply_mode: "review" | "auto";
 }
 interface PostingRow {
   id: string; title: string; company: string; company_token: string; location: string;
@@ -54,7 +60,7 @@ serve(async (req) => {
   // Active mandates with a usable resume, joined to the entitlement cache.
   const { data: mandates, error: mErr } = await client
     .from("agent_mandates")
-    .select("user_id, email, q, category, location, remote_only, salary_min, daily_count, resume_text")
+    .select("user_id, email, q, category, location, remote_only, salary_min, daily_count, resume_text, apply_mode")
     .eq("active", true)
     .limit(MANDATES_PER_RUN);
   if (mErr) return json({ error: mErr.message }, 500);
@@ -109,7 +115,41 @@ serve(async (req) => {
     if (m.location) qb = qb.ilike("location", `%${m.location}%`);
     if (m.q) qb = qb.ilike("title", `%${m.q}%`);
     if (m.salary_min != null) qb = qb.gte("salary_min_annual", m.salary_min);
-    const { data: cands, error: cErr } = await qb;
+    const { data: cands0, error: cErr } = await qb;
+
+    // A SECOND, narrower pull for auto mode — only the vendors the worker can
+    // actually finish.
+    //
+    // Without this the sendable boost is close to cosmetic. Those three vendors
+    // are ~3.4% of the board, so a 400-row window ordered by date holds maybe a
+    // dozen of them before the fit floor, and whether any survive is luck. The
+    // boost can only prefer what is already in the pool; this puts them there.
+    //
+    // Same mandate filters, so it widens the pool without loosening anyone's
+    // criteria — and everything still goes through the identical fit floor and
+    // scoring below. Merged and deduped by id, so a posting caught by both
+    // queries is scored once.
+    let cands = cands0 ?? [];
+    if (m.apply_mode === "auto") {
+      let sb2 = client
+        .from("job_board_postings")
+        .select("id, title, company, company_token, location, apply_url, salary, category, posted_at, first_seen, remote, description, salary_min_annual")
+        .gt("first_seen", sinceIso)
+        .or(SENDABLE_VENDORS.map((v) => `id.like.${v}:*`).join(","))
+        .order("posted_at", { ascending: false, nullsFirst: false })
+        .limit(SENDABLE_CANDIDATES);
+      if (m.category) sb2 = sb2.eq("category", m.category);
+      if (m.remote_only) sb2 = sb2.eq("remote", true);
+      if (m.location) sb2 = sb2.ilike("location", `%${m.location}%`);
+      if (m.q) sb2 = sb2.ilike("title", `%${m.q}%`);
+      if (m.salary_min != null) sb2 = sb2.gte("salary_min_annual", m.salary_min);
+      const { data: sendableCands } = await sb2;
+      if (sendableCands?.length) {
+        const seen = new Set(cands.map((c) => (c as PostingRow).id));
+        for (const c of sendableCands as PostingRow[]) if (!seen.has(c.id)) cands.push(c);
+      }
+    }
+
     if (cErr || !cands?.length) {
       await client.from("agent_mandates").update({
         last_run_at: new Date().toISOString(),
@@ -147,8 +187,28 @@ serve(async (req) => {
         if (days <= 7) reasons.push({ k: "fresh", days });
       }
       if (m.salary_min != null && c.salary_min_annual != null) reasons.push({ k: "salary" });
-      // Ranking: fit first, genuine-filler boost breaks ties.
-      const rank = fit.pct + ((h && (h.closed_90d ?? 0) >= 3) ? 8 : 0);
+      // Can the worker finish this one without the candidate? Only three
+      // vendors have an adapter, and that is ~2% of the board — so for somebody
+      // in auto mode the queue is nearly all jobs the agent must hand back.
+      const sendable = isSendableVendor(c.id);
+      if (sendable) reasons.push({ k: "sendable" });
+
+      // Ranking: fit first, then two small boosts.
+      //
+      // SENDABLE_BOOST is deliberately smaller than a meaningful fit gap. It can
+      // only reorder postings already within 6 points of each other, so a
+      // clearly better match still wins — and everything being ranked has
+      // already cleared MIN_FIT_PCT, so this is a preference among jobs that all
+      // qualified, never a promotion of a worse one.
+      //
+      // It applies ONLY in auto mode. Somebody who reviews and submits their own
+      // applications gets no benefit from the vendor being drivable, and
+      // reordering their queue by it would be showing them worse jobs for a
+      // reason that does not apply to them.
+      const SENDABLE_BOOST = 6;
+      const rank = fit.pct
+        + ((h && (h.closed_90d ?? 0) >= 3) ? 8 : 0)
+        + (sendable && m.apply_mode === "auto" ? SENDABLE_BOOST : 0);
       scored.push({ c, fit: fit.pct, reasons: [...reasons, { k: "_rank", v: rank }] });
     }
     scored.sort((a, b) =>

@@ -4217,7 +4217,9 @@
     "skip": "Hindi para sa akin",
     "expiryNote": "Mag-e-expire ang hindi nirepasong pili pagkatapos ng 48 oras — laging sariwa ang pila, hindi backlog.",
     "emailToggle": "I-email sa akin ang shortlist tuwing umaga — kapag may bago lang, hindi kailanman walang laman na listahan.",
-    "emailSaveError": "Hindi na-update — subukan muli."
+    "emailSaveError": "Hindi na-update — subukan muli.",
+    "reasonSendable": "kaya itong isumite ng agent para sa iyo",
+    "subtitleAuto": "Isaayos ang iyong paghahanap nang minsanan. Gabi-gabi, sinusuri ng agent ang mga bagong trabaho, isinusukat ang mga ito sa iyong résumé, nilalaktawan ang mga kumpanyang paulit-ulit magpost, at pinipila ang pinakamahusay — may kasamang dahilan. Isinusumite niya ang kayang tapusin mag-isa at iniaabot sa iyo ang iba."
   },
   "applyProfile": {
     "authorized": "May pahintulot ka bang magtrabaho kung saan ka nag-a-apply?",

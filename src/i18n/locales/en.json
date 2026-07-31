@@ -4217,7 +4217,9 @@
     "skip": "Not for me",
     "expiryNote": "Unreviewed picks expire after 48 hours — the queue stays fresh, never a backlog.",
     "emailToggle": "Email me the shortlist each morning — only when there's something new, never an empty list.",
-    "emailSaveError": "Couldn't change that — please try again."
+    "emailSaveError": "Couldn't change that — please try again.",
+    "reasonSendable": "the agent can submit this one for you",
+    "subtitleAuto": "Set your search once. Every night the agent scans new postings, scores them against your résumé, skips companies that churn re-listings, and queues the best few — each with its reasons. It submits the ones it can complete on its own and hands you the rest."
   },
   "applyProfile": {
     "authorized": "Are you authorised to work where you're applying?",

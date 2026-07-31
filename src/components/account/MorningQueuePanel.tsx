@@ -22,6 +22,7 @@ interface Mandate {
   user_id: string; email: string; active: boolean; q: string; category: string;
   location: string; remote_only: boolean; salary_min: number | null; daily_count: number;
   resume_text: string; last_run_at: string | null; email_opt_in?: boolean;
+  apply_mode?: "review" | "auto";
   last_run_summary: { scanned: number; picked: number; skipped_churn: number; skipped_lowfit: number } | null;
 }
 interface QueueItem {
@@ -155,6 +156,10 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
     if (r.k === "fills") return t("agentQueue.reasonFills", "filled {{n}} roles in our tracking", { n: r.n });
     if (r.k === "fresh") return (r.days ?? 0) === 0 ? t("agentQueue.reasonToday", "posted today") : t("agentQueue.reasonFresh", "posted {{d}}d ago", { d: r.days });
     if (r.k === "salary") return t("agentQueue.reasonSalary", "meets your salary floor");
+    // Says what the agent can actually DO with this one. Only three vendors
+    // have an adapter — about 2% of the board — so on most rows this chip is
+    // absent, and its absence is the honest signal that you finish that one.
+    if (r.k === "sendable") return t("agentQueue.reasonSendable", "the agent can submit this one for you");
     return null;
   };
 
@@ -168,7 +173,13 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
         <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary">{t("agentQueue.badge", "Apply Agent")}</span>
       </div>
       <p className="text-[13px] text-muted-foreground mb-4">
-        {t("agentQueue.subtitle", "Set your search once. Every night the agent scans new postings, scores them against your résumé, skips companies that churn re-listings, and queues the best few — each with its reasons. You review, you send.")}
+        {/* Two modes, two different true sentences. "You review, you send" stopped
+            being true for auto mode the moment the agent could finish a form on
+            its own, and copy that describes something which has since moved is
+            the exact way this product tells a lie without anyone editing it. */}
+        {mandate?.apply_mode === "auto"
+          ? t("agentQueue.subtitleAuto", "Set your search once. Every night the agent scans new postings, scores them against your résumé, skips companies that churn re-listings, and queues the best few — each with its reasons. It submits the ones it can complete on its own and hands you the rest.")
+          : t("agentQueue.subtitle", "Set your search once. Every night the agent scans new postings, scores them against your résumé, skips companies that churn re-listings, and queues the best few — each with its reasons. You review, you send.")}
       </p>
 
       {/* Paywall — the $99/mo Apply Agent tier (includes Pro). */}

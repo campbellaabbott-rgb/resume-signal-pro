@@ -4217,7 +4217,9 @@
     "skip": "Não é para mim",
     "expiryNote": "Escolhas não revisadas expiram em 48 horas — a fila fica fresca, nunca um acúmulo.",
     "emailToggle": "Envie-me a lista todas as manhãs por e-mail, só quando houver novidades; nunca uma lista vazia.",
-    "emailSaveError": "Não foi possível alterar — tente novamente."
+    "emailSaveError": "Não foi possível alterar — tente novamente.",
+    "reasonSendable": "o agente pode enviar esta candidatura por si",
+    "subtitleAuto": "Configure a sua pesquisa uma vez. Todas as noites o agente analisa novas vagas, pontua-as com o seu currículo, ignora empresas que republicam sem parar e coloca as melhores em fila, cada uma com os seus motivos. Envia as que consegue completar sozinho e entrega-lhe as restantes."
   },
   "applyProfile": {
     "authorized": "Tens autorização para trabalhar onde te candidatas?",

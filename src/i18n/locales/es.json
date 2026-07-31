@@ -4217,7 +4217,9 @@
     "skip": "No es para mí",
     "expiryNote": "Las selecciones sin revisar caducan a las 48 horas — la cola se mantiene fresca, nunca un atasco.",
     "emailToggle": "Envíame la lista cada mañana por correo, solo cuando haya algo nuevo; nunca una lista vacía.",
-    "emailSaveError": "No se pudo cambiar. Inténtalo de nuevo."
+    "emailSaveError": "No se pudo cambiar. Inténtalo de nuevo.",
+    "reasonSendable": "el agente puede enviar esta solicitud por ti",
+    "subtitleAuto": "Configura tu búsqueda una vez. Cada noche el agente revisa las nuevas ofertas, las puntúa con tu currículum, descarta empresas que republican sin parar y encola las mejores, cada una con sus motivos. Envía las que puede completar por sí solo y te pasa el resto."
   },
   "applyProfile": {
     "authorized": "¿Tienes autorización para trabajar donde te postulas?",

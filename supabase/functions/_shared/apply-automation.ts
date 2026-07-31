@@ -83,7 +83,7 @@ const FACTS: Record<string, AutomationFact> = {
   // measures 91%, 100%, 100% and 100%. Shipping it would have pointed the agent
   // at exactly the vendors it must avoid.
   ashby: { tier: "click", realQuestions: true, sampled: 60, note: "60/60 captcha" },
-  bamboohr: { tier: "click", realQuestions: false, sampled: 60, note: "60/60 captcha" },
+  bamboohr: { tier: "click", realQuestions: false, sampled: 84, note: "re-measured 2026-07-31 with a real browser: 24/24 tenants serve a VISIBLE reCAPTCHA v2 checkbox (304x78) on the application form, all sharing ONE BambooHR platform sitekey — so it is not a per-employer toggle. Not Enterprise, so it blocks honestly rather than scoring us down silently. See worker/RECON.md." },
   workable: { tier: "click", realQuestions: false, sampled: 60, note: "60/60 captcha" },
   lever: { tier: "click", realQuestions: false, sampled: 57, note: "57/57 captcha" },
   rippling: { tier: "click", realQuestions: false, sampled: 49, note: "49/49 captcha" },
@@ -137,4 +137,39 @@ export function automationLabel(source: string): string {
     default:
       return "We haven't measured this employer's form yet";
   }
+}
+
+/**
+ * Vendors the WORKER can actually drive to submission today.
+ *
+ * This is a different question from the FACTS table above, and the difference
+ * is the whole point. FACTS answers "is there a CAPTCHA in the way", measured
+ * by sampling apply pages. This answers "has someone looked at a real form and
+ * written an adapter for it" — which is the only thing that makes an unattended
+ * send possible. Workday is `auto` up there and absent down here.
+ *
+ * MIRROR — this list is a COPY. The original is `ADAPTERS` in
+ * worker/src/vendors/index.ts, and it cannot be imported: that is Node, this is
+ * Deno. A copy of a fact in another runtime goes stale silently, which is how
+ * public copy ends up describing something that has moved. So
+ * `src/test/sendable-mirror.test.ts` reads both and fails when they diverge.
+ *
+ * Adding a vendor here without an adapter would point the queue at postings the
+ * worker then refuses — the queue would look productive and send nothing.
+ */
+export const SENDABLE_VENDORS: readonly string[] = ["breezy", "personio", "pinpoint"];
+
+const SENDABLE = new Set(SENDABLE_VENDORS);
+
+/**
+ * Can the agent finish this posting without the candidate?
+ *
+ * Takes the board's posting id, whose first segment is the vendor
+ * (`breezy:acme:123`). Falling back to the raw string when there is no colon
+ * means a bare vendor name also works, and anything unrecognised is false —
+ * unknown is never treated as sendable.
+ */
+export function isSendableVendor(postingIdOrSource: string): boolean {
+  const s = String(postingIdOrSource ?? "").toLowerCase();
+  return SENDABLE.has(s.includes(":") ? s.split(":")[0]! : s);
 }

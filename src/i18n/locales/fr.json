@@ -4217,7 +4217,9 @@
     "skip": "Pas pour moi",
     "expiryNote": "Les sélections non revues expirent après 48 h — la file reste fraîche, jamais un arriéré.",
     "emailToggle": "Envoyez-moi la sélection chaque matin par e-mail, uniquement s'il y a du nouveau, jamais une liste vide.",
-    "emailSaveError": "Modification impossible — réessayez."
+    "emailSaveError": "Modification impossible — réessayez.",
+    "reasonSendable": "l'agent peut envoyer cette candidature pour vous",
+    "subtitleAuto": "Configurez votre recherche une fois. Chaque nuit, l'agent parcourt les nouvelles offres, les note face à votre CV, écarte les entreprises qui republient en boucle et met en file les meilleures, chacune avec ses raisons. Il envoie celles qu'il peut compléter seul et vous laisse les autres."
   },
   "applyProfile": {
     "authorized": "Êtes-vous autorisé à travailler là où vous postulez ?",
