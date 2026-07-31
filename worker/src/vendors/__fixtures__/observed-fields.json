@@ -1,0 +1,119 @@
+{
+  "_README": [
+    "The field inventory each vendor's RENDERED form actually presents, read out of",
+    "a live posting on 2026-07-30. Nothing here is inferred or copied from docs.",
+    "",
+    "WHY A STRUCTURAL SNAPSHOT AND NOT SAVED HTML. Saved HTML only works when the",
+    "server sends the form. It mostly does not:",
+    "  breezy   — 35 inputs in the server HTML. Genuine, so breezy.html is kept.",
+    "  pinpoint — 9 inputs served, 56 in the rendered page. 47 arrive via JS.",
+    "  personio — 0 inputs served. The whole form is JS.",
+    "  smartrecruiters — the form lives in 1,806 shadow roots; outerHTML omits it.",
+    "A saved file for the last three would LOOK like a fixture and would be a",
+    "fiction, and a fiction that passes is worse than no test at all.",
+    "",
+    "WHAT THIS CATCHES: a vendor renaming or dropping a field an adapter targets —",
+    "the realistic regression, and the one that would otherwise surface as silently",
+    "unfilled applications sent under a real person's name.",
+    "",
+    "WHAT IT DOES NOT CATCH: layout changes, a form becoming multi-step, a new",
+    "CAPTCHA, or Playwright's locator behaviour. Those need a live run. This is a",
+    "cheap guard against the most likely breakage, not a substitute for watching a",
+    "real submission."
+  ],
+
+  "breezy": {
+    "observedAt": "2026-07-30",
+    "formUrl": "https://bvn.breezy.hr/p/{posting}/apply",
+    "matchStrategy": "name",
+    "requiredAttributeIsTrustworthy": true,
+    "totalFields": 50,
+    "fieldsWithName": 40,
+    "fieldsWithRequiredAttr": 30,
+    "names": [
+      "cResume", "cName", "cEmail", "cPhoneNumber", "cAddress",
+      "cSalary", "cLocation", "cSummary", "salaryCurrency"
+    ],
+    "submitControl": "Submit Application",
+    "captcha": false,
+    "honeypot": false
+  },
+
+  "personio": {
+    "observedAt": "2026-07-30",
+    "formUrl": "https://{tenant}.jobs.personio.de/job/{id}?apply",
+    "matchStrategy": "name",
+    "requiredAttributeIsTrustworthy": false,
+    "note": "Labels are German (Vorname, Nachname, E-Mail) while the name attributes are English. Requiredness is in the label text as '*(erforderlich)', never in the attribute.",
+    "totalFields": 12,
+    "fieldsWithName": 12,
+    "fieldsWithRequiredAttr": 0,
+    "names": [
+      "first_name", "last_name", "email", "location", "phone",
+      "available_from", "salary_expectations", "gender",
+      "documents.cv", "documents.cover-letter",
+      "documents.employment-reference", "documents.other"
+    ],
+    "resumeField": "documents.cv",
+    "captcha": false,
+    "honeypot": false
+  },
+
+  "pinpoint": {
+    "observedAt": "2026-07-30",
+    "formUrl": "https://{tenant}.pinpointhq.com/en/postings/{id}/applications/new",
+    "matchStrategy": "name",
+    "requiredAttributeIsTrustworthy": true,
+    "note": "Rails-nested names. 'Save application for later' sits beside the real submit — matching it would park a draft no employer sees.",
+    "totalFields": 56,
+    "fieldsWithName": 40,
+    "fieldsWithRequiredAttr": 9,
+    "names": [
+      "application_form[application][first_name]",
+      "application_form[application][last_name]",
+      "application_form[application][email]",
+      "application_form[application][phone]",
+      "application_form[application][linkedin_url]",
+      "application_form[application][address1]",
+      "application_form[application][address2]",
+      "application_form[application][postcode]",
+      "application_form[application][cv]",
+      "application_form[application][summary]"
+    ],
+    "resumeField": "application_form[application][cv]",
+    "submitControl": "Submit Application",
+    "decoyControl": "Save application for later",
+    "captcha": false,
+    "honeypot": false
+  },
+
+  "smartrecruiters": {
+    "observedAt": "2026-07-30",
+    "formUrl": "reached via a link whose href contains /oneclick-ui/",
+    "matchStrategy": "label",
+    "requiredAttributeIsTrustworthy": false,
+    "note": "No field carries a name. 1,806 open shadow roots; Playwright pierces them, querySelectorAll does not. Two file inputs share id='file-input' — the résumé one is the LAST, the first is CV-autocomplete.",
+    "totalFields": 14,
+    "fieldsWithName": 0,
+    "fieldsWithRequiredAttr": 0,
+    "labels": [
+      "First name*", "Last name*", "Email*", "Confirm your email*",
+      "City", "LinkedIn", "Facebook", "X (fka Twitter)", "Website",
+      "Choose a file or drop it here",
+      "Let the company know about your interest"
+    ],
+    "submitControl": "Next (multi-step; no submit on page one)",
+    "captcha": false,
+    "honeypot": false
+  },
+
+  "oracle": {
+    "observedAt": "2026-07-30",
+    "servable": false,
+    "note": "NOT served. Email-first screen, no account needed, but a REQUIRED terms-and-conditions checkbox, and it ships a honeypot.",
+    "names": ["primary-email", "honey-pot"],
+    "honeypot": true,
+    "honeypotField": "honey-pot",
+    "captcha": false
+  }
+}
