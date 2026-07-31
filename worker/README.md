@@ -118,6 +118,35 @@ read the same ready row and both submit it. Leases expire after 10 minutes so a
 crashed worker doesn't strand a packet; the expiry is deliberately generous
 because a slow form is not a dead worker.
 
+## On a Mac
+
+`mac/applyd` is the whole interface.
+
+```bash
+cp .env.example .env      # then put your service_role key in it
+./mac/applyd check        # what the queue says, without starting a browser
+./mac/applyd once         # send what is waiting, then exit
+./mac/applyd watch        # headed + slowed, to WATCH a submission happen
+./mac/applyd install      # run every 5 minutes via launchd
+./mac/applyd status       # scheduled? last exit? last log lines?
+./mac/applyd uninstall    # stop
+```
+
+The 5-minute schedule is cheap because the worker asks the database whether
+there is anything to do **before** it starts Chromium, and exits in about a
+second when there is not. `install` writes a launchd agent with `StartInterval`
+and deliberately **not** `KeepAlive` — this is a job that finishes, and KeepAlive
+would restart it the instant it exited, defeating the point.
+
+Two things about a laptop specifically:
+
+- **It only works while the Mac is awake.** A shut lid means the run is skipped,
+  the heartbeat goes stale, and `apply-agent` stops releasing. That is correct
+  behaviour rather than a failure — packets wait and drain on the next run.
+- **The service-role key sits in `worker/.env`** (gitignored). It bypasses RLS
+  and can read any candidate's résumé, which is why it belongs in a file rather
+  than in a shell command that lands in your history.
+
 ## Run it locally — no hosting, no card
 
 For the first watched submission this is BETTER than deploying. You can see the

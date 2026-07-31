@@ -292,6 +292,32 @@ async function main() {
   if (!headless) {
     console.log(`[worker] HEADED mode, slowMo=${slowMo}ms — a browser window will open`);
   }
+  // PRE-FLIGHT, before paying for a browser.
+  //
+  // Launching Chromium costs a second or two and a few hundred MB. On a laptop
+  // woken by a timer every few minutes that is the entire cost of the system,
+  // and it would be spent almost every time on finding nothing — there are no
+  // subscribers yet, and even with some, the queue is empty most of the day.
+  //
+  // Only short-circuits when WORKER_IDLE_EXIT_MS says this is a scheduled,
+  // exit-when-done run. A long-running worker still starts its browser and
+  // polls, because that mode exists for watching a submission happen.
+  if (IDLE_EXIT_MS > 0) {
+    const { data: pend, error: pendErr } = await db.rpc("agent_work_pending");
+    const p = (pend ?? {}) as { should_run?: boolean; pending?: number; subscribers?: number };
+    if (pendErr) {
+      // Could not tell. Carry on and let the claim loop decide — a failed probe
+      // is not evidence of an empty queue, and treating it as one would make the
+      // worker quietly stop sending whenever this RPC had a bad day.
+      console.warn(`[worker] work check failed (${pendErr.message}) — starting anyway`);
+    } else if (p.should_run !== true) {
+      console.log(`[worker] nothing to do (subscribers=${p.subscribers ?? 0}, pending=${p.pending ?? 0}) — exiting without starting a browser`);
+      return;
+    } else {
+      console.log(`[worker] ${p.pending} packet(s) waiting — starting browser`);
+    }
+  }
+
   const browser = await chromium.launch({ headless, slowMo: slowMo > 0 ? slowMo : undefined });
   let stopping = false;
   for (const sig of ["SIGINT", "SIGTERM"] as const) {
@@ -301,6 +327,15 @@ async function main() {
   // Time of the last actual work, not of the last loop. A worker that polled
   // every 30s and reset this each time would never reach the exit threshold.
   let lastWorkAt = Date.now();
+  // One definition of "long enough with nothing achieved", used by BOTH the
+  // no-packet path and the claim-failed path.
+  //
+  // It lived only in the no-packet branch at first, so a claim that kept
+  // ERRORING — a bad key, a permissions change, a database hiccup — never
+  // reached it and the worker ran forever. Under a launchd schedule that is a
+  // new Chromium every five minutes, none of them ever leaving. Found by
+  // running it with a deliberately wrong key and watching it not stop.
+  const idleTooLong = () => IDLE_EXIT_MS > 0 && Date.now() - lastWorkAt > IDLE_EXIT_MS;
 
   while (!stopping) {
     // Check in BEFORE claiming, every loop including idle ones. An idle worker
@@ -313,14 +348,24 @@ async function main() {
     const { data, error } = await db.rpc("agent_claim_submission", {
       p_worker: WORKER_ID, p_lease_minutes: 10,
     });
-    if (error) { console.error("[worker] claim failed:", error.message); await sleep(IDLE_MS); continue; }
+    if (error) {
+      console.error("[worker] claim failed:", error.message);
+      // A claim that will not run is not work. Left out of this check, a
+      // persistent failure keeps the process (and its browser) alive forever.
+      if (idleTooLong()) {
+        console.log(`[worker] ${Math.round((Date.now() - lastWorkAt) / 1000)}s without a successful claim — stopping`);
+        break;
+      }
+      await sleep(IDLE_MS);
+      continue;
+    }
     const p = (Array.isArray(data) ? data[0] : null) as Packet | null;
     if (!p) {
       // Idle. Leave only if configured to, and only from HERE — the top of an
       // idle pass, with nothing claimed. Exiting mid-application would strand a
       // packet under a lease until it expired, and exiting right after a submit
       // would lose the confirmation check that decides whether it actually sent.
-      if (IDLE_EXIT_MS > 0 && Date.now() - lastWorkAt > IDLE_EXIT_MS) {
+      if (idleTooLong()) {
         console.log(`[worker] idle ${Math.round((Date.now() - lastWorkAt) / 1000)}s — stopping (WORKER_IDLE_EXIT_MS=${IDLE_EXIT_MS})`);
         break;
       }

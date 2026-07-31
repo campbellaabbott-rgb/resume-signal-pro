@@ -1,0 +1,137 @@
+#!/bin/bash
+# Apply worker, on a Mac. One command for each thing you actually do.
+#
+#   ./mac/applyd check     what the queue says right now (no browser)
+#   ./mac/applyd once      one pass: send what's waiting, then exit
+#   ./mac/applyd watch     headed + slowed, so you can WATCH a submission
+#   ./mac/applyd install   run every 5 minutes via launchd
+#   ./mac/applyd uninstall stop doing that
+#   ./mac/applyd status    is it scheduled, did it run, what did it say
+#   ./mac/applyd logs      tail the log
+#
+# It reads worker/.env, which is gitignored and holds the service-role key.
+set -euo pipefail
+
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+LABEL="work.resumebooster.apply"
+PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
+LOG="$HERE/mac/apply.log"
+
+need_env() {
+  if [ ! -f "$HERE/.env" ]; then
+    echo "  worker/.env is missing."
+    echo "  cp worker/.env.example worker/.env  and put your service-role key in it."
+    echo "  (Supabase -> Project Settings -> API -> service_role)"
+    exit 2
+  fi
+  set -a; . "$HERE/.env"; set +a
+  if [ -z "${SUPABASE_SERVICE_ROLE_KEY:-}" ]; then
+    echo "  SUPABASE_SERVICE_ROLE_KEY is empty in worker/.env"; exit 2
+  fi
+}
+
+case "${1:-}" in
+  check)
+    need_env
+    # Read-only. Answers "is there anything for a worker to do", without
+    # starting one — the same RPC the worker itself pre-flights on.
+    OUT=$(curl -s -X POST "$SUPABASE_URL/rest/v1/rpc/agent_work_pending" \
+      -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+      -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+      -H "Content-Type: application/json" -d '{}')
+    case "$OUT" in
+      *PGRST202*)
+        # The migration is committed but has not reached the database yet —
+        # Lovable applies migrations during a session, not on git push. Worth
+        # naming, because "function not found" reads like a broken install.
+        echo "  agent_work_pending() is not in the database yet."
+        echo "  Open the project in Lovable once to apply pending migrations."
+        echo "  Until then the worker still runs; it just cannot skip the browser"
+        echo "  launch when the queue is empty." ;;
+      *42501*)
+        echo "  permission denied — is SUPABASE_SERVICE_ROLE_KEY the service_role key,"
+        echo "  not the anon key? (anon is correctly refused here.)" ;;
+      *should_run*)
+        echo "  $OUT"
+        case "$OUT" in
+          *'"should_run":true'*)  echo "  -> there is paid work waiting; ./mac/applyd once will send it" ;;
+          *) echo "  -> nothing to send. A worker started now would exit immediately." ;;
+        esac ;;
+      *) echo "  unexpected: $OUT" ;;
+    esac
+    ;;
+
+  once)
+    need_env
+    # Exits as soon as the queue is dry. This is what launchd runs.
+    cd "$HERE" && WORKER_IDLE_EXIT_MS="${WORKER_IDLE_EXIT_MS:-120000}" npm run --silent dev
+    ;;
+
+  watch)
+    need_env
+    # A real window, slowed down. Same adapters, same guards, same refusals as
+    # production — only visibility changes. This is the mode for the first real
+    # submission, where somebody needs to SEE which field got filled.
+    cd "$HERE" && HEADLESS=false SLOW_MO=400 WORKER_IDLE_EXIT_MS=0 npm run --silent dev
+    ;;
+
+  install)
+    need_env
+    mkdir -p "$HOME/Library/LaunchAgents" "$HERE/mac"
+    cat > "$PLIST" <<PLIST_EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>$LABEL</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>$HERE/mac/applyd</string>
+    <string>once</string>
+  </array>
+  <!-- Every 5 minutes. Cheap because the worker asks the database whether
+       there is anything to do BEFORE it starts a browser, and exits in about a
+       second when there is not. -->
+  <key>StartInterval</key><integer>300</integer>
+  <key>RunAtLoad</key><true/>
+  <!-- Deliberately NOT KeepAlive. This is a job that finishes, not a daemon;
+       KeepAlive would restart it the instant it exited and defeat the whole
+       point of exiting when the queue is dry. -->
+  <key>StandardOutPath</key><string>$LOG</string>
+  <key>StandardErrorPath</key><string>$LOG</string>
+  <key>WorkingDirectory</key><string>$HERE</string>
+  <key>ProcessType</key><string>Background</string>
+  <!-- Never wake a sleeping Mac to apply for jobs. If the laptop is shut, the
+       run is skipped, the heartbeat goes stale, and apply-agent stops releasing
+       — which is the correct behaviour, not a failure. -->
+  <key>LowPriorityIO</key><true/>
+</dict>
+</plist>
+PLIST_EOF
+    launchctl unload "$PLIST" 2>/dev/null || true
+    launchctl load "$PLIST"
+    echo "  installed: runs every 5 minutes, logs to $LOG"
+    echo "  it exits in ~1s whenever there is nothing to send."
+    ;;
+
+  uninstall)
+    launchctl unload "$PLIST" 2>/dev/null || true
+    rm -f "$PLIST"
+    echo "  removed. Nothing scheduled."
+    ;;
+
+  status)
+    if launchctl list | /usr/bin/grep -q "$LABEL"; then
+      echo "  scheduled: yes"
+      launchctl list "$LABEL" 2>/dev/null | /usr/bin/grep -E '"(PID|LastExitStatus)"' | sed 's/^/    /'
+    else
+      echo "  scheduled: no"
+    fi
+    [ -f "$LOG" ] && { echo "  last log lines:"; tail -6 "$LOG" | sed 's/^/    /'; } || echo "  no log yet"
+    ;;
+
+  logs) tail -f "$LOG" ;;
+
+  *) sed -n '2,14p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//' ;;
+esac
