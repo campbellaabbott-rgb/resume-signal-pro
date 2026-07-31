@@ -197,7 +197,24 @@ async function runOne(browser: Awaited<ReturnType<typeof chromium.launch>>, p: P
 
 async function main() {
   console.log(`[worker] ${WORKER_ID} starting`);
-  const browser = await chromium.launch({ headless: true });
+
+  // Headless by default, because that is how this runs in production.
+  //
+  // HEADLESS=false opens a real window, and SLOW_MO puts a delay between actions
+  // so a person can follow along. That combination exists for exactly one job:
+  // the first watched submission on a new vendor, where someone needs to SEE
+  // which field got filled, whether the résumé attached, and what the page said
+  // after the click.
+  //
+  // Nothing about the run changes except visibility — same adapters, same
+  // guards, same refusals. A test that takes a different code path than
+  // production is not a test of production.
+  const headless = process.env.HEADLESS !== "false";
+  const slowMo = Number(process.env.SLOW_MO ?? 0);
+  if (!headless) {
+    console.log(`[worker] HEADED mode, slowMo=${slowMo}ms — a browser window will open`);
+  }
+  const browser = await chromium.launch({ headless, slowMo: slowMo > 0 ? slowMo : undefined });
   let stopping = false;
   for (const sig of ["SIGINT", "SIGTERM"] as const) {
     process.on(sig, () => { console.log(`[worker] ${sig} — finishing current packet`); stopping = true; });

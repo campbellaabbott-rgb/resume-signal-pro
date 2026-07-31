@@ -75,6 +75,35 @@ npm install && npx playwright install chromium
 npm run dev
 ```
 
+## Run it locally — no hosting, no card
+
+For the first watched submission this is BETTER than deploying. You can see the
+browser fill the form, and it costs nothing.
+
+```bash
+cd worker
+npm install
+npx playwright install chromium          # one-off, ~150MB
+
+# HEADED so you can watch, slowed so you can follow.
+HEADLESS=false SLOW_MO=400 \
+SUPABASE_URL="https://bwhdazbotpblihdxcmho.supabase.co" \
+SUPABASE_SERVICE_ROLE_KEY="<service_role key from Supabase → Settings → API>" \
+npm run dev
+```
+
+A window opens and the worker starts polling. Ctrl-C stops it after the current
+packet — never mid-application.
+
+`HEADLESS` and `SLOW_MO` change VISIBILITY only. Same adapters, same guards, same
+refusals as production: a test that takes a different code path than production
+is not a test of production.
+
+The service-role key bypasses RLS and can read any candidate's résumé. Passing it
+inline like this leaves it in your shell history — `export` it from a file you do
+not commit, or prefix the command with a space if your shell is set to skip
+those.
+
 ## Deploy
 
 `fly.toml` is checked in. The Dockerfile uses Playwright's own image, so Chromium
