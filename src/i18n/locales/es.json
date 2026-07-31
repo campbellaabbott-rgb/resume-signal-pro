@@ -4294,5 +4294,31 @@
       "drafted": "redactado para ti",
       "declined": "declinada"
     }
+  },
+  "agentPlan": {
+    "badge": "Se postula por ti",
+    "name": "Agente de Postulación",
+    "tagline": "Encuentra los puestos, rellena la solicitud y la envía.",
+    "month": "mes",
+    "includesPro": "Incluye todo lo de Pro (${{proPrice}}/mes)",
+    "perkAutoApply": "Se postula automáticamente por ti en {{names}}",
+    "perkOneClick": "Solicitudes rellenadas y listas para enviar en {{names}}",
+    "perkQueue": "Una cola que puedes revisar primero, o dejar que funcione sola: tú decides y puedes cambiarlo cuando quieras",
+    "perkCap": "Un límite diario que tú fijas, y nunca se postula dos veces al mismo puesto",
+    "perkHonest": "Nunca inventa una respuesta. Si una pregunta te necesita, se detiene y te consulta.",
+    "cta": "Activar el agente",
+    "footnoteOnline": "Cancela cuando quieras. Nunca resolvemos ni evitamos un CAPTCHA: donde lo haya, tu solicitud queda preparada y la envías tú.",
+    "footnoteOffline": "Cancela cuando quieras. El envío automático no está funcionando ahora mismo, así que las solicitudes se preparan para que las envíes con un clic.",
+    "checkoutFailed": "No se pudo iniciar el pago: inténtalo de nuevo"
+  },
+  "atsCoverage": {
+    "heading": "Hecho para los sistemas que las empresas usan de verdad",
+    "sub": "Leemos las ofertas directamente de {{count}} sistemas de seguimiento de candidatos, no de un buscador.",
+    "autoTitle": "Nos postulamos por ti",
+    "autoBlurb": "El agente completa y envía la solicitud por su cuenta.",
+    "clickTitle": "Rellenada; tú pulsas enviar",
+    "clickBlurb": "Estos usan CAPTCHA o una verificación humana. Nunca los resolvemos ni los evitamos, así que tu solicitud llega lista y la envías tú.",
+    "allTitle": "Solicitudes preparadas para ti",
+    "allBlurb": "Extraemos las ofertas directamente de estos sistemas y preparamos tu solicitud para cada una."
   }
 }

@@ -11,6 +11,7 @@ import { JobBoardHero } from "@/components/JobBoardHero";
 import { ResumeUploader } from "@/components/ResumeUploader";
 import { AnalysisPreview } from "@/components/AnalysisPreview";
 import { SocialProof } from "@/components/SocialProof";
+import { AtsCoverage } from "@/components/AtsCoverage";
 import { LiveScanStats } from "@/components/LiveScanStats";
 import { Footer } from "@/components/Footer";
 import { FAQ } from "@/components/FAQ";
@@ -2090,6 +2091,12 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
         <WhyNotChatGPT />
 
         <SocialProof />
+
+        {/* The ATS platforms we integrate with. Named rather than counted —
+            see src/config/ats-vendors.ts for why there is no percentage. */}
+        <section className="container py-12 border-t border-border">
+          <AtsCoverage />
+        </section>
 
         {/* Real corpus statistics — the transparency claim above, made concrete */}
         <LiveScanStats />

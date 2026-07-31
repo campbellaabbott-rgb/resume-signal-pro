@@ -4294,5 +4294,31 @@
       "drafted": "rédigé pour vous",
       "declined": "déclinée"
     }
+  },
+  "agentPlan": {
+    "badge": "Postule à votre place",
+    "name": "Agent de candidature",
+    "tagline": "Il trouve les postes, remplit la candidature et l'envoie.",
+    "month": "mois",
+    "includesPro": "Comprend tout le contenu de Pro ({{proPrice}} $/mois)",
+    "perkAutoApply": "Postule automatiquement pour vous sur {{names}}",
+    "perkOneClick": "Candidatures remplies et prêtes à envoyer sur {{names}}",
+    "perkQueue": "Une file que vous pouvez vérifier d'abord, ou laisser tourner seule — à vous de choisir, modifiable à tout moment",
+    "perkCap": "Une limite quotidienne que vous fixez, et jamais deux candidatures au même poste",
+    "perkHonest": "Il n'invente jamais de réponse. Si une question vous revient, il s'arrête et vous demande.",
+    "cta": "Lancer l'agent",
+    "footnoteOnline": "Annulable à tout moment. Nous ne résolvons ni ne contournons jamais un CAPTCHA — là où il y en a un, votre candidature est préparée et c'est vous qui l'envoyez.",
+    "footnoteOffline": "Annulable à tout moment. L'envoi automatique ne fonctionne pas actuellement : les candidatures sont donc préparées pour que vous les envoyiez en un clic.",
+    "checkoutFailed": "Impossible de lancer le paiement — réessayez"
+  },
+  "atsCoverage": {
+    "heading": "Conçu pour les systèmes que les employeurs utilisent vraiment",
+    "sub": "Nous lisons les offres directement dans {{count}} systèmes de suivi des candidatures, sans passer par un moteur de recherche.",
+    "autoTitle": "Nous postulons pour vous",
+    "autoBlurb": "L'agent remplit et envoie lui-même la candidature.",
+    "clickTitle": "Remplie, vous appuyez sur envoyer",
+    "clickBlurb": "Ceux-ci utilisent un CAPTCHA ou une vérification humaine. Nous ne les résolvons ni ne les contournons : votre candidature arrive prête et vous l'envoyez.",
+    "allTitle": "Candidatures préparées pour vous",
+    "allBlurb": "Nous récupérons les offres directement dans ces systèmes et préparons votre candidature pour chacune."
   }
 }

@@ -77,17 +77,43 @@ export async function isProCached(
   supabase: { from: (t: string) => any },
   email: string,
 ): Promise<boolean> {
-  try {
+  const normalized = email.trim().toLowerCase();
+
+  const activeIn = async (table: string): Promise<boolean> => {
     const { data } = await supabase
-      .from("pro_subscribers")
+      .from(table)
       .select("status, current_period_end")
-      .eq("email", email.trim().toLowerCase())
+      .eq("email", normalized)
       .maybeSingle();
     if (!data || !ACTIVE_STATUSES.has(data.status)) return false;
+    // A day of grace: Stripe's renewal webhook and this read are not
+    // synchronous, and briefly locking a paying subscriber out of what they
+    // just paid for is worse than briefly trusting a lapsed one.
     if (data.current_period_end && new Date(data.current_period_end).getTime() < Date.now() - 24 * 3600 * 1000) {
       return false;
     }
     return true;
+  };
+
+  try {
+    if (await activeIn("pro_subscribers")) return true;
+
+    // THE AGENT TIER INCLUDES PRO. It costs more ($99 vs $45) and is a superset
+    // by definition — nobody pays the higher price for less.
+    //
+    // This was NOT true until now, and the failure was silent in the worst
+    // direction: nothing writes pro_subscribers on an agent purchase, and this
+    // function only read that table, so a $99 subscriber was refused Pro
+    // features they had paid for. Meanwhile checkProByEmail — which lists
+    // Stripe subscriptions without filtering by price — said they WERE Pro. The
+    // two checks disagreed depending on which path a feature happened to call.
+    //
+    // Resolved by reading the agent table here rather than by writing a
+    // pro_subscribers row at purchase time. Two rows describing one entitlement
+    // is two things to keep in sync, and they drift on exactly the edges that
+    // matter — cancellation, refund, card failure. One subscription, one row,
+    // read from both places.
+    return await activeIn("agent_subscribers");
   } catch (_) {
     return false;
   }

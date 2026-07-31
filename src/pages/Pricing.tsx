@@ -15,6 +15,8 @@ import { useScrollDepth } from "@/hooks/use-scroll-depth";
 import { useTimeOnPage } from "@/hooks/use-time-on-page";
 import { AddOnsShowcase } from "@/components/AddOnsShowcase";
 import { ProSubscriptionCard } from "@/components/ProSubscriptionCard";
+import { AgentSubscriptionCard } from '@/components/AgentSubscriptionCard';
+import { AtsCoverage } from '@/components/AtsCoverage';
 import { ProductPreview } from "@/components/ProductPreview";
 import { getResumeFromSession } from "@/hooks/use-session-resume";
 import { useState } from "react";
@@ -183,10 +185,17 @@ export default function Pricing() {
             </div>
           </div>
 
-          {/* Pro subscription — all tools, one price */}
-          <div className="max-w-xl mx-auto mb-16">
+          {/* The two recurring plans, side by side. The agent is a superset of
+              Pro and priced accordingly, so they belong next to each other —
+              seeing $45 alone invites the question this answers. */}
+          <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto mb-12 items-start">
             <ProSubscriptionCard />
+            <AgentSubscriptionCard />
           </div>
+
+          {/* Which platforms, and what happens on each. Directly under the
+              plans because "it applies for you" immediately raises "where?" */}
+          <AtsCoverage className="max-w-4xl mx-auto mb-16" />
 
           {/* Everything else, collapsed: the SKU wall demonstrably converts ~0 */}
           <Collapsible>

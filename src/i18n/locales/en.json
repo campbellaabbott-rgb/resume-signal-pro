@@ -4294,5 +4294,31 @@
       "drafted": "drafted for you",
       "declined": "declined"
     }
+  },
+  "agentPlan": {
+    "badge": "Does the applying for you",
+    "name": "Apply Agent",
+    "tagline": "It finds the roles, fills in the application, and sends it.",
+    "month": "month",
+    "includesPro": "Includes everything in Pro (${{proPrice}}/mo)",
+    "perkAutoApply": "Applies for you automatically on {{names}}",
+    "perkOneClick": "Applications filled in and ready to send on {{names}}",
+    "perkQueue": "A queue you can review first, or let it run unattended — your choice, changeable any time",
+    "perkCap": "A daily limit you set, and it never applies to the same job twice",
+    "perkHonest": "It never invents an answer. If a question needs you, it stops and asks.",
+    "cta": "Start the agent",
+    "footnoteOnline": "Cancel any time. We never solve or bypass a CAPTCHA — where a site uses one, your application is prepared and you send it.",
+    "footnoteOffline": "Cancel any time. Unattended sending is not running right now, so applications are prepared for you to send in one click.",
+    "checkoutFailed": "Could not start checkout — please try again"
+  },
+  "atsCoverage": {
+    "heading": "Built for the systems employers actually use",
+    "sub": "We read jobs straight from {{count}} applicant tracking systems — not scraped from a search engine.",
+    "autoTitle": "We apply for you",
+    "autoBlurb": "The agent completes and submits the application itself.",
+    "clickTitle": "Filled in, you press send",
+    "clickBlurb": "These use a CAPTCHA or a human check. We never solve or bypass one, so your application arrives ready and you send it.",
+    "allTitle": "Applications prepared for you",
+    "allBlurb": "We pull jobs directly from these systems and prepare your application for each one."
   }
 }

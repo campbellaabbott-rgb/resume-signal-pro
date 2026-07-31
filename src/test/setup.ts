@@ -60,3 +60,32 @@ function cleanupStrayTestPdfs() {
 
 afterEach(cleanupStrayTestPdfs);
 afterAll(cleanupStrayTestPdfs);
+
+// ---------------------------------------------------------------------------
+// Keep marketing components off the network.
+//
+// AtsCoverage sits on the front page and asks the database one question on
+// mount: is the apply worker live? Any suite that renders Index therefore fired
+// a real RPC, and the answer arrived — or didn't — at an unpredictable moment
+// relative to the assertions. Adding that component turned a green suite into
+// one that failed a different test on each run.
+//
+// Intercepted here rather than branched around in the component. Production
+// code that checks `is this a test` drifts from production behaviour, and the
+// thing worth testing is what real users get.
+//
+// Deliberately narrow: only this one endpoint, and only to answer "offline",
+// which is the component's safe default and what a fresh environment sees
+// anyway. Every other request still hits whatever the suite has arranged.
+// ---------------------------------------------------------------------------
+const realFetch = globalThis.fetch;
+globalThis.fetch = ((input: RequestInfo | URL, init?: RequestInit) => {
+  const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+  if (url && url.includes("/rest/v1/rpc/agent_sender_public_status")) {
+    return Promise.resolve(new Response("false", {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    }));
+  }
+  return realFetch(input as RequestInfo, init);
+}) as typeof globalThis.fetch;

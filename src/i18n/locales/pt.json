@@ -4294,5 +4294,31 @@
       "drafted": "redigido para ti",
       "declined": "recusada"
     }
+  },
+  "agentPlan": {
+    "badge": "Candidata-se por si",
+    "name": "Agente de Candidaturas",
+    "tagline": "Encontra as vagas, preenche a candidatura e envia-a.",
+    "month": "mês",
+    "includesPro": "Inclui tudo o que está no Pro ({{proPrice}} $/mês)",
+    "perkAutoApply": "Candidata-se automaticamente por si em {{names}}",
+    "perkOneClick": "Candidaturas preenchidas e prontas a enviar em {{names}}",
+    "perkQueue": "Uma fila que pode rever primeiro, ou deixar correr sozinha — a escolha é sua e pode mudá-la quando quiser",
+    "perkCap": "Um limite diário definido por si, e nunca se candidata duas vezes à mesma vaga",
+    "perkHonest": "Nunca inventa uma resposta. Se uma pergunta precisar de si, pára e pergunta.",
+    "cta": "Ativar o agente",
+    "footnoteOnline": "Cancele quando quiser. Nunca resolvemos nem contornamos um CAPTCHA — onde existir, a sua candidatura fica preparada e é você que a envia.",
+    "footnoteOffline": "Cancele quando quiser. O envio automático não está a funcionar neste momento, por isso as candidaturas ficam preparadas para enviar com um clique.",
+    "checkoutFailed": "Não foi possível iniciar o pagamento — tente novamente"
+  },
+  "atsCoverage": {
+    "heading": "Feito para os sistemas que os empregadores usam mesmo",
+    "sub": "Lemos as vagas diretamente de {{count}} sistemas de gestão de candidaturas — não de um motor de busca.",
+    "autoTitle": "Candidatamo-nos por si",
+    "autoBlurb": "O agente preenche e submete a candidatura sozinho.",
+    "clickTitle": "Preenchida, você carrega em enviar",
+    "clickBlurb": "Estes usam CAPTCHA ou uma verificação humana. Nunca os resolvemos nem contornamos, por isso a candidatura chega pronta e é você que a envia.",
+    "allTitle": "Candidaturas preparadas para si",
+    "allBlurb": "Retiramos as vagas diretamente destes sistemas e preparamos a sua candidatura para cada uma."
   }
 }

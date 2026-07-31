@@ -4294,5 +4294,31 @@
       "drafted": "voor je opgesteld",
       "declined": "afgewezen"
     }
+  },
+  "agentPlan": {
+    "badge": "Solliciteert voor je",
+    "name": "Sollicitatie-agent",
+    "tagline": "Hij vindt de functies, vult de sollicitatie in en verstuurt hem.",
+    "month": "maand",
+    "includesPro": "Bevat alles uit Pro (${{proPrice}}/maand)",
+    "perkAutoApply": "Solliciteert automatisch voor je op {{names}}",
+    "perkOneClick": "Sollicitaties ingevuld en klaar om te versturen op {{names}}",
+    "perkQueue": "Een wachtrij die je eerst kunt nakijken, of onbeheerd laten draaien — jouw keuze, altijd aan te passen",
+    "perkCap": "Een daglimiet die jij instelt, en nooit twee keer op dezelfde vacature",
+    "perkHonest": "Hij verzint nooit een antwoord. Heeft een vraag jou nodig, dan stopt hij en vraagt het.",
+    "cta": "Agent starten",
+    "footnoteOnline": "Altijd opzegbaar. We lossen of omzeilen nooit een CAPTCHA — waar er een staat, wordt je sollicitatie klaargezet en verstuur jij hem.",
+    "footnoteOffline": "Altijd opzegbaar. Onbeheerd versturen draait op dit moment niet, dus sollicitaties worden klaargezet om met één klik te versturen.",
+    "checkoutFailed": "Afrekenen kon niet worden gestart — probeer het opnieuw"
+  },
+  "atsCoverage": {
+    "heading": "Gebouwd voor de systemen die werkgevers echt gebruiken",
+    "sub": "We lezen vacatures rechtstreeks uit {{count}} sollicitatiesystemen — niet geschraapt van een zoekmachine.",
+    "autoTitle": "Wij solliciteren voor je",
+    "autoBlurb": "De agent vult de sollicitatie zelf in en verstuurt hem.",
+    "clickTitle": "Ingevuld, jij drukt op versturen",
+    "clickBlurb": "Deze gebruiken een CAPTCHA of een menselijke controle. Die lossen of omzeilen we nooit, dus je sollicitatie komt kant-en-klaar aan en jij verstuurt hem.",
+    "allTitle": "Sollicitaties voor je klaargezet",
+    "allBlurb": "We halen vacatures rechtstreeks uit deze systemen en zetten je sollicitatie voor elke vacature klaar."
   }
 }

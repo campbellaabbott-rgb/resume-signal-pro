@@ -4294,5 +4294,31 @@
       "drafted": "für dich entworfen",
       "declined": "abgelehnt"
     }
+  },
+  "agentPlan": {
+    "badge": "Bewirbt sich für Sie",
+    "name": "Bewerbungs-Agent",
+    "tagline": "Er findet die Stellen, füllt die Bewerbung aus und schickt sie ab.",
+    "month": "Monat",
+    "includesPro": "Enthält alles aus Pro ({{proPrice}} $/Monat)",
+    "perkAutoApply": "Bewirbt sich automatisch für Sie bei {{names}}",
+    "perkOneClick": "Bewerbungen ausgefüllt und versandbereit bei {{names}}",
+    "perkQueue": "Eine Liste, die Sie erst prüfen können – oder unbeaufsichtigt laufen lassen. Ihre Entscheidung, jederzeit änderbar.",
+    "perkCap": "Ein Tageslimit, das Sie festlegen, und nie zwei Bewerbungen auf dieselbe Stelle",
+    "perkHonest": "Er erfindet nie eine Antwort. Braucht eine Frage Sie, hält er an und fragt.",
+    "cta": "Agent starten",
+    "footnoteOnline": "Jederzeit kündbar. Wir lösen und umgehen niemals ein CAPTCHA – wo eines steht, wird Ihre Bewerbung vorbereitet und Sie senden sie ab.",
+    "footnoteOffline": "Jederzeit kündbar. Der unbeaufsichtigte Versand läuft gerade nicht, daher werden Bewerbungen vorbereitet, damit Sie sie mit einem Klick senden.",
+    "checkoutFailed": "Bezahlvorgang konnte nicht gestartet werden – bitte erneut versuchen"
+  },
+  "atsCoverage": {
+    "heading": "Gebaut für die Systeme, die Arbeitgeber wirklich nutzen",
+    "sub": "Wir lesen Stellen direkt aus {{count}} Bewerbermanagement-Systemen – nicht aus einer Suchmaschine.",
+    "autoTitle": "Wir bewerben uns für Sie",
+    "autoBlurb": "Der Agent füllt die Bewerbung selbst aus und sendet sie ab.",
+    "clickTitle": "Ausgefüllt, Sie drücken senden",
+    "clickBlurb": "Diese nutzen ein CAPTCHA oder eine menschliche Prüfung. Wir lösen und umgehen keines – Ihre Bewerbung kommt fertig an und Sie senden sie.",
+    "allTitle": "Bewerbungen für Sie vorbereitet",
+    "allBlurb": "Wir holen Stellen direkt aus diesen Systemen und bereiten Ihre Bewerbung für jede einzelne vor."
   }
 }

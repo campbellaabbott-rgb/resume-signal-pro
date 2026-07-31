@@ -4294,5 +4294,31 @@
       "drafted": "isinulat para sa iyo",
       "declined": "tinanggihan"
     }
+  },
+  "agentPlan": {
+    "badge": "Siya ang mag-a-apply para sa iyo",
+    "name": "Apply Agent",
+    "tagline": "Hinahanap nito ang mga trabaho, pinupunan ang aplikasyon, at ipinapadala.",
+    "month": "buwan",
+    "includesPro": "Kasama ang lahat ng nasa Pro (${{proPrice}}/buwan)",
+    "perkAutoApply": "Awtomatikong nag-a-apply para sa iyo sa {{names}}",
+    "perkOneClick": "Mga aplikasyong napunan na at handang ipadala sa {{names}}",
+    "perkQueue": "May listahang puwede mong suriin muna, o hayaang tumakbo mag-isa — ikaw ang pipili, mababago anumang oras",
+    "perkCap": "Ikaw ang nagtatakda ng pang-araw-araw na limitasyon, at hindi ito mag-a-apply nang dalawang beses sa iisang trabaho",
+    "perkHonest": "Hindi ito kailanman gumagawa-gawa ng sagot. Kung kailangan ka ng isang tanong, hihinto ito at magtatanong.",
+    "cta": "Simulan ang agent",
+    "footnoteOnline": "Puwedeng kanselahin anumang oras. Hindi namin nilulutas o nilalampasan ang CAPTCHA — kung saan may ganoon, inihahanda ang aplikasyon mo at ikaw ang magpapadala.",
+    "footnoteOffline": "Puwedeng kanselahin anumang oras. Hindi tumatakbo ngayon ang awtomatikong pagpapadala, kaya inihahanda ang mga aplikasyon para maipadala mo sa isang pindot.",
+    "checkoutFailed": "Hindi masimulan ang checkout — pakisubukang muli"
+  },
+  "atsCoverage": {
+    "heading": "Ginawa para sa mga sistemang talagang ginagamit ng mga employer",
+    "sub": "Direktang binabasa namin ang mga trabaho mula sa {{count}} applicant tracking system — hindi kinuha sa search engine.",
+    "autoTitle": "Kami ang mag-a-apply para sa iyo",
+    "autoBlurb": "Ang agent mismo ang bubuo at magpapadala ng aplikasyon.",
+    "clickTitle": "Napunan na, ikaw ang pipindot ng send",
+    "clickBlurb": "May CAPTCHA o pagsusuri ng tao ang mga ito. Hindi namin nilulutas o nilalampasan, kaya handa nang dumating ang aplikasyon mo at ikaw ang magpapadala.",
+    "allTitle": "Mga aplikasyong inihanda para sa iyo",
+    "allBlurb": "Direktang kinukuha namin ang mga trabaho sa mga sistemang ito at inihahanda ang aplikasyon mo sa bawat isa."
   }
 }
