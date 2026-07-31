@@ -183,6 +183,59 @@ written from what vendors typically say, never from what one actually says. This
 is the only way to find out. On `unknown` it prints the page's real wording so
 the phrase can be added, and saves a screenshot either way.
 
+## Nothing has been bought yet — so nothing needs to run
+
+With zero subscribers the correct amount of worker to run is **none**, and that
+is what happens today. Nothing is lost by it:
+
+| | |
+|---|---|
+| Morning Queue still fills nightly | `agent-runner` never consults the worker |
+| Packets are still prepared | `apply-agent` prepares, then declines to release |
+| Sends are gated, with a reason | `sender-offline`, not a silent no-op |
+| Hourly cron fires nothing | guarded on a vault key that does not exist |
+
+Packets sit as `ready` and drain whenever a sender next appears, so a worker
+that is off is a pause, never a loss.
+
+### Starting one the moment somebody buys
+
+Two halves, and neither is useful alone — waking a worker with no work burns
+money, and a worker that exits with no way to be woken makes the product
+silently stop.
+
+**Wake.** `apply-agent` runs hourly. When it finds packets ready and no sender
+online it calls `agent_work_pending()` — true only when somebody is PAYING *and*
+there are unclaimed packets — and POSTs to `WORKER_START_URL`:
+
+```bash
+supabase secrets set WORKER_START_URL="<your host's start endpoint>"
+supabase secrets set WORKER_START_TOKEN="<bearer token, if it needs one>"
+```
+
+Host-agnostic on purpose: a Fly Machines start call, a GitHub Actions
+`workflow_dispatch`, a Cloud Run job, a webhook on a machine at home. **Unset, it
+is a no-op** — which is the state now, and why none of this changes anything
+until you pick a host. A failed wake is logged and ignored; it must never stop
+packets being prepared.
+
+Worst-case latency is one cron tick (~1 hour). Fine for job applications, and it
+can be made instant later by calling the same endpoint from the purchase path.
+
+**Sleep.** The worker exits once it has been idle a while:
+
+```bash
+WORKER_IDLE_EXIT_MS=600000   # leave after 10 minutes with nothing to do
+```
+
+Opt-in. Unset means run forever, which is what somebody watching a browser on
+their own laptop expects. It only ever exits at the top of an idle pass with
+nothing claimed — never mid-application, and never between a submit and its
+confirmation check.
+
+Together: `$0` while nobody has bought, a machine that starts when the first
+person does, and one that leaves when the queue is empty.
+
 ## Deploy
 
 `fly.toml` is checked in. The Dockerfile uses Playwright's own image, so Chromium

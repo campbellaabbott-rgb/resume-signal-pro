@@ -28,6 +28,16 @@ const WORKER_ID = process.env.WORKER_ID ?? `worker-${Math.random().toString(36).
 // and it keeps one candidate's batch from looking like a burst.
 const GAP_MS = Number(process.env.APPLY_GAP_MS ?? 20_000);
 const IDLE_MS = 30_000;
+// Stop after this long with nothing to do. OPT-IN — unset means run forever,
+// which is what someone watching a browser on their own laptop expects, and a
+// default of "exit" would strand them.
+//
+// Set it on a metered host and the pair becomes scale-to-zero: apply-agent
+// starts a machine when paid work appears, the machine drains the queue, and
+// then it leaves. Nobody has bought yet, so today the right amount of worker to
+// run is none, and this is what makes "none" the resting state rather than a
+// bill.
+const IDLE_EXIT_MS = Number(process.env.WORKER_IDLE_EXIT_MS ?? 0);
 // Reported in the heartbeat so two overlapping versions during a redeploy can be
 // told apart when one of them is the one misbehaving.
 const WORKER_VERSION = "2026-07-31.1";
@@ -288,6 +298,10 @@ async function main() {
     process.on(sig, () => { console.log(`[worker] ${sig} — finishing current packet`); stopping = true; });
   }
 
+  // Time of the last actual work, not of the last loop. A worker that polled
+  // every 30s and reset this each time would never reach the exit threshold.
+  let lastWorkAt = Date.now();
+
   while (!stopping) {
     // Check in BEFORE claiming, every loop including idle ones. An idle worker
     // is still a working worker, and if the heartbeat only landed on successful
@@ -301,7 +315,19 @@ async function main() {
     });
     if (error) { console.error("[worker] claim failed:", error.message); await sleep(IDLE_MS); continue; }
     const p = (Array.isArray(data) ? data[0] : null) as Packet | null;
-    if (!p) { await sleep(IDLE_MS); continue; }
+    if (!p) {
+      // Idle. Leave only if configured to, and only from HERE — the top of an
+      // idle pass, with nothing claimed. Exiting mid-application would strand a
+      // packet under a lease until it expired, and exiting right after a submit
+      // would lose the confirmation check that decides whether it actually sent.
+      if (IDLE_EXIT_MS > 0 && Date.now() - lastWorkAt > IDLE_EXIT_MS) {
+        console.log(`[worker] idle ${Math.round((Date.now() - lastWorkAt) / 1000)}s — stopping (WORKER_IDLE_EXIT_MS=${IDLE_EXIT_MS})`);
+        break;
+      }
+      await sleep(IDLE_MS);
+      continue;
+    }
+    lastWorkAt = Date.now();
 
     console.log(`[worker] claimed #${p.id} ${p.source} ${p.company}`);
     try {

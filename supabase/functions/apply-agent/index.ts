@@ -18,6 +18,7 @@
 // hands report back and stamp submitted_at, which a database trigger refuses to
 // accept without a source.
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { wakeSender } from "../_shared/wake-sender.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { buildPacket, type PacketQuestion, type Profile, type StandingAnswers } from "../_shared/submission-packet.ts";
 import { decideRelease } from "../_shared/apply-release.ts";
@@ -122,8 +123,34 @@ serve(async (req) => {
     p_max_age_seconds: 900,
   });
   const senderOnline = !onlineErr && onlineRow === true;
+  let wake: unknown = null;
   if (!senderOnline) {
     console.warn(`[APPLY-AGENT] sender OFFLINE (${onlineErr?.message ?? "no recent heartbeat"}) — preparing packets but releasing none`);
+
+    // Ask for a sender to be started — but only if there is genuinely paid work
+    // waiting. Both halves of that matter: a subscriber with an empty queue and
+    // a full queue with no subscriber should each start nothing, and only
+    // agent_work_pending() knows both at once.
+    //
+    // With WORKER_START_URL unset — the state today, since no worker exists
+    // anywhere — this is a no-op and everything below runs exactly as before.
+    // Packets prepared on this pass simply wait, which is the design: they
+    // drain whenever a sender next appears, so nothing is lost by not having
+    // one, and nothing needs to run while nobody has bought.
+    try {
+      const { data: pend } = await client.rpc("agent_work_pending");
+      const p = (pend ?? {}) as { should_run?: boolean; pending?: number };
+      wake = await wakeSender(p.should_run === true);
+      if (p.should_run) {
+        console.warn(`[APPLY-AGENT] ${p.pending} packet(s) waiting on a sender — wake: ${JSON.stringify(wake)}`);
+      }
+    } catch (e) {
+      // Never fatal. A failed wake leaves packets waiting, the same safe state
+      // as before this existed. Letting it throw would stop packets being
+      // PREPARED, which is strictly worse than them being prepared and queued.
+      wake = { attempted: true, ok: false, error: String(e).slice(0, 120) };
+      console.warn(`[APPLY-AGENT] wake check failed: ${String(e).slice(0, 120)}`);
+    }
   }
 
   const startedAt = Date.now();
@@ -328,8 +355,11 @@ serve(async (req) => {
   // senderOnline is in the summary because "0 released" has two very different
   // meanings — nothing qualified, or nothing could be sent at all — and a run
   // report that cannot tell them apart is the same trap as a silent refusal.
-  console.log(`[APPLY-AGENT] senderOnline=${senderOnline} resumesBucket=${bucketState} ${JSON.stringify(summary)}`);
-  return new Response(JSON.stringify({ ...summary, senderOnline, resumesBucket: bucketState, ms: Date.now() - startedAt }), {
+  console.log(`[APPLY-AGENT] senderOnline=${senderOnline} wake=${JSON.stringify(wake)} resumesBucket=${bucketState} ${JSON.stringify(summary)}`);
+  // `wake` rides along for the same reason senderOnline does: "0 released" has
+  // several very different causes, and a run that asked for a sender and was
+  // refused looks identical to one that never asked unless it is recorded.
+  return new Response(JSON.stringify({ ...summary, senderOnline, wake, resumesBucket: bucketState, ms: Date.now() - startedAt }), {
     headers: { "content-type": "application/json" },
   });
 });
