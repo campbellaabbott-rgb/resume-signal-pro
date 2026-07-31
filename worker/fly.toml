@@ -1,0 +1,51 @@
+
+# Fly config for the apply worker.
+#
+# Chosen because this is a long-running process with a browser in it, not a
+# request handler: it wakes, claims a packet, drives a real form for up to a
+# minute, sleeps. Fly runs a plain container without a request/response model
+# wrapped around it, which is what that shape needs.
+#
+# NOT A WEB SERVICE. There are no [[services]] or [http_service] blocks and no
+# ports, on purpose. Nothing should be able to reach this process from the
+# internet — it reaches out, claims work, and reports back. An exposed port
+# would be an attack surface on a machine that holds the service-role key and
+# candidates' résumés.
+app = "resumebooster-apply-worker"
+primary_region = "iad"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  # Between applications. Not evasion — the vendors here were measured to carry
+  # no CAPTCHA and no challenge wall. It is courtesy to an employer's server,
+  # and it keeps one candidate's batch from arriving as a burst.
+  APPLY_GAP_MS = "20000"
+
+[[vm]]
+  # Chromium is memory-hungry; 512MB gets OOM-killed mid-application, which is
+  # the worst moment to die because a submit may already be in flight and the
+  # outcome becomes unknowable. 1GB is the honest floor.
+  memory = "1gb"
+  cpu_kind = "shared"
+  cpus = 1
+
+[deploy]
+  # Never two workers briefly overlapping on a deploy. agent_claim_submission
+  # uses FOR UPDATE SKIP LOCKED so a double-claim is impossible at the database
+  # level, but an overlap still means two browsers mid-application while one is
+  # being killed — and a killed browser after a submit click is an ambiguous
+  # outcome that costs a human's time to resolve.
+  strategy = "immediate"
+
+# Exactly one machine. Concurrency here buys nothing: the work is rate-limited
+# by APPLY_GAP_MS by design, so a second worker would not go faster, it would
+# only double the number of ways a deploy can overlap.
+#
+# SECRETS (set before first deploy — the process exits immediately without them):
+#   fly secrets set SUPABASE_URL="https://bwhdazbotpblihdxcmho.supabase.co"
+#   fly secrets set SUPABASE_SERVICE_ROLE_KEY="<service role key>"
+#
+# The service-role key is why this machine matters: it bypasses RLS and can read
+# any candidate's résumé. It belongs here and nowhere else.

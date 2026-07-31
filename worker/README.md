@@ -75,14 +75,44 @@ npm install && npx playwright install chromium
 npm run dev
 ```
 
-Deploy: `fly launch` or `railway up` — the Dockerfile uses Playwright's own image
-so Chromium and its system libraries are already present.
+## Deploy
+
+`fly.toml` is checked in. The Dockerfile uses Playwright's own image, so Chromium
+and its system libraries are already present.
+
+```bash
+cd worker
+fly launch --no-deploy --copy-config --name resumebooster-apply-worker
+fly secrets set SUPABASE_URL="https://bwhdazbotpblihdxcmho.supabase.co"
+fly secrets set SUPABASE_SERVICE_ROLE_KEY="<service role key>"
+fly deploy
+```
+
+Deliberately **not** a web service — no ports, no `[[services]]`. Nothing should
+reach this process from the internet; it reaches out, claims work, reports back.
+It holds the service-role key and reads candidates' résumés, so an open port
+would be a real attack surface.
+
+One machine only. The work is rate-limited by `APPLY_GAP_MS` by design, so a
+second worker wouldn't go faster — it would only add ways for a deploy to
+overlap.
+
+Confirm it is alive:
+
+```sql
+SELECT worker_id, last_seen, claimed_total, version FROM agent_worker_heartbeat;
+```
+
+Until a row there is under 15 minutes old, `apply-agent` refuses to release
+anything and records `sender-offline` — so a queue can never silently sit
+waiting for a sender that isn't there.
 
 ## Not done yet
 
-- Résumé file upload needs the file fetched from storage to local disk first;
-  `resumePath` is threaded through but the worker doesn't populate it.
-- Workday's per-tenant account creation is not handled. Those packets will reach
-  the signup wall and come back `not-submitted`.
+- Workday's per-tenant account creation is not handled. Those packets reach the
+  signup wall and come back `not-submitted`.
 - **Nothing here has run against a real posting.** Confirmation-phrase matching
-  in particular is guesswork until it meets real vendor pages.
+  in particular is guesswork until it meets real vendor pages. If the phrases
+  don't match, sends land as `uncertain` and go to a human — the safe failure,
+  but it means the unattended path does nothing. Watch one real submission end
+  to end before trusting a batch.
