@@ -187,3 +187,48 @@ is recorded in `vendors/index.ts` so the next pass starts from evidence:
 than a form problem, unsolved, and the largest vendor in the tier.
 
 Nothing was submitted to any employer during this work.
+
+## BambooHR — re-measured 2026-07-31. NO-BUILD, and now on solid evidence.
+
+BambooHR is ~17% of what a real user sees on the board, and it had been ruled
+out on an "87–100% CAPTCHA" sample. That number answered a weaker question than
+the one that matters, so it was re-run properly (`src/probe-bamboohr.ts`).
+
+**Method.** One posting per TENANT, 24 tenants drawn from 305 distinct ones —
+sampling several jobs from one employer would measure that employer's
+configuration repeatedly and report it as a vendor-wide fact. The probe clicks
+through to the application form first: BambooHR's posting page carries **no
+CAPTCHA at all**, and a probe that stops there measures the job description.
+
+**The probe self-checks before it reports.** Its first run returned
+`visible-challenge` for 24 of 24 — an answer indistinguishable from a stuck
+classifier. It now runs against breezy and pinpoint first, which are known clean
+and driven daily, and aborts if they do not come back `none`. They return
+`frames=0 widgets=0 globals=[]`, so the classifier discriminates.
+
+**Result, 24/24 tenants:**
+
+| | |
+|---|---|
+| reCAPTCHA v2 anchor iframe, **304×78 and visible** | 24/24 |
+| `g-recaptcha-response` present in the form | 24/24 |
+| sitekey | `6LfZ4KEsAAAAAP7osErua7mOIzcdDjnUdaZfp0` — **one key, every tenant** |
+| grecaptcha **Enterprise** (invisible scoring) | 0/24 |
+| honeypot field (`nickname_hpcsaf`) | 24/24 |
+
+The single shared sitekey is what closes this. It is BambooHR's **platform** key,
+not a per-employer setting, so there is no subset of tenants with it switched
+off — there is nothing to go looking for.
+
+The irony: the form is otherwise the easiest of any vendor examined. ~18 fields,
+0–3 required, honest `name` attributes. Only the checkbox stands in the way, and
+clicking it is the line we do not cross.
+
+**Small mercy:** it is v2, not Enterprise. A visible checkbox blocks us HONESTLY
+— we can see we are stopped. Greenhouse's invisible Enterprise scoring is worse,
+because it fails silently and the application never reaches a person.
+
+**What was NOT measured.** Whether the server rejects a submission lacking the
+token. Testing that means sending a real application to a stranger's job, which
+is not a thing to do to find out. The claim here is that a visible v2 challenge
+sits on every tenant's form, not that submission is provably rejected without it.
