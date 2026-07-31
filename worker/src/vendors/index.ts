@@ -1,6 +1,5 @@
 import type { VendorAdapter } from "./types.js";
 import { breezy } from "./breezy.js";
-import { smartrecruiters } from "./smartrecruiters.js";
 import { personio } from "./personio.js";
 import { pinpoint } from "./pinpoint.js";
 
@@ -19,7 +18,6 @@ import { pinpoint } from "./pinpoint.js";
  */
 export const ADAPTERS: Record<string, VendorAdapter> = {
   breezy,
-  smartrecruiters,
   personio,
   pinpoint,
 };
@@ -39,6 +37,22 @@ export const ADAPTERS: Record<string, VendorAdapter> = {
  * needs one more pass to map its fields.
  */
 export const NEEDS_RECON: Record<string, string> = {
+  // MEASURED 2026-07-31, and it is a decision rather than a defect.
+  //
+  // The apply URL answers a headless browser with 403 and a headed one with 200.
+  // Same URL, same machine, seconds apart. The block keys on the headless signal
+  // itself, so SmartRecruiters is saying no to exactly what this worker is.
+  //
+  // It COULD be worked around — spoof the user agent, or run headed behind a
+  // virtual display on the server. Both are ways of not being what we are, which
+  // is the same line as solving a CAPTCHA. The adapter stays written and stays
+  // unused until someone decides otherwise, on purpose rather than by leaving a
+  // flag flipped.
+  //
+  // Note this is invisible without testing: no CAPTCHA, no challenge page, just a
+  // 403 that reads like a broken link.
+  smartrecruiters: "403s headless browsers on the apply URL (headed gets 200) — respecting the refusal",
+
   // Reaching the form needs an email + a REQUIRED terms-and-conditions
   // checkbox, and it carries a `honey-pot` field (see HONEYPOTS below). No
   // account is needed — "simply using your email" — so it is servable, but

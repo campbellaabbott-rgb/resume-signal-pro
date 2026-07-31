@@ -97,7 +97,24 @@ describe("adapter selectors still match what the vendors present", () => {
     });
   }
 
-  it("smartrecruiters matches on labels the form really shows", () => {
+  it("smartrecruiters is NOT served — the vendor refuses headless browsers", () => {
+    // Measured 2026-07-31: its apply URL returns 403 to headless and 200 to
+    // headed, same URL and machine, seconds apart. No CAPTCHA, no challenge —
+    // just a 403 that reads like a broken link.
+    //
+    // The adapter is written and correct. Serving it again means either spoofing
+    // the user agent or hiding behind a virtual display, which is the same line
+    // as solving a CAPTCHA. This test exists so that re-adding it has to be a
+    // decision someone makes, not a line someone restores.
+    const index = codeOnly(src("index.ts"));
+    const shipped = index.slice(index.indexOf("ADAPTERS"), index.indexOf("NEEDS_RECON"));
+    expect(shipped, "smartrecruiters must not be in ADAPTERS while it 403s headless")
+      .not.toMatch(/\bsmartrecruiters\b/);
+    expect(index).toMatch(/smartrecruiters:.*403/);
+    expect(observed.smartrecruiters.servable, "fixture must record the refusal").toBe(false);
+  });
+
+  it("smartrecruiters' adapter still matches labels the form shows", () => {
     // The only label-matched adapter, because it is the only vendor with no
     // name attributes at all.
     const code = src("smartrecruiters.ts");

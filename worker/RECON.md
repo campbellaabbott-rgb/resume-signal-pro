@@ -100,9 +100,36 @@ name. A false negative is the dangerous direction here, and presence was the
 wrong test. All three name-matched adapters now require the field to be VISIBLE
 before asserting failure, and fall back to "unknown" otherwise.
 
+## Live adapter runs, 2026-07-31 — nothing submitted
+
+`npx tsx src/dryrun.ts <postingUrl> <vendor>` drives a real posting with the real
+adapter code and stops before the click. Results:
+
+| vendor | resolve | fields | résumé attach | proceed() would |
+|---|---|---|---|---|
+| breezy | OK | 6/6 | OK (hidden input) | ADVANCE (multi-step) |
+| personio | OK | 6/6 | OK (hidden input) | SUBMIT |
+| pinpoint | OK | 7/7 | OK (visible) | SUBMIT |
+| smartrecruiters | **403** | — | — | — |
+
+**Hidden file inputs accept files.** Two of the three attach to an input the
+vendor hides behind a styled drop zone. Playwright's setInputFiles does not
+require visibility — but that is a claim about a library, and the résumé is the
+one attachment an application cannot do without, so the dry run attaches a real
+temp file and confirms it landed rather than trusting the documentation.
+
+**SmartRecruiters blocks headless browsers.** Its apply URL returns 403 to
+headless and 200 to headed, same URL and machine, seconds apart. There is no
+CAPTCHA and no challenge page — just a 403 that reads like a broken link. It is
+now listed as a refusal we respect rather than a gap to close: working around it
+means spoofing the user agent or hiding behind a virtual display, which is the
+same line as solving a CAPTCHA.
+
 ## Status
 
-**Adapters written from observation:** Breezy, SmartRecruiters, Personio, Pinpoint.
+**Adapters serving:** Breezy, Personio, Pinpoint — each verified against a live form.
+
+**Written but not served:** SmartRecruiters — the adapter is correct; the vendor refuses headless.
 
 **A truncation caught by navigating.** The first Pinpoint note recorded the form
 URL as `{posting}/application`, because the href in the probe output was cut at

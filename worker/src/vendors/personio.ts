@@ -70,15 +70,19 @@ export const personio: VendorAdapter = {
     return (await l.count()) > 0 ? wrap(l) : null;
   },
 
-  async proceed(page) {
-    // Found by type + form membership rather than by text: the label is
-    // "Bewerbung senden" here and would be different on an English tenant.
+  // Located by TYPE and form membership, never by text: the control reads
+  // "Bewerbung senden" on this tenant and something else on an English one.
+  async canProceed(page) {
     const submit = page.locator('form button[type="submit"], form input[type="submit"]').last();
-    if (await submit.count() && await submit.isVisible().catch(() => false)) {
-      await submit.click({ timeout: 10_000 });
-      return "submitted";
-    }
+    if (await submit.count() && await submit.isVisible().catch(() => false)) return "would-submit";
     return "stuck";
+  },
+
+  async proceed(page) {
+    if (await this.canProceed(page) !== "would-submit") return "stuck";
+    await page.locator('form button[type="submit"], form input[type="submit"]').last()
+      .click({ timeout: 10_000 });
+    return "submitted";
   },
 
   async confirmed(page) {

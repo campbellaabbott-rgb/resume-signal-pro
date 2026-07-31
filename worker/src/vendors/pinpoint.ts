@@ -70,17 +70,16 @@ export const pinpoint: VendorAdapter = {
     return (await l.count()) > 0 ? wrap(l) : null;
   },
 
-  async proceed(page) {
-    // "Save application for later" sits beside the real submit. Matching it by
-    // accident would silently park the application as a draft that no employer
-    // ever sees, while every signal we have says it was sent — anchored exactly
-    // to avoid that.
+  async canProceed(page) {
     const submit = page.getByRole("button", { name: /^submit application$/i }).first();
-    if (await submit.count() && await submit.isVisible().catch(() => false)) {
-      await submit.click({ timeout: 10_000 });
-      return "submitted";
-    }
+    if (await submit.count() && await submit.isVisible().catch(() => false)) return "would-submit";
     return "stuck";
+  },
+
+  async proceed(page) {
+    if (await this.canProceed(page) !== "would-submit") return "stuck";
+    await page.getByRole("button", { name: /^submit application$/i }).first().click({ timeout: 10_000 });
+    return "submitted";
   },
 
   async confirmed(page) {

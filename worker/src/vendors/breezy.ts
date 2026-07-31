@@ -61,15 +61,23 @@ export const breezy: VendorAdapter = {
     return (await l.count()) > 0 ? wrap(l) : null;
   },
 
-  async proceed(page) {
+  async canProceed(page) {
     const submit = page.getByRole("button", { name: /^submit application$/i }).first();
-    if (await submit.count() && await submit.isVisible().catch(() => false)) {
-      await submit.click({ timeout: 10_000 });
+    if (await submit.count() && await submit.isVisible().catch(() => false)) return "would-submit";
+    const cont = page.getByRole("button", { name: /^continue$/i }).first();
+    if (await cont.count() && await cont.isVisible().catch(() => false)) return "would-advance";
+    return "stuck";
+  },
+
+  async proceed(page) {
+    // Delegates so the dry run and the real run can never disagree.
+    const what = await this.canProceed(page);
+    if (what === "would-submit") {
+      await page.getByRole("button", { name: /^submit application$/i }).first().click({ timeout: 10_000 });
       return "submitted";
     }
-    const cont = page.getByRole("button", { name: /^continue$/i }).first();
-    if (await cont.count() && await cont.isVisible().catch(() => false)) {
-      await cont.click({ timeout: 10_000 });
+    if (what === "would-advance") {
+      await page.getByRole("button", { name: /^continue$/i }).first().click({ timeout: 10_000 });
       return "advanced";
     }
     return "stuck";

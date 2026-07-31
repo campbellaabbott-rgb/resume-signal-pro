@@ -124,7 +124,9 @@
     ],
     "submitControl": "Next (multi-step; no submit on page one)",
     "captcha": false,
-    "honeypot": false
+    "honeypot": false,
+    "servable": false,
+    "blockedBy": "403 to headless browsers on the apply URL (headed gets 200), measured 2026-07-31"
   },
   "oracle": {
     "observedAt": "2026-07-30",

@@ -56,6 +56,20 @@ export interface VendorAdapter {
   proceed(page: Page): Promise<"advanced" | "submitted" | "stuck">;
 
   /**
+   * What proceed() WOULD do, without doing it.
+   *
+   * Exists so a dry run can report the real answer instead of guessing. The
+   * first version of the dry run checked for buttons reading "submit
+   * application" or "continue" and declared Personio STUCK — because its button
+   * says "Bewerbung senden". That is the same mistake the adapters exist to
+   * avoid: identifying a control by its words.
+   *
+   * proceed() MUST delegate to this and act on the answer, so the two can never
+   * disagree about what the page offers.
+   */
+  canProceed(page: Page): Promise<"would-advance" | "would-submit" | "stuck">;
+
+  /**
    * Did the application land? Vendor-specific because confirmation wording is.
    *
    * MUST return "unknown" when unsure. A false "yes" records a send that never

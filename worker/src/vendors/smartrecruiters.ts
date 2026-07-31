@@ -88,17 +88,29 @@ export const smartrecruiters: VendorAdapter = {
     return wrap(scoped.nth(n - 1));
   },
 
-  async proceed(page) {
+  async canProceed(page) {
     for (const re of [/^submit application$/i, /^submit$/i, /^send application$/i]) {
       const b = page.getByRole("button", { name: re }).first();
-      if (await b.count() && await b.isVisible().catch(() => false)) {
-        await b.click({ timeout: 10_000 });
-        return "submitted";
-      }
+      if (await b.count() && await b.isVisible().catch(() => false)) return "would-submit";
     }
     const next = page.getByRole("button", { name: /^next$/i }).first();
-    if (await next.count() && await next.isVisible().catch(() => false)) {
-      await next.click({ timeout: 10_000 });
+    if (await next.count() && await next.isVisible().catch(() => false)) return "would-advance";
+    return "stuck";
+  },
+
+  async proceed(page) {
+    const what = await this.canProceed(page);
+    if (what === "would-submit") {
+      for (const re of [/^submit application$/i, /^submit$/i, /^send application$/i]) {
+        const b = page.getByRole("button", { name: re }).first();
+        if (await b.count() && await b.isVisible().catch(() => false)) {
+          await b.click({ timeout: 10_000 });
+          return "submitted";
+        }
+      }
+    }
+    if (what === "would-advance") {
+      await page.getByRole("button", { name: /^next$/i }).first().click({ timeout: 10_000 });
       await page.waitForTimeout(2_000);
       return "advanced";
     }
