@@ -9,20 +9,37 @@ failed on all three vendors examined — not because of CAPTCHAs, which were
 absent exactly as measured, but because the forms are nothing like what a
 generic driver assumes.
 
-## The three shapes
+## Six vendors, six shapes
 
-| | SmartRecruiters | Breezy | Teamtailor |
-|---|---|---|---|
-| Apply control text | `I'm interested` | `Apply To Position` | `Apply Here .xx` |
-| Control type | link → other URL | button → `{jd}/apply` | employer-customised |
-| Form location | separate `oneclick-ui` URL | `{jdUrl}/apply` | not yet reached |
-| Shadow DOM | **1,806 open roots** | none | none |
-| Fields with `name` | **0 of 14** | **40 of 50** | — |
-| Fields with `label[for]` | **11 of 14** | **0 of 50** | — |
-| `required` attribute | **absent on all** | **30 of 50** | — |
-| File inputs | 2, both `id="file-input"` | 3, `cResume` required | — |
-| Submit control | `Next` (multi-step) | `Submit Application` | — |
-| CAPTCHA | none | none | none |
+All six were CAPTCHA-free, exactly as the 674-page measurement said. Not one of
+the problems below is a CAPTCHA.
+
+| | SmartRecruiters | Breezy | Personio | Oracle | Pinpoint | Teamtailor |
+|---|---|---|---|---|---|---|
+| Apply control | `I'm interested` | `Apply To Position` | `Auf diese Stelle bewerben` | `Apply Now` | `Apply Now` | `Apply Here .xx` |
+| Form URL rule | link href has `/oneclick-ui/` | `{url}/apply` | `{url}?apply` | in-page screen | `{url}/application` | unknown |
+| Shadow DOM | **1,806 roots** | none | 1 | none | none | none |
+| Fields with `name` | **0 of 14** | **40 of 50** | **12 of 12** | 2 of 4 | not mapped | not mapped |
+| Fields with `label[for]` | **11 of 14** | **0 of 50** | 8 of 12 | 3 of 4 | — | — |
+| `required` attribute | **none** | **30 of 50** | **none** | 1 (consent) | — | — |
+| Match strategy | `label[for]` | `name` | `name` | `name` | — | — |
+| CAPTCHA | none | none | none | none | none | none |
+| Honeypot | no | no | no | **YES** | no | — |
+
+## The two findings that change the design
+
+**Oracle ships a honeypot.** `name="honey-pot"`, `aria-label="honeypot"` — a
+field invisible to a person, so anything that fills it is provably not one.
+This is the strongest possible argument against the fill-everything strategy the
+original driver used: it would have announced itself on the first Oracle
+application. The driver now fills ONLY fields an adapter has explicitly mapped,
+and `isHoneypot()` exists so that rule is testable rather than merely implied.
+
+**Personio's apply button is in German.** "Auf diese Stelle bewerben" — the
+tenant's locale decides the text. Combined with Teamtailor's employer-authored
+"Apply Here .xx", that closes the question: the apply control cannot be found by
+its words, in any language. Its href, however, is `{jobUrl}?apply` on every
+Personio tenant. Structure is stable; text is not.
 
 ## What this proves
 
@@ -65,11 +82,20 @@ Had the recon stopped at the first measurement, SmartRecruiters would have been
 written off. Check whether the instrument can see the thing before concluding
 the thing is absent.
 
-## Still to do
+## Status
 
-Oracle, Personio and Pinpoint have had no recon. They are marked `needsRecon` in
-`vendors/index.ts` and the worker refuses them, because shipping an adapter
-written from imagination is exactly what this document exists to prevent.
+**Adapters written from observation:** Breezy, SmartRecruiters, Personio.
 
-Workday needs a per-tenant candidate account — a credential problem, not a form
-problem, and unsolved.
+**Reconnoitred, not yet servable** — each needs one more pass, and what is known
+is recorded in `vendors/index.ts` so the next pass starts from evidence:
+  - **Pinpoint** — form URL rule known (`{posting}/application`); fields unmapped.
+  - **Oracle** — email-first screen, no account needed, but a REQUIRED
+    terms-and-conditions checkbox. Accepting an employer's terms on a
+    candidate's behalf is a product decision, not a coding one.
+  - **Teamtailor** — apply control is employer-authored, so the form URL rule is
+    still unknown.
+
+**Workday** needs a per-tenant candidate account — a credential problem rather
+than a form problem, unsolved, and the largest vendor in the tier.
+
+Nothing was submitted to any employer during this work.
