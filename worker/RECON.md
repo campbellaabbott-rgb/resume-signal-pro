@@ -232,3 +232,34 @@ because it fails silently and the application never reaches a person.
 token. Testing that means sending a real application to a stranger's job, which
 is not a thing to do to find out. The claim here is that a visible v2 challenge
 sits on every tenant's form, not that submission is provably rejected without it.
+
+## Oracle — re-checked 2026-07-31. STILL NO, and my note was the problem.
+
+`consent_to_processing` shipped that afternoon, which appeared to remove Oracle's
+recorded blocker ("REQUIRED terms checkbox"). It did remove that one. The note
+was incomplete.
+
+**What the gate actually does**, read off three tenants with the idle-session
+modal dismissed:
+
+> "Get started right away by using your email or phone number. **Your profile
+> will be created and kept up to date automatically** as you enter details for
+> each of your job applications"
+
+`/apply/email` carries `primary-email`, a `honey-pot`, and an "I agree with the
+terms and conditions" checkbox. **No guest path** — searched for one on all
+three, found none.
+
+So applying via Oracle means creating a persistent candidate profile on each
+employer's tenant, in the candidate's name, described by Oracle as an ongoing
+record rather than a one-off submission. That is the same class of obstacle as
+Workday's per-tenant candidate account, which is already ruled out — a
+credential and consent problem, not a form problem. 14,277 postings stay shut.
+
+**Two mistakes of mine, one shape.** The recorded reason listed only the terms
+checkbox, so months later it read as fully addressed the moment consent shipped.
+And the first probe's detector asked for /create an account|sign up|register/
+and returned `createsAccount: false` on a page whose own text says "Your profile
+will be created" — matching the words I expected instead of the words the page
+used. The reason in `vendors/index.ts` now states the whole obstacle, because a
+partial reason is worse than none: it expires into a false green light.

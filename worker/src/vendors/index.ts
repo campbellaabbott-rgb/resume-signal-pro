@@ -58,7 +58,7 @@ export const NEEDS_RECON: Record<string, string> = {
   // account is needed — "simply using your email" — so it is servable, but
   // agreeing to an employer's terms on someone's behalf is a product decision
   // rather than a coding one.
-  oracle: "email-first auth screen; REQUIRED terms checkbox; has a honeypot",
+  oracle: "creates a candidate PROFILE per employer tenant before the form — its own words: 'Your profile will be created and kept up to date automatically'. No guest path offered (checked 3 tenants, 2026-07-31). Same class of obstacle as workday, not a form problem. Also a required terms checkbox and a honey-pot, but those were only HALF the reason and the note used to stop there — which later read as 'solved' once consent_to_processing shipped.",
 
   // The apply control text is written by the EMPLOYER ("Apply Here .xx" on the
   // tenant examined), so the form URL must be derived some other way. Not yet
