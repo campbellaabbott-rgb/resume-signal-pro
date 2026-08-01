@@ -4273,7 +4273,11 @@
     "otherCountries": "Outros países onde pode trabalhar sem patrocínio",
     "otherCountriesHint": "Opcional, e pode ficar vazio. Os empregadores perguntam por um país concreto — «autorização para trabalhar nos EUA?» — e estar autorizado num sítio não é estar autorizado em todo o lado. Assinale apenas o que for verdade: em qualquer país não assinalado, o agente pára e pergunta-lhe em vez de responder.",
     "address": "Morada",
-    "postcode": "Código postal"
+    "postcode": "Código postal",
+    "coverNote": "Uma nota breve para acompanhar as suas candidaturas",
+    "coverNoteHint": "Opcional. Alguns formulários não são submetidos sem ela, e o agente pára em vez de enviar em branco. Este texto segue tal como está para todos os empregadores — não é reescrito por vaga —, por isso fale de si e do seu trabalho, não de uma empresa em particular.",
+    "coverNotePlaceholder": "ex. Sou engenheiro de dados com oito anos a construir pipelines em Python e dbt e procuro um cargo sénior onde possa ser responsável por uma plataforma de ponta a ponta.",
+    "coverNoteCount": "{{n}} de 2000 caracteres"
   },
   "applyQueue": {
     "title": "Candidaturas preparadas",

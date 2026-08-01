@@ -4273,7 +4273,11 @@
     "otherCountries": "Anywhere else you may work without sponsorship",
     "otherCountriesHint": "Optional, and safe to leave empty. Employers ask about a named country — “authorised to work in the US?” — and being authorised somewhere is not being authorised everywhere. Tick only what’s true: on any country you haven’t ticked, the agent stops and asks you rather than answering.",
     "address": "Street address",
-    "postcode": "Postcode / ZIP"
+    "postcode": "Postcode / ZIP",
+    "coverNote": "A short note to go with your applications",
+    "coverNoteHint": "Optional. Some forms won't submit without one, and the agent stops rather than sending a blank. This exact text goes to every employer — it isn't rewritten per job — so keep it about you and your work, not about any one company.",
+    "coverNotePlaceholder": "e.g. I'm a data engineer with eight years building pipelines in Python and dbt, currently looking for a senior role where I can own a platform end to end.",
+    "coverNoteCount": "{{n}} of 2000 characters"
   },
   "applyQueue": {
     "title": "Prepared applications",

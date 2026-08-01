@@ -4273,7 +4273,11 @@
     "otherCountries": "Andere landen waar u zonder sponsoring mag werken",
     "otherCountriesHint": "Optioneel; leeg laten mag. Werkgevers vragen naar een specifiek land — „toestemming om in de VS te werken?” — en ergens mogen werken is niet overal mogen werken. Vink alleen aan wat klopt: bij elk land dat u niet aanvinkt stopt de agent en vraagt het u, in plaats van te antwoorden.",
     "address": "Straat en huisnummer",
-    "postcode": "Postcode"
+    "postcode": "Postcode",
+    "coverNote": "Een korte notitie bij uw sollicitaties",
+    "coverNoteHint": "Optioneel. Sommige formulieren versturen niet zonder, en de agent stopt liever dan een lege mee te sturen. Deze tekst gaat ongewijzigd naar elke werkgever — hij wordt niet per functie herschreven — dus houd het bij uzelf en uw werk, niet bij één bedrijf.",
+    "coverNotePlaceholder": "bijv. Ik ben data engineer met acht jaar ervaring in het bouwen van pipelines met Python en dbt, en zoek een senior rol waarin ik een platform van begin tot eind kan dragen.",
+    "coverNoteCount": "{{n}} van 2000 tekens"
   },
   "applyQueue": {
     "title": "Voorbereide sollicitaties",

@@ -4273,7 +4273,11 @@
     "otherCountries": "Tout autre pays où vous pouvez travailler sans parrainage",
     "otherCountriesHint": "Facultatif, et vous pouvez le laisser vide. Les employeurs interrogent sur un pays précis — « autorisé à travailler aux États-Unis ? » — et être autorisé quelque part n’est pas l’être partout. Ne cochez que ce qui est vrai : pour tout pays non coché, l’agent s’arrête et vous demande au lieu de répondre.",
     "address": "Adresse",
-    "postcode": "Code postal"
+    "postcode": "Code postal",
+    "coverNote": "Une note courte à joindre à vos candidatures",
+    "coverNoteHint": "Facultatif. Certains formulaires refusent de partir sans, et l'agent s'arrête plutôt que d'en envoyer une vide. Ce texte part tel quel chez chaque employeur — il n'est pas réécrit pour chaque poste — alors parlez de vous et de votre travail, pas d'une entreprise en particulier.",
+    "coverNotePlaceholder": "ex. Ingénieur data depuis huit ans, je construis des pipelines en Python et dbt et je cherche un poste senior où je pourrais porter une plateforme de bout en bout.",
+    "coverNoteCount": "{{n}} sur 2000 caractères"
   },
   "applyQueue": {
     "title": "Candidatures préparées",

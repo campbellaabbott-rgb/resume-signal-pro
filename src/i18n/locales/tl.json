@@ -4273,7 +4273,11 @@
     "otherCountries": "Iba pang bansa kung saan ka maaaring magtrabaho nang walang sponsorship",
     "otherCountriesHint": "Opsyonal, at ligtas na iwanang blangko. Nagtatanong ang mga employer tungkol sa isang tiyak na bansa — “awtorisado bang magtrabaho sa US?” — at ang pagiging awtorisado sa isang lugar ay hindi pagiging awtorisado saanman. I-tick lamang ang totoo: sa anumang bansang hindi mo na-tick, titigil ang agent at magtatanong sa iyo sa halip na sumagot.",
     "address": "Address ng kalye",
-    "postcode": "Zip code"
+    "postcode": "Zip code",
+    "coverNote": "Isang maikling tala na kasama ng iyong mga aplikasyon",
+    "coverNoteHint": "Opsyonal. May mga form na hindi maisusumite kung wala nito, at hihinto ang agent sa halip na magpadala ng blangko. Ang tekstong ito ay dumarating nang buo sa bawat employer — hindi ito isinusulat muli kada trabaho — kaya panatilihin itong tungkol sa iyo at sa trabaho mo, hindi sa iisang kompanya.",
+    "coverNotePlaceholder": "hal. Isa akong data engineer na walong taon nang gumagawa ng pipelines sa Python at dbt, at naghahanap ng senior na papel kung saan maaari kong pangasiwaan ang isang platform mula simula hanggang dulo.",
+    "coverNoteCount": "{{n}} sa 2000 na karakter"
   },
   "applyQueue": {
     "title": "Mga inihandang aplikasyon",

@@ -65,6 +65,7 @@ interface ApplyProfile {
   work_authorized: Tri; requires_sponsorship: Tri; willing_to_relocate: Tri;
   /** Countries BEYOND their own that they may work in, as ISO-2 codes. */
   work_authorized_countries: string[];
+  cover_note: string;
   salary_expectation: string; earliest_start: string;
   share_demographics: boolean; consent_to_processing: boolean;
   apply_mode: "review" | "auto"; auto_apply_daily_cap: number;
@@ -74,7 +75,8 @@ const EMPTY: ApplyProfile = {
   full_name: "", phone: "", linkedin: "", website: "", city: "", country: "",
   address: "", postcode: "",
   resume_file_url: "", work_authorized: null, requires_sponsorship: null,
-  willing_to_relocate: null, work_authorized_countries: [], salary_expectation: "", earliest_start: "",
+  willing_to_relocate: null, work_authorized_countries: [],
+  cover_note: "", salary_expectation: "", earliest_start: "",
   share_demographics: false, consent_to_processing: false, apply_mode: "review", auto_apply_daily_cap: 5,
 };
 
@@ -329,6 +331,36 @@ export function ApplyProfilePanel({ userId }: { userId: string }) {
             </span>
           )}
         </div>
+      </div>
+
+      <div className="border-t border-border pt-5 mb-5">
+        <label className="block">
+          <span className="text-sm font-medium text-foreground">
+            {t("applyProfile.coverNote", "A short note to go with your applications")}
+          </span>
+          <p className="text-xs text-muted-foreground mt-0.5 mb-2">
+            {/* The honesty that makes this usable. It is ONE note, sent
+                verbatim to every employer — the agent does not rewrite it per
+                job, and would be inventing enthusiasm if it did. So the useful
+                note is about the candidate, not about the company: anything
+                naming a specific employer or mission is wrong on almost every
+                application it goes out with. */}
+            {t("applyProfile.coverNoteHint",
+              "Optional. Some forms won't submit without one, and the agent stops rather than sending a blank. This exact text goes to every employer — it isn't rewritten per job — so keep it about you and your work, not about any one company.")}
+          </p>
+          <textarea
+            value={p.cover_note}
+            onChange={(e) => set("cover_note", e.target.value)}
+            rows={4}
+            maxLength={2000}
+            placeholder={t("applyProfile.coverNotePlaceholder",
+              "e.g. I'm a data engineer with eight years building pipelines in Python and dbt, currently looking for a senior role where I can own a platform end to end.")}
+            className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm resize-y"
+          />
+          <span className="text-xs text-muted-foreground">
+            {t("applyProfile.coverNoteCount", "{{n}} of 2000 characters", { n: p.cover_note.length })}
+          </span>
+        </label>
       </div>
 
       <div className="border-t border-border pt-5">

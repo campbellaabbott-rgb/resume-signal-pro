@@ -4273,7 +4273,11 @@
     "otherCountries": "Cualquier otro país donde puedas trabajar sin patrocinio",
     "otherCountriesHint": "Opcional, y puedes dejarlo vacío sin problema. Las empresas preguntan por un país concreto — «autorización para trabajar en EE. UU.» — y estar autorizado en un sitio no es estarlo en todos. Marca solo lo que sea cierto: en cualquier país que no marques, el agente se detiene y te pregunta en lugar de responder.",
     "address": "Dirección",
-    "postcode": "Código postal"
+    "postcode": "Código postal",
+    "coverNote": "Una nota breve para acompañar tus solicitudes",
+    "coverNoteHint": "Opcional. Algunos formularios no se envían sin ella, y el agente se detiene en lugar de mandarla en blanco. Este texto llega tal cual a todas las empresas —no se reescribe para cada puesto—, así que céntralo en ti y en tu trabajo, no en una empresa concreta.",
+    "coverNotePlaceholder": "p. ej. Soy ingeniero de datos con ocho años construyendo pipelines en Python y dbt, y busco un puesto sénior donde pueda responsabilizarme de una plataforma de principio a fin.",
+    "coverNoteCount": "{{n}} de 2000 caracteres"
   },
   "applyQueue": {
     "title": "Candidaturas preparadas",

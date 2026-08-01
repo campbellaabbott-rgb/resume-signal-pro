@@ -4273,7 +4273,11 @@
     "otherCountries": "Weitere Länder, in denen Sie ohne Sponsoring arbeiten dürfen",
     "otherCountriesHint": "Optional, kann leer bleiben. Arbeitgeber fragen nach einem bestimmten Land – „Arbeitserlaubnis für die USA?“ – und irgendwo berechtigt zu sein heißt nicht, überall berechtigt zu sein. Wählen Sie nur Zutreffendes: Bei jedem nicht gewählten Land hält der Agent an und fragt Sie, statt zu antworten.",
     "address": "Straße und Hausnummer",
-    "postcode": "Postleitzahl"
+    "postcode": "Postleitzahl",
+    "coverNote": "Eine kurze Notiz zu Ihren Bewerbungen",
+    "coverNoteHint": "Optional. Manche Formulare lassen sich ohne sie nicht absenden, und der Agent hält lieber an, als etwas Leeres zu schicken. Dieser Text geht unverändert an jeden Arbeitgeber – er wird nicht pro Stelle umgeschrieben –, also schreiben Sie über sich und Ihre Arbeit, nicht über ein bestimmtes Unternehmen.",
+    "coverNotePlaceholder": "z. B. Ich bin Data Engineer mit acht Jahren Erfahrung im Bau von Pipelines mit Python und dbt und suche eine Senior-Rolle, in der ich eine Plattform von Anfang bis Ende verantworten kann.",
+    "coverNoteCount": "{{n}} von 2000 Zeichen"
   },
   "applyQueue": {
     "title": "Vorbereitete Bewerbungen",
