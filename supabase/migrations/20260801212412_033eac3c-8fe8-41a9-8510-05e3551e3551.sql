@@ -1,0 +1,1 @@
+ALTER TABLE public.agent_mandates ADD COLUMN IF NOT EXISTS cover_note text;

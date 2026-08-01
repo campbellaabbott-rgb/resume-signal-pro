@@ -241,6 +241,7 @@ export type Database = {
           city: string
           consent_to_processing: boolean
           country: string
+          cover_note: string | null
           created_at: string
           daily_count: number
           earliest_start: string
@@ -279,6 +280,7 @@ export type Database = {
           city?: string
           consent_to_processing?: boolean
           country?: string
+          cover_note?: string | null
           created_at?: string
           daily_count?: number
           earliest_start?: string
@@ -317,6 +319,7 @@ export type Database = {
           city?: string
           consent_to_processing?: boolean
           country?: string
+          cover_note?: string | null
           created_at?: string
           daily_count?: number
           earliest_start?: string

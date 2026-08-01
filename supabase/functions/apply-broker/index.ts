@@ -15,7 +15,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const BUILD_VERSION = "2026-08-01.1";
+const BUILD_VERSION = "2026-08-01.2";
 const LEASE_MINUTES = 10;
 const RESUME_URL_TTL_SECONDS = 300; // 5 minutes; the worker downloads and deletes
 
@@ -106,7 +106,7 @@ serve(async (req) => {
           .from("agent_mandates")
           .select("email,full_name,phone,linkedin,website,city,country,address,postcode," +
             "resume_file_url,work_authorized,requires_sponsorship,willing_to_relocate," +
-            "work_authorized_countries,salary_expectation,earliest_start," +
+            "work_authorized_countries,salary_expectation,earliest_start,cover_note," +
             "share_demographics,consent_to_processing")
           .eq("user_id", row.user_id).maybeSingle();
 
@@ -166,7 +166,7 @@ serve(async (req) => {
             postcode: str(mandate.postcode),
             linkedin: str(mandate.linkedin),
             website: str(mandate.website),
-            coverNote: "",
+            coverNote: str(mandate.cover_note),
             salaryExpectation: str(mandate.salary_expectation),
             earliestStart: str(mandate.earliest_start),
             // TRINARY — null means "not stated" and must survive as null.
@@ -207,6 +207,53 @@ serve(async (req) => {
       // send that did not happen cannot be recorded as one.
       const { error } = await client.from("agent_submissions").update(update).eq("id", id);
       if (error) return json({ error: error.message }, 400);
+
+      // THE TRACKER MIRROR. A confirmed send must also appear in the tracker the
+      // candidate reads, or a real application looks to them like the agent did
+      // nothing. Done here, inside the same call that records the send, so the
+      // worker cannot crash between the two writes and half-do it.
+      let mirrored = false;
+      if (str(update.status) === "submitted") {
+        const { data: row } = await client.from("agent_submissions")
+          .select("user_id,company,title,posting_id,apply_url,submitted_at")
+          .eq("id", id).maybeSingle();
+        if (row?.user_id) {
+          // Idempotent: a retried release must not add a second tracker entry.
+          const { data: existing } = await client.from("user_applications")
+            .select("id").eq("user_id", row.user_id)
+            .eq("job_id", str(row.posting_id)).limit(1).maybeSingle();
+          if (!existing) {
+            const { error: mirrorErr } = await client.from("user_applications").insert({
+              user_id: row.user_id,
+              company: str(row.company) || "Unknown",
+              role: str(row.title) || "Unknown",
+              status: "applied",
+              job_id: str(row.posting_id) || null,
+              apply_url: str(row.apply_url) || null,
+            });
+            if (mirrorErr) {
+              // The send is already recorded and must not be rolled back — a
+              // failed mirror is a visibility bug, not a lost application.
+              console.error(`[APPLY-BROKER] mirror failed for ${id}: ${mirrorErr.message}`);
+            } else mirrored = true;
+          }
+        }
+      }
+      return json({ ok: true, mirrored });
+    }
+
+    if (action === "uncertain") {
+      // Straight passthrough to agent_mark_uncertain. Its semantics are NOT
+      // reimplemented here: the `submitted_at IS NULL` guard (which refuses to
+      // overwrite a confirmed send with "we don't know") and the server-side
+      // blockers append (which cannot drop a concurrent write the way a
+      // read-modify-write from the worker would) only exist inside the RPC.
+      const id = Number(body.id);
+      if (!Number.isFinite(id)) return json({ error: "id required" }, 400);
+      const { error } = await client.rpc("agent_mark_uncertain", {
+        p_id: id, p_reason: str(body.reason) || "worker could not confirm the result",
+      });
+      if (error) return json({ error: error.message }, 400);
       return json({ ok: true });
     }
 
@@ -243,7 +290,10 @@ serve(async (req) => {
       return json({ ok: true, upserted: rows.length });
     }
 
-    return json({ error: "unknown action", actions: ["claim", "release", "pending", "ping"] }, 400);
+    return json({
+      error: "unknown action",
+      actions: ["claim", "release", "uncertain", "pending", "ping"],
+    }, 400);
   } catch (e) {
     console.error(`[APPLY-BROKER] ${action}: ${String(e).slice(0, 200)}`);
     return json({ error: "broker failure" }, 500);
