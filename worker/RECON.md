@@ -263,3 +263,44 @@ and returned `createsAccount: false` on a page whose own text says "Your profile
 will be created" — matching the words I expected instead of the words the page
 used. The reason in `vendors/index.ts` now states the whole obstacle, because a
 partial reason is worse than none: it expires into a false green light.
+
+## Teamtailor — 2026-07-31. Buildable. Both recorded blockers were wrong.
+
+10,144 postings. The note said "apply control text is employer-authored; form
+URL rule unknown". There is no form URL rule to find: **the form is inline on
+the posting page**. Clicking whatever the employer calls the apply control
+reveals it in place.
+
+**Field names are Rails-nested and stable across tenants** (7 of 10):
+
+    candidate[first_name]  candidate[last_name]  candidate[email]  candidate[phone]
+    candidate[job_applications_attributes][0][cover_letter]
+    candidate[consent_given]                     <- the consent opt-in already handles this
+    candidate[answers_attributes][N][text|choice|boolean|choices]   <- screening questions
+
+**THE CV QUESTION, and how I got it wrong first.** The initial probe reported
+0/10 file inputs and no mention of a résumé anywhere — which would have made
+Teamtailor worthless, since an application with no CV is not an application.
+That probe never dismissed the cookie banner. With "decline all non-necessary"
+clicked first, 4 of 6 tenants show a real upload:
+
+| | |
+|---|---|
+| label | "Upload resume*", "Upload CV", "Lebenslauf hochladen*" |
+| accept | `.doc,.docx,.pptx,.pdf,.pages,.txt,.rtf` |
+| name | **empty** — locate by the accept list, never by name |
+
+The other 2 of 6 showed no form at all and are likely external-apply redirects;
+those must resolve to "no form, refuse" rather than a half-filled submit.
+
+**Third time today the probe measured my own setup instead of the vendor.**
+BambooHR: stopped at the posting page and missed that the CAPTCHA is on the
+form. Oracle: read the idle-session modal instead of the page. Teamtailor: a
+cookie overlay suppressed the form and "no file input" was a fact about the
+banner. Every one of them would have gone into the record as a fact about the
+vendor. The fix is the same each time — dismiss the chrome, then look.
+
+**Still to establish before shipping an adapter:** whether the screening
+questions carry readable labels (the enumerator needs them, and
+`answers_attributes[N]` names carry no meaning), and what a submitted
+confirmation says.

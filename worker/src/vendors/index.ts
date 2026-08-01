@@ -63,7 +63,7 @@ export const NEEDS_RECON: Record<string, string> = {
   // The apply control text is written by the EMPLOYER ("Apply Here .xx" on the
   // tenant examined), so the form URL must be derived some other way. Not yet
   // determined.
-  teamtailor: "apply control text is employer-authored; form URL rule unknown",
+  teamtailor: "NO LONGER BLOCKED — needs an adapter written. Recon 2026-07-31: the form is INLINE on the posting page (there is no separate form URL, which is what 'rule unknown' was really recording), names are Rails-nested and stable (candidate[first_name], candidate[email], candidate[answers_attributes][N][text|choice|boolean]), consent is candidate[consent_given], and the CV input is real — located by its accept list, not a name, since Teamtailor renders file inputs unnamed. A cookie overlay must be declined first or the form does not render.",
 };
 
 /**
