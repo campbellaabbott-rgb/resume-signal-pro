@@ -371,3 +371,68 @@ plan ("run headed, gain 45,380 postings, 5.2% -> 13%") and an ethical debate
 about whether to. Both were built on a fact nobody had re-checked. Sixth time in
 two days that a recorded observation turned out to be an artifact — and the only
 reason this one cost nothing is that the measurement came before the build.
+
+## Ashby, Lever, Rippling, Workable — 2026-08-01. NO-BUILD, all four.
+
+These were the four vendors never assessed for apply, and together they are
+17.9% of what a searcher sees — nearly eight times the 2.33% currently
+drivable. So this was the highest-value question open, and the answer is no.
+
+**All four run bot detection on the apply form. None of the three vendors in
+production do.**
+
+| | product | on the network | visible challenge | share |
+|---|---|---|---|---|
+| Ashby | reCAPTCHA v3 | yes, 10/10 | none — v3 badge present | 8.25% |
+| Rippling | Turnstile + CF challenge-platform | yes, 10/10 | none | 5.54% |
+| Lever | hCaptcha + CF challenge-platform | yes, 10/10 | none | 2.43% |
+| Workable | Turnstile + CF challenge-platform | yes, 6/6 | none | 1.69% |
+| — Breezy | — | **NONE** | — | 1.32% |
+| — Pinpoint | — | **NONE** | — | — |
+| — Teamtailor | — | **NONE** | — | 0.71% |
+
+**The first probe was worthless and the control group is what said so.** The
+original check was `/recaptcha|hcaptcha|turnstile/.test(page.content())`, and it
+flagged 40 of 40 pages — the shape of a probe that cannot fail. Running the same
+probe against Breezy and Teamtailor, which I have driven end to end, returned
+"no wall". So the signal did discriminate, and the string really was there. The
+crude probe was right by accident; it took the control to know that.
+
+It still could not answer the question that decides the build, so
+`probe-captcha.ts` asks a sharper one: which product, is the script actually
+FETCHED (a tag in the markup can be dead, a network request cannot), is a widget
+rendered, is it visible, and is the v3 badge present. Three different worlds hide
+behind one word:
+
+  1. Referenced but never instantiated — a privacy-policy mention. No obstacle.
+  2. Invisible scoring — no challenge, the submit succeeds, and a score decides
+     silently whether a human ever sees the application.
+  3. An interactive challenge — a hard, honest stop.
+
+All four are (2), which is the worst of the three, because **it looks exactly
+like success**. A visible challenge stops the agent and the candidate is told.
+An invisible score lets the submit through, we report "applied", and the
+application may already have been binned. That is the wrong "yes" — and the
+whole reason this codebase refuses rather than guesses is that a wrong yes is
+silent.
+
+**Why this is not a coding problem.** The two ways past are a solving service
+and fingerprint evasion. Both are ruled out — the first by an explicit product
+decision, the second self-imposed, and neither is the kind of thing to quietly
+reverse because the number is disappointing.
+
+**Workable, separately, is otherwise the cleanest vendor seen.** Its form is at
+`{posting}/apply` — not the posting page, which is why the first pass read
+"0 fields, 0 required" on all ten and looked like SmartRecruiters. Field names
+are the best of any vendor: `firstname, lastname, email, phone, address, city,
+postcode, country, cover_letter`, with custom questions as `QA_*`/`CA_*`. The
+résumé input is unnamed and found by accept list, and some tenants carry a
+SECOND document input accepting `.ppt`/images — so "first file input" would
+attach the CV to a portfolio slot, the Personio trap exactly. If Turnstile ever
+comes off, this is a two-hour adapter. That is recorded so the next pass starts
+from evidence rather than repeating the recon.
+
+**What this means for the product ceiling.** Question coverage is a multiplier
+on 2.33%, not a path past it. Perfect question coverage caps the auto-apply
+product at 2.33% of search results. Growing the base needs a vendor with no
+bot detection on the form, and the four candidates are now measured and closed.
