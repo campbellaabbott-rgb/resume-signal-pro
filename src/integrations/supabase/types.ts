@@ -200,6 +200,7 @@ export type Database = {
       agent_mandates: {
         Row: {
           active: boolean
+          address: string | null
           apply_mode: string
           auto_apply_daily_cap: number
           auto_apply_sources: string[]
@@ -219,6 +220,7 @@ export type Database = {
           linkedin: string
           location: string
           phone: string
+          postcode: string | null
           q: string
           remote_only: boolean
           requires_sponsorship: boolean | null
@@ -236,6 +238,7 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          address?: string | null
           apply_mode?: string
           auto_apply_daily_cap?: number
           auto_apply_sources?: string[]
@@ -255,6 +258,7 @@ export type Database = {
           linkedin?: string
           location?: string
           phone?: string
+          postcode?: string | null
           q?: string
           remote_only?: boolean
           requires_sponsorship?: boolean | null
@@ -272,6 +276,7 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          address?: string | null
           apply_mode?: string
           auto_apply_daily_cap?: number
           auto_apply_sources?: string[]
@@ -291,6 +296,7 @@ export type Database = {
           linkedin?: string
           location?: string
           phone?: string
+          postcode?: string | null
           q?: string
           remote_only?: boolean
           requires_sponsorship?: boolean | null
