@@ -21,7 +21,7 @@ import { adapterFor, BLOCKED } from "./vendors/index.js";
 import type { PacketFieldKey, VendorAdapter } from "./vendors/types.js";
 import { planAnswers, type StandingAnswers } from "./questions/match.js";
 import { applyResolution } from "./questions/answer.js";
-import type { LearnedAnswers } from "./questions/learned.js";
+import { isLearnable, type LearnedAnswers } from "./questions/learned.js";
 
 export type PacketField = { value: string; source: string };
 
@@ -40,11 +40,37 @@ export type ApplyInput = {
   resumePath?: string;
 };
 
+/** A required question the agent would not answer, kept whole. */
+export type BlockedQuestion = {
+  label: string;
+  /** What the control wants, so the account surface renders the right input. */
+  kind: "fill" | "choose" | "check";
+  options: string[];
+  category: string;
+  why: string;
+  /** False for refusals of principle — an ID number, a date of birth, a
+   *  referee. Those must never be offered to the candidate to "fix", because
+   *  answering them would convert a safeguard into a stored value. */
+  learnable: boolean;
+};
+
 export type ApplyOutcome =
   /** A confirmation was recognised. Safe to stamp as sent. */
   | { kind: "submitted"; evidence: string }
   /** Submit was never pressed. Nothing was sent; safe to try again later. */
-  | { kind: "not-submitted"; reason: string }
+  | {
+      kind: "not-submitted";
+      reason: string;
+      /**
+       * The questions that caused it, when the cause was questions.
+       *
+       * The `reason` string is for a human reading a log; this is for the loop
+       * that turns a refusal into a question the candidate can answer once. The
+       * summary alone was lossy — it truncates to three and flattens the
+       * options away, so nothing downstream could reconstruct what to ask.
+       */
+      blocked?: BlockedQuestion[];
+    }
   /** Submit was pressed and the result is unknown. NEVER retried, always escalated. */
   | { kind: "uncertain"; reason: string; screenshot?: Buffer };
 
@@ -202,6 +228,19 @@ export async function applyToPosting(browser: Browser, input: ApplyInput): Promi
             return {
               kind: "not-submitted",
               reason: `${blocking.length} required question(s) the agent cannot answer — ${why}`,
+              blocked: blocking.map((b) => {
+                const r = b.r as { kind: string; category?: string; why?: string };
+                return {
+                  label: b.q.label,
+                  kind: b.q.options.length ? "choose" as const
+                      : b.q.type === "checkbox" ? "check" as const
+                      : "fill" as const,
+                  options: b.q.options.slice(0, 24),
+                  category: r.category ?? "unrecognised",
+                  why: r.why ?? "",
+                  learnable: isLearnable(r.category ?? "unrecognised"),
+                };
+              }),
             };
           }
           for (const { q: dq, r } of answerable) {

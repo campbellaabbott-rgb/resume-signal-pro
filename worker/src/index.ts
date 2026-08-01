@@ -16,7 +16,8 @@ import { createClient } from "@supabase/supabase-js";
 import { mkdtemp, writeFile, rm, mkdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { LearnedAnswers, LearnedAnswer } from "./questions/learned.js";
+import { learnedKey, type LearnedAnswers, type LearnedAnswer } from "./questions/learned.js";
+import type { BlockedQuestion } from "./apply.js";
 import { applyToPosting } from "./apply.js";
 import { ADAPTERS, BLOCKED } from "./vendors/index.js";
 import type { PacketFieldKey } from "./vendors/types.js";
@@ -245,6 +246,52 @@ async function loadLearned(userId: string): Promise<LearnedAnswers> {
   return m;
 }
 
+/**
+ * Turn a refusal into a question the candidate can answer once.
+ *
+ * ONLY LEARNABLE REFUSALS. `learnable` is decided in questions/learned.ts and
+ * carried on the blocked question itself, so this function cannot accidentally
+ * offer up a date of birth or a referee's phone number as something to "fix".
+ * Those are refused for what they are, not for being absent, and putting them
+ * in front of someone with an input box is how a safeguard becomes a feature.
+ *
+ * FAILING HERE MUST NOT FAIL THE PACKET. The packet is already blocked and its
+ * reason is already recorded; this is an additional courtesy on top. A write
+ * that throws would turn "blocked, and here is the question" into an unhandled
+ * error partway through releasing the claim.
+ */
+async function recordPending(
+  p: Packet,
+  outcome: { kind: string; blocked?: BlockedQuestion[] },
+): Promise<void> {
+  if (outcome.kind !== "not-submitted" || !outcome.blocked?.length) return;
+  const askable = outcome.blocked.filter((b) => b.learnable && b.label.trim());
+  if (!askable.length) return;
+
+  for (const b of askable) {
+    const key = learnedKey(b.label);
+    if (!key) continue;
+    // Upsert on (user_id, question_key): the same question across ten postings
+    // is ONE thing to ask, not ten. seen_count records how much it is costing.
+    const { error } = await db.from("agent_pending_questions").upsert({
+      user_id: p.user_id,
+      question_key: key,
+      question_label: b.label.slice(0, 400),
+      answer_kind: b.kind,
+      options: b.options,
+      refusal_reason: b.why.slice(0, 300),
+      posting_id: p.posting_id,
+      company: p.company,
+      last_seen_at: new Date().toISOString(),
+    }, { onConflict: "user_id,question_key", ignoreDuplicates: false });
+    if (error) {
+      console.error(`[worker] could not record pending question for ${p.user_id}: ${error.message}`);
+      return; // one failure is enough to stop trying; the packet is unaffected
+    }
+  }
+  console.log(`[worker] ${askable.length} question(s) recorded for ${p.user_id} to answer once`);
+}
+
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 async function release(id: number, patch: Record<string, unknown>) {
@@ -322,6 +369,12 @@ async function runOne(browser: Awaited<ReturnType<typeof chromium.launch>>, p: P
   }
 
   // not-submitted: nothing was sent, so this is safely retryable within the
+  // A refusal caused by questions is the moment to ASK. Recorded before the
+  // release below, so a blocked packet and the question that blocked it land
+  // together rather than the packet going quiet with the reason buried in a
+  // log line nobody reads.
+  await recordPending(p, outcome);
+
   // attempt ceiling. The reason is stored where the candidate can read it.
   await release(p.id, {
     status: "blocked",

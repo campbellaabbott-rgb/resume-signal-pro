@@ -4330,5 +4330,18 @@
     "clickBlurb": "Estes usam CAPTCHA ou uma verificação humana. Nunca os resolvemos nem contornamos, por isso a candidatura chega pronta e é você que a envia.",
     "allTitle": "Candidaturas preparadas para si",
     "allBlurb": "Retiramos as vagas diretamente destes sistemas e preparamos a sua candidatura para cada uma."
+  },
+  "pendingQ": {
+    "title": "Perguntas em que o agente parou",
+    "empty": "Nada pendente. Quando um empregador pergunta algo que o seu perfil não consegue responder, o agente pára em vez de adivinhar — e pergunta-lhe aqui.",
+    "intro": "O agente não responde por si: estas perguntas são sobre si, e uma resposta errada chega ao empregador em seu nome. Responda uma vez a cada e ele usará em todos os formulários que voltem a perguntar.",
+    "askedBy": "Perguntado por {{company}}",
+    "askedGeneric": "Perguntado num formulário de candidatura",
+    "seenN": "bloqueou {{n}} candidaturas",
+    "confirm": "Sim, isso é verdade no meu caso",
+    "placeholder": "A sua resposta, por palavras suas",
+    "save": "Guardar",
+    "saved": "Guardado — o agente usará esta resposta a partir de agora",
+    "saveFailed": "Não foi possível guardar a resposta — nada foi alterado"
   }
 }

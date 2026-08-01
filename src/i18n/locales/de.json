@@ -4330,5 +4330,18 @@
     "clickBlurb": "Diese nutzen ein CAPTCHA oder eine menschliche Prüfung. Wir lösen und umgehen keines – Ihre Bewerbung kommt fertig an und Sie senden sie.",
     "allTitle": "Bewerbungen für Sie vorbereitet",
     "allBlurb": "Wir holen Stellen direkt aus diesen Systemen und bereiten Ihre Bewerbung für jede einzelne vor."
+  },
+  "pendingQ": {
+    "title": "Fragen, bei denen der Agent gestoppt hat",
+    "empty": "Nichts offen. Wenn ein Arbeitgeber etwas fragt, das Ihr Profil nicht beantworten kann, hält der Agent an, statt zu raten – und fragt Sie hier.",
+    "intro": "Der Agent beantwortet diese nicht für Sie: Es geht um Sie, und eine falsche Antwort erreicht den Arbeitgeber in Ihrem Namen. Beantworten Sie jede einmal, und er verwendet sie in jedem Formular, das erneut danach fragt.",
+    "askedBy": "Gefragt von {{company}}",
+    "askedGeneric": "In einem Bewerbungsformular gefragt",
+    "seenN": "blockierte {{n}} Bewerbungen",
+    "confirm": "Ja, das trifft auf mich zu",
+    "placeholder": "Ihre Antwort, in Ihren Worten",
+    "save": "Speichern",
+    "saved": "Gespeichert – der Agent verwendet diese Antwort ab jetzt",
+    "saveFailed": "Antwort konnte nicht gespeichert werden – nichts wurde geändert"
   }
 }

@@ -4330,5 +4330,18 @@
     "clickBlurb": "Estos usan CAPTCHA o una verificación humana. Nunca los resolvemos ni los evitamos, así que tu solicitud llega lista y la envías tú.",
     "allTitle": "Solicitudes preparadas para ti",
     "allBlurb": "Extraemos las ofertas directamente de estos sistemas y preparamos tu solicitud para cada una."
+  },
+  "pendingQ": {
+    "title": "Preguntas ante las que el agente se detuvo",
+    "empty": "Nada pendiente. Cuando una empresa pregunte algo que tu perfil no puede responder, el agente se detiene en lugar de adivinar y te lo pregunta aquí.",
+    "intro": "El agente no responderá por ti: son preguntas sobre ti, y una respuesta incorrecta llega a la empresa en tu nombre. Responde cada una una vez y la usará en todos los formularios que la vuelvan a hacer.",
+    "askedBy": "Preguntado por {{company}}",
+    "askedGeneric": "Preguntado en un formulario de solicitud",
+    "seenN": "bloqueó {{n}} solicitudes",
+    "confirm": "Sí, eso es cierto en mi caso",
+    "placeholder": "Tu respuesta, con tus palabras",
+    "save": "Guardar",
+    "saved": "Guardado: el agente usará esta respuesta a partir de ahora",
+    "saveFailed": "No se pudo guardar la respuesta; no se cambió nada"
   }
 }

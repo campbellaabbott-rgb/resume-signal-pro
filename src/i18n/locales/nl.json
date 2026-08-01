@@ -4330,5 +4330,18 @@
     "clickBlurb": "Deze gebruiken een CAPTCHA of een menselijke controle. Die lossen of omzeilen we nooit, dus je sollicitatie komt kant-en-klaar aan en jij verstuurt hem.",
     "allTitle": "Sollicitaties voor je klaargezet",
     "allBlurb": "We halen vacatures rechtstreeks uit deze systemen en zetten je sollicitatie voor elke vacature klaar."
+  },
+  "pendingQ": {
+    "title": "Vragen waarbij de agent is gestopt",
+    "empty": "Niets open. Als een werkgever iets vraagt dat uw profiel niet kan beantwoorden, stopt de agent in plaats van te gokken — en vraagt het hier aan u.",
+    "intro": "De agent beantwoordt deze niet voor u: ze gaan over u, en een fout antwoord bereikt de werkgever onder uw naam. Beantwoord elke vraag één keer en hij gebruikt het op elk formulier dat er opnieuw naar vraagt.",
+    "askedBy": "Gevraagd door {{company}}",
+    "askedGeneric": "Gevraagd op een sollicitatieformulier",
+    "seenN": "blokkeerde {{n}} sollicitaties",
+    "confirm": "Ja, dat klopt voor mij",
+    "placeholder": "Uw antwoord, in uw eigen woorden",
+    "save": "Opslaan",
+    "saved": "Opgeslagen — de agent gebruikt dit antwoord vanaf nu",
+    "saveFailed": "Antwoord kon niet worden opgeslagen — er is niets gewijzigd"
   }
 }

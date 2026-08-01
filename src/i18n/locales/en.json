@@ -4330,5 +4330,18 @@
     "clickBlurb": "These use a CAPTCHA or a human check. We never solve or bypass one, so your application arrives ready and you send it.",
     "allTitle": "Applications prepared for you",
     "allBlurb": "We pull jobs directly from these systems and prepare your application for each one."
+  },
+  "pendingQ": {
+    "title": "Questions the agent stopped on",
+    "empty": "Nothing waiting. When an employer asks something your profile can't answer, the agent stops rather than guessing — and asks you here.",
+    "intro": "The agent won't answer these for you — they're about you, and a wrong answer goes to an employer under your name. Answer each once and it will use it on every form that asks again.",
+    "askedBy": "Asked by {{company}}",
+    "askedGeneric": "Asked on an application form",
+    "seenN": "blocked {{n}} applications",
+    "confirm": "Yes, that's true of me",
+    "placeholder": "Your answer, in your own words",
+    "save": "Save",
+    "saved": "Saved — the agent will use this answer from now on",
+    "saveFailed": "Could not save that answer — nothing was changed"
   }
 }

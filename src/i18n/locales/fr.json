@@ -4330,5 +4330,18 @@
     "clickBlurb": "Ceux-ci utilisent un CAPTCHA ou une vérification humaine. Nous ne les résolvons ni ne les contournons : votre candidature arrive prête et vous l'envoyez.",
     "allTitle": "Candidatures préparées pour vous",
     "allBlurb": "Nous récupérons les offres directement dans ces systèmes et préparons votre candidature pour chacune."
+  },
+  "pendingQ": {
+    "title": "Questions sur lesquelles l'agent s'est arrêté",
+    "empty": "Rien en attente. Lorsqu'un employeur pose une question à laquelle votre profil ne peut pas répondre, l'agent s'arrête au lieu de deviner et vous la pose ici.",
+    "intro": "L'agent ne répondra pas à votre place : ces questions vous concernent, et une mauvaise réponse parvient à l'employeur en votre nom. Répondez une fois et il l'utilisera sur tous les formulaires qui la reposent.",
+    "askedBy": "Posée par {{company}}",
+    "askedGeneric": "Posée sur un formulaire de candidature",
+    "seenN": "a bloqué {{n}} candidatures",
+    "confirm": "Oui, c'est vrai pour moi",
+    "placeholder": "Votre réponse, avec vos mots",
+    "save": "Enregistrer",
+    "saved": "Enregistré — l'agent utilisera cette réponse désormais",
+    "saveFailed": "Impossible d'enregistrer cette réponse — rien n'a été modifié"
   }
 }

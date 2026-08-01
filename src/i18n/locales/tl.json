@@ -4330,5 +4330,18 @@
     "clickBlurb": "May CAPTCHA o pagsusuri ng tao ang mga ito. Hindi namin nilulutas o nilalampasan, kaya handa nang dumating ang aplikasyon mo at ikaw ang magpapadala.",
     "allTitle": "Mga aplikasyong inihanda para sa iyo",
     "allBlurb": "Direktang kinukuha namin ang mga trabaho sa mga sistemang ito at inihahanda ang aplikasyon mo sa bawat isa."
+  },
+  "pendingQ": {
+    "title": "Mga tanong na hindi nasagot ng agent",
+    "empty": "Walang naghihintay. Kapag may itinanong ang employer na hindi kayang sagutin ng iyong profile, humihinto ang agent sa halip na manghula — at dito ka nito tatanungin.",
+    "intro": "Hindi ito sasagutin ng agent para sa iyo — tungkol ito sa iyo, at ang maling sagot ay dumarating sa employer sa ilalim ng iyong pangalan. Sagutin ang bawat isa nang minsan at gagamitin niya ito sa bawat form na muling magtatanong.",
+    "askedBy": "Itinanong ng {{company}}",
+    "askedGeneric": "Itinanong sa isang application form",
+    "seenN": "humarang sa {{n}} aplikasyon",
+    "confirm": "Oo, totoo iyan sa akin",
+    "placeholder": "Ang sagot mo, sa sarili mong salita",
+    "save": "I-save",
+    "saved": "Na-save — gagamitin na ito ng agent mula ngayon",
+    "saveFailed": "Hindi ma-save ang sagot — walang binago"
   }
 }
