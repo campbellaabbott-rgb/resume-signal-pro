@@ -607,3 +607,60 @@ Note that `apply-agent` does not pass `language` at all today, so every
 tailored note is English regardless of the candidate's locale. That is now a
 deliberate, recorded limit: wiring language through requires the gate to
 support that language first.
+
+---
+
+## The browser half works. Three live dry runs, 2026-08-01.
+
+First time the real adapters have been driven against live employer forms since
+the broker rewrite. `dryrun.ts` imports the same adapter code the worker uses
+and calls it in the same order; it needs no database, no service key and no
+broker, and it stops before the click. Nothing was submitted.
+
+| vendor | form | CAPTCHA | fields | résumé | verdict |
+|---|---|---|---|---|---|
+| **Personio** | resolved | none | 5/5 | attached | **DRY RUN CLEAN — would have submitted** |
+| **Pinpoint** | resolved | none | 7/7 | attached | 1 blocker (with a complete profile) |
+| **Breezy** | resolved | none | 4/4 | attached | 4 blockers |
+
+Personio completed end to end on a real posting. That is the first evidence the
+browser half is not theoretical.
+
+### The blockers are all ONE class, and it is not the class we built for
+
+Pinpoint with the dry run's default (empty) standing answers reported five
+blockers: city, postcode, salary, an open question, and consent. With a
+COMPLETE profile it drops to **one**, and seven questions get answered —
+preferred name, city, postcode, notice period, salary, work authorisation
+(chosen "Yes" from the trinary), consent (ticked). Measuring against an empty
+profile overstates the problem by 4x, which is worth remembering before anyone
+quotes a completion rate.
+
+What survives a complete profile is **employer-specific open prose**:
+
+    Breezy    "Walk me through your last role where you were directly responsible…"
+              "What was your average close rate across your team…"
+              "Have you managed a warm-lead, appointment-driven sales model…"
+    Pinpoint  "Please tell us what adjustments or support would help you…"
+
+Pinpoint's is a disability-adjustments question and the agent SHOULD refuse it —
+that is the safeguard working. Breezy's three are ordinary experience questions
+that a résumé can answer, and they are the reason a Breezy packet refuses.
+
+### Why they are never drafted: we harvest questions for the wrong vendors
+
+`realQuestions` is true for exactly three vendors — **teamtailor, ashby,
+greenhouse**. Ashby is 60/60 CAPTCHA and Greenhouse is invisible reCAPTCHA
+Enterprise: both NO-BUILD. So the agent harvests real questions for two vendors
+it cannot drive, and harvests none for **breezy, personio and pinpoint** —
+three of the four it can.
+
+With `realQuestions: false`, apply-agent falls back to four generic questions
+(name, email, phone, résumé), never sees the employer's actual form, never
+drafts anything, and the worker meets the questions cold and refuses.
+
+Everything needed to close this already exists: `generate-application-answers`
+drafts grounded answers with a `supported` flag, `buildPacket` consumes them via
+`drafted`, and the worker reads `packet.fields`. The missing piece is harvesting
+breezy/personio/pinpoint questions at prep time — the same shape as the
+teamtailor harvester that already works.

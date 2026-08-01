@@ -22,7 +22,6 @@
     "whether they are authorised to work' — the honest answer to a question the",
     "profile could not answer, and a wasted run."
   ],
-
   "fullName": "",
   "firstName": "",
   "lastName": "",
@@ -32,17 +31,16 @@
   "city": "",
   "country": "",
   "address": "",
+  "postcode": "",
   "linkedin": "",
   "website": "",
   "coverNote": "",
   "salaryExpectation": "",
   "earliestStart": "",
   "resumePath": "",
-
   "workAuthorized": null,
   "requiresSponsorship": null,
   "willingToRelocate": null,
-
   "shareDemographics": false,
   "consentToProcessing": false
 }
