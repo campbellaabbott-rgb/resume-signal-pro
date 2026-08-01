@@ -19,6 +19,23 @@
  */
 const TIMEOUT_MS = 4_000;
 
+/**
+ * What to POST. `WORKER_START_BODY` verbatim when set, otherwise a readable
+ * reason for hosts that do not care.
+ *
+ * Invalid JSON in the secret falls back to the default rather than throwing:
+ * a typo in a wake payload must not take down the path that PREPARES
+ * applications, which would turn a cosmetic misconfiguration into customers
+ * getting nothing at all.
+ */
+function bodyFor(): string {
+  const raw = (Deno.env.get("WORKER_START_BODY") ?? "").trim();
+  if (raw) {
+    try { JSON.parse(raw); return raw; } catch { /* fall through to default */ }
+  }
+  return JSON.stringify({ reason: "apply-agent: packets ready, no sender online" });
+}
+
 export type WakeResult =
   | { attempted: false; reason: "no-url" | "not-needed" }
   | { attempted: true; ok: boolean; status?: number; error?: string };
@@ -47,7 +64,15 @@ export async function wakeSender(needed: boolean): Promise<WakeResult> {
         // too without receiving a stray Authorization header.
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
-      body: JSON.stringify({ reason: "apply-agent: packets ready, no sender online" }),
+      // The body the HOST needs, not the body we would like to send.
+      //
+      // GitHub's workflow_dispatch endpoint REQUIRES a `ref` and rejects
+      // anything without one with 422 — so the human-readable reason below,
+      // which is the useful default for a plain webhook, silently fails against
+      // the host we actually use. Configurable rather than special-cased,
+      // because hard-coding GitHub's shape here would undo the point of this
+      // module being host-agnostic.
+      body: bodyFor(),
       signal: ctrl.signal,
     });
     return { attempted: true, ok: resp.ok, status: resp.status };

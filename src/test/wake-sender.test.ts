@@ -74,3 +74,47 @@ describe("wakeSender stays out of the way", () => {
     expect(headers.Authorization).toBe("Bearer sekrit");
   });
 });
+
+/**
+ * The body GitHub needs. This is the difference between a wake that starts the
+ * worker and a 422 nobody notices — wake failures are swallowed by design, so
+ * a wrong body would show up only as applications never being sent.
+ */
+describe("the wake body is the host's shape, not ours", () => {
+  /** Capture the request the module actually makes. */
+  const capture = () => {
+    const seen: Array<{ url: string; init: RequestInit }> = [];
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init: RequestInit) => {
+      seen.push({ url, init });
+      return { ok: true, status: 204 } as Response;
+    }));
+    return seen;
+  };
+
+  it("sends WORKER_START_BODY verbatim when it is set", async () => {
+    const seen = capture();
+    env.set("WORKER_START_URL", "https://api.github.com/dispatches");
+    // GitHub's workflow_dispatch REQUIRES a ref and 422s without one.
+    env.set("WORKER_START_BODY", '{"ref":"main"}');
+    expect(await (await load())(true)).toMatchObject({ attempted: true, ok: true });
+    expect(seen[0]?.init.body).toBe('{"ref":"main"}');
+  });
+
+  it("falls back to the readable default when the secret is not JSON", async () => {
+    // A typo in a wake payload must not take down the path that PREPARES
+    // applications — that would turn a cosmetic misconfiguration into
+    // customers getting nothing at all.
+    const seen = capture();
+    env.set("WORKER_START_URL", "https://example.test/start");
+    env.set("WORKER_START_BODY", "{ref:main}");
+    expect(await (await load())(true)).toMatchObject({ attempted: true, ok: true });
+    expect(JSON.parse(String(seen[0]?.init.body))).toHaveProperty("reason");
+  });
+
+  it("still sends the default when no body is configured", async () => {
+    const seen = capture();
+    env.set("WORKER_START_URL", "https://example.test/start");
+    await (await load())(true);
+    expect(JSON.parse(String(seen[0]?.init.body))).toHaveProperty("reason");
+  });
+});
