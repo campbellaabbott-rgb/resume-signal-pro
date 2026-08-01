@@ -9,7 +9,12 @@
 #   ./mac/applyd status    is it scheduled, did it run, what did it say
 #   ./mac/applyd logs      tail the log
 #
-# It reads worker/.env, which is gitignored and holds the service-role key.
+# It reads worker/.env, which is gitignored. That file used to hold a
+# service-role key; it no longer can. The backend is Lovable Cloud-managed and
+# injects that key into edge functions at runtime, where nobody can retrieve it.
+# Every privileged operation now goes through the apply-broker edge function,
+# and this worker holds only APPLY_BROKER_URL + APPLY_WORKER_SECRET — a
+# credential that can claim and release application packets and nothing else.
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -20,44 +25,59 @@ LOG="$HERE/mac/apply.log"
 need_env() {
   if [ ! -f "$HERE/.env" ]; then
     echo "  worker/.env is missing."
-    echo "  cp worker/.env.example worker/.env  and put your service-role key in it."
-    echo "  (Supabase -> Project Settings -> API -> service_role)"
+    echo "  cp worker/.env.example worker/.env  and fill in the two broker values."
     exit 2
   fi
   set -a; . "$HERE/.env"; set +a
-  if [ -z "${SUPABASE_SERVICE_ROLE_KEY:-}" ]; then
-    echo "  SUPABASE_SERVICE_ROLE_KEY is empty in worker/.env"; exit 2
+  MISSING=""
+  [ -z "${APPLY_BROKER_URL:-}" ]    && MISSING="$MISSING APPLY_BROKER_URL"
+  [ -z "${APPLY_WORKER_SECRET:-}" ] && MISSING="$MISSING APPLY_WORKER_SECRET"
+  if [ -n "$MISSING" ]; then
+    echo "  missing in worker/.env:$MISSING"
+    echo "  URL:    https://<project>.supabase.co/functions/v1/apply-broker"
+    echo "  SECRET: Lovable -> Backend -> Secrets -> APPLY_WORKER_SECRET"
+    exit 2
   fi
 }
 
 case "${1:-}" in
   check)
     need_env
-    # Read-only. Answers "is there anything for a worker to do", without
-    # starting one — the same RPC the worker itself pre-flights on.
-    OUT=$(curl -s -X POST "$SUPABASE_URL/rest/v1/rpc/agent_work_pending" \
-      -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
-      -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
-      -H "Content-Type: application/json" -d '{}')
-    case "$OUT" in
-      *PGRST202*)
-        # The migration is committed but has not reached the database yet —
-        # Lovable applies migrations during a session, not on git push. Worth
-        # naming, because "function not found" reads like a broken install.
-        echo "  agent_work_pending() is not in the database yet."
-        echo "  Open the project in Lovable once to apply pending migrations."
-        echo "  Until then the worker still runs; it just cannot skip the browser"
-        echo "  launch when the queue is empty." ;;
-      *42501*)
-        echo "  permission denied — is SUPABASE_SERVICE_ROLE_KEY the service_role key,"
-        echo "  not the anon key? (anon is correctly refused here.)" ;;
-      *should_run*)
-        echo "  $OUT"
-        case "$OUT" in
-          *'"should_run":true'*)  echo "  -> there is paid work waiting; ./mac/applyd once will send it" ;;
-          *) echo "  -> nothing to send. A worker started now would exit immediately." ;;
+    # Probes BEHAVIOUR, not reachability. A 401 and an empty queue are different
+    # facts that used to be easy to confuse, so they print differently here.
+    BODY='{"action":"ping","worker_id":"applyd-check","version":"check","claimed":0}'
+    CODE=$(curl -s -o /tmp/applyd-check.out -w "%{http_code}" \
+      -X POST "$APPLY_BROKER_URL" \
+      -H "Authorization: Bearer $APPLY_WORKER_SECRET" \
+      -H "Content-Type: application/json" -d "$BODY")
+    case "$CODE" in
+      200)
+        echo "  broker reachable and the secret is accepted."
+        # Now ask the question that decides whether a browser is worth starting.
+        CBODY='{"action":"claim","worker_id":"applyd-check","version":"check"}'
+        COUT=$(curl -s -X POST "$APPLY_BROKER_URL" \
+          -H "Authorization: Bearer $APPLY_WORKER_SECRET" \
+          -H "Content-Type: application/json" -d "$CBODY")
+        case "$COUT" in
+          *'"packet":null'*)
+            echo "  nothing queued. A worker started now would exit without a browser." ;;
+          *'"packet"'*)
+            # NOTE: this claim took a 10-minute lease on a real packet. It will
+            # be picked up by the next run once the lease lapses, or immediately
+            # if you run `once` now.
+            echo "  a packet is waiting — ./mac/applyd once will send it."
+            echo "  (this check leased it for 10 minutes; run 'once' now or wait)" ;;
+          *) echo "  unexpected claim response: $(echo "$COUT" | head -c 200)" ;;
         esac ;;
-      *) echo "  unexpected: $OUT" ;;
+      401|403)
+        echo "  broker rejected the secret ($CODE)."
+        echo "  APPLY_WORKER_SECRET does not match the edge secret of the same name." ;;
+      404)
+        echo "  no broker at that URL ($CODE) — check APPLY_BROKER_URL." ;;
+      000)
+        echo "  could not reach the broker at all. Network, or a wrong host." ;;
+      *)
+        echo "  broker returned $CODE: $(head -c 200 /tmp/applyd-check.out)" ;;
     esac
     ;;
 

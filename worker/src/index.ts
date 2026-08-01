@@ -12,19 +12,17 @@
 //   - retry an ambiguous submit
 //   - claim a row another worker holds
 import { chromium } from "playwright";
-import { createClient } from "@supabase/supabase-js";
 import { mkdtemp, writeFile, rm, mkdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { learnedKey, type LearnedAnswers, type LearnedAnswer } from "./questions/learned.js";
+import * as broker from "./broker.js";
 import type { BlockedQuestion } from "./apply.js";
 import { applyToPosting } from "./apply.js";
 import { ADAPTERS, BLOCKED } from "./vendors/index.js";
 import type { PacketFieldKey } from "./vendors/types.js";
 import type { StandingAnswers } from "./questions/match.js";
 
-const SUPABASE_URL = process.env.SUPABASE_URL ?? "";
-const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
 const WORKER_ID = process.env.WORKER_ID ?? `worker-${Math.random().toString(36).slice(2, 8)}`;
 // Between applications. Not evasion — plain courtesy to an employer's server,
 // and it keeps one candidate's batch from looking like a burst.
@@ -57,11 +55,18 @@ const SHOT_DIR = process.env.WORKER_SHOT_DIR ?? join(process.cwd(), "mac", "unce
 // so it claimed capability the driver did not have.
 const AUTO_VENDORS = new Set(Object.keys(ADAPTERS));
 
-if (!SUPABASE_URL || !SERVICE_KEY) {
-  console.error("[worker] SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required");
+if (!process.env.APPLY_BROKER_URL || !process.env.APPLY_WORKER_SECRET) {
+  console.error(
+    [
+      "[worker] APPLY_BROKER_URL and APPLY_WORKER_SECRET are required.",
+      "  The worker no longer holds a service-role key — it cannot. The backend",
+      "  is Lovable Cloud-managed and injects that key into edge functions at",
+      "  runtime, where it is not retrievable. Every privileged operation goes",
+      "  through the apply-broker edge function instead.",
+    ].join("\n"),
+  );
   process.exit(1);
 }
-const db = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } });
 
 type Packet = {
   id: number; user_id: string; posting_id: string; title: string; company: string;
@@ -76,31 +81,34 @@ type Packet = {
 // The bucket is PRIVATE, so this reads with the service key. That is the only
 // path by which a résumé leaves its owner's control, and it goes straight into
 // an application that owner asked for.
-async function stageResume(userId: string): Promise<{ path: string; dir: string } | null> {
-  const { data: m } = await db.from("agent_mandates")
-    .select("resume_file_url").eq("user_id", userId).maybeSingle();
-  const key = String((m as { resume_file_url?: string } | null)?.resume_file_url ?? "").trim();
-  if (!key) return null;
-
-  // The stored value is a storage PATH, not a URL. A row still holding an http
-  // URL predates the bucket and cannot be downloaded this way — better to skip
-  // and let the form's required-field check block than to attach nothing and
-  // submit an application with no résumé.
-  if (/^https?:\/\//i.test(key)) {
-    console.warn(`[worker] ${userId} resume_file_url is a URL, not a storage path — skipping`);
+async function stageResume(resumeUrl: string | null): Promise<{ path: string; dir: string } | null> {
+  // The broker hands back a short-lived signed URL rather than a storage path,
+  // because the worker no longer has credentials to read the private bucket —
+  // which is the point. A plain fetch is all that is needed, and the URL is
+  // useless to anyone who intercepts it minutes later.
+  if (!resumeUrl) return null;
+  try {
+    const res = await fetch(resumeUrl);
+    if (!res.ok) {
+      // A résumé we cannot fetch BLOCKS the send. It never falls through to
+      // submitting an application with no CV attached, which is worse than not
+      // applying: it burns the posting and looks to the employer like
+      // carelessness by the candidate.
+      console.warn(`[worker] resume download failed: ${res.status}`);
+      return null;
+    }
+    const dir = await mkdtemp(join(tmpdir(), "rb-resume-"));
+    // Name it from the URL path so the employer sees a sensible filename, and
+    // fall back rather than trusting a query string to be absent.
+    const guessed = decodeURIComponent(new URL(resumeUrl).pathname.split("/").pop() || "");
+    const name = /\.(pdf|docx?|rtf|odt)$/i.test(guessed) ? guessed : "resume.pdf";
+    const path = join(dir, name);
+    await writeFile(path, Buffer.from(await res.arrayBuffer()));
+    return { path, dir };
+  } catch (e) {
+    console.warn(`[worker] resume fetch threw: ${String(e).slice(0, 120)}`);
     return null;
   }
-
-  const { data, error } = await db.storage.from("resumes").download(key);
-  if (error || !data) {
-    console.warn(`[worker] resume download failed for ${userId}: ${error?.message ?? "no data"}`);
-    return null;
-  }
-  const dir = await mkdtemp(join(tmpdir(), "rb-resume-"));
-  const name = key.split("/").pop() || "resume.pdf";
-  const path = join(dir, name);
-  await writeFile(path, Buffer.from(await data.arrayBuffer()));
-  return { path, dir };
 }
 
 
@@ -143,108 +151,7 @@ function toFieldKeys(
   return out;
 }
 
-/**
- * The candidate's standing answers to employer screening questions.
- *
- * Read from the mandate at claim time rather than snapshotted into the packet:
- * somebody who corrects "requires sponsorship" this morning must not have
- * yesterday's answer sent to an employer this afternoon.
- *
- * Booleans stay TRINARY. `?? null` and never `?? false` — a missing row means
- * the person never answered, and defaulting that to "no" would have the agent
- * tell an employer a candidate is not authorised to work in a country when they
- * simply had not said. That ends the application, and it is a false statement.
- */
-async function loadAnswers(userId: string): Promise<StandingAnswers | undefined> {
-  // COLUMN NAMES ARE VERIFIED AGAINST THE SCHEMA, not guessed from the field
-  // names in StandingAnswers. My first version asked for first_name, last_name,
-  // address, linkedin_url and website_url; the table has none of those (it has
-  // linkedin and website, and no split name at all). PostgREST answers an
-  // unknown column with an error and no rows, so loadAnswers would have
-  // returned undefined every time and every screening form would have been
-  // refused — the feature silently absent, looking exactly like "no employer
-  // form is answerable".
-  const { data, error } = await db.from("agent_mandates")
-    .select("full_name, email, phone, city, country, location, address, postcode, linkedin, website, " +
-            "salary_expectation, earliest_start, work_authorized, requires_sponsorship, " +
-            "willing_to_relocate, work_authorized_countries, share_demographics, consent_to_processing")
-    .eq("user_id", userId).maybeSingle();
-  if (error) {
-    // Loud, because the failure mode is invisible: no answers means every form
-    // with a screening question is refused, which reads as a hard market rather
-    // than a broken query.
-    console.error(`[worker] loadAnswers failed for ${userId}: ${error.message}`);
-    return undefined;
-  }
-  if (!data) return undefined;
-  const m = data as unknown as Record<string, unknown>;
-  const str = (k: string) => String(m[k] ?? "").trim();
-  // TRINARY. `?? null`, never `?? false` — a column the candidate never filled
-  // in means "not stated". Defaulting it to "no" would have the agent tell an
-  // employer someone is not authorised to work in a country when they simply
-  // had not said, which is both a false statement and an instant rejection.
-  const tri = (k: string) => (typeof m[k] === "boolean" ? (m[k] as boolean) : null);
 
-  // The table stores one name. Splitting it is a formatting choice about the
-  // candidate's own stated name, not an inference about a new fact.
-  const full = str("full_name");
-  const parts = full.split(/\s+/).filter(Boolean);
-  const firstName = parts.length > 0 ? parts[0]! : "";
-  const lastName = parts.length > 1 ? parts.slice(1).join(" ") : "";
-
-  return {
-    fullName: full, firstName, lastName,
-    email: str("email"), phone: str("phone"),
-    city: str("city") || str("location"), country: str("country"),
-    // Added 20260801020000. Still refuses when empty — a form asking for a
-    // street address must never receive a city, and a postcode is never parsed
-    // out of the address line.
-    address: str("address"), postcode: str("postcode"),
-    linkedin: str("linkedin"), website: str("website"), coverNote: "",
-    salaryExpectation: str("salary_expectation"), earliestStart: str("earliest_start"),
-    workAuthorized: tri("work_authorized"),
-    requiresSponsorship: tri("requires_sponsorship"),
-    willingToRelocate: tri("willing_to_relocate"),
-    // Explicit, never inferred. An empty list means the single boolean speaks
-    // only for `country` — see questions/countries.ts for why that matters.
-    workAuthorizedCountries: Array.isArray(m["work_authorized_countries"])
-      ? (m["work_authorized_countries"] as string[]).map((c) => String(c).toUpperCase())
-      : [],
-    shareDemographics: m["share_demographics"] === true,
-    consentToProcessing: m["consent_to_processing"] === true,
-  };
-}
-
-/**
- * Screening answers this candidate has already given on earlier forms.
- *
- * Absence is not failure. A candidate who has answered nothing simply gets the
- * standing rules, which is the state everyone starts in — so a query error here
- * degrades to "no learned answers" rather than refusing the send. It is still
- * logged, because the difference between "nobody has answered anything yet" and
- * "the table is unreachable" is invisible from the outcome, and that is exactly
- * the kind of silence that has hidden problems in this codebase before.
- */
-async function loadLearned(userId: string): Promise<LearnedAnswers> {
-  const { data, error } = await db.from("agent_learned_answers")
-    .select("question_key, question_label, answer_kind, answer_value")
-    .eq("user_id", userId);
-  if (error) {
-    console.error(`[worker] loadLearned failed for ${userId}: ${error.message} — continuing with standing answers only`);
-    return new Map();
-  }
-  const m = new Map<string, LearnedAnswer>();
-  for (const r of (data ?? []) as Array<Record<string, unknown>>) {
-    const key = String(r["question_key"] ?? "");
-    const kind = String(r["answer_kind"] ?? "");
-    if (!key || (kind !== "fill" && kind !== "choose" && kind !== "check")) continue;
-    m.set(key, {
-      key, label: String(r["question_label"] ?? ""),
-      kind, value: String(r["answer_value"] ?? ""),
-    });
-  }
-  return m;
-}
 
 /**
  * Turn a refusal into a question the candidate can answer once.
@@ -268,28 +175,59 @@ async function recordPending(
   const askable = outcome.blocked.filter((b) => b.learnable && b.label.trim());
   if (!askable.length) return;
 
-  for (const b of askable) {
-    const key = learnedKey(b.label);
-    if (!key) continue;
-    // Upsert on (user_id, question_key): the same question across ten postings
-    // is ONE thing to ask, not ten. seen_count records how much it is costing.
-    const { error } = await db.from("agent_pending_questions").upsert({
-      user_id: p.user_id,
-      question_key: key,
-      question_label: b.label.slice(0, 400),
-      answer_kind: b.kind,
-      options: b.options,
-      refusal_reason: b.why.slice(0, 300),
-      posting_id: p.posting_id,
-      company: p.company,
-      last_seen_at: new Date().toISOString(),
-    }, { onConflict: "user_id,question_key", ignoreDuplicates: false });
-    if (error) {
-      console.error(`[worker] could not record pending question for ${p.user_id}: ${error.message}`);
-      return; // one failure is enough to stop trying; the packet is unaffected
-    }
+  // Upserted on (user_id, question_key) by the broker: the same question across
+  // ten postings is ONE thing to ask, not ten. seen_count records the cost.
+
+  const r = await broker.pending(p.user_id, askable.map((b) => ({
+    question_key: learnedKey(b.label),
+    question_label: b.label.slice(0, 400),
+    answer_kind: b.kind,
+    options: b.options,
+    refusal_reason: b.why.slice(0, 300),
+    posting_id: p.posting_id,
+    company: p.company,
+  })).filter((q) => q.question_key));
+  if (!r.ok) {
+    console.error(`[worker] could not record pending questions (${r.kind}): ${r.detail}`);
+    return;
   }
   console.log(`[worker] ${askable.length} question(s) recorded for ${p.user_id} to answer once`);
+}
+
+/**
+ * The broker returns exactly the shape the matcher wants, so this is a cast
+ * with a guard rather than a transform. The one thing that must survive intact
+ * is the TRINARIES: `null` means "the candidate never said", and coercing it to
+ * false would have the agent tell an employer someone is NOT authorised to work
+ * somewhere when they simply had not answered.
+ */
+function toStanding(a: broker.StandingAnswersWire): StandingAnswers {
+  const tri = (v: boolean | null | undefined) => (typeof v === "boolean" ? v : null);
+  return {
+    fullName: a.fullName ?? "", firstName: a.firstName ?? "", lastName: a.lastName ?? "",
+    email: a.email ?? "", phone: a.phone ?? "", city: a.city ?? "", country: a.country ?? "",
+    address: a.address ?? "", postcode: a.postcode ?? "",
+    linkedin: a.linkedin ?? "", website: a.website ?? "",
+    coverNote: a.coverNote ?? "", salaryExpectation: a.salaryExpectation ?? "",
+    earliestStart: a.earliestStart ?? "",
+    workAuthorized: tri(a.workAuthorized),
+    requiresSponsorship: tri(a.requiresSponsorship),
+    willingToRelocate: tri(a.willingToRelocate),
+    workAuthorizedCountries: (a.workAuthorizedCountries ?? []).map((c) => String(c).toUpperCase()),
+    // These two gate behaviour rather than answering a question, so an unstated
+    // value is treated as "not granted" — the safe direction for both.
+    shareDemographics: a.shareDemographics === true,
+    consentToProcessing: a.consentToProcessing === true,
+  };
+}
+
+function toLearned(rows: broker.ClaimedPacket["learned"]): LearnedAnswers {
+  const m = new Map<string, LearnedAnswer>();
+  for (const r of rows ?? []) {
+    if (!r?.key) continue;
+    m.set(r.key, { key: r.key, label: r.label ?? "", kind: r.kind, value: r.value ?? "" });
+  }
+  return m;
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -328,10 +266,28 @@ async function pauseForEmployer(company: string): Promise<void> {
 }
 
 async function release(id: number, patch: Record<string, unknown>) {
-  await db.from("agent_submissions").update({ claimed_at: null, claimed_by: "", ...patch }).eq("id", id);
+  // The broker clears the lease itself and, on status:'submitted', mirrors the
+  // row into user_applications so the tracker the candidate reads and
+  // agent_submissions can never disagree about what they applied to.
+  const r = await broker.release(id, patch);
+  if (!r.ok) console.error(`[worker] release ${id} failed (${r.kind}): ${r.detail}`);
+  else if (patch.status === "submitted" && r.data.mirrored === false) {
+    // Not fatal — the send IS recorded. But the tracker is what the person
+    // paying actually looks at, and a missing row there reads as "the agent
+    // did nothing", so it is worth saying out loud rather than swallowing.
+    console.warn(`[worker] ${id} sent but the tracker mirror did not land`);
+  }
 }
 
-async function runOne(browser: Awaited<ReturnType<typeof chromium.launch>>, p: Packet): Promise<string> {
+async function runOne(
+  browser: Awaited<ReturnType<typeof chromium.launch>>,
+  claimed: broker.ClaimedPacket,
+): Promise<string> {
+  // Everything this needs arrives with the claim in one round trip: the packet,
+  // the candidate's standing answers, what they have already taught the agent,
+  // and a short-lived signed URL for the résumé. The worker used to make three
+  // more privileged queries per packet; it now makes none.
+  const p = claimed.packet as unknown as Packet;
   const src = String(p.source ?? "").toLowerCase();
 
   // Belt and braces against the row being wrong about its own vendor — a stale
@@ -348,9 +304,9 @@ async function runOne(browser: Awaited<ReturnType<typeof chromium.launch>>, p: P
   // at right now, not the one it pointed at when the worker started.
   await pauseForEmployer(p.company);
 
-  const staged = await stageResume(p.user_id);
-  const answers = await loadAnswers(p.user_id);
-  const learned = await loadLearned(p.user_id);
+  const staged = await stageResume(claimed.resumeUrl);
+  const answers = toStanding(claimed.answers);
+  const learned = toLearned(claimed.learned);
   let outcome;
   try {
     outcome = await applyToPosting(browser, {
@@ -380,12 +336,6 @@ async function runOne(browser: Awaited<ReturnType<typeof chromium.launch>>, p: P
       sent_answers: outcome.answered ?? [],
       sent_evidence: outcome.evidence.slice(0, 500),
     });
-    // Mirror into the tracker the human reads, so the two never disagree about
-    // what this person has applied to.
-    await db.from("user_applications").insert({
-      user_id: p.user_id, company: p.company, role: p.title,
-      status: "applied", job_id: p.posting_id, apply_url: p.apply_url,
-    }).then(() => {}, () => {});
     return `SENT ${p.company} — ${p.title}`;
   }
 
@@ -406,7 +356,7 @@ async function runOne(browser: Awaited<ReturnType<typeof chromium.launch>>, p: P
     }
     // Never our call to resolve. The RPC parks it for a human AND pushes
     // attempts past the ceiling so nothing picks it up again.
-    await db.rpc("agent_mark_uncertain", { p_id: p.id, p_reason: outcome.reason });
+    await broker.uncertain(p.id, outcome.reason);
     return `UNCERTAIN ${p.company} — ${outcome.reason}`;
   }
 
@@ -455,19 +405,32 @@ async function main() {
   // Only short-circuits when WORKER_IDLE_EXIT_MS says this is a scheduled,
   // exit-when-done run. A long-running worker still starts its browser and
   // polls, because that mode exists for watching a submission happen.
-  if (IDLE_EXIT_MS > 0) {
-    const { data: pend, error: pendErr } = await db.rpc("agent_work_pending");
-    const p = (pend ?? {}) as { should_run?: boolean; pending?: number; subscribers?: number };
-    if (pendErr) {
-      // Could not tell. Carry on and let the claim loop decide — a failed probe
-      // is not evidence of an empty queue, and treating it as one would make the
-      // worker quietly stop sending whenever this RPC had a bad day.
-      console.warn(`[worker] work check failed (${pendErr.message}) — starting anyway`);
-    } else if (p.should_run !== true) {
-      console.log(`[worker] nothing to do (subscribers=${p.subscribers ?? 0}, pending=${p.pending ?? 0}) — exiting without starting a browser`);
+  // FIRST CLAIM BEFORE THE BROWSER. Chromium costs a second or two and a few
+  // hundred megabytes, and on a timer-woken machine it would be spent almost
+  // every time on finding nothing.
+  //
+  // This used to call a separate agent_work_pending() probe to decide. Claiming
+  // is the same signal with one fewer round trip and no chance of the two
+  // disagreeing — a probe that says "work waiting" and a claim that returns
+  // nothing is a state the old shape could reach and this one cannot.
+  //
+  // A packet claimed here holds a 10-minute lease. If the browser then fails to
+  // launch, the lease simply expires and another run picks it up: no worse than
+  // a crash mid-application, which the lease already exists to cover.
+  let firstClaim: broker.ClaimedPacket | null = null;
+  {
+    const r = await broker.claim(WORKER_ID, WORKER_VERSION);
+    if (!r.ok) {
+      // Could not ASK is not the same as nothing to do. Exit non-zero so a
+      // scheduled run shows red rather than quietly reporting an empty queue.
+      console.error(`[worker] first claim failed (${r.kind}): ${r.detail}`);
+      if (r.kind === "auth" || r.kind === "misconfigured") process.exit(2);
+      process.exit(1);
+    }
+    firstClaim = r.data;
+    if (!firstClaim && IDLE_EXIT_MS > 0) {
+      console.log("[worker] nothing to do — exiting without starting a browser");
       return;
-    } else {
-      console.log(`[worker] ${p.pending} packet(s) waiting — starting browser`);
     }
   }
 
@@ -495,25 +458,31 @@ async function main() {
     // is still a working worker, and if the heartbeat only landed on successful
     // claims then a healthy-but-idle sender would look dead and apply-agent
     // would stop releasing to it — the system would talk itself into an outage.
-    await db.rpc("agent_worker_ping", { p_worker: WORKER_ID, p_version: WORKER_VERSION, p_claimed: 0 })
-      .then(() => {}, (e: unknown) => console.warn("[worker] ping failed:", String(e).slice(0, 120)));
+    const pong = await broker.ping(WORKER_ID, WORKER_VERSION, 0);
+    if (!pong.ok) console.warn(`[worker] ping failed (${pong.kind}): ${pong.detail}`);
 
-    const { data, error } = await db.rpc("agent_claim_submission", {
-      p_worker: WORKER_ID, p_lease_minutes: 10,
-    });
-    if (error) {
-      console.error("[worker] claim failed:", error.message);
+    // The packet claimed before the browser launched is used on the first pass,
+    // then normal claiming takes over. Without this it would sit leased and
+    // unworked for ten minutes.
+    let claimed: broker.ClaimedPacket | null = firstClaim;
+    if (claimed) firstClaim = null;
+    else {
+      const r = await broker.claim(WORKER_ID, WORKER_VERSION);
+      if (!r.ok) {
+        console.error(`[worker] claim failed (${r.kind}): ${r.detail}`);
       // A claim that will not run is not work. Left out of this check, a
       // persistent failure keeps the process (and its browser) alive forever.
-      if (idleTooLong()) {
-        console.log(`[worker] ${Math.round((Date.now() - lastWorkAt) / 1000)}s without a successful claim — stopping`);
-        break;
+        if (idleTooLong()) {
+          console.log(`[worker] ${Math.round((Date.now() - lastWorkAt) / 1000)}s without a successful claim — stopping`);
+          break;
+        }
+        await sleep(IDLE_MS);
+        continue;
       }
-      await sleep(IDLE_MS);
-      continue;
+      claimed = r.data;
     }
-    const p = (Array.isArray(data) ? data[0] : null) as Packet | null;
-    if (!p) {
+
+    if (!claimed) {
       // Idle. Leave only if configured to, and only from HERE — the top of an
       // idle pass, with nothing claimed. Exiting mid-application would strand a
       // packet under a lease until it expired, and exiting right after a submit
@@ -525,16 +494,17 @@ async function main() {
       await sleep(IDLE_MS);
       continue;
     }
+    const p = claimed.packet as unknown as Packet;
     lastWorkAt = Date.now();
 
     console.log(`[worker] claimed #${p.id} ${p.source} ${p.company}`);
     try {
-      console.log(`[worker] ${await runOne(browser, p)}`);
+      console.log(`[worker] ${await runOne(browser, claimed)}`);
     } catch (e) {
       // A crash after clicking submit is the same ambiguity as a timeout, and
       // gets the same treatment: parked, never retried.
       console.error(`[worker] #${p.id} threw:`, String(e).slice(0, 200));
-      await db.rpc("agent_mark_uncertain", { p_id: p.id, p_reason: `worker crashed: ${String(e).slice(0, 140)}` });
+      await broker.uncertain(p.id, `worker crashed: ${String(e).slice(0, 140)}`);
     }
     await sleep(GAP_MS);
   }
