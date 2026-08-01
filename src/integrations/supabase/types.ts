@@ -197,6 +197,39 @@ export type Database = {
         }
         Relationships: []
       }
+      agent_learned_answers: {
+        Row: {
+          answer_kind: string
+          answer_value: string
+          created_at: string
+          id: number
+          question_key: string
+          question_label: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          answer_kind: string
+          answer_value?: string
+          created_at?: string
+          id?: never
+          question_key: string
+          question_label: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          answer_kind?: string
+          answer_value?: string
+          created_at?: string
+          id?: never
+          question_key?: string
+          question_label?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       agent_mandates: {
         Row: {
           active: boolean
