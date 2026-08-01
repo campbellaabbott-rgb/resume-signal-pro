@@ -7,6 +7,7 @@
 #   ./mac/applyd install   run every 5 minutes via launchd
 #   ./mac/applyd uninstall stop doing that
 #   ./mac/applyd status    is it scheduled, did it run, what did it say
+#   ./mac/applyd smoke     check the worker and broker agree (submits nothing)
 #   ./mac/applyd logs      tail the log
 #
 # It reads worker/.env, which is gitignored. That file used to hold a
@@ -79,6 +80,14 @@ case "${1:-}" in
       *)
         echo "  broker returned $CODE: $(head -c 200 /tmp/applyd-check.out)" ;;
     esac
+    ;;
+
+  smoke)
+    need_env
+    # The contract check. Verifies the worker and the broker agree on every
+    # field before anything is driven for real — nothing is submitted, and a
+    # packet claimed for inspection is handed straight back.
+    cd "$HERE" && npm run --silent smoke
     ;;
 
   once)

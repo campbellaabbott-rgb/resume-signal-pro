@@ -102,13 +102,24 @@ serve(async (req) => {
         const row = Array.isArray(data) ? data[0] : data;
         if (!row) return json({ packet: null });
 
-        const { data: mandate } = await client
+        // NARROWED, because `deno check` types a maybeSingle() result as the
+        // row OR GenericStringError and refuses every field access on the union
+        // — the function ran fine in production while the repo's mandatory
+        // edge-function gate went red. A gate that stays red gets ignored, and
+        // then it is protecting nothing at all.
+        //
+        // A cast rather than a guard on purpose: every read below already goes
+        // through str()/trinary(), which return "" and null for anything that
+        // is not the expected type. The narrowing changes no behaviour; it just
+        // lets the checker see what those helpers already handle.
+        const { data: mandateRow } = await client
           .from("agent_mandates")
           .select("email,full_name,phone,linkedin,website,city,country,address,postcode," +
             "resume_file_url,work_authorized,requires_sponsorship,willing_to_relocate," +
             "work_authorized_countries,salary_expectation,earliest_start,cover_note," +
             "share_demographics,consent_to_processing")
           .eq("user_id", row.user_id).maybeSingle();
+        const mandate = mandateRow as Record<string, unknown> | null;
 
         const unclaim = async () => {
           await client.from("agent_submissions")
@@ -120,7 +131,7 @@ serve(async (req) => {
         // Entitlement, checked at claim time rather than at prepare time: a
         // lapsed subscriber must stop being applied for the day they lapse.
         const { data: sub } = await client
-          .from("agent_subscribers").select("email").eq("email", mandate.email).maybeSingle();
+          .from("agent_subscribers").select("email").eq("email", str(mandate.email)).maybeSingle();
         if (!sub) { await unclaim(); continue; }
 
         const { data: learnedRows } = await client
