@@ -69,11 +69,11 @@ const FACTS: Record<string, AutomationFact> = {
   // JavaScript, so submission needs a browser engine, not an HTTP POST.
   workday: { tier: "auto", realQuestions: false, sampled: 60, note: "0/60 captcha; JS form; per-tenant account needed" },
   smartrecruiters: { tier: "auto", realQuestions: false, sampled: 60, note: "0/60 captcha; JS form" },
-  breezy: { tier: "auto", realQuestions: false, sampled: 54, note: "0/54 captcha; JS form" },
+  breezy: { tier: "auto", realQuestions: true, sampled: 54, note: "0/54 captcha; JS form. QUESTIONS HARVESTABLE 2026-08-01: the /apply route server-renders the questionnaire as HTML-escaped JSON. Parsed by _shared/vendor-questions.ts" },
   oracle: { tier: "auto", realQuestions: false, sampled: 39, note: "0/39 captcha; JS form" },
   teamtailor: { tier: "auto", realQuestions: true, sampled: 22, note: "0 captcha, no login wall. ADAPTER SHIPPED 2026-07-31: form is inline on the posting page, names are Rails-nested (candidate[first_name] etc), screening questions carry real labels. A cookie overlay must be declined first or the form does not render, and the CV input is unnamed — located by its accept list." },
   personio: { tier: "auto", realQuestions: false, sampled: 7, note: "0/7 captcha — thin sample" },
-  pinpoint: { tier: "auto", realQuestions: false, sampled: 5, note: "0/5 captcha — thin sample" },
+  pinpoint: { tier: "auto", realQuestions: true, sampled: 5, note: "0/5 captcha - thin sample. QUESTIONS HARVESTABLE 2026-08-01: the /applications/new route server-renders one react-on-rails script per question carrying questionDetails{title,questionType,required}. The POSTING page does NOT - probing it and concluding JS-only was wrong. Parsed by _shared/vendor-questions.ts" },
 
   // CAPTCHA PRESENT — excluded from unattended sending.
   //

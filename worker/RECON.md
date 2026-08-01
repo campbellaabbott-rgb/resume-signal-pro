@@ -664,3 +664,61 @@ drafts grounded answers with a `supported` flag, `buildPacket` consumes them via
 `drafted`, and the worker reads `packet.fields`. The missing piece is harvesting
 breezy/personio/pinpoint questions at prep time — the same shape as the
 teamtailor harvester that already works.
+
+---
+
+## Question harvesting for Breezy and Pinpoint, 2026-08-01
+
+Closes the inversion recorded above: `realQuestions` was true for teamtailor,
+ashby and greenhouse, and Ashby and Greenhouse are both NO-BUILD on CAPTCHA. We
+were reading the real form for two vendors we cannot drive and none for three of
+the four we can.
+
+Both remaining vendors turn out to SERVER-RENDER their apply route:
+
+| | where | shape |
+|---|---|---|
+| Breezy | `{posting}/apply` | HTML-escaped JSON — `"questions":[{text,required,type:{id}}]` |
+| Pinpoint | `{posting}/applications/new` | one react-on-rails `<script>` per question, `questionDetails{title,questionType,required}` |
+
+**Measured across 20 live boards:**
+
+| vendor | harvested | questions | required |
+|---|---|---|---|
+| Breezy | 8/10 | 46 | 43 |
+| Pinpoint | 10/10 | 296 | 228 |
+
+The two Breezy zeros are boards with no questionnaire at all, which is a real
+state and not a parse failure.
+
+Personio is deliberately excluded. Its apply route is served but contains no
+`<label>` elements, and the same dry run measured ZERO required questions beyond
+the adapter's own fields — nothing to harvest, so no parser to maintain.
+
+### Two measurement errors on the way, both the same shape
+
+**1. Probing the wrong URL.** Pinpoint's POSTING page carries none of the
+question text, and I nearly recorded it as JS-only and unharvestable. The
+questions are on the APPLY route — the one the adapter already navigates to.
+
+**2. Composing a URL from an id.** The first parser took `(token, externalId)`
+and built the path. It worked on Breezy and **404'd on 8 of 8 live Pinpoint
+boards**: Pinpoint's `id` is a numeric key (`505393`) and its apply path is an
+unrelated UUID (`ac538c02-…`). Nothing about the id announces this. Both
+functions now take the posting's OWN `apply_url` — the same value the worker's
+adapter navigates to — so harvesting one form and filling another is impossible
+by construction rather than merely unlikely.
+
+A 404 harvests nothing while looking exactly like "this form has no questions".
+The unit test asserting the URL strings existed did not catch it; ten live
+fetches did.
+
+### What this changes about where refusals happen
+
+Before: the packet carried four generic questions (name, email, phone, résumé),
+looked ready, and the WORKER refused at the form after launching a browser.
+
+Now: apply-agent sees the real questions, drafts what the résumé supports, and
+anything unsupported becomes a blocker at PREP time with a reason attached.
+Some packets that used to look ready will now be blocked — that is the same
+refusal surfacing earlier and legibly, not a regression.

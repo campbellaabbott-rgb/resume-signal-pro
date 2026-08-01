@@ -55,6 +55,7 @@ import { detectExperience, isExperienceBand } from "./experience.ts";
 import { filterViolations, isUnfiltered, normalizeFilters } from "./filters.ts";
 import { expandQuery } from "./search-alias.ts";
 import { classifyQuestion } from "../_shared/application-questions.ts";
+import { parseBreezyQuestions, parsePinpointQuestions, breezyApplyUrl, pinpointApplyUrl } from "../_shared/vendor-questions.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -4418,6 +4419,44 @@ Deno.serve(async (req) => {
         // supported means "we saw the real form" — a form with no custom
         // questions is still real, and its document list still helps.
         return json({ vendor: source, supported: true, questions, requirements });
+      }
+
+      // Breezy and Pinpoint both SERVER-RENDER their apply route, so the real
+      // form is readable without a browser. Added 2026-08-01 after a live dry
+      // run showed these two were the only remaining blocker class on drivable
+      // vendors — and that we were harvesting questions for Ashby and
+      // Greenhouse, which are both NO-BUILD on CAPTCHA, while harvesting none
+      // for three of the four vendors the worker can actually drive.
+      //
+      // The URLs come from vendor-questions.ts, which is also what the tests
+      // pin against the worker's adapters: harvesting one form and filling a
+      // different one would put confident answers to unasked questions into a
+      // packet, which is worse than harvesting nothing.
+      if (source === "breezy" || source === "pinpoint") {
+        // The posting's OWN url, not one rebuilt from the id. Pinpoint's id is
+        // a numeric key while its apply path is an unrelated UUID — composing
+        // the path 404'd on 8 of 8 live boards.
+        const { data: row } = await client
+          .from("job_board_postings").select("apply_url").eq("id", id).maybeSingle();
+        const postingUrl = String((row as { apply_url?: string } | null)?.apply_url ?? "");
+        if (!postingUrl) return unsupported();
+        const url = source === "breezy" ? breezyApplyUrl(postingUrl) : pinpointApplyUrl(postingUrl);
+        const res = await fetchWithTimeout(url);
+        if (!res.ok) return unsupported();
+        const html = await res.text();
+        const raw = source === "breezy" ? parseBreezyQuestions(html) : parsePinpointQuestions(html);
+        // No questions found is NOT the same as "this form has none" — it is
+        // equally consistent with the markup having changed under us. Reporting
+        // supported:false keeps the caller on its inferred-question fallback
+        // rather than asserting an empty form.
+        if (raw.length === 0) return unsupported();
+        const questions: Q[] = raw.map((q) => ({
+          label: q.label,
+          required: q.required,
+          type: q.type,
+          class: classifyQuestion(q.label, q.type),
+        }));
+        return json({ vendor: source, supported: true, questions, requirements: docsFrom(questions) });
       }
 
       return unsupported();
