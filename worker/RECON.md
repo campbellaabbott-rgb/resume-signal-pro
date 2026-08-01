@@ -509,3 +509,56 @@ as separate named inputs, so the "which file input is the CV" ambiguity that
 nearly cost Personio an empty résumé slot does not even arise. Custom questions
 are `candidate.openQuestionAnswers.{id}.content` and `.flag`. If the wall ever
 comes off it is an afternoon's work; recorded so nobody repeats the recon.
+
+---
+
+## The 1,073 silent Personio boards are stale tenants, not an ingestion bug
+
+**Measured 2026-08-01. Recorded so nobody re-runs it.**
+
+Of 2,368 configured Personio boards, **1,073 produce no postings at all**. That
+looked like the highest-value thing open: Personio yields 3.7 postings per live
+board against Teamtailor's 9.1, and if a third of the silent ones were broken
+rather than dead it would have added thousands of postings on a vendor the agent
+can actually drive.
+
+The first two probes both pointed at a bug:
+
+- **40 of 40** sampled silent boards return live XML with real `<position>`
+  blocks — a mean of ~7 each. Not one is a dead tenant.
+- Personio does **not** rate-limit: 60 feeds at concurrency 12 returned 60×200
+  in five seconds. No 429, no backoff.
+
+Neither of those was the answer. The dates were:
+
+| | postings | median age | within the 30-day window |
+|---|---|---|---|
+| silent boards (30 sampled) | 219 | **416 days** | 2 (**0.9%**) |
+| producing boards (30 sampled) | 983 | 161 days | 191 (19.4%) |
+
+**The board is behaving correctly.** These tenants leave roles open for years;
+`FRESH_WINDOW_DAYS` excludes them, which is the same 30-day guarantee the trust
+framing is built on. The boards are silent because they have nothing recent,
+not because anything is broken.
+
+**The real prize is ~70 postings, not the ~7,300 the first probe implied** —
+0.9% of them, and they arrive on their own as tenants post something new.
+
+Two hypotheses died cleanly on the way and are worth not re-testing: the `.de`
+vs `.com` host fallback is correct (`fetchPersonio` tries both and requires
+`<position>` before accepting either), and token collision is not a factor —
+**0** of the 1,073 silent tokens is claimed by another vendor.
+
+### The measurement mistake worth keeping
+
+"Not in `companiesFacet`" was the definition of silent, and the first version of
+the check that followed it passed `companyToken` — a parameter `serveList` does
+not read. It returned the board-wide 571,703 for every token, including ones
+that genuinely had nothing, so **the probe returned the same answer for two
+different states** and would have "confirmed" any hypothesis put to it. The real
+key is `companies: [token]`, and the control that should have been there from
+the start — Personio boards known to be live — returns 49, 61, 7, 6, 38 while
+the silent ones return 0.
+
+Same failure as the CAPTCHA host allow-list above, in different clothes: the
+probe did not error, it answered confidently, and it was not measuring anything.
