@@ -472,6 +472,8 @@ export type Database = {
           release_refusal: string
           released_at: string | null
           resume_version_id: string | null
+          sent_answers: Json
+          sent_evidence: string
           source: string
           status: string
           submitted_at: string | null
@@ -502,6 +504,8 @@ export type Database = {
           release_refusal?: string
           released_at?: string | null
           resume_version_id?: string | null
+          sent_answers?: Json
+          sent_evidence?: string
           source?: string
           status?: string
           submitted_at?: string | null
@@ -532,6 +536,8 @@ export type Database = {
           release_refusal?: string
           released_at?: string | null
           resume_version_id?: string | null
+          sent_answers?: Json
+          sent_evidence?: string
           source?: string
           status?: string
           submitted_at?: string | null
@@ -2697,6 +2703,8 @@ export type Database = {
           release_refusal: string
           released_at: string | null
           resume_version_id: string | null
+          sent_answers: Json
+          sent_evidence: string
           source: string
           status: string
           submitted_at: string | null
