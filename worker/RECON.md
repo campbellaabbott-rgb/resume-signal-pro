@@ -305,27 +305,37 @@ questions carry readable labels (the enumerator needs them, and
 `answers_attributes[N]` names carry no meaning), and what a submitted
 confirmation says.
 
-## Pinpoint — résumé attach FAILS. Found 2026-07-31 by a better probe.
+## Pinpoint — résumé attach WORKS. My check was case-sensitive.
 
-`setInputFiles` resolves cleanly on Pinpoint's CV input and **no file lands** —
-verified with both a `.txt` and a `.pdf`, so it is not the accept list. Breezy
-attaches (the input holds the file) and Teamtailor attaches (the page shows the
-filename), so the check discriminates; Pinpoint fails both signals.
+I wrote this section earlier today claiming Pinpoint's `setInputFiles` resolved
+without landing a file, and blamed the vendor. That was wrong, and the wrong
+version sat in the record for about twenty minutes.
 
-**This was invisible until the check improved, and it was dangerous.** The
-worker set `resumeAttached = true` from `setFile` merely not throwing. So on
-Pinpoint it believed it had a résumé, sailed past the "wants a CV and has not
-got one" guard, and would have submitted an application with an empty CV slot
-under a real person's name.
+The network trace settles it:
 
-`apply.ts` now proves the attach from two independent signals before continuing,
-and returns `not-submitted` when neither holds. Pinpoint therefore refuses
-rather than sending CV-less applications — correct, but it means Pinpoint's
-3,744 postings are effectively unavailable until the cause is found. Left in
-ADAPTERS deliberately: the refusal is now loud and correct, and removing it
-would hide a real vendor problem behind a config change.
+    POST https://trilongroup.pinpointhq.com/rails/active_storage/direct_uploads
+    PUT  https://pinpoint-production.s3.eu-west-2.amazonaws.com/...
 
-**Why the old check could not see it.** It asked "did setFile throw", which is a
+A real ActiveStorage direct upload to S3, completing normally. The page then
+displays the filename — **in capitals**: `PROBE-CV-MARKER.PDF`. My verification
+asked `document.body.innerText.includes("probe-cv-marker")`, case-sensitively,
+and got false. Both sides are lowercased now.
+
+**Two true things came out of the false alarm**, which is the only reason it was
+worth the detour. The worker was setting `resumeAttached = true` from `setFile`
+merely not throwing — a question about the CALL, not about the page — so a
+vendor that genuinely failed to attach would have had a CV-less application
+submitted under a real person's name. That guard is real and stays. And the
+attach is now proven from two independent signals, because Breezy holds the file
+on the input while Teamtailor and Pinpoint both clear it after uploading.
+
+**Fifth time in one day** that a probe measured my own setup and I nearly filed
+it as a fact about a vendor: BambooHR (stopped at the posting page), Oracle (read
+the idle modal, then matched the words I expected), Teamtailor (cookie overlay
+suppressed the form), the `required`-attribute verdict (`req > 0` is not a test
+of trustworthiness), and this. Every one was caught by asking what CHANGED
+rather than what a call returned.
+
 question about the CALL, not about the page. The same shape as counting a
 `required` attribute a vendor never sets, or reading a cookie banner and
 concluding a form has no file input. A probe has to ask the page what changed.

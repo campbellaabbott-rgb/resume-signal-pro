@@ -129,10 +129,16 @@ export async function applyToPosting(browser: Browser, input: ApplyInput): Promi
           // counting inputs returns 0 where the attach worked perfectly. Asked
           // before AND after, so "the page shows it" is a change, not a
           // coincidence.
-          const stamp = input.resumePath.split("/").pop() ?? "";
-          const seenBefore = await page
-            .evaluate((n: string) => document.body.innerText.includes(n), stamp)
-            .catch(() => false);
+          // LOWERCASED ON BOTH SIDES. Pinpoint renders the filename in caps —
+          // "PROBE-CV-MARKER.PDF" — so a case-sensitive includes() reported a
+          // failed attach on a vendor whose ActiveStorage upload to S3 had
+          // completed perfectly. That false negative was written up as a
+          // Pinpoint bug before the network trace showed the PUT succeeding.
+          const stamp = (input.resumePath.split("/").pop() ?? "").toLowerCase();
+          const pageHas = (n: string) =>
+            page.evaluate((x: string) => document.body.innerText.toLowerCase().includes(x), n)
+              .catch(() => false);
+          const seenBefore = await pageHas(stamp);
           await file.setFile(input.resumePath).catch(() => {});
           // Several vendors parse the CV and rewrite name/email from it, which
           // would otherwise race the fields just filled.
@@ -140,9 +146,7 @@ export async function applyToPosting(browser: Browser, input: ApplyInput): Promi
           const held = await page.locator('input[type="file"]')
             .evaluateAll((els) => els.some((e) => (e as HTMLInputElement).files?.length))
             .catch(() => false);
-          const seenAfter = await page
-            .evaluate((n: string) => document.body.innerText.includes(n), stamp)
-            .catch(() => false);
+          const seenAfter = await pageHas(stamp);
           resumeAttached = held || (seenAfter && !seenBefore);
           if (!resumeAttached) {
             return {

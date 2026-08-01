@@ -258,11 +258,12 @@ async function main() {
       // placeholder measured the extension of my own temp file rather than
       // whether the adapter can attach a résumé.
       if (!doSubmit) writeFileSync(tmp, "%PDF-1.4\n% dry run placeholder — not a real resume\n");
-      const stamp = tmp.split("/").pop() ?? "";
+      // Lowercased both sides: Pinpoint displays the filename in caps.
+      const stamp = (tmp.split("/").pop() ?? "").toLowerCase();
       // Does the PAGE already mention this filename? Asked BEFORE, so that
       // "the page shows it after" is a change rather than a coincidence.
       const seenBefore = await page.evaluate(
-        `document.body.innerText.includes(${JSON.stringify(stamp)})`).catch(() => false);
+        `document.body.innerText.toLowerCase().includes(${JSON.stringify(stamp)})`).catch(() => false);
       let attached = "FAILED";
       try {
         await cv.setFile(tmp);
@@ -276,7 +277,7 @@ async function main() {
           .evaluateAll((els) => els.filter((e) => (e as HTMLInputElement).files?.length).length)
           .catch(() => 0);
         const shown = await page.evaluate(
-          `document.body.innerText.includes(${JSON.stringify(stamp)})`).catch(() => false);
+          `document.body.innerText.toLowerCase().includes(${JSON.stringify(stamp)})`).catch(() => false);
         const landed = n > 0 || (Boolean(shown) && !seenBefore);
         attached = n > 0 ? `OK — ${n} input(s) now hold a file`
           : landed ? "OK — the page now shows the filename (JS uploader clears the input)"
