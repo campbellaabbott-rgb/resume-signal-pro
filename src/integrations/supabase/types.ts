@@ -232,6 +232,7 @@ export type Database = {
           website: string
           willing_to_relocate: boolean | null
           work_authorized: boolean | null
+          work_authorized_countries: string[]
         }
         Insert: {
           active?: boolean
@@ -267,6 +268,7 @@ export type Database = {
           website?: string
           willing_to_relocate?: boolean | null
           work_authorized?: boolean | null
+          work_authorized_countries?: string[]
         }
         Update: {
           active?: boolean
@@ -302,6 +304,7 @@ export type Database = {
           website?: string
           willing_to_relocate?: boolean | null
           work_authorized?: boolean | null
+          work_authorized_countries?: string[]
         }
         Relationships: []
       }
