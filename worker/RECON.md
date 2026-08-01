@@ -436,3 +436,76 @@ from evidence rather than repeating the recon.
 on 2.33%, not a path past it. Perfect question coverage caps the auto-apply
 product at 2.33% of search results. Growing the base needs a vendor with no
 bot detection on the form, and the four candidates are now measured and closed.
+
+## Corrections, 2026-08-01 — two of them, both mine
+
+### 1. The vendor shares I published this morning were wrong
+
+They came from paging the board's list endpoint and counting sources in the
+sample. That sample is ordered, and the ordering correlates with vendor: big
+boards that post often are over-represented near the front. Every share derived
+from it was distorted, some by two orders of magnitude.
+
+Recomputed exactly, by joining `sources.ts` (16,301 configured boards) to the
+live `companiesFacet` counts:
+
+| vendor | sampled (wrong) | **exact** | postings |
+|---|---|---|---|
+| workday | 34.65% | **52.53%** | 300,376 |
+| bamboohr | 18.02% | **3.31%** | 18,935 |
+| workable | 1.69% | **3.06%** | 17,479 |
+| icims | 2.57% | **2.58%** | 14,730 |
+| breezy | 1.32% | **1.97%** | 11,287 |
+| teamtailor | 0.71% | **1.71%** | 9,767 |
+| rippling | 5.54% | **1.52%** | 8,706 |
+| recruitee | — | **1.40%** | 7,979 |
+| greenhouse | 12.61% | **0.90%** | 5,132 |
+| personio | — | **0.83%** | 4,752 |
+| pinpoint | — | **0.65%** | 3,716 |
+| lever | 2.43% | **0.44%** | 2,507 |
+| ashby | 8.25% | **0.10%** | 560 |
+
+**Drivable is 5.16% (29,522 postings), not the 2.33% I reported.** And the four
+vendors I closed as "17.9% of the board" are really **5.12%** — Ashby, which I
+called the single biggest prize at 8.25%, is 0.10% and one of the smallest
+things on here. The NO-BUILD verdicts stand; the sizes attached to them did not.
+
+The lesson is the same one as the count-capped board totals: a sample drawn
+from an ordered list is not a random sample, and nothing downstream of it is
+trustworthy just because the arithmetic was done correctly.
+
+### 2. My CAPTCHA probe had a false-negative shape, and Recruitee caught it
+
+`probe-captcha.ts` matched known vendor HOSTS — `google.com/recaptcha`,
+`hcaptcha.com`, `challenges.cloudflare.com`. It reported Recruitee as clean on
+all ten tenants: nothing in markup, nothing on the network. Recruitee serves
+hCaptcha from its own CDN:
+
+    https://captcha-base.recruiteecdn.com/1/secure-api.js?render=explicit&onload=hca…
+
+A first-party proxy defeats a host allow-list completely, and the failure is
+silent and confident — the probe does not error, it says "clean". That is the
+worst shape a measurement can have, and it came within one commit of putting a
+bot-walled vendor into production as a build target.
+
+`probe-botwall.ts` replaces it: match on the PATH and query of every request the
+page makes, whatever the host, across captcha / turnstile / challenge-platform /
+datadome / perimeterx / imperva / akamai / fingerprintjs / arkose.
+
+**Re-checked under the stricter probe, the production vendors survive:**
+
+| | tenants | bot wall |
+|---|---|---|
+| Breezy | 3 | 0 |
+| Pinpoint | 5 | 0 |
+| Teamtailor | 6 | 0 |
+| Personio | 6 | 0 — never probed until now |
+| **total** | **20** | **0** |
+
+**Recruitee: NO-BUILD.** 10/10 tenants load hCaptcha via `recruiteecdn.com`.
+Its form is otherwise the best-shaped of any vendor seen — the résumé input is
+NAMED (`candidate.cv`), with `candidate.photo` and `candidate.coverLetterFile`
+as separate named inputs, so the "which file input is the CV" ambiguity that
+nearly cost Personio an empty résumé slot does not even arise. Custom questions
+are `candidate.openQuestionAnswers.{id}.content` and `.flag`. If the wall ever
+comes off it is an afternoon's work; recorded so nobody repeats the recon.
