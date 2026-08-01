@@ -4271,7 +4271,9 @@
     "authorizedHome": "¿Tienes autorización para trabajar en el país donde vives?",
     "authorizedHint": "Esta respuesta cubre únicamente tu propio país. Para cualquier otro, márcalo abajo: el agente no lo dará por supuesto.",
     "otherCountries": "Cualquier otro país donde puedas trabajar sin patrocinio",
-    "otherCountriesHint": "Opcional, y puedes dejarlo vacío sin problema. Las empresas preguntan por un país concreto — «autorización para trabajar en EE. UU.» — y estar autorizado en un sitio no es estarlo en todos. Marca solo lo que sea cierto: en cualquier país que no marques, el agente se detiene y te pregunta en lugar de responder."
+    "otherCountriesHint": "Opcional, y puedes dejarlo vacío sin problema. Las empresas preguntan por un país concreto — «autorización para trabajar en EE. UU.» — y estar autorizado en un sitio no es estarlo en todos. Marca solo lo que sea cierto: en cualquier país que no marques, el agente se detiene y te pregunta en lugar de responder.",
+    "address": "Dirección",
+    "postcode": "Código postal"
   },
   "applyQueue": {
     "title": "Candidaturas preparadas",

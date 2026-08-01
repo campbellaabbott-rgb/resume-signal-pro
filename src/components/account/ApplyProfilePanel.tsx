@@ -61,7 +61,7 @@ export const WORK_COUNTRIES: ReadonlyArray<{ code: string; name: string }> = [
 
 interface ApplyProfile {
   full_name: string; phone: string; linkedin: string; website: string;
-  city: string; country: string; resume_file_url: string;
+  city: string; country: string; address: string; postcode: string; resume_file_url: string;
   work_authorized: Tri; requires_sponsorship: Tri; willing_to_relocate: Tri;
   /** Countries BEYOND their own that they may work in, as ISO-2 codes. */
   work_authorized_countries: string[];
@@ -72,6 +72,7 @@ interface ApplyProfile {
 
 const EMPTY: ApplyProfile = {
   full_name: "", phone: "", linkedin: "", website: "", city: "", country: "",
+  address: "", postcode: "",
   resume_file_url: "", work_authorized: null, requires_sponsorship: null,
   willing_to_relocate: null, work_authorized_countries: [], salary_expectation: "", earliest_start: "",
   share_demographics: false, consent_to_processing: false, apply_mode: "review", auto_apply_daily_cap: 5,
@@ -282,6 +283,13 @@ export function ApplyProfilePanel({ userId }: { userId: string }) {
           ["website", t("applyProfile.website", "Website or portfolio"), ""],
           ["city", t("applyProfile.city", "City"), "Austin"],
           ["country", t("applyProfile.country", "Country"), "US"],
+          // Measured on 29 live forms: "Zipcode" was required on 3 and was the
+          // only thing left blocking all 3, and one Breezy form required a
+          // residential address outright. Neither is derived — the agent will
+          // not parse a postcode out of an address line or build an address
+          // from city and country.
+          ["address", t("applyProfile.address", "Street address"), "12 Example Street"],
+          ["postcode", t("applyProfile.postcode", "Postcode / ZIP"), "LS1 4AP"],
         ] as Array<[keyof ApplyProfile, string, string]>).map(([k, label, ph]) => (
           <label key={String(k)} className="block">
             <span className="text-sm font-medium text-foreground">{label}</span>

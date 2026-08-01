@@ -4271,7 +4271,9 @@
     "authorizedHome": "Are you authorised to work in the country you live in?",
     "authorizedHint": "This answer covers your own country only. Anywhere else, tick it below — the agent will not assume it.",
     "otherCountries": "Anywhere else you may work without sponsorship",
-    "otherCountriesHint": "Optional, and safe to leave empty. Employers ask about a named country — “authorised to work in the US?” — and being authorised somewhere is not being authorised everywhere. Tick only what’s true: on any country you haven’t ticked, the agent stops and asks you rather than answering."
+    "otherCountriesHint": "Optional, and safe to leave empty. Employers ask about a named country — “authorised to work in the US?” — and being authorised somewhere is not being authorised everywhere. Tick only what’s true: on any country you haven’t ticked, the agent stops and asks you rather than answering.",
+    "address": "Street address",
+    "postcode": "Postcode / ZIP"
   },
   "applyQueue": {
     "title": "Prepared applications",

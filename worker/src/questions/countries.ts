@@ -55,6 +55,37 @@ const COUNTRIES: Record<string, string[]> = {
   MX: ["mexico", "méxico"],
   BR: ["brazil", "brasil"],
   JP: ["japan"],
+  MT: ["malta"],
+  LU: ["luxembourg"],
+  CZ: ["czechia", "czech republic"],
+  HU: ["hungary"],
+  RO: ["romania"],
+  GR: ["greece"],
+  HR: ["croatia"],
+  SK: ["slovakia"],
+  SI: ["slovenia"],
+  BG: ["bulgaria"],
+  EE: ["estonia"],
+  LV: ["latvia"],
+  LT: ["lithuania"],
+  CY: ["cyprus"],
+  IS: ["iceland"],
+  IL: ["israel"],
+  HK: ["hong kong"],
+  KR: ["south korea"],
+  MY: ["malaysia"],
+  PH: ["philippines"],
+  ID: ["indonesia"],
+  TH: ["thailand"],
+  VN: ["vietnam"],
+  NG: ["nigeria"],
+  KE: ["kenya"],
+  SA: ["saudi arabia"],
+  QA: ["qatar"],
+  PK: ["pakistan"],
+  AR: ["argentina"],
+  CL: ["chile"],
+  CO: ["colombia"],
 };
 
 /**
@@ -65,8 +96,9 @@ const COUNTRIES: Record<string, string[]> = {
  */
 const EU_EEA = new Set([
   "IE", "DE", "FR", "ES", "PT", "IT", "NL", "BE", "AT", "PL", "SE", "DK", "FI",
+  "MT", "LU", "CZ", "HU", "RO", "GR", "HR", "SK", "SI", "BG", "EE", "LV", "LT", "CY",
   // EEA but not EU
-  "NO",
+  "NO", "IS",
 ]);
 const REGION_ALIASES: Array<[string, RegExp]> = [
   ["EU_EEA", /\b(eu|e\.u\.|european union|eea|e\.e\.a\.|europe)\b/i],

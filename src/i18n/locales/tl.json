@@ -4271,7 +4271,9 @@
     "authorizedHome": "May awtorisasyon ka bang magtrabaho sa bansang tinitirhan mo?",
     "authorizedHint": "Ang sagot na ito ay para lamang sa sarili mong bansa. Para sa iba pa, i-tick ito sa ibaba — hindi ito ipagpapalagay ng agent.",
     "otherCountries": "Iba pang bansa kung saan ka maaaring magtrabaho nang walang sponsorship",
-    "otherCountriesHint": "Opsyonal, at ligtas na iwanang blangko. Nagtatanong ang mga employer tungkol sa isang tiyak na bansa — “awtorisado bang magtrabaho sa US?” — at ang pagiging awtorisado sa isang lugar ay hindi pagiging awtorisado saanman. I-tick lamang ang totoo: sa anumang bansang hindi mo na-tick, titigil ang agent at magtatanong sa iyo sa halip na sumagot."
+    "otherCountriesHint": "Opsyonal, at ligtas na iwanang blangko. Nagtatanong ang mga employer tungkol sa isang tiyak na bansa — “awtorisado bang magtrabaho sa US?” — at ang pagiging awtorisado sa isang lugar ay hindi pagiging awtorisado saanman. I-tick lamang ang totoo: sa anumang bansang hindi mo na-tick, titigil ang agent at magtatanong sa iyo sa halip na sumagot.",
+    "address": "Address ng kalye",
+    "postcode": "Zip code"
   },
   "applyQueue": {
     "title": "Mga inihandang aplikasyon",

@@ -20,7 +20,7 @@ const mapped = adapter.mappedNames;
 const A: StandingAnswers = {
   fullName: "Alex Fairweather", firstName: "Alex", lastName: "Fairweather",
   email: "alex@example.com", phone: "+44 7700 900123", city: "Leeds",
-  country: "United Kingdom", address: "12 Example Street",
+  country: "United Kingdom", address: "12 Example Street", postcode: "LS1 4AP",
   linkedin: "https://linkedin.com/in/example", website: "", coverNote: "A short note.",
   salaryExpectation: "£55,000", earliestStart: "4 weeks",
   workAuthorized: true, requiresSponsorship: false, willingToRelocate: true,

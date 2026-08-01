@@ -39,6 +39,30 @@
  * A UK candidate who has not claimed US work rights gets 5, which is the honest
  * figure for that person.
  *
+ * THE WIDER RE-MEASURE, same day. Eight forms is too small to steer coverage
+ * by, so 29 were harvested live across Breezy, Pinpoint and Teamtailor —
+ * 103 required questions once the adapter's own fields and 18 honeypots are
+ * removed. Coverage was chosen from that list rather than from intuition:
+ *
+ *     13 -> 16 of 29 forms completable, 48 -> 51 questions answered
+ *
+ * What the measurement changed about the plan, which is the point of taking it:
+ *
+ *  - The top unrecognised question was "Allow us to process your personal
+ *    information." — a consent tickbox the matcher already knew how to answer,
+ *    missed only because the pattern demanded the word "data". Five occurrences
+ *    for a one-word fix.
+ *  - Postcode was the SOLE remaining blocker on 3 forms. Nothing else was.
+ *    That is 10 points of completion behind one text input.
+ *  - Years-of-experience appeared on 6 forms and was the sole blocker on NONE.
+ *    It was top of the intuition list; building it would have shipped nothing,
+ *    and building it as a single career total would have been the country bug
+ *    over again — see RE_YEARS_EXPERIENCE for why it refuses instead.
+ *
+ * `coverage.ts` regenerates all of this. The distinction it draws between
+ * "blocks a form" and "is the ONLY thing blocking a form" is what makes it
+ * useful; the first ranks sympathetically, the second ranks by what ships.
+ *
  * THE TWO CORRECTIONS, because both were mine and both flattered the result.
  *
  * The first run reported "Full Name" as 16 of 40 blocking questions — the
@@ -82,6 +106,8 @@ export type StandingAnswers = {
   city: string;
   country: string;
   address: string;
+  /** Stated separately. Never parsed out of `address`. */
+  postcode: string;
   linkedin: string;
   website: string;
   coverNote: string;
@@ -175,7 +201,7 @@ const RE_ID_DOC =
 
 const RE_NATIONALITY = /\bnationality\b|\bcitizenship\b|\bcitizen\s+of\b/i;
 
-const RE_FULL_NAME = /^(full|complete)\s+name$|^name$|^your\s+(full\s+)?name$|full\s+name/i;
+const RE_FULL_NAME = /^(full|complete)\s+name$|^name$|^your\s+(full\s+)?name$|full\s+name|\b(complete|legal|given)\s+name\b/i;
 const RE_PREFERRED_NAME = /preferred\s+(first\s+)?name|name\s+you\s+(go\s+by|prefer)|nickname|known\s+as/i;
 
 /**
@@ -198,12 +224,72 @@ const RE_WORK_AUTH =
   /legally\s+(authori[sz]ed|entitled|eligible|permitted)|(authori[sz]ed|eligible|entitled|permitted)\s+to\s+work|work\s+authori[sz]ation|right\s+to\s+work|permission\s+to\s+work/i;
 
 const RE_SPONSORSHIP =
-  /\bsponsor(ship|ing|ed)?\b|immigration\s+(case|petition|process|filing)|require[^?]{0,30}\b(work\s+)?(visa|permit)\b/i;
+  /\bsponsor(ship|ing|ed)?\b|immigration\s+(case|petition|process|filing)|(require|need)[^?]{0,30}\b(work\s+)?(visa|permit)\b/i;
 /** "…without sponsorship" / "…able to work without needing sponsorship" flips
  *  the sense of the answer. Missing this states the exact opposite of the
  *  truth, on a question employers filter hard on. */
 const RE_SPONSOR_INVERTED =
   /without\s+(the\s+need\s+for\s+)?(visa\s+)?sponsor|not\s+require\s+sponsor|no\s+sponsorship\s+(required|needed)|free\s+from\s+(any\s+)?(visa|immigration)/i;
+
+/**
+ * CONTACT DETAILS BY LABEL.
+ *
+ * The adapter maps fields by NAME, which works until a tenant adds its own.
+ * One live Breezy form carried 27 required custom fields including "Email
+ * Address", "Mobile Number", "Your Complete Legal Name" and "What is your
+ * current residential address?" — every one of them an answer already on file,
+ * every one of them refused, and together enough to block the whole posting.
+ *
+ * ORDER IS LORE HERE. Email is tested before address because "Email Address"
+ * contains the word address, and filling a street address into an email field
+ * produces a submitted application nobody can reply to.
+ */
+const RE_EMAIL = /\be-?mail\b/i;
+const RE_PHONE = /\b(phone|mobile|cell|telephone)\b|contact\s+number|\btel\b/i;
+const RE_LINKEDIN = /linkedin/i;
+const RE_PORTFOLIO = /portfolio|personal\s+(web)?site|your\s+website|social\s+media\s+profile/i;
+const RE_CITY = /^(city|town)$|city\s*\/\s*town|which\s+city|city\s+of\s+residence|^city\b/i;
+const RE_POSTCODE = /zip\s*code|zipcode|^zip\b|post(al)?\s*code/i;
+const RE_ADDRESS = /\baddress\b/i;
+const RE_COVER_LETTER = /cover\s+letter|motivation\s+letter|covering\s+letter/i;
+
+/**
+ * DATE OF BIRTH. Refused, not collected, and deliberately so — it is an
+ * age-discrimination vector, and unlike a name or a phone number there is no
+ * version of this the agent should be volunteering on someone's behalf.
+ */
+const RE_DOB = /date\s+of\s+birth|when\s+is\s+your\s+birthday|birth\s*day|birth\s*date|\bd\.?o\.?b\.?\b/i;
+
+/**
+ * REFEREES. "Character Reference #1/#2/#3" was required on a live form. Even
+ * where a candidate has given us a referee's details, publishing another
+ * person's name and phone number to an employer is that person's decision, not
+ * ours and not the candidate's to delegate to software.
+ */
+const RE_REFEREE = /character\s+reference|\breferee\b|reference\s*#?\s*\d|\breferences?\b[^?]{0,20}(name|contact|detail|email|phone)/i;
+
+/**
+ * YEARS OF EXPERIENCE — and why this REFUSES rather than answers.
+ *
+ * The obvious build was a `yearsExperience` number on the profile. Every real
+ * example proves it wrong: "How many years' experience in commercial and/or
+ * industrial electrical work", "How many years of experience do you have in a
+ * GMP-regulated pharmaceutical manufacturing environment". A single career
+ * total cannot answer either without asserting something nobody stated. That is
+ * the country bug in a different coat — one global value answering a specific
+ * question — so the honest move is to refuse and say why.
+ */
+const RE_YEARS_EXPERIENCE =
+  /how\s+(many\s+years|much\s+(experience|exposure))|years?\s+of\s+experience|years'?\s+experience/i;
+
+/**
+ * WHERE DID YOU HEAR ABOUT US. Answerable truthfully: the agent found this
+ * posting on the job board it applies from. It is not a guess and not a
+ * flattering invention, which is the only reason it is answered at all.
+ */
+const RE_HEARD_ABOUT =
+  /where\s+did\s+you\s+(hear|find|see|learn)|how\s+did\s+you\s+(hear|find|learn|get\s+to\s+know)|how\s+did\s+you\s+come\s+across|source\s+of\s+application/i;
+const RE_HEARD_JOB_BOARD = /job\s*board|job\s*site|online\s+job|jobboard|internet|website|other/i;
 
 const RE_NOTICE =
   /notice\s+period|when\s+(can|could|are)\s+you\s+(start|commence|available)|start\s+date|available\s+to\s+(start|commence)|availability\s+to\s+start|earliest[^?]{0,20}start|how\s+soon\s+can\s+you/i;
@@ -213,8 +299,13 @@ const RE_ROLE_LOCATION =
 
 const RE_RELOCATE = /willing\s+to\s+relocate|open\s+to\s+relocat|able\s+to\s+relocate|relocat(e|ion)/i;
 
+// MEASURED against 29 live forms: "Allow us to process your personal
+// information." was the single most common unrecognised REQUIRED question, 5
+// occurrences, and it is a consent tickbox the matcher already knows how to
+// answer. It missed only because the old pattern demanded the word "data" —
+// "personal information" and "personal details" are the same request.
 const RE_CONSENT =
-  /privacy\s+(notice|policy|statement)|consent[^?]{0,30}process|process(ing)?[^?]{0,30}\b(my|personal)\s+data|gdpr|data\s+protection|terms\s+(and|&)\s+conditions/i;
+  /privacy\s+(notice|policy|statement)|consent[^?]{0,30}process|process(ing)?[^?]{0,40}\b(my|your|the|personal)\s+(personal\s+)?(data|information|details)|allow\s+us\s+to\s+process|gdpr|data\s+protection|terms\s+(and|&)\s+conditions/i;
 const RE_DECLARATION =
   /information\s+(provided|given|supplied)\s+is\s+(correct|true|accurate)|declare[^?]{0,40}(truthful|correct|accurate)|confirm[^?]{0,30}(accurate|correct|true)/i;
 
@@ -278,6 +369,21 @@ export function matchQuestion(q: DomQuestion, a: StandingAnswers): Resolution | 
   if (RE_ID_DOC.test(label)) {
     return text("identity-document", "identity/ID numbers are never auto-filled");
   }
+  if (RE_DOB.test(label)) {
+    return text("date-of-birth", "date of birth is not collected — it is an age-discrimination vector, not a contact detail");
+  }
+  if (RE_REFEREE.test(label)) {
+    return text("referee", "a referee's contact details are another person's data, and are not supplied on their behalf");
+  }
+  // An extra document slot is not the résumé slot. The adapter attaches the CV
+  // by itself; anything ELSE the form wants uploaded — "Qualifications
+  // Attachment", a portfolio, a licence scan — is a file we do not hold. The
+  // Personio near-miss is the reason this is explicit: attaching the résumé to
+  // whichever file input happened to be there would have filed a CV under
+  // "employment reference" and left the CV slot empty.
+  if (q.type === "file") {
+    return text("extra-document", `"${label.slice(0, 60)}" wants a document that is not the résumé, and none is held`);
+  }
 
   // --- Demographics: decline only, never assert ------------------------
   // We do not store race, gender, veteran or disability status, so the ONLY
@@ -312,9 +418,55 @@ export function matchQuestion(q: DomQuestion, a: StandingAnswers): Resolution | 
     return text("nationality", "nationality is not collected — it is not the same question as work authorisation");
   }
 
+  // --- Contact details, by label ---------------------------------------
+  // Email FIRST: "Email Address" contains "address", and a street address in an
+  // email field is a submitted application nobody can reply to.
+  if (RE_EMAIL.test(label)) {
+    return has(a.email) ? { kind: "fill", category: "email", value: a.email }
+                        : text("email", "no email on file");
+  }
+  if (RE_PHONE.test(label)) {
+    return has(a.phone) ? { kind: "fill", category: "phone", value: a.phone }
+                        : text("phone", "no phone number on file");
+  }
+  if (RE_LINKEDIN.test(label)) {
+    return has(a.linkedin) ? { kind: "fill", category: "linkedin", value: a.linkedin }
+                           : text("linkedin", "no LinkedIn profile on file");
+  }
+  if (RE_PORTFOLIO.test(label)) {
+    // A personal site and a LinkedIn profile are both honest answers to "your
+    // online presence"; the website is preferred and LinkedIn is the fallback.
+    const url = has(a.website) ? a.website : a.linkedin;
+    return has(url) ? { kind: "fill", category: "portfolio", value: url }
+                    : text("portfolio", "no website or profile URL on file");
+  }
+  if (RE_POSTCODE.test(label)) {
+    // NOT derived from the address. Parsing a postcode out of free text is a
+    // guess, and a wrong postcode on an application is worse than a blank —
+    // so an empty field refuses rather than improvising one.
+    return has(a.postcode) ? { kind: "fill", category: "postcode", value: a.postcode }
+                           : text("postcode", "no postcode on file — it is not parsed out of the address");
+  }
+  if (RE_CITY.test(label)) {
+    return has(a.city) ? { kind: "fill", category: "city", value: a.city }
+                       : text("city", "no city on file");
+  }
+  if (RE_ADDRESS.test(label)) {
+    return has(a.address) ? { kind: "fill", category: "address", value: a.address }
+                          : text("address", "no address on file");
+  }
+  if (RE_COVER_LETTER.test(label)) {
+    return has(a.coverNote) ? { kind: "fill", category: "cover-letter", value: a.coverNote }
+                            : text("cover-letter", "no cover note on file");
+  }
+
   // --- Salary: current before expected, always ------------------------
   if (RE_SALARY_CURRENT.test(label)) {
     return text("salary-current", "current salary is not collected, and an expectation is not a substitute");
+  }
+  if (RE_YEARS_EXPERIENCE.test(label)) {
+    return text("years-experience",
+      "years of experience in a named field is not a single stored number, and a career total is not a substitute");
   }
   if (RE_SALARY_EXPECTED.test(label)) {
     return has(a.salaryExpectation)
@@ -412,6 +564,21 @@ export function matchQuestion(q: DomQuestion, a: StandingAnswers): Resolution | 
   }
 
   // --- Unrecognised ------------------------------------------------------
+  // --- Where did you hear about this role -------------------------------
+  // True, not flattering: the agent found this posting on the job board it
+  // applies from. Where the form offers a list, the closest honest option is
+  // taken and nothing is invented; where it offers none that fit, it refuses
+  // rather than picking whichever sounds best.
+  if (RE_HEARD_ABOUT.test(label)) {
+    if (q.options.length) {
+      const opt = pick(q.options, RE_HEARD_JOB_BOARD);
+      return opt
+        ? { kind: "choose", category: "heard-about", option: opt }
+        : text("heard-about", `none of the offered sources match "job board", and the real answer is not on the list`);
+    }
+    return { kind: "fill", category: "heard-about", value: "Job board" };
+  }
+
   return q.required
     ? { kind: "unanswerable", category: "unrecognised", why: `no standing answer covers "${label.slice(0, 80)}"` }
     : null;

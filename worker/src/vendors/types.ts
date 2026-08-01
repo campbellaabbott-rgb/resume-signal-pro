@@ -143,6 +143,6 @@ export interface Locatable {
 export type PacketFieldKey =
   | "fullName" | "firstName" | "lastName"
   | "email" | "confirmEmail" | "phone"
-  | "city" | "country" | "address"
+  | "city" | "country" | "address" | "postcode"
   | "linkedin" | "website"
   | "coverNote" | "salaryExpectation";

@@ -308,7 +308,7 @@ describe("a honeypot marked REQUIRED is the trap, not the question", () => {
     // unanswerable required field refuses postings that are fine.
     expect(matchQuestion(trap, {
       fullName: "A B", firstName: "A", lastName: "B", email: "a@b.com", phone: "", city: "", country: "",
-      address: "", linkedin: "", website: "", coverNote: "", salaryExpectation: "", earliestStart: "",
+      address: "", postcode: "", linkedin: "", website: "", coverNote: "", salaryExpectation: "", earliestStart: "",
       workAuthorized: true, requiresSponsorship: false, willingToRelocate: true,
       workAuthorizedCountries: [], shareDemographics: false, consentToProcessing: true,
     })).toBeNull();

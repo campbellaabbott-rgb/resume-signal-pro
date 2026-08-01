@@ -35,7 +35,7 @@ const BREEZY_MAPPED = breezy.mappedNames;
 const FULL: StandingAnswers = {
   fullName: "Alex Fairweather", firstName: "Alex", lastName: "Fairweather",
   email: "alex@example.com", phone: "+44 7700 900123",
-  city: "Leeds", country: "United Kingdom", address: "12 Example Street",
+  city: "Leeds", country: "United Kingdom", address: "12 Example Street", postcode: "LS1 4AP",
   linkedin: "https://linkedin.com/in/example", website: "",
   coverNote: "A short note.", salaryExpectation: "£55,000",
   earliestStart: "4 weeks",
@@ -202,9 +202,13 @@ describe("the refusals that keep a false statement out of an application", () =>
   });
 
   it("leaves an unrecognised OPTIONAL question blank instead of refusing the packet", () => {
-    const optional = q({ required: false, label: "How did you hear about this role?" });
+    // A real label from the harvested corpus, and one nothing on a standing
+    // profile can honestly answer. The old label here was "How did you hear
+    // about this role?", which the matcher now DOES answer — so it stopped
+    // testing the thing it was named after.
+    const optional = q({ required: false, label: "Do you have a Journeyman Electrician License?" });
     expect(matchQuestion(optional, FULL)).toBeNull();
-    const required = q({ required: true, label: "How did you hear about this role?" });
+    const required = q({ required: true, label: "Do you have a Journeyman Electrician License?" });
     expect(matchQuestion(required, FULL)).toMatchObject({ kind: "unanswerable", category: "unrecognised" });
   });
 });
@@ -231,10 +235,18 @@ describe("what this actually changes, measured on the same 8 postings", () => {
   });
 
   it("a candidate who has filled in nothing gets fewer answers, not invented ones", () => {
+    // WRITTEN OUT IN FULL, not `...FULL` with a few keys blanked. The spread
+    // version silently kept an email, a phone, an address and a cover note, so
+    // "a candidate who has filled in nothing" was nothing of the sort and the
+    // test only passed because the matcher could not yet read those labels.
+    // Spelled out, a new field on StandingAnswers fails to compile here until
+    // somebody decides what empty means for it.
     const EMPTY: StandingAnswers = {
-      ...FULL, fullName: "", firstName: "", lastName: "", salaryExpectation: "",
-      earliestStart: "", workAuthorized: null, requiresSponsorship: null,
-      willingToRelocate: null, consentToProcessing: false,
+      fullName: "", firstName: "", lastName: "", email: "", phone: "",
+      city: "", country: "", address: "", postcode: "", linkedin: "", website: "",
+      coverNote: "", salaryExpectation: "", earliestStart: "",
+      workAuthorized: null, requiresSponsorship: null, willingToRelocate: null,
+      workAuthorizedCountries: [], shareDemographics: false, consentToProcessing: false,
     };
     for (const f of forms) {
       const { answerable } = planAnswers(f.questions, EMPTY, BREEZY_MAPPED);
@@ -345,5 +357,118 @@ describe("the countries the UI offers are countries the matcher understands", ()
         workAuthorizedCountries: [c.code] });
       expect(withIt?.kind, `${c.code} should be answerable once ticked`).toBe("choose");
     }
+  });
+});
+
+/**
+ * Everything in this block came from measuring 29 live forms, not from
+ * guessing. The labels are verbatim from the harvest.
+ */
+describe("the question types the corpus actually contains", () => {
+  it("recognises a consent tickbox that says information rather than data", () => {
+    // The single most common unrecognised REQUIRED question in the corpus, 5
+    // occurrences, and one the matcher already knew how to answer — it missed
+    // only because the pattern demanded the word "data".
+    const r = matchQuestion(q({ type: "checkbox", required: true,
+      label: "Allow us to process your personal information." }), FULL);
+    expect(r?.category).toBe("consent-processing");
+    expect(r?.kind).toBe("check");
+  });
+
+  it("fills contact details the adapter did not map, by label", () => {
+    // One live Breezy form carried 27 required custom fields, every one of them
+    // an answer already on file and every one of them refused.
+    const cases: Array<[string, string, string]> = [
+      ["Email Address", "email", FULL.email],
+      ["Mobile Number", "phone", FULL.phone],
+      ["Your Complete Legal Name", "full-name", FULL.fullName],
+      ["What is your current residential address?", "address", FULL.address],
+      ["Zipcode", "postcode", FULL.postcode],
+      ["City", "city", FULL.city],
+      // FULL has no website, so this exercises the LinkedIn fallback — both
+      // are honest answers to "your online presence", and the explicit
+      // preference is asserted separately below.
+      ["Your Online Portfolio", "portfolio", FULL.linkedin],
+    ];
+    for (const [label, category, value] of cases) {
+      const r = matchQuestion(q({ required: true, label }), FULL);
+      expect(r, label).toMatchObject({ kind: "fill", category, value });
+    }
+  });
+
+  it("prefers a personal website over LinkedIn when both are on file", () => {
+    const withSite = { ...FULL, website: "https://alex.example" };
+    expect(matchQuestion(q({ required: true, label: "Your Online Portfolio" }), withSite))
+      .toMatchObject({ category: "portfolio", value: "https://alex.example" });
+  });
+
+  it("does not read \"Email Address\" as a street address", () => {
+    // Order-dependent and easy to break: both labels contain "address", and a
+    // street address in an email field is an application nobody can reply to.
+    expect(matchQuestion(q({ required: true, label: "Email Address" }), FULL))
+      .toMatchObject({ category: "email", value: FULL.email });
+  });
+
+  it("never invents a postcode out of the address line", () => {
+    const noPostcode = { ...FULL, postcode: "" };
+    const r = matchQuestion(q({ required: true, label: "Zipcode" }), noPostcode);
+    // FULL.address is "12 Example Street, LS1 4AP"-shaped in real life, and a
+    // parser would happily produce something. A wrong postcode on someone's
+    // application is worse than an admitted blank.
+    expect(r).toMatchObject({ kind: "unanswerable", category: "postcode" });
+  });
+
+  it("refuses date of birth and referees outright", () => {
+    expect(matchQuestion(q({ required: true, label: "When is your birthday?" }), FULL))
+      .toMatchObject({ kind: "unanswerable", category: "date-of-birth" });
+    // Another person's contact details are that person's to give.
+    expect(matchQuestion(q({ required: true, label: "Character Reference #1" }), FULL))
+      .toMatchObject({ kind: "unanswerable", category: "referee" });
+  });
+
+  it("refuses years-of-experience rather than answering it from a career total", () => {
+    // The obvious build was a yearsExperience number. Every real example shows
+    // why that would be the country bug again — one global value answering a
+    // specific question.
+    for (const label of [
+      "How many years' experience in commercial and/or industrial electrical work do you have?",
+      "How many years of experience do you have in a GMP-regulated pharmaceutical manufacturing environment?",
+    ]) {
+      expect(matchQuestion(q({ required: true, label }), FULL), label)
+        .toMatchObject({ kind: "unanswerable", category: "years-experience" });
+    }
+  });
+
+  it("answers where-did-you-hear truthfully, and refuses when the truth is not on the list", () => {
+    const free = matchQuestion(q({ required: true, label: "Where did you hear about this job opportunity?" }), FULL);
+    expect(free).toMatchObject({ kind: "fill", category: "heard-about", value: "Job board" });
+
+    const listed = matchQuestion(q({ required: true, type: "select",
+      label: "How did you get to know about this role?",
+      options: ["Referral", "Job board", "Careers fair"] }), FULL);
+    expect(listed).toMatchObject({ kind: "choose", option: "Job board" });
+
+    // No honest option: refuse rather than pick whichever sounds best.
+    const noneFit = matchQuestion(q({ required: true, type: "select",
+      label: "How did you get to know about this role?",
+      options: ["A friend who works here", "A recruiter contacted me"] }), FULL);
+    expect(noneFit).toMatchObject({ kind: "unanswerable", category: "heard-about" });
+  });
+
+  it("treats \"do you need a work permit\" as the sponsorship question it is", () => {
+    // Verbatim from a Maltese Teamtailor posting. The candidate has not stated
+    // Malta, so this must refuse rather than answer from a UK boolean.
+    const r = matchQuestion(q({ required: true, type: "radio",
+      label: "Do you need a work permit to work in Malta?", options: ["Yes", "No"] }), FULL);
+    expect(r).toMatchObject({ kind: "unanswerable", category: "sponsorship" });
+    expect((r as { why: string }).why).toContain("MT");
+  });
+
+  it("refuses an extra document slot rather than putting the résumé in it", () => {
+    // The Personio near-miss: attaching the CV to whichever file input happened
+    // to be present would file it under "employment reference" and leave the CV
+    // slot empty, while looking to us like it worked.
+    expect(matchQuestion(q({ required: true, type: "file", label: "Qualifications Attachment" }), FULL))
+      .toMatchObject({ kind: "unanswerable", category: "extra-document" });
   });
 });

@@ -120,6 +120,7 @@ const FIELD_ALIASES: Array<[RegExp, PacketFieldKey]> = [
   [/phone|mobile|telephone/i, "phone"],
   [/^city|town$/i, "city"],
   [/^country/i, "country"],
+  [/post\s*code|zip\s*code|postal/i, "postcode"],
   [/address/i, "address"],
   [/linked\s*in/i, "linkedin"],
   [/website|portfolio|personal site/i, "website"],
@@ -162,7 +163,7 @@ async function loadAnswers(userId: string): Promise<StandingAnswers | undefined>
   // refused — the feature silently absent, looking exactly like "no employer
   // form is answerable".
   const { data, error } = await db.from("agent_mandates")
-    .select("full_name, email, phone, city, country, location, linkedin, website, " +
+    .select("full_name, email, phone, city, country, location, address, postcode, linkedin, website, " +
             "salary_expectation, earliest_start, work_authorized, requires_sponsorship, " +
             "willing_to_relocate, work_authorized_countries, share_demographics, consent_to_processing")
     .eq("user_id", userId).maybeSingle();
@@ -193,9 +194,10 @@ async function loadAnswers(userId: string): Promise<StandingAnswers | undefined>
     fullName: full, firstName, lastName,
     email: str("email"), phone: str("phone"),
     city: str("city") || str("location"), country: str("country"),
-    // No address column exists. Left empty on purpose so that a form requiring
-    // an address refuses rather than receiving a city where a street should be.
-    address: "",
+    // Added 20260801020000. Still refuses when empty — a form asking for a
+    // street address must never receive a city, and a postcode is never parsed
+    // out of the address line.
+    address: str("address"), postcode: str("postcode"),
     linkedin: str("linkedin"), website: str("website"), coverNote: "",
     salaryExpectation: str("salary_expectation"), earliestStart: str("earliest_start"),
     workAuthorized: tri("work_authorized"),

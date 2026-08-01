@@ -4271,7 +4271,9 @@
     "authorizedHome": "Mag u werken in het land waar u woont?",
     "authorizedHint": "Dit antwoord geldt alleen voor uw eigen land. Vink elk ander land hieronder aan — de agent gaat er niet vanuit.",
     "otherCountries": "Andere landen waar u zonder sponsoring mag werken",
-    "otherCountriesHint": "Optioneel; leeg laten mag. Werkgevers vragen naar een specifiek land — „toestemming om in de VS te werken?” — en ergens mogen werken is niet overal mogen werken. Vink alleen aan wat klopt: bij elk land dat u niet aanvinkt stopt de agent en vraagt het u, in plaats van te antwoorden."
+    "otherCountriesHint": "Optioneel; leeg laten mag. Werkgevers vragen naar een specifiek land — „toestemming om in de VS te werken?” — en ergens mogen werken is niet overal mogen werken. Vink alleen aan wat klopt: bij elk land dat u niet aanvinkt stopt de agent en vraagt het u, in plaats van te antwoorden.",
+    "address": "Straat en huisnummer",
+    "postcode": "Postcode"
   },
   "applyQueue": {
     "title": "Voorbereide sollicitaties",

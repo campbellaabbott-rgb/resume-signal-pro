@@ -118,7 +118,7 @@ function server(mode: Mode, extra: string, port: number) {
 const ANSWERS: StandingAnswers = {
   fullName: "Harness Test", firstName: "Harness", lastName: "Test",
   email: "harness@example.invalid", phone: "+44 7700 900000",
-  city: "Leeds", country: "United Kingdom", address: "1 Test Street",
+  city: "Leeds", country: "United Kingdom", address: "1 Test Street", postcode: "LS1 4AP",
   linkedin: "", website: "", coverNote: "", salaryExpectation: "£50,000",
   earliestStart: "4 weeks", workAuthorized: true, requiresSponsorship: false,
   willingToRelocate: true, workAuthorizedCountries: ["US"],

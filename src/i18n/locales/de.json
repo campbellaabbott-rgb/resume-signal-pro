@@ -4271,7 +4271,9 @@
     "authorizedHome": "Sind Sie berechtigt, in Ihrem Wohnsitzland zu arbeiten?",
     "authorizedHint": "Diese Antwort gilt nur für Ihr eigenes Land. Für alle anderen Länder wählen Sie sie unten aus – der Agent setzt das nicht voraus.",
     "otherCountries": "Weitere Länder, in denen Sie ohne Sponsoring arbeiten dürfen",
-    "otherCountriesHint": "Optional, kann leer bleiben. Arbeitgeber fragen nach einem bestimmten Land – „Arbeitserlaubnis für die USA?“ – und irgendwo berechtigt zu sein heißt nicht, überall berechtigt zu sein. Wählen Sie nur Zutreffendes: Bei jedem nicht gewählten Land hält der Agent an und fragt Sie, statt zu antworten."
+    "otherCountriesHint": "Optional, kann leer bleiben. Arbeitgeber fragen nach einem bestimmten Land – „Arbeitserlaubnis für die USA?“ – und irgendwo berechtigt zu sein heißt nicht, überall berechtigt zu sein. Wählen Sie nur Zutreffendes: Bei jedem nicht gewählten Land hält der Agent an und fragt Sie, statt zu antworten.",
+    "address": "Straße und Hausnummer",
+    "postcode": "Postleitzahl"
   },
   "applyQueue": {
     "title": "Vorbereitete Bewerbungen",

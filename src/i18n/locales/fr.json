@@ -4271,7 +4271,9 @@
     "authorizedHome": "Êtes-vous autorisé à travailler dans le pays où vous vivez ?",
     "authorizedHint": "Cette réponse ne couvre que votre propre pays. Pour tout autre, cochez-le ci-dessous : l’agent ne le supposera pas.",
     "otherCountries": "Tout autre pays où vous pouvez travailler sans parrainage",
-    "otherCountriesHint": "Facultatif, et vous pouvez le laisser vide. Les employeurs interrogent sur un pays précis — « autorisé à travailler aux États-Unis ? » — et être autorisé quelque part n’est pas l’être partout. Ne cochez que ce qui est vrai : pour tout pays non coché, l’agent s’arrête et vous demande au lieu de répondre."
+    "otherCountriesHint": "Facultatif, et vous pouvez le laisser vide. Les employeurs interrogent sur un pays précis — « autorisé à travailler aux États-Unis ? » — et être autorisé quelque part n’est pas l’être partout. Ne cochez que ce qui est vrai : pour tout pays non coché, l’agent s’arrête et vous demande au lieu de répondre.",
+    "address": "Adresse",
+    "postcode": "Code postal"
   },
   "applyQueue": {
     "title": "Candidatures préparées",
