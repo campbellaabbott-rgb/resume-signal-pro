@@ -7,7 +7,7 @@
  * symptom would be an absence. Nobody files a bug against an absence.
  */
 import { describe, it, expect } from "vitest";
-import { validateCoverNote, coverNotePrompt, MIN_CHARS, MAX_CHARS } from "./cover-note";
+import { validateCoverNote, coverNotePrompt, gateCanCheck, MIN_CHARS, MAX_CHARS } from "./cover-note";
 
 const RESUME = `Jane Okafor
 Senior Backend Engineer
@@ -154,6 +154,42 @@ describe("validateCoverNote — rejects fabrication", () => {
     const v = validateCoverNote({ ...ctx, note });
     expect(v.ok).toBe(false);
     if (!v.ok) expect(v.issues.join(" ")).toContain("AWS");
+  });
+});
+
+describe("the gate knows which languages it can actually check", () => {
+  // THIS IS THE TEST THAT WAS MISSING. Every acceptance test above is in
+  // English, so nothing noticed that the whole heuristic is a property of the
+  // language. Production found it: a clean German note came back rejected over
+  // "Liefergeschwindigkeit", "Beitrag" and "Ihrem".
+  it.each(["en", "en-GB", "es", "fr", "pt", "nl", "tl", undefined, ""])(
+    "runs for %s, where a mid-sentence capital means a name", (lang) => {
+      expect(gateCanCheck(lang)).toBe(true);
+    });
+
+  it("declines German, which capitalises every noun", () => {
+    expect(gateCanCheck("de")).toBe(false);
+    expect(gateCanCheck("de-AT")).toBe(false);
+  });
+
+  it("declines Hindi, where Devanagari has no case for the check to read", () => {
+    expect(gateCanCheck("hi")).toBe(false);
+  });
+
+  it("demonstrates the German failure the check would otherwise produce", () => {
+    // Ordinary German prose, nothing invented — every flagged word is a common
+    // noun or a pronoun. Kept as the concrete reason gateCanCheck exists.
+    const v = validateCoverNote({
+      ...ctx,
+      note: "Ich leitete die Migration des Abrechnungsdienstes und brachte Erfahrung mit Postgres ein. "
+        + "Mir ist Korrektheit wichtiger als Geschwindigkeit, und ich möchte diesen Beitrag in Ihrem Team leisten. "
+        + "Meine Kenntnisse umfassen Python und Go, sowie die Betreuung jüngerer Kollegen im Alltag.",
+    });
+    expect(v.ok).toBe(false);
+    if (!v.ok) {
+      const joined = v.issues.join(" ");
+      expect(joined).toMatch(/Erfahrung|Beitrag|Ihrem|Kenntnisse/);
+    }
   });
 });
 

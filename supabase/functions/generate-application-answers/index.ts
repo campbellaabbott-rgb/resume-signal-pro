@@ -21,7 +21,7 @@ import { callAIWithModelFallback, chainFrom } from "../_shared/ai-fallback.ts";
 import { buildLanguageInstruction } from "../_shared/language-instruction.ts";
 import { checkInputLimits } from "../_shared/input-limits.ts";
 import { classifyQuestion, selectDraftable, roleGuidance, type AppQuestion } from "../_shared/application-questions.ts";
-import { coverNotePrompt, validateCoverNote, COVER_NOTE_VERSION } from "../_shared/cover-note.ts";
+import { coverNotePrompt, validateCoverNote, gateCanCheck, COVER_NOTE_VERSION } from "../_shared/cover-note.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -59,6 +59,21 @@ serve(async (req) => {
     // touching the check. Returning an already-validated note (or null) makes
     // that impossible by construction.
     if (mode === "cover-note") {
+      // Refuse BEFORE spending anything. In a language the gate cannot check,
+      // every draft would be rejected (German) or waved through unchecked
+      // (Devanagari) — so two model calls per posting would buy a guaranteed
+      // fallback, or a note with a guard silently switched off. Neither is
+      // worth paying for, and the second is worse than not having the feature.
+      if (!gateCanCheck(language)) {
+        console.log(`[COVER-NOTE] declined: the grounding check is not valid for language="${language}"`);
+        return json({
+          note: null,
+          issues: [`Tailoring is not available in this language yet — the grounding check cannot verify a note written in "${language}", so your own note is sent instead.`],
+          version: COVER_NOTE_VERSION,
+          unsupportedLanguage: true,
+        });
+      }
+
       const apiKeyCN = Deno.env.get("LOVABLE_API_KEY");
       if (!apiKeyCN) return json({ error: "AI is not configured." }, 500);
 

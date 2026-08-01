@@ -56,6 +56,42 @@ export type CoverNoteVerdict =
   | { ok: false; issues: string[] };
 
 /**
+ * Languages whose capitalisation actually MEANS something here.
+ *
+ * The proper-noun check assumes a capital letter mid-sentence marks a name.
+ * That assumption is a property of the language, not of the checker, and it
+ * fails in two opposite directions:
+ *
+ *   GERMAN capitalises every noun. Measured against production on 2026-08-01:
+ *   a perfectly honest German note was rejected over "Liefergeschwindigkeit",
+ *   "Beitrag" and "Ihrem" — a compound noun, a common noun and a possessive
+ *   pronoun. Every German note would be rejected, tailoring would silently
+ *   never happen, and the only symptom would be the fallback doing its job.
+ *   That is precisely the failure the acceptance tests exist to catch, and it
+ *   survived because those tests were all in English.
+ *
+ *   HINDI is written in Devanagari, which has no case at all. Nothing matches
+ *   /^[A-Z]/, so an invented employer written in Devanagari passes unseen. Not
+ *   over-rejection but the reverse: a check that quietly does nothing.
+ *
+ * The honest response to "our check does not work here" is not to ship the
+ * prose with a weaker check nobody mentioned. It is to decline to generate,
+ * and send the candidate's own note — the same fallback every other failure
+ * takes. A limit that is known and stated beats a guard that is silently off.
+ */
+export const LANGUAGES_THE_GATE_CAN_CHECK = new Set([
+  "en", "en-gb", "es", "fr", "pt", "nl", "tl",
+]);
+
+/** Undefined/empty means English, which is what apply-agent sends today. */
+export function gateCanCheck(language?: string): boolean {
+  const l = (language ?? "").trim().toLowerCase();
+  if (!l) return true;
+  return LANGUAGES_THE_GATE_CAN_CHECK.has(l) ||
+    LANGUAGES_THE_GATE_CAN_CHECK.has(l.split("-")[0]);
+}
+
+/**
  * Words that are capitalised for reasons that have nothing to do with naming an
  * organisation, a school or a technology. Without these the gate would reject
  * every honest letter ever written, which is the failure mode that does not

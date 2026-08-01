@@ -562,3 +562,48 @@ the silent ones return 0.
 
 Same failure as the CAPTCHA host allow-list above, in different clothes: the
 probe did not error, it answered confidently, and it was not measuring anything.
+
+---
+
+## The cover-note gate was English-only, and only production noticed
+
+**Measured 2026-08-01, against the live function.**
+
+`validateCoverNote` flags any capitalised word that does not appear in the
+résumé, the posting or the candidate's own note. That catches the fabrication
+numeric grounding is blind to — "my time at Google", "my MIT coursework". It
+rests on an assumption nobody wrote down: **that a capital letter mid-sentence
+marks a name.** That is a property of the LANGUAGE, not of the checker.
+
+Asked for a German note, the live function returned:
+
+    "Liefergeschwindigkeit" appears in neither the résumé, the posting, nor
+    the candidate's own note
+    "Beitrag" appears in neither ...
+    "Ihrem" appears in neither ...
+
+A compound noun, a common noun, and a possessive pronoun. German capitalises
+every noun, so **every German note would be rejected forever.** Spanish passed
+in the same run, which is what makes it a language property rather than a bug
+in the note.
+
+Hindi fails the opposite way: Devanagari has no case, nothing matches `/^[A-Z]/`,
+and an invented employer written in Devanagari would pass unseen. Over-rejection
+in one language, a silently disabled guard in another.
+
+**Why the tests missed it.** The file opens by arguing that the ACCEPTANCE tests
+matter more than the rejection tests, because a gate that rejects everything
+sends the generic note forever and the only symptom is an absence. Nine of them
+were written. All nine were in English. The blind spot was not a missing test —
+it was that every test shared one unstated assumption with the code.
+
+**The fix is a refusal, not a workaround.** `gateCanCheck(language)` returns
+false for `de` and `hi`; the function returns `note: null` before spending a
+single model call, and the candidate's own note goes out. Shipping the prose
+with a guard we know does not work — or quietly weakening the guard for those
+languages — would be worse than not offering the feature there.
+
+Note that `apply-agent` does not pass `language` at all today, so every
+tailored note is English regardless of the candidate's locale. That is now a
+deliberate, recorded limit: wiring language through requires the gate to
+support that language first.
