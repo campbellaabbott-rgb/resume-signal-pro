@@ -30,7 +30,15 @@ dist-ssr
 
 # Agent worktrees and local CI experiments — never commit
 New Folder With Items/.claude/
-.github/
+# .github/ WAS ignored here from 2026-07-05 until 2026-08-01, and it took the
+# real CI config with it. ci.yml describes itself as a gate that means "a
+# detection regression physically cannot reach main unnoticed" — it had never
+# run once, because it was never committed. The apply worker's workflow hit the
+# same trap: `git add -A` reported success and silently skipped it, so a commit
+# whose message announced the worker's host shipped everything EXCEPT the host.
+#
+# Ignoring a whole directory to exclude experiments inside it is the mistake.
+# If a local CI experiment needs excluding, name the file.
 scripts/.prerender-data-entry.ts
 scripts/.prerender-data.mjs
 worker/applicant.json
