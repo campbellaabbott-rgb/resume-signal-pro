@@ -200,6 +200,7 @@ export type Database = {
       agent_mandates: {
         Row: {
           active: boolean
+          address: string | null
           apply_mode: string
           auto_apply_daily_cap: number
           auto_apply_sources: string[]
@@ -219,6 +220,7 @@ export type Database = {
           linkedin: string
           location: string
           phone: string
+          postcode: string | null
           q: string
           remote_only: boolean
           requires_sponsorship: boolean | null
@@ -232,9 +234,11 @@ export type Database = {
           website: string
           willing_to_relocate: boolean | null
           work_authorized: boolean | null
+          work_authorized_countries: string[]
         }
         Insert: {
           active?: boolean
+          address?: string | null
           apply_mode?: string
           auto_apply_daily_cap?: number
           auto_apply_sources?: string[]
@@ -254,6 +258,7 @@ export type Database = {
           linkedin?: string
           location?: string
           phone?: string
+          postcode?: string | null
           q?: string
           remote_only?: boolean
           requires_sponsorship?: boolean | null
@@ -267,9 +272,11 @@ export type Database = {
           website?: string
           willing_to_relocate?: boolean | null
           work_authorized?: boolean | null
+          work_authorized_countries?: string[]
         }
         Update: {
           active?: boolean
+          address?: string | null
           apply_mode?: string
           auto_apply_daily_cap?: number
           auto_apply_sources?: string[]
@@ -289,6 +296,7 @@ export type Database = {
           linkedin?: string
           location?: string
           phone?: string
+          postcode?: string | null
           q?: string
           remote_only?: boolean
           requires_sponsorship?: boolean | null
@@ -302,6 +310,7 @@ export type Database = {
           website?: string
           willing_to_relocate?: boolean | null
           work_authorized?: boolean | null
+          work_authorized_countries?: string[]
         }
         Relationships: []
       }
@@ -3612,6 +3621,7 @@ export type Database = {
         Returns: boolean
       }
       refresh_explore_cache: { Args: never; Returns: undefined }
+      refresh_job_board_facets: { Args: never; Returns: Json }
       refresh_stats_cache: { Args: never; Returns: undefined }
       register_affiliate: {
         Args: { p_email: string; p_password: string }
