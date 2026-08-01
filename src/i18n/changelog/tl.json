@@ -1,5 +1,13 @@
 {
   "changelogEntries": {
+    "filterCountsRestored": {
+      "title": "Gumagana na ulit ang mga bilang sa filter",
+      "description": "Tumigil nang tuluyan sa pag-load ang mga bilang katabi ng bawat kompanya at kategorya — bawat bisita ay nakakakuha ng error pagkatapos ng humigit-kumulang 20 segundo. Simple lang ang dahilan at atin talaga: binibilang muli ang mga numerong iyon mula sa simula sa bawat pag-view ng pahina, tatlong buong pagdaan sa lahat ng 572,000 posting, at lumaki ang board nang higit sa kayang tapusin niyon sa oras. Kinakalkula na ngayon ang mga ito ayon sa iskedyul at inihahain nang handa na, wala pang isang segundo. May kasama ring oras kung kailan kinalkula ang mga bilang, para masabi ng isang bilang kung kailan ito totoo sa halip na basta ipahiwatig na kasalukuyan ito."
+    },
+    "applyAgentCountries": {
+      "title": "Hindi sasabihin ng agent na makakapagtrabaho ka kung saan hindi mo sinabi",
+      "description": "Isang oo-o-hindi lang ang hawak nito para sa work authorization at ginagamit iyon sa bawat bansa, kaya ang isang awtorisado sa UK ay sasagot ng “oo” sa “legal ka bang awtorisadong magtrabaho sa US?” — isang maling pahayag tungkol sa iyong immigration status, ipinadala sa employer sa ilalim ng pangalan mo, sa mismong tanong na pinakamahigpit nilang pinagfi-filter. Maaari mo nang ilista ang mga bansang talagang pinapayagan kang magtrabaho, at anumang tanong tungkol sa bansang hindi mo nailista ay hihinto at maghihintay sa iyo sa halip na manghula. Puwede ring i-save ang iyong address at zip code — hinihingi ito ng ilang form at wala ni isa sa kanila ang tumatanggap ng tantiya."
+    },
     "searchFixed": {
       "title": "Gumagana na ulit ang search — karamihan ng paghahanap ay nabibigo",
       "description": "Sa sample na humigit-kumulang 40 tunay na paghahanap, mga 60% ang nagbabalik ng error pagkalipas ng 35 hanggang 79 segundo. Simple lang ang dahilan: magkatabing tumatakbo ang mga resulta at ang bilang na «N resulta», pero naghihintay pa rin ang pahina sa bilang — kaya hinahawakan ng mabagal na bilang ang buong sagot at sa huli ay kinakaladkad ito pababa, gayong hindi kailanman ang mga resulta ang mabagal na bahagi. May limitasyon na sa oras ang bilang. Sumasagot ang paghahanap sa 1 hanggang 7 segundo; kung matagal ang kabuuan, ipinapakita namin ang mga trabaho nang wala ito sa halip na paghintayin ka sa isang numero."

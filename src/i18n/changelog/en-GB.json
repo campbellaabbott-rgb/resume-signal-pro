@@ -1,5 +1,13 @@
 {
   "changelogEntries": {
+    "filterCountsRestored": {
+      "title": "Filter counts are working again",
+      "description": "The counts beside each company and category had stopped loading entirely — every visitor was getting an error after about 20 seconds. The cause was simple and entirely ours: those numbers were recounted from scratch on every single page view, three full passes over all 572,000 postings, and the board outgrew what that could finish in time. They are now worked out on a schedule and served ready-made, which takes under a second. The figures also carry the moment they were computed, so a count can tell you when it was true rather than quietly implying it is current."
+    },
+    "applyAgentCountries": {
+      "title": "The apply agent won't claim you can work somewhere you haven't said",
+      "description": "It held a single yes-or-no for work authorisation and used it for every country, so someone authorised in the UK would have answered \"yes\" to \"are you legally authorized to work in the US?\" — a false statement about your immigration status, sent to an employer under your name, on the question they filter hardest on. You can now list the countries you're actually authorised to work in, and anything asking about a country you haven't listed stops and waits for you instead of guessing. Your street address and postcode can be saved too, which several application forms require and none of them will accept an approximation of."
+    },
     "searchFixed": {
       "title": "Search works again — most searches were failing",
       "description": "Measured across a sample of about 40 real queries, roughly 60% were returning an error after 35 to 79 seconds. The cause was mundane: the search results and the \"N results\" count ran side by side, but the page still waited for the count, so a slow count held the whole response and then took it down with it — even though the results themselves were never the slow part. The count now has a time limit. Searches return in 1 to 7 seconds; if the total takes too long we show the jobs without it rather than making you wait for a number."

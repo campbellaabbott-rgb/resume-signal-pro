@@ -1,5 +1,13 @@
 {
   "changelogEntries": {
+    "filterCountsRestored": {
+      "title": "Les compteurs de filtres fonctionnent à nouveau",
+      "description": "Les nombres affichés à côté de chaque entreprise et catégorie ne se chargeaient plus du tout : chaque visiteur recevait une erreur après une vingtaine de secondes. La cause était simple et entièrement de notre fait : ces chiffres étaient recalculés de zéro à chaque affichage de page, trois parcours complets des 572 000 offres, et le tableau a dépassé ce que cela pouvait terminer à temps. Ils sont désormais calculés selon un planning et servis tout prêts, en moins d'une seconde. Les chiffres indiquent aussi le moment de leur calcul, afin qu'un compteur puisse vous dire quand il était exact plutôt que de laisser croire qu'il l'est encore."
+    },
+    "applyAgentCountries": {
+      "title": "L'agent ne prétendra pas que vous pouvez travailler là où vous ne l'avez pas dit",
+      "description": "Il ne conservait qu'un seul oui ou non pour l'autorisation de travail et l'appliquait à tous les pays : une personne autorisée au Royaume-Uni aurait donc répondu « oui » à « êtes-vous légalement autorisé à travailler aux États-Unis ? » — une déclaration fausse sur votre statut d'immigration, transmise à un employeur en votre nom, sur la question qu'ils filtrent le plus. Vous pouvez maintenant indiquer les pays où vous êtes réellement autorisé, et toute question portant sur un pays non indiqué s'arrête et vous attend au lieu de deviner. Votre adresse et votre code postal peuvent aussi être enregistrés : plusieurs formulaires les exigent et aucun n'en accepte une approximation."
+    },
     "searchFixed": {
       "title": "La recherche fonctionne de nouveau : la plupart des recherches échouaient",
       "description": "Sur un échantillon d'environ 40 requêtes réelles, près de 60% renvoyaient une erreur après 35 à 79 secondes. La cause était banale : les résultats et le décompte « N résultats » s'exécutaient en parallèle, mais la page attendait quand même le décompte — un décompte lent bloquait donc toute la réponse puis la faisait échouer, alors que les résultats n'ont jamais été la partie lente. Le décompte a désormais une limite de temps. Les recherches répondent en 1 à 7 secondes ; si le total tarde, nous affichons les offres sans lui plutôt que de vous faire attendre un chiffre."

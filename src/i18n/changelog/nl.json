@@ -1,5 +1,13 @@
 {
   "changelogEntries": {
+    "filterCountsRestored": {
+      "title": "De filtertellingen werken weer",
+      "description": "De aantallen naast elk bedrijf en elke categorie laadden helemaal niet meer — iedere bezoeker kreeg na ongeveer 20 seconden een foutmelding. De oorzaak was eenvoudig en volledig de onze: die getallen werden bij elke paginaweergave opnieuw geteld, drie volledige rondes langs alle 572.000 vacatures, en het bord groeide voorbij wat daarin op tijd af kon. Ze worden nu volgens een schema berekend en kant-en-klaar geleverd, in minder dan een seconde. De cijfers vermelden ook wanneer ze zijn berekend, zodat een telling kan zeggen wanneer die klopte in plaats van stilzwijgend te suggereren dat die actueel is."
+    },
+    "applyAgentCountries": {
+      "title": "De agent beweert niet dat u mag werken waar u dat niet hebt aangegeven",
+      "description": "Hij bewaarde één ja of nee voor werkvergunning en gebruikte die voor elk land, dus iemand met toestemming in het Verenigd Koninkrijk zou „ja” hebben geantwoord op „mag u wettelijk in de VS werken?” — een onjuiste verklaring over uw verblijfsstatus, in uw naam naar een werkgever gestuurd, bij precies de vraag waarop het hardst wordt gefilterd. U kunt nu aangeven in welke landen u daadwerkelijk mag werken, en elke vraag over een land dat u niet hebt aangegeven stopt en wacht op u in plaats van te gokken. Ook uw adres en postcode kunnen worden opgeslagen — meerdere formulieren vereisen ze en geen enkel formulier neemt genoegen met een benadering."
+    },
     "searchFixed": {
       "title": "Zoeken werkt weer — de meeste zoekopdrachten mislukten",
       "description": "In een steekproef van zo'n 40 echte zoekopdrachten gaf ongeveer 60% een fout na 35 tot 79 seconden. De oorzaak was alledaags: de resultaten en de telling 'N resultaten' liepen naast elkaar, maar de pagina wachtte toch op de telling — een trage telling hield dus de hele reactie vast en sleepte die uiteindelijk mee, terwijl de resultaten nooit het trage deel waren. De telling heeft nu een tijdslimiet. Zoekopdrachten reageren in 1 tot 7 seconden; duurt het totaal te lang, dan tonen we de vacatures zonder dat getal in plaats van je te laten wachten."

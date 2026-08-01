@@ -1,5 +1,13 @@
 {
   "changelogEntries": {
+    "filterCountsRestored": {
+      "title": "As contagens dos filtros voltaram a funcionar",
+      "description": "Os números ao lado de cada empresa e categoria tinham deixado de carregar por completo — todos os visitantes recebiam um erro ao fim de cerca de 20 segundos. A causa era simples e inteiramente nossa: esses números eram recontados de raiz em cada visita, três passagens completas por todas as 572.000 vagas, e o quadro cresceu para além do que isso conseguia terminar a tempo. Agora são calculados de forma agendada e servidos já prontos, em menos de um segundo. Os números indicam também o momento em que foram calculados, para que uma contagem possa dizer-lhe quando era verdadeira em vez de sugerir que é atual."
+    },
+    "applyAgentCountries": {
+      "title": "O agente não afirmará que pode trabalhar onde não o indicou",
+      "description": "Guardava um único sim ou não sobre autorização de trabalho e usava-o para todos os países, pelo que alguém autorizado no Reino Unido teria respondido «sim» a «tem autorização legal para trabalhar nos EUA?» — uma afirmação falsa sobre a sua situação migratória, enviada a um empregador em seu nome, na pergunta que mais filtram. Pode agora indicar os países onde está realmente autorizado, e qualquer pergunta sobre um país que não tenha indicado pára e espera por si em vez de adivinhar. A sua morada e código postal também podem ser guardados — vários formulários exigem-nos e nenhum aceita uma aproximação."
+    },
     "searchFixed": {
       "title": "A pesquisa voltou a funcionar — a maioria das pesquisas falhava",
       "description": "Numa amostra de cerca de 40 pesquisas reais, aproximadamente 60% devolvia um erro após 35 a 79 segundos. A causa era simples: os resultados e a contagem «N resultados» corriam lado a lado, mas a página esperava na mesma pela contagem, por isso uma contagem lenta segurava toda a resposta e acabava por derrubá-la, embora os resultados nunca tenham sido a parte lenta. A contagem passou a ter limite de tempo. As pesquisas respondem em 1 a 7 segundos; se o total demorar, mostramos as vagas sem ele em vez de te fazer esperar por um número."

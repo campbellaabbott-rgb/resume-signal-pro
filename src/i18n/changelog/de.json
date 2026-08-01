@@ -1,5 +1,13 @@
 {
   "changelogEntries": {
+    "filterCountsRestored": {
+      "title": "Die Filterzahlen funktionieren wieder",
+      "description": "Die Zahlen neben jedem Unternehmen und jeder Kategorie luden überhaupt nicht mehr – alle Besucher erhielten nach etwa 20 Sekunden einen Fehler. Die Ursache war schlicht und ganz die unsere: Diese Zahlen wurden bei jedem einzelnen Seitenaufruf von Grund auf neu gezählt, drei vollständige Durchläufe über alle 572.000 Stellen, und das Board wuchs über das hinaus, was sich so rechtzeitig abschließen ließ. Sie werden jetzt planmäßig berechnet und fertig ausgeliefert, in unter einer Sekunde. Die Zahlen tragen außerdem den Zeitpunkt ihrer Berechnung, damit eine Zahl sagen kann, wann sie zutraf, statt stillschweigend Aktualität zu suggerieren."
+    },
+    "applyAgentCountries": {
+      "title": "Der Agent behauptet nicht, Sie dürften arbeiten, wo Sie es nicht angegeben haben",
+      "description": "Er hielt ein einziges Ja oder Nein zur Arbeitserlaubnis und nutzte es für jedes Land – wer im Vereinigten Königreich berechtigt war, hätte also „ja“ auf „Sind Sie rechtlich berechtigt, in den USA zu arbeiten?“ geantwortet: eine falsche Aussage über Ihren aufenthaltsrechtlichen Status, in Ihrem Namen an einen Arbeitgeber gesendet, bei genau der Frage, nach der am härtesten gefiltert wird. Sie können nun die Länder angeben, in denen Sie tatsächlich arbeiten dürfen; jede Frage zu einem nicht angegebenen Land hält an und wartet auf Sie, statt zu raten. Auch Straße und Postleitzahl lassen sich speichern – mehrere Formulare verlangen sie, und keines akzeptiert eine Näherung."
+    },
     "searchFixed": {
       "title": "Die Suche funktioniert wieder — die meisten Suchen schlugen fehl",
       "description": "In einer Stichprobe von rund 40 echten Suchanfragen lieferten etwa 60% nach 35 bis 79 Sekunden einen Fehler. Die Ursache war banal: Ergebnisse und die Zählung „N Ergebnisse\" liefen nebeneinander, doch die Seite wartete trotzdem auf die Zählung — eine langsame Zählung hielt also die ganze Antwort auf und riss sie am Ende mit, obwohl die Ergebnisse nie der langsame Teil waren. Die Zählung hat jetzt ein Zeitlimit. Suchen antworten in 1 bis 7 Sekunden; dauert die Gesamtzahl zu lange, zeigen wir die Stellen ohne sie, statt dich auf eine Zahl warten zu lassen."

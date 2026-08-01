@@ -1,5 +1,13 @@
 {
   "changelogEntries": {
+    "filterCountsRestored": {
+      "title": "Los recuentos de los filtros vuelven a funcionar",
+      "description": "Los números junto a cada empresa y categoría habían dejado de cargarse por completo: todos los visitantes recibían un error tras unos 20 segundos. La causa era sencilla y enteramente nuestra: esas cifras se recalculaban desde cero en cada visita, tres recorridos completos por las 572.000 ofertas, y el tablón superó lo que eso podía terminar a tiempo. Ahora se calculan de forma programada y se sirven ya hechas, en menos de un segundo. Las cifras además indican el momento en que se calcularon, para que un recuento pueda decirte cuándo era cierto en lugar de dar a entender que es actual."
+    },
+    "applyAgentCountries": {
+      "title": "El agente no afirmará que puedes trabajar donde no lo has dicho",
+      "description": "Guardaba un único sí o no sobre autorización laboral y lo usaba para todos los países, así que alguien autorizado en el Reino Unido habría respondido «sí» a «¿tienes autorización legal para trabajar en EE. UU.?»: una afirmación falsa sobre tu situación migratoria, enviada a una empresa en tu nombre, en la pregunta que más filtran. Ahora puedes indicar los países en los que realmente tienes autorización, y cualquier pregunta sobre un país que no hayas indicado se detiene y te espera en lugar de adivinar. También puedes guardar tu dirección y código postal, que varios formularios exigen y ninguno acepta de forma aproximada."
+    },
     "searchFixed": {
       "title": "La búsqueda vuelve a funcionar: la mayoría de las búsquedas fallaban",
       "description": "En una muestra de unas 40 búsquedas reales, cerca del 60% devolvía un error tras 35 a 79 segundos. La causa era simple: los resultados y el recuento «N resultados» corrían en paralelo, pero la página seguía esperando al recuento, así que un recuento lento retenía toda la respuesta y acababa tumbándola, aunque los resultados nunca fueron la parte lenta. El recuento ahora tiene límite de tiempo. Las búsquedas responden en 1 a 7 segundos; si el total tarda demasiado, mostramos las vacantes sin él en vez de hacerte esperar por una cifra."
