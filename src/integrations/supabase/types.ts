@@ -263,6 +263,7 @@ export type Database = {
           salary_expectation: string
           salary_min: number | null
           share_demographics: boolean
+          tailor_cover_note: boolean
           updated_at: string
           user_id: string
           website: string
@@ -302,6 +303,7 @@ export type Database = {
           salary_expectation?: string
           salary_min?: number | null
           share_demographics?: boolean
+          tailor_cover_note?: boolean
           updated_at?: string
           user_id: string
           website?: string
@@ -341,6 +343,7 @@ export type Database = {
           salary_expectation?: string
           salary_min?: number | null
           share_demographics?: boolean
+          tailor_cover_note?: boolean
           updated_at?: string
           user_id?: string
           website?: string
