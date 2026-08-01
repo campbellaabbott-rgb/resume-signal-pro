@@ -21,6 +21,7 @@ import { adapterFor, BLOCKED } from "./vendors/index.js";
 import type { PacketFieldKey, VendorAdapter } from "./vendors/types.js";
 import { planAnswers, type StandingAnswers } from "./questions/match.js";
 import { applyResolution } from "./questions/answer.js";
+import type { LearnedAnswers } from "./questions/learned.js";
 
 export type PacketField = { value: string; source: string };
 
@@ -29,6 +30,9 @@ export type ApplyInput = {
    *  no screening question can be answered, so any form that asks one is
    *  refused rather than part-filled. */
   answers?: StandingAnswers;
+  /** Questions this candidate has already answered on earlier forms. Consulted
+   *  only where a refusal means "we do not hold this" — see questions/learned.ts. */
+  learned?: LearnedAnswers;
   applyUrl: string;
   source: string;
   /** Keyed by PacketFieldKey. Anything the adapter cannot place is reported, not guessed at. */
@@ -190,7 +194,7 @@ export async function applyToPosting(browser: Browser, input: ApplyInput): Promi
             return { kind: "not-submitted", reason: `form asks ${required.length} question(s) and no standing answers are on file` };
           }
         } else {
-          const { answerable, blocking } = planAnswers(asked, answers, adapter.mappedNames);
+          const { answerable, blocking } = planAnswers(asked, answers, adapter.mappedNames, input.learned);
           if (blocking.length > 0) {
             const why = blocking.slice(0, 3)
               .map((b: { r: { kind: string; category?: string; why?: string } }) => (b.r.kind === "unanswerable" ? `${b.r.category}: ${b.r.why}` : ""))

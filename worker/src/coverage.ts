@@ -27,6 +27,7 @@
  */
 import { readFileSync } from "node:fs";
 import { matchQuestion, type StandingAnswers } from "./questions/match.js";
+import { learnedKey, isLearnable, type LearnedAnswer } from "./questions/learned.js";
 import { ADAPTERS } from "./vendors/index.js";
 import type { DomQuestion } from "./vendors/enumerate-dom.js";
 
@@ -52,6 +53,13 @@ if (!files.length) {
   console.error("usage: coverage.ts <harvest.json> [more.json ...]  (name each file <vendor>.json or pass vendor:path)");
   process.exit(1);
 }
+
+// SECOND PASS. Simulates a candidate who has already met each of these
+// questions once and answered it — the state after a few days of use, not a
+// hypothetical. Only refusals the allow-list permits are learnable, so a
+// refusal of principle stays refused in this pass too and the ceiling it
+// reports is a real one.
+const learnedStore = new Map<string, LearnedAnswer>();
 
 const unrecognised = new Map<string, { n: number; sample: string; vendors: Set<string> }>();
 const deliberate = new Map<string, number>();
@@ -91,6 +99,20 @@ for (const spec of files) {
       required++;
 
       const r = matchQuestion(q, FULL);
+      // Record what a candidate COULD teach it, for the second pass below.
+      if (r && r.kind === "unanswerable" && isLearnable(r.category)) {
+        const k = learnedKey(q.label);
+        if (!learnedStore.has(k)) {
+          learnedStore.set(k, {
+            key: k, label: q.label,
+            kind: q.options.length ? "choose" : q.type === "checkbox" ? "check" : "fill",
+            // The candidate's own words. Stood in for here by a marker, because
+            // this measures REACH — how many forms become completable once the
+            // question has been answered — not answer quality.
+            value: q.options.length ? (q.options[0] ?? "") : "(candidate's answer)",
+          });
+        }
+      }
       if (r && r.kind !== "unanswerable") { answered++; continue; }
       if (r && r.kind === "unanswerable" && r.category !== "unrecognised") {
         deliberate.set(r.category, (deliberate.get(r.category) ?? 0) + 1);
@@ -129,6 +151,40 @@ for (const [c, n] of [...blockedBy].sort((a, b) => b[1] - a[1])) {
 console.log("\n  REFUSED ON PURPOSE — these must stay refused:");
 for (const [c, n] of [...deliberate].sort((a, b) => b[1] - a[1])) {
   console.log(`    ${String(n).padStart(3)}  ${c}`);
+}
+
+// ── second pass: the same forms, for a candidate who has answered once ──
+{
+  let forms2 = 0, completable2 = 0, stillBlocked = new Map<string, number>();
+  for (const spec of files) {
+    const parts = spec.includes(":") ? spec.split(/:(.+)/) : [spec.replace(/.*h_|\.json$/g, ""), spec];
+    const vendor = parts[0] ?? "", path = parts[1] ?? "";
+    const adapter = ADAPTERS[vendor]!;
+    const data: Form[] = JSON.parse(readFileSync(path, "utf8"));
+    for (const f of data) {
+      if (!f.questions?.length) continue;
+      forms2++;
+      const blockers: string[] = [];
+      for (const q of f.questions) {
+        if (q.honeypot || adapter.mappedNames.has(q.name)) continue;
+        const isReq = adapter.requiredAttributeIsTrustworthy === false
+          ? q.required || /\*\s*$|\brequired\b|erforderlich|requis|obligatorisk/i.test(q.label)
+          : q.required;
+        if (!isReq) continue;
+        const r = matchQuestion(q, FULL, learnedStore);
+        if (r && r.kind === "unanswerable") blockers.push(r.category);
+      }
+      if (!blockers.length) completable2++;
+      else for (const b of new Set(blockers)) stillBlocked.set(b, (stillBlocked.get(b) ?? 0) + 1);
+    }
+  }
+  console.log(`\n  ── once the candidate has answered each question ONCE ──`);
+  console.log(`  ${completable2}/${forms2} forms completable  (was ${completable})`);
+  console.log(`  ${learnedStore.size} distinct questions they would have to answer, across all ${forms2} forms`);
+  console.log("  still blocked, and these are refusals of PRINCIPLE that must stay:");
+  for (const [c, n] of [...stillBlocked].sort((a, b) => b[1] - a[1])) {
+    console.log(`    ${String(n).padStart(3)} forms  ${c}`);
+  }
 }
 
 console.log("\n  UNRECOGNISED — the honest build list, most frequent first:");

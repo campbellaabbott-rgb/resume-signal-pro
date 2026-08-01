@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
+import { learnedKey } from "../../worker/src/questions/learned";
 import { resolve } from "node:path";
 import {
   matchQuestion,
@@ -470,5 +471,89 @@ describe("the question types the corpus actually contains", () => {
     // slot empty, while looking to us like it worked.
     expect(matchQuestion(q({ required: true, type: "file", label: "Qualifications Attachment" }), FULL))
       .toMatchObject({ kind: "unanswerable", category: "extra-document" });
+  });
+});
+
+/**
+ * Learned answers: the candidate tells us once, we reuse it forever.
+ *
+ * The load-bearing property is not that it remembers. It is WHAT it refuses to
+ * remember — a stored row must never be able to override a refusal of
+ * principle, or a safeguard gets deleted by a feature.
+ */
+describe("answers the candidate has already given", () => {
+  const learn = (label: string, kind: "fill" | "choose" | "check", value = "") =>
+    new Map([[learnedKey(label), { key: learnedKey(label), label, kind, value }]]);
+
+  it("answers a role-specific question it could never pattern-match", async () => {
+    const label = "Do you have a Journeyman Electrician License?";
+    const q0 = q({ required: true, label });
+    // Cold: refused, because no standing answer covers it.
+    expect(matchQuestion(q0, FULL)).toMatchObject({ kind: "unanswerable", category: "unrecognised" });
+    // After the candidate answers once.
+    const r = matchQuestion(q0, FULL, learn(label, "fill", "Yes — licensed since 2019"));
+    expect(r).toMatchObject({ kind: "fill", value: "Yes — licensed since 2019" });
+  });
+
+  it("matches the question through a requiredness marker", () => {
+    // "…?*Required" and "…?" are one question, not two — otherwise the
+    // candidate answers the same thing once per vendor spelling.
+    const stored = learn("What is your availability?", "fill", "Immediate");
+    const asked = q({ required: true, label: "What is your availability?*Required" });
+    expect(matchQuestion(asked, FULL, stored)).toMatchObject({ kind: "fill", value: "Immediate" });
+  });
+
+  it("REFUSES to remember a refusal of principle", () => {
+    // Each of these is refused for what it IS, not for being absent. A stored
+    // row must not turn any of them into an answer.
+    const cases: Array<[string, string]> = [
+      ["When is your birthday?", "date-of-birth"],
+      ["Character Reference #1", "referee"],
+      ["What is your nationality?", "nationality"],
+      ["National Insurance number", "identity-document"],
+    ];
+    for (const [label, category] of cases) {
+      const withRow = matchQuestion(q({ required: true, label }), FULL, learn(label, "fill", "something"));
+      expect(withRow, label).toMatchObject({ kind: "unanswerable", category });
+    }
+  });
+
+  it("does not let a stored row shadow the profile", () => {
+    // The profile is the single source for name, email and the rest. A stale
+    // learned value overriding it would reintroduce the drift this removes.
+    const r = matchQuestion(q({ required: true, label: "Email Address" }), FULL,
+      learn("Email Address", "fill", "old-address@example.com"));
+    expect(r).toMatchObject({ kind: "fill", value: FULL.email });
+  });
+
+  it("refuses when the remembered option is no longer on the form", () => {
+    // Employers edit their dropdowns. Picking a value that has since been
+    // removed either fails silently or selects whatever now sits in that slot;
+    // re-asking costs one question, picking wrong costs the application.
+    const label = "How did you get to know about this role?";
+    const stored = learn(label, "choose", "Careers fair");
+    const nowOffers = q({ required: true, type: "select", label,
+      options: ["Referral", "A recruiter contacted me"] });
+    // heard-about answers "Job board" when offered; here neither option fits
+    // and the stored one is gone, so it must refuse rather than improvise.
+    expect(matchQuestion(nowOffers, FULL, stored))
+      .toMatchObject({ kind: "unanswerable", category: "heard-about" });
+
+    const stillOffers = q({ required: true, type: "select", label,
+      options: ["Referral", "Careers fair", "A recruiter contacted me"] });
+    expect(matchQuestion(stillOffers, FULL, stored)).toMatchObject({ kind: "choose", option: "Careers fair" });
+  });
+
+  it("every learnable category is a gap, and every never-learnable one is a position", async () => {
+    const { isLearnable } = await import("../../worker/src/questions/learned.js");
+    // Spelled out so that adding a refusal category to the matcher forces a
+    // decision about which side it belongs on, rather than defaulting silently.
+    for (const c of ["unrecognised", "years-experience", "postcode", "heard-about", "cover-letter"]) {
+      expect(isLearnable(c), `${c} should be learnable`).toBe(true);
+    }
+    for (const c of ["identity-document", "date-of-birth", "nationality", "demographic",
+                     "referee", "extra-document", "unlabelled", "work-authorization", "sponsorship"]) {
+      expect(isLearnable(c), `${c} must NEVER be learnable`).toBe(false);
+    }
   });
 });

@@ -94,6 +94,7 @@
  * about that. Not built yet.
  */
 import type { DomQuestion } from "../vendors/enumerate-dom.js";
+import { fromLearned, isLearnable, type LearnedAnswers } from "./learned.js";
 import { coverage } from "./countries.js";
 
 /** What the candidate has told us. Booleans are TRINARY: null = never stated. */
@@ -343,7 +344,19 @@ export type AlreadyMapped = ReadonlySet<string>;
  * do not care about would do. A REQUIRED question never returns null; it
  * resolves or it refuses.
  */
-export function matchQuestion(q: DomQuestion, a: StandingAnswers): Resolution | null {
+function matchStanding(
+  q: DomQuestion,
+  a: StandingAnswers,
+  /**
+   * What this candidate has already told us, from earlier forms.
+   *
+   * Consulted ONLY after the standing rules have run and only for refusals that
+   * mean "we do not hold this". A refusal of principle — an ID number, a date
+   * of birth, a referee's phone number — is never resolvable from here, because
+   * those are refused for what they are and not for being absent. Letting a
+   * stored row override them would delete a safeguard by adding a feature.
+   */
+): Resolution | null {
   // A honeypot is not a question. Skipping it BEFORE anything else matters in
   // both directions: filling it announces us to a vendor that has no CAPTCHA,
   // and treating it as an unanswerable required field refuses postings that are
@@ -584,17 +597,50 @@ export function matchQuestion(q: DomQuestion, a: StandingAnswers): Resolution | 
     : null;
 }
 
+/**
+ * The standing rules first, then — only where the refusal was "we do not hold
+ * this" — whatever the candidate has already told us.
+ *
+ * ORDER MATTERS AND IS NOT NEGOTIABLE. The standing rules run to completion
+ * before a learned answer is looked at, so a stored row can never override a
+ * refusal of principle. If someone at some point answers a question that was
+ * later reclassified as never-learnable, the row stays in the table and stops
+ * being used — the safeguard wins over the data, not the other way round.
+ *
+ * A learned answer also never overrides a SUCCESSFUL standing answer. The
+ * profile is the single source for name, email, work authorisation and the
+ * rest; letting stale free text shadow it would reintroduce exactly the drift
+ * this design is trying to remove.
+ */
+export function matchQuestion(
+  q: DomQuestion,
+  a: StandingAnswers,
+  learned?: LearnedAnswers,
+): Resolution | null {
+  const standing = matchStanding(q, a);
+  if (!standing || standing.kind !== "unanswerable") return standing;
+  if (!learned || !learned.size) return standing;
+  if (!isLearnable(standing.category)) return standing;
+
+  const hit = fromLearned(q, learned);
+  if (!hit) return standing;
+  if (hit.kind === "choose") return { kind: "choose", category: standing.category, option: hit.option! };
+  if (hit.kind === "check") return { kind: "check", category: standing.category };
+  return { kind: "fill", category: standing.category, value: hit.value! };
+}
+
 /** Split a form's questions into what we can answer and what blocks the send. */
 export function planAnswers(
   questions: readonly DomQuestion[],
   answers: StandingAnswers,
   alreadyMapped: AlreadyMapped,
+  learned?: LearnedAnswers,
 ): { answerable: Array<{ q: DomQuestion; r: Resolution }>; blocking: Array<{ q: DomQuestion; r: Resolution }> } {
   const answerable: Array<{ q: DomQuestion; r: Resolution }> = [];
   const blocking: Array<{ q: DomQuestion; r: Resolution }> = [];
   for (const q of questions) {
     if (alreadyMapped.has(q.name)) continue;
-    const r = matchQuestion(q, answers);
+    const r = matchQuestion(q, answers, learned);
     if (!r) continue;
     if (r.kind === "unanswerable") {
       // Only a REQUIRED question blocks. An optional one we cannot answer is

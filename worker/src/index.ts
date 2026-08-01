@@ -16,6 +16,7 @@ import { createClient } from "@supabase/supabase-js";
 import { mkdtemp, writeFile, rm, mkdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import type { LearnedAnswers, LearnedAnswer } from "./questions/learned.js";
 import { applyToPosting } from "./apply.js";
 import { ADAPTERS, BLOCKED } from "./vendors/index.js";
 import type { PacketFieldKey } from "./vendors/types.js";
@@ -213,6 +214,37 @@ async function loadAnswers(userId: string): Promise<StandingAnswers | undefined>
   };
 }
 
+/**
+ * Screening answers this candidate has already given on earlier forms.
+ *
+ * Absence is not failure. A candidate who has answered nothing simply gets the
+ * standing rules, which is the state everyone starts in — so a query error here
+ * degrades to "no learned answers" rather than refusing the send. It is still
+ * logged, because the difference between "nobody has answered anything yet" and
+ * "the table is unreachable" is invisible from the outcome, and that is exactly
+ * the kind of silence that has hidden problems in this codebase before.
+ */
+async function loadLearned(userId: string): Promise<LearnedAnswers> {
+  const { data, error } = await db.from("agent_learned_answers")
+    .select("question_key, question_label, answer_kind, answer_value")
+    .eq("user_id", userId);
+  if (error) {
+    console.error(`[worker] loadLearned failed for ${userId}: ${error.message} — continuing with standing answers only`);
+    return new Map();
+  }
+  const m = new Map<string, LearnedAnswer>();
+  for (const r of (data ?? []) as Array<Record<string, unknown>>) {
+    const key = String(r["question_key"] ?? "");
+    const kind = String(r["answer_kind"] ?? "");
+    if (!key || (kind !== "fill" && kind !== "choose" && kind !== "check")) continue;
+    m.set(key, {
+      key, label: String(r["question_label"] ?? ""),
+      kind, value: String(r["answer_value"] ?? ""),
+    });
+  }
+  return m;
+}
+
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 async function release(id: number, patch: Record<string, unknown>) {
@@ -236,9 +268,11 @@ async function runOne(browser: Awaited<ReturnType<typeof chromium.launch>>, p: P
   // at right now, not the one it pointed at when the worker started.
   const staged = await stageResume(p.user_id);
   const answers = await loadAnswers(p.user_id);
+  const learned = await loadLearned(p.user_id);
   let outcome;
   try {
     outcome = await applyToPosting(browser, {
+      learned,
       applyUrl: p.apply_url, source: src, fields: toFieldKeys(p.fields ?? {}),
       resumePath: staged?.path, answers,
     });
