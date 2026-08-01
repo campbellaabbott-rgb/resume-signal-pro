@@ -1474,7 +1474,11 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
     // Facets from the database — always true to what the board serves. If
     // the RPC isn't migrated yet (function published before migration ran),
     // keep the previous meta instead of clobbering it with zeros.
-    const { data: facets, error: facetsErr } = await client.rpc("get_job_board_facets");
+    // refresh_job_board_facets, NOT get_job_board_facets. The read function now
+    // serves a CACHED row so page views stop timing out over 584k rows — and the
+    // orphan prune below DELETES postings from the company list it gets back. A
+    // destructive path computes its own input rather than trusting a cache.
+    const { data: facets, error: facetsErr } = await client.rpc("refresh_job_board_facets");
     const f = (facets ?? {}) as Record<string, unknown>;
     if (facetsErr || !f.total) {
       console.warn("[JOB-BOARD] facets RPC unavailable — previous refresh meta kept:", facetsErr?.message ?? "empty result");
