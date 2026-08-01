@@ -76,6 +76,17 @@ const json = (body: unknown, status = 200) =>
 // while this file was untouched). Always bump BUILD_VERSION here when a shared
 // module this function imports changes — it forces the diff AND gives the
 // deploy a verifiable tell.
+//
+// AND WHEN sources.ts CHANGES, which this comment used to omit and which cost
+// us a day. 22 verified Pinpoint boards were merged on 2026-08-01 and reached
+// the deployed catalog, then sat there invisible: the bootstrap lane that jumps
+// brand-new boards ahead of the 28k cold rotation is KEYED ON BUILD_VERSION, so
+// with the version unchanged it never recomputed and the new boards queued
+// behind everything else. The catalog was right and the board was empty, which
+// is the hardest kind of wrong to notice.
+//
+// src/test/build-version-guard.test.ts now fails if sources.ts changes without
+// this constant changing, so the rule does not depend on anyone reading this.
 // Sitemap pagination unit: one file per day of the 30-day freshness window.
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
