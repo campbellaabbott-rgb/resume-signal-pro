@@ -3612,6 +3612,7 @@ export type Database = {
         Returns: boolean
       }
       refresh_explore_cache: { Args: never; Returns: undefined }
+      refresh_job_board_facets: { Args: never; Returns: Json }
       refresh_stats_cache: { Args: never; Returns: undefined }
       register_affiliate: {
         Args: { p_email: string; p_password: string }
