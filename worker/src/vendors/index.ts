@@ -53,7 +53,7 @@ export const NEEDS_RECON: Record<string, string> = {
   //
   // Note this is invisible without testing: no CAPTCHA, no challenge page, just a
   // 403 that reads like a broken link.
-  smartrecruiters: "403s headless browsers on the apply URL (headed gets 200) — respecting the refusal",
+  smartrecruiters: "the apply app 403s in BOTH modes. Re-measured 2026-08-01 across 4 tenants: clicking through lands on /oneclick-ui/, which then 403s on its own API (/oneclick-ui/api/company/...) and sometimes on its JS bundle. Headless renders nothing at all; HEADED renders the job title and still reaches 0 form inputs after 20s. The old note said headed got 200 — true of the PAGE, false of the form. Reaching the form would mean defeating the protection, not running a browser differently. Adapter stays written and unused.",
 
   // Reaching the form needs an email + a REQUIRED terms-and-conditions
   // checkbox, and it carries a `honey-pot` field (see HONEYPOTS below). No

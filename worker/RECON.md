@@ -339,3 +339,35 @@ rather than what a call returned.
 question about the CALL, not about the page. The same shape as counting a
 `required` attribute a vendor never sets, or reading a cookie banner and
 concluding a form has no file input. A probe has to ask the page what changed.
+
+## SmartRecruiters — re-measured 2026-08-01. Closed, and not on a judgement call.
+
+45,380 postings, the largest single unlock left, with an adapter already written.
+It was recorded as "403s headless browsers on the apply URL (headed gets 200) —
+respecting the refusal", which framed it as an ethical decision: run headed and
+it works, so should we?
+
+**That framing was wrong, and the measurement settles it without needing the
+decision.** Four tenants, headed, 20-second waits, no user-agent spoofing and no
+stealth of any kind:
+
+| mode | page | form |
+|---|---|---|
+| headless | 403 on /oneclick-ui/, body empty | 0 inputs |
+| **headed** | renders, job title visible | **0 inputs** |
+
+Headed 403s too — just one layer in, on `/oneclick-ui/api/company/...`, and on
+Securitas also on the `js-www.smartrecruiters.com` bundle. The old note was true
+of the PAGE and false of the FORM, which is the only part that matters.
+
+So there is no version of this that works by running a browser differently.
+Reaching the form would mean defeating the protection itself — user-agent
+spoofing, stealth plugins, fingerprint patching — which is a different act from
+being a real browser on a real screen, and is the line this project does not
+cross. The adapter stays written and unused.
+
+**Worth noting what nearly happened.** The half-true note had already produced a
+plan ("run headed, gain 45,380 postings, 5.2% -> 13%") and an ethical debate
+about whether to. Both were built on a fact nobody had re-checked. Sixth time in
+two days that a recorded observation turned out to be an artifact — and the only
+reason this one cost nothing is that the measurement came before the build.
