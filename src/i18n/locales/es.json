@@ -4319,7 +4319,9 @@
     "cta": "Activar el agente",
     "footnoteOnline": "Cancela cuando quieras. Nunca resolvemos ni evitamos un CAPTCHA: donde lo haya, tu solicitud queda preparada y la envías tú.",
     "footnoteOffline": "Cancela cuando quieras. El envío automático no está funcionando ahora mismo, así que las solicitudes se preparan para que las envíes con un clic.",
-    "checkoutFailed": "No se pudo iniciar el pago: inténtalo de nuevo"
+    "checkoutFailed": "No se pudo iniciar el pago: inténtalo de nuevo",
+    "badgeOffline": "Hace la parte difícil de postularte",
+    "taglineOffline": "Encuentra los puestos y rellena la solicitud. Tú pulsas enviar."
   },
   "atsCoverage": {
     "heading": "Hecho para los sistemas que las empresas usan de verdad",

@@ -4319,7 +4319,9 @@
     "cta": "Lancer l'agent",
     "footnoteOnline": "Annulable à tout moment. Nous ne résolvons ni ne contournons jamais un CAPTCHA — là où il y en a un, votre candidature est préparée et c'est vous qui l'envoyez.",
     "footnoteOffline": "Annulable à tout moment. L'envoi automatique ne fonctionne pas actuellement : les candidatures sont donc préparées pour que vous les envoyiez en un clic.",
-    "checkoutFailed": "Impossible de lancer le paiement — réessayez"
+    "checkoutFailed": "Impossible de lancer le paiement — réessayez",
+    "badgeOffline": "Fait le plus dur de la candidature",
+    "taglineOffline": "Il trouve les postes et remplit la candidature. Vous appuyez sur envoyer."
   },
   "atsCoverage": {
     "heading": "Conçu pour les systèmes que les employeurs utilisent vraiment",

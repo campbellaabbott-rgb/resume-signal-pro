@@ -46,7 +46,9 @@ export function AgentSubscriptionCard({ email }: { email?: string }) {
     <div className="relative rounded-2xl border-2 border-primary/40 bg-card p-6 md:p-8 shadow-lg">
       <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground shadow-lg">
         <Bot className="w-3 h-3 mr-1" />
-        {t("agentPlan.badge", "Does the applying for you")}
+        {online
+          ? t("agentPlan.badge", "Does the applying for you")
+          : t("agentPlan.badgeOffline", "Does the hard part of applying")}
       </Badge>
 
       <div className="flex items-start gap-4 mb-4 mt-2">
@@ -56,7 +58,14 @@ export function AgentSubscriptionCard({ email }: { email?: string }) {
         <div>
           <h3 className="font-bold text-xl">{t("agentPlan.name", "Apply Agent")}</h3>
           <p className="text-sm text-muted-foreground">
-            {t("agentPlan.tagline", "It finds the roles, fills in the application, and sends it.")}
+            {/* GATED, because "and sends it" is a statement of fact and it is
+                currently false. The perk list below was already gated on
+                `online`; this line was not, so the card hid the auto-apply
+                bullet while the sentence above it still promised sending. A
+                claim does not stop being a claim for being in smaller type. */}
+            {online
+              ? t("agentPlan.tagline", "It finds the roles, fills in the application, and sends it.")
+              : t("agentPlan.taglineOffline", "It finds the roles and fills in the application. You press send.")}
           </p>
         </div>
       </div>

@@ -4319,7 +4319,9 @@
     "cta": "Agent starten",
     "footnoteOnline": "Jederzeit kündbar. Wir lösen und umgehen niemals ein CAPTCHA – wo eines steht, wird Ihre Bewerbung vorbereitet und Sie senden sie ab.",
     "footnoteOffline": "Jederzeit kündbar. Der unbeaufsichtigte Versand läuft gerade nicht, daher werden Bewerbungen vorbereitet, damit Sie sie mit einem Klick senden.",
-    "checkoutFailed": "Bezahlvorgang konnte nicht gestartet werden – bitte erneut versuchen"
+    "checkoutFailed": "Bezahlvorgang konnte nicht gestartet werden – bitte erneut versuchen",
+    "badgeOffline": "Übernimmt den mühsamen Teil der Bewerbung",
+    "taglineOffline": "Es findet die Stellen und füllt die Bewerbung aus. Sie drücken auf Senden."
   },
   "atsCoverage": {
     "heading": "Gebaut für die Systeme, die Arbeitgeber wirklich nutzen",

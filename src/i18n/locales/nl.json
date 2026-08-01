@@ -4319,7 +4319,9 @@
     "cta": "Agent starten",
     "footnoteOnline": "Altijd opzegbaar. We lossen of omzeilen nooit een CAPTCHA — waar er een staat, wordt je sollicitatie klaargezet en verstuur jij hem.",
     "footnoteOffline": "Altijd opzegbaar. Onbeheerd versturen draait op dit moment niet, dus sollicitaties worden klaargezet om met één klik te versturen.",
-    "checkoutFailed": "Afrekenen kon niet worden gestart — probeer het opnieuw"
+    "checkoutFailed": "Afrekenen kon niet worden gestart — probeer het opnieuw",
+    "badgeOffline": "Doet het zware werk van solliciteren",
+    "taglineOffline": "Het vindt de functies en vult de sollicitatie in. U drukt op verzenden."
   },
   "atsCoverage": {
     "heading": "Gebouwd voor de systemen die werkgevers echt gebruiken",

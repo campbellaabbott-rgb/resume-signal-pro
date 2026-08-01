@@ -4319,7 +4319,9 @@
     "cta": "Simulan ang agent",
     "footnoteOnline": "Puwedeng kanselahin anumang oras. Hindi namin nilulutas o nilalampasan ang CAPTCHA — kung saan may ganoon, inihahanda ang aplikasyon mo at ikaw ang magpapadala.",
     "footnoteOffline": "Puwedeng kanselahin anumang oras. Hindi tumatakbo ngayon ang awtomatikong pagpapadala, kaya inihahanda ang mga aplikasyon para maipadala mo sa isang pindot.",
-    "checkoutFailed": "Hindi masimulan ang checkout — pakisubukang muli"
+    "checkoutFailed": "Hindi masimulan ang checkout — pakisubukang muli",
+    "badgeOffline": "Ginagawa ang mahirap na bahagi ng pag-apply",
+    "taglineOffline": "Hinahanap nito ang mga trabaho at pinupunan ang application. Ikaw ang pipindot ng send."
   },
   "atsCoverage": {
     "heading": "Ginawa para sa mga sistemang talagang ginagamit ng mga employer",

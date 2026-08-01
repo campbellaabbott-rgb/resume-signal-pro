@@ -4319,7 +4319,9 @@
     "cta": "Ativar o agente",
     "footnoteOnline": "Cancele quando quiser. Nunca resolvemos nem contornamos um CAPTCHA — onde existir, a sua candidatura fica preparada e é você que a envia.",
     "footnoteOffline": "Cancele quando quiser. O envio automático não está a funcionar neste momento, por isso as candidaturas ficam preparadas para enviar com um clique.",
-    "checkoutFailed": "Não foi possível iniciar o pagamento — tente novamente"
+    "checkoutFailed": "Não foi possível iniciar o pagamento — tente novamente",
+    "badgeOffline": "Faz a parte difícil da candidatura",
+    "taglineOffline": "Encontra as vagas e preenche a candidatura. Você carrega em enviar."
   },
   "atsCoverage": {
     "heading": "Feito para os sistemas que os empregadores usam mesmo",
