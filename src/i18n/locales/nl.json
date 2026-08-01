@@ -4277,7 +4277,9 @@
     "coverNote": "Een korte notitie bij uw sollicitaties",
     "coverNoteHint": "Optioneel. Sommige formulieren versturen niet zonder, en de agent stopt liever dan een lege mee te sturen. Deze tekst gaat ongewijzigd naar elke werkgever — hij wordt niet per functie herschreven — dus houd het bij uzelf en uw werk, niet bij één bedrijf.",
     "coverNotePlaceholder": "bijv. Ik ben data engineer met acht jaar ervaring in het bouwen van pipelines met Python en dbt, en zoek een senior rol waarin ik een platform van begin tot eind kan dragen.",
-    "coverNoteCount": "{{n}} van 2000 tekens"
+    "coverNoteCount": "{{n}} van 2000 tekens",
+    "coverNoteHintTailored": "Optioneel. Sommige formulieren verzenden niet zonder, en de agent stopt liever dan een leeg veld te versturen. Omdat afstemming aanstaat, past de agent de notitie aan per functie en gebruikt daarbij alleen wat je cv en de vacature daadwerkelijk zeggen — lukt dat niet eerlijk, dan wordt je notitie precies zo verstuurd als je hem hebt geschreven.",
+    "tailorCoverNote": "Deze notitie per functie aanpassen. De agent herschrijft hem aan de hand van de vacature en gebruikt alleen feiten die al in je cv staan: hij kan geen werkgever, opleiding, vaardigheid of getal toevoegen dat er niet in staat, en noemt uit zichzelf nooit je visumstatus, salaris of startdatum. Wat hij niet kan onderbouwen, laat hij weg: dan gaat je notitie ongewijzigd mee."
   },
   "applyQueue": {
     "title": "Voorbereide sollicitaties",

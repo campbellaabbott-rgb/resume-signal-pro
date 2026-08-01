@@ -1,5 +1,9 @@
 {
   "changelogEntries": {
+    "tailoredCoverNotes": {
+      "title": "Las notas de presentación ya pueden escribirse para cada puesto",
+      "description": "Hasta ahora, la nota que acompañaba a tus candidaturas era un único párrafo enviado palabra por palabra a todas las empresas. Ahora puedes activar la personalización y el agente la reescribe para cada puesto a partir de la propia oferta. Solo trabaja con lo que ya figura en tu currículum: no puede mencionar una empresa, un centro de estudios, una habilidad ni una cifra que no esté ahí, y nunca menciona por iniciativa propia tu situación de visado, tu salario ni tu fecha de incorporación, que tienen sus propios campos. Cada borrador se contrasta con tu currículum y con la oferta antes de poder usarse, y lo que no supera la comprobación se descarta y se envía tu nota original. Viene desactivado, porque reescribir tus palabras es una decisión tuya."
+    },
     "filterCountsRestored": {
       "title": "Los recuentos de los filtros vuelven a funcionar",
       "description": "Los números junto a cada empresa y categoría habían dejado de cargarse por completo: todos los visitantes recibían un error tras unos 20 segundos. La causa era sencilla y enteramente nuestra: esas cifras se recalculaban desde cero en cada visita, tres recorridos completos por las 572.000 ofertas, y el tablón superó lo que eso podía terminar a tiempo. Ahora se calculan de forma programada y se sirven ya hechas, en menos de un segundo. Las cifras además indican el momento en que se calcularon, para que un recuento pueda decirte cuándo era cierto en lugar de dar a entender que es actual."

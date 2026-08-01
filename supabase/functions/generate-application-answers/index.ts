@@ -21,6 +21,7 @@ import { callAIWithModelFallback, chainFrom } from "../_shared/ai-fallback.ts";
 import { buildLanguageInstruction } from "../_shared/language-instruction.ts";
 import { checkInputLimits } from "../_shared/input-limits.ts";
 import { classifyQuestion, selectDraftable, roleGuidance, type AppQuestion } from "../_shared/application-questions.ts";
+import { coverNotePrompt, validateCoverNote, COVER_NOTE_VERSION } from "../_shared/cover-note.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -39,14 +40,81 @@ serve(async (req) => {
 
   try {
     const body = await req.json();
-    const { resumeText, jobTitle, jobCompany, jobDescription, questions, language, jobCategory, experienceBand } = body as {
+    const { resumeText, jobTitle, jobCompany, jobDescription, questions, language, jobCategory, experienceBand,
+      mode, baseNote, candidateName } = body as {
       resumeText?: string; jobTitle?: string; jobCompany?: string; jobDescription?: string;
       questions?: AppQuestion[]; language?: string; jobCategory?: string; experienceBand?: string;
+      mode?: string; baseNote?: string; candidateName?: string;
     };
 
     const limitError = checkInputLimits({ resumeText, jobDescription });
     if (limitError) return json({ error: limitError }, 400);
     if (!resumeText || resumeText.trim().length < 50) return json({ error: "Resume text is required." }, 400);
+
+    // ── cover-note mode ──────────────────────────────────────────────────────
+    // A different job from drafting screening answers, and it lives here rather
+    // than in its own function for one reason: THE GATE TRAVELS WITH THE
+    // GENERATOR. If validateCoverNote ran at the call site, a second caller
+    // could invoke this and send an ungrounded note to an employer without ever
+    // touching the check. Returning an already-validated note (or null) makes
+    // that impossible by construction.
+    if (mode === "cover-note") {
+      const apiKeyCN = Deno.env.get("LOVABLE_API_KEY");
+      if (!apiKeyCN) return json({ error: "AI is not configured." }, 500);
+
+      const gateCtx = {
+        resumeText, jobDescription, jobTitle, company: jobCompany,
+        candidateName, baseNote: baseNote ?? "",
+      };
+      const { system, user } = coverNotePrompt({
+        jobTitle: jobTitle ?? "", company: jobCompany ?? "",
+        jobDescription, baseNote: baseNote ?? "", resumeText,
+      });
+
+      const messages: Array<{ role: string; content: string }> = [
+        { role: "system", content: `${system}\n${buildLanguageInstruction(language)}` },
+        { role: "user", content: user },
+      ];
+
+      // Two attempts at most. The repair round hands the model its OWN failures
+      // rather than re-rolling blind — most rejections are one invented name or
+      // one stray placeholder, which is a correctable mistake, not a hopeless
+      // draft. Bounded at two because this runs per posting inside a batch that
+      // already has a wall-clock budget.
+      let lastIssues: string[] = [];
+      for (let attempt = 0; attempt < 2; attempt++) {
+        const { response } = await callAIWithModelFallback(apiKeyCN, {
+          messages, temperature: 0.4, maxTokens: 900,
+          models: chainFrom("google/gemini-2.5-flash"),
+          context: "COVER-NOTE",
+        });
+        if (!response.ok) {
+          if (response.status === 429) return json({ error: "Busy — try again shortly." }, 429);
+          if (response.status === 402) return json({ error: "AI credits exhausted." }, 402);
+          return json({ error: "Couldn't draft a cover note right now." }, 502);
+        }
+        const r = await response.json();
+        const draft = String(r?.choices?.[0]?.message?.content ?? "")
+          .replace(/^```[a-z]*\n?|```$/g, "").trim();
+
+        const verdict = validateCoverNote({ ...gateCtx, note: draft });
+        if (verdict.ok) {
+          console.log(`[COVER-NOTE] accepted on attempt ${attempt + 1}; ${verdict.note.length} chars`);
+          return json({ note: verdict.note, issues: [], version: COVER_NOTE_VERSION });
+        }
+        lastIssues = verdict.issues;
+        console.log(`[COVER-NOTE] attempt ${attempt + 1} rejected: ${verdict.issues.join(" | ")}`);
+        messages.push({ role: "assistant", content: draft });
+        messages.push({
+          role: "user",
+          content: `That draft was REJECTED for these reasons:\n${verdict.issues.map((i) => `- ${i}`).join("\n")}\n\nRewrite it so none of them apply. Remove any name, figure or claim you cannot ground in the RESUME, the candidate's OWN NOTE, or the JOB POSTING. Return ONLY the corrected note.`,
+        });
+      }
+
+      // Null, not a degraded note. The caller sends the candidate's own words
+      // instead — a generic note is a fine outcome; a false one is not.
+      return json({ note: null, issues: lastIssues, version: COVER_NOTE_VERSION });
+    }
 
     const hasExplicit = Array.isArray(questions) && questions.length > 0;
     const draftable = hasExplicit ? selectDraftable(questions).slice(0, 25) : [];

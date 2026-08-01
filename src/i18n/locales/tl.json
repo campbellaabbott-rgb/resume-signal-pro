@@ -4277,7 +4277,9 @@
     "coverNote": "Isang maikling tala na kasama ng iyong mga aplikasyon",
     "coverNoteHint": "Opsyonal. May mga form na hindi maisusumite kung wala nito, at hihinto ang agent sa halip na magpadala ng blangko. Ang tekstong ito ay dumarating nang buo sa bawat employer — hindi ito isinusulat muli kada trabaho — kaya panatilihin itong tungkol sa iyo at sa trabaho mo, hindi sa iisang kompanya.",
     "coverNotePlaceholder": "hal. Isa akong data engineer na walong taon nang gumagawa ng pipelines sa Python at dbt, at naghahanap ng senior na papel kung saan maaari kong pangasiwaan ang isang platform mula simula hanggang dulo.",
-    "coverNoteCount": "{{n}} sa 2000 na karakter"
+    "coverNoteCount": "{{n}} sa 2000 na karakter",
+    "coverNoteHintTailored": "Opsyonal. May mga form na hindi maisusumite kung wala ito, at hihinto ang ahente sa halip na magpadala ng blangko. Dahil naka-on ang pag-angkop, ina-angkop ito ng ahente sa bawat posisyon gamit lamang ang aktuwal na nakasaad sa iyong résumé at sa anunsyo — at kung hindi niya iyon magawa nang tapat, ipapadala ang iyong nota nang eksakto sa pagkakasulat mo.",
+    "tailorCoverNote": "Iangkop ang notang ito sa bawat posisyon. Isinusulat itong muli ng ahente batay sa anunsyo gamit lamang ang mga bagay na nasa iyong résumé na — hindi siya makakadagdag ng employer, paaralan, kasanayan o numerong wala roon, at hindi niya kusang binabanggit ang iyong visa status, sahod o petsa ng pagsisimula. Ang hindi niya mapatunayan ay inaalis niya: ang iyong nota ang ipapadala nang buo."
   },
   "applyQueue": {
     "title": "Mga inihandang aplikasyon",

@@ -1,5 +1,9 @@
 {
   "changelogEntries": {
+    "tailoredCoverNotes": {
+      "title": "Cover notes can now be written for each job",
+      "description": "Until now the note attached to your applications was one paragraph, sent word for word to every employer. You can now switch on tailoring, and the agent rewrites it for each role against that job's own posting. It works only from what is already in your résumé: it cannot name an employer, a school, a skill or a figure that isn't there, and it never volunteers your visa status, salary or start date — those have their own fields, answered from what you set. Every draft is checked against your résumé and the posting before it can be used, and anything that fails the check is thrown away and your own note sent instead. It is off by default, because rewriting your words is your decision to make."
+    },
     "filterCountsRestored": {
       "title": "Filter counts are working again",
       "description": "The counts beside each company and category had stopped loading entirely — every visitor was getting an error after about 20 seconds. The cause was simple and entirely ours: those numbers were recounted from scratch on every single page view, three full passes over all 572,000 postings, and the board outgrew what that could finish in time. They are now worked out on a schedule and served ready-made, which takes under a second. The figures also carry the moment they were computed, so a count can tell you when it was true rather than quietly implying it is current."

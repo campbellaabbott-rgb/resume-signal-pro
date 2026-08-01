@@ -1,5 +1,9 @@
 {
   "changelogEntries": {
+    "tailoredCoverNotes": {
+      "title": "Notities bij sollicitaties kunnen nu per vacature worden geschreven",
+      "description": "Tot nu toe was de notitie bij je sollicitaties één alinea, woord voor woord naar elke werkgever gestuurd. Je kunt nu afstemming inschakelen: de agent herschrijft hem voor elke functie aan de hand van de vacature zelf. Hij werkt alleen met wat al in je cv staat: hij kan geen werkgever, opleiding, vaardigheid of getal noemen dat er niet in staat, en noemt uit zichzelf nooit je visumstatus, salaris of startdatum — die hebben hun eigen velden. Elk concept wordt getoetst aan je cv en de vacature voordat het gebruikt mag worden; wat de toets niet doorstaat, wordt weggegooid en je eigen notitie gaat mee. Standaard uit, want het herschrijven van jouw woorden is jouw keuze."
+    },
     "filterCountsRestored": {
       "title": "De filtertellingen werken weer",
       "description": "De aantallen naast elk bedrijf en elke categorie laadden helemaal niet meer — iedere bezoeker kreeg na ongeveer 20 seconden een foutmelding. De oorzaak was eenvoudig en volledig de onze: die getallen werden bij elke paginaweergave opnieuw geteld, drie volledige rondes langs alle 572.000 vacatures, en het bord groeide voorbij wat daarin op tijd af kon. Ze worden nu volgens een schema berekend en kant-en-klaar geleverd, in minder dan een seconde. De cijfers vermelden ook wanneer ze zijn berekend, zodat een telling kan zeggen wanneer die klopte in plaats van stilzwijgend te suggereren dat die actueel is."

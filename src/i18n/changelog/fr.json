@@ -1,5 +1,9 @@
 {
   "changelogEntries": {
+    "tailoredCoverNotes": {
+      "title": "Les notes de candidature peuvent désormais être écrites pour chaque poste",
+      "description": "Jusqu'ici, la note jointe à vos candidatures était un seul paragraphe, envoyé mot pour mot à tous les employeurs. Vous pouvez maintenant activer la personnalisation : l'agent la réécrit pour chaque poste à partir de l'annonce elle-même. Il ne travaille qu'à partir de ce qui figure déjà dans votre CV : il ne peut citer ni employeur, ni école, ni compétence, ni chiffre absent, et il n'évoque jamais de lui-même votre situation de visa, votre salaire ou votre date de disponibilité, qui ont leurs propres champs. Chaque brouillon est vérifié face à votre CV et à l'annonce avant de pouvoir servir ; ce qui échoue au contrôle est écarté et votre note d'origine est envoyée. Désactivé par défaut, car réécrire vos mots vous appartient."
+    },
     "filterCountsRestored": {
       "title": "Les compteurs de filtres fonctionnent à nouveau",
       "description": "Les nombres affichés à côté de chaque entreprise et catégorie ne se chargeaient plus du tout : chaque visiteur recevait une erreur après une vingtaine de secondes. La cause était simple et entièrement de notre fait : ces chiffres étaient recalculés de zéro à chaque affichage de page, trois parcours complets des 572 000 offres, et le tableau a dépassé ce que cela pouvait terminer à temps. Ils sont désormais calculés selon un planning et servis tout prêts, en moins d'une seconde. Les chiffres indiquent aussi le moment de leur calcul, afin qu'un compteur puisse vous dire quand il était exact plutôt que de laisser croire qu'il l'est encore."

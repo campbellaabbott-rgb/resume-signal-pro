@@ -201,14 +201,39 @@ async function recordPending(
  * false would have the agent tell an employer someone is NOT authorised to work
  * somewhere when they simply had not answered.
  */
-function toStanding(a: broker.StandingAnswersWire): StandingAnswers {
+/**
+ * Reserved key in `packet.fields` carrying a note written for THIS posting.
+ *
+ * Mirrors COVER_NOTE_FIELD_KEY in supabase/functions/_shared/submission-packet.ts.
+ * The two runtimes cannot import from each other — Deno on one side, Node on the
+ * other — so this is a hand-copied constant, and the cross-runtime test pins the
+ * pair. That is the same shape as every other duplicated definition here, and
+ * the reason the test exists: a rename on one side alone is silent, and the
+ * symptom would be the generic note going out forever.
+ */
+const COVER_NOTE_FIELD_KEY = "__coverNote";
+
+function toStanding(
+  a: broker.StandingAnswersWire,
+  /**
+   * The packet's fields. When apply-agent tailored a note for this posting it
+   * rides here, already past the grounding gate, and it WINS over the standing
+   * note — that is the whole point of having written it.
+   *
+   * Optional, and absent means "use what the candidate wrote". A packet
+   * prepared before tailoring shipped, or one where the gate refused the draft,
+   * carries no such field and behaves exactly as it always did.
+   */
+  fields?: Record<string, { value: string; source: string }>,
+): StandingAnswers {
   const tri = (v: boolean | null | undefined) => (typeof v === "boolean" ? v : null);
+  const tailored = (fields?.[COVER_NOTE_FIELD_KEY]?.value ?? "").trim();
   return {
     fullName: a.fullName ?? "", firstName: a.firstName ?? "", lastName: a.lastName ?? "",
     email: a.email ?? "", phone: a.phone ?? "", city: a.city ?? "", country: a.country ?? "",
     address: a.address ?? "", postcode: a.postcode ?? "",
     linkedin: a.linkedin ?? "", website: a.website ?? "",
-    coverNote: a.coverNote ?? "", salaryExpectation: a.salaryExpectation ?? "",
+    coverNote: tailored || (a.coverNote ?? ""), salaryExpectation: a.salaryExpectation ?? "",
     earliestStart: a.earliestStart ?? "",
     workAuthorized: tri(a.workAuthorized),
     requiresSponsorship: tri(a.requiresSponsorship),
@@ -305,7 +330,7 @@ async function runOne(
   await pauseForEmployer(p.company);
 
   const staged = await stageResume(claimed.resumeUrl);
-  const answers = toStanding(claimed.answers);
+  const answers = toStanding(claimed.answers, claimed.packet?.fields);
   const learned = toLearned(claimed.learned);
   let outcome;
   try {

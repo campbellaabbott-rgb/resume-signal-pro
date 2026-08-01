@@ -1,5 +1,9 @@
 {
   "changelogEntries": {
+    "tailoredCoverNotes": {
+      "title": "Anschreiben-Notizen lassen sich jetzt pro Stelle schreiben",
+      "description": "Bisher war die Notiz zu Ihren Bewerbungen ein einziger Absatz, der wortgleich an jeden Arbeitgeber ging. Sie können die Anpassung nun einschalten: Der Agent schreibt sie für jede Stelle anhand der jeweiligen Anzeige um. Er arbeitet ausschließlich mit dem, was bereits in Ihrem Lebenslauf steht — er kann keinen Arbeitgeber, keine Hochschule, keine Fähigkeit und keine Zahl nennen, die dort fehlt, und er erwähnt von sich aus nie Ihren Visastatus, Ihr Gehalt oder Ihr Eintrittsdatum; dafür gibt es eigene Felder. Jeder Entwurf wird gegen Lebenslauf und Anzeige geprüft, bevor er verwendet werden darf; was durchfällt, wird verworfen und Ihre eigene Notiz gesendet. Standardmäßig aus, denn das Umschreiben Ihrer Worte ist Ihre Entscheidung."
+    },
     "filterCountsRestored": {
       "title": "Die Filterzahlen funktionieren wieder",
       "description": "Die Zahlen neben jedem Unternehmen und jeder Kategorie luden überhaupt nicht mehr – alle Besucher erhielten nach etwa 20 Sekunden einen Fehler. Die Ursache war schlicht und ganz die unsere: Diese Zahlen wurden bei jedem einzelnen Seitenaufruf von Grund auf neu gezählt, drei vollständige Durchläufe über alle 572.000 Stellen, und das Board wuchs über das hinaus, was sich so rechtzeitig abschließen ließ. Sie werden jetzt planmäßig berechnet und fertig ausgeliefert, in unter einer Sekunde. Die Zahlen tragen außerdem den Zeitpunkt ihrer Berechnung, damit eine Zahl sagen kann, wann sie zutraf, statt stillschweigend Aktualität zu suggerieren."

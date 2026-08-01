@@ -4277,7 +4277,9 @@
     "coverNote": "Uma nota breve para acompanhar as suas candidaturas",
     "coverNoteHint": "Opcional. Alguns formulários não são submetidos sem ela, e o agente pára em vez de enviar em branco. Este texto segue tal como está para todos os empregadores — não é reescrito por vaga —, por isso fale de si e do seu trabalho, não de uma empresa em particular.",
     "coverNotePlaceholder": "ex. Sou engenheiro de dados com oito anos a construir pipelines em Python e dbt e procuro um cargo sénior onde possa ser responsável por uma plataforma de ponta a ponta.",
-    "coverNoteCount": "{{n}} de 2000 caracteres"
+    "coverNoteCount": "{{n}} de 2000 caracteres",
+    "coverNoteHintTailored": "Opcional. Alguns formulários não são enviados sem ela, e o agente para em vez de enviar um campo em branco. Como a personalização está ativada, o agente adapta-a a cada vaga usando apenas o que o seu currículo e o anúncio realmente dizem — e se não conseguir fazê-lo com honestidade, a sua nota é enviada exatamente como a escreveu.",
+    "tailorCoverNote": "Adaptar esta nota a cada vaga. O agente reescreve-a com base no anúncio usando apenas factos que já constam do seu currículo: não pode acrescentar uma empresa, uma escola, uma competência ou um número que não esteja lá, e nunca menciona por iniciativa própria o seu estatuto de visto, salário ou data de início. O que não conseguir fundamentar, descarta: a sua nota segue tal como está."
   },
   "applyQueue": {
     "title": "Candidaturas preparadas",

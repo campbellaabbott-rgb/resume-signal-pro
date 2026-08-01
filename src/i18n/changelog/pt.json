@@ -1,5 +1,9 @@
 {
   "changelogEntries": {
+    "tailoredCoverNotes": {
+      "title": "As notas de candidatura já podem ser escritas para cada vaga",
+      "description": "Até agora, a nota que acompanhava as suas candidaturas era um único parágrafo, enviado palavra por palavra a todos os empregadores. Pode agora ativar a personalização e o agente reescreve-a para cada vaga a partir do próprio anúncio. Trabalha apenas com o que já consta do seu currículo: não pode indicar uma empresa, uma escola, uma competência ou um número que não esteja lá, e nunca menciona por iniciativa própria o seu estatuto de visto, salário ou data de início — esses têm campos próprios. Cada rascunho é confrontado com o seu currículo e com o anúncio antes de poder ser usado, e o que falhar a verificação é descartado, seguindo a sua nota original. Vem desligado, porque reescrever as suas palavras é uma decisão sua."
+    },
     "filterCountsRestored": {
       "title": "As contagens dos filtros voltaram a funcionar",
       "description": "Os números ao lado de cada empresa e categoria tinham deixado de carregar por completo — todos os visitantes recebiam um erro ao fim de cerca de 20 segundos. A causa era simples e inteiramente nossa: esses números eram recontados de raiz em cada visita, três passagens completas por todas as 572.000 vagas, e o quadro cresceu para além do que isso conseguia terminar a tempo. Agora são calculados de forma agendada e servidos já prontos, em menos de um segundo. Os números indicam também o momento em que foram calculados, para que uma contagem possa dizer-lhe quando era verdadeira em vez de sugerir que é atual."

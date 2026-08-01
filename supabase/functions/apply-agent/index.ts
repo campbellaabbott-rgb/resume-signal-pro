@@ -33,6 +33,8 @@ const MANDATES_PER_RUN = 50;
 const PACKETS_PER_MANDATE = 10;
 const MIN_FIT_PCT = 55; // floor for unattended sending; review mode ignores it
 
+const t = (v: unknown): string => String(v ?? "").trim();
+
 interface MandateRow {
   user_id: string; email: string; resume_text: string;
   full_name: string; phone: string; linkedin: string; website: string;
@@ -41,6 +43,7 @@ interface MandateRow {
   willing_to_relocate: boolean | null; salary_expectation: string; earliest_start: string;
   share_demographics: boolean; apply_mode: "review" | "auto";
   auto_apply_daily_cap: number; auto_apply_sources: string[];
+  cover_note: string; tailor_cover_note: boolean;
 }
 interface QueueRow {
   id: number; user_id: string; posting_id: string; title: string; company: string;
@@ -160,6 +163,11 @@ serve(async (req) => {
     mandates: 0, prepared: 0, ready: 0, blocked: 0, released: 0,
     skippedDuplicate: 0, failed: 0, refusals: {} as Record<string, number>,
     stoppedEarly: false,
+    // Both, not just the successes. A tailoring feature that is switched on and
+    // silently rejects every draft looks identical to one nobody enabled, and
+    // the only visible symptom would be an absence of tailored notes — which is
+    // exactly what the fallback is designed to look like.
+    coverNotesTailored: 0, coverNotesRejected: 0,
   };
 
   const { data: mandates } = await client
@@ -167,7 +175,7 @@ serve(async (req) => {
     .select("user_id,email,resume_text,full_name,phone,linkedin,website,city,country," +
       "resume_file_url,work_authorized,requires_sponsorship,willing_to_relocate," +
       "salary_expectation,earliest_start,share_demographics,apply_mode," +
-      "auto_apply_daily_cap,auto_apply_sources")
+      "auto_apply_daily_cap,auto_apply_sources,cover_note,tailor_cover_note")
     .eq("active", true)
     .limit(MANDATES_PER_RUN);
 
@@ -291,8 +299,57 @@ serve(async (req) => {
           if (Array.isArray(list)) drafted = list;
         }
 
+        // ── the cover note ───────────────────────────────────────────────────
+        // Opt-in, and the default is off. The candidate wrote `cover_note`
+        // expecting it to be sent as they wrote it; quietly substituting a
+        // model's prose for their own words would be a trust violation whatever
+        // the prose was like. So `tailor_cover_note` gates this, and when it is
+        // off nothing about the old behaviour changes.
+        //
+        // FAILURE IS A FEATURE HERE. Anything that goes wrong — no résumé text,
+        // no description to tailor against, a rejected draft, a 502, a timeout —
+        // falls through to the candidate's own note. A generic note is a fine
+        // outcome. A false one is not, and a BLOCKED application would be worse
+        // than either, so this can never add a blocker.
+        let coverNote: { value: string; tailored: boolean } | undefined =
+          t(m.cover_note) ? { value: t(m.cover_note), tailored: false } : undefined;
+
+        if (m.tailor_cover_note && m.resume_text && !outOfTime()) {
+          try {
+            // The posting text is what makes a tailored note worth having, and
+            // it doubles as the gate's supporting context: a figure the employer
+            // published is legitimate to quote back at them.
+            const { data: det } = await client.functions.invoke("job-board", {
+              body: { action: "detail", id: q.posting_id },
+            });
+            const jobDescription = String((det as { description?: string })?.description ?? "");
+
+            const { data: cn } = await client.functions.invoke("generate-application-answers", {
+              body: {
+                mode: "cover-note",
+                resumeText: m.resume_text,
+                jobTitle: q.title, jobCompany: q.company, jobDescription,
+                baseNote: t(m.cover_note), candidateName: m.full_name,
+              },
+            });
+            const note = (cn as { note?: string | null })?.note;
+            if (typeof note === "string" && note.trim()) {
+              coverNote = { value: note.trim(), tailored: true };
+              summary.coverNotesTailored++;
+            } else {
+              // The gate refused it twice. Recorded, because "the feature is on
+              // and nothing is ever tailored" must be answerable from the run
+              // summary rather than from guesswork.
+              summary.coverNotesRejected++;
+            }
+          } catch (e) {
+            summary.coverNotesRejected++;
+            console.error(`[APPLY-AGENT] cover note failed for ${q.posting_id}: ${String(e).slice(0, 120)}`);
+          }
+        }
+
         const packet = buildPacket({
-          questions, profile, standing, drafted, automationTier: auto.tier,
+          questions, profile, standing, drafted, automationTier: auto.tier, coverNote,
         });
 
         const decision = decideRelease({

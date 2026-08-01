@@ -4277,7 +4277,9 @@
     "coverNote": "Una nota breve para acompañar tus solicitudes",
     "coverNoteHint": "Opcional. Algunos formularios no se envían sin ella, y el agente se detiene en lugar de mandarla en blanco. Este texto llega tal cual a todas las empresas —no se reescribe para cada puesto—, así que céntralo en ti y en tu trabajo, no en una empresa concreta.",
     "coverNotePlaceholder": "p. ej. Soy ingeniero de datos con ocho años construyendo pipelines en Python y dbt, y busco un puesto sénior donde pueda responsabilizarme de una plataforma de principio a fin.",
-    "coverNoteCount": "{{n}} de 2000 caracteres"
+    "coverNoteCount": "{{n}} de 2000 caracteres",
+    "coverNoteHintTailored": "Opcional. Algunos formularios no se envían sin ella, y el agente se detiene en lugar de enviar un campo vacío. Como la personalización está activada, el agente la adapta a cada puesto usando solo lo que dicen realmente tu currículum y la oferta; y si no puede hacerlo con honestidad, tu nota se envía tal como la escribiste.",
+    "tailorCoverNote": "Adaptar esta nota a cada puesto. El agente la reescribe según la oferta usando solo datos que ya están en tu currículum: no puede añadir una empresa, un centro de estudios, una habilidad ni una cifra que no figure, y nunca menciona por iniciativa propia tu situación de visado, tu salario ni tu fecha de incorporación. Lo que no pueda fundamentar, lo descarta: se envía tu nota tal cual."
   },
   "applyQueue": {
     "title": "Candidaturas preparadas",

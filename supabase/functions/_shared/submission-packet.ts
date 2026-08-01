@@ -48,6 +48,21 @@ export type Profile = {
 
 export type DraftedAnswer = { label: string; answer: string; supported: boolean; note?: string };
 
+/**
+ * Reserved key carrying the cover note through `fields` to the worker.
+ *
+ * Every other key in `fields` is a QUESTION LABEL read off the employer's form.
+ * This one is not, and the underscores say so. It rides here because `fields`
+ * already travels intact from apply-agent → agent_submissions → apply-broker →
+ * the worker, so a note added at prep time reaches the browser with no schema
+ * change and no new broker action to keep in sync.
+ *
+ * It is excluded from `autoFilled` and `total` below — those are counts a
+ * candidate reads as "how much of this form did the agent fill", and a pseudo
+ * field that is not on the form would make them overstate by one.
+ */
+export const COVER_NOTE_FIELD_KEY = "__coverNote";
+
 export type FilledField = {
   key: string;
   value: string;
@@ -112,6 +127,14 @@ export function buildPacket(opts: {
   drafted: readonly DraftedAnswer[];
   /** From apply-automation.ts — 'click' means a CAPTCHA is known to be present. */
   automationTier: "auto" | "signup" | "click" | "unknown";
+  /**
+   * The note to put in whatever cover-letter box the form turns out to have.
+   * `tailored` records whether it was written for THIS posting and passed the
+   * grounding gate, or is the candidate's standing note sent as-is — the two
+   * must stay distinguishable on the row, because a reviewer has to be able to
+   * tell a generated sentence from one the candidate wrote themselves.
+   */
+  coverNote?: { value: string; tailored: boolean };
 }): Packet {
   const { questions, profile, standing, drafted, automationTier } = opts;
   const fields: FilledField[] = [];
@@ -187,11 +210,27 @@ export function buildPacket(opts: {
     blockers.push({ kind: "unknown-form", detail: "we haven't measured this employer's form yet" });
   }
 
+  // Carried, not counted. Added after the loop so it can never be mistaken for
+  // an answer to one of the employer's questions.
+  if (opts.coverNote && t(opts.coverNote.value)) {
+    fields.push({
+      key: COVER_NOTE_FIELD_KEY,
+      value: t(opts.coverNote.value),
+      source: opts.coverNote.tailored ? "drafted" : "standing",
+    });
+  }
+
+  // Both counts ignore the reserved key. `autoFilled` is read as "how many of
+  // this form's questions did the agent fill", and `ready` must not be able to
+  // flip true on a packet whose only field is a note for a box that may not
+  // even exist on the form.
+  const answered = fields.filter((f) => f.key !== COVER_NOTE_FIELD_KEY).length;
+
   return {
     fields,
     blockers,
-    ready: blockers.length === 0 && fields.length > 0,
-    autoFilled: fields.length,
+    ready: blockers.length === 0 && answered > 0,
+    autoFilled: answered,
     total: questions.filter((q) => t(q.label)).length,
   };
 }

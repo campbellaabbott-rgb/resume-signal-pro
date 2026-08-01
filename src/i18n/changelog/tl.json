@@ -1,5 +1,9 @@
 {
   "changelogEntries": {
+    "tailoredCoverNotes": {
+      "title": "Maaari nang isulat ang cover note para sa bawat trabaho",
+      "description": "Hanggang ngayon, ang notang kalakip ng iyong mga aplikasyon ay iisang talata lamang, ipinapadala nang salita-por-salita sa bawat employer. Maaari mo nang buksan ang pag-angkop, at isusulat itong muli ng ahente para sa bawat posisyon batay sa mismong anunsyo ng trabahong iyon. Ang pinagbabatayan lamang niya ay ang nasa iyong résumé na: hindi siya makakapagbanggit ng employer, paaralan, kasanayan o numerong wala roon, at hindi niya kusang binabanggit ang iyong visa status, sahod o petsa ng pagsisimula — may sarili silang mga field. Sinusuri ang bawat draft laban sa iyong résumé at sa anunsyo bago ito magamit, at ang anumang hindi pumasa ay itinatapon at ang sarili mong nota ang ipinapadala. Naka-off ito bilang default, dahil ikaw ang may karapatang magpasya kung muling isusulat ang iyong mga salita."
+    },
     "filterCountsRestored": {
       "title": "Gumagana na ulit ang mga bilang sa filter",
       "description": "Tumigil nang tuluyan sa pag-load ang mga bilang katabi ng bawat kompanya at kategorya — bawat bisita ay nakakakuha ng error pagkatapos ng humigit-kumulang 20 segundo. Simple lang ang dahilan at atin talaga: binibilang muli ang mga numerong iyon mula sa simula sa bawat pag-view ng pahina, tatlong buong pagdaan sa lahat ng 572,000 posting, at lumaki ang board nang higit sa kayang tapusin niyon sa oras. Kinakalkula na ngayon ang mga ito ayon sa iskedyul at inihahain nang handa na, wala pang isang segundo. May kasama ring oras kung kailan kinalkula ang mga bilang, para masabi ng isang bilang kung kailan ito totoo sa halip na basta ipahiwatig na kasalukuyan ito."
