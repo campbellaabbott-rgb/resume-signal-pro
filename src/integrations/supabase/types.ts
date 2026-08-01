@@ -347,6 +347,51 @@ export type Database = {
         }
         Relationships: []
       }
+      agent_pending_questions: {
+        Row: {
+          answer_kind: string
+          company: string | null
+          first_seen_at: string
+          id: number
+          last_seen_at: string
+          options: Json
+          posting_id: string | null
+          question_key: string
+          question_label: string
+          refusal_reason: string
+          seen_count: number
+          user_id: string
+        }
+        Insert: {
+          answer_kind: string
+          company?: string | null
+          first_seen_at?: string
+          id?: never
+          last_seen_at?: string
+          options?: Json
+          posting_id?: string | null
+          question_key: string
+          question_label: string
+          refusal_reason?: string
+          seen_count?: number
+          user_id: string
+        }
+        Update: {
+          answer_kind?: string
+          company?: string | null
+          first_seen_at?: string
+          id?: never
+          last_seen_at?: string
+          options?: Json
+          posting_id?: string | null
+          question_key?: string
+          question_label?: string
+          refusal_reason?: string
+          seen_count?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       agent_queue: {
         Row: {
           apply_url: string
@@ -427,6 +472,8 @@ export type Database = {
           release_refusal: string
           released_at: string | null
           resume_version_id: string | null
+          sent_answers: Json
+          sent_evidence: string
           source: string
           status: string
           submitted_at: string | null
@@ -457,6 +504,8 @@ export type Database = {
           release_refusal?: string
           released_at?: string | null
           resume_version_id?: string | null
+          sent_answers?: Json
+          sent_evidence?: string
           source?: string
           status?: string
           submitted_at?: string | null
@@ -487,6 +536,8 @@ export type Database = {
           release_refusal?: string
           released_at?: string | null
           resume_version_id?: string | null
+          sent_answers?: Json
+          sent_evidence?: string
           source?: string
           status?: string
           submitted_at?: string | null
@@ -2652,6 +2703,8 @@ export type Database = {
           release_refusal: string
           released_at: string | null
           resume_version_id: string | null
+          sent_answers: Json
+          sent_evidence: string
           source: string
           status: string
           submitted_at: string | null
