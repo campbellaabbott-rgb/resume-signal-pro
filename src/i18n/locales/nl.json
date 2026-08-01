@@ -4266,7 +4266,12 @@
     "uploaded": "Cv toegevoegd — vergeet niet op te slaan",
     "website": "Website of portfolio",
     "yes": "Ja",
-    "consent": "Laat de agent privacyverklaringen van werkgevers en verklaringen “de verstrekte informatie is juist” namens mij accepteren. Uit gelaten gaat elk formulier dat hierom vraagt naar je wachtrij zodat je het zelf aanvinkt."
+    "consent": "Laat de agent privacyverklaringen van werkgevers en verklaringen “de verstrekte informatie is juist” namens mij accepteren. Uit gelaten gaat elk formulier dat hierom vraagt naar je wachtrij zodat je het zelf aanvinkt.",
+    "authorizedIn": "Mag u werken in {{country}}?",
+    "authorizedHome": "Mag u werken in het land waar u woont?",
+    "authorizedHint": "Dit antwoord geldt alleen voor uw eigen land. Vink elk ander land hieronder aan — de agent gaat er niet vanuit.",
+    "otherCountries": "Andere landen waar u zonder sponsoring mag werken",
+    "otherCountriesHint": "Optioneel; leeg laten mag. Werkgevers vragen naar een specifiek land — „toestemming om in de VS te werken?” — en ergens mogen werken is niet overal mogen werken. Vink alleen aan wat klopt: bij elk land dat u niet aanvinkt stopt de agent en vraagt het u, in plaats van te antwoorden."
   },
   "applyQueue": {
     "title": "Voorbereide sollicitaties",

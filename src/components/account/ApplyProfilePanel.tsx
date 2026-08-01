@@ -28,10 +28,43 @@ const ACCEPT = ".pdf,.doc,.docx,.txt";
 
 type Tri = boolean | null;
 
+/**
+ * The countries offerable as extra work authorisation.
+ *
+ * WHY THIS EXISTS AT ALL. `work_authorized` is one boolean, and it can only
+ * honestly answer a question about the country the candidate said they live in.
+ * Before this list existed the agent used it for every country, so a UK-based
+ * candidate answered "Yes" to "Are you legally authorized to work in the US?" —
+ * a false statement about someone's immigration status, made under their name.
+ *
+ * Every code here must be one the worker's matcher recognises; a code it cannot
+ * resolve would read as an authorisation and behave as silence. `src/test/
+ * question-match.test.ts` asserts that, importing the worker's own list rather
+ * than trusting this file to have stayed in step.
+ */
+export const WORK_COUNTRIES: ReadonlyArray<{ code: string; name: string }> = [
+  { code: "US", name: "United States" }, { code: "GB", name: "United Kingdom" },
+  { code: "IE", name: "Ireland" }, { code: "CA", name: "Canada" },
+  { code: "AU", name: "Australia" }, { code: "NZ", name: "New Zealand" },
+  { code: "DE", name: "Germany" }, { code: "FR", name: "France" },
+  { code: "ES", name: "Spain" }, { code: "PT", name: "Portugal" },
+  { code: "IT", name: "Italy" }, { code: "NL", name: "Netherlands" },
+  { code: "BE", name: "Belgium" }, { code: "CH", name: "Switzerland" },
+  { code: "AT", name: "Austria" }, { code: "PL", name: "Poland" },
+  { code: "SE", name: "Sweden" }, { code: "DK", name: "Denmark" },
+  { code: "NO", name: "Norway" }, { code: "FI", name: "Finland" },
+  { code: "IN", name: "India" }, { code: "SG", name: "Singapore" },
+  { code: "AE", name: "United Arab Emirates" }, { code: "ZA", name: "South Africa" },
+  { code: "MX", name: "Mexico" }, { code: "BR", name: "Brazil" },
+  { code: "JP", name: "Japan" },
+];
+
 interface ApplyProfile {
   full_name: string; phone: string; linkedin: string; website: string;
   city: string; country: string; resume_file_url: string;
   work_authorized: Tri; requires_sponsorship: Tri; willing_to_relocate: Tri;
+  /** Countries BEYOND their own that they may work in, as ISO-2 codes. */
+  work_authorized_countries: string[];
   salary_expectation: string; earliest_start: string;
   share_demographics: boolean; consent_to_processing: boolean;
   apply_mode: "review" | "auto"; auto_apply_daily_cap: number;
@@ -40,7 +73,7 @@ interface ApplyProfile {
 const EMPTY: ApplyProfile = {
   full_name: "", phone: "", linkedin: "", website: "", city: "", country: "",
   resume_file_url: "", work_authorized: null, requires_sponsorship: null,
-  willing_to_relocate: null, salary_expectation: "", earliest_start: "",
+  willing_to_relocate: null, work_authorized_countries: [], salary_expectation: "", earliest_start: "",
   share_demographics: false, consent_to_processing: false, apply_mode: "review", auto_apply_daily_cap: 5,
 };
 
@@ -300,10 +333,48 @@ export function ApplyProfilePanel({ userId }: { userId: string }) {
         </p>
 
         <TriToggle
-          label={t("applyProfile.authorized", "Are you authorised to work where you're applying?")}
+          label={p.country.trim()
+            ? t("applyProfile.authorizedIn", "Are you authorised to work in {{country}}?",
+                { country: p.country.trim() })
+            : t("applyProfile.authorizedHome", "Are you authorised to work in the country you live in?")}
+          hint={t("applyProfile.authorizedHint",
+            "This answer covers your own country only. Anywhere else, tick it below — the agent will not assume it.")}
           value={p.work_authorized}
           onChange={(v) => set("work_authorized", v)}
         />
+
+        <div className="mb-4">
+          <div className="text-sm font-medium text-foreground mb-1">
+            {t("applyProfile.otherCountries", "Anywhere else you may work without sponsorship")}
+          </div>
+          <p className="text-xs text-muted-foreground mb-2">
+            {t("applyProfile.otherCountriesHint",
+              "Optional, and safe to leave empty. Employers ask about a named country — \"authorised to work in the US?\" — and being authorised somewhere is not being authorised everywhere. Tick only what's true: on any country you haven't ticked, the agent stops and asks you rather than answering.")}
+          </p>
+          <div className="flex flex-wrap gap-1.5" role="group"
+               aria-label={t("applyProfile.otherCountries", "Anywhere else you may work without sponsorship")}>
+            {WORK_COUNTRIES.map((c) => {
+              const on = p.work_authorized_countries.includes(c.code);
+              return (
+                <button
+                  key={c.code}
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() => set("work_authorized_countries", on
+                    ? p.work_authorized_countries.filter((x) => x !== c.code)
+                    : [...p.work_authorized_countries, c.code])}
+                  className={`px-2.5 py-1 rounded-full border text-xs transition-colors ${
+                    on
+                      ? "border-primary bg-primary/10 text-primary font-semibold"
+                      : "border-border text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {c.name}
+                </button>
+              );
+            })}
+          </div>
+        </div>
         <TriToggle
           label={t("applyProfile.sponsorship", "Will you need visa sponsorship?")}
           value={p.requires_sponsorship}

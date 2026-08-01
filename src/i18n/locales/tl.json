@@ -4266,7 +4266,12 @@
     "uploaded": "Nakakabit ang résumé — huwag kalimutang i-save",
     "website": "Website o portfolio",
     "yes": "Oo",
-    "consent": "Hayaang tanggapin ng agent para sa iyo ang mga privacy notice ng employer at ang mga deklarasyong “totoo ang ibinigay kong impormasyon”. Kapag naka-off, ang anumang form na humihingi nito ay ipapadala sa iyong queue para ikaw mismo ang mag-tsek."
+    "consent": "Hayaang tanggapin ng agent para sa iyo ang mga privacy notice ng employer at ang mga deklarasyong “totoo ang ibinigay kong impormasyon”. Kapag naka-off, ang anumang form na humihingi nito ay ipapadala sa iyong queue para ikaw mismo ang mag-tsek.",
+    "authorizedIn": "May awtorisasyon ka bang magtrabaho sa {{country}}?",
+    "authorizedHome": "May awtorisasyon ka bang magtrabaho sa bansang tinitirhan mo?",
+    "authorizedHint": "Ang sagot na ito ay para lamang sa sarili mong bansa. Para sa iba pa, i-tick ito sa ibaba — hindi ito ipagpapalagay ng agent.",
+    "otherCountries": "Iba pang bansa kung saan ka maaaring magtrabaho nang walang sponsorship",
+    "otherCountriesHint": "Opsyonal, at ligtas na iwanang blangko. Nagtatanong ang mga employer tungkol sa isang tiyak na bansa — “awtorisado bang magtrabaho sa US?” — at ang pagiging awtorisado sa isang lugar ay hindi pagiging awtorisado saanman. I-tick lamang ang totoo: sa anumang bansang hindi mo na-tick, titigil ang agent at magtatanong sa iyo sa halip na sumagot."
   },
   "applyQueue": {
     "title": "Mga inihandang aplikasyon",

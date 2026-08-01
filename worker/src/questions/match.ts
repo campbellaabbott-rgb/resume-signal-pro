@@ -24,7 +24,20 @@
  *     1  truthfulness declaration
  *
  * Effect on the thing that matters: 3 of 8 sampled postings were completable
- * before, 7 of 8 after.
+ * before, 7 of 8 after — but see the correction below, because that 7 was
+ * partly bought with a false answer.
+ *
+ * THE COUNTRY CORRECTION, 2026-08-01. `workAuthorized` was a single global
+ * boolean answering every authorisation question, so the UK-based test
+ * candidate answered "Yes" to "Are you legally authorized to work in the US?".
+ * Re-measured with that fixed:
+ *
+ *     5 of 8   candidate states no countries beyond their own
+ *     7 of 8   candidate has explicitly stated US authorisation too
+ *
+ * The headline number did not really move; what moved is that it is now earned.
+ * A UK candidate who has not claimed US work rights gets 5, which is the honest
+ * figure for that person.
  *
  * THE TWO CORRECTIONS, because both were mine and both flattered the result.
  *
@@ -48,8 +61,16 @@
  * explicit refusal; there is no branch that invents a value. A wrong answer to
  * "are you legally authorised to work here" is not a bug, it is a false
  * statement made to an employer under someone's real name.
+ *
+ * ONE GAP LEFT, stated rather than hidden. A question naming NO country ("Do
+ * you have the right to work?") is answered from the boolean. On a posting in
+ * the candidate's own country that is right; on a foreign posting it is the old
+ * bug in miniature. Closing it means passing the POSTING's country into the
+ * matcher — the board holds it — and treating an unqualified question as being
+ * about that. Not built yet.
  */
 import type { DomQuestion } from "../vendors/enumerate-dom.js";
+import { coverage } from "./countries.js";
 
 /** What the candidate has told us. Booleans are TRINARY: null = never stated. */
 export type StandingAnswers = {
@@ -69,6 +90,11 @@ export type StandingAnswers = {
   workAuthorized: boolean | null;
   requiresSponsorship: boolean | null;
   willingToRelocate: boolean | null;
+  /** Countries the candidate has EXPLICITLY said they may work in, as ISO-ish
+   *  codes. `workAuthorized` alone only speaks for `country` — being allowed to
+   *  work somewhere is not being allowed to work everywhere, and a form asking
+   *  about the US is not asking about where you live. */
+  workAuthorizedCountries: readonly string[];
   /** Voluntary self-ID. We never store race or gender, so this only ever
    *  governs whether declining is acceptable — it can never produce a value. */
   shareDemographics: boolean;
@@ -299,18 +325,35 @@ export function matchQuestion(q: DomQuestion, a: StandingAnswers): Resolution | 
   // --- Work authorisation and sponsorship ------------------------------
   // Sponsorship is checked first: "require sponsorship to work" satisfies the
   // authorisation pattern too, and answering it as authorisation inverts it.
-  if (RE_SPONSORSHIP.test(label)) {
-    if (a.requiresSponsorship === null) {
-      return text("sponsorship", "candidate has not stated whether they need sponsorship");
+  // WHICH COUNTRY IS THIS ABOUT? Both of these are country-specific in
+  // practice — "authorized to work in the US", "require sponsorship for a UK
+  // visa" — and a single global boolean answering them produced false claims
+  // about a real person's immigration status. See ./countries.ts.
+  if (RE_SPONSORSHIP.test(label) || RE_WORK_AUTH.test(label)) {
+    const isSponsor = RE_SPONSORSHIP.test(label);
+    const category = isSponsor ? "sponsorship" : "work-authorization";
+    const stated = isSponsor ? a.requiresSponsorship : a.workAuthorized;
+    if (stated === null) {
+      return text(category, isSponsor
+        ? "candidate has not stated whether they need sponsorship"
+        : "candidate has not stated whether they are authorised to work");
     }
-    const inverted = RE_SPONSOR_INVERTED.test(label);
-    return chooseBoolean(q, inverted ? !a.requiresSponsorship : a.requiresSponsorship, "sponsorship");
-  }
-  if (RE_WORK_AUTH.test(label)) {
-    if (a.workAuthorized === null) {
-      return text("work-authorization", "candidate has not stated whether they are authorised to work");
+
+    const cov = coverage(label, a.workAuthorizedCountries, a.country);
+    if (cov.kind === "not-covered") {
+      // The honest refusal. Saying "yes" here claims a right to work in a
+      // country nobody has said they hold, which is a false statement with
+      // consequences well beyond a wasted application.
+      return text(category,
+        `question is about ${cov.asked.join("/")} and the candidate has only stated authorisation for ` +
+        `${[a.country, ...a.workAuthorizedCountries].filter(Boolean).join(", ") || "nowhere"}`);
     }
-    return chooseBoolean(q, a.workAuthorized, "work-authorization");
+
+    if (isSponsor) {
+      const inverted = RE_SPONSOR_INVERTED.test(label);
+      return chooseBoolean(q, inverted ? !a.requiresSponsorship! : a.requiresSponsorship!, category);
+    }
+    return chooseBoolean(q, a.workAuthorized!, category);
   }
 
   // --- Availability and relocation -------------------------------------

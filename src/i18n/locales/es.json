@@ -4266,7 +4266,12 @@
     "uploaded": "CV adjuntado: recuerda guardar",
     "website": "Web o portafolio",
     "yes": "Sí",
-    "consent": "Permitir que el agente acepte por mí los avisos de privacidad de las empresas y las declaraciones de “la información facilitada es veraz”. Si lo dejas desactivado, cualquier formulario que lo pida pasará a tu cola para que lo marques tú."
+    "consent": "Permitir que el agente acepte por mí los avisos de privacidad de las empresas y las declaraciones de “la información facilitada es veraz”. Si lo dejas desactivado, cualquier formulario que lo pida pasará a tu cola para que lo marques tú.",
+    "authorizedIn": "¿Tienes autorización para trabajar en {{country}}?",
+    "authorizedHome": "¿Tienes autorización para trabajar en el país donde vives?",
+    "authorizedHint": "Esta respuesta cubre únicamente tu propio país. Para cualquier otro, márcalo abajo: el agente no lo dará por supuesto.",
+    "otherCountries": "Cualquier otro país donde puedas trabajar sin patrocinio",
+    "otherCountriesHint": "Opcional, y puedes dejarlo vacío sin problema. Las empresas preguntan por un país concreto — «autorización para trabajar en EE. UU.» — y estar autorizado en un sitio no es estarlo en todos. Marca solo lo que sea cierto: en cualquier país que no marques, el agente se detiene y te pregunta en lugar de responder."
   },
   "applyQueue": {
     "title": "Candidaturas preparadas",

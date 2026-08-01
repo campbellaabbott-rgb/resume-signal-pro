@@ -40,6 +40,11 @@ const FULL: StandingAnswers = {
   coverNote: "A short note.", salaryExpectation: "£55,000",
   earliestStart: "4 weeks",
   workAuthorized: true, requiresSponsorship: false, willingToRelocate: true,
+  // A UK-based candidate who has ALSO explicitly stated US authorisation. The
+  // sample contains US postings, and without this the fixture would represent
+  // somebody answering questions about a country they never claimed — which is
+  // now correctly refused, and is covered by its own describe block below.
+  workAuthorizedCountries: ["US"],
   shareDemographics: false, consentToProcessing: true,
 };
 const q = (over: Partial<DomQuestion> = {}): DomQuestion => ({
@@ -240,6 +245,105 @@ describe("what this actually changes, measured on the same 8 postings", () => {
         expect(["demographic-declined", "role-location"], `answered "${r.category}" from an empty profile`)
           .toContain(r.category);
       }
+    }
+  });
+});
+
+describe("work authorisation is country-specific, and a boolean is not", () => {
+  /**
+   * FOUND 2026-08-01 IN SHIPPED CODE. `workAuthorized` was one global boolean
+   * answering every authorisation question, so a UK-authorised candidate
+   * answered "Yes" to "Are you legally authorized to work in the US?".
+   *
+   * That is a false claim about someone's immigration status, made to an
+   * employer under their real name, on the question employers filter hardest
+   * on. Worse than not applying.
+   */
+  const uk = (countries: string[] = []): StandingAnswers => ({
+    ...FULL, country: "United Kingdom", workAuthorized: true,
+    requiresSponsorship: false, workAuthorizedCountries: countries,
+  });
+  const ask = (label: string) =>
+    q({ type: "radio", label, options: ["Yes", "No"] });
+
+  it("refuses a country the candidate never claimed", () => {
+    for (const label of [
+      "Are you legally authorized to work in the US?",
+      "Work authorization in Germany:",
+      "Are you legally authorised to work in Australia?",
+      "Do you have the right to work in Canada?",
+    ]) {
+      expect(matchQuestion(ask(label), uk()), label)
+        .toMatchObject({ kind: "unanswerable", category: "work-authorization" });
+    }
+  });
+
+  it("answers for the country the candidate actually stated", () => {
+    expect(matchQuestion(ask("Do you have the right to work in the United Kingdom?"), uk()))
+      .toMatchObject({ kind: "choose", option: "Yes" });
+    // And for one they explicitly added.
+    expect(matchQuestion(ask("Are you legally authorized to work in the US?"), uk(["US"])))
+      .toMatchObject({ kind: "choose", option: "Yes" });
+  });
+
+  it("does not treat the UK as covering an EU/EEA question", () => {
+    // The reason this is a list and not a guess. "Europe" and "the UK" stopped
+    // being interchangeable in 2020, and an adapter that assumes otherwise
+    // states a right to work that does not exist.
+    expect(matchQuestion(ask("Do you have the right to work in the EU/EEA?"), uk()))
+      .toMatchObject({ kind: "unanswerable" });
+    expect(matchQuestion(ask("Do you have the right to work in the EU/EEA?"), uk(["IE"])))
+      .toMatchObject({ kind: "choose", option: "Yes" });
+  });
+
+  it("applies the same rule to sponsorship", () => {
+    // "Will you require sponsorship to work in the US?" is as country-specific
+    // as the authorisation question, and was answered from the same global flag.
+    expect(matchQuestion(ask("Will you now or in the future require sponsorship to work in the US?"), uk()))
+      .toMatchObject({ kind: "unanswerable", category: "sponsorship" });
+    expect(matchQuestion(ask("Will you require UK visa sponsorship?"), uk()))
+      .toMatchObject({ kind: "choose", option: "No" });
+  });
+
+  it("does not attach a country to a question that names none", async () => {
+    // "us" must not match inside "industry", "discuss" or "customer" — a
+    // substring match would silently make unrelated questions country-specific.
+    const { countriesIn } = await import("../../worker/src/questions/countries.js");
+    expect(countriesIn("How many years in the industry do you have?")).toEqual([]);
+    expect(countriesIn("Discuss your customer service experience")).toEqual([]);
+    expect(countriesIn("Are you authorized to work in the US?")).toContain("US");
+  });
+});
+
+/**
+ * The account UI offers a fixed list of countries. The matcher has its own.
+ * Two hand-maintained lists that must agree is exactly the shape that has gone
+ * wrong here before — so this asserts agreement rather than assuming it.
+ */
+describe("the countries the UI offers are countries the matcher understands", () => {
+  it("offers no country the matcher cannot resolve", async () => {
+    const { WORK_COUNTRIES } = await import("../components/account/ApplyProfilePanel");
+    const { KNOWN_COUNTRY_CODES } = await import("../../worker/src/questions/countries.js");
+    const known = new Set(KNOWN_COUNTRY_CODES);
+    const orphans = WORK_COUNTRIES.filter((c) => !known.has(c.code)).map((c) => c.code);
+    // An orphan is not a cosmetic mismatch: the candidate ticks it, believing
+    // they have stated authorisation, and every question about that country is
+    // then refused as though they had said nothing.
+    expect(orphans).toEqual([]);
+  });
+
+  it("a ticked country actually unlocks that country's question", async () => {
+    const { WORK_COUNTRIES } = await import("../components/account/ApplyProfilePanel");
+    // End-to-end through the real matcher, for every chip on the panel — the
+    // subset check above proves the codes line up, this proves they DO
+    // something. A code can be known to `countriesIn` and still never be
+    // reached by a question, which the set comparison alone would not catch.
+    for (const c of WORK_COUNTRIES) {
+      const q = { name: "auth", type: "radio", required: true,
+        label: `Are you legally authorised to work in ${c.name}?`, options: ["Yes", "No"] };
+      const withIt = matchQuestion(q, { ...FULL, country: "Atlantis",
+        workAuthorizedCountries: [c.code] });
+      expect(withIt?.kind, `${c.code} should be answerable once ticked`).toBe("choose");
     }
   });
 });

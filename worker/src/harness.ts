@@ -121,7 +121,8 @@ const ANSWERS: StandingAnswers = {
   city: "Leeds", country: "United Kingdom", address: "1 Test Street",
   linkedin: "", website: "", coverNote: "", salaryExpectation: "£50,000",
   earliestStart: "4 weeks", workAuthorized: true, requiresSponsorship: false,
-  willingToRelocate: true, shareDemographics: false, consentToProcessing: true,
+  willingToRelocate: true, workAuthorizedCountries: ["US"],
+  shareDemographics: false, consentToProcessing: true,
 };
 
 async function run(name: string, mode: Mode, extra: string, port: number, expect: string) {

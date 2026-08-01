@@ -4266,7 +4266,12 @@
     "uploaded": "CV joint — pensez à enregistrer",
     "website": "Site ou portfolio",
     "yes": "Oui",
-    "consent": "Autoriser l'agent à accepter à ma place les avis de confidentialité des employeurs et les déclarations « les informations fournies sont exactes ». Désactivé, tout formulaire concerné part dans votre file pour que vous le cochiez vous-même."
+    "consent": "Autoriser l'agent à accepter à ma place les avis de confidentialité des employeurs et les déclarations « les informations fournies sont exactes ». Désactivé, tout formulaire concerné part dans votre file pour que vous le cochiez vous-même.",
+    "authorizedIn": "Êtes-vous autorisé à travailler en {{country}} ?",
+    "authorizedHome": "Êtes-vous autorisé à travailler dans le pays où vous vivez ?",
+    "authorizedHint": "Cette réponse ne couvre que votre propre pays. Pour tout autre, cochez-le ci-dessous : l’agent ne le supposera pas.",
+    "otherCountries": "Tout autre pays où vous pouvez travailler sans parrainage",
+    "otherCountriesHint": "Facultatif, et vous pouvez le laisser vide. Les employeurs interrogent sur un pays précis — « autorisé à travailler aux États-Unis ? » — et être autorisé quelque part n’est pas l’être partout. Ne cochez que ce qui est vrai : pour tout pays non coché, l’agent s’arrête et vous demande au lieu de répondre."
   },
   "applyQueue": {
     "title": "Candidatures préparées",

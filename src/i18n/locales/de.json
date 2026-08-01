@@ -4266,7 +4266,12 @@
     "uploaded": "Lebenslauf angehängt — nicht vergessen zu speichern",
     "website": "Website oder Portfolio",
     "yes": "Ja",
-    "consent": "Der Agent darf Datenschutzhinweise von Arbeitgebern und Erklärungen „Die gemachten Angaben sind wahr“ für mich akzeptieren. Ohne Haken landet jedes Formular mit einer solchen Abfrage in Ihrer Warteschlange, damit Sie sie selbst bestätigen."
+    "consent": "Der Agent darf Datenschutzhinweise von Arbeitgebern und Erklärungen „Die gemachten Angaben sind wahr“ für mich akzeptieren. Ohne Haken landet jedes Formular mit einer solchen Abfrage in Ihrer Warteschlange, damit Sie sie selbst bestätigen.",
+    "authorizedIn": "Sind Sie berechtigt, in {{country}} zu arbeiten?",
+    "authorizedHome": "Sind Sie berechtigt, in Ihrem Wohnsitzland zu arbeiten?",
+    "authorizedHint": "Diese Antwort gilt nur für Ihr eigenes Land. Für alle anderen Länder wählen Sie sie unten aus – der Agent setzt das nicht voraus.",
+    "otherCountries": "Weitere Länder, in denen Sie ohne Sponsoring arbeiten dürfen",
+    "otherCountriesHint": "Optional, kann leer bleiben. Arbeitgeber fragen nach einem bestimmten Land – „Arbeitserlaubnis für die USA?“ – und irgendwo berechtigt zu sein heißt nicht, überall berechtigt zu sein. Wählen Sie nur Zutreffendes: Bei jedem nicht gewählten Land hält der Agent an und fragt Sie, statt zu antworten."
   },
   "applyQueue": {
     "title": "Vorbereitete Bewerbungen",

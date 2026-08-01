@@ -153,6 +153,9 @@ function profileAnswers(p: Profile | null): StandingAnswers {
     workAuthorized: tri("workAuthorized"),
     requiresSponsorship: tri("requiresSponsorship"),
     willingToRelocate: tri("willingToRelocate"),
+    workAuthorizedCountries: Array.isArray(rec?.["workAuthorizedCountries"])
+      ? (rec["workAuthorizedCountries"] as string[]).map((c) => String(c).toUpperCase())
+      : [],
     shareDemographics: rec?.["shareDemographics"] === true,
     consentToProcessing: rec?.["consentToProcessing"] === true,
   };

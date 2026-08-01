@@ -24,7 +24,7 @@ const A: StandingAnswers = {
   linkedin: "https://linkedin.com/in/example", website: "", coverNote: "A short note.",
   salaryExpectation: "£55,000", earliestStart: "4 weeks",
   workAuthorized: true, requiresSponsorship: false, willingToRelocate: true,
-  shareDemographics: false, consentToProcessing: true,
+  workAuthorizedCountries: [], shareDemographics: false, consentToProcessing: true,
 };
 
 let ok = 0;

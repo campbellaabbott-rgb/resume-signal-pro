@@ -164,7 +164,7 @@ async function loadAnswers(userId: string): Promise<StandingAnswers | undefined>
   const { data, error } = await db.from("agent_mandates")
     .select("full_name, email, phone, city, country, location, linkedin, website, " +
             "salary_expectation, earliest_start, work_authorized, requires_sponsorship, " +
-            "willing_to_relocate, share_demographics, consent_to_processing")
+            "willing_to_relocate, work_authorized_countries, share_demographics, consent_to_processing")
     .eq("user_id", userId).maybeSingle();
   if (error) {
     // Loud, because the failure mode is invisible: no answers means every form
@@ -201,6 +201,11 @@ async function loadAnswers(userId: string): Promise<StandingAnswers | undefined>
     workAuthorized: tri("work_authorized"),
     requiresSponsorship: tri("requires_sponsorship"),
     willingToRelocate: tri("willing_to_relocate"),
+    // Explicit, never inferred. An empty list means the single boolean speaks
+    // only for `country` — see questions/countries.ts for why that matters.
+    workAuthorizedCountries: Array.isArray(m["work_authorized_countries"])
+      ? (m["work_authorized_countries"] as string[]).map((c) => String(c).toUpperCase())
+      : [],
     shareDemographics: m["share_demographics"] === true,
     consentToProcessing: m["consent_to_processing"] === true,
   };
