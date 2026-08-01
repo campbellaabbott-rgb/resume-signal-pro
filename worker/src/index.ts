@@ -294,6 +294,39 @@ async function recordPending(
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+/**
+ * Per-employer pacing, on top of the global gap.
+ *
+ * APPLY_GAP_MS spaces out submissions overall, which protects the vendors. It
+ * does not protect an EMPLOYER: a candidate whose queue holds eight roles at
+ * one company would hit that company eight times in under three minutes, from
+ * one IP, which is what a burst looks like from the receiving end regardless of
+ * how legitimate each individual application is.
+ *
+ * The four vendors this drives have no bot wall. That is a courtesy to respect
+ * rather than an absence to exploit — and the person who pays for being read as
+ * a bot is the candidate whose name is on the applications.
+ */
+const EMPLOYER_GAP_MS = Number(process.env.APPLY_EMPLOYER_GAP_MS ?? 120_000);
+const lastSentToEmployer = new Map<string, number>();
+
+async function pauseForEmployer(company: string): Promise<void> {
+  const key = company.trim().toLowerCase();
+  if (!key) return;
+  const last = lastSentToEmployer.get(key);
+  if (last !== undefined) {
+    const wait = EMPLOYER_GAP_MS - (Date.now() - last);
+    if (wait > 0) {
+      console.log(`[worker] pausing ${Math.round(wait / 1000)}s — already applied to ${company} this run`);
+      await sleep(wait);
+    }
+  }
+  // Stamped BEFORE the attempt, not after. Stamping on success would let a
+  // string of failures against one employer retry with no gap at all, which is
+  // the case where restraint matters most.
+  lastSentToEmployer.set(key, Date.now());
+}
+
 async function release(id: number, patch: Record<string, unknown>) {
   await db.from("agent_submissions").update({ claimed_at: null, claimed_by: "", ...patch }).eq("id", id);
 }
@@ -313,6 +346,8 @@ async function runOne(browser: Awaited<ReturnType<typeof chromium.launch>>, p: P
   // Staged per packet rather than cached per user: a candidate may replace their
   // résumé mid-batch, and the file on disk must be the one their profile points
   // at right now, not the one it pointed at when the worker started.
+  await pauseForEmployer(p.company);
+
   const staged = await stageResume(p.user_id);
   const answers = await loadAnswers(p.user_id);
   const learned = await loadLearned(p.user_id);
@@ -337,6 +372,13 @@ async function runOne(browser: Awaited<ReturnType<typeof chromium.launch>>, p: P
       submitted_at: new Date().toISOString(),
       submitted_via: "worker",
       error: "",
+      // The evidence, not the claim. `sent_answers` is what actually went onto
+      // the form — distinct from the packet's `answers`, which is what was
+      // PREPARED, because a learned answer can resolve a question between
+      // preparation and send and that difference should stay visible.
+      // `sent_evidence` is the employer's own confirmation wording.
+      sent_answers: outcome.answered ?? [],
+      sent_evidence: outcome.evidence.slice(0, 500),
     });
     // Mirror into the tracker the human reads, so the two never disagree about
     // what this person has applied to.

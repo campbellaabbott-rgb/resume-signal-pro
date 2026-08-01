@@ -56,7 +56,15 @@ export type BlockedQuestion = {
 
 export type ApplyOutcome =
   /** A confirmation was recognised. Safe to stamp as sent. */
-  | { kind: "submitted"; evidence: string }
+  | {
+      kind: "submitted";
+      evidence: string;
+      /**
+       * What was actually entered, so the candidate can see the answers that
+       * went out under their name. Computed already; it was simply discarded.
+       */
+      answered?: Array<{ category: string; label: string; value: string }>;
+    }
   /** Submit was never pressed. Nothing was sent; safe to try again later. */
   | {
       kind: "not-submitted";
@@ -79,6 +87,8 @@ const SUBMIT_WAIT = 20_000;
 const MAX_STEPS = 6;
 
 export async function applyToPosting(browser: Browser, input: ApplyInput): Promise<ApplyOutcome> {
+  /** What actually went onto the form, in order, for the evidence trail. */
+  const sentAnswers: Array<{ category: string; label: string; value: string }> = [];
   const source = String(input.source ?? "").toLowerCase();
 
   if (BLOCKED[source]) {
@@ -246,7 +256,20 @@ export async function applyToPosting(browser: Browser, input: ApplyInput): Promi
           for (const { q: dq, r } of answerable) {
             if (answeredNames.has(dq.name)) continue;
             const res = await applyResolution(page, dq, r);
-            if (res.ok) { answeredNames.add(dq.name); continue; }
+            if (res.ok) {
+              answeredNames.add(dq.name);
+              // Recorded only on SUCCESS. An answer the control refused was
+              // never submitted, and listing it as evidence would describe an
+              // application that did not happen.
+              sentAnswers.push({
+                category: r.category,
+                label: (dq.label || dq.name).slice(0, 200),
+                value: r.kind === "fill" ? r.value
+                     : r.kind === "choose" ? r.option
+                     : "ticked",
+              });
+              continue;
+            }
             // A REQUIRED question that would not take its answer stops the run.
             // Pressing on submits a form the vendor will reject, which burns the
             // posting for this candidate and then trips the duplicate guard when
@@ -290,7 +313,11 @@ export async function applyToPosting(browser: Browser, input: ApplyInput): Promi
 
     const verdict = await adapter.confirmed(page).catch(() => "unknown" as const);
     if (verdict === "yes") {
-      return { kind: "submitted", evidence: `${adapter.key} confirmed after step ${submittedAt + 1}` };
+      return {
+        kind: "submitted",
+        evidence: `${adapter.key} confirmed after step ${submittedAt + 1}`,
+        answered: sentAnswers,
+      };
     }
     if (verdict === "no") {
       // Only asserted where an adapter has real evidence — e.g. Breezy still
