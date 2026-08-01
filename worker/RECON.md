@@ -304,3 +304,28 @@ vendor. The fix is the same each time — dismiss the chrome, then look.
 questions carry readable labels (the enumerator needs them, and
 `answers_attributes[N]` names carry no meaning), and what a submitted
 confirmation says.
+
+## Pinpoint — résumé attach FAILS. Found 2026-07-31 by a better probe.
+
+`setInputFiles` resolves cleanly on Pinpoint's CV input and **no file lands** —
+verified with both a `.txt` and a `.pdf`, so it is not the accept list. Breezy
+attaches (the input holds the file) and Teamtailor attaches (the page shows the
+filename), so the check discriminates; Pinpoint fails both signals.
+
+**This was invisible until the check improved, and it was dangerous.** The
+worker set `resumeAttached = true` from `setFile` merely not throwing. So on
+Pinpoint it believed it had a résumé, sailed past the "wants a CV and has not
+got one" guard, and would have submitted an application with an empty CV slot
+under a real person's name.
+
+`apply.ts` now proves the attach from two independent signals before continuing,
+and returns `not-submitted` when neither holds. Pinpoint therefore refuses
+rather than sending CV-less applications — correct, but it means Pinpoint's
+3,744 postings are effectively unavailable until the cause is found. Left in
+ADAPTERS deliberately: the refusal is now loud and correct, and removing it
+would hide a real vendor problem behind a config change.
+
+**Why the old check could not see it.** It asked "did setFile throw", which is a
+question about the CALL, not about the page. The same shape as counting a
+`required` attribute a vendor never sets, or reading a cookie banner and
+concluding a form has no file input. A probe has to ask the page what changed.

@@ -227,6 +227,13 @@ export type AlreadyMapped = ReadonlySet<string>;
  * resolves or it refuses.
  */
 export function matchQuestion(q: DomQuestion, a: StandingAnswers): Resolution | null {
+  // A honeypot is not a question. Skipping it BEFORE anything else matters in
+  // both directions: filling it announces us to a vendor that has no CAPTCHA,
+  // and treating it as an unanswerable required field refuses postings that are
+  // perfectly completable. Teamtailor marks its honeypot `required` precisely
+  // to catch drivers that reason "required, therefore must answer".
+  if (q.honeypot) return null;
+
   const label = (q.label || "").trim();
 
   // An unlabelled control is unanswerable, full stop. Two required yes/no

@@ -114,10 +114,42 @@ export async function applyToPosting(browser: Browser, input: ApplyInput): Promi
       if (!resumeAttached && input.resumePath) {
         const file = await adapter.locateResume(page).catch(() => null);
         if (file) {
-          await file.setFile(input.resumePath).then(() => { resumeAttached = true; }, () => {});
+          // setFile NOT THROWING IS NOT EVIDENCE THE FILE LANDED.
+          //
+          // This set resumeAttached from a resolved promise alone. On Pinpoint
+          // setInputFiles resolves cleanly and no file lands — so the worker
+          // believed it had a résumé, sailed past the "wants a CV and has not
+          // got one" check, and would submit an application with an empty CV
+          // slot under a real person's name. The precise failure this path
+          // exists to prevent, sitting inside it.
+          //
+          // Two independent signals, because the obvious one is wrong on some
+          // vendors: the input holding a file, OR the page starting to show the
+          // filename. Teamtailor uploads via JS and CLEARS the input, so
+          // counting inputs returns 0 where the attach worked perfectly. Asked
+          // before AND after, so "the page shows it" is a change, not a
+          // coincidence.
+          const stamp = input.resumePath.split("/").pop() ?? "";
+          const seenBefore = await page
+            .evaluate((n: string) => document.body.innerText.includes(n), stamp)
+            .catch(() => false);
+          await file.setFile(input.resumePath).catch(() => {});
           // Several vendors parse the CV and rewrite name/email from it, which
           // would otherwise race the fields just filled.
           await page.waitForTimeout(SETTLE_MS);
+          const held = await page.locator('input[type="file"]')
+            .evaluateAll((els) => els.some((e) => (e as HTMLInputElement).files?.length))
+            .catch(() => false);
+          const seenAfter = await page
+            .evaluate((n: string) => document.body.innerText.includes(n), stamp)
+            .catch(() => false);
+          resumeAttached = held || (seenAfter && !seenBefore);
+          if (!resumeAttached) {
+            return {
+              kind: "not-submitted",
+              reason: "the résumé did not attach — setFile reported no error, but neither the input nor the page shows the file",
+            };
+          }
         }
       }
 

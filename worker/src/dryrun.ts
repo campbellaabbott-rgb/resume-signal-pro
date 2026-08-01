@@ -251,16 +251,37 @@ async function main() {
       // Nothing is uploaded. A file only leaves the machine on submit, which
       // this run never performs.
       const tmp = doSubmit ? (profile!.resumePath as string)
-                           : join(tmpdir(), `dryrun-resume-${Date.now()}.txt`);
-      if (!doSubmit) writeFileSync(tmp, "dry run placeholder — not a real resume");
+                           : join(tmpdir(), `dryrun-resume-${Date.now()}.pdf`);
+      // .pdf, not .txt. These inputs carry an accept list (Teamtailor:
+      // .doc,.docx,.pptx,.pdf,.pages,.txt,.rtf; Pinpoint narrower), and the
+      // browser silently refuses a file the list excludes — so a .txt
+      // placeholder measured the extension of my own temp file rather than
+      // whether the adapter can attach a résumé.
+      if (!doSubmit) writeFileSync(tmp, "%PDF-1.4\n% dry run placeholder — not a real resume\n");
+      const stamp = tmp.split("/").pop() ?? "";
+      // Does the PAGE already mention this filename? Asked BEFORE, so that
+      // "the page shows it after" is a change rather than a coincidence.
+      const seenBefore = await page.evaluate(
+        `document.body.innerText.includes(${JSON.stringify(stamp)})`).catch(() => false);
       let attached = "FAILED";
       try {
         await cv.setFile(tmp);
+        await page.waitForTimeout(3_000);
+        // TWO independent signals, because the obvious one is wrong on some
+        // vendors. Teamtailor uploads via JS and CLEARS the input, so counting
+        // inputs that "now hold a file" returns 0 on a form where the résumé
+        // landed perfectly — this reported "no file landed" against a page that
+        // was already displaying the filename.
         const n = await page.locator('input[type="file"]')
           .evaluateAll((els) => els.filter((e) => (e as HTMLInputElement).files?.length).length)
           .catch(() => 0);
-        attached = n > 0 ? `OK — ${n} input(s) now hold a file` : "setFile threw no error but no file landed";
-        if (n === 0) bad++;
+        const shown = await page.evaluate(
+          `document.body.innerText.includes(${JSON.stringify(stamp)})`).catch(() => false);
+        const landed = n > 0 || (Boolean(shown) && !seenBefore);
+        attached = n > 0 ? `OK — ${n} input(s) now hold a file`
+          : landed ? "OK — the page now shows the filename (JS uploader clears the input)"
+          : "setFile threw no error, and neither the input nor the page shows a file";
+        if (!landed) bad++;
       } catch (e) {
         attached = `FAILED — ${String(e).slice(0, 80)}`;
         bad++;

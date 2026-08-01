@@ -76,6 +76,7 @@ describe("adapter selectors still match what the vendors present", () => {
     ["breezy", "breezy.ts"],
     ["personio", "personio.ts"],
     ["pinpoint", "pinpoint.ts"],
+    ["teamtailor", "teamtailor.ts"],
   ];
 
   it("has a fixture for every adapter that ships", () => {
@@ -162,7 +163,7 @@ describe("the rules that keep a real employer from getting nonsense", () => {
     // Oracle ships name="honey-pot": invisible to a person, so anything filling
     // it is provably not one. Filling it would announce us on a vendor with no
     // CAPTCHA, and the rejections would read as bad luck.
-    for (const file of ["breezy.ts", "personio.ts", "pinpoint.ts", "smartrecruiters.ts"]) {
+    for (const file of ["breezy.ts", "personio.ts", "pinpoint.ts", "teamtailor.ts", "smartrecruiters.ts"]) {
       for (const sel of selectorsIn(src(file))) {
         expect(/honey.?pot|bot.?trap|^hp_/i.test(sel), `${file} targets a honeypot: ${sel}`).toBe(false);
       }
@@ -216,7 +217,7 @@ describe("a false 'not submitted' is the dangerous direction", () => {
    * second is unrecoverable, so failure must be asserted from visibility and
    * anything less must fall through to "unknown", which routes to a human.
    */
-  for (const file of ["breezy.ts", "personio.ts", "pinpoint.ts"]) {
+  for (const file of ["breezy.ts", "personio.ts", "pinpoint.ts", "teamtailor.ts"]) {
     it(`${file} decides from visibility BEFORE it reads the page's words`, () => {
       const code = codeOnly(src(file));
       const confirmed = code.slice(code.indexOf("async confirmed"));
@@ -278,5 +279,38 @@ describe("classifying a submit outcome — the ordering that lost applications",
     // under a real person's name that cannot be withdrawn.
     expect(classifyConfirmation(false, "All done. Reference #48213.")).toBe("unknown");
     expect(classifyConfirmation(false, "")).toBe("unknown");
+  });
+});
+
+describe("a honeypot marked REQUIRED is the trap, not the question", () => {
+  it("teamtailor's full_email is recorded, and shape — not name — is what finds it", () => {
+    // Teamtailor ships an invisible, keyboard-unreachable email field named
+    // full_email, next to the real candidate[email], and marks it REQUIRED.
+    // Nothing about that name looks like a trap, so the name blocklist sails
+    // past it — and "required" is the bait: a driver reasoning "required,
+    // therefore answer it" fills it and announces itself to a vendor that has
+    // no CAPTCHA. The rejections would read as bad luck.
+    expect(observed.teamtailor.honeypot).toBe("full_email");
+    // Detection lives in the enumerator and keys on shape, so it travels to
+    // vendors whose trap has a different name.
+    const enumr = src("enumerate-dom.ts");
+    expect(enumr, "honeypot detection must not be name-based").toMatch(/tabindex.*-1|aria-hidden/);
+    expect(enumr).toMatch(/honeypot = invisible && unreachable/);
+    // A file input styled invisible over a drop zone is the NORMAL way these
+    // forms render an upload — flagging those would break every résumé attach.
+    expect(enumr, "file inputs must be exempt").toMatch(/type !== "file"/);
+  });
+
+  it("the matcher skips a honeypot rather than filling OR blocking on it", async () => {
+    const { matchQuestion } = await import("../../worker/src/questions/match.js");
+    const trap = { name: "full_email", type: "email", required: true, honeypot: true, label: "", options: [] };
+    // null = leave it alone. Filling identifies us; treating it as an
+    // unanswerable required field refuses postings that are fine.
+    expect(matchQuestion(trap, {
+      fullName: "A B", firstName: "A", lastName: "B", email: "a@b.com", phone: "", city: "", country: "",
+      address: "", linkedin: "", website: "", coverNote: "", salaryExpectation: "", earliestStart: "",
+      workAuthorized: true, requiresSponsorship: false, willingToRelocate: true,
+      shareDemographics: false, consentToProcessing: true,
+    })).toBeNull();
   });
 });

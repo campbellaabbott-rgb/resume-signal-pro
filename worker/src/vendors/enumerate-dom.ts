@@ -71,11 +71,29 @@ export const ENUMERATE_JS = `(() => {
         let holdsAll = true;
         for (let j = 0; j < els.length; j++) if (!a.contains(els[j])) { holdsAll = false; break; }
         if (!holdsAll) continue;
-        const hs = a.querySelectorAll("legend, h2, h3, h4, label, .question");
+        const hs = a.querySelectorAll("legend, h2, h3, h4, .question, [class*=question], label, p");
         for (let k = 0; k < hs.length; k++) {
-          let wraps = false;
-          for (let j = 0; j < els.length; j++) if (hs[k].contains(els[j])) { wraps = true; break; }
-          if (!wraps) { const t = clean(hs[k].textContent); if (t) { label = t; break; } }
+          const h = hs[k];
+          let isOption = false;
+          // Wrapping one of the controls makes it that option's own label.
+          for (let j = 0; j < els.length; j++) if (h.contains(els[j])) { isOption = true; break; }
+          // AND SO DOES label[for] POINTING AT ONE. This is the case that was
+          // missing, and it silently mislabelled every choice question on every
+          // vendor: <label for="q1">Yes</label><input id="q1"> does not CONTAIN
+          // its input, so the old check passed it through and the group came
+          // back labelled "Yes". A radio question called "Yes" is unmatchable —
+          // the matcher refuses it as unrecognised — so this turned answerable
+          // screening questions into refusals across the board.
+          if (!isOption && h.getAttribute) {
+            const f = h.getAttribute("for");
+            if (f) for (let j = 0; j < els.length; j++) if (els[j].id === f) { isOption = true; break; }
+          }
+          if (isOption) continue;
+          const t = clean(h.textContent);
+          // An option's text repeated elsewhere is still an option, not a question.
+          let echoesOption = false;
+          for (let j = 0; j < options.length; j++) if (options[j] && options[j] === t) { echoesOption = true; break; }
+          if (t && !echoesOption) { label = t; break; }
         }
         if (label) break;
       }
@@ -100,10 +118,35 @@ export const ENUMERATE_JS = `(() => {
       }
     }
 
+    // HONEYPOT, detected by SHAPE rather than by name.
+    //
+    // Teamtailor ships full_email: type=email, REQUIRED, opacity:0,
+    // tabindex=-1, autocomplete=off, sitting beside the real candidate[email].
+    // Nothing in that name looks like a trap, so a name blocklist
+    // (/honey.?pot|bot.?trap|^hp_/) sails straight past it — and marking it
+    // required is the trap itself, because a driver that fills every required
+    // field fills this one and announces what it is.
+    //
+    // A person cannot see it, cannot tab to it, and will never fill it. So
+    // anything matching that shape is flagged, and the caller must neither fill
+    // it nor count it as blocking. Structure travels across vendors; names do
+    // not.
+    let honeypot = false;
+    try {
+      const cs = getComputedStyle(e);
+      const r = e.getBoundingClientRect();
+      const invisible = cs.opacity === "0" || cs.visibility === "hidden" ||
+        cs.display === "none" || r.width === 0 || r.height === 0 || r.left < -500;
+      const unreachable = e.getAttribute("tabindex") === "-1" || e.getAttribute("aria-hidden") === "true";
+      // A file input styled invisible over a drop zone is the NORMAL way these
+      // forms render an upload, so it is never a honeypot on shape alone.
+      honeypot = invisible && unreachable && type !== "file";
+    } catch (_) { honeypot = false; }
+
     // A trailing asterisk is a requiredness MARKER, not part of the question.
     // Left on, every pattern would need to tolerate it and some would not.
     label = label.replace(/[*\\u2217]\\s*$/, "").trim();
-    out.push({ name: name, type: type, required: required, label: label.slice(0, 200), options: options.slice(0, 24) });
+    out.push({ name: name, type: type, required: required, honeypot: honeypot, label: label.slice(0, 200), options: options.slice(0, 24) });
   });
   return out;
 })()`;
@@ -113,6 +156,9 @@ export type DomQuestion = {
   name: string;
   type: string;
   required: boolean;
+  /** Invisible AND keyboard-unreachable: a trap, not a question. Never fill it,
+   *  and never let it block a submission by counting as unanswered. */
+  honeypot?: boolean;
   label: string;
   options: string[];
 };
