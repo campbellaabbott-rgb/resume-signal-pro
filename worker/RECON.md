@@ -767,3 +767,62 @@ board is not expressible in sources.ts at all — no entry carries a `host` fiel
 today. Personio already solves the same problem by carrying the winning host, so
 the shape is known; it is ~5 call sites. Deliberately NOT built yet: a host
 override that serves one board is not worth the surface until enumeration works.
+
+---
+
+## Custom-domain census: the channel pays, for a different vendor
+
+**Measured 2026-08-01.** Built to solve Pinpoint enumeration, which the earlier
+census left as the one untried route. It did not solve that. It found something
+else worth more.
+
+**4,000 .co.uk domains from Tranco, DNS-first:**
+
+| | |
+|---|---|
+| have a `careers.*` CNAME at all | 236 / 4,000 |
+| point at `ext.teamtailor.com` | 27 |
+| serve a real feed | 20 |
+| **not in our catalog** | **17 → 282 postings** |
+| point at Pinpoint | **0** |
+
+`ext.teamtailor.com` was the single most common careers-CNAME target in the
+sample, ahead of every other ATS. InPost UK (64), Yopa (55), Pennon Group (28),
+Motorpoint (25), Blue Light Card (23), Crystal Palace F.C. (19), Cazoo,
+On the Beach, The Independent.
+
+**Pinpoint custom domains are rare, not absent.** careers.riverisland.com is one
+and serves 60 postings. Zero in 4,000 UK domains means the yield per domain is
+low, not that the route is closed.
+
+**The corpus should follow the vendor.** This pilot ran `.co.uk` because it was
+hunting Pinpoint, which is British. **Teamtailor is Swedish** — `.se/.no/.dk/.fi`
+should out-yield `.co.uk` for it, and that is untested.
+
+### Two things to settle before any of this is ingested
+
+**1. Is there an underlying `{token}.teamtailor.com` behind each custom domain?**
+If yes, nothing new is needed. If no, the ingester needs a host override,
+because it builds feed URLs from the token alone. **Unresolved** — the feeds do
+not name their tenant, and it has to be answered rather than assumed.
+
+**2. The "17 not in catalog" is NAME-matched** against the companies facet,
+which is fuzzy. "Pennon Group" serving `careers.southwestwater.co.uk` is exactly
+the shape that defeats it. Treat 17 as an UPPER BOUND until each is checked
+token-first.
+
+### Three parse errors on the way to this number, all mine, all the same shape
+
+- `/jobs.json` returning HTTP 200 with the word "teamtailor" in the headers was
+  read as "serves a feed". 23 of 27 "had feeds"; parsed properly, several had
+  none.
+- The feed is **JSON Feed** (`items[]`), not the `data[]` shape every other
+  vendor uses. Parsing for `data` returned **0 jobs from a 73KB feed of real
+  jobs**, twice, and I nearly recorded Teamtailor custom domains as empty.
+- A regex requiring `token:` and `source:` adjacent reported **0 teamtailor
+  tokens in sources.ts**, where there are 1,535. That one would have turned
+  "already covered" into "all new".
+
+Checking reachability instead of behaviour, three times in one investigation,
+after a whole session of finding exactly that. The fix each time was to parse
+the payload and assert a known-present value before believing a count.
