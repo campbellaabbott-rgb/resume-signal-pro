@@ -722,3 +722,48 @@ Now: apply-agent sees the real questions, drafts what the résumé supports, and
 anything unsupported becomes a blocker at PREP time with a reason attached.
 Some packets that used to look ready will now be blocked — that is the same
 refusal surfacing earlier and legibly, not a regression.
+
+---
+
+## Pinpoint custom domains: the channel is real, enumeration is not solved
+
+**Measured 2026-08-01.** The earlier Pinpoint census (`scripts/census-pinpoint.mjs`)
+put the population near **340 boards against the 109 we carry**, closed
+certificate transparency and the customer-list route as dead ends, and named one
+untried channel: employers serving Pinpoint on their OWN hostname, invisible to
+any `*.pinpointhq.com` query.
+
+**The channel exists.** `careers.riverisland.com/postings.json` returns **60
+Pinpoint postings** with the identical schema, apply URLs on the custom domain.
+That is one board worth more than the 44/board Pinpoint average, which no
+subdomain census could ever have found.
+
+**Two fingerprints, both cheap:**
+
+| signal | value |
+|---|---|
+| `_pinpoint_session` cookie on any response | definitive — vendor-named, unambiguous |
+| CNAME | `d3p6l7ched4xva.cloudfront.net` (also `x-powered-by: cloud66`) |
+
+Note the CNAME is confirmed on ONE example only. Whether every tenant shares
+that distribution is unverified, and it matters: if they do, discovery is a DNS
+query instead of an HTTPS fetch.
+
+**WHAT DOES NOT WORK: guessing the domain.** 30 plausible UK employers × 2
+prefixes (`careers.`, `jobs.`) = 60 hostnames probed. **One hit — River Island,
+the example already known.** Pinpoint is UK-founded and the guesses were
+size- and sector-matched, so this is not a bad guess list; enumeration by
+inspiration simply does not work at any useful rate. Do not repeat it.
+
+**So the lever is real and currently unreachable.** ~230 undiscovered boards at
+~44 postings each is roughly **10,000 applyable postings** — a third again on
+top of the entire 29,871 drivable set, on the vendor with the best yield per
+board and no bot wall. It is blocked on ONE thing: a source of candidate
+hostnames. Not on verification, which is a single request.
+
+**Also required before any of this can land:** the ingester hardcodes
+`https://{token}.pinpointhq.com/postings.json` (index.ts:422). A custom-domain
+board is not expressible in sources.ts at all — no entry carries a `host` field
+today. Personio already solves the same problem by carrying the winning host, so
+the shape is known; it is ~5 call sites. Deliberately NOT built yet: a host
+override that serves one board is not worth the surface until enumeration works.
