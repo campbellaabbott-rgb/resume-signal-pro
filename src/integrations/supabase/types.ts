@@ -2726,6 +2726,10 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      agent_maintenance_key_matches: {
+        Args: { p_key: string }
+        Returns: boolean
+      }
       agent_mark_uncertain: {
         Args: { p_id: number; p_reason: string }
         Returns: undefined
