@@ -1,5 +1,17 @@
 {
   "changelogEntries": {
+    "agentSaysWhatItIsDoing": {
+      "title": "Ihr Agent sagt Ihnen jetzt, was er tut",
+      "description": "Eine einzige Zeile oben in Ihrem Agentenbereich sagt genau, was er gerade kann und was nicht — ob er auf eine Einstellung von Ihnen wartet, auf etwas Fehlendes in Ihrem Profil, oder auf uns. Vorher sah all das gleich aus: es passierte nichts. Liegt es an uns, sagt er das klar und schickt Sie nicht los, etwas zu reparieren, das nicht kaputt ist."
+    },
+    "applyReasonsNamed": {
+      "title": "Jede vorbereitete Bewerbung sagt, warum sie noch nicht raus ist",
+      "description": "Bewerbungen in Ihrer Warteschlange nennen jetzt den echten Grund: unter der von Ihnen gesetzten Passungsgrenze, Tageslimit erreicht, eine Frage, die nur Sie beantworten können, oder bereits beworben. Und eine Bewerbung, die wirklich gestoppt ist, sagt das, statt für immer als „fertig\" dazustehen — mit einem Button zum erneuten Versuch, wo das sicher ist. Wenn wir auf Senden geklickt haben, den Eingang aber nicht bestätigen konnten, sagen wir auch das und versuchen es bewusst NICHT erneut, weil Sie sich sonst doppelt bewerben könnten."
+    },
+    "agentOnAtPurchase": {
+      "title": "Das Abo schaltet den Agenten sofort frei",
+      "description": "Der Kauf des Agenten aktiviert ihn jetzt, sobald die Zahlung abgeschlossen ist. Vorher wurde die Berechtigung erst beim nächsten Öffnen Ihrer Kontoseite geschrieben — wer spätabends abschloss und den Tab schloss, wurde vom nächtlichen Lauf übersprungen und bekam am Morgen keine Liste."
+    },
     "tailoredCoverNotes": {
       "title": "Anschreiben-Notizen lassen sich jetzt pro Stelle schreiben",
       "description": "Bisher war die Notiz zu Ihren Bewerbungen ein einziger Absatz, der wortgleich an jeden Arbeitgeber ging. Sie können die Anpassung nun einschalten: Der Agent schreibt sie für jede Stelle anhand der jeweiligen Anzeige um. Er arbeitet ausschließlich mit dem, was bereits in Ihrem Lebenslauf steht — er kann keinen Arbeitgeber, keine Hochschule, keine Fähigkeit und keine Zahl nennen, die dort fehlt, und er erwähnt von sich aus nie Ihren Visastatus, Ihr Gehalt oder Ihr Eintrittsdatum; dafür gibt es eigene Felder. Jeder Entwurf wird gegen Lebenslauf und Anzeige geprüft, bevor er verwendet werden darf; was durchfällt, wird verworfen und Ihre eigene Notiz gesendet. Standardmäßig aus, denn das Umschreiben Ihrer Worte ist Ihre Entscheidung."

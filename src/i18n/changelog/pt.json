@@ -1,5 +1,17 @@
 {
   "changelogEntries": {
+    "agentSaysWhatItIsDoing": {
+      "title": "O seu agente diz-lhe agora o que está a fazer",
+      "description": "Uma única linha no topo da secção do agente diz exatamente o que ele pode e não pode fazer agora — se espera uma definição sua, algo em falta no seu perfil, ou algo do nosso lado. Antes tudo isso parecia igual: não acontecia nada. Se o problema é nosso, di-lo claramente e não o manda arranjar o que não está avariado."
+    },
+    "applyReasonsNamed": {
+      "title": "Cada candidatura preparada diz porque ainda não seguiu",
+      "description": "As candidaturas em fila dão agora o motivo real: abaixo do limiar de adequação que definiu, limite diário atingido, uma pergunta que só você pode responder, ou já se candidatou. E uma candidatura que parou mesmo di-lo, em vez de ficar marcada como pronta para sempre, com um botão para tentar de novo onde repetir é seguro. Quando carregámos em enviar mas não conseguimos confirmar que chegou, também o dizemos e deliberadamente não repetimos, porque isso poderia candidatá-lo duas vezes."
+    },
+    "agentOnAtPurchase": {
+      "title": "Subscrever liga o agente de imediato",
+      "description": "Comprar o agente ativa-o agora assim que o pagamento é concluído. Antes o acesso só era registado quando abrisse a página da conta, por isso subscrever à noite e fechar o separador fazia com que a execução noturna o ignorasse e não chegasse fila na manhã seguinte."
+    },
     "tailoredCoverNotes": {
       "title": "As notas de candidatura já podem ser escritas para cada vaga",
       "description": "Até agora, a nota que acompanhava as suas candidaturas era um único parágrafo, enviado palavra por palavra a todos os empregadores. Pode agora ativar a personalização e o agente reescreve-a para cada vaga a partir do próprio anúncio. Trabalha apenas com o que já consta do seu currículo: não pode indicar uma empresa, uma escola, uma competência ou um número que não esteja lá, e nunca menciona por iniciativa própria o seu estatuto de visto, salário ou data de início — esses têm campos próprios. Cada rascunho é confrontado com o seu currículo e com o anúncio antes de poder ser usado, e o que falhar a verificação é descartado, seguindo a sua nota original. Vem desligado, porque reescrever as suas palavras é uma decisão sua."

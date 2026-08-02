@@ -1,5 +1,17 @@
 {
   "changelogEntries": {
+    "agentSaysWhatItIsDoing": {
+      "title": "Uw agent vertelt nu wat hij doet",
+      "description": "Eén regel bovenaan uw agentgedeelte zegt precies wat hij nu wel en niet kan — of hij wacht op een instelling van u, op iets dat in uw profiel ontbreekt, of op ons. Voorheen zag dat er allemaal hetzelfde uit: er gebeurde niets. Ligt het aan ons, dan zegt hij dat gewoon en stuurt u niet iets repareren dat niet stuk is."
+    },
+    "applyReasonsNamed": {
+      "title": "Elke voorbereide sollicitatie zegt waarom hij nog niet weg is",
+      "description": "Sollicitaties in uw wachtrij geven nu de echte reden: onder de matchdrempel die u instelde, daglimiet bereikt, een vraag die alleen u kunt beantwoorden, of al gesolliciteerd. En een sollicitatie die echt gestopt is zegt dat, in plaats van eeuwig als klaar te blijven staan, met een knop om opnieuw te proberen waar dat veilig is. Als we op versturen drukten maar niet konden bevestigen dat het aankwam, zeggen we dat ook en proberen we bewust NIET opnieuw, want dat zou u twee keer kunnen laten solliciteren."
+    },
+    "agentOnAtPurchase": {
+      "title": "Een abonnement zet de agent meteen aan",
+      "description": "Het kopen van de agent activeert hem nu zodra de betaling rond is. Voorheen werd de toegang pas vastgelegd wanneer u uw accountpagina opende, dus 's avonds laat abonneren en het tabblad sluiten betekende dat de nachtelijke ronde u oversloeg en er 's ochtends geen wachtrij was."
+    },
     "tailoredCoverNotes": {
       "title": "Notities bij sollicitaties kunnen nu per vacature worden geschreven",
       "description": "Tot nu toe was de notitie bij je sollicitaties één alinea, woord voor woord naar elke werkgever gestuurd. Je kunt nu afstemming inschakelen: de agent herschrijft hem voor elke functie aan de hand van de vacature zelf. Hij werkt alleen met wat al in je cv staat: hij kan geen werkgever, opleiding, vaardigheid of getal noemen dat er niet in staat, en noemt uit zichzelf nooit je visumstatus, salaris of startdatum — die hebben hun eigen velden. Elk concept wordt getoetst aan je cv en de vacature voordat het gebruikt mag worden; wat de toets niet doorstaat, wordt weggegooid en je eigen notitie gaat mee. Standaard uit, want het herschrijven van jouw woorden is jouw keuze."

@@ -1,5 +1,17 @@
 {
   "changelogEntries": {
+    "agentSaysWhatItIsDoing": {
+      "title": "Votre agent vous dit désormais ce qu'il fait",
+      "description": "Une seule ligne en haut de votre section agent indique exactement ce qu'il peut et ne peut pas faire : s'il attend un réglage de votre part, un élément manquant de votre profil, ou quelque chose de notre côté. Auparavant tout cela se ressemblait : rien ne se passait. Si le blocage vient de nous, il le dit clairement et ne vous envoie pas réparer ce qui n'est pas cassé."
+    },
+    "applyReasonsNamed": {
+      "title": "Chaque candidature préparée indique pourquoi elle n'est pas partie",
+      "description": "Les candidatures en attente donnent maintenant la vraie raison : sous le seuil d'adéquation que vous avez fixé, limite quotidienne atteinte, une question à laquelle vous seul pouvez répondre, ou déjà postulé. Et une candidature réellement arrêtée le dit, au lieu de rester marquée « prête » indéfiniment, avec un bouton Réessayer là où réessayer est sûr. Lorsque nous avons cliqué sur envoyer sans pouvoir confirmer l'aboutissement, nous le disons aussi et ne réessayons délibérément pas, car cela pourrait vous faire postuler deux fois."
+    },
+    "agentOnAtPurchase": {
+      "title": "L'abonnement active l'agent immédiatement",
+      "description": "L'achat de l'agent l'active désormais dès que le paiement aboutit. Auparavant, l'accès n'était enregistré qu'à votre prochaine visite de la page compte : s'abonner tard le soir et fermer l'onglet signifiait que le traitement nocturne vous ignorait et qu'aucune file n'arrivait le lendemain."
+    },
     "tailoredCoverNotes": {
       "title": "Les notes de candidature peuvent désormais être écrites pour chaque poste",
       "description": "Jusqu'ici, la note jointe à vos candidatures était un seul paragraphe, envoyé mot pour mot à tous les employeurs. Vous pouvez maintenant activer la personnalisation : l'agent la réécrit pour chaque poste à partir de l'annonce elle-même. Il ne travaille qu'à partir de ce qui figure déjà dans votre CV : il ne peut citer ni employeur, ni école, ni compétence, ni chiffre absent, et il n'évoque jamais de lui-même votre situation de visa, votre salaire ou votre date de disponibilité, qui ont leurs propres champs. Chaque brouillon est vérifié face à votre CV et à l'annonce avant de pouvoir servir ; ce qui échoue au contrôle est écarté et votre note d'origine est envoyée. Désactivé par défaut, car réécrire vos mots vous appartient."

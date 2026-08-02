@@ -1,5 +1,17 @@
 {
   "changelogEntries": {
+    "agentSaysWhatItIsDoing": {
+      "title": "Sinasabi na ng iyong ahente kung ano ang ginagawa niya",
+      "description": "Isang linya sa itaas ng iyong bahagi ng ahente ang nagsasabi kung ano ang kaya at hindi niya kaya ngayon — kung naghihintay siya ng setting mula sa iyo, ng kulang sa iyong profile, o ng isang bagay sa aming panig. Dati magkakapareho ang hitsura ng lahat ng iyon: walang nangyayari. Kung sa amin ang problema, sinasabi niya iyon nang malinaw at hindi ka pinapaayos ng bagay na hindi naman sira."
+    },
+    "applyReasonsNamed": {
+      "title": "Sinasabi ng bawat handang aplikasyon kung bakit hindi pa ito umaalis",
+      "description": "May tunay nang dahilan ang mga aplikasyong nakapila: mas mababa sa fit na itinakda mo, naabot na ang pang-araw-araw na limitasyon, isang tanong na ikaw lang ang makakasagot, o nakapag-apply ka na. At ang aplikasyong talagang huminto ay sinasabi na iyon, sa halip na manatiling 'handa' magpakailanman, may pindutan para subukan ulit kung ligtas. Kapag pinindot namin ang send pero hindi nakumpirma ang pagdating, sinasabi rin namin at sadyang HINDI umuulit, dahil baka makapag-apply ka nang dalawang beses."
+    },
+    "agentOnAtPurchase": {
+      "title": "Agad na bumubukas ang ahente pagka-subscribe",
+      "description": "Ang pagbili ng ahente ay agad itong ina-activate sa sandaling makumpleto ang bayad. Dati ay naitatala lang ang access kapag binuksan mo ang iyong account page, kaya ang mag-subscribe nang gabi at magsara ng tab ay nangangahulugang nilaktawan ka ng takbo sa gabi at walang dumating na pila kinaumagahan."
+    },
     "tailoredCoverNotes": {
       "title": "Maaari nang isulat ang cover note para sa bawat trabaho",
       "description": "Hanggang ngayon, ang notang kalakip ng iyong mga aplikasyon ay iisang talata lamang, ipinapadala nang salita-por-salita sa bawat employer. Maaari mo nang buksan ang pag-angkop, at isusulat itong muli ng ahente para sa bawat posisyon batay sa mismong anunsyo ng trabahong iyon. Ang pinagbabatayan lamang niya ay ang nasa iyong résumé na: hindi siya makakapagbanggit ng employer, paaralan, kasanayan o numerong wala roon, at hindi niya kusang binabanggit ang iyong visa status, sahod o petsa ng pagsisimula — may sarili silang mga field. Sinusuri ang bawat draft laban sa iyong résumé at sa anunsyo bago ito magamit, at ang anumang hindi pumasa ay itinatapon at ang sarili mong nota ang ipinapadala. Naka-off ito bilang default, dahil ikaw ang may karapatang magpasya kung muling isusulat ang iyong mga salita."

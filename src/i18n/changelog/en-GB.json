@@ -1,5 +1,17 @@
 {
   "changelogEntries": {
+    "agentSaysWhatItIsDoing": {
+      "title": "Your apply agent now tells you what it's doing",
+      "description": "A single line at the top of your agent section says exactly what it can and can't do right now — whether it's waiting on a setting you control, on something missing from your profile, or on us. Before, all of those looked identical: nothing happening. If the hold-up is on our side it says so plainly, and doesn't send you off to fix something that isn't broken."
+    },
+    "applyReasonsNamed": {
+      "title": "Every prepared application says why it hasn't gone yet",
+      "description": "Applications waiting in your queue now give the real reason — below the fit level you set, your daily limit reached, a question only you can answer, or already applied. And an application that has genuinely stopped now says so instead of sitting there marked ready forever, with a Try again button where retrying is safe. Where we pressed send but couldn't confirm it arrived, we say that too and deliberately don't retry, because that could apply you twice."
+    },
+    "agentOnAtPurchase": {
+      "title": "Subscribing switches the agent on straight away",
+      "description": "Buying the apply agent now activates it the moment payment completes. Previously the entitlement was only written when you next opened your account page, so subscribing late in the evening and closing the tab meant the overnight run skipped you and no queue arrived the next morning."
+    },
     "tailoredCoverNotes": {
       "title": "Cover notes can now be written for each job",
       "description": "Until now the note attached to your applications was one paragraph, sent word for word to every employer. You can now switch on tailoring, and the agent rewrites it for each role against that job's own advert. It works only from what is already in your CV: it cannot name an employer, a school, a skill or a figure that isn't there, and it never volunteers your visa status, salary or start date — those have their own fields, answered from what you set. Every draft is checked against your CV and the advert before it can be used, and anything that fails the check is thrown away and your own note sent instead. It is off by default, because rewriting your words is your decision to make."

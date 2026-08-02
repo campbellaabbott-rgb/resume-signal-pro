@@ -2,12 +2,17 @@
 // ship — newest first. Keep entries written for users (what changed and why it
 // helps them), not engineering changelogs (no file names, no internal jargon).
 //
-// Title and description text live in src/i18n/locales/*.json under
+// Title and description text live in src/i18n/changelog/*.json under
 // `changelogEntries.<id>.title` / `.description` (en.json is the source of
 // truth), not inline here — the `id` below is just the lookup key. When
 // adding a new entry, add the matching `changelogEntries.<id>` block to
 // en.json AND translate it into the other 8 locale files, or it will show up
 // untranslated (or trip the key-parity test) for non-English users.
+//
+// THAT PATH USED TO SAY src/i18n/locales/*.json AND WAS WRONG. The strings were
+// split into their own lazily-loaded bundle so they stay out of the main
+// download, and this comment did not move with them — it would send you to a
+// file with no changelogEntries block in it at all.
 
 export type ChangelogTag = "new" | "improved" | "fixed";
 
@@ -18,6 +23,9 @@ export interface ChangelogEntry {
 }
 
 export const changelog: ChangelogEntry[] = [
+  { id: "agentSaysWhatItIsDoing", date: "2026-08-02", tags: ["new", "improved"] },
+  { id: "applyReasonsNamed", date: "2026-08-02", tags: ["new", "fixed"] },
+  { id: "agentOnAtPurchase", date: "2026-08-02", tags: ["fixed"] },
   { id: "tailoredCoverNotes", date: "2026-08-01", tags: ["new"] },
   { id: "filterCountsRestored", date: "2026-08-01", tags: ["fixed"] },
   { id: "applyAgentCountries", date: "2026-08-01", tags: ["fixed", "improved"] },

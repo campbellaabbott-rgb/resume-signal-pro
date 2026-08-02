@@ -1,5 +1,17 @@
 {
   "changelogEntries": {
+    "agentSaysWhatItIsDoing": {
+      "title": "Tu agente ahora te dice qué está haciendo",
+      "description": "Una sola línea arriba de tu sección del agente dice exactamente qué puede y qué no puede hacer ahora mismo: si espera un ajuste tuyo, algo que falta en tu perfil, o algo nuestro. Antes todo eso se veía igual: no pasaba nada. Si el problema es nuestro, lo dice claramente y no te manda a arreglar algo que no está roto."
+    },
+    "applyReasonsNamed": {
+      "title": "Cada candidatura preparada dice por qué aún no ha salido",
+      "description": "Las candidaturas en tu cola ahora dan el motivo real: por debajo del nivel de encaje que fijaste, límite diario alcanzado, una pregunta que solo tú puedes responder, o ya te habías inscrito. Y una candidatura que se detuvo de verdad ahora lo dice, en lugar de quedarse marcada como lista para siempre, con un botón de reintentar donde reintentar es seguro. Cuando pulsamos enviar pero no pudimos confirmar que llegó, también lo decimos y deliberadamente no reintentamos, porque podría inscribirte dos veces."
+    },
+    "agentOnAtPurchase": {
+      "title": "Suscribirse activa el agente al instante",
+      "description": "Comprar el agente ahora lo activa en el momento en que se completa el pago. Antes el acceso solo se registraba al abrir tu página de cuenta, así que suscribirse por la noche y cerrar la pestaña hacía que la ejecución nocturna te saltara y no llegara ninguna cola por la mañana."
+    },
     "tailoredCoverNotes": {
       "title": "Las notas de presentación ya pueden escribirse para cada puesto",
       "description": "Hasta ahora, la nota que acompañaba a tus candidaturas era un único párrafo enviado palabra por palabra a todas las empresas. Ahora puedes activar la personalización y el agente la reescribe para cada puesto a partir de la propia oferta. Solo trabaja con lo que ya figura en tu currículum: no puede mencionar una empresa, un centro de estudios, una habilidad ni una cifra que no esté ahí, y nunca menciona por iniciativa propia tu situación de visado, tu salario ni tu fecha de incorporación, que tienen sus propios campos. Cada borrador se contrasta con tu currículum y con la oferta antes de poder usarse, y lo que no supera la comprobación se descarta y se envía tu nota original. Viene desactivado, porque reescribir tus palabras es una decisión tuya."
