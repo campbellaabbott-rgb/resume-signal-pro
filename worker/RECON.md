@@ -902,3 +902,53 @@ for a `*.teamtailor.com` reference. It works only on pages that link SIBLING
 tenants — `careers.telenor.se` names `telenorlinx` and `telenorsharedservices`,
 never its own token. Three unresolved boards were checked directly: zero
 teamtailor subdomains in the markup.
+
+### Full-corpus sweep, all 1,000,000 Tranco domains, 2026-08-01
+
+~2M DNS queries, ~110 minutes wall clock. The pilots suggested a broad seam;
+this measured it.
+
+| | |
+|---|---|
+| domains swept | 1,000,000 |
+| on a known ATS CNAME | 1,187 |
+| **serving real jobs** | **806** |
+| by vendor | teamtailor **801**, breezy 4, pinpoint **1** |
+| postings (see cap below) | **11,250** |
+
+Top TLDs: `.com` 535, `.uk` 46, `.org` 21, `.se` 21, `.io` 19, `.co` 17,
+`.fr` 15, `.fi` 12. **This was never a Nordic seam.** The Nordic pilot found 44
+boards; over half the true population sits on `.com`.
+
+**Pinpoint: 1 board in a million domains.** The channel this whole tool was
+built for is, on this evidence, essentially closed. Teamtailor is 801 of 806.
+
+#### 11,250 is a FLOOR, not a count
+
+Ten boards report exactly 100 jobs, none report 99 or 101. That flat wall is a
+page cap, and `?page=2` on `careers.lovisa.com` returns another 100. Those ten
+are censored; the true total is higher by an unknown amount. Anyone quoting
+11,250 should say "at least".
+
+#### After token-first dedupe — the number that actually holds
+
+| | boards | postings |
+|---|---|---|
+| teamtailor boards found | 801 | |
+| resolved to a tenant token | 437 | |
+| — already in sources.ts | 43 | 834 |
+| — **genuinely new** | **394** | **5,359** |
+| unresolved (token exists, guess list missed it) | 364 | 4,969 |
+
+**394 new boards / 5,359 postings, token-verified.** Named: Savills (82),
+Holcim (77), InPost UK (64), Easyfairs (63), BoyleSports (60), Thérapie Clinic
+(59), Qureos, Aroma-Zone, ALE-HOP, Synergym.
+
+Only 43 of 437 resolved boards were already carried — **90% of what a
+subdomain census can see on custom domains, it cannot see.** That is the
+finding: the two channels barely overlap.
+
+The 364 unresolved are not dead. Their tokens exist; the name/domain guess list
+misses renames and holding companies. At the resolved set's average they
+represent roughly 4,900 more postings, and closing that gap is worth more than
+sweeping another corpus.
