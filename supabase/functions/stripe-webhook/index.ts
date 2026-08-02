@@ -4,6 +4,10 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+// Price identity for the $99 apply agent, and the entitlement writer.
+// Static import: the dynamic one inside the handler typechecked as `any`,
+// which is how a rename would have reached production silently.
+import { AGENT_PRICE_CENTS, checkAgentByEmail } from "../_shared/agent.ts";
 
 // Declare EdgeRuntime for background tasks
 declare const EdgeRuntime: { waitUntil: (promise: Promise<unknown>) => void };
@@ -423,6 +427,42 @@ serve(async (req) => {
         const session = event.data.object as Stripe.Checkout.Session;
         
         if (session.payment_status === 'paid') {
+          // GRANT THE APPLY AGENT ENTITLEMENT HERE, at the event that means
+          // "they paid". Nothing else did.
+          //
+          // THE HOLE THIS CLOSES. agent_subscribers was written by exactly one
+          // path — checkAgentByEmail — and the only caller that runs AFTER a
+          // purchase is agent-access, which fires when the Account page loads.
+          // create-agent-checkout calls it too, but BEFORE payment, to avoid
+          // double-billing. reconcile-stripe never touched the agent table at
+          // all.
+          //
+          // So a subscriber who paid and did not return to the app had no row.
+          // agent-runner filters on that table and runs at 06:10 UTC, which
+          // means someone subscribing late in the evening on a phone, closing
+          // the tab, and going to bed silently missed the first morning queue —
+          // while the UI told them "your first queue arrives after tonight's
+          // run". The Stripe redirect usually brings people back, so this looks
+          // fine right up until somebody's session ends differently.
+          //
+          // Deliberately non-fatal: a failure here must not 500 the webhook and
+          // make Stripe retry a delivery that already succeeded. The Account
+          // page still repairs the row on next load, exactly as before — this
+          // removes the dependency on that visit, it does not replace it.
+          try {
+            const paidEmail = session.customer_details?.email ?? session.customer_email ?? "";
+            const isAgent = (session.amount_total ?? 0) === AGENT_PRICE_CENTS
+              || session.metadata?.product_type === "apply_agent";
+            if (paidEmail && isAgent) {
+              const seeded = await checkAgentByEmail(stripe, supabase, paidEmail);
+              logStep("Agent entitlement seeded from webhook", {
+                email: paidEmail, active: seeded.active, status: seeded.status,
+              });
+            }
+          } catch (err) {
+            logStep("Agent entitlement seeding failed (Account page will repair)", { error: String(err) });
+          }
+
           try {
             const result = await triggerProductDelivery(session, supabase, supabaseUrl);
             logStep("Delivery result", result);
