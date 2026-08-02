@@ -206,7 +206,11 @@ const listUrl = (s: JobSource) =>
               : s.source === "breezy"
                 ? `https://${s.token}.breezy.hr/json`
                 : s.source === "teamtailor"
-                  ? `https://${s.token}.teamtailor.com/jobs.rss`
+                  // `host` serves the board from the employer's own domain.
+                  // Teamtailor exposes the identical /jobs.rss there, and it is
+                  // the ONLY reachable route for the 364 custom-domain boards
+                  // whose tenant token no reverse lookup can recover.
+                  ? `https://${s.host ?? `${s.token}.teamtailor.com`}/jobs.rss`
                   : `https://${s.token}.bamboohr.com/careers/list`;
 
 // SmartRecruiters paginates 100/page. With ~1,000 SR boards now in the pool, an

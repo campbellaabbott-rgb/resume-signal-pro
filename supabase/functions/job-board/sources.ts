@@ -21,6 +21,32 @@ export interface JobSource {
   name: string; // display name
   source: JobSourceKind;
   token: string; // the company's board token on that ATS
+  /**
+   * Serve this board from the employer's OWN hostname instead of the vendor's.
+   *
+   * Added 2026-08-01 after sweeping all 1M Tranco domains: 806 live ATS boards
+   * sit on custom domains (careers.motorpoint.co.uk, careers.savills.com), and
+   * 90% of the ones we could resolve were absent from a catalog built entirely
+   * from subdomain censuses. The two channels barely overlap.
+   *
+   * WHY THIS RATHER THAN RESOLVING THE TENANT. Every custom-domain board DOES
+   * have a {token}.teamtailor.com behind it — careers.telenor.se is
+   * telenorsweden — so the first conclusion was that no override was needed.
+   * That held for the 437 whose token a name-derived guess list could find, and
+   * failed for the other 364. Teamtailor rewrites every absolute URL to the
+   * custom domain: not the JSON feed, not the RSS channel link, not the page
+   * markup carries the tenant. There is no reliable reverse lookup.
+   *
+   * Fetching the custom host needs no lookup at all — the same /jobs.rss is
+   * served there. So the override is the cheaper AND more reliable path, which
+   * reverses my earlier "no host override needed" call.
+   *
+   * `token` stays the board's identity (posting ids, company pages, dedupe);
+   * `host` only decides where the feed is fetched from. A board whose employer
+   * later drops the custom domain fails visibly — the feed 404s and the
+   * dead-board sweep catches it — rather than silently serving stale rows.
+   */
+  host?: string;
 }
 
 // Boards with heavy inventory get re-checked every cycle (~10 min); the
