@@ -65,6 +65,46 @@ export async function checkAgentByEmail(
     if (result.active) break;
   }
 
+  // A MANUAL GRANT IS A REAL ENTITLEMENT, and this read has to honour it.
+  //
+  // THE BUG, found live 2026-08-02. Two paths answer "is this person entitled",
+  // and they consulted different sources. agent-runner, apply-agent and
+  // apply-broker read the agent_subscribers table — which is where a comp,
+  // an internal test account, or support making someone whole actually lives.
+  // This function asked STRIPE. So a comped account was entitled everywhere
+  // except the one place it mattered: MorningQueuePanel disables its Resume
+  // button on `agentActive === false`, and Resume is what sets
+  // agent_mandates.active. The person could not switch their own agent on, and
+  // nothing said why — the button was simply grey.
+  //
+  // ONLY rows Stripe does not own. `stripe_customer_id IS NULL` is precisely
+  // what distinguishes a deliberate grant from a cached Stripe answer. Without
+  // that filter this would resurrect every lapsed subscriber whose cached row
+  // still said active, which is the opposite mistake and a far worse one.
+  if (!result.active) {
+    try {
+      const { data: manual } = await supabase
+        .from("agent_subscribers")
+        .select(ENTITLEMENT_COLUMNS)
+        .eq("email", normalized)
+        .is("stripe_customer_id", null)
+        .maybeSingle();
+      if (rowIsEntitled(manual)) {
+        // Returned BEFORE the cache write below: there is nothing to refresh,
+        // and writing would only risk overwriting the grant we just honoured.
+        return {
+          active: true,
+          status: "comped",
+          currentPeriodEnd: (manual as { current_period_end?: string | null })?.current_period_end ?? null,
+          stripeCustomerId: null,
+        };
+      }
+    } catch (_) {
+      // A failed lookup must not upgrade anyone. Fall through to the Stripe
+      // answer, which is already `inactive`.
+    }
+  }
+
   const cached = {
     stripe_customer_id: result.stripeCustomerId,
     status: result.active ? result.status : result.status || "inactive",

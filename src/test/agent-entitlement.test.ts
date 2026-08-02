@@ -155,6 +155,43 @@ describe("no consumer asks the easier question", () => {
   });
 });
 
+describe("a manual grant is honoured on READ, not only on write", () => {
+  const root = resolve(__dirname, "../..");
+  const shared = readFileSync(resolve(root, "supabase/functions/_shared/agent.ts"), "utf8");
+
+  // FOUND LIVE 2026-08-02. Two paths answer "is this person entitled" and they
+  // read different sources. agent-runner / apply-agent / apply-broker read the
+  // agent_subscribers table, where a comp actually lives. checkAgentByEmail
+  // asked STRIPE. So a comped account was entitled everywhere except the one
+  // place that mattered: MorningQueuePanel disables its Resume button on
+  // `agentActive === false`, and Resume is what sets agent_mandates.active.
+  // The person could not switch their own agent on, and the button was simply
+  // grey — no error, no explanation.
+  it("falls back to the subscribers table when Stripe says no", () => {
+    expect(shared).toMatch(/if \(!result\.active\)/);
+    expect(shared).toContain("rowIsEntitled(manual)");
+    expect(shared).toMatch(/status: "comped"/);
+  });
+
+  it("ONLY honours rows Stripe does not own", () => {
+    // Without `stripe_customer_id IS NULL` this would resurrect every lapsed
+    // subscriber whose cached row still read active — the opposite mistake,
+    // and a far worse one than the bug it fixes.
+    const block = shared.slice(shared.indexOf("if (!result.active)"), shared.indexOf("const cached"));
+    expect(block).toMatch(/\.is\("stripe_customer_id", null\)/);
+  });
+
+  it("returns before the cache write, so the grant is not overwritten", () => {
+    const block = shared.slice(shared.indexOf("if (!result.active)"), shared.indexOf("const cached"));
+    expect(block).toContain("return {");
+  });
+
+  it("a failed lookup does not upgrade anyone", () => {
+    const block = shared.slice(shared.indexOf("if (!result.active)"), shared.indexOf("const cached"));
+    expect(block, "the catch must not set active").not.toMatch(/catch[\s\S]*active: true/);
+  });
+});
+
 describe("agent-access cannot mint a row for an address Stripe has never seen", () => {
   const root = resolve(__dirname, "../..");
   const shared = readFileSync(resolve(root, "supabase/functions/_shared/agent.ts"), "utf8");
