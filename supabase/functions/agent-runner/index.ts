@@ -66,6 +66,18 @@ serve(async (req) => {
     .limit(MANDATES_PER_RUN);
   if (mErr) return json({ error: mErr.message }, 500);
 
+  // ROWS THAT EXIST BUT ARE SWITCHED OFF. The `active` filter above means a
+  // zero result still spans two states — nobody has ever set up a mandate, and
+  // somebody set one up and turned it off. Those need opposite responses from
+  // a human ("create one" vs "yours is paused"), so counting only the filtered
+  // set reproduces, one level down, exactly the ambiguity these counters were
+  // added to remove. agent_mandates holds one row per subscriber, so an exact
+  // count is cheap. (Exact, never estimated — an estimate here would be a
+  // number that looks like a fact and is not one.)
+  const { count: totalMandates } = await client
+    .from("agent_mandates")
+    .select("user_id", { count: "exact", head: true });
+
   // The account UI promises "the apply agent now matches against this
   // résumé" when a user pins one — honor it: prefer the profile's CURRENT
   // matching resume over the mandate's creation-time snapshot (audit
@@ -263,10 +275,14 @@ serve(async (req) => {
     ok: true,
     mandates: processed,
     picked: totalPicked,
-    // `found` is the row count before any skip. found === 0 means nobody has
-    // created a mandate; found > 0 with mandates === 0 means every one of them
-    // was dropped, and the two counters below say which gate did it.
+    // `found` is the ACTIVE row count before any skip; `mandates_total` is
+    // every row regardless of the active flag. Read them together:
+    //   total 0                      nobody has created a mandate
+    //   total > 0, found 0           every mandate is switched off
+    //   found > 0, mandates 0        all were dropped — the two counters below
+    //                                say which gate did it
     found: (mandates ?? []).length,
+    mandates_total: totalMandates ?? 0,
     skipped_unentitled: skippedUnentitled,
     skipped_no_resume: skippedNoResume,
     ms: Date.now() - startedAt,
