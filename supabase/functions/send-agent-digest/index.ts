@@ -17,7 +17,7 @@
 // Trigger on a schedule shortly after agent-runner: POST {"action":"send"}.
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { ENTITLEMENT_COLUMNS, entitledFromRows, normalizeEmail, rowIsEntitled } from "../_shared/agent-entitlement.ts";
+import { ENTITLEMENT_COLUMNS, entitledFromRows, isEntitled, normalizeEmail, rowIsEntitled } from "../_shared/agent-entitlement.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -127,7 +127,11 @@ Deno.serve(async (req) => {
 
     let sent = 0, skipped = 0;
     for (const m of list) {
-      if (!m.email || !entitled.has(m.email) || suppressed.has(m.email.toLowerCase())) { skipped++; continue; }
+      // isEntitled normalises before asking, because entitledFromRows normalised
+      // before storing. This line used to ask with the raw address while the
+      // suppression check beside it lowercased — so a subscriber whose mandate
+      // stored a capitalised address was silently counted as `skipped`.
+      if (!m.email || !isEntitled(entitled, m.email) || suppressed.has(m.email.toLowerCase())) { skipped++; continue; }
 
       // Rate floor: never twice in one morning.
       if (m.email_last_sent_at && Date.now() - new Date(m.email_last_sent_at).getTime() < MIN_HOURS_BETWEEN_SENDS * 3600_000) {

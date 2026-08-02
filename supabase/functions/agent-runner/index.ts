@@ -18,7 +18,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { computeFit } from "../_shared/fit-score.ts";
 import { isSendableVendor, SENDABLE_VENDORS } from "../_shared/apply-automation.ts";
-import { ENTITLEMENT_COLUMNS, entitledFromRows, normalizeEmail, rowIsEntitled } from "../_shared/agent-entitlement.ts";
+import { ENTITLEMENT_COLUMNS, entitledFromRows, isEntitled, normalizeEmail, rowIsEntitled } from "../_shared/agent-entitlement.ts";
 
 const MANDATES_PER_RUN = 200;      // safety cap; batches long before this matters
 const CANDIDATES_PER_MANDATE = 400;
@@ -98,10 +98,17 @@ serve(async (req) => {
 
   const sinceIso = new Date(Date.now() - LOOKBACK_HOURS * 3600_000).toISOString();
   let processed = 0, totalPicked = 0;
+  // WHY THESE COUNTERS EXIST. This function reported `mandates: 0` for four
+  // different states — no mandate rows at all, rows that failed the entitlement
+  // check, rows whose résumé was too short, and rows that ran and picked
+  // nothing. One number for four states is not a measurement, and it sent two
+  // separate investigations looking for a subscription problem when the honest
+  // answer might simply have been "nobody has created a mandate".
+  let skippedUnentitled = 0, skippedNoResume = 0;
 
   for (const m of (mandates ?? []) as MandateRow[]) {
-    if (!entitled.has(m.email)) continue;
-    if ((m.resume_text ?? "").trim().length < 100) continue;
+    if (!isEntitled(entitled, m.email)) { skippedUnentitled++; continue; }
+    if ((m.resume_text ?? "").trim().length < 100) { skippedNoResume++; continue; }
     processed++;
 
     // Candidate postings: genuinely new to the board, mandate filters applied
@@ -252,7 +259,18 @@ serve(async (req) => {
     }).eq("user_id", m.user_id);
   }
 
-  return json({ ok: true, mandates: processed, picked: totalPicked, ms: Date.now() - startedAt });
+  return json({
+    ok: true,
+    mandates: processed,
+    picked: totalPicked,
+    // `found` is the row count before any skip. found === 0 means nobody has
+    // created a mandate; found > 0 with mandates === 0 means every one of them
+    // was dropped, and the two counters below say which gate did it.
+    found: (mandates ?? []).length,
+    skipped_unentitled: skippedUnentitled,
+    skipped_no_resume: skippedNoResume,
+    ms: Date.now() - startedAt,
+  });
 });
 
 function json(body: unknown, status = 200) {

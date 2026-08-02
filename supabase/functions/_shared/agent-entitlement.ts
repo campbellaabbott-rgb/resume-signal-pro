@@ -79,3 +79,24 @@ export function entitledFromRows(rows: SubscriberRow[] | null | undefined, now: 
   }
   return out;
 }
+
+/**
+ * ASK THE SET THE SAME WAY IT WAS BUILT. entitledFromRows normalises every key
+ * it stores, so a lookup with a raw address silently misses.
+ *
+ * Both callers had this bug, and it fails in the direction that looks healthy:
+ * an entitled subscriber whose mandate row stores "Name@Gmail.com" is dropped
+ * from the run, and the run reports `{"ok":true,"mandates":0}` — indistinguish-
+ * able from "nobody has set one up". agent-runner skipped them out of the
+ * morning queue; send-agent-digest skipped their email. Nobody gets an error.
+ *
+ * send-agent-digest is the clearest evidence it was a slip rather than a
+ * decision: the suppression check on the SAME LINE lowercases the address while
+ * the entitlement check beside it does not.
+ *
+ * So the comparison stops being something each call site re-derives.
+ */
+export const isEntitled = (entitled: Set<string>, email: unknown): boolean => {
+  const normalized = normalizeEmail(email);
+  return normalized !== "" && entitled.has(normalized);
+};

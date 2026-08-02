@@ -28,6 +28,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import {
   entitledFromRows,
+  isEntitled,
   normalizeEmail,
   rowIsEntitled,
   type SubscriberRow,
@@ -222,5 +223,79 @@ describe("agent-access cannot mint a row for an address Stripe has never seen", 
     // loaded the Account page. The symptom would have surfaced far away from
     // the cause: the agent just quietly stops doing anything.
     expect(shared).toMatch(/\.not\("stripe_customer_id", "is", null\)/);
+  });
+});
+
+/**
+ * THE SET IS NORMALISED; THE LOOKUP WAS NOT.
+ *
+ * entitledFromRows lowercases and trims every key it stores. Both consumers
+ * then asked for it with the raw mandate address:
+ *
+ *     if (!entitled.has(m.email)) continue;                    // agent-runner
+ *     if (!m.email || !entitled.has(m.email) || suppressed...  // send-agent-digest
+ *
+ * A paying subscriber whose mandate row holds "Name@Gmail.com" is therefore
+ * absent from the set, and is dropped — out of the morning queue, and out of
+ * the digest. Neither logs anything. agent-runner reported the result as
+ * `{"ok":true,"mandates":0}`, which is the same thing it reports when nobody
+ * has created a mandate at all, so the failure is not merely silent: it is
+ * disguised as the ordinary empty case.
+ *
+ * send-agent-digest shows it was a slip and not a decision — the suppression
+ * check on the SAME LINE lowercases the address the entitlement check beside it
+ * did not.
+ */
+describe("isEntitled asks the set the way the set was built", () => {
+  const set = entitledFromRows([{ email: "user@example.com", status: "active", current_period_end: future }], NOW);
+
+  it("matches the exact address", () => {
+    expect(isEntitled(set, "user@example.com")).toBe(true);
+  });
+
+  // The bug, as data. Every one of these is the same person.
+  it.each(["User@Example.com", "USER@EXAMPLE.COM", "  user@example.com  ", "User@Example.com "])(
+    "matches %j, which the raw lookup dropped", (variant) => {
+      expect(set.has(variant), "precondition: the raw lookup really does miss").toBe(false);
+      expect(isEntitled(set, variant)).toBe(true);
+    });
+
+  it("still refuses an address that is genuinely absent", () => {
+    expect(isEntitled(set, "someone-else@example.com")).toBe(false);
+  });
+
+  it("refuses empty and non-string input rather than matching an empty key", () => {
+    for (const junk of ["", "   ", null, undefined, 42, {}]) {
+      expect(isEntitled(set, junk), String(junk)).toBe(false);
+    }
+    // An entitled set built from a blank address must not create a key that a
+    // blank lookup then matches.
+    const blank = entitledFromRows([{ email: "", status: "active", current_period_end: future }], NOW);
+    expect(isEntitled(blank, "")).toBe(false);
+  });
+});
+
+describe("no consumer re-derives the comparison", () => {
+  // Written against the CLASS, not the two known instances. The last time a
+  // guard here was written against specific filenames, the identical bug in a
+  // sibling file survived the fix.
+  const CONSUMERS = [
+    "supabase/functions/agent-runner/index.ts",
+    "supabase/functions/send-agent-digest/index.ts",
+  ];
+  const root = resolve(__dirname, "../..");
+
+  it.each(CONSUMERS)("%s never queries the entitled set with a raw address", (rel) => {
+    const src = readFileSync(resolve(root, rel), "utf8");
+    // Strip comments — the prose above each fix quotes the old broken line, and
+    // a guard that cannot tell code from a description of code is not a guard.
+    const code = src.split("\n").filter((l) => !l.trim().startsWith("//") && !l.trim().startsWith("*")).join("\n");
+    const raw = [...code.matchAll(/entitled\.has\(([^)]*)\)/g)].map((m) => m[1].trim());
+    expect(raw, `${rel} calls entitled.has(...) directly; use isEntitled(entitled, email)`).toEqual([]);
+  });
+
+  it.each(CONSUMERS)("%s imports the shared helper", (rel) => {
+    const src = readFileSync(resolve(root, rel), "utf8");
+    expect(src).toMatch(/import\s*\{[^}]*\bisEntitled\b[^}]*\}\s*from\s*"\.\.\/_shared\/agent-entitlement\.ts"/);
   });
 });
