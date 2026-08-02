@@ -170,6 +170,24 @@ describe("the wiring is actually in place", () => {
     expect(refusal, "must not confirm whether a key is even configured").not.toMatch(/\bkey\s*[,:]/);
   });
 
+  it("accepts the vault key, and costs an anonymous caller no database work", () => {
+    const { readFileSync } = require("node:fs") as typeof import("node:fs");
+    const { resolve } = require("node:path") as typeof import("node:path");
+    const src = readFileSync(
+      resolve(__dirname, "../../supabase/functions/apply-agent/index.ts"), "utf8");
+
+    // The env key still works — nothing that worked before may stop.
+    expect(src).toMatch(/envKey !== "" && presented === envKey/);
+    // And the self-armed vault key is accepted, via the boolean-only check.
+    expect(src).toContain("agent_maintenance_key_matches");
+
+    // THE GUARD THAT KEEPS IT CHEAP. The vault lookup must be reachable only
+    // when a key was actually presented; otherwise every unauthenticated
+    // request becomes a database round trip, and the 403 path is the one an
+    // anonymous caller can hit freely.
+    expect(src).toMatch(/if \(!authorized && presented\)/);
+  });
+
   it("job-board status exposes it without authentication", () => {
     const { readFileSync } = require("node:fs") as typeof import("node:fs");
     const { resolve } = require("node:path") as typeof import("node:path");

@@ -29,7 +29,7 @@ import { nextRunStamp } from "../_shared/run-stamp.ts";
 // Bumped whenever this function's behaviour changes. It rides along in the run
 // stamp so "the new code has not deployed yet" and "the code deployed but has
 // never run" are different observations rather than the same silence.
-const BUILD_VERSION = "2026-08-02.2";
+const BUILD_VERSION = "2026-08-02.3";
 
 // Wall clock, not a row count. Question fetches and answer drafting are both
 // network-bound and wildly variable, so a fixed "20 packets" budget either wastes
@@ -62,9 +62,45 @@ serve(async (req) => {
 
   // Maintenance-gated. This function reads every mandate on the platform and can
   // release applications; it is never reachable from a browser.
-  const key = req.headers.get("x-maintenance-key") ?? "";
-  const expected = Deno.env.get("MAINTENANCE_KEY") ?? "";
-  if (!expected || key !== expected) {
+  //
+  // TWO KEYS ARE ACCEPTED, and the second one is why the cron works at all.
+  //
+  //  1. MAINTENANCE_KEY, the env secret. Unchanged; anything using it keeps
+  //     working exactly as before.
+  //  2. The vault-held 'apply_agent_maintenance_key', verified through
+  //     agent_maintenance_key_matches (service_role only, returns a boolean and
+  //     never the secret).
+  //
+  // The second exists because arming the hourly cron otherwise required a person
+  // to copy a production credential out of one dashboard into a SQL editor — and
+  // that step silently did not happen for two days, during which the job fired
+  // nothing while looking perfectly healthy. Migration 20260802190000 has the
+  // database generate its own key instead, so the cron arms itself and the secret
+  // never touches a clipboard.
+  //
+  // NOT A WEAKENING: reading the vault already requires service_role, which is
+  // full database access. Anyone who could obtain key 2 could already do more
+  // than call this endpoint.
+  const presented = req.headers.get("x-maintenance-key") ?? "";
+  const envKey = Deno.env.get("MAINTENANCE_KEY") ?? "";
+
+  // Built before the gate so the vault check can use it. Construction is local —
+  // no network, no cost to an unauthenticated caller.
+  const client = createClient(
+    Deno.env.get("SUPABASE_URL") ?? "",
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+    { auth: { persistSession: false } },
+  );
+
+  let authorized = envKey !== "" && presented === envKey;
+  // Only consult the vault when a key was actually presented. A caller sending
+  // nothing is refused without touching the database, so this cannot be used to
+  // make an unauthenticated request expensive.
+  if (!authorized && presented) {
+    const { data: matches } = await client.rpc("agent_maintenance_key_matches", { p_key: presented });
+    authorized = matches === true;
+  }
+  if (!authorized) {
     // THE REFUSAL CARRIES THE BUILD VERSION. Nothing else about the function,
     // and certainly nothing about the key — just which bundle is deployed.
     //
@@ -94,11 +130,8 @@ serve(async (req) => {
     });
   }
 
-  const client = createClient(
-    Deno.env.get("SUPABASE_URL") ?? "",
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
-    { auth: { persistSession: false } },
-  );
+  // `client` is created above the auth gate — the vault check needs it.
+
   // Make sure the résumé bucket exists, and say so out loud on every run.
   //
   // The bucket DOES exist in production today — verified with a write probe,
