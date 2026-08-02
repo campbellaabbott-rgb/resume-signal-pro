@@ -6,8 +6,8 @@
 # minute, sleeps. Fly runs a plain container without a request/response model
 # wrapped around it, which is what that shape needs.
 #
-# NOT A WEB SERVICE. There are no [[services]] or [http_service] blocks and no
-# ports, on purpose. Nothing should be able to reach this process from the
+# NOT A WEB SERVICE. No service or http blocks are declared, and no ports, on
+# purpose. Nothing should be able to reach this process from the
 # internet — it reaches out, claims work, and reports back. An exposed port
 # would be an attack surface on a machine that holds the service-role key and
 # candidates' résumés.
@@ -22,6 +22,19 @@ primary_region = "iad"
   # no CAPTCHA and no challenge wall. It is courtesy to an employer's server,
   # and it keeps one candidate's batch from arriving as a burst.
   APPLY_GAP_MS = "20000"
+  # A longer gap before touching the SAME employer twice.
+  APPLY_EMPLOYER_GAP_MS = "120000"
+
+  # NEVER EXIT. 0 means the loop keeps polling forever, which is what a hosted
+  # worker must do. The local launchd install sets this to a few seconds so a
+  # scheduled run stops once the queue is dry — the opposite need, and copying
+  # that value here would give you a worker that dies within a minute of every
+  # deploy and looks like a crash loop.
+  WORKER_IDLE_EXIT_MS = "0"
+
+  # The broker's public URL. Not a secret — it is the same endpoint the worker
+  # would call from anywhere, and it is useless without APPLY_WORKER_SECRET.
+  APPLY_BROKER_URL = "https://bwhdazbotpblihdxcmho.supabase.co/functions/v1/apply-broker"
 
 [[vm]]
   # Chromium is memory-hungry; 512MB gets OOM-killed mid-application, which is
@@ -43,9 +56,28 @@ primary_region = "iad"
 # by APPLY_GAP_MS by design, so a second worker would not go faster, it would
 # only double the number of ways a deploy can overlap.
 #
-# SECRETS (set before first deploy — the process exits immediately without them):
-#   fly secrets set SUPABASE_URL="https://bwhdazbotpblihdxcmho.supabase.co"
-#   fly secrets set SUPABASE_SERVICE_ROLE_KEY="<service role key>"
+# SECRET (exactly one — the process exits `misconfigured` without it):
 #
-# The service-role key is why this machine matters: it bypasses RLS and can read
-# any candidate's résumé. It belongs here and nowhere else.
+#   fly secrets set APPLY_WORKER_SECRET="<the value from Lovable → Backend → Secrets>"
+#
+# THIS FILE PREVIOUSLY ASKED FOR THE WRONG THING, and it is worth recording why,
+# because the wrong version looked more plausible than the right one. It said:
+#
+#   the Supabase project URL, and the Supabase service-role key.
+#
+# The worker reads NEITHER. It has not held a service-role key since the broker
+# was built. Following those instructions produced a worker that exited
+# immediately, and sent you looking for a credential that cannot be obtained at
+# all: the backend is Lovable Cloud-managed, which injects the service key into
+# edge functions at runtime where it is not retrievable or listable by anyone.
+#
+# That is a better arrangement than the one it replaced. The key that can read
+# every candidate's private résumé now exists only inside the platform, never in
+# a container, a file, or a dashboard. What this machine holds instead is a
+# credential for the apply-broker function, granting exactly five operations —
+# claim, release, uncertain, pending, ping. If it leaks, someone can move
+# application packets around. They cannot read a résumé, a mandate, or anyone
+# else's data.
+#
+# The résumé still reaches this machine, but as a five-minute signed URL the
+# broker mints per packet, downloaded and deleted — not as standing access.
