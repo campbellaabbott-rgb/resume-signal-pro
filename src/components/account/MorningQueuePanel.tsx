@@ -165,6 +165,18 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
 
   const ready = queue.filter((q) => q.status === "ready");
 
+  // THE PREREQUISITE THE BUTTON DID NOT ADMIT TO. saveMandate returns BEFORE
+  // writing anything when the matching résumé is under 100 characters, so
+  // clicking Activate wrote no row and left only a toast. A toast is gone in
+  // four seconds; the user is then looking at a form that appears saved and an
+  // agent that never runs, with nothing on screen explaining why. Verified live
+  // 2026-08-02: agent_mandates was empty after an activate attempt.
+  //
+  // Same expression as saveMandate deliberately — a second, drifting copy of
+  // "is the résumé usable" is how the button and the handler start disagreeing.
+  const resumeForMandate = defaultResume?.trim() || mandate?.resume_text?.trim() || "";
+  const resumeReady = resumeForMandate.length >= 100;
+
   return (
     <div className="rounded-2xl border border-border bg-card p-5 mb-6">
       <div className="flex items-center gap-2 mb-1">
@@ -231,7 +243,7 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
               className="w-16 rounded-lg border border-border bg-background px-2 py-1 text-sm" />
           </label>
           <div className="sm:col-span-2 flex gap-2">
-            <button onClick={() => void saveMandate(true)} disabled={busy || agentActive !== true}
+            <button onClick={() => void saveMandate(true)} disabled={busy || agentActive !== true || !resumeReady}
               className="inline-flex items-center gap-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold px-4 py-2 hover:bg-primary/90 disabled:opacity-50">
               <Play className="w-3.5 h-3.5" /> {t("agentQueue.activate", "Activate mandate")}
             </button>
@@ -241,6 +253,15 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
               </button>
             )}
           </div>
+          {/* A disabled button with no stated reason is its own dead end. Same
+              string the toast used, now permanent and next to the control it
+              explains. Entitlement is handled by the paywall above, so this
+              only speaks when the résumé is the thing in the way. */}
+          {agentActive === true && !resumeReady && (
+            <p className="sm:col-span-2 text-[12px] text-muted-foreground -mt-1">
+              {t("agentQueue.needResume", "Save a résumé for matching first (above) — the agent scores every posting against it.")}
+            </p>
+          )}
         </div>
       ) : (
         <div className="flex flex-wrap items-center gap-2 mb-4 text-[13px] text-muted-foreground">

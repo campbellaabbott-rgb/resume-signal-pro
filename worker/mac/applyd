@@ -1,6 +1,7 @@
 #!/bin/bash
 # Apply worker, on a Mac. One command for each thing you actually do.
 #
+#   ./mac/applyd arm       paste the secret once; verifies, then installs
 #   ./mac/applyd check     what the queue says right now (no browser)
 #   ./mac/applyd once      one pass: send what's waiting, then exit
 #   ./mac/applyd watch     headed + slowed, so you can WATCH a submission
@@ -77,8 +78,78 @@ case "${1:-}" in
         echo "  no broker at that URL ($CODE) — check APPLY_BROKER_URL." ;;
       000)
         echo "  could not reach the broker at all. Network, or a wrong host." ;;
+      503)
+        # NOT your .env. apply-broker returns 503 "broker not configured" when
+        # ITS OWN APPLY_WORKER_SECRET is unset, and 401 when yours simply does
+        # not match. Reporting both as "check your secret" sends someone to
+        # re-paste a value that was never the problem.
+        echo "  the BROKER has no secret configured on the server ($CODE)."
+        echo "  Nothing you can fix here — set APPLY_WORKER_SECRET in Lovable -> Backend -> Secrets." ;;
       *)
         echo "  broker returned $CODE: $(head -c 200 /tmp/applyd-check.out)" ;;
+    esac
+    ;;
+
+  arm)
+    # One command between a fresh clone and a running sender.
+    #
+    # The secret is read from STDIN, never argv. An argument lands in shell
+    # history and is visible in `ps` to every user on the machine, and this
+    # credential can claim and release application packets.
+    #
+    # It INSTALLS ONLY IF THE BROKER ACCEPTS THE CREDENTIAL. Writing the file
+    # and scheduling a job that will fail every five minutes is the arrangement
+    # where a typo looks exactly like a working install until somebody reads a
+    # log — which is the same failure this worker keeps being rescued from.
+    if [ ! -f "$HERE/.env" ]; then
+      [ -f "$HERE/.env.example" ] && cp "$HERE/.env.example" "$HERE/.env" || : > "$HERE/.env"
+    fi
+    chmod 600 "$HERE/.env"
+
+    printf "Paste APPLY_WORKER_SECRET (input hidden), then Enter: "
+    IFS= read -rs SECRET
+    echo
+    if [ -z "$SECRET" ]; then echo "  nothing entered — aborting, .env untouched."; exit 2; fi
+
+    # Preserve every other key; replace this one.
+    TMP="$(mktemp)"
+    grep -v '^APPLY_WORKER_SECRET=' "$HERE/.env" > "$TMP" 2>/dev/null || true
+    printf 'APPLY_WORKER_SECRET="%s"\n' "$SECRET" >> "$TMP"
+    # The broker URL is not a secret and the worker cannot guess it.
+    if ! grep -q '^APPLY_BROKER_URL=' "$TMP"; then
+      printf 'APPLY_BROKER_URL="https://bwhdazbotpblihdxcmho.supabase.co/functions/v1/apply-broker"\n' >> "$TMP"
+    fi
+    mv "$TMP" "$HERE/.env"
+    chmod 600 "$HERE/.env"
+    echo "  wrote worker/.env (mode 600, ${#SECRET} chars stored — value not echoed)"
+
+    # Prove the credential against the real broker before scheduling anything.
+    set -a; . "$HERE/.env"; set +a
+    CODE=$(curl -s -o /tmp/applyd-arm.out -w "%{http_code}" \
+      -X POST "$APPLY_BROKER_URL" \
+      -H "Authorization: Bearer $APPLY_WORKER_SECRET" \
+      -H "Content-Type: application/json" \
+      -d '{"action":"ping","worker_id":"applyd-arm","version":"arm","claimed":0}')
+    case "$CODE" in
+      200)
+        echo "  broker ACCEPTED the credential."
+        "$0" install
+        echo
+        echo "  Armed. Next: ./mac/applyd watch   (headed, slowed — watch the first one go)"
+        ;;
+      401|403)
+        echo "  broker REJECTED it ($CODE) — not installing."
+        echo "  That value is not the edge secret named APPLY_WORKER_SECRET."
+        exit 1 ;;
+      503)
+        echo "  the BROKER has no secret configured on the server ($CODE) — not installing."
+        echo "  Nothing you can fix in this file." ; exit 1 ;;
+      000)
+        echo "  could not reach the broker at all — not installing. Network, or a wrong host."
+        exit 1 ;;
+      *)
+        echo "  broker returned $CODE — not installing: $(head -c 200 /tmp/applyd-arm.out)"
+        exit 1 ;;
     esac
     ;;
 
