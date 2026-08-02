@@ -127,3 +127,34 @@ describe("the applicant profile cannot be committed", () => {
     }
   });
 });
+
+describe("EVERY surface that launches the worker passes the right credentials", () => {
+  // I fixed fly.toml and did not look for siblings. The GitHub Actions workflow
+  // carried the identical stale instruction — SUPABASE_URL and
+  // SUPABASE_SERVICE_ROLE_KEY — and would have exited `misconfigured` in
+  // seconds. One fix, one missed instance, because the guard was written
+  // against a filename instead of against a class of file.
+  const SURFACES = [
+    "worker/fly.toml",
+    ".github/workflows/apply-worker.yml",
+  ];
+  const needed = workerEnvKeys();
+
+  it.each(SURFACES)("%s passes APPLY_WORKER_SECRET", (rel) => {
+    const src = readFileSync(resolve(root, rel), "utf8");
+    expect(src).toMatch(/APPLY_WORKER_SECRET/);
+  });
+
+  it.each(SURFACES)("%s never SETS a credential the worker ignores", (rel) => {
+    const src = readFileSync(resolve(root, rel), "utf8");
+    // Assignments only — prose explaining the old mistake is allowed and
+    // useful. `KEY: ${{ secrets.KEY }}` or `fly secrets set KEY` are not.
+    for (const dead of ["SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_URL"]) {
+      expect(needed.has(dead), `worker unexpectedly reads ${dead}`).toBe(false);
+      expect(src, `${rel} still ASSIGNS ${dead}`).not.toMatch(
+        new RegExp(`^\\s*${dead}\\s*:\\s*\\$\\{\\{`, "m"));
+      expect(src, `${rel} still instructs setting ${dead}`).not.toMatch(
+        new RegExp(`(fly secrets set|gh secret set)\\s+${dead}`));
+    }
+  });
+});
