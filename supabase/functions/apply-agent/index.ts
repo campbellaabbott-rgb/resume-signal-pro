@@ -23,6 +23,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { buildPacket, type PacketQuestion, type Profile, type StandingAnswers } from "../_shared/submission-packet.ts";
 import { decideRelease } from "../_shared/apply-release.ts";
 import { automationFor } from "../_shared/apply-automation.ts";
+import { ENTITLEMENT_COLUMNS, normalizeEmail, rowIsEntitled } from "../_shared/agent-entitlement.ts";
 
 // Wall clock, not a row count. Question fetches and answer drafting are both
 // network-bound and wildly variable, so a fixed "20 packets" budget either wastes
@@ -185,9 +186,17 @@ serve(async (req) => {
 
     // Entitlement is checked per mandate, not once per run: a lapsed subscriber
     // must stop being applied for the same day their subscription ends.
+    //
+    // This once selected only `email` and tested that the row existed, which is
+    // not the same question. agent-access is unauthenticated and used to upsert
+    // a row for any address posted to it, so "a row exists" was true for
+    // essentially everyone — and this function is the one that PREPARES
+    // APPLICATIONS TO EMPLOYERS. rowIsEntitled reads status and period end, and
+    // is the single definition all four consumers now share.
     const { data: sub } = await client
-      .from("agent_subscribers").select("email").eq("email", m.email).maybeSingle();
-    if (!sub) continue;
+      .from("agent_subscribers").select(ENTITLEMENT_COLUMNS)
+      .eq("email", normalizeEmail(m.email)).maybeSingle();
+    if (!rowIsEntitled(sub)) continue;
 
     // In auto mode the agent works its own picks; in review mode it only
     // prepares what the candidate approved. The queue is the same table either

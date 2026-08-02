@@ -17,6 +17,7 @@
 // Trigger on a schedule shortly after agent-runner: POST {"action":"send"}.
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { ENTITLEMENT_COLUMNS, entitledFromRows, normalizeEmail, rowIsEntitled } from "../_shared/agent-entitlement.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -110,17 +111,14 @@ Deno.serve(async (req) => {
     if (list.length === 0) return json({ ok: true, sent: 0, skipped: 0, note: "no opted-in mandates" });
 
     // Entitlement at SEND time — a lapsed subscriber stops receiving.
-    const emails = [...new Set(list.map((m) => m.email).filter(Boolean))];
-    const entitled = new Set<string>();
+    const emails = [...new Set(list.map((m) => normalizeEmail(m.email)).filter(Boolean))];
+    let entitled = new Set<string>();
     if (emails.length) {
       const { data: subs } = await supabase
         .from("agent_subscribers")
-        .select("email, status, current_period_end")
+        .select(ENTITLEMENT_COLUMNS)
         .in("email", emails);
-      for (const s of (subs ?? []) as Array<{ email: string; status: string; current_period_end: string | null }>) {
-        const periodOk = !s.current_period_end || new Date(s.current_period_end).getTime() > Date.now();
-        if ((s.status === "active" || s.status === "trialing") && periodOk) entitled.add(s.email);
-      }
+      entitled = entitledFromRows(subs);
     }
 
     // Global unsubscribes win over everything.

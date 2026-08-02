@@ -6,6 +6,16 @@
 // an agent subscriber passes the generic Pro check too, so $99 includes Pro.
 
 import Stripe from "https://esm.sh/stripe@18.5.0";
+import {
+  ACTIVE_SUBSCRIBER_STATUSES,
+  ENTITLEMENT_COLUMNS,
+  entitledFromRows,
+  normalizeEmail,
+  rowIsEntitled,
+} from "./agent-entitlement.ts";
+
+// Re-exported so a consumer never has to decide which module to trust.
+export { ENTITLEMENT_COLUMNS, entitledFromRows, rowIsEntitled };
 
 export const AGENT_PRICE_CENTS = 9900;
 export const AGENT_PRODUCT_NAME = "Resume Booster Apply Agent — Morning Queue";
@@ -17,14 +27,16 @@ export interface AgentStatus {
   stripeCustomerId: string | null;
 }
 
-const ACTIVE_STATUSES = new Set(["active", "trialing"]);
+// One list, shared with every consumer. A second copy here is how the four
+// readers of agent_subscribers drifted apart in the first place.
+const ACTIVE_STATUSES = ACTIVE_SUBSCRIBER_STATUSES;
 
 export async function checkAgentByEmail(
   stripe: Stripe,
   supabase: { from: (t: string) => any },
   email: string,
 ): Promise<AgentStatus> {
-  const normalized = email.trim().toLowerCase();
+  const normalized = normalizeEmail(email);
   let result: AgentStatus = { active: false, status: "inactive", currentPeriodEnd: null, stripeCustomerId: null };
 
   const customers = await stripe.customers.list({ email: normalized, limit: 5 });
@@ -53,14 +65,31 @@ export async function checkAgentByEmail(
     if (result.active) break;
   }
 
+  const cached = {
+    stripe_customer_id: result.stripeCustomerId,
+    status: result.active ? result.status : result.status || "inactive",
+    current_period_end: result.currentPeriodEnd,
+    updated_at: new Date().toISOString(),
+  };
+
   try {
-    await supabase.from("agent_subscribers").upsert({
-      email: normalized,
-      stripe_customer_id: result.stripeCustomerId,
-      status: result.active ? result.status : result.status || "inactive",
-      current_period_end: result.currentPeriodEnd,
-      updated_at: new Date().toISOString(),
-    });
+    if (result.stripeCustomerId) {
+      // Stripe knows this address — cache the answer, active or lapsed.
+      await supabase.from("agent_subscribers").upsert({ email: normalized, ...cached });
+    } else {
+      // Stripe has never seen it. UPDATE, not upsert: an existing row must
+      // still be downgraded (a customer deleted outright must not stay
+      // entitled), but an address with no Stripe presence must not have a row
+      // CREATED for it.
+      //
+      // This endpoint is unauthenticated and takes the email from the request
+      // body, so an upsert here let anyone mint an agent_subscribers row for
+      // any address they liked. That was worth nothing while every consumer
+      // checked `status`, and worth a free apply-agent subscription for the two
+      // consumers that only checked whether the row existed. Both halves are
+      // now fixed; this is the half that stops the row appearing at all.
+      await supabase.from("agent_subscribers").update(cached).eq("email", normalized);
+    }
   } catch (_) {
     // Cache refresh is best-effort; the caller already has the live answer.
   }

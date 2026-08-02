@@ -18,6 +18,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { computeFit } from "../_shared/fit-score.ts";
 import { isSendableVendor, SENDABLE_VENDORS } from "../_shared/apply-automation.ts";
+import { ENTITLEMENT_COLUMNS, entitledFromRows, normalizeEmail, rowIsEntitled } from "../_shared/agent-entitlement.ts";
 
 const MANDATES_PER_RUN = 200;      // safety cap; batches long before this matters
 const CANDIDATES_PER_MANDATE = 400;
@@ -81,17 +82,18 @@ serve(async (req) => {
     }
   }
 
-  const emails = [...new Set((mandates ?? []).map((m) => m.email).filter(Boolean))];
-  const entitled = new Set<string>();
+  // This check was already correct. It is routed through the shared predicate
+  // anyway, so that "what does entitled mean" has exactly one answer in the
+  // codebase — the two functions that got it wrong got it wrong by writing a
+  // fourth version of this loop.
+  const emails = [...new Set((mandates ?? []).map((m) => normalizeEmail(m.email)).filter(Boolean))];
+  let entitled = new Set<string>();
   if (emails.length) {
     const { data: subs } = await client
       .from("agent_subscribers")
-      .select("email, status, current_period_end")
+      .select(ENTITLEMENT_COLUMNS)
       .in("email", emails);
-    for (const s of (subs ?? []) as Array<{ email: string; status: string; current_period_end: string | null }>) {
-      const periodOk = !s.current_period_end || new Date(s.current_period_end).getTime() > Date.now();
-      if ((s.status === "active" || s.status === "trialing") && periodOk) entitled.add(s.email);
-    }
+    entitled = entitledFromRows(subs);
   }
 
   const sinceIso = new Date(Date.now() - LOOKBACK_HOURS * 3600_000).toISOString();

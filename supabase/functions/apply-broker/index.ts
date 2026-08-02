@@ -14,6 +14,7 @@
 // Those are different situations and they get different responses, deliberately.
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { ENTITLEMENT_COLUMNS, normalizeEmail, rowIsEntitled } from "../_shared/agent-entitlement.ts";
 
 const BUILD_VERSION = "2026-08-01.2";
 const LEASE_MINUTES = 10;
@@ -130,9 +131,16 @@ serve(async (req) => {
 
         // Entitlement, checked at claim time rather than at prepare time: a
         // lapsed subscriber must stop being applied for the day they lapse.
+        //
+        // Checked status, not merely row existence — see the note in
+        // _shared/agent-entitlement.ts. This is the LAST gate before a packet
+        // is handed to a worker that will type it into an employer's form, so
+        // it is the worst possible place to ask an easier question than the one
+        // that was intended.
         const { data: sub } = await client
-          .from("agent_subscribers").select("email").eq("email", str(mandate.email)).maybeSingle();
-        if (!sub) { await unclaim(); continue; }
+          .from("agent_subscribers").select(ENTITLEMENT_COLUMNS)
+          .eq("email", normalizeEmail(mandate.email)).maybeSingle();
+        if (!rowIsEntitled(sub)) { await unclaim(); continue; }
 
         const { data: learnedRows } = await client
           .from("agent_learned_answers")
