@@ -32,8 +32,8 @@ const ROOT = resolve(__dirname, "../../supabase/functions/job-board");
 
 /** Updated together with BUILD_VERSION, never on its own. */
 const PINNED = {
-  sourcesHash: "358ea43cbaabc9ba",
-  buildVersion: "2026-07-30.1",
+  sourcesHash: "62b79a3adda5601f",
+  buildVersion: "2026-08-02.1",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {
