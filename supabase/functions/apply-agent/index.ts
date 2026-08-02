@@ -29,7 +29,7 @@ import { nextRunStamp } from "../_shared/run-stamp.ts";
 // Bumped whenever this function's behaviour changes. It rides along in the run
 // stamp so "the new code has not deployed yet" and "the code deployed but has
 // never run" are different observations rather than the same silence.
-const BUILD_VERSION = "2026-08-02.1";
+const BUILD_VERSION = "2026-08-02.2";
 
 // Wall clock, not a row count. Question fetches and answer drafting are both
 // network-bound and wildly variable, so a fixed "20 packets" budget either wastes
@@ -65,7 +65,31 @@ serve(async (req) => {
   const key = req.headers.get("x-maintenance-key") ?? "";
   const expected = Deno.env.get("MAINTENANCE_KEY") ?? "";
   if (!expected || key !== expected) {
-    return new Response(JSON.stringify({ error: "apply-agent is a maintenance action" }), {
+    // THE REFUSAL CARRIES THE BUILD VERSION. Nothing else about the function,
+    // and certainly nothing about the key — just which bundle is deployed.
+    //
+    // WHY: on 2026-08-02 job-board's new bundle went live and the run stamp
+    // stayed empty through two cron firings. That has exactly two causes — the
+    // vault key is missing, or apply-agent did not redeploy alongside job-board
+    // — and there was NO WAY to tell them apart without the maintenance key,
+    // because every observable this function offers was behind that key. So the
+    // one question you most need answered when the agent is silent was the one
+    // question you needed a credential to ask.
+    //
+    // A version string is not a secret. job-board has published its own for
+    // months and it is the reason "did the deploy land?" is answerable there.
+    // With this, `version` here plus `status.applyAgent` there separate the two
+    // causes completely, from a terminal, with nothing but curl:
+    //
+    //   version current + no stamp after a firing -> THE VAULT KEY IS MISSING
+    //   version stale                             -> apply-agent did not deploy
+    //
+    // It does NOT reveal whether the key is set, and knowing the build date
+    // buys an attacker nothing they could not learn from the public repo.
+    return new Response(JSON.stringify({
+      error: "apply-agent is a maintenance action",
+      version: BUILD_VERSION,
+    }), {
       status: 403, headers: { "content-type": "application/json" },
     });
   }

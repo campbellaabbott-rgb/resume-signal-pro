@@ -150,6 +150,26 @@ describe("the wiring is actually in place", () => {
     expect(mig).toMatch(/WHERE EXISTS/);
   });
 
+  it("the 403 carries the build version, and nothing else", () => {
+    // The refusal is the ONLY thing an unauthenticated caller can observe from
+    // apply-agent, so it has to carry the one fact that separates "this did not
+    // deploy" from "the vault key is missing". Without it, the single most
+    // urgent question about a silent agent was the one question you needed a
+    // credential to ask.
+    const { readFileSync } = require("node:fs") as typeof import("node:fs");
+    const { resolve } = require("node:path") as typeof import("node:path");
+    const src = readFileSync(
+      resolve(__dirname, "../../supabase/functions/apply-agent/index.ts"), "utf8");
+    const refusal = src.slice(src.indexOf("maintenance action"), src.indexOf("maintenance action") + 400);
+    expect(refusal).toContain("version: BUILD_VERSION");
+
+    // And it must never leak the credential itself, in any form. `expected` is
+    // the variable holding the real MAINTENANCE_KEY.
+    expect(refusal, "the refusal must not echo the key").not.toMatch(/\bexpected\b/);
+    expect(refusal).not.toContain("MAINTENANCE_KEY");
+    expect(refusal, "must not confirm whether a key is even configured").not.toMatch(/\bkey\s*[,:]/);
+  });
+
   it("job-board status exposes it without authentication", () => {
     const { readFileSync } = require("node:fs") as typeof import("node:fs");
     const { resolve } = require("node:path") as typeof import("node:path");
