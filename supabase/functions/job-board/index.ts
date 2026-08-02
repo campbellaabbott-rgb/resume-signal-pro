@@ -2467,7 +2467,7 @@ Deno.serve(async (req) => {
       // bundle, so a stale/failed publish is visible in ONE call instead of being
       // inferred from posting counts over hours (the rung-2 "did it deploy?" pain).
       // Also the source of truth for the heartbeat's job_board_deploy check.
-      const [prog, pbMeta, rot, refreshMeta, bf, hotMeta, fresh, breaker, dateCov, bsMeta, dsMeta, esMeta, fiOk, fiBad, faMeta] = await Promise.all([
+      const [prog, pbMeta, rot, refreshMeta, bf, hotMeta, fresh, breaker, dateCov, bsMeta, dsMeta, esMeta, fiOk, fiBad, faMeta, aaMeta] = await Promise.all([
         client.from("job_board_meta").select("v, updated_at").eq("k", "refresh_progress").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "posted_backfill").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "cold_rotation").maybeSingle(),
@@ -2499,6 +2499,10 @@ Deno.serve(async (req) => {
         client.from("job_board_meta").select("v, updated_at").eq("k", "filter_integrity_ok").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "filter_integrity_incident").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "filter_audit").maybeSingle(),
+        // Has the apply agent ever actually run, and was it the SCHEDULE that
+        // ran it? See the applyAgent block in the response for why that second
+        // half is the whole question.
+        client.from("job_board_meta").select("v, updated_at").eq("k", "apply_agent_run").maybeSingle(),
 ]);
       const pgV = (prog.data?.v ?? {}) as { hot?: number; cold?: number; coldDone?: number; failedAcc?: string[] };
       const rotV = (rot.data?.v ?? {}) as { completedAt?: string; coldBoards?: number };
@@ -2523,6 +2527,54 @@ Deno.serve(async (req) => {
         // re-trigger the bootstrap queue across 28k boards to answer a
         // yes/no question.
         questionVendors: realQuestionVendors(),
+        // HAS THE APPLY AGENT EVER RUN, AND DID THE SCHEDULE RUN IT?
+        //
+        // apply-agent is scheduled hourly at :23, but the cron body is wrapped
+        // in `WHERE EXISTS (... vault.decrypted_secrets WHERE name =
+        // 'apply_agent_maintenance_key')`. With no key in the vault it fires
+        // NOTHING — deliberately, because a cron that collects a 403 twenty-four
+        // times a day is indistinguishable from a working one until somebody
+        // reads the logs.
+        //
+        // The cost of that good decision was that "armed and working" and
+        // "never armed at all" produced byte-identical evidence from outside:
+        // no packets, no errors, nothing. Answering it required the Supabase
+        // dashboard, which is exactly the sort of question this endpoint exists
+        // to make answerable without one.
+        //
+        // READ IT LIKE THIS — four states, not two, and the first two are
+        // different questions that a single `null` would have merged:
+        //   key ABSENT from the response -> THIS bundle has not deployed
+        //   key present, value null      -> deployed; apply-agent has not run
+        //                                   since the stamping build shipped
+        //   lastCronAt null, an hour on  -> the vault key is MISSING; the job
+        //                                   fires nothing, exactly as designed
+        //   lastCronAt recent            -> key present, schedule firing
+        //
+        // lastCronAt only advances on a real cron firing. A hand invocation
+        // must not be able to make the schedule look alive.
+        applyAgent: aaMeta.data?.v
+          ? (() => {
+              const v = aaMeta.data.v as Record<string, unknown>;
+              const cronAt = typeof v.lastCronAt === "string" ? v.lastCronAt : null;
+              return {
+                lastRunAt: v.at ?? null,
+                lastRunTrigger: v.trigger ?? null,
+                lastCronAt: cronAt,
+                cronAgeMin: ageMin(cronAt),
+                buildVersion: v.buildVersion ?? null,
+                senderOnline: v.senderOnline ?? null,
+                resumesBucket: v.resumesBucket ?? null,
+                mandates: v.mandates ?? null,
+                prepared: v.prepared ?? null,
+                released: v.released ?? null,
+                // The verdict, so nobody has to re-derive the rule above. Two
+                // hours of slack on an hourly job absorbs one missed tick
+                // without crying wolf.
+                scheduleProven: cronAt !== null && (ageMin(cronAt) ?? 1e9) < 120,
+              };
+            })()
+          : null,
         catalogSize: JOB_SOURCES.length,
         categorizeVersion: CATEGORIZE_VERSION,
         hotTier: Array.isArray(hotTokens) && hotTokens.length >= 50 ? hotTokens.length : HOT_SIZE,

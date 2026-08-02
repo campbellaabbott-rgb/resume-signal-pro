@@ -24,6 +24,12 @@ import { buildPacket, type PacketQuestion, type Profile, type StandingAnswers } 
 import { decideRelease } from "../_shared/apply-release.ts";
 import { automationFor } from "../_shared/apply-automation.ts";
 import { ENTITLEMENT_COLUMNS, normalizeEmail, rowIsEntitled } from "../_shared/agent-entitlement.ts";
+import { nextRunStamp } from "../_shared/run-stamp.ts";
+
+// Bumped whenever this function's behaviour changes. It rides along in the run
+// stamp so "the new code has not deployed yet" and "the code deployed but has
+// never run" are different observations rather than the same silence.
+const BUILD_VERSION = "2026-08-02.1";
 
 // Wall clock, not a row count. Question fetches and answer drafting are both
 // network-bound and wildly variable, so a fixed "20 packets" budget either wastes
@@ -107,8 +113,16 @@ serve(async (req) => {
   }
 
   // Runnable on its own so the bucket can be fixed without releasing anything.
-  let body: { action?: string } = {};
+  let body: { action?: string; source?: string } = {};
   try { body = await req.json(); } catch { /* no body is the normal run */ }
+
+  // WHO ASKED. The hourly cron sends {"source":"cron"}; anything else is a hand
+  // invocation. Keeping them apart is the entire point of the stamp below: a
+  // manual run proves the FUNCTION works, and proves nothing whatsoever about
+  // whether the schedule fires. Those were indistinguishable before, and the
+  // difference is exactly the open question — the cron's WHERE clause is gated
+  // on a vault secret, so with no key it fires NOTHING, silently and by design.
+  const trigger = body.source === "cron" ? "cron" : "manual";
   if (body.action === "ensure-storage") {
     return new Response(JSON.stringify({ resumesBucket: await ensureResumeBucket() }), {
       headers: { "content-type": "application/json" },
@@ -422,6 +436,44 @@ serve(async (req) => {
   // meanings — nothing qualified, or nothing could be sent at all — and a run
   // report that cannot tell them apart is the same trap as a silent refusal.
   console.log(`[APPLY-AGENT] senderOnline=${senderOnline} wake=${JSON.stringify(wake)} resumesBucket=${bucketState} ${JSON.stringify(summary)}`);
+
+  // THE RUN STAMP. Makes "has the apply agent ever actually run?" answerable
+  // from outside, with no database access, no dashboard and no service key —
+  // job-board's `status` action reads this row and is anon-readable.
+  //
+  // WHY IT WAS NEEDED. apply-agent is scheduled hourly at :23, but the cron
+  // body is wrapped in `WHERE EXISTS (SELECT 1 FROM vault.decrypted_secrets
+  // WHERE name = 'apply_agent_maintenance_key')`. With no key that fires
+  // NOTHING — deliberately, so a missing key does not mean 24 failed POSTs a
+  // day. The cost of that good decision is that "armed and working" and "never
+  // armed at all" produce byte-identical evidence from outside: no packets, no
+  // errors, no logs. Nobody can tell you which one you are in, and the only
+  // people who could are the ones with dashboard access.
+  //
+  // lastCronAt is carried forward across manual runs on purpose. A hand
+  // invocation must never be able to make the schedule look alive — that would
+  // be a probe that answers the question you meant to ask with the answer to an
+  // easier one, which is the whole failure this exists to end.
+  try {
+    const { data: prevRow } = await client
+      .from("job_board_meta").select("v").eq("k", "apply_agent_run").maybeSingle();
+    const now = new Date().toISOString();
+    await client.from("job_board_meta").upsert({
+      k: "apply_agent_run",
+      v: nextRunStamp(prevRow?.v, {
+        trigger, now, buildVersion: BUILD_VERSION, senderOnline,
+        resumesBucket: bucketState,
+        mandates: summary.mandates,
+        prepared: summary.prepared,
+        released: summary.released,
+        ms: Date.now() - startedAt,
+      }),
+      updated_at: now,
+    });
+  } catch (e) {
+    // Never let observability failure break a run that otherwise worked.
+    console.error(`[APPLY-AGENT] run stamp failed: ${String(e).slice(0, 140)}`);
+  }
   // `wake` rides along for the same reason senderOnline does: "0 released" has
   // several very different causes, and a run that asked for a sender and was
   // refused looks identical to one that never asked unless it is recorded.
