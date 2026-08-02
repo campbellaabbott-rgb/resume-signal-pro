@@ -101,3 +101,29 @@ describe("the container can actually launch a browser", () => {
     expect(dockerfile).toMatch(/CMD \["node", "dist\/index\.js"\]/);
   });
 });
+
+describe("the applicant profile cannot be committed", () => {
+  // applicant.example.json has instructed people to "copy to applicant.json
+  // (gitignored)" since it was written. The ignore rule did not exist until
+  // 2026-08-02, so that was a promise the repo did not keep — and the file it
+  // describes carries a real name, email, phone, home address, postcode,
+  // LinkedIn and a path to a CV. Nothing leaked, but only because nobody had
+  // yet run the command the documentation asked for.
+  const ignore = readFileSync(resolve(root, "worker/.gitignore"), "utf8");
+
+  it("ignores applicant.json", () => {
+    expect(ignore).toMatch(/^applicant\.json$/m);
+  });
+
+  it("still tracks the example, which carries no personal data", () => {
+    expect(ignore).toMatch(/^!applicant\.example\.json$/m);
+  });
+
+  it("the example ships empty — a filled one would BE the leak", () => {
+    const ex = JSON.parse(readFileSync(resolve(root, "worker/applicant.example.json"), "utf8"));
+    for (const [k, v] of Object.entries(ex)) {
+      if (k === "_README") continue;
+      expect(v === "" || v === null || v === false, `${k} is pre-filled with ${JSON.stringify(v)}`).toBe(true);
+    }
+  });
+});

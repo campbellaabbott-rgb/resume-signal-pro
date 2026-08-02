@@ -5,3 +5,16 @@ dist/
 # Local worker run artefacts
 mac/apply.log
 mac/uncertain/
+
+# THE APPLICANT PROFILE. Real name, email, phone, home address, postcode,
+# LinkedIn and a path to a CV — the densest piece of personal data in this
+# repository, and the one most likely to be created in a hurry.
+#
+# applicant.example.json has told people to "copy to applicant.json
+# (gitignored)" since it was written. That was not true until 2026-08-02: the
+# ignore rule did not exist, so the claim was a promise the repo did not keep.
+# Nothing had leaked — no applicant.json was ever tracked — but only because
+# nobody had run the command the docs asked for.
+applicant.json
+applicant.*.json
+!applicant.example.json
