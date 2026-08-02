@@ -826,3 +826,40 @@ token-first.
 Checking reachability instead of behaviour, three times in one investigation,
 after a whole session of finding exactly that. The fix each time was to parse
 the payload and assert a known-present value before believing a count.
+
+### Nordic run, 2026-08-01
+
+Teamtailor is Swedish, so the corpus followed the vendor. All four Nordic TLDs
+in Tranco's top 1M, run exhaustively rather than sampled:
+
+| TLD | domains | boards found | not in catalog | new postings | hit rate |
+|---|---|---|---|---|---|
+| .co.uk | 4,000 | 20 | 17 | 282 | 0.50% |
+| **.se** | 3,529 | **21** | 17 | 175 | **0.60%** |
+| .fi | 2,221 | 12 | 10 | 71 | 0.54% |
+| .dk | 2,327 | 7 | 7 | 52 | 0.30% |
+| .no | 1,779 | 4 | 3 | 94 | 0.22% |
+| **total** | **13,856** | **64** | **54** | **674** | |
+
+Sweden did out-yield the UK per domain, as predicted, but not dramatically —
+0.60% against 0.50%. **The vendor-home-market effect is real and small.** The
+interesting number is that all five TLDs land in the same 0.2–0.6% band: this
+is a broad seam, not a Nordic one, and the ~880k domains in Tranco outside
+these five TLDs have never been looked at.
+
+Every board found across all five runs was Teamtailor. Not one Pinpoint.
+
+Named employers include Telenor (Sweden and Norway), KICKS (Sweden, Norway,
+Finland), Hedin Automotive, Grand Hôtel Stockholm, Mandatum, Granlund,
+3 Danmark, Dr.Dropin, First Camp (77 postings, the largest single find).
+
+**A dedupe hazard the merge must handle:** `3 Danmark` serves TWO boards under
+different brands — `careers.3.dk` (20) and `careers.oister.dk` (2). Name-keyed
+clustering would merge them; token-keyed would not. KICKS runs three separate
+country boards which are genuinely distinct employers-in-market and should
+stay separate. The two cases look identical from a name alone.
+
+**54 is still an upper bound.** It is name-matched against a fuzzy facet, and
+"Pennon Group" serving `careers.southwestwater.co.uk` is exactly the shape that
+defeats it. Token-first verification is the merge protocol's job, not the
+census's.
