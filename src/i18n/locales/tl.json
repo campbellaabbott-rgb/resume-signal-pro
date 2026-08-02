@@ -4351,5 +4351,24 @@
     "save": "I-save",
     "saved": "Na-save — gagamitin na ito ng agent mula ngayon",
     "saveFailed": "Hindi ma-save ang sagot — walang binago"
+  },
+  "applyReadiness": {
+    "clear": "Walang anuman sa profile mo ang humahadlang sa mga aplikasyon. Kung may bagong itatanong ang employer, hihinto pa rin ang ahente sa halip na manghula — lalabas ito sa iyong pila.",
+    "headBlocked": "Wala pang maipapadala",
+    "headSome": "{{n}} bagay ang humaharang sa ilang aplikasyon",
+    "headQuality": "Maipapadala ang mga aplikasyon, ngunit hindi kasinglaman ng kaya nito",
+    "resume_file_url": "Bawat form ay nangangailangan ng file ng résumé. Kung wala, walang maipapadala ang ahente.",
+    "full_name": "Nasa bawat form ang pangalan mo.",
+    "email": "Nasa bawat form ang email mo — dito sumasagot ang mga employer.",
+    "work_authorized": "“Mayroon ka bang legal na karapatang magtrabaho…?” — hindi nanghuhula ang ahente, kaya nilalaktawan ang mga posisyong iyon.",
+    "salary_expectation": "“Ano ang inaasahan mong sahod?” ay kinakailangang field sa mga form na hinahawakan namin.",
+    "earliest_start": "“Kung maalok sa iyo ang posisyon, kailan ka pinakamaaga makakapagsimula?” — itinatanong bilang kailangang sagutin.",
+    "postcode": "May mga form na hiwalay na humihingi ng postcode sa address; hindi ito kinukuha roon.",
+    "city": "Hiwalay itong itinatanong.",
+    "phone": "Kailangan sa karamihan, at may humihingi ng pangalawang numero.",
+    "consent_to_processing": "“Payagan kaming iproseso ang iyong personal na impormasyon” ay kailangang lagyan ng tsek. Kapag hindi, napupunta sa pila mo ang mga form na iyon.",
+    "cover_note": "Naiiwang blangko ang mga form na may cover-letter box. Walang ginagawa-gawa para punan ang mga ito.",
+    "linkedin": "Naiiwang blangko kung saan ito hinihingi.",
+    "requires_sponsorship": "Ang mga tanong sa sponsorship ay napupunta sa pila mo sa halip na sagutin."
   }
 }

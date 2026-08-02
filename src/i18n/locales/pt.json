@@ -4351,5 +4351,24 @@
     "save": "Guardar",
     "saved": "Guardado — o agente usará esta resposta a partir de agora",
     "saveFailed": "Não foi possível guardar a resposta — nada foi alterado"
+  },
+  "applyReadiness": {
+    "clear": "Nada no seu perfil está a travar candidaturas. Se um empregador perguntar algo novo, o agente continua a parar em vez de adivinhar — aparecerá na sua fila.",
+    "headBlocked": "Ainda não é possível enviar nada",
+    "headSome": "{{n}} coisas bloqueiam algumas candidaturas",
+    "headQuality": "As candidaturas serão enviadas, mas com menos conteúdo do que poderiam",
+    "resume_file_url": "Todos os formulários exigem um ficheiro de currículo. Sem ele o agente não consegue enviar nada.",
+    "full_name": "O seu nome consta de todos os formulários.",
+    "email": "O seu email consta de todos os formulários — é assim que respondem.",
+    "work_authorized": "«Tem atualmente autorização legal para trabalhar…?» — o agente recusa adivinhar, pelo que essas vagas são ignoradas.",
+    "salary_expectation": "«Quais são as suas expectativas salariais?» é um campo obrigatório nos formulários que usamos.",
+    "earliest_start": "«Se lhe fosse oferecida a vaga, qual a data mais próxima de início?» — é uma pergunta obrigatória.",
+    "postcode": "Alguns formulários pedem o código postal separado da morada; não é extraído dela.",
+    "city": "Pedida como campo próprio.",
+    "phone": "Obrigatório na maioria, e alguns pedem um segundo número.",
+    "consent_to_processing": "«Autoriza o tratamento dos seus dados pessoais» é uma marcação obrigatória. Sem ela, esses formulários vão para a sua fila.",
+    "cover_note": "Formulários com carta de apresentação ficam vazios. Nada é inventado para os preencher.",
+    "linkedin": "Fica em branco onde o formulário o pede.",
+    "requires_sponsorship": "Perguntas sobre patrocínio vão para a sua fila em vez de serem respondidas."
   }
 }

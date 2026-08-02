@@ -4351,5 +4351,24 @@
     "save": "Opslaan",
     "saved": "Opgeslagen — de agent gebruikt dit antwoord vanaf nu",
     "saveFailed": "Antwoord kon niet worden opgeslagen — er is niets gewijzigd"
+  },
+  "applyReadiness": {
+    "clear": "Niets in je profiel houdt sollicitaties tegen. Vraagt een werkgever iets nieuws, dan stopt de agent nog steeds in plaats van te gokken — het verschijnt in je wachtrij.",
+    "headBlocked": "Er kan nog niets verstuurd worden",
+    "headSome": "{{n}} dingen blokkeren sommige sollicitaties",
+    "headQuality": "Sollicitaties gaan wel weg, maar lezen magerder dan mogelijk",
+    "resume_file_url": "Elk formulier vraagt een cv-bestand. Zonder cv kan de agent helemaal niets versturen.",
+    "full_name": "Je naam staat op elk formulier.",
+    "email": "Je e-mail staat op elk formulier — zo reageren werkgevers.",
+    "work_authorized": "“Heb je momenteel het recht om te werken…?” — de agent gokt niet, dus die vacatures worden overgeslagen.",
+    "salary_expectation": "“Wat zijn je salarisverwachtingen?” is een verplicht veld op formulieren die wij bedienen.",
+    "earliest_start": "“Wanneer zou je op zijn vroegst kunnen beginnen?” — wordt als verplichte vraag gesteld.",
+    "postcode": "Sommige formulieren vragen de postcode los van je adres; die wordt er niet uit afgeleid.",
+    "city": "Wordt als eigen veld gevraagd.",
+    "phone": "Op de meeste formulieren verplicht, sommige vragen een tweede nummer.",
+    "consent_to_processing": "“Sta ons toe je persoonsgegevens te verwerken” is een verplicht vinkje. Zonder dat gaan die formulieren naar je wachtrij.",
+    "cover_note": "Formulieren met een motivatieveld blijven leeg. Er wordt niets verzonnen om ze te vullen.",
+    "linkedin": "Blijft leeg waar een formulier erom vraagt.",
+    "requires_sponsorship": "Sponsorvragen gaan naar je wachtrij in plaats van beantwoord te worden."
   }
 }

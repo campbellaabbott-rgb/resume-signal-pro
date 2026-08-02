@@ -17,6 +17,7 @@ import { useTranslation } from "react-i18next";
 import { ShieldCheck, Loader2, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { applyReadiness, worstSeverity } from "@/lib/applyReadiness";
 
 const sb = supabase as unknown as {
   from: (t: string) => any;
@@ -190,11 +191,16 @@ export function ApplyProfilePanel({ userId }: { userId: string }) {
   // Which required-everywhere answers are still missing. Shown as a count with
   // the consequence attached, because "3 fields empty" means nothing and
   // "3 answers missing, so those applications wait for you" means something.
-  const missing: string[] = [];
-  if (!p.full_name.trim()) missing.push(t("applyProfile.fName", "your name"));
-  if (!p.resume_file_url.trim()) missing.push(t("applyProfile.fResume", "a résumé file"));
-  if (p.work_authorized === null) missing.push(t("applyProfile.fAuth", "work authorisation"));
-  if (p.requires_sponsorship === null) missing.push(t("applyProfile.fSponsor", "sponsorship"));
+  // Replaces a four-field "still needed" list that named no consequence.
+  //
+  // A live dry run on 2026-08-01 measured why this matters: the SAME agent
+  // against the SAME Pinpoint form reported five blockers with an empty
+  // standing profile and ONE with a complete one. The profile, not the agent,
+  // is the main thing deciding whether an application goes out — and a list of
+  // field names does not tell anyone that. Each gap now carries the question an
+  // employer's form actually asks.
+  const readiness = applyReadiness(p);
+  const worst = worstSeverity(readiness);
 
   // Uploads to the PRIVATE `resumes` bucket and stores the path, not a URL.
   // The worker fetches it with the service key at submit time — the file is
@@ -267,13 +273,46 @@ export function ApplyProfilePanel({ userId }: { userId: string }) {
           "Answer these once and the agent stops having to ask. Anything you leave blank isn't guessed at — applications that need it wait for you instead.")}
       </p>
 
-      {missing.length > 0 && (
+      {readiness.gaps.length === 0 ? (
+        <div className="mb-5 rounded-lg border border-primary/40 bg-primary/5 p-3 flex gap-2">
+          <ShieldCheck className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+          <div className="text-sm text-foreground">
+            {/* Carefully worded. Nothing WE HAVE MEASURED would stop a send —
+                that is not the same as "no form will ever ask something new",
+                and the agent still refuses unknown questions rather than
+                answering them. Promising more than that here would be the
+                claim-drift failure in its purest form. */}
+            {t("applyReadiness.clear",
+              "Nothing in your profile is holding applications back. If an employer asks something new, the agent still stops rather than guessing — it'll appear in your queue.")}
+          </div>
+        </div>
+      ) : (
         <div className="mb-5 rounded-lg border border-warning/40 bg-warning/5 p-3 flex gap-2">
           <AlertTriangle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
-          <div className="text-sm text-foreground">
-            {t("applyProfile.missing",
-              "Still needed: {{list}}. Until then, applications asking for those will wait for you rather than be sent.",
-              { list: missing.join(", ") })}
+          <div className="text-sm text-foreground min-w-0">
+            <div className="font-medium mb-1">
+              {worst === "blocks-everything"
+                ? t("applyReadiness.headBlocked", "Nothing can be sent yet")
+                : worst === "blocks-some"
+                  ? t("applyReadiness.headSome", "{{n}} things stop some applications", { n: readiness.gaps.filter((g) => g.severity !== "reduces-quality").length })
+                  : t("applyReadiness.headQuality", "Applications will send, but read thinner than they could")}
+            </div>
+            <ul className="space-y-1.5 mt-2">
+              {readiness.gaps.map((g) => (
+                <li key={g.field} className="text-xs text-muted-foreground flex gap-2">
+                  <span
+                    aria-hidden
+                    className={`mt-1.5 h-1.5 w-1.5 rounded-full shrink-0 ${
+                      g.severity === "blocks-everything" ? "bg-destructive"
+                        : g.severity === "blocks-some" ? "bg-warning" : "bg-muted-foreground/50"}`}
+                  />
+                  {/* The employer's own question, so the cost of the gap is
+                      concrete rather than a field name the candidate has to
+                      translate into a consequence themselves. */}
+                  <span>{t(`applyReadiness.${g.field}`, g.consequence)}</span>
+                </li>
+              ))}
+            </ul>
           </div>
         </div>
       )}

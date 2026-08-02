@@ -4351,5 +4351,24 @@
     "save": "Guardar",
     "saved": "Guardado: el agente usará esta respuesta a partir de ahora",
     "saveFailed": "No se pudo guardar la respuesta; no se cambió nada"
+  },
+  "applyReadiness": {
+    "clear": "Nada en tu perfil está frenando las candidaturas. Si una empresa pregunta algo nuevo, el agente se detiene en lugar de suponer: aparecerá en tu cola.",
+    "headBlocked": "Todavía no se puede enviar nada",
+    "headSome": "{{n}} cosas bloquean algunas candidaturas",
+    "headQuality": "Las candidaturas se enviarán, pero con menos contenido del posible",
+    "resume_file_url": "Todos los formularios exigen un archivo de currículum. Sin él, el agente no puede enviar nada.",
+    "full_name": "Tu nombre aparece en todos los formularios.",
+    "email": "Tu correo aparece en todos los formularios: es como te responden.",
+    "work_authorized": "«¿Tienes actualmente permiso legal para trabajar…?»: el agente se niega a suponer, así que esas ofertas se omiten.",
+    "salary_expectation": "«¿Cuáles son tus expectativas salariales?» es un campo obligatorio en los formularios que manejamos.",
+    "earliest_start": "«Si te ofrecieran el puesto, ¿cuál es la fecha más temprana de incorporación?»: se pregunta como campo obligatorio.",
+    "postcode": "Algunos formularios piden el código postal aparte de la dirección; no se extrae de ella.",
+    "city": "Se pide como campo propio en los formularios que manejamos.",
+    "phone": "Obligatorio en la mayoría, y algunos piden un segundo número.",
+    "consent_to_processing": "«Permítenos tratar tus datos personales» es una casilla obligatoria. Sin marcarla, esos formularios van a tu cola.",
+    "cover_note": "Los formularios con carta de presentación se dejan vacíos. No se inventa nada para rellenarlos.",
+    "linkedin": "Se deja en blanco donde el formulario lo pide.",
+    "requires_sponsorship": "Las preguntas sobre patrocinio van a tu cola en vez de responderse."
   }
 }

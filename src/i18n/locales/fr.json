@@ -4351,5 +4351,24 @@
     "save": "Enregistrer",
     "saved": "Enregistré — l'agent utilisera cette réponse désormais",
     "saveFailed": "Impossible d'enregistrer cette réponse — rien n'a été modifié"
+  },
+  "applyReadiness": {
+    "clear": "Rien dans votre profil ne bloque les candidatures. Si un employeur pose une question nouvelle, l'agent s'arrête plutôt que de deviner : elle apparaîtra dans votre file.",
+    "headBlocked": "Rien ne peut encore être envoyé",
+    "headSome": "{{n}} éléments bloquent certaines candidatures",
+    "headQuality": "Les candidatures partiront, mais moins étoffées qu'elles pourraient l'être",
+    "resume_file_url": "Chaque formulaire exige un fichier CV. Sans lui, l'agent ne peut rien envoyer.",
+    "full_name": "Votre nom figure sur chaque formulaire.",
+    "email": "Votre e-mail figure sur chaque formulaire : c'est ainsi qu'on vous répond.",
+    "work_authorized": "« Avez-vous actuellement le droit de travailler… ? » — l'agent refuse de deviner, ces offres sont donc ignorées.",
+    "salary_expectation": "« Quelles sont vos prétentions salariales ? » est un champ obligatoire sur les formulaires que nous traitons.",
+    "earliest_start": "« Si le poste vous était proposé, à quelle date au plus tôt pourriez-vous commencer ? » — posée comme question obligatoire.",
+    "postcode": "Certains formulaires demandent le code postal séparément de l'adresse ; il n'en est pas extrait.",
+    "city": "Demandée comme champ distinct sur les formulaires que nous traitons.",
+    "phone": "Obligatoire sur la plupart, et certains demandent un second numéro.",
+    "consent_to_processing": "« Autorisez-nous à traiter vos données personnelles » est une case obligatoire. Non cochée, ces formulaires vont dans votre file.",
+    "cover_note": "Les formulaires avec lettre de motivation restent vides. Rien n'est inventé pour les remplir.",
+    "linkedin": "Laissé vide là où un formulaire le demande.",
+    "requires_sponsorship": "Les questions de parrainage vont dans votre file au lieu d'être répondues."
   }
 }

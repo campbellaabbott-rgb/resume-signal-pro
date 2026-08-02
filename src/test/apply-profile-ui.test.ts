@@ -55,12 +55,31 @@ describe("the apply profile cannot collapse 'not stated' into 'No'", () => {
 
 describe("the panel tells the user what a blank field costs", () => {
   it("names the missing answers and the consequence, not just a count", () => {
-    expect(panel).toContain("applyProfile.missing");
-    // "3 fields empty" means nothing; "those applications wait for you" means something.
+    // Was `applyProfile.missing` — a flat list of four field names with one
+    // shared sentence. Replaced 2026-08-02 by the readiness model, which
+    // carries the EMPLOYER'S ACTUAL QUESTION per gap. The intent of this test
+    // is unchanged and the bar is higher: a consequence per field, not one
+    // sentence covering all of them.
+    expect(panel).toContain("applyReadiness");
+    expect(panel).toContain("g.consequence");
     const en = JSON.parse(readFileSync(resolve(root, "src/i18n/locales/en.json"), "utf8"));
-    expect(en.applyProfile.missing).toMatch(/wait for you/i);
     expect(en.applyProfile.legalIntro).toMatch(/never guesses/i);
     expect(en.applyProfile.modeAutoHint).toMatch(/CAPTCHA/i);
+  });
+
+  it("separates what blocks everything from what blocks some", () => {
+    // The distinction is the point. Telling someone a missing postcode is as
+    // serious as a missing CV makes the panel cry wolf; telling them a missing
+    // CV is minor lets them believe applications are going out when none are.
+    expect(panel).toContain("blocks-everything");
+    expect(panel).toContain("blocks-some");
+  });
+
+  it("does not promise more than the agent can honour when nothing is missing", () => {
+    // The clear state must not read as "every form will now succeed" — unknown
+    // questions still stop the agent, by design.
+    const en = JSON.parse(readFileSync(resolve(root, "src/i18n/locales/en.json"), "utf8"));
+    expect(en.applyReadiness?.clear ?? "").toMatch(/still stops|rather than guessing/i);
   });
 
   it("is translated into all nine locales with no key gaps", () => {

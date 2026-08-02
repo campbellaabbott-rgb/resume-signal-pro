@@ -4351,5 +4351,24 @@
     "save": "Save",
     "saved": "Saved — the agent will use this answer from now on",
     "saveFailed": "Could not save that answer — nothing was changed"
+  },
+  "applyReadiness": {
+    "clear": "Nothing in your profile is holding applications back. If an employer asks something new, the agent still stops rather than guessing — it'll appear in your queue.",
+    "headBlocked": "Nothing can be sent yet",
+    "headSome": "{{n}} things stop some applications",
+    "headQuality": "Applications will send, but read thinner than they could",
+    "resume_file_url": "Every application form requires a CV file. Without one the agent cannot send anything at all.",
+    "full_name": "Your name is on every form.",
+    "email": "Your email is on every form — it is how employers reply.",
+    "work_authorized": "“Do you currently have the legal right to work…” — the agent refuses rather than guessing, so those postings are skipped.",
+    "salary_expectation": "“What are your salary expectations?” is a required field on forms we drive.",
+    "earliest_start": "“If offered the position, what is the earliest date you could start?” — asked as a required question.",
+    "postcode": "Some forms ask for a postcode or Zipcode separately from your address — it is not parsed out of it.",
+    "city": "Asked as its own field on forms we drive.",
+    "phone": "Required on most forms, and some ask for a second number too.",
+    "consent_to_processing": "“Allow us to process your personal information” is a required tick. Left off, those forms go to your queue instead.",
+    "cover_note": "Forms with a cover-letter box are left empty. Nothing is invented to fill them.",
+    "linkedin": "Left blank where a form asks for it.",
+    "requires_sponsorship": "Sponsorship questions go to your queue rather than being answered."
   }
 }

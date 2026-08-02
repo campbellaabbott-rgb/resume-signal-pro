@@ -4351,5 +4351,24 @@
     "save": "Speichern",
     "saved": "Gespeichert – der Agent verwendet diese Antwort ab jetzt",
     "saveFailed": "Antwort konnte nicht gespeichert werden – nichts wurde geändert"
+  },
+  "applyReadiness": {
+    "clear": "Nichts in Ihrem Profil hält Bewerbungen auf. Fragt ein Arbeitgeber etwas Neues, stoppt der Agent weiterhin, statt zu raten — es erscheint in Ihrer Warteschlange.",
+    "headBlocked": "Es kann noch nichts gesendet werden",
+    "headSome": "{{n}} Dinge blockieren einige Bewerbungen",
+    "headQuality": "Bewerbungen gehen raus, wirken aber dünner als möglich",
+    "resume_file_url": "Jedes Formular verlangt eine Lebenslauf-Datei. Ohne sie kann der Agent überhaupt nichts senden.",
+    "full_name": "Ihr Name steht auf jedem Formular.",
+    "email": "Ihre E-Mail steht auf jedem Formular — darüber antworten Arbeitgeber.",
+    "work_authorized": "„Haben Sie derzeit die rechtliche Erlaubnis zu arbeiten…?“ — der Agent rät nicht, diese Stellen werden übersprungen.",
+    "salary_expectation": "„Was sind Ihre Gehaltsvorstellungen?“ ist ein Pflichtfeld auf den Formularen, die wir bedienen.",
+    "earliest_start": "„Wann könnten Sie frühestens anfangen?“ — wird als Pflichtfrage gestellt.",
+    "postcode": "Manche Formulare fragen die Postleitzahl getrennt von der Adresse ab; sie wird nicht daraus abgeleitet.",
+    "city": "Wird als eigenes Feld abgefragt.",
+    "phone": "Auf den meisten Formularen Pflicht, manche fragen eine zweite Nummer ab.",
+    "consent_to_processing": "„Erlauben Sie uns, Ihre personenbezogenen Daten zu verarbeiten“ ist ein Pflichthaken. Ohne ihn landen diese Formulare in Ihrer Warteschlange.",
+    "cover_note": "Formulare mit Anschreibenfeld bleiben leer. Es wird nichts erfunden, um sie zu füllen.",
+    "linkedin": "Bleibt leer, wo ein Formular danach fragt.",
+    "requires_sponsorship": "Fragen zur Visumsförderung landen in Ihrer Warteschlange, statt beantwortet zu werden."
   }
 }
