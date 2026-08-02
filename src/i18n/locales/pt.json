@@ -4370,5 +4370,26 @@
     "cover_note": "Formulários com carta de apresentação ficam vazios. Nada é inventado para os preencher.",
     "linkedin": "Fica em branco onde o formulário o pede.",
     "requires_sponsorship": "Perguntas sobre patrocínio vão para a sua fila em vez de serem respondidas."
+  },
+  "applyRefusal": {
+    "sender-offline": "O nosso emissor está offline, por isso nada saiu. Está em fila e segue assim que voltar — não precisa de fazer nada.",
+    "fit-unknown": "Não conseguimos avaliar esta vaga face ao seu currículo, por isso não a enviámos sem supervisão. Pode enviá-la você.",
+    "not-ready": "Este empregador pergunta algo que não responderemos por si. Abra e preencha o que falta.",
+    "review-mode": "Pronta e à espera de que carregue em enviar — o seu agente está em modo de revisão, por isso nunca envia sozinho.",
+    "vendor-not-allowed": "Não ativou a candidatura sem supervisão para este portal de emprego.",
+    "already-submitted": "Já enviada. Nunca enviamos a mesma candidatura duas vezes.",
+    "duplicate": "Já se tinha candidatado a esta vaga, por isso não lhe tocámos.",
+    "fit-below-floor": "Abaixo do limiar de adequação que definiu. Baixe-o se quiser que as vagas limítrofes também sigam.",
+    "daily-cap": "O limite de hoje esgotou. Segue amanhã, ou aumente o seu limite diário.",
+    "vendor-needs-human": "Este portal exige um passo que só uma pessoa pode dar — normalmente uma caixa que não assinalaremos por si."
+  },
+  "agentState": {
+    "no-mandate": "O seu agente ainda não está configurado. Diga-lhe o que procura e começa a trabalhar durante a noite.",
+    "not-entitled": "A sua subscrição do agente não está ativa, por isso nada está a ser preparado nem enviado.",
+    "no-resume": "Sem currículo em ficheiro. Todos os formulários exigem um, por isso nada pode seguir até o carregar.",
+    "sender-offline": "O nosso emissor está offline, por isso nada está a sair. A sua fila está segura e retoma sozinha — não há nada para corrigir.",
+    "profile-gaps": "Alguns formulários pedem dados que o seu perfil ainda não responde, por isso essas candidaturas param e ficam à sua espera.",
+    "review-mode": "O seu agente prepara cada candidatura e espera que carregue em enviar. Nunca enviará sozinho enquanto estiver em modo de revisão.",
+    "armed": "O seu agente está a candidatar-se por si. Continua a parar e a perguntar sempre que um empregador quer algo que não consegue apurar do seu currículo."
   }
 }

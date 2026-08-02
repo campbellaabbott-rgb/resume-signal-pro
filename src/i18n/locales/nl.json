@@ -4370,5 +4370,26 @@
     "cover_note": "Formulieren met een motivatieveld blijven leeg. Er wordt niets verzonnen om ze te vullen.",
     "linkedin": "Blijft leeg waar een formulier erom vraagt.",
     "requires_sponsorship": "Sponsorvragen gaan naar je wachtrij in plaats van beantwoord te worden."
+  },
+  "applyRefusal": {
+    "sender-offline": "Onze verzender is offline, er is niets verstuurd. Dit staat in de wachtrij en gaat weg zodra hij terug is — u hoeft niets te doen.",
+    "fit-unknown": "We konden deze vacature niet tegen uw cv beoordelen en hebben hem daarom niet onbeheerd verstuurd. U kunt hem zelf versturen.",
+    "not-ready": "Deze werkgever vraagt iets dat wij niet voor u invullen. Open de sollicitatie en vul de gaten aan.",
+    "review-mode": "Klaar en wacht tot u op versturen drukt — uw agent staat in beoordelingsmodus en verstuurt dus nooit zelf.",
+    "vendor-not-allowed": "U heeft onbeheerd solliciteren voor deze vacaturesite niet aangezet.",
+    "already-submitted": "Al verstuurd. We versturen dezelfde sollicitatie nooit twee keer.",
+    "duplicate": "U had al op deze vacature gesolliciteerd, dus we hebben hem met rust gelaten.",
+    "fit-below-floor": "Onder de matchdrempel die u heeft ingesteld. Verlaag hem als u ook twijfelgevallen wilt versturen.",
+    "daily-cap": "De limiet van vandaag is op. Dit gaat morgen weg, of verhoog uw daglimiet.",
+    "vendor-needs-human": "Deze site vereist een stap die alleen een mens kan doen — meestal een vinkje dat wij niet namens u zetten."
+  },
+  "agentState": {
+    "no-mandate": "Uw agent is nog niet ingesteld. Vertel hem wat u zoekt, dan gaat hij 's nachts aan de slag.",
+    "not-entitled": "Uw agentabonnement is niet actief, dus er wordt niets voorbereid of verstuurd.",
+    "no-resume": "Geen cv opgeslagen. Elk formulier vereist er een, dus er kan niets weg tot u hem uploadt.",
+    "sender-offline": "Onze verzender is offline, er gaat nu niets weg. Uw wachtrij blijft intact en hervat vanzelf — er is niets wat u hoeft te repareren.",
+    "profile-gaps": "Sommige formulieren vragen dingen die uw profiel nog niet beantwoordt, dus die sollicitaties stoppen en wachten op u.",
+    "review-mode": "Uw agent bereidt elke sollicitatie voor en wacht tot u op versturen drukt. Hij verstuurt nooit zelf zolang u in beoordelingsmodus staat.",
+    "armed": "Uw agent solliciteert voor u. Hij stopt nog steeds en vraagt het u zodra een werkgever iets wil dat niet uit uw cv blijkt."
   }
 }

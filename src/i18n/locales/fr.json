@@ -4370,5 +4370,26 @@
     "cover_note": "Les formulaires avec lettre de motivation restent vides. Rien n'est inventé pour les remplir.",
     "linkedin": "Laissé vide là où un formulaire le demande.",
     "requires_sponsorship": "Les questions de parrainage vont dans votre file au lieu d'être répondues."
+  },
+  "applyRefusal": {
+    "sender-offline": "Notre émetteur est hors ligne, rien n'est parti. C'est en file d'attente et partira dès son retour : vous n'avez rien à faire.",
+    "fit-unknown": "Nous n'avons pas pu évaluer cette offre par rapport à votre CV, donc nous ne l'avons pas envoyée sans supervision. Vous pouvez l'envoyer vous-même.",
+    "not-ready": "Cet employeur pose une question à laquelle nous ne répondrons pas à votre place. Ouvrez-la et complétez.",
+    "review-mode": "Prête et en attente de votre envoi : votre agent est en mode révision, il n'envoie donc jamais seul.",
+    "vendor-not-allowed": "Vous n'avez pas activé la candidature sans supervision pour ce site d'emploi.",
+    "already-submitted": "Déjà envoyée. Nous n'envoyons jamais deux fois la même candidature.",
+    "duplicate": "Vous aviez déjà postulé à cette offre, nous n'y avons pas touché.",
+    "fit-below-floor": "Sous le seuil d'adéquation que vous avez fixé. Abaissez-le si vous voulez aussi les offres limites.",
+    "daily-cap": "La limite du jour est atteinte. Cela partira demain, ou augmentez votre plafond quotidien.",
+    "vendor-needs-human": "Ce site exige une étape que seule une personne peut faire — souvent une case que nous ne cocherons pas à votre place."
+  },
+  "agentState": {
+    "no-mandate": "Votre agent n'est pas encore configuré. Dites-lui ce que vous cherchez et il travaillera pendant la nuit.",
+    "not-entitled": "Votre abonnement à l'agent n'est pas actif : rien n'est préparé ni envoyé.",
+    "no-resume": "Aucun CV enregistré. Tous les formulaires en exigent un : rien ne peut partir avant que vous le déposiez.",
+    "sender-offline": "Notre émetteur est hors ligne, rien ne part pour l'instant. Votre file est intacte et reprend toute seule : vous n'avez rien à corriger.",
+    "profile-gaps": "Certains formulaires demandent des informations que votre profil ne fournit pas encore : ces candidatures s'arrêtent et vous attendent.",
+    "review-mode": "Votre agent prépare chaque candidature et attend que vous l'envoyiez. Il n'enverra jamais seul tant que vous êtes en mode révision.",
+    "armed": "Votre agent postule pour vous. Il s'arrête toujours pour vous demander lorsqu'un employeur veut une information que votre CV ne permet pas d'établir."
   }
 }

@@ -4370,5 +4370,26 @@
     "cover_note": "Los formularios con carta de presentación se dejan vacíos. No se inventa nada para rellenarlos.",
     "linkedin": "Se deja en blanco donde el formulario lo pide.",
     "requires_sponsorship": "Las preguntas sobre patrocinio van a tu cola en vez de responderse."
+  },
+  "applyRefusal": {
+    "sender-offline": "Nuestro emisor está desconectado, así que no se envió nada. Está en cola y saldrá en cuanto vuelva: no tienes que hacer nada.",
+    "fit-unknown": "No pudimos evaluar esta oferta con tu currículum, así que no la enviamos sin supervisión. Puedes enviarla tú.",
+    "not-ready": "Esta empresa pregunta algo que no responderemos por ti. Ábrela y completa lo que falta.",
+    "review-mode": "Lista y esperando a que pulses enviar: tu agente está en modo revisión, así que nunca envía solo.",
+    "vendor-not-allowed": "No has activado el envío sin supervisión para este portal de empleo.",
+    "already-submitted": "Ya enviada. Nunca enviamos la misma candidatura dos veces.",
+    "duplicate": "Ya te habías inscrito en esta oferta, así que no hicimos nada.",
+    "fit-below-floor": "Por debajo del umbral de encaje que fijaste. Bájalo si quieres que también se envíen las dudosas.",
+    "daily-cap": "El límite de hoy está agotado. Saldrá mañana, o sube tu límite diario.",
+    "vendor-needs-human": "Este portal exige un paso que solo puede dar una persona: normalmente una casilla que no marcaremos por ti."
+  },
+  "agentState": {
+    "no-mandate": "Tu agente aún no está configurado. Dile qué buscas y empezará a trabajar por la noche.",
+    "not-entitled": "Tu suscripción al agente no está activa, así que no se prepara ni se envía nada.",
+    "no-resume": "No hay currículum. Todos los formularios lo exigen, así que no se puede enviar nada hasta que lo subas.",
+    "sender-offline": "Nuestro emisor está desconectado, así que ahora no sale nada. Tu cola está a salvo y se reanuda sola: no hay nada que arreglar.",
+    "profile-gaps": "Algunos formularios piden datos que tu perfil todavía no responde, así que esas candidaturas se detienen y te esperan.",
+    "review-mode": "Tu agente prepara cada candidatura y espera a que pulses enviar. Nunca enviará solo mientras estés en modo revisión.",
+    "armed": "Tu agente está postulando por ti. Aun así se detiene y pregunta siempre que una empresa quiere algo que no puede deducir de tu currículum."
   }
 }

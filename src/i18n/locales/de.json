@@ -4370,5 +4370,26 @@
     "cover_note": "Formulare mit Anschreibenfeld bleiben leer. Es wird nichts erfunden, um sie zu füllen.",
     "linkedin": "Bleibt leer, wo ein Formular danach fragt.",
     "requires_sponsorship": "Fragen zur Visumsförderung landen in Ihrer Warteschlange, statt beantwortet zu werden."
+  },
+  "applyRefusal": {
+    "sender-offline": "Unser Sender ist offline, es wurde nichts verschickt. Die Bewerbung steht in der Warteschlange und geht raus, sobald er wieder da ist — Sie müssen nichts tun.",
+    "fit-unknown": "Wir konnten diese Stelle nicht gegen Ihren Lebenslauf bewerten und haben sie deshalb nicht unbeaufsichtigt verschickt. Sie können sie selbst senden.",
+    "not-ready": "Dieser Arbeitgeber fragt etwas, das wir nicht für Sie beantworten. Öffnen Sie die Bewerbung und ergänzen Sie die Lücken.",
+    "review-mode": "Fertig und wartet auf Ihr Senden — Ihr Agent ist im Prüfmodus und verschickt nie von allein.",
+    "vendor-not-allowed": "Sie haben das unbeaufsichtigte Bewerben für diese Jobplattform nicht aktiviert.",
+    "already-submitted": "Bereits gesendet. Wir verschicken dieselbe Bewerbung nie zweimal.",
+    "duplicate": "Sie haben sich auf diese Stelle bereits beworben, deshalb haben wir sie nicht angerührt.",
+    "fit-below-floor": "Unter der von Ihnen gesetzten Passungsgrenze. Senken Sie sie, wenn auch Grenzfälle rausgehen sollen.",
+    "daily-cap": "Das heutige Limit ist aufgebraucht. Sie geht morgen raus, oder erhöhen Sie Ihr Tageslimit.",
+    "vendor-needs-human": "Diese Plattform verlangt einen Schritt, den nur ein Mensch machen kann — meist ein Häkchen, das wir nicht für Sie setzen."
+  },
+  "agentState": {
+    "no-mandate": "Ihr Agent ist noch nicht eingerichtet. Sagen Sie ihm, was Sie suchen, dann arbeitet er über Nacht.",
+    "not-entitled": "Ihr Agent-Abo ist nicht aktiv, deshalb wird nichts vorbereitet oder verschickt.",
+    "no-resume": "Kein Lebenslauf hinterlegt. Jedes Formular verlangt einen, also kann nichts raus, bis Sie ihn hochladen.",
+    "sender-offline": "Unser Sender ist offline, im Moment geht nichts raus. Ihre Warteschlange bleibt erhalten und läuft von selbst weiter — Sie müssen nichts reparieren.",
+    "profile-gaps": "Manche Formulare fragen Dinge, die Ihr Profil noch nicht beantwortet. Diese Bewerbungen halten an und warten auf Sie.",
+    "review-mode": "Ihr Agent bereitet jede Bewerbung vor und wartet auf Ihr Senden. Im Prüfmodus verschickt er nie von allein.",
+    "armed": "Ihr Agent bewirbt sich für Sie. Er hält weiterhin an und fragt nach, sobald ein Arbeitgeber etwas will, das sich aus Ihrem Lebenslauf nicht ergibt."
   }
 }

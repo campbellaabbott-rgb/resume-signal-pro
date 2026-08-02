@@ -4370,5 +4370,26 @@
     "cover_note": "Forms with a covering-letter box are left empty. Nothing is invented to fill them.",
     "linkedin": "Left blank where a form asks for it.",
     "requires_sponsorship": "Sponsorship questions go to your queue rather than being answered."
+  },
+  "applyRefusal": {
+    "sender-offline": "Our sender is offline, so nothing went out. This is queued and goes as soon as it is back — you do not need to do anything.",
+    "fit-unknown": "We could not score this one against your CV, so we did not send it unattended. You can still send it yourself.",
+    "not-ready": "This employer asks something we will not answer for you. Open it and fill the gaps.",
+    "review-mode": "Ready and waiting for you to press send — your agent is in review mode, so it never sends on its own.",
+    "vendor-not-allowed": "You have not switched on unattended applying for this job site.",
+    "already-submitted": "Already sent. We never send the same application twice.",
+    "duplicate": "You have already applied to this posting, so we left it alone.",
+    "fit-below-floor": "Below the fit floor you set. Lower the floor if you want borderline roles sent too.",
+    "daily-cap": "Today's limit is used up. This goes out tomorrow, or raise your daily cap.",
+    "vendor-needs-human": "This job site needs a step only a person can do — usually a tick box we will not tick on your behalf."
+  },
+  "agentState": {
+    "no-mandate": "Your agent is not set up yet. Tell it what you are looking for and it starts working overnight.",
+    "not-entitled": "Your agent subscription is not active, so nothing is being prepared or sent.",
+    "no-resume": "No CV on file. Every application form requires one, so nothing can be sent until you upload it.",
+    "sender-offline": "Our sender is offline, so nothing is going out right now. Your queue is safe and resumes automatically — there is nothing for you to fix.",
+    "profile-gaps": "Some employers' forms ask things your profile does not answer yet, so those applications stop and wait for you.",
+    "review-mode": "Your agent prepares each application and waits for you to press send. It will never send on its own while you are in review mode.",
+    "armed": "Your agent is applying for you. It still stops and asks whenever an employer wants something it cannot answer from your CV."
   }
 }

@@ -4370,5 +4370,26 @@
     "cover_note": "Naiiwang blangko ang mga form na may cover-letter box. Walang ginagawa-gawa para punan ang mga ito.",
     "linkedin": "Naiiwang blangko kung saan ito hinihingi.",
     "requires_sponsorship": "Ang mga tanong sa sponsorship ay napupunta sa pila mo sa halip na sagutin."
+  },
+  "applyRefusal": {
+    "sender-offline": "Offline ang aming tagapagpadala, kaya walang naipadala. Naka-queue ito at aalis pagbalik niya — wala kang kailangang gawin.",
+    "fit-unknown": "Hindi namin nasukat ito laban sa iyong résumé, kaya hindi namin ipinadala nang walang bantay. Maaari mo itong ipadala mismo.",
+    "not-ready": "May tinatanong ang employer na hindi namin sasagutin para sa iyo. Buksan ito at punan ang mga kulang.",
+    "review-mode": "Handa na at naghihintay na pindutin mo ang send — nasa review mode ang iyong ahente, kaya hindi ito kusang nagpapadala.",
+    "vendor-not-allowed": "Hindi mo pa binubuksan ang walang-bantay na pag-aaplay para sa job site na ito.",
+    "already-submitted": "Naipadala na. Hindi namin kailanman ipinapadala nang dalawang beses ang parehong aplikasyon.",
+    "duplicate": "Nag-apply ka na sa posisyong ito, kaya hindi namin ito ginalaw.",
+    "fit-below-floor": "Mas mababa sa fit floor na itinakda mo. Ibaba ito kung gusto mong maipadala rin ang mga borderline.",
+    "daily-cap": "Ubos na ang limitasyon ngayong araw. Aalis ito bukas, o taasan ang iyong pang-araw-araw na limitasyon.",
+    "vendor-needs-human": "May hakbang ang site na tao lang ang makakagawa — kadalasan ay isang checkbox na hindi namin tatakan para sa iyo."
+  },
+  "agentState": {
+    "no-mandate": "Hindi pa naka-set up ang iyong ahente. Sabihin mo kung ano ang hinahanap mo at magsisimula itong magtrabaho sa gabi.",
+    "not-entitled": "Hindi aktibo ang iyong agent subscription, kaya walang inihahanda o ipinapadala.",
+    "no-resume": "Walang résumé na nakatago. Kailangan ito ng bawat application form, kaya walang maipapadala hangga't hindi mo ito na-a-upload.",
+    "sender-offline": "Offline ang aming tagapagpadala, kaya wala munang lumalabas. Ligtas ang iyong queue at kusang magpapatuloy — walang kailangang ayusin sa iyong panig.",
+    "profile-gaps": "May mga form na humihingi ng bagay na hindi pa sinasagot ng iyong profile, kaya humihinto ang mga aplikasyong iyon at naghihintay sa iyo.",
+    "review-mode": "Inihahanda ng iyong ahente ang bawat aplikasyon at naghihintay na pindutin mo ang send. Hindi ito kusang magpapadala habang nasa review mode ka.",
+    "armed": "Nag-a-apply ang iyong ahente para sa iyo. Humihinto pa rin ito at nagtatanong tuwing may gustong malaman ang employer na hindi matutukoy sa iyong résumé."
   }
 }

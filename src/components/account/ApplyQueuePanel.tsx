@@ -14,9 +14,10 @@
 // reading.
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { CheckCircle2, Clock, AlertTriangle, Send, ExternalLink, Loader2, Inbox } from "lucide-react";
+import { CheckCircle2, Clock, AlertTriangle, Send, ExternalLink, Loader2, Inbox, PauseCircle, Info } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { refusalFace } from "@/lib/refusalCopy";
 
 const sb = supabase as unknown as { from: (t: string) => any };
 
@@ -31,6 +32,13 @@ interface Packet {
   blockers: Array<{ kind: string; detail: string }>;
   fit_pct: number | null;
   prepared_at: string | null; submitted_at: string | null; submitted_via: string | null;
+  /**
+   * WHY it was not sent, as a decideRelease code. Ten possible values, every one
+   * of them written by apply-agent onto this row — and not read here until
+   * 2026-08-02, so "our sender is offline", "below your own fit floor" and
+   * "you already applied" all rendered as the same grey blocked row.
+   */
+  release_refusal: string | null;
 }
 
 const TONE: Record<Status, string> = {
@@ -52,7 +60,8 @@ export function ApplyQueuePanel({ userId }: { userId: string }) {
   const load = useCallback(async () => {
     const { data } = await sb.from("agent_submissions")
       .select("id,posting_id,title,company,apply_url,source,status,fields,questions," +
-        "questions_are_real,blockers,fit_pct,prepared_at,submitted_at,submitted_via")
+        "questions_are_real,blockers,fit_pct,prepared_at,submitted_at,submitted_via," +
+        "release_refusal")
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
       .limit(50);
@@ -168,6 +177,33 @@ export function ApplyQueuePanel({ userId }: { userId: string }) {
                           </span>
                         )}
                       </div>
+
+                      {/* WHY IT HAS NOT GONE OUT — the decideRelease reason.
+                          Distinct from `status`: a packet can be perfectly READY
+                          and still be held because our sender is down, or because
+                          the fit is under the floor this person set themselves.
+                          Status alone rendered all of those identically, and
+                          "Ready — nothing needs you" on a packet that has sat
+                          unsent for a day is the kind of true-but-useless line
+                          that makes people stop trusting the screen.
+
+                          Blame is separated deliberately. `on-us` must not be
+                          coloured like a warning the candidate can act on, and
+                          `by-design` must not be coloured at all — the dedupe
+                          guard refusing to apply twice is the product working. */}
+                      {(() => {
+                        const face = refusalFace(p.release_refusal);
+                        if (!face) return null;
+                        const Icon = face.severity === "needs-you" ? AlertTriangle
+                          : face.severity === "on-us" ? PauseCircle : Info;
+                        const tone = face.severity === "needs-you" ? "text-warning" : "text-muted-foreground";
+                        return (
+                          <div className={`mt-1.5 flex items-start gap-1.5 text-xs ${tone}`}>
+                            <Icon className="w-3.5 h-3.5 shrink-0 mt-[1px]" aria-hidden />
+                            <span>{t(face.key, face.fallback)}</span>
+                          </div>
+                        );
+                      })()}
 
                       {/* Every blocker in full. A queue that says something is
                           stuck without saying why is a queue people stop reading. */}
