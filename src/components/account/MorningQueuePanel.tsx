@@ -186,7 +186,15 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
       {agentActive === false && (
         <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 mb-4">
           <p className="text-sm text-foreground font-medium mb-1">{t("agentQueue.payPitch", "Wake up to a reviewed shortlist instead of another hour of scrolling.")}</p>
-          <p className="text-[12px] text-muted-foreground mb-3">{t("agentQueue.payBoundary", "The agent prepares and explains — it never submits for you, and it never invents answers. 7 mornings free, then $99/month — everything in Pro included. Cancel anytime.")}</p>
+          {/* This sentence used to end "it never submits for you". That stopped
+              being true when auto mode shipped — apply-agent claims packets in
+              `ready` (never approved by a human) when apply_mode === "auto" and
+              releases them. The subtitle eight lines above was split into two
+              variants for exactly this reason; the paywall directly below it
+              was not, so the false half survived on the one surface where
+              someone is deciding whether to pay. Both modes are named now,
+              because a buyer has not chosen one yet. */}
+          <p className="text-[12px] text-muted-foreground mb-3">{t("agentQueue.payBoundary", "The agent prepares, explains, and never invents an answer. In review mode — the default — nothing goes out until you press send. Switch it to auto and it submits the ones it can complete on its own, and hands you the rest. 7 mornings free, then $99/month — everything in Pro included. Cancel anytime.")}</p>
           <button onClick={() => void subscribe()} disabled={busy || !email}
             className="inline-flex items-center gap-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold px-4 py-2 hover:bg-primary/90 disabled:opacity-50">
             <Sparkles className="w-4 h-4" /> {t("agentQueue.payCta", "Try the Apply Agent free for 7 days")}

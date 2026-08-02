@@ -4185,7 +4185,7 @@
     "badge": "Agent de candidature",
     "subtitle": "Configurez votre recherche une fois. Chaque nuit, l'agent analyse les nouvelles offres, les note contre votre CV, écarte les entreprises qui republient en boucle et met en file les meilleures — chacune avec ses raisons. Vous relisez, vous envoyez.",
     "payPitch": "Réveillez-vous avec une sélection déjà triée plutôt qu'une heure de défilement.",
-    "payBoundary": "L'agent prépare et explique — il n'envoie jamais à votre place et n'invente jamais de réponses. 7 matins gratuits, puis 99 $/mois — tout Pro inclus. Annulez à tout moment.",
+    "payBoundary": "L'agent prépare, explique et n'invente jamais de réponse. En mode révision — le mode par défaut — rien ne part tant que vous n'appuyez pas sur envoyer. Passez-le en automatique et il soumet celles qu'il peut remplir seul, et vous laisse le reste. 7 matins gratuits, puis 99 $/mois — tout Pro inclus. Annulable à tout moment.",
     "payCta": "Essayez l'Agent gratuitement 7 jours",
     "checkoutError": "Impossible d'ouvrir le paiement — réessayez.",
     "needResume": "Enregistrez d'abord un CV pour le matching (ci-dessus) — l'agent note chaque offre contre lui.",

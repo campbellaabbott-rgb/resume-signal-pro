@@ -4185,7 +4185,7 @@
     "badge": "Agente de solicitudes",
     "subtitle": "Configura tu búsqueda una vez. Cada noche el agente analiza las vacantes nuevas, las puntúa contra tu currículum, omite empresas que republican en bucle y pone en cola las mejores — cada una con sus razones. Tú revisas, tú envías.",
     "payPitch": "Despierta con una lista revisada en lugar de otra hora de scroll.",
-    "payBoundary": "El agente prepara y explica — nunca envía por ti y nunca inventa respuestas. 7 mañanas gratis, luego 99 $/mes — todo Pro incluido. Cancela cuando quieras.",
+    "payBoundary": "El agente prepara, explica y nunca inventa una respuesta. En modo revisión —el predeterminado— no se envía nada hasta que pulses enviar. Cámbialo a automático y enviará las que pueda completar por su cuenta, y te dejará el resto. 7 mañanas gratis, luego 99 $/mes: todo lo de Pro incluido. Cancela cuando quieras.",
     "payCta": "Prueba el Agente gratis 7 días",
     "checkoutError": "No se pudo abrir el pago — inténtalo de nuevo.",
     "needResume": "Guarda primero un currículum para matching (arriba) — el agente puntúa cada vacante contra él.",

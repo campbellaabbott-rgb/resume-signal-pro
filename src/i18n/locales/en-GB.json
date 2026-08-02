@@ -4185,7 +4185,7 @@
     "badge": "Apply Agent",
     "subtitle": "Set your search once. Every night the agent scans new postings, scores them against your résumé, skips companies that churn re-listings, and queues the best few — each with its reasons. You review, you send.",
     "payPitch": "Wake up to a reviewed shortlist instead of another hour of scrolling.",
-    "payBoundary": "The agent prepares and explains — it never submits for you, and it never invents answers. 7 mornings free, then $99/month — everything in Pro included. Cancel anytime.",
+    "payBoundary": "The agent prepares, explains, and never invents an answer. In review mode — the default — nothing goes out until you press send. Switch it to auto and it submits the ones it can complete on its own, and hands you the rest. 7 mornings free, then $99/month — everything in Pro included. Cancel anytime.",
     "payCta": "Try the Apply Agent free for 7 days",
     "checkoutError": "Couldn't open checkout — please try again.",
     "needResume": "Save a résumé for matching first (above) — the agent scores every posting against it.",

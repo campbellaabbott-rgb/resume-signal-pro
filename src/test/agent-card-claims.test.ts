@@ -58,3 +58,74 @@ describe("the agent card never promises sending while the sender is offline", ()
     expect(gated, "perkOneClick should render regardless of sender status").toBe(false);
   });
 });
+
+/**
+ * THE SAME CLAIM, ON THE OTHER PAYWALL.
+ *
+ * The guard above was written against AgentSubscriptionCard.tsx. There is a
+ * second surface that takes the same money — the Morning Queue paywall in
+ * MorningQueuePanel.tsx — and it carried the opposite error: not an ungated
+ * sending claim, but an ungated NOT-sending claim.
+ *
+ *     "The agent prepares and explains — it never submits for you, and it
+ *      never invents answers."
+ *
+ * That was true when written and false by the time it was read. apply-agent
+ * claims packets in `ready` — never approved by a human — when the mandate's
+ * apply_mode is "auto", and releases them. The user picks that mode from a
+ * radio group in ApplyProfilePanel.
+ *
+ * The same file already knew. Eight lines above the paywall, the subtitle was
+ * split into two variants with a comment explaining that "You review, you
+ * send" stopped being true for auto mode, and that copy describing something
+ * which has since moved is "the exact way this product tells a lie without
+ * anyone editing it". The fix was applied to the sentence above and not to the
+ * sentence below — so the false half survived on the one surface where a
+ * person is deciding whether to pay.
+ *
+ * So this guard is tied to the CODE that makes the claim false, not to the
+ * wording. If unattended release is ever removed, the precondition fails loudly
+ * and this rule can be retired on purpose rather than by drift.
+ */
+describe("the Morning Queue paywall describes what the agent actually does", () => {
+  const APPLY_AGENT = readFileSync(
+    resolve(__dirname, "../../supabase/functions/apply-agent/index.ts"), "utf8");
+
+  const LOCALES = ["en", "en-GB", "es", "fr", "de", "pt", "nl", "hi", "tl"];
+  const payBoundary = (loc: string): string => {
+    const j = JSON.parse(readFileSync(resolve(__dirname, `../i18n/locales/${loc}.json`), "utf8"));
+    return j?.agentQueue?.payBoundary ?? "";
+  };
+
+  it("PRECONDITION: the agent really can submit without human approval", () => {
+    // If this ever fails, unattended release was removed and the rule below is
+    // no longer required — check, then delete it deliberately.
+    expect(APPLY_AGENT, "apply-agent no longer treats `ready` as claimable in auto mode")
+      .toMatch(/apply_mode === "auto"\s*\?\s*\["ready",\s*"approved"\]/);
+  });
+
+  it("does not claim the agent never submits", () => {
+    for (const loc of ["en", "en-GB"]) {
+      expect(payBoundary(loc), `${loc}: paywall claims the agent never submits, but auto mode does`)
+        .not.toMatch(/never submits|never sends|it never submits for you/i);
+    }
+  });
+
+  it("names auto mode in every locale, not only English", () => {
+    // A claim corrected in one language and left standing in eight is still a
+    // claim left standing.
+    for (const loc of LOCALES) {
+      const s = payBoundary(loc);
+      expect(s.length, `${loc}: payBoundary missing`).toBeGreaterThan(0);
+      expect(s, `${loc}: paywall never mentions auto mode`).toMatch(/auto|ऑटो/i);
+    }
+  });
+
+  it("the component's inline fallback matches — it renders when a key is missing", () => {
+    const panel = readFileSync(resolve(__dirname, "../components/account/MorningQueuePanel.tsx"), "utf8");
+    const code = panel.split("\n").filter((l) => !l.trim().startsWith("*") && !l.trim().startsWith("{/*") && !l.trim().startsWith("//")).join("\n");
+    const m = code.match(/t\(\s*"agentQueue\.payBoundary"\s*,\s*"([^"]+)"/);
+    expect(m, "inline fallback for agentQueue.payBoundary not found").not.toBeNull();
+    expect(m![1], "the hardcoded fallback still says the agent never submits").not.toMatch(/never submits|never sends/i);
+  });
+});

@@ -4185,7 +4185,7 @@
     "badge": "Bewerbungs-Agent",
     "subtitle": "Suche einmal einstellen. Jede Nacht scannt der Agent neue Stellen, bewertet sie gegen deinen Lebenslauf, überspringt Unternehmen mit Dauer-Neueinstellungen und stellt die besten in die Queue — jede mit Begründung. Du prüfst, du sendest.",
     "payPitch": "Wach mit einer geprüften Auswahl auf statt einer weiteren Stunde Scrollen.",
-    "payBoundary": "Der Agent bereitet vor und begründet — er sendet nie für dich und erfindet nie Antworten. 7 Morgen gratis, danach 99 $/Monat — alles aus Pro inklusive. Jederzeit kündbar.",
+    "payBoundary": "Der Agent bereitet vor, begründet und erfindet nie eine Antwort. Im Prüfmodus — der Voreinstellung — geht nichts raus, bevor du auf Senden drückst. Stell ihn auf Automatik, und er reicht die ein, die er allein ausfüllen kann, und übergibt dir den Rest. 7 Morgen gratis, danach 99 $/Monat — alles aus Pro inklusive. Jederzeit kündbar.",
     "payCta": "Agent 7 Tage gratis testen",
     "checkoutError": "Checkout konnte nicht geöffnet werden — bitte erneut versuchen.",
     "needResume": "Speichere zuerst einen Lebenslauf fürs Matching (oben) — der Agent bewertet jede Stelle dagegen.",
