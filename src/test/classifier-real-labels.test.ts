@@ -40,6 +40,15 @@ const MUST_NOT_DRAFT: Array<[string, string]> = [
   ["How did you learn about this job opportunity? Please select or specify", "factual"],
   // Contact details come from the profile, never from prose generation.
   ["Secondary contact number", "identity"],
+
+  // CONDITIONAL FOLLOW-UPS. Found by reading a whole live form after the first
+  // fix deployed: employers write a parent question and an "If yes, …" child,
+  // and the child is phrased differently enough to miss every pattern the
+  // parent matched. The parent was refused and the child was handed to the
+  // drafter — which on this form meant asking a model to name a real employee.
+  ["If yes, please provide the name of the MCC/MCA staff or contractor/consultant and your relationship", "factual"],
+  ["If you have chosen \"others\" kindly specify how you learned about this job opportunity", "factual"],
+  ["Would you be able to start working with us by the fourth quarter of 2026?", "factual"],
 ];
 
 /**
