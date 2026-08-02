@@ -10,7 +10,8 @@
     "dev": "tsc && node dist/index.js",
     "typecheck": "tsc --noEmit",
     "send": "tsx src/index.ts",
-    "smoke": "tsx src/smoke.ts"
+    "smoke": "tsx src/smoke.ts",
+    "harness": "tsx src/harness.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",

@@ -46,6 +46,29 @@ if [ "$changed" = "ALL" ] || printf '%s\n' "$changed" | grep -qE '^supabase/func
   run "edge-function deno check" "npm run --silent check:functions"
 fi
 
+# 4. Apply-driver harness — only if the worker changed (or unknown scope).
+#
+# THIS IS THE ONLY THING THAT EXECUTES applyToPosting PAST THE CLICK. Everything
+# else — vendor-adapters, broker-contract, the fixtures — compares selectors and
+# field names against recordings. None of them press submit, wait for the page
+# to settle, or run confirmed(). Those are the lines that decide whether a real
+# person's application is recorded as SENT, and until now they were covered by a
+# script nobody ran: no test invoked it, and ci.yml had never been committed, so
+# it last executed by hand in July.
+#
+# The bug it exists to catch already happened once. "Thank you for your interest
+# in this role" is ordinary job-ad copy that sits on the form page, so a submit
+# that FAILED matched the phrase list and was recorded as sent — the application
+# silently lost, and the duplicate guard then blocking the candidate from
+# applying properly. Six scenarios now cover that plus silence, a foreign
+# language, and a question the agent must refuse rather than guess.
+#
+# ~40s and it launches six browsers, which is why it is scoped to worker changes
+# rather than run on every push.
+if [ "$changed" = "ALL" ] || printf '%s\n' "$changed" | grep -qE '^worker/'; then
+  run "apply-driver harness (past the click)" "cd worker && npm run --silent harness"
+fi
+
 if [ "$fail" -ne 0 ]; then
   echo "[pre-push] blocked — fix the failures above, or bypass a WIP push with: git push --no-verify"
   exit 1
