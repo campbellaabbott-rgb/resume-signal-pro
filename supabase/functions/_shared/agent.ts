@@ -88,7 +88,19 @@ export async function checkAgentByEmail(
       // checked `status`, and worth a free apply-agent subscription for the two
       // consumers that only checked whether the row existed. Both halves are
       // now fixed; this is the half that stops the row appearing at all.
-      await supabase.from("agent_subscribers").update(cached).eq("email", normalized);
+      //
+      // AND IT ONLY TOUCHES ROWS STRIPE OWNS. A row with a null
+      // stripe_customer_id was not created by this function — it is a manual
+      // grant (a comp, an internal test account, support making someone whole).
+      // Stripe has no opinion about those, and "Stripe has never heard of this
+      // address" is not evidence that a deliberate grant should be revoked.
+      //
+      // Without this the downgrade was a trap: grant an account by hand, load
+      // the Account page once, and the grant silently evaporates — with the
+      // symptom appearing later and somewhere else entirely, as the agent
+      // quietly doing nothing.
+      await supabase.from("agent_subscribers").update(cached)
+        .eq("email", normalized).not("stripe_customer_id", "is", null);
     }
   } catch (_) {
     // Cache refresh is best-effort; the caller already has the live answer.

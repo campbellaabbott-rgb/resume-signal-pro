@@ -174,6 +174,16 @@ describe("agent-access cannot mint a row for an address Stripe has never seen", 
     // UPDATE, not upsert: it must reach a row that is already there without
     // creating one that is not. A customer deleted outright must not stay
     // entitled just because we declined to write.
-    expect(shared).toMatch(/\.update\(cached\)\.eq\("email", normalized\)/);
+    expect(shared).toMatch(/\.update\(cached\)\s*\n?\s*\.eq\("email", normalized\)/);
+  });
+
+  it("never revokes a grant Stripe did not make", () => {
+    // A row with a null stripe_customer_id is a manual grant — a comp, an
+    // internal test account, support making someone whole. Stripe having no
+    // record of that address is not a reason to revoke it, and without this
+    // clause the downgrade path silently ate such rows the next time anyone
+    // loaded the Account page. The symptom would have surfaced far away from
+    // the cause: the agent just quietly stops doing anything.
+    expect(shared).toMatch(/\.not\("stripe_customer_id", "is", null\)/);
   });
 });
