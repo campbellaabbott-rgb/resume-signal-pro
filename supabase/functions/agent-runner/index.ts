@@ -74,7 +74,13 @@ serve(async (req) => {
   // added to remove. agent_mandates holds one row per subscriber, so an exact
   // count is cheap. (Exact, never estimated — an estimate here would be a
   // number that looks like a fact and is not one.)
-  const { count: totalMandates } = await client
+  //
+  // AND THE COUNT'S OWN FAILURE IS NOT ZERO. Written first as
+  // `mandates_total: totalMandates ?? 0`, which reports a failed count and an
+  // empty table with the same digit — the exact defect this whole block exists
+  // to remove, reintroduced by the code removing it. A number that cannot fail
+  // visibly is not evidence. On error the field is null, never 0.
+  const { count: totalMandates, error: cErr } = await client
     .from("agent_mandates")
     .select("user_id", { count: "exact", head: true });
 
@@ -282,7 +288,9 @@ serve(async (req) => {
     //   found > 0, mandates 0        all were dropped — the two counters below
     //                                say which gate did it
     found: (mandates ?? []).length,
-    mandates_total: totalMandates ?? 0,
+    // null means THE COUNT FAILED — not "no rows". Read mandates_total_error.
+    mandates_total: cErr ? null : (totalMandates ?? 0),
+    mandates_total_error: cErr?.message ?? null,
     skipped_unentitled: skippedUnentitled,
     skipped_no_resume: skippedNoResume,
     ms: Date.now() - startedAt,
