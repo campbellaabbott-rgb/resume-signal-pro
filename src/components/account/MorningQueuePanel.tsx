@@ -3,8 +3,15 @@
 // reviewed morning shortlist: each pick scored against the resume, churny
 // companies skipped, genuine hirers boosted, and every pick carries the
 // REASONS it was chosen (structured data localized here — the agent shows its
-// work). The human always presses send: picks deep-link into the board's
-// apply flow; nothing is ever submitted on the user's behalf.
+// work).
+//
+// IN REVIEW MODE the human presses send: picks deep-link into the board's
+// apply flow. IN AUTO MODE they do not — apply-agent claims packets in `ready`
+// and the worker submits them. This comment used to end "nothing is ever
+// submitted on the user's behalf", which was true when it was written and
+// false from the moment auto mode shipped. Three separate strings in this one
+// file made that same claim; a docstring drifts exactly like copy does, and
+// nobody diffs a comment against the runtime.
 
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -12,6 +19,7 @@ import { useTranslation } from "react-i18next";
 import { Sunrise, Play, Pause, X, Check, ArrowRight, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { useAgentSender } from "@/hooks/useAgentSender";
 
 const sb = supabase as unknown as {
   from: (t: string) => any;
@@ -39,6 +47,10 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
 }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  // Same source the marketing surfaces use. Defaults to false and treats any
+  // error as offline, so a first paint can understate the product but never
+  // overstate it.
+  const { online: senderOnline } = useAgentSender();
   const [agentActive, setAgentActive] = useState<boolean | null>(null);
   const [mandate, setMandate] = useState<Mandate | null>(null);
   const [queue, setQueue] = useState<QueueItem[]>([]);
@@ -198,15 +210,21 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
       {agentActive === false && (
         <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 mb-4">
           <p className="text-sm text-foreground font-medium mb-1">{t("agentQueue.payPitch", "Wake up to a reviewed shortlist instead of another hour of scrolling.")}</p>
-          {/* This sentence used to end "it never submits for you". That stopped
-              being true when auto mode shipped — apply-agent claims packets in
-              `ready` (never approved by a human) when apply_mode === "auto" and
-              releases them. The subtitle eight lines above was split into two
-              variants for exactly this reason; the paywall directly below it
-              was not, so the false half survived on the one surface where
-              someone is deciding whether to pay. Both modes are named now,
-              because a buyer has not chosen one yet. */}
-          <p className="text-[12px] text-muted-foreground mb-3">{t("agentQueue.payBoundary", "The agent prepares, explains, and never invents an answer. In review mode — the default — nothing goes out until you press send. Switch it to auto and it submits the ones it can complete on its own, and hands you the rest. 7 mornings free, then $99/month — everything in Pro included. Cancel anytime.")}</p>
+          {/* GATED ON THE CAPABILITY, NOT ON SOMEONE REMEMBERING TO EDIT THIS.
+              This sentence first said "it never submits for you", which auto
+              mode falsified. The replacement described auto submission
+              unconditionally — truthful about the design, but a promise the
+              product cannot keep on a day when no worker is alive, stated on
+              the surface that takes the money.
+              AgentSubscriptionCard already solved this: it hides its
+              auto-apply bullet behind `online` and swaps its footnote. Same
+              rule here. When the sender is down the copy falls back to what is
+              unambiguously true — prepared, ready for you to send. */}
+          <p className="text-[12px] text-muted-foreground mb-3">
+            {senderOnline
+              ? t("agentQueue.payBoundary", "The agent prepares, explains, and never invents an answer. In review mode — the default — nothing goes out until you press send. Switch it to auto and it submits the ones it can complete on its own, and hands you the rest. 7 mornings free, then $99/month — everything in Pro included. Cancel anytime.")
+              : t("agentQueue.payBoundaryOffline", "The agent prepares, explains, and never invents an answer — every application arrives ready for you to send. Unattended sending is not running right now. 7 mornings free, then $99/month — everything in Pro included. Cancel anytime.")}
+          </p>
           <button onClick={() => void subscribe()} disabled={busy || !email}
             className="inline-flex items-center gap-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold px-4 py-2 hover:bg-primary/90 disabled:opacity-50">
             <Sparkles className="w-4 h-4" /> {t("agentQueue.payCta", "Try the Apply Agent free for 7 days")}

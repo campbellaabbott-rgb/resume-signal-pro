@@ -121,6 +121,37 @@ describe("the Morning Queue paywall describes what the agent actually does", () 
     }
   });
 
+  it("the auto-submission claim is GATED on the sender being online", () => {
+    // The wording tests above only prove the sentence is accurate about the
+    // design. They do not prove it is accurate TODAY. senderOnline is what
+    // makes it true or false on any given morning, so the claim has to be
+    // rendered from the capability — exactly as AgentSubscriptionCard does —
+    // rather than from someone remembering to edit a string when the worker
+    // goes down.
+    const panel = readFileSync(resolve(__dirname, "../components/account/MorningQueuePanel.tsx"), "utf8");
+    expect(panel, "panel does not read the sender's live state").toMatch(/useAgentSender\(\)/);
+    // The paying-surface sentence must sit behind that state.
+    expect(panel, "payBoundary is rendered unconditionally — it must be gated on senderOnline")
+      .toMatch(/senderOnline[\s\S]{0,120}agentQueue\.payBoundary"/);
+    expect(panel, "no offline fallback — the copy has nothing true to say when the sender is down")
+      .toMatch(/agentQueue\.payBoundaryOffline/);
+  });
+
+  it("the offline variant promises no submission, in any locale", () => {
+    for (const loc of LOCALES) {
+      const j = JSON.parse(readFileSync(resolve(__dirname, `../i18n/locales/${loc}.json`), "utf8"));
+      const s = j?.agentQueue?.payBoundaryOffline ?? "";
+      expect(s.length, `${loc}: payBoundaryOffline missing — i18n parity would break`).toBeGreaterThan(0);
+      expect(s, `${loc}: offline copy is identical to the online copy`).not.toBe(j.agentQueue.payBoundary);
+    }
+    for (const loc of ["en", "en-GB"]) {
+      const j = JSON.parse(readFileSync(resolve(__dirname, `../i18n/locales/${loc}.json`), "utf8"));
+      const s = j.agentQueue.payBoundaryOffline as string;
+      expect(s, `${loc}: offline copy still claims the agent submits`).not.toMatch(/it submits|submits the ones/i);
+      expect(s, `${loc}: offline copy does not say sending is off`).toMatch(/not running/i);
+    }
+  });
+
   it("the component's inline fallback matches — it renders when a key is missing", () => {
     const panel = readFileSync(resolve(__dirname, "../components/account/MorningQueuePanel.tsx"), "utf8");
     const code = panel.split("\n").filter((l) => !l.trim().startsWith("*") && !l.trim().startsWith("{/*") && !l.trim().startsWith("//")).join("\n");

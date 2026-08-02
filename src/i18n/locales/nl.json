@@ -4219,7 +4219,8 @@
     "emailToggle": "Mail me elke ochtend de shortlist — alleen als er iets nieuws is, nooit een lege lijst.",
     "emailSaveError": "Wijzigen is niet gelukt — probeer het opnieuw.",
     "reasonSendable": "deze kan de agent voor je versturen",
-    "subtitleAuto": "Stel je zoekopdracht één keer in. Elke nacht bekijkt de agent nieuwe vacatures, scoort ze tegen je cv, slaat bedrijven over die eindeloos herplaatsen en zet de beste in de wachtrij — elk met redenen. Wat hij zelf kan afronden verstuurt hij; de rest geeft hij aan jou."
+    "subtitleAuto": "Stel je zoekopdracht één keer in. Elke nacht bekijkt de agent nieuwe vacatures, scoort ze tegen je cv, slaat bedrijven over die eindeloos herplaatsen en zet de beste in de wachtrij — elk met redenen. Wat hij zelf kan afronden verstuurt hij; de rest geeft hij aan jou.",
+    "payBoundaryOffline": "De agent bereidt voor, legt uit en verzint nooit een antwoord — elke sollicitatie komt klaar om door jou verstuurd te worden. Onbeheerd versturen werkt op dit moment niet. 7 ochtenden gratis, daarna $99/maand — alles uit Pro inbegrepen. Altijd opzegbaar."
   },
   "applyProfile": {
     "authorized": "Mag je werken waar je solliciteert?",

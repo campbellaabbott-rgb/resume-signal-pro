@@ -4219,7 +4219,8 @@
     "emailToggle": "Schick mir die Auswahl jeden Morgen per E-Mail – nur wenn es etwas Neues gibt, nie eine leere Liste.",
     "emailSaveError": "Änderung fehlgeschlagen – bitte erneut versuchen.",
     "reasonSendable": "Diese Bewerbung kann der Agent für Sie absenden",
-    "subtitleAuto": "Suche einmal einrichten. Jede Nacht sichtet der Agent neue Stellen, bewertet sie anhand Ihres Lebenslaufs, überspringt Firmen mit ständigen Neuausschreibungen und stellt die besten in die Warteschlange – jeweils mit Begründung. Was er allein ausfüllen kann, sendet er; den Rest übergibt er Ihnen."
+    "subtitleAuto": "Suche einmal einrichten. Jede Nacht sichtet der Agent neue Stellen, bewertet sie anhand Ihres Lebenslaufs, überspringt Firmen mit ständigen Neuausschreibungen und stellt die besten in die Warteschlange – jeweils mit Begründung. Was er allein ausfüllen kann, sendet er; den Rest übergibt er Ihnen.",
+    "payBoundaryOffline": "Der Agent bereitet vor, begründet und erfindet nie eine Antwort — jede Bewerbung kommt fertig zum Absenden bei dir an. Der unbeaufsichtigte Versand läuft derzeit nicht. 7 Morgen gratis, danach 99 $/Monat — alles aus Pro inklusive. Jederzeit kündbar."
   },
   "applyProfile": {
     "authorized": "Bist du berechtigt, dort zu arbeiten, wo du dich bewirbst?",

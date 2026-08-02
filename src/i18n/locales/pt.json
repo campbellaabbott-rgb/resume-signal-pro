@@ -4219,7 +4219,8 @@
     "emailToggle": "Envie-me a lista todas as manhãs por e-mail, só quando houver novidades; nunca uma lista vazia.",
     "emailSaveError": "Não foi possível alterar — tente novamente.",
     "reasonSendable": "o agente pode enviar esta candidatura por si",
-    "subtitleAuto": "Configure a sua pesquisa uma vez. Todas as noites o agente analisa novas vagas, pontua-as com o seu currículo, ignora empresas que republicam sem parar e coloca as melhores em fila, cada uma com os seus motivos. Envia as que consegue completar sozinho e entrega-lhe as restantes."
+    "subtitleAuto": "Configure a sua pesquisa uma vez. Todas as noites o agente analisa novas vagas, pontua-as com o seu currículo, ignora empresas que republicam sem parar e coloca as melhores em fila, cada uma com os seus motivos. Envia as que consegue completar sozinho e entrega-lhe as restantes.",
+    "payBoundaryOffline": "O agente prepara, explica e nunca inventa uma resposta — cada candidatura chega pronta para você enviar. O envio automático não está em funcionamento no momento. 7 manhãs grátis, depois US$ 99/mês — tudo do Pro incluído. Cancele quando quiser."
   },
   "applyProfile": {
     "authorized": "Tens autorização para trabalhar onde te candidatas?",
