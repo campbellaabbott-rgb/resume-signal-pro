@@ -56,6 +56,7 @@ import { filterViolations, isUnfiltered, normalizeFilters } from "./filters.ts";
 import { expandQuery } from "./search-alias.ts";
 import { classifyQuestion } from "../_shared/application-questions.ts";
 import { parseBreezyQuestions, parsePinpointQuestions, breezyApplyUrl, pinpointApplyUrl } from "../_shared/vendor-questions.ts";
+import { realQuestionVendors } from "../_shared/apply-automation.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -2505,6 +2506,19 @@ Deno.serve(async (req) => {
       return json({
         // deployed build identity (constants baked into THIS bundle)
         version: BUILD_VERSION,
+        // WHICH VENDORS THIS BUNDLE CAN HARVEST REAL QUESTIONS FOR.
+        //
+        // Derived from the automation facts rather than hand-maintained, so it
+        // moves on its own whenever that map does. It exists because
+        // BUILD_VERSION could not answer "did the edge functions deploy?": it
+        // is keyed to sources.ts and to the bootstrap lane, so a change that
+        // touches neither leaves it identical — the status field read the same
+        // whether the new code had shipped or not, which is not a measurement.
+        //
+        // Bumping BUILD_VERSION to make it one would be worse: it would
+        // re-trigger the bootstrap queue across 28k boards to answer a
+        // yes/no question.
+        questionVendors: realQuestionVendors(),
         catalogSize: JOB_SOURCES.length,
         categorizeVersion: CATEGORIZE_VERSION,
         hotTier: Array.isArray(hotTokens) && hotTokens.length >= 50 ? hotTokens.length : HOT_SIZE,

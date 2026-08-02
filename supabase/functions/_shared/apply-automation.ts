@@ -113,6 +113,22 @@ const UNKNOWN: AutomationFact = {
 // VENDOR_MODE), so this one is a Map.
 const TABLE = new Map<string, AutomationFact>(Object.entries(FACTS));
 
+/**
+ * Every vendor whose REAL application questions this bundle can read.
+ *
+ * Derived from FACTS, never hand-listed — a separate list would be one more
+ * thing to forget to update, and its whole job is to be trustworthy about what
+ * the deployed code can actually do. Surfaced by job-board's `status` action so
+ * "did the edge functions deploy?" has an answer that changes when the code
+ * changes.
+ */
+export function realQuestionVendors(): string[] {
+  return Object.entries(FACTS)
+    .filter(([, f]) => f.realQuestions)
+    .map(([vendor]) => vendor)
+    .sort();
+}
+
 export function automationFor(source: string): AutomationFact {
   return TABLE.get(String(source ?? "").trim().toLowerCase()) ?? UNKNOWN;
 }
