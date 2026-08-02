@@ -19,13 +19,59 @@ export interface AppQuestion {
   type?: string;
 }
 
-const IDENTITY = /\b(first\s*name|last\s*name|full\s*name|legal\s*name|preferred\s*name|middle\s*name|e-?mail|phone|mobile|street|address|city|state|province|zip|postal|country|linkedin|github|portfolio|personal\s*website|website|twitter|url)\b/i;
+// `contact number` and `telephone` added 2026-08-01: the first real Pinpoint
+// forms we ever harvested ask for a "Secondary contact number", which matched
+// neither `phone` nor `mobile` and fell through to draftable — i.e. an LLM
+// would have been asked to write a phone number.
+// UNAMBIGUOUS identity tokens: nobody writes an essay question containing
+// "linkedin" or "postal code". These mean identity wherever they appear.
+const IDENTITY = /\b(first\s*name|last\s*name|full\s*name|legal\s*name|preferred\s*name|middle\s*name|e-?mail|phone|mobile|telephone|contact\s*number|street|zip|postal|linkedin|github|portfolio|personal\s*website|twitter|url)\b/i;
+
+// ORDINARY ENGLISH NOUNS that are identity only when the label is a FIELD, not
+// prose. Found by the real-label corpus on 2026-08-01: "Describe a time you
+// coordinated with government stakeholders, donors, or country partners" was
+// classified identity — because of the word "country" — which would have
+// autofilled the candidate's profile country into an essay box.
+//
+// A pre-existing bug, invisible until the agent saw real questions: the four
+// generic questions it used to see contained none of these words in prose.
+const IDENTITY_IF_FIELD = /\b(city|state|province|country|address|website|location)\b/i;
+// "your city" is the candidate's own; "country partners" is not.
+const OWN_ATTRIBUTE = /\byour\s+(?:current\s+|home\s+|primary\s+)?(?:city|state|province|country|address|website|location)\b/i;
 const FILE = /\b(resume|résumé|cv|cover\s*letter|upload|attach|transcript|portfolio\s*file)\b/i;
 // Protected/voluntary self-ID — never auto-answered. Stems match suffixed forms
 // ("disability", "pronouns") so no trailing word-boundary can slip them through.
 const DEMOGRAPHIC = /\b(gender|sex|race|ethnic\w*|hispanic|latin[ox]|veteran|disab\w*|sexual\s+orientation|pronoun\w*|date\s+of\s+birth|marital|religio\w*|nationalit\w*|citizenship|national\s+origin)/i;
 // Facts a resume can't establish — must come from the candidate.
-const FACTUAL = /(authoriz\w*\s*to\s*work|work\s*authoriz|require\s*(?:visa\s*)?sponsor|sponsorship|need\s*sponsor|work\s*(?:visa|permit)|(?:need|require|hold|have)\s*(?:a\s*)?(?:valid\s*)?(?:work\s*|employment\s*)?visa|eligible\s*to\s*work|right\s*to\s*work|employment\s*eligib\w*|salary|compensation|desired\s*pay|expected\s*(?:pay|salary|compensation)|pay\s*expectation|notice\s*period|start\s*date|available\s*to\s*start|when\s*can\s*you\s*start|willing\s*to\s*relocate|relocat|able\s*to\s*commute|are\s*you\s*(?:at\s*least\s*)?18|legally\s*(?:eligible|authorized)|do\s*you\s*now\s*or\s*in\s*the\s*future)/i;
+//
+// EVERYTHING FROM `earliest` ONWARD WAS ADDED 2026-08-01, from the first 118
+// REAL question labels ever harvested off Breezy and Pinpoint. Until that day
+// the agent only ever saw four generic questions on those vendors, so every
+// pattern here had been written against phrasings we imagined. Employers do not
+// use them. Each addition below is a live label that fell through to
+// `draftable`, which means a language model would have written the answer:
+//
+//   "If offered the position, what is the earliest date you could start?"
+//        — `start date` and `when can you start` both miss it. The candidate
+//          has ALREADY answered this in their profile; drafting it is not just
+//          a guess, it is ignoring a stated fact.
+//   "Are you over 18 years old?"        — `at least 18` misses "over 18".
+//   "What days are you available to work?"
+//   "Are you Willing to travel to different centers?"
+//   "Are you willing to work in another location? If yes, where?"
+//   "Do you have a current Washington medical assistant ... license"
+//   "If a current skipper referred you, please list their name."
+//        — a THIRD PARTY's name. A model asked to fill this invents a person.
+//   "Do you have a close relative who is a current MCA/MCC staff ...?"
+//   "How did you learn about this job opportunity?"
+//   "If yes, kindly specify what kind of legal authorization you possess"
+//
+// Deliberately NOT added: `certification`, `experience`, `knowledge`,
+// `proficiency`. "Do you have EMR experience?", "Do you have Medical
+// Terminology knowledge?" and "Please describe your proficiency in French" are
+// answerable FROM THE RESUME and must stay draftable — widening this far enough
+// to catch them would block half the corpus and quietly turn the agent off.
+const FACTUAL = /(authoriz\w*\s*to\s*work|work\s*authoriz|legal\s*authoriz\w*|require\s*(?:visa\s*)?sponsor|sponsorship|need\s*sponsor|work\s*(?:visa|permit)|(?:need|require|hold|have)\s*(?:a\s*)?(?:valid\s*)?(?:work\s*|employment\s*)?visa|eligible\s*to\s*work|right\s*to\s*work|employment\s*eligib\w*|salary|compensation|desired\s*pay|expected\s*(?:pay|salary|compensation)|pay\s*expectation|notice\s*period|start\s*date|available\s*to\s*start|when\s*can\s*you\s*start|willing\s*to\s*relocate|relocat|able\s*to\s*commute|are\s*you\s*(?:at\s*least\s*)?18|legally\s*(?:eligible|authorized)|do\s*you\s*now\s*or\s*in\s*the\s*future|earliest\s*(?:possible\s*)?(?:date|start)|date\s*you\s*(?:could|can|would)\s*start|over\s*18|18\s*(?:years\s*)?(?:or\s*(?:older|above)|of\s*age)|legal\s*working\s*age|days\s*(?:are\s*)?you\s*available|what\s*days\s*[\w\s]{0,24}available|willing\s*to\s*travel|willing\s*to\s*work\s*(?:in|at)\s*(?:another|a\s*different)|licen[sc]e|security\s*clearance|dbs\s*check|background\s*check|criminal\s*(?:record|convict\w*)|referred\s*you|who\s*referred|close\s*relative|family\s*member|related\s*to\s*(?:any\s*)?(?:current\s*)?(?:employee|staff)|how\s*did\s*you\s*(?:hear|learn)\s*about)/i;
 
 export function classifyQuestion(label: string, fieldType?: string): QuestionClass {
   const l = label ?? "";
@@ -53,7 +99,18 @@ export function classifyQuestion(label: string, fieldType?: string): QuestionCla
   // to trail off on the word name from being autofilled.
   if (/\bname$/.test(bare) && bare.split(" ").length <= 3) return "identity";
   if (IDENTITY.test(l)) return "identity";
+  // Geographic/contact words that are also ordinary English. Identity only when
+  // the label reads as a FIELD — a short one ("Country", "Current City, State")
+  // or one that says whose it is ("What is your country of residence?"). In a
+  // long sentence with no "your", the word is doing prose work and the question
+  // belongs to the drafter.
+  //
+  // FACTUAL is checked FIRST so that "Are you willing to work in another
+  // location?" stays a refusal rather than being autofilled with a home city.
   if (FACTUAL.test(l)) return "factual";
+  if (IDENTITY_IF_FIELD.test(l) && (bare.split(" ").length <= 4 || OWN_ATTRIBUTE.test(l))) {
+    return "identity";
+  }
   return "draftable";
 }
 
