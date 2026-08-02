@@ -4391,5 +4391,14 @@
     "profile-gaps": "May mga form na humihingi ng bagay na hindi pa sinasagot ng iyong profile, kaya humihinto ang mga aplikasyong iyon at naghihintay sa iyo.",
     "review-mode": "Inihahanda ng iyong ahente ang bawat aplikasyon at naghihintay na pindutin mo ang send. Hindi ito kusang magpapadala habang nasa review mode ka.",
     "armed": "Nag-a-apply ang iyong ahente para sa iyo. Humihinto pa rin ito at nagtatanong tuwing may gustong malaman ang employer na hindi matutukoy sa iyong résumé."
+  },
+  "agentBand": {
+    "title": "Ang iyong apply agent",
+    "checking": "Tinitingnan kung ano ang kaya ng iyong ahente…",
+    "fixSetup": "I-set up ang iyong ahente",
+    "fixSubscribe": "Tingnan ang mga plano",
+    "fixResume": "I-upload ang iyong résumé",
+    "fixProfile": "Kumpletuhin ang iyong profile",
+    "fixMode": "Baguhin kung paano ito nagpapadala"
   }
 }

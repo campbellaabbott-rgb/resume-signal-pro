@@ -4391,5 +4391,14 @@
     "profile-gaps": "Algunos formularios piden datos que tu perfil todavía no responde, así que esas candidaturas se detienen y te esperan.",
     "review-mode": "Tu agente prepara cada candidatura y espera a que pulses enviar. Nunca enviará solo mientras estés en modo revisión.",
     "armed": "Tu agente está postulando por ti. Aun así se detiene y pregunta siempre que una empresa quiere algo que no puede deducir de tu currículum."
+  },
+  "agentBand": {
+    "title": "Tu agente de candidaturas",
+    "checking": "Comprobando qué puede hacer tu agente…",
+    "fixSetup": "Configura tu agente",
+    "fixSubscribe": "Ver planes",
+    "fixResume": "Sube tu currículum",
+    "fixProfile": "Completa tu perfil",
+    "fixMode": "Cambiar cómo envía"
   }
 }

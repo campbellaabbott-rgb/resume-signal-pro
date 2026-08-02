@@ -4391,5 +4391,14 @@
     "profile-gaps": "Manche Formulare fragen Dinge, die Ihr Profil noch nicht beantwortet. Diese Bewerbungen halten an und warten auf Sie.",
     "review-mode": "Ihr Agent bereitet jede Bewerbung vor und wartet auf Ihr Senden. Im Prüfmodus verschickt er nie von allein.",
     "armed": "Ihr Agent bewirbt sich für Sie. Er hält weiterhin an und fragt nach, sobald ein Arbeitgeber etwas will, das sich aus Ihrem Lebenslauf nicht ergibt."
+  },
+  "agentBand": {
+    "title": "Ihr Bewerbungsagent",
+    "checking": "Wird geprüft, was Ihr Agent tun kann…",
+    "fixSetup": "Agent einrichten",
+    "fixSubscribe": "Tarife ansehen",
+    "fixResume": "Lebenslauf hochladen",
+    "fixProfile": "Profil vervollständigen",
+    "fixMode": "Sendeverhalten ändern"
   }
 }

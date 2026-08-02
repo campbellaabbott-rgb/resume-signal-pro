@@ -27,6 +27,7 @@ import { GapReport } from "@/components/account/GapReport";
 import { InterviewsHub } from "@/components/account/InterviewsHub";
 import { SetupChecklist } from "@/components/account/SetupChecklist";
 import { AgentBridgeCard } from "@/components/account/AgentBridgeCard";
+import { AgentStatusBand } from "@/components/account/AgentStatusBand";
 import { NotificationsPanel } from "@/components/account/NotificationsPanel";
 import { useProSubscription } from "@/hooks/use-pro-subscription";
 import { supabase } from "@/integrations/supabase/client";
@@ -1014,10 +1015,16 @@ export default function Account() {
           />
         )}
 
+        {/* THE VERDICT, ABOVE EVERYTHING IT SUMMARISES. Six gates stand between
+            a posting and a sent application and each one, when shut, produces
+            the same nothing. This says which one it is, once, in a sentence —
+            so an idle agent stops being indistinguishable from a quiet day. */}
+        {user && <div className="mt-6"><AgentStatusBand userId={user.id} email={user.email ?? null} /></div>}
+
         {/* Directly under the queue: the answers that decide whether a queued
             pick can actually be finished. Blockers here are the single largest
             reason a packet never reaches `ready`. */}
-        {user && <div className="mt-6"><ApplyProfilePanel userId={user.id} /></div>}
+        {user && <div className="mt-6" id="apply-profile"><ApplyProfilePanel userId={user.id} /></div>}
         {/* Directly under the profile: these are the questions the profile
             could not answer, so the two belong next to each other. */}
         {user && <div className="mt-6"><PendingQuestionsPanel userId={user.id} /></div>}

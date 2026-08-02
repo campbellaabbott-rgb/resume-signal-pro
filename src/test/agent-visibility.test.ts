@@ -165,6 +165,26 @@ describe("armed", () => {
   });
 });
 
+describe("a decision module that nothing renders is the bug it was written to fix", () => {
+  // I SHIPPED THIS EXACT BUG. agentState.ts was written, tested, reviewed and
+  // merged — and no component imported it. A module that computes what the
+  // agent is doing, and which nothing displays, is precisely the "carefully
+  // computed, then shown as silence" defect the whole file exists to end. Tests
+  // passing is not evidence anybody can see the output.
+  const root = resolve(__dirname, "../..");
+  const MUST_BE_RENDERED = ["agentState", "refusalCopy", "applyReadiness"];
+
+  it.each(MUST_BE_RENDERED)("src/lib/%s.ts has a non-test consumer", (mod) => {
+    const { execSync } = require("node:child_process") as typeof import("node:child_process");
+    const hits = execSync(
+      `/usr/bin/grep -rl 'lib/${mod}"' ${root}/src || true`, { encoding: "utf8" })
+      .split("\n")
+      .filter((f) => f && !f.includes("/test/") && !f.endsWith(`/lib/${mod}.ts`));
+    expect(hits.length, `nothing imports lib/${mod} outside tests — it is invisible to users`)
+      .toBeGreaterThan(0);
+  });
+});
+
 describe("the panel actually reads the column", () => {
   it("selects release_refusal and renders its copy", () => {
     const panel = readFileSync(

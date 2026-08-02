@@ -4391,5 +4391,14 @@
     "profile-gaps": "Some employers' forms ask things your profile does not answer yet, so those applications stop and wait for you.",
     "review-mode": "Your agent prepares each application and waits for you to press send. It will never send on its own while you are in review mode.",
     "armed": "Your agent is applying for you. It still stops and asks whenever an employer wants something it cannot answer from your résumé."
+  },
+  "agentBand": {
+    "title": "Your apply agent",
+    "checking": "Checking what your agent can do…",
+    "fixSetup": "Set up your agent",
+    "fixSubscribe": "See plans",
+    "fixResume": "Upload your CV",
+    "fixProfile": "Complete your profile",
+    "fixMode": "Change how it sends"
   }
 }

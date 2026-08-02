@@ -4391,5 +4391,14 @@
     "profile-gaps": "Certains formulaires demandent des informations que votre profil ne fournit pas encore : ces candidatures s'arrêtent et vous attendent.",
     "review-mode": "Votre agent prépare chaque candidature et attend que vous l'envoyiez. Il n'enverra jamais seul tant que vous êtes en mode révision.",
     "armed": "Votre agent postule pour vous. Il s'arrête toujours pour vous demander lorsqu'un employeur veut une information que votre CV ne permet pas d'établir."
+  },
+  "agentBand": {
+    "title": "Votre agent de candidature",
+    "checking": "Vérification de ce que votre agent peut faire…",
+    "fixSetup": "Configurer votre agent",
+    "fixSubscribe": "Voir les offres",
+    "fixResume": "Déposer votre CV",
+    "fixProfile": "Compléter votre profil",
+    "fixMode": "Changer son mode d'envoi"
   }
 }

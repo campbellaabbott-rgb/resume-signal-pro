@@ -4391,5 +4391,14 @@
     "profile-gaps": "Sommige formulieren vragen dingen die uw profiel nog niet beantwoordt, dus die sollicitaties stoppen en wachten op u.",
     "review-mode": "Uw agent bereidt elke sollicitatie voor en wacht tot u op versturen drukt. Hij verstuurt nooit zelf zolang u in beoordelingsmodus staat.",
     "armed": "Uw agent solliciteert voor u. Hij stopt nog steeds en vraagt het u zodra een werkgever iets wil dat niet uit uw cv blijkt."
+  },
+  "agentBand": {
+    "title": "Uw sollicitatieagent",
+    "checking": "Controleren wat uw agent kan doen…",
+    "fixSetup": "Uw agent instellen",
+    "fixSubscribe": "Bekijk abonnementen",
+    "fixResume": "Upload uw cv",
+    "fixProfile": "Vul uw profiel aan",
+    "fixMode": "Wijzig hoe hij verstuurt"
   }
 }
