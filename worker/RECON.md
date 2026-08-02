@@ -863,3 +863,42 @@ stay separate. The two cases look identical from a name alone.
 "Pennon Group" serving `careers.southwestwater.co.uk` is exactly the shape that
 defeats it. Token-first verification is the merge protocol's job, not the
 census's.
+
+### The tenant-token question, resolved
+
+**The token exists. No host override is needed.** `careers.telenor.se` is
+`telenorsweden.teamtailor.com`, serving the same 26 jobs. These are ordinary
+`{source:"teamtailor", token}` entries, so this is a merge and not a build —
+which is exactly why it was worth answering before writing either.
+
+**How a match is proven:** a SHARED NUMERIC JOB ID between the custom domain's
+feed and the candidate tenant's. Not a 200 — Teamtailor serves a valid empty
+feed for tenants that exist but are not hiring, so status alone would have
+"confirmed" nonsense. Two hosts advertising the same posting are the same
+tenant; nothing weaker establishes it.
+
+**39 of 54 resolved** by a name- and domain-derived guess list
+(`firstcamp`, `inpost`, `victorianplumbing`, `telenorsweden`, `kicksnorge`).
+Then checked against sources.ts token-first, which is the check the fuzzy
+name-match could not do:
+
+| | |
+|---|---|
+| resolved to a tenant | 39 |
+| **already carried** (yopa, getagent, cofoco) | **3** |
+| **genuinely new tokens** | **36** |
+| **postings behind them** | **479** |
+
+So the earlier "54 new / 674 postings" was indeed an upper bound, as flagged.
+The token-verified figure is **36 boards / 479 postings**, and that one is
+solid because it compares tokens rather than company names.
+
+**The 15 unresolved are not dead** — their tokens exist, the guess list missed
+them. It fails on renames and holding companies: Pennon Group serving
+`careers.southwestwater.co.uk`, and KICKS Sverige where `kicksnorge` worked.
+
+**A dead end, recorded so it is not retried:** scraping the custom domain's HTML
+for a `*.teamtailor.com` reference. It works only on pages that link SIBLING
+tenants — `careers.telenor.se` names `telenorlinx` and `telenorsharedservices`,
+never its own token. Three unresolved boards were checked directly: zero
+teamtailor subdomains in the markup.
