@@ -4309,7 +4309,10 @@
       "resume": "votre CV",
       "drafted": "rédigé pour vous",
       "declined": "déclinée"
-    }
+    },
+    "tryAgain": "Réessayer",
+    "retried": "Remise en file — partira au prochain passage",
+    "retryFailed": "Impossible de la remettre en file — réessayez"
   },
   "agentPlan": {
     "badge": "Postule à votre place",
@@ -4400,5 +4403,15 @@
     "fixResume": "Déposer votre CV",
     "fixProfile": "Compléter votre profil",
     "fixMode": "Changer son mode d'envoi"
+  },
+  "packetState": {
+    "sent": "Envoyée.",
+    "uncertain": "Nous avons cliqué sur envoyer sans pouvoir confirmer l'aboutissement. Nous ne réessaierons pas : cela pourrait vous faire postuler deux fois. Vérifiez le site de l'employeur, puis marquez-la comme envoyée si elle est arrivée.",
+    "exhausted": "Arrêtée après 3 tentatives : le formulaire de cet employeur n'a pas abouti et nous n'insisterons pas. Rien n'a été envoyé.",
+    "in-flight": "En cours d'envoi…",
+    "held": "Préparée, pas encore envoyée.",
+    "ready": "Prête — rien ne vous attend.",
+    "blocked": "Quelque chose ici vous attend.",
+    "preparing": "Préparation…"
   }
 }

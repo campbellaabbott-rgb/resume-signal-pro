@@ -4309,7 +4309,10 @@
       "resume": "your résumé",
       "drafted": "drafted for you",
       "declined": "declined"
-    }
+    },
+    "tryAgain": "Try again",
+    "retried": "Queued again — it will go out on the next run",
+    "retryFailed": "Could not queue that again — try again"
   },
   "agentPlan": {
     "badge": "Does the applying for you",
@@ -4400,5 +4403,15 @@
     "fixResume": "Upload your CV",
     "fixProfile": "Complete your profile",
     "fixMode": "Change how it sends"
+  },
+  "packetState": {
+    "sent": "Sent.",
+    "uncertain": "We pressed send but could not confirm it went through. We will not try again — retrying could apply you twice. Check the employer's site, then mark it sent if it arrived.",
+    "exhausted": "Stopped after 3 attempts — this employer's form did not go through, and we will not keep retrying it. Nothing was sent.",
+    "in-flight": "Being sent right now…",
+    "held": "Prepared, not sent yet.",
+    "ready": "Ready — nothing needs you.",
+    "blocked": "Something here needs you.",
+    "preparing": "Preparing…"
   }
 }

@@ -4309,7 +4309,10 @@
       "resume": "dein Lebenslauf",
       "drafted": "für dich entworfen",
       "declined": "abgelehnt"
-    }
+    },
+    "tryAgain": "Erneut versuchen",
+    "retried": "Wieder eingereiht — geht beim nächsten Lauf raus",
+    "retryFailed": "Konnte nicht erneut eingereiht werden — bitte nochmal"
   },
   "agentPlan": {
     "badge": "Bewirbt sich für Sie",
@@ -4400,5 +4403,15 @@
     "fixResume": "Lebenslauf hochladen",
     "fixProfile": "Profil vervollständigen",
     "fixMode": "Sendeverhalten ändern"
+  },
+  "packetState": {
+    "sent": "Gesendet.",
+    "uncertain": "Wir haben auf Senden geklickt, konnten den Eingang aber nicht bestätigen. Wir versuchen es nicht erneut — ein zweiter Versuch könnte Sie doppelt bewerben. Prüfen Sie die Seite des Arbeitgebers und markieren Sie sie als gesendet, wenn sie angekommen ist.",
+    "exhausted": "Nach 3 Versuchen gestoppt — das Formular dieses Arbeitgebers ging nicht durch, und wir versuchen es nicht weiter. Es wurde nichts gesendet.",
+    "in-flight": "Wird gerade gesendet…",
+    "held": "Vorbereitet, noch nicht gesendet.",
+    "ready": "Fertig — nichts zu tun.",
+    "blocked": "Hier wird etwas von Ihnen gebraucht.",
+    "preparing": "Wird vorbereitet…"
   }
 }

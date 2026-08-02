@@ -18,6 +18,7 @@ import { CheckCircle2, Clock, AlertTriangle, Send, ExternalLink, Loader2, Inbox,
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { refusalFace } from "@/lib/refusalCopy";
+import { packetState, needsAttention as packetNeedsAttention } from "@/lib/packetState";
 
 const sb = supabase as unknown as { from: (t: string) => any };
 
@@ -39,6 +40,14 @@ interface Packet {
    * "you already applied" all rendered as the same grey blocked row.
    */
   release_refusal: string | null;
+  /**
+   * How many times a worker has taken this packet. agent_claim_submission stops
+   * handing it out at 3 — a terminal state that nothing read until now, so an
+   * application that had permanently stopped rendered as "Ready".
+   */
+  attempts: number | null;
+  claimed_at: string | null;
+  released_at: string | null;
 }
 
 const TONE: Record<Status, string> = {
@@ -61,7 +70,7 @@ export function ApplyQueuePanel({ userId }: { userId: string }) {
     const { data } = await sb.from("agent_submissions")
       .select("id,posting_id,title,company,apply_url,source,status,fields,questions," +
         "questions_are_real,blockers,fit_pct,prepared_at,submitted_at,submitted_via," +
-        "release_refusal")
+        "release_refusal,attempts,claimed_at,released_at")
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
       .limit(50);
@@ -81,6 +90,27 @@ export function ApplyQueuePanel({ userId }: { userId: string }) {
     setBusy(null);
     if (error) { toast.error(t("applyQueue.markFailed", "Could not record that — try again")); return; }
     toast.success(t("applyQueue.marked", "Recorded as sent"));
+    void load();
+  }, [load, t]);
+
+  // TRY AGAIN — only offered where retrying is honest.
+  //
+  // agent_claim_submission stops at `attempts < 3`, which is right: a form we
+  // cannot drive is a bug to fix, not a thing to keep hammering at an employer.
+  // But the packet then sits there permanently, and until now said "Ready".
+  //
+  // Resetting attempts to 0 puts it back in the queue and the cap applies again
+  // from scratch. It is NEVER offered for an `uncertain` packet — that one had
+  // submit pressed with an unknown outcome, and retrying could apply someone
+  // twice. packetState.canRetry encodes that distinction; this only honours it.
+  const retry = useCallback(async (p: Packet) => {
+    setBusy(p.id);
+    const { error } = await sb.from("agent_submissions")
+      .update({ attempts: 0, claimed_at: null, claimed_by: "" })
+      .eq("id", p.id).is("submitted_at", null);   // never revive a sent packet
+    setBusy(null);
+    if (error) { toast.error(t("applyQueue.retryFailed", "Could not queue that again — try again")); return; }
+    toast.success(t("applyQueue.retried", "Queued again — it will go out on the next run"));
     void load();
   }, [load, t]);
 
@@ -191,6 +221,36 @@ export function ApplyQueuePanel({ userId }: { userId: string }) {
                           coloured like a warning the candidate can act on, and
                           `by-design` must not be coloured at all — the dedupe
                           guard refusing to apply twice is the product working. */}
+                      {/* THE TERMINAL STATES, which `status` alone cannot show.
+                          A packet that exhausted its 3 attempts, and one whose
+                          submit outcome is unknown, both sat here reading
+                          "Ready — nothing needs you" in green. Rendered BEFORE
+                          the refusal line because these outrank it: there is no
+                          point explaining why it has not gone yet when it is
+                          never going. */}
+                      {(() => {
+                        const st = packetState(p);
+                        if (st.phase !== "exhausted" && st.phase !== "uncertain") return null;
+                        return (
+                          <div className="mt-1.5 flex items-start gap-1.5 text-xs text-warning">
+                            <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-[1px]" aria-hidden />
+                            <span>
+                              {t(st.key, st.fallback)}
+                              {st.canRetry && (
+                                <button
+                                  type="button"
+                                  disabled={busy === p.id}
+                                  onClick={() => void retry(p)}
+                                  className="ml-2 font-semibold text-primary hover:underline disabled:opacity-50"
+                                >
+                                  {t("applyQueue.tryAgain", "Try again")}
+                                </button>
+                              )}
+                            </span>
+                          </div>
+                        );
+                      })()}
+
                       {(() => {
                         const face = refusalFace(p.release_refusal);
                         if (!face) return null;

@@ -172,7 +172,7 @@ describe("a decision module that nothing renders is the bug it was written to fi
   // computed, then shown as silence" defect the whole file exists to end. Tests
   // passing is not evidence anybody can see the output.
   const root = resolve(__dirname, "../..");
-  const MUST_BE_RENDERED = ["agentState", "refusalCopy", "applyReadiness"];
+  const MUST_BE_RENDERED = ["agentState", "refusalCopy", "applyReadiness", "packetState"];
 
   it.each(MUST_BE_RENDERED)("src/lib/%s.ts has a non-test consumer", (mod) => {
     const { execSync } = require("node:child_process") as typeof import("node:child_process");

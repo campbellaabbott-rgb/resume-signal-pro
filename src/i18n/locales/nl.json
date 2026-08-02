@@ -4309,7 +4309,10 @@
       "resume": "je cv",
       "drafted": "voor je opgesteld",
       "declined": "afgewezen"
-    }
+    },
+    "tryAgain": "Opnieuw proberen",
+    "retried": "Opnieuw in de wachtrij — gaat mee met de volgende ronde",
+    "retryFailed": "Kon niet opnieuw in de wachtrij — probeer het nog eens"
   },
   "agentPlan": {
     "badge": "Solliciteert voor je",
@@ -4400,5 +4403,15 @@
     "fixResume": "Upload uw cv",
     "fixProfile": "Vul uw profiel aan",
     "fixMode": "Wijzig hoe hij verstuurt"
+  },
+  "packetState": {
+    "sent": "Verstuurd.",
+    "uncertain": "We hebben op versturen geklikt maar konden niet bevestigen dat het aankwam. We proberen het niet opnieuw — dat zou u twee keer kunnen laten solliciteren. Controleer de site van de werkgever en markeer als verstuurd als hij is aangekomen.",
+    "exhausted": "Gestopt na 3 pogingen — het formulier van deze werkgever ging niet door en we blijven het niet proberen. Er is niets verstuurd.",
+    "in-flight": "Wordt nu verstuurd…",
+    "held": "Voorbereid, nog niet verstuurd.",
+    "ready": "Klaar — er is niets nodig.",
+    "blocked": "Hier is iets van u nodig.",
+    "preparing": "Voorbereiden…"
   }
 }

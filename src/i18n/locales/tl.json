@@ -4309,7 +4309,10 @@
       "resume": "ang résumé mo",
       "drafted": "isinulat para sa iyo",
       "declined": "tinanggihan"
-    }
+    },
+    "tryAgain": "Subukan ulit",
+    "retried": "Nakapila ulit — aalis sa susunod na takbo",
+    "retryFailed": "Hindi maibalik sa pila — subukan ulit"
   },
   "agentPlan": {
     "badge": "Siya ang mag-a-apply para sa iyo",
@@ -4400,5 +4403,15 @@
     "fixResume": "I-upload ang iyong résumé",
     "fixProfile": "Kumpletuhin ang iyong profile",
     "fixMode": "Baguhin kung paano ito nagpapadala"
+  },
+  "packetState": {
+    "sent": "Naipadala.",
+    "uncertain": "Pinindot namin ang send pero hindi namin nakumpirma na dumating ito. Hindi namin uulitin — baka makapag-apply ka nang dalawang beses. Tingnan ang site ng employer, at markahan bilang naipadala kung dumating.",
+    "exhausted": "Huminto pagkatapos ng 3 pagsubok — hindi tumuloy ang form ng employer na ito, at hindi na namin uulit-ulitin. Walang naipadala.",
+    "in-flight": "Ipinapadala ngayon…",
+    "held": "Handa na, hindi pa naipapadala.",
+    "ready": "Handa — wala kang kailangang gawin.",
+    "blocked": "May kailangan dito mula sa iyo.",
+    "preparing": "Inihahanda…"
   }
 }

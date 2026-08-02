@@ -4309,7 +4309,10 @@
       "resume": "o teu CV",
       "drafted": "redigido para ti",
       "declined": "recusada"
-    }
+    },
+    "tryAgain": "Tentar de novo",
+    "retried": "De novo em fila — segue na próxima execução",
+    "retryFailed": "Não foi possível pôr em fila — tente de novo"
   },
   "agentPlan": {
     "badge": "Candidata-se por si",
@@ -4400,5 +4403,15 @@
     "fixResume": "Carregar o seu currículo",
     "fixProfile": "Completar o seu perfil",
     "fixMode": "Alterar como envia"
+  },
+  "packetState": {
+    "sent": "Enviada.",
+    "uncertain": "Carregámos em enviar mas não conseguimos confirmar que chegou. Não vamos tentar de novo — repetir poderia candidatá-lo duas vezes. Verifique o site do empregador e marque como enviada se chegou.",
+    "exhausted": "Parada após 3 tentativas — o formulário deste empregador não funcionou e não vamos insistir. Nada foi enviado.",
+    "in-flight": "A ser enviada agora…",
+    "held": "Preparada, ainda não enviada.",
+    "ready": "Pronta — não precisa de si.",
+    "blocked": "Aqui é preciso algo seu.",
+    "preparing": "A preparar…"
   }
 }

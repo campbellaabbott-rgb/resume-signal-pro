@@ -4309,7 +4309,10 @@
       "resume": "tu CV",
       "drafted": "redactado para ti",
       "declined": "declinada"
-    }
+    },
+    "tryAgain": "Reintentar",
+    "retried": "En cola otra vez: saldrá en la próxima ejecución",
+    "retryFailed": "No se pudo poner en cola: inténtalo de nuevo"
   },
   "agentPlan": {
     "badge": "Se postula por ti",
@@ -4400,5 +4403,15 @@
     "fixResume": "Sube tu currículum",
     "fixProfile": "Completa tu perfil",
     "fixMode": "Cambiar cómo envía"
+  },
+  "packetState": {
+    "sent": "Enviada.",
+    "uncertain": "Pulsamos enviar pero no pudimos confirmar que llegara. No lo intentaremos de nuevo: reintentar podría inscribirte dos veces. Revisa el sitio de la empresa y márcala como enviada si llegó.",
+    "exhausted": "Detenida tras 3 intentos: el formulario de esta empresa no funcionó y no seguiremos reintentando. No se envió nada.",
+    "in-flight": "Enviándose ahora mismo…",
+    "held": "Preparada, aún sin enviar.",
+    "ready": "Lista: no necesita nada de ti.",
+    "blocked": "Aquí hace falta algo tuyo.",
+    "preparing": "Preparando…"
   }
 }
