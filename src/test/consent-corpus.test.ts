@@ -43,6 +43,21 @@ const CORPUS: Row[] = JSON.parse(
   readFileSync(resolve(__dirname, "fixtures/consent-corpus.json"), "utf8"),
 );
 
+/**
+ * ONE FIXTURE ROW WAS DELIBERATELY RE-BASELINED, 2026-08-03, and it is recorded
+ * here rather than quietly changed.
+ *
+ * "De acuerdo con la Ley 2466 de 2025 de Colombia, si tienes alguna
+ * discapacidad, por favor carga tu certificado..." — a statutory Colombian
+ * question that is BOTH a disability disclosure and a file upload. It used to
+ * classify `file`, which meant the packet would attach the candidate's RÉSUMÉ
+ * to a disability-certificate slot. With the multilingual demographic patterns
+ * it classifies `demographic`, and is declined instead.
+ *
+ * Both readings are defensible; `demographic` is the safer one, and it is what
+ * this classifier's own precedence rule already says — "Protected self-ID wins
+ * over everything — even if phrased oddly." The old answer was the anomaly.
+ */
 describe("the classifier over 103 live vendor questions", () => {
   it("has a corpus worth replaying", () => {
     expect(CORPUS.length).toBeGreaterThanOrEqual(100);

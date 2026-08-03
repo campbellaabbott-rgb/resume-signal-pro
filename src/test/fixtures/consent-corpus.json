@@ -507,7 +507,7 @@
  {
   "label": "De acuerdo con la Ley 2466 de 2025 de Colombia, si tienes alguna discapacidad, por favor comparte tu certificado de discapacidad.",
   "type": "input_file",
-  "expect": "file"
+  "expect": "demographic"
  },
  {
   "label": "EyeCare Partners and it's affiliated companies are an equal opportunity employer. EyeCare Partners does not discriminate in employment on account of race, color, religion, national origin, citizenship status, ancestry, age, sex (including sexual harassment), sexual orientation, marital status, physical or mental disability, military status or unfavorable discharge from military service. I understa",

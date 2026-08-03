@@ -192,16 +192,54 @@ export function cleanQuestionLabel(raw: unknown): string {
     .trim();
 }
 
+/**
+ * THE HONESTY CLASSES, IN THE LANGUAGES EMPLOYERS ACTUALLY WRITE IN.
+ *
+ * MEASURED 2026-08-03, and it is the widest hole found all day. Ten labels
+ * were tested against the classifier — a Dutch date of birth, a Dutch gender,
+ * a Swedish personnummer, a French/German/Spanish date of birth, a Dutch
+ * address, a Dutch background check. TEN OF TEN came back `draftable`.
+ *
+ * `draftable` means a language model is asked to write the answer. So on any
+ * non-English form this file's entire purpose inverted: the classifier whose
+ * header calls it "the honesty core of the apply agent" would have had an LLM
+ * invent a DATE OF BIRTH, a GENDER, or a NATIONAL ID NUMBER. The only thing
+ * standing behind it was the grounding gate marking the draft unsupported —
+ * a backstop, not a design.
+ *
+ * This is not hypothetical traffic. The same day's dry runs drove live Dutch
+ * (velomedi), Swedish (vardaga, attendosverige), Norwegian (compass-group) and
+ * Italian (roccofortehotels) application forms.
+ *
+ * ADDITIVE ON PURPOSE. Each pattern below is OR'd with its English original
+ * rather than merged into it, so every existing English case keeps the exact
+ * behaviour its tests pin. A regression here can only come from these lines.
+ *
+ * Word boundaries are avoided around accented terms — JavaScript's \b is
+ * ASCII-only, so `\bkön\b` does not do what it looks like it does.
+ */
+const DEMOGRAPHIC_INTL =
+  /(geboortedatum|geburtsdatum|date\s+de\s+naissance|fecha\s+de\s+nacimiento|data\s+di\s+nascita|data\s+de\s+nascimento|födelsedatum|fødselsdato|syntymäaika|data\s+urodzenia|personnummer|fødselsnummer|\bbsn\b|geslacht|geschlecht|\bsexe\b|\bgénero\b|\bgenere\b|\bsesso\b|\bkön\b|kjønn|sukupuoli|\bpłeć\b|nationaliteit|staatsangehörigkeit|nationalité|nacionalidad|nazionalità|nacionalidade|nationalitet|kansalaisuus|obywatelstwo|burgerlijke\s+staat|familienstand|état\s+civil|estado\s+civil|stato\s+civile|civilstånd|handicap|behinderung|discapacidad|disabilità|deficiência|funktionsnedsättning|funksjonsnedsettelse|etnische|ethnische|origine\s+ethnique|origen\s+étnico)/i;
+
+const IDENTITY_INTL =
+  /(adresgegevens|\badres\b|anschrift|\badresse\b|dirección|indirizzo|endereço|\badress\b|osoite|telefoonnummer|telefoon|telefonnummer|téléphone|teléfono|telefono|telefone|puhelin|postcode|postleitzahl|\bplz\b|code\s+postal|código\s+postal|postnummer|postinumero|kod\s+pocztowy|voornaam|achternaam|vorname|nachname|prénom|apellido|cognome|sobrenome|förnamn|efternamn|etunimi|sukunimi)/i;
+
+const FACTUAL_INTL =
+  /(salaris|gehaltsvorstellung|\bgehalt\b|prétentions\s+salariales|\bsalaire\b|expectativa\s+salarial|pretensión\s+salarial|\bsueldo\b|stipendio|salário|löneanspråk|\blön\b|\blønn\b|palkkatoive|wynagrodzenie|opzegtermijn|kündigungsfrist|préavis|preaviso|preavviso|uppsägningstid|oppsigelsestid|startdatum|beschikbaar\s+vanaf|verfügbar\s+ab|date\s+de\s+début|fecha\s+de\s+inicio|data\s+di\s+inizio|tillträde|werkvergunning|arbeitserlaubnis|aufenthaltstitel|permis\s+de\s+travail|permiso\s+de\s+trabajo|permesso\s+di\s+lavoro|arbetstillstånd|arbeidstillatelse|verklaring\s+omtrent\s+gedrag|\bvog\b|führungszeugnis|casier\s+judiciaire|antecedentes\s+penales|belastningsregister|politiattest|rijbewijs|führerschein|permis\s+de\s+conduire|carnet\s+de\s+conducir|patente\s+di\s+guida|körkort)/i;
+
+const FILE_INTL =
+  /(curriculum\s+vitae|lebenslauf|motivatiebrief|motivationsschreiben|anschreiben|lettre\s+de\s+motivation|carta\s+de\s+presentación|lettera\s+di\s+presentazione|carta\s+de\s+apresentação|personlig\w*\s+brev|søknadsbrev|hakemuskirje|bijlage|anhang|pièce\s+jointe|ladda\s+upp|hochladen|télécharger|subir\s+(?:tu|su|el)|caricare|carregar|last\s+opp|lataa\s+tiedosto)/i;
+
 export function classifyQuestion(label: string, fieldType?: string): QuestionClass {
   const l = cleanQuestionLabel(label);
   const t = (fieldType ?? "").toLowerCase();
   // Protected self-ID wins over everything — even if phrased oddly.
-  if (DEMOGRAPHIC.test(l)) return "demographic";
+  if (DEMOGRAPHIC.test(l) || DEMOGRAPHIC_INTL.test(l)) return "demographic";
   // BEFORE `file` AND `identity`, deliberately — see CONSENT_DOC. Both of those
   // classes were measured stealing real consent questions and answering them
   // with a phone number and a résumé URL respectively.
   if (CONSENT_DOC.test(l)) return "consent";
-  if (t.includes("file") || FILE.test(l)) return "file";
+  if (t.includes("file") || FILE.test(l) || FILE_INTL.test(l)) return "file";
   // Structured contact/location field types (Ashby: Email/Phone/Location) are
   // identity regardless of label — "Where do you plan on working from?" has no
   // identity keyword but is the candidate's own to fill.
@@ -221,7 +259,7 @@ export function classifyQuestion(label: string, fieldType?: string): QuestionCla
   // verb and ends on "of". The three-word cap stops a long prompt that happens
   // to trail off on the word name from being autofilled.
   if (/\bname$/.test(bare) && bare.split(" ").length <= 3) return "identity";
-  if (IDENTITY.test(l)) return "identity";
+  if (IDENTITY.test(l) || IDENTITY_INTL.test(l)) return "identity";
   // Geographic/contact words that are also ordinary English. Identity only when
   // the label reads as a FIELD — a short one ("Country", "Current City, State")
   // or one that says whose it is ("What is your country of residence?"). In a
@@ -230,7 +268,7 @@ export function classifyQuestion(label: string, fieldType?: string): QuestionCla
   //
   // FACTUAL is checked FIRST so that "Are you willing to work in another
   // location?" stays a refusal rather than being autofilled with a home city.
-  if (FACTUAL.test(l)) return "factual";
+  if (FACTUAL.test(l) || FACTUAL_INTL.test(l)) return "factual";
   // AFTER factual, so "I acknowledge that I am at least 18 years of age" keeps
   // the standing answer it already has instead of becoming a blocker.
   if (CONSENT_ATTEST.test(l)) return "consent";
