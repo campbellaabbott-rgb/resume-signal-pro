@@ -24,7 +24,15 @@ import { nextRunStamp } from "../_shared/run-stamp.ts";
 // Bumped whenever this function changes shape, so a 403 can say WHICH bundle
 // refused — the difference between "the gate is live" and "the old open build
 // is still deployed" is otherwise invisible from outside.
-const BUILD_VERSION = "2026-08-03.1";
+//
+// .2 ADDS THE RUN STAMP, and exists because .1 did not get bumped when the
+// stamp was added. Both builds then reported the same version, so "is the gate
+// deployed" was answerable and "is the stamp writer deployed" was not — the
+// same one-value-two-states fault this file's counters exist to remove,
+// reintroduced in the version field one commit after fixing it elsewhere.
+// Until the nightly cron fires, this string is the only thing that can tell
+// the two bundles apart.
+const BUILD_VERSION = "2026-08-03.2";
 
 const MANDATES_PER_RUN = 200;      // safety cap; batches long before this matters
 const CANDIDATES_PER_MANDATE = 400;
