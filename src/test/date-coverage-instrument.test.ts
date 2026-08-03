@@ -69,3 +69,47 @@ describe("an unavailable measurement says so", () => {
     expect(board).toMatch(/\.then\(\(\) => \{\}, \(\) => \{\}\)/);
   });
 });
+
+/**
+ * A HARDCODED MEASUREMENT IS A MEASUREMENT THAT CANNOT MOVE.
+ *
+ * Three code comments asserted the auto-submittable share of the board: "about
+ * 2%" twice and "~3.4%" once. All were written when three adapters existed.
+ * There are four, and the live figure on 2026-08-03 is 5.3% — 30,090 of
+ * 564,153 postings. Nobody lied; the number simply had no way to update.
+ *
+ * It is a decision input, not decoration: those comments are what an engineer
+ * reads when judging whether the sendable-candidates query earns its cost, and
+ * a 2.6x understatement argues for deleting something that is pulling its
+ * weight. So the share is computed from the same live per-vendor totals the
+ * status endpoint already has.
+ *
+ * THE CEILING ITSELF IS NOT AN ADAPTER GAP. worker/RECON.md carries a measured
+ * refusal for every other major vendor — BambooHR reCAPTCHA v2 visible on 24/24
+ * pages, Ashby v3, Lever/Rippling/Workable bot detection, SmartRecruiters 403
+ * headless AND headed, Oracle re-checked. Raising 5.3% means defeating bot
+ * protection. That is a line, not a backlog item.
+ */
+describe("the auto-submittable share is computed, not asserted", () => {
+  it("status derives it from live per-vendor totals", () => {
+    expect(board).toMatch(/sendable: \(\(\) => \{/);
+    expect(board).toMatch(/SENDABLE_VENDORS/);
+    // Falls back to the cache, so it does not vanish when the query is slow —
+    // the same failure the deadline fix above was written for.
+    expect(board).toMatch(/dcCache\.data\?\.v as Array/);
+  });
+
+  it("no source file still asserts a hardcoded board share", () => {
+    const FILES = [
+      "supabase/functions/agent-runner/index.ts",
+      "src/components/account/MorningQueuePanel.tsx",
+    ];
+    for (const rel of FILES) {
+      const src = readFileSync(resolve(__dirname, "../..", rel), "utf8");
+      // The stale forms, specifically. A comment may cite the measured 5.3%
+      // with its date; what it may not do is restate the old numbers.
+      expect(src, `${rel} still claims "about 2% of the board"`).not.toMatch(/about 2% of the board/);
+      expect(src, `${rel} still claims "~3.4% of the board"`).not.toMatch(/~3\.4% of the board/);
+    }
+  });
+});

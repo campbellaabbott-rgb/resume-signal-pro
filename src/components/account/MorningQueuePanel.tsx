@@ -261,9 +261,11 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
     if (r.k === "fills") return t("agentQueue.reasonFills", "filled {{n}} roles in our tracking", { n: r.n });
     if (r.k === "fresh") return (r.days ?? 0) === 0 ? t("agentQueue.reasonToday", "posted today") : t("agentQueue.reasonFresh", "posted {{d}}d ago", { d: r.days });
     if (r.k === "salary") return t("agentQueue.reasonSalary", "meets your salary floor");
-    // Says what the agent can actually DO with this one. Only three vendors
-    // have an adapter — about 2% of the board — so on most rows this chip is
-    // absent, and its absence is the honest signal that you finish that one.
+    // Says what the agent can actually DO with this one. Four vendors have an
+    // adapter — 5.3% of the board as measured 2026-08-03, not the "about 2%"
+    // this comment asserted from when there were three — so on most rows this
+    // chip is absent, and its absence is the honest signal that you finish
+    // that one yourself.
     if (r.k === "sendable") return t("agentQueue.reasonSendable", "the agent can submit this one for you");
     return null;
   };

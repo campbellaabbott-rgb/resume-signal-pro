@@ -296,8 +296,11 @@ serve(async (req) => {
     // A SECOND, narrower pull for auto mode — only the vendors the worker can
     // actually finish.
     //
-    // Without this the sendable boost is close to cosmetic. Those three vendors
-    // are ~3.4% of the board, so a 400-row window ordered by date holds maybe a
+    // Without this the sendable boost is close to cosmetic. Those vendors are
+    // 5.3% of the board (measured 2026-08-03; this comment said 3.4% and a
+    // sibling said 2%, both from when three adapters existed — job-board's
+    // `sendable` block now computes it live so it cannot drift again), so a
+    // 400-row window ordered by date holds maybe a
     // dozen of them before the fit floor, and whether any survive is luck. The
     // boost can only prefer what is already in the pool; this puts them there.
     //
@@ -359,9 +362,11 @@ serve(async (req) => {
         if (days <= 7) reasons.push({ k: "fresh", days });
       }
       if (m.salary_min != null && c.salary_min_annual != null) reasons.push({ k: "salary" });
-      // Can the worker finish this one without the candidate? Only three
-      // vendors have an adapter, and that is ~2% of the board — so for somebody
-      // in auto mode the queue is nearly all jobs the agent must hand back.
+      // Can the worker finish this one without the candidate? Four vendors
+      // have an adapter — 5.3% of the board, measured, not asserted — so for
+      // somebody in auto mode the queue is still mostly jobs the agent hands
+      // back. The ceiling is bot protection on every other vendor, documented
+      // per-vendor in worker/RECON.md, not a gap in our adapter coverage.
       const sendable = isSendableVendor(c.id);
       if (sendable) reasons.push({ k: "sendable" });
 

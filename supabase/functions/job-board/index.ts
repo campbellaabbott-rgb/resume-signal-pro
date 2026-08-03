@@ -56,7 +56,7 @@ import { filterViolations, isUnfiltered, normalizeFilters } from "./filters.ts";
 import { expandQuery } from "./search-alias.ts";
 import { classifyQuestion } from "../_shared/application-questions.ts";
 import { parseBreezyQuestions, parsePinpointQuestions, breezyApplyUrl, pinpointApplyUrl } from "../_shared/vendor-questions.ts";
-import { realQuestionVendors } from "../_shared/apply-automation.ts";
+import { realQuestionVendors, SENDABLE_VENDORS } from "../_shared/apply-automation.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -2642,6 +2642,38 @@ Deno.serve(async (req) => {
               };
             })()
           : null,
+        // HOW MUCH OF THE BOARD THE AGENT CAN ACTUALLY SUBMIT TO, computed
+        // from the same live per-vendor totals above rather than asserted.
+        //
+        // Three separate code comments claimed "about 2%" and "~3.4%". Both
+        // were written when three adapters existed; there are four, and the
+        // real figure measured 2026-08-03 is 5.3%. Nobody lied — the number
+        // simply had no way to move, which is what a hardcoded measurement is.
+        // Engineers reason from these comments when deciding whether the
+        // sendable boost is worth its query, so a 2.6x understatement is a
+        // decision input, not a cosmetic error.
+        //
+        // The ceiling itself is structural and documented in worker/RECON.md:
+        // every other major vendor was measured and refused for a stated
+        // reason — BambooHR reCAPTCHA v2 visible on 24/24 pages, Ashby v3,
+        // Lever/Rippling/Workable bot detection, SmartRecruiters 403 headless
+        // AND headed, Oracle re-checked. Raising it means defeating bot
+        // protection, which is not on the table.
+        sendable: (() => {
+          const cov = Array.isArray((dateCov as { data?: unknown }).data)
+            ? (dateCov as { data: Array<{ source: string; total: number }> }).data
+            : ((dcCache.data?.v as Array<{ source: string; total: number }> | undefined) ?? null);
+          if (!cov) return null;
+          const set = new Set(SENDABLE_VENDORS);
+          let send = 0, all = 0;
+          for (const r of cov) { all += Number(r.total); if (set.has(r.source)) send += Number(r.total); }
+          return {
+            vendors: SENDABLE_VENDORS.length,
+            postings: send,
+            ofTotal: all,
+            pct: all ? Math.round(1000 * send / all) / 10 : null,
+          };
+        })(),
         catalogSize: JOB_SOURCES.length,
         categorizeVersion: CATEGORIZE_VERSION,
         hotTier: Array.isArray(hotTokens) && hotTokens.length >= 50 ? hotTokens.length : HOT_SIZE,
