@@ -2467,7 +2467,7 @@ Deno.serve(async (req) => {
       // bundle, so a stale/failed publish is visible in ONE call instead of being
       // inferred from posting counts over hours (the rung-2 "did it deploy?" pain).
       // Also the source of truth for the heartbeat's job_board_deploy check.
-      const [prog, pbMeta, rot, refreshMeta, bf, hotMeta, fresh, breaker, dateCov, bsMeta, dsMeta, esMeta, fiOk, fiBad, faMeta, aaMeta, arMeta] = await Promise.all([
+      const [prog, pbMeta, rot, refreshMeta, bf, hotMeta, fresh, breaker, dateCov, dcCache, bsMeta, dsMeta, esMeta, fiOk, fiBad, faMeta, aaMeta, arMeta] = await Promise.all([
         client.from("job_board_meta").select("v, updated_at").eq("k", "refresh_progress").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "posted_backfill").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "cold_rotation").maybeSingle(),
@@ -2487,7 +2487,21 @@ Deno.serve(async (req) => {
         withDeadline(client.rpc("get_freshness_stats"), 2_500),
         client.from("job_board_meta").select("v").eq("k", "vendor_breaker").maybeSingle(),
         // Per-vendor stated-date coverage (null until the migration lands)
-        withDeadline(client.rpc("get_date_coverage"), 2_500),
+        // 2_500 WAS BELOW THE COST OF THE QUERY. Measured 2026-08-03: this RPC
+        // takes ~3.5s over 562k rows, so it timed out on EVERY call and
+        // withDeadline returned { data: null } — the same value it returns for
+        // a genuine error and for an empty result. dateCoverage has therefore
+        // been silently absent from the public status endpoint, and "which
+        // vendors state posting dates" — the measured basis behind every age
+        // claim on this platform — was unanswerable without a direct RPC call.
+        //
+        // The deadline is raised past the measured cost with headroom, and the
+        // result is cached below so the NEXT call is instant and a slow day
+        // degrades to "slightly stale" rather than "gone".
+        withDeadline(client.rpc("get_date_coverage"), 8_000),
+        // Last good coverage, so a timeout serves stale numbers with their age
+        // attached instead of nothing at all.
+        client.from("job_board_meta").select("v, updated_at").eq("k", "date_coverage_cache").maybeSingle(),
         client.from("job_board_meta").select("v").eq("k", "bootstrap").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "desc_sweep").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "embed_sweep").maybeSingle(),
@@ -2515,6 +2529,22 @@ Deno.serve(async (req) => {
       const hotTokens = ((hotMeta.data?.v ?? {}) as { tokens?: unknown[] }).tokens;
       const now = Date.now();
       const ageMin = (ts?: string | null) => (ts ? Math.round((now - new Date(ts).getTime()) / 60000) : null);
+
+      // SELF-POPULATING CACHE. Whenever the live query beats its deadline, its
+      // answer is stored, so the next caller that does not is served real
+      // numbers with an age rather than a null. No cron to schedule, nothing
+      // else to keep alive — the cache is a by-product of the reads that
+      // already succeed, and the first successful read after a deploy fills it.
+      //
+      // Fire-and-forget: a status page must never fail because it could not
+      // write its own cache.
+      if (Array.isArray((dateCov as { data?: unknown }).data)) {
+        void client.from("job_board_meta").upsert({
+          k: "date_coverage_cache",
+          v: (dateCov as { data: unknown[] }).data,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: "k" }).then(() => {}, () => {});
+      }
       return json({
         // deployed build identity (constants baked into THIS bundle)
         version: BUILD_VERSION,
@@ -2708,13 +2738,31 @@ Deno.serve(async (req) => {
         quarantinedVendors: (((breaker.data?.v ?? {}) as { quarantined?: string[] }).quarantined ?? []),
         // Which hiring systems state posting dates, and for what share of
         // their postings — the measured basis behind every age stat.
+        // WHY THIS WAS NULL FOR WEEKS. The deadline was 2_500ms and the query
+        // measures ~3.5s over 562k rows, so it timed out on every call —
+        // and withDeadline returns { data: null } for a timeout, for an error,
+        // and there is no separate signal for an empty result. One value, three
+        // states, and the one that was actually happening was invisible.
+        //
+        // Now: live if it answers, last good cached copy WITH ITS AGE if it
+        // does not, and a stated reason if neither exists. A number with no age
+        // beside it cannot be told from a fresh one, so the age is not optional.
+        dateCoverageSource: Array.isArray((dateCov as { data?: unknown }).data)
+          ? "live"
+          : (dcCache.data?.v ? "cache" : "unavailable"),
+        dateCoverageAgeMin: Array.isArray((dateCov as { data?: unknown }).data)
+          ? 0
+          : ageMin(dcCache.data?.updated_at ?? null),
         dateCoverage: Array.isArray((dateCov as { data?: unknown }).data)
           ? ((dateCov as { data: Array<{ source: string; total: number; dated: number }> }).data).map((r) => ({
               source: r.source,
               total: Number(r.total),
               datedPct: Math.round(100 * Number(r.dated) / Math.max(Number(r.total), 1)),
             }))
-          : null,
+          // Serve the last good copy rather than nothing. Its age is reported
+          // above, so a reader can decide whether stale is good enough — which
+          // is a judgement they can only make if they are told.
+          : ((dcCache.data?.v as unknown[] | undefined) ?? null),
         at: new Date().toISOString(),
       });
     }
