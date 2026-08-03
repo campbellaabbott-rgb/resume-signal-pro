@@ -413,6 +413,8 @@ export type Database = {
           posting_id: string
           reasons: Json
           salary: string
+          search_id: number | null
+          search_label: string
           status: string
           title: string
           user_id: string
@@ -431,6 +433,8 @@ export type Database = {
           posting_id: string
           reasons?: Json
           salary?: string
+          search_id?: number | null
+          search_label?: string
           status?: string
           title?: string
           user_id: string
@@ -449,11 +453,21 @@ export type Database = {
           posting_id?: string
           reasons?: Json
           salary?: string
+          search_id?: number | null
+          search_label?: string
           status?: string
           title?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "agent_queue_search_id_fkey"
+            columns: ["search_id"]
+            isOneToOne: false
+            referencedRelation: "agent_searches"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       agent_searches: {
         Row: {
