@@ -79,3 +79,44 @@ describe("the nightly cron sends one", () => {
     expect(sched).toMatch(/"source":"cron"/);
   });
 });
+
+describe("the gated cron is observable", () => {
+  // Gating a function whose caller cannot be observed is how a fix becomes an
+  // outage nobody attributes to the fix. agent-runner is now the only caller
+  // holding a key, and it wrote no run stamp — so a silent schedule failure
+  // would look exactly like a quiet night with nothing to queue. The first
+  // symptom would have been a subscriber noticing an empty morning queue.
+  const board = readFileSync(resolve(root, "supabase/functions/job-board/index.ts"), "utf8");
+
+  it("the runner stamps every run", () => {
+    expect(runner).toMatch(/k: "agent_runner_run"/);
+    expect(runner).toMatch(/nextRunStamp\(/);
+  });
+
+  it("it distinguishes a scheduled run from a hand one", () => {
+    // A manual run proves the function works and proves nothing at all about
+    // the schedule. Conflating them is what made this unanswerable for
+    // apply-agent until 20260802140000.
+    expect(runner).toMatch(/body\?\.source === "cron" \? "cron" : "manual"/);
+  });
+
+  it("bookkeeping never fails the run", () => {
+    expect(runner).toMatch(/run stamp failed/);
+  });
+
+  it("status reports it without a service key", () => {
+    expect(board).toMatch(/"agent_runner_run"/);
+    expect(board).toMatch(/agentRunner:/);
+    expect(board, "no scheduleProven — the whole point is answering 'did the cron fire'")
+      .toMatch(/scheduleProven: cronAt !== null && \(ageMin\(cronAt\) \?\? 1e9\) < 1500/);
+  });
+
+  it("does not report a sender the runner does not have", () => {
+    // The stamp omits senderOnline/resumesBucket rather than defaulting them,
+    // so this block must not invent them either. `false` here would be a fact
+    // about something this job does not do.
+    const block = board.slice(board.indexOf("agentRunner:"), board.indexOf("catalogSize:"));
+    expect(block).not.toMatch(/senderOnline/);
+    expect(block).not.toMatch(/resumesBucket/);
+  });
+});

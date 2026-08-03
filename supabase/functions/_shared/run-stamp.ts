@@ -31,8 +31,9 @@ export type RunStamp = {
   buildVersion: string;
   /** Only ever set by a real cron firing. Carried forward otherwise. */
   lastCronAt: string | null;
-  senderOnline: boolean;
-  resumesBucket: string;
+  /** Absent on jobs that have no sender — see RunFacts. Never defaulted. */
+  senderOnline?: boolean;
+  resumesBucket?: string;
   mandates: number;
   prepared: number;
   released: number;
@@ -43,8 +44,20 @@ export type RunFacts = {
   trigger: RunTrigger;
   now: string;
   buildVersion: string;
-  senderOnline: boolean;
-  resumesBucket: string;
+  /**
+   * OPTIONAL BECAUSE NOT EVERY STAMPED JOB HAS A SENDER.
+   *
+   * These two describe apply-agent's world: whether a worker is alive to
+   * submit, and whether the résumé bucket exists. agent-runner has neither —
+   * it scores and queues, and never touches the worker or a file.
+   *
+   * Made optional rather than filled with a placeholder. `senderOnline: false`
+   * on a runner stamp would be a fact about a thing that job does not do, and
+   * a reader comparing two stamps would have no way to tell "the sender is
+   * down" from "this job has no sender". A missing field says the second.
+   */
+  senderOnline?: boolean;
+  resumesBucket?: string;
   mandates: number;
   prepared: number;
   released: number;
@@ -65,8 +78,11 @@ export function nextRunStamp(prev: unknown, facts: RunFacts): RunStamp {
     buildVersion: facts.buildVersion,
     // THE ASYMMETRY. Never `facts.now` on a manual run.
     lastCronAt: facts.trigger === "cron" ? facts.now : priorCronAt(prev),
-    senderOnline: facts.senderOnline,
-    resumesBucket: facts.resumesBucket,
+    // OMITTED, NOT DEFAULTED. `senderOnline: false` on a runner stamp would be
+    // a fact about something that job does not do, and a reader comparing two
+    // stamps could not tell "the sender is down" from "this job has no sender".
+    ...(facts.senderOnline === undefined ? {} : { senderOnline: facts.senderOnline }),
+    ...(facts.resumesBucket === undefined ? {} : { resumesBucket: facts.resumesBucket }),
     mandates: facts.mandates,
     prepared: facts.prepared,
     released: facts.released,

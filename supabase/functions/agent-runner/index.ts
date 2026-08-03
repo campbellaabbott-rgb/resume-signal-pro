@@ -19,6 +19,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { computeFit } from "../_shared/fit-score.ts";
 import { isSendableVendor, SENDABLE_VENDORS } from "../_shared/apply-automation.ts";
 import { ENTITLEMENT_COLUMNS, entitledFromRows, isEntitled, normalizeEmail, rowIsEntitled } from "../_shared/agent-entitlement.ts";
+import { nextRunStamp } from "../_shared/run-stamp.ts";
 
 // Bumped whenever this function changes shape, so a 403 can say WHICH bundle
 // refused — the difference between "the gate is live" and "the old open build
@@ -90,6 +91,14 @@ serve(async (req) => {
     console.warn("[AGENT-RUNNER] refused an unauthenticated call");
     return json({ error: "unauthorized", version: BUILD_VERSION }, 403);
   }
+
+  // WHO ASKED. The cron sends {"source":"cron"}; a hand invocation sends {}.
+  // Conflating them is what made "has the SCHEDULE ever run" unanswerable for
+  // apply-agent until 20260802140000 — a manual run proves the function works
+  // and proves nothing at all about the schedule.
+  let body: Record<string, unknown> = {};
+  try { body = await req.json(); } catch { /* empty body is a hand run */ }
+  const trigger = body?.source === "cron" ? "cron" : "manual";
 
   // Queue hygiene first: unactioned picks older than 48h expire (the cron
   // retention job also does this; doing it here keeps a manual run honest).
@@ -409,6 +418,40 @@ serve(async (req) => {
       skipped_churn: skippedChurn,
       skipped_lowfit: skippedLowfit,
     });
+  }
+
+  // STAMP THE RUN, so "did the schedule fire?" is answerable.
+  //
+  // This function is now gated, and its cron is the only caller that holds the
+  // key. That makes a silent cron failure indistinguishable from a quiet night
+  // — agent-runner wrote no stamp, so the first symptom of a broken schedule
+  // would have been a subscriber noticing an empty morning queue. Gating a
+  // function whose caller cannot be observed is how a fix becomes an outage
+  // nobody attributes to the fix.
+  //
+  // Same shape and same table as apply-agent's stamp, so job-board's anon
+  // `status` action can surface it without a service key. trigger comes from
+  // the body: the cron sends {"source":"cron"}, a hand invocation does not, and
+  // conflating the two is what made "has the schedule ever run" unanswerable
+  // for apply-agent until 20260802140000.
+  try {
+    const { data: prevRow } = await client
+      .from("job_board_meta").select("v").eq("k", "agent_runner_run").maybeSingle();
+    const nowIso = new Date().toISOString();
+    await client.from("job_board_meta").upsert({
+      k: "agent_runner_run",
+      v: nextRunStamp(prevRow?.v, {
+        trigger, now: nowIso, buildVersion: BUILD_VERSION,
+        mandates: processed,
+        prepared: runRows.length,
+        released: totalPicked,
+        ms: Date.now() - startedAt,
+      }),
+      updated_at: nowIso,
+    }, { onConflict: "k" });
+  } catch (e) {
+    // Never fail the run over its own bookkeeping.
+    console.warn(`[AGENT-RUNNER] run stamp failed: ${String(e).slice(0, 120)}`);
   }
 
   return json({

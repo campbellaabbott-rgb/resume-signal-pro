@@ -2467,7 +2467,7 @@ Deno.serve(async (req) => {
       // bundle, so a stale/failed publish is visible in ONE call instead of being
       // inferred from posting counts over hours (the rung-2 "did it deploy?" pain).
       // Also the source of truth for the heartbeat's job_board_deploy check.
-      const [prog, pbMeta, rot, refreshMeta, bf, hotMeta, fresh, breaker, dateCov, bsMeta, dsMeta, esMeta, fiOk, fiBad, faMeta, aaMeta] = await Promise.all([
+      const [prog, pbMeta, rot, refreshMeta, bf, hotMeta, fresh, breaker, dateCov, bsMeta, dsMeta, esMeta, fiOk, fiBad, faMeta, aaMeta, arMeta] = await Promise.all([
         client.from("job_board_meta").select("v, updated_at").eq("k", "refresh_progress").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "posted_backfill").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "cold_rotation").maybeSingle(),
@@ -2503,6 +2503,10 @@ Deno.serve(async (req) => {
         // ran it? See the applyAgent block in the response for why that second
         // half is the whole question.
         client.from("job_board_meta").select("v, updated_at").eq("k", "apply_agent_run").maybeSingle(),
+        // And the same question for the RUNNER, which is now gated: its cron is
+        // the only caller holding a key, so a silent schedule failure would
+        // otherwise look exactly like a quiet night with no queued picks.
+        client.from("job_board_meta").select("v, updated_at").eq("k", "agent_runner_run").maybeSingle(),
 ]);
       const pgV = (prog.data?.v ?? {}) as { hot?: number; cold?: number; coldDone?: number; failedAcc?: string[] };
       const rotV = (rot.data?.v ?? {}) as { completedAt?: string; coldBoards?: number };
@@ -2572,6 +2576,39 @@ Deno.serve(async (req) => {
                 // hours of slack on an hourly job absorbs one missed tick
                 // without crying wolf.
                 scheduleProven: cronAt !== null && (ageMin(cronAt) ?? 1e9) < 120,
+              };
+            })()
+          : null,
+        // THE RUNNER'S OWN SCHEDULE. agent-runner is gated as of 2026-08-03.1,
+        // and its cron is the only caller that holds a key — so if that
+        // schedule breaks, nothing else changes shape. No queued picks looks
+        // identical to a quiet night. This is the only thing that separates
+        // them, and it is anon-readable on purpose: the question "is the agent
+        // still being run" should not require a service key to answer.
+        //
+        // Deliberately NOT reporting senderOnline or resumesBucket here. The
+        // runner has no sender and touches no bucket; the stamp omits them
+        // rather than defaulting, so this reports what the job actually knows.
+        agentRunner: arMeta.data?.v
+          ? (() => {
+              const v = arMeta.data.v as {
+                at?: string; trigger?: string; lastCronAt?: string | null;
+                buildVersion?: string; mandates?: number; prepared?: number; released?: number;
+              };
+              const cronAt = v.lastCronAt ?? null;
+              return {
+                lastRunAt: v.at ?? null,
+                lastRunTrigger: v.trigger ?? null,
+                lastCronAt: cronAt,
+                cronAgeMin: ageMin(cronAt),
+                buildVersion: v.buildVersion ?? null,
+                mandates: v.mandates ?? null,
+                // `prepared` is searches run, `released` is picks queued — the
+                // runner's two counts, under the stamp's shared field names.
+                searches: v.prepared ?? null,
+                picked: v.released ?? null,
+                // Nightly, so a full day of slack before this cries wolf.
+                scheduleProven: cronAt !== null && (ageMin(cronAt) ?? 1e9) < 1500,
               };
             })()
           : null,
