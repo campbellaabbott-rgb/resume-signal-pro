@@ -103,6 +103,14 @@ describe("classifyQuestion", () => {
     }
   });
 
+  // Live Dutch/German salary and availability labels that must stay blocked.
+  // A resume cannot establish notice period, availability date, or pay expectation.
+  it("blocks non-English salary, notice period, and availability questions", () => {
+    expect(classifyQuestion("Wat is je huidige opzegtermijn of beschikbaarheidsdatum?", "input_text")).toBe("factual");
+    expect(classifyQuestion("Wat is je gewenste bruto maandsalaris? (o.b.v. 40 uur)", "input_text")).toBe("factual");
+    expect(classifyQuestion("Nennen Sie uns bitte Ihre Gehaltsvorstellung für den...", "input_text")).toBe("factual");
+  });
+
   it("selectDraftable keeps only the draftable questions", () => {
     const qs = [
       { label: "First Name", type: "input_text" },
