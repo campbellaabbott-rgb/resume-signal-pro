@@ -50,32 +50,89 @@ const DEMOGRAPHIC = /\b(gender|sex|race|ethnic\w*|hispanic|latin[ox]|veteran|dis
  * CONSENT AND ATTESTATION — the class this classifier was missing, found by
  * measurement on 2026-08-03 and not by reading the code.
  *
- * Sampling 40 live Recruitee forms (127 real questions) turned up labels like:
+ * Two matchers, at deliberately different priorities. Read CONSENT_DOC and
+ * CONSENT_ATTEST below for why the split exists; this is the shared reason
+ * either of them does.
  *
- *   "<p>Please confirm you've read our <a ...>Privacy Notice</a> ...</p>"
- *   "<p>Ik heb de <a ...>privacy statement</a> gelezen en ga akkoord.</p>"
+ * A first sample of 40 live Recruitee forms turned up labels like
+ * "Please confirm you've read our Privacy Notice" and its Dutch equivalent.
+ * Both classified `draftable`, and apply-agent selected what to send the model
+ * with `label.length > 24`, so both were going to it. A language model was
+ * about to WRITE AN ATTESTATION THAT THE CANDIDATE HAD READ A DOCUMENT — an
+ * assertion about an act a specific person did or did not perform, which no
+ * amount of résumé grounding can support, on a question whose entire purpose
+ * is that a human followed the link inside it.
  *
- * Both classified `draftable`, and both are longer than the 24-character
- * threshold apply-agent uses to decide what to send to the model. So a language
- * model was going to be asked to WRITE AN ATTESTATION THAT THE CANDIDATE HAD
- * READ A DOCUMENT — an assertion about an act a specific person did or did not
- * perform, which no amount of résumé grounding can support, on a question whose
- * whole purpose is that a human read the link in it.
+ * That is the same principle as `demographic`, and sharper: a declined EEO
+ * question is a non-answer, while a drafted consent is a false statement made
+ * in the candidate's name to a company they want to work for.
  *
- * That is the same principle as `demographic`, and it is arguably sharper: a
- * declined EEO question is a non-answer, while a drafted consent is a false
- * statement made in the candidate's name to a company they want to work for.
- *
- * It is not a Recruitee problem. Any vendor whose real questions we read can
- * carry one; it was invisible until we read enough real forms, exactly like the
- * `IDENTITY_IF_FIELD` and `FACTUAL` corrections logged above.
- *
- * NOT MATCHED ON PURPOSE: "agree" or "consent" alone. "Do you agree that good
- * design is invisible?" is a real interview question and belongs to the drafter.
- * Every branch here needs a document, a policy, or an explicit "I have read".
+ * THE PATTERNS BELOW ARE FITTED TO A REAL CORPUS, and that is not incidental.
+ * The first version of this class was written against a label reconstructed
+ * from a TRUNCATED sample — the real one reads "gelezen en begrijp" (read and
+ * understand), not "gelezen en ga akkoord" (read and agree), and the deployed
+ * regex missed it live while its unit test passed against the invention. So
+ * every branch here is now anchored to one of 5,537 questions harvested across
+ * all six reader vendors, and `consent-corpus.test.ts` replays them.
  */
-const CONSENT =
-  /(privacy\s*(?:notice|policy|statement|declaration)|data\s*protection|gdpr|terms\s*(?:and|&)\s*conditions|terms\s*of\s*(?:use|service)|i\s*(?:have\s*)?(?:read|reviewed)\b[\s\S]{0,60}\b(?:agree|accept|consent|understood|acknowledge)|(?:agree|consent|accept)\w*\s*(?:to|with|met|de)\s*[\s\S]{0,40}(?:terms|policy|notice|statement|process\w*|stor\w*|retain\w*|retention)|consent\s*to\s*(?:the\s*)?(?:processing|storage|retention|use)\s*of|heb\s*[\s\S]{0,40}gelezen|ga\s*akkoord|einverstanden|zustimm\w*|acepto\s*[\s\S]{0,30}(?:pol[ií]tica|t[eé]rminos)|consent\s*(?:form|clause))/i;
+/**
+ * CONSENT_DOC — an attestation tied to a DOCUMENT or a data/communication
+ * permission. Checked EARLY, ahead of `file` and `identity`, because the live
+ * corpus shows those two classes actively stealing consent questions and
+ * answering them with a value:
+ *
+ *   "By selecting YES, I consent to receive recruiting SMS messages from
+ *    Bluestone at the phone number provided above."        -> was `identity`
+ *
+ * That contains "phone number", so identityValue() would have written the
+ * candidate's PHONE NUMBER into a yes/no consent box.
+ *
+ *   "By typing my legal name below, I acknowledge that the information
+ *    contained in this document, my resume, and any other materials submitted
+ *    on my behalf are true and correct..."                 -> was `file`
+ *
+ * That contains "resume", so the packet would have put a résumé URL where a
+ * signature attesting to truthfulness belongs.
+ *
+ * Neither was a hypothetical: both are verbatim labels from the 5,537-question
+ * corpus harvested across all six reader vendors on 2026-08-03.
+ */
+const CONSENT_DOC =
+  /(privacy\s*(?:notice|policy|statement|declaration)|privacyverklaring|privacybeleid|datenschutz\w*|pol[ií]tica\s+de\s+privacidad|politique\s+de\s+confidentialit|data\s*protection|\bgdpr\b|\bccpa\b|terms\s*(?:and|&)\s*conditions|terms\s*of\s*(?:use|service)|algemene\s*voorwaarden|arbitration\s*agreement|non-?disclosure|\bnda\b|at[-\s]?will\s*employ\w*|(?:interview|call|meeting)\s*record(?:ing|ed)|notetaker|\bdo\s+you\s+consent\b|\bi\s+(?:hereby\s+)?consent\b|consent\w*\s*(?:to|for)\s*(?:the\s*)?(?:receiv|process|stor|retain|record|use)\w*|(?:process|collect|stor)\w*\s+(?:and\s+\w+\s+)?my\s+personal\s+(?:data|information)|persoonsgegevens|\bi\s+attest\b|\battest\s+that\b|accept\s+(?:all\s+)?(?:the\s+)?terms\b|autoriza\w*\s+que\s+seus\s+dados|\blgpd\b|동의|by\s+(?:typing|signing|submitting|selecting|checking|ticking|initial\w*|entering|clicking)\b[\s\S]{0,70}\b(?:i|you)\s+(?:hereby\s+)?(?:acknowledge|confirm|certify|agree|consent)|(?:i|you)\s+(?:hereby\s+)?(?:agree|confirm|certify|acknowledge)\b[\s\S]{0,90}\b(?:true\s+and\s+(?:correct|complete|accurate)|accurate\s+and\s+complete|truthful))/i;
+
+/**
+ * CONSENT_ATTEST — a bare first-person attestation with no document attached.
+ *
+ * Checked LATE, AFTER `factual`, and that ordering is the whole subtlety.
+ * These are all real labels:
+ *
+ *   "I acknowledge that I am at least 18 years of age"
+ *   "I acknowledge that I am authorized to work lawfully in the United States"
+ *   "I acknowledge that employees are required to have a valid driver's licence"
+ *   "Please acknowledge that you have seen the posted compensation range"
+ *
+ * Every one is a fact the candidate has ALREADY given as a standing answer.
+ * Matching them here would convert four settled profile answers into four
+ * blockers and strand packets that were ready to go. `factual` claims them
+ * first and fills them from the profile, which is both correct and better.
+ *
+ * What is left over genuinely has no answer anywhere in our data:
+ *
+ *   "I confirm to have a valid DNI or NIE (Spanish tax number)"
+ *   "I confirm that I'm based in Madrid and able to work from the office 3 days"
+ *   "You acknowledge this role will start Monday–Friday 9am–5pm"
+ *
+ * Those were `draftable`, meaning a model was being asked to assert facts about
+ * a person's tax registration and home city. Blocking is the honest outcome.
+ */
+/**
+ * "Please confirm you are comfortable with late-night trade" is a COMMITMENT.
+ * "Please confirm whether you have 3+ years with ASC 606" is a RESUME FACT and
+ * must keep being drafted. Both are live labels; the difference the pattern
+ * turns on is `you are <state>` versus `you have <experience>`.
+ */
+const CONSENT_ATTEST =
+  /(^\s*i\s+(?:hereby\s+)?(?:acknowledge|confirm|certify|agree|consent|understand)\b|^\s*you\s+(?:acknowledge|understand)\b|\byou\s+hereby\s+agree\b|\bdo\s+you\s+agree\s+to\s+this\b|acknowledge?ments?\s*$|\bconsent\s*$|please\s+confirm\b[\s\S]{0,30}\byou\s+are\s+(?:comfortable|available|willing|happy|aware|ok|okay)\b|confirm\s+(?:that\s+)?you\s+(?:have\s+)?read\b|are\s+you\s+comfortable\s+with\s+this\b|you\s+are\s+aware\s+of\s+(?:this|these)\b|confirmas\s+tu\s+disponibilidad|ik\s+heb\b[\s\S]{0,90}\bgelezen\b|ich\s+habe\b[\s\S]{0,90}\bgelesen\b|\bhe\s+le[ií]do\b|j['’]ai\s+lu\b|ga\s+(?:ik\s+)?akkoord|einverstanden|zustimm\w*|acepto\b)/i;
 // Facts a resume can't establish — must come from the candidate.
 //
 // EVERYTHING FROM `earliest` ONWARD WAS ADDED 2026-08-01, from the first 118
@@ -140,10 +197,10 @@ export function classifyQuestion(label: string, fieldType?: string): QuestionCla
   const t = (fieldType ?? "").toLowerCase();
   // Protected self-ID wins over everything — even if phrased oddly.
   if (DEMOGRAPHIC.test(l)) return "demographic";
-  // BEFORE `file`, deliberately. "I consent to my CV being stored for 12
-  // months" contains "CV"; classified as a file field it would have had a
-  // résumé URL pushed into a consent checkbox.
-  if (CONSENT.test(l)) return "consent";
+  // BEFORE `file` AND `identity`, deliberately — see CONSENT_DOC. Both of those
+  // classes were measured stealing real consent questions and answering them
+  // with a phone number and a résumé URL respectively.
+  if (CONSENT_DOC.test(l)) return "consent";
   if (t.includes("file") || FILE.test(l)) return "file";
   // Structured contact/location field types (Ashby: Email/Phone/Location) are
   // identity regardless of label — "Where do you plan on working from?" has no
@@ -174,6 +231,9 @@ export function classifyQuestion(label: string, fieldType?: string): QuestionCla
   // FACTUAL is checked FIRST so that "Are you willing to work in another
   // location?" stays a refusal rather than being autofilled with a home city.
   if (FACTUAL.test(l)) return "factual";
+  // AFTER factual, so "I acknowledge that I am at least 18 years of age" keeps
+  // the standing answer it already has instead of becoming a blocker.
+  if (CONSENT_ATTEST.test(l)) return "consent";
   if (IDENTITY_IF_FIELD.test(l) && (bare.split(" ").length <= 4 || OWN_ATTRIBUTE.test(l))) {
     return "identity";
   }

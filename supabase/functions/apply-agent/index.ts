@@ -30,7 +30,7 @@ import { nextRunStamp } from "../_shared/run-stamp.ts";
 // Bumped whenever this function's behaviour changes. It rides along in the run
 // stamp so "the new code has not deployed yet" and "the code deployed but has
 // never run" are different observations rather than the same silence.
-const BUILD_VERSION = "2026-08-03.4";
+const BUILD_VERSION = "2026-08-03.5";
 
 // Wall clock, not a row count. Question fetches and answer drafting are both
 // network-bound and wildly variable, so a fixed "20 packets" budget either wastes

@@ -1,0 +1,517 @@
+[
+ {
+  "label": "By submitting your application, you confirm that you have read and understood the Plaud Candidate Privacy Notice outlined below:",
+  "type": "Boolean",
+  "expect": "consent"
+ },
+ {
+  "label": "This role requires local travel to vendor and venue locations and flexible schedules based on client needs. Are you comfortable with this?",
+  "type": "Boolean",
+  "expect": "consent"
+ },
+ {
+  "label": "Auror offers employment based on satisfactory completion of relevant backgound checks. Do you consent to Auror completing there checks if you are the successful candidate?",
+  "type": "Boolean",
+  "expect": "consent"
+ },
+ {
+  "label": "We use Ashby AI Notetaker in all interviews, this helps us focus on speaking to you, rather than writing lots of notes! Do you consent for this to be used during the interview process? Y/N",
+  "type": "Boolean",
+  "expect": "consent"
+ },
+ {
+  "label": "Applicant Arbitration Agreement Acknowledgement",
+  "type": "MultiValueSelect",
+  "expect": "consent"
+ },
+ {
+  "label": "I hereby certify that I have not knowingly withheld any information that might adversely affect my chances for employment and that the answers given by me are true and correct to the best of my knowledge. I further certify that I, the undersigned applicant, have personally completed this application. I understand that, to the extent permitted by applicable law, any omission or misstatement of mate",
+  "type": "MultiValueSelect",
+  "expect": "consent"
+ },
+ {
+  "label": "CERTIFICATION: By initialing below, you hereby agree that all information you provided on this application is true and complete.",
+  "type": "String",
+  "expect": "consent"
+ },
+ {
+  "label": "Applicant Consent & Acknowledgment : By submitting your application, you acknowledge that you have reviewed Pebl’s Candidate Privacy Notice and consent to the following:",
+  "type": "ValueSelect",
+  "expect": "consent"
+ },
+ {
+  "label": "You understand that this is an on-site role and you are able to work out of our Pharmacy based in Richmond, BC.",
+  "type": "Boolean",
+  "expect": "consent"
+ },
+ {
+  "label": "You acknowledge this role will start Monday–Friday 9am–5pm and will transition to Sunday–Thursday once onboarded.",
+  "type": "Boolean",
+  "expect": "consent"
+ },
+ {
+  "label": "Snowflake will process your personal information in accordance with the Snowflake Candidate Privacy Notice.",
+  "type": "MultiValueSelect",
+  "expect": "consent"
+ },
+ {
+  "label": "Do you consent to receive text messages (SMS) from our recruiting team regarding your application and interview updates?",
+  "type": "Boolean",
+  "expect": "consent"
+ },
+ {
+  "label": "Interview Recording Consent",
+  "type": "ValueSelect",
+  "expect": "consent"
+ },
+ {
+  "label": "You will be subject to employment verification. Do you agree to this?",
+  "type": "dropdown",
+  "expect": "consent"
+ },
+ {
+  "label": "I acknowledge and understand that the company is an “at will” employer. Therefore, any employee (regular, temporary, or other type of category employee) may resign at any time, just as the employer may terminate the employment relationship with any employee at any time, with or without cause, with or without notice to the other party.",
+  "type": "multiplechoice",
+  "expect": "consent"
+ },
+ {
+  "label": "I certify that the facts set forth in this Application for Employment are true and complete to the best of my knowledge. I understand that if I am employed, false statements, omissions or misrepresentations may result in my dismissal. I authorize the Employer to make an investigation of any of the facts set forth in this application and release the Employer from any liability.",
+  "type": "multiplechoice",
+  "expect": "consent"
+ },
+ {
+  "label": "I acknowledge that I will be required to sign an NDA if offered employment",
+  "type": "checkboxes",
+  "expect": "consent"
+ },
+ {
+  "label": "Have you entered into a non-disclosure or non-compete agreement or understanding of any kind?",
+  "type": "multi_value_single_select",
+  "expect": "consent"
+ },
+ {
+  "label": "Job Applicant Data Privacy Notice",
+  "type": "multi_value_single_select",
+  "expect": "consent"
+ },
+ {
+  "label": "This role may be required to work late‑night trade, weekends, and public holidays. Please confirm you are comfortable with these requirements.",
+  "type": "multi_value_single_select",
+  "expect": "consent"
+ },
+ {
+  "label": "As part of our peak trading period, this role requires availability from November through to January. Please confirm you are comfortable with this requirement.",
+  "type": "multi_value_single_select",
+  "expect": "consent"
+ },
+ {
+  "label": "Candidate Privacy Notice",
+  "type": "multi_value_multi_select",
+  "expect": "consent"
+ },
+ {
+  "label": "If you provided a phone number, do you consent to receiving follow-up communication via text message (or SMS message) regarding your application status?",
+  "type": "multi_value_single_select",
+  "expect": "consent"
+ },
+ {
+  "label": "By selecting YES, I consent to receive recruiting SMS messages from Bluestone at the phone number provided above.",
+  "type": "multi_value_single_select",
+  "expect": "consent"
+ },
+ {
+  "label": "By typing my legal name below, I acknowledge that the information contained in this document, my resume, and any other materials submitted on my behalf are true and correct to the best of my knowledge and belief. I understand that any incorrect, incomplete, or false statements, or information furnished by me and/or on my behalf during the application or employment process, may subject me to disqua",
+  "type": "input_text",
+  "expect": "consent"
+ },
+ {
+  "label": "Do you consent that Collective Health and its service providers may send text messages regarding scheduling and other information about your candidacy to the number you provided? This consent is not a condition of employment. Reply STOP at any time to opt out of receiving these text messages. Standard rates apply.",
+  "type": "multi_value_single_select",
+  "expect": "consent"
+ },
+ {
+  "label": "I confirm to have a valid DNI or NIE (Spanish tax number)",
+  "type": "multi_value_single_select",
+  "expect": "consent"
+ },
+ {
+  "label": "I confirm that I'm able to sign an University Agreement with an Spanish University",
+  "type": "multi_value_single_select",
+  "expect": "consent"
+ },
+ {
+  "label": "I confirm that I am available to work 40h per week for 6 months",
+  "type": "multi_value_single_select",
+  "expect": "consent"
+ },
+ {
+  "label": "I confirm that I'm based in Madrid and am able to work from the Madrid office 3 days per week as required",
+  "type": "multi_value_single_select",
+  "expect": "consent"
+ },
+ {
+  "label": "I confirm, that I have read the Celonis Privacy Notice for the handling of my personal data in the application process.",
+  "type": "multi_value_single_select",
+  "expect": "consent"
+ },
+ {
+  "label": "1. (선택) i) 면접 과정 녹화, ii) 면접 음성 전사 및 기록, iii) 면접 결과 요약, iv) 면접 과정 및 평가결과 검증, v) 채용 절차 개선, vi) 다른 채용 공고에 대한 지원자 적합성 확인, vii) 과거 면접 기록 확인, viii) 내부 이동 또는 전환 기회 적합성 평가 목적으로 면접 과정의 녹화 영상 및 음성 전사 기록을 수집 및 이용할 수 있습니다. 수집한 개인정보는 채용 결과 통지일로부터 4년 보관 후 삭제합니다. 본 동의를 거부할 수 있으며, 거부하더라도 채용 과정 진행에는 문제가 없습니다. 개인정보 처리에 대한 자세한 내용은 지원자 개인정보 처리방침(https://coupa.ng/ckJm4X)을 참고하시기 바랍니다.",
+  "type": "multi_value_single_select",
+  "expect": "consent"
+ },
+ {
+  "label": "쿠팡 주식회사와 그 계열사 및 자회사*(이하 합칭하여 ‘회사’라 함)는 본 동의서에 명시된 개인정보 항목 이외의 개인정보를 수집 및 이용하지 않으니 이력서 제출시 동의서 외의 정보는 제출하지 않도록 유의하시기 바랍니다.",
+  "type": "multi_value_single_select",
+  "expect": "consent"
+ },
+ {
+  "label": "1. (필수) i) 지원자 본인 확인 및 자격 확인, ii) 배경 및 평판조회, iii) 입사지원, iv) 지원 내역 및 합격 여부 확인, v) 지원자 의사소통, vi) 채용 관련 요청 및 문의 처리, vii) 불공정 채용 방지를 목적으로 성명, 연락처, 이메일 주소, 국적, 학력사항, 경력사항, 자격사항, (특별전형 채용에 한해) 국가유공자 여부, 친인척의 성명/관계/소속팀, 지원내역을 수집 및 이용합니다. 수집한 개인정보는 채용 결과 통지일로부터 6개월 보관 후 삭제합니다. 본 동의를 거부할 수 있으나, 거부 시 지원이 불가능합니다.",
+  "type": "multi_value_single_select",
+  "expect": "consent"
+ },
+ {
+  "label": "2. (선택) 상시 채용 진행 목적으로 성명, 국적, 연락처, 이메일 주소, 학력사항, 경력사항, 자격사항, (특별전형 채용에 한해) 국가유공자 여부, 친인척의 성명/관계/소속팀, 지원내역을 수집 및 이용합니다. 수집한 개인정보는 5년 보관 후 삭제합니다. 본 동의를 거부할 수 있으나, 거부 시 상시 채용이 진행되지 않습니다.",
+  "type": "multi_value_single_select",
+  "expect": "consent"
+ },
+ {
+  "label": "3. (선택) i) 면접 과정 녹화, ii) 면접 음성 전사 및 기록, iii) 면접 결과 요약, iv) 면접 과정 및 평가결과 검증, v) 채용 절차 개선, vi) 다른 채용 공고에 대한 지원자 적합성 확인, vii) 과거 면접 기록 확인 목적으로 면접 과정의 녹화 영상 및 음성 전사 기록을 수집 및 이용할 수 있습니다. 수집한 개인정보는 채용 결과 통지일로부터 4년 보관 후 삭제합니다. 본 동의를 거부할 수 있으며, 거부하더라도 채용 과정 진행에는 문제가 없습니다.",
+  "type": "multi_value_single_select",
+  "expect": "consent"
+ },
+ {
+  "label": "4. (선택) 쿠팡 계열사 및 자회사* 중 당초 지원한 회사를 제외한 회사에게 유사 포지션 채용 검토 및 진행을 목적으로 성명, 국적, 연락처, 이메일 주소, 학력사항, 경력사항, 자격사항, (특별전형 채용에 한해) 국가유공자 여부, 친인척의 성명/관계/소속팀, 지원내역을 채용 지원 시점에 제공합니다. 그에 따라 개인정보가 해외로 이전될 수 있음을 알려드립니다. 해외 이전시에는 안전한 전송수단을 통해 전송하며, 제공한 개인정보는 5년 보관 후 삭제합니다. 본 동의를 거부할 수 있으나, 거부 시 지원한 이외 회사에 대한 상시 채용이 진행되지 않습니다.",
+  "type": "multi_value_single_select",
+  "expect": "consent"
+ },
+ {
+  "label": "5. (선택) 쿠팡과 쿠팡 계열사 및 자회사*가 위 동의를 통해 수집한 연락처, 이메일을 이용하여 전화, 이메일, SMS 등 전송 매체를 통해 채용알림을 발송할 것입니다.",
+  "type": "multi_value_single_select",
+  "expect": "consent"
+ },
+ {
+  "label": "6. (필수) 지원자는 AIM Screening Limited(U.S., privacy@sterlingcheck.com)에게 i) 학력 조회, ii) 자격사항 조회, iii) 근무경력 조회 및 평판 조회, iv) 국제 제재 대상 인물 여부 조회, v) 글로벌 매체, 국제 제재 대상 명단, 사법 기관 또는 금융 감독기관 등에서 발표한 거래제한 대상자 명단 등을 대상으로 문제 소지 여부 조회, vi) 수사 경력 또는 범죄 경력 조회(외국인인 지원자) 목적으로 배경 조회 시 성명, 이메일 주소, 지원 포지션, 지원 법인, 국적을 제공합니다. 해외 이전시에는 안전한 네트워크를 이용해 전송하며, 제공한 개인정보는 제공목적 달성 시까지 보유합니다. 본 동의를 거부할 수 있으나, 거부 시 지원이 불가능합니다.",
+  "type": "multi_value_single_select",
+  "expect": "consent"
+ },
+ {
+  "label": "7. (선택) 본인은 동의한 범위에 대해 회사가 아래와 같이 평판조회를 실시하는 것에 동의합니다. 대면면접을 통과한 후보자 중 회사에 지원한 한국인(*)에 대해 평판조회를 추가로 실시할 수 있으며, 회사는 평판조회의 방법을 마련하고 있습니다.",
+  "type": "multi_value_single_select",
+  "expect": "consent"
+ },
+ {
+  "label": "2. 취업심사대상자에 해당하는 경우, 후보자는 관련 법령에 따라 관할 공직자윤리위원회로부터 취업가능결정 또는 취업승인결정을 받아 입사 전까지 심사결과 등 관련 서류를 회사에 제출하여야 하고, 이를 제출하지 않거나 그 기재에 허위 또는 거짓이 있는 경우 및 위원회로부터 취업제한결정 내지 취업불승인결정을 받은 경우 채용이 취소될 수 있음에 동의합니다.",
+  "type": "multi_value_single_select",
+  "expect": "consent"
+ },
+ {
+  "label": "I certify that the information provided in this application is true and correct to the best of my knowledge. I understand that any false statements or omissions may result in disqualification from employment consideration or, if employed, in termination.",
+  "type": "multi_value_single_select",
+  "expect": "consent"
+ },
+ {
+  "label": "I understand my application will be processed in accordance with Datadog’s Candidate Privacy Policy.",
+  "type": "multi_value_single_select",
+  "expect": "consent"
+ },
+ {
+  "label": "I certify that the facts in this application are true and complete to the best of my knowledge and understand that if employed, falsified statements on this application shall be grounds for dismissal. I understand that just as I am free to resign at any time, the Employer reserves the right to terminate my employment at any time, with or without cause and without prior notice. I understand that no",
+  "type": "input_text",
+  "expect": "consent"
+ },
+ {
+  "label": "We want your interviews with us to feel like genuine conversations where we can focus entirely on getting to know you and your experience. For this, we use an AI-powered interview assistant, Doctolib Notetaker (powered by Brighthire). It captures audio recordings and generates transcripts, so interviewers can give you their full attention. Do you consent to its use during your upcoming interviews ",
+  "type": "multi_value_single_select",
+  "expect": "consent"
+ },
+ {
+  "label": "I understand that 1Password offers of employment are conditional on satisfactory completion of a background check.",
+  "type": "MultiValueSelect",
+  "expect": "factual"
+ },
+ {
+  "label": "If the posted salary or hourly range does not align with your expectations, please provide your desired range and any details that would help us to understand your requirements",
+  "type": "String",
+  "expect": "factual"
+ },
+ {
+  "label": "Please acknowledge that you have seen the posted compensation range for this role and confirm that this aligns with your expectations.",
+  "type": "Boolean",
+  "expect": "factual"
+ },
+ {
+  "label": "For Snowflake to anticipate possible immigration timelines and obligations, could you confirm you are currently authorized to work in the country to which you are applying?",
+  "type": "Boolean",
+  "expect": "factual"
+ },
+ {
+  "label": "You will be subject to a full state & federal background check and fingerprinting. Do you agree to this?",
+  "type": "dropdown",
+  "expect": "factual"
+ },
+ {
+  "label": "Please confirm that you are 18 or older",
+  "type": "multiplechoice",
+  "expect": "factual"
+ },
+ {
+  "label": "Do you currently have any of the following licenses/certifications?",
+  "type": "checkboxes",
+  "expect": "factual"
+ },
+ {
+  "label": "List all relevant licenses, designations, or certifications you may hold.",
+  "type": "text",
+  "expect": "factual"
+ },
+ {
+  "label": "Since this role involves driving, could you confirm which state issued your current driver’s license?",
+  "type": "text",
+  "expect": "factual"
+ },
+ {
+  "label": "Thank you for applying to our open position. FlowPlay does not provide visa sponsorship, can you please confirm if you will require visa sponsorship now or in the future?",
+  "type": "multiplechoice",
+  "expect": "factual"
+ },
+ {
+  "label": "What are your salary expectations for this role? Please note that final compensation is determined by various factors such as years of relevant work experience, skills, qualifications, certifications, and other business considerations.",
+  "type": "text",
+  "expect": "factual"
+ },
+ {
+  "label": "I acknowledge that I am authorized to work lawfully in the United States for Turning Point Action",
+  "type": "checkboxes",
+  "expect": "factual"
+ },
+ {
+  "label": "I acknowledge that I am at least 18 years of age",
+  "type": "checkboxes",
+  "expect": "factual"
+ },
+ {
+  "label": "I acknowledge that employees are required to have a valid driver's license, a reliable mode of transportation, and proof of insurance when applicable",
+  "type": "checkboxes",
+  "expect": "factual"
+ },
+ {
+  "label": "Prior to employment, you must consent to a background check. Please acknowledge this requirement.",
+  "type": "multi_value_single_select",
+  "expect": "factual"
+ },
+ {
+  "label": "Do you currently hold any of these certifications/licenses? Please check all that apply. If not, please select NONE.",
+  "type": "multi_value_multi_select",
+  "expect": "factual"
+ },
+ {
+  "label": "In compliance with local law, all persons hired will be required to verify identity and eligibility to work in our countries of operation and to complete the required employment eligibility verification forms upon hire. Please select your passport country to help us understand your work authorization status.",
+  "type": "multi_value_multi_select",
+  "expect": "factual"
+ },
+ {
+  "label": "Do you hold any professional beauty licenses or certifications? (Esthetician, Cosmetologist, MUA certification, etc. — not required.)",
+  "type": "short_text",
+  "expect": "factual"
+ },
+ {
+  "label": "Salary budget for this role is indicated in the job advert. Currently we do not offer performance bonuses or share options. Confirm your awareness of the budget and that this aligns with your expectations.",
+  "type": "boolean",
+  "expect": "factual"
+ },
+ {
+  "label": "I understand that a DBS check may be required",
+  "type": "boolean",
+  "expect": "factual"
+ },
+ {
+  "label": "Are you subject to any agreements with any current or former employers or third parties (such as non-competition, non-solicitation, or confidentiality agreements) that might restrict your ability to work for Amplify?",
+  "type": "Boolean",
+  "expect": "draftable"
+ },
+ {
+  "label": "Are You Entered in Non-Compete or Solicitations Agreements with a Prior Employer? *",
+  "type": "MultiValueSelect",
+  "expect": "draftable"
+ },
+ {
+  "label": "Do you speak, write, or understand any other language?",
+  "type": "Boolean",
+  "expect": "draftable"
+ },
+ {
+  "label": "Please confirm whether you have 3+ years of hands‑on experience with revenue recognition under US GAAP (ASC 606)?",
+  "type": "LongText",
+  "expect": "draftable"
+ },
+ {
+  "label": "Please confirm the office location you'll be working from for this position.",
+  "type": "MultiValueSelect",
+  "expect": "draftable"
+ },
+ {
+  "label": "Are you RBT Certified? If so, please share your RBT certification number below.",
+  "type": "text",
+  "expect": "draftable"
+ },
+ {
+  "label": "If you are not RBT certified, are you willing to become RBT certified within 45 days of hire?",
+  "type": "dropdown",
+  "expect": "draftable"
+ },
+ {
+  "label": "If not RBT certified, have you completed the 40 hr RBT course? Can you provide documentation?",
+  "type": "dropdown",
+  "expect": "draftable"
+ },
+ {
+  "label": "Are you CPR or BLS certified? If not, are you willing to become BLS certified within 30 days of hire?",
+  "type": "dropdown",
+  "expect": "draftable"
+ },
+ {
+  "label": "Please select your current certifications applicable to this job.",
+  "type": "multiplechoice",
+  "expect": "draftable"
+ },
+ {
+  "label": "Do you have an active RBT certification through the BACB?",
+  "type": "dropdown",
+  "expect": "draftable"
+ },
+ {
+  "label": "When you think about your natural behavioral bent in a variety of situations and circumstances, would you consider yourself more QUESTIONING (Logic-focused, objective, skeptical & challenging) or more ACCEPTING (people-focused, empathizing, receptive & agreeable)?",
+  "type": "text",
+  "expect": "draftable"
+ },
+ {
+  "label": "Do you hold an ASE Master Mechanic certification, or do you qualify for the waiver?",
+  "type": "text",
+  "expect": "draftable"
+ },
+ {
+  "label": "3. Some of Terzo Enterprises’ careers require lifting over 60 pounds and demonstrated understanding of power tools. Can you perform the physical duties of the job you are applying for?",
+  "type": "dropdown",
+  "expect": "draftable"
+ },
+ {
+  "label": "Do you have IPC-A-610 / J-STD-001 or any other certifications?",
+  "type": "checkboxes",
+  "expect": "draftable"
+ },
+ {
+  "label": "Do you have a Home Health Aid Certification?",
+  "type": "multi_value_single_select",
+  "expect": "draftable"
+ },
+ {
+  "label": "Do you have a current employment agreement that includes a non-compete and/or non solicitation restrictions?",
+  "type": "multi_value_single_select",
+  "expect": "draftable"
+ },
+ {
+  "label": "If you have an existing non-compete and/or non-solicitation agreement, or are not sure of the implications of your agreement(s) with current or prior employers, please provide details.",
+  "type": "textarea",
+  "expect": "draftable"
+ },
+ {
+  "label": "Which University can sign your University Agreement?",
+  "type": "input_text",
+  "expect": "draftable"
+ },
+ {
+  "label": "Document Policy",
+  "type": "multi_value_single_select",
+  "expect": "draftable"
+ },
+ {
+  "label": "Have you obtained a high school diploma, GED or equivalent certification? Please note you will be required to verify this as part of your onboarding process.",
+  "type": "multi_value_single_select",
+  "expect": "draftable"
+ },
+ {
+  "label": "Do you have experience directly selling products, services, and service agreements in the commercial and/or industrial sectors?",
+  "type": "multi_value_single_select",
+  "expect": "draftable"
+ },
+ {
+  "label": "Do you have a working understanding of core finance and accounting processes: month-end close, reconciliation, accounts payable / procure-to-pay, and revenue?",
+  "type": "multi_value_single_select",
+  "expect": "draftable"
+ },
+ {
+  "label": "Kindly, write down professional certificates you have",
+  "type": "textarea",
+  "expect": "draftable"
+ },
+ {
+  "label": "Do you confirm that the advertised RAL range is aligned with your expectations?",
+  "type": "multi_value_single_select",
+  "expect": "draftable"
+ },
+ {
+  "label": "List any professional licensure or certifications you may have.",
+  "type": "input_text",
+  "expect": "draftable"
+ },
+ {
+  "label": "Are you subject to a non-compete agreement?",
+  "type": "multi_value_single_select",
+  "expect": "draftable"
+ },
+ {
+  "label": "Do you currently hold at least one of the following certifications: ISO 27001 (Lead Implementer/Auditor), CRISC, CISA, CISSP, or equivalent?",
+  "type": "boolean",
+  "expect": "draftable"
+ },
+ {
+  "label": "Have you acted as an Internal Security Assessor and led or significantly supported at least one full PCI DSS certification or assessment cycle?",
+  "type": "boolean",
+  "expect": "draftable"
+ },
+ {
+  "label": "Please confirm your Linkedin profile",
+  "type": "String",
+  "expect": "identity"
+ },
+ {
+  "label": "Confirm your email",
+  "type": "String",
+  "expect": "identity"
+ },
+ {
+  "label": "This role will be hired on a hybrid contract basis with a requirement to work from our Dean Street office in London at least twice per week. Please confirm that you are aware of and can commit this requirement.",
+  "type": "boolean",
+  "expect": "identity"
+ },
+ {
+  "label": "If 'Yes' was your response to the previous question, please provide a copy of the agreement(s).",
+  "type": "File",
+  "expect": "file"
+ },
+ {
+  "label": "Please share the name, phone number, and email address of 3 professional references who can attest to your abilities as a dancer/teacher, at least one should be a direct supervisor. If references are already included in your resume this question ca",
+  "type": "text",
+  "expect": "file"
+ },
+ {
+  "label": "I confirm the information provided in this application, including but not limited to my resume and the above information, is true and correct. I understand that false statements or material omissions of any kind during the hiring process may result in the rescinding of any offer of employment or dismissal once employed.",
+  "type": "multi_value_single_select",
+  "expect": "file"
+ },
+ {
+  "label": "Please upload your NYSC Certificate (Discharge or Exemption)",
+  "type": "input_file",
+  "expect": "file"
+ },
+ {
+  "label": "De acuerdo con la Ley 2466 de 2025 de Colombia, si tienes alguna discapacidad, por favor comparte tu certificado de discapacidad.",
+  "type": "input_file",
+  "expect": "file"
+ },
+ {
+  "label": "EyeCare Partners and it's affiliated companies are an equal opportunity employer. EyeCare Partners does not discriminate in employment on account of race, color, religion, national origin, citizenship status, ancestry, age, sex (including sexual harassment), sexual orientation, marital status, physical or mental disability, military status or unfavorable discharge from military service. I understa",
+  "type": "input_text",
+  "expect": "demographic"
+ }
+]

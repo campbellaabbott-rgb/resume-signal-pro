@@ -37,7 +37,12 @@ import { buildPacket } from "../../supabase/functions/_shared/submission-packet.
 /** Verbatim from the live sample. Not paraphrased — that is the whole point. */
 const LIVE_CONSENT = [
   `<p>Please confirm you've read our <a href="https://tbibank.bg/wp-content/uploads/2023/04/tbi-bank_Privacy-Notice.pdf" target="_blank">Privacy Notice</a> and consent to the processing of your data.</p>`,
-  `<p>Ik heb de <a href="https://www.jobsatpon.com/nl/nl/privacy-statement" target="_blank" rel="noopener">privacy statement</a> gelezen en ga akkoord.</p>`,
+  // VERBATIM, and it was not before. The first version of this fixture ended
+  // "gelezen en ga akkoord" — a tail I completed from a truncated sample. The
+  // real one says "gelezen en begrijp hoe mijn persoonsgegevens worden
+  // verwerkt", which the shipped regex missed live while this test passed.
+  // See consent-corpus.test.ts.
+  `<p>Ik heb de <a href="https://www.jobsatpon.com/nl/nl/privacy-statement" target="_blank" rel="noopener">privacyverklaring</a> van Pon Holding B.V. gelezen en begrijp hoe mijn persoonsgegevens worden verwerkt.</p>`,
 ];
 
 describe("consent and attestation are never drafted", () => {
