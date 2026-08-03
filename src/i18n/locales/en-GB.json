@@ -4220,7 +4220,16 @@
     "emailSaveError": "Couldn't change that — please try again.",
     "reasonSendable": "the agent can submit this one for you",
     "subtitleAuto": "Set your search once. Every night the agent scans new postings, scores them against your résumé, skips companies that churn re-listings, and queues the best few — each with its reasons. It submits the ones it can complete on its own and hands you the rest.",
-    "payBoundaryOffline": "The agent prepares, explains, and never invents an answer — every application arrives ready for you to send. Unattended sending is not running right now. 7 mornings free, then $99/month — everything in Pro included. Cancel anytime."
+    "payBoundaryOffline": "The agent prepares, explains, and never invents an answer — every application arrives ready for you to send. Unattended sending is not running right now. 7 mornings free, then $99/month — everything in Pro included. Cancel anytime.",
+    "addSearch": "Add another search",
+    "deleteSearch": "Delete",
+    "untitledSearch": "My search",
+    "searchLabelPlaceholder": "Name this search — e.g. Product Manager, London",
+    "searchSaved": "Search saved.",
+    "searchDeleted": "Search removed.",
+    "anyRole": "Any role",
+    "searchLimitHit": "You can run up to 10 active searches. Pause one to add another.",
+    "searchLastRun": "Last run: scanned {{scanned}}, queued {{picked}}."
   },
   "applyProfile": {
     "authorized": "Are you authorised to work where you're applying?",

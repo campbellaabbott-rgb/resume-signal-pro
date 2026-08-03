@@ -4220,7 +4220,16 @@
     "emailSaveError": "Wijzigen is niet gelukt — probeer het opnieuw.",
     "reasonSendable": "deze kan de agent voor je versturen",
     "subtitleAuto": "Stel je zoekopdracht één keer in. Elke nacht bekijkt de agent nieuwe vacatures, scoort ze tegen je cv, slaat bedrijven over die eindeloos herplaatsen en zet de beste in de wachtrij — elk met redenen. Wat hij zelf kan afronden verstuurt hij; de rest geeft hij aan jou.",
-    "payBoundaryOffline": "De agent bereidt voor, legt uit en verzint nooit een antwoord — elke sollicitatie komt klaar om door jou verstuurd te worden. Onbeheerd versturen werkt op dit moment niet. 7 ochtenden gratis, daarna $99/maand — alles uit Pro inbegrepen. Altijd opzegbaar."
+    "payBoundaryOffline": "De agent bereidt voor, legt uit en verzint nooit een antwoord — elke sollicitatie komt klaar om door jou verstuurd te worden. Onbeheerd versturen werkt op dit moment niet. 7 ochtenden gratis, daarna $99/maand — alles uit Pro inbegrepen. Altijd opzegbaar.",
+    "addSearch": "Nog een zoekopdracht toevoegen",
+    "deleteSearch": "Verwijderen",
+    "untitledSearch": "Mijn zoekopdracht",
+    "searchLabelPlaceholder": "Geef deze zoekopdracht een naam — bijv. Product Manager, Amsterdam",
+    "searchSaved": "Zoekopdracht opgeslagen.",
+    "searchDeleted": "Zoekopdracht verwijderd.",
+    "anyRole": "Elke functie",
+    "searchLimitHit": "Je kunt maximaal 10 actieve zoekopdrachten hebben. Pauzeer er een om een nieuwe toe te voegen.",
+    "searchLastRun": "Laatste run: {{scanned}} bekeken, {{picked}} in de wachtrij."
   },
   "applyProfile": {
     "authorized": "Mag je werken waar je solliciteert?",

@@ -16,7 +16,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Sunrise, Play, Pause, X, Check, ArrowRight, Sparkles } from "lucide-react";
+import { Sunrise, Play, Pause, X, Check, ArrowRight, Sparkles, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAgentSender } from "@/hooks/useAgentSender";
@@ -33,6 +33,20 @@ interface Mandate {
   apply_mode?: "review" | "auto";
   last_run_summary: { scanned: number; picked: number; skipped_churn: number; skipped_lowfit: number } | null;
 }
+/**
+ * One saved search. Criteria only — the PROFILE (name, phone, résumé, standing
+ * answers) stays on the mandate, one row per person, because two copies of "are
+ * you authorised to work" that can disagree is worse than the one-search limit
+ * this replaces.
+ */
+interface Search {
+  id: number; label: string; active: boolean;
+  q: string; category: string; location: string;
+  remote_only: boolean; salary_min: number | null; daily_count: number;
+  last_run_summary: { scanned: number; picked: number } | null;
+}
+const MAX_SEARCHES = 10; // mirrors the agent_searches_cap trigger
+
 interface QueueItem {
   id: number; posting_id: string; title: string; company: string; location: string;
   salary: string; posted_at: string | null; fit_pct: number | null;
@@ -58,6 +72,24 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState({ q: "", category: "", location: "", remote_only: false, salary_min: "", daily_count: 5 });
 
+  // MANY SEARCHES, ONE PROFILE.
+  //
+  // `searches` null means the table has not answered yet OR is not there — the
+  // migration may land after this build. In that case the panel falls back to
+  // the single-mandate form it has always shown, rather than rendering an empty
+  // list that reads as "the agent forgot your search".
+  const [searches, setSearches] = useState<Search[] | null>(null);
+  const [editingId, setEditingId] = useState<number | "new" | null>(null);
+  const [label, setLabel] = useState("");
+
+  const loadSearches = useCallback(async () => {
+    const { data, error } = await sb.from("agent_searches")
+      .select("id,label,active,q,category,location,remote_only,salary_min,daily_count,last_run_summary")
+      .eq("user_id", userId).order("created_at", { ascending: true });
+    if (error) { setSearches(null); return; }
+    setSearches((data ?? []) as Search[]);
+  }, [userId]);
+
   useEffect(() => {
     void (async () => {
       const [{ data: m }, { data: qRows }] = await Promise.all([
@@ -69,8 +101,67 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
         setForm({ q: m.q, category: m.category, location: m.location, remote_only: m.remote_only, salary_min: m.salary_min?.toString() ?? "", daily_count: m.daily_count });
       }
       if (Array.isArray(qRows)) setQueue(qRows as QueueItem[]);
+      await loadSearches();
     })();
-  }, [userId]);
+  }, [userId, loadSearches]);
+
+  /** Insert or update one search. The trigger enforces the ceiling; this only reports it. */
+  const saveSearch = useCallback(async () => {
+    const row = {
+      user_id: userId,
+      label: (label.trim() || t("agentQueue.untitledSearch", "My search")).slice(0, 60),
+      q: form.q.trim(), category: form.category, location: form.location.trim(),
+      remote_only: form.remote_only,
+      salary_min: form.salary_min ? parseInt(form.salary_min, 10) || null : null,
+      daily_count: Math.max(1, Math.min(10, form.daily_count)),
+      updated_at: new Date().toISOString(),
+    };
+    setBusy(true);
+    const { error } = editingId === "new" || editingId == null
+      ? await sb.from("agent_searches").insert(row)
+      : await sb.from("agent_searches").update(row).eq("id", editingId);
+    setBusy(false);
+    if (error) {
+      // The 10-search ceiling lives in a database trigger, so this is where a
+      // user meets it. Saying "couldn't save" for a rule we chose would make
+      // our limit look like a fault.
+      const hit = /at most 10 active searches/i.test(String(error.message ?? ""));
+      toast.error(hit
+        ? t("agentQueue.searchLimitHit", "You can run up to 10 active searches. Pause one to add another.")
+        : t("agentQueue.saveError", "Couldn't save — please try again."));
+      return;
+    }
+    setEditingId(null); setLabel(""); setEditing(false);
+    await loadSearches();
+    toast.success(t("agentQueue.searchSaved", "Search saved."));
+  }, [userId, label, form, editingId, loadSearches, t]);
+
+  const toggleSearch = useCallback(async (s: Search) => {
+    const { error } = await sb.from("agent_searches")
+      .update({ active: !s.active, updated_at: new Date().toISOString() }).eq("id", s.id);
+    if (error) { toast.error(t("agentQueue.saveError", "Couldn't save — please try again.")); return; }
+    await loadSearches();
+  }, [loadSearches, t]);
+
+  const deleteSearch = useCallback(async (s: Search) => {
+    const { error } = await sb.from("agent_searches").delete().eq("id", s.id);
+    if (error) { toast.error(t("agentQueue.saveError", "Couldn't save — please try again.")); return; }
+    await loadSearches();
+    toast.success(t("agentQueue.searchDeleted", "Search removed."));
+  }, [loadSearches, t]);
+
+  /** Open the shared criteria form against a specific search, or a blank one. */
+  const editSearch = useCallback((s: Search | null) => {
+    if (s) {
+      setEditingId(s.id); setLabel(s.label);
+      setForm({ q: s.q, category: s.category, location: s.location, remote_only: s.remote_only,
+        salary_min: s.salary_min?.toString() ?? "", daily_count: s.daily_count });
+    } else {
+      setEditingId("new"); setLabel("");
+      setForm({ q: "", category: "", location: "", remote_only: false, salary_min: "", daily_count: 5 });
+    }
+    setEditing(true);
+  }, []);
 
   useEffect(() => {
     if (!email) { setAgentActive(false); return; }
@@ -232,9 +323,17 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
         </div>
       )}
 
-      {/* Mandate editor / status */}
+      {/* Criteria editor — for one saved search, or for the mandate itself on
+          the pre-migration fallback path. */}
       {(editing || !mandate) ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+          {/* Only when editing a SEARCH. A name is what makes a morning queue
+              of eight jobs from three searches readable rather than a list. */}
+          {editingId != null && (
+            <input value={label} onChange={(e) => setLabel(e.target.value)} maxLength={60}
+              placeholder={t("agentQueue.searchLabelPlaceholder", "Name this search — e.g. Product Manager, NYC")}
+              className="sm:col-span-2 rounded-lg border border-border bg-background px-3 py-2 text-sm font-semibold" />
+          )}
           <input value={form.q} onChange={(e) => setForm((f) => ({ ...f, q: e.target.value }))}
             placeholder={t("agentQueue.fieldQ", "Role keywords (e.g. data engineer)")}
             className="rounded-lg border border-border bg-background px-3 py-2 text-sm" />
@@ -261,12 +360,15 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
               className="w-16 rounded-lg border border-border bg-background px-2 py-1 text-sm" />
           </label>
           <div className="sm:col-span-2 flex gap-2">
-            <button onClick={() => void saveMandate(true)} disabled={busy || agentActive !== true || !resumeReady}
+            {/* One button, two jobs. Editing a SEARCH writes agent_searches;
+                the fallback path (no searches table yet) still activates the
+                mandate exactly as before. */}
+            <button onClick={() => void (editingId != null ? saveSearch() : saveMandate(true))} disabled={busy || agentActive !== true || !resumeReady}
               className="inline-flex items-center gap-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold px-4 py-2 hover:bg-primary/90 disabled:opacity-50">
               <Play className="w-3.5 h-3.5" /> {t("agentQueue.activate", "Activate mandate")}
             </button>
             {mandate && (
-              <button onClick={() => setEditing(false)} className="text-sm text-muted-foreground px-3 py-2 hover:text-foreground">
+              <button onClick={() => { setEditing(false); setEditingId(null); setLabel(""); }} className="text-sm text-muted-foreground px-3 py-2 hover:text-foreground">
                 {t("agentQueue.cancel", "Cancel")}
               </button>
             )}
@@ -280,6 +382,84 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
               {t("agentQueue.needResume", "Save a résumé for matching first (above) — the agent scores every posting against it.")}
             </p>
           )}
+        </div>
+      ) : searches !== null ? (
+        /* MANY SEARCHES. A real job hunt is not one set of criteria —
+           "Product Manager, NYC, >=140k" and "Program Manager, remote, >=120k"
+           are different searches with different floors. Each one is listed with
+           its own on/off, because pausing a search you are unsure about is the
+           move people actually want, not deleting it.
+
+           `searches === null` (below) means the table has not answered — the
+           migration may not have landed yet — so the panel falls back to the
+           single-mandate summary rather than showing an empty list that reads
+           as "the agent forgot your search". */
+        <div className="mb-4">
+          <div className="flex flex-wrap items-center gap-2 mb-2">
+            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${mandate.active ? "bg-success/10 text-success" : "bg-muted text-muted-foreground"}`}>
+              {mandate.active
+                ? (agentActive === false
+                  ? t("agentQueue.statusAwaiting", "Active — awaiting subscription")
+                  : t("agentQueue.statusActive", "Active"))
+                : t("agentQueue.statusPaused", "Paused")}
+            </span>
+            <button onClick={() => void saveMandate(!mandate.active)} disabled={busy || (agentActive === false && !mandate.active)} className="inline-flex items-center gap-1 text-[13px] text-primary hover:underline disabled:opacity-50">
+              {mandate.active ? <><Pause className="w-3 h-3" />{t("agentQueue.pause", "Pause")}</> : <><Play className="w-3 h-3" />{t("agentQueue.resume", "Resume")}</>}
+            </button>
+          </div>
+
+          <ul className="space-y-2">
+            {searches.map((s) => (
+              <li key={s.id} className="rounded-xl border border-border bg-background/50 p-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-semibold text-sm text-foreground truncate">{s.label}</span>
+                  {!s.active && (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+                      {t("agentQueue.statusPaused", "Paused")}
+                    </span>
+                  )}
+                  <span className="ml-auto flex items-center gap-3 text-[13px]">
+                    <button onClick={() => editSearch(s)} className="text-primary hover:underline">{t("agentQueue.edit", "Edit")}</button>
+                    <button onClick={() => void toggleSearch(s)} className="text-primary hover:underline">
+                      {s.active ? t("agentQueue.pause", "Pause") : t("agentQueue.resume", "Resume")}
+                    </button>
+                    <button onClick={() => void deleteSearch(s)} className="text-muted-foreground hover:text-destructive">
+                      {t("agentQueue.deleteSearch", "Delete")}
+                    </button>
+                  </span>
+                </div>
+                <p className="text-[12px] text-muted-foreground truncate mt-0.5">
+                  {[s.q, s.category && t(`jobsPage.categories.${s.category}`, s.category), s.location,
+                    s.remote_only ? t("agentQueue.fieldRemote", "Remote only") : "",
+                    s.salary_min ? `$${s.salary_min.toLocaleString()}+` : ""].filter(Boolean).join(" · ")
+                    || t("agentQueue.anyRole", "Any role")}
+                </p>
+                {/* Per-search, because a summary stamped on the user would be
+                    last-writer-wins across three searches. */}
+                {s.last_run_summary && (
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    {t("agentQueue.searchLastRun", "Last run: scanned {{scanned}}, queued {{picked}}.", {
+                      scanned: s.last_run_summary.scanned, picked: s.last_run_summary.picked,
+                    })}
+                  </p>
+                )}
+              </li>
+            ))}
+          </ul>
+
+          <div className="mt-2 flex items-center gap-3">
+            <button
+              onClick={() => editSearch(null)}
+              disabled={busy || searches.filter((s) => s.active).length >= MAX_SEARCHES}
+              className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-primary hover:underline disabled:opacity-50 disabled:no-underline">
+              <Plus className="w-3.5 h-3.5" /> {t("agentQueue.addSearch", "Add another search")}
+            </button>
+            {searches.filter((s) => s.active).length >= MAX_SEARCHES && (
+              <span className="text-[12px] text-muted-foreground">
+                {t("agentQueue.searchLimitHit", "You can run up to 10 active searches. Pause one to add another.")}
+              </span>
+            )}
+          </div>
         </div>
       ) : (
         <div className="flex flex-wrap items-center gap-2 mb-4 text-[13px] text-muted-foreground">

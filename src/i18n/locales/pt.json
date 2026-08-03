@@ -4220,7 +4220,16 @@
     "emailSaveError": "Não foi possível alterar — tente novamente.",
     "reasonSendable": "o agente pode enviar esta candidatura por si",
     "subtitleAuto": "Configure a sua pesquisa uma vez. Todas as noites o agente analisa novas vagas, pontua-as com o seu currículo, ignora empresas que republicam sem parar e coloca as melhores em fila, cada uma com os seus motivos. Envia as que consegue completar sozinho e entrega-lhe as restantes.",
-    "payBoundaryOffline": "O agente prepara, explica e nunca inventa uma resposta — cada candidatura chega pronta para você enviar. O envio automático não está em funcionamento no momento. 7 manhãs grátis, depois US$ 99/mês — tudo do Pro incluído. Cancele quando quiser."
+    "payBoundaryOffline": "O agente prepara, explica e nunca inventa uma resposta — cada candidatura chega pronta para você enviar. O envio automático não está em funcionamento no momento. 7 manhãs grátis, depois US$ 99/mês — tudo do Pro incluído. Cancele quando quiser.",
+    "addSearch": "Adicionar outra busca",
+    "deleteSearch": "Excluir",
+    "untitledSearch": "Minha busca",
+    "searchLabelPlaceholder": "Nomeie esta busca — ex. Product Manager, São Paulo",
+    "searchSaved": "Busca salva.",
+    "searchDeleted": "Busca removida.",
+    "anyRole": "Qualquer cargo",
+    "searchLimitHit": "Você pode ter até 10 buscas ativas. Pause uma para adicionar outra.",
+    "searchLastRun": "Última execução: {{scanned}} analisadas, {{picked}} na fila."
   },
   "applyProfile": {
     "authorized": "Tens autorização para trabalhar onde te candidatas?",

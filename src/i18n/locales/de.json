@@ -4220,7 +4220,16 @@
     "emailSaveError": "Änderung fehlgeschlagen – bitte erneut versuchen.",
     "reasonSendable": "Diese Bewerbung kann der Agent für Sie absenden",
     "subtitleAuto": "Suche einmal einrichten. Jede Nacht sichtet der Agent neue Stellen, bewertet sie anhand Ihres Lebenslaufs, überspringt Firmen mit ständigen Neuausschreibungen und stellt die besten in die Warteschlange – jeweils mit Begründung. Was er allein ausfüllen kann, sendet er; den Rest übergibt er Ihnen.",
-    "payBoundaryOffline": "Der Agent bereitet vor, begründet und erfindet nie eine Antwort — jede Bewerbung kommt fertig zum Absenden bei dir an. Der unbeaufsichtigte Versand läuft derzeit nicht. 7 Morgen gratis, danach 99 $/Monat — alles aus Pro inklusive. Jederzeit kündbar."
+    "payBoundaryOffline": "Der Agent bereitet vor, begründet und erfindet nie eine Antwort — jede Bewerbung kommt fertig zum Absenden bei dir an. Der unbeaufsichtigte Versand läuft derzeit nicht. 7 Morgen gratis, danach 99 $/Monat — alles aus Pro inklusive. Jederzeit kündbar.",
+    "addSearch": "Weitere Suche hinzufügen",
+    "deleteSearch": "Löschen",
+    "untitledSearch": "Meine Suche",
+    "searchLabelPlaceholder": "Benenne diese Suche — z. B. Product Manager, Berlin",
+    "searchSaved": "Suche gespeichert.",
+    "searchDeleted": "Suche entfernt.",
+    "anyRole": "Beliebige Rolle",
+    "searchLimitHit": "Du kannst bis zu 10 aktive Suchen haben. Pausiere eine, um eine weitere hinzuzufügen.",
+    "searchLastRun": "Letzter Lauf: {{scanned}} geprüft, {{picked}} eingereiht."
   },
   "applyProfile": {
     "authorized": "Bist du berechtigt, dort zu arbeiten, wo du dich bewirbst?",

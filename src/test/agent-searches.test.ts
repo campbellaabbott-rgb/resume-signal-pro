@@ -129,3 +129,39 @@ describe("agent-runner fans out per search", () => {
       .toMatch(/searches: runRows\.length/);
   });
 });
+
+describe("the Account panel can actually manage several searches", () => {
+  const panel = readFileSync(resolve(root, "src/components/account/MorningQueuePanel.tsx"), "utf8");
+
+  it("reads and writes agent_searches", () => {
+    expect(panel).toMatch(/\.from\("agent_searches"\)/);
+    for (const verb of ["insert", "update", "delete"]) {
+      expect(panel, `panel cannot ${verb} a search`).toMatch(new RegExp(`agent_searches"\\)[\\s\\S]{0,120}\\.${verb}\\(|\\.${verb}\\(`));
+    }
+  });
+
+  it("falls back to the single-mandate form when the table is absent", () => {
+    // The migration may land after this build. An empty list would read as
+    // "the agent forgot your search", which is worse than the old form.
+    expect(panel, "no null-state fallback — a pre-migration user sees an empty list")
+      .toMatch(/searches !== null \?/);
+    expect(panel).toMatch(/setSearches\(null\); return;/);
+  });
+
+  it("names each search, because a queue from three searches is otherwise a list", () => {
+    expect(panel).toMatch(/agentQueue\.searchLabelPlaceholder/);
+  });
+
+  it("reports the database's own ceiling as a rule, not as a failure", () => {
+    // The cap is a trigger. If the panel surfaced it as "couldn't save", our
+    // own limit would read to the user as a bug in the product.
+    expect(panel).toMatch(/at most 10 active searches/);
+    expect(panel).toMatch(/agentQueue\.searchLimitHit/);
+  });
+
+  it("mirrors the trigger's ceiling rather than inventing its own", () => {
+    expect(panel).toMatch(/const MAX_SEARCHES = 10/);
+    const sql = migration("agent_searches");
+    expect(sql, "UI and trigger disagree on the ceiling").toMatch(/n >= 10/);
+  });
+});

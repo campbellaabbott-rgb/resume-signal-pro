@@ -4220,7 +4220,16 @@
     "emailSaveError": "Hindi na-update — subukan muli.",
     "reasonSendable": "kaya itong isumite ng agent para sa iyo",
     "subtitleAuto": "Isaayos ang iyong paghahanap nang minsanan. Gabi-gabi, sinusuri ng agent ang mga bagong trabaho, isinusukat ang mga ito sa iyong résumé, nilalaktawan ang mga kumpanyang paulit-ulit magpost, at pinipila ang pinakamahusay — may kasamang dahilan. Isinusumite niya ang kayang tapusin mag-isa at iniaabot sa iyo ang iba.",
-    "payBoundaryOffline": "Naghahanda, nagpapaliwanag, at hindi kailanman gumagawa-gawa ng sagot ang agent — handa nang ipadala mo ang bawat aplikasyon. Hindi tumatakbo ngayon ang awtomatikong pagpapadala. Libre ang 7 umaga, tapos $99/buwan — kasama ang lahat ng nasa Pro. Puwedeng kanselahin anumang oras."
+    "payBoundaryOffline": "Naghahanda, nagpapaliwanag, at hindi kailanman gumagawa-gawa ng sagot ang agent — handa nang ipadala mo ang bawat aplikasyon. Hindi tumatakbo ngayon ang awtomatikong pagpapadala. Libre ang 7 umaga, tapos $99/buwan — kasama ang lahat ng nasa Pro. Puwedeng kanselahin anumang oras.",
+    "addSearch": "Magdagdag ng ibang search",
+    "deleteSearch": "Burahin",
+    "untitledSearch": "Aking search",
+    "searchLabelPlaceholder": "Pangalanan ang search na ito — hal. Product Manager, Maynila",
+    "searchSaved": "Na-save ang search.",
+    "searchDeleted": "Inalis ang search.",
+    "anyRole": "Kahit anong role",
+    "searchLimitHit": "Hanggang 10 aktibong search lang. I-pause ang isa para makapagdagdag.",
+    "searchLastRun": "Huling takbo: {{scanned}} na-scan, {{picked}} naka-queue."
   },
   "applyProfile": {
     "authorized": "May pahintulot ka bang magtrabaho kung saan ka nag-a-apply?",
