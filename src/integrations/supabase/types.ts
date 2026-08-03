@@ -455,6 +455,57 @@ export type Database = {
         }
         Relationships: []
       }
+      agent_searches: {
+        Row: {
+          active: boolean
+          category: string
+          created_at: string
+          daily_count: number
+          id: number
+          label: string
+          last_run_at: string | null
+          last_run_summary: Json | null
+          location: string
+          q: string
+          remote_only: boolean
+          salary_min: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          active?: boolean
+          category?: string
+          created_at?: string
+          daily_count?: number
+          id?: never
+          label?: string
+          last_run_at?: string | null
+          last_run_summary?: Json | null
+          location?: string
+          q?: string
+          remote_only?: boolean
+          salary_min?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          active?: boolean
+          category?: string
+          created_at?: string
+          daily_count?: number
+          id?: never
+          label?: string
+          last_run_at?: string | null
+          last_run_summary?: Json | null
+          location?: string
+          q?: string
+          remote_only?: boolean
+          salary_min?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       agent_submissions: {
         Row: {
           answers: Json
