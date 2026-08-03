@@ -1454,8 +1454,8 @@ serve(async (req) => {
     } else if (!globalRateLimitResult.data && !isHeartbeatProbe) {
       console.log(`[FREE-KEYWORD-SCAN] Global rate limit exceeded for IP: ${clientIp}`);
       return new Response(
-        JSON.stringify({ error: 'Too many requests. Please try again later.', rateLimited: true }),
-        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: 'Too many requests. Please try again later.', rateLimited: true, code: 'rate_limited_budget' }),
+        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Retry-After': '3600' } }
       );
     }
 

@@ -95,8 +95,8 @@ serve(async (req) => {
     } else if (!globalAllowed) {
       console.log(`[PARSE-DOCX] Global rate limit exceeded for IP: ${clientIp}`);
       return new Response(
-        JSON.stringify({ error: "Rate limit exceeded. Please try again later." }),
-        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: "Rate limit exceeded. Please try again later.", code: "rate_limited_budget" }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": "3600" } }
       );
     }
 
@@ -113,8 +113,8 @@ serve(async (req) => {
     } else if (!allowed) {
       console.log(`[PARSE-DOCX] Rate limit exceeded for IP: ${clientIp}`);
       return new Response(
-        JSON.stringify({ error: "Rate limit exceeded. Please try again later." }),
-        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: "Rate limit exceeded. Please try again later.", code: "rate_limited_function" }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": "3600" } }
       );
     }
 

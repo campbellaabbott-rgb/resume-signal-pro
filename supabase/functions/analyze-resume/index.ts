@@ -743,8 +743,8 @@ serve(async (req) => {
     } else if (!globalAllowed) {
       console.log(`[ANALYZE-RESUME] Global rate limit exceeded for IP: ${clientIp}`);
       return new Response(
-        JSON.stringify({ error: ERROR_MESSAGES.RATE_LIMITED }),
-        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: ERROR_MESSAGES.RATE_LIMITED, code: 'rate_limited_budget' }),
+        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Retry-After': '3600' } }
       );
     }
 

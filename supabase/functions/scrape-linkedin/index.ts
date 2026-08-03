@@ -41,8 +41,8 @@ serve(async (req) => {
     } else if (!globalAllowed) {
       console.log(`[SCRAPE-LINKEDIN] Global rate limit exceeded for IP: ${clientIp}`);
       return new Response(
-        JSON.stringify({ success: false, error: 'Rate limit exceeded. Please try again later or paste your profile text instead.' }),
-        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ success: false, error: 'Rate limit exceeded. Please try again later or paste your profile text instead.', code: 'rate_limited_budget' }),
+        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Retry-After': '3600' } }
       );
     }
 
@@ -59,8 +59,8 @@ serve(async (req) => {
     } else if (!allowed) {
       console.log(`[SCRAPE-LINKEDIN] Rate limit exceeded for IP: ${clientIp}`);
       return new Response(
-        JSON.stringify({ success: false, error: 'Rate limit exceeded. Please try again later or paste your profile text instead.' }),
-        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ success: false, error: 'Rate limit exceeded. Please try again later or paste your profile text instead.', code: 'rate_limited_function' }),
+        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Retry-After': '3600' } }
       );
     }
 

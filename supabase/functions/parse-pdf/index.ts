@@ -122,9 +122,13 @@ serve(async (req) => {
       console.error("[PARSE-PDF] Global rate limit check error:", globalRlError);
     } else if (!globalAllowed) {
       console.log(`[PARSE-PDF] Global rate limit exceeded for IP: ${clientIp}`);
+      // `code` distinguishes this from the per-function ceiling below. Both used
+      // to return byte-identical text, so a 429 could not be attributed to
+      // either without logs that RLS makes unreadable — which is how board
+      // traffic exhausting this budget got reported as "PDF parse failures".
       return new Response(
-        JSON.stringify({ error: "Rate limit exceeded. Please try again later." }),
-        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: "Rate limit exceeded. Please try again later.", code: "rate_limited_budget" }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": "3600" } }
       );
     }
 
@@ -141,8 +145,8 @@ serve(async (req) => {
     } else if (!allowed) {
       console.log(`[PARSE-PDF] Rate limit exceeded for IP: ${clientIp}`);
       return new Response(
-        JSON.stringify({ error: "Rate limit exceeded. Please try again later." }),
-        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: "Rate limit exceeded. Please try again later.", code: "rate_limited_function" }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": "3600" } }
       );
     }
 

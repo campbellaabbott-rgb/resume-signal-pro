@@ -313,8 +313,8 @@ serve(async (req) => {
     } else if (!rateLimitResult.data) {
       logStep("Rate limit exceeded", { ip: clientIp });
       return new Response(
-        JSON.stringify({ error: "Too many requests. Please try again later." }),
-        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: "Too many requests. Please try again later.", code: "rate_limited_function" }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": "3600" } }
       );
     }
 
@@ -323,8 +323,8 @@ serve(async (req) => {
     } else if (!globalRateLimitResult.data) {
       logStep("Global rate limit exceeded", { ip: clientIp });
       return new Response(
-        JSON.stringify({ error: "Too many requests. Please try again later." }),
-        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: "Too many requests. Please try again later.", code: "rate_limited_budget" }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": "3600" } }
       );
     }
 

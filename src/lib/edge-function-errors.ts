@@ -106,7 +106,9 @@ const STATUS_CODE_MAP: Record<number, { title: string; description: string; isRe
   },
   429: {
     title: 'Too many requests',
-    description: 'You\'ve made too many requests. Please wait a few minutes before trying again.',
+    // The window is 60 minutes, not "a few". Saying minutes sent people straight
+    // back to retry, fail again, and report it as the upload being broken.
+    description: 'You\'ve hit the hourly limit. Please try again later, or paste your résumé text instead.',
     isRetryable: true,
     code: 'RATE_LIMIT',
   },
