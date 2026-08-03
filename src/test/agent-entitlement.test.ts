@@ -27,6 +27,7 @@ import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import {
+  effectiveDailyCap,
   entitledFromRows,
   isEntitled,
   normalizeEmail,
@@ -297,5 +298,61 @@ describe("no consumer re-derives the comparison", () => {
   it.each(CONSUMERS)("%s imports the shared helper", (rel) => {
     const src = readFileSync(resolve(root, rel), "utf8");
     expect(src).toMatch(/import\s*\{[^}]*\bisEntitled\b[^}]*\}\s*from\s*"\.\.\/_shared\/agent-entitlement\.ts"/);
+  });
+});
+
+/**
+ * A LIMIT THE CUSTOMER SETS FOR THEMSELVES IS A SUGGESTION.
+ *
+ * auto_apply_daily_cap is chosen by the candidate, 1–20, with no relationship
+ * to what they pay. A seven-day trial could therefore authorise the same twenty
+ * unattended applications a day as a paying subscriber — and a trial is free to
+ * start and repeatable with another address.
+ *
+ * The tier is now a CEILING over that choice. Never a target: someone who set 3
+ * gets 3 on any tier, because raising a person's send rate because they
+ * upgraded is a change they did not ask for, applied to something that sends
+ * messages in their name.
+ */
+describe("effectiveDailyCap clamps the candidate's choice to their tier", () => {
+  it("a paying subscriber gets what they asked for", () => {
+    expect(effectiveDailyCap(20, "active")).toBe(20);
+    expect(effectiveDailyCap(7, "active")).toBe(7);
+  });
+
+  it("a trial is capped below what they could type", () => {
+    expect(effectiveDailyCap(20, "trialing")).toBe(5);
+    expect(effectiveDailyCap(6, "trialing")).toBe(5);
+  });
+
+  it("a lower choice always wins — this is a ceiling, not a target", () => {
+    expect(effectiveDailyCap(3, "active")).toBe(3);
+    expect(effectiveDailyCap(3, "trialing")).toBe(3);
+    expect(effectiveDailyCap(1, "trialing")).toBe(1);
+  });
+
+  it("an unrecognised status sends nothing", () => {
+    // A status this code does not know must not authorise sending BY being
+    // unknown. Falling back to the chosen value would make every future Stripe
+    // status a full-rate tier by default.
+    for (const s of ["past_due", "canceled", "paused", "", null, undefined, "ACTIVE"]) {
+      expect(effectiveDailyCap(20, s), String(s)).toBe(0);
+    }
+  });
+
+  it("refuses junk in the chosen value rather than trusting it", () => {
+    for (const junk of [0, -5, NaN, Infinity, "abc", null, undefined]) {
+      expect(effectiveDailyCap(junk, "active"), String(junk)).toBe(0);
+    }
+    // A fractional cap floors rather than rounding up — 2.9 authorises 2.
+    expect(effectiveDailyCap(2.9, "active")).toBe(2);
+  });
+
+  it("apply-agent actually uses it at the release decision", () => {
+    const agent = readFileSync(
+      resolve(__dirname, "../../supabase/functions/apply-agent/index.ts"), "utf8");
+    expect(agent, "the raw user-chosen cap is still being passed through")
+      .not.toMatch(/dailyCap: m\.auto_apply_daily_cap\s*,/);
+    expect(agent).toMatch(/dailyCap: effectiveDailyCap\(m\.auto_apply_daily_cap, sub\?\.status\)/);
   });
 });

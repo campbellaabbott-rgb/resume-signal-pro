@@ -23,7 +23,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { buildPacket, type PacketQuestion, type Profile, type StandingAnswers } from "../_shared/submission-packet.ts";
 import { decideRelease } from "../_shared/apply-release.ts";
 import { automationFor } from "../_shared/apply-automation.ts";
-import { ENTITLEMENT_COLUMNS, normalizeEmail, rowIsEntitled } from "../_shared/agent-entitlement.ts";
+import { ENTITLEMENT_COLUMNS, effectiveDailyCap, normalizeEmail, rowIsEntitled } from "../_shared/agent-entitlement.ts";
 import { nextRunStamp } from "../_shared/run-stamp.ts";
 
 // Bumped whenever this function's behaviour changes. It rides along in the run
@@ -439,7 +439,13 @@ serve(async (req) => {
           source,
           allowedSources: m.auto_apply_sources ?? [],
           sentToday,
-          dailyCap: m.auto_apply_daily_cap,
+          // THE LOWER OF WHAT THEY CHOSE AND WHAT THEIR TIER ALLOWS.
+          // auto_apply_daily_cap is picked by the candidate with no relation to
+          // what they pay, so a seven-day trial could authorise the same twenty
+          // unattended sends a day as a subscriber. A limit the customer sets
+          // for themselves is a suggestion. `sub` is the subscriber row this
+          // loop already fetched to check entitlement, so the tier is free.
+          dailyCap: effectiveDailyCap(m.auto_apply_daily_cap, sub?.status),
           alreadySubmitted: false,
           fitPct: q.fit_pct,
           minFitPct: MIN_FIT_PCT,

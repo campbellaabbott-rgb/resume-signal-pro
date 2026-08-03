@@ -81,6 +81,49 @@ export function entitledFromRows(rows: SubscriberRow[] | null | undefined, now: 
 }
 
 /**
+ * HOW MANY APPLICATIONS A DAY THIS TIER MAY SEND.
+ *
+ * auto_apply_daily_cap is chosen by the candidate, 1–20, with no relationship
+ * to what they pay. A seven-day trial could therefore authorise the same twenty
+ * unattended applications a day as a paying subscriber — and a trial costs
+ * nothing to start, needs no card at checkout past the first step, and can be
+ * repeated with another address. "The customer picks their own limit" is not a
+ * rate limit, it is a suggestion.
+ *
+ * A trial is a smaller number on purpose, not a worse product: five real
+ * applications a day is a fair demonstration of what the agent does, and the
+ * ceiling is the thing that makes abuse of a free week uninteresting.
+ *
+ * THE CANDIDATE'S CHOICE STILL WINS WHEN IT IS LOWER. This is a ceiling, never
+ * a target — someone who set 3 gets 3 on any tier. Raising a person's cap
+ * because they upgraded would be a change they did not ask for, applied to
+ * something that sends messages in their name.
+ */
+export const TIER_SEND_CEILING: Readonly<Record<string, number>> = {
+  active: 20,
+  trialing: 5,
+};
+
+/** Tiers with no entry send nothing — rowIsEntitled has already refused them. */
+export function tierCeiling(status: unknown): number {
+  return TIER_SEND_CEILING[String(status ?? "")] ?? 0;
+}
+
+/**
+ * The cap actually in force: the lower of what the candidate chose and what
+ * their tier allows.
+ *
+ * Returns 0 for an unknown tier rather than falling back to the chosen value —
+ * a status this code does not recognise must not be able to authorise sending
+ * by being unrecognised.
+ */
+export function effectiveDailyCap(chosen: unknown, status: unknown): number {
+  const n = Number(chosen);
+  const want = Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
+  return Math.min(want, tierCeiling(status));
+}
+
+/**
  * ASK THE SET THE SAME WAY IT WAS BUILT. entitledFromRows normalises every key
  * it stores, so a lookup with a raw address silently misses.
  *
