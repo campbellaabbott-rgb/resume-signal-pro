@@ -168,10 +168,25 @@ case "${1:-}" in
       -d '{"action":"ping","worker_id":"applyd-arm","version":"arm","claimed":0}')
     case "$CODE" in
       200)
+        # EVIDENCE, NOT AN ASSERTION. "broker ACCEPTED the credential" on its
+        # own is a sentence this script prints; it is not something anybody
+        # else can check. The ping it is based on writes a heartbeat row
+        # (agent_worker_ping), which is what makes senderOnline true for the
+        # next 15 minutes — so printing the broker's own reply and the time
+        # turns the claim into something verifiable from the other side.
+        #
+        # This mattered: a report of "broker ACCEPTED the credential" arrived
+        # while the server still read senderOnline=false and this machine had
+        # an empty .env and no launch agent. With no evidence attached, there
+        # was no way to tell a real success from a misremembered line.
         echo "  broker ACCEPTED the credential."
+        echo "    reply: $(head -c 120 /tmp/applyd-arm.out)"
+        echo "    at:    $(date -u '+%Y-%m-%dT%H:%M:%SZ') (heartbeat valid 15 min)"
+        echo "    file:  $HERE/.env"
         "$0" install
         echo
         echo "  Armed. Next: ./mac/applyd watch   (headed, slowed — watch the first one go)"
+        echo "  Paste the three lines above if anyone needs to confirm this ran."
         ;;
       401|403)
         echo "  broker REJECTED it ($CODE) — not installing."
