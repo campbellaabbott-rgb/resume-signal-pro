@@ -21,7 +21,7 @@ import type { BlockedQuestion } from "./apply.js";
 import { applyToPosting } from "./apply.js";
 import { ADAPTERS, BLOCKED } from "./vendors/index.js";
 import type { PacketFieldKey } from "./vendors/types.js";
-import type { StandingAnswers } from "./questions/match.js";
+import { normaliseLabel, type StandingAnswers } from "./questions/match.js";
 
 const WORKER_ID = process.env.WORKER_ID ?? `worker-${Math.random().toString(36).slice(2, 8)}`;
 // Between applications. Not evasion — plain courtesy to an employer's server,
@@ -147,6 +147,34 @@ function toFieldKeys(
     // First alias wins, and an already-filled key is not overwritten: the
     // earliest label is the one the packet builder considered primary.
     if (hit && !out[hit[1]]) out[hit[1]] = field;
+  }
+  return out;
+}
+
+/**
+ * The packet fields that are QUESTION LABELS, not adapter fields.
+ *
+ * `toFieldKeys` above keeps the entries an adapter fills directly — name,
+ * email, phone. Everything it drops is a label read off the employer's own
+ * form, and for the draftable ones apply-agent has already written a grounded
+ * answer. Until 2026-08-03 they were dropped here and nowhere else looked at
+ * them, so the worker refused postings as "no standing answer covers ..." while
+ * carrying the answer in memory. See PreparedAnswers in questions/match.ts.
+ *
+ * Only `source: "drafted"` is taken. A `standing`/`profile` entry is one the
+ * StandingAnswers path already owns, and letting a packet copy shadow the live
+ * profile would reintroduce the drift the standing rules exist to prevent. The
+ * cover note is excluded because toStanding already places it.
+ */
+function toPrepared(
+  raw: Record<string, { value: string; source: string }>,
+): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const [label, field] of Object.entries(raw ?? {})) {
+    if (label === COVER_NOTE_FIELD_KEY) continue;
+    if (field?.source !== "drafted") continue;
+    const v = String(field.value ?? "").trim();
+    if (v) out.set(normaliseLabel(label), v);
   }
   return out;
 }
@@ -338,6 +366,9 @@ async function runOne(
       learned,
       applyUrl: p.apply_url, source: src, fields: toFieldKeys(p.fields ?? {}),
       resumePath: staged?.path, answers,
+      // The drafted answers apply-agent already wrote for this posting's real
+      // questions. Dropped on the floor until 2026-08-03.
+      prepared: toPrepared(p.fields ?? {}),
     });
   } finally {
     // Always clean up. A worker that runs for days would otherwise accumulate

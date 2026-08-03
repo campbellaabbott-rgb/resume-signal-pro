@@ -19,7 +19,7 @@
 import type { Browser, Page } from "playwright";
 import { adapterFor, BLOCKED } from "./vendors/index.js";
 import type { PacketFieldKey, VendorAdapter } from "./vendors/types.js";
-import { planAnswers, type StandingAnswers } from "./questions/match.js";
+import { planAnswers, type PreparedAnswers, type StandingAnswers } from "./questions/match.js";
 import { applyResolution } from "./questions/answer.js";
 import { isLearnable, type LearnedAnswers } from "./questions/learned.js";
 
@@ -33,6 +33,10 @@ export type ApplyInput = {
   /** Questions this candidate has already answered on earlier forms. Consulted
    *  only where a refusal means "we do not hold this" — see questions/learned.ts. */
   learned?: LearnedAnswers;
+  /** Answers apply-agent drafted for THIS posting's real questions, keyed by
+   *  normalised label. Resolves ONLY `unrecognised` refusals — see
+   *  PreparedAnswers in questions/match.ts. */
+  prepared?: PreparedAnswers;
   applyUrl: string;
   source: string;
   /** Keyed by PacketFieldKey. Anything the adapter cannot place is reported, not guessed at. */
@@ -230,7 +234,7 @@ export async function applyToPosting(browser: Browser, input: ApplyInput): Promi
             return { kind: "not-submitted", reason: `form asks ${required.length} question(s) and no standing answers are on file` };
           }
         } else {
-          const { answerable, blocking } = planAnswers(asked, answers, adapter.mappedNames, input.learned);
+          const { answerable, blocking } = planAnswers(asked, answers, adapter.mappedNames, input.learned, input.prepared);
           if (blocking.length > 0) {
             const why = blocking.slice(0, 3)
               .map((b: { r: { kind: string; category?: string; why?: string } }) => (b.r.kind === "unanswerable" ? `${b.r.category}: ${b.r.why}` : ""))

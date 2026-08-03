@@ -616,17 +616,76 @@ export function matchQuestion(
   q: DomQuestion,
   a: StandingAnswers,
   learned?: LearnedAnswers,
+  prepared?: PreparedAnswers,
 ): Resolution | null {
   const standing = matchStanding(q, a);
   if (!standing || standing.kind !== "unanswerable") return standing;
-  if (!learned || !learned.size) return standing;
-  if (!isLearnable(standing.category)) return standing;
 
-  const hit = fromLearned(q, learned);
-  if (!hit) return standing;
-  if (hit.kind === "choose") return { kind: "choose", category: standing.category, option: hit.option! };
-  if (hit.kind === "check") return { kind: "check", category: standing.category };
-  return { kind: "fill", category: standing.category, value: hit.value! };
+  if (learned && learned.size && isLearnable(standing.category)) {
+    const hit = fromLearned(q, learned);
+    if (hit) {
+      if (hit.kind === "choose") return { kind: "choose", category: standing.category, option: hit.option! };
+      if (hit.kind === "check") return { kind: "check", category: standing.category };
+      return { kind: "fill", category: standing.category, value: hit.value! };
+    }
+  }
+
+  // LAST, AND ONLY FOR `unrecognised`. See PreparedAnswers.
+  if (standing.category === "unrecognised") {
+    const drafted = fromPrepared(q, prepared);
+    if (drafted) return { kind: "fill", category: "unrecognised", value: drafted };
+  }
+  return standing;
+}
+
+/**
+ * Answers apply-agent already wrote for THIS posting, keyed by question label.
+ *
+ * WHY THIS EXISTS — measured 2026-08-03, and it is the gap that made the whole
+ * question pipeline pointless on the submit path. apply-agent harvests the
+ * employer's real questions from six vendors, drafts an answer for each
+ * draftable one against the résumé AND the job description, runs every draft
+ * past the grounding gate, and ships the survivors in `packet.fields`. The
+ * worker received all of that and read exactly one key out of it — the cover
+ * note — then refused postings with "no standing answer covers ...".
+ *
+ * A live dry run showed the shape of the waste: "How familiar are you with
+ * Service Titan?" and "What are the brands or types of units you have worked
+ * on?" both blocked as `unrecognised`. Both are ordinary résumé questions that
+ * apply-agent had already answered.
+ *
+ * THREE RULES, none of them optional:
+ *
+ *  1. LAST. Standing rules run to completion first, then learned answers. A
+ *     draft can never shadow the profile, and never overrides the candidate's
+ *     own previous words.
+ *  2. ONLY `unrecognised`. Every other refusal is a refusal OF PRINCIPLE — a
+ *     consent, a truthfulness declaration, a work-authorisation fact, a salary
+ *     expectation. Those must come from the person or not at all, and a
+ *     generated sentence is exactly what they exist to prevent. `unrecognised`
+ *     is the one category that means "nothing in our schema covers this", which
+ *     is precisely what a grounded draft is for.
+ *  3. ALREADY GATED. buildPacket only emits a field when `d.supported` is true;
+ *     an unsupported draft becomes an `unsupported-answer` blocker and never
+ *     reaches the wire. So everything arriving here has passed the honesty gate
+ *     once already — this does not relax it, it stops discarding its output.
+ */
+export type PreparedAnswers = ReadonlyMap<string, string>;
+
+/** Labels differ in case, spacing and a trailing required-marker. Normalise both ends. */
+export function normaliseLabel(s: string): string {
+  return String(s ?? "")
+    .toLowerCase()
+    .replace(/[*✱]|\(required\)|\(optional\)/g, " ")
+    .replace(/[\s ]+/g, " ")
+    .replace(/[:?.\s]+$/, "")
+    .trim();
+}
+
+function fromPrepared(q: DomQuestion, prepared?: PreparedAnswers): string | null {
+  if (!prepared || !prepared.size) return null;
+  const v = prepared.get(normaliseLabel(q.label));
+  return v && v.trim() ? v.trim() : null;
 }
 
 /** Split a form's questions into what we can answer and what blocks the send. */
@@ -635,12 +694,13 @@ export function planAnswers(
   answers: StandingAnswers,
   alreadyMapped: AlreadyMapped,
   learned?: LearnedAnswers,
+  prepared?: PreparedAnswers,
 ): { answerable: Array<{ q: DomQuestion; r: Resolution }>; blocking: Array<{ q: DomQuestion; r: Resolution }> } {
   const answerable: Array<{ q: DomQuestion; r: Resolution }> = [];
   const blocking: Array<{ q: DomQuestion; r: Resolution }> = [];
   for (const q of questions) {
     if (alreadyMapped.has(q.name)) continue;
-    const r = matchQuestion(q, answers, learned);
+    const r = matchQuestion(q, answers, learned, prepared);
     if (!r) continue;
     if (r.kind === "unanswerable") {
       // Only a REQUIRED question blocks. An optional one we cannot answer is
