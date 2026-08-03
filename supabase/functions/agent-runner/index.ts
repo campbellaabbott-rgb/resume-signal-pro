@@ -34,6 +34,12 @@ interface MandateRow {
   remote_only: boolean; salary_min: number | null; daily_count: number; resume_text: string;
   apply_mode: "review" | "auto";
 }
+/** One saved search. The profile stays on the mandate; only criteria live here. */
+interface SearchRow {
+  id: number; user_id: string; label: string;
+  q: string; category: string; location: string;
+  remote_only: boolean; salary_min: number | null; daily_count: number;
+}
 interface PostingRow {
   id: string; title: string; company: string; company_token: string; location: string;
   apply_url: string; salary: string | null; category: string; posted_at: string | null;
@@ -114,6 +120,35 @@ serve(async (req) => {
     entitled = entitledFromRows(subs);
   }
 
+  // SAVED SEARCHES — many per candidate.
+  //
+  // agent_mandates is `user_id PRIMARY KEY`, so it could hold exactly one set
+  // of criteria. A real job hunt is not one: "Product Manager, NYC, >=140k" and
+  // "Program Manager, remote, >=120k" are different searches with different
+  // floors. The criteria now live in agent_searches; the PROFILE stays on the
+  // mandate, because two copies of "are you authorised to work" that can
+  // disagree is worse than the limitation being lifted.
+  //
+  // A missing table is treated as "no searches", not as an error, so this
+  // function is safe to deploy before or after its migration.
+  const searchesByUser = new Map<string, SearchRow[]>();
+  if (userIds.length) {
+    const { data: sRows, error: sErr } = await client
+      .from("agent_searches")
+      .select("id, user_id, label, q, category, location, remote_only, salary_min, daily_count")
+      .eq("active", true)
+      .in("user_id", userIds);
+    if (sErr) {
+      console.warn(`[AGENT-RUNNER] agent_searches unavailable, using mandate criteria: ${sErr.message?.slice(0, 120)}`);
+    } else {
+      for (const s of (sRows ?? []) as SearchRow[]) {
+        const list = searchesByUser.get(s.user_id) ?? [];
+        list.push(s);
+        searchesByUser.set(s.user_id, list);
+      }
+    }
+  }
+
   const sinceIso = new Date(Date.now() - LOOKBACK_HOURS * 3600_000).toISOString();
   let processed = 0, totalPicked = 0;
   // WHY THESE COUNTERS EXIST. This function reported `mandates: 0` for four
@@ -124,10 +159,73 @@ serve(async (req) => {
   // answer might simply have been "nobody has created a mandate".
   let skippedUnentitled = 0, skippedNoResume = 0;
 
+  // GATE PER USER, THEN FAN OUT PER SEARCH.
+  //
+  // The two checks below are facts about a PERSON — are they entitled, do they
+  // have a usable résumé — not about a search. Running them inside the
+  // per-search loop would count one unentitled subscriber three times and make
+  // skipped_unentitled a number of searches pretending to be a number of
+  // people. That is the same "one number for two things" fault the counters
+  // themselves were added to remove.
+  const eligible: MandateRow[] = [];
   for (const m of (mandates ?? []) as MandateRow[]) {
     if (!isEntitled(entitled, m.email)) { skippedUnentitled++; continue; }
     if ((m.resume_text ?? "").trim().length < 100) { skippedNoResume++; continue; }
-    processed++;
+    eligible.push(m);
+  }
+  processed = eligible.length;
+
+  // Each saved search becomes its own run row, carrying the user's profile with
+  // that search's criteria. The loop body below is unchanged: a run row has the
+  // same field names a mandate had, so `m.q` and friends keep working.
+  //
+  // FALLBACK IS DELIBERATE. If agent_searches is missing (function deployed
+  // ahead of its migration) or a user has no rows yet, the mandate's own
+  // columns are used. An agent that silently stops finding jobs because a table
+  // is not there yet is worse than one that keeps doing what it did yesterday.
+  type RunRow = MandateRow & { search_id: number; search_label: string };
+  const runRows: RunRow[] = [];
+  for (const m of eligible) {
+    const list = searchesByUser.get(m.user_id) ?? [];
+    if (list.length) {
+      for (const s of list) {
+        runRows.push({
+          ...m,
+          q: s.q, category: s.category, location: s.location,
+          remote_only: s.remote_only, salary_min: s.salary_min,
+          daily_count: s.daily_count,
+          search_id: s.id, search_label: s.label,
+        });
+      }
+    } else {
+      runRows.push({ ...m, search_id: 0, search_label: "My search" });
+    }
+  }
+
+  // STAMP THE SEARCH THAT RAN, NOT THE USER.
+  //
+  // Both summary writes targeted agent_mandates by user_id. With several
+  // searches per candidate that is last-writer-wins: three searches run, three
+  // summaries are written to the same row, and the two that finished first are
+  // erased. "Why did my Product Manager search find nothing" then has no
+  // answer, because only the last search's numbers survived.
+  //
+  // search_id 0 means the fallback path (no agent_searches rows yet), where the
+  // mandate IS the search and the old behaviour is still correct.
+  const stampRun = async (r: RunRow, summary: Record<string, number>) => {
+    const now = new Date().toISOString();
+    if (r.search_id > 0) {
+      await client.from("agent_searches").update({
+        last_run_at: now, last_run_summary: summary, updated_at: now,
+      }).eq("id", r.search_id);
+    } else {
+      await client.from("agent_mandates").update({
+        last_run_at: now, last_run_summary: summary, updated_at: now,
+      }).eq("user_id", r.user_id);
+    }
+  };
+
+  for (const m of runRows) {
 
     // Candidate postings: genuinely new to the board, mandate filters applied
     // in SQL, newest-stated first so freshness wins ties before scoring.
@@ -178,11 +276,7 @@ serve(async (req) => {
     }
 
     if (cErr || !cands?.length) {
-      await client.from("agent_mandates").update({
-        last_run_at: new Date().toISOString(),
-        last_run_summary: { scanned: 0, picked: 0, skipped_churn: 0, skipped_lowfit: 0 },
-        updated_at: new Date().toISOString(),
-      }).eq("user_id", m.user_id);
+      await stampRun(m, { scanned: 0, picked: 0, skipped_churn: 0, skipped_lowfit: 0 });
       continue;
     }
 
@@ -265,16 +359,12 @@ serve(async (req) => {
       else totalPicked += rows.length;
     }
 
-    await client.from("agent_mandates").update({
-      last_run_at: new Date().toISOString(),
-      last_run_summary: {
-        scanned: cands.length,
-        picked: picks.length,
-        skipped_churn: skippedChurn,
-        skipped_lowfit: skippedLowfit,
-      },
-      updated_at: new Date().toISOString(),
-    }).eq("user_id", m.user_id);
+    await stampRun(m, {
+      scanned: cands.length,
+      picked: picks.length,
+      skipped_churn: skippedChurn,
+      skipped_lowfit: skippedLowfit,
+    });
   }
 
   return json({
@@ -293,6 +383,11 @@ serve(async (req) => {
     mandates_total_error: cErr?.message ?? null,
     skipped_unentitled: skippedUnentitled,
     skipped_no_resume: skippedNoResume,
+    // `mandates` counts PEOPLE the agent ran for; `searches` counts the saved
+    // searches it ran across them. Reporting only one of these makes a user
+    // with four searches indistinguishable from four users with one — and the
+    // number that matters when picks look low is usually the other one.
+    searches: runRows.length,
     ms: Date.now() - startedAt,
   });
 });
