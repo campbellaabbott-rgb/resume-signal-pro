@@ -2,6 +2,8 @@
 # Apply worker, on a Mac. One command for each thing you actually do.
 #
 #   ./mac/applyd arm       paste the secret once; verifies, then installs
+#   ./mac/applyd arm-visible  same, but echoes the paste (if yours won't paste
+#                             into a hidden prompt). Nobody watching, please.
 #   ./mac/applyd check     what the queue says right now (no browser)
 #   ./mac/applyd once      one pass: send what's waiting, then exit
 #   ./mac/applyd watch     headed + slowed, so you can WATCH a submission
@@ -90,7 +92,7 @@ case "${1:-}" in
     esac
     ;;
 
-  arm)
+  arm|arm-visible)
     # One command between a fresh clone and a running sender.
     #
     # The secret is read from STDIN, never argv. An argument lands in shell
@@ -106,10 +108,44 @@ case "${1:-}" in
     fi
     chmod 600 "$HERE/.env"
 
-    printf "Paste APPLY_WORKER_SECRET (input hidden), then Enter: "
-    IFS= read -rs SECRET
-    echo
-    if [ -z "$SECRET" ]; then echo "  nothing entered — aborting, .env untouched."; exit 2; fi
+    # ECHO A CHARACTER COUNT, NOT THE SECRET.
+    #
+    # The first version printed "input hidden" and read silently. Pasting into
+    # it looks identical to a frozen terminal: no dots, no cursor movement,
+    # nothing. Someone pastes, sees no response, presses Enter to make it
+    # register, and gets an abort that scrolls past — the file is never written
+    # and the next run reports the secret "missing", which reads as though the
+    # paste was wrong rather than never delivered. That happened, and the
+    # evidence was unambiguous: zero characters on disk, not a wrong value.
+    #
+    # So the prompt now says how many characters it received. That reveals a
+    # length and nothing else — enough to see the paste landed, useless to
+    # anyone reading over a shoulder.
+    echo "  The secret is in Lovable -> Backend -> Secrets -> APPLY_WORKER_SECRET"
+    if [ "${1:-}" = "arm-visible" ]; then
+      echo "  VISIBLE MODE — the secret will be echoed as you paste it."
+      printf "  Paste it now, then press Enter: "
+      IFS= read -r SECRET
+    else
+      echo "  Paste is INVISIBLE — no dots will appear. That is normal."
+      printf "  Paste it now, then press Enter: "
+      IFS= read -rs SECRET
+      echo
+    fi
+    if [ -z "$SECRET" ]; then
+      echo
+      echo "  Nothing arrived — .env untouched, nothing installed."
+      echo "  The paste did not reach the prompt. Two things that cause it:"
+      echo "    - Enter pressed before pasting (the input really is invisible)"
+      echo "    - a terminal that blocks paste into a hidden prompt"
+      echo
+      echo "  If your terminal will not paste into a hidden prompt, use:"
+      echo "      ./mac/applyd arm-visible"
+      echo "  which echoes the secret as you type. Only do that with nobody"
+      echo "  watching your screen, and clear the scrollback afterwards."
+      exit 2
+    fi
+    echo "  received ${#SECRET} characters."
 
     # Preserve every other key; replace this one.
     TMP="$(mktemp)"
