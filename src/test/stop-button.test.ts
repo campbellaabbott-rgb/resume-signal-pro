@@ -81,3 +81,46 @@ describe("stop means stop, at every gate", () => {
     expect(gate).toBeLessThan(entitlementCall);
   });
 });
+
+/**
+ * THE GATE HAS TO BE OBSERVABLE OR IT IS STILL AN ASSUMPTION.
+ *
+ * The stop-button fix shipped and could not be confirmed. job-board publishes
+ * its version in `status`; apply-agent puts its version in its own 403 for
+ * exactly this purpose. apply-broker — the LAST gate before a packet reaches an
+ * employer's form — answered every unauthenticated caller with a bare
+ * `{"error":"unauthorized"}`.
+ *
+ * So the most safety-critical component in the chain was the only one whose
+ * deployed state could not be checked without the worker credential, which
+ * lives on one laptop. The deploy report read "paused-agent release refusal
+ * live" — true, and derived from the source that was deployed rather than from
+ * asking the broker. Those are different kinds of statement, and for a control
+ * whose whole job is to make something stop, the difference matters.
+ */
+describe("the broker says which build is deployed", () => {
+  it("puts the version in its 401", () => {
+    expect(code(broker), "an unauthenticated caller cannot tell which build is live")
+      .toMatch(/error: "unauthorized", version: BUILD_VERSION/);
+  });
+
+  it("declares BUILD_VERSION before the refusal uses it", () => {
+    // `const` is not hoisted: a use above the declaration is a ReferenceError
+    // at request time, turning every 401 into a 500.
+    const c = code(broker);
+    expect(c.indexOf("const BUILD_VERSION")).toBeLessThan(c.indexOf('error: "unauthorized"'));
+  });
+
+  it("still says nothing about the secret itself", () => {
+    // A version is not a credential. A missing secret already returns 503
+    // further up and must keep doing so — the 401 must not become a way to
+    // probe whether a key is configured.
+    const c = code(broker);
+    const idx = c.indexOf('error: "unauthorized"');
+    expect(c.slice(idx, idx + 120)).not.toMatch(/expected|presented|APPLY_WORKER_SECRET/);
+    // The unconfigured case keeps its own distinct status, so the 401 never
+    // becomes a way to probe whether a key exists.
+    expect(c).toMatch(/broker not configured/);
+    expect(c).toMatch(/503/);
+  });
+});

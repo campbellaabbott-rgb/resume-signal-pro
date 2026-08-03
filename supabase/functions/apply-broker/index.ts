@@ -16,7 +16,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { ENTITLEMENT_COLUMNS, normalizeEmail, rowIsEntitled } from "../_shared/agent-entitlement.ts";
 
-const BUILD_VERSION = "2026-08-03.7";
+const BUILD_VERSION = "2026-08-03.8";
 const LEASE_MINUTES = 10;
 const RESUME_URL_TTL_SECONDS = 300; // 5 minutes; the worker downloads and deletes
 
@@ -58,7 +58,31 @@ serve(async (req) => {
   }
   const presented = (req.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "");
   if (!timingSafeEqual(presented, expected)) {
-    return json({ error: "unauthorized" }, 401);
+    /**
+     * THE REFUSAL CARRIES THE BUILD VERSION, and nothing else.
+     *
+     * WHY, measured 2026-08-03: a change shipped to this function — the gate
+     * that stops a paused agent sending — and there was NO WAY TO CONFIRM IT
+     * DEPLOYED. job-board publishes its version in `status`; apply-agent puts
+     * its version in its own 403 for exactly this reason. This function, the
+     * LAST gate before a packet reaches an employer's form, answered every
+     * unauthenticated caller with a bare `{"error":"unauthorized"}`.
+     *
+     * So the most safety-critical component in the chain was the only one
+     * whose deployed state could not be observed without the worker
+     * credential — and the credential lives on one laptop. "The stop button is
+     * live" was an assumption rather than a measurement, which is the precise
+     * condition this codebase keeps having to dig itself out of.
+     *
+     * A version string is not a secret. It reveals nothing about the key, says
+     * nothing about whether one is configured (a missing secret already
+     * returns 503 above, and did so before this change), and is derivable from
+     * the public repository anyway. What it buys is that "did the deploy
+     * land?" is answerable with curl, from anywhere, by anyone — including
+     * whoever is trying to work out why an agent someone paused is still
+     * sending.
+     */
+    return json({ error: "unauthorized", version: BUILD_VERSION }, 401);
   }
 
   let body: Record<string, unknown> = {};
