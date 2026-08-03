@@ -52,6 +52,8 @@ interface QueueItem {
   salary: string; posted_at: string | null; fit_pct: number | null;
   reasons: Array<{ k: string; pct?: number; top?: string[]; n?: number; days?: number }>;
   status: string; created_at: string;
+  /** Which saved search found this. Empty on picks queued before attribution existed. */
+  search_label?: string;
 }
 
 const CATEGORIES = ["", "engineering", "data_ai", "design", "product", "marketing", "sales", "customer", "finance", "legal", "people_hr", "operations", "healthcare", "science", "education", "hospitality_retail", "security", "admin"];
@@ -520,6 +522,15 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                 <span className="text-sm font-semibold text-foreground">{it.title}</span>
                 <span className="text-[12px] text-muted-foreground">{it.company}{it.location ? ` · ${it.location}` : ""}{it.salary ? ` · ${it.salary}` : ""}</span>
+                {/* WHICH SEARCH FOUND IT. Absent on rows queued before
+                    attribution existed, and on the pre-migration fallback path
+                    — rendered only when the row actually carries one rather
+                    than inventing "My search" for a pick we cannot attribute. */}
+                {it.search_label ? (
+                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-primary/10 text-primary self-start">
+                    {it.search_label}
+                  </span>
+                ) : null}
                 {it.fit_pct != null && (
                   <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-primary/10 text-primary">{it.fit_pct}%</span>
                 )}

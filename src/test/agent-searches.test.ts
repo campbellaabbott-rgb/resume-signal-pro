@@ -165,3 +165,40 @@ describe("the Account panel can actually manage several searches", () => {
     expect(sql, "UI and trigger disagree on the ceiling").toMatch(/n >= 10/);
   });
 });
+
+describe("a queued pick records which search found it", () => {
+  // 20260803130000 justified agent_searches.label as existing so "a candidate
+  // can tell WHICH search produced a pick", then queued picks with no search
+  // reference at all and no column to hold one. The reason the field exists was
+  // not delivered by the change that introduced it — claim drift inside a
+  // migration comment, which is the same fault this repo keeps finding in copy.
+  const sql = stripComments(migration("queue_knows_its_search"));
+
+  it("agent_queue has somewhere to put it", () => {
+    expect(sql, "no migration adding search attribution to agent_queue").toContain("ALTER TABLE public.agent_queue");
+    expect(sql).toMatch(/search_id bigint/);
+    expect(sql).toMatch(/search_label text/);
+  });
+
+  it("deleting a search does not delete the jobs it already queued", () => {
+    // Those picks are the candidate's morning. One vanishing because they
+    // tidied up a search is worse than an unattributed row.
+    expect(sql, "ON DELETE CASCADE would take the candidate's queue with it")
+      .toMatch(/ON DELETE SET NULL/);
+    expect(sql, "label must be denormalised, or a deleted search erases the answer")
+      .toMatch(/search_label text NOT NULL DEFAULT ''/);
+  });
+
+  it("the runner actually writes both", () => {
+    expect(runner).toMatch(/search_id: m\.search_id > 0 \? m\.search_id : null/);
+    expect(runner).toMatch(/search_label: m\.search_label/);
+  });
+
+  it("the card shows it only when the row carries one", () => {
+    // Rows queued before attribution existed, and the pre-migration fallback,
+    // have no search. Rendering a default there would attribute a pick to a
+    // search that did not find it.
+    const panel = readFileSync(resolve(root, "src/components/account/MorningQueuePanel.tsx"), "utf8");
+    expect(panel).toMatch(/it\.search_label \?/);
+  });
+});

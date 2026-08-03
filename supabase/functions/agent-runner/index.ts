@@ -351,6 +351,16 @@ serve(async (req) => {
         fit_pct: fit,
         reasons: reasons.filter((r) => (r as { k: string }).k !== "_rank"),
         status: "ready",
+        // WHICH SEARCH FOUND THIS. agent_searches.label exists so a candidate
+        // can tell a queue of eight jobs drawn from three searches apart; the
+        // migration that introduced it said so and did not wire it through.
+        // search_id 0 is the pre-migration fallback path, where there is no
+        // search row to point at.
+        search_id: m.search_id > 0 ? m.search_id : null,
+        // Denormalised: after a search is deleted the pick survives (ON DELETE
+        // SET NULL) and "Product Manager, NYC" is still the true answer to
+        // where it came from, which a join could no longer give.
+        search_label: m.search_label ?? "",
       }));
       // Dedupe on (user_id, posting_id): re-runs and overlapping lookbacks no-op.
       const { error: insErr } = await client.from("agent_queue")
