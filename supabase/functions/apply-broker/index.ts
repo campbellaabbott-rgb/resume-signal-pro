@@ -16,7 +16,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { ENTITLEMENT_COLUMNS, normalizeEmail, rowIsEntitled } from "../_shared/agent-entitlement.ts";
 
-const BUILD_VERSION = "2026-08-01.2";
+const BUILD_VERSION = "2026-08-03.7";
 const LEASE_MINUTES = 10;
 const RESUME_URL_TTL_SECONDS = 300; // 5 minutes; the worker downloads and deletes
 
@@ -118,7 +118,7 @@ serve(async (req) => {
           .select("email,full_name,phone,linkedin,website,city,country,address,postcode," +
             "resume_file_url,work_authorized,requires_sponsorship,willing_to_relocate," +
             "work_authorized_countries,salary_expectation,earliest_start,cover_note," +
-            "share_demographics,consent_to_processing")
+            "share_demographics,consent_to_processing,active")
           .eq("user_id", row.user_id).maybeSingle();
         const mandate = mandateRow as Record<string, unknown> | null;
 
@@ -128,6 +128,32 @@ serve(async (req) => {
         };
 
         if (!mandate) { await unclaim(); continue; }
+
+        /**
+         * THE STOP BUTTON, ENFORCED WHERE STOPPING ACTUALLY HAPPENS.
+         *
+         * `active` is what the candidate toggles when they turn the agent off.
+         * apply-agent has always honoured it — `.eq("active", true)` — so
+         * switching off correctly stops NEW packets being prepared.
+         *
+         * It did not stop anything already prepared. Packets released before
+         * the switch stayed claimable, and this function handed them to a
+         * worker that typed them into an employer's form. Someone who turned
+         * the agent off because they had accepted a job, or changed their mind
+         * about a company, would have watched applications keep going out with
+         * no way to intervene — and the queue drains over hours, so "off" would
+         * have meant "off eventually".
+         *
+         * The comment directly below has said for months that this is the LAST
+         * gate before a packet reaches a form. Entitlement was checked here for
+         * exactly that reason. The candidate's own instruction to stop deserves
+         * at least the same standing as their subscription status.
+         *
+         * Fails closed: a mandate whose `active` is null or missing does not
+         * send. Off is the safe direction for a control whose whole purpose is
+         * to make something stop.
+         */
+        if (mandate.active !== true) { await unclaim(); continue; }
 
         // Entitlement, checked at claim time rather than at prepare time: a
         // lapsed subscriber must stop being applied for the day they lapse.

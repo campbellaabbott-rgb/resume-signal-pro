@@ -151,3 +151,48 @@ describe("ordinary non-English questions still get answered", () => {
     });
   }
 });
+
+/**
+ * COMPOUND WORDS AND DECLENSIONS DEFEAT WHOLE-WORD MATCHING, and the live board
+ * proved it twice on the same day.
+ *
+ * The first multilingual pass shipped with `\bgehalt\b`. A LIVE Recruitee
+ * posting then came back `draftable` for "Wie ist dein Gehaltswunsch /
+ * Wochenstunden?" — German glues its nouns together, so the word boundary the
+ * pattern relied on is not there. The same shape had already bitten Swedish an
+ * hour earlier: `personligt brev` written down, `personliga brev` on the form.
+ *
+ * So the salary and birth terms are STEMS for the compound-forming languages —
+ * de, nl, sv, no, fi — not whole words. Gehaltswunsch, Gehaltserwartung,
+ * salariswens, löneanspråk, lønnskrav, palkkatoive, Geburtsort, Geburtsjahr,
+ * geboorteplaats all resolve now.
+ *
+ * The stems stop short of over-reaching: the six ordinary essay questions in
+ * the block below still classify draftable, which is the property that makes a
+ * stem safe rather than merely wide.
+ */
+describe("compound words and declensions still classify", () => {
+  const FACTUAL_COMPOUNDS = [
+    ["de", "Wie ist dein Gehaltswunsch / Wochenstunden?"],  // verbatim, live
+    ["de", "Was ist deine Gehaltserwartung?"],
+    ["nl", "Wat is je salariswens?"],
+    ["sv", "Vad har du för löneanspråk?"],
+    ["no", "Hva er ditt lønnskrav?"],
+    ["fi", "Mikä on palkkatoiveesi?"],
+  ] as const;
+  for (const [lang, label] of FACTUAL_COMPOUNDS) {
+    it(`${lang}: "${label.slice(0, 40)}" is factual`, () => {
+      expect(classifyQuestion(label, "")).toBe("factual");
+    });
+  }
+
+  const DEMO_COMPOUNDS = [
+    ["de", "Ihr Geburtsort?"], ["de", "Geburtsjahr"],
+    ["nl", "Wat is je geboorteplaats?"],
+  ] as const;
+  for (const [lang, label] of DEMO_COMPOUNDS) {
+    it(`${lang}: "${label}" is demographic`, () => {
+      expect(classifyQuestion(label, "")).toBe("demographic");
+    });
+  }
+});
