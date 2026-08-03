@@ -33,7 +33,10 @@ const ROOT = resolve(__dirname, "../../supabase/functions/job-board");
 /** Updated together with BUILD_VERSION, never on its own. */
 const PINNED = {
   sourcesHash: "62b79a3adda5601f",
-  buildVersion: "2026-08-02.1",
+  // 2026-08-03.4: _shared/application-questions.ts gained the `consent` class,
+  // and job-board imports classifyQuestion — so the deployed bundle changed
+  // even though sources.ts did not. sourcesHash is therefore unchanged.
+  buildVersion: "2026-08-03.4",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {

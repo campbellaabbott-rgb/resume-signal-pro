@@ -87,7 +87,7 @@ const FACTS: Record<string, AutomationFact> = {
   workable: { tier: "click", realQuestions: false, sampled: 60, note: "60/60 captcha" },
   lever: { tier: "click", realQuestions: false, sampled: 57, note: "57/57 captcha" },
   rippling: { tier: "click", realQuestions: false, sampled: 49, note: "49/49 captcha" },
-  recruitee: { tier: "click", realQuestions: false, sampled: 30, note: "26/30 captcha" },
+  recruitee: { tier: "click", realQuestions: true, sampled: 30, note: "26/30 captcha. QUESTIONS HARVESTABLE, measured 2026-08-03: /api/offers/{id} returns open_questions plus the document config (options_cv/cover_letter/photo). 40/40 live postings supported, 127 real questions. The reader shipped with task #201 and this flag was never flipped, so apply-agent — which gates the harvest on it — sent four generic questions to 7,886 postings that publish their actual form" },
   icims: { tier: "click", realQuestions: false, sampled: 60, note: "17/60 captcha — mixed, treat as blocked" },
 
   // Greenhouse is its own case and the reason `tier` alone is not enough.

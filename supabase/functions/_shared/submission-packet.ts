@@ -72,7 +72,13 @@ export type FilledField = {
 };
 
 export type Blocker = {
-  kind: "captcha" | "missing-file" | "missing-standing" | "unsupported-answer" | "unknown-form";
+  // `needs-candidate` is distinct from `missing-standing` on purpose: a standing
+  // answer is one the candidate can set ONCE in their profile and stop being
+  // asked. A consent is per-employer and per-document, so there is nothing to
+  // pre-fill and telling them to "set this once" would be wrong advice.
+  kind:
+    | "captcha" | "missing-file" | "missing-standing" | "unsupported-answer"
+    | "unknown-form" | "needs-candidate";
   detail: string;
 };
 
@@ -170,6 +176,26 @@ export function buildPacket(opts: {
       // silence is the safe default, and it is never a reason to block a send.
       if (!standing.shareDemographics) {
         fields.push({ key: label, value: "Decline to self-identify", source: "declined" });
+      }
+      continue;
+    }
+
+    if (cls === "consent") {
+      // NEVER answered, and unlike a demographic question it is never declined
+      // on the candidate's behalf either. "I have read and agree to the privacy
+      // notice" is a statement about something a specific person did; ticking it
+      // for them is a false statement to an employer, and leaving a required one
+      // silently unticked is a submission the employer will treat as consented.
+      //
+      // A required consent therefore BLOCKS. On the click-to-submit path that
+      // costs nothing — the candidate is already at the form, and the link is
+      // one they should read. On the unattended path it is the difference
+      // between the agent declining to attest and the agent attesting.
+      if (q.required) {
+        blockers.push({
+          kind: "needs-candidate",
+          detail: `"${label}" — a consent you have to give yourself`,
+        });
       }
       continue;
     }

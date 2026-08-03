@@ -16,7 +16,46 @@ export interface DraftedAnswer { question: string; answer: string; supported: bo
  * Exported so the board page gates its "Prep answers" button on the SAME
  * list — it was hardcoded to greenhouse: there, hiding the feature on Ashby
  * and Recruitee postings the backend had supported since task #201. */
-export const REAL_QUESTION_PREFIXES = ["greenhouse:", "ashby:", "recruitee:"];
+/**
+ * Vendors whose REAL application form job-board can read.
+ *
+ * MIRROR of `realQuestionVendors()` in
+ * supabase/functions/_shared/apply-automation.ts, kept in sync by
+ * `src/test/real-question-mirror.test.ts` — the same arrangement as
+ * SENDABLE_VENDORS and the worker's ADAPTERS, and for the same reason: the
+ * table is written for Deno and this is the browser bundle.
+ *
+ * IT HAD DRIFTED, measured 2026-08-03. This list said greenhouse/ashby/
+ * recruitee while the deployed table said ashby/breezy/greenhouse/pinpoint/
+ * teamtailor — disagreeing in BOTH directions at once. Postings on the three
+ * missing vendors silently fell through to inferred questions, which the kit
+ * then labelled as inferred and was honest about, so nothing looked broken; the
+ * candidate simply got a guess where the employer's actual form was available.
+ */
+export const REAL_QUESTION_PREFIXES = [
+  "ashby:", "breezy:", "greenhouse:", "pinpoint:", "recruitee:", "teamtailor:",
+];
+
+/**
+ * Mirror of `cleanQuestionLabel` in
+ * supabase/functions/_shared/application-questions.ts — same reason as the list
+ * above, and the same mirror test. Entities are decoded AFTER tags are stripped
+ * so an escaped `&lt;p&gt;` in real question text cannot become a tag the strip
+ * pass has already walked past.
+ */
+export function stripLabelMarkup(raw: unknown): string {
+  return String(raw ?? "")
+    .replace(/<br\s*\/?>|<\/p>|<\/div>|<\/li>/gi, " ")
+    .replace(/<[^>]*>/g, "")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#0*39;|&apos;|&rsquo;/gi, "'")
+    .replace(/\s+/g, " ")
+    .trim();
+}
 
 export function ApplicationAnswers({
   resumeText,
@@ -72,7 +111,11 @@ export function ApplicationAnswers({
           if (qd?.supported && Array.isArray(qd.questions) && qd.questions.length) {
             questions = qd.questions
               .filter((x): x is { label: string; required?: boolean; type?: string } => typeof x?.label === "string" && !!x.label.trim())
-              .map((x) => ({ label: x.label, required: x.required, type: x.type }));
+              // Live Recruitee labels arrive as HTML — `<p>` wrappers and `<a>`
+              // tags around the very link the question asks you to read. Left
+              // alone they render as tag soup in the kit.
+              .map((x) => ({ label: stripLabelMarkup(x.label), required: x.required, type: x.type }))
+              .filter((x) => x.label !== "");
           }
           if (qd?.supported && Array.isArray(qd.requirements) && qd.requirements.length) {
             setRequirements(qd.requirements.filter((r): r is string => typeof r === "string" && !!r.trim()).slice(0, 6));

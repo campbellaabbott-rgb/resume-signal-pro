@@ -1,9 +1,30 @@
+/**
+ * THIS SUITE USED TO PIN A FILE NOBODY DEPLOYED.
+ *
+ * There were two copies of the automation table: `_shared/apply-automation.ts`,
+ * which all four edge functions import, and `job-board/apply-automation.ts`,
+ * which nothing imported except this test. They had drifted — breezy,
+ * teamtailor and pinpoint said `realQuestions: false` in the orphan and `true`
+ * in the deployed one, and the orphan was missing three exports outright
+ * (`realQuestionVendors`, `SENDABLE_VENDORS`, `isSendableVendor`).
+ *
+ * So the guard below labelled "only Greenhouse claims real published questions"
+ * was green while the shipped table named five vendors. A test pinned to a dead
+ * file is worse than no test: it reports on a state of the world that stopped
+ * existing, and it does it in the confident voice of a passing suite.
+ *
+ * The orphan is deleted and this imports what deploys. `one-fact-table` at the
+ * bottom is what stops the fork coming back.
+ */
 import { describe, expect, it } from "vitest";
+import { readdirSync } from "node:fs";
+import { resolve } from "node:path";
 import {
   automationFor,
   automationLabel,
   isFullyAutomatable,
-} from "../../supabase/functions/job-board/apply-automation.ts";
+  realQuestionVendors,
+} from "../../supabase/functions/_shared/apply-automation.ts";
 
 // This table is a MEASUREMENT (2026-07-29, 298 real apply URLs), and the risk
 // with a measurement written down as code is that it quietly becomes folklore.
@@ -83,13 +104,16 @@ describe("apply automation tiers reflect what was actually measured", () => {
     expect(automationFor("ASHBY").tier).toBe("click");
   });
 
-  it("only Greenhouse claims real published questions", () => {
-    // Verified 2026-07-14 and unchanged: Greenhouse is the one vendor exposing a
-    // posting's actual application questions publicly. Ashby publishes its
-    // posting API but the agent reads real questions only where the fetch is
-    // wired; everywhere else the form is inferred and must say so.
-    expect(automationFor("greenhouse").realQuestions).toBe(true);
-    for (const v of ["smartrecruiters", "bamboohr", "workable", "lever", "workday", "breezy"]) {
+  it("claims real questions for exactly the vendors with a reader wired", () => {
+    // The flag means one thing: job-board's `application-questions` action has a
+    // branch that reads THIS vendor's real form. It is not about CAPTCHA — the
+    // agent can read Greenhouse's and Ashby's questions and still cannot submit
+    // to either. Six as of 2026-08-03; recruitee's reader shipped with the other
+    // five and its flag was left false for three days.
+    expect(realQuestionVendors()).toEqual(
+      ["ashby", "breezy", "greenhouse", "pinpoint", "recruitee", "teamtailor"],
+    );
+    for (const v of ["smartrecruiters", "bamboohr", "workable", "lever", "workday", "icims", "oracle", "rippling"]) {
       expect(automationFor(v).realQuestions, `${v} must not claim real questions`).toBe(false);
     }
   });
@@ -99,6 +123,23 @@ describe("apply automation tiers reflect what was actually measured", () => {
     expect(automationLabel("greenhouse")).toMatch(/CAPTCHA/i);
     expect(automationLabel("lever")).toMatch(/CAPTCHA/i);
     expect(automationLabel("nope")).toMatch(/haven't measured/i);
+  });
+
+  it("there is exactly ONE automation table in the tree", () => {
+    // The defect this suite was blind to for as long as it existed. A second
+    // copy does not announce itself: both files compile, both look authoritative,
+    // and the tests go green against whichever one they happen to import. The
+    // only durable fix is that a second copy cannot appear without failing here.
+    const root = resolve(__dirname, "../../supabase/functions");
+    const found: string[] = [];
+    for (const dir of readdirSync(root, { withFileTypes: true })) {
+      if (!dir.isDirectory()) continue;
+      for (const f of readdirSync(resolve(root, dir.name))) {
+        if (f === "apply-automation.ts") found.push(`${dir.name}/${f}`);
+      }
+    }
+    expect(found, "a fork of the automation table is back — delete it and import _shared")
+      .toEqual(["_shared/apply-automation.ts"]);
   });
 
   it("thin samples stay visibly thin", () => {

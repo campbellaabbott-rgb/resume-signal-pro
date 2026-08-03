@@ -23,13 +23,14 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { buildPacket, type PacketQuestion, type Profile, type StandingAnswers } from "../_shared/submission-packet.ts";
 import { decideRelease } from "../_shared/apply-release.ts";
 import { automationFor } from "../_shared/apply-automation.ts";
+import { classifyQuestion, cleanQuestionLabel } from "../_shared/application-questions.ts";
 import { ENTITLEMENT_COLUMNS, effectiveDailyCap, normalizeEmail, rowIsEntitled } from "../_shared/agent-entitlement.ts";
 import { nextRunStamp } from "../_shared/run-stamp.ts";
 
 // Bumped whenever this function's behaviour changes. It rides along in the run
 // stamp so "the new code has not deployed yet" and "the code deployed but has
 // never run" are different observations rather than the same silence.
-const BUILD_VERSION = "2026-08-02.3";
+const BUILD_VERSION = "2026-08-03.4";
 
 // Wall clock, not a row count. Question fetches and answer drafting are both
 // network-bound and wildly variable, so a fixed "20 packets" budget either wastes
@@ -348,8 +349,19 @@ serve(async (req) => {
           });
           const list = (qr as { questions?: Array<{ label: string; required?: boolean; type?: string }> })?.questions;
           if (Array.isArray(list) && list.length) {
-            questions = list.map((x) => ({ label: x.label, required: x.required, fieldType: x.type, real: true }));
-            real = true;
+            // Labels are cleaned HERE, at the boundary, so every downstream
+            // consumer — classifier, drafter, packet, UI — sees the same text.
+            // Live Recruitee forms return HTML in the label, and markup that
+            // reaches the packet is both unreadable and unclassifiable.
+            questions = list
+              .map((x) => ({
+                label: cleanQuestionLabel(x.label),
+                required: x.required,
+                fieldType: x.type,
+                real: true,
+              }))
+              .filter((x) => x.label !== "");
+            real = questions.length > 0;
           }
         }
         if (!questions.length) {
@@ -364,14 +376,62 @@ serve(async (req) => {
           ];
         }
 
+        /**
+         * THE POSTING TEXT, FETCHED ONCE AND SHARED.
+         *
+         * It used to be fetched only for the cover note, thirty lines below this
+         * one — which meant every drafted ANSWER was written from a résumé, a job
+         * title and a company name, with the posting itself sitting one call away
+         * in the same loop iteration and never asked for.
+         *
+         * That is the difference between "Why do you want to work at Acme?"
+         * answered from the candidate's history alone and the same question
+         * answered against what Acme actually published. generate-application-
+         * answers has always accepted `jobDescription` and puts it in the prompt;
+         * this caller simply never sent it.
+         *
+         * Lazy and memoised: nothing extra is spent on a posting with no
+         * draftable questions and no tailored note, and a posting that needs
+         * both pays for one fetch rather than two. A failure degrades the draft;
+         * it never blocks the send.
+         */
+        let jobDescription = "";
+        let descTried = false;
+        const postingText = async (): Promise<string> => {
+          if (descTried || outOfTime()) return jobDescription;
+          descTried = true;
+          try {
+            const { data: det } = await client.functions.invoke("job-board", {
+              body: { action: "detail", id: q.posting_id },
+            });
+            jobDescription = String((det as { description?: string })?.description ?? "");
+          } catch (e) {
+            console.error(`[APPLY-AGENT] description fetch failed for ${q.posting_id}: ${String(e).slice(0, 120)}`);
+          }
+          return jobDescription;
+        };
+
         // Draft only the questions that need drafting — the classifier already
-        // knows identity/file/demographic/factual are not the LLM's business.
+        // knows identity/file/demographic/factual/consent are not the LLM's
+        // business.
+        //
+        // IT SAID THAT BEFORE, AND FILTERED ON `label.length > 24`. A length
+        // heuristic standing in for a classifier that was imported two files
+        // away: "I have read and agree to the privacy notice" is 43 characters,
+        // so a consent attestation went to the model, and "Current Location" is
+        // 16, so a real question could be dropped for being short. The packet
+        // builder classified correctly and discarded the bad draft afterwards —
+        // but the model had already been asked to write it, and a draft nobody
+        // uses is still a draft that was generated in the candidate's name.
         let drafted: Array<{ label: string; answer: string; supported: boolean; note?: string }> = [];
-        const needsDraft = questions.filter((x) => (x.label ?? "").length > 24);
+        const needsDraft = questions.filter(
+          (x) => classifyQuestion(x.label ?? "", x.fieldType) === "draftable",
+        );
         if (needsDraft.length && m.resume_text) {
           const { data: ans } = await client.functions.invoke("generate-application-answers", {
             body: {
               resumeText: m.resume_text, jobTitle: q.title, jobCompany: q.company,
+              jobDescription: await postingText(),
               questions: needsDraft.map((x) => ({ label: x.label, required: x.required })),
             },
           });
@@ -398,17 +458,17 @@ serve(async (req) => {
           try {
             // The posting text is what makes a tailored note worth having, and
             // it doubles as the gate's supporting context: a figure the employer
-            // published is legitimate to quote back at them.
-            const { data: det } = await client.functions.invoke("job-board", {
-              body: { action: "detail", id: q.posting_id },
-            });
-            const jobDescription = String((det as { description?: string })?.description ?? "");
-
+            // published is legitimate to quote back at them. Shared with the
+            // drafting pass above — same posting, one fetch.
             const { data: cn } = await client.functions.invoke("generate-application-answers", {
               body: {
                 mode: "cover-note",
                 resumeText: m.resume_text,
-                jobTitle: q.title, jobCompany: q.company, jobDescription,
+                jobTitle: q.title, jobCompany: q.company,
+                // Not the bare variable: a posting with no draftable questions
+                // never called this, so reading it directly would send "" and
+                // silently un-tailor the note that asked for the fetch.
+                jobDescription: await postingText(),
                 baseNote: t(m.cover_note), candidateName: m.full_name,
               },
             });

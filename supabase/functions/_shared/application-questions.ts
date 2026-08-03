@@ -8,9 +8,12 @@
 //   - factual/status     → work authorization, sponsorship, salary, start date,
 //                          relocation — NOT derivable from a resume, so an AI would
 //                          have to guess. We refuse; the user fills these in.
+//   - consent/attestation → "I have read and agree to the privacy notice". A
+//                          statement about something THE CANDIDATE DID. See below.
 // Only "draftable" questions get a grounded AI draft. Pure + unit-tested.
 
-export type QuestionClass = "identity" | "file" | "demographic" | "factual" | "draftable";
+export type QuestionClass =
+  | "identity" | "file" | "demographic" | "factual" | "consent" | "draftable";
 
 export interface AppQuestion {
   label: string;
@@ -42,6 +45,37 @@ const FILE = /\b(resume|résumé|cv|cover\s*letter|upload|attach|transcript|port
 // Protected/voluntary self-ID — never auto-answered. Stems match suffixed forms
 // ("disability", "pronouns") so no trailing word-boundary can slip them through.
 const DEMOGRAPHIC = /\b(gender|sex|race|ethnic\w*|hispanic|latin[ox]|veteran|disab\w*|sexual\s+orientation|pronoun\w*|date\s+of\s+birth|marital|religio\w*|nationalit\w*|citizenship|national\s+origin)/i;
+
+/**
+ * CONSENT AND ATTESTATION — the class this classifier was missing, found by
+ * measurement on 2026-08-03 and not by reading the code.
+ *
+ * Sampling 40 live Recruitee forms (127 real questions) turned up labels like:
+ *
+ *   "<p>Please confirm you've read our <a ...>Privacy Notice</a> ...</p>"
+ *   "<p>Ik heb de <a ...>privacy statement</a> gelezen en ga akkoord.</p>"
+ *
+ * Both classified `draftable`, and both are longer than the 24-character
+ * threshold apply-agent uses to decide what to send to the model. So a language
+ * model was going to be asked to WRITE AN ATTESTATION THAT THE CANDIDATE HAD
+ * READ A DOCUMENT — an assertion about an act a specific person did or did not
+ * perform, which no amount of résumé grounding can support, on a question whose
+ * whole purpose is that a human read the link in it.
+ *
+ * That is the same principle as `demographic`, and it is arguably sharper: a
+ * declined EEO question is a non-answer, while a drafted consent is a false
+ * statement made in the candidate's name to a company they want to work for.
+ *
+ * It is not a Recruitee problem. Any vendor whose real questions we read can
+ * carry one; it was invisible until we read enough real forms, exactly like the
+ * `IDENTITY_IF_FIELD` and `FACTUAL` corrections logged above.
+ *
+ * NOT MATCHED ON PURPOSE: "agree" or "consent" alone. "Do you agree that good
+ * design is invisible?" is a real interview question and belongs to the drafter.
+ * Every branch here needs a document, a policy, or an explicit "I have read".
+ */
+const CONSENT =
+  /(privacy\s*(?:notice|policy|statement|declaration)|data\s*protection|gdpr|terms\s*(?:and|&)\s*conditions|terms\s*of\s*(?:use|service)|i\s*(?:have\s*)?(?:read|reviewed)\b[\s\S]{0,60}\b(?:agree|accept|consent|understood|acknowledge)|(?:agree|consent|accept)\w*\s*(?:to|with|met|de)\s*[\s\S]{0,40}(?:terms|policy|notice|statement|process\w*|stor\w*|retain\w*|retention)|consent\s*to\s*(?:the\s*)?(?:processing|storage|retention|use)\s*of|heb\s*[\s\S]{0,40}gelezen|ga\s*akkoord|einverstanden|zustimm\w*|acepto\s*[\s\S]{0,30}(?:pol[ií]tica|t[eé]rminos)|consent\s*(?:form|clause))/i;
 // Facts a resume can't establish — must come from the candidate.
 //
 // EVERYTHING FROM `earliest` ONWARD WAS ADDED 2026-08-01, from the first 118
@@ -73,11 +107,43 @@ const DEMOGRAPHIC = /\b(gender|sex|race|ethnic\w*|hispanic|latin[ox]|veteran|dis
 // to catch them would block half the corpus and quietly turn the agent off.
 const FACTUAL = /(authoriz\w*\s*to\s*work|work\s*authoriz|legal\s*authoriz\w*|require\s*(?:visa\s*)?sponsor|sponsorship|need\s*sponsor|work\s*(?:visa|permit)|(?:need|require|hold|have)\s*(?:a\s*)?(?:valid\s*)?(?:work\s*|employment\s*)?visa|eligible\s*to\s*work|right\s*to\s*work|employment\s*eligib\w*|salary|compensation|desired\s*pay|expected\s*(?:pay|salary|compensation)|pay\s*expectation|notice\s*period|start\s*date|available\s*to\s*start|when\s*can\s*you\s*start|willing\s*to\s*relocate|relocat|able\s*to\s*commute|are\s*you\s*(?:at\s*least\s*)?18|legally\s*(?:eligible|authorized)|do\s*you\s*now\s*or\s*in\s*the\s*future|earliest\s*(?:possible\s*)?(?:date|start)|date\s*you\s*(?:could|can|would)\s*start|over\s*18|18\s*(?:years\s*)?(?:or\s*(?:older|above)|of\s*age)|legal\s*working\s*age|days\s*(?:are\s*)?you\s*available|what\s*days\s*[\w\s]{0,24}available|willing\s*to\s*travel|willing\s*to\s*work\s*(?:in|at)\s*(?:another|a\s*different)|licen[sc]e|security\s*clearance|dbs\s*check|background\s*check|criminal\s*(?:record|convict\w*)|referred\s*you|who\s*referred|close\s*relative|family\s*member|related\s*to\s*(?:any\s*)?(?:current\s*)?(?:employee|staff)|how\s*did\s*you\s*(?:hear|learn)\s*about|how\s*you\s*(?:heard|learned)\s*about|name\s*of\s*the\s*[\w\/]{0,24}\s*(?:staff|contractor|consultant|employee|colleague|relative|referrer)|able\s*to\s*start\s*(?:work|by|on)|start\s*working\s*(?:with|for)\s*us)/i;
 
+/**
+ * Real vendor question labels are not always plain text.
+ *
+ * 2 of 127 live Recruitee labels arrived as HTML — `<p>` wrappers and `<a>`
+ * tags around the very link the candidate is being asked to read. Markup in a
+ * label breaks it twice: it renders as tag soup wherever the packet is shown,
+ * and it defeats the matchers below, which are written against prose. A label
+ * whose consent link is spelled `<a href="...">privacy statement</a>` still has
+ * to classify as consent.
+ *
+ * So classification and display both run on text. Entities are decoded AFTER
+ * tags are stripped, so an escaped `&lt;p&gt;` in genuine question text cannot
+ * become a tag that the strip pass has already gone past.
+ */
+export function cleanQuestionLabel(raw: unknown): string {
+  return String(raw ?? "")
+    .replace(/<br\s*\/?>|<\/p>|<\/div>|<\/li>/gi, " ")
+    .replace(/<[^>]*>/g, "")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#0*39;|&apos;|&rsquo;/gi, "'")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 export function classifyQuestion(label: string, fieldType?: string): QuestionClass {
-  const l = label ?? "";
+  const l = cleanQuestionLabel(label);
   const t = (fieldType ?? "").toLowerCase();
   // Protected self-ID wins over everything — even if phrased oddly.
   if (DEMOGRAPHIC.test(l)) return "demographic";
+  // BEFORE `file`, deliberately. "I consent to my CV being stored for 12
+  // months" contains "CV"; classified as a file field it would have had a
+  // résumé URL pushed into a consent checkbox.
+  if (CONSENT.test(l)) return "consent";
   if (t.includes("file") || FILE.test(l)) return "file";
   // Structured contact/location field types (Ashby: Email/Phone/Location) are
   // identity regardless of label — "Where do you plan on working from?" has no
