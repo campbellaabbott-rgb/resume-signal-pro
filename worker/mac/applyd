@@ -249,6 +249,27 @@ case "${1:-}" in
   <!-- Deliberately NOT KeepAlive. This is a job that finishes, not a daemon;
        KeepAlive would restart it the instant it exited and defeat the whole
        point of exiting when the queue is dry. -->
+  <!-- LAUNCHD DOES NOT READ YOUR SHELL PROFILE. Its default PATH is
+       /usr/bin:/bin:/usr/sbin:/sbin, and node/npm are installed in none of
+       those — Homebrew puts them in /opt/homebrew/bin (Apple silicon) or
+       /usr/local/bin (Intel, and the Node.js .pkg installer on both).
+
+       Measured 2026-08-03: with no PATH here the job ran, reached
+       \`npm run --silent dev\`, and died with exit 127 "npm: command not
+       found" every five minutes. It looks exactly like a working install —
+       the plist loads, launchctl lists the job, no error surfaces anywhere
+       except a log nobody opens. The interactive \`./mac/applyd once\` works
+       fine, because THAT inherits your shell's PATH, so the two disagree and
+       the failing one is the one that matters.
+
+       Both Homebrew prefixes are listed because this file has to work on
+       either architecture, and a directory that does not exist costs nothing.
+       \$PATH is expanded at install time, so a machine with node somewhere
+       unusual still works if it was on PATH when you ran install. -->
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key><string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH</string>
+  </dict>
   <key>StandardOutPath</key><string>$LOG</string>
   <key>StandardErrorPath</key><string>$LOG</string>
   <key>WorkingDirectory</key><string>$HERE</string>

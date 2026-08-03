@@ -444,6 +444,30 @@ async function main() {
   // a crash mid-application, which the lease already exists to cover.
   let firstClaim: broker.ClaimedPacket | null = null;
   {
+    // HEARTBEAT BEFORE THE FIRST CLAIM, and this is not a duplicate of the one
+    // in the loop below — it is the only one an IDLE run ever reaches.
+    //
+    // THE DEADLOCK IT BREAKS, measured 2026-08-03 on the first armed worker.
+    // apply-agent releases nothing unless `agent_sender_online(900)` is true,
+    // and that is fed only by this ping. The loop below pings on every pass
+    // including idle ones — deliberately, and its comment says why. But the
+    // fast-exit twenty lines down (`nothing to do — exiting without starting a
+    // browser`) RETURNS BEFORE THE LOOP, so on an empty queue the worker
+    // claimed, found nothing, and left without ever checking in.
+    //
+    // That is stable in the worst way: the worker only heartbeats once it
+    // already has work, and it can only get work after a heartbeat. A fresh
+    // install would sit at "nothing to do" every five minutes forever while
+    // apply-agent logged "sender OFFLINE — preparing packets but releasing
+    // none", each component behaving exactly as designed and the pair of them
+    // doing nothing. The loop's own comment names the failure — "the system
+    // would talk itself into an outage" — it just could not see this path,
+    // because the fast-exit was added after it.
+    //
+    // Cost is one POST on an idle run, against a browser launch it is skipping.
+    const hello = await broker.ping(WORKER_ID, WORKER_VERSION, 0);
+    if (!hello.ok) console.warn(`[worker] heartbeat failed (${hello.kind}): ${hello.detail}`);
+
     const r = await broker.claim(WORKER_ID, WORKER_VERSION);
     if (!r.ok) {
       // Could not ASK is not the same as nothing to do. Exit non-zero so a
