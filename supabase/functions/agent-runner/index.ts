@@ -20,6 +20,11 @@ import { computeFit } from "../_shared/fit-score.ts";
 import { isSendableVendor, SENDABLE_VENDORS } from "../_shared/apply-automation.ts";
 import { ENTITLEMENT_COLUMNS, entitledFromRows, isEntitled, normalizeEmail, rowIsEntitled } from "../_shared/agent-entitlement.ts";
 
+// Bumped whenever this function changes shape, so a 403 can say WHICH bundle
+// refused — the difference between "the gate is live" and "the old open build
+// is still deployed" is otherwise invisible from outside.
+const BUILD_VERSION = "2026-08-03.1";
+
 const MANDATES_PER_RUN = 200;      // safety cap; batches long before this matters
 const CANDIDATES_PER_MANDATE = 400;
 // A separate, smaller pull for vendors the worker can submit to unattended.
@@ -56,6 +61,35 @@ serve(async (req) => {
     { auth: { persistSession: false } },
   );
   const startedAt = Date.now();
+
+  // AUTHENTICATED. This was open to anyone.
+  //
+  // A POST with an empty body scanned the board, scored every candidate posting
+  // against every subscriber's résumé, and wrote queue rows — hundreds of
+  // database reads and the fit scorer over each one, on demand, from anywhere.
+  // It leaks nothing (the response is counts), so this is a cost and abuse hole
+  // rather than a data one, but "free to trigger, expensive to serve" is the
+  // shape of an outage someone else gets to schedule for us.
+  //
+  // Same gate as apply-agent, deliberately: env key or the vault-held
+  // maintenance key, and the vault is only consulted when a key was actually
+  // presented, so an unauthenticated caller is refused without touching the
+  // database and cannot be used to make refusal expensive.
+  const presented = req.headers.get("x-maintenance-key") ?? "";
+  const envKey = Deno.env.get("AGENT_MAINTENANCE_KEY") ?? "";
+  let authorized = envKey !== "" && presented === envKey;
+  if (!authorized && presented) {
+    const { data: matches } = await client.rpc("agent_maintenance_key_matches", { p_key: presented });
+    authorized = matches === true;
+  }
+  if (!authorized) {
+    // The refusal carries the build version and nothing else — never whether a
+    // key exists, never how long one should be. Same as apply-agent: enough to
+    // tell "the new bundle refused me" from "the old bundle has no gate", which
+    // is the only question worth answering to an unauthenticated caller.
+    console.warn("[AGENT-RUNNER] refused an unauthenticated call");
+    return json({ error: "unauthorized", version: BUILD_VERSION }, 403);
+  }
 
   // Queue hygiene first: unactioned picks older than 48h expire (the cron
   // retention job also does this; doing it here keeps a manual run honest).
