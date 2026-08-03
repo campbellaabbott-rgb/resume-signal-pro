@@ -60,9 +60,67 @@ const FIELDS = Object.fromEntries(
  */
 const RESUME_SEL = 'input[type="file"][accept*="pdf"][accept*="docx"]';
 
-const DECLINE_RE = /decline all non.?necessary|decline all|reject all|only necessary|nur notwendige|refuser/i;
-const APPLY_RE = /^(apply for this job|apply now|apply|jetzt bewerben|bewerben|postuler|solicitar)/i;
-const SUBMIT_RE = /^submit application$/i;
+/**
+ * THE NORDIC GAP, measured 2026-08-03 across 13 live Teamtailor postings.
+ *
+ * Seven of them failed at `resolveFormUrl` with "no form found", and every
+ * single failure was a NON-ENGLISH site: Swedish (attendosverige, vardaga,
+ * purplerekrytering, dentalbusinessgroup), Norwegian (compass-group.no),
+ * Italian (roccofortehotelsitaly), Spanish (kidsandus). Every English tenant
+ * passed. The regex below covered English, German, French and Spanish and
+ * nothing else — on a vendor headquartered in Stockholm, whose heartland is
+ * exactly the languages it could not read. Six of thirteen postings became
+ * unreachable for the sake of one missing alternation.
+ *
+ * WIDENING THIS IS SAFE, and that is a property of the design rather than
+ * luck. `resolveFormUrl` does not trust the button: after clicking it, the
+ * check is `candidate[email]` — a field name the VENDOR controls. A looser
+ * match can therefore only ever click something harmless and then still return
+ * null. Nothing downstream believes a form is present because a button was
+ * found. That is why this can be broadened without a new risk.
+ *
+ * Cookie banners get the same treatment: an overlay that will not dismiss
+ * intercepts the apply click, so a Swedish "Avvisa alla" costs exactly as much
+ * as a missing apply button.
+ */
+const DECLINE_RE = /decline all non.?necessary|decline all|reject all|only necessary|nur notwendige|refuser|avvisa alla|endast nödvändiga|neka alla|avvis alle|kun nødvendige|afvis alle|hylkää|vain välttämättömät|rifiuta tutto|solo necessari|alles weigeren|alleen noodzakelijke|rejeitar tudo|odrzuć wszystko/i;
+const APPLY_RE = /^(apply for this job|apply now|apply|jetzt bewerben|bewerben|postuler|solicitar|inscribirse|postularme|ansök|sök tjänsten|sök jobbet|søk stillingen|søk nå|søk|ansøg|hae paikkaa|hae|candidati|invia candidatura|solliciteer|solliciteren|candidatar|candidate-se|aplikuj|jelentkezem|přihlásit)/i;
+/**
+ * The submit control, in the languages this vendor's tenants actually use.
+ *
+ * SAME BUG AS APPLY_RE, ONE STEP LATER, and it hid behind the first one. With
+ * the form finally reachable on six Nordic/Italian tenants (2026-08-03), every
+ * one of them located all five fields, attached the résumé, read the questions,
+ * found nothing required outstanding — and then reported "stuck", because
+ * `^submit application$` cannot see "Skicka ansökan".
+ *
+ * WIDENED DIFFERENTLY FROM APPLY_RE, ON PURPOSE. A loose apply match is
+ * harmless: the check afterwards is a vendor-controlled field name, so a wrong
+ * click just fails to find a form. A loose SUBMIT match has no such backstop —
+ * it presses the button, and an employer receives an application that cannot be
+ * withdrawn. So every alternative here is FULLY ANCHORED (^...$) and is a
+ * complete button label, never a fragment. "ansök" appears in APPLY_RE as a
+ * prefix and is deliberately absent here: on an application form a bare
+ * "Ansök" could be a nav link back to the listing.
+ *
+ * Verified against the live DOM of the six tenants before being widened.
+ */
+const SUBMIT_RE = new RegExp(
+  "^(" + [
+    "submit application", "submit", "send application",
+    "skicka ansökan", "skicka in ansökan",            // sv
+    "send søknad", "send inn søknaden", "send inn",   // no
+    "send ansøgning", "send ansøgningen",             // da
+    "lähetä hakemus",                                 // fi
+    "invia candidatura", "invia la candidatura",      // it
+    "enviar solicitud", "enviar candidatura",         // es / pt
+    "envoyer ma candidature", "envoyer la candidature", // fr
+    "bewerbung absenden", "bewerbung abschicken",     // de
+    "sollicitatie versturen", "verstuur sollicitatie", // nl
+    "wyślij aplikację",                               // pl
+  ].join("|") + ")$",
+  "i",
+);
 
 /** Clear the consent overlay, choosing the most privacy-preserving option. */
 async function declineCookies(page: Page): Promise<void> {
@@ -104,11 +162,38 @@ export const teamtailor: VendorAdapter = {
       await page.waitForTimeout(4_000);
     }
 
-    // Two of ten sampled tenants exposed no form at all — probably external
-    // apply redirects. They must resolve to null so the worker refuses, rather
-    // than proceeding to submit whatever is on screen.
-    const ok = await page.locator(f("candidate[email]")).count().catch(() => 0);
-    return ok > 0 ? url : null;
+    const inline = await page.locator(f("candidate[email]")).count().catch(() => 0);
+    if (inline > 0) return url;
+
+    /**
+     * THE CANONICAL FORM ROUTE, and it is where most of the "no form" tenants
+     * were hiding. Measured 2026-08-03 across 13 live postings: 7 failed here,
+     * and the note this replaces guessed "probably external apply redirects".
+     * It was wrong. Fetching `{posting}/applications/new` on three of the
+     * failures returned HTTP 200 with `candidate[email]` present in the raw
+     * HTML — the form exists, it is simply not inline and the apply control
+     * never resolved to it.
+     *
+     * That mattered disproportionately because Teamtailor is a Stockholm
+     * company and the failures were Swedish, Norwegian and Italian tenants —
+     * so the gap fell almost entirely on non-English employers, which is
+     * exactly the part of the catalogue nothing else reaches.
+     *
+     * THE GUARD IS UNCHANGED. This is a second place to look, not a second
+     * standard of proof: the return is still conditional on `candidate[email]`
+     * being present, a field name the VENDOR controls. A tenant that genuinely
+     * redirects to an external ATS still resolves to null and is still refused.
+     */
+    const canonical = `${url}/applications/new`;
+    const r2 = await page.goto(canonical, { waitUntil: "domcontentloaded", timeout: 45_000 })
+      .catch(() => null);
+    if (r2 && r2.status() < 400) {
+      await page.waitForTimeout(1_500);
+      await declineCookies(page);
+      const ok2 = await page.locator(f("candidate[email]")).count().catch(() => 0);
+      if (ok2 > 0) return canonical;
+    }
+    return null;
   },
 
   async locate(page, field) {
