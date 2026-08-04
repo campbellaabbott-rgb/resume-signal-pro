@@ -994,6 +994,17 @@ serve(async (req) => {
       EdgeRuntime.waitUntil(sendHeartbeatAlert(overallStatus, errorMessage, checks, totalTime));
     }
 
+    // The apply worker runs on hardware we do not control — currently a laptop,
+    // which macOS sleeps ~11 minutes after you stop touching it unless
+    // `pmset -c sleep 0` is set, and an OS update can revert that silently.
+    // Deliberately OUTSIDE overallStatus: the scanner and board are fine when
+    // the sender is down, and turning this into a platform "down" would page on
+    // the wrong thing.
+    const senderState = await evaluateSenderState(supabase);
+    if (senderState?.shouldAlert) {
+      EdgeRuntime.waitUntil(sendSenderOfflineAlert(senderState));
+    }
+
     return new Response(
       JSON.stringify({
         status: overallStatus,
@@ -1001,7 +1012,11 @@ serve(async (req) => {
         responseTimeMs: totalTime,
         checks,
         skipped,
-        errorMessage
+        errorMessage,
+        // Reported every run, alert or not. An alert that has never fired is an
+        // assumption; this makes the exact inputs curl-able so the rule can be
+        // checked against live data instead of waited on.
+        senderState
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
@@ -1036,6 +1051,150 @@ serve(async (req) => {
     );
   }
 });
+
+/**
+ * IS THE APPLY WORKER ALIVE, AND DOES IT MATTER RIGHT NOW?
+ *
+ * `agent_sender_online()` is a boolean, and false means two unrelated things:
+ * nothing was ever installed, or the thing that was installed died. Alerting on
+ * it would page about a machine that never existed, or stay silent when the real
+ * one stops. `agent_sender_state()` returns the inputs instead, so the rule
+ * lives here in the open and every state is nameable.
+ *
+ * WHY IT IS GATED ON WORK OUTSTANDING. A sleeping worker with no mandate and no
+ * ready packet costs nobody anything — the laptop being shut overnight is normal
+ * and emailing about it nightly would train the alert to be ignored, which is
+ * worse than not having one. The moment there is a mandate or a ready packet,
+ * the same silence means a candidate is not being applied for, and that is the
+ * outage worth waking up to.
+ */
+const SENDER_OFFLINE_SECONDS = Math.max(
+  300,
+  Number(Deno.env.get("SENDER_OFFLINE_ALERT_SECONDS") ?? "3600") || 3600,
+);
+
+interface SenderState {
+  everSeen: boolean;
+  lastSeen: string | null;
+  offlineSeconds: number | null;
+  activeMandates: number;
+  pendingPackets: number;
+  thresholdSeconds: number;
+  shouldAlert: boolean;
+  reason: string;
+}
+
+async function evaluateSenderState(
+  // PromiseLike, not Promise: rpc() returns a PostgrestFilterBuilder, which is
+  // thenable but has no catch/finally. `ReturnType<typeof createClient>` does
+  // not work either — it infers different generics than the call site. Deno's
+  // check catches both; tsconfig.app.json does not cover edge functions.
+  supabase: { rpc: (fn: string, args?: Record<string, unknown>) => PromiseLike<{ data: unknown; error: unknown }> },
+): Promise<SenderState | null> {
+  try {
+    const { data, error } = await supabase.rpc('agent_sender_state');
+    if (error) {
+      // Distinguishable on purpose: before the migration lands this reads
+      // `rpc-missing` rather than silently looking like a healthy sender.
+      console.error('[SCAN-HEARTBEAT] agent_sender_state failed:', error);
+      return {
+        everSeen: false, lastSeen: null, offlineSeconds: null,
+        activeMandates: 0, pendingPackets: 0,
+        thresholdSeconds: SENDER_OFFLINE_SECONDS,
+        shouldAlert: false, reason: 'rpc-missing',
+      };
+    }
+    const row = (Array.isArray(data) ? data[0] : data) as {
+      ever_seen?: boolean; last_seen?: string | null; offline_seconds?: number | null;
+      active_mandates?: number; pending_packets?: number;
+    } | undefined;
+    if (!row) return null;
+
+    const everSeen = row.ever_seen === true;
+    const offlineSeconds = typeof row.offline_seconds === 'number' ? row.offline_seconds : null;
+    const activeMandates = row.active_mandates ?? 0;
+    const pendingPackets = row.pending_packets ?? 0;
+    const workOutstanding = activeMandates > 0 || pendingPackets > 0;
+    const isOffline = everSeen && offlineSeconds !== null && offlineSeconds > SENDER_OFFLINE_SECONDS;
+
+    const reason = !everSeen ? 'never-installed'
+      : !isOffline ? 'online'
+      : !workOutstanding ? 'offline-nothing-at-stake'
+      : 'offline-with-work-outstanding';
+
+    return {
+      everSeen,
+      lastSeen: row.last_seen ?? null,
+      offlineSeconds,
+      activeMandates,
+      pendingPackets,
+      thresholdSeconds: SENDER_OFFLINE_SECONDS,
+      shouldAlert: reason === 'offline-with-work-outstanding',
+      reason,
+    };
+  } catch (e) {
+    console.error('[SCAN-HEARTBEAT] sender state check threw:', e);
+    return null;
+  }
+}
+
+async function sendSenderOfflineAlert(state: SenderState): Promise<void> {
+  try {
+    const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+    const ADMIN_EMAIL = Deno.env.get("ADMIN_EMAIL") || "resumeboostersupp@gmail.com";
+    if (!RESEND_API_KEY) return;
+
+    // Same durable dedupe as the heartbeat alert. 1 per 6 hours: this fires on a
+    // 10-minute schedule, and an outage that lasts a weekend must not send 200
+    // emails. NB `alert:*` is deliberately outside the cross-function request
+    // budget (migration 20260803170000), so alerting can never spend the budget
+    // that résumé upload and checkout depend on.
+    try {
+      const supabaseUrl = Deno.env.get("SUPABASE_URL");
+      const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+      if (supabaseUrl && serviceKey) {
+        const dedupeClient = createClient(supabaseUrl, serviceKey);
+        const { data: allowed } = await dedupeClient.rpc('check_rate_limit', {
+          p_function: 'alert:sender-offline',
+          p_ip: 'global',
+          p_max_requests: 1,
+          p_window_minutes: 360,
+        });
+        if (allowed === false) {
+          console.log('[SCAN-HEARTBEAT] Sender-offline alert suppressed (1 per 6h)');
+          return;
+        }
+      }
+    } catch (_e) { /* dedupe is best-effort — never swallow a real alert */ }
+
+    const mins = state.offlineSeconds === null ? '?' : Math.round(state.offlineSeconds / 60).toString();
+    await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        from: "Resume Booster Alerts <onboarding@resend.dev>",
+        to: [ADMIN_EMAIL],
+        subject: `🔴 Apply worker offline ${mins}m — ${state.activeMandates} mandate(s) waiting`,
+        html: `
+          <h2>The apply worker has stopped</h2>
+          <p>No heartbeat for <strong>${mins} minutes</strong> (last seen
+             ${state.lastSeen ?? 'unknown'}). Applications are not going out.</p>
+          <ul>
+            <li>Active mandates: <strong>${state.activeMandates}</strong></li>
+            <li>Packets ready to send: <strong>${state.pendingPackets}</strong></li>
+          </ul>
+          <p>Most likely cause, if it runs on the Mac: the machine slept. Check
+             <code>pmset -g custom</code> shows <code>sleep 0</code> under AC Power —
+             a macOS update can revert it. Lid open, on the power adapter.</p>
+          <p>You will not get another of these for 6 hours.</p>
+        `,
+      }),
+    });
+    console.log(`[SCAN-HEARTBEAT] Sender-offline alert sent (${mins}m, ${state.activeMandates} mandates)`);
+  } catch (e) {
+    console.error('[SCAN-HEARTBEAT] Failed to send sender-offline alert:', e);
+  }
+}
 
 // Send alert email for heartbeat failures
 async function sendHeartbeatAlert(
