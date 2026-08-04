@@ -2804,6 +2804,16 @@ export type Database = {
         Returns: boolean
       }
       agent_sender_public_status: { Args: never; Returns: boolean }
+      agent_sender_state: {
+        Args: never
+        Returns: {
+          active_mandates: number
+          ever_seen: boolean
+          last_seen: string
+          offline_seconds: number
+          pending_packets: number
+        }[]
+      }
       agent_sent_today: { Args: { p_user: string }; Returns: number }
       agent_work_pending: { Args: never; Returns: Json }
       agent_worker_ping: {
