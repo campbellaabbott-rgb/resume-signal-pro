@@ -253,6 +253,7 @@ export type Database = {
           employer_cooldown_days: number
           full_name: string
           hold_first_n: number
+          last_prepare_kick_at: string | null
           last_run_at: string | null
           last_run_summary: Json | null
           linkedin: string
@@ -300,6 +301,7 @@ export type Database = {
           employer_cooldown_days?: number
           full_name?: string
           hold_first_n?: number
+          last_prepare_kick_at?: string | null
           last_run_at?: string | null
           last_run_summary?: Json | null
           linkedin?: string
@@ -347,6 +349,7 @@ export type Database = {
           employer_cooldown_days?: number
           full_name?: string
           hold_first_n?: number
+          last_prepare_kick_at?: string | null
           last_run_at?: string | null
           last_run_summary?: Json | null
           linkedin?: string
