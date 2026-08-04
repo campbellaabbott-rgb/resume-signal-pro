@@ -13,6 +13,7 @@
 // a queue that says something is stuck without saying why is a queue people stop
 // reading.
 import { useCallback, useEffect, useState } from "react";
+import { ApplicationReceipt } from "./ApplicationReceipt";
 import { useTranslation } from "react-i18next";
 import { CheckCircle2, Clock, AlertTriangle, Send, ExternalLink, Loader2, Inbox, PauseCircle, Info } from "lucide-react";
 import { toast } from "sonner";
@@ -33,6 +34,9 @@ interface Packet {
   blockers: Array<{ kind: string; detail: string }>;
   fit_pct: number | null;
   prepared_at: string | null; submitted_at: string | null; submitted_via: string | null;
+  /** What the worker actually put on the form, vs `fields` which is what was prepared. */
+  sent_answers: Array<{ category: string; label: string; value: string }> | null;
+  sent_evidence: string | null;
   /**
    * WHY it was not sent, as a decideRelease code. Ten possible values, every one
    * of them written by apply-agent onto this row — and not read here until
@@ -70,7 +74,9 @@ export function ApplyQueuePanel({ userId }: { userId: string }) {
     const { data } = await sb.from("agent_submissions")
       .select("id,posting_id,title,company,apply_url,source,status,fields,questions," +
         "questions_are_real,blockers,fit_pct,prepared_at,submitted_at,submitted_via," +
-        "release_refusal,attempts,claimed_at,released_at")
+        "release_refusal,attempts,claimed_at,released_at," +
+        // The receipt. Recorded since 2026-08-01 and read by nothing until now.
+        "sent_answers,sent_evidence")
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
       .limit(50);
@@ -292,10 +298,35 @@ export function ApplyQueuePanel({ userId }: { userId: string }) {
 
                   {isOpen && (
                     <div className="mt-3 border-t border-border pt-3">
+                      {/* ONCE IT IS SENT, "what would be sent" is the wrong
+                          tense and the wrong question. The receipt shows what
+                          actually went, in the words that went. */}
+                      {p.status === "submitted" && (
+                        <div className="mb-3">
+                          <ApplicationReceipt
+                            company={p.company}
+                            title={p.title}
+                            submittedAt={p.submitted_at}
+                            submittedVia={p.submitted_via}
+                            sentAnswers={p.sent_answers ?? []}
+                            // `fields` is keyed by field name and sent_answers by
+                            // label, so this only lines up when they are the same
+                            // string. That is deliberate: a match is a real diff,
+                            // and a miss shows nothing rather than a wrong one.
+                            preparedAnswers={Object.fromEntries(
+                              Object.entries(p.fields ?? {}).map(([k, v]) => [k, v.value]),
+                            )}
+                            sentEvidence={p.sent_evidence ?? undefined}
+                          />
+                        </div>
+                      )}
+
                       {/* Provenance is the point. A reviewer must be able to tell
                           a fact from a generated sentence at a glance. */}
                       <div className="text-xs font-semibold text-foreground mb-2">
-                        {t("applyQueue.willSend", "What would be sent")}
+                        {p.status === "submitted"
+                          ? t("applyQueue.wasPrepared", "What was prepared")
+                          : t("applyQueue.willSend", "What would be sent")}
                       </div>
                       <dl className="space-y-1.5 mb-3">
                         {Object.entries(p.fields ?? {}).map(([k, v]) => (

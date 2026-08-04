@@ -38,6 +38,7 @@ import { MorningQueuePanel } from "@/components/account/MorningQueuePanel";
 import { PendingQuestionsPanel } from "@/components/account/PendingQuestionsPanel";
 import { ApplyQueuePanel } from "@/components/account/ApplyQueuePanel";
 import { ApplyProfilePanel } from "@/components/account/ApplyProfilePanel";
+import { AgentControlsPanel } from "@/components/account/AgentControlsPanel";
 
 const AgentReachNote = lazy(() => import("@/components/account/AgentReachNote"));
 
@@ -161,6 +162,10 @@ export default function Agent() {
 
           {tab === "settings" && (
             <>
+              {/* Controls BEFORE the profile. "Where it may not apply" is the
+                  anxious question a new subscriber has, and it should not be
+                  below a long form about their phone number. */}
+              <AgentControlsPanel userId={userId} />
               <ApplyProfilePanel userId={userId} />
               <Suspense fallback={<div className="h-24 animate-pulse rounded-xl bg-muted" />}>
                 <AgentReachNote />
