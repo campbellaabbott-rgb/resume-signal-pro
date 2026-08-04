@@ -313,4 +313,43 @@ describe("a honeypot marked REQUIRED is the trap, not the question", () => {
       workAuthorizedCountries: [], shareDemographics: false, consentToProcessing: true,
     })).toBeNull();
   });
+  it("recognises the vendors' OWN languages, not just English", async () => {
+    const { classifyConfirmation: classifyConfirmationFn } =
+      await import("../../worker/src/vendors/confirmed.js");
+    // Teamtailor is Swedish and Personio German, and both localise per tenant.
+    // A tenant running in its home language previously had no chance of being
+    // recognised, so every successful send there would have parked as uncertain
+    // — an agent that works and looks broken.
+    const cases: Array<[string, string]> = [
+      ["Swedish", "Tack för din ansökan! Vi hör av oss."],
+      ["Swedish", "Din ansökan har mottagits."],
+      ["Norwegian", "Takk for søknaden."],
+      ["Danish", "Tak for din ansøgning."],
+      ["Finnish", "Kiitos hakemuksestasi."],
+      ["Italian", "Grazie! Candidatura ricevuta."],
+      ["Polish", "Dziękujemy za zgłoszenie."],
+      ["English", "Application complete."],
+      ["English", "You have applied to this role."],
+      ["English", "We will be in touch shortly."],
+    ];
+    for (const [lang, said] of cases) {
+      expect(classifyConfirmationFn(false, said), `${lang}: ${said}`).toBe("yes");
+    }
+  });
+
+  it("THE WIDER LIST STILL CANNOT MANUFACTURE A FALSE SUBMITTED", async () => {
+    const { classifyConfirmation: classifyConfirmationFn } =
+      await import("../../worker/src/vendors/confirmed.js");
+    // The whole reason widening is safe is that visibility is checked FIRST.
+    // If that ever regressed, every phrase added above becomes a new way to
+    // tell somebody they applied to a job they did not. So each one is
+    // re-asserted against a form that is STILL ON SCREEN.
+    for (const said of [
+      "Tack för din ansökan!", "Vielen Dank!", "Grazie!", "Thank you",
+      "Application complete", "We will be in touch", "Dziękujemy",
+    ]) {
+      expect(classifyConfirmationFn(true, said), `form still up: ${said}`).toBe("no");
+    }
+  });
+
 });

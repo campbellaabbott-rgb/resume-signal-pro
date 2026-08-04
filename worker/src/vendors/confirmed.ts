@@ -16,8 +16,49 @@
  * When the first real submission happens, the worker records the page's actual
  * wording in the uncertain reason. Add what it saw here.
  */
+/**
+ * WIDENING THIS IS SAFE; NARROWING IT IS NOT. `classifyConfirmation` returns
+ * "yes" only when the form is GONE **and** a phrase matches, so a broad list
+ * cannot on its own manufacture a false "submitted" — the visibility gate is
+ * what prevents that, and it is checked first. What a NARROW list does is route
+ * genuine successes to `uncertain`, where they sit waiting for a human. That is
+ * the safe failure, but at any volume it is also a product that does nothing
+ * useful unattended.
+ *
+ * LANGUAGES ARE CHOSEN FROM THE VENDORS, not from a general list. Teamtailor is
+ * Swedish and Personio is German; both localise per tenant, and the Breezy recon
+ * sample alone spanned UK, US, South African and German employers. Nordic
+ * coverage was missing entirely, which meant a Teamtailor tenant running in its
+ * home language had no chance of being recognised.
+ */
 export const CONFIRMED_RE =
-  /thank you|thanks for (?:applying|your application)|application (?:has been )?(?:received|submitted|sent)|we(?:'ve| have) received|successfully (?:submitted|applied)|vielen dank|bewerbung (?:erhalten|eingegangen|übermittelt)|merci|candidature (?:re[çc]ue|envoy[ée]e)|gracias|solicitud recibida|hemos recibido|obrigad[oa]|candidatura recebida|bedankt|sollicitatie ontvangen/i;
+  new RegExp([
+    // English — the widest set, because it is the fallback locale for all four.
+    "thank you", "thanks for (?:applying|your application)",
+    "application (?:has been )?(?:received|submitted|sent|complete)",
+    "we(?:'ve| have) received", "successfully (?:submitted|applied|sent)",
+    "you(?:'ve| have) applied", "we(?:'ll| will) be in touch",
+    "submission (?:has been )?received",
+    // German — Personio's home language.
+    "vielen dank", "bewerbung (?:erhalten|eingegangen|übermittelt|gesendet)",
+    // Swedish / Norwegian / Danish — Teamtailor's home region. `tack` and `takk`
+    // are bounded below so they cannot match inside a longer word.
+    "tack för din ansökan", "ansökan (?:har )?mottagits", "takk for søknaden",
+    "søknaden (?:er )?mottatt", "tak for din ansøgning",
+    // Finnish.
+    "kiitos hakemuksestasi", "hakemuksesi on vastaanotettu",
+    // French.
+    "merci", "candidature (?:re[çc]ue|envoy[ée]e)",
+    // Spanish / Portuguese.
+    "gracias", "solicitud recibida", "hemos recibido",
+    "obrigad[oa]", "candidatura recebida",
+    // Dutch.
+    "bedankt", "sollicitatie ontvangen",
+    // Italian.
+    "grazie", "candidatura ricevuta",
+    // Polish.
+    "dziękujemy", "otrzymaliśmy(?: tw[oó]j[ąa])? (?:zgłoszenie|aplikacj)",
+  ].join("|"), "i");
 
 /**
  * The shared shape of `confirmed()`, with the ordering that matters.
