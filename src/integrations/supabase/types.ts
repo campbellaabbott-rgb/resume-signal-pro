@@ -2823,6 +2823,14 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      agent_confirmation_gaps: {
+        Args: { p_days?: number }
+        Returns: {
+          last_seen: string
+          occurrences: number
+          wording: string
+        }[]
+      }
       agent_employer_in_cooldown: {
         Args: { p_company: string; p_days: number; p_user_id: string }
         Returns: boolean
