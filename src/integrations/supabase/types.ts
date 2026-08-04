@@ -237,6 +237,7 @@ export type Database = {
           apply_mode: string
           auto_apply_daily_cap: number
           auto_apply_sources: string[]
+          auto_released_count: number
           blocked_companies: string[]
           category: string
           city: string
@@ -251,6 +252,7 @@ export type Database = {
           email_opt_in: boolean
           employer_cooldown_days: number
           full_name: string
+          hold_first_n: number
           last_run_at: string | null
           last_run_summary: Json | null
           linkedin: string
@@ -268,6 +270,7 @@ export type Database = {
           salary_min: number | null
           share_demographics: boolean
           tailor_cover_note: boolean
+          undo_window_seconds: number
           updated_at: string
           user_id: string
           website: string
@@ -281,6 +284,7 @@ export type Database = {
           apply_mode?: string
           auto_apply_daily_cap?: number
           auto_apply_sources?: string[]
+          auto_released_count?: number
           blocked_companies?: string[]
           category?: string
           city?: string
@@ -295,6 +299,7 @@ export type Database = {
           email_opt_in?: boolean
           employer_cooldown_days?: number
           full_name?: string
+          hold_first_n?: number
           last_run_at?: string | null
           last_run_summary?: Json | null
           linkedin?: string
@@ -312,6 +317,7 @@ export type Database = {
           salary_min?: number | null
           share_demographics?: boolean
           tailor_cover_note?: boolean
+          undo_window_seconds?: number
           updated_at?: string
           user_id: string
           website?: string
@@ -325,6 +331,7 @@ export type Database = {
           apply_mode?: string
           auto_apply_daily_cap?: number
           auto_apply_sources?: string[]
+          auto_released_count?: number
           blocked_companies?: string[]
           category?: string
           city?: string
@@ -339,6 +346,7 @@ export type Database = {
           email_opt_in?: boolean
           employer_cooldown_days?: number
           full_name?: string
+          hold_first_n?: number
           last_run_at?: string | null
           last_run_summary?: Json | null
           linkedin?: string
@@ -356,6 +364,7 @@ export type Database = {
           salary_min?: number | null
           share_demographics?: boolean
           tailor_cover_note?: boolean
+          undo_window_seconds?: number
           updated_at?: string
           user_id?: string
           website?: string
@@ -538,6 +547,7 @@ export type Database = {
           apply_url: string
           attempts: number
           blockers: Json
+          claimable_at: string | null
           claimed_at: string | null
           claimed_by: string
           company: string
@@ -570,6 +580,7 @@ export type Database = {
           apply_url?: string
           attempts?: number
           blockers?: Json
+          claimable_at?: string | null
           claimed_at?: string | null
           claimed_by?: string
           company?: string
@@ -602,6 +613,7 @@ export type Database = {
           apply_url?: string
           attempts?: number
           blockers?: Json
+          claimable_at?: string | null
           claimed_at?: string | null
           claimed_by?: string
           company?: string
@@ -2762,6 +2774,10 @@ export type Database = {
         Args: { p_credits: number; p_email: string }
         Returns: boolean
       }
+      agent_cancel_pending: {
+        Args: { p_submission_id: number }
+        Returns: boolean
+      }
       agent_claim_submission: {
         Args: { p_lease_minutes?: number; p_worker: string }
         Returns: {
@@ -2769,6 +2785,7 @@ export type Database = {
           apply_url: string
           attempts: number
           blockers: Json
+          claimable_at: string | null
           claimed_at: string | null
           claimed_by: string
           company: string
@@ -2815,6 +2832,8 @@ export type Database = {
         Args: { p_id: number; p_reason: string }
         Returns: undefined
       }
+      agent_note_auto_release: { Args: { p_user_id: string }; Returns: number }
+      agent_prepare_now: { Args: never; Returns: boolean }
       agent_reach: {
         Args: { p_max_age_minutes?: number }
         Returns: {
