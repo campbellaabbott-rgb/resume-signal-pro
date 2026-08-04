@@ -3727,6 +3727,14 @@ export type Database = {
         }
         Returns: number
       }
+      rate_budget_state: {
+        Args: { p_function?: string; p_ip: string; p_window_minutes?: number }
+        Returns: {
+          budget_used: number
+          function_used: number
+          oldest_window: string
+        }[]
+      }
       read_email_batch: {
         Args: { batch_size: number; queue_name: string; vt: number }
         Returns: {
