@@ -162,6 +162,40 @@ notice period, salary, right to work — things the standing-answers profile
 already captures. Matching common question PATTERNS rather than exact field names
 is the highest-value work left on the agent.
 
+### RE-MEASURED 2026-08-04: that work is done, and the lever is spent
+
+Same eight Breezy forms, same fixture, run through `src/coverage.ts` (which
+derives mapped fields from each adapter's own map, so the hand-list error below
+cannot recur):
+
+    8 forms, 22 required questions beyond the adapter's own fields
+    16 answered · 5 refused on purpose · 1 distinct unrecognised
+    7/8 forms completable end to end     (was 3/8)
+
+The 3/8 above is now historical. What still blocks the eighth form is
+identity-document, nationality, demographic, extra-document and salary-current —
+every one a refusal of PRINCIPLE that must stay refused. After the learned-answer
+pass it is still 7/8, and the two questions a candidate would have to answer once
+are the same principled ones.
+
+**One genuine gap remains, across all eight forms:** "Are you an Internal
+Applicant?". Answering it needs a stated current employer, which the standing
+profile does not hold — inferring "No" from the fact that someone applied through
+a public board is a claim about their employment, not a fact we have.
+
+So question coverage is no longer the ceiling. The ceiling is vendor reach:
+30,345 drivable postings of ~570k, bounded by bot walls that are closed on
+evidence, not on effort. Do not spend another pass widening label patterns
+against this fixture — measure a NEW vendor's forms first, or the work is
+optimising something already at 7/8.
+
+CAUTION, and it has now cost two people (both me). Writing a fresh harness that
+calls `matchQuestion` directly, without the adapter's `mappedNames`, reports
+0/8 and blames cName/cEmail/cResume — Breezy's own unlabelled standard fields,
+which the adapter fills. That is the identical mistake recorded below as "the
+first run reported Full Name as 16 of 40". Use `src/coverage.ts`, and pass
+`vendor:path`.
+
 ## Status
 
 **Adapters serving:** Breezy, Personio, Pinpoint — each verified against a live form.
