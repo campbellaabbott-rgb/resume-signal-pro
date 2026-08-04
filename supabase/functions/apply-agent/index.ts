@@ -30,7 +30,7 @@ import { nextRunStamp } from "../_shared/run-stamp.ts";
 // Bumped whenever this function's behaviour changes. It rides along in the run
 // stamp so "the new code has not deployed yet" and "the code deployed but has
 // never run" are different observations rather than the same silence.
-const BUILD_VERSION = "2026-08-03.6";
+const BUILD_VERSION = "2026-08-04.1";
 
 // Wall clock, not a row count. Question fetches and answer drafting are both
 // network-bound and wildly variable, so a fixed "20 packets" budget either wastes
@@ -52,6 +52,13 @@ interface MandateRow {
   share_demographics: boolean; apply_mode: "review" | "auto";
   auto_apply_daily_cap: number; auto_apply_sources: string[];
   cover_note: string; tailor_cover_note: boolean;
+  // Where it may NOT apply. Nullable rather than defaulted in the type: these
+  // arrive from PostgREST, and a mandate row written before the migration has
+  // them absent — treating absent as "block everything" would silently stop a
+  // working agent, so every consumer must read them as permissive-when-missing.
+  blocked_companies: string[] | null;
+  paused_until: string | null;
+  employer_cooldown_days: number | null;
 }
 interface QueueRow {
   id: number; user_id: string; posting_id: string; title: string; company: string;
@@ -236,6 +243,10 @@ serve(async (req) => {
     mandates: 0, prepared: 0, ready: 0, blocked: 0, released: 0,
     skippedDuplicate: 0, failed: 0, refusals: {} as Record<string, number>,
     stoppedEarly: false,
+    // Counted separately, because "0 applications" has to be explainable. A
+    // candidate whose agent is paused, or whose whole shortlist was their own
+    // employer, must not see the same empty morning as one with no matches.
+    skippedPaused: 0, skippedBlockedCompany: 0, skippedEmployerCooldown: 0,
     // Both, not just the successes. A tailoring feature that is switched on and
     // silently rejects every draft looks identical to one nobody enabled, and
     // the only visible symptom would be an absence of tailored notes — which is
@@ -248,7 +259,11 @@ serve(async (req) => {
     .select("user_id,email,resume_text,full_name,phone,linkedin,website,city,country," +
       "resume_file_url,work_authorized,requires_sponsorship,willing_to_relocate," +
       "salary_expectation,earliest_start,share_demographics,apply_mode," +
-      "auto_apply_daily_cap,auto_apply_sources,cover_note,tailor_cover_note")
+      "auto_apply_daily_cap,auto_apply_sources,cover_note,tailor_cover_note," +
+      // Selected explicitly: PostgREST returns ONLY named columns, so a guard on
+      // an unselected one reads `undefined` forever and silently never fires.
+      // That is exactly how the broker's `active` check did nothing for months.
+      "blocked_companies,paused_until,employer_cooldown_days")
     .eq("active", true)
     .limit(MANDATES_PER_RUN);
 
@@ -265,10 +280,31 @@ serve(async (req) => {
     // essentially everyone — and this function is the one that PREPARES
     // APPLICATIONS TO EMPLOYERS. rowIsEntitled reads status and period end, and
     // is the single definition all four consumers now share.
+    // A timed pause, checked BEFORE the entitlement query so a paused agent
+    // costs no work — same ordering rule the broker uses for `active`.
+    //
+    // `active=false` is an indefinite off switch someone has to remember to
+    // reverse; this is "back on Monday". Fails OPEN on a null: a mandate with no
+    // paused_until is simply not paused.
+    if (m.paused_until && new Date(m.paused_until).getTime() > Date.now()) {
+      summary.skippedPaused++;
+      continue;
+    }
+
     const { data: sub } = await client
       .from("agent_subscribers").select(ENTITLEMENT_COLUMNS)
       .eq("email", normalizeEmail(m.email)).maybeSingle();
     if (!rowIsEntitled(sub)) continue;
+
+    // Normalised once per mandate rather than per posting. Case- and
+    // whitespace-insensitive because "Acme Ltd" and "acme ltd " are the same
+    // employer to everyone except a string comparison.
+    const blockedCompanies = new Set(
+      (Array.isArray(m.blocked_companies) ? m.blocked_companies : [])
+        .map((c: string) => String(c ?? "").trim().toLowerCase())
+        .filter(Boolean),
+    );
+    const cooldownDays = Number(m.employer_cooldown_days ?? 0);
 
     // In auto mode the agent works its own picks; in review mode it only
     // prepares what the candidate approved. The queue is the same table either
@@ -300,6 +336,26 @@ serve(async (req) => {
 
     for (const q of (rows as unknown as QueueRow[])) {
       if (outOfTime()) { summary.stoppedEarly = true; break; }
+
+      // NEVER apply here. Checked before any query, because it is the cheapest
+      // guard and the most consequential one: for anyone currently employed, an
+      // application to their own employer is not an inconvenience, it is how
+      // they find out they are job hunting.
+      if (blockedCompanies.size && blockedCompanies.has(String(q.company ?? "").trim().toLowerCase())) {
+        summary.skippedBlockedCompany++;
+        continue;
+      }
+
+      // One employer, one application per cooldown window. The worker already
+      // spaces submissions WITHIN a run; nothing stopped eight applications to
+      // the same company across eight consecutive days, which reads as a burst
+      // from the recruiter's side however reasonable each one is alone.
+      if (cooldownDays > 0 && q.company) {
+        const { data: inCooldown } = await client.rpc("agent_employer_in_cooldown", {
+          p_user_id: m.user_id, p_company: q.company, p_days: cooldownDays,
+        });
+        if (inCooldown === true) { summary.skippedEmployerCooldown++; continue; }
+      }
 
       // A packet already exists for this posting. The unique index would reject
       // the insert anyway; checking first keeps us from spending an LLM call to
