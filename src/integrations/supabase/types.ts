@@ -237,6 +237,7 @@ export type Database = {
           apply_mode: string
           auto_apply_daily_cap: number
           auto_apply_sources: string[]
+          blocked_companies: string[]
           category: string
           city: string
           consent_to_processing: boolean
@@ -248,11 +249,14 @@ export type Database = {
           email: string
           email_last_sent_at: string | null
           email_opt_in: boolean
+          employer_cooldown_days: number
           full_name: string
           last_run_at: string | null
           last_run_summary: Json | null
           linkedin: string
           location: string
+          pause_reason: string
+          paused_until: string | null
           phone: string
           postcode: string | null
           q: string
@@ -277,6 +281,7 @@ export type Database = {
           apply_mode?: string
           auto_apply_daily_cap?: number
           auto_apply_sources?: string[]
+          blocked_companies?: string[]
           category?: string
           city?: string
           consent_to_processing?: boolean
@@ -288,11 +293,14 @@ export type Database = {
           email?: string
           email_last_sent_at?: string | null
           email_opt_in?: boolean
+          employer_cooldown_days?: number
           full_name?: string
           last_run_at?: string | null
           last_run_summary?: Json | null
           linkedin?: string
           location?: string
+          pause_reason?: string
+          paused_until?: string | null
           phone?: string
           postcode?: string | null
           q?: string
@@ -317,6 +325,7 @@ export type Database = {
           apply_mode?: string
           auto_apply_daily_cap?: number
           auto_apply_sources?: string[]
+          blocked_companies?: string[]
           category?: string
           city?: string
           consent_to_processing?: boolean
@@ -328,11 +337,14 @@ export type Database = {
           email?: string
           email_last_sent_at?: string | null
           email_opt_in?: boolean
+          employer_cooldown_days?: number
           full_name?: string
           last_run_at?: string | null
           last_run_summary?: Json | null
           linkedin?: string
           location?: string
+          pause_reason?: string
+          paused_until?: string | null
           phone?: string
           postcode?: string | null
           q?: string
@@ -2791,6 +2803,10 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      agent_employer_in_cooldown: {
+        Args: { p_company: string; p_days: number; p_user_id: string }
+        Returns: boolean
+      }
       agent_maintenance_key_matches: {
         Args: { p_key: string }
         Returns: boolean
@@ -2798,6 +2814,15 @@ export type Database = {
       agent_mark_uncertain: {
         Args: { p_id: number; p_reason: string }
         Returns: undefined
+      }
+      agent_reach: {
+        Args: { p_max_age_minutes?: number }
+        Returns: {
+          board_total: number
+          computed_at: string
+          drivable: number
+          vendors: string[]
+        }[]
       }
       agent_sender_online: {
         Args: { p_max_age_seconds?: number }
