@@ -160,7 +160,44 @@ describe("the résumé file — the thing that blocks every application without 
   it("stores a storage PATH keyed by user, never a public URL", () => {
     // The path's first segment is what the storage policy checks ownership on.
     expect(panel).toMatch(/const path = `\$\{userId\}\//);
-    expect(panel).toMatch(/set\("resume_file_url", path\)/);
+    // resume_file_url is set FROM that path. Asserted on the property rather
+    // than one spelling of it: the upload used to call set() directly and now
+    // folds the path into the object it persists, and a test that pins the
+    // mechanism instead of the guarantee fails on every honest refactor while
+    // still passing if somebody swapped in a public URL.
+    expect(panel).toMatch(/resume_file_url: path\b|set\("resume_file_url", path\)/);
+    expect(panel).not.toMatch(/getPublicUrl/);
+  });
+
+  it("the upload saves by itself — attaching a CV is not a to-do list item", () => {
+    // "Attached — remember to save" turned a finished action into a pending
+    // chore, which is the setup friction in miniature. The upload now persists
+    // what it computed, so a CV plus nothing else is a working agent.
+    expect(panel).toMatch(/await persist\(next\)/);
+    // Comments stripped first: the panel's own comment QUOTES the old string
+    // while explaining why it went. A bare toContain reads a comment about a
+    // removed behaviour as the behaviour — the same trap that put a phantom
+    // refusal code in the release union.
+    const shipped = panel.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+    expect(shipped).not.toContain("remember to save");
+  });
+
+  it("fills gaps from the CV without ever overwriting what somebody typed", () => {
+    expect(panel).toMatch(/fillGaps\(/);
+    expect(panel).toMatch(/deriveContact\(/);
+  });
+
+  it("NEVER infers a legal or personal declaration from a CV", () => {
+    // The line between "read their phone number off the document they gave us"
+    // and "decide their immigration status for them" is the whole product.
+    const uploadFn = panel.slice(panel.indexOf("const upload ="), panel.indexOf("const save ="));
+    for (const field of [
+      "work_authorized", "requires_sponsorship", "salary_expectation",
+      "earliest_start", "consent_to_processing",
+    ]) {
+      expect(uploadFn, `${field} must never be derived from a résumé`)
+        .not.toMatch(new RegExp(`${field}\\s*[:=]`));
+    }
   });
 
   it("keeps the bucket private", () => {

@@ -34,6 +34,8 @@ interface Step {
   id: string;
   done: boolean;
   title: string;
+  /** Shown, but never counted — an optional step must not hold the list open. */
+  optional?: boolean;
   why: string;
   tab: "today" | "settings";
 }
@@ -49,32 +51,46 @@ export function AgentSetupChecklist({
     (async () => {
       const { data } = await supabase
         .from("agent_mandates")
-        .select("active,consent_to_processing,full_name,phone,blocked_companies,q")
+        // resume_file_url IS THE ONE THIS STEP READS. PostgREST returns only the
+        // columns named here, so omitting it would leave the check reading
+        // `undefined` forever and the step permanently unfinished.
+        .select("active,consent_to_processing,full_name,phone,blocked_companies,q,resume_file_url")
         .eq("user_id", userId).maybeSingle();
       if (!live) return;
 
       const m = data ?? null;
-      // Consent is the hard gate — buildPacket refuses without it — so it is
-      // grouped with the identity fields rather than listed as its own step. A
-      // person does not think of "consent" as a task; they think of "my details".
-      const profileReady = !!m?.consent_to_processing
-        && !!String(m?.full_name ?? "").trim()
-        && !!String(m?.phone ?? "").trim();
-      const exclusionsSet = Array.isArray(m?.blocked_companies) && m.blocked_companies.length > 0;
+      // ONE REQUIRED STEP: the CV. Everything a form needs that a CV states —
+      // name, email, phone, LinkedIn — is lifted out of the file on upload, so
+      // asking for them again as a checklist item was asking somebody to retype
+      // a document they had just handed over.
+      //
+      // It used to demand name AND phone AND consent before this step went
+      // green, which meant a person who had uploaded their CV still saw an
+      // unfinished list and no explanation of what more was wanted.
+      const profileReady = !!String(m?.resume_file_url ?? "").trim();
       const mandateActive = m?.active === true && !!String(m?.q ?? "").trim();
 
       setSteps([
         {
           id: "profile", done: profileReady, tab: "settings",
-          title: t("agentSetup.profile.title", "Add your details and give consent"),
+          title: t("agentSetup.profile.title", "Upload your CV"),
           why: t("agentSetup.profile.why",
-            "Without these every application is prepared and then blocked, with nothing to show for it."),
+            "That is the whole of setup. We read your name and contact details straight off it, and ask about anything else only when a form actually needs it."),
         },
         {
-          id: "exclusions", done: exclusionsSet, tab: "settings",
-          title: t("agentSetup.exclusions.title", "Name the employers to skip"),
+          // OPTIONAL, AND HONESTLY LABELLED AS SUCH. This step was previously
+          // "done" only once blocked_companies had at least one entry — so for
+          // the many people with nobody to exclude, the checklist could NEVER be
+          // completed. An unfinishable list is worse than no list: it reads as
+          // "you are not set up" forever, which is precisely the feeling that
+          // makes setup seem hard.
+          //
+          // It stays visible because it is the one thing that cannot be undone
+          // after the fact, but it no longer gates anything.
+          id: "exclusions", done: false, optional: true, tab: "settings",
+          title: t("agentSetup.exclusions.title", "Optional: name employers to skip"),
           why: t("agentSetup.exclusions.why",
-            "Your current employer above all. This is the one that cannot be undone afterwards."),
+            "Your current employer above all. Worth a moment now — it is the one thing that cannot be undone afterwards."),
         },
         {
           id: "mandate", done: mandateActive, tab: "today",
@@ -89,19 +105,20 @@ export function AgentSetupChecklist({
 
   if (!steps) return <div className="h-40 animate-pulse rounded-xl bg-muted" />;
   // Genuinely finished — not "dismissed", not "visited".
-  if (steps.every((s) => s.done)) return null;
+  const required = steps.filter((s) => !s.optional);
+  if (required.every((s) => s.done)) return null;
 
-  const doneCount = steps.filter((s) => s.done).length;
-  const next = steps.find((s) => !s.done)!;
+  const doneCount = required.filter((s) => s.done).length;
+  const next = required.find((s) => !s.done)!;
 
   return (
     <section className="rounded-xl border border-primary/30 bg-primary/5 p-5">
       <div className="flex items-baseline justify-between gap-3">
         <h2 className="text-base font-semibold">
-          {t("agentSetup.title", "Three things before it can start")}
+          {t("agentSetup.title", "Two things before it can start")}
         </h2>
         <span className="shrink-0 text-xs text-muted-foreground">
-          {t("agentSetup.progress", { defaultValue: "{{done}} of {{total}}", done: doneCount, total: steps.length })}
+          {t("agentSetup.progress", { defaultValue: "{{done}} of {{total}}", done: doneCount, total: required.length })}
         </span>
       </div>
 

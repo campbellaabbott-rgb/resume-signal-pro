@@ -18,6 +18,8 @@ import { ShieldCheck, Loader2, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { applyReadiness, worstSeverity } from "@/lib/applyReadiness";
+import { deriveContact, fillGaps } from "@/lib/resumeContact";
+import { resumeTextFrom } from "@/lib/resumeText";
 
 const sb = supabase as unknown as {
   from: (t: string) => any;
@@ -61,6 +63,12 @@ export const WORK_COUNTRIES: ReadonlyArray<{ code: string; name: string }> = [
 ];
 
 interface ApplyProfile {
+  /**
+   * On every form, and the address employers reply to. Filled from the account
+   * rather than asked for — it is already verified there, and re-typing it is
+   * the kind of question that made setup feel like work.
+   */
+  email: string;
   full_name: string; phone: string; linkedin: string; website: string;
   city: string; country: string; address: string; postcode: string; resume_file_url: string;
   work_authorized: Tri; requires_sponsorship: Tri; willing_to_relocate: Tri;
@@ -74,6 +82,7 @@ interface ApplyProfile {
 }
 
 const EMPTY: ApplyProfile = {
+  email: "",
   full_name: "", phone: "", linkedin: "", website: "", city: "", country: "",
   address: "", postcode: "",
   resume_file_url: "", work_authorized: null, requires_sponsorship: null,
@@ -202,6 +211,28 @@ export function ApplyProfilePanel({ userId }: { userId: string }) {
   const readiness = applyReadiness(p);
   const worst = worstSeverity(readiness);
 
+  /**
+   * One writer for the row, so the résumé upload and the Save button cannot
+   * disagree. Callers pass the object they just computed rather than relying on
+   * `p`, whose state update has not landed yet — reading it here would persist
+   * the PREVIOUS profile and silently drop everything just derived from the CV.
+   *
+   * Declared ABOVE `upload` deliberately: it sits in that callback's dependency
+   * array, which React evaluates during render, so a `const` declared later
+   * would throw on the temporal dead zone before anybody clicked anything.
+   */
+  const persist = useCallback(async (values: ApplyProfile): Promise<boolean> => {
+    setSaving(true);
+    const { error } = await saveTolerantly((v) => (exists
+      ? sb.from("agent_mandates").update(v).eq("user_id", userId)
+      : sb.from("agent_mandates").upsert({ user_id: userId, ...v }, { onConflict: "user_id" })
+    ) as unknown as PromiseLike<{ error: SaveError }>, { ...values } as Record<string, unknown>);
+    setSaving(false);
+    if (error) { toast.error(t("applyProfile.saveFailed", "Could not save — try again")); return false; }
+    setExists(true);
+    return true;
+  }, [userId, exists, t]);
+
   // Uploads to the PRIVATE `resumes` bucket and stores the path, not a URL.
   // The worker fetches it with the service key at submit time — the file is
   // never world-readable, which matters because a résumé is a home address, a
@@ -235,21 +266,41 @@ export function ApplyProfilePanel({ userId }: { userId: string }) {
       );
       return;
     }
-    set("resume_file_url", path);
-    toast.success(t("applyProfile.uploaded", "Résumé attached — remember to save"));
-  }, [userId, t]);
+    // THE UPLOAD IS THE WHOLE OF SETUP, so it reads the document rather than
+    // handing back a form. Everything a CV states plainly — name, email, phone,
+    // LinkedIn — is lifted out and filled in, and the file is saved immediately.
+    //
+    // "Attached — remember to save" was the old message, and it was the friction
+    // in miniature: it turned a finished action into a pending chore. Nothing
+    // here asks for a second step.
+    //
+    // Nothing legal or personal is ever inferred (work authorisation,
+    // sponsorship, salary, start date, consent). Those are asked at the moment a
+    // form actually needs them — see resumeContact for why guessing them would
+    // be a false declaration made under somebody else's name.
+    const text = await resumeTextFrom(file);
+    const derived = deriveContact(text);
+    const { next, filled } = fillGaps({ ...p, resume_file_url: path }, derived);
+
+    // The account's own email beats parsing every time — it is verified, and it
+    // is the address employers will actually reach them on.
+    if (!String(next.email ?? "").trim()) {
+      const { data: auth } = await supabase.auth.getUser();
+      const accountEmail = auth?.user?.email;
+      if (accountEmail) { next.email = accountEmail; filled.push("email"); }
+    }
+
+    setP(next);
+    const ok = await persist(next);
+    if (!ok) return;
+    toast.success(filled.length
+      ? t("applyProfile.uploadedAndRead", "Saved. We filled in {{count}} details from your CV — check them below.", { count: filled.length })
+      : t("applyProfile.uploadedSaved", "Saved. Your CV is attached and the agent can start."));
+  }, [userId, t, p, persist]);
 
   const save = useCallback(async () => {
-    setSaving(true);
-    const { error } = await saveTolerantly((v) => (exists
-      ? sb.from("agent_mandates").update(v).eq("user_id", userId)
-      : sb.from("agent_mandates").upsert({ user_id: userId, ...v }, { onConflict: "user_id" })
-    ) as unknown as PromiseLike<{ error: SaveError }>, { ...p } as Record<string, unknown>);
-    setSaving(false);
-    if (error) { toast.error(t("applyProfile.saveFailed", "Could not save — try again")); return; }
-    setExists(true);
-    toast.success(t("applyProfile.saved", "Saved"));
-  }, [p, userId, exists, t]);
+    if (await persist(p)) toast.success(t("applyProfile.saved", "Saved"));
+  }, [p, persist, t]);
 
   if (loading) {
     return (
