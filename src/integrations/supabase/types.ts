@@ -2815,6 +2815,7 @@ export type Database = {
         Args: { p_id: number; p_reason: string }
         Returns: undefined
       }
+      agent_prepare_now: { Args: never; Returns: boolean }
       agent_reach: {
         Args: { p_max_age_minutes?: number }
         Returns: {
