@@ -1007,6 +1007,20 @@ export default function Account() {
         </div>
 
         <div id="agent" className="scroll-mt-28" />
+        {/* The agent now has its own page. This stays — deep links and the
+            account nav both point at #agent — but the full surface, and the
+            only mobile-shaped one, is /agent. */}
+        {user && (
+          <Link
+            to="/agent"
+            className="mb-4 flex items-center justify-between rounded-xl border border-border bg-muted/30 p-4 transition-colors hover:bg-muted/60"
+          >
+            <span className="text-sm font-medium">
+              {t("account.openAgent", "Open the apply agent")}
+            </span>
+            <span aria-hidden="true" className="text-muted-foreground">→</span>
+          </Link>
+        )}
         {user && (
           <MorningQueuePanel
             userId={user.id}

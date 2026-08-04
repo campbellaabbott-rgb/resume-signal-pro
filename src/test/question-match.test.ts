@@ -252,10 +252,25 @@ describe("what this actually changes, measured on the same 8 postings", () => {
     for (const f of forms) {
       const { answerable } = planAnswers(f.questions, EMPTY, BREEZY_MAPPED);
       for (const { r } of answerable) {
-        // Only two things are answerable with no profile at all, and neither
-        // asserts anything about the candidate: declining a self-ID question,
-        // and confirming the single location of the posting they already chose.
-        expect(["demographic-declined", "role-location"], `answered "${r.category}" from an empty profile`)
+        // Two of these assert nothing about the candidate: declining a self-ID
+        // question, and confirming the single location of the posting they
+        // already chose.
+        //
+        // `internal-applicant` IS DIFFERENT, and the difference is deliberate.
+        // It answers "No" from an empty profile, which does assert something —
+        // that this person does not work for the employer. Added on the owner's
+        // explicit instruction 2026-08-04, having been refused before that.
+        // The reasoning is in RE_INTERNAL_APPLICANT: it is a routing question
+        // rather than a protected characteristic or a legal declaration,
+        // reaching the external form at all implies an external applicant, and
+        // blocked_companies makes it true by construction for anyone who
+        // excludes their employer.
+        //
+        // It is listed here rather than exempted from the rule, so the set of
+        // things answerable from nothing stays countable and anything ELSE
+        // joining it still fails this test.
+        expect(["demographic-declined", "role-location", "internal-applicant"],
+          `answered "${r.category}" from an empty profile`)
           .toContain(r.category);
       }
     }

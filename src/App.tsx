@@ -22,6 +22,7 @@ const Index = lazy(() => import("./pages/Index"));
 import { TOOL_LANDINGS } from "@/data/tool-landings";
 const Auth = lazy(() => import("./pages/Auth"));
 const Account = lazy(() => import("./pages/Account"));
+const Agent = lazy(() => import("./pages/Agent"));
 const Shortlist = lazy(() => import("./pages/Shortlist"));
 const Success = lazy(() => import("./pages/Success"));
 const ProductSuccess = lazy(() => import("./pages/ProductSuccess"));
@@ -77,6 +78,7 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/account" element={<Account />} />
+          <Route path="/agent" element={<Agent />} />
           <Route path="/shortlist" element={<Shortlist />} />
           <Route path="/success" element={<Success />} />
           <Route path="/product-success" element={<ProductSuccess />} />

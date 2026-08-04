@@ -300,6 +300,36 @@ const RE_ROLE_LOCATION =
 
 const RE_RELOCATE = /willing\s+to\s+relocate|open\s+to\s+relocat|able\s+to\s+relocate|relocat(e|ion)/i;
 
+/** "Are you an internal applicant?" / "Are you a current employee?"
+ *
+ *  ANSWERED "No" BY STANDING POLICY, on the owner's explicit instruction
+ *  2026-08-04, having been refused before that.
+ *
+ *  What makes it defensible, and it is not that the answer is certain:
+ *   - It is a ROUTING question. Employers use it to send internal candidates to
+ *     the internal process. It is not a protected characteristic, an immigration
+ *     status or a legal declaration, so a wrong answer costs a mis-routed
+ *     application rather than a false statement about a person.
+ *   - Reaching this form at all means the posting came off a public aggregator
+ *     and the agent drove the EXTERNAL form. An internal applicant uses their
+ *     employer's own portal.
+ *   - blocked_companies makes it self-consistent: a candidate who excludes their
+ *     employer is never applied there, so "No" is then true by construction.
+ *
+ *  THE RESIDUAL RISK, stated rather than buried: a candidate who does not use
+ *  the blocklist and whose agent reaches their own employer's public posting
+ *  will have "No" submitted for them, and it will be wrong. That is the whole
+ *  exposure, and it is the argument for putting the employer in the blocklist
+ *  during onboarding.
+ *
+ *  Narrow ON PURPOSE. It must not swallow "internal audit", "internal
+ *  communications" or "internal medicine", which are job titles, not questions
+ *  about employment status — hence the required applicant/employee/candidate
+ *  noun and the anchored question shape.
+ */
+const RE_INTERNAL_APPLICANT =
+  /\b(are|is)\s+you.{0,12}\b(an?\s+)?(internal|current)\s+(applicant|employee|candidate|staff)\b|\binternal\s+(applicant|candidate)\b\s*\??$|current(ly)?\s+employed\s+(by|at|with)\s+(us|this\s+(company|organi[sz]ation))/i;
+
 // MEASURED against 29 live forms: "Allow us to process your personal
 // information." was the single most common unrecognised REQUIRED question, 5
 // occurrences, and it is a consent tickbox the matcher already knows how to
@@ -530,6 +560,12 @@ function matchStanding(
   if (RE_RELOCATE.test(label)) {
     if (a.willingToRelocate === null) return text("relocation", "candidate has not stated relocation willingness");
     return chooseBoolean(q, a.willingToRelocate, "relocation");
+  }
+
+  // Standing "No" — see RE_INTERNAL_APPLICANT for why this one is answered
+  // rather than refused, and what the residual risk is.
+  if (RE_INTERNAL_APPLICANT.test(label)) {
+    return chooseBoolean(q, false, "internal-applicant");
   }
 
   // --- Which advertised location ---------------------------------------
