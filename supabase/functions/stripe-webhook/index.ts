@@ -458,6 +458,25 @@ serve(async (req) => {
               logStep("Agent entitlement seeded from webhook", {
                 email: paidEmail, active: seeded.active, status: seeded.status,
               });
+
+              // ...and PREPARE, rather than leaving them to wait for :23.
+              //
+              // The entitlement landing instantly is only half the fix: nothing
+              // invokes apply-agent except the hourly cron, so a subscriber who
+              // paid at :24 stared at an empty queue for fifty-nine minutes at
+              // the exact moment their expectations were highest.
+              //
+              // agent_prepare_now() mirrors the cron's own vault lookup, so the
+              // maintenance key never enters application code. It returns false
+              // rather than throwing when the vault is empty, because the cron
+              // remains the floor — this only ever removes waiting.
+              //
+              // Same non-fatal treatment as the seeding above: a failure here
+              // must not 500 a webhook whose payment already succeeded.
+              if (seeded.active) {
+                const { data: kicked, error: kickErr } = await supabase.rpc("agent_prepare_now");
+                logStep("Prepare kicked", { kicked: kicked === true, error: kickErr?.message ?? null });
+              }
             }
           } catch (err) {
             logStep("Agent entitlement seeding failed (Account page will repair)", { error: String(err) });

@@ -59,6 +59,9 @@ interface MandateRow {
   blocked_companies: string[] | null;
   paused_until: string | null;
   employer_cooldown_days: number | null;
+  hold_first_n: number | null;
+  auto_released_count: number | null;
+  undo_window_seconds: number | null;
 }
 interface QueueRow {
   id: number; user_id: string; posting_id: string; title: string; company: string;
@@ -263,7 +266,7 @@ serve(async (req) => {
       // Selected explicitly: PostgREST returns ONLY named columns, so a guard on
       // an unselected one reads `undefined` forever and silently never fires.
       // That is exactly how the broker's `active` check did nothing for months.
-      "blocked_companies,paused_until,employer_cooldown_days")
+      "blocked_companies,paused_until,employer_cooldown_days,hold_first_n,auto_released_count,undo_window_seconds")
     .eq("active", true)
     .limit(MANDATES_PER_RUN);
 
@@ -323,6 +326,10 @@ serve(async (req) => {
     // cap of 5 send 30, which is exactly the bug decideBatch exists to prevent.
     const { data: sentRow } = await client.rpc("agent_sent_today", { p_user: m.user_id });
     let sentToday = Number(sentRow ?? 0);
+    // Counted locally as we release, for the same reason sentToday is: two
+    // releases in one run must not both see the pre-run count and both decide
+    // they are still inside the on-ramp.
+    let autoReleased = Number(m.auto_released_count ?? 0);
 
     const profile: Profile = {
       fullName: m.full_name, email: m.email, phone: m.phone, linkedin: m.linkedin,
@@ -567,6 +574,13 @@ serve(async (req) => {
           minFitPct: MIN_FIT_PCT,
           duplicate,
           senderOnline,
+          // THE ON-RAMP. Read from the mandate and counted forward on each
+          // auto release, so the first few go out with the candidate looking.
+          // Both are permissive when absent: a mandate written before the
+          // migration has neither, and treating undefined as "hold" would stop
+          // a working agent with no error anywhere.
+          holdFirstN: m.hold_first_n ?? 0,
+          autoReleasedCount: autoReleased,
         });
         if (!decision.release) {
           summary.refusals[decision.code] = (summary.refusals[decision.code] ?? 0) + 1;
@@ -593,8 +607,32 @@ serve(async (req) => {
           // row rather than from logs nobody reads.
           released_at: decision.release ? new Date().toISOString() : null,
           release_refusal: decision.release ? "" : decision.code,
+          // THE CANCEL WINDOW. A released packet is not claimable until this
+          // passes, so the candidate has a real chance to stop it rather than
+          // needing to be faster than a worker polling every 300s.
+          //
+          // NULL when not released and when the window is 0 — the column's own
+          // comment says NULL means immediately claimable, and writing a past
+          // timestamp instead would work today and confuse anyone reading it.
+          claimable_at: decision.release && Number(m.undo_window_seconds ?? 0) > 0
+            ? new Date(Date.now() + Number(m.undo_window_seconds) * 1000).toISOString()
+            : null,
         });
         if (error) { summary.failed++; continue; }
+
+        // COUNT THE ON-RAMP FORWARD, and only for unattended releases. A packet
+        // the candidate approved by hand in review mode teaches them nothing
+        // about what the agent does while they are asleep, so it must not spend
+        // one of their three.
+        //
+        // Locally first so a second release in this same run sees it; durably
+        // second so the next run does too. The RPC is a single UPDATE ... +1, not
+        // a read-then-write, because two concurrent runs would otherwise both
+        // read the same value and both write the same increment.
+        if (decision.release && m.apply_mode === "auto") {
+          autoReleased += 1;
+          await client.rpc("agent_note_auto_release", { p_user_id: m.user_id });
+        }
 
         summary.prepared++;
         if (status === "ready") summary.ready++;

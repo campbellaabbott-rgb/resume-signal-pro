@@ -39,6 +39,8 @@ import { PendingQuestionsPanel } from "@/components/account/PendingQuestionsPane
 import { ApplyQueuePanel } from "@/components/account/ApplyQueuePanel";
 import { ApplyProfilePanel } from "@/components/account/ApplyProfilePanel";
 import { AgentControlsPanel } from "@/components/account/AgentControlsPanel";
+import { AgentSetupChecklist } from "@/components/account/AgentSetupChecklist";
+import { AgentNightSummary } from "@/components/account/AgentNightSummary";
 
 const AgentReachNote = lazy(() => import("@/components/account/AgentReachNote"));
 
@@ -153,6 +155,13 @@ export default function Agent() {
         <div className="mt-6 space-y-6">
           {tab === "today" && (
             <>
+              {/* Setup first, and only while it is genuinely unfinished. An
+                  empty queue below an unexplained empty page is how a paid
+                  product gets mistaken for a broken one. */}
+              <AgentSetupChecklist userId={userId} onGo={go} />
+              {/* Then last night, which is the question a returning subscriber
+                  actually has — before the queue that answers it obliquely. */}
+              <AgentNightSummary userId={userId} />
               <MorningQueuePanel userId={userId} email={email} defaultResume={null} />
               <PendingQuestionsPanel userId={userId} />
             </>

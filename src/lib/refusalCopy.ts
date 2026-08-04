@@ -35,7 +35,9 @@ export type RefusalCode =
   | "duplicate"
   | "fit-below-floor"
   | "fit-unknown"
-  | "sender-offline";
+  | "sender-offline"
+  | "held-for-review"
+  | "cancelled-by-you";
 
 export type RefusalSeverity =
   /** The candidate can clear it, and it is worth clearing. */
@@ -66,6 +68,20 @@ const FACES: Record<RefusalCode, RefusalFace> = {
   "sender-offline": F(
     "sender-offline", "on-us",
     "Our sender is offline, so nothing went out. This is queued and goes as soon as it is back — you do not need to do anything.",
+  ),
+
+  // NOT a fault and NOT something to fix — the on-ramp is the product being
+  // careful on purpose, and phrasing it as a problem would teach a new
+  // subscriber to distrust the thing that is protecting them.
+  "held-for-review": F(
+    "held-for-review", "by-design",
+    "Your first few go out with your approval so you can see exactly what we send. Approve it and it goes straight away.",
+  ),
+  // Their own act. Reported back plainly so the row does not look like a
+  // failure they need to investigate.
+  "cancelled-by-you": F(
+    "cancelled-by-you", "by-design",
+    "You cancelled this one before it went out. Nothing was sent.",
   ),
   "fit-unknown": F(
     "fit-unknown", "on-us",

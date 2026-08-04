@@ -42,6 +42,10 @@ export type ReleaseInput = {
    * that quietly does nothing is not.
    */
   senderOnline: boolean;
+  /** On-ramp: hold this many auto releases for approval first. Undefined = 0. */
+  holdFirstN?: number;
+  /** How many have already gone out unattended. Undefined = 0, i.e. brand new. */
+  autoReleasedCount?: number;
 };
 
 export type ReleaseDecision =
@@ -58,7 +62,22 @@ export type ReleaseRefusal =
   | "duplicate"
   | "fit-below-floor"
   | "fit-unknown"
-  | "sender-offline";
+  | "sender-offline"
+  // NB FOR ANYONE EDITING THIS UNION: src/test/agent-visibility parses the
+  // region as TEXT — it slices at the first semicolon and regexes for quoted
+  // lowercase words. So a comment in here must contain NEITHER a semicolon nor
+  // a quoted word, or it truncates the list or invents a code. Both happened
+  // while adding the two below, and the drift guard caught both.
+  //
+  // The on-ramp. Not a fault and not a misconfiguration — it means the packet is
+  // good and the candidate is going to watch it go. In the union so every
+  // consumer switching on a refusal must decide how to present it, instead of
+  // falling through to a generic blocked state that reads as a problem.
+  | "held-for-review"
+  // Written by agent_cancel_pending rather than decideRelease. It lives here so
+  // there is ONE closed vocabulary for why something was not sent. A code that
+  // exists only in the database renders to a candidate as a raw slug.
+  | "cancelled-by-you";
 
 export function decideRelease(i: ReleaseInput): ReleaseDecision {
   // Order matters only for which reason a candidate sees first; each check is
@@ -128,6 +147,27 @@ export function decideRelease(i: ReleaseInput): ReleaseDecision {
       release: false,
       code: "fit-below-floor",
       reason: `fit ${Math.round(i.fitPct)}% is under your ${i.minFitPct}% floor`,
+    };
+  }
+
+  // THE ON-RAMP. The first few auto-mode releases are held for approval even
+  // though everything else passed — the packet is good, and that is exactly why
+  // it is a fair one to show somebody before it goes out unattended.
+  //
+  // Placed AFTER the substantive checks on purpose: a candidate on their first
+  // day should be shown a packet that would really have been sent, not one that
+  // would have been refused for fit or vendor anyway. Otherwise the on-ramp
+  // teaches them about the wrong thing.
+  //
+  // Fails OPEN on missing values, like every other guard here: a mandate row
+  // written before this column existed has holdFirstN undefined, and reading
+  // that as "hold everything" would silently stop a working agent.
+  const hold = Number(i.holdFirstN ?? 0);
+  if (hold > 0 && Number(i.autoReleasedCount ?? 0) < hold) {
+    return {
+      release: false,
+      code: "held-for-review",
+      reason: `your first ${hold} go out with your approval — this is ${Number(i.autoReleasedCount ?? 0) + 1} of ${hold}`,
     };
   }
 
