@@ -1005,6 +1005,16 @@ serve(async (req) => {
       EdgeRuntime.waitUntil(sendSenderOfflineAlert(senderState));
     }
 
+    // WHAT CONFIRMATION PAGES ACTUALLY SAID when the worker could not recognise
+    // them. Every phrase in CONFIRMED_RE is a guess, and the evidence that would
+    // replace a guess with a measurement was landing in a jsonb column nobody
+    // reads. Surfaced here because this response is already the thing that gets
+    // curled — the wording is useless sitting in a table nobody queries.
+    //
+    // Carries no user, no posting and no URL: agent_confirmation_gaps strips all
+    // three, which is what makes it safe to put in a public response.
+    const confirmationGaps = await evaluateConfirmationGaps(supabase);
+
     return new Response(
       JSON.stringify({
         status: overallStatus,
@@ -1016,7 +1026,8 @@ serve(async (req) => {
         // Reported every run, alert or not. An alert that has never fired is an
         // assumption; this makes the exact inputs curl-able so the rule can be
         // checked against live data instead of waited on.
-        senderState
+        senderState,
+        confirmationGaps
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
@@ -1082,6 +1093,42 @@ interface SenderState {
   thresholdSeconds: number;
   shouldAlert: boolean;
   reason: string;
+}
+
+/**
+ * The phrases real confirmation pages used, for the ones we failed to read.
+ *
+ * `parked` is reported even when zero, deliberately. A field that only appears
+ * when something is wrong is indistinguishable from a field that stopped being
+ * computed, which is the same trap as an alarm that only records failures.
+ *
+ * Never throws and never blocks the heartbeat: an absent RPC (migration not yet
+ * applied) reports `reason: rpc-missing` rather than turning a healthy platform
+ * into a failed check.
+ */
+async function evaluateConfirmationGaps(
+  supabase: { rpc: (fn: string, args?: Record<string, unknown>) => PromiseLike<{ data: unknown; error: unknown }> },
+): Promise<{ reason: string; parked: number; wordings: Array<{ wording: string; occurrences: number }> }> {
+  try {
+    const { data, error } = await supabase.rpc('agent_confirmation_gaps', { p_days: 30 });
+    if (error) return { reason: 'rpc-missing', parked: 0, wordings: [] };
+    const rows = Array.isArray(data) ? data as Array<Record<string, unknown>> : [];
+    const wordings = rows.slice(0, 10).map((r) => ({
+      wording: String(r.wording ?? '').slice(0, 200),
+      occurrences: Number(r.occurrences ?? 0),
+    }));
+    const parked = wordings.reduce((n, w) => n + w.occurrences, 0);
+    return {
+      // `none-yet` and `unrecognised-wording` are different states and must read
+      // differently: the first means nothing has been sent, the second means
+      // sends ARE happening and the phrase list is behind them.
+      reason: parked === 0 ? 'none-yet' : 'unrecognised-wording',
+      parked,
+      wordings,
+    };
+  } catch {
+    return { reason: 'rpc-missing', parked: 0, wordings: [] };
+  }
 }
 
 async function evaluateSenderState(

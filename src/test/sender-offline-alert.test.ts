@@ -57,9 +57,14 @@ describe("the sender-offline rule names every state", () => {
   it("a missing RPC does not look like a healthy sender", () => {
     // Before the migration lands the rpc errors. Returning null or a bare
     // false there would read as "sender fine" forever.
-    const i = code(fn).indexOf("rpc-missing");
+    // SCOPED TO THE SENDER'S OWN FUNCTION. A bare indexOf finds the FIRST
+    // "rpc-missing" in the file, and another evaluator now degrades the same
+    // way — so this was silently checking a different function's neighbours,
+    // which is how an ambiguous anchor turns into a vacuous assertion.
+    const body = code(fn).slice(code(fn).indexOf("async function evaluateSenderState"));
+    const i = body.indexOf("rpc-missing");
     expect(i).toBeGreaterThan(-1);
-    expect(code(fn).slice(i - 200, i)).toMatch(/shouldAlert:\s*false/);
+    expect(body.slice(Math.max(0, i - 200), i)).toMatch(/shouldAlert:\s*false/);
   });
 });
 
@@ -103,7 +108,10 @@ describe("it cannot become a noise machine", () => {
  */
 describe("the rule is checkable without waiting for an outage", () => {
   it("returns senderState in the heartbeat response", () => {
-    expect(code(fn), "the state is computed but never surfaced").toMatch(/^\s*senderState$/m);
+    // Trailing comma allowed: this is a field in an object literal, and pinning
+    // it as the LAST field made an unrelated addition after it look like a
+    // regression in the sender.
+    expect(code(fn), "the state is computed but never surfaced").toMatch(/^\s*senderState,?$/m);
   });
 
   it("surfaces the threshold it judged against, not just the verdict", () => {
