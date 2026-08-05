@@ -1,0 +1,57 @@
+# CI gate: a detection regression (or any test/type failure) physically cannot
+# reach main unnoticed. The golden industry-detection corpus runs on every push.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Typecheck
+        # -p tsconfig.app.json, NOT a bare `tsc --noEmit`.
+        #
+        # The root tsconfig is `files: []` plus project references, and tsc
+        # without -p or -b does not follow references — so the bare form
+        # typechecks NOTHING and exits 0. Verified by planting a deliberate type
+        # error in src/ and watching it pass. This step has never caught
+        # anything and could not have; the local pre-push hook has been the only
+        # real typecheck. Same shape as the rest of today's findings: a gate
+        # that reports success for two different states.
+        run: npx tsc --noEmit -p tsconfig.app.json
+      - name: Edge functions syntax check
+        run: npx esbuild supabase/functions/free-keyword-scan/index.ts supabase/functions/free-keyword-scan/industry-detection.ts supabase/functions/free-keyword-scan/market-intelligence.ts supabase/functions/send-scan-report/index.ts --outdir=/tmp/esbuild-ci
+      - name: Tests (includes golden detection corpus)
+        run: npx vitest run
+      - name: Production build
+        run: npm run build
+
+      # THE APPLY DRIVER, PAST THE CLICK. Everything above compares selectors
+      # and field names against recordings; none of it presses submit, waits for
+      # the page to settle, or runs confirmed(). Those lines decide whether a
+      # real person's application is recorded as SENT — and a bug there already
+      # recorded a FAILED submit as sent, because "thank you for your interest
+      # in this role" is ordinary job-ad copy sitting on the form page.
+      #
+      # Its own deps and its own browser: the worker is a separate package that
+      # the root `npm ci` does not install, and Playwright needs a Chromium
+      # matching whatever npm actually resolved rather than one baked into an
+      # image tag.
+      - name: Install worker deps
+        working-directory: worker
+        run: npm ci || npm install
+      - name: Install Chromium for the harness
+        working-directory: worker
+        run: npx playwright install --with-deps chromium
+      - name: Apply-driver harness (six outcomes, past the click)
+        working-directory: worker
+        run: npm run harness

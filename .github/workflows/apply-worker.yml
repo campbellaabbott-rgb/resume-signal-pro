@@ -1,0 +1,140 @@
+# The apply worker's host.
+#
+# WHY THIS EXISTS. Every other piece of the paid apply agent was already built:
+# apply-agent writes packets, the worker claims and sends them, wake-sender pokes
+# a host, assertPaidSession gates the whole thing. Nothing ran the worker. So a
+# customer who bought it got packets prepared, marked `ready`, and queued
+# forever — not a bug, an unmade decision, deliberately left open because
+# wake-sender was written host-agnostic.
+#
+# WHY ACTIONS AND NOT A SERVER. The worker needs a real browser (Playwright);
+# Supabase edge functions are Deno with no browser, so it cannot live there. It
+# also does nothing at all most of the time — applications arrive in bursts
+# after a purchase. That is a job, not a service, and paying for an idle VM to
+# be ready for it is the wrong shape. `WORKER_IDLE_EXIT_MS` already existed for
+# exactly this: the worker drains the queue and exits.
+#
+# THE ONE SECRET THIS NEEDS (Settings -> Secrets and variables -> Actions):
+#   APPLY_WORKER_SECRET   the same value as the APPLY_WORKER_SECRET set on the
+#                         apply-broker edge function in Lovable
+#
+# IT USED TO ASK FOR THE WRONG ONES, and the wrong version read as more
+# plausible: SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY. The worker has not held
+# a service-role key since the broker was built, and reads neither. Setting them
+# produced a run that exited `misconfigured` (code 2) in seconds, and sent
+# whoever was configuring it hunting for a credential that cannot be obtained —
+# Lovable Cloud injects the service key into edge functions at runtime where
+# nobody can list or retrieve it.
+#
+# The same stale instruction lived in worker/fly.toml. Fixing one and not
+# looking for the other is why this comment names both.
+#
+# The résumé still reaches the runner, but as a five-minute signed URL the
+# broker mints per packet — downloaded, used, deleted. Not standing access.
+#
+# And in Supabase (Edge Function secrets), so wake-sender can start this:
+#   WORKER_START_URL    https://api.github.com/repos/<owner>/<repo>/actions/workflows/apply-worker.yml/dispatches
+#   WORKER_START_TOKEN  a fine-grained PAT with Actions: read/write on THIS repo only
+#   WORKER_START_BODY   {"ref":"main"}
+#
+# The last one matters and is easy to miss: GitHub's dispatch endpoint requires
+# a `ref` and rejects a body without one with 422. wake-sender's default body is
+# a human-readable reason, which GitHub will not accept.
+#
+# IF THE WAKE NEVER FIRES, NOTHING IS LOST. The schedule below sweeps every 30
+# minutes, so a packet whose wake failed is sent late rather than never. That is
+# the same reasoning as wake-sender swallowing its own errors: waking is an
+# optimisation on a system that already drains without it.
+
+name: Apply worker
+
+on:
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: "Why this run was started (recorded in the log)"
+        required: false
+        default: "manual"
+  schedule:
+    # BACKSTOP ONLY, and priced deliberately.
+    #
+    # Every run pays for an npm install and a Chromium download whether or not
+    # a single application is waiting — about four billable minutes. At the
+    # */30 this originally used, that is ~1,440 runs and ~5,800 minutes a
+    # month against a 2,000-minute quota on a private repo: roughly three times
+    # over, burned almost entirely on empty queues.
+    #
+    # Every six hours is ~120 runs and ~480 minutes, comfortably inside the
+    # quota. The cost of the longer gap is only paid when the WAKE has failed,
+    # because workflow_dispatch is the real path — a purchase pokes this within
+    # seconds. Widening the backstop does not slow the normal case down at all.
+    - cron: "17 */6 * * *"
+
+# One worker at a time. Two runners claiming the same queue is not corruption —
+# claims are atomic — but it doubles the request rate against employers' forms
+# for no gain, and politeness is a feature here.
+concurrency:
+  group: apply-worker
+  cancel-in-progress: false
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    # Generous ceiling, not an expectation. The worker exits on its own when the
+    # queue is empty; this only stops a wedged run burning the whole budget.
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install worker dependencies
+        working-directory: worker
+        run: npm install --no-audit --no-fund
+
+      - name: Install Chromium
+        working-directory: worker
+        # Chromium only. The worker drives one browser and the other two are
+        # several hundred megabytes of download on every run.
+        run: npx playwright install --with-deps chromium
+
+      - name: Typecheck
+        working-directory: worker
+        # The worker is not covered by the main CI job, and a type error here
+        # surfaces as an application that silently never sends.
+        run: npx tsc --noEmit
+
+      - name: Send ready packets
+        working-directory: worker
+        env:
+          APPLY_BROKER_URL: "https://bwhdazbotpblihdxcmho.supabase.co/functions/v1/apply-broker"
+          APPLY_WORKER_SECRET: ${{ secrets.APPLY_WORKER_SECRET }}
+          WORKER_ID: gha-${{ github.run_id }}
+          # Drain, then stop. Without this the worker polls forever and the job
+          # runs until the timeout above, whether or not there is any work.
+          WORKER_IDLE_EXIT_MS: "60000"
+          # Politeness: a fixed gap between submissions. Employers' forms are
+          # not ours to hammer, and a burst from one IP is exactly what makes a
+          # legitimate tool look like an attack.
+          APPLY_GAP_MS: "20000"
+          # And a longer gap before touching the SAME employer twice. Eight
+          # roles at one company would otherwise arrive within three minutes
+          # from one IP — a burst from the receiving end, however legitimate
+          # each application is on its own.
+          APPLY_EMPLOYER_GAP_MS: "120000"
+        run: npx tsx src/index.ts
+
+      - name: Upload evidence for uncertain outcomes
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: uncertain-${{ github.run_id }}
+          # Screenshots the worker keeps when it submitted but could not confirm.
+          # `if-no-files-found: ignore` because the healthy case is an empty
+          # directory, and a failed upload step would make a clean run look red.
+          path: worker/mac/uncertain/
+          if-no-files-found: ignore
+          retention-days: 14
