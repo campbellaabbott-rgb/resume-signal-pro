@@ -253,11 +253,13 @@ export type Database = {
           employer_cooldown_days: number
           full_name: string
           hold_first_n: number
+          include_uncategorised: boolean
           last_prepare_kick_at: string | null
           last_run_at: string | null
           last_run_summary: Json | null
           linkedin: string
           location: string
+          max_age_days: number | null
           pause_reason: string
           paused_until: string | null
           phone: string
@@ -301,11 +303,13 @@ export type Database = {
           employer_cooldown_days?: number
           full_name?: string
           hold_first_n?: number
+          include_uncategorised?: boolean
           last_prepare_kick_at?: string | null
           last_run_at?: string | null
           last_run_summary?: Json | null
           linkedin?: string
           location?: string
+          max_age_days?: number | null
           pause_reason?: string
           paused_until?: string | null
           phone?: string
@@ -349,11 +353,13 @@ export type Database = {
           employer_cooldown_days?: number
           full_name?: string
           hold_first_n?: number
+          include_uncategorised?: boolean
           last_prepare_kick_at?: string | null
           last_run_at?: string | null
           last_run_summary?: Json | null
           linkedin?: string
           location?: string
+          max_age_days?: number | null
           pause_reason?: string
           paused_until?: string | null
           phone?: string
@@ -500,10 +506,12 @@ export type Database = {
           created_at: string
           daily_count: number
           id: number
+          include_uncategorised: boolean
           label: string
           last_run_at: string | null
           last_run_summary: Json | null
           location: string
+          max_age_days: number | null
           q: string
           remote_only: boolean
           salary_min: number | null
@@ -516,10 +524,12 @@ export type Database = {
           created_at?: string
           daily_count?: number
           id?: never
+          include_uncategorised?: boolean
           label?: string
           last_run_at?: string | null
           last_run_summary?: Json | null
           location?: string
+          max_age_days?: number | null
           q?: string
           remote_only?: boolean
           salary_min?: number | null
@@ -532,10 +542,12 @@ export type Database = {
           created_at?: string
           daily_count?: number
           id?: never
+          include_uncategorised?: boolean
           label?: string
           last_run_at?: string | null
           last_run_summary?: Json | null
           location?: string
+          max_age_days?: number | null
           q?: string
           remote_only?: boolean
           salary_min?: number | null
@@ -2834,6 +2846,16 @@ export type Database = {
       agent_employer_in_cooldown: {
         Args: { p_company: string; p_days: number; p_user_id: string }
         Returns: boolean
+      }
+      agent_fill_gaps: {
+        Args: { p_days?: number }
+        Returns: {
+          last_seen: string
+          occurrences: number
+          source: string
+          stage: string
+          wording: string
+        }[]
       }
       agent_maintenance_key_matches: {
         Args: { p_key: string }
