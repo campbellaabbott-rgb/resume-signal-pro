@@ -986,3 +986,74 @@ The 364 unresolved are not dead. Their tokens exist; the name/domain guess list
 misses renames and holding companies. At the resolved set's average they
 represent roughly 4,900 more postings, and closing that gap is worth more than
 sweeping another corpus.
+
+---
+
+## Ranking discovery by DRIVABLE yield — 2026-08-05
+
+`scripts/census-drivable-yield.mjs`. Two phases: `rank` joins sources.ts to the
+live `companiesFacet` and prints postings per producing board for the four
+drivable vendors; `sweep` runs the custom-domain discovery over a Tranco corpus
+and reports what that corpus actually surfaces.
+
+**The live yield table reproduces the one the Pinpoint census was built on**,
+which is the control that says the method still measures what it did:
+
+| vendor | carried | producing | postings | per producing board |
+|---|---|---|---|---|
+| pinpoint | 257 | 104 | 4,583 | **44.1** |
+| breezy | 1,005 | 832 | 11,522 | 13.8 |
+| teamtailor | 1,535 | 1,063 | 10,043 | 9.4 |
+| personio | 2,368 | 1,310 | 4,696 | 3.6 |
+
+(77 Pinpoint tokens are claimed by another vendor too — Accenture, Next and
+their kind, admitted deliberately by the merge guard's collision rule. The facet
+counts by token, so those cannot be attributed to one vendor and are excluded
+from both sides.)
+
+### Yield per board was half a ranking, and it is the wrong half
+
+    drivable postings per 1,000 domains = (boards per 1,000 domains) x (postings per board)
+
+The left factor had never been measured. Four corpora, 15,000 domains, this run:
+
+| TLD | domains | careers CNAMEs | on a drivable ATS | boards/1k | postings/1k |
+|---|---|---|---|---|---|
+| .co.uk | 4,000 | 384 | 27 | **5.00** | **84.0** |
+| .com | 4,000 | 1,045 | 22 | 4.25 | 70.5 |
+| .nl | 4,000 | 247 | 4 | 1.00 | 37.3 |
+| .de | 3,000 | 418 | 2 | 0.67 | 5.3 |
+
+**.co.uk returns 5.00 boards/1k — the 0.50% hit rate recorded for the same TLD
+in the pilot above, to the digit.** That is the control, and it passed.
+
+**Every board found across all 15,000 domains was Teamtailor.** Not one Breezy,
+Personio or Pinpoint. So on the product that actually ranks a sweep, Teamtailor
+at 9.4 x ~4.5 beats Pinpoint at 44.1 x ~0.001 by four orders of magnitude. The
+vendor that wins the yield table is the one this channel cannot find, and
+picking a target on yield alone is what sent 2M DNS queries after a single
+Pinpoint board.
+
+### The .de run measured our own vendor table, not the German market
+
+418 careers CNAMEs resolved and 2 matched. Read as a result that says German
+employers do not use drivable ATSs. It says nothing of the kind — the other 416
+point at platforms this table has no fingerprint for. The sweep now reports them:
+
+| .de | .com | .co.uk / .nl |
+|---|---|---|
+| b-ite (25), jobware (15), umantis (4), beesite (4), talention (4) | jibeapply (11), career.page (10), happydance (11), findly (7), recruitology (20) | volcanic.cloud (10), postingpanda (10), talosats (7), homerun.co (5) |
+
+Sixth time a probe in this file measured our own setup and nearly filed it as a
+fact about the world. The fix is the same one every time: ask what the
+instrument can see before concluding the thing is absent.
+
+**None of those platforms has been assessed for a bot wall or an adapter.** They
+are the concrete next question, and they are a better one than another corpus:
+`.com` is roughly half of Tranco and already swept exhaustively, so more domains
+buys little, while a fingerprint for one mid-sized ATS opens a channel.
+`secure.recruitee.com` shows up on both .de and .nl and stays NO-BUILD —
+hCaptcha from `recruiteecdn.com`, measured 2026-08-01.
+
+Nothing here is catalog-ready. Token-first dedupe, the corporate-only rule and
+the merge guard's collision rule still decide what may enter sources.ts.
