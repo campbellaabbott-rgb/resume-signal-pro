@@ -1,0 +1,101 @@
+/**
+ * "NEEDS YOU" ON AN APPLICATION THAT MAY ALREADY HAVE ARRIVED.
+ *
+ * agent_mark_uncertain parks a packet at status='blocked'. The queue read that
+ * RAW status and printed "Needs you" — so somebody whose application may well
+ * have been received was told it still needed them, and the obvious response to
+ * "Needs you" is to go and apply again by hand.
+ *
+ * That is a duplicate application under a real person's name, caused entirely by
+ * our own wording. It is the same failure the release path guards against with
+ * `alreadySubmitted` and the duplicate check; the UI just had its own way of
+ * getting there.
+ *
+ * packetState already ranked `uncertain` above `blocked` and already owned the
+ * honest sentence. The model was right the whole time — two render paths simply
+ * were not asking it.
+ */
+import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { packetState } from "../lib/packetState";
+
+const panel = readFileSync(
+  resolve(__dirname, "../components/account/ApplyQueuePanel.tsx"), "utf8");
+const code = panel.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+
+/** A packet the worker submitted and could not confirm. */
+const uncertainPacket = {
+  status: "blocked",
+  submitted_at: null,
+  attempts: 99,
+  blockers: [{ kind: "uncertain-submit", detail: 'no confirmation recognised after submit — page said: "All done"' }],
+};
+
+describe("the model already knew", () => {
+  it("classifies it as uncertain, not blocked", () => {
+    expect(packetState(uncertainPacket).phase).toBe("uncertain");
+  });
+
+  it("refuses a retry, because retrying could apply someone twice", () => {
+    expect(packetState(uncertainPacket).canRetry).toBe(false);
+  });
+
+  it("an ordinary blocked packet is still blocked", () => {
+    // The control. Without it, a change that made EVERYTHING read as uncertain
+    // would pass every assertion above.
+    const ordinary = { status: "blocked", submitted_at: null, attempts: 0, blockers: [
+      { kind: "missing-answer", detail: "work authorisation" }] };
+    expect(packetState(ordinary).phase).toBe("blocked");
+  });
+});
+
+describe("and now the queue asks it", () => {
+  it("the row label branches on the derived phase, not the raw status alone", () => {
+    expect(code).toMatch(/p\.status === "blocked" && packetState\(p\)\.phase === "uncertain"/);
+    expect(code).toMatch(/p\.status === "blocked" && packetState\(p\)\.phase !== "uncertain"/);
+  });
+
+  it("an uncertain packet does not say it needs you", () => {
+    // The two branches are mutually exclusive on the same condition, so an
+    // uncertain packet cannot reach the "Needs you" label.
+    const uncertainBranch = code.slice(
+      code.indexOf('packetState(p).phase === "uncertain"'),
+      code.indexOf('packetState(p).phase !== "uncertain"'),
+    );
+    expect(uncertainBranch).toMatch(/applyQueue\.sUncertain/);
+    expect(uncertainBranch).not.toMatch(/applyQueue\.sBlocked/);
+  });
+
+  it("says what actually happened, including that it may have gone through", () => {
+    expect(code).toMatch(/Sent — but we could not confirm it/);
+  });
+});
+
+describe("the summary agrees with the rows it summarises", () => {
+  it("the blocked count excludes uncertain packets", () => {
+    // A person reads the headline number and may never open the row. A summary
+    // that contradicts its own list is worse than no summary.
+    expect(code).toMatch(/blocked: rows\.filter\(\(r\) => r\.status === "blocked" && packetState\(r\)\.phase !== "uncertain"\)/);
+  });
+
+  it("uncertain packets are counted, not simply dropped", () => {
+    // Excluding them from `blocked` without counting them anywhere would make
+    // applications vanish from the summary entirely — quieter, and worse.
+    expect(code).toMatch(/unconfirmed: rows\.filter\(\(r\) => packetState\(r\)\.phase === "uncertain"\)/);
+    expect(code).toMatch(/applyQueue\.cUnconfirmed/);
+  });
+
+  it("counts come from packetState, so there is ONE definition of these words", () => {
+    // A second, local definition of "blocked" is how a summary and its list end
+    // up disagreeing on screen.
+    // The end anchor is searched FROM the start anchor. An unanchored
+    // indexOf("return (") finds the loading early-return, which sits ABOVE the
+    // counts — so the slice ran backwards and yielded "", and the assertion was
+    // measuring an empty string rather than the block it names.
+    const from = code.indexOf("const counts = {");
+    expect(from).toBeGreaterThan(-1);
+    const countsBlock = code.slice(from, code.indexOf("return (", from));
+    expect((countsBlock.match(/packetState\(r\)/g) ?? []).length).toBeGreaterThanOrEqual(2);
+  });
+});

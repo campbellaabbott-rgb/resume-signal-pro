@@ -15,7 +15,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { ApplicationReceipt } from "./ApplicationReceipt";
 import { useTranslation } from "react-i18next";
-import { CheckCircle2, Clock, AlertTriangle, Send, ExternalLink, Loader2, Inbox, PauseCircle, Info } from "lucide-react";
+import { CheckCircle2, Clock, AlertTriangle, Send, ExternalLink, Loader2, Inbox, PauseCircle, Info, HelpCircle } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { refusalFace } from "@/lib/refusalCopy";
@@ -129,9 +129,18 @@ export function ApplyQueuePanel({ userId }: { userId: string }) {
     );
   }
 
+  // THE SUMMARY COUNTS MUST AGREE WITH THE ROWS THEY SUMMARISE. An uncertain
+  // packet is status='blocked' in the database, so counting the raw status put
+  // it under "need you" — the same untruth as the row label, with the added
+  // problem that a person reads the headline count and never opens the row.
+  //
+  // Counted through packetState so there is ONE definition of what these words
+  // mean. A second definition here is how a summary and its own list end up
+  // disagreeing on screen.
   const counts = {
     ready: rows.filter((r) => r.status === "ready").length,
-    blocked: rows.filter((r) => r.status === "blocked").length,
+    blocked: rows.filter((r) => r.status === "blocked" && packetState(r).phase !== "uncertain").length,
+    unconfirmed: rows.filter((r) => packetState(r).phase === "uncertain").length,
     sent: rows.filter((r) => r.status === "submitted").length,
   };
 
@@ -162,6 +171,11 @@ export function ApplyQueuePanel({ userId }: { userId: string }) {
             <span className="text-warning font-semibold">
               {t("applyQueue.cBlocked", "{{n}} need you", { n: counts.blocked })}
             </span>
+            {counts.unconfirmed > 0 && (
+              <span className="text-warning font-semibold">
+                {t("applyQueue.cUnconfirmed", "{{n}} unconfirmed", { n: counts.unconfirmed })}
+              </span>
+            )}
             <span className="text-muted-foreground">
               {t("applyQueue.cSent", "{{n}} sent", { n: counts.sent })}
             </span>
@@ -184,7 +198,25 @@ export function ApplyQueuePanel({ userId }: { userId: string }) {
                               {t("applyQueue.sReady", "Ready — nothing needs you")}
                             </span></>
                         )}
-                        {p.status === "blocked" && (
+                        {/* UNCERTAIN IS NOT "NEEDS YOU", AND THE DIFFERENCE IS THE
+                            WHOLE POINT. agent_mark_uncertain parks the row at
+                            status='blocked', so reading the RAW status here told
+                            somebody whose application may already have arrived
+                            that it still needed them — and the obvious response
+                            to "Needs you" is to go and apply again by hand. That
+                            is a duplicate application under a real name, caused
+                            by our own wording.
+
+                            packetState already ranks uncertain ABOVE blocked and
+                            owns the honest sentence. The model was right; this
+                            line just was not asking it. */}
+                        {p.status === "blocked" && packetState(p).phase === "uncertain" && (
+                          <><HelpCircle className="w-3.5 h-3.5 text-warning" />
+                            <span className="text-warning font-medium">
+                              {t("applyQueue.sUncertain", "Sent — but we could not confirm it")}
+                            </span></>
+                        )}
+                        {p.status === "blocked" && packetState(p).phase !== "uncertain" && (
                           <><AlertTriangle className="w-3.5 h-3.5 text-warning" />
                             <span className="text-warning font-medium">
                               {t("applyQueue.sBlocked", "Needs you")}
