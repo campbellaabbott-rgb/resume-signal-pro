@@ -44,6 +44,26 @@ const existingNames = new Set([
   ...[...src.matchAll(/name:\s*"((?:[^"\\]|\\.)*)"/g)].map((m) => m[1].toLowerCase().trim()),
   ...[...src.matchAll(/s\("((?:[^"\\]|\\.)*)"/g)].map((m) => m[1].toLowerCase().trim()),
 ]);
+
+// WHICH VENDOR EACH EXISTING NAME IS CARRIED ON, so a collision can be judged
+// rather than just counted.
+const nameVendors = new Map();
+const noteName = (n, v) => {
+  const k = n.toLowerCase().trim();
+  if (!nameVendors.has(k)) nameVendors.set(k, new Set());
+  nameVendors.get(k).add(v);
+};
+for (const m of src.matchAll(/name:\s*"((?:[^"\\]|\\.)*)",\s*source:\s*"(\w+)"/g)) noteName(m[1], m[2]);
+for (const m of src.matchAll(/s\("((?:[^"\\]|\\.)*)",\s*"(\w+)"/g)) noteName(m[1], m[2]);
+
+/**
+ * THE FOUR VENDORS THE APPLY AGENT CAN ACTUALLY DRIVE.
+ *
+ * Mirrors agent_reach() and _shared/apply-automation. Kept as a literal rather
+ * than imported because this is a Node script and that is Deno — the drift risk
+ * is real, so a test asserts the two lists agree.
+ */
+const DRIVABLE = new Set(["breezy", "teamtailor", "personio", "pinpoint"]);
 console.log(`catalog: ${existingTokens.size} tokens, ${existingNames.size} names`);
 
 const decodeEntities = (s) => s
@@ -63,7 +83,32 @@ for (const vendor of VENDORS) {
     if (TOKEN_BLOCK.test(b.token)) { dropped.blockedToken++; continue; }
     if (!name || NAME_BLOCK.test(name) || GOV_BLOCK.test(name)) { dropped.blockedName++; continue; }
     if (seen.has(tokenKey) || existingTokens.has(tokenKey)) { dropped.dupe++; continue; }
-    if (existingNames.has(nameKey)) { dropped.nameCollision++; continue; }
+    // COLLISION, BUT NOT ALL COLLISIONS ARE EQUAL.
+    //
+    // The guard exists so one employer does not appear twice. That is right for
+    // a catalog judged on tidiness, and wrong for one judged on what the agent
+    // can act on: 38 of the 57 Pinpoint boards found on 2026-08-05 collided
+    // with employers we ALREADY carry on a WALLED vendor. Accenture, Next and
+    // HelloFresh publish to Pinpoint and to Workday, and we were keeping the
+    // Workday one — holding the copy the agent can never apply to.
+    //
+    // So a collision is only fatal when it does not buy reach. If the incoming
+    // vendor is drivable and every vendor already carrying that name is not,
+    // the new board is admitted: the employer appears twice, once appliable.
+    // Duplicate display is already handled by the name-keyed employer
+    // clustering; an unappliable posting is not handled by anything.
+    //
+    // Deliberately NOT a replacement of the existing entry. Dropping the walled
+    // token would orphan-prune its postings, and a Workday board can carry
+    // hundreds against Pinpoint's handful — the board would shrink to make the
+    // agent look better, which is the wrong trade and would trip the catalog
+    // high-water guard besides.
+    if (existingNames.has(nameKey)) {
+      const carriers = nameVendors.get(nameKey) ?? new Set();
+      const buysReach = DRIVABLE.has(vendor) && [...carriers].every((v) => !DRIVABLE.has(v));
+      if (!buysReach) { dropped.nameCollision++; continue; }
+      dropped.collisionAdmittedForReach = (dropped.collisionAdmittedForReach ?? 0) + 1;
+    }
     seen.add(tokenKey);
     keep[vendor].push({ ...b, name });
     if (b.count >= 100) millWorklist.push({ vendor, ...b, name });
