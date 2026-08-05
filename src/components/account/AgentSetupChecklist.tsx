@@ -25,6 +25,7 @@
  * a progress bar, not a checklist.
  */
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { Check, Circle, ArrowRight } from "lucide-react";
@@ -140,14 +141,23 @@ export function AgentSetupChecklist({
         ))}
       </ol>
 
-      <button
-        type="button"
-        onClick={() => onGo(next.tab)}
-        className="mt-4 inline-flex items-center gap-1.5 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
-      >
-        {t("agentSetup.continue", "Continue")}
-        <ArrowRight className="h-4 w-4" aria-hidden="true" />
-      </button>
+      <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
+        <button
+          type="button"
+          onClick={() => onGo(next.tab)}
+          className="inline-flex items-center gap-1.5 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
+        >
+          {t("agentSetup.continue", "Continue")}
+          <ArrowRight className="h-4 w-4" aria-hidden="true" />
+        </button>
+        {/* The checklist says what to DO and never what happens afterwards, so
+            the moment it is finished is also the moment somebody has the most
+            questions and the fewest answers. This is that answer, offered while
+            they are still here rather than after the list disappears. */}
+        <Link to="/guides/how-the-apply-agent-works" className="text-sm text-primary hover:underline">
+          {t("agentSetup.howItWorks", "What happens after this →")}
+        </Link>
+      </div>
     </section>
   );
 }

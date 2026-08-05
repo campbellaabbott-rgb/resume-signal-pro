@@ -12,17 +12,22 @@ export default function GuidesIndex() {
   return (
     <div className="min-h-screen bg-background">
       <SEO
-        title="Resume & ATS Guides — From Real Scanner Data"
-        description="How ATS systems actually work, how resumes really get rejected, and how to fix yours — every guide grounded in the checks our scanner runs, not folklore."
+        title="Resume, ATS & Apply Agent Guides — From Real Data"
+        description="How ATS systems actually work, how resumes really get rejected, how to fix yours, and how our apply agent works — grounded in what the product does, not folklore."
         path="/guides"
       />
       <Header />
       <main className="pt-20 pb-20">
         <div className="container max-w-3xl">
-          <h1 className="text-3xl md:text-4xl font-bold mb-3">Resume &amp; ATS guides</h1>
+          <h1 className="text-3xl md:text-4xl font-bold mb-3">Guides</h1>
           <p className="text-muted-foreground mb-8 max-w-2xl">
-            No recycled folklore: every guide below is grounded in the checks our scanner runs on real resumes and
-            the documented behavior of real ATS parsers. Where the popular advice is wrong, we say so.
+            {/* WAS "every guide below is grounded in the checks our scanner runs
+                on real resumes", which was true of eight résumé guides and went
+                false the moment a guide about the apply agent joined them. A
+                blanket claim about a growing list is a claim that expires. */}
+            No recycled folklore. Every guide below is grounded in something this product actually does — the
+            checks our scanner runs, the documented behavior of real ATS parsers, or what our apply agent will
+            and will not do on your behalf. Where the popular advice is wrong, we say so.
           </p>
           <div className="space-y-3">
             <Link

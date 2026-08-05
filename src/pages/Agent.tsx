@@ -118,9 +118,22 @@ export default function Agent() {
           {t("agent.backToAccount", "Back to account")}
         </Link>
 
-        <h1 className="mt-3 text-2xl font-semibold tracking-tight sm:text-3xl">
-          {t("agent.title", "Apply agent")}
-        </h1>
+        <div className="mt-3 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+            {t("agent.title", "Apply agent")}
+          </h1>
+          {/* THE WAY OUT OF "what is this actually going to do".
+              Every explanation on this page is a fragment attached to the
+              control it describes — correct, and no use at all to somebody who
+              wants the whole shape before handing over their job hunt. On all
+              three tabs, because the question does not only arrive on one. */}
+          <Link
+            to="/guides/how-the-apply-agent-works"
+            className="text-sm text-primary hover:underline"
+          >
+            {t("agent.howItWorks", "How it works")}
+          </Link>
+        </div>
 
         <div className="mt-4">
           <AgentStatusBand userId={userId} email={email} />

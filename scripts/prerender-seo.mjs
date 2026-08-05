@@ -39,7 +39,7 @@ export { COMPETITORS } from "../src/data/competitors";
 export { VENDORS } from "../src/data/ats-vendors";
 export { ES_INDUSTRIES, isSpanish } from "../src/data/es-industries";
 export { SCREENER_NOTES } from "../src/data/screener-notes";
-export { GUIDES } from "../src/data/guides";
+export { GUIDES, guideGrounding } from "../src/data/guides";
 export { buildIndustryFaqs } from "../src/data/industry-faqs";
 export { COUNTRY_STANDARDS } from "../supabase/functions/free-keyword-scan/country-standards";
 export { COUNTRY_SLUGS, CV_LOCALES, EN_TEMPLATE, fill, hreflangCluster } from "../src/data/cv-standards-content";
@@ -564,7 +564,7 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
           ${breadcrumbNav([{ name: "Home", href: "/" }, { name: "Guides", href: "/guides" }, { name: g.h1 }])}
           <article>
           <h1 class="text-3xl font-bold mb-3">${esc(g.h1)}</h1>
-          <p class="text-xs text-muted-foreground mb-6">${g.minutes} min read · Updated ${g.updated} · Grounded in the checks our scanner runs on every resume</p>
+          <p class="text-xs text-muted-foreground mb-6">${g.minutes} min read · Updated ${g.updated} · ${esc(D.guideGrounding(g))}</p>
           <section class="rounded-2xl border border-primary/25 bg-primary/5 p-5 mb-8"><h2 class="text-sm font-semibold text-foreground mb-1.5">The short answer</h2><p class="text-sm text-muted-foreground leading-relaxed">${esc(g.tldr)}</p></section>
           ${g.sections.map((s) => `
             <section class="mb-8">

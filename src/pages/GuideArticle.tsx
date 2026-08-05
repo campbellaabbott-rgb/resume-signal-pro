@@ -8,7 +8,7 @@ import { ArrowRight } from "lucide-react";
 import { SEO } from "@/components/seo/SEO";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
-import { GUIDES } from "@/data/guides";
+import { GUIDES, guideGrounding } from "@/data/guides";
 
 export default function GuideArticle() {
   const { slug } = useParams();
@@ -67,7 +67,7 @@ export default function GuideArticle() {
           </nav>
           <h1 className="text-3xl md:text-4xl font-bold mb-3">{g.h1}</h1>
           <p className="text-xs text-muted-foreground mb-6">
-            {g.minutes} min read · Updated {g.updated} · Grounded in the checks our scanner runs on every resume
+            {g.minutes} min read · Updated {g.updated} · {guideGrounding(g)}
           </p>
 
           {/* Answer-first: the extractable 2–3 sentence answer, before the depth */}
