@@ -20,6 +20,12 @@ import { computeFit } from "../_shared/fit-score.ts";
 import { isSendableVendor, SENDABLE_VENDORS } from "../_shared/apply-automation.ts";
 import { ENTITLEMENT_COLUMNS, entitledFromRows, isEntitled, normalizeEmail, rowIsEntitled } from "../_shared/agent-entitlement.ts";
 import { nextRunStamp } from "../_shared/run-stamp.ts";
+// The two reach rules live in _shared so a vitest suite can EXECUTE them.
+// This file imports from https://deno.land, which the Node ESM loader refuses,
+// so every test of it is a regex over its source — able to prove a line exists
+// and never able to prove what it does. These two decide whether a subscriber
+// sees a quarter of the board, which is worth more than a text match.
+import { applyCategory, applyMaxAge } from "../_shared/mandate-reach.ts";
 
 // Bumped whenever this function changes shape, so a 403 can say WHICH bundle
 // refused — the difference between "the gate is live" and "the old open build
@@ -43,17 +49,38 @@ const SENDABLE_CANDIDATES = 120;
 const LOOKBACK_HOURS = 36;         // overlap across runs; dedupe is the unique key
 const MIN_FIT_PCT = 30;            // below this a pick would waste the user's morning
 
-interface MandateRow {
+/**
+ * REACH, which the mandate had no way to express.
+ *
+ * `max_age_days` — the runner takes postings whose FIRST_SEEN is inside a
+ * 36-hour lookback, which is "new to the board" and not "new to the world". An
+ * employer's feed routinely surfaces a role it posted five months ago, and the
+ * agent queued it as today's find. Mirrors the board's own maxAgeDays exactly:
+ * posted_at, 1..30, undated postings outside it.
+ *
+ * `include_uncategorised` — `.eq("category", …)` excluded the `other` bucket,
+ * which held 162,800 of 590,808 postings on 2026-08-05. A category choice was
+ * hiding 27.6% of the board and nothing said so.
+ *
+ * Both optional on the type, because this function must survive being deployed
+ * before its migration — see the select fallback below.
+ */
+interface Reach {
+  max_age_days?: number | null;
+  include_uncategorised?: boolean | null;
+}
+interface MandateRow extends Reach {
   user_id: string; email: string; q: string; category: string; location: string;
   remote_only: boolean; salary_min: number | null; daily_count: number; resume_text: string;
   apply_mode: "review" | "auto";
 }
 /** One saved search. The profile stays on the mandate; only criteria live here. */
-interface SearchRow {
+interface SearchRow extends Reach {
   id: number; user_id: string; label: string;
   q: string; category: string; location: string;
   remote_only: boolean; salary_min: number | null; daily_count: number;
 }
+
 interface PostingRow {
   id: string; title: string; company: string; company_token: string; location: string;
   apply_url: string; salary: string | null; category: string; posted_at: string | null;
@@ -116,12 +143,29 @@ serve(async (req) => {
     .lt("created_at", new Date(Date.now() - 48 * 3600_000).toISOString());
 
   // Active mandates with a usable resume, joined to the entitlement cache.
-  const { data: mandates, error: mErr } = await client
-    .from("agent_mandates")
-    .select("user_id, email, q, category, location, remote_only, salary_min, daily_count, resume_text, apply_mode")
-    .eq("active", true)
-    .limit(MANDATES_PER_RUN);
-  if (mErr) return json({ error: mErr.message }, 500);
+  //
+  // TWO SELECTS, AND THE SECOND ONE IS THE POINT. PostgREST rejects the whole
+  // query with a 400 when a named column does not exist, so adding
+  // max_age_days/include_uncategorised to this list makes the nightly run fail
+  // COMPLETELY in the window between this bundle deploying and its migration
+  // applying. That window is real here — the frontend deploys fast and
+  // migrations only apply through an active session — and a runner that stops
+  // finding anyone jobs is a worse outcome than a feature arriving late.
+  //
+  // So the extended select is attempted and the legacy one is the fallback. The
+  // new fields are optional on the type and every read of them treats absent as
+  // "not set", which is exactly the pre-migration behaviour.
+  const MANDATE_COLS = "user_id, email, q, category, location, remote_only, salary_min, daily_count, resume_text, apply_mode";
+  const readMandates = async (cols: string) => await client
+    .from("agent_mandates").select(cols).eq("active", true).limit(MANDATES_PER_RUN);
+
+  let mRes = await readMandates(`${MANDATE_COLS}, max_age_days, include_uncategorised`);
+  if (mRes.error) {
+    console.warn(`[AGENT-RUNNER] reach columns unavailable, running without them: ${mRes.error.message?.slice(0, 120)}`);
+    mRes = await readMandates(MANDATE_COLS);
+  }
+  if (mRes.error) return json({ error: mRes.error.message }, 500);
+  const mandates = (mRes.data ?? []) as unknown as MandateRow[];
 
   // ROWS THAT EXIST BUT ARE SWITCHED OFF. The `active` filter above means a
   // zero result still spans two states — nobody has ever set up a mandate, and
@@ -184,15 +228,21 @@ serve(async (req) => {
   // function is safe to deploy before or after its migration.
   const searchesByUser = new Map<string, SearchRow[]>();
   if (userIds.length) {
-    const { data: sRows, error: sErr } = await client
-      .from("agent_searches")
-      .select("id, user_id, label, q, category, location, remote_only, salary_min, daily_count")
-      .eq("active", true)
-      .in("user_id", userIds);
-    if (sErr) {
-      console.warn(`[AGENT-RUNNER] agent_searches unavailable, using mandate criteria: ${sErr.message?.slice(0, 120)}`);
+    const SEARCH_COLS = "id, user_id, label, q, category, location, remote_only, salary_min, daily_count";
+    // Same two-step as the mandates select above, and for the same reason: a
+    // 400 on an unknown column here would be swallowed by the `error` branch
+    // below and read as "this user has no searches" — every subscriber's agent
+    // silently falling back to their single mandate, which is the failure that
+    // looks exactly like working software.
+    const readSearches = async (cols: string) => await client
+      .from("agent_searches").select(cols).eq("active", true).in("user_id", userIds);
+
+    let sRes = await readSearches(`${SEARCH_COLS}, max_age_days, include_uncategorised`);
+    if (sRes.error) sRes = await readSearches(SEARCH_COLS);
+    if (sRes.error) {
+      console.warn(`[AGENT-RUNNER] agent_searches unavailable, using mandate criteria: ${sRes.error.message?.slice(0, 120)}`);
     } else {
-      for (const s of (sRows ?? []) as SearchRow[]) {
+      for (const s of (sRes.data ?? []) as unknown as SearchRow[]) {
         const list = searchesByUser.get(s.user_id) ?? [];
         list.push(s);
         searchesByUser.set(s.user_id, list);
@@ -245,6 +295,10 @@ serve(async (req) => {
           q: s.q, category: s.category, location: s.location,
           remote_only: s.remote_only, salary_min: s.salary_min,
           daily_count: s.daily_count,
+          // Reach is per SEARCH, not per person: "anything posted this week" and
+          // "anything at all" are different searches, and taking the mandate's
+          // value here would make one of them wrong.
+          max_age_days: s.max_age_days, include_uncategorised: s.include_uncategorised,
           search_id: s.id, search_label: s.label,
         });
       }
@@ -286,7 +340,12 @@ serve(async (req) => {
       .gt("first_seen", sinceIso)
       .order("posted_at", { ascending: false, nullsFirst: false })
       .limit(CANDIDATES_PER_MANDATE);
-    if (m.category) qb = qb.eq("category", m.category);
+    // CATEGORY, AND THE QUARTER OF THE BOARD IT USED TO REMOVE. `other` held
+    // 162,800 of 590,808 postings on 2026-08-05 — it is where a posting lands
+    // when the classifier could not place its title, not a junk drawer — and
+    // `.eq()` excluded every one of them the moment somebody picked a field.
+    // Opt-in, so an existing mandate returns exactly what it returned before.
+    qb = applyCategory(qb, m);
     if (m.remote_only) qb = qb.eq("remote", true);
     // Multi-term: one mandate can now name several roles and several places.
     const locTerms = splitTerms(m.location);
@@ -294,6 +353,11 @@ serve(async (req) => {
     if (locTerms.length) qb = qb.or(orIlike("location", locTerms));
     if (qTerms.length) qb = qb.or(orIlike("title", qTerms));
     if (m.salary_min != null) qb = qb.gte("salary_min_annual", m.salary_min);
+    // STATED AGE, not discovery age. `first_seen > sinceIso` above means new to
+    // THE BOARD; a feed can surface a role posted five months ago and it would
+    // arrive as today's find. Same column and same clamp as the board's own
+    // maxAgeDays, so the two surfaces cannot disagree about one posting.
+    qb = applyMaxAge(qb, m);
     const { data: cands0, error: cErr } = await qb;
 
     // A SECOND, narrower pull for auto mode — only the vendors the worker can
@@ -320,13 +384,19 @@ serve(async (req) => {
         .or(SENDABLE_VENDORS.map((v) => `id.like.${v}:*`).join(","))
         .order("posted_at", { ascending: false, nullsFirst: false })
         .limit(SENDABLE_CANDIDATES);
-      if (m.category) sb2 = sb2.eq("category", m.category);
+      // THE SECOND CALL SITE. The multi-term change shipped one commit ago with
+      // a note that this file turns a mandate into a query in TWO places and
+      // that patching only the obvious one leaves the feature working in the
+      // main path and silently absent in the other. Same two filters, same
+      // helpers, and the test counts both call sites.
+      sb2 = applyCategory(sb2, m);
       if (m.remote_only) sb2 = sb2.eq("remote", true);
       const locTerms2 = splitTerms(m.location);
       const qTerms2 = splitTerms(m.q);
       if (locTerms2.length) sb2 = sb2.or(orIlike("location", locTerms2));
       if (qTerms2.length) sb2 = sb2.or(orIlike("title", qTerms2));
       if (m.salary_min != null) sb2 = sb2.gte("salary_min_annual", m.salary_min);
+      sb2 = applyMaxAge(sb2, m);
       const { data: sendableCands } = await sb2;
       if (sendableCands?.length) {
         const seen = new Set(cands.map((c) => (c as PostingRow).id));

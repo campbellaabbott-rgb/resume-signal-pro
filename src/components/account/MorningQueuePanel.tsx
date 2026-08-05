@@ -20,6 +20,7 @@ import { Sunrise, Play, Pause, X, Check, ArrowRight, Sparkles, Plus } from "luci
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAgentSender } from "@/hooks/useAgentSender";
+import { EMPTY_PROPOSAL, proposeMandate, toMandateField, type MandateProposal } from "@/lib/mandateProposal";
 
 const sb = supabase as unknown as {
   from: (t: string) => any;
@@ -31,6 +32,8 @@ interface Mandate {
   location: string; remote_only: boolean; salary_min: number | null; daily_count: number;
   resume_text: string; last_run_at: string | null; email_opt_in?: boolean;
   apply_mode?: "review" | "auto";
+  /** Reach. Absent on rows read before the migration landed; absent means "not set". */
+  max_age_days?: number | null; include_uncategorised?: boolean | null;
   last_run_summary: { scanned: number; picked: number; skipped_churn: number; skipped_lowfit: number } | null;
 }
 /**
@@ -43,6 +46,7 @@ interface Search {
   id: number; label: string; active: boolean;
   q: string; category: string; location: string;
   remote_only: boolean; salary_min: number | null; daily_count: number;
+  max_age_days?: number | null; include_uncategorised?: boolean | null;
   last_run_summary: { scanned: number; picked: number } | null;
 }
 const MAX_SEARCHES = 10; // mirrors the agent_searches_cap trigger
@@ -100,7 +104,13 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
   const [queue, setQueue] = useState<QueueItem[]>([]);
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [form, setForm] = useState({ q: "", category: "", location: "", remote_only: false, salary_min: "", daily_count: 5 });
+  const [form, setForm] = useState({
+    q: "", category: "", location: "", remote_only: false, salary_min: "", daily_count: 5,
+    // REACH. `max_age_days` empty means no age constraint, which is what every
+    // existing mandate has and keeps. `include_uncategorised` off means the
+    // category filter behaves exactly as it always did.
+    max_age_days: "", include_uncategorised: false,
+  });
 
   // MANY SEARCHES, ONE PROFILE.
   //
@@ -112,10 +122,45 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
   const [editingId, setEditingId] = useState<number | "new" | null>(null);
   const [label, setLabel] = useState("");
 
+  // THE RÉSUMÉ THIS PANEL CAN SEE, WHICH ON /agent WAS NOTHING.
+  //
+  // `defaultResume` is supplied by Account.tsx and hardcoded `null` by the
+  // Agent page — so on the agent's own address the matching résumé was always
+  // absent, `resumeReady` was always false for anyone who had not first
+  // activated from /account, and the Activate button sat disabled under a
+  // sentence pointing "above" at a panel that uploads a CV without ever writing
+  // resume_text. The page dedicated to the agent was the one page that could
+  // not start it.
+  //
+  // Read here, from the same two places Account reads and in the same order
+  // agent-runner prefers them: the pinned matching résumé first, the newest
+  // scan second. A failure leaves it null, which is exactly the old behaviour.
+  const [ownResume, setOwnResume] = useState<string | null>(null);
+  useEffect(() => {
+    if (defaultResume) return;                 // the caller already has one
+    let live = true;
+    void (async () => {
+      const [{ data: prof }, { data: scan }] = await Promise.all([
+        sb.from("user_profiles").select("matching_resume_text").eq("user_id", userId).maybeSingle(),
+        sb.from("user_scans").select("resume_text").order("created_at", { ascending: false }).limit(1).maybeSingle(),
+      ]);
+      if (!live) return;
+      setOwnResume(prof?.matching_resume_text ?? scan?.resume_text ?? null);
+    })();
+    return () => { live = false; };
+  }, [userId, defaultResume]);
+
   const loadSearches = useCallback(async () => {
-    const { data, error } = await sb.from("agent_searches")
-      .select("id,label,active,q,category,location,remote_only,salary_min,daily_count,last_run_summary")
-      .eq("user_id", userId).order("created_at", { ascending: true });
+    // TWO SELECTS. PostgREST fails the WHOLE query on an unknown column, and
+    // the error path here sets `searches` to null, which renders the old
+    // single-mandate form — so naming a column before its migration lands would
+    // make everybody's saved searches vanish from the page. The reach columns
+    // are asked for first and dropped if they are not there yet.
+    const COLS = "id,label,active,q,category,location,remote_only,salary_min,daily_count,last_run_summary";
+    const read = (cols: string) => sb.from("agent_searches")
+      .select(cols).eq("user_id", userId).order("created_at", { ascending: true });
+    let { data, error } = await read(`${COLS},max_age_days,include_uncategorised`);
+    if (error) ({ data, error } = await read(COLS));
     if (error) { setSearches(null); return; }
     setSearches((data ?? []) as Search[]);
   }, [userId]);
@@ -128,12 +173,29 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
       ]);
       if (m) {
         setMandate(m as Mandate);
-        setForm({ q: m.q, category: m.category, location: m.location, remote_only: m.remote_only, salary_min: m.salary_min?.toString() ?? "", daily_count: m.daily_count });
+        setForm({ q: m.q, category: m.category, location: m.location, remote_only: m.remote_only, salary_min: m.salary_min?.toString() ?? "", daily_count: m.daily_count,
+          max_age_days: m.max_age_days?.toString() ?? "", include_uncategorised: m.include_uncategorised === true });
       }
       if (Array.isArray(qRows)) setQueue(qRows as QueueItem[]);
       await loadSearches();
     })();
   }, [userId, loadSearches]);
+
+  /**
+   * The two reach fields, written the way the runner reads them.
+   *
+   * The clamp is here as well as in the runner and in a CHECK constraint. That
+   * is three copies on purpose: a value the runner has to silently correct is a
+   * row that lies about itself, and this is the only one of the three the
+   * person can see before it is saved.
+   */
+  const reachPatch = useCallback(() => {
+    const n = parseInt(form.max_age_days, 10);
+    return {
+      max_age_days: Number.isFinite(n) && n >= 1 ? Math.min(n, 30) : null,
+      include_uncategorised: form.include_uncategorised === true,
+    };
+  }, [form.max_age_days, form.include_uncategorised]);
 
   /** Insert or update one search. The trigger enforces the ceiling; this only reports it. */
   const saveSearch = useCallback(async () => {
@@ -144,6 +206,7 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
       remote_only: form.remote_only,
       salary_min: form.salary_min ? parseInt(form.salary_min, 10) || null : null,
       daily_count: Math.max(1, Math.min(10, form.daily_count)),
+      ...reachPatch(),
       updated_at: new Date().toISOString(),
     };
     setBusy(true);
@@ -164,7 +227,7 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
     setEditingId(null); setLabel(""); setEditing(false);
     await loadSearches();
     toast.success(t("agentQueue.searchSaved", "Search saved."));
-  }, [userId, label, form, editingId, loadSearches, t]);
+  }, [userId, label, form, editingId, loadSearches, reachPatch, t]);
 
   const toggleSearch = useCallback(async (s: Search) => {
     const { error } = await sb.from("agent_searches")
@@ -185,10 +248,12 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
     if (s) {
       setEditingId(s.id); setLabel(s.label);
       setForm({ q: s.q, category: s.category, location: s.location, remote_only: s.remote_only,
-        salary_min: s.salary_min?.toString() ?? "", daily_count: s.daily_count });
+        salary_min: s.salary_min?.toString() ?? "", daily_count: s.daily_count,
+        max_age_days: s.max_age_days?.toString() ?? "", include_uncategorised: s.include_uncategorised === true });
     } else {
       setEditingId("new"); setLabel("");
-      setForm({ q: "", category: "", location: "", remote_only: false, salary_min: "", daily_count: 5 });
+      setForm({ q: "", category: "", location: "", remote_only: false, salary_min: "", daily_count: 5,
+        max_age_days: "", include_uncategorised: false });
     }
     setEditing(true);
   }, []);
@@ -234,6 +299,7 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
       remote_only: form.remote_only,
       salary_min: form.salary_min ? parseInt(form.salary_min, 10) || null : null,
       daily_count: Math.max(1, Math.min(10, form.daily_count)),
+      ...reachPatch(),
       resume_text: resume,
       updated_at: new Date().toISOString(),
     };
@@ -245,7 +311,7 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
     toast.success(activate
       ? t("agentQueue.activated", "Mandate active — your first queue arrives after tonight's run.")
       : t("agentQueue.paused", "Mandate paused — no new picks until you resume."));
-  }, [mandate, defaultResume, userId, email, form, t]);
+  }, [mandate, defaultResume, userId, email, form, reachPatch, t]);
 
   // The morning email is the agent's whole point — it's on by default, but it
   // must be one click to stop, from the same place the mandate lives (not only
@@ -309,8 +375,53 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
   //
   // Same expression as saveMandate deliberately — a second, drifting copy of
   // "is the résumé usable" is how the button and the handler start disagreeing.
-  const resumeForMandate = defaultResume?.trim() || mandate?.resume_text?.trim() || "";
+  const resumeForMandate = defaultResume?.trim() || ownResume?.trim() || mandate?.resume_text?.trim() || "";
   const resumeReady = resumeForMandate.length >= 100;
+
+  // WHAT THE CV ALREADY SAYS, offered rather than asked for.
+  //
+  // Recomputed from the résumé, not stored: a proposal is worth exactly as much
+  // as the document it was read from, and caching it would let a stale reading
+  // of an old CV outlive the CV. Cheap enough to derive on render — it is a
+  // handful of regexes over text already in memory.
+  //
+  // NOTHING HERE IS SAVED BY ITSELF. It fills the form; the person still presses
+  // Activate. An agent that starts searching for a role we inferred is the agent
+  // doing something nobody asked for, which is the one thing this product cannot
+  // afford to do.
+  const proposal: MandateProposal = resumeReady ? proposeMandate(resumeForMandate) : EMPTY_PROPOSAL;
+  const proposalUseful = proposal.titles.length > 0 || proposal.locations.length > 0;
+  // Only offered into an EMPTY field. Overwriting something a person typed is
+  // the behaviour that makes autofill infuriating, and re-proposing over their
+  // own edit would look like the form fighting them.
+  const formIsBlank = !form.q.trim() && !form.location.trim() && !form.category;
+
+  /** Add one term to a comma-separated field, or remove it if it is already there. */
+  const toggleTerm = (field: "q" | "location", term: string) => {
+    setForm((f) => {
+      const current = f[field].split(",").map((x) => x.trim()).filter(Boolean);
+      const has = current.some((x) => x.toLowerCase() === term.toLowerCase());
+      const next = has
+        ? current.filter((x) => x.toLowerCase() !== term.toLowerCase())
+        : [...current, term];
+      return { ...f, [field]: toMandateField(next) };
+    });
+  };
+  const hasTerm = (field: "q" | "location", term: string) =>
+    form[field].split(",").some((x) => x.trim().toLowerCase() === term.toLowerCase());
+
+  /** Fill every blank field from the CV in one press. */
+  const applyProposal = () => {
+    setForm((f) => ({
+      ...f,
+      q: f.q.trim() || toMandateField(proposal.titles.map((p) => p.value)),
+      location: f.location.trim() || toMandateField(proposal.locations.map((p) => p.value)),
+      category: f.category || proposal.category?.slug || "",
+    }));
+    if (!label.trim() && proposal.titles[0]) {
+      setLabel([proposal.titles[0].value, proposal.locations[0]?.value].filter(Boolean).join(", ").slice(0, 60));
+    }
+  };
 
   return (
     <div className="rounded-2xl border border-border bg-card p-5 mb-6">
@@ -366,6 +477,88 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
               placeholder={t("agentQueue.searchLabelPlaceholder", "Name this search — e.g. Product Manager, NYC")}
               className="sm:col-span-2 rounded-lg border border-border bg-background px-3 py-2 text-sm font-semibold" />
           )}
+
+          {/* READ OFF THE CV THEY ALREADY UPLOADED.
+              Setup is one step — upload a CV — and then the very next screen is
+              a blank box asking for a job title the document names four times.
+              Each chip is a substring of a real line, and hovering shows the
+              line, because "we read this off your CV" is only a claim worth
+              making if you can see where from. */}
+          {proposalUseful && (
+            <div className="sm:col-span-2 rounded-lg border border-primary/25 bg-primary/5 px-3 py-2.5">
+              <div className="flex flex-wrap items-center gap-2">
+                <Sparkles className="w-3.5 h-3.5 text-primary shrink-0" aria-hidden />
+                <span className="text-[12px] font-semibold text-foreground">
+                  {t("agentQueue.fromCvTitle", "From your CV")}
+                </span>
+                {formIsBlank && (
+                  <button type="button" onClick={applyProposal}
+                    className="ml-auto text-[12px] font-semibold text-primary hover:underline">
+                    {t("agentQueue.fromCvUseAll", "Use these")}
+                  </button>
+                )}
+              </div>
+
+              {proposal.titles.length > 0 && (
+                <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                  <span className="text-[11px] text-muted-foreground mr-0.5">{t("agentQueue.fromCvRoles", "Roles:")}</span>
+                  {proposal.titles.map((p) => (
+                    <button key={p.value} type="button" onClick={() => toggleTerm("q", p.value)}
+                      title={t("agentQueue.fromCvEvidence", { defaultValue: "Read from: {{line}}", line: p.evidence })}
+                      aria-pressed={hasTerm("q", p.value)}
+                      className={`rounded-full border px-2 py-0.5 text-xs ${hasTerm("q", p.value)
+                        ? "border-primary bg-primary/15 text-primary font-medium"
+                        : "border-border bg-background text-muted-foreground hover:border-primary/50"}`}>
+                      {p.value}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* ADJACENT ROLES ARE NOT ON THE CV, and are labelled separately
+                  for that reason. Presenting a suggestion as a quotation is the
+                  same class of dishonesty as an invented answer on a form —
+                  smaller stakes, identical shape. They earn their place because
+                  a mandate can now hold several roles at once, so widening no
+                  longer costs the search you already had. */}
+              {proposal.adjacent.length > 0 && (
+                <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                  <span className="text-[11px] text-muted-foreground mr-0.5">{t("agentQueue.fromCvAlso", "Often a fit too:")}</span>
+                  {proposal.adjacent.map((a) => (
+                    <button key={a} type="button" onClick={() => toggleTerm("q", a)}
+                      title={t("agentQueue.fromCvAdjacentTip", "A career-adjacent role — our suggestion, not something your CV says")}
+                      aria-pressed={hasTerm("q", a)}
+                      className={`rounded-full border border-dashed px-2 py-0.5 text-xs ${hasTerm("q", a)
+                        ? "border-primary bg-primary/15 text-primary font-medium"
+                        : "border-border bg-background text-muted-foreground hover:border-primary/50"}`}>
+                      {a}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {proposal.locations.length > 0 && (
+                <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                  <span className="text-[11px] text-muted-foreground mr-0.5">{t("agentQueue.fromCvPlaces", "Places:")}</span>
+                  {proposal.locations.map((p) => (
+                    <button key={p.value} type="button" onClick={() => toggleTerm("location", p.value)}
+                      title={t("agentQueue.fromCvEvidence", { defaultValue: "Read from: {{line}}", line: p.evidence })}
+                      aria-pressed={hasTerm("location", p.value)}
+                      className={`rounded-full border px-2 py-0.5 text-xs ${hasTerm("location", p.value)
+                        ? "border-primary bg-primary/15 text-primary font-medium"
+                        : "border-border bg-background text-muted-foreground hover:border-primary/50"}`}>
+                      {p.value}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              <p className="mt-2 text-[11px] text-muted-foreground">
+                {t("agentQueue.fromCvNote",
+                  "Suggestions only — nothing runs until you activate. We drop the seniority word (“Senior”) on purpose: postings title the same job a dozen ways, and the shorter term finds all of them.")}
+              </p>
+            </div>
+          )}
           <input value={form.q} onChange={(e) => setForm((f) => ({ ...f, q: e.target.value }))}
             placeholder={t("morningQueue.qPlaceholder", "Product Manager, Programme Manager")}
             className="rounded-lg border border-border bg-background px-3 py-2 text-sm" />
@@ -383,10 +576,60 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
           <input value={form.salary_min} onChange={(e) => setForm((f) => ({ ...f, salary_min: e.target.value.replace(/\D/g, "") }))}
             placeholder={t("agentQueue.fieldSalary", "Salary floor, annual (only stated-pay postings match)")}
             className="rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+          {/* POSTING AGE, ON THE DATE THE EMPLOYER STATED.
+              The runner's 36-hour window is about when WE first saw a posting,
+              which is not how old it is — a feed can surface a role posted five
+              months ago and it arrives in the queue as today's find. Same
+              column and the same 1–30 clamp as the board's own filter, so the
+              two surfaces cannot disagree about one posting. */}
+          <label className="flex items-center gap-2 text-sm text-muted-foreground">
+            {t("agentQueue.fieldMaxAge", "Posted within")}
+            <select value={form.max_age_days}
+              onChange={(e) => setForm((f) => ({ ...f, max_age_days: e.target.value }))}
+              className="rounded-lg border border-border bg-background px-2 py-1 text-sm">
+              <option value="">{t("agentQueue.ageAny", "Any age")}</option>
+              <option value="1">{t("agentQueue.age1", "24 hours")}</option>
+              <option value="3">{t("agentQueue.age3", "3 days")}</option>
+              <option value="7">{t("agentQueue.age7", "7 days")}</option>
+              <option value="14">{t("agentQueue.age14", "14 days")}</option>
+              <option value="30">{t("agentQueue.age30", "30 days")}</option>
+            </select>
+          </label>
           <label className="flex items-center gap-2 text-sm text-muted-foreground">
             <input type="checkbox" checked={form.remote_only} onChange={(e) => setForm((f) => ({ ...f, remote_only: e.target.checked }))} />
             {t("agentQueue.fieldRemote", "Remote only")}
           </label>
+          {form.max_age_days !== "" && (
+            <p className="sm:col-span-2 text-[11px] text-muted-foreground -mt-1">
+              {t("agentQueue.ageNote",
+                "Based on the date each employer states on its own feed. Postings that carry no date are left out — we never guess an age.")}
+            </p>
+          )}
+
+          {/* THE QUARTER OF THE BOARD A CATEGORY CHOICE WAS HIDING.
+              `other` is where a posting lands when the title classifier could
+              not place it — 162,800 of 590,808 postings on 2026-08-05 — and the
+              runner's `.eq()` dropped every one the moment a field was chosen.
+              Off by default so an existing mandate keeps behaving identically,
+              and only shown when a category is actually set, because with "Any
+              field" the bucket is already included. */}
+          {form.category && (
+            <label className="sm:col-span-2 flex items-start gap-2 text-sm text-muted-foreground">
+              <input type="checkbox" className="mt-1"
+                checked={form.include_uncategorised}
+                onChange={(e) => setForm((f) => ({ ...f, include_uncategorised: e.target.checked }))} />
+              <span>
+                {t("agentQueue.fieldUncategorised",
+                  "Also search uncategorised postings — about a quarter of the board, where the role's field could not be read from its title.")}
+                {form.q.trim() ? null : (
+                  <em className="block not-italic text-[11px] mt-0.5">
+                    {t("agentQueue.uncategorisedNoTerms",
+                      "With no job titles above, this widens the search a lot. Add titles and it costs you almost nothing.")}
+                  </em>
+                )}
+              </span>
+            </label>
+          )}
           <label className="flex items-center gap-2 text-sm text-muted-foreground">
             {t("agentQueue.fieldDaily", "Picks per morning")}
             <input type="number" min={1} max={10} value={form.daily_count}
@@ -463,9 +706,14 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
                   </span>
                 </div>
                 <p className="text-[12px] text-muted-foreground truncate mt-0.5">
+                  {/* Reach shows in the summary too. A search whose age floor
+                      or uncategorised opt-in is invisible here is one somebody
+                      re-opens to check, which is the summary failing at its job. */}
                   {[s.q, s.category && t(`jobsPage.categories.${s.category}`, s.category), s.location,
                     s.remote_only ? t("agentQueue.fieldRemote", "Remote only") : "",
-                    s.salary_min ? `$${s.salary_min.toLocaleString()}+` : ""].filter(Boolean).join(" · ")
+                    s.salary_min ? `$${s.salary_min.toLocaleString()}+` : "",
+                    s.max_age_days ? t("agentQueue.summaryAge", "posted within {{d}}d", { d: s.max_age_days }) : "",
+                    s.include_uncategorised ? t("agentQueue.summaryUncat", "+ uncategorised") : ""].filter(Boolean).join(" · ")
                     || t("agentQueue.anyRole", "Any role")}
                 </p>
                 {/* Per-search, because a summary stamped on the user would be
@@ -505,7 +753,9 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
               : t("agentQueue.statusPaused", "Paused")}
           </span>
           <span className="truncate">
-            {[mandate.q, mandate.category && t(`jobsPage.categories.${mandate.category}`, mandate.category), mandate.location, mandate.remote_only ? t("agentQueue.fieldRemote", "Remote only") : "", mandate.salary_min ? `$${mandate.salary_min.toLocaleString()}+` : ""].filter(Boolean).join(" · ")}
+            {[mandate.q, mandate.category && t(`jobsPage.categories.${mandate.category}`, mandate.category), mandate.location, mandate.remote_only ? t("agentQueue.fieldRemote", "Remote only") : "", mandate.salary_min ? `$${mandate.salary_min.toLocaleString()}+` : "",
+              mandate.max_age_days ? t("agentQueue.summaryAge", "posted within {{d}}d", { d: mandate.max_age_days }) : "",
+              mandate.include_uncategorised ? t("agentQueue.summaryUncat", "+ uncategorised") : ""].filter(Boolean).join(" · ")}
           </span>
           <button onClick={() => setEditing(true)} className="text-primary hover:underline">{t("agentQueue.edit", "Edit")}</button>
           <button onClick={() => void saveMandate(!mandate.active)} disabled={busy || (agentActive === false && !mandate.active)} className="inline-flex items-center gap-1 text-primary hover:underline disabled:opacity-50">

@@ -134,8 +134,23 @@ describe("the sendable pull widens the pool without loosening anyone's criteria"
     // or the location the person set, purely because those postings happen to be
     // submittable. That is worse than showing nothing: it is the product
     // overriding a stated preference to make its own numbers look better.
-    for (const filter of ["m.category", "m.remote_only", "m.location", "m.q", "m.salary_min"]) {
-      expect(second.slice(0, 1800), `the sendable pull must also honour ${filter}`).toContain(filter);
+    //
+    // Two of these are now applied through a shared helper rather than inline —
+    // `applyCategory(sb2, m)` and `applyMaxAge(sb2, m)` — because the category
+    // rule grew an opt-in (the `other` bucket) and a second hand-written copy
+    // of it is exactly what this test exists to prevent. Each filter therefore
+    // names either the field or the helper that carries it, and BOTH forms
+    // still have to appear in this block.
+    const HONOURED: Array<[string, RegExp]> = [
+      ["m.category", /applyCategory\(sb2, m\)|m\.category/],
+      ["m.max_age_days", /applyMaxAge\(sb2, m\)/],
+      ["m.remote_only", /m\.remote_only/],
+      ["m.location", /m\.location/],
+      ["m.q", /m\.q/],
+      ["m.salary_min", /m\.salary_min/],
+    ];
+    for (const [filter, re] of HONOURED) {
+      expect(second.slice(0, 2400), `the sendable pull must also honour ${filter}`).toMatch(re);
     }
   });
 
