@@ -22,6 +22,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { readdirSync } from "node:fs";
 import { resolve } from "node:path";
+import { SENDABLE_VENDORS } from "../../supabase/functions/_shared/apply-automation";
 
 const sql = readFileSync(
   resolve(__dirname, "../../supabase/migrations/20260804030000_agent_controls_and_honest_reach.sql"), "utf8");
@@ -45,28 +46,25 @@ const code = (s: string) =>
   s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
 
 /**
- * The vendors named in agent_reach()'s ARRAY[...] — parsed, not restated.
+ * The vendors published as drivable — read from SENDABLE_VENDORS, which is what
+ * job-board's `status.sendable` counts and what AgentReachNote displays.
  *
- * NOTE, 2026-08-05: no UI reads agent_reach() any more. It returns 57014
- * statement timeout on every call (its cache's only writer is its own slow
- * path, which counts ~590k rows twice and never finishes), so AgentReachNote
- * now reads job-board's `status.sendable` instead — see that component.
+ * IT USED TO PARSE agent_reach()'s ARRAY[...] out of a migration. That function
+ * was dropped on 2026-08-06: it could never answer (two full count(*) over
+ * ~590k rows against a ~3s anon statement timeout, so its cache was never
+ * written and every call timed out), and it carried a FOURTH hand-copy of this
+ * list inside a SQL body no test could reach.
  *
- * These assertions are kept rather than deleted: the SQL is still deployed and
- * still anon-callable, so if anyone revives or repairs it, the vendor list it
- * publishes must still match what the worker can actually drive. What they no
- * longer prove is anything about what a subscriber SEES.
+ * Anchoring here is strictly stronger. SENDABLE_VENDORS is the value the
+ * running code uses, and sendable-mirror.test.ts already pins it to the
+ * worker's ADAPTERS — so the chain now runs published -> shared constant ->
+ * worker registry with a test at every link, instead of ending at a string
+ * literal in SQL.
  */
 const publishedVendors = (): string[] => {
-  const marker = "v_vendors text[] := ARRAY[";
-  const start = sql.indexOf(marker);
-  expect(start, "the reach vendor list was renamed or removed").toBeGreaterThan(-1);
-  const from = start + marker.length;
-  const end = sql.indexOf("]", from);
-  const names = [...sql.slice(from, end).matchAll(/'([^']+)'/g)].map((m) => m[1]);
-  expect(names.length, "parsed an empty vendor list — assertions would be vacuous")
+  expect(SENDABLE_VENDORS.length, "parsed an empty vendor list — assertions would be vacuous")
     .toBeGreaterThan(0);
-  return names;
+  return [...SENDABLE_VENDORS];
 };
 
 describe("published reach follows the dispatch list, not the file list", () => {
@@ -98,13 +96,27 @@ describe("published reach follows the dispatch list, not the file list", () => {
       .toMatch(/smartrecruiters:/);
   });
 
-  it("counts the whole board too, so the share is computable and not asserted", () => {
-    expect(sql).toMatch(/board_total/);
-    expect(sql).toMatch(/SELECT count\(\*\)::int INTO v_total FROM public\.job_board_postings;/);
+  it("still publishes a share of the whole board, not a bare count", () => {
+    // The share is what stops "31,786 postings" reading as coverage. It now
+    // comes from job-board's status.sendable (postings / ofTotal), computed
+    // from per-vendor coverage rather than by counting 590k rows twice — which
+    // is precisely what made the old RPC unanswerable.
+    const board = readFileSync(
+      resolve(__dirname, "../../supabase/functions/job-board/index.ts"), "utf8");
+    expect(board).toMatch(/sendable:/);
+    expect(board).toMatch(/ofTotal/);
+    expect(board).toMatch(/SENDABLE_VENDORS/);
   });
 
-  it("is readable by anon — the number belongs on the pricing page", () => {
-    expect(sql).toMatch(/GRANT EXECUTE ON FUNCTION public\.agent_reach\(integer\) TO anon/);
+  it("the dropped RPC is really gone, and dropped by signature", () => {
+    // A DROP without the argument type does not resolve a function with a
+    // defaulted parameter, so it would fail rather than drop anything.
+    const migDir = resolve(__dirname, "../../supabase/migrations");
+    const drop = readdirSync(migDir).filter((f) => f.endsWith(".sql"))
+      .map((f) => readFileSync(resolve(migDir, f), "utf8"))
+      .find((t) => t.includes("DROP FUNCTION IF EXISTS public.agent_reach"));
+    expect(drop, "no migration drops agent_reach").toBeTruthy();
+    expect(drop!).toMatch(/DROP FUNCTION IF EXISTS public\.agent_reach\(integer\);/);
   });
 });
 

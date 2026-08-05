@@ -11,6 +11,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { SENDABLE_VENDORS } from "../../supabase/functions/_shared/apply-automation";
 
 const merge = readFileSync(resolve(__dirname, "../../scripts/merge-all.mjs"), "utf8");
 const code = merge.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
@@ -40,23 +41,23 @@ describe("the merge prefers a drivable vendor on collision", () => {
 });
 
 describe("DRIVABLE does not drift from the rest of the system", () => {
-  it("matches the vendor list agent_reach() measures", () => {
-    // This script is Node and the RPC is SQL, so the two lists can only be kept
-    // in step by an assertion. If reach gains a vendor and this does not, every
-    // future census silently drops boards for the new one.
+  it("matches the vendor list the product publishes", () => {
+    // This script is Node and cannot import the Deno shared module, so the two
+    // lists can only be kept in step by an assertion. If reach gains a vendor
+    // and this does not, every future census silently drops boards for it.
+    //
+    // ANCHORED ON SENDABLE_VENDORS, not on SQL. It used to parse
+    // agent_reach()'s ARRAY[...] out of a migration; that function was dropped
+    // 2026-08-06 because it could never answer, and its copy of this list sat
+    // in a SQL body no test could reach. sendable-mirror.test.ts pins
+    // SENDABLE_VENDORS to the worker's actual adapters, so this now chains to
+    // the registry that decides what really gets driven.
     const m = code.match(/const DRIVABLE = new Set\(\[([^\]]+)\]\)/);
     expect(m, "DRIVABLE not found").toBeTruthy();
-    const here = new Set([...m![1].matchAll(/"([a-z]+)"/g)].map((x) => x[1]));
+    const here = [...m![1].matchAll(/"([a-z]+)"/g)].map((x) => x[1]);
 
-    const migDir = resolve(__dirname, "../../supabase/migrations");
-    const { readdirSync } = require("node:fs") as typeof import("node:fs");
-    const f = readdirSync(migDir).filter((x) => x.endsWith(".sql"))
-      .filter((x) => readFileSync(resolve(migDir, x), "utf8").includes("v_vendors")).sort().pop()!;
-    const sql = readFileSync(resolve(migDir, f), "utf8");
-    const arr = sql.slice(sql.indexOf("v_vendors"));
-    const there = new Set([...arr.slice(0, arr.indexOf(";")).matchAll(/'([a-z]+)'/g)].map((x) => x[1]));
-
-    expect(there.size, `parsed no vendors from ${f}`).toBeGreaterThan(0);
-    expect([...here].sort(), `merge-all DRIVABLE disagrees with ${f}`).toEqual([...there].sort());
-  });
-});
+    expect(here.length, "parsed no vendors from merge-all").toBeGreaterThan(0);
+    expect(SENDABLE_VENDORS.length, "parsed no vendors from the shared list").toBeGreaterThan(0);
+    expect([...here].sort(), "merge-all DRIVABLE disagrees with SENDABLE_VENDORS")
+      .toEqual([...SENDABLE_VENDORS].sort());
+  });});

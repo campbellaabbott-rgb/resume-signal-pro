@@ -59,7 +59,7 @@ for (const m of src.matchAll(/s\("((?:[^"\\]|\\.)*)",\s*"(\w+)"/g)) noteName(m[1
 /**
  * THE FOUR VENDORS THE APPLY AGENT CAN ACTUALLY DRIVE.
  *
- * Mirrors agent_reach() and _shared/apply-automation. Kept as a literal rather
+ * Mirrors _shared/apply-automation's SENDABLE_VENDORS (agent_reach() also held a copy until it was dropped 2026-08-06). Kept as a literal rather
  * than imported because this is a Node script and that is Deno — the drift risk
  * is real, so a test asserts the two lists agree.
  */

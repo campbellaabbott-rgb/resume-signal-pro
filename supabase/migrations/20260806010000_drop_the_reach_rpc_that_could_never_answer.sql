@@ -1,0 +1,45 @@
+-- DROP agent_reach: it has never been able to answer, and nothing calls it.
+--
+-- It served a cache in job_board_meta, and the ONLY writer of that cache was
+-- its own slow path. That path ran two full count(*) over ~590k
+-- job_board_postings rows; anon's statement timeout killed it at ~3s, so the
+-- INSERT never executed, the cache stayed empty, and every subsequent call took
+-- the slow path again. Measured 2026-08-05 against production: 57014
+-- "canceling statement due to statement timeout", four calls, ~3.2s each, at
+-- every cache window. Not a slow function — a function with no path to success.
+--
+-- AgentReachNote, its only caller, now reads job-board's `status.sendable`,
+-- which computes the same figure from pre-aggregated per-vendor coverage rather
+-- than counting rows, and answers in normal time. Verified live at 31,786 of
+-- 572,607 (5.6%).
+--
+-- WHY DROP RATHER THAN LEAVE IT. It is SECURITY DEFINER and granted to anon, so
+-- it is reachable by anyone. It cannot leak anything — the projection is two
+-- counts — but every call burns ~3s of a database connection before being
+-- cancelled, which is a free-to-trigger, expensive-to-serve endpoint: the same
+-- shape as the hole that was closed on agent-runner. Leaving a definer function
+-- that provably cannot succeed is debt with a cost attached.
+--
+-- AND IT HELD A FOURTH COPY OF THE DRIVABLE VENDOR LIST, hardcoded as
+-- ARRAY['breezy','teamtailor','personio','pinpoint'] inside a SQL body where no
+-- test could reach it. The other three copies (worker ADAPTERS,
+-- _shared/apply-automation SENDABLE_VENDORS, scripts/merge-all DRIVABLE) are
+-- pinned to each other by tests. This one could only ever go stale, and an
+-- adapter landing would have left it understating reach silently.
+--
+-- IF EXISTS, and the argument type is named: PostgreSQL resolves DROP FUNCTION
+-- by signature, and agent_reach has a defaulted parameter, so omitting
+-- (integer) fails on older servers rather than dropping anything. IF EXISTS
+-- keeps this migration safe to re-run and safe on an environment where the
+-- function was never created.
+--
+-- NOTHING NEEDS TO BE REVOKED FIRST. Dropping a function removes its grants
+-- with it.
+
+DROP FUNCTION IF EXISTS public.agent_reach(integer);
+
+-- The cache row it wrote is now orphaned. Removing it keeps job_board_meta
+-- honest — a key whose only writer no longer exists would otherwise sit there
+-- looking like live state, and this table is read by several status surfaces.
+-- (It is almost certainly absent already: the writer never once completed.)
+DELETE FROM public.job_board_meta WHERE k = 'agent_reach';
