@@ -44,7 +44,19 @@ const dispatched = (): string[] => {
 const code = (s: string) =>
   s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
 
-/** The vendors named in agent_reach()'s ARRAY[...] — parsed, not restated. */
+/**
+ * The vendors named in agent_reach()'s ARRAY[...] — parsed, not restated.
+ *
+ * NOTE, 2026-08-05: no UI reads agent_reach() any more. It returns 57014
+ * statement timeout on every call (its cache's only writer is its own slow
+ * path, which counts ~590k rows twice and never finishes), so AgentReachNote
+ * now reads job-board's `status.sendable` instead — see that component.
+ *
+ * These assertions are kept rather than deleted: the SQL is still deployed and
+ * still anon-callable, so if anyone revives or repairs it, the vendor list it
+ * publishes must still match what the worker can actually drive. What they no
+ * longer prove is anything about what a subscriber SEES.
+ */
 const publishedVendors = (): string[] => {
   const marker = "v_vendors text[] := ARRAY[";
   const start = sql.indexOf(marker);

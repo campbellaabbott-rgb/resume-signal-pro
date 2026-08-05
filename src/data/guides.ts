@@ -535,9 +535,10 @@ export const GUIDES: Record<string, Guide> = {
   // higher than the rest of this file rather than lower.
   //
   // NO VOLATILE NUMBERS LIVE HERE. How many postings the agent can submit to
-  // moves every day, and AgentReachNote already reads it from `agent_reach()`
-  // and renders NOTHING when the query fails, precisely so a stale constant
-  // cannot outlive the data. Repeating a figure like "3.5% of the board" in a
+  // moves every day, and AgentReachNote reads it live — from job-board's
+  // `status.sendable`, since the `agent_reach()` RPC it used to call times out
+  // on every request — rendering NOTHING when the call fails, precisely so a
+  // stale constant cannot outlive the data. Repeating a figure like "3.5% of the board" in a
   // prerendered SEO page would reintroduce that failure in the one place nobody
   // re-reads. This page states STRUCTURE and points at the app for quantities.
   //
