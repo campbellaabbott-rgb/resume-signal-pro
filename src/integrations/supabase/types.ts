@@ -2867,15 +2867,6 @@ export type Database = {
       }
       agent_note_auto_release: { Args: { p_user_id: string }; Returns: number }
       agent_prepare_now: { Args: never; Returns: boolean }
-      agent_reach: {
-        Args: { p_max_age_minutes?: number }
-        Returns: {
-          board_total: number
-          computed_at: string
-          drivable: number
-          vendors: string[]
-        }[]
-      }
       agent_sender_online: {
         Args: { p_max_age_seconds?: number }
         Returns: boolean
