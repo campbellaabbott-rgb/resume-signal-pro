@@ -72,6 +72,52 @@ describe("and now the queue asks it", () => {
   });
 });
 
+/**
+ * THE SAME MISTAKE, ON THE SURFACE PEOPLE READ FIRST.
+ *
+ * Having found it twice in the queue, I went looking for a third. The night
+ * summary — the card somebody reads over breakfast — counted the raw status too,
+ * so an uncertain packet was reported as SKIPPED. Waking up to "skipped" invites
+ * exactly the manual re-application the whole uncertain state exists to prevent.
+ */
+describe("the night summary distinguishes unconfirmed from skipped", () => {
+  const night = readFileSync(
+    resolve(__dirname, "../components/account/AgentNightSummary.tsx"), "utf8");
+  const ncode = night.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+
+  it("SELECTS the columns packetState needs — or it is blind to uncertain", () => {
+    // The trap: PostgREST returns only named columns, so without blockers and
+    // attempts every uncertain packet would count as skipped and nothing would
+    // error. This is the third time this exact shape has bitten this codebase.
+    const sel = ncode.match(/\.select\("([^"]+)"\)/);
+    expect(sel).not.toBeNull();
+    expect(sel![1]).toContain("blockers");
+    expect(sel![1]).toContain("attempts");
+  });
+
+  it("counts uncertain separately, before the refusal reasons", () => {
+    // Before, because a packet that reached submit was never refused — letting
+    // a refusal reason claim it first would file it under the wrong heading.
+    const i = ncode.indexOf('packetState(r).phase === "uncertain"');
+    const j = ncode.indexOf("const why = r.release_refusal");
+    expect(i).toBeGreaterThan(-1);
+    expect(j).toBeGreaterThan(-1);
+    expect(i, "uncertain must be checked before refusal reasons").toBeLessThan(j);
+  });
+
+  it("says sent-but-unconfirmed, never skipped", () => {
+    expect(ncode).toMatch(/agentNight\.unconfirmed/);
+    expect(ncode).toMatch(/sent but unconfirmed/);
+  });
+
+  it("an unconfirmed-only night still renders the card", () => {
+    // The early return hid the card unless sent/waiting/blocked were non-zero.
+    // A night whose ONLY event was an unconfirmed send would have shown nothing
+    // at all — the most alarming outcome, rendered as silence.
+    expect(ncode).toMatch(/n\.unconfirmed === 0\)\) return null/);
+  });
+});
+
 describe("the summary agrees with the rows it summarises", () => {
   it("the blocked count excludes uncertain packets", () => {
     // A person reads the headline number and may never open the row. A summary

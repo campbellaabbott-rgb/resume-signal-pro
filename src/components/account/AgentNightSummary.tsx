@@ -28,6 +28,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
+import { packetState } from "@/lib/packetState";
 import { AlertTriangle, CheckCircle2, Clock } from "lucide-react";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -36,6 +37,8 @@ interface Night {
   sent: number;
   waitingOnYou: number;
   blocked: number;
+  /** Submit was pressed and we could not confirm it. NOT a failure to report as one. */
+  unconfirmed: number;
   /** Refusal code -> count, for the ones worth naming. */
   reasons: Record<string, number>;
 }
@@ -66,16 +69,33 @@ export function AgentNightSummary({ userId }: { userId: string }) {
       const since = new Date(Date.now() - DAY_MS).toISOString();
       const { data } = await supabase
         .from("agent_submissions")
-        .select("status,release_refusal,submitted_at,created_at")
+        // blockers AND attempts are what packetState reads to spot an uncertain
+        // packet. PostgREST returns only the columns named here, so omitting
+        // them would leave every uncertain send silently counted as "skipped" —
+        // the same unselected-column trap that made the broker's `active` check
+        // do nothing for months.
+        .select("status,release_refusal,submitted_at,created_at,blockers,attempts")
         .eq("user_id", userId)
         .gte("created_at", since)
         .limit(200);
       if (!live || !data) return;
 
       const reasons: Record<string, number> = {};
-      let sent = 0, waitingOnYou = 0, blocked = 0;
+      let sent = 0, waitingOnYou = 0, blocked = 0, unconfirmed = 0;
       for (const r of data as Array<{ status: string; release_refusal: string | null }>) {
         if (r.status === "submitted") { sent++; continue; }
+
+        // UNCERTAIN IS NOT SKIPPED. agent_mark_uncertain parks the packet at
+        // status='blocked', so counting the raw status told somebody their
+        // application had been SKIPPED when submit had in fact been pressed and
+        // we simply could not read the confirmation page. Waking up to "skipped"
+        // invites them to apply again by hand — a duplicate under their own
+        // name, caused by our summary.
+        //
+        // Checked before the refusal reasons because it outranks all of them:
+        // a packet that reached submit was never refused.
+        if (packetState(r).phase === "uncertain") { unconfirmed++; continue; }
+
         const why = r.release_refusal ?? "";
         if (why) reasons[why] = (reasons[why] ?? 0) + 1;
         // review-mode is not a failure — it is the product working as designed
@@ -84,7 +104,7 @@ export function AgentNightSummary({ userId }: { userId: string }) {
         if (why === "review-mode") waitingOnYou++;
         else if (r.status === "blocked" || why) blocked++;
       }
-      setN({ sent, waitingOnYou, blocked, reasons });
+      setN({ sent, waitingOnYou, blocked, unconfirmed, reasons });
     })();
     return () => { live = false; };
   }, [userId]);
@@ -92,7 +112,7 @@ export function AgentNightSummary({ userId }: { userId: string }) {
   // Nothing at all in 24h means no run has touched this account yet. The setup
   // checklist above is already saying what to do; a second empty card would
   // just be noise.
-  if (!n || (n.sent === 0 && n.waitingOnYou === 0 && n.blocked === 0)) return null;
+  if (!n || (n.sent === 0 && n.waitingOnYou === 0 && n.blocked === 0 && n.unconfirmed === 0)) return null;
 
   const ourProblems = Object.entries(n.reasons).filter(([k]) => OUR_FAULT.has(k));
 
@@ -111,6 +131,12 @@ export function AgentNightSummary({ userId }: { userId: string }) {
           <span className="inline-flex items-center gap-1.5 text-sm">
             <Clock className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
             <strong>{n.waitingOnYou}</strong> {t("agentNight.waiting", "waiting for you")}
+          </span>
+        )}
+        {n.unconfirmed > 0 && (
+          <span className="text-warning">
+            <strong>{n.unconfirmed}</strong>{" "}
+            {t("agentNight.unconfirmed", "sent but unconfirmed")}
           </span>
         )}
         {n.blocked > 0 && (
