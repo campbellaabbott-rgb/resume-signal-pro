@@ -38,7 +38,14 @@ import { applyCategory, applyMaxAge } from "../_shared/mandate-reach.ts";
 // reintroduced in the version field one commit after fixing it elsewhere.
 // Until the nightly cron fires, this string is the only thing that can tell
 // the two bundles apart.
-const BUILD_VERSION = "2026-08-03.2";
+// 2026-08-05.1 IS THE REACH CHANGE, and this bump was nearly missed in exactly
+// the way the note above describes. The function grew two new filters
+// (max_age_days, include_uncategorised), a shared helper at both query sites,
+// and a two-step select that falls back when the reach columns are absent —
+// and it would have reported the same version string as the bundle without any
+// of that. "Did the reach change deploy?" would then have been unanswerable
+// from outside, which is the whole reason this constant exists.
+const BUILD_VERSION = "2026-08-05.1";
 
 const MANDATES_PER_RUN = 200;      // safety cap; batches long before this matters
 const CANDIDATES_PER_MANDATE = 400;
