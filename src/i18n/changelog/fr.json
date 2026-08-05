@@ -1,5 +1,21 @@
 {
   "changelogEntries": {
+    "setupIsOneStep": {
+      "title": "Configurer votre agent de candidature ne prend plus qu'une étape : importez votre CV",
+      "description": "Nous lisons votre nom, votre e-mail, votre téléphone et votre LinkedIn directement dans le document et les enregistrons — inutile de ressaisir ce que vous venez de nous transmettre. Ce qu'un formulaire exige et que le CV ne dit pas vous est demandé au moment où ce formulaire le demande, pas avant. Votre autorisation de travail, votre salaire et votre date de début ne sont jamais devinés."
+    },
+    "sentButUnconfirmed": {
+      "title": "Une candidature que nous n'avons pas pu confirmer ne ressemble plus à une qui vous attend",
+      "description": "Quand nous envoyons et que la page de l'employeur ne renvoie pas de confirmation claire, cette candidature indique désormais « envoyée, mais sans confirmation » et non « à traiter ». Auparavant elle paraissait identique à une candidature en attente de vous, et le réflexe était de repostuler à la main — ce qui aurait inscrit votre nom deux fois. Nous ne réessayons jamais non plus."
+    },
+    "agentStartsWhenYouAsk": {
+      "title": "Votre agent démarre dès que vous le configurez",
+      "description": "Enregistrer votre recherche impliquait d'attendre jusqu'à une heure la prochaine exécution planifiée avant de voir quoi que ce soit. Le lancement est désormais immédiat : le premier lot est prêt pendant que vous êtes encore sur la page."
+    },
+    "moreEmployersAutoApply": {
+      "title": "L'agent peut désormais postuler auprès de plus d'employeurs",
+      "description": "Nous avons ajouté 148 sites d'offres d'employeurs sur les systèmes que notre agent sait mener jusqu'au bout, choisis parce qu'il peut réellement les finir et non parce qu'ils gonflent le total."
+    },
     "agentSaysWhatItIsDoing": {
       "title": "Votre agent vous dit désormais ce qu'il fait",
       "description": "Une seule ligne en haut de votre section agent indique exactement ce qu'il peut et ne peut pas faire : s'il attend un réglage de votre part, un élément manquant de votre profil, ou quelque chose de notre côté. Auparavant tout cela se ressemblait : rien ne se passait. Si le blocage vient de nous, il le dit clairement et ne vous envoie pas réparer ce qui n'est pas cassé."

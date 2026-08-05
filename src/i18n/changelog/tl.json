@@ -1,5 +1,21 @@
 {
   "changelogEntries": {
+    "setupIsOneStep": {
+      "title": "Isang hakbang na lang ang pag-set up ng iyong apply agent: i-upload ang CV mo",
+      "description": "Binabasa namin ang pangalan, email, telepono at LinkedIn mo mismo sa dokumento at sine-save — hindi na kailangang i-type muli ang ibinigay mo pa lang. Ang kailangan ng isang form na wala sa CV ay itatanong sa mismong sandaling hingin iyon ng form, hindi nang maaga. Hindi kailanman hinuhulaan ang iyong work authorisation, sahod at petsa ng pagsisimula."
+    },
+    "sentButUnconfirmed": {
+      "title": "Ang aplikasyong hindi namin nakumpirma ay hindi na mukhang naghihintay sa iyo",
+      "description": "Kapag nagpadala kami at hindi malinaw ang kumpirmasyon ng pahina ng employer, ang aplikasyong iyon ay nagsasabing \"naipadala — ngunit hindi nakumpirma\", hindi \"kailangan ka\". Dati ay kamukha ito ng isang bagay na naghihintay sa iyo, at ang natural na tugon ay mag-apply ulit nang manu-mano — na maglalagay ng pangalan mo nang dalawang beses. Hindi rin namin ito inuulit kailanman."
+    },
+    "agentStartsWhenYouAsk": {
+      "title": "Nagsisimula ang agent mo sa mismong sandaling i-set up mo",
+      "description": "Dati, ang pag-save ng paghahanap mo ay nangangahulugang maghintay ng hanggang isang oras para sa susunod na nakatakdang run bago may lumabas. Nagsisimula na ito agad, kaya handa na ang unang batch habang nasa pahina ka pa."
+    },
+    "moreEmployersAutoApply": {
+      "title": "Mas maraming employer na ang maaaring aplayan ng agent",
+      "description": "Nagdagdag kami ng 148 pang job board ng employer sa mga sistemang kayang tapusin ng aming agent mula simula hanggang dulo, pinili dahil ito ang tunay niyang natatapos at hindi dahil nakadaragdag lang sa kabuuan."
+    },
     "agentSaysWhatItIsDoing": {
       "title": "Sinasabi na ng iyong ahente kung ano ang ginagawa niya",
       "description": "Isang linya sa itaas ng iyong bahagi ng ahente ang nagsasabi kung ano ang kaya at hindi niya kaya ngayon — kung naghihintay siya ng setting mula sa iyo, ng kulang sa iyong profile, o ng isang bagay sa aming panig. Dati magkakapareho ang hitsura ng lahat ng iyon: walang nangyayari. Kung sa amin ang problema, sinasabi niya iyon nang malinaw at hindi ka pinapaayos ng bagay na hindi naman sira."

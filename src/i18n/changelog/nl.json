@@ -1,5 +1,21 @@
 {
   "changelogEntries": {
+    "setupIsOneStep": {
+      "title": "Je sollicitatieagent instellen is nu één stap: upload je cv",
+      "description": "We lezen je naam, e-mailadres, telefoonnummer en LinkedIn rechtstreeks uit het document en slaan ze op — geen gegevens overtypen die je net hebt aangeleverd. Wat een formulier nodig heeft en het cv niet vermeldt, vragen we op het moment dat dat formulier erom vraagt. Je werkvergunning, salaris en startdatum raden we nooit."
+    },
+    "sentButUnconfirmed": {
+      "title": "Een sollicitatie die we niet konden bevestigen lijkt niet langer op eentje die op jou wacht",
+      "description": "Als we versturen en de pagina van de werkgever geeft geen duidelijke bevestiging, staat er nu \"verzonden — maar niet bevestigd\" in plaats van \"vraagt om jou\". Voorheen zag dat er hetzelfde uit als iets dat nog op jou wachtte, en de logische reactie was opnieuw handmatig solliciteren — waardoor je naam er twee keer in zou staan. We proberen het ook nooit opnieuw."
+    },
+    "agentStartsWhenYouAsk": {
+      "title": "Je agent begint zodra je hem instelt",
+      "description": "Je zoekopdracht opslaan betekende voorheen tot een uur wachten op de volgende geplande run voordat er iets verscheen. Hij begint nu meteen, dus de eerste reeks staat klaar terwijl je nog op de pagina bent."
+    },
+    "moreEmployersAutoApply": {
+      "title": "De agent kan nu bij meer werkgevers solliciteren",
+      "description": "We hebben 148 extra vacaturesites van werkgevers toegevoegd op de systemen die onze agent volledig kan afronden, gekozen omdat hij die echt kan afmaken en niet omdat ze het totaal opkrikken."
+    },
     "agentSaysWhatItIsDoing": {
       "title": "Uw agent vertelt nu wat hij doet",
       "description": "Eén regel bovenaan uw agentgedeelte zegt precies wat hij nu wel en niet kan — of hij wacht op een instelling van u, op iets dat in uw profiel ontbreekt, of op ons. Voorheen zag dat er allemaal hetzelfde uit: er gebeurde niets. Ligt het aan ons, dan zegt hij dat gewoon en stuurt u niet iets repareren dat niet stuk is."

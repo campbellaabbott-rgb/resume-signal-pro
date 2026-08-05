@@ -1,5 +1,21 @@
 {
   "changelogEntries": {
+    "setupIsOneStep": {
+      "title": "Configurar o seu agente de candidaturas passou a ser um passo: envie o seu CV",
+      "description": "Lemos o seu nome, e-mail, telefone e LinkedIn diretamente do documento e guardamos — sem reescrever dados que acabou de nos dar. O que um formulário exigir e o CV não disser é perguntado no momento em que esse formulário pergunta, não antes. A sua autorização de trabalho, salário e data de início nunca são adivinhados."
+    },
+    "sentButUnconfirmed": {
+      "title": "Uma candidatura que não conseguimos confirmar já não parece estar à sua espera",
+      "description": "Quando enviamos e a página do empregador não dá uma confirmação clara, essa candidatura passa a dizer «enviada — mas sem confirmação», e não «precisa de si». Antes parecia igual a algo à sua espera, e a reação natural era candidatar-se outra vez à mão, o que colocaria o seu nome duas vezes. Também nunca a repetimos."
+    },
+    "agentStartsWhenYouAsk": {
+      "title": "O seu agente arranca assim que o configura",
+      "description": "Antes, guardar a sua pesquisa significava esperar até uma hora pela próxima execução agendada para ver alguma coisa. Agora começa de imediato, por isso o primeiro lote fica pronto enquanto ainda está na página."
+    },
+    "moreEmployersAutoApply": {
+      "title": "O agente já pode candidatar-se a mais empregadores",
+      "description": "Acrescentámos mais 148 portais de emprego de empregadores nos sistemas que o nosso agente consegue concluir de ponta a ponta, escolhidos por serem os que ele realmente termina e não os que apenas aumentam o total."
+    },
     "agentSaysWhatItIsDoing": {
       "title": "O seu agente diz-lhe agora o que está a fazer",
       "description": "Uma única linha no topo da secção do agente diz exatamente o que ele pode e não pode fazer agora — se espera uma definição sua, algo em falta no seu perfil, ou algo do nosso lado. Antes tudo isso parecia igual: não acontecia nada. Se o problema é nosso, di-lo claramente e não o manda arranjar o que não está avariado."

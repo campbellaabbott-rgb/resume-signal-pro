@@ -23,6 +23,10 @@ export interface ChangelogEntry {
 }
 
 export const changelog: ChangelogEntry[] = [
+  { id: "setupIsOneStep", date: "2026-08-05", tags: ["improved", "new"] },
+  { id: "sentButUnconfirmed", date: "2026-08-05", tags: ["fixed"] },
+  { id: "agentStartsWhenYouAsk", date: "2026-08-05", tags: ["improved"] },
+  { id: "moreEmployersAutoApply", date: "2026-08-05", tags: ["improved"] },
   { id: "agentSaysWhatItIsDoing", date: "2026-08-02", tags: ["new", "improved"] },
   { id: "applyReasonsNamed", date: "2026-08-02", tags: ["new", "fixed"] },
   { id: "agentOnAtPurchase", date: "2026-08-02", tags: ["fixed"] },

@@ -1,5 +1,21 @@
 {
   "changelogEntries": {
+    "setupIsOneStep": {
+      "title": "Die Einrichtung Ihres Bewerbungs-Agenten ist jetzt ein Schritt: Lebenslauf hochladen",
+      "description": "Wir lesen Name, E-Mail, Telefonnummer und LinkedIn direkt aus dem Dokument und speichern sie — kein erneutes Eintippen von Angaben, die Sie gerade übergeben haben. Was ein Formular verlangt und der Lebenslauf nicht hergibt, fragen wir genau dann, wenn das Formular es verlangt. Arbeitserlaubnis, Gehalt und Startdatum werden nie erraten."
+    },
+    "sentButUnconfirmed": {
+      "title": "Eine Bewerbung ohne Bestätigung sieht nicht mehr aus wie eine, die auf Sie wartet",
+      "description": "Wenn wir absenden und die Seite des Arbeitgebers keine klare Bestätigung liefert, steht dort jetzt „gesendet — aber nicht bestätigt“ statt „wartet auf Sie“. Vorher sah das genauso aus wie etwas, das noch auf Sie wartete, und die naheliegende Reaktion war, sich von Hand erneut zu bewerben — Ihr Name wäre doppelt eingegangen. Wir versuchen es auch nie erneut."
+    },
+    "agentStartsWhenYouAsk": {
+      "title": "Ihr Agent startet, sobald Sie ihn einrichten",
+      "description": "Bisher hieß Suche speichern: bis zu eine Stunde auf den nächsten geplanten Lauf warten, bevor etwas erschien. Jetzt startet er sofort, sodass die erste Auswahl bereitliegt, während Sie noch auf der Seite sind."
+    },
+    "moreEmployersAutoApply": {
+      "title": "Der Agent kann sich jetzt bei mehr Arbeitgebern bewerben",
+      "description": "Wir haben 148 weitere Stellenportale von Arbeitgebern auf den Systemen ergänzt, die unser Agent vollständig bedienen kann — ausgewählt, weil er sie wirklich abschließen kann und nicht, weil sie die Gesamtzahl erhöhen."
+    },
     "agentSaysWhatItIsDoing": {
       "title": "Ihr Agent sagt Ihnen jetzt, was er tut",
       "description": "Eine einzige Zeile oben in Ihrem Agentenbereich sagt genau, was er gerade kann und was nicht — ob er auf eine Einstellung von Ihnen wartet, auf etwas Fehlendes in Ihrem Profil, oder auf uns. Vorher sah all das gleich aus: es passierte nichts. Liegt es an uns, sagt er das klar und schickt Sie nicht los, etwas zu reparieren, das nicht kaputt ist."

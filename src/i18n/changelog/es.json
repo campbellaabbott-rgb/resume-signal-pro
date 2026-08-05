@@ -1,5 +1,21 @@
 {
   "changelogEntries": {
+    "setupIsOneStep": {
+      "title": "Configurar tu agente de candidaturas ahora es un solo paso: sube tu CV",
+      "description": "Leemos tu nombre, correo, teléfono y LinkedIn directamente del documento y los guardamos, sin que tengas que reescribir datos que acabas de darnos. Lo que un formulario necesite y el CV no diga se te pregunta en el momento en que ese formulario lo pide, no antes. Tu permiso de trabajo, salario y fecha de inicio nunca se adivinan."
+    },
+    "sentButUnconfirmed": {
+      "title": "Una candidatura que no pudimos confirmar ya no parece que te esté esperando",
+      "description": "Cuando enviamos y la página del empleador no nos da una confirmación clara, esa candidatura ahora dice «enviada, pero no pudimos confirmarlo», no «te necesita». Antes se veía igual que algo pendiente de ti, y la reacción natural era volver a postularte a mano, lo que habría duplicado tu nombre. Tampoco la reintentamos nunca."
+    },
+    "agentStartsWhenYouAsk": {
+      "title": "Tu agente empieza en cuanto lo configuras",
+      "description": "Antes, guardar tu búsqueda significaba esperar hasta una hora a la siguiente ejecución programada para ver algo. Ahora empieza al instante, así que el primer lote está listo mientras sigues en la página."
+    },
+    "moreEmployersAutoApply": {
+      "title": "El agente ya puede postularse en más empleadores",
+      "description": "Añadimos 148 portales de empleo más en los sistemas que nuestro agente puede completar de principio a fin, elegidos porque son los que realmente puede terminar y no los que solo suman al total."
+    },
     "agentSaysWhatItIsDoing": {
       "title": "Tu agente ahora te dice qué está haciendo",
       "description": "Una sola línea arriba de tu sección del agente dice exactamente qué puede y qué no puede hacer ahora mismo: si espera un ajuste tuyo, algo que falta en tu perfil, o algo nuestro. Antes todo eso se veía igual: no pasaba nada. Si el problema es nuestro, lo dice claramente y no te manda a arreglar algo que no está roto."

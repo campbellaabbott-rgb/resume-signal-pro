@@ -1,5 +1,21 @@
 {
   "changelogEntries": {
+    "setupIsOneStep": {
+      "title": "Setting up your apply agent is now one step: upload your CV",
+      "description": "We read your name, email, phone and LinkedIn straight off the document and save it — no retyping details you just handed us. Anything an employer's form needs that a CV can't tell us is asked at the moment that form actually asks it, instead of up front. Your work authorisation, salary and start date are never guessed."
+    },
+    "sentButUnconfirmed": {
+      "title": "An application we couldn't confirm no longer looks like one that needs you",
+      "description": "When we press send and the employer's page doesn't give us a clear confirmation, that application now reads \"sent — but we couldn't confirm it\", not \"needs you\". It used to look identical to something still waiting on you, and the natural response was to go and apply again by hand — which would have put your name in twice. We never retry it either."
+    },
+    "agentStartsWhenYouAsk": {
+      "title": "Your agent starts the moment you set it up",
+      "description": "Saving your search used to mean waiting up to an hour for the next scheduled run before anything appeared. It now begins immediately, so the first batch is ready while you're still looking at the page."
+    },
+    "moreEmployersAutoApply": {
+      "title": "The agent can now apply to more employers",
+      "description": "We added 148 more employer job boards on the systems our agent is able to complete end to end, chosen because they are the ones it can genuinely finish rather than the ones that merely add to the total."
+    },
     "agentSaysWhatItIsDoing": {
       "title": "Your apply agent now tells you what it's doing",
       "description": "A single line at the top of your agent section says exactly what it can and can't do right now — whether it's waiting on a setting you control, on something missing from your profile, or on us. Before, all of those looked identical: nothing happening. If the hold-up is on our side it says so plainly, and doesn't send you off to fix something that isn't broken."
