@@ -20,6 +20,7 @@ import * as broker from "./broker.js";
 import type { BlockedQuestion } from "./apply.js";
 import { applyToPosting } from "./apply.js";
 import { ADAPTERS, BLOCKED } from "./vendors/index.js";
+import { refusalBlocker } from "./refusal.js";
 import type { PacketFieldKey } from "./vendors/types.js";
 import { normaliseLabel, type StandingAnswers } from "./questions/match.js";
 
@@ -424,9 +425,17 @@ async function runOne(
   await recordPending(p, outcome);
 
   // attempt ceiling. The reason is stored where the candidate can read it.
+  //
+  // AND, NOW, WHERE SOMETHING CAN COUNT IT. The sentence alone told a person
+  // what happened to their packet and told nobody at all what is failing across
+  // every packet — 19 of 60 fills refusing looks identical, from the database,
+  // to 19 unrelated accidents. `refusalBlocker` adds a stage from a closed list
+  // and the employer's own question label, on the same terms that make
+  // agent_confirmation_gaps safe to read without a session. `kind` and `detail`
+  // are untouched, so packetState and the candidate's own view do not move.
   await release(p.id, {
     status: "blocked",
-    blockers: [{ kind: "worker", detail: outcome.reason }],
+    blockers: [refusalBlocker(outcome.reason, src, outcome.blocked)],
     error: outcome.reason.slice(0, 300),
   });
   return `not sent ${p.company} — ${outcome.reason}`;

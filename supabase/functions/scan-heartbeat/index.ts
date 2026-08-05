@@ -1015,6 +1015,16 @@ serve(async (req) => {
     // three, which is what makes it safe to put in a public response.
     const confirmationGaps = await evaluateConfirmationGaps(supabase);
 
+    // WHY FILLS REFUSED, which is the same question one step earlier in the run
+    // and the larger of the two numbers. A confirmation gap costs a review; a
+    // fill gap costs the application. Both were landing in `blockers` and only
+    // one of them was being read.
+    //
+    // Same safety terms: the worker decides at the point of failure what may be
+    // published, and agent_fill_gaps reads only that — never the free-text
+    // sentence beside it.
+    const fillGaps = await evaluateFillGaps(supabase);
+
     return new Response(
       JSON.stringify({
         status: overallStatus,
@@ -1027,7 +1037,8 @@ serve(async (req) => {
         // assumption; this makes the exact inputs curl-able so the rule can be
         // checked against live data instead of waited on.
         senderState,
-        confirmationGaps
+        confirmationGaps,
+        fillGaps
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
@@ -1128,6 +1139,70 @@ async function evaluateConfirmationGaps(
     };
   } catch {
     return { reason: 'rpc-missing', parked: 0, wordings: [] };
+  }
+}
+
+/**
+ * WHY THE AGENT DID NOT FILL A FORM, grouped so it can be acted on.
+ *
+ * The shape mirrors evaluateConfirmationGaps deliberately — same never-throws
+ * rule, same rpc-missing reason so a build deployed ahead of its migration says
+ * so rather than reporting a clean run.
+ *
+ * `blocked` is reported even at zero for the same reason `parked` is: a field
+ * that only appears when something is wrong cannot be told apart from a field
+ * that has stopped being computed.
+ *
+ * TOP STAGE IS THE HEADLINE, and it is the number worth watching. When a single
+ * stage holds most of the refusals it is one fix — a label pattern, a field map
+ * — standing between the agent and every one of them. When they are spread
+ * evenly there is no such fix, and knowing that is worth as much.
+ */
+async function evaluateFillGaps(
+  supabase: { rpc: (fn: string, args?: Record<string, unknown>) => PromiseLike<{ data: unknown; error: unknown }> },
+): Promise<{
+  reason: string;
+  blocked: number;
+  topStage: string | null;
+  stages: Array<{ stage: string; occurrences: number }>;
+  wordings: Array<{ stage: string; source: string; wording: string; occurrences: number }>;
+}> {
+  const empty = { reason: 'rpc-missing', blocked: 0, topStage: null, stages: [], wordings: [] };
+  try {
+    const { data, error } = await supabase.rpc('agent_fill_gaps', { p_days: 30 });
+    if (error) return empty;
+    const rows = (Array.isArray(data) ? data as Array<Record<string, unknown>> : []).map((r) => ({
+      stage: String(r.stage ?? 'unstamped'),
+      source: String(r.source ?? 'unknown'),
+      wording: String(r.wording ?? '').slice(0, 200),
+      occurrences: Number(r.occurrences ?? 0),
+    }));
+    const blocked = rows.reduce((n, r) => n + r.occurrences, 0);
+
+    // Rolled up per stage, because the row grain is (stage, vendor, wording)
+    // and "question-unanswerable, 40 times across 12 different labels" is the
+    // sentence that decides what to build next.
+    const byStage = new Map<string, number>();
+    for (const r of rows) byStage.set(r.stage, (byStage.get(r.stage) ?? 0) + r.occurrences);
+    const stages = [...byStage.entries()]
+      .map(([stage, occurrences]) => ({ stage, occurrences }))
+      .sort((a, b) => b.occurrences - a.occurrences);
+
+    return {
+      // Three states, three words. `none-yet` means nothing has been attempted;
+      // `clean` would be a lie in that case, and it is the lie that matters —
+      // an agent that has never run looks exactly like one that never fails.
+      reason: blocked === 0 ? 'none-yet' : 'fills-refused',
+      blocked,
+      topStage: stages[0]?.stage ?? null,
+      stages: stages.slice(0, 10),
+      // Only the rows that carry evidence. A stage with no wording is already
+      // counted above, and repeating it here as an empty string reads like a
+      // vendor whose forms ask blank questions.
+      wordings: rows.filter((r) => r.wording.length > 0).slice(0, 10),
+    };
+  } catch {
+    return empty;
   }
 }
 

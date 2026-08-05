@@ -27,6 +27,28 @@ const bare = sql.replace(/--[^\n]*/g, "");
 const hb = readFileSync(
   resolve(__dirname, "../../supabase/functions/scan-heartbeat/index.ts"), "utf8");
 
+/**
+ * The body of one named function, bounded by the NEXT top-level function
+ * rather than by a specific neighbour's name.
+ *
+ * It was bounded by `evaluateSenderState`, which is a fact about what happened
+ * to sit underneath it. Adding a sibling between the two silently widened every
+ * assertion below to cover both functions — the tests keep passing and stop
+ * testing what they name, which is the worst way for a guard to fail.
+ */
+const bodyOf = (src: string, name: string): string => {
+  const start = src.indexOf(`async function ${name}`);
+  if (start < 0) return "";
+  // Stop at the next top-level DOCSTRING as well as the next function: a
+  // sibling's comment sits above its `async function` line, so bounding only on
+  // that would pull the neighbour's prose into this function's body and make
+  // assertions about the code match words in a comment.
+  const ends = ["\nasync function ", "\n/**"]
+    .map((m) => src.indexOf(m, start + 1))
+    .filter((i) => i > -1);
+  return src.slice(start, ends.length ? Math.min(...ends) : src.length);
+};
+
 describe("the evidence is collected", () => {
   it("reads the blocker the worker actually writes", () => {
     // agent_mark_uncertain writes kind 'uncertain-submit'. A mismatch here would
@@ -82,7 +104,10 @@ describe("it cannot leak who applied where", () => {
 
 describe("the heartbeat carries it somewhere a person will see it", () => {
   it("reports the gaps on every run", () => {
-    expect(hb).toMatch(/confirmationGaps\s*$/m);
+    // A key in the response object. It used to assert `confirmationGaps` ended
+    // a line, which only held while it happened to be the LAST key — adding one
+    // after it broke the test without breaking the thing it tests.
+    expect(hb).toMatch(/^\s*confirmationGaps,?\s*$/m);
     expect(hb).toMatch(/const confirmationGaps = await evaluateConfirmationGaps\(supabase\)/);
   });
 
@@ -97,16 +122,14 @@ describe("the heartbeat carries it somewhere a person will see it", () => {
     // The migration lands on a different schedule from the function bundle, so
     // there is always a window where the RPC does not exist yet. That window
     // must not turn a healthy platform red.
-    const fn = hb.slice(hb.indexOf("async function evaluateConfirmationGaps"),
-                        hb.indexOf("async function evaluateSenderState"));
+    const fn = bodyOf(hb, "evaluateConfirmationGaps");
     expect(fn).toMatch(/'rpc-missing'/);
     expect(fn).toMatch(/catch/);
     expect(fn).not.toMatch(/throw/);
   });
 
   it("bounds what it prints, so one enormous page cannot bloat every response", () => {
-    const fn = hb.slice(hb.indexOf("async function evaluateConfirmationGaps"),
-                        hb.indexOf("async function evaluateSenderState"));
+    const fn = bodyOf(hb, "evaluateConfirmationGaps");
     expect(fn).toMatch(/slice\(0, 10\)/);
     expect(fn).toMatch(/slice\(0, 200\)/);
   });
