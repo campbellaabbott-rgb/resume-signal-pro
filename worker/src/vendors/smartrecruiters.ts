@@ -1,5 +1,6 @@
 import type { Page, Locator } from "playwright";
 import { enumerateOn } from "./enumerate-dom.js";
+import { classifyWithoutVisibility } from "./confirmed.js";
 import type { VendorAdapter, Locatable, PacketFieldKey } from "./types.js";
 
 /**
@@ -132,7 +133,19 @@ export const smartrecruiters: VendorAdapter = {
 
   async confirmed(page) {
     const body = ((await page.textContent("body").catch(() => "")) ?? "").slice(0, 4_000);
-    if (/thank you for (?:your )?appl|application (?:has been )?(?:received|submitted)|we(?:'ve| have) received your application/i.test(body)) {
+    // THE STRICT LIST, because this adapter cannot check visibility.
+    //
+    // It used to carry its own inline regex with no visibility gate at all —
+    // the one thing classifyConfirmation exists to prevent. It also matched
+    // "thank you for your appl…", which is close enough to ordinary job-ad copy
+    // to fire on a page whose form never submitted, and it drifted from the
+    // shared phrase list: the Nordic wording added for Teamtailor and Personio
+    // never reached it, so a Swedish tenant could not have been recognised here
+    // even in principle.
+    //
+    // classifyWithoutVisibility requires the page to name the APPLICATION as a
+    // completed thing, which cannot be true before one exists.
+    if (classifyWithoutVisibility(body) === "yes") {
       return "yes";
     }
     // NEVER assert "no" here. The form is in shadow DOM and multi-step; not

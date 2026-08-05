@@ -353,3 +353,76 @@ describe("a honeypot marked REQUIRED is the trap, not the question", () => {
   });
 
 });
+
+/**
+ * THE ADAPTER THAT CANNOT SEE ITS OWN FORM.
+ *
+ * SmartRecruiters renders in shadow DOM across several steps, so "no form field
+ * found" means EITHER submitted OR mid-wizard. It therefore cannot use the
+ * visibility gate every other adapter relies on — and its answer to that was to
+ * match loose phrases with no gate at all, which is precisely the false positive
+ * the gate exists to prevent.
+ *
+ * It had drifted, too: the Nordic wording added for Teamtailor and Personio
+ * never reached its private regex, so a Swedish tenant could not have been
+ * recognised there even in principle.
+ */
+describe("an adapter that cannot check visibility uses the strict list", () => {
+  it("SmartRecruiters no longer carries its own confirmation regex", () => {
+    const sr = readFileSync(
+      resolve(__dirname, "../../worker/src/vendors/smartrecruiters.ts"), "utf8");
+    const code = sr.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+    expect(code).toMatch(/classifyWithoutVisibility\(body\)/);
+    // A private phrase list is how this one silently fell three languages behind.
+    expect(code).not.toMatch(/test\(body\)/);
+  });
+
+  it("the strict list REFUSES ordinary job-ad copy", async () => {
+    const { classifyWithoutVisibility } = await import("../../worker/src/vendors/confirmed.js");
+    for (const said of [
+      "Thank you for your interest in this role!",
+      "Thanks for applying — read more about life at Acme.",
+      "Merci de votre intérêt pour ce poste.",
+      "Vielen Dank für Ihr Interesse.",
+    ]) {
+      expect(classifyWithoutVisibility(said), `must not confirm on: ${said}`).toBe("unknown");
+    }
+  });
+
+  it("it recognises a page that names a completed application", async () => {
+    const { classifyWithoutVisibility } = await import("../../worker/src/vendors/confirmed.js");
+    for (const said of [
+      "Your application has been received.",
+      "We have received your application.",
+      "Application submitted.",
+      "Ihre Bewerbung ist eingegangen.",
+      "Din ansökan har mottagits.",
+      "Votre candidature a été reçue.",
+    ]) {
+      expect(classifyWithoutVisibility(said), `should confirm on: ${said}`).toBe("yes");
+    }
+  });
+
+  it("it NEVER answers no — that would invite a second application", async () => {
+    const { classifyWithoutVisibility } = await import("../../worker/src/vendors/confirmed.js");
+    // Mid-wizard looks identical to failed here. "no" would retry; unknown parks.
+    for (const said of ["Step 3 of 4", "", "Please complete the required fields"]) {
+      expect(classifyWithoutVisibility(said)).toBe("unknown");
+    }
+  });
+
+  it("the strict list is a SUBSET of the broad one", async () => {
+    const { CONFIRMED_RE, CONFIRMED_STRICT_RE } =
+      await import("../../worker/src/vendors/confirmed.js");
+    // Anything strict enough to confirm without a visibility check must also
+    // satisfy the gated path, or the two would disagree about the same page.
+    for (const said of [
+      "Your application has been received.",
+      "Din ansökan har mottagits.",
+      "Ihre Bewerbung ist eingegangen.",
+    ]) {
+      expect(CONFIRMED_STRICT_RE.test(said), said).toBe(true);
+      expect(CONFIRMED_RE.test(said), `broad list must also accept: ${said}`).toBe(true);
+    }
+  });
+});

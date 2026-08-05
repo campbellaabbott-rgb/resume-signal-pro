@@ -8,28 +8,22 @@
  * row for a human, not-submitted invites a retry, and a retry is a second
  * application under a real person's name that cannot be withdrawn.
  *
- * Multilingual because these vendors are. The Breezy recon sample alone spanned
- * UK, US, South African and German employers, and Personio renders German
- * labels with English attribute names. An English-only list would route most
- * SUCCESSFUL sends to a human as unresolved.
+ * When the first real submission happens the worker records the page's actual
+ * wording, agent_confirmation_gaps groups it, and the heartbeat reports it. Add
+ * what it saw here — that is how the guess becomes a measurement.
  *
- * When the first real submission happens, the worker records the page's actual
- * wording in the uncertain reason. Add what it saw here.
- */
-/**
- * WIDENING THIS IS SAFE; NARROWING IT IS NOT. `classifyConfirmation` returns
- * "yes" only when the form is GONE **and** a phrase matches, so a broad list
- * cannot on its own manufacture a false "submitted" — the visibility gate is
- * what prevents that, and it is checked first. What a NARROW list does is route
- * genuine successes to `uncertain`, where they sit waiting for a human. That is
- * the safe failure, but at any volume it is also a product that does nothing
- * useful unattended.
+ * WIDENING THIS IS SAFE; NARROWING IT IS NOT. classifyConfirmation returns "yes"
+ * only when the form is GONE **and** a phrase matches, and visibility is checked
+ * first — so a broad list cannot on its own manufacture a false "submitted".
+ * What a NARROW list does is route genuine successes to `uncertain`, where they
+ * sit waiting for a human: the safe failure, but at any volume also a product
+ * that does nothing useful unattended.
  *
  * LANGUAGES ARE CHOSEN FROM THE VENDORS, not from a general list. Teamtailor is
- * Swedish and Personio is German; both localise per tenant, and the Breezy recon
+ * Swedish and Personio German, both localise per tenant, and the Breezy recon
  * sample alone spanned UK, US, South African and German employers. Nordic
- * coverage was missing entirely, which meant a Teamtailor tenant running in its
- * home language had no chance of being recognised.
+ * coverage was missing entirely, so a Teamtailor tenant running in its home
+ * language had no chance of being recognised.
  */
 export const CONFIRMED_RE =
   new RegExp([
@@ -40,7 +34,12 @@ export const CONFIRMED_RE =
     "you(?:'ve| have) applied", "we(?:'ll| will) be in touch",
     "submission (?:has been )?received",
     // German — Personio's home language.
-    "vielen dank", "bewerbung (?:erhalten|eingegangen|übermittelt|gesendet)",
+    "vielen dank",
+    // "ist"/"wurde" sit BETWEEN the noun and the verb in natural German —
+    // "Ihre Bewerbung ist eingegangen" is the ordinary way to say it, and the
+    // adjacent-words-only version could not match it. Caught by the invariant
+    // that the strict list must be a subset of this one.
+    "bewerbung (?:ist |wurde |wurde soeben )?(?:erhalten|eingegangen|übermittelt|gesendet)",
     // Swedish / Norwegian / Danish — Teamtailor's home region. `tack` and `takk`
     // are bounded below so they cannot match inside a longer word.
     "tack för din ansökan", "ansökan (?:har )?mottagits", "takk for søknaden",
@@ -85,4 +84,49 @@ export function classifyConfirmation(
   if (stillOnScreen) return "no";
   if (CONFIRMED_RE.test(bodyText)) return "yes";
   return "unknown";
+}
+
+/**
+ * THE STRICT LIST — phrases that cannot appear until an application exists.
+ *
+ * CONFIRMED_RE above is deliberately broad, and it is only safe because the
+ * visibility gate runs first: "thank you", "merci", "gracias" are all ordinary
+ * job-ad copy, and matching them on a page whose form is still up would report a
+ * failed submit as sent.
+ *
+ * Some adapters cannot check visibility at all. SmartRecruiters renders its form
+ * in shadow DOM across multiple steps, so "no form field found" means EITHER
+ * submitted OR on step 3 of 4. For those, the broad list plus no gate is the
+ * false-positive waiting to happen — and that is exactly what its adapter did.
+ *
+ * So this list requires the page to name the APPLICATION as a completed thing:
+ * a noun for the submission plus a verb of receipt. "Thank you for your interest
+ * in this role" cannot match it. "Your application has been received" cannot
+ * appear before there is an application to receive.
+ */
+export const CONFIRMED_STRICT_RE =
+  new RegExp([
+    "application (?:has been |was |is )?(?:received|submitted|sent|complete)",
+    "we(?:'ve| have) received your application",
+    "your application (?:to|for) .{0,60} (?:has been|was) (?:received|submitted|sent)",
+    "successfully (?:submitted|applied)",
+    "submission (?:has been |was )?received",
+    "bewerbung (?:ist |wurde )?(?:erhalten|eingegangen|übermittelt|gesendet)",
+    "ansökan (?:har )?mottagits", "søknaden (?:er )?mottatt",
+    "hakemuksesi on vastaanotettu",
+    "candidature (?:a été )?(?:re[çc]ue|envoy[ée]e)",
+    "solicitud (?:ha sido )?recibida", "candidatura (?:foi )?recebida",
+    "sollicitatie (?:is )?ontvangen", "candidatura (?:è stata )?ricevuta",
+  ].join("|"), "i");
+
+/**
+ * For adapters that cannot determine whether the form is still on screen.
+ *
+ * NEVER returns "no". Not finding a confirmation on a multi-step shadow-DOM form
+ * could equally mean we are mid-wizard, and "no" would invite a retry — a second
+ * application under a real person's name. Unknown parks it for a human, which is
+ * the honest answer when we genuinely do not know.
+ */
+export function classifyWithoutVisibility(bodyText: string): "yes" | "unknown" {
+  return CONFIRMED_STRICT_RE.test(bodyText) ? "yes" : "unknown";
 }
