@@ -49,28 +49,73 @@ const sh = async (...a) => {
  *  per-group: kicksnorge, telenorsweden, kirppudk. */
 const COUNTRY = { se: "sweden", no: "norway", dk: "denmark", fi: "finland", uk: "uk" };
 
-function guesses(name, host) {
+/**
+ * THE FEED DECLARES ITS OWN TEAMTAILOR ACCOUNT NAME, and this script used to
+ * ignore it.
+ *
+ * Every custom-domain feed carries JSON-LD per item:
+ *
+ *     _jobposting.identifier      { name: "Telenor Sweden", value: 8174332 }
+ *     _jobposting.hiringOrganization { name: "Telenor Sweden", ... }
+ *
+ * `identifier.name` is the employer's account name IN Teamtailor, which is what
+ * the token is derived from — telenorsweden. The hostname is not: it is
+ * whatever the employer chose to point at the board. Measured 14/14 feeds
+ * declaring it.
+ *
+ * This is the channel for the failure the header records — renames and holding
+ * companies. Verified cases the hostname could never have produced:
+ *
+ *     careers.desprint.nl    -> globalautomotivegroup   (holding company)
+ *     careers.lutontown.co.uk-> lutontownfootballclub   (expanded name)
+ *     careers.mdpi.com       -> mdpispain               (per-market tenant)
+ *     careers.formelskin.de  -> "Voy"                   (a rebrand)
+ *
+ * Org-derived candidates go FIRST, because when they hit they are right for a
+ * reason, whereas a hostname match is a coincidence that usually holds.
+ */
+function orgName(feedJson) {
+  const it = (feedJson?.items ?? [])[0] ?? {};
+  return it?._jobposting?.identifier?.name
+      ?? it?._jobposting?.hiringOrganization?.name
+      ?? null;
+}
+
+function guesses(name, host, org) {
   const parts = host.split(".");
   const base = parts[1] ?? "";                 // careers.telenor.se -> telenor
   const cc = parts[parts.length - 1] ?? "";
-  const n = (name ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  const slug = (x) => String(x ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  const n = slug(name);
   const c = COUNTRY[cc] ?? "";
-  return [...new Set([n, base, base + c, n + c, base + cc, n + cc].filter(Boolean))].slice(0, 6);
+  const o = slug(org);
+  // Legal and boilerplate suffixes: "Lawsons (Whetstone) Ltd" is not the token.
+  const oStripped = slug(String(org ?? "").replace(
+    /\b(ltd|limited|group|plc|ab|as|oy|inc|gmbh|bv|nv|football club)\b/gi, " "));
+  return [...new Set([o, oStripped, o + c, n, base, base + c, n + c, base + cc, n + cc]
+    .filter(Boolean).filter((x) => x.length > 2))].slice(0, 9);
 }
 
 const jobIds = (s) => new Set([...s.matchAll(/\/jobs\/(\d+)/g)].map((m) => m[1]));
 
 async function resolve(c) {
-  const own = jobIds(await sh("curl", "-s", "--max-time", "20", `https://${c.host}/jobs.json`));
+  const body = await sh("curl", "-s", "--max-time", "20", `https://${c.host}/jobs.json`);
+  const own = jobIds(body);
   if (!own.size) return { ...c, token: null, why: "no job ids on the custom domain" };
-  for (const g of guesses(c.name, c.host)) {
+  let org = null;
+  try { org = orgName(JSON.parse(body)); } catch { /* not JSON Feed; host guesses still apply */ }
+  for (const g of guesses(c.name, c.host, org)) {
     const rss = await sh("curl", "-s", "--max-time", "15", `https://${g}.teamtailor.com/jobs.rss`);
     if (!rss.includes("<item>")) continue;
     const shared = [...jobIds(rss)].filter((id) => own.has(id));
     // A shared posting is the proof. A 200 is not.
-    if (shared.length) return { ...c, token: g, why: `${shared.length} shared job ids` };
+    if (shared.length) return { ...c, token: g, org, why: `${shared.length} shared job ids` };
   }
-  return { ...c, token: null, why: "no guess matched" };
+  // NOT "the guess list missed it". Calibrated 2026-08-05: a fabricated
+  // subdomain and every unresolved candidate both return HTTP 404, while a real
+  // tenant returns 200 with jobs — so for these the derived tokens genuinely do
+  // not exist rather than being merely unguessed.
+  return { ...c, token: null, org, why: "no candidate token exists" };
 }
 
 async function main() {
@@ -89,7 +134,8 @@ async function main() {
   for (const r of ok) console.log(`    ${String(r.jobs).padStart(4)}  ${(r.name || "").slice(0, 26).padEnd(26)} ${r.host.padEnd(34)} -> ${r.token}`);
   const bad = out.filter((r) => !r.token);
   if (bad.length) {
-    console.log(`\n  unresolved (${bad.length}) — token exists, the guess list missed it:`);
+    console.log(`\n  unresolved (${bad.length}) — no DERIVED token exists (404s like a fabricated name);`);
+    console.log("  the tenant is named something neither the hostname nor the feed's org name predicts:");
     for (const r of bad) console.log(`    ${String(r.jobs).padStart(4)}  ${(r.name || "").slice(0, 26).padEnd(26)} ${r.host}`);
   }
   writeFileSync(outPath, JSON.stringify(out, null, 1));

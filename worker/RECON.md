@@ -1057,3 +1057,61 @@ hCaptcha from `recruiteecdn.com`, measured 2026-08-01.
 
 Nothing here is catalog-ready. Token-first dedupe, the corporate-only rule and
 the merge guard's collision rule still decide what may enter sources.ts.
+
+### The feed names its own tenant — a resolution channel that was sitting unread
+
+**Measured 2026-08-05.** RECON above records 364 custom-domain Teamtailor boards
+(~4,900 postings) as unresolved, with "closing that gap is worth more than
+sweeping another corpus", and names the failure: a name- and domain-derived
+guess list misses renames and holding companies.
+
+Every Teamtailor custom-domain feed carries JSON-LD per item, and it declares
+the employer's account name IN Teamtailor:
+
+    _jobposting.identifier         { name: "Telenor Sweden", value: 8174332 }
+    _jobposting.hiringOrganization { name: "Telenor Sweden" }
+
+That name is what the token derives from — `telenorsweden`. The HOSTNAME is not:
+it is whatever the employer pointed at the board. 14 of 14 feeds declared it.
+
+`resolve-teamtailor-tokens.mjs` now derives candidates from it, ahead of the
+hostname. Verified the same way as before — a SHARED NUMERIC JOB ID, never a
+200. Across the 43 boards reachable from this session's sweeps:
+
+| | |
+|---|---|
+| resolved | 21 / 43 |
+| of those, only the org channel could produce | **3** |
+| unresolved | 22 |
+
+The three are exactly the documented failure shape, and no hostname could have
+produced any of them:
+
+    careers.desprint.nl     -> globalautomotivegroup   holding company
+    careers.lutontown.co.uk -> lutontownfootballclub   expanded name
+    careers.mdpi.com        -> mdpispain               per-market tenant
+
+`careers.formelskin.de` declares "Voy" — a rebrand invisible from the domain.
+
+### And the limit, calibrated rather than assumed
+
+The remaining 22 are NOT "the guess list missed it", which is what the earlier
+note assumed and what this script used to print. Probing the derived tokens
+directly:
+
+    telenorsweden.teamtailor.com/jobs.json    200, 25 jobs     (known good)
+    inpost.teamtailor.com/jobs.json           200, 61 jobs     (known good)
+    zzqqxxnotatenant.teamtailor.com           HTTP 404         (fabricated)
+    pennongroup / southwestwater / pennon     HTTP 404
+    crystalpalacefc / cpfc / motorpoint       HTTP 404
+
+Every unresolved candidate answers identically to a name that was invented. So
+for those boards the derived token genuinely does not exist — the tenant is
+called something neither the hostname nor the declared org name predicts. More
+guessing will not close them; a different channel is needed, and there is no
+point spending another pass on slug variants.
+
+Note also that Pennon Group was the case the earlier note singled out, and the
+org channel gets the NAME right ("Pennon Group") while the token still 404s —
+so even a correct employer name is not sufficient. Two separate facts that the
+old "the guess list missed it" wording merged into one.
