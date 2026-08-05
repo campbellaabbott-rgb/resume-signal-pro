@@ -1115,3 +1115,65 @@ Note also that Pennon Group was the case the earlier note singled out, and the
 org channel gets the NAME right ("Pennon Group") while the token still 404s —
 so even a correct employer name is not sufficient. Two separate facts that the
 old "the guess list missed it" wording merged into one.
+
+### The unassessed platforms behind the careers CNAMEs — 2026-08-05
+
+The .de sweep above resolved 418 careers CNAMEs and matched two, and the point
+made there was that the miss list is a fact about our four-entry pattern table,
+not about the market. This is that miss list turned into candidates.
+
+**14,000 .com/.de/.co.uk domains, DNS-first, counting tenants per platform:**
+
+| platform | tenants | example tenants |
+|---|---|---|
+| recruitology | 68 | USA Today, LA Times, Chicago Tribune |
+| jibeapply | 20 | Medallia, SiriusXM, Discovery |
+| happydance | 19 | Criteo, Box, Uber |
+| career.page | 18 | Booking.com, McAfee, Costco |
+| findly | 16 | Home Depot, Realtor.com, Vanguard |
+| b-ite | 6 | Uni Kiel, Ruhr-Uni Bochum, Uni Kaiserslautern |
+| umantis | 4 | Deutsche Welle, NDR, BR |
+| beesite | 3 | Porsche, KfW, GIZ |
+| homerun / jobware / volcanic | 1–2 each | |
+
+**TWO OF THE FOUR BIGGEST ARE ALREADY-CLOSED VENDORS WEARING A NEW HOSTNAME.**
+Following the careers host and looking for a known ATS underneath:
+
+    career.page   -> iCIMS 4/4
+    jibeapply     -> iCIMS 3/4, Phenom 1/4
+    volcanic      -> Phenom
+
+iCIMS is recorded above as 17/60 CAPTCHA, "mixed, treat as blocked". So
+Booking.com, McAfee, Costco, Medallia, SiriusXM and Discovery are not 38 new
+drivable tenants — they are iCIMS, and they stay shut. Worth knowing before
+anyone counts hostnames as reach.
+
+**Genuinely unassessed, and in this order:** recruitology, happydance, findly,
+umantis, beesite, b-ite, jobware.
+
+### What this measurement does NOT establish
+
+It followed the CAREERS LANDING PAGE, not a posting's apply URL. A platform
+that hosts the job list can still hand the APPLICATION to something else, and
+that handoff is invisible here — so "stays on platform" means "no known ATS
+signature on the landing page", not "the apply form belongs to this platform".
+Resolving that needs a real posting's apply URL per tenant, which is the next
+pass and the one that decides whether any of these is buildable.
+
+One prior judgement to carry into it: **recruitology is 68 tenants and they are
+newspapers.** Newspaper job boards carry OTHER companies' listings, which is the
+aggregator shape the catalog rules already exclude — so its size is likely to
+evaporate on the corporate-only rule rather than on a bot wall. Check that
+before spending a browser pass on it.
+
+### The measurement error, for the sixth time in this file
+
+The first run of this sweep returned ZERO tenants for every platform and would
+have been recorded as "these platforms have no tenants in the top 14,000". The
+Tranco CSV has CRLF line endings, so `d.endsWith(".de")` was false for every
+`"example.de\r"`. `census-drivable-yield.mjs` trims and was unaffected; the
+one-off script written beside it did not.
+
+Same shape as every other entry here: the probe did not error, it answered
+confidently, and it was measuring nothing. It was caught only by asking why a
+sweep that had previously found 25 b-ite hosts now found none.
