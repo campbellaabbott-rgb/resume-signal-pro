@@ -9,6 +9,12 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "rea
 // the detail panel parses the posting's stated pay client-side to compare it
 // against the field's live benchmark in the SAME currency, never across.
 import { parseSalaryStructured } from "../../supabase/functions/_shared/salary-extract";
+// THE SAME PREDICATE THE NIGHTLY RUNNER RANKS BY, not a second copy of it.
+// `SENDABLE_VENDORS` is already a hand-maintained mirror of the worker's
+// adapters (kept honest by sendable-mirror.test.ts); a third copy in the app
+// bundle would be a third thing to forget. Pure TS with no Deno imports, the
+// same reason the salary parser above is imported straight out of _shared.
+import { isSendableVendor } from "../../supabase/functions/_shared/apply-automation";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Activity, AlertTriangle, Bell, Bookmark, BookmarkCheck, Briefcase, ChevronDown, Clock, Compass, Copy, ExternalLink, FileText, Flag, Link2, Loader2, MapPin, MessageSquare, RefreshCw, Search, ShieldCheck, SlidersHorizontal, Sparkles, Target, Upload, Info} from "lucide-react";
@@ -2477,6 +2483,18 @@ export default function Jobs() {
                     {t(`jobsPage.workMode.${detailJob.workMode ?? "remote"}`, detailJob.workMode ?? "remote")}
                   </Badge>
                 )}
+                {/* Same chip, on the panel where the decision is actually made.
+                    The card is skimmed; this is read. */}
+                {isSendableVendor(detailJob.id) && (
+                  <Link
+                    to="/agent"
+                    className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
+                    title={t("jobsPage.agentAppliesTip", "This employer's application form is one our apply agent can fill and submit on its own — no CAPTCHA and no account needed. It still hands the application back to you if the employer asks something we can't answer from your profile. Needs the Apply Agent subscription.")}
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    {t("jobsPage.agentAppliesChip", "Agent can apply")}
+                  </Link>
+                )}
                 {detailJob.experienceBand && detailJob.experienceBand !== "unspecified" && (
                   <span className="px-2 py-0.5 rounded-full border border-border text-muted-foreground">
                     {t(`jobsPage.experience.${detailJob.experienceBand}`, detailJob.experienceBand)}
@@ -4174,6 +4192,32 @@ export default function Jobs() {
                               </span>
                             );
                           })()}
+                          {/* THE AGENT CAN FINISH THIS ONE. Until now this fact
+                              existed only inside the morning queue — visible
+                              after the agent had already picked a posting, and
+                              invisible on the page where people decide what to
+                              save. Four vendors have an adapter and they are
+                              5.3% of the board, so this chip is absent on most
+                              rows, and its absence is the honest signal.
+
+                              It describes the FORM, not the service: an
+                              adapter exists and the vendor has no bot wall.
+                              Whether a given application actually completes
+                              still depends on the employer's own screening
+                              questions — 7 of 8 measured forms, not 8 — and on
+                              having the agent. The tooltip says so rather than
+                              letting a green chip imply a promise. */}
+                          {isSendableVendor(job.id) && (
+                            <Link
+                              to="/agent"
+                              onClick={(e) => e.stopPropagation()}
+                              className="inline-flex items-center gap-1 text-[11px] font-medium text-primary mt-1 ml-2 hover:underline"
+                              title={t("jobsPage.agentAppliesTip", "This employer's application form is one our apply agent can fill and submit on its own — no CAPTCHA and no account needed. It still hands the application back to you if the employer asks something we can't answer from your profile. Needs the Apply Agent subscription.")}
+                            >
+                              <Sparkles className="w-3 h-3 shrink-0" />
+                              {t("jobsPage.agentAppliesChip", "Agent can apply")}
+                            </Link>
+                          )}
                           {/* Repost caution: frequent same-title relistings — shown as a
                               neutral fact so the seeker can weigh it, never hidden. */}
                           {job.token && (healthByToken[job.token]?.superseded_90d ?? 0) >= REPOST_FLAG_MIN && (

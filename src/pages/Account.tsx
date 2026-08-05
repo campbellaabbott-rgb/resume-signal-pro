@@ -8,12 +8,15 @@ import { useNavigate, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
   TrendingUp, Coins, ShoppingBag, LogOut, Loader2, ScanSearch, Target,
-  ListChecks, GitCompare, Briefcase, Plus, Trash2, AlertTriangle, ExternalLink,
+  ListChecks, GitCompare, Briefcase, Plus, Trash2, AlertTriangle, ExternalLink, Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { useAuth } from "@/contexts/AuthContext";
+// Same predicate the board and the nightly runner use — see the note on the
+// import in Jobs.tsx for why this is imported rather than copied.
+import { isSendableVendor } from "../../supabase/functions/_shared/apply-automation";
 import { SavedSearchesCard } from "@/components/account/SavedSearchesCard";
 import { ApplyKitPanel } from "@/components/account/ApplyKitPanel";
 import { ApplyCopilotPanel } from "@/components/account/ApplyCopilotPanel";
@@ -1289,6 +1292,26 @@ export default function Account() {
                       {new Date(a.applied_at).toLocaleDateString()}
                       {version ? ` · sent "${versionName(version)}" (score ${a.scan_score ?? version.ats_score})` : (a.scan_score ? ` · applied with score ${a.scan_score}` : "")}
                     </p>
+                    {/* SAVED, AND THE AGENT COULD FINISH IT. A saved row is a
+                        job somebody meant to apply to and has not — the single
+                        most common thing in this list — and for the minority on
+                        a drivable vendor the agent can take it off their hands.
+                        That was knowable from the job_id all along and shown
+                        nowhere outside the morning queue.
+
+                        Only on `saved`. On a row already applied to it would be
+                        an offer to do something done, and the duplicate guard
+                        would refuse it anyway. */}
+                    {a.status === "saved" && a.job_id && isSendableVendor(a.job_id) && (
+                      <Link
+                        to="/agent"
+                        className="inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline mt-0.5"
+                        title={t("accountPage.agentCanApplyTip", "This employer's form is one the apply agent can fill and submit on its own. It still hands it back to you if the employer asks something we can't answer from your profile.")}
+                      >
+                        <Sparkles className="w-3 h-3 shrink-0" />
+                        {t("accountPage.agentCanApply", "The agent can apply to this one for you")}
+                      </Link>
+                    )}
                     {/* What ACTUALLY happened to this exact posting, from the
                         closure log — not inferred from when the user last
                         loaded this page. The 'not_observed' branch is the
