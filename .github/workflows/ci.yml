@@ -39,6 +39,26 @@ jobs:
       # to installing with npm for real. The worker package needs no flag — it
       # resolves clean on its own.
       - run: npm ci --legacy-peer-deps
+      # BEFORE THE TYPECHECK, and the order is load-bearing.
+      #
+      # tsconfig.app.json includes `src`, and five tests there import worker
+      # sources on purpose — sendable-mirror, broker-contract, harness-gate and
+      # friends exist precisely to compare the app against the worker. tsc
+      # follows those imports into worker/src/vendors/*.ts, which import
+      # `playwright`, and playwright is a WORKER dependency.
+      #
+      # So the root typecheck cannot pass until the worker's deps exist. It
+      # passes locally only because worker/node_modules is already there —
+      # reproduced by moving that directory aside, which yields the identical
+      # four TS2307 errors CI reported.
+      #
+      # Installing here rather than excluding worker/ from the typecheck: the
+      # exclusion would silence the cross-boundary imports those mirror tests
+      # depend on, which is the drift they were written to catch.
+      - name: Install worker deps
+        working-directory: worker
+        run: npm ci || npm install
+
       - name: Typecheck
         # -p tsconfig.app.json, NOT a bare `tsc --noEmit`.
         #
@@ -68,9 +88,6 @@ jobs:
       # the root `npm ci` does not install, and Playwright needs a Chromium
       # matching whatever npm actually resolved rather than one baked into an
       # image tag.
-      - name: Install worker deps
-        working-directory: worker
-        run: npm ci || npm install
       - name: Install Chromium for the harness
         working-directory: worker
         run: npx playwright install --with-deps chromium
