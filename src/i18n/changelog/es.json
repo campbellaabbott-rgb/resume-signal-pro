@@ -1,5 +1,25 @@
 {
   "changelogEntries": {
+    "mandateFromYourCv": {
+      "title": "La búsqueda de tu agente ahora parte de tu CV",
+      "description": "Al crear una búsqueda, los puestos que ya figuran en tu CV se ofrecen como sugerencias de un toque, y cada una muestra la línea de la que se leyó, para que veas de dónde sale. Quitamos la palabra de seniority (“Senior”) a propósito: las empresas titulan el mismo puesto de mil maneras y el término más corto los encuentra todos. No se guarda nada hasta que tú lo actives."
+    },
+    "agentCanApplyHere": {
+      "title": "Mira a qué empleos puede postular el agente antes de guardarlos",
+      "description": "Las ofertas que nuestro agente puede rellenar y enviar por su cuenta llevan ahora la marca “El agente puede postular” en el tablón, en el detalle de la oferta y en tus empleos guardados. La mayoría de empresas pone protección antibots en su formulario, y ahí el agente lo prepara todo y tú pulsas enviar: ahora distingues cuál es cuál antes de invertir tiempo."
+    },
+    "sinceYourInterview": {
+      "title": "Qué pasó con el puesto después de tu entrevista",
+      "description": "Registramos el día en que cada oferta desaparece del propio portal de empleo de la empresa. Tras una entrevista, tu seguimiento te dice si ese anuncio concreto se retiró y sigue retirado, o si el mismo puesto ha vuelto a publicarse. Describe la oferta, no a ti: que un anuncio se retire no nos dice a quién contrataron."
+    },
+    "agentSearchReach": {
+      "title": "Dos controles nuevos sobre lo que te trae el agente",
+      "description": "Ahora puedes limitar las propuestas a empleos publicados dentro de un número de días, según la fecha que indica la empresa y no cuándo los encontramos nosotros. Y si has elegido un sector, puedes incluir también las ofertas cuyo sector no pudo deducirse del título: alrededor de una cuarta parte del tablón, antes excluida siempre que fijabas un sector."
+    },
+    "applyAgentGuide": {
+      "title": "Una guía clara de lo que hace el agente",
+      "description": "Una sola página con la configuración, lo que ocurre cada noche, la diferencia entre el modo revisión y el automático, dónde puede y no puede enviar por ti, y lo que nunca hará. Termina con los motivos por los que una mañana llega vacía: casi siempre es un ajuste, no un mercado sin ofertas."
+    },
     "setupIsOneStep": {
       "title": "Configurar tu agente de candidaturas ahora es un solo paso: sube tu CV",
       "description": "Leemos tu nombre, correo, teléfono y LinkedIn directamente del documento y los guardamos, sin que tengas que reescribir datos que acabas de darnos. Lo que un formulario necesite y el CV no diga se te pregunta en el momento en que ese formulario lo pide, no antes. Tu permiso de trabajo, salario y fecha de inicio nunca se adivinan."

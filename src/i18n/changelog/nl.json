@@ -1,5 +1,25 @@
 {
   "changelogEntries": {
+    "mandateFromYourCv": {
+      "title": "De zoekopdracht van je agent begint nu bij je cv",
+      "description": "Bij het instellen van een zoekopdracht worden de functies die al op je cv staan als suggesties aangeboden, elk met de regel waaruit ze zijn gelezen. Het senioriteitswoord (“Senior”) laten we bewust weg: werkgevers noemen dezelfde functie op tien manieren, en de kortere term vindt ze allemaal. Er wordt niets opgeslagen tot jij activeert."
+    },
+    "agentCanApplyHere": {
+      "title": "Zie waar de agent kan solliciteren, vóór je opslaat",
+      "description": "Vacatures die onze agent zelf kan invullen en versturen krijgen nu het label “Agent kan solliciteren” op het vacatureboard, in het detail en bij je opgeslagen vacatures. De meeste werkgevers beveiligen hun formulier tegen bots; daar bereidt de agent alles voor en druk jij op verzenden."
+    },
+    "sinceYourInterview": {
+      "title": "Wat er met de vacature gebeurde na je gesprek",
+      "description": "We leggen vast op welke dag een vacature van de eigen carrièrepresite van de werkgever verdwijnt. Na een gesprek vertelt je tracker of precies die advertentie is ingetrokken en ingetrokken bleef, of dat dezelfde functie opnieuw online staat. Het gaat over de vacature, niet over jou."
+    },
+    "agentSearchReach": {
+      "title": "Twee nieuwe knoppen voor wat je agent meebrengt",
+      "description": "Je kunt voorstellen nu beperken tot vacatures die binnen een gekozen aantal dagen zijn geplaatst, op basis van de datum die de werkgever noemt en niet wanneer wij ze vonden. En als je een vakgebied hebt gekozen, kun je ook vacatures meenemen waarvan het vakgebied niet uit de titel te lezen was: ongeveer een kwart van het board."
+    },
+    "applyAgentGuide": {
+      "title": "Een heldere gids voor wat de sollicitatie-agent doet",
+      "description": "Één pagina: instellen, wat er 's nachts gebeurt, het verschil tussen beoordelen en automatisch, waar de agent wel en niet voor je kan versturen, en wat hij nooit doet. Tot slot de redenen waarom een ochtend leeg blijft — bijna altijd een instelling, geen lege markt."
+    },
     "setupIsOneStep": {
       "title": "Je sollicitatieagent instellen is nu één stap: upload je cv",
       "description": "We lezen je naam, e-mailadres, telefoonnummer en LinkedIn rechtstreeks uit het document en slaan ze op — geen gegevens overtypen die je net hebt aangeleverd. Wat een formulier nodig heeft en het cv niet vermeldt, vragen we op het moment dat dat formulier erom vraagt. Je werkvergunning, salaris en startdatum raden we nooit."

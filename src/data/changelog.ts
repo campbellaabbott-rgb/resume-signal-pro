@@ -23,6 +23,11 @@ export interface ChangelogEntry {
 }
 
 export const changelog: ChangelogEntry[] = [
+  { id: "mandateFromYourCv", date: "2026-08-05", tags: ["new", "improved"] },
+  { id: "agentCanApplyHere", date: "2026-08-05", tags: ["new"] },
+  { id: "sinceYourInterview", date: "2026-08-05", tags: ["new"] },
+  { id: "agentSearchReach", date: "2026-08-05", tags: ["new", "improved"] },
+  { id: "applyAgentGuide", date: "2026-08-05", tags: ["new"] },
   { id: "setupIsOneStep", date: "2026-08-05", tags: ["improved", "new"] },
   { id: "sentButUnconfirmed", date: "2026-08-05", tags: ["fixed"] },
   { id: "agentStartsWhenYouAsk", date: "2026-08-05", tags: ["improved"] },

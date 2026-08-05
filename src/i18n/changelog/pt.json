@@ -1,5 +1,25 @@
 {
   "changelogEntries": {
+    "mandateFromYourCv": {
+      "title": "A busca do seu agente agora começa pelo seu CV",
+      "description": "Ao criar uma busca, os cargos que já constam do seu CV são oferecidos como sugestões de um toque, cada uma mostrando a linha de onde foi lida. Retiramos a palavra de senioridade (“Senior”) de propósito: as empresas nomeiam o mesmo cargo de dez formas, e o termo mais curto encontra todas. Nada é salvo até você ativar."
+    },
+    "agentCanApplyHere": {
+      "title": "Veja onde o agente pode se candidatar antes de salvar",
+      "description": "As vagas que o nosso agente consegue preencher e enviar sozinho passam a exibir a marca “O agente pode se candidatar” no quadro de vagas, no detalhe e nas suas vagas salvas. A maioria das empresas protege o formulário contra robôs; nesses casos o agente prepara tudo e você aperta enviar."
+    },
+    "sinceYourInterview": {
+      "title": "O que aconteceu com a vaga depois da sua entrevista",
+      "description": "Registamos o dia em que cada vaga sai do próprio site de carreiras da empresa. Depois de uma entrevista, o seu acompanhamento diz se aquele anúncio foi retirado e continuou retirado, ou se a mesma vaga voltou ao ar. Descreve a vaga, não você: um anúncio sair não nos diz quem foi contratado."
+    },
+    "agentSearchReach": {
+      "title": "Dois novos controlos sobre o que o agente lhe traz",
+      "description": "Pode agora limitar as escolhas a vagas publicadas dentro de um número de dias, pela data que a empresa indica e não por quando as encontrámos. E se escolheu uma área, pode incluir também as vagas cuja área não foi possível ler pelo título: cerca de um quarto do quadro."
+    },
+    "applyAgentGuide": {
+      "title": "Um guia simples do que o agente de candidaturas faz",
+      "description": "Uma página: configuração, o que acontece durante a noite, a diferença entre modo de revisão e automático, onde o agente pode e não pode enviar por si, e o que nunca fará. Termina com os motivos de uma manhã vazia — quase sempre uma definição, e não um mercado sem vagas."
+    },
     "setupIsOneStep": {
       "title": "Configurar o seu agente de candidaturas passou a ser um passo: envie o seu CV",
       "description": "Lemos o seu nome, e-mail, telefone e LinkedIn diretamente do documento e guardamos — sem reescrever dados que acabou de nos dar. O que um formulário exigir e o CV não disser é perguntado no momento em que esse formulário pergunta, não antes. A sua autorização de trabalho, salário e data de início nunca são adivinhados."

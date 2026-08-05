@@ -1,5 +1,25 @@
 {
   "changelogEntries": {
+    "mandateFromYourCv": {
+      "title": "La recherche de votre agent part maintenant de votre CV",
+      "description": "Lors de la création d'une recherche, les postes déjà présents sur votre CV sont proposés en un geste, chacun affichant la ligne dont il a été tiré. Nous retirons volontairement le mot de séniorité (« Senior ») : les entreprises intitulent le même poste de dix façons, et le terme le plus court les trouve toutes. Rien n'est enregistré tant que vous n'activez pas."
+    },
+    "agentCanApplyHere": {
+      "title": "Voyez où l'agent peut postuler, avant d'enregistrer l'offre",
+      "description": "Les offres que notre agent peut remplir et envoyer seul portent désormais la mention « L'agent peut postuler » sur le tableau, dans le détail de l'offre et dans vos offres enregistrées. La plupart des entreprises protègent leur formulaire contre les robots : là, l'agent prépare tout et c'est vous qui envoyez."
+    },
+    "sinceYourInterview": {
+      "title": "Ce qu'est devenue l'offre après votre entretien",
+      "description": "Nous enregistrons le jour où chaque offre disparaît du site carrières de l'entreprise. Après un entretien, votre suivi indique si cette annonce précise a été retirée et l'est restée, ou si le même poste est repassé en ligne. Cela décrit l'annonce, pas vous : un retrait ne nous dit pas qui a été recruté."
+    },
+    "agentSearchReach": {
+      "title": "Deux nouveaux réglages sur ce que l'agent vous apporte",
+      "description": "Vous pouvez limiter les propositions aux offres publiées depuis un nombre de jours choisi, selon la date indiquée par l'entreprise et non celle où nous l'avons trouvée. Et si vous avez choisi un domaine, vous pouvez aussi inclure les offres dont le domaine n'a pas pu être lu dans l'intitulé : environ un quart du tableau."
+    },
+    "applyAgentGuide": {
+      "title": "Un guide clair de ce que fait l'agent de candidature",
+      "description": "Une seule page : la configuration, ce qui se passe la nuit, la différence entre le mode revue et le mode automatique, où l'agent peut ou non envoyer pour vous, et ce qu'il ne fera jamais. Elle se termine par les raisons d'un matin vide — presque toujours un réglage, pas un marché sans offres."
+    },
     "setupIsOneStep": {
       "title": "Configurer votre agent de candidature ne prend plus qu'une étape : importez votre CV",
       "description": "Nous lisons votre nom, votre e-mail, votre téléphone et votre LinkedIn directement dans le document et les enregistrons — inutile de ressaisir ce que vous venez de nous transmettre. Ce qu'un formulaire exige et que le CV ne dit pas vous est demandé au moment où ce formulaire le demande, pas avant. Votre autorisation de travail, votre salaire et votre date de début ne sont jamais devinés."

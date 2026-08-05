@@ -1,5 +1,25 @@
 {
   "changelogEntries": {
+    "mandateFromYourCv": {
+      "title": "Ang paghahanap ng iyong agent ay nagsisimula na sa CV mo",
+      "description": "Kapag gumagawa ka ng paghahanap, ang mga posisyong nasa CV mo na ay iniaalok bilang one-tap na suhestiyon, at ipinapakita ng bawat isa ang linyang pinagbasahan nito. Sinasadya naming alisin ang salitang pang-seniority (“Senior”): iba-iba ang tawag ng mga employer sa parehong trabaho. Walang sine-save hangga't hindi mo ina-activate."
+    },
+    "agentCanApplyHere": {
+      "title": "Tingnan kung saan makakapag-apply ang agent bago mo i-save",
+      "description": "Ang mga posting na kayang punan at isumite mismo ng aming agent ay may markang “Kayang mag-apply ng agent” na ngayon sa job board, sa detalye ng trabaho, at sa mga na-save mong trabaho. Karamihan sa mga employer ay may bot protection sa kanilang form; doon, inihahanda ng agent ang lahat at ikaw ang pipindot ng send."
+    },
+    "sinceYourInterview": {
+      "title": "Ano ang nangyari sa trabaho pagkatapos ng interview mo",
+      "description": "Itinatala namin ang araw na inaalis ang bawat posting sa sariling careers feed ng kumpanya. Pagkatapos ng interview, sinasabi ng tracker mo kung ang mismong anunsyong iyon ay inalis at nanatiling wala, o kung muling na-post ang parehong posisyon. Tungkol ito sa posting, hindi sa iyo."
+    },
+    "agentSearchReach": {
+      "title": "Dalawang bagong kontrol sa kung ano ang dala ng agent",
+      "description": "Maaari mo nang limitahan ang mga pili sa mga trabahong na-post sa loob ng piniling bilang ng araw, batay sa petsang sinasabi ng employer at hindi kung kailan namin natagpuan. At kung may piniling larangan ka, puwede mo ring isama ang mga posting na hindi mabasa ang larangan mula sa titulo: humigit-kumulang isang-kapat ng board."
+    },
+    "applyAgentGuide": {
+      "title": "Isang malinaw na gabay sa ginagawa ng apply agent",
+      "description": "Isang pahina: ang setup, ang nangyayari tuwing gabi, ang pagkakaiba ng review at auto mode, kung saan puwede at hindi puwedeng magsumite ang agent para sa iyo, at ang hindi nito kailanman gagawin. Nagtatapos ito sa mga dahilan kung bakit walang laman ang isang umaga — halos palaging isang setting."
+    },
     "setupIsOneStep": {
       "title": "Isang hakbang na lang ang pag-set up ng iyong apply agent: i-upload ang CV mo",
       "description": "Binabasa namin ang pangalan, email, telepono at LinkedIn mo mismo sa dokumento at sine-save — hindi na kailangang i-type muli ang ibinigay mo pa lang. Ang kailangan ng isang form na wala sa CV ay itatanong sa mismong sandaling hingin iyon ng form, hindi nang maaga. Hindi kailanman hinuhulaan ang iyong work authorisation, sahod at petsa ng pagsisimula."

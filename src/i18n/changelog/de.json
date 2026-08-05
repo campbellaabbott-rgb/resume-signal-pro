@@ -1,5 +1,25 @@
 {
   "changelogEntries": {
+    "mandateFromYourCv": {
+      "title": "Die Suche deines Agenten beginnt jetzt bei deinem Lebenslauf",
+      "description": "Beim Anlegen einer Suche werden die Positionen, die bereits in deinem Lebenslauf stehen, als Vorschläge angeboten — jeder zeigt die Zeile, aus der er gelesen wurde. Das Senioritätswort („Senior“) lassen wir bewusst weg: Unternehmen betiteln dieselbe Stelle auf ein Dutzend Arten, und der kürzere Begriff findet sie alle. Gespeichert wird nichts, bis du es aktivierst."
+    },
+    "agentCanApplyHere": {
+      "title": "Sieh vor dem Speichern, wo sich der Agent bewerben kann",
+      "description": "Anzeigen, die unser Agent selbst ausfüllen und absenden kann, tragen jetzt die Markierung „Agent kann sich bewerben“ — im Stellenboard, in der Detailansicht und bei deinen gespeicherten Jobs. Die meisten Unternehmen sichern ihr Formular gegen Bots ab; dort bereitet der Agent alles vor und du drückst auf Senden."
+    },
+    "sinceYourInterview": {
+      "title": "Was mit der Stelle nach deinem Gespräch passiert ist",
+      "description": "Wir halten fest, an welchem Tag eine Anzeige aus dem Karriereportal des Unternehmens verschwindet. Nach einem Gespräch sagt dir dein Tracker, ob genau diese Anzeige zurückgezogen wurde und zurückgezogen blieb — oder ob dieselbe Stelle wieder online ist. Das beschreibt die Anzeige, nicht dich."
+    },
+    "agentSearchReach": {
+      "title": "Zwei neue Regler dafür, was dein Agent dir bringt",
+      "description": "Du kannst Vorschläge jetzt auf Stellen begrenzen, die innerhalb einer gewählten Zahl von Tagen veröffentlicht wurden — nach dem Datum, das das Unternehmen angibt, nicht danach, wann wir sie gefunden haben. Und wenn du einen Bereich gewählt hast, kannst du auch Anzeigen einbeziehen, deren Bereich sich nicht aus dem Titel lesen ließ: rund ein Viertel des Boards."
+    },
+    "applyAgentGuide": {
+      "title": "Eine klare Anleitung, was der Bewerbungs-Agent tut",
+      "description": "Eine Seite: Einrichtung, was nachts passiert, der Unterschied zwischen Prüf- und Automatikmodus, wo der Agent für dich absenden kann und wo nicht — und was er niemals tut. Am Ende die Gründe, warum ein Morgen leer bleibt: fast immer eine Einstellung, kein leerer Markt."
+    },
     "setupIsOneStep": {
       "title": "Die Einrichtung Ihres Bewerbungs-Agenten ist jetzt ein Schritt: Lebenslauf hochladen",
       "description": "Wir lesen Name, E-Mail, Telefonnummer und LinkedIn direkt aus dem Dokument und speichern sie — kein erneutes Eintippen von Angaben, die Sie gerade übergeben haben. Was ein Formular verlangt und der Lebenslauf nicht hergibt, fragen wir genau dann, wenn das Formular es verlangt. Arbeitserlaubnis, Gehalt und Startdatum werden nie erraten."
