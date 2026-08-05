@@ -288,8 +288,11 @@ serve(async (req) => {
       .limit(CANDIDATES_PER_MANDATE);
     if (m.category) qb = qb.eq("category", m.category);
     if (m.remote_only) qb = qb.eq("remote", true);
-    if (m.location) qb = qb.ilike("location", `%${m.location}%`);
-    if (m.q) qb = qb.ilike("title", `%${m.q}%`);
+    // Multi-term: one mandate can now name several roles and several places.
+    const locTerms = splitTerms(m.location);
+    const qTerms = splitTerms(m.q);
+    if (locTerms.length) qb = qb.or(orIlike("location", locTerms));
+    if (qTerms.length) qb = qb.or(orIlike("title", qTerms));
     if (m.salary_min != null) qb = qb.gte("salary_min_annual", m.salary_min);
     const { data: cands0, error: cErr } = await qb;
 
@@ -319,8 +322,10 @@ serve(async (req) => {
         .limit(SENDABLE_CANDIDATES);
       if (m.category) sb2 = sb2.eq("category", m.category);
       if (m.remote_only) sb2 = sb2.eq("remote", true);
-      if (m.location) sb2 = sb2.ilike("location", `%${m.location}%`);
-      if (m.q) sb2 = sb2.ilike("title", `%${m.q}%`);
+      const locTerms2 = splitTerms(m.location);
+      const qTerms2 = splitTerms(m.q);
+      if (locTerms2.length) sb2 = sb2.or(orIlike("location", locTerms2));
+      if (qTerms2.length) sb2 = sb2.or(orIlike("title", qTerms2));
       if (m.salary_min != null) sb2 = sb2.gte("salary_min_annual", m.salary_min);
       const { data: sendableCands } = await sb2;
       if (sendableCands?.length) {
@@ -491,6 +496,37 @@ serve(async (req) => {
     ms: Date.now() - startedAt,
   });
 });
+
+/**
+ * MANY ROLES, MANY PLACES — out of the two single-value fields we already have.
+ *
+ * A mandate stored one title fragment and one location, so "product manager OR
+ * programme manager" and "London OR Manchester" were simply not expressible;
+ * people had to pick one and lose the rest of their search.
+ *
+ * Commas separate them. No migration and no new columns, which matters more
+ * than tidiness here: a value with no comma splits to a single-element list and
+ * produces EXACTLY the query it produced before, so every mandate that already
+ * exists keeps behaving identically without being touched or migrated.
+ *
+ * Commas are stripped from each term rather than escaped. PostgREST's `or()`
+ * takes a comma-delimited string, so a comma surviving inside a value would be
+ * read as a separator and silently widen somebody's search to terms they never
+ * typed — a filter that quietly matches MORE than asked is worse than one that
+ * errors.
+ */
+export function splitTerms(raw: string | null | undefined): string[] {
+  return String(raw ?? "")
+    .split(",")
+    .map((t) => t.replace(/[,()*]/g, " ").trim())
+    .filter((t) => t.length > 0)
+    .slice(0, 12);   // a bounded OR; nobody searches 50 titles, and the URL has limits
+}
+
+/** `col ILIKE %a%` OR `col ILIKE %b%` … for PostgREST's or() syntax. */
+export function orIlike(col: string, terms: string[]): string {
+  return terms.map((t) => `${col}.ilike.*${t}*`).join(",");
+}
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });

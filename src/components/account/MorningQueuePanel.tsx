@@ -58,6 +58,34 @@ interface QueueItem {
 
 const CATEGORIES = ["", "engineering", "data_ai", "design", "product", "marketing", "sales", "customer", "finance", "legal", "people_hr", "operations", "healthcare", "science", "education", "hospitality_retail", "security", "admin"];
 
+/**
+ * WHAT WE PARSED, SHOWN BACK BEFORE IT IS SAVED.
+ *
+ * Roles and locations are comma-separated, and a separator you cannot see is a
+ * separator people get wrong — "Product Manager, Programme Manager" and
+ * "Product Manager Programme Manager" look nearly identical in a text box and
+ * mean completely different searches. Rendering the parsed terms as chips makes
+ * the split visible at the moment it can still be corrected.
+ *
+ * Deliberately mirrors the SAME splitter the runner uses, including the
+ * 12-term bound, so what is shown is what will actually be searched rather than
+ * a hopeful preview of it.
+ */
+function TermChips({ raw, label }: { raw: string; label: string }) {
+  const terms = String(raw ?? "").split(",").map((t) => t.replace(/[,()*]/g, " ").trim())
+    .filter((t) => t.length > 0).slice(0, 12);
+  if (terms.length < 2) return null;
+  return (
+    <div className="mt-1.5 flex flex-wrap gap-1" aria-label={label}>
+      {terms.map((t, i) => (
+        <span key={i} className="rounded-full border border-border bg-muted/50 px-2 py-0.5 text-xs text-muted-foreground">
+          {t}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 export function MorningQueuePanel({ userId, email, defaultResume }: {
   userId: string; email: string | null; defaultResume: string | null;
 }) {
@@ -339,8 +367,9 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
               className="sm:col-span-2 rounded-lg border border-border bg-background px-3 py-2 text-sm font-semibold" />
           )}
           <input value={form.q} onChange={(e) => setForm((f) => ({ ...f, q: e.target.value }))}
-            placeholder={t("agentQueue.fieldQ", "Role keywords (e.g. data engineer)")}
+            placeholder={t("morningQueue.qPlaceholder", "Product Manager, Programme Manager")}
             className="rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+          <TermChips raw={form.q} label="Roles being searched" />
           <select value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
             className="rounded-lg border border-border bg-background px-3 py-2 text-sm">
             {CATEGORIES.map((c) => (
@@ -348,8 +377,9 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
             ))}
           </select>
           <input value={form.location} onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))}
-            placeholder={t("agentQueue.fieldLocation", "Location contains… (optional)")}
+            placeholder={t("morningQueue.locPlaceholder", "London, Manchester, Remote")}
             className="rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+          <TermChips raw={form.location} label="Locations being searched" />
           <input value={form.salary_min} onChange={(e) => setForm((f) => ({ ...f, salary_min: e.target.value.replace(/\D/g, "") }))}
             placeholder={t("agentQueue.fieldSalary", "Salary floor, annual (only stated-pay postings match)")}
             className="rounded-lg border border-border bg-background px-3 py-2 text-sm" />
