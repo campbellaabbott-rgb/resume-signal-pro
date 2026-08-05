@@ -284,6 +284,12 @@ export default function Jobs() {
   const routeCompany = companyToken || undefined;
   const [company, setCompany] = useState(initial.get("company") ?? routeCompany ?? "");
   const [category, setCategory] = useState(initial.get("category") ?? routeCategory ?? "");
+  // ALSO SEARCH THE UNCATEGORISED BUCKET. `other` held 162,800 of 590,808
+  // postings on 2026-08-05 — where a posting lands when its field could not be
+  // read from the title — so choosing a field silently costs a quarter of the
+  // board. Off by default, and never set on a /jobs/field/:slug lander: a page
+  // titled "Engineering jobs" must not list postings whose field is unknown.
+  const [inclUncat, setInclUncat] = useState(initial.get("inclUncat") === "1");
   // Lander identity tracks the LIVE filter, not the route param. The URL-sync
   // effect rewrites the address with history.replaceState, which React Router
   // does not observe — so useParams keeps returning the lander token forever.
@@ -823,6 +829,7 @@ export default function Jobs() {
     const params = {
       q: q || undefined,
       category: category || undefined,
+      includeUncategorised: category && inclUncat ? true : undefined,
       experience: experience || undefined,
       location: location || undefined,
       // ONE definition of Remote — see the note at the other call site. Sending
@@ -903,6 +910,7 @@ export default function Jobs() {
           remote: (remoteOnly && !workMode) || undefined,
       workMode: workMode || undefined,
           category: category || undefined,
+          includeUncategorised: category && inclUncat ? true : undefined,
           country: country || undefined,
           experience: experience || undefined,
           companies: company ? [company] : undefined,
@@ -951,7 +959,7 @@ export default function Jobs() {
         }
       }
     },
-    [q, location, remoteOnly, workMode, company, category, experience, country, salaryFloor, sortMode, freshness, searchNewestFirst],
+    [q, location, remoteOnly, workMode, company, category, inclUncat, experience, country, salaryFloor, sortMode, freshness, searchNewestFirst],
   );
 
   // Keep the URL shareable — filters in, defaults out. A category lander
@@ -965,6 +973,7 @@ export default function Jobs() {
     if (workMode) p.set("mode", workMode);
     if (company) p.set("company", company);
     if (category) p.set("category", category);
+    if (category && inclUncat) p.set("inclUncat", "1");
     if (experience) p.set("experience", experience);
     if (country) p.set("country", country);
     if (salaryFloor) p.set("salaryFloor", String(salaryFloor));
@@ -995,7 +1004,7 @@ export default function Jobs() {
       return;
     }
     window.history.replaceState({}, "", qs ? `/jobs?${qs}` : "/jobs");
-  }, [q, location, remoteOnly, workMode, company, category, experience, country, salaryFloor, freshness, sortMode, landerCategory, landerCompany]);
+  }, [q, location, remoteOnly, workMode, company, category, inclUncat, experience, country, salaryFloor, freshness, sortMode, landerCategory, landerCompany]);
 
   // Category salary benchmarks: median advertised pay floor per field, computed
   // live from postings that state pay (RPC self-gates at n>=30 — a thin sample
@@ -3173,6 +3182,31 @@ export default function Jobs() {
                 </option>
               ))}
             </select>
+            {/* THE QUARTER OF THE BOARD A FIELD CHOICE HIDES.
+                `other` is where a posting lands when its field could not be
+                read from the title — 162,800 of 590,808 on 2026-08-05 — not a
+                junk drawer, and plenty of them are ordinary engineering,
+                operations and healthcare roles. Shown only once a field is
+                chosen, because with "All fields" they are already included.
+                The live count comes from the same facets that fill the select,
+                so the number is measured rather than asserted. */}
+            {category && category !== "other" && (
+              <label
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border bg-background text-sm text-muted-foreground cursor-pointer whitespace-nowrap"
+                title={t("jobsPage.inclUncatTip", "Some postings can't be sorted into a field from their job title. They're excluded when you pick one — this puts them back.")}
+              >
+                <input
+                  type="checkbox"
+                  checked={inclUncat}
+                  onChange={(e) => setInclUncat(e.target.checked)}
+                  className="accent-[hsl(var(--primary))]"
+                />
+                {t("jobsPage.inclUncat", "+ unsorted")}
+                {data?.categories?.other ? (
+                  <span className="text-muted-foreground/70">({data.categories.other.toLocaleString()})</span>
+                ) : null}
+              </label>
+            )}
             <select
               value={experience}
               onChange={(e) => setExperience(e.target.value)}

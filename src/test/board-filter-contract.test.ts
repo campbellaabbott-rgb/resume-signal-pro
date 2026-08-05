@@ -98,6 +98,12 @@ describe("isUnfiltered — derived, so a new filter cannot be forgotten", () => 
       country: "DE",
       remote: true,
       workMode: "remote",
+      // Added 2026-08-06. This test exists so a NEW field is covered the moment
+      // it exists — it caught this one at the typecheck, which is the design
+      // working: `isUnfiltered` must treat "engineering + unsorted" as a
+      // filtered request, or the board could serve the whole-corpus total over
+      // a narrowed page again.
+      includeUncategorised: true,
       category: "engineering",
       experience: ["senior"],
       salaryFloor: 100_000,

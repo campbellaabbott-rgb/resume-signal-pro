@@ -52,7 +52,7 @@ import { classifyDormancy, updateBoardFailures, type BoardFailureState } from ".
 import { advanceProgress, isPassDone, type RefreshProgress } from "./rotation.ts";
 import { CANARIES, rawItemCount, aggregateVendorHealth, type CanaryResult } from "./vendor-canary.ts";
 import { detectExperience, isExperienceBand } from "./experience.ts";
-import { filterViolations, isUnfiltered, normalizeFilters } from "./filters.ts";
+import { categoryParam, filterViolations, isUnfiltered, normalizeFilters } from "./filters.ts";
 import { expandQuery } from "./search-alias.ts";
 import { classifyQuestion } from "../_shared/application-questions.ts";
 import { parseBreezyQuestions, parsePinpointQuestions, breezyApplyUrl, pinpointApplyUrl } from "../_shared/vendor-questions.ts";
@@ -5048,7 +5048,16 @@ async function serveList(
     // Postings whose location we couldn't place have country NULL and are
     // excluded by the filter — honestly, never guessed (the UI says so).
     if (applied.country) q = q.eq("country", applied.country);
-    if (applied.category) q = q.eq("category", applied.category);
+    // ONE DERIVED VALUE FOR ALL THREE CALL SITES.
+    //
+    // A category becomes a query in three places here — this direct filter and
+    // two RPCs — and widening one of them is how a feature ends up working
+    // while you browse and silently absent the moment you type a search term.
+    // `categoryParam` is computed once, above, and every site uses it.
+    if (applied.category) {
+      if (applied.includeUncategorised) q = q.in("category", [applied.category, "other"]);
+      else q = q.eq("category", applied.category);
+    }
     // Experience filter: one of entry/mid/senior/expert. "unspecified" rows are
     // never returned by a band filter — we only surface postings we can honestly
     // place. Accepts a comma list or an array so a user can widen; anything that
@@ -5105,7 +5114,7 @@ async function serveList(
         p_location: sanitizeTerm(applied.location) || null,
         p_remote: applied.remote ? true : null,
         p_country: applied.country,
-        p_category: applied.category,
+        p_category: categoryParam(applied),
         p_experience: applied.experience.length ? applied.experience : null,
         p_salary_floor: applied.salaryFloor,
         p_companies: applied.companies.length ? applied.companies : null,
@@ -5148,7 +5157,7 @@ async function serveList(
           p_location: sanitizeTerm(applied.location) || null,
           p_remote: applied.remote ? true : null,
           p_country: applied.country,
-          p_category: applied.category,
+          p_category: categoryParam(applied),
           p_experience: applied.experience.length ? applied.experience : null,
           p_salary_floor: applied.salaryFloor,
           p_companies: applied.companies.length ? applied.companies : null,
@@ -5205,7 +5214,7 @@ async function serveList(
         p_location: sanitizeTerm(applied.location) || null,
         p_remote: applied.remote ? true : null,
         p_country: applied.country,
-        p_category: applied.category,
+        p_category: categoryParam(applied),
         p_experience: applied.experience.length ? applied.experience : null,
         p_salary_floor: applied.salaryFloor,
         p_companies: applied.companies.length ? applied.companies : null,

@@ -43,6 +43,17 @@ export type AppliedFilters = {
   remote: boolean;
   workMode: string | null;
   category: string | null;
+  /**
+   * Also return the `other` bucket alongside the chosen category.
+   *
+   * OPT-IN, and it must stay opt-in. `other` held 162,800 of 590,808 postings
+   * on 2026-08-05 — a posting lands there when the classifier cannot read its
+   * field from the title — so a category filter silently costs a searcher a
+   * quarter of the board. But the SEO landers at /jobs/field/:slug run through
+   * this same path, and a page titled "Engineering jobs" must not list postings
+   * whose field is unknown. They never send the flag, so they never widen.
+   */
+  includeUncategorised: boolean;
   experience: string[];
   salaryFloor: number | null;
   companies: string[];
@@ -77,6 +88,11 @@ export function normalizeFilters(
   const categoryRaw = String(body.category ?? "").trim().toLowerCase();
   const category = (JOB_CATEGORIES as readonly string[]).includes(categoryRaw) ? categoryRaw : null;
   if (sent(body.category) && !category) ignored.push("category");
+
+  // Only meaningful alongside a category — with no category the bucket is
+  // already included, so accepting it there would be a no-op that reads like a
+  // setting.
+  const includeUncategorised = category !== null && category !== "other" && body.includeUncategorised === true;
 
   const wmRaw = String(body.workMode ?? "").trim().toLowerCase();
   const workMode = (WORK_MODES as readonly string[]).includes(wmRaw) ? wmRaw : null;
@@ -150,6 +166,7 @@ export function normalizeFilters(
       remote: body.remote === true && !workMode,
       workMode,
       category,
+      includeUncategorised,
       experience,
       salaryFloor,
       companies,
@@ -238,4 +255,23 @@ export function filterViolations(
     }
   }
   return out;
+}
+
+/**
+ * The value `p_category` carries into search_jobs / count_jobs_capped.
+ *
+ * The RPCs split this on commas (`= ANY(string_to_array($N, ','))`, migration
+ * 20260806020000), so one value with no comma produces exactly the query it
+ * always did and two values widen to the uncategorised bucket.
+ *
+ * A COMMA CANNOT ARRIVE FROM A CALLER. `category` is validated against
+ * JOB_CATEGORIES above and anything else is rejected, so this only ever joins a
+ * known slug to the literal "other". It matters because the RPC now treats a
+ * comma as a separator: if arbitrary text could reach here, a caller could
+ * widen their own query to categories they never asked for — the same class of
+ * hazard as a comma surviving into the mandate's PostgREST or().
+ */
+export function categoryParam(a: Pick<AppliedFilters, "category" | "includeUncategorised">): string | null {
+  if (!a.category) return null;
+  return a.includeUncategorised ? `${a.category},other` : a.category;
 }
