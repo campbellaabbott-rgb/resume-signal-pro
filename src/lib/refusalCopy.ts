@@ -131,17 +131,41 @@ const FACES: Record<RefusalCode, RefusalFace> = {
 };
 
 /**
- * Unknown codes return null rather than a guess.
+ * NO REFUSAL AND AN UNRECOGNISED REFUSAL ARE DIFFERENT ANSWERS.
  *
  * A new refusal code shipped in an edge function reaches production before any
- * frontend that knows about it — Lovable deploys the two separately. Inventing
- * a friendly sentence for a code we do not recognise would state a reason that
- * is not the real one, which is worse than the silence this file replaces.
- * The caller falls back to the plain status.
+ * frontend that knows about it — the two deploy separately, routinely. This used
+ * to return null for both cases, and the queue renders null as NOTHING: the
+ * packet sat there refused, with no reason on screen at all.
+ *
+ * That is the silent no this whole file exists to abolish. The header of
+ * apply-release says it in as many words — "a silent no is indistinguishable
+ * from a broken cron" — and the unknown branch was quietly reintroducing it.
+ * The comment here even claimed "the caller falls back to the plain status";
+ * the caller fell back to blank space.
+ *
+ * So an unrecognised code now gets a face that says exactly that. Note this is
+ * NOT the guess the old comment rightly refused: inventing "your fit was too
+ * low" for an unknown code states a false reason, whereas naming the code and
+ * admitting we cannot describe it states a true one. Severity is `on-us`,
+ * because a reason we cannot render is our gap and never the candidate's.
  */
 export function refusalFace(code: string | null | undefined): RefusalFace | null {
-  if (!code) return null;
-  return FACES[code as RefusalCode] ?? null;
+  // Genuinely nothing to report. Not a refusal, so not a message.
+  if (!code || !String(code).trim()) return null;
+  const known = FACES[code as RefusalCode];
+  if (known) return known;
+  return {
+    code: code as RefusalCode,
+    severity: "on-us",
+    // Keyed on the literal code so translators can add one later without a
+    // code change, and so two different unknown codes never share a message.
+    key: `applyRefusal.${code}`,
+    fallback:
+      `Not sent, and we cannot describe why yet — the reason our agent recorded ("${code}") ` +
+      `is newer than this page. Nothing was sent, and this is our gap to close, not yours.`,
+    fix: null,
+  };
 }
 
 /** Every code, for tests and for the settings-page legend. */

@@ -59,10 +59,34 @@ describe("the copy stays in step with the backend's reasons", () => {
 
   it("refuses to invent a sentence for a code it does not know", () => {
     // Edge functions and the bundle deploy separately, so a new code WILL reach
-    // production before this file knows it. Guessing a reason is worse than the
+    // production before this file knows it. Guessing a reason is worse than
     // silence — it states something untrue about someone's application.
-    for (const unknown of ["", null, undefined, "brand-new-code", "SENDER-OFFLINE"]) {
-      expect(refusalFace(unknown as string)).toBeNull();
+    //
+    // WHAT CHANGED, AND WHY THE ASSERTION MOVED. This used to require null for
+    // BOTH "no refusal" and "unrecognised refusal", and the queue renders null
+    // as nothing at all — so a packet sat there, not sent, with no reason on
+    // screen. That is the silent no apply-release's own header calls out ("a
+    // silent no is indistinguishable from a broken cron"), reintroduced by the
+    // fallback meant to prevent a lie.
+    //
+    // It was a false choice. Naming the code and saying we cannot describe it
+    // is a TRUE statement; only a borrowed sentence from another code would be
+    // the untruth this test exists to stop. So the rule is now the stronger
+    // one: never state a reason we cannot support, and never say nothing.
+    for (const nothing of ["", "   ", null, undefined]) {
+      expect(refusalFace(nothing as string), "no refusal means no banner").toBeNull();
+    }
+
+    const knownCopy = new Set(ALL_REFUSAL_CODES.map((c) => refusalFace(c)!.fallback));
+    for (const unknown of ["brand-new-code", "SENDER-OFFLINE"]) {
+      const f = refusalFace(unknown);
+      expect(f, `"${unknown}" must be reported, not swallowed`).toBeTruthy();
+      // The original intent, kept exactly: it must not borrow another code's
+      // sentence. "SENDER-OFFLINE" is here on purpose — a casing near-miss of a
+      // real code must NOT resolve to that code's reassuring wording.
+      expect(knownCopy.has(f!.fallback), `"${unknown}" borrowed a known code's wording`).toBe(false);
+      expect(f!.fallback).toContain(unknown);
+      expect(f!.severity, "an unreadable reason is our gap, not theirs").toBe("on-us");
     }
   });
 });
