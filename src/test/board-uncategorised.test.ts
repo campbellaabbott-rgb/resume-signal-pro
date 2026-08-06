@@ -161,7 +161,7 @@ describe("the chosen field comes first, without sorting across both subsets", ()
     // An estimate would skip or repeat rows at the boundary — invisible, and
     // indistinguishable from the board not having that job.
     expect(board).toMatch(/buildQuery\(dateCol, true, applied\.category!\)\.range\(0, 0\)/);
-    expect(board).toMatch(/splitPage\(offset, fetchLimit, countA\)/);
+    expect(board).toMatch(/splitPage\(offset, twoSubsetLimit, countA\)/);
   });
 
   it("skips a subset entirely when the page does not reach it", () => {
@@ -221,5 +221,21 @@ describe("the salary sort refuses the opt-in instead of erroring", () => {
     // failure from the other end.
     expect(jobs).toMatch(/disabled=\{sortMode === "salary"\}/);
     expect(jobs).toMatch(/checked=\{inclUncat && sortMode !== "salary"\}/);
+  });
+});
+
+describe("the opt-in path is bounded, because the bucket is expensive to read", () => {
+  it("does not apply the grouping over-fetch to the two-subset page", () => {
+    // fetchLimit is 3x limit when grouping is on, and it triples the range
+    // asked of the `other` half. Measured on legal+DE at offset 60:
+    // fetchLimit 180 -> 500 after 43s; fetchLimit 60 -> 200 in 5.1s.
+    expect(board).toMatch(/const twoSubsetLimit = Math\.min\(fetchLimit, limit\)/);
+    expect(board).toMatch(/splitPage\(offset, twoSubsetLimit, countA\)/);
+  });
+
+  it("says out loud that this bounds the cost rather than fixing it", () => {
+    // ~5s against a normal ~0.3s page. An index would fix it; a comment that
+    // claimed this was fast would just be wrong.
+    expect(board).toMatch(/BOUNDS the cost, it does not fix it/);
   });
 });

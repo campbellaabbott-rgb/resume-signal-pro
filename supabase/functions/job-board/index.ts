@@ -5787,7 +5787,25 @@ async function serveList(
     const aCount = await buildQuery(dateCol, true, applied.category!).range(0, 0);
     if (aCount.error) return aCount;
     const countA = aCount.count ?? 0;
-    const s = splitPage(offset, fetchLimit, countA);
+    // NO GROUPING OVER-FETCH ON THIS PATH, and the cliff is steep.
+    //
+    // `fetchLimit` is 3x `limit` when grouping is on, so it asks the `other`
+    // half for a much wider range. Measured on legal+DE at offset 60:
+    //
+    //     fetchLimit 180   500 after 43s
+    //     fetchLimit  60   200 in   5.1s
+    //
+    // Reading the unsorted bucket is simply expensive — it is 162,800 rows with
+    // no index supporting this shape — and the over-fetch multiplies exactly
+    // the query that cannot afford it. Grouping still runs, with `limit`
+    // candidates instead of 3x; slightly less clustering on a rare opt-in path
+    // is worth incomparably more than a 43-second 500 on page two.
+    //
+    // This BOUNDS the cost, it does not fix it: ~5s against a normal ~0.3s
+    // page. The real fix is an index for (category, country, effective_posted),
+    // which is a migration and a separate decision.
+    const twoSubsetLimit = Math.min(fetchLimit, limit);
+    const s = splitPage(offset, twoSubsetLimit, countA);
 
     const [ra, rb] = await Promise.all([
       s.aLimit > 0
