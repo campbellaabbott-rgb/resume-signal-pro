@@ -3006,6 +3006,7 @@ export type Database = {
           last_at: string
           n: number
           status: string
+          stuck: number
         }[]
       }
       email_queue_dispatch: { Args: never; Returns: undefined }
