@@ -186,3 +186,40 @@ describe("the chosen field comes first, without sorting across both subsets", ()
     expect(board).toMatch(/bCount\.error \? null :/);
   });
 });
+
+describe("the salary sort refuses the opt-in instead of erroring", () => {
+  // MEASURED against production 2026-08-06: `category=other + country=DE +
+  // sort=salary` returns HTTP 500 after 17.7s on its own, with no opt-in
+  // involved. `other` is 162,800 rows and salary ordering cannot use the
+  // category index. That defect PRE-DATES this feature and is not fixed here —
+  // what is fixed is the opt-in no longer walking into it, since the
+  // two-subset pager queries `other` as one of its halves.
+  it("drops the flag under a salary sort", () => {
+    expect(norm({ category: "legal", includeUncategorised: true, sort: "salary" }).includeUncategorised).toBe(false);
+  });
+
+  it("keeps it under every other sort", () => {
+    for (const sort of [undefined, "newest", "relevance"]) {
+      expect(norm({ category: "legal", includeUncategorised: true, sort }).includeUncategorised,
+        `sort=${sort} should keep the opt-in`).toBe(true);
+    }
+  });
+
+  it("REPORTS the drop rather than silently ignoring it", () => {
+    // This file's contract is that a filter is never silently dropped.
+    const r = normalizeFilters({ category: "legal", includeUncategorised: true, sort: "salary" }, 200);
+    expect(r.ignored).toContain("includeUncategorised");
+  });
+
+  it("reports nothing when the flag was never asked for", () => {
+    expect(normalizeFilters({ category: "legal", sort: "salary" }, 200).ignored)
+      .not.toContain("includeUncategorised");
+  });
+
+  it("the control is disabled in the UI, so the box cannot lie", () => {
+    // A box that stays ticked while the server ignores it is the same silent
+    // failure from the other end.
+    expect(jobs).toMatch(/disabled=\{sortMode === "salary"\}/);
+    expect(jobs).toMatch(/checked=\{inclUncat && sortMode !== "salary"\}/);
+  });
+});

@@ -92,7 +92,24 @@ export function normalizeFilters(
   // Only meaningful alongside a category — with no category the bucket is
   // already included, so accepting it there would be a no-op that reads like a
   // setting.
-  const includeUncategorised = category !== null && category !== "other" && body.includeUncategorised === true;
+  const wantsUncategorised = category !== null && category !== "other" && body.includeUncategorised === true;
+
+  // NOT AVAILABLE UNDER A SALARY SORT, and refused out loud rather than served
+  // slowly or as a 500.
+  //
+  // Measured 2026-08-06 against production: `category=other + country=DE +
+  // sort=salary` returns HTTP 500 after 17.7s ON ITS OWN, with no opt-in
+  // involved — ordering the unsorted bucket by salary cannot use the category
+  // index, and `other` is 162,800 rows. That is a PRE-EXISTING defect (`other`
+  // has always been selectable) and it is not fixed here; what is fixed is the
+  // opt-in no longer walking into it, because the two-subset pager queries
+  // `other` as one of its halves.
+  //
+  // Pushed onto `ignored` because this file's contract is that a filter is
+  // never silently dropped — the caller is told which one did not apply.
+  const sortingBySalary = String(body.sort ?? "") === "salary";
+  const includeUncategorised = wantsUncategorised && !sortingBySalary;
+  if (wantsUncategorised && sortingBySalary) ignored.push("includeUncategorised");
 
   const wmRaw = String(body.workMode ?? "").trim().toLowerCase();
   const workMode = (WORK_MODES as readonly string[]).includes(wmRaw) ? wmRaw : null;

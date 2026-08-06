@@ -3192,12 +3192,23 @@ export default function Jobs() {
                 so the number is measured rather than asserted. */}
             {category && category !== "other" && (
               <label
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border bg-background text-sm text-muted-foreground cursor-pointer whitespace-nowrap"
-                title={t("jobsPage.inclUncatTip", "Some postings can't be sorted into a field from their job title. They're excluded when you pick one — this puts them back.")}
+                className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border bg-background text-sm whitespace-nowrap ${
+                  sortMode === "salary" ? "opacity-50 cursor-not-allowed text-muted-foreground/60" : "text-muted-foreground cursor-pointer"
+                }`}
+                title={sortMode === "salary"
+                  ? t("jobsPage.inclUncatSalaryTip", "Not available while sorting by salary — that combination is too slow to serve, so we don't pretend to apply it.")
+                  : t("jobsPage.inclUncatTip", "Some postings can't be sorted into a field from their job title. They're excluded when you pick one — this puts them back.")}
               >
+                {/* DISABLED UNDER A SALARY SORT, matching what the server does.
+                    normalizeFilters drops the flag there and reports it in
+                    `ignored`, because ordering the unsorted bucket by salary
+                    returns a 500 after ~17s. A box that stays ticked while the
+                    server ignores it is the silent-filter failure this codebase
+                    has a whole contract against. */}
                 <input
                   type="checkbox"
-                  checked={inclUncat}
+                  checked={inclUncat && sortMode !== "salary"}
+                  disabled={sortMode === "salary"}
                   onChange={(e) => setInclUncat(e.target.checked)}
                   className="accent-[hsl(var(--primary))]"
                 />
