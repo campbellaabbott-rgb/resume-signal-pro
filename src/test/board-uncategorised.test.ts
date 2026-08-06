@@ -140,3 +140,35 @@ describe("the SEO landers cannot widen", () => {
     expect((jobs.match(/category, inclUncat,/g) ?? []).length).toBeGreaterThanOrEqual(2);
   });
 });
+
+describe("the chosen field is not buried under the bucket it let in", () => {
+  it("orders the chosen category ahead of the unsorted rows", () => {
+    // legal + country=DE went 114 -> 3,126 with the opt-in, and page one came
+    // back entirely `other`: date ordering plus a bucket 27x larger does that
+    // on its own, and the field the person actually picked disappears.
+    expect(board).toMatch(/qb\.order\("category", \{ ascending: applied\.category < "other" \}\)/);
+  });
+
+  it("picks the direction by comparison, which is exact for two values", () => {
+    // The result set holds exactly the chosen slug and "other", so ASC/DESC
+    // decides it deterministically. Alphabetical order alone would NOT do it —
+    // these sort AFTER "other" and would need the opposite direction.
+    for (const c of ["legal", "engineering", "admin", "design"]) expect(c < "other").toBe(true);
+    for (const c of ["sales", "science", "security", "product", "people_hr"]) expect(c < "other").toBe(false);
+  });
+
+  it("applies at BOTH paging sites, not just the happy one", () => {
+    // pageWith and the no-count retry are separate builders, and the retry runs
+    // exactly when a count failed — the path nobody watches.
+    expect((board.match(/catFirst\(buildQuery\(/g) ?? []).length).toBe(4);
+  });
+
+  it("leaves an explicit salary sort alone", () => {
+    // Reordering by field would answer a question the user did not ask.
+    expect(board).toMatch(/&& !sortSalary\)/);
+  });
+
+  it("never reorders when the opt-in is off — normal browsing is untouched", () => {
+    expect(board).toMatch(/applied\.category && applied\.includeUncategorised && !sortSalary/);
+  });
+});
