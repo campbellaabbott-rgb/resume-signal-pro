@@ -52,7 +52,7 @@ import { classifyDormancy, updateBoardFailures, type BoardFailureState } from ".
 import { advanceProgress, isPassDone, type RefreshProgress } from "./rotation.ts";
 import { CANARIES, rawItemCount, aggregateVendorHealth, type CanaryResult } from "./vendor-canary.ts";
 import { detectExperience, isExperienceBand } from "./experience.ts";
-import { categoryParam, filterViolations, isUnfiltered, normalizeFilters } from "./filters.ts";
+import { categoryParam, filterViolations, isUnfiltered, normalizeFilters, splitPage } from "./filters.ts";
 import { expandQuery } from "./search-alias.ts";
 import { classifyQuestion } from "../_shared/application-questions.ts";
 import { parseBreezyQuestions, parsePinpointQuestions, breezyApplyUrl, pinpointApplyUrl } from "../_shared/vendor-questions.ts";
@@ -5000,7 +5000,7 @@ async function serveList(
   // band (~150-190k rows) picks an index scan with random heap access and
   // crawls. Dropping the redundant effective_posted predicate was measured and
   // does NOT help, so the fix is to never let the count kill the page.
-  const buildQuery = (dateCol: string, withCount = wantCount) => {
+  const buildQuery = (dateCol: string, withCount = wantCount, categoryOverride?: string) => {
     let q = client
       .from("job_board_postings")
       .select(
@@ -5054,7 +5054,13 @@ async function serveList(
     // two RPCs — and widening one of them is how a feature ends up working
     // while you browse and silently absent the moment you type a search term.
     // `categoryParam` is computed once, above, and every site uses it.
-    if (applied.category) {
+    // `categoryOverride` is how the two-subset pager asks for ONE category at a
+    // time. It matters that this is an .eq(): the widened `.in()` below loses
+    // the date index on a large bucket, which is what made ordering across both
+    // subsets time out.
+    if (categoryOverride) {
+      q = q.eq("category", categoryOverride);
+    } else if (applied.category) {
       if (applied.includeUncategorised) q = q.in("category", [applied.category, "other"]);
       else q = q.eq("category", applied.category);
     }
@@ -5581,13 +5587,57 @@ async function serveList(
   // arithmetic, rather than asking the database to sort across both. That needs
   // care around count/hasMore and is not a one-liner — which is exactly why the
   // one-liner was tempting.
-  const pageWith = (dateCol: string, salaryCol: string, withCount: boolean) =>
+  // TWO SUBSETS, FETCHED SEPARATELY, ONLY ON THE OPT-IN PATH.
+  //
+  // Everything below is bypassed unless somebody chose a field AND opted into
+  // the unsorted bucket, so ordinary browsing runs the exact query it always
+  // did. That containment is deliberate: this is the second attempt at the
+  // problem and the first one reached production.
+  const twoSubset = !!applied.category && applied.includeUncategorised;
+
+  // deno-lint-ignore no-explicit-any
+  const ordered = (q: any, dateCol: string, salaryCol: string) =>
     (sortSalary
-      ? buildQuery(dateCol, withCount).order(salaryCol, { ascending: false, nullsFirst: false })
-      : buildQuery(dateCol, withCount).order(dateCol, { ascending: false, nullsFirst: false })
-    )
-      .order("id", { ascending: true })
-      .range(offset, offset + fetchLimit - 1);
+      ? q.order(salaryCol, { ascending: false, nullsFirst: false })
+      : q.order(dateCol, { ascending: false, nullsFirst: false })
+    ).order("id", { ascending: true });
+
+  const pageWith = async (dateCol: string, salaryCol: string, withCount: boolean) => {
+    if (!twoSubset) {
+      return await ordered(buildQuery(dateCol, withCount), dateCol, salaryCol)
+        .range(offset, offset + fetchLimit - 1);
+    }
+    // The chosen category's exact size decides where this page crosses into the
+    // bucket. EXACT, never estimated: an approximate pivot skips or repeats
+    // rows at the boundary, which reads as the board simply not having a job.
+    const aCount = await buildQuery(dateCol, true, applied.category!).range(0, 0);
+    if (aCount.error) return aCount;
+    const countA = aCount.count ?? 0;
+    const s = splitPage(offset, fetchLimit, countA);
+
+    const [ra, rb] = await Promise.all([
+      s.aLimit > 0
+        ? ordered(buildQuery(dateCol, false, applied.category!), dateCol, salaryCol)
+            .range(s.aOffset, s.aOffset + s.aLimit - 1)
+        : Promise.resolve({ data: [], error: null }),
+      s.bLimit > 0
+        ? ordered(buildQuery(dateCol, false, "other"), dateCol, salaryCol)
+            .range(s.bOffset, s.bOffset + s.bLimit - 1)
+        : Promise.resolve({ data: [], error: null }),
+    ]);
+    if (ra.error) return ra;
+    if (rb.error) return rb;
+
+    // The total is A + B. Only computed when a count was asked for, and a
+    // failure degrades to null — the client already renders "Showing N" without
+    // a denominator rather than a wrong one.
+    let count: number | null = null;
+    if (withCount) {
+      const bCount = await buildQuery(dateCol, true, "other").range(0, 0);
+      count = bCount.error ? null : countA + (bCount.count ?? 0);
+    }
+    return { data: [...(ra.data ?? []), ...(rb.data ?? [])], error: null, count };
+  };
 
   // Page and count run CONCURRENTLY and independently: the page never waits on
   // a count, and a count that fails can't take the page down with it. The page
@@ -5631,11 +5681,10 @@ async function serveList(
   // render a wrong number, and hasMore keeps pagination working without it.
   let countUnavailable = false;
   if (error && wantCount) {
-    const noCount = (dateCol: string, salaryCol: string) =>
-      (sortSalary
-        ? buildQuery(dateCol, false).order(salaryCol, { ascending: false, nullsFirst: false })
-        : buildQuery(dateCol, false).order(dateCol, { ascending: false, nullsFirst: false })
-      ).order("id", { ascending: true }).range(offset, offset + fetchLimit - 1);
+    // Same path as the page above, count suppressed — a second hand-written
+    // builder here is how the retry ends up filtering differently from the
+    // query it is retrying.
+    const noCount = (dateCol: string, salaryCol: string) => pageWith(dateCol, salaryCol, false);
     let retry = await noCount("effective_posted", "salary_rank_usd");
     if (sortSalary && retry.error?.message?.includes("salary_rank_usd")) retry = await noCount("effective_posted", "salary_min_annual");
     if (missingColumn(retry.error)) retry = await noCount("posted_at", "salary_min_annual");

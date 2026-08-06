@@ -141,24 +141,48 @@ describe("the SEO landers cannot widen", () => {
   });
 });
 
-describe("the chosen field IS still buried, and that is a known open problem", () => {
-  // Ordering the chosen category ahead of `other` was implemented, deployed,
-  // and reverted the same day: `.order("category", …)` stops Postgres using the
-  // date index, so the widened set sorts in full — sales+DE returned 500 after
-  // 17.5s, engineering took 4.3s against a normal ~0.3s page.
-  //
-  // This test exists so the one-liner is not re-attempted from scratch. It
-  // pins the ABSENCE, with the reason attached.
-  it("does not order by category — it times out on large widened sets", () => {
-    // COMMENTS STRIPPED: the note above the revert quotes `.order("category")`
-    // in order to explain why it is gone, and a check that cannot tell a
-    // prohibition from a violation would force the reasoning out of the file.
+describe("the chosen field comes first, without sorting across both subsets", () => {
+  // ATTEMPT ONE, REVERTED: `.order("category", …)` over `.in([chosen,"other"])`.
+  // Correct, and it cost the date index — sales+DE returned 500 after 17.5s and
+  // even successful pages went from ~0.3s to 4.3s. This pins that it is gone.
+  it("never orders by category — that is what timed out", () => {
     const code = board.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/^\s*\/\/.*$/gm, " ");
     expect(code).not.toMatch(/\.order\("category"/);
   });
 
-  it("records why, so the next person starts from the measurement", () => {
-    expect(board).toMatch(/statement timeout/);
-    expect(board).toMatch(/pages the two subsets SEPARATELY|two subsets/i);
+  it("fetches each subset with an indexed .eq instead", () => {
+    // Two .eq() queries each keep the date index; one .in() over a 162,800-row
+    // bucket does not. That is the whole reason this is two queries.
+    expect(board).toMatch(/buildQuery\(dateCol, false, applied\.category!\)/);
+    expect(board).toMatch(/buildQuery\(dateCol, false, "other"\)/);
+  });
+
+  it("pivots on an EXACT count of the chosen category", () => {
+    // An estimate would skip or repeat rows at the boundary — invisible, and
+    // indistinguishable from the board not having that job.
+    expect(board).toMatch(/buildQuery\(dateCol, true, applied\.category!\)\.range\(0, 0\)/);
+    expect(board).toMatch(/splitPage\(offset, fetchLimit, countA\)/);
+  });
+
+  it("skips a subset entirely when the page does not reach it", () => {
+    expect(board).toMatch(/s\.aLimit > 0/);
+    expect(board).toMatch(/s\.bLimit > 0/);
+  });
+
+  it("leaves ordinary browsing on the original single query", () => {
+    // The opt-in is rare; everything else must run the query it always ran.
+    expect(board).toMatch(/const twoSubset = !!applied\.category && applied\.includeUncategorised/);
+    expect(board).toMatch(/if \(!twoSubset\) \{/);
+  });
+
+  it("routes the no-count retry through the same pager", () => {
+    // A second hand-written builder is how a retry starts filtering differently
+    // from the query it is retrying.
+    expect(board).toMatch(/const noCount = \(dateCol: string, salaryCol: string\) => pageWith\(dateCol, salaryCol, false\)/);
+  });
+
+  it("reports the total as A + B, and degrades to null rather than lying", () => {
+    expect(board).toMatch(/countA \+ \(bCount\.count \?\? 0\)/);
+    expect(board).toMatch(/bCount\.error \? null :/);
   });
 });

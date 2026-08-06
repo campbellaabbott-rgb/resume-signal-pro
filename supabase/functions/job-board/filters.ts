@@ -275,3 +275,46 @@ export function categoryParam(a: Pick<AppliedFilters, "category" | "includeUncat
   if (!a.category) return null;
   return a.includeUncategorised ? `${a.category},other` : a.category;
 }
+
+/**
+ * PAGING ACROSS TWO SUBSETS THAT MUST STAY IN ORDER.
+ *
+ * When somebody picks a field and opts into the unsorted bucket, the result is
+ * conceptually one list: every posting in their chosen category, then every
+ * posting in `other`. Asking the database for that with
+ * `.in([chosen, "other"]) ORDER BY category, date` was tried and reverted — it
+ * stops Postgres using the date index and the whole widened set has to be
+ * sorted, which returned HTTP 500 after 17.5s on sales+DE.
+ *
+ * Two `.eq()` queries are each indexed and fast. This works out which slice of
+ * which subset a given page needs, so they can be fetched separately and
+ * concatenated.
+ *
+ * `countA` is the exact size of the FIRST subset, and it has to be exact: an
+ * estimate would silently skip or repeat rows at the boundary, which is the
+ * kind of paging bug nobody reports because it looks like the board simply not
+ * having that job.
+ */
+export type PageSplit = {
+  aOffset: number; aLimit: number;
+  bOffset: number; bLimit: number;
+};
+
+export function splitPage(offset: number, limit: number, countA: number): PageSplit {
+  const off = Math.max(0, Math.floor(offset));
+  const lim = Math.max(0, Math.floor(limit));
+  const ca = Math.max(0, Math.floor(countA));
+
+  // How many of this page's slots the first subset can still fill.
+  const aLimit = Math.max(0, Math.min(ca - off, lim));
+  return {
+    // Past the end of A, aLimit is 0 and the offset is irrelevant — clamped so
+    // it can never be a negative range.
+    aOffset: Math.min(off, ca),
+    aLimit,
+    // B starts where A ran out. On pages entirely inside A this is 0 and
+    // bLimit is 0, so B is never queried at all.
+    bOffset: Math.max(0, off - ca),
+    bLimit: lim - aLimit,
+  };
+}
