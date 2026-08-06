@@ -1644,6 +1644,24 @@ export type Database = {
         }
         Relationships: []
       }
+      job_board_stats_rollup: {
+        Row: {
+          computed_at: string
+          k: string
+          v: Json
+        }
+        Insert: {
+          computed_at?: string
+          k: string
+          v: Json
+        }
+        Update: {
+          computed_at?: string
+          k?: string
+          v?: Json
+        }
+        Relationships: []
+      }
       job_board_verifications: {
         Row: {
           company_token: string
@@ -3160,6 +3178,7 @@ export type Database = {
       get_date_coverage: {
         Args: never
         Returns: {
+          computed_at: string
           dated: number
           source: string
           total: number
@@ -3271,6 +3290,7 @@ export type Database = {
         Args: never
         Returns: {
           boards: number
+          computed_at: string
           max_min: number
           p50_min: number
           p95_min: number
@@ -3869,6 +3889,7 @@ export type Database = {
       }
       refresh_explore_cache: { Args: never; Returns: undefined }
       refresh_job_board_facets: { Args: never; Returns: Json }
+      refresh_job_board_stats: { Args: never; Returns: undefined }
       refresh_stats_cache: { Args: never; Returns: undefined }
       register_affiliate: {
         Args: { p_email: string; p_password: string }
