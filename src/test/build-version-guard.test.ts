@@ -36,7 +36,7 @@ const PINNED = {
   // 2026-08-03.4: _shared/application-questions.ts gained the `consent` class,
   // and job-board imports classifyQuestion — so the deployed bundle changed
   // even though sources.ts did not. sourcesHash is therefore unchanged.
-  buildVersion: "2026-08-05.3",
+  buildVersion: "2026-08-06.1",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {

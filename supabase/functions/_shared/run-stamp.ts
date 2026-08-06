@@ -90,6 +90,16 @@ export function nextRunStamp(prev: unknown, facts: RunFacts): RunStamp {
     // stamps could not tell "the sender is down" from "this job has no sender".
     ...(facts.senderOnline === undefined ? {} : { senderOnline: facts.senderOnline }),
     ...(facts.resumesBucket === undefined ? {} : { resumesBucket: facts.resumesBucket }),
+    // SHIPPED BROKEN 2026-08-06, CAUGHT THE SAME DAY. apply-agent passed
+    // `wakeConfig: wakeConfig()` and this constructor silently dropped it: the
+    // field is optional on RunStamp, so tsc had nothing to object to, and the
+    // status endpoint read `null` on every run.
+    //
+    // That null is the exact fault this field exists to remove. "Wake is not
+    // configured" and "the wake field is never written" produced the identical
+    // value, and the first was reported as fact off the back of it. A stamp
+    // that can only be wrong in the reassuring direction is worse than absent.
+    ...(facts.wakeConfig === undefined ? {} : { wakeConfig: facts.wakeConfig }),
     mandates: facts.mandates,
     prepared: facts.prepared,
     released: facts.released,

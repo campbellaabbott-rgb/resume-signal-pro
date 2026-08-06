@@ -93,7 +93,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-05.3";
+const BUILD_VERSION = "2026-08-06.1";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -2544,7 +2544,7 @@ Deno.serve(async (req) => {
       // bundle, so a stale/failed publish is visible in ONE call instead of being
       // inferred from posting counts over hours (the rung-2 "did it deploy?" pain).
       // Also the source of truth for the heartbeat's job_board_deploy check.
-      const [prog, pbMeta, rot, refreshMeta, bf, hotMeta, fresh, breaker, dateCov, dcCache, bsMeta, dsMeta, esMeta, fiOk, fiBad, faMeta, aaMeta, arMeta] = await Promise.all([
+      const [prog, pbMeta, rot, refreshMeta, bf, hotMeta, fresh, breaker, dateCov, dcCache, bsMeta, dsMeta, esMeta, fiOk, fiBad, faMeta, aaMeta, arMeta, rsRun, rsCron] = await Promise.all([
         client.from("job_board_meta").select("v, updated_at").eq("k", "refresh_progress").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "posted_backfill").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "cold_rotation").maybeSingle(),
@@ -2598,6 +2598,12 @@ Deno.serve(async (req) => {
         // the only caller holding a key, so a silent schedule failure would
         // otherwise look exactly like a quiet night with no queued picks.
         client.from("job_board_meta").select("v, updated_at").eq("k", "agent_runner_run").maybeSingle(),
+        // And the same question for the one job where the answer is money: the
+        // Stripe reconciliation sweep. Two rows because they answer different
+        // questions and only one of them is trustworthy about the schedule —
+        // see the paymentReconcile block below.
+        client.from("job_board_meta").select("v, updated_at").eq("k", "reconcile_stripe_run").maybeSingle(),
+        client.from("job_board_meta").select("v, updated_at").eq("k", "reconcile_stripe_cron").maybeSingle(),
 ]);
       const pgV = (prog.data?.v ?? {}) as { hot?: number; cold?: number; coldDone?: number; failedAcc?: string[] };
       const rotV = (rot.data?.v ?? {}) as { completedAt?: string; coldBoards?: number };
@@ -2725,6 +2731,45 @@ Deno.serve(async (req) => {
               };
             })()
           : null,
+        // THE PAYMENT SAFETY NET. reconcile-stripe finds customers who PAID and
+        // received nothing, and emails the owner to recover them. It emails only
+        // when it finds something, so a healthy day and a dead cron are both
+        // silent — which made the highest-stakes job here the least observable.
+        //
+        // NOT `? … : null` like the two blocks above. This object is always
+        // emitted, because the state worth shouting about is "has never run",
+        // and a block that disappears in exactly that case would report the
+        // alarming answer by vanishing. Nulls inside a present object say "never
+        // happened"; an absent object says nothing at all.
+        paymentReconcile: (() => {
+          const run = (rsRun.data?.v ?? {}) as {
+            at?: string; buildVersion?: string; checkedPaid?: number;
+            orphans?: number; alerted?: boolean | null; lookbackHours?: number;
+          };
+          const cron = (rsCron.data?.v ?? {}) as { lastCronAt?: string };
+          const cronAt = typeof cron.lastCronAt === "string" ? cron.lastCronAt : null;
+          return {
+            lastRunAt: run.at ?? null,
+            buildVersion: run.buildVersion ?? null,
+            // Written only by reconcile_stripe_tick(), which has no HTTP path —
+            // so unlike a body-derived trigger on a verify_jwt=false function,
+            // this cannot be set green by anyone curling the endpoint.
+            lastCronAt: cronAt,
+            cronAgeMin: ageMin(cronAt),
+            checkedPaid: run.checkedPaid ?? null,
+            // The number that matters: paid sessions with no delivery marker.
+            orphans: run.orphans ?? null,
+            // Whether the owner alert actually went out. null = nothing to send.
+            // false = orphans were found and the email did NOT leave — the worst
+            // state this system can be in, and previously a console.error.
+            alerted: run.alerted ?? null,
+            // Daily at 15:17 UTC, so 25h means one missed run shows up rather
+            // than being absorbed. Deliberately tighter in spirit than the
+            // hourly job's two-hour slack: this one guards money, and a day of
+            // unrecovered payments is worth a false alarm.
+            scheduleProven: cronAt !== null && (ageMin(cronAt) ?? 1e9) < 1500,
+          };
+        })(),
         // HOW MUCH OF THE BOARD THE AGENT CAN ACTUALLY SUBMIT TO, computed
         // from the same live per-vendor totals above rather than asserted.
         //

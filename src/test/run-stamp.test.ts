@@ -127,6 +127,51 @@ describe("scheduleProven", () => {
   });
 });
 
+describe("an optional fact the caller supplies must reach the stamp", () => {
+  // SHIPPED BROKEN 2026-08-06. apply-agent passed `wakeConfig: wakeConfig()`
+  // and the constructor dropped it. Optional field on RunStamp, so tsc had
+  // nothing to object to; the status endpoint read `null` on every run and
+  // "wake is not configured" got reported as a fact off the back of it.
+  //
+  // The bug is not wakeConfig. The bug is that a field can be added to RunFacts,
+  // passed by a caller, and silently discarded — with the type checker, the test
+  // suite and the dashboard all agreeing that everything is fine.
+  const WAKE = { url: true, token: true, body: "json" };
+
+  it("carries wakeConfig through", () => {
+    expect(nextRunStamp(null, facts({ wakeConfig: WAKE })).wakeConfig).toEqual(WAKE);
+  });
+
+  it("carries a NEGATIVE wakeConfig through, which is the one that matters", () => {
+    // An unconfigured wake must arrive as `{url:false,...}` and not as absence.
+    // Absence is what a dropped field looks like, and the two must never agree.
+    const off = { url: false, token: false, body: "default" };
+    expect(nextRunStamp(null, facts({ wakeConfig: off })).wakeConfig).toEqual(off);
+  });
+
+  it("still omits it when the caller genuinely has no wake to describe", () => {
+    // agent-runner has no sender. Omitted, not defaulted — same rule as senderOnline.
+    expect("wakeConfig" in nextRunStamp(null, facts({ wakeConfig: undefined }))).toBe(false);
+  });
+
+  it("EVERY optional fact in RunFacts is read by the constructor", () => {
+    // The class-level guard. Adding `foo?:` to RunFacts and forgetting to emit
+    // it fails here, rather than three weeks later via a dashboard that has been
+    // quietly reporting null.
+    const src = readFileSync(
+      resolve(__dirname, "../../supabase/functions/_shared/run-stamp.ts"), "utf8");
+    const block = src.slice(src.indexOf("export type RunFacts"),
+                            src.indexOf("export function priorCronAt"));
+    const body = src.slice(src.indexOf("export function nextRunStamp"));
+    const optional = [...block.matchAll(/^\s*(\w+)\?:/gm)].map((m) => m[1]);
+
+    expect(optional.length, "no optional fields parsed — the regex broke, not the code").toBeGreaterThan(2);
+    for (const field of optional) {
+      expect(body, `RunFacts.${field} is accepted and never emitted`).toContain(`facts.${field}`);
+    }
+  });
+});
+
 describe("the wiring is actually in place", () => {
   it("apply-agent stamps every run through the shared helper", async () => {
     const { readFileSync } = await import("node:fs");

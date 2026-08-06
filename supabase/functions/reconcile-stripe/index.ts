@@ -17,6 +17,11 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { findOrphanSessions, type ReconcileSession } from "./reconcile.ts";
 
+// The only external tell of which bundle is live. Bump on every deploy — twice
+// this month a fix was "deployed" and the old code was still answering, and the
+// version marker is the single thing that separates that from a job not running.
+const BUILD_VERSION = "2026-08-06.1";
+
 const cors = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-cron-secret",
@@ -83,6 +88,13 @@ serve(async (req) => {
 
     const orphans = findOrphanSessions(paid, markers);
 
+    // Did the alert actually leave the building? `null` means there was nothing
+    // to send, which is NOT the same as a send that failed — and neither is the
+    // same as a missing key. Orphans found with no RESEND_API_KEY currently
+    // produces one console.error nobody reads, which would make the loudest
+    // event this function can detect its quietest observable.
+    let alerted: boolean | null = null;
+
     if (orphans.length > 0) {
       const resendKey = Deno.env.get("RESEND_API_KEY");
       const adminEmail = Deno.env.get("ADMIN_EMAIL") || "resumeboostersupp@gmail.com";
@@ -98,15 +110,44 @@ serve(async (req) => {
           html: `<h2>Stripe reconciliation: ${orphans.length} unfulfilled paid session(s)</h2>`
             + `<p>These were PAID in Stripe in the last ${lookbackHours}h but have no <code>used_stripe_sessions</code> marker — the webhook (and the success-page fallback) both missed them. Recover each via the <code>recover-purchase</code> function.</p>`
             + `<table border="1" cellpadding="6" style="border-collapse:collapse"><tr><th>Created</th><th>Session</th><th>Email</th><th>Amount</th><th>Product</th></tr>${rows}</table>`,
-        }).catch((e) => console.error("[RECONCILE-STRIPE] owner email failed:", e));
+        }).then(() => { alerted = true; })
+          .catch((e) => { alerted = false; console.error("[RECONCILE-STRIPE] owner email failed:", e); });
       } else {
+        alerted = false;
         console.error("[RECONCILE-STRIPE] RESEND_API_KEY not set — cannot alert on orphans");
       }
     }
 
     console.log(`[RECONCILE-STRIPE] ${paid.length} paid sessions over ${lookbackHours}h, ${orphans.length} orphan(s)`);
+
+    // WHAT THE LAST SWEEP SAW, so a healthy result stops being indistinguishable
+    // from no result. Counts only — session ids, addresses and amounts stay in
+    // the owner email, because this row is read by an anon-facing status
+    // endpoint and a sweep must not become a way to enumerate purchases.
+    //
+    // Note what is NOT written here: lastCronAt. That belongs to
+    // reconcile_stripe_tick(), which only the scheduler can call. This function
+    // is open to the internet, so anything it writes about itself can be
+    // triggered by anyone — fine for "here is what I found", useless as proof
+    // that the schedule is alive. Keeping them in separate rows keeps a hand-run
+    // from ever looking like a cron run.
+    const stampedAt = new Date().toISOString();
+    try {
+      await supabase.from("job_board_meta").upsert({
+        k: "reconcile_stripe_run",
+        v: { at: stampedAt, buildVersion: BUILD_VERSION, checkedPaid: paid.length,
+             orphans: orphans.length, alerted, lookbackHours },
+        updated_at: stampedAt,
+      }, { onConflict: "k" });
+    } catch (e) {
+      // Never fail the sweep over its own bookkeeping. The email is the product
+      // here; the stamp is only how we find out the email never happened.
+      console.error("[RECONCILE-STRIPE] run stamp failed:", e);
+    }
+
     // Counts only — never PII — so an unauthenticated caller learns nothing sensitive.
-    return json({ checkedPaid: paid.length, orphans: orphans.length, lookbackHours, at: new Date().toISOString() });
+    return json({ checkedPaid: paid.length, orphans: orphans.length, alerted, lookbackHours,
+                  buildVersion: BUILD_VERSION, at: stampedAt });
   } catch (e) {
     console.error("[RECONCILE-STRIPE] error:", e);
     return json({ error: e instanceof Error ? e.message : "reconciliation failed" }, 500);
