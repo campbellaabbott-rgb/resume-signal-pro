@@ -18,7 +18,7 @@
 // hands report back and stamp submitted_at, which a database trigger refuses to
 // accept without a source.
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { wakeSender } from "../_shared/wake-sender.ts";
+import { wakeConfig, wakeSender } from "../_shared/wake-sender.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { buildPacket, type PacketQuestion, type Profile, type StandingAnswers } from "../_shared/submission-packet.ts";
 import { decideRelease } from "../_shared/apply-release.ts";
@@ -680,6 +680,10 @@ serve(async (req) => {
       v: nextRunStamp(prevRow?.v, {
         trigger, now, buildVersion: BUILD_VERSION, senderOnline,
         resumesBucket: bucketState,
+        // Booleans and a shape, never the URL or the token. Stamped every run
+        // so "is the wake configured" is answerable BEFORE there is a paying
+        // customer whose packets are the ones sitting unsent.
+        wakeConfig: wakeConfig(),
         mandates: summary.mandates,
         prepared: summary.prepared,
         released: summary.released,

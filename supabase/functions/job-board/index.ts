@@ -2676,6 +2676,12 @@ Deno.serve(async (req) => {
                 buildVersion: v.buildVersion ?? null,
                 senderOnline: v.senderOnline ?? null,
                 resumesBucket: v.resumesBucket ?? null,
+                // Whether a wake is configured at all. Without it the Actions
+                // cron is the only path to a sender, which is a ~6h worst case
+                // when the other host is asleep — and wakeSender never even
+                // reads the secret unless work is already waiting, so this was
+                // unobservable until it was too late to matter.
+                wakeConfig: v.wakeConfig ?? null,
                 mandates: v.mandates ?? null,
                 prepared: v.prepared ?? null,
                 released: v.released ?? null,

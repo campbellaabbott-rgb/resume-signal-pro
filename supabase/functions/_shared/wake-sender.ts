@@ -82,3 +82,44 @@ export async function wakeSender(needed: boolean): Promise<WakeResult> {
     clearTimeout(timer);
   }
 }
+
+/**
+ * IS THE WAKE EVEN CONFIGURED — answerable without there being work to wake for.
+ *
+ * `wakeSender` short-circuits on `needed === false` and never reads
+ * WORKER_START_URL, so with an empty queue the whole configuration is
+ * unobservable. That is precisely backwards: the only moment it reports
+ * "no-url" is the moment a paying customer's packets are already sitting
+ * unsent, which is the silent-gate shape this codebase keeps having to fix.
+ *
+ * The distinction matters because the wake is what makes sending feel instant.
+ * Without it the Actions cron is the only path, and that is a ~6 hour worst
+ * case whenever the other host is asleep.
+ *
+ * BOOLEANS AND A SHAPE, NEVER THE VALUES. A URL would name the host and a token
+ * is a credential; neither belongs in a response the board serves to anyone.
+ * `body` is reported because of a documented trap rather than for completeness:
+ * GitHub's dispatch endpoint rejects a payload without `ref` with a 422, and
+ * wake-sender's default body is a human-readable reason GitHub will not accept.
+ * So a GitHub host with `body: "default"` is misconfigured in a way that only
+ * shows up as a failed wake.
+ */
+export type WakeConfig = {
+  url: boolean;
+  token: boolean;
+  /** `default` = no secret set, `json` = valid JSON supplied, `invalid` = set but unparseable. */
+  body: "default" | "json" | "invalid";
+};
+
+export function wakeConfig(): WakeConfig {
+  const raw = (Deno.env.get("WORKER_START_BODY") ?? "").trim();
+  let body: WakeConfig["body"] = "default";
+  if (raw) {
+    try { JSON.parse(raw); body = "json"; } catch { body = "invalid"; }
+  }
+  return {
+    url: (Deno.env.get("WORKER_START_URL") ?? "").trim() !== "",
+    token: (Deno.env.get("WORKER_START_TOKEN") ?? "").trim() !== "",
+    body,
+  };
+}

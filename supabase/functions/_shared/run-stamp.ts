@@ -34,6 +34,12 @@ export type RunStamp = {
   /** Absent on jobs that have no sender — see RunFacts. Never defaulted. */
   senderOnline?: boolean;
   resumesBucket?: string;
+  /**
+   * Whether a wake is configured. Booleans and a shape only — never the URL,
+   * never the token. Optional for the same reason senderOnline is: agent-runner
+   * has no sender to wake.
+   */
+  wakeConfig?: { url: boolean; token: boolean; body: string };
   mandates: number;
   prepared: number;
   released: number;
@@ -57,6 +63,7 @@ export type RunFacts = {
    * down" from "this job has no sender". A missing field says the second.
    */
   senderOnline?: boolean;
+  wakeConfig?: { url: boolean; token: boolean; body: string };
   resumesBucket?: string;
   mandates: number;
   prepared: number;

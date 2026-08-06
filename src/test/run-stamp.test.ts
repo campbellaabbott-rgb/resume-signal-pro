@@ -20,6 +20,8 @@
  * field, because it would be believed.
  */
 import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import {
   nextRunStamp,
   priorCronAt,
@@ -196,5 +198,51 @@ describe("the wiring is actually in place", () => {
     expect(src).toContain("apply_agent_run");
     expect(src).toContain("applyAgent:");
     expect(src).toContain("scheduleProven");
+  });
+});
+
+describe("the wake configuration is observable before it matters", () => {
+  // wakeSender short-circuits on `needed === false` and never reads
+  // WORKER_START_URL, so with an empty queue the entire configuration was
+  // invisible. The only moment it reported "no-url" was the moment a paying
+  // customer's packets were already sitting unsent — the silent-gate shape this
+  // repo keeps having to remove.
+  const shared = readFileSync(
+    resolve(__dirname, "../../supabase/functions/_shared/wake-sender.ts"), "utf8");
+  const agent = readFileSync(
+    resolve(__dirname, "../../supabase/functions/apply-agent/index.ts"), "utf8");
+  const board = readFileSync(
+    resolve(__dirname, "../../supabase/functions/job-board/index.ts"), "utf8");
+
+  it("reports booleans and a shape, never the URL or the token", () => {
+    // A URL names the host and a token is a credential; the board serves this
+    // to anyone.
+    const fn = shared.slice(shared.indexOf("export function wakeConfig"));
+    expect(fn).toMatch(/url: \(Deno\.env\.get\("WORKER_START_URL"\) \?\? ""\)\.trim\(\) !== ""/);
+    expect(fn).toMatch(/token: \(Deno\.env\.get\("WORKER_START_TOKEN"\) \?\? ""\)\.trim\(\) !== ""/);
+    // The real guarantee is the TYPE: these fields cannot carry a string, so
+    // no future edit can leak the URL or the token through them without
+    // changing the contract in a way the compiler reports.
+    //
+    // The first version of this assertion was a regex forbidding `return` near
+    // `Deno.env.get(...)`, which matched the perfectly correct return statement
+    // and failed. A test that cannot tell the safe shape from the unsafe one is
+    // worse than none.
+    expect(shared).toMatch(/export type WakeConfig = \{\s*url: boolean;\s*token: boolean;/);
+  });
+
+  it("distinguishes an unset body from an unparseable one", () => {
+    // GitHub rejects a dispatch without `ref` with 422, and the DEFAULT body is
+    // a human-readable reason it will not accept — so "default" on a GitHub
+    // host is a misconfiguration that only ever shows up as a failed wake.
+    expect(shared).toMatch(/"default" \| "json" \| "invalid"/);
+  });
+
+  it("is stamped every run, not only when there is work", () => {
+    expect(agent).toMatch(/wakeConfig: wakeConfig\(\)/);
+  });
+
+  it("is served by the board so the check is a curl", () => {
+    expect(board).toMatch(/wakeConfig: v\.wakeConfig \?\? null/);
   });
 });
