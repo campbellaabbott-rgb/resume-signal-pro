@@ -1177,3 +1177,82 @@ one-off script written beside it did not.
 Same shape as every other entry here: the probe did not error, it answered
 confidently, and it was measuring nothing. It was caught only by asking why a
 sweep that had previously found 25 b-ite hosts now found none.
+
+## Public application APIs — probed 2026-08-06. Two closed, one is a policy question.
+
+The 5.4% drivable ceiling is the binding constraint on the whole apply agent, and
+the note above says every route past it is closed on evidence. This tests a
+route that note did NOT separate out: not "can a browser reach the form", but
+"does the vendor publish an API that accepts an application".
+
+The distinction matters, because they are not the same act. A documented public
+application endpoint is the vendor's own supported path and using it is
+ordinary integration. An undocumented endpoint that happens to skip a protection
+the vendor deployed is evasion wearing a different verb.
+
+All probes below are READ-ONLY or empty-body. An empty POST carries no name, no
+email and no résumé, so it cannot create a candidate; it only separates 401/403
+(auth required) from 400/500 (reachable). Same probe RECON already ran against
+Greenhouse, Lever and Ashby. Nothing was submitted to any employer.
+
+### SmartRecruiters — CLOSED, and now for a second, independent reason
+
+45,380 postings, the largest single unlock, adapter already written.
+
+    GET  /v1/companies/{co}/postings/{id}              200   public, unauthenticated
+    GET  /v1/companies/{co}/postings?limit=1           200   totalFound 4,753 for Bosch alone
+    OPTIONS /v1/.../candidates                         204   allow-methods: GET,HEAD,PUT,PATCH,POST,DELETE
+    POST /v1/.../candidates                            404   "Cannot POST /public-posting-api/api-v1/..."
+    POST /spi/v1/.../candidates                        404   nginx
+
+The posting API is genuinely public and genuinely READ-ONLY. The permissive
+OPTIONS is a blanket CORS default, not a contract — it lists every verb
+including DELETE, and POST 404s from the Express service behind it, which names
+its own internal path in the error. So SmartRecruiters is closed twice over: the
+web form 403s headless, and there is no API to apply through.
+
+### Workable — CLOSED, needs an employer token
+
+    GET  apply.workable.com/api/v1/widget/accounts/{t}   200   public read
+    GET  {t}.workable.com/spi/v3/jobs                    401   invalid_token
+
+Consistent with the note above that no vendor exposes a public submit endpoint.
+
+### Recruitee — REACHABLE, AND THAT IS THE PROBLEM
+
+7,979 postings. Recorded above as NO-BUILD because 10/10 tenants load hCaptcha
+on the application form, served first-party from recruiteecdn.com.
+
+    GET  {t}.recruitee.com/api/offers/                   200   public read
+    POST {t}.recruitee.com/api/offers/{id}/candidates/   500   on an EMPTY body
+
+A 500 rather than a 401 means the request got past authentication and fell over
+on missing fields — so the route is reachable without credentials. It is the
+endpoint Recruitee's own careers widget posts to.
+
+**NOT A GREEN LIGHT, and it should not be read as one.** Recruitee put hCaptcha
+on the application path deliberately. Submitting through a sibling endpoint that
+does not ask for the token is bot-detection evasion by another name, whatever
+the HTTP status says — and this project's boundary does not bend because the
+number on the other side is 7,979.
+
+**Also NOT PROVEN.** A 500 on an empty body says the route is reachable. It does
+NOT say a complete application would be accepted without a CAPTCHA token —
+Recruitee may well validate it server-side. Establishing that either way means
+sending a real application to a real employer under a real name, which is not a
+thing to do to satisfy curiosity.
+
+So it stays NO-BUILD, now for a stated reason rather than an assumed one, and
+the question is a product decision rather than an open engineering task.
+
+### The in-bounds way to grow reach, and it is cheap
+
+Every vendor above is closed by a CHOICE the vendor made, and choices change.
+Workable is recorded here as "otherwise the cleanest vendor seen... if Turnstile
+ever comes off, this is a two-hour adapter". Nothing currently re-checks that.
+
+`probe-botwall.ts` already exists and already discriminates. Running it on a
+schedule over the closed vendors turns "closed on evidence from 2026-08-01" into
+"closed as of this week", and would catch a vendor dropping its wall within days
+instead of never. That is the highest-value reach work left that does not
+involve crossing a line.
