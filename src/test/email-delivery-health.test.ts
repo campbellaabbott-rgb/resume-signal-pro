@@ -98,7 +98,10 @@ describe("what counts as a failure", () => {
 
 describe("the heartbeat carries it", () => {
   it("is reported on every run", () => {
-    expect(hb).toMatch(/^\s*delivery\s*$/m);
+    // Trailing comma optional: this was pinned as the last key in the response
+    // object, so adding productDelivery after it broke an assertion about
+    // punctuation rather than about behaviour.
+    expect(hb).toMatch(/^\s*delivery,?\s*$/m);
     expect(hb).toMatch(/const delivery = await evaluateDelivery\(supabase\)/);
   });
 

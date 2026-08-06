@@ -1100,6 +1100,13 @@ serve(async (req) => {
     // the delivery log recorded every failure and no surface read it.
     const delivery = await evaluateDelivery(supabase);
 
+    // AND DID THE PRODUCT ITSELF EVER GET MADE. The email check above assumes
+    // there was something to send. reconcile-stripe assumes the webhook never
+    // ran. Neither sees a generation that failed after the idempotency marker
+    // was written, which is the one case where the customer has paid, the
+    // system believes it delivered, and the retry has already given up.
+    const productDelivery = await evaluateProductDelivery(supabase);
+
     return new Response(
       JSON.stringify({
         status: overallStatus,
@@ -1114,7 +1121,8 @@ serve(async (req) => {
         senderState,
         confirmationGaps,
         fillGaps,
-        delivery
+        delivery,
+        productDelivery
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
@@ -1329,6 +1337,57 @@ async function evaluateDelivery(
       failRate: total > 0 ? Math.round((failed / total) * 1000) / 10 : null,
       byStatus: rows.map(({ status, n }) => ({ status, n })).slice(0, 10),
       lastSentAt: rows.find((r) => r.status === 'sent')?.last_at ?? null,
+    };
+  } catch {
+    return empty;
+  }
+}
+
+/**
+ * PAID PRODUCTS THAT NEVER ARRIVED.
+ *
+ * Distinct from the email check above and from reconcile-stripe, and the
+ * distinction is the point: reconcile-stripe finds sessions with no delivery
+ * marker, but the webhook writes that marker BEFORE generating. So everything
+ * that breaks after the marker — a failed generation, an exhausted retry, a row
+ * stranded in `generating` because the webhook died mid-flight — is invisible to
+ * the money sweep, and retry-failed-deliveries gives up without telling anyone.
+ *
+ * This is the surface for the half of the failure space nothing was watching.
+ */
+async function evaluateProductDelivery(
+  supabase: { rpc: (fn: string, args?: Record<string, unknown>) => PromiseLike<{ data: unknown; error: unknown }> },
+): Promise<{
+  reason: string; delivered: number; failed: number; exhausted: number; stuck: number;
+  byStatus: Array<{ status: string; n: number }>;
+}> {
+  const empty = { reason: 'rpc-missing', delivered: 0, failed: 0, exhausted: 0, stuck: 0, byStatus: [] };
+  try {
+    const { data, error } = await supabase.rpc('product_delivery_health', { p_hours: 24 });
+    if (error) return empty;
+    const rows = (Array.isArray(data) ? data as Array<Record<string, unknown>> : []).map((r) => ({
+      status: String(r.status ?? 'unknown'),
+      n: Number(r.n ?? 0),
+      exhausted: Number(r.exhausted ?? 0),
+      stuck: Number(r.stuck ?? 0),
+    }));
+    const of = (s: string) => rows.find((r) => r.status === s)?.n ?? 0;
+    // Both terminal-good states. `content_generated` means the product exists;
+    // whether its email landed is the OTHER check's business, and conflating
+    // them would let a delivery failure hide behind a successful generation.
+    const delivered = of('delivered') + of('content_generated');
+    const failed = of('generation_failed');
+    const exhausted = rows.reduce((a, r) => a + r.exhausted, 0);
+    // Stranded in a state that is transient by design and terminal by accident.
+    const stuck = rows.reduce((a, r) => a + r.stuck, 0);
+    return {
+      // `idle` for the same reason as the email check: no purchases in 24h is a
+      // quiet Tuesday or a broken checkout, and only a human knows which.
+      reason: (delivered + failed + stuck) === 0 ? 'idle'
+            : (failed + stuck) === 0 ? 'clean'
+            : 'undelivered',
+      delivered, failed, exhausted, stuck,
+      byStatus: rows.map(({ status, n }) => ({ status, n })).slice(0, 10),
     };
   } catch {
     return empty;
