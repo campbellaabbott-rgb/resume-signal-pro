@@ -746,6 +746,57 @@ describe("the accuracy alarm rests on a sample big enough to mean something", ()
     expect(hb).toMatch(/passed: !capTight && !capUnmeasured/);
   });
 
+  it("a monitor that cannot measure says so instead of disappearing", () => {
+    // job_board_freshness_claim skipped silently when its RPC returned nothing.
+    // On 2026-08-06 get_freshness_stats outgrew its own 20s statement timeout
+    // and failed on EVERY call, so the check vanished from the heartbeat output
+    // and the published "re-verified within a few hours" claim went unwatched —
+    // with no signal that watching had stopped.
+    expect(hb).toMatch(/claim is currently UNWATCHED/);
+    expect(hb).toMatch(/Board freshness claim unwatched/);
+    // The two RPC-unavailable paths (empty result, and throw) must not skip.
+    // The remaining skip — "too thin a sample to judge" — is a different and
+    // legitimate statement: the monitor ran and declined to draw a conclusion,
+    // which is not the same as the monitor being gone.
+    expect(hb).not.toMatch(/skip\('job_board_freshness_claim', 'get_freshness_stats/);
+    expect(hb).not.toMatch(/skip\('job_board_freshness_claim', e instanceof Error/);
+    expect(hb).toMatch(/skip\('job_board_freshness_claim', `only \$\{f\.boards \?\? 0\} stamped boards/);
+  });
+
+  it("the deploy check's bound sits clear of what status actually costs", () => {
+    // Status measured 8.5-26s across seven probes; a 15s abort sat inside that
+    // spread, so the check flapped "board unreachable" at a board that was
+    // serving audits the same minute.
+    expect(hb).toMatch(/controller\.abort\(\), 35000\)/);
+    expect(hb).not.toMatch(/controller\.abort\(\), 15000\)/);
+  });
+
+  it("the stats behind status are precomputed, not aggregated per request", () => {
+    const mig = readFileSync(
+      resolve(root, "supabase/migrations/20260806120000_precompute_the_stats_that_outgrew_their_timeouts.sql"),
+      "utf8",
+    );
+    // Both RPCs read the rollup rather than scanning 592k rows.
+    expect(mig).toMatch(/CREATE TABLE IF NOT EXISTS public\.job_board_stats_rollup/);
+    expect(mig).toMatch(/FROM public\.job_board_stats_rollup r\s+WHERE r\.k = 'freshness'/);
+    expect(mig).toMatch(/WHERE r\.k = 'date_coverage'/);
+    // DROP before CREATE — Postgres refuses to replace a function whose return
+    // type changed, and both gain a trailing computed_at.
+    expect(mig).toMatch(/DROP FUNCTION IF EXISTS public\.get_freshness_stats\(\);/);
+    expect(mig).toMatch(/DROP FUNCTION IF EXISTS public\.get_date_coverage\(\);/);
+    // Refreshed on a schedule, and seeded so it isn't empty on arrival.
+    expect(mig).toMatch(/cron\.schedule\(\s*'job-board-stats-rollup',\s*'\*\/15 \* \* \* \*'/);
+    expect(mig).toMatch(/PERFORM public\.refresh_job_board_stats\(\);/);
+    // Signatures keep every existing caller working, plus a computed_at so the
+    // staleness of a precomputed stat is stated rather than hidden.
+    expect(mig).toMatch(/RETURNS TABLE \(boards integer, p50_min numeric, p95_min numeric, max_min numeric, computed_at timestamptz\)/);
+    expect(mig).toMatch(/RETURNS TABLE \(source text, total bigint, dated bigint, computed_at timestamptz\)/);
+    // The writer is not callable by the public.
+    expect(mig).toMatch(/REVOKE ALL ON FUNCTION public\.refresh_job_board_stats\(\) FROM anon, authenticated;/);
+    // And status no longer carries an 8-second floor waiting on it.
+    expect(board).toMatch(/withDeadline\(client\.rpc\("get_date_coverage"\), 2_500\)/);
+  });
+
   it("the alert names the breach that actually fired", () => {
     // This summary line is what the alert email leads with, and it read "Board
     // accuracy 97.8% (below 97% SLA)" — a per-vendor breach in the overall

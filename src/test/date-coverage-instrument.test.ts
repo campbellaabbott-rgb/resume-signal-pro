@@ -31,28 +31,63 @@ import { resolve } from "node:path";
 const board = readFileSync(
   resolve(__dirname, "../../supabase/functions/job-board/index.ts"), "utf8");
 
+/**
+ * UPDATE 2026-08-06. The 8s deadline this guard used to require was the right
+ * answer to the wrong problem, and it expired.
+ *
+ * Raising the deadline to clear a 3.5s aggregate bought a working stat and an
+ * 8-SECOND FLOOR on every status request. By 2026-08-06 the same aggregate had
+ * outgrown its own 20s STATEMENT timeout — measured, 500 "57014 canceling
+ * statement due to statement timeout" — so the deadline bought nothing at all
+ * while still costing the floor. Status ran 8.5-26s, which put it astride the
+ * heartbeat's 15s deploy abort and made job_board_deploy flap "board
+ * unreachable" at a board that was serving audits the same minute.
+ *
+ * The fix is not a bigger deadline. Both stats are precomputed into
+ * job_board_stats_rollup every 15 minutes, so the RPC is now a single-row read
+ * and the deadline goes back to being a guard rather than a budget.
+ *
+ * The rule this file exists to enforce is unchanged — A DEADLINE MUST EXCEED
+ * WHAT THE QUERY COSTS — so the two are now checked TOGETHER. A short deadline
+ * is legitimate only while the query is cheap, and reverting the rollup without
+ * restoring the deadline fails here rather than in production.
+ */
 describe("the date-coverage deadline exceeds the query's measured cost", () => {
-  it("is not back below the measured 3.5s", () => {
+  it("a sub-3.5s deadline is allowed only because the RPC is a rollup read", () => {
     const m = board.match(/withDeadline\(client\.rpc\("get_date_coverage"\), ([0-9_]+)\)/);
     expect(m, "the get_date_coverage call is gone or reshaped").not.toBeNull();
     const ms = Number(m![1].replace(/_/g, ""));
-    expect(ms, `deadline ${ms}ms is below the measured ~3500ms cost — it will time out on every call`)
-      .toBeGreaterThan(3500);
+    if (ms > 3500) return; // the old regime: deadline clears the live aggregate
+
+    const mig = readFileSync(
+      resolve(__dirname, "../../supabase/migrations/20260806120000_precompute_the_stats_that_outgrew_their_timeouts.sql"),
+      "utf8",
+    );
+    expect(mig, `deadline is ${ms}ms, which only clears a precomputed read — but get_date_coverage no longer reads the rollup`)
+      .toMatch(/WHERE r\.k = 'date_coverage'/);
+    expect(mig, "nothing refreshes the rollup, so a short deadline would serve a frozen stat")
+      .toMatch(/cron\.schedule\(\s*'job-board-stats-rollup'/);
   });
 });
 
 describe("an unavailable measurement says so", () => {
-  it("reports whether the numbers are live, cached, or missing", () => {
-    // Three states that used to share one value.
+  it("reports whether the numbers are from the rollup, cached, or missing", () => {
+    // Three states that used to share one value. The first was called "live"
+    // while the RPC computed on demand; it now reads a 15-minute rollup, and
+    // calling that "live" would be the same false-freshness move this block was
+    // written to stop.
     expect(board).toMatch(/dateCoverageSource:/);
-    expect(board).toMatch(/"live"/);
+    expect(board).toMatch(/"rollup"/);
     expect(board).toMatch(/"cache"/);
     expect(board).toMatch(/"unavailable"/);
   });
 
-  it("puts an age on cached numbers", () => {
-    // A number with no age beside it cannot be told from a fresh one.
+  it("puts an age on the numbers, including the non-cached path", () => {
+    // A number with no age beside it cannot be told from a fresh one — and a
+    // hardcoded 0 is worse than no age, because it asserts freshness that the
+    // 15-minute refresh cannot deliver.
     expect(board).toMatch(/dateCoverageAgeMin:/);
+    expect(board).toMatch(/ageMin\(\(\(\(dateCov as \{ data: Array<\{ computed_at\?: string \}> \}\)\.data\)\[0\]\?\.computed_at\) \?\? null\)/);
   });
 
   it("serves the last good copy instead of nothing", () => {

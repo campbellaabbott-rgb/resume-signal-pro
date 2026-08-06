@@ -371,11 +371,30 @@ serve(async (req) => {
       // an ABSOLUTE bound on the measured stamp-age distribution: P95 past 5h
       // means the published claim is about to be false. Skips silently until
       // the freshness-stats migration lands.
+      // AN UNWATCHED PUBLIC CLAIM IS AN INCIDENT, NOT A SKIP. This used to skip
+      // silently when the RPC returned nothing, on the reasoning that the
+      // freshness-stats migration might not have landed yet. That reasoning
+      // expired the day the migration landed, and on 2026-08-06 the skip path
+      // started firing permanently for a completely different reason — the RPC
+      // had grown past its own 20s statement timeout, so it failed on EVERY
+      // call. The check vanished from the heartbeat output entirely and nothing
+      // was watching the published "re-verified within a few hours" claim. The
+      // one thing a monitor must never do quietly is stop monitoring.
       try {
         const { data: fRows } = await freshnessP;
         const f = Array.isArray(fRows) ? (fRows[0] as { boards?: number; p50_min?: number; p95_min?: number } | undefined) : undefined;
         if (!f || typeof f.p95_min !== 'number') {
-          skip('job_board_freshness_claim', 'get_freshness_stats returned nothing within its deadline');
+          // withDeadline collapses timeout, error and empty into { data: null },
+          // so the cause can't be named here — say what IS known, which is that
+          // the measurement is missing and the claim is therefore unwatched.
+          checks.push({
+            name: 'job_board_freshness_claim',
+            passed: false,
+            responseTimeMs: 0,
+            error: 'get_freshness_stats returned no usable measurement (timed out, errored, or empty) — the published "re-verified within a few hours" claim is currently UNWATCHED; check the job-board-stats-rollup cron',
+          });
+          if (overallStatus === 'healthy') overallStatus = 'degraded';
+          errorMessage = errorMessage || 'Board freshness claim unwatched (get_freshness_stats unavailable)';
         } else if ((f.boards ?? 0) <= 1000) {
           skip('job_board_freshness_claim', `only ${f.boards ?? 0} stamped boards — too thin a sample to judge the published claim`);
         }
@@ -396,7 +415,16 @@ serve(async (req) => {
           }
         }
       } catch (e) {
-        skip('job_board_freshness_claim', e instanceof Error ? e.message : 'get_freshness_stats unavailable');
+        // Same rule on the throw path: unreachable stats mean the claim is
+        // unwatched, and that has to be visible.
+        checks.push({
+          name: 'job_board_freshness_claim',
+          passed: false,
+          responseTimeMs: 0,
+          error: `get_freshness_stats unavailable (${e instanceof Error ? e.message : 'unknown error'}) — the published "re-verified within a few hours" claim is currently UNWATCHED`,
+        });
+        if (overallStatus === 'healthy') overallStatus = 'degraded';
+        errorMessage = errorMessage || 'Board freshness claim unwatched (get_freshness_stats unavailable)';
       }
 
       // Ground-truth accuracy: the daily audit samples ~100 served postings and
@@ -832,7 +860,16 @@ serve(async (req) => {
     try {
       const anonKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000);
+      // 35s, not 15s. Measured 2026-08-06 across seven probes over 4.5 minutes:
+      // status answers in 8.5-26s, straddling the old 15s abort, so this check
+      // FLAPPED — reporting "job-board status unreachable" about a function that
+      // was demonstrably serving audits and job queries the same minute. A
+      // deploy check that cries outage on a slow-but-working endpoint trains you
+      // to ignore the one alarm whose entire job is answering "did it land?".
+      // The underlying latency is fixed separately (the two stats RPCs it awaits
+      // are now precomputed); this bound just has to sit clear of the real
+      // spread rather than inside it.
+      const timeoutId = setTimeout(() => controller.abort(), 35000);
       let resp: Response;
       try {
         resp = await fetch(`${supabaseUrl}/functions/v1/job-board`, {

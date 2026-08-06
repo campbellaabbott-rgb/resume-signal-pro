@@ -2563,19 +2563,19 @@ Deno.serve(async (req) => {
         // stat is simply omitted rather than allowed to stall the answer.
         withDeadline(client.rpc("get_freshness_stats"), 2_500),
         client.from("job_board_meta").select("v").eq("k", "vendor_breaker").maybeSingle(),
-        // Per-vendor stated-date coverage (null until the migration lands)
-        // 2_500 WAS BELOW THE COST OF THE QUERY. Measured 2026-08-03: this RPC
-        // takes ~3.5s over 562k rows, so it timed out on EVERY call and
-        // withDeadline returned { data: null } — the same value it returns for
-        // a genuine error and for an empty result. dateCoverage has therefore
-        // been silently absent from the public status endpoint, and "which
-        // vendors state posting dates" — the measured basis behind every age
-        // claim on this platform — was unanswerable without a direct RPC call.
+        // Per-vendor stated-date coverage. This deadline went 2_500 → 8_000 on
+        // 2026-08-03 to clear a ~3.5s aggregate over 562k rows, and by
+        // 2026-08-06 that aggregate had outgrown its own 20s STATEMENT timeout
+        // and failed outright on every call — so the 8s bought nothing and cost
+        // this endpoint an 8-second floor on every request. Status measured
+        // 8.5-26s, which is what pushed the heartbeat's 15s deploy check into
+        // flapping "board unreachable" at a healthy board.
         //
-        // The deadline is raised past the measured cost with headroom, and the
-        // result is cached below so the NEXT call is instant and a slow day
-        // degrades to "slightly stale" rather than "gone".
-        withDeadline(client.rpc("get_date_coverage"), 8_000),
+        // Both stats are precomputed into job_board_stats_rollup every 15
+        // minutes now, so the RPC is a single indexed row read and the deadline
+        // goes back to being a guard rather than a budget. The result is still
+        // cached below, so a bad day degrades to "slightly stale" not "gone".
+        withDeadline(client.rpc("get_date_coverage"), 2_500),
         // Last good coverage, so a timeout serves stale numbers with their age
         // attached instead of nothing at all.
         client.from("job_board_meta").select("v, updated_at").eq("k", "date_coverage_cache").maybeSingle(),
@@ -2856,11 +2856,15 @@ Deno.serve(async (req) => {
         // Now: live if it answers, last good cached copy WITH ITS AGE if it
         // does not, and a stated reason if neither exists. A number with no age
         // beside it cannot be told from a fresh one, so the age is not optional.
+        // "live" now means "read the rollup successfully", NOT "computed this
+        // instant" — the aggregate runs on a 15-minute cron. Reporting age 0 for
+        // it would be the same false-freshness move this block exists to
+        // prevent, so the age comes from the rollup's own computed_at.
         dateCoverageSource: Array.isArray((dateCov as { data?: unknown }).data)
-          ? "live"
+          ? "rollup"
           : (dcCache.data?.v ? "cache" : "unavailable"),
         dateCoverageAgeMin: Array.isArray((dateCov as { data?: unknown }).data)
-          ? 0
+          ? ageMin((((dateCov as { data: Array<{ computed_at?: string }> }).data)[0]?.computed_at) ?? null)
           : ageMin(dcCache.data?.updated_at ?? null),
         dateCoverage: Array.isArray((dateCov as { data?: unknown }).data)
           ? ((dateCov as { data: Array<{ source: string; total: number; dated: number }> }).data).map((r) => ({
