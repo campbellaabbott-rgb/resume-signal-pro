@@ -1308,16 +1308,17 @@ async function evaluateFillGaps(
 async function evaluateDelivery(
   supabase: { rpc: (fn: string, args?: Record<string, unknown>) => PromiseLike<{ data: unknown; error: unknown }> },
 ): Promise<{
-  reason: string; sent: number; failed: number; failRate: number | null;
+  reason: string; sent: number; failed: number; stuck: number; failRate: number | null;
   byStatus: Array<{ status: string; n: number }>; lastSentAt: string | null;
 }> {
-  const empty = { reason: 'rpc-missing', sent: 0, failed: 0, failRate: null, byStatus: [], lastSentAt: null };
+  const empty = { reason: 'rpc-missing', sent: 0, failed: 0, stuck: 0, failRate: null, byStatus: [], lastSentAt: null };
   try {
     const { data, error } = await supabase.rpc('email_delivery_health', { p_hours: 24 });
     if (error) return empty;
     const rows = (Array.isArray(data) ? data as Array<Record<string, unknown>> : []).map((r) => ({
       status: String(r.status ?? 'unknown'),
       n: Number(r.n ?? 0),
+      stuck: Number(r.stuck ?? 0),
       last_at: r.last_at ? String(r.last_at) : null,
     }));
     const of = (s: string) => rows.find((r) => r.status === s)?.n ?? 0;
@@ -1326,14 +1327,24 @@ async function evaluateDelivery(
     // deliberately NOT counted as a failure: it is the system correctly
     // refusing to mail someone who unsubscribed or hard-bounced before.
     const failed = of('failed') + of('bounced') + of('dlq');
+    // NEITHER SENT NOR FAILED, which is how a stranded email stayed invisible.
+    // Measured 2026-08-06: one row pending since 2026-07-03 — thirty-four days
+    // — counted by nothing, so a log of nothing but stuck sends read as 'clean'.
+    const stuck = rows.reduce((a, r) => a + r.stuck, 0);
     const total = sent + failed;
     return {
-      // Three states, three words. `idle` matters: no email in 24h is normal on
-      // a quiet day and catastrophic on a busy one, and only a human knows
-      // which — so it must not read as healthy OR as broken.
-      reason: total === 0 ? 'idle' : failed === 0 ? 'clean' : 'failures',
+      // Four states now. `idle` matters: no email in 24h is normal on a quiet
+      // day and catastrophic on a busy one, and only a human knows which — so it
+      // must not read as healthy OR as broken. `stalled` is the state that used
+      // to hide inside `clean`, and it is checked BEFORE clean deliberately: a
+      // run with zero failures and a stranded queue is not a clean run.
+      reason: (total + stuck) === 0 ? 'idle'
+            : failed > 0 ? 'failures'
+            : stuck > 0 ? 'stalled'
+            : 'clean',
       sent,
       failed,
+      stuck,
       failRate: total > 0 ? Math.round((failed / total) * 1000) / 10 : null,
       byStatus: rows.map(({ status, n }) => ({ status, n })).slice(0, 10),
       lastSentAt: rows.find((r) => r.status === 'sent')?.last_at ?? null,

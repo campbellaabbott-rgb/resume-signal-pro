@@ -46,6 +46,23 @@ describe("it cannot leak who was emailed", () => {
     }
   });
 
+  it("defines stuck by EXCLUDING terminal states, not by listing live ones", () => {
+    // Listing the non-terminal statuses positively would mean this silently
+    // stops covering any status added later — which is precisely how `pending`
+    // escaped. An unrecognised status is far likelier to be stuck than fine.
+    expect(bare).toMatch(/NOT IN \('sent', 'failed', 'bounced', 'complained', 'suppressed', 'dlq'\)/);
+    expect(bare).toMatch(/interval '2 hours'/);
+  });
+
+  it("drops before recreating, because the return type changed", () => {
+    // Postgres will not CREATE OR REPLACE across a signature change; without the
+    // drop this migration applies cleanly and changes nothing.
+    const drop = bare.indexOf("DROP FUNCTION IF EXISTS public.email_delivery_health");
+    const create = bare.indexOf("CREATE OR REPLACE FUNCTION public.email_delivery_health");
+    expect(drop).toBeGreaterThan(-1);
+    expect(create).toBeGreaterThan(drop);
+  });
+
   it("never selects the address or the error text", () => {
     expect(bare).not.toMatch(/recipient_email/);
     expect(bare).not.toMatch(/error_message/);
@@ -82,6 +99,31 @@ describe("what counts as a failure", () => {
     expect(fn).toMatch(/'idle'/);
     expect(fn).toMatch(/'clean'/);
     expect(fn).toMatch(/'failures'/);
+  });
+
+  it("counts what is neither sent nor failed", () => {
+    // MEASURED IN PRODUCTION 2026-08-06, hours after this check shipped: one row
+    // pending since 2026-07-03. `total = sent + failed` excluded it entirely, so
+    // a log of nothing but stranded sends reported 'clean' with a null failRate.
+    expect(fn).toMatch(/const stuck = rows\.reduce\(\(a, r\) => a \+ r\.stuck, 0\)/);
+  });
+
+  it("a stranded queue outranks clean", () => {
+    // Zero failures plus a stuck queue is not a clean run. Order matters here:
+    // if 'clean' were tested first, `stalled` could never be reached.
+    expect(fn).toMatch(/stuck > 0 \? 'stalled'/);
+    // Comments stripped: the prose explaining this ordering names both states,
+    // and matching it instead of the code inverts the very thing being checked.
+    const code = fn.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/^\s*\/\/.*$/gm, " ");
+    const ternary = code.slice(code.indexOf("reason: (total + stuck)"));
+    expect(ternary.indexOf("'stalled'"), "stalled must be decided before clean")
+      .toBeLessThan(ternary.indexOf("'clean'"));
+  });
+
+  it("does not call a stalled queue idle either", () => {
+    // `idle` means nothing happened. A stuck row is something that happened and
+    // then stopped, so it must keep the check out of the idle branch.
+    expect(fn).toMatch(/\(total \+ stuck\) === 0 \? 'idle'/);
   });
 
   it("reports zero as a value rather than as silence", () => {
