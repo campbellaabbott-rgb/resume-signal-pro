@@ -30,7 +30,13 @@ import { nextRunStamp } from "../_shared/run-stamp.ts";
 // Bumped whenever this function's behaviour changes. It rides along in the run
 // stamp so "the new code has not deployed yet" and "the code deployed but has
 // never run" are different observations rather than the same silence.
-const BUILD_VERSION = "2026-08-04.1";
+// 2026-08-06.1 ADDS wakeConfig TO THE RUN STAMP — and this bump is late, which
+// is the whole lesson. The stamp gained a field and the version did not move,
+// so a missing `wakeConfig` in the status response had two causes that looked
+// identical: the bundle never deployed, or it deployed and has not run since.
+// That is the same one-value-two-states fault agent-runner was bumped for
+// twelve hours earlier, repeated in the next function along.
+const BUILD_VERSION = "2026-08-06.1";
 
 // Wall clock, not a row count. Question fetches and answer drafting are both
 // network-bound and wildly variable, so a fixed "20 packets" budget either wastes
