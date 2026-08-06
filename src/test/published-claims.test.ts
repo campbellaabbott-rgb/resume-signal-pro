@@ -191,7 +191,17 @@ describe("the self-audit cannot silently drop a hiring system", () => {
     expect(fn).toMatch(/coveredSharePct/);
     expect(fn).toMatch(/missingSources/);
     // Coverage must be part of the stored result, not just logged.
-    expect(fn).toMatch(/accuracyPct, corpus, byVendor, coverage, labelAudit/);
+    expect(fn).toMatch(/accuracyPct, corpus, byVendor, coverage, deepened, labelAudit/);
+  });
+
+  it("the headline sample is the even draw, not the re-drawn total", () => {
+    // A vendor that looks low gets re-drawn up to 30 probes. Those probes must
+    // not move the headline: the page says the sample was "drawn evenly across
+    // hiring systems", which stops being true the moment one vendor carries 30
+    // of the probes and the rest carry 6.
+    expect(fn).toMatch(/sampled: headlineSampled, probed: sampleIds\.length/);
+    expect(fn).toMatch(/await probeAll\(sampleIds, true\)/);
+    expect(fn).toMatch(/await probeAll\(extra, false\)/);
   });
 
   it("logs a dropped stratum at error level", () => {
@@ -640,11 +650,15 @@ describe("verify-on-apply cannot destroy a live posting on one probe", () => {
 
   it("a first miss stamps, it does not delete", () => {
     // checkLive reported GONE for 7 of 50 randomly sampled LIVE Workday
-    // postings — Workday's search index does not contain every externalId its
-    // own detail pages serve. The old branch deleted unconditionally, so a user
-    // clicking Apply was the thing destroying the row.
-    expect(verify.slice(0, 2600)).toMatch(/update\(\{ missing_since: stampIso \}\)/);
-    expect(verify.slice(0, 2600)).toMatch(/nowMs - Date\.parse\(st\) >= VERIFY_GRACE_MS/);
+    // postings. The cause was found on 2026-08-06: the stored externalId is the
+    // externalPath's `_`-suffix, which carries a `-N` dedupe discriminator for
+    // multi-location reqs, and Workday's search index holds only the base req
+    // id — so we were searching for an id that does not exist. The old branch
+    // deleted unconditionally, so a user clicking Apply was the thing
+    // destroying the row. The probe is fixed; the two-pass rule stays, because
+    // no single probe should ever be able to destroy an open job.
+    expect(verify.slice(0, 3800)).toMatch(/update\(\{ missing_since: stampIso \}\)/);
+    expect(verify.slice(0, 3800)).toMatch(/nowMs - Date\.parse\(st\) >= VERIFY_GRACE_MS/);
   });
 
   it("its grace outlasts a cold rotation", () => {
@@ -652,6 +666,61 @@ describe("verify-on-apply cannot destroy a live posting on one probe", () => {
     // re-read; this path has only a single-posting probe with a measured 14%
     // false-negative rate, so one rotation must be able to clear the stamp.
     expect(fn).toMatch(/const VERIFY_GRACE_MS = 6 \* 60 \* 60_000;/);
+  });
+
+  it("the workday probe confirms a miss before calling it a closure", () => {
+    // The `-N` discriminator bug above is only invisible again once the probe
+    // stops treating an empty search as proof. Two corroborations must survive:
+    // the base-id retry, and the authoritative CXS detail endpoint. Measured
+    // over 172 postings seen live in the feed that same second — 5 false
+    // closures before, 0 after, with fabricated ids still reading gone 30/30.
+    const wd = fn.slice(fn.indexOf('if (src.source === "workday") {\n      // Workday has no by-id endpoint'));
+    expect(wd.slice(0, 3600)).toMatch(/externalId\.replace\(\/-\\d\+\$\/, ""\)/);
+    expect(wd.slice(0, 3600)).toMatch(/workdayCxsUrl\(applyUrl\)/);
+    // A non-404 on the authoritative probe is unknown, never a closure.
+    expect(wd.slice(0, 3600)).toMatch(/if \(det\.status === 404\) return false;/);
+    expect(wd.slice(0, 3600)).toMatch(/if \(!det\.ok\) return null;/);
+  });
+
+  it("both callers hand the probe the apply_url it needs to be authoritative", () => {
+    // checkLive can only reach the CXS detail endpoint via apply_url. If a
+    // caller stops passing it, the probe silently drops back to the search
+    // index that caused the incident — with no type error to catch it.
+    expect(fn).toMatch(/select\("id, apply_url"\)/);
+    expect(fn).toMatch(/checkLive\(src, externalId, applyBy\.get\(id\) \?\? null\)/);
+    expect(fn).toMatch(/checkLive\(src, rest\.join\(":"\), applyBy\.get\(id\) \?\? null\)/);
+  });
+});
+
+describe("the accuracy alarm rests on a sample big enough to mean something", () => {
+  const hb = readFileSync(resolve(root, "supabase/functions/scan-heartbeat/index.ts"), "utf8");
+  const board = readFileSync(resolve(root, "supabase/functions/job-board/index.ts"), "utf8");
+
+  it("a vendor pages only on DECIDED probes, not on drawn ids", () => {
+    // The old gate was `sampled >= 5`, which the ~6-per-vendor stratified draw
+    // clears every run. Two dead listings out of 6 then reads 66.7% and pages.
+    // At a true 3% death rate that lands on some vendor about one day in six,
+    // so the alarm carried almost no information — and a real break looked the
+    // same as noise.
+    expect(hb).toMatch(/const MIN_VENDOR_DECIDED = 20;/);
+    expect(hb).toMatch(/\(\(b\.live \?\? 0\) \+ \(b\.gone \?\? 0\)\) >= MIN_VENDOR_DECIDED/);
+  });
+
+  it("the audit re-draws a suspicious vendor instead of publishing the thin number", () => {
+    // MIN_VENDOR_DECIDED only stops false alarms if something still catches a
+    // REAL break — that something is this escalation, which takes any low
+    // vendor up to a 30-probe sample before the floor is applied to it.
+    expect(board).toMatch(/const SUSPECT_PCT = 90;/);
+    expect(board).toMatch(/const DEEPEN_TO = 30;/);
+    expect(board).toMatch(/b\.deepened = true;/);
+  });
+
+  it("the alert names the breach that actually fired", () => {
+    // This summary line is what the alert email leads with, and it read "Board
+    // accuracy 97.8% (below 97% SLA)" — a per-vendor breach in the overall
+    // SLA's words, which is self-contradictory on its face.
+    expect(hb).toMatch(/lowOverall \? `Board accuracy \$\{aV\.accuracyPct\}% \(below 97% SLA\)`/);
+    expect(hb).toMatch(/badVendors\.length > 0 \? `Board accuracy: vendor\(s\) below the 80% floor/);
   });
 });
 

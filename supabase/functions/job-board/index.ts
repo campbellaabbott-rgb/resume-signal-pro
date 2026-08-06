@@ -2060,7 +2060,7 @@ async function embedText(text: string): Promise<number[] | null> {
 // membership for vendors without one. Returns true=live, false=confirmed gone,
 // null=couldn't tell (transient) so callers don't wrongly mark a job closed.
 const liveBoardMemo = new Map<string, Set<string>>();
-async function checkLive(src: JobSource, externalId: string): Promise<boolean | null> {
+async function checkLive(src: JobSource, externalId: string, applyUrl?: string | null): Promise<boolean | null> {
   try {
     if (src.source === "greenhouse") {
       const gh = greenhouseApi(src.token);
@@ -2092,20 +2092,58 @@ async function checkLive(src: JobSource, externalId: string): Promise<boolean | 
       return Array.isArray(items) ? items.length > 0 : null;
     }
     if (src.source === "workday") {
-      // Cheap per-job detail: 200 live / 404 gone. externalId is the reqId; the
-      // detail path needs the full externalPath, so probe the tenant search for
-      // the reqId instead — a targeted list query returns it iff still posted.
+      // Workday has no by-id endpoint, so liveness is probed in three escalating
+      // steps and only the last one is allowed to say "gone".
+      //
+      // WHY THREE. The stored externalId is the externalPath's `_`-suffix, and
+      // when a requisition is posted to several locations Workday appends a
+      // DEDUPE DISCRIMINATOR to that suffix — `..._JR3085-1`. The req id its
+      // search index actually holds is the base, `JR3085`. Searching the stored
+      // id therefore returns zero hits for a perfectly live posting, and the old
+      // single-step version read that empty result as a confirmed closure.
+      // Measured 2026-08-06 over 172 postings seen live in the feed that same
+      // second: 5 were reported GONE, every one of them a `-N` id. That is the
+      // "search index does not contain every externalId" note on the verify
+      // branch — it was never the index being incomplete, it was us searching
+      // for an id that does not exist.
       const [tenant, dc, site] = src.token.split("~");
       if (!tenant || !dc || !site) return null;
-      const res = await fetchWithTimeout(`https://${tenant}.${dc}.myworkdayjobs.com/wday/cxs/${tenant}/${site}/jobs`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Accept": "application/json" },
-        body: JSON.stringify({ limit: 20, offset: 0, searchText: externalId, appliedFacets: {} }),
-      });
-      if (!res.ok) return null;
-      const body = await res.json();
-      const items = (body as { jobPostings?: Array<{ externalPath?: string; bulletFields?: string[] }> }).jobPostings ?? [];
-      return items.some((j) => String(j.externalPath ?? "").includes(externalId) || (j.bulletFields ?? []).includes(externalId));
+      const search = async (q: string): Promise<Array<{ externalPath?: string; bulletFields?: string[] }> | null> => {
+        const res = await fetchWithTimeout(`https://${tenant}.${dc}.myworkdayjobs.com/wday/cxs/${tenant}/${site}/jobs`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Accept": "application/json" },
+          body: JSON.stringify({ limit: 20, offset: 0, searchText: q, appliedFacets: {} }),
+        });
+        if (!res.ok) return null;
+        const body = await res.json();
+        return (body as { jobPostings?: Array<{ externalPath?: string; bulletFields?: string[] }> }).jobPostings ?? [];
+      };
+      // The FULL stored id must appear, even when the base id is what we asked
+      // for — a sibling `JR3085-2` being open says nothing about `JR3085-1`.
+      const holds = (items: Array<{ externalPath?: string; bulletFields?: string[] }>) =>
+        items.some((j) => String(j.externalPath ?? "").includes(externalId) || (j.bulletFields ?? []).includes(externalId));
+
+      const first = await search(externalId);
+      if (first === null) return null;
+      if (holds(first)) return true;
+      const base = externalId.replace(/-\d+$/, "");
+      if (base && base !== externalId) {
+        const second = await search(base);
+        if (second === null) return null;
+        if (second.some((j) => String(j.externalPath ?? "").includes(externalId))) return true;
+      }
+      // Last word: the CXS detail endpoint, which is authoritative rather than
+      // index-backed — 200 with a jobPostingInfo is live, 404 is gone. It needs
+      // the full externalPath, which only apply_url carries, so callers pass it.
+      const cxs = applyUrl ? workdayCxsUrl(applyUrl) : null;
+      if (cxs) {
+        const det = await fetchWithTimeout(cxs);
+        if (det.status === 404) return false;
+        if (!det.ok) return null;
+        const body = await det.json().catch(() => null) as { jobPostingInfo?: unknown } | null;
+        return !!body?.jobPostingInfo;
+      }
+      return false;
     }
     // ashby / workable / bamboohr have no cheap per-job endpoint — fetch the
     // board once (memoized per request) and check membership.
@@ -4161,23 +4199,34 @@ Deno.serve(async (req) => {
       const deadIds: string[] = [];
       const demandTokens = new Set<string>();
       liveBoardMemo.clear();
+      // apply_url is what lets the workday probe reach its authoritative detail
+      // endpoint instead of stopping at the search index; read it once here so
+      // the per-id probe never has to go back to the DB.
+      const { data: applyRows } = await client
+        .from("job_board_postings").select("id, apply_url").in("id", ids);
+      const applyBy = new Map((applyRows ?? []).map((r) => [String(r.id), (r.apply_url as string | null) ?? null]));
       for (const id of ids) {
         const [source, token, ...rest] = id.split(":");
         const externalId = rest.join(":");
         const src = JOB_SOURCES.find((s) => s.source === source && s.token === token);
         if (!src || !externalId) { liveMap[id] = false; deadIds.push(id); continue; }
         demandTokens.add(src.token);
-        const live = await checkLive(src, externalId);
+        const live = await checkLive(src, externalId, applyBy.get(id) ?? null);
         if (live === false) { liveMap[id] = false; deadIds.push(id); }
         else liveMap[id] = true; // true OR null(unknown) → keep showing, never a false close
       }
       // NEVER delete on a single probe. Measured 2026-07-28: checkLive reported
-      // GONE for 7 of 50 randomly sampled LIVE Workday postings — Workday's
-      // search index does not contain every externalId its own detail pages
-      // still serve, so one miss is not evidence of closure. This branch used to
-      // DELETE unconditionally, which is silent destruction of open jobs, and it
-      // contradicted the published audit that reports workday accuracy 100%
-      // (gone: 0). A user clicking Apply was the thing destroying the row.
+      // GONE for 7 of 50 randomly sampled LIVE Workday postings. That was read
+      // at the time as Workday's search index being incomplete; the real cause,
+      // found 2026-08-06, is that we were searching for an id Workday never
+      // indexes — see the `-N` discriminator note in checkLive. The probe now
+      // corroborates against the CXS detail endpoint before returning false, so
+      // this branch sees far fewer misses, but the rule below is unchanged and
+      // deliberately so: it is what made a probe bug survivable instead of
+      // destructive. This branch used to DELETE unconditionally, which is silent
+      // destruction of open jobs, and it contradicted the published audit that
+      // reports workday accuracy 100% (gone: 0). A user clicking Apply was the
+      // thing destroying the row.
       //
       // Same two-pass rule the refresh prune already uses (VERIFY_GRACE_MS):
       // stamp missing_since on the first miss; only remove a row whose stamp has
@@ -4241,66 +4290,113 @@ Deno.serve(async (req) => {
       const VENDORS = [...new Set(JOB_SOURCES.map((s) => s.source))];
       const PER_VENDOR = Math.max(4, Math.floor(AUDIT_SAMPLE / Math.max(1, VENDORS.length)));
       const sampleIds: string[] = [];
+      // apply_url rides along with every drawn id: the workday probe needs it to
+      // reach its authoritative detail endpoint, and a liveness audit that can't
+      // get an authoritative answer is measuring its own search index.
+      const applyBy = new Map<string, string | null>();
       // Per-vendor corpus sizes, kept so an omitted stratum can be reported
       // with its real weight rather than just disappearing.
       const vendorRows: Record<string, number> = {};
       const drawErrors: Record<string, string> = {};
-      for (const v of VENDORS) {
-        const { count, error: cErr } = await client.from("job_board_postings").select("id", { count: "exact", head: true }).eq("source", v);
-        if (cErr) { drawErrors[v] = `count: ${cErr.message}`; continue; }
-        const n = count ?? 0;
-        vendorRows[v] = n;
-        if (n === 0) continue;
-        const want = Math.min(PER_VENDOR, n);
+      // KEYSET, not OFFSET. The old draw was
+      //   .order("id").range(off, off+per-1)  with off up to n-per
+      // which is a deep OFFSET. On workday — 303,098 rows, 52.1% of the
+      // whole board — that query never returned, and because `error` was
+      // destructured away the failure read as an empty page. Workday
+      // therefore contributed ZERO ids and vanished from byVendor entirely,
+      // while the blended headline still published as the board's accuracy.
+      // Verified live 2026-07-27: 14 strata present, workday absent.
+      // Same fix already applied to the sitemap today: anchor on a random
+      // board for this vendor and seek forward on the indexed id.
+      const drawIds = async (v: string, want: number): Promise<string[]> => {
+        const drawn: string[] = [];
         const pages = want > 4 ? 2 : 1;
         const per = Math.ceil(want / pages);
-        // KEYSET, not OFFSET. The old draw was
-        //   .order("id").range(off, off+per-1)  with off up to n-per
-        // which is a deep OFFSET. On workday — 303,098 rows, 52.1% of the
-        // whole board — that query never returned, and because `error` was
-        // destructured away the failure read as an empty page. Workday
-        // therefore contributed ZERO ids and vanished from byVendor entirely,
-        // while the blended headline still published as the board's accuracy.
-        // Verified live 2026-07-27: 14 strata present, workday absent.
-        // Same fix already applied to the sitemap today: anchor on a random
-        // board for this vendor and seek forward on the indexed id.
         const toks = JOB_SOURCES.filter((s) => s.source === v);
         for (let p = 0; p < pages && toks.length > 0; p++) {
           const anchor = toks[Math.floor(Math.random() * toks.length)];
-          let q = client.from("job_board_postings").select("id").eq("source", v)
+          let q = client.from("job_board_postings").select("id, apply_url").eq("source", v)
             .gt("id", `${v}:${anchor.token}:`).order("id").limit(per);
           let { data: page, error: pErr } = await q;
           // A board at the end of the id range yields nothing; wrap to the
           // vendor's start rather than silently contributing zero.
           if (!pErr && (!page || page.length === 0)) {
             ({ data: page, error: pErr } = await client.from("job_board_postings")
-              .select("id").eq("source", v).order("id").limit(per));
+              .select("id, apply_url").eq("source", v).order("id").limit(per));
           }
           if (pErr) { drawErrors[v] = `draw: ${pErr.message}`; continue; }
-          for (const r of page ?? []) if (!sampleIds.includes(r.id as string)) sampleIds.push(r.id as string);
+          for (const r of page ?? []) {
+            const id = String(r.id);
+            applyBy.set(id, (r.apply_url as string | null) ?? null);
+            if (!sampleIds.includes(id) && !drawn.includes(id)) drawn.push(id);
+          }
         }
+        return drawn;
+      };
+      for (const v of VENDORS) {
+        const { count, error: cErr } = await client.from("job_board_postings").select("id", { count: "exact", head: true }).eq("source", v);
+        if (cErr) { drawErrors[v] = `count: ${cErr.message}`; continue; }
+        const n = count ?? 0;
+        vendorRows[v] = n;
+        if (n === 0) continue;
+        sampleIds.push(...await drawIds(v, Math.min(PER_VENDOR, n)));
       }
       let live = 0, gone = 0, unknown = 0;
-      const byVendor: Record<string, { sampled: number; live: number; gone: number; unknown: number; accuracyPct: number | null }> = {};
+      const byVendor: Record<string, { sampled: number; live: number; gone: number; unknown: number; accuracyPct: number | null; deepened?: boolean }> = {};
       liveBoardMemo.clear();
-      // Small parallel batches: bounded fan-out, memoized board fetches.
-      for (let i = 0; i < sampleIds.length; i += 8) {
-        const batch = sampleIds.slice(i, i + 8);
-        const results = await Promise.all(batch.map(async (id) => {
-          const [source, token, ...rest] = id.split(":");
-          const src = JOB_SOURCES.find((s) => s.source === source && s.token === token);
-          if (!src || rest.length === 0) return null; // deselected board — can't ground-truth
-          return await checkLive(src, rest.join(":"));
-        }));
-        results.forEach((r, j) => {
-          const v = batch[j].split(":")[0];
-          const bucket = byVendor[v] ?? (byVendor[v] = { sampled: 0, live: 0, gone: 0, unknown: 0, accuracyPct: null });
-          bucket.sampled++;
-          if (r === true) { live++; bucket.live++; }
-          else if (r === false) { gone++; bucket.gone++; }
-          else { unknown++; bucket.unknown++; }
-        });
+      // `headline` distinguishes the even base draw from the follow-up draws
+      // below. The published sentence says the sample was "drawn evenly across
+      // hiring systems", and that is only true of the base draw — folding a
+      // 24-probe re-draw of one vendor into the headline would silently make it
+      // a differently-weighted number than the one the page describes.
+      const probeAll = async (ids: string[], headline: boolean) => {
+        // Small parallel batches: bounded fan-out, memoized board fetches.
+        for (let i = 0; i < ids.length; i += 8) {
+          const batch = ids.slice(i, i + 8);
+          const results = await Promise.all(batch.map(async (id) => {
+            const [source, token, ...rest] = id.split(":");
+            const src = JOB_SOURCES.find((s) => s.source === source && s.token === token);
+            if (!src || rest.length === 0) return null; // deselected board — can't ground-truth
+            return await checkLive(src, rest.join(":"), applyBy.get(id) ?? null);
+          }));
+          results.forEach((r, j) => {
+            const v = batch[j].split(":")[0];
+            const bucket = byVendor[v] ?? (byVendor[v] = { sampled: 0, live: 0, gone: 0, unknown: 0, accuracyPct: null });
+            bucket.sampled++;
+            if (r === true) { if (headline) live++; bucket.live++; }
+            else if (r === false) { if (headline) gone++; bucket.gone++; }
+            else { if (headline) unknown++; bucket.unknown++; }
+          });
+        }
+      };
+      await probeAll(sampleIds, true);
+      const headlineSampled = sampleIds.length;
+
+      // ESCALATE BEFORE ACCUSING. A stratified draw gives each vendor ~6 ids, so
+      // a single dead listing moves that vendor from 100% to 83% and two move it
+      // to 67% — under the 80% floor the heartbeat pages on. At a true 3% death
+      // rate, 2-of-6 comes up on some vendor roughly one day in six, so the alarm
+      // was firing mostly on sampling noise (2026-08-06: workday 66.7% = 4 live,
+      // 2 gone) and a real vendor break would have looked identical. A number
+      // that thin is not evidence either way, so any vendor that looks bad gets
+      // re-drawn deeper and is judged on the combined sample instead.
+      const SUSPECT_PCT = 90;
+      const DEEPEN_TO = 30;
+      const deepened: Array<{ source: string; firstPassPct: number; added: number }> = [];
+      for (const [v, b] of Object.entries(byVendor)) {
+        const d = b.live + b.gone;
+        if (d === 0 || (b.live / d) * 100 >= SUSPECT_PCT) continue;
+        if (d >= DEEPEN_TO) continue;
+        const firstPassPct = Math.round((b.live / d) * 1000) / 10;
+        const extra = await drawIds(v, Math.min(DEEPEN_TO - d, Math.max(0, (vendorRows[v] ?? 0) - b.sampled)));
+        if (extra.length === 0) continue;
+        sampleIds.push(...extra);
+        b.deepened = true;
+        await probeAll(extra, false);
+        deepened.push({ source: v, firstPassPct, added: extra.length });
+        console.log(`[JOB-BOARD] audit: ${v} looked low (${firstPassPct}% on ${d} probes) — re-drew ${extra.length} more`);
       }
+
       for (const b of Object.values(byVendor)) {
         const d = b.live + b.gone;
         b.accuracyPct = d > 0 ? Math.round((b.live / d) * 1000) / 10 : null;
@@ -4390,7 +4486,10 @@ Deno.serve(async (req) => {
         sourcesWithRows: Object.values(vendorRows).filter((n) => n > 0).length,
         missingSources,
       };
-      const result = { at: new Date().toISOString(), sampled: sampleIds.length, live, gone, unknown, accuracyPct, corpus, byVendor, coverage, labelAudit };
+      // `sampled` is the EVEN draw the headline describes; `probed` is every
+      // probe including the follow-up re-draws. Publishing sampleIds.length as
+      // `sampled` would state a sample size the headline was not computed from.
+      const result = { at: new Date().toISOString(), sampled: headlineSampled, probed: sampleIds.length, live, gone, unknown, accuracyPct, corpus, byVendor, coverage, deepened, labelAudit };
       await client.from("job_board_meta").upsert(
         { k: "audit", v: { ...result, history: [...prevHistory, result] }, updated_at: new Date().toISOString() },
         { onConflict: "k" },

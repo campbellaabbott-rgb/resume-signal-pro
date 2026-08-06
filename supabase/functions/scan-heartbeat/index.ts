@@ -406,15 +406,31 @@ serve(async (req) => {
       const { data: audit } = await supabase
         .from('job_board_meta').select('v, updated_at').eq('k', 'audit').maybeSingle();
       if (audit) {
-        const aV = (audit.v ?? {}) as { accuracyPct?: number | null; live?: number; gone?: number; at?: string; byVendor?: Record<string, { sampled?: number; accuracyPct?: number | null }> };
+        const aV = (audit.v ?? {}) as { accuracyPct?: number | null; live?: number; gone?: number; at?: string; byVendor?: Record<string, { sampled?: number; live?: number; gone?: number; accuracyPct?: number | null }> };
         const auditAgeH = Math.round((Date.now() - new Date(audit.updated_at).getTime()) / 3600_000);
         // Per-vendor floor: the stratified audit samples every vendor, so one
         // broken vendor can't hide inside a healthy blended number. A vendor
         // with a real sample below 80% is an incident even at 99% overall.
+        //
+        // "Real sample" means DECIDED probes (live+gone), not drawn ids, and at
+        // least MIN_VENDOR_DECIDED of them. The old gate was `sampled >= 5`,
+        // which the stratified draw clears with 6 — and at 6, two dead listings
+        // read as 66.7% and paged. That fired on 2026-08-06 for workday and the
+        // cause was our own probe, not the vendor. The audit now re-draws any
+        // vendor that looks low, so a vendor under the floor on a full sample is
+        // a real break; one that never got deepened is not evidence yet.
+        //
+        // Known gap, accepted: a vendor whose ENTIRE corpus is smaller than this
+        // can never reach the threshold and so can never page on its own. Every
+        // vendor currently on the board carries thousands of postings, and the
+        // 97% overall SLA still covers them, so the alternative — a floor that
+        // fires on single-digit samples — costs more than it catches.
+        const MIN_VENDOR_DECIDED = 20;
         const badVendors = Object.entries(aV.byVendor ?? {})
-          .filter(([, b]) => (b.sampled ?? 0) >= 5 && typeof b.accuracyPct === 'number' && b.accuracyPct < 80)
-          .map(([v, b]) => `${v} ${b.accuracyPct}%`);
-        const lowAccuracy = (typeof aV.accuracyPct === 'number' && aV.accuracyPct < 97) || badVendors.length > 0;
+          .filter(([, b]) => ((b.live ?? 0) + (b.gone ?? 0)) >= MIN_VENDOR_DECIDED && typeof b.accuracyPct === 'number' && b.accuracyPct < 80)
+          .map(([v, b]) => `${v} ${b.accuracyPct}% of ${(b.live ?? 0) + (b.gone ?? 0)}`);
+        const lowOverall = typeof aV.accuracyPct === 'number' && aV.accuracyPct < 97;
+        const lowAccuracy = lowOverall || badVendors.length > 0;
         const auditStale = auditAgeH > 48;
         checks.push({
           name: 'job_board_accuracy',
@@ -428,7 +444,14 @@ serve(async (req) => {
         });
         if (lowAccuracy || auditStale) {
           if (overallStatus === 'healthy') overallStatus = 'degraded';
-          errorMessage = errorMessage || (lowAccuracy ? `Board accuracy ${aV.accuracyPct}% (below 97% SLA)` : 'Board accuracy audit stale');
+          // Name the breach that actually fired. This line read "Board accuracy
+          // 97.8% (below 97% SLA)" on 2026-08-06 — self-contradictory, because a
+          // per-vendor breach was being reported in the overall-SLA's words, and
+          // that summary is what the alert email leads with.
+          errorMessage = errorMessage || (
+            lowOverall ? `Board accuracy ${aV.accuracyPct}% (below 97% SLA)`
+              : badVendors.length > 0 ? `Board accuracy: vendor(s) below the 80% floor — ${badVendors.join(', ')} (overall ${aV.accuracyPct}%)`
+              : 'Board accuracy audit stale');
         }
       }
 

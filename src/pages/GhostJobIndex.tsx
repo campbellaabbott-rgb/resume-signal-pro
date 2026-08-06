@@ -55,6 +55,9 @@ interface AuditResult {
   };
   /** Stratified per-vendor results (the audit samples every hiring system). */
   byVendor?: Record<string, { sampled: number; accuracyPct: number | null }>;
+  /** Systems that looked low on the even draw and were re-checked deeper before
+   *  their figure was published. `sampled` above stays the even draw. */
+  deepened?: Array<{ source: string; firstPassPct: number; added: number }>;
 }
 
 const rpc = (fn: string, args?: Record<string, unknown>) =>
@@ -278,6 +281,16 @@ export default function GhostJobIndex() {
                   .sort(([a], [b]) => a.localeCompare(b))
                   .map(([v, b]) => `${v} ${b.accuracyPct}%`)
                   .join(" · ")}
+              </p>
+            )}
+            {/* An even draw gives each system only ~6 probes, where one dead
+                listing swings the figure 17 points. Any system that looked low
+                is re-drawn deeper before we publish its number — so the reader
+                is told which figures rest on a bigger sample than the rest,
+                rather than seeing two differently-earned numbers side by side. */}
+            {(audit.deepened?.length ?? 0) > 0 && (
+              <p className="text-[11px] text-muted-foreground mt-1">
+                {audit.deepened!.map((d) => `${d.source} looked low (${d.firstPassPct}%) on the even draw, so we re-checked ${d.added} more of its listings before publishing the figure above`).join("; ")}.
               </p>
             )}
             {/* The daily-audit trend — only once there are at least two real
