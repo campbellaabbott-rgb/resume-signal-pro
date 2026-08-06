@@ -5557,34 +5557,34 @@ async function serveList(
     } catch { /* fall through to recency path */ }
   }
   const sortSalary = body.sort === "salary";
-  /**
-   * THE CHOSEN FIELD FIRST, when the unsorted bucket has been opted into.
-   *
-   * `legal + country=DE` went from 114 postings to 3,126 with the opt-in, and
-   * page one came back ENTIRELY `other` — the field the person actually picked
-   * was buried under 27x more unsorted rows that happened to be newer. Date
-   * ordering plus a much larger second bucket does that on its own.
-   *
-   * THE RESULT SET HOLDS EXACTLY TWO CATEGORY VALUES — the chosen slug and
-   * "other" — so a plain ASC/DESC on `category` puts the chosen one first
-   * deterministically. That is not an alphabetical coincidence to be nervous
-   * about: with two possible values, picking the direction by comparing them is
-   * exact. (It would NOT hold if a third value could appear, which is why this
-   * only applies on the `.in([chosen, "other"])` branch.)
-   *
-   * ONLY ON THE DEFAULT DATE SORT. If somebody has explicitly asked for salary
-   * order, that instruction wins — reordering their results by field would be
-   * answering a question they did not ask. They can still see which rows are
-   * unsorted; they just get the sort they chose.
-   */
-  const catFirst = <T extends { order: (c: string, o: { ascending: boolean }) => T }>(qb: T): T =>
-    (applied.category && applied.includeUncategorised && !sortSalary)
-      ? qb.order("category", { ascending: applied.category < "other" })
-      : qb;
+  // NO CATEGORY ORDERING HERE, AND THE ATTEMPT IS WORTH RECORDING.
+  //
+  // With the unsorted opt-in on, page one of `legal + country=DE` was entirely
+  // `other` — the second bucket is 27x larger and date ordering does the rest,
+  // so the field the person picked disappeared. The fix looked free: the result
+  // set holds exactly two category values, so `.order("category", …)` puts the
+  // chosen one first deterministically.
+  //
+  // It shipped and broke production. Ordering by category stops Postgres using
+  // the date index, so the whole widened set has to be sorted:
+  //
+  //     sales + DE    + opt-in   500 after 17.5s (statement timeout)
+  //     engineering   + opt-in   200 but 4.3s
+  //     legal         + opt-in   200 but 1.6s     (normally ~0.3s)
+  //
+  // Only the largest combination actually 500s, which is why the first probe —
+  // one narrow category — looked like a clean success. Reverted.
+  //
+  // The problem is real and unsolved: opting in still buries the chosen field.
+  // A correct fix pages the two subsets SEPARATELY (chosen category first, then
+  // `other`, each on its own date index) and stitches them with the offset
+  // arithmetic, rather than asking the database to sort across both. That needs
+  // care around count/hasMore and is not a one-liner — which is exactly why the
+  // one-liner was tempting.
   const pageWith = (dateCol: string, salaryCol: string, withCount: boolean) =>
     (sortSalary
-      ? catFirst(buildQuery(dateCol, withCount)).order(salaryCol, { ascending: false, nullsFirst: false })
-      : catFirst(buildQuery(dateCol, withCount)).order(dateCol, { ascending: false, nullsFirst: false })
+      ? buildQuery(dateCol, withCount).order(salaryCol, { ascending: false, nullsFirst: false })
+      : buildQuery(dateCol, withCount).order(dateCol, { ascending: false, nullsFirst: false })
     )
       .order("id", { ascending: true })
       .range(offset, offset + fetchLimit - 1);
@@ -5633,8 +5633,8 @@ async function serveList(
   if (error && wantCount) {
     const noCount = (dateCol: string, salaryCol: string) =>
       (sortSalary
-        ? catFirst(buildQuery(dateCol, false)).order(salaryCol, { ascending: false, nullsFirst: false })
-        : catFirst(buildQuery(dateCol, false)).order(dateCol, { ascending: false, nullsFirst: false })
+        ? buildQuery(dateCol, false).order(salaryCol, { ascending: false, nullsFirst: false })
+        : buildQuery(dateCol, false).order(dateCol, { ascending: false, nullsFirst: false })
       ).order("id", { ascending: true }).range(offset, offset + fetchLimit - 1);
     let retry = await noCount("effective_posted", "salary_rank_usd");
     if (sortSalary && retry.error?.message?.includes("salary_rank_usd")) retry = await noCount("effective_posted", "salary_min_annual");

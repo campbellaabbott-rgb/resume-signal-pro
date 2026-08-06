@@ -141,34 +141,24 @@ describe("the SEO landers cannot widen", () => {
   });
 });
 
-describe("the chosen field is not buried under the bucket it let in", () => {
-  it("orders the chosen category ahead of the unsorted rows", () => {
-    // legal + country=DE went 114 -> 3,126 with the opt-in, and page one came
-    // back entirely `other`: date ordering plus a bucket 27x larger does that
-    // on its own, and the field the person actually picked disappears.
-    expect(board).toMatch(/qb\.order\("category", \{ ascending: applied\.category < "other" \}\)/);
+describe("the chosen field IS still buried, and that is a known open problem", () => {
+  // Ordering the chosen category ahead of `other` was implemented, deployed,
+  // and reverted the same day: `.order("category", …)` stops Postgres using the
+  // date index, so the widened set sorts in full — sales+DE returned 500 after
+  // 17.5s, engineering took 4.3s against a normal ~0.3s page.
+  //
+  // This test exists so the one-liner is not re-attempted from scratch. It
+  // pins the ABSENCE, with the reason attached.
+  it("does not order by category — it times out on large widened sets", () => {
+    // COMMENTS STRIPPED: the note above the revert quotes `.order("category")`
+    // in order to explain why it is gone, and a check that cannot tell a
+    // prohibition from a violation would force the reasoning out of the file.
+    const code = board.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/^\s*\/\/.*$/gm, " ");
+    expect(code).not.toMatch(/\.order\("category"/);
   });
 
-  it("picks the direction by comparison, which is exact for two values", () => {
-    // The result set holds exactly the chosen slug and "other", so ASC/DESC
-    // decides it deterministically. Alphabetical order alone would NOT do it —
-    // these sort AFTER "other" and would need the opposite direction.
-    for (const c of ["legal", "engineering", "admin", "design"]) expect(c < "other").toBe(true);
-    for (const c of ["sales", "science", "security", "product", "people_hr"]) expect(c < "other").toBe(false);
-  });
-
-  it("applies at BOTH paging sites, not just the happy one", () => {
-    // pageWith and the no-count retry are separate builders, and the retry runs
-    // exactly when a count failed — the path nobody watches.
-    expect((board.match(/catFirst\(buildQuery\(/g) ?? []).length).toBe(4);
-  });
-
-  it("leaves an explicit salary sort alone", () => {
-    // Reordering by field would answer a question the user did not ask.
-    expect(board).toMatch(/&& !sortSalary\)/);
-  });
-
-  it("never reorders when the opt-in is off — normal browsing is untouched", () => {
-    expect(board).toMatch(/applied\.category && applied\.includeUncategorised && !sortSalary/);
+  it("records why, so the next person starts from the measurement", () => {
+    expect(board).toMatch(/statement timeout/);
+    expect(board).toMatch(/pages the two subsets SEPARATELY|two subsets/i);
   });
 });
