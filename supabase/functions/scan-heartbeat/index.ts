@@ -1095,6 +1095,11 @@ serve(async (req) => {
     // sentence beside it.
     const fillGaps = await evaluateFillGaps(supabase);
 
+    // IS EMAIL ACTUALLY GOING OUT. The worst failure this product has is a paid
+    // report that never arrives, and until now nothing anywhere reported it —
+    // the delivery log recorded every failure and no surface read it.
+    const delivery = await evaluateDelivery(supabase);
+
     return new Response(
       JSON.stringify({
         status: overallStatus,
@@ -1108,7 +1113,8 @@ serve(async (req) => {
         // checked against live data instead of waited on.
         senderState,
         confirmationGaps,
-        fillGaps
+        fillGaps,
+        delivery
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
@@ -1270,6 +1276,59 @@ async function evaluateFillGaps(
       // counted above, and repeating it here as an empty string reads like a
       // vendor whose forms ask blank questions.
       wordings: rows.filter((r) => r.wording.length > 0).slice(0, 10),
+    };
+  } catch {
+    return empty;
+  }
+}
+
+/**
+ * EMAIL DELIVERY, WHICH NOTHING WAS WATCHING.
+ *
+ * Same never-throws, rpc-missing-is-a-reason shape as the two gap evaluators.
+ *
+ * `sent` and `failed` are reported even at zero, because a field that only
+ * appears when something is wrong cannot be told apart from a field that
+ * stopped being computed — the same rule the other two follow.
+ *
+ * `failRate` is the number worth alerting on eventually, but it is NOT wired to
+ * overallStatus here. A first version that pages on it would fire on the first
+ * bounced address from a typo, and an alert that cries wolf gets muted, which
+ * is worse than the silence this replaces. Report it, watch it, then choose a
+ * threshold from real numbers rather than from a guess.
+ */
+async function evaluateDelivery(
+  supabase: { rpc: (fn: string, args?: Record<string, unknown>) => PromiseLike<{ data: unknown; error: unknown }> },
+): Promise<{
+  reason: string; sent: number; failed: number; failRate: number | null;
+  byStatus: Array<{ status: string; n: number }>; lastSentAt: string | null;
+}> {
+  const empty = { reason: 'rpc-missing', sent: 0, failed: 0, failRate: null, byStatus: [], lastSentAt: null };
+  try {
+    const { data, error } = await supabase.rpc('email_delivery_health', { p_hours: 24 });
+    if (error) return empty;
+    const rows = (Array.isArray(data) ? data as Array<Record<string, unknown>> : []).map((r) => ({
+      status: String(r.status ?? 'unknown'),
+      n: Number(r.n ?? 0),
+      last_at: r.last_at ? String(r.last_at) : null,
+    }));
+    const of = (s: string) => rows.find((r) => r.status === s)?.n ?? 0;
+    const sent = of('sent');
+    // Everything that means the person did not get it. `suppressed` is
+    // deliberately NOT counted as a failure: it is the system correctly
+    // refusing to mail someone who unsubscribed or hard-bounced before.
+    const failed = of('failed') + of('bounced') + of('dlq');
+    const total = sent + failed;
+    return {
+      // Three states, three words. `idle` matters: no email in 24h is normal on
+      // a quiet day and catastrophic on a busy one, and only a human knows
+      // which — so it must not read as healthy OR as broken.
+      reason: total === 0 ? 'idle' : failed === 0 ? 'clean' : 'failures',
+      sent,
+      failed,
+      failRate: total > 0 ? Math.round((failed / total) * 1000) / 10 : null,
+      byStatus: rows.map(({ status, n }) => ({ status, n })).slice(0, 10),
+      lastSentAt: rows.find((r) => r.status === 'sent')?.last_at ?? null,
     };
   } catch {
     return empty;
