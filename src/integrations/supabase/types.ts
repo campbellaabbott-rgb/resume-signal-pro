@@ -3000,6 +3000,14 @@ export type Database = {
           visitor_id: string
         }[]
       }
+      email_delivery_health: {
+        Args: { p_hours?: number }
+        Returns: {
+          last_at: string
+          n: number
+          status: string
+        }[]
+      }
       email_queue_dispatch: { Args: never; Returns: undefined }
       enqueue_email: {
         Args: { payload: Json; queue_name: string }
@@ -3825,6 +3833,16 @@ export type Database = {
         }
         Returns: number
       }
+      product_delivery_health: {
+        Args: { p_hours?: number }
+        Returns: {
+          exhausted: number
+          last_at: string
+          n: number
+          status: string
+          stuck: number
+        }[]
+      }
       rate_budget_state: {
         Args: { p_function?: string; p_ip: string; p_window_minutes?: number }
         Returns: {
@@ -3841,6 +3859,7 @@ export type Database = {
           read_ct: number
         }[]
       }
+      reconcile_stripe_tick: { Args: never; Returns: undefined }
       record_affiliate_conversion:
         | {
             Args: {
