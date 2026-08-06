@@ -715,6 +715,37 @@ describe("the accuracy alarm rests on a sample big enough to mean something", ()
     expect(board).toMatch(/b\.deepened = true;/);
   });
 
+  it("a stratum is never skipped because its count failed", () => {
+    // Shipped and caught in production the same day: the exact per-vendor count
+    // outgrew the statement timeout at ~590k postings, every count 500'd, each
+    // vendor took n = 0, `n === 0` skipped the draw, and a zero-row vendor is
+    // not a "missing source" — so the audit published a figure covering 6 of 15
+    // hiring systems while its coverage line claimed it had reached them all.
+    // Counts are now planner estimates, an unknown count is null rather than 0,
+    // and the draw runs regardless of what the count did.
+    expect(board).toMatch(/count: "planned", head: true \}\)\.eq\("source", v\)/);
+    expect(board).toMatch(/const vendorRows: Record<string, number \| null> = \{\}/);
+    // The count no longer controls whether the vendor is drawn at all.
+    expect(board).not.toMatch(/if \(cErr\) \{ drawErrors\[v\] = `count: \$\{cErr\.message\}`; continue; \}/);
+    // Unknown size still reports as missing rather than vanishing.
+    expect(board).toMatch(/\(n === null \|\| n > 0\) && !sampledSources\.has\(v\)/);
+    expect(board).toMatch(/"posting count unavailable"/);
+  });
+
+  it("coverage shares admit they are estimates", () => {
+    expect(board).toMatch(/basis: "planner estimate"/);
+  });
+
+  it("an unmeasurable corpus fails the capacity check instead of reading as full headroom", () => {
+    // Same root cause, worse blast radius: `corpusSize ?? 0` turned a timed-out
+    // count into a corpus of zero, so the meta row published headroom = the
+    // entire ceiling and the capacity guard went green while blind.
+    expect(board).toMatch(/corpusBasis === "exact" && \(corpusSize as number\) > CORPUS_CEILING/);
+    expect(board).toMatch(/headroom: corpusSize === null \? null : CORPUS_CEILING - corpusSize/);
+    expect(hb).toMatch(/const capUnmeasured =/);
+    expect(hb).toMatch(/passed: !capTight && !capUnmeasured/);
+  });
+
   it("the alert names the breach that actually fired", () => {
     // This summary line is what the alert email leads with, and it read "Board
     // accuracy 97.8% (below 97% SLA)" — a per-vendor breach in the overall

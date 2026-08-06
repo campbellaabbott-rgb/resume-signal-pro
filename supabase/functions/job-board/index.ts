@@ -1615,10 +1615,35 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
       if (dropped > 0) console.log(`[JOB-BOARD] freshness cap: dropped ${dropped} postings older than ${FRESH_WINDOW_DAYS}d`);
     }
 
-    // Capacity governor (see CORPUS_CEILING). Accurate post-prune count — this
-    // gates a destructive op, so don't reuse the orphan-inflated facet total.
-    const { count: corpusSize } = await client.from("job_board_postings").select("id", { count: "exact", head: true });
-    if ((corpusSize ?? 0) > CORPUS_CEILING) {
+    // Capacity governor (see CORPUS_CEILING). This gates a destructive op, so
+    // don't reuse the orphan-inflated facet total — and don't evict on an
+    // estimate either.
+    //
+    // The exact count stopped fitting the statement timeout as the table grew
+    // past ~590k (measured 2026-08-06). `corpusSize ?? 0` then read as a corpus
+    // of ZERO, which is not merely wrong but wrong in the safe-looking
+    // direction: eviction never fires, and the meta row below published
+    // `headroom = ceiling`, so the heartbeat's capacity check saw maximum
+    // headroom and passed. The guard had switched itself off and reported
+    // healthy while doing it.
+    //
+    // So: the planner estimate is the routine watch signal (0.1s), and the
+    // expensive exact count is attempted ONLY when that estimate says we are
+    // near the ceiling and the answer could actually authorize a deletion.
+    // Eviction still requires an exact number — never an estimate.
+    const { count: plannedSize } = await client.from("job_board_postings").select("id", { count: "planned", head: true });
+    const estimate = typeof plannedSize === "number" ? plannedSize : null;
+    let corpusSize: number | null = null;
+    let corpusBasis: "exact" | "planner estimate" | "unmeasured" = "unmeasured";
+    if (estimate !== null && estimate > CORPUS_CEILING * 0.95) {
+      const { count: exactSize } = await client.from("job_board_postings").select("id", { count: "exact", head: true });
+      if (typeof exactSize === "number") { corpusSize = exactSize; corpusBasis = "exact"; }
+    }
+    if (corpusSize === null && estimate !== null) { corpusSize = estimate; corpusBasis = "planner estimate"; }
+    if (corpusBasis === "unmeasured") {
+      console.error("[JOB-BOARD] capacity governor: corpus size unmeasurable (planned count failed) — eviction skipped and headroom unknown");
+    }
+    if (corpusBasis === "exact" && (corpusSize as number) > CORPUS_CEILING) {
       const overflow = (corpusSize as number) - CORPUS_TARGET;
       // Page the oldest ids (PostgREST caps a response at 1,000 rows) so a big
       // jump — e.g. a wider board selection — can be shed in one pass.
@@ -1641,15 +1666,29 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
         evicted += Math.min(200, ids.length - i);
       }
       await client.from("job_board_meta").upsert(
-        { k: "capacity", v: { at: nowIso, corpusBefore: corpusSize, ceiling: CORPUS_CEILING, target: CORPUS_TARGET, evicted, active: true }, updated_at: nowIso },
+        { k: "capacity", v: { at: nowIso, corpusBefore: corpusSize, basis: corpusBasis, ceiling: CORPUS_CEILING, target: CORPUS_TARGET, evicted, active: true }, updated_at: nowIso },
         { onConflict: "k" },
       );
       console.warn(`[JOB-BOARD] capacity governor: corpus ${corpusSize} > ${CORPUS_CEILING} — evicted ${evicted} stalest postings toward ${CORPUS_TARGET}`);
     } else {
       // Record headroom each pass so the heartbeat can watch the corpus trend
-      // toward the ceiling before it ever binds.
+      // toward the ceiling before it ever binds. `basis` travels with it: an
+      // unmeasured corpus must NOT be published as a healthy headroom, which is
+      // exactly what `corpusSize ?? 0` used to do.
       await client.from("job_board_meta").upsert(
-        { k: "capacity", v: { at: nowIso, corpus: corpusSize ?? 0, ceiling: CORPUS_CEILING, headroom: CORPUS_CEILING - (corpusSize ?? 0), evicted: 0, active: false }, updated_at: nowIso },
+        {
+          k: "capacity",
+          v: {
+            at: nowIso,
+            corpus: corpusSize,
+            basis: corpusBasis,
+            ceiling: CORPUS_CEILING,
+            headroom: corpusSize === null ? null : CORPUS_CEILING - corpusSize,
+            evicted: 0,
+            active: false,
+          },
+          updated_at: nowIso,
+        },
         { onConflict: "k" },
       );
     }
@@ -4285,7 +4324,25 @@ Deno.serve(async (req) => {
       // could serve 100% dead listings and barely dent the blended number.
       // Stratifying makes any single vendor's break visible within one audit,
       // and produces the per-vendor accuracy published alongside the headline.
-      const { count: totalRows } = await client.from("job_board_postings").select("id", { count: "exact", head: true });
+      // PLANNED, not EXACT. An exact count is a full scan of every matching row,
+      // and at ~590k postings that no longer fits the statement timeout —
+      // measured 2026-08-06, the corpus count AND all 15 per-vendor counts each
+      // came back 500 "canceling statement due to statement timeout" in 3.2s.
+      //
+      // The failure mode is what makes this urgent rather than slow: a dead
+      // count left the vendor at n = 0, `n === 0` skipped it before it could be
+      // drawn, and a vendor with no rows is not a "missing source" — so it
+      // vanished from coverage too. The audit published a figure covering 6 of
+      // 15 hiring systems while its own coverage line read "reached every
+      // hiring system with postings on the board". That is the 2026-07-27
+      // omission again, walking in through the one door the coverage instrument
+      // did not watch.
+      //
+      // The planner estimate answers in 0.1s and was within 0.4% of the exact
+      // count the same morning (592,860 vs 590,501) — far more precision than a
+      // stratification weight or a coverage share needs. It IS an estimate, and
+      // the payload and the page both say so rather than implying a census.
+      const { count: totalRows } = await client.from("job_board_postings").select("id", { count: "planned", head: true });
       const corpus = totalRows ?? 0;
       const VENDORS = [...new Set(JOB_SOURCES.map((s) => s.source))];
       const PER_VENDOR = Math.max(4, Math.floor(AUDIT_SAMPLE / Math.max(1, VENDORS.length)));
@@ -4295,8 +4352,11 @@ Deno.serve(async (req) => {
       // get an authoritative answer is measuring its own search index.
       const applyBy = new Map<string, string | null>();
       // Per-vendor corpus sizes, kept so an omitted stratum can be reported
-      // with its real weight rather than just disappearing.
-      const vendorRows: Record<string, number> = {};
+      // with its real weight rather than just disappearing. `null` means the
+      // count was unavailable — deliberately distinct from 0, because "this
+      // vendor has no postings" and "we could not find out" are opposite facts
+      // about coverage and collapsing them is what hid nine vendors.
+      const vendorRows: Record<string, number | null> = {};
       const drawErrors: Record<string, string> = {};
       // KEYSET, not OFFSET. The old draw was
       //   .order("id").range(off, off+per-1)  with off up to n-per
@@ -4334,12 +4394,16 @@ Deno.serve(async (req) => {
         return drawn;
       };
       for (const v of VENDORS) {
-        const { count, error: cErr } = await client.from("job_board_postings").select("id", { count: "exact", head: true }).eq("source", v);
-        if (cErr) { drawErrors[v] = `count: ${cErr.message}`; continue; }
-        const n = count ?? 0;
+        const { count, error: cErr } = await client.from("job_board_postings").select("id", { count: "planned", head: true }).eq("source", v);
+        if (cErr) drawErrors[v] = `count: ${cErr.message}`;
+        const n = typeof count === "number" ? count : null;
         vendorRows[v] = n;
+        // Draw even when the count is unavailable. The draw is a cheap keyset
+        // read and it — not the count — is what establishes whether this vendor
+        // can be sampled at all. Letting a failed count skip the draw is the
+        // precise mechanism that silently dropped nine strata.
         if (n === 0) continue;
-        sampleIds.push(...await drawIds(v, Math.min(PER_VENDOR, n)));
+        sampleIds.push(...await drawIds(v, Math.min(PER_VENDOR, n ?? PER_VENDOR)));
       }
       let live = 0, gone = 0, unknown = 0;
       const byVendor: Record<string, { sampled: number; live: number; gone: number; unknown: number; accuracyPct: number | null; deepened?: boolean }> = {};
@@ -4388,7 +4452,11 @@ Deno.serve(async (req) => {
         if (d === 0 || (b.live / d) * 100 >= SUSPECT_PCT) continue;
         if (d >= DEEPEN_TO) continue;
         const firstPassPct = Math.round((b.live / d) * 1000) / 10;
-        const extra = await drawIds(v, Math.min(DEEPEN_TO - d, Math.max(0, (vendorRows[v] ?? 0) - b.sampled)));
+        // An unknown vendor size must not block the re-draw — the draw itself
+        // will simply return what exists.
+        const room = vendorRows[v];
+        const headroom = room === null || room === undefined ? DEEPEN_TO : Math.max(0, room - b.sampled);
+        const extra = await drawIds(v, Math.min(DEEPEN_TO - d, headroom));
         if (extra.length === 0) continue;
         sampleIds.push(...extra);
         b.deepened = true;
@@ -4468,23 +4536,30 @@ Deno.serve(async (req) => {
       // number and the page can disclose it instead of the reader having to
       // notice a missing table row.
       const sampledSources = new Set(Object.keys(byVendor));
+      // A vendor whose count is unknown (null) is treated as POSSIBLY having
+      // postings, so it is reported missing rather than quietly written off.
       const missingSources = Object.entries(vendorRows)
-        .filter(([v, n]) => n > 0 && !sampledSources.has(v))
+        .filter(([v, n]) => (n === null || n > 0) && !sampledSources.has(v))
         .map(([v, n]) => ({
           source: v,
           postings: n,
-          sharePct: corpus > 0 ? Math.round((n / corpus) * 1000) / 10 : null,
-          reason: drawErrors[v] ?? "no rows drawn",
+          sharePct: n !== null && corpus > 0 ? Math.round((n / corpus) * 1000) / 10 : null,
+          reason: drawErrors[v] ?? (n === null ? "posting count unavailable" : "no rows drawn"),
         }))
-        .sort((a, b) => b.postings - a.postings);
+        .sort((a, b) => (b.postings ?? 0) - (a.postings ?? 0));
       const coveredPostings = Object.entries(vendorRows)
-        .filter(([v, n]) => n > 0 && sampledSources.has(v))
-        .reduce((t, [, n]) => t + n, 0);
+        .filter(([v, n]) => n !== null && n > 0 && sampledSources.has(v))
+        .reduce((t, [, n]) => t + (n as number), 0);
+      const countsUnavailable = Object.entries(vendorRows).filter(([, n]) => n === null).map(([v]) => v);
       const coverage = {
         coveredSharePct: corpus > 0 ? Math.round((coveredPostings / corpus) * 1000) / 10 : null,
+        // Coverage shares are planner estimates, not a census — named here so a
+        // reader is never left to assume the stronger claim.
+        basis: "planner estimate" as const,
         sourcesSampled: sampledSources.size,
-        sourcesWithRows: Object.values(vendorRows).filter((n) => n > 0).length,
+        sourcesWithRows: Object.values(vendorRows).filter((n) => n === null || n > 0).length,
         missingSources,
+        countsUnavailable,
       };
       // `sampled` is the EVEN draw the headline describes; `probed` is every
       // probe including the follow-up re-draws. Publishing sampleIds.length as

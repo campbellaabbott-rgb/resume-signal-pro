@@ -756,24 +756,34 @@ serve(async (req) => {
       // selection, rather than silently shedding real jobs to stay under cap.
       const { data: cap } = await supabase
         .from('job_board_meta').select('v').eq('k', 'capacity').maybeSingle();
-      const capV = (cap?.v ?? {}) as { active?: boolean; headroom?: number; corpusBefore?: number; evicted?: number; ceiling?: number };
+      const capV = (cap?.v ?? {}) as { active?: boolean; headroom?: number | null; corpus?: number | null; corpusBefore?: number; evicted?: number; ceiling?: number; basis?: string };
       const headroom = typeof capV.headroom === 'number'
         ? capV.headroom
         : (typeof capV.ceiling === 'number' && typeof capV.corpusBefore === 'number' ? capV.ceiling - capV.corpusBefore : null);
+      // An UNMEASURED corpus is a failure, not a pass. The exact count outgrew
+      // the statement timeout and `corpusSize ?? 0` published headroom = the
+      // whole ceiling, so this check read maximum headroom and went green while
+      // the governor was in fact blind. A guard that cannot measure the thing it
+      // guards has to say so.
+      const capUnmeasured = capV.basis === 'unmeasured' || (capV.active !== true && headroom === null);
       const capTight = capV.active === true || (headroom !== null && headroom < 2000);
       checks.push({
         name: 'job_board_capacity',
-        passed: !capTight,
+        passed: !capTight && !capUnmeasured,
         responseTimeMs: 0,
-        error: capTight
+        error: capUnmeasured
+          ? 'corpus size unmeasurable — the capacity governor cannot tell whether the ceiling is near, and eviction is disabled until it can'
+          : capTight
           ? (capV.active
               ? `capacity governor active — evicted ${capV.evicted ?? '?'} stalest postings last pass (ceiling ${capV.ceiling ?? '?'}); widen the DB tier or trim board selection`
               : `corpus near cap — headroom ${headroom} below ceiling ${capV.ceiling ?? '?'}`)
           : undefined,
       });
-      if (capTight) {
+      if (capTight || capUnmeasured) {
         if (overallStatus === 'healthy') overallStatus = 'degraded';
-        errorMessage = errorMessage || `Job board near capacity (${capV.active ? 'governor evicting' : `headroom ${headroom}`})`;
+        errorMessage = errorMessage || (capUnmeasured
+          ? 'Job board corpus size unmeasurable (capacity governor blind)'
+          : `Job board near capacity (${capV.active ? 'governor evicting' : `headroom ${headroom}`})`);
       }
 
       // Disk headroom: the governor caps ROWS, but nothing watched BYTES on the

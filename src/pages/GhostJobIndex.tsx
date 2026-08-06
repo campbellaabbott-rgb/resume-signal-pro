@@ -49,9 +49,13 @@ interface AuditResult {
   /** What share of the corpus the sample actually reached, and what it missed. */
   coverage?: {
     coveredSharePct: number | null;
+    /** Coverage shares come from planner estimates, not a census. */
+    basis?: string;
     sourcesSampled: number;
     sourcesWithRows: number;
-    missingSources: Array<{ source: string; postings: number; sharePct: number | null; reason: string }>;
+    missingSources: Array<{ source: string; postings: number | null; sharePct: number | null; reason: string }>;
+    /** Systems whose posting count could not be read at all this run. */
+    countsUnavailable?: string[];
   };
   /** Stratified per-vendor results (the audit samples every hiring system). */
   byVendor?: Record<string, { sampled: number; accuracyPct: number | null }>;
@@ -257,7 +261,8 @@ export default function GhostJobIndex() {
                 {audit.coverage.missingSources.map((m, i) => (
                   <span key={m.source}>
                     {i > 0 && ", "}
-                    <b className="text-foreground">{m.source}</b> ({m.sharePct}% of postings)
+                    <b className="text-foreground">{m.source}</b>{" "}
+                    ({typeof m.sharePct === "number" ? `${m.sharePct}% of postings` : "size unknown"})
                   </span>
                 ))}
                 . The figure above describes only the systems that were sampled, so treat it as a
