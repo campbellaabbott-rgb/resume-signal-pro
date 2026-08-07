@@ -6,6 +6,9 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+// Comma-stripping matters here: role titles go into a PostgREST or() downstream,
+// where a comma is a separator. Same reason mandateProposal strips them.
+import { toMandateField } from "@/lib/mandateProposal";
 import {
   TrendingUp, Coins, ShoppingBag, LogOut, Loader2, ScanSearch, Target,
   ListChecks, GitCompare, Briefcase, Plus, Trash2, AlertTriangle, ExternalLink, Sparkles,
@@ -1268,6 +1271,30 @@ export default function Account() {
             </div>
           ) : (
             <>
+            {/* THE SAVED SET, TURNED INTO A MANDATE. Saved rows are the
+                clearest statement of intent this product ever records — jobs a
+                person chose and has not applied to. One click hands their
+                distinct role titles to the mandate form on /agent as
+                ?seedTitles, where they PREFILL and nothing more: an existing
+                mandate wins, typed text wins, and the person still presses
+                Activate. Shown from two saved roles, because "jobs like these"
+                is not a claim one row can support. */}
+            {(() => {
+              const savedRoles = [...new Set(
+                applications.filter((a) => a.status === "saved" && a.role?.trim())
+                  .map((a) => toMandateField([a.role as string])).filter(Boolean),
+              )].slice(0, 4);
+              return savedRoles.length >= 2 ? (
+                <Link
+                  to={`/agent?seedTitles=${encodeURIComponent(savedRoles.join("|"))}`}
+                  className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline mb-3"
+                  title={t("accountPage.seedMandateTip", "Prefills the apply agent's search with these role titles. Nothing starts until you activate it there.")}
+                >
+                  <Sparkles className="w-3.5 h-3.5 shrink-0" />
+                  {t("accountPage.seedMandate", "Have the agent hunt for jobs like these ({{titles}})", { titles: savedRoles.slice(0, 2).join(", ") + (savedRoles.length > 2 ? "…" : "") })}
+                </Link>
+              ) : null;
+            })()}
             <div className="flex flex-wrap items-center gap-1.5 mb-3">
               <button type="button" onClick={() => setAppFilter("")}
                 className={`text-[11px] px-2.5 py-1 rounded-full border transition-colors ${appFilter === "" ? "border-primary bg-primary/10 text-primary font-semibold" : "border-border text-muted-foreground hover:text-foreground"}`}>

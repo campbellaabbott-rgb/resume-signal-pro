@@ -175,6 +175,23 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
         setMandate(m as Mandate);
         setForm({ q: m.q, category: m.category, location: m.location, remote_only: m.remote_only, salary_min: m.salary_min?.toString() ?? "", daily_count: m.daily_count,
           max_age_days: m.max_age_days?.toString() ?? "", include_uncategorised: m.include_uncategorised === true });
+      } else {
+        // SEEDED FROM SAVED JOBS. Account.tsx's "have the agent hunt for jobs
+        // like these" link arrives as ?seedTitles=a|b|c — the distinct role
+        // titles of what the person saved, which is the clearest statement of
+        // intent this product ever sees. Same contract as the CV proposal
+        // above: it FILLS THE FORM and nothing else — the person still presses
+        // Activate — and it loses to everything: an existing mandate (this
+        // branch never runs), anything already typed, and toMandateField's own
+        // sanitisation, since a URL param is caller-controlled input.
+        const seed = new URLSearchParams(window.location.search).get("seedTitles");
+        if (seed) {
+          const titles = [...new Set(seed.split("|").map((x) => toMandateField([x])).filter(Boolean))].slice(0, 4);
+          if (titles.length) {
+            setForm((f) => (f.q.trim() ? f : { ...f, q: toMandateField(titles) }));
+            setLabel((l) => (l.trim() ? l : `${titles[0]}`.slice(0, 60)));
+          }
+        }
       }
       if (Array.isArray(qRows)) setQueue(qRows as QueueItem[]);
       await loadSearches();
