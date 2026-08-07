@@ -1292,3 +1292,43 @@ honesty question of listing a job as agent-appliable when the answer depends on
 that employer's own config.
 
 n=6 per vendor. One clean tenant is a hypothesis, not a channel.
+
+## The custom-domain channel finds Teamtailor and almost nothing else (2026-08-07)
+
+Two sweeps, same method, different corpora:
+
+    corpus                    domains   careers CNAMEs   drivable   per 1k
+    Umbrella apex .com        107,658          13,772         364     3.38
+    European apex (15 TLDs)    14,845           1,698          42     2.83
+
+By vendor, per 1,000 domains:
+
+    vendor        .com    European
+    teamtailor    2.42        2.09
+    pinpoint      0.01        0.00
+    breezy        0.00        0.00
+    personio      0.00        0.00
+
+THE EUROPEAN SWEEP WAS A HYPOTHESIS AND IT WAS WRONG. It was aimed at
+Personio (DACH) and Breezy on the reasoning that a .com corpus is the wrong
+place to look for European vendors. The European corpus surfaced ZERO of
+both — the same as .com — and a slightly lower overall rate.
+
+WHY, and this is the durable part: the channel measures who points
+`careers.example.com` at a vendor. Teamtailor supports custom domains and its
+customers use them. Personio and Breezy customers sit on `jobs.personio.de/…`
+and `…breezy.hr` subdomains directly, so a CNAME census CANNOT SEE THEM at any
+corpus size. This is a property of the channel, not of the corpus, and no
+further TLD selection will change it.
+
+CONSEQUENCE FOR PLANNING: custom-domain censuses are a Teamtailor tool. Growing
+personio/breezy/pinpoint reach needs a different channel — vendor-side
+enumeration (their own tenant directories / sitemaps), not DNS.
+
+Miss table worth noting: cs-balancers-1.b-ite.com (20) is b-ite, a German ATS
+we carry no fingerprint for; secure.recruitee.com (15) is Recruitee, NO-BUILD
+on the vendor wall but see the per-tenant finding above.
+
+Merged: 19 boards / 249 postings after the protocol (2 dupes dropped, no
+mill-screen candidates). Ten of 31 hosts were unresolvable — the tenant is
+named something neither the hostname nor the feed's org name predicts.
