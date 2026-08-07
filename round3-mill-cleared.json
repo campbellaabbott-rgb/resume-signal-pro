@@ -1,6 +1,50 @@
 [
  {
-  "vendor": "teamtailor",
-  "token": "aromazone"
+  "vendor": "personio",
+  "token": "cafedelsol"
+ },
+ {
+  "vendor": "breezy",
+  "token": "srs-merchandising"
+ },
+ {
+  "vendor": "breezy",
+  "token": "everstar"
+ },
+ {
+  "vendor": "breezy",
+  "token": "vanguard-ip"
+ },
+ {
+  "vendor": "breezy",
+  "token": "rinvio"
+ },
+ {
+  "vendor": "breezy",
+  "token": "turner-mining-group"
+ },
+ {
+  "vendor": "breezy",
+  "token": "trueline"
+ },
+ {
+  "vendor": "breezy",
+  "token": "merchandising-consultants-associates"
+ },
+ {
+  "vendor": "breezy",
+  "token": "small-potato-trucking"
+ },
+ {
+  "vendor": "breezy",
+  "token": "gen-tech"
+ },
+ {
+  "vendor": "pinpoint",
+  "token": "kempinski"
+ },
+ {
+  "vendor": "pinpoint",
+  "token": "gloryglobal"
  }
 ]

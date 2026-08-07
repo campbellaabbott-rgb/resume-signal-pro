@@ -1,1 +1,74 @@
-[]
+[
+ {
+  "vendor": "personio",
+  "token": "cafedelsol",
+  "name": "Cafedelsol",
+  "count": 125
+ },
+ {
+  "vendor": "breezy",
+  "token": "srs-merchandising",
+  "name": "SRS Merchandising",
+  "count": 336
+ },
+ {
+  "vendor": "breezy",
+  "token": "everstar",
+  "name": "Everstar",
+  "count": 324
+ },
+ {
+  "vendor": "breezy",
+  "token": "vanguard-ip",
+  "name": "Vanguard-IP",
+  "count": 288
+ },
+ {
+  "vendor": "breezy",
+  "token": "rinvio",
+  "name": "Rinvio",
+  "count": 274
+ },
+ {
+  "vendor": "breezy",
+  "token": "turner-mining-group",
+  "name": "Turner Mining Group",
+  "count": 213
+ },
+ {
+  "vendor": "breezy",
+  "token": "trueline",
+  "name": "Trueline",
+  "count": 137
+ },
+ {
+  "vendor": "breezy",
+  "token": "merchandising-consultants-associates",
+  "name": "Merchandising Consultants Associates",
+  "count": 108
+ },
+ {
+  "vendor": "breezy",
+  "token": "small-potato-trucking",
+  "name": "Small Potato Trucking",
+  "count": 106
+ },
+ {
+  "vendor": "breezy",
+  "token": "gen-tech",
+  "name": "Genesis",
+  "count": 102
+ },
+ {
+  "vendor": "pinpoint",
+  "token": "kempinski",
+  "name": "Kempinski",
+  "count": 280
+ },
+ {
+  "vendor": "pinpoint",
+  "token": "gloryglobal",
+  "name": "Gloryglobal",
+  "count": 138
+ }
+]

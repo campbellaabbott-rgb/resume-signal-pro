@@ -1332,3 +1332,44 @@ on the vendor wall but see the per-tenant finding above.
 Merged: 19 boards / 249 postings after the protocol (2 dupes dropped, no
 mill-screen candidates). Ten of 31 hosts were unresolvable — the tenant is
 named something neither the hostname nor the feed's org name predicts.
+
+## Common Crawl sees what DNS cannot: +324 drivable boards (2026-08-07)
+
+The two CNAME censuses returned ZERO personio and ZERO breezy across 122k
+domains, and the note above explains why: those customers live on vendor
+subdomains, so a custom-domain census structurally cannot see them. The stated
+consequence was "growing the other three needs vendor-side enumeration, not
+DNS". This is that, and the numbers settle it.
+
+`census-cluster-all.mjs` against CC-MAIN-2026-30 (July 2026; the previous
+census used CC-MAIN-2025-47, nine months older) — 23,191 candidate tokens
+across 13 vendor prefixes. Live-verified the four drivable vendors (>=3
+postings from the vendor's own API):
+
+    vendor      candidates   verified   postings   per board
+    breezy           2,149        210      4,647        22.1
+    personio         1,696        120      1,136         9.5
+    pinpoint            48         16        745        46.6
+    teamtailor          86         16        170        10.6
+
+After the merge protocol: 324 boards / 5,361 postings entered sources.ts.
+Dropped 28 on the name blocklist, 2 on token, 8 name collisions (8 more
+admitted for reach). Twelve boards cleared the staffing-mill screen 12/12 —
+spot-checked the two most suspicious by name (SRS Merchandising 336 postings,
+Merchandising Consultants Associates 108) and both are direct employers hiring
+their own field merchandisers, store by store, not agencies placing candidates.
+
+That is a ~17% increase in agent-submittable inventory in one pass, and it
+required no new adapter and no bot-wall boundary crossing.
+
+TWO PREFIXES RETURNED ZERO BLOCKS and should not be believed: `jobs.lever.co`
+and `careers.smartrecruiters.com`. Lever is a large vendor; zero is not a
+plausible measurement, so the SURT prefix matching is wrong for those hosts.
+Unfixed — potentially thousands of missed boards, and it is an enumeration bug
+rather than a fact about the vendor.
+
+NOT YET VERIFIED: the 20,908 non-drivable candidates (greenhouse 4,284,
+bamboohr 3,405, workable 3,148, workday 3,000, ashby 2,661, recruitee 706,
+smartrecruiters 676, rippling 980, greenhouse-eu 352). Those are listing
+inventory only — greenhouse measured 5/6 bot-walled the same day, so they add
+board depth and SEO, not agent reach.
