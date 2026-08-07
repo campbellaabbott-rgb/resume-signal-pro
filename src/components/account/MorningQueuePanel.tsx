@@ -16,7 +16,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Sunrise, Play, Pause, X, Check, ArrowRight, Sparkles, Plus, ChevronDown } from "lucide-react";
+import { Sunrise, Play, Pause, X, Check, ArrowRight, Sparkles, Plus, ChevronDown, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAgentSender } from "@/hooks/useAgentSender";
@@ -25,6 +25,9 @@ import { EMPTY_PROPOSAL, proposeMandate, toMandateField, type MandateProposal } 
 // same reason Jobs.tsx imports isSendableVendor out of _shared. Pure TS, no
 // Deno specifiers, so the bundler and vitest both handle it.
 import { parseCountries } from "../../../supabase/functions/_shared/mandate-reach";
+// The same extractor the scanner and setup use — one definition of "text out of
+// an uploaded CV", wrapping parse-pdf/parse-docx.
+import { resumeTextFrom } from "@/lib/resumeText";
 
 const sb = supabase as unknown as {
   from: (t: string) => any;
@@ -463,7 +466,11 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
       // Reachable only if the button was pressed while genuinely résumé-less;
       // the control is disabled in that state, so this is a backstop, not the
       // path a person is expected to hit.
-      toast.error(t("agentQueue.needResume", "Save a résumé for matching first (above) — the agent scores every posting against it."));
+      // Points at the upload in THIS panel now. The old copy said "above",
+      // meaning a control on another page — and on /agent, one that does not
+      // exist. Copy that names a place the reader cannot reach is the same
+      // dead end as no copy at all.
+      toast.error(t("agentQueue.needResumeHere", "Add your CV first — upload or paste it just below, and the agent can start."));
       return;
     }
     setBusy(true);
@@ -558,6 +565,72 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
   // definition, so the button and the handler cannot disagree about whether a
   // résumé exists.
   const resumeReady = resumeForMandate.length >= 100;
+
+  // THE CV, TAKEN HERE INSTEAD OF SOMEWHERE ELSE.
+  //
+  // The one input the agent genuinely cannot derive is the résumé, and until
+  // now the panel's answer to not having one was a sentence pointing "above" —
+  // at a control on a different page, which on /agent does not exist at all.
+  // The single prerequisite of the whole product was the one thing this surface
+  // could not do.
+  const [cvBusy, setCvBusy] = useState(false);
+  const [pasteOpen, setPasteOpen] = useState(false);
+  const [pasteDraft, setPasteDraft] = useState("");
+
+  /**
+   * Persist a résumé and make it usable in the same breath.
+   *
+   * Writes the SAME row Account.tsx writes (user_profiles.matching_resume_text,
+   * 50k cap) rather than a second home for the same fact, and updates
+   * `ownResume` so `resumeReady` flips immediately — a save that required a
+   * page reload to take effect would be a new version of the dead end this
+   * replaces.
+   */
+  const saveResumeText = useCallback(async (text: string): Promise<boolean> => {
+    const clean = text.trim();
+    // Same 100-character floor the mandate gate uses. Below it the agent cannot
+    // score anything, so accepting it would store a résumé that silently keeps
+    // the button disabled with no explanation.
+    if (clean.length < 100) {
+      toast.error(t("agentQueue.cvTooShort", "That looks too short to match against — please upload the full CV, or paste the text."));
+      return false;
+    }
+    const { error } = await sb.from("user_profiles").upsert({
+      user_id: userId,
+      matching_resume_text: clean.slice(0, 50000),
+      matching_resume_updated_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    });
+    if (error) {
+      toast.error(t("agentQueue.cvSaveError", "Couldn't save that — please try again."));
+      return false;
+    }
+    setOwnResume(clean);
+    toast.success(t("agentQueue.cvSaved", "CV saved — the agent will score every posting against it."));
+    return true;
+  }, [userId, t]);
+
+  /**
+   * A parse failure is NOT a silent one.
+   *
+   * resumeTextFrom returns "" for every failure mode — unreadable PDF, a
+   * scanned image with no text layer, and the rate-limited case, since parse-pdf
+   * shares a budget that board traffic has exhausted before. Treating "" as
+   * "nothing happened" would give a file picker that swallows CVs. It opens the
+   * paste box instead, which always works.
+   */
+  const onCvFile = useCallback(async (file: File | null) => {
+    if (!file) return;
+    setCvBusy(true);
+    const text = await resumeTextFrom(file);
+    setCvBusy(false);
+    if (!text.trim()) {
+      setPasteOpen(true);
+      toast.error(t("agentQueue.cvParseFailed", "Couldn't read that file — paste the text instead and it will work."));
+      return;
+    }
+    await saveResumeText(text);
+  }, [saveResumeText, t]);
 
   /**
    * Any optional filter that is actually doing something, named in plain words.
@@ -956,14 +1029,75 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
               </button>
             )}
           </div>
-          {/* A disabled button with no stated reason is its own dead end. Same
-              string the toast used, now permanent and next to the control it
-              explains. Entitlement is handled by the paywall above, so this
-              only speaks when the résumé is the thing in the way. */}
+          {/* THE PREREQUISITE, SATISFIABLE WHERE IT IS STATED.
+              This used to be a sentence pointing "above" at a control on a
+              different page — which on /agent does not exist at all, so the one
+              thing standing between a paying subscriber and a working agent was
+              the one thing this surface could not do. Now it is done here. */}
           {agentActive === true && !resumeReady && (
-            <p className="sm:col-span-2 text-[12px] text-muted-foreground -mt-1">
-              {t("agentQueue.needResume", "Save a résumé for matching first (above) — the agent scores every posting against it.")}
-            </p>
+            <div className="sm:col-span-2 rounded-lg border border-border bg-muted/30 px-3 py-2.5 -mt-1">
+              <p className="text-[12px] text-foreground font-medium">
+                {t("agentQueue.needResumeTitle", "Add your CV to start")}
+              </p>
+              <p className="mt-0.5 text-[11px] text-muted-foreground">
+                {t("agentQueue.needResumeWhy", "The agent scores every posting against it, and reads your roles and locations from it — it is the only thing we cannot work out for you.")}
+              </p>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <label className={`inline-flex items-center gap-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold px-3.5 py-2 ${cvBusy ? "opacity-60" : "cursor-pointer hover:bg-primary/90"}`}>
+                  <Upload className="w-3.5 h-3.5" />
+                  {cvBusy
+                    ? t("agentQueue.cvReading", "Reading…")
+                    : t("agentQueue.cvUpload", "Upload CV")}
+                  <input
+                    type="file"
+                    accept=".pdf,.doc,.docx,.txt,application/pdf,text/plain"
+                    disabled={cvBusy}
+                    className="hidden"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0] ?? null;
+                      // Cleared so choosing the SAME file after a failed parse
+                      // still fires a change event; otherwise a retry is a
+                      // control that visibly does nothing.
+                      e.target.value = "";
+                      void onCvFile(f);
+                    }}
+                  />
+                </label>
+                <button type="button" onClick={() => setPasteOpen((v) => !v)}
+                  className="text-[12px] font-medium text-primary hover:underline">
+                  {pasteOpen
+                    ? t("agentQueue.cvPasteHide", "Hide paste box")
+                    : t("agentQueue.cvPaste", "or paste the text")}
+                </button>
+              </div>
+              {/* ALWAYS REACHABLE, not only after a failure. parse-pdf shares a
+                  rate budget that board traffic has exhausted before, and a
+                  scanned CV has no text layer to extract at all — so the path
+                  that always works must not be hidden behind the one that
+                  sometimes does not. */}
+              {pasteOpen && (
+                <div className="mt-2">
+                  <textarea
+                    value={pasteDraft}
+                    onChange={(e) => setPasteDraft(e.target.value)}
+                    rows={6}
+                    placeholder={t("agentQueue.cvPastePlaceholder", "Paste your CV text here…")}
+                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                  />
+                  <div className="mt-1.5 flex items-center gap-2">
+                    <button type="button"
+                      onClick={() => void (async () => { if (await saveResumeText(pasteDraft)) { setPasteDraft(""); setPasteOpen(false); } })()}
+                      disabled={cvBusy || pasteDraft.trim().length < 100}
+                      className="rounded-lg bg-primary text-primary-foreground text-sm font-semibold px-3.5 py-1.5 hover:bg-primary/90 disabled:opacity-50">
+                      {t("agentQueue.cvPasteSave", "Save CV")}
+                    </button>
+                    <span className="text-[11px] text-muted-foreground">
+                      {t("agentQueue.cvPasteCount", "{{n}} characters — 100 needed", { n: pasteDraft.trim().length })}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
           )}
         </div>
       ) : searches !== null ? (
