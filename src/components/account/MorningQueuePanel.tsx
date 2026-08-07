@@ -416,12 +416,40 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
     window.location.href = data.url;
   }, [email, t]);
 
+  /**
+   * THE RÉSUMÉ THE AGENT WILL SCORE AGAINST — one definition, used by both the
+   * button's enabled state and the handler that saves.
+   *
+   * `ownResume` is the one that matters and the one that was missing: on
+   * /agent, `defaultResume` is hardcoded null, so ownResume is the ONLY source
+   * a subscriber there can have. The gate inside saveMandate omitted it, so the
+   * button was enabled and the save bailed — press Activate, get "save a résumé
+   * first", no row written. Exactly the dead end the note below it claims to
+   * have fixed; the two hand-kept copies drifted apart.
+   *
+   * Order matters: the pinned/default résumé wins over a mandate's stale
+   * snapshot, or re-saving would never pick up a newer CV (audit 2026-07-25).
+   */
+  const resumeForMandate = defaultResume?.trim() || ownResume?.trim() || mandate?.resume_text?.trim() || "";
+
   const saveMandate = useCallback(async (activate: boolean) => {
-    // Current pinned/default resume FIRST — the old order preferred the
-    // mandate's stale snapshot forever, so re-saving never picked up a new
-    // resume (audit 2026-07-25).
-    const resume = defaultResume?.trim() || mandate?.resume_text?.trim() || "";
+    // ONE EXPRESSION, NOT TWO THAT AGREE BY HAND. The gate below used to read
+    // `defaultResume || mandate.resume_text` while the button's `resumeReady`
+    // read `defaultResume || ownResume || mandate.resume_text` — and ownResume
+    // is the ONLY one of the three that is ever set on /agent, where
+    // defaultResume is hardcoded null.
+    //
+    // So on the agent's own page the button was ENABLED and this function
+    // bailed: a subscriber pressed Activate, got "save a résumé first", and no
+    // row was written. That is the identical dead end the comment beside
+    // resumeReady says was fixed in August — fixed there, missed here, because
+    // the fix was "keep the same expression in both places" and two hand-kept
+    // copies drift. Now there is one.
+    const resume = resumeForMandate;
     if (activate && resume.length < 100) {
+      // Reachable only if the button was pressed while genuinely résumé-less;
+      // the control is disabled in that state, so this is a backstop, not the
+      // path a person is expected to hit.
       toast.error(t("agentQueue.needResume", "Save a résumé for matching first (above) — the agent scores every posting against it."));
       return;
     }
@@ -448,7 +476,10 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
     toast.success(activate
       ? t("agentQueue.activated", "Mandate active — your first queue arrives after tonight's run.")
       : t("agentQueue.paused", "Mandate paused — no new picks until you resume."));
-  }, [mandate, defaultResume, userId, email, form, reachPatch, t]);
+    // resumeForMandate, not defaultResume: the callback must re-create when the
+    // résumé it gates on changes, or /agent's async ownResume fetch lands after
+    // this closure was made and the save keeps seeing the empty first render.
+  }, [mandate, resumeForMandate, userId, email, form, reachPatch, t]);
 
   // The morning email is the agent's whole point — it's on by default, but it
   // must be one click to stop, from the same place the mandate lives (not only
@@ -510,9 +541,9 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
   // agent that never runs, with nothing on screen explaining why. Verified live
   // 2026-08-02: agent_mandates was empty after an activate attempt.
   //
-  // Same expression as saveMandate deliberately — a second, drifting copy of
-  // "is the résumé usable" is how the button and the handler start disagreeing.
-  const resumeForMandate = defaultResume?.trim() || ownResume?.trim() || mandate?.resume_text?.trim() || "";
+  // Declared ABOVE saveMandate now, and read by it — see the note there. One
+  // definition, so the button and the handler cannot disagree about whether a
+  // résumé exists.
   const resumeReady = resumeForMandate.length >= 100;
 
   // WHAT THE CV ALREADY SAYS, offered rather than asked for.
