@@ -63,6 +63,24 @@ async function rpcWithin<T>(p: PromiseLike<{ data: T | null }>, ms = 6_000): Pro
   ]);
 }
 
+/**
+ * WHICH BUNDLE ANSWERED — the one thing this endpoint could not say.
+ *
+ * Added 2026-08-07 after a deploy where the frontend half of a commit went
+ * live and this function's half did not. The symptom was a heartbeat still
+ * reporting `healthy` under a stalled stats cache, and distinguishing "the fix
+ * did not deploy" from "the fix has a bug" took six probes and a read of every
+ * assignment to overallStatus — because the response carried nothing that
+ * identified the code behind it.
+ *
+ * Every other function here carries this marker for exactly that reason. The
+ * health endpoint was the one without it, which is the wrong one to omit: it
+ * is the endpoint you consult when you already suspect something is wrong.
+ *
+ * BUMP ON EVERY DEPLOY of this function.
+ */
+const BUILD_VERSION = "2026-08-07.1";
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -1135,6 +1153,9 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         status: overallStatus,
+        // First field after the verdict, deliberately: when this endpoint says
+        // something surprising, "which bundle said it" is the next question.
+        buildVersion: BUILD_VERSION,
         timestamp: new Date().toISOString(),
         responseTimeMs: totalTime,
         checks,

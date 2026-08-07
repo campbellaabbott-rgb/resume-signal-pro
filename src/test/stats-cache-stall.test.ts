@@ -82,3 +82,19 @@ describe("the public page dates its own figures", () => {
     expect(pageCode).toMatch(/: "verified open roles right now"/);
   });
 });
+
+describe("the health endpoint says which bundle answered", () => {
+  // Added after a deploy where the frontend half of a commit went live and this
+  // function's half did not. The heartbeat still reported `healthy` under a
+  // stalled cache, and telling "the fix did not deploy" from "the fix has a
+  // bug" took six probes — because the response identified nothing about the
+  // code behind it. Every other function carries this marker; the one you
+  // consult when you already suspect a problem was the one without it.
+  it("declares a BUILD_VERSION", () => {
+    expect(hb).toMatch(/const BUILD_VERSION = "\d{4}-\d{2}-\d{2}\.\d+"/);
+  });
+
+  it("returns it alongside the verdict", () => {
+    expect(hbCode).toMatch(/status: overallStatus,\s*buildVersion: BUILD_VERSION,/);
+  });
+});
