@@ -242,6 +242,7 @@ export type Database = {
           category: string
           city: string
           consent_to_processing: boolean
+          countries: string | null
           country: string
           cover_note: string | null
           created_at: string
@@ -292,6 +293,7 @@ export type Database = {
           category?: string
           city?: string
           consent_to_processing?: boolean
+          countries?: string | null
           country?: string
           cover_note?: string | null
           created_at?: string
@@ -342,6 +344,7 @@ export type Database = {
           category?: string
           city?: string
           consent_to_processing?: boolean
+          countries?: string | null
           country?: string
           cover_note?: string | null
           created_at?: string
@@ -503,6 +506,7 @@ export type Database = {
         Row: {
           active: boolean
           category: string
+          countries: string | null
           created_at: string
           daily_count: number
           id: number
@@ -521,6 +525,7 @@ export type Database = {
         Insert: {
           active?: boolean
           category?: string
+          countries?: string | null
           created_at?: string
           daily_count?: number
           id?: never
@@ -539,6 +544,7 @@ export type Database = {
         Update: {
           active?: boolean
           category?: string
+          countries?: string | null
           created_at?: string
           daily_count?: number
           id?: never
