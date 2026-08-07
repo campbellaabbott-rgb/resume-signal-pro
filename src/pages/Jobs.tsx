@@ -290,6 +290,13 @@ export default function Jobs() {
   // board. Off by default, and never set on a /jobs/field/:slug lander: a page
   // titled "Engineering jobs" must not list postings whose field is unknown.
   const [inclUncat, setInclUncat] = useState(initial.get("inclUncat") === "1");
+  // ONLY JOBS THE AGENT CAN APPLY TO — the filter form of the Sparkles badge.
+  // 31,552 of 588,607 postings (5.4%, 2026-08-07) across the four drivable
+  // vendors. A FILTER, deliberately not a sort: ranking by sendability is the
+  // .order("category") timeout with a different column. Off by default; the
+  // server derives the vendor list from the same SENDABLE_VENDORS mirror the
+  // badge reads, so the chip and the filter cannot disagree.
+  const [agentOnly, setAgentOnly] = useState(initial.get("agentOnly") === "1");
   // Lander identity tracks the LIVE filter, not the route param. The URL-sync
   // effect rewrites the address with history.replaceState, which React Router
   // does not observe — so useParams keeps returning the lander token forever.
@@ -830,6 +837,7 @@ export default function Jobs() {
       q: q || undefined,
       category: category || undefined,
       includeUncategorised: category && inclUncat ? true : undefined,
+      sendableOnly: agentOnly ? true : undefined,
       experience: experience || undefined,
       location: location || undefined,
       // ONE definition of Remote — see the note at the other call site. Sending
@@ -911,6 +919,7 @@ export default function Jobs() {
       workMode: workMode || undefined,
           category: category || undefined,
           includeUncategorised: category && inclUncat ? true : undefined,
+          sendableOnly: agentOnly ? true : undefined,
           country: country || undefined,
           experience: experience || undefined,
           companies: company ? [company] : undefined,
@@ -959,7 +968,7 @@ export default function Jobs() {
         }
       }
     },
-    [q, location, remoteOnly, workMode, company, category, inclUncat, experience, country, salaryFloor, sortMode, freshness, searchNewestFirst],
+    [q, location, remoteOnly, workMode, company, category, inclUncat, agentOnly, experience, country, salaryFloor, sortMode, freshness, searchNewestFirst],
   );
 
   // Keep the URL shareable — filters in, defaults out. A category lander
@@ -974,6 +983,7 @@ export default function Jobs() {
     if (company) p.set("company", company);
     if (category) p.set("category", category);
     if (category && inclUncat) p.set("inclUncat", "1");
+    if (agentOnly) p.set("agentOnly", "1");
     if (experience) p.set("experience", experience);
     if (country) p.set("country", country);
     if (salaryFloor) p.set("salaryFloor", String(salaryFloor));
@@ -1004,7 +1014,7 @@ export default function Jobs() {
       return;
     }
     window.history.replaceState({}, "", qs ? `/jobs?${qs}` : "/jobs");
-  }, [q, location, remoteOnly, workMode, company, category, inclUncat, experience, country, salaryFloor, freshness, sortMode, landerCategory, landerCompany]);
+  }, [q, location, remoteOnly, workMode, company, category, inclUncat, agentOnly, experience, country, salaryFloor, freshness, sortMode, landerCategory, landerCompany]);
 
   // Category salary benchmarks: median advertised pay floor per field, computed
   // live from postings that state pay (RPC self-gates at n>=30 — a thin sample
@@ -3190,6 +3200,26 @@ export default function Jobs() {
                 chosen, because with "All fields" they are already included.
                 The live count comes from the same facets that fill the select,
                 so the number is measured rather than asserted. */}
+            {/* THE FILTER FORM OF THE SPARKLES BADGE. Same icon, same phrase,
+                same SENDABLE_VENDORS mirror server-side — the chip on a card
+                and this toggle must never disagree about what "agent can
+                apply" means. Always visible (unlike the unsorted opt-in it
+                sits beside, which only means something once a field is
+                chosen), because sendability is a property of the employer's
+                form, not of any other filter. */}
+            <label
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border bg-background text-sm whitespace-nowrap text-muted-foreground cursor-pointer"
+              title={t("jobsPage.agentOnlyTip", "Show only postings whose application form our apply agent can fill and submit for you. The Sparkles badge on a job card means the same thing — this filters the whole board to those.")}
+            >
+              <input
+                type="checkbox"
+                checked={agentOnly}
+                onChange={(e) => setAgentOnly(e.target.checked)}
+                className="accent-[hsl(var(--primary))]"
+              />
+              <Sparkles className="w-3.5 h-3.5" />
+              {t("jobsPage.agentOnly", "Agent can apply")}
+            </label>
             {category && category !== "other" && (
               <label
                 className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border bg-background text-sm whitespace-nowrap ${

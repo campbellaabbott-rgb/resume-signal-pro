@@ -33,6 +33,7 @@
 // because there is only one site.
 import { JOB_CATEGORIES } from "./categories.ts";
 import { isExperienceBand } from "./experience.ts";
+import { SENDABLE_VENDORS } from "../_shared/apply-automation.ts";
 
 export const WORK_MODES = ["remote", "hybrid", "onsite"] as const;
 
@@ -54,6 +55,13 @@ export type AppliedFilters = {
    * whose field is unknown. They never send the flag, so they never widen.
    */
   includeUncategorised: boolean;
+  /**
+   * "Only jobs the agent can apply to." A FILTER, never a sort — the
+   * .order("category") incident is what a ranking version of this becomes.
+   * The vendor list itself lives in _shared/apply-automation.ts
+   * (SENDABLE_VENDORS); this flag only says the caller asked.
+   */
+  sendableOnly: boolean;
   experience: string[];
   salaryFloor: number | null;
   companies: string[];
@@ -110,6 +118,10 @@ export function normalizeFilters(
   const sortingBySalary = String(body.sort ?? "") === "salary";
   const includeUncategorised = wantsUncategorised && !sortingBySalary;
   if (wantsUncategorised && sortingBySalary) ignored.push("includeUncategorised");
+
+  // Literal true only, same contract as includeUncategorised: a truthy string
+  // from a query param must not silently narrow a search to 5.4% of the board.
+  const sendableOnly = body.sendableOnly === true;
 
   const wmRaw = String(body.workMode ?? "").trim().toLowerCase();
   const workMode = (WORK_MODES as readonly string[]).includes(wmRaw) ? wmRaw : null;
@@ -184,6 +196,7 @@ export function normalizeFilters(
       workMode,
       category,
       includeUncategorised,
+      sendableOnly,
       experience,
       salaryFloor,
       companies,
@@ -239,7 +252,22 @@ export function filterViolations(
     if (a.workMode && String(r.workMode ?? "").toLowerCase() !== a.workMode) {
       push("workMode", a.workMode, r.workMode);
     }
-    if (a.category && String(r.category ?? "") !== a.category) push("category", a.category, r.category);
+    // `other` is LEGITIMATE under the opt-in — the two-subset pager returns it
+    // by design. Without this allowance every opted-in page with any `other`
+    // rows logged a false filter-integrity incident, unsampled, and wrote a
+    // permanent red light over a working feature. Found 2026-08-07 while adding
+    // the sendable check below, one day after the opt-in shipped; nothing had
+    // used the opt-in yet, which is the only reason the incident log is clean.
+    if (a.category && String(r.category ?? "") !== a.category) {
+      const allowedOther = a.includeUncategorised && String(r.category ?? "") === "other";
+      if (!allowedOther) push("category", a.category, r.category);
+    }
+    // The agent-ready filter, checked against the same mirror the query used.
+    // `source` is the key rowToJob actually emits — verified, not assumed,
+    // because the `token`/`companyToken` mismatch above shipped exactly that way.
+    if (a.sendableOnly && !SENDABLE_VENDORS.includes(String(r.source ?? ""))) {
+      push("sendableOnly", SENDABLE_VENDORS.join("|"), r.source);
+    }
     if (a.experience.length && !a.experience.includes(String(r.experienceBand ?? ""))) {
       push("experience", a.experience.join("|"), r.experienceBand);
     }
@@ -291,6 +319,25 @@ export function filterViolations(
 export function categoryParam(a: Pick<AppliedFilters, "category" | "includeUncategorised">): string | null {
   if (!a.category) return null;
   return a.includeUncategorised ? `${a.category},other` : a.category;
+}
+
+/**
+ * The agent-ready filter as an RPC body FRAGMENT, spread into the call.
+ *
+ * A fragment rather than a value, because the key must be ABSENT when the
+ * toggle is off — not null. During the deploy window where the new bundle runs
+ * against the old SQL, a call that includes `p_sources` (even null) matches no
+ * function signature and PostgREST 404s the whole search. Omitting the key
+ * keeps every non-toggle query working against either SQL version; only the
+ * toggle itself needs the migration, which is the smallest possible blast
+ * radius. Same trick as the MorningQueuePanel two-select fallback.
+ *
+ * The list is a COPY of SENDABLE_VENDORS ([...spread]) because PostgREST
+ * serialises the body and a readonly array is fine — but the copy makes it a
+ * plain string[], which is what the RPC's text[] expects from supabase-js.
+ */
+export function sendableSourcesParam(a: Pick<AppliedFilters, "sendableOnly">): { p_sources: string[] } | Record<string, never> {
+  return a.sendableOnly ? { p_sources: [...SENDABLE_VENDORS] } : {};
 }
 
 /**

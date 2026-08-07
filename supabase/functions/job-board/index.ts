@@ -52,7 +52,7 @@ import { classifyDormancy, updateBoardFailures, type BoardFailureState } from ".
 import { advanceProgress, isPassDone, type RefreshProgress } from "./rotation.ts";
 import { CANARIES, rawItemCount, aggregateVendorHealth, type CanaryResult } from "./vendor-canary.ts";
 import { detectExperience, isExperienceBand } from "./experience.ts";
-import { categoryParam, filterViolations, isUnfiltered, normalizeFilters, splitPage } from "./filters.ts";
+import { categoryParam, filterViolations, isUnfiltered, normalizeFilters, sendableSourcesParam, splitPage } from "./filters.ts";
 import { expandQuery } from "./search-alias.ts";
 import { classifyQuestion } from "../_shared/application-questions.ts";
 import { parseBreezyQuestions, parsePinpointQuestions, breezyApplyUrl, pinpointApplyUrl } from "../_shared/vendor-questions.ts";
@@ -93,7 +93,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-06.1";
+const BUILD_VERSION = "2026-08-07.1";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -423,7 +423,17 @@ async function fetchBoard(s: JobSource): Promise<{ jobs: JobPosting[]; raw: unkn
     }
     if (s.source === "pinpoint") {
       // Documented public JSON — single unpaginated list.
-      const res = await fetchWithTimeout(`https://${s.token}.pinpointhq.com/postings.json`);
+      //
+      // A DOTTED TOKEN IS A CUSTOM DOMAIN, and custom domains are most of why
+      // Pinpoint — the top-yield drivable vendor at 29.7 postings/board — was
+      // nearly invisible to discovery: careers.riverisland.com CNAMEs to
+      // CloudFront, not to anything pinpoint-named, and its DERIVED tenant
+      // (riverisland.pinpointhq.com) answers 200 with {"data":[]} while the
+      // custom host serves 62 postings. Measured 2026-08-07. So the subdomain
+      // template only fits subdomain tenants; a token containing a dot is used
+      // as the host itself.
+      const pinpointHost = s.token.includes(".") ? s.token : `${s.token}.pinpointhq.com`;
+      const res = await fetchWithTimeout(`https://${pinpointHost}/postings.json`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const body = await res.json();
       const data = Array.isArray((body as { data?: unknown[] }).data) ? (body as { data: unknown[] }).data : [];
@@ -5293,6 +5303,11 @@ async function serveList(
       if (applied.includeUncategorised) q = q.in("category", [applied.category, "other"]);
       else q = q.eq("category", applied.category);
     }
+    // "Only jobs the agent can apply to" — a FILTER on source, composing with
+    // the date-index ORDER BY. Never a sort: ranking by sendability is the
+    // .order("category") timeout with a different column. The list comes from
+    // the same SENDABLE_VENDORS mirror the badges and the worker share.
+    if (applied.sendableOnly) q = q.in("source", [...SENDABLE_VENDORS]);
     // Experience filter: one of entry/mid/senior/expert. "unspecified" rows are
     // never returned by a band filter — we only surface postings we can honestly
     // place. Accepts a comma list or an array so a user can widen; anything that
@@ -5350,6 +5365,9 @@ async function serveList(
         p_remote: applied.remote ? true : null,
         p_country: applied.country,
         p_category: categoryParam(applied),
+        // Spread-omitted when off: including the key (even null) against the
+        // pre-p_sources SQL would 404 the whole RPC during the deploy window.
+        ...sendableSourcesParam(applied),
         p_experience: applied.experience.length ? applied.experience : null,
         p_salary_floor: applied.salaryFloor,
         p_companies: applied.companies.length ? applied.companies : null,
@@ -5393,6 +5411,7 @@ async function serveList(
           p_remote: applied.remote ? true : null,
           p_country: applied.country,
           p_category: categoryParam(applied),
+          ...sendableSourcesParam(applied),
           p_experience: applied.experience.length ? applied.experience : null,
           p_salary_floor: applied.salaryFloor,
           p_companies: applied.companies.length ? applied.companies : null,
@@ -5450,6 +5469,9 @@ async function serveList(
         p_remote: applied.remote ? true : null,
         p_country: applied.country,
         p_category: categoryParam(applied),
+        // Spread-omitted when off: including the key (even null) against the
+        // pre-p_sources SQL would 404 the whole RPC during the deploy window.
+        ...sendableSourcesParam(applied),
         p_experience: applied.experience.length ? applied.experience : null,
         p_salary_floor: applied.salaryFloor,
         p_companies: applied.companies.length ? applied.companies : null,

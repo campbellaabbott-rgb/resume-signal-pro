@@ -104,6 +104,10 @@ describe("isUnfiltered — derived, so a new filter cannot be forgotten", () => 
       // filtered request, or the board could serve the whole-corpus total over
       // a narrowed page again.
       includeUncategorised: true,
+      // Added 2026-08-07: the agent-ready filter. Same catch as above — this
+      // literal fails the typecheck the moment AppliedFilters gains a field,
+      // and the loop below then proves isUnfiltered counts it.
+      sendableOnly: true,
       category: "engineering",
       experience: ["senior"],
       salaryFloor: 100_000,
