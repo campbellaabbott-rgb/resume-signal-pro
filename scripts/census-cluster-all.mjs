@@ -91,15 +91,45 @@ console.log(`${CRAWL}: cluster.idx ${lines.length} entries`);
 // 2. Blocks per SURT prefix (plus the block immediately before each first
 // match — its range can contain early rows of the prefix).
 function blocksFor(prefix) {
+  // CLUSTER.IDX IS SPARSE, AND THAT BROKE THE OLD MATCH.
+  //
+  // Each line marks where a block STARTS, so a prefix only appears as a line
+  // start if the sampling happened to land on it. The previous version looked
+  // for lines starting with the prefix and only added the preceding block once
+  // it had already found one — so a vendor with no sample point of its own
+  // returned ZERO blocks and read as "this vendor has no boards".
+  //
+  // Measured on CC-MAIN-2026-30: `co,lever,jobs)/` matched nothing and lever
+  // was reported as 0 candidates. Its rows sit inside the block beginning
+  // `co,levelupbusiness)/the-team`, with `co,lexir)/…` starting the next one.
+  // Greenhouse only worked because it is big enough to own 4 sample points.
+  // careers.smartrecruiters.com was the same silent zero.
+  //
+  // The correct read is a RANGE: the last block whose key sorts at or before
+  // the prefix can contain its first rows, then take every following block
+  // whose key still begins with the prefix. Costs at most one extra block
+  // fetch when a vendor genuinely has nothing — the extractor filters by host
+  // anyway, so a spurious block yields no tokens.
+  const keyOf = (ln) => ln.split(/\s/)[0];
   const blocks = [];
+  const add = (ln) => {
+    const p = ln.split("\t");
+    if (p.length >= 4) blocks.push({ shard: p[1], off: Number(p[2]), len: Number(p[3]) });
+  };
+
+  let start = -1;
   for (let i = 0; i < lines.length; i++) {
-    if (lines[i].startsWith(prefix)) {
-      const add = (ln) => { const p = ln.split("\t"); if (p.length >= 4) blocks.push({ shard: p[1], off: Number(p[2]), len: Number(p[3]) }); };
-      if (blocks.length === 0 && i > 0) add(lines[i - 1]);
-      add(lines[i]);
-    } else if (blocks.length > 0 && !lines[i].startsWith(prefix)) {
-      break; // cluster.idx is sorted — past the range
-    }
+    if (!lines[i]) continue;
+    if (keyOf(lines[i]) <= prefix) start = i;
+    else break;                       // sorted — everything after is greater
+  }
+  if (start < 0) return blocks;
+
+  add(lines[start]);
+  for (let i = start + 1; i < lines.length; i++) {
+    if (!lines[i]) continue;
+    if (!keyOf(lines[i]).startsWith(prefix)) break;
+    add(lines[i]);
   }
   return blocks;
 }
