@@ -21,6 +21,10 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAgentSender } from "@/hooks/useAgentSender";
 import { EMPTY_PROPOSAL, proposeMandate, toMandateField, type MandateProposal } from "@/lib/mandateProposal";
+// The runner's own country parser, imported rather than reimplemented — the
+// same reason Jobs.tsx imports isSendableVendor out of _shared. Pure TS, no
+// Deno specifiers, so the bundler and vitest both handle it.
+import { parseCountries } from "../../../supabase/functions/_shared/mandate-reach";
 
 const sb = supabase as unknown as {
   from: (t: string) => any;
@@ -34,6 +38,8 @@ interface Mandate {
   apply_mode?: "review" | "auto";
   /** Reach. Absent on rows read before the migration landed; absent means "not set". */
   max_age_days?: number | null; include_uncategorised?: boolean | null;
+  /** Comma-separated ISO-2. Absent/empty = every country, i.e. the old behaviour. */
+  countries?: string | null;
   last_run_summary: { scanned: number; picked: number; skipped_churn: number; skipped_lowfit: number } | null;
 }
 /**
@@ -47,6 +53,7 @@ interface Search {
   q: string; category: string; location: string;
   remote_only: boolean; salary_min: number | null; daily_count: number;
   max_age_days?: number | null; include_uncategorised?: boolean | null;
+  countries?: string | null;
   last_run_summary: { scanned: number; picked: number } | null;
 }
 const MAX_SEARCHES = 10; // mirrors the agent_searches_cap trigger
@@ -90,6 +97,78 @@ function TermChips({ raw, label }: { raw: string; label: string }) {
   );
 }
 
+/** ISO-2 -> the reader's own language, the same call the board's filter uses. */
+function countryLabel(code: string): string {
+  try {
+    return new Intl.DisplayNames(undefined, { type: "region" }).of(code) ?? code;
+  } catch {
+    return code;
+  }
+}
+
+/**
+ * WHICH COUNTRIES THE AGENT MAY APPLY IN.
+ *
+ * PICKED, NEVER TYPED. The stored value is ISO-2 codes, and nobody should have
+ * to know that "anywhere in Germany" is spelled DE. Every option here comes
+ * from the board's own country facet, so a code that reaches the mandate is one
+ * the board actually has postings for — which is what stops the other failure
+ * mode: an unrecognised code becomes a filter matching nothing, and a mandate
+ * that silently matches nothing looks exactly like a quiet job market.
+ *
+ * Toggling rather than a multi-select: a <select multiple> on a phone is close
+ * to unusable, and this list is short because it is the countries this board
+ * actually covers.
+ */
+function CountryPicker({ value, onChange, options }: {
+  value: string;
+  onChange: (next: string) => void;
+  options: Array<{ country: string; n: number }>;
+}) {
+  const { t } = useTranslation();
+  const picked = value.split(",").map((c) => c.trim().toUpperCase()).filter(Boolean);
+  const toggle = (code: string) => {
+    const next = picked.includes(code) ? picked.filter((c) => c !== code) : [...picked, code].slice(0, 12);
+    onChange(next.join(","));
+  };
+  if (!options.length) return null;
+  return (
+    <div>
+      <p className="text-[11px] text-muted-foreground mb-1">
+        {picked.length === 0
+          ? t("agentQueue.countryAny", "Countries — any (the agent applies wherever your roles and places match)")
+          : t("agentQueue.countryPicked", "Countries the agent may apply in")}
+      </p>
+      <div className="flex flex-wrap gap-1">
+        {options.map((o) => {
+          const on = picked.includes(o.country);
+          return (
+            <button
+              key={o.country}
+              type="button"
+              onClick={() => toggle(o.country)}
+              aria-pressed={on}
+              className={`rounded-full border px-2.5 py-1 text-xs transition-colors ${
+                on ? "border-primary bg-primary/10 text-primary font-semibold" : "border-border text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {countryLabel(o.country)}
+              {o.n > 0 ? <span className="opacity-60"> {o.n.toLocaleString()}</span> : null}
+            </button>
+          );
+        })}
+      </div>
+      {/* THE POINT OF THE FIELD, said once. A person who types "Germany" into
+          the place box gets 7,594 of the 11,511 postings the board places in
+          Germany, because a third of them name only the city. */}
+      <p className="mt-1 text-[11px] text-muted-foreground">
+        {t("agentQueue.countryNote",
+          "Reads each posting's country, not its wording — so picking Germany finds roles that only say “Berlin”. Leave all off to search everywhere.")}
+      </p>
+    </div>
+  );
+}
+
 export function MorningQueuePanel({ userId, email, defaultResume }: {
   userId: string; email: string | null; defaultResume: string | null;
 }) {
@@ -110,7 +189,38 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
     // existing mandate has and keeps. `include_uncategorised` off means the
     // category filter behaves exactly as it always did.
     max_age_days: "", include_uncategorised: false,
+    // Comma-separated ISO-2. Empty = no country constraint, which is what every
+    // mandate saved before this field existed keeps doing.
+    countries: "",
   });
+
+  /**
+   * The board's OWN country facet, so the picker can only ever offer a code
+   * the board has postings for. get_country_facet is the same RPC the public
+   * board's country filter reads — one source, so the agent cannot offer a
+   * country the board would return nothing for.
+   */
+  const [countryOptions, setCountryOptions] = useState<Array<{ country: string; n: number }>>([]);
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const { data } = await (sb as unknown as { rpc: (fn: string) => Promise<{ data: unknown }> })
+          .rpc("get_country_facet");
+        if (cancelled || !Array.isArray(data)) return;
+        setCountryOptions(
+          (data as Array<{ country?: string; n?: number }>)
+            .filter((r) => typeof r.country === "string" && r.country.length === 2)
+            .map((r) => ({ country: String(r.country), n: Number(r.n) || 0 }))
+            .slice(0, 16),
+        );
+      } catch {
+        // A missing facet hides the PICKER, not the mandate. Better an absent
+        // control than a list of codes we cannot vouch for.
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   // MANY SEARCHES, ONE PROFILE.
   //
@@ -174,7 +284,8 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
       if (m) {
         setMandate(m as Mandate);
         setForm({ q: m.q, category: m.category, location: m.location, remote_only: m.remote_only, salary_min: m.salary_min?.toString() ?? "", daily_count: m.daily_count,
-          max_age_days: m.max_age_days?.toString() ?? "", include_uncategorised: m.include_uncategorised === true });
+          max_age_days: m.max_age_days?.toString() ?? "", include_uncategorised: m.include_uncategorised === true,
+          countries: m.countries ?? "" });
       } else {
         // SEEDED FROM SAVED JOBS. Account.tsx's "have the agent hunt for jobs
         // like these" link arrives as ?seedTitles=a|b|c — the distinct role
@@ -208,11 +319,19 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
    */
   const reachPatch = useCallback(() => {
     const n = parseInt(form.max_age_days, 10);
+    // Normalised through the RUNNER'S OWN parser, not a second opinion about
+    // what a country code is. What gets stored is then exactly what gets read,
+    // so the chips a person confirms are the countries actually searched.
+    const codes = parseCountries(form.countries);
     return {
       max_age_days: Number.isFinite(n) && n >= 1 ? Math.min(n, 30) : null,
       include_uncategorised: form.include_uncategorised === true,
+      // NULL rather than "" for "everywhere": the column is nullable and the
+      // runner treats absent and empty alike, but a NULL says "not set" where
+      // an empty string reads like a value someone cleared by accident.
+      countries: codes.length ? codes.join(",") : null,
     };
-  }, [form.max_age_days, form.include_uncategorised]);
+  }, [form.max_age_days, form.include_uncategorised, form.countries]);
 
   /** Insert or update one search. The trigger enforces the ceiling; this only reports it. */
   const saveSearch = useCallback(async () => {
@@ -266,11 +385,12 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
       setEditingId(s.id); setLabel(s.label);
       setForm({ q: s.q, category: s.category, location: s.location, remote_only: s.remote_only,
         salary_min: s.salary_min?.toString() ?? "", daily_count: s.daily_count,
-        max_age_days: s.max_age_days?.toString() ?? "", include_uncategorised: s.include_uncategorised === true });
+        max_age_days: s.max_age_days?.toString() ?? "", include_uncategorised: s.include_uncategorised === true,
+        countries: s.countries ?? "" });
     } else {
       setEditingId("new"); setLabel("");
       setForm({ q: "", category: "", location: "", remote_only: false, salary_min: "", daily_count: 5,
-        max_age_days: "", include_uncategorised: false });
+        max_age_days: "", include_uncategorised: false, countries: "" });
     }
     setEditing(true);
   }, []);
@@ -590,6 +710,16 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
             placeholder={t("morningQueue.locPlaceholder", "London, Manchester, Remote")}
             className="rounded-lg border border-border bg-background px-3 py-2 text-sm" />
           <TermChips raw={form.location} label="Locations being searched" />
+          {/* COUNTRY, beneath the place box because it answers the same
+              question at a different altitude: the box above says WHERE in a
+              country, this says WHICH countries. They compose (AND) — "Berlin"
+              plus Germany is still Berlin — and leaving every country off is
+              the pre-existing behaviour exactly. */}
+          <CountryPicker
+            value={form.countries}
+            onChange={(countries) => setForm((f) => ({ ...f, countries }))}
+            options={countryOptions}
+          />
           <input value={form.salary_min} onChange={(e) => setForm((f) => ({ ...f, salary_min: e.target.value.replace(/\D/g, "") }))}
             placeholder={t("agentQueue.fieldSalary", "Salary floor, annual (only stated-pay postings match)")}
             className="rounded-lg border border-border bg-background px-3 py-2 text-sm" />

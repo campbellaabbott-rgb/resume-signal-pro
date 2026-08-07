@@ -25,7 +25,7 @@ import { nextRunStamp } from "../_shared/run-stamp.ts";
 // so every test of it is a regex over its source — able to prove a line exists
 // and never able to prove what it does. These two decide whether a subscriber
 // sees a quarter of the board, which is worth more than a text match.
-import { applyCategory, applyMaxAge } from "../_shared/mandate-reach.ts";
+import { applyCategory, applyCountries, applyMaxAge } from "../_shared/mandate-reach.ts";
 
 // Bumped whenever this function changes shape, so a 403 can say WHICH bundle
 // refused — the difference between "the gate is live" and "the old open build
@@ -45,7 +45,7 @@ import { applyCategory, applyMaxAge } from "../_shared/mandate-reach.ts";
 // and it would have reported the same version string as the bundle without any
 // of that. "Did the reach change deploy?" would then have been unanswerable
 // from outside, which is the whole reason this constant exists.
-const BUILD_VERSION = "2026-08-05.1";
+const BUILD_VERSION = "2026-08-07.1";
 
 const MANDATES_PER_RUN = 200;      // safety cap; batches long before this matters
 const CANDIDATES_PER_MANDATE = 400;
@@ -75,6 +75,12 @@ const MIN_FIT_PCT = 30;            // below this a pick would waste the user's m
 interface Reach {
   max_age_days?: number | null;
   include_uncategorised?: boolean | null;
+  /**
+   * Comma-separated ISO-2 codes. Optional for the same reason as the two
+   * above: this bundle must survive deploying before its migration, and absent
+   * means no country predicate, which is exactly the old behaviour.
+   */
+  countries?: string | null;
 }
 interface MandateRow extends Reach {
   user_id: string; email: string; q: string; category: string; location: string;
@@ -166,7 +172,15 @@ serve(async (req) => {
   const readMandates = async (cols: string) => await client
     .from("agent_mandates").select(cols).eq("active", true).limit(MANDATES_PER_RUN);
 
-  let mRes = await readMandates(`${MANDATE_COLS}, max_age_days, include_uncategorised`);
+  // THREE RUNGS, NEWEST FIRST. `countries` ships after the reach columns, so a
+  // single widened select would drop BOTH features back to the legacy row the
+  // moment the newest column is missing — and the reach fields have been live
+  // and applying since 2026-08-05. Each rung gives up only what that rung adds.
+  let mRes = await readMandates(`${MANDATE_COLS}, max_age_days, include_uncategorised, countries`);
+  if (mRes.error) {
+    console.warn(`[AGENT-RUNNER] countries column unavailable, keeping reach columns: ${mRes.error.message?.slice(0, 120)}`);
+    mRes = await readMandates(`${MANDATE_COLS}, max_age_days, include_uncategorised`);
+  }
   if (mRes.error) {
     console.warn(`[AGENT-RUNNER] reach columns unavailable, running without them: ${mRes.error.message?.slice(0, 120)}`);
     mRes = await readMandates(MANDATE_COLS);
@@ -244,7 +258,8 @@ serve(async (req) => {
     const readSearches = async (cols: string) => await client
       .from("agent_searches").select(cols).eq("active", true).in("user_id", userIds);
 
-    let sRes = await readSearches(`${SEARCH_COLS}, max_age_days, include_uncategorised`);
+    let sRes = await readSearches(`${SEARCH_COLS}, max_age_days, include_uncategorised, countries`);
+    if (sRes.error) sRes = await readSearches(`${SEARCH_COLS}, max_age_days, include_uncategorised`);
     if (sRes.error) sRes = await readSearches(SEARCH_COLS);
     if (sRes.error) {
       console.warn(`[AGENT-RUNNER] agent_searches unavailable, using mandate criteria: ${sRes.error.message?.slice(0, 120)}`);
@@ -359,6 +374,11 @@ serve(async (req) => {
     const qTerms = splitTerms(m.q);
     if (locTerms.length) qb = qb.or(orIlike("location", locTerms));
     if (qTerms.length) qb = qb.or(orIlike("title", qTerms));
+    // COUNTRY, on the normalised column rather than the location text. Measured
+    // 2026-08-07: `location ~ 'Germany'` finds 7,594 of the 11,511 postings the
+    // board places in DE, because a third of them name only the city. Composes
+    // with the location terms above (AND) so "Berlin" inside DE still narrows.
+    qb = applyCountries(qb, m);
     if (m.salary_min != null) qb = qb.gte("salary_min_annual", m.salary_min);
     // STATED AGE, not discovery age. `first_seen > sinceIso` above means new to
     // THE BOARD; a feed can surface a role posted five months ago and it would
@@ -402,6 +422,9 @@ serve(async (req) => {
       const qTerms2 = splitTerms(m.q);
       if (locTerms2.length) sb2 = sb2.or(orIlike("location", locTerms2));
       if (qTerms2.length) sb2 = sb2.or(orIlike("title", qTerms2));
+      // THE SECOND SITE. Applying a filter at one of these and not the other is
+      // the partial rollout this file's tests count call sites to prevent.
+      sb2 = applyCountries(sb2, m);
       if (m.salary_min != null) sb2 = sb2.gte("salary_min_annual", m.salary_min);
       sb2 = applyMaxAge(sb2, m);
       const { data: sendableCands } = await sb2;

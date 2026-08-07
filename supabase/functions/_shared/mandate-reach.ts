@@ -87,3 +87,54 @@ export function applyMaxAge<T extends Filterable>(
   if (days === null) return qb;
   return qb.gte("posted_at", new Date(now - days * 86_400_000).toISOString());
 }
+
+/**
+ * WHICH COUNTRIES THE AGENT MAY APPLY IN — and why `location` could not say it.
+ *
+ * A mandate matched place by substring on the posting's own location TEXT.
+ * Measured against production 2026-08-07:
+ *
+ *     country = DE          11,511 postings   what the board can express
+ *     location ~ "Germany"   7,594            what a mandate could express
+ *     location ~ "Berlin"    2,604
+ *
+ *     country = GB          21,126
+ *     location ~ "London"   10,195
+ *
+ * So a person who wants "anywhere in Germany" had no way to say it: a third of
+ * German postings never spell the country in their location line — they say
+ * "Berlin" or "Munich, Bavaria" — and naming cities means naming every city or
+ * losing the rest. The board has had a normalised `country` column all along
+ * and the mandate simply had no field for it. This is that field.
+ *
+ * ISO-3166-1 alpha-2, VALIDATED, because an unrecognised code must not become a
+ * filter. `country.in.(GERMANY)` matches no row, and a mandate that silently
+ * matches nothing is indistinguishable from a quiet job market — the exact
+ * shape of failure this project keeps writing post-mortems about. Anything that
+ * is not two letters is dropped here, and the UI only ever emits codes the
+ * board's own facet returned.
+ *
+ * Absent, null or empty means NO country predicate — every posting stays in
+ * scope, which is precisely today's behaviour. That is what lets the runner
+ * ship before the migration lands.
+ */
+export function parseCountries(raw: string | null | undefined): string[] {
+  return String(raw ?? "")
+    .split(",")
+    .map((c) => c.trim().toUpperCase())
+    .filter((c) => /^[A-Z]{2}$/.test(c))
+    // Deduped: `in.(DE,DE)` is harmless but a repeated code in the UI's chips
+    // reads as a bug in the thing the person just typed.
+    .filter((c, i, all) => all.indexOf(c) === i)
+    // Same bound as splitTerms uses for titles and places. Nobody job-hunts in
+    // 30 countries, and the URL PostgREST builds has a length limit.
+    .slice(0, 12);
+}
+
+export function applyCountries<T extends Filterable>(
+  qb: T,
+  m: { countries?: string | null },
+): T {
+  const codes = parseCountries(m.countries);
+  return codes.length ? qb.in("country", codes) : qb;
+}
