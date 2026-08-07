@@ -601,9 +601,16 @@ describe("Ghost Job Index age stats use the company's date, not our discovery ti
     // as median(now() - first_seen) over EVERY row. Measured on 4,179 rows
     // carrying both fields the bases differ by 17.6 days at the median, and the
     // published number was the flattering one.
-    const body = sql.slice(sql.indexOf("median_days_open"));
-    expect(body).not.toMatch(/COALESCE\(posted_at, first_seen\)/);
-    expect(sql).toMatch(/ORDER BY GREATEST\(EXTRACT\(EPOCH FROM \(now\(\) - posted_at\)\)/);
+    // Asserted as a PROPERTY, not as one spelling of it. This used to pin the
+    // exact percentile_cont expression, which failed when the median was
+    // rewritten to an index-ordered offset over the same column — correct code,
+    // rejected for its shape. The rule that matters is narrower and stronger:
+    // our discovery timestamp must not appear in this function at all, however
+    // the median is computed.
+    const fnBody = sql.slice(sql.indexOf("FUNCTION public.get_ghost_job_index_stats"));
+    const bodyOnly = fnBody.slice(0, fnBody.indexOf("$$;")).replace(/--[^\n]*/g, "");
+    expect(bodyOnly, "first_seen is our discovery time, never a posting age").not.toMatch(/first_seen/);
+    expect(bodyOnly, "the age median must be measured from posted_at").toMatch(/now\(\) - p?\.?posted_at/);
   });
 
   it("time-to-close does not substitute first_seen either", () => {
