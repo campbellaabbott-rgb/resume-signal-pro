@@ -1,6 +1,7 @@
 // deploy-stamp: 2026-07-04T18:44Z
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { assertPaidSession } from "../_shared/paid-session.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -360,7 +361,25 @@ serve(async (req) => {
     // generate-apply-package and generate-cover-letter. Translating it into
     // the UI's language regardless of the candidate's actual job-search
     // language could quietly damage their real resume.
-    const { resumeText, jobDescription, jobTitle, jobCompany } = await req.json();
+    const { resumeText, jobDescription, jobTitle, jobCompany, sessionId } = await req.json();
+
+    // PAID CONTENT. verify_jwt=false, so without this anyone could POST
+    // resumeText and receive the full package free, on our AI spend. The
+    // -stream twin has had this gate since July; this primary — the one the
+    // webhook and the success page actually call — never got it.
+    //
+    // Safe to gate UNCONDITIONALLY because every caller is post-purchase
+    // (stripe-webhook, verify-product-purchase, retry-failed-deliveries,
+    // ProductSuccess). That is NOT true of generate-cover-letter or
+    // generate-tailored-resume, which the public job board calls for free with
+    // an identical body shape — gating those would break the board.
+    const paidError = await assertPaidSession(supabase, sessionId);
+    if (paidError) {
+      return new Response(
+        JSON.stringify({ error: paidError, retryable: true }),
+        { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     if (!resumeText) {
       return new Response(

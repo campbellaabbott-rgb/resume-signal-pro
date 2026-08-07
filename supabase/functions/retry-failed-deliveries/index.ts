@@ -187,7 +187,12 @@ serve(async (req) => {
               jobDescription: job_description_text || '',
               jobTitle,
               jobCompany,
-              language
+              language,
+              // Proof of purchase for the paid-only generators' own gate
+              // (assertPaidSession). A RETRY is exactly where omitting this
+              // would hurt most: the delivery already failed once, and a 402
+              // here would turn a recoverable failure into a permanent one.
+              sessionId: delivery.stripe_session_id
             };
 
             if (delivery.product_type === 'basic_keyword_fix') {

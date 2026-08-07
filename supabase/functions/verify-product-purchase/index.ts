@@ -31,12 +31,15 @@ function buildGenerationRequest(
       return { endpoint: 'generate-keyword-fix', body: { resumeText, jobDescription: jobDescriptionText, jobTitle, jobCompany, language } };
     case 'cover_letter':
       return { endpoint: 'generate-cover-letter', body: { resumeText, jobDescription: jobDescriptionText, jobTitle: jobTitle || 'Professional Position', jobCompany, tone: 'professional', language } };
+    // These three now gate on assertPaidSession (they are paid-only endpoints —
+    // unlike cover_letter, whose generator the public board also calls free).
+    // The sessionId is their proof of purchase; omit it and a real buyer 402s.
     case 'premium_package':
-      return { endpoint: 'generate-premium-package', body: { resumeText, jobDescription: jobDescriptionText, jobTitle: jobTitle || 'Target Position', jobCompany, language } };
+      return { endpoint: 'generate-premium-package', body: { sessionId, resumeText, jobDescription: jobDescriptionText, jobTitle: jobTitle || 'Target Position', jobCompany, language } };
     case 'graduate_gameplan':
-      return { endpoint: 'generate-graduate-gameplan', body: { resumeText, jobDescription: jobDescriptionText, jobTitle, jobCompany, language } };
+      return { endpoint: 'generate-graduate-gameplan', body: { sessionId, resumeText, jobDescription: jobDescriptionText, jobTitle, jobCompany, language } };
     case 'career_snapshot':
-      return { endpoint: 'generate-career-snapshot', body: { resumeText, jobDescription: jobDescriptionText, jobTitle, jobCompany, language } };
+      return { endpoint: 'generate-career-snapshot', body: { sessionId, resumeText, jobDescription: jobDescriptionText, jobTitle, jobCompany, language } };
     case 'ats_defense':
       // generate-ats-defense independently re-verifies payment via a real
       // Stripe checkout session lookup, so it requires sessionId in the

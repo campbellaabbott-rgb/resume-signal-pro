@@ -264,7 +264,17 @@ async function triggerProductDelivery(
         jobDescription: job_description_text || '',
         jobTitle,
         jobCompany,
-        language
+        language,
+        // PROOF OF PURCHASE FOR THE GENERATOR'S OWN GATE. The paid-only
+        // generators now call assertPaidSession, which looks this session up in
+        // used_stripe_sessions — and the marker is written at the TOP of this
+        // function, so by now it exists and the gate passes.
+        //
+        // Previously only the ats_defense case passed this, and that case
+        // carries a comment explaining that WITHOUT it the call always fails and
+        // silently falls through to manual recovery. Passing it for everyone
+        // means the next gated generator cannot repeat that bug.
+        sessionId
       };
 
       switch (productType) {

@@ -278,11 +278,15 @@ export default function ProductSuccess() {
 
     try {
       let endpoint = '';
-      let body: Record<string, unknown> = { resumeText };
+      // sessionId is set for EVERY product, not per-branch. The paid-only
+      // generators verify it via assertPaidSession, and setting it in one place
+      // means a newly-gated endpoint cannot be forgotten in its own branch —
+      // which is precisely how the non-stream generators went ungated while
+      // their streaming twins were fixed. Harmless where it is not read.
+      let body: Record<string, unknown> = { resumeText, sessionId };
 
       if (productKey === 'basicKeywordFix') {
         endpoint = 'generate-keyword-fix';
-        body.sessionId = sessionId; // proves the purchase to the now-gated endpoint
         if (jobDescription) body.jobDescription = jobDescription;
       } else if (productKey === 'coverLetter') {
         endpoint = 'generate-cover-letter';
@@ -752,6 +756,7 @@ export default function ProductSuccess() {
           if (sessionData.resumeText) {
             const { data: snapshotData, error: snapshotError } = await supabase.functions.invoke('generate-career-snapshot', {
               body: {
+                sessionId, // proves the purchase to the now-gated endpoint
                 resumeText: sessionData.resumeText,
                 jobDescription: sessionData.jobDescriptionText || undefined,
                 language: (() => { try { return localStorage.getItem('i18nextLng') || 'en'; } catch { return 'en'; } })()
@@ -836,6 +841,7 @@ export default function ProductSuccess() {
           if (sessionData.resumeText) {
             const { data: gameplanData, error: gameplanError } = await supabase.functions.invoke('generate-graduate-gameplan', {
               body: {
+                sessionId, // proves the purchase to the now-gated endpoint
                 resumeText: sessionData.resumeText,
                 jobDescription: sessionData.jobDescriptionText || undefined,
                 language: (() => { try { return localStorage.getItem('i18nextLng') || 'en'; } catch { return 'en'; } })()

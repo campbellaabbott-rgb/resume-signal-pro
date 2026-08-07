@@ -1,6 +1,7 @@
 // deploy-stamp: 2026-07-04T18:44Z
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { assertPaidSession } from "../_shared/paid-session.ts";
 import { checkAiGatewayResponse } from "../_shared/ai-gateway-response.ts";
 import { callAIWithModelFallback, chainFrom } from "../_shared/ai-fallback.ts";
 import { buildLanguageInstruction } from "../_shared/language-instruction.ts";
@@ -25,7 +26,17 @@ serve(async (req) => {
   if (!allowed) return new Response(JSON.stringify({ error: "Rate limit exceeded." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
   try {
-    const { resumeText, jobDescription, jobTitle, jobCompany, language } = await req.json();
+    const { resumeText, jobDescription, jobTitle, jobCompany, language, sessionId } = await req.json();
+
+    // PAID CONTENT — see paid-session.ts. Gated before input validation so an
+    // unpaid caller cannot probe the endpoint's behaviour or spend a token.
+    const paidError = await assertPaidSession(supabase, sessionId);
+    if (paidError) {
+      return new Response(
+        JSON.stringify({ error: paidError, retryable: true }),
+        { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     if (!resumeText) {
       return new Response(

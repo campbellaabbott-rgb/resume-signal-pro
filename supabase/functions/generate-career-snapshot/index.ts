@@ -1,6 +1,7 @@
 // deploy-stamp: 2026-07-04T18:44Z
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { assertPaidSession } from "../_shared/paid-session.ts";
 import { checkAiGatewayResponse } from "../_shared/ai-gateway-response.ts";
 import { callAIWithModelFallback, chainFrom } from "../_shared/ai-fallback.ts";
 import { buildLanguageInstruction } from "../_shared/language-instruction.ts";
@@ -25,7 +26,20 @@ serve(async (req) => {
   if (!allowed) return new Response(JSON.stringify({ error: "Rate limit exceeded." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
   try {
-    const { resumeText, jobDescription, jobTitle, jobCompany, language } = await req.json();
+    const { resumeText, jobDescription, jobTitle, jobCompany, language, sessionId } = await req.json();
+
+    // PAID CONTENT. This endpoint is verify_jwt=false, so before this gate
+    // existed anyone could POST resumeText and receive the product for free, on
+    // our AI spend. The streaming twins were gated in July; the NON-STREAM
+    // primaries — which is what the webhook and the success page actually call —
+    // were missed, so the fix landed on the fallback and not the main path.
+    const paidError = await assertPaidSession(supabase, sessionId);
+    if (paidError) {
+      return new Response(
+        JSON.stringify({ error: paidError, retryable: true }),
+        { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     if (!resumeText) {
       return new Response(
