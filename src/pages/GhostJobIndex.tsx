@@ -77,6 +77,12 @@ interface FreshnessStats {
 
 export default function GhostJobIndex() {
   const [stats, setStats] = useState<Stats | null>(null);
+  /** When the cached figures were computed. Null when they were read live. */
+  const [statsComputedAt, setStatsComputedAt] = useState<string | null>(null);
+  /** Hours since those figures were computed; null when they are live. */
+  const statsStaleHours = statsComputedAt
+    ? (Date.now() - new Date(statsComputedAt).getTime()) / 3_600_000
+    : null;
   const [leaders, setLeaders] = useState<Leader[]>([]);
   const [benchmarks, setBenchmarks] = useState<Array<{ company: string; closures: number; median_days_open: number; window_days: number; observed_days?: number }>>([]);
   const [audit, setAudit] = useState<AuditResult | null>(null);
@@ -118,6 +124,21 @@ export default function GhostJobIndex() {
           // migration lands, and the section simply doesn't render.
           Promise.resolve(rpc("get_employer_benchmarks", { p_days: 90, p_min_closures: 25, p_limit: 20 })).catch(() => ({ data: null })),
         ]);
+        // WHEN THESE NUMBERS WERE COMPUTED, carried alongside them.
+        //
+        // The cache is the fast path and is normally an hour old, which nobody
+        // needs told. It is not always an hour old: on 2026-08-07 it was 4.3
+        // days stale, because get_ghost_job_index_stats() had started timing
+        // out (57014 at 60s) as the corpus passed 590k postings, and the hourly
+        // refresh had been failing silently since 2026-08-03. The page went on
+        // publishing 562,873 open jobs against a real 590,870 — understating
+        // its own board by 28,000 — with nothing on screen dating the claim.
+        //
+        // A stale statistic that names its date is honest. The same number
+        // presented as current is not, and this page's entire subject is
+        // whether job numbers can be trusted.
+        const cachedAt = typeof cache?.computed_at === "string" ? cache.computed_at : null;
+        setStatsComputedAt(cache?.ghost_stats ? cachedAt : null);
         let srow = Array.isArray(s.data) ? (s.data[0] as Stats) : null;
         // The stats RPC can time out on a cold cache and succeed warm — one
         // spaced retry turns a half-blank page into a reliably full one.
@@ -183,7 +204,18 @@ export default function GhostJobIndex() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
           <div className="rounded-xl border border-border bg-card p-4">
             <div className="text-2xl font-bold text-foreground">{fmt(stats?.total_open)}</div>
-            <div className="text-[11px] text-muted-foreground mt-0.5">verified open roles right now</div>
+            {/* "right now" WAS A CLAIM, and for four days it was a false one.
+                These figures come from an hourly cache; when that cache is
+                current the wording is true and saying so costs nothing. When
+                the refresh has stalled — 4.3 days on 2026-08-07, while this
+                tile still said "right now" — the caption has to date itself.
+                A page arguing that job numbers cannot be trusted cannot be
+                sloppy about its own. */}
+            <div className="text-[11px] text-muted-foreground mt-0.5">
+              {statsStaleHours !== null && statsStaleHours >= 3
+                ? `verified open roles, as of ${new Date(statsComputedAt as string).toLocaleDateString()}`
+                : "verified open roles right now"}
+            </div>
           </div>
           <div className="rounded-xl border border-border bg-card p-4">
             <div className="text-2xl font-bold text-foreground">{fmt(stats?.total_companies)}</div>

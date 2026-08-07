@@ -504,6 +504,31 @@ serve(async (req) => {
         ? 'stats_cache row missing — refresh_stats_cache() has never run'
         : `stats_cache is ${scAgeMin} min old (hourly cron; 180 min bound) — the refresh-stats-cache job looks stalled`;
 
+      // A SKIP THAT NEVER ENDS IS NOT A HICCUP.
+      //
+      // Skips deliberately do not fail the run — see the note beside `skip`:
+      // an hourly job missing a tick or two is normal and crying wolf is worse
+      // than silence. That reasoning holds for a transient stall and breaks
+      // completely for a permanent one.
+      //
+      // MEASURED 2026-08-07: stats_cache was 6,163 minutes old — 4.3 days, 34x
+      // the bound — because get_ghost_job_index_stats() had begun timing out
+      // (57014 at 60s, reproduced live) as the corpus grew past 590k postings.
+      // Two checks had therefore been blind for four days while this endpoint
+      // reported `healthy`, and the skip reason said "looks stalled" the whole
+      // time. Nobody was lied to by a wrong number; they were lied to by a
+      // green light over an instrument that had stopped reading.
+      //
+      // 12 hours = four consecutive missed refreshes. Below that, still just a
+      // hiccup and still silent; past it, the dependency is broken and the
+      // overall status has to say so.
+      const SC_STALL_DEGRADE_MIN = 720;
+      if (scAgeMin === null || scAgeMin > SC_STALL_DEGRADE_MIN) {
+        if (overallStatus === 'healthy') overallStatus = 'degraded';
+        errorMessage = errorMessage
+          ?? `${scWhy} — two board checks have been unevaluated for ${scAgeMin === null ? 'as long as this row has been missing' : `${Math.round(scAgeMin / 60)}h`}`;
+      }
+
       try {
         const g = (statsCache?.ghost_stats ?? null) as
           { median_days_open?: number; posted_coverage_pct?: number } | null;
