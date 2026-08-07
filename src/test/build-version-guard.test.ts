@@ -32,15 +32,17 @@ const ROOT = resolve(__dirname, "../../supabase/functions/job-board");
 
 /** Updated together with BUILD_VERSION, never on its own. */
 const PINNED = {
-  // 2026-08-07.3: +324 DRIVABLE boards from the CC-MAIN-2026-30 census
-  // (breezy 175, personio 119, pinpoint 16, teamtailor 14) — 5,361 postings
-  // the apply agent can submit to. Earlier the same day: +134 from the
-  // Umbrella .com census and +19 from the European sweep.
-  sourcesHash: "d2d76e485bd4e5e2",
+  // 2026-08-07.4: +1,065 inventory boards from the same census (workable 297,
+  // bamboohr 255, ashby 156, greenhouse 141, rippling 138, recruitee 62,
+  // smartrecruiters 18) — 20,380 postings, listing depth not agent reach.
+  // Domino's (24,571p) held back deliberately: one brand at ~4% of the board
+  // is a product call, not a merge-protocol one. Earlier the same day: +324
+  // drivable, +134 Umbrella .com, +19 European.
+  sourcesHash: "6c8c32211263856a",
   // 2026-08-03.4: _shared/application-questions.ts gained the `consent` class,
   // and job-board imports classifyQuestion — so the deployed bundle changed
   // even though sources.ts did not. sourcesHash is therefore unchanged.
-  buildVersion: "2026-08-07.3",
+  buildVersion: "2026-08-07.4",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {
