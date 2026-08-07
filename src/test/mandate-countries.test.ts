@@ -169,7 +169,10 @@ describe("the picker cannot offer a country the board lacks", () => {
 
   it("stores through the runner's parser, so saved equals searched", () => {
     expect(panel).toMatch(/import \{ parseCountries \}/);
-    expect(panel).toMatch(/const codes = parseCountries\(form\.countries\)/);
+    // Reads reachPatch's merged source, not `form` directly: the one-press
+    // start passes proposed values in explicitly, and a patch that read `form`
+    // would save the pre-proposal state while the screen showed the proposal.
+    expect(panel).toMatch(/const codes = parseCountries\(f\.countries\)/);
   });
 
   it("writes NULL for 'everywhere', not an empty string", () => {

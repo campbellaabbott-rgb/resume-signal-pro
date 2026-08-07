@@ -16,7 +16,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Sunrise, Play, Pause, X, Check, ArrowRight, Sparkles, Plus } from "lucide-react";
+import { Sunrise, Play, Pause, X, Check, ArrowRight, Sparkles, Plus, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAgentSender } from "@/hooks/useAgentSender";
@@ -317,21 +317,24 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
    * row that lies about itself, and this is the only one of the three the
    * person can see before it is saved.
    */
-  const reachPatch = useCallback(() => {
-    const n = parseInt(form.max_age_days, 10);
+  const reachPatch = useCallback((src?: typeof form) => {
+    const f = src ?? form;
+    const n = parseInt(f.max_age_days, 10);
     // Normalised through the RUNNER'S OWN parser, not a second opinion about
     // what a country code is. What gets stored is then exactly what gets read,
     // so the chips a person confirms are the countries actually searched.
-    const codes = parseCountries(form.countries);
+    const codes = parseCountries(f.countries);
     return {
       max_age_days: Number.isFinite(n) && n >= 1 ? Math.min(n, 30) : null,
-      include_uncategorised: form.include_uncategorised === true,
+      include_uncategorised: f.include_uncategorised === true,
       // NULL rather than "" for "everywhere": the column is nullable and the
       // runner treats absent and empty alike, but a NULL says "not set" where
       // an empty string reads like a value someone cleared by accident.
       countries: codes.length ? codes.join(",") : null,
     };
-  }, [form.max_age_days, form.include_uncategorised, form.countries]);
+    // Whole `form`, because every field can now arrive via `src` instead — a
+    // narrower list would go stale the moment another field joins the patch.
+  }, [form]);
 
   /** Insert or update one search. The trigger enforces the ceiling; this only reports it. */
   const saveSearch = useCallback(async () => {
@@ -432,7 +435,17 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
    */
   const resumeForMandate = defaultResume?.trim() || ownResume?.trim() || mandate?.resume_text?.trim() || "";
 
-  const saveMandate = useCallback(async (activate: boolean) => {
+  /**
+   * `override` exists for the one-press start, and for a specific reason.
+   *
+   * setForm is asynchronous. "Fill the form from the CV, then activate" reads
+   * the form from THIS render's closure — the empty one — and would save a
+   * blank mandate while the screen showed the proposed roles. The values that
+   * are about to be displayed are passed in explicitly instead, so what is
+   * saved is what the person just agreed to.
+   */
+  const saveMandate = useCallback(async (activate: boolean, override?: Partial<typeof form>) => {
+    const f = { ...form, ...(override ?? {}) };
     // ONE EXPRESSION, NOT TWO THAT AGREE BY HAND. The gate below used to read
     // `defaultResume || mandate.resume_text` while the button's `resumeReady`
     // read `defaultResume || ownResume || mandate.resume_text` — and ownResume
@@ -458,13 +471,13 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
       user_id: userId,
       email: (email ?? "").toLowerCase(),
       active: activate,
-      q: form.q.trim(),
-      category: form.category,
-      location: form.location.trim(),
-      remote_only: form.remote_only,
-      salary_min: form.salary_min ? parseInt(form.salary_min, 10) || null : null,
-      daily_count: Math.max(1, Math.min(10, form.daily_count)),
-      ...reachPatch(),
+      q: f.q.trim(),
+      category: f.category,
+      location: f.location.trim(),
+      remote_only: f.remote_only,
+      salary_min: f.salary_min ? parseInt(f.salary_min, 10) || null : null,
+      daily_count: Math.max(1, Math.min(10, f.daily_count)),
+      ...reachPatch(f),
       resume_text: resume,
       updated_at: new Date().toISOString(),
     };
@@ -546,6 +559,39 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
   // résumé exists.
   const resumeReady = resumeForMandate.length >= 100;
 
+  /**
+   * Any optional filter that is actually doing something, named in plain words.
+   *
+   * The contract this pays for: collapsing the optional fields must never hide
+   * a filter that is narrowing somebody's results. A thin morning queue with an
+   * unexplained cause is the exact failure the `other`-bucket incident produced
+   * — 27.6% of the board removed by a control the person had forgotten about.
+   * Opened OR closed, an active filter says so.
+   */
+  const advancedSummary = ((): string[] => {
+    const out: string[] = [];
+    if (form.category) out.push(t(`jobsPage.categories.${form.category}`, form.category));
+    if (form.salary_min) out.push(t("agentQueue.sumSalary", "{{n}}+", { n: Number(form.salary_min).toLocaleString() }));
+    if (form.remote_only) out.push(t("agentQueue.sumRemote", "remote only"));
+    if (form.max_age_days) out.push(t("agentQueue.sumAge", "posted within {{n}}d", { n: form.max_age_days }));
+    if (form.include_uncategorised) out.push(t("agentQueue.sumUncat", "+ uncategorised"));
+    if (form.daily_count !== 5) out.push(t("agentQueue.sumDaily", "{{n}}/morning", { n: form.daily_count }));
+    return out;
+  })();
+
+  /**
+   * Opened automatically when an existing mandate already uses one of them.
+   * Somebody returning to a mandate they tuned should find their settings where
+   * they left them, not behind a control they have to discover.
+   */
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  useEffect(() => {
+    if (advancedSummary.length > 0) setShowAdvanced(true);
+    // Mount-time only: this must not re-open the panel every time somebody
+    // edits a value inside it, and must not fight a deliberate collapse.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mandate?.user_id]);
+
   // WHAT THE CV ALREADY SAYS, offered rather than asked for.
   //
   // Recomputed from the résumé, not stored: a proposal is worth exactly as much
@@ -589,6 +635,35 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
     if (!label.trim() && proposal.titles[0]) {
       setLabel([proposal.titles[0].value, proposal.locations[0]?.value].filter(Boolean).join(", ").slice(0, 60));
     }
+  };
+
+  /**
+   * THE WHOLE SIGN-UP, IN ONE PRESS.
+   *
+   * A new subscriber's only genuine input is their CV — roles, places and field
+   * are all readable from it, and every remaining control has a working
+   * default. Making them confirm ten fields before anything happens charges
+   * nine decisions for nothing at the exact moment somebody is deciding whether
+   * this product works at all.
+   *
+   * The values are computed ONCE and passed to both setForm and saveMandate.
+   * setForm is asynchronous: "fill the form, then activate" would read the
+   * empty closure and save a blank mandate while the screen showed the proposed
+   * roles — active, searching for nothing, and looking correct.
+   *
+   * Still not silent. It fills what the CV says, activates, and the very next
+   * thing on screen is the editable form holding exactly those values, so the
+   * first thing a person can do is disagree with it.
+   */
+  const startFromCv = async () => {
+    const next = {
+      ...form,
+      q: form.q.trim() || toMandateField(proposal.titles.map((p) => p.value)),
+      location: form.location.trim() || toMandateField(proposal.locations.map((p) => p.value)),
+      category: form.category || proposal.category?.slug || "",
+    };
+    setForm(next);
+    await saveMandate(true, next);
   };
 
   return (
@@ -725,18 +800,30 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
                 {t("agentQueue.fromCvNote",
                   "Suggestions only — nothing runs until you activate. We drop the seniority word (“Senior”) on purpose: postings title the same job a dozen ways, and the shorter term finds all of them.")}
               </p>
+
+              {/* THE ONE-PRESS PATH, offered only when there is nothing to
+                  overwrite and no mandate yet — i.e. exactly the new
+                  subscriber this exists for. It fills from the CV and
+                  activates in a single action; the editable form is directly
+                  below it holding those same values, so disagreeing is the
+                  next thing available rather than a thing to go and find. */}
+              {formIsBlank && !mandate && (
+                <button
+                  type="button"
+                  onClick={() => void startFromCv()}
+                  disabled={busy || agentActive !== true || !resumeReady}
+                  className="mt-2.5 inline-flex items-center gap-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold px-4 py-2 hover:bg-primary/90 disabled:opacity-50"
+                >
+                  <Play className="w-3.5 h-3.5" />
+                  {t("agentQueue.startFromCv", "Start the agent with these")}
+                </button>
+              )}
             </div>
           )}
           <input value={form.q} onChange={(e) => setForm((f) => ({ ...f, q: e.target.value }))}
             placeholder={t("morningQueue.qPlaceholder", "Product Manager, Programme Manager")}
             className="rounded-lg border border-border bg-background px-3 py-2 text-sm" />
           <TermChips raw={form.q} label="Roles being searched" />
-          <select value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
-            className="rounded-lg border border-border bg-background px-3 py-2 text-sm">
-            {CATEGORIES.map((c) => (
-              <option key={c} value={c}>{c === "" ? t("agentQueue.anyField", "Any field") : t(`jobsPage.categories.${c}`, c)}</option>
-            ))}
-          </select>
           <input value={form.location} onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))}
             placeholder={t("morningQueue.locPlaceholder", "London, Manchester, Remote")}
             className="rounded-lg border border-border bg-background px-3 py-2 text-sm" />
@@ -751,6 +838,45 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
             onChange={(countries) => setForm((f) => ({ ...f, countries }))}
             options={countryOptions}
           />
+          {/* EVERYTHING BELOW IS OPTIONAL, AND SAYING SO IS THE POINT.
+              Ten fields greeted a new subscriber, of which three decide what
+              the agent looks for. The other seven all have a working default —
+              any field, any salary, any age, any work mode, five picks — so
+              they were seven decisions charged for nothing at the exact moment
+              somebody is deciding whether this product works at all.
+
+              COLLAPSED, NEVER HIDDEN. The summary line below names any of them
+              that is actually set, because a filter you cannot see is the
+              silent-filter failure this codebase has a whole contract against —
+              a person must never wonder why their queue is thin and have no way
+              to find the salary floor they set last week. */}
+          <div className="sm:col-span-2 mt-1">
+            <button
+              type="button"
+              onClick={() => setShowAdvanced((v) => !v)}
+              aria-expanded={showAdvanced}
+              className="inline-flex items-center gap-1.5 text-[13px] font-medium text-primary hover:underline"
+            >
+              <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showAdvanced ? "rotate-180" : ""}`} />
+              {showAdvanced
+                ? t("agentQueue.fewerOptions", "Fewer options")
+                : t("agentQueue.moreOptions", "More options")}
+            </button>
+            {!showAdvanced && advancedSummary.length > 0 && (
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                {t("agentQueue.advancedActive", "Also applying:")} {advancedSummary.join(" · ")}
+              </p>
+            )}
+          </div>
+
+          {showAdvanced && (
+          <>
+          <select value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
+            className="rounded-lg border border-border bg-background px-3 py-2 text-sm">
+            {CATEGORIES.map((c) => (
+              <option key={c} value={c}>{c === "" ? t("agentQueue.anyField", "Any field") : t(`jobsPage.categories.${c}`, c)}</option>
+            ))}
+          </select>
           <input value={form.salary_min} onChange={(e) => setForm((f) => ({ ...f, salary_min: e.target.value.replace(/\D/g, "") }))}
             placeholder={t("agentQueue.fieldSalary", "Salary floor, annual (only stated-pay postings match)")}
             className="rounded-lg border border-border bg-background px-3 py-2 text-sm" />
@@ -814,6 +940,8 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
               onChange={(e) => setForm((f) => ({ ...f, daily_count: parseInt(e.target.value, 10) || 5 }))}
               className="w-16 rounded-lg border border-border bg-background px-2 py-1 text-sm" />
           </label>
+          </>
+          )}
           <div className="sm:col-span-2 flex gap-2">
             {/* One button, two jobs. Editing a SEARCH writes agent_searches;
                 the fallback path (no searches table yet) still activates the
