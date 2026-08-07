@@ -20,18 +20,11 @@
  */
 import { chromium } from "playwright";
 import { readFileSync } from "node:fs";
-
-const SIGNS: Array<[string, RegExp]> = [
-  ["captcha", /captcha/i],
-  ["turnstile", /turnstile/i],
-  ["cf-challenge", /challenge-platform|cdn-cgi\/challenge/i],
-  ["datadome", /datadome/i],
-  ["perimeterx", /perimeterx|px-cloud|px-cdn/i],
-  ["imperva", /incapsula|imperva/i],
-  ["akamai-bot", /akam\/\d|_bm\/|akamaized.*sensor/i],
-  ["fingerprint", /fingerprintjs|fpjs|botd/i],
-  ["arkose", /arkoselabs|funcaptcha/i],
-];
+// The table moved to botwall-detect.ts when the scheduled sweep needed it too.
+// Imported rather than copied: a second signature table is how a walled vendor
+// gets reported clean, which is the direction that gets an adapter built
+// against a wall.
+import { SIGNS } from "./botwall-detect.js";
 
 async function main() {
   const vendor = process.argv[2]!;

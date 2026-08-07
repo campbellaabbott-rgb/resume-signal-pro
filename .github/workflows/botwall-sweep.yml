@@ -1,0 +1,60 @@
+# IS ANY CLOSED VENDOR STILL CLOSED?
+#
+# The apply agent reaches 5.4% of the board. Everything past that ceiling is
+# shut by a choice some vendor made, and choices change — RECON records
+# Workable as "otherwise the cleanest vendor seen... if Turnstile ever comes
+# off, this is a two-hour adapter." Nothing re-checked that, so a vendor could
+# drop its wall and this project would find out never.
+#
+# Weekly, because a bot-wall policy changes on the order of months and a daily
+# run would be six extra browser launches a week to learn the same thing. The
+# expected result is "everything still walled", and the run stays GREEN when
+# that is true: a red run every week for the expected state is the muted alert
+# this project already has a rule against. The finding — a vendor going clean —
+# is a ::warning:: annotation on the run instead.
+#
+# It solves nothing, submits nothing and spoofs nothing. It loads a public
+# posting's apply page and records what the page itself asks for.
+name: Bot-wall sweep
+
+on:
+  schedule:
+    # Mondays 06:12 UTC. Odd minute on purpose: the round slots are where every
+    # other scheduled job in this account already piles up.
+    - cron: "12 6 * * 1"
+  workflow_dispatch:
+    inputs:
+      vendors:
+        description: "Comma-separated vendors (default: the closed set)"
+        required: false
+        default: ""
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install worker deps
+        working-directory: worker
+        run: npm ci --no-audit --no-fund
+
+      - name: Install Chromium
+        working-directory: worker
+        run: npx playwright install --with-deps chromium
+
+      - name: Sweep
+        working-directory: worker
+        env:
+          # The publishable anon key and URL — the same pair the browser bundle
+          # ships. Read-only board access; the sweep only lists apply_urls.
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        # The script exits 2 when those are missing rather than reporting a
+        # sweep that measured nothing — an empty result must not read as clean.
+        run: npx tsx src/botwall-sweep.ts "${{ github.event.inputs.vendors }}"

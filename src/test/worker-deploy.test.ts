@@ -17,27 +17,55 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { readdirSync } from "node:fs";
+import { existsSync } from "node:fs";
 
 const root = resolve(__dirname, "../..");
 const fly = readFileSync(resolve(root, "worker/fly.toml"), "utf8");
 const dockerfile = readFileSync(resolve(root, "worker/Dockerfile"), "utf8");
 
-/** Every process.env key the worker actually reads. */
+/**
+ * Every process.env key the DEPLOYED worker actually reads.
+ *
+ * REACHABILITY FROM index.ts, NOT every .ts under worker/src — and the
+ * distinction has teeth. worker/src also holds standalone research tools that
+ * are never launched by fly.toml or apply-worker.yml: probe-botwall.ts,
+ * botwall-sweep.ts and friends. botwall-sweep reads SUPABASE_URL, which is
+ * exactly a key this file asserts the worker does NOT read, and a directory
+ * walk therefore failed the guard for a script that has nothing to do with
+ * sending applications.
+ *
+ * Widening the assertion to accommodate it would have been the wrong repair:
+ * it would let a genuine reintroduction of SUPABASE_URL into the SENDER pass
+ * unnoticed, which is the precise bug this file exists to prevent. Following
+ * the import graph keeps the guard pointed at its actual subject — the code
+ * that boots in the container.
+ */
 function workerEnvKeys(): Set<string> {
   const dir = resolve(root, "worker/src");
-  const files: string[] = [];
-  const walk = (d: string) => {
-    for (const e of readdirSync(d, { withFileTypes: true })) {
-      if (e.isDirectory()) walk(resolve(d, e.name));
-      else if (e.name.endsWith(".ts")) files.push(resolve(d, e.name));
+  const seen = new Set<string>();
+  const keys = new Set<string>();
+
+  const visit = (file: string) => {
+    if (seen.has(file)) return;
+    seen.add(file);
+    let src: string;
+    try { src = readFileSync(file, "utf8"); } catch { return; }
+    for (const m of src.matchAll(/process\.env\.([A-Z0-9_]+)/g)) keys.add(m[1]);
+    // Relative imports only — a bare specifier is a package, not our code.
+    for (const m of src.matchAll(/(?:from|import)\s*["'](\.[^"']+)["']/g)) {
+      const spec = m[1].replace(/\.js$/, "");
+      const base = resolve(file, "..", spec);
+      for (const cand of [`${base}.ts`, resolve(base, "index.ts")]) {
+        if (existsSync(cand)) { visit(cand); break; }
+      }
     }
   };
-  walk(dir);
-  const keys = new Set<string>();
-  for (const f of files) {
-    for (const m of readFileSync(f, "utf8").matchAll(/process\.env\.([A-Z0-9_]+)/g)) keys.add(m[1]);
-  }
+  visit(resolve(dir, "index.ts"));
+
+  // The walk must actually have walked. A typo in the entry path would yield an
+  // empty set, and every "does not read X" assertion below would pass vacuously
+  // — a guard that cannot fail is the shape this codebase has been bitten by.
+  if (keys.size < 3) throw new Error(`worker import graph yielded only ${keys.size} env keys — the traversal broke, not the worker`);
   return keys;
 }
 

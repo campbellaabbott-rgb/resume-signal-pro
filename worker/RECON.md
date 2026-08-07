@@ -1256,3 +1256,39 @@ schedule over the closed vendors turns "closed on evidence from 2026-08-01" into
 "closed as of this week", and would catch a vendor dropping its wall within days
 instead of never. That is the highest-value reach work left that does not
 involve crossing a line.
+
+## Bot-wall re-probe, 2026-08-07: the wall is PER-TENANT, not per-vendor
+
+The note above ends by saying a scheduled re-probe is "the highest-value reach
+work left that does not involve crossing a line". Built as
+`worker/src/botwall-sweep.ts` + `.github/workflows/botwall-sweep.yml`, weekly.
+Detection extracted to `botwall-detect.ts` so the sweep and probe-botwall.ts
+cannot drift to different signature tables.
+
+First run, six distinct tenants per vendor sampled live from the board:
+
+    workable          walled   6/6   cf-challenge, turnstile
+    smartrecruiters   walled   6/6   cf-challenge
+    lever             walled   6/6   captcha, cf-challenge
+    greenhouse        mixed    5/6   captcha
+    recruitee         MIXED    5/6   captcha
+
+**RECRUITEE CONTRADICTS THE EARLIER READING, and the correction matters more
+than the number.** This file records Recruitee as NO-BUILD on "10/10 tenants
+load hCaptcha". Six sampled tenants today: five load it, CLANX does not.
+Greenhouse is the same shape — 5/6, one tenant clean.
+
+So a bot wall is not a vendor-level fact. It is a per-tenant configuration, and
+"vendor X is walled" was a summary of a sample that happened to be uniform. That
+reframes the ceiling: the drivable set is not four vendors, it is every tenant
+whose form has no wall — a set nothing currently measures.
+
+WHAT THIS DOES NOT LICENSE. Nothing here changes the boundary. A tenant that
+deploys hCaptcha stays untouched; the sweep exists to notice tenants and vendors
+that never deployed one, which is ordinary reachability and not circumvention.
+Whether to submit to individually-clean tenants of an otherwise-walled vendor is
+a PRODUCT decision — it needs a per-tenant wall check at send time, and the
+honesty question of listing a job as agent-appliable when the answer depends on
+that employer's own config.
+
+n=6 per vendor. One clean tenant is a hypothesis, not a channel.
