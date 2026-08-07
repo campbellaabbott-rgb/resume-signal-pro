@@ -2969,6 +2969,7 @@ export type Database = {
           p_q?: string
           p_remote?: boolean
           p_salary_floor?: number
+          p_sources?: string[]
           p_work_mode?: string
         }
         Returns: {
@@ -3953,6 +3954,7 @@ export type Database = {
           p_q: string
           p_remote?: boolean
           p_salary_floor?: number
+          p_sources?: string[]
           p_work_mode?: string
         }
         Returns: {
