@@ -54,13 +54,42 @@ describe("it cannot leak who was emailed", () => {
     expect(bare).toMatch(/interval '2 hours'/);
   });
 
-  it("drops before recreating, because the return type changed", () => {
+  it("drops before recreating in the migration that changed the signature", () => {
     // Postgres will not CREATE OR REPLACE across a signature change; without the
-    // drop this migration applies cleanly and changes nothing.
-    const drop = bare.indexOf("DROP FUNCTION IF EXISTS public.email_delivery_health");
-    const create = bare.indexOf("CREATE OR REPLACE FUNCTION public.email_delivery_health");
-    expect(drop).toBeGreaterThan(-1);
+    // drop that migration applies cleanly and changes nothing. Pinned to the
+    // file that actually added the column — later migrations keep the same
+    // signature and correctly have no DROP, so asserting this against whichever
+    // file is newest would fail for the right code.
+    const sigChange = readdirSync(DIR).filter((f) => f.endsWith(".sql"))
+      .map((f) => readFileSync(resolve(DIR, f), "utf8"))
+      .find((t) => t.includes("DROP FUNCTION IF EXISTS public.email_delivery_health"));
+    expect(sigChange, "no migration drops the old signature").toBeDefined();
+    const drop = sigChange!.indexOf("DROP FUNCTION IF EXISTS public.email_delivery_health");
+    const create = sigChange!.indexOf("CREATE OR REPLACE FUNCTION public.email_delivery_health");
     expect(create).toBeGreaterThan(drop);
+  });
+
+  it("counts stuck WITHOUT a time window — it is a condition, not an event", () => {
+    // MEASURED LIVE 2026-08-06, minutes after the windowed version deployed:
+    //   p_hours=24   -> []                       <- what the heartbeat asks for
+    //   p_hours=8760 -> [{"status":"pending","stuck":1}]
+    // The row had been stuck 34 days and the heartbeat reported 'idle'. A
+    // windowed stuck count can only fire between hour 2 and hour 24, then goes
+    // quiet with nothing fixed — which reads as resolved, and is worse than
+    // never having counted it.
+    // Isolate the ONE filter: a fixed-width slice backwards swallows the
+    // neighbouring windowed count and asserts the opposite of what is meant.
+    const i = bare.indexOf("AS stuck");
+    const stuckFilter = bare.slice(bare.lastIndexOf("count(*) FILTER", i), i);
+    expect(stuckFilter).toMatch(/NOT IN/);
+    expect(stuckFilter).not.toMatch(/make_interval/);
+  });
+
+  it("admits a currently-stuck status that has nothing in the window", () => {
+    // Without this the GROUP BY drops the status and the count has nowhere to
+    // live — which is exactly why p_hours=24 returned [] rather than stuck>0.
+    const where = bare.slice(bare.indexOf("FROM public.email_send_log"));
+    expect(where).toMatch(/OR \(s\.status NOT IN/);
   });
 
   it("never selects the address or the error text", () => {

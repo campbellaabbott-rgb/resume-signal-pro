@@ -27,7 +27,17 @@ const DIR = resolve(__dirname, "../../supabase/migrations");
 const sqlFile = readdirSync(DIR).filter((f) => f.endsWith(".sql"))
   .filter((f) => readFileSync(resolve(DIR, f), "utf8").includes("FUNCTION public.product_delivery_health"))
   .sort().pop()!;
-const bare = readFileSync(resolve(DIR, sqlFile), "utf8").replace(/--[^\n]*/g, "");
+// Scoped to the product function. The latest migration defines BOTH health
+// functions, so an unscoped indexOf("RETURNS TABLE") reads the EMAIL signature
+// and every assertion below silently checks the wrong function.
+const wholeFile = readFileSync(resolve(DIR, sqlFile), "utf8").replace(/--[^\n]*/g, "");
+const bare = wholeFile.slice(wholeFile.indexOf("FUNCTION public.product_delivery_health"));
+
+/** The single FILTER clause immediately preceding a column alias. */
+const filterFor = (src: string, alias: string): string => {
+  const i = src.indexOf(alias);
+  return i < 0 ? "" : src.slice(src.lastIndexOf("count(*) FILTER", i), i);
+};
 const hb = readFileSync(resolve(__dirname, "../../supabase/functions/scan-heartbeat/index.ts"), "utf8");
 
 const bodyOf = (src: string, name: string): string => {
@@ -72,6 +82,31 @@ describe("what the SQL actually counts", () => {
   it("counts rows stranded in a state that should be transient", () => {
     expect(bare).toMatch(/'payment_received', 'generating', 'generation_failed'/);
     expect(bare).toMatch(/interval '2 hours'/);
+  });
+
+  it("counts stuck and exhausted WITHOUT a time window", () => {
+    // Same defect as the email check, shipped an hour apart in the same shape:
+    // a customer who paid and never received does not stop being owed after
+    // twenty-four hours, so neither standing condition may be windowed.
+    expect(filterFor(bare, "AS stuck")).toMatch(/status IN/);
+    expect(filterFor(bare, "AS stuck")).not.toMatch(/make_interval/);
+    expect(filterFor(bare, "AS exhausted")).toMatch(/retry_count/);
+    expect(filterFor(bare, "AS exhausted")).not.toMatch(/make_interval/);
+  });
+
+  it("admits a currently-stuck status with nothing in the window", () => {
+    const where = bare.slice(bare.indexOf("FROM public.product_deliveries"));
+    expect(where).toMatch(/OR \(d\.status IN/);
+  });
+
+  it("does not call a DELIVERED row exhausted", () => {
+    // retry_count >= max_retries is true of a row that retried and then
+    // succeeded. Counting it would manufacture an unfulfilled purchase out of
+    // the retry system working, which is the mirror of counting `suppressed`
+    // as an email failure.
+    const exhausted = filterFor(bare, "AS exhausted");
+    expect(exhausted).toMatch(/status <> 'delivered'/);
+    expect(exhausted).toMatch(/status <> 'content_generated'/);
   });
 });
 
