@@ -3384,6 +3384,7 @@ export type Database = {
         Args: never
         Returns: {
           closed_90d: number
+          computed_at: string
           median_days_open: number
           median_days_to_close: number
           observed_days: number
@@ -3948,6 +3949,7 @@ export type Database = {
         Returns: undefined
       }
       refresh_explore_cache: { Args: never; Returns: undefined }
+      refresh_ghost_stats: { Args: never; Returns: undefined }
       refresh_job_board_facets: { Args: never; Returns: Json }
       refresh_job_board_stats: { Args: never; Returns: undefined }
       refresh_stats_cache: { Args: never; Returns: undefined }
