@@ -20,8 +20,16 @@
  * `version !== POSTED_BACKFILL_VERSION` — so 4 === 4 meant the sweep was
  * permanently, silently "done" with bamboohr 43,687/43,687 and rippling
  * 8,991/8,991 undated.
+ *
+ * v6 (2026-08-08): NOT a bug fix — a deliberate re-arm, and the only mechanism
+ * that can do it. The growth rule below measures against `backlogAtSweep`, and
+ * the last completed sweep (08-05) predates that field, so it recorded no
+ * floor: the rule was inert on arrival and the 45,466 undated rows measured
+ * after deploy would have waited for the seven-day timer regardless. Bumping
+ * the version runs the sweep now, dates them, and — because completion records
+ * the floor — is what actually switches the growth rule on.
  */
-export const POSTED_BACKFILL_VERSION = 5;
+export const POSTED_BACKFILL_VERSION = 6;
 
 /**
  * The completion stamp EXPIRES. Without this the sweep is strictly one-shot: it

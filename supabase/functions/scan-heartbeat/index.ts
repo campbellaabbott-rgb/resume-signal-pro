@@ -79,7 +79,7 @@ async function rpcWithin<T>(p: PromiseLike<{ data: T | null }>, ms = 6_000): Pro
  *
  * BUMP ON EVERY DEPLOY of this function.
  */
-const BUILD_VERSION = "2026-08-08.1";
+const BUILD_VERSION = "2026-08-08.2";
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -294,6 +294,13 @@ serve(async (req) => {
       const freshnessP = rpcWithin(supabase.rpc('get_freshness_stats'), RPC_MS);
       const storageP = rpcWithin(supabase.rpc('get_storage_footprint'), RPC_MS);
       const staleBoardsP = rpcWithin(supabase.rpc('get_stale_board_count'), RPC_MS);
+      // Read LIVE, unlike the ghost stats below, because this one no longer
+      // aggregates: since the rollup precompute it reads a single row and
+      // measures 0.27-1.35s (three calls, 2026-08-08) against the 20s that
+      // made it unreadable before. The note below about not reading these
+      // live is still correct for get_ghost_job_index_stats and no longer
+      // correct for this one.
+      const dateCovP = rpcWithin(supabase.rpc('get_date_coverage'), RPC_MS);
       const dbSizeP = rpcWithin(supabase.rpc('get_db_size_stats'), RPC_MS);
 
       // ghost-index stats and per-vendor date coverage are NOT read live here.
@@ -671,9 +678,25 @@ serve(async (req) => {
       // its post-sweep floor; alarming at 25,000 means several missed re-arms,
       // not one busy afternoon.
       const BACKLOG_ALARM = 25_000;
+      //
+      // READ FROM THE ROLLUP, NOT FROM stats_cache. This check was wired to
+      // stats_cache, and on the very deploy that added the backlog alarm it
+      // did not run at all: stats_cache had been frozen for 7,651 minutes
+      // (5.3 days) while the rollup behind get_date_coverage was current to
+      // the half-hour. So the alarm built to notice the dating sweep falling
+      // behind was itself unwatched, for the oldest reason in this codebase —
+      // it was reading an instrument that had stopped.
+      //
+      // The rollup is the same data the sweep's own re-arm reads, which is the
+      // point: the alarm and the mechanism it watches now agree on a source.
+      // stats_cache stays as the fallback, so a rollup outage degrades to the
+      // previous behaviour rather than to nothing.
       try {
-        const cov = statsCache?.date_coverage ?? null;
-        if (!Array.isArray(cov) || cov.length === 0) skip('job_board_date_coverage', cov ? 'stats_cache date_coverage is empty' : scWhy);
+        const { data: covLive } = await dateCovP;
+        const cov = (Array.isArray(covLive) && covLive.length > 0)
+          ? covLive as Array<Record<string, unknown>>
+          : (statsCache?.date_coverage ?? null);
+        if (!Array.isArray(cov) || cov.length === 0) skip('job_board_date_coverage', cov ? 'date_coverage is empty in both the rollup and stats_cache' : scWhy);
         if (Array.isArray(cov) && cov.length > 0) {
           const rows = cov as Array<{ source: string; total: number; dated: number }>;
           const broken = rows

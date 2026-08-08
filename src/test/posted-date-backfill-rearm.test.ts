@@ -230,4 +230,27 @@ describe("the heartbeat watches the vendors that depend on the sweep", () => {
   it("declares a bumped BUILD_VERSION so the deploy is checkable", () => {
     expect(HB).toMatch(/const BUILD_VERSION = "2026-08-08\.\d+"/);
   });
+
+  it("reads the ROLLUP, not the cache that was frozen when this shipped", () => {
+    // The alarm went out wired to stats_cache and did not run once: measured
+    // straight after deploy, stats_cache was 7,651 minutes stale (5.3 days)
+    // while the rollup was current to the half-hour, so `job_board_date_
+    // coverage` was absent from the response entirely. An alarm reading a
+    // stopped instrument is the failure it was built to catch.
+    expect(HB).toMatch(/const dateCovP = rpcWithin\(supabase\.rpc\('get_date_coverage'\), RPC_MS\)/);
+    expect(HB).toMatch(/const \{ data: covLive \} = await dateCovP;/);
+  });
+
+  it("keeps stats_cache as the fallback, so a rollup outage degrades not disappears", () => {
+    expect(HB).toMatch(/\(Array\.isArray\(covLive\) && covLive\.length > 0\)[\s\S]{0,160}statsCache\?\.date_coverage/);
+  });
+
+  it("watches the same source the sweep's own re-arm reads", () => {
+    // The alarm and the mechanism it watches must not disagree about the
+    // numbers. job-board counts the backlog off date_coverage in the rollup;
+    // so does this.
+    const fn = /async function undatedBacklog\([\s\S]*?\n\}/.exec(SRC)?.[0] ?? "";
+    expect(fn).toMatch(/date_coverage/);
+    expect(HB).toMatch(/get_date_coverage/);
+  });
 });
