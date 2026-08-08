@@ -16,7 +16,38 @@ const worklist = JSON.parse(fs.readFileSync(process.argv[2] ?? "round3-mill-work
 const UA = { "User-Agent": "resumebooster.work job board (contact: support@resumebooster.work)" };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-const MILL_TEXT = /\bour client\b|\bon behalf of (a|an|our|the)\b|\bfor our client\b|\bclient of ours\b|\bour customer is (hiring|looking)\b|\bstaffing (agency|firm|partner)\b|\brecruitment agency\b|\bwe are (a|an) (staffing|recruiting|recruitment|talent) (agency|firm|partner)\b/i;
+// ENGLISH ONLY WAS A BLIND SPOT, and the board is mostly European now.
+//
+// 2026-08-08: this screen CLEARED `teamtailor:jobtalentfrance` — Jobandtalent
+// France, one of Europe's largest temp-staffing platforms. Its postings are
+// repeated generic warehouse roles and one names the client outright
+// ("A08-RHENUS-Préparateur de commandes"). Nothing matched, because every
+// pattern below the fold was English and the postings are French.
+//
+// The vendors this catalogue grows fastest on — teamtailor, personio — are
+// European, so an English-only mill screen fails exactly where it is most
+// needed. Phrases added for FR/DE/ES/NL/IT, chosen to be industry terms rather
+// than ordinary words: "agence d'intérim" and "Zeitarbeit" name the business
+// model, whereas a bare "client"/"Kunde" appears in perfectly normal postings.
+const MILL_TEXT = new RegExp([
+  // English
+  "\\bour client\\b", "\\bon behalf of (a|an|our|the)\\b", "\\bfor our client\\b",
+  "\\bclient of ours\\b", "\\bour customer is (hiring|looking)\\b",
+  "\\bstaffing (agency|firm|partner)\\b", "\\brecruitment agency\\b",
+  "\\bwe are (a|an) (staffing|recruiting|recruitment|talent) (agency|firm|partner)\\b",
+  // French — intérim is the industry's own word for it
+  "\\bnotre client\\b", "\\bpour le compte de\\b", "\\bagence d.int.rim\\b",
+  "\\bagence de recrutement\\b", "\\bcabinet de recrutement\\b", "\\bsoci.t. d.int.rim\\b",
+  // German — Zeitarbeit / Arbeitnehmerüberlassung are the regulated terms
+  "\\bunser Kunde\\b", "\\bim Auftrag (unseres|eines|der)\\b", "\\bZeitarbeit\\b",
+  "\\bPersonaldienstleist", "\\bArbeitnehmer.berlassung\\b", "\\bPersonalvermittlung\\b",
+  // Spanish — ETT is the legal category
+  "\\bnuestro cliente\\b", "\\bempresa de trabajo temporal\\b", "\\bagencia de empleo\\b",
+  // Dutch — uitzendbureau / detachering
+  "\\bonze klant\\b", "\\buitzendbureau\\b", "\\bdetacherings?bureau\\b",
+  // Italian
+  "\\bnostro cliente\\b", "\\bagenzia per il lavoro\\b", "\\bsomministrazione di lavoro\\b",
+].join("|"), "i");
 const strip = (h) => String(h ?? "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
 
 async function get(url, asText = false) {

@@ -23,7 +23,32 @@ for (const f of files) {
   for (const v of VENDORS) if (Array.isArray(data[v])) verified[v].push(...data[v]);
 }
 
-const NAME_BLOCK = /\b(staffing|recruit(ing|ment|er)?s?|talent\s|talents\b|headhunt|personnel|manpower|workforce|employment\s+(agency|services)|temp\s|outsourc|bpo\b|demo|test|sample|sandbox|placeholder)\b/i;
+// `talent\s` REQUIRED A TRAILING SPACE, so "Job&Talent" — Jobandtalent France,
+// one of Europe's largest temp-staffing platforms — walked straight through on
+// a string boundary and was merged as a corporate employer. Its postings are
+// repeated warehouse roles naming the client outright
+// ("A08-RHENUS-Préparateur de commandes"), and the TEXT screen cannot catch it
+// either: the evidence is in the titles, not in a phrase like "notre client".
+// `talents?` inside the existing word boundaries matches the name wherever it
+// sits. A company called "…Talent" is in the talent business.
+//
+// Non-English terms added for the same reason the mill screen needed them: the
+// vendors this catalogue grows fastest on are European. intérim, uitzend,
+// Zeitarbeit and Personaldienst are the industry's own words, not ordinary
+// ones — no legitimate manufacturer is called Zeitarbeit GmbH.
+// TWO ALTERNATIONS, because two different shapes of name leak.
+//
+// Whole words, bounded both sides: "Job&Talent" (Jobandtalent France, a large
+// European temp-staffing platform) was merged as a corporate employer because
+// the old pattern was `talent\s` and required a trailing space. `talents?`
+// inside the boundaries catches it wherever it sits, and still leaves
+// "Talentum" alone — the trailing boundary fails on the "u".
+//
+// Prefixes, bounded only on the left: Dutch and German compound nouns run the
+// word on ("Uitzendbureau", "Personaldienstleistungen"), so a right-hand
+// boundary never matches. These are the industry's own regulated terms; no
+// manufacturer is called Zeitarbeit GmbH.
+const NAME_BLOCK = /\b(staffing|recruit(ing|ment|er)?s?|talents?|headhunt|personnel|manpower|workforce|employment\s+(agency|services)|temp\s|outsourc|bpo\b|int[eé]rim|travail\s+temporaire|trabajo\s+temporal|demo|test|sample|sandbox|placeholder)\b|\b(uitzend|zeitarbeit|personaldienst|jobandtalent)/i;
 // Corporate-only policy: public-sector entities never enter the catalog
 // (mobile audit 2026-07-18 found City of Baltimore et al. had slipped in
 // through census waves — 22 boards curated out, these patterns keep the
