@@ -124,21 +124,17 @@ export function JobBoardHero() {
             </Link>
           </div>
 
-          {/* AI apply agent — front and center, above the fold. The claim is
-              exactly what ships: the agent drafts and preps; the user sends. */}
-          <div className="flex justify-center mb-5 animate-fade-in" style={{ animationDelay: "0.18s" }}>
-            <button
-              type="button"
-              onClick={() => document.getElementById("apply-agent-heading")?.scrollIntoView({ behavior: "smooth", block: "center" })}
-              className="inline-flex items-center gap-2 rounded-full border border-success/40 bg-success/10 px-4 py-2 text-sm text-foreground hover:bg-success/15 transition-colors"
-            >
-              <Bot className="w-4 h-4 text-success shrink-0" />
-              <span>
-                <span className="font-semibold">{t("boardHero.agentLead", "Your AI agent applies with you:")}</span>{" "}
-                {t("boardHero.agentLine", "it writes the cover letter, answers the real questions, preps you — you hit send")}
-              </span>
-              <ArrowRight className="w-3.5 h-3.5 shrink-0" />
-            </button>
+          {/* THE PLATFORMS, DIRECTLY UNDER THE CTAs — the first thing after the
+              two buttons, where the agent banner used to sit. The headline
+              claims ~595,000 verified openings; naming the fifteen systems that
+              produced them, with each one's live count, is what turns that from
+              an assertion into something a reader can check. It was 1,200 lines
+              down the page this morning.
+
+              Counts render only once measured — see AtsCoverage: a platform we
+              could not measure shows its name and no number, never a zero. */}
+          <div className="mb-6 animate-fade-in" style={{ animationDelay: "0.18s" }}>
+            <AtsCoverage variant="strip" />
           </div>
 
           {/* Trust: what makes this board different — always true. */}
@@ -163,17 +159,25 @@ export function JobBoardHero() {
             </span>
           </div>
 
-          {/* THE PLATFORMS, INSIDE THE HERO. The headline claims ~595,000
-              verified openings and the trust line above says "direct from
-              company career pages — no aggregators"; naming the fifteen systems
-              right here is what turns that from an assertion into something a
-              reader can check. It sat 1,200 lines down the page until today,
-              which is to say below where most visitors ever reach.
-
-              Counts render only once measured — see AtsCoverage: a platform we
-              could not measure shows its name and no number, never a zero. */}
-          <div className="mb-7 animate-fade-in" style={{ animationDelay: "0.22s" }}>
-            <AtsCoverage variant="strip" />
+          {/* AI apply agent — swapped down into the slot the platform row used
+              to hold. It is NOT removed: it is the only entry point in the hero
+              to the apply-agent section below, and the claim on it is exactly
+              what ships — the agent drafts and preps; the user sends. It simply
+              no longer outranks the answer to "where do these jobs come from",
+              which is the question the two buttons above it provoke. */}
+          <div className="flex justify-center mb-7 animate-fade-in" style={{ animationDelay: "0.22s" }}>
+            <button
+              type="button"
+              onClick={() => document.getElementById("apply-agent-heading")?.scrollIntoView({ behavior: "smooth", block: "center" })}
+              className="inline-flex items-center gap-2 rounded-full border border-success/40 bg-success/10 px-4 py-2 text-sm text-foreground hover:bg-success/15 transition-colors"
+            >
+              <Bot className="w-4 h-4 text-success shrink-0" />
+              <span>
+                <span className="font-semibold">{t("boardHero.agentLead", "Your AI agent applies with you:")}</span>{" "}
+                {t("boardHero.agentLine", "it writes the cover letter, answers the real questions, preps you — you hit send")}
+              </span>
+              <ArrowRight className="w-3.5 h-3.5 shrink-0" />
+            </button>
           </div>
 
           {/* One-tap browse by field. */}
