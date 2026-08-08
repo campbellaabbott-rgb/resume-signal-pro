@@ -140,12 +140,28 @@ describe("the strip at the top of the page is a narrower layout, not a weaker cl
     }
   });
 
-  it("carries the counts, the total and the as-of line", async () => {
+  it("carries the counts and the as-of line", async () => {
     route(facets({ greenhouse: 48_102, workday: 305_380 }, 561_004));
     render(<AtsCoverage variant="strip" />);
     await waitFor(() => expect(screen.getByText("305,380")).toBeInTheDocument());
-    expect(screen.getByText(/561,004 open roles/)).toBeInTheDocument();
     expect(screen.getByText(/measured/i)).toBeInTheDocument();
+  });
+
+  it("does NOT restate a board-wide total — the hero above it owns that", async () => {
+    // Measured in production once the facet went live: the hero showed 595,687
+    // and this facet's openTotal was 596,759. Both honest, computed by
+    // different paths at different moments, ~1,000 apart — and rendered four
+    // lines apart on the same screen, where a reader has no way to know they
+    // are two measurements rather than one contradiction.
+    route(facets({ greenhouse: 48_102, workday: 305_380 }, 561_004));
+    render(<AtsCoverage variant="strip" />);
+    await waitFor(() => expect(screen.getByText("305,380")).toBeInTheDocument());
+    expect(screen.queryByText(/561,004/)).not.toBeInTheDocument();
+    // A restated FIGURE is the problem, not the phrase: the as-of line says
+    // "currently open roles" and states no total, which is exactly right.
+    expect(screen.queryByText(/[\d,]+\s+open roles/i)).not.toBeInTheDocument();
+    // The claim that sentence actually carries survives.
+    expect(screen.getByText(/never scraped from a search engine/i)).toBeInTheDocument();
   });
 
   it("obeys absence-is-not-zero exactly like the full block", async () => {
@@ -277,7 +293,22 @@ describe("the facet is filtered by the board's real serving rule", () => {
   });
 
   it("omits vendors with no postings rather than recording a zero", () => {
-    expect(mig).toMatch(/absence is never rendered as a measured zero|ABSENT from this object rather than present with 0/);
+    // ASSERTED ON THE CONSTRUCTION, NOT ON A COMMENT SAYING SO.
+    //
+    // This first checked for the sentence "absence is never rendered as a
+    // measured zero" in the migration text. Lovable re-stamps applied
+    // migrations with the comments stripped, so the identical SQL arrived as a
+    // new file and the assertion failed — correctly telling me the test was
+    // wrong, not the code. A comment enforces nothing; it was never the thing
+    // keeping zeros out.
+    //
+    // What actually does: jsonb_object_agg over a GROUP BY. A source with no
+    // matching rows forms no group, so it cannot appear as a key at all. The
+    // way to break this is to zero-fill against a vendor list — a LEFT JOIN
+    // with COALESCE(n, 0) — which is precisely what the last assertion forbids.
+    expect(facetBlock).toMatch(/jsonb_object_agg\(source, n\)/);
+    expect(facetBlock).toMatch(/GROUP BY source/);
+    expect(facetBlock).not.toMatch(/LEFT JOIN|COALESCE\([^)]*,\s*0\s*\)/i);
   });
 
   it("stays off the request path", () => {

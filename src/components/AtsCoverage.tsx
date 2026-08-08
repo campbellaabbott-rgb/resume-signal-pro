@@ -134,14 +134,24 @@ export function AtsCoverage({
         </ul>
 
         <div className="mt-4 text-center">
-          {ready && openTotal !== null && (
-            <p className="text-xs sm:text-sm text-muted-foreground">
-              {t("atsCoverage.stripSub", "{{total}} open roles, read directly from all {{count}} — never scraped from a search engine.", {
-                total: openTotal.toLocaleString(),
-                count: ATS_VENDORS.length,
-              })}
-            </p>
-          )}
+          {/* NO TOTAL HERE, DELIBERATELY — the hero states one four lines above.
+              Measured after the migration applied: the hero's headline read
+              595,687 live openings while this facet's openTotal read 596,759.
+              Both are honest; they are computed by different paths at different
+              refresh moments and drift by a thousand or so. But two numbers for
+              the same quantity, on the same screen, a thousand apart, is a
+              reader's reason to distrust both — and a visitor cannot know they
+              are separate measurements.
+
+              The hero owns the total. This row owns the breakdown. The claim
+              that mattered in this sentence was never the figure anyway. The
+              FULL variant keeps its total: it renders far down the page with no
+              competing number beside it. */}
+          <p className="text-xs sm:text-sm text-muted-foreground">
+            {t("atsCoverage.stripSub", "Read directly from all {{count}} — never scraped from a search engine.", {
+              count: ATS_VENDORS.length,
+            })}
+          </p>
 
           {/* The split is a product claim, not decoration — it survives the
               compact layout as a legend rather than being dropped with the
