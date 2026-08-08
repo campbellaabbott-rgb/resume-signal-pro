@@ -787,6 +787,30 @@
     "premiumLook": {
       "title": "Mas matalas na itsura para sa buong platform",
       "description": "Buong design pass: bagong display typeface na may sariling karakter, mas malalim na patong-patong na surface, pinong kulay at espasyo, glass navigation, at tahimik na detalye kahit saan — nakahanay na numero, mas malambot na kanto, banayad na signature glow. Parehong tapat na datos, ngayon ay bagay na ang bihis."
+    },
+    "agentSetupOneScreen": {
+      "title": "Isang screen na lang ang pag-set up ng agent",
+      "description": "Idagdag ang CV mo — i-upload o i-paste ang teksto, mismo sa hinihingian ng agent — at pindutin ang isang button. Binabasa sa CV ang mga posisyon, lugar at larangan mo, kaya wala nang iba pang punan. Ang iba (pinakamababang sahod, gaano kabago, ilan kada umaga) ay nasa “More options” na may makatuwirang default. Kapag may binago ka, nakasulat ito sa screen — hindi basta makakapagpaliit ng paghahanap ang isang filter nang hindi mo alam."
+    },
+    "agentCountryChoice": {
+      "title": "Sabihin sa agent kung aling mga bansa ang aaplayan",
+      "description": "Tumatanggap na ng bansa ang paghahanap ng agent mo, hindi lang pangalan ng lugar. Mas mahalaga ito kaysa sa tunog nito: ikatlo ng mga trabaho sa Alemanya ay hindi isinusulat ang “Germany” — “Berlin” o “Munich” lang — kaya tahimik silang nalalaktawan kapag pangalan ng bansa ang tinipa sa location. Pumili ng bansa sa listahan at babasahin ng agent ang totoong bansa ng bawat trabaho, hindi ang pagkakasulat. Iwanang walang napili para maghanap kahit saan, tulad ng dati."
+    },
+    "boardAgentFilter": {
+      "title": "I-filter ang board sa mga trabahong kayang aplayan ng agent",
+      "description": "May bagong switch ang job board: “Agent can apply”. Buksan mo at mga trabaho lang ang lalabas na kayang punan at isumite mismo ng agent namin — ang mga may sparkle na marka sa card. Sa iba, inihahanda ng agent ang aplikasyon at ikaw ang pipindot ng send. Mainam kapag gusto mong ilaan ang umaga sa mga hindi na nangangailangan ng kahit ano sa iyo."
+    },
+    "savedJobsStartAgent": {
+      "title": "Gawing paghahanap ng agent ang mga na-save mong trabaho",
+      "description": "Kung may na-save kang ilang posisyon, mag-aalok na ngayon ang listahan mo na simulan ang agent sa mga katulad nito. Binabasa nito ang mga na-save mong job title at inilalagay sa paghahanap ng agent — walang naise-save at walang tumatakbo hangga't hindi mo ito inaaktibo, at mababago mo muna ang bawat salita."
+    },
+    "boardGrewAgentReach": {
+      "title": "1,400 pang company board, at mas marami para sa agent",
+      "description": "Nagdagdag kami ng 1,408 career page ng mga kumpanya sa isang pasada, mula sa bagong pag-crawl ng bukas na web. 343 dito ay nasa mga sistemang kayang isumite mismo ng aming apply agent, kaya lumaki ang bahagi ng board na naaabot nito. Bawat board ay live na sinuri bago idagdag — totoong bakante, mula sa sariling feed ng kumpanya, walang aggregator at walang staffing mill."
+    },
+    "agentStartFix": {
+      "title": "Naayos: maaaring tumangging mag-save ang Activate button ng agent",
+      "description": "Sa agent page, mukhang handa ang Activate button pero tinatanggihan ang pag-click gamit ang “magdagdag muna ng résumé” nang walang naise-save — kahit may résumé na. Magkaiba ang hinahanapan ng button at ng code na nagse-save, at isa lang ang tumitingin kung saan talaga itinatago ng agent page. Iisa na ang binabasa nila ngayon."
     }
   }
 }

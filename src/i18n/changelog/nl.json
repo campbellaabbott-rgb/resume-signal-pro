@@ -787,6 +787,30 @@
     "premiumLook": {
       "title": "Een scherpere look voor het hele platform",
       "description": "Een volledige designronde: een onderscheidend nieuw koplettertype, diepere gelaagde vlakken, verfijnde kleuren en spacing, glasnavigatie en stille details overal — uitgelijnde cijfers, zachtere hoeken, een subtiele kenmerkende gloed. Dezelfde eerlijke data, nu passend gekleed."
+    },
+    "agentSetupOneScreen": {
+      "title": "Het instellen van de agent is nu één scherm",
+      "description": "Voeg je cv toe — uploaden of de tekst plakken, precies waar de agent erom vraagt — en druk op één knop. Je functies, plaatsen en vakgebied worden uit je cv gelezen, dus verder hoef je niets in te vullen. De rest (salarisondergrens, hoe recent, hoeveel per ochtend) staat onder “Meer opties” met verstandige standaardwaarden. Wijzig je er één, dan staat dat in beeld — een filter kan je zoekopdracht nooit stiekem versmallen."
+    },
+    "agentCountryChoice": {
+      "title": "Vertel de agent in welke landen hij mag solliciteren",
+      "description": "De zoekopdracht van je agent accepteert nu landen, niet alleen plaatsnamen. Dat telt zwaarder dan het klinkt: een derde van de Duitse vacatures schrijft nergens “Duitsland” — alleen “Berlijn” of “München” — dus wie het land in het locatieveld typte, miste ze stilletjes. Kies landen uit de lijst en de agent leest het echte land van elke vacature in plaats van de formulering. Laat alles uit om overal te zoeken, precies als voorheen."
+    },
+    "boardAgentFilter": {
+      "title": "Filter het bord op vacatures waar de agent kan solliciteren",
+      "description": "Het vacaturebord heeft een nieuwe schakelaar “Agent kan solliciteren”. Zet hem aan en je ziet alleen vacatures waarvan onze agent het formulier zelf kan invullen en versturen — dezelfde die het sterretje op de kaart dragen. Overal elders bereidt de agent de sollicitatie voor en druk jij op verzenden. Handig als je je ochtend liever besteedt aan de vacatures die niets van je vragen."
+    },
+    "savedJobsStartAgent": {
+      "title": "Maak van je bewaarde vacatures een agentzoekopdracht",
+      "description": "Heb je een paar functies bewaard, dan biedt je lijst nu aan de agent op vergelijkbare vacatures te zetten. Hij leest de bewaarde functietitels en vult ze in bij de zoekopdracht van de agent — er wordt niets opgeslagen en niets gestart tot je het zelf activeert, en je kunt vooraf elk woord aanpassen."
+    },
+    "boardGrewAgentReach": {
+      "title": "1.400 extra bedrijfsborden, en meer waar de agent kan solliciteren",
+      "description": "We hebben in één keer 1.408 bedrijfsvacaturepagina's toegevoegd, uit een verse verkenning van het open web. 343 daarvan staan op systemen waar onze agent zelf kan versturen, wat het deel van het bord dat hij bereikt vergroot. Elk bord is live gecontroleerd voor toevoeging — echte vacatures, uit de eigen feed van het bedrijf, geen aggregators en geen uitzendfabrieken."
+    },
+    "agentStartFix": {
+      "title": "Opgelost: de Activeer-knop van de agent kon weigeren op te slaan",
+      "description": "Op de agentpagina kon de Activeer-knop klaar lijken en de klik dan afwijzen met “voeg eerst een cv toe”, zonder iets op te slaan — ook als er al een cv was. De knop en de code die opslaat zochten je cv op twee verschillende plekken, en maar één keek waar de agentpagina hem echt bewaart. Ze lezen nu hetzelfde."
     }
   }
 }

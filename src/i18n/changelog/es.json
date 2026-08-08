@@ -787,6 +787,30 @@
     "premiumLook": {
       "title": "Un aspecto más pulido en toda la plataforma",
       "description": "Un repaso de diseño completo: nueva tipografía de titulares con carácter, superficies con más profundidad, color y espaciado refinados, navegación tipo cristal y detalles silenciosos en todas partes — números alineados, esquinas más suaves, un sutil brillo distintivo. Los mismos datos honestos, ahora bien vestidos."
+    },
+    "agentSetupOneScreen": {
+      "title": "Configurar el agente ahora es una sola pantalla",
+      "description": "Añade tu CV — súbelo o pega el texto, justo donde el agente lo pide — y pulsa un botón. Tus puestos, lugares y área se leen del CV, así que no hay nada más que rellenar. El resto (salario mínimo, antigüedad, cuántos al día) pasó a “Más opciones”, con valores por defecto razonables. Si cambias alguno, aparece en pantalla: un filtro nunca puede reducir tu búsqueda sin que lo sepas."
+    },
+    "agentCountryChoice": {
+      "title": "Dile al agente en qué países postular",
+      "description": "La búsqueda del agente ahora acepta países, no solo nombres de lugares. Importa más de lo que parece: un tercio de las ofertas alemanas nunca escribe “Alemania” — solo dicen “Berlín” o “Múnich” — así que escribir el país en el campo de ubicación las dejaba fuera sin avisar. Elige países de la lista y el agente lee el país real de cada oferta, no su redacción. Déjalos todos sin marcar para buscar en todas partes, igual que antes."
+    },
+    "boardAgentFilter": {
+      "title": "Filtra el tablón por empleos a los que el agente puede postular",
+      "description": "El tablón tiene un nuevo interruptor “El agente puede postular”. Actívalo y verás solo ofertas cuyo formulario nuestro agente puede rellenar y enviar por su cuenta — las mismas que llevan la marca de destello en la tarjeta. En el resto, el agente prepara la candidatura y tú pulsas enviar. Útil cuando prefieres dedicar la mañana a las que no requieren nada de ti."
+    },
+    "savedJobsStartAgent": {
+      "title": "Convierte tus empleos guardados en una búsqueda del agente",
+      "description": "Si has guardado varios puestos, tu lista ahora te ofrece poner al agente a buscar empleos como esos. Lee los títulos que guardaste y los rellena en la búsqueda del agente — no se guarda nada ni se ejecuta nada hasta que tú lo actives, y puedes editar cada palabra antes."
+    },
+    "boardGrewAgentReach": {
+      "title": "1.400 tableros de empresa más, y más donde el agente puede postular",
+      "description": "Añadimos 1.408 páginas de empleo de empresas en una sola pasada, a partir de un rastreo reciente de la web abierta. 343 están en sistemas donde nuestro agente puede enviar la candidatura por su cuenta, lo que amplió la parte del tablón que alcanza. Cada tablón se comprobó en vivo antes de añadirlo — vacantes reales, del propio feed de la empresa, sin agregadores ni empresas de intermediación."
+    },
+    "agentStartFix": {
+      "title": "Corregido: el botón Activar del agente podía negarse a guardar",
+      "description": "En la página del agente, el botón Activar podía parecer listo y luego rechazar el clic con “añade primero un CV” sin guardar nada, incluso teniendo ya un CV. El botón y el código que guarda buscaban tu CV en dos sitios distintos, y solo uno miraba donde la página del agente lo guarda de verdad. Ahora leen lo mismo."
     }
   }
 }

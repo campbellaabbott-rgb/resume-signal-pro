@@ -787,6 +787,30 @@
     "premiumLook": {
       "title": "Une allure plus soignée sur toute la plateforme",
       "description": "Une passe de design complète : nouvelle typographie de titres avec du caractère, surfaces plus profondes, couleurs et espacements raffinés, navigation en verre et touches discrètes partout — chiffres alignés, coins adoucis, un léger halo signature. Les mêmes données honnêtes, désormais bien habillées."
+    },
+    "agentSetupOneScreen": {
+      "title": "La configuration de l'agent tient en un seul écran",
+      "description": "Ajoutez votre CV — téléversez-le ou collez le texte, là où l'agent le demande — puis appuyez sur un bouton. Vos postes, lieux et domaine sont lus dans le CV : rien d'autre à remplir. Le reste (salaire plancher, ancienneté, nombre par matin) est passé sous « Plus d'options », avec des valeurs par défaut sensées. Si vous en modifiez un, il est affiché — un filtre ne peut jamais rétrécir votre recherche à votre insu."
+    },
+    "agentCountryChoice": {
+      "title": "Indiquez à l'agent dans quels pays postuler",
+      "description": "La recherche de votre agent accepte désormais des pays, pas seulement des noms de lieux. C'est plus important qu'il n'y paraît : un tiers des offres allemandes n'écrivent jamais « Allemagne » — seulement « Berlin » ou « Munich » — si bien que taper le pays dans le champ lieu les manquait sans le dire. Choisissez des pays dans la liste et l'agent lit le pays réel de chaque offre, pas sa formulation. Laissez tout décoché pour chercher partout, comme avant."
+    },
+    "boardAgentFilter": {
+      "title": "Filtrez le tableau sur les offres où l'agent peut postuler",
+      "description": "Le tableau des offres a un nouvel interrupteur « L'agent peut postuler ». Activez-le et vous ne voyez que les offres dont le formulaire peut être rempli et envoyé par notre agent seul — celles qui portent l'étoile sur la carte. Ailleurs, l'agent prépare la candidature et vous appuyez sur envoyer. Pratique quand vous préférez consacrer la matinée à celles qui ne demandent rien."
+    },
+    "savedJobsStartAgent": {
+      "title": "Transformez vos offres enregistrées en recherche d'agent",
+      "description": "Si vous avez enregistré quelques postes, votre liste propose désormais de lancer l'agent sur des offres similaires. Elle lit les intitulés enregistrés et les place dans la recherche de l'agent — rien n'est enregistré et rien ne démarre tant que vous n'activez pas vous-même, et vous pouvez tout modifier avant."
+    },
+    "boardGrewAgentReach": {
+      "title": "1 400 tableaux d'entreprise de plus, et davantage où l'agent peut postuler",
+      "description": "Nous avons ajouté 1 408 pages carrières d'entreprises en une seule passe, issues d'une exploration récente du web ouvert. 343 se trouvent sur des systèmes où notre agent peut envoyer seul la candidature, ce qui a élargi la part du tableau qu'il atteint. Chaque tableau a été vérifié en direct avant ajout — de vraies offres, issues du flux de l'entreprise, sans agrégateurs ni boîtes d'intérim."
+    },
+    "agentStartFix": {
+      "title": "Corrigé : le bouton Activer de l'agent pouvait refuser d'enregistrer",
+      "description": "Sur la page de l'agent, le bouton Activer pouvait sembler prêt puis refuser le clic avec « ajoutez d'abord un CV » sans rien enregistrer, même avec un CV déjà présent. Le bouton et le code d'enregistrement cherchaient votre CV à deux endroits différents, et un seul regardait là où la page de l'agent le range réellement. Ils lisent désormais la même chose."
     }
   }
 }

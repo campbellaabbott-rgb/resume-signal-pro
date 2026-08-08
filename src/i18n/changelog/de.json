@@ -787,6 +787,30 @@
     "premiumLook": {
       "title": "Ein schärferer Look für die ganze Plattform",
       "description": "Ein kompletter Design-Durchgang: markante neue Display-Schrift, tiefere Ebenen, verfeinerte Farben und Abstände, Glas-Navigation und leise Details überall — ausgerichtete Zahlen, weichere Ecken, ein dezentes Signatur-Leuchten. Dieselben ehrlichen Daten, jetzt passend gekleidet."
+    },
+    "agentSetupOneScreen": {
+      "title": "Die Einrichtung des Agenten passt jetzt auf einen Bildschirm",
+      "description": "Füge deinen Lebenslauf hinzu — hochladen oder Text einfügen, genau dort, wo der Agent danach fragt — und drücke einen Knopf. Rollen, Orte und Bereich werden aus dem Lebenslauf gelesen, mehr ist nicht auszufüllen. Alles Weitere (Gehaltsuntergrenze, Alter der Anzeige, Anzahl pro Morgen) liegt unter „Mehr Optionen“ mit sinnvollen Voreinstellungen. Änderst du etwas, steht es sichtbar da — ein Filter kann deine Suche nie unbemerkt verengen."
+    },
+    "agentCountryChoice": {
+      "title": "Sag dem Agenten, in welchen Ländern er sich bewerben soll",
+      "description": "Die Suche deines Agenten nimmt jetzt Länder an, nicht nur Ortsnamen. Das ist wichtiger, als es klingt: Ein Drittel der deutschen Anzeigen schreibt nirgends „Deutschland“ — nur „Berlin“ oder „München“ — wer also den Landesnamen ins Ortsfeld tippte, verpasste sie stillschweigend. Wähle Länder aus der Liste, und der Agent liest das tatsächliche Land jeder Anzeige statt ihres Wortlauts. Nichts auswählen sucht wie bisher überall."
+    },
+    "boardAgentFilter": {
+      "title": "Filtere das Board auf Stellen, bei denen sich der Agent bewerben kann",
+      "description": "Das Jobboard hat einen neuen Schalter „Agent kann sich bewerben“. Schalte ihn ein und du siehst nur Anzeigen, deren Bewerbungsformular unser Agent allein ausfüllen und absenden kann — dieselben, die auf der Karte das Funkelzeichen tragen. Überall sonst bereitet der Agent die Bewerbung vor und du drückst Senden. Praktisch, wenn du den Morgen lieber denen widmest, die nichts von dir brauchen."
+    },
+    "savedJobsStartAgent": {
+      "title": "Mach aus deinen gemerkten Stellen eine Agentensuche",
+      "description": "Wenn du ein paar Rollen gemerkt hast, bietet deine Merkliste jetzt an, den Agenten auf ähnliche Stellen anzusetzen. Sie liest die gemerkten Jobtitel und trägt sie in die Suche des Agenten ein — nichts wird gespeichert und nichts läuft, bis du selbst aktivierst, und du kannst vorher jedes Wort ändern."
+    },
+    "boardGrewAgentReach": {
+      "title": "1.400 weitere Unternehmens-Boards, und mehr, wo der Agent sich bewerben kann",
+      "description": "Wir haben in einem Durchgang 1.408 Karriereseiten von Unternehmen aufgenommen, aus einem frischen Durchlauf des offenen Webs. 343 davon liegen auf Systemen, bei denen unser Agent allein absenden kann — das hebt den Anteil des Boards, den er erreicht. Jedes Board wurde vor der Aufnahme live geprüft: echte Stellen aus dem eigenen Feed des Unternehmens, keine Aggregatoren, keine Personalvermittler."
+    },
+    "agentStartFix": {
+      "title": "Behoben: Der Aktivieren-Knopf des Agenten konnte das Speichern verweigern",
+      "description": "Auf der Agentenseite konnte der Aktivieren-Knopf bereit wirken und den Klick dann mit „erst einen Lebenslauf hinzufügen“ abweisen, ohne etwas zu speichern — auch wenn bereits ein Lebenslauf hinterlegt war. Knopf und Speicher-Code suchten den Lebenslauf an zwei verschiedenen Stellen, und nur einer schaute dorthin, wo die Agentenseite ihn tatsächlich ablegt. Jetzt lesen beide dasselbe."
     }
   }
 }

@@ -787,6 +787,30 @@
     "premiumLook": {
       "title": "Um visual mais refinado em toda a plataforma",
       "description": "Uma revisão completa de design: nova tipografia de títulos com personalidade, superfícies em camadas mais profundas, cor e espaçamento refinados, navegação de vidro e toques discretos por toda parte — números alinhados, cantos mais suaves, um brilho sutil de assinatura. Os mesmos dados honestos, agora bem vestidos."
+    },
+    "agentSetupOneScreen": {
+      "title": "Configurar o agente agora é um só ecrã",
+      "description": "Adicione o seu CV — carregue o ficheiro ou cole o texto, no mesmo sítio onde o agente o pede — e carregue num botão. As funções, os locais e a área são lidos do CV, por isso não há mais nada a preencher. O resto (salário mínimo, quão recente, quantos por manhã) passou para “Mais opções”, já com valores sensatos. Se mudar algum, fica indicado no ecrã — um filtro nunca reduz a sua pesquisa sem que saiba."
+    },
+    "agentCountryChoice": {
+      "title": "Diga ao agente em que países se candidatar",
+      "description": "A pesquisa do seu agente aceita agora países, não apenas nomes de locais. Isso pesa mais do que parece: um terço dos anúncios alemães nunca escreve “Alemanha” — dizem só “Berlim” ou “Munique” — pelo que escrever o país no campo de localização os deixava de fora sem aviso. Escolha países da lista e o agente lê o país real de cada anúncio, e não a sua redação. Deixe tudo desmarcado para procurar em todo o lado, tal como antes."
+    },
+    "boardAgentFilter": {
+      "title": "Filtre o quadro para vagas onde o agente pode candidatar-se",
+      "description": "O quadro de vagas tem um novo interruptor “O agente pode candidatar-se”. Ligue-o e vê apenas anúncios cujo formulário o nosso agente consegue preencher e enviar sozinho — os mesmos que têm a marca brilhante no cartão. Nos restantes, o agente prepara a candidatura e o utilizador carrega em enviar. Útil quando prefere dedicar a manhã às que não exigem nada de si."
+    },
+    "savedJobsStartAgent": {
+      "title": "Transforme as vagas guardadas numa pesquisa do agente",
+      "description": "Se guardou algumas funções, a sua lista passa a oferecer pôr o agente à procura de vagas parecidas. Lê os títulos que guardou e preenche-os na pesquisa do agente — nada é guardado e nada corre até que o ative, e pode editar cada palavra antes."
+    },
+    "boardGrewAgentReach": {
+      "title": "Mais 1.400 quadros de empresas, e mais onde o agente se pode candidatar",
+      "description": "Adicionámos 1.408 páginas de carreiras de empresas numa só passagem, a partir de um rastreio recente da web aberta. 343 estão em sistemas onde o nosso agente consegue submeter sozinho, o que aumentou a fatia do quadro que alcança. Cada quadro foi verificado ao vivo antes de entrar — vagas reais, do próprio feed da empresa, sem agregadores nem empresas de trabalho temporário."
+    },
+    "agentStartFix": {
+      "title": "Corrigido: o botão Ativar do agente podia recusar guardar",
+      "description": "Na página do agente, o botão Ativar podia parecer pronto e depois recusar o clique com “adicione primeiro um CV”, sem guardar nada — mesmo havendo já um CV. O botão e o código que guarda procuravam o seu CV em dois sítios diferentes, e só um olhava onde a página do agente o guarda de facto. Passam a ler o mesmo."
     }
   }
 }

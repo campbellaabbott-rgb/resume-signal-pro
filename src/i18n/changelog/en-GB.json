@@ -787,6 +787,30 @@
     "premiumLook": {
       "title": "A sharper look for the whole platform",
       "description": "A full design pass: a distinctive new display typeface, deeper layered surfaces, refined color and spacing, glass navigation, and quiet touches everywhere — aligned numbers, softer corners, a subtle signature glow. Same honest data, now dressed for it."
+    },
+    "agentSetupOneScreen": {
+      "title": "Setting up the agent is one screen now",
+      "description": "Add your CV — upload it or paste the text, right where the agent asks for it — and press one button. Your roles, places and field are read from the CV, so there is nothing else to fill in. Everything else (salary floor, how recent, how many a morning) moved behind “More options”, already set to sensible defaults. If you do change one, it is named on screen so a filter can never quietly narrow your search without you knowing."
+    },
+    "agentCountryChoice": {
+      "title": "Tell the agent which countries to apply in",
+      "description": "Your agent's search now takes countries, not just place names. That matters more than it sounds: a third of German postings never write “Germany” anywhere — they just say “Berlin” or “Munich” — so typing a country name into the location box quietly missed them. Pick countries from the list and the agent reads each posting's actual country instead of its wording. Leave them all off to search everywhere, exactly as before."
+    },
+    "boardAgentFilter": {
+      "title": "Filter the board to jobs the agent can apply to",
+      "description": "The job board has a new “Agent can apply” switch. Turn it on and you only see postings whose application form our agent can fill in and submit on its own — the same jobs that carry the sparkle mark on a card. Everywhere else the agent still prepares the application and you press send. Useful when you would rather spend the morning on the ones that need nothing from you."
+    },
+    "savedJobsStartAgent": {
+      "title": "Turn your saved jobs into an agent search",
+      "description": "If you have saved a few roles, your saved list now offers to start the agent hunting for jobs like them. It reads the job titles you saved and fills them into the agent's search — nothing is saved and nothing runs until you activate it yourself, and you can edit every word first."
+    },
+    "boardGrewAgentReach": {
+      "title": "1,400 more company boards, and more the agent can apply to",
+      "description": "We added 1,408 company career pages to the board in one pass, taken from a fresh crawl of the open web. 343 of them sit on the systems our apply agent can submit to on its own, which lifted the share of the board it can reach. Every board was checked live before it was added — real openings, from the company's own feed, no aggregators and no staffing mills."
+    },
+    "agentStartFix": {
+      "title": "Fixed: the agent's Activate button could refuse to save",
+      "description": "On the agent page, the Activate button could look ready and then reject the click with “add a résumé first”, without saving anything — even when a résumé was already on file. The button and the code that saves were checking for your résumé in two different places, and only one of them looked where the agent page actually keeps it. They now read the same thing."
     }
   }
 }
