@@ -189,3 +189,64 @@ export function isSendableVendor(postingIdOrSource: string): boolean {
   const s = String(postingIdOrSource ?? "").toLowerCase();
   return SENDABLE.has(s.includes(":") ? s.split(":")[0]! : s);
 }
+
+/**
+ * A TENANT'S WALL IS NOT ITS VENDOR'S.
+ *
+ * Measured 2026-08-07 at n=30 per vendor: recruitee 24% of tenants clean,
+ * ashby 17%, bamboohr 10%, greenhouse 7% — while workable, rippling, lever and
+ * smartrecruiters were 30/30 walled. Roughly 14,100 postings sit on employers
+ * who never deployed protection, against a drivable inventory of 34,265.
+ *
+ * SENDABLE_VENDORS above stays exactly as it is and is still the primary
+ * answer: it describes which vendors we have WRITTEN AN ADAPTER for, which is
+ * a fact about our code. This is the second, narrower question — whether one
+ * particular employer on an otherwise-walled vendor left their form open —
+ * which is a fact about somebody else's configuration and can change any day.
+ *
+ * Hence the two rules below, and both matter more than they look:
+ *
+ *   ABSENCE IS NOT CLEAN. No observation means unknown, and unknown returns
+ *   false. The whole reach argument rests on having actually looked.
+ *
+ *   OBSERVATIONS EXPIRE. A tenant can turn protection on any morning, and a
+ *   six-month-old "clean" reading is a guess wearing a measurement's clothes.
+ *   Past the TTL the answer reverts to false rather than to its last value.
+ *
+ * WHAT THIS DELIBERATELY DOES NOT FEED: the board's "Agent can apply" badge and
+ * its filter. Those stay vendor-level. A public mark whose truth depends on a
+ * probe that can go stale between page view and send is a claim we cannot keep,
+ * and under-promising costs nothing here — the agent reaches the extra tenants
+ * whether or not the badge advertises them.
+ */
+export const TENANT_WALL_TTL_DAYS = 14;
+
+/** One observed row from apply_tenant_walls. */
+export interface TenantWall {
+  walled: boolean;
+  checked_at: string;
+}
+
+/**
+ * May the agent submit to this posting?
+ *
+ * `wall` is the observation for this posting's tenant, or null/undefined when
+ * none exists. Vendor-level sendability wins immediately; everything else needs
+ * a fresh, explicitly-clean observation.
+ */
+export function tenantSendable(
+  postingIdOrSource: string,
+  wall?: TenantWall | null,
+  now: number = Date.now(),
+): boolean {
+  // An adapter exists for the whole vendor — no per-tenant question to ask.
+  if (isSendableVendor(postingIdOrSource)) return true;
+
+  if (!wall || wall.walled !== false) return false;
+
+  const seen = Date.parse(wall.checked_at ?? "");
+  if (!Number.isFinite(seen)) return false;          // unparseable is unknown
+  const ageDays = (now - seen) / 86_400_000;
+  // Future timestamps are corrupt, not fresh.
+  return ageDays >= 0 && ageDays <= TENANT_WALL_TTL_DAYS;
+}
