@@ -641,10 +641,23 @@ describe("Ghost Job Index age stats use the company's date, not our discovery ti
     // rejected for its shape. The rule that matters is narrower and stronger:
     // our discovery timestamp must not appear in this function at all, however
     // the median is computed.
+    // THE COMPUTATION MOVED; THE RULE DID NOT. get_ghost_job_index_stats is now
+    // a single-row read of job_board_stats_rollup — it aggregated on the request
+    // path and returned 57014 at 60s for 5.3 days — and the eight measurements
+    // are computed by refresh_ghost_stats() on a cron. So the posting-age basis
+    // is asserted where it is now calculated, and the reader is separately held
+    // to computing nothing at all, which is a stronger pair than before.
+    const compute = latestMigrationDefining("refresh_ghost_stats");
+    const cBody = compute.slice(compute.indexOf("FUNCTION public.refresh_ghost_stats"));
+    const cOnly = cBody.slice(0, cBody.indexOf("END $$;")).replace(/--[^\n]*/g, "");
+    expect(cOnly, "first_seen is our discovery time, never a posting age").not.toMatch(/first_seen/);
+    expect(cOnly, "the age median must be measured from posted_at").toMatch(/now\(\) - p?\.?posted_at/);
+
     const fnBody = sql.slice(sql.indexOf("FUNCTION public.get_ghost_job_index_stats"));
     const bodyOnly = fnBody.slice(0, fnBody.indexOf("$$;")).replace(/--[^\n]*/g, "");
-    expect(bodyOnly, "first_seen is our discovery time, never a posting age").not.toMatch(/first_seen/);
-    expect(bodyOnly, "the age median must be measured from posted_at").toMatch(/now\(\) - p?\.?posted_at/);
+    expect(bodyOnly, "first_seen must not appear in the reader either").not.toMatch(/first_seen/);
+    expect(bodyOnly, "the reader must read the rollup, not recompute").toMatch(/job_board_stats_rollup/);
+    expect(bodyOnly, "no aggregate belongs on the request path").not.toMatch(/percentile_cont|count\(\*\)/);
   });
 
   it("time-to-close does not substitute first_seen either", () => {
