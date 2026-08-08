@@ -1373,3 +1373,47 @@ bamboohr 3,405, workable 3,148, workday 3,000, ashby 2,661, recruitee 706,
 smartrecruiters 676, rippling 980, greenhouse-eu 352). Those are listing
 inventory only — greenhouse measured 5/6 bot-walled the same day, so they add
 board depth and SEO, not agent reach.
+
+## Bot walls are per-TENANT, measured at n=30 (2026-08-07)
+
+The n=6 sweep found greenhouse 5/6 and recruitee 5/6 and could only disprove
+"the wall is a vendor property". This is the same probe at 30 tenants per
+vendor, including bamboohr and rippling which had NEVER been wall-tested:
+
+    vendor           walled/reached   clean %   live postings   ~reachable
+    recruitee              22/29        24%           7,945        1,900
+    ashby                  25/30        17%          21,003        3,500
+    bamboohr               27/30        10%          45,999        4,600
+    greenhouse             28/30         7%          61,851        4,100
+    workable               30/30         0%          22,081            —
+    rippling               30/30         0%          10,053            —
+    lever                  30/30         0%          12,957            —
+    smartrecruiters        30/30         0%          43,583            —
+
+FOUR VENDORS ARE UNIFORMLY WALLED at 30/30 — workable, rippling, lever,
+smartrecruiters. That is a strong zero and those are closed; stop revisiting
+them except via the weekly sweep.
+
+FOUR HAVE REAL CLEAN FRACTIONS totalling ~14,100 postings, against a current
+drivable inventory of 34,265. That is roughly +41% agent reach from boards
+ALREADY IN THE CATALOG — no new discovery, no new adapter, no bot-wall
+boundary crossed, because the tenants in question never deployed a wall.
+
+TWO CAVEATS THE NUMBER DOES NOT CARRY. n=30 is +/-9 points, so greenhouse's 7%
+could be 2-15%. And the rate is per TENANT while the estimate multiplies
+per-POSTING totals — it assumes clean tenants are averagely sized, and they may
+well skew small, since a large employer is likelier to have configured
+protection. Treat 14,100 as optimistic.
+
+WHAT BUILDING THIS REQUIRES, and the honesty problem in it:
+  1. A send-time per-tenant wall check — probe the specific employer's form
+     before queueing, rather than trusting the vendor label.
+  2. Badging that can say "this employer's form is open" without implying the
+     vendor is. The board currently shows one sparkle mark meaning "agent can
+     apply"; extending it to per-tenant means the mark's meaning now depends on
+     a probe that can go stale between page view and send.
+  3. A decision about what the agent does when a tenant walls up between
+     queueing and sending. The refusal path already exists (refusal.ts) and
+     this is just another refusal stage — but it must be a stage, not a retry.
+
+The boundary does not move: a tenant that deploys a wall is left alone.
