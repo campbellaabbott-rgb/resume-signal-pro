@@ -79,7 +79,7 @@ async function rpcWithin<T>(p: PromiseLike<{ data: T | null }>, ms = 6_000): Pro
  *
  * BUMP ON EVERY DEPLOY of this function.
  */
-const BUILD_VERSION = "2026-08-07.1";
+const BUILD_VERSION = "2026-08-08.1";
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -640,27 +640,65 @@ serve(async (req) => {
 
       // Per-vendor date-parser canary: a vendor whose stated-date coverage
       // collapses means its date mapping regressed (the Lever evergreen bug
-      // was found by hand; this catches the next one). BambooHR is exempt —
-      // its feed carries no dates at all, disclosed as such.
+      // was found by hand; this catches the next one).
+      //
+      // TWO POPULATIONS, TWO QUESTIONS. This check used to exempt bamboohr,
+      // rippling, pinpoint and workday outright, reasoning that their feeds
+      // carry no dates so a low percentage is expected rather than broken.
+      // That is true of the FEED and false of the POSTING: bamboohr and
+      // rippling are dated after ingest by the posted-date backfill, from
+      // their detail endpoints. So the vendors whose dates depend entirely on
+      // that sweep were the only ones nothing watched — and on 2026-08-08
+      // bamboohr sat at 23% dated (34,211 undated) and rippling at 19%
+      // (10,121) with every check green, because a day of board merges
+      // outran a sweep that re-arms weekly.
+      //
+      // Feed-dated vendors are still judged on percentage: a collapse means a
+      // parser regressed. Backfill-dated vendors are judged on BACKLOG SIZE
+      // instead, which is the thing that actually goes wrong for them — the
+      // sweep falling behind intake. Percentage would be the wrong test there:
+      // it is expected to sag right after a merge and to recover, and it says
+      // nothing about how many postings are affected.
+      //
+      // pinpoint stays exempt and that is now a verified fact rather than an
+      // assumption: its postings.json was inspected on 2026-08-08 and carries
+      // no created/published field of any kind, so its 6,110 undated rows are
+      // honest and no sweep can fix them.
+      const BACKFILL_DATED = ['bamboohr', 'rippling', 'greenhouse'];
+      const FEED_UNDATED = ['pinpoint', 'workday'];
+      // Backlog that should trigger the growth re-arm in job-board, with room
+      // for it to act before this complains. The sweep re-arms at +5,000 above
+      // its post-sweep floor; alarming at 25,000 means several missed re-arms,
+      // not one busy afternoon.
+      const BACKLOG_ALARM = 25_000;
       try {
         const cov = statsCache?.date_coverage ?? null;
         if (!Array.isArray(cov) || cov.length === 0) skip('job_board_date_coverage', cov ? 'stats_cache date_coverage is empty' : scWhy);
         if (Array.isArray(cov) && cov.length > 0) {
-          const broken = (cov as Array<{ source: string; total: number; dated: number }>)
-            .filter((r) => r.source !== 'bamboohr' && r.source !== 'rippling' && r.source !== 'pinpoint' && r.source !== 'workday' && Number(r.total) >= 1000)
+          const rows = cov as Array<{ source: string; total: number; dated: number }>;
+          const broken = rows
+            .filter((r) => !BACKFILL_DATED.includes(r.source) && !FEED_UNDATED.includes(r.source) && Number(r.total) >= 1000)
             .map((r) => ({ source: r.source, pct: Math.round(100 * Number(r.dated) / Math.max(Number(r.total), 1)) }))
             .filter((r) => r.pct < 50);
+          const backlog = rows
+            .filter((r) => BACKFILL_DATED.includes(r.source))
+            .reduce((n, r) => n + Math.max(0, Number(r.total) - Number(r.dated)), 0);
+          const behind = backlog >= BACKLOG_ALARM;
+          const reasons = [
+            ...broken.map((b) => `${b.source} ${b.pct}%`),
+            ...(behind ? [`posted-date backfill ${backlog.toLocaleString()} rows behind`] : []),
+          ];
           checks.push({
             name: 'job_board_date_coverage',
-            passed: broken.length === 0,
+            passed: reasons.length === 0,
             responseTimeMs: 0,
-            error: broken.length
-              ? `stated-date coverage collapsed for ${broken.map((b) => `${b.source} ${b.pct}%`).join(', ')} — that vendor's date mapping likely regressed; age stats are losing their basis`
+            error: reasons.length
+              ? `date coverage: ${reasons.join(', ')} — a percentage collapse means that vendor's date mapping regressed; a backfill backlog means postings are served with no stated age at all`
               : undefined,
           });
-          if (broken.length && overallStatus === 'healthy') {
+          if (reasons.length && overallStatus === 'healthy') {
             overallStatus = 'degraded';
-            errorMessage = errorMessage || `Vendor date coverage collapsed: ${broken.map((b) => b.source).join(', ')}`;
+            errorMessage = errorMessage || `Vendor date coverage: ${[...broken.map((b) => b.source), ...(behind ? ['backfill backlog'] : [])].join(', ')}`;
           }
         }
       } catch (e) {

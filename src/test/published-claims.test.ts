@@ -480,7 +480,7 @@ describe("the posted-date backfill is reachable without a full rotation", () => 
 
   it("does not start a second chain while one is alive", () => {
     const mk = fn.slice(fn.indexOf("async function maybeKickMaintenance"));
-    expect(mk).toMatch(/if \(!pb\.alive && postedBackfillDue\(pbv\)\)/);
+    expect(mk).toMatch(/if \(!pb\.alive && postedBackfillDue\(pbv[,)]/);
   });
 });
 
@@ -534,21 +534,28 @@ describe("exit ledger keeps learned age separate from observed age", () => {
 // the only remedy would be a human bumping a constant.
 describe("the posted-date sweep re-arms instead of latching", () => {
   const fn = readFileSync(resolve(root, "supabase/functions/job-board/index.ts"), "utf8");
+  // postedBackfillDue moved to _shared/posted-backfill.ts on 2026-08-08 so the
+  // rule could be tested by CALLING it rather than by reading it — see
+  // posted-date-backfill-rearm.test.ts, which exercises the real function.
+  // These two assertions stay as source checks because they guard the
+  // fail-safe DIRECTIONS, and a direction is easiest to state where it is
+  // written.
+  const pbSrc = readFileSync(resolve(root, "supabase/functions/_shared/posted-backfill.ts"), "utf8");
 
   it("neither kick compares the version directly any more", () => {
     const code = fn.split("\n").filter((l) => !l.trim().startsWith("//")).join("\n");
     expect(code).not.toMatch(/pbV?\.version !== POSTED_BACKFILL_VERSION/);
-    expect(code.match(/postedBackfillDue\((pbV|pbv)\)/g)?.length).toBe(2);
+    expect(code.match(/postedBackfillDue\((pbV|pbv)[,)]/g)?.length).toBe(2);
   });
 
   it("a completed sweep goes due again once the stamp ages out", () => {
-    const h = fn.slice(fn.indexOf("function postedBackfillDue"), fn.indexOf("function postedBackfillDue") + 400);
-    expect(h).toMatch(/Date\.now\(\) - swept > POSTED_BACKFILL_REARM_MS/);
+    const h = pbSrc.slice(pbSrc.indexOf("export function postedBackfillDue"));
+    expect(h).toMatch(/since > POSTED_BACKFILL_REARM_MS/);
   });
 
   it("an unreadable stamp reads as due, not as done", () => {
-    const h = fn.slice(fn.indexOf("function postedBackfillDue"), fn.indexOf("function postedBackfillDue") + 400);
-    expect(h).toMatch(/!Number\.isFinite\(swept\) \|\|/);
+    const h = pbSrc.slice(pbSrc.indexOf("export function postedBackfillDue"));
+    expect(h).toMatch(/if \(!Number\.isFinite\(swept\)\) return true;/);
   });
 
   it("re-running stays cheap because the draw is undated-only", () => {
@@ -564,7 +571,15 @@ describe("the posted-date sweep re-arms instead of latching", () => {
 // them apart needed dashboard SQL — the exact gap embedSweep was added to close.
 describe("the posted-date sweep reports its own state", () => {
   const fn = readFileSync(resolve(root, "supabase/functions/job-board/index.ts"), "utf8");
-  const status = fn.slice(fn.indexOf("postedBackfill: (() => {"), fn.indexOf("postedBackfill: (() => {") + 1200);
+  // Sliced to the END OF THE BLOCK, not to a fixed character count. It was
+  // `+ 1200`, and adding the backlog fields pushed `due:` past that window —
+  // so the assertion silently stopped seeing its own target. A window that can
+  // be outgrown by the code it inspects is a test that quietly retires itself.
+  const status = (() => {
+    const i = fn.indexOf("postedBackfill: (() => {");
+    const j = fn.indexOf("})(),", i);
+    return i < 0 || j < 0 ? "" : fn.slice(i, j);
+  })();
 
   it("status publishes the sweep's meta row", () => {
     expect(fn).toMatch(/client\.from\("job_board_meta"\)\.select\("v, updated_at"\)\.eq\("k", "posted_backfill"\)/);
@@ -576,7 +591,7 @@ describe("the posted-date sweep reports its own state", () => {
   it("reports due-ness via the kick's OWN predicate, so it cannot drift", () => {
     // A hand-rolled copy here would eventually disagree with the real kick and
     // report "due: true" on a sweep that never fires — worse than no signal.
-    expect(status).toMatch(/due: postedBackfillDue\(v\)/);
+    expect(status).toMatch(/due: postedBackfillDue\(v[,)]/);
   });
 
   it("a completion stamp records what the chain ACHIEVED, not just that it ended", () => {

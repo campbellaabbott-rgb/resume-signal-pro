@@ -47,6 +47,11 @@ import {
 } from "./normalize.ts";
 import { categorize, CATEGORIZE_VERSION, JOB_CATEGORIES } from "./categories.ts";
 import { computeFit } from "../_shared/fit-score.ts";
+import {
+  POSTED_BACKFILL_VERSION,
+  postedBackfillDue,
+  backlogFromCoverage,
+} from "../_shared/posted-backfill.ts";
 import { extractSalary, parseSalaryStructured } from "../_shared/salary-extract.ts";
 import { classifyDormancy, updateBoardFailures, type BoardFailureState } from "./dormancy.ts";
 import { advanceProgress, isPassDone, type RefreshProgress } from "./rotation.ts";
@@ -613,7 +618,6 @@ const COUNTRY_VERSION = 1; // v1: deterministic country from location text (name
 // kick; it is what this constant is for. On the next kick the stored
 // resumeVersion (4, or absent) also fails the new match, so the chain starts
 // clean at bamboohr with an empty cursor rather than inheriting v4 state.
-const POSTED_BACKFILL_VERSION = 5;
 
 // The completion stamp EXPIRES. Without this the sweep is strictly one-shot:
 // it stamps {version: 5} when the last phase drains, and both kicks test
@@ -629,12 +633,25 @@ const POSTED_BACKFILL_VERSION = 5;
 // A missing or unparseable sweptAt reads as DUE. It is the conservative
 // direction (one cheap extra sweep) and it self-corrects, because completing
 // writes a fresh stamp.
-const POSTED_BACKFILL_REARM_MS = 7 * 86_400_000;
-function postedBackfillDue(v: { version?: number; sweptAt?: string }): boolean {
-  if (v.version !== POSTED_BACKFILL_VERSION) return true;
-  const swept = v.sweptAt ? Date.parse(v.sweptAt) : NaN;
-  return !Number.isFinite(swept) || Date.now() - swept > POSTED_BACKFILL_REARM_MS;
+/**
+ * The sweep's cadence rule now lives in _shared/posted-backfill.ts so it can be
+ * tested against the real function rather than a copy of it. `undatedBacklog`
+ * stays here because it does IO; the counting itself is the shared pure helper.
+ */
+// `SupabaseClient` untyped-generic, not a hand-written structural type: the
+// structural version tripped TS2589 ("type instantiation is excessively deep")
+// against the real client, which the deno gate caught and tsc never would have
+// — this file is not in the frontend project.
+// deno-lint-ignore no-explicit-any
+async function undatedBacklog(client: SupabaseClient<any, any, any>): Promise<number | null> {
+  try {
+    const { data } = await client.from("job_board_stats_rollup").select("v").eq("k", "date_coverage").maybeSingle();
+    return backlogFromCoverage((data as { v?: unknown } | null)?.v ?? null);
+  } catch {
+    return null;
+  }
 }
+
 const BACKFILL_HOP_PAUSE_MS = 3_000;
 // Velocity tier: boards that ADDED postings recently earn hot cadence even if
 // small — a 40-role startup posting daily deserves faster revisits than a
@@ -1803,9 +1820,12 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
     // from the beginning — restart-from-scratch is why v2's late phases
     // never ran.
     const { data: pbVer } = await client.from("job_board_meta").select("v").eq("k", "posted_backfill").maybeSingle();
-    const pbV = (pbVer?.v ?? {}) as { version?: number; resumeVersion?: number; phase?: string; cursor?: string; at?: string };
+    const pbV = (pbVer?.v ?? {}) as { version?: number; resumeVersion?: number; phase?: string; cursor?: string; at?: string; sweptAt?: string; backlogAtSweep?: number };
     const pbAlive = typeof pbV.at === "string" && Date.now() - Date.parse(pbV.at) < 5 * 60_000;
-    if (postedBackfillDue(pbV) && !pbAlive) {
+    // Read the backlog only when the cheap checks have not already decided, so
+    // the common "not due" path costs no extra query.
+    const pbBacklog = pbAlive ? null : await undatedBacklog(client);
+    if (postedBackfillDue(pbV, pbBacklog) && !pbAlive) {
       const url = `${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`;
       // Resume ONLY state written by this sweep version. v4 retired the
       // "workday" phase, but the stored v3 state was replayed verbatim:
@@ -1986,8 +2006,8 @@ async function maybeKickMaintenance(client: SupabaseClient): Promise<void> {
     // Resume state is version-keyed (see the kick in runRefresh) so stale v4
     // state can never be replayed.
     const pb = await alive("posted_backfill");
-    const pbv = (pb.v ?? {}) as { version?: number; sweptAt?: string; resumeVersion?: number; phase?: string; cursor?: string };
-    if (!pb.alive && postedBackfillDue(pbv)) {
+    const pbv = (pb.v ?? {}) as { version?: number; sweptAt?: string; resumeVersion?: number; phase?: string; cursor?: string; backlogAtSweep?: number };
+    if (!pb.alive && postedBackfillDue(pbv, await undatedBacklog(client))) {
       const pbResume = pbv.resumeVersion === POSTED_BACKFILL_VERSION
         && typeof pbv.phase === "string" && typeof pbv.cursor === "string"
         ? { phase: pbv.phase, cursor: pbv.cursor }
@@ -2638,6 +2658,11 @@ Deno.serve(async (req) => {
           updated_at: new Date().toISOString(),
         }, { onConflict: "k" }).then(() => {}, () => {});
       }
+      // Undated rows on the vendors the posted-date sweep can fix, and the
+      // floor it last left behind. `due` below is computed WITH this, so the
+      // status endpoint answers "is the sweep behind, and will it re-arm" in
+      // one place instead of leaving it to be inferred from two percentages.
+      const pbBacklogNow = await undatedBacklog(client);
       return json({
         // deployed build identity (constants baked into THIS bundle)
         version: BUILD_VERSION,
@@ -2891,7 +2916,7 @@ Deno.serve(async (req) => {
           };
         })(),
         postedBackfill: (() => {
-          const v = (pbMeta.data?.v ?? {}) as { version?: number; sweptAt?: string; phase?: string; cursor?: string; datedTotal?: number; scannedTotal?: number; note?: string };
+          const v = (pbMeta.data?.v ?? {}) as { version?: number; sweptAt?: string; phase?: string; cursor?: string; datedTotal?: number; scannedTotal?: number; note?: string; backlogAtSweep?: number };
           return {
             version: v.version ?? null,
             sweptAt: v.sweptAt ?? null,
@@ -2901,7 +2926,15 @@ Deno.serve(async (req) => {
             note: v.note ?? null,
             scannedTotal: v.scannedTotal ?? null,
             ageMin: pbMeta.data?.updated_at ? Math.round((Date.now() - new Date(pbMeta.data.updated_at).getTime()) / 60000) : null,
-            due: postedBackfillDue(v),
+            // Undated rows on bamboohr/rippling/greenhouse right now, the
+            // residue the last completed sweep could not date, and the growth
+            // between them — which is what actually arms the sweep early.
+            backlog: pbBacklogNow,
+            backlogAtSweep: v.backlogAtSweep ?? null,
+            backlogGrowth: typeof pbBacklogNow === "number" && typeof v.backlogAtSweep === "number"
+              ? pbBacklogNow - v.backlogAtSweep
+              : null,
+            due: postedBackfillDue(v, pbBacklogNow),
           };
         })(),
         // live pipeline health (meta-derived)
@@ -3610,8 +3643,15 @@ Deno.serve(async (req) => {
         chain({ phase: NEXT_PHASE[phase], datedTotal, scannedTotal, note: lastBoardError ? `board ${lastBoardError}` : `phase done: ${datedTotal}/${scannedTotal}` }); // fresh cursor for the next source
         return json({ ok: true, phase, scanned, dated, datedTotal, scannedTotal, next: NEXT_PHASE[phase] });
       }
+      // backlogAtSweep is the IRREDUCIBLE RESIDUE — what remains undated after
+      // a full sweep, because those rows carry no vendor date or are no longer
+      // listed. Recording it here is what lets the growth re-arm measure new
+      // intake instead of re-running forever against rows already proven
+      // undatable. Null (rollup unreadable) simply omits the key, and the next
+      // sweep is then timer-driven, which is the behaviour before this existed.
+      const backlogAtSweep = await undatedBacklog(client);
       await client.from("job_board_meta").upsert(
-        { k: "posted_backfill", v: { version: POSTED_BACKFILL_VERSION, sweptAt: new Date().toISOString(), datedTotal, scannedTotal }, updated_at: new Date().toISOString() },
+        { k: "posted_backfill", v: { version: POSTED_BACKFILL_VERSION, sweptAt: new Date().toISOString(), datedTotal, scannedTotal, ...(backlogAtSweep === null ? {} : { backlogAtSweep }) }, updated_at: new Date().toISOString() },
         { onConflict: "k" },
       );
       console.log(`[JOB-BOARD] posted-date backfill complete: ${scanned} scanned, ${dated} dated (v${POSTED_BACKFILL_VERSION})`);
