@@ -34,9 +34,14 @@ const NOW = Date.parse("2026-08-08T12:00:00Z");
 const daysAgo = (d: number) => new Date(NOW - d * 86_400_000).toISOString();
 
 const DIR = resolve(__dirname, "../../supabase/migrations");
+// The migration that CREATES the table, not merely one that mentions it.
+// Selecting "the latest file containing the name" picks up the follow-up that
+// fixed the grant, and every assertion about the schema then fails for the
+// wrong reason. Third time this exact slip has cost a green run today, so:
+// match on the DDL, never on the identifier.
 const mig = readdirSync(DIR).filter((f) => f.endsWith(".sql"))
   .map((f) => readFileSync(resolve(DIR, f), "utf8"))
-  .filter((t) => t.includes("apply_tenant_walls")).pop() ?? "";
+  .filter((t) => t.includes("CREATE TABLE IF NOT EXISTS public.apply_tenant_walls")).pop() ?? "";
 
 describe("a drivable vendor needs no per-tenant question", () => {
   it("stays sendable with no observation at all", () => {

@@ -21,8 +21,13 @@ import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 
 const DIR = resolve(__dirname, "../../supabase/migrations");
+// The migration that CREATES the tick, not merely one that mentions it. A
+// name-only filter picks the LATEST such file, which is now 20260808134902 —
+// the migration that fixed the grant — and every assertion about the creating
+// migration then fails for entirely the wrong reason.
 const migFile = readdirSync(DIR).filter((f) => f.endsWith(".sql"))
-  .filter((f) => readFileSync(resolve(DIR, f), "utf8").includes("reconcile_stripe_tick"))
+  .filter((f) => readFileSync(resolve(DIR, f), "utf8")
+    .includes("CREATE OR REPLACE FUNCTION public.reconcile_stripe_tick"))
   .sort().pop()!;
 const mig = readFileSync(resolve(DIR, migFile), "utf8");
 const bare = mig.replace(/--[^\n]*/g, "");
@@ -32,10 +37,20 @@ const board = readFileSync(
   resolve(__dirname, "../../supabase/functions/job-board/index.ts"), "utf8");
 
 describe("only the scheduler can claim the schedule ran", () => {
-  it("revokes the tick from PUBLIC — this is the entire trust basis", () => {
-    // A GRANT here would silently undo the migration. 107 of 121 definer
-    // functions in this project were once anon-callable for exactly this reason.
-    expect(bare).toMatch(/REVOKE ALL ON FUNCTION public\.reconcile_stripe_tick\(\) FROM PUBLIC/);
+  it("revokes the tick from anon BY NAME — revoking PUBLIC alone did not work", () => {
+    // THIS ASSERTION USED TO CHECK ONLY `FROM PUBLIC`, AND PASSED WHILE THE
+    // FUNCTION WAS WORLD-CALLABLE. Measured as anon 2026-08-08:
+    // POST /rpc/reconcile_stripe_tick returned 204 and stamped lastCronAt.
+    // This database grants EXECUTE to anon on newly created functions, and a
+    // grant held directly by anon survives a PUBLIC revoke — so the statement
+    // ran, succeeded, and removed a privilege nothing was using.
+    //
+    // The trust basis is the by-name revoke, so that is what is pinned.
+    const revokes = readdirSync(DIR).filter((f) => f.endsWith(".sql"))
+      .map((f) => readFileSync(resolve(DIR, f), "utf8"))
+      .filter((t) => t.includes("REVOKE ALL ON FUNCTION public.reconcile_stripe_tick"))
+      .join("\n");
+    expect(revokes).toMatch(/FROM PUBLIC, anon, authenticated/);
   });
 
   it("never grants it to anon or authenticated", () => {
@@ -161,7 +176,11 @@ describe("status reports it, including the state worth shouting about", () => {
   });
 
   it("judges a daily job on a 25h window", () => {
-    const blk = board.slice(board.indexOf("paymentReconcile:"));
-    expect(blk.slice(0, 2000)).toMatch(/scheduleProven: cronAt !== null && \(ageMin\(cronAt\) \?\? 1e9\) < 1500/);
+    // Sliced to the END OF THE BLOCK, not a fixed byte count. A 2000-char
+    // window silently excluded the assertion target the moment the block gained
+    // a comment — the test then failed for prose, not for code.
+    const start = board.indexOf("paymentReconcile:");
+    const blk = board.slice(start, board.indexOf("})(),", start));
+    expect(blk).toMatch(/scheduleProven: cronAt !== null && \(ageMin\(cronAt\) \?\? 1e9\) < 1500/);
   });
 });

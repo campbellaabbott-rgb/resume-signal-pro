@@ -93,7 +93,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-07.4";
+const BUILD_VERSION = "2026-08-08.1";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -2761,9 +2761,22 @@ Deno.serve(async (req) => {
           return {
             lastRunAt: run.at ?? null,
             buildVersion: run.buildVersion ?? null,
-            // Written only by reconcile_stripe_tick(), which has no HTTP path —
-            // so unlike a body-derived trigger on a verify_jwt=false function,
-            // this cannot be set green by anyone curling the endpoint.
+            // Written by reconcile_stripe_tick(), which pg_cron calls.
+            //
+            // THIS COMMENT USED TO CLAIM THE VALUE COULD NOT BE FORGED, and it
+            // was wrong for a day. The design intent was right — a stamp
+            // written from inside the database rather than derived from a
+            // request body, precisely so an open endpoint could not fake it —
+            // but the implementation revoked the function from PUBLIC only.
+            // This database grants EXECUTE to anon on newly created functions,
+            // and a grant held directly by anon survives a PUBLIC revoke, so
+            // `POST /rpc/reconcile_stripe_tick` returned 204 to an anonymous
+            // caller and stamped this field. Measured 2026-08-08; closed in
+            // 20260808134902 by revoking anon and authenticated BY NAME.
+            //
+            // Now genuinely unreachable over HTTP. Stated as a fact that was
+            // checked rather than one that was assumed, because it was
+            // assumed once already.
             lastCronAt: cronAt,
             cronAgeMin: ageMin(cronAt),
             checkedPaid: run.checkedPaid ?? null,
