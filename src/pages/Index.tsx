@@ -1864,6 +1864,20 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
         {/* Trust Indicators + How It Works — moved below the uploader so the
             free scan is the first thing visitors can act on */}
         <TrustIndicators />
+
+        {/* The platforms we read, named and counted, in the trust band rather
+            than 1,200 lines further down where this used to sit — below the
+            comparison table and the FAQ, which is to say below the point most
+            visitors stop scrolling. "Where do these jobs come from" is the first
+            question a sceptical reader has, and the answer is one of the
+            strongest things we can say, so it is answered here. Still AFTER the
+            uploader: the free scan stays the first thing anyone can act on.
+            See src/config/ats-vendors.ts for why these are names and live
+            counts rather than a coverage percentage. */}
+        <section className="container py-12 border-t border-border">
+          <AtsCoverage />
+        </section>
+
         <HowItWorks />
 
         {/* Mini Pricing Cards - Featured packages */}
@@ -2092,11 +2106,7 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
 
         <SocialProof />
 
-        {/* The ATS platforms we integrate with. Named rather than counted —
-            see src/config/ats-vendors.ts for why there is no percentage. */}
-        <section className="container py-12 border-t border-border">
-          <AtsCoverage />
-        </section>
+        {/* AtsCoverage moved UP into the trust band, just under TrustIndicators. */}
 
         {/* Real corpus statistics — the transparency claim above, made concrete */}
         <LiveScanStats />

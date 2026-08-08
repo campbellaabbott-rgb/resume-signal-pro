@@ -30,9 +30,24 @@ const DIR = resolve(__dirname, "../../supabase/migrations");
 const files = readdirSync(DIR).filter((f) => f.endsWith(".sql"));
 const read = (f: string) => readFileSync(resolve(DIR, f), "utf8");
 
-/** The migration that closed the hole. */
-const fix = files.map(read).filter((t) => t.includes("REVOKE ALL FROM PUBLIC\" DOES NOT LOCK")
-  || t.includes("FROM PUBLIC, anon, authenticated")).pop() ?? "";
+/**
+ * The migration that closed the hole, selected by the DDL that closes it.
+ *
+ * It used to be selected by `t.includes("FROM PUBLIC, anon, authenticated")`,
+ * which is the pattern the second describe block below exists to PROPAGATE. So
+ * the first migration to adopt it — a facets change with nothing to do with
+ * this fix — sorted later, won `.pop()`, and failed all three assertions. The
+ * test broke on compliance with itself: the more the rule spread, the more
+ * reliably it pointed at the wrong file.
+ *
+ * Fourth time in one day that "latest file matching a common string" has picked
+ * up a neighbour. The rule, now written down rather than re-learned: select a
+ * migration by DDL unique to it, never by a phrase other migrations will
+ * legitimately share.
+ */
+const fix = files.map(read)
+  .filter((t) => t.includes("REVOKE ALL ON FUNCTION public.record_tenant_wall")
+    && t.includes("DELETE FROM public.apply_tenant_walls")).pop() ?? "";
 
 describe("the two exposed functions are revoked by NAME", () => {
   it("record_tenant_wall — a caller here steers where the agent applies", () => {

@@ -1,23 +1,65 @@
 import { useTranslation } from "react-i18next";
-import { Bot, MousePointerClick } from "lucide-react";
-import { ATS_VENDORS, AUTO_VENDORS, CLICK_VENDORS } from "@/config/ats-vendors";
+import { Bot, MousePointerClick, Database } from "lucide-react";
+import { ATS_VENDORS, AUTO_VENDORS, CLICK_VENDORS, type AtsVendor } from "@/config/ats-vendors";
 import { useAgentSender } from "@/hooks/useAgentSender";
+import { useBoardVendorCounts } from "@/hooks/useBoardVendorCounts";
 
 /**
  * The ATS platforms we integrate with, on the front page.
  *
- * Names rather than a percentage, on purpose. "We cover 68% of jobs" is
- * unfalsifiable by a reader and I could not measure it honestly — the board
- * clusters by vendor and sampling it at different offsets answered 79%, 100%
- * and 0.6% to the same question. A platform name is something a person can
- * check against the jobs they are actually looking at.
+ * NAMES RATHER THAN A PERCENTAGE, still. src/config/ats-vendors.ts explains why
+ * a share-of-board figure was refused and that has not changed: sampling the
+ * board at different offsets answered 79%, 100% and 0.6% to the same question.
+ *
+ * What DID change is that each platform now carries its own live open count,
+ * which is a different kind of number entirely — measured, not derived, and
+ * checkable against the board itself. A name is a claim; a name with a count
+ * beside it is evidence. That is the point of putting this on a credibility
+ * surface rather than a feature list.
+ *
+ * The counts come from a 15-minute cached facet computed under the board's FULL
+ * serving rule, so a vendor's figure is the number of postings /jobs will
+ * actually serve for it. They cannot be computed live — every vendor times out
+ * on the request path, which is why this reads a cache and says when it was
+ * true.
+ *
+ * NO NUMBER IS BETTER THAN A WRONG ONE. Until the counts are in hand the
+ * platform names render alone, exactly as before. A vendor missing from the
+ * facet shows no figure rather than a zero: absence means "not measured or none
+ * today", and rendering that as `0` would be asserting something we did not
+ * measure. Same rule the whole codebase runs on, and the reason this component
+ * degrades in only one direction.
  *
  * The auto-apply split only appears when a worker is live. Otherwise every
  * platform is shown as prepared-for-one-click, which is what is true then.
  */
+
+/** Vendor pill: the platform name, and its live count when we have one. */
+function VendorPill({ v, count }: { v: AtsVendor; count?: number }) {
+  return (
+    <li className="rounded-lg border bg-background px-3 py-2 flex items-baseline gap-2">
+      <span className="text-sm font-medium">{v.label}</span>
+      {count !== undefined && (
+        <span className="text-xs text-muted-foreground tabular-nums">
+          {count.toLocaleString()}
+        </span>
+      )}
+    </li>
+  );
+}
+
 export function AtsCoverage({ className = "" }: { className?: string }) {
   const { t } = useTranslation();
   const { online } = useAgentSender();
+  const { counts, openTotal, asOf, ready } = useBoardVendorCounts();
+
+  // Biggest first once we can measure — the ordering itself is informative, and
+  // a reader scanning for a platform they recognise finds the large ones first.
+  // Falls back to the config's deliberate order while counts are unknown.
+  const order = (list: readonly AtsVendor[]) =>
+    ready
+      ? [...list].sort((a, b) => (counts[b.key] ?? -1) - (counts[a.key] ?? -1))
+      : list;
 
   const groups = online
     ? [
@@ -26,14 +68,14 @@ export function AtsCoverage({ className = "" }: { className?: string }) {
           Icon: Bot,
           title: t("atsCoverage.autoTitle", "We apply for you"),
           blurb: t("atsCoverage.autoBlurb", "The agent completes and submits the application itself."),
-          vendors: AUTO_VENDORS,
+          vendors: order(AUTO_VENDORS),
         },
         {
           key: "click",
           Icon: MousePointerClick,
           title: t("atsCoverage.clickTitle", "Filled in, you press send"),
           blurb: t("atsCoverage.clickBlurb", "These use a CAPTCHA or a human check. We never solve or bypass one, so your application arrives ready and you send it."),
-          vendors: CLICK_VENDORS,
+          vendors: order(CLICK_VENDORS),
         },
       ]
     : [
@@ -42,20 +84,32 @@ export function AtsCoverage({ className = "" }: { className?: string }) {
           Icon: MousePointerClick,
           title: t("atsCoverage.allTitle", "Applications prepared for you"),
           blurb: t("atsCoverage.allBlurb", "We pull jobs directly from these systems and prepare your application for each one."),
-          vendors: ATS_VENDORS,
+          vendors: order(ATS_VENDORS),
         },
       ];
 
   return (
     <section className={className} aria-labelledby="ats-coverage-heading">
       <div className="text-center mb-8">
+        <div className="inline-flex items-center gap-2 rounded-full border bg-muted/40 px-3 py-1 text-xs font-medium text-muted-foreground mb-4">
+          <Database className="w-3.5 h-3.5 text-primary" />
+          {t("atsCoverage.eyebrow", "Where our jobs come from")}
+        </div>
+
         <h2 id="ats-coverage-heading" className="text-2xl md:text-3xl font-bold mb-2">
           {t("atsCoverage.heading", "Built for the systems employers actually use")}
         </h2>
+
+        {/* The sentence only quotes a total once one has been measured. */}
         <p className="text-muted-foreground max-w-2xl mx-auto">
-          {t("atsCoverage.sub", "We read jobs straight from {{count}} applicant tracking systems — not scraped from a search engine.", {
-            count: ATS_VENDORS.length,
-          })}
+          {ready && openTotal !== null
+            ? t("atsCoverage.subCounted", "{{total}} open roles, read straight from the {{count}} applicant tracking systems below — not scraped from a search engine.", {
+                total: openTotal.toLocaleString(),
+                count: ATS_VENDORS.length,
+              })
+            : t("atsCoverage.sub", "We read jobs straight from {{count}} applicant tracking systems — not scraped from a search engine.", {
+                count: ATS_VENDORS.length,
+              })}
         </p>
       </div>
 
@@ -67,19 +121,28 @@ export function AtsCoverage({ className = "" }: { className?: string }) {
               <h3 className="font-semibold">{title}</h3>
             </div>
             <p className="text-sm text-muted-foreground mb-4">{blurb}</p>
-            <ul className="flex flex-wrap gap-2">
+            <ul className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {vendors.map((v) => (
-                <li
-                  key={v.key}
-                  className="rounded-md border bg-background px-2.5 py-1 text-sm font-medium"
-                >
-                  {v.label}
-                </li>
+                <VendorPill key={v.key} v={v} count={counts[v.key]} />
               ))}
             </ul>
           </div>
         ))}
       </div>
+
+      {/* Counts are of a live, churning table. Saying when they were true is the
+          difference between a measurement and a decoration — and the cache can
+          legitimately be a few minutes behind. */}
+      {ready && asOf && (
+        <p className="text-center text-xs text-muted-foreground mt-4">
+          {t("atsCoverage.asOf", "Live counts of currently open roles, measured {{time}}.", {
+            time: asOf.toLocaleString(undefined, {
+              dateStyle: "medium",
+              timeStyle: "short",
+            }),
+          })}
+        </p>
+      )}
     </section>
   );
 }
