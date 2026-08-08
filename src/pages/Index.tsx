@@ -1736,19 +1736,11 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
             result is showing (the report takes over). */}
         {!landing && !freeKeywordResult && (
           <>
+            {/* The fifteen platforms now live INSIDE this hero, above the
+                field chips — see JobBoardHero. They were briefly a separate
+                band underneath it, which read as a bolted-on strip rather than
+                part of the claim the hero is making. */}
             <JobBoardHero />
-
-            {/* ALL FIFTEEN PLATFORMS, IMMEDIATELY — directly under the board
-                hero, before anything asks the visitor for a file. The hero
-                claims ~595,000 verified openings; "where did you get them"
-                is the very next thought a sceptical reader has, and leaving
-                that answer 1,200 lines down the page meant most people never
-                got it. Compact strip rather than the full two-card block so
-                the scanner below stays reachable — same names, same live
-                counts, same as-of line. */}
-            <section className="container pt-2 pb-6">
-              <AtsCoverage variant="strip" />
-            </section>
 
             {/* AI apply agent — literally on the front page, right under the
                 board hero: the second thing every visitor sees. */}

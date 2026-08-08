@@ -88,37 +88,81 @@ export function AtsCoverage({
   if (variant === "strip") {
     return (
       <section className={className} aria-labelledby="ats-strip-heading">
-        <div className="text-center mb-4">
-          <h2 id="ats-strip-heading" className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+        {/* Same ruled-label pattern the page already uses to separate the board
+            from the toolkit — this belongs to the hero, so it borrows the
+            hero's vocabulary instead of introducing a second one. */}
+        <div className="flex items-center gap-3 mb-4">
+          <div className="h-px flex-1 bg-border/60" />
+          <h2
+            id="ats-strip-heading"
+            className="text-[11px] sm:text-xs font-medium uppercase tracking-wider text-muted-foreground text-center"
+          >
             {t("atsCoverage.stripHeading", "Every job here comes straight from these systems")}
           </h2>
+          <div className="h-px flex-1 bg-border/60" />
+        </div>
+
+        {/* Pills echo the field chips below: same radius, border and card wash,
+            so the row reads as one family rather than a pasted-in widget. The
+            NUMBER carries the weight — muted name, solid foreground count —
+            which is the same treatment as the hero's own live totals. */}
+        {/* SIZED DOWN ON SMALL SCREENS, NOT TRIMMED. At the desktop size this
+            row is eight lines and 557px tall on a 375px phone — an entire
+            screen of hero given to one list. The fix is smaller pills, never a
+            shorter list: "all fifteen" is the claim, and quietly showing ten on
+            mobile would make the sentence underneath it false. */}
+        <ul className="flex flex-wrap justify-center gap-1 sm:gap-2">
+          {order(ATS_VENDORS).map((v) => {
+            const n = counts[v.key];
+            return (
+              <li
+                key={v.key}
+                className="inline-flex items-center gap-1 sm:gap-1.5 px-2 py-1 sm:px-3 sm:py-1.5 rounded-full border border-border bg-card/60 hover:border-primary/40 transition-colors"
+              >
+                {online && v.tier === "auto" && (
+                  <Bot className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-success shrink-0" aria-hidden />
+                )}
+                <span className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{v.label}</span>
+                {n !== undefined && (
+                  <span className="text-xs sm:text-sm font-bold text-foreground tabular-nums">
+                    {n.toLocaleString()}
+                  </span>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+
+        <div className="mt-4 text-center">
           {ready && openTotal !== null && (
-            <p className="text-sm text-muted-foreground mt-1">
+            <p className="text-xs sm:text-sm text-muted-foreground">
               {t("atsCoverage.stripSub", "{{total}} open roles, read directly from all {{count}} — never scraped from a search engine.", {
                 total: openTotal.toLocaleString(),
                 count: ATS_VENDORS.length,
               })}
             </p>
           )}
+
+          {/* The split is a product claim, not decoration — it survives the
+              compact layout as a legend rather than being dropped with the
+              second card.
+
+              FLEX ON THE ROW, TEXT IN ITS OWN SPAN. Written first as an
+              inline-flex `p` with the sentence as a bare flex CHILD, which made
+              the icon a flex item in its own right: it broke onto a line of its
+              own, centred above the text, and read as a stray glyph. The icon
+              needs to sit beside the paragraph, not inside its wrap. */}
+          {online && (
+            <p className="mt-1.5 flex items-start justify-center gap-1.5 max-w-xl mx-auto text-xs text-muted-foreground">
+              <Bot className="w-3.5 h-3.5 text-success shrink-0 mt-0.5" aria-hidden />
+              <span className="text-left sm:text-center">
+                {t("atsCoverage.stripLegend", "The agent submits these for you. The rest it fills in completely — you press send, because they use a human check we will not bypass.")}
+              </span>
+            </p>
+          )}
+
+          {asOfLine && <p className="mt-1.5 text-[11px] text-muted-foreground/70">{asOfLine}</p>}
         </div>
-
-        <ul className="flex flex-wrap justify-center gap-2">
-          {order(ATS_VENDORS).map((v) => (
-            <VendorPill key={v.key} v={v} count={counts[v.key]} auto={online && v.tier === "auto"} />
-          ))}
-        </ul>
-
-        {/* The split is a product claim, not decoration — it survives the
-            compact layout as a legend rather than being dropped with the
-            second card. */}
-        {online && (
-          <p className="text-center text-xs text-muted-foreground mt-3 flex items-center justify-center gap-1.5">
-            <Bot className="w-3.5 h-3.5 text-primary" aria-hidden />
-            {t("atsCoverage.stripLegend", "The agent submits these for you. The rest it fills in completely — you press send, because they use a human check we will not bypass.")}
-          </p>
-        )}
-
-        {asOfLine && <p className="text-center text-xs text-muted-foreground mt-2">{asOfLine}</p>}
       </section>
     );
   }

@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Briefcase, Target, ShieldCheck, ArrowRight, Sparkles, CalendarClock, Bot } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { AtsCoverage } from "@/components/AtsCoverage";
 
 // Page-leading hero for the live job board. The board is the destination; the
 // resume tools (below) are how you win the jobs on it. Numbers are fetched live
@@ -162,8 +163,21 @@ export function JobBoardHero() {
             </span>
           </div>
 
+          {/* THE PLATFORMS, INSIDE THE HERO. The headline claims ~595,000
+              verified openings and the trust line above says "direct from
+              company career pages — no aggregators"; naming the fifteen systems
+              right here is what turns that from an assertion into something a
+              reader can check. It sat 1,200 lines down the page until today,
+              which is to say below where most visitors ever reach.
+
+              Counts render only once measured — see AtsCoverage: a platform we
+              could not measure shows its name and no number, never a zero. */}
+          <div className="mb-7 animate-fade-in" style={{ animationDelay: "0.22s" }}>
+            <AtsCoverage variant="strip" />
+          </div>
+
           {/* One-tap browse by field. */}
-          <div className="flex flex-wrap justify-center gap-2 animate-fade-in" style={{ animationDelay: "0.25s" }}>
+          <div className="flex flex-wrap justify-center gap-2 animate-fade-in" style={{ animationDelay: "0.28s" }}>
             {FIELDS.map((f) => (
               <Link
                 key={f.id}
