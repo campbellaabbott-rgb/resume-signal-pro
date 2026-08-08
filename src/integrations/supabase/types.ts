@@ -772,6 +772,30 @@ export type Database = {
         }
         Relationships: []
       }
+      apply_tenant_walls: {
+        Row: {
+          checked_at: string
+          company_token: string
+          vendor: string
+          walled: boolean
+          walls: string[]
+        }
+        Insert: {
+          checked_at?: string
+          company_token: string
+          vendor: string
+          walled: boolean
+          walls?: string[]
+        }
+        Update: {
+          checked_at?: string
+          company_token?: string
+          vendor?: string
+          walled?: boolean
+          walls?: string[]
+        }
+        Relationships: []
+      }
       cohort_weekly_reports: {
         Row: {
           created_at: string
@@ -3913,6 +3937,15 @@ export type Database = {
       record_scan_outcome: {
         Args: { p_ip: string; p_outcome: string; p_report_id: string }
         Returns: boolean
+      }
+      record_tenant_wall: {
+        Args: {
+          p_token: string
+          p_vendor: string
+          p_walled: boolean
+          p_walls?: string[]
+        }
+        Returns: undefined
       }
       refresh_explore_cache: { Args: never; Returns: undefined }
       refresh_job_board_facets: { Args: never; Returns: Json }
