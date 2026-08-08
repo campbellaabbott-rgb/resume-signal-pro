@@ -1,0 +1,154 @@
+# DEPLOY EDGE FUNCTIONS ON PUSH, AND PROVE IT LANDED.
+#
+# Every deploy in this project has gone through a human driving a Lovable
+# session, and twice on 2026-08-07 that shipped STALE CODE while reporting
+# success: the project copy had stopped pulling from GitHub, so origin/main was
+# at BUILD_VERSION 2026-08-07.3 while the deployed function still answered
+# 2026-08-07.1. Nothing surfaced it — it was caught by hand-diffing the
+# deployed bundle against the repo.
+#
+# So this workflow does two jobs, and the SECOND is the one that pays for
+# itself even if the first never runs:
+#
+#   deploy  — supabase functions deploy, on changes under supabase/functions/
+#   verify  — read the live BUILD_VERSION back and FAIL if it does not match
+#             the one in the repo at this commit
+#
+# The verify job runs on every push regardless of who deployed. If you deploy
+# by hand through Lovable, this still tells you within a minute whether the
+# thing you pushed is the thing that is now answering.
+#
+# MIGRATIONS ARE NOT AUTOMATIC, deliberately. `supabase db push` on every merge
+# to main would apply schema changes to production with no human between the
+# commit and the database. On 2026-08-07 a migration in this repo silently
+# reverted a documented incident fix (a published median switched back to our
+# discovery timestamp from the employer's stated date, an 17.6-day difference);
+# the test suite caught it, but the "a person runs it and reads the error"
+# step is a real gate and removing it is not an improvement. Migrations run
+# from workflow_dispatch with an explicit confirm, so applying one is a choice
+# somebody makes on purpose.
+#
+# SECRETS REQUIRED (repo settings -> Secrets and variables -> Actions):
+#   SUPABASE_ACCESS_TOKEN  personal access token from supabase.com/dashboard/account/tokens
+#   SUPABASE_URL           already set (used by the bot-wall sweep)
+#   SUPABASE_ANON_KEY      already set
+#   SUPABASE_DB_PASSWORD   ONLY needed for the manual migration job
+#
+# If SUPABASE_ACCESS_TOKEN is absent the deploy job skips with a notice rather
+# than failing the run — an unconfigured pipeline should be visibly idle, not
+# a red X on every commit that teaches everyone to ignore red Xs.
+#
+# A NOTE ON TWO WRITERS. Lovable also deploys this project from its own copy.
+# Both writing to the same functions is safe in the sense that the last write
+# wins and both come from the same git history — but if a deploy here and a
+# Lovable session overlap, the verify job below is what tells you which one
+# won. That is the reason it reports the version rather than just exiting 0.
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      apply_migrations:
+        description: 'Type "apply" to run pending database migrations (leave blank to skip)'
+        required: false
+        default: ''
+
+concurrency:
+  # One deploy at a time. Two overlapping runs would race to write the same
+  # functions and the verify step could then check a version neither produced.
+  group: deploy-main
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for deploy credentials
+        id: creds
+        env:
+          TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          if [ -z "$TOKEN" ]; then
+            echo "::notice title=Deploy skipped::SUPABASE_ACCESS_TOKEN is not set — functions were not deployed. The verify job still runs and will report whether the live version matches this commit."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: supabase/setup-cli@v1
+        if: steps.creds.outputs.ready == 'true'
+        with:
+          version: latest
+
+      - name: Deploy edge functions
+        if: steps.creds.outputs.ready == 'true'
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        # ALL functions, never one. On 2026-08-03 a single-function deploy was
+        # followed within minutes by 79 of 80 functions returning
+        # NOT_FOUND_FUNCTION_BLOB — an eight-minute outage across the board,
+        # every checkout path and the scanner. The mechanism was never proven,
+        # so this is a strong correlation rather than a law, but the operational
+        # rule stands: deploy the whole set.
+        run: supabase functions deploy --project-ref bwhdazbotpblihdxcmho
+
+  verify:
+    # Runs even when the deploy job skipped or failed: the question "is the
+    # live code the code I pushed" is worth answering either way.
+    needs: deploy
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Wait for propagation
+        run: sleep 45
+
+      - name: Compare the live BUILD_VERSION against this commit
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "${SUPABASE_URL:-}" ] || [ -z "${SUPABASE_ANON_KEY:-}" ]; then
+            echo "::warning::SUPABASE_URL / SUPABASE_ANON_KEY not set — cannot verify what is live."
+            exit 0
+          fi
+
+          EXPECTED=$(grep -m1 -oE 'BUILD_VERSION = "[^"]+"' supabase/functions/job-board/index.ts | sed 's/.*"\(.*\)"/\1/')
+          echo "repo expects: $EXPECTED"
+
+          LIVE=$(curl -sS -X POST "$SUPABASE_URL/functions/v1/job-board" \
+            -H "apikey: $SUPABASE_ANON_KEY" -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
+            -H "Content-Type: application/json" -d '{"action":"status"}' --max-time 60 \
+            | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d.get("version") or d.get("buildVersion") or "")')
+          echo "live reports: $LIVE"
+
+          if [ "$LIVE" != "$EXPECTED" ]; then
+            echo "::error title=Deployed code is not this commit::job-board reports '$LIVE' but this commit is '$EXPECTED'. The project copy is behind — pull from GitHub before deploying. This exact split shipped stale code twice on 2026-08-07."
+            exit 1
+          fi
+          echo "::notice title=Deploy verified::job-board is serving $LIVE"
+
+  migrate:
+    # MANUAL ONLY. See the header: a migration that applies itself removes the
+    # step where a human reads the error.
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.apply_migrations == 'apply'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Apply pending migrations
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: supabase db push --project-ref bwhdazbotpblihdxcmho

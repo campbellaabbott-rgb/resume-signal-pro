@@ -27,8 +27,22 @@ import { signsInUrl, vendorVerdict, isOpportunity, type TenantResult } from "./b
 // sender's own failure path, not a reach question) and iCIMS/SuccessFactors
 // (an unreachable JS shell and a mixed-CAPTCHA vendor, neither a two-hour
 // adapter even if a wall lifted).
-const DEFAULT_VENDORS = ["smartrecruiters", "workable", "recruitee", "greenhouse", "lever", "ashby"];
-const PER_VENDOR = 6;
+// bamboohr and rippling were NOT in the original list and had never been
+// wall-tested at all — bamboohr is the third-largest non-drivable vendor at
+// ~46,000 live postings, so "unknown" there was the biggest blank on the map.
+const DEFAULT_VENDORS = ["smartrecruiters", "workable", "recruitee", "greenhouse", "lever", "ashby", "bamboohr", "rippling"];
+
+// SAMPLE SIZE IS THE WHOLE POINT OF THE SECOND RUN.
+//
+// The first sweep used 6 tenants per vendor and found greenhouse 5/6 and
+// recruitee 5/6 — one clean tenant each. That was enough to disprove
+// "vendor-level wall" and nowhere near enough to estimate a RATE: at n=6 a
+// single observation moves the figure by 17 points. Anything built on
+// "about a sixth of tenants are open" needs a real denominator.
+//
+// Override with argv[3]. 30 puts the 95% interval near +/-9 points, which is
+// the difference between "worth building a per-tenant check" and "not".
+const PER_VENDOR = Number(process.argv[3]) || 6;
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || "";
 const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY || "";
@@ -36,7 +50,7 @@ const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_
 /** Distinct tenants for a vendor, straight from the live board. */
 async function sampleTenants(vendor: string): Promise<Array<{ company: string; apply_url: string }>> {
   const url = `${SUPABASE_URL}/rest/v1/job_board_postings`
-    + `?select=company,apply_url&source=eq.${vendor}&limit=120`;
+    + `?select=company,apply_url&source=eq.${vendor}&limit=${Math.max(120, PER_VENDOR * 12)}`;
   const res = await fetch(url, { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } });
   if (!res.ok) throw new Error(`sample ${vendor}: HTTP ${res.status}`);
   const rows = (await res.json()) as Array<{ company: string; apply_url: string | null }>;
@@ -68,7 +82,15 @@ async function main() {
     }
 
     const rows: TenantResult[] = [];
-    for (const t of tenants) {
+    // Three at a time. Sequential is too slow at n=30 across eight vendors
+    // (~90 min); higher would be discourteous to real employer pages for no
+    // measurement benefit. Tenants within a vendor are independent, so this
+    // changes throughput only, never the result.
+    const LANES = 3;
+    let next = 0;
+    const lane = async () => {
+      while (next < tenants.length) {
+      const t = tenants[next++];
       const page = await browser.newPage();
       const walls = new Set<string>();
       let reached = false;
@@ -88,7 +110,9 @@ async function main() {
       } catch { /* keep whatever was seen; `reached` stays false if goto failed */ }
       rows.push({ company: t.company, walls: [...walls], reached });
       await page.close();
-    }
+      }
+    };
+    await Promise.all(Array.from({ length: LANES }, lane));
 
     const v = vendorVerdict(rows);
     summary[vendor] = v;
