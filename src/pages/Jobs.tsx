@@ -15,6 +15,7 @@ import { parseSalaryStructured } from "../../supabase/functions/_shared/salary-e
 // bundle would be a third thing to forget. Pure TS with no Deno imports, the
 // same reason the salary parser above is imported straight out of _shared.
 import { isSendableVendor } from "../../supabase/functions/_shared/apply-automation";
+import { ATS_VENDOR_LIST } from "@/config/ats-vendors";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Activity, AlertTriangle, Bell, Bookmark, BookmarkCheck, Briefcase, ChevronDown, Clock, Compass, Copy, ExternalLink, FileText, Flag, Link2, Loader2, MapPin, MessageSquare, RefreshCw, Search, ShieldCheck, SlidersHorizontal, Sparkles, Target, Upload, Info} from "lucide-react";
@@ -4539,7 +4540,17 @@ export default function Jobs() {
           </div>
 
           <p className="text-[11px] text-muted-foreground mt-10">
-            {t("jobsPage.sourceNote", "Sources: the official public job-board APIs companies publish on Greenhouse, Lever, Ashby, SmartRecruiters, Workable, BambooHR, Recruitee, Teamtailor, Personio, and Breezy. The largest boards are re-checked about every 10–15 minutes and the whole catalog rotates continuously — every feed is re-verified within a few hours, and postings a company takes down disappear on the next pass. A feed that stops responding drops off the board rather than breaking it.")}
+            {/* The platform list is INTERPOLATED from ats-vendors.ts, never
+                typed out here. It used to be spelled out in this default and
+                again in all nine locales — ten copies of one fact, each of
+                which goes stale silently the moment a vendor is added. This
+                default had already drifted: it named ten platforms and omitted
+                Workday, our single largest source. Nobody saw it, because the
+                en.json key overrides the default — so the stale copy was
+                invisible right up until a missing translation would have
+                rendered it. Now there is one list, and it is the one the code
+                obeys. */}
+            {t("jobsPage.sourceNote", "Sources: the official public job-board APIs companies publish on {{vendors}}. The largest boards are re-checked about every 10–15 minutes and the whole catalog rotates continuously — every feed is re-verified within a few hours, and postings a company takes down disappear on the next pass. A feed that stops responding drops off the board rather than breaking it.", { vendors: ATS_VENDOR_LIST })}
           </p>
         </div>
       </main>

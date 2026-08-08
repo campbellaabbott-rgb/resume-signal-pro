@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { isUnfiltered, normalizeFilters } from "../../supabase/functions/job-board/filters.ts";
+import { ATS_VENDOR_LIST } from "../config/ats-vendors";
 
 // /trust and /methodology — the two pages whose entire purpose is to be
 // believed — carried the worst claims on the site until 2026-07-27:
@@ -244,11 +245,29 @@ describe("published source lists name every system the board actually serves", (
     expect(SOURCES.length).toBeGreaterThanOrEqual(15);
   });
 
+  // The note now INTERPOLATES {{vendors}} from ats-vendors.ts rather than
+  // spelling the platforms out in each locale. Ten hand-kept copies of one fact
+  // is what let the inline English default drift to ten platforms and lose
+  // Workday; this guard kept the nine LOCALES honest but never saw the default.
+  //
+  // The claim is unchanged and so is this test's job: whatever a reader ends up
+  // seeing must name every system the board serves. So it renders the string
+  // the way i18next will — placeholder substituted — and asserts on that. This
+  // is strictly stronger than before, because it now also pins ATS_VENDOR_LIST
+  // to the normalizers: a vendor added to the edge function but missing from
+  // the config fails here, which the old raw-JSON check could not detect.
+  const render = (note: string) => note.replace("{{vendors}}", ATS_VENDOR_LIST);
+
   for (const file of locales) {
     it(`${file} jobsPage.sourceNote names all ${SOURCES.length} systems`, () => {
       const note: string = readJson(resolve(localeDir, file)).jobsPage.sourceNote;
-      const missing = SOURCES.filter((s) => !note.includes(DISPLAY[s] ?? s));
+      const missing = SOURCES.filter((s) => !render(note).includes(DISPLAY[s] ?? s));
       expect(missing).toEqual([]);
+    });
+
+    it(`${file} interpolates rather than hardcoding the list`, () => {
+      const note: string = readJson(resolve(localeDir, file)).jobsPage.sourceNote;
+      expect(note, `${file} must use {{vendors}}`).toContain("{{vendors}}");
     });
   }
 

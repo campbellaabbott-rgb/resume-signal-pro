@@ -35,9 +35,10 @@ import { useBoardVendorCounts } from "@/hooks/useBoardVendorCounts";
  */
 
 /** Vendor pill: the platform name, and its live count when we have one. */
-function VendorPill({ v, count }: { v: AtsVendor; count?: number }) {
+function VendorPill({ v, count, auto = false }: { v: AtsVendor; count?: number; auto?: boolean }) {
   return (
     <li className="rounded-lg border bg-background px-3 py-2 flex items-baseline gap-2">
+      {auto && <Bot className="w-3.5 h-3.5 text-primary self-center flex-shrink-0" aria-hidden />}
       <span className="text-sm font-medium">{v.label}</span>
       {count !== undefined && (
         <span className="text-xs text-muted-foreground tabular-nums">
@@ -48,7 +49,22 @@ function VendorPill({ v, count }: { v: AtsVendor; count?: number }) {
   );
 }
 
-export function AtsCoverage({ className = "" }: { className?: string }) {
+export function AtsCoverage({
+  className = "",
+  variant = "full",
+}: {
+  className?: string;
+  /**
+   * `strip` is the top-of-page version: all fifteen platforms in one flowing
+   * row, immediately, before anything asks the visitor for a file. It carries
+   * the same counts and the same as-of line — it is a narrower LAYOUT, not a
+   * weaker claim. The auto/click split survives as an icon plus a legend
+   * rather than two cards, because two cards at the top of the page push the
+   * scanner below the fold and that split is the one thing here we must not
+   * quietly drop.
+   */
+  variant?: "full" | "strip";
+}) {
   const { t } = useTranslation();
   const { online } = useAgentSender();
   const { counts, openTotal, asOf, ready } = useBoardVendorCounts();
@@ -60,6 +76,52 @@ export function AtsCoverage({ className = "" }: { className?: string }) {
     ready
       ? [...list].sort((a, b) => (counts[b.key] ?? -1) - (counts[a.key] ?? -1))
       : list;
+
+  // Counts are of a live, churning table. Saying when they were true is the
+  // difference between a measurement and a decoration.
+  const asOfLine = ready && asOf
+    ? t("atsCoverage.asOf", "Live counts of currently open roles, measured {{time}}.", {
+        time: asOf.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }),
+      })
+    : null;
+
+  if (variant === "strip") {
+    return (
+      <section className={className} aria-labelledby="ats-strip-heading">
+        <div className="text-center mb-4">
+          <h2 id="ats-strip-heading" className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+            {t("atsCoverage.stripHeading", "Every job here comes straight from these systems")}
+          </h2>
+          {ready && openTotal !== null && (
+            <p className="text-sm text-muted-foreground mt-1">
+              {t("atsCoverage.stripSub", "{{total}} open roles, read directly from all {{count}} — never scraped from a search engine.", {
+                total: openTotal.toLocaleString(),
+                count: ATS_VENDORS.length,
+              })}
+            </p>
+          )}
+        </div>
+
+        <ul className="flex flex-wrap justify-center gap-2">
+          {order(ATS_VENDORS).map((v) => (
+            <VendorPill key={v.key} v={v} count={counts[v.key]} auto={online && v.tier === "auto"} />
+          ))}
+        </ul>
+
+        {/* The split is a product claim, not decoration — it survives the
+            compact layout as a legend rather than being dropped with the
+            second card. */}
+        {online && (
+          <p className="text-center text-xs text-muted-foreground mt-3 flex items-center justify-center gap-1.5">
+            <Bot className="w-3.5 h-3.5 text-primary" aria-hidden />
+            {t("atsCoverage.stripLegend", "The agent submits these for you. The rest it fills in completely — you press send, because they use a human check we will not bypass.")}
+          </p>
+        )}
+
+        {asOfLine && <p className="text-center text-xs text-muted-foreground mt-2">{asOfLine}</p>}
+      </section>
+    );
+  }
 
   const groups = online
     ? [
@@ -130,19 +192,7 @@ export function AtsCoverage({ className = "" }: { className?: string }) {
         ))}
       </div>
 
-      {/* Counts are of a live, churning table. Saying when they were true is the
-          difference between a measurement and a decoration — and the cache can
-          legitimately be a few minutes behind. */}
-      {ready && asOf && (
-        <p className="text-center text-xs text-muted-foreground mt-4">
-          {t("atsCoverage.asOf", "Live counts of currently open roles, measured {{time}}.", {
-            time: asOf.toLocaleString(undefined, {
-              dateStyle: "medium",
-              timeStyle: "short",
-            }),
-          })}
-        </p>
-      )}
+      {asOfLine && <p className="text-center text-xs text-muted-foreground mt-4">{asOfLine}</p>}
     </section>
   );
 }

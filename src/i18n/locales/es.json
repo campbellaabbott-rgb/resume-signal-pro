@@ -3511,7 +3511,7 @@
     "checkFit": "Comprobar mi encaje — escaneo gratis",
     "apply": "Postularme en el sitio de {{company}}",
     "loadMore": "Cargar más",
-    "sourceNote": "Fuentes: las API públicas oficiales que las empresas publican en Workday, Greenhouse, SmartRecruiters, Ashby, iCIMS, Oracle, Lever, Workable, BambooHR, Recruitee, Teamtailor, Personio, Breezy, Rippling y Pinpoint. Los tablones más grandes se revisan con más frecuencia y el resto del catálogo rota de forma continua — la mayoría de las fuentes se vuelven a verificar en algunas horas — la mediana y el percentil 95 de antigüedad en vivo se publican en el Ghost Job Index, y una pequeña cola de fuentes lentas o con límite de tasa tarda más — y las ofertas retiradas desaparecen en la siguiente pasada. Una fuente que deja de responder sale del tablón en lugar de romperlo.",
+    "sourceNote": "Fuentes: las API públicas oficiales que las empresas publican en {{vendors}}. Los tablones más grandes se revisan con más frecuencia y el resto del catálogo rota de forma continua — la mayoría de las fuentes se vuelven a verificar en algunas horas — la mediana y el percentil 95 de antigüedad en vivo se publican en el Ghost Job Index, y una pequeña cola de fuentes lentas o con límite de tasa tarda más — y las ofertas retiradas desaparecen en la siguiente pasada. Una fuente que deja de responder sale del tablón en lugar de romperlo.",
     "fitFetchErrorTitle": "No se pudo cargar esa oferta",
     "fitFetchError": "La fuente de la empresa no devolvió la descripción. Abre la oferta y pégala en el escáner.",
     "fitLoadedTitle": "Descripción del puesto cargada",

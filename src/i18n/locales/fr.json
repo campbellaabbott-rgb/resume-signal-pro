@@ -3511,7 +3511,7 @@
     "checkFit": "Vérifier mon adéquation — scan gratuit",
     "apply": "Candidater sur le site de {{company}}",
     "loadMore": "Afficher plus",
-    "sourceNote": "Sources : les API publiques officielles que les entreprises publient sur Workday, Greenhouse, SmartRecruiters, Ashby, iCIMS, Oracle, Lever, Workable, BambooHR, Recruitee, Teamtailor, Personio, Breezy, Rippling et Pinpoint. Les plus gros tableaux sont re-vérifiés le plus souvent et le reste du catalogue tourne en continu — la plupart des flux sont re-vérifiés en quelques heures — la médiane et le 95e percentile d'ancienneté en direct sont publiés sur le Ghost Job Index, et une petite queue de flux lents ou à débit limité met plus de temps — et les offres retirées disparaissent à la passe suivante. Un flux qui ne répond plus disparaît du tableau au lieu de le casser.",
+    "sourceNote": "Sources : les API publiques officielles que les entreprises publient sur {{vendors}}. Les plus gros tableaux sont re-vérifiés le plus souvent et le reste du catalogue tourne en continu — la plupart des flux sont re-vérifiés en quelques heures — la médiane et le 95e percentile d'ancienneté en direct sont publiés sur le Ghost Job Index, et une petite queue de flux lents ou à débit limité met plus de temps — et les offres retirées disparaissent à la passe suivante. Un flux qui ne répond plus disparaît du tableau au lieu de le casser.",
     "fitFetchErrorTitle": "Impossible de charger cette offre",
     "fitFetchError": "Le flux de l'entreprise n'a pas renvoyé la description. Ouvrez l'offre et collez-la dans le scanner.",
     "fitLoadedTitle": "Description du poste chargée",

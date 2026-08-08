@@ -54,6 +54,24 @@ export const AUTO_VENDORS = ATS_VENDORS.filter((v) => v.tier === "auto");
 export const CLICK_VENDORS = ATS_VENDORS.filter((v) => v.tier === "click");
 
 /**
+ * Every platform as one prose string, for interpolation into copy.
+ *
+ * The board's own "Sources:" note used to spell the list out in its English
+ * default AND in all nine locales — ten copies of a fact this file exists to
+ * hold once. The default had already drifted to ten platforms and was missing
+ * Workday, the largest source on the board; it went unnoticed because the
+ * en.json key overrides the default, so the stale text only becomes visible the
+ * day a translation goes missing. Interpolating removes the possibility.
+ *
+ * COMMA-JOINED, with no "and" before the last. The nine locales each have their
+ * own conjunction (und / y / et / en / e / at / और) and this string is dropped
+ * into all of them; an English "and" welded on here would be wrong in eight
+ * languages. The surrounding sentence supplies the grammar, this supplies the
+ * names.
+ */
+export const ATS_VENDOR_LIST = ATS_VENDORS.map((v) => v.label).join(", ");
+
+/**
  * Deliberately no "percentage of the board" export.
  *
  * The obvious thing to put here is "auto-apply covers N% of jobs". I tried to

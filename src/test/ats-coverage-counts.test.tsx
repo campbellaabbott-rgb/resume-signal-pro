@@ -34,7 +34,7 @@ vi.mock("@/integrations/supabase/client", () => ({
 }));
 
 import { AtsCoverage } from "../components/AtsCoverage";
-import { ATS_VENDORS } from "../config/ats-vendors";
+import { ATS_VENDORS, ATS_VENDOR_LIST } from "../config/ats-vendors";
 
 /** Shape the warm cache returns, trimmed to what this component reads. */
 const facets = (sourcesFacet: Record<string, unknown>, openTotal: unknown = 12_345) => ({
@@ -124,6 +124,92 @@ describe("counts render only when they were actually measured", () => {
     await waitFor(() => expect(screen.getByText("48,102")).toBeInTheDocument());
     for (const v of ATS_VENDORS) {
       expect(screen.getByText(v.label), v.label).toBeInTheDocument();
+    }
+  });
+});
+
+describe("the strip at the top of the page is a narrower layout, not a weaker claim", () => {
+  it("names every platform, immediately", async () => {
+    // The whole point of the placement: all fifteen, before anything asks the
+    // visitor for a file.
+    route(facets({ greenhouse: 48_102 }));
+    render(<AtsCoverage variant="strip" />);
+    await waitFor(() => expect(screen.getByText("48,102")).toBeInTheDocument());
+    for (const v of ATS_VENDORS) {
+      expect(screen.getByText(v.label), v.label).toBeInTheDocument();
+    }
+  });
+
+  it("carries the counts, the total and the as-of line", async () => {
+    route(facets({ greenhouse: 48_102, workday: 305_380 }, 561_004));
+    render(<AtsCoverage variant="strip" />);
+    await waitFor(() => expect(screen.getByText("305,380")).toBeInTheDocument());
+    expect(screen.getByText(/561,004 open roles/)).toBeInTheDocument();
+    expect(screen.getByText(/measured/i)).toBeInTheDocument();
+  });
+
+  it("obeys absence-is-not-zero exactly like the full block", async () => {
+    route(facets({ greenhouse: 0, workday: 12 }));
+    render(<AtsCoverage variant="strip" />);
+    await waitFor(() => expect(screen.getByText("12")).toBeInTheDocument());
+    expect(screen.queryByText("0")).not.toBeInTheDocument();
+  });
+
+  it("falls back to names alone when nothing was measured", async () => {
+    route({ data: null, error: { message: "statement timeout" } });
+    render(<AtsCoverage variant="strip" />);
+    await waitFor(() => expect(screen.getByText("Workday")).toBeInTheDocument());
+    expect(screen.queryByText(/measured/i)).not.toBeInTheDocument();
+  });
+
+  it("still states the auto/click split when the sender is live", async () => {
+    // Compacting the layout must not quietly drop the one claim that says we
+    // do not bypass a human check.
+    route(facets({ workday: 12 }), true);
+    render(<AtsCoverage variant="strip" />);
+    await waitFor(() => expect(screen.getByText(/press send/i)).toBeInTheDocument());
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("the board's Sources note is generated, never typed out", () => {
+  const LOCALES = resolve(__dirname, "../i18n/locales");
+
+  it("ATS_VENDOR_LIST names every platform", () => {
+    for (const v of ATS_VENDORS) expect(ATS_VENDOR_LIST, v.label).toContain(v.label);
+  });
+
+  it("every locale interpolates the list instead of spelling it out", () => {
+    // Ten copies of one fact — nine locales plus the inline default — is how
+    // the default came to omit Workday, the largest source on the board,
+    // without anyone noticing.
+    for (const f of readdirSync(LOCALES).filter((n) => n.endsWith(".json"))) {
+      const note = (JSON.parse(readFileSync(resolve(LOCALES, f), "utf8"))
+        .jobsPage ?? {}).sourceNote as string | undefined;
+      if (!note) continue;
+      expect(note, `${f} does not interpolate {{vendors}}`).toContain("{{vendors}}");
+      // No hardcoded platform run left behind next to the placeholder.
+      const named = ATS_VENDORS.filter((v) => note.includes(v.label));
+      expect(named.map((v) => v.label), `${f} still hardcodes platform names`).toEqual([]);
+    }
+  });
+
+  it("Jobs.tsx passes the generated list into the string", () => {
+    const jobs = readFileSync(resolve(__dirname, "../pages/Jobs.tsx"), "utf8");
+    expect(jobs).toMatch(/jobsPage\.sourceNote[\s\S]{0,600}?\{ vendors: ATS_VENDOR_LIST \}/);
+    expect(jobs).toMatch(/import \{ ATS_VENDOR_LIST \} from "@\/config\/ats-vendors"/);
+  });
+
+  it("the inline default no longer spells any platform out", () => {
+    // It used to name ten and miss five. The en.json key overrode it, so the
+    // drift was invisible until a translation went missing.
+    const jobs = readFileSync(resolve(__dirname, "../pages/Jobs.tsx"), "utf8");
+    const call = /t\("jobsPage\.sourceNote",\s*"([^"]+)"/.exec(jobs);
+    expect(call, "could not find the sourceNote default").toBeTruthy();
+    expect(call![1]).toContain("{{vendors}}");
+    for (const v of ATS_VENDORS) {
+      expect(call![1], `default still hardcodes ${v.label}`).not.toContain(v.label);
     }
   });
 });
