@@ -1,6 +1,50 @@
 [
  {
-  "vendor": "breezy",
-  "token": "tenor-health-foundation"
+  "vendor": "greenhouse",
+  "token": "westernveterinarypartnersllc"
+ },
+ {
+  "vendor": "smartrecruiters",
+  "token": "Primark"
+ },
+ {
+  "vendor": "smartrecruiters",
+  "token": "AveryDennison"
+ },
+ {
+  "vendor": "smartrecruiters",
+  "token": "TheAparecioFoundationNFP"
+ },
+ {
+  "vendor": "recruitee",
+  "token": "boulangerieange"
+ },
+ {
+  "vendor": "recruitee",
+  "token": "decircletalentpartner"
+ },
+ {
+  "vendor": "rippling",
+  "token": "petfolk"
+ },
+ {
+  "vendor": "rippling",
+  "token": "mindcaresolutions-careers"
+ },
+ {
+  "vendor": "rippling",
+  "token": "nws"
+ },
+ {
+  "vendor": "rippling",
+  "token": "prc"
+ },
+ {
+  "vendor": "rippling",
+  "token": "northern-montana-hospital"
+ },
+ {
+  "vendor": "rippling",
+  "token": "pathways-healthcare-careers"
  }
 ]

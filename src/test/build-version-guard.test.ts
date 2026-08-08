@@ -38,11 +38,11 @@ const PINNED = {
   // Domino's (24,571p) held back deliberately: one brand at ~4% of the board
   // is a product call, not a merge-protocol one. Earlier the same day: +324
   // drivable, +134 Umbrella .com, +19 European.
-  sourcesHash: "694c7bd189a23db5",
+  sourcesHash: "15b947e46273f45d",
   // 2026-08-03.4: _shared/application-questions.ts gained the `consent` class,
   // and job-board imports classifyQuestion — so the deployed bundle changed
   // even though sources.ts did not. sourcesHash is therefore unchanged.
-  buildVersion: "2026-08-08.2",
+  buildVersion: "2026-08-08.3",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {

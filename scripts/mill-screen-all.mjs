@@ -134,7 +134,55 @@ for (const b of worklist) {
   const texts = await sampleTexts(b.vendor, b.token);
   const hits = texts.filter((t) => MILL_TEXT.test(t)).length;
   const weak = TITLE_ONLY.has(b.vendor);
-  if (hits > 0) {
+
+  // ONE LISTING, POSTED A THOUSAND TIMES, IS NOT A THOUSAND OPENINGS.
+  //
+  // The phrase patterns above look for a mill SAYING what it is. Two boards on
+  // 2026-08-08 cleared every one of them and were still not employers:
+  //
+  //   Next Job Abroad — 3,173 postings, every sample identical
+  //     ("Auswandern nach Griechenland | Customer Support für Deutsche")
+  //   Schwertfels Consulting — 1,001 postings, every sample identical
+  //     ("(Angehender) Steuerberater (m/w/d)")
+  //
+  // Between them, 4,174 postings of one advert each. The tell is not what the
+  // text says, it is that there is only one text. A real employer with 500
+  // openings has 500-ish different titles; a recruiter multiplying one
+  // placement across every city has one.
+  //
+  // Only applied to boards big enough for the ratio to mean something — a
+  // 4-posting board legitimately repeating a title is noise, not evidence.
+  // A BOARD WE COULD NOT READ MUST NOT CLEAR.
+  //
+  // The verdict below is `if (spam) exclude; else if (hits) exclude; else
+  // clear`, so an EMPTY sample — a 429, a dead endpoint, a shape this script
+  // does not parse — produced hits=0, spam=false, and a clean bill of health.
+  // "We could not look" and "we looked and it is fine" were the same outcome.
+  //
+  // Measured 2026-08-08: Workable rate-limited this run (Cloudflare 1015), and
+  // `next-job-abroad` cleared with zero postings read — a board whose 3,173
+  // postings are all ONE advert ("Auswandern nach Griechenland"), which I had
+  // already confirmed by hand. Schwertfels Consulting cleared the same way,
+  // 1,001 copies of one placement. Between them 4,174 postings of spam, waved
+  // through by a filter that never saw a single line.
+  //
+  // Held, not excluded-forever: the board is simply not admitted on this run.
+  // Re-run when the vendor is not throttling and it gets a real verdict.
+  if (texts.length < 3) {
+    excluded.push({ ...b, hits: 0, sampled: texts.length, reason: "not-sampled" });
+    console.log(`HOLD    ${b.vendor}:${b.token} "${b.name}" (${b.count}p) — only ${texts.length} postings readable; NOT cleared`);
+    await sleep(250);
+    continue;
+  }
+
+  const firstLines = texts.map((t) => String(t).split("\n")[0].trim().toLowerCase()).filter(Boolean);
+  const distinct = new Set(firstLines).size;
+  const dupSpam = b.count >= 100 && firstLines.length >= 6 && distinct <= Math.max(1, Math.floor(firstLines.length * 0.2));
+
+  if (dupSpam) {
+    excluded.push({ ...b, hits, sampled: texts.length, reason: "duplicate-titles" });
+    console.log(`EXCLUDE ${b.vendor}:${b.token} "${b.name}" — ${distinct} distinct title(s) across ${firstLines.length} sampled of ${b.count} postings`);
+  } else if (hits > 0) {
     excluded.push({ ...b, hits, sampled: texts.length });
     console.log(`EXCLUDE ${b.vendor}:${b.token} "${b.name}" — ${hits}/${texts.length} sampled postings show mill evidence`);
   } else {
