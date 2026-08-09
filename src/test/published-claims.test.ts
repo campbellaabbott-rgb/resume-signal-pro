@@ -680,6 +680,54 @@ describe("Ghost Job Index age stats use the company's date, not our discovery ti
     expect(sql).toMatch(/WHERE missing_since IS NULL/);
     expect(latestMigrationDefining("get_date_coverage")).toMatch(/WHERE missing_since IS NULL/);
   });
+
+  it("an EMPTY answer is not published as a good one", () => {
+    // MEASURED 2026-08-09, and it did visible harm. get_ghost_job_index_stats
+    // returned zero rows (its rollup had not filled), which is not an
+    // exception — so refresh_stats_cache's per-piece handler never fired. It
+    // wrote ghost_stats: null over four hours of perfectly good previous
+    // values and reported stale_parts: []. GhostJobIndex reads the cache first
+    // and fell through to the same empty RPC, so the page lost its figures
+    // while every health signal stayed green.
+    //
+    // A caught error and an empty answer are different events with the same
+    // consequence, and only one of them was handled.
+    const cache = latestMigrationDefining("refresh_stats_cache");
+    for (const part of ["ghost_stats", "entry_stats"]) {
+      expect(
+        cache,
+        `${part} can still be published as a JSON null`,
+      ).toMatch(new RegExp(`jsonb_typeof\\(payload -> '${part}'\\) = 'null'`));
+    }
+    // …and the guard must restore the previous value, not just rename it.
+    expect(cache).toMatch(/stale := stale \|\| 'ghost_stats';\s*\n\s*payload := payload \|\| jsonb_build_object\('ghost_stats', prev -> 'ghost_stats'\);\s*\n\s*END IF;/);
+  });
+
+  it("the ghost rollup always writes a row, even when parts fail", () => {
+    // The all-or-nothing version left NOTHING behind through a migration seed
+    // and two cron ticks, so the reader had no row to serve and the whole
+    // index went dark. A row naming its stale parts beats an absent row.
+    // Bounded to this function's own END, because the same migration defines
+    // refresh_stats_cache below it — an unbounded slice compared the ghost
+    // INSERT against the LAST exception block in a different function and
+    // failed for a reason that had nothing to do with the property.
+    const gs = latestMigrationDefining("refresh_ghost_stats");
+    const from = gs.indexOf("FUNCTION public.refresh_ghost_stats");
+    const body = gs.slice(from, gs.indexOf("END $$;", from));
+    const insertAt = body.indexOf("INSERT INTO public.job_board_stats_rollup");
+    const lastExc = body.lastIndexOf("EXCEPTION WHEN OTHERS THEN");
+    expect(insertAt, "no unconditional write").toBeGreaterThan(-1);
+    expect(insertAt, "the write must come after the last handler, not before it").toBeGreaterThan(lastExc);
+    // …and that handler must have CLOSED before the write, or the write is
+    // still inside a block that a failure can skip. Ordering alone does not
+    // prove that: text placed just after "EXCEPTION WHEN OTHERS THEN" is later
+    // in the file and still inside the block.
+    expect(
+      body.slice(lastExc, insertAt),
+      "the write sits inside an exception block a failure would skip",
+    ).toMatch(/\bEND;/);
+    expect(body).toMatch(/'stale_parts', to_jsonb\(stale\)/);
+  });
 });
 
 describe("dropped postings are unreachable by EVERY route", () => {
