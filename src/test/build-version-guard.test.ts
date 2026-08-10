@@ -32,17 +32,18 @@ const ROOT = resolve(__dirname, "../../supabase/functions/job-board");
 
 /** Updated together with BUILD_VERSION, never on its own. */
 const PINNED = {
-  // 2026-08-07.4: +1,065 inventory boards from the same census (workable 297,
-  // bamboohr 255, ashby 156, greenhouse 141, rippling 138, recruitee 62,
-  // smartrecruiters 18) — 20,380 postings, listing depth not agent reach.
-  // Domino's (24,571p) held back deliberately: one brand at ~4% of the board
-  // is a product call, not a merge-protocol one. Earlier the same day: +324
-  // drivable, +134 Umbrella .com, +19 European.
-  sourcesHash: "15b947e46273f45d",
-  // 2026-08-03.4: _shared/application-questions.ts gained the `consent` class,
-  // and job-board imports classifyQuestion — so the deployed bundle changed
-  // even though sources.ts did not. sourcesHash is therefore unchanged.
-  buildVersion: "2026-08-08.3",
+  // 2026-08-10.1: +11 of the 14 HELD Workable boards (~1,786 postings), finally
+  // given a real verdict — Workable stopped throttling, so the description
+  // screen could actually read them. Three were confirmed mills and stay out:
+  // solution-sft (597p, hospital nurse placement), gotham-enterprises (563p,
+  // near-identical therapist ads + on-behalf language), ubteam (122p, 6/12
+  // recruiting-on-behalf). Two lessons paid for in this batch: rimkus's 8/12
+  // "our client" hits were a CONSULTANCY describing its own service work
+  // (context read, kept), and 4chain's Schwertfels-shaped salary-band titles
+  // carried zero placement language in two languages across 40 ads (kept).
+  // Evidence convicts; names alone do not.
+  sourcesHash: "24eb2bb4eaf3c266",
+  buildVersion: "2026-08-10.1",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {

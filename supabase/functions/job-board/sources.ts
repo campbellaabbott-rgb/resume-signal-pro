@@ -31206,4 +31206,16 @@ export const JOB_SOURCES: JobSource[] = [
   { name: "Civie", source: "rippling", token: "civie" },
   { name: "Contextual Careers", source: "rippling", token: "contextual-careers" },
   { name: "Paraconsulting", source: "rippling", token: "paraconsulting" },
+  // ── Census round 3 + Rippling (merged 2026-08-10): all vendors, official-API verified ≥3 postings, mill-screened ──
+  { name: "METRO AEBE", source: "workable", token: "metro-aebe" },
+  { name: "Unison Group", source: "workable", token: "unisongroup" },
+  { name: "SSC HR Solutions", source: "workable", token: "ssc-hr" },
+  { name: "QualDerm Partners", source: "workable", token: "qualderm-partners" },
+  { name: "TGA Premier Sports", source: "workable", token: "tga-sports" },
+  { name: "4Chain Consulting", source: "workable", token: "4chain-consulting" },
+  { name: "Rimkus", source: "workable", token: "rimkus" },
+  { name: "Genesis Orthopedics & Sports Medicine", source: "workable", token: "genesisortho" },
+  { name: "The Recovery Village", source: "workable", token: "therecoveryvillage" },
+  { name: "Enterprise Electrical", source: "workable", token: "enterprise-electrical" },
+  { name: "Renmoney", source: "workable", token: "renmoney" },
 ];
