@@ -681,6 +681,54 @@ describe("Ghost Job Index age stats use the company's date, not our discovery ti
     expect(latestMigrationDefining("get_date_coverage")).toMatch(/WHERE missing_since IS NULL/);
   });
 
+  it("the page reads the column the RPC actually returns", () => {
+    // THE GATE WAS WIRED TO A RETIRED COLUMN. get_ghost_job_index_stats
+    // returned `tracking_days` up to 20260721260000 and `observed_days` in
+    // every signature since. The page kept reading the old name, so it was
+    // permanently undefined — which silently disabled both things gated on it:
+    // the "In the N days we've kept this record" opener fell back to its vaguer
+    // form, and the time-to-close sentence (gated on >= 21) could never be true
+    // and had not rendered once since the rename. Verified live once fixed:
+    // "In the 27 days we've kept this record … about 11 days".
+    //
+    // Third occurrence of this exact shape on this page, after
+    // posted_coverage_pct and the first_seen median. A renamed field does not
+    // error — it reads as a deliberately withheld statistic.
+    const page = readFileSync(resolve(root, "src/pages/GhostJobIndex.tsx"), "utf8");
+    const cols = /RETURNS TABLE \(([\s\S]*?)\)\s*LANGUAGE/.exec(
+      latestMigrationDefining("get_ghost_job_index_stats"),
+    )?.[1] ?? "";
+    expect(cols, "could not read the RPC signature").not.toBe("");
+    expect(cols).toMatch(/observed_days/);
+    // Whatever the page gates the closure copy on must be a column the RPC
+    // returns — reading only the retired name is the bug this guards.
+    expect(page).toMatch(/stats\?\.observed_days/);
+    expect(page, "the gate must not depend solely on the retired column")
+      .not.toMatch(/\(stats\?\.tracking_days \?\? 0\) >= 21/);
+  });
+
+  it("time-to-close names the 30-day window it is measured inside", () => {
+    // THE MEDIAN IS CENSORED BY THE BOARD'S OWN RULE. A posting older than 30
+    // days is dropped, so it exits rather than being recorded as closed, and no
+    // closure longer than that can enter the figure. Measured 2026-08-09 on the
+    // 400 closures with the oldest post dates — the ones most able to run long:
+    // every top duration was exactly 30.0 days, none exceeded it. A hard
+    // ceiling, not a tail.
+    //
+    // The page said "a typical role closes in about 11 days of the company
+    // posting it", which reads as a fact about hiring when it is a fact about
+    // roles that close inside a month. Same class as the first_seen-vs-posted_at
+    // incident: the number was right and the sentence around it was not.
+    const page = readFileSync(resolve(root, "src/pages/GhostJobIndex.tsx"), "utf8");
+    const claim = page.slice(page.indexOf("median_days_to_close != null"));
+    const sentence = claim.slice(0, claim.indexOf("Postings that never close"));
+    expect(sentence, "the rendered claim must state the 30-day window").toMatch(/within 30 days/);
+    // …and the methodology entry must explain WHY the bound exists, or the
+    // number reads as a fact about hiring speed rather than about this board.
+    const method = page.slice(page.indexOf('term: "Typical time to close"'));
+    expect(method.slice(0, 1400)).toMatch(/drops any posting older than 30 days|structural/);
+  });
+
   it("an EMPTY answer is not published as a good one", () => {
     // MEASURED 2026-08-09, and it did visible harm. get_ghost_job_index_stats
     // returned zero rows (its rollup had not filled), which is not an

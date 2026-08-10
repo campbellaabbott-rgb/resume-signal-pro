@@ -24,8 +24,21 @@ interface Stats {
   // measured basis for every age stat on this page. Optional: absent until
   // the stated-date-medians migration is applied.
   posted_coverage_pct?: number | null;
-  // Days the closure record actually spans. Optional: absent until the
-  // datapage-accuracy migration is applied (and in older cached rows).
+  // Days the closure record actually spans.
+  //
+  // THE COLUMN WAS RENAMED AND THIS PAGE WAS NOT. `tracking_days` was returned
+  // by get_ghost_job_index_stats up to 20260721260000; every signature since
+  // calls it `observed_days`. The page kept reading the old name, so it has
+  // been `undefined` ever since — which silently disabled BOTH things gated on
+  // it: the "In the N days we've kept this record" opener fell back to its
+  // vaguer form, and the time-to-close sentence, gated on `>= 21`, could never
+  // be true and has not rendered once since the rename.
+  //
+  // Same shape as the posted_coverage_pct incident on this very page: the
+  // number was fine, the field feeding the gate was gone, and the absence
+  // looked exactly like a deliberately withheld stat. Both names are read
+  // below, because stats_cache can still hold an old-shaped ghost_stats row.
+  observed_days?: number;
   tracking_days?: number;
 }
 interface Leader {
@@ -177,6 +190,11 @@ export default function GhostJobIndex() {
   }, []);
 
   const hasClosureData = !!stats && stats.closed_90d > 0;
+  // Current name first, old name second. See the note on the interface: the
+  // RPC renamed tracking_days -> observed_days and this page kept reading the
+  // retired one, so everything gated on it went quietly dark. Reading both
+  // keeps a stats_cache row written before the rename working too.
+  const trackedDays = stats?.observed_days ?? stats?.tracking_days;
 
   return (
     <div className="min-h-screen bg-background">
@@ -357,7 +375,7 @@ export default function GhostJobIndex() {
             { term: "Verified open roles", method: "A live count of postings currently served from companies' official hiring systems (Greenhouse, Lever, Ashby and 8 more) — never aggregators or scrapes. Postings a feed stops serving are removed after a confirmation pass." },
             { term: "30-day freshness cap", method: "Postings whose company-stated date is older than 30 days are dropped at ingestion AND filtered at read time — the board cannot serve a stale posting even mid-sweep. Undated postings can't be judged old, so they're kept and simply show no age." },
             { term: "Median posting age", method: "Computed only from postings whose company states its own post date (the coverage share is shown next to the number). Undated postings are excluded from age stats, never estimated. We never use our own discovery time as a posting age." },
-            { term: "Typical time to close", method: "Days between the company's stated post date and the moment its feed stopped serving the posting — measured only where the post date is stated. Same-title relistings are classified as churn, not fills, and excluded." },
+            { term: "Typical time to close", method: "Days between the company's stated post date and the moment its feed stopped serving the posting — measured only where the post date is stated. Bounded at 30 days, and that bound is structural rather than a property of hiring: the board drops any posting older than 30 days, so a role that stays open longer leaves the board instead of being recorded as closed, and no closure beyond 30 days can enter this figure. Measured 2026-08-09 against the 400 closures with the oldest post dates, every longest duration was exactly 30.0 days and none exceeded it. Read it as the typical speed of roles that close inside a month, never as the typical speed of all hiring. Same-title relistings are classified as churn, not fills, and excluded." },
             { term: "Confirmed-live accuracy", method: "Every day we draw ~100 served postings and re-check each at the company's own system. Draws are spread evenly across hiring systems rather than taken at random from the corpus, so a small vendor is checked as hard as a large one — which also means the blended figure weights systems equally, not by how many postings each contributes. Per-vendor results are published unedited alongside it, including runs that fail or miss a system." },
             { term: "Re-verification freshness", method: "Every board carries a verification stamp from the refresh loop; the median and 95th-percentile ages shown are computed from those stamps at page load — a measurement, not a promise." },
           ]}
@@ -370,15 +388,26 @@ export default function GhostJobIndex() {
           </h2>
           {hasClosureData ? (
             <p className="text-sm text-muted-foreground">
-              {stats?.tracking_days ? `In the ${stats.tracking_days} days we've kept this record` : "Since we started keeping this record"} we've
+              {trackedDays ? `In the ${trackedDays} days we've kept this record` : "Since we started keeping this record"} we've
               watched <b className="text-foreground">{fmt(stats?.closed_90d)}</b> roles
               come down across the board
-              {/* The time-to-close median is right-censored early on: a young
-                  record can't yet contain slow closes, so the number would read
-                  artificially fast. Withheld until the record spans >= 21 days. */}
-              {stats?.median_days_to_close != null && (stats?.tracking_days ?? 0) >= 21 && (
-                <> — a typical role closes in about <b className="text-foreground">{Math.round(stats.median_days_to_close)} days</b> of
-                the company posting it (measured only where the company states its post date)</>
+              {/* THE MEDIAN IS RIGHT-CENSORED TWICE, and only one was disclosed.
+                    1. By record length — a young log cannot yet contain slow
+                       closes. Handled by withholding until >= 21 days.
+                    2. By the board's own 30-day window, PERMANENTLY. A posting
+                       past 30 days is dropped, so it exits the board rather
+                       than being recorded as closed, and no longer closure can
+                       ever enter this median. Measured 2026-08-09 against the
+                       400 closures with the oldest post dates — the ones most
+                       able to run long: every top duration was exactly 30.0
+                       days and not one exceeded it. A hard ceiling, not a tail.
+                  "A typical role closes in about 11 days" reads as a fact about
+                  hiring. It is a fact about roles that close inside 30 days, so
+                  the sentence now says the window it was measured inside. */}
+              {stats?.median_days_to_close != null && (trackedDays ?? 0) >= 21 && (
+                <> — and among roles that close <b className="text-foreground">within 30 days</b> of
+                being posted, a typical one goes in about <b className="text-foreground">{Math.round(stats.median_days_to_close)} days</b>{" "}
+                (measured only where the company states its post date)</>
               )}. Postings that never close are exactly the ghost jobs we drop.
             </p>
           ) : (
