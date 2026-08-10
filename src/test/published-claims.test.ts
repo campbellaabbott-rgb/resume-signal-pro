@@ -729,6 +729,40 @@ describe("Ghost Job Index age stats use the company's date, not our discovery ti
     expect(method.slice(0, 1400)).toMatch(/drops any posting older than 30 days|structural/);
   });
 
+  it("every surface quoting time-to-close states the 30-day window", () => {
+    // The same censored median is quoted per employer on the account page
+    // ("this employer typically fills in ~11d") and on a board tooltip
+    // ("a typical role here closes in about 11 days"). The 30-day ceiling
+    // applies identically there: a role that stays open longer leaves the board
+    // instead of being recorded as closed, so these figures cannot see it.
+    //
+    // A claim qualified on one page and bare on two others is the same drift
+    // the sources note had — and worse here, because these live in nine
+    // locales, where the translated value overrides the English default and
+    // the qualifier has to exist in all of them or it simply is not shown.
+    const KEYS: Array<[string, string]> = [
+      ["accountPage", "replyWindow"],
+      ["accountPage", "replyWindowPast"],
+      ["jobsPage", "urgencyTipFills"],
+    ];
+    for (const file of readdirSync(localeDir).filter((f) => f.endsWith(".json"))) {
+      const d = readJson(resolve(localeDir, file)) as Record<string, Record<string, string>>;
+      for (const [sec, key] of KEYS) {
+        const v = d[sec]?.[key];
+        if (!v) continue;
+        expect(v, `${file} ${sec}.${key} quotes the median with no 30-day bound`).toMatch(/30/);
+      }
+    }
+    // The inline English defaults too: a missing translation must not fall back
+    // to the unqualified sentence.
+    const account = readFileSync(resolve(root, "src/pages/Account.tsx"), "utf8");
+    const jobs = readFileSync(resolve(root, "src/pages/Jobs.tsx"), "utf8");
+    expect(account).not.toMatch(/\(from \{\{n\}\} tracked fills\)/);
+    expect(jobs).not.toMatch(/then closed\), a typical role/);
+    expect(account).toMatch(/fills tracked within 30 days of posting/);
+    expect(jobs).toMatch(/then closed within 30 days of posting/);
+  });
+
   it("an EMPTY answer is not published as a good one", () => {
     // MEASURED 2026-08-09, and it did visible harm. get_ghost_job_index_stats
     // returned zero rows (its rollup had not filled), which is not an

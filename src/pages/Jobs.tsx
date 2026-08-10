@@ -4261,7 +4261,7 @@ export default function Jobs() {
                             return (
                               <span
                                 className="inline-flex items-center gap-1 text-[11px] font-medium text-warning mt-1 ml-2"
-                                title={t("jobsPage.urgencyTipFills", "Based on {{n}} genuine fills in our tracking (roles that stayed posted a week or more, then closed), a typical role here closes in about {{d}} days — worth applying early.", { n: hh.closed_90d, d: Math.round(m) })}
+                                title={t("jobsPage.urgencyTipFills", "Based on {{n}} genuine fills in our tracking (roles that stayed posted a week or more, then closed within 30 days of posting), a typical role here closes in about {{d}} days — worth applying early.", { n: hh.closed_90d, d: Math.round(m) })}
                               >
                                 <Clock className="w-3 h-3 shrink-0" />
                                 {t("jobsPage.urgencyChip", "Typically fills in ~{{d}}d", { d: Math.round(m) })}

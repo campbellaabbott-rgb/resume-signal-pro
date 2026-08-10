@@ -1422,8 +1422,8 @@ export default function Account() {
                       return (
                         <p className={`text-[11px] mt-0.5 ${past ? "text-warning/90" : "text-muted-foreground/80"}`}>
                           {past
-                            ? t("accountPage.replyWindowPast", "applied {{d}}d ago — past this employer's typical ~{{m}}d fill window (from {{n}} tracked fills); a follow-up is reasonable", { d: daysIn, m: Math.round(median), n: hh?.closed_90d ?? 0 })
-                            : t("accountPage.replyWindow", "applied {{d}}d ago — this employer typically fills in ~{{m}}d (from {{n}} tracked fills)", { d: daysIn, m: Math.round(median), n: hh?.closed_90d ?? 0 })}
+                            ? t("accountPage.replyWindowPast", "applied {{d}}d ago — past this employer's typical ~{{m}}d fill window (from {{n}} fills tracked within 30 days of posting); a follow-up is reasonable", { d: daysIn, m: Math.round(median), n: hh?.closed_90d ?? 0 })
+                            : t("accountPage.replyWindow", "applied {{d}}d ago — this employer typically fills in ~{{m}}d (from {{n}} fills tracked within 30 days of posting)", { d: daysIn, m: Math.round(median), n: hh?.closed_90d ?? 0 })}
                         </p>
                       );
                     })()}
