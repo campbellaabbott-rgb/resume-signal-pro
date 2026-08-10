@@ -98,7 +98,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-10.2";
+const BUILD_VERSION = "2026-08-10.3";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -225,20 +225,57 @@ const listUrl = (s: JobSource) =>
 // 30-day freshness cap discards most of a mega-board's inventory anyway. Big
 // boards still get full coverage once the self-tuning hot tier promotes them
 // (fetched alone in small hot slices).
-const SR_CAP = 800;
-async function fetchSmartRecruiters(s: JobSource): Promise<{ content: unknown[] }> {
+// SR_CAP 800 -> 2000, and the reason is measured rather than tuned.
+//
+// The SmartRecruiters feed is ordered NEWEST FIRST — verified on AECOM
+// 2026-08-10: offset 0 = today, offset 800 = 10 days old, offset 2000 = 34
+// days, offset 4000 = 3.5 months. So the cap never dropped random postings; it
+// cut the tail, and most of that tail is already past the board's own 30-day
+// serving window and would be filtered out regardless. The old cap was not
+// losing 22,617 servable roles, which is what the raw feed-vs-live gap looks
+// like until you check the ordering.
+//
+// What it WAS losing is the part of the window it could not reach. Measured by
+// binary-searching each feed for the 30-day crossover:
+//   AECOM      1,793 postings inside 30 days — 800 covered 44%
+//   Bosch      1,815 inside 30 days          — 800 covered 44%
+//   Domino's  >6,000 inside 30 days          — 800 covered <13%
+// 2,000 therefore covers ten of the eleven currently-capped boards in FULL,
+// and triples the giants.
+//
+// 2,000 is not an arbitrary ceiling either: it is exactly Oracle's per-pass
+// budget in this same file (ORACLE_PAGE_SIZE 100 × ORACLE_PAGE_CAP 20), a page
+// shape and request count already proven in production here. Workday runs 500.
+// The cap exists so one board cannot monopolise a slice, and that constraint is
+// unchanged — 20 requests, not 246, which is what an uncapped Domino's would
+// cost every pass.
+const SR_PAGE = 100;
+const SR_PAGE_CAP = 20;
+const SR_CAP = SR_PAGE * SR_PAGE_CAP; // 2,000/board/pass
+async function fetchSmartRecruiters(s: JobSource): Promise<{ content: unknown[]; windowed: boolean; feedTotal: number }> {
   const first = await fetchWithTimeout(listUrl(s));
   if (!first.ok) throw new Error(`HTTP ${first.status}`);
   const page1 = await first.json();
-  const total = Math.min(Number(page1.totalFound) || 0, SR_CAP);
+  // The vendor's own advertised count, kept whole — NOT clamped to the cap.
+  // It rides the verification stamp so the UI can say "4,887 advertised"
+  // instead of publishing the cap as though it were the company's size, which
+  // is the false-precision trap Workday's feedTotal was added to close.
+  const feedTotal = Number(page1.totalFound) || 0;
+  const total = Math.min(feedTotal, SR_CAP);
   const content: unknown[] = [...(page1.content ?? [])];
-  for (let offset = 100; offset < total; offset += 100) {
-    const res = await fetchWithTimeout(`https://api.smartrecruiters.com/v1/companies/${s.token}/postings?limit=100&offset=${offset}`);
+  for (let offset = SR_PAGE; offset < total; offset += SR_PAGE) {
+    const res = await fetchWithTimeout(`https://api.smartrecruiters.com/v1/companies/${s.token}/postings?limit=${SR_PAGE}&offset=${offset}`);
     if (!res.ok) break; // partial page set is fine — prune guard keys off success of THIS board overall
     const page = await res.json();
     content.push(...(page.content ?? []));
   }
-  return { content };
+  // windowed, reported the same way Workday and Oracle report it: the company
+  // holds more than we fetched, so a posting's ABSENCE from our copy proves
+  // nothing about it being filled. Downstream this suppresses closure logging
+  // and guards the prune. SR previously had no feedTotal at all, so truncation
+  // was inferred from `rowsById.size >= SR_CAP` — a proxy that cannot tell a
+  // board of exactly 2,000 from one of 24,566.
+  return { content, windowed: feedTotal > content.length, feedTotal };
 }
 
 async function fetchWithTimeout(url: string, init?: RequestInit): Promise<Response> {
@@ -480,6 +517,14 @@ async function fetchBoard(s: JobSource): Promise<{ jobs: JobPosting[]; raw: unkn
                   : s.source === "breezy"
                     ? normalizeBreezy(raw, s.name, s.token)
                     : normalizeBambooHR(raw, s.name, s.token);
+    // SmartRecruiters now reports truncation the way Workday and Oracle do.
+    // Without this the honest `windowed`/`feedTotal` computed in the fetcher
+    // died here at the return, and downstream kept inferring truncation from a
+    // row-count proxy.
+    if (s.source === "smartrecruiters") {
+      const sr = raw as { windowed?: boolean; feedTotal?: number };
+      return { jobs, raw, windowed: sr.windowed === true, feedTotal: sr.feedTotal ?? 0 };
+    }
     return { jobs, raw };
   } catch (e) {
     console.warn(`[JOB-BOARD] board ${s.source}:${s.token} failed:`, String(e).slice(0, 100));
@@ -1299,7 +1344,21 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
         //  (c) a closure whose exact title is still live at the same company is
         //      marked superseded (repost/relisting churn, not a fill) and excluded
         //      from hiring-health stats.
-        const truncatedFetch = (s.source === "smartrecruiters" && rowsById.size >= SR_CAP) || r.windowed === true;
+        // `r.windowed` alone now — the SmartRecruiters row-count proxy is gone.
+        //
+        // It read `rowsById.size >= SR_CAP`, which cannot tell a board holding
+        // exactly the cap from one holding twelve times it, so a company with
+        // precisely SR_CAP live postings would have had closure logging
+        // suppressed forever. The closure log is the one asset here that cannot
+        // be re-derived later, so quietly never writing it for a board is a
+        // real cost, not a safe default.
+        //
+        // The replacement is strictly better informed: `windowed` is computed
+        // from the vendor's OWN advertised total against what we actually
+        // fetched (feedTotal > content.length), for SmartRecruiters exactly as
+        // for Workday and Oracle. A partial fetch — cap hit, or a mid-loop page
+        // failure — still reports windowed and still suppresses closures.
+        const truncatedFetch = r.windowed === true;
         if (vanished.length && !truncatedFetch) {
           const closedAt = new Date().toISOString();
           const liveTitles = new Set(

@@ -47,8 +47,12 @@ const PINNED = {
   // and search, excluded from EDITORIAL stats via showcase_excluded, and kept
   // out of the hot tier through both doors (velocity RPC and size ranking).
   // Same commit: +11 of the held Workable boards.
+  // 2026-08-10.3: SR_CAP 800 -> 2,000. sources.ts is UNCHANGED by that (the
+  // hash below still pins the Domino's + Workable merge); the bump is for the
+  // fetcher itself, so the deployed bundle is identifiable when checking
+  // whether the larger window actually landed.
   sourcesHash: "5665ce23b64042e8",
-  buildVersion: "2026-08-10.2",
+  buildVersion: "2026-08-10.3",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {

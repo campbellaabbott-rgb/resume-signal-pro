@@ -1,3 +1,18 @@
+-- RE-STAMPED 2026-08-10. This shipped as 20260810023000 and did NOT apply:
+-- verified after the deploy that landed its two sibling migrations, anon got
+-- PGRST202 "no matches were found in the schema cache" for a function that
+-- takes no arguments and is granted to anon — a genuine absence, not the
+-- signature-mismatch 404 PostgREST returns when you call a parameterised
+-- function with the wrong arguments. (That distinction cost me a wrong reading
+-- first time round: apply_posting_corrections looked equally missing and was
+-- actually present, which its 42501 permission-denied proved once probed with
+-- its real parameter.)
+--
+-- Nothing was broken by the miss, because the caller degrades: the hook falls
+-- back to the wide facets RPC on PGRST202, so the vendor wall kept rendering
+-- at the old 1.6MB cost. This is a re-application to collect the saving, and
+-- CREATE OR REPLACE makes it a no-op if the original did land after all.
+
 -- THE HOMEPAGE DOWNLOADS 3.2MB TO RENDER FIFTEEN SMALL NUMBERS.
 --
 -- Measured 2026-08-10: get_job_board_facets returns 1,622,548 bytes, of which
