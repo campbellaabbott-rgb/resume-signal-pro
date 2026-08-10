@@ -5215,15 +5215,21 @@ export function FreeKeywordResults({
 
       {/* Final CTA */}
       <div className="text-center p-6 rounded-2xl bg-gradient-to-br from-primary/10 via-background to-primary/5 border border-primary/20">
-        {/* Social proof */}
-        {scanCountData && scanCountData.inflatedCount > 0 && (
+        {/* Social proof — the REAL scans-today count, or nothing. This line
+            used to render `inflatedCount` (2800 + count*3, clock-derived on
+            error) under copy claiming "people upgraded this week": a number we
+            invented for a quantity we don't even measure. Now it makes the
+            claim the RPC actually answers, and only once the day's count is
+            large enough to be worth stating — a quiet morning renders no line
+            at all rather than a padded one. */}
+        {scanCountData && scanCountData.count >= 25 && (
           <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground mb-3">
             <div className="flex -space-x-1">
               {['bg-blue-400','bg-green-400','bg-purple-400'].map((c,i) => (
                 <div key={i} className={`w-5 h-5 rounded-full ${c} border-2 border-background`} />
               ))}
             </div>
-            <span>{t('freeResults.cta.socialProof', { count: scanCountData.inflatedCount })}</span>
+            <span>{t('freeResults.cta.socialProof', { count: scanCountData.count })}</span>
           </div>
         )}
 

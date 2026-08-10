@@ -49,9 +49,19 @@ export function useBoardVendorCounts(): BoardVendorCounts {
       try {
         // Cast: types.ts is generated and types this RPC as `Json`.
         const sb = supabase as unknown as {
-          rpc: (fn: string) => Promise<{ data: unknown; error: unknown }>;
+          rpc: (fn: string) => Promise<{ data: unknown; error: { code?: string } | null }>;
         };
-        const { data, error } = await sb.rpc("get_job_board_facets");
+        // SLIM READ FIRST. get_job_board_facets returns 1.6MB, of which this
+        // hook reads ~600 bytes (sourcesFacet/openTotal/as_of) — and the wall
+        // mounts twice per landing, so the wide read cost ~3.2MB per visitor.
+        // get_board_vendor_counts is the same cached row minus companiesFacet.
+        // The wide RPC stays as the fallback for the deploy window where the
+        // frontend ships before the migration applies (PGRST202 = function
+        // not found) — degraded to yesterday's cost, never to a blank wall.
+        let { data, error } = await sb.rpc("get_board_vendor_counts");
+        if (error?.code === "PGRST202") {
+          ({ data, error } = await sb.rpc("get_job_board_facets"));
+        }
         if (!alive || error || !data || typeof data !== "object") return;
 
         const payload = data as {

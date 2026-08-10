@@ -1601,7 +1601,7 @@
     "cta": {
       "fixIssues": "Tingnan kung ano ang pumipigil sa mga interview — {{price}}",
       "getFullAnalysis": "Kunin ang aking recruiter-ready na resume — {{price}}",
-      "socialProof": "{{count}} tao ang nagpabuti ng kanilang resume ngayong linggo",
+      "socialProof": "{{count}} resume ang na-scan ngayong araw",
       "resultsExpiry": "Ang iyong mga resulta ay naka-save pa ng {{hours}} oras"
     },
     "enterprise": {

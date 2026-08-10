@@ -1601,7 +1601,7 @@
     "cta": {
       "fixIssues": "See What's Costing You Interviews — {{price}}",
       "getFullAnalysis": "Get My Recruiter-Ready CV — {{price}}",
-      "socialProof": "{{count}} people upgraded their CV this week",
+      "socialProof": "{{count}} CVs scanned today",
       "resultsExpiry": "Your results are saved for {{hours}} more hours"
     },
     "enterprise": {

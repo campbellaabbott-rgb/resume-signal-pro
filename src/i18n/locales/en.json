@@ -1601,7 +1601,7 @@
     "cta": {
       "fixIssues": "See What's Costing You Interviews — {{price}}",
       "getFullAnalysis": "Get My Recruiter-Ready Resume — {{price}}",
-      "socialProof": "{{count}} people upgraded their resume this week",
+      "socialProof": "{{count}} resumes scanned today",
       "resultsExpiry": "Your results are saved for {{hours}} more hours"
     },
     "enterprise": {

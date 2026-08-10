@@ -49,13 +49,27 @@ const facets = (sourcesFacet: Record<string, unknown>, openTotal: unknown = 12_3
   error: null,
 });
 
-/** Route by RPC name: the component also asks whether the sender is online. */
+/** Route by RPC name: the component also asks whether the sender is online.
+ *
+ * The hook now asks the SLIM read (get_board_vendor_counts) first and falls
+ * back to the wide facets RPC only on PGRST202 — both are routed to the same
+ * payload here because the slim read is by construction the same cached row
+ * minus companiesFacet, and these tests assert on keys both shapes carry. */
 const route = (facetResult: unknown, senderOnline = false) => {
   rpc.mockImplementation((fn: string) =>
-    fn === "get_job_board_facets"
+    fn === "get_board_vendor_counts" || fn === "get_job_board_facets"
       ? Promise.resolve(facetResult)
       : Promise.resolve({ data: senderOnline, error: null }),
   );
+};
+
+/** The deploy window: slim RPC not yet applied (PGRST202) → wide fallback. */
+const routeSlimMissing = (facetResult: unknown) => {
+  rpc.mockImplementation((fn: string) => {
+    if (fn === "get_board_vendor_counts") return Promise.resolve({ data: null, error: { code: "PGRST202" } });
+    if (fn === "get_job_board_facets") return Promise.resolve(facetResult);
+    return Promise.resolve({ data: false, error: null });
+  });
 };
 
 beforeEach(() => rpc.mockReset());
@@ -66,6 +80,25 @@ describe("counts render only when they were actually measured", () => {
     render(<AtsCoverage />);
     await waitFor(() => expect(screen.getByText("48,102")).toBeInTheDocument());
     expect(screen.getByText("305,380")).toBeInTheDocument();
+  });
+
+  it("prefers the slim read and never fetches the wide facets when it answers", async () => {
+    // The wide RPC returns 1.6MB of companiesFacet this component discards;
+    // fetching it anyway — twice per landing — was ~3.2MB per visitor.
+    route(facets({ greenhouse: 48_102 }));
+    render(<AtsCoverage />);
+    await waitFor(() => expect(screen.getByText("48,102")).toBeInTheDocument());
+    const called = rpc.mock.calls.map((c) => c[0]);
+    expect(called).toContain("get_board_vendor_counts");
+    expect(called).not.toContain("get_job_board_facets");
+  });
+
+  it("falls back to the wide facets during the deploy window (PGRST202)", async () => {
+    // Frontend can ship before the migration applies; the cost degrades to
+    // yesterday's, the wall never goes blank.
+    routeSlimMissing(facets({ greenhouse: 48_102 }));
+    render(<AtsCoverage />);
+    await waitFor(() => expect(screen.getByText("48,102")).toBeInTheDocument());
   });
 
   it("says when the counts were true", async () => {

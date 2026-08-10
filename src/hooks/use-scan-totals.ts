@@ -40,7 +40,13 @@ export function useScanTotals() {
       );
     };
     load();
-    const interval = setInterval(load, 30_000);
+    // 5 minutes, not 30s: this is an ALL-TIME counter that moves by single
+    // digits per hour, and every page mounting Hero/trust/methodology carried
+    // the 30s cadence — 120 RPC calls/hour per open tab for a number whose
+    // display doesn't change between polls. The scan-completed listener below
+    // still refreshes instantly when this very tab finishes a scan, which is
+    // the only movement a viewer can actually witness.
+    const interval = setInterval(load, 300_000);
     window.addEventListener("scan-completed", load);
     return () => {
       cancelled = true;

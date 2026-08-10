@@ -1601,7 +1601,7 @@
     "cta": {
       "fixIssues": "Ver o que está custando entrevistas — {{price}}",
       "getFullAnalysis": "Obter meu currículo pronto para recrutadores — {{price}}",
-      "socialProof": "{{count}} pessoas melhoraram seu currículo esta semana",
+      "socialProof": "{{count}} currículos analisados hoje",
       "resultsExpiry": "Seus resultados ficam salvos por mais {{hours}} horas"
     },
     "enterprise": {

@@ -1601,7 +1601,7 @@
     "cta": {
       "fixIssues": "Ver qué te cuesta entrevistas — {{price}}",
       "getFullAnalysis": "Obtener mi CV listo para reclutadores — {{price}}",
-      "socialProof": "{{count}} personas mejoraron su CV esta semana",
+      "socialProof": "{{count}} CV analizados hoy",
       "resultsExpiry": "Tus resultados se guardarán {{hours}} horas más"
     },
     "enterprise": {

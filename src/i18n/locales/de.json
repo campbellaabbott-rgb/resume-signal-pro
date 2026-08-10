@@ -1601,7 +1601,7 @@
     "cta": {
       "fixIssues": "Sehen, was Bewerbungen kostet — {{price}}",
       "getFullAnalysis": "Meinen bewerbungsfertigen Lebenslauf holen — {{price}}",
-      "socialProof": "{{count}} Personen haben ihren Lebenslauf diese Woche verbessert",
+      "socialProof": "{{count}} Lebensläufe heute geprüft",
       "resultsExpiry": "Ihre Ergebnisse werden noch {{hours}} Stunden gespeichert"
     },
     "enterprise": {

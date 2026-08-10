@@ -14,22 +14,24 @@ function useBoardTotals() {
   useEffect(() => {
     let cancelled = false;
     supabase.functions
-      .invoke("job-board", { body: { action: "list", limit: 1, includeFacets: true } })
+      // includeFacets FALSE (2026-08-10): this call renders exactly two
+      // numbers, and the light response carries both — verified live at 1,751
+      // bytes against 100,935 with facets on, a 58x cut on every homepage
+      // view. The facets fallback below existed for deployments that predate
+      // `companiesCount` riding the light response; none remain (the deployed
+      // function is months past it), and the fallback now simply yields 0
+      // companies, which renders as the jobs count alone — degraded, honest.
+      .invoke("job-board", { body: { action: "list", limit: 1, includeFacets: false } })
       .then(({ data }) => {
         if (cancelled) return;
         // Use `total` — the read-filtered (≤30-day) count the /jobs board
         // actually serves — NOT `totalAllCompanies` (the pre-sweep facet total,
         // which still counts aged rows the read filter hides). This keeps the
         // homepage number identical to what a visitor sees on the board, and
-        // honest with the "nothing older than 30 days" claim. Companies counted
-        // the same way /jobs does (count > 0).
-        const d = data as { total?: number; companiesCount?: number; companies?: Array<{ count?: number }> } | null;
+        // honest with the "nothing older than 30 days" claim.
+        const d = data as { total?: number; companiesCount?: number } | null;
         const jobs = d?.total || 0;
-        // companiesCount is the untrimmed facet size (the served `companies`
-        // array is capped for payload weight); fall back to counting the array
-        // for older deployed function versions.
-        const companies = d?.companiesCount
-          ?? (Array.isArray(d?.companies) ? d!.companies.filter((c) => (c?.count ?? 0) > 0).length : 0);
+        const companies = d?.companiesCount ?? 0;
         if (jobs > 0) setTotals({ jobs, companies });
       })
       .catch(() => {});

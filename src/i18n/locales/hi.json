@@ -1601,7 +1601,7 @@
     "cta": {
       "fixIssues": "देखें क्या इंटरव्यू रोक रहा है — {{price}}",
       "getFullAnalysis": "रिक्रूटर-रेडी रिज्यूमे पाएं — {{price}}",
-      "socialProof": "{{count}} लोगों ने इस सप्ताह अपना रिज्यूमे सुधारा",
+      "socialProof": "आज {{count}} रिज्यूमे स्कैन हुए",
       "resultsExpiry": "आपके परिणाम {{hours}} और घंटों तक सहेजे हैं"
     },
     "enterprise": {

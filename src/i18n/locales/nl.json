@@ -1601,7 +1601,7 @@
     "cta": {
       "fixIssues": "Zie wat sollicitaties kost — {{price}}",
       "getFullAnalysis": "Mijn recruiter-klaar cv ophalen — {{price}}",
-      "socialProof": "{{count}} mensen verbeterden hun cv deze week",
+      "socialProof": "{{count}} cv's vandaag gescand",
       "resultsExpiry": "Uw resultaten worden nog {{hours}} uur opgeslagen"
     },
     "enterprise": {

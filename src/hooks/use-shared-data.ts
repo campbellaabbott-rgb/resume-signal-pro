@@ -63,14 +63,21 @@ export function invalidateCache(key: string) {
 
 interface TodayScanData {
   count: number;
-  inflatedCount: number;
 }
 
 // Cached today's scan count - deduplicates calls from Hero, Index, graceful-degradation
+//
+// `inflatedCount` REMOVED (2026-08-10). It was `2800 + count * 3`, with a
+// clock-derived fallback when the RPC failed — a fabricated figure, rendered
+// as social proof, in a codebase whose other stat surfaces enforce
+// measured-or-nothing (use-scan-totals.ts says "no hardcoded or invented
+// counts, ever", and cites the 9.5x trust-page overstatement that rule came
+// from). The consumer now renders the REAL count past a floor, or nothing.
+// An error yields count 0, and 0 renders nothing — never a synthetic number.
 export function useTodayScanCount() {
-  const [data, setData] = useState<TodayScanData>({ count: 0, inflatedCount: 2847 });
+  const [data, setData] = useState<TodayScanData>({ count: 0 });
   const [isLoading, setIsLoading] = useState(true);
-  
+
   const refresh = useCallback(async () => {
     try {
       const count = await getCachedOrFetch<number>(
@@ -82,16 +89,9 @@ export function useTodayScanCount() {
         },
         120_000 // 2 minute TTL for scan count
       );
-      
-      // Inflate the number: base of 2800 + actual count * multiplier
-      const inflatedCount = 2800 + (count * 3);
-      setData({ count, inflatedCount });
+      setData({ count });
     } catch (e) {
-      // Fallback to time-based calculation
-      const now = new Date();
-      const hoursSinceMidnight = now.getHours() + now.getMinutes() / 60;
-      const fallback = 2800 + Math.floor(hoursSinceMidnight * 25);
-      setData({ count: 0, inflatedCount: fallback });
+      setData({ count: 0 });
     } finally {
       setIsLoading(false);
     }
