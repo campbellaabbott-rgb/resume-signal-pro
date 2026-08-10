@@ -42,8 +42,13 @@ const PINNED = {
   // (context read, kept), and 4chain's Schwertfels-shaped salary-band titles
   // carried zero placement language in two languages across 40 ads (kept).
   // Evidence convicts; names alone do not.
-  sourcesHash: "24eb2bb4eaf3c266",
-  buildVersion: "2026-08-10.1",
+  // 2026-08-10.2: +Domino's (smartrecruiters:dominos, 24,566 postings) — the
+  // hold from 2026-08-07 released on the middle path: merged into the board
+  // and search, excluded from EDITORIAL stats via showcase_excluded, and kept
+  // out of the hot tier through both doors (velocity RPC and size ranking).
+  // Same commit: +11 of the held Workable boards.
+  sourcesHash: "5665ce23b64042e8",
+  buildVersion: "2026-08-10.2",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {

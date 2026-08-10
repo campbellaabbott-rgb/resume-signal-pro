@@ -31218,4 +31218,6 @@ export const JOB_SOURCES: JobSource[] = [
   { name: "The Recovery Village", source: "workable", token: "therecoveryvillage" },
   { name: "Enterprise Electrical", source: "workable", token: "enterprise-electrical" },
   { name: "Renmoney", source: "workable", token: "renmoney" },
+  // ── Census round 3 + Rippling (merged 2026-08-10): all vendors, official-API verified ≥3 postings, mill-screened ──
+  { name: "Domino's", source: "smartrecruiters", token: "dominos" },
 ];

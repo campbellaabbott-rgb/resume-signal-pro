@@ -98,7 +98,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-10.1";
+const BUILD_VERSION = "2026-08-10.2";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -1733,8 +1733,32 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
     // leaders (most postings first_seen inside the window — the boards where
     // new jobs actually appear) take guaranteed slots, size leaders fill the
     // rest. RPC missing (migration lag) degrades to pure size ranking.
+    // HOT-TIER EXCLUSIONS. get_board_velocity filters showcase_excluded, but
+    // the SIZE ranking below is a second, independent door into the hot tier —
+    // and the board this exists for (Domino's, 24,566 postings) would top it
+    // outright. Filtering one door and not the other would have let it in
+    // anyway, which is the kind of half-fix that reads as done and is not.
+    //
+    // Cadence only, never coverage: an excluded board keeps full cold-tier
+    // refresh. The hot tier re-fetches every ~10-15 min at HOT_CONCURRENCY=2
+    // because its members are giants; a per-store delivery-driver vacancy does
+    // not need that, and the slot goes to a board where a stale posting costs
+    // someone a real application.
+    //
+    // A failed read yields an EMPTY set — the previous behaviour, one giant in
+    // the hot tier — rather than an empty hot tier. Degrading to "slightly
+    // expensive" beats degrading to "nothing gets refreshed often".
+    const hotExcluded = new Set<string>();
+    try {
+      const { data: ex } = await client.from("showcase_excluded").select("company_token");
+      for (const r of (ex ?? []) as Array<{ company_token?: string }>) {
+        if (typeof r.company_token === "string") hotExcluded.add(r.company_token);
+      }
+    } catch { /* keep the previous behaviour rather than an empty hot tier */ }
+
     const sizeRanked = [...companies]
       .filter((c): c is { token: string; count: number } => typeof (c as { token?: unknown }).token === "string" && typeof (c as { count?: unknown }).count === "number")
+      .filter((c) => !hotExcluded.has(c.token))
       .sort((a, b) => b.count - a.count)
       .map((c) => c.token);
     const hotSet = new Set<string>();
