@@ -147,7 +147,114 @@ describe("the page does not fire a query that cannot finish", () => {
     // froze every section with nothing saying so.
     const fn = latestWith("FUNCTION public.refresh_explore_cache");
     expect(fn).toMatch(/transparent jsonb := '\[\]'::jsonb;/);
-    expect(fn).toMatch(/EXCEPTION WHEN OTHERS THEN[\s\S]{0,220}RAISE WARNING 'explore cache: transparent employers unavailable/);
+    expect(fn).toMatch(/RAISE WARNING 'explore cache: transparent employers unavailable/);
+  });
+});
+
+/**
+ * Moving it to the cron did not make it work, and the reasons are two lessons
+ * worth keeping. Measured against production 2026-08-10, as anon:
+ *
+ *   get_transparent_employers(12)  ->  500 / 57014 at 25.46s
+ *
+ * 25.46s, NOT the 90s the caller had set — proof that a function's own SET
+ * clause overrides the caller's for the body's duration, so the wrapper's
+ * `SET LOCAL statement_timeout = '90s'` was inert. And 57014 rather than 42501
+ * proves anon still held EXECUTE on a query that pins a worker for half a
+ * minute.
+ */
+describe("the cron call is shaped for what the function actually returns", () => {
+  // Comments stripped: Lovable re-stamps applied migrations and drops comments,
+  // so anything asserted here must be true of the CODE, not of prose about it.
+  const RAW = latestWith("FUNCTION public.get_transparent_employers");
+  const SQL = RAW.replace(/^\s*--.*$/gm, "");
+
+  it("calls the scalar function as a scalar, never in FROM", () => {
+    // `SELECT jsonb_agg(row_to_json(x)) FROM get_transparent_employers(12) x`
+    // parses fine — Postgres treats a non-set-returning function in FROM as a
+    // one-row table — and yields [{"x":[...]}]. Explore's Array.isArray gate
+    // passes on that, so the section would have rendered one card with every
+    // field undefined. The timeout was hiding a shape bug.
+    expect(SQL).not.toMatch(/FROM\s+public\.get_transparent_employers/);
+    expect(SQL).toMatch(/transparent := COALESCE\(public\.get_transparent_employers\(12\), '\[\]'::jsonb\);/);
+  });
+
+  it("still returns scalar jsonb — the premise the call shape depends on", () => {
+    // If this ever becomes RETURNS TABLE, the assertion above inverts. Six
+    // sibling collections ARE set-returning and are correctly called with
+    // FROM ... row_to_json; this one and get_size_segments are not.
+    expect(SQL).toMatch(/FUNCTION public\.get_transparent_employers\(p_limit int DEFAULT 12\)\s*\nRETURNS jsonb/);
+  });
+
+  it("rejects a non-array result rather than publishing it", () => {
+    const fn = latestWith("FUNCTION public.refresh_explore_cache");
+    expect(fn).toMatch(/jsonb_typeof\(transparent\) <> 'array'/);
+  });
+});
+
+describe("empty and failed are recorded as different things", () => {
+  const fn = latestWith("FUNCTION public.refresh_explore_cache");
+
+  it("the cache says WHY transparent is empty", () => {
+    // `[]` meant both "nobody clears 80%" and "the query died" and looked
+    // identical, which is why the failure survived weeks unnoticed.
+    expect(fn).toMatch(/'transparent_status', transparent_status/);
+    expect(fn).toMatch(/transparent_status text := 'ok';/);
+    expect(fn).toMatch(/transparent_status := 'failed: ' \|\| left\(SQLERRM, 120\)/);
+  });
+});
+
+describe("the query is made cheap and private, not merely patient", () => {
+  const SQL = latestWith("FUNCTION public.get_transparent_employers").replace(/^\s*--.*$/gm, "");
+
+  it("gets a budget larger than the 25s that was actually binding", () => {
+    const m = /RETURNS jsonb[\s\S]{0,300}?SET statement_timeout = '(\d+)(min|s)'/.exec(SQL);
+    expect(m, "no statement_timeout on get_transparent_employers").toBeTruthy();
+    const seconds = m![2] === "min" ? Number(m![1]) * 60 : Number(m![1]);
+    expect(seconds).toBeGreaterThan(25);
+    // Must stay inside refresh_explore_cache's own 10min ceiling, or a slow run
+    // takes down the seven collections that already work.
+    expect(seconds).toBeLessThan(600);
+  });
+
+  it("computes the median only for the rows it returns", () => {
+    // percentile_cont is an ordered-set aggregate that sorts each group. It was
+    // running for every qualifying company when at most 12 are ever returned —
+    // that, not the grouping, is what cost 25s+.
+    expect(SQL).toMatch(/LEFT JOIN LATERAL/);
+    const beforeLateral = SQL.slice(0, SQL.indexOf("LEFT JOIN LATERAL"));
+    expect(beforeLateral, "percentile_cont still runs before the LIMIT")
+      .not.toMatch(/percentile_cont/);
+  });
+
+  it("counts only postings the board will actually serve", () => {
+    // Both predicates, matching buildQuery and the sourcesFacet. Without them
+    // the >=20 floor and the 80% ratio describe a population no reader can
+    // reach — one quantity with two numbers.
+    //
+    // Sliced to the CTE that decides WHO QUALIFIES rather than searched
+    // file-wide: the first version of this test asserted the strings appeared
+    // anywhere, and passed with the qualifying filter deleted, because the
+    // median LATERAL still carried its own copy. Caught by mutation, not by
+    // reading.
+    const agg = SQL.slice(SQL.indexOf("WITH agg AS ("), SQL.indexOf("top AS ("));
+    expect(agg, "agg CTE not located").toContain("GROUP BY company_token");
+    expect(agg).toMatch(/missing_since IS NULL/);
+    expect(agg).toMatch(/effective_posted >= now\(\) - interval '30 days'/);
+
+    // The median must be drawn from the same population it is reported beside.
+    const lateral = SQL.slice(SQL.indexOf("LEFT JOIN LATERAL"));
+    expect(lateral).toMatch(/p\.missing_since IS NULL/);
+    expect(lateral).toMatch(/p\.effective_posted >= now\(\) - interval '30 days'/);
+  });
+
+  it("is no longer executable by anon", () => {
+    // Nothing on a request path calls it; a 4-minute aggregate any anonymous
+    // caller can start is a worker-exhaustion lever, not an API.
+    expect(SQL).toMatch(/REVOKE ALL ON FUNCTION public\.get_transparent_employers\(int\) FROM PUBLIC, anon, authenticated;/);
+    const afterRevoke = SQL.slice(SQL.indexOf("REVOKE ALL ON FUNCTION public.get_transparent_employers"));
+    expect(afterRevoke, "re-granted to anon after the revoke")
+      .not.toMatch(/GRANT EXECUTE ON FUNCTION public\.get_transparent_employers\(int\) TO [^;]*anon/);
   });
 
   it("the dead drill-through is gone, not merely hidden", () => {
