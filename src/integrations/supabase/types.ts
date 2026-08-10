@@ -2936,6 +2936,7 @@ export type Database = {
         Args: { p_claimed?: number; p_version?: string; p_worker: string }
         Returns: undefined
       }
+      apply_posting_corrections: { Args: { p_patches: Json }; Returns: number }
       build_missing_since_index_oneshot: { Args: never; Returns: undefined }
       build_speed_indexes_oneshot: { Args: never; Returns: undefined }
       check_global_rate_limit: {
