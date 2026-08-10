@@ -3167,6 +3167,7 @@ export type Database = {
           recent: number
         }[]
       }
+      get_board_vendor_counts: { Args: never; Returns: Json }
       get_cached_response: {
         Args: { p_cache_key: string; p_function_name: string }
         Returns: Json
