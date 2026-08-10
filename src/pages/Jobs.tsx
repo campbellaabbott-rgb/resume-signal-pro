@@ -16,6 +16,7 @@ import { parseSalaryStructured } from "../../supabase/functions/_shared/salary-e
 // same reason the salary parser above is imported straight out of _shared.
 import { isSendableVendor } from "../../supabase/functions/_shared/apply-automation";
 import { ATS_VENDOR_LIST } from "@/config/ats-vendors";
+import { markDeadForRobots, clearDeadForRobots } from "@/lib/seo-robots";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Activity, AlertTriangle, Bell, Bookmark, BookmarkCheck, Briefcase, ChevronDown, Clock, Compass, Copy, ExternalLink, FileText, Flag, Link2, Loader2, MapPin, MessageSquare, RefreshCw, Search, ShieldCheck, SlidersHorizontal, Sparkles, Target, Upload, Info} from "lucide-react";
@@ -1098,8 +1099,19 @@ export default function Jobs() {
   // HONESTY FENCE: only fields we actually hold go into the markup —
   // datePosted only when the COMPANY stated a date, description only when
   // the real JD text is loaded (Google requires it, so no-desc postings emit
-  // nothing), no invented validThrough/salary. The tag is removed when the
-  // panel closes so stale markup never lingers on other views.
+  // nothing), no invented salary. The tag is removed when the panel closes so
+  // stale markup never lingers on other views.
+  //
+  // validThrough IS emitted, and it clears the fence because it is not the
+  // company's application deadline (which we do not know and must not invent):
+  // it is posted_at + 30 days — THIS BOARD's own serving guarantee. The board
+  // hard-drops any dated posting past 30 days (FRESH_WINDOW_DAYS), so the URL
+  // in this markup genuinely stops serving the posting at that instant. That is
+  // exactly what validThrough means for the page it is on, it is one of
+  // Google's three sanctioned expiry signals, and it is the only one that works
+  // IN ADVANCE: Google learns the expiry on a routine recrawl of the LIVE page,
+  // before the URL dies — instead of soft-404-classifying the corpse later
+  // (GSC flagged exactly that on 2026-08-07, with ~16k URLs/day aging out).
   useEffect(() => {
     const TAG_ID = "job-posting-ld";
     document.getElementById(TAG_ID)?.remove();
@@ -1140,6 +1152,13 @@ export default function Jobs() {
       datePosted: (detailJob.postedAt!.slice(0, 10) > new Date().toISOString().slice(0, 10)
         ? new Date().toISOString().slice(0, 10)
         : detailJob.postedAt!.slice(0, 10)),
+      // The board's serving window, not a company deadline — see the fence
+      // note above. Computed from the RAW postedAt (not the clamped
+      // datePosted) so an already-old posting gets a validThrough in the
+      // past, which Google correctly reads as "expired" — true, since the
+      // 30-day cap is about to drop it.
+      validThrough: new Date(Date.parse(detailJob.postedAt!.slice(0, 10)) + 30 * 86_400_000)
+        .toISOString().slice(0, 10),
       hiringOrganization: { "@type": "Organization", name: detailJob.company },
       url: `https://resumebooster.work/jobs?job=${encodeURIComponent(detailJob.id)}`,
       directApply: false,
@@ -1327,6 +1346,22 @@ export default function Jobs() {
   // present when the closure log knew the posting, so we can offer a search
   // for live siblings instead of a shrug.
   const [deadLink, setDeadLink] = useState<{ title: string | null; company: string | null } | null>(null);
+
+  // GSC "Soft 404" (2026-08-07): a dead ?job= deep link renders this banner
+  // under a head that says index,follow — the textbook soft-404 shape, and with
+  // ~16k postings/day aging out of the 30-day window the dead-URL stream is
+  // permanent, not a one-off from the 27k purge. noindex is the only expiry
+  // signal a static SPA can send per-URL (no status-code lever on Lovable
+  // hosting; Googlebot gets byte-identical HTML — verified). Google picks it up
+  // when it re-renders each orphaned URL. Symmetric on purpose: cleared the
+  // moment the state clears, so a crawler-visible flag can never linger over a
+  // live board view reached from the same tab.
+  useEffect(() => {
+    if (!deadLink) return;
+    const prevTitle = document.title;
+    markDeadForRobots(t("jobsPage.deadLinkDocTitle", "Posting no longer available — Resume Booster"));
+    return () => { clearDeadForRobots(); document.title = prevTitle; };
+  }, [deadLink, t]);
   useEffect(() => {
     if (deepLinkTried.current) return;
     const id = new URLSearchParams(window.location.search).get("job");
