@@ -116,6 +116,34 @@ const verifiers = {
     if (!Array.isArray(rows) || rows.length < MIN_POSTINGS) return null;
     return { name: prettify(t), count: rows.length };
   },
+  // Oracle Fusion. Token is tenant~region~site, exactly as sources.ts stores
+  // it, so a verified hit merges without translation.
+  //
+  // The count comes from TotalJobsCount rather than the returned page: this
+  // endpoint pages at 25 by default, and counting the page would report every
+  // large employer as a 25-posting board — under the 161/board average that
+  // makes this vendor worth censusing at all.
+  //
+  // The name comes from the employer's own EmployerName where the payload
+  // carries one; the tenant code (edel, ebxr) is meaningless to a reader, so
+  // prettify() is a poor fallback here and a merge-time name collision would
+  // be the only other check. Verified live 2026-08-10: an existing tenant
+  // returned TotalJobsCount 906.
+  oracle: async (t) => {
+    const [tenant, region, site] = String(t).split("~");
+    if (!tenant || !region || !site) return null;
+    const finder = `findReqs;siteNumber=${site},limit=1`;
+    const d = await probe(
+      `https://${tenant}.fa.${region}.oraclecloud.com/hcmRestApi/resources/latest/` +
+      `recruitingCEJobRequisitions?onlyData=true&expand=requisitionList&finder=${encodeURIComponent(finder)}`,
+    );
+    const item = Array.isArray(d?.items) ? d.items[0] : null;
+    const total = Number(item?.TotalJobsCount) || 0;
+    if (total < MIN_POSTINGS) return null;
+    const first = Array.isArray(item?.requisitionList) ? item.requisitionList[0] : null;
+    const name = String(first?.EmployerName || prettify(tenant)).slice(0, 60);
+    return { name, count: total };
+  },
   recruitee: async (t) => {
     const d = await probe(`https://${t}.recruitee.com/api/offers/`);
     const offers = d?.offers;
@@ -175,8 +203,8 @@ const verifiers = {
   },
 };
 
-const CONCURRENCY = { greenhouse: 14, ashby: 14, smartrecruiters: 8, workable: 8, bamboohr: 14, recruitee: 14, teamtailor: 14, breezy: 14, personio: 2, rippling: 10, lever: 14, pinpoint: 14 };
-const SPACING_MS = { greenhouse: 60, ashby: 60, smartrecruiters: 150, workable: 150, bamboohr: 60, recruitee: 60, teamtailor: 60, breezy: 60, personio: 1600, rippling: 120, lever: 60, pinpoint: 60 };
+const CONCURRENCY = { greenhouse: 14, ashby: 14, smartrecruiters: 8, workable: 8, bamboohr: 14, recruitee: 14, teamtailor: 14, breezy: 14, personio: 2, rippling: 10, lever: 14, pinpoint: 14, oracle: 6 };
+const SPACING_MS = { greenhouse: 60, ashby: 60, smartrecruiters: 150, workable: 150, bamboohr: 60, recruitee: 60, teamtailor: 60, breezy: 60, personio: 1600, rippling: 120, lever: 60, pinpoint: 60, oracle: 250 };
 
 async function run(vendor, tokens) {
   const verified = [];

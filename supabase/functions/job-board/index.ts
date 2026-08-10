@@ -1228,12 +1228,36 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
           if (typeof row.remote === "boolean" && row.remote !== prev.remote) patch.remote = row.remote;
           if (Object.keys(patch).length) corrections.push({ id, ...patch });
         }
+        // ONE ROUND TRIP PER CHUNK, not per row. This loop used to issue a
+        // sequentially-awaited UPDATE for every corrected posting — the only
+        // unbatched write in an otherwise consistently 200-250-batched ingest,
+        // and hundreds of serial round trips per pass on a churny giant. That
+        // time comes straight out of the freshness budget that decides how
+        // fast the whole catalog rotates.
+        //
+        // The patches are PARTIAL and differ per row, so this cannot be a bulk
+        // PostgREST update: apply_posting_corrections tests key PRESENCE per
+        // column and leaves anything the patch did not mention untouched. A
+        // plain bulk update would null out an employer's real salary because a
+        // different row's title moved.
         for (let i = 0; i < corrections.length; i += 200) {
           const chunk = corrections.slice(i, i + 200);
-          for (const c of chunk) {
-            const { id, ...patch } = c as { id: string };
-            const { error: cErr } = await client.from("job_board_postings").update(patch).eq("id", id);
-            if (cErr) { lastUpsertError = `${s.token} correct ${String(id).slice(0, 40)}: ${cErr.message}`; break; }
+          const { error: cErr } = await client.rpc("apply_posting_corrections", { p_patches: chunk });
+          if (cErr) {
+            // Deploy-before-migration window: the frontend/function can ship
+            // ahead of the RPC. Fall back to the old per-row path rather than
+            // silently dropping corrections — slow beats wrong, and the next
+            // pass picks up the batched path once the migration lands.
+            if (cErr.message?.includes("apply_posting_corrections") || (cErr as { code?: string }).code === "PGRST202") {
+              for (const c of chunk) {
+                const { id, ...patch } = c as { id: string };
+                const { error: rowErr } = await client.from("job_board_postings").update(patch).eq("id", id);
+                if (rowErr) { lastUpsertError = `${s.token} correct ${String(id).slice(0, 40)}: ${rowErr.message}`; break; }
+              }
+            } else {
+              lastUpsertError = `${s.token} correct batch: ${cErr.message}`;
+              break;
+            }
           }
         }
         if (corrections.length) console.log(`[JOB-BOARD] ${s.token}: corrected ${corrections.length} existing rows`);

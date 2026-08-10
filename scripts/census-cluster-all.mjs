@@ -53,6 +53,48 @@ const SURTS = [
   { vendor: "personio", kind: "subdomain", surt: "com,personio,jobs,", hostSuffix: ".jobs.personio.com", personioHost: "jobs.personio.com" },
   { vendor: "rippling", kind: "path", surt: "com,rippling,ats)/", host: "ats.rippling.com" },
   { vendor: "workday", kind: "workday", surt: "com,myworkdayjobs,", hostSuffix: ".myworkdayjobs.com" },
+  // Oracle Fusion recruiting. THE HIGHEST-YIELD VENDOR WE CARRY and, until
+  // now, one of only two with no standing census coverage at all: 88 boards
+  // holding 14,207 postings — 161 per board, against 1.7 for personio and 11.8
+  // for greenhouse. Every board added here is worth ~160.
+  //
+  // Hosts are {tenant}.fa.{region}.oraclecloud.com, so the reversed SURT is
+  // "com,oraclecloud,{region},fa,{tenant}" and the shared prefix is
+  // "com,oraclecloud,". The catalog token is tenant~region~site, and the site
+  // number is NOT in the hostname — CX_1 is the near-universal default and is
+  // what the extractor assumes; a tenant using a different site simply fails
+  // verification and is dropped, which is the right direction to be wrong in.
+  //
+  // Verified live 2026-08-10 before adding this: the list endpoint
+  // (recruitingCEJobRequisitions, finder findReqs;siteNumber=CX_1) answered
+  // 906 jobs for an existing tenant, so discovered hosts are genuinely
+  // fetchable rather than merely findable.
+  //
+  // DISCOVERY AND VERIFICATION ONLY — merge-all's VENDORS list deliberately
+  // omits oracle, so candidates are enumerated and confirmed live but never
+  // auto-appended, exactly as pinpoint and the EU hosts were staged. The
+  // blocker is NAMES, not reach: the Oracle payload carries no employer name
+  // anywhere (LegalEmployer, BusinessUnit, Organization all null on a live
+  // tenant, measured), and the runtime takes the display name from the catalog
+  // entry — which is why the 88 boards we already serve read "Fortinet" and
+  // "Texas Instruments" rather than "edel" and "edbz". Auto-merging would put
+  // tenant codes in front of users. Enumerate and size the pool now; add a name
+  // resolution step before anything merges.
+  { vendor: "oracle", kind: "oracle", surt: "com,oraclecloud,", hostSuffix: ".oraclecloud.com" },
+  // NO iCIMS SURT, and this is a measured decision rather than an oversight.
+  // iCIMS is the other zero-coverage high-yield vendor (122 boards, 15,913
+  // postings, 130/board) and a crawl prefix on icims.com looks obvious — but
+  // our fetcher reads `https://{token}/api/jobs`, and that endpoint exists
+  // only on employers' CUSTOM career domains. Measured 2026-08-10:
+  //   careers-pilotcompany.icims.com/api/jobs -> 404
+  //   careers-medallia.icims.com/api/jobs     -> 404
+  //   careers.84lumber.com/api/jobs           -> 200 (control, from our catalog)
+  //   careers.aarp.org/api/jobs               -> 200 (control)
+  // So an icims.com prefix would enumerate thousands of hosts that every one
+  // of our probes would then fail to read. iCIMS discovery belongs to the
+  // Wayback CDX letter-partition channel that produced 105 employers /
+  // ~36.7k postings on 2026-07-25 (commit 820b3cb8) — a different scan over
+  // custom domains, not a SURT here.
   // Discovery-only until the Pinpoint vendor ships: merge/verify ignore
   // unknown vendors, so this just measures the candidate pool for rung 5.
   { vendor: "pinpoint", kind: "subdomain", surt: "com,pinpointhq,", hostSuffix: ".pinpointhq.com" },
@@ -171,6 +213,19 @@ for (const s of SURTS) {
         if (label.includes(".") || !TOKEN_RE.test(label) || NOT_COMPANY.has(label)) continue;
         add(s.vendor, label); found++;
         if (s.personioHost) out.personio_hosts[label] = s.personioHost;
+      } else if (s.kind === "oracle") {
+        // {tenant}.fa.{region}.oraclecloud.com — everything else under
+        // oraclecloud.com (and there is a great deal of it) is not a careers
+        // site and must not enter the pool.
+        const m = host.match(/^([a-z0-9-]+)\.fa\.([a-z0-9-]+)\.oraclecloud\.com$/);
+        if (!m) continue;
+        if (NOT_COMPANY.has(m[1])) continue;
+        // CX_1 is the near-universal default site number and is not carried in
+        // the hostname; a tenant on a different site fails verification and is
+        // dropped, which is the correct direction to be wrong in — a missing
+        // board costs inventory, an unfetchable one costs a refresh slot every
+        // rotation forever.
+        add("oracle", `${m[1]}~${m[2]}~CX_1`); found++;
       } else {
         // workday: {tenant}.{dc}.myworkdayjobs.com/(locale/)?{site}/…
         const m = host.match(/^([a-z0-9-]+)\.(wd\d+)\.myworkdayjobs\.com$/);
