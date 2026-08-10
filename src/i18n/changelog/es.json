@@ -1,5 +1,25 @@
 {
   "changelogEntries": {
+    "whereTheJobsComeFrom": {
+      "title": "Vea exactamente de dónde vienen nuestras vacantes",
+      "description": "La página de inicio ahora nombra los 15 sistemas de selección que leemos —Workday, Greenhouse, BambooHR y los demás—, cada uno con el número de vacantes abiertas en él en este momento. Cada vacante del tablón procede directamente de uno de ellos, nunca de un buscador. Las cifras están medidas, no afirmadas: cambian a lo largo del día e indican cuándo se comprobaron por última vez."
+    },
+    "moreRolesShowTheirDate": {
+      "title": "Muchas más vacantes muestran su fecha real de publicación",
+      "description": "Dos sistemas de selección no incluyen la fecha en su feed, así que la obtenemos de cada vacante. Ese repaso se ejecutaba una vez por semana, de modo que un lote grande de empleadores nuevos podía quedar sin fecha durante días. Ahora se activa en cuanto llegan muchas vacantes sin fecha: BambooHR pasó del 23 % al 38 % y Rippling del 19 % al 57 %, y sigue subiendo. Conocer la fecha real también nos permitió retirar unas 27.000 publicaciones con más de 30 días —nuestro propio límite—, así que lo que queda está realmente al día."
+    },
+    "ghostIndexStatsLive": {
+      "title": "Las cifras del Ghost Job Index vuelven a estar al día",
+      "description": "Las estadísticas de nuestra página Ghost Job Index habían dejado de actualizarse en silencio y tenían cinco días: la página seguía mostrándolas sin que nada pareciera fallar. Ahora se calculan de forma programada en segundo plano en lugar de al cargar la página, así se mantienen actuales e indican cuándo se midieron. Si alguna cifra no puede calcularse, la página conserva la última buena y lo advierte en vez de quedarse en blanco."
+    },
+    "fillSpeedSaysItsWindow": {
+      "title": "«Tiempo típico de cobertura» ahora dice en qué ventana se mide",
+      "description": "Publicamos con qué rapidez se cierra una vacante típica tras publicarse. Esa cifra solo puede ver vacantes que cierran dentro de los 30 días, porque retiramos las publicaciones más antiguas: una vacante que sigue abierta más tiempo sale del tablón en lugar de contarse como cubierta. En todos los sitios donde la citamos ahora se indica «dentro de los 30 días». Al corregirlo descubrimos que la frase había dejado de aparecer por completo en la página del Ghost Job Index tras un cambio interno de nombre; ya está de vuelta."
+    },
+    "moreEmployersOnTheBoard": {
+      "title": "2.395 empleadores más en el tablón de empleo",
+      "description": "Añadimos 2.395 páginas de empleo de empresas en un solo día, 510 de ellas donde nuestro agente puede enviar la candidatura por su cuenta. Además filtramos antes las agencias que publican en masa: los tablones donde cientos de «vacantes» son el mismo anuncio repetido quedan retenidos, y un tablón que no pudimos leer de verdad ya no se da por bueno."
+    },
     "mandateFromYourCv": {
       "title": "La búsqueda de tu agente ahora parte de tu CV",
       "description": "Al crear una búsqueda, los puestos que ya figuran en tu CV se ofrecen como sugerencias de un toque, y cada una muestra la línea de la que se leyó, para que veas de dónde sale. Quitamos la palabra de seniority (“Senior”) a propósito: las empresas titulan el mismo puesto de mil maneras y el término más corto los encuentra todos. No se guarda nada hasta que tú lo actives."

@@ -1,5 +1,25 @@
 {
   "changelogEntries": {
+    "whereTheJobsComeFrom": {
+      "title": "See exactly where our jobs come from",
+      "description": "The front page now names all 15 applicant tracking systems we read — Workday, Greenhouse, BambooHR and the rest — each with a live count of the roles open on it right now. Every job on the board is pulled straight from one of them, never scraped from a search engine. The counts are measured rather than claimed: they move through the day and say when they were last checked."
+    },
+    "moreRolesShowTheirDate": {
+      "title": "Far more roles now show when they were actually posted",
+      "description": "Two hiring systems don't publish a posting date in their job feed, so we fetch it from each posting itself. That catch-up used to run once a week, which meant a large batch of new employers could sit undated for days. It now starts as soon as a lot of undated roles arrive: BambooHR went from 23% to 38% dated and Rippling from 19% to 57%, and it keeps climbing. Knowing the real date also let us remove about 27,000 postings that turned out to be older than 30 days — our own limit — so what's left is genuinely current."
+    },
+    "ghostIndexStatsLive": {
+      "title": "The Ghost Job Index numbers are current again",
+      "description": "The statistics on our Ghost Job Index page had quietly stopped updating and were five days old — the page kept showing them with nothing looking wrong. They are now computed on a schedule in the background instead of when the page loads, so they stay current and carry the time they were measured. If a single figure can't be computed, the page keeps the last good one and says so rather than showing a blank."
+    },
+    "fillSpeedSaysItsWindow": {
+      "title": "\"Typical time to fill\" now says the window it's measured in",
+      "description": "We publish how quickly a typical role closes after being posted. That number can only see roles that close within 30 days, because we drop postings older than that — so a role that stays open longer leaves the board instead of being counted as filled. Everywhere we quote it now says \"within 30 days\" outright. While fixing this we found the sentence had stopped appearing on the Ghost Job Index page altogether after an internal rename, so it's back."
+    },
+    "moreEmployersOnTheBoard": {
+      "title": "2,395 more employers on the job board",
+      "description": "We added 2,395 company career pages in a single day, 510 of them ones our apply agent can submit to on its own. We also screen out bulk-posting agencies before they land: boards where hundreds of \"openings\" are the same advert repeated get held back — and a board we could not actually read is no longer treated as checked and fine."
+    },
     "mandateFromYourCv": {
       "title": "Your agent's search now starts from your CV",
       "description": "When you set up a search, the roles already on your CV are offered as one-tap suggestions — each one showing the line it was read from, so you can see where it came from. We drop the seniority word (“Senior”) on purpose: employers title the same job a dozen ways, and the shorter term finds all of them. Nothing is saved until you activate it."

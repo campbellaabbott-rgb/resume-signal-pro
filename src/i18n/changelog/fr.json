@@ -1,5 +1,25 @@
 {
   "changelogEntries": {
+    "whereTheJobsComeFrom": {
+      "title": "Voyez exactement d'où viennent nos offres",
+      "description": "La page d'accueil nomme désormais les 15 systèmes de recrutement que nous lisons — Workday, Greenhouse, BambooHR et les autres —, chacun avec le nombre d'offres qui y sont ouvertes en ce moment. Chaque offre du tableau provient directement de l'un d'eux, jamais d'un moteur de recherche. Les chiffres sont mesurés, pas affirmés : ils évoluent au fil de la journée et indiquent quand ils ont été vérifiés."
+    },
+    "moreRolesShowTheirDate": {
+      "title": "Beaucoup plus d'offres affichent leur vraie date de publication",
+      "description": "Deux systèmes de recrutement ne donnent pas de date dans leur flux ; nous allons donc la chercher sur chaque offre. Cette reprise ne tournait qu'une fois par semaine, si bien qu'un gros lot de nouveaux employeurs pouvait rester sans date pendant des jours. Elle se déclenche maintenant dès que beaucoup d'offres sans date arrivent : BambooHR est passé de 23 % à 38 % et Rippling de 19 % à 57 %, et cela continue de monter. Connaître la vraie date nous a aussi permis de retirer environ 27 000 annonces de plus de 30 jours — notre propre limite."
+    },
+    "ghostIndexStatsLive": {
+      "title": "Les chiffres du Ghost Job Index sont de nouveau à jour",
+      "description": "Les statistiques de notre page Ghost Job Index avaient cessé de se mettre à jour sans bruit et dataient de cinq jours : la page continuait de les afficher sans que rien ne semble anormal. Elles sont désormais calculées selon un programme en arrière-plan plutôt qu'au chargement de la page ; elles restent à jour et indiquent quand elles ont été mesurées. Si un chiffre ne peut pas être calculé, la page conserve le dernier bon et le signale au lieu d'afficher un vide."
+    },
+    "fillSpeedSaysItsWindow": {
+      "title": "« Délai type de pourvoi » indique maintenant sa fenêtre de mesure",
+      "description": "Nous publions la rapidité avec laquelle une offre type se ferme après sa publication. Ce chiffre ne peut voir que les offres closes dans les 30 jours, car nous retirons les annonces plus anciennes : une offre qui reste ouverte plus longtemps quitte le tableau au lieu d'être comptée comme pourvue. Partout où nous le citons, il est désormais précisé « dans les 30 jours ». En corrigeant cela, nous avons découvert que la phrase avait entièrement disparu de la page Ghost Job Index après un renommage interne ; elle est de retour."
+    },
+    "moreEmployersOnTheBoard": {
+      "title": "2 395 employeurs de plus sur le tableau des offres",
+      "description": "Nous avons ajouté 2 395 pages carrières d'entreprises en une seule journée, dont 510 où notre agent peut postuler seul. Nous filtrons aussi en amont les cabinets qui publient en masse : les tableaux où des centaines d'« offres » sont la même annonce répétée sont mis de côté, et un tableau que nous n'avons pas réellement pu lire n'est plus considéré comme validé."
+    },
     "mandateFromYourCv": {
       "title": "La recherche de votre agent part maintenant de votre CV",
       "description": "Lors de la création d'une recherche, les postes déjà présents sur votre CV sont proposés en un geste, chacun affichant la ligne dont il a été tiré. Nous retirons volontairement le mot de séniorité (« Senior ») : les entreprises intitulent le même poste de dix façons, et le terme le plus court les trouve toutes. Rien n'est enregistré tant que vous n'activez pas."

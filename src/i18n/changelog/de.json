@@ -1,5 +1,25 @@
 {
   "changelogEntries": {
+    "whereTheJobsComeFrom": {
+      "title": "Sehen Sie genau, woher unsere Stellen kommen",
+      "description": "Die Startseite nennt jetzt alle 15 Bewerbermanagement-Systeme, die wir auslesen — Workday, Greenhouse, BambooHR und die übrigen —, jeweils mit der aktuellen Zahl der dort offenen Stellen. Jede Stelle auf dem Board stammt direkt aus einem dieser Systeme und wird nie aus einer Suchmaschine zusammengetragen. Die Zahlen sind gemessen, nicht behauptet: Sie ändern sich im Tagesverlauf und nennen, wann sie zuletzt geprüft wurden."
+    },
+    "moreRolesShowTheirDate": {
+      "title": "Deutlich mehr Stellen zeigen jetzt ihr tatsächliches Veröffentlichungsdatum",
+      "description": "Zwei Bewerbermanagement-Systeme geben im Stellen-Feed kein Datum an, deshalb holen wir es bei jeder Stelle einzeln nach. Dieser Abgleich lief bisher einmal pro Woche, sodass ein großer Schwung neuer Arbeitgeber tagelang ohne Datum bleiben konnte. Er startet jetzt, sobald viele undatierte Stellen eintreffen: BambooHR stieg von 23 % auf 38 %, Rippling von 19 % auf 57 % — Tendenz steigend. Weil wir das echte Datum kennen, konnten wir rund 27.000 Anzeigen entfernen, die älter als 30 Tage waren — unsere eigene Grenze."
+    },
+    "ghostIndexStatsLive": {
+      "title": "Die Zahlen im Ghost Job Index sind wieder aktuell",
+      "description": "Die Statistiken auf unserer Ghost-Job-Index-Seite hatten sich still und leise nicht mehr aktualisiert und waren fünf Tage alt — die Seite zeigte sie weiter, ohne dass etwas auffällig gewesen wäre. Die Werte werden jetzt planmäßig im Hintergrund berechnet statt beim Seitenaufruf, bleiben dadurch aktuell und nennen den Zeitpunkt der Messung. Lässt sich ein einzelner Wert nicht berechnen, behält die Seite den letzten guten Wert und weist darauf hin, statt eine Lücke zu zeigen."
+    },
+    "fillSpeedSaysItsWindow": {
+      "title": "„Typische Besetzungsdauer“ nennt jetzt ihren Messzeitraum",
+      "description": "Wir veröffentlichen, wie schnell eine typische Stelle nach der Veröffentlichung wieder geschlossen wird. Diese Zahl kann nur Stellen erfassen, die innerhalb von 30 Tagen schließen, denn ältere Anzeigen entfernen wir — eine länger offene Stelle verlässt also das Board, statt als besetzt gezählt zu werden. Überall, wo wir die Zahl nennen, steht jetzt ausdrücklich „innerhalb von 30 Tagen“. Dabei fiel auf, dass der Satz auf der Ghost-Job-Index-Seite nach einer internen Umbenennung gar nicht mehr angezeigt wurde — er ist zurück."
+    },
+    "moreEmployersOnTheBoard": {
+      "title": "2.395 weitere Arbeitgeber auf dem Stellenboard",
+      "description": "Wir haben an einem einzigen Tag 2.395 Karriereseiten von Unternehmen aufgenommen, davon 510, bei denen unser Bewerbungs-Agent eigenständig absenden kann. Außerdem sortieren wir Massenanzeigen von Vermittlern vorher aus: Boards, auf denen Hunderte „offene Stellen“ dieselbe Anzeige sind, werden zurückgehalten — und ein Board, das wir nicht wirklich lesen konnten, gilt jetzt nicht mehr automatisch als geprüft."
+    },
     "mandateFromYourCv": {
       "title": "Die Suche deines Agenten beginnt jetzt bei deinem Lebenslauf",
       "description": "Beim Anlegen einer Suche werden die Positionen, die bereits in deinem Lebenslauf stehen, als Vorschläge angeboten — jeder zeigt die Zeile, aus der er gelesen wurde. Das Senioritätswort („Senior“) lassen wir bewusst weg: Unternehmen betiteln dieselbe Stelle auf ein Dutzend Arten, und der kürzere Begriff findet sie alle. Gespeichert wird nichts, bis du es aktivierst."

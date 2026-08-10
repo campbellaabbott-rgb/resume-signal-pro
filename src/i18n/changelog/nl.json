@@ -1,5 +1,25 @@
 {
   "changelogEntries": {
+    "whereTheJobsComeFrom": {
+      "title": "Zie precies waar onze vacatures vandaan komen",
+      "description": "De startpagina noemt nu alle 15 wervingssystemen die we uitlezen — Workday, Greenhouse, BambooHR en de rest — elk met het aantal vacatures dat er op dit moment openstaat. Elke vacature op het bord komt rechtstreeks uit een van die systemen, nooit uit een zoekmachine. De aantallen zijn gemeten, niet beweerd: ze lopen gedurende de dag mee en vermelden wanneer ze voor het laatst zijn gecontroleerd."
+    },
+    "moreRolesShowTheirDate": {
+      "title": "Veel meer vacatures tonen nu hun echte plaatsingsdatum",
+      "description": "Twee wervingssystemen geven geen datum in hun feed, dus halen we die per vacature op. Die inhaalslag liep één keer per week, waardoor een grote lichting nieuwe werkgevers dagenlang zonder datum kon staan. Hij start nu zodra er veel vacatures zonder datum binnenkomen: BambooHR ging van 23% naar 38% en Rippling van 19% naar 57%, en dat loopt door. Doordat we de echte datum kennen, konden we ook zo'n 27.000 plaatsingen verwijderen die ouder bleken dan 30 dagen — onze eigen grens."
+    },
+    "ghostIndexStatsLive": {
+      "title": "De cijfers in de Ghost Job Index zijn weer actueel",
+      "description": "De statistieken op onze Ghost Job Index-pagina waren stilletjes gestopt met bijwerken en waren vijf dagen oud — de pagina toonde ze gewoon door, zonder dat er iets mis leek. Ze worden nu volgens een schema op de achtergrond berekend in plaats van bij het laden van de pagina, blijven zo actueel en vermelden wanneer ze zijn gemeten. Kan een cijfer niet worden berekend, dan houdt de pagina het laatste goede aan en zegt dat erbij in plaats van leeg te blijven."
+    },
+    "fillSpeedSaysItsWindow": {
+      "title": "'Gebruikelijke vervultijd' noemt nu het venster waarin het is gemeten",
+      "description": "We publiceren hoe snel een gebruikelijke vacature sluit na plaatsing. Dat getal kan alleen vacatures zien die binnen 30 dagen sluiten, want oudere plaatsingen halen we weg: een vacature die langer openstaat verlaat het bord in plaats van als vervuld te tellen. Overal waar we het noemen staat nu uitdrukkelijk 'binnen 30 dagen'. Bij het herstellen bleek dat de zin op de Ghost Job Index-pagina na een interne naamswijziging helemaal niet meer verscheen — hij is terug."
+    },
+    "moreEmployersOnTheBoard": {
+      "title": "2.395 werkgevers extra op het vacaturebord",
+      "description": "We hebben op één dag 2.395 bedrijfsvacaturepagina's toegevoegd, waarvan 510 waar onze sollicitatie-agent zelfstandig kan versturen. Ook filteren we bureaus die massaal plaatsen er vooraf uit: borden waar honderden 'vacatures' dezelfde advertentie zijn, worden tegengehouden — en een bord dat we niet echt konden lezen geldt niet langer automatisch als goedgekeurd."
+    },
     "mandateFromYourCv": {
       "title": "De zoekopdracht van je agent begint nu bij je cv",
       "description": "Bij het instellen van een zoekopdracht worden de functies die al op je cv staan als suggesties aangeboden, elk met de regel waaruit ze zijn gelezen. Het senioriteitswoord (“Senior”) laten we bewust weg: werkgevers noemen dezelfde functie op tien manieren, en de kortere term vindt ze allemaal. Er wordt niets opgeslagen tot jij activeert."

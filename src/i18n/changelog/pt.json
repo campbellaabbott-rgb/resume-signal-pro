@@ -1,5 +1,25 @@
 {
   "changelogEntries": {
+    "whereTheJobsComeFrom": {
+      "title": "Veja exatamente de onde vêm as nossas vagas",
+      "description": "A página inicial passa a nomear os 15 sistemas de recrutamento que lemos — Workday, Greenhouse, BambooHR e os restantes —, cada um com o número de vagas abertas nele neste momento. Cada vaga do mural vem diretamente de um deles, nunca de um motor de busca. Os números são medidos, não afirmados: acompanham o dia e indicam quando foram verificados pela última vez."
+    },
+    "moreRolesShowTheirDate": {
+      "title": "Muito mais vagas mostram a data real de publicação",
+      "description": "Dois sistemas de recrutamento não indicam data no feed, por isso vamos buscá-la a cada vaga. Essa recolha corria uma vez por semana, pelo que um lote grande de novos empregadores podia ficar sem data durante dias. Agora arranca assim que chegam muitas vagas sem data: o BambooHR passou de 23% para 38% e o Rippling de 19% para 57%, e continua a subir. Saber a data real permitiu-nos ainda remover cerca de 27.000 publicações com mais de 30 dias — o nosso próprio limite."
+    },
+    "ghostIndexStatsLive": {
+      "title": "Os números do Ghost Job Index estão outra vez atuais",
+      "description": "As estatísticas da nossa página Ghost Job Index tinham deixado de atualizar em silêncio e estavam com cinco dias — a página continuava a mostrá-las sem que nada parecesse errado. Passam a ser calculadas de forma agendada em segundo plano em vez de ao carregar a página, mantendo-se atuais e indicando quando foram medidas. Se algum número não puder ser calculado, a página mantém o último válido e assinala-o em vez de ficar vazia."
+    },
+    "fillSpeedSaysItsWindow": {
+      "title": "«Tempo típico de preenchimento» passa a dizer a janela em que é medido",
+      "description": "Publicamos com que rapidez uma vaga típica fecha depois de publicada. Esse número só consegue ver vagas que fecham nos 30 dias, porque retiramos publicações mais antigas: uma vaga que fique aberta mais tempo sai do mural em vez de contar como preenchida. Em todos os sítios onde o citamos passa a constar «nos 30 dias». Ao corrigir isto descobrimos que a frase tinha deixado de aparecer por completo na página do Ghost Job Index após uma mudança interna de nome — já voltou."
+    },
+    "moreEmployersOnTheBoard": {
+      "title": "Mais 2.395 empregadores no mural de vagas",
+      "description": "Adicionámos 2.395 páginas de carreiras de empresas num único dia, 510 delas onde o nosso agente consegue submeter sozinho. Também filtramos à cabeça as agências que publicam em massa: murais onde centenas de «vagas» são o mesmo anúncio repetido ficam retidos — e um mural que não conseguimos mesmo ler deixou de contar como verificado."
+    },
     "mandateFromYourCv": {
       "title": "A busca do seu agente agora começa pelo seu CV",
       "description": "Ao criar uma busca, os cargos que já constam do seu CV são oferecidos como sugestões de um toque, cada uma mostrando a linha de onde foi lida. Retiramos a palavra de senioridade (“Senior”) de propósito: as empresas nomeiam o mesmo cargo de dez formas, e o termo mais curto encontra todas. Nada é salvo até você ativar."

@@ -1,5 +1,25 @@
 {
   "changelogEntries": {
+    "whereTheJobsComeFrom": {
+      "title": "Tingnan mismo kung saan nanggagaling ang mga trabaho namin",
+      "description": "Nakalista na sa home page ang lahat ng 15 applicant tracking system na binabasa namin — Workday, Greenhouse, BambooHR at ang iba pa — bawat isa may bilang ng trabahong bukas doon ngayon. Bawat trabaho sa board ay direktang galing sa isa sa kanila, hindi kailanman kinuha sa search engine. Sinukat ang mga bilang, hindi basta sinabi: gumagalaw ang mga ito sa buong araw at sinasabi kung kailan huling tiningnan."
+    },
+    "moreRolesShowTheirDate": {
+      "title": "Mas marami nang trabaho ang may tunay na petsa ng pag-post",
+      "description": "Dalawang sistema ang walang petsa sa feed nila, kaya kinukuha namin ito sa bawat posting. Minsan lang sa isang linggo tumatakbo ang paghabol na iyon, kaya maaaring ilang araw na walang petsa ang malaking batch ng bagong employer. Umaandar na ito agad kapag maraming walang-petsang trabaho ang dumating: mula 23% naging 38% ang BambooHR at mula 19% naging 57% ang Rippling, at patuloy pa. Dahil alam na namin ang tunay na petsa, natanggal din namin ang mga 27,000 posting na lampas 30 araw na pala — ang sarili naming hangganan."
+    },
+    "ghostIndexStatsLive": {
+      "title": "Napapanahon na ulit ang mga bilang sa Ghost Job Index",
+      "description": "Tahimik na tumigil sa pag-update ang estadistika sa aming Ghost Job Index page at limang araw na itong luma — ipinapakita pa rin ito ng page na parang walang problema. Naka-iskedyul na ang pagkuwenta ngayon sa likod sa halip na tuwing bubuksan ang page, kaya nananatiling napapanahon at sinasabi kung kailan sinukat. Kung may bilang na hindi makuwenta, pinananatili ng page ang huling maayos at sinasabi ito sa halip na magpakita ng blangko."
+    },
+    "fillSpeedSaysItsWindow": {
+      "title": "Sinasabi na ng \"karaniwang bilis mapunan\" kung anong window ito sinukat",
+      "description": "Inilalathala namin kung gaano kabilis magsara ang karaniwang trabaho matapos i-post. Ang bilang na iyon ay nakikita lang ang mga trabahong nagsasara sa loob ng 30 araw, dahil inaalis namin ang mas lumang posting: ang trabahong mas matagal bukas ay umaalis sa board sa halip na mabilang na napunan. Sa lahat ng lugar na binabanggit namin ito, nakasaad na ngayon ang \"sa loob ng 30 araw\". Habang inaayos ito, natuklasan naming tuluyang hindi na lumalabas ang pangungusap sa Ghost Job Index page matapos ang isang internal na pagpapalit ng pangalan — bumalik na ito."
+    },
+    "moreEmployersOnTheBoard": {
+      "title": "2,395 pang employer sa job board",
+      "description": "Nagdagdag kami ng 2,395 careers page ng kumpanya sa loob ng isang araw, 510 doon ang kayang pasukan mismo ng aming apply agent. Sinasala rin namin nang maaga ang mga ahensiyang nagpo-post nang paramihan: ang mga board na daan-daang \"bakante\" ang iisang anunsyo lang ay pinipigil — at ang board na hindi namin talaga nabasa ay hindi na basta ituturing na malinis."
+    },
     "mandateFromYourCv": {
       "title": "Ang paghahanap ng iyong agent ay nagsisimula na sa CV mo",
       "description": "Kapag gumagawa ka ng paghahanap, ang mga posisyong nasa CV mo na ay iniaalok bilang one-tap na suhestiyon, at ipinapakita ng bawat isa ang linyang pinagbasahan nito. Sinasadya naming alisin ang salitang pang-seniority (“Senior”): iba-iba ang tawag ng mga employer sa parehong trabaho. Walang sine-save hangga't hindi mo ina-activate."
