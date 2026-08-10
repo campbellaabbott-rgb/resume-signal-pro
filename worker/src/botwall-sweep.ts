@@ -47,18 +47,63 @@ const PER_VENDOR = Number(process.argv[3]) || 6;
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || "";
 const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY || "";
 
-/** Distinct tenants for a vendor, straight from the live board. */
-async function sampleTenants(vendor: string): Promise<Array<{ company: string; apply_url: string }>> {
+/** Distinct tenants for a vendor, straight from the live board.
+ *
+ * KEYED ON company_token, NOT company. The token is apply_tenant_walls' key —
+ * the sweep used to sample by display name, which meant its observations could
+ * never join the table they exist to feed (and two boards sharing a display
+ * name would have collapsed into one sample). */
+async function sampleTenants(vendor: string): Promise<Array<{ token: string; company: string; apply_url: string }>> {
   const url = `${SUPABASE_URL}/rest/v1/job_board_postings`
-    + `?select=company,apply_url&source=eq.${vendor}&limit=${Math.max(120, PER_VENDOR * 12)}`;
+    + `?select=company_token,company,apply_url&source=eq.${vendor}&limit=${Math.max(120, PER_VENDOR * 12)}`;
   const res = await fetch(url, { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } });
   if (!res.ok) throw new Error(`sample ${vendor}: HTTP ${res.status}`);
-  const rows = (await res.json()) as Array<{ company: string; apply_url: string | null }>;
-  const seen = new Map<string, { company: string; apply_url: string }>();
+  const rows = (await res.json()) as Array<{ company_token: string | null; company: string; apply_url: string | null }>;
+  const seen = new Map<string, { token: string; company: string; apply_url: string }>();
   for (const r of rows) {
-    if (r.apply_url && !seen.has(r.company)) seen.set(r.company, { company: r.company, apply_url: r.apply_url });
+    if (r.apply_url && r.company_token && !seen.has(r.company_token)) {
+      seen.set(r.company_token, { token: r.company_token, company: r.company, apply_url: r.apply_url });
+    }
   }
   return [...seen.values()].slice(0, PER_VENDOR);
+}
+
+/**
+ * Persist reached observations through the broker — the only write path.
+ *
+ * The table these feed (apply_tenant_walls) is what lets the agent submit to
+ * individual employers on vendors it cannot drive wholesale: recruitee 24% of
+ * tenants measured clean, ashby 17%, greenhouse 7%. Until this function
+ * existed the sweep measured all of that and threw it away — a census, run
+ * weekly, feeding nothing.
+ *
+ * Fail-safe by construction: only REACHED tenants are reported (an unreachable
+ * probe writes no row — the table's founding rule), and with no broker
+ * credentials this is a dry run that says so, never a silent success.
+ */
+async function reportObservations(obs: Array<{ vendor: string; token: string; walled: boolean; walls: string[] }>) {
+  const brokerUrl = (process.env.APPLY_BROKER_URL ?? "").replace(/\/+$/, "");
+  const secret = process.env.APPLY_WORKER_SECRET ?? "";
+  if (!brokerUrl || !secret) {
+    console.log(`  DRY RUN: ${obs.length} observations NOT persisted (APPLY_BROKER_URL/APPLY_WORKER_SECRET unset)`);
+    return;
+  }
+  try {
+    const res = await fetch(brokerUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${secret}` },
+      body: JSON.stringify({ action: "wall", observations: obs }),
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      console.log(`::warning title=Wall observations not persisted::broker HTTP ${res.status} — ${JSON.stringify(body).slice(0, 120)}`);
+      return;
+    }
+    console.log(`  persisted ${body.written ?? "?"} wall observations` +
+      (Array.isArray(body.rejected) && body.rejected.length ? ` (rejected: ${body.rejected.join(", ").slice(0, 200)})` : ""));
+  } catch (e) {
+    console.log(`::warning title=Wall observations not persisted::${String(e).slice(0, 160)}`);
+  }
 }
 
 async function main() {
@@ -70,9 +115,12 @@ async function main() {
 
   const browser = await chromium.launch({ headless: true });
   const summary: Record<string, ReturnType<typeof vendorVerdict>> = {};
+  // Every REACHED tenant becomes one observation; unreachable probes write
+  // nothing (no third state — the table refuses a guess).
+  const observations: Array<{ vendor: string; token: string; walled: boolean; walls: string[] }> = [];
 
   for (const vendor of vendors) {
-    let tenants: Array<{ company: string; apply_url: string }> = [];
+    let tenants: Array<{ token: string; company: string; apply_url: string }> = [];
     try {
       tenants = await sampleTenants(vendor);
     } catch (e) {
@@ -91,6 +139,7 @@ async function main() {
     const lane = async () => {
       while (next < tenants.length) {
       const t = tenants[next++];
+      if (!t) break; // races the length check under concurrency; also satisfies noUncheckedIndexedAccess
       const page = await browser.newPage();
       const walls = new Set<string>();
       let reached = false;
@@ -109,6 +158,7 @@ async function main() {
         }
       } catch { /* keep whatever was seen; `reached` stays false if goto failed */ }
       rows.push({ company: t.company, walls: [...walls], reached });
+      if (reached) observations.push({ vendor, token: t.token, walled: walls.size > 0, walls: [...walls] });
       await page.close();
       }
     };
@@ -123,6 +173,8 @@ async function main() {
   }
 
   await browser.close();
+
+  await reportObservations(observations);
 
   // The only line worth a human's attention. A GitHub annotation so it surfaces
   // in the Actions run without anyone reading the log.

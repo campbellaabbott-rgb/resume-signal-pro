@@ -55,6 +55,14 @@ jobs:
           # ships. Read-only board access; the sweep only lists apply_urls.
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          # Wall-observation persistence, via the broker's authenticated `wall`
+          # action (the worker deliberately holds no service key). Optional:
+          # when these repo secrets are unset the sweep prints a labelled DRY
+          # RUN line and persists nothing — measurement still happens, the
+          # write is what's gated. APPLY_BROKER_URL is the apply-broker
+          # function URL; APPLY_WORKER_SECRET matches the edge secret.
+          APPLY_BROKER_URL: ${{ secrets.APPLY_BROKER_URL }}
+          APPLY_WORKER_SECRET: ${{ secrets.APPLY_WORKER_SECRET }}
         # The script exits 2 when those are missing rather than reporting a
         # sweep that measured nothing — an empty result must not read as clean.
         run: npx tsx src/botwall-sweep.ts "${{ github.event.inputs.vendors }}"

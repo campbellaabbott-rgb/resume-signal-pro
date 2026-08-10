@@ -16,7 +16,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { ENTITLEMENT_COLUMNS, normalizeEmail, rowIsEntitled } from "../_shared/agent-entitlement.ts";
 
-const BUILD_VERSION = "2026-08-03.8";
+const BUILD_VERSION = "2026-08-10.1";
 const LEASE_MINUTES = 10;
 const RESUME_URL_TTL_SECONDS = 300; // 5 minutes; the worker downloads and deletes
 
@@ -359,9 +359,50 @@ serve(async (req) => {
       return json({ ok: true, upserted: rows.length });
     }
 
+    if (action === "wall") {
+      // THE WRITE SEAM FOR PER-TENANT WALL OBSERVATIONS — the only one.
+      //
+      // apply_tenant_walls decides which employers the agent may submit to on
+      // vendors outside SENDABLE_VENDORS, and record_tenant_wall is
+      // service_role-only precisely because a caller who can write here can
+      // steer the agent at forms it cannot complete (that hole shipped
+      // world-writable once — 20260808134902 — and is not being reopened).
+      // The worker measures walls but, by design, holds no service key; its
+      // observations must travel through this authenticated action.
+      //
+      // VALIDATION MIRRORS THE TABLE'S OWN RULES rather than trusting the
+      // RPC to catch nonsense later: `walled` must be a literal boolean —
+      // "an unreachable probe writes no row" is the table's founding
+      // constraint, so an undefined/null verdict is REFUSED, not coerced.
+      // vendor and token must be non-empty (a blank token would match every
+      // posting of the vendor). Capped per call: the weekly sweep reports
+      // ~120 tenants; 500 leaves headroom without letting one bad caller
+      // spray unbounded writes.
+      const raw = Array.isArray(body.observations) ? body.observations : null;
+      if (!raw || raw.length === 0) return json({ error: "observations array required" }, 400);
+      if (raw.length > 500) return json({ error: "too many observations in one call (max 500)" }, 400);
+      let written = 0;
+      const rejected: string[] = [];
+      for (const o of raw as Array<Record<string, unknown>>) {
+        const vendor = str(o.vendor);
+        const token = str(o.token);
+        const walls = Array.isArray(o.walls) ? o.walls.map((w) => str(w)).filter(Boolean).slice(0, 12) : [];
+        if (!vendor || !token || typeof o.walled !== "boolean") {
+          rejected.push(`${vendor || "?"}:${token || "?"}`);
+          continue;
+        }
+        const { error } = await client.rpc("record_tenant_wall", {
+          p_vendor: vendor, p_token: token, p_walled: o.walled, p_walls: walls,
+        });
+        if (error) rejected.push(`${vendor}:${token} (${error.message.slice(0, 60)})`);
+        else written++;
+      }
+      return json({ ok: true, written, rejected });
+    }
+
     return json({
       error: "unknown action",
-      actions: ["claim", "release", "uncertain", "pending", "ping"],
+      actions: ["claim", "release", "uncertain", "pending", "ping", "wall"],
     }, 400);
   } catch (e) {
     console.error(`[APPLY-BROKER] ${action}: ${String(e).slice(0, 200)}`);
