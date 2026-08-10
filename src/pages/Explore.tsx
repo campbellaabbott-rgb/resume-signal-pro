@@ -27,7 +27,35 @@ const ycAbbrev = (b: string): string => {
   const season = { Winter: "W", Summer: "S", Spring: "X", Fall: "F" }[m[1] as "Winter"];
   return `${season}${m[2].slice(2)}`;
 };
-type Segments = Partial<Record<"enterprise" | "mid" | "small", Segment>>;
+// KEYED BY WHATEVER THE RPC EMITS, not by a literal this file guesses.
+//
+// It was `Record<"enterprise" | "mid" | "small", Segment>`, and the RPC has
+// emitted mega/large/mid/small since 20260727212029. "enterprise" simply never
+// matched, so the largest band never rendered and nothing errored: 936
+// companies and 305,631 open roles — 52% of the section, and every recognisable
+// large employer — were invisible while the page looked healthy. Same shape as
+// tracking_days -> observed_days on the Ghost Job Index. A renamed key must
+// degrade to a plain label, never to silence.
+type Segments = Record<string, Segment | undefined>;
+
+/**
+ * Bands in descending order of the thing they band ON — roles open per company
+ * — derived from the payload rather than from a list that can fall out of step
+ * with the RPC.
+ *
+ * NOT by total open roles, which was the first attempt and rendered
+ * "200–999, Under 50, 1,000+, 50–199": the small band holds 15,513 companies,
+ * so its aggregate outweighs the mega band's 212 even though every company in
+ * it is tiny. Roles-per-company IS the banding dimension, so ordering by it
+ * always yields biggest-first (mega 612, large 243, mid 70, small 10) without
+ * naming a single band.
+ */
+const orderedBands = (segments: Segments): Array<[string, Segment]> =>
+  Object.entries(segments)
+    .filter((e): e is [string, Segment] => !!e[1] && (e[1].companies ?? 0) > 0)
+    .sort((a, b) =>
+      (b[1].open_roles ?? 0) / Math.max(b[1].companies, 1) -
+      (a[1].open_roles ?? 0) / Math.max(a[1].companies, 1));
 
 const CATEGORY_LABELS: Record<string, string> = {
   engineering: "Engineering & IT", data_ai: "Data & AI", design: "Design", product: "Product",
@@ -96,27 +124,13 @@ export default function Explore() {
   // Transparent employers: companies stating pay on >=80% of a meaningful
   // board. Fetched live (not in the hourly cache yet); section hides on empty.
   const [transparent, setTransparent] = useState<CompanyRow[]>([]);
-  // Drill-through: full verified-headcount list per band, loaded on demand
-  // ("See all N"), paged 60 at a time via get_size_segment_companies.
-  const [segAll, setSegAll] = useState<Record<string, { total: number; rows: CompanyRow[] }>>({});
-  const [segAllLoading, setSegAllLoading] = useState<string | null>(null);
-
-  const loadSegAll = async (band: string) => {
-    if (segAllLoading) return;
-    setSegAllLoading(band);
-    try {
-      const offset = segAll[band]?.rows.length ?? 0;
-      const { data } = await Promise.resolve(rpc("get_size_segment_companies", { p_band: band, p_limit: 60, p_offset: offset }));
-      const d = data as { total?: number; rows?: CompanyRow[] } | null;
-      if (d && Array.isArray(d.rows)) {
-        setSegAll((prev) => ({
-          ...prev,
-          [band]: { total: d.total ?? d.rows!.length, rows: [...(prev[band]?.rows ?? []), ...d.rows!] },
-        }));
-      }
-    } catch { /* button stays; retry on next click */ }
-    finally { setSegAllLoading(null); }
-  };
+  // When the cached collections were computed. The cache has always carried
+  // this; the page just never rendered it while claiming "computed live".
+  const [computedAt, setComputedAt] = useState<string | null>(null);
+  // The per-band drill-through state and loader were removed with the buttons
+  // that drove them — get_size_segment_companies 57014s on every band, and
+  // bands by a different definition than the section it sat under. See the
+  // note at the render site.
 
   useEffect(() => {
     const applySalary = (rows: SalaryRow[]) =>
@@ -138,9 +152,15 @@ export default function Explore() {
           if (Array.isArray(c.entry)) setEntry(c.entry as CompanyRow[]);
           if (Array.isArray(c.salary)) applySalary(c.salary as SalaryRow[]);
           if (c.segments && typeof c.segments === "object" && !Array.isArray(c.segments)) setSegments(c.segments as Segments);
-          void Promise.resolve(rpc("get_transparent_employers", { p_limit: 12 })).then((r: { data: unknown }) => {
-            if (Array.isArray(r.data)) setTransparent(r.data as CompanyRow[]);
-          }).catch(() => { /* section hides */ });
+          // FROM THE CACHE, not a live call. This used to fire
+          // get_transparent_employers on every page view; measured 2026-08-10
+          // it returns 57014 after ~27s, 100% of the time, so the section had
+          // never rendered while every visitor paid 26s of database time for
+          // it. It now rides the hourly refresh with the other collections.
+          // Absent key (cache written before that migration) leaves the
+          // section hidden, exactly as today — never a zero.
+          if (Array.isArray(c.transparent)) setTransparent(c.transparent as CompanyRow[]);
+          if (typeof c.computed_at === "string") setComputedAt(c.computed_at);
           return;
         }
       } catch { /* fall through to live RPCs */ }
@@ -152,9 +172,9 @@ export default function Explore() {
         Promise.resolve(rpc("get_entry_level_companies", { p_limit: 12 })).catch(() => ({ data: null })),
         Promise.resolve(rpc("get_salary_benchmarks")).catch(() => ({ data: null })),
       ]);
-      void Promise.resolve(rpc("get_transparent_employers", { p_limit: 12 })).then((r: { data: unknown }) => {
-        if (Array.isArray(r.data)) setTransparent(r.data as CompanyRow[]);
-      }).catch(() => { /* section hides */ });
+      // No live transparent-employers call on the fallback path either — the
+      // RPC cannot complete inside a request, so attempting it only spends
+      // database time to reach the same hidden section.
       // Segments live-fallback fires separately: its full-table aggregate is the
       // slowest collection and must never delay the five above.
       void Promise.resolve(rpc("get_size_segments")).then((r: { data: unknown }) => {
@@ -173,7 +193,7 @@ export default function Explore() {
     <div className="min-h-screen bg-background">
       <SEO
         title={t("explore.seoTitle", "Explore Jobs — Trending Companies, Fast Hirers & Top-Paying Fields")}
-        description={t("explore.seoDescription", "Discover jobs by what matters: companies hiring fastest right now, businesses that actually fill roles, newly added company boards, entry-level friendly employers, and the highest-paying fields — all computed live from companies' own job boards.")}
+        description={t("explore.seoDescription", "Discover jobs by what matters: companies hiring fastest right now, businesses that actually fill roles, newly added company boards, entry-level friendly employers, and the highest-paying fields — all measured from companies' own job boards, refreshed hourly.")}
         path="/explore"
       />
       <Header />
@@ -187,8 +207,21 @@ export default function Explore() {
             {t("explore.headline", "Find your next role by what actually matters")}
           </h1>
           <p className="text-base text-muted-foreground max-w-2xl">
-            {t("explore.subhead", "Not sure what to search? Browse by real signals — who's hiring fastest, who actually fills roles, who's new, and where the pay is — every list computed live from companies' own boards.")}
+            {t("explore.subhead", "Not sure what to search? Browse by real signals — who's hiring fastest, who actually fills roles, who's new, and where the pay is — every list measured from companies' own boards.")}
           </p>
+          {/* "computed live" was false: these collections come from a cache
+              refreshed hourly, and the cache has carried its own computed_at
+              all along while the page never showed it. Every other measured
+              surface in this product states when it was measured; this one
+              asserted something stronger than the truth instead. Renders only
+              once a real timestamp is in hand — no timestamp, no claim. */}
+          {computedAt && (
+            <p className="text-xs text-muted-foreground/80 mt-2">
+              {t("explore.asOf", "Measured {{time}}, refreshed hourly.", {
+                time: new Date(computedAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }),
+              })}
+            </p>
+          )}
         </div>
 
         {trending.length > 0 && (
@@ -243,17 +276,31 @@ export default function Explore() {
           </Section>
         )}
 
-        {segments && (["enterprise", "mid", "small"] as const).some((b) => (segments[b]?.companies ?? 0) > 0) && (
-          <Section icon={Building2} title={t("explore.segTitle", "By company scale")} blurb={t("explore.segBlurb", "Every company here states its own headcount — on its Y Combinator profile or in public records — and is banded by that number. Companies without a sourced count aren't shown, and counts the board itself contradicts are dropped. Nothing is guessed.")}>
+        {segments && orderedBands(segments).length > 0 && (
+          <Section icon={Building2} title={t("explore.segTitle", "By how much they're hiring")} blurb={t("explore.segBlurb", "Banded by how many roles each company currently has open on our board — not by company size. A company with a thousand openings might be an employer of a hundred thousand, or a smaller one hiring hard.")}>
             <div className="space-y-6">
-              {(["enterprise", "mid", "small"] as const).map((band) => {
-                const s = segments[band];
-                if (!s || !s.companies) return null;
-                const label = band === "enterprise"
-                  ? t("explore.segEnterprise", "Enterprise — 1,000+ employees")
-                  : band === "mid"
-                    ? t("explore.segMid", "Mid-market — 100–999 employees")
-                    : t("explore.segSmall", "Startups & small teams — under 100 employees");
+              {orderedBands(segments).map(([band, s]) => {
+                // LABELS DESCRIBE WHAT IS MEASURED: open roles on this board.
+                // They used to say "Enterprise — 1,000+ employees" over bands
+                // computed from GREATEST(on_board, feed_total) — a posting
+                // count — under a blurb promising sourced headcounts and
+                // "Nothing is guessed". No row in the payload carries an
+                // employee count at all, so the page was asserting three
+                // things that were each untrue, and filing Epic Games under
+                // "under 100 employees".
+                //
+                // An unrecognised key falls back to a label built from the
+                // band's own numbers rather than vanishing, so the next rename
+                // costs a generic heading instead of half the section.
+                const label = band === "mega"
+                  ? t("explore.segMega", "1,000+ open roles")
+                  : band === "large"
+                    ? t("explore.segLarge", "200–999 open roles")
+                    : band === "mid"
+                      ? t("explore.segMid", "50–199 open roles")
+                      : band === "small"
+                        ? t("explore.segSmall", "Under 50 open roles")
+                        : t("explore.segOther", "{{n}} companies", { n: s.companies.toLocaleString() });
                 return (
                   <div key={band}>
                     <h3 className="text-sm font-bold text-foreground mb-1">{label}</h3>
@@ -277,13 +324,11 @@ export default function Explore() {
                       {s.median_usd_floor != null && (s.usd_n ?? 0) >= 50 && (
                         <> · {t("explore.segSalary", "median stated floor ${{m}} ({{n}} USD postings)", { m: Math.round(s.median_usd_floor).toLocaleString(), n: s.usd_n })}</>
                       )}
-                      {/* v4 segments are headcount-only, so this clause is
-                          redundant there (with_headcount == companies); it
-                          still renders against a pre-v4 RPC during the
-                          frontend-before-migration deploy window. */}
-                      {(s.with_headcount ?? 0) > 0 && s.with_headcount !== s.companies && (
-                        <> · {t("explore.segHeadcountStat", "{{k}} with stated headcount", { k: s.with_headcount })}</>
-                      )}
+                      {/* The "N with stated headcount" clause was removed with
+                          the headcount framing: the live RPC emits no
+                          with_headcount field at all, so the branch was dead,
+                          and its wording implied a sourcing step that does not
+                          happen. */}
                     </p>
                     {/* Two-number badge: our verified count and the company's own
                         advertised total when it exceeds it — the band label and
@@ -309,36 +354,22 @@ export default function Explore() {
                         parts.push(openTxt);
                         return parts.join(" · ");
                       };
-                      const expanded = segAll[band];
-                      return (
-                        <>
-                          <CompanyGrid rows={expanded ? expanded.rows : s.top} badge={segBadge} />
-                          {!expanded && s.companies > (s.top?.length ?? 0) && (
-                            <button
-                              type="button"
-                              onClick={() => void loadSegAll(band)}
-                              disabled={segAllLoading !== null}
-                              className="mt-2.5 text-[12px] text-primary hover:underline disabled:opacity-50"
-                            >
-                              {segAllLoading === band
-                                ? t("explore.segLoading", "Loading…")
-                                : t("explore.segSeeAll", "See all {{n}} companies", { n: s.companies.toLocaleString() })}
-                            </button>
-                          )}
-                          {expanded && expanded.rows.length < expanded.total && (
-                            <button
-                              type="button"
-                              onClick={() => void loadSegAll(band)}
-                              disabled={segAllLoading !== null}
-                              className="mt-2.5 text-[12px] text-primary hover:underline disabled:opacity-50"
-                            >
-                              {segAllLoading === band
-                                ? t("explore.segLoading", "Loading…")
-                                : t("explore.segShowMore", "Show more ({{shown}} of {{total}})", { shown: expanded.rows.length, total: expanded.total.toLocaleString() })}
-                            </button>
-                          )}
-                        </>
-                      );
+                      // THE "See all N companies" BUTTONS ARE GONE.
+                      //
+                      // They called get_size_segment_companies, which returns
+                      // 57014 for every band — measured 25.2s, 26.6s and 26.6s
+                      // — and the click handler swallowed the error, so the
+                      // label just reverted and nothing happened. Every press
+                      // spent 25 seconds of a Postgres worker to achieve that.
+                      //
+                      // It was also paging a DIFFERENT population: that RPC
+                      // still bands by employee headcount and requires
+                      // `employees IS NOT NULL`, while the band above it is
+                      // open roles. Even repaired, "See all 1,724 companies"
+                      // would have returned a disjoint set under a total that
+                      // did not describe it. A control that cannot keep its
+                      // own promise is worse than no control.
+                      return <CompanyGrid rows={s.top} badge={segBadge} />;
                     })()}
                   </div>
                 );
