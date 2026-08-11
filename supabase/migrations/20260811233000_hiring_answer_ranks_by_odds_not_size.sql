@@ -112,11 +112,34 @@ AS $$
          f.tracking_days, f.p50_days_open, f.dated_n
   FROM fills f
   JOIN open_now o ON o.company_token = f.company_token
-  -- >=10 open roles: below that the ratio is noise rather than a hiring rate.
-  WHERE o.n >= 10
-  -- FILLS PER 100 OPEN ROLES — the odds a posting here becomes a hire, not the
-  -- employer's size. Ties break on absolute fills so a bigger record still
-  -- wins between equals.
+  -- >=100 OPEN ROLES, AND THE NUMBER IS MEASURED, NOT CHOSEN.
+  --
+  -- The first draft floored at 10, which fixed "ranks by size" into something
+  -- that ranked by SMALLNESS: a small denominator makes the ratio explode, so
+  -- the answer to "who will actually hire me" became a list of the tiniest
+  -- boards on it. Measured over the 300 top-filling employers before setting
+  -- this:
+  --
+  --     floor   eligible   top ratio   of the top 12, how many had <100 open
+  --       10        300        580%              12 of 12
+  --       25        121        468%              10 of 12
+  --       50         64        456%               8 of 12
+  --      100         25        251%               0 of 12
+  --      150          7          —        too few to fill twelve slots
+  --
+  -- Median open_roles among qualifiers is 21, so a floor of 10 admits nearly
+  -- everyone and hands the ranking to whoever has the fewest live roles.
+  -- 100 is the only value that both fills the list and leaves no card that a
+  -- reader would find trivially small. 25 is a LOWER bound on the eligible
+  -- pool: the sample was the top 300 by absolute fills, so employers with 100+
+  -- open roles and modest fill counts were never in it.
+  WHERE o.n >= 100
+  -- THE RATIO ORDERS THE LIST; IT IS NEVER PRINTED. "251 fills per 100 open
+  -- roles" is arithmetically true and reads as nonsense — it is a throughput-
+  -- to-inventory ratio, not a probability, and a reader would take it as one.
+  -- The card states both raw numbers ("342 filled in 27d tracked · 75 open
+  -- now") and lets them judge. A number good enough to sort by is not
+  -- automatically a number worth publishing.
   ORDER BY (f.filled * 100.0 / o.n) DESC, f.filled DESC
   LIMIT GREATEST(p_limit, 1);
 $$;

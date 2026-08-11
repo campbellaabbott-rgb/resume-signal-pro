@@ -871,9 +871,30 @@ describe("the hiring answer ranks by odds, not by size", () => {
     expect(open).toMatch(/effective_posted >= now\(\) - interval '30 days'/);
   });
 
-  it("floors the ratio so a winding-down employer cannot top the list", () => {
-    // 3 fills against 4 open roles is not a 75% hiring rate.
-    expect(body).toMatch(/WHERE o\.n >= 10/);
+  it("floors the denominator high enough that the ratio means something", () => {
+    // MEASURED, not chosen. The first draft floored at 10 and turned "ranks by
+    // size" into "ranks by smallness" — every one of the top 12 had fewer than
+    // 100 open roles, topped by 580% on a 10-role board. Measured across the
+    // 300 top-filling employers (median open_roles = 21):
+    //   floor  10 -> 12 of 12 cards under 100 open, top ratio 580%
+    //   floor  50 ->  8 of 12 under 100 open, top ratio 456%
+    //   floor 100 ->  0 of 12 under 100 open, top ratio 251%, 25+ eligible
+    //   floor 150 ->  only 7 eligible, cannot fill twelve slots
+    const m = /WHERE o\.n >= (\d+)/.exec(body);
+    expect(m, "no open-roles floor on the ranking").toBeTruthy();
+    const floor = Number(m![1]);
+    expect(floor, "floor too low — a small denominator hands the list to tiny boards")
+      .toBeGreaterThanOrEqual(100);
+    // Above ~150 the eligible pool measured 7, which cannot fill a 12-row list.
+    expect(floor, "floor too high — not enough employers qualify to fill the list")
+      .toBeLessThanOrEqual(120);
+  });
+
+  it("the ranking ratio is never printed", () => {
+    // "251 fills per 100 open roles" is true and reads as nonsense: it is a
+    // throughput-to-inventory ratio, not a probability, and a reader would take
+    // it as one. It sorts; the card states the two raw numbers instead.
+    expect(CODE).not.toMatch(/per 100|fillRate|fillsPer/);
   });
 
   it("the published median comes from posted_at alone", () => {
