@@ -98,7 +98,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-11.2";
+const BUILD_VERSION = "2026-08-11.3";
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -2051,19 +2051,57 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
         // old name forever unless something rewrites them, so a rename in
         // sources.ts is invisible on the site without this sweep.
         for (const tk of RENAMED_TOKENS) tokens.add(tk);
-        let fixed = 0;
+        // THE v2 RUN GOT FOURTEEN BOARDS IN AND STOPPED, AND ALMOST SAID IT WAS DONE.
+        //
+        // Measured against production after the v2 sweep: tokens 1-14 of
+        // RENAMED_TOKENS were renamed and 15-29 were untouched, plus two
+        // individual failures inside that prefix (hdsupply, weis — both boards
+        // with large historical row counts). Two distinct faults:
+        //   1. individual UPDATEs time out on boards with many rows, and the
+        //      old loop recorded that only by not incrementing `fixed`;
+        //   2. the run itself ran out of budget partway down the list.
+        //
+        // And the stamp was UNCONDITIONAL. A run that reached the end having
+        // failed every single update still wrote its version and was never
+        // retried — the sweep would report success forever having changed
+        // nothing. That is the same failure this whole week has been about.
+        //
+        // Three changes, all aimed at "a partial run must be resumable and must
+        // not claim completion":
+        let fixed = 0, failed = 0, already = 0;
         for (const tk of tokens) {
           const src = JOB_SOURCES.find((s) => s.token === tk);
           if (!src) continue;
-          const { error: e1 } = await client.from("job_board_postings").update({ company: src.name }).eq("company_token", tk);
-          const { error: e2 } = await client.from("job_board_closures").update({ company: src.name }).eq("company_token", tk);
-          if (!e1 && !e2) fixed++;
+          // (a) SKIP BOARDS ALREADY CORRECT. Makes every retry cheaper than the
+          //     last, so successive passes get further instead of re-doing the
+          //     same expensive updates and dying in the same place.
+          const { data: stale } = await client.from("job_board_postings")
+            .select("company_token").eq("company_token", tk).neq("company", src.name).limit(1);
+          if (!stale?.length) { already++; continue; }
+          // (b) NARROW THE UPDATE to rows that actually differ. The old
+          //     statement rewrote every row for the token including ones already
+          //     carrying the right name, which is what made the big boards time
+          //     out in the first place.
+          const { error: e1 } = await client.from("job_board_postings")
+            .update({ company: src.name }).eq("company_token", tk).neq("company", src.name);
+          const { error: e2 } = await client.from("job_board_closures")
+            .update({ company: src.name }).eq("company_token", tk).neq("company", src.name);
+          if (e1 || e2) {
+            failed++;
+            console.warn(`[JOB-BOARD] name sync: ${tk} failed:`, (e1 ?? e2)?.message?.slice(0, 120));
+          } else fixed++;
         }
-        await client.from("job_board_meta").upsert(
-          { k: "name_sync_version", v: { version: NAME_SYNC_VERSION, fixed, sweptAt: new Date().toISOString() }, updated_at: new Date().toISOString() },
-          { onConflict: "k" },
-        );
-        if (fixed > 0) console.log(`[JOB-BOARD] name sync: decoded stored names for ${fixed} boards`);
+        // (c) STAMP ONLY ON A CLEAN RUN. Leaving it unstamped costs one more
+        //     pass; stamping over failures costs the rename permanently.
+        if (failed === 0) {
+          await client.from("job_board_meta").upsert(
+            { k: "name_sync_version", v: { version: NAME_SYNC_VERSION, fixed, already, sweptAt: new Date().toISOString() }, updated_at: new Date().toISOString() },
+            { onConflict: "k" },
+          );
+          console.log(`[JOB-BOARD] name sync v${NAME_SYNC_VERSION} complete: ${fixed} renamed, ${already} already correct`);
+        } else {
+          console.warn(`[JOB-BOARD] name sync v${NAME_SYNC_VERSION} INCOMPLETE: ${fixed} renamed, ${failed} failed, ${already} already correct — version left unstamped so the next pass resumes`);
+        }
       } catch (e) {
         console.warn("[JOB-BOARD] name sync failed (retries next pass):", String(e).slice(0, 150));
       }

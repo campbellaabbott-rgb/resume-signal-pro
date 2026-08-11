@@ -67,8 +67,14 @@ const PINNED = {
   // Every name was verified against the employer's own board or careers site;
   // two differed from the obvious guess (Alignment Health, not Healthcare;
   // AnewHealth, not ExactCare). Ships with NAME_SYNC_VERSION 3.
+  // 2026-08-11.3: name-sync repair only — sources.ts is UNCHANGED (the hash
+  // below still pins the v3 renames). Measured after the v2 sweep ran: tokens
+  // 1-14 renamed, 15-29 untouched, and the run would have stamped itself
+  // complete over its own failures. The sweep now skips already-correct boards,
+  // narrows each UPDATE to rows that differ, and refuses to stamp its version
+  // when any board failed. Bumped so the deploy is externally identifiable.
   sourcesHash: "578bd5893bc57cd1",
-  buildVersion: "2026-08-11.2",
+  buildVersion: "2026-08-11.3",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {
