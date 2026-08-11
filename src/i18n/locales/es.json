@@ -4166,10 +4166,6 @@
     "segSalary": "suelo salarial mediano ${{m}} ({{n}} vacantes en USD)",
     "segOpen": "{{n}} vacantes",
     "segOpenBoth": "{{n}} en nuestro tablero · {{total}} en toda la empresa",
-    "segEmp": "≈{{n}} empleados ({{basis}})",
-    "segBasisYc": "perfil YC",
-    "segBasisPr": "registros públicos",
-    "segYcChip": "YC {{b}}",
     "transparentTitle": "Transparentes con el salario",
     "transparentBlurb": "Empresas que declaran el salario en al menos el 80% de sus vacantes — contado desde su propio texto y campos de su ATS. Una insignia que nadie puede comprar: la única forma de entrar es declarar el salario.",
     "transparentBadge": "{{pct}}% de {{n}} vacantes declaran salario",
@@ -4178,7 +4174,7 @@
     "segLarge": "200–999 vacantes abiertas",
     "segOther": "{{n}} empresas",
     "asOf": "Medido el {{time}}, actualizado cada hora.",
-    "repostBadgeCapped": "{{n}}+ republicaciones del mismo puesto"
+    "repostBadgeCapped": "«{{title}}» re-publicado {{n}}+× · {{events}} en total en {{d}}d"
   },
   "agentQueue": {
     "title": "Cola matinal",

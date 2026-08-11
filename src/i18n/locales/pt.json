@@ -4166,10 +4166,6 @@
     "segSalary": "piso salarial mediano US$ {{m}} ({{n}} vagas em USD)",
     "segOpen": "{{n}} vagas abertas",
     "segOpenBoth": "{{n}} no nosso quadro · {{total}} na empresa toda",
-    "segEmp": "≈{{n}} funcionários ({{basis}})",
-    "segBasisYc": "perfil YC",
-    "segBasisPr": "registros públicos",
-    "segYcChip": "YC {{b}}",
     "transparentTitle": "Transparentes com salário",
     "transparentBlurb": "Empresas que declaram salário em pelo menos 80% de suas vagas abertas — contado do próprio texto e dos campos do ATS delas. Um selo que ninguém pode comprar: o único caminho é realmente declarar salário.",
     "transparentBadge": "{{pct}}% de {{n}} vagas declaram salário",
@@ -4178,7 +4174,7 @@
     "segLarge": "200–999 vagas abertas",
     "segOther": "{{n}} empresas",
     "asOf": "Medido em {{time}}, atualizado de hora a hora.",
-    "repostBadgeCapped": "{{n}}+ republicações da mesma vaga"
+    "repostBadgeCapped": "“{{title}}” republicada {{n}}+× · {{events}} no total em {{d}}d"
   },
   "agentQueue": {
     "title": "Fila da manhã",

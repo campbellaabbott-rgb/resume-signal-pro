@@ -4166,10 +4166,6 @@
     "segSalary": "median stated floor ${{m}} ({{n}} USD postings)",
     "segOpen": "{{n}} open roles",
     "segOpenBoth": "{{n}} on our board · {{total}} company-wide",
-    "segEmp": "≈{{n}} employees ({{basis}})",
-    "segBasisYc": "YC profile",
-    "segBasisPr": "public records",
-    "segYcChip": "YC {{b}}",
     "transparentTitle": "Transparent about pay",
     "transparentBlurb": "Companies stating pay on at least 80% of their open roles — counted from their own posting text and ATS fields. A badge no one can buy: the only way in is to actually state pay.",
     "transparentBadge": "{{pct}}% of {{n}} roles state pay",
@@ -4178,7 +4174,7 @@
     "segLarge": "200–999 open roles",
     "segOther": "{{n}} companies",
     "asOf": "Measured {{time}}, refreshed hourly.",
-    "repostBadgeCapped": "{{n}}+ re-lists of the same role"
+    "repostBadgeCapped": "“{{title}}” re-listed {{n}}+× · {{events}} total in {{d}}d"
   },
   "agentQueue": {
     "title": "Morning Queue",

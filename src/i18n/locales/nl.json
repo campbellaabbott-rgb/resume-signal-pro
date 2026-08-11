@@ -4166,10 +4166,6 @@
     "segSalary": "mediane vermelde ondergrens ${{m}} ({{n}} USD-vacatures)",
     "segOpen": "{{n}} open vacatures",
     "segOpenBoth": "{{n}} op ons board · {{total}} bedrijfsbreed",
-    "segEmp": "≈{{n}} medewerkers ({{basis}})",
-    "segBasisYc": "YC-profiel",
-    "segBasisPr": "openbare registers",
-    "segYcChip": "YC {{b}}",
     "transparentTitle": "Transparant over salaris",
     "transparentBlurb": "Bedrijven die bij minstens 80% van hun vacatures het salaris vermelden — geteld uit hun eigen vacaturetekst en ATS-velden. Een badge die niemand kan kopen: de enige weg erin is echt salaris vermelden.",
     "transparentBadge": "{{pct}}% van {{n}} vacatures vermeldt salaris",
@@ -4178,7 +4174,7 @@
     "segLarge": "200–999 open functies",
     "segOther": "{{n}} bedrijven",
     "asOf": "Gemeten op {{time}}, elk uur ververst.",
-    "repostBadgeCapped": "{{n}}+ herplaatsingen van dezelfde functie"
+    "repostBadgeCapped": "\"{{title}}\" {{n}}+× herplaatst · {{events}} totaal in {{d}}d"
   },
   "agentQueue": {
     "title": "Ochtendwachtrij",

@@ -4166,10 +4166,6 @@
     "segSalary": "median na nakasaad na sahod ${{m}} ({{n}} USD na posting)",
     "segOpen": "{{n}} bukas na posisyon",
     "segOpenBoth": "{{n}} sa aming board · {{total}} sa buong kumpanya",
-    "segEmp": "≈{{n}} empleyado ({{basis}})",
-    "segBasisYc": "YC profile",
-    "segBasisPr": "pampublikong rekord",
-    "segYcChip": "YC {{b}}",
     "transparentTitle": "Transparent sa sahod",
     "transparentBlurb": "Mga kumpanyang nagsasaad ng sahod sa hindi bababa sa 80% ng kanilang bukas na posisyon — binilang mula sa sarili nilang teksto at ATS field. Badge na hindi mabibili ninuman: ang tanging daan ay talagang magsaad ng sahod.",
     "transparentBadge": "{{pct}}% ng {{n}} posisyon ang nagsasaad ng sahod",
@@ -4178,7 +4174,7 @@
     "segLarge": "200–999 bukas na role",
     "segOther": "{{n}} kumpanya",
     "asOf": "Sinukat noong {{time}}, ni-refresh kada oras.",
-    "repostBadgeCapped": "{{n}}+ ulit na pag-post ng parehong role"
+    "repostBadgeCapped": "“{{title}}” muling inilista {{n}}+× · {{events}} kabuuan sa {{d}} araw"
   },
   "agentQueue": {
     "title": "Morning Queue",

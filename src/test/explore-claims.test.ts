@@ -270,6 +270,183 @@ describe("the query is made cheap and private, not merely patient", () => {
   });
 });
 
+/**
+ * EVERY COUNT ON EXPLORE MUST DESCRIBE WHAT THE BOARD WILL ACTUALLY SERVE.
+ *
+ * The board serves `missing_since IS NULL AND effective_posted >= now() - 30
+ * days`. get_transparent_employers was corrected on 2026-08-10; its siblings
+ * were not, so a card said "412 open now" and the /jobs/company page it links
+ * to — which does apply both predicates — showed fewer.
+ *
+ * And the band headings were arithmetically false in a way that was my own
+ * doing: the labels were changed from "1,000+ employees" to "1,000+ open roles"
+ * while the banding stayed on GREATEST(on_board, feed_total), the company's own
+ * ADVERTISED total. Measured live 2026-08-11: mega = 223 companies / 133,129
+ * open roles = 597 per company, printed under "1,000+ open roles".
+ */
+describe("Explore counts only what the board serves", () => {
+  const SERVED = /missing_since IS NULL/;
+  const WINDOW = /effective_posted >= now\(\) - interval '30 days'/;
+
+  // Functions that COUNT POSTINGS for a figure Explore renders. Trending and
+  // newest are deliberately absent: their open_roles comes from
+  // job_board_company_snapshots, so the fix belongs in the snapshot writer and
+  // needs a backfill plan (trending is a difference across snapshot rows, so a
+  // one-sided change fabricates a collapse for 7-14 days).
+  const COUNTERS = [
+    "get_size_segments",
+    "get_actively_hiring_companies",
+    "get_entry_level_companies",
+    "get_salary_benchmarks",
+    "get_transparent_employers",
+  ];
+
+  /** THAT function's body alone — from its header to its own closing `$$;`.
+   *  Slicing merely from indexOf(name) runs to end-of-file, so a LATER
+   *  function's predicates satisfy an earlier one's assertion: mutation-tested
+   *  by deleting the predicates from get_size_segments, which the first version
+   *  of this helper passed. Same defect as the transparent migration's
+   *  serving-predicate test earlier the same day, made twice. */
+  const bodyOf = (fn: string) => {
+    const sql = latestWith(`FUNCTION public.${fn}`).replace(/^\s*--.*$/gm, "");
+    const start = sql.indexOf(`FUNCTION public.${fn}`);
+    expect(start, `${fn} not found`).toBeGreaterThan(-1);
+    const end = sql.indexOf("$$;", start);
+    expect(end, `${fn} body has no terminator`).toBeGreaterThan(start);
+    return sql.slice(start, end);
+  };
+
+  for (const fn of COUNTERS) {
+    it(`${fn} applies both serving predicates`, () => {
+      const body = bodyOf(fn);
+      expect(body, `${fn} counts postings the board refuses to show`).toMatch(SERVED);
+      expect(body, `${fn} has no 30-day window`).toMatch(WINDOW);
+    });
+  }
+
+  it("the actively-hiring open-roles lateral is itself filtered", () => {
+    // The figure beside a fill count comes from a LATERAL that had no predicate
+    // at all. The function-level check above passes as soon as ANY clause in
+    // the body carries the predicates, so the lateral gets its own assertion.
+    const body = bodyOf("get_actively_hiring_companies");
+    const lateral = body.slice(body.indexOf("JOIN LATERAL"));
+    expect(lateral).toMatch(SERVED);
+    expect(lateral).toMatch(WINDOW);
+  });
+
+  it("the size-segments base CTE is itself filtered", () => {
+    const body = bodyOf("get_size_segments");
+    const co = body.slice(body.indexOf("WITH co AS ("), body.indexOf("named AS ("));
+    expect(co, "co CTE not located").toContain("GROUP BY p.company_token");
+    expect(co).toMatch(SERVED);
+    expect(co).toMatch(WINDOW);
+  });
+
+  it("bands are cut on the same quantity the heading names", () => {
+    const sql = latestWith("FUNCTION public.get_size_segments").replace(/^\s*--.*$/gm, "");
+    // The label says "open roles ... on our board"; on_board is that number.
+    expect(sql).toMatch(/sum\(on_board\)::int AS effective/);
+    expect(sql, "banding back on the advertised feed total")
+      .not.toMatch(/GREATEST\(sum\(on_board\), sum\(feed_total\)\)::int AS effective/);
+  });
+
+  it("remote_pct draws numerator and denominator from the same column", () => {
+    // remote=true is a strict subset of work_mode='remote' (5.2%-11.3%
+    // narrower), so mixing them makes the ratio one of two populations.
+    const sql = latestWith("FUNCTION public.get_size_segments").replace(/^\s*--.*$/gm, "");
+    expect(sql).toMatch(/count\(\*\) FILTER \(WHERE p\.work_mode = 'remote'\)::int AS remote_n/);
+  });
+
+  it("salary benchmarks still report per-currency, never a mixed median", () => {
+    // The highest-SORTING migration for this function carries an older,
+    // currency-less body; production emits `currency`. Lovable re-stamps old
+    // content with new timestamps, so filename order does not track what is
+    // deployed — rebuilding from the "latest" file would have silently reverted
+    // per-currency medians and made "Never converted, never mixed" false.
+    const sql = latestWith("FUNCTION public.get_salary_benchmarks").replace(/^\s*--.*$/gm, "");
+    expect(sql).toMatch(/RETURNS TABLE \(category text, currency text, n integer, median_annual_min numeric\)/);
+    expect(sql).toMatch(/GROUP BY category, salary_currency/);
+  });
+});
+
+describe("Explore is reachable without a wide viewport", () => {
+  const FOOTER = readFileSync(resolve(__dirname, "../components/Footer.tsx"), "utf8");
+  const HEADER = readFileSync(resolve(__dirname, "../components/Header.tsx"), "utf8");
+  const SHELL = readFileSync(resolve(__dirname, "../../scripts/prerender-seo.mjs"), "utf8");
+
+  it("the footer links /explore", () => {
+    // The header wraps its ENTIRE nav in `hidden sm:flex` and the app has no
+    // hamburger anywhere, so under 640px the footer is the only navigation that
+    // renders. /explore was in neither: the page existed, was prerendered and
+    // was sitemapped, and no phone could reach it by any link in the product.
+    expect(FOOTER).toMatch(/to="\/explore"/);
+  });
+
+  it("the header nav is still viewport-gated, so the footer link is load-bearing", () => {
+    // If a mobile menu ever lands this can relax — but until then, deleting the
+    // footer link silently removes the only mobile path.
+    expect(HEADER).toMatch(/hidden sm:flex/);
+  });
+
+  it("the prerendered shell links /explore", () => {
+    // /explore is prerendered and sitemapped at priority 0.8 daily, but no
+    // served page linked to it, so non-JS crawlers saw a sitemap-only orphan —
+    // the condition Footer.tsx's own comment warns about.
+    const shell = SHELL.slice(SHELL.indexOf("const shell ="), SHELL.indexOf("</footer>"));
+    expect(shell).toMatch(/href="\/explore"/);
+  });
+});
+
+describe("no locale ships a string the page cannot render", () => {
+  it("the retired segment fields are gone from code and from all nine locales", () => {
+    // get_size_segments' `top` object emits exactly company / company_token /
+    // on_board / company_total. The 2026-07-27 rewrite dropped the
+    // company_profiles join, taking employees / employee_basis / yc_batch with
+    // it; the frontend kept reading them, so those branches were dead and
+    // ycAbbrev never executed once. Four keys were translated nine times for
+    // strings that could not appear.
+    expect(CODE).not.toMatch(/r\.employees/);
+    expect(CODE).not.toMatch(/r\.yc_batch/);
+    expect(CODE).not.toMatch(/ycAbbrev/);
+    for (const f of localeFiles) {
+      const e = (JSON.parse(readFileSync(resolve(LOCALES, f), "utf8")).explore ?? {}) as Record<string, string>;
+      for (const k of ["segEmp", "segBasisYc", "segBasisPr", "segYcChip"]) {
+        expect(e[k], `${f} still ships explore.${k}`).toBeUndefined();
+      }
+    }
+  });
+
+  it("the capped re-post badge says as much as the uncapped one, in every locale", () => {
+    // A locale VALUE overrides the inline t() default, and all nine defined
+    // repostBadgeCapped as a bare "{{n}}+ re-lists of the same role" — dropping
+    // the role title, the event total and the window that the uncapped badge
+    // carries. The capped branch fires for the WORST re-posters, so the most
+    // egregious employers got the least informative badge.
+    for (const f of localeFiles) {
+      const e = (JSON.parse(readFileSync(resolve(LOCALES, f), "utf8")).explore ?? {}) as Record<string, string>;
+      const capped = e.repostBadgeCapped;
+      if (!capped) continue;
+      for (const v of ["{{title}}", "{{events}}", "{{d}}", "{{n}}"]) {
+        expect(capped, `${f} explore.repostBadgeCapped drops ${v}: ${capped}`).toContain(v);
+      }
+    }
+  });
+
+  it("both counts in the segment badge are grouped the same way", () => {
+    // Rendered "3842 on our board · 12,000 company-wide" — one raw, one
+    // grouped, in one sentence, because only `total` had .toLocaleString().
+    //
+    // EVERY onBoard interpolation, not just one: there are two call sites
+    // (segOpenBoth and segOpen), and asserting the string appears once let a
+    // mutation that un-grouped the first of them pass.
+    const sites = [...CODE.matchAll(/\bn: onBoard\b(\.toLocaleString\(\))?/g)];
+    expect(sites.length, "onBoard interpolation sites not found").toBeGreaterThanOrEqual(2);
+    for (const m of sites) {
+      expect(m[1], `an onBoard count is interpolated raw: ${m[0]}`).toBe(".toLocaleString()");
+    }
+  });
+});
+
 describe("the page says when it was measured", () => {
   it("renders the cache's own computed_at", () => {
     expect(EXPLORE).toMatch(/setComputedAt\(c\.computed_at\)/);

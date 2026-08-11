@@ -16,17 +16,10 @@ import { supabase } from "@/integrations/supabase/client";
 const rpc = (fn: string, args?: Record<string, unknown>) =>
   (supabase as unknown as { rpc: (f: string, a?: Record<string, unknown>) => Promise<{ data: unknown }> }).rpc(fn, args);
 
-interface CompanyRow { company: string; company_token: string; open_roles?: number; pay_pct?: number; median_usd_floor?: number | null; recent?: number; closed_90d?: number; entry_roles?: number; tracking_days?: number; repost_events?: number; reposted_roles?: number; worst_title?: string; worst_count?: number; feed_total?: number | null; on_board?: number; company_total?: number | null; employees?: number | null; employee_basis?: string | null; yc_batch?: string | null }
+interface CompanyRow { company: string; company_token: string; open_roles?: number; pay_pct?: number; median_usd_floor?: number | null; recent?: number; closed_90d?: number; entry_roles?: number; tracking_days?: number; repost_events?: number; reposted_roles?: number; worst_title?: string; worst_count?: number; feed_total?: number | null; on_board?: number; company_total?: number | null }
 interface SalaryRow { category: string; currency: string; n: number; median_annual_min: number }
 interface Segment { companies: number; with_headcount?: number; open_roles: number; remote_pct: number | null; disclosed_pct?: number | null; disclosed_n?: number | null; entry_pct: number; median_usd_floor: number | null; usd_n: number | null; top: CompanyRow[] }
 
-// YC batch shorthand ("Winter 2024" → "W24") — the notation YC itself uses.
-const ycAbbrev = (b: string): string => {
-  const m = b.match(/^(Winter|Summer|Spring|Fall)\s+(\d{4})$/);
-  if (!m) return b;
-  const season = { Winter: "W", Summer: "S", Spring: "X", Fall: "F" }[m[1] as "Winter"];
-  return `${season}${m[2].slice(2)}`;
-};
 // KEYED BY WHATEVER THE RPC EMITS, not by a literal this file guesses.
 //
 // It was `Record<"enterprise" | "mid" | "small", Segment>`, and the RPC has
@@ -338,21 +331,28 @@ export default function Explore() {
                       const segBadge = (r: CompanyRow) => {
                         const onBoard = r.on_board ?? r.open_roles ?? 0;
                         const total = r.company_total ?? r.feed_total ?? 0;
-                        const openTxt = total > onBoard
-                          ? t("explore.segOpenBoth", "{{n}} on our board · {{total}} company-wide", { n: onBoard, total: total.toLocaleString() })
-                          : t("explore.segOpen", "{{n}} open roles", { n: onBoard });
-                        const parts: string[] = [];
-                        if (r.employees != null) {
-                          parts.push(t("explore.segEmp", "≈{{n}} employees ({{basis}})", {
-                            n: r.employees.toLocaleString(),
-                            basis: r.employee_basis === "yc_self_reported"
-                              ? t("explore.segBasisYc", "YC profile")
-                              : t("explore.segBasisPr", "public records"),
-                          }));
-                        }
-                        if (r.yc_batch) parts.push(t("explore.segYcChip", "YC {{b}}", { b: ycAbbrev(r.yc_batch) }));
-                        parts.push(openTxt);
-                        return parts.join(" · ");
+                        // BOTH numbers grouped. This read "3842 on our board ·
+                        // 12,000 company-wide" — one raw, one grouped, in one
+                        // sentence — because only `total` had .toLocaleString().
+                        return total > onBoard
+                          ? t("explore.segOpenBoth", "{{n}} on our board · {{total}} company-wide", { n: onBoard.toLocaleString(), total: total.toLocaleString() })
+                          : t("explore.segOpen", "{{n}} open roles", { n: onBoard.toLocaleString() });
+                        // THE EMPLOYEES AND YC-BATCH CHIPS ARE GONE, because
+                        // they could never render. get_size_segments' `top`
+                        // object emits exactly four keys — company,
+                        // company_token, on_board, company_total
+                        // (20260727212029:105-108). The 2026-07-27 rewrite
+                        // dropped the company_profiles join and with it
+                        // employees / employee_basis / yc_batch; the frontend
+                        // was never updated, so `r.employees != null` and
+                        // `r.yc_batch` have been dead since that day and
+                        // ycAbbrev never executed once.
+                        //
+                        // This is the third field of the same rewrite to be
+                        // caught: the comment above already records removing
+                        // `with_headcount` for exactly this reason. One of
+                        // three was removed and two were left, which is why the
+                        // rule is now a test rather than a code comment.
                       };
                       // THE "See all N companies" BUTTONS ARE GONE.
                       //

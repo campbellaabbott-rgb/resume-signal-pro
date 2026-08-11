@@ -22,8 +22,15 @@ export function Footer() {
         </div>
         
         {/* Resources — internal links matter for SEO: pages reachable only via
-            sitemap rank far worse than internally-linked ones */}
+            sitemap rank far worse than internally-linked ones.
+            This nav is also the ONLY navigation that renders at every viewport:
+            Header.tsx wraps its whole nav in `hidden sm:flex` and the app has no
+            hamburger menu anywhere, so under 640px a destination missing from
+            this list is unreachable by any link in the product. /explore was
+            missing from both for exactly that reason. */}
         <nav aria-label="Resources" className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs text-muted-foreground mb-8 pb-8 border-b border-border/50">
+          <Link to="/explore" className="hover:text-foreground transition-colors">Explore employers</Link>
+          <Link to="/trust" className="hover:text-foreground transition-colors">Trust &amp; transparency</Link>
           <Link to="/resume-checker" className="hover:text-foreground transition-colors">Free resume checker</Link>
           <Link to="/ats-resume-test" className="hover:text-foreground transition-colors">ATS resume test</Link>
           <Link to="/resume-score" className="hover:text-foreground transition-colors">Resume score</Link>

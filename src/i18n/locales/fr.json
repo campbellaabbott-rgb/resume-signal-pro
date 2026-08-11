@@ -4166,10 +4166,6 @@
     "segSalary": "salaire plancher médian {{m}} $ ({{n}} offres en USD)",
     "segOpen": "{{n}} postes ouverts",
     "segOpenBoth": "{{n}} sur notre tableau · {{total}} dans l'entreprise",
-    "segEmp": "≈{{n}} employés ({{basis}})",
-    "segBasisYc": "profil YC",
-    "segBasisPr": "registres publics",
-    "segYcChip": "YC {{b}}",
     "transparentTitle": "Transparentes sur les salaires",
     "transparentBlurb": "Entreprises indiquant le salaire sur au moins 80% de leurs postes ouverts — compté depuis leur propre texte et les champs de leur ATS. Un badge que personne ne peut acheter : la seule façon d'y figurer est d'indiquer les salaires.",
     "transparentBadge": "{{pct}}% de {{n}} postes indiquent le salaire",
@@ -4178,7 +4174,7 @@
     "segLarge": "200–999 postes ouverts",
     "segOther": "{{n}} entreprises",
     "asOf": "Mesuré le {{time}}, actualisé chaque heure.",
-    "repostBadgeCapped": "{{n}}+ republications du même poste"
+    "repostBadgeCapped": "« {{title}} » republié {{n}}+× · {{events}} au total en {{d}}j"
   },
   "agentQueue": {
     "title": "File du matin",

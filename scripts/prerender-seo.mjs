@@ -279,6 +279,10 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
           <a href="/methodology" class="hover:text-foreground">Methodology</a>
           <a href="/pricing" class="hover:text-foreground">Pricing</a>
           <a href="/jobs" class="hover:text-foreground">Job board</a>
+          <!-- /explore is prerendered and sitemapped at priority 0.8 daily, but
+               until now no served page linked to it, so every non-JS crawler saw
+               a sitemap-only orphan — the exact condition Footer.tsx warns about. -->
+          <a href="/explore" class="hover:text-foreground">Explore employers</a>
         </nav>
       </div></footer>
     </div>`;
