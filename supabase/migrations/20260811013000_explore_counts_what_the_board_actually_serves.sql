@@ -259,14 +259,8 @@ COMMENT ON FUNCTION public.get_size_segments() IS
   'renders. Banding on GREATEST(on_board, feed_total) put 597-role-average '
   'companies under a 1,000+ heading.';
 
--- Recompute now so the corrected numbers serve immediately rather than at the
--- next tick. Best effort: the cron is the backstop.
-DO $$
-BEGIN
-  SET LOCAL statement_timeout = '9min';
-  PERFORM public.refresh_explore_cache();
-EXCEPTION WHEN OTHERS THEN
-  RAISE WARNING 'explore cache refresh deferred to cron: %', SQLERRM;
-END $$;
-
+-- No inline recompute — see the note at the end of 20260810200000. A DO block
+-- calling refresh_explore_cache() here is what kept both migrations from
+-- applying at all: it runs for minutes, and a connection-level abort rolls back
+-- the DDL above it. The hourly :07 cron picks these up.
 NOTIFY pgrst, 'reload schema';

@@ -164,15 +164,19 @@ BEGIN
 END;
 $$;
 
--- Fill it once now rather than at the next tick, so the answer — a populated
--- section, or an honest recorded reason — is readable immediately. Best effort:
--- the cron is the backstop and a migration must not fail over a stat recompute.
-DO $$
-BEGIN
-  SET LOCAL statement_timeout = '9min';
-  PERFORM public.refresh_explore_cache();
-EXCEPTION WHEN OTHERS THEN
-  RAISE WARNING 'explore cache seed deferred to cron: %', SQLERRM;
-END $$;
-
+-- NO INLINE RECOMPUTE HERE, DELIBERATELY.
+--
+-- This migration originally ended with a DO block calling
+-- refresh_explore_cache() so the corrected numbers would serve immediately
+-- instead of at the next tick. That block is why the whole file kept failing to
+-- apply: recomputing seven collections takes minutes, and while its
+-- `EXCEPTION WHEN OTHERS` catches a statement timeout, it cannot catch the SQL
+-- editor's connection/gateway limit. When that killed the session mid-script,
+-- the surrounding transaction rolled back — taking the DDL above with it. Three
+-- attempts applied exactly nothing, and the failure was invisible because the
+-- statements that mattered had already "run".
+--
+-- The cron refreshes explore_cache hourly at :07 (verified live), so waiting is
+-- at most an hour and costs nothing. A migration should not be able to fail on
+-- a stat recompute.
 NOTIFY pgrst, 'reload schema';
