@@ -3086,7 +3086,9 @@ export type Database = {
           closed_90d: number
           company: string
           company_token: string
+          dated_n: number
           open_roles: number
+          p50_days_open: number
           tracking_days: number
         }[]
       }
