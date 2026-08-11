@@ -1136,15 +1136,29 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
 
     write({
       path: "/explore",
-      title: "Explore Jobs — Trending Companies, Fast Hirers, Pay Transparency",
-      description: "Browse the board by measured signal: fastest-growing employers, companies that truly fill roles, pay transparency, and where the pay is.",
+      // THE PAGE'S TITLE LIVES IN TWO PLACES AND ONLY ONE WAS FIXED.
+      //
+      // Explore.tsx has its own <SEO title=…> for the client render; this
+      // object is what CRAWLERS receive. When the trending and newest
+      // collections were deleted, the React copy was corrected and this was
+      // not — so the served HTML kept advertising "Trending Companies" and
+      // "fastest-growing employers" for sections the page no longer contains,
+      // while the live page said something else entirely. Verified after
+      // deploy: document.title read the new sentence and the prerendered
+      // <title> read the old one.
+      //
+      // Whatever this says must remain true of what /explore actually renders.
+      title: "Explore Employers — Who Fills Roles, Who States Pay, Who Re-posts",
+      description: "Pick what you're looking for: employers that actually fill the roles they post, companies that state pay up front, entry-level friendly boards, serial re-posters to avoid, and the highest-paying fields — measured from our own daily tracking.",
       jsonLd: [
         breadcrumbLd([{ name: "Home", path: "/" }, { name: "Explore", path: "/explore" }]),
         {
           "@context": "https://schema.org",
           "@type": "CollectionPage",
-          name: "Explore jobs",
-          description: "Discovery collections computed from the board's own daily tracking: trending boards, real fill signals, pay transparency, re-poster flags, and salary-by-field.",
+          name: "Explore employers",
+          // Same correction as the title above: "trending boards" names a
+          // collection that no longer exists.
+          description: "Employer collections computed from the board's own daily tracking: real fill signals, pay transparency, entry-level friendly boards, re-poster flags, and salary-by-field.",
           url: `${SITE}/explore`,
           isPartOf: { "@type": "WebSite", name: "Resume Booster", url: SITE },
         },

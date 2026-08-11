@@ -659,6 +659,33 @@ describe("the transparent-pay list is winnable by a recognisable employer", () =
   });
 });
 
+describe("both copies of Explore's title describe the page that exists", () => {
+  // /explore's title and description live in TWO places: Explore.tsx's <SEO>
+  // for the client render, and scripts/prerender-seo.mjs for what crawlers
+  // receive. Deleting the trending and newest collections corrected the first
+  // and missed the second, so after deploy document.title read the new sentence
+  // while the served HTML still advertised "Trending Companies" — a page
+  // promising crawlers two sections it does not contain.
+  const SHELL = readFileSync(resolve(__dirname, "../../scripts/prerender-seo.mjs"), "utf8");
+  const entry = SHELL.slice(SHELL.indexOf('path: "/explore"'), SHELL.indexOf('path: "/explore"') + 2200);
+
+  it("the prerendered copy names no deleted collection", () => {
+    const GONE = /Trending Companies|trending boards|fastest-growing/i;
+    const code = entry.replace(/^\s*\/\/.*$/gm, "");
+    expect(code, `prerender-seo.mjs still advertises a removed collection`).not.toMatch(GONE);
+  });
+
+  it("neither does the client-side copy, in any locale", () => {
+    const GONE = /Trending Companies|hiring fastest|newly added/i;
+    for (const f of localeFiles) {
+      const e = (JSON.parse(readFileSync(resolve(LOCALES, f), "utf8")).explore ?? {}) as Record<string, string>;
+      for (const k of ["seoTitle2", "seoDescription2", "subhead2"]) {
+        if (e[k]) expect(e[k], `${f} explore.${k}`).not.toMatch(GONE);
+      }
+    }
+  });
+});
+
 describe("the page says when it was measured", () => {
   it("renders the cache's own computed_at", () => {
     expect(EXPLORE).toMatch(/setComputedAt\(c\.computed_at\)/);
