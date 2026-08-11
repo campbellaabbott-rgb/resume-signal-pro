@@ -88,12 +88,22 @@ describe("bands come from the payload, never from a hardcoded list", () => {
 });
 
 describe("no surface promises headcount the SQL never reads", () => {
-  const sql = latestWith("FUNCTION public.get_size_segments");
+  // Comments stripped. This assertion previously matched the phrase
+  // "WAS GREATEST(sum(on_board), sum(feed_total))" inside a comment EXPLAINING
+  // that the banding had changed — so it kept passing while asserting the
+  // opposite of what the code did, and only failed once Lovable re-stamped the
+  // migration and dropped the comments. A guard that a comment can satisfy is
+  // not a guard.
+  const sql = latestWith("FUNCTION public.get_size_segments").replace(/^\s*--.*$/gm, "");
 
-  it("the RPC really does band on open roles, not employees", () => {
-    // If this ever flips back to headcount banding, the labels below must flip
-    // with it — that is the whole coupling this test exists to hold.
-    expect(sql).toMatch(/GREATEST\(sum\(on_board\), sum\(feed_total\)\)/);
+  it("the RPC bands on the served count the labels name", () => {
+    // The coupling this test exists to hold: bands are cut on what the board
+    // serves, and the labels below say "open roles". If banding ever moves back
+    // to the advertised feed total, the labels must move with it — that pairing
+    // is what produced "1,000+ open roles" over companies averaging 597.
+    expect(sql).toMatch(/sum\(on_board\)::int AS effective/);
+    expect(sql, "banded on the advertised total again")
+      .not.toMatch(/GREATEST\(sum\(on_board\), sum\(feed_total\)\)::int AS effective/);
     expect(sql).toMatch(/WHEN effective >= 1000 THEN 'mega'/);
   });
 

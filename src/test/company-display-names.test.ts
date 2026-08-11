@@ -184,12 +184,25 @@ describe("a rename actually reaches stored rows", () => {
 
 describe("the segment card states the number its link delivers", () => {
   const MIG = resolve(__dirname, "../../supabase/migrations");
+  /** get_size_segments' OWN body, not the whole migration file.
+   *
+   *  Lovable re-stamps applied migrations and MERGES them, so the newest file
+   *  containing get_size_segments also contains get_transparent_employers —
+   *  whose `WITH agg AS (SELECT company_token, …)` comes first in the text.
+   *  Slicing on the file's first "agg AS (" therefore read the wrong function
+   *  entirely, and the assertion below failed against a CTE it was never about.
+   *  Scope to the function first, always. */
   const sql = (() => {
     const { readdirSync } = require("node:fs") as typeof import("node:fs");
     const hit = readdirSync(MIG).filter((f) => f.endsWith(".sql")).sort()
       .map((f) => readFileSync(resolve(MIG, f), "utf8"))
       .filter((t) => t.includes("FUNCTION public.get_size_segments")).pop();
-    return (hit ?? "").replace(/^\s*--.*$/gm, "");
+    const file = (hit ?? "").replace(/^\s*--.*$/gm, "");
+    const start = file.indexOf("FUNCTION public.get_size_segments");
+    expect(start, "get_size_segments not found in any migration").toBeGreaterThan(-1);
+    const end = file.indexOf("$$;", start);
+    expect(end, "get_size_segments body has no terminator").toBeGreaterThan(start);
+    return file.slice(start, end);
   })();
 
   it("emits the lead feed's own count for the card", () => {
