@@ -3086,7 +3086,9 @@ export type Database = {
           closed_90d: number
           company: string
           company_token: string
+          dated_n: number
           open_roles: number
+          p50_days_open: number
           tracking_days: number
         }[]
       }
@@ -3210,6 +3212,13 @@ export type Database = {
         }[]
       }
       get_company_intel: { Args: { p_token: string }; Returns: Json }
+      get_company_suggest: {
+        Args: { p_q: string }
+        Returns: {
+          name: string
+          tokens: string[]
+        }[]
+      }
       get_country_facet: {
         Args: never
         Returns: {
