@@ -3953,7 +3953,8 @@
       "remote": "Remote",
       "salaryFloor": "Mindestgehalt",
       "workMode": "Arbeitsmodus"
-    }
+    },
+    "companiesChip": "{{n}} Unternehmen"
   },
   "accountPage": {
     "statusSaveFailed": "Status konnte nicht gespeichert werden — bitte erneut versuchen.",
@@ -4187,7 +4188,10 @@
     "repostAcross": "über {{roles}} Stellen",
     "seoTitle2": "Arbeitgeber entdecken — wer besetzt, wer Gehalt nennt, wer neu ausschreibt",
     "seoDescription2": "Wählen Sie, wonach Sie suchen: Arbeitgeber, die ihre Stellen wirklich besetzen, Unternehmen, die das Gehalt nennen, einstiegsfreundliche Boards, Serien-Wiederausschreiber zum Meiden und die bestbezahlten Bereiche — gemessen an den Stellenportalen der Unternehmen und unserem eigenen täglichen Tracking, stündlich aktualisiert.",
-    "subhead2": "Wählen Sie, wonach Sie wirklich suchen. Jede Antwort stammt aus unserem eigenen täglichen Tracking dessen, was mit jeder Anzeige passiert — nicht aus Angaben der Arbeitgeber."
+    "subhead2": "Wählen Sie, wonach Sie wirklich suchen. Jede Antwort stammt aus unserem eigenen täglichen Tracking dessen, was mit jeder Anzeige passiert — nicht aus Angaben der Arbeitgeber.",
+    "actionHiring": "Offene Stellen bei all diesen Arbeitgebern",
+    "actionEntry": "Alle Einstiegsstellen auf dem Board",
+    "actionGhost": "Nur Arbeitgeber mit nachgewiesener Besetzung zeigen"
   },
   "agentQueue": {
     "title": "Morgen-Queue",

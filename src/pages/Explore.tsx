@@ -285,6 +285,30 @@ export default function Explore() {
   // first that does rather than rendering a heading over nothing.
   const active: Intent = available[intent] ? intent : (shown[0] ?? "fields");
 
+  /** Each answer's way into the board, turning an intent into JOBS rather than
+   *  into twelve more company links.
+   *
+   *  Every one of these params is READ by Jobs.tsx — that is not decoration.
+   *  A `fresh=day` action was drafted for the ghost answer and dropped, because
+   *  Jobs WROTE that param and never read it back, so the button would have
+   *  promised a 24-hour window over an unfiltered board. `fresh` and
+   *  `activelyHiring` are now both read; `company` accepts a comma list, which
+   *  the server has always supported.
+   *
+   *  NO COUNTS on these buttons. The collection holds 12 rows, which is not the
+   *  size of the population the sentence would imply, and only a live aggregate
+   *  could state the real number — the 26-seconds-per-view mistake. */
+  const ACTION: Partial<Record<Intent, { to: string; label: string }>> = {
+    hiring: hiring.length
+      ? {
+          to: `/jobs?company=${encodeURIComponent(hiring.slice(0, 12).map((r) => r.company_token).join(","))}&from=explore`,
+          label: t("explore.actionHiring", "Open roles at all of these employers"),
+        }
+      : undefined,
+    entry: { to: "/jobs?experience=entry&from=explore", label: t("explore.actionEntry", "All entry-level roles on the board") },
+    ghost: { to: "/jobs?activelyHiring=1&from=explore", label: t("explore.actionGhost", "Show only employers with a proven fill record") },
+  };
+
   const INTENT_LABEL: Record<Intent, string> = {
     hiring: t("explore.intentHiring", "Will actually hire me"),
     pay: t("explore.intentPay", "States the pay"),
@@ -387,6 +411,18 @@ export default function Explore() {
         {/* "Fastest-growing boards" was here. Removed, not hidden: it answered
             no question a job seeker arrives with, and its counts came from the
             snapshot path that applies neither serving predicate. */}
+
+        {/* The answer's action, rendered once for whichever answer is showing
+            rather than repeated inside six bodies. */}
+        {ACTION[active] && (
+          <Link
+            to={ACTION[active]!.to}
+            className="flex items-center justify-center gap-2 mb-6 rounded-xl border border-primary/40 bg-primary/5 px-4 py-3 text-sm font-medium text-primary hover:bg-primary/10 transition-colors"
+          >
+            {ACTION[active]!.label}
+            <ArrowRight className="w-4 h-4" />
+          </Link>
+        )}
 
         <div hidden={active !== "hiring"}>
         {hiring.length > 0 && (

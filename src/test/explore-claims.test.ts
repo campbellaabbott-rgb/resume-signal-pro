@@ -176,8 +176,14 @@ describe("the page does not fire a query that cannot finish", () => {
 describe("the cron call is shaped for what the function actually returns", () => {
   // Comments stripped: Lovable re-stamps applied migrations and drops comments,
   // so anything asserted here must be true of the CODE, not of prose about it.
-  const RAW = latestWith("FUNCTION public.get_transparent_employers");
-  const SQL = RAW.replace(/^\s*--.*$/gm, "");
+  //
+  // Sourced from refresh_explore_cache's own latest migration, not from
+  // get_transparent_employers'. This block is about how the CACHE CALLS the
+  // function, and the two stopped living in the same file the moment a later
+  // migration redefined only the callee — at which point this assertion started
+  // reading a file that never contained the call it was checking.
+  const SQL = latestWith("FUNCTION public.refresh_explore_cache").replace(/^\s*--.*$/gm, "");
+  const CALLEE = latestWith("FUNCTION public.get_transparent_employers").replace(/^\s*--.*$/gm, "");
 
   it("calls the scalar function as a scalar, never in FROM", () => {
     // `SELECT jsonb_agg(row_to_json(x)) FROM get_transparent_employers(12) x`
@@ -193,7 +199,9 @@ describe("the cron call is shaped for what the function actually returns", () =>
     // If this ever becomes RETURNS TABLE, the assertion above inverts. Six
     // sibling collections ARE set-returning and are correctly called with
     // FROM ... row_to_json; this one and get_size_segments are not.
-    expect(SQL).toMatch(/FUNCTION public\.get_transparent_employers\(p_limit int DEFAULT 12\)\s*\nRETURNS jsonb/);
+    // CALLEE, not SQL: this is a fact about the function, and it now lives in a
+    // different migration from the cache that calls it.
+    expect(CALLEE).toMatch(/FUNCTION public\.get_transparent_employers\(p_limit int DEFAULT 12\)\s*\nRETURNS jsonb/);
   });
 
   it("rejects a non-array result rather than publishing it", () => {
@@ -576,6 +584,78 @@ describe("every interpolation a badge passes exists in every locale", () => {
       const e = (JSON.parse(readFileSync(resolve(LOCALES, f), "utf8")).explore ?? {}) as Record<string, string>;
       for (const k of keys) expect(e[k], `${f} is missing explore.${k}`).toBeTruthy();
     }
+  });
+});
+
+describe("every per-answer action lands on a filter Jobs actually applies", () => {
+  const JOBS = readFileSync(resolve(__dirname, "../pages/Jobs.tsx"), "utf8");
+
+  it("Jobs reads ?fresh= from the URL, not only writes it", () => {
+    // It was written on every change and never read back, so a shared "posted
+    // today" link produced an unfiltered board. Explore's ghost answer was
+    // going to link to it.
+    expect(JOBS).toMatch(/const f = initial\.get\("fresh"\);/);
+    expect(JOBS).toMatch(/f === "day" \|\| f === "week" \? f : ""/);
+  });
+
+  it("Jobs reads ?activelyHiring= from the URL", () => {
+    expect(JOBS).toMatch(/useState\(initial\.get\("activelyHiring"\) === "1"\)/);
+  });
+
+  it("Jobs accepts a comma-separated company list, capped", () => {
+    // The server has always taken an array here; the client only ever sent a
+    // single-element one, so a collection could not be a destination. Verified
+    // live: four tokens returned 5,491 rows with ignored=None.
+    expect(JOBS).toMatch(/company\.split\(","\)/);
+    expect(JOBS).toMatch(/\.slice\(0, 12\)/);
+    expect(JOBS, "every request site must send the token list")
+      .not.toMatch(/companies: company \? \[company\] : undefined/);
+  });
+
+  it("a multi-company filter renders as a count, not a wall of tokens", () => {
+    expect(JOBS).toMatch(/companyTokens\.length > 1/);
+    expect(JOBS).toMatch(/jobsPage\.companiesChip/);
+  });
+
+  it("Explore's actions use only params Jobs reads", () => {
+    const actions = [...CODE.matchAll(/to: `\/jobs\?([a-zA-Z]+)=/g)].map((m) => m[1]);
+    expect(actions.length, "no per-answer actions found").toBeGreaterThan(0);
+    for (const p of actions) {
+      expect(["company", "experience", "activelyHiring"], `Explore links ?${p}= — confirm Jobs reads it`).toContain(p);
+    }
+  });
+
+  it("no action carries a count it cannot stand behind", () => {
+    // The collection holds 12 rows, which is not the size of the population a
+    // number would imply, and only a live aggregate could state the real one.
+    const block = CODE.slice(CODE.indexOf("const ACTION"), CODE.indexOf("const INTENT_LABEL"));
+    expect(block).not.toMatch(/\{\{n\}\}|\{\{count\}\}|\{\{total\}\}/);
+  });
+});
+
+describe("the transparent-pay list is winnable by a recognisable employer", () => {
+  const sql = latestWith("FUNCTION public.get_transparent_employers").replace(/^\s*--.*$/gm, "");
+  const body = sql.slice(sql.indexOf("FUNCTION public.get_transparent_employers"), sql.indexOf("$$;"));
+
+  it("ranks by roles stating pay, not by percentage", () => {
+    // Ranking by percentage with LIMIT 12 gave every slot to 100%-of-~50-role
+    // boards — measured live, all twelve were exactly 100% and the largest was
+    // 267 roles — so a company stating pay on 95% of 4,000 could never place.
+    expect(body).toMatch(/ORDER BY pay_n DESC, total DESC/);
+    expect(body, "still ranking by percentage")
+      .not.toMatch(/ORDER BY \(100\.0 \* pay_n \/ GREATEST\(total, 1\)\) DESC/);
+  });
+
+  it("the aggregate is ordered the same way it was selected", () => {
+    // Otherwise the twelve chosen rows get re-sorted by a different rule than
+    // the one that chose them.
+    expect(body).toMatch(/ORDER BY t\.pay_n DESC, t\.total DESC/);
+  });
+
+  it("the 80% claim on the card is unchanged", () => {
+    // The fix must change WHO is shown, never what the badge asserts.
+    expect(body).toMatch(/HAVING count\(\*\) >= 20/);
+    expect(body).toMatch(/100\.0 \* count\(\*\) FILTER \(WHERE salary IS NOT NULL\) \/ count\(\*\) >= 80/);
   });
 });
 

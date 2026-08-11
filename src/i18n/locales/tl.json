@@ -3953,7 +3953,8 @@
       "remote": "remote",
       "salaryFloor": "pinakamababang sahod",
       "workMode": "paraan ng trabaho"
-    }
+    },
+    "companiesChip": "{{n}} kumpanya"
   },
   "accountPage": {
     "statusSaveFailed": "Hindi na-save ang status na iyon — pakisubukan muli.",
@@ -4187,7 +4188,10 @@
     "repostAcross": "sa {{roles}} posisyon",
     "seoTitle2": "Tuklasin ang mga employer — sino ang pumupuno, nagsasaad ng sahod, at umuulit ng post",
     "seoDescription2": "Piliin ang hinahanap mo: mga employer na talagang pinupunan ang kanilang mga posisyon, kumpanyang nagsasaad ng sahod, mga board para sa panimulang karera, mga paulit-ulit na nag-po-post na dapat iwasan, at ang pinakamataas ang sahod na larangan — sinusukat mula sa sariling job board ng mga kumpanya at sa aming araw-araw na pagsubaybay, ina-update kada oras.",
-    "subhead2": "Piliin ang talagang hinahanap mo. Bawat sagot ay sinusukat mula sa aming sariling araw-araw na pagsubaybay sa nangyayari sa bawat post — hindi mula sa sinasabi ng mga employer."
+    "subhead2": "Piliin ang talagang hinahanap mo. Bawat sagot ay sinusukat mula sa aming sariling araw-araw na pagsubaybay sa nangyayari sa bawat post — hindi mula sa sinasabi ng mga employer.",
+    "actionHiring": "Bukas na posisyon sa lahat ng employer na ito",
+    "actionEntry": "Lahat ng entry-level na posisyon",
+    "actionGhost": "Ipakita lang ang employer na may patunay na napupunan"
   },
   "agentQueue": {
     "title": "Morning Queue",

@@ -285,6 +285,23 @@ export default function Jobs() {
   // /jobs/company/:token — the board scoped to one employer's verified openings.
   const routeCompany = companyToken || undefined;
   const [company, setCompany] = useState(initial.get("company") ?? routeCompany ?? "");
+  // `company` may now carry a COMMA-SEPARATED list, so Explore can hand over a
+  // whole collection ("the twelve employers that actually fill roles") rather
+  // than one employer at a time. The server has always accepted an array —
+  // filters.ts slices it to companyTokenLimit and names "companies" in
+  // `ignored` if it drops any — but the client only ever sent one, so this was
+  // a client-side limit wearing the costume of a server contract.
+  //
+  // Verified against production before shipping: four tokens returned 5,491
+  // rows with ignored=None and results from several employers; one token
+  // returned 756.
+  //
+  // Capped at 12, the size of an Explore collection, so a hand-edited URL
+  // cannot turn a cheap query into an expensive one.
+  const companyTokens = useMemo(
+    () => company.split(",").map((s) => s.trim()).filter(Boolean).slice(0, 12),
+    [company],
+  );
   const [category, setCategory] = useState(initial.get("category") ?? routeCategory ?? "");
   // ALSO SEARCH THE UNCATEGORISED BUCKET. `other` held 162,800 of 590,808
   // postings on 2026-08-05 — where a posting lands when its field could not be
@@ -365,7 +382,16 @@ export default function Jobs() {
     const n = Number(initial.get("salaryFloor"));
     return Number.isFinite(n) && n > 0 ? n : 0;
   });
-  const [freshness, setFreshness] = useState<"" | "day" | "week">("");
+  // READ FROM THE URL, not just written to it. This state was set only by the
+  // natural-language parser and by the UI control, while `fresh` was WRITTEN to
+  // the query string on every change — so the param round-tripped visibly and
+  // did nothing on arrival. A shared or bookmarked "posted today" link, and any
+  // deep link from another page, silently produced an unfiltered board.
+  // Validated rather than cast: an unknown value falls back to no filter.
+  const [freshness, setFreshness] = useState<"" | "day" | "week">(() => {
+    const f = initial.get("fresh");
+    return f === "day" || f === "week" ? f : "";
+  });
   // Natural-language search: the user describes what they want, an LLM maps
   // it to the board's REAL filters (never inventing one), and we show exactly
   // how it read the query with anything it couldn't map disclosed plainly.
@@ -631,7 +657,10 @@ export default function Jobs() {
   // Board-card hiring-health, batched per visible company token → "Actively hiring"
   // badge + filter. Auto-activates as the closure log accrues real data.
   const [healthByToken, setHealthByToken] = useState<Record<string, HiringHealth>>({});
-  const [activelyHiringOnly, setActivelyHiringOnly] = useState(false);
+  // Also linkable. Same gap as `fresh`: the toggle existed in the UI and the
+  // NL parser could set it, but no URL could, so Explore had no way to hand a
+  // reader "companies with a proven fill record" as a destination.
+  const [activelyHiringOnly, setActivelyHiringOnly] = useState(initial.get("activelyHiring") === "1");
   const healthAttempted = useRef<Set<string>>(new Set());
   const [healthFailed, setHealthFailed] = useState(false);
   // Apply-agent: the posting whose questions we're drafting (with its fetched JD
@@ -924,7 +953,7 @@ export default function Jobs() {
           sendableOnly: agentOnly ? true : undefined,
           country: country || undefined,
           experience: experience || undefined,
-          companies: company ? [company] : undefined,
+          companies: companyTokens.length ? companyTokens : undefined,
           salaryFloor: salaryFloor || undefined,
           // Searches default to relevance ranking; the toggle bypasses it.
           sort: sortMode === "salary" ? "salary" : q && searchNewestFirst ? "newest" : undefined,
@@ -2204,7 +2233,14 @@ export default function Jobs() {
     if (location) f.push({ key: "location", label: location, clear: () => setLocation("") });
     if (category) f.push({ key: "category", label: t(`jobsPage.categories.${category}`, category), clear: () => setCategory("") });
     if (experience) f.push({ key: "experience", label: t(`jobsPage.experience.${experience}`, experience), clear: () => setExperience("") });
-    if (company) f.push({ key: "company", label: companies.find((c) => c.token === company)?.name ?? company, clear: () => setCompany("") });
+    // A multi-employer filter gets a count, not a 400-character wall of raw
+    // tokens. One employer still shows its name — the resolved display name
+    // where the facet knows it, the token only as a last resort.
+    if (companyTokens.length > 1) {
+      f.push({ key: "company", label: t("jobsPage.companiesChip", "{{n}} companies", { n: companyTokens.length }), clear: () => setCompany("") });
+    } else if (company) {
+      f.push({ key: "company", label: companies.find((c) => c.token === company)?.name ?? company, clear: () => setCompany("") });
+    }
     if (country) f.push({ key: "country", label: country, clear: () => setCountry("") });
     if (salaryFloor > 0) f.push({ key: "salaryFloor", label: `$${salaryFloor / 1000}k+`, clear: () => setSalaryFloor(0) });
     if (remoteOnly && !workMode) f.push({ key: "remote", label: t("jobsPage.remoteBadge", "Remote"), clear: () => setRemoteOnly(false) });
@@ -2212,7 +2248,7 @@ export default function Jobs() {
     if (freshness) f.push({ key: "freshness", label: freshness === "day" ? t("jobsPage.freshDay", "Today") : t("jobsPage.freshWeek", "This week"), clear: () => setFreshness("") });
     return f;
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [q, location, category, experience, company, country, salaryFloor, remoteOnly, workMode, freshness, companies, t]);
+  }, [q, location, category, experience, company, companyTokens, country, salaryFloor, remoteOnly, workMode, freshness, companies, t]);
   // S1: search suggestions — recent searches (local), matching companies
   // (served facet), matching category pages, and a curated common-role list.
   // Everything suggested is real and clickable; nothing invented.
@@ -2305,7 +2341,7 @@ export default function Jobs() {
       q: q || undefined, location: location || undefined, remote: remoteOnly || undefined,
       workMode: workMode || undefined, country: country || undefined,
       category: category || undefined, experience: experience || undefined,
-      companies: company ? [company] : undefined, salaryFloor: salaryFloor || undefined,
+      companies: companyTokens.length ? companyTokens : undefined, salaryFloor: salaryFloor || undefined,
       maxAgeDays: freshness ? (freshness === "day" ? 1 : 7) : undefined,
     };
     const OVERRIDES: Record<string, Record<string, unknown>> = {
@@ -2363,7 +2399,7 @@ export default function Jobs() {
           action: "list", countOnly: true, includeFacets: false,
           q: q || undefined, location: location || undefined,
           category: category || undefined, experience: experience || undefined,
-          companies: company ? [company] : undefined, country: country || undefined,
+          companies: companyTokens.length ? companyTokens : undefined, country: country || undefined,
           maxAgeDays: freshness ? (freshness === "day" ? 1 : 7) : undefined,
           // Drop ONLY the disclosure-dependent filter; every other constraint stays.
           ...(kind === "salary"

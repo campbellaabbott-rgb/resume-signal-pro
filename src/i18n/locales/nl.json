@@ -3953,7 +3953,8 @@
       "remote": "remote",
       "salaryFloor": "minimumsalaris",
       "workMode": "werkvorm"
-    }
+    },
+    "companiesChip": "{{n}} bedrijven"
   },
   "accountPage": {
     "statusSaveFailed": "Kon die status niet opslaan — probeer het opnieuw.",
@@ -4187,7 +4188,10 @@
     "repostAcross": "over {{roles}} functies",
     "seoTitle2": "Ontdek werkgevers — wie vult vacatures, wie vermeldt salaris, wie herplaatst",
     "seoDescription2": "Kies waar je naar op zoek bent: werkgevers die hun vacatures echt vullen, bedrijven die het salaris vermelden, boards voor starters, seriële herplaatsers om te mijden en de best betaalde vakgebieden — gemeten vanaf de eigen vacaturesites van bedrijven en onze eigen dagelijkse tracking, elk uur ververst.",
-    "subhead2": "Kies waar je echt naar op zoek bent. Elk antwoord komt uit onze eigen dagelijkse tracking van wat er met elke vacature gebeurt — niet uit wat werkgevers beweren."
+    "subhead2": "Kies waar je echt naar op zoek bent. Elk antwoord komt uit onze eigen dagelijkse tracking van wat er met elke vacature gebeurt — niet uit wat werkgevers beweren.",
+    "actionHiring": "Vacatures bij al deze werkgevers",
+    "actionEntry": "Alle starterfuncties op het board",
+    "actionGhost": "Toon alleen werkgevers met een bewezen vulhistorie"
   },
   "agentQueue": {
     "title": "Ochtendwachtrij",

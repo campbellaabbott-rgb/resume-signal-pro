@@ -3953,7 +3953,8 @@
       "remote": "remoto",
       "salaryFloor": "salario mínimo",
       "workMode": "modalidad"
-    }
+    },
+    "companiesChip": "{{n}} empresas"
   },
   "accountPage": {
     "statusSaveFailed": "No se pudo guardar ese estado; inténtalo de nuevo.",
@@ -4187,7 +4188,10 @@
     "repostAcross": "en {{roles}} puestos",
     "seoTitle2": "Explora empleadores — quién cubre vacantes, quién indica el salario, quién republica",
     "seoDescription2": "Elige lo que buscas: empleadores que cubren de verdad sus vacantes, empresas que indican el salario, boards para nivel inicial, republicadores en serie que evitar y las áreas mejor pagadas — medido desde los portales de las propias empresas y nuestro seguimiento diario, actualizado cada hora.",
-    "subhead2": "Elige lo que realmente buscas. Cada respuesta se mide desde nuestro seguimiento diario de lo que ocurre con cada oferta — no desde lo que dicen las empresas."
+    "subhead2": "Elige lo que realmente buscas. Cada respuesta se mide desde nuestro seguimiento diario de lo que ocurre con cada oferta — no desde lo que dicen las empresas.",
+    "actionHiring": "Vacantes en todos estos empleadores",
+    "actionEntry": "Todos los puestos de nivel inicial",
+    "actionGhost": "Mostrar solo empleadores con historial de contratación"
   },
   "agentQueue": {
     "title": "Cola matinal",

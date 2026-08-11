@@ -3953,7 +3953,8 @@
       "remote": "télétravail",
       "salaryFloor": "salaire minimum",
       "workMode": "mode de travail"
-    }
+    },
+    "companiesChip": "{{n}} entreprises"
   },
   "accountPage": {
     "statusSaveFailed": "Impossible d'enregistrer ce statut — réessayez.",
@@ -4187,7 +4188,10 @@
     "repostAcross": "sur {{roles}} postes",
     "seoTitle2": "Explorer les employeurs — qui pourvoit, qui indique le salaire, qui republie",
     "seoDescription2": "Choisissez ce que vous cherchez : des employeurs qui pourvoient vraiment leurs postes, des entreprises qui indiquent le salaire, des offres pour débutants, les republieurs en série à éviter et les domaines les mieux payés — mesuré depuis les sites carrières des entreprises et notre propre suivi quotidien, actualisé chaque heure.",
-    "subhead2": "Choisissez ce que vous cherchez vraiment. Chaque réponse provient de notre suivi quotidien de ce qui arrive à chaque offre — et non de ce que les employeurs déclarent."
+    "subhead2": "Choisissez ce que vous cherchez vraiment. Chaque réponse provient de notre suivi quotidien de ce qui arrive à chaque offre — et non de ce que les employeurs déclarent.",
+    "actionHiring": "Postes ouverts chez tous ces employeurs",
+    "actionEntry": "Tous les postes junior du site",
+    "actionGhost": "Afficher seulement les employeurs qui pourvoient vraiment"
   },
   "agentQueue": {
     "title": "File du matin",

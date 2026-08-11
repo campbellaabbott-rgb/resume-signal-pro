@@ -3953,7 +3953,8 @@
       "remote": "remoto",
       "salaryFloor": "salário mínimo",
       "workMode": "modalidade"
-    }
+    },
+    "companiesChip": "{{n}} empresas"
   },
   "accountPage": {
     "statusSaveFailed": "Não foi possível salvar esse status — tente novamente.",
@@ -4187,7 +4188,10 @@
     "repostAcross": "em {{roles}} vagas",
     "seoTitle2": "Explore empregadores — quem preenche vagas, quem informa salário, quem republica",
     "seoDescription2": "Escolha o que procura: empregadores que realmente preenchem as vagas que publicam, empresas que informam o salário, boards para nível inicial, republicadores em série a evitar e as áreas mais bem pagas — medido a partir dos sites das próprias empresas e do nosso acompanhamento diário, atualizado a cada hora.",
-    "subhead2": "Escolha o que você realmente procura. Cada resposta é medida pelo nosso acompanhamento diário do que acontece com cada vaga — não pelo que as empresas afirmam."
+    "subhead2": "Escolha o que você realmente procura. Cada resposta é medida pelo nosso acompanhamento diário do que acontece com cada vaga — não pelo que as empresas afirmam.",
+    "actionHiring": "Vagas em todos estes empregadores",
+    "actionEntry": "Todas as vagas de nível inicial",
+    "actionGhost": "Mostrar apenas empregadores com histórico de preenchimento"
   },
   "agentQueue": {
     "title": "Fila da manhã",

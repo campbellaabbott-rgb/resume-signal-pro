@@ -3953,7 +3953,8 @@
       "remote": "remote",
       "salaryFloor": "pay floor",
       "workMode": "work mode"
-    }
+    },
+    "companiesChip": "{{n}} companies"
   },
   "accountPage": {
     "statusSaveFailed": "Couldn't save that status — please try again.",
@@ -4187,7 +4188,10 @@
     "repostAcross": "across {{roles}} roles",
     "seoTitle2": "Explore Employers — Who Fills Roles, Who States Pay, Who Re-posts",
     "seoDescription2": "Pick what you're looking for: employers that actually fill the roles they post, companies that state pay up front, entry-level friendly boards, serial re-posters to avoid, and the highest-paying fields — all measured from companies' own job boards and our own daily tracking, refreshed hourly.",
-    "subhead2": "Pick what you're actually looking for. Every answer is measured from our own daily tracking of what happens to each posting — not from what employers claim."
+    "subhead2": "Pick what you're actually looking for. Every answer is measured from our own daily tracking of what happens to each posting — not from what employers claim.",
+    "actionHiring": "Open roles at all of these employers",
+    "actionEntry": "All entry-level roles on the board",
+    "actionGhost": "Show only employers with a proven fill record"
   },
   "agentQueue": {
     "title": "Morning Queue",
