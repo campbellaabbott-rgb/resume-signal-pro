@@ -1,0 +1,1 @@
+SET statement_timeout = '10min'; SELECT public.refresh_explore_cache();
