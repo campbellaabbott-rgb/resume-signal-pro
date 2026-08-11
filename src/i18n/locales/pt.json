@@ -4198,7 +4198,8 @@
     "checkPlaceholder": "Digite o nome de uma empresa…",
     "checkFeeds": "{{n}} portais de vagas",
     "checkNone": "Não acompanhamos o portal de vagas desse empregador — portanto não temos nada medido para mostrar.",
-    "checkErr": "A busca de empregadores está indisponível no momento — isso não diz nada sobre esse empregador. Tente novamente em instantes."
+    "checkErr": "A busca de empregadores está indisponível no momento — isso não diz nada sobre esse empregador. Tente novamente em instantes.",
+    "hiringSpeed": "metade saiu do ar em {{d}} dias"
   },
   "agentQueue": {
     "title": "Fila da manhã",

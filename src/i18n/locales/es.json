@@ -4198,7 +4198,8 @@
     "checkPlaceholder": "Escribe el nombre de una empresa…",
     "checkFeeds": "{{n}} portales de empleo",
     "checkNone": "No cubrimos el portal de empleo de ese empleador, así que no tenemos nada medido que mostrarte.",
-    "checkErr": "La búsqueda de empleadores no está disponible ahora mismo — esto no dice nada sobre ese empleador. Inténtalo de nuevo en un momento."
+    "checkErr": "La búsqueda de empleadores no está disponible ahora mismo — esto no dice nada sobre ese empleador. Inténtalo de nuevo en un momento.",
+    "hiringSpeed": "la mitad se retiró en {{d}} días"
   },
   "agentQueue": {
     "title": "Cola matinal",

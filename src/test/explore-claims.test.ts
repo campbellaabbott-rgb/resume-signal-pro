@@ -342,14 +342,21 @@ describe("Explore counts only what the board serves", () => {
     });
   }
 
-  it("the actively-hiring open-roles lateral is itself filtered", () => {
-    // The figure beside a fill count comes from a LATERAL that had no predicate
-    // at all. The function-level check above passes as soon as ANY clause in
-    // the body carries the predicates, so the lateral gets its own assertion.
+  it("the actively-hiring open-roles count is itself filtered", () => {
+    // The figure beside a fill count originally came from a LATERAL with no
+    // predicate at all. The function-level check above passes as soon as ANY
+    // clause carries the predicates, so the open-roles source gets its own
+    // assertion — whatever form it takes.
+    //
+    // That source is now the `open_now` CTE rather than a lateral: the lateral
+    // is what forced the pool to be pre-truncated to 60 employers, which made
+    // every small employer unrankable. This asserts the PREDICATES, which is
+    // the invariant, rather than the mechanism, which was free to change.
     const body = bodyOf("get_actively_hiring_companies");
-    const lateral = body.slice(body.indexOf("JOIN LATERAL"));
-    expect(lateral).toMatch(SERVED);
-    expect(lateral).toMatch(WINDOW);
+    const open = body.slice(body.indexOf("open_now AS ("), body.indexOf("fills AS ("));
+    expect(open, "open_now CTE not located").toContain("GROUP BY company_token");
+    expect(open).toMatch(SERVED);
+    expect(open).toMatch(WINDOW);
   });
 
   it("the size-segments base CTE is itself filtered", () => {
@@ -820,6 +827,76 @@ describe("the page the lookup points at answers honestly", () => {
     expect(span).toMatch(/c\.company_token = t\.t/);
     expect(span, "span must not scan the whole closure log unfiltered")
       .not.toMatch(/FROM public\.job_board_closures\s*\)/);
+  });
+});
+
+/**
+ * "WILL ACTUALLY HIRE ME" WAS A SIZE RANKING WEARING A LIFECYCLE BADGE.
+ *
+ * ORDER BY filled DESC ranks by the absolute number of roles closed, so the
+ * answer to "who will actually hire me" was "the biggest employers". And the
+ * candidate pool was pre-cut to the top 60 by raw fills BEFORE open roles were
+ * known, so no small employer could place regardless of the final sort.
+ */
+describe("the hiring answer ranks by odds, not by size", () => {
+  const sql = latestWith("FUNCTION public.get_actively_hiring_companies").replace(/^\s*--.*$/gm, "");
+  const fnAt = sql.indexOf("FUNCTION public.get_actively_hiring_companies");
+  const body = sql.slice(fnAt, sql.indexOf("$$;", fnAt));
+
+  it("ranks on fills per open role", () => {
+    expect(body).toMatch(/ORDER BY \(f\.filled \* 100\.0 \/ o\.n\) DESC/);
+    expect(body, "ranked on absolute fills again — that is a size ranking")
+      .not.toMatch(/ORDER BY f\.filled DESC, o\.n DESC\s*\n\s*LIMIT/);
+  });
+
+  it("no longer pre-cuts the pool before open roles are known", () => {
+    // The truncation, not the ORDER BY, is what made the tail unrankable.
+    const fills = body.slice(body.indexOf("fills AS ("), body.indexOf("SELECT f.company"));
+    expect(fills, "fills CTE still truncates before ranking")
+      .not.toMatch(/LIMIT GREATEST\(p_limit, 1\) \* 3/);
+  });
+
+  it("counts open roles in one grouped scan, not a per-company lateral", () => {
+    // The lateral is why the pre-truncation existed; removing it is what makes
+    // ranking every qualifier affordable.
+    expect(body).toMatch(/open_now AS \(/);
+    expect(body).toMatch(/JOIN open_now o ON o\.company_token = f\.company_token/);
+    expect(body, "lateral count is back — the pool will have to be cut again")
+      .not.toMatch(/JOIN LATERAL/);
+  });
+
+  it("open roles use both serving predicates", () => {
+    const open = body.slice(body.indexOf("open_now AS ("), body.indexOf("fills AS ("));
+    expect(open).toMatch(/missing_since IS NULL/);
+    expect(open).toMatch(/effective_posted >= now\(\) - interval '30 days'/);
+  });
+
+  it("floors the ratio so a winding-down employer cannot top the list", () => {
+    // 3 fills against 4 open roles is not a 75% hiring rate.
+    expect(body).toMatch(/WHERE o\.n >= 10/);
+  });
+
+  it("the published median comes from posted_at alone", () => {
+    // COALESCE(posted_at, first_seen) is correct as a FILTER and is the
+    // 2.8-day-median incident as a published number — it substitutes our
+    // discovery time for the employer's posting date.
+    const pct = body.slice(body.indexOf("percentile_cont"), body.indexOf("AS p50_days_open"));
+    expect(pct).toMatch(/c\.closed_at - c\.posted_at/);
+    expect(pct, "median computed over COALESCEd dates").not.toMatch(/COALESCE/);
+  });
+
+  it("tracking_days is per company, not the age of the whole closure log", () => {
+    // Second place this defect was written; get_company_hiring_health carried
+    // it until 20260811223000.
+    expect(body).toMatch(/EXTRACT\(DAY FROM now\(\) - min\(c\.closed_at\)\)/);
+    expect(body, "span CTE over the unfiltered closure log is back")
+      .not.toMatch(/FROM public\.job_board_closures\s*\n\s*\),/);
+  });
+
+  it("the card shows the clock only on a real sample", () => {
+    // A median over four dated closures is noise dressed as a deadline.
+    expect(CODE).toMatch(/\(r\.dated_n \?\? 0\) >= 10 && r\.tracking_days >= 21/);
+    expect(CODE).toMatch(/explore\.hiringSpeed/);
   });
 });
 

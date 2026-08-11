@@ -4198,7 +4198,8 @@
     "checkPlaceholder": "Firmennamen eingeben…",
     "checkFeeds": "{{n}} Stellenportale",
     "checkNone": "Wir führen das Stellenportal dieses Arbeitgebers nicht — daher haben wir nichts Gemessenes zu zeigen.",
-    "checkErr": "Die Arbeitgebersuche ist derzeit nicht verfügbar — das sagt nichts über diesen Arbeitgeber aus. Bitte gleich noch einmal versuchen."
+    "checkErr": "Die Arbeitgebersuche ist derzeit nicht verfügbar — das sagt nichts über diesen Arbeitgeber aus. Bitte gleich noch einmal versuchen.",
+    "hiringSpeed": "die Hälfte war innerhalb von {{d}} Tagen wieder offline"
   },
   "agentQueue": {
     "title": "Morgen-Queue",

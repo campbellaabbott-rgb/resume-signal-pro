@@ -4198,7 +4198,8 @@
     "checkPlaceholder": "I-type ang pangalan ng kumpanya…",
     "checkFeeds": "{{n}} job boards",
     "checkNone": "Hindi namin sinusubaybayan ang job board ng employer na iyon — kaya wala kaming nasukat na maipapakita.",
-    "checkErr": "Hindi available ngayon ang paghahanap ng employer — wala itong sinasabi tungkol sa employer na iyon. Subukan ulit mamaya."
+    "checkErr": "Hindi available ngayon ang paghahanap ng employer — wala itong sinasabi tungkol sa employer na iyon. Subukan ulit mamaya.",
+    "hiringSpeed": "kalahati ay natanggal sa loob ng {{d}} araw"
   },
   "agentQueue": {
     "title": "Morning Queue",

@@ -4198,7 +4198,8 @@
     "checkPlaceholder": "Typ een bedrijfsnaam…",
     "checkFeeds": "{{n}} vacaturesites",
     "checkNone": "We volgen de vacaturesite van die werkgever niet — we hebben dus niets gemetens om te laten zien.",
-    "checkErr": "Werkgevers opzoeken werkt nu even niet — dit zegt niets over die werkgever. Probeer het zo opnieuw."
+    "checkErr": "Werkgevers opzoeken werkt nu even niet — dit zegt niets over die werkgever. Probeer het zo opnieuw.",
+    "hiringSpeed": "de helft was binnen {{d}} dagen weer offline"
   },
   "agentQueue": {
     "title": "Ochtendwachtrij",

@@ -20,7 +20,7 @@ import { supabase } from "@/integrations/supabase/client";
 const rpc = (fn: string, args?: Record<string, unknown>) =>
   (supabase as unknown as { rpc: (f: string, a?: Record<string, unknown>) => Promise<{ data: unknown }> }).rpc(fn, args);
 
-interface CompanyRow { company: string; company_token: string; open_roles?: number; pay_pct?: number; median_usd_floor?: number | null; recent?: number; closed_90d?: number; entry_roles?: number; tracking_days?: number; repost_events?: number; reposted_roles?: number; worst_title?: string; worst_count?: number; feed_total?: number | null; on_board?: number; company_total?: number | null }
+interface CompanyRow { company: string; company_token: string; open_roles?: number; p50_days_open?: number | null; dated_n?: number; pay_pct?: number; median_usd_floor?: number | null; recent?: number; closed_90d?: number; entry_roles?: number; tracking_days?: number; repost_events?: number; reposted_roles?: number; worst_title?: string; worst_count?: number; feed_total?: number | null; on_board?: number; company_total?: number | null }
 interface SalaryRow { category: string; currency: string; n: number; median_annual_min: number }
 interface Segment { companies: number; with_headcount?: number; open_roles: number; remote_pct: number | null; disclosed_pct?: number | null; disclosed_n?: number | null; entry_pct: number; median_usd_floor: number | null; usd_n: number | null; top: CompanyRow[] }
 
@@ -547,9 +547,23 @@ export default function Explore() {
           <Section icon={Activity} title={t("explore.hiringTitle", "Companies that actually fill roles")} blurb={t("explore.hiringBlurb", "Roles that stayed posted at least a week and then came down — a real fill signal from our own tracking. Companies whose takedowns are mostly re-listings are disqualified (they appear under Serial re-posters instead).")}>
             {/* tracking_days ships with the rebuilt RPC; rows from the old cache
                 lack it — show only the open count then, never an unbacked claim. */}
-            <CompanyGrid rows={hiring} intent="hiring" badge={(r) => r.tracking_days
-              ? t("explore.hiringBadge", "{{filled}} filled in {{d}}d tracked · {{open}} open now", { filled: r.closed_90d ?? 0, d: r.tracking_days, open: r.open_roles ?? 0 })
-              : t("explore.openRoles", "{{n}} open roles", { n: r.open_roles ?? 0 })} />
+            {/* THE CLOCK, when the sample supports it.
+                p50_days_open answers "how long until this employer decides",
+                which is the most decision-changing thing on the page — but a
+                median over four dated closures is noise dressed as a deadline.
+                Gated on dated_n >= 10 AND tracking_days >= 21, and it degrades
+                to today's badge rather than to a number with no confidence
+                behind it. Absent fields (a cache row written before the
+                migration) take the same path. */}
+            <CompanyGrid rows={hiring} intent="hiring" badge={(r) => {
+              if (!r.tracking_days) return t("explore.openRoles", "{{n}} open roles", { n: (r.open_roles ?? 0).toLocaleString() });
+              const core = t("explore.hiringBadge", "{{filled}} filled in {{d}}d tracked · {{open}} open now",
+                { filled: r.closed_90d ?? 0, d: r.tracking_days, open: (r.open_roles ?? 0).toLocaleString() });
+              const showClock = r.p50_days_open != null && (r.dated_n ?? 0) >= 10 && r.tracking_days >= 21;
+              return showClock
+                ? `${core} · ${t("explore.hiringSpeed", "half came down within {{d}}d", { d: Math.round(r.p50_days_open as number) })}`
+                : core;
+            }} />
           </Section>
         )}
         </div>

@@ -4198,7 +4198,8 @@
     "checkPlaceholder": "Saisissez un nom d'entreprise…",
     "checkFeeds": "{{n}} sites carrières",
     "checkNone": "Nous ne suivons pas le site carrières de cet employeur — nous n'avons donc rien de mesuré à vous montrer.",
-    "checkErr": "La recherche d'employeurs est indisponible pour le moment — cela ne dit rien sur cet employeur. Réessayez dans un instant."
+    "checkErr": "La recherche d'employeurs est indisponible pour le moment — cela ne dit rien sur cet employeur. Réessayez dans un instant.",
+    "hiringSpeed": "la moitié retirée en {{d}} jours"
   },
   "agentQueue": {
     "title": "File du matin",

@@ -4198,7 +4198,8 @@
     "checkPlaceholder": "Type a company name…",
     "checkFeeds": "{{n}} job boards",
     "checkNone": "We don't carry that employer's job board — so we have nothing measured to show you.",
-    "checkErr": "Employer lookup is unavailable right now — this says nothing about that employer. Try again shortly."
+    "checkErr": "Employer lookup is unavailable right now — this says nothing about that employer. Try again shortly.",
+    "hiringSpeed": "half came down within {{d}}d"
   },
   "agentQueue": {
     "title": "Morning Queue",
