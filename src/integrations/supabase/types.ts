@@ -3210,6 +3210,13 @@ export type Database = {
         }[]
       }
       get_company_intel: { Args: { p_token: string }; Returns: Json }
+      get_company_suggest: {
+        Args: { p_q: string }
+        Returns: {
+          name: string
+          tokens: string[]
+        }[]
+      }
       get_country_facet: {
         Args: never
         Returns: {
