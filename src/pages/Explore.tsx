@@ -7,7 +7,11 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Compass, Flame, Sparkles, TrendingUp, GraduationCap, DollarSign, Activity, ArrowRight, Briefcase, Repeat, Building2, BadgeDollarSign } from "lucide-react";
+// Compass went with the header pill; Flame and Sparkles went with the trending
+// and newest sections. Section's icon prop is typed off LucideIcon rather than
+// off one of the icons it happens to receive, so removing a section no longer
+// strands an import purely to satisfy a type.
+import { LucideIcon, TrendingUp, GraduationCap, DollarSign, Activity, ArrowRight, Briefcase, Repeat, Building2, BadgeDollarSign } from "lucide-react";
 import { SEO } from "@/components/seo/SEO";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -60,9 +64,33 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 const CCY: Record<string, string> = { USD: "$", EUR: "€", GBP: "£" };
 
+/** THE ONLY PLACE THIS FILE BUILDS A /jobs URL.
+ *
+ *  Every card used to hardcode `/jobs/company/{token}?from=explore`, which is
+ *  how the entry-level card came to promise "38 entry-level roles" over a
+ *  destination showing 900 — the badge counted one thing and the page it opened
+ *  counted another. A card's number and the filter its link carries are one
+ *  decision, so they live in one function.
+ *
+ *  `experience=entry` is read by Jobs.tsx:315 and accepted by experience.ts —
+ *  verified, not assumed. Nothing here appends a filter Jobs does not read: a
+ *  `fresh=day` link was drafted for the ghost-job answer and dropped, because
+ *  Jobs.tsx WRITES that param but never reads it back, so the button would have
+ *  promised a 24-hour window and delivered an unfiltered board. */
+const companyHref = (token: string, intent: Intent): string => {
+  const base = `/jobs/company/${encodeURIComponent(token)}?from=explore`;
+  return intent === "entry" ? `${base}&experience=entry` : base;
+};
+
+/** The six things a visitor might actually want, in chip order. Each renders
+ *  one cached collection; none triggers a fetch. */
+type Intent = "hiring" | "pay" | "entry" | "ghost" | "scale" | "fields";
+const INTENTS: readonly Intent[] = ["hiring", "pay", "entry", "ghost", "scale", "fields"];
+const isIntent = (v: string | null): v is Intent => !!v && (INTENTS as readonly string[]).includes(v);
+
 // A collection of companies → each a deep-link into the board filtered to that
 // company. One shared card grid so every section reads consistently.
-function CompanyGrid({ rows, badge }: { rows: CompanyRow[]; badge?: (r: CompanyRow) => string | null }) {
+function CompanyGrid({ rows, badge, intent, tone = "default" }: { rows: CompanyRow[]; badge?: (r: CompanyRow) => string | null; intent: Intent; tone?: "default" | "warning" }) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
       {rows.map((r) => {
@@ -70,8 +98,12 @@ function CompanyGrid({ rows, badge }: { rows: CompanyRow[]; badge?: (r: CompanyR
         return (
           <Link
             key={r.company_token}
-            to={`/jobs/company/${encodeURIComponent(r.company_token)}?from=explore`}
-            className="group flex items-center gap-3 rounded-xl border border-border bg-card/60 px-4 py-3 hover:border-primary/50 hover:bg-card transition-colors"
+            to={companyHref(r.company_token, intent)}
+            className={`group flex items-center gap-3 rounded-xl border bg-card/60 px-4 py-3 transition-colors ${
+              tone === "warning"
+                ? "border-warning/40 hover:border-warning hover:bg-warning/5"
+                : "border-border hover:border-primary/50 hover:bg-card"
+            }`}
           >
             <span className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-primary/10 text-primary font-bold text-sm shrink-0">
               {r.company.slice(0, 1).toUpperCase()}
@@ -80,7 +112,13 @@ function CompanyGrid({ rows, badge }: { rows: CompanyRow[]; badge?: (r: CompanyR
               <span className="block text-sm font-semibold text-foreground truncate">{r.company}</span>
               {b && <span className="block text-[11px] text-muted-foreground">{b}</span>}
             </span>
-            <ArrowRight className="w-4 h-4 text-muted-foreground/50 group-hover:text-primary group-hover:translate-x-0.5 transition-all shrink-0" />
+            {/* No arrow on the warning list. Every other collection is a
+                recommendation and the arrow reads as "go here"; the re-poster
+                list is the one that says "be careful", and it must not look
+                like the five that say "apply". */}
+            {tone !== "warning" && (
+              <ArrowRight className="w-4 h-4 text-muted-foreground/50 group-hover:text-primary group-hover:translate-x-0.5 transition-all shrink-0" />
+            )}
           </Link>
         );
       })}
@@ -88,7 +126,7 @@ function CompanyGrid({ rows, badge }: { rows: CompanyRow[]; badge?: (r: CompanyR
   );
 }
 
-function Section({ icon: Icon, title, blurb, children }: { icon: typeof Flame; title: string; blurb: string; children: React.ReactNode }) {
+function Section({ icon: Icon, title, blurb, children }: { icon: LucideIcon; title: string; blurb: string; children: React.ReactNode }) {
   return (
     <section className="mb-10">
       <div className="flex items-start gap-2.5 mb-3">
@@ -107,8 +145,24 @@ function Section({ icon: Icon, title, blurb, children }: { icon: typeof Flame; t
 
 export default function Explore() {
   const { t } = useTranslation();
-  const [trending, setTrending] = useState<CompanyRow[]>([]);
-  const [newest, setNewest] = useState<CompanyRow[]>([]);
+  // ONE QUESTION AT A TIME.
+  //
+  // Measured before this change: the page was 31,935px — about forty screens —
+  // with 120 company cards, ZERO interactive controls, and six of its eight
+  // sections rendering the same 12-card grid differing only in sort order. A
+  // visitor with no specific query had nothing to act on and no way to tell
+  // why they should care about one leaderboard over the next.
+  //
+  // The collections are unchanged and still come from the single hourly cache
+  // row. What changed is that one is visible at a time, chosen by the reader,
+  // with the rest kept in the DOM under `hidden` — never conditionally
+  // unmounted, because /explore is prerendered and sitemapped at priority 0.8
+  // daily and every company link must stay crawlable and findable with Ctrl-F.
+  const [intent, setIntent] = useState<Intent>("hiring");
+  // Which size band is expanded. Only one band's cards render at a time; the
+  // four stat lines act as the selector, so 36 of 48 cards leave the viewport
+  // while every band's aggregate stays on screen.
+  const [band, setBand] = useState<string | null>(null);
   const [hiring, setHiring] = useState<CompanyRow[]>([]);
   const [reposters, setReposters] = useState<CompanyRow[]>([]);
   const [entry, setEntry] = useState<CompanyRow[]>([]);
@@ -137,9 +191,21 @@ export default function Explore() {
       try {
         const { data: cache } = await Promise.resolve(rpc("get_explore_cache")).catch(() => ({ data: null }));
         const c = cache as Record<string, unknown> | null;
-        if (c && (Array.isArray(c.trending) || Array.isArray(c.hiring) || Array.isArray(c.entry))) {
-          if (Array.isArray(c.trending)) setTrending(c.trending as CompanyRow[]);
-          if (Array.isArray(c.newest)) setNewest(c.newest as CompanyRow[]);
+        // TRENDING AND NEWEST ARE NO LONGER READ, AND THAT IS THE POINT.
+        //
+        // Both answered a question nobody arrives with (a board adding roles
+        // fast is not a board more likely to hire you), and both carried a live
+        // honesty problem: their open_roles comes from
+        // job_board_company_snapshots, whose writer applies neither serving
+        // predicate — migration 20260811013000 says so in as many words under
+        // "NOT INCLUDED, DELIBERATELY" — so their badges could overstate what
+        // the click-through would show. "Just added" was worse still: its
+        // "get in early" framing rested on first_added, which is when WE
+        // discovered the board, not when the roles went up.
+        //
+        // The cache still carries both keys; this page simply stops rendering
+        // claims it cannot stand behind.
+        if (c && (Array.isArray(c.hiring) || Array.isArray(c.entry) || Array.isArray(c.transparent))) {
           if (Array.isArray(c.hiring)) setHiring(c.hiring as CompanyRow[]);
           if (Array.isArray(c.reposters)) setReposters(c.reposters as CompanyRow[]);
           if (Array.isArray(c.entry)) setEntry(c.entry as CompanyRow[]);
@@ -157,9 +223,10 @@ export default function Explore() {
           return;
         }
       } catch { /* fall through to live RPCs */ }
-      const [tr, nw, hi, rp, en, sa] = await Promise.all([
-        Promise.resolve(rpc("get_trending_companies", { p_limit: 12 })).catch(() => ({ data: null })),
-        Promise.resolve(rpc("get_newest_companies", { p_limit: 12 })).catch(() => ({ data: null })),
+      // Two fewer RPCs on the fallback path than before: the trending and
+      // newest collections are no longer rendered, so fetching them would only
+      // spend request time to fill state nothing reads.
+      const [hi, rp, en, sa] = await Promise.all([
         Promise.resolve(rpc("get_actively_hiring_companies", { p_limit: 12 })).catch(() => ({ data: null })),
         Promise.resolve(rpc("get_repost_churn_companies", { p_limit: 12 })).catch(() => ({ data: null })),
         Promise.resolve(rpc("get_entry_level_companies", { p_limit: 12 })).catch(() => ({ data: null })),
@@ -173,8 +240,6 @@ export default function Explore() {
       void Promise.resolve(rpc("get_size_segments")).then((r: { data: unknown }) => {
         if (r.data && typeof r.data === "object" && !Array.isArray(r.data)) setSegments(r.data as Segments);
       }).catch(() => { /* section hides */ });
-      if (Array.isArray(tr.data)) setTrending(tr.data as CompanyRow[]);
-      if (Array.isArray(nw.data)) setNewest(nw.data as CompanyRow[]);
       if (Array.isArray(hi.data)) setHiring(hi.data as CompanyRow[]);
       if (Array.isArray(rp.data)) setReposters(rp.data as CompanyRow[]);
       if (Array.isArray(en.data)) setEntry(en.data as CompanyRow[]);
@@ -182,25 +247,82 @@ export default function Explore() {
     })();
   }, []);
 
+  // The chosen answer lives in the URL, so it is shareable, survives the back
+  // button, and a crawler following ?i=pay sees the pay answer rather than
+  // whatever happens to be first. replaceState rather than push: switching
+  // answers is not a navigation, and stacking six entries would make Back feel
+  // broken.
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search).get("i");
+    if (isIntent(q)) setIntent(q);
+  }, []);
+  const chooseIntent = (next: Intent) => {
+    setIntent(next);
+    const u = new URL(window.location.href);
+    u.searchParams.set("i", next);
+    window.history.replaceState(null, "", u.toString());
+  };
+
+  const bands = segments ? orderedBands(segments) : [];
+  // Default to the biggest band, but only once the payload is in hand — a band
+  // key hardcoded here is how half this section vanished the last time the SQL
+  // renamed one.
+  const activeBand = band ?? bands[0]?.[0] ?? null;
+
+  // A chip is rendered only when its collection has something to show. An
+  // answer that would open empty is worse than an answer that is not offered,
+  // and a chip whose body is blank reads as breakage rather than as absence.
+  const available: Record<Intent, boolean> = {
+    hiring: hiring.length > 0,
+    pay: transparent.length > 0 || salary.length > 0,
+    entry: entry.length > 0,
+    ghost: reposters.length > 0,
+    scale: bands.length > 0,
+    fields: true,
+  };
+  const shown = INTENTS.filter((i) => available[i]);
+  // If the cache is partial and the chosen answer has no data, fall to the
+  // first that does rather than rendering a heading over nothing.
+  const active: Intent = available[intent] ? intent : (shown[0] ?? "fields");
+
+  const INTENT_LABEL: Record<Intent, string> = {
+    hiring: t("explore.intentHiring", "Will actually hire me"),
+    pay: t("explore.intentPay", "States the pay"),
+    entry: t("explore.intentEntry", "Early career"),
+    ghost: t("explore.intentGhost", "Watch out: ghost jobs"),
+    scale: t("explore.intentScale", "Hiring at scale"),
+    fields: t("explore.intentFields", "By field"),
+  };
+
   return (
     <div className="min-h-screen bg-background">
+      {/* NEW KEYS, because the old copy described sections that no longer
+          exist. seoTitle led with "Trending Companies" and seoDescription
+          promised "companies hiring fastest right now" and "newly added company
+          boards" — both collections were removed above for having counts their
+          click-through could contradict. Leaving the old strings would have the
+          page advertise, to crawlers and in nine languages, two things it does
+          not contain: the same claim-drift defect the collections were removed
+          FOR. */}
       <SEO
-        title={t("explore.seoTitle", "Explore Jobs — Trending Companies, Fast Hirers & Top-Paying Fields")}
-        description={t("explore.seoDescription", "Discover jobs by what matters: companies hiring fastest right now, businesses that actually fill roles, newly added company boards, entry-level friendly employers, and the highest-paying fields — all measured from companies' own job boards, refreshed hourly.")}
+        title={t("explore.seoTitle2", "Explore Employers — Who Fills Roles, Who States Pay, Who Re-posts")}
+        description={t("explore.seoDescription2", "Pick what you're looking for: employers that actually fill the roles they post, companies that state pay up front, entry-level friendly boards, serial re-posters to avoid, and the highest-paying fields — all measured from companies' own job boards and our own daily tracking, refreshed hourly.")}
         path="/explore"
       />
       <Header />
       <main className="max-w-4xl mx-auto px-4 py-10">
-        <div className="mb-8">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/30 mb-3">
-            <Compass className="w-4 h-4 text-primary" />
-            <span className="text-sm font-medium text-primary">{t("explore.badge", "Explore the board")}</span>
-          </div>
+        {/* The Compass pill is gone. It said "Explore the board" directly above
+            an H1 saying much the same thing, and on a 375px screen it cost
+            ~56px of the only fold a visitor is guaranteed to see. */}
+        <div className="mb-6">
           <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight mb-2">
             {t("explore.headline", "Find your next role by what actually matters")}
           </h1>
           <p className="text-base text-muted-foreground max-w-2xl">
-            {t("explore.subhead", "Not sure what to search? Browse by real signals — who's hiring fastest, who actually fills roles, who's new, and where the pay is — every list measured from companies' own boards.")}
+            {/* Same reason as the SEO strings: the old subhead named "who's
+                hiring fastest" and "who's new", which are exactly the two
+                collections deleted above. */}
+            {t("explore.subhead2", "Pick what you're actually looking for. Every answer is measured from our own daily tracking of what happens to each posting — not from what employers claim.")}
           </p>
           {/* "computed live" was false: these collections come from a cache
               refreshed hourly, and the cache has carried its own computed_at
@@ -217,35 +339,87 @@ export default function Explore() {
           )}
         </div>
 
-        {trending.length > 0 && (
-          <Section icon={Flame} title={t("explore.trendingTitle", "Fastest-growing boards")} blurb={t("explore.trendingBlurb", "Biggest net increase in open roles — counted from our own daily snapshots, so reposts can't inflate it.")}>
-            <CompanyGrid rows={trending} badge={(r) => t("explore.trendingBadge", "+{{n}} net-new roles", { n: r.recent ?? 0 })} />
-          </Section>
-        )}
+        {/* THE PAGE'S ONLY CONTROL, and the fix for "zero interactive inputs".
+            Wrapped, never a horizontal scroller: all six choices are visible on
+            a 375px screen without a gesture. A nowrap row would hide half the
+            options behind a swipe nobody knows to make, which is the same class
+            of defect as the header nav being `hidden sm:flex` with no
+            hamburger — the reason /explore was unreachable on a phone at all
+            until today.
 
+            No counts on the chips. A number here would be the size of a
+            collection capped at 12, not the size of the population it implies,
+            and this page has already shipped one heading whose number its own
+            contents contradicted. */}
+        <div className="mb-8" role="tablist" aria-label={t("explore.intentAria", "What are you looking for?")}>
+          <div className="flex flex-wrap gap-2">
+            {shown.map((i) => (
+              <button
+                key={i}
+                type="button"
+                role="tab"
+                aria-selected={active === i}
+                onClick={() => chooseIntent(i)}
+                className={`inline-flex items-center px-3.5 py-2 rounded-full border text-sm font-medium transition-colors min-h-[40px] ${
+                  active === i
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border bg-card/60 text-muted-foreground hover:border-primary/50 hover:text-foreground"
+                }`}
+              >
+                {INTENT_LABEL[i]}
+              </button>
+            ))}
+            {/* The way out, kept beside the choices rather than buried at the
+                bottom of a long page. /jobs does search, filters and sorting
+                well; Explore is for people who do not yet have a query, and the
+                ones who do should not have to scroll to leave. */}
+            <Link
+              to="/jobs"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full border border-primary/40 bg-primary/5 text-sm font-medium text-primary hover:bg-primary/10 transition-colors min-h-[40px]"
+            >
+              <Briefcase className="w-3.5 h-3.5" />
+              {t("explore.searchAll", "Search all jobs")}
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+        </div>
+
+        {/* "Fastest-growing boards" was here. Removed, not hidden: it answered
+            no question a job seeker arrives with, and its counts came from the
+            snapshot path that applies neither serving predicate. */}
+
+        <div hidden={active !== "hiring"}>
         {hiring.length > 0 && (
           <Section icon={Activity} title={t("explore.hiringTitle", "Companies that actually fill roles")} blurb={t("explore.hiringBlurb", "Roles that stayed posted at least a week and then came down — a real fill signal from our own tracking. Companies whose takedowns are mostly re-listings are disqualified (they appear under Serial re-posters instead).")}>
             {/* tracking_days ships with the rebuilt RPC; rows from the old cache
                 lack it — show only the open count then, never an unbacked claim. */}
-            <CompanyGrid rows={hiring} badge={(r) => r.tracking_days
+            <CompanyGrid rows={hiring} intent="hiring" badge={(r) => r.tracking_days
               ? t("explore.hiringBadge", "{{filled}} filled in {{d}}d tracked · {{open}} open now", { filled: r.closed_90d ?? 0, d: r.tracking_days, open: r.open_roles ?? 0 })
               : t("explore.openRoles", "{{n}} open roles", { n: r.open_roles ?? 0 })} />
           </Section>
         )}
+        </div>
 
+        <div hidden={active !== "pay"}>
         {transparent.length > 0 && (
           <Section icon={BadgeDollarSign} title={t("explore.transparentTitle", "Transparent about pay")} blurb={t("explore.transparentBlurb", "Companies stating pay on at least 80% of their open roles — counted from their own posting text and ATS fields. A badge no one can buy: the only way in is to actually state pay.")}>
-            <CompanyGrid rows={transparent} badge={(r) => {
+            {/* No salaryFloor on this link. "States pay" and "pays at least
+                $X" are different populations, and salary_min_annual is
+                annualised in the posting's own currency and never converted —
+                a floor filter would quietly mean different things per row. */}
+            <CompanyGrid rows={transparent} intent="pay" badge={(r) => {
               const parts = [t("explore.transparentBadge", "{{pct}}% of {{n}} roles state pay", { pct: r.pay_pct ?? 0, n: r.open_roles ?? 0 })];
               if (r.median_usd_floor != null) parts.push(t("explore.transparentMedian", "median floor ${{m}}", { m: Math.round(r.median_usd_floor).toLocaleString() }));
               return parts.join(" · ");
             }} />
           </Section>
         )}
+        </div>
 
+        <div hidden={active !== "ghost"}>
         {reposters.length > 0 && (
           <Section icon={Repeat} title={t("explore.repostTitle", "Serial re-posters")} blurb={t("explore.repostBlurb", "Companies that take roles down and re-list them again and again — measured from our own lifecycle tracking. Re-listing resets the posted date, so an opening can look brand-new long after it first appeared.")}>
-            <CompanyGrid rows={reposters} badge={(r) => {
+            <CompanyGrid rows={reposters} intent="ghost" tone="warning" badge={(r) => {
               // A re-list count far above the tracking window is a data artifact
               // (bulk feed churn re-stamping ids), not something a reader should
               // take literally — audit 2026-07-26 measured "289× in 8d". Cap the
@@ -254,24 +428,44 @@ export default function Explore() {
               const days = Math.max(1, r.tracking_days ?? 0);
               const raw = r.worst_count ?? 0;
               const capped = Math.min(raw, days);
-              return t(capped < raw ? "explore.repostBadgeCapped" : "explore.repostBadge",
+              const core = t(capped < raw ? "explore.repostBadgeCapped" : "explore.repostBadge",
                 capped < raw
                   ? "“{{title}}” re-listed {{n}}+× · {{events}} total in {{d}}d"
                   : "“{{title}}” re-listed {{n}}× · {{events}} total in {{d}}d",
                 { title: (r.worst_title ?? "").slice(0, 34), n: capped, events: r.repost_events ?? 0, d: r.tracking_days ?? 0 });
+              // ACROSS HOW MANY ROLES — the number that turns a count into a
+              // diagnosis. 581 re-lists across 3 roles is one job advertised
+              // forever; 769 across 298 is a big employer with ordinary churn.
+              // Read as one number those look identical and the second company
+              // is unfairly damned. reposted_roles is already in the cached
+              // payload, so this costs nothing.
+              //
+              // Appended as its own key rather than reworded into the existing
+              // badge: a locale VALUE overrides the inline default, and all
+              // nine locales already carry the current sentence. Editing it
+              // here would leave nine translations rendering the old string.
+              return r.reposted_roles
+                ? `${core} · ${t("explore.repostAcross", "across {{roles}} roles", { roles: r.reposted_roles })}`
+                : core;
             }} />
           </Section>
         )}
+        </div>
 
-        {newest.length > 0 && (
-          <Section icon={Sparkles} title={t("explore.newestTitle", "Just added to the board")} blurb={t("explore.newestBlurb", "Boards that newly appeared in our daily tracking — verified new arrivals, get in early.")}>
-            <CompanyGrid rows={newest} badge={(r) => t("explore.openRoles", "{{n}} open roles", { n: r.open_roles ?? 0 })} />
-          </Section>
-        )}
+        {/* "Just added to the board" was here. Removed: same uncorrected
+            snapshot counts as trending, and its "get in early" promise rested
+            on first_added — the date WE discovered the board, not the date the
+            roles went up. */}
 
+        <div hidden={active !== "scale"}>
         {segments && orderedBands(segments).length > 0 && (
           <Section icon={Building2} title={t("explore.segTitle", "By how much they're hiring")} blurb={t("explore.segBlurb", "Banded by how many roles each company currently has open on our board — not by company size. A company with a thousand openings might be an employer of a hundred thousand, or a smaller one hiring hard.")}>
-            <div className="space-y-6">
+            {/* EVERY BAND'S AGGREGATE STAYS; ONLY ONE BAND'S CARDS RENDER.
+                The four stat lines were already the most carefully-built
+                sentences on this page, so they become the selector rather than
+                headers over four stacked grids. 36 of 48 cards leave the
+                viewport and nothing measured is lost. */}
+            <div className="space-y-2">
               {orderedBands(segments).map(([band, s]) => {
                 // LABELS DESCRIBE WHAT IS MEASURED: open roles on this board.
                 // They used to say "Enterprise — 1,000+ employees" over bands
@@ -294,10 +488,17 @@ export default function Explore() {
                       : band === "small"
                         ? t("explore.segSmall", "Under 50 open roles")
                         : t("explore.segOther", "{{n}} companies", { n: s.companies.toLocaleString() });
+                const open = activeBand === band;
                 return (
-                  <div key={band}>
+                  <div key={band} className={`rounded-xl border transition-colors ${open ? "border-primary/40 bg-card/40" : "border-border"}`}>
+                    <button
+                      type="button"
+                      onClick={() => setBand(open ? null : band)}
+                      aria-expanded={open}
+                      className="w-full text-left px-4 py-3"
+                    >
                     <h3 className="text-sm font-bold text-foreground mb-1">{label}</h3>
-                    <p className="text-[11px] text-muted-foreground mb-2.5">
+                    <p className="text-[11px] text-muted-foreground">
                       {t("explore.segStatsBase", "{{companies}} companies · {{roles}} open roles · {{entry}}% entry-level", {
                         companies: s.companies.toLocaleString(), roles: s.open_roles.toLocaleString(),
                         entry: s.entry_pct,
@@ -323,6 +524,7 @@ export default function Explore() {
                           and its wording implied a sourcing step that does not
                           happen. */}
                     </p>
+                    </button>
                     {/* Two-number badge: our verified count and the company's own
                         advertised total when it exceeds it — the band label and
                         badge can never contradict each other. (Fallback fields
@@ -369,7 +571,11 @@ export default function Explore() {
                       // would have returned a disjoint set under a total that
                       // did not describe it. A control that cannot keep its
                       // own promise is worse than no control.
-                      return <CompanyGrid rows={s.top} badge={segBadge} />;
+                      return open ? (
+                        <div className="px-4 pb-4">
+                          <CompanyGrid rows={s.top} intent="scale" badge={segBadge} />
+                        </div>
+                      ) : null;
                     })()}
                   </div>
                 );
@@ -378,12 +584,44 @@ export default function Explore() {
           </Section>
         )}
 
+        </div>
+
+        <div hidden={active !== "entry"}>
         {entry.length > 0 && (
           <Section icon={GraduationCap} title={t("explore.entryTitle", "Entry-level friendly")} blurb={t("explore.entryBlurb", "Companies with the most roles open to people early in their careers.")}>
-            <CompanyGrid rows={entry} badge={(r) => t("explore.entryBadge", "{{n}} entry-level roles", { n: r.entry_roles ?? 0 })} />
+            {/* THE RATIO, NOT THE COUNT — and a link that carries the filter.
+                This badge said "38 entry-level roles" and opened the company's
+                whole board showing 900, so the number a reader clicked was not
+                the number they landed on. Both figures are already in the
+                payload, and the ratio is the actual signal: 40 entry roles out
+                of 2,000 is not an entry-friendly employer, while 40 out of 60
+                is. The link now carries ?experience=entry, which Jobs.tsx
+                reads, so the destination shows what the card counted.
+
+                New key, not a reworded one: all nine locales carry
+                explore.entryBadge with a single {{n}}, and a locale value beats
+                the inline default — editing in place would render the old
+                sentence with a hole in it in nine languages. */}
+            <CompanyGrid rows={entry} intent="entry" badge={(r) => (r.open_roles
+              ? t("explore.entryBadgeRatio", "{{entry}} of {{open}} roles are entry-level", { entry: (r.entry_roles ?? 0).toLocaleString(), open: r.open_roles.toLocaleString() })
+              : t("explore.entryBadge", "{{n}} entry-level roles", { n: r.entry_roles ?? 0 }))} />
           </Section>
         )}
+        </div>
 
+        {/* Folded into the pay answer. "Which employers state pay" and "which
+            fields pay" are one question, and rendering them as two sections
+            twenty screens apart made a reader choose between halves of the same
+            answer. Everything between this and the transparent block is hidden
+            whenever `pay` is active, so the two render adjacent without moving
+            the code.
+
+            No currency control here, deliberately: get_salary_benchmarks does
+            DISTINCT ON (category), so each field appears exactly once in its
+            dominant currency, and all 18 live rows are USD. A USD/EUR/GBP
+            toggle would be a control with one real option — the dead-branch
+            class this page has spent the week removing. */}
+        <div hidden={active !== "pay"}>
         {salary.length > 0 && (
           <Section icon={DollarSign} title={t("explore.salaryTitle", "Where the pay is")} blurb={t("explore.salaryBlurb", "Fields ranked by the median advertised floor — from postings that state pay, in each field's dominant currency. Never converted, never mixed.")}>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -407,7 +645,13 @@ export default function Explore() {
           </Section>
         )}
 
-        {/* Browse by field — always shown; the classic taxonomy entry point. */}
+        </div>
+
+        {/* Browse by field — the classic taxonomy entry point, now its own
+            answer rather than a footer. No counts on these chips: a correct
+            per-category number is a database change, and Jobs.tsx:2195 already
+            records that it is worth doing and not worth faking meanwhile. */}
+        <div hidden={active !== "fields"}>
         <Section icon={Briefcase} title={t("explore.fieldsTitle", "Browse by field")} blurb={t("explore.fieldsBlurb", "Jump straight into any field's live openings.")}>
           <div className="flex flex-wrap gap-2">
             {Object.entries(CATEGORY_LABELS).filter(([id]) => id !== "other").map(([id, label]) => (
@@ -422,13 +666,13 @@ export default function Explore() {
           </div>
         </Section>
 
-        <div className="rounded-2xl border border-primary/30 bg-primary/5 p-5 text-center">
-          <p className="text-sm text-foreground font-medium mb-3">{t("explore.ctaLine", "Know what you're looking for? Search the full live board.")}</p>
-          <Link to="/jobs" className="inline-flex items-center gap-2 rounded-xl bg-primary text-primary-foreground font-semibold px-6 py-3 hover:bg-primary/90 transition-colors">
-            <Briefcase className="w-4 h-4" />
-            {t("explore.ctaButton", "Search all jobs")}
-          </Link>
         </div>
+
+        {/* The bottom CTA card is gone. "Know what you're looking for?" was the
+            last thing a visitor read on a discovery page — an odd note to end
+            on — and it sat forty screens below the fold where the people who
+            did know what they wanted had long since left. The same escape now
+            rides beside the chips, where it is reachable in one tap. */}
       </main>
       <Footer />
     </div>

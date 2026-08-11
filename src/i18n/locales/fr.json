@@ -4174,7 +4174,20 @@
     "segLarge": "200–999 postes ouverts",
     "segOther": "{{n}} entreprises",
     "asOf": "Mesuré le {{time}}, actualisé chaque heure.",
-    "repostBadgeCapped": "« {{title}} » republié {{n}}+× · {{events}} au total en {{d}}j"
+    "repostBadgeCapped": "« {{title}} » republié {{n}}+× · {{events}} au total en {{d}}j",
+    "intentHiring": "Pourvoit vraiment les postes",
+    "intentPay": "Indique le salaire",
+    "intentEntry": "Début de carrière",
+    "intentGhost": "Attention : offres fantômes",
+    "intentScale": "Recrute à grande échelle",
+    "intentFields": "Par domaine",
+    "intentAria": "Que recherchez-vous ?",
+    "searchAll": "Rechercher toutes les offres",
+    "entryBadgeRatio": "{{entry}} des {{open}} postes sont juniors",
+    "repostAcross": "sur {{roles}} postes",
+    "seoTitle2": "Explorer les employeurs — qui pourvoit, qui indique le salaire, qui republie",
+    "seoDescription2": "Choisissez ce que vous cherchez : des employeurs qui pourvoient vraiment leurs postes, des entreprises qui indiquent le salaire, des offres pour débutants, les republieurs en série à éviter et les domaines les mieux payés — mesuré depuis les sites carrières des entreprises et notre propre suivi quotidien, actualisé chaque heure.",
+    "subhead2": "Choisissez ce que vous cherchez vraiment. Chaque réponse provient de notre suivi quotidien de ce qui arrive à chaque offre — et non de ce que les employeurs déclarent."
   },
   "agentQueue": {
     "title": "File du matin",

@@ -4174,7 +4174,20 @@
     "segLarge": "200–999 vacantes abiertas",
     "segOther": "{{n}} empresas",
     "asOf": "Medido el {{time}}, actualizado cada hora.",
-    "repostBadgeCapped": "«{{title}}» re-publicado {{n}}+× · {{events}} en total en {{d}}d"
+    "repostBadgeCapped": "«{{title}}» re-publicado {{n}}+× · {{events}} en total en {{d}}d",
+    "intentHiring": "Cubre las vacantes de verdad",
+    "intentPay": "Indica el salario",
+    "intentEntry": "Inicio de carrera",
+    "intentGhost": "Ojo: ofertas fantasma",
+    "intentScale": "Contrata a gran escala",
+    "intentFields": "Por área",
+    "intentAria": "¿Qué estás buscando?",
+    "searchAll": "Buscar todos los empleos",
+    "entryBadgeRatio": "{{entry}} de {{open}} puestos son de nivel inicial",
+    "repostAcross": "en {{roles}} puestos",
+    "seoTitle2": "Explora empleadores — quién cubre vacantes, quién indica el salario, quién republica",
+    "seoDescription2": "Elige lo que buscas: empleadores que cubren de verdad sus vacantes, empresas que indican el salario, boards para nivel inicial, republicadores en serie que evitar y las áreas mejor pagadas — medido desde los portales de las propias empresas y nuestro seguimiento diario, actualizado cada hora.",
+    "subhead2": "Elige lo que realmente buscas. Cada respuesta se mide desde nuestro seguimiento diario de lo que ocurre con cada oferta — no desde lo que dicen las empresas."
   },
   "agentQueue": {
     "title": "Cola matinal",

@@ -4174,7 +4174,20 @@
     "segLarge": "200–999 vagas abertas",
     "segOther": "{{n}} empresas",
     "asOf": "Medido em {{time}}, atualizado de hora a hora.",
-    "repostBadgeCapped": "“{{title}}” republicada {{n}}+× · {{events}} no total em {{d}}d"
+    "repostBadgeCapped": "“{{title}}” republicada {{n}}+× · {{events}} no total em {{d}}d",
+    "intentHiring": "Preenche vagas de verdade",
+    "intentPay": "Informa o salário",
+    "intentEntry": "Início de carreira",
+    "intentGhost": "Atenção: vagas fantasma",
+    "intentScale": "Contrata em grande escala",
+    "intentFields": "Por área",
+    "intentAria": "O que você está procurando?",
+    "searchAll": "Buscar todas as vagas",
+    "entryBadgeRatio": "{{entry}} de {{open}} vagas são de nível inicial",
+    "repostAcross": "em {{roles}} vagas",
+    "seoTitle2": "Explore empregadores — quem preenche vagas, quem informa salário, quem republica",
+    "seoDescription2": "Escolha o que procura: empregadores que realmente preenchem as vagas que publicam, empresas que informam o salário, boards para nível inicial, republicadores em série a evitar e as áreas mais bem pagas — medido a partir dos sites das próprias empresas e do nosso acompanhamento diário, atualizado a cada hora.",
+    "subhead2": "Escolha o que você realmente procura. Cada resposta é medida pelo nosso acompanhamento diário do que acontece com cada vaga — não pelo que as empresas afirmam."
   },
   "agentQueue": {
     "title": "Fila da manhã",

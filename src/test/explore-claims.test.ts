@@ -457,6 +457,128 @@ describe("no locale ships a string the page cannot render", () => {
   });
 });
 
+/**
+ * ONE ANSWER AT A TIME.
+ *
+ * Measured before this change: 31,935px (~40 screens), 120 company cards, ZERO
+ * interactive controls, and six of eight sections rendering the same 12-card
+ * grid differing only in sort order. The collections are unchanged and still
+ * come from one cached row; what changed is that the reader picks which one is
+ * on screen.
+ */
+describe("Explore offers a choice instead of forty screens", () => {
+  it("renders the intent switcher, and it is wrapped rather than a scroller", () => {
+    // A nowrap row hides half the options behind a swipe nobody knows to make —
+    // the same class of defect as the header nav being `hidden sm:flex` with no
+    // hamburger, which made this page unreachable on a phone entirely.
+    expect(CODE).toMatch(/role="tablist"/);
+    expect(CODE).toMatch(/\{shown\.map\(\(i\) =>/);
+    const chips = CODE.slice(CODE.indexOf('role="tablist"'), CODE.indexOf("explore.searchAll"));
+    expect(chips).toMatch(/flex flex-wrap/);
+    expect(chips, "chip row must not be a horizontal scroller").not.toMatch(/overflow-x-auto|flex-nowrap/);
+  });
+
+  it("keeps every answer in the DOM, hidden — never conditionally unmounted", () => {
+    // /explore is prerendered and sitemapped at priority 0.8 daily. Unmounting
+    // five of six answers would drop ~90 company links out of the document for
+    // crawlers and out of reach of Ctrl-F.
+    const hides = [...CODE.matchAll(/hidden=\{active !== "(\w+)"\}/g)].map((m) => m[1]);
+    for (const i of ["hiring", "pay", "entry", "ghost", "scale", "fields"]) {
+      expect(hides, `no hidden-gated body for intent "${i}"`).toContain(i);
+    }
+  });
+
+  it("the chosen answer is in the URL", () => {
+    expect(CODE).toMatch(/searchParams\.set\("i", next\)/);
+    // replaceState, not push: switching answers is not a navigation, and six
+    // history entries would make the back button feel broken.
+    expect(CODE).toMatch(/history\.replaceState/);
+  });
+
+  it("never offers an answer that would open empty", () => {
+    expect(CODE).toMatch(/const shown = INTENTS\.filter/);
+    expect(CODE).toMatch(/available\[intent\] \? intent :/);
+  });
+
+  it("the two provenance-flawed collections are gone from the page", () => {
+    // Both took open_roles from job_board_company_snapshots, whose writer
+    // applies neither serving predicate, so their badges could overstate what
+    // the click-through shows. "Just added" also rested "get in early" on
+    // first_added — the date WE discovered the board.
+    expect(CODE).not.toMatch(/rows=\{trending\}/);
+    expect(CODE).not.toMatch(/rows=\{newest\}/);
+    expect(CODE).not.toMatch(/get_trending_companies/);
+    expect(CODE).not.toMatch(/get_newest_companies/);
+  });
+
+  it("only one size band's cards render at a time", () => {
+    // 36 of 48 cards leave the viewport while all four aggregates stay.
+    expect(CODE).toMatch(/const open = activeBand === band;/);
+    expect(CODE).toMatch(/return open \? \(/);
+  });
+
+  it("the escape to /jobs sits with the chips, not at the bottom", () => {
+    const head = CODE.slice(0, CODE.indexOf('hidden={active !== "hiring"}'));
+    expect(head, "the /jobs link must be above the answers").toMatch(/to="\/jobs"/);
+    expect(CODE, "the old bottom CTA card should be gone").not.toMatch(/explore\.ctaLine/);
+  });
+});
+
+describe("a card's number and the page it opens agree", () => {
+  it("all /jobs links come from the single builder", () => {
+    // Cards hardcoded `/jobs/company/{token}?from=explore` in six places, which
+    // is how the entry-level badge promised 38 roles over a destination showing
+    // 900.
+    expect(CODE).toMatch(/const companyHref = \(token: string, intent: Intent\)/);
+    const grid = CODE.slice(CODE.indexOf("function CompanyGrid"), CODE.indexOf("function Section"));
+    expect(grid).toMatch(/to=\{companyHref\(r\.company_token, intent\)\}/);
+    expect(grid, "CompanyGrid must not build its own URL").not.toMatch(/to=\{`\/jobs\/company/);
+  });
+
+  it("the entry-level answer filters its destination to entry roles", () => {
+    expect(CODE).toMatch(/intent === "entry" \? `\$\{base\}&experience=entry`/);
+  });
+
+  it("appends no filter Jobs.tsx does not read", () => {
+    // `fresh` is WRITTEN by Jobs.tsx and never read back, so a fresh=day link
+    // would promise a 24-hour window and deliver an unfiltered board.
+    expect(CODE).not.toMatch(/fresh=day/);
+    // "states pay" and "pays at least $X" are different populations, and the
+    // floor is currency-blind.
+    expect(CODE).not.toMatch(/salaryFloor/);
+  });
+});
+
+describe("every interpolation a badge passes exists in every locale", () => {
+  // THE LOCALE-OVERRIDE TRAP, guarded generically. A locale VALUE beats the
+  // inline t() default, so a key whose translation omits {{open}} renders a
+  // sentence with a hole in it — silently, in eight languages nobody on the
+  // team reads. This is why the reworded badges got NEW keys.
+  const NEW_KEYS: Record<string, string[]> = {
+    entryBadgeRatio: ["{{entry}}", "{{open}}"],
+    repostAcross: ["{{roles}}"],
+  };
+  for (const [key, vars] of Object.entries(NEW_KEYS)) {
+    it(`${key} keeps every placeholder in all nine locales`, () => {
+      for (const f of localeFiles) {
+        const e = (JSON.parse(readFileSync(resolve(LOCALES, f), "utf8")).explore ?? {}) as Record<string, string>;
+        expect(e[key], `${f} is missing explore.${key}`).toBeTruthy();
+        for (const v of vars) {
+          expect(e[key], `${f} explore.${key} drops ${v}: ${e[key]}`).toContain(v);
+        }
+      }
+    });
+  }
+
+  it("every intent chip has a label in every locale", () => {
+    const keys = ["intentHiring", "intentPay", "intentEntry", "intentGhost", "intentScale", "intentFields", "searchAll"];
+    for (const f of localeFiles) {
+      const e = (JSON.parse(readFileSync(resolve(LOCALES, f), "utf8")).explore ?? {}) as Record<string, string>;
+      for (const k of keys) expect(e[k], `${f} is missing explore.${k}`).toBeTruthy();
+    }
+  });
+});
+
 describe("the page says when it was measured", () => {
   it("renders the cache's own computed_at", () => {
     expect(EXPLORE).toMatch(/setComputedAt\(c\.computed_at\)/);

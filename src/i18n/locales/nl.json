@@ -4174,7 +4174,20 @@
     "segLarge": "200–999 open functies",
     "segOther": "{{n}} bedrijven",
     "asOf": "Gemeten op {{time}}, elk uur ververst.",
-    "repostBadgeCapped": "\"{{title}}\" {{n}}+× herplaatst · {{events}} totaal in {{d}}d"
+    "repostBadgeCapped": "\"{{title}}\" {{n}}+× herplaatst · {{events}} totaal in {{d}}d",
+    "intentHiring": "Vult vacatures echt",
+    "intentPay": "Vermeldt het salaris",
+    "intentEntry": "Starters",
+    "intentGhost": "Let op: spookvacatures",
+    "intentScale": "Werft op grote schaal",
+    "intentFields": "Per vakgebied",
+    "intentAria": "Waar ben je naar op zoek?",
+    "searchAll": "Alle vacatures zoeken",
+    "entryBadgeRatio": "{{entry}} van {{open}} functies zijn voor starters",
+    "repostAcross": "over {{roles}} functies",
+    "seoTitle2": "Ontdek werkgevers — wie vult vacatures, wie vermeldt salaris, wie herplaatst",
+    "seoDescription2": "Kies waar je naar op zoek bent: werkgevers die hun vacatures echt vullen, bedrijven die het salaris vermelden, boards voor starters, seriële herplaatsers om te mijden en de best betaalde vakgebieden — gemeten vanaf de eigen vacaturesites van bedrijven en onze eigen dagelijkse tracking, elk uur ververst.",
+    "subhead2": "Kies waar je echt naar op zoek bent. Elk antwoord komt uit onze eigen dagelijkse tracking van wat er met elke vacature gebeurt — niet uit wat werkgevers beweren."
   },
   "agentQueue": {
     "title": "Ochtendwachtrij",

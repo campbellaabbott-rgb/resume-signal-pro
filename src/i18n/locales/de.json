@@ -4174,7 +4174,20 @@
     "segLarge": "200–999 offene Stellen",
     "segOther": "{{n}} Unternehmen",
     "asOf": "Gemessen am {{time}}, stündlich aktualisiert.",
-    "repostBadgeCapped": "„{{title}}“ {{n}}+× neu eingestellt · {{events}} gesamt in {{d}} T."
+    "repostBadgeCapped": "„{{title}}“ {{n}}+× neu eingestellt · {{events}} gesamt in {{d}} T.",
+    "intentHiring": "Stellen wirklich besetzt",
+    "intentPay": "Nennt das Gehalt",
+    "intentEntry": "Berufseinstieg",
+    "intentGhost": "Achtung: Geisterjobs",
+    "intentScale": "Stellt in großem Umfang ein",
+    "intentFields": "Nach Bereich",
+    "intentAria": "Wonach suchen Sie?",
+    "searchAll": "Alle Jobs durchsuchen",
+    "entryBadgeRatio": "{{entry}} von {{open}} Stellen für Berufseinsteiger",
+    "repostAcross": "über {{roles}} Stellen",
+    "seoTitle2": "Arbeitgeber entdecken — wer besetzt, wer Gehalt nennt, wer neu ausschreibt",
+    "seoDescription2": "Wählen Sie, wonach Sie suchen: Arbeitgeber, die ihre Stellen wirklich besetzen, Unternehmen, die das Gehalt nennen, einstiegsfreundliche Boards, Serien-Wiederausschreiber zum Meiden und die bestbezahlten Bereiche — gemessen an den Stellenportalen der Unternehmen und unserem eigenen täglichen Tracking, stündlich aktualisiert.",
+    "subhead2": "Wählen Sie, wonach Sie wirklich suchen. Jede Antwort stammt aus unserem eigenen täglichen Tracking dessen, was mit jeder Anzeige passiert — nicht aus Angaben der Arbeitgeber."
   },
   "agentQueue": {
     "title": "Morgen-Queue",

@@ -4174,7 +4174,20 @@
     "segLarge": "200–999 open roles",
     "segOther": "{{n}} companies",
     "asOf": "Measured {{time}}, refreshed hourly.",
-    "repostBadgeCapped": "“{{title}}” re-listed {{n}}+× · {{events}} total in {{d}}d"
+    "repostBadgeCapped": "“{{title}}” re-listed {{n}}+× · {{events}} total in {{d}}d",
+    "intentHiring": "Will actually hire me",
+    "intentPay": "States the pay",
+    "intentEntry": "Early career",
+    "intentGhost": "Watch out: ghost jobs",
+    "intentScale": "Hiring at scale",
+    "intentFields": "By field",
+    "intentAria": "What are you looking for?",
+    "searchAll": "Search all jobs",
+    "entryBadgeRatio": "{{entry}} of {{open}} roles are entry-level",
+    "repostAcross": "across {{roles}} roles",
+    "seoTitle2": "Explore Employers — Who Fills Roles, Who States Pay, Who Re-posts",
+    "seoDescription2": "Pick what you're looking for: employers that actually fill the roles they post, companies that state pay up front, entry-level friendly boards, serial re-posters to avoid, and the highest-paying fields — all measured from companies' own job boards and our own daily tracking, refreshed hourly.",
+    "subhead2": "Pick what you're actually looking for. Every answer is measured from our own daily tracking of what happens to each posting — not from what employers claim."
   },
   "agentQueue": {
     "title": "Morning Queue",
