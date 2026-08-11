@@ -487,7 +487,12 @@ describe("Explore offers a choice instead of forty screens", () => {
     // the same class of defect as the header nav being `hidden sm:flex` with no
     // hamburger, which made this page unreachable on a phone entirely.
     expect(CODE).toMatch(/role="tablist"/);
-    expect(CODE).toMatch(/\{shown\.map\(\(i\) =>/);
+    // Tolerant of the callback's arity: this asserts the chip row is rendered
+    // from `shown`, not how many arguments the map callback happens to take.
+    // It broke when an index param was added for arrow-key navigation — a
+    // legitimate change failing a test that was pinned to a signature rather
+    // than to the behaviour it cares about.
+    expect(CODE).toMatch(/\{shown\.map\(\(i(?:,\s*\w+)?\) =>/);
     const chips = CODE.slice(CODE.indexOf('role="tablist"'), CODE.indexOf("explore.searchAll"));
     expect(chips).toMatch(/flex flex-wrap/);
     expect(chips, "chip row must not be a horizontal scroller").not.toMatch(/overflow-x-auto|flex-nowrap/);
@@ -510,9 +515,20 @@ describe("Explore offers a choice instead of forty screens", () => {
     expect(CODE).toMatch(/history\.replaceState/);
   });
 
-  it("never offers an answer that would open empty", () => {
-    expect(CODE).toMatch(/const shown = INTENTS\.filter/);
+  it("never offers an answer that would open empty — once loaded", () => {
+    // "Once loaded" is load-bearing. While the fetch is in flight every
+    // collection is empty, so availability is UNKNOWN, not false. Deriving the
+    // chips from it during load rendered two chips that then jumped to seven,
+    // and pushed `active` to `check` — which hid the hiring skeleton for the
+    // whole 540ms it existed to cover. Absence of data is not evidence of
+    // absence; the rule this page applies to its numbers applies to its
+    // controls too.
+    expect(CODE).toMatch(/INTENTS\.filter\(\(i\) => available\[i\]\)/);
     expect(CODE).toMatch(/available\[intent\] \? intent :/);
+    // Both must be gated on `loading`, or the fallback fires against data that
+    // has simply not arrived yet.
+    expect(CODE).toMatch(/const shown = loading \? INTENTS :/);
+    expect(CODE).toMatch(/const active: Intent = loading \? intent :/);
   });
 
   it("the two provenance-flawed collections are gone from the page", () => {
@@ -918,6 +934,58 @@ describe("the hiring answer ranks by odds, not by size", () => {
     // A median over four dated closures is noise dressed as a deadline.
     expect(CODE).toMatch(/\(r\.dated_n \?\? 0\) >= 10 && r\.tracking_days >= 21/);
     expect(CODE).toMatch(/explore\.hiringSpeed/);
+  });
+});
+
+describe("the page behaves while it is still loading, and for keyboard users", () => {
+  it("shows card-shaped placeholders instead of nothing", () => {
+    // Every answer is gated on collection.length > 0, so before the cache read
+    // returned a visitor saw a heading, chips, and empty space — which on this
+    // page is indistinguishable from a section that is broken, and this page
+    // has earned that reading elsewhere.
+    expect(CODE).toMatch(/function GridSkeleton\(\)/);
+    expect(CODE).toMatch(/\{loading && hiring\.length === 0 && \(/);
+  });
+
+  it("the skeleton is announced once, not as twelve empty rows", () => {
+    const sk = CODE.slice(CODE.indexOf("function GridSkeleton"), CODE.indexOf("function Section"));
+    expect(sk).toMatch(/role="status" aria-live="polite"/);
+    expect(sk).toMatch(/aria-hidden="true"/);
+  });
+
+  it("loading clears on BOTH load paths", () => {
+    // The cache fast-path returns early; a setLoading only after it would leave
+    // the skeleton up forever on the common path.
+    expect((CODE.match(/setLoading\(false\)/g) ?? []).length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("role=tablist comes with the arrow keys it promises", () => {
+    // Shipping the role without the keys is worse than shipping neither: a
+    // screen reader announces "tab, 1 of 7" and the keys the user is then told
+    // to press do nothing.
+    expect(CODE).toMatch(/role="tablist"/);
+    expect(CODE).toMatch(/e\.key === "ArrowRight"/);
+    expect(CODE).toMatch(/e\.key === "ArrowLeft"/);
+    // Roving tabindex, so Tab enters the group once rather than stopping on
+    // every chip.
+    expect(CODE).toMatch(/tabIndex=\{active === i \? 0 : -1\}/);
+  });
+});
+
+describe("no number is published without the sample behind it", () => {
+  it("the measured-at date renders in the reader's language", () => {
+    // toLocaleString(undefined) resolves to the BROWSER's locale, which is
+    // independent of the language the reader picked — so the one visible date
+    // on a German page rendered in English, inside a German sentence.
+    expect(CODE).toMatch(/toLocaleString\(i18n\.language/);
+    expect(CODE, "date still uses the browser locale").not.toMatch(/toLocaleString\(undefined/);
+  });
+
+  it("the transparent median needs a sample before it prints", () => {
+    // The SQL medians whichever roles state USD pay with no floor, so ONE USD
+    // posting was enough to publish "median floor $X" for an employer whose
+    // other 300 roles say nothing.
+    expect(CODE).toMatch(/r\.median_usd_floor != null && \(r\.open_roles \?\? 0\) >= 20/);
   });
 });
 

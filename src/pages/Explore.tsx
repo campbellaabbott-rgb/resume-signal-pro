@@ -130,6 +130,30 @@ function CompanyGrid({ rows, badge, intent, tone = "default" }: { rows: CompanyR
   );
 }
 
+/** Twelve card-shaped placeholders, matching CompanyGrid's geometry exactly so
+ *  nothing shifts when the real cards replace them.
+ *
+ *  aria-hidden with a polite live region beside it: a screen reader should hear
+ *  "loading employers" once, not twelve empty list items. */
+function GridSkeleton() {
+  return (
+    <>
+      <span className="sr-only" role="status" aria-live="polite">Loading employers…</span>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5" aria-hidden="true">
+        {Array.from({ length: 12 }, (_, i) => (
+          <div key={i} className="flex items-center gap-3 rounded-xl border border-border bg-card/30 px-4 py-3">
+            <div className="w-9 h-9 rounded-lg bg-muted animate-pulse shrink-0" />
+            <div className="min-w-0 flex-1 space-y-1.5">
+              <div className="h-3.5 rounded bg-muted animate-pulse" style={{ width: `${55 + ((i * 7) % 35)}%` }} />
+              <div className="h-2.5 rounded bg-muted/60 animate-pulse" style={{ width: `${35 + ((i * 11) % 40)}%` }} />
+            </div>
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
 function Section({ icon: Icon, title, blurb, children }: { icon: LucideIcon; title: string; blurb: string; children: React.ReactNode }) {
   return (
     <section className="mb-10">
@@ -148,7 +172,7 @@ function Section({ icon: Icon, title, blurb, children }: { icon: LucideIcon; tit
 }
 
 export default function Explore() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   // ONE QUESTION AT A TIME.
   //
   // Measured before this change: the page was 31,935px — about forty screens —
@@ -194,6 +218,19 @@ export default function Explore() {
   // When the cached collections were computed. The cache has always carried
   // this; the page just never rendered it while claiming "computed live".
   const [computedAt, setComputedAt] = useState<string | null>(null);
+  // THE PAGE USED TO RENDER EMPTY AND POP.
+  //
+  // Every answer is gated on `collection.length > 0`, so before the cache read
+  // returns, a visitor sees a heading, six chips and nothing under them — which
+  // is indistinguishable from "this section is broken" and is exactly the
+  // reading this page has earned elsewhere. It resolves in well under a second
+  // on a warm cache and noticeably longer on a cold one, which is precisely
+  // when a visitor is most likely to conclude nothing works.
+  //
+  // Not a spinner: a spinner says "wait" without saying what for. Twelve
+  // card-shaped placeholders say what is coming and stop the layout jumping
+  // when it arrives.
+  const [loading, setLoading] = useState(true);
   // The per-band drill-through state and loader were removed with the buttons
   // that drove them — get_size_segment_companies 57014s on every band, and
   // bands by a different definition than the section it sat under. See the
@@ -240,6 +277,7 @@ export default function Explore() {
           // section hidden, exactly as today — never a zero.
           if (Array.isArray(c.transparent)) setTransparent(c.transparent as CompanyRow[]);
           if (typeof c.computed_at === "string") setComputedAt(c.computed_at);
+          setLoading(false);
           return;
         }
       } catch { /* fall through to live RPCs */ }
@@ -264,6 +302,10 @@ export default function Explore() {
       if (Array.isArray(rp.data)) setReposters(rp.data as CompanyRow[]);
       if (Array.isArray(en.data)) setEntry(en.data as CompanyRow[]);
       if (Array.isArray(sa.data)) applySalary(sa.data as SalaryRow[]);
+      // Cleared after the four that gate visible answers. The segments call
+      // above resolves on its own schedule and must not hold the skeleton up —
+      // it is the slowest collection and its band section appears when ready.
+      setLoading(false);
     })();
   }, []);
 
@@ -329,10 +371,23 @@ export default function Explore() {
     scale: bands.length > 0,
     fields: true,
   };
-  const shown = INTENTS.filter((i) => available[i]);
-  // If the cache is partial and the chosen answer has no data, fall to the
-  // first that does rather than rendering a heading over nothing.
-  const active: Intent = available[intent] ? intent : (shown[0] ?? "fields");
+  // WHILE LOADING, EVERY COLLECTION IS EMPTY — so availability is unknown, not
+  // false. Deriving `shown` and `active` from it during load produced two
+  // visible defects, both measured in a browser rather than reasoned about:
+  //
+  //   - the chip row rendered TWO chips (check, fields — the only two that do
+  //     not depend on a collection) and then jumped to seven;
+  //   - `active` fell back to `check`, so the hiring skeleton — which sits
+  //     inside `hidden={active !== "hiring"}` — was hidden for the entire
+  //     540ms it existed to cover, and the loading state I had just added
+  //     never appeared once.
+  //
+  // Absence of data is not evidence of absence, which is the rule this page
+  // applies to every number on it; it applies to its own controls too.
+  const shown = loading ? INTENTS : INTENTS.filter((i) => available[i]);
+  // Once loaded: if the chosen answer genuinely has no data, fall to the first
+  // that does rather than rendering a heading over nothing.
+  const active: Intent = loading ? intent : (available[intent] ? intent : (shown[0] ?? "fields"));
 
   /** Each answer's way into the board, turning an intent into JOBS rather than
    *  into twelve more company links.
@@ -407,7 +462,13 @@ export default function Explore() {
           {computedAt && (
             <p className="text-xs text-muted-foreground/80 mt-2">
               {t("explore.asOf", "Measured {{time}}, refreshed hourly.", {
-                time: new Date(computedAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }),
+                // i18n.language, not undefined. `undefined` resolves to the
+                // BROWSER's locale, which is independent of the language the
+                // reader picked — so a German page rendered "Aug 11, 2026,
+                // 10:07 PM" in English while every word around it was German.
+                // The one visible date on the page belonged to a different
+                // language than the sentence containing it.
+                time: new Date(computedAt).toLocaleString(i18n.language, { dateStyle: "medium", timeStyle: "short" }),
               })}
             </p>
           )}
@@ -427,12 +488,30 @@ export default function Explore() {
             contents contradicted. */}
         <div className="mb-8" role="tablist" aria-label={t("explore.intentAria", "What are you looking for?")}>
           <div className="flex flex-wrap gap-2">
-            {shown.map((i) => (
+            {shown.map((i, idx) => (
               <button
                 key={i}
                 type="button"
                 role="tab"
                 aria-selected={active === i}
+                // role="tablist" PROMISES arrow-key navigation. Shipping the
+                // role without the keys is worse than shipping neither: a
+                // screen reader announces "tab, 1 of 7" and the arrow keys a
+                // user is then told to press do nothing. Roving tabindex so
+                // Tab enters the group once and arrows move within it, which is
+                // the behaviour the role advertises.
+                tabIndex={active === i ? 0 : -1}
+                onKeyDown={(e) => {
+                  const d = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
+                  if (!d) return;
+                  e.preventDefault();
+                  const next = shown[(idx + d + shown.length) % shown.length];
+                  chooseIntent(next);
+                  // Move focus with selection, or the ring stays on a chip that
+                  // is no longer the selected one.
+                  const el = e.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('[role="tab"]');
+                  el?.[(idx + d + shown.length) % shown.length]?.focus();
+                }}
                 onClick={() => chooseIntent(i)}
                 className={`inline-flex items-center px-3.5 py-2 rounded-full border text-sm font-medium transition-colors min-h-[40px] ${
                   active === i
@@ -543,6 +622,14 @@ export default function Explore() {
         </div>
 
         <div hidden={active !== "hiring"}>
+        {/* The default answer, so this skeleton is the one a first-time visitor
+            sees. Rendered under the real heading and blurb, which are static —
+            only the cards are unknown, so only the cards are placeholders. */}
+        {loading && hiring.length === 0 && (
+          <Section icon={Activity} title={t("explore.hiringTitle", "Companies that actually fill roles")} blurb={t("explore.hiringBlurb", "Roles that stayed posted at least a week and then came down — a real fill signal from our own tracking. Companies whose takedowns are mostly re-listings are disqualified (they appear under Serial re-posters instead).")}>
+            <GridSkeleton />
+          </Section>
+        )}
         {hiring.length > 0 && (
           <Section icon={Activity} title={t("explore.hiringTitle", "Companies that actually fill roles")} blurb={t("explore.hiringBlurb", "Roles that stayed posted at least a week and then came down — a real fill signal from our own tracking. Companies whose takedowns are mostly re-listings are disqualified (they appear under Serial re-posters instead).")}>
             {/* tracking_days ships with the rebuilt RPC; rows from the old cache
@@ -577,7 +664,17 @@ export default function Explore() {
                 a floor filter would quietly mean different things per row. */}
             <CompanyGrid rows={transparent} intent="pay" badge={(r) => {
               const parts = [t("explore.transparentBadge", "{{pct}}% of {{n}} roles state pay", { pct: r.pay_pct ?? 0, n: r.open_roles ?? 0 })];
-              if (r.median_usd_floor != null) parts.push(t("explore.transparentMedian", "median floor ${{m}}", { m: Math.round(r.median_usd_floor).toLocaleString() }));
+              // A MEDIAN NEEDS A SAMPLE. The SQL computes this over whichever
+              // of the employer's roles state USD pay, with no floor — so one
+              // USD posting was enough to publish "median floor $X" beside a
+              // company whose other 300 roles say nothing. The row carries no
+              // usd_n, so the honest available gate is the employer's own
+              // served-role count: below 20 the median is omitted rather than
+              // shown with invisible uncertainty. Omission is the correct
+              // degradation; a number with no sample behind it is not.
+              if (r.median_usd_floor != null && (r.open_roles ?? 0) >= 20) {
+                parts.push(t("explore.transparentMedian", "median floor ${{m}}", { m: Math.round(r.median_usd_floor).toLocaleString() }));
+              }
               return parts.join(" · ");
             }} />
           </Section>
