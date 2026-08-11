@@ -4191,7 +4191,14 @@
     "subhead2": "Choisissez ce que vous cherchez vraiment. Chaque réponse provient de notre suivi quotidien de ce qui arrive à chaque offre — et non de ce que les employeurs déclarent.",
     "actionHiring": "Postes ouverts chez tous ces employeurs",
     "actionEntry": "Tous les postes junior du site",
-    "actionGhost": "Afficher seulement les employeurs qui pourvoient vraiment"
+    "actionGhost": "Afficher seulement les employeurs qui pourvoient vraiment",
+    "intentCheck": "Vérifier un employeur",
+    "checkTitle": "Vérifier un employeur précis",
+    "checkBlurb": "Tous les employeurs du site, pas seulement ceux de ces listes. Voyez combien de postes sont ouverts, combien ont réellement été pourvus, et si la même offre est republiée.",
+    "checkPlaceholder": "Saisissez un nom d'entreprise…",
+    "checkFeeds": "{{n}} sites carrières",
+    "checkNone": "Nous ne suivons pas le site carrières de cet employeur — nous n'avons donc rien de mesuré à vous montrer.",
+    "checkErr": "La recherche d'employeurs est indisponible pour le moment — cela ne dit rien sur cet employeur. Réessayez dans un instant."
   },
   "agentQueue": {
     "title": "File du matin",

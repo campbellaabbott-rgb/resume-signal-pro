@@ -11,7 +11,7 @@ import { useTranslation } from "react-i18next";
 // and newest sections. Section's icon prop is typed off LucideIcon rather than
 // off one of the icons it happens to receive, so removing a section no longer
 // strands an import purely to satisfy a type.
-import { LucideIcon, TrendingUp, GraduationCap, DollarSign, Activity, ArrowRight, Briefcase, Repeat, Building2, BadgeDollarSign } from "lucide-react";
+import { LucideIcon, TrendingUp, GraduationCap, DollarSign, Activity, ArrowRight, Briefcase, Repeat, Building2, BadgeDollarSign, Search } from "lucide-react";
 import { SEO } from "@/components/seo/SEO";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -84,8 +84,12 @@ const companyHref = (token: string, intent: Intent): string => {
 
 /** The six things a visitor might actually want, in chip order. Each renders
  *  one cached collection; none triggers a fetch. */
-type Intent = "hiring" | "pay" | "entry" | "ghost" | "scale" | "fields";
-const INTENTS: readonly Intent[] = ["hiring", "pay", "entry", "ghost", "scale", "fields"];
+type Intent = "check" | "hiring" | "pay" | "entry" | "ghost" | "scale" | "fields";
+/** `check` first, deliberately. The other six are browsing; this one answers the
+ *  question a visitor most often actually arrives with — "should I trust this
+ *  posting from THIS employer?" — and it is the only answer that covers all
+ *  24,931 employers rather than the 85 that top a list. */
+const INTENTS: readonly Intent[] = ["check", "hiring", "pay", "entry", "ghost", "scale", "fields"];
 const isIntent = (v: string | null): v is Intent => !!v && (INTENTS as readonly string[]).includes(v);
 
 // A collection of companies → each a deep-link into the board filtered to that
@@ -159,6 +163,22 @@ export default function Explore() {
   // unmounted, because /explore is prerendered and sitemapped at priority 0.8
   // daily and every company link must stay crawlable and findable with Ctrl-F.
   const [intent, setIntent] = useState<Intent>("hiring");
+  // Employer lookup state. The query fires on keystroke only, never on load,
+  // and only at 3+ characters — a shorter one would scan the alphabet.
+  const [cq, setCq] = useState("");
+  const [cHits, setCHits] = useState<Array<{ name: string; tokens: string[] }>>([]);
+  /** THREE STATES, NOT TWO — and the third is the whole point.
+   *
+   *  This was a boolean, and a failed lookup fell into the same branch as a
+   *  genuine miss: searching "wegman" while the RPC was undeployed printed
+   *  "We don't carry that employer's job board", which is a confident false
+   *  statement about a company we carry 498 roles for. Caught by testing before
+   *  the migration applied.
+   *
+   *  A broken instrument must never render as a fact about the thing it
+   *  measures. That is the failure this whole page has been paying down: a
+   *  section that timed out looked like a section with nothing to show. */
+  const [cState, setCState] = useState<"idle" | "ok" | "error">("idle");
   // Which size band is expanded. Only one band's cards render at a time; the
   // four stat lines act as the selector, so 36 of 48 cards leave the viewport
   // while every band's aggregate stays on screen.
@@ -263,6 +283,31 @@ export default function Explore() {
     window.history.replaceState(null, "", u.toString());
   };
 
+  // Debounced typeahead. 250ms and 3 chars keep this to roughly one request per
+  // word typed, against a single-row PK lookup — no aggregate on the request
+  // path, which is the rule this page exists to respect.
+  useEffect(() => {
+    const s = cq.trim();
+    if (s.length < 3) { setCHits([]); setCState("idle"); return; }
+    let alive = true;
+    const id = setTimeout(() => {
+      void Promise.resolve(rpc("get_company_suggest", { p_q: s }))
+        .then((r: { data: unknown; error?: unknown }) => {
+          if (!alive) return;
+          // A non-array reply is a FAILURE, not an empty result. supabase-js
+          // resolves rather than throws on a PostgREST error, so an undeployed
+          // or erroring RPC arrives here with data === null — and treating that
+          // as "no match" is what printed "we don't carry that employer" over a
+          // company with 498 open roles.
+          if (r.error || !Array.isArray(r.data)) { setCHits([]); setCState("error"); return; }
+          setCHits(r.data as Array<{ name: string; tokens: string[] }>);
+          setCState("ok");
+        })
+        .catch(() => { if (alive) { setCHits([]); setCState("error"); } });
+    }, 250);
+    return () => { alive = false; clearTimeout(id); };
+  }, [cq]);
+
   const bands = segments ? orderedBands(segments) : [];
   // Default to the biggest band, but only once the payload is in hand — a band
   // key hardcoded here is how half this section vanished the last time the SQL
@@ -273,6 +318,10 @@ export default function Explore() {
   // answer that would open empty is worse than an answer that is not offered,
   // and a chip whose body is blank reads as breakage rather than as absence.
   const available: Record<Intent, boolean> = {
+    // Always offered: it reads the facets row, which the edge-function refresh
+    // pass maintains independently of the hourly cron. When pg_cron died today
+    // every other answer froze; this one would have kept working.
+    check: true,
     hiring: hiring.length > 0,
     pay: transparent.length > 0 || salary.length > 0,
     entry: entry.length > 0,
@@ -310,6 +359,7 @@ export default function Explore() {
   };
 
   const INTENT_LABEL: Record<Intent, string> = {
+    check: t("explore.intentCheck", "Check an employer"),
     hiring: t("explore.intentHiring", "Will actually hire me"),
     pay: t("explore.intentPay", "States the pay"),
     entry: t("explore.intentEntry", "Early career"),
@@ -423,6 +473,74 @@ export default function Explore() {
             <ArrowRight className="w-4 h-4" />
           </Link>
         )}
+
+        {/* CHECK AN EMPLOYER — the only answer that covers all 24,931 boards
+            rather than the 85 that top a list. Selecting a match NAVIGATES to
+            /jobs/company/{token} rather than rendering a verdict here: that
+            page already states these sentences from nine translated locales,
+            and rebuilding them on Explore would be eight new sentence keys x
+            nine languages to reach a page one click away. */}
+        <div hidden={active !== "check"}>
+          <Section
+            icon={Search}
+            title={t("explore.checkTitle", "Check a specific employer")}
+            blurb={t("explore.checkBlurb", "Every employer on the board — not just the ones on these lists. See how many roles they have open, how many they've actually filled, and whether they re-list the same job.")}
+          >
+            <input
+              type="search"
+              value={cq}
+              onChange={(e) => setCq(e.target.value)}
+              placeholder={t("explore.checkPlaceholder", "Type a company name…")}
+              aria-label={t("explore.checkTitle", "Check a specific employer")}
+              className="w-full rounded-xl border border-border bg-card/60 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+            />
+            {cHits.length > 0 && (
+              <div className="mt-2.5 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {cHits.map((h) => (
+                  <Link
+                    key={h.name}
+                    to={`/jobs/company/${encodeURIComponent(h.tokens[0])}?from=explore`}
+                    className="group flex items-center gap-3 rounded-xl border border-border bg-card/60 px-4 py-3 hover:border-primary/50 hover:bg-card transition-colors"
+                  >
+                    <span className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-primary/10 text-primary font-bold text-sm shrink-0">
+                      {h.name.slice(0, 1).toUpperCase()}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-semibold text-foreground truncate">{h.name}</span>
+                      {/* NO COUNT HERE. The facet's count applies neither serving
+                          predicate, so printing it would state a number the
+                          destination contradicts — the defect this page spent
+                          the week removing. The company page carries the real
+                          figures. */}
+                      {h.tokens.length > 1 && (
+                        <span className="block text-[11px] text-muted-foreground">
+                          {t("explore.checkFeeds", "{{n}} job boards", { n: h.tokens.length })}
+                        </span>
+                      )}
+                    </span>
+                    <ArrowRight className="w-4 h-4 text-muted-foreground/50 group-hover:text-primary group-hover:translate-x-0.5 transition-all shrink-0" />
+                  </Link>
+                ))}
+              </div>
+            )}
+            {/* A GENUINE MISS. Only reachable when the lookup actually answered
+                and returned nothing — never when it failed. */}
+            {cState === "ok" && cHits.length === 0 && (
+              <p className="mt-3 text-sm text-muted-foreground">
+                {t("explore.checkNone", "We don't carry that employer's job board — so we have nothing measured to show you.")}
+              </p>
+            )}
+            {/* A BROKEN LOOKUP, said as such. This must never borrow the
+                sentence above: "we don't carry them" is a claim about the
+                employer, and we are in no position to make it when our own
+                query did not answer. */}
+            {cState === "error" && (
+              <p className="mt-3 text-sm text-warning">
+                {t("explore.checkErr", "Employer lookup is unavailable right now — this says nothing about that employer. Try again shortly.")}
+              </p>
+            )}
+          </Section>
+        </div>
 
         <div hidden={active !== "hiring"}>
         {hiring.length > 0 && (

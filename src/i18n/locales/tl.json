@@ -4191,7 +4191,14 @@
     "subhead2": "Piliin ang talagang hinahanap mo. Bawat sagot ay sinusukat mula sa aming sariling araw-araw na pagsubaybay sa nangyayari sa bawat post — hindi mula sa sinasabi ng mga employer.",
     "actionHiring": "Bukas na posisyon sa lahat ng employer na ito",
     "actionEntry": "Lahat ng entry-level na posisyon",
-    "actionGhost": "Ipakita lang ang employer na may patunay na napupunan"
+    "actionGhost": "Ipakita lang ang employer na may patunay na napupunan",
+    "intentCheck": "Suriin ang employer",
+    "checkTitle": "Suriin ang isang partikular na employer",
+    "checkBlurb": "Lahat ng employer sa board — hindi lang ang nasa mga listahang ito. Tingnan kung ilan ang bukas nilang posisyon, ilan ang talagang napunan, at kung paulit-ulit nilang ini-post ang parehong trabaho.",
+    "checkPlaceholder": "I-type ang pangalan ng kumpanya…",
+    "checkFeeds": "{{n}} job boards",
+    "checkNone": "Hindi namin sinusubaybayan ang job board ng employer na iyon — kaya wala kaming nasukat na maipapakita.",
+    "checkErr": "Hindi available ngayon ang paghahanap ng employer — wala itong sinasabi tungkol sa employer na iyon. Subukan ulit mamaya."
   },
   "agentQueue": {
     "title": "Morning Queue",

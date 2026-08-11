@@ -4191,7 +4191,14 @@
     "subhead2": "Elige lo que realmente buscas. Cada respuesta se mide desde nuestro seguimiento diario de lo que ocurre con cada oferta — no desde lo que dicen las empresas.",
     "actionHiring": "Vacantes en todos estos empleadores",
     "actionEntry": "Todos los puestos de nivel inicial",
-    "actionGhost": "Mostrar solo empleadores con historial de contratación"
+    "actionGhost": "Mostrar solo empleadores con historial de contratación",
+    "intentCheck": "Comprobar un empleador",
+    "checkTitle": "Comprobar un empleador concreto",
+    "checkBlurb": "Todos los empleadores del board, no solo los de estas listas. Mira cuántas vacantes tiene abiertas, cuántas ha cubierto de verdad y si repite la misma oferta.",
+    "checkPlaceholder": "Escribe el nombre de una empresa…",
+    "checkFeeds": "{{n}} portales de empleo",
+    "checkNone": "No cubrimos el portal de empleo de ese empleador, así que no tenemos nada medido que mostrarte.",
+    "checkErr": "La búsqueda de empleadores no está disponible ahora mismo — esto no dice nada sobre ese empleador. Inténtalo de nuevo en un momento."
   },
   "agentQueue": {
     "title": "Cola matinal",

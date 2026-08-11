@@ -4191,7 +4191,14 @@
     "subhead2": "Escolha o que você realmente procura. Cada resposta é medida pelo nosso acompanhamento diário do que acontece com cada vaga — não pelo que as empresas afirmam.",
     "actionHiring": "Vagas em todos estes empregadores",
     "actionEntry": "Todas as vagas de nível inicial",
-    "actionGhost": "Mostrar apenas empregadores com histórico de preenchimento"
+    "actionGhost": "Mostrar apenas empregadores com histórico de preenchimento",
+    "intentCheck": "Verificar um empregador",
+    "checkTitle": "Verificar um empregador específico",
+    "checkBlurb": "Todos os empregadores do board, não apenas os destas listas. Veja quantas vagas tem abertas, quantas realmente preencheu e se repete a mesma vaga.",
+    "checkPlaceholder": "Digite o nome de uma empresa…",
+    "checkFeeds": "{{n}} portais de vagas",
+    "checkNone": "Não acompanhamos o portal de vagas desse empregador — portanto não temos nada medido para mostrar.",
+    "checkErr": "A busca de empregadores está indisponível no momento — isso não diz nada sobre esse empregador. Tente novamente em instantes."
   },
   "agentQueue": {
     "title": "Fila da manhã",

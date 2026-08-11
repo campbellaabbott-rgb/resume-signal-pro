@@ -4191,7 +4191,14 @@
     "subhead2": "Pick what you're actually looking for. Every answer is measured from our own daily tracking of what happens to each posting — not from what employers claim.",
     "actionHiring": "Open roles at all of these employers",
     "actionEntry": "All entry-level roles on the board",
-    "actionGhost": "Show only employers with a proven fill record"
+    "actionGhost": "Show only employers with a proven fill record",
+    "intentCheck": "Check an employer",
+    "checkTitle": "Check a specific employer",
+    "checkBlurb": "Every employer on the board — not just the ones on these lists. See how many roles they have open, how many they've actually filled, and whether they re-list the same job.",
+    "checkPlaceholder": "Type a company name…",
+    "checkFeeds": "{{n}} job boards",
+    "checkNone": "We don't carry that employer's job board — so we have nothing measured to show you.",
+    "checkErr": "Employer lookup is unavailable right now — this says nothing about that employer. Try again shortly."
   },
   "agentQueue": {
     "title": "Morning Queue",

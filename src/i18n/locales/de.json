@@ -4191,7 +4191,14 @@
     "subhead2": "Wählen Sie, wonach Sie wirklich suchen. Jede Antwort stammt aus unserem eigenen täglichen Tracking dessen, was mit jeder Anzeige passiert — nicht aus Angaben der Arbeitgeber.",
     "actionHiring": "Offene Stellen bei all diesen Arbeitgebern",
     "actionEntry": "Alle Einstiegsstellen auf dem Board",
-    "actionGhost": "Nur Arbeitgeber mit nachgewiesener Besetzung zeigen"
+    "actionGhost": "Nur Arbeitgeber mit nachgewiesener Besetzung zeigen",
+    "intentCheck": "Arbeitgeber prüfen",
+    "checkTitle": "Einen bestimmten Arbeitgeber prüfen",
+    "checkBlurb": "Jeder Arbeitgeber auf dem Board — nicht nur die aus diesen Listen. Sehen Sie, wie viele Stellen offen sind, wie viele wirklich besetzt wurden und ob dieselbe Stelle immer wieder neu ausgeschrieben wird.",
+    "checkPlaceholder": "Firmennamen eingeben…",
+    "checkFeeds": "{{n}} Stellenportale",
+    "checkNone": "Wir führen das Stellenportal dieses Arbeitgebers nicht — daher haben wir nichts Gemessenes zu zeigen.",
+    "checkErr": "Die Arbeitgebersuche ist derzeit nicht verfügbar — das sagt nichts über diesen Arbeitgeber aus. Bitte gleich noch einmal versuchen."
   },
   "agentQueue": {
     "title": "Morgen-Queue",

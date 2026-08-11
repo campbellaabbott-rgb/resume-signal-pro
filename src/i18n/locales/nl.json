@@ -4191,7 +4191,14 @@
     "subhead2": "Kies waar je echt naar op zoek bent. Elk antwoord komt uit onze eigen dagelijkse tracking van wat er met elke vacature gebeurt — niet uit wat werkgevers beweren.",
     "actionHiring": "Vacatures bij al deze werkgevers",
     "actionEntry": "Alle starterfuncties op het board",
-    "actionGhost": "Toon alleen werkgevers met een bewezen vulhistorie"
+    "actionGhost": "Toon alleen werkgevers met een bewezen vulhistorie",
+    "intentCheck": "Werkgever checken",
+    "checkTitle": "Een specifieke werkgever checken",
+    "checkBlurb": "Elke werkgever op het board — niet alleen die uit deze lijsten. Zie hoeveel vacatures openstaan, hoeveel er echt zijn vervuld en of dezelfde functie steeds opnieuw wordt geplaatst.",
+    "checkPlaceholder": "Typ een bedrijfsnaam…",
+    "checkFeeds": "{{n}} vacaturesites",
+    "checkNone": "We volgen de vacaturesite van die werkgever niet — we hebben dus niets gemetens om te laten zien.",
+    "checkErr": "Werkgevers opzoeken werkt nu even niet — dit zegt niets over die werkgever. Probeer het zo opnieuw."
   },
   "agentQueue": {
     "title": "Ochtendwachtrij",

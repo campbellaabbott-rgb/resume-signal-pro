@@ -710,6 +710,119 @@ describe("both copies of Explore's title describe the page that exists", () => {
   });
 });
 
+/**
+ * THE 0.34% GAP. Explore's six browsing answers surface 85 distinct employers;
+ * the board carries 24,931. The lifecycle data that makes this product
+ * different is tracked for all of them and was exposed only for the handful
+ * that top a twelve-row list. The lookup covers the rest.
+ */
+describe("the employer lookup covers the whole board, honestly", () => {
+  const sql = latestWith("FUNCTION public.get_company_suggest").replace(/^\s*--.*$/gm, "");
+  // $$; anchored to the function start. Searching from 0 finds whichever
+  // function is FIRST in the migration — two live in this one — which yielded a
+  // negative slice and an assertion that could never match.
+  const fnAt = sql.indexOf("FUNCTION public.get_company_suggest");
+  const body = sql.slice(fnAt, sql.indexOf("$$;", fnAt));
+
+  it("never returns the facet count to the client", () => {
+    // companiesFacet.count is count(*) GROUP BY company_token with NEITHER
+    // serving predicate. It may rank and match; publishing it would put a
+    // number on screen that the destination contradicts.
+    expect(body).toMatch(/RETURNS TABLE\(name text, tokens text\[\]\)/);
+    expect(CODE, "Explore must not render a count on a lookup result")
+      .not.toMatch(/h\.count|hit\.count/);
+  });
+
+  it("reads the cached facets row, never an aggregate", () => {
+    // A request-path aggregate over 605k postings is the 26s-per-view mistake.
+    expect(body).toMatch(/FROM public\.job_board_meta m/);
+    expect(body).toMatch(/WHERE m\.k = 'facets'/);
+    expect(body).not.toMatch(/FROM public\.job_board_postings/);
+  });
+
+  it("merges an employer's several feeds into one row", () => {
+    // PwC has four boards; four identical "PwC" rows is a worse answer than one.
+    expect(body).toMatch(/GROUP BY h\.name/);
+    expect(body).toMatch(/array_agg\(h\.token/);
+  });
+
+  it("enforces the 3-character floor server-side, not only in the input", () => {
+    expect(body).toMatch(/length\(q\.s\) >= 3/);
+  });
+
+  it("the chip is always offered — it does not depend on the hourly cron", () => {
+    // The facets row is written by the edge-function refresh pass. When pg_cron
+    // died for five hours today every other answer froze; this one would not.
+    expect(CODE).toMatch(/check: true,/);
+    expect(CODE).toMatch(/INTENTS: readonly Intent\[\] = \["check",/);
+  });
+
+  it("says what is true when nothing matches, instead of an empty box", () => {
+    expect(CODE).toMatch(/explore\.checkNone/);
+    expect(CODE).toMatch(/cState === "ok" && cHits\.length === 0/);
+  });
+
+  it("a BROKEN lookup never renders as a claim about the employer", () => {
+    // THE BUG THIS CAUGHT, live. With the RPC undeployed, searching "wegman"
+    // printed "We don't carry that employer's job board" — a confident false
+    // statement about a company with 498 open roles. supabase-js RESOLVES on a
+    // PostgREST error rather than throwing, so `data === null` arrived in the
+    // success path and a two-state boolean folded failure into absence.
+    //
+    // This is the defect the whole page has been paying down: a section that
+    // timed out looked identical to a section with nothing to show.
+    expect(CODE, "lookup state must be tri-state, not a boolean")
+      .toMatch(/useState<"idle" \| "ok" \| "error">/);
+    expect(CODE, "a non-array reply must be treated as failure, not emptiness")
+      .toMatch(/if \(r\.error \|\| !Array\.isArray\(r\.data\)\) \{ setCHits\(\[\]\); setCState\("error"\); return; \}/);
+    expect(CODE).toMatch(/cState === "error" &&/);
+    expect(CODE).toMatch(/explore\.checkErr/);
+
+    // And the two sentences must stay distinct in every locale — an error
+    // message that borrows the not-carried wording re-creates the bug in
+    // translation.
+    for (const f of localeFiles) {
+      const e = (JSON.parse(readFileSync(resolve(LOCALES, f), "utf8")).explore ?? {}) as Record<string, string>;
+      expect(e.checkErr, `${f} is missing explore.checkErr`).toBeTruthy();
+      expect(e.checkErr, `${f} checkErr must not equal checkNone`).not.toBe(e.checkNone);
+    }
+  });
+
+  it("queries on keystroke only, debounced — never on page load", () => {
+    const block = CODE.slice(CODE.indexOf("const s = cq.trim();"), CODE.indexOf("const bands ="));
+    expect(block).toMatch(/if \(s\.length < 3\)/);
+    expect(block).toMatch(/setTimeout\(/);
+  });
+});
+
+describe("the page the lookup points at answers honestly", () => {
+  const sql = latestWith("FUNCTION public.get_company_hiring_health").replace(/^\s*--.*$/gm, "");
+  // Anchored — see the note in the suggest block. get_company_suggest is
+  // defined ABOVE this function in the same migration, so an unanchored search
+  // returned its terminator and sliced backwards.
+  const fnAt = sql.indexOf("FUNCTION public.get_company_hiring_health");
+  const body = sql.slice(fnAt, sql.indexOf("$$;", fnAt));
+
+  it("open_roles applies BOTH serving predicates", () => {
+    // It filtered only missing_since, so the card stated a bigger number than
+    // the board it links to — on the page a reader opened to decide whether to
+    // trust us.
+    const live = body.slice(body.indexOf("live AS ("), body.indexOf("closed AS ("));
+    expect(live).toMatch(/missing_since IS NULL/);
+    expect(live).toMatch(/effective_posted >= now\(\) - interval '30 days'/);
+  });
+
+  it("tracking_days is per company, not the age of the whole closure log", () => {
+    // `span` had NO company filter, so every employer reported the same window.
+    // For a board carried a week that renders "90 days tracked, 0 filled", and
+    // silence reads as a verdict.
+    const span = body.slice(body.indexOf("span AS ("), body.indexOf("live AS ("));
+    expect(span).toMatch(/c\.company_token = t\.t/);
+    expect(span, "span must not scan the whole closure log unfiltered")
+      .not.toMatch(/FROM public\.job_board_closures\s*\)/);
+  });
+});
+
 describe("the page says when it was measured", () => {
   it("renders the cache's own computed_at", () => {
     expect(EXPLORE).toMatch(/setComputedAt\(c\.computed_at\)/);
