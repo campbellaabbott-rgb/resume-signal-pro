@@ -60,8 +60,15 @@ const PINNED = {
   // so those distinct employers were being counted as one company.
   // Ships with NAME_SYNC_VERSION 2, because the refresh is insert-only and a
   // rename reaches stored rows through that sweep or not at all.
-  sourcesHash: "4b399bb502460bc0",
-  buildVersion: "2026-08-11.1",
+  // 2026-08-11.2: 9 more board renames (8 employers; Embry-Riddle has two
+  // boards). These became visible only AFTER the Explore migrations landed —
+  // "Transparent about pay" rendered for the first time and the size bands
+  // re-cut on served counts, surfacing cards that had never been on screen.
+  // Every name was verified against the employer's own board or careers site;
+  // two differed from the obvious guess (Alignment Health, not Healthcare;
+  // AnewHealth, not ExactCare). Ships with NAME_SYNC_VERSION 3.
+  sourcesHash: "578bd5893bc57cd1",
+  buildVersion: "2026-08-11.2",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {

@@ -98,14 +98,14 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-11.1";
+const BUILD_VERSION = "2026-08-11.2";
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
 // nothing else — every existing row keeps the old name indefinitely. The
 // version-stamped sweep below is the only path that rewrites them, so a rename
 // must arrive with a bump here or it is invisible on the site.
-const NAME_SYNC_VERSION = 2;
+const NAME_SYNC_VERSION = 3;
 
 /** Boards whose catalog display name was corrected, for the v2 sweep.
  *
@@ -148,6 +148,33 @@ const RENAMED_TOKENS: readonly string[] = [
   "integritymarketing~wd1~PHPAgency",
   "integritymarketing~wd1~RitterInsuranceMarketing",
   "integritymarketing~wd1~connexionpoint",
+
+  // v3, added 2026-08-11. These surfaced only AFTER the Explore fixes landed:
+  // "Transparent about pay" rendered for the first time and the size bands
+  // re-cut on served counts, so cards that had never been visible came into
+  // view carrying slug names. Fixing one instrument exposed the next.
+  //
+  // Every name below was verified against the employer's own board or careers
+  // site rather than guessed. Two came back different from the obvious guess:
+  //   alignmenthealthcare -> "Alignment Health", not "Alignment Healthcare".
+  //     Healthcare is the SEC registrant; the board's own og:description and
+  //     every posting body say Alignment Health.
+  //   exactcare -> "AnewHealth", not ExactCare. The slug is the old subsidiary;
+  //     the board is a shared career site for the merged organisation and every
+  //     job page on it is titled "Careers at AnewHealth". Calling it ExactCare
+  //     would attribute the whole board to one of its pharmacy brands.
+  "nfamilyclub",
+  "gianttiger~wd3~gianttiger",
+  "picknpay~wd3~PNP_Careers",
+  "alignmenthealthcare~wd12~ahc_external",
+  // Both Embry-Riddle boards, confirmed linked from careers.erau.edu: External
+  // is staff/faculty, AdjunctFacultyOpportunities is adjunct hiring. Same
+  // employer, so the same name — they are not separate companies.
+  "embryriddle~wd1~External",
+  "embryriddle~wd1~AdjunctFacultyOpportunities",
+  "standoutforgood~wd12~StandOutForGood",
+  "trilongroup",
+  "exactcare~wd1~AnewHealth_Career_Site",
 ];
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min

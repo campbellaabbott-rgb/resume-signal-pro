@@ -46,7 +46,13 @@ const entries = (() => {
 const renamedTokens = (() => {
   const block = /const RENAMED_TOKENS: readonly string\[\] = \[([\s\S]*?)\];/.exec(IDX);
   expect(block, "RENAMED_TOKENS not found in index.ts").toBeTruthy();
-  return [...block![1].matchAll(/"((?:[^"\\]|\\.)*)"/g)].map((m) => m[1]);
+  // Comments stripped FIRST. The v3 note inside this array quotes company names
+  // ("Alignment Health", "Careers at AnewHealth"), and without this the quoted
+  // prose was harvested as if it were board tokens — the test then failed
+  // reporting five "missing tokens" that were never tokens at all. Caught by
+  // this file's own guard, which is the outcome it was written for.
+  const code = block![1].replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+  return [...code.matchAll(/"((?:[^"\\]|\\.)*)"/g)].map((m) => m[1]);
 })();
 
 describe("the catalog parses at all", () => {
@@ -79,6 +85,30 @@ describe("renamed boards are corrected in the catalog", () => {
     }
   });
 
+  it("the v3 renames are the verified names, not the obvious guesses", () => {
+    // Both of these came back from source-checking DIFFERENT from what a
+    // reasonable guess would produce, which is the whole reason the names were
+    // verified rather than assumed:
+    //   Alignment Healthcare is the SEC registrant; the board's own
+    //     og:description and every posting body say "Alignment Health".
+    //   The exactcare slug is an old subsidiary; that board is a shared career
+    //     site for the merged organisation and every job page on it is titled
+    //     "Careers at AnewHealth". Naming it ExactCare would attribute the
+    //     whole board to one of its pharmacy brands.
+    expect(byToken.get("alignmenthealthcare~wd12~ahc_external")?.name).toBe("Alignment Health");
+    expect(byToken.get("exactcare~wd1~AnewHealth_Career_Site")?.name).toBe("AnewHealth");
+  });
+
+  it("Embry-Riddle's two boards carry the SAME name", () => {
+    // External is staff/faculty, AdjunctFacultyOpportunities is adjunct hiring;
+    // careers.erau.edu links both. They are one employer, so get_size_segments
+    // SHOULD merge them — the one place a shared display name is correct.
+    const a = byToken.get("embryriddle~wd1~External")?.name;
+    const b = byToken.get("embryriddle~wd1~AdjunctFacultyOpportunities")?.name;
+    expect(a).toBe("Embry-Riddle Aeronautical University");
+    expect(b).toBe(a);
+  });
+
   it("the boards that were three employers under one name are distinct again", () => {
     // get_size_segments merges by display name, so identical names here mean
     // these are still counted as one company.
@@ -98,6 +128,34 @@ describe("renamed boards are corrected in the catalog", () => {
 });
 
 describe("a rename actually reaches stored rows", () => {
+  /** Updated together, never one without the other.
+   *
+   *  Adding a token to RENAMED_TOKENS without bumping NAME_SYNC_VERSION is a
+   *  SILENT no-op: the sweep's guard is `stored.version !== NAME_SYNC_VERSION`,
+   *  so if the version already matches what is stored, the block is skipped
+   *  entirely and the new rename never touches a single row. The catalog would
+   *  be correct, every test green, and the site unchanged — the exact shape of
+   *  failure this codebase keeps paying for.
+   *
+   *  Mutation-tested: renaming a board and leaving the version at 2 must fail. */
+  const PINNED = { nameSyncVersion: 3, tokenCount: 38 };
+
+  it("the token list and the sync version move together", () => {
+    const m = /const NAME_SYNC_VERSION = (\d+);/.exec(IDX);
+    expect(m, "NAME_SYNC_VERSION not found").toBeTruthy();
+    expect(
+      Number(m![1]),
+      "RENAMED_TOKENS changed but NAME_SYNC_VERSION did not — the sweep will " +
+        "skip itself and the rename will never reach stored rows. Bump the " +
+        "version in index.ts and update PINNED here.",
+    ).toBe(PINNED.nameSyncVersion);
+    expect(
+      renamedTokens.length,
+      `RENAMED_TOKENS is now ${renamedTokens.length} tokens; if you added some, ` +
+        `bump NAME_SYNC_VERSION and set PINNED.tokenCount to ${renamedTokens.length}`,
+    ).toBe(PINNED.tokenCount);
+  });
+
   it("the sweep is keyed on the constant, not a literal version", () => {
     // It read `!== 1` and stamped `version: 1`. With the check hardcoded, a
     // later rename could never trigger a re-sweep — the rename would land in
