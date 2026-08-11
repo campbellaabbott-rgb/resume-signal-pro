@@ -71,6 +71,17 @@ AS $$
     SELECT company,
            (array_agg(company_token ORDER BY on_board DESC))[1] AS company_token,
            sum(on_board)::int AS on_board,
+           -- THE NUMBER THE CLICK ACTUALLY DELIVERS.
+           -- This CTE merges an employer's several ATS feeds by display name so
+           -- PwC (four feeds) appears once, summing on_board but keeping ONE
+           -- token — and the card links to /jobs/company/{that token}, which
+           -- filters on it alone. So the card promised the summed figure and
+           -- the destination showed one feed's worth, with nothing explaining
+           -- the gap. The band still uses the summed count (the employer really
+           -- is that big); the CARD now states the lead feed's own count, which
+           -- is what the reader will find. Because the token is picked
+           -- ORDER BY on_board DESC, that count is max(on_board).
+           max(on_board)::int AS lead_on_board,
            sum(remote_n)::int AS remote_n,
            sum(disclosed_n)::int AS disclosed_n,
            sum(entry_n)::int AS entry_n,
@@ -117,7 +128,9 @@ AS $$
   top AS (
     SELECT band, jsonb_agg(jsonb_build_object(
              'company', company, 'company_token', company_token,
-             'on_board', on_board, 'company_total', company_total)
+             -- lead_on_board, not on_board: see the note in `named`. The card
+             -- and the page it links to must state one number.
+             'on_board', lead_on_board, 'company_total', company_total)
              ORDER BY effective DESC) AS top
     FROM (
       SELECT *, row_number() OVER (PARTITION BY band ORDER BY effective DESC) AS rn

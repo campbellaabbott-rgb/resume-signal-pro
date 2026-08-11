@@ -162,9 +162,35 @@ if (import.meta.env.DEV) {
 i18n.on('languageChanged', (lng) => {
   localStorage.setItem('i18nextLng', lng);
   loadLocale(lng);
+  syncDocumentLang(lng);
   if (import.meta.env.DEV) {
     console.log('[i18n] Language changed to:', lng);
   }
 });
+
+// EIGHT LANGUAGES WERE RENDERING INSIDE <html lang="en">.
+//
+// Detection order is ['localStorage', 'navigator'], so a visitor with a German
+// browser is switched into German with no action on their part — but nothing on
+// that path ever touched document.documentElement.lang. It was set in exactly
+// two places, LanguageSwitcher (the manual picker) and
+// ResumeLanguageSuggestion, so it stayed "en" for everyone who never opened the
+// picker, which is everyone auto-detected.
+//
+// The consequences are the ones a sighted English-speaking developer never
+// sees: screen readers apply English pronunciation rules to German and Hindi
+// text, and the browser's own translation prompt does not offer to translate a
+// page it believes is already in the reader's language.
+//
+// Applied here rather than in the picker so it holds for EVERY path into a
+// language — detection, picker, and any future deep link.
+function syncDocumentLang(lng: string) {
+  if (typeof document === 'undefined') return;
+  document.documentElement.lang = lng;
+}
+
+// The initial detection happens during init(), before this listener is
+// attached, so the first render needs it applied directly.
+syncDocumentLang(i18n.language);
 
 export default i18n;

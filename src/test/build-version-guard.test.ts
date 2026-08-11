@@ -51,8 +51,17 @@ const PINNED = {
   // hash below still pins the Domino's + Workable merge); the bump is for the
   // fetcher itself, so the deployed bundle is identifiable when checking
   // whether the larger window actually landed.
-  sourcesHash: "5665ce23b64042e8",
-  buildVersion: "2026-08-10.3",
+  // 2026-08-11.1: 29 boards renamed in sources.ts. Most were the slug
+  // title-cased and rendered that way on company cards — "Thehartford",
+  // "Hdsupply", "Nyp", "Umd", "Ummh", "Ncsecu". Four were worse than cosmetic:
+  // Fabletics, Savage X Fenty and JustFab all sat under the parent slug
+  // "Justfab", and PHP Agency / Ritter / Connexion Point under
+  // "Integritymarketing" — and get_size_segments merges boards BY DISPLAY NAME,
+  // so those distinct employers were being counted as one company.
+  // Ships with NAME_SYNC_VERSION 2, because the refresh is insert-only and a
+  // rename reaches stored rows through that sweep or not at all.
+  sourcesHash: "4b399bb502460bc0",
+  buildVersion: "2026-08-11.1",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {

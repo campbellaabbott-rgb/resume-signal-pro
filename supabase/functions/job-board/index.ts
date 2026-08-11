@@ -98,7 +98,57 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-10.3";
+const BUILD_VERSION = "2026-08-11.1";
+
+// STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
+// correcting a display name in sources.ts changes what NEW postings get and
+// nothing else — every existing row keeps the old name indefinitely. The
+// version-stamped sweep below is the only path that rewrites them, so a rename
+// must arrive with a bump here or it is invisible on the site.
+const NAME_SYNC_VERSION = 2;
+
+/** Boards whose catalog display name was corrected, for the v2 sweep.
+ *
+ *  Two kinds. Most were the slug title-cased — "Thehartford", "Hdsupply",
+ *  "Nyp", "Umd" — which is what a reader saw on the company card. The rest were
+ *  worse than cosmetic: several DISTINCT employers shared one parent slug, so
+ *  Fabletics, Savage X Fenty and JustFab all rendered as "Justfab", and
+ *  get_size_segments (which merges boards by display name) counted them as one
+ *  company. Naming them correctly separates them again.
+ *
+ *  Adding a rename later means editing sources.ts, appending the token here,
+ *  and bumping NAME_SYNC_VERSION. */
+const RENAMED_TOKENS: readonly string[] = [
+  "analogdevices~wd1~External",
+  "broadviewfcu~wd1~broadviewfcucareers",
+  "hdsupply~wd1~external",
+  "ncsecu~wd1~SECU",
+  "norgesgruppen~wd3~karriere",
+  "nyp~wd1~nypcareers",
+  "umd~wd1~UMCP",
+  "ummh~wd1~Careers",
+  "uobgroup~wd3~UOBExternal",
+  "weis~wd108~Careers",
+  "albanymed~wd5~Albany_Med",
+  "thehartford~wd5~Careers_External",
+  "extraspace~wd5~ESS_External",
+  "extraspace~wd5~ESS_Acquisitions",
+  "elevancehealth~wd1~ANT",
+  "elevancehealth~wd1~carelonglobal_in",
+  "dinebrands~wd503~DineCareers",
+  "dinebrands~wd503~RestaurantCareerSite",
+  "sunking",
+  "bpinternational~wd3~bpcareers",
+  "bpinternational~wd3~bpcwcareerssite",
+  "bpinternational~wd3~bpEarlyCareers",
+  "justfab~wd1~fabletics",
+  "justfab~wd1~savagex",
+  "justfab~wd1~justfab",
+  "integritymarketing~wd1~Integrity",
+  "integritymarketing~wd1~PHPAgency",
+  "integritymarketing~wd1~RitterInsuranceMarketing",
+  "integritymarketing~wd1~connexionpoint",
+];
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -1962,13 +2012,18 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
     // carrying escaped names and sync them (postings + closures, which feed
     // the actively-hiring leaderboard) to the decoded catalog name. Stamped.
     const { data: nsVer } = await client.from("job_board_meta").select("v").eq("k", "name_sync_version").maybeSingle();
-    if ((nsVer?.v as { version?: number } | null)?.version !== 1) {
+    if ((nsVer?.v as { version?: number } | null)?.version !== NAME_SYNC_VERSION) {
       try {
         const tokens = new Set<string>();
         for (const pat of ["%&amp;%", "%&#039;%"]) {
           const { data: escRows } = await client.from("job_board_postings").select("company_token").like("company", pat).limit(1000);
           for (const r of escRows ?? []) tokens.add(r.company_token as string);
         }
+        // Boards whose catalog display name was CORRECTED rather than merely
+        // escaped. Same insert-only problem, same cure: stored rows keep the
+        // old name forever unless something rewrites them, so a rename in
+        // sources.ts is invisible on the site without this sweep.
+        for (const tk of RENAMED_TOKENS) tokens.add(tk);
         let fixed = 0;
         for (const tk of tokens) {
           const src = JOB_SOURCES.find((s) => s.token === tk);
@@ -1978,7 +2033,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
           if (!e1 && !e2) fixed++;
         }
         await client.from("job_board_meta").upsert(
-          { k: "name_sync_version", v: { version: 1, fixed, sweptAt: new Date().toISOString() }, updated_at: new Date().toISOString() },
+          { k: "name_sync_version", v: { version: NAME_SYNC_VERSION, fixed, sweptAt: new Date().toISOString() }, updated_at: new Date().toISOString() },
           { onConflict: "k" },
         );
         if (fixed > 0) console.log(`[JOB-BOARD] name sync: decoded stored names for ${fixed} boards`);
