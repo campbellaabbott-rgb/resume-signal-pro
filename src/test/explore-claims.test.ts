@@ -667,7 +667,31 @@ describe("both copies of Explore's title describe the page that exists", () => {
   // while the served HTML still advertised "Trending Companies" — a page
   // promising crawlers two sections it does not contain.
   const SHELL = readFileSync(resolve(__dirname, "../../scripts/prerender-seo.mjs"), "utf8");
-  const entry = SHELL.slice(SHELL.indexOf('path: "/explore"'), SHELL.indexOf('path: "/explore"') + 2200);
+  /** The WHOLE /explore entry — title, description, jsonLd AND the prerendered
+   *  body — ending at the entry's own terminator rather than a fixed count.
+   *
+   *  This was `slice(i, i + 2200)`, and a "Fastest-growing boards" card sat in
+   *  the prerendered BODY at offset 2352. Missed by 152 characters, so the
+   *  guard passed while the served HTML advertised a collection deleted that
+   *  morning — to exactly the audience that cannot run the JS proving
+   *  otherwise. A fixed window is not a boundary, it is a guess about how long
+   *  the thing you are checking happens to be, and it rots the moment anyone
+   *  adds a line above the part that matters. */
+  const entry = (() => {
+    const start = SHELL.indexOf('path: "/explore"');
+    expect(start, "/explore entry not found in prerender-seo.mjs").toBeGreaterThan(-1);
+    const end = SHELL.indexOf("});", start);
+    expect(end, "/explore entry has no terminator").toBeGreaterThan(start);
+    const slice = SHELL.slice(start, end);
+    // The body is what ships to crawlers, so it must be inside the slice — if
+    // this ever fails the guard has silently stopped covering the thing it is for.
+    expect(slice, "slice does not reach the prerendered body").toContain("content:");
+    // HTML comments stripped as well as //. A removal note that NAMES the
+    // removed collection is prose, and prose must not be able to fail — or
+    // satisfy — an assertion about shipped markup. Twice today a guard read a
+    // comment instead of code.
+    return slice.replace(/<!--[\s\S]*?-->/g, "").replace(/^\s*\/\/.*$/gm, "");
+  })();
 
   it("the prerendered copy names no deleted collection", () => {
     const GONE = /Trending Companies|trending boards|fastest-growing/i;
