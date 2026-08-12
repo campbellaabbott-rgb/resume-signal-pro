@@ -3954,7 +3954,10 @@
       "salaryFloor": "salaire minimum",
       "workMode": "mode de travail"
     },
-    "companiesChip": "{{n}} entreprises"
+    "companiesChip": "{{n}} entreprises",
+    "firstSeenToday": "vue pour la première fois aujourd'hui",
+    "firstSeenDaysAgo": "vue pour la première fois il y a {{count}} j",
+    "firstSeenProvenance": "Cet employeur n'indique pas de date de publication, donc aucun âge n'est affiché. Voici quand l'offre est apparue pour la première fois sur notre site — cela plafonne son ancienneté possible, mais c'est notre date de découverte, pas celle de l'employeur."
   },
   "accountPage": {
     "statusSaveFailed": "Impossible d'enregistrer ce statut — réessayez.",

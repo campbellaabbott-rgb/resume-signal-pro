@@ -1,8 +1,18 @@
 // The Pay Transparency Index — a public data page ranking fields, hiring
 // systems, and large employers by how much of their postings state pay and
-// work mode. Every number is computed live from postings' own text and ATS
-// fields; nothing is estimated and no placement is purchasable (the /trust
-// fence). EN-only like the other data pages.
+// work mode. Every number is computed from postings' own text and ATS fields;
+// nothing is estimated and no placement is purchasable (the /trust fence).
+// EN-only like the other data pages.
+//
+// READS THE HOURLY CACHE, NOT THE AGGREGATES. This page used to call
+// get_pay_transparency (measured 14.9s) and get_transparency_coverage (4.8s,
+// and the first 57014 of the 2026-08-12 incident) on every mount — ~20 seconds
+// of full-table scans per visitor. Both now run hourly under cron into
+// job_board_meta, and this page reads the row (get_transparency_cache, a PK
+// lookup). The direct calls remain ONLY as a fallback for the deploy window
+// where this frontend is live before the migration has been applied — once the
+// migration revokes them from anon, the fallback path returns nothing and the
+// cache is the only source.
 
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
@@ -38,11 +48,25 @@ export default function PayTransparencyIndex() {
   const [cov, setCov] = useState<Coverage | null>(null);
 
   useEffect(() => {
-    void Promise.resolve(rpc("get_pay_transparency")).then((r) => {
-      if (r.data && typeof r.data === "object") setPay(r.data as PayData);
-    }).catch(() => {});
-    void Promise.resolve(rpc("get_transparency_coverage")).then((r) => {
-      if (r.data && typeof r.data === "object") setCov(r.data as Coverage);
+    void Promise.resolve(rpc("get_transparency_cache")).then((r) => {
+      const c = r.data as { pay?: unknown; coverage?: unknown } | null;
+      // Object-shape checks, not truthiness: the row is NULL before the first
+      // refresh, and `typeof null === "object"` would put null into state.
+      const isObj = (v: unknown) => !!v && typeof v === "object" && !Array.isArray(v);
+      let served = false;
+      if (isObj(c?.pay)) { setPay(c!.pay as PayData); served = true; }
+      if (isObj(c?.coverage)) { setCov(c!.coverage as Coverage); served = true; }
+      if (served) return;
+      // Deploy-window fallback only (cache RPC absent, or row not yet primed):
+      // the old direct calls. After the migration lands these are revoked from
+      // anon and return errors, which the catch swallows — by then the cache
+      // path above has already served.
+      void Promise.resolve(rpc("get_pay_transparency")).then((r2) => {
+        if (isObj(r2.data)) setPay(r2.data as PayData);
+      }).catch(() => {});
+      void Promise.resolve(rpc("get_transparency_coverage")).then((r2) => {
+        if (isObj(r2.data)) setCov(r2.data as Coverage);
+      }).catch(() => {});
     }).catch(() => {});
   }, []);
 

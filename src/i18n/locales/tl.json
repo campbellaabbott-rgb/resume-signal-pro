@@ -3954,7 +3954,10 @@
       "salaryFloor": "pinakamababang sahod",
       "workMode": "paraan ng trabaho"
     },
-    "companiesChip": "{{n}} kumpanya"
+    "companiesChip": "{{n}} kumpanya",
+    "firstSeenToday": "unang nakita ngayong araw",
+    "firstSeenDaysAgo": "unang nakita {{count}} araw na nakalipas",
+    "firstSeenProvenance": "Walang isinasaad na petsa ng paglalathala ang employer na ito, kaya walang ipinapakitang edad. Ito ang petsa nang unang lumitaw ang posisyon sa aming board — nililimitahan nito kung gaano na ito katanda, pero petsa ito ng aming pagkakadiskubre, hindi sa employer."
   },
   "accountPage": {
     "statusSaveFailed": "Hindi na-save ang status na iyon — pakisubukan muli.",

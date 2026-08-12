@@ -31,8 +31,13 @@ const hbCode = hb.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/^\s*\/\/.*$/gm, " "
 const pageCode = page.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/^\s*\/\/.*$/gm, " ");
 
 describe("a permanent skip degrades the run", () => {
-  it("has a threshold well past the 180-minute freshness bound", () => {
-    expect(hbCode).toMatch(/SC_STALL_DEGRADE_MIN = 720/);
+  it("degrades after three missed hourly refreshes, not twelve", () => {
+    // Was pinned at 720 and lived through its first real stall 2026-08-12:
+    // stats_cache dead for six hours, heartbeat green throughout, because six
+    // hours is a "hiccup" under a 12-hour bar. 240 sits above the endpoint's
+    // own 180-minute freshness bound (the hiccup test below defends that
+    // boundary) and would have caught the six-hour stall at hour four.
+    expect(hbCode).toMatch(/SC_STALL_DEGRADE_MIN = 240/);
   });
 
   it("degrades when the cache is far stale OR the row is missing", () => {

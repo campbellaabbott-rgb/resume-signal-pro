@@ -3954,7 +3954,10 @@
       "salaryFloor": "minimumsalaris",
       "workMode": "werkvorm"
     },
-    "companiesChip": "{{n}} bedrijven"
+    "companiesChip": "{{n}} bedrijven",
+    "firstSeenToday": "voor het eerst gezien vandaag",
+    "firstSeenDaysAgo": "voor het eerst gezien {{count}}d geleden",
+    "firstSeenProvenance": "Deze werkgever vermeldt geen plaatsingsdatum, dus er wordt geen leeftijd getoond. Dit is wanneer de vacature voor het eerst op ons bord verscheen — het begrenst hoe oud ze hoogstens kan zijn, maar het is onze ontdekkingsdatum, niet die van de werkgever."
   },
   "accountPage": {
     "statusSaveFailed": "Kon die status niet opslaan — probeer het opnieuw.",

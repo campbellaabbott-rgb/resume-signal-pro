@@ -3954,7 +3954,10 @@
       "salaryFloor": "pay floor",
       "workMode": "work mode"
     },
-    "companiesChip": "{{n}} companies"
+    "companiesChip": "{{n}} companies",
+    "firstSeenToday": "first seen today",
+    "firstSeenDaysAgo": "first seen {{count}}d ago",
+    "firstSeenProvenance": "This employer states no posting date, so no age is shown. This is when the posting first appeared on our board — it caps how old the posting can be, but it is our discovery date, not the employer's."
   },
   "accountPage": {
     "statusSaveFailed": "Couldn't save that status — please try again.",

@@ -1,0 +1,124 @@
+# EXTERNAL BOARD MONITOR — the alarm the 2026-08-12 outage did not have.
+#
+# That day the board was fully down (plain queries timing out at 90s) and
+# nothing said so: every instrument this system owns runs INSIDE the database
+# that was down, and the heartbeat's own dependency cache was one of the
+# casualties. The outage was found by a human running curl. This workflow is
+# that curl, on a schedule, from GitHub's infrastructure — outside the blast
+# radius of anything it watches.
+#
+# WHAT IT CHECKS (deliberately minimal, so it cannot flap):
+#   1. The board serves: one thin page query answers 200 with a numeric total
+#      inside 25s. This is the user-facing contract.
+#   2. The pipeline breathes: the status action answers, and its last refresh
+#      slice ran within 6 hours (lastSliceAgeMin). A dead scheduler shows up
+#      here long before any data page looks wrong.
+#
+# WHAT IT DOES ON FAILURE: opens a GitHub issue labeled `board-health` (or
+# comments on the existing open one, so a long outage is one thread rather
+# than an issue per tick). Closing the issue re-arms clean alerting; the
+# workflow never closes it itself, because "it came back" is a human judgment
+# after today — recovery at 13:07 followed three separate false dawns.
+#
+# CREDENTIALS: the probe reads the ANON key out of the repo's own committed
+# .env — the same public key shipped in the JS bundle to every visitor; it
+# grants nothing RLS does not already grant to the world. Reading it from .env
+# rather than a repo secret/variable means the monitor needs ZERO configuration
+# and cannot silently die of a missing secret (the failure mode monitors are
+# for), and key rotation stays a one-file change. A missing/unparseable .env
+# still alarms loudly rather than passing vacuously.
+#
+# Schedule note: GitHub fires scheduled workflows with best-effort timing
+# (typically +3-10 min). Fine here — this is an outage alarm, not a metric.
+name: board-health
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch: {}
+
+permissions:
+  issues: write
+
+concurrency:
+  group: board-health
+  cancel-in-progress: false
+
+env:
+  SB_URL: https://bwhdazbotpblihdxcmho.supabase.co
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Probe the board
+        id: probe
+        run: |
+          set -u
+          FAILS=""
+
+          # The anon key from the repo's own .env (see the header note). A
+          # missing key must read as "monitor misconfigured" — loud, never
+          # silent, and never mistaken for a board failure.
+          SB_ANON=$(grep -m1 '^VITE_SUPABASE_PUBLISHABLE_KEY=' .env | cut -d= -f2- | tr -d '"' || echo "")
+          if [ -z "$SB_ANON" ]; then
+            echo "note=could not read VITE_SUPABASE_PUBLISHABLE_KEY from .env — the monitor cannot probe" >> "$GITHUB_OUTPUT"
+            echo "failed=config" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # 1. The user-facing contract: a page with a total, promptly.
+          BODY=$(curl -sS -m 25 -X POST "$SB_URL/functions/v1/job-board" \
+            -H "apikey: $SB_ANON" -H "Authorization: Bearer $SB_ANON" \
+            -H "Content-Type: application/json" \
+            -d '{"limit":1,"page":1}' || echo "")
+          TOTAL=$(printf '%s' "$BODY" | python3 -c "import sys,json
+try: print(json.load(sys.stdin).get('total') or '')
+except Exception: print('')")
+          if [ -z "$TOTAL" ]; then
+            FAILS="board query returned no total (timeout, error, or non-JSON)"
+          fi
+
+          # 2. The pipeline breathes: a refresh slice within 6 hours.
+          ST=$(curl -sS -m 25 -X POST "$SB_URL/functions/v1/job-board" \
+            -H "apikey: $SB_ANON" -H "Authorization: Bearer $SB_ANON" \
+            -H "Content-Type: application/json" \
+            -d '{"action":"status"}' || echo "")
+          SLICE=$(printf '%s' "$ST" | python3 -c "import sys,json
+try: print(json.load(sys.stdin).get('lastSliceAgeMin', ''))
+except Exception: print('')")
+          if [ -z "$SLICE" ]; then
+            FAILS="${FAILS:+$FAILS; }status action unreachable"
+          elif [ "$(printf '%s' "$SLICE" | cut -d. -f1)" -gt 360 ] 2>/dev/null; then
+            FAILS="${FAILS:+$FAILS; }last refresh slice was ${SLICE} minutes ago (>6h: scheduler or worker likely dead)"
+          fi
+
+          if [ -n "$FAILS" ]; then
+            echo "note=$FAILS" >> "$GITHUB_OUTPUT"
+            echo "failed=probe" >> "$GITHUB_OUTPUT"
+          else
+            echo "failed=" >> "$GITHUB_OUTPUT"
+            echo "board OK: total=$TOTAL, lastSliceAgeMin=$SLICE"
+          fi
+
+      - name: Raise or update the alarm
+        if: steps.probe.outputs.failed != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NOTE: ${{ steps.probe.outputs.note }}
+        run: |
+          set -u
+          EXISTING=$(gh issue list --repo "$GITHUB_REPOSITORY" --label board-health --state open --json number --jq '.[0].number' || echo "")
+          STAMP="$(date -u +'%Y-%m-%d %H:%M UTC')"
+          if [ -n "$EXISTING" ]; then
+            gh issue comment "$EXISTING" --repo "$GITHUB_REPOSITORY" --body "Still failing at $STAMP — $NOTE"
+          else
+            gh issue create --repo "$GITHUB_REPOSITORY" \
+              --title "Board health: probe failing" \
+              --label board-health \
+              --body "$STAMP — $NOTE
+
+This issue was opened by .github/workflows/board-health.yml, which probes the live board every 10 minutes from outside the database. Close it once the board is verified healthy; the monitor comments here instead of opening duplicates while it stays open."
+          fi

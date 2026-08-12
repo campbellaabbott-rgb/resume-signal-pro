@@ -79,7 +79,7 @@ async function rpcWithin<T>(p: PromiseLike<{ data: T | null }>, ms = 6_000): Pro
  *
  * BUMP ON EVERY DEPLOY of this function.
  */
-const BUILD_VERSION = "2026-08-08.2";
+const BUILD_VERSION = "2026-08-12.1";
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -544,10 +544,22 @@ serve(async (req) => {
       // time. Nobody was lied to by a wrong number; they were lied to by a
       // green light over an instrument that had stopped reading.
       //
-      // 12 hours = four consecutive missed refreshes. Below that, still just a
-      // hiccup and still silent; past it, the dependency is broken and the
-      // overall status has to say so.
-      const SC_STALL_DEGRADE_MIN = 720;
+      // WAS 720 (12 hours = four missed refreshes). Lived through its first
+      // real stall 2026-08-12: stats_cache sat dead for SIX HOURS — 17:12 to
+      // 01:12 — and this endpoint reported healthy the entire time, because six
+      // hours is "still just a hiccup" under a 12-hour bar. The scheduler
+      // stalled twice that same day. A watchdog that stays green through a
+      // six-hour outage of the thing it watches is a green light over a stopped
+      // instrument, which is the exact failure the comment above records.
+      //
+      // 240, not 180: the freshness bound elsewhere in this endpoint is 180
+      // minutes, and a degrade threshold EQUAL to the freshness bound alarms
+      // on a cache that is merely at the stale edge — the existing hiccup
+      // test (`toBeGreaterThan(180)`) exists precisely to block that. Four
+      // hours = three consecutive missed hourly refreshes: past any hiccup,
+      // and it would have caught the six-hour stall at hour four instead of
+      // never.
+      const SC_STALL_DEGRADE_MIN = 240;
       if (scAgeMin === null || scAgeMin > SC_STALL_DEGRADE_MIN) {
         if (overallStatus === 'healthy') overallStatus = 'degraded';
         errorMessage = errorMessage

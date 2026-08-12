@@ -2603,6 +2603,19 @@ export default function Jobs() {
                     <span className="text-[11px]">{t("jobsPage.companyStated", "company-stated")}</span>
                   </span>
                 )}
+                {/* Same positive form as the list card: an undated posting
+                    states its observation window instead of nothing. Muted,
+                    never fresh-styled — discovery is not freshness. */}
+                {daysAgo(detailJob.postedAt) === null && daysAgo(detailJob.lastSeen ?? null) !== null && (
+                  <span
+                    className="text-muted-foreground"
+                    title={t("jobsPage.firstSeenProvenance", "This employer states no posting date, so no age is shown. This is when the posting first appeared on our board — it caps how old the posting can be, but it is our discovery date, not the employer's.")}
+                  >
+                    {daysAgo(detailJob.lastSeen ?? null) === 0
+                      ? t("jobsPage.firstSeenToday", "first seen today")
+                      : t("jobsPage.firstSeenDaysAgo", "first seen {{count}}d ago", { count: daysAgo(detailJob.lastSeen ?? null) })}
+                  </span>
+                )}
                 {isActivelyHiring(detailJob.token) && (
                   <span className="inline-flex items-center gap-1 text-success">
                     <Activity className="w-3 h-3" />
@@ -4431,6 +4444,28 @@ export default function Jobs() {
                               title={t("jobsPage.postedProvenance", "Posting age from the date the company states on its own careers feed — undated postings show no age, never a guess")}
                             >
                               {d === 0 ? t("jobsPage.postedToday", "today") : t("jobsPage.postedDaysAgo", "{{count}}d ago", { count: d })}
+                            </span>
+                          )}
+                          {/* THE POSITIVE FORM FOR UNDATED POSTINGS. ~89k
+                              postings (14.6%) carry no employer-stated date,
+                              and until now their card said nothing — honest,
+                              but silence where a true sentence exists. lastSeen
+                              is INSERT-time (semantically first_seen), so
+                              "first seen Xd ago" states our observation window:
+                              it CAPS how old the posting can be without
+                              claiming to know its age. Deliberately never
+                              styled as fresh (no success color at d<=2 like the
+                              posted badge above) — discovery time must never
+                              read as freshness, which is the exact substitution
+                              behind the 2.8-day-median incident. */}
+                          {d === null && daysAgo(job.lastSeen ?? null) !== null && (
+                            <span
+                              className="text-[11px] whitespace-nowrap text-muted-foreground"
+                              title={t("jobsPage.firstSeenProvenance", "This employer states no posting date, so no age is shown. This is when the posting first appeared on our board — it caps how old the posting can be, but it is our discovery date, not the employer's.")}
+                            >
+                              {daysAgo(job.lastSeen ?? null) === 0
+                                ? t("jobsPage.firstSeenToday", "first seen today")
+                                : t("jobsPage.firstSeenDaysAgo", "first seen {{count}}d ago", { count: daysAgo(job.lastSeen ?? null) })}
                             </span>
                           )}
                           {/* The receipt. The whole product rests on "every posting

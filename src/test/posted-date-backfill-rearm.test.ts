@@ -228,7 +228,11 @@ describe("the heartbeat watches the vendors that depend on the sweep", () => {
   });
 
   it("declares a bumped BUILD_VERSION so the deploy is checkable", () => {
-    expect(HB).toMatch(/const BUILD_VERSION = "2026-08-08\.\d+"/);
+    // 2026-08-12.1: SC_STALL_DEGRADE_MIN 720 -> 240 after the six-hour
+    // stats_cache stall this endpoint slept through (its first real one).
+    // The pin moves with every scan-heartbeat change, deliberately: the
+    // version is the only external tell of which bundle answered.
+    expect(HB).toMatch(/const BUILD_VERSION = "2026-08-12\.\d+"/);
   });
 
   it("reads the ROLLUP, not the cache that was frozen when this shipped", () => {

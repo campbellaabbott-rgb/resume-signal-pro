@@ -3954,7 +3954,10 @@
       "salaryFloor": "salario mínimo",
       "workMode": "modalidad"
     },
-    "companiesChip": "{{n}} empresas"
+    "companiesChip": "{{n}} empresas",
+    "firstSeenToday": "vista por primera vez hoy",
+    "firstSeenDaysAgo": "vista por primera vez hace {{count}}d",
+    "firstSeenProvenance": "Este empleador no indica fecha de publicación, por eso no se muestra antigüedad. Esta es la fecha en que la oferta apareció por primera vez en nuestro tablón: limita su antigüedad máxima, pero es nuestra fecha de descubrimiento, no la del empleador."
   },
   "accountPage": {
     "statusSaveFailed": "No se pudo guardar ese estado; inténtalo de nuevo.",

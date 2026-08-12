@@ -3954,7 +3954,10 @@
       "salaryFloor": "Mindestgehalt",
       "workMode": "Arbeitsmodus"
     },
-    "companiesChip": "{{n}} Unternehmen"
+    "companiesChip": "{{n}} Unternehmen",
+    "firstSeenToday": "zuerst gesehen: heute",
+    "firstSeenDaysAgo": "zuerst gesehen vor {{count}} Tagen",
+    "firstSeenProvenance": "Dieser Arbeitgeber nennt kein Veröffentlichungsdatum, daher wird kein Alter angezeigt. Dies ist der Zeitpunkt, an dem die Anzeige zuerst auf unserem Board erschien — er begrenzt, wie alt sie höchstens sein kann, ist aber unser Entdeckungsdatum, nicht das des Arbeitgebers."
   },
   "accountPage": {
     "statusSaveFailed": "Status konnte nicht gespeichert werden — bitte erneut versuchen.",

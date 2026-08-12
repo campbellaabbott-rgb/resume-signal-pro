@@ -3954,7 +3954,10 @@
       "salaryFloor": "salário mínimo",
       "workMode": "modalidade"
     },
-    "companiesChip": "{{n}} empresas"
+    "companiesChip": "{{n}} empresas",
+    "firstSeenToday": "vista pela primeira vez hoje",
+    "firstSeenDaysAgo": "vista pela primeira vez há {{count}}d",
+    "firstSeenProvenance": "Este empregador não indica data de publicação, por isso não se mostra idade. Esta é a data em que a vaga apareceu pela primeira vez no nosso mural — limita a idade máxima possível, mas é a nossa data de descoberta, não a do empregador."
   },
   "accountPage": {
     "statusSaveFailed": "Não foi possível salvar esse status — tente novamente.",
