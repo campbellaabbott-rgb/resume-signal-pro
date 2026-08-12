@@ -1,0 +1,3 @@
+SELECT cron.unschedule('build-work-mode-serving-idx');
+COMMENT ON INDEX public.job_board_postings_work_mode_serving_idx IS
+  'Serves the work-mode filtered count. Carries BOTH serving predicates: work_mode IS NOT NULL and missing_since IS NULL in the partial clause, effective_posted as the range column. The older work_mode_posted_idx omits missing_since, which forced a heap fetch per candidate row and timed out count_jobs_capped on every work mode (measured 2026-08-12).';
