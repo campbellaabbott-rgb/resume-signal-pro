@@ -4199,7 +4199,15 @@
     "checkFeeds": "{{n}} job boards",
     "checkNone": "We don't carry that employer's job board — so we have nothing measured to show you.",
     "checkErr": "Employer lookup is unavailable right now — this says nothing about that employer. Try again shortly.",
-    "hiringSpeed": "half came down within {{d}}d"
+    "hiringSpeed": "half came down within {{d}}d",
+    "repostWarn": "Re-lists roles: {{events}} re-postings across {{roles}} roles in {{d}}d",
+    "noteHiring": "The 12 with the strongest fill rate, out of {{n}} employers that qualify — a measurable fill record and 100+ roles open now.",
+    "notePay": "{{n}} of the {{pool}} employers with 20+ open roles state pay on at least 80% of them.",
+    "notePayBoard": "Board-wide, {{pct}}% of open postings state pay at all.",
+    "noteEntry": "The 12 with the most, out of {{n}} employers with 5 or more entry-level roles open.",
+    "noteGhost": "The 12 with the most re-listings, out of {{n}} employers with 20 or more tracked.",
+    "noteGhostFlagged": "{{n}} re-list often enough to carry a warning on the other answers.",
+    "noteFields": "{{n}} roles open across the board right now."
   },
   "agentQueue": {
     "title": "Morning Queue",

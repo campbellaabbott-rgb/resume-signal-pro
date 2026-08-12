@@ -4199,7 +4199,15 @@
     "checkFeeds": "{{n}} Stellenportale",
     "checkNone": "Wir führen das Stellenportal dieses Arbeitgebers nicht — daher haben wir nichts Gemessenes zu zeigen.",
     "checkErr": "Die Arbeitgebersuche ist derzeit nicht verfügbar — das sagt nichts über diesen Arbeitgeber aus. Bitte gleich noch einmal versuchen.",
-    "hiringSpeed": "die Hälfte war innerhalb von {{d}} Tagen wieder offline"
+    "hiringSpeed": "die Hälfte war innerhalb von {{d}} Tagen wieder offline",
+    "repostWarn": "Schreibt Stellen neu aus: {{events}} Neuausschreibungen über {{roles}} Stellen in {{d}} Tagen",
+    "noteHiring": "Die 12 mit der besten Besetzungsquote von {{n}} qualifizierten Arbeitgebern — mit messbarer Besetzungsbilanz und derzeit über 100 offenen Stellen.",
+    "notePay": "{{n}} der {{pool}} Arbeitgeber mit mindestens 20 offenen Stellen nennen bei mindestens 80 % davon das Gehalt.",
+    "notePayBoard": "Board-weit nennen {{pct}} % aller offenen Anzeigen überhaupt ein Gehalt.",
+    "noteEntry": "Die 12 mit den meisten, von {{n}} Arbeitgebern mit mindestens 5 offenen Einstiegsstellen.",
+    "noteGhost": "Die 12 mit den meisten Neuausschreibungen, von {{n}} Arbeitgebern mit mindestens 20 erfassten.",
+    "noteGhostFlagged": "{{n}} schreiben so häufig neu aus, dass sie bei den anderen Antworten einen Hinweis tragen.",
+    "noteFields": "{{n}} Stellen sind derzeit board-weit offen."
   },
   "agentQueue": {
     "title": "Morgen-Queue",

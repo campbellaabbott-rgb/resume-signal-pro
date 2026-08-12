@@ -4199,7 +4199,15 @@
     "checkFeeds": "{{n}} vacaturesites",
     "checkNone": "We volgen de vacaturesite van die werkgever niet — we hebben dus niets gemetens om te laten zien.",
     "checkErr": "Werkgevers opzoeken werkt nu even niet — dit zegt niets over die werkgever. Probeer het zo opnieuw.",
-    "hiringSpeed": "de helft was binnen {{d}} dagen weer offline"
+    "hiringSpeed": "de helft was binnen {{d}} dagen weer offline",
+    "repostWarn": "Plaatst functies opnieuw: {{events}} herplaatsingen over {{roles}} functies in {{d}} d",
+    "noteHiring": "De 12 met de sterkste vervullingsgraad, van {{n}} werkgevers die voldoen — met een meetbare vervullingsgeschiedenis en nu meer dan 100 openstaande functies.",
+    "notePay": "{{n}} van de {{pool}} werkgevers met 20+ openstaande functies vermelden het salaris bij minstens 80 % daarvan.",
+    "notePayBoard": "Over het hele bord vermeldt {{pct}} % van de openstaande vacatures überhaupt een salaris.",
+    "noteEntry": "De 12 met de meeste, van {{n}} werkgevers met 5 of meer openstaande startersfuncties.",
+    "noteGhost": "De 12 met de meeste herplaatsingen, van {{n}} werkgevers met 20 of meer geregistreerd.",
+    "noteGhostFlagged": "{{n}} herplaatsen vaak genoeg om bij de andere antwoorden een waarschuwing te krijgen.",
+    "noteFields": "{{n}} functies staan op dit moment open op het hele bord."
   },
   "agentQueue": {
     "title": "Ochtendwachtrij",

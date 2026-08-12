@@ -64,6 +64,33 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 const CCY: Record<string, string> = { USD: "$", EUR: "€", GBP: "£" };
 
+/** MIRRORS `COUNT_CAP` in supabase/functions/job-board/index.ts:5626.
+ *
+ *  The serving API stops counting at 10,000 and replies `countCapped: true`,
+ *  so /jobs/field/marketing renders "10,000+" no matter how many roles are
+ *  really there. get_explore_denominators counts in SQL and is NOT capped, so
+ *  a chip printing its raw number would read "38,412" and open a page saying
+ *  "10,000+" — the card-contradicts-destination defect, merely inverted.
+ *
+ *  So the chip formats through the SAME cap. Two runtimes, one number, and a
+ *  cross-runtime test pins them together: this is the exact shape of the
+ *  claim-drift failure where copy went false because the thing it described
+ *  lived in a different runtime than the sentence about it. */
+const SERVE_COUNT_CAP = 10_000;
+const fieldCount = (n: number, loc: string) =>
+  n >= SERVE_COUNT_CAP ? `${SERVE_COUNT_CAP.toLocaleString(loc)}+` : n.toLocaleString(loc);
+
+/** token -> [repost_events, reposted_roles, days_tracked]. */
+type RepostIndex = Record<string, [number, number, number] | undefined>;
+/** Pool sizes behind each collection. Every key is optional and every one is
+ *  absent rather than zero when its scan failed — see the NULLIF/strip_nulls
+ *  note in 20260812020000. Nothing here may render as "0". */
+interface Totals {
+  hiring_n?: number; repost_pool_n?: number; repost_flagged_n?: number;
+  entry_n?: number; pay_n?: number; pay_pool_n?: number;
+  employers_n?: number; postings_n?: number; postings_pay_n?: number;
+}
+
 /** THE ONLY PLACE THIS FILE BUILDS A /jobs URL.
  *
  *  Every card used to hardcode `/jobs/company/{token}?from=explore`, which is
@@ -94,11 +121,12 @@ const isIntent = (v: string | null): v is Intent => !!v && (INTENTS as readonly 
 
 // A collection of companies → each a deep-link into the board filtered to that
 // company. One shared card grid so every section reads consistently.
-function CompanyGrid({ rows, badge, intent, tone = "default" }: { rows: CompanyRow[]; badge?: (r: CompanyRow) => string | null; intent: Intent; tone?: "default" | "warning" }) {
+function CompanyGrid({ rows, badge, intent, tone = "default", warn }: { rows: CompanyRow[]; badge?: (r: CompanyRow) => string | null; intent: Intent; tone?: "default" | "warning"; warn?: (r: CompanyRow) => string | null }) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
       {rows.map((r) => {
         const b = badge?.(r);
+        const w = warn?.(r);
         return (
           <Link
             key={r.company_token}
@@ -115,6 +143,13 @@ function CompanyGrid({ rows, badge, intent, tone = "default" }: { rows: CompanyR
             <span className="min-w-0 flex-1">
               <span className="block text-sm font-semibold text-foreground truncate">{r.company}</span>
               {b && <span className="block text-[11px] text-muted-foreground">{b}</span>}
+              {/* THE CHURN WARNING, WHEREVER THE EMPLOYER APPEARS.
+                  Rendered only on a hit, and only ever as a positive statement
+                  — a miss means "did not clear the rate gate", which includes
+                  every employer we have watched for a week. Styled warning, not
+                  muted, because it contradicts the recommendation the card it
+                  sits inside is making. */}
+              {w && <span className="block text-[11px] text-warning mt-0.5">{w}</span>}
             </span>
             {/* No arrow on the warning list. Every other collection is a
                 recommendation and the arrow reads as "go here"; the re-poster
@@ -154,7 +189,17 @@ function GridSkeleton() {
   );
 }
 
-function Section({ icon: Icon, title, blurb, children }: { icon: LucideIcon; title: string; blurb: string; children: React.ReactNode }) {
+/** `note` is the denominator line — "the 12 best of N that qualify".
+ *
+ *  Twelve cards under "Companies that actually fill roles" is indistinguishable
+ *  from "twelve companies fill roles". The collection is a top slice and has
+ *  always been one; the page simply never said what it was a slice OF, which
+ *  makes a leaderboard read as a census.
+ *
+ *  Optional, and absent whenever its counter is — a failed scan leaves the key
+ *  stripped rather than zero, so a broken instrument renders no sentence rather
+ *  than "the 12 best of 0 employers". */
+function Section({ icon: Icon, title, blurb, note, children }: { icon: LucideIcon; title: string; blurb: string; note?: string | null; children: React.ReactNode }) {
   return (
     <section className="mb-10">
       <div className="flex items-start gap-2.5 mb-3">
@@ -164,6 +209,7 @@ function Section({ icon: Icon, title, blurb, children }: { icon: LucideIcon; tit
         <div>
           <h2 className="text-lg font-bold text-foreground leading-tight">{title}</h2>
           <p className="text-[13px] text-muted-foreground">{blurb}</p>
+          {note && <p className="text-[12px] text-foreground/70 mt-1.5 font-medium">{note}</p>}
         </div>
       </div>
       {children}
@@ -218,6 +264,14 @@ export default function Explore() {
   // When the cached collections were computed. The cache has always carried
   // this; the page just never rendered it while claiming "computed live".
   const [computedAt, setComputedAt] = useState<string | null>(null);
+  // Per-field served counts, pool sizes, and the churn index. All three ride
+  // the same cached row as the collections — no extra request, and no live
+  // aggregate on the request path, which is the rule this page exists to keep.
+  // All three default EMPTY and every render site is gated, so a cache row
+  // written before this migration renders exactly today's page.
+  const [fields, setFields] = useState<Record<string, number>>({});
+  const [totals, setTotals] = useState<Totals>({});
+  const [repostIndex, setRepostIndex] = useState<RepostIndex>({});
   // THE PAGE USED TO RENDER EMPTY AND POP.
   //
   // Every answer is gated on `collection.length > 0`, so before the cache read
@@ -276,6 +330,14 @@ export default function Explore() {
           // Absent key (cache written before that migration) leaves the
           // section hidden, exactly as today — never a zero.
           if (Array.isArray(c.transparent)) setTransparent(c.transparent as CompanyRow[]);
+          // Objects, not arrays — and checked as such. `typeof null === "object"`
+          // is the trap that would put `null` into a Record and crash the first
+          // Object.entries over it, so each is required to be a non-null,
+          // non-array object before it is trusted.
+          const obj = (v: unknown) => !!v && typeof v === "object" && !Array.isArray(v);
+          if (obj(c.fields)) setFields(c.fields as Record<string, number>);
+          if (obj(c.totals)) setTotals(c.totals as Totals);
+          if (obj(c.repost_index)) setRepostIndex(c.repost_index as RepostIndex);
           if (typeof c.computed_at === "string") setComputedAt(c.computed_at);
           setLoading(false);
           return;
@@ -421,6 +483,76 @@ export default function Explore() {
     ghost: t("explore.intentGhost", "Watch out: ghost jobs"),
     scale: t("explore.intentScale", "Hiring at scale"),
     fields: t("explore.intentFields", "By field"),
+  };
+
+  const nf = (n: number) => n.toLocaleString(i18n.language);
+
+  /** The churn warning for one employer, or null — POSITIVE FORM ONLY.
+   *
+   *  A hit means "this employer cleared a rate gate of 5 re-lists per affected
+   *  role on 25+ events". A MISS means only that it did not, which includes
+   *  every employer whose board we have watched for a week. So there is no
+   *  "no re-posting detected", no green tick, no clean-bill styling anywhere
+   *  in this file: absence of evidence is not evidence of absence, and this
+   *  page applies that rule to its own numbers everywhere else.
+   *
+   *  "across {{roles}} roles" is not decoration — it is what separates a
+   *  diagnosis from a libel. 581 re-lists across 3 roles is one job advertised
+   *  forever; 769 across 298 is a large employer with ordinary churn. Read as
+   *  a bare count they look identical and the second employer is defamed. It
+   *  travels in the same sentence, never a tooltip.
+   *
+   *  Not on the ghost answer: that card's own badge already states these
+   *  numbers, and repeating them under it would read as two findings. */
+  const repostWarn = (token: string | undefined, on: Intent): string | null => {
+    if (!token || on === "ghost") return null;
+    const hit = repostIndex[token];
+    // Shape-checked, not just presence-checked: the payload is JSON from a
+    // cache row that may predate the migration, and destructuring a non-array
+    // would print "undefined re-postings across undefined roles".
+    if (!Array.isArray(hit) || hit.length < 3) return null;
+    const [events, roles, days] = hit;
+    if (!(typeof events === "number" && events > 0 && typeof roles === "number" && roles > 0)) return null;
+    return t("explore.repostWarn", "Re-lists roles: {{events}} re-postings across {{roles}} roles in {{d}}d", {
+      events: nf(events), roles: nf(roles), d: days,
+    });
+  };
+
+  /** The denominator under each answer. Rendered only when its counter is
+   *  present — see the strip_nulls note in the migration; a missing key is a
+   *  failed scan and must produce silence, not a zero. */
+  const NOTE: Partial<Record<Intent, string | null>> = {
+    hiring: totals.hiring_n
+      ? t("explore.noteHiring", "The 12 with the strongest fill rate, out of {{n}} employers that qualify — a measurable fill record and 100+ roles open now.", { n: nf(totals.hiring_n) })
+      : null,
+    // TWO SENTENCES, because the second is what makes the first mean anything.
+    // "41 employers state pay on 80%+ of their roles" sounds thin until you
+    // know the board-wide rate; together they say how unusual the badge is.
+    pay: totals.pay_n && totals.pay_pool_n
+      ? [
+          t("explore.notePay", "{{n}} of the {{pool}} employers with 20+ open roles state pay on at least 80% of them.", { n: nf(totals.pay_n), pool: nf(totals.pay_pool_n) }),
+          totals.postings_pay_n && totals.postings_n
+            ? t("explore.notePayBoard", "Board-wide, {{pct}}% of open postings state pay at all.", { pct: Math.round(100 * totals.postings_pay_n / totals.postings_n) })
+            : "",
+        ].filter(Boolean).join(" ")
+      : null,
+    entry: totals.entry_n
+      ? t("explore.noteEntry", "The 12 with the most, out of {{n}} employers with 5 or more entry-level roles open.", { n: nf(totals.entry_n) })
+      : null,
+    ghost: totals.repost_pool_n
+      ? [
+          t("explore.noteGhost", "The 12 with the most re-listings, out of {{n}} employers with 20 or more tracked.", { n: nf(totals.repost_pool_n) }),
+          // The flagged count is the population behind the warning that now
+          // follows employers onto the other answers, so this is where it is
+          // explained rather than appearing unannounced under a pay card.
+          totals.repost_flagged_n
+            ? t("explore.noteGhostFlagged", "{{n}} re-list often enough to carry a warning on the other answers.", { n: nf(totals.repost_flagged_n) })
+            : "",
+        ].filter(Boolean).join(" ")
+      : null,
+    fields: totals.postings_n
+      ? t("explore.noteFields", "{{n}} roles open across the board right now.", { n: nf(totals.postings_n) })
+      : null,
   };
 
   return (
@@ -575,7 +707,24 @@ export default function Explore() {
             />
             {cHits.length > 0 && (
               <div className="mt-2.5 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                {cHits.map((h) => (
+                {cHits.map((h) => {
+                  /* THE WARNING'S MOST USEFUL HOME. A reader typing a company
+                     name has already decided to consider that employer; this is
+                     the last moment before they leave for its board, and it is
+                     the one place on the page where the answer covers all
+                     24,931 employers rather than a twelve-row slice.
+                     ACROSS ALL ITS FEEDS, worst first. An employer with four
+                     ATS feeds merges into one row here (get_company_suggest
+                     groups by display name), and the churn index is keyed by
+                     token — so checking only tokens[0] would miss the churn
+                     whenever it lives on a sibling feed. The one shown is the
+                     highest-event token, so the sentence and the token that
+                     earned it are the same. */
+                  const worstToken = h.tokens
+                    .filter((tk) => Array.isArray(repostIndex[tk]))
+                    .sort((a, b) => (repostIndex[b]![0] ?? 0) - (repostIndex[a]![0] ?? 0))[0];
+                  const worst = worstToken ? repostWarn(worstToken, "check") : null;
+                  return (
                   <Link
                     key={h.name}
                     to={`/jobs/company/${encodeURIComponent(h.tokens[0])}?from=explore`}
@@ -596,10 +745,12 @@ export default function Explore() {
                           {t("explore.checkFeeds", "{{n}} job boards", { n: h.tokens.length })}
                         </span>
                       )}
+                      {worst && <span className="block text-[11px] text-warning mt-0.5">{worst}</span>}
                     </span>
                     <ArrowRight className="w-4 h-4 text-muted-foreground/50 group-hover:text-primary group-hover:translate-x-0.5 transition-all shrink-0" />
                   </Link>
-                ))}
+                  );
+                })}
               </div>
             )}
             {/* A GENUINE MISS. Only reachable when the lookup actually answered
@@ -631,7 +782,7 @@ export default function Explore() {
           </Section>
         )}
         {hiring.length > 0 && (
-          <Section icon={Activity} title={t("explore.hiringTitle", "Companies that actually fill roles")} blurb={t("explore.hiringBlurb", "Roles that stayed posted at least a week and then came down — a real fill signal from our own tracking. Companies whose takedowns are mostly re-listings are disqualified (they appear under Serial re-posters instead).")}>
+          <Section icon={Activity} note={NOTE.hiring} title={t("explore.hiringTitle", "Companies that actually fill roles")} blurb={t("explore.hiringBlurb", "Roles that stayed posted at least a week and then came down — a real fill signal from our own tracking. Companies whose takedowns are mostly re-listings are disqualified (they appear under Serial re-posters instead).")}>
             {/* tracking_days ships with the rebuilt RPC; rows from the old cache
                 lack it — show only the open count then, never an unbacked claim. */}
             {/* THE CLOCK, when the sample supports it.
@@ -642,7 +793,14 @@ export default function Explore() {
                 to today's badge rather than to a number with no confidence
                 behind it. Absent fields (a cache row written before the
                 migration) take the same path. */}
-            <CompanyGrid rows={hiring} intent="hiring" badge={(r) => {
+            {/* The churn warning reaches here too, and this is the answer where
+                it matters most: an employer can hold a genuine fill record and
+                still re-list the same role forty times, and the fill record is
+                the reason a reader is about to trust it. The disqualification
+                inside the RPC only removes employers whose takedowns are
+                MOSTLY re-listings; one that fills plenty and churns plenty
+                passes it and says nothing. */}
+            <CompanyGrid rows={hiring} intent="hiring" warn={(r) => repostWarn(r.company_token, "hiring")} badge={(r) => {
               if (!r.tracking_days) return t("explore.openRoles", "{{n}} open roles", { n: (r.open_roles ?? 0).toLocaleString() });
               const core = t("explore.hiringBadge", "{{filled}} filled in {{d}}d tracked · {{open}} open now",
                 { filled: r.closed_90d ?? 0, d: r.tracking_days, open: (r.open_roles ?? 0).toLocaleString() });
@@ -657,12 +815,12 @@ export default function Explore() {
 
         <div hidden={active !== "pay"}>
         {transparent.length > 0 && (
-          <Section icon={BadgeDollarSign} title={t("explore.transparentTitle", "Transparent about pay")} blurb={t("explore.transparentBlurb", "Companies stating pay on at least 80% of their open roles — counted from their own posting text and ATS fields. A badge no one can buy: the only way in is to actually state pay.")}>
+          <Section icon={BadgeDollarSign} note={NOTE.pay} title={t("explore.transparentTitle", "Transparent about pay")} blurb={t("explore.transparentBlurb", "Companies stating pay on at least 80% of their open roles — counted from their own posting text and ATS fields. A badge no one can buy: the only way in is to actually state pay.")}>
             {/* No salaryFloor on this link. "States pay" and "pays at least
                 $X" are different populations, and salary_min_annual is
                 annualised in the posting's own currency and never converted —
                 a floor filter would quietly mean different things per row. */}
-            <CompanyGrid rows={transparent} intent="pay" badge={(r) => {
+            <CompanyGrid rows={transparent} intent="pay" warn={(r) => repostWarn(r.company_token, "pay")} badge={(r) => {
               const parts = [t("explore.transparentBadge", "{{pct}}% of {{n}} roles state pay", { pct: r.pay_pct ?? 0, n: r.open_roles ?? 0 })];
               // A MEDIAN NEEDS A SAMPLE. The SQL computes this over whichever
               // of the employer's roles state USD pay, with no floor — so one
@@ -683,7 +841,7 @@ export default function Explore() {
 
         <div hidden={active !== "ghost"}>
         {reposters.length > 0 && (
-          <Section icon={Repeat} title={t("explore.repostTitle", "Serial re-posters")} blurb={t("explore.repostBlurb", "Companies that take roles down and re-list them again and again — measured from our own lifecycle tracking. Re-listing resets the posted date, so an opening can look brand-new long after it first appeared.")}>
+          <Section icon={Repeat} note={NOTE.ghost} title={t("explore.repostTitle", "Serial re-posters")} blurb={t("explore.repostBlurb", "Companies that take roles down and re-list them again and again — measured from our own lifecycle tracking. Re-listing resets the posted date, so an opening can look brand-new long after it first appeared.")}>
             <CompanyGrid rows={reposters} intent="ghost" tone="warning" badge={(r) => {
               // A re-list count far above the tracking window is a data artifact
               // (bulk feed churn re-stamping ids), not something a reader should
@@ -838,7 +996,7 @@ export default function Explore() {
                       // own promise is worse than no control.
                       return open ? (
                         <div className="px-4 pb-4">
-                          <CompanyGrid rows={s.top} intent="scale" badge={segBadge} />
+                          <CompanyGrid rows={s.top} intent="scale" warn={(r) => repostWarn(r.company_token, "scale")} badge={segBadge} />
                         </div>
                       ) : null;
                     })()}
@@ -853,7 +1011,7 @@ export default function Explore() {
 
         <div hidden={active !== "entry"}>
         {entry.length > 0 && (
-          <Section icon={GraduationCap} title={t("explore.entryTitle", "Entry-level friendly")} blurb={t("explore.entryBlurb", "Companies with the most roles open to people early in their careers.")}>
+          <Section icon={GraduationCap} note={NOTE.entry} title={t("explore.entryTitle", "Entry-level friendly")} blurb={t("explore.entryBlurb", "Companies with the most roles open to people early in their careers.")}>
             {/* THE RATIO, NOT THE COUNT — and a link that carries the filter.
                 This badge said "38 entry-level roles" and opened the company's
                 whole board showing 900, so the number a reader clicked was not
@@ -867,7 +1025,7 @@ export default function Explore() {
                 explore.entryBadge with a single {{n}}, and a locale value beats
                 the inline default — editing in place would render the old
                 sentence with a hole in it in nine languages. */}
-            <CompanyGrid rows={entry} intent="entry" badge={(r) => (r.open_roles
+            <CompanyGrid rows={entry} intent="entry" warn={(r) => repostWarn(r.company_token, "entry")} badge={(r) => (r.open_roles
               ? t("explore.entryBadgeRatio", "{{entry}} of {{open}} roles are entry-level", { entry: (r.entry_roles ?? 0).toLocaleString(), open: r.open_roles.toLocaleString() })
               : t("explore.entryBadge", "{{n}} entry-level roles", { n: r.entry_roles ?? 0 }))} />
           </Section>
@@ -913,21 +1071,49 @@ export default function Explore() {
         </div>
 
         {/* Browse by field — the classic taxonomy entry point, now its own
-            answer rather than a footer. No counts on these chips: a correct
-            per-category number is a database change, and Jobs.tsx:2195 already
-            records that it is worth doing and not worth faking meanwhile. */}
+            answer rather than a footer.
+
+            THE CHIPS NOW CARRY COUNTS. The note here used to read "a correct
+            per-category number is a database change, and it is worth doing and
+            not worth faking meanwhile" — get_explore_denominators is that
+            change, and it counts under the SERVING predicates only
+            (missing_since IS NULL, effective_posted within 30 days), which is
+            exactly what job-board/index.ts:5529-5539 applies and nothing more.
+            The chip's number and the page it opens count the same rows.
+
+            Formatted through SERVE_COUNT_CAP, because the serving API stops
+            counting at 10,000: an uncapped "38,412" here would open a page
+            reading "10,000+". Same number, same presentation, both runtimes.
+
+            Ordered biggest-first when counts are in hand — the point of a
+            count on a browse control is to show where the board is deep — and
+            falling back to the declared order when they are not, so a cache
+            row written before this migration renders exactly today's page. */}
         <div hidden={active !== "fields"}>
-        <Section icon={Briefcase} title={t("explore.fieldsTitle", "Browse by field")} blurb={t("explore.fieldsBlurb", "Jump straight into any field's live openings.")}>
+        <Section icon={Briefcase} note={NOTE.fields} title={t("explore.fieldsTitle", "Browse by field")} blurb={t("explore.fieldsBlurb", "Jump straight into any field's live openings.")}>
           <div className="flex flex-wrap gap-2">
-            {Object.entries(CATEGORY_LABELS).filter(([id]) => id !== "other").map(([id, label]) => (
-              <Link
-                key={id}
-                to={`/jobs/field/${id}?from=explore`}
-                className="inline-flex items-center px-3.5 py-1.5 rounded-full border border-border bg-card/60 text-sm text-muted-foreground hover:border-primary/50 hover:text-foreground transition-colors"
-              >
-                {t(`jobsPage.categories.${id}`, label)}
-              </Link>
-            ))}
+            {Object.entries(CATEGORY_LABELS)
+              .filter(([id]) => id !== "other")
+              .sort((a, b) => (fields[b[0]] ?? 0) - (fields[a[0]] ?? 0))
+              .map(([id, label]) => {
+                const n = fields[id];
+                return (
+                  <Link
+                    key={id}
+                    to={`/jobs/field/${id}?from=explore`}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-border bg-card/60 text-sm text-muted-foreground hover:border-primary/50 hover:text-foreground transition-colors"
+                  >
+                    {t(`jobsPage.categories.${id}`, label)}
+                    {/* A field below the 50-posting floor is absent from the
+                        payload entirely and renders as a bare chip — the link
+                        still works, it simply makes no claim about depth. A
+                        thin field must not render "0". */}
+                    {typeof n === "number" && n > 0 && (
+                      <span className="text-[11px] tabular-nums text-muted-foreground/70">{fieldCount(n, i18n.language)}</span>
+                    )}
+                  </Link>
+                );
+              })}
           </div>
         </Section>
 

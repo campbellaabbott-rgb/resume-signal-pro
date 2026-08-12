@@ -4199,7 +4199,15 @@
     "checkFeeds": "{{n}} job boards",
     "checkNone": "Hindi namin sinusubaybayan ang job board ng employer na iyon — kaya wala kaming nasukat na maipapakita.",
     "checkErr": "Hindi available ngayon ang paghahanap ng employer — wala itong sinasabi tungkol sa employer na iyon. Subukan ulit mamaya.",
-    "hiringSpeed": "kalahati ay natanggal sa loob ng {{d}} araw"
+    "hiringSpeed": "kalahati ay natanggal sa loob ng {{d}} araw",
+    "repostWarn": "Paulit-ulit na inilalathala ang mga posisyon: {{events}} muling paglalathala sa {{roles}} posisyon sa loob ng {{d}} araw",
+    "noteHiring": "Ang 12 na may pinakamataas na rate ng pagpuno, mula sa {{n}} employer na kwalipikado — may masusukat na rekord ng pagpuno at 100+ bukas na posisyon ngayon.",
+    "notePay": "{{n}} sa {{pool}} employer na may 20+ bukas na posisyon ang nagsasaad ng sahod sa hindi bababa sa 80% ng mga ito.",
+    "notePayBoard": "Sa buong board, {{pct}}% ng mga bukas na anunsyo ang nagsasaad ng sahod.",
+    "noteEntry": "Ang 12 na may pinakamarami, mula sa {{n}} employer na may 5 o higit pang bukas na entry-level na posisyon.",
+    "noteGhost": "Ang 12 na may pinakamaraming muling paglalathala, mula sa {{n}} employer na may 20 o higit pang natukoy.",
+    "noteGhostFlagged": "{{n}} ang madalas maglathala muli kaya may babala sila sa ibang mga sagot.",
+    "noteFields": "{{n}} posisyon ang bukas sa buong board ngayon."
   },
   "agentQueue": {
     "title": "Morning Queue",

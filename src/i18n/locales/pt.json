@@ -4199,7 +4199,15 @@
     "checkFeeds": "{{n}} portais de vagas",
     "checkNone": "Não acompanhamos o portal de vagas desse empregador — portanto não temos nada medido para mostrar.",
     "checkErr": "A busca de empregadores está indisponível no momento — isso não diz nada sobre esse empregador. Tente novamente em instantes.",
-    "hiringSpeed": "metade saiu do ar em {{d}} dias"
+    "hiringSpeed": "metade saiu do ar em {{d}} dias",
+    "repostWarn": "Republica vagas: {{events}} republicações em {{roles}} vagas em {{d}} dias",
+    "noteHiring": "Os 12 com melhor taxa de preenchimento, de {{n}} empregadores que se qualificam — com histórico de preenchimento mensurável e mais de 100 vagas abertas agora.",
+    "notePay": "{{n}} dos {{pool}} empregadores com mais de 20 vagas abertas informam o salário em pelo menos 80 % delas.",
+    "notePayBoard": "No mural inteiro, {{pct}} % das vagas abertas informam algum salário.",
+    "noteEntry": "Os 12 com mais, de {{n}} empregadores com 5 ou mais vagas de nível inicial abertas.",
+    "noteGhost": "Os 12 com mais republicações, de {{n}} empregadores com 20 ou mais registradas.",
+    "noteGhostFlagged": "{{n}} republicam com frequência suficiente para levar um aviso nas outras respostas.",
+    "noteFields": "{{n}} vagas abertas no mural inteiro neste momento."
   },
   "agentQueue": {
     "title": "Fila da manhã",

@@ -1021,3 +1021,283 @@ describe("every t() key the page uses exists in English", () => {
     expect(missing, `referenced in Explore.tsx but absent from en.json: ${missing.join(", ")}`).toEqual([]);
   });
 });
+
+/**
+ * ITEMS 3-5: A WARNING THAT TRAVELS, COUNTS ON THE FIELD CHIPS, AND
+ * DENOMINATORS UNDER EVERY ANSWER.
+ *
+ * All three add NUMBERS to a page whose entire remaining debt is numbers that
+ * contradict the thing they sit next to. So each gets a guard for the specific
+ * way it could go false:
+ *
+ *   the churn warning  — could defame a large employer (rank vs rate), or read
+ *                        as a clean bill on a miss;
+ *   the field counts   — could contradict the page they open (the serving API
+ *                        caps its count at 10,000; SQL does not);
+ *   the denominators   — could drift from the collection they describe, or
+ *                        render "0" when their scan failed.
+ */
+describe("the churn warning is gated on a rate and never reads as a clean bill", () => {
+  const bodyOf = (fn: string) => {
+    const sql = latestWith(`FUNCTION public.${fn}`).replace(/^\s*--.*$/gm, "");
+    const start = sql.indexOf(`FUNCTION public.${fn}`);
+    expect(start, `${fn} not found`).toBeGreaterThan(-1);
+    const end = sql.indexOf("$$;", start);
+    expect(end, `${fn} body has no terminator`).toBeGreaterThan(start);
+    return sql.slice(start, end);
+  };
+
+  it("gates on re-lists PER ROLE, not on a top-N by raw events", () => {
+    // The measured reason this matters: over the 300 highest-event employers,
+    // the median is 2.7 re-lists per affected role, and the two LARGEST by raw
+    // events sit below it (ALTEN 769 events at 2.6/role, BAYADA 594 at 2.2).
+    // A top-N-by-events gate would have warned about both — ordinary churn at
+    // scale — while missing BoxLunch & Hot Topic at 193.7 per role across 3.
+    // Ranking by size under a claim about CONDUCT does not misrank, it defames.
+    const body = bodyOf("get_repost_index");
+    expect(body).toMatch(/sum\(n\)::numeric\s*\/\s*GREATEST\(count\(\*\), 1\)\s*>=\s*5/);
+    // And an absolute floor, or 2 roles re-listed 5 times each qualifies.
+    expect(body).toMatch(/sum\(n\)\s*>=\s*25/);
+    // No rank anywhere: an ORDER BY + LIMIT here would reintroduce exactly the
+    // size gate the ratio exists to replace.
+    expect(body).not.toMatch(/ORDER BY[\s\S]*LIMIT/);
+  });
+
+  it("only indexes employers whose roles the board still serves", () => {
+    // job_board_closures carries no serving predicate, so without this an
+    // employer whose postings all aged out keeps a warning it can never be
+    // seen next to.
+    const body = bodyOf("get_repost_index");
+    expect(body).toMatch(/JOIN live l ON l\.company_token = a\.company_token/);
+    const live = body.slice(body.indexOf("live AS ("));
+    expect(live).toMatch(/missing_since IS NULL/);
+    expect(live).toMatch(/effective_posted >= now\(\) - interval '30 days'/);
+  });
+
+  it("bounds its lookback, which the collection RPC does not", () => {
+    // get_repost_churn_companies' `sup` CTE has no time bound at all, so an
+    // employer that churned once and reformed carries it forever. A no-op
+    // today (the closure log starts 2026-07-14) and the difference between a
+    // measurement and a grudge later.
+    expect(bodyOf("get_repost_index")).toMatch(/closed_at >= now\(\) - interval '180 days'/);
+  });
+
+  it("states the role count in the same sentence as the event count", () => {
+    // 581 re-lists across 3 roles is one job advertised forever; 769 across
+    // 298 is a large employer with ordinary churn. Read as a bare count they
+    // are indistinguishable and the second employer is defamed. This must
+    // never degrade to a tooltip or a second line.
+    const m = CODE.match(/t\("explore\.repostWarn",\s*"([^"]+)"/);
+    expect(m, "explore.repostWarn default not found").toBeTruthy();
+    expect(m![1]).toContain("{{events}}");
+    expect(m![1]).toContain("{{roles}}");
+  });
+
+  it("renders nothing at all on a miss — no clean bill, no green tick", () => {
+    // A miss means "did not clear a rate gate of 5 per role on 25+ events",
+    // which includes every employer whose board we have watched for a week.
+    // Asserted against comment-stripped source: the prose above the helper
+    // says these words precisely to explain why they may not be rendered.
+    for (const phrase of [/no re-?post/i, /does not re-?post/i, /never re-?lists/i,
+                          /clean record/i, /no churn/i, /doesn't re-?post/i]) {
+      expect(CODE, `clean-bill copy: ${phrase}`).not.toMatch(phrase);
+    }
+    expect(CODE).toMatch(/if \(!Array\.isArray\(hit\) \|\| hit\.length < 3\) return null;/);
+  });
+
+  it("does not repeat itself under the answer that already states it", () => {
+    expect(CODE).toMatch(/if \(!token \|\| on === "ghost"\) return null;/);
+  });
+
+  it("reaches the answers where a reader is being persuaded to trust", () => {
+    // The point of item 3: the warning is worthless under the chip that is
+    // already a warning. It has to reach the cards that recommend.
+    for (const on of ["hiring", "pay", "entry", "scale", "check"]) {
+      expect(CODE, `no churn warning on the ${on} answer`).toMatch(
+        new RegExp(`repostWarn\\((?:r\\.company_token|worstToken), "${on}"\\)`));
+    }
+  });
+
+  it("checks every one of a merged employer's feeds, worst first", () => {
+    // get_company_suggest merges by display name (PwC has four ATS feeds), and
+    // the index is keyed by TOKEN — so reading tokens[0] alone would miss the
+    // churn whenever it lives on a sibling feed.
+    expect(CODE).toMatch(/h\.tokens\s*\.filter\(\(tk\) => Array\.isArray\(repostIndex\[tk\]\)\)/);
+    expect(CODE).toMatch(/\(repostIndex\[b\]!\[0\] \?\? 0\) - \(repostIndex\[a\]!\[0\] \?\? 0\)/);
+  });
+});
+
+describe("field chips count exactly what their destination counts", () => {
+  const DENOM = (() => {
+    const sql = latestWith("FUNCTION public.get_explore_denominators").replace(/^\s*--.*$/gm, "");
+    const start = sql.indexOf("FUNCTION public.get_explore_denominators");
+    return sql.slice(start, sql.indexOf("$$;", start));
+  })();
+  const cte = (name: string, until: string) =>
+    DENOM.slice(DENOM.indexOf(`${name} AS (`), DENOM.indexOf(`${until} AS (`));
+
+  it("applies the serving predicates and NOTHING else", () => {
+    // job-board/index.ts applies exactly .gte(dateCol, freshCutoff) and
+    // .is("missing_since", null) — no showcase_excluded, no company <> ''.
+    // Adding either here would put a number on a chip that its own
+    // destination contradicts, which is the defect this page spent the week
+    // removing. The company-level pools in `co` DO exclude them, because that
+    // is the pool the twelve cards were drawn from — the asymmetry is the
+    // point, so it is asserted in both directions.
+    const fld = cte("fld", "board");
+    expect(fld).toMatch(/missing_since IS NULL/);
+    expect(fld).toMatch(/effective_posted >= now\(\) - interval '30 days'/);
+    expect(fld, "field counts exclude rows the field page shows").not.toMatch(/showcase_excluded/);
+    expect(fld, "field counts exclude rows the field page shows").not.toMatch(/company <> ''/);
+    const co = cte("co", "fld");
+    expect(co, "the card pool must exclude what the cards exclude").toMatch(/showcase_excluded/);
+    expect(co).toMatch(/company <> ''/);
+  });
+
+  it("mirrors the serving API's count cap across runtimes", () => {
+    // THE CROSS-RUNTIME GUARD. The serving API stops counting at COUNT_CAP and
+    // replies countCapped, so /jobs/field/marketing renders "10,000+".
+    // get_explore_denominators counts in SQL and is not capped, so an uncapped
+    // chip would read "38,412" and open a page saying "10,000+" — the same
+    // card-contradicts-destination failure, merely inverted. Two runtimes, one
+    // number: parsed from both sources and compared, never asserted as a
+    // literal in one place.
+    const fn = readFileSync(resolve(__dirname, "../../supabase/functions/job-board/index.ts"), "utf8");
+    const server = fn.match(/const COUNT_CAP = ([\d_]+);/);
+    const client = EXPLORE.match(/const SERVE_COUNT_CAP = ([\d_]+);/);
+    expect(server, "COUNT_CAP not found in job-board").toBeTruthy();
+    expect(client, "SERVE_COUNT_CAP not found in Explore").toBeTruthy();
+    expect(Number(client![1].replace(/_/g, ""))).toBe(Number(server![1].replace(/_/g, "")));
+  });
+
+  it("formats a capped count the way the destination formats it", () => {
+    const cap = Number(EXPLORE.match(/const SERVE_COUNT_CAP = ([\d_]+);/)![1].replace(/_/g, ""));
+    const fieldCount = (n: number, loc: string) =>
+      n >= cap ? `${cap.toLocaleString(loc)}+` : n.toLocaleString(loc);
+    expect(fieldCount(cap, "en-US")).toBe("10,000+");
+    expect(fieldCount(cap + 28_412, "en-US")).toBe("10,000+");
+    expect(fieldCount(4246, "en-US")).toBe("4,246");
+  });
+
+  it("omits a thin field rather than printing a small or zero count", () => {
+    // A field with nine postings is a categoriser artifact; printing "9" beside
+    // Engineering invites a reader to conclude the board is empty in their area
+    // when it is the label that is thin. Below the floor the key is absent and
+    // the chip renders bare — the link still works, it just claims nothing.
+    expect(DENOM).toMatch(/FROM fld WHERE n >= 50/);
+    expect(CODE).toMatch(/typeof n === "number" && n > 0 &&/);
+  });
+});
+
+describe("every answer states the pool it was drawn from, and zero is silence", () => {
+  const REFRESH = (() => {
+    const sql = latestWith("FUNCTION public.refresh_explore_cache").replace(/^\s*--.*$/gm, "");
+    const start = sql.indexOf("FUNCTION public.refresh_explore_cache");
+    return sql.slice(start, sql.indexOf("$$;", start));
+  })();
+
+  it("counts the pool with the SAME call that produces the cards", () => {
+    // Not a second query. Duplicating the HAVING clauses of either RPC gives
+    // the >=100 open-roles floor, the 7-day fill definition and the churn
+    // disqualification three fresh chances to drift — and every duplicated
+    // predicate in this file's history has eventually disagreed with its
+    // original. One statement yields both the twelve rows and the count.
+    expect(REFRESH).toMatch(/INTO hiring_rows, hiring_n/);
+    expect(REFRESH).toMatch(/INTO repost_rows, repost_pool_n/);
+    expect(REFRESH).toMatch(/FILTER \(WHERE r\.rn <= 12\)/);
+    // And the limits are raised past any real pool, or the count is a count of
+    // the LIMIT rather than of the population.
+    expect(REFRESH).toMatch(/get_actively_hiring_companies\(2000\)/);
+    expect(REFRESH).toMatch(/get_repost_churn_companies\(9000\)/);
+  });
+
+  it("builds the pay denominator from the 20-role rule ALONE", () => {
+    // THE TRAP. get_transparent_employers' agg CTE has
+    //   HAVING count(*) >= 20 AND 100.0 * pay_n / count(*) >= 80
+    // so counting its rows yields the NUMERATOR twice and a "median" around
+    // 90% instead of the board's real rate. The denominator must be built from
+    // the >=20 condition on its own.
+    const sql = latestWith("FUNCTION public.get_explore_denominators").replace(/^\s*--.*$/gm, "");
+    const pool = sql.slice(sql.indexOf("'pay_pool_n'"), sql.indexOf("'pay_n'"));
+    expect(pool).toMatch(/WHERE total >= 20/);
+    expect(pool, "the 80% gate leaked into its own denominator").not.toMatch(/80/);
+  });
+
+  it("strips a failed counter instead of publishing it as zero", () => {
+    // A broken instrument must never render as a fact about the thing it
+    // measures — "the 12 best of 0 employers" is the page asserting something
+    // false about the board because its own scan died.
+    expect(REFRESH).toMatch(/jsonb_strip_nulls/);
+    for (const k of ["hiring_n", "repost_pool_n", "repost_flagged_n"]) {
+      expect(REFRESH, `${k} can publish a zero`).toMatch(new RegExp(`'${k}',\\s*NULLIF\\(`));
+    }
+    expect(latestWith("FUNCTION public.get_explore_denominators")).toMatch(/jsonb_strip_nulls/);
+  });
+
+  it("every optional block degrades without taking the payload down", () => {
+    // The cache row must still be written when any one collection fails, or a
+    // single slow scan freezes every answer on the page.
+    const handlers = REFRESH.match(/EXCEPTION WHEN OTHERS THEN/g) ?? [];
+    expect(handlers.length, "an unwrapped block can abort the whole refresh").toBeGreaterThanOrEqual(5);
+  });
+
+  it("renders a note only when its counter arrived", () => {
+    for (const [intent, key] of [["hiring", "totals\\.hiring_n"], ["entry", "totals\\.entry_n"],
+                                 ["ghost", "totals\\.repost_pool_n"], ["fields", "totals\\.postings_n"]] as const) {
+      // Whitespace-tolerant: an exact-indent match would break on a reformat
+      // and say the guard failed when only the layout moved.
+      expect(CODE, `${intent} note is ungated`).toMatch(
+        new RegExp(`${intent}:\\s*${key}\\s*\\?\\s*(t\\(|\\[)`));
+    }
+    // The pay note needs BOTH halves of its fraction before it may state one.
+    expect(CODE).toMatch(/pay: totals\.pay_n && totals\.pay_pool_n/);
+  });
+
+  it("the new cache keys are read as objects, never trusted from null", () => {
+    // typeof null === "object" is the trap: it would put null into a Record and
+    // throw on the first read. Each is required to be a non-null, non-array
+    // object before it is trusted.
+    expect(CODE).toMatch(/const obj = \(v: unknown\) => !!v && typeof v === "object" && !Array\.isArray\(v\);/);
+    for (const k of ["c.fields", "c.totals", "c.repost_index"]) {
+      expect(CODE).toContain(`obj(${k})`);
+    }
+  });
+
+  it("no translation of the new copy can drop a placeholder", () => {
+    // THE REAL RISK, and it is not that a locale is missing — it is that a
+    // locale HAS the key with a value that loses a number. A locale value
+    // overrides the inline default silently, so a translation of
+    // explore.repostWarn that drops {{roles}} renders "Re-lists roles: 581
+    // re-postings" with no denominator: the bare-count libel, in one language,
+    // with the English page still reading correctly. Same for the pay note,
+    // where losing {{pool}} turns a fraction into a bare claim.
+    //
+    // Checked against EVERY locale that defines the key, so a translation
+    // landing later is held to the same rule as today's English.
+    const REQUIRED: Record<string, string[]> = {
+      repostWarn: ["{{events}}", "{{roles}}"],
+      noteHiring: ["{{n}}"],
+      notePay: ["{{n}}", "{{pool}}"],
+      notePayBoard: ["{{pct}}"],
+      noteEntry: ["{{n}}"],
+      noteGhost: ["{{n}}"],
+      noteGhostFlagged: ["{{n}}"],
+      noteFields: ["{{n}}"],
+    };
+    // English must carry all of them — the page's own key-exists guard above
+    // requires it, and this pins the shape as well as the presence.
+    const en = (JSON.parse(readFileSync(resolve(LOCALES, "en.json"), "utf8")).explore ?? {}) as Record<string, string>;
+    for (const key of Object.keys(REQUIRED)) {
+      expect(typeof en[key], `en.json is missing explore.${key}`).toBe("string");
+    }
+    for (const f of localeFiles) {
+      const ex = (JSON.parse(readFileSync(resolve(LOCALES, f), "utf8")).explore ?? {}) as Record<string, string>;
+      for (const [key, placeholders] of Object.entries(REQUIRED)) {
+        if (typeof ex[key] !== "string") continue;
+        for (const ph of placeholders) {
+          expect(ex[key], `${f} explore.${key} drops ${ph}`).toContain(ph);
+        }
+      }
+    }
+  });
+});

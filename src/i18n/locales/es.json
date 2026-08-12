@@ -4199,7 +4199,15 @@
     "checkFeeds": "{{n}} portales de empleo",
     "checkNone": "No cubrimos el portal de empleo de ese empleador, así que no tenemos nada medido que mostrarte.",
     "checkErr": "La búsqueda de empleadores no está disponible ahora mismo — esto no dice nada sobre ese empleador. Inténtalo de nuevo en un momento.",
-    "hiringSpeed": "la mitad se retiró en {{d}} días"
+    "hiringSpeed": "la mitad se retiró en {{d}} días",
+    "repostWarn": "Vuelve a publicar puestos: {{events}} republicaciones en {{roles}} puestos en {{d}} días",
+    "noteHiring": "Los 12 con mejor tasa de cobertura, de {{n}} empleadores que califican — con historial medible de cobertura y más de 100 puestos abiertos ahora.",
+    "notePay": "{{n}} de los {{pool}} empleadores con más de 20 puestos abiertos indican el salario en al menos el 80 % de ellos.",
+    "notePayBoard": "En todo el tablón, el {{pct}} % de las ofertas abiertas indica algún salario.",
+    "noteEntry": "Los 12 con más, de {{n}} empleadores con 5 o más puestos de nivel inicial abiertos.",
+    "noteGhost": "Los 12 con más republicaciones, de {{n}} empleadores con 20 o más registradas.",
+    "noteGhostFlagged": "{{n}} republican con suficiente frecuencia como para llevar un aviso en las demás respuestas.",
+    "noteFields": "{{n}} puestos abiertos en todo el tablón ahora mismo."
   },
   "agentQueue": {
     "title": "Cola matinal",

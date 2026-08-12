@@ -4199,7 +4199,15 @@
     "checkFeeds": "{{n}} sites carrières",
     "checkNone": "Nous ne suivons pas le site carrières de cet employeur — nous n'avons donc rien de mesuré à vous montrer.",
     "checkErr": "La recherche d'employeurs est indisponible pour le moment — cela ne dit rien sur cet employeur. Réessayez dans un instant.",
-    "hiringSpeed": "la moitié retirée en {{d}} jours"
+    "hiringSpeed": "la moitié retirée en {{d}} jours",
+    "repostWarn": "Republie ses offres : {{events}} republications sur {{roles}} postes en {{d}} j",
+    "noteHiring": "Les 12 au meilleur taux de pourvoi, sur {{n}} employeurs éligibles — avec un historique de pourvoi mesurable et plus de 100 postes ouverts actuellement.",
+    "notePay": "{{n}} des {{pool}} employeurs ayant plus de 20 postes ouverts indiquent le salaire sur au moins 80 % d'entre eux.",
+    "notePayBoard": "Sur l'ensemble du site, {{pct}} % des offres ouvertes indiquent un salaire.",
+    "noteEntry": "Les 12 qui en ont le plus, sur {{n}} employeurs avec au moins 5 postes junior ouverts.",
+    "noteGhost": "Les 12 qui republient le plus, sur {{n}} employeurs avec au moins 20 republications suivies.",
+    "noteGhostFlagged": "{{n}} republient assez souvent pour porter un avertissement dans les autres réponses.",
+    "noteFields": "{{n}} postes ouverts sur l'ensemble du site en ce moment."
   },
   "agentQueue": {
     "title": "File du matin",
