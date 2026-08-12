@@ -1,40 +1,3 @@
--- A TIMEOUT IS THE ONE ERROR "WHEN OTHERS" DOES NOT CATCH.
---
--- Post-migration evidence, 2026-08-12 18:12: a statement timeout escaped WHOLE
--- from refresh_stats_cache at the entry_stats assignment — with
--- pg_proc.prosrc confirming the wrapped body and proconfig confirming the
--- 5-minute budget were live. The handler was right there and did not fire.
---
--- Because it cannot. Per the PostgreSQL documentation on trapping errors:
--- "The special condition name OTHERS matches every error type except
--- QUERY_CANCELED and ASSERT_FAILURE." statement_timeout raises QUERY_CANCELED
--- (57014). So the fail-soft wrapping never caught a timeout — not in this
--- morning's re-assert, not in the 20260807214412 original. It protected the
--- caches against every error except the one it was built for. Yesterday's
--- six-hour stall, today's whole-run deaths, and the untouched stale_parts are
--- all this one documentation footnote. (My earlier "the deployed body must
--- predate the wrapping" was wrong, and the pg_proc check is what killed it.)
---
--- THE FIX: every section handler names QUERY_CANCELED explicitly, with the
--- identical fallback the OTHERS arm carries. The docs call trapping it
--- "possible, but often unwise" — the caveat is that a section will also
--- swallow an operator's pg_cancel_backend aimed at the whole run, degrading
--- one section instead of stopping. For an hourly cron refresh that is the
--- right trade: pg_terminate_backend still stops it dead, and the alternative
--- is what the last two days looked like.
---
--- One knock-on, accepted: once a section catches the OUTER function budget
--- firing (5min/15min), that timer is spent and later sections run under only
--- their callees'' own headers. Those headers bound every callee at 5s-4min,
--- so the run stays finite either way; the outer budget is the backstop for
--- the sections, not the other way around.
---
--- ALSO RE-ASSERTED: refresh_ghost_stats. The 18:05 failure context shows a
--- payload-building body at "line 54" that does not exist in this repo''s
--- version (a single INSERT...SELECT with its own 10-minute budget) — an older
--- copy is deployed there too.
-
--- ── 1. refresh_stats_cache, re-asserted ───────────────────────────────────
 CREATE OR REPLACE FUNCTION public.refresh_stats_cache()
 RETURNS void
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
@@ -138,17 +101,6 @@ BEGIN
 END;
 $$;
 
-COMMENT ON FUNCTION public.refresh_stats_cache() IS
-  'Hourly stats cache. EVERY section is wrapped: a failing callee costs one '
-  'stale section (named in stale_parts, previous value carried), never the '
-  'run — a version without the wrapping was found deployed 2026-08-12, dying '
-  'whole on intermittent 57014s. Function-level 5min budget so role-GUC drift '
-  '(the vacuum-incident RESET) cannot re-cap it at 120s. The old SET LOCAL '
-  '20s per section is gone: the callees carry their own 5-20s budgets, which '
-  'override anyway (proven 25.46s), so the inner SET LOCALs only added a '
-  'second, weaker copy of a fact the callees already own.';
-
--- ── 2. refresh_explore_cache, every section now optional ──────────────────
 CREATE OR REPLACE FUNCTION public.refresh_explore_cache()
 RETURNS void
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
@@ -245,10 +197,6 @@ BEGIN
     RAISE WARNING 'explore cache: denominators unavailable (%)', SQLERRM;
   END;
 
-  -- THE FIVE THAT WERE NEVER WRAPPED. Any one of them dying under load —
-  -- get_salary_benchmarks at its 20s budget was enough today — killed the
-  -- whole refresh and the hour's write. Each now degrades to the previous
-  -- row's value and is named in stale_parts, exactly like stats_cache.
   BEGIN
     trending_v := (SELECT coalesce(jsonb_agg(row_to_json(x)), '[]'::jsonb) FROM public.get_trending_companies(12) x);
   EXCEPTION
@@ -328,27 +276,6 @@ BEGIN
 END;
 $$;
 
-COMMENT ON FUNCTION public.refresh_explore_cache() IS
-  'Hourly Explore cache. EVERY section is optional: a failing callee costs '
-  'one stale section (previous value carried, named in stale_parts), never '
-  'the hour''s write. trending/newest/entry/salary/segments were unwrapped '
-  'until 2026-08-12, when one of them dying under post-incident load cost the '
-  '17:07 tick entirely. hiring/reposters are sliced to twelve from the SAME '
-  'call that yields hiring_n/repost_pool_n so a collection and its stated '
-  'denominator cannot disagree.';
-
-
--- ── 3. refresh_ghost_stats: the TRUE latest body, plus the arms ───────────
---
--- The first draft of this migration re-asserted the 20260808191630 body — an
--- ALL-OR-NOTHING version — because the search for "latest definition" sorted
--- by file modification time, which git checkouts scramble. The true latest by
--- filename is 20260809223000 ("per piece and no null publishing"), whose
--- payload-style per-piece handlers match the 18:05 failure context exactly:
--- the deployed body was never old, only unable to catch QUERY_CANCELED, like
--- everything else in this file. src/test/published-claims.test.ts caught the
--- regression before it shipped. This is that body, verbatim, with the
--- QUERY_CANCELED arm added to every handler.
 CREATE OR REPLACE FUNCTION public.refresh_ghost_stats()
 RETURNS void
 LANGUAGE plpgsql
@@ -368,14 +295,6 @@ BEGIN
   SELECT COALESCE(v, '{}'::jsonb) INTO prev
     FROM public.job_board_stats_rollup WHERE k = 'ghost_stats';
 
-  -- The four postings counts, in a single sequential pass.
-  --
-  -- SAME DEFINITIONS AS EVER, and two of them were incidents:
-  --   * every count filters missing_since IS NULL — a column headed "open
-  --     postings" must mean postings the board will actually serve;
-  --   * total_company_names groups on the RAW company string, the same key
-  --     get_size_segments uses, so the headline and the segments page cannot
-  --     disagree about what one employer is.
   BEGIN
     SET LOCAL statement_timeout = '8min';
     SELECT
@@ -390,20 +309,18 @@ BEGIN
       'total_open',          open_n,
       'total_companies',     tokens_n,
       'total_company_names', names_n,
-      -- Kept in the payload because GhostJobIndex gates its coverage caveat on
-      -- it; when the column went missing the caveat never rendered once.
       'posted_coverage_pct',
         CASE WHEN open_n > 0 THEN round(100.0 * dated_n / open_n, 1) END);
   EXCEPTION
     WHEN QUERY_CANCELED THEN
-    stale := stale || 'counts'::text;
+    stale := stale || 'counts';
     payload := jsonb_build_object(
       'total_open',          prev -> 'total_open',
       'total_companies',     prev -> 'total_companies',
       'total_company_names', prev -> 'total_company_names',
       'posted_coverage_pct', prev -> 'posted_coverage_pct');
     WHEN OTHERS THEN
-    stale := stale || 'counts'::text;
+    stale := stale || 'counts';
     payload := jsonb_build_object(
       'total_open',          prev -> 'total_open',
       'total_companies',     prev -> 'total_companies',
@@ -411,10 +328,6 @@ BEGIN
       'posted_coverage_pct', prev -> 'posted_coverage_pct');
   END;
 
-  -- Posting-age median. From the EMPLOYER's stated posted_at and never from
-  -- first_seen, which is when WE noticed: on 4,179 rows carrying both, the two
-  -- bases differ by 17.6 days at the median and the published figure was the
-  -- flattering one. Sorts only the dated, still-served subset.
   BEGIN
     SET LOCAL statement_timeout = '5min';
     payload := payload || jsonb_build_object('median_days_open', (
@@ -425,14 +338,13 @@ BEGIN
       WHERE missing_since IS NULL AND posted_at IS NOT NULL));
   EXCEPTION
     WHEN QUERY_CANCELED THEN
-    stale := stale || 'median_days_open'::text;
+    stale := stale || 'median_days_open';
     payload := payload || jsonb_build_object('median_days_open', prev -> 'median_days_open');
     WHEN OTHERS THEN
-    stale := stale || 'median_days_open'::text;
+    stale := stale || 'median_days_open';
     payload := payload || jsonb_build_object('median_days_open', prev -> 'median_days_open');
   END;
 
-  -- Closure-derived figures. A different, far smaller table.
   BEGIN
     SET LOCAL statement_timeout = '2min';
     payload := payload || jsonb_build_object(
@@ -449,28 +361,26 @@ BEGIN
           AND closed_at >= posted_at));
   EXCEPTION
     WHEN QUERY_CANCELED THEN
-    stale := stale || 'closures'::text;
+    stale := stale || 'closures';
     payload := payload || jsonb_build_object(
       'closed_90d',           prev -> 'closed_90d',
       'observed_days',        prev -> 'observed_days',
       'median_days_to_close', prev -> 'median_days_to_close');
     WHEN OTHERS THEN
-    stale := stale || 'closures'::text;
+    stale := stale || 'closures';
     payload := payload || jsonb_build_object(
       'closed_90d',           prev -> 'closed_90d',
       'observed_days',        prev -> 'observed_days',
       'median_days_to_close', prev -> 'median_days_to_close');
   END;
 
-  -- ALWAYS write. A row that says "these three parts are stale" is worth far
-  -- more than no row, which is what the previous all-or-nothing version left
-  -- behind through two cron ticks and a migration seed.
   payload := payload || jsonb_build_object('stale_parts', to_jsonb(stale));
 
   INSERT INTO public.job_board_stats_rollup (k, v, computed_at)
   VALUES ('ghost_stats', payload, now())
   ON CONFLICT (k) DO UPDATE SET v = EXCLUDED.v, computed_at = EXCLUDED.computed_at;
 END $$;
+
 REVOKE ALL ON FUNCTION public.refresh_ghost_stats() FROM PUBLIC, anon, authenticated;
 
 NOTIFY pgrst, 'reload schema';
