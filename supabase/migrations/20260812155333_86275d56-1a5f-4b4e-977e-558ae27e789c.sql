@@ -1,0 +1,1 @@
+ALTER ROLE postgres SET statement_timeout = '30min'; SELECT cron.schedule('oneoff-vacuum-jbp', '*/10 * * * *', 'VACUUM (ANALYZE) public.job_board_postings');
