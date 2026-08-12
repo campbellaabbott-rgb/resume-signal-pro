@@ -133,6 +133,18 @@ AS $$
   -- reader would find trivially small. 25 is a LOWER bound on the eligible
   -- pool: the sample was the top 300 by absolute fills, so employers with 100+
   -- open roles and modest fill counts were never in it.
+  --
+  -- MEASURED AFTER DEPLOY (2026-08-12): the true eligible pool is 633, not 25.
+  -- The caveat above was right that 25 was a floor, and badly wrong about the
+  -- magnitude — it undercounted by 25x, because the sampling frame excluded
+  -- exactly the employers this floor was designed to admit. Recorded here so
+  -- the table above is not read as a census; it is a sample, and the number
+  -- Explore now publishes under this collection comes from
+  -- get_explore_denominators counting the whole population.
+  --
+  -- The floor itself still holds at 633: the top twelve span 146-254 fills per
+  -- 100 open roles with a minimum of 100 open, so nothing trivially small
+  -- placed.
   WHERE o.n >= 100
   -- THE RATIO ORDERS THE LIST; IT IS NEVER PRINTED. "251 fills per 100 open
   -- roles" is arithmetically true and reads as nonsense — it is a throughput-
