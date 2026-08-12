@@ -73,8 +73,16 @@ const PINNED = {
   // complete over its own failures. The sweep now skips already-correct boards,
   // narrows each UPDATE to rows that differ, and refuses to stamp its version
   // when any board failed. Bumped so the deploy is externally identifiable.
-  sourcesHash: "578bd5893bc57cd1",
-  buildVersion: "2026-08-11.3",
+  // 2026-08-12.1: +18 iCIMS employers / 9,282 postings (round 2, two-hop CDX
+  // discovery — see the block comment above the iCIMS entries in sources.ts).
+  // This test is the reason they will actually appear: the bootstrap lane is
+  // keyed on BUILD_VERSION, and 18 new boards behind a 28,000-board cold
+  // rotation would have been days of "catalog correct, board empty" — the exact
+  // Pinpoint failure this guard was written for, reproduced at 18x the size.
+  //
+  // Same bump also carries the structured-sweep lane, which is index.ts-only.
+  sourcesHash: "6bac7c8103784266",
+  buildVersion: "2026-08-12.1",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {

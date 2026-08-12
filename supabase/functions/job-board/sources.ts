@@ -28376,14 +28376,43 @@ export const JOB_SOURCES: JobSource[] = [
   // Richest feed we ingest: real posted dates, ISO country codes, stated
   // salary, and full descriptions in the list payload (2,852 postings at
   // verification). AIDT excluded: state workforce agency, corporate-only bar.
+  //
+  // ROUND 2, 2026-08-12: +18 employers / 9,282 postings, two-hop discovery.
+  // Hop 1 is a Wayback CDX pull on icims.com for tenant hosts; hop 2 derives
+  // {careers,jobs}.{company}.{tld} from each tenant slug and probes /api/jobs.
+  // The hops are needed because the JSON API lives ONLY on custom career-site
+  // domains — measured: it returns HTML on every *.icims.com host, including
+  // the tenant host that named the company — so the CDX corpus finds WHO uses
+  // iCIMS and the probe finds WHERE their feed is. 1,907 candidates -> 22 live
+  // feeds; every one verified live before landing here.
+  //
+  // Three exclusions, all on the collision rule rather than on feed quality:
+  // Gallagher (the board already carries Gallagher Europe BV — a different
+  // legal entity, and this catalog has mapped slugs to the wrong employer
+  // before), Aptive and Pinion (exact name matches already carried).
+  // Foot Locker answered on careers. AND jobs.; one host per employer, or the
+  // same 2,890 postings are ingested twice under two tokens.
+  //
+  // Names are `hiring_organization` from the employer's own posting payload,
+  // never the tenant slug — postholdings.icims.com posts as Michael Foods Inc.
+  // Casing is theirs: AVI-SPL is not "Avi-spl".
   { name: "84 Lumber", source: "icims", token: "careers.84lumber.com" },
   { name: "AARP", source: "icims", token: "careers.aarp.org" },
   { name: "AccentCare", source: "icims", token: "careers.accentcare.com" },
   { name: "Acentra Health", source: "icims", token: "careers.acentra.com" },
+  { name: "Adisseo France S.A.S", source: "icims", token: "careers.adisseo.com" },
+  { name: "Advanced Micro Devices, Inc", source: "icims", token: "careers.amd.com" },
   { name: "Agape Care Group", source: "icims", token: "careers.agapecaregroup.com" },
+  { name: "Air Methods", source: "icims", token: "careers.airmethods.com" },
   { name: "Akima", source: "icims", token: "careers.akima.com" },
   { name: "Alera Group", source: "icims", token: "careers.aleragroup.com" },
+  { name: "Allan Myers, Inc", source: "icims", token: "careers.allanmyers.com" },
+  { name: "Alumus", source: "icims", token: "careers.alumus.com" },
   { name: "American Integrity Insurance", source: "icims", token: "careers.americanintegrityinsurance.com" },
+  { name: "Aon Corporation", source: "icims", token: "jobs.aon.com" },
+  { name: "Applied Medical", source: "icims", token: "careers.appliedmedical.com" },
+  { name: "AprilAire", source: "icims", token: "careers.aprilaire.com" },
+  { name: "Aptean", source: "icims", token: "careers.aptean.com" },
   { name: "Aurobindo Pharma USA", source: "icims", token: "careers.acrotechbiopharma.com" },
   // iCIMS deep census 2026-07-26 (Wayback alphabetical partitions + Common
   // Crawl; 1,744 candidate hosts -> 137 live). Protocol applied: exact-domain
@@ -28394,6 +28423,7 @@ export const JOB_SOURCES: JobSource[] = [
   // as public-sector. 105 employers, 36,745 postings at verification.
   { name: "Ajinomoto Foods North America", source: "icims", token: "www.ajinomotocareers.com" },
   { name: "Arcus FM", source: "icims", token: "careers.arcusfm.com" },
+  { name: "AVI-SPL", source: "icims", token: "careers.avispl.com" },
   { name: "AXA", source: "icims", token: "careers.axa.com" },
   { name: "Bassett Healthcare Network", source: "icims", token: "jobs.bassett.org" },
   { name: "Bayonet Plumbing, Heating & Air-Conditioning", source: "icims", token: "joinus.ies-co.com" },
@@ -28401,12 +28431,14 @@ export const JOB_SOURCES: JobSource[] = [
   { name: "Beazley Management", source: "icims", token: "careers.beazley.com" },
   { name: "Behavioral Innovations", source: "icims", token: "careers.behavioral-innovations.com" },
   { name: "Benevis", source: "icims", token: "careers.benevis.com" },
+  { name: "BISSELL Homecare", source: "icims", token: "careers.bissell.com" },
   { name: "Blain's Farm & Fleet", source: "icims", token: "careers.farmandfleet.com" },
   { name: "Boyne Resorts", source: "icims", token: "careers.boyneresorts.com" },
   { name: "Brother Canada", source: "icims", token: "careers.brother.com" },
   { name: "Busy Bees", source: "icims", token: "careers.giraffe.ie" },
   { name: "Cambrex", source: "icims", token: "careers.cambrex.com" },
   { name: "Careforth", source: "icims", token: "careers.careforth.com" },
+  { name: "Certara", source: "icims", token: "careers.certara.com" },
   { name: "Chick-fil-A", source: "icims", token: "careers.baycenterfoods.com" },
   { name: "Clyde Companies", source: "icims", token: "careers.clydeinc.com" },
   { name: "CoBank", source: "icims", token: "careers.cobank.com" },
@@ -28420,13 +28452,17 @@ export const JOB_SOURCES: JobSource[] = [
   { name: "ECS", source: "icims", token: "careers.ecslimited.com" },
   { name: "Exelon", source: "icims", token: "careers.delmarva.com" },
   { name: "Fast Pace Health", source: "icims", token: "talent.fastpacehealth.com" },
+  { name: "FirstHealth of the Carolinas, Inc.", source: "icims", token: "careers.firsthealth.org" },
+  { name: "Foot Locker", source: "icims", token: "jobs.footlocker.com" },
   { name: "Games Global Operations", source: "icims", token: "careers.gamesglobal.com" },
   { name: "Garmin International", source: "icims", token: "careers.garmin.com" },
   { name: "Garnet Health", source: "icims", token: "careers.garnethealth.org" },
   { name: "Gates Hudson", source: "icims", token: "careers.gateshudson.com" },
+  { name: "General RV Center", source: "icims", token: "careers.generalrv.com" },
   { name: "Genesis Administrative Services", source: "icims", token: "www.genesiscareers.jobs" },
   { name: "Glacier Bancorp", source: "icims", token: "www.gbcijobs.com" },
   { name: "Global Data Consultants", source: "icims", token: "careers.gdcitsolutions.com" },
+  { name: "Global Medical Response", source: "icims", token: "careers.gmr.net" },
   { name: "Govcio", source: "icims", token: "careers.govcio.com" },
   { name: "Haymarket Media Group", source: "icims", token: "careers.haymarket.com" },
   { name: "Hazelden Betty Ford Foundation", source: "icims", token: "jobs.hazeldenbettyford.org" },
@@ -28455,9 +28491,11 @@ export const JOB_SOURCES: JobSource[] = [
   { name: "Marmic Fire & Safety", source: "icims", token: "careers.marmicfire.com" },
   { name: "Martin Brower", source: "icims", token: "jobportal.martinbrower.com" },
   { name: "MasTec", source: "icims", token: "careers.mastec.com" },
+  { name: "MasTec Utility Services", source: "icims", token: "jobs.mastec.com" },
   { name: "Matrix Medical Network", source: "icims", token: "careers.matrixmedicalnetwork.com" },
   { name: "Matthews Real Estate Investment Services", source: "icims", token: "careers.matthews.com" },
   { name: "McAfee", source: "icims", token: "careers.mcafee.com" },
+  { name: "Michael Foods Inc.", source: "icims", token: "jobs.postholdings.com" },
   { name: "N-able", source: "icims", token: "careers.n-able.com" },
   { name: "National Federation of Independent Business (NFIB)", source: "icims", token: "careers.nfib.com" },
   { name: "Natures Way Foods", source: "icims", token: "careers.natureswayfoods.com" },

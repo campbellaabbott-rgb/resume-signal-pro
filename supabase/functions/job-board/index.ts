@@ -98,7 +98,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-11.3";
+const BUILD_VERSION = "2026-08-12.1";
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -207,6 +207,17 @@ const HOT_CONCURRENCY = 2; // hot boards are giants — two multi-MB parses at o
 // edge wall-time limit while still clearing ~406k rows in a few thousand hops.
 const DESC_SWEEP_PER_HOP = 120;
 const DESC_SWEEP_CONCURRENCY = 8;
+// structured-sweep: vendors whose PER-POSTING DETAIL states a work mode the
+// list payload does not. Only Workday qualifies today — fetchVendorDetail
+// reads its `remoteType` — and Workday is half the board, so this one entry is
+// 306,186 postings whose work mode is otherwise text-inferred or absent.
+//
+// Not the same question as DETAIL_DESC_SOURCES. That list is "whose text needs
+// a per-posting fetch"; this is "whose STRUCTURED fields do". A vendor belongs
+// here only if fetchVendorDetail sets `workMode` for it, so adding one means
+// writing that branch first — an entry without one would walk the vendor's
+// whole corpus fetching details and filling nothing.
+const STRUCTURED_SWEEP_SOURCES: readonly string[] = ["workday"];
 // Slice sizes are calibrated to the per-invocation compute budget. Hot
 // slices are UNIFORMLY giant boards (that's what makes them hot), so they
 // must be much smaller than the old mixed slices: the first tiered deploy
@@ -2293,6 +2304,28 @@ async function maybeKickMaintenance(client: SupabaseClient): Promise<void> {
     // self-resuming: filled rows have left the description-is-null filter.
     const settled = Number.isFinite(doneAt) && Date.now() - doneAt < 6 * 60 * 60_000;
     if (!ds.alive && !settled) await kick("desc-sweep", { vi: 0 });
+
+    // The work-mode recovery lane, and it RESUMES rather than restarts.
+    //
+    // desc-sweep can safely re-kick at vi:0 because its predicate is
+    // self-clearing: a filled row leaves `description is null`, so a fresh
+    // walk lands on genuinely unfilled rows. This lane's predicate is NOT
+    // self-clearing in the same way. The rows that remain `work_mode is null`
+    // after a pass are exactly the ones whose detail states no remoteType —
+    // permanently. Restarting at cursor "" would re-fetch every one of them,
+    // spending the whole budget re-proving they have nothing to give.
+    //
+    // So the stored cursor is carried forward, and only a COMPLETED pass
+    // (doneAt) clears it. The settle window is 24h rather than desc-sweep's 6:
+    // a posting's remoteType does not change, so re-walking sooner buys
+    // nothing but vendor requests.
+    const ss = await alive("structured_sweep");
+    const ssDone = typeof ss.v?.doneAt === "string" ? Date.parse(ss.v.doneAt as string) : NaN;
+    const ssSettled = Number.isFinite(ssDone) && Date.now() - ssDone < 24 * 60 * 60_000;
+    if (!ss.alive && !ssSettled) {
+      const ssCursor = typeof ss.v?.cursor === "string" ? ss.v.cursor as string : "";
+      await kick("structured-sweep", { vi: 0, cursor: ssCursor });
+    }
   } catch (e) {
     // Maintenance is best-effort; it must never break a refresh slice.
     console.warn("[JOB-BOARD] maintenance kick skipped:", String(e).slice(0, 120));
@@ -2801,7 +2834,7 @@ Deno.serve(async (req) => {
       // bundle, so a stale/failed publish is visible in ONE call instead of being
       // inferred from posting counts over hours (the rung-2 "did it deploy?" pain).
       // Also the source of truth for the heartbeat's job_board_deploy check.
-      const [prog, pbMeta, rot, refreshMeta, bf, hotMeta, fresh, breaker, dateCov, dcCache, bsMeta, dsMeta, esMeta, fiOk, fiBad, faMeta, aaMeta, arMeta, rsRun, rsCron] = await Promise.all([
+      const [prog, pbMeta, rot, refreshMeta, bf, hotMeta, fresh, breaker, dateCov, dcCache, bsMeta, dsMeta, ssMeta, esMeta, fiOk, fiBad, faMeta, aaMeta, arMeta, rsRun, rsCron] = await Promise.all([
         client.from("job_board_meta").select("v, updated_at").eq("k", "refresh_progress").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "posted_backfill").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "cold_rotation").maybeSingle(),
@@ -2838,6 +2871,7 @@ Deno.serve(async (req) => {
         client.from("job_board_meta").select("v, updated_at").eq("k", "date_coverage_cache").maybeSingle(),
         client.from("job_board_meta").select("v").eq("k", "bootstrap").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "desc_sweep").maybeSingle(),
+        client.from("job_board_meta").select("v, updated_at").eq("k", "structured_sweep").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "embed_sweep").maybeSingle(),
               // The filter self-check's two halves. BOTH are read, because reading
         // only incidents makes silence ambiguous: "no violations" and "the check
@@ -3087,6 +3121,20 @@ Deno.serve(async (req) => {
           vendor: ((dsMeta.data?.v ?? {}) as { vendor?: string }).vendor ?? null,
           doneAt: ((dsMeta.data?.v ?? {}) as { doneAt?: string }).doneAt ?? null,
           ageMin: dsMeta.data?.updated_at ? Math.round((Date.now() - new Date(dsMeta.data.updated_at).getTime()) / 60000) : null,
+        },
+        // Work-mode recovery lane. `filled` is the number that matters and the
+        // reason it is published: this lane exists because the structured
+        // remoteType parsing could not reach rows that already had a
+        // description, and a lane that walks its whole corpus filling nothing
+        // looks identical to one that never ran. cursor advancing with filled
+        // at 0 is the honest reading of "scanning, nothing to state here".
+        structuredSweep: {
+          vendor: ((ssMeta.data?.v ?? {}) as { vendor?: string }).vendor ?? null,
+          cursor: ((ssMeta.data?.v ?? {}) as { cursor?: string }).cursor ?? null,
+          scanned: ((ssMeta.data?.v ?? {}) as { scanned?: number }).scanned ?? null,
+          filled: ((ssMeta.data?.v ?? {}) as { filled?: number }).filled ?? null,
+          doneAt: ((ssMeta.data?.v ?? {}) as { doneAt?: string }).doneAt ?? null,
+          ageMin: ssMeta.data?.updated_at ? Math.round((Date.now() - new Date(ssMeta.data.updated_at).getTime()) / 60000) : null,
         },
         // Embedding sweep liveness — same shape as descSweep. Added 2026-07-25
         // when the corpus fill had NO anon-visible progress signal (the meta
@@ -4480,7 +4528,30 @@ Deno.serve(async (req) => {
           if (!externalId) continue;
           try {
             const { text, postedAt, workMode: wmVendor } = await fetchVendorDetail(src, row.id, externalId, row.apply_url);
-            if (!text) continue;
+            if (!text) {
+              // AN EMPTY BODY IS NOT AN EMPTY PAYLOAD. This was a bare
+              // `continue`, which discarded a remoteType and a startDate that
+              // had ALREADY been parsed out of the same response: the fetch was
+              // paid for, the vendor stated both facts, and they were dropped
+              // because a different field of that payload came back blank.
+              //
+              // Salvage them on the way past. The row keeps its null
+              // description and is retried for that next sweep — this only
+              // stops the structured half being collateral damage.
+              const salv: Record<string, unknown> = {};
+              if (wmVendor) { salv.work_mode = wmVendor; salv.remote = wmVendor === "remote"; }
+              if (postedAt && (vendor === "workday" || !row.posted_at)) salv.posted_at = postedAt;
+              if (Object.keys(salv).length) {
+                // The work_mode IS NULL guard applies ONLY when this patch
+                // actually writes a work mode. Attaching it unconditionally
+                // would mean a row that already HAS a work mode and is missing
+                // a date matches nothing — silently dropping the very date this
+                // block exists to rescue.
+                const q = client.from("job_board_postings").update(salv).eq("id", row.id);
+                await (wmVendor ? q.is("work_mode", null) : q);
+              }
+              continue;
+            }
             const clean = text.replace(/\u0000/g, "").slice(0, 4000);
             if (!clean) continue;
             // Same rule as ingest: the description is also the salary source
@@ -4545,6 +4616,134 @@ Deno.serve(async (req) => {
         body: JSON.stringify({ action: "desc-sweep", chainKey: key, vi }),
       })).then((rr) => rr.text()).catch(() => {}));
       return json({ ok: true, vendor, scanned: queue.length, updated, nextVi: vi });
+    }
+
+    if (action === "structured-sweep") {
+      // THE WORK-MODE RECOVERY LANE, AND WHY desc-sweep COULD NOT BE IT.
+      //
+      // fetchVendorDetail already parses Workday's `remoteType` into a
+      // structured work mode (:2596) and its `startDate` into a real posting
+      // date. That code is correct. It simply cannot reach the rows that need
+      // it, because desc-sweep selects
+      //
+      //     .eq("source", vendor).is("description", null)
+      //
+      // and writes through `.is("description", null)` as well. Both are right
+      // for descriptions and fatal for everything else: the moment a posting
+      // has a description — stored by the on-demand `detail` read at :2466, or
+      // by a sweep that ran before the remoteType parsing existed — it becomes
+      // permanently invisible to the only code that could state its work mode.
+      //
+      // Measured 2026-08-12: work_mode is set on 29% of served postings.
+      // Workday is 306,186 of them, half the board, and its LIST payload
+      // carries no work-mode field at all — so every Workday row is
+      // text-inferred or nothing, and the structured statement sitting in a
+      // detail payload we already know how to fetch never lands.
+      //
+      // KEYSET PAGINATION, NOT "SELECT WHERE STILL NULL". desc-sweep can
+      // re-select its gaps every hop because filling one removes it from the
+      // predicate. Here the predicate cannot be self-clearing: a posting whose
+      // detail genuinely states no remoteType stays work_mode IS NULL forever
+      // and would be re-fetched on every hop, so the lane would spend its
+      // entire budget on the rows it has already proven have nothing to give.
+      // A cursor over `id` visits each row once per pass instead.
+      if (typeof body.chainKey !== "string" || body.chainKey !== await chainKey()) {
+        return json({ error: "structured-sweep is a maintenance action" }, 403);
+      }
+      let vi = Math.max(0, Number(body.vi) || 0);
+      if (vi >= STRUCTURED_SWEEP_SOURCES.length) {
+        await client.from("job_board_meta").upsert(
+          { k: "structured_sweep", v: { doneAt: new Date().toISOString() }, updated_at: new Date().toISOString() },
+          { onConflict: "k" },
+        );
+        return json({ ok: true, done: true });
+      }
+      const sVendor = STRUCTURED_SWEEP_SOURCES[vi];
+      const cursor = String(body.cursor ?? "");
+      // description IS NOT NULL is the POINT, not an optimisation: those are
+      // exactly the rows desc-sweep can never revisit. Rows still lacking a
+      // description are already its job and will pick up the same structured
+      // fields on the way past, so scanning them here would duplicate a
+      // per-posting vendor fetch for no gain.
+      let sel = client
+        .from("job_board_postings")
+        .select("id, company_token, apply_url, posted_at, work_mode")
+        .eq("source", sVendor)
+        .not("description", "is", null)
+        .is("work_mode", null)
+        .order("id", { ascending: true })
+        .limit(DESC_SWEEP_PER_HOP);
+      if (cursor) sel = sel.gt("id", cursor);
+      const { data: sRows, error: sErr } = await sel;
+      if (sErr) throw sErr;
+      const sQueue = [...(sRows ?? [])] as Array<{
+        id: string; company_token: string; apply_url: string | null;
+        posted_at: string | null; work_mode: string | null;
+      }>;
+      const sPending = [...sQueue];
+      let sFilled = 0;
+      let sSeen = 0;
+      await Promise.all(Array.from({ length: DESC_SWEEP_CONCURRENCY }, async () => {
+        for (;;) {
+          const row = sPending.shift();
+          if (!row) return;
+          sSeen++;
+          const src = JOB_SOURCES.find((s) => s.source === sVendor && s.token === row.company_token);
+          if (!src) continue;
+          const externalId = String(row.id).split(":").slice(2).join(":");
+          if (!externalId) continue;
+          try {
+            const { postedAt, workMode } = await fetchVendorDetail(src, row.id, externalId, row.apply_url);
+            // NO `if (!text) continue` HERE. desc-sweep drops the whole row
+            // when the description comes back empty (:4485) and throws away a
+            // remoteType and a startDate it successfully parsed on the way. In
+            // this lane the description is not the payload — the structured
+            // fields are — so an empty body is not a reason to discard them.
+            const patch: Record<string, unknown> = {};
+            // `remote` moves WITH work_mode or the two columns drift: ingest
+            // sets remote = (workMode === "remote") and the board's Remote
+            // filter reads the boolean, so writing one without the other makes
+            // a row that says remote and cannot be found by asking for remote.
+            if (workMode) { patch.work_mode = workMode; patch.remote = workMode === "remote"; }
+            // Fill-only. A stored date here came from the vendor's own list
+            // payload and this lane has no standing to overwrite it; the
+            // Workday floored-bucket replacement is desc-sweep's call, made
+            // where the description write already justifies the fetch.
+            if (postedAt && !row.posted_at) patch.posted_at = postedAt;
+            if (!Object.keys(patch).length) continue;
+            const { error } = await client.from("job_board_postings")
+              .update(patch)
+              .eq("id", row.id)
+              // Gap-fill only, and it is what makes a concurrent desc-sweep
+              // write safe: if that lane set a work mode between our select and
+              // our update, this update matches nothing rather than racing it.
+              .is("work_mode", null);
+            if (!error) sFilled++;
+          } catch { /* transient — the row keeps its place in the cursor order */ }
+        }
+      }));
+      // Advance the cursor to the LAST id we selected, never to the last one we
+      // filled: a page where nothing had a remoteType must still move, or the
+      // lane re-reads the same page forever. This is the same failure desc-sweep
+      // guards with `updated === 0`, in the form a keyset walk takes.
+      const nextCursor = sQueue.length ? sQueue[sQueue.length - 1].id : "";
+      const sDone = sQueue.length < DESC_SWEEP_PER_HOP;
+      if (sDone) vi += 1;
+      await client.from("job_board_meta").upsert({
+        k: "structured_sweep",
+        v: {
+          vendor: sVendor, cursor: sDone ? "" : nextCursor,
+          scanned: sSeen, filled: sFilled, at: new Date().toISOString(),
+        },
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "k" });
+      const sUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`;
+      waitUntil(chainKey().then((key) => fetch(sUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "structured-sweep", chainKey: key, vi, cursor: sDone ? "" : nextCursor }),
+      })).then((rr) => rr.text()).catch(() => {}));
+      return json({ ok: true, vendor: sVendor, scanned: sQueue.length, filled: sFilled, nextCursor: sDone ? "" : nextCursor, nextVi: vi });
     }
 
     if (action === "report") {
