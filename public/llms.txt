@@ -28,6 +28,7 @@ Full guide text, the complete data-page map, and the CURRENT benchmark figures (
 ## Original data
 
 - [What's a good ATS score? Live benchmarks](/research/ats-score-benchmarks): Median, quartiles, per-industry and experience-level benchmarks computed live from our real scan corpus — original data, honestly framed with sample sizes.
+- [Explore employers by hiring behaviour](/explore): Which employers actually fill roles, which state pay, and which re-list the same opening again and again — measured from our own daily tracking of what happens to every posting, never from employer claims. A role that stayed up a week and then came down is a fill; one taken down and re-listed is churn, and re-listing resets the posted date so an opening can look new long after it first appeared. Also carries a per-employer lookup across all 24,000+ companies on the board. Refreshed hourly, and every collection states the size of the pool it ranks rather than presenting twelve cards as a census.
 
 ## Data pages
 
