@@ -1,5 +1,25 @@
 {
   "changelogEntries": {
+    "outagePostmortem": {
+      "title": "O mural esteve uma hora fora do ar. Eis o que mudou.",
+      "description": "Um erro de manutenção do nosso lado — uma limpeza de base de dados demasiado zelosa que nós próprios pedimos — tirou o mural do ar por cerca de uma hora a 12 de agosto. Nenhum dado se perdeu e as vagas mantiveram o seu histórico de verificação. O que mudou depois: o mural agora é sondado a cada dez minutos a partir de fora da nossa própria infraestrutura, de modo que uma queda dispara um alarme em vez de esperar ser notada; a nossa verificação de saúde sinaliza uma estatística parada em quatro horas em vez de doze; e os processos que calculam as estatísticas públicas foram reconstruídos para que uma consulta lenta degrade um único número — rotulado como desatualizado — em vez de congelar páginas inteiras em silêncio. Várias destas falhas existiam há semanas; a queda foi o que as expôs."
+    },
+    "remoteFilterCounts": {
+      "title": "O filtro de trabalho remoto mostra quantas vagas encontrou",
+      "description": "Filtrar por trabalho remoto, híbrido ou presencial mostrava resultados sem total: a contagem por trás expirava e a página dizia “Mostrando 20” sem saber quantas mais existiam. A contagem agora termina em bem menos de um segundo e cada um desses filtros volta a indicar o seu total completo. Ao corrigir, também fixámos o número exatamente ao que o filtro serve: o número que vê é o número que pode percorrer."
+    },
+    "firstSeenLabels": {
+      "title": "Vagas sem data agora dizem quando as vimos pela primeira vez",
+      "description": "Cerca de uma vaga em sete não traz data do empregador. Nunca adivinhamos idades, por isso esses cartões não mostravam nada. Agora dizem “vista pela primeira vez há 3d” — o dia em que a vaga apareceu no nosso mural. Deliberadamente não se apresenta como data de publicação: limita a idade máxima possível, mas é a nossa data de descoberta, não a do empregador, e o cartão diz isso."
+    },
+    "payTransparencyInstant": {
+      "title": "O Índice de Transparência Salarial carrega instantaneamente",
+      "description": "Abrir o índice calculava cada número ao vivo — até vinte segundos de cálculo por visita, e sob carga por vezes falhava por completo. Os números agora são calculados uma vez por hora em segundo plano e a página lê o conjunto mais recente, com o momento do cálculo. Os mesmos números, página instantânea."
+    },
+    "moreICIMSEmployers": {
+      "title": "Mais 18 empregadores, mais de 9.000 vagas",
+      "description": "Outra ronda de descoberta sobre o sistema de recrutamento iCIMS somou 18 empregadores — Foot Locker, AMD, Aon, MasTec e mais — cerca de 9.300 vagas; cada fonte é lida do próprio site de carreiras do empregador e verificada ao vivo antes de entrar no mural. Os nomes vêm dos próprios dados de publicação das empresas, e um empregador que respondia em dois endereços web foi fundido para as suas vagas não contarem duas vezes."
+    },
     "repostWarningTravels": {
       "title": "Quem republica em série passa a ser sinalizado onde quer que apareça",
       "description": "Acompanhamos o que acontece com cada anúncio, por isso sabemos quais empregadores retiram uma vaga e a republicam vezes sem conta — o que reinicia a data de publicação e faz uma vaga antiga parecer nova. Esse aviso só aparecia na secção de vagas fantasma. Agora acompanha o empregador: se algum surgir em «preenche vagas mesmo» ou «informa o salário», o cartão diz, com o número de republicações e por quantas vagas se repartem. Atualmente aplica-se a 89 empregadores. É avaliado pela taxa e não pelo volume, para que um grande empregador com rotatividade normal não seja sinalizado apenas por ser grande."

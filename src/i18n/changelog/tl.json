@@ -1,5 +1,25 @@
 {
   "changelogEntries": {
+    "outagePostmortem": {
+      "title": "Bumagsak ang board nang isang oras. Ito ang nagbago.",
+      "description": "Isang pagkakamali sa maintenance sa aming panig — isang sobrang sigasig na paglilinis ng database na kami mismo ang humiling — ang nagpa-offline sa board nang halos isang oras noong Agosto 12. Walang nawalang data at napanatili ng mga posting ang kanilang kasaysayan ng beripikasyon. Ang nagbago pagkatapos: sinusuri na ang board bawat sampung minuto mula sa labas ng aming sariling imprastruktura, kaya ang outage ay nagpapatunog ng alarma sa halip na maghintay na mapansin; ang aming health check ay nagba-bandila ng huminto na estadistika sa loob ng apat na oras sa halip na labindalawa; at muling itinayo ang mga background na proseso ng pampublikong estadistika para ang isang mabagal na query ay magpababa ng isang bilang lamang — may markang luma — sa halip na tahimik na magyelo ng buong mga pahina. Ilang linggo nang umiiral ang ilan sa mga puwang na ito; ang outage ang naglantad sa kanila."
+    },
+    "remoteFilterCounts": {
+      "title": "Ipinapakita na ng remote filter kung ilang trabaho ang nahanap nito",
+      "description": "Ang pag-filter sa remote, hybrid o on-site na trabaho ay nagpapakita dati ng mga resulta nang walang kabuuang bilang — nag-time-out ang bilangan sa likod nito, kaya sinasabi ng pahina na “Ipinapakita ang 20” nang hindi alam kung ilan pa ang mayroon. Natatapos na ngayon ang bilangan nang mas mababa sa isang segundo at muling isinasaad ng bawat filter na ito ang buong kabuuan nito. Habang inaayos ito, itinali rin namin ang bilang sa eksaktong inihahain ng filter: ang bilang na nakikita mo ang bilang na maaari mong tingnan."
+    },
+    "firstSeenLabels": {
+      "title": "Sinasabi na ng mga posting na walang petsa kung kailan namin sila unang nakita",
+      "description": "Humigit-kumulang isa sa pitong posting ang walang petsa mula sa employer. Hindi kami nanghuhula ng edad, kaya wala talagang ipinapakita ang mga card na iyon dati. Sinasabi na nila ngayon ang “unang nakita 3 araw na nakalipas” — ang araw na lumitaw ang posting sa aming board. Sadyang hindi ito mukhang petsa ng paglalathala: nililimitahan nito kung gaano na katanda ang posting, pero petsa ito ng aming pagkakadiskubre, hindi sa employer, at sinasabi iyon ng card."
+    },
+    "payTransparencyInstant": {
+      "title": "Agad nang nag-lo-load ang Pay Transparency Index",
+      "description": "Ang pagbubukas ng index ay live na nagkukuwenta dati ng bawat bilang — hanggang dalawampung segundo ng pagkukuwenta bawat bisita, at kung minsan ay tuluyang nabibigo sa ilalim ng load. Kinukuwenta na ngayon ang mga bilang isang beses kada oras sa background at binabasa ng pahina ang pinakabagong set, may tatak ng oras ng pagkukuwenta. Parehong mga numero, agarang pahina."
+    },
+    "moreICIMSEmployers": {
+      "title": "18 pang employer, 9,000+ pang trabaho",
+      "description": "Nagdagdag ng 18 employer ang isa pang discovery round sa iCIMS na sistema ng pagkuha — Foot Locker, AMD, Aon, MasTec at iba pa — humigit-kumulang 9,300 posting; bawat feed ay binabasa mula sa sariling careers site ng employer at bine-verify nang live bago sumali sa board. Ang mga pangalan ay mula sa sariling data ng mga kumpanya, at pinagsama ang isang employer na sumasagot sa dalawang web address para hindi mabilang nang dalawang beses ang mga trabaho nito."
+    },
     "repostWarningTravels": {
       "title": "Ang mga paulit-ulit maglathala ay minamarkahan na saanman sila lumitaw",
       "description": "Sinusubaybayan namin ang nangyayari sa bawat anunsyo, kaya alam namin kung aling mga employer ang nag-aalis ng posisyon at inilalathala itong muli nang paulit-ulit — na nagre-reset sa petsa ng paglalathala at nagpapamukhang bago ang lumang bakante. Dati ay nasa bahagi lamang ng ghost jobs ang babalang ito. Ngayon ay sumasama na ito sa employer: kung may lumitaw sa ilalim ng «talagang pinupunan ang mga posisyon» o «nagsasaad ng sahod», sinasabi ito ng card, kasama ang bilang ng muling paglalathala at kung ilang posisyon ang saklaw nito. Sa ngayon ay 89 employer ang saklaw. Batay ito sa rate at hindi sa dami, kaya hindi namamarkahan ang malaking employer na may karaniwang paglilipat dahil lamang sa laki nito."

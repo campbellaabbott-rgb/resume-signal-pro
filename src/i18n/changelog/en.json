@@ -1,5 +1,25 @@
 {
   "changelogEntries": {
+    "outagePostmortem": {
+      "title": "The board went down for an hour. Here is what changed.",
+      "description": "A maintenance mistake on our side — an overzealous database cleanup we ourselves requested — took the board offline for about an hour on August 12. No job data was lost and postings kept their verification history. What changed afterwards: the board is now probed every ten minutes from outside our own infrastructure, so an outage raises an alarm instead of waiting to be noticed; our health check flags a stalled statistic within four hours instead of twelve; and the background jobs that compute public statistics were rebuilt so one slow query degrades a single figure — labeled as stale — instead of silently freezing whole pages. Several of these gaps had existed for weeks; the outage is what exposed them."
+    },
+    "remoteFilterCounts": {
+      "title": "The remote filter shows how many jobs it found",
+      "description": "Filtering to remote, hybrid or on-site work used to show results without a total — the count behind it was timing out, so the page said “Showing 20” with no idea how many more existed. The counting now finishes in well under a second and each of these filters states its full total again. While fixing it we also pinned the count to exactly what the filter serves, so the number you see is the number you can browse."
+    },
+    "firstSeenLabels": {
+      "title": "Undated postings now say when we first saw them",
+      "description": "About one posting in seven carries no date from the employer. We never guess ages, so those cards used to show nothing at all. They now say “first seen 3d ago” — the day the posting appeared on our board. It is deliberately not styled like a posting date: it caps how old the listing can be, but it is our discovery date, not the employer’s, and the card says so."
+    },
+    "payTransparencyInstant": {
+      "title": "The Pay Transparency Index loads instantly",
+      "description": "Opening the index used to compute every figure live — up to twenty seconds of number-crunching per visit, and under load it sometimes failed entirely. The figures are now computed once an hour in the background and the page reads the latest set, stamped with when they were computed. Same numbers, instant page."
+    },
+    "moreICIMSEmployers": {
+      "title": "18 more employers, 9,000+ more jobs",
+      "description": "Another discovery round over the iCIMS hiring system added 18 employers — Foot Locker, AMD, Aon, MasTec and more — roughly 9,300 postings, each feed read from the employer’s own careers site and verified live before joining the board. Names come from the companies’ own posting data, and one employer that answered on two web addresses was merged so its jobs are not counted twice."
+    },
     "repostWarningTravels": {
       "title": "Serial re-posters are now flagged wherever they appear",
       "description": "We track what happens to every posting, so we know which employers take a role down and re-list it again and again — which resets its posted date and makes an old opening look new. That warning used to appear only under the ghost-jobs heading. It now travels with the employer: if one turns up under \"actually fills roles\" or \"states the pay\", the card says so, with the number of re-postings and how many roles they were spread across. 89 employers currently qualify. It's judged on rate rather than volume, so a large employer with ordinary churn isn't flagged just for being big."

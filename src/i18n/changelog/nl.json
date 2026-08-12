@@ -1,5 +1,25 @@
 {
   "changelogEntries": {
+    "outagePostmortem": {
+      "title": "Het bord lag een uur plat. Dit is er veranderd.",
+      "description": "Een onderhoudsfout aan onze kant — een overijverige databaseopruiming die we zelf hadden aangevraagd — haalde het bord op 12 augustus ongeveer een uur offline. Er gingen geen gegevens verloren en vacatures behielden hun verificatiegeschiedenis. Wat er daarna veranderde: het bord wordt nu elke tien minuten van buiten onze eigen infrastructuur gecontroleerd, zodat een storing een alarm afgeeft in plaats van opgemerkt te moeten worden; onze gezondheidscheck meldt een stilgevallen statistiek binnen vier uur in plaats van twaalf; en de achtergrondtaken die publieke statistieken berekenen zijn herbouwd zodat één trage query één cijfer degradeert — gemarkeerd als verouderd — in plaats van hele pagina's geruisloos te bevriezen. Meerdere van deze gaten bestonden al weken; de storing legde ze bloot."
+    },
+    "remoteFilterCounts": {
+      "title": "Het remote-filter toont hoeveel vacatures het vond",
+      "description": "Filteren op remote, hybride of op locatie toonde resultaten zonder totaal: de telling erachter liep tegen een tijdslimiet aan en de pagina zei “20 resultaten” zonder te weten hoeveel er nog waren. De telling is nu ruim binnen een seconde klaar en elk van deze filters vermeldt weer zijn volledige totaal. Bij het herstel is het getal bovendien exact vastgepind op wat het filter daadwerkelijk toont: het getal dat u ziet is het getal dat u kunt doorbladeren."
+    },
+    "firstSeenLabels": {
+      "title": "Ongedateerde vacatures vermelden nu wanneer wij ze voor het eerst zagen",
+      "description": "Ongeveer één op de zeven vacatures draagt geen datum van de werkgever. Wij gokken nooit naar leeftijden, dus die kaarten toonden niets. Ze zeggen nu “voor het eerst gezien 3d geleden” — de dag waarop de vacature op ons bord verscheen. Bewust niet vormgegeven als plaatsingsdatum: het begrenst hoe oud de vacature hoogstens kan zijn, maar het is onze ontdekkingsdatum, niet die van de werkgever, en de kaart zegt dat er ook bij."
+    },
+    "payTransparencyInstant": {
+      "title": "De Salaristransparantie-index laadt direct",
+      "description": "Het openen van de index berekende elk cijfer live — tot twintig seconden rekenwerk per bezoek, en onder belasting mislukte het soms volledig. De cijfers worden nu elk uur op de achtergrond berekend en de pagina leest de laatste set, voorzien van het berekeningstijdstip. Dezelfde cijfers, directe pagina."
+    },
+    "moreICIMSEmployers": {
+      "title": "18 werkgevers erbij, ruim 9.000 vacatures erbij",
+      "description": "Een nieuwe ontdekkingsronde over het iCIMS-wervingssysteem voegde 18 werkgevers toe — Foot Locker, AMD, Aon, MasTec en meer — zo'n 9.300 vacatures; elke feed wordt gelezen van de careers-site van de werkgever zelf en live geverifieerd vóór opname. Namen komen uit de eigen vacaturedata van de bedrijven, en één werkgever die op twee webadressen antwoordde is samengevoegd zodat zijn vacatures niet dubbel tellen."
+    },
     "repostWarningTravels": {
       "title": "Serie-herplaatsers worden nu overal gemarkeerd waar ze verschijnen",
       "description": "We volgen wat er met elke vacature gebeurt, dus we weten welke werkgevers een functie weghalen en steeds opnieuw plaatsen — waardoor de plaatsingsdatum wordt gereset en een oude vacature nieuw lijkt. Die waarschuwing stond alleen onder het kopje spookvacatures. Nu reist ze mee met de werkgever: duikt er een op onder „vervult functies echt\" of „vermeldt het salaris\", dan zegt de kaart het, met het aantal herplaatsingen en over hoeveel functies die verspreid zijn. Op dit moment gaat het om 89 werkgevers. Er wordt beoordeeld op tempo en niet op omvang, zodat een grote werkgever met gewoon verloop niet wordt gemarkeerd puur omdat hij groot is."

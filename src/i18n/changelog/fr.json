@@ -1,5 +1,25 @@
 {
   "changelogEntries": {
+    "outagePostmortem": {
+      "title": "Le site est tombé une heure. Voici ce qui a changé.",
+      "description": "Une erreur de maintenance de notre côté — un nettoyage de base de données trop zélé que nous avions nous-mêmes demandé — a mis le site hors ligne environ une heure le 12 août. Aucune donnée n'a été perdue et les offres ont conservé leur historique de vérification. Ce qui a changé ensuite : le site est désormais sondé toutes les dix minutes depuis l'extérieur de notre propre infrastructure, si bien qu'une panne déclenche une alarme au lieu d'attendre d'être remarquée ; notre contrôle de santé signale une statistique bloquée sous quatre heures au lieu de douze ; et les traitements qui calculent les statistiques publiques ont été refaits pour qu'une requête lente dégrade un seul chiffre — étiqueté comme périmé — au lieu de figer des pages entières en silence. Plusieurs de ces failles existaient depuis des semaines ; la panne les a exposées."
+    },
+    "remoteFilterCounts": {
+      "title": "Le filtre télétravail indique combien d'offres il a trouvées",
+      "description": "Filtrer sur le télétravail, l'hybride ou le présentiel affichait des résultats sans total : le comptage expirait, et la page disait « 20 résultats » sans savoir combien d'autres existaient. Le comptage aboutit désormais en bien moins d'une seconde et chacun de ces filtres annonce de nouveau son total complet. En le corrigeant, nous avons aussi aligné le nombre exactement sur ce que le filtre sert : le chiffre affiché est le chiffre que vous pouvez parcourir."
+    },
+    "firstSeenLabels": {
+      "title": "Les offres non datées disent désormais quand nous les avons vues",
+      "description": "Environ une offre sur sept ne porte aucune date de l'employeur. Nous ne devinons jamais l'ancienneté, donc ces cartes n'affichaient rien. Elles disent désormais « vue pour la première fois il y a 3 j » — le jour où l'offre est apparue sur notre site. Volontairement pas présenté comme une date de publication : cela plafonne l'ancienneté possible, mais c'est notre date de découverte, pas celle de l'employeur, et la carte le précise."
+    },
+    "payTransparencyInstant": {
+      "title": "L'Index de transparence salariale se charge instantanément",
+      "description": "Ouvrir l'index recalculait chaque chiffre en direct — jusqu'à vingt secondes de calcul par visite, et sous charge cela échouait parfois complètement. Les chiffres sont désormais calculés une fois par heure en arrière-plan et la page lit le dernier jeu, horodaté. Mêmes chiffres, page instantanée."
+    },
+    "moreICIMSEmployers": {
+      "title": "18 employeurs de plus, 9 000+ offres de plus",
+      "description": "Une nouvelle campagne de découverte sur le système de recrutement iCIMS a ajouté 18 employeurs — Foot Locker, AMD, Aon, MasTec et d'autres — soit environ 9 300 offres ; chaque flux est lu depuis le site carrières de l'employeur lui-même et vérifié en direct avant d'entrer sur le site. Les noms viennent des données de publication des entreprises elles-mêmes, et un employeur répondant sur deux adresses web a été fusionné pour ne pas compter ses offres deux fois."
+    },
     "repostWarningTravels": {
       "title": "Les republieurs en série sont désormais signalés partout où ils apparaissent",
       "description": "Nous suivons ce qu'il advient de chaque annonce, donc nous savons quels employeurs retirent un poste et le republient encore et encore — ce qui réinitialise la date de publication et fait passer une vieille offre pour neuve. Cet avertissement n'apparaissait que sous la rubrique des offres fantômes. Il accompagne maintenant l'employeur : si l'un d'eux figure sous « pourvoit vraiment ses postes » ou « indique le salaire », la fiche le dit, avec le nombre de republications et sur combien de postes elles portent. 89 employeurs sont actuellement concernés. Le critère est le taux et non le volume, afin qu'un grand employeur au renouvellement ordinaire ne soit pas signalé du seul fait de sa taille."

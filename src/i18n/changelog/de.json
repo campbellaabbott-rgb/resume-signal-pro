@@ -1,5 +1,25 @@
 {
   "changelogEntries": {
+    "outagePostmortem": {
+      "title": "Das Board war eine Stunde offline. Das hat sich geändert.",
+      "description": "Ein Wartungsfehler auf unserer Seite — eine übereifrige Datenbankbereinigung, die wir selbst angestoßen hatten — nahm das Board am 12. August für etwa eine Stunde offline. Es gingen keine Daten verloren, und alle Anzeigen behielten ihre Verifizierungshistorie. Was sich danach geändert hat: Das Board wird jetzt alle zehn Minuten von außerhalb unserer eigenen Infrastruktur geprüft, sodass ein Ausfall Alarm auslöst, statt bemerkt werden zu müssen; unser Health-Check meldet eine stehengebliebene Statistik binnen vier statt zwölf Stunden; und die Hintergrundjobs für öffentliche Statistiken wurden so umgebaut, dass eine langsame Abfrage eine einzelne Zahl — als veraltet gekennzeichnet — verschlechtert, statt ganze Seiten stumm einzufrieren. Mehrere dieser Lücken bestanden seit Wochen; der Ausfall hat sie sichtbar gemacht."
+    },
+    "remoteFilterCounts": {
+      "title": "Der Remote-Filter zeigt, wie viele Stellen er gefunden hat",
+      "description": "Beim Filtern nach Remote-, Hybrid- oder Vor-Ort-Arbeit erschienen Ergebnisse bislang ohne Gesamtzahl — die Zählung dahinter lief in ein Zeitlimit, die Seite zeigte „20 Ergebnisse“ ohne Angabe, wie viele weitere existieren. Die Zählung ist jetzt in deutlich unter einer Sekunde fertig, und jeder dieser Filter nennt wieder seine volle Gesamtzahl. Dabei wurde die Zahl exakt an das gebunden, was der Filter tatsächlich ausliefert — die Zahl, die Sie sehen, ist die Zahl, die Sie durchsehen können."
+    },
+    "firstSeenLabels": {
+      "title": "Undatierte Anzeigen nennen jetzt, wann wir sie zuerst gesehen haben",
+      "description": "Etwa jede siebte Anzeige trägt kein Datum des Arbeitgebers. Wir raten nie bei Altersangaben, daher zeigten diese Karten bisher gar nichts. Jetzt steht dort „zuerst gesehen vor 3 Tagen“ — der Tag, an dem die Anzeige auf unserem Board erschien. Bewusst nicht wie ein Veröffentlichungsdatum gestaltet: Es begrenzt, wie alt die Anzeige höchstens sein kann, ist aber unser Entdeckungsdatum, nicht das des Arbeitgebers — und die Karte sagt das auch."
+    },
+    "payTransparencyInstant": {
+      "title": "Der Gehaltstransparenz-Index lädt sofort",
+      "description": "Das Öffnen des Index berechnete bislang jede Zahl live — bis zu zwanzig Sekunden Rechenarbeit pro Besuch, unter Last schlug es mitunter ganz fehl. Die Zahlen werden jetzt stündlich im Hintergrund berechnet, und die Seite liest den letzten Stand samt Zeitstempel. Gleiche Zahlen, sofortige Seite."
+    },
+    "moreICIMSEmployers": {
+      "title": "18 weitere Arbeitgeber, über 9.000 weitere Stellen",
+      "description": "Eine weitere Erkundungsrunde über das iCIMS-Bewerbersystem brachte 18 Arbeitgeber — Foot Locker, AMD, Aon, MasTec und mehr — mit rund 9.300 Anzeigen. Jeder Feed wird von der Karriereseite des Arbeitgebers selbst gelesen und vor Aufnahme live verifiziert. Die Namen stammen aus den Anzeigedaten der Unternehmen selbst, und ein Arbeitgeber, der unter zwei Webadressen antwortete, wurde zusammengeführt, damit seine Stellen nicht doppelt gezählt werden."
+    },
     "repostWarningTravels": {
       "title": "Serientäter beim Neuausschreiben werden jetzt überall gekennzeichnet",
       "description": "Wir verfolgen, was mit jeder Anzeige geschieht, und wissen daher, welche Arbeitgeber eine Stelle abnehmen und immer wieder neu ausschreiben — was das Veröffentlichungsdatum zurücksetzt und eine alte Stelle neu aussehen lässt. Dieser Hinweis stand bisher nur unter der Rubrik Geisterjobs. Jetzt begleitet er den Arbeitgeber: Taucht einer unter „besetzt Stellen tatsächlich“ oder „nennt das Gehalt“ auf, sagt die Karte es — mit der Zahl der Neuausschreibungen und über wie viele Stellen sie sich verteilen. Derzeit trifft das auf 89 Arbeitgeber zu. Bewertet wird die Rate, nicht die Menge, damit ein großer Arbeitgeber mit normaler Fluktuation nicht allein wegen seiner Größe markiert wird."

@@ -23,6 +23,11 @@ export interface ChangelogEntry {
 }
 
 export const changelog: ChangelogEntry[] = [
+  { id: "outagePostmortem", date: "2026-08-12", tags: ["fixed"] },
+  { id: "remoteFilterCounts", date: "2026-08-12", tags: ["fixed", "improved"] },
+  { id: "firstSeenLabels", date: "2026-08-12", tags: ["new"] },
+  { id: "payTransparencyInstant", date: "2026-08-12", tags: ["fixed", "improved"] },
+  { id: "moreICIMSEmployers", date: "2026-08-12", tags: ["improved"] },
   { id: "repostWarningTravels", date: "2026-08-12", tags: ["new"] },
   { id: "fieldsShowTheirSize", date: "2026-08-12", tags: ["improved"] },
   { id: "listsSayWhatTheyPickedFrom", date: "2026-08-12", tags: ["improved"] },

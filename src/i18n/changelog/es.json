@@ -1,5 +1,25 @@
 {
   "changelogEntries": {
+    "outagePostmortem": {
+      "title": "El tablón estuvo caído una hora. Esto es lo que cambió.",
+      "description": "Un error de mantenimiento nuestro — una limpieza de base de datos demasiado agresiva que nosotros mismos pedimos — dejó el tablón fuera de línea alrededor de una hora el 12 de agosto. No se perdió ningún dato y las ofertas conservaron su historial de verificación. Lo que cambió después: el tablón ahora se sondea cada diez minutos desde fuera de nuestra propia infraestructura, de modo que una caída dispara una alarma en lugar de esperar a que alguien la note; nuestro chequeo de salud señala una estadística detenida en cuatro horas en vez de doce; y los procesos que calculan las estadísticas públicas se reconstruyeron para que una consulta lenta degrade una sola cifra — marcada como obsoleta — en lugar de congelar páginas enteras en silencio. Varias de estas brechas existían desde hacía semanas; la caída fue lo que las expuso."
+    },
+    "remoteFilterCounts": {
+      "title": "El filtro de trabajo remoto muestra cuántos empleos encontró",
+      "description": "Filtrar por trabajo remoto, híbrido o presencial mostraba resultados sin total: el recuento se agotaba por tiempo y la página decía «Mostrando 20» sin saber cuántos más existían. El recuento ahora termina en mucho menos de un segundo y cada uno de estos filtros vuelve a indicar su total completo. Al arreglarlo, además fijamos el número exactamente a lo que el filtro sirve: el número que ves es el número que puedes recorrer."
+    },
+    "firstSeenLabels": {
+      "title": "Las ofertas sin fecha ahora dicen cuándo las vimos por primera vez",
+      "description": "Aproximadamente una oferta de cada siete no trae fecha del empleador. Nunca adivinamos antigüedades, así que esas tarjetas no mostraban nada. Ahora dicen «vista por primera vez hace 3d»: el día en que la oferta apareció en nuestro tablón. Deliberadamente no se presenta como fecha de publicación: limita la antigüedad máxima posible, pero es nuestra fecha de descubrimiento, no la del empleador, y la tarjeta lo dice."
+    },
+    "payTransparencyInstant": {
+      "title": "El Índice de Transparencia Salarial carga al instante",
+      "description": "Abrir el índice calculaba cada cifra en vivo: hasta veinte segundos de cómputo por visita, y bajo carga a veces fallaba por completo. Las cifras ahora se calculan una vez por hora en segundo plano y la página lee el último conjunto, con la hora en que se calculó. Los mismos números, página instantánea."
+    },
+    "moreICIMSEmployers": {
+      "title": "18 empleadores más, más de 9.000 empleos nuevos",
+      "description": "Otra ronda de descubrimiento sobre el sistema de contratación iCIMS sumó 18 empleadores — Foot Locker, AMD, Aon, MasTec y más — con unas 9.300 ofertas; cada fuente se lee del propio sitio de empleo del empleador y se verifica en vivo antes de entrar al tablón. Los nombres provienen de los propios datos de las empresas, y un empleador que respondía en dos direcciones web se fusionó para no contar sus empleos dos veces."
+    },
     "repostWarningTravels": {
       "title": "Quienes republican en serie ahora se señalan dondequiera que aparezcan",
       "description": "Seguimos qué ocurre con cada anuncio, así que sabemos qué empleadores retiran un puesto y lo vuelven a publicar una y otra vez — lo que reinicia su fecha de publicación y hace que una vacante antigua parezca nueva. Ese aviso solo aparecía bajo el apartado de empleos fantasma. Ahora acompaña al empleador: si alguno aparece en «cubre puestos de verdad» o «indica el salario», la ficha lo dice, con el número de republicaciones y en cuántos puestos se reparten. Actualmente lo cumplen 89 empleadores. Se juzga por tasa y no por volumen, de modo que un gran empleador con rotación normal no queda señalado solo por su tamaño."
