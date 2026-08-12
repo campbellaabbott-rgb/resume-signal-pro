@@ -1,5 +1,37 @@
 {
   "changelogEntries": {
+    "repostWarningTravels": {
+      "title": "Les republieurs en série sont désormais signalés partout où ils apparaissent",
+      "description": "Nous suivons ce qu'il advient de chaque annonce, donc nous savons quels employeurs retirent un poste et le republient encore et encore — ce qui réinitialise la date de publication et fait passer une vieille offre pour neuve. Cet avertissement n'apparaissait que sous la rubrique des offres fantômes. Il accompagne maintenant l'employeur : si l'un d'eux figure sous « pourvoit vraiment ses postes » ou « indique le salaire », la fiche le dit, avec le nombre de republications et sur combien de postes elles portent. 89 employeurs sont actuellement concernés. Le critère est le taux et non le volume, afin qu'un grand employeur au renouvellement ordinaire ne soit pas signalé du seul fait de sa taille."
+    },
+    "fieldsShowTheirSize": {
+      "title": "Chaque domaine indique désormais combien de postes il contient",
+      "description": "Parcourir par domaine revenait à choisir à l'aveugle : 18 libellés sans moyen de savoir lequel comptait 70 000 postes et lequel 4 000. Chacun porte désormais son décompte en direct, le plus grand d'abord, calculé exactement comme le fait la page du domaine, pour que les deux concordent. 610 900 postes tous domaines confondus en ce moment. Un domaine trop mince pour être significatif n'affiche aucun chiffre plutôt qu'un petit nombre qui laisserait croire que le site est vide dans votre secteur."
+    },
+    "listsSayWhatTheyPickedFrom": {
+      "title": "Chaque liste indique désormais ce parmi quoi elle a été choisie",
+      "description": "Douze entreprises sous « employeurs qui pourvoient vraiment leurs postes » se lit comme la réponse entière, alors que ce sont les douze premières d'un ensemble bien plus large. Chaque liste indique désormais son vivier : 633 employeurs sont éligibles sur le pourvoi, 1 938 ont cinq postes junior ouverts ou plus, 818 sont suivis pour la republication. La liste des salaires le dit aussi : 237 des 5 011 employeurs ayant 20 postes ouverts ou plus indiquent le salaire sur au moins 80 % d'entre eux, contre 14 % des annonces sur l'ensemble du site. Si un chiffre ne peut être calculé, la phrase est omise plutôt qu'affichée à zéro."
+    },
+    "exploreOneQuestion": {
+      "title": "Explorer demande ce que vous cherchez au lieu de vous faire défiler",
+      "description": "La page Explorer empilait toutes les listes les unes après les autres — environ quarante écrans sur mobile, avec certaines des parties les plus utiles tout en bas, où presque personne n'arrivait. Elle commence désormais par la question : vérifier un employeur, qui recrute vraiment, qui indique le salaire, début de carrière, offres fantômes, recrutement à grande échelle, ou parcourir par domaine. Vous en choisissez une et obtenez cette réponse. Votre choix reste dans la barre d'adresse, si bien qu'un lien s'ouvre sur la réponse que vous lisiez."
+    },
+    "checkAnyEmployer": {
+      "title": "Consultez n'importe quel employeur du site, pas seulement ceux d'une liste",
+      "description": "Nos listes font apparaître environ 85 entreprises sur plus de 24 000. Le suivi qui les sous-tend — qui pourvoit ses postes, qui les republie, qui indique le salaire — est tenu pour toutes, et n'était visible que si une entreprise se trouvait en tête d'une liste. Vous pouvez maintenant saisir le nom de n'importe quel employeur et accéder directement à ce que nous avons mesuré. Les entreprises utilisant plusieurs systèmes de recrutement apparaissent une fois au lieu de quatre."
+    },
+    "hiringRanksByChance": {
+      "title": "« Pourvoit vraiment ses postes » classe désormais selon vos chances, pas selon la taille",
+      "description": "Cette liste était classée par le nombre brut de postes pourvus, ce qui mesure surtout la taille : une entreprise pourvoyant 40 de ses 60 postes ouverts ne pouvait devancer celle qui en pourvoit 400 sur 12 000, alors qu'elle a bien plus de chances de vous embaucher. Elle rapporte désormais les postes pourvus aux postes actuellement ouverts. Les petits sites ne gagnent pas non plus : il faut au moins 100 postes ouverts pour figurer, car avec très peu d'offres le rapport perd son sens. Chaque fiche indique aussi combien de temps ses postes pourvus restaient en ligne, et masque cette ligne quand nous n'observons pas l'employeur depuis assez longtemps."
+    },
+    "payListWinnable": {
+      "title": "La liste de transparence salariale peut être gagnée par des employeurs connus",
+      "description": "« Transparent sur le salaire » classait par pourcentage : avec seulement douze places, chacune revenait à un petit site exactement à 100 % — une entreprise indiquant le salaire sur 95 % de 4 000 postes ne pouvait jamais apparaître. Le classement se fait désormais sur le nombre de postes indiquant réellement le salaire, ce qui rend la liste à la fois honnête et reconnaissable. Le seuil de 80 % pour être éligible est inchangé."
+    },
+    "employerNamesReal": {
+      "title": "Les fiches d'entreprise affichent les vrais noms et les doublons sont fusionnés",
+      "description": "Certaines fiches d'employeur affichaient l'identifiant interne d'un système de recrutement plutôt que le nom de l'entreprise — « aloyoga » au lieu d'ALO — et quelques entreprises apparaissaient en plusieurs entrées distinctes parce que chacun de leurs systèmes orthographiait le nom différemment. 38 noms sont corrigés et les doublons fusionnés. En corrigeant cela, nous avons découvert que la passe de correction s'arrêtait en cours de route en se notant comme terminée ; elle ne déclare désormais un succès que si elle est réellement allée au bout."
+    },
     "whereTheJobsComeFrom": {
       "title": "Voyez exactement d'où viennent nos offres",
       "description": "La page d'accueil nomme désormais les 15 systèmes de recrutement que nous lisons — Workday, Greenhouse, BambooHR et les autres —, chacun avec le nombre d'offres qui y sont ouvertes en ce moment. Chaque offre du tableau provient directement de l'un d'eux, jamais d'un moteur de recherche. Les chiffres sont mesurés, pas affirmés : ils évoluent au fil de la journée et indiquent quand ils ont été vérifiés."

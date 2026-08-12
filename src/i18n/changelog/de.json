@@ -1,5 +1,37 @@
 {
   "changelogEntries": {
+    "repostWarningTravels": {
+      "title": "Serientäter beim Neuausschreiben werden jetzt überall gekennzeichnet",
+      "description": "Wir verfolgen, was mit jeder Anzeige geschieht, und wissen daher, welche Arbeitgeber eine Stelle abnehmen und immer wieder neu ausschreiben — was das Veröffentlichungsdatum zurücksetzt und eine alte Stelle neu aussehen lässt. Dieser Hinweis stand bisher nur unter der Rubrik Geisterjobs. Jetzt begleitet er den Arbeitgeber: Taucht einer unter „besetzt Stellen tatsächlich“ oder „nennt das Gehalt“ auf, sagt die Karte es — mit der Zahl der Neuausschreibungen und über wie viele Stellen sie sich verteilen. Derzeit trifft das auf 89 Arbeitgeber zu. Bewertet wird die Rate, nicht die Menge, damit ein großer Arbeitgeber mit normaler Fluktuation nicht allein wegen seiner Größe markiert wird."
+    },
+    "fieldsShowTheirSize": {
+      "title": "Jeder Bereich zeigt jetzt, wie viele Stellen er enthält",
+      "description": "Nach Bereich zu stöbern hieß, blind zu wählen — 18 Bezeichnungen, ohne zu erkennen, welche 70.000 Stellen enthielt und welche 4.000. Jede trägt nun ihre aktuelle Zahl, die größte zuerst, gezählt genau so, wie die Seite des Bereichs selbst zählt, damit beide übereinstimmen. Aktuell 610.900 Stellen über alle Bereiche. Ein Bereich, der zu dünn für eine Aussage ist, zeigt gar keine Zahl statt einer kleinen, die den Eindruck erwecken würde, das Board sei in Ihrem Gebiet leer."
+    },
+    "listsSayWhatTheyPickedFrom": {
+      "title": "Jede Liste nennt jetzt, woraus sie ausgewählt wurde",
+      "description": "Zwölf Unternehmen unter „Arbeitgeber, die Stellen tatsächlich besetzen“ liest sich wie die ganze Antwort, dabei sind es die besten zwölf aus einer weit größeren Gruppe. Jede Liste nennt jetzt ihre Grundgesamtheit: 633 Arbeitgeber qualifizieren sich beim Besetzen, 1.938 haben fünf oder mehr Einstiegsstellen offen, 818 werden auf Neuausschreibungen beobachtet. Die Gehaltsliste sagt es ebenfalls — 237 der 5.011 Arbeitgeber mit 20 oder mehr offenen Stellen nennen bei mindestens 80 % davon das Gehalt, gegenüber 14 % aller Anzeigen board-weit. Lässt sich eine Zahl nicht berechnen, entfällt der Satz, statt eine Null zu zeigen."
+    },
+    "exploreOneQuestion": {
+      "title": "Entdecken fragt, was Sie suchen, statt Sie scrollen zu lassen",
+      "description": "Die Entdecken-Seite reihte jede Liste aneinander — auf dem Handy rund vierzig Bildschirme, mit einigen der nützlichsten Teile ganz unten, wo sie kaum jemand erreichte. Jetzt steht die Frage am Anfang: einen Arbeitgeber prüfen, wer wirklich einstellt, wer das Gehalt nennt, Berufseinstieg, Geisterjobs, Einstellung in großem Maßstab oder nach Bereich stöbern. Sie wählen eines und erhalten diese Antwort. Ihre Wahl bleibt in der Adresszeile, sodass ein Link genau bei der Antwort öffnet, die Sie gelesen haben."
+    },
+    "checkAnyEmployer": {
+      "title": "Jeden Arbeitgeber auf dem Board nachschlagen, nicht nur die auf einer Liste",
+      "description": "Unsere Listen zeigen etwa 85 Unternehmen von mehr als 24.000. Die Nachverfolgung dahinter — wer Stellen besetzt, wer sie neu ausschreibt, wer das Gehalt nennt — führen wir für alle, und sie war nur sichtbar, wenn ein Unternehmen zufällig eine Liste anführte. Sie können jetzt den Namen eines beliebigen Arbeitgebers eingeben und direkt zu dem gelangen, was wir gemessen haben. Unternehmen mit mehreren Bewerbersystemen erscheinen einmal statt viermal."
+    },
+    "hiringRanksByChance": {
+      "title": "„Besetzt Stellen tatsächlich“ sortiert jetzt nach Ihren Chancen, nicht nach Unternehmensgröße",
+      "description": "Diese Liste war nach der reinen Zahl besetzter Stellen sortiert, was vor allem die Größe misst: Ein Unternehmen, das 40 seiner 60 offenen Stellen besetzt, konnte eines nicht überholen, das 400 von 12.000 besetzt, obwohl es Sie weit wahrscheinlicher einstellt. Jetzt zählt das Verhältnis von Besetzungen zu aktuell offenen Stellen. Kleine Boards gewinnen ebenfalls nicht — ein Arbeitgeber braucht mindestens 100 offene Stellen, denn bei sehr wenigen Stellen wird das Verhältnis bedeutungslos. Jede Karte nennt außerdem, wie lange besetzte Stellen typischerweise online blieben, und blendet diese Zeile aus, wenn wir den Arbeitgeber noch nicht lange genug beobachten."
+    },
+    "payListWinnable": {
+      "title": "Die Gehaltstransparenz-Liste ist für bekannte Arbeitgeber gewinnbar",
+      "description": "„Transparent beim Gehalt“ sortierte nach Prozentsatz, sodass bei nur zwölf Plätzen jeder an ein kleines Board mit genau 100 % ging — ein Unternehmen, das bei 95 % von 4.000 Stellen das Gehalt nennt, konnte nie erscheinen. Jetzt wird nach der Zahl der Stellen sortiert, die tatsächlich das Gehalt nennen, was die Liste ehrlich und zugleich wiedererkennbar macht. Die 80-%-Schwelle für die Aufnahme bleibt unverändert."
+    },
+    "employerNamesReal": {
+      "title": "Unternehmenskarten zeigen echte Namen, Dubletten sind zusammengeführt",
+      "description": "Manche Arbeitgeberkarten zeigten das interne Kürzel aus einem Bewerbersystem statt des Unternehmensnamens — „aloyoga“ statt ALO — und einige Unternehmen erschienen mehrfach, weil ihre Bewerbersysteme den Namen jeweils anders schrieben. 38 Namen sind korrigiert und die Dubletten zusammengeführt. Dabei fiel auf, dass der Korrekturlauf mittendrin stehen blieb und sich selbst als abgeschlossen vermerkte; er meldet Erfolg jetzt nur noch, wenn er tatsächlich durchgelaufen ist."
+    },
     "whereTheJobsComeFrom": {
       "title": "Sehen Sie genau, woher unsere Stellen kommen",
       "description": "Die Startseite nennt jetzt alle 15 Bewerbermanagement-Systeme, die wir auslesen — Workday, Greenhouse, BambooHR und die übrigen —, jeweils mit der aktuellen Zahl der dort offenen Stellen. Jede Stelle auf dem Board stammt direkt aus einem dieser Systeme und wird nie aus einer Suchmaschine zusammengetragen. Die Zahlen sind gemessen, nicht behauptet: Sie ändern sich im Tagesverlauf und nennen, wann sie zuletzt geprüft wurden."

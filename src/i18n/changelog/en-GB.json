@@ -1,5 +1,37 @@
 {
   "changelogEntries": {
+    "repostWarningTravels": {
+      "title": "Serial re-posters are now flagged wherever they appear",
+      "description": "We track what happens to every posting, so we know which employers take a role down and re-list it again and again — which resets its posted date and makes an old opening look new. That warning used to appear only under the ghost-jobs heading. It now travels with the employer: if one turns up under \"actually fills roles\" or \"states the pay\", the card says so, with the number of re-postings and how many roles they were spread across. 89 employers currently qualify. It's judged on rate rather than volume, so a large employer with ordinary churn isn't flagged just for being big."
+    },
+    "fieldsShowTheirSize": {
+      "title": "Every field now shows how many roles are in it",
+      "description": "Browsing by field meant choosing blind — 18 labels with no way to tell which held 70,000 roles and which held 4,000. Each now carries its live count, biggest first, counted exactly the way that field's own page counts it so the two agree. 610,900 roles across all fields right now. A field too thin to be meaningful shows no number at all rather than a small one that would suggest the board is empty in your area."
+    },
+    "listsSayWhatTheyPickedFrom": {
+      "title": "Each list now says what it was picked from",
+      "description": "Twelve companies under \"employers that actually fill roles\" reads like the whole answer, when it's the top twelve of a much larger group. Every list now states its pool: 633 employers qualify on hiring, 1,938 have five or more entry-level roles open, 818 are tracked for re-posting. The pay list says it too — 237 of the 5,011 employers with 20 or more open roles state pay on at least 80% of them, against 14% of postings board-wide. If a figure can't be computed, the sentence is left out rather than shown as zero."
+    },
+    "exploreOneQuestion": {
+      "title": "Explore asks what you're looking for instead of making you scroll",
+      "description": "The Explore page stacked every list one after another — roughly forty screens on a phone, with some of the most useful parts at the bottom where almost nobody reached them. It now opens with the question instead: check an employer, who actually hires, who states the pay, early career, ghost jobs, hiring at scale, or browse by field. You pick one and get that answer. Your choice is kept in the address bar, so a link opens on the same answer you were reading."
+    },
+    "checkAnyEmployer": {
+      "title": "Look up any employer on the board, not just the ones on a list",
+      "description": "Our lists surface about 85 companies out of more than 24,000. The tracking behind them — who fills roles, who re-lists them, who states pay — is kept for all of them, and was only visible if a company happened to top a list. You can now type any employer's name and go straight to what we've measured about them. Companies that use several hiring systems appear once instead of four times."
+    },
+    "hiringRanksByChance": {
+      "title": "\"Actually fills roles\" now ranks by your odds, not by company size",
+      "description": "This list was ordered by the raw number of roles an employer filled, which mostly measures how big they are: a company filling 40 of its 60 open roles could not outrank one filling 400 of 12,000, though it is far likelier to hire you. It now ranks fills against roles currently open. Small boards can't win it either — an employer needs at least 100 roles open to place, because a tiny number of openings makes the ratio meaningless. Each card also says how long its filled roles typically stayed up, and hides that line when we haven't watched the employer long enough to say."
+    },
+    "payListWinnable": {
+      "title": "The pay-transparency list is winnable by employers you've heard of",
+      "description": "\"Transparent about pay\" ranked by percentage, so with only twelve places every one went to a small board sitting at exactly 100% — a company stating pay on 95% of 4,000 roles could never appear. It now ranks by how many roles actually state pay, which makes the list both honest and recognisable. The 80% threshold to qualify is unchanged."
+    },
+    "employerNamesReal": {
+      "title": "Company cards show real names, and duplicates are merged",
+      "description": "Some employer cards showed the internal slug from a hiring system rather than the company's name — \"aloyoga\" instead of ALO — and a few companies appeared as several separate entries because each of their hiring systems spelled the name differently. 38 names are corrected and the duplicates are merged. While fixing it we found the correction pass had been stopping partway through and recording itself as finished, so it now refuses to claim success unless it actually completed."
+    },
     "whereTheJobsComeFrom": {
       "title": "See exactly where our jobs come from",
       "description": "The front page now names all 15 applicant tracking systems we read — Workday, Greenhouse, BambooHR and the rest — each with a live count of the roles open on it right now. Every job on the board is pulled straight from one of them, never scraped from a search engine. The counts are measured rather than claimed: they move through the day and say when they were last checked."

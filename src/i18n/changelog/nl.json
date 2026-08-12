@@ -1,5 +1,37 @@
 {
   "changelogEntries": {
+    "repostWarningTravels": {
+      "title": "Serie-herplaatsers worden nu overal gemarkeerd waar ze verschijnen",
+      "description": "We volgen wat er met elke vacature gebeurt, dus we weten welke werkgevers een functie weghalen en steeds opnieuw plaatsen — waardoor de plaatsingsdatum wordt gereset en een oude vacature nieuw lijkt. Die waarschuwing stond alleen onder het kopje spookvacatures. Nu reist ze mee met de werkgever: duikt er een op onder „vervult functies echt\" of „vermeldt het salaris\", dan zegt de kaart het, met het aantal herplaatsingen en over hoeveel functies die verspreid zijn. Op dit moment gaat het om 89 werkgevers. Er wordt beoordeeld op tempo en niet op omvang, zodat een grote werkgever met gewoon verloop niet wordt gemarkeerd puur omdat hij groot is."
+    },
+    "fieldsShowTheirSize": {
+      "title": "Elk vakgebied laat nu zien hoeveel functies erin zitten",
+      "description": "Bladeren op vakgebied betekende blind kiezen: 18 labels zonder te zien welk er 70.000 functies had en welk 4.000. Elk draagt nu zijn actuele aantal, het grootste eerst, geteld precies zoals de pagina van dat vakgebied zelf telt, zodat beide overeenkomen. Op dit moment 610.900 functies over alle vakgebieden. Een vakgebied dat te dun is om iets te betekenen toont helemaal geen getal in plaats van een klein getal dat zou suggereren dat het bord leeg is in uw vak."
+    },
+    "listsSayWhatTheyPickedFrom": {
+      "title": "Elke lijst vermeldt nu waaruit ze gekozen is",
+      "description": "Twaalf bedrijven onder „werkgevers die functies echt vervullen\" leest als het hele antwoord, terwijl het de beste twaalf uit een veel grotere groep zijn. Elke lijst vermeldt nu haar vijver: 633 werkgevers komen in aanmerking op vervulling, 1.938 hebben vijf of meer startersfuncties open, 818 worden gevolgd op herplaatsing. De salarislijst zegt het ook — 237 van de 5.011 werkgevers met 20 of meer openstaande functies vermelden het salaris bij minstens 80 % daarvan, tegenover 14 % van alle vacatures op het bord. Kan een cijfer niet worden berekend, dan vervalt de zin in plaats van een nul te tonen."
+    },
+    "exploreOneQuestion": {
+      "title": "Ontdekken vraagt wat u zoekt in plaats van u te laten scrollen",
+      "description": "De pagina Ontdekken stapelde elke lijst achter elkaar — ongeveer veertig schermen op een telefoon, met sommige van de nuttigste delen onderaan waar bijna niemand kwam. Nu begint ze met de vraag: een werkgever controleren, wie er echt aanneemt, wie het salaris vermeldt, starters, spookvacatures, aannemen op grote schaal, of bladeren op vakgebied. U kiest er één en krijgt dat antwoord. Uw keuze blijft in de adresbalk staan, zodat een link opent bij hetzelfde antwoord dat u las."
+    },
+    "checkAnyEmployer": {
+      "title": "Zoek elke werkgever op het bord op, niet alleen die op een lijst",
+      "description": "Onze lijsten tonen zo'n 85 bedrijven van de ruim 24.000. Het onderliggende volgen — wie functies vervult, wie ze herplaatst, wie het salaris vermeldt — houden we voor allemaal bij, en het was alleen zichtbaar als een bedrijf toevallig bovenaan een lijst stond. U kunt nu de naam van elke werkgever intypen en direct naar wat we hebben gemeten. Bedrijven met meerdere wervingssystemen verschijnen één keer in plaats van vier."
+    },
+    "hiringRanksByChance": {
+      "title": "„Vervult functies echt\" rangschikt nu op uw kansen, niet op bedrijfsgrootte",
+      "description": "Deze lijst was gerangschikt op het kale aantal vervulde functies, wat vooral omvang meet: een bedrijf dat 40 van zijn 60 openstaande functies vervult kon er niet één voorbij dat er 400 van 12.000 vervult, terwijl het u veel waarschijnlijker aanneemt. Nu telt de verhouding van vervullingen tot nu openstaande functies. Kleine borden winnen evenmin — een werkgever heeft minstens 100 openstaande functies nodig, want bij heel weinig vacatures wordt de verhouding betekenisloos. Elke kaart vermeldt ook hoe lang haar vervulde functies doorgaans online stonden, en verbergt die regel als we de werkgever nog niet lang genoeg volgen."
+    },
+    "payListWinnable": {
+      "title": "De lijst voor salaristransparantie is te winnen door bekende werkgevers",
+      "description": "„Transparant over salaris\" rangschikte op percentage, dus met slechts twaalf plaatsen ging elke plaats naar een klein bord dat precies op 100 % stond — een bedrijf dat bij 95 % van 4.000 functies het salaris vermeldt kon nooit verschijnen. Nu wordt gerangschikt op hoeveel functies daadwerkelijk het salaris vermelden, wat de lijst zowel eerlijk als herkenbaar maakt. De drempel van 80 % om in aanmerking te komen is ongewijzigd."
+    },
+    "employerNamesReal": {
+      "title": "Bedrijfskaarten tonen echte namen en dubbelen zijn samengevoegd",
+      "description": "Sommige werkgeverskaarten toonden de interne code uit een wervingssysteem in plaats van de bedrijfsnaam — „aloyoga\" in plaats van ALO — en enkele bedrijven verschenen als meerdere aparte vermeldingen omdat elk van hun wervingssystemen de naam anders schreef. 38 namen zijn gecorrigeerd en de dubbelen samengevoegd. Bij het oplossen ontdekten we dat de correctieronde halverwege stopte en zichzelf als voltooid noteerde; ze meldt nu alleen succes als ze werkelijk klaar is."
+    },
     "whereTheJobsComeFrom": {
       "title": "Zie precies waar onze vacatures vandaan komen",
       "description": "De startpagina noemt nu alle 15 wervingssystemen die we uitlezen — Workday, Greenhouse, BambooHR en de rest — elk met het aantal vacatures dat er op dit moment openstaat. Elke vacature op het bord komt rechtstreeks uit een van die systemen, nooit uit een zoekmachine. De aantallen zijn gemeten, niet beweerd: ze lopen gedurende de dag mee en vermelden wanneer ze voor het laatst zijn gecontroleerd."

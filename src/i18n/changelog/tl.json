@@ -1,5 +1,37 @@
 {
   "changelogEntries": {
+    "repostWarningTravels": {
+      "title": "Ang mga paulit-ulit maglathala ay minamarkahan na saanman sila lumitaw",
+      "description": "Sinusubaybayan namin ang nangyayari sa bawat anunsyo, kaya alam namin kung aling mga employer ang nag-aalis ng posisyon at inilalathala itong muli nang paulit-ulit — na nagre-reset sa petsa ng paglalathala at nagpapamukhang bago ang lumang bakante. Dati ay nasa bahagi lamang ng ghost jobs ang babalang ito. Ngayon ay sumasama na ito sa employer: kung may lumitaw sa ilalim ng «talagang pinupunan ang mga posisyon» o «nagsasaad ng sahod», sinasabi ito ng card, kasama ang bilang ng muling paglalathala at kung ilang posisyon ang saklaw nito. Sa ngayon ay 89 employer ang saklaw. Batay ito sa rate at hindi sa dami, kaya hindi namamarkahan ang malaking employer na may karaniwang paglilipat dahil lamang sa laki nito."
+    },
+    "fieldsShowTheirSize": {
+      "title": "Ipinapakita na ng bawat larangan kung ilang posisyon ang nasa loob nito",
+      "description": "Ang pagtingin ayon sa larangan ay parang pumipili nang nakapikit — 18 label na walang paraan para malaman kung alin ang may 70,000 posisyon at alin ang may 4,000. May dala nang bilang ang bawat isa, pinakamalaki muna, at binibilang nang eksaktong tulad ng pagbibilang ng sariling pahina ng larangang iyon, kaya magkatugma ang dalawa. 610,900 posisyon sa lahat ng larangan sa ngayon. Ang larangang masyadong manipis para may masabi ay walang ipinapakitang bilang, sa halip na maliit na bilang na magmumungkahing walang laman ang board sa larangan mo."
+    },
+    "listsSayWhatTheyPickedFrom": {
+      "title": "Sinasabi na ng bawat listahan kung saan ito pinili",
+      "description": "Ang labindalawang kumpanya sa ilalim ng «mga employer na talagang pinupunan ang posisyon» ay parang buong sagot, gayong ito ang nangungunang labindalawa mula sa mas malaking grupo. Sinasabi na ng bawat listahan ang pinagkunan nito: 633 employer ang kwalipikado sa pagpuno, 1,938 ang may lima o higit pang bukas na entry-level na posisyon, 818 ang sinusubaybayan sa muling paglalathala. Sinasabi rin ito ng listahan ng sahod — 237 sa 5,011 employer na may 20 o higit pang bukas na posisyon ang nagsasaad ng sahod sa hindi bababa sa 80% ng mga ito, kumpara sa 14% ng mga anunsyo sa buong board. Kung hindi makalkula ang isang bilang, tinatanggal ang pangungusap sa halip na magpakita ng zero."
+    },
+    "exploreOneQuestion": {
+      "title": "Nagtatanong na ang Explore kung ano ang hinahanap mo sa halip na pagscroll-in ka",
+      "description": "Sunod-sunod na isinasalansan ng pahinang Explore ang bawat listahan — mga apatnapung screen sa telepono, at nasa pinakailalim ang ilan sa pinakakapaki-pakinabang na bahagi kung saan halos walang nakakarating. Nagsisimula na ito ngayon sa tanong: suriin ang isang employer, sino ang talagang kumukuha, sino ang nagsasaad ng sahod, panimulang karera, ghost jobs, malawakang pagkuha, o pagtingin ayon sa larangan. Pumipili ka ng isa at iyon ang sagot na makukuha mo. Nananatili sa address bar ang pinili mo, kaya bubukas ang link sa mismong sagot na binabasa mo."
+    },
+    "checkAnyEmployer": {
+      "title": "Hanapin ang kahit sinong employer sa board, hindi lang ang nasa listahan",
+      "description": "Mga 85 kumpanya sa mahigit 24,000 ang lumalabas sa aming mga listahan. Ang pagsubaybay sa likod ng mga ito — sino ang pumupuno ng posisyon, sino ang naglalathala muli, sino ang nagsasaad ng sahod — ay ginagawa namin para sa lahat, at nakikita lamang kung nagkataong nanguna ang kumpanya sa isang listahan. Maaari mo nang i-type ang pangalan ng kahit sinong employer at diretsong makita ang aming nasukat tungkol sa kanila. Ang mga kumpanyang may ilang sistema ng pagkuha ay lumalabas nang isang beses sa halip na apat."
+    },
+    "hiringRanksByChance": {
+      "title": "Ang «talagang pinupunan ang mga posisyon» ay nakabatay na sa tsansa mo, hindi sa laki ng kumpanya",
+      "description": "Nakaayos dati ang listahang ito ayon sa hilaw na bilang ng napunang posisyon, na sukat higit sa lahat ng laki: ang kumpanyang pumupuno ng 40 sa 60 nitong bukas na posisyon ay hindi malalampasan ang pumupuno ng 400 sa 12,000, kahit na mas malaki ang tsansang ikaw ay kunin nito. Ngayon ay inihahambing ang napuno laban sa mga posisyong kasalukuyang bukas. Hindi rin nananalo ang maliliit na board — kailangan ng employer ng hindi bababa sa 100 bukas na posisyon, dahil nawawalan ng saysay ang ratio kapag napakakaunti ng bakante. Sinasabi rin ng bawat card kung gaano katagal karaniwang nanatiling nakapaskil ang napunang posisyon, at itinatago ang linyang iyon kapag hindi pa sapat ang haba ng pagsubaybay namin sa employer."
+    },
+    "payListWinnable": {
+      "title": "Kayang manalo sa listahan ng transparency sa sahod ang mga kilalang employer",
+      "description": "Nakaayos ayon sa porsyento ang «Malinaw sa sahod», kaya sa labindalawang puwesto lamang ay napupunta ang bawat isa sa maliit na board na eksaktong nasa 100% — hindi kailanman makakalabas ang kumpanyang nagsasaad ng sahod sa 95% ng 4,000 posisyon. Nakaayos na ito ngayon ayon sa kung ilang posisyon ang talagang nagsasaad ng sahod, kaya naging tapat at kilala rin ang listahan. Hindi nagbago ang 80% na hangganan para maging kwalipikado."
+    },
+    "employerNamesReal": {
+      "title": "Tunay nang pangalan ang ipinapakita ng mga card ng kumpanya, at pinagsama ang mga duplicate",
+      "description": "May ilang card ng employer na nagpapakita ng panloob na slug mula sa sistema ng pagkuha sa halip na pangalan ng kumpanya — «aloyoga» sa halip na ALO — at may ilang kumpanyang lumalabas bilang magkakahiwalay na entry dahil magkakaiba ang baybay ng pangalan sa bawat sistema nila. 38 pangalan ang naitama at pinagsama ang mga duplicate. Habang inaayos ito, natuklasan naming humihinto sa gitna ang pass ng pagwawasto at itinatala ang sarili bilang tapos na; ngayon ay hindi na ito nag-uulat ng tagumpay maliban kung talagang natapos ito."
+    },
     "whereTheJobsComeFrom": {
       "title": "Tingnan mismo kung saan nanggagaling ang mga trabaho namin",
       "description": "Nakalista na sa home page ang lahat ng 15 applicant tracking system na binabasa namin — Workday, Greenhouse, BambooHR at ang iba pa — bawat isa may bilang ng trabahong bukas doon ngayon. Bawat trabaho sa board ay direktang galing sa isa sa kanila, hindi kailanman kinuha sa search engine. Sinukat ang mga bilang, hindi basta sinabi: gumagalaw ang mga ito sa buong araw at sinasabi kung kailan huling tiningnan."

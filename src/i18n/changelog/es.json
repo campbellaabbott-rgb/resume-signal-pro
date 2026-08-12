@@ -1,5 +1,37 @@
 {
   "changelogEntries": {
+    "repostWarningTravels": {
+      "title": "Quienes republican en serie ahora se señalan dondequiera que aparezcan",
+      "description": "Seguimos qué ocurre con cada anuncio, así que sabemos qué empleadores retiran un puesto y lo vuelven a publicar una y otra vez — lo que reinicia su fecha de publicación y hace que una vacante antigua parezca nueva. Ese aviso solo aparecía bajo el apartado de empleos fantasma. Ahora acompaña al empleador: si alguno aparece en «cubre puestos de verdad» o «indica el salario», la ficha lo dice, con el número de republicaciones y en cuántos puestos se reparten. Actualmente lo cumplen 89 empleadores. Se juzga por tasa y no por volumen, de modo que un gran empleador con rotación normal no queda señalado solo por su tamaño."
+    },
+    "fieldsShowTheirSize": {
+      "title": "Cada área muestra ahora cuántos puestos contiene",
+      "description": "Explorar por área significaba elegir a ciegas: 18 etiquetas sin forma de saber cuál tenía 70.000 puestos y cuál 4.000. Cada una lleva ahora su recuento en vivo, la mayor primero, contado exactamente como lo cuenta la propia página de esa área, para que ambas coincidan. 610.900 puestos en total ahora mismo. Un área demasiado escasa para significar algo no muestra número alguno en lugar de uno pequeño que sugeriría que el tablón está vacío en tu campo."
+    },
+    "listsSayWhatTheyPickedFrom": {
+      "title": "Cada lista indica ahora de dónde se eligió",
+      "description": "Doce empresas bajo «empleadores que cubren puestos de verdad» se lee como la respuesta completa, cuando son las doce mejores de un grupo mucho mayor. Cada lista indica ahora su conjunto: 633 empleadores califican en cobertura, 1.938 tienen cinco o más puestos de nivel inicial abiertos, 818 están vigilados por republicación. La lista de salarios también lo dice: 237 de los 5.011 empleadores con 20 o más puestos abiertos indican el salario en al menos el 80 % de ellos, frente al 14 % de las ofertas de todo el tablón. Si una cifra no puede calcularse, se omite la frase en vez de mostrar un cero."
+    },
+    "exploreOneQuestion": {
+      "title": "Explorar pregunta qué buscas en lugar de obligarte a desplazarte",
+      "description": "La página Explorar apilaba todas las listas una tras otra — unas cuarenta pantallas en el móvil, con algunas de las partes más útiles al final, donde casi nadie llegaba. Ahora empieza por la pregunta: comprobar un empleador, quién contrata de verdad, quién indica el salario, primer empleo, empleos fantasma, contratación a gran escala o explorar por área. Eliges una y obtienes esa respuesta. Tu elección queda en la barra de direcciones, así que un enlace abre en la misma respuesta que estabas leyendo."
+    },
+    "checkAnyEmployer": {
+      "title": "Consulta cualquier empleador del tablón, no solo los de una lista",
+      "description": "Nuestras listas muestran unas 85 empresas de más de 24.000. El seguimiento que hay detrás — quién cubre puestos, quién los republica, quién indica el salario — lo mantenemos para todas, y solo era visible si una empresa encabezaba una lista por casualidad. Ahora puedes escribir el nombre de cualquier empleador e ir directo a lo que hemos medido sobre él. Las empresas con varios sistemas de contratación aparecen una vez en lugar de cuatro."
+    },
+    "hiringRanksByChance": {
+      "title": "«Cubre puestos de verdad» ahora ordena por tus probabilidades, no por tamaño",
+      "description": "Esta lista se ordenaba por el número bruto de puestos cubiertos, que mide sobre todo el tamaño: una empresa que cubre 40 de sus 60 puestos abiertos no podía superar a otra que cubre 400 de 12.000, aunque es mucho más probable que te contrate. Ahora ordena las coberturas frente a los puestos abiertos actualmente. Los tablones pequeños tampoco ganan: un empleador necesita al menos 100 puestos abiertos, porque con muy pocas vacantes la proporción pierde sentido. Cada ficha indica además cuánto tiempo solían estar publicados sus puestos cubiertos, y oculta esa línea cuando no llevamos observando al empleador el tiempo suficiente."
+    },
+    "payListWinnable": {
+      "title": "La lista de transparencia salarial la pueden ganar empleadores conocidos",
+      "description": "«Transparente sobre el salario» ordenaba por porcentaje, así que con solo doce plazas todas iban a un tablón pequeño situado exactamente en el 100 % — una empresa que indica el salario en el 95 % de 4.000 puestos nunca podía aparecer. Ahora ordena por cuántos puestos indican realmente el salario, lo que hace la lista honesta y reconocible a la vez. El umbral del 80 % para calificar no cambia."
+    },
+    "employerNamesReal": {
+      "title": "Las fichas de empresa muestran nombres reales y se fusionan los duplicados",
+      "description": "Algunas fichas de empleador mostraban el identificador interno de un sistema de contratación en lugar del nombre de la empresa — «aloyoga» en vez de ALO — y algunas empresas aparecían como varias entradas separadas porque cada uno de sus sistemas escribía el nombre de forma distinta. Se han corregido 38 nombres y fusionado los duplicados. Al arreglarlo descubrimos que el proceso de corrección se detenía a medio camino y se registraba como terminado, así que ahora no declara éxito salvo que haya completado de verdad."
+    },
     "whereTheJobsComeFrom": {
       "title": "Vea exactamente de dónde vienen nuestras vacantes",
       "description": "La página de inicio ahora nombra los 15 sistemas de selección que leemos —Workday, Greenhouse, BambooHR y los demás—, cada uno con el número de vacantes abiertas en él en este momento. Cada vacante del tablón procede directamente de uno de ellos, nunca de un buscador. Las cifras están medidas, no afirmadas: cambian a lo largo del día e indican cuándo se comprobaron por última vez."

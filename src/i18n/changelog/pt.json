@@ -1,5 +1,37 @@
 {
   "changelogEntries": {
+    "repostWarningTravels": {
+      "title": "Quem republica em série passa a ser sinalizado onde quer que apareça",
+      "description": "Acompanhamos o que acontece com cada anúncio, por isso sabemos quais empregadores retiram uma vaga e a republicam vezes sem conta — o que reinicia a data de publicação e faz uma vaga antiga parecer nova. Esse aviso só aparecia na secção de vagas fantasma. Agora acompanha o empregador: se algum surgir em «preenche vagas mesmo» ou «informa o salário», o cartão diz, com o número de republicações e por quantas vagas se repartem. Atualmente aplica-se a 89 empregadores. É avaliado pela taxa e não pelo volume, para que um grande empregador com rotatividade normal não seja sinalizado apenas por ser grande."
+    },
+    "fieldsShowTheirSize": {
+      "title": "Cada área mostra agora quantas vagas contém",
+      "description": "Navegar por área significava escolher às cegas: 18 rótulos sem forma de saber qual tinha 70.000 vagas e qual tinha 4.000. Cada uma traz agora a sua contagem ao vivo, a maior primeiro, contada exatamente como a própria página da área conta, para que as duas coincidam. 610.900 vagas em todas as áreas neste momento. Uma área demasiado escassa para significar algo não mostra número nenhum, em vez de um número pequeno que sugeriria que o mural está vazio na sua área."
+    },
+    "listsSayWhatTheyPickedFrom": {
+      "title": "Cada lista indica agora de onde foi escolhida",
+      "description": "Doze empresas em «empregadores que preenchem vagas mesmo» lê-se como a resposta inteira, quando são as doze melhores de um grupo bem maior. Cada lista indica agora o seu conjunto: 633 empregadores qualificam-se no preenchimento, 1.938 têm cinco ou mais vagas de nível inicial abertas, 818 são acompanhados quanto a republicação. A lista de salários também o diz — 237 dos 5.011 empregadores com 20 ou mais vagas abertas informam o salário em pelo menos 80 % delas, contra 14 % dos anúncios em todo o mural. Se um número não puder ser calculado, a frase é omitida em vez de mostrar zero."
+    },
+    "exploreOneQuestion": {
+      "title": "Explorar pergunta o que procura em vez de o obrigar a percorrer",
+      "description": "A página Explorar empilhava todas as listas umas a seguir às outras — cerca de quarenta ecrãs no telemóvel, com algumas das partes mais úteis no fim, onde quase ninguém chegava. Agora começa pela pergunta: verificar um empregador, quem contrata mesmo, quem informa o salário, início de carreira, vagas fantasma, contratação em grande escala, ou navegar por área. Escolhe uma e obtém essa resposta. A sua escolha fica na barra de endereço, por isso um link abre na mesma resposta que estava a ler."
+    },
+    "checkAnyEmployer": {
+      "title": "Consulte qualquer empregador do mural, não apenas os de uma lista",
+      "description": "As nossas listas mostram cerca de 85 empresas de mais de 24.000. O acompanhamento por trás delas — quem preenche vagas, quem as republica, quem informa o salário — é feito para todas, e só era visível se uma empresa calhasse liderar uma lista. Pode agora escrever o nome de qualquer empregador e ir diretamente ao que medimos sobre ele. Empresas com vários sistemas de recrutamento aparecem uma vez em vez de quatro."
+    },
+    "hiringRanksByChance": {
+      "title": "«Preenche vagas mesmo» ordena agora pelas suas hipóteses, não pelo tamanho",
+      "description": "Esta lista era ordenada pelo número bruto de vagas preenchidas, o que mede sobretudo o tamanho: uma empresa que preenche 40 das suas 60 vagas abertas não conseguia ultrapassar outra que preenche 400 de 12.000, embora tenha muito mais probabilidade de o contratar. Agora compara preenchimentos com as vagas atualmente abertas. Murais pequenos também não ganham — um empregador precisa de pelo menos 100 vagas abertas, porque com pouquíssimas vagas a proporção deixa de significar algo. Cada cartão indica também quanto tempo as suas vagas preenchidas costumavam estar online, e esconde essa linha quando não acompanhamos o empregador há tempo suficiente."
+    },
+    "payListWinnable": {
+      "title": "A lista de transparência salarial pode ser ganha por empregadores conhecidos",
+      "description": "«Transparente sobre o salário» ordenava por percentagem, por isso com apenas doze lugares todos iam para um mural pequeno exatamente nos 100 % — uma empresa que informa o salário em 95 % de 4.000 vagas nunca podia aparecer. Agora ordena por quantas vagas informam efetivamente o salário, o que torna a lista honesta e reconhecível ao mesmo tempo. O limiar de 80 % para qualificar mantém-se."
+    },
+    "employerNamesReal": {
+      "title": "Os cartões de empresa mostram nomes reais e os duplicados são fundidos",
+      "description": "Alguns cartões de empregador mostravam o identificador interno de um sistema de recrutamento em vez do nome da empresa — «aloyoga» em vez de ALO — e algumas empresas apareciam como várias entradas separadas porque cada um dos seus sistemas escrevia o nome de forma diferente. 38 nomes foram corrigidos e os duplicados fundidos. Ao corrigir, descobrimos que a passagem de correção parava a meio e registava-se como concluída; agora só declara sucesso se tiver realmente terminado."
+    },
     "whereTheJobsComeFrom": {
       "title": "Veja exatamente de onde vêm as nossas vagas",
       "description": "A página inicial passa a nomear os 15 sistemas de recrutamento que lemos — Workday, Greenhouse, BambooHR e os restantes —, cada um com o número de vagas abertas nele neste momento. Cada vaga do mural vem diretamente de um deles, nunca de um motor de busca. Os números são medidos, não afirmados: acompanham o dia e indicam quando foram verificados pela última vez."
