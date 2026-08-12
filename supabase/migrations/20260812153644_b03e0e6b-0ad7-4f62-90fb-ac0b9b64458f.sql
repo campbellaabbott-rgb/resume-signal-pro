@@ -1,0 +1,1 @@
+SELECT cron.schedule('oneoff-vacuum-jbp', '* * * * *', 'VACUUM (ANALYZE) public.job_board_postings');
