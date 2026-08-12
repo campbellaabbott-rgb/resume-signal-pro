@@ -1,0 +1,1 @@
+SELECT cron.unschedule('oneoff-vacuum-jbp'); ALTER ROLE postgres RESET statement_timeout;
