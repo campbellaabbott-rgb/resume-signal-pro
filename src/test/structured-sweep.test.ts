@@ -174,6 +174,33 @@ describe("the lane is observable, and cannot silently do nothing", () => {
     expect(CODE).toMatch(/const ssCursor = typeof ss\.v\?\.cursor === "string"/);
   });
 
+  it("is kicked BEFORE any branch that returns, or it never runs", () => {
+    // THE BUG THIS EXISTS FOR, and it shipped. The kick was originally last in
+    // maybeKickMaintenance, after the desc_sweep kick. Two branches in that
+    // sequence — the recategorise sweep and backfill-desc — `return` after
+    // kicking, so everything below them only runs on cycles where neither
+    // fires. Measured live: four status polls over 13 minutes, structuredSweep
+    // all-null the whole time while every other chain ran.
+    //
+    // The function's own header already recorded this: "Track kicks are
+    // NON-EXCLUSIVE — kick and fall through, never return", written after the
+    // same starvation hit desc-sweep. Adding a track below a `return` repeats
+    // it, and the symptom is a lane that looks deployed and does nothing.
+    const fnAt = CODE.indexOf("async function maybeKickMaintenance");
+    expect(fnAt, "maybeKickMaintenance is gone").toBeGreaterThan(-1);
+    const body = CODE.slice(fnAt, CODE.indexOf("\n}", CODE.indexOf("maintenance kick skipped", fnAt)));
+    const kickAt = body.indexOf('kick("structured-sweep"');
+    expect(kickAt, "the structured-sweep kick is not in maybeKickMaintenance").toBeGreaterThan(-1);
+    // The first bare `return;` in the sequence is the starvation boundary:
+    // anything after it runs only when no earlier branch has fired.
+    const returnAt = body.search(/\n\s*return;/);
+    expect(returnAt, "no early return found — the guard's premise is stale").toBeGreaterThan(-1);
+    expect(
+      kickAt,
+      "the structured-sweep kick sits after an early return and will be starved",
+    ).toBeLessThan(returnAt);
+  });
+
   it("only lists vendors whose detail actually states a work mode", () => {
     // An entry without a fetchVendorDetail branch setting workMode would walk
     // that vendor's whole corpus fetching details and filling nothing.

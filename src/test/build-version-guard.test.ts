@@ -81,8 +81,14 @@ const PINNED = {
   // Pinpoint failure this guard was written for, reproduced at 18x the size.
   //
   // Same bump also carries the structured-sweep lane, which is index.ts-only.
+  // 2026-08-12.2: structured-sweep kick MOVED out of the starved tail of
+  // maybeKickMaintenance up to the independent-track block. sources.ts is
+  // UNCHANGED (the hash below still pins the iCIMS round-2 merge); the bump is
+  // so the fix is externally identifiable. The lane had deployed and never run
+  // — four status polls over 13 minutes, structuredSweep all-null — because two
+  // branches above it return after kicking.
   sourcesHash: "6bac7c8103784266",
-  buildVersion: "2026-08-12.1",
+  buildVersion: "2026-08-12.2",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {

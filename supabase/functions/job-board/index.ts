@@ -98,7 +98,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-12.1";
+const BUILD_VERSION = "2026-08-12.2";
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -2253,6 +2253,33 @@ async function maybeKickMaintenance(client: SupabaseClient): Promise<void> {
       await kick("backfill-posted", pbResume);
     }
 
+    // Work-mode recovery — the fourth INDEPENDENT track, and it sits up here
+    // with the others for a reason I got wrong the first time.
+    //
+    // It was originally placed at the very end of this function, after the
+    // desc_sweep kick. It never fired: measured over 13 minutes across four
+    // status polls, `structuredSweep` stayed all-null while every other chain
+    // ran. Two branches below — the recategorise sweep and backfill-desc —
+    // `return` after kicking, so anything after them only runs on cycles where
+    // neither fires, and the last position in the sequence is the most starved
+    // one available. That is the same starvation the note at the top of this
+    // block records for desc-sweep, reproduced by adding a track without
+    // reading its own warning.
+    //
+    // RESUMES, never restarts. desc-sweep re-kicks at vi:0 safely because its
+    // predicate is self-clearing; this one's is not. Rows still work_mode-null
+    // after a pass are the ones whose detail states no remoteType, permanently,
+    // so restarting at cursor "" would re-fetch every one of them.
+    const ss = await alive("structured_sweep");
+    const ssDone = typeof ss.v?.doneAt === "string" ? Date.parse(ss.v.doneAt as string) : NaN;
+    // 24h, not desc-sweep's 6: a posting's remoteType does not change, so
+    // re-walking sooner buys nothing but vendor requests.
+    const ssSettled = Number.isFinite(ssDone) && Date.now() - ssDone < 24 * 60 * 60_000;
+    if (!ss.alive && !ssSettled) {
+      const ssCursor = typeof ss.v?.cursor === "string" ? ss.v.cursor as string : "";
+      await kick("structured-sweep", { vi: 0, cursor: ssCursor });
+    }
+
     // Categorization rules changed since the corpus was stamped? Sweep the
     // stored "other" rows through the current rules in a fresh invocation
     // (own compute budget). Idempotent: the stamp is written only when the
@@ -2304,28 +2331,6 @@ async function maybeKickMaintenance(client: SupabaseClient): Promise<void> {
     // self-resuming: filled rows have left the description-is-null filter.
     const settled = Number.isFinite(doneAt) && Date.now() - doneAt < 6 * 60 * 60_000;
     if (!ds.alive && !settled) await kick("desc-sweep", { vi: 0 });
-
-    // The work-mode recovery lane, and it RESUMES rather than restarts.
-    //
-    // desc-sweep can safely re-kick at vi:0 because its predicate is
-    // self-clearing: a filled row leaves `description is null`, so a fresh
-    // walk lands on genuinely unfilled rows. This lane's predicate is NOT
-    // self-clearing in the same way. The rows that remain `work_mode is null`
-    // after a pass are exactly the ones whose detail states no remoteType —
-    // permanently. Restarting at cursor "" would re-fetch every one of them,
-    // spending the whole budget re-proving they have nothing to give.
-    //
-    // So the stored cursor is carried forward, and only a COMPLETED pass
-    // (doneAt) clears it. The settle window is 24h rather than desc-sweep's 6:
-    // a posting's remoteType does not change, so re-walking sooner buys
-    // nothing but vendor requests.
-    const ss = await alive("structured_sweep");
-    const ssDone = typeof ss.v?.doneAt === "string" ? Date.parse(ss.v.doneAt as string) : NaN;
-    const ssSettled = Number.isFinite(ssDone) && Date.now() - ssDone < 24 * 60 * 60_000;
-    if (!ss.alive && !ssSettled) {
-      const ssCursor = typeof ss.v?.cursor === "string" ? ss.v.cursor as string : "";
-      await kick("structured-sweep", { vi: 0, cursor: ssCursor });
-    }
   } catch (e) {
     // Maintenance is best-effort; it must never break a refresh slice.
     console.warn("[JOB-BOARD] maintenance kick skipped:", String(e).slice(0, 120));
