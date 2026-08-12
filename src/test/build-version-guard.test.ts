@@ -101,8 +101,13 @@ const PINNED = {
   // evidence — the first real pass finished in ~7 minutes and left a bare
   // {doneAt}, making "small eligible set" and "early termination"
   // indistinguishable. sources.ts UNCHANGED.
+  // 2026-08-12.6: the sweep's progress stamp gains firstId/lastId/pageLen —
+  // the id window each hop actually visited. The 17:50 pass "completed"
+  // against 148,776 eligible rows with the id-prefix assumption verified
+  // correct, so the only remaining way to see where the walk went is for the
+  // walk to report it. sources.ts UNCHANGED.
   sourcesHash: "6bac7c8103784266",
-  buildVersion: "2026-08-12.5",
+  buildVersion: "2026-08-12.6",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {

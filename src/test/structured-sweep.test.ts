@@ -204,8 +204,13 @@ describe("the lane is observable, and cannot silently do nothing", () => {
     // published rather than inferred from coverage moving days later.
     const at = CODE.indexOf("structuredSweep: {");
     expect(at, "structuredSweep is not reported in status").toBeGreaterThan(-1);
-    const block = CODE.slice(at, at + 700);
-    for (const k of ["vendor", "cursor", "scanned", "filled", "ageMin"]) {
+    // Sliced to the block's closing "}," not a fixed width — a 700-char
+    // window silently dropped ageMin when the id-window fields grew the block,
+    // the third fixed-window failure in this repo's test history.
+    const blockEnd = CODE.indexOf("\n        },", at);
+    expect(blockEnd, "structuredSweep block has no terminator").toBeGreaterThan(at);
+    const block = CODE.slice(at, blockEnd);
+    for (const k of ["vendor", "cursor", "scanned", "filled", "ageMin", "firstId", "lastId", "pageLen"]) {
       expect(block, `structuredSweep omits ${k}`).toContain(`${k}:`);
     }
   });

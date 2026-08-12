@@ -98,7 +98,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-12.5";
+const BUILD_VERSION = "2026-08-12.6";
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -3139,6 +3139,11 @@ Deno.serve(async (req) => {
           scanned: ((ssMeta.data?.v ?? {}) as { scanned?: number }).scanned ?? null,
           filled: ((ssMeta.data?.v ?? {}) as { filled?: number }).filled ?? null,
           doneAt: ((ssMeta.data?.v ?? {}) as { doneAt?: string }).doneAt ?? null,
+          // The final page's id window — the forensic detail the 17:50 pass
+          // lacked. Readable from outside without SQL access.
+          firstId: ((ssMeta.data?.v ?? {}) as { firstId?: string }).firstId ?? null,
+          lastId: ((ssMeta.data?.v ?? {}) as { lastId?: string }).lastId ?? null,
+          pageLen: ((ssMeta.data?.v ?? {}) as { pageLen?: number }).pageLen ?? null,
           ageMin: ssMeta.data?.updated_at ? Math.round((Date.now() - new Date(ssMeta.data.updated_at).getTime()) / 60000) : null,
         },
         // Embedding sweep liveness — same shape as descSweep. Added 2026-07-25
@@ -4795,6 +4800,14 @@ Deno.serve(async (req) => {
         v: {
           vendor: sVendor, cursor: sDone ? "" : nextCursor,
           scanned: cumScanned, filled: cumFilled, at: new Date().toISOString(),
+          // The hop's actual id window, kept for the forensics the 17:50 pass
+          // forced: it "completed" against 148,776 eligible rows, the id
+          // format assumption checked out, and the only remaining way to see
+          // WHERE the walk really went is for the walk to say so. firstId and
+          // lastId of the final page pin the range the select returned; a
+          // page that comes back short mid-range names its own boundary.
+          firstId: sQueue[0]?.id ?? null, lastId: nextCursor || null,
+          pageLen: sQueue.length,
         },
         updated_at: new Date().toISOString(),
       }, { onConflict: "k" });
