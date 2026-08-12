@@ -344,6 +344,20 @@ describe("the labels are cast everywhere, not where it fired", () => {
     expect(t).toMatch(/prev -> 'coverage'/);
   });
 
+  it("each re-asserted refresher still labels its degradation", () => {
+    // Found by mutation: deleting refresh_stats_cache's stale_parts emission
+    // survived, because the transparency guard's slice starts after it and
+    // nothing else pinned it in THIS file. A cache that degrades without
+    // labeling is yesterday's silent staleness back again.
+    const statsAt = sql.indexOf("FUNCTION public.refresh_stats_cache");
+    const exploreAt = sql.indexOf("FUNCTION public.refresh_explore_cache");
+    const transAt = sql.indexOf("FUNCTION public.refresh_transparency_cache");
+    expect(statsAt).toBeGreaterThan(-1); expect(exploreAt).toBeGreaterThan(statsAt);
+    for (const [name, a, b] of [["stats", statsAt, exploreAt], ["explore", exploreAt, transAt], ["transparency", transAt, sql.length]] as const) {
+      expect(sql.slice(a, b), `${name} degrades without saying so`).toMatch(/'stale_parts', to_jsonb\(stale\)/);
+    }
+  });
+
   it("the re-asserted refreshers keep their own budgets", () => {
     expect(sql).toMatch(/FUNCTION public\.refresh_stats_cache[\s\S]*?SET statement_timeout = '5min'/);
     expect(sql).toMatch(/FUNCTION public\.refresh_explore_cache[\s\S]*?SET statement_timeout = '15min'/);
