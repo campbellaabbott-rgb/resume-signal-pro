@@ -198,3 +198,63 @@ describe("undated postings state their observation window, honestly", () => {
     expect(code).toMatch(/jobsPage\.firstSeenProvenance/);
   });
 });
+
+describe("both hourly caches degrade instead of dying", () => {
+  const sql = strip(readFileSync(
+    resolve(MIG, "20260812210000_both_caches_degrade_instead_of_dying.sql"), "utf8"));
+  const stats = sql.slice(sql.indexOf("FUNCTION public.refresh_stats_cache"),
+                          sql.indexOf("FUNCTION public.refresh_explore_cache"));
+  const explore = sql.slice(sql.indexOf("FUNCTION public.refresh_explore_cache"));
+
+  it("stats: every section is wrapped and the write is unconditional", () => {
+    // The deployed body was dying whole on intermittent 57014s while the
+    // repo's wrapped version cannot — evidence that a re-stamped migration
+    // carried an old body. Re-asserted here; these counts keep it re-asserted.
+    const handlers = stats.match(/EXCEPTION WHEN OTHERS THEN/g) ?? [];
+    expect(handlers.length, "a stats section lost its wrapper").toBeGreaterThanOrEqual(6);
+    expect(stats).toMatch(/'stale_parts', to_jsonb\(stale\)/);
+    expect(stats).toMatch(/ON CONFLICT \(k\) DO UPDATE/);
+  });
+
+  it("stats: carries its own budget, immune to role-GUC drift", () => {
+    // The cron job runs as postgres, whose role timeout was RESET during the
+    // vacuum incident — the run must not be governed by whatever the role
+    // happens to carry that day.
+    expect(stats).toMatch(/SET statement_timeout = '5min'/);
+  });
+
+  it("stats: the per-section SET LOCALs are gone, not half-gone", () => {
+    // The callees own their budgets (5-20s headers, which override anyway —
+    // proven at 25.46s). A surviving SET LOCAL would be a second, weaker copy
+    // of a fact that already has one owner.
+    expect(stats).not.toMatch(/SET LOCAL statement_timeout/);
+  });
+
+  it("explore: the five once-unwrapped sections each degrade to the previous row", () => {
+    for (const k of ["trending", "newest", "entry", "salary", "segments"]) {
+      expect(explore, `${k} has no stale fallback`).toMatch(
+        new RegExp(`stale := stale \\|\\| '${k}'`));
+      expect(explore, `${k} does not carry the previous value`).toMatch(
+        new RegExp(`COALESCE\\(prev -> '${k}'`));
+    }
+  });
+
+  it("explore: no collection is built by a bare call inside the payload", () => {
+    // The defect shape: a get_*() call sitting directly in jsonb_build_object
+    // has no handler, so its failure kills the whole refresh. Every collection
+    // must arrive through a wrapped variable.
+    const payloadAt = explore.indexOf("payload := jsonb_build_object(");
+    expect(payloadAt).toBeGreaterThan(-1);
+    const payload = explore.slice(payloadAt, explore.indexOf("INSERT INTO", payloadAt));
+    expect(payload, "a bare aggregate call is back inside the payload build")
+      .not.toMatch(/FROM public\.get_/);
+  });
+
+  it("explore: keeps the same-call denominator slicing intact", () => {
+    // The re-assert must not quietly undo this morning's invariant: the twelve
+    // cards and their stated pool come from ONE call.
+    expect(explore).toMatch(/INTO hiring_rows, hiring_n/);
+    expect(explore).toMatch(/INTO repost_rows, repost_pool_n/);
+    expect(explore).toMatch(/FILTER \(WHERE r\.rn <= 12\)/);
+  });
+});
