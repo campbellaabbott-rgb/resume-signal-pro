@@ -396,14 +396,14 @@ BEGIN
         CASE WHEN open_n > 0 THEN round(100.0 * dated_n / open_n, 1) END);
   EXCEPTION
     WHEN QUERY_CANCELED THEN
-    stale := stale || 'counts';
+    stale := stale || 'counts'::text;
     payload := jsonb_build_object(
       'total_open',          prev -> 'total_open',
       'total_companies',     prev -> 'total_companies',
       'total_company_names', prev -> 'total_company_names',
       'posted_coverage_pct', prev -> 'posted_coverage_pct');
     WHEN OTHERS THEN
-    stale := stale || 'counts';
+    stale := stale || 'counts'::text;
     payload := jsonb_build_object(
       'total_open',          prev -> 'total_open',
       'total_companies',     prev -> 'total_companies',
@@ -425,10 +425,10 @@ BEGIN
       WHERE missing_since IS NULL AND posted_at IS NOT NULL));
   EXCEPTION
     WHEN QUERY_CANCELED THEN
-    stale := stale || 'median_days_open';
+    stale := stale || 'median_days_open'::text;
     payload := payload || jsonb_build_object('median_days_open', prev -> 'median_days_open');
     WHEN OTHERS THEN
-    stale := stale || 'median_days_open';
+    stale := stale || 'median_days_open'::text;
     payload := payload || jsonb_build_object('median_days_open', prev -> 'median_days_open');
   END;
 
@@ -449,13 +449,13 @@ BEGIN
           AND closed_at >= posted_at));
   EXCEPTION
     WHEN QUERY_CANCELED THEN
-    stale := stale || 'closures';
+    stale := stale || 'closures'::text;
     payload := payload || jsonb_build_object(
       'closed_90d',           prev -> 'closed_90d',
       'observed_days',        prev -> 'observed_days',
       'median_days_to_close', prev -> 'median_days_to_close');
     WHEN OTHERS THEN
-    stale := stale || 'closures';
+    stale := stale || 'closures'::text;
     payload := payload || jsonb_build_object(
       'closed_90d',           prev -> 'closed_90d',
       'observed_days',        prev -> 'observed_days',
