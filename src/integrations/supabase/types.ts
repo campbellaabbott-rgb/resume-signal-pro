@@ -3324,6 +3324,7 @@ export type Database = {
         }[]
       }
       get_explore_cache: { Args: never; Returns: Json }
+      get_explore_denominators: { Args: never; Returns: Json }
       get_failed_deliveries_for_retry: {
         Args: { p_limit?: number }
         Returns: {
@@ -3561,6 +3562,7 @@ export type Database = {
           worst_title: string
         }[]
       }
+      get_repost_index: { Args: never; Returns: Json }
       get_salary_benchmarks: {
         Args: never
         Returns: {
