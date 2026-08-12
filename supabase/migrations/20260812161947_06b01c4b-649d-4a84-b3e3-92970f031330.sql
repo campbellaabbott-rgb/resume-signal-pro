@@ -1,0 +1,1 @@
+SELECT pid, pg_cancel_backend(pid) FROM pg_stat_activity WHERE pid <> pg_backend_pid() AND (query ILIKE 'VACUUM%' OR query ILIKE '%apply sql from post body%');
