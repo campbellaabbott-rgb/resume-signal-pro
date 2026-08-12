@@ -1,0 +1,2 @@
+SELECT cron.unschedule('build-work-mode-serving-idx');
+SELECT cron.schedule('build-work-mode-serving-idx', '* * * * *', 'CREATE INDEX CONCURRENTLY IF NOT EXISTS job_board_postings_work_mode_serving_idx ON public.job_board_postings (work_mode, effective_posted DESC) WHERE work_mode IS NOT NULL AND missing_since IS NULL');
