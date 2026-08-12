@@ -1237,8 +1237,17 @@ describe("every answer states the pool it was drawn from, and zero is silence", 
   it("every optional block degrades without taking the payload down", () => {
     // The cache row must still be written when any one collection fails, or a
     // single slow scan freezes every answer on the page.
-    const handlers = REFRESH.match(/EXCEPTION WHEN OTHERS THEN/g) ?? [];
-    expect(handlers.length, "an unwrapped block can abort the whole refresh").toBeGreaterThanOrEqual(5);
+    //
+    // Counted on the QUERY_CANCELED arm, not WHEN OTHERS, since 2026-08-12:
+    // per the PostgreSQL docs, "OTHERS matches every error type except
+    // QUERY_CANCELED and ASSERT_FAILURE" — and statement_timeout raises
+    // QUERY_CANCELED. A handler without the explicit arm does not catch the
+    // one error these blocks exist to survive; the caches died whole on
+    // timeouts for two days while visibly "wrapped".
+    const qc = REFRESH.match(/WHEN QUERY_CANCELED THEN/g) ?? [];
+    expect(qc.length, "a block cannot catch the timeout it exists to survive").toBeGreaterThanOrEqual(5);
+    const wo = REFRESH.match(/WHEN OTHERS THEN/g) ?? [];
+    expect(wo.length, "the OTHERS arm went missing").toBeGreaterThanOrEqual(qc.length);
   });
 
   it("renders a note only when its counter arrived", () => {

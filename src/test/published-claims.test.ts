@@ -797,7 +797,11 @@ describe("Ghost Job Index age stats use the company's date, not our discovery ti
     const from = gs.indexOf("FUNCTION public.refresh_ghost_stats");
     const body = gs.slice(from, gs.indexOf("END $$;", from));
     const insertAt = body.indexOf("INSERT INTO public.job_board_stats_rollup");
-    const lastExc = body.lastIndexOf("EXCEPTION WHEN OTHERS THEN");
+    // Anchored on the OTHERS arm rather than the full "EXCEPTION WHEN OTHERS
+    // THEN" line: since 2026-08-12 every handler leads with an explicit
+    // QUERY_CANCELED arm (WHEN OTHERS does not catch statement timeouts, per
+    // the PostgreSQL docs), so the arms sit on their own lines.
+    const lastExc = body.lastIndexOf("WHEN OTHERS THEN");
     expect(insertAt, "no unconditional write").toBeGreaterThan(-1);
     expect(insertAt, "the write must come after the last handler, not before it").toBeGreaterThan(lastExc);
     // …and that handler must have CLOSED before the write, or the write is

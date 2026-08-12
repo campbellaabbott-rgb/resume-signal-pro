@@ -19,7 +19,10 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 const MIG = resolve(__dirname, "../../supabase/migrations");
-const strip = (s: string) => s.replace(/^\s*--.*$/gm, "");
+// Strips BOTH comment forms: a guard satisfied by a /* */-commented-out
+// function is a guard that passes while the code is disabled — proven by a
+// mutation that block-commented the ghost re-assert and survived.
+const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*--.*$/gm, "");
 
 describe("the embed queue rotates instead of re-scanning its dead prefix", () => {
   const sql = strip(readFileSync(
@@ -256,5 +259,53 @@ describe("both hourly caches degrade instead of dying", () => {
     expect(explore).toMatch(/INTO hiring_rows, hiring_n/);
     expect(explore).toMatch(/INTO repost_rows, repost_pool_n/);
     expect(explore).toMatch(/FILTER \(WHERE r\.rn <= 12\)/);
+  });
+});
+
+describe("a timeout is what WHEN OTHERS does not catch", () => {
+  // Post-migration evidence, 18:12: a statement timeout escaped WHOLE from a
+  // section whose handler was confirmed live in pg_proc. Per the PostgreSQL
+  // docs, OTHERS matches every error type EXCEPT QUERY_CANCELED and
+  // ASSERT_FAILURE — and statement_timeout raises QUERY_CANCELED. The fail-
+  // soft wrapping never caught the one error it was built for.
+  const sql = strip(readFileSync(
+    resolve(MIG, "20260812220000_a_timeout_is_what_when_others_does_not_catch.sql"), "utf8"));
+
+  it("EVERY handler block carries the QUERY_CANCELED arm — parsed, not counted", () => {
+    // A count can pass with one block missed; each block is held to it.
+    const blocks = [...sql.matchAll(/EXCEPTION[\s\S]*?\n\s*END;/g)].map((m) => m[0]);
+    expect(blocks.length, "no handler blocks found — the regex broke").toBeGreaterThanOrEqual(16);
+    for (const [i, b] of blocks.entries()) {
+      expect(b, `handler block ${i} cannot catch a timeout`).toContain("WHEN QUERY_CANCELED THEN");
+      expect(b, `handler block ${i} lost its OTHERS arm`).toContain("WHEN OTHERS THEN");
+    }
+  });
+
+  it("the arms stay balanced", () => {
+    const qc = (sql.match(/WHEN QUERY_CANCELED THEN/g) ?? []).length;
+    const wo = (sql.match(/WHEN OTHERS THEN/g) ?? []).length;
+    expect(qc).toBe(wo);
+    expect(qc).toBeGreaterThanOrEqual(16);
+  });
+
+  it("re-asserts refresh_ghost_stats with its own budget", () => {
+    // Its 18:05 failure context showed a payload-building body that does not
+    // exist in this repo — an older copy deployed. Same re-assert treatment.
+    const g = sql.slice(sql.indexOf("FUNCTION public.refresh_ghost_stats"));
+    expect(g.length).toBeGreaterThan(100);
+    // 15min is the TRUE latest body's own budget (20260809223000). The first
+    // draft pinned 10min from an obsolete version found via mtime-ordered
+    // search — published-claims caught the regression.
+    expect(g).toMatch(/SET statement_timeout = '15min'/);
+    // The write must land under the key the reader serves — an INSERT to any
+    // other key is a refresh that "succeeds" while the page goes stale forever.
+    expect(g).toMatch(/VALUES \('ghost_stats', payload, now\(\)\)/);
+    expect(g).toMatch(/ON CONFLICT \(k\) DO UPDATE/);
+    expect(sql).toMatch(/REVOKE ALL ON FUNCTION public\.refresh_ghost_stats\(\) FROM PUBLIC, anon, authenticated/);
+  });
+
+  it("both cache refreshers ride in the same file with their budgets intact", () => {
+    expect(sql).toMatch(/FUNCTION public\.refresh_stats_cache[\s\S]*?SET statement_timeout = '5min'/);
+    expect(sql).toMatch(/FUNCTION public\.refresh_explore_cache[\s\S]*?SET statement_timeout = '15min'/);
   });
 });
