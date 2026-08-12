@@ -106,8 +106,12 @@ const PINNED = {
   // against 148,776 eligible rows with the id-prefix assumption verified
   // correct, so the only remaining way to see where the walk went is for the
   // walk to report it. sources.ts UNCHANGED.
+  // 2026-08-12.7: the sweep's upper-bound sentinel ";" -> "~". The semicolon
+  // is truncated in the REST query string (proven live: lt.workday; matches
+  // zero rows, lt.workday~ matches), so the bounded window was empty and two
+  // passes stamped doneAt over 148,776 untouched rows. sources.ts UNCHANGED.
   sourcesHash: "6bac7c8103784266",
-  buildVersion: "2026-08-12.6",
+  buildVersion: "2026-08-12.7",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {

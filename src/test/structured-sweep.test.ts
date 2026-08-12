@@ -81,11 +81,18 @@ describe("the recovery lane reaches the rows desc-sweep cannot", () => {
     expect(LANE).toMatch(/String\(body\.cursor \?\? ""\) \|\| `\$\{sVendor\}:`/);
   });
 
-  it("bounds the walk above so it cannot leave the vendor's range", () => {
-    // The mirror of the same defect. Without it, a vendor's final hop scans the
-    // whole remainder of the table to prove nothing is left. Harmless today
-    // because workday sorts last; a vendor added after it inherits the timeout.
-    expect(LANE).toMatch(/\.lt\("id", `\$\{sVendor\};`\)/);
+  it("bounds the walk above with a sentinel that survives the URL", () => {
+    // The bound itself is the mirror of the missing-seed defect. But the
+    // SENTINEL is the hard-won part: ";" (the theoretically-tight next byte
+    // after ":") is truncated in the REST query string — proven live,
+    // `id=lt.workday;` matched ZERO rows while `~` matched — so the window
+    // came back empty and the pass stamped doneAt over 148,776 untouched
+    // rows, twice. "~" sorts above ":" and vendor names are lowercase ASCII,
+    // so `{vendor}~` bounds correctly for every vendor. ";" must never come
+    // back, however tight it looks.
+    expect(LANE).toMatch(/\.lt\("id", `\$\{sVendor\}~`\)/);
+    expect(LANE, "the semicolon sentinel is back — it dies in the query string")
+      .not.toMatch(/\$\{sVendor\};/);
   });
 
   it("stamps its progress row BEFORE doing the work", () => {

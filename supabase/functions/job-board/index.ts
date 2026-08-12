@@ -98,7 +98,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-12.6";
+const BUILD_VERSION = "2026-08-12.7";
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -4724,15 +4724,28 @@ Deno.serve(async (req) => {
         .is("work_mode", null)
         .order("id", { ascending: true })
         // BOUNDED AT BOTH ENDS. `gt` seeds the walk at this vendor's range;
-        // `lt` stops it leaving. ";" is the byte after ":", so `workday;` is
-        // the first id that cannot belong to workday.
+        // `lt` stops it leaving.
         //
-        // Without the upper bound the final hop of a vendor walks the entire
+        // THE SENTINEL IS "~", NOT ";" — and that one character cost two full
+        // passes. ";" is the byte after ":", the theoretically-tight bound,
+        // and it DIES IN TRANSIT: proven live 2026-08-12 against the REST
+        // layer, `id=lt.workday;` matches ZERO rows while the identical query
+        // with `~` returns them — the semicolon is truncated somewhere in the
+        // query-string path (semicolons are a legacy query-param separator),
+        // leaving `lt.'workday'`, which excludes every `workday:` id. The
+        // sweep's select came back empty, sDone fired, and the pass stamped
+        // doneAt with 148,776 eligible rows untouched — twice.
+        //
+        // "~" (0x7E) sorts above ":" (0x3A), every id is `{vendor}:...`, and
+        // vendor names are lowercase ASCII, so `{vendor}~` is a correct upper
+        // bound for every vendor and survives the URL.
+        //
+        // Without SOME upper bound the final hop of a vendor walks the entire
         // remainder of the table — every row failing `source = ?` — to prove
         // there is nothing left. Today workday sorts last so that remainder is
         // empty and the bug would not show; add one vendor after it and the
         // lane inherits the same timeout that the missing lower bound caused.
-        .lt("id", `${sVendor};`)
+        .lt("id", `${sVendor}~`)
         .limit(DESC_SWEEP_PER_HOP);
       if (cursor) sel = sel.gt("id", cursor);
       const { data: sRows, error: sErr } = await sel;
