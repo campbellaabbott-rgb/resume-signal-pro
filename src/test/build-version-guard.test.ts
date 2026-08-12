@@ -87,8 +87,16 @@ const PINNED = {
   // so the fix is externally identifiable. The lane had deployed and never run
   // — four status polls over 13 minutes, structuredSweep all-null — because two
   // branches above it return after kicking.
+  // 2026-08-12.3: the lane still never ran after .2, and the reorder was not
+  // the whole bug. `id` is source:token:externalId, so ordering by id orders by
+  // VENDOR, and every vendor sorts before "workday" — an empty cursor made hop
+  // one scan ~300k non-matching rows and time out. Every later hop would have
+  // been fine, so it could only fail at the one hop it could never get past.
+  // Cursor now seeds to `workday:`, the walk is bounded above at `workday;`,
+  // and the progress row is stamped BEFORE the work so a dead hop stops looking
+  // identical to a hop that was never kicked. sources.ts UNCHANGED.
   sourcesHash: "6bac7c8103784266",
-  buildVersion: "2026-08-12.2",
+  buildVersion: "2026-08-12.3",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {

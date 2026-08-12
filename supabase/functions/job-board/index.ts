@@ -98,7 +98,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-12.2";
+const BUILD_VERSION = "2026-08-12.3";
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -4664,7 +4664,34 @@ Deno.serve(async (req) => {
         return json({ ok: true, done: true });
       }
       const sVendor = STRUCTURED_SWEEP_SOURCES[vi];
-      const cursor = String(body.cursor ?? "");
+      // STAMP BEFORE THE WORK, NOT AFTER.
+      //
+      // This lane originally wrote its meta row only at the END of a
+      // successful hop, so a hop that died left status all-null — identical to
+      // "never kicked". It cost two deploys to tell those apart: the kick is
+      // fire-and-forget through waitUntil with a `.catch(() => {})`, so a
+      // failing action is invisible from both ends at once. desc-sweep stamps
+      // `runningVi` up front for exactly this reason.
+      await client.from("job_board_meta").upsert(
+        { k: "structured_sweep", v: { vendor: sVendor, running: true, at: new Date().toISOString() }, updated_at: new Date().toISOString() },
+        { onConflict: "k" },
+      );
+      // SEED THE CURSOR TO THE VENDOR'S RANGE, and this is why the first hop
+      // kept dying.
+      //
+      // `id` is `source:token:externalId`, so ordering by id orders by vendor
+      // first — and every vendor we carry sorts BEFORE "workday": ashby,
+      // bamboohr, breezy, greenhouse, icims, lever, oracle, personio, pinpoint,
+      // recruitee, rippling, smartrecruiters, teamtailor, workable. Starting an
+      // empty cursor at the beginning of the table meant the first hop had to
+      // walk roughly 300,000 rows that fail `source = 'workday'` before
+      // reaching a single candidate, and it timed out every time.
+      //
+      // Every LATER hop was fine, because by then the cursor was already inside
+      // the vendor's range — which is the nastiest shape for this: the lane
+      // would have worked perfectly from hop two onward and could never reach
+      // hop two.
+      const cursor = String(body.cursor ?? "") || `${sVendor}:`;
       // description IS NOT NULL is the POINT, not an optimisation: those are
       // exactly the rows desc-sweep can never revisit. Rows still lacking a
       // description are already its job and will pick up the same structured
@@ -4677,6 +4704,16 @@ Deno.serve(async (req) => {
         .not("description", "is", null)
         .is("work_mode", null)
         .order("id", { ascending: true })
+        // BOUNDED AT BOTH ENDS. `gt` seeds the walk at this vendor's range;
+        // `lt` stops it leaving. ";" is the byte after ":", so `workday;` is
+        // the first id that cannot belong to workday.
+        //
+        // Without the upper bound the final hop of a vendor walks the entire
+        // remainder of the table — every row failing `source = ?` — to prove
+        // there is nothing left. Today workday sorts last so that remainder is
+        // empty and the bug would not show; add one vendor after it and the
+        // lane inherits the same timeout that the missing lower bound caused.
+        .lt("id", `${sVendor};`)
         .limit(DESC_SWEEP_PER_HOP);
       if (cursor) sel = sel.gt("id", cursor);
       const { data: sRows, error: sErr } = await sel;

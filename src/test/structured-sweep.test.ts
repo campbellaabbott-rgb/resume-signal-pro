@@ -64,6 +64,50 @@ describe("the recovery lane reaches the rows desc-sweep cannot", () => {
       .toMatch(/\.is\("work_mode", null\)/);
   });
 
+  it("seeds an empty cursor to the vendor's own id range", () => {
+    // THE BUG THAT KILLED THE FIRST HOP, TWICE.
+    //
+    // `id` is `source:token:externalId`, so ordering by id orders by vendor
+    // first — and every vendor carried sorts BEFORE "workday" (ashby,
+    // bamboohr, breezy, greenhouse, icims, lever, oracle, personio, pinpoint,
+    // recruitee, rippling, smartrecruiters, teamtailor, workable). An empty
+    // cursor started the walk at row one and had to scan ~300,000 rows failing
+    // `source = 'workday'` before reaching a single candidate. It timed out
+    // every time.
+    //
+    // The shape is what made it hard to see: every hop AFTER the first would
+    // have been fine, because the cursor was by then inside the vendor range.
+    // The lane could only fail at hop one, and could never reach hop two.
+    expect(LANE).toMatch(/String\(body\.cursor \?\? ""\) \|\| `\$\{sVendor\}:`/);
+  });
+
+  it("bounds the walk above so it cannot leave the vendor's range", () => {
+    // The mirror of the same defect. Without it, a vendor's final hop scans the
+    // whole remainder of the table to prove nothing is left. Harmless today
+    // because workday sorts last; a vendor added after it inherits the timeout.
+    expect(LANE).toMatch(/\.lt\("id", `\$\{sVendor\};`\)/);
+  });
+
+  it("stamps its progress row BEFORE doing the work", () => {
+    // A hop that dies before its end-of-run stamp leaves status all-null, which
+    // is indistinguishable from "never kicked" — and the kick itself is
+    // fire-and-forget through waitUntil with a `.catch(() => {})`, so a failing
+    // action is invisible from both ends at once. That ambiguity cost two
+    // deploys. desc-sweep stamps `runningVi` up front for the same reason.
+    // Anchored on `running: true`, which only the start-stamp carries.
+    // A first version matched `k: "structured_sweep"` and passed while the
+    // start-stamp was deleted, because the DONE-stamp (in the vi-exhausted
+    // branch above) also matches and also precedes the select — caught by
+    // mutation. Two writes to the same meta key need distinguishing by their
+    // payload, not by the key they share.
+    const stampAt = LANE.indexOf("running: true");
+    const selectAt = LANE.indexOf("let sel = client");
+    expect(stampAt, "no start-of-hop progress stamp in the lane").toBeGreaterThan(-1);
+    expect(selectAt, "the select is gone").toBeGreaterThan(-1);
+    expect(stampAt, "the lane stamps only after its work — a dead hop is invisible")
+      .toBeLessThan(selectAt);
+  });
+
   it("walks by cursor, because the predicate cannot clear itself", () => {
     // desc-sweep may re-select its gaps every hop: filling one removes it from
     // `description is null`. Here a posting whose detail states no remoteType
