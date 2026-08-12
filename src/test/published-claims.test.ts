@@ -782,7 +782,9 @@ describe("Ghost Job Index age stats use the company's date, not our discovery ti
       ).toMatch(new RegExp(`jsonb_typeof\\(payload -> '${part}'\\) = 'null'`));
     }
     // …and the guard must restore the previous value, not just rename it.
-    expect(cache).toMatch(/stale := stale \|\| 'ghost_stats';\s*\n\s*payload := payload \|\| jsonb_build_object\('ghost_stats', prev -> 'ghost_stats'\);\s*\n\s*END IF;/);
+    // The label may carry ::text — required since 2026-08-12, when an uncast
+    // literal resolved as an array literal and killed the handler itself.
+    expect(cache).toMatch(/stale := stale \|\| 'ghost_stats'(?:::text)?;\s*\n\s*payload := payload \|\| jsonb_build_object\('ghost_stats', prev -> 'ghost_stats'\);\s*\n\s*END IF;/);
   });
 
   it("the ghost rollup always writes a row, even when parts fail", () => {

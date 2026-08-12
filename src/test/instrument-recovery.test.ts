@@ -309,3 +309,44 @@ describe("a timeout is what WHEN OTHERS does not catch", () => {
     expect(sql).toMatch(/FUNCTION public\.refresh_explore_cache[\s\S]*?SET statement_timeout = '15min'/);
   });
 });
+
+describe("the labels are cast everywhere, not where it fired", () => {
+  // 19:05, the first tick where a handler actually fired: "malformed array
+  // literal: counts". An unknown-typed literal on || can resolve toward
+  // anyarray || anyarray, so the label parses as an array literal and the
+  // HANDLER ITSELF dies — a bug unreachable for three days because handlers
+  // could not fire at all, surfaced the moment they could.
+  const sql = strip(readFileSync(
+    resolve(MIG, "20260812230000_cast_the_labels_everywhere_not_where_it_fired.sql"), "utf8"));
+
+  it("no stale-label concatenation is left uncast", () => {
+    // Checked on the comment-stripped file: the header QUOTES the failing
+    // line, and an assertion satisfied-or-failed by prose is the trap this
+    // suite keeps refusing.
+    const uncast = [...sql.matchAll(/stale := stale \|\| '[a-z_]+'(?!::text)/g)];
+    expect(uncast.map((m) => m[0]), "these labels can kill their own handler").toEqual([]);
+    const cast = (sql.match(/stale := stale \|\| '[a-z_]+'::text/g) ?? []).length;
+    expect(cast, "the cast sites vanished — wrong file?").toBeGreaterThanOrEqual(15);
+  });
+
+  it("the transparency refresh now degrades like its siblings", () => {
+    // Written hours before the QUERY_CANCELED lesson, it shipped with no
+    // handlers at all: one slow callee killed the run whole, and the cache
+    // sat on its 17:47 prime through the 18:37 tick.
+    const t = sql.slice(sql.indexOf("FUNCTION public.refresh_transparency_cache"));
+    const blocks = [...t.matchAll(/EXCEPTION[\s\S]*?\n\s*END;/g)];
+    expect(blocks.length, "transparency sections lost their handlers").toBeGreaterThanOrEqual(2);
+    for (const [i, b] of blocks.entries()) {
+      expect(b[0], `transparency block ${i} cannot catch a timeout`).toContain("WHEN QUERY_CANCELED THEN");
+    }
+    expect(t).toMatch(/'stale_parts', to_jsonb\(stale\)/);
+    expect(t).toMatch(/prev -> 'pay'/);
+    expect(t).toMatch(/prev -> 'coverage'/);
+  });
+
+  it("the re-asserted refreshers keep their own budgets", () => {
+    expect(sql).toMatch(/FUNCTION public\.refresh_stats_cache[\s\S]*?SET statement_timeout = '5min'/);
+    expect(sql).toMatch(/FUNCTION public\.refresh_explore_cache[\s\S]*?SET statement_timeout = '15min'/);
+    expect(sql).toMatch(/FUNCTION public\.refresh_transparency_cache[\s\S]*?SET statement_timeout = '3min'/);
+  });
+});
