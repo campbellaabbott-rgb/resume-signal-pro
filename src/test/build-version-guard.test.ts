@@ -95,8 +95,14 @@ const PINNED = {
   // Cursor now seeds to `workday:`, the walk is bounded above at `workday;`,
   // and the progress row is stamped BEFORE the work so a dead hop stops looking
   // identical to a hop that was never kicked. sources.ts UNCHANGED.
+  // 2026-08-12.5 (.4 was minted and reverted with the backlog-policy change):
+  // structured-sweep totals become CUMULATIVE through the chain and the
+  // done-stamp reports {doneAt, scanned, filled} instead of erasing the pass's
+  // evidence — the first real pass finished in ~7 minutes and left a bare
+  // {doneAt}, making "small eligible set" and "early termination"
+  // indistinguishable. sources.ts UNCHANGED.
   sourcesHash: "6bac7c8103784266",
-  buildVersion: "2026-08-12.3",
+  buildVersion: "2026-08-12.5",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {

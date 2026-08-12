@@ -295,3 +295,23 @@ describe("the work-mode count index carries both serving predicates", () => {
     expect(sql).toMatch(/CREATE INDEX CONCURRENTLY IF NOT EXISTS/);
   });
 });
+
+describe("a finished pass reports itself instead of erasing itself", () => {
+  // The first real pass wrote a bare {doneAt} over its own tallies, which made
+  // "the eligible set was genuinely small" and "the walk terminated early"
+  // indistinguishable from outside — forcing exactly the forensics the status
+  // surface exists to prevent.
+  it("carries cumulative totals through the chain body", () => {
+    expect(CODE).toMatch(/passScanned = Math\.max\(0, Number\(body\.passScanned\) \|\| 0\)/);
+    expect(CODE).toMatch(/const cumScanned = passScanned \+ sSeen;/);
+    expect(CODE).toMatch(/passScanned: cumScanned, passFilled: cumFilled,/);
+  });
+
+  it("the done-stamp keeps the pass's numbers", () => {
+    expect(CODE).toMatch(/doneAt: new Date\(\)\.toISOString\(\), scanned: passScanned, filled: passFilled/);
+  });
+
+  it("the progress stamp reports the pass, not the hop", () => {
+    expect(CODE).toMatch(/scanned: cumScanned, filled: cumFilled, at:/);
+  });
+});

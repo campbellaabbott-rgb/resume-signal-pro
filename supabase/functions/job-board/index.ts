@@ -98,7 +98,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-12.3";
+const BUILD_VERSION = "2026-08-12.5";
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -4656,12 +4656,26 @@ Deno.serve(async (req) => {
         return json({ error: "structured-sweep is a maintenance action" }, 403);
       }
       let vi = Math.max(0, Number(body.vi) || 0);
+      // Cumulative pass totals, carried THROUGH THE CHAIN body. Each hop's
+      // progress stamp used to hold only that hop's numbers, and the done
+      // branch then overwrote the row with a bare {doneAt} — so a completed
+      // pass ERASED its own evidence. Measured 2026-08-12: the first real
+      // pass finished in ~7 minutes and left {doneAt} and nothing else, which
+      // made "the eligible set was genuinely small" and "the walk terminated
+      // early" indistinguishable from the outside. A pass that cannot report
+      // what it did forces exactly the forensics it exists to prevent.
+      const passScanned = Math.max(0, Number(body.passScanned) || 0);
+      const passFilled = Math.max(0, Number(body.passFilled) || 0);
       if (vi >= STRUCTURED_SWEEP_SOURCES.length) {
         await client.from("job_board_meta").upsert(
-          { k: "structured_sweep", v: { doneAt: new Date().toISOString() }, updated_at: new Date().toISOString() },
+          {
+            k: "structured_sweep",
+            v: { doneAt: new Date().toISOString(), scanned: passScanned, filled: passFilled },
+            updated_at: new Date().toISOString(),
+          },
           { onConflict: "k" },
         );
-        return json({ ok: true, done: true });
+        return json({ ok: true, done: true, scanned: passScanned, filled: passFilled });
       }
       const sVendor = STRUCTURED_SWEEP_SOURCES[vi];
       // STAMP BEFORE THE WORK, NOT AFTER.
@@ -4771,11 +4785,16 @@ Deno.serve(async (req) => {
       const nextCursor = sQueue.length ? sQueue[sQueue.length - 1].id : "";
       const sDone = sQueue.length < DESC_SWEEP_PER_HOP;
       if (sDone) vi += 1;
+      // Totals are CUMULATIVE across the pass, not per-hop: the progress row
+      // and the done-stamp both report what the whole pass has done so far, so
+      // finishing no longer erases the evidence of what finished.
+      const cumScanned = passScanned + sSeen;
+      const cumFilled = passFilled + sFilled;
       await client.from("job_board_meta").upsert({
         k: "structured_sweep",
         v: {
           vendor: sVendor, cursor: sDone ? "" : nextCursor,
-          scanned: sSeen, filled: sFilled, at: new Date().toISOString(),
+          scanned: cumScanned, filled: cumFilled, at: new Date().toISOString(),
         },
         updated_at: new Date().toISOString(),
       }, { onConflict: "k" });
@@ -4783,9 +4802,13 @@ Deno.serve(async (req) => {
       waitUntil(chainKey().then((key) => fetch(sUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "structured-sweep", chainKey: key, vi, cursor: sDone ? "" : nextCursor }),
+        body: JSON.stringify({
+          action: "structured-sweep", chainKey: key, vi,
+          cursor: sDone ? "" : nextCursor,
+          passScanned: cumScanned, passFilled: cumFilled,
+        }),
       })).then((rr) => rr.text()).catch(() => {}));
-      return json({ ok: true, vendor: sVendor, scanned: sQueue.length, filled: sFilled, nextCursor: sDone ? "" : nextCursor, nextVi: vi });
+      return json({ ok: true, vendor: sVendor, scanned: cumScanned, filled: cumFilled, nextCursor: sDone ? "" : nextCursor, nextVi: vi });
     }
 
     if (action === "report") {
