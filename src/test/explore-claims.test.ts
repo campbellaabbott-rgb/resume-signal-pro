@@ -1301,3 +1301,56 @@ describe("every answer states the pool it was drawn from, and zero is silence", 
     }
   });
 });
+
+describe("the refresh budget covers the scans it runs", () => {
+  /** '4min' -> 240, '90s' -> 90. Anything else is a parse failure, not a zero:
+   *  silently reading an unrecognised unit as 0 would make this whole test
+   *  pass by measuring nothing. */
+  const secs = (v: string): number => {
+    const m = v.match(/^(\d+)\s*(s|min)$/);
+    if (!m) throw new Error(`unparseable statement_timeout: ${v}`);
+    return Number(m[1]) * (m[2] === "min" ? 60 : 1);
+  };
+
+  const timeoutOf = (fn: string): number => {
+    const sql = latestWith(`FUNCTION public.${fn}`).replace(/^\s*--.*$/gm, "");
+    const start = sql.indexOf(`FUNCTION public.${fn}`);
+    // Header only — from the signature to the body opener. A statement_timeout
+    // set on some LATER function in the same file must not be read as this
+    // one's, which is what an unbounded slice would do.
+    const head = sql.slice(start, sql.indexOf("AS $$", start));
+    const m = head.match(/statement_timeout = '([^']+)'/);
+    return m ? secs(m[1]) : 0;
+  };
+
+  it("the outer ceiling is at least the sum of every inner ceiling", () => {
+    // A CALLEE'S OWN statement_timeout OVERRIDES THE CALLER'S — proved on this
+    // codebase when a 90s caller ran a function that capped itself at 25s and
+    // died at 25.46s. So each scan below is capped individually and NOTHING
+    // caps their sum but the outer value. When the sum exceeds it, a slow hour
+    // aborts the whole function and rolls back the INSERT: every collection
+    // lost, including the healthy ones, presenting as a frozen page with no
+    // error a reader could see.
+    //
+    // This commit added 270s of new worst case (denominators 180 + index 90)
+    // to a 600s ceiling that already carried 415s. Derived from the source
+    // rather than pinned, so adding a scan fails here instead of at 03:07.
+    const sql = latestWith("FUNCTION public.refresh_explore_cache").replace(/^\s*--.*$/gm, "");
+    const start = sql.indexOf("FUNCTION public.refresh_explore_cache");
+    const body = sql.slice(start, sql.indexOf("$$;", start));
+
+    const outer = timeoutOf("refresh_explore_cache");
+    expect(outer, "refresh_explore_cache has no statement_timeout at all").toBeGreaterThan(0);
+
+    const called = [...new Set([...body.matchAll(/public\.(get_[a-z_]+)\s*\(/g)].map((m) => m[1]))];
+    expect(called.length, "no callees found — the regex broke").toBeGreaterThan(5);
+
+    const inner = called.map((fn) => [fn, timeoutOf(fn)] as const);
+    for (const [fn, t] of inner) {
+      expect(t, `${fn} has no statement_timeout, so it is unbounded inside the refresh`).toBeGreaterThan(0);
+    }
+    const sum = inner.reduce((a, [, t]) => a + t, 0);
+    expect(outer, `inner ceilings total ${sum}s but the refresh budget is ${outer}s: ` +
+      inner.map(([f, t]) => `${f}=${t}s`).join(", ")).toBeGreaterThanOrEqual(sum);
+  });
+});

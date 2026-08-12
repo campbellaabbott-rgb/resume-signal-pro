@@ -215,7 +215,23 @@ COMMENT ON FUNCTION public.get_explore_denominators() IS
 CREATE OR REPLACE FUNCTION public.refresh_explore_cache()
 RETURNS void
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
-SET statement_timeout = '10min'
+-- 15min, RAISED FROM 10 BECAUSE THIS COMMIT ADDED 4.5 MINUTES OF WORST CASE.
+--
+-- A callee's own SET statement_timeout OVERRIDES the caller's, so each scan
+-- below is individually capped — but nothing caps their SUM except this line,
+-- and the sum is what this budget has to cover:
+--
+--   transparent 240s + denominators 180s + repost_index 90s + hiring 60s
+--   + segments 30s + entry 20s + salary 20s + churn 15s + trending 15s
+--   + newest 15s                                              = 685s (11.4min)
+--
+-- Against the old 10min ceiling a worst-case hour would abort the whole
+-- function and roll back the INSERT — losing every collection, including the
+-- eight that were healthy, to make room for two new ones. The failure would
+-- present as a frozen Explore page with no error anywhere a reader could see.
+--
+-- If a scan is added below, add its ceiling here first.
+SET statement_timeout = '15min'
 AS $$
 DECLARE
   payload jsonb;
