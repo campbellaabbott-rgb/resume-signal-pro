@@ -110,8 +110,12 @@ const PINNED = {
   // is truncated in the REST query string (proven live: lt.workday; matches
   // zero rows, lt.workday~ matches), so the bounded window was empty and two
   // passes stamped doneAt over 148,776 untouched rows. sources.ts UNCHANGED.
+  // 2026-08-12.8: structured-sweep hop 120 -> 24 (id-ordered hops cluster on
+  // one tenant; a hanging board = 15 waves x 20s = past the wall clock — two
+  // passes died mid-hop), and the start-stamp carries its cursor so a dead
+  // hop resumes in place instead of from the range start. sources.ts UNCHANGED.
   sourcesHash: "6bac7c8103784266",
-  buildVersion: "2026-08-12.7",
+  buildVersion: "2026-08-12.8",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {

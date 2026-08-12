@@ -98,7 +98,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-12.7";
+const BUILD_VERSION = "2026-08-12.8";
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -218,6 +218,16 @@ const DESC_SWEEP_CONCURRENCY = 8;
 // writing that branch first — an entry without one would walk the vendor's
 // whole corpus fetching details and filling nothing.
 const STRUCTURED_SWEEP_SOURCES: readonly string[] = ["workday"];
+// 24, NOT desc-sweep's 120 — and the difference is the walk order, measured
+// the hard way. desc-sweep orders by posted_at DESC, so every hop mixes
+// tenants and one dead board costs a few of its 120 fetches. This lane walks
+// by id, and ids cluster BY TENANT — a hop parked on one hanging Workday
+// board serializes into ceil(120/8) waves x FETCH_TIMEOUT_MS (20s) = 300+
+// seconds, past the isolate's wall clock. Two live passes died exactly this
+// way (start-stamp at 21:23 and 21:44, no end-of-hop report either time).
+// At 24 rows the worst case is 3 waves x 20s = ~60s: the hop survives a
+// fully dead tenant, skips it, and the cursor moves on.
+const STRUCTURED_SWEEP_PER_HOP = 24;
 // Slice sizes are calibrated to the per-invocation compute budget. Hot
 // slices are UNIFORMLY giant boards (that's what makes them hot), so they
 // must be much smaller than the old mixed slices: the first tiered deploy
@@ -4691,10 +4701,6 @@ Deno.serve(async (req) => {
       // fire-and-forget through waitUntil with a `.catch(() => {})`, so a
       // failing action is invisible from both ends at once. desc-sweep stamps
       // `runningVi` up front for exactly this reason.
-      await client.from("job_board_meta").upsert(
-        { k: "structured_sweep", v: { vendor: sVendor, running: true, at: new Date().toISOString() }, updated_at: new Date().toISOString() },
-        { onConflict: "k" },
-      );
       // SEED THE CURSOR TO THE VENDOR'S RANGE, and this is why the first hop
       // kept dying.
       //
@@ -4711,6 +4717,15 @@ Deno.serve(async (req) => {
       // would have worked perfectly from hop two onward and could never reach
       // hop two.
       const cursor = String(body.cursor ?? "") || `${sVendor}:`;
+      // The start-stamp CARRIES ITS CURSOR. Without it, a hop that dies
+      // mid-flight leaves a row with no cursor, the re-kick reads "" and the
+      // next attempt restarts from the RANGE START — measured: two dead hops
+      // in a row both began again at workday:2020companies. With it, a death
+      // resumes from the hop it died in.
+      await client.from("job_board_meta").upsert(
+        { k: "structured_sweep", v: { vendor: sVendor, running: true, cursor, at: new Date().toISOString() }, updated_at: new Date().toISOString() },
+        { onConflict: "k" },
+      );
       // description IS NOT NULL is the POINT, not an optimisation: those are
       // exactly the rows desc-sweep can never revisit. Rows still lacking a
       // description are already its job and will pick up the same structured
@@ -4746,7 +4761,7 @@ Deno.serve(async (req) => {
         // empty and the bug would not show; add one vendor after it and the
         // lane inherits the same timeout that the missing lower bound caused.
         .lt("id", `${sVendor}~`)
-        .limit(DESC_SWEEP_PER_HOP);
+        .limit(STRUCTURED_SWEEP_PER_HOP);
       if (cursor) sel = sel.gt("id", cursor);
       const { data: sRows, error: sErr } = await sel;
       if (sErr) throw sErr;
@@ -4801,7 +4816,7 @@ Deno.serve(async (req) => {
       // lane re-reads the same page forever. This is the same failure desc-sweep
       // guards with `updated === 0`, in the form a keyset walk takes.
       const nextCursor = sQueue.length ? sQueue[sQueue.length - 1].id : "";
-      const sDone = sQueue.length < DESC_SWEEP_PER_HOP;
+      const sDone = sQueue.length < STRUCTURED_SWEEP_PER_HOP;
       if (sDone) vi += 1;
       // Totals are CUMULATIVE across the pass, not per-hop: the progress row
       // and the done-stamp both report what the whole pass has done so far, so

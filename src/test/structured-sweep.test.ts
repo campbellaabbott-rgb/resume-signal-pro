@@ -58,7 +58,7 @@ describe("the recovery lane reaches the rows desc-sweep cannot", () => {
     // `.is("work_mode", null)` guard and satisfied the regex on its own —
     // caught by mutation, and it is the difference between "walks the gaps" and
     // "walks all 306k Workday rows re-fetching details for nothing".
-    const sel = LANE.slice(LANE.indexOf("let sel = client"), LANE.indexOf(".limit(DESC_SWEEP_PER_HOP)"));
+    const sel = LANE.slice(LANE.indexOf("let sel = client"), LANE.indexOf(".limit(STRUCTURED_SWEEP_PER_HOP)"));
     expect(sel.length, "the select chain slice is empty").toBeGreaterThan(60);
     expect(sel, "the lane no longer filters to rows missing a work mode")
       .toMatch(/\.is\("work_mode", null\)/);
@@ -108,6 +108,9 @@ describe("the recovery lane reaches the rows desc-sweep cannot", () => {
     // mutation. Two writes to the same meta key need distinguishing by their
     // payload, not by the key they share.
     const stampAt = LANE.indexOf("running: true");
+    // ...and it carries its cursor: two dead hops both restarted from the
+    // range start because the re-kick found a cursorless row.
+    expect(LANE).toMatch(/running: true, cursor,/);
     const selectAt = LANE.indexOf("let sel = client");
     expect(stampAt, "no start-of-hop progress stamp in the lane").toBeGreaterThan(-1);
     expect(selectAt, "the select is gone").toBeGreaterThan(-1);
@@ -325,5 +328,21 @@ describe("a finished pass reports itself instead of erasing itself", () => {
 
   it("the progress stamp reports the pass, not the hop", () => {
     expect(CODE).toMatch(/scanned: cumScanned, filled: cumFilled, at:/);
+  });
+});
+
+describe("hops are sized for the walk order they actually use", () => {
+  it("a hop survives one fully dead tenant", () => {
+    // The id-ordered walk clusters each hop on a single tenant, so hop cost
+    // under a hanging board is ceil(N/8) waves x 20s fetch timeout. Two live
+    // passes died at N=120 (300s, past the isolate wall clock). The bound:
+    // ceil(N/8) x 20s must stay under ~90s.
+    const m = /const STRUCTURED_SWEEP_PER_HOP = (\d+);/.exec(CODE);
+    expect(m, "the lane lost its own hop size").toBeTruthy();
+    const n = Number(m![1]);
+    expect(Math.ceil(n / 8) * 20, "a dead tenant kills the hop again").toBeLessThanOrEqual(90);
+    expect(n, "hops too small to finish 148k rows in days").toBeGreaterThanOrEqual(16);
+    expect(LANE).toMatch(/\.limit\(STRUCTURED_SWEEP_PER_HOP\)/);
+    expect(LANE).toMatch(/sQueue\.length < STRUCTURED_SWEEP_PER_HOP/);
   });
 });
