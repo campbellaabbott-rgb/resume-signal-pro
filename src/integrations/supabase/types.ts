@@ -3650,6 +3650,7 @@ export type Database = {
         }[]
       }
       get_today_scan_count: { Args: never; Returns: number }
+      get_transparency_cache: { Args: never; Returns: Json }
       get_transparency_coverage: { Args: never; Returns: Json }
       get_transparent_employers: { Args: { p_limit?: number }; Returns: Json }
       get_trending_categories: {
@@ -3966,6 +3967,7 @@ export type Database = {
       refresh_job_board_facets: { Args: never; Returns: Json }
       refresh_job_board_stats: { Args: never; Returns: undefined }
       refresh_stats_cache: { Args: never; Returns: undefined }
+      refresh_transparency_cache: { Args: never; Returns: undefined }
       register_affiliate: {
         Args: { p_email: string; p_password: string }
         Returns: Json
