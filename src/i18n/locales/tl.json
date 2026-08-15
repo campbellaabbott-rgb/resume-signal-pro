@@ -55,7 +55,9 @@
     "headline": {
       "get": "Ang job board na may",
       "recruiterGrade": "zero ghost jobs",
-      "feedback": "— 550,000+ verified na trabaho, tugma sa resume mo"
+      "feedback": "— 550,000+ verified na trabaho, tugma sa resume mo",
+      "feedbackLive": "— {{n}}+ beripikadong bakante, itinugma sa resume mo",
+      "feedbackPlain": "— bawat bakante beripikado, itinugma sa resume mo"
     },
     "description": "I-upload ang iyong resume at makakuha ng ATS-optimized rewrites, red-flag warnings, at keyword improvements — gaya ng tunay na pag-review ng hiring managers.",
     "benefits": {
@@ -146,7 +148,9 @@
     "factNoStorage": "Hindi kailanman iniimbak o ibinabahagi",
     "measureStrip": "Sukat, hindi opinyon · Bawat sipi beripikado · Iskor na nagpapakita ng trabaho nito",
     "jobsCta": "Live na job board — i-check ang fit mo bago mag-apply →",
-    "browseJobs": "Tingnan ang 550,000+ verified na trabaho"
+    "browseJobs": "Tingnan ang 550,000+ verified na trabaho",
+    "browseJobsLive": "Tingnan ang {{n}}+ beripikadong trabaho",
+    "browseJobsPlain": "Tingnan ang beripikadong job board"
   },
   "footer": {
     "copyright": "© {{year}} Resume Booster. Lahat ng karapatan ay nakalaan.",

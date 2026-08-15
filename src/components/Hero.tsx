@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useScanTotals } from "@/hooks/use-scan-totals";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useTranslation } from "react-i18next";
+import { useBoardTotals, roundedFloor } from "@/hooks/use-board-totals";
 import { useCurrency } from "@/hooks/use-currency";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { PRODUCTS } from "@/config/products";
@@ -151,6 +152,7 @@ function AddOnsTeaser() {
 
 export function Hero({ onFileSelect }: { onFileSelect?: (file: File) => void | Promise<void> }) {
   const { t } = useTranslation();
+  const boardTotals = useBoardTotals();
   const { formatPrice, isLocalCurrency } = useCurrency();
   const isMobile = useIsMobile();
   const [showAtsInfo, setShowAtsInfo] = useState(false);
@@ -222,7 +224,15 @@ export function Hero({ onFileSelect }: { onFileSelect?: (file: File) => void | P
           className={`group relative w-full sm:w-auto inline-flex items-center justify-center gap-3 rounded-2xl bg-gradient-to-r from-primary via-primary to-blue-500 text-primary-foreground font-bold shadow-xl shadow-primary/30 hover:shadow-2xl hover:shadow-primary/40 active:scale-[0.98] transition-all duration-300 touch-manipulation ${sizeClasses[size]}`}
         >
           <Briefcase className={iconSize[size]} />
-          <span>{t('hero.browseJobs', 'Browse 550,000+ verified jobs')}</span>
+          {/* LIVE, OR NO NUMBER AT ALL. This read "Browse 550,000+ verified
+              jobs" while the board served 603,904 — true, frozen, and
+              understating the product by ~54,000 roles in the direction that
+              makes it look smaller. New key, because a locale value overrides
+              an inline default and the nine translated copies of the old
+              string would have kept rendering the stale figure. */}
+          <span>{boardTotals
+            ? t('hero.browseJobsLive', 'Browse {{n}}+ verified jobs', { n: roundedFloor(boardTotals.jobs).toLocaleString() })
+            : t('hero.browseJobsPlain', 'Browse the verified job board')}</span>
         </Link>
         <button
           onClick={handleFreeScanClick}
@@ -358,13 +368,15 @@ export function Hero({ onFileSelect }: { onFileSelect?: (file: File) => void | P
 
             {/* Headline - slightly smaller to emphasize social proof */}
             <div className="mb-4 animate-fade-in" style={{ animationDelay: "0.05s" }}>
-              <h1 id="hero-heading" className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold tracking-tight mb-3 leading-tight">
+              <h2 id="hero-heading" className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold tracking-tight mb-3 leading-tight">
                 {t('hero.headline.get', 'The job board with')}{" "}
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-success via-emerald-400 to-success">
                   {t('hero.headline.recruiterGrade', 'zero ghost jobs')}
                 </span>{" "}
-                {t('hero.headline.feedback', '— 550,000+ verified openings, matched to your resume')}
-              </h1>
+                {boardTotals
+                ? t('hero.headline.feedbackLive', '— {{n}}+ verified openings, matched to your resume', { n: roundedFloor(boardTotals.jobs).toLocaleString() })
+                : t('hero.headline.feedbackPlain', '— every opening verified, matched to your resume')}
+              </h2>
               <p className="text-sm sm:text-base text-muted-foreground max-w-xl mx-auto">
                 {t('hero.socialFirst.subheading')}
               </p>
@@ -432,13 +444,13 @@ export function Hero({ onFileSelect }: { onFileSelect?: (file: File) => void | P
                 <span className="text-xs text-muted-foreground uppercase tracking-wider">{t('hero.benefitLed.solutionLabel')}</span>
                 <div className="w-8 h-[2px] bg-muted-foreground/30" />
               </div>
-              <h1 id="hero-heading" className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight mb-2 leading-tight">
+              <h2 id="hero-heading" className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight mb-2 leading-tight">
                 {t('hero.headline.get', 'The job board with')}{" "}
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-success via-emerald-400 to-success">
                   {t('hero.benefitLed.solutionHeadingHighlight')}
                 </span>{" "}
                 {t('hero.benefitLed.solutionHeadingSuffix')}
-              </h1>
+              </h2>
               <p className="text-xs sm:text-sm text-muted-foreground max-w-lg mx-auto">
                 {t('hero.benefitLed.solutionSubheading')}
               </p>
@@ -483,7 +495,7 @@ export function Hero({ onFileSelect }: { onFileSelect?: (file: File) => void | P
               bullets, and chips render BELOW the CTA so the scan entry point
               is visible without scrolling. */}
           <div className={`animate-fade-in ${isUltraCompact ? 'mb-3' : isCompactLayout ? 'mb-4 sm:mb-6' : 'mb-8'}`} style={{ animationDelay: "0.05s" }}>
-            <h1
+            <h2
               id="hero-heading"
               className={`font-bold tracking-tight leading-tight ${
                 isUltraCompact 
@@ -497,8 +509,10 @@ export function Hero({ onFileSelect }: { onFileSelect?: (file: File) => void | P
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-success via-emerald-400 to-success">
                 {t('hero.headline.recruiterGrade', 'zero ghost jobs')}
               </span>{" "}
-              {t('hero.headline.feedback', '— 550,000+ verified openings, matched to your resume')}
-            </h1>
+              {boardTotals
+                ? t('hero.headline.feedbackLive', '— {{n}}+ verified openings, matched to your resume', { n: roundedFloor(boardTotals.jobs).toLocaleString() })
+                : t('hero.headline.feedbackPlain', '— every opening verified, matched to your resume')}
+            </h2>
             
             {/* Description - shorter for ultra-compact */}
             {isUltraCompact ? (

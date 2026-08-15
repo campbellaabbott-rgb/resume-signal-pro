@@ -102,3 +102,88 @@ describe("the matches panel acts on the CV and only on real data", () => {
     expect(panelCode).toMatch(/if \(query\.length < 3\) return;/);
   });
 });
+
+describe("the front page states one subject and no frozen totals", () => {
+  const HERO_C = readFileSync(resolve(__dirname, "../components/Hero.tsx"), "utf8");
+  const BOARD = readFileSync(resolve(__dirname, "../components/JobBoardHero.tsx"), "utf8");
+  const stripCode = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\{\/\*[\s\S]*?\*\/\}/g, "").replace(/^\s*\/\/.*$/gm, "");
+
+  it("exactly one h1 across the homepage heroes", () => {
+    // Three rendered h1s (agent, board, resume-tool) is a hierarchy a screen
+    // reader cannot navigate and three competing subjects to a crawler. The
+    // agent owns it since the 2026-08-13 redesign.
+    const counts = {
+      AgentHero: (HERO.match(/<h1[\s>]/g) ?? []).length,
+      JobBoardHero: (BOARD.match(/<h1[\s>]/g) ?? []).length,
+      Hero: (HERO_C.match(/<h1[\s>]/g) ?? []).length,
+    };
+    expect(counts.AgentHero, "the agent hero lost its h1").toBe(1);
+    expect(counts.JobBoardHero + counts.Hero, "a second h1 is back on the homepage").toBe(0);
+  });
+
+  it("no shipped surface hardcodes a board total", () => {
+    // "550,000+" sat in the headline, a CTA, the <title> and og: tags while the
+    // board served 603,904 — true, frozen, and understating the product by
+    // ~54,000 in the direction that makes it look smaller. Numbers about the
+    // board come from the board.
+    const surfaces: Array<[string, string]> = [
+      ["Hero.tsx", stripCode(HERO_C)],
+      ["JobBoardHero.tsx", stripCode(BOARD)],
+      ["AgentHero.tsx", stripCode(HERO)],
+      ["LiveMatches.tsx", stripCode(readFileSync(resolve(__dirname, "../components/LiveMatches.tsx"), "utf8"))],
+    ];
+    for (const [name, code] of surfaces) {
+      expect(code, `${name} hardcodes a stale board total`).not.toMatch(/550,000/);
+    }
+  });
+
+  it("the live claims degrade to count-free copy, never to a placeholder", () => {
+    const code = stripCode(HERO_C);
+    // Both live strings are ternaries against the fetched totals, with a
+    // sibling key that states the same thing without a number.
+    expect(code).toMatch(/boardTotals\s*\?[\s\S]{0,220}browseJobsLive[\s\S]{0,220}browseJobsPlain/);
+    expect(code).toMatch(/boardTotals\s*\?[\s\S]{0,260}feedbackLive[\s\S]{0,260}feedbackPlain/);
+  });
+
+  it("interpolates on `n`, never `count`", () => {
+    // i18next reserves `count` for plural selection: passing it changes which
+    // plural form resolves and forces a number type. Caught by tsc when the
+    // first draft used it.
+    const code = stripCode(HERO_C);
+    expect(code).toMatch(/\{\{n\}\}\+ verified jobs/);
+    expect(code, "a board total is interpolated on the reserved `count` key")
+      .not.toMatch(/\{\{count\}\}\+ verified/);
+  });
+
+  it("rounds a published floor DOWN", () => {
+    const hook = readFileSync(resolve(__dirname, "../hooks/use-board-totals.ts"), "utf8");
+    // A rounded-UP figure claims roles that do not exist, and the "+" only
+    // reads as honest when the number under it is a floor.
+    expect(hook).toMatch(/Math\.floor\(n \/ step\) \* step/);
+    expect(hook, "rounding to NEAREST would publish roles the board does not have")
+      .not.toMatch(/Math\.round\(n \/ step\)/);
+  });
+
+  it("a failed totals read yields null, never zero", () => {
+    const hook = readFileSync(resolve(__dirname, "../hooks/use-board-totals.ts"), "utf8");
+    expect(hook).toMatch(/if \(jobs > 0\) setTotals/);
+  });
+});
+
+describe("the platform tallies survive every page state", () => {
+  it("render on the landing and post-scan screens too", () => {
+    // The agent+board band is replaced once a report exists (the report must
+    // lead). The fifteen platforms and their live counts are not pitch — they
+    // answer "where do these jobs come from" — so they get their own render
+    // in exactly the states the band does not cover.
+    expect(indexCode).toMatch(/\{\(landing \|\| freeKeywordResult\) && \([\s\S]{0,400}<AtsCoverage variant="strip" \/>/);
+  });
+
+  it("through the same component, not a second data path", () => {
+    // One source for the counts; a hand-rolled copy for the compact state is
+    // how two numbers for one quantity end up on the same site.
+    const strips = (indexCode.match(/<AtsCoverage variant="strip" \/>/g) ?? []).length;
+    expect(strips, "the strip is duplicated in Index").toBe(1);
+    expect(indexCode).toMatch(/<AtsCoverage \/>/); // the full variant, deeper in the page
+  });
+});

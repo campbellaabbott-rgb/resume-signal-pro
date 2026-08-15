@@ -55,7 +55,9 @@
     "headline": {
       "get": "The job board with",
       "recruiterGrade": "zero ghost jobs",
-      "feedback": "— 550,000+ verified openings, matched to your CV"
+      "feedback": "— 550,000+ verified openings, matched to your CV",
+      "feedbackLive": "— {{n}}+ verified openings, matched to your resume",
+      "feedbackPlain": "— every opening verified, matched to your resume"
     },
     "description": "Upload your CV and get ATS-optimised rewrites, red-flag warnings, and keyword improvements — written the way hiring managers actually review CVs.",
     "benefits": {
@@ -146,7 +148,9 @@
     "factNoStorage": "Never stored, never shared",
     "measureStrip": "Measurements, not opinions · Every quote verified · A score that shows its work",
     "jobsCta": "Live job board — check your fit before you apply →",
-    "browseJobs": "Browse 550,000+ verified jobs"
+    "browseJobs": "Browse 550,000+ verified jobs",
+    "browseJobsLive": "Browse {{n}}+ verified jobs",
+    "browseJobsPlain": "Browse the verified job board"
   },
   "footer": {
     "copyright": "© {{year}} CV Booster. All rights reserved.",

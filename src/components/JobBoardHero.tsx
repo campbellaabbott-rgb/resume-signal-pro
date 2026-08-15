@@ -70,7 +70,12 @@ export function JobBoardHero() {
             <span className="text-sm font-medium text-primary">{t("boardHero.badge", "Live job board")}</span>
           </div>
 
-          <h1
+          {/* h2, not h1: AgentHero owns the page's single h1 since the
+              2026-08-13 redesign. Three h1s on one document is a
+              hierarchy a screen reader cannot navigate and a signal
+              search engines read as three competing page subjects. The
+              visual weight is unchanged — this is a semantics fix. */}
+          <h2
             id="board-hero-heading"
             className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight leading-tight mb-4 animate-fade-in"
             style={{ animationDelay: "0.05s" }}
@@ -79,7 +84,7 @@ export function JobBoardHero() {
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-primary to-success">
               {t("boardHero.headlineHighlight", "actually a match for")}
             </span>
-          </h1>
+          </h2>
 
           <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed mb-5 animate-fade-in" style={{ animationDelay: "0.1s" }}>
             {t(

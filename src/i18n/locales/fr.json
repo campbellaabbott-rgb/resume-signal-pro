@@ -55,7 +55,9 @@
     "headline": {
       "get": "Le site d'emploi avec",
       "recruiterGrade": "zéro offre fantôme",
-      "feedback": "— plus de 550 000 offres vérifiées, adaptées à votre CV"
+      "feedback": "— plus de 550 000 offres vérifiées, adaptées à votre CV",
+      "feedbackLive": "— {{n}}+ offres vérifiées, comparées à votre CV",
+      "feedbackPlain": "— chaque offre vérifiée, comparée à votre CV"
     },
     "description": "Téléchargez votre CV et obtenez des réécritures optimisées ATS, des alertes red flags et des améliorations de mots-clés — comme les recruteurs évaluent réellement les CV.",
     "benefits": {
@@ -146,7 +148,9 @@
     "factNoStorage": "Jamais stockés, jamais partagés",
     "measureStrip": "Des mesures, pas des opinions · Chaque citation vérifiée · Un score qui montre son travail",
     "jobsCta": "Offres en direct — vérifiez votre adéquation avant de candidater →",
-    "browseJobs": "Parcourir 550 000+ offres vérifiées"
+    "browseJobs": "Parcourir 550 000+ offres vérifiées",
+    "browseJobsLive": "Parcourir {{n}}+ offres vérifiées",
+    "browseJobsPlain": "Parcourir le site d'offres vérifiées"
   },
   "footer": {
     "copyright": "© {{year}} Resume Booster. Tous droits réservés.",

@@ -61,7 +61,9 @@
     "headline": {
       "get": "The job board with",
       "recruiterGrade": "zero ghost jobs",
-      "feedback": "— 550,000+ verified openings, matched to your resume"
+      "feedback": "— 550,000+ verified openings, matched to your resume",
+      "feedbackLive": "— {{n}}+ verified openings, matched to your resume",
+      "feedbackPlain": "— every opening verified, matched to your resume"
     },
     "description": "Upload your resume and get ATS-optimized rewrites, red-flag warnings, and keyword improvements — written the way hiring managers actually review resumes.",
     "benefits": {
@@ -146,7 +148,9 @@
     "factNoStorage": "Never stored, never shared",
     "measureStrip": "Measurements, not opinions · Every quote verified · A score that shows its work",
     "jobsCta": "Live job board — check your fit before you apply →",
-    "browseJobs": "Browse 550,000+ verified jobs"
+    "browseJobs": "Browse 550,000+ verified jobs",
+    "browseJobsLive": "Browse {{n}}+ verified jobs",
+    "browseJobsPlain": "Browse the verified job board"
   },
   "footer": {
     "copyright": "© {{year}} Resume Booster. All rights reserved.",

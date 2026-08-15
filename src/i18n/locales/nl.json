@@ -55,7 +55,9 @@
     "headline": {
       "get": "Het vacaturebord met",
       "recruiterGrade": "nul spookvacatures",
-      "feedback": "— 550.000+ geverifieerde vacatures, gematcht met je cv"
+      "feedback": "— 550.000+ geverifieerde vacatures, gematcht met je cv",
+      "feedbackLive": "— {{n}}+ geverifieerde vacatures, afgestemd op uw cv",
+      "feedbackPlain": "— elke vacature geverifieerd, afgestemd op uw cv"
     },
     "description": "Upload je cv en krijg ATS-geoptimaliseerde herschrijvingen, red-flag waarschuwingen en keyword-verbeteringen — zoals hiring managers cv’s echt beoordelen.",
     "benefits": {
@@ -146,7 +148,9 @@
     "factNoStorage": "Nooit opgeslagen, nooit gedeeld",
     "measureStrip": "Metingen, geen meningen · Elk citaat geverifieerd · Een score die zijn werk laat zien",
     "jobsCta": "Live vacaturebank — check je match vóór je solliciteert →",
-    "browseJobs": "Bekijk 550.000+ geverifieerde vacatures"
+    "browseJobs": "Bekijk 550.000+ geverifieerde vacatures",
+    "browseJobsLive": "Bekijk {{n}}+ geverifieerde vacatures",
+    "browseJobsPlain": "Bekijk het geverifieerde vacaturebord"
   },
   "footer": {
     "copyright": "© {{year}} Resume Booster. Alle rechten voorbehouden.",

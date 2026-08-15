@@ -98,7 +98,7 @@ export function LiveMatches({ resumeText, industry }: { resumeText: string; indu
           to="/jobs"
           className="flex items-center justify-center gap-2 w-full rounded-xl bg-gradient-to-r from-primary via-primary to-blue-500 text-primary-foreground font-bold px-5 py-3.5 shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/35 active:scale-[0.99] transition-all"
         >
-          {t("freeResults.matches.openBoardFallback", "Open the live job board — 550,000+ verified openings, ranked against your resume")}
+          {t("freeResults.matches.openBoardFallback", "Open the live job board — 600,000+ verified openings, ranked against your resume")}
           <ArrowRight className="w-4 h-4 shrink-0" />
         </Link>
       </div>
@@ -161,7 +161,7 @@ export function LiveMatches({ resumeText, industry }: { resumeText: string; indu
             <ArrowRight className="w-4 h-4 shrink-0" />
           </Link>
           <p className="text-[11px] text-muted-foreground text-center mt-2">
-            {t("freeResults.matches.openBoardNote", "550,000+ verified openings · save searches, watch companies, track applications")}
+            {t("freeResults.matches.openBoardNote", "600,000+ verified openings · save searches, watch companies, track applications")}
           </p>
         </>
       )}

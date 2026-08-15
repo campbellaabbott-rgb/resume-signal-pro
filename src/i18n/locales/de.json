@@ -61,7 +61,9 @@
     "headline": {
       "get": "Die Jobbörse mit",
       "recruiterGrade": "null Geisterjobs",
-      "feedback": "— über 550.000 verifizierte Stellen, abgeglichen mit Ihrem Lebenslauf"
+      "feedback": "— über 550.000 verifizierte Stellen, abgeglichen mit Ihrem Lebenslauf",
+      "feedbackLive": "— {{n}}+ verifizierte Stellen, passend zu Ihrem Lebenslauf",
+      "feedbackPlain": "— jede Stelle verifiziert, passend zu Ihrem Lebenslauf"
     },
     "description": "Laden Sie Ihren Lebenslauf hoch und erhalten Sie ATS-optimierte Umschreibungen, Red-Flag-Warnungen und Keyword-Verbesserungen — so wie Personalverantwortliche Lebensläufe wirklich prüfen.",
     "benefits": {
@@ -146,7 +148,9 @@
     "factNoStorage": "Nie gespeichert, nie geteilt",
     "measureStrip": "Messungen statt Meinungen · Jedes Zitat verifiziert · Ein Score, der seine Arbeit zeigt",
     "jobsCta": "Live-Jobbörse — Passung prüfen, bevor Sie sich bewerben →",
-    "browseJobs": "550.000+ verifizierte Jobs ansehen"
+    "browseJobs": "550.000+ verifizierte Jobs ansehen",
+    "browseJobsLive": "{{n}}+ geprüfte Stellen durchsuchen",
+    "browseJobsPlain": "Geprüftes Stellenboard durchsuchen"
   },
   "footer": {
     "copyright": "© {{year}} Resume Booster. Alle Rechte vorbehalten.",

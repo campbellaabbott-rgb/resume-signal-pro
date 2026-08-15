@@ -55,7 +55,9 @@
     "headline": {
       "get": "O quadro de vagas com",
       "recruiterGrade": "zero vagas fantasma",
-      "feedback": "— mais de 550.000 vagas verificadas, combinadas com o seu currículo"
+      "feedback": "— mais de 550.000 vagas verificadas, combinadas com o seu currículo",
+      "feedbackLive": "— {{n}}+ vagas verificadas, comparadas com o seu CV",
+      "feedbackPlain": "— cada vaga verificada, comparada com o seu CV"
     },
     "description": "Carregue o seu currículo e receba reescritas otimizadas para ATS, alertas de red flags e melhorias de palavras‑chave — como recrutadores realmente avaliam currículos.",
     "benefits": {
@@ -146,7 +148,9 @@
     "factNoStorage": "Nunca armazenados, nunca compartilhados",
     "measureStrip": "Medições, não opiniões · Cada citação verificada · Uma pontuação que mostra seu trabalho",
     "jobsCta": "Mural de vagas ao vivo — cheque seu encaixe antes de se candidatar →",
-    "browseJobs": "Ver mais de 550.000 vagas verificadas"
+    "browseJobs": "Ver mais de 550.000 vagas verificadas",
+    "browseJobsLive": "Explore {{n}}+ vagas verificadas",
+    "browseJobsPlain": "Explore o mural verificado"
   },
   "footer": {
     "copyright": "© {{year}} Resume Booster. Todos os direitos reservados.",

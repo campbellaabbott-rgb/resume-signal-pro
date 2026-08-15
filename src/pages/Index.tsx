@@ -1706,8 +1706,8 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
         offers: { "@type": "Offer", price: "0", priceCurrency: "USD", description: "Free resume scan — no signup required" },
       }) }} />
       <SEO
-        title={landing?.title ?? "Resume Booster — Live Job Board: 550,000+ Verified Openings, Zero Ghost Jobs"}
-        description={landing?.description ?? "A live job board with zero ghost jobs: 550,000+ openings pulled straight from companies' own career systems, re-verified all day. Scan your resume free and see your match score on every posting."}
+        title={landing?.title ?? "Resume Booster — Live Job Board: 600,000+ Verified Openings, Zero Ghost Jobs"}
+        description={landing?.description ?? "A live job board with zero ghost jobs: 600,000+ openings pulled straight from companies' own career systems, re-verified all day. Scan your resume free and see your match score on every posting."}
         path={landing?.path ?? "/"}
       />
       {landing?.alternates && (
@@ -1760,6 +1760,26 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
               </div>
             </div>
           </>
+        )}
+
+        {/* THE PROVENANCE STRIP SURVIVES EVERY PAGE STATE.
+            The band above — agent hero, board hero, and the strip inside it —
+            is the landing experience and is deliberately replaced once a scan
+            report exists (the report has to lead; a visitor who just uploaded
+            a CV came for their result, not for the pitch). But the fifteen
+            platforms and their live counts are not pitch: they are the answer
+            to "where do these jobs come from", which is the first question a
+            sceptical reader has and the single strongest thing this product
+            can say. Gating them behind "hasn't scanned yet" meant the people
+            most likely to act on them — the ones who just engaged — were the
+            only ones who never saw them near the top.
+            So on landing variants and on the post-scan screen, the strip
+            renders on its own, compactly, above the fold. One row, same
+            component, same live counts, no second data path to drift. */}
+        {(landing || freeKeywordResult) && (
+          <section className="container pt-4 pb-1" aria-label={t('atsCoverage.stripHeading', 'Every job here comes straight from these systems')}>
+            <AtsCoverage variant="strip" />
+          </section>
         )}
         <Hero onFileSelect={handleFileSelect} />
 
