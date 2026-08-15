@@ -1887,26 +1887,31 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
           </section>
         )}
 
-        {/* What the free scan delivers — expectation-setting before upload,
-            hidden once a report is on screen */}
-        {!freeKeywordResult && <WhatYouGetSection />}
-
-        {/* Trust Indicators + How It Works — moved below the uploader so the
-            free scan is the first thing visitors can act on */}
-        <TrustIndicators />
-
-        {/* The platforms we read, named and counted, in the trust band rather
-            than 1,200 lines further down where this used to sit — below the
-            comparison table and the FAQ, which is to say below the point most
-            visitors stop scrolling. "Where do these jobs come from" is the first
-            question a sceptical reader has, and the answer is one of the
-            strongest things we can say, so it is answered here. Still AFTER the
-            uploader: the free scan stays the first thing anyone can act on.
+        {/* THE BOARD'S EVIDENCE NOW SITS WITH THE BOARD'S CLAIM.
+            Measured 2026-08-13: this section rendered at 17,816px on a 45,741px
+            page — nearly 40% down, behind two expectation-setting blocks. It is
+            the answer to "where do these jobs come from", which is the first
+            question a sceptical reader has about a board promising zero ghost
+            jobs, and it was arriving four thousand pixels after everything that
+            makes the promise.
+            Still AFTER the uploader — the free scan stays the first thing
+            anyone can act on, which is the one ordering rule this band has
+            always kept. What moved is everything that used to sit BETWEEN the
+            two: expectation-setting about the resume scan now follows the
+            provenance instead of delaying it.
             See src/config/ats-vendors.ts for why these are names and live
             counts rather than a coverage percentage. */}
         <section className="container py-12 border-t border-border">
           <AtsCoverage />
         </section>
+
+        {/* Trust Indicators + How It Works — below the uploader so the free
+            scan is the first thing visitors can act on */}
+        <TrustIndicators />
+
+        {/* What the free scan delivers — expectation-setting before upload,
+            hidden once a report is on screen */}
+        {!freeKeywordResult && <WhatYouGetSection />}
 
         <HowItWorks />
 
@@ -2139,19 +2144,25 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
           </section>
         )}
 
+        {/* PROOF BEFORE PERSUASION.
+            These two are measurements — what this system has actually observed,
+            and how real resumes actually score — and they sat BELOW 9,157px of
+            argument (analysis preview, comparison table, the ChatGPT rebuttal).
+            A reader who stops scrolling mid-argument, which is most of them,
+            never reached the evidence that the argument is true. Evidence is
+            cheaper to believe than assertion, so it goes first now; the
+            persuasion follows for readers who want the case made. */}
+        <SocialProof />
+
+        {/* Real corpus statistics — the transparency claim above, made concrete */}
+        <LiveScanStats />
+
         <AnalysisPreview />
 
         <ComparisonTable />
 
         {/* The question skeptics actually ask — answered honestly */}
         <WhyNotChatGPT />
-
-        <SocialProof />
-
-        {/* AtsCoverage moved UP into the trust band, just under TrustIndicators. */}
-
-        {/* Real corpus statistics — the transparency claim above, made concrete */}
-        <LiveScanStats />
 
         <FAQ />
 

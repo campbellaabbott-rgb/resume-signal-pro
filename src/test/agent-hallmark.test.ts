@@ -187,3 +187,37 @@ describe("the platform tallies survive every page state", () => {
     expect(indexCode).toMatch(/<AtsCoverage \/>/); // the full variant, deeper in the page
   });
 });
+
+describe("the page orders product, then evidence, then argument", () => {
+  // Measured 2026-08-13 on a 45,741px homepage: the board's own provenance
+  // rendered at 17,816px (40% down, behind two expectation-setting blocks) and
+  // the two measured-evidence sections sat below 9,157px of argument. A reader
+  // who stops scrolling mid-argument — most of them — reached neither.
+  const at = (needle: string) => {
+    const i = indexCode.indexOf(needle);
+    expect(i, `${needle} is gone from the homepage`).toBeGreaterThan(-1);
+    return i;
+  };
+
+  it("puts the board's provenance before the scan's expectation-setting", () => {
+    expect(at("<AtsCoverage />")).toBeLessThan(at("<WhatYouGetSection />"));
+  });
+
+  it("keeps the free scan actionable first — the one rule this band never breaks", () => {
+    // Provenance moved up, but not past the uploader: everything above it must
+    // still be something a visitor can act on.
+    expect(at("<ResumeUploader")).toBeLessThan(at("<AtsCoverage />"));
+  });
+
+  it("puts measured evidence ahead of the persuasion trio", () => {
+    const proof = Math.max(at("<SocialProof />"), at("<LiveScanStats />"));
+    for (const arg of ["<AnalysisPreview />", "<ComparisonTable />", "<WhyNotChatGPT />"]) {
+      expect(proof, `${arg} is back above the evidence for it`).toBeLessThan(at(arg));
+    }
+  });
+
+  it("still closes on the FAQ and the final call", () => {
+    expect(at("<WhyNotChatGPT />")).toBeLessThan(at("<FAQ />"));
+    expect(at("<FAQ />")).toBeLessThan(at("<FinalCTA"));
+  });
+});
