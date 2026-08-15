@@ -4479,5 +4479,18 @@
     "sendableBadge": "Der Agent kann diese einreichen",
     "ctaSetup": "Agenten darauf ansetzen",
     "ctaBrowse": "Alle durchsehen"
+  },
+  "homeHero": {
+    "badge": "Live-Stellenboard + KI-Bewerbungsagent",
+    "headlinePre": "Jede Stelle hier ist echt.",
+    "headlineHighlight": "Der Agent bewirbt sich für Sie.",
+    "sub": "Stellen direkt aus den Bewerbersystemen der Unternehmen — nie gescrapt, den ganzen Tag neu geprüft. Laden Sie Ihren Lebenslauf hoch: der Agent bewertet jede Stelle, schreibt jede Bewerbung ehrlich und reicht ein, wo Arbeitgeber es zulassen.",
+    "statOpenings": "verifizierte Stellen",
+    "statCompanies": "Unternehmen",
+    "statSendable": "kann der Agent für Sie einreichen",
+    "ctaPrimary": "Lebenslauf hochladen — kostenlos",
+    "ctaSecondary": "Board durchsuchen",
+    "reassure": "Kostenloser Scan · ohne Karte, ohne Anmeldung",
+    "exploreCta": "Arbeitgeber entdecken"
   }
 }

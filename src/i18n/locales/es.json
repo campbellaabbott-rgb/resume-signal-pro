@@ -4479,5 +4479,18 @@
     "sendableBadge": "El agente puede enviar esta",
     "ctaSetup": "Pon al agente con estas",
     "ctaBrowse": "Ver todas"
+  },
+  "homeHero": {
+    "badge": "Tablón en vivo + agente de IA",
+    "headlinePre": "Cada empleo aquí es real.",
+    "headlineHighlight": "El agente se postula por ti.",
+    "sub": "Vacantes directas de los sistemas de contratación de las empresas — nunca extraídas, revisadas todo el día. Sube tu CV y el agente las clasifica todas, escribe cada solicitud con honestidad y la envía donde el empleador lo permite.",
+    "statOpenings": "vacantes verificadas",
+    "statCompanies": "empresas",
+    "statSendable": "puede enviarlas el agente por ti",
+    "ctaPrimary": "Sube tu CV — gratis",
+    "ctaSecondary": "Explorar el tablón",
+    "reassure": "Análisis gratis · sin tarjeta, sin registro",
+    "exploreCta": "Descubrir empleadores"
   }
 }

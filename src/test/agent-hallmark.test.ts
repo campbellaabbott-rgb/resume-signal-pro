@@ -22,7 +22,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-const HERO = readFileSync(resolve(__dirname, "../components/AgentHero.tsx"), "utf8");
+const HERO = readFileSync(resolve(__dirname, "../components/HomeHero.tsx"), "utf8");
 const PANEL = readFileSync(resolve(__dirname, "../components/AgentMatchesPanel.tsx"), "utf8");
 const INDEX = readFileSync(resolve(__dirname, "../pages/Index.tsx"), "utf8");
 const JOBS = readFileSync(resolve(__dirname, "../pages/Jobs.tsx"), "utf8");
@@ -32,12 +32,34 @@ const panelCode = strip(PANEL);
 const indexCode = strip(INDEX);
 
 describe("the agent opens the page", () => {
-  it("renders before the board hero", () => {
-    const agentAt = indexCode.indexOf("<AgentHero />");
-    const boardAt = indexCode.indexOf("<JobBoardHero />");
-    expect(agentAt, "AgentHero is not on the page").toBeGreaterThan(-1);
-    expect(boardAt, "JobBoardHero is gone").toBeGreaterThan(-1);
-    expect(agentAt, "the board opens the page again — the agent is the hallmark").toBeLessThan(boardAt);
+  it("is ONE hero, not two stacked ones", () => {
+    // Two full-height heroes put 6,807px and four competing CTAs between a
+    // visitor and any action; the upload tool — the only path to a paying
+    // customer — began at 10,546px. Consolidated 2026-08-13 to 3,903px.
+    expect(indexCode, "HomeHero is not on the page").toMatch(/<HomeHero \/>/);
+    expect(indexCode, "the second stacked hero is back").not.toMatch(/<JobBoardHero \/>/);
+    expect(indexCode, "the old agent hero is back alongside HomeHero").not.toMatch(/<AgentHero \/>/);
+  });
+
+  it("offers exactly one primary action", () => {
+    // Two equally-loud gradient buttons is the choice paralysis this hero
+    // exists to remove: the secondary is border-weight, never a second
+    // gradient fill.
+    // Counted on FILLED interactive elements only. A first version matched
+    // `bg-gradient-to-r from-primary` anywhere and failed on the headline's
+    // own text gradient — the assertion has to distinguish a painted button
+    // from painted words, which is exactly the distinction it is about.
+    const filled = (heroCode.match(/className="[^"]*\bbg-gradient-to-r from-primary[^"]*text-primary-foreground[^"]*"/g) ?? []).length;
+    expect(filled, "a second primary-weight CTA is back in the hero").toBe(1);
+    // ...and the secondary is border-weight, not a second fill.
+    expect(heroCode).toMatch(/ctaSecondary[\s\S]{0,80}|border border-border bg-card\/60/);
+  });
+
+  it("puts the platform proof inside the hero, under the action", () => {
+    const ctaAt = heroCode.indexOf("ctaPrimary");
+    const stripAt = heroCode.indexOf('<AtsCoverage variant="strip" />');
+    expect(stripAt, "the hero lost the platform strip").toBeGreaterThan(-1);
+    expect(ctaAt).toBeLessThan(stripAt);
   });
 
   it("replaced the brochure, not doubled it", () => {
@@ -47,10 +69,12 @@ describe("the agent opens the page", () => {
 
   it("speaks with measured inventory or with none", () => {
     // The line renders only when BOTH numbers arrived; no fallback figures.
-    expect(heroCode).toMatch(/inv\.sendable !== null && inv\.total !== null &&/);
+    // Each stat renders only when its own payload arrived.
+    expect(heroCode).toMatch(/\{totals && \(/);
+    expect(heroCode).toMatch(/\{sendable !== null && \(/);
     // Payload gating: a number must be > 0 to be trusted — a zero from a
     // half-written status payload must read as absence, not "0 openings".
-    expect(heroCode).toMatch(/d\.sendable\?\.postings === "number" && d\.sendable\.postings > 0/);
+    expect(heroCode).toMatch(/typeof n === "number" && n > 0/);
     // And no literal inventory anywhere: five-or-more-digit numbers in the
     // hero are claims only a payload may make.
     expect(heroCode.replace(/\d{1,2}\b/g, "")).not.toMatch(/\b\d{3,}(?:,\d{3})*\b/);
@@ -113,11 +137,11 @@ describe("the front page states one subject and no frozen totals", () => {
     // reader cannot navigate and three competing subjects to a crawler. The
     // agent owns it since the 2026-08-13 redesign.
     const counts = {
-      AgentHero: (HERO.match(/<h1[\s>]/g) ?? []).length,
+      HomeHero: (HERO.match(/<h1[\s>]/g) ?? []).length,
       JobBoardHero: (BOARD.match(/<h1[\s>]/g) ?? []).length,
       Hero: (HERO_C.match(/<h1[\s>]/g) ?? []).length,
     };
-    expect(counts.AgentHero, "the agent hero lost its h1").toBe(1);
+    expect(counts.HomeHero, "the home hero lost its h1").toBe(1);
     expect(counts.JobBoardHero + counts.Hero, "a second h1 is back on the homepage").toBe(0);
   });
 
@@ -129,7 +153,7 @@ describe("the front page states one subject and no frozen totals", () => {
     const surfaces: Array<[string, string]> = [
       ["Hero.tsx", stripCode(HERO_C)],
       ["JobBoardHero.tsx", stripCode(BOARD)],
-      ["AgentHero.tsx", stripCode(HERO)],
+      ["HomeHero.tsx", stripCode(HERO)],
       ["LiveMatches.tsx", stripCode(readFileSync(resolve(__dirname, "../components/LiveMatches.tsx"), "utf8"))],
     ];
     for (const [name, code] of surfaces) {

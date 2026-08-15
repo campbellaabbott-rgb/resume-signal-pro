@@ -4479,5 +4479,18 @@
     "sendableBadge": "Kayang isumite ito ng agent",
     "ctaSetup": "Iatas ang agent sa mga ito",
     "ctaBrowse": "Tingnan lahat"
+  },
+  "homeHero": {
+    "badge": "Live na job board + AI apply agent",
+    "headlinePre": "Totoo ang bawat trabaho rito.",
+    "headlineHighlight": "Nag-a-apply ang agent para sa iyo.",
+    "sub": "Mga bakanteng galing mismo sa sariling hiring system ng mga kumpanya — hindi kailanman scraped, sinusuri buong araw. I-upload ang CV mo: inaayos ng agent ang bawat isa laban dito, isinusulat nang tapat ang bawat aplikasyon, at isinusumite kung saan pinapayagan ng employer.",
+    "statOpenings": "beripikadong bakante",
+    "statCompanies": "kumpanya",
+    "statSendable": "kayang isumite ng agent para sa iyo",
+    "ctaPrimary": "I-upload ang CV mo — libre",
+    "ctaSecondary": "Tingnan ang board",
+    "reassure": "Libreng scan · walang card, walang signup",
+    "exploreCta": "Tuklasin ang mga employer"
   }
 }

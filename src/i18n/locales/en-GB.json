@@ -4479,5 +4479,18 @@
     "sendableBadge": "Agent can submit this one",
     "ctaSetup": "Set the agent on these",
     "ctaBrowse": "Browse all of them"
+  },
+  "homeHero": {
+    "badge": "Live job board + AI apply agent",
+    "headlinePre": "Every job here is real.",
+    "headlineHighlight": "The agent applies for you.",
+    "sub": "Openings pulled straight from companies' own hiring systems — never scraped, re-checked all day. Upload your CV and the agent ranks every one against it, writes each application honestly, and submits where employers allow.",
+    "statOpenings": "verified openings",
+    "statCompanies": "companies",
+    "statSendable": "the agent can submit for you",
+    "ctaPrimary": "Upload your CV — free",
+    "ctaSecondary": "Browse the board",
+    "reassure": "Free scan · no card, no signup",
+    "exploreCta": "Explore employers"
   }
 }

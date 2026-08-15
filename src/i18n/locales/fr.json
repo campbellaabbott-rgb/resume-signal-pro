@@ -4479,5 +4479,18 @@
     "sendableBadge": "L'agent peut soumettre celle-ci",
     "ctaSetup": "Lancer l'agent sur celles-ci",
     "ctaBrowse": "Tout parcourir"
+  },
+  "homeHero": {
+    "badge": "Site d'offres en direct + agent IA",
+    "headlinePre": "Chaque offre ici est réelle.",
+    "headlineHighlight": "L'agent postule pour vous.",
+    "sub": "Des offres issues directement des systèmes de recrutement des entreprises — jamais aspirées, revérifiées toute la journée. Déposez votre CV : l'agent les classe toutes, rédige chaque candidature honnêtement et la soumet là où l'employeur le permet.",
+    "statOpenings": "offres vérifiées",
+    "statCompanies": "entreprises",
+    "statSendable": "que l'agent peut soumettre pour vous",
+    "ctaPrimary": "Déposez votre CV — gratuit",
+    "ctaSecondary": "Parcourir les offres",
+    "reassure": "Analyse gratuite · sans carte, sans inscription",
+    "exploreCta": "Découvrir les employeurs"
   }
 }

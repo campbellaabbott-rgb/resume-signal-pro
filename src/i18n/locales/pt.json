@@ -4479,5 +4479,18 @@
     "sendableBadge": "O agente pode submeter esta",
     "ctaSetup": "Ponha o agente nestas",
     "ctaBrowse": "Ver todas"
+  },
+  "homeHero": {
+    "badge": "Mural ao vivo + agente de IA",
+    "headlinePre": "Cada vaga aqui é real.",
+    "headlineHighlight": "O agente candidata-se por si.",
+    "sub": "Vagas retiradas diretamente dos sistemas de recrutamento das empresas — nunca raspadas, reverificadas o dia todo. Carregue o seu CV: o agente classifica todas, escreve cada candidatura com honestidade e submete onde o empregador permite.",
+    "statOpenings": "vagas verificadas",
+    "statCompanies": "empresas",
+    "statSendable": "o agente pode submeter por si",
+    "ctaPrimary": "Carregue o seu CV — grátis",
+    "ctaSecondary": "Explorar o mural",
+    "reassure": "Análise grátis · sem cartão, sem registo",
+    "exploreCta": "Descobrir empregadores"
   }
 }

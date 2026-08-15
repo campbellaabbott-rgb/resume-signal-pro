@@ -7,7 +7,6 @@ import { useTimeOnPage } from "@/hooks/use-time-on-page";
 import { useFunnelTracking } from "@/hooks/use-funnel-tracking";
 import { Header } from "@/components/Header";
 import { Hero } from "@/components/Hero";
-import { JobBoardHero } from "@/components/JobBoardHero";
 import { ResumeUploader } from "@/components/ResumeUploader";
 import { AnalysisPreview } from "@/components/AnalysisPreview";
 import { SocialProof } from "@/components/SocialProof";
@@ -44,7 +43,7 @@ import { LazySection } from "@/components/LazySection";
 import { type JobEntry } from "@/components/JobSelector";
 
 import { HowItWorks } from "@/components/HowItWorks";
-import { AgentHero } from "@/components/AgentHero";
+import { HomeHero } from "@/components/HomeHero";
 import { AgentMatchesPanel } from "@/components/AgentMatchesPanel";
 import { MiniPricingCards } from "@/components/MiniPricingCards";
 import { TrustIndicators } from "@/components/TrustIndicators";
@@ -1737,28 +1736,16 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
             result is showing (the report takes over). */}
         {!landing && !freeKeywordResult && (
           <>
-            {/* THE AGENT OPENS THE PAGE. It was the second section, as a
-                brochure of static feature cards; it is now the hallmark — the
-                first thing every visitor sees, speaking in the first person
-                and holding live inventory numbers (rendered only once
-                measured; never hardcoded, never zero). The board hero follows
-                as its supporting evidence: the corpus the agent hunts in. */}
-            <AgentHero />
-
-            {/* The fifteen platforms now live INSIDE this hero, above the
-                field chips — see JobBoardHero. They were briefly a separate
-                band underneath it, which read as a bolted-on strip rather than
-                part of the claim the hero is making. */}
-            <JobBoardHero />
-            <div className="container">
-              <div className="max-w-3xl mx-auto flex items-center gap-3 py-2">
-                <div className="h-px flex-1 bg-border/60" />
-                <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground whitespace-nowrap">
-                  {t('boardHero.toolkitLabel', 'Your free toolkit to land them')}
-                </span>
-                <div className="h-px flex-1 bg-border/60" />
-              </div>
-            </div>
+            {/* ONE HERO. Two stacked full-height heroes — the agent's and the
+                board's — put 6,807px and four competing calls to action
+                between a visitor and anything they could do; the upload tool,
+                the only path to a paying customer, began at 10,546px. HomeHero
+                fuses the claim (every job real, the agent applies for you),
+                states the three live numbers, offers ONE primary action, and
+                puts the fifteen hiring systems and their counts directly
+                underneath — proof under the claim, where a sceptic can check
+                it without scrolling. */}
+            <HomeHero />
           </>
         )}
 

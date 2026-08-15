@@ -4479,5 +4479,18 @@
     "sendableBadge": "De agent kan deze indienen",
     "ctaSetup": "Zet de agent hierop",
     "ctaBrowse": "Bekijk ze allemaal"
+  },
+  "homeHero": {
+    "badge": "Live vacaturebord + AI-sollicitatieagent",
+    "headlinePre": "Elke vacature hier is echt.",
+    "headlineHighlight": "De agent solliciteert voor u.",
+    "sub": "Vacatures rechtstreeks uit de wervingssystemen van bedrijven — nooit gescrapet, de hele dag opnieuw gecontroleerd. Upload uw cv: de agent rangschikt ze allemaal, schrijft elke sollicitatie eerlijk en dient in waar de werkgever het toestaat.",
+    "statOpenings": "geverifieerde vacatures",
+    "statCompanies": "bedrijven",
+    "statSendable": "kan de agent voor u indienen",
+    "ctaPrimary": "Upload uw cv — gratis",
+    "ctaSecondary": "Bekijk het bord",
+    "reassure": "Gratis scan · geen kaart, geen registratie",
+    "exploreCta": "Ontdek werkgevers"
   }
 }
