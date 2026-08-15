@@ -294,7 +294,11 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
   // inline script that clears the static homepage content immediately when
   // the browser path isn't "/" (crawlers don't run it; JS users on other
   // routes get the same blank-then-render they had before).
-  const renderFile = ({ path, title, description, content, jsonLd = [], hreflang = null, lang = null, isFallback = false }) => {
+  // `canonical` names a DIFFERENT page as the indexable version of this one —
+  // for near-duplicates that must stay reachable but must not compete. `robots`
+  // sets the meta robots tag for pages that exist only to serve their own URL
+  // (an auth wall, say) and should never be indexed at all.
+  const renderFile = ({ path, title, description, content, jsonLd = [], hreflang = null, lang = null, isFallback = false, canonical = null, robots = null }) => {
     // SERP snippets truncate ~160 chars; clamp at a word boundary so no page
     // (current or future) ships an overlong description.
     if (description && description.length > 160) {
@@ -315,7 +319,19 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
     html = html.replace(/(<meta name="twitter:url" content=")[^"]*(")/, `$1${pageUrl}$2`);
     if (lang) html = html.replace(/<html lang="[^"]*"/, `<html lang="${lang}"`);
 
-    let headExtra = `${isFallback ? "" : `<link rel="canonical" href="${SITE}${path}" />\n`}<meta name="x-prerendered" content="1" />\n`;
+    // REPLACE the template's robots tag, never append a second one. The
+    // template ships `index, follow`; appending `noindex` left both in the
+    // head, and two contradictory robots directives is a page whose indexing
+    // depends on which one a given crawler resolves. Caught before deploy by
+    // reading the built file — the tag was correct AND the wrong one was still
+    // above it.
+    if (robots) {
+      const tag = `<meta name="robots" content="${robots}" />`;
+      html = /<meta name="robots"[^>]*>/.test(html)
+        ? html.replace(/<meta name="robots"[^>]*>/, tag)
+        : html.replace("</head>", `${tag}\n</head>`);
+    }
+    let headExtra = `${isFallback ? "" : `<link rel="canonical" href="${SITE}${canonical || path}" />\n`}<meta name="x-prerendered" content="1" />\n`;
     if (hreflang) {
       // hreflang is a { locale: path } map (any number of locales). Every
       // cluster member emits the SAME set of alternates (reciprocity is what
@@ -348,7 +364,15 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
 
   let count = 0;
   const writtenPaths = [];
-  const write = (page) => { renderFile(page); writtenPaths.push(page.path); count++; };
+  // A page that names another as canonical, or is marked noindex, still gets a
+  // file — it has to, or the host serves it the homepage — but it stays OUT of
+  // the sitemap. Submitting a URL for indexing while telling the crawler not to
+  // index it is a contradiction Search Console reports as an error.
+  const write = (page) => {
+    renderFile(page);
+    if (!page.canonical && !page.robots) writtenPaths.push(page.path);
+    count++;
+  };
 
   // ---- /industries index ----
   {
@@ -693,7 +717,7 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
     title: BOARD_TOTAL
       ? `Resume Booster — Live Job Board: ${plusClaim(BOARD_TOTAL, 50000)} Verified Openings, Zero Ghost Jobs`
       : "Resume Booster — Live Job Board: 450,000+ Verified Openings, Zero Ghost Jobs",
-    description: "Live openings pulled straight from companies' own career pages, ranked against your resume so you apply where you can win. Free ATS resume scan included.",
+    description: "A live job board with zero ghost jobs — every opening pulled straight from the employer's own hiring system, re-verified all day. Upload your CV and an AI agent ranks every role against it, writes each application honestly, and applies for you. Free ATS resume scan included.",
     jsonLd: [
       {
         "@context": "https://schema.org",
@@ -705,9 +729,47 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
         description: `Free diagnostic resume scan: ATS score with a full audit trail, verified quotes, per-vendor parsing checks, and a fix plan — across ${NIND} industries and 10 languages.`,
         offers: { "@type": "Offer", price: "0", priceCurrency: "USD", description: "Free resume scan — no signup required" },
       },
+      // The board itself, and the agent that acts on it. Without these the
+      // structured data described only the resume scanner while the title and
+      // the page both led with the job board — an answer engine had nothing to
+      // cite for "job board" or "AI that applies for me".
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        name: "Resume Booster",
+        url: SITE,
+        potentialAction: {
+          "@type": "SearchAction",
+          target: { "@type": "EntryPoint", urlTemplate: `${SITE}/jobs?q={search_term_string}` },
+          "query-input": "required name=search_term_string",
+        },
+      },
+      {
+        "@context": "https://schema.org",
+        "@type": "Service",
+        name: "AI apply agent",
+        serviceType: "Automated job application assistance",
+        provider: { "@type": "Organization", name: "Resume Booster", url: SITE },
+        areaServed: "Worldwide",
+        description: "Reads your CV, ranks live verified openings against it, writes a tailored application for each, answers the employer's own screening questions, and submits on hiring systems that permit it. It never fabricates experience and never solves a CAPTCHA or evades a bot check.",
+        offers: { "@type": "Offer", priceCurrency: "USD", description: "Included with a Resume Booster account" },
+      },
     ],
     content: `
-      <h1 class="text-3xl font-bold mb-3">Your resume's real score — measured, not guessed</h1>
+      <h1 class="text-3xl font-bold mb-3">Every job here is real. The agent applies for you.</h1>
+      <p class="text-muted-foreground mb-6">${BOARD_TOTAL ? `${plusClaim(BOARD_TOTAL, 50000)} verified openings` : "Verified openings"}${BOARD_COMPANIES ? ` from ${plusClaim(BOARD_COMPANIES, 1000)} companies` : ""}, every one pulled straight from the employer's own hiring system — never scraped, nothing older than 30 days, re-checked live at the moment you apply. Upload your CV and an AI apply agent ranks every opening against it, writes each application honestly (it will state what you do not have rather than invent it), and submits on the systems where employers allow it. <a href="/jobs" class="text-primary">Browse the live board →</a></p>
+      <section class="mt-8 mb-8">
+        <h2 class="text-xl font-bold mb-3">What the AI apply agent does</h2>
+        <ul class="space-y-1.5">
+          <li class="text-sm text-muted-foreground">✓ Reads your CV and scores every live opening against it</li>
+          <li class="text-sm text-muted-foreground">✓ Writes a tailored application per role — never one blast sent everywhere</li>
+          <li class="text-sm text-muted-foreground">✓ Answers the employer's real screening questions, harvested from the actual form</li>
+          <li class="text-sm text-muted-foreground">✓ Refuses to fabricate: asked about experience you lack, it says so</li>
+          <li class="text-sm text-muted-foreground">✓ Submits end-to-end where the employer's system permits; never solves a CAPTCHA or evades a bot check</li>
+          <li class="text-sm text-muted-foreground">✓ Tracks every application and tells you when a role comes down</li>
+        </ul>
+      </section>
+      <h2 class="text-xl font-bold mb-3">Your resume's real score — measured, not guessed</h2>
       <p class="text-muted-foreground mb-6">Same document, same score, every time — benchmarked against real scans in your industry, with every quoted line verified against your actual resume. Not a ChatGPT or Claude opinion: a reproducible reading with a full audit trail, missing keywords, weak bullets rewritten, and per-vendor parsing checks for Workday, Greenhouse, Lever, and iCIMS. No sign-up; your resume is never stored. <a href="/vs/chatgpt" class="text-primary">How this differs from asking a chatbot →</a></p>
       ${cta("Check my resume now — free", "Upload or paste your resume and get the complete diagnostic report. 7 scans a day free, 15 with a free account.", "Check my resume free")}
       <section class="mt-10 mb-8">
@@ -889,10 +951,37 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
           && typeof c.count === "number" && c.count >= 8 && typeof c.name === "string" && c.name.trim())
         .sort((a, b) => b.count - a.count)
         .slice(0, 500);
+      // ONE EMPLOYER, TWO BOARDS, TWO IDENTICAL PAGES.
+      //
+      // The URL is per-BOARD (source~tenant) but the page is about the
+      // EMPLOYER, so an employer running two boards got two landers with the
+      // same title, the same description and the same body — abbottcareers and
+      // abbottcareers2, boeing's EXTERNAL_CAREERS and external_subsidiary, two
+      // HPE boards, two PwC boards (audit 2026-08-15). Both were in the
+      // sitemap, so we were submitting pairs of duplicates and letting Google
+      // pick which to keep, which is how a page ends up reported as "Duplicate
+      // without user-selected canonical".
+      //
+      // The largest board becomes the indexable page for that employer; the
+      // rest keep their file (they must, or the host serves them the homepage)
+      // and point their canonical at it. Grouped on the same normalized display
+      // name that get_size_segments merges on, so this page family and the
+      // company counts agree about what "one employer" means.
+      const primaryByName = new Map();
+      for (const c of topCompanies) {
+        const key = c.name.trim().toLowerCase();
+        const prev = primaryByName.get(key);
+        if (!prev || c.count > prev.count) primaryByName.set(key, c);
+      }
+      let consolidated = 0;
       for (const c of topCompanies) {
         const nm = c.name.trim();
+        const primary = primaryByName.get(nm.toLowerCase());
+        const isPrimary = primary.token === c.token;
+        if (!isPrimary) consolidated++;
         write({
           path: `/jobs/company/${c.token}`,
+          canonical: isPrimary ? null : `/jobs/company/${primary.token}`,
           title: `${nm} Jobs — ${fmt(c.count)} Verified Openings`,
           description: `Browse ${fmt(c.count)} open roles at ${nm}, pulled straight from ${nm}'s own job board and re-verified all day — no aggregators, no reposts. Check your resume's fit free, then apply on ${nm}'s own site.`,
           content: `
@@ -918,7 +1007,7 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
           }],
         });
       }
-      console.log(`[prerender-seo] company pages: ${topCompanies.length}`);
+      console.log(`[prerender-seo] company pages: ${topCompanies.length} (${consolidated} canonicalized to a larger board of the same employer)`);
     }
 
     // Main board page — the parent of the field landers. Without its own write()
@@ -1071,6 +1160,181 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
         }],
       });
     }
+  }
+
+  // ---- /methodology, /trust, /freelance-boost, /affiliates ----
+  // THE SAME BUG AS /pricing, FOUND AGAIN A YEAR LATER — and this time we were
+  // the ones telling Google to index it.
+  //
+  // Audit 2026-08-15. All four are declared in sitemap.xml, so we actively
+  // submit them for indexing. All four fell through to the homepage fallback,
+  // which means a crawler fetching /trust received the HOMEPAGE's <title>,
+  // <meta description>, og:title, og:description AND the homepage's rendered
+  // body — byte-for-byte identical across all four URLs. Verified live against
+  // a Googlebot user-agent before this fix: four sitemap URLs, one page.
+  //
+  // Three of them (/methodology, /trust, /freelance-boost) do carry a correct
+  // <SEO> component, which is exactly what made this survive so long: open any
+  // of them in a browser and the tab title is right, because React swapped it
+  // after hydration. The served HTML — what a non-rendering crawler indexes,
+  // and what every AI answer engine reads — was the homepage. A page whose SEO
+  // is correct only after JavaScript runs is a page that is correct only for
+  // the crawlers that needed no help.
+  //
+  // /affiliates had no <SEO> at all, so it was wrong in both renders.
+  //
+  // Titles and descriptions below are the pages' OWN strings, read from
+  // en.json (methodologyPage.*, trustPage.*) and from the components' existing
+  // <SEO> props — never freshly invented here. That is the whole failure mode
+  // this file keeps hitting: a second copy of the truth that drifts from the
+  // first. Where a page's copy is a literal in the component, it is quoted
+  // verbatim rather than paraphrased.
+  {
+    const M = (D.EN_LOCALE && D.EN_LOCALE.methodologyPage) || {};
+    const T = (D.EN_LOCALE && D.EN_LOCALE.trustPage) || {};
+    const steps = M.steps || {};
+    const sec = T.security || {};
+
+    write({
+      path: "/methodology",
+      title: M.metaTitle || "Methodology — How Resume Booster Scores Resumes",
+      description: M.metaDescription,
+      jsonLd: [
+        breadcrumbLd([{ name: "Home", path: "/" }, { name: "Methodology", path: "/methodology" }]),
+        {
+          "@context": "https://schema.org",
+          "@type": "HowTo",
+          name: "How Resume Booster analyzes your resume",
+          description: M.heroSubtitle,
+          step: Object.values(steps).map((s, i) => ({
+            "@type": "HowToStep",
+            position: i + 1,
+            name: s.title,
+            text: s.description,
+          })),
+        },
+      ],
+      content: `
+        ${breadcrumbNav([{ name: "Home", href: "/" }, { name: "Methodology" }])}
+        <h1 class="text-3xl font-bold mb-3">${esc(`${M.titlePrefix || "Our ATS Analysis"} ${M.titleHighlight || "Methodology"}`)}</h1>
+        <p class="text-muted-foreground mb-8">${esc(M.heroSubtitle || "")}</p>
+        <section class="mb-8"><h2 class="text-xl font-bold mb-3">${esc(M.howAnalysisWorks || "How the analysis works")}</h2>
+          <ol class="space-y-3">${Object.values(steps).map((s, i) => `<li class="rounded-xl border border-border bg-card p-4"><p class="text-sm font-semibold text-foreground mb-1">${i + 1}. ${esc(s.title)}</p><p class="text-xs text-muted-foreground">${esc(s.description)}</p></li>`).join("")}</ol>
+        </section>
+        <section class="mb-8"><h2 class="text-xl font-bold mb-2">${esc(M.scoreCalculatedTitle || "How your ATS score is calculated")}</h2>
+          <p class="text-sm text-muted-foreground">${esc(M.scoreCalculatedSubtitle || "")}</p>
+        </section>
+        <section class="mb-8"><h2 class="text-xl font-bold mb-2">${esc(M.atsPlatformsTitle || "ATS platforms we analyze against")}</h2>
+          <p class="text-sm text-muted-foreground">${esc(M.atsPlatformsSubtitle || "")}</p>
+        </section>
+        ${cta("See it run on your own resume", "The full diagnostic — score with audit trail, parse checks, missing keywords — is free and needs no signup.", "Scan my resume free")}`,
+    });
+
+    write({
+      path: "/trust",
+      title: T.metaTitle || "Trust & Security — Resume Booster",
+      description: T.metaDescription,
+      jsonLd: [breadcrumbLd([{ name: "Home", path: "/" }, { name: "Trust & Security", path: "/trust" }])],
+      content: `
+        ${breadcrumbNav([{ name: "Home", href: "/" }, { name: "Trust & Security" }])}
+        <h1 class="text-3xl font-bold mb-3">${esc(`${T.titlePrefix || "Your Resume Is"} ${T.titleHighlight || "Safe With Us"}`)}</h1>
+        <p class="text-muted-foreground mb-8">${esc(T.heroSubtitle || "")}</p>
+        <section class="mb-8"><h2 class="text-xl font-bold mb-3">${esc(T.protectDataTitle || "How we protect your data")}</h2>
+          <div class="space-y-2">${Object.values(sec).map((s) => `<div class="rounded-xl border border-border bg-card p-4"><p class="text-sm font-semibold text-foreground mb-1">${esc(s.title)}</p><p class="text-xs text-muted-foreground">${esc(s.description)}</p></div>`).join("")}</div>
+        </section>
+        <section class="mb-8"><h2 class="text-xl font-bold mb-2">${esc(T.transparentScoringTitle || "Transparent scoring")}</h2>
+          <p class="text-sm text-muted-foreground mb-3">${esc(T.transparentScoringSubtitle || "")}</p>
+          <a href="/methodology" class="text-sm font-medium text-primary underline">${esc(T.viewMethodology || "View the methodology")}</a>
+        </section>
+        ${cta("Scan without an account", "No signup, no card, and nothing kept — 7 free scans a day.", "Scan my resume free")}`,
+    });
+
+    write({
+      path: "/freelance-boost",
+      // Verbatim from the page's own <SEO> props — the strings a browser
+      // already renders into the tab; this puts them in the served HTML too.
+      title: "Freelance Boost — Turn Projects Into Resume Experience",
+      description: "Turn freelance projects, gig work, and side hustles into recruiter-grade resume experience. Built for career changers who've already done the work.",
+      jsonLd: [breadcrumbLd([{ name: "Home", path: "/" }, { name: "Freelance Boost", path: "/freelance-boost" }])],
+      content: `
+        ${breadcrumbNav([{ name: "Home", href: "/" }, { name: "Freelance Boost" }])}
+        <h1 class="text-3xl font-bold mb-3">Your freelance work counts. Make recruiters see it.</h1>
+        <p class="text-muted-foreground mb-8">Freelance projects, contract gigs and side work are real experience, and they get read as a gap when they are written like a portfolio instead of a job. Freelance Boost translates the work you have already done into the structure, bullets and keywords a recruiter and an ATS both parse as employment — in about 15 seconds.</p>
+        <section class="mb-8"><h2 class="text-xl font-bold mb-3">What it produces</h2>
+          <ul class="space-y-2 text-sm text-muted-foreground">
+            <li class="rounded-xl border border-border bg-card p-4"><span class="font-semibold text-foreground">A structured experience entry</span> — your projects grouped under one umbrella role rather than scattered one-line gigs, which is the format that stops reading as a job-hopping record.</li>
+            <li class="rounded-xl border border-border bg-card p-4"><span class="font-semibold text-foreground">Recruiter-grade bullets</span> — each project rewritten as an accomplishment with the metric surfaced, in the wording your target role is actually screened on.</li>
+            <li class="rounded-xl border border-border bg-card p-4"><span class="font-semibold text-foreground">A cover-letter transition paragraph</span> — the part that explains the move from independent work to the role you want, without apologising for it.</li>
+          </ul>
+        </section>
+        <p class="text-sm text-muted-foreground mb-8">Related reading: <a href="/guides/freelance-work-on-resume" class="text-primary underline">how to put freelance work on your resume</a> and <a href="/guides/fractional-roles-on-resume" class="text-primary underline">how to put fractional roles on your resume</a>.</p>
+        ${cta("Start with the free scan", "See how your resume reads today before changing anything — free, no signup.", "Scan my resume free")}`,
+    });
+
+    write({
+      path: "/builder",
+      // Verbatim from ResumeBuilder.tsx's own <SEO> props.
+      title: "Free Resume Builder — Resume Booster",
+      description: "Build an ATS-friendly resume in minutes with our free guided builder. Export to PDF, no signup required.",
+      jsonLd: [
+        breadcrumbLd([{ name: "Home", path: "/" }, { name: "Resume Builder", path: "/builder" }]),
+        {
+          "@context": "https://schema.org",
+          "@type": "WebApplication",
+          name: "Free Resume Builder",
+          url: `${SITE}/builder`,
+          applicationCategory: "BusinessApplication",
+          operatingSystem: "Web",
+          offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+        },
+      ],
+      content: `
+        ${breadcrumbNav([{ name: "Home", href: "/" }, { name: "Resume Builder" }])}
+        <h1 class="text-3xl font-bold mb-3">Free resume builder</h1>
+        <p class="text-muted-foreground mb-8">A guided builder that produces a resume an ATS can actually parse: standard section headings, a single-column layout, real text rather than tables or graphics, and dates in a format parsers read. Export to PDF when you are done. Free, and no signup.</p>
+        <section class="mb-8"><h2 class="text-xl font-bold mb-3">Why layout decides whether you are read</h2>
+          <p class="text-sm text-muted-foreground mb-3">Most resumes that never get a reply were never rejected by a person. They were parsed into the wrong fields — a two-column layout read across instead of down, experience buried in a text box, a header the parser dropped — and the recruiter saw a record with gaps that were never in the resume. The builder avoids those constructs rather than fixing them afterwards.</p>
+          <p class="text-sm text-muted-foreground">If you already have a resume, run the <a href="/" class="text-primary underline">free scan</a> first — it shows what an ATS extracts from your current file, which usually tells you whether you need a rebuild or an edit. The scoring rubric behind it is documented on the <a href="/methodology" class="text-primary underline">methodology page</a>.</p>
+        </section>
+        ${cta("Check your current resume first", "See exactly what a parser pulls out of the file you have today — free, no signup.", "Scan my resume free")}`,
+    });
+
+    // /shortlist is an AUTH WALL, not a page: it redirects to /auth when there
+    // is no session, so it has never had public content. It was in the sitemap
+    // anyway, where it served the homepage fallback — we were submitting a
+    // duplicate of "/" for indexing and getting nothing for it. It keeps a file
+    // (the footer links to it, and without one the host serves the homepage
+    // there) and is marked noindex, which is the accurate instruction: this URL
+    // exists, and there is nothing here to index.
+    write({
+      path: "/shortlist",
+      robots: "noindex, follow",
+      title: "Shortlist for Employers — Resume Booster",
+      description: "Sign in to manage your shortlist.",
+      content: `
+        <h1 class="text-2xl font-bold mb-3">Shortlist</h1>
+        <p class="text-muted-foreground mb-6">This page needs an account. <a href="/auth" class="text-primary underline">Sign in</a> to continue, or <a href="/" class="text-primary underline">run the free resume scan</a> — that needs no account at all.</p>`,
+    });
+
+    write({
+      path: "/affiliates",
+      title: "Affiliate Program — Earn 20% on Every Referral",
+      description: "Earn 20% commission on every sale you refer, with a 30-day cookie and monthly payouts. Join the Resume Booster affiliate program or sign in to your dashboard.",
+      jsonLd: [breadcrumbLd([{ name: "Home", path: "/" }, { name: "Affiliate Program", path: "/affiliates" }])],
+      content: `
+        ${breadcrumbNav([{ name: "Home", href: "/" }, { name: "Affiliate Program" }])}
+        <h1 class="text-3xl font-bold mb-3">Join the Resume Booster affiliate program</h1>
+        <p class="text-muted-foreground mb-8">Earn 20% commission on every sale you refer. 30-day cookie, paid monthly, and a dashboard that shows referrals and earnings over any date range you pick.</p>
+        <section class="mb-8"><h2 class="text-xl font-bold mb-3">The terms</h2>
+          <ul class="space-y-2 text-sm text-muted-foreground">
+            <li class="rounded-xl border border-border bg-card p-4"><span class="font-semibold text-foreground">20% commission</span> on every sale from someone you referred.</li>
+            <li class="rounded-xl border border-border bg-card p-4"><span class="font-semibold text-foreground">30-day cookie</span> — you are credited if they buy within 30 days of clicking your link.</li>
+            <li class="rounded-xl border border-border bg-card p-4"><span class="font-semibold text-foreground">Paid monthly</span>, with per-referral detail in your dashboard.</li>
+          </ul>
+        </section>
+        <p class="text-sm text-muted-foreground mb-8">What you would be referring people to: a resume scanner whose full diagnostic is free with no signup, and a job board of verified openings pulled straight from employers' own hiring systems. Sign-up and login are on this page in the app.</p>
+        ${cta("See the product first", "Run the free scan yourself before you recommend it — that is the honest order.", "Scan my resume free")}`,
+    });
   }
 
   // ---- /pricing, /changelog, /explore ----
@@ -1276,7 +1540,8 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
       { path: "/methodology", changefreq: "monthly", priority: "0.7" },
       { path: "/trust", changefreq: "monthly", priority: "0.6" },
       { path: "/affiliates", changefreq: "monthly", priority: "0.6" },
-      { path: "/shortlist", changefreq: "monthly", priority: "0.6" },
+      // /shortlist deliberately absent: it is an auth wall with no public
+      // content and now ships noindex. See its write() above.
       { path: "/jobs", changefreq: "daily", priority: "0.8" },
       { path: "/explore", changefreq: "daily", priority: "0.8" },
       { path: "/changelog", changefreq: "weekly", priority: "0.5" },

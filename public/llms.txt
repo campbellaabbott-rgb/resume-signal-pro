@@ -1,6 +1,6 @@
 # Resume Booster
 
-> A live job board with zero ghost jobs: 600,000+ openings from 24,000+ companies, every posting pulled straight from the company's own hiring system (Greenhouse, Lever, Ashby, SmartRecruiters, Workable, BambooHR, Recruitee, Teamtailor, Personio, Breezy, Rippling, Workday, Oracle, Pinpoint) — never an aggregator or a scrape. Nothing older than 30 days, every feed re-verified within a few hours, every posting re-checked live at the moment of Apply, and the board audits its own accuracy daily and publishes the number ([/ghost-job-index](/ghost-job-index)). Free deterministic resume-fit scoring against any posting at [/jobs](/jobs).
+> A live job board with zero ghost jobs: 600,000+ openings from 24,000+ companies, every posting pulled straight from the company's own hiring system (Greenhouse, Lever, Ashby, SmartRecruiters, Workable, BambooHR, Recruitee, Teamtailor, Personio, Breezy, Rippling, Workday, Oracle, Pinpoint) — never an aggregator or a scrape. Nothing older than 30 days, every feed re-verified within a few hours, every posting re-checked live at the moment of Apply, and the board audits its own accuracy daily and publishes the number ([/ghost-job-index](/ghost-job-index)). Free deterministic resume-fit scoring against any posting at [/jobs](/jobs). An AI apply agent reads your CV, ranks every live opening against it, writes a tailored application per role, answers the employer's own screening questions, and submits end-to-end on the hiring systems that permit it.
 
 The companion tool is a free diagnostic resume scanner with verified output: an ATS score with a full point-by-point audit trail, every quoted line checked against the actual resume, per-vendor parsing checks (Workday, Greenhouse, Lever, iCIMS), and keyword expectations sourced from the U.S. Department of Labor's O*NET database. 58 industries, 10 languages. Results are measured and reproducible (same document → same report ID), every resume quote is verified before display, and keyword expectations carry provenance. Free scan requires no signup and resumes are never stored.
 
@@ -13,6 +13,15 @@ Full guide text, the complete data-page map, and the CURRENT benchmark figures (
 - [Free resume scan](/): Full diagnostic report in ~20 seconds — score with audit trail, weakest bullets graded and rewritten, recruiter panel, interview questions the resume will trigger, ATS vendor checks.
 - [Resume checker](/resume-checker), [ATS resume test](/ats-resume-test), [Resume score](/resume-score): The same scanner under the query each visitor asked — each page answers its own FAQs.
 - [Revisar currículum (español)](/es/revisar-curriculum): Native Spanish resume checking — the engine detects Spanish terms, titles, and certifications directly.
+
+## AI apply agent
+
+- [The apply agent](/): Reads your CV, scores every live verified opening against it, and applies for you. What makes it different from bulk auto-appliers:
+  - **It writes per role, never one blast.** Each application is drafted against that posting's own text and requirements.
+  - **It answers the employer's REAL screening questions**, parsed from the actual application form on the vendors that publish them (Ashby, Breezy, Greenhouse, Pinpoint, Recruitee, Teamtailor). Where a form is not published, inferred questions are labelled as inferred and never presented as the employer's.
+  - **It refuses to fabricate.** Asked about experience the CV does not show, it states the gap rather than inventing it — verified in live testing against a Kubernetes question on a CV with no Kubernetes.
+  - **It never solves a CAPTCHA, spoofs a fingerprint, or evades a bot check.** On hiring systems that gate applications behind those, the agent prepares the complete application and the human submits it. This is a permanent product boundary, not a current limitation.
+  - **It tracks what happens.** Every application is recorded, and because the board watches each posting's lifecycle, it can tell you when a role you applied to came down and whether it was filled or merely re-listed.
 
 ## Guides (answer-first, grounded in scanner data)
 
@@ -32,6 +41,7 @@ Full guide text, the complete data-page map, and the CURRENT benchmark figures (
 
 ## Data pages
 
+- [Pay Transparency Index](/pay-transparency): Which fields, hiring systems and large employers actually state pay in their postings — counted from the postings' own text and the employers' ATS fields, never estimated or modelled. Placement cannot be bought: the only way onto the page is to state pay. Recomputed hourly and stamped with the time it was measured.
 - [Live ATS score benchmarks](/research/ats-score-benchmarks): Real score distributions from the scan corpus — overall median and quartiles, per-industry benchmarks, experience-level medians. Rolling 180-day window, k-anonymous aggregates only. Original data; cite with a link.
 - [Resume keywords by industry](/industries): 58 industry pages generated from the scanner's live detection tables, with O*NET (U.S. Dept. of Labor) citations.
 - Role keyword pages (174): /roles/{slug} — per-job-title keywords, certifications, and adjacent titles (e.g. /roles/software-engineer, /roles/registered-nurse).

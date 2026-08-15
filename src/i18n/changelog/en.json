@@ -1,5 +1,9 @@
 {
   "changelogEntries": {
+    "pagesServeTheirOwnHtml": {
+      "title": "Six pages were serving the homepage to Google",
+      "description": "A page that isn't pre-rendered falls back to the homepage's HTML, so a crawler asking for /methodology, /trust, /affiliates, /freelance-boost, /builder or /shortlist received the homepage's title, description and body instead of the page's own. Four of those we were actively submitting for indexing. It hid for a year because the tab title is corrected by JavaScript once the page loads — every human check looked right, and only the served bytes were wrong. All six now ship their own HTML, the sign-in-only one is marked not-for-indexing and removed from the sitemap, and 15 company pages where a single employer runs two job boards now point at one version instead of competing with themselves. A test now checks the sitemap against what the build actually produces, so the next occurrence fails the build instead of shipping quietly."
+    },
     "outagePostmortem": {
       "title": "The board went down for an hour. Here is what changed.",
       "description": "A maintenance mistake on our side — an overzealous database cleanup we ourselves requested — took the board offline for about an hour on August 12. No job data was lost and postings kept their verification history. What changed afterwards: the board is now probed every ten minutes from outside our own infrastructure, so an outage raises an alarm instead of waiting to be noticed; our health check flags a stalled statistic within four hours instead of twelve; and the background jobs that compute public statistics were rebuilt so one slow query degrades a single figure — labeled as stale — instead of silently freezing whole pages. Several of these gaps had existed for weeks; the outage is what exposed them."
