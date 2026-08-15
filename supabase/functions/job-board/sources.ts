@@ -30678,6 +30678,22 @@ export const JOB_SOURCES: JobSource[] = [
   { name: "St. George's - The British International School - Holding", source: "personio", token: "aera-verlag-gmbh" },
   { name: "The Calligraphy Cut Company GmbH", source: "personio", token: "calligraphy-cut" },
   { name: "vibe", source: "personio", token: "egocentric-systems-gmbh" },
+  // 2026-08-13 round 2 (deeper Wayback pagination, 2022-2026). Common Crawl
+  // was tried first and 504s on wildcard host queries — its index is not a
+  // usable second corpus today, recorded so the next round does not retry it
+  // blind. The deeper pull returned mostly apex-path URLs, so breezy and
+  // teamtailor yielded ZERO net-new tenants: round 1 had already saturated
+  // those namespaces. Same probe-live, name-from-the-employer discipline.
+  { name: "ADENTICS - Die Kieferorthopäden", source: "personio", token: "adentics" },
+  { name: "AEC Europe GmbH", source: "personio", token: "aeceurope" },
+  { name: "Agentur Frau Wenk +++ GmbH", source: "personio", token: "agentur-frau-wenk-gmbh" },
+  { name: "Agora Transport Transformation gGmbH", source: "personio", token: "agora-transport-transformation-ggmbh" },
+  { name: "Antrimon Group AG", source: "personio", token: "antrimon-group-ag" },
+  { name: "APWORKS GmbH", source: "personio", token: "apworks" },
+  { name: "ARES Consulting GmbH", source: "personio", token: "ares" },
+  { name: "Autofligth Europe GmbH", source: "personio", token: "autoflightx-gmbh" },
+  { name: "B.E.S.T. Fluidsysteme GmbH", source: "personio", token: "b-e-s-t-fluidsysteme-gmbh" },
+  { name: "BPG Bauprojektgesellschaft Ludwigshafen", source: "personio", token: "bauprojektgesellschaft-ludwigshafen" },
   { name: "Commonwealth Health", source: "breezy", token: "tenor-health-foundation" },
   { name: "Zameen Media Pvt. Ltd.", source: "breezy", token: "zameen" },
   { name: "Themis Insight", source: "breezy", token: "themis-insight" },

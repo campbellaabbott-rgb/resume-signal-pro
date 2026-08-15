@@ -121,8 +121,13 @@ const PINNED = {
   // careers-page title (skip-on-doubt), 7 staffing-named boards held out, 52
   // exact-name duplicates skipped. The bump is what puts these into the
   // bootstrap lane instead of a days-long cold rotation.
-  sourcesHash: "a4eafab4354e3161",
-  buildVersion: "2026-08-13.1",
+  // 2026-08-13.2: round 2 of the sendable census. Common Crawl 504s on
+  // wildcard host queries (recorded so it is not retried blind); a deeper
+  // Wayback pull found breezy/teamtailor already saturated by round 1 and
+  // added 19 personio boards. Small by design — the namespaces are close to
+  // exhausted, which is itself the finding.
+  sourcesHash: "33d1ad0e828f7ffc",
+  buildVersion: "2026-08-13.2",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {
