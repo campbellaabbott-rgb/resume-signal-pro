@@ -114,8 +114,15 @@ const PINNED = {
   // one tenant; a hanging board = 15 waves x 20s = past the wall clock — two
   // passes died mid-hop), and the start-stamp carries its cursor so a dead
   // hop resumes in place instead of from the range start. sources.ts UNCHANGED.
-  sourcesHash: "6bac7c8103784266",
-  buildVersion: "2026-08-12.8",
+  // 2026-08-13.1: +795 boards / ~6,392 postings across the FOUR SENDABLE
+  // vendors (breezy +186, teamtailor +33, pinpoint +288, personio +288) —
+  // direct apply-agent inventory, ~19% on top of its 34.5k. Wayback CDX
+  // round, every board probed live, names from the employer's own payload or
+  // careers-page title (skip-on-doubt), 7 staffing-named boards held out, 52
+  // exact-name duplicates skipped. The bump is what puts these into the
+  // bootstrap lane instead of a days-long cold rotation.
+  sourcesHash: "a4eafab4354e3161",
+  buildVersion: "2026-08-13.1",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {
