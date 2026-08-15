@@ -132,17 +132,26 @@ describe("the front page states one subject and no frozen totals", () => {
   const BOARD = readFileSync(resolve(__dirname, "../components/JobBoardHero.tsx"), "utf8");
   const stripCode = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\{\/\*[\s\S]*?\*\/\}/g, "").replace(/^\s*\/\/.*$/gm, "");
 
-  it("exactly one h1 across the homepage heroes", () => {
-    // Three rendered h1s (agent, board, resume-tool) is a hierarchy a screen
-    // reader cannot navigate and three competing subjects to a crawler. The
-    // agent owns it since the 2026-08-13 redesign.
-    const counts = {
-      HomeHero: (HERO.match(/<h1[\s>]/g) ?? []).length,
-      JobBoardHero: (BOARD.match(/<h1[\s>]/g) ?? []).length,
-      Hero: (HERO_C.match(/<h1[\s>]/g) ?? []).length,
-    };
-    expect(counts.HomeHero, "the home hero lost its h1").toBe(1);
-    expect(counts.JobBoardHero + counts.Hero, "a second h1 is back on the homepage").toBe(0);
+  it("exactly one h1 renders in every page state", () => {
+    // Three rendered h1s is a hierarchy a screen reader cannot navigate and
+    // three competing subjects to a crawler. But ZERO is worse, and that is
+    // what a first pass shipped: Hero's h1 was demoted while HomeHero owned
+    // it, and HomeHero is gated on `!landing && !freeKeywordResult` — so the
+    // landing variants and the post-scan screen rendered with no h1 at all,
+    // caught by loading /resume-checker.
+    //
+    // The invariant is exclusivity, not a count in one file: HomeHero and Hero
+    // never render together (Index gates them on complementary conditions), so
+    // each carries its own h1 and every state has exactly one.
+    const homeH1 = (HERO.match(/<h1[\s>]/g) ?? []).length;
+    const heroH1 = (HERO_C.match(/<h1[\s>]/g) ?? []).length;
+    expect(homeH1, "HomeHero must own the default homepage h1").toBe(1);
+    expect(heroH1, "Hero must own the h1 on landing and post-scan states").toBeGreaterThanOrEqual(1);
+    // Balanced tags — reopening h1s left </h2> closers behind once.
+    expect((HERO_C.match(/<\/h1>/g) ?? []).length).toBe(heroH1);
+    // The exclusivity itself, read off Index.
+    expect(indexCode).toMatch(/\{!landing && !freeKeywordResult && \(/);
+    expect(indexCode).toMatch(/\{\(landing \|\| freeKeywordResult\) && <Hero /);
   });
 
   it("no shipped surface hardcodes a board total", () => {

@@ -368,7 +368,7 @@ export function Hero({ onFileSelect }: { onFileSelect?: (file: File) => void | P
 
             {/* Headline - slightly smaller to emphasize social proof */}
             <div className="mb-4 animate-fade-in" style={{ animationDelay: "0.05s" }}>
-              <h2 id="hero-heading" className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold tracking-tight mb-3 leading-tight">
+              <h1 id="hero-heading" className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold tracking-tight mb-3 leading-tight">
                 {t('hero.headline.get', 'The job board with')}{" "}
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-success via-emerald-400 to-success">
                   {t('hero.headline.recruiterGrade', 'zero ghost jobs')}
@@ -376,7 +376,7 @@ export function Hero({ onFileSelect }: { onFileSelect?: (file: File) => void | P
                 {boardTotals
                 ? t('hero.headline.feedbackLive', '— {{n}}+ verified openings, matched to your resume', { n: roundedFloor(boardTotals.jobs).toLocaleString() })
                 : t('hero.headline.feedbackPlain', '— every opening verified, matched to your resume')}
-              </h2>
+              </h1>
               <p className="text-sm sm:text-base text-muted-foreground max-w-xl mx-auto">
                 {t('hero.socialFirst.subheading')}
               </p>
@@ -444,13 +444,13 @@ export function Hero({ onFileSelect }: { onFileSelect?: (file: File) => void | P
                 <span className="text-xs text-muted-foreground uppercase tracking-wider">{t('hero.benefitLed.solutionLabel')}</span>
                 <div className="w-8 h-[2px] bg-muted-foreground/30" />
               </div>
-              <h2 id="hero-heading" className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight mb-2 leading-tight">
+              <h1 id="hero-heading" className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight mb-2 leading-tight">
                 {t('hero.headline.get', 'The job board with')}{" "}
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-success via-emerald-400 to-success">
                   {t('hero.benefitLed.solutionHeadingHighlight')}
                 </span>{" "}
                 {t('hero.benefitLed.solutionHeadingSuffix')}
-              </h2>
+              </h1>
               <p className="text-xs sm:text-sm text-muted-foreground max-w-lg mx-auto">
                 {t('hero.benefitLed.solutionSubheading')}
               </p>
@@ -495,7 +495,7 @@ export function Hero({ onFileSelect }: { onFileSelect?: (file: File) => void | P
               bullets, and chips render BELOW the CTA so the scan entry point
               is visible without scrolling. */}
           <div className={`animate-fade-in ${isUltraCompact ? 'mb-3' : isCompactLayout ? 'mb-4 sm:mb-6' : 'mb-8'}`} style={{ animationDelay: "0.05s" }}>
-            <h2
+            <h1
               id="hero-heading"
               className={`font-bold tracking-tight leading-tight ${
                 isUltraCompact 
@@ -512,7 +512,7 @@ export function Hero({ onFileSelect }: { onFileSelect?: (file: File) => void | P
               {boardTotals
                 ? t('hero.headline.feedbackLive', '— {{n}}+ verified openings, matched to your resume', { n: roundedFloor(boardTotals.jobs).toLocaleString() })
                 : t('hero.headline.feedbackPlain', '— every opening verified, matched to your resume')}
-            </h2>
+            </h1>
             
             {/* Description - shorter for ultra-compact */}
             {isUltraCompact ? (

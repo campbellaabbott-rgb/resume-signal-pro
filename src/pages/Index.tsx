@@ -1768,7 +1768,19 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
             <AtsCoverage variant="strip" />
           </section>
         )}
-        <Hero onFileSelect={handleFileSelect} />
+        {/* MUTUALLY EXCLUSIVE WITH HomeHero, which is the whole point.
+            This block headlined "The job board with zero ghost jobs —
+            600,000+ verified openings" directly beneath HomeHero's "Every job
+            here is real" — 3,643px restating the claim above it, with its own
+            pair of CTAs competing with the one primary action. Making the same
+            promise twice does not make it twice as believable.
+            It is NOT deleted, because it is the only hero the other two page
+            states have: HomeHero is gated on `!landing && !freeKeywordResult`,
+            so landing variants (which carry their own query-specific promise)
+            and the post-scan screen would otherwise render with no hero at
+            all. The condition here is the exact complement of that gate —
+            one hero on every page state, never two, never none. */}
+        {(landing || freeKeywordResult) && <Hero onFileSelect={handleFileSelect} />}
 
         {/* Landing-variant copy: the query-specific promise, right under the tool */}
         {landing && !freeKeywordResult && (
