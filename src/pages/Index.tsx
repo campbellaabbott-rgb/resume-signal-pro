@@ -44,7 +44,8 @@ import { LazySection } from "@/components/LazySection";
 import { type JobEntry } from "@/components/JobSelector";
 
 import { HowItWorks } from "@/components/HowItWorks";
-import { ApplyAgentShowcase } from "@/components/ApplyAgentShowcase";
+import { AgentHero } from "@/components/AgentHero";
+import { AgentMatchesPanel } from "@/components/AgentMatchesPanel";
 import { MiniPricingCards } from "@/components/MiniPricingCards";
 import { TrustIndicators } from "@/components/TrustIndicators";
 import { WhatYouGetSection } from "@/components/WhatYouGetSection";
@@ -1736,15 +1737,19 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
             result is showing (the report takes over). */}
         {!landing && !freeKeywordResult && (
           <>
+            {/* THE AGENT OPENS THE PAGE. It was the second section, as a
+                brochure of static feature cards; it is now the hallmark — the
+                first thing every visitor sees, speaking in the first person
+                and holding live inventory numbers (rendered only once
+                measured; never hardcoded, never zero). The board hero follows
+                as its supporting evidence: the corpus the agent hunts in. */}
+            <AgentHero />
+
             {/* The fifteen platforms now live INSIDE this hero, above the
                 field chips — see JobBoardHero. They were briefly a separate
                 band underneath it, which read as a bolted-on strip rather than
                 part of the claim the hero is making. */}
             <JobBoardHero />
-
-            {/* AI apply agent — literally on the front page, right under the
-                board hero: the second thing every visitor sees. */}
-            <ApplyAgentShowcase />
             <div className="container">
               <div className="max-w-3xl mx-auto flex items-center gap-3 py-2">
                 <div className="h-px flex-1 bg-border/60" />
@@ -1937,6 +1942,18 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
                   </p>
                 </div>
               )}
+              {/* THE 60-SECOND PAYOFF. The scan just proved the machine read
+                  this CV; this panel is the agent acting on that read — live
+                  sendable roles matching the visitor's own extracted role,
+                  above the report so the agent's offer is the first thing the
+                  result screen says. Absent (never a shell) when the search
+                  yields nothing or errors. */}
+              <CardErrorBoundary section="agent-matches" fallback={<></>}>
+                <AgentMatchesPanel
+                  currentRole={freeKeywordResult.currentRole}
+                  keywords={(freeKeywordResult.keywords ?? []).map((k) => k.keyword)}
+                />
+              </CardErrorBoundary>
               <CardErrorBoundary
                 section="free-keyword-results"
                 fallback={

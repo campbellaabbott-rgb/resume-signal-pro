@@ -4455,5 +4455,25 @@
     "ready": "Fertig — nichts zu tun.",
     "blocked": "Hier wird etwas von Ihnen gebraucht.",
     "preparing": "Wird vorbereitet…"
+  },
+  "agentHero": {
+    "badge": "Ihr KI-Bewerbungsagent",
+    "headline": "Ich bewerbe mich, während Sie schlafen.",
+    "sub": "Geben Sie mir Ihren Lebenslauf. Ich durchsuche ein Live-Board verifizierter Stellen, wähle die passenden Rollen, schreibe jede Bewerbung ehrlich und reiche dort ein, wo Arbeitgeber es zulassen — Sie geben frei, ich mache die Arbeit.",
+    "inventory": "Im Moment: {{sendable}} Stellen, die ich vollständig einreichen kann, von {{total}} live verifizierten Anzeigen, die ich für Sie durchsuche.",
+    "ctaPrimary": "Lebenslauf hochladen — kostenlos",
+    "ctaSecondary": "Bei der Arbeit zusehen",
+    "proofTailored": "Maßgeschneiderte Unterlagen für jede Bewerbung — nie Massenversand",
+    "proofQuestions": "Beantwortet die echten Auswahlfragen des Arbeitgebers",
+    "proofHonest": "Zur Ehrlichkeit verpflichtet: sagt, was Sie nicht haben",
+    "proofTracks": "Verfolgt jede Bewerbung und sagt Ihnen, was daraus wurde"
+  },
+  "agentMatches": {
+    "headlineCounted": "Ich habe {{total}}{{plus}} Stellen zu „{{q}}“ gefunden, die ich vollständig einreichen kann",
+    "headline": "Stellen zu „{{q}}“, die ich vollständig einreichen kann",
+    "sub": "Live-Anzeigen von den Boards der Arbeitgeber selbst, auf Systemen, wo ich die Bewerbung für Sie abschließen kann. Die besten Treffer:",
+    "sendableBadge": "Der Agent kann diese einreichen",
+    "ctaSetup": "Agenten darauf ansetzen",
+    "ctaBrowse": "Alle durchsehen"
   }
 }

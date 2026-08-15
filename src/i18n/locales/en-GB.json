@@ -4455,5 +4455,25 @@
     "ready": "Ready — nothing needs you.",
     "blocked": "Something here needs you.",
     "preparing": "Preparing…"
+  },
+  "agentHero": {
+    "badge": "Your AI apply agent",
+    "headline": "I apply to jobs while you sleep.",
+    "sub": "Feed me your CV. I search a live board of verified openings, pick the roles that fit, write each application honestly, and submit where employers allow it — you approve, I do the legwork.",
+    "inventory": "Right now: {{sendable}} openings I can submit end-to-end, out of {{total}} live verified postings I search for you.",
+    "ctaPrimary": "Feed it your CV — free",
+    "ctaSecondary": "Watch it work",
+    "proofTailored": "Tailored materials for every application — never a blast",
+    "proofQuestions": "Answers the employer's real screening questions",
+    "proofHonest": "Sworn to honesty: it will say what you don't have",
+    "proofTracks": "Tracks every application and tells you what happened"
+  },
+  "agentMatches": {
+    "headlineCounted": "I found {{total}}{{plus}} openings matching “{{q}}” that I can submit end-to-end",
+    "headline": "Openings matching “{{q}}” that I can submit end-to-end",
+    "sub": "Live postings from employers' own boards, on systems where I can complete the application for you. Here are the top matches:",
+    "sendableBadge": "Agent can submit this one",
+    "ctaSetup": "Set the agent on these",
+    "ctaBrowse": "Browse all of them"
   }
 }

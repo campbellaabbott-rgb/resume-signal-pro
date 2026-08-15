@@ -4455,5 +4455,25 @@
     "ready": "Prête — rien ne vous attend.",
     "blocked": "Quelque chose ici vous attend.",
     "preparing": "Préparation…"
+  },
+  "agentHero": {
+    "badge": "Votre agent de candidature IA",
+    "headline": "Je postule pendant que vous dormez.",
+    "sub": "Confiez-moi votre CV. Je fouille un site vivant d'offres vérifiées, je choisis les postes qui correspondent, je rédige chaque candidature honnêtement et je soumets là où l'employeur le permet — vous validez, je fais le travail.",
+    "inventory": "En ce moment : {{sendable}} offres que je peux soumettre de bout en bout, sur {{total}} annonces vérifiées en direct que je fouille pour vous.",
+    "ctaPrimary": "Confiez-lui votre CV — gratuit",
+    "ctaSecondary": "Regardez-le travailler",
+    "proofTailored": "Des dossiers sur mesure pour chaque candidature — jamais d'envoi en masse",
+    "proofQuestions": "Répond aux vraies questions de présélection de l'employeur",
+    "proofHonest": "Voué à l'honnêteté : il dira ce que vous n'avez pas",
+    "proofTracks": "Suit chaque candidature et vous dit ce qu'elle est devenue"
+  },
+  "agentMatches": {
+    "headlineCounted": "J'ai trouvé {{total}}{{plus}} offres pour « {{q}} » que je peux soumettre de bout en bout",
+    "headline": "Offres pour « {{q}} » que je peux soumettre de bout en bout",
+    "sub": "Des annonces en direct issues des sites des employeurs eux-mêmes, sur des systèmes où je peux finaliser la candidature pour vous. Les meilleures correspondances :",
+    "sendableBadge": "L'agent peut soumettre celle-ci",
+    "ctaSetup": "Lancer l'agent sur celles-ci",
+    "ctaBrowse": "Tout parcourir"
   }
 }

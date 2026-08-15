@@ -4455,5 +4455,25 @@
     "ready": "Pronta — não precisa de si.",
     "blocked": "Aqui é preciso algo seu.",
     "preparing": "A preparar…"
+  },
+  "agentHero": {
+    "badge": "O seu agente de candidaturas com IA",
+    "headline": "Eu candidato-me enquanto você dorme.",
+    "sub": "Dê-me o seu CV. Procuro num mural vivo de vagas verificadas, escolho os papéis que encaixam, escrevo cada candidatura com honestidade e submeto onde o empregador permite — você aprova, eu faço o trabalho.",
+    "inventory": "Agora mesmo: {{sendable}} vagas que posso submeter de ponta a ponta, de {{total}} anúncios vivos verificados que procuro por si.",
+    "ctaPrimary": "Dê-lhe o seu CV — grátis",
+    "ctaSecondary": "Veja-o a trabalhar",
+    "proofTailored": "Materiais à medida para cada candidatura — nunca em massa",
+    "proofQuestions": "Responde às verdadeiras perguntas de triagem do empregador",
+    "proofHonest": "Jurado à honestidade: dirá o que você não tem",
+    "proofTracks": "Acompanha cada candidatura e diz-lhe o que aconteceu"
+  },
+  "agentMatches": {
+    "headlineCounted": "Encontrei {{total}}{{plus}} vagas para «{{q}}» que posso submeter de ponta a ponta",
+    "headline": "Vagas para «{{q}}» que posso submeter de ponta a ponta",
+    "sub": "Anúncios vivos dos murais dos próprios empregadores, em sistemas onde posso concluir a candidatura por si. As melhores correspondências:",
+    "sendableBadge": "O agente pode submeter esta",
+    "ctaSetup": "Ponha o agente nestas",
+    "ctaBrowse": "Ver todas"
   }
 }

@@ -4455,5 +4455,25 @@
     "ready": "Lista: no necesita nada de ti.",
     "blocked": "Aquí hace falta algo tuyo.",
     "preparing": "Preparando…"
+  },
+  "agentHero": {
+    "badge": "Tu agente de solicitudes con IA",
+    "headline": "Yo me postulo mientras duermes.",
+    "sub": "Dame tu CV. Busco en un tablón vivo de vacantes verificadas, elijo los puestos que encajan, escribo cada solicitud con honestidad y la envío donde el empleador lo permite — tú apruebas, yo hago el trabajo.",
+    "inventory": "Ahora mismo: {{sendable}} vacantes que puedo enviar de principio a fin, de {{total}} ofertas vivas verificadas que busco por ti.",
+    "ctaPrimary": "Dale tu CV — gratis",
+    "ctaSecondary": "Míralo trabajar",
+    "proofTailored": "Materiales a medida para cada solicitud — nunca en masa",
+    "proofQuestions": "Responde las preguntas reales de selección del empleador",
+    "proofHonest": "Jurado a la honestidad: dirá lo que no tienes",
+    "proofTracks": "Sigue cada solicitud y te cuenta qué pasó"
+  },
+  "agentMatches": {
+    "headlineCounted": "Encontré {{total}}{{plus}} vacantes para «{{q}}» que puedo enviar de principio a fin",
+    "headline": "Vacantes para «{{q}}» que puedo enviar de principio a fin",
+    "sub": "Ofertas vivas de los tablones de los propios empleadores, en sistemas donde puedo completar la solicitud por ti. Las mejores coincidencias:",
+    "sendableBadge": "El agente puede enviar esta",
+    "ctaSetup": "Pon al agente con estas",
+    "ctaBrowse": "Ver todas"
   }
 }

@@ -4455,5 +4455,25 @@
     "ready": "Handa — wala kang kailangang gawin.",
     "blocked": "May kailangan dito mula sa iyo.",
     "preparing": "Inihahanda…"
+  },
+  "agentHero": {
+    "badge": "Ang iyong AI apply agent",
+    "headline": "Nag-a-apply ako habang natutulog ka.",
+    "sub": "Ibigay mo sa akin ang iyong CV. Hinahanap ko sa live na board ng mga beripikadong bakante, pinipili ang mga tamang papel, isinusulat nang tapat ang bawat aplikasyon, at nagsusumite kung saan pinapayagan ng employer — ikaw ang nag-aapruba, ako ang gumagawa.",
+    "inventory": "Sa ngayon: {{sendable}} bakante na kaya kong isumite nang buo, mula sa {{total}} live na beripikadong posting na hinahanap ko para sa iyo.",
+    "ctaPrimary": "Ibigay ang CV mo — libre",
+    "ctaSecondary": "Panoorin itong gumana",
+    "proofTailored": "Naaangkop na materyales sa bawat aplikasyon — hindi kailanman maramihan",
+    "proofQuestions": "Sinasagot ang tunay na screening questions ng employer",
+    "proofHonest": "Sumumpa sa katapatan: sasabihin nito kung ano ang wala ka",
+    "proofTracks": "Sinusubaybayan ang bawat aplikasyon at sinasabi kung ano ang nangyari"
+  },
+  "agentMatches": {
+    "headlineCounted": "Nakakita ako ng {{total}}{{plus}} bakanteng tumutugma sa “{{q}}” na kaya kong isumite nang buo",
+    "headline": "Mga bakanteng tumutugma sa “{{q}}” na kaya kong isumite nang buo",
+    "sub": "Live na mga posting mula sa sariling board ng mga employer, sa mga sistemang kaya kong tapusin ang aplikasyon para sa iyo. Ang pinakamahusay na tugma:",
+    "sendableBadge": "Kayang isumite ito ng agent",
+    "ctaSetup": "Iatas ang agent sa mga ito",
+    "ctaBrowse": "Tingnan lahat"
   }
 }

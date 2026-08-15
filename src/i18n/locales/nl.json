@@ -4455,5 +4455,25 @@
     "ready": "Klaar — er is niets nodig.",
     "blocked": "Hier is iets van u nodig.",
     "preparing": "Voorbereiden…"
+  },
+  "agentHero": {
+    "badge": "Uw AI-sollicitatieagent",
+    "headline": "Ik solliciteer terwijl u slaapt.",
+    "sub": "Geef mij uw cv. Ik doorzoek een live bord met geverifieerde vacatures, kies de rollen die passen, schrijf elke sollicitatie eerlijk en dien in waar de werkgever het toestaat — u keurt goed, ik doe het werk.",
+    "inventory": "Op dit moment: {{sendable}} vacatures die ik volledig kan indienen, van de {{total}} live geverifieerde vacatures die ik voor u doorzoek.",
+    "ctaPrimary": "Geef uw cv — gratis",
+    "ctaSecondary": "Zie het werken",
+    "proofTailored": "Op maat gemaakte stukken voor elke sollicitatie — nooit massaal",
+    "proofQuestions": "Beantwoordt de echte selectievragen van de werkgever",
+    "proofHonest": "Gezworen eerlijkheid: het zegt wat u niet heeft",
+    "proofTracks": "Volgt elke sollicitatie en vertelt wat ermee gebeurde"
+  },
+  "agentMatches": {
+    "headlineCounted": "Ik vond {{total}}{{plus}} vacatures voor „{{q}}” die ik volledig kan indienen",
+    "headline": "Vacatures voor „{{q}}” die ik volledig kan indienen",
+    "sub": "Live vacatures van de borden van werkgevers zelf, op systemen waar ik de sollicitatie voor u kan afronden. De beste matches:",
+    "sendableBadge": "De agent kan deze indienen",
+    "ctaSetup": "Zet de agent hierop",
+    "ctaBrowse": "Bekijk ze allemaal"
   }
 }
