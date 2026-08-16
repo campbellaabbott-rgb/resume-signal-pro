@@ -150,6 +150,64 @@ describe.skipIf(!built)("sitemap URLs serve their own prerendered HTML", () => {
     ).toEqual([]);
   });
 
+  it("never publishes a dotted URL without a trailing slash", () => {
+    // Measured live 2026-08-15: /jobs/company/careers.amd.com returned HTTP 404
+    // (9-byte "Not found") while the same path with a trailing slash returned
+    // 200 with the right page. The host reads the dot as a file extension and
+    // never reaches the SPA fallback. 25 of 485 company URLs were affected —
+    // 25/25 dotted failed, 460/460 plain passed, so it is deterministic — and
+    // it broke ordinary browsers too, not just crawlers.
+    const bad = sitemapPaths().filter((p) => {
+      const last = p.split("/").pop() ?? "";
+      return last.includes(".") && !p.endsWith("/");
+    });
+    expect(
+      bad,
+      "Sitemap URLs whose last segment contains a dot but has no trailing " +
+        "slash. The host 404s these for crawlers AND for humans. Emit them " +
+        "via publicHref() so they carry the slash.",
+    ).toEqual([]);
+  });
+
+  it("ships exactly one WebSite JSON-LD entity on the homepage", () => {
+    // index.html carries the site's WebSite block; prerender-seo.mjs briefly
+    // added a second with the same name and url, one holding the SearchAction
+    // and one not. Two competing entities for one URL lets Google attribute
+    // the sitelinks searchbox to the block that does not declare it.
+    const html = readFileSync(FALLBACK_FILE, "utf8");
+    const blocks = [...html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)];
+    const websites = blocks
+      .map((m) => { try { return JSON.parse(m[1]); } catch { return null; } })
+      .flatMap((d) => (Array.isArray(d) ? d : [d]))
+      .filter((d) => d && d["@type"] === "WebSite");
+    expect(websites.length, "Homepage must declare exactly one WebSite entity").toBe(1);
+    expect(
+      websites[0]?.potentialAction?.["@type"],
+      "The single WebSite entity should carry the SearchAction (sitelinks searchbox)",
+    ).toBe("SearchAction");
+  });
+
+  it("never ships a homepage description truncated by the SERP clamp", () => {
+    // A description authored over 160 chars gets cut at a word boundary with an
+    // ellipsis appended. The homepage's ran to 279 and ended "…Upload your CV
+    // and an AI…" — the snippet Google shows trailed off BEFORE the word
+    // "agent", so the change that made the agent the headline never reached the
+    // search result at all.
+    //
+    // SCOPED TO THE HOMEPAGE ON PURPOSE. A build-wide assertion would fail on
+    // 769 pre-existing pages (500 company, 161 role, 74 industry — all
+    // templated descriptions that predate this) and that is a backlog to decide
+    // on, not a regression to block on. prerender-seo.mjs now WARNS with the
+    // full list on every build, so the rest is visible rather than silent.
+    const m = /<meta name="description" content="([^"]*)"/.exec(readFileSync(FALLBACK_FILE, "utf8"));
+    expect(m, "homepage has no meta description").toBeTruthy();
+    expect(
+      m![1].endsWith("…"),
+      `Homepage description was clipped by the 160-char clamp — shorten it at ` +
+        `the source in prerender-seo.mjs. Got: "${m![1]}"`,
+    ).toBe(false);
+  });
+
   it("gives every prerendered sitemap URL its own canonical", () => {
     const missing: string[] = [];
     for (const p of sitemapPaths()) {

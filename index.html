@@ -58,12 +58,25 @@
          Product block carried an invented aggregateRating (fake review markup
          risks a Google manual action) and a site-wide FAQPage that conflicted
          with per-page FAQs — both removed deliberately; do not re-add. -->
+    <!-- THE SITE'S ONLY WebSite ENTITY. The SearchAction lives here rather than
+         in prerender-seo.mjs: the homepage briefly shipped two WebSite blocks
+         with identical name+url, one with the searchbox and one without, which
+         lets Google attribute the sitelinks searchbox to the block that does
+         not declare it. One URL, one entity. Do not add a second. -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
       "@type": "WebSite",
       "name": "Resume Booster",
-      "url": "https://resumebooster.work"
+      "url": "https://resumebooster.work",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": {
+          "@type": "EntryPoint",
+          "urlTemplate": "https://resumebooster.work/jobs?q={search_term_string}"
+        },
+        "query-input": "required name=search_term_string"
+      }
     }
     </script>
   </head>

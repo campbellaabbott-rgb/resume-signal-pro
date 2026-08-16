@@ -301,7 +301,15 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
   const renderFile = ({ path, title, description, content, jsonLd = [], hreflang = null, lang = null, isFallback = false, canonical = null, robots = null }) => {
     // SERP snippets truncate ~160 chars; clamp at a word boundary so no page
     // (current or future) ships an overlong description.
+    //
+    // The clamp STAYS (a 300-char description in the wild is worse than a cut
+    // one) but it no longer does its work in silence. It cut the homepage's
+    // description at "…Upload your CV and an AI…" and nothing said so, so the
+    // headline change that made the agent the hallmark never reached the
+    // snippet Google shows. A safety net that hides the fall is how you find
+    // out months later.
     if (description && description.length > 160) {
+      truncatedDescriptions.push({ path, len: description.length, text: description });
       description = description.slice(0, 157).replace(/\s+\S*$/, "") + "…";
     }
     let html = template;
@@ -331,7 +339,7 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
         ? html.replace(/<meta name="robots"[^>]*>/, tag)
         : html.replace("</head>", `${tag}\n</head>`);
     }
-    let headExtra = `${isFallback ? "" : `<link rel="canonical" href="${SITE}${canonical || path}" />\n`}<meta name="x-prerendered" content="1" />\n`;
+    let headExtra = `${isFallback ? "" : `<link rel="canonical" href="${SITE}${publicHref(canonical || path)}" />\n`}<meta name="x-prerendered" content="1" />\n`;
     if (hreflang) {
       // hreflang is a { locale: path } map (any number of locales). Every
       // cluster member emits the SAME set of alternates (reciprocity is what
@@ -364,6 +372,27 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
 
   let count = 0;
   const writtenPaths = [];
+  const truncatedDescriptions = [];
+
+  // A PATH WHOSE LAST SEGMENT CONTAINS A DOT 404s WITHOUT A TRAILING SLASH.
+  //
+  // Measured live 2026-08-15: /jobs/company/careers.amd.com returns HTTP 404
+  // with a 9-byte "Not found", while /jobs/company/careers.amd.com/ and
+  // .../careers.amd.com.html both return 200 with the correct page. The host
+  // reads the dot as a file extension, looks for a static asset by that exact
+  // name, and 404s instead of falling through to the SPA. 25 of the 485
+  // company URLs in the sitemap had dotted slugs — Phenom-style tokens that
+  // ARE hostnames — and all 25 were dead. Not a sample: 25/25 dotted failed,
+  // 460/460 plain succeeded, so this is deterministic routing, not flakiness.
+  //
+  // It broke humans too, not only crawlers: the same URL 404s under a normal
+  // Chrome user-agent. Internal SPA navigation was fine, which is why nobody
+  // saw it — only a cold load of the published URL fails, which is exactly
+  // what a crawler and a pasted link both do.
+  //
+  // The files are already written both ways (see renderFile). This picks the
+  // form that actually resolves for the sitemap and the canonical.
+  const publicHref = (p) => (/\.[^/]*$/.test(p) ? `${p}/` : p);
   // A page that names another as canonical, or is marked noindex, still gets a
   // file — it has to, or the host serves it the homepage — but it stays OUT of
   // the sitemap. Submitting a URL for indexing while telling the crawler not to
@@ -717,7 +746,11 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
     title: BOARD_TOTAL
       ? `Resume Booster — Live Job Board: ${plusClaim(BOARD_TOTAL, 50000)} Verified Openings, Zero Ghost Jobs`
       : "Resume Booster — Live Job Board: 450,000+ Verified Openings, Zero Ghost Jobs",
-    description: "A live job board with zero ghost jobs — every opening pulled straight from the employer's own hiring system, re-verified all day. Upload your CV and an AI agent ranks every role against it, writes each application honestly, and applies for you. Free ATS resume scan included.",
+    // KEEP THIS UNDER 160 CHARACTERS. The previous one ran to 279 and the
+    // clamp below cut it at "…Upload your CV and an AI…" — the snippet Google
+    // shows literally trailed off before the word "agent", so the change that
+    // made the agent the homepage's headline never reached the search result.
+    description: "A live job board with zero ghost jobs — every opening straight from the employer's own hiring system. An AI agent ranks them to your CV and applies for you.",
     jsonLd: [
       {
         "@context": "https://schema.org",
@@ -729,21 +762,16 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
         description: `Free diagnostic resume scan: ATS score with a full audit trail, verified quotes, per-vendor parsing checks, and a fix plan — across ${NIND} industries and 10 languages.`,
         offers: { "@type": "Offer", price: "0", priceCurrency: "USD", description: "Free resume scan — no signup required" },
       },
-      // The board itself, and the agent that acts on it. Without these the
+      // NO WebSite ENTITY HERE — index.html already ships one in the template,
+      // so emitting a second gave the homepage TWO WebSite blocks with the same
+      // name and url and only one carrying the SearchAction. Two competing
+      // entities for one URL is how a sitelinks searchbox gets attributed to
+      // the block that does not declare it. The SearchAction now lives on the
+      // template's single block instead; see index.html.
+      //
+      // The agent, though, has no entity anywhere else — without this the
       // structured data described only the resume scanner while the title and
-      // the page both led with the job board — an answer engine had nothing to
-      // cite for "job board" or "AI that applies for me".
-      {
-        "@context": "https://schema.org",
-        "@type": "WebSite",
-        name: "Resume Booster",
-        url: SITE,
-        potentialAction: {
-          "@type": "SearchAction",
-          target: { "@type": "EntryPoint", urlTemplate: `${SITE}/jobs?q={search_term_string}` },
-          "query-input": "required name=search_term_string",
-        },
-      },
+      // the page both led with the job board and the agent.
       {
         "@context": "https://schema.org",
         "@type": "Service",
@@ -1578,12 +1606,21 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
     const xml = [
       `<?xml version="1.0" encoding="UTF-8"?>`,
       `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">`,
-      ...entries.map((e) => `  <url>\n    <loc>${SITE}${e.path}</loc>\n    <lastmod>${LASTMOD}</lastmod>\n    <changefreq>${e.changefreq}</changefreq>\n    <priority>${e.priority}</priority>\n  </url>`),
+      // publicHref, not e.path: a dotted last segment needs the trailing slash
+      // or the host 404s it. See the comment on publicHref.
+      ...entries.map((e) => `  <url>\n    <loc>${SITE}${publicHref(e.path)}</loc>\n    <lastmod>${LASTMOD}</lastmod>\n    <changefreq>${e.changefreq}</changefreq>\n    <priority>${e.priority}</priority>\n  </url>`),
       `</urlset>`,
     ].join("\n");
     writeFileSync(join(root, "public/sitemap.xml"), xml);
     writeFileSync(join(dist, "sitemap.xml"), xml);
     console.log(`[prerender-seo] sitemap.xml regenerated: ${entries.length} URLs (public/ + dist/)`);
+  }
+
+  // Say out loud what the clamp had to cut. Silent truncation is how the
+  // homepage shipped a snippet ending "…Upload your CV and an AI…".
+  if (truncatedDescriptions.length) {
+    console.warn(`[prerender-seo] ${truncatedDescriptions.length} description(s) OVER 160 CHARS and truncated for the SERP snippet — shorten them at the source:`);
+    for (const t of truncatedDescriptions) console.warn(`  ${t.path} (${t.len} chars): ${t.text.slice(0, 100)}…`);
   }
 
   console.log(`[prerender-seo] Wrote ${count} static HTML pages into dist/ (+ homepage fallback + llms-full.txt)`);
