@@ -140,20 +140,26 @@ describe("the board's growth number is observed, not inferred", () => {
       .toBeLessThan(facets);
   });
 
-  it("is exposed on status, deadlined, and omitted rather than zeroed", () => {
-    expect(FN).toMatch(/rpc\("get_board_flow"/);
-    // [\d_]+ not \d+ — the codebase writes numeric separators (3_000), and the
-    // first draft of this assertion failed on its own correct code because of it.
-    expect(/withDeadline\(client\.rpc\("get_board_flow"[\s\S]{0,60}?,\s*[\d_]+\)/.test(FN)).toBe(true);
-    const ms = Number(
-      (/withDeadline\(client\.rpc\("get_board_flow"[\s\S]{0,80}?,\s*([\d_]+)\)/.exec(FN)?.[1] ?? "0")
-        .replace(/_/g, ""),
-    );
-    expect(ms, "deadline must leave real headroom over the observed runtime")
-      .toBeGreaterThanOrEqual(6000);
+  it("is served from CACHE on status, never computed per request", () => {
+    // withDeadline is a Promise.race: losing the race abandons the JS promise
+    // while the statement runs on to its 15s statement_timeout. So deadlining
+    // this RPC never reduced its cost — it only hid the result. Measured during
+    // the 2026-08-17 22:07Z outage: freshness, dateCoverage and boardFlow were
+    // all null in one payload, every one of them still charged in full, while
+    // ordinary reads timed out and the ingest failed with (db-write).
+    expect(FN).not.toMatch(/withDeadline\(client\.rpc\("get_board_flow"/);
+    expect(FN).toMatch(/eq\("k", "board_flow_cache"\)/);
+    // Computed once per completed pass, next to the pool sample.
+    const passDone = FN.indexOf("if (passDone) {");
+    const cached = FN.indexOf('rpc("get_board_flow"', passDone);
+    expect(cached, "flow must be computed inside the passDone block").toBeGreaterThan(-1);
+    expect(FN.slice(passDone, cached)).toMatch(/record_board_pool_sample/);
+    // Null, never 0 — "0 intake" on a board taking thousands is a false alarm.
     const block = /boardFlow: \(\(\) => \{[\s\S]{0,400}?\}\)\(\)/.exec(FN)?.[0] ?? "";
     expect(block, "boardFlow status field not found").not.toBe("");
     expect(block.includes("return row && typeof row === \"object\" ? row : null;")).toBe(true);
+    // A cached number must carry its age or it reads as current.
+    expect(FN).toMatch(/boardFlowAgeMin: ageMin\(/);
   });
 });
 

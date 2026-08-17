@@ -80,11 +80,25 @@
 --   untracked      we removed the board from sources.ts
 --
 -- Neither means the employer stopped hiring, which is why neither is a closure.
+-- NOT VALID, deliberately. A plain ADD CONSTRAINT ... CHECK takes ACCESS
+-- EXCLUSIVE and scans every existing row to validate it. This migration is
+-- landing on a database that spent 2026-08-17 22:00Z refusing `select id limit 1`
+-- inside 20s, and the sibling migration's plain CREATE INDEX on
+-- job_board_closures is a prime suspect for that. Adding another full-table lock
+-- to a struggling database to validate rows I can already prove are fine is not
+-- a trade worth making.
+--
+-- Nothing is lost: the pre-existing vocabulary is ('removed','aged_out',
+-- 'backdated'), all three are in the new list, so every existing row already
+-- satisfies the constraint. NOT VALID skips the historical scan and still
+-- enforces the check on every INSERT and UPDATE from here on, which is the only
+-- thing this constraint is for.
 ALTER TABLE public.job_board_exits
   DROP CONSTRAINT IF EXISTS job_board_exits_exit_reason_check;
 ALTER TABLE public.job_board_exits
   ADD CONSTRAINT job_board_exits_exit_reason_check
-  CHECK (exit_reason IN ('removed', 'aged_out', 'backdated', 'board_dormant', 'untracked'));
+  CHECK (exit_reason IN ('removed', 'aged_out', 'backdated', 'board_dormant', 'untracked'))
+  NOT VALID;
 
 CREATE TABLE IF NOT EXISTS public.job_board_pool_samples (
   sampled_at timestamptz PRIMARY KEY DEFAULT now(),

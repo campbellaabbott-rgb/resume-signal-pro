@@ -1768,6 +1768,25 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
       const { data: sampled, error: sErr } = await client.rpc("record_board_pool_sample");
       if (sErr) console.warn("[JOB-BOARD] pool sample failed (non-fatal):", sErr.message?.slice(0, 140));
       else console.log(`[JOB-BOARD] pool sample recorded: serving=${sampled}`);
+
+      // AND CACHE THE FLOW HERE, so status never computes it per request.
+      // withDeadline is a Promise.race: losing the race abandons the promise but
+      // the statement keeps running to its 15s statement_timeout. Calling this
+      // from status meant every status hit paid for the counts and usually
+      // displayed null anyway — measured during the 2026-08-17 22:07Z outage,
+      // when freshness, dateCoverage and boardFlow were all null together while
+      // ordinary reads timed out. Once per pass, read from meta thereafter.
+      const { data: flow, error: fErr } = await client.rpc("get_board_flow", { p_hours: 24 });
+      if (fErr) console.warn("[JOB-BOARD] board flow cache failed (non-fatal):", fErr.message?.slice(0, 140));
+      else {
+        const row = Array.isArray(flow) ? flow[0] : flow;
+        if (row && typeof row === "object") {
+          await client.from("job_board_meta").upsert(
+            { k: "board_flow_cache", v: row, updated_at: new Date().toISOString() },
+            { onConflict: "k" },
+          );
+        }
+      }
     }
 
     // Facets from the database — always true to what the board serves. If
@@ -3020,14 +3039,24 @@ Deno.serve(async (req) => {
         // status payload that waits on an analytics count is a status payload
         // that stops answering the question it exists for.
         //
-        // 3_000 WAS TOO TIGHT AND THE FIELD WAS NULL ON EVERY CALL. Measured
-        // live: the RPC ran 2.64s, 2.80s, 2.78s against a 3.0s deadline, so any
-        // jitter missed and the value never populated — a metric that is always
-        // absent is the same as one that does not exist. 8s leaves real
-        // headroom over the observed range while still being a guard rather
-        // than a budget: status must keep answering "did the deploy land?"
-        // even when an analytics count is slow.
-        withDeadline(client.rpc("get_board_flow", { p_hours: 24 }), 8_000),
+        // NOW READ FROM CACHE, NOT COMPUTED PER REQUEST — because withDeadline
+        // DOES NOT CANCEL THE QUERY. It is a Promise.race: losing the race
+        // abandons the JS promise while the statement keeps running server-side
+        // to its 15s statement_timeout. So the 3_000 -> 8_000 change earlier
+        // today bought nothing except a longer wait for a value that was still
+        // usually null, and every status call went on paying for a full 572k-row
+        // count regardless.
+        //
+        // Measured 2026-08-17 22:07Z during a live board outage: freshness,
+        // dateCoverage and boardFlow were ALL null in the same payload, meaning
+        // all three analytics RPCs blew their deadlines — and all three still
+        // ran to completion in Postgres. The board was paying full price for
+        // three heavy scans per status call and displaying none of them, while
+        // ordinary reads timed out and the ingest failed with (db-write).
+        //
+        // The pass computes it once and stores it, exactly as date_coverage
+        // already does. A status call now costs one indexed meta read.
+        client.from("job_board_meta").select("v, updated_at").eq("k", "board_flow_cache").maybeSingle(),
         // Last good coverage, so a timeout serves stale numbers with their age
         // attached instead of nothing at all.
         client.from("job_board_meta").select("v, updated_at").eq("k", "date_coverage_cache").maybeSingle(),
@@ -3413,10 +3442,14 @@ Deno.serve(async (req) => {
         // the migration has not landed — never a zero, which would read as
         // "nothing came in today" on a board taking thousands.
         boardFlow: (() => {
-          const r = (boardFlow as { data?: unknown } | null)?.data;
+          const r = (boardFlow as { data?: { v?: unknown } } | null)?.data?.v;
           const row = Array.isArray(r) ? r[0] : r;
           return row && typeof row === "object" ? row : null;
         })(),
+        // The cache's own age, so a stale flow number is never read as current.
+        boardFlowAgeMin: ageMin(
+          (boardFlow as { data?: { updated_at?: string } } | null)?.data?.updated_at ?? null,
+        ),
         dateCoverageSource: Array.isArray((dateCov as { data?: unknown }).data)
           ? "rollup"
           : (dcCache.data?.v ? "cache" : "unavailable"),
