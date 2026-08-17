@@ -7,7 +7,7 @@ import { Resend } from "https://esm.sh/resend@2.0.0";
 // Price identity for the $99 apply agent, and the entitlement writer.
 // Static import: the dynamic one inside the handler typechecked as `any`,
 // which is how a rename would have reached production silently.
-import { AGENT_PRICE_CENTS, checkAgentByEmail } from "../_shared/agent.ts";
+import { AGENT_PRICE_CENTS, checkAgentByEmail, isAgentPriced } from "../_shared/agent.ts";
 
 // Declare EdgeRuntime for background tasks
 declare const EdgeRuntime: { waitUntil: (promise: Promise<unknown>) => void };
@@ -79,6 +79,61 @@ function sendFailureAlertBackground(details: {
       console.error("[STRIPE-WEBHOOK] Alert email failed:", e);
     }
   })());
+}
+
+/**
+ * Re-read Stripe and rewrite the agent entitlement cache for one customer.
+ *
+ * Shared by the four lifecycle events that can change entitlement (see the
+ * cases at the bottom of the switch). Resolving an email is the whole job: a
+ * subscription event carries only a customer reference, and an invoice's
+ * `customer_email` can be null, so both fall back to retrieving the customer.
+ *
+ * DELIBERATELY NON-FATAL, exactly like the seeding path at checkout: throwing
+ * here would 500 the webhook and make Stripe retry a delivery that already
+ * succeeded, and the /account page still repairs the row on next load. This
+ * removes the dependence on that visit; it is not the only route.
+ */
+async function refreshAgentEntitlement(
+  stripe: Stripe,
+  // deno-lint-ignore no-explicit-any
+  supabase: SupabaseClient<any, any, any>,
+  knownEmail: string | null,
+  customerRef: string | { id?: string } | null,
+  eventType: string,
+): Promise<void> {
+  try {
+    let email = knownEmail ?? "";
+    if (!email) {
+      const customerId = typeof customerRef === "string" ? customerRef : customerRef?.id;
+      if (!customerId) {
+        logStep("Agent entitlement refresh skipped (no customer on event)", { eventType });
+        return;
+      }
+      const customer = await stripe.customers.retrieve(customerId);
+      // A deleted customer comes back as { deleted: true } with no email. There
+      // is nothing to look up, and nothing to revoke that Stripe has not already
+      // revoked via the subscription event itself.
+      if ((customer as { deleted?: boolean }).deleted) {
+        logStep("Agent entitlement refresh skipped (customer deleted)", { eventType, customerId });
+        return;
+      }
+      email = (customer as Stripe.Customer).email ?? "";
+    }
+    if (!email) {
+      logStep("Agent entitlement refresh skipped (customer has no email)", { eventType });
+      return;
+    }
+    const refreshed = await checkAgentByEmail(stripe, supabase, email);
+    logStep("Agent entitlement refreshed", {
+      eventType, email, active: refreshed.active, status: refreshed.status,
+      currentPeriodEnd: refreshed.currentPeriodEnd,
+    });
+  } catch (err) {
+    logStep("Agent entitlement refresh failed (Account page will repair)", {
+      eventType, error: String(err),
+    });
+  }
 }
 
 // Trigger product delivery for a completed checkout
@@ -627,6 +682,67 @@ serve(async (req) => {
             paymentIntentId: session.payment_intent as string || session.id
           });
         })());
+        break;
+      }
+
+      // THE AGENT WENT SILENT ON THE DAY THE CARD WAS FIRST CHARGED.
+      //
+      // checkout.session.completed seeds the entitlement cache once, at
+      // purchase, with `current_period_end` set to the END OF THE TRIAL. Nothing
+      // refreshed it after that. rowIsEntitled() compares that timestamp to now,
+      // so on day 8 — the moment the first real $99 charge succeeds and the
+      // subscription becomes genuinely valuable — the cached row expires and
+      // every consumer starts skipping the customer.
+      //
+      // The failure is silent in three places at once: apply-agent skips with a
+      // bare `continue` and no counter, apply-broker unclaims, and the digest
+      // email is suppressed — so the customer gets no queue, no email, and no
+      // error, on the first day they actually paid. It only recovered if they
+      // happened to load /account, which re-seeds the row as a side effect.
+      //
+      // Stripe already tells us; we simply were not listening. These are the
+      // events that change whether somebody is entitled:
+      //   invoice.payment_succeeded    the renewal — the day-8 case itself
+      //   invoice.payment_failed       card declined; sub heads for past_due
+      //   customer.subscription.updated  trial->active, ->past_due, ->canceled
+      //   customer.subscription.deleted  cancellation
+      //
+      // checkAgentByEmail re-reads Stripe and rewrites the cache correctly, and
+      // is already safe for manual grants: a comp (stripe_customer_id IS NULL)
+      // returns before the cache write, and the downgrade path only touches
+      // rows Stripe owns. So this cannot revoke a comp.
+      case "invoice.payment_succeeded":
+      case "invoice.payment_failed": {
+        const invoice = event.data.object as Stripe.Invoice;
+        // Filter to agent invoices so an unrelated subscription's renewal does
+        // not spend two Stripe calls recomputing an answer that cannot change.
+        if (!isAgentPriced(invoice.lines?.data as ReadonlyArray<{ price?: unknown }> | undefined)) {
+          logStep("Invoice ignored (not the agent price)", { type: event.type, invoice: invoice.id });
+          break;
+        }
+        await refreshAgentEntitlement(
+          stripe, supabase,
+          invoice.customer_email ?? null,
+          invoice.customer as string | { id?: string } | null,
+          event.type,
+        );
+        break;
+      }
+
+      case "customer.subscription.updated":
+      case "customer.subscription.deleted": {
+        const sub = event.data.object as Stripe.Subscription;
+        if (!isAgentPriced(sub.items?.data as ReadonlyArray<{ price?: unknown }> | undefined)) {
+          logStep("Subscription ignored (not the agent price)", { type: event.type, sub: sub.id });
+          break;
+        }
+        // A subscription event carries no email, only a customer reference.
+        await refreshAgentEntitlement(
+          stripe, supabase,
+          null,
+          sub.customer as string | { id?: string } | null,
+          event.type,
+        );
         break;
       }
 

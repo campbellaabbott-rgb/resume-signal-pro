@@ -31,6 +31,32 @@ export interface AgentStatus {
 // readers of agent_subscribers drifted apart in the first place.
 const ACTIVE_STATUSES = ACTIVE_SUBSCRIBER_STATUSES;
 
+/**
+ * Does this subscription (or invoice) bill the agent's price?
+ *
+ * ENTITLEMENT MATCHES ON AMOUNT, NOT ON A PRICE ID, and that is worth knowing
+ * before you touch pricing: create-agent-checkout builds an inline `price_data`
+ * rather than referencing a stored Price, so there is no ID to match on.
+ * Consequence: ANY $99.00 subscription on this Stripe account reads as the
+ * agent, and changing AGENT_PRICE_CENTS silently de-entitles every existing
+ * subscriber at once. Kept as one exported function so the webhook and the
+ * entitlement reader cannot drift into disagreeing about what "an agent
+ * subscription" is — a second copy of that rule is how the four readers of
+ * agent_subscribers diverged the first time.
+ *
+ * `it` is annotated explicitly because `items.data` widens to an implicit any
+ * under Deno's stricter check: `deno check` failed with TS7006 on every
+ * function importing this file, while `tsc` — which does not cover
+ * supabase/functions — stayed green.
+ */
+export function isAgentPriced(
+  items: ReadonlyArray<{ price?: unknown }> | null | undefined,
+): boolean {
+  return (items ?? []).some(
+    (it: { price?: unknown }) => (it.price as { unit_amount?: number } | undefined)?.unit_amount === AGENT_PRICE_CENTS,
+  );
+}
+
 export async function checkAgentByEmail(
   stripe: Stripe,
   supabase: { from: (t: string) => any },
@@ -43,16 +69,7 @@ export async function checkAgentByEmail(
   for (const customer of customers.data) {
     const subs = await stripe.subscriptions.list({ customer: customer.id, status: "all", limit: 10 });
     for (const sub of subs.data) {
-      // `it` annotated explicitly: `sub.items.data` widens to an implicit any
-      // here under Deno's stricter check, so `deno check` on every function that
-      // imports this file failed with TS7006 while `tsc` — which does not cover
-      // supabase/functions — stayed green. That is exactly the gap that let an
-      // edge-function outage ship once before; the annotation costs nothing and
-      // puts the whole agent entitlement path back under the Deno gate.
-      const isAgentSub = (sub.items?.data ?? []).some(
-        (it: { price?: unknown }) => (it.price as { unit_amount?: number } | undefined)?.unit_amount === AGENT_PRICE_CENTS,
-      );
-      if (!isAgentSub) continue;
+      if (!isAgentPriced(sub.items?.data)) continue;
       const periodEnd = (sub as unknown as { current_period_end?: number }).current_period_end
         ?? (sub.items?.data?.[0] as unknown as { current_period_end?: number } | undefined)?.current_period_end;
       if (ACTIVE_STATUSES.has(sub.status)) {

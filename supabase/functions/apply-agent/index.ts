@@ -255,7 +255,11 @@ serve(async (req) => {
     // Counted separately, because "0 applications" has to be explainable. A
     // candidate whose agent is paused, or whose whole shortlist was their own
     // employer, must not see the same empty morning as one with no matches.
-    skippedPaused: 0, skippedBlockedCompany: 0, skippedEmployerCooldown: 0,
+    // skippedNotEntitled is the one that says "they are PAYING and getting
+    // nothing" rather than "quiet day" — a non-zero value here is an incident,
+    // not a statistic, because every one of these is a customer whose agent
+    // silently stopped.
+    skippedPaused: 0, skippedBlockedCompany: 0, skippedEmployerCooldown: 0, skippedNotEntitled: 0,
     // Both, not just the successes. A tailoring feature that is switched on and
     // silently rejects every draft looks identical to one nobody enabled, and
     // the only visible symptom would be an absence of tailored notes — which is
@@ -303,7 +307,18 @@ serve(async (req) => {
     const { data: sub } = await client
       .from("agent_subscribers").select(ENTITLEMENT_COLUMNS)
       .eq("email", normalizeEmail(m.email)).maybeSingle();
-    if (!rowIsEntitled(sub)) continue;
+    // COUNTED, because this was the one skip that left no trace.
+    //
+    // Every neighbouring skip increments something — skippedPaused,
+    // skippedBlockedCompany, skippedEmployerCooldown — and this one did not, so
+    // a run that dropped every subscriber on a lapsed entitlement reported
+    // {mandates: N, prepared: 0}: byte-identical to "nobody matched any jobs
+    // today". That is precisely the shape the day-8 expiry took, and it is why
+    // it went unnoticed — the instrument that would have shown it did not exist.
+    if (!rowIsEntitled(sub)) {
+      summary.skippedNotEntitled++;
+      continue;
+    }
 
     // Normalised once per mandate rather than per posting. Case- and
     // whitespace-insensitive because "Acme Ltd" and "acme ltd " are the same
