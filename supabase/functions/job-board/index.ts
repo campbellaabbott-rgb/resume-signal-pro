@@ -5832,6 +5832,33 @@ function interleaveByCompany(rows: Array<Record<string, unknown>>): Array<Record
   return out;
 }
 
+/**
+ * The categories facet a response may honestly publish.
+ *
+ * BOARD-WIDE COUNTS INSIDE A FILTERED VIEW OVERSTATED BY 15.7x TO 45x, which is
+ * why `categories` is withheld unless the request is unfiltered. That rule is
+ * right and stays.
+ *
+ * But it took a true number away from the one page that needs it most. A
+ * category lander (/jobs/field/engineering) IS filtered, so it got nothing, and
+ * the page fell back to the capped `total` — rendering "10,000+" under a Google
+ * snippet promising "68,347+". The count that won the click did not survive it.
+ *
+ * The single ACTIVE category is a different claim from the whole facet: it is
+ * scoped to exactly what the reader filtered, so it cannot overstate. Publish
+ * that one entry, and nothing else.
+ */
+function visibleCategories(
+  facet: Record<string, number> | undefined,
+  unfiltered: boolean,
+  activeCategory: string | null,
+): Record<string, number> | undefined {
+  if (unfiltered) return facet ?? {};
+  if (!activeCategory || !facet) return undefined;
+  const n = facet[activeCategory];
+  return typeof n === "number" ? { [activeCategory]: n } : undefined;
+}
+
 function collapseClusters(
   rows: Array<Record<string, unknown>>,
   limit: number,
@@ -6452,7 +6479,7 @@ async function serveList(
           // is a wrong number on every filtered session. Omit rather than
           // mislead: the UI already handles an absent facet, and a count we
           // cannot scope to the query is a count we should not publish.
-          categories: unfiltered ? ((v0.categoriesFacet as Record<string, number>) ?? {}) : undefined,
+          categories: visibleCategories(v0.categoriesFacet as Record<string, number> | undefined, unfiltered, applied.category),
                 failedSources: (v0.failedSources as string[]) ?? [],
                 refreshedAt: (v0.refreshedAt as string) ?? null,
                 fuzzy: qText,
@@ -6517,7 +6544,7 @@ async function serveList(
           // is a wrong number on every filtered session. Omit rather than
           // mislead: the UI already handles an absent facet, and a count we
           // cannot scope to the query is a count we should not publish.
-          categories: unfiltered ? ((v0.categoriesFacet as Record<string, number>) ?? {}) : undefined,
+          categories: visibleCategories(v0.categoriesFacet as Record<string, number> | undefined, unfiltered, applied.category),
                     failedSources: (v0.failedSources as string[]) ?? [],
                     refreshedAt: (v0.refreshedAt as string) ?? null,
                     semantic: qText,
@@ -6653,7 +6680,7 @@ async function serveList(
           // is a wrong number on every filtered session. Omit rather than
           // mislead: the UI already handles an absent facet, and a count we
           // cannot scope to the query is a count we should not publish.
-          categories: unfiltered ? ((v0.categoriesFacet as Record<string, number>) ?? {}) : undefined,
+          categories: visibleCategories(v0.categoriesFacet as Record<string, number> | undefined, unfiltered, applied.category),
           failedSources: (v0.failedSources as string[]) ?? [],
           refreshedAt: (v0.refreshedAt as string) ?? null,
           ranked: true,
@@ -6931,7 +6958,7 @@ async function serveList(
     // 67,898" next to a country=GB page whose entire scope is 19,633. Today's fix
     // covered three of the four response sites and its commit message claimed
     // all of them; this is the fourth.
-    categories: unfiltered ? ((v.categoriesFacet as Record<string, number>) ?? {}) : undefined,
+    categories: visibleCategories(v.categoriesFacet as Record<string, number> | undefined, unfiltered, applied.category),
     failedSources: (v.failedSources as string[]) ?? [],
     refreshedAt: (v.refreshedAt as string) ?? null,
   });

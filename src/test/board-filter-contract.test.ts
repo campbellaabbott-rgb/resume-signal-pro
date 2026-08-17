@@ -490,3 +490,46 @@ describe("the countOnly exit is not exempt from the honesty contract", () => {
     expect(code).toContain("total: augmented ? null : total");
   });
 });
+
+describe("a category lander may publish its OWN count, never the whole facet", () => {
+  const FN = readFileSync(
+    resolve(__dirname, "../../supabase/functions/job-board/index.ts"), "utf8",
+  );
+
+  it("withholds the board-wide facet on any filtered view", () => {
+    // The original rule, and it stays: board-wide category counts rendered
+    // inside a filtered view overstated by 15.7x to 45x.
+    const fn = /function visibleCategories\([\s\S]*?\n\}/.exec(FN)?.[0] ?? "";
+    expect(fn, "visibleCategories not found").not.toBe("");
+    expect(fn.includes("if (unfiltered) return facet ?? {};")).toBe(true);
+    expect(
+      /if \(!activeCategory \|\| !facet\) return undefined;/.test(fn),
+      "a filtered view with no active category must publish NOTHING",
+    ).toBe(true);
+  });
+
+  it("publishes exactly one entry — the category being filtered", () => {
+    // Scoped to what the reader actually filtered, so it cannot overstate.
+    // This is what lets /jobs/field/engineering show 68,347 instead of the
+    // capped "10,000+" it fell back to, under a Google snippet promising the
+    // real number.
+    const fn = /function visibleCategories\([\s\S]*?\n\}/.exec(FN)?.[0] ?? "";
+    expect(/\{ \[activeCategory\]: n \}/.test(fn), "must return a single-key object").toBe(true);
+    expect(
+      fn.includes("typeof n === \"number\""),
+      "a missing count must yield undefined, never 0 — zero would render as " +
+        "'0 live openings' on a page that has thousands",
+    ).toBe(true);
+  });
+
+  it("routes every response site through the helper", () => {
+    // Four sites emit `categories`. One left on the old ternary would make the
+    // lander's number depend on which internal path served it.
+    expect(
+      FN.includes("categories: unfiltered ?"),
+      "a response site still uses the old unfiltered-ternary instead of visibleCategories",
+    ).toBe(false);
+    const uses = (FN.match(/categories: visibleCategories\(/g) ?? []).length;
+    expect(uses, "expected every categories site to use the helper").toBeGreaterThanOrEqual(4);
+  });
+});

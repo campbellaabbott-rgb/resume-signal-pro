@@ -1626,7 +1626,32 @@ describe("filters send and show one honest definition", () => {
     // The property is that NO site emits the facet ungated, however many exist.
     const ungated = fn.match(/categories: \((?:v|v0)\.categoriesFacet/g) ?? [];
     expect(ungated, `ungated board-wide facet site(s): ${ungated.join(", ")}`).toEqual([]);
-    expect((fn.match(/categories: unfiltered \?/g) ?? []).length).toBeGreaterThanOrEqual(4);
+
+    // REWRITTEN A SECOND TIME, for the reason the note above already gives.
+    // This asserted `categories: unfiltered ?` appeared at least four times —
+    // which pins the IMPLEMENTATION, not the property, and broke the moment the
+    // gate moved into a named helper. That is the same census-instead-of-property
+    // mistake, one layer up.
+    //
+    // The gate now lives in visibleCategories(): board-wide facet only when
+    // unfiltered, and on a FILTERED view at most the single active category —
+    // scoped to exactly what the reader filtered, so it cannot overstate. That
+    // narrow case exists because withholding everything left a category lander
+    // rendering "10,000+" (the capped total) under a Google snippet promising
+    // "68,347+".
+    //
+    // What must hold: every emitting site is gated, and the gate still refuses
+    // the whole facet when filtered.
+    const sites = fn.match(/categories: (?:unfiltered \?|visibleCategories\()/g) ?? [];
+    expect(sites.length, "expected every `categories:` site to be gated").toBeGreaterThanOrEqual(4);
+    const helper = /function visibleCategories\([\s\S]*?\n\}/.exec(fn)?.[0] ?? "";
+    if (helper) {
+      expect(helper).toMatch(/if \(unfiltered\) return facet \?\? \{\};/);
+      expect(
+        /\{ \[activeCategory\]: n \}/.test(helper),
+        "a filtered view may publish AT MOST the one active category",
+      ).toBe(true);
+    }
   });
 
   it("the country facet RPC counts only servable rows", () => {
