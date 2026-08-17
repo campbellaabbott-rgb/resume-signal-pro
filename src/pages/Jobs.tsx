@@ -2019,6 +2019,19 @@ export default function Jobs() {
     [jobs],
   );
 
+  /**
+   * Weave employers together on the DEFAULT browse only.
+   *
+   * Off whenever the reader has expressed an intent the weave would fight:
+   *  - a company filter or a /jobs/company lander — they asked for one employer
+   *  - salary sort or fit ranking — an explicit ordering, and reordering it
+   *    would make the sort label false
+   *  - a search query — relevance order is the answer to what they typed
+   * Freshness/recency browsing stays woven, which is the case that was broken.
+   */
+  const interleaveEmployers =
+    !company && !landerCompany && !q && sortMode !== "salary" && !fitRanking;
+
   const groupedJobs = useMemo(() => {
     const map = new Map<string, { primary: BoardJob; siblings: BoardJob[] }>();
     const order: Array<{ primary: BoardJob; siblings: BoardJob[] }> = [];
@@ -2042,8 +2055,49 @@ export default function Jobs() {
         order.push(ng);
       }
     }
-    return order;
-  }, [displayJobs]);
+
+    // PAGE 1 OF A 598,066-JOB BOARD WAS ELEVEN EMPLOYERS.
+    //
+    // The server sorts `effective_posted DESC, id ASC`, and `id` is
+    // `vendor:token:jobid` — so every date tie collapses into a per-company
+    // block. Measured live on the default view: 60 rows, 11 distinct companies,
+    // including one unbroken run of 24 Republic postings and 13 PNC. On
+    // /jobs/field/engineering, 20 companies with a 12-run of Parsons.
+    //
+    // A first-time visitor scrolls past two dozen near-identical rows from one
+    // employer and concludes this is a scrape — the precise opposite of the
+    // "verified, straight from the employer" claim in the hero above it. It
+    // also hides the agent: 59 of the 60 default rows are Workday (walled), so
+    // the "Agent can apply" chip never fires on the one screen everyone sees.
+    //
+    // ROUND-ROBIN, NOT A CAP. Nothing is dropped and nothing is hidden — the
+    // same rows in a different order — so "Showing N" stays true, pagination is
+    // unaffected, and no employer's postings become unreachable. Order WITHIN
+    // each employer is preserved, so the newest role at any company still
+    // outranks its older ones.
+    //
+    // Strict date order is genuinely relaxed, so the sort label says so rather
+    // than claiming "newest first" and quietly meaning something else.
+    if (!interleaveEmployers) return order;
+    const byCompany = new Map<string, Array<{ primary: BoardJob; siblings: BoardJob[] }>>();
+    for (const g of order) {
+      const k = (g.primary.token ?? g.primary.company ?? "").toLowerCase();
+      const bucket = byCompany.get(k);
+      if (bucket) bucket.push(g); else byCompany.set(k, [g]);
+    }
+    // Buckets keep first-appearance order, so the employer holding the single
+    // newest posting still leads the page.
+    const buckets = [...byCompany.values()];
+    const woven: typeof order = [];
+    for (let round = 0; woven.length < order.length; round++) {
+      let placed = false;
+      for (const b of buckets) {
+        if (round < b.length) { woven.push(b[round]); placed = true; }
+      }
+      if (!placed) break; // exhausted — cannot loop forever
+    }
+    return woven;
+  }, [displayJobs, interleaveEmployers]);
 
   // What the summary may honestly call "shown". `jobs.length` was the FETCHED
   // page, but the rendered list is narrowed further by the Actively-hiring
@@ -3011,9 +3065,33 @@ export default function Jobs() {
               // A category lander's headline count must be THAT category's —
               // the board-wide 574k under an "Engineering jobs" H1 claimed
               // 574k engineering openings (scope-integrity finding).
-              : landerCategory && (data?.categories?.[landerCategory] ?? 0) > 0
+              // THE COUNT THAT WON THE CLICK MUST SURVIVE THE CLICK.
+              //
+              // This required `data.categories[landerCategory]` — a FACET, and
+              // facets only arrive on the first uncached fetch, so on a lander
+              // it is usually absent and the whole line fell through to the
+              // generic subtitle with NO number at all. Google's snippet for
+              // /jobs/field/engineering promises "68,370+ Live Openings" and
+              // the page then said nothing about how many jobs it had; the only
+              // figure in the hero was a CLOSURE count, so the first fact a
+              // visitor read on a jobs page was about jobs going away.
+              //
+              // data.total is the correct fallback and NOT the bug the original
+              // comment warns about. That bug was rendering `totalAllCompanies`
+              // — board-wide — under an "Engineering jobs" H1. On a lander the
+              // category filter IS applied, so data.total is already scoped to
+              // this category. Board-wide totals stay barred from this line.
+              //
+              // Capped counts render "10,000+", never as an exact figure —
+              // same honesty rule the company lander above already follows.
+              : landerCategory && ((data?.categories?.[landerCategory] ?? 0) > 0 || (data?.total ?? 0) > 0)
               ? t("jobsPage.landerCountLine", "{{total}} live {{category}} openings — every one straight from the company's own hiring system.", {
-                  total: (data?.categories?.[landerCategory] ?? 0).toLocaleString(),
+                  total: (() => {
+                    const facet = data?.categories?.[landerCategory] ?? 0;
+                    if (facet > 0) return facet.toLocaleString();
+                    const tot = data?.total ?? 0;
+                    return data?.countCapped ? `${tot.toLocaleString()}+` : tot.toLocaleString();
+                  })(),
                   category: t(`jobsPage.categories.${landerCategory}`, landerCategory),
                 })
               : !landerCategory && data?.totalAllCompanies
@@ -3691,7 +3769,9 @@ export default function Jobs() {
                   ? t("jobsPage.orderSalary", "ordered by stated salary floor — postings without stated pay sort last")
                   : q
                     ? t("jobsPage.orderRelevance", "ordered by relevance to your search")
-                    : t("jobsPage.orderNewest", "newest first, company-stated dates before undated")}
+                    : interleaveEmployers
+                      ? t("jobsPage.orderNewestWoven", "newest first, spread across employers so one company can't fill the page")
+                      : t("jobsPage.orderNewest", "newest first, company-stated dates before undated")}
             </span>
             {salaryFloor > 0 && (
               <span className="text-[11px] text-muted-foreground">
