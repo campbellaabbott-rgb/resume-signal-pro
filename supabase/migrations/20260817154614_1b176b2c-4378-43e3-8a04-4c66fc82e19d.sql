@@ -1,0 +1,1 @@
+select cron.schedule('oneshot-undated-draw-idx','* * * * *',$$CREATE INDEX CONCURRENTLY IF NOT EXISTS job_board_postings_undated_draw_idx ON public.job_board_postings (source, id) WHERE posted_at IS NULL$$);
