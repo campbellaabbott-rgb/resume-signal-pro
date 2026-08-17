@@ -467,8 +467,15 @@ describe("the posted-date backfill is reachable without a full rotation", () => 
   it("maintenance is reachable from the SLICE path", () => {
     // If maybeKickMaintenance itself were only called at pass end, moving the
     // kick into it would change nothing.
-    const sliceTail = fn.slice(fn.indexOf("if (chainHop < CHAIN_CAP) chainNextSlice(chainHop);") - 400);
-    expect(sliceTail).toMatch(/await maybeKickMaintenance\(client\)/);
+    // ANCHOR ON THE CONDITION, NOT THE WHOLE CALL, AND ASSERT IT WAS FOUND.
+    // This read `indexOf("...chainNextSlice(chainHop);") - 400`. When the call
+    // gained an argument the indexOf returned -1, so slice(-401) silently
+    // examined the LAST 401 BYTES OF THE FILE and reported a mismatch against
+    // unrelated prose. A missing anchor must fail as "anchor missing", never as
+    // a confusing assertion about some other part of the file.
+    const at = fn.indexOf("if (chainHop < CHAIN_CAP)");
+    expect(at, "chain-continuation site not found").toBeGreaterThan(-1);
+    expect(fn.slice(Math.max(0, at - 400), at)).toMatch(/await maybeKickMaintenance\(client\)/);
   });
 
   it("still refuses to replay resume state from an older sweep version", () => {

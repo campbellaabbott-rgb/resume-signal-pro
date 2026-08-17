@@ -944,13 +944,55 @@ function chainKey(): Promise<string> {
   return chainKeyPromise;
 }
 
-function chainNextSlice(hop: number) {
+// THE INGEST HAD NO OFF SWITCH, AND ON 2026-08-17 THAT MATTERED.
+//
+// The database degraded to the point that `select id limit 1` took 20-30s and
+// action=list timed out outright. The operator response was to disable the four
+// pg_cron jobs that start a refresh. Sixty-six minutes later the ingest was
+// STILL RUNNING — status reported lastSliceAgeMin 0, and the cold cursor had
+// reset from 30000 to 640, meaning a fresh pass had begun after the pause.
+//
+// Because pg_cron only ever STARTS a chain. chainNextSlice re-invokes this
+// function for the next slice, up to CHAIN_CAP hops (a full pass), and a
+// completed pass wraps the cursor and begins another. Once a chain is in flight
+// it sustains itself, so pausing the scheduler quiesces nothing. There was no
+// lever anywhere that stopped work already moving.
+//
+// isIngestPaused is that lever. It is checked HERE, at the hop boundary, so an
+// in-flight chain DRAINS — the current slice finishes its writes and simply does
+// not schedule a successor. Nothing is killed mid-write, no partial state is
+// left behind, and the pass resumes from its stored cursor when unpaused.
+//
+// Failure is deliberately asymmetric: if the flag cannot be read, the chain
+// CONTINUES. A transient meta read error must never silently stop the ingest —
+// that failure mode is invisible for hours and is precisely what today's
+// incident was made of. Pausing requires a positive, readable `true`.
+async function isIngestPaused(client: SupabaseClient): Promise<boolean> {
+  try {
+    const { data, error } = await client
+      .from("job_board_meta").select("v").eq("k", "ingest_paused").maybeSingle();
+    if (error) return false;
+    return (data?.v as { paused?: boolean } | null)?.paused === true;
+  } catch {
+    return false;
+  }
+}
+
+function chainNextSlice(hop: number, client?: SupabaseClient) {
   const url = `${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`;
-  waitUntil(chainKey().then((key) => fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ action: "refresh", force: true, chain: hop + 1, chainKey: key }),
-  })).then((r) => r.text()).catch(() => {}));
+  waitUntil((async () => {
+    if (client && await isIngestPaused(client)) {
+      console.warn(`[JOB-BOARD] ingest PAUSED — chain stopping at hop ${hop}; unset job_board_meta.ingest_paused to resume`);
+      return;
+    }
+    const key = await chainKey();
+    const r = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "refresh", force: true, chain: hop + 1, chainKey: key }),
+    });
+    await r.text();
+  })().catch(() => {}));
 }
 
 // Two-tier refresh: HOT boards (heavy inventory) re-verify on every chain
@@ -959,6 +1001,13 @@ function chainNextSlice(hop: number) {
 // the get_job_board_facets() RPC at pass end — always DB-true, no
 // accumulator bookkeeping.
 async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): Promise<{ ok: boolean; detail: string }> {
+  // Checked at the ENTRY too, not only at the hop: pausing must also stop a
+  // fresh chain started by pg_cron, a manual refresh, or any other trigger.
+  // `force` does NOT override this — force exists to bypass the slice lock, and
+  // an operator stopping a struggling database means it.
+  if (await isIngestPaused(client)) {
+    return { ok: true, detail: "ingest paused — set job_board_meta.ingest_paused.paused=false to resume" };
+  }
   const { data: prog } = await client.from("job_board_meta").select("v, updated_at").eq("k", "refresh_progress").maybeSingle();
   if (!force && prog && Date.now() - new Date(prog.updated_at).getTime() < SLICE_LOCK_MS) {
     return { ok: true, detail: "skipped — a slice ran moments ago" };
@@ -2247,7 +2296,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
   // in "other" despite the work being built and deployed. maybeKickMaintenance
   // throttles itself, so a slice cadence costs one small meta read per slice.
   await maybeKickMaintenance(client);
-  if (chainHop < CHAIN_CAP) chainNextSlice(chainHop);
+  if (chainHop < CHAIN_CAP) chainNextSlice(chainHop, client);
   const phase = inHotPhase ? `hot ${Math.min(hot, HOT_LIST.length)}/${HOT_LIST.length}` : `cold slice ${coldDone}/${COLD_SLICES_PER_PASS} (rotation ${cold}/${COLD_LIST.length})`;
   return { ok: true, detail: `slice done (${sliceTotal} postings, ${failed.length} failed) — ${phase}` };
 }
@@ -2997,7 +3046,7 @@ Deno.serve(async (req) => {
       // bundle, so a stale/failed publish is visible in ONE call instead of being
       // inferred from posting counts over hours (the rung-2 "did it deploy?" pain).
       // Also the source of truth for the heartbeat's job_board_deploy check.
-      const [prog, pbMeta, rot, refreshMeta, bf, hotMeta, fresh, breaker, dateCov, boardFlow, dcCache, bsMeta, dsMeta, ssMeta, esMeta, fiOk, fiBad, faMeta, aaMeta, arMeta, rsRun, rsCron] = await Promise.all([
+      const [prog, pbMeta, rot, refreshMeta, bf, hotMeta, fresh, breaker, dateCov, boardFlow, ingestPaused, dcCache, bsMeta, dsMeta, ssMeta, esMeta, fiOk, fiBad, faMeta, aaMeta, arMeta, rsRun, rsCron] = await Promise.all([
         client.from("job_board_meta").select("v, updated_at").eq("k", "refresh_progress").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "posted_backfill").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "cold_rotation").maybeSingle(),
@@ -3057,6 +3106,10 @@ Deno.serve(async (req) => {
         // The pass computes it once and stores it, exactly as date_coverage
         // already does. A status call now costs one indexed meta read.
         client.from("job_board_meta").select("v, updated_at").eq("k", "board_flow_cache").maybeSingle(),
+        // A pause nobody can see is its own outage: without this, "the ingest
+        // is off" and "the ingest is broken" look identical from status, and
+        // stale data gets diagnosed for hours before anyone checks the flag.
+        client.from("job_board_meta").select("v, updated_at").eq("k", "ingest_paused").maybeSingle(),
         // Last good coverage, so a timeout serves stale numbers with their age
         // attached instead of nothing at all.
         client.from("job_board_meta").select("v, updated_at").eq("k", "date_coverage_cache").maybeSingle(),
@@ -3449,6 +3502,13 @@ Deno.serve(async (req) => {
         // The cache's own age, so a stale flow number is never read as current.
         boardFlowAgeMin: ageMin(
           (boardFlow as { data?: { updated_at?: string } } | null)?.data?.updated_at ?? null,
+        ),
+        // Is the ingest deliberately stopped? Without this, "paused" and
+        // "broken" are indistinguishable from status, and stale data gets
+        // diagnosed for hours before anyone thinks to check a meta row.
+        ingestPaused: ((ingestPaused as { data?: { v?: { paused?: boolean } } } | null)?.data?.v?.paused === true) || false,
+        ingestPausedAgeMin: ageMin(
+          (ingestPaused as { data?: { updated_at?: string } } | null)?.data?.updated_at ?? null,
         ),
         dateCoverageSource: Array.isArray((dateCov as { data?: unknown }).data)
           ? "rollup"
