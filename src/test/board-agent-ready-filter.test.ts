@@ -185,3 +185,48 @@ describe("the UI round trip", () => {
     expect(tip).not.toMatch(/\d+%/);
   });
 });
+
+describe("the agent filter is inside the never-silently-dropped fence", () => {
+  it("names sendableOnly in ignoredFilters when it is not a boolean", () => {
+    // PROVEN LIVE on 2026-08-17 against the deployed build:
+    //   {"action":"list","sendableOnly":"true","limit":25}
+    //     -> total 598,066, ignoredFilters ABSENT, 0 of 25 rows sendable
+    //   {"action":"list","remote":"true","limit":5}
+    //     -> total 598,066, ignoredFilters ["remote"]
+    // Same failure shape, one named and one silent — and the silent one gates
+    // the $99/mo product. ~16x over-serve (36,489 sendable rows vs 600,803).
+    for (const bogus of ["true", 1, {}, []]) {
+      const { applied, ignored } = normalizeFilters({ sendableOnly: bogus } as never, 15);
+      expect(applied.sendableOnly, `${JSON.stringify(bogus)} must not enable the filter`).toBe(false);
+      expect(ignored, `${JSON.stringify(bogus)} must be REPORTED, not dropped in silence`).toContain("sendableOnly");
+    }
+  });
+
+  it("leaves a real boolean alone", () => {
+    expect(normalizeFilters({ sendableOnly: true } as never, 15).ignored).not.toContain("sendableOnly");
+    expect(normalizeFilters({ sendableOnly: false } as never, 15).ignored).not.toContain("sendableOnly");
+    expect(normalizeFilters({} as never, 15).ignored).not.toContain("sendableOnly");
+  });
+
+  it("derives filtersActive mechanically, so a new filter cannot be forgotten", () => {
+    // The rescue tiers (fuzzy, semantic, fuzzy-augmentation) stand down when a
+    // filter is active, because none of those RPCs takes filter params. That
+    // gate was a hand-written list of ten fields and sendableOnly was never
+    // added — so with the agent filter alone, all three fired UNFILTERED.
+    // Live proof: {"q":"nurse practicioner","sendableOnly":true} returned an
+    // IDENTICAL id set to the unfiltered control, with filterIntegrity
+    // reporting 12 violations across 13 rows.
+    const fn = readFileSync(
+      resolve(__dirname, "../../supabase/functions/job-board/index.ts"), "utf8",
+    );
+    const start = fn.indexOf("const filtersActive =");
+    expect(start, "filtersActive not found").toBeGreaterThan(-1);
+    const body = fn.slice(start, start + 700);
+    expect(
+      /Object\.entries\(applied\)/.test(body),
+      "filtersActive must be derived from `applied`, not hand-listed — a " +
+        "conjunction that needs editing whenever a filter is added is one that " +
+        "goes stale, and it already did once.",
+    ).toBe(true);
+  });
+});

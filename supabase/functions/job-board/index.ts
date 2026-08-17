@@ -6305,13 +6305,34 @@ async function serveList(
         // active they all stand down: the filtered (possibly empty) answer IS
         // the honest answer. This gate is the fence that once broke on a
         // company lander serving other companies' jobs for a typo'd query.
+        //
+        // THIS WAS A HAND-MAINTAINED LIST OF TEN FIELDS AND IT WENT STALE.
+        //
+        // `sendableOnly` — the "Agent can apply" filter, i.e. the filter for the
+        // product that costs $99/mo — was never added. None of the three rescue
+        // RPCs below takes filter params, so with the agent filter as the ONLY
+        // active filter, `filtersActive` read false and all three fired
+        // unfiltered.
+        //
+        // Proven live: {"q":"nurse practicioner","sendableOnly":true} returned
+        // 13 rows of which 1 was sendable, with filterIntegrity reporting 12
+        // violations — and the unfiltered control returned an IDENTICAL id set.
+        // The predicate was absent, not loose.
+        //
+        // Derived MECHANICALLY from `applied` now, the way filters.ts's own
+        // isUnfiltered already does. A conjunction that must be edited every
+        // time a filter is added is a conjunction that will go stale again —
+        // filters.ts's header documents that exact failure, and this is it.
+        const NON_NARROWING = new Set(["includeUncategorised", "sort", "q"]);
         const filtersActive =
           !!sanitizeTerm(String(body.location ?? "")) ||
           body.remote === true ||
-          !!applied.workMode || !!applied.country || !!applied.category ||
-          applied.experience.length > 0 || applied.salaryFloor !== null ||
-          applied.companies.length > 0 || applied.maxAgeDays !== null ||
-          !!applied.postedAfter;
+          Object.entries(applied).some(([k, v]) => {
+            if (NON_NARROWING.has(k)) return false;
+            if (v === null || v === undefined || v === false || v === "") return false;
+            if (Array.isArray(v)) return v.length > 0;
+            return true;
+          });
         // Empty ranked result: try the FAST trigram fuzzy fallback right here
         // ("desinger" → designer), then return an honest empty. Critically we
         // do NOT fall through to the recency path — its OR-of-ILIKE with an

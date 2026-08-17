@@ -177,6 +177,24 @@ export function normalizeFilters(
   if (body.companies !== undefined && body.companies !== null && !Array.isArray(body.companies)) {
     ignored.push("companies");
   }
+  // sendableOnly AND includeUncategorised were the two that had the `=== true`
+  // strictness WITHOUT the shape guard, so a non-boolean evaporated silently —
+  // the one class of filter this file's own header says cannot happen.
+  //
+  // Proven live on the deployed build: {"sendableOnly":"true"} returned total
+  // 598,066 with ignoredFilters ABSENT and 0 of 25 rows sendable, while the
+  // identical shape {"remote":"true"} returned ignoredFilters ["remote"]. Same
+  // failure, one named and one silent — and the silent one is the filter for
+  // the $99/mo product.
+  //
+  // The `=== true` strictness stays; it just stops being quiet about a value
+  // it refused.
+  if (body.sendableOnly !== undefined && body.sendableOnly !== null && typeof body.sendableOnly !== "boolean") {
+    ignored.push("sendableOnly");
+  }
+  if (body.includeUncategorised !== undefined && body.includeUncategorised !== null && typeof body.includeUncategorised !== "boolean") {
+    ignored.push("includeUncategorised");
+  }
 
   const paRaw = body.postedAfter;
   const postedAfter = typeof paRaw === "string" && !Number.isNaN(Date.parse(paRaw)) ? paRaw : null;
