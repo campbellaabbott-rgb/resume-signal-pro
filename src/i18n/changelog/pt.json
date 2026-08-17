@@ -1,5 +1,17 @@
 {
   "changelogEntries": {
+    "boardPageOneManyEmployers": {
+      "title": "A primeira página do quadro mostrava muito poucos empregadores",
+      "description": "As vagas publicadas no mesmo dia eram ordenadas de forma a agrupar as de uma mesma empresa, pelo que o primeiro ecrã podia ser um único empregador vinte e quatro vezes seguidas — num quadro com 600.000 vagas de 25.000 empresas. A primeira página passa agora a distribuir-se por vários empregadores, e nada fica escondido: todas as vagas continuam na mesma lista, e as de qualquer empresa continuam a um clique umas das outras. As páginas de categoria voltam a mostrar o número de vagas — o número no resultado do Google coincide agora com o da página."
+    },
+    "newestKeptTheSearchEngine": {
+      "title": "Ordenar uma pesquisa por «Mais recentes» desligava a pesquisa sem avisar",
+      "description": "Escolher «Mais recentes» depois de pesquisar deixava de usar o motor de pesquisa real e passava a uma simples correspondência de texto. Pesquisar «RN» devolvia «internship» e «PRN» porque essas palavras contêm essas letras, as vagas intituladas «registered nurse» não apareciam de todo, e um termo invulgar podia fazer a página falhar por completo ao fim de cerca de vinte e cinco segundos. «Mais recentes» ordena agora por data os resultados reais — e é mais rápido do que antes, porque a pesquisa correta assenta num índice."
+    },
+    "agentFilterNoLongerIgnored": {
+      "title": "O filtro «O agente pode candidatar-se» podia ser ignorado sem aviso",
+      "description": "O quadro promete que um filtro nunca é descartado em silêncio. Um filtro ficava fora dessa promessa: quando «O agente pode candidatar-se» chegava num formato que o quadro não reconhecia — o que acontece através da API pública de dados e não da caixa do site —, era descartado e o quadro completo era servido como se o filtro tivesse sido aplicado. Passa agora a ser respeitado e, quando um valor não pode ser usado, a resposta indica-o pelo nome, tal como acontece com todos os outros filtros."
+    },
     "pagesServeTheirOwnHtml": {
       "title": "Seis páginas estavam a servir a página inicial ao Google",
       "description": "Uma página sem pré-renderização recorre ao HTML da página inicial, por isso um rastreador que pedia /methodology, /trust, /affiliates, /freelance-boost, /builder ou /shortlist recebia o título, a descrição e o conteúdo da página inicial em vez dos próprios. Quatro delas eram submetidas ativamente para indexação. Passou despercebido durante um ano porque o JavaScript corrige o título do separador assim que a página carrega: qualquer verificação humana parecia correta e só os bytes servidos estavam errados. As seis passam agora a entregar HTML próprio, a que exige sessão iniciada está marcada como não indexável e foi retirada do sitemap, e 15 páginas de empresa em que um mesmo empregador tem dois portais de emprego apontam agora para uma única versão em vez de competirem consigo próprias. Um teste compara o sitemap com aquilo que o build produz de facto, pelo que a próxima ocorrência falha o build em vez de seguir em silêncio."

@@ -1,5 +1,17 @@
 {
   "changelogEntries": {
+    "boardPageOneManyEmployers": {
+      "title": "The first page of the board showed far too few employers",
+      "description": "Jobs posted on the same day were ordered in a way that grouped one company's roles together, so the first screen could be a single employer twenty-four times over — on a board of 600,000 openings from 25,000 companies. The first page now spreads across employers instead, and nothing is hidden: every posting is still there, in the same list, and any company's roles are still one click from each other. Category pages also show the opening count again — the number in the Google result now matches the number on the page."
+    },
+    "newestKeptTheSearchEngine": {
+      "title": "Sorting a search by \"Newest\" quietly turned the search off",
+      "description": "Choosing \"Newest\" after a search stopped using the real search engine and fell back to plain text matching. Searching \"RN\" returned \"internship\" and \"PRN\" because those words contain those letters, roles actually titled \"registered nurse\" could not be found at all, and an unusual search term could make the page fail outright after about twenty-five seconds. \"Newest\" now sorts the real results by date — and it is faster than before, because the proper search runs on an index."
+    },
+    "agentFilterNoLongerIgnored": {
+      "title": "The \"Agent can apply\" filter could be ignored without saying so",
+      "description": "The board promises that a filter is never silently dropped. One filter was outside that promise: when \"Agent can apply\" arrived in a form the board did not recognise — which happens through the public data API rather than the website's own checkbox — it was discarded and the full board was served as though the filter had been applied. It is now honoured, and when a value cannot be used the response says so by name, exactly like every other filter."
+    },
     "pagesServeTheirOwnHtml": {
       "title": "Six pages were serving the homepage to Google",
       "description": "A page that isn't pre-rendered falls back to the homepage's HTML, so a crawler asking for /methodology, /trust, /affiliates, /freelance-boost, /builder or /shortlist received the homepage's title, description and body instead of the page's own. Four of those we were actively submitting for indexing. It hid for a year because the tab title is corrected by JavaScript once the page loads - every human check looked right, and only the served bytes were wrong. All six now ship their own HTML, the sign-in-only one is marked not-for-indexing and removed from the sitemap, and 15 company pages where a single employer runs two job boards now point at one version instead of competing with themselves. A test now checks the sitemap against what the build actually produces, so the next occurrence fails the build instead of shipping quietly."

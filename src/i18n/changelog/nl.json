@@ -1,5 +1,17 @@
 {
   "changelogEntries": {
+    "boardPageOneManyEmployers": {
+      "title": "De eerste pagina van het vacaturebord toonde veel te weinig werkgevers",
+      "description": "Vacatures die op dezelfde dag waren geplaatst, werden zo gesorteerd dat de vacatures van één bedrijf bij elkaar kwamen te staan — het eerste scherm kon dus vierentwintig keer dezelfde werkgever tonen, op een bord met 600.000 vacatures van 25.000 bedrijven. De eerste pagina spreidt nu over werkgevers, en er wordt niets verborgen: elke vacature staat nog steeds in dezelfde lijst, en vacatures van hetzelfde bedrijf blijven één klik van elkaar verwijderd. Categoriepagina's tonen ook weer het aantal vacatures — het getal in het Google-resultaat komt nu overeen met dat op de pagina."
+    },
+    "newestKeptTheSearchEngine": {
+      "title": "Sorteren op ‘Nieuwste’ zette de zoekfunctie stilletjes uit",
+      "description": "Wie na een zoekopdracht ‘Nieuwste’ koos, verliet de echte zoekmachine en kreeg een eenvoudige tekstvergelijking. Zoeken op ‘RN’ leverde ‘internship’ en ‘PRN’ op omdat die woorden dezelfde letters bevatten, functies met de titel ‘registered nurse’ waren helemaal niet te vinden, en een zeldzame zoekterm kon de pagina na ongeveer vijfentwintig seconden helemaal laten mislukken. ‘Nieuwste’ sorteert nu de echte resultaten op datum — en is sneller dan voorheen, omdat de juiste zoekopdracht via een index loopt."
+    },
+    "agentFilterNoLongerIgnored": {
+      "title": "Het filter ‘Agent kan solliciteren’ kon worden genegeerd zonder melding",
+      "description": "Het vacaturebord belooft dat een filter nooit stilzwijgend wordt genegeerd. Eén filter viel buiten die belofte: kwam ‘Agent kan solliciteren’ binnen in een vorm die het bord niet herkende — wat gebeurt via de publieke data-API, niet via het vinkje op de site — dan werd het weggegooid en werd het volledige bord getoond alsof het filter was toegepast. Het wordt nu wel toegepast, en als een waarde niet bruikbaar is, noemt het antwoord die bij naam, net als bij elk ander filter."
+    },
     "pagesServeTheirOwnHtml": {
       "title": "Zes pagina's serveerden de homepage aan Google",
       "description": "Een pagina zonder prerendering valt terug op de HTML van de homepage. Een crawler die /methodology, /trust, /affiliates, /freelance-boost, /builder of /shortlist opvroeg, kreeg daardoor de titel, beschrijving en inhoud van de homepage in plaats van die van de pagina zelf. Vier ervan dienden we actief in voor indexering. Het bleef een jaar onopgemerkt doordat JavaScript de tabtitel corrigeert zodra de pagina laadt: elke menselijke controle leek te kloppen, alleen de geserveerde bytes waren fout. Alle zes leveren nu hun eigen HTML, de pagina die alleen na inloggen werkt is als niet-indexeerbaar gemarkeerd en uit de sitemap gehaald, en 15 bedrijfspagina's waar één werkgever twee vacaturesites heeft verwijzen nu naar één versie in plaats van met zichzelf te concurreren. Een test vergelijkt de sitemap voortaan met wat de build daadwerkelijk oplevert, zodat een volgend geval de build laat falen in plaats van stilletjes live te gaan."

@@ -1,5 +1,17 @@
 {
   "changelogEntries": {
+    "boardPageOneManyEmployers": {
+      "title": "La première page du tableau affichait beaucoup trop peu d'employeurs",
+      "description": "Les offres publiées le même jour étaient triées de façon à regrouper celles d'une même entreprise : le premier écran pouvait donc afficher vingt-quatre fois le même employeur, sur un tableau de 600 000 offres émanant de 25 000 entreprises. La première page se répartit désormais entre les employeurs, et rien n'est masqué : chaque offre reste dans la même liste, et celles d'une même entreprise restent à un clic les unes des autres. Les pages de catégorie réaffichent aussi le nombre d'offres — le chiffre du résultat Google correspond maintenant à celui de la page."
+    },
+    "newestKeptTheSearchEngine": {
+      "title": "Trier une recherche par « Plus récentes » désactivait discrètement la recherche",
+      "description": "Choisir « Plus récentes » après une recherche abandonnait le vrai moteur de recherche au profit d'une simple correspondance de texte. Chercher « RN » renvoyait « internship » et « PRN » parce que ces mots contiennent ces lettres, les postes intitulés « registered nurse » devenaient introuvables, et un terme rare pouvait faire échouer la page au bout d'environ vingt-cinq secondes. « Plus récentes » trie désormais les vrais résultats par date — et c'est plus rapide qu'avant, car la vraie recherche s'appuie sur un index."
+    },
+    "agentFilterNoLongerIgnored": {
+      "title": "Le filtre « L'agent peut postuler » pouvait être ignoré sans le dire",
+      "description": "Le tableau promet qu'un filtre n'est jamais abandonné en silence. Un filtre échappait à cette promesse : lorsque « L'agent peut postuler » arrivait sous une forme non reconnue — ce qui se produit via l'API de données publique, pas via la case à cocher du site —, il était écarté et le tableau complet était servi comme si le filtre avait été appliqué. Il est désormais respecté, et lorsqu'une valeur est inutilisable, la réponse la nomme explicitement, comme pour tous les autres filtres."
+    },
     "pagesServeTheirOwnHtml": {
       "title": "Six pages servaient la page d'accueil à Google",
       "description": "Une page sans prérendu retombe sur le HTML de la page d'accueil : un robot demandant /methodology, /trust, /affiliates, /freelance-boost, /builder ou /shortlist recevait donc le titre, la description et le contenu de l'accueil au lieu des siens. Quatre d'entre elles étaient activement soumises à l'indexation. Le problème est passé inaperçu pendant un an parce que JavaScript corrige le titre de l'onglet une fois la page chargée : toute vérification humaine semblait correcte, seuls les octets servis étaient faux. Les six livrent désormais leur propre HTML, celle réservée aux comptes connectés est marquée non indexable et retirée du sitemap, et 15 pages d'entreprise où un même employeur exploite deux portails d'offres pointent maintenant vers une seule version au lieu de se concurrencer. Un test compare le sitemap à ce que le build produit réellement : la prochaine occurrence fera échouer le build au lieu de partir en silence."

@@ -23,6 +23,9 @@ export interface ChangelogEntry {
 }
 
 export const changelog: ChangelogEntry[] = [
+  { id: "boardPageOneManyEmployers", date: "2026-08-17", tags: ["fixed", "improved"] },
+  { id: "newestKeptTheSearchEngine", date: "2026-08-17", tags: ["fixed"] },
+  { id: "agentFilterNoLongerIgnored", date: "2026-08-17", tags: ["fixed"] },
   { id: "pagesServeTheirOwnHtml", date: "2026-08-15", tags: ["fixed"] },
   { id: "outagePostmortem", date: "2026-08-12", tags: ["fixed"] },
   { id: "remoteFilterCounts", date: "2026-08-12", tags: ["fixed", "improved"] },

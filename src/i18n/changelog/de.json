@@ -1,5 +1,17 @@
 {
   "changelogEntries": {
+    "boardPageOneManyEmployers": {
+      "title": "Die erste Seite der Jobbörse zeigte viel zu wenige Arbeitgeber",
+      "description": "Am selben Tag veröffentlichte Stellen wurden so sortiert, dass die Anzeigen eines Unternehmens zusammen erschienen — auf dem ersten Bildschirm konnte damit vierundzwanzigmal derselbe Arbeitgeber stehen, bei 600.000 Stellen von 25.000 Unternehmen. Die erste Seite verteilt sich jetzt über verschiedene Arbeitgeber, und nichts wird ausgeblendet: Jede Anzeige ist weiterhin in derselben Liste, und alle Stellen eines Unternehmens bleiben einen Klick voneinander entfernt. Kategorieseiten zeigen außerdem wieder die Anzahl offener Stellen — die Zahl im Google-Ergebnis stimmt jetzt mit der Zahl auf der Seite überein."
+    },
+    "newestKeptTheSearchEngine": {
+      "title": "Die Sortierung „Neueste“ schaltete die Suche unbemerkt ab",
+      "description": "Wer nach einer Suche „Neueste“ wählte, verließ die eigentliche Suchmaschine und landete bei einem einfachen Textabgleich. Die Suche nach „RN“ lieferte „internship“ und „PRN“, weil diese Wörter dieselben Buchstaben enthalten, Stellen mit dem Titel „registered nurse“ waren gar nicht auffindbar, und ein seltener Suchbegriff konnte die Seite nach rund fünfundzwanzig Sekunden ganz scheitern lassen. „Neueste“ sortiert jetzt die echten Treffer nach Datum — und ist dabei schneller als zuvor, weil die richtige Suche über einen Index läuft."
+    },
+    "agentFilterNoLongerIgnored": {
+      "title": "Der Filter „Agent kann sich bewerben“ konnte unbemerkt ignoriert werden",
+      "description": "Die Jobbörse verspricht, dass ein Filter niemals stillschweigend verworfen wird. Ein Filter stand außerhalb dieses Versprechens: Kam „Agent kann sich bewerben“ in einer Form an, die die Börse nicht erkannte — was über die öffentliche Daten-API geschieht, nicht über das Kontrollkästchen der Website —, wurde er verworfen und die vollständige Jobbörse ausgeliefert, als sei der Filter angewendet worden. Er wird jetzt berücksichtigt, und wenn ein Wert nicht verwendbar ist, benennt die Antwort ihn ausdrücklich — genau wie bei jedem anderen Filter."
+    },
     "pagesServeTheirOwnHtml": {
       "title": "Sechs Seiten lieferten Google die Startseite aus",
       "description": "Eine Seite ohne Vorab-Rendering fällt auf das HTML der Startseite zurück. Ein Crawler, der /methodology, /trust, /affiliates, /freelance-boost, /builder oder /shortlist abrief, erhielt daher Titel, Beschreibung und Inhalt der Startseite statt der eigenen Seite. Vier davon haben wir aktiv zur Indexierung eingereicht. Der Fehler blieb ein Jahr lang verborgen, weil JavaScript den Tab-Titel nach dem Laden korrigiert — jede manuelle Prüfung sah richtig aus, falsch waren nur die ausgelieferten Bytes. Alle sechs liefern jetzt eigenes HTML, die reine Login-Seite ist als nicht zu indexieren markiert und aus der Sitemap entfernt, und 15 Unternehmensseiten, bei denen ein Arbeitgeber zwei Jobbörsen betreibt, verweisen nun auf eine Version, statt sich selbst Konkurrenz zu machen. Ein Test vergleicht die Sitemap jetzt mit dem tatsächlichen Build-Ergebnis, sodass der nächste Fall den Build scheitern lässt, statt still auszuliefern."

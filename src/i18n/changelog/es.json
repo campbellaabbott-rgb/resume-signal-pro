@@ -1,5 +1,17 @@
 {
   "changelogEntries": {
+    "boardPageOneManyEmployers": {
+      "title": "La primera página del tablón mostraba demasiados pocos empleadores",
+      "description": "Las ofertas publicadas el mismo día se ordenaban de forma que agrupaban las de una misma empresa, así que la primera pantalla podía ser un único empleador veinticuatro veces seguidas — en un tablón con 600.000 vacantes de 25.000 empresas. Ahora la primera página se reparte entre empleadores y no se oculta nada: todas las ofertas siguen ahí, en la misma lista, y las de cualquier empresa siguen a un clic entre sí. Las páginas de categoría vuelven a mostrar el número de vacantes: la cifra del resultado de Google ya coincide con la de la página."
+    },
+    "newestKeptTheSearchEngine": {
+      "title": "Ordenar una búsqueda por «Más recientes» desactivaba la búsqueda sin avisar",
+      "description": "Al elegir «Más recientes» después de buscar, se dejaba de usar el buscador real y se pasaba a una simple coincidencia de texto. Buscar «RN» devolvía «internship» y «PRN» porque esas palabras contienen esas letras, los puestos titulados «registered nurse» no aparecían en absoluto, y un término poco común podía hacer que la página fallara del todo tras unos veinticinco segundos. «Más recientes» ahora ordena por fecha los resultados reales, y además es más rápido que antes, porque la búsqueda correcta se apoya en un índice."
+    },
+    "agentFilterNoLongerIgnored": {
+      "title": "El filtro «El agente puede postular» podía ignorarse sin avisar",
+      "description": "El tablón promete que un filtro nunca se descarta en silencio. Un filtro quedaba fuera de esa promesa: cuando «El agente puede postular» llegaba en un formato que el tablón no reconocía —algo que ocurre a través de la API pública de datos, no de la casilla del sitio—, se descartaba y se servía el tablón completo como si el filtro se hubiera aplicado. Ahora se respeta, y cuando un valor no puede usarse la respuesta lo indica por su nombre, igual que con cualquier otro filtro."
+    },
     "pagesServeTheirOwnHtml": {
       "title": "Seis páginas le servían la portada a Google",
       "description": "Una página sin prerenderizado recurre al HTML de la portada, así que un rastreador que pedía /methodology, /trust, /affiliates, /freelance-boost, /builder o /shortlist recibía el título, la descripción y el cuerpo de la portada en lugar de los suyos. Cuatro de ellas las enviábamos activamente para indexación. Pasó desapercibido durante un año porque JavaScript corrige el título de la pestaña al cargar la página: toda revisión humana parecía correcta y solo los bytes servidos estaban mal. Las seis entregan ya su propio HTML, la que solo permite iniciar sesión está marcada como no indexable y fuera del sitemap, y 15 páginas de empresa en las que un mismo empleador tiene dos portales de empleo apuntan ahora a una sola versión en vez de competir consigo mismas. Una prueba compara el sitemap con lo que el build produce realmente, de modo que la próxima vez fallará la compilación en lugar de publicarse en silencio."

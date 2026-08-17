@@ -1,5 +1,17 @@
 {
   "changelogEntries": {
+    "boardPageOneManyEmployers": {
+      "title": "Kakaunti masyado ang employer na lumalabas sa unang pahina ng job board",
+      "description": "Ang mga trabahong nai-post sa iisang araw ay pinagsunod-sunod sa paraang magkakasama ang mga role ng iisang kompanya — kaya puwedeng isang employer lang ang lumabas nang dalawampu't apat na beses sa unang screen, sa isang board na may 600,000 bakante mula sa 25,000 kompanya. Kumakalat na ngayon ang unang pahina sa iba't ibang employer, at walang itinatago: nasa parehong listahan pa rin ang bawat posting, at isang click lang ang layo ng mga role ng bawat kompanya sa isa't isa. Ipinapakita na rin muli ng mga category page ang bilang ng bakante — tugma na ngayon ang numero sa resulta ng Google at ang nasa pahina."
+    },
+    "newestKeptTheSearchEngine": {
+      "title": "Ang pag-sort ng paghahanap sa “Pinakabago” ay tahimik na pumapatay sa search",
+      "description": "Kapag pinili ang “Pinakabago” pagkatapos maghanap, hindi na ginagamit ang tunay na search engine at bumabalik ito sa payak na pagtutugma ng teksto. Ang paghahanap ng “RN” ay naglalabas ng “internship” at “PRN” dahil naglalaman ang mga salitang iyon ng parehong titik, hindi talaga makita ang mga trabahong ang pamagat ay “registered nurse”, at ang isang pambihirang termino ay puwedeng magpabagsak sa pahina pagkatapos ng mga dalawampu't limang segundo. Inaayos na ngayon ng “Pinakabago” ang tunay na resulta ayon sa petsa — at mas mabilis pa ito kaysa dati, dahil tumatakbo sa index ang tamang paghahanap."
+    },
+    "agentFilterNoLongerIgnored": {
+      "title": "Puwedeng balewalain ang filter na “Puwedeng mag-apply ang agent” nang walang sabi",
+      "description": "Nangangako ang board na hindi kailanman tahimik na ibinabasura ang isang filter. Isang filter ang nasa labas ng pangakong iyon: kapag dumating ang “Puwedeng mag-apply ang agent” sa anyong hindi nakikilala ng board — nangyayari ito sa pamamagitan ng pampublikong data API, hindi sa checkbox ng site — ito ay itinatapon at inihahain ang buong board na para bang na-apply ang filter. Sinusunod na ito ngayon, at kapag hindi magamit ang isang halaga, pinapangalanan iyon ng sagot, tulad ng bawat ibang filter."
+    },
     "pagesServeTheirOwnHtml": {
       "title": "Anim na pahina ang naghahain ng homepage sa Google",
       "description": "Ang pahinang hindi pre-rendered ay babagsak sa HTML ng homepage, kaya ang crawler na humihingi ng /methodology, /trust, /affiliates, /freelance-boost, /builder o /shortlist ay tumatanggap ng pamagat, paglalarawan at nilalaman ng homepage sa halip na sa sariling pahina. Apat doon ang aktibo naming isinusumite para ma-index. Nagtago ito nang isang taon dahil inaayos ng JavaScript ang pamagat ng tab kapag na-load na ang pahina — tama ang tingin sa bawat manu-manong pagsusuri, at ang mali ay ang mga byte lamang na inihahain. Ang lahat ng anim ay may sariling HTML na, ang pahinang nangangailangan ng pag-sign in ay minarkahang huwag i-index at inalis sa sitemap, at ang 15 pahina ng kumpanya kung saan iisang employer ang may dalawang job board ay tumuturo na ngayon sa iisang bersyon sa halip na maglaban sa sarili. May test nang naghahambing ng sitemap sa aktuwal na inilalabas ng build, kaya ang susunod na pagkakataon ay pipigilan ang build sa halip na tahimik na ma-deploy."
