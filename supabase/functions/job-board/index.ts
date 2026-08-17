@@ -2675,8 +2675,23 @@ async function fetchVendorDetail(
         // by accident, via its `&& !includes("hybrid")` guard). The in-person
         // family must precede remote for the same reason — "Remote or On
         // Campus" style labels lead with the exception.
+        //
+        // THE NEGATION ARM COMES FIRST, AND IT IS NOT OPTIONAL. Nike's live
+        // tenant publishes the literal string "Non-Remote Posting". A substring
+        // test for /remote/ matches it and writes work_mode = "remote" — the
+        // exact inversion of what the employer said. "Not Remote" and "No
+        // Remote" are the same trap. This was caught by an audit AFTER the
+        // rewrite had been committed and pushed, and before it was deployed:
+        // without this arm, structured-sweep would have written "remote" onto
+        // every Non-Remote Posting row at Workday scale (half the board) the
+        // first time it ran.
+        //
+        // A classifier built from substrings has to answer the negations before
+        // the positives, always. Ordering below: negated -> hybrid -> onsite
+        // family -> remote.
         const rt = String(j?.jobPostingInfo?.remoteType ?? "").toLowerCase().trim();
         workMode = !rt ? null
+          : /\bnon[-\s]?remote\b|\bnot remote\b|\bno remote\b|\bnon[-\s]?rem\b/.test(rt) ? "onsite"
           : /hybrid|hybride|flex/.test(rt) ? "hybrid"
           : /on[-\s]?site|in[-\s]?person|on[-\s]?campus|campus[-\s]?based|on[-\s]?premise|fully on|field[-\s]?based/.test(rt) ? "onsite"
           : /remote|work from home|wfh|telework|virtual|distributed/.test(rt) ? "remote"
@@ -4739,7 +4754,19 @@ Deno.serve(async (req) => {
             // workday rows only ever had text inference at ingest, so the
             // structured statement corrects them. Prose inference stays
             // fill-only: it never overwrites.
-            const wm = wmVendor ?? (row.work_mode ? null : detectWorkMode(row.location, row.title, clean));
+            // NO DESCRIPTION ARGUMENT. detectWorkMode's contract is stated at
+            // normalize.ts:156 — "clear words only; descriptions are never
+            // inferred from" — and every call site in normalize.ts obeys it.
+            // This one passed the 4,000-char description as a third part, and
+            // P_REMOTE is a bare /\bremote\b/, so one incidental use of the
+            // word in prose tagged the posting remote. Live examples pulled
+            // from employers' own payloads: "due to the remote location of this
+            // site, there are no public transport links", "a major civil
+            // earthworks project in remote Northern Saskatchewan", "the
+            // technical component of remote cardiac device monitoring", and —
+            // best of all — "There is no option for this position to be
+            // remote." All four were being served under the Remote filter.
+            const wm = wmVendor ?? (row.work_mode ? null : detectWorkMode(row.location, row.title));
             // Dates: Workday's stored value is a relative bucket floored at 30
             // days, so an absolute startDate is strictly better and replaces
             // it. For every other vendor we only fill a gap.
@@ -5494,7 +5521,9 @@ Deno.serve(async (req) => {
         // rather than waiting for the sweep to reach it. Fill-only for work
         // mode — a vendor's structured field always outranks inference.
         const expRead = detectExperience(String(jobRow.title ?? ""), description);
-        const wmRead = jobRow.work_mode ? null : detectWorkMode(jobRow.location as string | null, jobRow.title as string | null, description);
+        // Description deliberately NOT passed — see the note at the desc-sweep
+        // call site. detectWorkMode is title/location only, by contract.
+        const wmRead = jobRow.work_mode ? null : detectWorkMode(jobRow.location as string | null, jobRow.title as string | null);
         waitUntil((async () => {
           try {
             await client.from("job_board_postings").update({
