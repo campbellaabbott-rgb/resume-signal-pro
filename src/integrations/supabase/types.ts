@@ -3162,6 +3162,18 @@ export type Database = {
         }[]
       }
       get_audit_result: { Args: never; Returns: Json }
+      get_board_flow: {
+        Args: { p_hours?: number }
+        Returns: {
+          aged_out: number
+          computed_at: string
+          intake: number
+          net: number
+          serving: number
+          takedown: number
+          window_hours: number
+        }[]
+      }
       get_board_velocity: {
         Args: { days?: number; top_n?: number }
         Returns: {
