@@ -623,19 +623,46 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
       setJobDescriptionText(sessionData.jobDescriptionText);
     }
     
-    // Handle hash navigation (e.g., /#upload from other pages)
+    // HASH NAVIGATION (/#upload from the board's "Check my fit — free scan").
+    //
+    // THIS USED TO FAIL EVERY TIME, and it is the board's single inbound
+    // conversion action. It fired ONE 100ms timeout; at that instant
+    // getElementById('upload') is still null, because the lazy route chunk and
+    // this page's heavy tree have not painted the uploader yet. The
+    // `if (uploadSection)` guard then silently no-opped — while the
+    // replaceState BELOW it ran unconditionally, destroying the hash so nothing
+    // could ever retry.
+    //
+    // Measured end state: scrollY 0, #upload at y=1349, viewport 812. The
+    // visitor lands 1.66 viewports ABOVE the uploader, on a hero about
+    // something else, with their job description invisibly pre-filled and the
+    // toast already gone. They asked "how do I match THIS job" and got a
+    // generic front page.
+    //
+    // Now it WAITS for the element and only clears the hash once it has
+    // actually scrolled, so a slow chunk retries instead of losing the intent.
+    let uploadRaf = 0;
     if (window.location.hash === '#upload') {
-      setTimeout(() => {
+      const deadline = Date.now() + 4000;
+      const tryScroll = () => {
         const uploadSection = document.getElementById('upload');
         if (uploadSection) {
           uploadSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          // Cleared ONLY on success — a miss must stay retryable.
+          window.history.replaceState(null, '', window.location.pathname);
+          return;
         }
-        // Clear the hash after scrolling
-        window.history.replaceState(null, '', window.location.pathname);
-      }, 100);
+        if (Date.now() < deadline) uploadRaf = requestAnimationFrame(tryScroll);
+        // On timeout the hash is deliberately left in place: a visitor who
+        // reloads still lands on the uploader rather than the top of the page.
+      };
+      uploadRaf = requestAnimationFrame(tryScroll);
     }
-    
-    return cleanup;
+
+    return () => {
+      if (uploadRaf) cancelAnimationFrame(uploadRaf);
+      cleanup?.();
+    };
   }, []);
 
   // Pre-store resume server-side when text changes (reduces checkout friction)

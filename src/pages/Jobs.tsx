@@ -1987,7 +1987,24 @@ export default function Jobs() {
         if (filtered.length > 0) list = filtered;
       }
     }
-    if (fitRanking) list = [...list].sort((a, b) => (fits[b.id] ?? -1) - (fits[a.id] ?? -1));
+    // A MISSING SCORE IS A DATA GAP, NOT A BAD MATCH.
+    //
+    // This was `(fits[b.id] ?? -1) - (fits[a.id] ?? -1)`, which sorts every
+    // UNSCORED posting below every scored one — including below a posting that
+    // scored 0. A posting is unscored when the employer publishes no description
+    // we store, which says nothing whatever about the candidate's fit. Result:
+    // an unscored Senior Software Engineer ranked beneath a 0%-fit warehouse
+    // role, under a header claiming the list was ordered by fit.
+    //
+    // Now a stable partition: scored rows rise in descending score, unscored
+    // rows keep their existing relevance/recency order behind them. Array.sort
+    // is stable in every engine we target, so the second group is untouched.
+    if (fitRanking) {
+      const scored = list.filter((j) => typeof fits[j.id] === "number");
+      const unscored = list.filter((j) => typeof fits[j.id] !== "number");
+      scored.sort((a, b) => (fits[b.id] as number) - (fits[a.id] as number));
+      list = [...scored, ...unscored];
+    }
     return list;
   }, [jobs, fitRanking, fits, activelyHiringOnly, isActivelyHiring, dismissedIds, refreshing, q, location]);
 
@@ -2708,8 +2725,20 @@ export default function Jobs() {
                   to top-0 and painted over each other (live-walk a11y
                   finding) — and the pinned bottom bar keeps Apply/Save in
                   thumb reach there anyway. */}
+              {/* THE INBOUND ACTION COMES FIRST AND IS THE FILLED ONE.
+                  This pane used to lead with "Apply on company site" as the
+                  primary while "Check my fit — free scan" sat second in outline
+                  — so at the moment of highest intent, the loudest thing on
+                  screen sent the visitor OFF the site for good. The board's
+                  whole argument is "check your fit before you spend an
+                  application"; the buttons argued the opposite.
+                  Apply is still right here, one tap away, just not shouting. */}
               <div className="flex flex-wrap gap-2 lg:sticky top-0 z-10 bg-card/95 backdrop-blur-sm py-2 -mt-2">
-                <Button size="sm" className="gap-1.5" asChild>
+                <Button size="sm" className="gap-1.5" disabled={fitFetching === detailJob.id} onClick={() => checkFit(detailJob)}>
+                  {fitFetching === detailJob.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Target className="w-3.5 h-3.5" />}
+                  {t("jobsPage.checkFit", "Check my fit — free scan")}
+                </Button>
+                <Button size="sm" variant="outline" className="gap-1.5" asChild>
                   <a
                     href={detailJob.applyUrl}
                     target="_blank"
@@ -2719,10 +2748,6 @@ export default function Jobs() {
                     {t("jobsPage.applyShort", "Apply on company site")}
                     <ExternalLink className="w-3.5 h-3.5" />
                   </a>
-                </Button>
-                <Button size="sm" variant="outline" className="gap-1.5" disabled={fitFetching === detailJob.id} onClick={() => checkFit(detailJob)}>
-                  {fitFetching === detailJob.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Target className="w-3.5 h-3.5" />}
-                  {t("jobsPage.checkFit", "Check my fit — free scan")}
                 </Button>
                 {REAL_QUESTION_PREFIXES.some((p) => detailJob.id.startsWith(p)) && (
                   <Button size="sm" variant="outline" className="gap-1.5" disabled={preparingId === detailJob.id} onClick={() => prepareApplication(detailJob)}>
@@ -3833,7 +3858,7 @@ export default function Jobs() {
               <p className="text-[13px] text-foreground flex-1 min-w-[200px]">
                 {parsingResume
                   ? t("jobsPage.dropParsing", "Reading your résumé…")
-                  : t("jobsPage.dropTitle", "Drop your résumé here — see your match score on every opening, instantly.")}
+                  : t("jobsPage.dropTitleScoped", "Drop your résumé here — we'll rank the openings on this page against it in seconds.")}
               </p>
               <label className="inline-flex">
                 <input
