@@ -1,0 +1,1 @@
+SELECT cron.alter_job(jobid, active := false) FROM cron.job WHERE jobid IN (109, 207, 531, 648);
