@@ -3165,12 +3165,12 @@ export type Database = {
       get_board_flow: {
         Args: { p_hours?: number }
         Returns: {
-          aged_out: number
+          closed: number
           computed_at: string
           intake: number
           net: number
           serving: number
-          takedown: number
+          superseded: number
           window_hours: number
         }[]
       }
