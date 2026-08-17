@@ -6191,7 +6191,12 @@ async function serveList(
     // relaxation buttons advertised counts that clicking couldn't reproduce
     // and the disclosure denominator went negative.
     const qTextC = String(body.q ?? "").trim().slice(0, 200);
-    if (qTextC && body.sort !== "salary" && body.sort !== "newest") {
+    // Kept in step with the row query's guard above, which no longer excludes
+    // "newest". If only one of the two had been changed, the count and the rows
+    // would answer DIFFERENT questions for a newest-sorted search — the count
+    // from a substring ILIKE and the rows from the FTS engine. That divergence
+    // is the shape of the incident where 60 rows rendered under a total of 36.
+    if (qTextC && body.sort !== "salary") {
       try {
         const { q: expQC } = expandQuery(qTextC);
         const { data: rc, error: ec } = await client.rpc("search_jobs", {
@@ -6245,7 +6250,28 @@ async function serveList(
   // recency as tiebreak — composed with every active filter. Any error
   // (migration lag, malformed query) falls back to the recency path below.
   const qText = String(body.q ?? "").trim().slice(0, 200);
-  if (qText && body.sort !== "salary" && body.sort !== "newest" && !countOnly) {
+  // "NEWEST" USED TO DROP THE ENTIRE SEARCH ENGINE.
+  //
+  // The guard excluded sort==="newest", so choosing Newest from the sort
+  // dropdown routed a query to the recency path's substring ILIKE at :6051:
+  //   title.ilike.%rn%  ->  matches inteRNship, PRN, oveRNight
+  // and, because "registered nurse" contains no "rn" substring, the spelled-out
+  // title became UNREACHABLE — alias expansion never ran on that path either.
+  // Measured live: q="RN" relevance-sorted returned 10/10 nursing roles; the
+  // same query newest-sorted returned substring artifacts and carried neither
+  // `ranked` nor `aliases`.
+  //
+  // It was also the slow path, not just the wrong one. `%term%` cannot use an
+  // index, so on 594k rows a rare term seq-scans: q="k8s" + newest returned
+  // HTTP 500 after 25.47s. Routing through search_jobs moves the work onto the
+  // GIN index, so this change makes the query FASTER as well as correct.
+  //
+  // Newest still means newest — the ranked path selects WHICH rows match, and
+  // the page is then ordered by date below (see `newestFirst`). That is
+  // "newest among the postings that actually match", which is what the control
+  // promises; the alternative was "oldest artifacts of a substring collision".
+  const newestFirst = body.sort === "newest";
+  if (qText && body.sort !== "salary" && !countOnly) {
     try {
       // Role-alias expansion (disclosed): "swe" also searches "software
       // engineer" etc. The expanded websearch string keeps the original
@@ -6507,6 +6533,19 @@ async function serveList(
         const includeFacets0 = (body as { includeFacets?: boolean }).includeFacets !== false;
         const fullCompanies0 = (v0.companiesFacet as Array<{ count?: number }>) ?? [];
         const rankedRows = (ranked as unknown[]).map(rowToJob) as Array<Record<string, unknown>>;
+        // Newest-first over the MATCHING set. The RPC picked the rows by
+        // relevance (that is what makes them matches at all); this orders the
+        // page the reader is looking at by date, which is what the control they
+        // chose promises. Undated rows sort last rather than first — an absent
+        // date is not evidence of newness, and treating it as such is how a
+        // board ends up leading with rows whose age it does not know.
+        if (newestFirst) {
+          rankedRows.sort((a, b) => {
+            const da = Date.parse(String(a.postedAt ?? "")) || 0;
+            const db = Date.parse(String(b.postedAt ?? "")) || 0;
+            return db - da;
+          });
+        }
         const rankedGrouped = groupSimilar
           ? collapseClusters(rankedRows, limit)
           : { jobs: rankedRows.slice(0, limit), rawConsumed: Math.min(rankedRows.length, limit) };
