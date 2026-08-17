@@ -483,6 +483,9 @@ export default function Jobs() {
   // strict newest-first (server bypasses the ranked path).
   const [searchNewestFirst, setSearchNewestFirst] = useState(false);
   const [fitRanking, setFitRanking] = useState(false);
+  /** Postings whose fit call failed outright, so the UI can say so instead of
+   *  presenting an unscored list as a ranked one. */
+  const [fitFailedCount, setFitFailedCount] = useState(0);
   const [fits, setFits] = useState<Record<string, number | null>>({});
   // Top missing keywords per posting id — the "add these to compete" signal
   // rendered inline on each card once fit-ranking is on.
@@ -603,6 +606,21 @@ export default function Jobs() {
   }, []);
   const [data, setData] = useState<BoardResponse | null>(null);
   const [jobs, setJobs] = useState<BoardJob[]>([]);
+  /** How many of the RENDERED postings actually carry a numeric fit.
+   *
+   *  The ranking claim is derived from this, never from the `fitRanking`
+   *  toggle. The toggle says what the user asked for; this says what we were
+   *  able to do — and the board printed "ordered by fit to your résumé" over
+   *  lists where those two disagreed completely.
+   *
+   *  Declared HERE, below `jobs` and `fits`, because the first draft put it up
+   *  with the other fit state and referenced both before their declarations.
+   *  The pre-commit typecheck caught it (TS2448) where a local `tsc --noEmit`
+   *  run had just passed — worth remembering that the hook is the real gate. */
+  const scoredCount = useMemo(
+    () => jobs.reduce((n, j) => n + (typeof fits[j.id] === "number" ? 1 : 0), 0),
+    [jobs, fits],
+  );
   // Scroll restore (Batch 4): once the first page of results is in, jump back
   // to where the visitor left — unless they deep-linked straight to a job.
   useEffect(() => {
@@ -1844,15 +1862,35 @@ export default function Jobs() {
       try {
         const resume = await resolveFitResume();
         if (!resume) return;
+        // A FAILED SCORING RUN USED TO LOOK EXACTLY LIKE A SUCCESSFUL ONE.
+        //
+        // This destructured only `{ data }`, so when the edge function returned
+        // `{"code":"WORKER_RESOURCE_LIMIT","message":"Function failed due to not
+        // having enough compute resources"}` the payload simply had no `fits`
+        // key, every score stayed undefined, and nothing anywhere said so. The
+        // board went on rendering "ordered by fit to your résumé" over an
+        // unchanged list. Measured live: one landing page scored 5 of 60, and a
+        // 60-id batch that returned WORKER_RESOURCE_LIMIT scored 60/60 on retry
+        // — so this is a transient the user should be told about, not a
+        // permanent limit, and silently swallowing it turns a retryable blip
+        // into "the fit feature does nothing".
+        let failed = 0;
         for (let i = 0; i < unscored.length; i += 60) {
-          const { data } = await supabase.functions.invoke("job-board", {
+          const { data, error } = await supabase.functions.invoke("job-board", {
             body: { action: "fit-batch", resumeText: resume, ids: unscored.slice(i, i + 60) },
           });
-          const payload = data as { fits?: Record<string, number | null>; missing?: Record<string, string[]>; matched?: Record<string, string[]> } | null;
+          const payload = data as { fits?: Record<string, number | null>; missing?: Record<string, string[]>; matched?: Record<string, string[]>; code?: string } | null;
+          // No `fits` key is a failure, whether or not the transport errored —
+          // the function can return 200 with an error body.
+          if (error || !payload?.fits) {
+            failed += Math.min(60, unscored.length - i);
+            continue;
+          }
           if (payload?.fits) setFits((prev) => ({ ...prev, ...payload.fits }));
           if (payload?.missing) setMisses((prev) => ({ ...prev, ...payload.missing }));
           if (payload?.matched) setHits((prev) => ({ ...prev, ...payload.matched }));
         }
+        setFitFailedCount(failed);
       } finally {
         setFitLoading(false);
       }
@@ -3611,8 +3649,19 @@ export default function Jobs() {
             {/* Why this order: the board explains its data everywhere else —
                 the ranking shouldn't be the one unexplained thing. */}
             <span className="text-[11px] text-muted-foreground">
+              {/* THE ORDER CLAIM HAS TO SURVIVE A SCORING FAILURE.
+                  `fitRanking` is only a toggle, so this said "ordered by fit to
+                  your résumé" over a list where nothing had been scored — the
+                  sort at :1952 is a no-op when every fit is null, and the
+                  fit-batch call can fail silently. Measured live: 5 of 60
+                  scored on one landing page. Now it states the coverage, and
+                  when nothing scored it does not claim an ordering at all. */}
               {fitRanking
-                ? t("jobsPage.orderFit", "ordered by fit to your résumé")
+                ? (scoredCount === 0
+                    ? t("jobsPage.orderFitNone", "not ranked — no posting on this page could be scored yet")
+                    : scoredCount < jobs.length
+                      ? t("jobsPage.orderFitPartial", "ordered by fit — {{n}} of {{m}} scored", { n: scoredCount, m: jobs.length })
+                      : t("jobsPage.orderFit", "ordered by fit to your résumé"))
                 : sortMode === "salary"
                   ? t("jobsPage.orderSalary", "ordered by stated salary floor — postings without stated pay sort last")
                   : q
@@ -3670,6 +3719,24 @@ export default function Jobs() {
             {fitRanking && (
               <span className="text-[11px] text-muted-foreground">
                 {t("jobsPage.fitRankingNote", "Deterministic keyword coverage vs your scanned resume — postings without stored descriptions show no score.")}
+              </span>
+            )}
+            {/* A SCORING FAILURE IS RETRYABLE, AND SAYING SO IS THE DIFFERENCE
+                BETWEEN A BLIP AND "THIS FEATURE DOES NOTHING". The fit call
+                returns WORKER_RESOURCE_LIMIT under load; measured live, a batch
+                that failed scored 60/60 on retry. Silence made a transient look
+                permanent, so the person concluded the product was broken rather
+                than pressing again. */}
+            {fitRanking && fitFailedCount > 0 && (
+              <span className="text-[11px] text-warning">
+                {t("jobsPage.fitFailedNote", "{{n}} postings could not be scored just now — this is usually temporary.", { n: fitFailedCount })}{" "}
+                <button
+                  type="button"
+                  onClick={() => { setFitFailedCount(0); setFits({}); }}
+                  className="underline hover:text-foreground"
+                >
+                  {t("jobsPage.fitRetry", "Try again")}
+                </button>
               </span>
             )}
           </div>
