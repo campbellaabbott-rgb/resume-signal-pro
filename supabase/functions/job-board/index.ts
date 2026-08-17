@@ -2943,7 +2943,15 @@ Deno.serve(async (req) => {
         // Deadlined like the coverage RPC and simply OMITTED when slow: a
         // status payload that waits on an analytics count is a status payload
         // that stops answering the question it exists for.
-        withDeadline(client.rpc("get_board_flow", { p_hours: 24 }), 3_000),
+        //
+        // 3_000 WAS TOO TIGHT AND THE FIELD WAS NULL ON EVERY CALL. Measured
+        // live: the RPC ran 2.64s, 2.80s, 2.78s against a 3.0s deadline, so any
+        // jitter missed and the value never populated — a metric that is always
+        // absent is the same as one that does not exist. 8s leaves real
+        // headroom over the observed range while still being a guard rather
+        // than a budget: status must keep answering "did the deploy land?"
+        // even when an analytics count is slow.
+        withDeadline(client.rpc("get_board_flow", { p_hours: 24 }), 8_000),
         // Last good coverage, so a timeout serves stale numbers with their age
         // attached instead of nothing at all.
         client.from("job_board_meta").select("v, updated_at").eq("k", "date_coverage_cache").maybeSingle(),
