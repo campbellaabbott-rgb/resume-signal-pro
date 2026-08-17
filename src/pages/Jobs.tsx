@@ -617,6 +617,26 @@ export default function Jobs() {
    *  with the other fit state and referenced both before their declarations.
    *  The pre-commit typecheck caught it (TS2448) where a local `tsc --noEmit`
    *  run had just passed — worth remembering that the hook is the real gate. */
+  /**
+   * How many of the RENDERED postings the apply agent can actually submit to.
+   *
+   * The agent is the $99/mo product and the board is the biggest surface on the
+   * site, and the word "agent" appeared exactly twice on /jobs: once as an
+   * unlabelled filter checkbox, once inside a job title. "$99", "Morning Queue"
+   * and "free trial" appeared zero times, and on mobile the word appeared not
+   * at all because the filter row collapses behind a button.
+   *
+   * Counted from THIS page rather than quoting a board-wide figure, and using
+   * the same isSendableVendor predicate as the per-card Sparkles badge — so the
+   * number a visitor reads is the number of badges they can count on screen. A
+   * board-wide "37,000 postings" would be true and unverifiable; this is true
+   * and checkable, which is the difference the rest of this product trades on.
+   */
+  const agentReadyOnPage = useMemo(
+    () => jobs.reduce((n, j) => n + (isSendableVendor(j.id) ? 1 : 0), 0),
+    [jobs],
+  );
+
   const scoredCount = useMemo(
     () => jobs.reduce((n, j) => n + (typeof fits[j.id] === "number" ? 1 : 0), 0),
     [jobs, fits],
@@ -4178,6 +4198,35 @@ export default function Jobs() {
                     : (data?.total ?? jobs.length).toLocaleString(),
                   companyFeeds: (data?.companiesCount ?? companies.length).toLocaleString(),
                 })}
+                {/* THE REVENUE PRODUCT, ON THE SURFACE THAT CARRIES THE TRAFFIC.
+                    Placed here rather than in the hero deliberately: a visitor
+                    reading the results line is looking at real roles, which is
+                    the moment "something could apply to these for me" means
+                    anything. In the hero it would be an ad before they had seen
+                    a job.
+
+                    EVERY NUMBER IS COUNTED, NOT CLAIMED. agentReadyOnPage uses
+                    the same predicate as the Sparkles badge on the cards below,
+                    so a sceptic can count the badges and get the same figure.
+                    It renders only when there is at least one — a pitch saying
+                    "0 of these" is worse than silence, and quoting a board-wide
+                    total here would be true but uncheckable.
+
+                    The 6.3% is stated rather than hidden. The agent covers four
+                    hiring systems, not the whole board, and a visitor who finds
+                    that out AFTER paying is a refund and a bad review. */}
+                {agentReadyOnPage > 0 && !agentOnly && (
+                  <span className="block text-[12px] text-muted-foreground mt-1">
+                    <Sparkles className="inline w-3 h-3 text-primary -mt-0.5" aria-hidden />{" "}
+                    {t("jobsPage.agentPitchCounted", "The apply agent can fill and submit {{n}} of these for you — it reads your CV, writes each application separately, and answers the employer's own screening questions.", { n: agentReadyOnPage })}{" "}
+                    <Link to="/agent" className="text-primary underline underline-offset-2">
+                      {t("jobsPage.agentPitchCta", "See how it works — 7 days free, then $99/mo")}
+                    </Link>
+                    <span className="block text-[11px] opacity-80 mt-0.5">
+                      {t("jobsPage.agentPitchScope", "It applies on four hiring systems — about 6% of the board — and never on sites that gate applications behind a CAPTCHA. Everywhere else it prepares the application and you send it.")}
+                    </span>
+                  </span>
+                )}
                 {/* refreshedAt is the last FULL-ROTATION stamp, not "when this
                     board was updated" — measured 2026-07-28 it read 931 min
                     while the site's own measured re-check median was 112 min
