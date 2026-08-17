@@ -2902,7 +2902,7 @@ Deno.serve(async (req) => {
       // bundle, so a stale/failed publish is visible in ONE call instead of being
       // inferred from posting counts over hours (the rung-2 "did it deploy?" pain).
       // Also the source of truth for the heartbeat's job_board_deploy check.
-      const [prog, pbMeta, rot, refreshMeta, bf, hotMeta, fresh, breaker, dateCov, dcCache, bsMeta, dsMeta, ssMeta, esMeta, fiOk, fiBad, faMeta, aaMeta, arMeta, rsRun, rsCron] = await Promise.all([
+      const [prog, pbMeta, rot, refreshMeta, bf, hotMeta, fresh, breaker, dateCov, boardFlow, dcCache, bsMeta, dsMeta, ssMeta, esMeta, fiOk, fiBad, faMeta, aaMeta, arMeta, rsRun, rsCron] = await Promise.all([
         client.from("job_board_meta").select("v, updated_at").eq("k", "refresh_progress").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "posted_backfill").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "cold_rotation").maybeSingle(),
@@ -2934,6 +2934,16 @@ Deno.serve(async (req) => {
         // goes back to being a guard rather than a budget. The result is still
         // cached below, so a bad day degrades to "slightly stale" not "gone".
         withDeadline(client.rpc("get_date_coverage"), 2_500),
+        // INTAKE vs OUTTAKE — the one number that says whether the board is
+        // growing or quietly draining. Every count on the serving path caps at
+        // 10,000 for a filtered query, so asking the API for "postings added in
+        // the last day" and "in the last week" BOTH returned 10,000 — the cap,
+        // not a measurement. There was no way to see it.
+        //
+        // Deadlined like the coverage RPC and simply OMITTED when slow: a
+        // status payload that waits on an analytics count is a status payload
+        // that stops answering the question it exists for.
+        withDeadline(client.rpc("get_board_flow", { p_hours: 24 }), 3_000),
         // Last good coverage, so a timeout serves stale numbers with their age
         // attached instead of nothing at all.
         client.from("job_board_meta").select("v, updated_at").eq("k", "date_coverage_cache").maybeSingle(),
@@ -3315,6 +3325,14 @@ Deno.serve(async (req) => {
         // instant" — the aggregate runs on a 15-minute cron. Reporting age 0 for
         // it would be the same false-freshness move this block exists to
         // prevent, so the age comes from the rollup's own computed_at.
+        // Intake vs outtake over the last 24h. Null when the RPC was slow or
+        // the migration has not landed — never a zero, which would read as
+        // "nothing came in today" on a board taking thousands.
+        boardFlow: (() => {
+          const r = (boardFlow as { data?: unknown } | null)?.data;
+          const row = Array.isArray(r) ? r[0] : r;
+          return row && typeof row === "object" ? row : null;
+        })(),
         dateCoverageSource: Array.isArray((dateCov as { data?: unknown }).data)
           ? "rollup"
           : (dcCache.data?.v ? "cache" : "unavailable"),
