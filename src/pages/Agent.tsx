@@ -70,6 +70,20 @@ export default function Agent() {
     if (isTab(q) && q !== tab) setTab(q);
   }, [params, tab]);
 
+  // Read ONCE, on mount, then strip the flag from the URL. Held in state rather
+  // than read from `params` at render time because the banner must survive the
+  // tab-switching setParams calls below — reading it live would make the
+  // welcome vanish the moment someone touched a tab, and re-appear on back.
+  // Stripping it also means a refresh or a shared link is not a second "you
+  // just subscribed" to somebody who did not just subscribe.
+  const [justSubscribed] = useState(() => params.get("welcome") === "1");
+  useEffect(() => {
+    if (params.get("welcome") === null) return;
+    const p = new URLSearchParams(params);
+    p.delete("welcome");
+    setParams(p, { replace: true });
+  }, [params, setParams]);
+
   const go = (next: Tab) => {
     setTab(next);
     const p = new URLSearchParams(params);
@@ -168,6 +182,29 @@ export default function Agent() {
         <div className="mt-6 space-y-6">
           {tab === "today" && (
             <>
+              {/* THE RECEIPT, AND THE REASON THE NEXT STEP EXISTS.
+                  Stripe returns a new subscriber here with ?welcome=1 (see
+                  create-agent-checkout). Two things have to be said in that
+                  moment: the payment worked, and the agent is NOT yet running.
+                  The second is the one that matters — buying does not create a
+                  mandate, so without the checklist below a paid account sits
+                  silent and looks broken. Says "checklist below", not "all set". */}
+              {justSubscribed && (
+                <div
+                  className="rounded-xl border border-success/40 bg-success/5 p-4"
+                  role="status"
+                >
+                  <p className="text-sm font-semibold text-foreground">
+                    {t("agentPage.welcomeTitle", "You're subscribed — 7 days free before the first charge.")}
+                  </p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {t(
+                      "agentPage.welcomeBody",
+                      "One thing left: the agent needs your CV and an active mandate before it can look for anything. The checklist below takes about a minute, and nothing runs until it is done.",
+                    )}
+                  </p>
+                </div>
+              )}
               {/* Setup first, and only while it is genuinely unfinished. An
                   empty queue below an unexplained empty page is how a paid
                   product gets mistaken for a broken one. */}

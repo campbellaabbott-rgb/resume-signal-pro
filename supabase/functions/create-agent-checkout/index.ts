@@ -68,8 +68,36 @@ serve(async (req) => {
       // checkAgentByEmail already treats 'trialing' as active, so the
       // entitlement (and the nightly runner) work from day one.
       subscription_data: { trial_period_days: 7 },
-      success_url: `${origin}/account?agent=success`,
-      cancel_url: `${origin}/account?agent=cancelled`,
+      // LAND THEM WHERE THE AGENT IS SET UP, NOT ON THE ACCOUNT PAGE.
+      //
+      // This used to return the buyer to `/account?agent=success` — and nothing
+      // in the app has ever read that parameter (Account.tsx does not call
+      // useSearchParams at all). So a customer who had just paid $99 was
+      // dropped at the top of a 1,768-line account page with no banner, no
+      // scroll and no prompt, while the thing they bought sat inert.
+      //
+      // That mattered more than a cosmetic miss, because BUYING DOES NOT CREATE
+      // A MANDATE. apply-agent opens with `agent_mandates WHERE active = true`;
+      // nothing at checkout writes that row, and the only writers are panels the
+      // customer has to find and drive by hand. With no mandate the hourly run
+      // matches zero rows and does nothing — no queue, no digest, no error.
+      // Indistinguishable from a quiet night, forever. The redirect was the
+      // cheapest place to make the required step unmissable.
+      //
+      // /agent renders AgentSetupChecklist first, which reads live state and
+      // names the three prerequisites (CV/consent, exclusions, active mandate)
+      // with the consequence of skipping each.
+      //
+      // `welcome=1` IS READ — see src/pages/Agent.tsx. Do not add a parameter
+      // here without wiring the reader; a redirect carrying a flag nobody
+      // consumes is precisely the bug this replaced.
+      success_url: `${origin}/agent?welcome=1`,
+      // Cancel returns to the agent page too, where the pitch and the retry
+      // path live — not to an account page that says nothing about why they
+      // came. NO FLAG: the first draft of this line carried `?checkout=cancelled`
+      // and the guard rejected it within a minute, because nothing reads it.
+      // Someone who backed out of a payment needs no banner about it.
+      cancel_url: `${origin}/agent`,
       metadata: { product_type: "apply_agent", customer_email: email },
     });
 

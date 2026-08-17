@@ -43,8 +43,14 @@ export async function checkAgentByEmail(
   for (const customer of customers.data) {
     const subs = await stripe.subscriptions.list({ customer: customer.id, status: "all", limit: 10 });
     for (const sub of subs.data) {
+      // `it` annotated explicitly: `sub.items.data` widens to an implicit any
+      // here under Deno's stricter check, so `deno check` on every function that
+      // imports this file failed with TS7006 while `tsc` — which does not cover
+      // supabase/functions — stayed green. That is exactly the gap that let an
+      // edge-function outage ship once before; the annotation costs nothing and
+      // puts the whole agent entitlement path back under the Deno gate.
       const isAgentSub = (sub.items?.data ?? []).some(
-        (it) => (it.price as unknown as { unit_amount?: number } | undefined)?.unit_amount === AGENT_PRICE_CENTS,
+        (it: { price?: unknown }) => (it.price as { unit_amount?: number } | undefined)?.unit_amount === AGENT_PRICE_CENTS,
       );
       if (!isAgentSub) continue;
       const periodEnd = (sub as unknown as { current_period_end?: number }).current_period_end
