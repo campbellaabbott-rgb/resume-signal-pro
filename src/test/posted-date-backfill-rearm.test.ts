@@ -137,8 +137,12 @@ describe("the backlog is measured off the precomputed rollup", () => {
   ];
 
   it("sums undated rows across exactly the backfillable vendors", () => {
-    // 34,211 + 10,121 + 550 — the live 2026-08-08 figures.
-    expect(backlogFromCoverage(cov)).toBe(44_882);
+    // 34,211 bamboohr + 10,121 rippling + 550 greenhouse — the live 2026-08-08
+    // figures — PLUS 6,110 pinpoint, which joined the sweep on 2026-08-17 when
+    // its "no date exists" exclusion turned out to have inspected only
+    // postings.json. Every one of those 6,110 is datable from the posting
+    // page's JSON-LD, so they belong in the backlog the re-arm measures.
+    expect(backlogFromCoverage(cov)).toBe(44_882 + 6_110);
   });
 
   it("excludes workday, whose phase is retired", () => {
@@ -152,8 +156,24 @@ describe("the backlog is measured off the precomputed rollup", () => {
     expect(backlogFromCoverage(wild)).toBe(backlogFromCoverage(without));
   });
 
-  it("excludes pinpoint, verified to carry no date field at all", () => {
-    expect(POSTED_BACKFILL_VENDORS).not.toContain("pinpoint");
+  it("INCLUDES pinpoint — the exclusion rested on one endpoint", () => {
+    // THIS TEST ASSERTED THE OPPOSITE UNTIL 2026-08-17, and it was wrong in a
+    // way worth keeping visible. The original read "excludes pinpoint, verified
+    // to carry no date field at all", locking in a note that had inspected
+    // postings.json and concluded "no sweep can fix them".
+    //
+    // postings.json really does carry no date. But Pinpoint publishes an
+    // employer-stated `datePosted` in the schema.org JSON-LD on every posting
+    // PAGE, and the list payload already hands us that page's URL. So the
+    // evidence supported "this endpoint has no date", and the conclusion drawn
+    // was "this vendor cannot be dated" — a much larger claim.
+    //
+    // The cost: pinpoint sat at exactly 0% dated (9,805 rows by 2026-08-17),
+    // every one served with no stated age, BY CONSTRUCTION rather than by
+    // backlog. A vendor at exactly 0.0% is never a backlog — a backlog produces
+    // a partial percentage. That is the tell, and a test that asserts an
+    // absence is how the wrong conclusion stayed frozen for nine days.
+    expect(POSTED_BACKFILL_VENDORS).toContain("pinpoint");
   });
 
   it("returns null — not 0 — when nothing matched", () => {

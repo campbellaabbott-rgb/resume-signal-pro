@@ -1426,11 +1426,28 @@ describe("the verification receipt is visible before the click", () => {
 // because greenhouse is 99.2% dated and must scan 59,878 rows to find 482.
 describe("a slow phase cannot wedge the dating sweep", () => {
   const fn = readFileSync(resolve(root, "supabase/functions/job-board/index.ts"), "utf8");
-  const draw = fn.slice(fn.indexOf("note: `draw: ${error.message ?? error}`") - 900,
-                        fn.indexOf("note: `draw: ${error.message ?? error}`") + 1600);
+  // SLICED TO A STRUCTURAL TERMINATOR, NOT A CHARACTER COUNT.
+  //
+  // This was `indexOf(...) - 900` to `+ 1600`. Adding a comment above the
+  // handler pushed `drawFailed = true;` past the 1600-character edge and the
+  // assertion failed on code that was present and correct. A fixed-width window
+  // asserts on whatever happens to fall inside it, which makes the test a
+  // function of comment length — and this file has hit that exact bug before.
+  const drawAnchor = fn.indexOf("note: `draw: ${error.message ?? error}`");
+  const drawStart = fn.lastIndexOf("if (error)", drawAnchor);
+  const drawEnd = fn.indexOf("let brokeEarly = false;", drawAnchor);
+  const draw = fn.slice(drawStart === -1 ? Math.max(0, drawAnchor - 900) : drawStart,
+                        drawEnd === -1 ? drawAnchor + 1600 : drawEnd);
 
   it("marks the phase exhausted instead of throwing", () => {
-    expect(draw).toMatch(/exhausted = true;\s*\n\s*break;/);
+    // Still exhausted-not-thrown — but it must ALSO record that the draw
+    // FAILED, which is the distinction that was missing. Marking the phase
+    // exhausted was correct for greenhouse (99% dated, genuinely near-done) and
+    // catastrophic for bamboohr (20% dated, 77% of the backlog): the terminal
+    // phase then fell through to an unconditional completion stamp, disarming
+    // the sweep for 4.9 days and writing a `backlogAtSweep` floor of 43,118
+    // rows nothing had read. A phase that could not be READ has proven nothing.
+    expect(draw).toMatch(/drawFailed = true;\s*\n\s*exhausted = true;\s*\n\s*break;/);
   });
 
   it("does not rethrow the draw error", () => {

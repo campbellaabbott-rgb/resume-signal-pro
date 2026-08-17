@@ -126,8 +126,26 @@ const PINNED = {
   // Wayback pull found breezy/teamtailor already saturated by round 1 and
   // added 19 personio boards. Small by design — the namespaces are close to
   // exhausted, which is itself the finding.
+  // 2026-08-17.1: the data-integrity round. sources.ts is UNCHANGED (the hash
+  // below still pins the round-2 sendable census); this bump is so the fixes
+  // are externally identifiable, and because POSTED_BACKFILL_VERSION 6 -> 7
+  // re-arms a sweep that must not run on the old code. Five defects, all
+  // measured live: (1) the backfill's draw ran with an EMPTY cursor, so it
+  // could not use the primary key and timed out at 3.1-3.3s against a ~3s
+  // statement timeout — seeded to `${phase}:` it returns in 0.23s; (2) a draw
+  // timeout was read as "phase exhausted" and, on the terminal phase, wrote an
+  // unconditional completion stamp recording backlogAtSweep 43,118 rows that
+  // nothing had touched — poisoning the growth re-arm into a ratchet; (3) the
+  // Workday work-mode classifier tested five substrings against a
+  // TENANT-AUTHORED free-text field and matched 0 of 154 sampled postings, so
+  // the structured sweep reported 154,003 scanned / 0 filled; (4) `filled`
+  // counted update ATTEMPTS, since PostgREST returns no error on a zero-row
+  // match; (5) pinpoint sat at exactly 0% dated because a note concluded "no
+  // sweep can fix them" from inspecting one endpoint — postings.json has no
+  // date, but every posting PAGE carries an employer-stated datePosted in its
+  // JSON-LD, and the list already hands us the URL.
   sourcesHash: "33d1ad0e828f7ffc",
-  buildVersion: "2026-08-13.2",
+  buildVersion: "2026-08-17.1",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {

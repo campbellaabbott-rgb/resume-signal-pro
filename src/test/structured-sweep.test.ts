@@ -323,7 +323,27 @@ describe("a finished pass reports itself instead of erasing itself", () => {
   });
 
   it("the done-stamp keeps the pass's numbers", () => {
-    expect(CODE).toMatch(/doneAt: new Date\(\)\.toISOString\(\), scanned: passScanned, filled: passFilled/);
+    // Reformatted across lines when the stamp gained the walk window it had
+    // been erasing (lastVendor/lastCursor) and the zero-write counter that
+    // gates the re-kick — so match the FIELDS, not one line's whitespace.
+    expect(CODE).toMatch(/doneAt: new Date\(\)\.toISOString\(\),/);
+    expect(CODE).toMatch(/scanned: passScanned, filled: passFilled,/);
+  });
+
+  it("the done-stamp keeps the window it walked", () => {
+    // A completed pass used to write only {doneAt, scanned, filled}, dropping
+    // the vendor/cursor the per-hop stamp carries — so it could not distinguish
+    // "walked the whole range" from "the select came back short". That is
+    // exactly the shape of the ";"-truncation incident, where two passes
+    // stamped doneAt over 148,776 untouched rows.
+    expect(CODE).toMatch(/lastVendor:/);
+    expect(CODE).toMatch(/lastCursor:/);
+  });
+
+  it("the done-stamp counts consecutive zero-write passes", () => {
+    // The lane re-walked ~154,000 Workday detail fetches every 24h to write
+    // nothing, because its cadence never consulted its own output.
+    expect(CODE).toMatch(/zeroFilledPasses: passFilled > 0 \? 0 : prevZero \+ 1/);
   });
 
   it("the progress stamp reports the pass, not the hop", () => {

@@ -98,7 +98,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-13.2";
+const BUILD_VERSION = "2026-08-17.1";
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -2285,7 +2285,20 @@ async function maybeKickMaintenance(client: SupabaseClient): Promise<void> {
     // 24h, not desc-sweep's 6: a posting's remoteType does not change, so
     // re-walking sooner buys nothing but vendor requests.
     const ssSettled = Number.isFinite(ssDone) && Date.now() - ssDone < 24 * 60 * 60_000;
-    if (!ss.alive && !ssSettled) {
+    // BACK OFF WHEN THE LANE IS PRODUCING NOTHING.
+    //
+    // The classifier bug meant every pass wrote 0 rows — and the lane happily
+    // re-issued ~154,000 Workday detail fetches every 24 hours to keep doing
+    // it, indefinitely. A cadence that ignores its own output is a cadence that
+    // cannot notice it has stopped working. Two consecutive zero-write passes
+    // now stretch the interval geometrically (24h, 48h, 96h, capped at a week)
+    // instead of hammering vendors for nothing. Any pass that writes a single
+    // row resets it, so the fixed classifier restores the 24h cadence on its
+    // first successful pass without anyone intervening.
+    const ssZeroPasses = Number((ss.v as { zeroFilledPasses?: number } | null)?.zeroFilledPasses ?? 0);
+    const ssBackoffH = ssZeroPasses >= 2 ? Math.min(24 * Math.pow(2, ssZeroPasses - 1), 168) : 24;
+    const ssBackedOff = Number.isFinite(ssDone) && Date.now() - ssDone < ssBackoffH * 60 * 60_000;
+    if (!ss.alive && !ssSettled && !ssBackedOff) {
       const ssCursor = typeof ss.v?.cursor === "string" ? ss.v.cursor as string : "";
       await kick("structured-sweep", { vi: 0, cursor: ssCursor });
     }
@@ -2641,11 +2654,36 @@ async function fetchVendorDetail(
         // already holding states remoteType outright. The vendor's structured
         // field always outranks inference, so carry it back to the caller for
         // the same free-ride treatment startDate gets.
-        const rt = String(j?.jobPostingInfo?.remoteType ?? "").toLowerCase();
-        workMode = rt.includes("remote") && !rt.includes("hybrid") ? "remote"
-          : rt.includes("hybrid") ? "hybrid"
-          : rt.includes("on-site") || rt.includes("onsite") || rt.includes("on site") ? "onsite"
+        //
+        // remoteType IS TENANT-AUTHORED FREE TEXT, NOT A WORKDAY ENUM, and
+        // that is why this lane wrote nothing for months. The previous test
+        // looked for five substrings — "remote", "hybrid", "on-site", "onsite",
+        // "on site". Measured across 154 live postings drawn from the exact
+        // eligible predicate: only 8 carried remoteType at all, and ZERO of
+        // those 8 matched any of the five. Every observed value was an onsite
+        // label the classifier had never heard of — "In-Person Working",
+        // "Campus based", "Fully on premise", "Field Based", "On Campus".
+        //
+        // So workMode came back null for 100% of eligible rows, the patch
+        // stayed empty, and the sweep reported 154,003 scanned / 0 filled. With
+        // work_mode null corpus-wide the board's Hybrid and On-site filters
+        // both degraded to "not remote" — two different labels over one
+        // identical result set.
+        //
+        // ORDER IS LOAD-BEARING. Hybrid first: "Hybrid: Remote and Office"
+        // contains "remote" and is not remote (the old code got that right only
+        // by accident, via its `&& !includes("hybrid")` guard). The in-person
+        // family must precede remote for the same reason — "Remote or On
+        // Campus" style labels lead with the exception.
+        const rt = String(j?.jobPostingInfo?.remoteType ?? "").toLowerCase().trim();
+        workMode = !rt ? null
+          : /hybrid|hybride|flex/.test(rt) ? "hybrid"
+          : /on[-\s]?site|in[-\s]?person|on[-\s]?campus|campus[-\s]?based|on[-\s]?premise|fully on|field[-\s]?based/.test(rt) ? "onsite"
+          : /remote|work from home|wfh|telework|virtual|distributed/.test(rt) ? "remote"
           : null;
+        // The next unknown label should be visible, not silent — that is the
+        // whole reason this was broken for so long.
+        if (rt && !workMode) console.log(`[JOB-BOARD] unclassified remoteType: ${JSON.stringify(rt).slice(0, 80)}`);
       }
     }
   } else if (src.source === "bamboohr") {
@@ -3691,7 +3729,13 @@ Deno.serve(async (req) => {
       // 75%. The bounded phases now run first, so a chain that dies mid-wall
       // has already banked the cheap wins — and the hop-persisted cursor below
       // means a revival resumes inside the wall instead of at the start.
-      const phase = ["greenhouse", "rippling"].includes(String(body.phase)) ? String(body.phase) as "greenhouse" | "rippling" : "bamboohr";
+      // The accepted list and the type must move together: `deno check` caught
+      // the pinpoint branch as unreachable ("no overlap") when only the type
+      // was widened, which is the whole reason edge functions carry their own
+      // gate — tsc does not see this directory.
+      const phase = ["greenhouse", "rippling", "pinpoint"].includes(String(body.phase))
+        ? String(body.phase) as "greenhouse" | "rippling" | "pinpoint"
+        : "bamboohr";
       // Workday hops fetch up to WORKDAY_PAGE_CAP list pages per board — keep
       // the per-hop board count low so a hop stays inside the compute budget.
       // BambooHR/Rippling date via ONE detail call PER POSTING (their list
@@ -3705,7 +3749,22 @@ Deno.serve(async (req) => {
       // `source:token:externalId`, so a cursor from another source can only
       // ever sort the whole phase out of range — silently, as an empty page
       // that reads exactly like a finished one.
-      let cursor = typeof body.cursor === "string" && body.cursor.startsWith(`${phase}:`) ? body.cursor : "";
+      //
+      // AND IT SEEDS TO THE PHASE PREFIX, NOT "". This one line is why the
+      // backfill did no work for 4.9 days. With an empty cursor the draw below
+      // runs `source=eq.X & posted_at is null ORDER BY id LIMIT 500` with NO id
+      // predicate, so Postgres cannot use the primary key for a bounded range
+      // scan and walks from the top of a 594k-row table. Measured live on
+      // bamboohr: 3.1-3.3s against a ~3s statement timeout, so it returned
+      // 57014 roughly two times in three. With `id > 'bamboohr:'` the identical
+      // query returns in 0.23s — 13x — because the id predicate makes it a
+      // range scan. Tokens are never empty, so the prefix sorts below every row
+      // of the phase and excludes nothing (first row back is
+      // "bamboohr:100percentgroup:26").
+      //
+      // The `if (cursor)` guard on the draw means an empty string disables the
+      // predicate entirely, which is exactly the branch that was firing.
+      let cursor = typeof body.cursor === "string" && body.cursor.startsWith(`${phase}:`) ? body.cursor : `${phase}:`;
       // Resume state, stamped EVERY hop. Without it a died chain restarted the
       // whole phase sequence from scratch on the next maintenance kick, and the
       // long phases never finished. `at` doubles as the liveness signal the
@@ -3719,6 +3778,10 @@ Deno.serve(async (req) => {
       const byBoard = new Map<string, { company: string; ids: string[] }>();
       let scanned = 0;
       let exhausted = false;
+      // Set when the DRAW itself failed (statement timeout), as opposed to the
+      // phase genuinely running out of rows. The two look identical downstream
+      // and must not: only the second may write a completion stamp.
+      let drawFailed = false;
       // `<`, NOT `<=`. This was an INFINITE LOOP and it is why bamboohr and
       // rippling sat at 0% dated while greenhouse reached 99.2%.
       //
@@ -3782,6 +3845,21 @@ Deno.serve(async (req) => {
           // to the next phase (or complete the sweep, which re-arms in 7 days
           // and starts again at bamboohr). The note above survives for the
           // operator either way.
+          //
+          // BUT IT MUST NOT COUNT AS A COMPLETED SWEEP. That reasoning was
+          // written for greenhouse, which is 99% dated and genuinely near-done.
+          // Applied to bamboohr — 20% dated, ~35,916 undated rows, 77% of the
+          // whole backlog — it declared the largest phase exhausted on hop 1
+          // having scanned ZERO rows, then wrote a completion stamp recording
+          // `backlogAtSweep: 43,118`. That field is documented as the
+          // IRREDUCIBLE RESIDUE — rows proven undatable — and it became the
+          // floor the +5,000 growth re-arm measures against. So the sweep
+          // disarmed itself for 7 days on the strength of work it never did,
+          // and each repeat would raise the floor further: a ratchet.
+          //
+          // A phase that could not be READ has proven nothing about whether its
+          // rows are datable. drawFailed keeps the completion stamp away.
+          drawFailed = true;
           exhausted = true;
           break;
         }
@@ -3836,6 +3914,48 @@ Deno.serve(async (req) => {
             for (const j of feed.jobs ?? []) {
               const iso = sanePostedAt(j.first_published ?? null);
               if (j.id != null && iso) dates.set(`greenhouse:${tk}:${j.id}`, iso);
+            }
+          } else if (phase === "pinpoint") {
+            // ONE BOARD FETCH, THEN THE POSTING PAGES.
+            //
+            // postings.json carries no date — that part of the 2026-08-08 note
+            // was right, and it is why this phase did not exist. What it missed
+            // is that every Pinpoint posting PAGE carries an employer-stated
+            // `datePosted` in its schema.org JSON-LD, and the list payload
+            // already hands us the URL. 9,805 rows sat at exactly 0% dated on
+            // that inference.
+            //
+            // Same shape as the description sweep: fetch the board list once to
+            // map id -> url, then walk only the ids this hop drew.
+            const psrc = JOB_SOURCES.find((s) => s.source === "pinpoint" && s.token === tk);
+            if (!psrc) continue;
+            const r = await fetchBoard(psrc);
+            const data = ((r?.raw as { data?: Array<{ id?: string | number; url?: string }> })?.data) ?? [];
+            const urlById = new Map<string, string>();
+            for (const it of data) if (it?.id != null && it.url) urlById.set(String(it.id), String(it.url));
+            // Same pool of 5 the bamboohr/rippling branch uses — the hop budget
+            // is already sized for per-posting work on those phases.
+            const ppool = 5;
+            for (let i = 0; i < ids.length; i += ppool) {
+              await Promise.all(ids.slice(i, i + ppool).map(async (rowId) => {
+                const ext = rowId.slice(rowId.lastIndexOf(":") + 1);
+                const url = urlById.get(ext);
+                if (!url) return;
+                try {
+                  const pr = await fetchWithTimeout(url);
+                  if (!pr.ok) { await pr.body?.cancel(); return; }
+                  const html = await pr.text();
+                  // The employer's OWN stated date, never our first_seen. A
+                  // posting that dates older than the 30-day serving window is
+                  // a CORRECT outcome and a desirable one: the freshness cap
+                  // then drops it instead of serving it ageless. Do not null a
+                  // too-old date — that is exactly the laundering the Lever
+                  // incident note in normalize.ts warns about.
+                  const m = /"datePosted"\s*:\s*"([^"]+)"/.exec(html);
+                  const iso = sanePostedAt(m?.[1] ?? null);
+                  if (iso) dates.set(rowId, iso);
+                } catch { /* row stays NULL */ }
+              }));
             }
           } else if (phase === "bamboohr" || phase === "rippling") {
             // Per-posting official detail endpoints (both company-stated):
@@ -3933,7 +4053,7 @@ Deno.serve(async (req) => {
         chain({ phase, cursor, datedTotal, scannedTotal, note: lastBoardError ? `board ${lastBoardError}` : `hop ok: ${dated}/${scanned}` });
         return json({ ok: true, phase, scanned, dated, datedTotal, scannedTotal, cursor });
       }
-      const NEXT_PHASE: Record<string, string> = { bamboohr: "rippling", rippling: "greenhouse" }; // greenhouse is terminal — the workday phase is retired (see POSTED_BACKFILL_VERSION)
+      const NEXT_PHASE: Record<string, string> = { bamboohr: "rippling", rippling: "pinpoint", pinpoint: "greenhouse" }; // greenhouse is terminal — the workday phase is retired (see POSTED_BACKFILL_VERSION)
       if (NEXT_PHASE[phase]) {
         chain({ phase: NEXT_PHASE[phase], datedTotal, scannedTotal, note: lastBoardError ? `board ${lastBoardError}` : `phase done: ${datedTotal}/${scannedTotal}` }); // fresh cursor for the next source
         return json({ ok: true, phase, scanned, dated, datedTotal, scannedTotal, next: NEXT_PHASE[phase] });
@@ -3944,9 +4064,37 @@ Deno.serve(async (req) => {
       // intake instead of re-running forever against rows already proven
       // undatable. Null (rollup unreadable) simply omits the key, and the next
       // sweep is then timer-driven, which is the behaviour before this existed.
+      // A SWEEP THAT SCANNED NOTHING IS NOT A COMPLETED SWEEP.
+      //
+      // This stamp was unconditional, and that is how the lane disarmed itself
+      // for 4.9 days: the terminal phase's draw timed out, `exhausted` was set,
+      // control fell straight through to here, and a run with scannedTotal:0
+      // and datedTotal:0 wrote `{version, sweptAt, backlogAtSweep: 43118}`. The
+      // stamp is indistinguishable from a real sweep, so postedBackfillDue went
+      // false for a week AND the growth floor was poisoned with 43,118 rows
+      // nothing had touched.
+      //
+      // This file already documents the identical failure for the name-sync
+      // lane: "the stamp was UNCONDITIONAL. A run that reached the end having
+      // failed every single update still wrote its version and was never
+      // retried." Same treatment here — leave `version` unwritten so
+      // postedBackfillDue stays true and the next kick retries.
+      if (drawFailed || scannedTotal <= 0) {
+        await client.from("job_board_meta").upsert(
+          { k: "posted_backfill", v: {
+            resumeVersion: POSTED_BACKFILL_VERSION,
+            phase, cursor, datedTotal, scannedTotal,
+            note: `vacuous sweep: ${scannedTotal} scanned${drawFailed ? " (draw failed)" : ""}${lastBoardError ? ` last=${lastBoardError}` : ""}`.slice(0, 200),
+            at: new Date().toISOString(),
+          }, updated_at: new Date().toISOString() },
+          { onConflict: "k" },
+        );
+        console.log(`[JOB-BOARD] posted-date backfill VACUOUS: ${scannedTotal} scanned, drawFailed=${drawFailed} — not stamping completion`);
+        return json({ ok: false, vacuous: true, phase, drawFailed, scannedTotal });
+      }
       const backlogAtSweep = await undatedBacklog(client);
       await client.from("job_board_meta").upsert(
-        { k: "posted_backfill", v: { version: POSTED_BACKFILL_VERSION, sweptAt: new Date().toISOString(), datedTotal, scannedTotal, ...(backlogAtSweep === null ? {} : { backlogAtSweep }) }, updated_at: new Date().toISOString() },
+        { k: "posted_backfill", v: { version: POSTED_BACKFILL_VERSION, sweptAt: new Date().toISOString(), datedTotal, scannedTotal, ...(backlogAtSweep === null ? {} : { backlogAtSweep }), note: lastBoardError ? `last=${lastBoardError}`.slice(0, 200) : null }, updated_at: new Date().toISOString() },
         { onConflict: "k" },
       );
       console.log(`[JOB-BOARD] posted-date backfill complete: ${scanned} scanned, ${dated} dated (v${POSTED_BACKFILL_VERSION})`);
@@ -4682,10 +4830,29 @@ Deno.serve(async (req) => {
       const passScanned = Math.max(0, Number(body.passScanned) || 0);
       const passFilled = Math.max(0, Number(body.passFilled) || 0);
       if (vi >= STRUCTURED_SWEEP_SOURCES.length) {
+        // THE TERMINAL STAMP KEEPS THE WINDOW IT WALKED.
+        //
+        // It used to write only {doneAt, scanned, filled} and drop the
+        // vendor/cursor/lastId/pageLen the per-hop stamp carries — so a
+        // completed pass erased the only evidence that distinguishes "walked
+        // the whole range" from "the select came back short". That is precisely
+        // the shape of the ";"-truncation incident this lane already survived
+        // once, where two passes stamped doneAt over 148,776 untouched rows.
+        //
+        // `zeroFilledPasses` is what stops the lane re-walking ~154,000 Workday
+        // detail fetches every 24 hours to write nothing: see the re-kick gate.
+        const prevZero = ((await client.from("job_board_meta").select("v").eq("k", "structured_sweep").maybeSingle())
+          .data?.v as { zeroFilledPasses?: number } | null)?.zeroFilledPasses ?? 0;
         await client.from("job_board_meta").upsert(
           {
             k: "structured_sweep",
-            v: { doneAt: new Date().toISOString(), scanned: passScanned, filled: passFilled },
+            v: {
+              doneAt: new Date().toISOString(),
+              scanned: passScanned, filled: passFilled,
+              lastVendor: STRUCTURED_SWEEP_SOURCES[STRUCTURED_SWEEP_SOURCES.length - 1] ?? null,
+              lastCursor: typeof body.cursor === "string" ? body.cursor : null,
+              zeroFilledPasses: passFilled > 0 ? 0 : prevZero + 1,
+            },
             updated_at: new Date().toISOString(),
           },
           { onConflict: "k" },
@@ -4800,14 +4967,23 @@ Deno.serve(async (req) => {
             // where the description write already justifies the fetch.
             if (postedAt && !row.posted_at) patch.posted_at = postedAt;
             if (!Object.keys(patch).length) continue;
-            const { error } = await client.from("job_board_postings")
+            // `filled` MUST MEAN ROWS WRITTEN, NOT UPDATES ATTEMPTED.
+            //
+            // PostgREST returns no error when an update matches zero rows, so
+            // `if (!error) sFilled++` counted attempts. Once the classifier
+            // starts producing work modes that distinction becomes the whole
+            // question: without it you cannot tell "wrote 6,700 rows" from
+            // "matched nothing 6,700 times", which is exactly the ambiguity
+            // that let 154,003 scanned / 0 filled sit unexplained.
+            const { data: wrote, error } = await client.from("job_board_postings")
               .update(patch)
               .eq("id", row.id)
               // Gap-fill only, and it is what makes a concurrent desc-sweep
               // write safe: if that lane set a work mode between our select and
               // our update, this update matches nothing rather than racing it.
-              .is("work_mode", null);
-            if (!error) sFilled++;
+              .is("work_mode", null)
+              .select("id");
+            if (!error) sFilled += (wrote?.length ?? 0);
           } catch { /* transient — the row keeps its place in the cursor order */ }
         }
       }));

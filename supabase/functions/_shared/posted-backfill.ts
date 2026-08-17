@@ -28,8 +28,22 @@
  * after deploy would have waited for the seven-day timer regardless. Bumping
  * the version runs the sweep now, dates them, and — because completion records
  * the floor — is what actually switches the growth rule on.
+ *
+ * v7 (2026-08-17): re-arm AND un-poison. The v6 sweep never ran a single
+ * productive hop — its draw timed out on an unseeded cursor, the timeout was
+ * read as "phase exhausted", and the terminal phase then wrote an
+ * unconditional completion stamp recording backlogAtSweep 43,118. That number
+ * is documented as the IRREDUCIBLE RESIDUE (rows proven undatable) but was in
+ * fact 43,118 rows nothing had touched, and it became the floor the +5,000
+ * growth rule measures against — a ratchet that made each re-arm harder than
+ * the last. Bumping the version is the only mechanism that discards it.
+ *
+ * Ships WITH the three fixes that make the sweep actually work (cursor seeded
+ * to the phase prefix, draw failures barred from stamping completion, and the
+ * partial index on (source, id) WHERE posted_at IS NULL). Bumping without them
+ * would just re-run the vacuous sweep and write a higher poisoned floor.
  */
-export const POSTED_BACKFILL_VERSION = 6;
+export const POSTED_BACKFILL_VERSION = 7;
 
 /**
  * The completion stamp EXPIRES. Without this the sweep is strictly one-shot: it
@@ -73,11 +87,22 @@ export const POSTED_BACKFILL_MIN_GAP_MS = 6 * 3_600_000;
  * help decide when it runs — spending BambooHR and Rippling detail requests
  * because Workday moved.
  *
- * PINPOINT IS ABSENT ON EVIDENCE. Its postings.json was inspected on
- * 2026-08-08 and carries no created/published field of any kind, so its 6,110
- * undated rows are honest and no sweep can fix them.
+ * PINPOINT WAS ABSENT ON EVIDENCE THAT INSPECTED ONE ENDPOINT, and the
+ * conclusion drawn from it was wrong. The 2026-08-08 note read: "its
+ * postings.json was inspected and carries no created/published field of any
+ * kind, so its 6,110 undated rows are honest and no sweep can fix them."
+ * The first half is true — postings.json genuinely has no date. The second
+ * half does not follow: Pinpoint publishes an employer-stated `datePosted` in
+ * the schema.org JSON-LD on every posting PAGE, and the list payload already
+ * hands us that page's URL in `item.url`. So "no sweep can fix them" described
+ * the endpoint we happened to look at, not the vendor.
+ *
+ * The cost of that inference: pinpoint sat at exactly 0% dated — 9,805 rows by
+ * 2026-08-17, every one served with no stated age — BY CONSTRUCTION rather than
+ * by backlog. A vendor at exactly 0.0% is never a backlog; a backlog produces a
+ * partial percentage. That is the tell worth remembering.
  */
-export const POSTED_BACKFILL_VENDORS: readonly string[] = ["bamboohr", "rippling", "greenhouse"];
+export const POSTED_BACKFILL_VENDORS: readonly string[] = ["bamboohr", "rippling", "pinpoint", "greenhouse"];
 
 export interface PostedBackfillState {
   version?: number;
