@@ -867,6 +867,63 @@ function exitReasonFor(postedAt: unknown, firstSeen: unknown): "aged_out" | "bac
   return p < f - BACKDATE_SLACK_MS ? "backdated" : "aged_out";
 }
 
+// WHOLE-BOARD PRUNES USED TO LEAVE NO TRACE AT ALL.
+//
+// Two paths delete by company_token rather than by id — a board going dormant
+// after repeated fetch failures, and a board removed from sources.ts — so
+// neither passes through the per-posting closure path below. Audited
+// 2026-08-17: they wrote to job_board_closures AND job_board_exits zero times.
+// Every other delete site writes at least one of them.
+//
+// They are NOT closures and must never be logged as such: a dead feed is our
+// fetch failing, and an orphan is us dropping the board. In both cases the
+// employer may still be hiring, and job_board_closures is the table that means
+// "the company took the role down" — the one asset here nobody can reproduce,
+// and worth exactly as much as its precision. They belong in the exit ledger,
+// under a reason that says what actually happened.
+//
+// Reads before deleting, because after the delete there is nothing to read. Best
+// effort throughout: a prune must never fail because bookkeeping did.
+async function logWholeBoardExit(
+  client: SupabaseClient,
+  token: string,
+  reason: "board_dormant" | "untracked",
+): Promise<number> {
+  const exitedAt = new Date().toISOString();
+  let logged = 0;
+  try {
+    for (let from = 0; ; from += 500) {
+      const { data: page, error } = await client
+        .from("job_board_postings")
+        .select("id, source, company_token, category, posted_at, first_seen")
+        .eq("company_token", token)
+        .range(from, from + 499);
+      if (error) { console.warn(`[JOB-BOARD] exit-log read failed for ${token} (non-fatal):`, error.message?.slice(0, 120)); break; }
+      const rows = (page ?? []) as Array<Record<string, unknown>>;
+      if (!rows.length) break;
+      const { error: insErr } = await client.from("job_board_exits").insert(rows.map((r) => ({
+        posting_id: String(r.id),
+        source: String(r.source ?? ""),
+        company_token: String(r.company_token ?? token),
+        category: String(r.category ?? "other"),
+        exit_reason: reason,
+        days_on_board: (r.posted_at ?? r.first_seen)
+          ? Math.round((Date.parse(exitedAt) - Date.parse(String(r.posted_at ?? r.first_seen))) / 8_640_000) / 10
+          : null,
+        exited_at: exitedAt,
+      })));
+      // supabase-js RETURNS errors rather than throwing. An unchecked insert is
+      // how lifecycle history goes missing without anyone noticing.
+      if (insErr) { console.warn(`[JOB-BOARD] exit-log insert failed for ${token} (non-fatal):`, insErr.message?.slice(0, 120)); break; }
+      logged += rows.length;
+      if (rows.length < 500) break;
+    }
+  } catch (e) {
+    console.warn(`[JOB-BOARD] exit-log threw for ${token} (non-fatal):`, String(e).slice(0, 120));
+  }
+  return logged;
+}
+
 // Cap the aged-tail sweep per pass so a big backlog drains without a giant
 // delete (still batched 200/delete below). Raised 6k→15k with
 // COLD_SLICES_PER_PASS 48→120: the sweep is per-PASS, so a 2.5x longer pass
@@ -1656,8 +1713,9 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
         now: Date.now(),
       });
       for (const tk of toPrune) {
+        const n = await logWholeBoardExit(client, tk, "board_dormant");
         await client.from("job_board_postings").delete().eq("company_token", tk);
-        console.warn(`[JOB-BOARD] board ${tk} dormant after ${DEAD_BOARD_THRESHOLD} consecutive failures (postings pruned; fetch skipped until recheck)`);
+        console.warn(`[JOB-BOARD] board ${tk} dormant after ${DEAD_BOARD_THRESHOLD} consecutive failures (${n} postings pruned and logged as board_dormant; fetch skipped until recheck)`);
       }
       await client.from("job_board_meta").upsert({ k: "board_failures", v: { streaks, dormant }, updated_at: new Date().toISOString() }, { onConflict: "k" });
     }
@@ -1696,6 +1754,22 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
   }
 
   if (passDone) {
+    // ONE POOL SAMPLE PER COMPLETED PASS. This is the entire basis for the
+    // board's published growth number, which is now OBSERVED (sample at the
+    // window start differenced against the pool now) rather than inferred from
+    // `intake - closed`. That inference shipped twice today and was wrong both
+    // times, most recently by 2.8x measured against this very quantity.
+    //
+    // BEFORE the facets call, not after: facets returns early when its RPC is
+    // unavailable, and a growth series that quietly stops accruing whenever a
+    // different RPC is down is a series that reads "flat" for the wrong reason.
+    // Best-effort — never fail a pass for a metric.
+    {
+      const { data: sampled, error: sErr } = await client.rpc("record_board_pool_sample");
+      if (sErr) console.warn("[JOB-BOARD] pool sample failed (non-fatal):", sErr.message?.slice(0, 140));
+      else console.log(`[JOB-BOARD] pool sample recorded: serving=${sampled}`);
+    }
+
     // Facets from the database — always true to what the board serves. If
     // the RPC isn't migrated yet (function published before migration ran),
     // keep the previous meta instead of clobbering it with zeros.
@@ -1739,10 +1813,12 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
         .map((c) => (c as { token?: string }).token)
         .filter((tk): tk is string => typeof tk === "string" && !validTokens.has(tk));
       if (orphanTokens.length > 0) {
+        let orphanLogged = 0;
         for (const tk of orphanTokens) {
+          orphanLogged += await logWholeBoardExit(client, tk, "untracked");
           await client.from("job_board_postings").delete().eq("company_token", tk);
         }
-        console.log(`[JOB-BOARD] orphan-pruned ${orphanTokens.length} removed board(s): ${orphanTokens.slice(0, 8).join(", ")}`);
+        console.log(`[JOB-BOARD] orphan-pruned ${orphanTokens.length} removed board(s), ${orphanLogged} postings logged as untracked: ${orphanTokens.slice(0, 8).join(", ")}`);
         companies = companies.filter((c) => !orphanTokens.includes((c as { token?: string }).token ?? ""));
       }
     }
