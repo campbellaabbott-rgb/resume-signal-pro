@@ -1527,6 +1527,24 @@ export type Database = {
         }
         Relationships: []
       }
+      job_board_pool_samples: {
+        Row: {
+          sampled_at: string
+          serving: number
+          total: number | null
+        }
+        Insert: {
+          sampled_at?: string
+          serving: number
+          total?: number | null
+        }
+        Update: {
+          sampled_at?: string
+          serving?: number
+          total?: number | null
+        }
+        Relationships: []
+      }
       job_board_posting_reports: {
         Row: {
           at: string
@@ -2937,6 +2955,7 @@ export type Database = {
         Returns: undefined
       }
       apply_posting_corrections: { Args: { p_patches: Json }; Returns: number }
+      board_serving_count: { Args: never; Returns: number }
       build_missing_since_index_oneshot: { Args: never; Returns: undefined }
       build_speed_indexes_oneshot: { Args: never; Returns: undefined }
       check_global_rate_limit: {
@@ -3167,9 +3186,12 @@ export type Database = {
         Returns: {
           closed: number
           computed_at: string
+          departed: number
           intake: number
-          net: number
           serving: number
+          serving_basis: string
+          serving_delta: number
+          serving_prev: number
           superseded: number
           window_hours: number
         }[]
@@ -3949,6 +3971,7 @@ export type Database = {
             }
             Returns: boolean
           }
+      record_board_pool_sample: { Args: never; Returns: number }
       record_scan_feedback: {
         Args: {
           p_ats_score?: number
