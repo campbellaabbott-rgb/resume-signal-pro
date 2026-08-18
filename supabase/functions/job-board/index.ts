@@ -6130,6 +6130,30 @@ async function serveList(
   const limit = Math.min(Math.max(Number(body.limit) || 60, 1), 200);
   const offset = Math.max(Number(body.offset) || 0, 0);
   const countOnly = body.countOnly === true;
+  // KEYSET CURSOR — a page anchored to the last row read, not to a row count.
+  //
+  // Measured 2026-08-18 03:0xZ, ingest active: 4 of 8 offset-paged page-1 ->
+  // page-2 transitions OVERLAPPED; the worst pair duplicated 9 of 60 rows and
+  // silently hid 9 others (union 111/120). Offset pagination cannot be stable
+  // over a table inserting ~70k rows/day above the reader: every insert shifts
+  // the window. The cursor is the (effective_posted, id) of the last raw row
+  // the previous page consumed; the next page starts strictly after it, so
+  // inserts above cost nothing and no row is shown twice or skipped.
+  //
+  // VALIDATED, NOT TRUSTED: both values are interpolated into a PostgREST
+  // or() filter tree, so anything that could not have come from our own
+  // nextCursor is rejected and the request falls back to offset paging —
+  // fail open to the old behaviour, never a 500 on a stale bookmark.
+  const cursor = (() => {
+    const c = body.cursor as { ep?: unknown; id?: unknown } | undefined;
+    if (!c || typeof c !== "object") return null;
+    const ep = typeof c.ep === "string" ? c.ep : "";
+    const id = typeof c.id === "string" ? c.id : "";
+    if (!ep || !id || id.length > 200) return null;
+    if (!/^\d{4}-\d{2}-\d{2}T[0-9:.+]+$/.test(ep)) return null;
+    if (/[",()\\]/.test(id)) return null;
+    return { ep, id };
+  })();
   // Location-cluster collapsing is on unless a caller opts out (the lander and
   // company views WANT every location listed). Over-fetch so there is material
   // to fold: a page of 25 reads up to 75 rows, which is still one indexed page.
@@ -6292,7 +6316,7 @@ async function serveList(
     let q = client
       .from("job_board_postings")
       .select(
-        "id,source,company_token,company,title,location,country,remote,work_mode,department,category,posted_at,apply_url,salary,salary_min_annual,salary_max_annual,salary_period,salary_currency,experience_band,min_years,last_seen,missing_since",
+        "id,source,company_token,company,title,location,country,remote,work_mode,department,category,posted_at,apply_url,salary,salary_min_annual,salary_max_annual,salary_period,salary_currency,experience_band,min_years,last_seen,missing_since,effective_posted",
         withCount ? { count: "exact" } : {},
       )
       .gte(dateCol, freshCutoffIso)
@@ -6964,6 +6988,15 @@ async function serveList(
 
   const pageWith = async (dateCol: string, salaryCol: string, withCount: boolean) => {
     if (!twoSubset) {
+      // Keyset: WHERE ep < X OR (ep = X AND id > Y) — the exact successor set
+      // of the ORDER BY (ep DESC, id ASC). Only on the date sort: the salary
+      // sort orders by a different column and keeps offset until it needs its
+      // own cursor.
+      if (cursor && !sortSalary) {
+        return await ordered(buildQuery(dateCol, withCount), dateCol, salaryCol)
+          .or(`${dateCol}.lt."${cursor.ep}",and(${dateCol}.eq."${cursor.ep}",id.gt."${cursor.id}")`)
+          .limit(fetchLimit);
+      }
       return await ordered(buildQuery(dateCol, withCount), dateCol, salaryCol)
         .range(offset, offset + fetchLimit - 1);
     }
@@ -7172,6 +7205,16 @@ async function serveList(
     // jobs.length once clusters are folded, or the siblings of a collapsed
     // result reappear on the next page as if they were new.
     nextOffset: offset + grouped.rawConsumed,
+    // The keyset successor: (effective_posted, id) of the last RAW row this
+    // page consumed — from `data`, never from grouped.jobs, because grouping
+    // folds clusters and its last visible card is not the last row read.
+    // Null on the paths that still page by offset.
+    nextCursor: (() => {
+      if (twoSubset || sortSalary) return null;
+      const r = (data ?? [])[Math.max(0, grouped.rawConsumed - 1)] as
+        { effective_posted?: string; id?: string } | undefined;
+      return r?.effective_posted && r?.id ? { ep: r.effective_posted, id: r.id } : null;
+    })(),
     // null (not 0) when the count timed out — 0 would read as "no matches" and
     // trip the zero-state on a page that is visibly full of results.
     total: countUnavailable ? null : (wantCount ? (count ?? 0) : safeMetaTotal),

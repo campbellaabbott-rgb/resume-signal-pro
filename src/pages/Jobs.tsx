@@ -152,6 +152,7 @@ interface BoardResponse {
   // clusters are folded, displayed rows no longer equal rows read, so paging by
   // jobs.length would re-show a collapsed result's siblings as new hits.
   nextOffset?: number;
+  nextCursor?: { ep: string; id: string } | null;
   totalAllCompanies: number;
   // Untrimmed company count — the served `companies` array is capped (top-N by
   // count) for payload weight, so stat displays must use this, not .length.
@@ -962,6 +963,13 @@ export default function Jobs() {
     return await supabase.functions.invoke("job-board", { body }) as { data: T | null; error: { message?: string } | null };
   };
 
+  // The keyset successor from the last page served. Offset paging over a board
+  // inserting ~70k rows/day duplicated and skipped rows on "Load more"
+  // (measured 2026-08-18: 4 of 8 transitions overlapped, worst 9/60 duplicated
+  // + 9 hidden). Sent only when continuing a list (offset > 0); a fresh load
+  // starts from the top and takes a fresh cursor from its own response.
+  const nextCursorRef = useRef<{ ep: string; id: string } | null>(null);
+
   const fetchJobs = useCallback(
     async (offset: number) => {
       const seq = ++reqSeq.current;
@@ -1000,6 +1008,7 @@ export default function Jobs() {
           maxAgeDays: freshness ? (freshness === "day" ? 1 : 7) : undefined,
           limit: PAGE,
           offset,
+          cursor: offset > 0 ? nextCursorRef.current ?? undefined : undefined,
           includeFacets: companiesCache.current.length === 0,
         };
         let { data: res, error: err } = await supabase.functions.invoke("job-board", { body });
@@ -1013,6 +1022,9 @@ export default function Jobs() {
         if (seq !== reqSeq.current) return; // a newer filter superseded this request — abandon quietly
         if (err || !res?.jobs) throw new Error(err?.message ?? "no jobs field");
         const br = res as BoardResponse;
+        // Every page carries its own successor (or null on paths that still
+        // page by offset — the fallback body sends offset regardless).
+        nextCursorRef.current = br.nextCursor ?? null;
         if (br.companies?.length) companiesCache.current = br.companies;
         else br.companies = companiesCache.current;
         servedQuery.current = { q, location };
