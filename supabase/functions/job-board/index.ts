@@ -3580,18 +3580,35 @@ Deno.serve(async (req) => {
       }
       const self = `${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`;
       const svc = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+      // THE AUDIT SPENT A DAY REPORTING ITS OWN THROTTLING AS FILTER FAILURES.
+      // 2026-08-17: every finding it produced was kind "request-failed" with
+      // "RateLimitError ... for trace" — the GATEWAY refusing the audit's own
+      // burst of self-calls, recorded as if the filters were broken. A
+      // guardrail that is red every day trains everyone to ignore the day it
+      // is right. So: one paced retry honouring Retry-After (capped — a lying
+      // header must not stall the audit), and a residual 429 is reported as
+      // `throttled`, a different kind from a filter defect, because "the
+      // gateway was busy" and "the board lies about filters" must never be
+      // the same alarm.
       const probe = async (payload: Record<string, unknown>) => {
         const started = Date.now();
         try {
-          const res = await fetch(self, {
+          const body = JSON.stringify({ action: "list", limit: 60, groupSimilar: false, ...payload });
+          const send = () => fetch(self, {
             method: "POST",
             headers: { "content-type": "application/json", apikey: svc, Authorization: `Bearer ${svc}` },
-            body: JSON.stringify({ action: "list", limit: 60, groupSimilar: false, ...payload }),
+            body,
           });
+          let res = await send();
+          if (res.status === 429) {
+            const ra = Number(res.headers.get("retry-after"));
+            await new Promise((r) => setTimeout(r, Math.min(Number.isFinite(ra) && ra > 0 ? ra * 1000 : 2_000, 5_000)));
+            res = await send();
+          }
           const j = await res.json().catch(() => ({}));
-          return { ok: res.ok, ms: Date.now() - started, body: j as Record<string, unknown> };
+          return { ok: res.ok, throttled: res.status === 429, ms: Date.now() - started, body: j as Record<string, unknown> };
         } catch (e) {
-          return { ok: false, ms: Date.now() - started, body: { error: String(e).slice(0, 80) } };
+          return { ok: false, throttled: false, ms: Date.now() - started, body: { error: String(e).slice(0, 80) } };
         }
       };
       const cutoff = new Date(Date.now() - FRESH_WINDOW_DAYS * 86_400_000).toISOString();
@@ -3662,15 +3679,19 @@ Deno.serve(async (req) => {
         const out: R[] = [];
         for (let i = 0; i < items.length; i += size) {
           out.push(...await Promise.all(items.slice(i, i + size).map(fn)));
+          // Pace between batches: the 4-wide unpaced burst is what the gateway
+          // was throttling. ~500ms x ~18 batches adds ~9s of wall to a
+          // maintenance action; a red-every-day audit cost more.
+          if (i + size < items.length) await new Promise((r) => setTimeout(r, 500));
         }
         return out;
       };
-      const BATCH = 4;
+      const BATCH = 2;
 
       await inBatches(FILTER_CASES, BATCH, async (c) => {
         const r = await probe(c.body);
         timings.push({ case: c.name, ms: r.ms });
-        if (!r.ok) { findings.push({ case: c.name, kind: "request-failed", detail: String(r.body.error ?? "").slice(0, 80) }); return; }
+        if (!r.ok) { findings.push({ case: c.name, kind: r.throttled ? "throttled" : "request-failed", detail: String(r.body.error ?? "").slice(0, 80) }); return; }
         const jobs = Array.isArray(r.body.jobs) ? r.body.jobs as Array<Record<string, unknown>> : [];
         // PRECISION — reuse the SAME predicate the live self-check uses, so the
         // audit and the request agree by construction rather than by discipline.
@@ -3726,7 +3747,7 @@ Deno.serve(async (req) => {
       await inBatches(QUERY_CASES, BATCH, async (c) => {
         const r = await probe({ q: c.q, limit: 10 });
         timings.push({ case: `q=${c.q}`, ms: r.ms });
-        if (!r.ok) { findings.push({ case: `q=${c.q}`, kind: "request-failed", detail: String(r.body.error ?? "").slice(0, 80) }); return; }
+        if (!r.ok) { findings.push({ case: `q=${c.q}`, kind: r.throttled ? "throttled" : "request-failed", detail: String(r.body.error ?? "").slice(0, 80) }); return; }
         const jobs = Array.isArray(r.body.jobs) ? r.body.jobs as unknown[] : [];
         const total = typeof r.body.total === "number" ? r.body.total : null;
         if (c.minTotal === 0) {
@@ -3753,7 +3774,7 @@ Deno.serve(async (req) => {
           // duplicate check trivially passes and the audit writes clean:true —
           // a green light during exactly the failure it exists to catch.
           if (!r.ok) {
-            findings.push({ case: `paging ${label}`, kind: "request-failed", detail: `offset ${off}: ${String(r.body.error ?? "").slice(0, 60)}` });
+            findings.push({ case: `paging ${label}`, kind: r.throttled ? "throttled" : "request-failed", detail: `offset ${off}: ${String(r.body.error ?? "").slice(0, 60)}` });
             break;
           }
           const jobs = Array.isArray(r.body.jobs) ? r.body.jobs as Array<Record<string, unknown>> : [];
@@ -3771,6 +3792,10 @@ Deno.serve(async (req) => {
         cases: FILTER_CASES.length + IGNORE_CASES.length + QUERY_CASES.length + 3,
         findings,
         clean: findings.length === 0,
+        // Distinct from a defect count: probes the gateway refused even after
+        // the paced retry. clean stays false (the audit did not finish), but
+        // "could not measure" and "measured broken" are different alarms.
+        throttledCases: findings.filter((f) => f.kind === "throttled").length,
         p95Ms: (() => {
           const xs = timings.map((t) => t.ms).sort((a, b) => a - b);
           return xs.length ? xs[Math.min(xs.length - 1, Math.floor(xs.length * 0.95))] : null;
