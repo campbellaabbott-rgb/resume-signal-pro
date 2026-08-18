@@ -6256,6 +6256,28 @@ async function serveList(
   // instead of a zero-state.
   const wantCount = !unfiltered;
   const safeMetaTotal = Number.isFinite(metaTotal) && metaTotal > 0 ? metaTotal : null;
+
+  // AN OFFSET PAST THE END MUST BE AN EMPTY PAGE, NOT A TABLE SCAN.
+  //
+  // Measured 2026-08-18, minutes after the outage recovery: offset=583921 and
+  // offset=999999999 both returned 500 after ~9.1s. Postgres implements OFFSET
+  // by walking and discarding every skipped row, so a caller paginating one
+  // page past the end spent nine seconds of the same database the outage was
+  // made of — and got an error for it. The board UI cannot reach this (60 per
+  // page); it is purely API/scraper traffic, which is exactly the traffic that
+  // retries on a 500.
+  //
+  // Two bounds, both cheap: the maintained catalog total is an upper bound for
+  // EVERY query (a filtered set cannot outnumber the corpus), and a hard
+  // ceiling catches the case where the cached total is unreadable. countOnly is
+  // exempt — it ignores offset and must keep returning totals.
+  const OFFSET_CEILING = 1_000_000;
+  if (!countOnly && (offset >= OFFSET_CEILING || (safeMetaTotal !== null && offset >= safeMetaTotal))) {
+    return json({
+      jobs: [], total: safeMetaTotal, hasMore: false, nextOffset: offset,
+      ...(safeMetaTotal === null ? { countUnavailable: true } : {}),
+    });
+  }
   // withCount is separable from wantCount so a page can be re-run WITHOUT the
   // count when the count is what failed. Measured 2026-07-25 on the 570k table:
   // the page itself returns in 0.2-0.4s, while the exact count over a broad
