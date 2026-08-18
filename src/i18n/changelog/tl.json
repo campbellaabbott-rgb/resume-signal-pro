@@ -899,6 +899,26 @@
     "agentStartFix": {
       "title": "Naayos: maaaring tumangging mag-save ang Activate button ng agent",
       "description": "Sa agent page, mukhang handa ang Activate button pero tinatanggihan ang pag-click gamit ang “magdagdag muna ng résumé” nang walang naise-save — kahit may résumé na. Magkaiba ang hinahanapan ng button at ng code na nagse-save, at isa lang ang tumitingin kung saan talaga itinatago ng agent page. Iisa na ang binabasa nila ngayon."
+    },
+    "loadMoreNeverRepeats": {
+      "title": "Ang “Load more” ay maaaring umulit ng mga trabahong nakita mo na — at magtago ng iba",
+      "description": "Sa board na nagdadagdag ng libu-libong posting araw-araw, bawat bagong dating ay naggagalaw ng mga pahina sa ilalim mo: ang pagpindot ng “Load more” ay maaaring magpakita nang dalawang beses ng ilan sa susunod na 60 trabaho at tahimik na laktawan ang iba na hindi mo na makikita — nasukat namin ito sa kalahati ng lahat ng page load sa abalang oras, hanggang 9 sa 60. Ngayon, ang bawat pahina ay nagpapatuloy mula mismo sa trabahong kinatapusan ng nauna — walang inuulit, walang nilalaktawan."
+    },
+    "boardRecoveredAndFaster": {
+      "title": "Nahirapan ang board isang gabi. Bumalik itong mas mabilis kaysa dati.",
+      "description": "Noong gabi ng Agosto 17, mabagal ang board at minsan ay hindi naglo-load. Dalawang sanhi, parehong sa amin: bawat page view ay nagpapabilang sa database ng buong board, at ang database ay lumaki na para sa hardware nito. Inayos namin ang pagbibilang, gumawa ng tunay na emergency stop para sa ingestion pipeline, at lumipat sa mas malaking hardware. Ang mga pahinang tumatagal ng 15 segundo o nabibigo ay naglo-load na ngayon sa halos isang segundo — habang ang board ay kumukuha ng mga bagong trabaho sa buong bilis. Walang nawalang data."
+    },
+    "countsAlwaysTrue": {
+      "title": "Ang aming headline na numero ay panandaliang nangako ng mas maraming trabaho kaysa mayroon kami",
+      "description": "Sinabi ng front page na “600,000+ openings” habang ang board ay panandaliang may 584,000 — ang numero ay naitakda noong huling na-publish ang site, at gumalaw ang board sa ilalim nito. Ang mga headline na bilang ay ngayon ay ni-round down na may safety margin, kaya ang numerong nababasa mo ay laging mas mababa sa aktwal naming hawak: ngayon, ang front page ay nagsasabing 550,000+ at ang board ay may mahigit 600,000. Mas gugustuhin naming magkulang kaysa magmalabis."
+    },
+    "agentHasItsOwnPage": {
+      "title": "Ang Apply Agent ay sa wakas may pahinang nagsasabi ng lahat",
+      "description": "Presyo, trial, at mga limitasyon — nakasaad bago ka magbayad: $99/buwan na may 7 araw na libre, mga aplikasyon na isinusumite para sa iyo sa apat na hiring system na kayang patakbuhin ng agent mula simula hanggang dulo — humigit-kumulang 6% ng board, bawat ganoong trabaho ay may label — at hinding-hindi sa mga site na hinaharangan ng CAPTCHA ang pag-apply. Kung ganoon ang site, inihahanda ng agent ang buong aplikasyon at ikaw ang pipindot ng send. Permanente ang hangganang iyon — mas gusto naming sabihin ito nang maaga."
+    },
+    "agentPitchOnBoard": {
+      "title": "Sinasabi na ngayon ng board kung aling mga trabaho ang maaaring aplayan ng agent para sa iyo",
+      "description": "Sa ilalim ng linya ng mga resulta, binibilang ng board kung ilang trabaho sa pahinang nasa harap mo ang maaaring pagsumitehan ng Apply Agent ng aplikasyon — parehong bilang ng maliliit na badge sa mga card, kaya maaari mong beripikahin ang numero sa pamamagitan ng pagbibilang. Lumalabas lamang ito kapag may kahit isang kwalipikadong trabaho, at isinasaad nito ang presyo at mga limitasyon doon mismo, sa halip na itago ang mga ito hanggang sa checkout."
     }
   }
 }

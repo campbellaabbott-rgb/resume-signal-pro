@@ -899,6 +899,26 @@
     "agentStartFix": {
       "title": "Behoben: Der Aktivieren-Knopf des Agenten konnte das Speichern verweigern",
       "description": "Auf der Agentenseite konnte der Aktivieren-Knopf bereit wirken und den Klick dann mit „erst einen Lebenslauf hinzufügen“ abweisen, ohne etwas zu speichern — auch wenn bereits ein Lebenslauf hinterlegt war. Knopf und Speicher-Code suchten den Lebenslauf an zwei verschiedenen Stellen, und nur einer schaute dorthin, wo die Agentenseite ihn tatsächlich ablegt. Jetzt lesen beide dasselbe."
+    },
+    "loadMoreNeverRepeats": {
+      "title": "„Mehr laden“ konnte bereits gesehene Jobs wiederholen — und andere verstecken",
+      "description": "Auf einem Board, das täglich Zehntausende Stellen aufnimmt, verschob jeder Neuzugang die Seiten unter Ihnen: „Mehr laden“ konnte einige der nächsten 60 Jobs doppelt zeigen und andere stillschweigend überspringen — in Stoßzeiten haben wir das bei der Hälfte aller Seitenaufrufe gemessen, mit bis zu 9 von 60 betroffenen Stellen. Seiten setzen jetzt exakt bei dem Job fort, an dem die letzte endete — nichts wiederholt sich, nichts wird übersprungen."
+    },
+    "boardRecoveredAndFaster": {
+      "title": "Das Board hatte einen schweren Abend. Es kam schneller zurück als zuvor.",
+      "description": "Am Abend des 17. August war das Board langsam und lud teilweise gar nicht. Zwei Ursachen, beide bei uns: Jeder Seitenaufruf ließ die Datenbank das gesamte Board zählen, und die Datenbank war ihrer Hardware entwachsen. Wir haben das Zählen behoben, einen echten Not-Aus für die Ingestion-Pipeline gebaut und auf größere Hardware gewechselt. Seiten, die 15 Sekunden brauchten oder abbrachen, laden jetzt in etwa einer Sekunde — während das Board mit voller Geschwindigkeit neue Jobs aufnimmt. Keine Jobdaten gingen verloren."
+    },
+    "countsAlwaysTrue": {
+      "title": "Unsere Schlagzahl versprach kurzzeitig mehr Jobs, als wir hatten",
+      "description": "Die Startseite sagte „600.000+ offene Stellen“, während das Board kurzzeitig 584.000 hielt — die Zahl wurde beim letzten Veröffentlichen der Seite eingebacken, und das Board bewegte sich darunter weiter. Schlagzahlen werden jetzt mit Sicherheitsmarge abgerundet, sodass die Zahl, die Sie lesen, immer unter der liegt, die wir tatsächlich halten: Heute sagt die Startseite 550.000+ und das Board hält über 600.000. Lieber untertreiben wir, als jemals zu übertreiben."
+    },
+    "agentHasItsOwnPage": {
+      "title": "Der Apply Agent hat endlich eine Seite, die alles offenlegt",
+      "description": "Preis, Testphase und Grenzen — genannt, bevor Sie zahlen: 99 $/Monat mit 7 Tagen gratis, Bewerbungen werden für Sie auf den vier Bewerbungssystemen eingereicht, die der Agent vollständig bedienen kann — rund 6 % des Boards, jeder solche Job ist markiert — und niemals auf Seiten, die das Bewerben hinter einem CAPTCHA verriegeln. Dort bereitet der Agent die komplette Bewerbung vor und Sie drücken auf Senden. Diese Grenze ist dauerhaft — wir nennen sie lieber vorab, als dass Sie sie nach dem Bezahlen entdecken."
+    },
+    "agentPitchOnBoard": {
+      "title": "Das Board zeigt jetzt, auf welche Jobs sich der Agent für Sie bewerben könnte",
+      "description": "Unter der Ergebniszeile zählt das Board, bei wie vielen Jobs auf der Seite vor Ihnen der Apply Agent Bewerbungen einreichen könnte — dieselbe Zahl wie die kleinen Abzeichen auf den Karten, Sie können also selbst nachzählen. Der Hinweis erscheint nur, wenn mindestens ein Job infrage kommt, und nennt Preis und Grenzen direkt dort statt erst an der Kasse."
     }
   }
 }

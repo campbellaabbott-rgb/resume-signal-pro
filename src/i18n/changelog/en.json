@@ -899,6 +899,26 @@
     "agentStartFix": {
       "title": "Fixed: the agent's Activate button could refuse to save",
       "description": "On the agent page, the Activate button could look ready and then reject the click with “add a résumé first”, without saving anything — even when a résumé was already on file. The button and the code that saves were checking for your résumé in two different places, and only one of them looked where the agent page actually keeps it. They now read the same thing."
+    },
+    "loadMoreNeverRepeats": {
+      "title": "“Load more” could repeat jobs you had already seen — and hide others",
+      "description": "On a board adding tens of thousands of postings a day, every new arrival shifted the pages underneath you: pressing “Load more” could show some of the next 60 jobs twice and silently skip others you never got to see — we measured it on half of all page loads during busy hours, with up to 9 of 60 affected. Pages now continue from the exact job where the last one ended, so nothing repeats and nothing is skipped, no matter how fast new jobs arrive."
+    },
+    "boardRecoveredAndFaster": {
+      "title": "The board struggled for an evening. It came back faster than before.",
+      "description": "On the evening of August 17 the board was slow and sometimes failed to load. Two causes, both ours: every page view was asking the database to count the entire board, and the database had outgrown its hardware. We fixed the counting, built a proper emergency stop for the ingestion pipeline, and moved to bigger hardware. Pages that took 15 seconds or timed out now load in about one second — while the board ingests new jobs at full speed. No job data was lost."
+    },
+    "countsAlwaysTrue": {
+      "title": "Our headline number briefly promised more jobs than we had",
+      "description": "The front page said “600,000+ openings” while the board briefly held 584,000 — the number was baked in when we last published the site, and the board moved underneath it. Headline counts are now rounded down with a safety margin, so the number you read is always below the number we actually hold: today the front page says 550,000+ and the board holds over 600,000. We would rather undersell the board than ever overstate it."
+    },
+    "agentHasItsOwnPage": {
+      "title": "The Apply Agent finally has a page that tells you everything",
+      "description": "Price, trial, and limits, stated before you pay: $99/month with 7 days free, applications submitted for you on the four hiring systems the agent can drive end to end — about 6% of the board, with every such job labelled — and never on sites that gate applying behind a CAPTCHA. Where a site does, the agent prepares the whole application and you press send. That boundary is permanent, and we would rather state it up front than have you discover it after paying."
+    },
+    "agentPitchOnBoard": {
+      "title": "The board now tells you which jobs the agent could apply to for you",
+      "description": "Under the results line, the board counts how many jobs on the page in front of you the Apply Agent could submit applications to — the same count as the small badges on the cards, so you can verify the number yourself by counting. It only appears when at least one job qualifies, and it states the price and the limits right there instead of saving them for the checkout."
     }
   }
 }

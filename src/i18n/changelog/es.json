@@ -899,6 +899,26 @@
     "agentStartFix": {
       "title": "Corregido: el botón Activar del agente podía negarse a guardar",
       "description": "En la página del agente, el botón Activar podía parecer listo y luego rechazar el clic con “añade primero un CV” sin guardar nada, incluso teniendo ya un CV. El botón y el código que guarda buscaban tu CV en dos sitios distintos, y solo uno miraba donde la página del agente lo guarda de verdad. Ahora leen lo mismo."
+    },
+    "loadMoreNeverRepeats": {
+      "title": "“Cargar más” podía repetir empleos ya vistos — y ocultar otros",
+      "description": "En un tablón que añade decenas de miles de ofertas al día, cada nueva llegada desplazaba las páginas bajo tus pies: al pulsar “Cargar más” podían aparecer repetidos algunos de los 60 empleos siguientes y omitirse otros que nunca llegabas a ver — lo medimos en la mitad de las cargas en horas punta, con hasta 9 de 60 afectados. Ahora cada página continúa exactamente desde el empleo donde terminó la anterior: nada se repite y nada se omite, por rápido que lleguen ofertas nuevas."
+    },
+    "boardRecoveredAndFaster": {
+      "title": "El tablón sufrió una tarde difícil. Volvió más rápido que antes.",
+      "description": "La tarde del 17 de agosto el tablón iba lento y a veces no cargaba. Dos causas, ambas nuestras: cada visita pedía a la base de datos contar el tablón entero, y la base de datos había superado su hardware. Arreglamos el conteo, construimos una parada de emergencia real para la ingesta y pasamos a hardware mayor. Páginas que tardaban 15 segundos o fallaban ahora cargan en un segundo — mientras el tablón ingiere ofertas nuevas a plena velocidad. No se perdió ningún dato."
+    },
+    "countsAlwaysTrue": {
+      "title": "Nuestra cifra principal prometió brevemente más empleos de los que teníamos",
+      "description": "La portada decía “600.000+ ofertas” mientras el tablón tenía brevemente 584.000 — la cifra se fijó al publicar el sitio por última vez, y el tablón se movió por debajo. Las cifras principales ahora se redondean hacia abajo con margen de seguridad, de modo que el número que lees siempre está por debajo del que realmente tenemos: hoy la portada dice 550.000+ y el tablón supera los 600.000. Preferimos quedarnos cortos antes que exagerar."
+    },
+    "agentHasItsOwnPage": {
+      "title": "El Agente de Solicitudes por fin tiene una página que lo cuenta todo",
+      "description": "Precio, prueba y límites, declarados antes de pagar: 99 $/mes con 7 días gratis, solicitudes enviadas por ti en los cuatro sistemas de contratación que el agente puede manejar de principio a fin — alrededor del 6% del tablón, con cada empleo así etiquetado — y nunca en sitios que bloquean la solicitud tras un CAPTCHA. Donde lo hacen, el agente prepara toda la solicitud y tú pulsas enviar. Ese límite es permanente, y preferimos declararlo por adelantado a que lo descubras después de pagar."
+    },
+    "agentPitchOnBoard": {
+      "title": "El tablón ahora te dice a qué empleos podría postularse el agente por ti",
+      "description": "Bajo la línea de resultados, el tablón cuenta a cuántos empleos de la página que tienes delante podría enviar solicitudes el Agente — la misma cifra que las pequeñas insignias de las tarjetas, así que puedes verificar el número contándolas tú mismo. Solo aparece cuando al menos un empleo cumple, y declara el precio y los límites ahí mismo en lugar de guardarlos para el pago."
     }
   }
 }

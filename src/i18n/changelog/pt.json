@@ -899,6 +899,26 @@
     "agentStartFix": {
       "title": "Corrigido: o botão Ativar do agente podia recusar guardar",
       "description": "Na página do agente, o botão Ativar podia parecer pronto e depois recusar o clique com “adicione primeiro um CV”, sem guardar nada — mesmo havendo já um CV. O botão e o código que guarda procuravam o seu CV em dois sítios diferentes, e só um olhava onde a página do agente o guarda de facto. Passam a ler o mesmo."
+    },
+    "loadMoreNeverRepeats": {
+      "title": "“Carregar mais” podia repetir vagas já vistas — e esconder outras",
+      "description": "Num quadro que adiciona dezenas de milhares de vagas por dia, cada nova chegada deslocava as páginas sob os seus pés: ao premir “Carregar mais”, algumas das 60 vagas seguintes podiam aparecer repetidas e outras eram silenciosamente saltadas — medimos isto em metade dos carregamentos nas horas de maior movimento, com até 9 em 60 afetadas. Agora cada página continua exatamente na vaga onde a anterior terminou: nada se repete e nada é saltado."
+    },
+    "boardRecoveredAndFaster": {
+      "title": "O quadro teve uma noite difícil. Voltou mais rápido do que antes.",
+      "description": "Na noite de 17 de agosto o quadro estava lento e por vezes não carregava. Duas causas, ambas nossas: cada visita pedia à base de dados que contasse o quadro inteiro, e a base de dados tinha ultrapassado o seu hardware. Corrigimos a contagem, construímos uma paragem de emergência real para o pipeline de ingestão e mudámos para hardware maior. Páginas que demoravam 15 segundos ou falhavam carregam agora em cerca de um segundo — enquanto o quadro ingere novas vagas a toda a velocidade. Nenhum dado se perdeu."
+    },
+    "countsAlwaysTrue": {
+      "title": "O nosso número de destaque prometeu por momentos mais vagas do que tínhamos",
+      "description": "A página inicial dizia “600.000+ vagas” enquanto o quadro teve por momentos 584.000 — o número ficou fixado na última publicação do site, e o quadro moveu-se por baixo dele. Os números de destaque são agora arredondados para baixo com margem de segurança, para que o número que lê esteja sempre abaixo do que realmente temos: hoje a página inicial diz 550.000+ e o quadro ultrapassa os 600.000. Preferimos prometer a menos do que alguma vez exagerar."
+    },
+    "agentHasItsOwnPage": {
+      "title": "O Agente de Candidaturas tem finalmente uma página que conta tudo",
+      "description": "Preço, período de teste e limites, declarados antes de pagar: 99 $/mês com 7 dias grátis, candidaturas submetidas por si nos quatro sistemas de recrutamento que o agente consegue operar de ponta a ponta — cerca de 6% do quadro, com cada vaga dessas etiquetada — e nunca em sites que bloqueiam a candidatura atrás de um CAPTCHA. Nesses casos, o agente prepara a candidatura completa e é você que prime enviar. Esse limite é permanente — preferimos declará-lo à partida a que o descubra depois de pagar."
+    },
+    "agentPitchOnBoard": {
+      "title": "O quadro agora diz-lhe a que vagas o agente poderia candidatar-se por si",
+      "description": "Sob a linha de resultados, o quadro conta a quantas vagas da página à sua frente o Agente poderia submeter candidaturas — a mesma contagem dos pequenos distintivos nos cartões, por isso pode verificar o número contando-os. Só aparece quando pelo menos uma vaga se qualifica, e declara o preço e os limites ali mesmo, em vez de os guardar para o pagamento."
     }
   }
 }

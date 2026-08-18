@@ -899,6 +899,26 @@
     "agentStartFix": {
       "title": "Opgelost: de Activeer-knop van de agent kon weigeren op te slaan",
       "description": "Op de agentpagina kon de Activeer-knop klaar lijken en de klik dan afwijzen met “voeg eerst een cv toe”, zonder iets op te slaan — ook als er al een cv was. De knop en de code die opslaat zochten je cv op twee verschillende plekken, en maar één keek waar de agentpagina hem echt bewaart. Ze lezen nu hetzelfde."
+    },
+    "loadMoreNeverRepeats": {
+      "title": "“Meer laden” kon vacatures herhalen die u al zag — en andere verbergen",
+      "description": "Op een bord dat per dag tienduizenden vacatures toevoegt, verschoof elke nieuwe vacature de pagina’s onder u: “Meer laden” kon sommige van de volgende 60 vacatures dubbel tonen en andere stilzwijgend overslaan — gemeten op de helft van alle paginaladingen tijdens drukke uren, tot 9 van de 60. Pagina’s gaan nu exact verder bij de vacature waar de vorige eindigde: niets herhaalt zich, niets wordt overgeslagen."
+    },
+    "boardRecoveredAndFaster": {
+      "title": "Het bord had één zware avond. Het kwam sneller terug dan voorheen.",
+      "description": "Op de avond van 17 augustus was het bord traag en laadde het soms niet. Twee oorzaken, beide van ons: elke paginaweergave vroeg de database het hele bord te tellen, en de database was uit zijn hardware gegroeid. We hebben het tellen opgelost, een echte noodstop voor de invoerpijplijn gebouwd en zijn naar zwaardere hardware verhuisd. Pagina’s die 15 seconden duurden of mislukten, laden nu in ongeveer één seconde — terwijl het bord op volle snelheid nieuwe vacatures binnenhaalt. Er gingen geen gegevens verloren."
+    },
+    "countsAlwaysTrue": {
+      "title": "Ons kopcijfer beloofde even meer vacatures dan we hadden",
+      "description": "De voorpagina zei “600.000+ vacatures” terwijl het bord kortstondig 584.000 telde — het cijfer werd vastgelegd bij de laatste publicatie van de site, en het bord bewoog eronder verder. Kopcijfers worden nu naar beneden afgerond met een veiligheidsmarge, zodat het getal dat u leest altijd lager is dan wat we werkelijk hebben: vandaag zegt de voorpagina 550.000+ en telt het bord ruim 600.000. Liever te bescheiden dan ooit overdreven."
+    },
+    "agentHasItsOwnPage": {
+      "title": "De Apply Agent heeft eindelijk een pagina die alles vertelt",
+      "description": "Prijs, proefperiode en grenzen, benoemd vóór u betaalt: $99/maand met 7 dagen gratis, sollicitaties voor u ingediend op de vier wervingssystemen die de agent volledig kan bedienen — zo’n 6% van het bord, elke zulke vacature gelabeld — en nooit op sites die solliciteren achter een CAPTCHA vergrendelen. Daar bereidt de agent de volledige sollicitatie voor en drukt u zelf op verzenden. Die grens is permanent — we benoemen hem liever vooraf dan dat u hem na betaling ontdekt."
+    },
+    "agentPitchOnBoard": {
+      "title": "Het bord vertelt u nu op welke vacatures de agent voor u zou kunnen solliciteren",
+      "description": "Onder de resultatenregel telt het bord bij hoeveel vacatures op de pagina voor u de Apply Agent sollicitaties zou kunnen indienen — hetzelfde aantal als de kleine badges op de kaarten, dus u kunt het getal zelf natellen. Het verschijnt alleen als minstens één vacature in aanmerking komt, en het noemt de prijs en de grenzen daar meteen, in plaats van ze te bewaren voor het afrekenen."
     }
   }
 }

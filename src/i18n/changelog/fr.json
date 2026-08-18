@@ -899,6 +899,26 @@
     "agentStartFix": {
       "title": "Corrigé : le bouton Activer de l'agent pouvait refuser d'enregistrer",
       "description": "Sur la page de l'agent, le bouton Activer pouvait sembler prêt puis refuser le clic avec « ajoutez d'abord un CV » sans rien enregistrer, même avec un CV déjà présent. Le bouton et le code d'enregistrement cherchaient votre CV à deux endroits différents, et un seul regardait là où la page de l'agent le range réellement. Ils lisent désormais la même chose."
+    },
+    "loadMoreNeverRepeats": {
+      "title": "« Charger plus » pouvait répéter des offres déjà vues — et en masquer d’autres",
+      "description": "Sur un tableau qui ajoute des dizaines de milliers d’offres par jour, chaque nouvelle arrivée décalait les pages sous vos pieds : « Charger plus » pouvait afficher deux fois certaines des 60 offres suivantes et en sauter d’autres que vous ne voyiez jamais — mesuré sur la moitié des chargements aux heures chargées, jusqu’à 9 offres sur 60. Chaque page reprend désormais exactement à l’offre où la précédente s’est arrêtée : rien ne se répète, rien n’est sauté."
+    },
+    "boardRecoveredAndFaster": {
+      "title": "Le tableau a connu une soirée difficile. Il est revenu plus rapide qu’avant.",
+      "description": "Le soir du 17 août, le tableau était lent et parfois ne chargeait pas. Deux causes, toutes deux de notre fait : chaque visite demandait à la base de données de compter tout le tableau, et la base avait dépassé son matériel. Nous avons corrigé le comptage, construit un véritable arrêt d’urgence pour l’ingestion et migré vers un matériel plus puissant. Les pages qui prenaient 15 secondes ou échouaient se chargent désormais en une seconde environ — pendant que le tableau ingère de nouvelles offres à pleine vitesse. Aucune donnée perdue."
+    },
+    "countsAlwaysTrue": {
+      "title": "Notre chiffre phare a brièvement promis plus d’offres que nous n’en avions",
+      "description": "La page d’accueil affichait « 600 000+ offres » alors que le tableau en comptait brièvement 584 000 — le chiffre était figé à la dernière publication du site, et le tableau a bougé en dessous. Les chiffres phares sont désormais arrondis à la baisse avec une marge de sécurité : le nombre affiché est toujours inférieur à ce que nous détenons réellement. Aujourd’hui la page d’accueil dit 550 000+ et le tableau dépasse 600 000. Nous préférons sous-estimer que jamais exagérer."
+    },
+    "agentHasItsOwnPage": {
+      "title": "L’Agent de candidature a enfin une page qui dit tout",
+      "description": "Prix, essai et limites, annoncés avant de payer : 99 $/mois avec 7 jours gratuits, des candidatures envoyées pour vous sur les quatre systèmes de recrutement que l’agent sait piloter de bout en bout — environ 6 % du tableau, chaque offre concernée étant étiquetée — et jamais sur les sites qui verrouillent la candidature derrière un CAPTCHA. Là où c’est le cas, l’agent prépare toute la candidature et c’est vous qui appuyez sur envoyer. Cette limite est permanente : nous préférons l’annoncer d’avance plutôt que vous la laissiez découvrir après paiement."
+    },
+    "agentPitchOnBoard": {
+      "title": "Le tableau vous dit désormais à quelles offres l’agent pourrait postuler pour vous",
+      "description": "Sous la ligne de résultats, le tableau compte combien d’offres de la page devant vous l’Agent pourrait soumettre — le même compte que les petits badges sur les cartes, vous pouvez donc vérifier le chiffre vous-même en les comptant. Il n’apparaît que si au moins une offre est éligible, et il annonce le prix et les limites à cet endroit même, plutôt que de les garder pour le paiement."
     }
   }
 }
