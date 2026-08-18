@@ -2957,6 +2957,7 @@ export type Database = {
       apply_posting_corrections: { Args: { p_patches: Json }; Returns: number }
       board_serving_count: { Args: never; Returns: number }
       build_missing_since_index_oneshot: { Args: never; Returns: undefined }
+      build_sitemap_day_index_oneshot: { Args: never; Returns: undefined }
       build_speed_indexes_oneshot: { Args: never; Returns: undefined }
       check_global_rate_limit: {
         Args: {
