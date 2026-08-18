@@ -173,7 +173,16 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
   const BOARD_COMPANIES = typeof boardFacets?.companiesCount === "number"
     ? boardFacets.companiesCount
     : (Array.isArray(boardFacets?.companiesFacet) ? boardFacets.companiesFacet.length : null);
-  const plusClaim = (n, step) => `${(Math.floor(n / step) * step).toLocaleString("en-US")}+`;
+  // CHURN MARGIN, measured, not guessed. The comment above promised the claim
+  // "stays literally true through churn between bakes" — the 2026-08-17 DB
+  // incident falsified it: the corpus fell 608,082 -> 583,921 (-4.0%) and
+  // companies 25,065 -> 23,999 (-4.3%) between bakes, blowing through the 50k
+  // floor's ~8k of slack, and the homepage title said "600,000+" over a board
+  // of 583,921 — a false claim in the one tag every SERP shows. 7% covers the
+  // worst observed drop with room; the floor step then rounds the honest
+  // number down further. A "+" claim must be a promise, not a hope.
+  const CHURN_MARGIN = 0.93;
+  const plusClaim = (n, step) => `${(Math.floor((n * CHURN_MARGIN) / step) * step).toLocaleString("en-US")}+`;
 
   const template = readFileSync(join(dist, "index.html"), "utf8");
   if (!template.includes('<div id="root"></div>')) {
@@ -1043,13 +1052,20 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
     // important jobs URL. Board-specific title/description, live counts when the
     // build can reach the board, honest '3,000+' fallback otherwise.
     {
+      // PLUS-CLAIMS, not exact figures. This lander baked "608,082 openings /
+      // 25,065 companies" into its title and description, and the board then
+      // moved (it always moves) — by the 2026-08-17 incident's end both were
+      // ~4% overstated in crawler-facing copy. An exact number that is only
+      // true on build day is indistinguishable from a made-up one by the time
+      // anyone reads it; the body text already says counts are measured at
+      // build. Same margined plusClaim as the homepage, one honesty rule.
       const jobsPhrase = boardTotal
-        ? `${fmt(boardTotal)} live openings across ${fmt(boardCompanies)} companies`
+        ? `${plusClaim(boardTotal, 50000)} live openings across ${plusClaim(boardCompanies, 1000)} companies`
         : "live openings across 3,000+ companies";
       write({
         path: "/jobs",
         title: boardTotal
-          ? `Live Job Board — ${fmt(boardTotal)} Openings Direct From Company Career Pages`
+          ? `Live Job Board — ${plusClaim(boardTotal, 50000)} Openings Direct From Company Career Pages`
           : "Live Job Board — Openings Direct From Company Career Pages",
         description: `Browse ${jobsPhrase} — straight from official company job boards. No aggregators; nothing older than 30 days.`,
         content: `
@@ -1275,6 +1291,36 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
           <a href="/methodology" class="text-sm font-medium text-primary underline">${esc(T.viewMethodology || "View the methodology")}</a>
         </section>
         ${cta("Scan without an account", "No signup, no card, and nothing kept — 7 free scans a day.", "Scan my resume free")}`,
+    });
+
+    // ---- /agent ----
+    // FOUND 2026-08-18 by the post-recovery SEO sweep: /agent — the page the
+    // $99/mo product's checkout, the board pitch, and the welcome redirect all
+    // land on — served the HOMEPAGE SHELL, byte-identical (16,183B), homepage
+    // title, homepage description, no canonical. To a crawler the money page
+    // was a duplicate of the front page; to an answer engine the price, the
+    // trial, the four-vendor scope and the CAPTCHA boundary were INVISIBLE,
+    // because they existed only in JS. The claims below are the SAME countable
+    // claims the board pitch makes (Jobs.tsx, agent-is-visible-on-the-board
+    // guard) — a crawler and a visitor must read the same product.
+    write({
+      path: "/agent",
+      title: "Apply Agent — $99/mo, Applications Sent For You",
+      description: "The agent matches fresh postings to your resume and submits real applications on four hiring systems. $99/mo, 7 days free. It never solves CAPTCHAs.",
+      jsonLd: [breadcrumbLd([{ name: "Home", path: "/" }, { name: "Apply Agent", path: "/agent" }])],
+      content: `
+        ${breadcrumbNav([{ name: "Home", href: "/" }, { name: "Apply Agent" }])}
+        <h1 class="text-3xl font-bold mb-3">The agent applies. You interview.</h1>
+        <p class="text-muted-foreground mb-8">Tell it the roles you want and it watches the board for you — every morning it queues fresh, matching postings and submits real applications with your resume and answers, on the hiring systems it can drive end to end. You review what it sent, not what it plans to send.</p>
+        <section class="mb-8"><h2 class="text-xl font-bold mb-3">What it costs, and what you get</h2>
+          <div class="rounded-xl border border-border bg-card p-4 mb-2"><p class="text-sm font-semibold text-foreground mb-1">$99/month, 7 days free</p><p class="text-xs text-muted-foreground">Cancel any time. The trial runs the same pipeline as the paid plan — real applications, not samples.</p></div>
+          <div class="rounded-xl border border-border bg-card p-4"><p class="text-sm font-semibold text-foreground mb-1">A morning queue, not a spray</p><p class="text-xs text-muted-foreground">Matches come from the same live board the site serves — fresh postings only, matched against your resume, deduplicated against everything already sent.</p></div>
+        </section>
+        <section class="mb-8"><h2 class="text-xl font-bold mb-3">The limits, stated up front</h2>
+          <div class="rounded-xl border border-border bg-card p-4 mb-2"><p class="text-sm font-semibold text-foreground mb-1">Four hiring systems — about 6% of the board</p><p class="text-xs text-muted-foreground">The agent submits only where it can complete a real application end to end. The board labels every posting it can send to, so the scope is countable on the page, not a claim.</p></div>
+          <div class="rounded-xl border border-border bg-card p-4"><p class="text-sm font-semibold text-foreground mb-1">It never solves CAPTCHAs or evades bot checks</p><p class="text-xs text-muted-foreground">Where a site gates applying, the agent prepares the application — answers, resume, cover note — and you press send. That boundary is permanent.</p></div>
+        </section>
+        ${cta("Set up the agent", "Upload a resume, pick your targets, and the first morning queue is ready tomorrow. 7 days free.", "Start free week")}`,
     });
 
     write({
@@ -1567,6 +1613,7 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
       { path: "/builder", changefreq: "monthly", priority: "0.8" },
       { path: "/methodology", changefreq: "monthly", priority: "0.7" },
       { path: "/trust", changefreq: "monthly", priority: "0.6" },
+      { path: "/agent", changefreq: "weekly", priority: "0.9" }, // the money page — was fallback-only and sitemap-absent until 2026-08-18
       { path: "/affiliates", changefreq: "monthly", priority: "0.6" },
       // /shortlist deliberately absent: it is an auth wall with no public
       // content and now ships noindex. See its write() above.
