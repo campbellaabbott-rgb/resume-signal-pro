@@ -3427,7 +3427,7 @@ Deno.serve(async (req) => {
           };
         })(),
         filterAudit: (() => {
-          const v = (faMeta.data?.v ?? {}) as { at?: string; clean?: boolean; cases?: number; findings?: unknown[]; p95Ms?: number | null; slowCases?: number };
+          const v = (faMeta.data?.v ?? {}) as { at?: string; clean?: boolean; cases?: number; findings?: unknown[]; p95Ms?: number | null; slowCases?: number; throttledCases?: number };
           return {
             at: v.at ?? null,
             ageMin: faMeta.data?.updated_at ? Math.round((Date.now() - new Date(faMeta.data.updated_at).getTime()) / 60000) : null,
@@ -3435,6 +3435,9 @@ Deno.serve(async (req) => {
             cases: v.cases ?? null,
             findings: Array.isArray(v.findings) ? v.findings.slice(0, 12) : null,
             findingCount: Array.isArray(v.findings) ? v.findings.length : null,
+            // "could not measure" vs "measured broken", visible where red is
+            // actually read — the stored payload had this and status hid it.
+            throttledCases: v.throttledCases ?? null,
             p95Ms: v.p95Ms ?? null,
             slowCases: v.slowCases ?? null,
           };

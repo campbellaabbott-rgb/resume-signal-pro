@@ -51,6 +51,9 @@ describe("the filter audit distinguishes throttling from breakage", () => {
 
   it("surfaces the throttle count, and clean still requires a finished audit", () => {
     expect(FN).toMatch(/throttledCases: findings\.filter\(\(f\) => f\.kind === "throttled"\)\.length,/);
+    // And status must pass it through — a distinction stored but not shown
+    // does not change what anyone does at 2am.
+    expect(FN).toMatch(/throttledCases: v\.throttledCases \?\? null,/);
     // Throttled findings still make clean:false — the audit did not finish,
     // and an unfinished audit must never read as a green one.
     expect(FN).toMatch(/clean: findings\.length === 0,/);
