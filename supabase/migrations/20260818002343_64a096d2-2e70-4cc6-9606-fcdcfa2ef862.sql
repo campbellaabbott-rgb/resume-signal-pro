@@ -1,0 +1,1 @@
+select cron.schedule('oneshot-vacuum-postings','* * * * *',$job$ set statement_timeout=0; vacuum (analyze) public.job_board_postings; select cron.unschedule('oneshot-vacuum-postings'); $job$);
