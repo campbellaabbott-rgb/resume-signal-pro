@@ -98,7 +98,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-17.1";
+const BUILD_VERSION = "2026-08-18.1";
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -6256,6 +6256,26 @@ async function serveList(
   // instead of a zero-state.
   const wantCount = !unfiltered;
   const safeMetaTotal = Number.isFinite(metaTotal) && metaTotal > 0 ? metaTotal : null;
+  // PAST-THE-END GUARD: stale crawlers and over-paginated clients sometimes
+  // request an offset at or beyond the cached corpus total. Running the
+  // ranked/recency query for those pages scans the heap and times out (9s →
+  // 500). Return an empty page immediately using the cached total.
+  if (!countOnly && unfiltered && safeMetaTotal !== null && offset >= safeMetaTotal) {
+    const v = (meta?.v ?? {}) as Record<string, unknown>;
+    return json({
+      jobs: [],
+      ...honesty([]),
+      nextOffset: null,
+      total: safeMetaTotal,
+      hasMore: false,
+      totalAllCompanies: safeMetaTotal,
+      companies: [],
+      companiesCount: 0,
+      categories: visibleCategories(undefined, true, applied.category),
+      failedSources: (v.failedSources as string[]) ?? [],
+      refreshedAt: (v.refreshedAt as string) ?? null,
+    });
+  }
   // withCount is separable from wantCount so a page can be re-run WITHOUT the
   // count when the count is what failed. Measured 2026-07-25 on the 570k table:
   // the page itself returns in 0.2-0.4s, while the exact count over a broad
