@@ -6240,7 +6240,22 @@ async function serveList(
     };
   };
   const unfiltered = isUnfiltered(applied);
-  const wantCount = !(unfiltered && Number.isFinite(metaTotal) && metaTotal > 0);
+  // THE UNFILTERED VIEW NEVER COUNTS — even when the cached total is missing.
+  //
+  // The old gate skipped the count only WHEN the cached facets total was
+  // readable. So the moment that cache became unreadable (facets RPC 503ing
+  // with PGRST002 during the 2026-08-18 00:20Z incident), every unfiltered
+  // page view ESCALATED to an exact count over 584k rows — the single most
+  // expensive query in this codebase, issued by the most common request, at
+  // precisely the moment the database was least able to serve it. The
+  // instance logged 88,674 rolled-back transactions, one per cancelled count.
+  //
+  // A missing headline number must degrade the HEADLINE ("many jobs"), never
+  // the page. safeMetaTotal is null when the cache is unreadable, and the
+  // response carries countUnavailable so the client renders its fallback
+  // instead of a zero-state.
+  const wantCount = !unfiltered;
+  const safeMetaTotal = Number.isFinite(metaTotal) && metaTotal > 0 ? metaTotal : null;
   // withCount is separable from wantCount so a page can be re-run WITHOUT the
   // count when the count is what failed. Measured 2026-07-25 on the 570k table:
   // the page itself returns in 0.2-0.4s, while the exact count over a broad
@@ -6406,7 +6421,7 @@ async function serveList(
     // had been dropped. It publishes only a number, which makes naming the
     // filters that number does not honour more important here, not less.
     const countHonesty = ignoredFilters.length ? { ignoredFilters } : {};
-    if (!wantCount) return json({ total: metaTotal, ...countHonesty }); // unfiltered — the maintained catalog total
+    if (!wantCount) return json({ total: safeMetaTotal, ...(safeMetaTotal === null ? { countUnavailable: true } : {}), ...countHonesty }); // unfiltered — the maintained catalog total, degraded to null when the cache is unreadable
     // With a query present, count what the LIST path would actually serve —
     // the FTS ranked tiers — not the ILIKE approximation. Measured
     // 2026-07-25: the two disagreed up to 4.3x on the same body, so
@@ -7137,8 +7152,8 @@ async function serveList(
     nextOffset: offset + grouped.rawConsumed,
     // null (not 0) when the count timed out — 0 would read as "no matches" and
     // trip the zero-state on a page that is visibly full of results.
-    total: countUnavailable ? null : (wantCount ? (count ?? 0) : metaTotal),
-    ...(countUnavailable ? { countUnavailable: true } : {}),
+    total: countUnavailable ? null : (wantCount ? (count ?? 0) : safeMetaTotal),
+    ...(countUnavailable || (!wantCount && safeMetaTotal === null) ? { countUnavailable: true } : {}),
     // The count stopped at the cap: the real figure is higher, so the client
     // renders "10,000+" rather than presenting the cap as an exact total.
     ...(cappedRes?.capped ? { countCapped: true } : {}),
