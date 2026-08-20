@@ -26,9 +26,15 @@ import { SENDABLE_VENDORS } from "../../supabase/functions/_shared/apply-automat
 const board = readFileSync(resolve(__dirname, "../../supabase/functions/job-board/index.ts"), "utf8");
 const jobs = readFileSync(resolve(__dirname, "../pages/Jobs.tsx"), "utf8");
 const DIR = resolve(__dirname, "../../supabase/migrations");
+// Picks the last migration that DEFINES these functions, not merely mentions
+// them. A comment naming p_sources used to win this selection — a reverted
+// migration explaining the parameter was chosen over the one declaring it, and
+// every assertion below failed against a file containing no SQL at all. Grep
+// selectors must match the thing, not talk about it.
 const mig = readdirSync(DIR).filter((f) => f.endsWith(".sql"))
   .map((f) => readFileSync(resolve(DIR, f), "utf8"))
-  .filter((t) => t.includes("p_sources")).pop() ?? "";
+  .filter((t) => /CREATE (OR REPLACE )?FUNCTION public\.(search_jobs|count_jobs_capped)\(/.test(t)
+    && t.includes("p_sources")).pop() ?? "";
 
 const norm = (b: Record<string, unknown>) => normalizeFilters(b, 200).applied;
 

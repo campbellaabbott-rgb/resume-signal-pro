@@ -27,6 +27,14 @@ const MIG = (() => {
 })();
 
 describe("a metro alias reaches every path, not just the one nobody types into", () => {
+  // FOUR ASSERTIONS BELOW ARE SKIPPED, not deleted. They describe the
+  // pipe-delimited RPC change, which was correct in intent and REVERTED in
+  // execution: it was applied to a definition read from this repo, while the
+  // definition that runs carries an extra p_sources parameter that exists only
+  // in the database. The result was a second overload and PGRST203 on every
+  // ranked search. Un-skip when the change is re-applied to the live
+  // definition, read via pg_get_functiondef.
+
   it("NO ranked or count site passes the raw location any more", () => {
     // This is the whole bug: four sites, all bypassing the expansion.
     expect(FN).not.toMatch(/p_location: sanitizeTerm\(applied\.location\) \|\| null/);
@@ -34,7 +42,11 @@ describe("a metro alias reaches every path, not just the one nobody types into",
     expect(wired, "every search_jobs call must send the expanded names").toBeGreaterThanOrEqual(4);
   });
 
-  it("the RPC matches ANY of the delimited names, not the literal string", () => {
+  it.skip("the RPC matches ANY of the delimited names, not the literal string", () => {
+    // SKIPPED, not deleted. The delimiter approach is right and should return
+    // — but only applied to the FIFTEEN-parameter definition that actually
+    // runs in production, read out of the database rather than out of this
+    // repo. Un-skip when that migration lands.
     expect(MIG, "migration not found").not.toBe("");
     expect(MIG).toMatch(/string_to_array\(\$3, ''\|''\)/);
     expect(MIG).toMatch(/EXISTS \(SELECT 1 FROM unnest/);
@@ -47,7 +59,7 @@ describe("a metro alias reaches every path, not just the one nobody types into",
     expect(generated).toContain("ILIKE '%' || alias.x || '%'");
   });
 
-  it("widens BOTH location functions, with their DIFFERENT positionals", () => {
+  it.skip("widens BOTH location functions, with their DIFFERENT positionals", () => {
     // count_jobs_capped carries the same clause at $2 where search_jobs has
     // $3. Fixing only one would be worse than fixing neither: the caller
     // already sends the joined string to both, so the rows would come from
@@ -60,14 +72,14 @@ describe("a metro alias reaches every path, not just the one nobody types into",
     expect(MIG).toMatch(/string_to_array\(\$2, ''\|''\)/);
   });
 
-  it("keeps the signature and the positional USING clauses untouched", () => {
+  it.skip("keeps the signature and the positional USING clauses untouched", () => {
     // Adding a parameter would renumber four USING clauses on the core search
     // RPC. The delimiter avoids that entirely, which is why it was chosen.
     expect(MIG).toMatch(/p_location text DEFAULT NULL,/);
     expect(MIG).not.toMatch(/p_location_any|p_locations/);
   });
 
-  it("a plain location still behaves exactly as before", () => {
+  it.skip("a plain location still behaves exactly as before", () => {
     // No pipe means a one-element array, so every existing caller is
     // unaffected whether or not it knows about this.
     expect(MIG).toMatch(/one-element array and behaves EXACTLY as before/i);
@@ -88,10 +100,18 @@ describe("a metro alias reaches every path, not just the one nobody types into",
     expect(strip.includes("\\\\"), "sanitizeTerm must strip the backslash").toBe(true);
   });
 
-  it("joins only sanitized names, and yields null when nothing survives", () => {
+  it("sends ONE sanitized canonical name, and null when nothing survives", () => {
+    // The pipe-joined version is reverted: the migration that taught
+    // search_jobs to split on "|" created a 14-param OVERLOAD of a 15-param
+    // function and broke ranked search outright (PGRST203). With the real
+    // one-substring definition restored, sending "Philly|Philadelphia" would
+    // match NOTHING — worse than the bug it fixed.
     const fn = /function rankedLocationParam\([\s\S]*?\n}/.exec(FN)?.[0] ?? "";
     expect(fn, "rankedLocationParam not found").not.toBe("");
-    expect(fn).toMatch(/\.map\(\(t\) => sanitizeTerm\(t\)\)\.filter\(Boolean\)\.join\("\|"\)/);
+    expect(fn, "must not send a delimited list to the one-substring RPC").not.toMatch(/join\("\|"\)/);
+    expect(fn).toMatch(/sanitizeTerm\(canonical\)/);
     expect(fn).toMatch(/if \(terms\.length === 0\) return null;/);
+    // Still an improvement on the raw token: "Philly" must search Philadelphia.
+    expect(fn).toMatch(/expandedFrom/);
   });
 });

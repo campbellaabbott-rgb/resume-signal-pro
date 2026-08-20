@@ -57,7 +57,7 @@ import { classifyDormancy, updateBoardFailures, type BoardFailureState } from ".
 import { advanceProgress, isPassDone, type RefreshProgress } from "./rotation.ts";
 import { CANARIES, rawItemCount, aggregateVendorHealth, type CanaryResult } from "./vendor-canary.ts";
 import { detectExperience, isExperienceBand } from "./experience.ts";
-import { categoryParam, filterViolations, isUnfiltered, normalizeFilters, sendableSourcesParam, splitPage } from "./filters.ts";
+import { categoryParam, filterViolations, isUnfiltered, normalizeFilters, sendableSourcesParam, splitPage, salaryFromQueryText, SALARY_IN_QUERY } from "./filters.ts";
 import { expandQuery } from "./search-alias.ts";
 import { classifyQuestion } from "../_shared/application-questions.ts";
 import { parseBreezyQuestions, parsePinpointQuestions, breezyApplyUrl, pinpointApplyUrl } from "../_shared/vendor-questions.ts";
@@ -3240,22 +3240,34 @@ const METRO_ALIASES: Record<string, { names: string[]; keepRaw: boolean }> = {
  * why, and a visitor who meant something else needs to see that we guessed.
  */
 /**
- * The location string for search_jobs, which matches ANY pipe-delimited name.
+ * The location for search_jobs — ONE name, not a delimited list.
  *
- * MEASURED after the alias deploy: location=Philly returned 13 jobs while
- * Philadelphia had 1,541, and NYC returned 344 against New York's 10,000. The
- * aliases were computed and REPORTED to the client, then thrown away here —
- * every ranked and count call passed applied.location raw. The browse path had
- * them; the path people actually search with did not.
+ * The pipe-delimited version was correct and is reverted, because the
+ * migration that taught search_jobs to split on "|" created a fourteen-
+ * parameter OVERLOAD of a fifteen-parameter function and broke ranked search
+ * outright (PGRST203). Dropping that overload restores the real definition —
+ * which matches ONE substring — so sending "Philly|Philadelphia" here would
+ * now match nothing at all. Worse than the bug it fixed.
  *
- * Joining with "|" rather than adding a parameter keeps search_jobs' signature
- * and its four positional USING clauses untouched. sanitizeTerm strips "|" from
- * user input, so only our own curated names are ever joined.
+ * INTERIM, and still better than before: send the first CANONICAL name rather
+ * than what the visitor typed. "Philly" searches Philadelphia (1,541 rows
+ * instead of 13) and "NYC" searches New York. The union across every alias
+ * name is lost on this path until the split lands on the real definition —
+ * the browse path keeps it, because it builds its own or() and never touches
+ * this RPC.
+ *
+ * Prefers a canonical name over the raw token deliberately: for "NYC" the
+ * names are ["NYC", "New York"], and New York is 12,168 rows against 344.
  */
 function rankedLocationParam(raw: unknown): string | null {
-  const { terms } = locationTerms(raw);
+  const { terms, expandedFrom } = locationTerms(raw);
   if (terms.length === 0) return null;
-  return terms.map((t) => sanitizeTerm(t)).filter(Boolean).join("|") || null;
+  // Skip a name that is just the typed token echoed back; a curated canonical
+  // is always the better single guess.
+  const canonical = expandedFrom
+    ? terms.find((t) => t.toLowerCase() !== String(expandedFrom).toLowerCase()) ?? terms[0]
+    : terms[0];
+  return sanitizeTerm(canonical) || null;
 }
 
 function locationTerms(raw: unknown): { terms: string[]; expandedFrom: string | null } {
@@ -3271,6 +3283,8 @@ function locationTerms(raw: unknown): { terms: string[]; expandedFrom: string | 
   };
 }
 
+
+
 /**
  * Split a query into title terms, dropping filler.
  *
@@ -3281,7 +3295,15 @@ function locationTerms(raw: unknown): { terms: string[]; expandedFrom: string | 
  */
 function queryTerms(raw: unknown): { terms: string[]; dropped: string[] } {
   const all = String(raw ?? "").toLowerCase().split(/\s+/).map(sanitizeTerm).filter(Boolean);
-  const kept = all.filter((t) => !QUERY_FILLER.has(t));
+  // The money token is lifted into the salary FILTER, so it must not also be
+  // ANDed against every title — that is what returned zero for "100k engineer".
+  // The money token is lifted into the salary filter by normalizeFilters, so
+  // it must not also be ANDed against every title — that returned zero for
+  // "100k engineer".
+  const money = salaryFromQueryText(raw) !== null
+    ? String(raw ?? "").toLowerCase().split(/\s+/).find((t) => SALARY_IN_QUERY.test(t)) ?? null
+    : null;
+  const kept = all.filter((t) => !QUERY_FILLER.has(t) && t !== money);
   if (kept.length === 0) return { terms: all, dropped: [] };
   return { terms: kept, dropped: all.filter((t) => QUERY_FILLER.has(t)) };
 }
@@ -6307,6 +6329,45 @@ async function attachRecheckedAt(
   return jobs;
 }
 
+/**
+ * Show the location the visitor actually searched for.
+ *
+ * FOUND while verifying the metro-alias fix: a search for SF returned a card
+ * reading "New York, New York, Un…" and looked like a broken filter. It was
+ * not — the posting's location field is
+ *   "New York, New York, United States; Remote; San Francisco, California, United States"
+ * and it genuinely matched. Ungrouped, 19 of 19 rows were correct.
+ *
+ * That is worse than a real bug in one specific way: the filter works, and the
+ * card says it does not. A visitor cannot verify a filter whose evidence
+ * contradicts it, and this board asks to be verified.
+ *
+ * So when a location filter is active and the posting lists several places,
+ * the matched one is shown first. Nothing is hidden — the others still travel
+ * in the same string after it, and the count of remaining places is exposed so
+ * the UI can say "+2 more" without inventing a number.
+ */
+function preferMatchedLocation(
+  jobs: Array<Record<string, unknown>>,
+  locTerms: string[],
+): Array<Record<string, unknown>> {
+  if (locTerms.length === 0) return jobs;
+  const needles = locTerms.map((t) => t.toLowerCase().replace(/^,\s*/, "")).filter(Boolean);
+  if (needles.length === 0) return jobs;
+  for (const j of jobs) {
+    const loc = typeof j.location === "string" ? j.location : "";
+    // Multi-location postings use ";" or "/" — measured on live rows.
+    const parts = loc.split(/\s*[;/]\s*/).map((x) => x.trim()).filter(Boolean);
+    if (parts.length < 2) continue;
+    const hit = parts.findIndex((part) => needles.some((n) => part.toLowerCase().includes(n)));
+    if (hit <= 0) continue; // already first, or this row matched on something else
+    j.location = [parts[hit], ...parts.filter((_, i) => i !== hit)].join("; ");
+    j.locationMatchedIndex = hit;
+    j.otherLocationCount = parts.length - 1;
+  }
+  return jobs;
+}
+
 const rowToJob = (r: any) => ({
   id: r.id,
   source: r.source,
@@ -7182,7 +7243,7 @@ async function serveList(
               const fzTotal = Number((fuzzy[0] as { total_rows?: number }).total_rows);
               const fzKnown = Number.isFinite(fzTotal) && fzTotal > 0 && fzTotal < limit;
               return json({
-                jobs: await attachRecheckedAt(client, fuzzyGrouped.jobs),
+                jobs: preferMatchedLocation(await attachRecheckedAt(client, fuzzyGrouped.jobs), locationTerms(body.location).terms),
                 ...honesty(fuzzyGrouped.jobs),
                 // This page is a RESCUE, not page 1 of a result set. It omitted
                 // hasMore/nextOffset, so the client's "Load more" issued the
@@ -7256,7 +7317,7 @@ async function serveList(
                     : { jobs: semRows.slice(0, limit), rawConsumed: Math.min(semRows.length, limit) };
                   logMiss("semantic");
                   return json({
-                    jobs: await attachRecheckedAt(client, semGrouped.jobs),
+                    jobs: preferMatchedLocation(await attachRecheckedAt(client, semGrouped.jobs), locationTerms(body.location).terms),
                     ...honesty(semGrouped.jobs),
                     total: semGrouped.jobs.length,
                     hasMore: false,
@@ -7422,7 +7483,11 @@ async function serveList(
         // Verified live on .10 — rows=60 alongside total=18. Null it.
         const augmented = fuzzyExtraOut !== null;
         return json({
-          jobs: rankedGrouped.jobs,
+          // attachRecheckedAt was MISSING here: the per-posting "re-checked N
+          // minutes ago" receipt reached people who browsed and not people who
+          // searched — the fourth thing today to be wired into the recency
+          // path and skipped on the ranked one.
+          jobs: preferMatchedLocation(await attachRecheckedAt(client, rankedGrouped.jobs), locationTerms(body.location).terms),
           ...honesty(rankedGrouped.jobs),
           ...(augmented ? { countUnavailable: true } : {}),
           nextOffset: offset + rankedGrouped.rawConsumed,
@@ -7765,7 +7830,7 @@ async function serveList(
   // in the response so the property is externally testable, and logged so it is
   // visible without a client.
   return json({
-    jobs: await attachRecheckedAt(client, grouped.jobs),
+    jobs: preferMatchedLocation(await attachRecheckedAt(client, grouped.jobs), locationTerms(body.location).terms),
     ...honesty(grouped.jobs),
     // Raw rows this page swallowed. The client MUST page by this rather than by
     // jobs.length once clusters are folded, or the siblings of a collapsed
@@ -7776,6 +7841,16 @@ async function serveList(
     // the board says what it ignored, the same way it names a filter it could
     // not honour. Absent when nothing was dropped.
     ...(() => { const d = queryTerms(body.q).dropped; return d.length ? { droppedTerms: d } : {}; })(),
+    // Pay lifted out of the search box into the filter. Said out loud for the
+    // same reason the dropped words are: the board changed what was asked, so
+    // it has to show its working.
+    // Pay lifted out of the search box into the filter. Said out loud for the
+    // same reason dropped words are: the board changed what was asked, so it
+    // shows its working. Read off the DERIVED filter — the raw body is not
+    // consulted anywhere outside normalizeFilters.
+    ...(salaryFromQueryText(body.q) !== null && applied.salaryFloor === salaryFromQueryText(body.q)
+      ? { salaryFromQuery: applied.salaryFloor }
+      : {}),
     // Said out loud, because we guessed on the visitor's behalf: someone who
     // typed "SF" and gets San Francisco results should know why, and someone
     // who meant something else needs to see that we substituted.

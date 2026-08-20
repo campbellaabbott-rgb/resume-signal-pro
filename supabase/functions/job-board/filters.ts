@@ -83,6 +83,33 @@ const asBands = (v: unknown): string[] =>
 const sent = (v: unknown): boolean =>
   Array.isArray(v) ? v.length > 0 : String(v ?? "").trim() !== "";
 
+/**
+ * A pay figure typed into the search box, as a salary FLOOR.
+ *
+ * MEASURED: q="100k engineer" returned ZERO jobs with total null. The money
+ * token is not a title word, so it ANDs against every title and matches
+ * nothing — the same failure as "jobs near me", except the intent maps onto a
+ * filter the board already has.
+ *
+ * Recognises 100k, 100K, $100k, 120,000, $120,000 and "100k+". Anything under
+ * $1,000 is ignored: a bare "10" is a version number far more often than a
+ * salary, and guessing wrong hides the entire board behind a filter nobody
+ * asked for.
+ */
+export const SALARY_IN_QUERY = /^\$?(\d{1,3}(?:,\d{3})+|\d+(?:\.\d+)?k?)\+?$/i;
+
+export function salaryFromQueryText(raw: unknown): number | null {
+  for (const t of String(raw ?? "").toLowerCase().split(/\s+/)) {
+    const m = SALARY_IN_QUERY.exec(t);
+    if (!m) continue;
+    const b = m[1];
+    const n = b.endsWith("k") ? Number(b.slice(0, -1)) * 1_000 : Number(b.replace(/,/g, ""));
+    if (!Number.isFinite(n) || n < 1_000 || n > 2_000_000) continue;
+    return n;
+  }
+  return null;
+}
+
 export function normalizeFilters(
   body: Record<string, unknown>,
   companyTokenLimit: number,
@@ -136,7 +163,20 @@ export function normalizeFilters(
 
   // 0 is the UI's "off" position for both of the next two, not a rejected value.
   // Reporting it would hang a warning on every unfiltered page.
-  const floorN = Number(body.salaryFloor);
+  // PAY TYPED INTO THE SEARCH BOX becomes this filter, but only when the
+  // visitor did not set it explicitly. Someone who moved the slider to $150k
+  // and then typed "100k engineer" meant the slider; silently lowering their
+  // floor would widen a search they deliberately narrowed.
+  //
+  // Derived HERE rather than at the call site because this file is the single
+  // filter derivation — reading body.salaryFloor anywhere else is exactly what
+  // src/test/board-filter-contract.test.ts forbids, and it forbids it because
+  // two derivations drift and the count starts answering a different question
+  // from the page.
+  const explicitFloor = Number(body.salaryFloor);
+  const hasExplicit = sent(body.salaryFloor) && Number.isFinite(explicitFloor) && explicitFloor > 0;
+  const queryFloor = hasExplicit ? null : salaryFromQueryText(body.q);
+  const floorN = hasExplicit ? explicitFloor : (queryFloor ?? Number(body.salaryFloor));
   const salaryFloor = Number.isFinite(floorN) && floorN > 0 ? Math.min(floorN, 2_000_000) : null;
   if (sent(body.salaryFloor) && salaryFloor === null && floorN !== 0) ignored.push("salaryFloor");
 
