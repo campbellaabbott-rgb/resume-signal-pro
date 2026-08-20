@@ -659,6 +659,10 @@ export default function Jobs() {
   const [error, setError] = useState(false);
   // "query" = the CDN WAF rejected the search string; "load" = anything else.
   const [errorKind, setErrorKind] = useState<"load" | "query">("load");
+  // Separate from `error`: a failed "Load more" leaves the list rendered and
+  // shows an inline retry under it, rather than replacing a full page of
+  // results with an error card.
+  const [loadMoreError, setLoadMoreError] = useState(false);
   const reqSeq = useRef(0);
   const { session } = useAuth();
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
@@ -981,6 +985,7 @@ export default function Jobs() {
       // recovery-from-error blanks to the spinner.
       offset === 0 ? (jobsCount.current > 0 ? setRefreshing(true) : setLoading(true)) : setLoadingMore(true);
       setError(false);
+      setLoadMoreError(false);
       try {
         const body = {
           action: "list",
@@ -1039,8 +1044,24 @@ export default function Jobs() {
         // page the client can't parse (audit 2026-07-26). Blaming "the board"
         // sends the user to retry the same doomed query; naming the real cause
         // lets them fix it in one edit.
-        setErrorKind(/['";\\]|--|\/\*|\bunion\b|\bselect\b/i.test(q) ? "query" : "load");
-        setError(true);
+        // AN APOSTROPHE IS NOT AN ATTACK. This regex matched a bare ' so
+        // "Kohl's", "St. Luke's", "Lowe's" and "Macy's" were classified as
+        // hostile queries: the visitor was told their own search was the
+        // problem, given no retry, and offered only a button that throws away
+        // what they typed. Every one of those is a real employer on this board.
+        //
+        // The classification now needs a genuine SQL-ish SEQUENCE, not a
+        // single punctuation mark that occurs in ordinary English possessives.
+        // And even then it is only a HINT: a retry is always offered, because
+        // the WAF is not the only reason a request fails and a dead end during
+        // an ordinary outage is worse than a slightly wrong explanation.
+        setErrorKind(/--|\/\*|\bunion\s+select\b|\bdrop\s+table\b|;\s*\w+\s+(select|insert|update|delete)\b/i.test(q) ? "query" : "load");
+        // Scope the failure to the request that failed. A "Load more" that
+        // fails must not delete the jobs already on screen — that is several
+        // minutes of someone's scrolling destroyed by one flaky request, with
+        // no way back. Only a first-page failure replaces the list.
+        if (offset === 0) setError(true);
+        else setLoadMoreError(true);
       } finally {
         if (seq === reqSeq.current) {
           setLoading(false);
@@ -1264,6 +1285,10 @@ export default function Jobs() {
     return () => { document.getElementById(TAG_ID)?.remove(); restoreCanonical(); };
   }, [detailJob, detailDesc]);
   const [detailLoading, setDetailLoading] = useState(false);
+  // The description could not be FETCHED — distinct from "this employer wrote
+  // none", which renders as ordinary empty. Conflating the two told visitors a
+  // falsehood about a named company and cached it.
+  const [detailFailed, setDetailFailed] = useState(false);
   // URL mode per selection: an explicit card click PUSHES history (back button
   // closes the panel); keyboard/auto-selection REPLACES (arrowing through 30
   // postings must not create 30 history entries). Close undoes whichever the
@@ -1297,6 +1322,7 @@ export default function Jobs() {
     setDetailJob(job);
     setDetailDesc(null);
     setDetailLoading(true);
+    setDetailFailed(false);
     setViewedIds((prev) => {
       if (prev.has(job.id)) return prev;
       const next = new Set(prev).add(job.id);
@@ -1345,11 +1371,29 @@ export default function Jobs() {
       return;
     }
     try {
-      const { data: res } = await invokeBoard<{ description?: string }>({ action: "detail", id: job.id });
-      descCache.current.set(job.id, res?.description ?? "");
+      // invokeBoard RETURNS errors, it does not throw — so the catch below
+      // never fired on a failed fetch. `res` came back undefined, and
+      // `res?.description ?? ""` wrote EMPTY STRING to the cache, which this
+      // cache defines as "fetched, and this employer wrote no description".
+      // A transient failure therefore became a permanent, confident, false
+      // statement about a named company, and the cache meant it never
+      // self-corrected for the rest of the session.
+      const { data: res, error: detErr } = await invokeBoard<{ description?: string }>({ action: "detail", id: job.id });
       if (seq !== detailSeq.current) return; // superseded — never paint a stale JD
-      setDetailDesc(res?.description ?? null);
-    } catch { /* panel still shows metadata + actions */ }
+      if (detErr || !res) {
+        // Do NOT cache. The next open retries, which is the behaviour a
+        // visitor expects from something that failed.
+        descCache.current.delete(job.id);
+        setDetailFailed(true);
+      } else {
+        descCache.current.set(job.id, res.description ?? "");
+        setDetailDesc(res.description ?? null);
+      }
+    } catch {
+      if (seq !== detailSeq.current) return;
+      descCache.current.delete(job.id);
+      setDetailFailed(true);
+    }
     if (seq !== detailSeq.current) return;
     setDetailLoading(false);
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -2963,6 +3007,21 @@ export default function Jobs() {
                 <div className="py-8 text-center text-muted-foreground">
                   <Loader2 className="w-5 h-5 animate-spin mx-auto" />
                 </div>
+              ) : detailFailed ? (
+                /* A FETCH FAILURE, not an employer who wrote nothing. The
+                   difference matters: the old code rendered the second message
+                   for both, so a transient error became a false statement
+                   about a named company — and it was cached, so reopening the
+                   job repeated it. A retry is offered because it usually
+                   works. */
+                <div className="py-6 text-center">
+                  <p className="text-sm text-muted-foreground mb-3">
+                    {t("jobsPage.descFailed", "We couldn't load this description just now.")}
+                  </p>
+                  <Button variant="outline" size="sm" onClick={() => detailJob && void openDetail(detailJob)}>
+                    {t("jobsPage.retry", "Try again")}
+                  </Button>
+                </div>
               ) : detailDesc ? (
                 <div>
                   {descHasHighlights && (
@@ -4028,13 +4087,16 @@ export default function Jobs() {
                   ? t("jobsPage.errorQuery", "That search contains characters our security filter blocks (quotes, semicolons, slashes). Try the words on their own.")
                   : t("jobsPage.error", "The board couldn't load right now.")}
               </p>
-              {errorKind === "query" ? (
-                <Button variant="outline" size="sm" onClick={() => setQ("")}>
+              {/* A RETRY IS ALWAYS OFFERED. The query branch used to show only
+                  "Clear the search", so a visitor whose search was misjudged
+                  as hostile — every possessive company name qualified — had no
+                  way to try again and one button that discarded their typing. */}
+              <Button variant="outline" size="sm" onClick={() => fetchJobs(0)}>
+                {t("jobsPage.retry", "Try again")}
+              </Button>
+              {errorKind === "query" && (
+                <Button variant="ghost" size="sm" onClick={() => setQ("")}>
                   {t("jobsPage.clearSearch", "Clear the search")}
-                </Button>
-              ) : (
-                <Button variant="outline" size="sm" onClick={() => fetchJobs(0)}>
-                  {t("jobsPage.retry", "Try again")}
                 </Button>
               )}
             </div>
@@ -4856,9 +4918,18 @@ export default function Jobs() {
               </ul>
               {data && (typeof data.total === "number" ? jobs.length < data.total : !!data.hasMore) && (
                 <div className="text-center mt-6">
+                  {/* A failed "Load more" keeps every job already on screen and
+                      retries in place. It used to replace the whole list with
+                      an error card — one flaky request on a phone wiping out
+                      several minutes of scrolling, with no way back to it. */}
+                  {loadMoreError && (
+                    <p className="text-sm text-muted-foreground mb-2">
+                      {t("jobsPage.loadMoreFailed", "Couldn't load more just now — your results are still here.")}
+                    </p>
+                  )}
                   <Button variant="outline" disabled={loadingMore} onClick={() => fetchJobs(data?.nextOffset ?? jobs.length)} className="gap-2">
                     {loadingMore && <Loader2 className="w-4 h-4 animate-spin" />}
-                    {t("jobsPage.loadMore", "Load more")}
+                    {loadMoreError ? t("jobsPage.loadMoreRetry", "Try again") : t("jobsPage.loadMore", "Load more")}
                   </Button>
                 </div>
               )}
