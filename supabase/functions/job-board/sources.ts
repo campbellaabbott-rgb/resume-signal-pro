@@ -22,6 +22,18 @@ export interface JobSource {
   source: JobSourceKind;
   token: string; // the company's board token on that ATS
   /**
+   * Per-tenant page budget for paginated vendors (iCIMS only, today).
+   *
+   * The global iCIMS cap is 12 pages (1,200 postings) so one giant board
+   * cannot wedge a refresh slice. PetSmart (careers.petsmart.com, found by the
+   * 2026-08-19 census probe) holds 10,911 postings — the cap would silently
+   * window it at 11%. This field raises the budget for NAMED giants only;
+   * everything else keeps the slice-protecting default. The fetch runs pages
+   * in small parallel chunks, so a 110-page board costs ~23 sequential rounds
+   * — the same order as Oracle's tolerated 20.
+   */
+  pages?: number;
+  /**
    * Serve this board from the employer's OWN hostname instead of the vendor's.
    *
    * Added 2026-08-01 after sweeping all 1M Tranco domains: 806 live ATS boards
@@ -28398,6 +28410,7 @@ export const JOB_SOURCES: JobSource[] = [
   // Casing is theirs: AVI-SPL is not "Avi-spl".
   { name: "84 Lumber", source: "icims", token: "careers.84lumber.com" },
   { name: "AARP", source: "icims", token: "careers.aarp.org" },
+  { name: "PetSmart", source: "icims", token: "careers.petsmart.com", pages: 115 }, // 10,911 postings measured 2026-08-19 — the pages budget is why it is not windowed at 1,200
   { name: "AccentCare", source: "icims", token: "careers.accentcare.com" },
   { name: "Acentra Health", source: "icims", token: "careers.acentra.com" },
   { name: "Adisseo France S.A.S", source: "icims", token: "careers.adisseo.com" },

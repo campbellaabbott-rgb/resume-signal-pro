@@ -98,7 +98,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-17.1";
+const BUILD_VERSION = "2026-08-19.1";
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -537,19 +537,34 @@ async function fetchBoard(s: JobSource): Promise<{ jobs: JobPosting[]; raw: unkn
     if (s.source === "icims") {
       // The employer's own career-site JSON (token IS the host). Paginated at
       // 100/page; bounded so one giant board can't wedge a refresh slice.
-      const ICIMS_PAGE = 100, ICIMS_MAX_PAGES = 12;
+      //
+      // s.pages overrides the budget for NAMED giants only (PetSmart holds
+      // 10,911 — the default would window it at 11% forever), and pages fetch
+      // in chunks of 5 so the giant costs ~23 sequential rounds, the same
+      // order as Oracle's tolerated 20 — not 110 serial round trips.
+      const ICIMS_PAGE = 100, ICIMS_MAX_PAGES = Math.max(1, s.pages ?? 12), ICIMS_CHUNK = 5;
       const all: unknown[] = [];
       let feedTotal = 0, exhausted = false;
-      for (let page = 1; page <= ICIMS_MAX_PAGES; page++) {
+      const fetchPage = async (page: number) => {
         const res = await fetchWithTimeout(`https://${s.token}/api/jobs?page=${page}&limit=${ICIMS_PAGE}`, {
           headers: { Accept: "application/json" },
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const body = await res.json() as { jobs?: unknown[]; totalCount?: number };
-        const batch = Array.isArray(body.jobs) ? body.jobs : [];
-        if (page === 1) feedTotal = Number(body.totalCount) || 0;
-        all.push(...batch);
-        if (batch.length < ICIMS_PAGE) { exhausted = true; break; }
+        return body;
+      };
+      outer: for (let start = 1; start <= ICIMS_MAX_PAGES; start += ICIMS_CHUNK) {
+        const pages = [];
+        for (let p = start; p <= Math.min(start + ICIMS_CHUNK - 1, ICIMS_MAX_PAGES); p++) pages.push(p);
+        const bodies = await Promise.all(pages.map(fetchPage));
+        for (let i = 0; i < bodies.length; i++) {
+          const batch = Array.isArray(bodies[i].jobs) ? bodies[i].jobs! : [];
+          if (pages[i] === 1) feedTotal = Number(bodies[i].totalCount) || 0;
+          all.push(...batch);
+          // A short page inside a chunk ends the walk — later chunk members
+          // past the end return empty and must not be treated as data.
+          if (batch.length < ICIMS_PAGE) { exhausted = true; break outer; }
+        }
       }
       // Same guard as the other paginated vendors: a page-1 failure that
       // returns empty while the feed claims postings must NOT read as "board
@@ -697,7 +712,13 @@ async function tierLists(client: SupabaseClient): Promise<{ hotList: JobSource[]
 // ~187 min for the full 28k wrap, against ~333 min at 48 (after the cursor fix
 // below stopped over-advancing). The cost is hot-tier cadence going ~46→~64
 // min, which the giants can afford; the claim is bounded by the COLD tail.
-const COLD_SLICES_PER_PASS = 120;
+// 120 -> 160 (2026-08-19): the capacity lever funding the census program. The
+// per-PASS overhead (hot phase, pass-end block, idle gap to next cron kick) is
+// large and fixed, so more cold slices per pass amortizes it further — the
+// same measured logic as the 48->120 raise. Absorbs ~3,700 more boards per
+// rotation ahead of the Oracle/iCIMS census merges. Watch one full wrap after
+// deploy: freshness p95 and lastRotationAgeMin must stay near current values.
+const COLD_SLICES_PER_PASS = 160;
 
 // Dormancy skip-list (throughput): a feed dead for DEAD_BOARD_THRESHOLD straight
 // rotations has its postings pruned and is marked dormant — future cold slices
