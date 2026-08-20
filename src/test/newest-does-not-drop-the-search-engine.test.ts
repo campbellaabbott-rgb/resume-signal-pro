@@ -35,7 +35,7 @@ const SRC = readFileSync(
 
 describe("a query reaches the search engine whatever the sort", () => {
   it("does not exclude sort=newest from the ROW query", () => {
-    const guard = /const qText = String\(body\.q[\s\S]{0,2400}?if \(qText &&([^)]*)\)/.exec(SRC)?.[1] ?? "";
+    const guard = /const qText =[\s\S]{0,2400}?if \(qText &&([^)]*)\)/.exec(SRC)?.[1] ?? "";
     expect(guard, "row-query guard not found").not.toBe("");
     expect(
       guard.includes('body.sort !== "newest"'),
@@ -48,7 +48,7 @@ describe("a query reaches the search engine whatever the sort", () => {
   });
 
   it("does not exclude sort=newest from the COUNT query", () => {
-    const guard = /const qTextC = String\(body\.q[\s\S]{0,900}?if \(qTextC &&([^)]*)\)/.exec(SRC)?.[1] ?? "";
+    const guard = /const qTextC =[\s\S]{0,900}?if \(qTextC &&([^)]*)\)/.exec(SRC)?.[1] ?? "";
     expect(guard, "count guard not found").not.toBe("");
     expect(
       guard.includes('body.sort !== "newest"'),

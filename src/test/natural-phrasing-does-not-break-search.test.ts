@@ -60,11 +60,28 @@ describe("natural job-search phrasing survives", () => {
     expect(fn).toMatch(/if \(kept\.length === 0\) return \{ terms: all, dropped: \[\] \};/);
   });
 
+  it("applies to the RANKED path — the one a typed query actually uses", () => {
+    // The first version wired queryTerms into the two ILIKE term-builders and
+    // MEASURED after deploy as changing nothing a searcher would notice:
+    // "electrician jobs near me" still returned 44 rows topped by
+    // "Maintenance II-ARP". A typed query is served by the ranked path, and
+    // that path tsquery-ises qText — which was still the raw string. The
+    // browse path is the one nobody types filler into.
+    expect(FN).toMatch(/const qText = queryTerms\(body\.q\)\.terms\.join\(" "\)/);
+    // The count probe must ask the same question, or the total disagrees with
+    // the results on screen.
+    expect(FN).toMatch(/const qTextC = queryTerms\(body\.q\)\.terms\.join\(" "\)/);
+    // Both keep the raw-text fallback for an all-filler query.
+    expect((FN.match(/\|\| String\(body\.q \?\? ""\)\.trim\(\)\.slice\(0, 200\)/g) ?? []).length).toBeGreaterThanOrEqual(2);
+  });
+
   it("applies to BOTH term-building sites, not just one", () => {
     // Two independent paths built terms from body.q. Fixing one and not the
     // other would leave the ranked path and the fallback path disagreeing
     // about what the visitor searched for.
     expect((FN.match(/queryTerms\(body\.q\)/g) ?? []).length).toBeGreaterThanOrEqual(3);
+    // The raw lowercase split is what queryTerms replaced; qText's fallback
+    // uses .trim() and is a different expression, so this stays precise.
     expect(FN).not.toMatch(/String\(body\.q \?\? ""\)\.toLowerCase\(\)\.split\(/);
   });
 

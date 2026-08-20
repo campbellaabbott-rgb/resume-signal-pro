@@ -74,9 +74,15 @@ describe("every call site, because there are four", () => {
   });
 
   it("all three RPC bodies spread the fragment", () => {
-    // count_jobs_capped, and search_jobs on two paths — the same three sites
-    // the category filter reaches.
-    expect((board.match(/\.\.\.sendableSourcesParam\(applied\)/g) ?? []).length).toBe(3);
+    // Asserts the PROPERTY, not a count. This hardcoded the number of
+    // search_jobs call sites, so adding a legitimate one — the clustering
+    // top-up on the ranked path — failed a guard about sendable sources
+    // that the new call actually satisfies. Every call site must spread the
+    // fragment; how many there are is not the contract.
+    const calls = (board.match(/client\.rpc\("search_jobs", \{/g) ?? []).length;
+    const withFragment = (board.match(/sendableSourcesParam\(applied\)/g) ?? []).length;
+    expect(calls, "guard would be vacuous with no search_jobs calls").toBeGreaterThanOrEqual(2);
+    expect(withFragment, `a search_jobs call site omits sendableSourcesParam(applied)`).toBeGreaterThanOrEqual(calls);
   });
 
   it("never sorts by sendability", () => {

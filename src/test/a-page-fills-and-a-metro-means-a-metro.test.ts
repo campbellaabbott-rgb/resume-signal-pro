@@ -81,6 +81,19 @@ describe("a page fills up", () => {
     expect(FN).toMatch(/const r = rawSequence\[Math\.max\(0, grouped\.rawConsumed - 1\)\]/);
   });
 
+  it("tops up the RANKED path too — the one a typed query uses", () => {
+    // The first version shipped only on the recency path and MEASURED as
+    // changing nothing: "retail sales" still returned 37 cards of 60,
+    // "customer service" 41, because a typed query is served by the ranked
+    // path and returns long before that code runs.
+    expect(FN).toMatch(/let rankedSequence = rankedRows;/);
+    expect(FN).toMatch(/rankedGrouped\.jobs\.length < limit && rankedRows\.length >= fetchLimit/);
+    // Paged by p_offset past everything already read — no cursor arithmetic.
+    expect(FN).toMatch(/p_offset: offset \+ rankedRows\.length,/);
+    // hasMore must count the MERGED rows or "Load more" disappears early.
+    expect(FN).toMatch(/hasMore: rankedSequence\.length > rankedGrouped\.rawConsumed/);
+  });
+
   it("serves the page it already has if the top-up fails", () => {
     const block = TOPUP;
     expect(block).toMatch(/catch \{ \/\* the page we already have is still correct/);

@@ -6746,7 +6746,9 @@ async function serveList(
     // 2026-07-25: the two disagreed up to 4.3x on the same body, so
     // relaxation buttons advertised counts that clicking couldn't reproduce
     // and the disclosure denominator went negative.
-    const qTextC = String(body.q ?? "").trim().slice(0, 200);
+    // Same strip as the main ranked path — the count probe must ask the same
+    // question the page asks, or the total disagrees with the results.
+    const qTextC = queryTerms(body.q).terms.join(" ").slice(0, 200) || String(body.q ?? "").trim().slice(0, 200);
     // Kept in step with the row query's guard above, which no longer excludes
     // "newest". If only one of the two had been changed, the count and the rows
     // would answer DIFFERENT questions for a newest-sorted search — the count
@@ -6805,7 +6807,15 @@ async function serveList(
   // the search_jobs RPC orders by ts_rank (title > company > department),
   // recency as tiebreak — composed with every active filter. Any error
   // (migration lag, malformed query) falls back to the recency path below.
-  const qText = String(body.q ?? "").trim().slice(0, 200);
+// FILLER-STRIPPED, because the ranked path is where the damage actually was.
+// queryTerms() was wired into the two ILIKE term-builders, and MEASURED after
+// deploy that fixed nothing a searcher would notice: "electrician jobs near
+// me" still returned 44 rows topped by "Maintenance II-ARP", because a query
+// goes through the RANKED path and this is the string it tsquery-ises. The
+// browse path I had fixed is the one nobody types filler into.
+// Falls back to the raw text when filler was all there was, same rule as
+// queryTerms itself.
+  const qText = queryTerms(body.q).terms.join(" ").slice(0, 200) || String(body.q ?? "").trim().slice(0, 200);
   // "NEWEST" USED TO DROP THE ENTIRE SEARCH ENGINE.
   //
   // The guard excluded sort==="newest", so choosing Newest from the sort
@@ -7102,9 +7112,49 @@ async function serveList(
             return db - da;
           });
         }
-        const rankedGrouped = groupSimilar
+        let rankedSequence = rankedRows;
+        let rankedGrouped = groupSimilar
           ? collapseClusters(rankedRows, limit)
           : { jobs: rankedRows.slice(0, limit), rawConsumed: Math.min(rankedRows.length, limit) };
+
+        // THE SAME TOP-UP THE BROWSE PATH GOT, because this is the path that
+        // actually needed it. The first version shipped only on the recency
+        // path, and MEASURED after deploy it changed nothing: "retail sales"
+        // still returned 37 cards of 60 and "customer service" 41, because a
+        // typed query is served HERE and returns long before that code. The
+        // browse path I fixed is the one people do not type into.
+        //
+        // Same three bounds as the other one: fires only when the buffer was
+        // genuinely exhausted, runs EXACTLY once (a loop is the amplification
+        // shape that took the board down on 2026-08-17), and serves the page
+        // it already has if the second call fails. Paged by p_offset, which is
+        // how this RPC has always paged, so there is no cursor arithmetic to
+        // get wrong.
+        if (groupSimilar && rankedGrouped.jobs.length < limit && rankedRows.length >= fetchLimit) {
+          try {
+            const { data: more, error: moreErr } = await client.rpc("search_jobs", {
+              p_q: expandedQ,
+              p_fresh_cutoff: freshCutoffIso,
+              p_location: sanitizeTerm(applied.location) || null,
+              p_remote: applied.remote ? true : null,
+              p_country: applied.country,
+              p_category: categoryParam(applied),
+              ...sendableSourcesParam(applied),
+              p_experience: applied.experience.length ? applied.experience : null,
+              p_salary_floor: applied.salaryFloor,
+              p_companies: applied.companies.length ? applied.companies : null,
+              p_posted_after: applied.postedAfter,
+              p_max_age_days: applied.maxAgeDays,
+              ...(applied.workMode ? { p_work_mode: applied.workMode } : {}),
+              p_limit: fetchLimit,
+              p_offset: offset + rankedRows.length,
+            });
+            if (!moreErr && Array.isArray(more) && more.length) {
+              rankedSequence = [...rankedRows, ...(more as unknown[]).map(rowToJob) as Array<Record<string, unknown>>];
+              rankedGrouped = collapseClusters(rankedSequence, limit);
+            }
+          } catch { /* the page we already have is correct — serve it */ }
+        }
         // LOW-RESULT AUGMENTATION. The rescue tiers used to fire only on
         // total === 0, so ONE posting that happened to share the user's typo
         // ("desinger" appearing verbatim in a single title) suppressed the
@@ -7190,7 +7240,7 @@ async function serveList(
           ...honesty(rankedGrouped.jobs),
           ...(augmented ? { countUnavailable: true } : {}),
           nextOffset: offset + rankedGrouped.rawConsumed,
-          hasMore: rankedRows.length > rankedGrouped.rawConsumed || rankedRows.length === fetchLimit,
+          hasMore: rankedSequence.length > rankedGrouped.rawConsumed || rankedSequence.length >= fetchLimit,
           // null once close matches are appended: `total` counts EXACT matches,
           // and the page now holds exact + close, so it no longer describes what
           // is on screen. Leaving it in beside countUnavailable published a
