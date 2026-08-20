@@ -3006,28 +3006,50 @@ export type Database = {
           metric: string
         }[]
       }
-      count_jobs_capped: {
-        Args: {
-          p_cap?: number
-          p_category?: string
-          p_companies?: string[]
-          p_country?: string
-          p_experience?: string[]
-          p_fresh_cutoff: string
-          p_location?: string
-          p_max_age_days?: number
-          p_posted_after?: string
-          p_q?: string
-          p_remote?: boolean
-          p_salary_floor?: number
-          p_sources?: string[]
-          p_work_mode?: string
-        }
-        Returns: {
-          capped: boolean
-          n: number
-        }[]
-      }
+      count_jobs_capped:
+        | {
+            Args: {
+              p_cap?: number
+              p_category?: string
+              p_companies?: string[]
+              p_country?: string
+              p_experience?: string[]
+              p_fresh_cutoff: string
+              p_location?: string
+              p_max_age_days?: number
+              p_posted_after?: string
+              p_q?: string
+              p_remote?: boolean
+              p_salary_floor?: number
+              p_work_mode?: string
+            }
+            Returns: {
+              capped: boolean
+              n: number
+            }[]
+          }
+        | {
+            Args: {
+              p_cap?: number
+              p_category?: string
+              p_companies?: string[]
+              p_country?: string
+              p_experience?: string[]
+              p_fresh_cutoff: string
+              p_location?: string
+              p_max_age_days?: number
+              p_posted_after?: string
+              p_q?: string
+              p_remote?: boolean
+              p_salary_floor?: number
+              p_sources?: string[]
+              p_work_mode?: string
+            }
+            Returns: {
+              capped: boolean
+              n: number
+            }[]
+          }
       delete_analysis_by_share_id: {
         Args: { p_share_id: string }
         Returns: boolean
@@ -4031,50 +4053,93 @@ export type Database = {
         Returns: string
       }
       scrub_emails: { Args: { p_text: string }; Returns: string }
-      search_jobs: {
-        Args: {
-          p_category?: string
-          p_companies?: string[]
-          p_country?: string
-          p_experience?: string[]
-          p_fresh_cutoff: string
-          p_limit?: number
-          p_location?: string
-          p_max_age_days?: number
-          p_offset?: number
-          p_posted_after?: string
-          p_q: string
-          p_remote?: boolean
-          p_salary_floor?: number
-          p_sources?: string[]
-          p_work_mode?: string
-        }
-        Returns: {
-          apply_url: string
-          category: string
-          company: string
-          company_token: string
-          country: string
-          department: string
-          experience_band: string
-          id: string
-          last_seen: string
-          location: string
-          min_years: number
-          posted_at: string
-          remote: boolean
-          salary: string
-          salary_currency: string
-          salary_max_annual: number
-          salary_min_annual: number
-          salary_period: string
-          snippet: string
-          source: string
-          title: string
-          total_rows: number
-          work_mode: string
-        }[]
-      }
+      search_jobs:
+        | {
+            Args: {
+              p_category?: string
+              p_companies?: string[]
+              p_country?: string
+              p_experience?: string[]
+              p_fresh_cutoff: string
+              p_limit?: number
+              p_location?: string
+              p_max_age_days?: number
+              p_offset?: number
+              p_posted_after?: string
+              p_q: string
+              p_remote?: boolean
+              p_salary_floor?: number
+              p_work_mode?: string
+            }
+            Returns: {
+              apply_url: string
+              category: string
+              company: string
+              company_token: string
+              department: string
+              experience_band: string
+              id: string
+              last_seen: string
+              location: string
+              min_years: number
+              posted_at: string
+              remote: boolean
+              salary: string
+              salary_currency: string
+              salary_max_annual: number
+              salary_min_annual: number
+              salary_period: string
+              snippet: string
+              source: string
+              title: string
+              total_rows: number
+              work_mode: string
+            }[]
+          }
+        | {
+            Args: {
+              p_category?: string
+              p_companies?: string[]
+              p_country?: string
+              p_experience?: string[]
+              p_fresh_cutoff: string
+              p_limit?: number
+              p_location?: string
+              p_max_age_days?: number
+              p_offset?: number
+              p_posted_after?: string
+              p_q: string
+              p_remote?: boolean
+              p_salary_floor?: number
+              p_sources?: string[]
+              p_work_mode?: string
+            }
+            Returns: {
+              apply_url: string
+              category: string
+              company: string
+              company_token: string
+              country: string
+              department: string
+              experience_band: string
+              id: string
+              last_seen: string
+              location: string
+              min_years: number
+              posted_at: string
+              remote: boolean
+              salary: string
+              salary_currency: string
+              salary_max_annual: number
+              salary_min_annual: number
+              salary_period: string
+              snippet: string
+              source: string
+              title: string
+              total_rows: number
+              work_mode: string
+            }[]
+          }
       search_jobs_semantic: {
         Args: { p_embedding: string; p_limit?: number; p_max_distance?: number }
         Returns: {
