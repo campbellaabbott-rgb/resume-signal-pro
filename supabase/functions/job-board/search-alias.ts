@@ -41,6 +41,60 @@ export const ROLE_ALIASES: Record<string, string[]> = {
   frontend: ["front end"],
   backend: ["back end"],
   fullstack: ["full stack"],
+
+  // ---- Abbreviated TITLE WORDS, added 2026-08-20 ------------------------
+  //
+  // The map above is acronyms — whole roles written as initials. This block is
+  // the other half of how people type: ordinary words shortened inside a
+  // phrase. It was missing entirely, and the cost was measured on the live
+  // board, comparing what a person types against the full spelling:
+  //
+  //     "mech eng"       0  vs  2,206  mechanical engineer   -100%
+  //     "svc technician" 7  vs  4,426  service technician    -100%
+  //     "medical asst"  69  vs  3,865  medical assistant      -98%
+  //     "project mgr"  174  vs  9,275  project manager        -98%
+  //     "ops manager"  335  vs  6,974  operations manager     -95%
+  //     "sales rep"    491  vs  5,543  sales representative   -91%
+  //     "sr accountant" 508 vs  3,172  senior accountant      -84%
+  //
+  // Losing 84-100% of the real matches, on phrasings that are completely
+  // ordinary — "mech eng" returned NOTHING on a board holding 2,206 of them.
+  //
+  // ONE MEASUREMENT WORTH KEEPING: "office admin" already returned MORE than
+  // "office administrator" (1,703 vs 659), because `admin` is a prefix of
+  // `administrator` and the ILIKE fallback matches substrings. Prefix
+  // abbreviations partly self-heal on that path; non-prefix ones ("mgr",
+  // "svc", "asst") cannot, which is why they fail hardest. `admin` is still
+  // listed so the ranked tsquery path — which matches WORDS, not substrings —
+  // gets it too.
+  //
+  // Same curation rule as above: unambiguous in a job-title context only.
+  // Deliberately absent — "tech" (technician vs technology vs the industry),
+  // "pt" (part-time vs physical therapist), "cs", "ops" alone as a role.
+  rep: ["representative"],
+  reps: ["representatives"],
+  asst: ["assistant"],
+  assoc: ["associate"],
+  mgr: ["manager"],
+  mgmt: ["management"],
+  supv: ["supervisor"],
+  dir: ["director"],
+  exec: ["executive"],
+  coord: ["coordinator"],
+  spec: ["specialist"],
+  eng: ["engineer"],
+  engr: ["engineer"],
+  mech: ["mechanical"],
+  elec: ["electrical"],
+  svc: ["service"],
+  maint: ["maintenance"],
+  ops: ["operations"],
+  admin: ["administrator", "administrative"],
+  acct: ["accounting"],
+  sr: ["senior"],
+  jr: ["junior"],
+  dev: ["developer"],
+  devs: ["developers"],
 };
 
 // Expands EVERY aliased token into websearch OR-branches that keep the rest
