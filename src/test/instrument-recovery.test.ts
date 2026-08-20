@@ -149,8 +149,28 @@ describe("the external monitor watches from outside the blast radius", () => {
     expect(wf).toMatch(/lastSliceAgeMin/);
   });
 
-  it("runs on a schedule, not only on demand", () => {
-    expect(wf).toMatch(/cron: "\*\/10 \* \* \* \*"/);
+  it("runs on a schedule, not only on demand, and often enough to be an alarm", () => {
+    // Asserts the PROPERTY, not the literal. This pinned `*/10` exactly, which
+    // made a cost fix look like a regression: at every 10 minutes the workflow
+    // ran ~4,320 times a month and ate the whole 2,000-minute Actions free
+    // tier by itself, and the exact-string guard failed the change to */30.
+    //
+    // What actually matters is that the monitor fires unattended and fires
+    // faster than the outage it watches. Its own threshold is "no refresh
+    // slice in 6 hours", so anything up to hourly is comfortably an alarm; a
+    // cadence finer than the threshold buys precision nothing consumes.
+    const m = /cron: "(\S+) (\S+) \* \* \*"/.exec(wf);
+    expect(m, "board-health has no minute/hour cron").not.toBeNull();
+    const [, minute, hour] = m!;
+    expect(hour, "must run every hour, not on selected hours").toBe("*");
+    const perHour = minute === "*" ? 60
+      : minute.startsWith("*/") ? 60 / Number(minute.slice(2))
+      : minute.split(",").length;
+    // At least hourly (the alarm must beat its own 6-hour threshold with room)
+    // and no more than every 5 minutes (past that it is paying for precision
+    // the threshold cannot use).
+    expect(perHour).toBeGreaterThanOrEqual(1);
+    expect(perHour).toBeLessThanOrEqual(12);
   });
 
   it("alarms into a labeled issue and dedupes into one thread", () => {
