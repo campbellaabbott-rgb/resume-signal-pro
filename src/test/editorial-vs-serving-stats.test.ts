@@ -35,6 +35,14 @@ const all = files.map((f) => readFileSync(resolve(DIR, f), "utf8"));
 /** Latest migration whose text contains this DDL fragment. Matching on DDL,
  *  never on a bare identifier — "latest file mentioning X" repeatedly picked up
  *  a follow-up migration and asserted against the wrong body. */
+/** The latest migration that DEFINES something matching `fragment`.
+ *
+ *  Matches only CREATE OR REPLACE definitions. It used to match ANY mention of
+ *  "FUNCTION public.x", which broke the moment a migration merely ALTERed one:
+ *  ALTER FUNCTION public.get_hiring_trends() SECURITY DEFINER made that file
+ *  the "latest" hit, bodyOf then sliced for a $$ terminator that was not
+ *  there, and four unrelated guards failed on a file containing no function
+ *  body at all. A definition lookup has to ask for a definition. */
 const latestWith = (fragment: string) => {
   const hit = all.filter((t) => t.includes(fragment)).pop();
   if (!hit) throw new Error(`no migration contains: ${fragment}`);
@@ -63,7 +71,7 @@ describe("editorial surfaces exclude", () => {
 
   for (const [fn, why] of CASES) {
     it(`${fn} — ${why}`, () => {
-      expect(bodyOf(latestWith(`FUNCTION public.${fn}`), fn)).toMatch(EXCLUSION);
+      expect(bodyOf(latestWith(`CREATE OR REPLACE FUNCTION public.${fn}`), fn)).toMatch(EXCLUSION);
     });
   }
 
@@ -71,7 +79,7 @@ describe("editorial surfaces exclude", () => {
     // Filtering only live postings while counting an excluded board's closures
     // would show closes with no posts behind them — a hiring collapse that
     // never happened. Survivorship correction has to be symmetric.
-    const body = bodyOf(latestWith("FUNCTION public.get_hiring_trends"), "get_hiring_trends");
+    const body = bodyOf(latestWith("CREATE OR REPLACE FUNCTION public.get_hiring_trends"), "get_hiring_trends");
     const legs = ["posted_live AS", "posted_closed AS", "closes AS"];
     for (const leg of legs) {
       const i = body.indexOf(leg);
@@ -95,7 +103,7 @@ describe("serving surfaces stay inclusive", () => {
 
   for (const [fn, why] of CASES) {
     it(`${fn} — ${why}`, () => {
-      expect(bodyOf(latestWith(`FUNCTION public.${fn}`), fn)).not.toMatch(EXCLUSION);
+      expect(bodyOf(latestWith(`CREATE OR REPLACE FUNCTION public.${fn}`), fn)).not.toMatch(EXCLUSION);
     });
   }
 });

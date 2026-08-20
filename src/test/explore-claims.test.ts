@@ -39,6 +39,14 @@ const LOCALES = resolve(__dirname, "../i18n/locales");
 const MIG = resolve(__dirname, "../../supabase/migrations");
 const localeFiles = readdirSync(LOCALES).filter((f) => f.endsWith(".json"));
 
+/** The latest migration that DEFINES something matching `fragment`.
+ *
+ *  Matches only CREATE OR REPLACE definitions. It used to match ANY mention of
+ *  "FUNCTION public.x", which broke the moment a migration merely ALTERed one:
+ *  ALTER FUNCTION public.get_hiring_trends() SECURITY DEFINER made that file
+ *  the "latest" hit, bodyOf then sliced for a $$ terminator that was not
+ *  there, and four unrelated guards failed on a file containing no function
+ *  body at all. A definition lookup has to ask for a definition. */
 const latestWith = (fragment: string) => {
   const hit = readdirSync(MIG).filter((f) => f.endsWith(".sql")).sort()
     .map((f) => readFileSync(resolve(MIG, f), "utf8"))
@@ -94,7 +102,7 @@ describe("no surface promises headcount the SQL never reads", () => {
   // opposite of what the code did, and only failed once Lovable re-stamped the
   // migration and dropped the comments. A guard that a comment can satisfy is
   // not a guard.
-  const sql = latestWith("FUNCTION public.get_size_segments").replace(/^\s*--.*$/gm, "");
+  const sql = latestWith("CREATE OR REPLACE FUNCTION public.get_size_segments").replace(/^\s*--.*$/gm, "");
 
   it("the RPC bands on the served count the labels name", () => {
     // The coupling this test exists to hold: bands are cut on what the board
@@ -149,13 +157,13 @@ describe("the page does not fire a query that cannot finish", () => {
 
   it("transparent is read from the cache instead", () => {
     expect(EXPLORE).toMatch(/Array\.isArray\(c\.transparent\)/);
-    expect(latestWith("FUNCTION public.refresh_explore_cache")).toMatch(/'transparent', transparent/);
+    expect(latestWith("CREATE OR REPLACE FUNCTION public.refresh_explore_cache")).toMatch(/'transparent', transparent/);
   });
 
   it("a slow collection cannot blank the other six", () => {
     // The cache was all-or-nothing: one failing member aborted the INSERT and
     // froze every section with nothing saying so.
-    const fn = latestWith("FUNCTION public.refresh_explore_cache");
+    const fn = latestWith("CREATE OR REPLACE FUNCTION public.refresh_explore_cache");
     expect(fn).toMatch(/transparent jsonb := '\[\]'::jsonb;/);
     expect(fn).toMatch(/RAISE WARNING 'explore cache: transparent employers unavailable/);
   });
@@ -182,8 +190,8 @@ describe("the cron call is shaped for what the function actually returns", () =>
   // function, and the two stopped living in the same file the moment a later
   // migration redefined only the callee — at which point this assertion started
   // reading a file that never contained the call it was checking.
-  const SQL = latestWith("FUNCTION public.refresh_explore_cache").replace(/^\s*--.*$/gm, "");
-  const CALLEE = latestWith("FUNCTION public.get_transparent_employers").replace(/^\s*--.*$/gm, "");
+  const SQL = latestWith("CREATE OR REPLACE FUNCTION public.refresh_explore_cache").replace(/^\s*--.*$/gm, "");
+  const CALLEE = latestWith("CREATE OR REPLACE FUNCTION public.get_transparent_employers").replace(/^\s*--.*$/gm, "");
 
   it("calls the scalar function as a scalar, never in FROM", () => {
     // `SELECT jsonb_agg(row_to_json(x)) FROM get_transparent_employers(12) x`
@@ -205,13 +213,13 @@ describe("the cron call is shaped for what the function actually returns", () =>
   });
 
   it("rejects a non-array result rather than publishing it", () => {
-    const fn = latestWith("FUNCTION public.refresh_explore_cache");
+    const fn = latestWith("CREATE OR REPLACE FUNCTION public.refresh_explore_cache");
     expect(fn).toMatch(/jsonb_typeof\(transparent\) <> 'array'/);
   });
 });
 
 describe("empty and failed are recorded as different things", () => {
-  const fn = latestWith("FUNCTION public.refresh_explore_cache");
+  const fn = latestWith("CREATE OR REPLACE FUNCTION public.refresh_explore_cache");
 
   it("the cache says WHY transparent is empty", () => {
     // `[]` meant both "nobody clears 80%" and "the query died" and looked
@@ -223,7 +231,7 @@ describe("empty and failed are recorded as different things", () => {
 });
 
 describe("the query is made cheap and private, not merely patient", () => {
-  const SQL = latestWith("FUNCTION public.get_transparent_employers").replace(/^\s*--.*$/gm, "");
+  const SQL = latestWith("CREATE OR REPLACE FUNCTION public.get_transparent_employers").replace(/^\s*--.*$/gm, "");
 
   it("gets a budget larger than the 25s that was actually binding", () => {
     const m = /RETURNS jsonb[\s\S]{0,300}?SET statement_timeout = '(\d+)(min|s)'/.exec(SQL);
@@ -326,7 +334,7 @@ describe("Explore counts only what the board serves", () => {
    *  of this helper passed. Same defect as the transparent migration's
    *  serving-predicate test earlier the same day, made twice. */
   const bodyOf = (fn: string) => {
-    const sql = latestWith(`FUNCTION public.${fn}`).replace(/^\s*--.*$/gm, "");
+    const sql = latestWith(`CREATE OR REPLACE FUNCTION public.${fn}`).replace(/^\s*--.*$/gm, "");
     const start = sql.indexOf(`FUNCTION public.${fn}`);
     expect(start, `${fn} not found`).toBeGreaterThan(-1);
     const end = sql.indexOf("$$;", start);
@@ -368,7 +376,7 @@ describe("Explore counts only what the board serves", () => {
   });
 
   it("bands are cut on the same quantity the heading names", () => {
-    const sql = latestWith("FUNCTION public.get_size_segments").replace(/^\s*--.*$/gm, "");
+    const sql = latestWith("CREATE OR REPLACE FUNCTION public.get_size_segments").replace(/^\s*--.*$/gm, "");
     // The label says "open roles ... on our board"; on_board is that number.
     expect(sql).toMatch(/sum\(on_board\)::int AS effective/);
     expect(sql, "banding back on the advertised feed total")
@@ -378,7 +386,7 @@ describe("Explore counts only what the board serves", () => {
   it("remote_pct draws numerator and denominator from the same column", () => {
     // remote=true is a strict subset of work_mode='remote' (5.2%-11.3%
     // narrower), so mixing them makes the ratio one of two populations.
-    const sql = latestWith("FUNCTION public.get_size_segments").replace(/^\s*--.*$/gm, "");
+    const sql = latestWith("CREATE OR REPLACE FUNCTION public.get_size_segments").replace(/^\s*--.*$/gm, "");
     expect(sql).toMatch(/count\(\*\) FILTER \(WHERE p\.work_mode = 'remote'\)::int AS remote_n/);
   });
 
@@ -388,7 +396,7 @@ describe("Explore counts only what the board serves", () => {
     // content with new timestamps, so filename order does not track what is
     // deployed — rebuilding from the "latest" file would have silently reverted
     // per-currency medians and made "Never converted, never mixed" false.
-    const sql = latestWith("FUNCTION public.get_salary_benchmarks").replace(/^\s*--.*$/gm, "");
+    const sql = latestWith("CREATE OR REPLACE FUNCTION public.get_salary_benchmarks").replace(/^\s*--.*$/gm, "");
     expect(sql).toMatch(/RETURNS TABLE \(category text, currency text, n integer, median_annual_min numeric\)/);
     expect(sql).toMatch(/GROUP BY category, salary_currency/);
   });
@@ -657,7 +665,7 @@ describe("every per-answer action lands on a filter Jobs actually applies", () =
 });
 
 describe("the transparent-pay list is winnable by a recognisable employer", () => {
-  const sql = latestWith("FUNCTION public.get_transparent_employers").replace(/^\s*--.*$/gm, "");
+  const sql = latestWith("CREATE OR REPLACE FUNCTION public.get_transparent_employers").replace(/^\s*--.*$/gm, "");
   const body = sql.slice(sql.indexOf("FUNCTION public.get_transparent_employers"), sql.indexOf("$$;"));
 
   it("ranks by roles stating pay, not by percentage", () => {
@@ -740,7 +748,7 @@ describe("both copies of Explore's title describe the page that exists", () => {
  * that top a twelve-row list. The lookup covers the rest.
  */
 describe("the employer lookup covers the whole board, honestly", () => {
-  const sql = latestWith("FUNCTION public.get_company_suggest").replace(/^\s*--.*$/gm, "");
+  const sql = latestWith("CREATE OR REPLACE FUNCTION public.get_company_suggest").replace(/^\s*--.*$/gm, "");
   // $$; anchored to the function start. Searching from 0 finds whichever
   // function is FIRST in the migration — two live in this one — which yielded a
   // negative slice and an assertion that could never match.
@@ -819,7 +827,7 @@ describe("the employer lookup covers the whole board, honestly", () => {
 });
 
 describe("the page the lookup points at answers honestly", () => {
-  const sql = latestWith("FUNCTION public.get_company_hiring_health").replace(/^\s*--.*$/gm, "");
+  const sql = latestWith("CREATE OR REPLACE FUNCTION public.get_company_hiring_health").replace(/^\s*--.*$/gm, "");
   // Anchored — see the note in the suggest block. get_company_suggest is
   // defined ABOVE this function in the same migration, so an unanchored search
   // returned its terminator and sliced backwards.
@@ -855,7 +863,7 @@ describe("the page the lookup points at answers honestly", () => {
  * known, so no small employer could place regardless of the final sort.
  */
 describe("the hiring answer ranks by odds, not by size", () => {
-  const sql = latestWith("FUNCTION public.get_actively_hiring_companies").replace(/^\s*--.*$/gm, "");
+  const sql = latestWith("CREATE OR REPLACE FUNCTION public.get_actively_hiring_companies").replace(/^\s*--.*$/gm, "");
   const fnAt = sql.indexOf("FUNCTION public.get_actively_hiring_companies");
   const body = sql.slice(fnAt, sql.indexOf("$$;", fnAt));
 
@@ -1039,7 +1047,7 @@ describe("every t() key the page uses exists in English", () => {
  */
 describe("the churn warning is gated on a rate and never reads as a clean bill", () => {
   const bodyOf = (fn: string) => {
-    const sql = latestWith(`FUNCTION public.${fn}`).replace(/^\s*--.*$/gm, "");
+    const sql = latestWith(`CREATE OR REPLACE FUNCTION public.${fn}`).replace(/^\s*--.*$/gm, "");
     const start = sql.indexOf(`FUNCTION public.${fn}`);
     expect(start, `${fn} not found`).toBeGreaterThan(-1);
     const end = sql.indexOf("$$;", start);
@@ -1129,7 +1137,7 @@ describe("the churn warning is gated on a rate and never reads as a clean bill",
 
 describe("field chips count exactly what their destination counts", () => {
   const DENOM = (() => {
-    const sql = latestWith("FUNCTION public.get_explore_denominators").replace(/^\s*--.*$/gm, "");
+    const sql = latestWith("CREATE OR REPLACE FUNCTION public.get_explore_denominators").replace(/^\s*--.*$/gm, "");
     const start = sql.indexOf("FUNCTION public.get_explore_denominators");
     return sql.slice(start, sql.indexOf("$$;", start));
   })();
@@ -1191,7 +1199,7 @@ describe("field chips count exactly what their destination counts", () => {
 
 describe("every answer states the pool it was drawn from, and zero is silence", () => {
   const REFRESH = (() => {
-    const sql = latestWith("FUNCTION public.refresh_explore_cache").replace(/^\s*--.*$/gm, "");
+    const sql = latestWith("CREATE OR REPLACE FUNCTION public.refresh_explore_cache").replace(/^\s*--.*$/gm, "");
     const start = sql.indexOf("FUNCTION public.refresh_explore_cache");
     return sql.slice(start, sql.indexOf("$$;", start));
   })();
@@ -1217,7 +1225,7 @@ describe("every answer states the pool it was drawn from, and zero is silence", 
     // so counting its rows yields the NUMERATOR twice and a "median" around
     // 90% instead of the board's real rate. The denominator must be built from
     // the >=20 condition on its own.
-    const sql = latestWith("FUNCTION public.get_explore_denominators").replace(/^\s*--.*$/gm, "");
+    const sql = latestWith("CREATE OR REPLACE FUNCTION public.get_explore_denominators").replace(/^\s*--.*$/gm, "");
     const pool = sql.slice(sql.indexOf("'pay_pool_n'"), sql.indexOf("'pay_n'"));
     expect(pool).toMatch(/WHERE total >= 20/);
     expect(pool, "the 80% gate leaked into its own denominator").not.toMatch(/80/);
@@ -1231,7 +1239,7 @@ describe("every answer states the pool it was drawn from, and zero is silence", 
     for (const k of ["hiring_n", "repost_pool_n", "repost_flagged_n"]) {
       expect(REFRESH, `${k} can publish a zero`).toMatch(new RegExp(`'${k}',\\s*NULLIF\\(`));
     }
-    expect(latestWith("FUNCTION public.get_explore_denominators")).toMatch(/jsonb_strip_nulls/);
+    expect(latestWith("CREATE OR REPLACE FUNCTION public.get_explore_denominators")).toMatch(/jsonb_strip_nulls/);
   });
 
   it("every optional block degrades without taking the payload down", () => {
@@ -1322,7 +1330,7 @@ describe("the refresh budget covers the scans it runs", () => {
   };
 
   const timeoutOf = (fn: string): number => {
-    const sql = latestWith(`FUNCTION public.${fn}`).replace(/^\s*--.*$/gm, "");
+    const sql = latestWith(`CREATE OR REPLACE FUNCTION public.${fn}`).replace(/^\s*--.*$/gm, "");
     const start = sql.indexOf(`FUNCTION public.${fn}`);
     // Header only — from the signature to the body opener. A statement_timeout
     // set on some LATER function in the same file must not be read as this
@@ -1344,7 +1352,7 @@ describe("the refresh budget covers the scans it runs", () => {
     // This commit added 270s of new worst case (denominators 180 + index 90)
     // to a 600s ceiling that already carried 415s. Derived from the source
     // rather than pinned, so adding a scan fails here instead of at 03:07.
-    const sql = latestWith("FUNCTION public.refresh_explore_cache").replace(/^\s*--.*$/gm, "");
+    const sql = latestWith("CREATE OR REPLACE FUNCTION public.refresh_explore_cache").replace(/^\s*--.*$/gm, "");
     const start = sql.indexOf("FUNCTION public.refresh_explore_cache");
     const body = sql.slice(start, sql.indexOf("$$;", start));
 

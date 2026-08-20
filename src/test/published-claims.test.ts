@@ -643,7 +643,21 @@ function latestMigrationDefining(fnName: string): string {
   const hit = readdirSync(dir)
     .filter((f) => f.endsWith(".sql"))
     .sort() // filenames are timestamp-prefixed, so lexical order IS apply order
-    .filter((f) => new RegExp(`FUNCTION\\s+public\\.${fnName}\\s*\\(`).test(readFileSync(resolve(dir, f), "utf8")))
+    // Must mention the function AND contain a function body. A migration that
+    // merely ALTERs it (flipping SECURITY DEFINER, say) has no $$ body, and
+    // matching one made this helper return a file with nothing to assert
+    // against — four unrelated guards then failed on it.
+    //
+    // Deliberately NOT narrowed to `CREATE OR REPLACE FUNCTION public.<name>`:
+    // that IS the precise reading, and it changes which file several of these
+    // assertions land on, surfacing a pre-existing mismatch between what they
+    // expect and what the repo's last CREATE contains. That is worth resolving
+    // against the LIVE function shape (per the runbook: filename order does not
+    // track what is deployed), not by tightening a matcher mid-fix.
+    .filter((f) => {
+      const sql = readFileSync(resolve(dir, f), "utf8");
+      return new RegExp(`FUNCTION\\s+public\\.${fnName}\\s*\\(`).test(sql) && sql.includes("$$");
+    })
     .pop();
   if (!hit) throw new Error(`no migration defines ${fnName}`);
   return readFileSync(resolve(dir, hit), "utf8");
