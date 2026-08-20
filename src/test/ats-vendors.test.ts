@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { ATS_VENDORS, AUTO_VENDORS, CLICK_VENDORS } from "../config/ats-vendors";
+import { ATS_VENDORS, AUTO_VENDORS, CLICK_VENDORS, NON_ATS_SOURCES, BOARD_SOURCE_LIST } from "../config/ats-vendors";
 import { SUBSCRIPTIONS } from "../config/products";
 
 const root = resolve(__dirname, "../..");
@@ -52,6 +52,21 @@ describe("the marketing vendor list cannot drift from what the agent obeys", () 
     expect(AUTO_VENDORS.length + CLICK_VENDORS.length).toBe(ATS_VENDORS.length);
     expect(new Set(ATS_VENDORS.map((v) => v.key)).size, "duplicate vendor key").toBe(ATS_VENDORS.length);
     expect(ATS_VENDORS.length).toBeGreaterThanOrEqual(15);
+  });
+
+  it("a non-ATS source never leaks into the agent's advertised vendors", () => {
+    // USAJOBS is the board's first source the agent cannot apply on at all —
+    // not auto, not click. It lives outside ATS_VENDORS precisely so it cannot
+    // acquire a tier, and this pins that: the moment one appears in the agent
+    // lists, the site is promising applications the worker will never send.
+    const agentKeys = new Set([...AUTO_VENDORS, ...CLICK_VENDORS].map((v) => v.key));
+    for (const s of NON_ATS_SOURCES) {
+      expect(agentKeys.has(s.key), `${s.label} is not applyable — it must never be an agent vendor`).toBe(false);
+      expect(ATS_VENDORS.map((v) => v.key)).not.toContain(s.key);
+      // But it MUST be named as a source, or the board hides where jobs come from.
+      expect(BOARD_SOURCE_LIST, `${s.label} missing from the source list`).toContain(s.label);
+    }
+    expect(NON_ATS_SOURCES.length).toBeGreaterThan(0);
   });
 
   it("states no coverage percentage anywhere in the config", () => {

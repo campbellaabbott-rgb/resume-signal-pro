@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { isUnfiltered, normalizeFilters } from "../../supabase/functions/job-board/filters.ts";
-import { ATS_VENDOR_LIST } from "../config/ats-vendors";
+import { BOARD_SOURCE_LIST } from "../config/ats-vendors";
 
 // /trust and /methodology — the two pages whose entire purpose is to be
 // believed — carried the worst claims on the site until 2026-07-27:
@@ -238,7 +238,7 @@ describe("published source lists name every system the board actually serves", (
     ashby: "Ashby", icims: "iCIMS", oracle: "Oracle", lever: "Lever",
     workable: "Workable", bamboohr: "BambooHR", recruitee: "Recruitee",
     teamtailor: "Teamtailor", personio: "Personio", breezy: "Breezy",
-    rippling: "Rippling", pinpoint: "Pinpoint",
+    rippling: "Rippling", pinpoint: "Pinpoint", usajobs: "USAJOBS",
   };
 
   it("the source set is non-trivial (guard would be vacuous otherwise)", () => {
@@ -253,10 +253,10 @@ describe("published source lists name every system the board actually serves", (
   // The claim is unchanged and so is this test's job: whatever a reader ends up
   // seeing must name every system the board serves. So it renders the string
   // the way i18next will — placeholder substituted — and asserts on that. This
-  // is strictly stronger than before, because it now also pins ATS_VENDOR_LIST
+  // is strictly stronger than before, because it now also pins BOARD_SOURCE_LIST
   // to the normalizers: a vendor added to the edge function but missing from
   // the config fails here, which the old raw-JSON check could not detect.
-  const render = (note: string) => note.replace("{{vendors}}", ATS_VENDOR_LIST);
+  const render = (note: string) => note.replace("{{vendors}}", BOARD_SOURCE_LIST);
 
   for (const file of locales) {
     it(`${file} jobsPage.sourceNote names all ${SOURCES.length} systems`, () => {

@@ -246,8 +246,8 @@ describe("the board's Sources note is generated, never typed out", () => {
 
   it("Jobs.tsx passes the generated list into the string", () => {
     const jobs = readFileSync(resolve(__dirname, "../pages/Jobs.tsx"), "utf8");
-    expect(jobs).toMatch(/jobsPage\.sourceNote[\s\S]{0,600}?\{ vendors: ATS_VENDOR_LIST \}/);
-    expect(jobs).toMatch(/import \{ ATS_VENDOR_LIST \} from "@\/config\/ats-vendors"/);
+    expect(jobs).toMatch(/jobsPage\.sourceNote[\s\S]{0,600}?\{ vendors: BOARD_SOURCE_LIST \}/);
+    expect(jobs).toMatch(/import \{ BOARD_SOURCE_LIST \} from "@\/config\/ats-vendors"/);
   });
 
   it("the inline default no longer spells any platform out", () => {

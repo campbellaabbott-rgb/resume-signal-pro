@@ -50,6 +50,26 @@ export const ATS_VENDORS: readonly AtsVendor[] = [
   { key: "icims", label: "iCIMS", tier: "click" },
 ] as const;
 
+/**
+ * Sources the board serves that are NOT ATS platforms, and that the agent can
+ * NEVER apply on.
+ *
+ * Kept out of ATS_VENDORS deliberately. Every entry there carries a `tier`
+ * mirrored from apply-automation.ts, and src/test/ats-vendors.test.ts fails if
+ * the two disagree — so putting a non-ATS source in that list would force a
+ * lie in one direction or the other: either a fake tier the agent does not
+ * obey, or a broken mirror.
+ *
+ * USAJOBS is the U.S. federal government's own hiring system. Applications run
+ * through USAJOBS accounts and agency assessments, so the agent does not apply
+ * there at all — not "auto", not "click", not ever. It still belongs in the
+ * board's SOURCE list, because a "where these jobs come from" note that omits
+ * a source is false by omission however true each named item is.
+ */
+export const NON_ATS_SOURCES = [
+  { key: "usajobs", label: "USAJOBS" },
+] as const;
+
 export const AUTO_VENDORS = ATS_VENDORS.filter((v) => v.tier === "auto");
 export const CLICK_VENDORS = ATS_VENDORS.filter((v) => v.tier === "click");
 
@@ -70,6 +90,20 @@ export const CLICK_VENDORS = ATS_VENDORS.filter((v) => v.tier === "click");
  * names.
  */
 export const ATS_VENDOR_LIST = ATS_VENDORS.map((v) => v.label).join(", ");
+
+/**
+ * EVERY source the board serves, ATS or not — the string for "where these jobs
+ * come from" copy.
+ *
+ * Distinct from ATS_VENDOR_LIST, which answers a different question ("which
+ * platforms does the agent work with") and must never grow a source the agent
+ * cannot drive. Source copy uses THIS; agent copy uses that. Conflating them is
+ * how a board ends up either hiding a source or promising applications it
+ * cannot send.
+ */
+export const BOARD_SOURCE_LIST = [...ATS_VENDORS, ...NON_ATS_SOURCES]
+  .map((v) => v.label)
+  .join(", ");
 
 /**
  * Deliberately no "percentage of the board" export.

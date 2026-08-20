@@ -15,7 +15,7 @@ import { parseSalaryStructured } from "../../supabase/functions/_shared/salary-e
 // bundle would be a third thing to forget. Pure TS with no Deno imports, the
 // same reason the salary parser above is imported straight out of _shared.
 import { isSendableVendor } from "../../supabase/functions/_shared/apply-automation";
-import { ATS_VENDOR_LIST } from "@/config/ats-vendors";
+import { BOARD_SOURCE_LIST } from "@/config/ats-vendors";
 import { markDeadForRobots, clearDeadForRobots } from "@/lib/seo-robots";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -4889,7 +4889,7 @@ export default function Jobs() {
                 invisible right up until a missing translation would have
                 rendered it. Now there is one list, and it is the one the code
                 obeys. */}
-            {t("jobsPage.sourceNote", "Sources: the official public job-board APIs companies publish on {{vendors}}. The largest boards are re-checked about every 10–15 minutes and the whole catalog rotates continuously — every feed is re-verified within a few hours, and postings a company takes down disappear on the next pass. A feed that stops responding drops off the board rather than breaking it.", { vendors: ATS_VENDOR_LIST })}
+            {t("jobsPage.sourceNote", "Sources: the official public job-board APIs that companies and public agencies publish on {{vendors}}. The largest boards are re-checked about every 10–15 minutes and the whole catalog rotates continuously — every feed is re-verified within a few hours, and postings a company takes down disappear on the next pass. A feed that stops responding drops off the board rather than breaking it.", { vendors: BOARD_SOURCE_LIST })}
           </p>
         </div>
       </main>
