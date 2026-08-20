@@ -180,15 +180,29 @@ describe("the rules that keep a real employer from getting nonsense", () => {
     expect(code, "must not match the save-for-later control").not.toMatch(/save application for later/i);
   });
 
-  it("oracle and workday stay out of the shipped adapters", () => {
+  it("workday stays out; oracle shipped only once its consent question was answered", () => {
     const index = src("index.ts");
     const shipped = index.slice(index.indexOf("ADAPTERS"), index.indexOf("NEEDS_RECON"));
-    // Oracle needs a decision about accepting an employer's terms on someone's
-    // behalf; workday needs per-tenant accounts nobody has built. Neither is a
-    // coding gap, and neither should be quietly closed by an adapter.
-    expect(shipped).not.toMatch(/\boracle\b/);
+
+    // WORKDAY IS STILL OUT, and for the reason that has not changed: it needs a
+    // per-tenant candidate ACCOUNT with a password before the form exists.
+    // That is credential creation and storage, a different problem class, and
+    // nobody has built it. It is also the largest vendor in the auto tier, so
+    // this remains the single biggest limit on the agent's reach.
     expect(shipped).not.toMatch(/\bworkday\b/);
     expect(index).toMatch(/workday:/);
+
+    // ORACLE IS NOW IN — the owner answered its consent question on 2026-08-19.
+    // This assertion used to forbid it, alongside workday, on the belief that
+    // Oracle also needed an account. A live read of the apply screen disproved
+    // that: "You don't need to have an account... simply using your email",
+    // zero password inputs, no sign-in wall. The two were never the same
+    // obstacle; only one of them was ever a credential problem.
+    expect(shipped).toMatch(/\boracle\b/);
+
+    // What still governs every individual Oracle send is the per-candidate
+    // opt-in, not this list — pinned in
+    // src/test/oracle-applies-without-agreeing-for-you.test.ts.
   });
 
   it("breezy's saved HTML still contains the fields the adapter targets", () => {

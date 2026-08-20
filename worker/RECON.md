@@ -211,9 +211,27 @@ are different tests, and only the second one failed.
 
 **Reconnoitred, not yet servable** — each needs one more pass, and what is known
 is recorded in `vendors/index.ts` so the next pass starts from evidence:
-  - **Oracle** — email-first screen, no account needed, but a REQUIRED
-    terms-and-conditions checkbox. Accepting an employer's terms on a
-    candidate's behalf is a product decision, not a coding one.
+  - **Oracle** — RESOLVED AND SHIPPED 2026-08-19 (worker/src/vendors/oracle.ts).
+    This note was right and a later note in vendors/index.ts was wrong; the
+    disagreement sat in the repo for three weeks and cost a servable vendor.
+    The later note claimed "creates a candidate PROFILE per employer tenant...
+    No guest path offered... Same class of obstacle as workday", which would
+    have required a credential vault. A live read of the apply screen has
+    Oracle saying the opposite in its own words: "You don't need to have an
+    account. Get started right away by simply using your email. Your profile
+    will be created and kept up to date automatically." Measured on that
+    screen: ZERO password inputs, no sign-in wall, no CAPTCHA. The profile is a
+    CONSEQUENCE of applying, not a gate before it.
+    Also measured, and not in the old note: the apply flow CHANGES THE SITE ID
+    (.../sites/CX_1/job/N -> .../sites/CX_1001/job/N/apply/email), so the form
+    URL cannot be string-derived — the control must be clicked.
+    The terms checkbox was the real gate, and it now runs through the same
+    consentToProcessing opt-in as every other consent item rather than a
+    private tick inside the adapter.
+    Still unmeasured, deliberately: every screen past the email step. Reaching
+    one means creating a candidate record at a real employer, so the adapter
+    fails safe there — proceed() returns "stuck" and an email-code wall is
+    refused rather than guessed past.
   - **Teamtailor** — apply control is employer-authored, so the form URL rule is
     still unknown.
 

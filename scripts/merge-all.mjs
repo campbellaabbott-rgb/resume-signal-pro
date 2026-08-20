@@ -88,7 +88,12 @@ for (const m of src.matchAll(/s\("((?:[^"\\]|\\.)*)",\s*"(\w+)"/g)) noteName(m[1
  * than imported because this is a Node script and that is Deno — the drift risk
  * is real, so a test asserts the two lists agree.
  */
-const DRIVABLE = new Set(["breezy", "teamtailor", "personio", "pinpoint"]);
+// oracle added 2026-08-19 with its adapter. This set decides collision
+// tie-breaks — when two censuses carry the same employer on different vendors,
+// the drivable one wins because it is worth more to a subscriber. Leaving
+// oracle out would have kept sending those collisions to a non-drivable
+// carrier and quietly costing the agent reach it now has.
+const DRIVABLE = new Set(["breezy", "oracle", "teamtailor", "personio", "pinpoint"]);
 console.log(`catalog: ${existingTokens.size} tokens, ${existingNames.size} names`);
 
 const decodeEntities = (s) => s

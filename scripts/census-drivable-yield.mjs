@@ -73,7 +73,11 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
  * here would aim the sweep at a vendor we cannot apply to, which is the exact
  * failure this file exists to stop.
  */
-const DRIVABLE = ["breezy", "personio", "pinpoint", "teamtailor"];
+// oracle added 2026-08-19 with its adapter (~14,000 postings). Kept in sync
+// with SENDABLE_VENDORS by src/test/drivable-yield-census.test.ts and
+// src/test/collision-prefers-reach.test.ts — a census that ranks a different
+// set from the one the agent can drive optimises for the wrong boards.
+const DRIVABLE = ["breezy", "oracle", "personio", "pinpoint", "teamtailor"];
 
 /** CNAME targets that identify the ATS behind an employer's own hostname. */
 const VENDOR_BY_CNAME = [
@@ -84,6 +88,10 @@ const VENDOR_BY_CNAME = [
 ];
 
 /** Where each vendor serves a machine-readable feed on a custom domain. */
+const ORACLE_FINDER = "/hcmRestApi/resources/latest/recruitingCEJobRequisitions"
+  + "?onlyData=true&expand=requisitionList"
+  + "&finder=findReqs%3BsiteNumber%3DCX_1%2Climit%3D25%2Coffset%3D0";
+
 const FEED = {
   teamtailor: { path: "/jobs.json", count: (d) => (d?.items ?? []).length },
   pinpoint: { path: "/postings.json", count: (d) => (Array.isArray(d) ? d : d?.data ?? []).length },
@@ -92,6 +100,15 @@ const FEED = {
   // count rather than as zero — reporting 0 would rank it last on evidence it
   // never produced, which is how a non-measurement becomes a finding.
   personio: { path: "/xml", count: () => null },
+  // ORACLE IS SHAPED DIFFERENTLY from the other four, and the difference is not
+  // cosmetic: its token is `tenant~region~site`, not a hostname, and the feed
+  // is the CE REST finder rather than a path appended to a board host. The
+  // count comes from the requisitionList the fetcher already reads.
+  //
+  // path is the finder query; the caller composes it against
+  // https://{tenant}.fa.{region}.oraclecloud.com — see fetchOracle in
+  // supabase/functions/job-board/index.ts, which is the authority on this shape.
+  oracle: { path: ORACLE_FINDER, count: (d) => (d?.items?.[0]?.requisitionList ?? []).length },
 };
 
 const sh = async (cmd, args) => {

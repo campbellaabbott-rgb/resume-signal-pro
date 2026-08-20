@@ -1,5 +1,6 @@
 import type { VendorAdapter } from "./types.js";
 import { breezy } from "./breezy.js";
+import { oracle } from "./oracle.js";
 import { personio } from "./personio.js";
 import { pinpoint } from "./pinpoint.js";
 import { teamtailor } from "./teamtailor.js";
@@ -19,6 +20,7 @@ import { teamtailor } from "./teamtailor.js";
  */
 export const ADAPTERS: Record<string, VendorAdapter> = {
   breezy,
+  oracle,
   personio,
   pinpoint,
   teamtailor,
@@ -55,12 +57,18 @@ export const NEEDS_RECON: Record<string, string> = {
   // 403 that reads like a broken link.
   smartrecruiters: "the apply app 403s in BOTH modes. Re-measured 2026-08-01 across 4 tenants: clicking through lands on /oneclick-ui/, which then 403s on its own API (/oneclick-ui/api/company/...) and sometimes on its JS bundle. Headless renders nothing at all; HEADED renders the job title and still reaches 0 form inputs after 20s. The old note said headed got 200 — true of the PAGE, false of the form. Reaching the form would mean defeating the protection, not running a browser differently. Adapter stays written and unused.",
 
-  // Reaching the form needs an email + a REQUIRED terms-and-conditions
-  // checkbox, and it carries a `honey-pot` field (see HONEYPOTS below). No
-  // account is needed — "simply using your email" — so it is servable, but
-  // agreeing to an employer's terms on someone's behalf is a product decision
-  // rather than a coding one.
-  oracle: "creates a candidate PROFILE per employer tenant before the form — its own words: 'Your profile will be created and kept up to date automatically'. No guest path offered (checked 3 tenants, 2026-07-31). Same class of obstacle as workday, not a form problem. Also a required terms checkbox and a honey-pot, but those were only HALF the reason and the note used to stop there — which later read as 'solved' once consent_to_processing shipped.",
+  // ORACLE MOVED TO ADAPTERS 2026-08-19. The note that used to sit here said
+  // "creates a candidate PROFILE per employer tenant... No guest path offered...
+  // Same class of obstacle as workday" — and that was wrong, which is worth
+  // recording because it cost three weeks of treating a servable vendor as
+  // blocked. A live read of the apply screen has Oracle saying the opposite in
+  // its own words: "You don't need to have an account. Get started right away
+  // by simply using your email." Zero password inputs, no sign-in requirement,
+  // no CAPTCHA. The profile is a CONSEQUENCE of applying, not a gate before it.
+  //
+  // The real gate was the required terms checkbox — an act performed in
+  // someone's name — which now runs through the same consentToProcessing
+  // opt-in as every other consent item. See vendors/oracle.ts.
 
   // The apply control text is written by the EMPLOYER ("Apply Here .xx" on the
   // tenant examined), so the form URL must be derived some other way. Not yet

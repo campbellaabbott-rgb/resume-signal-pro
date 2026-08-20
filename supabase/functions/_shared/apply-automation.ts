@@ -173,7 +173,14 @@ export function automationLabel(source: string): string {
  * Adding a vendor here without an adapter would point the queue at postings the
  * worker then refuses — the queue would look productive and send nothing.
  */
-export const SENDABLE_VENDORS: readonly string[] = ["breezy", "personio", "pinpoint", "teamtailor"];
+// oracle added 2026-08-19: ~14,000 postings, the largest single expansion of
+// the agent's reach since launch. It was believed blocked by a credential wall
+// for three weeks; a live read of the apply screen disproved that ("You don't
+// need to have an account... simply using your email"). Its required terms
+// checkbox is governed by the per-candidate consentToProcessing opt-in, not by
+// membership in this list — a mandate without that opt-in still refuses every
+// Oracle posting and routes it to review.
+export const SENDABLE_VENDORS: readonly string[] = ["breezy", "oracle", "personio", "pinpoint", "teamtailor"];
 
 const SENDABLE = new Set(SENDABLE_VENDORS);
 
