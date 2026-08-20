@@ -15,7 +15,7 @@
 export type JobSourceKind =
   | "greenhouse" | "lever" | "ashby" | "smartrecruiters" | "workable" | "bamboohr"
   | "recruitee" | "teamtailor" | "personio" | "breezy" | "rippling" | "workday" | "pinpoint"
-  | "oracle" | "icims";
+  | "oracle" | "icims" | "usajobs";
 
 export interface JobSource {
   name: string; // display name
@@ -32106,4 +32106,12 @@ export const JOB_SOURCES: JobSource[] = [
   { name: "Renmoney", source: "workable", token: "renmoney" },
   // ── Census round 3 + Rippling (merged 2026-08-10): all vendors, official-API verified ≥3 postings, mill-screened ──
   { name: "Domino's", source: "smartrecruiters", token: "dominos" },
+  // THE ONE SINGLE-SOURCE VENDOR: the U.S. federal government's official API,
+  // one national feed instead of per-employer tenants. Token is fixed; the
+  // hiring AGENCY travels in each posting and becomes the displayed employer,
+  // so the company facet shows "Veterans Affairs", never one giant "USAJOBS"
+  // blob. Requires USAJOBS_API_KEY + USAJOBS_USER_AGENT secrets; without them
+  // the fetcher returns empty rather than failing the board.
+  { name: "USAJOBS", source: "usajobs", token: "usajobs" },
+
 ];

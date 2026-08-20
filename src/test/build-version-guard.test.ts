@@ -144,8 +144,13 @@ const PINNED = {
   // sweep can fix them" from inspecting one endpoint — postings.json has no
   // date, but every posting PAGE carries an employer-stated datePosted in its
   // JSON-LD, and the list already hands us the URL.
-  sourcesHash: "33d1ad0e828f7ffc",
-  buildVersion: "2026-08-17.1",
+  // 2026-08-19.1: +PetSmart (icims, 10,911 postings measured — the census
+  // find that also exposed the windowing bug: the global 12-page cap would
+  // have served 1,200 of them, so JobSource gained a per-tenant `pages`
+  // budget) and +USAJOBS, the first SINGLE-SOURCE vendor on the board (one
+  // national federal feed, agency-as-employer, never agent-sendable).
+  sourcesHash: "83127cd939ce5fa4",
+  buildVersion: "2026-08-19.1",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {

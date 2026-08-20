@@ -36,7 +36,7 @@ import {
   sanePostedAt,
   isDatedBefore,
   normalizeCloseTitle,
-  normalizeIcims,
+  normalizeIcims, normalizeUsajobs,
   normalizeRippling,
   normalizePinpoint,
   extractRipplingJobPosts,
@@ -554,7 +554,7 @@ async function fetchBoard(s: JobSource): Promise<{ jobs: JobPosting[]; raw: unkn
         return body;
       };
       outer: for (let start = 1; start <= ICIMS_MAX_PAGES; start += ICIMS_CHUNK) {
-        const pages = [];
+        const pages: number[] = [];
         for (let p = start; p <= Math.min(start + ICIMS_CHUNK - 1, ICIMS_MAX_PAGES); p++) pages.push(p);
         const bodies = await Promise.all(pages.map(fetchPage));
         for (let i = 0; i < bodies.length; i++) {
@@ -571,6 +571,36 @@ async function fetchBoard(s: JobSource): Promise<{ jobs: JobPosting[]; raw: unkn
       // emptied" (the orphan prune would delete a live tenant).
       if (all.length === 0 && feedTotal > 0) throw new Error(`empty page but total=${feedTotal}`);
       return { jobs: normalizeIcims(all as never, s.name, s.token), raw: { items: all }, windowed: !exhausted, feedTotal };
+    }
+    if (s.source === "usajobs") {
+      // Single national feed, paged 500 at a time. The key lives in secrets;
+      // a MISSING key returns empty rather than throwing, because throwing
+      // marks the board failed and the dormancy prune would eventually delete
+      // every federal posting over a config gap.
+      const key = Deno.env.get("USAJOBS_API_KEY") ?? "";
+      const ua = Deno.env.get("USAJOBS_USER_AGENT") ?? "";
+      if (!key || !ua) {
+        console.warn("[JOB-BOARD] usajobs: USAJOBS_API_KEY/USAJOBS_USER_AGENT unset — skipping (not a board failure)");
+        return { jobs: [], raw: { items: [] }, windowed: true, feedTotal: 0 };
+      }
+      const PAGE = 500, MAX_PAGES = Math.max(1, s.pages ?? 40);
+      const all: unknown[] = [];
+      let feedTotal = 0, exhausted = false;
+      for (let page = 1; page <= MAX_PAGES; page++) {
+        const url = `https://data.usajobs.gov/api/search?ResultsPerPage=${PAGE}&Page=${page}`;
+        const res = await fetchWithTimeout(url, {
+          headers: { Host: "data.usajobs.gov", "User-Agent": ua, "Authorization-Key": key },
+        });
+        if (!res.ok) { if (page === 1) throw new Error(`HTTP ${res.status}`); break; }
+        const body = await res.json() as { SearchResult?: { SearchResultCountAll?: number; SearchResultItems?: unknown[] } };
+        const sr = body.SearchResult ?? {};
+        const batch = Array.isArray(sr.SearchResultItems) ? sr.SearchResultItems : [];
+        if (page === 1) feedTotal = Number(sr.SearchResultCountAll) || 0;
+        all.push(...batch);
+        if (batch.length < PAGE) { exhausted = true; break; }
+      }
+      if (all.length === 0 && feedTotal > 0) throw new Error(`empty page but total=${feedTotal}`);
+      return { jobs: normalizeUsajobs(all as never, s.name, s.token), raw: { items: all }, windowed: !exhausted, feedTotal };
     }
     if (s.source === "rippling") {
       const { items, raw } = await fetchRippling(s);

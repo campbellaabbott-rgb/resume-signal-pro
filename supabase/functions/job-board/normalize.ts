@@ -1444,3 +1444,76 @@ export function sortJobs(jobs: JobPosting[]): JobPosting[] {
     return a.title.localeCompare(b.title);
   });
 }
+
+/** USAJOBS — the U.S. federal government's official job API.
+ *
+ *  A SINGLE-SOURCE VENDOR, unlike every other adapter here: one national feed
+ *  rather than per-employer tenants, so `token` is the fixed string "usajobs"
+ *  and the hiring agency travels in each posting's own fields. That makes the
+ *  displayed company the AGENCY (Veterans Affairs, Forest Service), not
+ *  "USAJOBS" — a visitor is applying to the agency, and the board's employer
+ *  facet would otherwise show one 15,000-job blob called "USAJOBS".
+ *
+ *  Provenance is the cleanest on the board: PublicationStartDate is the
+ *  government's own stated publication date, and ApplyURI points at the
+ *  official posting. Salary is structured and honest (federal ranges are
+ *  published by law), so it is read rather than left null.
+ *
+ *  NOT AGENT-SENDABLE: federal applications run through USAJOBS accounts and
+ *  agency assessments. The board must never badge these as agent-ready.
+ */
+interface UsajobsRemuneration { MinimumRange?: unknown; MaximumRange?: unknown }
+interface UsajobsDescriptor {
+  PositionID?: unknown; PositionTitle?: unknown; OrganizationName?: unknown; DepartmentName?: unknown;
+  PositionLocation?: Array<{ LocationName?: unknown }>; PositionLocationDisplay?: unknown;
+  RemoteIndicator?: unknown; TeleworkEligible?: unknown; PublicationStartDate?: unknown;
+  PositionRemuneration?: UsajobsRemuneration[]; JobCategory?: Array<{ Name?: unknown }>;
+  ApplyURI?: unknown[]; PositionURI?: unknown;
+}
+interface UsajobsItem { MatchedObjectId?: unknown; MatchedObjectDescriptor?: UsajobsDescriptor }
+
+export function normalizeUsajobs(items: UsajobsItem[], _company: string, token: string): JobPosting[] {
+  return (Array.isArray(items) ? items : [])
+    .map((wrap) => {
+      const d = (wrap?.MatchedObjectDescriptor ?? {}) as UsajobsDescriptor;
+      const externalId = String(wrap?.MatchedObjectId ?? d.PositionID ?? "").trim();
+      const title = String(d.PositionTitle ?? "").trim();
+      // The agency IS the employer here; OrganizationName is the parent
+      // department, DepartmentName the sub-agency. Prefer the specific one.
+      const agency = String(d.OrganizationName ?? d.DepartmentName ?? "").trim();
+      const loc = Array.isArray(d.PositionLocation) && d.PositionLocation.length
+        ? String(d.PositionLocation[0]?.LocationName ?? "").trim()
+        : String(d.PositionLocationDisplay ?? "").trim();
+      // Federal remote/telework is stated structurally; text detection only
+      // fills the gap, never overrides the government's own field.
+      const stated = d.RemoteIndicator === true ? "remote" as const
+        : String(d.TeleworkEligible ?? "").toLowerCase() === "true" ? "hybrid" as const
+        : null;
+      const mode = stated ?? detectWorkMode(loc, title);
+      const posted = safeIso(d.PublicationStartDate);
+      const pay = Array.isArray(d.PositionRemuneration) ? d.PositionRemuneration[0] : null;
+      const min = Number(pay?.MinimumRange) || 0;
+      const max = Number(pay?.MaximumRange) || 0;
+      const salary = min > 0 && max > 0
+        ? `$${Math.round(min).toLocaleString("en-US")} - $${Math.round(max).toLocaleString("en-US")}`
+        : null;
+      return {
+        id: `usajobs:${token}:${externalId}`,
+        source: "usajobs" as const,
+        token,
+        company: agency || "U.S. Federal Government",
+        title,
+        location: loc,
+        workMode: mode,
+        remote: mode === "remote",
+        department: String(d.JobCategory?.[0]?.Name ?? "").trim() || null,
+        postedAt: posted,
+        category: categorize(title, String(d.JobCategory?.[0]?.Name ?? "")),
+        salary,
+        // Federal postings are US by definition; the feed also states it.
+        country: "US",
+        applyUrl: safeUrl(String(d.ApplyURI?.[0] ?? d.PositionURI ?? "")),
+      };
+    })
+    .filter((j) => j.applyUrl !== "" && j.title !== "" && !j.id.endsWith(":"));
+}
