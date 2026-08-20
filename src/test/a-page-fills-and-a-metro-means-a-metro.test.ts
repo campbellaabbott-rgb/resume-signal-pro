@@ -129,7 +129,12 @@ describe("a metro abbreviation searches the metro", () => {
   it("tells the visitor the search was expanded", () => {
     // We guessed on their behalf; someone who meant something else has to be
     // able to see that.
-    expect(FN).toMatch(/locationExpandedFrom: l\.expandedFrom, locationSearched: l\.terms/);
+    // Moved into the shared searchDisclosures() helper 2026-08-20. The
+    // expansion notice previously reached only the recency return, so someone
+    // who TYPED "SF" was never told it had been read as San Francisco — the
+    // disclosure is now spread at all four list returns.
+    expect(FN).toMatch(/out\.locationExpandedFrom = l\.expandedFrom; out\.locationSearched = l\.terms/);
+    expect((FN.match(/\.\.\.searchDisclosures\(body, applied\)/g) ?? []).length).toBe(4);
   });
 
   it("leaves a non-alias location exactly as typed", () => {

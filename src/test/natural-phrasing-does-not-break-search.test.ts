@@ -57,7 +57,12 @@ describe("natural job-search phrasing survives", () => {
     // query the person typed is better than silently ignoring them.
     const fn = /function queryTerms\([\s\S]*?\n}/.exec(FN)?.[0] ?? "";
     expect(fn, "queryTerms not found").not.toBe("");
-    expect(fn).toMatch(/if \(kept\.length === 0\) return \{ terms: all, dropped: \[\] \};/);
+    // Re-anchored 2026-08-20. The fallback still exists and still matters, but
+    // it is now CONDITIONAL: it fires for an all-filler query and must NOT fire
+    // when a pay figure was lifted out, because returning `all` there put the
+    // money token back as a required title word and q="120000" returned zero.
+    // See a-pay-figure-is-a-filter-not-a-word for that half.
+    expect(fn).toMatch(/return \{ terms: all, dropped: \[\], liftedSalary: false \};/);
   });
 
   it("applies to the RANKED path — the one a typed query actually uses", () => {
@@ -67,12 +72,14 @@ describe("natural job-search phrasing survives", () => {
     // "Maintenance II-ARP". A typed query is served by the ranked path, and
     // that path tsquery-ises qText — which was still the raw string. The
     // browse path is the one nobody types filler into.
-    expect(FN).toMatch(/const qText = queryTerms\(body\.q\)\.terms\.join\(" "\)/);
+    expect(FN).toMatch(/const qText = qt\.terms\.join\(" "\)/);
     // The count probe must ask the same question, or the total disagrees with
     // the results on screen.
-    expect(FN).toMatch(/const qTextC = queryTerms\(body\.q\)\.terms\.join\(" "\)/);
-    // Both keep the raw-text fallback for an all-filler query.
-    expect((FN.match(/\|\| String\(body\.q \?\? ""\)\.trim\(\)\.slice\(0, 200\)/g) ?? []).length).toBeGreaterThanOrEqual(2);
+    expect(FN).toMatch(/const qTextC = qtC\.terms\.join\(" "\)/);
+    // Both keep the raw-text fallback for an all-filler query — now guarded so
+    // it does not fire when the query was only a pay figure.
+    expect((FN.match(/liftedSalary \? "" : String\(body\.q \?\? ""\)\.trim\(\)\.slice\(0, 200\)/g) ?? []).length)
+      .toBeGreaterThanOrEqual(2);
   });
 
   it("applies to BOTH term-building sites, not just one", () => {
@@ -89,7 +96,11 @@ describe("natural job-search phrasing survives", () => {
     // Silently rewriting someone's search is its own failure. The board
     // already names filters it cannot honour; dropped words get the same
     // treatment.
-    expect(FN).toMatch(/droppedTerms: d/);
+    // Moved into the shared searchDisclosures() helper, which is spread at all
+    // four list returns rather than the recency one alone — searchers were
+    // never told what had been dropped.
+    expect(FN).toMatch(/out\.droppedTerms = dropped/);
+    expect((FN.match(/\.\.\.searchDisclosures\(body, applied\)/g) ?? []).length).toBe(4);
     expect(UI).toMatch(/droppedTerms\?: string\[\];/);
     expect(UI).toMatch(/jobsPage\.droppedTerms/);
   });

@@ -3293,10 +3293,8 @@ function locationTerms(raw: unknown): { terms: string[]; expandedFrom: string | 
  * box being broken. Better to run the poor query the person typed than to
  * silently ignore them.
  */
-function queryTerms(raw: unknown): { terms: string[]; dropped: string[] } {
+function queryTerms(raw: unknown): { terms: string[]; dropped: string[]; liftedSalary: boolean } {
   const all = String(raw ?? "").toLowerCase().split(/\s+/).map(sanitizeTerm).filter(Boolean);
-  // The money token is lifted into the salary FILTER, so it must not also be
-  // ANDed against every title — that is what returned zero for "100k engineer".
   // The money token is lifted into the salary filter by normalizeFilters, so
   // it must not also be ANDed against every title — that returned zero for
   // "100k engineer".
@@ -3304,8 +3302,60 @@ function queryTerms(raw: unknown): { terms: string[]; dropped: string[] } {
     ? String(raw ?? "").toLowerCase().split(/\s+/).find((t) => SALARY_IN_QUERY.test(t)) ?? null
     : null;
   const kept = all.filter((t) => !QUERY_FILLER.has(t) && t !== money);
-  if (kept.length === 0) return { terms: all, dropped: [] };
-  return { terms: kept, dropped: all.filter((t) => QUERY_FILLER.has(t)) };
+  if (kept.length === 0) {
+    // NOTHING LEFT — and WHY it is empty decides what to do next.
+    //
+    // If a pay figure was lifted out, the figure WAS the whole query and the
+    // floor alone is the search. Returning `all` here put the money token back
+    // as a required title word, which is why the plainest possible use of the
+    // feature failed: q="120000" returned ZERO while the same floor on its own
+    // counted 13,381, and q="80k" returned 88 — literal matches on titles like
+    // "Senior Product Engineer (£80k-125k + Equity)" — while the floor counted
+    // 25,896. The board answered a text question nobody asked instead of the
+    // pay question they did.
+    //
+    // If it is empty because every word was filler ("jobs near me"), the raw
+    // string is still the best guess and the caller falls back to it. That is
+    // what liftedSalary distinguishes; without the flag the two cases are
+    // indistinguishable downstream and one of them has to be answered wrongly.
+    if (money !== null) return { terms: [], dropped: all.filter((t) => QUERY_FILLER.has(t)), liftedSalary: true };
+    return { terms: all, dropped: [], liftedSalary: false };
+  }
+  return { terms: kept, dropped: all.filter((t) => QUERY_FILLER.has(t)), liftedSalary: money !== null };
+}
+
+/**
+ * Everything the board changed about what was asked, said out loud.
+ *
+ * SHARED BECAUSE IT KEPT NOT BEING. These three disclosures lived inline at the
+ * recency return only, so a visitor who BROWSED was told what had been dropped,
+ * expanded or lifted and a visitor who SEARCHED was told nothing — measured:
+ * q="100k engineer" narrowed 10,000 results to 4,944 with no salaryFromQuery in
+ * the payload, and q="engineer jobs near me" dropped three words with no
+ * droppedTerms. That is the FIFTH fix in two days to land on one of the four
+ * query paths and silently miss the rest. A single helper spread at every list
+ * return is the only version of this that stays true.
+ */
+function searchDisclosures(
+  body: Record<string, unknown>,
+  applied: { salaryFloor?: number | null },
+): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  // Words removed because they cannot be part of a job title ("jobs", "near",
+  // "me"). Reported rather than silently swallowed.
+  const dropped = queryTerms(body.q).dropped;
+  if (dropped.length) out.droppedTerms = dropped;
+  // Pay lifted out of the search box into the filter. Read off the DERIVED
+  // filter, never the raw body — normalizeFilters is the only place that reads
+  // it, and an explicit slider beats a typed figure, so the two can differ.
+  const fromQuery = salaryFromQueryText(body.q);
+  if (fromQuery !== null && applied.salaryFloor === fromQuery) out.salaryFromQuery = fromQuery;
+  // We guessed on the visitor's behalf: someone who typed "SF" and gets San
+  // Francisco results should know why, and someone who meant somewhere else
+  // needs to see that we substituted.
+  const l = locationTerms(body.location);
+  if (l.expandedFrom) { out.locationExpandedFrom = l.expandedFrom; out.locationSearched = l.terms; }
+  return out;
 }
 
 
@@ -6995,7 +7045,10 @@ async function serveList(
     // and the disclosure denominator went negative.
     // Same strip as the main ranked path — the count probe must ask the same
     // question the page asks, or the total disagrees with the results.
-    const qTextC = queryTerms(body.q).terms.join(" ").slice(0, 200) || String(body.q ?? "").trim().slice(0, 200);
+    // The `|| raw` fallback must NOT fire when the query was only a pay figure —
+    // it would put "120000" straight back as search text and undo the lift.
+    const qtC = queryTerms(body.q);
+    const qTextC = qtC.terms.join(" ").slice(0, 200) || (qtC.liftedSalary ? "" : String(body.q ?? "").trim().slice(0, 200));
     // Kept in step with the row query's guard above, which no longer excludes
     // "newest". If only one of the two had been changed, the count and the rows
     // would answer DIFFERENT questions for a newest-sorted search — the count
@@ -7062,7 +7115,12 @@ async function serveList(
 // browse path I had fixed is the one nobody types filler into.
 // Falls back to the raw text when filler was all there was, same rule as
 // queryTerms itself.
-  const qText = queryTerms(body.q).terms.join(" ").slice(0, 200) || String(body.q ?? "").trim().slice(0, 200);
+  // Kept deliberately identical to qTextC above, including the liftedSalary
+  // guard. If only one of the two changes, the count and the rows answer
+  // DIFFERENT questions — that divergence is the shape of the incident where
+  // 60 rows rendered under a total of 36.
+  const qt = queryTerms(body.q);
+  const qText = qt.terms.join(" ").slice(0, 200) || (qt.liftedSalary ? "" : String(body.q ?? "").trim().slice(0, 200));
   // "NEWEST" USED TO DROP THE ENTIRE SEARCH ENGINE.
   //
   // The guard excluded sort==="newest", so choosing Newest from the sort
@@ -7244,6 +7302,7 @@ async function serveList(
               const fzKnown = Number.isFinite(fzTotal) && fzTotal > 0 && fzTotal < limit;
               return json({
                 jobs: preferMatchedLocation(await attachRecheckedAt(client, fuzzyGrouped.jobs), locationTerms(body.location).terms),
+                ...searchDisclosures(body, applied),
                 ...honesty(fuzzyGrouped.jobs),
                 // This page is a RESCUE, not page 1 of a result set. It omitted
                 // hasMore/nextOffset, so the client's "Load more" issued the
@@ -7318,6 +7377,7 @@ async function serveList(
                   logMiss("semantic");
                   return json({
                     jobs: preferMatchedLocation(await attachRecheckedAt(client, semGrouped.jobs), locationTerms(body.location).terms),
+                    ...searchDisclosures(body, applied),
                     ...honesty(semGrouped.jobs),
                     total: semGrouped.jobs.length,
                     hasMore: false,
@@ -7523,6 +7583,7 @@ async function serveList(
           // searched — the fourth thing today to be wired into the recency
           // path and skipped on the ranked one.
           jobs: preferMatchedLocation(await attachRecheckedAt(client, rankedGrouped.jobs), locationTerms(body.location).terms),
+          ...searchDisclosures(body, applied),
           ...honesty(rankedGrouped.jobs),
           ...(augmented ? { countUnavailable: true } : {}),
           nextOffset: offset + rankedGrouped.rawConsumed,
@@ -7871,28 +7932,7 @@ async function serveList(
     // jobs.length once clusters are folded, or the siblings of a collapsed
     // result reappear on the next page as if they were new.
     nextOffset: offset + grouped.rawConsumed,
-    // Words removed from the search because they cannot be part of a job
-    // title ("jobs", "near", "me"). Reported rather than silently swallowed —
-    // the board says what it ignored, the same way it names a filter it could
-    // not honour. Absent when nothing was dropped.
-    ...(() => { const d = queryTerms(body.q).dropped; return d.length ? { droppedTerms: d } : {}; })(),
-    // Pay lifted out of the search box into the filter. Said out loud for the
-    // same reason the dropped words are: the board changed what was asked, so
-    // it has to show its working.
-    // Pay lifted out of the search box into the filter. Said out loud for the
-    // same reason dropped words are: the board changed what was asked, so it
-    // shows its working. Read off the DERIVED filter — the raw body is not
-    // consulted anywhere outside normalizeFilters.
-    ...(salaryFromQueryText(body.q) !== null && applied.salaryFloor === salaryFromQueryText(body.q)
-      ? { salaryFromQuery: applied.salaryFloor }
-      : {}),
-    // Said out loud, because we guessed on the visitor's behalf: someone who
-    // typed "SF" and gets San Francisco results should know why, and someone
-    // who meant something else needs to see that we substituted.
-    ...(() => {
-      const l = locationTerms(body.location);
-      return l.expandedFrom ? { locationExpandedFrom: l.expandedFrom, locationSearched: l.terms } : {};
-    })(),
+    ...searchDisclosures(body, applied),
     // The keyset successor: (effective_posted, id) of the last RAW row this
     // page consumed — from `data`, never from grouped.jobs, because grouping
     // folds clusters and its last visible card is not the last row read.
