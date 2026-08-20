@@ -11,19 +11,47 @@
 -- ("enginer" -> Engineer, "acountant" -> Accountant).
 --
 -- WHAT I DID. The metro-alias migration needed to edit one line inside
--- search_jobs, so I took the function's latest definition by MIGRATION
--- FILENAME ORDER and CREATE OR REPLACE'd it with that line changed. The
--- database's actual function has a FIFTEENTH parameter, p_sources, added for
--- the agent-sendable filter — and that version exists ONLY in the database. No
--- migration in this repo defines it. So my statement did not replace anything:
--- a different parameter list makes a NEW OVERLOAD, and PostgREST then has two
--- candidates and refuses to pick.
+-- search_jobs, so I searched the migrations for the create-or-replace spelling
+-- of that function, took the newest hit, and re-issued it with the line
+-- changed. That newest hit was a FOURTEEN-parameter definition from July 29.
 --
--- THE RULE I BROKE IS ALREADY WRITTEN DOWN, in the ops runbook, in these words:
--- "MIGRATION FILENAME ORDER DOES NOT TRACK WHAT IS DEPLOYED... ALWAYS confirm a
--- function's live shape (call the RPC, or read the cached row it feeds) before
--- rewriting it from a repo file." I read the repo and not the database. One
--- probe of the live function would have shown fifteen parameters.
+-- THE DEPLOYED FUNCTION HAS FIFTEEN PARAMETERS. p_sources was added on
+-- August 7 by 20260807064219 for the agent-sendable filter. I first recorded
+-- here that no migration in this repo declared it; THAT WAS WRONG, and the
+-- truth is worse. It is declared, in the repo, in a file I had read — but that
+-- file spells the statement "CREATE FUNCTION", not "CREATE OR REPLACE
+-- FUNCTION", deliberately, because it is creating a new signature rather than
+-- replacing one. My search matched only the create-or-replace spelling, so the
+-- ONE migration that defines the live shape was invisible to it, and the newest
+-- visible definition was six weeks stale. The defect was in my grep.
+--
+-- A different parameter list does not replace a function, it OVERLOADS it. So
+-- PostgREST had two candidates and refused to choose.
+--
+-- THE AUGUST 7 MIGRATION SAYS SO IN ITS OWN HEADER, and dropped the
+-- fourteen-parameter version on purpose for exactly this reason:
+--
+--     "DROP + CREATE, not CREATE OR REPLACE: adding a parameter would
+--      otherwise create an OVERLOAD, and a PostgREST call that omits every
+--      optional param then matches both signatures and 400s as ambiguous."
+--
+-- I put back the thing it had removed, and re-created the failure it had
+-- already reasoned its way out of.
+--
+-- THE RULE IS ALSO IN THE OPS RUNBOOK: "MIGRATION FILENAME ORDER DOES NOT TRACK
+-- WHAT IS DEPLOYED... ALWAYS confirm a function's live shape before rewriting
+-- it from a repo file." One probe of the live function would have shown fifteen
+-- parameters. I read the repo instead, and read it with the wrong pattern.
+--
+-- WHY THIS IS SAFE, verified rather than assumed: p_sources is declared
+-- "text[] DEFAULT NULL", and the body guards it with "IF p_sources IS NOT NULL
+-- THEN". So once the fourteen-parameter overload is gone, the edge function's
+-- fourteen-argument call binds to the fifteen-parameter function with
+-- p_sources defaulting to NULL, which applies no source filter. Confirmed
+-- against production before shipping: an explicit fifteen-argument call with a
+-- real p_fresh_cutoff returns rows, and p_sources => NULL does not filter them.
+-- (An empty ARRAY does filter everything out, but sendableSourcesParam omits
+-- the key entirely rather than sending [], so that path is unreachable.)
 --
 -- THE FIX IS TO DROP WHAT I ADDED, NOT TO REWRITE ANYTHING. The 15-parameter
 -- versions are intact and correct; removing my overloads leaves exactly one
