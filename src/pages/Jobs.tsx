@@ -340,6 +340,23 @@ export default function Jobs() {
     return /^[A-Z]{2}$/.test(c) ? c : "";
   });
   const [countryFacet, setCountryFacet] = useState<Array<{ country: string; n: number }>>([]);
+
+  // FILTER-AWARE CATEGORY COUNTS.
+  //
+  // The dropdown renders board-wide counts when nothing is filtered, and the
+  // server correctly suppresses them the moment a filter is applied — a
+  // board-wide "Design (4,320)" under a United States filter would be a global
+  // number wearing a filtered label. The result today is no counts at exactly
+  // the moment they matter most: while narrowing.
+  //
+  // So they are fetched separately, against the same filters, in their own
+  // request. Deliberately NOT part of the list call: 18 grouped counts riding
+  // every page view is the request-amplification shape that took the board
+  // down on 2026-08-17. This runs once per filter change, after the list has
+  // already painted, and the page is fully usable whether or not it arrives.
+  const [filteredCats, setFilteredCats] = useState<Record<string, number> | null>(null);
+  const catFacetSeq = useRef(0);
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -974,6 +991,38 @@ export default function Jobs() {
   // + 9 hidden). Sent only when continuing a list (offset > 0); a fresh load
   // starts from the top and takes a fresh cursor from its own response.
   const nextCursorRef = useRef<{ ep: string; id: string } | null>(null);
+
+  // Refetch whenever the filter set changes. Debounced so dragging a salary
+  // slider does not fire eighteen counts per pixel, and sequence-guarded so a
+  // slow response for last filter set cannot paint over the current one.
+  useEffect(() => {
+    const activeFilters = !!(q || location || remoteOnly || workMode || category ||
+      agentOnly || country || experience.length || salaryFloor || freshness || companyTokens.length);
+    if (!activeFilters) { setFilteredCats(null); return; } // unfiltered: the cached board-wide facet is correct
+    const seq = ++catFacetSeq.current;
+    const timer = setTimeout(async () => {
+      try {
+        const { data: res } = await supabase.functions.invoke("job-board", {
+          body: {
+            action: "list", facetCounts: true,
+            q: q || undefined, location: location || undefined,
+            remote: (remoteOnly && !workMode) || undefined,
+            workMode: workMode || undefined,
+            sendableOnly: agentOnly ? true : undefined,
+            country: country || undefined,
+            experience: experience.length ? experience : undefined,
+            companies: companyTokens.length ? companyTokens : undefined,
+            salaryFloor: salaryFloor || undefined,
+            maxAgeDays: freshness ? (freshness === "day" ? 1 : 7) : undefined,
+          },
+        });
+        if (seq !== catFacetSeq.current) return; // a newer filter set superseded this
+        const c = (res as { categories?: Record<string, number> } | null)?.categories;
+        setFilteredCats(c && Object.keys(c).length ? c : null);
+      } catch { /* counts are an enhancement — the dropdown works without them */ }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [q, location, remoteOnly, workMode, category, agentOnly, country, experience, salaryFloor, freshness, companyTokens]);
 
   const fetchJobs = useCallback(
     async (offset: number) => {
@@ -3506,7 +3555,9 @@ export default function Jobs() {
               {CATEGORY_IDS.map((c) => (
                 <option key={c} value={c}>
                   {t(`jobsPage.categories.${c}`, c)}
-                  {data?.categories?.[c] ? ` (${data.categories[c]})` : ""}
+                  {(filteredCats?.[c] ?? data?.categories?.[c])
+                    ? ` (${(filteredCats?.[c] ?? data!.categories![c]).toLocaleString()})`
+                    : ""}
                 </option>
               ))}
             </select>

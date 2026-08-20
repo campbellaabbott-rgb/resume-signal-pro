@@ -6670,6 +6670,67 @@ async function serveList(
     }
   };
 
+  // ---- FILTER-AWARE CATEGORY COUNTS -------------------------------------
+  //
+  // The dropdown already renders "Sales (62,871)" — and those numbers VANISH
+  // the moment any filter is applied. Measured: unfiltered returns 18
+  // populated categories; with country=US it returns 0.
+  //
+  // That was deliberate and it was right. The cached facet is board-wide, so
+  // under country=US "Design (4,320)" would be a global number wearing a
+  // filtered label. visibleCategories suppresses rather than lies.
+  //
+  // But counts matter MOST while narrowing — that is the whole job of a filter
+  // UI, and a visitor who has picked United States currently cannot tell
+  // whether Design holds 4,000 US roles or 4. So instead of removing the
+  // guard, compute the honest number: the same filters, once per category.
+  //
+  // REUSES buildQuery WITH ITS EXISTING categoryOverride, which is why this is
+  // ~15 lines and not a second implementation of the filter semantics. Every
+  // predicate — country, work mode, experience, salary floor, freshness,
+  // sendable, the serving window — binds exactly as it does for the list. A
+  // hand-rolled facet query would drift from the list the first time a filter
+  // changed, and the counts would quietly stop matching the results.
+  //
+  // COST, measured before building: a single filtered category count runs
+  // 0.27-0.43s (US+engineering 24,713 rows in 0.30s). Affordable — but 18 at
+  // once is precisely the request-amplification shape that took this board
+  // down on 2026-08-17, so it is bounded three ways: its own ACTION (never
+  // riding the list request), chunked concurrency, and a hard deadline after
+  // which it returns what it has.
+  //
+  // PARTIAL RESULTS ARE HONEST HERE. A category that did not answer in time is
+  // simply absent, and an absent count renders as no count at all — the state
+  // the dropdown is already in today. It never renders a zero it did not
+  // measure.
+  if (body.facetCounts === true) {
+    const FACET_CHUNK = 6;
+    const FACET_DEADLINE = Date.now() + 4_000;
+    const counts: Record<string, number> = {};
+    const cats = [...JOB_CATEGORIES];
+    for (let i = 0; i < cats.length; i += FACET_CHUNK) {
+      if (Date.now() > FACET_DEADLINE) break;
+      const chunk = cats.slice(i, i + FACET_CHUNK);
+      const settled = await Promise.all(chunk.map(async (c) => {
+        try {
+          const r = await buildQuery("effective_posted", true, c).range(0, 0);
+          return [c, r.error ? null : (r.count ?? 0)] as const;
+        } catch {
+          return [c, null] as const;
+        }
+      }));
+      for (const [c, n] of settled) if (typeof n === "number") counts[c] = n;
+    }
+    return json({
+      categories: counts,
+      // Says which filters these counts are FOR, so a stale response arriving
+      // after the visitor changed a filter can be discarded rather than
+      // painted over the new selection.
+      appliedSignature: JSON.stringify(applied),
+      ...(ignoredFilters.length ? { ignoredFilters } : {}),
+    });
+  }
+
   if (countOnly) {
     // countOnly is the FIFTH exit, and I missed it when wiring the honesty
     // helper into the other four. Verified live on .10: {remote:"true"} returned

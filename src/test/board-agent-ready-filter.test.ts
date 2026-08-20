@@ -170,8 +170,17 @@ describe("the UI round trip", () => {
     expect(jobs).toMatch(/if \(agentOnly\) p\.set\("agentOnly", "1"\)/);
   });
 
-  it("sends only a literal true", () => {
-    expect((jobs.match(/sendableOnly: agentOnly \? true : undefined/g) ?? []).length).toBe(2);
+  it("sends only a literal true, at every send site", () => {
+    // Counts SITES, and there are three since the filter-aware category counts
+    // shipped (list, count-probe, facet counts). The property being protected
+    // is not the number — it is that no site can send a truthy STRING, which
+    // would silently narrow the board to ~6% for anyone with ?sendableOnly=1
+    // in a shared URL. So: every occurrence of the key uses the literal form,
+    // and none uses a bare pass-through.
+    const literal = (jobs.match(/sendableOnly: agentOnly \? true : undefined/g) ?? []).length;
+    const total = (jobs.match(/sendableOnly:/g) ?? []).length;
+    expect(literal, "a sendableOnly send site is not using the literal-true form").toBe(total);
+    expect(total, "guard would be vacuous with no send sites").toBeGreaterThanOrEqual(2);
   });
 
   it("refetches when toggled — a filter absent from the deps does nothing", () => {
