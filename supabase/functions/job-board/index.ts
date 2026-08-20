@@ -2992,7 +2992,13 @@ function isoDateOnly(v: unknown): string | null {
 // Commas and parens never needed stripping: the term is BOUND (.ilike() and a $3
 // parameter), never concatenated into SQL, so they are literal characters. Only
 // % _ and \ carry meaning to ILIKE.
-const sanitizeTerm = (t: string) => t.replace(/[%_\\]/g, "").trim();
+// "|" joins the RANKED path is now a delimiter (search_jobs splits p_location
+// on it so one metro alias can match any of its canonical names), so it is
+// stripped here for the same reason % and _ are: a value the caller controls
+// must never be able to change the shape of the query. Real locations in this
+// corpus DO contain pipes — BAYADA publishes "Philadelphia | 39.95 | -75.16" —
+// so this is a live concern, not a theoretical one.
+const sanitizeTerm = (t: string) => t.replace(/[%_\\|]/g, "").trim();
 
 /**
  * Words a person types around a job title that are not part of any job title.
@@ -3080,6 +3086,25 @@ const METRO_ALIASES: Record<string, { names: string[]; keepRaw: boolean }> = {
  * a visitor who typed "SF" and sees San Francisco results deserves to know
  * why, and a visitor who meant something else needs to see that we guessed.
  */
+/**
+ * The location string for search_jobs, which matches ANY pipe-delimited name.
+ *
+ * MEASURED after the alias deploy: location=Philly returned 13 jobs while
+ * Philadelphia had 1,541, and NYC returned 344 against New York's 10,000. The
+ * aliases were computed and REPORTED to the client, then thrown away here —
+ * every ranked and count call passed applied.location raw. The browse path had
+ * them; the path people actually search with did not.
+ *
+ * Joining with "|" rather than adding a parameter keeps search_jobs' signature
+ * and its four positional USING clauses untouched. sanitizeTerm strips "|" from
+ * user input, so only our own curated names are ever joined.
+ */
+function rankedLocationParam(raw: unknown): string | null {
+  const { terms } = locationTerms(raw);
+  if (terms.length === 0) return null;
+  return terms.map((t) => sanitizeTerm(t)).filter(Boolean).join("|") || null;
+}
+
 function locationTerms(raw: unknown): { terms: string[]; expandedFrom: string | null } {
   const clean = sanitizeTerm(String(raw ?? ""));
   if (!clean) return { terms: [], expandedFrom: null };
@@ -6646,7 +6671,7 @@ async function serveList(
       const { data, error } = await client.rpc("count_jobs_capped", {
         p_fresh_cutoff: freshCutoffIso,
         p_q: qTerms.length === 1 ? qTerms[0] : null,
-        p_location: sanitizeTerm(applied.location) || null,
+        p_location: rankedLocationParam(applied.location),
         p_remote: applied.remote ? true : null,
         p_country: applied.country,
         p_category: categoryParam(applied),
@@ -6760,7 +6785,7 @@ async function serveList(
         const { data: rc, error: ec } = await client.rpc("search_jobs", {
           p_q: expQC,
           p_fresh_cutoff: freshCutoffIso,
-          p_location: sanitizeTerm(applied.location) || null,
+          p_location: rankedLocationParam(applied.location),
           p_remote: applied.remote ? true : null,
           p_country: applied.country,
           p_category: categoryParam(applied),
@@ -6847,7 +6872,7 @@ async function serveList(
       const { data: ranked, error: rankErr } = await client.rpc("search_jobs", {
         p_q: expandedQ,
         p_fresh_cutoff: freshCutoffIso,
-        p_location: sanitizeTerm(applied.location) || null,
+        p_location: rankedLocationParam(applied.location),
         p_remote: applied.remote ? true : null,
         p_country: applied.country,
         p_category: categoryParam(applied),
@@ -7135,7 +7160,7 @@ async function serveList(
             const { data: more, error: moreErr } = await client.rpc("search_jobs", {
               p_q: expandedQ,
               p_fresh_cutoff: freshCutoffIso,
-              p_location: sanitizeTerm(applied.location) || null,
+              p_location: rankedLocationParam(applied.location),
               p_remote: applied.remote ? true : null,
               p_country: applied.country,
               p_category: categoryParam(applied),
