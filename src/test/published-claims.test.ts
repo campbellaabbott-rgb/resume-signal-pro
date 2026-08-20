@@ -339,8 +339,23 @@ describe("the re-check chip shows real re-verification, not insert time", () => 
     expect(jobs).toMatch(/job\.recheckedAt && Date\.now\(\) - Date\.parse\(job\.recheckedAt\)/);
   });
 
-  it("every list return path attaches it", () => {
-    expect((fn.match(/await attachRecheckedAt\(client,/g) || []).length).toBe(3);
+  it("every path that returns postings attaches it", () => {
+    // Asserts the PROPERTY, not a magic number. This read `.toBe(3)`, so
+    // ADDING a fourth call site — the detail pane, which had been missing the
+    // stamp entirely — failed a guard whose own name asks for more coverage,
+    // not less. An exact count turns "we now attach it in one more place" into
+    // a regression.
+    //
+    // The real rule: no response that carries postings may skip the stamp.
+    // Every `jobs:` / `job:` emission in a json() return must be wrapped.
+    const calls = (fn.match(/await attachRecheckedAt\(client,/g) || []).length;
+    expect(calls, "at least the three list paths plus the detail pane").toBeGreaterThanOrEqual(4);
+
+    // And nothing may emit a raw grouped list around it. `grouped.jobs` is the
+    // collapsed page; if it reaches a response without passing through
+    // attachRecheckedAt, that page ships without its freshness receipt.
+    const rawEmissions = fn.match(/jobs: grouped\.jobs\b/g) || [];
+    expect(rawEmissions.length, "a page is being returned without the re-check stamp").toBe(0);
   });
 });
 

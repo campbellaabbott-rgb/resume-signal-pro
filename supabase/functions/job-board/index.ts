@@ -5816,7 +5816,11 @@ Deno.serve(async (req) => {
           } catch { /* best effort - a failed write must never break the read */ }
         })());
       }
-      return json({ job: jobRow ? rowToJob(jobRow) : null, description });
+      // The pane needs the stamp too — it is where the apply decision is made,
+      // and until now only the list paths attached it. attachRecheckedAt takes
+      // an array, so the single row goes through as one.
+      const detailJobs = jobRow ? await attachRecheckedAt(client, [rowToJob(jobRow) as unknown as Record<string, unknown>]) : [];
+      return json({ job: detailJobs[0] ?? null, description });
     }
 
     if (action === "application-questions") {
@@ -5975,7 +5979,19 @@ async function attachRecheckedAt(
   client: SupabaseClient,
   jobs: Array<Record<string, unknown>>,
 ): Promise<Array<Record<string, unknown>>> {
-  const tokens = [...new Set(jobs.map((j) => String(j.companyToken ?? "")).filter(Boolean))].slice(0, 80);
+  // `token`, NOT `companyToken`. rowToJob emits the field as `token`; this read
+  // `j.companyToken`, which is undefined on every row, so the token list was
+  // always empty and this function returned early on every single call. The
+  // board's strongest per-posting sentence — "re-checked N minutes ago", about
+  // THIS job rather than about 24,934 boards in aggregate — has therefore never
+  // rendered to a single visitor, on any of the three UI surfaces built to show
+  // it. Verified live before the fix: 0 of 60 served rows carried recheckedAt,
+  // and the payload key list contains `token` and no `companyToken`.
+  //
+  // A typo, and invisible precisely because the failure was silent: an empty
+  // token list is indistinguishable from "no stamps available", which is a
+  // legitimate state this function is designed to degrade into.
+  const tokens = [...new Set(jobs.map((j) => String(j.token ?? "")).filter(Boolean))].slice(0, 80);
   if (tokens.length === 0) return jobs;
   const { data, error } = await client
     .from("job_board_verifications")
@@ -5991,7 +6007,7 @@ async function attachRecheckedAt(
     if (t && v) byToken.set(t, v);
   }
   for (const j of jobs) {
-    const v = byToken.get(String(j.companyToken ?? ""));
+    const v = byToken.get(String(j.token ?? ""));
     // verified_at says the FEED was fetched, not that this posting was in it.
     if (v && !j.missingSince) j.recheckedAt = v;
   }
