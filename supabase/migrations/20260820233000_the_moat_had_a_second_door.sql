@@ -1,0 +1,66 @@
+-- THE MOAT HAD A SECOND DOOR, AND IT WAS THE BIGGER ONE.
+--
+-- 20260818110000_the_moat_was_open closed public read on job_board_closures,
+-- the lifecycle log this product's only uncopyable asset is built from. It
+-- closed ONE table. job_board_company_snapshots was left wide open, and it is
+-- the same asset in a more convenient shape.
+--
+-- MEASURED with the anon key, 2026-08-20, during post-deploy verification:
+--   GET /rest/v1/job_board_company_snapshots?select=company_token,snapshot_date,open_roles
+--   -> HTTP 206, content-range 0-0/733665, real rows.
+-- Continuous daily coverage 2026-07-21 -> 2026-08-20. One filtered request
+-- returns a complete per-company series:
+--   ?company_token=eq.bluescopenac~wd5~BNACareers&order=snapshot_date.asc
+--   -> 51,55,60,57,56,55,54,54,59,60,61,61,60,60,60,63,67,64,...
+-- So an anonymous caller can page the whole table at 1,000 rows a request and
+-- reconstruct every company's hiring curve for the last month. The closure log
+-- being shut while this stayed open protected nothing: this table answers the
+-- same question with less work.
+--
+-- AGGREGATES STAY PUBLIC. THE RAW SERIES DOES NOT. That is the same line the
+-- closure lockdown drew, and it is the whole point — get_trending_companies,
+-- get_actively_hiring_companies, get_newest_companies and get_size_segments
+-- are the product; the row-by-row history behind them is the moat.
+--
+-- WHY THIS DOES NOT REPEAT THE 18th's MISTAKE. That lockdown broke four
+-- SECURITY INVOKER RPCs: they kept returning HTTP 200 with ZERO aggregates,
+-- which is indistinguishable from "the data says zero", and /hiring-trends
+-- published "0 closures" for two days before anyone noticed. So the consumers
+-- were enumerated BEFORE writing this, not after:
+--
+--   get_actively_hiring_companies  SECURITY DEFINER   reads it
+--   get_trending_companies         SECURITY DEFINER   reads it
+--   get_newest_companies           SECURITY DEFINER   reads it
+--   get_size_segments              SECURITY DEFINER   reads it
+--   get_company_intel              SECURITY DEFINER   reads it
+--   refresh_explore_cache          SECURITY DEFINER   reads it
+--   snapshot_company_counts        SECURITY DEFINER   writes it
+--   apply_company_name_override    INVOKER            WRITES only, no caller
+--
+-- Every READER is DEFINER, so every one of them bypasses RLS and is unaffected.
+-- The single INVOKER function only issues an UPDATE, has no edge-function or
+-- frontend caller, and already updates job_board_closures — which has been
+-- locked since the 18th without incident, so its execution context is
+-- demonstrably not anon.
+--
+-- BASELINE TAKEN THE MINUTE BEFORE THIS WAS WRITTEN, so "still working" can be
+-- checked against a number rather than against a 200:
+--   get_actively_hiring_companies  20 rows
+--   get_trending_companies         12 rows
+--   get_newest_companies           12 rows
+--   get_size_segments              populated (mid segment non-empty)
+-- If any of these returns an empty set after this migration applies, this
+-- migration is the cause and reverting the two statements below restores it.
+--
+-- No frontend reader exists: the only src/ references are two explanatory
+-- comments and the generated types file.
+
+DROP POLICY IF EXISTS "job_board_company_snapshots_public_read" ON public.job_board_company_snapshots;
+
+-- The GRANT is revoked as well as the policy. A GRANT alone does not grant
+-- access through RLS, but leaving it in place means the next person to add a
+-- permissive policy silently reopens the table — and this repo has already
+-- learned that a GRANT is not what restricts.
+REVOKE SELECT ON public.job_board_company_snapshots FROM anon;
+
+ALTER TABLE public.job_board_company_snapshots ENABLE ROW LEVEL SECURITY;

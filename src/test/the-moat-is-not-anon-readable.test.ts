@@ -31,12 +31,38 @@ describe("the private ledgers stay private", () => {
     expect(lock! > "20260714150000").toBe(true);
   });
 
+  it("ships the SECOND lock — the closure log was shut while the daily series stayed open", () => {
+    // Locking job_board_closures on the 18th protected nothing on its own.
+    // job_board_company_snapshots holds the same asset in a more convenient
+    // shape — a per-company daily open-roles series — and was still returning
+    // 733,665 rows to the anon key two days later, continuous from 2026-07-21.
+    // One filtered request handed over a whole company's hiring curve.
+    const lock = files.find((f) => f.includes("the_moat_had_a_second_door"));
+    expect(lock, "the job_board_company_snapshots lock migration is missing").toBeTruthy();
+    const sql = read(lock!);
+    expect(sql).toMatch(
+      /DROP POLICY IF EXISTS "job_board_company_snapshots_public_read" ON public\.job_board_company_snapshots;/,
+    );
+    // The GRANT goes too. A GRANT is not what restricts — but leaving it means
+    // the next permissive policy silently reopens the table.
+    expect(sql).toMatch(/REVOKE SELECT ON public\.job_board_company_snapshots FROM anon;/);
+    expect(sql).toMatch(/ALTER TABLE public\.job_board_company_snapshots ENABLE ROW LEVEL SECURITY;/);
+    // Must sort after the migration that granted the read, or it is a no-op on
+    // a fresh database.
+    expect(lock! > "20260721190000").toBe(true);
+  });
+
   it("no migration AFTER the lock creates a public SELECT policy on a private ledger", () => {
     const lock = files.find((f) => f.includes("the_moat_was_open"))!;
     const laters = files.filter((f) => f > lock);
     for (const f of laters) {
       const s = read(f);
-      for (const table of ["job_board_closures", "job_board_exits", "job_board_pool_samples"]) {
+      for (const table of [
+        "job_board_closures",
+        "job_board_exits",
+        "job_board_pool_samples",
+        "job_board_company_snapshots",
+      ]) {
         const re = new RegExp(
           String.raw`CREATE POLICY[^;]*ON\s+(public\.)?${table}[^;]*FOR SELECT[^;]*USING\s*\(\s*true\s*\)`,
           "i",

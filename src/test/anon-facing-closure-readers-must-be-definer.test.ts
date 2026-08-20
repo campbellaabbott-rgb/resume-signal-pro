@@ -28,7 +28,18 @@ import { resolve } from "node:path";
  * publishes emptiness.
  */
 const DIR = resolve(__dirname, "../../supabase/migrations");
-const LOCKED_TABLES = ["job_board_closures", "job_board_exits", "job_board_pool_samples"];
+// job_board_company_snapshots joined this list 2026-08-20. The closure log had
+// been locked since the 18th while the per-company daily series sat fully
+// anon-readable at 733,665 rows — an anonymous caller could page it and
+// reconstruct every company's hiring curve for the last month, which is the
+// same asset the closure lock was protecting, in a more convenient shape.
+// Adding it here is what makes the DEFINER check cover its readers too.
+const LOCKED_TABLES = [
+  "job_board_closures",
+  "job_board_exits",
+  "job_board_pool_samples",
+  "job_board_company_snapshots",
+];
 
 /** Latest CREATE of each function — Lovable re-stamps migrations, so filename
  *  order is the only ordering available and later files supersede.
