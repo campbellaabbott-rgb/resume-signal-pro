@@ -7458,7 +7458,42 @@ async function serveList(
               const extra = (groupSimilar ? collapseClusters(novel, room).jobs : novel.slice(0, room))
                 .map((j) => ({ ...(j as Record<string, unknown>), closeMatch: true }));
               if (extra.length > 0) {
-                rankedGrouped.jobs.push(...extra);
+                // ORDER BY MATCH STRENGTH, NOT BY WHICH TIER ARRIVED FIRST.
+                //
+                // Appending put the close matches BELOW every exact row, and on
+                // a misspelling the exact rows are the junk. Measured live the
+                // hour this shipped, q="maneger", limit=60: SEVEN Dutch care
+                // postings (Slaapwacht, Woonbegeleider, Persoonlijk begeleider)
+                // above THIRTY-NINE Managers. None of the seven has "maneger"
+                // in its title — they matched on description text — while all
+                // thirty-nine are what the searcher meant. Same shape on
+                // q="nures": "CARE NOW FULL TIME REGISTER NURE" first, five
+                // Nurses beneath it, the one row on top matching a typo in the
+                // employer's own posting.
+                //
+                // The rule is the ordinary one this path had inverted: A TITLE
+                // MATCH BEATS A DESCRIPTION-ONLY MATCH. A close title match is
+                // stronger evidence of intent than a body-text coincidence, so
+                // it sits above it — and below a real title hit, which is
+                // stronger still. On q="profesor" every exact row DOES carry
+                // the term in its title, so that query is untouched: the
+                // Spanish teaching posts stay on top, correctly.
+                //
+                // ROOM IS DELIBERATELY UNCHANGED. Only the order moves. The
+                // close matches were already being fetched, already collapsed,
+                // already counted — nothing enters or leaves the page here, so
+                // rawConsumed, nextOffset and hasMore keep describing exactly
+                // what they described before. A version that let close matches
+                // DISPLACE exact rows would have to answer where the displaced
+                // rows go on page two, and this fix does not need to ask.
+                const terms = queryTerms(qText).terms.map((t) => t.toLowerCase()).filter(Boolean);
+                const inTitle = (r: unknown) => {
+                  const t = String((r as Record<string, unknown>).title ?? "").toLowerCase();
+                  return terms.length > 0 && terms.some((term) => t.includes(term));
+                };
+                const titleHits = rankedGrouped.jobs.filter(inTitle);
+                const bodyOnly = rankedGrouped.jobs.filter((j) => !inTitle(j));
+                rankedGrouped.jobs = [...titleHits, ...extra, ...bodyOnly];
                 fuzzyExtraOut = { q: qText, count: extra.length };
               }
             }
