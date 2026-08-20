@@ -2998,7 +2998,13 @@ function isoDateOnly(v: unknown): string | null {
 // must never be able to change the shape of the query. Real locations in this
 // corpus DO contain pipes — BAYADA publishes "Philadelphia | 39.95 | -75.16" —
 // so this is a live concern, not a theoretical one.
-const sanitizeTerm = (t: string) => t.replace(/[%_\\|]/g, "").trim();
+// Strips every character that could change the SHAPE of a query rather than
+// its content: % and _ are ILIKE wildcards, \ escapes them, | is the metro/state
+// alias delimiter search_jobs splits on, and " delimits a value inside a
+// PostgREST or() branch — a typed quote could otherwise close the quoting early
+// and inject filter syntax. The quote became load-bearing when state aliases
+// (", TX") forced the browse path to quote its or() values.
+const sanitizeTerm = (t: string) => t.replace(/[%_\\|"]/g, "").trim();
 
 /**
  * Words a person types around a job title that are not part of any job title.
@@ -3066,6 +3072,153 @@ const QUERY_FILLER = new Set([
  * about the specific letters, not their count: "DC" is two letters and is
  * perfectly safe, since it is how the location is actually written.
  */
+/**
+ * US states and Canadian provinces — and why the abbreviation needs a comma.
+ *
+ * MEASURED 2026-08-20, and both directions were broken:
+ *   "Texas"       7,788 rows   misses the 16,234 written "TX"
+ *   "California" 10,106 rows   misses most of the state
+ *   "CA"        113,223 rows   of which ~70% are NOT California — it matches
+ *                              "CAnada", "3 LoCAtions", "TransCAnada"
+ *
+ * A bare two-letter code cannot be substring-matched. Many are ordinary
+ * English: %IN% matches 129,229 rows, %OR% matches 109,393. Anchoring on the
+ * comma that precedes a state in real location strings fixes it exactly —
+ * %, IN% is 14,071 and %, OR% is 3,265, and "CAN - Quebec" no longer matches
+ * ", CA".
+ *
+ * So every state maps to BOTH forms: the spelled-out name and ", ST". Typing
+ * either reaches the union, which is the whole point — the data uses both
+ * ("Dallas, Texas" and "Austin, TX" are the same state to a job seeker).
+ *
+ * keepRaw is false everywhere here: the spelled-out name is already in the
+ * list, and the bare code is precisely the poison being removed.
+ */
+const STATE_ALIASES: Record<string, { names: string[]; keepRaw: boolean }> = {
+  "alabama": { names: ["Alabama", ", AL"], keepRaw: false },
+  "al": { names: ["Alabama", ", AL"], keepRaw: false },
+  "alaska": { names: ["Alaska", ", AK"], keepRaw: false },
+  "ak": { names: ["Alaska", ", AK"], keepRaw: false },
+  "arizona": { names: ["Arizona", ", AZ"], keepRaw: false },
+  "az": { names: ["Arizona", ", AZ"], keepRaw: false },
+  "arkansas": { names: ["Arkansas", ", AR"], keepRaw: false },
+  "ar": { names: ["Arkansas", ", AR"], keepRaw: false },
+  "california": { names: ["California", ", CA"], keepRaw: false },
+  "ca": { names: ["California", ", CA"], keepRaw: false },
+  "colorado": { names: ["Colorado", ", CO"], keepRaw: false },
+  "co": { names: ["Colorado", ", CO"], keepRaw: false },
+  "connecticut": { names: ["Connecticut", ", CT"], keepRaw: false },
+  "ct": { names: ["Connecticut", ", CT"], keepRaw: false },
+  "delaware": { names: ["Delaware", ", DE"], keepRaw: false },
+  "de": { names: ["Delaware", ", DE"], keepRaw: false },
+  "florida": { names: ["Florida", ", FL"], keepRaw: false },
+  "fl": { names: ["Florida", ", FL"], keepRaw: false },
+  "georgia": { names: ["Georgia", ", GA"], keepRaw: false },
+  "ga": { names: ["Georgia", ", GA"], keepRaw: false },
+  "hawaii": { names: ["Hawaii", ", HI"], keepRaw: false },
+  "hi": { names: ["Hawaii", ", HI"], keepRaw: false },
+  "idaho": { names: ["Idaho", ", ID"], keepRaw: false },
+  "id": { names: ["Idaho", ", ID"], keepRaw: false },
+  "illinois": { names: ["Illinois", ", IL"], keepRaw: false },
+  "il": { names: ["Illinois", ", IL"], keepRaw: false },
+  "indiana": { names: ["Indiana", ", IN"], keepRaw: false },
+  "in": { names: ["Indiana", ", IN"], keepRaw: false },
+  "iowa": { names: ["Iowa", ", IA"], keepRaw: false },
+  "ia": { names: ["Iowa", ", IA"], keepRaw: false },
+  "kansas": { names: ["Kansas", ", KS"], keepRaw: false },
+  "ks": { names: ["Kansas", ", KS"], keepRaw: false },
+  "kentucky": { names: ["Kentucky", ", KY"], keepRaw: false },
+  "ky": { names: ["Kentucky", ", KY"], keepRaw: false },
+  "louisiana": { names: ["Louisiana", ", LA"], keepRaw: false },
+  "la": { names: ["Louisiana", ", LA"], keepRaw: false },
+  "maine": { names: ["Maine", ", ME"], keepRaw: false },
+  "me": { names: ["Maine", ", ME"], keepRaw: false },
+  "maryland": { names: ["Maryland", ", MD"], keepRaw: false },
+  "md": { names: ["Maryland", ", MD"], keepRaw: false },
+  "massachusetts": { names: ["Massachusetts", ", MA"], keepRaw: false },
+  "ma": { names: ["Massachusetts", ", MA"], keepRaw: false },
+  "michigan": { names: ["Michigan", ", MI"], keepRaw: false },
+  "mi": { names: ["Michigan", ", MI"], keepRaw: false },
+  "minnesota": { names: ["Minnesota", ", MN"], keepRaw: false },
+  "mn": { names: ["Minnesota", ", MN"], keepRaw: false },
+  "mississippi": { names: ["Mississippi", ", MS"], keepRaw: false },
+  "ms": { names: ["Mississippi", ", MS"], keepRaw: false },
+  "missouri": { names: ["Missouri", ", MO"], keepRaw: false },
+  "mo": { names: ["Missouri", ", MO"], keepRaw: false },
+  "montana": { names: ["Montana", ", MT"], keepRaw: false },
+  "mt": { names: ["Montana", ", MT"], keepRaw: false },
+  "nebraska": { names: ["Nebraska", ", NE"], keepRaw: false },
+  "ne": { names: ["Nebraska", ", NE"], keepRaw: false },
+  "nevada": { names: ["Nevada", ", NV"], keepRaw: false },
+  "nv": { names: ["Nevada", ", NV"], keepRaw: false },
+  "new hampshire": { names: ["New Hampshire", ", NH"], keepRaw: false },
+  "nh": { names: ["New Hampshire", ", NH"], keepRaw: false },
+  "new jersey": { names: ["New Jersey", ", NJ"], keepRaw: false },
+  "nj": { names: ["New Jersey", ", NJ"], keepRaw: false },
+  "new mexico": { names: ["New Mexico", ", NM"], keepRaw: false },
+  "nm": { names: ["New Mexico", ", NM"], keepRaw: false },
+  "new york": { names: ["New York", ", NY"], keepRaw: false },
+  "ny": { names: ["New York", ", NY"], keepRaw: false },
+  "north carolina": { names: ["North Carolina", ", NC"], keepRaw: false },
+  "nc": { names: ["North Carolina", ", NC"], keepRaw: false },
+  "north dakota": { names: ["North Dakota", ", ND"], keepRaw: false },
+  "nd": { names: ["North Dakota", ", ND"], keepRaw: false },
+  "ohio": { names: ["Ohio", ", OH"], keepRaw: false },
+  "oh": { names: ["Ohio", ", OH"], keepRaw: false },
+  "oklahoma": { names: ["Oklahoma", ", OK"], keepRaw: false },
+  "ok": { names: ["Oklahoma", ", OK"], keepRaw: false },
+  "oregon": { names: ["Oregon", ", OR"], keepRaw: false },
+  "or": { names: ["Oregon", ", OR"], keepRaw: false },
+  "pennsylvania": { names: ["Pennsylvania", ", PA"], keepRaw: false },
+  "pa": { names: ["Pennsylvania", ", PA"], keepRaw: false },
+  "rhode island": { names: ["Rhode Island", ", RI"], keepRaw: false },
+  "ri": { names: ["Rhode Island", ", RI"], keepRaw: false },
+  "south carolina": { names: ["South Carolina", ", SC"], keepRaw: false },
+  "sc": { names: ["South Carolina", ", SC"], keepRaw: false },
+  "south dakota": { names: ["South Dakota", ", SD"], keepRaw: false },
+  "sd": { names: ["South Dakota", ", SD"], keepRaw: false },
+  "tennessee": { names: ["Tennessee", ", TN"], keepRaw: false },
+  "tn": { names: ["Tennessee", ", TN"], keepRaw: false },
+  "texas": { names: ["Texas", ", TX"], keepRaw: false },
+  "tx": { names: ["Texas", ", TX"], keepRaw: false },
+  "utah": { names: ["Utah", ", UT"], keepRaw: false },
+  "ut": { names: ["Utah", ", UT"], keepRaw: false },
+  "vermont": { names: ["Vermont", ", VT"], keepRaw: false },
+  "vt": { names: ["Vermont", ", VT"], keepRaw: false },
+  "virginia": { names: ["Virginia", ", VA"], keepRaw: false },
+  "va": { names: ["Virginia", ", VA"], keepRaw: false },
+  "washington": { names: ["Washington", ", WA"], keepRaw: false },
+  "wa": { names: ["Washington", ", WA"], keepRaw: false },
+  "west virginia": { names: ["West Virginia", ", WV"], keepRaw: false },
+  "wv": { names: ["West Virginia", ", WV"], keepRaw: false },
+  "wisconsin": { names: ["Wisconsin", ", WI"], keepRaw: false },
+  "wi": { names: ["Wisconsin", ", WI"], keepRaw: false },
+  "wyoming": { names: ["Wyoming", ", WY"], keepRaw: false },
+  "wy": { names: ["Wyoming", ", WY"], keepRaw: false },
+  "district of columbia": { names: ["District of Columbia", ", DC"], keepRaw: false },
+  "dc": { names: ["District of Columbia", ", DC"], keepRaw: false },
+  "alberta": { names: ["Alberta", ", AB"], keepRaw: false },
+  "ab": { names: ["Alberta", ", AB"], keepRaw: false },
+  "british columbia": { names: ["British Columbia", ", BC"], keepRaw: false },
+  "bc": { names: ["British Columbia", ", BC"], keepRaw: false },
+  "manitoba": { names: ["Manitoba", ", MB"], keepRaw: false },
+  "mb": { names: ["Manitoba", ", MB"], keepRaw: false },
+  "new brunswick": { names: ["New Brunswick", ", NB"], keepRaw: false },
+  "nb": { names: ["New Brunswick", ", NB"], keepRaw: false },
+  "newfoundland and labrador": { names: ["Newfoundland and Labrador", ", NL"], keepRaw: false },
+  "nl": { names: ["Newfoundland and Labrador", ", NL"], keepRaw: false },
+  "nova scotia": { names: ["Nova Scotia", ", NS"], keepRaw: false },
+  "ns": { names: ["Nova Scotia", ", NS"], keepRaw: false },
+  "ontario": { names: ["Ontario", ", ON"], keepRaw: false },
+  "on": { names: ["Ontario", ", ON"], keepRaw: false },
+  "prince edward island": { names: ["Prince Edward Island", ", PE"], keepRaw: false },
+  "pe": { names: ["Prince Edward Island", ", PE"], keepRaw: false },
+  "quebec": { names: ["Quebec", ", QC"], keepRaw: false },
+  "qc": { names: ["Quebec", ", QC"], keepRaw: false },
+  "saskatchewan": { names: ["Saskatchewan", ", SK"], keepRaw: false },
+  "sk": { names: ["Saskatchewan", ", SK"], keepRaw: false },
+};
+
 const METRO_ALIASES: Record<string, { names: string[]; keepRaw: boolean }> = {
   nyc: { names: ["New York"], keepRaw: true },
   "new york city": { names: ["New York"], keepRaw: false },
@@ -3108,7 +3261,9 @@ function rankedLocationParam(raw: unknown): string | null {
 function locationTerms(raw: unknown): { terms: string[]; expandedFrom: string | null } {
   const clean = sanitizeTerm(String(raw ?? ""));
   if (!clean) return { terms: [], expandedFrom: null };
-  const hit = METRO_ALIASES[clean.toLowerCase()];
+  // Metro first: "NYC" and "LA" are cities, not states, and must not be
+  // shadowed by a same-spelled code.
+  const hit = METRO_ALIASES[clean.toLowerCase()] ?? STATE_ALIASES[clean.toLowerCase()];
   if (!hit) return { terms: [clean], expandedFrom: null };
   return {
     terms: hit.keepRaw ? [clean, ...hit.names] : [...hit.names],
@@ -6570,7 +6725,13 @@ async function serveList(
     // %LA% returns Plain City, Ohio.
     const locTerms = locationTerms(body.location).terms;
     if (locTerms.length === 1) q = q.ilike("location", `%${locTerms[0]}%`);
-    else if (locTerms.length > 1) q = q.or(locTerms.map((t) => `location.ilike.%${t}%`).join(","));
+    // QUOTED, because a state alias contains a comma. PostgREST separates
+    // or() branches on commas, so an unquoted `location.ilike.%, TX%` splits
+    // into two malformed branches — the filter would silently stop meaning
+    // what it says. Quoting the value is the documented escape for exactly
+    // this, and sanitizeTerm already removes the characters that could close
+    // the quote early.
+    else if (locTerms.length > 1) q = q.or(locTerms.map((t) => `location.ilike."%${t}%"`).join(","));
     // An explicit workMode WINS over the legacy `remote` boolean. These are not
     // independent predicates: remote=true is a strict SUBSET of
     // work_mode='remote' (normalize.ts:1069), so ANDing them equals the

@@ -77,7 +77,15 @@ describe("a metro alias reaches every path, not just the one nobody types into",
     // Real locations here DO contain pipes: BAYADA publishes
     // "Philadelphia | 39.95 | -75.16". Untrusted input must never reshape the
     // query, the same reason % and _ are stripped.
-    expect(FN).toMatch(/const sanitizeTerm = \(t: string\) => t\.replace\(\/\[%_\\\\\|\]\/g, ""\)/);
+    // Asserts the SET of stripped characters, not the exact literal — the
+    // class grew when state aliases forced quoting. Each one changes the
+    // SHAPE of a query rather than its content.
+    const strip = /const sanitizeTerm = \(t: string\) => t\.replace\(\/\[([^\]]+)\]\/g, ""\)/.exec(FN)?.[1] ?? "";
+    expect(strip, "sanitizeTerm character class not found").not.toBe("");
+    for (const ch of ["%", "_", "|"]) {
+      expect(strip.includes(ch), `sanitizeTerm must strip ${ch}`).toBe(true);
+    }
+    expect(strip.includes("\\\\"), "sanitizeTerm must strip the backslash").toBe(true);
   });
 
   it("joins only sanitized names, and yields null when nothing survives", () => {
