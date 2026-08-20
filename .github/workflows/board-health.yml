@@ -30,10 +30,20 @@
 #
 # Schedule note: GitHub fires scheduled workflows with best-effort timing
 # (typically +3-10 min). Fine here — this is an outage alarm, not a metric.
+#
+# EVERY 30 MINUTES, not every 10 (changed 2026-08-19). At */10 this one
+# workflow ran ~4,320 times a month and consumed the entire 2,000-minute free
+# tier on its own — the other two scheduled workflows total ~150 runs between
+# them. It was the whole reason the account ran out of Actions minutes.
+#
+# Nothing is lost by the change, and the note directly above says why: this is
+# an outage ALARM, and its own failure threshold is "no refresh slice in 6
+# hours". A cadence three times finer than the thing it watches was buying
+# precision the alarm never used. ~1,440 runs/month leaves room for CI.
 name: board-health
 on:
   schedule:
-    - cron: "*/10 * * * *"
+    - cron: "*/30 * * * *"
   workflow_dispatch: {}
 
 permissions:
