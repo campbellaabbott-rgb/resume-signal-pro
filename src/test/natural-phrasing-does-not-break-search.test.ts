@@ -1,0 +1,79 @@
+import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
+/**
+ * THE BOARD WAS AT ITS WORST WHEN SOMEONE TYPED NATURALLY.
+ *
+ * MEASURED on the live board 2026-08-20:
+ *   "electrician"              979 results, top hit a real electrician role
+ *   "electrician jobs near me"  44 results, top hit "Maintenance II-ARP"
+ *
+ * A 95% collapse and a wrong top result, from four words that say nothing
+ * about the role. Two mechanisms combine:
+ *   1. terms are ANDed, so every extra word can only shrink the set;
+ *   2. terms are matched as SUBSTRINGS, so `%me%` matches "Maintenance",
+ *      "Management", "Commercial".
+ * Filler does not merely narrow a search — it poisons it with whatever
+ * contains those letters. And "jobs near me" is how a very large share of
+ * real people phrase a job search.
+ *
+ * What this file pins is the SHAPE of the fix, because each property was a
+ * decision that could go wrong in the opposite direction.
+ */
+const FN = readFileSync(
+  resolve(__dirname, "../../supabase/functions/job-board/index.ts"),
+  "utf8",
+);
+const UI = readFileSync(resolve(__dirname, "../pages/Jobs.tsx"), "utf8");
+
+// Reconstruct the shipped list so the assertions test the real thing.
+const FILLER = (() => {
+  const block = /const QUERY_FILLER = new Set\(\[([\s\S]*?)\]\);/.exec(FN)?.[1] ?? "";
+  return new Set([...block.matchAll(/"([a-z]+)"/g)].map((m) => m[1]));
+})();
+
+describe("natural job-search phrasing survives", () => {
+  it("drops the words that cannot be part of a job title", () => {
+    expect(FILLER.size, "QUERY_FILLER not parsed").toBeGreaterThan(10);
+    for (const w of ["jobs", "job", "careers", "near", "me", "hiring", "openings", "positions"]) {
+      expect(FILLER.has(w), `"${w}" should be treated as filler`).toBe(true);
+    }
+  });
+
+  it("NEVER drops a word that appears in real job titles", () => {
+    // The mirror of the bug being fixed: dropping these would silently WIDEN
+    // a search the person meant to narrow. Every one is in live titles on
+    // this board.
+    for (const w of ["remote", "senior", "junior", "lead", "part", "time",
+                     "contract", "intern", "manager", "night", "weekend"]) {
+      expect(FILLER.has(w), `"${w}" appears in real titles and must be kept`).toBe(false);
+    }
+  });
+
+  it("falls back to the raw query when filler was all there was", () => {
+    // "jobs near me" strips to nothing. An empty term list returns the WHOLE
+    // board, which reads as the search box being broken. Running the poor
+    // query the person typed is better than silently ignoring them.
+    const fn = /function queryTerms\([\s\S]*?\n}/.exec(FN)?.[0] ?? "";
+    expect(fn, "queryTerms not found").not.toBe("");
+    expect(fn).toMatch(/if \(kept\.length === 0\) return \{ terms: all, dropped: \[\] \};/);
+  });
+
+  it("applies to BOTH term-building sites, not just one", () => {
+    // Two independent paths built terms from body.q. Fixing one and not the
+    // other would leave the ranked path and the fallback path disagreeing
+    // about what the visitor searched for.
+    expect((FN.match(/queryTerms\(body\.q\)/g) ?? []).length).toBeGreaterThanOrEqual(3);
+    expect(FN).not.toMatch(/String\(body\.q \?\? ""\)\.toLowerCase\(\)\.split\(/);
+  });
+
+  it("tells the visitor which words it ignored", () => {
+    // Silently rewriting someone's search is its own failure. The board
+    // already names filters it cannot honour; dropped words get the same
+    // treatment.
+    expect(FN).toMatch(/droppedTerms: d/);
+    expect(UI).toMatch(/droppedTerms\?: string\[\];/);
+    expect(UI).toMatch(/jobsPage\.droppedTerms/);
+  });
+});

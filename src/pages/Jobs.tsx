@@ -146,6 +146,7 @@ interface BoardResponse {
   // it as "10,000+" rather than as an exact total.
   countCapped?: boolean;
   ignoredFilters?: string[];
+  droppedTerms?: string[];
   // Server-computed "a full page came back", so pagination survives a missing total.
   hasMore?: boolean;
   // Raw rows the server consumed for this page. Once same-role-different-location
@@ -4228,6 +4229,13 @@ export default function Jobs() {
                   on screen — an active filter chip, results that ignore it, and no
                   word to the user. A filter that did nothing has to SAY so where
                   the results are, not only in the JSON. */}
+              {Array.isArray(data?.droppedTerms) && data.droppedTerms.length > 0 && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  {t("jobsPage.droppedTerms", "Searched titles for the rest — ignored {{words}}, which don't appear in job titles.", {
+                    words: data.droppedTerms.map((w) => `"${w}"`).join(", "),
+                  })}
+                </p>
+              )}
               {Array.isArray(data?.ignoredFilters) && data.ignoredFilters.length > 0 && (
                 <p className="text-xs text-warning mb-2" role="status">
                   {t("jobsPage.ignoredFilters", "We couldn't apply {{filters}} — those results are unfiltered by it. Everything else you selected did apply.", {

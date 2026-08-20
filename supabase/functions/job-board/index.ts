@@ -2994,6 +2994,60 @@ function isoDateOnly(v: unknown): string | null {
 // % _ and \ carry meaning to ILIKE.
 const sanitizeTerm = (t: string) => t.replace(/[%_\\]/g, "").trim();
 
+/**
+ * Words a person types around a job title that are not part of any job title.
+ *
+ * MEASURED 2026-08-20 on the live board:
+ *   "electrician"                979 results, top hit a real electrician role
+ *   "electrician jobs near me"    44 results, top hit "Maintenance II-ARP"
+ *
+ * A 95% collapse AND a wrong top result, from words that carry no information
+ * about the role. Two things combine to cause it. The terms are ANDed, so each
+ * extra word can only ever shrink the set — and they are matched as
+ * SUBSTRINGS, so `%me%` matches "Maintenance", "Management", "Commercial".
+ * Filler does not merely narrow the results, it actively poisons them with
+ * whatever happens to contain those letters.
+ *
+ * This is the single most common way a real person phrases a job search, so
+ * the board was at its worst exactly when someone typed naturally.
+ *
+ * WHAT IS NOT HERE, deliberately: "remote", "senior", "junior", "lead",
+ * "part", "time", "contract", "intern". Every one appears in real job titles,
+ * and dropping them would silently widen a search the person meant to narrow —
+ * the mirror of the bug being fixed. Only words that cannot be part of a title
+ * qualify.
+ *
+ * Dropped terms are REPORTED to the caller, never silently swallowed: the
+ * board tells the visitor which words it ignored, the same way it names a
+ * filter it could not honour.
+ */
+const QUERY_FILLER = new Set([
+  // the search itself
+  "job", "jobs", "career", "careers", "vacancy", "vacancies", "opening",
+  "openings", "position", "positions", "employment", "hiring", "listing",
+  "listings", "opportunity", "opportunities",
+  // proximity phrasing — the location filter is the honest home for this
+  "near", "nearby", "me", "around", "close",
+  // grammatical glue
+  "in", "at", "for", "the", "a", "an", "of", "and", "or", "to", "with", "my",
+]);
+
+/**
+ * Split a query into title terms, dropping filler.
+ *
+ * FALLS BACK TO THE ORIGINAL when filler is all there was ("jobs near me"):
+ * an empty term list would return the entire board, which reads as the search
+ * box being broken. Better to run the poor query the person typed than to
+ * silently ignore them.
+ */
+function queryTerms(raw: unknown): { terms: string[]; dropped: string[] } {
+  const all = String(raw ?? "").toLowerCase().split(/\s+/).map(sanitizeTerm).filter(Boolean);
+  const kept = all.filter((t) => !QUERY_FILLER.has(t));
+  if (kept.length === 0) return { terms: all, dropped: [] };
+  return { terms: kept, dropped: all.filter((t) => QUERY_FILLER.has(t)) };
+}
+
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   // GET sitemap route — the ONE crawler-facing surface this function serves.
@@ -6425,7 +6479,7 @@ async function serveList(
       // Cheap here: it filters rows already fetched via the effective_posted
       // index, and ~99% pass.
       .is("missing_since", null);
-    const terms = String(body.q ?? "").toLowerCase().split(/\s+/).map(sanitizeTerm).filter(Boolean).slice(0, 8);
+    const terms = queryTerms(body.q).terms.slice(0, 8);
     for (const t of terms) q = q.or(`title.ilike.%${t}%,company.ilike.%${t}%,department.ilike.%${t}%`);
     const loc = sanitizeTerm(String(body.location ?? ""));
     if (loc) q = q.ilike("location", `%${loc}%`);
@@ -6523,7 +6577,7 @@ async function serveList(
     // semantics; multi-term falls back (null) to the inline exact count, which
     // uses the identical buildQuery filter. Rare path: it is reached only when
     // the ranked search (which carries its own total) has already failed.
-    const qTerms = String(body.q ?? "").toLowerCase().split(/\s+/).map(sanitizeTerm).filter(Boolean);
+    const qTerms = queryTerms(body.q).terms;
     if (qTerms.length > 1) return null;
     try {
       const { data, error } = await client.rpc("count_jobs_capped", {
@@ -7300,6 +7354,11 @@ async function serveList(
     // jobs.length once clusters are folded, or the siblings of a collapsed
     // result reappear on the next page as if they were new.
     nextOffset: offset + grouped.rawConsumed,
+    // Words removed from the search because they cannot be part of a job
+    // title ("jobs", "near", "me"). Reported rather than silently swallowed —
+    // the board says what it ignored, the same way it names a filter it could
+    // not honour. Absent when nothing was dropped.
+    ...(() => { const d = queryTerms(body.q).dropped; return d.length ? { droppedTerms: d } : {}; })(),
     // The keyset successor: (effective_posted, id) of the last RAW row this
     // page consumed — from `data`, never from grouped.jobs, because grouping
     // folds clusters and its last visible card is not the last row read.
