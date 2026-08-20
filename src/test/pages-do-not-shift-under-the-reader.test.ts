@@ -43,7 +43,12 @@ describe("board pages are anchored to rows, not row counts", () => {
   it("emits the successor from the RAW stream, never from the grouped cards", () => {
     const emit = FN.slice(FN.indexOf("nextCursor: (() => {"), FN.indexOf("})(),", FN.indexOf("nextCursor: (() => {")));
     expect(emit, "nextCursor emission not found").not.toBe("");
-    expect(emit).toMatch(/\(data \?\? \[\]\)\[Math\.max\(0, grouped\.rawConsumed - 1\)\]/);
+    // rawSequence, not `data`: after a clustering top-up the consumed rows
+    // span TWO fetches, and reading the cursor off the first alone would send
+    // page 2 back over rows page 1 already served. Still the raw stream —
+    // more of it than before.
+    expect(emit).toMatch(/rawSequence\[Math\.max\(0, grouped\.rawConsumed - 1\)\]/);
+    expect(emit).not.toMatch(/grouped\.jobs\[/);
     // Paths that still page by offset must say so with null, not a wrong cursor.
     expect(emit).toMatch(/if \(twoSubset \|\| sortSalary\) return null;/);
   });

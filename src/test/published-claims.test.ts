@@ -1579,7 +1579,11 @@ describe("the same-employer interleave cannot lose a posting", () => {
   });
 
   it("runs AFTER the page is cut", () => {
-    const cut = fn.indexOf("const grouped = groupSimilar");
+    // Matches `const` OR `let` — the declaration keyword is not the property
+    // being protected. It became `let` when the clustering top-up shipped, and
+    // an indexOf on the literal returned -1, so this guard silently stopped
+    // asserting the ordering it exists for.
+    const cut = fn.search(/\b(const|let) grouped = groupSimilar/);
     const mix = fn.indexOf("grouped.jobs = interleaveByCompany(grouped.jobs)");
     expect(cut).toBeGreaterThan(-1);
     expect(mix).toBeGreaterThan(cut);

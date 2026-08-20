@@ -3032,6 +3032,65 @@ const QUERY_FILLER = new Set([
   "in", "at", "for", "the", "a", "an", "of", "and", "or", "to", "with", "my",
 ]);
 
+
+/**
+ * Metro shorthand, and why a plain substring search cannot serve it.
+ *
+ * MEASURED on the live board 2026-08-20, typing what people actually type:
+ *   "NYC"     356 hits — misses all 10,000 "New York" postings
+ *   "SF"    1,427 hits — top result "Innisfil, Ontario"  (Inni-SF-il)
+ *   "LA"   10,000 hits — top result "Plain City, Ohio"   (P-LA-in)
+ *   "Philly"   13 hits — top result "Philly - Ontario, CA"
+ *
+ * Two different failures wearing one coat. The long forms are simply missing:
+ * nothing connects "NYC" to "New York". The short forms are worse than
+ * missing — a two-letter substring matches inside ordinary words, so "LA"
+ * returns ten thousand rows of Ohio. Same root cause as the query-filler bug:
+ * ILIKE %x% has no idea what a word is.
+ *
+ * So each alias declares whether its RAW form is safe to keep searching:
+ *   keepRaw true  — the token is distinctive ("NYC", "Philly" appear in real
+ *                   location strings and match little else), so search BOTH
+ *                   and the visitor gets the union.
+ *   keepRaw false — the token is two or three letters that occur inside
+ *                   common words ("LA", "SF"), so searching it at all is
+ *                   noise. The canonical name REPLACES it.
+ *
+ * Encoded per-alias rather than by a length rule, because the property is
+ * about the specific letters, not their count: "DC" is two letters and is
+ * perfectly safe, since it is how the location is actually written.
+ */
+const METRO_ALIASES: Record<string, { names: string[]; keepRaw: boolean }> = {
+  nyc: { names: ["New York"], keepRaw: true },
+  "new york city": { names: ["New York"], keepRaw: false },
+  sf: { names: ["San Francisco"], keepRaw: false },
+  "bay area": { names: ["San Francisco", "Oakland", "San Jose"], keepRaw: false },
+  la: { names: ["Los Angeles"], keepRaw: false },
+  philly: { names: ["Philadelphia"], keepRaw: false },
+  atl: { names: ["Atlanta"], keepRaw: false },
+  dfw: { names: ["Dallas", "Fort Worth"], keepRaw: false },
+  nola: { names: ["New Orleans"], keepRaw: false },
+  "the city": { names: ["New York"], keepRaw: false },
+};
+
+/**
+ * Expand a typed location into the strings actually worth searching.
+ *
+ * Returns the alias that fired so the board can SAY it expanded the search —
+ * a visitor who typed "SF" and sees San Francisco results deserves to know
+ * why, and a visitor who meant something else needs to see that we guessed.
+ */
+function locationTerms(raw: unknown): { terms: string[]; expandedFrom: string | null } {
+  const clean = sanitizeTerm(String(raw ?? ""));
+  if (!clean) return { terms: [], expandedFrom: null };
+  const hit = METRO_ALIASES[clean.toLowerCase()];
+  if (!hit) return { terms: [clean], expandedFrom: null };
+  return {
+    terms: hit.keepRaw ? [clean, ...hit.names] : [...hit.names],
+    expandedFrom: clean,
+  };
+}
+
 /**
  * Split a query into title terms, dropping filler.
  *
@@ -6481,8 +6540,12 @@ async function serveList(
       .is("missing_since", null);
     const terms = queryTerms(body.q).terms.slice(0, 8);
     for (const t of terms) q = q.or(`title.ilike.%${t}%,company.ilike.%${t}%,department.ilike.%${t}%`);
-    const loc = sanitizeTerm(String(body.location ?? ""));
-    if (loc) q = q.ilike("location", `%${loc}%`);
+    // Metro shorthand expands to the names that actually appear in the data,
+    // and a noisy two-letter form is REPLACED rather than ORed in — searching
+    // %LA% returns Plain City, Ohio.
+    const locTerms = locationTerms(body.location).terms;
+    if (locTerms.length === 1) q = q.ilike("location", `%${locTerms[0]}%`);
+    else if (locTerms.length > 1) q = q.or(locTerms.map((t) => `location.ilike.%${t}%`).join(","));
     // An explicit workMode WINS over the legacy `remote` boolean. These are not
     // independent predicates: remote=true is a strict SUBSET of
     // work_mode='remote' (normalize.ts:1069), so ANDing them equals the
@@ -7305,9 +7368,66 @@ async function serveList(
         .sort((a, b) => (b.count ?? 0) - (a.count ?? 0))
     : [];
   const mappedRows = (data ?? []).map(rowToJob) as Array<Record<string, unknown>>;
-  const grouped = groupSimilar
+  // The raw, in-order rows the collapse walked. After a top-up this spans BOTH
+  // fetches, and it is what nextOffset and nextCursor must be derived from —
+  // reading them off the first fetch alone would send the next page back over
+  // rows this one already served.
+  let rawSequence = mappedRows;
+  let grouped = groupSimilar
     ? collapseClusters(mappedRows, limit)
     : { jobs: mappedRows.slice(0, limit), rawConsumed: Math.min(mappedRows.length, limit) };
+
+  // ONE TOP-UP WHEN CLUSTERING ATE THE WHOLE BUFFER.
+  //
+  // MEASURED 2026-08-20, and the signature is exact — nextOffset === fetchLimit
+  // on every case, meaning all 180 raw rows were consumed and still did not
+  // yield a full page:
+  //     "retail sales"       39 cards under a total of 3,437
+  //     "customer service"   42 cards under a total of 9,846
+  //     "physical therapist" 55 cards under a total of 2,675
+  // A visitor sees a third of a page under a headline promising thousands, and
+  // the page simply looks broken. The 3x over-fetch is a guess about how much
+  // clustering will fold, and on searches where one employer posts the same
+  // title in dozens of towns the guess is wrong.
+  //
+  // Bounded to a SINGLE extra round trip, deliberately. Looping until the page
+  // fills would turn a heavy search into an unbounded fan of queries — the
+  // exact shape that took the board down two days ago. One top-up converts the
+  // common case (a third of a page) into a full or nearly-full one; the rare
+  // residue is honest and cheap.
+  //
+  // Only on the plain date-sorted path: the ranked, two-subset and salary paths
+  // have their own offset arithmetic, and a top-up that ignored it would move
+  // rows across a page boundary the cursor does not know about.
+  if (
+    groupSimilar && !twoSubset && !sortSalary && !countOnly &&
+    grouped.jobs.length < limit &&
+    mappedRows.length >= fetchLimit          // the buffer was exhausted, not just short
+  ) {
+    const lastRaw = mappedRows[mappedRows.length - 1] as { effective_posted?: string; id?: string };
+    if (lastRaw?.effective_posted && lastRaw?.id) {
+      try {
+        // Keyset-anchored, exactly like page 2: start strictly after the last
+        // raw row this page read, so the top-up cannot repeat or skip.
+        const topUp = await ordered(
+          buildQuery("effective_posted", false).or(
+            `effective_posted.lt."${lastRaw.effective_posted}",and(effective_posted.eq."${lastRaw.effective_posted}",id.gt."${lastRaw.id}")`,
+          ),
+          "effective_posted",
+          "salary_rank_usd",
+        ).limit(fetchLimit);
+        const extra = (topUp.data ?? []).map(rowToJob) as Array<Record<string, unknown>>;
+        if (extra.length) {
+          rawSequence = [...mappedRows, ...extra];
+          const merged = collapseClusters(rawSequence, limit);
+          // rawConsumed must stay in the ORIGINAL row space for nextOffset to
+          // mean anything, so it is capped at what the first fetch held plus
+          // however far into the top-up the collapse actually reached.
+          grouped = merged;
+        }
+      } catch { /* the page we already have is still correct — serve it */ }
+    }
+  }
   // Interleave the RETURNED page only, never the pre-slice buffer.
   //
   // The first version of this ran before the cut, which read as the careful
@@ -7359,13 +7479,20 @@ async function serveList(
     // the board says what it ignored, the same way it names a filter it could
     // not honour. Absent when nothing was dropped.
     ...(() => { const d = queryTerms(body.q).dropped; return d.length ? { droppedTerms: d } : {}; })(),
+    // Said out loud, because we guessed on the visitor's behalf: someone who
+    // typed "SF" and gets San Francisco results should know why, and someone
+    // who meant something else needs to see that we substituted.
+    ...(() => {
+      const l = locationTerms(body.location);
+      return l.expandedFrom ? { locationExpandedFrom: l.expandedFrom, locationSearched: l.terms } : {};
+    })(),
     // The keyset successor: (effective_posted, id) of the last RAW row this
     // page consumed — from `data`, never from grouped.jobs, because grouping
     // folds clusters and its last visible card is not the last row read.
     // Null on the paths that still page by offset.
     nextCursor: (() => {
       if (twoSubset || sortSalary) return null;
-      const r = (data ?? [])[Math.max(0, grouped.rawConsumed - 1)] as
+      const r = rawSequence[Math.max(0, grouped.rawConsumed - 1)] as
         { effective_posted?: string; id?: string } | undefined;
       return r?.effective_posted && r?.id ? { ep: r.effective_posted, id: r.id } : null;
     })(),
