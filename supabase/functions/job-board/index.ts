@@ -5719,6 +5719,41 @@ Deno.serve(async (req) => {
       return json({ ok: true, known: !!row });
     }
 
+    if (action === "click") {
+      // THE OTHER HALF OF THE LOOP. A search event says what was shown; this
+      // says what was chosen. Neither is worth much alone — zero-result rate
+      // without click-through tells you people got results, not that the
+      // results were right.
+      //
+      // Deliberately permissive about what it accepts. A click that arrives
+      // without a searchId (browse, a restored tab, a client that lost the id)
+      // is still recorded, because dropping those would bias every rate toward
+      // people who searched. posting_id is the only hard requirement.
+      const postingId = String(body.postingId ?? "").slice(0, 200);
+      if (!postingId) return json({ ok: false, reason: "postingId required" }, 400);
+      const rawSid = String(body.searchId ?? "");
+      // Validated, not trusted: a malformed uuid would make the INSERT fail as
+      // a whole and lose the click entirely. Anything that is not a uuid is
+      // stored as null, which still counts the click.
+      const sid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rawSid) ? rawSid : null;
+      const posN = Number(body.position);
+      waitUntil(Promise.resolve(
+        client.from("job_board_search_clicks").insert({
+          search_id: sid,
+          posting_id: postingId,
+          q: String(body.q ?? "").slice(0, 200),
+          position: Number.isFinite(posN) && posN > 0 ? Math.min(Math.trunc(posN), 100000) : null,
+          kind: body.kind === "apply" ? "apply" : "open",
+        }).then(({ error }) => {
+          if (error) console.warn("[JOB-BOARD] click insert failed:", error.message);
+        }),
+      ));
+      // Answers immediately. The caller is a beacon fired as someone navigates
+      // away to an employer's site; making it wait on a write would cost the
+      // click it is trying to record.
+      return json({ ok: true });
+    }
+
     if (action === "verify") {
       // Live-now liveness for a batch of posting ids (verify-on-apply,
       // surfaced-match re-check). Confirms against the vendor, prunes ids
@@ -6714,6 +6749,55 @@ async function serveList(
   //     filtered one. Verified live before this change; see filters.ts.
   // A fourth site could not be kept in sync by discipline, so there is one.
   const { applied, ignored: ignoredFilters } = normalizeFilters(body, JOB_SOURCES.length);
+
+  // SEARCH TELEMETRY. One id per list response, echoed back by the client on a
+  // click, which is the only thing that makes position-aware relevance
+  // measurable at all. Without it a click can say "someone clicked something"
+  // and nothing more.
+  const searchId = crypto.randomUUID();
+  /**
+   * Records this response. FIRE AND FORGET, BUT NOT SILENT.
+   *
+   * Behind waitUntil so a visitor never waits on telemetry and never loses
+   * results to it. The failure is logged rather than swallowed: this repo's
+   * most repeated defect is a telemetry table that records nothing while every
+   * dashboard reads healthy — the checkout funnel captured NOTHING for weeks
+   * because bad-visitorId 400s were caught and dropped on the floor.
+   *
+   * `total` is passed through as null when the board does not know. Coercing
+   * unknown to 0 would silently inflate the zero-result rate, which is the one
+   * number this table exists to produce.
+   */
+  const logSearch = (
+    route: "recency" | "ranked" | "fuzzy" | "semantic",
+    results: number,
+    total: number | null,
+    rescued: "fuzzy" | "semantic" | null = null,
+  ) => {
+    waitUntil(Promise.resolve(
+      client.from("job_board_search_events").insert({
+        search_id: searchId,
+        q: String(body.q ?? "").slice(0, 200),
+        location: sanitizeTerm(String(body.location ?? "")).slice(0, 120),
+        filters: {
+          category: applied.category ?? undefined,
+          experience: applied.experience.join(",") || undefined,
+          remote: body.remote === true || undefined,
+          workMode: applied.workMode ?? undefined,
+          country: applied.country ?? undefined,
+          salaryFloor: applied.salaryFloor ?? undefined,
+          sendableOnly: applied.sendableOnly || undefined,
+        },
+        route,
+        rescued,
+        results,
+        total,
+        offset_n: offset,
+      }).then(({ error }) => {
+        if (error) console.warn("[JOB-BOARD] search-event insert failed:", error.message);
+      }),
+    ));
+  };
   // ONE honesty block, attached to EVERY exit from the list action.
   //
   // It used to live only at the recency path's return, so the three earlier
@@ -7300,8 +7384,10 @@ async function serveList(
               // matching openings" with no total rather than inventing one.
               const fzTotal = Number((fuzzy[0] as { total_rows?: number }).total_rows);
               const fzKnown = Number.isFinite(fzTotal) && fzTotal > 0 && fzTotal < limit;
+              logSearch("fuzzy", fuzzyGrouped.jobs.length, fzKnown ? fzTotal : null, "fuzzy");
               return json({
                 jobs: preferMatchedLocation(await attachRecheckedAt(client, fuzzyGrouped.jobs), locationTerms(body.location).terms),
+                searchId,
                 ...searchDisclosures(body, applied),
                 ...honesty(fuzzyGrouped.jobs),
                 // This page is a RESCUE, not page 1 of a result set. It omitted
@@ -7375,8 +7461,10 @@ async function serveList(
                     ? collapseClusters(semRows, limit)
                     : { jobs: semRows.slice(0, limit), rawConsumed: Math.min(semRows.length, limit) };
                   logMiss("semantic");
+                  logSearch("semantic", semGrouped.jobs.length, semGrouped.jobs.length, "semantic");
                   return json({
                     jobs: preferMatchedLocation(await attachRecheckedAt(client, semGrouped.jobs), locationTerms(body.location).terms),
+                    searchId,
                     ...searchDisclosures(body, applied),
                     ...honesty(semGrouped.jobs),
                     total: semGrouped.jobs.length,
@@ -7577,12 +7665,14 @@ async function serveList(
         // `total` sees a number the same response has just declared unknown.
         // Verified live on .10 — rows=60 alongside total=18. Null it.
         const augmented = fuzzyExtraOut !== null;
+        logSearch("ranked", rankedGrouped.jobs.length, augmented ? null : total);
         return json({
           // attachRecheckedAt was MISSING here: the per-posting "re-checked N
           // minutes ago" receipt reached people who browsed and not people who
           // searched — the fourth thing today to be wired into the recency
           // path and skipped on the ranked one.
           jobs: preferMatchedLocation(await attachRecheckedAt(client, rankedGrouped.jobs), locationTerms(body.location).terms),
+          searchId,
           ...searchDisclosures(body, applied),
           ...honesty(rankedGrouped.jobs),
           ...(augmented ? { countUnavailable: true } : {}),
@@ -7925,8 +8015,16 @@ async function serveList(
   // should not get a 500 because a badge field regressed. The count is surfaced
   // in the response so the property is externally testable, and logged so it is
   // visible without a client.
+  // The RECENCY path, logged last and named explicitly because it is the one
+  // that has been forgotten five times in two days — filler stripping,
+  // clustering, metro aliases, attachRecheckedAt and the disclosures each
+  // shipped to one path and silently skipped the others. A telemetry table
+  // missing this path would under-count every browse and quietly bias the
+  // denominator toward searchers.
+  logSearch("recency", grouped.jobs.length, countUnavailable ? null : (wantCount ? (count ?? 0) : safeMetaTotal));
   return json({
     jobs: preferMatchedLocation(await attachRecheckedAt(client, grouped.jobs), locationTerms(body.location).terms),
+    searchId,
     ...honesty(grouped.jobs),
     // Raw rows this page swallowed. The client MUST page by this rather than by
     // jobs.length once clusters are folded, or the siblings of a collapsed

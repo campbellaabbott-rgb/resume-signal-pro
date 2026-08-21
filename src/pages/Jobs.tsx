@@ -56,6 +56,15 @@ const searchesTable = () => (supabase as unknown as { from: (t: string) => any }
 
 interface BoardJob {
   id: string;
+  // SEARCH ATTRIBUTION, stamped per row rather than read off the response.
+  // "Load more" accumulates jobs while `data` holds only the LATEST page, so a
+  // single response-level id would attribute a click on a page-one row to
+  // whatever search fetched page three. Carrying it on the row keeps a click
+  // tied to the search that actually produced it.
+  searchId?: string;
+  // 1-based ABSOLUTE rank (offset + index + 1). Position on the page would make
+  // page two's first result look like a first-place click.
+  rank?: number;
   token?: string; // company_token — used to look up the company's open-role count
   company: string;
   title: string;
@@ -137,6 +146,9 @@ const EXPERIENCE_IDS = ["entry", "mid", "senior", "expert"] as const;
 
 interface BoardResponse {
   jobs: BoardJob[];
+  // Issued by the server per list response; echoed back on click so relevance
+  // can be measured by position instead of guessed at.
+  searchId?: string;
   // null when the exact count timed out server-side (broad freshness windows on
   // the 570k table trip the statement limit). Never render a number from this
   // without a typeof check — the server sends null rather than a wrong 0.
@@ -1083,7 +1095,11 @@ export default function Jobs() {
         if (br.companies?.length) companiesCache.current = br.companies;
         else br.companies = companiesCache.current;
         servedQuery.current = { q, location };
-        br.jobs = br.jobs.map(normalizeRow);
+        br.jobs = br.jobs.map((row, i) => ({
+          ...normalizeRow(row),
+          searchId: br.searchId,
+          rank: offset + i + 1,
+        }));
         setData(br);
         setJobs((prev) => (offset === 0 ? br.jobs : [...prev, ...br.jobs]));
       } catch (e) {
@@ -1370,6 +1386,13 @@ export default function Jobs() {
     const seq = ++detailSeq.current;
     userClosed.current = false; // an explicit open clears the "don't re-open" flag
     setDetailJob(job);
+    // OPENS ARE LOGGED ONLY WHEN DELIBERATE. openDetail fires once per keystroke
+    // while arrowing down the list, and again when a deep link restores a
+    // posting on load — logging those raw would bury the real signal and inflate
+    // click-through with rows nobody chose. The urlMode already separates them:
+    // arrow navigation passes "replace", deep-link restore passes "none", and
+    // every genuine click takes the "push" default.
+    if (urlMode === "push") trackClick(job, "open");
     setDetailDesc(null);
     setDetailLoading(true);
     setDetailFailed(false);
@@ -1843,7 +1866,37 @@ export default function Jobs() {
     const visitorId = getVisitorId();
     postTrackEvent({ testName: "job_board", variant, eventType: "view", visitorId, metadata });
   };
+  /**
+   * The click half of the relevance loop.
+   *
+   * Separate from trackApply on purpose. trackApply writes into the generic A/B
+   * events table as {testName:"job_board", variant:"apply_click"} with company
+   * and title — no query, no position, no search id — so it can say a click
+   * happened but never which search earned it, which is the only thing that
+   * makes relevance measurable. It also rides the analytics path that recorded
+   * NOTHING for weeks when bad visitorId 400s were swallowed.
+   *
+   * Fire-and-forget by design: this runs as the visitor navigates to an
+   * employer's site, so it must never block or throw into that path. The
+   * failure is logged rather than silently dropped.
+   */
+  const trackClick = (job: BoardJob, kind: "open" | "apply") => {
+    void supabase.functions
+      .invoke("job-board", {
+        body: {
+          action: "click",
+          postingId: job.id,
+          searchId: job.searchId,
+          position: job.rank,
+          q: servedQuery.current?.q ?? "",
+          kind,
+        },
+      })
+      .catch((e) => console.warn("[Jobs] click beacon failed:", e));
+  };
+
   const trackApply = (job: BoardJob) => {
+    trackClick(job, "apply");
     const visitorId = getVisitorId();
     postTrackEvent({
       testName: "job_board",
