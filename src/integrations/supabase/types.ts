@@ -1665,6 +1665,78 @@ export type Database = {
         }
         Relationships: []
       }
+      job_board_search_clicks: {
+        Row: {
+          at: string
+          id: number
+          kind: string
+          position: number | null
+          posting_id: string
+          q: string
+          search_id: string | null
+        }
+        Insert: {
+          at?: string
+          id?: never
+          kind?: string
+          position?: number | null
+          posting_id: string
+          q?: string
+          search_id?: string | null
+        }
+        Update: {
+          at?: string
+          id?: never
+          kind?: string
+          position?: number | null
+          posting_id?: string
+          q?: string
+          search_id?: string | null
+        }
+        Relationships: []
+      }
+      job_board_search_events: {
+        Row: {
+          at: string
+          filters: Json
+          id: number
+          location: string
+          offset_n: number
+          q: string
+          rescued: string | null
+          results: number
+          route: string
+          search_id: string
+          total: number | null
+        }
+        Insert: {
+          at?: string
+          filters?: Json
+          id?: never
+          location?: string
+          offset_n?: number
+          q?: string
+          rescued?: string | null
+          results?: number
+          route?: string
+          search_id: string
+          total?: number | null
+        }
+        Update: {
+          at?: string
+          filters?: Json
+          id?: never
+          location?: string
+          offset_n?: number
+          q?: string
+          rescued?: string | null
+          results?: number
+          route?: string
+          search_id?: string
+          total?: number | null
+        }
+        Relationships: []
+      }
       job_board_search_misses: {
         Row: {
           at: string
@@ -3656,6 +3728,19 @@ export type Database = {
         }[]
       }
       get_scan_totals: { Args: never; Returns: Json }
+      get_search_quality: {
+        Args: { p_days?: number }
+        Returns: {
+          clicks: number
+          ctr: number
+          ctr_at_5: number
+          day: string
+          rescued: number
+          searches: number
+          zero_rate: number
+          zero_result: number
+        }[]
+      }
       get_similar_companies: {
         Args: { p_limit?: number; p_token: string }
         Returns: Json
@@ -3685,6 +3770,15 @@ export type Database = {
         }[]
       }
       get_today_scan_count: { Args: never; Returns: number }
+      get_top_search_misses: {
+        Args: { p_days?: number; p_limit?: number }
+        Returns: {
+          clicks: number
+          q: string
+          searches: number
+          zero_results: number
+        }[]
+      }
       get_transparency_cache: { Args: never; Returns: Json }
       get_transparency_coverage: { Args: never; Returns: Json }
       get_transparent_employers: { Args: { p_limit?: number }; Returns: Json }
