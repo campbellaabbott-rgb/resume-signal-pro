@@ -31,7 +31,15 @@ describe("the unfiltered board view never runs an exact count", () => {
   });
 
   it("degrades a missing cached total to null, never NaN and never a count", () => {
-    expect(FN).toMatch(/const safeMetaTotal = Number\.isFinite\(metaTotal\) && metaTotal > 0 \? metaTotal : null;/);
+    // The PROPERTY, not one spelling of it. safeMetaTotal now prefers an exact
+    // servable count (openTotal) and falls back to the cached catalog figure —
+    // the headline used to publish 614,231 against 600,072 rows a visitor could
+    // actually page to. What must not change is the degradation: a missing or
+    // NaN total becomes null, never a zero and never a live count.
+    expect(FN).toMatch(/const safeMetaTotal = openTotal \?\?/);
+    expect(FN).toMatch(/Number\.isFinite\(metaTotal\) && metaTotal > 0 \? metaTotal : null/);
+    // openTotal itself must degrade the same way rather than admitting a NaN.
+    expect(FN).toMatch(/return Number\.isFinite\(n\) && n > 0 \? n : null;/);
     // Both return sites serve the safe value; the raw NaN-able metaTotal must
     // not reach a response. (NaN JSON-serialises to null by accident — this
     // makes it deliberate and greppable.)

@@ -2096,12 +2096,50 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
       );
     }
 
+    // WHAT EACH FILTER WOULD COST THE SEARCHER, computed once per pass.
+    //
+    // A filter here is honest — it excludes rows whose value we genuinely do
+    // not know — but it is silent, and the silence is the problem. MEASURED
+    // against 599,316 open postings: salary is stated on 12.9%, so setting a
+    // salary floor discards 87% of the board; work mode on 29.9%; experience on
+    // 40.4%. Someone who sets a floor believes they are looking at the market
+    // and is looking at an eighth of it, with nothing on screen to say so.
+    //
+    // Counted HERE rather than per request: four exact counts on a 600k table
+    // is nothing once an ingest pass, and unaffordable on every search. head:true
+    // sends no rows. A failure leaves coverage absent, and the UI shows nothing
+    // rather than a wrong fraction — an invented coverage number would be worse
+    // than none, since it would be believed.
+    const coverage = await (async () => {
+      const one = async (col: string, op: "not.is.null" | "neq.unspecified") => {
+        const q = client.from("job_board_postings").select("id", { count: "exact", head: true }).is("missing_since", null);
+        const { count } = op === "not.is.null" ? await q.not(col, "is", null) : await q.neq(col, "unspecified");
+        return count ?? null;
+      };
+      try {
+        const { count: open } = await client.from("job_board_postings")
+          .select("id", { count: "exact", head: true }).is("missing_since", null);
+        if (!open) return undefined;
+        const [sal, wm, exp] = await Promise.all([
+          one("salary_rank_usd", "not.is.null"),
+          one("work_mode", "not.is.null"),
+          one("experience_band", "neq.unspecified"),
+        ]);
+        const frac = (n: number | null) => (n === null ? null : Math.round((n / open) * 1000) / 1000);
+        return { open, salaryFloor: frac(sal), workMode: frac(wm), experience: frac(exp) };
+        // `open` doubles as the honest board total — see the headline note in
+        // serveList. It is an EXACT count of exactly the rows a visitor can
+        // page to, taken in the same pass, so it costs nothing extra.
+      } catch { return undefined; }
+    })();
+
     const v = {
       total: f.total, // includes just-pruned orphans until the next pass recomputes — harmless
       boards: companies.length,
       failedSources: failedAcc,
       companiesFacet: companies,
       categoriesFacet: f.categoriesFacet ?? {},
+      ...(coverage ? { coverage } : {}),
       refreshedAt: startIso,
     };
     await client.from("job_board_meta").upsert({ k: "refresh", v, updated_at: new Date().toISOString() }, { onConflict: "k" });
@@ -3447,6 +3485,76 @@ const AMBIGUOUS_COMPANY_WORDS = new Set([
   "cardinal", "crown", "pioneer", "frontier", "horizon", "unity", "spark",
 ]);
 
+/**
+ * INTENT PHRASES THAT ARE FILTERS, NOT SEARCH TEXT.
+ *
+ * "work from home" is the most common consumer phrasing for remote work, and it
+ * MEASURED at 287 results against 43,929 postings flagged remote — 0.7% of the
+ * inventory — because it was matched as literal title text. The remote filter
+ * already exists, is already indexed, and is already bound by every path. The
+ * phrase simply never reached it.
+ *
+ * Each entry rewrites a phrase into a predicate the board ALREADY SERVES. This
+ * adds no scan, no column and no index: it routes an intent to a filter that
+ * was there the whole time. That is also the limit of the idea — nothing is
+ * added here that cannot be expressed with an existing filter.
+ *
+ * PHRASES, NOT WORDS, and that is deliberate. "remote" alone stays a text
+ * search, because a searcher typing it may well mean a job title ("Remote
+ * Support Technician") and the filter would silently discard the 70% of the
+ * board with no work_mode recorded. A multi-word phrase like "work from home"
+ * carries no such ambiguity.
+ */
+const INTENT_FILTERS: Array<{ re: RegExp; label: string; patch: Record<string, unknown> }> = [
+  { re: /\bwork(?:ing)? from home\b/i, label: "work from home", patch: { remote: true } },
+  { re: /\bwfh\b/i, label: "wfh", patch: { remote: true } },
+  { re: /\btele(?:commut|work)\w*\b/i, label: "telecommute", patch: { remote: true } },
+  { re: /\bhome[- ]based\b/i, label: "home based", patch: { remote: true } },
+  { re: /\bremote(?:ly)? only\b/i, label: "remote only", patch: { remote: true } },
+  // Seniority phrases map onto the experience band the board already stores.
+  { re: /\bno experience(?: (?:required|needed|necessary))?\b/i, label: "no experience", patch: { experience: ["entry"] } },
+  { re: /\bentry[- ]level\b/i, label: "entry level", patch: { experience: ["entry"] } },
+  { re: /\bgraduate scheme\b/i, label: "graduate scheme", patch: { experience: ["entry"] } },
+  // Freshness phrasing — maxAgeDays is an existing, indexed predicate.
+  { re: /\bhiring (?:now|immediately)\b/i, label: "hiring now", patch: { maxAgeDays: 7 } },
+  { re: /\bimmediate start\b/i, label: "immediate start", patch: { maxAgeDays: 7 } },
+  { re: /\bposted today\b/i, label: "posted today", patch: { maxAgeDays: 1 } },
+];
+
+/**
+ * Lift any intent phrases out of the query and into filters.
+ *
+ * Returns the patch to apply, the phrases recognised (for disclosure), and the
+ * query with those phrases REMOVED — leaving them in would re-impose the
+ * literal-text match the rewrite exists to escape, so "work from home nurse"
+ * searches for "nurse" among remote roles rather than for the whole string.
+ *
+ * A CALLER'S OWN FILTER ALWAYS WINS. Someone who set remote=false and typed
+ * "work from home" has contradicted themselves, and the explicit control is the
+ * one they can see and change.
+ */
+function liftIntentFilters(
+  rawQ: unknown,
+  body: Record<string, unknown>,
+): { patch: Record<string, unknown>; labels: string[]; residualQ: string } | null {
+  const q = String(rawQ ?? "");
+  if (!q.trim()) return null;
+  let residual = q;
+  const patch: Record<string, unknown> = {};
+  const labels: string[] = [];
+  for (const { re, label, patch: p } of INTENT_FILTERS) {
+    if (!re.test(residual)) continue;
+    // Skip when the caller already spoke for this field.
+    if (Object.keys(p).some((k) => body[k] !== undefined && body[k] !== null)) continue;
+    residual = residual.replace(re, " ");
+    Object.assign(patch, p);
+    labels.push(label);
+  }
+  if (labels.length === 0) return null;
+  residual = residual.replace(/\s+/g, " ").trim();
+  return { patch, labels, residualQ: residual };
+}
+
 function queryTerms(raw: unknown): { terms: string[]; dropped: string[]; liftedSalary: boolean } {
   const all = String(raw ?? "").toLowerCase().split(/\s+/).map(sanitizeTerm).filter(Boolean);
   // The money token is lifted into the salary filter by normalizeFilters, so
@@ -3519,6 +3627,43 @@ function searchDisclosures(
  */
 function employerDisclosure(r: { matchedName: string; residualQ: string } | null): Record<string, unknown> {
   return r ? { companyMatched: r.matchedName, ...(r.residualQ ? { companySearchedWithin: r.residualQ } : {}) } : {};
+}
+
+/**
+ * The board turned words the visitor typed into filters. It has to say so, for
+ * the same reason it names a dropped word or an expanded location: someone who
+ * meant "work from home" as a job title needs to see that it became a filter,
+ * and be able to take it off.
+ */
+function intentDisclosure(r: { labels: string[] } | null): Record<string, unknown> {
+  return r && r.labels.length ? { intentFilters: r.labels } : {};
+}
+
+/**
+ * How much of the board each ACTIVE filter can even see.
+ *
+ * Emitted only for filters the caller actually set — coverage for a filter
+ * nobody applied is noise. Absent when the cache has no coverage figures,
+ * because showing an invented fraction would be worse than showing none: a
+ * number on screen gets believed.
+ *
+ * MEASURED against 599,316 open postings: salary stated on 12.9%, work mode on
+ * 29.9%, experience on 40.4%. A searcher who sets a salary floor is seeing an
+ * eighth of the market and currently has no way to know it.
+ */
+function coverageDisclosure(
+  applied: { salaryFloor?: number | null; workMode?: string | null; experience?: string[] },
+  meta?: { v: Record<string, unknown> } | null,
+): Record<string, unknown> {
+  const cov = (meta?.v as Record<string, unknown> | undefined)?.coverage as
+    | { salaryFloor?: number | null; workMode?: number | null; experience?: number | null }
+    | undefined;
+  if (!cov) return {};
+  const out: Record<string, number> = {};
+  if (applied.salaryFloor != null && typeof cov.salaryFloor === "number") out.salaryFloor = cov.salaryFloor;
+  if (applied.workMode != null && typeof cov.workMode === "number") out.workMode = cov.workMode;
+  if (applied.experience?.length && typeof cov.experience === "number") out.experience = cov.experience;
+  return Object.keys(out).length ? { filterCoverage: out } : {};
 }
 
 
@@ -6956,10 +7101,16 @@ async function serveList(
   const employerRoute = preFilters.applied.companies.length === 0
     ? routeEmployerQuery(body.q, (meta?.v as Record<string, unknown> | undefined)?.companiesFacet)
     : null;
-  if (employerRoute) {
-    body = { ...body, companies: employerRoute.tokens, q: employerRoute.residualQ };
+  // Intent phrases run AFTER employer routing, so "AT&T work from home" keeps
+  // both: the employer takes the name prefix, the phrase is lifted from what
+  // remains. Both rewrites happen HERE and nowhere else, ahead of the single
+  // filter derivation, so the count probe, the facet query and the list all see
+  // the same normalised request.
+  const intentLift = liftIntentFilters(body.q, body);
+  if (intentLift) {
+    body = { ...body, ...intentLift.patch, q: intentLift.residualQ };
   }
-  const { applied, ignored: ignoredFilters } = employerRoute
+  const { applied, ignored: ignoredFilters } = (employerRoute || intentLift)
     ? normalizeFilters(body, JOB_SOURCES.length)
     : preFilters;
 
@@ -7075,7 +7226,39 @@ async function serveList(
   // response carries countUnavailable so the client renders its fallback
   // instead of a zero-state.
   const wantCount = !unfiltered;
-  const safeMetaTotal = Number.isFinite(metaTotal) && metaTotal > 0 ? metaTotal : null;
+  // THE HEADLINE COUNTED ROWS NOBODY CAN REACH.
+  //
+  // Three numbers for the same board, measured within one minute:
+  //   headline `total` (meta.total)      615,914
+  //   direct count on job_board_postings 608,453
+  //   filter-aware facet sum             603,377
+  // The headline exceeded the servable set by 12,537 (2.1%) — it carries rows
+  // stamped missing_since and rows pruned since the last pass, neither of which
+  // a visitor can page to. A total larger than the table it describes is not a
+  // rounding difference, it is a number that cannot be true.
+  //
+  // The facet sum is already computed, already cached and already correct: it
+  // is the same aggregate the category rail is drawn from, so publishing it
+  // makes the headline equal what a searcher can actually reach AND agree with
+  // the counts beside it. Falls back to meta.total when the facet is missing,
+  // because a stale headline still beats none.
+  // Published figure = the SERVABLE count, taken as an exact count of rows with
+  // no missing_since stamp during the refresh pass (it is the same count the
+  // coverage fractions are computed against, so it is free).
+  //
+  // I first reached for the cached category-facet sum, which the audit measured
+  // at 603,377 against a headline of 615,914. I could not verify what that sum
+  // currently holds — job_board_meta is not anon-readable, correctly — and the
+  // on-demand facet came back 14k BELOW the open-row count, which would have
+  // traded an overcount for an undercount. An unverifiable swap between two
+  // wrong numbers is not an improvement. The open-row count can be checked from
+  // outside against the table itself, which is why it is the one used.
+  const openTotal = (() => {
+    const cov = (meta?.v as Record<string, unknown> | undefined)?.coverage as { open?: unknown } | undefined;
+    const n = Number(cov?.open);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  })();
+  const safeMetaTotal = openTotal ?? (Number.isFinite(metaTotal) && metaTotal > 0 ? metaTotal : null);
 
   // AN OFFSET PAST THE END MUST BE AN EMPTY PAGE, NOT A TABLE SCAN.
   //
@@ -7623,6 +7806,8 @@ async function serveList(
                 searchId,
                 ...searchDisclosures(body, applied),
                 ...employerDisclosure(employerRoute),
+                ...intentDisclosure(intentLift),
+                ...coverageDisclosure(applied, meta),
                 ...honesty(fuzzyGrouped.jobs),
                 // This page is a RESCUE, not page 1 of a result set. It omitted
                 // hasMore/nextOffset, so the client's "Load more" issued the
@@ -7701,6 +7886,8 @@ async function serveList(
                     searchId,
                     ...searchDisclosures(body, applied),
                     ...employerDisclosure(employerRoute),
+                    ...intentDisclosure(intentLift),
+                    ...coverageDisclosure(applied, meta),
                     ...honesty(semGrouped.jobs),
                     total: semGrouped.jobs.length,
                     hasMore: false,
@@ -7933,6 +8120,8 @@ async function serveList(
           searchId,
           ...searchDisclosures(body, applied),
           ...employerDisclosure(employerRoute),
+          ...intentDisclosure(intentLift),
+          ...coverageDisclosure(applied, meta),
           ...honesty(rankedGrouped.jobs),
           ...(augmented ? { countUnavailable: true } : {}),
           nextOffset: offset + rankedGrouped.rawConsumed,
@@ -8291,6 +8480,8 @@ async function serveList(
     nextOffset: offset + grouped.rawConsumed,
     ...searchDisclosures(body, applied),
     ...employerDisclosure(employerRoute),
+    ...intentDisclosure(intentLift),
+    ...coverageDisclosure(applied, meta),
     // The keyset successor: (effective_posted, id) of the last RAW row this
     // page consumed — from `data`, never from grouped.jobs, because grouping
     // folds clusters and its last visible card is not the last row read.

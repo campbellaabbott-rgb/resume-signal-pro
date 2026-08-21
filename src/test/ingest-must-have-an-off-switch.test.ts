@@ -78,7 +78,13 @@ describe("the ingest has an off switch that actually stops it", () => {
     // line-matching regex got this wrong in both directions: the comments in
     // this array are long prose containing commas at depth 0, which split into
     // 48 phantom entries. Counting structure requires parsing structure.
-    const m = /const \[([^\]]+)\] = await Promise\.all\(\[/.exec(FN);
+    // Anchored on the destructuring that CONTAINS ingestPaused, not on the
+    // first one in the file. The bare pattern matched whichever Promise.all
+    // appeared earliest, so an unrelated three-element array added elsewhere in
+    // the module silently became the thing under test — a guard pointed at the
+    // wrong object reports confidently about code it never read.
+    const all = [...FN.matchAll(/const \[([^\]]+)\] = await Promise\.all\(\[/g)];
+    const m = all.find((x) => x[1].includes("ingestPaused")) ?? null;
     expect(m, "status Promise.all destructuring not found").not.toBeNull();
     const names = m![1].split(",").map((n) => n.trim()).filter(Boolean);
 
