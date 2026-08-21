@@ -35,11 +35,25 @@
 -- 500s to visitors. The caller must therefore stay disabled until this is
 -- verified live.
 --
--- ONE STATEMENT, NO BEGIN/COMMIT — CREATE INDEX CONCURRENTLY raises 25001
--- inside a transaction block, and a migration is one. This is the same shape as
--- 20260817190000_the_draw_that_could_not_use_an_index.sql, which is the form
--- that worked here. If the runner wraps it anyway the migration simply fails
--- and creates nothing, which is a safe failure: verify before relying on it.
+-- THE FORM BELOW DID NOT WORK, AND THIS NOTE IS THE POINT OF KEEPING THE FILE.
+--
+-- I wrote it as one statement with no BEGIN/COMMIT, reasoning that CREATE INDEX
+-- CONCURRENTLY raises 25001 inside a transaction block and that the bare shape
+-- of 20260817190000 was therefore the form that works here. It is not: this
+-- runner wraps migrations regardless, so this statement could not apply.
+--
+-- What actually built the index was the pg_cron one-shot — schedule the CREATE
+-- INDEX CONCURRENTLY as a job, let it run once outside any transaction, then
+-- unschedule it (20260821154825, 155911, 160325). That is the same trick
+-- 20260817154614 used, and the runbook already recorded it as "a genuinely good
+-- trick" — I read the wrong precedent out of the pair and picked the one that
+-- happened to sit later in the directory.
+--
+-- The statement stays because it is IF NOT EXISTS and therefore a harmless
+-- no-op, and because a file that quietly disappears takes the lesson with it.
+-- NEXT TIME: use the cron one-shot, and remember to unschedule it — a one-shot
+-- left running every minute forever is its own documented incident
+-- (20260817230000).
 --
 -- VERIFY LIVE, DO NOT ASSUME. Lovable re-stamps migrations, so this file
 -- existing is not proof the index does. Confirm with a term that timed out
