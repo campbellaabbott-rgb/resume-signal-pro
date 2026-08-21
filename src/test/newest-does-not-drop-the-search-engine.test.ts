@@ -35,26 +35,73 @@ const SRC = readFileSync(
 
 describe("a query reaches the search engine whatever the sort", () => {
   it("does not exclude sort=newest from the ROW query", () => {
-    const guard = /const qText =[\s\S]{0,2400}?if \(qText &&([^)]*)\)/.exec(SRC)?.[1] ?? "";
-    expect(guard, "row-query guard not found").not.toBe("");
+    // Sliced from `const qText =` to the FIRST `if (qText &&` after it, rather
+    // than within a character budget. The budget version broke the moment a
+    // comment was added between the two — the same "window too small" bug this
+    // repo has hit before, and a guard that silently finds nothing reports a
+    // passing empty string instead of a failure.
+    // Located and contents kept separate, same reasoning as the count twin.
+    const from = SRC.indexOf("const qText =");
+    expect(from, "row-query guard not found — `const qText =` has moved").toBeGreaterThan(-1);
+    const m = /if \(qText &&([^)]*)\)/.exec(SRC.slice(from));
+    expect(m, "row-query guard not found — no `if (qText &&` follows it").not.toBeNull();
+    const guard = m![1];
     expect(
       guard.includes('body.sort !== "newest"'),
       'The row guard must NOT exclude sort="newest" — that routes a query to ' +
         'the substring ILIKE where "rn" matches "internship" and "registered ' +
         'nurse" is unreachable.',
     ).toBe(false);
-    // Salary sort legitimately still bypasses it: that ordering is the answer.
-    expect(guard.includes('body.sort !== "salary"')).toBe(true);
+    // REVERSED 2026-08-21, and the original reasoning is worth keeping because
+    // it was coherent: a salary sort wants a GLOBAL ordering by pay, and only
+    // the browse path can get one from the salary_rank_usd index — the ranked
+    // path can order no more than the relevance page it was handed.
+    //
+    // What that argument missed is what the substring path does to MATCHING.
+    // Measured live: q="nurse" + sort=salary put "Unqualified Nursery
+    // Practitioner" at position one, matched on "Nurser". q="swe" returned
+    // 10,000 ranked Software Engineer roles under relevance and 1,101
+    // substring artifacts under salary, led by "Roswell Full-Time General
+    // CRNA" (Ro-SWE-ll) and "SWEPCO". q="bioinformatician" counted 55 ranked
+    // against 11 from the identical body. A sort control was changing which
+    // jobs MATCH by up to 5x, which no ordering benefit can pay for.
+    //
+    // So salary now takes the same deal newest already took: the RPC picks the
+    // rows by relevance, and the page the reader is looking at is ordered by
+    // pay. "Best paid among the most relevant" — a trade this file already
+    // accepted once, for dates, three lines above.
+    expect(
+      guard.includes('body.sort !== "salary"'),
+      'The row guard must NOT exclude sort="salary" either — it routed the query ' +
+        'to the substring ILIKE, where "nurse" matched "Nursery".',
+    ).toBe(false);
   });
 
   it("does not exclude sort=newest from the COUNT query", () => {
-    const guard = /const qTextC =[\s\S]{0,900}?if \(qTextC &&([^)]*)\)/.exec(SRC)?.[1] ?? "";
-    expect(guard, "count guard not found").not.toBe("");
-    expect(
-      guard.includes('body.sort !== "newest"'),
-      "The count guard must move with the row guard, or a newest-sorted " +
-        "search reports a total computed a different way from its rows.",
-    ).toBe(false);
+// Boundary-sliced, like its row-query twin above: a character budget breaks
+    // silently the next time a comment lands between the two anchors.
+    // LOCATED and CONTENTS are separate questions. The condition is now bare
+    // `if (qTextC)`, so its captured clause list is legitimately EMPTY — and a
+    // check that treats empty as "not found" fails on the very state it is
+    // meant to approve. Locate first, then read.
+    const fromC = SRC.indexOf("const qTextC =");
+    expect(fromC, "count guard not found — `const qTextC =` has moved").toBeGreaterThan(-1);
+    const m = /if \(qTextC([^)]*)\)/.exec(SRC.slice(fromC));
+    expect(m, "count guard not found — no `if (qTextC` follows it").not.toBeNull();
+    const guard = m![1];
+    // BOTH sort values, not just newest. Mutation-testing this file found the
+    // gap: excluding only "salary" from the COUNT query passed cleanly while
+    // the row query kept the engine — the exact divergence where a page of
+    // ranked results renders under a total computed by substring matching.
+    // That is the 60-rows-under-a-total-of-36 shape, and it is the single most
+    // dangerous edit anyone can make here, so it is named explicitly.
+    for (const sortValue of ["newest", "salary"]) {
+      expect(
+        guard.includes(`body.sort !== "${sortValue}"`),
+        `The count guard must move WITH the row guard. Excluding sort="${sortValue}" here ` +
+          `alone means the total is computed a different way from the rows it is shown above.`,
+      ).toBe(false);
+    }
   });
 
   it("still orders the page by date when newest was asked for", () => {

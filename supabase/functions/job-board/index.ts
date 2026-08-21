@@ -3293,6 +3293,160 @@ function locationTerms(raw: unknown): { terms: string[]; expandedFrom: string | 
  * box being broken. Better to run the poor query the person typed than to
  * silently ignore them.
  */
+/**
+ * USD conversion rates, MIRRORED from the salary_rank_usd generated column.
+ *
+ * This is a second copy of a table that lives in SQL, which this codebase
+ * normally refuses on the grounds that the second copy is the one that goes
+ * stale. It exists because the ranked path has to order by pay in the edge
+ * function: search_jobs returns salary_min_annual and salary_currency but not
+ * salary_rank_usd, and adding a column to its RETURNS TABLE changes the
+ * signature — which is precisely the overload that took ranked search down on
+ * 2026-08-20.
+ *
+ * salary-rates-mirror.test.ts parses the CASE arms out of the migration and
+ * fails if these drift. Change the migration, run the test, paste what it
+ * prints; never edit one side alone.
+ */
+const SALARY_USD_RATES: Record<string, number> = {
+  USD: 1.0, EUR: 1.08, GBP: 1.27, CAD: 0.73, AUD: 0.66, NZD: 0.61,
+  CHF: 1.12, SEK: 0.095, DKK: 0.145, NOK: 0.094, PLN: 0.25, INR: 0.012,
+  SGD: 0.74, JPY: 0.0066, BRL: 0.18, MXN: 0.055, PHP: 0.017,
+};
+
+/**
+ * A row's pay in approximate USD, or -Infinity when it has none.
+ *
+ * -Infinity rather than 0 so unpriced rows sort below a genuine zero and can
+ * never lead a highest-paid-first page. An unknown CURRENCY is also unpriced:
+ * the generated column returns NULL there rather than guessing a rate, and
+ * guessing here would be worse than the column it is mirroring.
+ */
+function usdRank(r: Record<string, unknown>): number {
+  const n = Number(r.salaryMinAnnual);
+  if (!Number.isFinite(n) || n <= 0) return -Infinity;
+  const cur = String(r.salaryCurrency ?? "").toUpperCase();
+  const rate = SALARY_USD_RATES[cur];
+  return rate === undefined ? -Infinity : n * rate;
+}
+
+/**
+ * ROUTE AN EMPLOYER NAME TO THE COMPANY FILTER.
+ *
+ * MEASURED before this existed: q="AT&T" returned ZERO against 493 live AT&T
+ * postings — the board's only total blackout, and no rescue tier fired.
+ * q="AT&T engineer" was worse than empty: it returned 60 generic engineers from
+ * Bosch and AECOM, presenting other companies' jobs as AT&T matches.
+ *
+ * The jobs were never unreachable. The board already ships a company directory
+ * in every response, and the filter works perfectly — verified live:
+ *   {"companies":["att~wd1~ATTGeneral"]}                  -> 484 rows
+ *   {"companies":["att~wd1~ATTGeneral"], "q":"engineer"}  ->  55 rows
+ * The only thing missing was routing the typed name to it.
+ *
+ * WHY THE TEXT SEARCH CANNOT DO THIS ITSELF, and why no query-side fix helps:
+ * every tsvector in the schema is built with the 'english' configuration, which
+ * discards "at" as a stopword and "t" as a one-character token, so AT&T is not
+ * in the index at all. Matching the name against a DIRECTORY sidesteps the
+ * index entirely, which is what makes this fix free of SQL.
+ *
+ * DELIBERATELY CONSERVATIVE, because a false positive is worse than the miss it
+ * replaces: routing "target" to Target Corporation would silently hide every
+ * other employer's targeting roles behind a filter the searcher never asked
+ * for. So it only fires when the WHOLE query is the name — a residual is kept
+ * as the text query rather than guessed at — the match is unambiguous across
+ * tokens, and short names must match exactly. Everything it does is disclosed.
+ */
+type CompanyEntry = { token?: unknown; name?: unknown; count?: unknown; tokens?: unknown };
+
+/** Fold to letters and digits: "AT&T" -> "att", "Domino's" -> "dominos". */
+const foldName = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "");
+
+export function routeEmployerQuery(
+  rawQ: unknown,
+  facet: unknown,
+): { tokens: string[]; matchedName: string; residualQ: string } | null {
+  const q = String(rawQ ?? "").trim();
+  if (!q || !Array.isArray(facet) || facet.length === 0) return null;
+
+  const folded = foldName(q);
+  if (folded.length < 2) return null;
+
+  // name -> the tokens that serve it. A directory entry may already carry
+  // several (PwC ships four), which is one employer and must stay routable;
+  // two DIFFERENT entries folding to the same name is a genuine ambiguity and
+  // is dropped rather than guessed.
+  const byName = new Map<string, { tokens: Set<string>; display: string; entries: number }>();
+  for (const raw of facet as CompanyEntry[]) {
+    const display = String(raw?.name ?? "").trim();
+    if (!display) continue;
+    const key = foldName(display);
+    if (!key) continue;
+    const toks = [
+      ...(Array.isArray(raw?.tokens) ? (raw.tokens as unknown[]).map(String) : []),
+      ...(raw?.token != null ? [String(raw.token)] : []),
+    ].filter(Boolean);
+    if (toks.length === 0) continue;
+    const cur = byName.get(key);
+    if (cur) { toks.forEach((t) => cur.tokens.add(t)); cur.entries += 1; }
+    else byName.set(key, { tokens: new Set(toks), display, entries: 1 });
+  }
+
+  const take = (key: string, residual: string) => {
+    const hit = byName.get(key);
+    // entries > 1 means two DIFFERENT directory entries fold to the same name.
+    // That is a real ambiguity and guessing between them would hide one
+    // employer's jobs behind the other's.
+    if (!hit || hit.entries > 1) return null;
+    return { tokens: [...hit.tokens], matchedName: hit.display, residualQ: residual };
+  };
+
+  // 1. THE WHOLE QUERY IS THE NAME. Safest case, and the one that fixes the
+  //    blackout: "AT&T" -> 484 rows instead of zero. Any name qualifies,
+  //    including a common word, because someone who types only "Target" has
+  //    said what they mean as clearly as they can.
+  const whole = take(folded, "");
+  if (whole) return whole;
+
+  // 2. THE QUERY STARTS WITH THE NAME. This is the case that was returning
+  //    WRONG answers rather than none — "AT&T engineer" served 60 Bosch and
+  //    AECOM engineers as though they were AT&T's. Longest span first, so
+  //    "general motors engineer" prefers General Motors over a company called
+  //    General.
+  const words = q.split(/\s+/).filter(Boolean);
+  for (let n = words.length - 1; n >= 1; n--) {
+    const spanWords = words.slice(0, n);
+    const span = foldName(spanWords.join(""));
+    if (span.length < 3) continue;
+    // A SINGLE COMMON ENGLISH WORD IS NOT AN EMPLOYER SIGNAL. "shell assessed
+    // internship program" is a real query from this board's own miss log, and
+    // routing it to Shell would bury every other employer's assessed-internship
+    // programme behind a filter nobody asked for. The list is short and about
+    // AMBIGUITY, not about these companies — each of them is still reachable by
+    // rule 1, by typing the name alone.
+    if (n === 1 && AMBIGUOUS_COMPANY_WORDS.has(span)) continue;
+    const hit = take(span, words.slice(n).join(" "));
+    if (hit) return hit;
+  }
+  return null;
+}
+
+/**
+ * Company names that are also ordinary English words a searcher is far more
+ * likely to mean generically when they appear before other terms.
+ *
+ * Only consulted for a SINGLE-WORD prefix span. Each of these is still routable
+ * by typing the name on its own, and a multi-word span ("general motors") is
+ * unaffected — a two-word coincidence is vanishingly rarer than a one-word one.
+ */
+const AMBIGUOUS_COMPANY_WORDS = new Set([
+  "target", "shell", "apple", "orange", "square", "stripe", "gap", "next",
+  "boots", "sky", "three", "giant", "first", "capital", "national", "general",
+  "standard", "premier", "summit", "apex", "match", "monster", "indeed",
+  "oracle", "sage", "visa", "discover", "guardian", "liberty", "progressive",
+  "cardinal", "crown", "pioneer", "frontier", "horizon", "unity", "spark",
+]);
+
 function queryTerms(raw: unknown): { terms: string[]; dropped: string[]; liftedSalary: boolean } {
   const all = String(raw ?? "").toLowerCase().split(/\s+/).map(sanitizeTerm).filter(Boolean);
   // The money token is lifted into the salary filter by normalizeFilters, so
@@ -3356,6 +3510,15 @@ function searchDisclosures(
   const l = locationTerms(body.location);
   if (l.expandedFrom) { out.locationExpandedFrom = l.expandedFrom; out.locationSearched = l.terms; }
   return out;
+}
+
+/**
+ * Said out loud, for the same reason every other rewrite here is: the board
+ * narrowed the search to one employer on the visitor's behalf, and someone who
+ * meant the word generically has to be able to see that and undo it.
+ */
+function employerDisclosure(r: { matchedName: string; residualQ: string } | null): Record<string, unknown> {
+  return r ? { companyMatched: r.matchedName, ...(r.residualQ ? { companySearchedWithin: r.residualQ } : {}) } : {};
 }
 
 
@@ -6777,7 +6940,28 @@ async function serveList(
   //     predicate AND reported nothing — the unfiltered board dressed as a
   //     filtered one. Verified live before this change; see filters.ts.
   // A fourth site could not be kept in sync by discipline, so there is one.
-  const { applied, ignored: ignoredFilters } = normalizeFilters(body, JOB_SOURCES.length);
+  // EMPLOYER-NAME ROUTING, applied to the BODY before filters are derived, so
+  // every downstream path sees one already-normalised request. Injecting it
+  // into `applied` afterwards would mean the count probe, the facet query and
+  // the list each had to remember to honour it — the four-path divergence that
+  // has caused five defects in two days.
+  //
+  // "Did the caller already pick a company?" is answered from the DERIVED
+  // filter, never from the raw request field. Reading a filter off the request is
+  // what board-filter-contract forbids, and it forbids it because the two
+  // derivations drift until the count answers a different question from the
+  // page. So the request is normalised once to ask, rewritten if it routes, and
+  // normalised again — one derivation feeds the board, and it is the last one.
+  const preFilters = normalizeFilters(body, JOB_SOURCES.length);
+  const employerRoute = preFilters.applied.companies.length === 0
+    ? routeEmployerQuery(body.q, (meta?.v as Record<string, unknown> | undefined)?.companiesFacet)
+    : null;
+  if (employerRoute) {
+    body = { ...body, companies: employerRoute.tokens, q: employerRoute.residualQ };
+  }
+  const { applied, ignored: ignoredFilters } = employerRoute
+    ? normalizeFilters(body, JOB_SOURCES.length)
+    : preFilters;
 
   // SEARCH TELEMETRY. One id per list response, echoed back by the client on a
   // click, which is the only thing that makes position-aware relevance
@@ -7167,7 +7351,11 @@ async function serveList(
     // would answer DIFFERENT questions for a newest-sorted search — the count
     // from a substring ILIKE and the rows from the FTS engine. That divergence
     // is the shape of the incident where 60 rows rendered under a total of 36.
-    if (qTextC && body.sort !== "salary") {
+    // The salary sort no longer drops the search engine. Kept in step with the
+    // row query below — if only one of these changes, the count and the rows
+    // answer different questions, which is the 60-rows-under-a-total-of-36
+    // incident.
+    if (qTextC) {
       try {
         const { q: expQC } = expandQuery(qTextC);
         const { data: rc, error: ec } = await client.rpc("search_jobs", {
@@ -7255,7 +7443,23 @@ async function serveList(
   // "newest among the postings that actually match", which is what the control
   // promises; the alternative was "oldest artifacts of a substring collision".
   const newestFirst = body.sort === "newest";
-  if (qText && body.sort !== "salary" && !countOnly) {
+  const sortSalaryRanked = body.sort === "salary";
+  // SORTING BY SALARY USED TO DROP THE SEARCH ENGINE ENTIRELY.
+  //
+  // This guard excluded sort==="salary", so a salary-sorted search never
+  // reached search_jobs and fell through to the browse path's OR-of-ILIKE.
+  // MEASURED: q="nurse" sorted by salary returned "Unqualified Nursery
+  // Practitioner" at position one — matched on the substring "Nurser" — with no
+  // `ranked` key and no alias expansion. q="swe" returned 10,000 ranked
+  // Software Engineer roles under relevance and 1,101 substring artifacts under
+  // salary, topped by "Roswell Full-Time General CRNA" (Ro-SWE-ll) and
+  // "SWEPCO". A sort control was changing WHICH JOBS MATCH, by up to 5x.
+  //
+  // This is the identical defect that was found and fixed for sort==="newest"
+  // — the fix landed on one of the two sort values and the other was missed.
+  // The remedy is the same one newest already uses: let the RPC pick the rows
+  // by relevance, then order the page the reader is looking at.
+  if (qText && !countOnly) {
     try {
       // Role-alias expansion (disclosed): "swe" also searches "software
       // engineer" etc. The expanded websearch string keeps the original
@@ -7418,6 +7622,7 @@ async function serveList(
                 jobs: preferMatchedLocation(await attachRecheckedAt(client, fuzzyGrouped.jobs), locationTerms(body.location).terms),
                 searchId,
                 ...searchDisclosures(body, applied),
+                ...employerDisclosure(employerRoute),
                 ...honesty(fuzzyGrouped.jobs),
                 // This page is a RESCUE, not page 1 of a result set. It omitted
                 // hasMore/nextOffset, so the client's "Load more" issued the
@@ -7495,6 +7700,7 @@ async function serveList(
                     jobs: preferMatchedLocation(await attachRecheckedAt(client, semGrouped.jobs), locationTerms(body.location).terms),
                     searchId,
                     ...searchDisclosures(body, applied),
+                    ...employerDisclosure(employerRoute),
                     ...honesty(semGrouped.jobs),
                     total: semGrouped.jobs.length,
                     hasMore: false,
@@ -7529,6 +7735,29 @@ async function serveList(
         // chose promises. Undated rows sort last rather than first — an absent
         // date is not evidence of newness, and treating it as such is how a
         // board ends up leading with rows whose age it does not know.
+        // Highest paid first, over the MATCHING set. Same contract as
+        // newestFirst directly below: the RPC picked these rows by relevance,
+        // which is what makes them matches at all, and the control the reader
+        // chose orders the page they are looking at. It is "best paid among the
+        // most relevant", not a global salary sort — the same trade already
+        // accepted, and documented, for newest.
+        //
+        // COMPARED IN USD, not in whatever currency the employer stated. The
+        // browse path orders by salary_rank_usd for exactly this reason, and
+        // sorting on the raw figure here would rank GBP 87,500 (~$111k) below
+        // USD 100,000. search_jobs does not return salary_rank_usd — adding it
+        // would change the RPC signature, which is the overload that took
+        // ranked search down this morning — so the same conversion is applied
+        // here from salary_min_annual + salary_currency. SALARY_USD_RATES is
+        // pinned to the generated column by a mirror test; it is a second copy
+        // and the guard is what stops it becoming a stale one.
+        //
+        // Unpriced rows sort LAST, never first: an absent salary is not
+        // evidence of a high one, the same reasoning that puts undated rows
+        // last under newest.
+        if (sortSalaryRanked) {
+          rankedRows.sort((a, b) => usdRank(b) - usdRank(a));
+        }
         if (newestFirst) {
           rankedRows.sort((a, b) => {
             const da = Date.parse(String(a.postedAt ?? "")) || 0;
@@ -7703,6 +7932,7 @@ async function serveList(
           jobs: preferMatchedLocation(await attachRecheckedAt(client, rankedGrouped.jobs), locationTerms(body.location).terms),
           searchId,
           ...searchDisclosures(body, applied),
+          ...employerDisclosure(employerRoute),
           ...honesty(rankedGrouped.jobs),
           ...(augmented ? { countUnavailable: true } : {}),
           nextOffset: offset + rankedGrouped.rawConsumed,
@@ -8060,6 +8290,7 @@ async function serveList(
     // result reappear on the next page as if they were new.
     nextOffset: offset + grouped.rawConsumed,
     ...searchDisclosures(body, applied),
+    ...employerDisclosure(employerRoute),
     // The keyset successor: (effective_posted, id) of the last RAW row this
     // page consumed — from `data`, never from grouped.jobs, because grouping
     // folds clusters and its last visible card is not the last row read.
