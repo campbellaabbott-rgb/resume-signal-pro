@@ -7101,6 +7101,9 @@ async function serveList(
   const employerRoute = preFilters.applied.companies.length === 0
     ? routeEmployerQuery(body.q, (meta?.v as Record<string, unknown> | undefined)?.companiesFacet)
     : null;
+  if (employerRoute) {
+    body = { ...body, companies: employerRoute.tokens, q: employerRoute.residualQ };
+  }
   // Intent phrases run AFTER employer routing, so "AT&T work from home" keeps
   // both: the employer takes the name prefix, the phrase is lifted from what
   // remains. Both rewrites happen HERE and nowhere else, ahead of the single
