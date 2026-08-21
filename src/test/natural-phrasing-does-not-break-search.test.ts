@@ -3,6 +3,11 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 /**
+ * FIVE list exits since the simple-config tier landed (recency, ranked,
+ * fuzzy, semantic, exact-word). The count is asserted rather than a minimum
+ * precisely so that ADDING an exit fails here and forces the author to carry
+ * every disclosure onto it — which is what happened.
+ *
  * THE BOARD WAS AT ITS WORST WHEN SOMEONE TYPED NATURALLY.
  *
  * MEASURED on the live board 2026-08-20:
@@ -100,7 +105,7 @@ describe("natural job-search phrasing survives", () => {
     // four list returns rather than the recency one alone — searchers were
     // never told what had been dropped.
     expect(FN).toMatch(/out\.droppedTerms = dropped/);
-    expect((FN.match(/\.\.\.searchDisclosures\(body, applied\)/g) ?? []).length).toBe(4);
+    expect((FN.match(/\.\.\.searchDisclosures\(body, applied\)/g) ?? []).length).toBe(5);
     expect(UI).toMatch(/droppedTerms\?: string\[\];/);
     expect(UI).toMatch(/jobsPage\.droppedTerms/);
   });

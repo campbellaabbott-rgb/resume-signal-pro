@@ -44,11 +44,16 @@ const MIG = (() => {
 
 describe("search quality has a denominator and an outcome", () => {
   it("logs ALL FOUR query paths, not the one that happened to be edited", () => {
-    const routes = [...FN.matchAll(/logSearch\("(\w+)"/g)].map((m) => m[1]).sort();
+    // The exact-word tier logs as route "ranked" with rescued "fuzzy" — it is a
+    // rescue on the ranked path, not a fifth route, so the ROUTE set is
+    // unchanged while the call count rises. Both are asserted: the set catches
+    // a path that stopped logging, the count catches an exit that never started.
+    const routes = [...FN.matchAll(/logSearch\("(\w+)"/g)].map((m) => m[1]);
     expect(
-      routes,
+      [...new Set(routes)].sort(),
       "every list return must log. A missing path is an invisible hole in the denominator.",
     ).toEqual(["fuzzy", "ranked", "recency", "semantic"]);
+    expect(routes.length, "five list exits, five logSearch calls").toBe(5);
   });
 
   it("issues a search id and returns it on every list response", () => {
@@ -57,8 +62,9 @@ describe("search quality has a denominator and an outcome", () => {
     // from that path can never be attributed and its results are unmeasurable.
     expect(
       (FN.match(/^\s*searchId,$/gm) ?? []).length,
-      "searchId must be returned by all four list paths",
-    ).toBe(4);
+      "searchId must be returned by all FIVE list paths — a click on a page that " +
+        "carries no search id can never be attributed to the search that produced it",
+    ).toBe(5);
   });
 
   it("does not swallow a failed write", () => {

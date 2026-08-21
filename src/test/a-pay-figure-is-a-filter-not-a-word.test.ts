@@ -3,6 +3,11 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 /**
+ * FIVE list exits since the simple-config tier landed (recency, ranked,
+ * fuzzy, semantic, exact-word). The count is asserted rather than a minimum
+ * precisely so that ADDING an exit fails here and forces the author to carry
+ * every disclosure onto it — which is what happened.
+ *
  * THE PLAINEST USE OF THE FEATURE WAS THE ONE THAT DID NOT WORK.
  *
  * Reading a pay figure out of the search box shipped working for "100k
@@ -79,8 +84,8 @@ describe("a pay figure is a filter, not a word to search for", () => {
     const calls = FN.match(/\.\.\.searchDisclosures\(body, applied\)/g) ?? [];
     expect(
       calls.length,
-      `searchDisclosures must be spread at all FOUR list returns (recency, ranked, fuzzy, semantic); found ${calls.length}`,
-    ).toBe(4);
+      `searchDisclosures must be spread at all FIVE list returns (recency, ranked, fuzzy, semantic, exact-word); found ${calls.length}`,
+    ).toBe(5);
     // No inline copy may come back alongside it — a second definition is how
     // these drift apart again.
     expect(

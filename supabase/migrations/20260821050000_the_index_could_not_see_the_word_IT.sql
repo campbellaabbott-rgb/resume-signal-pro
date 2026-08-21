@@ -1,0 +1,49 @@
+-- THE SEARCH INDEX CANNOT SEE THE WORDS PEOPLE SEARCH FOR.
+--
+-- Every tsvector in this schema is built with the 'english' text-search
+-- configuration, which discards stopwords before storing anything. So the token
+-- "it" is not in the index at all, and no query-side rewrite on any of the four
+-- paths can retrieve it. That is why five separate query-side fixes this week
+-- moved nothing: they were all patching the wrong layer.
+--
+-- MEASURED THROUGH POSTGREST, against live production, before writing this:
+--   title=wfts(english).IT      -> the filter matches NOTHING
+--   title=wfts(simple).IT       -> 4,072 rows
+-- The board currently serves about 18 results for q="IT" against 4,145 postings
+-- carrying it as a title word. Same story for stemming collisions: "intern"
+-- matches 7,280 under english (it conflates Internal and International) and
+-- 4,907 under simple, which is the precise set.
+--
+-- WHAT THIS MIGRATION IS, AND IS DELIBERATELY NOT. It adds ONE expression index
+-- and nothing else. No column, no generated column, no function, no signature.
+--   - No column, because a STORED generated column on 602,880 rows takes an
+--     ACCESS EXCLUSIVE lock for a full table rewrite. An expression index built
+--     CONCURRENTLY blocks neither reads nor writes.
+--   - No function, because changing search_jobs means matching a fifteen-
+--     parameter signature I cannot read from here, and getting that wrong is
+--     what took ranked search down on 2026-08-20 with PGRST203. PostgREST can
+--     express this filter directly, so no function needs to change at all.
+--
+-- THE EXPRESSION MUST MATCH POSTGREST'S BYTE FOR BYTE or the planner will not
+-- use the index: PostgREST compiles ?title=wfts(simple).X into
+-- to_tsvector('simple', title) @@ websearch_to_tsquery('simple', 'X').
+--
+-- THIS INDEX IS A PRECONDITION, NOT AN OPTIMISATION. Measured without it, the
+-- same filter is a sequential scan over 602,880 rows: q="IT" took 2.1s, and
+-- q="ux" and q="qa" both returned HTTP 500 (statement timeout) at ~3.2s. Wiring
+-- the simple tier into the edge function before this index exists would ship
+-- 500s to visitors. The caller must therefore stay disabled until this is
+-- verified live.
+--
+-- ONE STATEMENT, NO BEGIN/COMMIT — CREATE INDEX CONCURRENTLY raises 25001
+-- inside a transaction block, and a migration is one. This is the same shape as
+-- 20260817190000_the_draw_that_could_not_use_an_index.sql, which is the form
+-- that worked here. If the runner wraps it anyway the migration simply fails
+-- and creates nothing, which is a safe failure: verify before relying on it.
+--
+-- VERIFY LIVE, DO NOT ASSUME. Lovable re-stamps migrations, so this file
+-- existing is not proof the index does. Confirm with a term that timed out
+-- before — ?title=wfts(simple).qa must return HTTP 200 well under a second.
+
+CREATE INDEX CONCURRENTLY IF NOT EXISTS job_board_postings_title_simple_fts_idx
+  ON public.job_board_postings USING gin (to_tsvector('simple', title));

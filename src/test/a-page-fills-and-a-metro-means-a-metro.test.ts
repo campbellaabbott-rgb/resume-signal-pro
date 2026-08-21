@@ -3,6 +3,11 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 /**
+ * FIVE list exits since the simple-config tier landed (recency, ranked,
+ * fuzzy, semantic, exact-word). The count is asserted rather than a minimum
+ * precisely so that ADDING an exit fails here and forces the author to carry
+ * every disclosure onto it — which is what happened.
+ *
  * TWO SEARCH DEFECTS, ONE ROOT CAUSE EACH, BOTH MEASURED LIVE 2026-08-20.
  *
  * A. THE PAGE UNDER-FILLED WHEN CLUSTERING ATE THE BUFFER.
@@ -134,7 +139,7 @@ describe("a metro abbreviation searches the metro", () => {
     // who TYPED "SF" was never told it had been read as San Francisco — the
     // disclosure is now spread at all four list returns.
     expect(FN).toMatch(/out\.locationExpandedFrom = l\.expandedFrom; out\.locationSearched = l\.terms/);
-    expect((FN.match(/\.\.\.searchDisclosures\(body, applied\)/g) ?? []).length).toBe(4);
+    expect((FN.match(/\.\.\.searchDisclosures\(body, applied\)/g) ?? []).length).toBe(5);
   });
 
   it("leaves a non-alias location exactly as typed", () => {

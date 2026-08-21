@@ -3,6 +3,11 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 /**
+ * FIVE list exits since the simple-config tier landed (recency, ranked,
+ * fuzzy, semantic, exact-word). The count is asserted rather than a minimum
+ * precisely so that ADDING an exit fails here and forces the author to carry
+ * every disclosure onto it — which is what happened.
+ *
  * THE BOARD READ INTENT AS TEXT, AND HID MOST OF ITSELF WITHOUT SAYING SO.
  *
  * Three defects, one theme: the searcher's words and the board's filters were
@@ -90,7 +95,7 @@ describe("intent becomes a filter, and a filter says what it hides", () => {
     expect(liftAt, "intent lift not found").toBeGreaterThan(-1);
     expect(liftAt < normAt, "the lift must precede the filter derivation").toBe(true);
     expect((FN.match(/\.\.\.intentDisclosure\(intentLift\)/g) ?? []).length,
-      "a rewritten search must be disclosed on all four list paths").toBe(4);
+      "a rewritten search must be disclosed on all FIVE list paths").toBe(5);
   });
 
   it("reports coverage only for filters that are actually on", () => {
@@ -102,7 +107,7 @@ describe("intent becomes a filter, and a filter says what it hides", () => {
     // No cache, no number. An invented fraction is worse than none, because a
     // number on screen gets believed.
     expect(/if \(!cov\) return \{\};/.test(H), "absent coverage must yield nothing, not a guess").toBe(true);
-    expect((FN.match(/\.\.\.coverageDisclosure\(applied, meta\)/g) ?? []).length).toBe(4);
+    expect((FN.match(/\.\.\.coverageDisclosure\(applied, meta\)/g) ?? []).length).toBe(5);
   });
 
   it("counts coverage once per ingest pass, never per request", () => {

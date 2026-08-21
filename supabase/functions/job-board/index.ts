@@ -7125,7 +7125,18 @@ async function serveList(
   // band (~150-190k rows) picks an index scan with random heap access and
   // crawls. Dropping the redundant effective_posted predicate was measured and
   // does NOT help, so the fix is to never let the count kill the page.
-  const buildQuery = (dateCol: string, withCount = wantCount, categoryOverride?: string) => {
+  const buildQuery = (
+    dateCol: string,
+    withCount = wantCount,
+    categoryOverride?: string,
+    // skipTerms leaves the free-text predicate OFF so a caller can supply its
+    // own matcher while still getting every FILTER — country, category,
+    // experience, salary, companies, work mode, the freshness window and the
+    // missing_since fence — from this one place. Added for the simple-config
+    // tier; the alternative was a fifth query path with its own filter binding,
+    // and this file has five defects in two days that are all that mistake.
+    opts?: { skipTerms?: boolean },
+  ) => {
     let q = client
       .from("job_board_postings")
       .select(
@@ -7144,7 +7155,7 @@ async function serveList(
       // index, and ~99% pass.
       .is("missing_since", null);
     const terms = queryTerms(body.q).terms.slice(0, 8);
-    for (const t of terms) q = q.or(`title.ilike.%${t}%,company.ilike.%${t}%,department.ilike.%${t}%`);
+    if (!opts?.skipTerms) for (const t of terms) q = q.or(`title.ilike.%${t}%,company.ilike.%${t}%,department.ilike.%${t}%`);
     // Metro shorthand expands to the names that actually appear in the data,
     // and a noisy two-letter form is REPLACED rather than ORed in — searching
     // %LA% returns Plain City, Ohio.
@@ -7599,6 +7610,86 @@ async function serveList(
               }),
             ).then(() => {}).catch(() => {}));
           };
+          // ── THE SIMPLE-CONFIG TIER ────────────────────────────────────
+          //
+          // Runs FIRST among the rescues, because it is exact word matching and
+          // therefore more precise than trigram similarity or embeddings.
+          //
+          // WHY IT EXISTS. Every tsvector in this schema is built with the
+          // 'english' configuration, which discards stopwords before storing
+          // anything — so "it" is not in the index at all and no query-side
+          // rewrite can retrieve it. Measured through PostgREST against live
+          // production: title=wfts(english).IT matches NOTHING, while
+          // title=wfts(simple).IT returns 4,072 rows. The board serves about 18
+          // for q="IT" against 4,145 postings carrying it as a title word.
+          // Simple also stops the stemmer conflating words: "intern" matches
+          // 7,280 under english (Internal, International) and 4,907 under
+          // simple, which is the precise set.
+          //
+          // It reuses buildQuery with skipTerms, so every filter — freshness,
+          // missing_since, country, category, experience, salary, companies —
+          // binds in the ONE place they are bound, and only the matcher differs.
+          //
+          // ONLY ON AN EMPTY PAGE, and that bound is deliberate. The visitor is
+          // already looking at zero results, so the worst case this can add is
+          // a wait before the same empty page. It cannot make a working query
+          // slower because it never runs on one.
+          //
+          // IT DEPENDS ON AN INDEX THAT MUST EXIST FIRST. Measured WITHOUT
+          // job_board_postings_title_simple_fts_idx, this filter is a
+          // sequential scan over 602,880 rows: q="IT" took 2.1s and q="ux" and
+          // q="qa" both returned HTTP 500 (statement timeout) at ~3.2s. Deploy
+          // the index migration and verify it BEFORE this function. The catch
+          // below means a failure degrades to the empty page the visitor
+          // already had rather than an error, but that is a safety net, not a
+          // licence to ship the two out of order.
+          if (!filtersActive && qText.length >= 2) try {
+            // NOTE: withDeadline is Promise.race — on timeout it resolves
+            // { data: null } and the SQL KEEPS RUNNING server-side. That is why
+            // the window is bounded to limit*2 rows and why this only fires on
+            // an already-empty page: an abandoned query still costs the
+            // database, so it must be small and rare.
+            const { data: simpleRows, error: sErr2 } = await withDeadline(
+              buildQuery("effective_posted", false, undefined, { skipTerms: true })
+                .textSearch("title", qText, { type: "websearch", config: "simple" })
+                .order("effective_posted", { ascending: false, nullsFirst: false })
+                .order("id", { ascending: true })
+                .range(0, Math.max(limit * 2 - 1, 0)),
+              4_000,
+            ) as { data: unknown[] | null; error?: unknown };
+            if (!sErr2 && Array.isArray(simpleRows) && simpleRows.length > 0) {
+              const simpleJobs = (simpleRows as unknown[]).map(rowToJob) as Array<Record<string, unknown>>;
+              const simpleGrouped = groupSimilar
+                ? collapseClusters(simpleJobs, limit)
+                : { jobs: simpleJobs.slice(0, limit), rawConsumed: Math.min(simpleJobs.length, limit) };
+              logMiss("fuzzy");
+              logSearch("ranked", simpleGrouped.jobs.length, null, "fuzzy");
+              return json({
+                jobs: preferMatchedLocation(await attachRecheckedAt(client, simpleGrouped.jobs), locationTerms(body.location).terms),
+                searchId,
+                ...searchDisclosures(body, applied),
+                ...intentDisclosure(intentLift),
+                ...coverageDisclosure(applied, meta),
+                ...honesty(simpleGrouped.jobs),
+                // No total: this tier reads a bounded window, so any figure it
+                // could publish would be the window size wearing a total's
+                // clothing — the defect the fuzzy tier already carries.
+                total: null,
+                countUnavailable: true,
+                hasMore: false,
+                nextOffset: 0,
+                // Named so the client can say WHY these matched, and so the
+                // tier is visible in telemetry rather than being mistaken for
+                // the ranked path.
+                exactWordMatch: qText,
+                totalAllCompanies: (v0.total as number) ?? 0,
+                companies: [],
+                companiesCount: ((v0.companiesFacet as unknown[]) ?? []).length,
+                refreshedAt: (v0.refreshedAt as string) ?? null,
+              });
+            }
+          } catch { /* the empty page the visitor already had */ }
+
           // (filtersActive hoisted above — shared with the augmentation tier.)
           if (!filtersActive) try {
             const { data: fuzzy, error: fErr } = await client.rpc("fuzzy_title_search", {
