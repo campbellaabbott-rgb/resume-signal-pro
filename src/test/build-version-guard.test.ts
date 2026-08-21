@@ -162,8 +162,16 @@ const PINNED = {
   // The bump was applied by the deploy rather than by hand, which is exactly
   // the case this guard exists to catch: the version moved and its receipt did
   // not, so the failure is the test working.
+  // 2026-08-21.2: index.ts only — sources.ts UNCHANGED, so no board is waiting
+  // on the bootstrap lane. Bumped for a reason this guard did not anticipate:
+  // NOT to make a change work, but to make a deploy IDENTIFIABLE. Three commits
+  // (intent-to-filter, filter coverage, the servable headline) sat undeployed
+  // while the version string read the same as the build that was live, so
+  // "is it deployed?" could only be answered by probing behaviour — the exact
+  // rung-2 pain the version exists to remove. A version that does not move
+  // across a deploy boundary cannot answer the one question it is for.
   sourcesHash: "83127cd939ce5fa4",
-  buildVersion: "2026-08-21.1",
+  buildVersion: "2026-08-21.2",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {
