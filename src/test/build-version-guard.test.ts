@@ -176,7 +176,9 @@ const PINNED = {
   // after three commits shipped undeployed behind an unchanged version string,
   // and "is it live?" cost six behavioural probes to answer.
   sourcesHash: "83127cd939ce5fa4",
-  buildVersion: "2026-08-21.3",
+  // 2026-08-21.4: disables the exact-word tier's company matcher, whose index
+  // never built. Bumped so the mitigation is externally identifiable.
+  buildVersion: "2026-08-21.4",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {

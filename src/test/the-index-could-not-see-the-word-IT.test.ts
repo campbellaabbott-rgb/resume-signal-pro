@@ -97,7 +97,14 @@ describe("the index can see the words people search for", () => {
     // 23 postings with AT&T in their TITLE and none of the 493 whose EMPLOYER
     // is AT&T.
     expect(/\.textSearch\("title", ftsQuery\(qText\)/.test(blk)).toBe(true);
-    expect(/\.textSearch\("company", ftsQuery\(qText\)/.test(blk)).toBe(true);
+    // DISABLED, and the guard says so rather than being deleted. The company
+    // matcher is a sequential scan until its index exists — measured at four
+    // concurrent identical requests: 500 500 500 500, against 200 200 200 200
+    // for the indexed title half. Re-enable only after that returns 200s.
+    expect(
+      /Promise\.resolve\(\{ data: \[\] as unknown\[\] \}\)/.test(blk),
+      "the company half must stay stubbed until its index is verified at concurrency",
+    ).toBe(true);
     // NOT an or(). MEASURED: or=(title.wfts,company.wfts) with the tier's real
     // ordering took 2.23s on AT&T and returned HTTP 500 at 3.24s on "dominos",
     // because an OR across two columns plus ORDER BY effective_posted cannot be
@@ -126,7 +133,9 @@ describe("the index can see the words people search for", () => {
       "the length floor keeps the variant off short plurals where the split half is noise",
     ).toBe(true);
     expect(/\.textSearch\("title", ftsQuery\(qText\)/.test(FN)).toBe(true);
-    expect(/\.textSearch\("company", ftsQuery\(qText\)/.test(FN)).toBe(true);
+    // Only the title half is live; the company half is stubbed pending its
+    // index, so ftsQuery is asserted on the call site that actually runs.
+    expect((FN.match(/ftsQuery\(qText\)/g) ?? []).length).toBeGreaterThanOrEqual(1);
 
     // Then the behaviour, reconstructed from the same rule.
     const ftsSafeLocal = (t: string) => t.replace(/[(),."'\\:]/g, " ").replace(/\s+/g, " ").trim();
