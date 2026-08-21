@@ -3,6 +3,12 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 /**
+ * SIX list exits since routed retrieval landed (recency, ranked, fuzzy,
+ * semantic, exact-word, routed). The count is asserted rather than a minimum
+ * precisely so that adding an exit FAILS here and forces every disclosure
+ * onto it — which is what happened, again, and is why this number keeps
+ * moving.
+ *
  * FIVE list exits since the simple-config tier landed (recency, ranked,
  * fuzzy, semantic, exact-word). The count is asserted rather than a minimum
  * precisely so that ADDING an exit fails here and forces the author to carry
@@ -84,8 +90,8 @@ describe("a pay figure is a filter, not a word to search for", () => {
     const calls = FN.match(/\.\.\.searchDisclosures\(body, applied\)/g) ?? [];
     expect(
       calls.length,
-      `searchDisclosures must be spread at all FIVE list returns (recency, ranked, fuzzy, semantic, exact-word); found ${calls.length}`,
-    ).toBe(5);
+      `searchDisclosures must be spread at all SIX list returns; found ${calls.length}`,
+    ).toBe(6);
     // No inline copy may come back alongside it — a second definition is how
     // these drift apart again.
     expect(

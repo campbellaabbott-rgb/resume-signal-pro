@@ -65,6 +65,21 @@ export const ENGLISH_STOPWORDS: ReadonlySet<string> = new Set([
 
 export type Route = "BROWSE" | "EMPLOYER" | "SYMBOL" | "SIMPLE" | "RANKED";
 
+/**
+ * Which RETRIEVER a route uses. Deliberately not one-to-one with the route: a
+ * SYMBOL query is a distinct class worth naming in the response and the
+ * telemetry, but it is served by the ranked retriever because every literal
+ * matcher measured too slow under concurrency and the ranked window already
+ * contains the rows the scorer needs.
+ */
+export const RETRIEVER_FOR: Readonly<Record<Route, "browse" | "company" | "simple" | "ranked">> = {
+  BROWSE: "browse",
+  EMPLOYER: "company",
+  SYMBOL: "ranked",
+  SIMPLE: "simple",
+  RANKED: "ranked",
+};
+
 export interface RouteDecision {
   route: Route;
   /** Why, verbatim, for the response and for telemetry. A route nobody can
@@ -107,13 +122,28 @@ export function pickRoute(
     }
   }
 
-  // R2 — symbols. The Postgres parser strips "++" and "#" under EVERY text
-  // search configuration, so wfts(simple).c++ and wfts(simple).c# are
-  // byte-identical at 1,437 rows of which ~71% contain neither string. Only a
-  // literal match separates them: title ILIKE 'c++%' is 61 rows, 6 of the top 6
-  // genuine C++ roles.
+  // R2 — symbols. The parser strips "++" and "#" under EVERY configuration, so
+  // wfts(simple).c++ and wfts(simple).c# are byte-identical at 1,437 rows of
+  // which ~71% contain neither string.
+  //
+  // THIS ROUTE DELIBERATELY HAS NO RETRIEVER OF ITS OWN. Three literal matchers
+  // were measured UNDER CONCURRENCY 4, which is the only measurement that
+  // counts here — everything looks fine at one request at a time, and that is
+  // exactly how a sequential scan reached production this morning:
+  //     title=ilike.'c++%'   (prefix)    0.25-0.43s   but only 60 rows
+  //     title=ilike.'%c++%'  (contains)  1.9-2.7s     311 rows
+  //     title=imatch '\yc\+\+'          3.1-3.5s     311 rows
+  // The regex is 0.35s SERIALLY and 3.5s at four callers. Prefix is the only
+  // safe one and it costs 80% of the recall.
+  //
+  // None of them is needed. The ranked window ALREADY holds the answers: of the
+  // 200 rows search_jobs returns for "c++", 38 contain the literal string, and
+  // 25 do for "c#". The scorer's +90 literal-substring rule floats them to the
+  // top for free. So a symbol query takes the ranked retriever and is separated
+  // by SCORING, not by a second query. The label is kept because it belongs in
+  // the disclosure and the telemetry.
   if (/[+#]/.test(raw)) {
-    return { route: "SYMBOL", reason: "query contains a symbol the text parser strips" };
+    return { route: "SYMBOL", reason: "symbol query — ranked retrieval, separated by literal scoring" };
   }
 
   // R3 — anything the english index cannot see. A stopword or a one-to-three

@@ -3,6 +3,12 @@ import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 
 /**
+ * SIX list exits since routed retrieval landed (recency, ranked, fuzzy,
+ * semantic, exact-word, routed). The count is asserted rather than a minimum
+ * precisely so that adding an exit FAILS here and forces every disclosure
+ * onto it — which is what happened, again, and is why this number keeps
+ * moving.
+ *
  * A TELEMETRY TABLE THAT RECORDS NOTHING LOOKS EXACTLY LIKE A QUIET WEEK.
  *
  * This board could not measure its own search. Every relevance judgement made
@@ -53,7 +59,7 @@ describe("search quality has a denominator and an outcome", () => {
       [...new Set(routes)].sort(),
       "every list return must log. A missing path is an invisible hole in the denominator.",
     ).toEqual(["fuzzy", "ranked", "recency", "semantic"]);
-    expect(routes.length, "five list exits, five logSearch calls").toBe(5);
+    expect(routes.length, "six list exits, six logSearch calls").toBe(6);
   });
 
   it("issues a search id and returns it on every list response", () => {
@@ -62,9 +68,9 @@ describe("search quality has a denominator and an outcome", () => {
     // from that path can never be attributed and its results are unmeasurable.
     expect(
       (FN.match(/^\s*searchId,$/gm) ?? []).length,
-      "searchId must be returned by all FIVE list paths — a click on a page that " +
+      "searchId must be returned by all SIX list paths — a click on a page that " +
         "carries no search id can never be attributed to the search that produced it",
-    ).toBe(5);
+    ).toBe(6);
   });
 
   it("does not swallow a failed write", () => {

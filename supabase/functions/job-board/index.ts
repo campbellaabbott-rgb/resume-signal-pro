@@ -58,6 +58,8 @@ import { advanceProgress, isPassDone, type RefreshProgress } from "./rotation.ts
 import { CANARIES, rawItemCount, aggregateVendorHealth, type CanaryResult } from "./vendor-canary.ts";
 import { detectExperience, isExperienceBand } from "./experience.ts";
 import { categoryParam, filterViolations, isUnfiltered, normalizeFilters, sendableSourcesParam, splitPage, salaryFromQueryText, SALARY_IN_QUERY } from "./filters.ts";
+import { pickRoute, rerankWindow, RETRIEVER_FOR } from "./search-routing.ts";
+import { EMPLOYER_ALIASES } from "./employer-aliases.ts";
 import { expandQuery } from "./search-alias.ts";
 import { classifyQuestion } from "../_shared/application-questions.ts";
 import { parseBreezyQuestions, parsePinpointQuestions, breezyApplyUrl, pinpointApplyUrl } from "../_shared/vendor-questions.ts";
@@ -98,7 +100,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-21.4";
+const BUILD_VERSION = "2026-08-21.5";
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -7538,6 +7540,92 @@ async function serveList(
   // — the fix landed on one of the two sort values and the other was missed.
   // The remedy is the same one newest already uses: let the RPC pick the rows
   // by relevance, then order the page the reader is looking at.
+  // ── ROUTED RETRIEVAL ──────────────────────────────────────────────────────
+  //
+  // ONE retriever per search, decided before any SQL is issued, and ONE exit for
+  // all of them. This supersedes the tier shipped this morning, whose fatal
+  // design was running only when the primary path returned ZERO rows — so
+  // queries returning a full page of WRONG answers, the larger class, could
+  // never reach it.
+  //
+  // Every route binds through buildQuery with skipTerms, so freshness,
+  // missing_since, country, category, experience, salary and companies bind in
+  // the ONE place they are bound and only the matcher differs. A route with its
+  // own PostgREST chain is the mistake behind five defects in two days.
+  //
+  // MEASURED UNDER CONCURRENCY 4, the only measurement that counts here —
+  // everything looks fine one request at a time, and that is exactly how a
+  // sequential scan reached production this morning:
+  //     company_token=in.(...)     0.67s x4, all 200
+  //     wfts(simple) on title      0.36-0.59s x4, all 200
+  // Rejected under the same conditions: ilike contains 1.9-2.7s, imatch regex
+  // 3.1-3.5s — and the regex is 0.35s SERIALLY, which is the whole trap.
+  //
+  // Standing down when a filter is active is deliberate: the routed window is
+  // capped, so a filter applied on top of a capped window would silently answer
+  // from a subset. The ranked path below binds filters in SQL and is correct.
+  const routeDecision = qText && !countOnly && isUnfiltered(applied)
+    ? pickRoute(qText, EMPLOYER_ALIASES)
+    : { route: "BROWSE" as const, reason: "not routable", tokens: undefined as string[] | undefined, matchedName: undefined as string | undefined };
+  const routedRetriever = RETRIEVER_FOR[routeDecision.route];
+  const metaV = (meta?.v ?? {}) as Record<string, unknown>;
+
+  if (!countOnly && (routedRetriever === "company" || routedRetriever === "simple")) try {
+    // Window anchored at rank 0 and sliced AFTER scoring, so `offset` is a
+    // position inside ONE stable ordering. Paging a re-ranked list by a
+    // retriever-ordered offset is what made sorted page two repeat page one.
+    const ROUTE_WINDOW = 400;
+    let rq = buildQuery("effective_posted", false, undefined, { skipTerms: true });
+    rq = routedRetriever === "company" && routeDecision.tokens?.length
+      ? rq.in("company_token", routeDecision.tokens)
+      : rq.textSearch("title", ftsQuery(qText), { type: "websearch", config: "simple" });
+    const { data: routedRows, error: rErr } = await withDeadline(
+      rq.order("effective_posted", { ascending: false }).order("id", { ascending: true })
+        .range(0, ROUTE_WINDOW - 1),
+      7_000,
+    ) as { data: unknown[] | null; error?: unknown };
+    if (routedRows === null) {
+      console.warn(`[JOB-BOARD] routed retrieval (${routeDecision.route}) hit its deadline for q=${JSON.stringify(qText)}`);
+    }
+    if (!rErr && Array.isArray(routedRows) && routedRows.length > 0) {
+      const mapped = (routedRows as unknown[]).map(rowToJob) as Array<Record<string, unknown>>;
+      // An EMPLOYER page is already exactly that employer's jobs, so scoring it
+      // by title similarity would demote roles for not repeating the company
+      // name. Recency is the honest order there; every other route is scored.
+      const ordered = routedRetriever === "company" ? mapped : rerankWindow(mapped, qText);
+      const page = ordered.slice(offset, offset + limit);
+      const routedGrouped = groupSimilar
+        ? collapseClusters(page, limit)
+        : { jobs: page.slice(0, limit), rawConsumed: Math.min(page.length, limit) };
+      if (routedGrouped.jobs.length > 0) {
+        logSearch("ranked", routedGrouped.jobs.length, ordered.length < ROUTE_WINDOW ? ordered.length : null);
+        return json({
+          jobs: preferMatchedLocation(await attachRecheckedAt(client, routedGrouped.jobs), locationTerms(body.location).terms),
+          searchId,
+          ...searchDisclosures(body, applied),
+          ...intentDisclosure(intentLift),
+          ...coverageDisclosure(applied, meta),
+          ...honesty(routedGrouped.jobs),
+          // A REAL count whenever the window came back short of the cap, because
+          // then the window IS the result set. At the cap it is only a floor, and
+          // saying "unavailable" beats publishing a window size as a total —
+          // the defect the fuzzy tier still carries.
+          total: ordered.length < ROUTE_WINDOW ? ordered.length : null,
+          ...(ordered.length >= ROUTE_WINDOW ? { countUnavailable: true } : {}),
+          hasMore: offset + limit < ordered.length,
+          nextOffset: offset + limit,
+          searchRoute: routeDecision.route,
+          searchRouteReason: routeDecision.reason,
+          ...(routeDecision.matchedName ? { companyMatched: routeDecision.matchedName } : {}),
+          totalAllCompanies: (metaV.total as number) ?? 0,
+          companies: [],
+          companiesCount: ((metaV.companiesFacet as unknown[]) ?? []).length,
+          refreshedAt: (metaV.refreshedAt as string) ?? null,
+        });
+      }
+    }
+  } catch { /* fall through to the path this query would have taken anyway */ }
+
   if (qText && body.sort !== "salary" && !countOnly) {
     try {
       // Role-alias expansion (disclosed): "swe" also searches "software

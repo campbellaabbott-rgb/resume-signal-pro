@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   pickRoute, scoreTitle, rerankWindow, foldName,
-  OCCUPATION_GUARD, ENGLISH_STOPWORDS,
+  OCCUPATION_GUARD, ENGLISH_STOPWORDS, RETRIEVER_FOR,
 } from "../../supabase/functions/job-board/search-routing";
 
 /**
@@ -68,7 +68,19 @@ describe("one retriever per search, chosen before any SQL", () => {
     }
   });
 
-  it("routes symbols to a literal matcher, because every config destroys them", () => {
+  it("classes symbols separately but serves them from the ranked retriever", () => {
+    // Every literal matcher was measured UNDER CONCURRENCY 4 and only the
+    // prefix survived, at 80% recall loss: ilike prefix 0.25-0.43s/60 rows,
+    // ilike contains 1.9-2.7s/311, imatch regex 3.1-3.5s/311 (and 0.35s
+    // serially — the trap that put a seq scan in production this morning).
+    // None is needed: 38 of the 200 rows the ranked window already returns for
+    // "c++" contain the literal string, and the scorer's +90 rule floats them.
+    expect(RETRIEVER_FOR.SYMBOL).toBe("ranked");
+    expect(RETRIEVER_FOR.EMPLOYER).toBe("company");
+    expect(RETRIEVER_FOR.SIMPLE).toBe("simple");
+  });
+
+  it("routes symbols to their own class, because every config destroys them", () => {
     // wfts(simple).c++ and wfts(simple).c# are byte-identical at 1,437 rows,
     // ~71% of which contain neither string. The parser strips "++" and "#"
     // under every configuration.
@@ -197,5 +209,75 @@ describe("employer diversity demotes, never drops", () => {
     expect(foldName("AT&T")).toBe("att");
     expect(foldName("Domino's")).toBe("dominos");
     expect(foldName("Turner & Townsend")).toBe("turnertownsend");
+  });
+});
+
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+const FN = readFileSync(resolve(__dirname, "../../supabase/functions/job-board/index.ts"), "utf8");
+
+/**
+ * The WIRING, asserted against source because the edge function cannot be
+ * imported. The logic above is executed; only the plumbing is matched here, and
+ * only for the properties that would fail silently.
+ */
+describe("routed retrieval is wired so it cannot fail quietly", () => {
+  const BLK = /── ROUTED RETRIEVAL[\s\S]*?catch \{ \/\* fall through to the path this query would have taken anyway \*\/ \}/.exec(FN)?.[0] ?? "";
+
+  it("is present, and decides the route BEFORE any SQL", () => {
+    expect(BLK, "the routed branch is missing").not.toBe("");
+    const routeAt = FN.indexOf("const routeDecision = qText");
+    const rankedAt = FN.indexOf('if (qText && body.sort !== "salary" && !countOnly)');
+    expect(routeAt).toBeGreaterThan(-1);
+    expect(routeAt < rankedAt, "routing must precede the ranked path, not rescue after it").toBe(true);
+  });
+
+  it("binds filters through the ONE filter binder", () => {
+    // A route with its own PostgREST chain is the mistake behind five defects
+    // in two days.
+    expect(/buildQuery\("effective_posted", false, undefined, \{ skipTerms: true \}\)/.test(BLK)).toBe(true);
+    expect(/\.in\("company_token", routeDecision\.tokens\)/.test(BLK)).toBe(true);
+    expect(/\.textSearch\("title", ftsQuery\(qText\), \{ type: "websearch", config: "simple" \}\)/.test(BLK)).toBe(true);
+  });
+
+  it("stands down when a filter is active, rather than answering from a capped subset", () => {
+    // The routed window is capped at 400. Applying a filter on top of a capped
+    // window silently answers from a subset of the matches — the honest place
+    // for a filtered query is the ranked path, which binds filters in SQL.
+    expect(/isUnfiltered\(applied\)/.test(FN.slice(FN.indexOf("const routeDecision"), FN.indexOf("const routedRetriever")))).toBe(true);
+  });
+
+  it("slices AFTER scoring, so offset indexes the order the reader sees", () => {
+    // Paging a re-ranked list by a retriever-ordered offset is what made sorted
+    // page two repeat page one.
+    expect(/const ordered = routedRetriever === "company" \? mapped : rerankWindow\(mapped, qText\);/.test(BLK)).toBe(true);
+    expect(/const page = ordered\.slice\(offset, offset \+ limit\);/.test(BLK)).toBe(true);
+    expect(/hasMore: offset \+ limit < ordered\.length,/.test(BLK)).toBe(true);
+  });
+
+  it("does not score an employer page by title similarity", () => {
+    // Every row already IS that employer's; scoring by title would demote roles
+    // for not repeating the company name.
+    expect(/routedRetriever === "company" \? mapped :/.test(BLK)).toBe(true);
+  });
+
+  it("publishes a real total only when the window is not the cap", () => {
+    expect(/total: ordered\.length < ROUTE_WINDOW \? ordered\.length : null,/.test(BLK)).toBe(true);
+    expect(/countUnavailable: true/.test(BLK)).toBe(true);
+  });
+
+  it("names the route it took, and logs a deadline miss", () => {
+    // A route nobody can see is a route nobody can debug; a silent deadline is
+    // indistinguishable from "no matches".
+    expect(/searchRoute: routeDecision\.route,/.test(BLK)).toBe(true);
+    expect(/searchRouteReason: routeDecision\.reason,/.test(BLK)).toBe(true);
+    expect(/hit its deadline/.test(BLK)).toBe(true);
+  });
+
+  it("falls through instead of erroring when the route finds nothing", () => {
+    // A route that returns an empty page would be WORSE than the path it
+    // replaced — the query must still reach the retriever it would have used.
+    expect(/if \(routedGrouped\.jobs\.length > 0\) \{/.test(BLK)).toBe(true);
+    expect(/catch \{ \/\* fall through/.test(BLK)).toBe(true);
   });
 });
