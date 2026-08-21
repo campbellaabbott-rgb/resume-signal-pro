@@ -72,6 +72,18 @@ describe("intent becomes a filter, and a filter says what it hides", () => {
     ).toBe(true);
   });
 
+  it("ACTUALLY APPLIES the lift — the sibling feature lost exactly this and stayed green", () => {
+    // The employer route shipped with its body-rewrite accidentally deleted and
+    // all eight of its tests passed, because they checked that the intent was
+    // COMPUTED and DISCLOSED, never that it was APPLIED. The same hole is
+    // possible here and is closed by name.
+    expect(
+      /if \(intentLift\) \{\s*\n\s*body = \{ \.\.\.body, \.\.\.intentLift\.patch, q: intentLift\.residualQ \};/.test(FN),
+      "the intent lift must REWRITE the request — otherwise 'work from home' is still 287 " +
+        "results while the response claims a remote filter was applied",
+    ).toBe(true);
+  });
+
   it("runs once, before the single filter derivation, and is disclosed everywhere", () => {
     const liftAt = FN.indexOf("const intentLift = liftIntentFilters");
     const normAt = FN.indexOf("const { applied, ignored: ignoredFilters } =");

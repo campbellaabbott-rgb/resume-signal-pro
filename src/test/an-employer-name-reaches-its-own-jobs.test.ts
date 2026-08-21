@@ -154,6 +154,30 @@ describe("an employer name reaches its own jobs", () => {
     expect(/body\.companies/.test(FN), "no filter may be re-derived from the raw body").toBe(false);
   });
 
+  it("ACTUALLY APPLIES the route — computing it and announcing it is not enough", () => {
+    // THIS ASSERTION EXISTS BECAUSE ITS ABSENCE COST THE WHOLE FEATURE.
+    //
+    // A commit dropped the three lines that rewrite the body, and every one of
+    // the other tests in this file stayed GREEN. routeEmployerQuery still ran,
+    // the response still announced companyMatched, the disclosure count was
+    // still 4 — and no companies filter was ever applied, so "AT&T" returned
+    // exactly the zero rows it had before, while claiming it had matched AT&T.
+    // Worse than the original bug, because the payload asserted a match that
+    // had not happened.
+    //
+    // Everything the old tests checked was upstream of the effect. A feature is
+    // not the computation of an intent, it is the application of one.
+    expect(
+      /if \(employerRoute\) \{\s*\n\s*body = \{ \.\.\.body, companies: employerRoute\.tokens, q: employerRoute\.residualQ \};/.test(FN),
+      "the employer route must REWRITE the request — without this the filter is never bound " +
+        "and the board announces a match it did not make",
+    ).toBe(true);
+    // And the rewrite must be consumed: the derivation that feeds the board has
+    // to be the one taken AFTER it.
+    expect(/employerRoute \|\| intentLift\)\s*\n\s*\? normalizeFilters\(body, JOB_SOURCES\.length\)/.test(FN),
+      "the post-rewrite normalizeFilters must be the one that feeds the board").toBe(true);
+  });
+
   it("is applied before filters are derived, and disclosed on every list path", () => {
     // Rewriting the body up front means the count probe, the facet query and
     // the list all see one normalised request — the four-path divergence that
