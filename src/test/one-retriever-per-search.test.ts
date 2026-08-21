@@ -244,7 +244,16 @@ describe("routed retrieval is wired so it cannot fail quietly", () => {
     // The routed window is capped at 400. Applying a filter on top of a capped
     // window silently answers from a subset of the matches — the honest place
     // for a filtered query is the ranked path, which binds filters in SQL.
-    expect(/isUnfiltered\(applied\)/.test(FN.slice(FN.indexOf("const routeDecision"), FN.indexOf("const routedRetriever")))).toBe(true);
+    // NOT isUnfiltered() — that asks "is this the bare board?" and counts the
+    // QUERY itself as a filter, so gating on it stood the router down on every
+    // search. Verified live before the fix: AT&T and IT returned no searchRoute
+    // at all. The gate must test the filter fields, excluding q.
+    const gate = FN.slice(FN.indexOf("const onlyQuery"), FN.indexOf("const routedRetriever"));
+    expect(gate, "the routing gate is missing").not.toBe("");
+    expect(/isUnfiltered\(applied\)/.test(gate), "isUnfiltered treats q as a filter — it blocks every route").toBe(false);
+    for (const f of ["country", "category", "workMode", "salaryFloor", "maxAgeDays", "postedAfter", "remote", "experience", "companies", "location"]) {
+      expect(gate, `the gate must consider ${f}`).toContain(f);
+    }
   });
 
   it("slices AFTER scoring, so offset indexes the order the reader sees", () => {
@@ -279,5 +288,32 @@ describe("routed retrieval is wired so it cannot fail quietly", () => {
     // replaced — the query must still reach the retriever it would have used.
     expect(/if \(routedGrouped\.jobs\.length > 0\) \{/.test(BLK)).toBe(true);
     expect(/catch \{ \/\* fall through/.test(BLK)).toBe(true);
+  });
+});
+
+describe("the scorer reaches the path that serves most searches", () => {
+  it("scores the RANKED path too — the one that serves most searches", () => {
+    // Verified live BEFORE this: q="sales" came back route=ranked with 0 of 60
+    // rows titled "Sales Associate", and c++ / c# returned identical totals of
+    // 1,641. The routed branch alone could never fix either, because both are
+    // served by RANKED. All 959 exact "Sales Associate" titles are already in
+    // that window — 959/959 by intersection — and 38 of the 200 rows for "c++"
+    // contain the literal string.
+    expect(/const rankedScored = scoreRanked \? rerankWindow\(rankedRows, qText\) : rankedRows;/.test(FN)).toBe(true);
+    // Scoring permutes the rows, so it needs the SAME fixed window a sort does.
+    expect(/p_offset: \(newestFirst \|\| scoreRanked\) \? 0 : offset,/.test(FN)).toBe(true);
+    expect(/rankedScored\.slice\(offset\)/.test(FN)).toBe(true);
+    expect(/hasMore: \(newestFirst \|\| scoreRanked\)/.test(FN)).toBe(true);
+    // And the top-up pages in relevance order, which a scored window has left.
+    expect(/if \(!newestFirst && !scoreRanked && groupSimilar/.test(FN)).toBe(true);
+  });
+
+  it("does not override an ordering the reader chose", () => {
+    // Scoring a date- or pay-sorted page would silently replace the control the
+    // visitor picked with our own opinion.
+    const m = /const scoreRanked = ([^;]+);/.exec(FN);
+    expect(m, "scoreRanked is missing").not.toBeNull();
+    expect(m![1]).toContain("!newestFirst");
+    expect(m![1]).toContain('body.sort !== "salary"');
   });
 });

@@ -100,7 +100,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-21.5";
+const BUILD_VERSION = "2026-08-21.6";
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -7525,6 +7525,10 @@ async function serveList(
   // "newest among the postings that actually match", which is what the control
   // promises; the alternative was "oldest artifacts of a substring collision".
   const newestFirst = body.sort === "newest";
+  // Score a relevance-ordered text search. Not when the reader asked for a
+  // date or pay order — they chose that ordering and it is not ours to
+  // override — and not on an empty query, which has nothing to score against.
+  const scoreRanked = !newestFirst && body.sort !== "salary" && !countOnly;
   // SORTING BY SALARY USED TO DROP THE SEARCH ENGINE ENTIRELY.
   //
   // This guard excluded sort==="salary", so a salary-sorted search never
@@ -7564,7 +7568,17 @@ async function serveList(
   // Standing down when a filter is active is deliberate: the routed window is
   // capped, so a filter applied on top of a capped window would silently answer
   // from a subset. The ranked path below binds filters in SQL and is correct.
-  const routeDecision = qText && !countOnly && isUnfiltered(applied)
+  // "No filters BESIDES the query." isUnfiltered() counts q itself as a filter —
+  // it is asking "is this the bare board?" — so gating on it meant the router
+  // stood down on EVERY search, which is every case it exists for. Verified
+  // live: AT&T and IT both came back with no searchRoute at all.
+  const onlyQuery = applied.country === null && applied.category === null
+    && applied.workMode === null && applied.salaryFloor === null
+    && applied.maxAgeDays === null && applied.postedAfter === null
+    && !applied.remote && !applied.sendableOnly
+    && applied.experience.length === 0 && applied.companies.length === 0
+    && applied.location === "";
+  const routeDecision = qText && !countOnly && onlyQuery
     ? pickRoute(qText, EMPLOYER_ALIASES)
     : { route: "BROWSE" as const, reason: "not routable", tokens: undefined as string[] | undefined, matchedName: undefined as string | undefined };
   const routedRetriever = RETRIEVER_FOR[routeDecision.route];
@@ -7673,8 +7687,12 @@ async function serveList(
         // search_jobs caps there internally — measured, p_limit 400 and 600 both
         // return exactly 200 — so paging a sorted search ends honestly at the
         // window edge instead of continuing with duplicates.
-        p_limit: newestFirst ? RANKED_WINDOW : fetchLimit,
-        p_offset: newestFirst ? 0 : offset,
+        // A SCORED page needs the same fixed window a SORTED one does: the
+        // scorer permutes the rows, so an offset that advances in relevance
+        // order stops describing where the reader is. Anchoring at rank 0 makes
+        // `offset` a position inside one stable ordering.
+        p_limit: (newestFirst || scoreRanked) ? RANKED_WINDOW : fetchLimit,
+        p_offset: (newestFirst || scoreRanked) ? 0 : offset,
       });
       if (!rankErr && Array.isArray(ranked)) {
         // A load-more just past an exactly-full final page must not overwrite
@@ -8100,7 +8118,24 @@ async function serveList(
         // offset is a position within it and has to be applied HERE, after the
         // sort. Everything downstream — clustering, rawConsumed, nextOffset —
         // then advances inside one stable ordering.
-        const rankedWindow = newestFirst ? rankedRows.slice(offset) : rankedRows;
+        // THE SCORER, ON THE PATH THAT SERVES MOST SEARCHES.
+        //
+        // This is what q="sales" actually needed. All 959 postings titled
+        // exactly "Sales Associate" are already IN this window — verified by
+        // intersection, 959/959 — and never surface, because ts_rank's default
+        // normalization applies no length penalty so a title repeating "sales"
+        // four times outranks the exact match. It is also what separates c++
+        // from c#: 38 of these 200 rows contain the literal "c++" and 25
+        // contain "c#", and only the literal-substring rule can tell them apart
+        // once the parser has destroyed both.
+        //
+        // The candidate set is the RELEVANCE top-200, not a recency slice. A
+        // review killed the recency version of this idea outright — its pool
+        // spanned two hours of ingest and held 3 of the 959 exact titles. This
+        // one starts from what the engine already judged most relevant and only
+        // reorders it.
+        const rankedScored = scoreRanked ? rerankWindow(rankedRows, qText) : rankedRows;
+        const rankedWindow = (newestFirst || scoreRanked) ? rankedScored.slice(offset) : rankedScored;
         let rankedSequence = rankedWindow;
         let rankedGrouped = groupSimilar
           ? collapseClusters(rankedWindow, limit)
@@ -8125,7 +8160,7 @@ async function serveList(
         // the RPC's entire 200-row cap as one window, so there is nothing behind
         // it to top up with: the correct behaviour is a short final page, not a
         // second fetch appended in a different ordering.
-        if (!newestFirst && groupSimilar && rankedGrouped.jobs.length < limit && rankedRows.length >= fetchLimit) {
+        if (!newestFirst && !scoreRanked && groupSimilar && rankedGrouped.jobs.length < limit && rankedRows.length >= fetchLimit) {
           try {
             const { data: more, error: moreErr } = await client.rpc("search_jobs", {
               p_q: expandedQ,
@@ -8282,7 +8317,7 @@ async function serveList(
           // On a sorted search the window is finite and known, so "more" means
           // more rows LEFT IN IT — never the fetch-size heuristic, which would
           // promise a page four that cannot exist.
-          hasMore: newestFirst
+          hasMore: (newestFirst || scoreRanked)
             ? rankedSequence.length > rankedGrouped.rawConsumed
             : (rankedSequence.length > rankedGrouped.rawConsumed || rankedSequence.length >= fetchLimit),
           // null once close matches are appended: `total` counts EXACT matches,

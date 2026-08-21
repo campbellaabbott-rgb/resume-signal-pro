@@ -31,18 +31,21 @@ const FN = readFileSync(resolve(__dirname, "../../supabase/functions/job-board/i
 
 describe("a sorted page two must not repeat page one", () => {
   it("anchors the window at rank 0 whenever the page is re-sorted in memory", () => {
+    // Widened to cover SCORED pages as well as sorted ones: the scorer
+    // permutes the rows exactly as a sort does, so it needs the same fixed
+    // window or `offset` stops describing where the reader is.
     expect(
-      /p_offset: newestFirst \? 0 : offset,/.test(FN),
+      /p_offset: \(newestFirst \|\| scoreRanked\) \? 0 : offset,/.test(FN),
       "a sorted mode must read a FIXED window — a moving p_offset describes a position " +
         "in relevance order that the sort has already destroyed",
     ).toBe(true);
-    expect(/p_limit: newestFirst \? RANKED_WINDOW : fetchLimit,/.test(FN)).toBe(true);
+    expect(/p_limit: \(newestFirst \|\| scoreRanked\) \? RANKED_WINDOW : fetchLimit,/.test(FN)).toBe(true);
   });
 
   it("applies the caller's offset AFTER the sort, inside that window", () => {
     // Applying it before the sort is the bug. Applying it after makes offset a
     // position in one stable ordering.
-    expect(/const rankedWindow = newestFirst \? rankedRows\.slice\(offset\) : rankedRows;/.test(FN)).toBe(true);
+    expect(/const rankedWindow = \(newestFirst \|\| scoreRanked\) \? rankedScored\.slice\(offset\) : rankedScored;/.test(FN)).toBe(true);
     // And everything downstream must consume the sliced window, not the raw rows.
     expect(/collapseClusters\(rankedWindow, limit\)/.test(FN)).toBe(true);
     expect(/rankedWindow\.slice\(0, limit\)/.test(FN)).toBe(true);
@@ -54,7 +57,7 @@ describe("a sorted page two must not repeat page one", () => {
     // more behind this". Inside a finite window that is a promise of a page
     // which does not exist, so the sorted branch asks only whether rows remain.
     expect(
-      /hasMore: newestFirst\s*\n\s*\? rankedSequence\.length > rankedGrouped\.rawConsumed/.test(FN),
+      /hasMore: \(newestFirst \|\| scoreRanked\)\s*\n\s*\? rankedSequence\.length > rankedGrouped\.rawConsumed/.test(FN),
       "a sorted search must report hasMore from what is left in the window",
     ).toBe(true);
   });
@@ -70,7 +73,7 @@ describe("a sorted page two must not repeat page one", () => {
   it("leaves the UNSORTED path exactly as it was", () => {
     // Relevance order needs no window: p_offset means what it says there, and
     // changing it would be a far larger blast radius than the bug being fixed.
-    expect(/p_offset: newestFirst \? 0 : offset,/.test(FN)).toBe(true);
+    expect(/p_offset: \(newestFirst \|\| scoreRanked\) \? 0 : offset,/.test(FN)).toBe(true);
     expect(/: \(rankedSequence\.length > rankedGrouped\.rawConsumed \|\| rankedSequence\.length >= fetchLimit\)/.test(FN)).toBe(true);
   });
 });

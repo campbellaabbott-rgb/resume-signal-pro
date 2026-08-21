@@ -104,7 +104,12 @@ describe("a page fills up", () => {
     expect(FN).toMatch(/rankedGrouped\.jobs\.length < limit && rankedRows\.length >= fetchLimit/);
     // And it must NOT run on a sorted page: its p_offset arithmetic is in
     // relevance order, which a sorted window has already left behind.
-    expect(FN).toMatch(/if \(!newestFirst && groupSimilar && rankedGrouped\.jobs\.length < limit/);
+    // The top-up pages from `offset + rankedRows.length`, which is
+    // relevance-order arithmetic. It must stand down for a SORTED page and now
+    // also for a SCORED one — both have left that ordering behind, and both
+    // already read the RPC's entire 200-row cap, so there is nothing behind the
+    // window to top up with.
+    expect(FN).toMatch(/if \(!newestFirst && !scoreRanked && groupSimilar && rankedGrouped\.jobs\.length < limit/);
     // Paged by p_offset past everything already read — no cursor arithmetic.
     expect(FN).toMatch(/p_offset: offset \+ rankedRows\.length,/);
     // hasMore must count the MERGED rows or "Load more" disappears early.
@@ -113,7 +118,7 @@ describe("a page fills up", () => {
     // rather than one line of it: hasMore is now a ternary (sorted pages read a
     // finite window), and pinning the old single-line spelling would fail on a
     // correct refactor and teach the next person to delete the check.
-    const hm = /hasMore: newestFirst[\s\S]{0,220}?,\n/.exec(FN)?.[0] ?? "";
+    const hm = /hasMore: \(newestFirst \|\| scoreRanked\)[\s\S]{0,220}?,\n/.exec(FN)?.[0] ?? "";
     expect(hm, "the ranked hasMore expression could not be located").not.toBe("");
     expect(
       (hm.match(/rankedSequence\.length > rankedGrouped\.rawConsumed/g) ?? []).length,
