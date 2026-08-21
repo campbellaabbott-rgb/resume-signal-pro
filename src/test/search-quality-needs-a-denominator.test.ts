@@ -141,6 +141,26 @@ describe("search quality has a denominator and an outcome", () => {
     ).toBe(true);
   });
 
+  it("is verifiable from outside, without exposing what people typed", () => {
+    // The tables are RLS-locked and the aggregate is service-role only — both
+    // correct. But that made "is it actually recording?" unanswerable with the
+    // anon key, and a telemetry table nobody can read is indistinguishable from
+    // one that records nothing. Shipping the unverifiable version of a feature
+    // built to prevent silent non-recording would have been absurd.
+    const blk = /if \(action === "searchQuality"\)[\s\S]*?\n    \}\n/.exec(FN)?.[0] ?? "";
+    expect(blk, "no searchQuality action — the telemetry cannot be checked from outside").not.toBe("");
+    expect(/get_search_quality/.test(blk)).toBe(true);
+    // "nothing recorded" must be reported as such, not as a zeroed summary that
+    // reads like health.
+    expect(/recording: rows\.length > 0/.test(blk), "an empty result must be reported as not-recording").toBe(true);
+    // Counts and rates only. People type their own names, employers and
+    // locations into a search box, so the raw-query aggregate stays private.
+    expect(
+      /get_top_search_misses/.test(blk),
+      "raw query strings must not be exposed through the public action",
+    ).toBe(false);
+  });
+
   it("records a click even when the search id is missing or malformed", () => {
     // Dropping un-attributed clicks would bias every rate toward searchers, and
     // a bad uuid would fail the whole INSERT and lose the click outright.

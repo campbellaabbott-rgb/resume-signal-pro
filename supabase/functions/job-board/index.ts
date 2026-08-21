@@ -3456,6 +3456,35 @@ Deno.serve(async (req) => {
   const client = db();
 
   try {
+    if (action === "searchQuality") {
+      // MAKES THE TELEMETRY VERIFIABLE FROM OUTSIDE, which it otherwise is not.
+      //
+      // get_search_quality is granted to service_role only, and the two tables
+      // behind it are RLS-locked with no policy — correctly, because they hold
+      // visitor behaviour. But that combination meant the one check that
+      // matters ("is it actually recording?") could not be run with the anon
+      // key, and a telemetry table nobody can read is indistinguishable from a
+      // telemetry table that records nothing. That is the exact failure this
+      // feature exists to prevent, so it would have been an absurd one to ship.
+      //
+      // This reads through the service-role client and returns ONLY the
+      // aggregate — the same line the closure log draws. RAW QUERY STRINGS ARE
+      // DELIBERATELY NOT EXPOSED HERE: people type their own names, employers
+      // and locations into a search box, so the aggregate over raw query text
+      // stays service-role-only. Counts and rates carry no such risk.
+      const days = Math.min(Math.max(Number(body.days) || 7, 1), 90);
+      const { data, error } = await client.rpc("get_search_quality", { p_days: days });
+      if (error) return json({ error: error.message, code: error.code ?? null }, 500);
+      const rows = (data ?? []) as Array<Record<string, unknown>>;
+      return json({
+        days,
+        // An empty array here means "nothing recorded", and it is reported as
+        // exactly that rather than as a zeroed summary that reads like health.
+        recording: rows.length > 0,
+        byDay: rows,
+      });
+    }
+
     if (action === "status") {
       // Deploy + health introspection. Read-only, zero-cost (meta rows only — no
       // feed fetches, no AI). BUILD_VERSION and catalogSize come from the DEPLOYED
