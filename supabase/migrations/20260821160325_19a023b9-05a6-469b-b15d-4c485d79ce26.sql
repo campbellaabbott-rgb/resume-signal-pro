@@ -1,0 +1,1 @@
+SELECT cron.unschedule('oneshot_title_simple_fts_idx');
