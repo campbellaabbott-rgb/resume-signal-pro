@@ -52,29 +52,21 @@ describe("a query reaches the search engine whatever the sort", () => {
         'the substring ILIKE where "rn" matches "internship" and "registered ' +
         'nurse" is unreachable.',
     ).toBe(false);
-    // REVERSED 2026-08-21, and the original reasoning is worth keeping because
-    // it was coherent: a salary sort wants a GLOBAL ordering by pay, and only
-    // the browse path can get one from the salary_rank_usd index — the ranked
-    // path can order no more than the relevance page it was handed.
+    // The salary sort legitimately still bypasses the engine.
     //
-    // What that argument missed is what the substring path does to MATCHING.
-    // Measured live: q="nurse" + sort=salary put "Unqualified Nursery
-    // Practitioner" at position one, matched on "Nurser". q="swe" returned
-    // 10,000 ranked Software Engineer roles under relevance and 1,101
-    // substring artifacts under salary, led by "Roswell Full-Time General
-    // CRNA" (Ro-SWE-ll) and "SWEPCO". q="bioinformatician" counted 55 ranked
-    // against 11 from the identical body. A sort control was changing which
-    // jobs MATCH by up to 5x, which no ordering benefit can pay for.
+    // I removed this guard, routed salary through search_jobs, and REVERTED the
+    // whole thing the same day. Routing fixed matching — "nurse" stopped
+    // returning "Nursery Practitioner" — but the ordering it produced was worse
+    // than what it replaced: only 16 of the 180 relevance rows carry a stated
+    // salary, so 44 of 60 cards on a "highest paid" page had no pay at all,
+    // page 1 topped out at $214,800 where the browse path starts at $650,000,
+    // and page 2 led higher than page 1. The browse path can order globally on
+    // the salary_rank_usd index; an in-memory sort of a relevance window
+    // cannot, and no amount of care in the edge function changes that.
     //
-    // So salary now takes the same deal newest already took: the RPC picks the
-    // rows by relevance, and the page the reader is looking at is ordered by
-    // pay. "Best paid among the most relevant" — a trade this file already
-    // accepted once, for dates, three lines above.
-    expect(
-      guard.includes('body.sort !== "salary"'),
-      'The row guard must NOT exclude sort="salary" either — it routed the query ' +
-        'to the substring ILIKE, where "nurse" matched "Nursery".',
-    ).toBe(false);
+    // The real fix is a sort parameter ON THE RPC so the database orders the
+    // whole match set. Until that exists, bypassing is the lesser wrong.
+    expect(guard.includes('body.sort !== "salary"')).toBe(true);
   });
 
   it("does not exclude sort=newest from the COUNT query", () => {
@@ -89,19 +81,14 @@ describe("a query reaches the search engine whatever the sort", () => {
     const m = /if \(qTextC([^)]*)\)/.exec(SRC.slice(fromC));
     expect(m, "count guard not found — no `if (qTextC` follows it").not.toBeNull();
     const guard = m![1];
-    // BOTH sort values, not just newest. Mutation-testing this file found the
-    // gap: excluding only "salary" from the COUNT query passed cleanly while
-    // the row query kept the engine — the exact divergence where a page of
-    // ranked results renders under a total computed by substring matching.
-    // That is the 60-rows-under-a-total-of-36 shape, and it is the single most
-    // dangerous edit anyone can make here, so it is named explicitly.
-    for (const sortValue of ["newest", "salary"]) {
-      expect(
-        guard.includes(`body.sort !== "${sortValue}"`),
-        `The count guard must move WITH the row guard. Excluding sort="${sortValue}" here ` +
-          `alone means the total is computed a different way from the rows it is shown above.`,
-      ).toBe(false);
-    }
+    // The count guard must MIRROR the row guard exactly — whatever the row
+    // query excludes, the count must exclude too. Mutation-testing found that
+    // an asymmetry here passes silently while producing a page of ranked
+    // results under a total computed by substring matching: the
+    // 60-rows-under-a-total-of-36 shape, and the most dangerous edit in this
+    // area.
+    expect(guard.includes('body.sort !== "newest"'), "newest must reach the engine").toBe(false);
+    expect(guard.includes('body.sort !== "salary"'), "salary must bypass it in BOTH places or neither").toBe(true);
   });
 
   it("still orders the page by date when newest was asked for", () => {
