@@ -6867,6 +6867,10 @@ async function serveList(
   // to fold: a page of 25 reads up to 75 rows, which is still one indexed page.
   const groupSimilar = body.groupSimilar !== false && !countOnly;
   const fetchLimit = groupSimilar ? Math.min(limit * GROUP_OVERFETCH, 200) : limit;
+  // search_jobs caps its own output at 200 rows — measured, p_limit 400 and 600
+  // both return exactly 200. A sorted mode reads the whole cap as one fixed
+  // window so paging stays inside a single stable ordering.
+  const RANKED_WINDOW = 200;
 
   // effective_posted = coalesce(posted_at, first_seen): undated feeds
   // (BambooHR) participate in freshness filters and recency sort. If the
@@ -7520,8 +7524,21 @@ async function serveList(
         // below, which filters work mode correctly. The filter is honoured on
         // every route; it is never quietly ignored again.
         ...(applied.workMode ? { p_work_mode: applied.workMode } : {}),
-        p_limit: fetchLimit,
-        p_offset: offset,
+        // A SORTED MODE READS A FIXED WINDOW, NOT A MOVING ONE.
+        //
+        // The in-memory sort permutes these rows, so a p_offset that advances in
+        // RELEVANCE order no longer describes where the reader is. Measured on
+        // production: q="nurse" sort=newest limit=20 returned nextOffset 25 and
+        // page 2 REPEATED 17 OF 20 ROWS, while other rows became unreachable.
+        //
+        // Anchoring the window at rank 0 makes `offset` a position INSIDE the
+        // sorted window, which is stable across calls because the window is
+        // always the same rows in the same order. RANKED_WINDOW is 200 because
+        // search_jobs caps there internally — measured, p_limit 400 and 600 both
+        // return exactly 200 — so paging a sorted search ends honestly at the
+        // window edge instead of continuing with duplicates.
+        p_limit: newestFirst ? RANKED_WINDOW : fetchLimit,
+        p_offset: newestFirst ? 0 : offset,
       });
       if (!rankErr && Array.isArray(ranked)) {
         // A load-more just past an exactly-full final page must not overwrite
@@ -7851,10 +7868,15 @@ async function serveList(
             return db - da;
           });
         }
-        let rankedSequence = rankedRows;
+        // The window is anchored at rank 0 for sorted modes, so the caller's
+        // offset is a position within it and has to be applied HERE, after the
+        // sort. Everything downstream — clustering, rawConsumed, nextOffset —
+        // then advances inside one stable ordering.
+        const rankedWindow = newestFirst ? rankedRows.slice(offset) : rankedRows;
+        let rankedSequence = rankedWindow;
         let rankedGrouped = groupSimilar
-          ? collapseClusters(rankedRows, limit)
-          : { jobs: rankedRows.slice(0, limit), rawConsumed: Math.min(rankedRows.length, limit) };
+          ? collapseClusters(rankedWindow, limit)
+          : { jobs: rankedWindow.slice(0, limit), rawConsumed: Math.min(rankedWindow.length, limit) };
 
         // THE SAME TOP-UP THE BROWSE PATH GOT, because this is the path that
         // actually needed it. The first version shipped only on the recency
@@ -7869,7 +7891,13 @@ async function serveList(
         // it already has if the second call fails. Paged by p_offset, which is
         // how this RPC has always paged, so there is no cursor arithmetic to
         // get wrong.
-        if (groupSimilar && rankedGrouped.jobs.length < limit && rankedRows.length >= fetchLimit) {
+        // NOT ON A SORTED PAGE. The top-up pages from `offset + rankedRows.length`,
+        // which is relevance-order arithmetic — the same coordinate mix-up that
+        // made sorted page two repeat page one. A sorted mode has already read
+        // the RPC's entire 200-row cap as one window, so there is nothing behind
+        // it to top up with: the correct behaviour is a short final page, not a
+        // second fetch appended in a different ordering.
+        if (!newestFirst && groupSimilar && rankedGrouped.jobs.length < limit && rankedRows.length >= fetchLimit) {
           try {
             const { data: more, error: moreErr } = await client.rpc("search_jobs", {
               p_q: expandedQ,
@@ -8023,7 +8051,12 @@ async function serveList(
           ...honesty(rankedGrouped.jobs),
           ...(augmented ? { countUnavailable: true } : {}),
           nextOffset: offset + rankedGrouped.rawConsumed,
-          hasMore: rankedSequence.length > rankedGrouped.rawConsumed || rankedSequence.length >= fetchLimit,
+          // On a sorted search the window is finite and known, so "more" means
+          // more rows LEFT IN IT — never the fetch-size heuristic, which would
+          // promise a page four that cannot exist.
+          hasMore: newestFirst
+            ? rankedSequence.length > rankedGrouped.rawConsumed
+            : (rankedSequence.length > rankedGrouped.rawConsumed || rankedSequence.length >= fetchLimit),
           // null once close matches are appended: `total` counts EXACT matches,
           // and the page now holds exact + close, so it no longer describes what
           // is on screen. Leaving it in beside countUnavailable published a
