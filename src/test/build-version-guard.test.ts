@@ -149,8 +149,21 @@ const PINNED = {
   // have served 1,200 of them, so JobSource gained a per-tenant `pages`
   // budget) and +USAJOBS, the first SINGLE-SOURCE vendor on the board (one
   // national federal feed, agency-as-employer, never agent-sendable).
+  // 2026-08-21.1: index.ts only — sources.ts is UNCHANGED (the hash below still
+  // pins the PetSmart + USAJOBS merge), so no board is waiting on the bootstrap
+  // lane and this bump carries no catalog risk. Three search fixes ride on it,
+  // all measured live before and after:
+  //   - the PGRST203 overload drop, which had left every ranked search falling
+  //     through to the recency path with the fuzzy and semantic tiers dead;
+  //   - close matches reordered above description-only rows, after "maneger"
+  //     was measured putting 7 Dutch care postings above 39 Managers;
+  //   - a pay figure typed alone ("120000", "80k") now filters instead of being
+  //     searched as text — it returned 0 against a floor that counts 13,381.
+  // The bump was applied by the deploy rather than by hand, which is exactly
+  // the case this guard exists to catch: the version moved and its receipt did
+  // not, so the failure is the test working.
   sourcesHash: "83127cd939ce5fa4",
-  buildVersion: "2026-08-19.1",
+  buildVersion: "2026-08-21.1",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {
