@@ -39,7 +39,7 @@ describe("the index can see the words people search for", () => {
     // concatenation — is built, occupies disk, and is never used. Nothing
     // errors; the query just silently goes back to a sequential scan.
     expect(MIG).toMatch(/USING gin \(to_tsvector\('simple', title\)\)/);
-    expect(/textSearch\("title", qText, \{ type: "websearch", config: "simple" \}\)/.test(FN),
+    expect(/textSearch\("title", ftsSafe\(qText\), \{ type: "websearch", config: "simple" \}\)/.test(FN),
       "the caller must use websearch + simple, matching the indexed expression").toBe(true);
   });
 
@@ -78,6 +78,64 @@ describe("the index can see the words people search for", () => {
     expect(/withDeadline\(/.test(blk), "must be deadline-bounded").toBe(true);
     expect(/\.range\(0, Math\.max\(limit \* 2 - 1, 0\)\)/.test(blk), "must read a bounded window").toBe(true);
     expect(/catch \{/.test(blk), "a failure must degrade to the empty page, never an error").toBe(true);
+  });
+
+  it("searches COMPANY as well as title, as two indexed queries not one or()", () => {
+    const blk = /── THE SIMPLE-CONFIG TIER[\s\S]*?catch \{ \/\* the empty page the visitor already had \*\/ \}/.exec(FN)?.[0] ?? "";
+    expect(blk, "the simple tier is missing").not.toBe("");
+    // An employer name lives in company. Title-only is why q="AT&T" reached the
+    // 23 postings with AT&T in their TITLE and none of the 493 whose EMPLOYER
+    // is AT&T.
+    expect(/\.textSearch\("title", ftsSafe\(qText\)/.test(blk)).toBe(true);
+    expect(/\.textSearch\("company", ftsSafe\(qText\)/.test(blk)).toBe(true);
+    // NOT an or(). MEASURED: or=(title.wfts,company.wfts) with the tier's real
+    // ordering took 2.23s on AT&T and returned HTTP 500 at 3.24s on "dominos",
+    // because an OR across two columns plus ORDER BY effective_posted cannot be
+    // served by one index — the same shape as this board's 17s outage. Split,
+    // each side hits its own gin index at about a quarter of a second.
+    expect(/\.or\(\s*`title\.wfts/.test(blk), "the or() form times out — keep the queries split").toBe(false);
+  });
+
+  it("survives one half of the pair failing", () => {
+    const blk = /── THE SIMPLE-CONFIG TIER[\s\S]*?catch \{ \/\* the empty page the visitor already had \*\/ \}/.exec(FN)?.[0] ?? "";
+    // The company index may not exist yet: measured today, title answers in
+    // 0.21-0.27s while company 500s at 3.31s on "dominos". Promise.all would
+    // let that discard the working title results.
+    expect(/Promise\.allSettled\(\[/.test(blk), "one failing side must not discard the other").toBe(true);
+    expect(/Promise\.all\(\[/.test(blk.replace(/Promise\.allSettled\(\[/g, "")), "no bare Promise.all").toBe(false);
+    expect(/r\.status === "fulfilled"/.test(blk)).toBe(true);
+  });
+
+  it("dedupes the merged pair, title first", () => {
+    const blk = /── THE SIMPLE-CONFIG TIER[\s\S]*?catch \{ \/\* the empty page the visitor already had \*\/ \}/.exec(FN)?.[0] ?? "";
+    // Concatenating two result sets means a posting matching BOTH appears
+    // twice, and each query is ordered only within itself.
+    expect(/const seenSimple = new Set<string>\(\)/.test(blk)).toBe(true);
+    expect(/if \(!id \|\| seenSimple\.has\(id\)\) return false;/.test(blk)).toBe(true);
+  });
+
+  it("strips the characters that would truncate a PostgREST filter", () => {
+    const fn = /function ftsSafe\(t: string\): string \{[\s\S]*?\n\}/.exec(FN)?.[0] ?? "";
+    expect(fn, "ftsSafe is missing").not.toBe("");
+    // A comma ends an or() branch and a parenthesis closes the filter — this
+    // board already shipped that bug on a location or() splitting at ", TX".
+    // Quotes are stripped rather than escaped: websearch_to_tsquery reads them
+    // as phrase syntax, and a half-open phrase is a parse error, not a search.
+    // Asserted behaviourally: a character class is easy to get subtly wrong
+    // and easy to assert vacuously. Reconstruct the shipped regex and run it.
+    const m = /return t\.replace\((\/\[[^/]*\]\/g)/.exec(fn);
+    expect(m, "could not read ftsSafe's character class").not.toBeNull();
+    // eslint-disable-next-line no-eval
+    const cls: RegExp = eval(m![1]);
+    for (const ch of [",", "(", ")", '"', "'", ":"]) {
+      expect(cls.test(ch), `ftsSafe must strip ${ch} — it would truncate the filter`).toBe(true);
+      cls.lastIndex = 0;
+    }
+    // and must NOT strip ordinary word characters
+    for (const ch of ["a", "1", "&", "+", "#", "-"]) {
+      expect(cls.test(ch), `ftsSafe must keep ${ch}`).toBe(false);
+      cls.lastIndex = 0;
+    }
   });
 
   it("publishes no total it cannot stand behind, and discloses the tier", () => {

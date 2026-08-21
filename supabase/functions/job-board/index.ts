@@ -3401,6 +3401,22 @@ function liftIntentFilters(
   return { patch, labels, residualQ: residual };
 }
 
+/**
+ * Make a term safe to embed in a PostgREST or() filter.
+ *
+ * or() is parsed as a comma-separated list of dotted expressions, so a comma or
+ * a parenthesis inside a value ends the branch early and the rest is read as
+ * another filter — silently, producing a query nobody wrote. A location or()
+ * already shipped that bug here by splitting on ", TX".
+ *
+ * Quotes are stripped rather than escaped because websearch_to_tsquery treats
+ * them as phrase syntax, and a half-open phrase from a stray quote is a parse
+ * error rather than a search.
+ */
+function ftsSafe(t: string): string {
+  return t.replace(/[(),."'\\:]/g, " ").replace(/\s+/g, " ").trim();
+}
+
 function queryTerms(raw: unknown): { terms: string[]; dropped: string[]; liftedSalary: boolean } {
   const all = String(raw ?? "").toLowerCase().split(/\s+/).map(sanitizeTerm).filter(Boolean);
   // The money token is lifted into the salary filter by normalizeFilters, so
@@ -7667,15 +7683,71 @@ async function serveList(
             // an already-empty page: an abandoned query still costs the
             // database, so it must be small and rare.
             const { data: simpleRows, error: sErr2 } = await withDeadline(
-              buildQuery("effective_posted", false, undefined, { skipTerms: true })
-                .textSearch("title", qText, { type: "websearch", config: "simple" })
-                .order("effective_posted", { ascending: false, nullsFirst: false })
-                .order("id", { ascending: true })
-                .range(0, Math.max(limit * 2 - 1, 0)),
+              // TWO INDEXED QUERIES, NOT ONE or(). An employer name lives in
+              // company, and leaving company out is why q="AT&T" reached the 23
+              // postings with AT&T in their TITLE — a Busser at the AT&T
+              // Discovery District — and none of the 493 whose EMPLOYER is AT&T.
+              //
+              // The obvious form, or=(title.wfts,company.wfts), was written and
+              // MEASURED FIRST, and it is a trap: an OR across two columns plus
+              // ORDER BY effective_posted cannot be served by one index, so the
+              // planner gathers every match and sorts. Timed with the tier's
+              // real column list and ordering:
+              //   or() AT&T    2.23s        or() dominos  HTTP 500 at 3.24s
+              // That is the "ORDER BY the date index does not serve" shape this
+              // board already took a 17s outage from.
+              //
+              // Split in two, each side hits its own gin index and returns in
+              // about a quarter of a second, and the merge happens here over at
+              // most a few hundred rows. Issued CONCURRENTLY so the pair costs
+              // one round trip, not two.
+              // allSettled, NOT all. supabase-js resolves an HTTP error into
+              // { data: null, error } rather than rejecting, but a network
+              // throw WOULD reject — and with Promise.all one rejection
+              // discards the other side's results. MEASURED right now, before
+              // the company index exists: the title side answers in 0.21-0.27s
+              // while company 500s at 3.31s on "dominos". The half that works
+              // must still answer.
+              Promise.allSettled([
+                buildQuery("effective_posted", false, undefined, { skipTerms: true })
+                  .textSearch("title", ftsSafe(qText), { type: "websearch", config: "simple" })
+                  .order("effective_posted", { ascending: false, nullsFirst: false })
+                  .order("id", { ascending: true })
+                  .range(0, Math.max(limit * 2 - 1, 0)),
+                buildQuery("effective_posted", false, undefined, { skipTerms: true })
+                  .textSearch("company", ftsSafe(qText), { type: "websearch", config: "simple" })
+                  .order("effective_posted", { ascending: false, nullsFirst: false })
+                  .order("id", { ascending: true })
+                  .range(0, Math.max(limit * 2 - 1, 0)),
+              ]).then((settled) => ({
+                // A failure on EITHER side is survivable — the other still
+                // answers. The company index may not exist yet, and a tier that
+                // dies entirely because half of it is unindexed would be worse
+                // than the empty page it replaces.
+                data: settled.flatMap((r) =>
+                  r.status === "fulfilled"
+                    ? ((r.value as { data?: unknown[] })?.data ?? [])
+                    : []
+                ),
+                error: null,
+              })),
               4_000,
             ) as { data: unknown[] | null; error?: unknown };
             if (!sErr2 && Array.isArray(simpleRows) && simpleRows.length > 0) {
-              const simpleJobs = (simpleRows as unknown[]).map(rowToJob) as Array<Record<string, unknown>>;
+              // Title first, then company, then dedupe by id — concatenating two
+              // result sets means a posting matching BOTH appears twice, and the
+              // ordering above is per-query so the merged list is not sorted as
+              // a whole. Title leads because a role in the title is what the
+              // searcher asked for; the employer match is the fallback that
+              // makes "AT&T" reach AT&T.
+              const seenSimple = new Set<string>();
+              const simpleJobs = ((simpleRows as unknown[]).map(rowToJob) as Array<Record<string, unknown>>)
+                .filter((r) => {
+                  const id = String(r.id ?? "");
+                  if (!id || seenSimple.has(id)) return false;
+                  seenSimple.add(id);
+                  return true;
+                });
               const simpleGrouped = groupSimilar
                 ? collapseClusters(simpleJobs, limit)
                 : { jobs: simpleJobs.slice(0, limit), rawConsumed: Math.min(simpleJobs.length, limit) };
