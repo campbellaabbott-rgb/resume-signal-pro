@@ -146,6 +146,7 @@ const MARKET_DATA: Record<CountryIndustryKey, MarketInsight> = {
     risingKeywords: ['Digital asset regulation', 'MAS FEAT principles', 'ESG finance', 'payments modernisation'],
     salaryContext: 'VP-level banking roles SGD $180-280K; quant roles $200-350K',
     uniqueSignals: ['MAS licensing knowledge (CMS, CMSL) is a hard gate for regulated roles', 'Family office experience is a fast-growing niche'],
+    cvNorms: ['2 pages standard', 'Include Singapore PR/EP/DP status explicitly', 'State MAS licences held (CMS, CMSL) explicitly', 'Include expected salary range'],
   },
 
   // ── UAE ──
