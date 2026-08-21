@@ -98,7 +98,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-21.2";
+const BUILD_VERSION = "2026-08-21.3";
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -3415,6 +3415,38 @@ function liftIntentFilters(
  */
 function ftsSafe(t: string): string {
   return t.replace(/[(),."'\\:]/g, " ").replace(/\s+/g, " ").trim();
+}
+
+/**
+ * The websearch query for the simple-config tiers, with the possessive variant.
+ *
+ * A possessive employer is stored as TWO tokens: to_tsvector('simple',
+ * "Domino's") is 'domino':1 's':2, because the parser splits on the apostrophe.
+ * Someone typing the apostrophe is fine — ftsSafe turns it into a space and the
+ * phrase matches. Someone typing "dominos" produces the single token 'dominos',
+ * which matches neither, and gets nothing.
+ *
+ * MEASURED against the company index:
+ *   dominos              -> 0 rows
+ *   Domino's / domino s  -> 2,002 rows
+ *   dominos or domino s  -> 2,002 rows, 0.22s
+ * That is Domino's, McDonald's, Macy's, Kohl's, Lowe's — a whole retail class
+ * failing on one apostrophe nobody types into a search box.
+ *
+ * The variant is free on ordinary words: "engineers or engineer s" returns the
+ * same 622 rows as "engineers", because the phrase 'engineer' <-> 's' matches
+ * almost nothing that the plain token does not.
+ *
+ * Only single tokens are rewritten. A multi-word query containing an apostrophe
+ * has already been split into the matching shape by ftsSafe.
+ */
+function ftsQuery(raw: string): string {
+  const safe = ftsSafe(raw);
+  // Length floor keeps it off short plurals where the split half is noise.
+  if (/^[a-z0-9]+s$/i.test(safe) && safe.length >= 5) {
+    return `${safe} or ${safe.slice(0, -1)} s`;
+  }
+  return safe;
 }
 
 function queryTerms(raw: unknown): { terms: string[]; dropped: string[]; liftedSalary: boolean } {
@@ -7710,12 +7742,12 @@ async function serveList(
               // must still answer.
               Promise.allSettled([
                 buildQuery("effective_posted", false, undefined, { skipTerms: true })
-                  .textSearch("title", ftsSafe(qText), { type: "websearch", config: "simple" })
+                  .textSearch("title", ftsQuery(qText), { type: "websearch", config: "simple" })
                   .order("effective_posted", { ascending: false, nullsFirst: false })
                   .order("id", { ascending: true })
                   .range(0, Math.max(limit * 2 - 1, 0)),
                 buildQuery("effective_posted", false, undefined, { skipTerms: true })
-                  .textSearch("company", ftsSafe(qText), { type: "websearch", config: "simple" })
+                  .textSearch("company", ftsQuery(qText), { type: "websearch", config: "simple" })
                   .order("effective_posted", { ascending: false, nullsFirst: false })
                   .order("id", { ascending: true })
                   .range(0, Math.max(limit * 2 - 1, 0)),
@@ -7731,8 +7763,28 @@ async function serveList(
                 ),
                 error: null,
               })),
-              4_000,
+              // 7s, not 4s. MEASURED: the pair costs ~1.3s warm (title 0.25s,
+              // company 1.13s, issued concurrently), but eight identical calls
+              // to q="IT" produced 7.9s, 6.5s, then six between 2.6s and 3.0s —
+              // cold-start spikes. Under the old 4s budget the two slow calls
+              // blew the deadline and fell through to the fuzzy tier, so the
+              // SAME QUERY returned 60 rows or 19 depending on the call.
+              //
+              // Non-determinism is worse than either answer. It makes the
+              // telemetry unreadable — a zero-result rate that depends on
+              // warm-up cannot be compared week to week — and it makes every
+              // relevance measurement a coin toss, which is how "IT is fixed"
+              // got reported off a lucky draw.
+              7_000,
             ) as { data: unknown[] | null; error?: unknown };
+            // A deadline miss now leaves a trace. withDeadline resolves
+            // { data: null }, which is indistinguishable from "no matches" —
+            // and a tier that silently degrades is exactly the failure this
+            // codebase keeps rediscovering. The warning is the only way to tell
+            // "the exact-word tier found nothing" from "it never finished".
+            if (simpleRows === null) {
+              console.warn(`[JOB-BOARD] exact-word tier exceeded its deadline for q=${JSON.stringify(qText)}`);
+            }
             if (!sErr2 && Array.isArray(simpleRows) && simpleRows.length > 0) {
               // Title first, then company, then dedupe by id — concatenating two
               // result sets means a posting matching BOTH appears twice, and the

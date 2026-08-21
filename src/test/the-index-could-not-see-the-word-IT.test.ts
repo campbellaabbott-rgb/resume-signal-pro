@@ -39,7 +39,7 @@ describe("the index can see the words people search for", () => {
     // concatenation — is built, occupies disk, and is never used. Nothing
     // errors; the query just silently goes back to a sequential scan.
     expect(MIG).toMatch(/USING gin \(to_tsvector\('simple', title\)\)/);
-    expect(/textSearch\("title", ftsSafe\(qText\), \{ type: "websearch", config: "simple" \}\)/.test(FN),
+    expect(/textSearch\("title", ftsQuery\(qText\), \{ type: "websearch", config: "simple" \}\)/.test(FN),
       "the caller must use websearch + simple, matching the indexed expression").toBe(true);
   });
 
@@ -76,6 +76,16 @@ describe("the index can see the words people search for", () => {
     // Bounded window: withDeadline is Promise.race and does NOT cancel the SQL,
     // so an abandoned query keeps costing the database.
     expect(/withDeadline\(/.test(blk), "must be deadline-bounded").toBe(true);
+    // The BUDGET is pinned, not just its presence. At 4s, eight identical calls
+    // to q="IT" split 2 / 6 between the fuzzy tier (19 rows) and this one (60):
+    // two cold-start spikes at 7.9s and 6.5s blew the deadline and the SAME
+    // QUERY returned two different answers. Non-determinism is worse than
+    // either answer — it makes the telemetry unreadable and turns every
+    // relevance check into a coin toss.
+    expect(/\n\s*7_000,/.test(blk), "the deadline must cover the measured cold-start spike").toBe(true);
+    // And a miss must leave a trace: withDeadline resolves { data: null }, which
+    // is indistinguishable from "no matches".
+    expect(/exceeded its deadline/.test(blk), "a silent degradation is the bug this repo keeps rediscovering").toBe(true);
     expect(/\.range\(0, Math\.max\(limit \* 2 - 1, 0\)\)/.test(blk), "must read a bounded window").toBe(true);
     expect(/catch \{/.test(blk), "a failure must degrade to the empty page, never an error").toBe(true);
   });
@@ -86,14 +96,56 @@ describe("the index can see the words people search for", () => {
     // An employer name lives in company. Title-only is why q="AT&T" reached the
     // 23 postings with AT&T in their TITLE and none of the 493 whose EMPLOYER
     // is AT&T.
-    expect(/\.textSearch\("title", ftsSafe\(qText\)/.test(blk)).toBe(true);
-    expect(/\.textSearch\("company", ftsSafe\(qText\)/.test(blk)).toBe(true);
+    expect(/\.textSearch\("title", ftsQuery\(qText\)/.test(blk)).toBe(true);
+    expect(/\.textSearch\("company", ftsQuery\(qText\)/.test(blk)).toBe(true);
     // NOT an or(). MEASURED: or=(title.wfts,company.wfts) with the tier's real
     // ordering took 2.23s on AT&T and returned HTTP 500 at 3.24s on "dominos",
     // because an OR across two columns plus ORDER BY effective_posted cannot be
     // served by one index — the same shape as this board's 17s outage. Split,
     // each side hits its own gin index at about a quarter of a second.
     expect(/\.or\(\s*`title\.wfts/.test(blk), "the or() form times out — keep the queries split").toBe(false);
+  });
+
+  it("reaches possessive employers, which one apostrophe was hiding", () => {
+    const fn = /function ftsQuery\(raw: string\): string \{[\s\S]*?\n\}/.exec(FN)?.[0] ?? "";
+    expect(fn, "ftsQuery is missing").not.toBe("");
+
+    // SOURCE ASSERTIONS FIRST, and they are not optional. Mutation-testing
+    // caught this file passing while the shipped rewrite was DELETED: the
+    // reimplementation below exercises the RULE and never touches the wiring,
+    // so it goes on passing no matter what happens to the real function. That
+    // is the exact defect a review found in the employer-routing tests this
+    // morning, repeated here within hours. A behavioural reimplementation
+    // proves a rule is right; only a source assertion proves it is connected.
+    expect(
+      /return `\$\{safe\} or \$\{safe\.slice\(0, -1\)\} s`;/.test(fn),
+      "the shipped ftsQuery must emit the possessive variant",
+    ).toBe(true);
+    expect(
+      /safe\.length >= 5/.test(fn),
+      "the length floor keeps the variant off short plurals where the split half is noise",
+    ).toBe(true);
+    expect(/\.textSearch\("title", ftsQuery\(qText\)/.test(FN)).toBe(true);
+    expect(/\.textSearch\("company", ftsQuery\(qText\)/.test(FN)).toBe(true);
+
+    // Then the behaviour, reconstructed from the same rule.
+    const ftsSafeLocal = (t: string) => t.replace(/[(),."'\\:]/g, " ").replace(/\s+/g, " ").trim();
+    const ftsQueryLocal = (raw: string) => {
+      const safe = ftsSafeLocal(raw);
+      if (/^[a-z0-9]+s$/i.test(safe) && safe.length >= 5) return `${safe} or ${safe.slice(0, -1)} s`;
+      return safe;
+    };
+    // MEASURED: "dominos" matched 0 rows, "dominos or domino s" matched 2,002.
+    expect(ftsQueryLocal("dominos")).toBe("dominos or domino s");
+    expect(ftsQueryLocal("mcdonalds")).toBe("mcdonalds or mcdonald s");
+    // An apostrophe typed by the user already splits correctly via ftsSafe.
+    expect(ftsQueryLocal("Domino's")).toBe("Domino s");
+    // Ordinary words are untouched in effect — "engineers or engineer s"
+    // measured the same 622 rows as "engineers" — and short plurals are left
+    // alone entirely so the split half cannot become noise.
+    expect(ftsQueryLocal("its")).toBe("its");
+    expect(ftsQueryLocal("nurse")).toBe("nurse");
+    expect(ftsQueryLocal("registered nurse")).toBe("registered nurse");
   });
 
   it("survives one half of the pair failing", () => {

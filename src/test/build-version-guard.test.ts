@@ -170,8 +170,13 @@ const PINNED = {
   // "is it deployed?" could only be answered by probing behaviour — the exact
   // rung-2 pain the version exists to remove. A version that does not move
   // across a deploy boundary cannot answer the one question it is for.
+  // 2026-08-21.3: index.ts only, sources.ts UNCHANGED. Carries the exact-word
+  // tier's company half, the possessive variant, and the deadline raise. Bumped
+  // as a matter of course this time — the .2 bump had to be made retroactively
+  // after three commits shipped undeployed behind an unchanged version string,
+  // and "is it live?" cost six behavioural probes to answer.
   sourcesHash: "83127cd939ce5fa4",
-  buildVersion: "2026-08-21.2",
+  buildVersion: "2026-08-21.3",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {
