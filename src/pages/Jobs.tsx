@@ -3739,7 +3739,12 @@ export default function Jobs() {
               <Sparkles className="w-3.5 h-3.5" />
               {t("jobsPage.agentOnly", "Agent can apply")}
             </label>
-            {category && category !== "other" && (
+            {/* `category` is comma-joined once a selection is multi-value, so
+                the old `!== "other"` test passes for "design,other" — the
+                control would render, be tickable, and be silently discarded by
+                the server, which drops the opt-in when the bucket is already in
+                the selection. Ask the question the server asks. */}
+            {category && !category.split(",").includes("other") && (
               <label
                 className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border bg-background text-sm whitespace-nowrap ${
                   sortMode === "salary" ? "opacity-50 cursor-not-allowed text-muted-foreground/60" : "text-muted-foreground cursor-pointer"

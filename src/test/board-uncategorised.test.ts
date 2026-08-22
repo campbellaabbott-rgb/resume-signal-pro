@@ -165,7 +165,19 @@ describe("the SEO landers cannot widen", () => {
   });
 
   it("the control is hidden on 'All fields' and on the bucket itself", () => {
-    expect(jobs).toMatch(/\{category && category !== "other" && \(/);
+    // Membership, not inequality. Once a selection can hold more than one field
+    // the value is comma-joined, and `"design,other" !== "other"` is TRUE — the
+    // control would render and be tickable while the server discards the opt-in,
+    // because the bucket is already in the selection. The old spelling kept
+    // passing throughout, which is why the property is pinned instead.
+    expect(jobs).toMatch(/\{category && !category\.split\(","\)\.includes\("other"\) && \(/);
+    expect(jobs).not.toMatch(/\{category && category !== "other" && \(/);
+    // And the server asks the same question, or the two disagree about whether
+    // the control should have been offered at all.
+    const filters = readFileSync(resolve(__dirname, "../../supabase/functions/job-board/filters.ts"), "utf8");
+    expect(filters).toMatch(/!category\.split\(","\)\.includes\("other"\)/);
+    expect(norm({ category: "engineering,other", includeUncategorised: true }).includeUncategorised).toBe(false);
+    expect(norm({ category: "engineering,admin", includeUncategorised: true }).includeUncategorised).toBe(true);
   });
 
   it("the lander routes never set it — they have no way to", () => {

@@ -7391,6 +7391,21 @@ async function serveList(
   // leaves the existing exact-count path in charge.
   const COUNT_CAP = 10_000;
   const cappedCount = async (): Promise<{ n: number; capped: boolean } | null> => {
+    // A MULTI-COUNTRY REQUEST DOES NOT ASK THIS RPC, AND THAT IS A DEPLOY GUARD.
+    //
+    // The comma split for the country parameter lives in a migration that is
+    // not applied yet. Against the SQL currently live, a joined value is an
+    // equality against the literal string and returns ZERO — so a function
+    // deployed ahead of its migration would serve a full page of real German
+    // and British rows under a headline of 0, and write a false catalogue-gap
+    // row into job_board_search_misses on the way. filterViolations cannot
+    // catch it: every row genuinely is in a selected country.
+    //
+    // Returning null is not a degradation. The caller falls through to an exact
+    // count through buildQuery, which splits the list in JS and is therefore
+    // correct against BOTH versions of the SQL. It costs one count query on a
+    // filter nothing can send yet. Single-country requests are untouched.
+    if (applied.country && applied.country.includes(",")) return null;
     // Bound from `applied`, the same object buildQuery reads. These four used to
     // be re-derived here with their own expressions; when one of those drifted
     // from the query's, the count described a different question than the page.

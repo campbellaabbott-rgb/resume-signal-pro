@@ -146,7 +146,9 @@ export function normalizeFilters(
   // way, per element. Two letters or it never reaches the split. "United
   // Kingdom" or "GB; drop" cannot become a predicate, and a list whose members
   // are ALL unusable is a refused filter, which is always named.
-  const COUNTRY_LIMIT = 12;
+  // Five. Country is cheap by comparison (an indexed equality per member) but
+  // US-heavy sets are not, and nothing on screen will offer more than a handful.
+  const COUNTRY_LIMIT = 5;
   const countryList = (Array.isArray(body.country) ? body.country : String(body.country ?? "").split(","))
     .map((c) => String(c ?? "").trim())
     .filter((c) => /^[A-Za-z]{2}$/.test(c))
@@ -164,7 +166,12 @@ export function normalizeFilters(
   // Unknown slugs are dropped rather than named: they cannot match a posting,
   // and the SQL already treats them as inert. Only a request whose categories
   // are ALL unusable has had its filter refused, and that one is named.
-  const CATEGORY_LIMIT = 8;
+  // THREE, AND THE NUMBER IS MEASURED. search_jobs q=manager: 1 field
+  // 0.26-0.35s, 3 fields ~0.45s, 6 big fields 0.75-0.79s; q=nurse across 7
+  // values 1.24-1.89s. Six is the same cost class as the two-value cliff the
+  // two-subset pager exists to avoid, so the cap sits below it rather than at
+  // a round number.
+  const CATEGORY_LIMIT = 3;
   const categoryList = (Array.isArray(body.category) ? body.category : String(body.category ?? "").split(","))
     .map((c) => String(c ?? "").trim().toLowerCase())
     .filter((c) => (JOB_CATEGORIES as readonly string[]).includes(c));
