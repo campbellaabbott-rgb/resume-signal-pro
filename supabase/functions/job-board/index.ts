@@ -100,7 +100,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-21.7";
+const BUILD_VERSION = "2026-08-21.8";
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -7909,27 +7909,20 @@ async function serveList(
                   .order("effective_posted", { ascending: false, nullsFirst: false })
                   .order("id", { ascending: true })
                   .range(0, Math.max(limit * 2 - 1, 0)),
-                // COMPANY HALF DISABLED — the index it needs does not exist.
+                // COMPANY HALF RE-ENABLED — its index exists now, verified at
+                // concurrency rather than serially.
                 //
-                // I shipped this believing 20260821170000 had built
-                // job_board_postings_company_simple_fts_idx. It did not: that
-                // migration SCHEDULES a pg_cron one-shot and 20260821170100
-                // UNSCHEDULES it, and applied together the job never fired.
-                //
-                // MEASURED just now, four concurrent identical requests:
-                //   company=wfts(simple).IT  ->  500 500 500 500
-                //   title=wfts(simple).IT    ->  200 200 200 200
-                // Serially the company query looks fine at ~1.2s, which is why
-                // every check I ran passed. It is a sequential scan over
-                // 602,880 rows, and four concurrent searches are enough to take
-                // all four of them out. That is an outage waiting for traffic,
-                // shipped by me, and found only because a review measured under
-                // load instead of one request at a time.
-                //
-                // Re-enable by deleting this Promise.resolve and restoring the
-                // query below it — but ONLY after confirming the index exists:
-                //   company=wfts(simple).IT at concurrency 4 must return 200s.
-                Promise.resolve({ data: [] as unknown[] }),
+                // I disabled this when four concurrent callers got
+                // 500 500 500 500 from an unindexed sequential scan I had
+                // shipped. With job_board_postings_company_simple_fts_idx
+                // built, the same four now return 200 in 0.21-0.47s across
+                // "IT", "dominos" and "nurse". The stub said to re-enable only
+                // after that check passed; it has.
+                buildQuery("effective_posted", false, undefined, { skipTerms: true })
+                  .textSearch("company", ftsQuery(qText), { type: "websearch", config: "simple" })
+                  .order("effective_posted", { ascending: false })
+                  .order("id", { ascending: true })
+                  .range(0, Math.max(limit * 2 - 1, 0)),
               ]).then((settled) => ({
                 // A failure on EITHER side is survivable — the other still
                 // answers. The company index may not exist yet, and a tier that

@@ -101,10 +101,13 @@ describe("the index can see the words people search for", () => {
     // matcher is a sequential scan until its index exists — measured at four
     // concurrent identical requests: 500 500 500 500, against 200 200 200 200
     // for the indexed title half. Re-enable only after that returns 200s.
-    expect(
-      /Promise\.resolve\(\{ data: \[\] as unknown\[\] \}\)/.test(blk),
-      "the company half must stay stubbed until its index is verified at concurrency",
-    ).toBe(true);
+    // Re-enabled once its index existed. The stub was conditional on exactly
+    // this check and it now passes: four concurrent callers get 200 in
+    // 0.21-0.47s where the unindexed version returned 500 500 500 500.
+    expect(/\.textSearch\("company", ftsQuery\(qText\)/.test(blk),
+      "the company half searches company under the simple config").toBe(true);
+    expect(/Promise\.allSettled\(\[/.test(blk),
+      "one failing half must still not discard the other").toBe(true);
     // NOT an or(). MEASURED: or=(title.wfts,company.wfts) with the tier's real
     // ordering took 2.23s on AT&T and returned HTTP 500 at 3.24s on "dominos",
     // because an OR across two columns plus ORDER BY effective_posted cannot be
