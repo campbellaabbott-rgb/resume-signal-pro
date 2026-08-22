@@ -57,7 +57,7 @@ import { classifyDormancy, updateBoardFailures, type BoardFailureState } from ".
 import { advanceProgress, isPassDone, type RefreshProgress } from "./rotation.ts";
 import { CANARIES, rawItemCount, aggregateVendorHealth, type CanaryResult } from "./vendor-canary.ts";
 import { detectExperience, isExperienceBand } from "./experience.ts";
-import { categoryParam, filterViolations, isUnfiltered, normalizeFilters, sendableSourcesParam, splitPage, salaryFromQueryText, SALARY_IN_QUERY } from "./filters.ts";
+import { categoryParam, filterViolations, isUnfiltered, normalizeFilters, rescueVendorsParam, sendableSourcesParam, splitPage, salaryFromQueryText, SALARY_IN_QUERY } from "./filters.ts";
 import { pickRoute, rerankWindow, RETRIEVER_FOR } from "./search-routing.ts";
 import { planRankedPage } from "./paging.ts";
 import { EMPLOYER_ALIASES } from "./employer-aliases.ts";
@@ -8173,6 +8173,45 @@ async function serveList(
             if (Array.isArray(v)) return v.length > 0;
             return true;
           });
+        // THE RESCUE TIERS NOW CARRY THE FILTERS INSTEAD OF STANDING DOWN.
+        //
+        // The flag above used to mean "no rescue runs at all". Measured live
+        // 2026-08-22 on the deployed board: q="nurrse" alone returned 17 close
+        // matches, and the SAME query with country=US, category=healthcare or
+        // workMode=remote each returned zero rows with no disclosure. One typo
+        // plus any filter emptied the board.
+        //
+        // Standing down was right only while the RPCs could not filter. That is
+        // no longer the shared situation:
+        //   * the exact-word tier binds through buildQuery and always carried
+        //     every filter — it never needed the fence;
+        //   * the trigram rescue takes the filters as parameters as of
+        //     20260822040000 and applies them BEFORE its own cap;
+        //   * the semantic RPC still cannot, so it hydrates its ids back through
+        //     buildQuery below.
+        //
+        // SPREAD-OMITTED WHEN NOTHING IS NARROWED, and that is deploy-window
+        // tolerance rather than tidiness: sending these arguments to the OLD
+        // three-argument function makes PostgREST answer a no-such-function code
+        // and the tier returns nothing. While the migration is unapplied, an
+        // unfiltered typo query keeps its old call shape and keeps working, and a
+        // filtered one degrades to the empty page it already shows today — no
+        // regression in either deploy order.
+        const rescueFilterParams = (): Record<string, unknown> => filtersActive ? {
+          p_location: rankedLocationParam(applied.location),
+          p_remote: applied.remote ? true : null,
+          p_country: applied.country,
+          p_category: categoryParam(applied),
+          p_experience: applied.experience.length ? applied.experience : null,
+          p_salary_floor: applied.salaryFloor,
+          p_companies: applied.companies.length ? applied.companies : null,
+          p_posted_after: applied.postedAfter,
+          p_max_age_days: applied.maxAgeDays,
+          p_work_mode: applied.workMode,
+          // One producer for the vendor list; this function spells the parameter
+          // differently for the reason recorded in the migration.
+          ...rescueVendorsParam(applied),
+        } : {};
         // Empty ranked result: try the FAST trigram fuzzy fallback right here
         // ("desinger" → designer), then return an honest empty. Critically we
         // do NOT fall through to the recency path — its OR-of-ILIKE with an
@@ -8181,7 +8220,16 @@ async function serveList(
         // paths are both index-backed and fast.
         // `total === 0` only — a null total means "count unavailable", which is
         // not the same claim as "nothing matches" (see the recency-path twin).
-        if (total === 0 && offset === 0 && !countOnly) {
+        // ROWS, NOT THE HEADLINE. This gate guards the rescue tiers — exact word,
+        // trigram fuzzy, semantic — and every one of them RETURNS EARLY with its
+        // own result set. Under two segments a query with zero title matches and
+        // 39 description matches has a total of 0 and a full page of rows, and
+        // this gate would have thrown those rows away and served a typo
+        // correction of a query that needed none. Twenty of forty measured
+        // country x skill combinations are exactly that shape.
+        // `total === 0` implied `ranked.length === 0` before this change, so the
+        // rewrite is behaviour-preserving against today's SQL and correct after.
+        if (ranked.length === 0 && offset === 0 && !countOnly) {
           // Demand telemetry, ranked path — logged AT EACH TERMINAL with its
           // rescue outcome. The single up-front insert counted typo queries
           // that fuzzy then rescued as if they were catalog gaps, so the
@@ -8242,7 +8290,17 @@ async function serveList(
           // below means a failure degrades to the empty page the visitor
           // already had rather than an error, but that is a safety net, not a
           // licence to ship the two out of order.
-          if (!filtersActive && qText.length >= 2) try {
+          // THE SHARED RESCUE FENCE DOES NOT APPLY TO THIS TIER, AND NEVER DID.
+          // The fence exists because the other two rescue RPCs cannot filter.
+          // This one is not an RPC — it is buildQuery with a different matcher,
+          // so freshness, presence, country, work mode, field, experience,
+          // salary, companies and both date filters were already binding on every
+          // call. Standing it down under a narrowing threw away an answer that
+          // was already correct. Nor is there a cost argument: the literal query
+          // shape under adversarial filters at concurrency 4 measured 0.22-0.51s
+          // across a dozen combinations, and it still only fires on an already
+          // empty page.
+          if (qText.length >= 2) try {
             // NOTE: withDeadline is Promise.race — on timeout it resolves
             // { data: null } and the SQL KEEPS RUNNING server-side. That is why
             // the window is bounded to limit*2 rows and why this only fires on
@@ -8376,10 +8434,27 @@ async function serveList(
             }
           } catch { /* the empty page the visitor already had */ }
 
-          // (filtersActive hoisted above — shared with the augmentation tier.)
-          if (!filtersActive) try {
+          // FILTERS BOUND, NOT FENCED OUT — AND A THREE-CHARACTER FLOOR, which
+          // this tier never had and the other two always did.
+          //
+          // The floor is the whole reason this ungating is not a regression.
+          // Degenerate queries are this RPC's worst case by a wide margin:
+          // measured at concurrency 4, q='a' 3.07-3.36s, q='++' 3.94-3.96s,
+          // q='  ' 2.64-2.72s, against 1.65s for the worst real misspelling.
+          // End to end, {"q":"++"} costs 5.08-5.25s today while
+          // {"q":"++","country":"US"} costs 1.10-1.33s precisely because the
+          // fence keeps it out. Ungating without a floor moves every filtered
+          // two-character query onto the expensive path and holds a database
+          // connection for four to five seconds to return nothing.
+          //
+          // The filters themselves apply BEFORE the ORDER BY and the cap, which
+          // is why this is a signature change rather than an id hydration:
+          // hydrating the unfiltered top 60 and narrowing after kept 2 of 60 GB
+          // rows for q=nurrse, where the complete trigram set is about 28% GB.
+          if (qText.length >= 3) try {
             const { data: fuzzy, error: fErr } = await client.rpc("fuzzy_title_search", {
               p_q: qText, p_fresh_cutoff: freshCutoffIso, p_limit: limit,
+              ...rescueFilterParams(),
             });
             if (!fErr && Array.isArray(fuzzy) && fuzzy.length > 0) {
               // Same-company+title clones flood trigram results exactly like
@@ -8460,14 +8535,63 @@ async function serveList(
           // restrictive filter active the semantic tier stands down and the
           // honest empty (which respects the filters) is the answer.
           // (filtersActive computed once above, shared with the fuzzy tier.)
-          if (qText.length >= 3 && !filtersActive) {
+          if (qText.length >= 3) {
             try {
               const qVec = await embedText(qText);
               if (qVec) {
-                const { data: sem, error: sErr } = await client.rpc("search_jobs_semantic", {
-                  p_embedding: JSON.stringify(qVec),
-                  p_limit: fetchLimit,
-                });
+                // DEADLINED. This RPC carries a 15s server-side statement timeout
+                // and had no client-side race, and filtered-empty is now the
+                // COMMON path rather than a rarity — so an unbounded tier here
+                // would set the floor on how long an empty page takes.
+                const { data: sem, error: sErr } = await withDeadline(
+                  client.rpc("search_jobs_semantic", {
+                    p_embedding: JSON.stringify(qVec),
+                    p_limit: fetchLimit,
+                  }),
+                  5_000,
+                ).catch(() => ({ data: null, error: new Error("semantic deadline") })) as
+                  { data: unknown; error: unknown };
+                // HYDRATE-AND-REFILTER, because this RPC cannot take filters and
+                // its rows cannot be narrowed afterwards either: the result set
+                // has no country column at all, so the row mapper emits null for
+                // it and the response self-check would flag every row against a
+                // country filter the tier had never applied.
+                //
+                // The ids go back through buildQuery — the one filter binder — so
+                // survivors come back with every column the board serves, and the
+                // embedding order is restored by rank rather than by whatever
+                // order PostgREST returns an id set in.
+                //
+                // THIS SAMPLES BEFORE IT FILTERS, and unlike the trigram tier
+                // that is acceptable HERE: this is the last rescue, reachable
+                // only when both lexical tiers found nothing, and its top-k is a
+                // fixed nearest-neighbour list rather than a truncated match set
+                // a filter would have reordered. Pushing predicates into an HNSW
+                // scan is filtered-ANN, a different and riskier problem than a
+                // trigram scan, and not worth taking on the tier that fires
+                // least. Call it filter-SAFE, never filter-aware.
+                let semSource = Array.isArray(sem) ? (sem as Array<Record<string, unknown>>) : [];
+                if (!sErr && filtersActive && semSource.length > 0) {
+                  const semIds = semSource.map((r) => String(r.id ?? "")).filter(Boolean);
+                  const semRank = new Map(semIds.map((id, i) => [id, i]));
+                  const { data: semFiltered } = await withDeadline(
+                    buildQuery("effective_posted", false, undefined, { skipTerms: true })
+                      .in("id", semIds)
+                      .range(0, Math.max(semIds.length - 1, 0)),
+                    4_000,
+                  ) as { data: unknown[] | null };
+                  // withDeadline is Promise.race and resolves { data: null },
+                  // which is indistinguishable from "the filters removed
+                  // everything". A tier that degrades silently is the bug this
+                  // codebase keeps rediscovering.
+                  if (semFiltered === null) {
+                    console.warn(`[JOB-BOARD] semantic re-filter exceeded its deadline for q=${JSON.stringify(qText)}`);
+                  }
+                  semSource = Array.isArray(semFiltered)
+                    ? (semFiltered as Array<Record<string, unknown>>)
+                      .sort((a, b) => (semRank.get(String(a.id)) ?? 0) - (semRank.get(String(b.id)) ?? 0))
+                    : [];
+                }
                 // A nearest neighbour is not a match. The vector tier always
                 // returns SOMETHING — it has no notion of "nothing is close" —
                 // so 'zzzqqxwv' came back with one confident, unrelated job

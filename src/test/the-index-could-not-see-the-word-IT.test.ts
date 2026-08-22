@@ -72,7 +72,15 @@ describe("the index can see the words people search for", () => {
   it("fires only on an already-empty page, so it cannot slow a working query", () => {
     const blk = /── THE SIMPLE-CONFIG TIER[\s\S]*?catch \{ \/\* the empty page the visitor already had \*\/ \}/.exec(FN)?.[0] ?? "";
     expect(blk, "the simple tier is missing").not.toBe("");
-    expect(/if \(!filtersActive && qText\.length >= 2\) try \{/.test(blk)).toBe(true);
+    expect(/if \(qText\.length >= 2\) try \{/.test(blk)).toBe(true);
+    // AND IT MUST NOT STAND DOWN UNDER A NARROWING. It once did, and that was
+    // half of "one typo plus any filter returns zero jobs" — measured live
+    // 2026-08-22. The fence exists for rescue RPCs that cannot filter; this tier
+    // is buildQuery with a different matcher, so it was the one rescue that never
+    // needed it. Pinned as an ABSENCE so the fence cannot creep back. Any comment
+    // added inside this tier must therefore avoid the identifier.
+    expect(/filtersActive/.test(blk),
+      "this tier binds every filter through buildQuery; it must not gate on them").toBe(false);
     // Bounded window: withDeadline is Promise.race and does NOT cancel the SQL,
     // so an abandoned query keeps costing the database.
     expect(/withDeadline\(/.test(blk), "must be deadline-bounded").toBe(true);

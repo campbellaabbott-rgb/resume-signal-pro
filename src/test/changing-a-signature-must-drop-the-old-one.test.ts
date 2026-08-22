@@ -79,7 +79,12 @@ function paramCount(sql: string, fn: string): number | null {
 const files = readdirSync(DIR).filter((f) => f.endsWith(".sql")).sort();
 
 describe("changing a function's signature must drop the old one", () => {
-  for (const fn of ["search_jobs", "count_jobs_capped"]) {
+  // ARITY IS WATCHED FOR EVERY SEARCH FUNCTION, NOT JUST THE TWO THAT BROKE.
+  // This list was the pair that caused the 2026-08-20 outage, which meant the
+  // one function whose arity ACTUALLY changed in the next push — the trigram
+  // rescue going from three parameters to fourteen — was the only one nobody
+  // was watching. A guard scoped to the last incident cannot see the next one.
+  for (const fn of ["search_jobs", "count_jobs_capped", "fuzzy_title_search"]) {
     it(`${fn}: every arity change in repo history drops the signature it replaces`, () => {
       let prev: { file: string; n: number } | null = null;
       const violations: string[] = [];
@@ -105,6 +110,12 @@ describe("changing a function's signature must drop the old one", () => {
       expect(violations, violations.join("\n")).toEqual([]);
     });
 
+  }
+
+  // The remaining assertion is about the SHARED sources parameter, which only
+  // the two ranked functions take — the rescue spells its vendor list
+  // differently — so this list stays at two on purpose.
+  for (const fn of ["search_jobs", "count_jobs_capped"]) {
     it(`${fn}: the newest definition in the repo is the one with p_sources`, () => {
       // The live shape. If a migration ever lands that defines these without
       // p_sources, the repo's "latest definition" is stale again and the next

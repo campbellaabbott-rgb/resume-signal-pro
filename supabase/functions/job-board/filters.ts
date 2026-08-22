@@ -492,6 +492,21 @@ export function categoryParam(a: Pick<AppliedFilters, "category" | "includeUncat
  * serialises the body and a readonly array is fine — but the copy makes it a
  * plain string[], which is what the RPC's text[] expects from supabase-js.
  */
+/**
+ * The rescue tier's twin of sendableSourcesParam, and it exists so that the
+ * vendor list still has exactly ONE producer per call shape.
+ *
+ * The trigram rescue spells its array parameter differently from the two ranked
+ * RPCs. That is not a style choice — a guard counts the ranked spelling and
+ * expects one declaration per ranked function, and a third copy fails it. The
+ * right response to that is a second named producer, not a second inline spread
+ * of the shared constant: the fifth copy of a vendor list is the one that goes
+ * stale when adapter five lands.
+ */
+export function rescueVendorsParam(a: Pick<AppliedFilters, "sendableOnly">): { p_vendors: string[] } | Record<string, never> {
+  return a.sendableOnly ? { p_vendors: [...SENDABLE_VENDORS] } : {};
+}
+
 export function sendableSourcesParam(a: Pick<AppliedFilters, "sendableOnly">): { p_sources: string[] } | Record<string, never> {
   return a.sendableOnly ? { p_sources: [...SENDABLE_VENDORS] } : {};
 }
