@@ -3956,7 +3956,9 @@
       "postedAfter": "geplaatst na",
       "remote": "remote",
       "salaryFloor": "minimumsalaris",
-      "workMode": "werkvorm"
+      "workMode": "werkvorm",
+      "includeUncategorised": "ongesorteerde vacatures",
+      "sendableOnly": "agent kan solliciteren"
     },
     "companiesChip": "{{n}} bedrijven",
     "firstSeenToday": "voor het eerst gezien vandaag",
@@ -3974,7 +3976,11 @@
     "maxAgeClamped": "Het bord bewaart {{days}} dagen aan vacatures, dus dat is de doorzochte periode.",
     "postedAfterStatedDate": "Geteld vanaf de datum die de werkgever noemt, niet vanaf het moment dat wij de vacature vonden.",
     "companyMatched": "Werkgeversnaam herkend — vacatures bij {{company}}.",
-    "exactWordMatch": "Exacte woordovereenkomsten voor “{{q}}”."
+    "exactWordMatch": "Exacte woordovereenkomsten voor “{{q}}”.",
+    "ignoredWidening": "We konden {{filters}} niet aan deze pagina toevoegen, dus die vacatures ontbreken hier.",
+    "chipAgentOnly": "Agent kan solliciteren",
+    "chipActivelyHiring": "Actief aan het werven",
+    "chipInclUncat": "+ ongesorteerd"
   },
   "accountPage": {
     "statusSaveFailed": "Kon die status niet opslaan — probeer het opnieuw.",

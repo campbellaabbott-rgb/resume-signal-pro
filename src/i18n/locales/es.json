@@ -3956,7 +3956,9 @@
       "postedAfter": "publicado después de",
       "remote": "remoto",
       "salaryFloor": "salario mínimo",
-      "workMode": "modalidad"
+      "workMode": "modalidad",
+      "includeUncategorised": "ofertas sin clasificar",
+      "sendableOnly": "el agente puede postular"
     },
     "companiesChip": "{{n}} empresas",
     "firstSeenToday": "vista por primera vez hoy",
@@ -3974,7 +3976,11 @@
     "maxAgeClamped": "El tablón conserva {{days}} días de ofertas, así que ese es el periodo consultado.",
     "postedAfterStatedDate": "Contado desde la fecha que indica cada empleador, no desde que encontramos la oferta.",
     "companyMatched": "Coincide con el nombre de una empresa — mostrando empleos en {{company}}.",
-    "exactWordMatch": "Mostrando coincidencias exactas de palabra para «{{q}}»."
+    "exactWordMatch": "Mostrando coincidencias exactas de palabra para «{{q}}».",
+    "ignoredWidening": "No pudimos añadir {{filters}} a esta página, así que esas ofertas quedan fuera aquí.",
+    "chipAgentOnly": "El agente puede postular",
+    "chipActivelyHiring": "Contratando ahora",
+    "chipInclUncat": "+ sin clasificar"
   },
   "accountPage": {
     "statusSaveFailed": "No se pudo guardar ese estado; inténtalo de nuevo.",

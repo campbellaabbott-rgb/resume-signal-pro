@@ -3956,7 +3956,9 @@
       "postedAfter": "na-post pagkatapos ng",
       "remote": "remote",
       "salaryFloor": "pinakamababang sahod",
-      "workMode": "paraan ng trabaho"
+      "workMode": "paraan ng trabaho",
+      "includeUncategorised": "mga anunsyong hindi nauuri",
+      "sendableOnly": "puwedeng mag-apply ang agent"
     },
     "companiesChip": "{{n}} kumpanya",
     "firstSeenToday": "unang nakita ngayong araw",
@@ -3974,7 +3976,11 @@
     "maxAgeClamped": "{{days}} araw na anunsyo ang itinatago ng board, kaya iyon ang panahong hinanap.",
     "postedAfterStatedDate": "Binilang mula sa petsang isinaad ng bawat employer, hindi mula nang matagpuan namin ang anunsyo.",
     "companyMatched": "Tumugma sa pangalan ng employer — ipinapakita ang mga trabaho sa {{company}}.",
-    "exactWordMatch": "Ipinapakita ang eksaktong buong-salitang tugma para sa “{{q}}”."
+    "exactWordMatch": "Ipinapakita ang eksaktong buong-salitang tugma para sa “{{q}}”.",
+    "ignoredWidening": "Hindi namin naidagdag ang {{filters}} sa pahinang ito, kaya wala rito ang mga anunsyong iyon.",
+    "chipAgentOnly": "Puwedeng mag-apply ang agent",
+    "chipActivelyHiring": "Aktibong kumukuha",
+    "chipInclUncat": "+ hindi nauuri"
   },
   "accountPage": {
     "statusSaveFailed": "Hindi na-save ang status na iyon — pakisubukan muli.",

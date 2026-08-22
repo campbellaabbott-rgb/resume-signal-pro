@@ -2517,8 +2517,10 @@ export default function Jobs() {
   // Badge on the mobile Filters button: how many secondary filters are active
   // (q lives in the always-visible search bar, so it doesn't count).
   const activeFilterCount = useMemo(
-    () => [location, category, experience, company, country, salaryFloor > 0, remoteOnly || workMode, freshness].filter(Boolean).length,
-    [location, category, experience, company, country, salaryFloor, remoteOnly, workMode, freshness],
+    // Same set as the chips above, for the same reason: a filter that narrows
+    // the board and is not counted here is a filter the visitor cannot see.
+    () => [location, category, experience, company, country, salaryFloor > 0, remoteOnly || workMode, freshness, agentOnly, activelyHiringOnly].filter(Boolean).length,
+    [location, category, experience, company, country, salaryFloor, remoteOnly, workMode, freshness, agentOnly, activelyHiringOnly],
   );
 
   // Keep the last facet we were handed, and use it to replace a vague capped
@@ -2570,9 +2572,24 @@ export default function Jobs() {
     if (remoteOnly && !workMode) f.push({ key: "remote", label: t("jobsPage.remoteBadge", "Remote"), clear: () => setRemoteOnly(false) });
     if (workMode) f.push({ key: "mode", label: t(`jobsPage.workMode.${workMode}`, workMode), clear: () => { setWorkMode(""); setRemoteOnly(false); } });
     if (freshness) f.push({ key: "freshness", label: freshness === "day" ? t("jobsPage.freshDay", "Today") : t("jobsPage.freshWeek", "This week"), clear: () => setFreshness("") });
+    // THREE FILTERS USED TO NARROW THE BOARD WITH NO CHIP AND NO WAY OUT.
+    //
+    // "Clear all" is literally `activeFilters.forEach((f) => f.clear())`, so
+    // this array IS the definition of what a filter is. agentOnly, inclUncat and
+    // activelyHiringOnly were never in it: they survived Clear all, they were
+    // missing from activeFilterCount (the number on the mobile Filters button),
+    // and nothing on screen said they were on. agentOnly is the most aggressive
+    // filter the board has — it hides ~95% of postings, keeping only the ~5% on
+    // vendors the apply agent can drive — and a visitor could leave it switched
+    // on believing they had cleared everything.
+    if (agentOnly) f.push({ key: "agentOnly", label: t("jobsPage.chipAgentOnly", "Agent can apply"), clear: () => setAgentOnly(false) });
+    if (activelyHiringOnly) f.push({ key: "activelyHiring", label: t("jobsPage.chipActivelyHiring", "Actively hiring"), clear: () => setActivelyHiringOnly(false) });
+    // A WIDENING toggle, so it gets a chip for visibility and for Clear all, but
+    // it only means anything alongside a category.
+    if (category && inclUncat) f.push({ key: "inclUncat", label: t("jobsPage.chipInclUncat", "+ unsorted"), clear: () => setInclUncat(false) });
     return f;
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [q, location, category, experience, company, companyTokens, country, salaryFloor, remoteOnly, workMode, freshness, companies, t]);
+  }, [q, location, category, experience, company, companyTokens, country, salaryFloor, remoteOnly, workMode, freshness, companies, agentOnly, activelyHiringOnly, inclUncat, t]);
   // S1: search suggestions — recent searches (local), matching companies
   // (served facet), matching category pages, and a curated common-role list.
   // Everything suggested is real and clickable; nothing invented.
@@ -4029,7 +4046,7 @@ export default function Jobs() {
             {recentJobs.length === 0 && !q && !location && !category && !experience && !company && !remoteOnly && !freshness && !salaryFloor && !country && (
               <span className="inline-flex flex-wrap items-center gap-2 ml-1">
                 <span className="text-[11px] text-muted-foreground">{t("jobsPage.tryLabel", "Try:")}</span>
-                <button type="button" onClick={() => { setRemoteOnly(true); setExperience("entry"); setCountry("US"); }}
+                <button type="button" onClick={() => { setWorkMode("remote"); setRemoteOnly(false); setExperience("entry"); setCountry("US"); }}
                   className="text-xs px-3 py-1.5 rounded-full border border-dashed border-border text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors">
                   {t("jobsPage.presetRemoteEntry", "Remote · Entry-level · US")}
                 </button>
@@ -4222,15 +4239,39 @@ export default function Jobs() {
                     })}
                   </p>
                 )}
-                {Array.isArray(data?.ignoredFilters) && data.ignoredFilters.length > 0 && (
-                  <p className="text-xs text-warning mb-2" role="status">
-                    {t("jobsPage.ignoredFilters", "We couldn't apply {{filters}} — those results are unfiltered by it. Everything else you selected did apply.", {
-                      filters: data.ignoredFilters
-                        .map((f) => t(`jobsPage.filterName.${f}`, f))
-                        .join(", "),
-                    })}
-                  </p>
-                )}
+                {/* TWO KINDS OF DROP, AND ONE SENTENCE CANNOT COVER BOTH.
+                    Most ignored filters NARROW: "those results are unfiltered
+                    by it" is then true and useful. But includeUncategorised
+                    WIDENS — it asks to ADD unsorted postings — and it is dropped
+                    when sorting by pay. Measured live: {includeUncategorised:
+                    true, category:"design", sort:"salary"} returns
+                    ignoredFilters:["includeUncategorised"], and the old copy
+                    rendered "We couldn't apply includeUncategorised — those
+                    results are unfiltered by it": a raw camelCase identifier,
+                    and the precise opposite of what happened. That page is MORE
+                    filtered than asked, not less. */}
+                {(() => {
+                  const ig = Array.isArray(data?.ignoredFilters) ? data.ignoredFilters : [];
+                  if (!ig.length) return null;
+                  const WIDENING = new Set(["includeUncategorised"]);
+                  const narrowed = ig.filter((f) => !WIDENING.has(f));
+                  const widened = ig.filter((f) => WIDENING.has(f));
+                  const name = (f: string) => t(`jobsPage.filterName.${f}`, f);
+                  return (
+                    <>
+                      {narrowed.length > 0 && (
+                        <p className="text-xs text-warning mb-2" role="status">
+                          {t("jobsPage.ignoredFilters", "We couldn't apply {{filters}} — those results are unfiltered by it. Everything else you selected did apply.", { filters: narrowed.map(name).join(", ") })}
+                        </p>
+                      )}
+                      {widened.length > 0 && (
+                        <p className="text-xs text-warning mb-2" role="status">
+                          {t("jobsPage.ignoredWidening", "We couldn't add {{filters}} to this page, so those postings are left out here.", { filters: widened.map(name).join(", ") })}
+                        </p>
+                      )}
+                    </>
+                  );
+                })()}
                 {/* WHAT A FILTER CAN EVEN SEE.
                     The single most useful thing on this page and it shipped mute.
                     A pay filter searches the 13% of postings that state pay; the

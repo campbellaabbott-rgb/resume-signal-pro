@@ -3956,7 +3956,9 @@
       "postedAfter": "publicado depois de",
       "remote": "remoto",
       "salaryFloor": "salário mínimo",
-      "workMode": "modalidade"
+      "workMode": "modalidade",
+      "includeUncategorised": "vagas não classificadas",
+      "sendableOnly": "o agente pode candidatar-se"
     },
     "companiesChip": "{{n}} empresas",
     "firstSeenToday": "vista pela primeira vez hoje",
@@ -3974,7 +3976,11 @@
     "maxAgeClamped": "O quadro guarda {{days}} dias de vagas, por isso é esse o período pesquisado.",
     "postedAfterStatedDate": "Contado a partir da data indicada por cada empregador, não de quando encontrámos a vaga.",
     "companyMatched": "Corresponde ao nome de uma empresa — a mostrar vagas na {{company}}.",
-    "exactWordMatch": "A mostrar correspondências exatas de palavra para “{{q}}”."
+    "exactWordMatch": "A mostrar correspondências exatas de palavra para “{{q}}”.",
+    "ignoredWidening": "Não conseguimos acrescentar {{filters}} a esta página, por isso essas vagas ficam de fora aqui.",
+    "chipAgentOnly": "O agente pode candidatar-se",
+    "chipActivelyHiring": "A contratar agora",
+    "chipInclUncat": "+ não classificadas"
   },
   "accountPage": {
     "statusSaveFailed": "Não foi possível salvar esse status — tente novamente.",

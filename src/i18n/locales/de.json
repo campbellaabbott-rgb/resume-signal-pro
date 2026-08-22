@@ -3956,7 +3956,9 @@
       "postedAfter": "veröffentlicht nach",
       "remote": "Remote",
       "salaryFloor": "Mindestgehalt",
-      "workMode": "Arbeitsmodus"
+      "workMode": "Arbeitsmodus",
+      "includeUncategorised": "unsortierte Anzeigen",
+      "sendableOnly": "Agent kann bewerben"
     },
     "companiesChip": "{{n}} Unternehmen",
     "firstSeenToday": "zuerst gesehen: heute",
@@ -3974,7 +3976,11 @@
     "maxAgeClamped": "Das Board bewahrt {{days}} Tage an Anzeigen auf — das ist der durchsuchte Zeitraum.",
     "postedAfterStatedDate": "Gezählt ab dem vom Arbeitgeber angegebenen Datum, nicht ab dem Zeitpunkt, an dem wir die Anzeige gefunden haben.",
     "companyMatched": "Arbeitgebername erkannt — Stellen bei {{company}}.",
-    "exactWordMatch": "Exakte Wortübereinstimmungen für „{{q}}“."
+    "exactWordMatch": "Exakte Wortübereinstimmungen für „{{q}}“.",
+    "ignoredWidening": "{{filters}} ließ sich auf dieser Seite nicht ergänzen, daher fehlen diese Anzeigen hier.",
+    "chipAgentOnly": "Agent kann bewerben",
+    "chipActivelyHiring": "Aktiv auf Personalsuche",
+    "chipInclUncat": "+ unsortiert"
   },
   "accountPage": {
     "statusSaveFailed": "Status konnte nicht gespeichert werden — bitte erneut versuchen.",

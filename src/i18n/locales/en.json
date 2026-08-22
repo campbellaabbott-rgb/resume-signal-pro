@@ -3956,7 +3956,9 @@
       "postedAfter": "posted after",
       "remote": "remote",
       "salaryFloor": "pay floor",
-      "workMode": "work mode"
+      "workMode": "work mode",
+      "includeUncategorised": "unsorted postings",
+      "sendableOnly": "agent can apply"
     },
     "companiesChip": "{{n}} companies",
     "firstSeenToday": "first seen today",
@@ -3974,7 +3976,11 @@
     "maxAgeClamped": "The board keeps {{days}} days of postings, so that is the window searched.",
     "postedAfterStatedDate": "Counted from the date each employer stated, not from when we found the posting.",
     "companyMatched": "Matched an employer name — showing roles at {{company}}.",
-    "exactWordMatch": "Showing exact whole-word matches for “{{q}}”."
+    "exactWordMatch": "Showing exact whole-word matches for “{{q}}”.",
+    "ignoredWidening": "We couldn't add {{filters}} to this page, so those postings are left out here.",
+    "chipAgentOnly": "Agent can apply",
+    "chipActivelyHiring": "Actively hiring",
+    "chipInclUncat": "+ unsorted"
   },
   "accountPage": {
     "statusSaveFailed": "Couldn't save that status — please try again.",

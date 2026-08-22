@@ -3956,7 +3956,9 @@
       "postedAfter": "publié après",
       "remote": "télétravail",
       "salaryFloor": "salaire minimum",
-      "workMode": "mode de travail"
+      "workMode": "mode de travail",
+      "includeUncategorised": "offres non classées",
+      "sendableOnly": "l'agent peut postuler"
     },
     "companiesChip": "{{n}} entreprises",
     "firstSeenToday": "vue pour la première fois aujourd'hui",
@@ -3974,7 +3976,11 @@
     "maxAgeClamped": "Le tableau conserve {{days}} jours d'offres — c'est la période consultée.",
     "postedAfterStatedDate": "Compté à partir de la date indiquée par chaque employeur, pas de celle où nous avons trouvé l'offre.",
     "companyMatched": "Nom d'employeur reconnu — offres chez {{company}}.",
-    "exactWordMatch": "Correspondances de mot exactes pour «{{q}}»."
+    "exactWordMatch": "Correspondances de mot exactes pour «{{q}}».",
+    "ignoredWidening": "Nous n'avons pas pu ajouter {{filters}} à cette page, ces offres sont donc absentes ici.",
+    "chipAgentOnly": "L'agent peut postuler",
+    "chipActivelyHiring": "Recrute activement",
+    "chipInclUncat": "+ non classées"
   },
   "accountPage": {
     "statusSaveFailed": "Impossible d'enregistrer ce statut — réessayez.",

@@ -3956,7 +3956,9 @@
       "postedAfter": "इसके बाद पोस्ट",
       "remote": "रिमोट",
       "salaryFloor": "न्यूनतम वेतन",
-      "workMode": "कार्य-प्रकार"
+      "workMode": "कार्य-प्रकार",
+      "includeUncategorised": "अवर्गीकृत पोस्टिंग",
+      "sendableOnly": "एजेंट आवेदन कर सकता है"
     },
     "companiesChip": "{{n}} कंपनियाँ",
     "firstSeenToday": "पहली बार आज देखी गई",
@@ -3974,7 +3976,11 @@
     "maxAgeClamped": "बोर्ड {{days}} दिनों की पोस्टिंग रखता है, इसलिए यही अवधि खोजी गई।",
     "postedAfterStatedDate": "प्रत्येक नियोक्ता द्वारा बताई गई तारीख से गिना गया, न कि जब हमें पोस्टिंग मिली।",
     "companyMatched": "नियोक्ता का नाम मिला — {{company}} की भूमिकाएँ दिखा रहे हैं।",
-    "exactWordMatch": "“{{q}}” के लिए सटीक पूर्ण-शब्द मिलान दिखा रहे हैं।"
+    "exactWordMatch": "“{{q}}” के लिए सटीक पूर्ण-शब्द मिलान दिखा रहे हैं।",
+    "ignoredWidening": "हम इस पेज में {{filters}} नहीं जोड़ सके, इसलिए वे पोस्टिंग यहाँ शामिल नहीं हैं।",
+    "chipAgentOnly": "एजेंट आवेदन कर सकता है",
+    "chipActivelyHiring": "अभी भर्ती कर रहे",
+    "chipInclUncat": "+ अवर्गीकृत"
   },
   "accountPage": {
     "statusSaveFailed": "यह स्थिति सहेजी नहीं जा सकी — कृपया फिर से प्रयास करें।",

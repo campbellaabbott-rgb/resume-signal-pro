@@ -7925,10 +7925,30 @@ async function serveList(
     // Window anchored at rank 0 and sliced AFTER scoring, so `offset` is a
     // position inside ONE stable ordering. Paging a re-ranked list by a
     // retriever-ordered offset is what made sorted page two repeat page one.
+    // ROLE ALIASES REACH THE SIMPLE ROUTE, WHICH IS WHERE THEY LIVE.
+    //
+    // expandQuery ran ~60 lines below this block, on the RANKED path only, and
+    // this block returns before it. But pickRoute sends a query to SIMPLE
+    // precisely when a token is <= 3 characters — and 37 of the 57 ROLE_ALIASES
+    // keys are <= 3 characters: swe, sde, sre, qa, ml, ai, ux, ui, pm, rn, lpn,
+    // cna, np, pa, emt, dba, ba, ae, hr, k8s, js and the rest. The abbreviations
+    // the alias table exists FOR were the exact set it could never serve.
+    // Measured live 2026-08-22: q="swe" returned 8 literal "SWE" titles and no
+    // aliases key, while ~70,000 "Software Engineer" postings sat unreachable.
+    //
+    // Never for the EMPLOYER route: those tokens are company names, and
+    // expanding "pa" to "physician assistant" inside a company match is wrong.
+    // ftsSafe keeps " OR " intact (it strips only (),."'\:), so the expanded
+    // websearch string passes through unchanged.
+    const routedExpand = routedRetriever === "company" ? { q: qText, expansions: [] as string[] } : expandQuery(qText);
     let rq = buildQuery("effective_posted", false, undefined, { skipTerms: true });
     rq = routedRetriever === "company" && routeDecision.tokens?.length
       ? rq.in("company_token", routeDecision.tokens)
-      : rq.textSearch("title", ftsQuery(qText), { type: "websearch", config: "simple" });
+      : rq.textSearch(
+        "title",
+        routedExpand.expansions.length ? ftsSafe(routedExpand.q) : ftsQuery(qText),
+        { type: "websearch", config: "simple" },
+      );
     const { data: routedRows, error: rErr } = await withDeadline(
       rq.order("effective_posted", { ascending: false }).order("id", { ascending: true })
         .range(0, ROUTE_WINDOW - 1),
@@ -7966,6 +7986,17 @@ async function serveList(
           nextOffset: offset + limit,
           searchRoute: routeDecision.route,
           searchRouteReason: routeDecision.reason,
+          // THE PAGE WAS APOLOGISING FOR WORK IT HAD DONE.
+          // `ordered` above is rerankWindow(mapped, qText) for every non-company
+          // route — these rows ARE relevance-sorted. Omitting `ranked` made the
+          // client fall to "Sorted by newest first (relevance ranking briefly
+          // unavailable)" on every short query: rn, swe, qa, pm, sde. A false
+          // apology is still a false statement about what the board did.
+          ...(routedRetriever === "company" ? {} : { ranked: true }),
+          // Say which alias phrases were also searched, exactly as the ranked
+          // path does. Emitted only when an expansion actually bound, so the
+          // line can never claim a phrase the query did not look for.
+          ...(routedExpand.expansions.length ? { aliases: routedExpand.expansions } : {}),
           ...(routeDecision.matchedName ? { companyMatched: routeDecision.matchedName } : {}),
           totalAllCompanies: safeMetaTotal ?? 0,
           companies: [],
