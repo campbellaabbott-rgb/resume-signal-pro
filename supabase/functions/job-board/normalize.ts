@@ -253,11 +253,45 @@ const COUNTRY_PATTERNS: ReadonlyArray<readonly [RegExp, string]> = [
   [/\b(?:turkey|türkiye)\b/i, "TR"],
   [/\bukraine\b/i, "UA"],
   [/\bcosta rica\b/i, "CR"],
+  // THIRTEEN COUNTRIES WHOSE OWN NAME DID NOT RESOLVE TO THEM.
+  // Found by sampling 5,000 postings that carry location text and no parsed
+  // country: 38 of them name a country outright and were still filed as
+  // unplaceable — "China", "Pakistan", "Ecuador". Roughly 1,280 postings
+  // board-wide. Not inference and not a guess; the text says where it is.
+  [/\bchina\b/i, "CN"],
+  [/\bpakistan\b/i, "PK"],
+  [/\btaiwan\b/i, "TW"],
+  [/\bbulgaria\b/i, "BG"],
+  [/\bcroatia\b/i, "HR"],
+  [/\bslovakia\b/i, "SK"],
+  [/\bserbia\b/i, "RS"],
+  [/\bslovenia\b/i, "SI"],
+  [/\begypt\b/i, "EG"],
+  [/\bmorocco\b/i, "MA"],
+  [/\btunisia\b/i, "TN"],
+  [/\bkenya\b/i, "KE"],
+  [/\becuador\b/i, "EC"],
+  [/\buruguay\b/i, "UY"],
 ];
 // Comma-prefixed uppercase state/province codes only — "Austin, TX" yes,
 // stray "in" or "or" inside words no.
 const P_US_STATE_CODE = /,\s*(AL|AK|AZ|AR|CA|CO|CT|DE|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY|DC)(?![A-Za-z])/;
 const P_CA_PROV_CODE = /,\s*(ON|QC|BC|AB|MB|SK|NS|NB|PE|NL|YT|NT|NU)(?![A-Za-z])/;
+// SOME FEEDS PUT THE STATE FIRST: "AR Hot Springs", "NC - Raleigh". The
+// comma-prefixed pattern above cannot see those, and they are the largest
+// recoverable class in the unplaced set — 146 of 5,000 sampled, roughly 4,900
+// postings board-wide.
+//
+// THE CODE LIST IS DELIBERATELY SHORTER THAN FIFTY. A leading two-letter token
+// is far weaker evidence than a trailing one: "OR Tambo" is an airport in
+// Johannesburg, "IN" and "ME" and "OK" and "HI" are English words, "DE" and
+// "LA" and "MA" open place names in other languages. Only codes that are not
+// words in English or common romance/germanic prefixes are listed, so a miss
+// here leaves a posting unplaced — which is the board's stated behaviour — and
+// never places it wrongly. GA is absent for the same reason it is absent from
+// the state-NAME pattern: Georgia is also a country.
+const P_US_STATE_CODE_LEADING =
+  /^(AK|AR|AZ|CT|FL|IA|KS|KY|MN|NC|ND|NH|NJ|NM|NV|NY|RI|SD|TN|TX|UT|VT|WI|WV|WY|IL|MO)\s*[-–—]?\s+[A-Za-z]/;
 const P_US_STATE_NAME = /\b(?:alabama|alaska|arizona|arkansas|california|colorado|connecticut|delaware|florida|hawaii|idaho|illinois|indiana|iowa|kansas|kentucky|louisiana|maine|maryland|massachusetts|michigan|minnesota|mississippi|missouri|montana|nebraska|nevada|new hampshire|new jersey|new mexico|new york|north carolina|north dakota|ohio|oklahoma|oregon|pennsylvania|rhode island|south carolina|south dakota|tennessee|texas|utah|vermont|virginia|washington|west virginia|wisconsin|wyoming)\b/i;
 const P_CA_PROV_NAME = /\b(?:ontario|quebec|british columbia|alberta|manitoba|saskatchewan|nova scotia|new brunswick|newfoundland)\b/i;
 
@@ -271,7 +305,7 @@ const P_CA_PROV_NAME = /\b(?:ontario|quebec|british columbia|alberta|manitoba|sa
 // never substring — "Santiago de Compostela" does not match "santiago".
 // Bump COUNTRY_MAP_VERSION when this table changes; the backfill-country
 // sweep re-runs stored null-country rows against the current table.
-export const COUNTRY_MAP_VERSION = 2;
+export const COUNTRY_MAP_VERSION = 3;
 const CITY_COUNTRY = new Map<string, string>([
   ["aarhus", "DK"],
   ["aberdeen", "GB"],
@@ -611,7 +645,7 @@ export function detectCountry(location: string | null | undefined): string | nul
   if (!location) return null;
   const s = String(location).slice(0, 300);
   for (const [re, code] of COUNTRY_PATTERNS) if (re.test(s)) return code;
-  if (P_US_STATE_CODE.test(s) || P_US_STATE_NAME.test(s)) return "US";
+  if (P_US_STATE_CODE.test(s) || P_US_STATE_NAME.test(s) || P_US_STATE_CODE_LEADING.test(s)) return "US";
   if (P_CA_PROV_CODE.test(s) || P_CA_PROV_NAME.test(s)) return "CA";
   if (/\bUS\b/.test(s)) return "US"; // "Remote - US", "US Remote" — after state codes so ", USA" paths won
   return cityCountry(s);
