@@ -1,4 +1,9 @@
--- DEEP PAGES MUST NOT HEADLINE THE ROWS THEY SKIP.
+-- DEEP PAGES MUST NOT HEADLINE THE ROWS THEY SKIP —
+-- AND "POSTED AFTER" MUST MEAN THE EMPLOYER'S DATE ON EVERY PATH.
+--
+-- Two changes, both to the same two functions, so they ship as one DROP+CREATE
+-- rather than two migrations racing to replace the same objects. The second is
+-- described at its own line below.
 --
 -- The description tier put ts_headline() in the target list of the SAME SELECT
 -- that carried LIMIT/OFFSET. Postgres evaluates that target list for every row
@@ -115,7 +120,19 @@ BEGIN
   IF p_experience IS NOT NULL THEN filters := filters || ' AND p.experience_band = ANY($6)'; END IF;
   IF p_salary_floor IS NOT NULL THEN filters := filters || ' AND p.salary_rank_usd >= $7'; END IF;
   IF p_companies IS NOT NULL THEN filters := filters || ' AND p.company_token = ANY($8)'; END IF;
-  IF p_posted_after IS NOT NULL THEN filters := filters || ' AND p.effective_posted > $9'; END IF;
+  -- POSTED AFTER MEANS THE EMPLOYER'S DATE, ON THIS PATH TOO.
+  -- effective_posted is coalesce(posted_at, first_seen), so binding it here
+  -- answered "we first SAW it after X", and every undated posting passed on the
+  -- strength of a recent crawl. The browse path was corrected to posted_at in
+  -- e16fcdc3; this one was missed, which is the shape the note at index.ts:7576
+  -- warns about — a fix landing on one of four query paths and silently missing
+  -- the rest. Measured live before this change: q=manager postedAfter=2026-08-20
+  -- returned total 10,000 with 14 of 60 rows carrying NO employer date, against
+  -- 7,274 and 0 of 60 for the honest maxAgeDays comparator.
+  -- posted_at > x excludes NULL by construction, which is the correct answer:
+  -- a posting whose date the employer never stated cannot be shown to be newer
+  -- than a date the visitor named.
+  IF p_posted_after IS NOT NULL THEN filters := filters || ' AND p.posted_at > $9'; END IF;
   IF p_max_age_days IS NOT NULL THEN filters := filters || ' AND p.posted_at >= now() - make_interval(days => $10)'; END IF;
   -- Bound like every other optional filter: the bind is always present in USING,
   -- the clause only when the caller asked.
@@ -207,7 +224,9 @@ BEGIN
   IF p_experience IS NOT NULL THEN filters := filters || ' AND p.experience_band = ANY($5)'; END IF;
   IF p_salary_floor IS NOT NULL THEN filters := filters || ' AND p.salary_rank_usd >= $6'; END IF;
   IF p_companies IS NOT NULL THEN filters := filters || ' AND p.company_token = ANY($7)'; END IF;
-  IF p_posted_after IS NOT NULL THEN filters := filters || ' AND p.effective_posted > $8'; END IF;
+  -- Same correction as search_jobs above: the count must ask the question the
+  -- list answers, or the headline and the rows disagree by a third.
+  IF p_posted_after IS NOT NULL THEN filters := filters || ' AND p.posted_at > $8'; END IF;
   IF p_max_age_days IS NOT NULL THEN filters := filters || ' AND p.posted_at >= now() - make_interval(days => $9)'; END IF;
   IF p_sources IS NOT NULL THEN filters := filters || ' AND p.source = ANY($11)'; END IF;
   IF p_work_mode IN ('remote', 'hybrid', 'onsite') THEN

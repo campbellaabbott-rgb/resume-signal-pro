@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 
 /**
@@ -76,5 +76,45 @@ describe("a date filter must mean the employer's date", () => {
     // It changes what the filter returns — 467 rows became 90 on the same
     // question — so it cannot change silently.
     expect(/out\.postedAfterUsesStatedDate = true;/.test(FN)).toBe(true);
+  });
+
+  it("binds postedAfter to the employer's date on EVERY path, not just browse", () => {
+    // THE FIX LANDED ON ONE OF THE PATHS AND THE DISCLOSURE LANDED ON ALL OF THEM.
+    //
+    // e16fcdc3 corrected the browse path to posted_at. The RANKED path is served
+    // by the search_jobs / count_jobs_capped RPCs, and those kept binding
+    // effective_posted = coalesce(posted_at, first_seen) — so any request
+    // carrying `q` still answered "we first SAW it after X". Measured live
+    // 2026-08-22: q=manager postedAfter=2026-08-20 returned total 10,000 with 14
+    // of 60 rows carrying no employer date, against 7,274 and 0 of 60 for the
+    // honest maxAgeDays comparator.
+    //
+    // That mismatch was about to become a LIE rather than a silence.
+    // postedAfterUsesStatedDate is set in searchDisclosures, which is spread at
+    // all eight list exits including the ranked ones, and the page now renders
+    // it. Shipping the disclosure without this bind would have printed "counted
+    // from the date each employer stated" on a path that did no such thing.
+    //
+    // So: the two paths must name the SAME column, and this checks the newest
+    // migration that defines the functions rather than any particular file.
+    const dir = resolve(__dirname, "../../supabase/migrations");
+    const defining = readdirSync(dir)
+      .filter((f) => f.endsWith(".sql"))
+      .filter((f) => /CREATE (OR REPLACE )?FUNCTION public\.search_jobs\(/.test(readFileSync(resolve(dir, f), "utf8")))
+      .sort();
+    expect(defining.length, "no migration defines the search RPC").toBeGreaterThan(0);
+    const sql = readFileSync(resolve(dir, defining[defining.length - 1]), "utf8");
+    const binds = [...sql.matchAll(/p_posted_after IS NOT NULL THEN filters := filters \|\| ' AND p\.(\w+) >/g)].map((m) => m[1]);
+    expect(binds.length, `expected both functions to bind p_posted_after in ${defining[defining.length - 1]}`).toBe(2);
+    for (const col of binds) {
+      expect(
+        col,
+        "the RPC must filter the EMPLOYER's posted_at. effective_posted coalesces " +
+          "first_seen, which is our crawl time, so an undated posting passes on the " +
+          "strength of when we happened to find it.",
+      ).toBe("posted_at");
+    }
+    // And the browse path must still agree with them.
+    expect(FN).toMatch(/applied\.postedAfter\) q = q\.gt\("posted_at", applied\.postedAfter\)/);
   });
 });
