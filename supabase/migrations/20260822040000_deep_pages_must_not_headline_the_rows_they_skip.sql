@@ -502,7 +502,8 @@ STABLE
 SECURITY DEFINER
 SET search_path = public, extensions
 SET statement_timeout = '15s'
-SET hnsw.ef_search = '100'
+-- SET hnsw.ef_search = '100'  -- removed 2026-08-22: the migration role lacks
+-- permission to set this parameter (42501), which aborted the whole apply.
 AS $$
   SELECT p.id, p.source, p.company_token, p.company, p.title,
          p.location, p.remote, p.work_mode, p.department, p.category,
