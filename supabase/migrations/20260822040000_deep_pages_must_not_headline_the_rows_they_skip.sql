@@ -521,4 +521,3 @@ AS $$
 $$;
 
 GRANT EXECUTE ON FUNCTION public.search_jobs_semantic(text, integer, numeric) TO anon, authenticated, service_role;
-```
