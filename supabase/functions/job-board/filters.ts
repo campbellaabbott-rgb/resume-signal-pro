@@ -43,6 +43,20 @@ export type AppliedFilters = {
   country: string | null;
   remote: boolean;
   workMode: string | null;
+  /**
+   * One or more field slugs, COMMA-JOINED — never an array.
+   *
+   * That is not a shortcut: `categoryParam` has always produced a comma-joined
+   * string (it appends the unsorted bucket that way), and the SQL has always
+   * split it. Measured live against the deployed function: science 7,420 +
+   * education 7,439 = 14,859, and the joined form returns exactly 14,859. The
+   * union was there the whole time; the only thing refusing multi-select was
+   * the single-slug check in this file.
+   *
+   * Keeping the type `string | null` also keeps every consumer honest —
+   * isUnfiltered, filterViolations and the contract test all ask "is this set?"
+   * and none of them has to learn a new shape.
+   */
   category: string | null;
   /**
    * Also return the `other` bucket alongside the chosen category.
@@ -128,18 +142,43 @@ export function normalizeFilters(
 ): NormalizedFilters {
   const ignored: string[] = [];
 
-  const countryRaw = String(body.country ?? "").trim();
-  const country = /^[A-Za-z]{2}$/.test(countryRaw) ? countryRaw.toUpperCase() : null;
+  // MULTI-SELECT, comma-joined, exactly like category — and validated the same
+  // way, per element. Two letters or it never reaches the split. "United
+  // Kingdom" or "GB; drop" cannot become a predicate, and a list whose members
+  // are ALL unusable is a refused filter, which is always named.
+  const COUNTRY_LIMIT = 12;
+  const countryList = (Array.isArray(body.country) ? body.country : String(body.country ?? "").split(","))
+    .map((c) => String(c ?? "").trim())
+    .filter((c) => /^[A-Za-z]{2}$/.test(c))
+    .map((c) => c.toUpperCase());
+  const country = countryList.length
+    ? [...new Set(countryList)].slice(0, COUNTRY_LIMIT).join(",")
+    : null;
   if (sent(body.country) && !country) ignored.push("country");
 
-  const categoryRaw = String(body.category ?? "").trim().toLowerCase();
-  const category = (JOB_CATEGORIES as readonly string[]).includes(categoryRaw) ? categoryRaw : null;
+  // MULTI-SELECT, and the trimming is load-bearing rather than tidy: the SQL
+  // splits on a BARE comma and does not trim, so " design , legal " matched
+  // nothing at all — verified live, it returns zero. Every element is trimmed,
+  // lowercased and checked before it is allowed near the query.
+  //
+  // Unknown slugs are dropped rather than named: they cannot match a posting,
+  // and the SQL already treats them as inert. Only a request whose categories
+  // are ALL unusable has had its filter refused, and that one is named.
+  const CATEGORY_LIMIT = 8;
+  const categoryList = (Array.isArray(body.category) ? body.category : String(body.category ?? "").split(","))
+    .map((c) => String(c ?? "").trim().toLowerCase())
+    .filter((c) => (JOB_CATEGORIES as readonly string[]).includes(c));
+  const category = categoryList.length
+    ? [...new Set(categoryList)].slice(0, CATEGORY_LIMIT).join(",")
+    : null;
   if (sent(body.category) && !category) ignored.push("category");
 
   // Only meaningful alongside a category — with no category the bucket is
   // already included, so accepting it there would be a no-op that reads like a
   // setting.
-  const wantsUncategorised = category !== null && category !== "other" && body.includeUncategorised === true;
+  // "other" already IS the unsorted bucket, so asking to add it to a selection
+  // that contains it is a no-op that would read like a setting.
+  const wantsUncategorised = category !== null && !category.split(",").includes("other") && body.includeUncategorised === true;
 
   // NOT AVAILABLE UNDER A SALARY SORT, and refused out loud rather than served
   // slowly or as a 500.

@@ -21,6 +21,10 @@ import { describe, expect, it } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { categoryParam, normalizeFilters } from "../../supabase/functions/job-board/filters";
+import { JOB_CATEGORIES } from "../../supabase/functions/job-board/categories";
+
+/** More slugs than the cap, to prove the bound is real. */
+const JOB_CATEGORY_SAMPLE = (JOB_CATEGORIES as readonly string[]).join(",");
 
 const board = readFileSync(
   resolve(__dirname, "../../supabase/functions/job-board/index.ts"), "utf8");
@@ -74,19 +78,49 @@ describe("the value handed to the RPCs", () => {
     expect(categoryParam({ category: null, includeUncategorised: true })).toBeNull();
   });
 
-  it("can only ever join a validated slug to the literal other", () => {
-    // The RPC now splits this on commas. If arbitrary text could reach it, a
-    // caller could widen their own query to categories they never asked for —
-    // the same hazard as a comma surviving into the mandate's PostgREST or().
-    const injected = norm({ category: "engineering,admin", includeUncategorised: true });
-    expect(injected.category, "an unknown slug must be rejected outright").toBeNull();
-    expect(categoryParam(injected)).toBeNull();
+  it("can only ever hand the RPC slugs it validated, one per comma", () => {
+    // The RPC splits this on commas, so the hazard is ARBITRARY TEXT reaching
+    // the split — a caller widening their own query to categories they never
+    // asked for, the same shape as a comma surviving into a PostgREST or().
+    //
+    // This used to be enforced by refusing any value containing a comma, which
+    // also refused the legitimate multi-select the SQL has always supported
+    // (measured live: science 7,420 + education 7,439, joined form 14,859).
+    // The property that actually matters is per-ELEMENT validation, and it is
+    // strictly stronger than the old rule: junk is dropped wherever it sits.
+    expect(norm({ category: "engineering,admin" }).category).toBe("engineering,admin");
+    expect(norm({ category: ["engineering", "admin"] }).category).toBe("engineering,admin");
+    // The SQL splits on a BARE comma and does not trim — " design , legal "
+    // returns zero rows live — so normalisation has to trim every element.
+    expect(norm({ category: " engineering , admin " }).category).toBe("engineering,admin");
+    // Anything not a known slug never reaches the split, at any position.
+    expect(norm({ category: "engineering,../../etc" }).category).toBe("engineering");
+    expect(norm({ category: "engineering,other'); drop--" }).category).toBe("engineering");
+    expect(norm({ category: "'; drop--" }).category).toBeNull();
+    expect(categoryParam(norm({ category: "'; drop--" }))).toBeNull();
+    // A request whose categories are ALL unusable has had its filter refused,
+    // and a refused filter is always named.
+    expect(normalizeFilters({ category: "nonsense" }, 200).ignored).toContain("category");
+    // Duplicates cannot inflate the list, and the list is bounded.
+    expect(norm({ category: "engineering,engineering" }).category).toBe("engineering");
+    expect((norm({ category: JOB_CATEGORY_SAMPLE }).category ?? "").split(",").length).toBeLessThanOrEqual(8);
+    // And the opt-in still appends the bucket to the whole selection.
+    expect(categoryParam({ category: "engineering,admin", includeUncategorised: true })).toBe("engineering,admin,other");
   });
 });
 
 describe("every call site, because there are three", () => {
-  it("the direct filter widens", () => {
-    expect(board).toMatch(/q\.in\("category", \[applied\.category, "other"\]\)/);
+  it("the direct filter widens, and asks the same question the RPC does", () => {
+    // The browse path binds PostgREST while the headline comes from the RPC.
+    // The RPC splits the comma; an .eq() against the joined value asks for a
+    // posting whose single category is the literal "design,legal" — no rows,
+    // under a non-zero headline. Both sides must split.
+    expect(board).toMatch(/const cats = applied\.category\.split\(","\)\.filter\(Boolean\);/);
+    expect(board).toMatch(/const wanted = applied\.includeUncategorised \? \[\.\.\.cats, "other"\] : cats;/);
+    expect(board).toMatch(/q = wanted\.length > 1 \? q\.in\("category", wanted\) : q\.eq\("category", wanted\[0\]\);/);
+    // The two-subset pager hands one side of the split back in as an override,
+    // and that value is comma-joined too once a selection is multi-value.
+    expect(board).toMatch(/const ov = categoryOverride\.split\(","\)\.filter\(Boolean\);/);
   });
 
   it("both RPC sites go through the shared helper", () => {

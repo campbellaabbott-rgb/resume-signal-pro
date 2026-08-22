@@ -115,7 +115,12 @@ DECLARE
 BEGIN
   IF p_location IS NOT NULL THEN filters := filters || ' AND p.location ILIKE ''%'' || $3 || ''%'''; END IF;
   IF p_remote IS TRUE THEN filters := filters || ' AND p.remote'; END IF;
-  IF p_country IS NOT NULL THEN filters := filters || ' AND p.country = $4'; END IF;
+  -- A SELECTION OF COUNTRIES, THE SAME WAY A SELECTION OF FIELDS ALREADY WORKS.
+  -- Equality could only ever express one, so "DE,GB" matched the literal string
+  -- and returned zero. This is the split the category line two rows down has
+  -- used since the unsorted bucket shipped; the parameter list is untouched, so
+  -- there is no new signature and no ambiguity exposure.
+  IF p_country IS NOT NULL THEN filters := filters || ' AND p.country = ANY(string_to_array($4, '','')) '; END IF;
   IF p_category IS NOT NULL THEN filters := filters || ' AND p.category = ANY(string_to_array($5, '','')) '; END IF;
   IF p_experience IS NOT NULL THEN filters := filters || ' AND p.experience_band = ANY($6)'; END IF;
   IF p_salary_floor IS NOT NULL THEN filters := filters || ' AND p.salary_rank_usd >= $7'; END IF;
@@ -219,7 +224,9 @@ DECLARE
 BEGIN
   IF p_location IS NOT NULL THEN filters := filters || ' AND p.location ILIKE ''%'' || $2 || ''%'''; END IF;
   IF p_remote IS TRUE THEN filters := filters || ' AND p.remote'; END IF;
-  IF p_country IS NOT NULL THEN filters := filters || ' AND p.country = $3'; END IF;
+  -- Same split as search_jobs, or the headline answers a different question
+  -- from the rows it sits over.
+  IF p_country IS NOT NULL THEN filters := filters || ' AND p.country = ANY(string_to_array($3, '','')) '; END IF;
   IF p_category IS NOT NULL THEN filters := filters || ' AND p.category = ANY(string_to_array($4, '','')) '; END IF;
   IF p_experience IS NOT NULL THEN filters := filters || ' AND p.experience_band = ANY($5)'; END IF;
   IF p_salary_floor IS NOT NULL THEN filters := filters || ' AND p.salary_rank_usd >= $6'; END IF;

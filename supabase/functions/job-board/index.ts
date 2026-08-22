@@ -7300,7 +7300,12 @@ async function serveList(
     // Country filter: exact match on the deterministically extracted code.
     // Postings whose location we couldn't place have country NULL and are
     // excluded by the filter — honestly, never guessed (the UI says so).
-    if (applied.country) q = q.eq("country", applied.country);
+    // Split here too: the RPC splits, and a browse page that binds equality
+    // against "DE,GB" serves zero rows under a headline that counted both.
+    if (applied.country) {
+      const cs = applied.country.split(",").filter(Boolean);
+      q = cs.length > 1 ? q.in("country", cs) : q.eq("country", cs[0]);
+    }
     // ONE DERIVED VALUE FOR ALL THREE CALL SITES.
     //
     // A category becomes a query in three places here — this direct filter and
@@ -7311,11 +7316,18 @@ async function serveList(
     // time. It matters that this is an .eq(): the widened `.in()` below loses
     // the date index on a large bucket, which is what made ordering across both
     // subsets time out.
+    // EQUALITY CANNOT EXPRESS A SELECTION. `applied.category` is comma-joined
+    // (it always was, for the unsorted bucket), so an .eq() against it asks the
+    // database for a posting whose single category is the literal string
+    // "design,legal" — no rows, under a headline computed by the RPC, which
+    // DOES split. Both sides must ask the same question.
     if (categoryOverride) {
-      q = q.eq("category", categoryOverride);
+      const ov = categoryOverride.split(",").filter(Boolean);
+      q = ov.length > 1 ? q.in("category", ov) : q.eq("category", ov[0]);
     } else if (applied.category) {
-      if (applied.includeUncategorised) q = q.in("category", [applied.category, "other"]);
-      else q = q.eq("category", applied.category);
+      const cats = applied.category.split(",").filter(Boolean);
+      const wanted = applied.includeUncategorised ? [...cats, "other"] : cats;
+      q = wanted.length > 1 ? q.in("category", wanted) : q.eq("category", wanted[0]);
     }
     // "Only jobs the agent can apply to" — a FILTER on source, composing with
     // the date-index ORDER BY. Never a sort: ranking by sendability is the
