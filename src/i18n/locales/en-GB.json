@@ -4003,7 +4003,13 @@
     "moreLocations_other": "Same role in {{count}} more locations",
     "savedWithoutActivelyHiring": "The Actively hiring filter is applied in your browser, not on the board, so this saved search does not include it.",
     "resultsSummarySegmented": "Showing {{shown}} — {{exact}} exact and {{related}} where the term appears in the description",
-    "descriptionMatchChip": "in description"
+    "descriptionMatchChip": "in description",
+    "nFields": "{{n}} fields",
+    "nCountries": "{{n}} countries",
+    "clearFields": "Clear fields",
+    "clearCountries": "Clear countries",
+    "fieldsAtMax": "Three fields at a time — more than that is slow enough to be worse than a second search.",
+    "countriesAtMax": "Five countries at a time."
   },
   "accountPage": {
     "statusSaveFailed": "Couldn't save that status — please try again.",

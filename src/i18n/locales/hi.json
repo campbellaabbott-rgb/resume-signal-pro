@@ -4003,7 +4003,13 @@
     "moreLocations_other": "यही रोल {{count}} और लोकेशन में",
     "savedWithoutActivelyHiring": "“अभी भर्ती कर रहे” फ़िल्टर आपके ब्राउज़र में लगता है, बोर्ड पर नहीं — इसलिए यह सहेजी गई खोज उसे शामिल नहीं करती।",
     "resultsSummarySegmented": "{{shown}} दिखा रहे हैं — {{exact}} सटीक और {{related}} जिनमें यह शब्द विवरण में आता है",
-    "descriptionMatchChip": "विवरण में"
+    "descriptionMatchChip": "विवरण में",
+    "nFields": "{{n}} क्षेत्र",
+    "nCountries": "{{n}} देश",
+    "clearFields": "क्षेत्र साफ़ करें",
+    "clearCountries": "देश साफ़ करें",
+    "fieldsAtMax": "एक साथ तीन क्षेत्र — इससे ज़्यादा इतना धीमा है कि दूसरी खोज करना बेहतर रहेगा।",
+    "countriesAtMax": "एक साथ पाँच देश।"
   },
   "accountPage": {
     "statusSaveFailed": "यह स्थिति सहेजी नहीं जा सकी — कृपया फिर से प्रयास करें।",

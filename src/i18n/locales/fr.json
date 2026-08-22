@@ -4003,7 +4003,13 @@
     "moreLocations_other": "Même poste dans {{count}} autres lieux",
     "savedWithoutActivelyHiring": "Le filtre « Recrute activement » s'applique dans votre navigateur, pas sur le tableau : cette recherche enregistrée ne l'inclut donc pas.",
     "resultsSummarySegmented": "{{shown}} affichées — {{exact}} exactes et {{related}} où le terme apparaît dans la description",
-    "descriptionMatchChip": "dans la description"
+    "descriptionMatchChip": "dans la description",
+    "nFields": "{{n}} domaines",
+    "nCountries": "{{n}} pays",
+    "clearFields": "Effacer les domaines",
+    "clearCountries": "Effacer les pays",
+    "fieldsAtMax": "Trois domaines à la fois — au-delà, c'est assez lent pour qu'une seconde recherche soit préférable.",
+    "countriesAtMax": "Cinq pays à la fois."
   },
   "accountPage": {
     "statusSaveFailed": "Impossible d'enregistrer ce statut — réessayez.",

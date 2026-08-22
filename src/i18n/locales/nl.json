@@ -4003,7 +4003,13 @@
     "moreLocations_other": "Dezelfde functie op {{count}} andere locaties",
     "savedWithoutActivelyHiring": "Het filter 'Actief aan het werven' werkt in je browser, niet op het bord, dus deze opgeslagen zoekopdracht bevat het niet.",
     "resultsSummarySegmented": "{{shown}} getoond — {{exact}} exact en {{related}} waar de term in de beschrijving voorkomt",
-    "descriptionMatchChip": "in de beschrijving"
+    "descriptionMatchChip": "in de beschrijving",
+    "nFields": "{{n}} vakgebieden",
+    "nCountries": "{{n}} landen",
+    "clearFields": "Vakgebieden wissen",
+    "clearCountries": "Landen wissen",
+    "fieldsAtMax": "Drie vakgebieden tegelijk — meer is zo traag dat een tweede zoekopdracht sneller is.",
+    "countriesAtMax": "Vijf landen tegelijk."
   },
   "accountPage": {
     "statusSaveFailed": "Kon die status niet opslaan — probeer het opnieuw.",

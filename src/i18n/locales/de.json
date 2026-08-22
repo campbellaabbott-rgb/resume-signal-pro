@@ -4003,7 +4003,13 @@
     "moreLocations_other": "Gleiche Stelle an {{count}} weiteren Standorten",
     "savedWithoutActivelyHiring": "Der Filter „Aktiv auf Personalsuche“ wirkt in deinem Browser, nicht auf dem Board — diese gespeicherte Suche enthält ihn daher nicht.",
     "resultsSummarySegmented": "{{shown}} angezeigt — {{exact}} exakt und {{related}}, bei denen der Begriff in der Beschreibung vorkommt",
-    "descriptionMatchChip": "in der Beschreibung"
+    "descriptionMatchChip": "in der Beschreibung",
+    "nFields": "{{n}} Bereiche",
+    "nCountries": "{{n}} Länder",
+    "clearFields": "Bereiche zurücksetzen",
+    "clearCountries": "Länder zurücksetzen",
+    "fieldsAtMax": "Drei Bereiche gleichzeitig — mehr ist so langsam, dass eine zweite Suche schneller wäre.",
+    "countriesAtMax": "Fünf Länder gleichzeitig."
   },
   "accountPage": {
     "statusSaveFailed": "Status konnte nicht gespeichert werden — bitte erneut versuchen.",

@@ -4003,7 +4003,13 @@
     "moreLocations_other": "Mismo puesto en {{count}} ubicaciones más",
     "savedWithoutActivelyHiring": "El filtro «Contratando ahora» se aplica en tu navegador, no en el tablón, así que esta búsqueda guardada no lo incluye.",
     "resultsSummarySegmented": "Mostrando {{shown}}: {{exact}} exactas y {{related}} donde el término aparece en la descripción",
-    "descriptionMatchChip": "en la descripción"
+    "descriptionMatchChip": "en la descripción",
+    "nFields": "{{n}} áreas",
+    "nCountries": "{{n}} países",
+    "clearFields": "Borrar áreas",
+    "clearCountries": "Borrar países",
+    "fieldsAtMax": "Tres áreas a la vez: más resulta tan lento que sale peor que hacer otra búsqueda.",
+    "countriesAtMax": "Cinco países a la vez."
   },
   "accountPage": {
     "statusSaveFailed": "No se pudo guardar ese estado; inténtalo de nuevo.",

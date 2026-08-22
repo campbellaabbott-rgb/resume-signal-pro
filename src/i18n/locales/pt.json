@@ -4003,7 +4003,13 @@
     "moreLocations_other": "A mesma vaga em mais {{count}} localizações",
     "savedWithoutActivelyHiring": "O filtro «A contratar agora» é aplicado no teu navegador, não no quadro, por isso esta pesquisa guardada não o inclui.",
     "resultsSummarySegmented": "A mostrar {{shown}} — {{exact}} exatas e {{related}} em que o termo aparece na descrição",
-    "descriptionMatchChip": "na descrição"
+    "descriptionMatchChip": "na descrição",
+    "nFields": "{{n}} áreas",
+    "nCountries": "{{n}} países",
+    "clearFields": "Limpar áreas",
+    "clearCountries": "Limpar países",
+    "fieldsAtMax": "Três áreas de cada vez — mais do que isso é tão lento que compensa fazer outra pesquisa.",
+    "countriesAtMax": "Cinco países de cada vez."
   },
   "accountPage": {
     "statusSaveFailed": "Não foi possível salvar esse status — tente novamente.",

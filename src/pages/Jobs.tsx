@@ -16,6 +16,7 @@ import { parseSalaryStructured } from "../../supabase/functions/_shared/salary-e
 // same reason the salary parser above is imported straight out of _shared.
 import { isSendableVendor } from "../../supabase/functions/_shared/apply-automation";
 import { BOARD_SOURCE_LIST } from "@/config/ats-vendors";
+import { MultiSelectFilter } from "@/components/board/MultiSelectFilter";
 import { markDeadForRobots, clearDeadForRobots } from "@/lib/seo-robots";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -2623,7 +2624,20 @@ export default function Jobs() {
     const f: Array<{ key: string; label: string; clear: () => void }> = [];
     if (q) f.push({ key: "q", label: `“${q}”`, clear: () => setQ("") });
     if (location) f.push({ key: "location", label: location, clear: () => setLocation("") });
-    if (category) f.push({ key: "category", label: t(`jobsPage.categories.${category}`, category), clear: () => setCategory("") });
+    // A comma-joined selection cannot be a translation key — asking for
+    // `categories.design,legal` resolves to nothing and the chip renders the raw
+    // slug list. One field names itself; several get a count, the same way the
+    // employer chip already does rather than printing a wall of tokens.
+    if (category) {
+      const cats = category.split(",").filter(Boolean);
+      f.push({
+        key: "category",
+        label: cats.length === 1
+          ? t(`jobsPage.categories.${cats[0]}`, cats[0])
+          : t("jobsPage.nFields", "{{n}} fields", { n: cats.length }),
+        clear: () => setCategory(""),
+      });
+    }
     if (experience) f.push({ key: "experience", label: t(`jobsPage.experience.${experience}`, experience), clear: () => setExperience("") });
     // A multi-employer filter gets a count, not a 400-character wall of raw
     // tokens. One employer still shows its name — the resolved display name
@@ -2633,7 +2647,14 @@ export default function Jobs() {
     } else if (company) {
       f.push({ key: "company", label: companies.find((c) => c.token === company)?.name ?? company, clear: () => setCompany("") });
     }
-    if (country) f.push({ key: "country", label: country, clear: () => setCountry("") });
+    if (country) {
+      const cs = country.split(",").filter(Boolean);
+      f.push({
+        key: "country",
+        label: cs.length === 1 ? cs[0] : t("jobsPage.nCountries", "{{n}} countries", { n: cs.length }),
+        clear: () => setCountry(""),
+      });
+    }
     if (salaryFloor > 0) f.push({ key: "salaryFloor", label: `$${salaryFloor / 1000}k+`, clear: () => setSalaryFloor(0) });
     if (remoteOnly && !workMode) f.push({ key: "remote", label: t("jobsPage.remoteBadge", "Remote"), clear: () => setRemoteOnly(false) });
     if (workMode) f.push({ key: "mode", label: t(`jobsPage.workMode.${workMode}`, workMode), clear: () => { setWorkMode(""); setRemoteOnly(false); } });
@@ -3739,22 +3760,27 @@ export default function Jobs() {
                 className="w-full pl-9 pr-3 py-2 rounded-lg bg-background border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
               />
             </div>
-            <select
+            {/* THREE FIELDS AT ONCE. The board has unioned comma-joined fields
+                since the unsorted bucket shipped, so this control is catching up
+                with the API rather than extending it. The cap is measured, not
+                chosen: one field costs 0.26-0.35s, three ~0.45s, six 0.75-0.79s
+                — the same cost class as the two-value cliff the two-subset pager
+                exists to avoid. */}
+            <MultiSelectFilter
               value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              className="px-3 py-2 rounded-lg bg-background border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-              aria-label={t("jobsPage.allFields", "All fields")}
-            >
-              <option value="">{t("jobsPage.allFields", "All fields")}</option>
-              {CATEGORY_IDS.map((c) => (
-                <option key={c} value={c}>
-                  {t(`jobsPage.categories.${c}`, c)}
-                  {(filteredCats?.[c] ?? data?.categories?.[c])
-                    ? ` (${(filteredCats?.[c] ?? data!.categories![c]).toLocaleString()})`
-                    : ""}
-                </option>
-              ))}
-            </select>
+              onChange={setCategory}
+              max={3}
+              options={CATEGORY_IDS.map((c) => ({
+                value: c,
+                label: t(`jobsPage.categories.${c}`, c),
+                count: filteredCats?.[c] ?? data?.categories?.[c],
+              }))}
+              allLabel={t("jobsPage.allFields", "All fields")}
+              ariaLabel={t("jobsPage.allFields", "All fields")}
+              selectedLabel={(n) => t("jobsPage.nFields", "{{n}} fields", { n })}
+              atMaxNote={t("jobsPage.fieldsAtMax", "Three fields at a time — more than that is slow enough to be worse than a second search.")}
+              clearLabel={t("jobsPage.clearFields", "Clear fields")}
+            />
             {/* THE QUARTER OF THE BOARD A FIELD CHOICE HIDES.
                 `other` is where a posting lands when its field could not be
                 read from the title — 162,800 of 590,808 on 2026-08-05 — not a
@@ -3837,20 +3863,22 @@ export default function Jobs() {
                 When the facet is empty we fall back to the countries actually
                 present in the current result set. */}
             {(countryFacet.length > 0 || fallbackCountries.length > 0) && (
-              <select
+              <MultiSelectFilter
                 value={country}
-                onChange={(e) => setCountry(e.target.value)}
-                className="px-3 py-2 rounded-lg bg-background border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-                aria-label={t("jobsPage.allCountries", "All countries")}
+                onChange={setCountry}
+                max={5}
+                options={(countryFacet.length ? countryFacet : fallbackCountries.map((c) => ({ country: c, n: 0 }))).map((c) => ({
+                  value: c.country,
+                  label: countryLabel(c.country),
+                  count: c.n,
+                }))}
+                allLabel={t("jobsPage.allCountries", "All countries")}
+                ariaLabel={t("jobsPage.allCountries", "All countries")}
+                selectedLabel={(n) => t("jobsPage.nCountries", "{{n}} countries", { n })}
+                atMaxNote={t("jobsPage.countriesAtMax", "Five countries at a time.")}
+                clearLabel={t("jobsPage.clearCountries", "Clear countries")}
                 title={t("jobsPage.countryTip", "Country read from each posting's own location text — postings we can't place are excluded while this is on, never guessed.")}
-              >
-                <option value="">{t("jobsPage.allCountries", "All countries")}</option>
-                {(countryFacet.length ? countryFacet : fallbackCountries.map((c) => ({ country: c, n: 0 }))).map((c) => (
-                  <option key={c.country} value={c.country}>
-                    {countryLabel(c.country)} ({c.n.toLocaleString()})
-                  </option>
-                ))}
-              </select>
+              />
             )}
             {/* U4: at ~25k companies a dropdown is unusable — type-ahead over the
                 served facet (top slice by count; the full set stays searchable
