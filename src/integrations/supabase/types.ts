@@ -3143,24 +3143,46 @@ export type Database = {
         Returns: number
       }
       fuzzy_title_search: {
-        Args: { p_fresh_cutoff: string; p_limit?: number; p_q: string }
+        Args: {
+          p_category?: string
+          p_companies?: string[]
+          p_country?: string
+          p_experience?: string[]
+          p_fresh_cutoff: string
+          p_limit?: number
+          p_location?: string
+          p_max_age_days?: number
+          p_posted_after?: string
+          p_q: string
+          p_remote?: boolean
+          p_salary_floor?: number
+          p_vendors?: string[]
+          p_work_mode?: string
+        }
         Returns: {
           apply_url: string
           category: string
           company: string
           company_token: string
+          country: string
           department: string
           experience_band: string
           id: string
           last_seen: string
           location: string
           min_years: number
+          missing_since: string
           posted_at: string
           remote: boolean
           salary: string
+          salary_currency: string
+          salary_max_annual: number
+          salary_min_annual: number
+          salary_period: string
           source: string
           title: string
           total_rows: number
+          work_mode: string
         }[]
       }
       get_ab_test_stats: {
@@ -4156,6 +4178,7 @@ export type Database = {
           location: string
           min_years: number
           posted_at: string
+          related_rows: number
           remote: boolean
           salary: string
           salary_currency: string
@@ -4165,6 +4188,7 @@ export type Database = {
           snippet: string
           source: string
           title: string
+          title_match: boolean
           total_rows: number
           work_mode: string
         }[]
