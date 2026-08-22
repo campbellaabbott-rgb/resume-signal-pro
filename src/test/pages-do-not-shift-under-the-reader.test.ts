@@ -81,4 +81,23 @@ describe("board pages are anchored to rows, not row counts", () => {
     expect(UI).toMatch(/cursor: offset > 0 \? nextCursorRef\.current \?\? undefined : undefined,/);
     expect(UI).toMatch(/nextCursorRef\.current = br\.nextCursor \?\? null;/);
   });
+
+  it("a page position is always a whole row that exists", () => {
+    // `Number(x) || default` coerced anything rather than rejecting it, and one
+    // of the things it coerced was a FRACTION. Measured: offset=1.5 returned
+    // rows and echoed nextOffset 7.5 — a fractional offset handed back to the
+    // client to resend into a range() call, a chain that never advances past the
+    // first few rows. offset="abc" and offset=-100 both became 0, so a broken
+    // pager looked like a working one parked on page one; limit=0 became 60
+    // because zero is falsy.
+    //
+    // Coercion is kept deliberately — a 400 would break data-API callers who
+    // have always been tolerated — but the accepted value must be a whole row,
+    // so nextOffset can only ever name a position that exists.
+    expect(FN).toMatch(/Number\.isFinite\(offsetRaw\) && offsetRaw > 0 \? Math\.floor\(offsetRaw\) : 0/);
+    expect(FN).toMatch(/Number\.isFinite\(limitRaw\) && limitRaw >= 1 \? Math\.min\(Math\.floor\(limitRaw\), 200\) : 60/);
+    // And the truthiness form must not come back — 0 is a real number.
+    expect(FN).not.toMatch(/Number\(body\.offset\) \|\| 0/);
+    expect(FN).not.toMatch(/Number\(body\.limit\) \|\| 60/);
+  });
 });

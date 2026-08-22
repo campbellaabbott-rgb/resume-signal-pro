@@ -6920,8 +6920,24 @@ async function serveList(
   body: Record<string, unknown>,
   meta?: { v: Record<string, unknown>; updated_at: string } | null,
 ) {
-  const limit = Math.min(Math.max(Number(body.limit) || 60, 1), 200);
-  const offset = Math.max(Number(body.offset) || 0, 0);
+  // WHOLE ROWS, OR THE PAGER HANDS BACK A POSITION THAT CANNOT EXIST.
+  //
+  // These were `Number(x) || default` clamps, which coerce anything rather than
+  // rejecting it, and one of the things they coerced was a FRACTION. Measured:
+  // offset=1.5 returned rows and echoed nextOffset 7.5, a fractional offset
+  // handed straight back to the client to resend into a PostgREST range() call;
+  // following that chain never advances past the first few rows. offset="abc"
+  // and offset=-100 both silently became 0, so a broken pager looked like a
+  // working one parked on page one. limit=0 became 60 because zero is falsy.
+  //
+  // Coercion stays — a 400 here would break live callers that have always been
+  // tolerated, and the data API is used by people who are not watching. But the
+  // value is now floored to a whole row, so whatever we accept, we can serve,
+  // and nextOffset is always a position that exists.
+  const limitRaw = Number(body.limit);
+  const limit = Number.isFinite(limitRaw) && limitRaw >= 1 ? Math.min(Math.floor(limitRaw), 200) : 60;
+  const offsetRaw = Number(body.offset);
+  const offset = Number.isFinite(offsetRaw) && offsetRaw > 0 ? Math.floor(offsetRaw) : 0;
   const countOnly = body.countOnly === true;
   // KEYSET CURSOR — a page anchored to the last row read, not to a row count.
   //
