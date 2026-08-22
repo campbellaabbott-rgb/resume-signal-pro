@@ -3308,14 +3308,31 @@ const METRO_ALIASES: Record<string, { names: string[]; keepRaw: boolean }> = {
  * names are ["NYC", "New York"], and New York is 12,168 rows against 344.
  */
 function rankedLocationParam(raw: unknown): string | null {
-  const { terms, expandedFrom } = locationTerms(raw);
+  const { terms } = locationTerms(raw);
   if (terms.length === 0) return null;
-  // Skip a name that is just the typed token echoed back; a curated canonical
-  // is always the better single guess.
-  const canonical = expandedFrom
-    ? terms.find((t) => t.toLowerCase() !== String(expandedFrom).toLowerCase()) ?? terms[0]
-    : terms[0];
-  return sanitizeTerm(canonical) || null;
+  // EVERY NAME, NOT THE BEST SINGLE GUESS.
+  //
+  // This used to pick one canonical name because the RPC took a single text
+  // parameter and matched it with one ILIKE. The browse path had no such limit
+  // — it ORs every expanded name — so the two paths answered the same request
+  // differently, and the difference was invisible: measured live, "bay area"
+  // alone returned San Francisco 40 / San Jose 10 / Oakland 5, while adding
+  // q=engineer returned San Francisco 54 / Oakland 1 / San Jose ZERO. Typing a
+  // job title shrank the metro.
+  //
+  // Worse once the disclosure shipped: both paths emit the same
+  // locationSearched list, so the page printed "Searched 'bay area' as San
+  // Francisco, Oakland, San Jose" over results that had only ever been matched
+  // against San Francisco.
+  //
+  // The RPC splits this on "|" as of 20260823010000. A pipe is the separator
+  // because state aliases deliberately CONTAIN commas (", TX" is what stops a
+  // bare code matching inside ordinary words) and because sanitizeTerm strips
+  // pipes from anything a visitor types — so the only source of one is this
+  // table. A single-name location produces no pipe and behaves exactly as it
+  // always did.
+  const joined = terms.map((t) => sanitizeTerm(t)).filter(Boolean).join("|");
+  return joined || null;
 }
 
 function locationTerms(raw: unknown): { terms: string[]; expandedFrom: string | null } {

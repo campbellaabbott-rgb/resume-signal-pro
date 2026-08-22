@@ -20,10 +20,20 @@ import { resolve } from "node:path";
  */
 const ROOT = resolve(__dirname, "../..");
 const FN = readFileSync(resolve(ROOT, "supabase/functions/job-board/index.ts"), "utf8");
+/**
+ * The NEWEST migration that teaches the RPC to split, not the first one named
+ * like it. The first attempt was reverted and its file is still on disk, so a
+ * `.find()` returns the rolled-back version and every assertion below reads the
+ * wrong text — which is how these four sat skipped against a file that could
+ * never satisfy them.
+ */
 const MIG = (() => {
   const dir = resolve(ROOT, "supabase/migrations");
-  const f = readdirSync(dir).find((n) => n.includes("a_metro_alias_must_match_any_of_its_names"));
-  return f ? readFileSync(resolve(dir, f), "utf8") : "";
+  const hits = readdirSync(dir)
+    .filter((n) => n.endsWith(".sql"))
+    .filter((n) => readFileSync(resolve(dir, n), "utf8").includes("string_to_array($3, ''|'')"))
+    .sort();
+  return hits.length ? readFileSync(resolve(dir, hits[hits.length - 1]), "utf8") : "";
 })();
 
 describe("a metro alias reaches every path, not just the one nobody types into", () => {
@@ -42,7 +52,7 @@ describe("a metro alias reaches every path, not just the one nobody types into",
     expect(wired, "every search_jobs call must send the expanded names").toBeGreaterThanOrEqual(4);
   });
 
-  it.skip("the RPC matches ANY of the delimited names, not the literal string", () => {
+  it("the RPC matches ANY of the delimited names, not the literal string", () => {
     // SKIPPED, not deleted. The delimiter approach is right and should return
     // — but only applied to the FIFTEEN-parameter definition that actually
     // runs in production, read out of the database rather than out of this
@@ -59,7 +69,7 @@ describe("a metro alias reaches every path, not just the one nobody types into",
     expect(generated).toContain("ILIKE '%' || alias.x || '%'");
   });
 
-  it.skip("widens BOTH location functions, with their DIFFERENT positionals", () => {
+  it("widens BOTH location functions, with their DIFFERENT positionals", () => {
     // count_jobs_capped carries the same clause at $2 where search_jobs has
     // $3. Fixing only one would be worse than fixing neither: the caller
     // already sends the joined string to both, so the rows would come from
@@ -72,14 +82,14 @@ describe("a metro alias reaches every path, not just the one nobody types into",
     expect(MIG).toMatch(/string_to_array\(\$2, ''\|''\)/);
   });
 
-  it.skip("keeps the signature and the positional USING clauses untouched", () => {
+  it("keeps the signature and the positional USING clauses untouched", () => {
     // Adding a parameter would renumber four USING clauses on the core search
     // RPC. The delimiter avoids that entirely, which is why it was chosen.
     expect(MIG).toMatch(/p_location text DEFAULT NULL,/);
     expect(MIG).not.toMatch(/p_location_any|p_locations/);
   });
 
-  it.skip("a plain location still behaves exactly as before", () => {
+  it("a plain location still behaves exactly as before", () => {
     // No pipe means a one-element array, so every existing caller is
     // unaffected whether or not it knows about this.
     expect(MIG).toMatch(/one-element array and behaves EXACTLY as before/i);
@@ -100,18 +110,34 @@ describe("a metro alias reaches every path, not just the one nobody types into",
     expect(strip.includes("\\\\"), "sanitizeTerm must strip the backslash").toBe(true);
   });
 
-  it("sends ONE sanitized canonical name, and null when nothing survives", () => {
-    // The pipe-joined version is reverted: the migration that taught
-    // search_jobs to split on "|" created a 14-param OVERLOAD of a 15-param
-    // function and broke ranked search outright (PGRST203). With the real
-    // one-substring definition restored, sending "Philly|Philadelphia" would
-    // match NOTHING — worse than the bug it fixed.
+  it("sends EVERY name, now that the RPC can split them", () => {
+    // The interlock above is released. While the RPC matched one substring,
+    // sending "Philly|Philadelphia" would have matched NOTHING — worse than the
+    // bug — so this assertion used to pin the single-canonical workaround. The
+    // split is re-applied in 20260823010000, built from the signature that is
+    // live rather than from the newest-looking file, which is the one thing the
+    // reverted attempt got wrong.
+    //
+    // What it buys, measured before the change: "bay area" alone returned San
+    // Francisco 40 / San Jose 10 / Oakland 5, while the same location with
+    // q=engineer returned San Jose ZERO. A job title should not shrink a metro.
     const fn = /function rankedLocationParam\([\s\S]*?\n}/.exec(FN)?.[0] ?? "";
     expect(fn, "rankedLocationParam not found").not.toBe("");
-    expect(fn, "must not send a delimited list to the one-substring RPC").not.toMatch(/join\("\|"\)/);
-    expect(fn).toMatch(/sanitizeTerm\(canonical\)/);
+    expect(fn).toMatch(/join\("\|"\)/);
     expect(fn).toMatch(/if \(terms\.length === 0\) return null;/);
-    // Still an improvement on the raw token: "Philly" must search Philadelphia.
-    expect(fn).toMatch(/expandedFrom/);
+    // Every name is sanitized individually — the delimiter must not survive
+    // inside a term and split it again on the SQL side.
+    expect(fn).toMatch(/terms\.map\(\(t\) => sanitizeTerm\(t\)\)/);
+  });
+
+  it("the edge change is USELESS AND HARMFUL without its migration", () => {
+    // Stated here because it decides deploy order, and getting it wrong is
+    // worse than not shipping: against a one-substring definition the joined
+    // value matches nothing, so EVERY metro and all 122 state aliases would
+    // return zero results. Migration first, then the function. The reverse
+    // order is an outage, not a degradation.
+    expect(MIG, "the split migration must exist before the edge change ships").not.toBe("");
+    expect(MIG).toMatch(/string_to_array\(\$3, ''\|''\)/);
+    expect(MIG).toMatch(/string_to_array\(\$2, ''\|''\)/);
   });
 });
