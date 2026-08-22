@@ -174,6 +174,32 @@ describe("a disclosure nobody renders is not a disclosure", () => {
     }
   });
 
+  it("disclosures render on an EMPTY page too — the case that needs them most", () => {
+    // They all used to sit in the results branch of
+    //   jobs.length === 0 ? (zero state) : (results ...disclosures)
+    // so a search returning nothing explained nothing. Verified in a browser
+    // before the fix: q + salaryFloor=300000 with zero rows rendered no coverage
+    // line at all. "Pay is stated on 13% of postings" is ADVICE on an empty page
+    // and trivia on a full one, and it was showing only on the full one.
+    const JOBS = readFileSync(resolve(ROOT, "src/pages/Jobs.tsx"), "utf8");
+    const split = JOBS.indexOf(") : jobs.length === 0 ? (");
+    expect(split, "the results/empty split moved — re-point this guard").toBeGreaterThan(0);
+    for (const key of [
+      "jobsPage.filterCoverage", "jobsPage.intentFilters", "jobsPage.salaryStatedOnly",
+      "jobsPage.droppedTerms", "jobsPage.ignoredFilters", "jobsPage.locationExpanded",
+      "jobsPage.salaryFromQuery", "jobsPage.maxAgeClamped", "jobsPage.postedAfterStatedDate",
+      "jobsPage.companyMatched", "jobsPage.exactWordMatch",
+    ]) {
+      const at = JOBS.indexOf(key);
+      expect(at, `${key} is not rendered at all`).toBeGreaterThan(0);
+      expect(
+        at,
+        `${key} renders AFTER the jobs.length === 0 split, so it is invisible on an ` +
+          "empty result page — the moment a searcher most needs to be told why.",
+      ).toBeLessThan(split);
+    }
+  });
+
   it("the intent lift does not strip a phrase whose filter will be discarded", () => {
     // q="work from home nurse" with workMode=onsite used to delete the phrase
     // from the query AND have its remote:true dropped by the precedence in

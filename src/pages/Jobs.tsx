@@ -4199,6 +4199,111 @@ export default function Jobs() {
           {/* Split-pane on lg+: list column left, detail column right. */}
           <div className="lg:grid lg:grid-cols-[minmax(0,46%)_minmax(0,54%)] lg:gap-6 lg:items-start">
           <div className="min-w-0">
+          {/* WHY THIS SITS ABOVE THE RESULTS/EMPTY SPLIT, NOT INSIDE IT.
+
+              Every one of these used to live in the results branch of
+              `jobs.length === 0 ? (zero state) : (results)`, so a search that
+              returned NOTHING explained nothing — which is precisely the moment
+              a searcher needs them. Verified: q + salaryFloor=300000 with zero
+              rows rendered no coverage line at all. "Pay is stated on 13% of
+              postings" is advice on an empty page and trivia on a full one, and
+              it was showing only on the full one. */}
+          {!loading && !error && (
+            <>
+                {/* The server names any filter it could not honour. Until now nothing
+                    read the field: the fence was satisfied in the payload and broken
+                    on screen — an active filter chip, results that ignore it, and no
+                    word to the user. A filter that did nothing has to SAY so where
+                    the results are, not only in the JSON. */}
+                {Array.isArray(data?.droppedTerms) && data.droppedTerms.length > 0 && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {t("jobsPage.droppedTerms", "Searched titles for the rest — ignored {{words}}, which don't appear in job titles.", {
+                      words: data.droppedTerms.map((w) => `"${w}"`).join(", "),
+                    })}
+                  </p>
+                )}
+                {Array.isArray(data?.ignoredFilters) && data.ignoredFilters.length > 0 && (
+                  <p className="text-xs text-warning mb-2" role="status">
+                    {t("jobsPage.ignoredFilters", "We couldn't apply {{filters}} — those results are unfiltered by it. Everything else you selected did apply.", {
+                      filters: data.ignoredFilters
+                        .map((f) => t(`jobsPage.filterName.${f}`, f))
+                        .join(", "),
+                    })}
+                  </p>
+                )}
+                {/* WHAT A FILTER CAN EVEN SEE.
+                    The single most useful thing on this page and it shipped mute.
+                    A pay filter searches the 13% of postings that state pay; the
+                    other 87% are not "jobs that pay less", they are jobs that did
+                    not say. Without this line a thin result set reads as a verdict
+                    on the market instead of on the data. */}
+                {(() => {
+                  const fc = data?.filterCoverage;
+                  if (!fc) return null;
+                  const parts: string[] = [];
+                  if (typeof fc.salaryFloor === "number") parts.push(t("jobsPage.coveragePay", "pay on {{pct}}%", { pct: Math.round(fc.salaryFloor * 100) }));
+                  if (typeof fc.workMode === "number") parts.push(t("jobsPage.coverageWorkMode", "work mode on {{pct}}%", { pct: Math.round(fc.workMode * 100) }));
+                  if (typeof fc.experience === "number") parts.push(t("jobsPage.coverageExperience", "experience level on {{pct}}%", { pct: Math.round(fc.experience * 100) }));
+                  if (!parts.length) return null;
+                  return (
+                    <p className="text-xs text-muted-foreground mb-2" role="status">
+                      {t("jobsPage.filterCoverage", "Employers state {{fields}} of postings. A filter can only search what was published — roles that don't say are hidden here, not absent.", { fields: parts.join(", ") })}
+                    </p>
+                  );
+                })()}
+                {/* We rewrote their query. Say so. */}
+                {Array.isArray(data?.intentFilters) && data.intentFilters.length > 0 && (
+                  <p className="text-xs text-muted-foreground mb-2" role="status">
+                    {t("jobsPage.intentFilters", "Read {{phrases}} as a filter and applied it, rather than searching for those words.", {
+                      phrases: data.intentFilters.map((p) => `“${p}”`).join(", "),
+                    })}
+                  </p>
+                )}
+                {/* A pay-sorted page is a filtered page. It never said so. */}
+                {data?.salaryStatedOnly && (
+                  <p className="text-xs text-muted-foreground mb-2" role="status">
+                    {t("jobsPage.salaryStatedOnly", "Sorted by pay, so only roles that state a salary appear here.")}
+                  </p>
+                )}
+                {data?.locationExpandedFrom && Array.isArray(data?.locationSearched) && data.locationSearched.length > 0 && (
+                  <p className="text-xs text-muted-foreground mb-2" role="status">
+                    {t("jobsPage.locationExpanded", "Searched {{from}} as {{places}}.", {
+                      from: `“${data.locationExpandedFrom}”`,
+                      places: data.locationSearched.join(", "),
+                    })}
+                  </p>
+                )}
+                {typeof data?.salaryFromQuery === "number" && (
+                  <p className="text-xs text-muted-foreground mb-2" role="status">
+                    {t("jobsPage.salaryFromQuery", "Read {{amount}} in your search as a minimum pay filter.", {
+                      amount: data.salaryFromQuery.toLocaleString(),
+                    })}
+                  </p>
+                )}
+                {typeof data?.maxAgeClampedTo === "number" && (
+                  <p className="text-xs text-muted-foreground mb-2" role="status">
+                    {t("jobsPage.maxAgeClamped", "The board keeps {{days}} days of postings, so that is the window searched.", {
+                      days: data.maxAgeClampedTo,
+                    })}
+                  </p>
+                )}
+                {data?.postedAfterUsesStatedDate && (
+                  <p className="text-xs text-muted-foreground mb-2" role="status">
+                    {t("jobsPage.postedAfterStatedDate", "Counted from the date each employer stated, not from when we found the posting.")}
+                  </p>
+                )}
+                {data?.companyMatched && (
+                  <p className="text-xs text-muted-foreground mb-2" role="status">
+                    {t("jobsPage.companyMatched", "Matched an employer name — showing roles at {{company}}.", { company: data.companyMatched })}
+                  </p>
+                )}
+                {data?.exactWordMatch && (
+                  <p className="text-xs text-muted-foreground mb-2" role="status">
+                    {t("jobsPage.exactWordMatch", "Showing exact whole-word matches for “{{q}}”.", { q: data.exactWordMatch })}
+                  </p>
+                )}
+            </>
+          )}
           {/* Results */}
           {loading ? (
             // Skeleton cards: the page keeps its shape while the first load
@@ -4363,98 +4468,6 @@ export default function Jobs() {
                     )}
                   </div>
                 </div>
-              )}
-              {/* The server names any filter it could not honour. Until now nothing
-                  read the field: the fence was satisfied in the payload and broken
-                  on screen — an active filter chip, results that ignore it, and no
-                  word to the user. A filter that did nothing has to SAY so where
-                  the results are, not only in the JSON. */}
-              {Array.isArray(data?.droppedTerms) && data.droppedTerms.length > 0 && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  {t("jobsPage.droppedTerms", "Searched titles for the rest — ignored {{words}}, which don't appear in job titles.", {
-                    words: data.droppedTerms.map((w) => `"${w}"`).join(", "),
-                  })}
-                </p>
-              )}
-              {Array.isArray(data?.ignoredFilters) && data.ignoredFilters.length > 0 && (
-                <p className="text-xs text-warning mb-2" role="status">
-                  {t("jobsPage.ignoredFilters", "We couldn't apply {{filters}} — those results are unfiltered by it. Everything else you selected did apply.", {
-                    filters: data.ignoredFilters
-                      .map((f) => t(`jobsPage.filterName.${f}`, f))
-                      .join(", "),
-                  })}
-                </p>
-              )}
-              {/* WHAT A FILTER CAN EVEN SEE.
-                  The single most useful thing on this page and it shipped mute.
-                  A pay filter searches the 13% of postings that state pay; the
-                  other 87% are not "jobs that pay less", they are jobs that did
-                  not say. Without this line a thin result set reads as a verdict
-                  on the market instead of on the data. */}
-              {(() => {
-                const fc = data?.filterCoverage;
-                if (!fc) return null;
-                const parts: string[] = [];
-                if (typeof fc.salaryFloor === "number") parts.push(t("jobsPage.coveragePay", "pay on {{pct}}%", { pct: Math.round(fc.salaryFloor * 100) }));
-                if (typeof fc.workMode === "number") parts.push(t("jobsPage.coverageWorkMode", "work mode on {{pct}}%", { pct: Math.round(fc.workMode * 100) }));
-                if (typeof fc.experience === "number") parts.push(t("jobsPage.coverageExperience", "experience level on {{pct}}%", { pct: Math.round(fc.experience * 100) }));
-                if (!parts.length) return null;
-                return (
-                  <p className="text-xs text-muted-foreground mb-2" role="status">
-                    {t("jobsPage.filterCoverage", "Employers state {{fields}} of postings. A filter can only search what was published — roles that don't say are hidden here, not absent.", { fields: parts.join(", ") })}
-                  </p>
-                );
-              })()}
-              {/* We rewrote their query. Say so. */}
-              {Array.isArray(data?.intentFilters) && data.intentFilters.length > 0 && (
-                <p className="text-xs text-muted-foreground mb-2" role="status">
-                  {t("jobsPage.intentFilters", "Read {{phrases}} as a filter and applied it, rather than searching for those words.", {
-                    phrases: data.intentFilters.map((p) => `“${p}”`).join(", "),
-                  })}
-                </p>
-              )}
-              {/* A pay-sorted page is a filtered page. It never said so. */}
-              {data?.salaryStatedOnly && (
-                <p className="text-xs text-muted-foreground mb-2" role="status">
-                  {t("jobsPage.salaryStatedOnly", "Sorted by pay, so only roles that state a salary appear here.")}
-                </p>
-              )}
-              {data?.locationExpandedFrom && Array.isArray(data?.locationSearched) && data.locationSearched.length > 0 && (
-                <p className="text-xs text-muted-foreground mb-2" role="status">
-                  {t("jobsPage.locationExpanded", "Searched {{from}} as {{places}}.", {
-                    from: `“${data.locationExpandedFrom}”`,
-                    places: data.locationSearched.join(", "),
-                  })}
-                </p>
-              )}
-              {typeof data?.salaryFromQuery === "number" && (
-                <p className="text-xs text-muted-foreground mb-2" role="status">
-                  {t("jobsPage.salaryFromQuery", "Read {{amount}} in your search as a minimum pay filter.", {
-                    amount: data.salaryFromQuery.toLocaleString(),
-                  })}
-                </p>
-              )}
-              {typeof data?.maxAgeClampedTo === "number" && (
-                <p className="text-xs text-muted-foreground mb-2" role="status">
-                  {t("jobsPage.maxAgeClamped", "The board keeps {{days}} days of postings, so that is the window searched.", {
-                    days: data.maxAgeClampedTo,
-                  })}
-                </p>
-              )}
-              {data?.postedAfterUsesStatedDate && (
-                <p className="text-xs text-muted-foreground mb-2" role="status">
-                  {t("jobsPage.postedAfterStatedDate", "Counted from the date each employer stated, not from when we found the posting.")}
-                </p>
-              )}
-              {data?.companyMatched && (
-                <p className="text-xs text-muted-foreground mb-2" role="status">
-                  {t("jobsPage.companyMatched", "Matched an employer name — showing roles at {{company}}.", { company: data.companyMatched })}
-                </p>
-              )}
-              {data?.exactWordMatch && (
-                <p className="text-xs text-muted-foreground mb-2" role="status">
-                  {t("jobsPage.exactWordMatch", "Showing exact whole-word matches for “{{q}}”.", { q: data.exactWordMatch })}
-                </p>
               )}
               <p className="text-xs text-muted-foreground mb-3" aria-live="polite">
                 {data?.countUnavailable
