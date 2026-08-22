@@ -87,7 +87,7 @@ describe("a pay figure is a filter, not a word to search for", () => {
   it("says out loud what it did, on EVERY list path and not just the one", () => {
     // The disclosures lived at the recency return only, so browsers were told
     // and searchers were not. Four list returns, four spreads.
-    const calls = FN.match(/\.\.\.searchDisclosures\(body, applied\)/g) ?? [];
+    const calls = FN.match(/\.\.\.searchDisclosures\(body, applied, maxAgeClamped\)/g) ?? [];
     expect(
       calls.length,
       `searchDisclosures must be spread at all SEVEN list returns; found ${calls.length}`,

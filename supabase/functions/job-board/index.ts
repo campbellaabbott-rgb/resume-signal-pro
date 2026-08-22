@@ -100,7 +100,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-22.1";
+const BUILD_VERSION = "2026-08-22.2";
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -3496,7 +3496,8 @@ function queryTerms(raw: unknown): { terms: string[]; dropped: string[]; liftedS
  */
 function searchDisclosures(
   body: Record<string, unknown>,
-  applied: { salaryFloor?: number | null },
+  applied: { salaryFloor?: number | null; postedAfter?: string | null },
+  maxAgeClamped = false,
 ): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   // Words removed because they cannot be part of a job title ("jobs", "near",
@@ -3513,6 +3514,15 @@ function searchDisclosures(
   // needs to see that we substituted.
   const l = locationTerms(body.location);
   if (l.expandedFrom) { out.locationExpandedFrom = l.expandedFrom; out.locationSearched = l.terms; }
+  // The board looked at a narrower window than it was asked for. Silent
+  // narrowing reads as "there is nothing older", which is a different claim
+  // from "we only keep 30 days".
+  if (maxAgeClamped) out.maxAgeClampedTo = 30;
+  // "Posted after X" now means the EMPLOYER posted after X, so postings with no
+  // stated date are outside the window rather than treated as brand new. Said
+  // out loud because it changes what the filter returns: the same 24-hour
+  // question was 467 rows on crawl time and 90 on the company date.
+  if (applied.postedAfter) out.postedAfterUsesStatedDate = true;
   return out;
 }
 
@@ -6998,7 +7008,7 @@ async function serveList(
   if (intentLift) {
     body = { ...body, ...intentLift.patch, q: intentLift.residualQ };
   }
-  const { applied, ignored: ignoredFilters } = intentLift
+  const { applied, ignored: ignoredFilters, maxAgeClamped } = intentLift
     ? normalizeFilters(body, JOB_SOURCES.length)
     : preFilters;
 
@@ -7287,7 +7297,27 @@ async function serveList(
     if (applied.salaryFloor !== null) q = q.gte("salary_rank_usd", applied.salaryFloor);
     if (applied.companies.length) q = q.in("company_token", applied.companies);
     // Saved searches ask "how many NEW since I last looked" — a cheap count.
-    if (applied.postedAfter) q = q.gt(dateCol, applied.postedAfter);
+    // COMPANY-STATED DATE, not our crawl time. dateCol is effective_posted =
+    // coalesce(posted_at, first_seen), so binding postedAfter to it answered
+    // "we FOUND this recently" while the visitor asked "the employer POSTED
+    // this recently". maxAgeDays has always used posted_at, so the board had
+    // two time filters answering the same question on opposite axes.
+    //
+    // MEASURED, same instant, same 24-hour question, category=design:
+    //   postedAfter -> 467      maxAgeDays:1 -> 90
+    // and 60 of 60 rows postedAfter returned had NO company-stated date at all.
+    // This is the filter behind the saved-search "new since you last looked"
+    // badge, so that badge was inflated roughly fivefold by postings whose age
+    // nobody knows.
+    //
+    // The repo already carries this lesson from a previous incident —
+    // first_seen is never a posting age — and it was reintroduced on a
+    // different filter.
+    //
+    // Undated rows now fall OUT of a postedAfter window rather than counting as
+    // brand new. That is the honest reading of "posted after X" and it is
+    // disclosed, not silent.
+    if (applied.postedAfter) q = q.gt("posted_at", applied.postedAfter);
     // "Posted this week" quick filter: company-stated dates ONLY (posted_at,
     // never first_seen — our discovery time can't make a posting fresh).
     // Undated postings are excluded by the filter, honestly; the UI says so.
@@ -7693,7 +7723,7 @@ async function serveList(
       return json({
         jobs: preferMatchedLocation(await attachRecheckedAt(client, salGrouped.jobs), locationTerms(body.location).terms),
         searchId,
-        ...searchDisclosures(body, applied),
+        ...searchDisclosures(body, applied, maxAgeClamped),
         ...intentDisclosure(intentLift),
         ...coverageDisclosure(applied, meta),
         ...honesty(salGrouped.jobs),
@@ -7748,7 +7778,7 @@ async function serveList(
         return json({
           jobs: preferMatchedLocation(await attachRecheckedAt(client, routedGrouped.jobs), locationTerms(body.location).terms),
           searchId,
-          ...searchDisclosures(body, applied),
+          ...searchDisclosures(body, applied, maxAgeClamped),
           ...intentDisclosure(intentLift),
           ...coverageDisclosure(applied, meta),
           ...honesty(routedGrouped.jobs),
@@ -8055,7 +8085,7 @@ async function serveList(
               return json({
                 jobs: preferMatchedLocation(await attachRecheckedAt(client, simpleGrouped.jobs), locationTerms(body.location).terms),
                 searchId,
-                ...searchDisclosures(body, applied),
+                ...searchDisclosures(body, applied, maxAgeClamped),
                 ...intentDisclosure(intentLift),
                 ...coverageDisclosure(applied, meta),
                 ...honesty(simpleGrouped.jobs),
@@ -8116,7 +8146,7 @@ async function serveList(
               return json({
                 jobs: preferMatchedLocation(await attachRecheckedAt(client, fuzzyGrouped.jobs), locationTerms(body.location).terms),
                 searchId,
-                ...searchDisclosures(body, applied),
+                ...searchDisclosures(body, applied, maxAgeClamped),
                 ...intentDisclosure(intentLift),
                 ...coverageDisclosure(applied, meta),
                 ...honesty(fuzzyGrouped.jobs),
@@ -8195,7 +8225,7 @@ async function serveList(
                   return json({
                     jobs: preferMatchedLocation(await attachRecheckedAt(client, semGrouped.jobs), locationTerms(body.location).terms),
                     searchId,
-                    ...searchDisclosures(body, applied),
+                    ...searchDisclosures(body, applied, maxAgeClamped),
                     ...intentDisclosure(intentLift),
                     ...coverageDisclosure(applied, meta),
                     ...honesty(semGrouped.jobs),
@@ -8487,7 +8517,7 @@ async function serveList(
           // path and skipped on the ranked one.
           jobs: preferMatchedLocation(await attachRecheckedAt(client, rankedGrouped.jobs), locationTerms(body.location).terms),
           searchId,
-          ...searchDisclosures(body, applied),
+          ...searchDisclosures(body, applied, maxAgeClamped),
           ...intentDisclosure(intentLift),
           ...coverageDisclosure(applied, meta),
           ...honesty(rankedGrouped.jobs),
@@ -8573,10 +8603,27 @@ async function serveList(
   const fetchUsed = twoSubset ? twoSubsetLimit : fetchLimit;
 
   // deno-lint-ignore no-explicit-any
+  // "NEWEST" MEANT "MOST RECENTLY CRAWLED", WHICH IS NOT WHAT ANYONE ASKS FOR.
+  //
+  // dateCol is effective_posted = coalesce(posted_at, first_seen), so a posting
+  // with no company-stated date takes our crawl time and sorts to the very top.
+  // MEASURED on the live board: 57 of 60 rows on sort=newest had postedAt=null,
+  // 95% of the page. The 10% of the corpus with no date was crowding out the
+  // 540,437 postings that DO carry one.
+  //
+  // Ordering on posted_at with nulls last is both honest and CHEAPER — measured
+  // at concurrency 4: posted_at 0.20-0.37s against effective_posted 1.03-1.23s,
+  // five times faster, because it uses a plain column instead of a coalesce.
+  //
+  // The freshness WINDOW still uses effective_posted. That is deliberate: an
+  // undated posting should still be served, it just should not claim to be the
+  // newest thing on the board.
   const ordered = (q: any, dateCol: string, salaryCol: string) =>
     (sortSalary
       ? q.order(salaryCol, { ascending: false, nullsFirst: false })
-      : q.order(dateCol, { ascending: false, nullsFirst: false })
+      : newestFirst
+        ? q.order("posted_at", { ascending: false, nullsFirst: false })
+        : q.order(dateCol, { ascending: false, nullsFirst: false })
     ).order("id", { ascending: true });
 
   const pageWith = async (dateCol: string, salaryCol: string, withCount: boolean) => {
@@ -8585,7 +8632,11 @@ async function serveList(
       // of the ORDER BY (ep DESC, id ASC). Only on the date sort: the salary
       // sort orders by a different column and keeps offset until it needs its
       // own cursor.
-      if (cursor && !sortSalary) {
+      // The keyset cursor is written in terms of dateCol, so it cannot describe
+      // a posted_at ordering — pairing them would page through one order using
+      // another's coordinates, which is the exact defect that made sorted page
+      // two repeat page one.
+      if (cursor && !sortSalary && !newestFirst) {
         return await ordered(buildQuery(dateCol, withCount), dateCol, salaryCol)
           .or(`${dateCol}.lt."${cursor.ep}",and(${dateCol}.eq."${cursor.ep}",id.gt."${cursor.id}")`)
           .limit(fetchLimit);
@@ -8862,7 +8913,7 @@ async function serveList(
     // jobs.length once clusters are folded, or the siblings of a collapsed
     // result reappear on the next page as if they were new.
     nextOffset: offset + grouped.rawConsumed,
-    ...searchDisclosures(body, applied),
+    ...searchDisclosures(body, applied, maxAgeClamped),
     ...intentDisclosure(intentLift),
     ...coverageDisclosure(applied, meta),
     // The keyset successor: (effective_posted, id) of the last RAW row this

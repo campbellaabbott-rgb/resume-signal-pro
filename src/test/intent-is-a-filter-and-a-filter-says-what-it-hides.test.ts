@@ -97,7 +97,7 @@ describe("intent becomes a filter, and a filter says what it hides", () => {
 
   it("runs once, before the single filter derivation, and is disclosed everywhere", () => {
     const liftAt = FN.indexOf("const intentLift = liftIntentFilters");
-    const normAt = FN.indexOf("const { applied, ignored: ignoredFilters } =");
+    const normAt = FN.indexOf("const { applied, ignored: ignoredFilters");
     expect(liftAt, "intent lift not found").toBeGreaterThan(-1);
     expect(liftAt < normAt, "the lift must precede the filter derivation").toBe(true);
     expect((FN.match(/\.\.\.intentDisclosure\(intentLift\)/g) ?? []).length,

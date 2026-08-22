@@ -69,7 +69,19 @@ export type AppliedFilters = {
   postedAfter: string | null;
 };
 
-export type NormalizedFilters = { applied: AppliedFilters; ignored: string[] };
+export type NormalizedFilters = {
+  applied: AppliedFilters;
+  ignored: string[];
+  /**
+   * The caller asked for a window wider than the serving window and it was cut
+   * to 30 days. Deliberately NOT a field of AppliedFilters: board-filter-
+   * contract counts every field there as a filter, and isUnfiltered() treats any
+   * truthy value as one — so putting it inside would have made a clamped
+   * request look filtered and re-routed it. It is a NOTICE about a filter, not
+   * a filter, and the type now says so.
+   */
+  maxAgeClamped: boolean;
+};
 
 // Accepts both shapes clients actually send: an array (["senior"]) and a comma
 // string ("senior,expert"). The previous code leaned on String(["a","b"])
@@ -183,6 +195,13 @@ export function normalizeFilters(
   const ageN = Number(body.maxAgeDays);
   const maxAgeDays = Number.isFinite(ageN) && ageN >= 1 ? Math.min(ageN, 30) : null;
   if (sent(body.maxAgeDays) && maxAgeDays === null && ageN !== 0) ignored.push("maxAgeDays");
+  // A CLAMP IS A NARROWING AND HAS TO BE SAID. maxAgeDays:90, :365 and :30 all
+  // returned identical results with nothing in the body admitting the window
+  // had been cut — the ignoredFilters line above cannot fire, because a clamped
+  // value is non-null and therefore "honoured". A caller asking for 90 days is
+  // told nothing and reasonably concludes the board has no older postings,
+  // rather than that it declined to look.
+  const maxAgeClamped = Number.isFinite(ageN) && ageN > 30;
 
   // An unknown company token is not invalid — it matches nothing, and a truthful
   // empty result is the correct answer to "jobs at a company we don't carry".
@@ -262,6 +281,7 @@ export function normalizeFilters(
       postedAfter,
     },
     ignored,
+    maxAgeClamped,
   };
 }
 

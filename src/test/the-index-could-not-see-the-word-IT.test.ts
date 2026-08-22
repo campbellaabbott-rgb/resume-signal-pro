@@ -211,7 +211,7 @@ describe("the index can see the words people search for", () => {
     expect(/exactWordMatch: qText,/.test(blk), "the tier must name itself in the payload").toBe(true);
     // Same disclosures as every other list exit — this is the fifth exit and
     // the four before it each shipped missing one.
-    for (const d of ["searchDisclosures(body, applied)", "intentDisclosure(intentLift)", "coverageDisclosure(applied, meta)", "searchId"]) {
+    for (const d of ["searchDisclosures(body, applied, maxAgeClamped)", "intentDisclosure(intentLift)", "coverageDisclosure(applied, meta)", "searchId"]) {
       expect(blk, `the new exit must carry ${d}`).toContain(d);
     }
     expect(/logSearch\("ranked", simpleGrouped\.jobs\.length, null, "fuzzy"\)/.test(blk),
