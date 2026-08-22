@@ -130,8 +130,18 @@ describe("a zero exact count is not an empty page", () => {
     expect(JOBS).toMatch(/matchScope === "description" && !\(job as \{ closeMatch\?: boolean \}\)\.closeMatch/);
   });
 
-  it("the split is disclosed only when there IS a second segment", () => {
-    expect(JOBS).toMatch(/typeof data\?\.relatedTotal === "number" && data\.relatedTotal > 0 &&/);
-    expect(JOBS).toMatch(/jobsPage\.resultsSummarySegmented/);
+  it("the segmented line IS the headline, and never sits beside one", () => {
+    // Verified live after deploy, and this is the mistake it pins. Rendering the
+    // split BESIDE a summed headline let the page print one number that is not
+    // comparable across searches: the related segment is only COMPUTED when the
+    // exact one is thin, so a fat search reports exact-only and a narrower one
+    // reports exact+related. PT+manager read "of 223" and PT+manager+hybrid — a
+    // strict SUBSET — read "of 254". Smaller than the 234/266 it replaced, and
+    // the same lie. A number whose meaning changes between two searches cannot
+    // be compared, so the segmented case offers no single figure at all.
+    expect(JOBS).toMatch(/\? t\("jobsPage\.resultsSummarySegmented"/);
+    expect(JOBS).toMatch(/typeof data\?\.relatedTotal === "number" && data\.relatedTotal > 0\n\s*\? t\(/);
+    // Exactly one render site — a second one is the supplementary line coming back.
+    expect((JOBS.match(/jobsPage\.resultsSummarySegmented/g) ?? []).length).toBe(1);
   });
 });

@@ -4627,7 +4627,24 @@ export default function Jobs() {
                   them; the split is disclosed on its own line rather than
                   crammed into four separate strings. */}
               <p className="text-xs text-muted-foreground mb-3" aria-live="polite">
-                {data?.countUnavailable
+                {/* WHEN THERE ARE TWO SEGMENTS, THE SEGMENTED LINE IS THE
+                    HEADLINE — it does not sit beside one.
+                    Rendering both let the page print a single summed figure,
+                    and that figure is not comparable across searches: the
+                    related segment is only COMPUTED when the exact one is thin,
+                    so a fat search reports exact-only while a narrower one
+                    reports exact+related. Measured after deploy: PT+manager read
+                    "of 223" and PT+manager+hybrid — a strict subset — read
+                    "of 254". Smaller than the 234/266 it replaced, and still the
+                    same lie. One number that changes meaning between two
+                    searches cannot be compared, so this stops offering one. */}
+                {typeof data?.relatedTotal === "number" && data.relatedTotal > 0
+                  ? t("jobsPage.resultsSummarySegmented", "Showing {{shown}} — {{exact}} exact and {{related}} where the term appears in the description", {
+                      shown: shownCount,
+                      exact: (data?.total ?? 0).toLocaleString(),
+                      related: `${data.relatedTotal.toLocaleString()}${data.relatedCapped ? "+" : ""}`,
+                    })
+                  : data?.countUnavailable
                   // The server couldn't compute an exact total for this filter.
                   // Say what we actually know instead of printing jobs.length as
                   // if it were the total — that would claim 20 matches when the
@@ -4666,21 +4683,6 @@ export default function Jobs() {
                     : pageTotalCount.toLocaleString(),
                   companyFeeds: (data?.companiesCount ?? companies.length).toLocaleString(),
                 })}
-                {/* THE SPLIT, SAID ONCE. Rendered only when the server actually
-                    computed a second segment AND found something in it —
-                    `relatedTotal` is optional-absent, so "this build has no
-                    segments" and "no related matches" stay distinguishable, and
-                    a zero would otherwise read as "37 exact and 0 in the
-                    description", which is noise. */}
-                {typeof data?.relatedTotal === "number" && data.relatedTotal > 0 && (
-                  <span className="block text-[12px] text-muted-foreground mt-1">
-                    {t("jobsPage.resultsSummarySegmented", "Showing {{shown}} — {{exact}} exact and {{related}} where the term appears in the description", {
-                      shown: shownCount,
-                      exact: (data?.total ?? 0).toLocaleString(),
-                      related: `${data.relatedTotal.toLocaleString()}${data.relatedCapped ? "+" : ""}`,
-                    })}
-                  </span>
-                )}
                 {/* THE REVENUE PRODUCT, ON THE SURFACE THAT CARRIES THE TRAFFIC.
                     Placed here rather than in the hero deliberately: a visitor
                     reading the results line is looking at real roles, which is
