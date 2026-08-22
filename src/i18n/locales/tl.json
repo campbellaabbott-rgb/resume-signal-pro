@@ -3899,7 +3899,6 @@
     "benchmarkTip": "Median ng mga annualized na lower bound na inilalathala mismo ng mga kumpanya (naka-annualize ang hourly at monthly rates), kinalkula sa dominanteng nakasaad na currency lang ng field na ito — hindi kailanman kino-convert, hindi hinahalo. Live mula sa board na ito — hindi survey o pagtatantya.",
     "benchmarkLine": "Naka-anunsyong sahod sa field na ito: median floor {{symbol}}{{median}} ({{currency}}) — mula sa {{n}} posting dito na nagsasaad ng sahod",
     "seenLastVisit": "naka-post bago ang huli mong pagbisita",
-    "alsoInLocations": "Nagha-hire rin sa {{count}} pang lokasyon",
     "hhBadgeTipFills": "Naka-fill na ang kumpanyang ito ng {{n}} role sa aming tracking sa ngayon — bawat isa'y naka-post nang hindi bababa sa isang linggo bago tinanggal. Napatunayan at aktibong hiring pattern, hindi lang mga bukas na listing.",
     "hhBadge": "Aktibong nagha-hire",
     "urgencyTipFills": "Batay sa {{n}} tunay na fill sa aming tracking (mga role na naka-post nang isang linggo o higit pa, saka nagsara sa loob ng 30 araw mula nang i-post), karaniwang nagsasara ang isang role dito sa humigit-kumulang {{d}} araw — sulit mag-apply nang maaga.",
@@ -3918,7 +3917,6 @@
     "dismissCta": "Itago ang posting na ito",
     "dismissTip": "Itago ang posting na ito sa device na ito. Maibabalik ang lahat ng nakatagong posting kahit kailan.",
     "hideLocations": "Itago ang ibang lokasyon",
-    "moreLocations": "Parehong role sa {{count}} pang lokasyon",
     "locationUnlisted": "Walang nakalistang lokasyon",
     "applyArrow": "Mag-apply →",
     "paneEmpty": "Pumili ng posting — o gamitin ang ↑ ↓ keys para gumalaw sa listahan.",
@@ -4000,7 +3998,10 @@
     "agentPitchCta": "Tingnan kung paano ito gumagana — 7 araw libre, tapos $99/buwan",
     "agentPitchScope": "Nag-a-apply ito sa apat na hiring system — mga 6% ng board — at hindi kailanman sa mga site na naglalagay ng CAPTCHA sa aplikasyon. Sa iba, inihahanda nito ang aplikasyon at ikaw ang magpapadala.",
     "loadMoreFailed": "Hindi makapag-load pa ngayon — nandiyan pa rin ang iyong mga resulta.",
-    "loadMoreRetry": "Subukan ulit"
+    "loadMoreRetry": "Subukan ulit",
+    "moreLocations_one": "Parehong tungkulin sa {{count}} pang lokasyon",
+    "moreLocations_other": "Parehong role sa {{count}} pang lokasyon",
+    "savedWithoutActivelyHiring": "Ang filter na “Aktibong kumukuha” ay inilalapat sa iyong browser, hindi sa board, kaya hindi ito kasama sa naka-save na paghahanap na ito."
   },
   "accountPage": {
     "statusSaveFailed": "Hindi na-save ang status na iyon — pakisubukan muli.",

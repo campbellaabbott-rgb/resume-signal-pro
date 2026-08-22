@@ -3899,7 +3899,6 @@
     "benchmarkTip": "Médiane des planchers annualisés publiés par les entreprises elles-mêmes (taux horaires et mensuels annualisés), calculée uniquement sur la devise dominante du secteur — jamais convertie, jamais mélangée. En direct de ce site — ni sondage ni estimation.",
     "benchmarkLine": "Salaires affichés dans ce secteur : plancher médian {{symbol}}{{median}} ({{currency}}) — sur {{n}} annonces ici indiquant le salaire",
     "seenLastVisit": "publiée avant votre dernière visite",
-    "alsoInLocations": "Recrute aussi dans {{count}} autres lieux",
     "hhBadgeTipFills": "Cette entreprise a pourvu {{n}} postes dans notre suivi à ce jour — chacun est resté publié au moins une semaine avant d'être retiré. Un recrutement actif et avéré, pas seulement des offres ouvertes.",
     "hhBadge": "Recrute activement",
     "urgencyTipFills": "D'après {{n}} recrutements réels dans notre suivi (postes restés publiés au moins une semaine, puis clôturés dans les 30 jours suivant la publication), un poste type ferme ici en environ {{d}} jours — mieux vaut postuler tôt.",
@@ -3918,7 +3917,6 @@
     "dismissCta": "Masquer cette annonce",
     "dismissTip": "Masque cette annonce sur cet appareil. Restaurez toutes les annonces masquées à tout moment.",
     "hideLocations": "Masquer les autres lieux",
-    "moreLocations": "Même poste dans {{count}} autres lieux",
     "locationUnlisted": "Lieu non précisé",
     "applyArrow": "Postuler →",
     "paneEmpty": "Sélectionnez une annonce — ou utilisez les touches ↑ ↓ pour parcourir la liste.",
@@ -4000,7 +3998,10 @@
     "agentPitchCta": "Voir comment ça marche — 7 jours gratuits, puis 99 $/mois",
     "agentPitchScope": "Il postule sur quatre systèmes de recrutement — environ 6 % du tableau — et jamais sur des sites qui protègent les candidatures par un CAPTCHA. Ailleurs, il prépare la candidature et vous l'envoyez.",
     "loadMoreFailed": "Impossible d'en charger davantage pour le moment — vos résultats sont toujours là.",
-    "loadMoreRetry": "Réessayer"
+    "loadMoreRetry": "Réessayer",
+    "moreLocations_one": "Même poste dans {{count}} autre lieu",
+    "moreLocations_other": "Même poste dans {{count}} autres lieux",
+    "savedWithoutActivelyHiring": "Le filtre « Recrute activement » s'applique dans votre navigateur, pas sur le tableau : cette recherche enregistrée ne l'inclut donc pas."
   },
   "accountPage": {
     "statusSaveFailed": "Impossible d'enregistrer ce statut — réessayez.",

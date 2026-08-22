@@ -3899,7 +3899,6 @@
     "benchmarkTip": "Mediana dos limites inferiores anualizados que as próprias empresas publicam (valores à hora e ao mês anualizados), calculada apenas na moeda dominante indicada nesta área — nunca convertida, nunca misturada. Em direto desta plataforma — não é um inquérito nem uma estimativa.",
     "benchmarkLine": "Salário anunciado nesta área: mediana dos mínimos {{symbol}}{{median}} ({{currency}}) — com base em {{n}} anúncios daqui que indicam salário",
     "seenLastVisit": "publicado antes da sua última visita",
-    "alsoInLocations": "Também a contratar em mais {{count}} localizações",
     "hhBadgeTipFills": "Esta empresa já preencheu {{n}} vagas na nossa monitorização — cada uma esteve publicada pelo menos uma semana antes de sair. Um padrão de contratação comprovado e ativo, não apenas anúncios abertos.",
     "hhBadge": "A contratar ativamente",
     "urgencyTipFills": "Com base em {{n}} preenchimentos genuínos na nossa monitorização (vagas publicadas uma semana ou mais e depois fechadas nos 30 dias após a publicação), uma vaga típica aqui fecha em cerca de {{d}} dias — vale a pena candidatar-se cedo.",
@@ -3918,7 +3917,6 @@
     "dismissCta": "Ocultar este anúncio",
     "dismissTip": "Oculta este anúncio neste dispositivo. Pode repor todos os anúncios ocultos quando quiser.",
     "hideLocations": "Ocultar outras localizações",
-    "moreLocations": "A mesma vaga em mais {{count}} localizações",
     "locationUnlisted": "Localização não indicada",
     "applyArrow": "Candidatar-se →",
     "paneEmpty": "Selecione um anúncio — ou use as teclas ↑ ↓ para percorrer a lista.",
@@ -4000,7 +3998,10 @@
     "agentPitchCta": "Ver como funciona — 7 dias grátis, depois 99 $/mês",
     "agentPitchScope": "Candidata-se em quatro sistemas de recrutamento — cerca de 6% do quadro — e nunca em sites que protegem as candidaturas com CAPTCHA. Nos restantes prepara a candidatura e és tu que a envias.",
     "loadMoreFailed": "Não foi possível carregar mais agora — os teus resultados continuam aqui.",
-    "loadMoreRetry": "Tentar novamente"
+    "loadMoreRetry": "Tentar novamente",
+    "moreLocations_one": "A mesma função em mais {{count}} localização",
+    "moreLocations_other": "A mesma vaga em mais {{count}} localizações",
+    "savedWithoutActivelyHiring": "O filtro «A contratar agora» é aplicado no teu navegador, não no quadro, por isso esta pesquisa guardada não o inclui."
   },
   "accountPage": {
     "statusSaveFailed": "Não foi possível salvar esse status — tente novamente.",

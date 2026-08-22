@@ -3899,7 +3899,6 @@
     "benchmarkTip": "Median of the annualized lower bounds companies publish themselves (hourly and monthly rates annualized), computed over this field's dominant stated currency only — never converted, never mixed. Live from this board — not a survey or an estimate.",
     "benchmarkLine": "Advertised pay in this field: median floor {{symbol}}{{median}} ({{currency}}) — from {{n}} postings here that state pay",
     "seenLastVisit": "posted before your last visit",
-    "alsoInLocations": "Also hiring in {{count}} more locations",
     "hhBadgeTipFills": "This company has filled {{n}} roles in our tracking so far — each stayed posted at least a week before coming down. A proven, active hiring pattern, not just open listings.",
     "hhBadge": "Actively hiring",
     "urgencyTipFills": "Based on {{n}} genuine fills in our tracking (roles that stayed posted a week or more, then closed within 30 days of posting), a typical role here closes in about {{d}} days — worth applying early.",
@@ -3918,7 +3917,6 @@
     "dismissCta": "Hide this posting",
     "dismissTip": "Hide this posting on this device. Restore all hidden postings any time.",
     "hideLocations": "Hide other locations",
-    "moreLocations": "Same role in {{count}} more locations",
     "locationUnlisted": "Location unlisted",
     "applyArrow": "Apply →",
     "paneEmpty": "Select a posting — or use the ↑ ↓ keys to move through the list.",
@@ -4000,7 +3998,10 @@
     "agentPitchCta": "See how it works — 7 days free, then $99/mo",
     "agentPitchScope": "It applies on four hiring systems — about 6% of the board — and never on sites that gate applications behind a CAPTCHA. Everywhere else it prepares the application and you send it.",
     "loadMoreFailed": "Couldn't load more just now — your results are still here.",
-    "loadMoreRetry": "Try again"
+    "loadMoreRetry": "Try again",
+    "moreLocations_one": "Same role in {{count}} more location",
+    "moreLocations_other": "Same role in {{count}} more locations",
+    "savedWithoutActivelyHiring": "The Actively hiring filter is applied in your browser, not on the board, so this saved search does not include it."
   },
   "accountPage": {
     "statusSaveFailed": "Couldn't save that status — please try again.",

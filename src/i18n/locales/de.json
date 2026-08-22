@@ -3899,7 +3899,6 @@
     "benchmarkTip": "Median der aufs Jahr gerechneten Untergrenzen, die Unternehmen selbst veröffentlichen (Stunden- und Monatssätze annualisiert), berechnet nur über die dominierende angegebene Währung dieses Berufsfelds — nie umgerechnet, nie gemischt. Live von diesem Board — keine Umfrage, keine Schätzung.",
     "benchmarkLine": "Ausgeschriebene Gehälter in diesem Berufsfeld: Median-Untergrenze {{symbol}}{{median}} ({{currency}}) — aus {{n}} Anzeigen hier mit Gehaltsangabe",
     "seenLastVisit": "vor deinem letzten Besuch veröffentlicht",
-    "alsoInLocations": "Stellt auch an {{count}} weiteren Standorten ein",
     "hhBadgeTipFills": "Dieses Unternehmen hat in unserem Tracking bislang {{n}} Stellen besetzt — jede war mindestens eine Woche ausgeschrieben, bevor sie offline ging. Nachweislich aktives Einstellen, nicht bloß offene Anzeigen.",
     "hhBadge": "Stellt aktiv ein",
     "urgencyTipFills": "Basierend auf {{n}} echten Besetzungen in unserem Tracking (Stellen, die mindestens eine Woche ausgeschrieben waren und dann innerhalb von 30 Tagen nach Veröffentlichung schlossen) schließt eine typische Stelle hier in etwa {{d}} Tagen — früh bewerben lohnt sich.",
@@ -3918,7 +3917,6 @@
     "dismissCta": "Diese Anzeige ausblenden",
     "dismissTip": "Blendet diese Anzeige auf diesem Gerät aus. Alle ausgeblendeten Anzeigen lassen sich jederzeit wiederherstellen.",
     "hideLocations": "Weitere Standorte ausblenden",
-    "moreLocations": "Gleiche Stelle an {{count}} weiteren Standorten",
     "locationUnlisted": "Standort nicht angegeben",
     "applyArrow": "Bewerben →",
     "paneEmpty": "Wähl eine Anzeige aus — oder navigiere mit den Tasten ↑ ↓ durch die Liste.",
@@ -4000,7 +3998,10 @@
     "agentPitchCta": "So funktioniert es — 7 Tage kostenlos, danach 99 $/Monat",
     "agentPitchScope": "Er bewirbt sich über vier Bewerbungssysteme — etwa 6 % des Boards — und nie auf Seiten, die Bewerbungen hinter ein CAPTCHA stellen. Überall sonst bereitet er die Bewerbung vor und du sendest sie ab.",
     "loadMoreFailed": "Mehr laden ging gerade nicht — deine Ergebnisse sind noch da.",
-    "loadMoreRetry": "Erneut versuchen"
+    "loadMoreRetry": "Erneut versuchen",
+    "moreLocations_one": "Gleiche Stelle an {{count}} weiterem Standort",
+    "moreLocations_other": "Gleiche Stelle an {{count}} weiteren Standorten",
+    "savedWithoutActivelyHiring": "Der Filter „Aktiv auf Personalsuche“ wirkt in deinem Browser, nicht auf dem Board — diese gespeicherte Suche enthält ihn daher nicht."
   },
   "accountPage": {
     "statusSaveFailed": "Status konnte nicht gespeichert werden — bitte erneut versuchen.",

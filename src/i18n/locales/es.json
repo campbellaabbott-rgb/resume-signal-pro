@@ -3899,7 +3899,6 @@
     "benchmarkTip": "Mediana de los pisos anualizados que las propias empresas publican (tarifas por hora y mensuales anualizadas), calculada solo sobre la moneda declarada dominante en este sector — nunca convertida, nunca mezclada. En vivo desde este tablero — no es una encuesta ni una estimación.",
     "benchmarkLine": "Salario anunciado en este sector: piso mediano {{symbol}}{{median}} ({{currency}}) — de {{n}} publicaciones aquí que declaran salario",
     "seenLastVisit": "publicada antes de tu última visita",
-    "alsoInLocations": "También contratando en {{count}} ubicaciones más",
     "hhBadgeTipFills": "Esta empresa ha cubierto {{n}} puestos en nuestro seguimiento hasta ahora — cada uno estuvo publicado al menos una semana antes de retirarse. Un patrón de contratación activo y comprobado, no solo vacantes abiertas.",
     "hhBadge": "Contratando activamente",
     "urgencyTipFills": "Según {{n}} contrataciones genuinas en nuestro seguimiento (puestos que estuvieron publicados una semana o más y luego cerraron dentro de los 30 días tras la publicación), un puesto típico aquí cierra en unos {{d}} días — conviene postularse temprano.",
@@ -3918,7 +3917,6 @@
     "dismissCta": "Ocultar esta publicación",
     "dismissTip": "Oculta esta publicación en este dispositivo. Restaura todas las ocultas cuando quieras.",
     "hideLocations": "Ocultar otras ubicaciones",
-    "moreLocations": "Mismo puesto en {{count}} ubicaciones más",
     "locationUnlisted": "Ubicación no indicada",
     "applyArrow": "Postularme →",
     "paneEmpty": "Selecciona una publicación — o usa las teclas ↑ ↓ para recorrer la lista.",
@@ -4000,7 +3998,10 @@
     "agentPitchCta": "Cómo funciona — 7 días gratis, luego 99 $/mes",
     "agentPitchScope": "Postula en cuatro sistemas de contratación —alrededor del 6 % del tablón— y nunca en sitios que protegen las solicitudes con CAPTCHA. En el resto prepara la solicitud y la envías tú.",
     "loadMoreFailed": "No pudimos cargar más ahora mismo; tus resultados siguen aquí.",
-    "loadMoreRetry": "Reintentar"
+    "loadMoreRetry": "Reintentar",
+    "moreLocations_one": "El mismo puesto en {{count}} ubicación más",
+    "moreLocations_other": "Mismo puesto en {{count}} ubicaciones más",
+    "savedWithoutActivelyHiring": "El filtro «Contratando ahora» se aplica en tu navegador, no en el tablón, así que esta búsqueda guardada no lo incluye."
   },
   "accountPage": {
     "statusSaveFailed": "No se pudo guardar ese estado; inténtalo de nuevo.",

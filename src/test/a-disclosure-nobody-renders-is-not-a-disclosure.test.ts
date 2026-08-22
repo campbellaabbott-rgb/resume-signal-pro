@@ -221,7 +221,12 @@ describe("a disclosure nobody renders is not a disclosure", () => {
     // same two characters as a t() call and would otherwise read as one.
     const calls = [...JOBS.matchAll(/(?<![A-Za-z0-9_.])t\(\s*"(jobsPage\.[A-Za-z0-9_.]+)"\s*,\s*"/g)].map((m) => m[1]);
     expect(calls.length, "no t() calls found — the matcher has rotted").toBeGreaterThan(50);
-    const orphans = [...new Set(calls)].filter((k) => typeof lookup(k) !== "string");
+    // A COUNTED string resolves through i18next's plural suffixes and has NO
+    // bare key — that is the correct shape, not a gap. Accept either form.
+    const resolves = (k: string) =>
+      typeof lookup(k) === "string" ||
+      (typeof lookup(`${k}_other`) === "string" && typeof lookup(`${k}_one`) === "string");
+    const orphans = [...new Set(calls)].filter((k) => !resolves(k));
     expect(
       orphans,
       "these render an inline English default to every non-English visitor because no " +

@@ -1030,9 +1030,20 @@ export default function Jobs() {
       toast({ title: t("jobsPage.saveFailed", "Couldn't save — try again.") });
       return;
     }
+    // ACTIVELY HIRING CANNOT RIDE ALONG, SO IT IS NAMED INSTEAD OF SAVED.
+    // It filters the fetched page in the browser (jobs.filter on the fill
+    // record); the board has no such predicate, so the nightly runner cannot
+    // reproduce it. Putting it in params would save a parameter nothing
+    // honours — the same shape as the country/freshness drop this function's
+    // comment already records, just one layer further on. Naming it is the
+    // only honest option available without a server-side predicate.
     toast({
       title: t("jobsPage.searchSaved", "Search saved"),
-      description: `${t("jobsPage.searchSavedDesc", "Your account shows how many new postings match since your last look.")} ${t("jobsPage.queueBridge", "Want ready-to-review picks every morning instead? The Apply Agent runs your search nightly — Morning Queue, in your account.")}`,
+      description: [
+        t("jobsPage.searchSavedDesc", "Your account shows how many new postings match since your last look."),
+        activelyHiringOnly ? t("jobsPage.savedWithoutActivelyHiring", "The Actively hiring filter is applied in your browser, not on the board, so this saved search does not include it.") : "",
+        t("jobsPage.queueBridge", "Want ready-to-review picks every morning instead? The Apply Agent runs your search nightly — Morning Queue, in your account."),
+      ].filter(Boolean).join(" "),
     });
   };
 
@@ -1234,11 +1245,14 @@ export default function Jobs() {
     const qs = p.toString();
     // !workMode belongs in both gates: without it, picking Hybrid on a lander
     // kept the bare lander URL and reload/share silently dropped the filter.
-    if (landerCompany && company === landerCompany && !q && !location && !remoteOnly && !workMode && !category && !experience && !salaryFloor && !country && !freshness && sortMode !== "salary") {
+    // agentOnly and inclUncat are filters too, and the lander form carries no
+    // query string — dropping into it with either one on silently discards it
+    // from a shared or reloaded link while the chip still shows on screen.
+    if (landerCompany && company === landerCompany && !q && !location && !remoteOnly && !workMode && !category && !experience && !salaryFloor && !country && !freshness && !agentOnly && sortMode !== "salary") {
       window.history.replaceState({}, "", `/jobs/company/${landerCompany}${jobParam ? `?job=${encodeURIComponent(jobParam)}` : ""}`);
       return;
     }
-    if (landerCategory && category === landerCategory && !q && !location && !remoteOnly && !workMode && !company && !experience && !salaryFloor && !country && !freshness && sortMode !== "salary") {
+    if (landerCategory && category === landerCategory && !q && !location && !remoteOnly && !workMode && !company && !experience && !salaryFloor && !country && !freshness && !agentOnly && !inclUncat && sortMode !== "salary") {
       window.history.replaceState({}, "", `/jobs/field/${landerCategory}${jobParam ? `?job=${encodeURIComponent(jobParam)}` : ""}`);
       return;
     }
@@ -2690,7 +2704,7 @@ export default function Jobs() {
   // countOnly calls, cached per filter signature) and offer it as a button —
   // an actionable exit instead of a dead end. Feeds the same honest instinct
   // as the zero-result telemetry: never pad results, just say what would work.
-  const [zeroHelp, setZeroHelp] = useState<Array<{ key: string; label: string; count: number; clear: () => void }> | null>(null);
+  const [zeroHelp, setZeroHelp] = useState<Array<{ key: string; label: string; count: number; capped: boolean; clear: () => void }> | null>(null);
   const zeroSigRef = useRef("");
   useEffect(() => {
     if (loading || refreshing || error || !data || data.total !== 0) { setZeroHelp(null); return; }
@@ -2721,9 +2735,14 @@ export default function Jobs() {
     (async () => {
       const results = await Promise.all(candidates.map(async (c) => {
         try {
-          const { data: r } = await invokeBoard<{ total?: number }>({ ...base, ...OVERRIDES[c.key] });
-          return { ...c, count: r?.total ?? 0 };
-        } catch { return { ...c, count: 0 }; }
+          // countCapped was dropped by the type parameter, so a relaxation
+          // whose count hit the server ceiling advertised the cap as an exact
+          // figure: "Remove country — 10,000 openings" when the truth is more.
+          // This is the same defect just fixed server-side, surviving on the
+          // client because the flag was never asked for.
+          const { data: r } = await invokeBoard<{ total?: number; countCapped?: boolean }>({ ...base, ...OVERRIDES[c.key] });
+          return { ...c, count: r?.total ?? 0, capped: r?.countCapped === true };
+        } catch { return { ...c, count: 0, capped: false }; }
       }));
       if (!cancelled) setZeroHelp(results.filter((r) => r.count > 0).sort((a, b) => b.count - a.count));
     })();
@@ -4441,7 +4460,7 @@ export default function Jobs() {
               <div className="flex flex-wrap justify-center gap-2">
                 {(zeroHelp ?? []).map((s) => (
                   <Button key={s.key} size="sm" variant="outline" onClick={s.clear}>
-                    {t("jobsPage.zeroRemove", "Remove {{label}} — {{n}} openings", { label: s.label, n: s.count.toLocaleString() })}
+                    {t("jobsPage.zeroRemove", "Remove {{label}} — {{n}} openings", { label: s.label, n: `${s.count.toLocaleString()}${s.capped ? "+" : ""}` })}
                   </Button>
                 ))}
                 {zeroHelp === null && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
@@ -4561,7 +4580,12 @@ export default function Jobs() {
                   : landerCompany
                   ? t("jobsPage.companyResultsSummary", "Showing {{shown}} of {{total}} open roles at {{company}}", {
                       shown: shownCount,
-                      total: data?.total ?? jobs.length,
+                      // The two branches below already do both of these; this one
+                      // did neither, so a company lander printed a bare capped
+                      // count and an unseparated five-digit number.
+                      total: data?.countCapped
+                        ? `${(data?.total ?? 0).toLocaleString()}+`
+                        : (data?.total ?? jobs.length).toLocaleString(),
                       company: landerCompanyName,
                     })
                   // "across N companies" only when nothing narrows the list:
@@ -4871,7 +4895,8 @@ export default function Jobs() {
                               className="text-xs text-muted-foreground mt-0.5"
                               title={(job.otherLocations ?? []).join(" · ")}
                             >
-                              {t("jobsPage.alsoInLocations", "Also hiring in {{count}} more locations", {
+                              {t("jobsPage.alsoInLocations", "Also hiring in {{count}} more locations", { // resolves via _one/_other
+
                                 count: (job.locationCount ?? 1) - 1,
                               })}
                               {(job.otherLocations ?? []).length > 0 && `: ${(job.otherLocations ?? []).slice(0, 3).join(", ")}`}
