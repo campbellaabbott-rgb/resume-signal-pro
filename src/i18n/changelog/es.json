@@ -1,5 +1,25 @@
 {
   "changelogEntries": {
+    "searchCouldNotSeeShortWords": {
+      "title": "Buscar «IT» devolvía 18 empleos de 4.145",
+      "description": "Nuestro índice de búsqueda descartaba en silencio las palabras muy cortas y muy comunes antes de guardar nada: «IT» no estaba en él, y buscarlo devolvía un puñado de empleos frente a los 4.145 que realmente tenemos. La misma laguna ocultaba resultados a quien buscaba «sin experiencia», «contratando ahora» o una empresa cuyo nombre es una palabra corriente. Ahora las palabras cortas se indexan bien, y «IT» devuelve una página completa de empleos reales de IT."
+    },
+    "employerNamesFindTheirJobs": {
+      "title": "Buscar una empresa por su nombre no encontraba ninguno de sus empleos",
+      "description": "Escribir «AT&T» no devolvía absolutamente nada, mientras teníamos 493 vacantes de ese empleador. Los nombres de empresa con signos de puntuación o palabras cortas —AT&T, Domino's, H&M— eran invisibles para la búsqueda aunque los empleos estuvieran ahí. Ahora los nombres de empleador se cotejan con nuestro directorio de empresas, así que buscar una empresa lleva directamente a sus vacantes, y añadir un puesto acota a las ofertas de esa empresa."
+    },
+    "commonSearchesShowTheRealRole": {
+      "title": "Las búsquedas más comunes enterraban justo el empleo que buscabas",
+      "description": "Buscar «ventas» colocaba arriba títulos como «Corporate Sales for Call Center Solutions — Communication Platform Sales Section, Network Sales Department», mientras que ninguna de las 958 ofertas tituladas «Sales Associate» aparecía. Repetir una palabra hacía subir un anuncio, así que los títulos más claros y pertinentes perdían frente a los más recargados. Ahora penalizamos el relleno y premiamos la coincidencia exacta del título: «ventas», «enfermera» e «ingeniero» abren justo con esos puestos."
+    },
+    "salarySortShowedTheWrongJobs": {
+      "title": "Ordenar empleos de enfermería por salario ponía arriba un puesto de guardería",
+      "description": "Elegir «mejor pagados» cambiaba en silencio la búsqueda a una coincidencia más burda: «nurse» por salario abría con «Unqualified Nursery Practitioner», coincidencia por letras, no por puesto. Las búsquedas por salario usan ahora la misma coincidencia que el resto y se ordenan por sueldo en todos los resultados, no solo en la primera página. «nurse» por salario abre ahora en 300.000 $. Estas páginas muestran a propósito solo puestos que indican salario: alrededor de uno de cada ocho."
+    },
+    "newestMeantWhenWeFoundIt": {
+      "title": "«Más recientes» mostraba empleos cuya fecha de publicación desconocíamos",
+      "description": "Ordenar por más recientes usaba nuestra propia fecha de descubrimiento cuando el empleador no publicaba una — y como así parecen recién salidos, llenaban la página: 57 de los primeros 60 resultados no tenían fecha del empleador, enterrando los 540.000 anuncios que sí la tienen. Ahora se ordena por la fecha que publica el empleador, y los empleos sin fecha van después. El contador «nuevos desde tu última visita» estaba inflado igual y ahora también usa fechas del empleador."
+    },
     "boardPageOneManyEmployers": {
       "title": "La primera página del tablón mostraba demasiados pocos empleadores",
       "description": "Las ofertas publicadas el mismo día se ordenaban de forma que agrupaban las de una misma empresa, así que la primera pantalla podía ser un único empleador veinticuatro veces seguidas — en un tablón con 600.000 vacantes de 25.000 empresas. Ahora la primera página se reparte entre empleadores y no se oculta nada: todas las ofertas siguen ahí, en la misma lista, y las de cualquier empresa siguen a un clic entre sí. Las páginas de categoría vuelven a mostrar el número de vacantes: la cifra del resultado de Google ya coincide con la de la página."

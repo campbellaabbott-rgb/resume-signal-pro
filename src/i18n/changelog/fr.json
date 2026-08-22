@@ -1,5 +1,25 @@
 {
   "changelogEntries": {
+    "searchCouldNotSeeShortWords": {
+      "title": "Rechercher « IT » renvoyait 18 offres sur 4 145",
+      "description": "Notre index de recherche écartait discrètement les mots très courts et très courants avant même de les enregistrer : « IT » n'y figurait pas du tout, et la recherche renvoyait une poignée d'offres au lieu des 4 145 que nous avons réellement. La même faille masquait les résultats pour « sans expérience », « recrute maintenant » ou une entreprise dont le nom est un mot ordinaire. Les mots courts sont désormais correctement indexés, et « IT » renvoie une page entière de vraies offres IT."
+    },
+    "employerNamesFindTheirJobs": {
+      "title": "Chercher une entreprise par son nom ne trouvait aucune de ses offres",
+      "description": "Taper « AT&T » ne renvoyait strictement rien, alors que nous avions 493 postes de cet employeur. Les noms d'entreprise pleins de ponctuation ou de mots courts — AT&T, Domino's, H&M — étaient invisibles à la recherche alors que les offres étaient bien là. Les noms d'employeur sont désormais rapprochés de notre annuaire des entreprises référencées : chercher une entreprise mène directement à ses postes, et ajouter un intitulé restreint à ses offres."
+    },
+    "commonSearchesShowTheRealRole": {
+      "title": "Les recherches les plus courantes enterraient justement l'offre cherchée",
+      "description": "Chercher « commercial » plaçait en tête des intitulés comme « Corporate Sales for Call Center Solutions — Communication Platform Sales Section, Network Sales Department », tandis qu'aucune des 958 annonces réellement intitulées « Sales Associate » n'apparaissait. Répéter un mot faisait monter une annonce : les intitulés les plus simples et les plus pertinents perdaient face aux plus chargés. Le classement pénalise désormais le remplissage et récompense la correspondance exacte — « commercial », « infirmier » et « ingénieur » ouvrent sur ces postes."
+    },
+    "salarySortShowedTheWrongJobs": {
+      "title": "Trier les offres d'infirmier par salaire plaçait une crèche en tête",
+      "description": "Choisir « les mieux payés » basculait discrètement la recherche vers une correspondance plus grossière : « nurse » trié par salaire s'ouvrait sur « Unqualified Nursery Practitioner » — une correspondance de lettres, pas de métier. Les recherches triées par salaire utilisent désormais la même correspondance que le reste et sont classées sur l'ensemble des résultats, pas seulement la première page. « nurse » par salaire s'ouvre maintenant à 300 000 $. Ces pages n'affichent volontairement que les offres indiquant un salaire, environ une sur huit."
+    },
+    "newestMeantWhenWeFoundIt": {
+      "title": "« Les plus récentes » affichait des offres dont nous ignorions la date",
+      "description": "Le tri par date utilisait notre propre date de découverte lorsque l'employeur n'en publiait pas — et comme ces annonces paraissent alors toutes neuves, elles remplissaient la page : 57 des 60 premiers résultats n'avaient aucune date d'employeur, enterrant les 540 000 annonces qui en portent une. Le tri se fait désormais sur la date publiée par l'employeur, les offres sans date venant ensuite. Le compteur « nouveautés depuis votre dernière visite » était gonflé de la même façon et repose maintenant aussi sur ces dates."
+    },
     "boardPageOneManyEmployers": {
       "title": "La première page du tableau affichait beaucoup trop peu d'employeurs",
       "description": "Les offres publiées le même jour étaient triées de façon à regrouper celles d'une même entreprise : le premier écran pouvait donc afficher vingt-quatre fois le même employeur, sur un tableau de 600 000 offres émanant de 25 000 entreprises. La première page se répartit désormais entre les employeurs, et rien n'est masqué : chaque offre reste dans la même liste, et celles d'une même entreprise restent à un clic les unes des autres. Les pages de catégorie réaffichent aussi le nombre d'offres — le chiffre du résultat Google correspond maintenant à celui de la page."

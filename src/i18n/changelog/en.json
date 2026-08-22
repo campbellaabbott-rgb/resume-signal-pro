@@ -1,5 +1,25 @@
 {
   "changelogEntries": {
+    "searchCouldNotSeeShortWords": {
+      "title": "Searching for “IT” returned 18 jobs out of 4,145",
+      "description": "Our search index quietly threw away very common and very short words before storing anything — so “IT” was not in it at all, and searching for it returned a handful of jobs against the 4,145 we actually hold. The same gap hid roles for anyone searching “no experience”, “hiring now” or a company whose name is an everyday word. Short words are now indexed properly, and “IT” returns a full page of real IT roles."
+    },
+    "employerNamesFindTheirJobs": {
+      "title": "Searching a company by name found none of its jobs",
+      "description": "Typing “AT&T” returned nothing at all, while we were holding 493 openings from that employer. Company names full of punctuation or short words — AT&T, Domino's, H&M — were invisible to search even though the jobs were right there. Employer names are now matched against our directory of the companies we carry, so searching a company takes you straight to its roles, and adding a job title narrows to that company's openings."
+    },
+    "commonSearchesShowTheRealRole": {
+      "title": "The most common searches buried the job you were looking for",
+      "description": "Searching “sales” put titles like “Corporate Sales for Call Center Solutions — Communication Platform Sales Section, Network Sales Department” at the top, while none of the 958 postings actually titled “Sales Associate” appeared at all. Repeating a word made a listing rank higher, so the plainest, most relevant titles lost to the most padded ones. Results are now ranked with a penalty for padding and a bonus for matching the title exactly — “sales”, “nurse” and “engineer” open with exactly those roles."
+    },
+    "salarySortShowedTheWrongJobs": {
+      "title": "Sorting nursing jobs by pay put a nursery job at the top",
+      "description": "Choosing “highest paid” quietly switched the search to a cruder kind of matching, so “nurse” sorted by salary opened with “Unqualified Nursery Practitioner” — matched on the letters, not the job. Pay-sorted searches now use the same matching as everything else and are ordered by salary across every matching job, not just the first page. Searching “nurse” by pay now opens at $300,000. These pages deliberately show only roles that state a salary, which is about one in eight."
+    },
+    "newestMeantWhenWeFoundIt": {
+      "title": "“Newest” was showing jobs whose posting date we did not know",
+      "description": "Sorting by newest used our own discovery time whenever an employer did not publish a date — and because those postings look brand new by that measure, they filled the page: 57 of the first 60 results had no employer date at all, burying the 540,000 listings that do carry one. Newest now sorts on the date the employer published, with undated roles after them. The “new since you last looked” count was inflated the same way and is now counted on employer dates too."
+    },
     "boardPageOneManyEmployers": {
       "title": "The first page of the board showed far too few employers",
       "description": "Jobs posted on the same day were ordered in a way that grouped one company's roles together, so the first screen could be a single employer twenty-four times over — on a board of 600,000 openings from 25,000 companies. The first page now spreads across employers instead, and nothing is hidden: every posting is still there, in the same list, and any company's roles are still one click from each other. Category pages also show the opening count again — the number in the Google result now matches the number on the page."

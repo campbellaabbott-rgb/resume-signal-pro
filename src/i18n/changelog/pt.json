@@ -1,5 +1,25 @@
 {
   "changelogEntries": {
+    "searchCouldNotSeeShortWords": {
+      "title": "Pesquisar «IT» devolvia 18 vagas em 4.145",
+      "description": "O nosso índice de pesquisa descartava em silêncio as palavras muito curtas e muito comuns antes de guardar seja o que for — «IT» não estava lá, e pesquisá-lo devolvia um punhado de vagas contra as 4.145 que temos de facto. A mesma falha escondia resultados a quem pesquisava «sem experiência», «a contratar agora» ou uma empresa cujo nome é uma palavra do dia a dia. As palavras curtas passaram a ser indexadas corretamente, e «IT» devolve uma página inteira de vagas reais de IT."
+    },
+    "employerNamesFindTheirJobs": {
+      "title": "Pesquisar uma empresa pelo nome não encontrava nenhuma das suas vagas",
+      "description": "Escrever «AT&T» não devolvia absolutamente nada, quando tínhamos 493 vagas desse empregador. Nomes de empresa cheios de pontuação ou palavras curtas — AT&T, Domino's, H&M — eram invisíveis para a pesquisa apesar de as vagas lá estarem. Os nomes de empregador passam a ser comparados com o nosso diretório de empresas, por isso pesquisar uma empresa leva diretamente às suas vagas, e juntar um cargo restringe às ofertas dessa empresa."
+    },
+    "commonSearchesShowTheRealRole": {
+      "title": "As pesquisas mais comuns enterravam justamente a vaga procurada",
+      "description": "Pesquisar «vendas» colocava no topo títulos como «Corporate Sales for Call Center Solutions — Communication Platform Sales Section, Network Sales Department», enquanto nenhuma das 958 vagas intituladas «Sales Associate» aparecia. Repetir uma palavra fazia um anúncio subir, por isso os títulos mais simples e pertinentes perdiam para os mais recheados. A ordenação passa a penalizar o enchimento e a premiar a correspondência exata — «vendas», «enfermeiro» e «engenheiro» abrem com esses cargos."
+    },
+    "salarySortShowedTheWrongJobs": {
+      "title": "Ordenar vagas de enfermagem por salário punha uma creche no topo",
+      "description": "Escolher «mais bem pagas» mudava em silêncio a pesquisa para uma correspondência mais grosseira: «nurse» por salário abria com «Unqualified Nursery Practitioner» — correspondência por letras, não por profissão. As pesquisas por salário passam a usar a mesma correspondência do resto e são ordenadas por todos os resultados, não só a primeira página. «nurse» por salário abre agora nos 300.000 $. Estas páginas mostram de propósito apenas vagas que indicam salário, cerca de uma em oito."
+    },
+    "newestMeantWhenWeFoundIt": {
+      "title": "«Mais recentes» mostrava vagas cuja data de publicação desconhecíamos",
+      "description": "Ordenar por mais recentes usava a nossa própria data de descoberta sempre que o empregador não publicava uma — e como assim parecem acabadinhas de sair, enchiam a página: 57 dos primeiros 60 resultados não tinham data do empregador, enterrando os 540.000 anúncios que têm. Passa a ordenar pela data publicada pelo empregador, com as vagas sem data a seguir. O contador «novas desde a tua última visita» estava inflacionado da mesma forma e passa também a usar datas do empregador."
+    },
     "boardPageOneManyEmployers": {
       "title": "A primeira página do quadro mostrava muito poucos empregadores",
       "description": "As vagas publicadas no mesmo dia eram ordenadas de forma a agrupar as de uma mesma empresa, pelo que o primeiro ecrã podia ser um único empregador vinte e quatro vezes seguidas — num quadro com 600.000 vagas de 25.000 empresas. A primeira página passa agora a distribuir-se por vários empregadores, e nada fica escondido: todas as vagas continuam na mesma lista, e as de qualquer empresa continuam a um clique umas das outras. As páginas de categoria voltam a mostrar o número de vagas — o número no resultado do Google coincide agora com o da página."

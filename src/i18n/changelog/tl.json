@@ -1,5 +1,25 @@
 {
   "changelogEntries": {
+    "searchCouldNotSeeShortWords": {
+      "title": "Ang paghahanap ng “IT” ay nagbabalik ng 18 trabaho sa 4,145",
+      "description": "Tahimik na itinatapon ng aming search index ang napakaikli at pangkaraniwang mga salita bago pa man makapag-imbak — kaya wala talaga roon ang “IT”, at ang paghahanap nito ay nagbabalik ng iilang trabaho laban sa 4,145 na talagang mayroon kami. Ang parehong puwang ay nagtago ng resulta para sa naghahanap ng “walang karanasan”, “kumukuha ngayon”, o kompanyang pangalan ay pang-araw-araw na salita. Maayos nang naka-index ang maikling salita, at ang “IT” ay nagbibigay na ng buong pahina ng tunay na trabahong IT."
+    },
+    "employerNamesFindTheirJobs": {
+      "title": "Ang paghahanap ng kompanya sa pangalan ay walang nahahanap na trabaho nito",
+      "description": "Ang pag-type ng “AT&T” ay walang ibinabalik, gayong may hawak kaming 493 bakante mula sa employer na iyon. Ang mga pangalan ng kompanyang puno ng bantas o maiikling salita — AT&T, Domino's, H&M — ay hindi nakikita ng paghahanap kahit nandoon lang ang mga trabaho. Itinutugma na ngayon ang pangalan ng employer sa aming direktoryo ng mga kompanya, kaya ang paghahanap ng kompanya ay diretso na sa mga trabaho nito, at ang pagdagdag ng titulo ay makikitid sa mga bakante nito."
+    },
+    "commonSearchesShowTheRealRole": {
+      "title": "Ang pinakakaraniwang paghahanap ay naglilibing sa mismong trabahong hinahanap mo",
+      "description": "Ang paghahanap ng “sales” ay naglalagay sa itaas ng mga pamagat tulad ng “Corporate Sales for Call Center Solutions — Communication Platform Sales Section, Network Sales Department”, samantalang wala ni isa sa 958 bakanteng may titulong “Sales Associate” ang lumalabas. Ang pag-ulit ng salita ay nagpapataas ng ranggo, kaya ang pinakasimple at pinaka-angkop na pamagat ay natatalo sa pinakamahaba. May parusa na ngayon sa palamuti at bonus sa eksaktong tugma — ang “sales”, “nurse” at “engineer” ay nagbubukas sa mismong mga tungkuling iyon."
+    },
+    "salarySortShowedTheWrongJobs": {
+      "title": "Ang pag-uuri ng trabahong nursing ayon sa sahod ay naglalagay ng nursery sa itaas",
+      "description": "Ang pagpili ng “pinakamataas ang bayad” ay tahimik na inililipat ang paghahanap sa mas magaspang na pagtutugma, kaya ang “nurse” ayon sa sahod ay nagbubukas sa “Unqualified Nursery Practitioner” — tugma sa titik, hindi sa trabaho. Ang paghahanap ayon sa sahod ay gumagamit na ng parehong pagtutugma at inaayos ayon sa sahod sa lahat ng resulta, hindi lang sa unang pahina. Ang “nurse” ayon sa sahod ay nagsisimula na sa $300,000. Sinasadyang ipinapakita lamang ng mga pahinang ito ang trabahong may nakasaad na sahod — mga isa sa walo."
+    },
+    "newestMeantWhenWeFoundIt": {
+      "title": "Ang “Pinakabago” ay nagpapakita ng trabahong hindi namin alam ang petsa ng pag-post",
+      "description": "Ang pag-uuri ayon sa pinakabago ay gumagamit ng sarili naming oras ng pagkatuklas tuwing walang inilalathalang petsa ang employer — at dahil mukhang bagung-bago ang mga ito sa sukat na iyon, napupuno nila ang pahina: 57 sa unang 60 resulta ay walang petsa ng employer, na naglilibing sa 540,000 listahang mayroon nito. Ang pinakabago ay inaayos na ayon sa petsang inilathala ng employer, at kasunod ang mga walang petsa. Ganoon din ang pagkalobo ng bilang na “bago mula noong huli kang tumingin”, at nakabatay na rin ito sa petsa ng employer."
+    },
     "boardPageOneManyEmployers": {
       "title": "Kakaunti masyado ang employer na lumalabas sa unang pahina ng job board",
       "description": "Ang mga trabahong nai-post sa iisang araw ay pinagsunod-sunod sa paraang magkakasama ang mga role ng iisang kompanya — kaya puwedeng isang employer lang ang lumabas nang dalawampu't apat na beses sa unang screen, sa isang board na may 600,000 bakante mula sa 25,000 kompanya. Kumakalat na ngayon ang unang pahina sa iba't ibang employer, at walang itinatago: nasa parehong listahan pa rin ang bawat posting, at isang click lang ang layo ng mga role ng bawat kompanya sa isa't isa. Ipinapakita na rin muli ng mga category page ang bilang ng bakante — tugma na ngayon ang numero sa resulta ng Google at ang nasa pahina."

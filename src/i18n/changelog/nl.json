@@ -1,5 +1,25 @@
 {
   "changelogEntries": {
+    "searchCouldNotSeeShortWords": {
+      "title": "Zoeken op “IT” gaf 18 vacatures van de 4.145",
+      "description": "Onze zoekindex gooide heel korte en heel gewone woorden stilletjes weg voordat er iets werd opgeslagen — “IT” stond er dus helemaal niet in, en zoeken leverde een handvol vacatures op tegenover de 4.145 die we echt hebben. Dezelfde tekortkoming verborg resultaten voor wie zocht op “geen ervaring”, “nu aannemen” of een bedrijfsnaam die een alledaags woord is. Korte woorden worden nu goed geïndexeerd, en “IT” geeft een volle pagina echte IT-vacatures."
+    },
+    "employerNamesFindTheirJobs": {
+      "title": "Zoeken op een bedrijfsnaam vond geen enkele vacature van dat bedrijf",
+      "description": "“AT&T” intypen gaf helemaal niets, terwijl we 493 vacatures van die werkgever hadden. Bedrijfsnamen vol leestekens of korte woorden — AT&T, Domino's, H&M — waren onzichtbaar voor de zoekfunctie, ook al stonden de vacatures er gewoon. Werkgeversnamen worden nu vergeleken met onze lijst van bedrijven, dus zoeken op een bedrijf brengt je direct bij hun vacatures, en een functietitel erbij beperkt tot dat bedrijf."
+    },
+    "commonSearchesShowTheRealRole": {
+      "title": "De meest gezochte termen begroeven juist de vacature die je zocht",
+      "description": "Zoeken op “sales” zette titels als “Corporate Sales for Call Center Solutions — Communication Platform Sales Section, Network Sales Department” bovenaan, terwijl geen van de 958 vacatures met de titel “Sales Associate” verscheen. Een woord herhalen liet een vacature hoger scoren, dus de eenvoudigste en meest relevante titels verloren van de meest opgeblazen. De rangschikking straft opvulling nu af en beloont een exacte titeltreffer — “sales”, “verpleegkundige” en “engineer” openen precies met die functies."
+    },
+    "salarySortShowedTheWrongJobs": {
+      "title": "Verpleegkundige vacatures op salaris sorteren zette een kinderdagverblijf bovenaan",
+      "description": "“Best betaald” kiezen schakelde de zoekfunctie stilletjes over op een grovere manier van matchen: “nurse” op salaris begon met “Unqualified Nursery Practitioner” — op letters gematcht, niet op beroep. Zoekopdrachten op salaris gebruiken nu dezelfde matching als de rest en worden over alle treffers gesorteerd, niet alleen de eerste pagina. “nurse” op salaris begint nu bij $300.000. Deze pagina's tonen bewust alleen functies met een vermeld salaris, ongeveer één op acht."
+    },
+    "newestMeantWhenWeFoundIt": {
+      "title": "“Nieuwste” toonde vacatures waarvan we de plaatsingsdatum niet kenden",
+      "description": "Sorteren op nieuwste gebruikte ons eigen vindmoment als een werkgever geen datum publiceerde — en omdat die vacatures daardoor spiksplinternieuw lijken, vulden ze de pagina: 57 van de eerste 60 resultaten hadden helemaal geen werkgeversdatum en verdrongen de 540.000 vacatures die er wel een hebben. Nieuwste sorteert nu op de datum van de werkgever, met ongedateerde functies daarna. De teller “nieuw sinds je laatste bezoek” was net zo opgeblazen en telt nu ook op werkgeversdatums."
+    },
     "boardPageOneManyEmployers": {
       "title": "De eerste pagina van het vacaturebord toonde veel te weinig werkgevers",
       "description": "Vacatures die op dezelfde dag waren geplaatst, werden zo gesorteerd dat de vacatures van één bedrijf bij elkaar kwamen te staan — het eerste scherm kon dus vierentwintig keer dezelfde werkgever tonen, op een bord met 600.000 vacatures van 25.000 bedrijven. De eerste pagina spreidt nu over werkgevers, en er wordt niets verborgen: elke vacature staat nog steeds in dezelfde lijst, en vacatures van hetzelfde bedrijf blijven één klik van elkaar verwijderd. Categoriepagina's tonen ook weer het aantal vacatures — het getal in het Google-resultaat komt nu overeen met dat op de pagina."

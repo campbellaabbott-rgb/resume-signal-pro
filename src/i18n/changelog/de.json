@@ -1,5 +1,25 @@
 {
   "changelogEntries": {
+    "searchCouldNotSeeShortWords": {
+      "title": "Die Suche nach „IT“ lieferte 18 von 4.145 Stellen",
+      "description": "Unser Suchindex verwarf sehr kurze und sehr häufige Wörter, bevor überhaupt etwas gespeichert wurde – „IT“ war darin gar nicht enthalten, und die Suche danach lieferte eine Handvoll Stellen statt der 4.145, die wir tatsächlich haben. Dieselbe Lücke verbarg Treffer für „ohne Erfahrung“, „jetzt einstellen“ oder Firmennamen, die Alltagswörter sind. Kurze Wörter werden jetzt korrekt indexiert, und „IT“ liefert eine volle Seite echter IT-Stellen."
+    },
+    "employerNamesFindTheirJobs": {
+      "title": "Die Suche nach einem Unternehmen fand keine seiner Stellen",
+      "description": "Die Eingabe „AT&T“ lieferte überhaupt nichts, obwohl wir 493 Stellen dieses Arbeitgebers hatten. Firmennamen mit Satzzeichen oder kurzen Wörtern – AT&T, Domino's, H&M – waren für die Suche unsichtbar, obwohl die Stellen vorhanden waren. Arbeitgebernamen werden jetzt mit unserem Verzeichnis der geführten Unternehmen abgeglichen: Die Suche nach einer Firma führt direkt zu ihren Stellen, und ein zusätzlicher Jobtitel grenzt auf deren Angebote ein."
+    },
+    "commonSearchesShowTheRealRole": {
+      "title": "Die häufigsten Suchanfragen begruben genau die gesuchte Stelle",
+      "description": "Die Suche „Vertrieb“ setzte Titel wie „Corporate Sales for Call Center Solutions – Communication Platform Sales Section, Network Sales Department“ nach oben, während keine der 958 Anzeigen mit dem Titel „Sales Associate“ überhaupt erschien. Wortwiederholungen ließen eine Anzeige höher ranken, sodass die schlichtesten und passendsten Titel gegen die aufgeblähtesten verloren. Jetzt gibt es Abzüge für Aufblähung und einen Bonus für exakte Titeltreffer – „Vertrieb“, „Pflege“ und „Ingenieur“ beginnen genau mit diesen Rollen."
+    },
+    "salarySortShowedTheWrongJobs": {
+      "title": "Nach Gehalt sortierte Pflegestellen zeigten eine Kita-Stelle ganz oben",
+      "description": "Die Auswahl „Bestbezahlt“ schaltete die Suche unbemerkt auf ein gröberes Verfahren um: „nurse“ nach Gehalt sortiert begann mit „Unqualified Nursery Practitioner“ – nach Buchstaben getroffen, nicht nach Beruf. Gehaltssortierte Suchen nutzen jetzt dieselbe Zuordnung wie alles andere und sortieren über alle Treffer hinweg, nicht nur die erste Seite. „nurse“ nach Gehalt beginnt jetzt bei 300.000 $. Diese Seiten zeigen bewusst nur Stellen mit Gehaltsangabe – etwa jede achte."
+    },
+    "newestMeantWhenWeFoundIt": {
+      "title": "„Neueste“ zeigte Stellen, deren Veröffentlichungsdatum wir nicht kannten",
+      "description": "Die Sortierung nach „Neueste“ nutzte unseren eigenen Fundzeitpunkt, wenn ein Arbeitgeber kein Datum angab – und weil solche Anzeigen dadurch brandneu wirken, füllten sie die Seite: 57 der ersten 60 Treffer hatten überhaupt kein Arbeitgeberdatum und verdrängten die 540.000 Anzeigen, die eines haben. „Neueste“ sortiert jetzt nach dem Veröffentlichungsdatum des Arbeitgebers, undatierte Stellen folgen danach. Der Zähler „neu seit deinem letzten Besuch“ war genauso überhöht und zählt jetzt ebenfalls Arbeitgeberdaten."
+    },
     "boardPageOneManyEmployers": {
       "title": "Die erste Seite der Jobbörse zeigte viel zu wenige Arbeitgeber",
       "description": "Am selben Tag veröffentlichte Stellen wurden so sortiert, dass die Anzeigen eines Unternehmens zusammen erschienen — auf dem ersten Bildschirm konnte damit vierundzwanzigmal derselbe Arbeitgeber stehen, bei 600.000 Stellen von 25.000 Unternehmen. Die erste Seite verteilt sich jetzt über verschiedene Arbeitgeber, und nichts wird ausgeblendet: Jede Anzeige ist weiterhin in derselben Liste, und alle Stellen eines Unternehmens bleiben einen Klick voneinander entfernt. Kategorieseiten zeigen außerdem wieder die Anzahl offener Stellen — die Zahl im Google-Ergebnis stimmt jetzt mit der Zahl auf der Seite überein."
