@@ -7638,7 +7638,19 @@ async function serveList(
           p_offset: 0,
         });
         if (!ec && Array.isArray(rc)) {
-          const tC = rc.length ? Number((rc[0] as { total_rows?: number }).total_rows) || rc.length : 0;
+          // `|| rc.length`, which this used to be, treats a legitimate ZERO
+          // total as absent and substitutes the row count. It cannot fire today
+          // — total_rows counts the same predicate that produced the rows, so a
+          // zero total means zero rows — but it is a loaded gun aimed at the
+          // next change to search_jobs. Any edit that makes total_rows a
+          // NARROWER count than the rows (counting title matches while serving
+          // title-or-description, the shape every proposed tier fix has) turns
+          // a filtered query with no title match into "the window size", and
+          // adding a filter would multiply the reported count by 8.5. Guard on
+          // finiteness, which is what the fallback was actually for: an absent
+          // or non-numeric total_rows gives NaN, not 0.
+          const trC = Number((rc[0] as { total_rows?: number } | undefined)?.total_rows);
+          const tC = rc.length ? (Number.isFinite(trC) ? trC : rc.length) : 0;
           // Tier-aware ceiling, same contract as the list path: the description
           // tier caps at 3,000, so a bare "3000" here was presented as an exact
           // figure when the truth is higher (bug sweep 2026-07-26).
@@ -7981,7 +7993,10 @@ async function serveList(
         // the client's header with 0 — null is "count unavailable", which the
         // client already renders honestly (2026-07-25 audit: a 180-match
         // search flipped to "0 matching" above 180 visible results).
-        const total = ranked.length ? Number((ranked[0] as { total_rows?: number }).total_rows) || ranked.length : (offset > 0 ? null : 0);
+        // Finiteness, not truthiness — see the note on the countOnly probe
+        // above. A real zero must survive; only an absent total falls back.
+        const trR = Number((ranked[0] as { total_rows?: number } | undefined)?.total_rows);
+        const total = ranked.length ? (Number.isFinite(trR) ? trR : ranked.length) : (offset > 0 ? null : 0);
         // search_jobs counts inside a LIMIT — 10,000 on the title tier, 3,000 on
         // the sampled description tier — so a broad term like "engineer" or
         // "nurse" comes back as EXACTLY the ceiling. Reported bare that reads as
