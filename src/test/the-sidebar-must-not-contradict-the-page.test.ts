@@ -80,3 +80,37 @@ describe("the sidebar must not contradict the page", () => {
       "the old comparison must be gone, or opting in to uncategorised jobs still costs every page after the first").toBe(false);
   });
 });
+
+describe("a salary-sorted search is ordered by the database, not by a window", () => {
+  const FN2 = readFileSync(resolve(__dirname, "../../supabase/functions/job-board/index.ts"), "utf8");
+  const BLK = /const salaryTextSort[\s\S]*?catch \{ \/\* fall through to the substring path this query used before \*\/ \}/.exec(FN2)?.[0] ?? "";
+
+  it("matches with word boundaries instead of substrings", () => {
+    // q="nurse" sorted by salary returned "Unqualified Nursery Practitioner"
+    // at #1, matched on "Nurser" by the substring path.
+    expect(BLK, "the salary-sorted branch is missing").not.toBe("");
+    expect(/\.textSearch\("title", ftsQuery\(qText\), \{ type: "websearch", config: "simple" \}\)/.test(BLK)).toBe(true);
+  });
+
+  it("orders in SQL on the indexed column, over the WHOLE match set", () => {
+    // The previous attempt sorted a 180-row relevance window in memory: only 16
+    // of those rows carried a stated salary, so 44 of 60 cards had no pay and
+    // page 2 led higher than page 1.
+    expect(/\.order\("salary_rank_usd", \{ ascending: false \}\)/.test(BLK)).toBe(true);
+    // Paging is a plain offset into one stable ordering — no window to fall off.
+    expect(/\.range\(offset, offset \+ limit - 1\)/.test(BLK)).toBe(true);
+  });
+
+  it("excludes unpriced rows rather than sorting them last", () => {
+    // On a highest-paid-first page they are not a weak answer, they are 87% of
+    // the board. The browse path's partial index takes the same view.
+    expect(/\.not\("salary_rank_usd", "is", null\)/.test(BLK)).toBe(true);
+    expect(/salaryStatedOnly: true,/.test(BLK), "and the page must say so").toBe(true);
+  });
+
+  it("degrades to the path this query used before", () => {
+    expect(/withDeadline\(/.test(BLK)).toBe(true);
+    expect(/hit its deadline/.test(BLK)).toBe(true);
+    expect(/catch \{ \/\* fall through/.test(BLK)).toBe(true);
+  });
+});

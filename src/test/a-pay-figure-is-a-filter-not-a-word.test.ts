@@ -90,8 +90,8 @@ describe("a pay figure is a filter, not a word to search for", () => {
     const calls = FN.match(/\.\.\.searchDisclosures\(body, applied\)/g) ?? [];
     expect(
       calls.length,
-      `searchDisclosures must be spread at all SIX list returns; found ${calls.length}`,
-    ).toBe(6);
+      `searchDisclosures must be spread at all SEVEN list returns; found ${calls.length}`,
+    ).toBe(7);
     // No inline copy may come back alongside it — a second definition is how
     // these drift apart again.
     expect(

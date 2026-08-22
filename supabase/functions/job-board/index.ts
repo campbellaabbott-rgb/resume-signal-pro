@@ -100,7 +100,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-21.9";
+const BUILD_VERSION = "2026-08-22.1";
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -7647,6 +7647,74 @@ async function serveList(
     : { route: "BROWSE" as const, reason: "not routable", tokens: undefined as string[] | undefined, matchedName: undefined as string | undefined };
   const routedRetriever = RETRIEVER_FOR[routeDecision.route];
   const metaV = (meta?.v ?? {}) as Record<string, unknown>;
+
+  // A SALARY-SORTED SEARCH CAN HAVE BOTH CORRECT MATCHING AND A GLOBAL ORDER.
+  //
+  // Until now it had neither. The ranked path is bypassed for sort=salary, so
+  // the query fell to substring ILIKE and q="nurse" returned "Unqualified
+  // Nursery Practitioner" at #1. I tried routing it through search_jobs and
+  // REVERTED that the same day: only 16 of the 180 relevance rows carry a
+  // stated salary, so 44 of 60 cards on a "highest paid" page had no pay at
+  // all, page 1 topped out at $214,800 where the browse path starts at
+  // $650,000, and page 2 led higher than page 1. The note left behind said the
+  // real fix was a sort parameter on the RPC.
+  //
+  // There is a third option that note did not consider: order in SQL on a
+  // DIFFERENT query. buildQuery can match with the simple-config index and sort
+  // on salary_rank_usd, which is indexed — so the database orders the whole
+  // match set, not a window, and the matcher has word boundaries. MEASURED at
+  // concurrency 4: nurse 0.34-0.46s, engineer 0.25-0.42s, all 200. The page it
+  // produces for q="nurse" is $300,000 Nurse Practitioner, $290,000 CRNA,
+  // $270,000 CRNA — against "Unqualified Nursery Practitioner" today.
+  //
+  // Rows with no stated pay are EXCLUDED rather than sorted last. On a
+  // highest-paid-first page they are not an answer to the question, they are
+  // 87% of the board — and the browse path's partial index already takes the
+  // same view.
+  const salaryTextSort = !countOnly && !!qText && body.sort === "salary" && onlyQuery;
+
+  if (salaryTextSort) try {
+    const { data: salRows, error: salErr } = await withDeadline(
+      buildQuery("effective_posted", false, undefined, { skipTerms: true })
+        .textSearch("title", ftsQuery(qText), { type: "websearch", config: "simple" })
+        .not("salary_rank_usd", "is", null)
+        .order("salary_rank_usd", { ascending: false })
+        .order("id", { ascending: true })
+        .range(offset, offset + limit - 1),
+      7_000,
+    ) as { data: unknown[] | null; error?: unknown };
+    if (salRows === null) console.warn(`[JOB-BOARD] salary-sorted search hit its deadline for q=${JSON.stringify(qText)}`);
+    if (!salErr && Array.isArray(salRows) && salRows.length > 0) {
+      const salJobs = (salRows as unknown[]).map(rowToJob) as Array<Record<string, unknown>>;
+      const salGrouped = groupSimilar
+        ? collapseClusters(salJobs, limit)
+        : { jobs: salJobs.slice(0, limit), rawConsumed: Math.min(salJobs.length, limit) };
+      logSearch("ranked", salGrouped.jobs.length, null);
+      return json({
+        jobs: preferMatchedLocation(await attachRecheckedAt(client, salGrouped.jobs), locationTerms(body.location).terms),
+        searchId,
+        ...searchDisclosures(body, applied),
+        ...intentDisclosure(intentLift),
+        ...coverageDisclosure(applied, meta),
+        ...honesty(salGrouped.jobs),
+        // Ordered in SQL over the whole match set, so paging is a plain offset
+        // into one stable ordering — no window to fall off the end of.
+        total: null,
+        countUnavailable: true,
+        hasMore: salJobs.length >= limit,
+        nextOffset: offset + salGrouped.rawConsumed,
+        searchRoute: "SALARY",
+        searchRouteReason: "salary-sorted text search, ordered on the indexed pay column",
+        // Said out loud: this page deliberately shows only postings that state
+        // pay, which is about an eighth of the board.
+        salaryStatedOnly: true,
+        totalAllCompanies: (metaV.total as number) ?? 0,
+        companies: [],
+        companiesCount: ((metaV.companiesFacet as unknown[]) ?? []).length,
+        refreshedAt: (metaV.refreshedAt as string) ?? null,
+      });
+    }
+  } catch { /* fall through to the substring path this query used before */ }
 
   if (!countOnly && (routedRetriever === "company" || routedRetriever === "simple")) try {
     // Window anchored at rank 0 and sliced AFTER scoring, so `offset` is a

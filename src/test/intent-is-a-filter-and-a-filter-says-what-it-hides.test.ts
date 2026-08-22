@@ -101,7 +101,7 @@ describe("intent becomes a filter, and a filter says what it hides", () => {
     expect(liftAt, "intent lift not found").toBeGreaterThan(-1);
     expect(liftAt < normAt, "the lift must precede the filter derivation").toBe(true);
     expect((FN.match(/\.\.\.intentDisclosure\(intentLift\)/g) ?? []).length,
-      "a rewritten search must be disclosed on all SIX list paths").toBe(6);
+      "a rewritten search must be disclosed on all SEVEN list paths").toBe(7);
   });
 
   it("reports coverage only for filters that are actually on", () => {
@@ -113,7 +113,7 @@ describe("intent becomes a filter, and a filter says what it hides", () => {
     // No cache, no number. An invented fraction is worse than none, because a
     // number on screen gets believed.
     expect(/if \(!cov\) return \{\};/.test(H), "absent coverage must yield nothing, not a guess").toBe(true);
-    expect((FN.match(/\.\.\.coverageDisclosure\(applied, meta\)/g) ?? []).length).toBe(6);
+    expect((FN.match(/\.\.\.coverageDisclosure\(applied, meta\)/g) ?? []).length).toBe(7);
   });
 
   it("counts coverage once per ingest pass, never per request", () => {

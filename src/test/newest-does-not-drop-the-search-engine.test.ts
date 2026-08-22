@@ -64,9 +64,27 @@ describe("a query reaches the search engine whatever the sort", () => {
     // the salary_rank_usd index; an in-memory sort of a relevance window
     // cannot, and no amount of care in the edge function changes that.
     //
-    // The real fix is a sort parameter ON THE RPC so the database orders the
-    // whole match set. Until that exists, bypassing is the lesser wrong.
+    // RESOLVED 2026-08-21 by a third option this note did not consider.
+    //
+    // The guard below STAYS — search_jobs is still bypassed for sort=salary,
+    // and everything above about why remains true. What changed is that the
+    // query no longer falls to substring ILIKE: a salary-sorted text search is
+    // now served by buildQuery matching on the simple-config index and ordering
+    // on salary_rank_usd, which is INDEXED. The database orders the whole match
+    // set rather than an in-memory window, so the objection that killed the
+    // last attempt — 44 of 60 cards with no stated pay, page 2 leading higher
+    // than page 1 — does not apply.
+    //
+    // MEASURED at concurrency 4: nurse 0.34-0.46s, engineer 0.25-0.42s, all
+    // 200. The page for q="nurse" becomes $300,000 Nurse Practitioner,
+    // $290,000 CRNA, $270,000 CRNA, against "Unqualified Nursery Practitioner"
+    // before it.
     expect(guard.includes('body.sort !== "salary"')).toBe(true);
+    // And the replacement must exist, or this guard is just protecting a hole.
+    expect(
+      /const salaryTextSort = !countOnly && !!qText && body\.sort === "salary"/.test(SRC),
+      "bypassing search_jobs is only acceptable because a correct salary path exists",
+    ).toBe(true);
   });
 
   it("does not exclude sort=newest from the COUNT query", () => {

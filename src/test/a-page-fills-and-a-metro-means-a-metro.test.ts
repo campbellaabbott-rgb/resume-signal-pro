@@ -166,7 +166,7 @@ describe("a metro abbreviation searches the metro", () => {
     // who TYPED "SF" was never told it had been read as San Francisco — the
     // disclosure is now spread at all four list returns.
     expect(FN).toMatch(/out\.locationExpandedFrom = l\.expandedFrom; out\.locationSearched = l\.terms/);
-    expect((FN.match(/\.\.\.searchDisclosures\(body, applied\)/g) ?? []).length).toBe(6);
+    expect((FN.match(/\.\.\.searchDisclosures\(body, applied\)/g) ?? []).length).toBe(7);
   });
 
   it("leaves a non-alias location exactly as typed", () => {
