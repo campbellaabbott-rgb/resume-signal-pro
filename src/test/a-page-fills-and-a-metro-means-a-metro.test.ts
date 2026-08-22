@@ -85,11 +85,25 @@ describe("a page fills up", () => {
 
   it("derives BOTH the next offset and the next cursor from the merged rows", () => {
     // After a top-up the consumed rows span two fetches. Reading either from
-    // the first fetch alone would send page 2 back over rows page 1 served —
-    // and would silently null the cursor on exactly the queries this fixes.
+    // the first fetch alone would send page 2 back over rows page 1 served.
+    //
+    // TWO ARRAYS, KEPT IN LOCKSTEP. rawSequence holds MAPPED jobs because
+    // collapseClusters needs job shape to fold on; rawKeys holds the RAW rows
+    // because the keyset lives on `effective_posted`, which rowToJob does not
+    // carry. The cursor read the mapped array for five days and was therefore
+    // null on every response ever served — the line below said "cursor" and
+    // meant it, and still could not see that. Both arrays must merge, or the
+    // cursor names a row from the first fetch while the page ended in the
+    // second.
     expect(FN).toMatch(/let rawSequence = mappedRows;/);
     expect(FN).toMatch(/rawSequence = \[\.\.\.mappedRows, \.\.\.extra\];/);
-    expect(FN).toMatch(/const r = rawSequence\[Math\.max\(0, grouped\.rawConsumed - 1\)\]/);
+    expect(FN).toMatch(/let rawKeys = \(data \?\? \[\]\) as Array</);
+    expect(FN).toMatch(/rawKeys = \[\.\.\.rawKeys, \.\.\.\(\(topUp\.data \?\? \[\]\) as typeof rawKeys\)\];/);
+    expect(FN).toMatch(/const r = rawKeys\[Math\.max\(0, grouped\.rawConsumed - 1\)\]/);
+    // The top-up's own anchor reads the same raw array. It read the mapped one
+    // too, which is why the top-up had NEVER RUN: its gate is
+    // `lastRaw?.effective_posted`, and that was always undefined.
+    expect(FN).toMatch(/const lastRaw = rawKeys\[rawKeys\.length - 1\];/);
   });
 
   it("tops up the RANKED path too — the one a typed query uses", () => {
@@ -118,12 +132,13 @@ describe("a page fills up", () => {
     // rather than one line of it: hasMore is now a ternary (sorted pages read a
     // finite window), and pinning the old single-line spelling would fail on a
     // correct refactor and teach the next person to delete the check.
-    const hm = /hasMore: \(newestFirst \|\| scoreRanked\)[\s\S]{0,220}?,\n/.exec(FN)?.[0] ?? "";
+    const hm = /hasMore: deepPage[\s\S]{0,520}?,\n/.exec(FN)?.[0] ?? "";
     expect(hm, "the ranked hasMore expression could not be located").not.toBe("");
     expect(
       (hm.match(/rankedSequence\.length > rankedGrouped\.rawConsumed/g) ?? []).length,
-      "BOTH branches must measure what is left in the merged sequence",
-    ).toBe(2);
+      "EVERY branch must measure what is left in the merged sequence — there are " +
+        "three now that a deep page is served straight from SQL rank",
+    ).toBe(3);
   });
 
   it("serves the page it already has if the top-up fails", () => {

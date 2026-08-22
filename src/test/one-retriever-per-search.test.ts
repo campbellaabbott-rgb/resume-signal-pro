@@ -215,6 +215,7 @@ describe("employer diversity demotes, never drops", () => {
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 const FN = readFileSync(resolve(__dirname, "../../supabase/functions/job-board/index.ts"), "utf8");
+const PAGING = readFileSync(resolve(__dirname, "../../supabase/functions/job-board/paging.ts"), "utf8");
 
 /**
  * The WIRING, asserted against source because the edge function cannot be
@@ -302,11 +303,19 @@ describe("the scorer reaches the path that serves most searches", () => {
     // Widened from rankedRows to mergedRows: the ranked window alone could not
     // fix q="sales", because zero of its 200 rows carry the exact title. The
     // head-term ring supplies those rows and the scorer ranks the union.
-    expect(/const rankedScored = scoreRanked \? rerankWindow\(mergedRows, qText\) : rankedRows;/.test(FN)).toBe(true);
-    // Scoring permutes the rows, so it needs the SAME fixed window a sort does.
-    expect(/p_offset: \(newestFirst \|\| scoreRanked\) \? 0 : offset,/.test(FN)).toBe(true);
-    expect(/rankedScored\.slice\(offset\)/.test(FN)).toBe(true);
-    expect(/hasMore: \(newestFirst \|\| scoreRanked\)/.test(FN)).toBe(true);
+    expect(/const rankedScored = pagePlan\.rerank \? rerankWindow\(mergedRows, qText\) : mergedRows;/.test(FN)).toBe(true);
+    // pagePlan.rerank IS `scoreRanked && !deepPage` — the scorer still reaches
+    // every page it used to; it stands down only past the re-ranked window,
+    // where the rows are served in the RPC's own ts_rank_cd order. Proven by
+    // walking the seam in a-sorted-page-two-must-not-repeat-page-one.test.ts
+    // rather than by matching this expression.
+    expect(/rerank: opts\.scoreRanked && !deepPage,/.test(PAGING)).toBe(true);
+    // Scoring permutes the rows, so below the seam it needs the SAME fixed
+    // window a sort does.
+    expect(/pLimit: windowed && !deepPage \? w : opts\.fetchLimit,/.test(PAGING)).toBe(true);
+    expect(/pOffset: windowed && !deepPage \? 0 : opts\.offset,/.test(PAGING)).toBe(true);
+    expect(/rankedScored\.slice\(pagePlan\.sliceStart, pagePlan\.sliceEnd\)/.test(FN)).toBe(true);
+    expect(/hasMore: deepPage/.test(FN)).toBe(true);
     // And the top-up pages in relevance order, which a scored window has left.
     expect(/if \(!newestFirst && !scoreRanked && groupSimilar/.test(FN)).toBe(true);
   });

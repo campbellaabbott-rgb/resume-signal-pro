@@ -59,6 +59,7 @@ import { CANARIES, rawItemCount, aggregateVendorHealth, type CanaryResult } from
 import { detectExperience, isExperienceBand } from "./experience.ts";
 import { categoryParam, filterViolations, isUnfiltered, normalizeFilters, sendableSourcesParam, splitPage, salaryFromQueryText, SALARY_IN_QUERY } from "./filters.ts";
 import { pickRoute, rerankWindow, RETRIEVER_FOR } from "./search-routing.ts";
+import { planRankedPage } from "./paging.ts";
 import { EMPLOYER_ALIASES } from "./employer-aliases.ts";
 import { expandQuery } from "./search-alias.ts";
 import { classifyQuestion } from "../_shared/application-questions.ts";
@@ -100,7 +101,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-22.2";
+const BUILD_VERSION = "2026-08-22.3";
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -6927,10 +6928,6 @@ async function serveList(
   // to fold: a page of 25 reads up to 75 rows, which is still one indexed page.
   const groupSimilar = body.groupSimilar !== false && !countOnly;
   const fetchLimit = groupSimilar ? Math.min(limit * GROUP_OVERFETCH, 200) : limit;
-  // search_jobs caps its own output at 200 rows — measured, p_limit 400 and 600
-  // both return exactly 200. A sorted mode reads the whole cap as one fixed
-  // window so paging stays inside a single stable ordering.
-  const RANKED_WINDOW = 200;
 
   // effective_posted = coalesce(posted_at, first_seen): undated feeds
   // (BambooHR) participate in freshness filters and recency sort. If the
@@ -7495,6 +7492,49 @@ async function serveList(
     });
   }
 
+  // ── ROUTED RETRIEVAL ──────────────────────────────────────────────────────
+  //
+  // ONE retriever per search, decided before any SQL is issued, and ONE exit for
+  // all of them. This supersedes the tier shipped this morning, whose fatal
+  // design was running only when the primary path returned ZERO rows — so
+  // queries returning a full page of WRONG answers, the larger class, could
+  // never reach it.
+  //
+  // Every route binds through buildQuery with skipTerms, so freshness,
+  // missing_since, country, category, experience, salary and companies bind in
+  // the ONE place they are bound and only the matcher differs. A route with its
+  // own PostgREST chain is the mistake behind five defects in two days.
+  //
+  // MEASURED UNDER CONCURRENCY 4, the only measurement that counts here —
+  // everything looks fine one request at a time, and that is exactly how a
+  // sequential scan reached production this morning:
+  //     company_token=in.(...)     0.67s x4, all 200
+  //     wfts(simple) on title      0.36-0.59s x4, all 200
+  // Rejected under the same conditions: ilike contains 1.9-2.7s, imatch regex
+  // 3.1-3.5s — and the regex is 0.35s SERIALLY, which is the whole trap.
+  //
+  // Standing down when a filter is active is deliberate: the routed window is
+  // capped, so a filter applied on top of a capped window would silently answer
+  // from a subset. The ranked path below binds filters in SQL and is correct.
+  // "No filters BESIDES the query." isUnfiltered() counts q itself as a filter —
+  // it is asking "is this the bare board?" — so gating on it meant the router
+  // stood down on EVERY search, which is every case it exists for. Verified
+  // live: AT&T and IT both came back with no searchRoute at all.
+  const onlyQuery = applied.country === null && applied.category === null
+    && applied.workMode === null && applied.salaryFloor === null
+    && applied.maxAgeDays === null && applied.postedAfter === null
+    && !applied.remote && !applied.sendableOnly
+    && applied.experience.length === 0 && applied.companies.length === 0
+    && applied.location === "";
+  const routeDecision = qText && onlyQuery
+    ? pickRoute(qText, EMPLOYER_ALIASES)
+    : { route: "BROWSE" as const, reason: "not routable", tokens: undefined as string[] | undefined, matchedName: undefined as string | undefined };
+  const routedRetriever = RETRIEVER_FOR[routeDecision.route];
+  // ONE window constant for both the routed count and the routed list. Two
+  // copies would drift, and the count would then say countUnavailable at a
+  // different size than the list slices.
+  const ROUTE_WINDOW = 400;
+
   if (countOnly) {
     // countOnly is the FIFTH exit, and I missed it when wiring the honesty
     // helper into the other four. Verified live on .10: {remote:"true"} returned
@@ -7503,8 +7543,60 @@ async function serveList(
     // buttons and the data API — was the caller least likely to be told a filter
     // had been dropped. It publishes only a number, which makes naming the
     // filters that number does not honour more important here, not less.
-    const countHonesty = ignoredFilters.length ? { ignoredFilters } : {};
+    // The clamp is a narrowing, and this is the exit where it hurts most: a
+    // countOnly response is a NUMBER and nothing else, so {country:IE,
+    // maxAgeDays:90} publishing 2,178 is read as "90 days of Ireland" when it
+    // is 30 days of it. The list exits already say so through
+    // searchDisclosures; this one ships no rows and does not call that helper,
+    // so the single field it owes the caller is spread here rather than adding
+    // an eighth searchDisclosures(body, applied, maxAgeClamped) call site —
+    // three tests assert that count is exactly 7.
+    const countHonesty = {
+      ...(ignoredFilters.length ? { ignoredFilters } : {}),
+      ...(maxAgeClamped ? { maxAgeClampedTo: 30 } : {}),
+    };
     if (!wantCount) return json({ total: safeMetaTotal, ...(safeMetaTotal === null ? { countUnavailable: true } : {}), ...countHonesty }); // unfiltered — the maintained catalog total, degraded to null when the cache is unreadable
+    // ONE BODY, ONE ANSWER — the count asks the SAME retriever the list used.
+    //
+    // MEASURED before this: the router carried `!countOnly`, so a routed query
+    // was counted by search_jobs instead of by the retriever that produced the
+    // page. {"q":"sql developer"} listed 30 rows under searchRoute SIMPLE and
+    // counted 3,000 through the description tier; {"q":"Domino's"} listed
+    // countUnavailable and counted 2,206. Two shapes, one defect.
+    //
+    // This is the routed list block's query, verbatim, through the same
+    // buildQuery binder and the same hoisted ROUTE_WINDOW — so the number IS the
+    // window the list slices and is reachable by paging. At the cap the window is
+    // a floor, not a total, and says so exactly as the list does.
+    //
+    // sort=salary stands down. A salary-sorted text search is served by
+    // salaryTextSort (buildQuery + salary_rank_usd, .not("salary_rank_usd","is",
+    // null)), NOT by the routed window — counting it here would publish 31 for a
+    // page that shows 1, which is this very defect with the signs reversed.
+    //
+    // MEASURED AT CONCURRENCY 4 on production: wfts(simple) over a 400-row window
+    // 0.34-0.46s, company_token IN 0.62-0.78s, 4/4 HTTP 200 — the same query and
+    // budget the routed LIST path already pays on every search.
+    if (qText && body.sort !== "salary" && (routedRetriever === "company" || routedRetriever === "simple")) {
+      try {
+        let rqC = buildQuery("effective_posted", false, undefined, { skipTerms: true });
+        rqC = routedRetriever === "company" && routeDecision.tokens?.length
+          ? rqC.in("company_token", routeDecision.tokens)
+          : rqC.textSearch("title", ftsQuery(qText), { type: "websearch", config: "simple" });
+        const { data: rcRows, error: rcErr } = await withDeadline(
+          rqC.order("effective_posted", { ascending: false }).order("id", { ascending: true })
+            .range(0, ROUTE_WINDOW - 1),
+          7_000,
+        ) as { data: unknown[] | null; error?: unknown };
+        if (rcRows === null) console.warn(`[JOB-BOARD] routed count (${routeDecision.route}) hit its deadline for q=${JSON.stringify(qText)}`);
+        // Empty window falls through, because the LIST falls through on an empty
+        // window too — matching its behaviour is the whole point of this block.
+        if (!rcErr && Array.isArray(rcRows) && rcRows.length > 0) {
+          const rcCapped = rcRows.length >= ROUTE_WINDOW;
+          return json({ total: rcCapped ? null : rcRows.length, ...(rcCapped ? { countUnavailable: true } : {}), ...countHonesty });
+        }
+      } catch { /* fall through to the search_jobs count below — the same path the list falls through to */ }
+    }
     // With a query present, count what the LIST path would actually serve —
     // the FTS ranked tiers — not the ILIKE approximation. Measured
     // 2026-07-25: the two disagreed up to 4.3x on the same body, so
@@ -7550,7 +7642,20 @@ async function serveList(
           // Tier-aware ceiling, same contract as the list path: the description
           // tier caps at 3,000, so a bare "3000" here was presented as an exact
           // figure when the truth is higher (bug sweep 2026-07-26).
-          const tier2C = (rc as Array<{ snippet?: unknown }>).some((r) => typeof r.snippet === "string" && r.snippet.length > 0);
+          // THE TIER IS A TYPE, NOT A CONTENT LENGTH.
+          //
+          // search_jobs sets snippet to NULL::text on the title tier and to a
+          // ts_headline STRING on the description tier, so `typeof === "string"`
+          // separates them exactly. The `.length > 0` this used to carry turned
+          // the type test into a content test, and ts_headline over
+          // left(coalesce(description,''),4000) returns the EMPTY STRING for a
+          // posting with no description. This probe passes p_limit:1, so ONE
+          // row with an empty description sniffed a description-tier count as
+          // title tier, raised the ceiling from 3,000 to 10,000, and published
+          // the 3,000 cap as an exact figure. Proven at the RPC: loan officer,
+          // sql developer and php developer all return snippet as a
+          // zero-length string at p_limit 1.
+          const tier2C = (rc as Array<{ snippet?: unknown }>).some((r) => typeof r.snippet === "string");
           return json({ total: tC, ...(tC >= (tier2C ? 3_000 : 10_000) ? { countCapped: true } : {}), ...countHonesty });
         }
       } catch { /* migration lag or malformed query — the capped/ILIKE path below still answers */ }
@@ -7638,44 +7743,50 @@ async function serveList(
   // — the fix landed on one of the two sort values and the other was missed.
   // The remedy is the same one newest already uses: let the RPC pick the rows
   // by relevance, then order the page the reader is looking at.
-  // ── ROUTED RETRIEVAL ──────────────────────────────────────────────────────
+  // The routing gate, the chosen route and its retriever are decided ABOVE the
+  // countOnly exit now — see the note there. They used to be decided HERE,
+  // behind a `!countOnly` term, which is why a count and a list ran different
+  // retrievers for one body: {"q":"sql developer"} listed 31 rows through the
+  // routed window and counted 3,000 through search_jobs' description tier.
+  // PAST THE RE-RANKED WINDOW, PAGE IN SQL.
   //
-  // ONE retriever per search, decided before any SQL is issued, and ONE exit for
-  // all of them. This supersedes the tier shipped this morning, whose fatal
-  // design was running only when the primary path returned ZERO rows — so
-  // queries returning a full page of WRONG answers, the larger class, could
-  // never reach it.
+  // The scored path anchored search_jobs at p_offset 0 and applied the caller's
+  // offset in JS, so the reachable set ENDED at the in-memory pool. Measured
+  // live 2026-08-22: q="loan officer", limit 100, groupSimilar false — offset
+  // 100 returns 100 rows with hasMore:false, offset 200 returns 0, against a
+  // published total of 201. limit=60 with grouping walked 118 cards and stopped.
   //
-  // Every route binds through buildQuery with skipTerms, so freshness,
-  // missing_since, country, category, experience, salary and companies bind in
-  // the ONE place they are bound and only the matcher differs. A route with its
-  // own PostgREST chain is the mistake behind five defects in two days.
+  // TWO REGIMES, ONE SEAM AT RANKED_WINDOW. Below the seam the page is served
+  // exactly as before — window, head-term ring, scorer, slice — and is CLAMPED
+  // to end at the seam. At or above it, search_jobs pages itself with p_offset
+  // in ts_rank_cd order and nothing is re-ranked, so `offset` means SQL rank and
+  // the regimes meet at rank 200 with no overlap and no hole. The seam CANNOT be
+  // the pool length: the pool is 200 plus whatever novel rows the head-term ring
+  // found (measured 200 / 293 / 399 for different queries) and it moves with
+  // whether the ring made its 4s deadline. RANKED_WINDOW is a constant known
+  // before any SQL is issued, which is also what lets ONE query serve a deep page.
   //
-  // MEASURED UNDER CONCURRENCY 4, the only measurement that counts here —
-  // everything looks fine one request at a time, and that is exactly how a
-  // sequential scan reached production this morning:
-  //     company_token=in.(...)     0.67s x4, all 200
-  //     wfts(simple) on title      0.36-0.59s x4, all 200
-  // Rejected under the same conditions: ilike contains 1.9-2.7s, imatch regex
-  // 3.1-3.5s — and the regex is 0.35s SERIALLY, which is the whole trap.
-  //
-  // Standing down when a filter is active is deliberate: the routed window is
-  // capped, so a filter applied on top of a capped window would silently answer
-  // from a subset. The ranked path below binds filters in SQL and is correct.
-  // "No filters BESIDES the query." isUnfiltered() counts q itself as a filter —
-  // it is asking "is this the bare board?" — so gating on it meant the router
-  // stood down on EVERY search, which is every case it exists for. Verified
-  // live: AT&T and IT both came back with no searchRoute at all.
-  const onlyQuery = applied.country === null && applied.category === null
-    && applied.workMode === null && applied.salaryFloor === null
-    && applied.maxAgeDays === null && applied.postedAfter === null
-    && !applied.remote && !applied.sendableOnly
-    && applied.experience.length === 0 && applied.companies.length === 0
-    && applied.location === "";
-  const routeDecision = qText && !countOnly && onlyQuery
-    ? pickRoute(qText, EMPLOYER_ALIASES)
-    : { route: "BROWSE" as const, reason: "not routable", tokens: undefined as string[] | undefined, matchedName: undefined as string | undefined };
-  const routedRetriever = RETRIEVER_FOR[routeDecision.route];
+  // NOT FOR sort=newest — its rows are date-permuted, so a relevance-ordered
+  // continuation would not be "newer than page three".
+  // NOT FOR THE EMPLOYER/SIMPLE ROUTES — they retrieve a different set in a
+  // different order through their own 400-row window.
+  // NOT FOR SYMBOL. RETRIEVER_FOR.SYMBOL is "ranked" (search-routing.ts:78) and
+  // search-routing.ts:125-146 says outright that a symbol query has no retriever
+  // of its own — it is separated ONLY by the scorer's literal-substring rule,
+  // which is off past the seam. Measured: q="c++" and q="c#" produce the
+  // identical tsquery ('c') and the identical total (1682); at p_offset 200 the
+  // raw ts_rank_cd order returns "Analista de P&C Cluster", "Lead P&C
+  // Operations", "C&I Sales Executive II" — 2 of 10 rows contain the literal.
+  // The 200-row wall is currently the only thing hiding that; opening it without
+  // this exclusion reintroduces the defect the SYMBOL route exists to prevent.
+  const deepPageable = scoreRanked
+    && routedRetriever !== "company" && routedRetriever !== "simple"
+    && routeDecision.route !== "SYMBOL";
+  // The seam arithmetic lives in paging.ts so a test can walk every offset
+  // across it and prove no rank is served twice or skipped. It used to be
+  // inline, which is why the 200-row wall was never caught.
+  const pagePlan = planRankedPage({ offset, fetchLimit, scoreRanked, newestFirst, deepPageable });
+  const deepPage = pagePlan.deepPage;
   const metaV = (meta?.v ?? {}) as Record<string, unknown>;
 
   // A SALARY-SORTED SEARCH CAN HAVE BOTH CORRECT MATCHING AND A GLOBAL ORDER.
@@ -7738,7 +7849,12 @@ async function serveList(
         // Said out loud: this page deliberately shows only postings that state
         // pay, which is about an eighth of the board.
         salaryStatedOnly: true,
-        totalAllCompanies: (metaV.total as number) ?? 0,
+        // The SERVABLE board-wide count — the same figure `total` publishes.
+        // meta.v.total is the pre-sweep refresh counter: it still holds
+        // missing_since-stamped and aged-out rows, and measured 615,366 against
+        // a table of 606,295 and a servable set of 601,760. A board-wide number
+        // larger than the table it describes cannot be true.
+        totalAllCompanies: safeMetaTotal ?? 0,
         companies: [],
         companiesCount: ((metaV.companiesFacet as unknown[]) ?? []).length,
         refreshedAt: (metaV.refreshedAt as string) ?? null,
@@ -7750,7 +7866,6 @@ async function serveList(
     // Window anchored at rank 0 and sliced AFTER scoring, so `offset` is a
     // position inside ONE stable ordering. Paging a re-ranked list by a
     // retriever-ordered offset is what made sorted page two repeat page one.
-    const ROUTE_WINDOW = 400;
     let rq = buildQuery("effective_posted", false, undefined, { skipTerms: true });
     rq = routedRetriever === "company" && routeDecision.tokens?.length
       ? rq.in("company_token", routeDecision.tokens)
@@ -7793,7 +7908,7 @@ async function serveList(
           searchRoute: routeDecision.route,
           searchRouteReason: routeDecision.reason,
           ...(routeDecision.matchedName ? { companyMatched: routeDecision.matchedName } : {}),
-          totalAllCompanies: (metaV.total as number) ?? 0,
+          totalAllCompanies: safeMetaTotal ?? 0,
           companies: [],
           companiesCount: ((metaV.companiesFacet as unknown[]) ?? []).length,
           refreshedAt: (metaV.refreshedAt as string) ?? null,
@@ -7853,8 +7968,13 @@ async function serveList(
         // scorer permutes the rows, so an offset that advances in relevance
         // order stops describing where the reader is. Anchoring at rank 0 makes
         // `offset` a position inside one stable ordering.
-        p_limit: (newestFirst || scoreRanked) ? RANKED_WINDOW : fetchLimit,
-        p_offset: (newestFirst || scoreRanked) ? 0 : offset,
+        // A deep page is an ordinary offset page: search_jobs already orders by
+        // ts_rank_cd with a total tiebreak (effective_posted DESC, id ASC), so
+        // p_offset walks one stable sequence. Verified live: p_offset=200 twice
+        // returned an identical id list in an identical order for all four
+        // probe queries.
+        p_limit: pagePlan.pLimit,
+        p_offset: pagePlan.pOffset,
       });
       if (!rankErr && Array.isArray(ranked)) {
         // A load-more just past an exactly-full final page must not overwrite
@@ -7869,7 +7989,14 @@ async function serveList(
         // Flag it so the client renders "10,000+", same contract the recency
         // path already uses. Tier is inferred from the snippet column, which
         // only the description tier populates.
-        const rankedTier2 = (ranked as Array<{ snippet?: unknown }>).some((r) => typeof r.snippet === "string" && r.snippet.length > 0);
+        // Same correction as the countOnly probe above: the tier is the snippet
+        // column's TYPE (NULL on the title tier, a ts_headline string on the
+        // description tier), not its length. This site only appeared healthy
+        // because it samples 200 rows instead of 1 — a description-tier query
+        // whose whole window has empty descriptions would under-report here too.
+        // Leaving one of the two sniffs wrong is how the count and the list
+        // start disagreeing again.
+        const rankedTier2 = (ranked as Array<{ snippet?: unknown }>).some((r) => typeof r.snippet === "string");
         const rankedCap = rankedTier2 ? 3_000 : 10_000;
         const rankedCapped = (total ?? 0) >= rankedCap;
         const v0 = (meta?.v ?? {}) as Record<string, unknown>;
@@ -8100,7 +8227,7 @@ async function serveList(
                 // tier is visible in telemetry rather than being mistaken for
                 // the ranked path.
                 exactWordMatch: qText,
-                totalAllCompanies: (v0.total as number) ?? 0,
+                totalAllCompanies: safeMetaTotal ?? 0,
                 companies: [],
                 companiesCount: ((v0.companiesFacet as unknown[]) ?? []).length,
                 refreshedAt: (v0.refreshedAt as string) ?? null,
@@ -8161,7 +8288,7 @@ async function serveList(
                 nextOffset: 0,
                 total: fzKnown ? fzTotal : null,
                 ...(fzKnown ? {} : { countUnavailable: true }),
-                totalAllCompanies: (v0.total as number) ?? 0,
+                totalAllCompanies: safeMetaTotal ?? 0,
                 companies: [],
                 companiesCount: ((v0.companiesFacet as unknown[]) ?? []).length,
                 // Board-wide, from the cached facet row — CORRECT only on the unfiltered
@@ -8231,7 +8358,7 @@ async function serveList(
                     ...honesty(semGrouped.jobs),
                     total: semGrouped.jobs.length,
                     hasMore: false,
-                    totalAllCompanies: (v0.total as number) ?? 0,
+                    totalAllCompanies: safeMetaTotal ?? 0,
                     companies: [],
                     companiesCount: ((v0.companiesFacet as unknown[]) ?? []).length,
                     // Board-wide, from the cached facet row — CORRECT only on the unfiltered
@@ -8318,7 +8445,7 @@ async function serveList(
         // path in the function — it is not free and should not fire when it
         // cannot help.
         let headRows: Array<Record<string, unknown>> = [];
-        if (scoreRanked && headTermRing) {
+        if (scoreRanked && headTermRing && !deepPage) {
           try {
             const { data: hr } = await withDeadline(
               buildQuery("effective_posted", false, undefined, { skipTerms: true })
@@ -8343,8 +8470,30 @@ async function serveList(
           mergedSeen.add(id);
           return true;
         });
-        const rankedScored = scoreRanked ? rerankWindow(mergedRows, qText) : rankedRows;
-        const rankedWindow = (newestFirst || scoreRanked) ? rankedScored.slice(offset) : rankedScored;
+        // A deep page is served in the RPC's own ts_rank_cd order. This is a
+        // REAL quality drop and it should be said plainly rather than called
+        // noise: index.ts:8290-8320 documents that without rerankWindow all 959
+        // postings titled exactly "Sales Associate" sit inside the window and ts_rank
+        // rewards repetition. Past the seam the tail is served PRE-SCORER. It is
+        // not re-enabled here because rerankWindow permutes the fetched window
+        // while nextOffset advances by rankedGrouped.rawConsumed, which is the
+        // "sorted page two repeated 17 of 20 rows" incident at index.ts:7845-7855.
+        // The pagination-safe form is to reorder rankedGrouped.jobs AFTER
+        // collapseClusters (the shape the fuzzy augment at :8480-8488 already
+        // uses); that is a follow-up, deliberately not in this patch.
+        // mergedRows is the SQL page here, the ring having stood down above.
+        const rankedScored = pagePlan.rerank ? rerankWindow(mergedRows, qText) : mergedRows;
+        // CLAMPED TO THE SEAM before the offset is applied, but ONLY for queries
+        // that have a seam. Without the clamp a page STARTING below the seam runs
+        // past it — offset 150 + limit 100 served pool positions 150-249 — and the
+        // next request, now in the SQL regime, begins at rank 250 and silently
+        // skips 200-249. COST, said out loud: for a deep-pageable query at
+        // limit >= 67 the clamp caps page one's raw intake at 200 where it could
+        // previously consume the whole ~400-row merged pool, so page one returns
+        // fewer CARDS than today (measured pre-patch: 189 cards at limit 200 from
+        // a 293-row pool). Non-deep-pageable queries — sort=newest, EMPLOYER,
+        // SIMPLE, SYMBOL — are not clamped and behave exactly as today.
+        const rankedWindow = rankedScored.slice(pagePlan.sliceStart, pagePlan.sliceEnd);
         let rankedSequence = rankedWindow;
         let rankedGrouped = groupSimilar
           ? collapseClusters(rankedWindow, limit)
@@ -8526,8 +8675,25 @@ async function serveList(
           // On a sorted search the window is finite and known, so "more" means
           // more rows LEFT IN IT — never the fetch-size heuristic, which would
           // promise a page four that cannot exist.
-          hasMore: (newestFirst || scoreRanked)
-            ? rankedSequence.length > rankedGrouped.rawConsumed
+          // In the SQL regime "more" is the ordinary fetch-size heuristic: a
+          // full page back from the RPC means there is another behind it, and a
+          // short one is the true end of the match set (verified: "warehouse
+          // associate" p_offset 3000 returns 0 rows, "loan officer" p_offset
+          // 3000 returns 32 and then nothing).
+          //
+          // Below the seam it is "more rows left in the clamped window, OR the
+          // match count says there is more behind the window". That second
+          // clause is the other half of the defect: rankedSequence goes to zero
+          // at the window edge while `total` is still advertising 1,417, and
+          // reporting hasMore:false there is what ended the walk. It is gated on
+          // deepPageable so sort=newest and the EMPLOYER/SIMPLE routes — whose
+          // windows genuinely end at their edge — never promise a page that
+          // would come back empty.
+          hasMore: deepPage
+            ? (rankedSequence.length > rankedGrouped.rawConsumed || rankedRows.length >= fetchLimit)
+            : (newestFirst || scoreRanked)
+            ? (rankedSequence.length > rankedGrouped.rawConsumed
+              || (deepPageable && total !== null && offset + rankedGrouped.rawConsumed < total))
             : (rankedSequence.length > rankedGrouped.rawConsumed || rankedSequence.length >= fetchLimit),
           // null once close matches are appended: `total` counts EXACT matches,
           // and the page now holds exact + close, so it no longer describes what
@@ -8535,7 +8701,7 @@ async function serveList(
           // payload that contradicted itself (rows=60, total=18).
           total: augmented ? null : total,
           ...(rankedCapped ? { countCapped: true } : {}),
-          totalAllCompanies: (v0.total as number) ?? total,
+          totalAllCompanies: safeMetaTotal ?? total,
           companies: includeFacets0
             ? mergeCompanyFacet([...fullCompanies0].sort((a, b) => (b.count ?? 0) - (a.count ?? 0)).slice(0, 1_500) as Array<{ token?: string; name?: string; count?: number }>)
                 .sort((a, b) => (b.count ?? 0) - (a.count ?? 0))
@@ -8804,6 +8970,23 @@ async function serveList(
   // reading them off the first fetch alone would send the next page back over
   // rows this one already served.
   let rawSequence = mappedRows;
+  // THE KEYSET LIVES ON THE RAW ROW, AND rowToJob DOES NOT CARRY IT.
+  //
+  // Both keyset readers below took (effective_posted, id) off `mappedRows`,
+  // which is `data.map(rowToJob)` — a mapper that emits 21 camelCase fields and
+  // no `effective_posted` at all. So both read `undefined`, every single time:
+  //   * nextCursor was null on EVERY response since the keyset shipped
+  //     (2026-08-17, "Load more showed the same job twice"). Every client fell
+  //     back to offset paging and the duplicates the commit was written to kill
+  //     came straight back — measured 2026-08-22, 6 pages of 20 on the default
+  //     feed: 0%, 0%, 5.0% repeats across three trials.
+  //   * the grouping top-up below is gated on `lastRaw?.effective_posted`, so
+  //     it has NEVER ONCE RUN. Pages starved by clustering were served short.
+  // A fix that reads a field the row does not have is not a fix; it is the same
+  // outage with a passing build. These keys are kept out of the response on
+  // purpose — effective_posted coalesces first_seen, which is our DISCOVERY
+  // time and must never reach a client that could read it as a posting date.
+  let rawKeys = (data ?? []) as Array<{ effective_posted?: string; id?: string }>;
   let grouped = groupSimilar
     ? collapseClusters(mappedRows, limit)
     : { jobs: mappedRows.slice(0, limit), rawConsumed: Math.min(mappedRows.length, limit) };
@@ -8835,7 +9018,7 @@ async function serveList(
     grouped.jobs.length < limit &&
     mappedRows.length >= fetchLimit          // the buffer was exhausted, not just short
   ) {
-    const lastRaw = mappedRows[mappedRows.length - 1] as { effective_posted?: string; id?: string };
+    const lastRaw = rawKeys[rawKeys.length - 1];
     if (lastRaw?.effective_posted && lastRaw?.id) {
       try {
         // Keyset-anchored, exactly like page 2: start strictly after the last
@@ -8850,6 +9033,9 @@ async function serveList(
         const extra = (topUp.data ?? []).map(rowToJob) as Array<Record<string, unknown>>;
         if (extra.length) {
           rawSequence = [...mappedRows, ...extra];
+          // Kept index-aligned with rawSequence, or the cursor would name a row
+          // from the first fetch while the page ended inside the second.
+          rawKeys = [...rawKeys, ...((topUp.data ?? []) as typeof rawKeys)];
           const merged = collapseClusters(rawSequence, limit);
           // rawConsumed must stay in the ORIGINAL row space for nextOffset to
           // mean anything, so it is capped at what the first fetch held plus
@@ -8922,8 +9108,7 @@ async function serveList(
     // Null on the paths that still page by offset.
     nextCursor: (() => {
       if (twoSubset || sortSalary) return null;
-      const r = rawSequence[Math.max(0, grouped.rawConsumed - 1)] as
-        { effective_posted?: string; id?: string } | undefined;
+      const r = rawKeys[Math.max(0, grouped.rawConsumed - 1)];
       return r?.effective_posted && r?.id ? { ep: r.effective_posted, id: r.id } : null;
     })(),
     // null (not 0) when the count timed out — 0 would read as "no matches" and
@@ -8939,7 +9124,7 @@ async function serveList(
     // fewer rows by design, and measuring "was the page full?" against a size
     // it never requests answers no every time.
     hasMore: (data ?? []).length > grouped.rawConsumed || (data ?? []).length === fetchUsed,
-    totalAllCompanies: (v.total as number) ?? count ?? 0,
+    totalAllCompanies: safeMetaTotal ?? count ?? 0,
     companies: servedCompanies,
     companiesCount: fullCompanies.length,
     // Gated like the other three. A board-wide facet printed beside a FILTERED

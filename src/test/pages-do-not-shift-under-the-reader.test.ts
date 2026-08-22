@@ -43,12 +43,30 @@ describe("board pages are anchored to rows, not row counts", () => {
   it("emits the successor from the RAW stream, never from the grouped cards", () => {
     const emit = FN.slice(FN.indexOf("nextCursor: (() => {"), FN.indexOf("})(),", FN.indexOf("nextCursor: (() => {")));
     expect(emit, "nextCursor emission not found").not.toBe("");
-    // rawSequence, not `data`: after a clustering top-up the consumed rows
-    // span TWO fetches, and reading the cursor off the first alone would send
-    // page 2 back over rows page 1 already served. Still the raw stream —
-    // more of it than before.
-    expect(emit).toMatch(/rawSequence\[Math\.max\(0, grouped\.rawConsumed - 1\)\]/);
+    // A RAW DB ROW, NOT A MAPPED JOB — and this assertion is the one that was
+    // missing. The cursor used to read `rawSequence`, which is
+    // `data.map(rowToJob)`; rowToJob emits 21 camelCase fields and no
+    // `effective_posted`, so the ternary below returned null on EVERY response
+    // from the day the keyset shipped (2026-08-17) until 2026-08-22. The old
+    // assertion here pinned the identifier `rawSequence` and passed throughout,
+    // because the identifier was never the bug — the SHAPE of what it held was.
+    // So: pin that the cursor reads an array fed from `data`, and pin that
+    // rowToJob genuinely lacks the field, which is what makes a mapped array
+    // the wrong source.
+    expect(emit).toMatch(/rawKeys\[Math\.max\(0, grouped\.rawConsumed - 1\)\]/);
+    expect(FN).toMatch(/let rawKeys = \(data \?\? \[\]\) as Array<\{ effective_posted\?: string; id\?: string \}>;/);
+    // Index-aligned with rawSequence across a clustering top-up: the consumed
+    // rows span TWO fetches, and reading the cursor off the first alone would
+    // send page 2 back over rows page 1 already served.
+    expect(FN).toMatch(/rawKeys = \[\.\.\.rawKeys, \.\.\.\(\(topUp\.data \?\? \[\]\) as typeof rawKeys\)\];/);
+    // The mapper must NOT carry the keyset. If someone adds effective_posted to
+    // rowToJob, our discovery time (first_seen, via coalesce) starts shipping to
+    // clients that can read it as a posting date — and this guard goes quiet.
+    const mapper = FN.slice(FN.indexOf("const rowToJob = (r: any) => ({"), FN.indexOf("});", FN.indexOf("const rowToJob = (r: any) => ({")));
+    expect(mapper, "rowToJob not found").not.toBe("");
+    expect(mapper).not.toMatch(/effective_posted/);
     expect(emit).not.toMatch(/grouped\.jobs\[/);
+    expect(emit).not.toMatch(/rawSequence/);
     // Paths that still page by offset must say so with null, not a wrong cursor.
     expect(emit).toMatch(/if \(twoSubset \|\| sortSalary\) return null;/);
   });

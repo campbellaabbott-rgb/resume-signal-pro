@@ -233,6 +233,38 @@ export function normalizeFilters(
   if (body.remote !== undefined && body.remote !== null && typeof body.remote !== "boolean") {
     ignored.push("remote");
   }
+  // AND THE SECOND WAY A `remote` REQUEST DIES: an explicit workMode wins the
+  // precedence in `applied` below, so remote:true alongside one binds nothing.
+  // The precedence is RIGHT and stays — {country:IE, workMode:onsite,
+  // remote:true} returned 261 onsite rows, the same as workMode alone, not the
+  // 137 remote ones — but it was the only drop path in this file with no name
+  // attached to it, because it lives in the return literal instead of up here
+  // with the others (166, 175, 193, 215, 233, 253, 256, 262 all have one).
+  //
+  // The intent lift makes it worse than an omission. liftIntentFilters injects
+  // {remote:true} for "work from home"/"wfh" and STRIPS the words from the
+  // query, checking only body.remote and never body.workMode: q="work from home
+  // nurse" + workMode=onsite returned 2,205 rows, byte for byte the same as
+  // q="nurse" + workMode=onsite, while the payload claimed intentFilters
+  // ["work from home"]. The phrase was deleted from the search AND its filter
+  // discarded, and the response asserted the opposite.
+  //
+  // EXEMPT workMode:"remote", and this is measured, not assumed. The boolean is
+  // a strict subset of the mode: IE remote=true is 137 rows, of which
+  // work_mode='remote' is 137 and work_mode<>'remote' is ZERO; GB is 1454 and
+  // 1447. Under {workMode:"remote", remote:true} the dropped predicate would
+  // only have removed rows that are remote by work_mode, so every row returned
+  // IS remote — and the only string the UI has says "those results are
+  // unfiltered by it", which would be false. That shape is exactly what
+  // nl-search/index.ts:52 tells the model to emit and what
+  // send-search-digest/index.ts:126 forwards. Trading a silence for a falsehood
+  // is the error this push exists to correct, not to commit.
+  //
+  // `=== true`, not sent(): remote:false is not a request for remote work, and
+  // naming it would hang a warning on every page where the box is off. Disjoint
+  // from the shape guard above (that one requires a NON-boolean), so
+  // {remote:"true", workMode:"onsite"} still names "remote" exactly once.
+  if (body.remote === true && workMode && workMode !== "remote") ignored.push("remote");
   if (body.companies !== undefined && body.companies !== null && !Array.isArray(body.companies)) {
     ignored.push("companies");
   }
