@@ -4001,7 +4001,9 @@
     "loadMoreRetry": "Réessayer",
     "moreLocations_one": "Même poste dans {{count}} autre lieu",
     "moreLocations_other": "Même poste dans {{count}} autres lieux",
-    "savedWithoutActivelyHiring": "Le filtre « Recrute activement » s'applique dans votre navigateur, pas sur le tableau : cette recherche enregistrée ne l'inclut donc pas."
+    "savedWithoutActivelyHiring": "Le filtre « Recrute activement » s'applique dans votre navigateur, pas sur le tableau : cette recherche enregistrée ne l'inclut donc pas.",
+    "resultsSummarySegmented": "{{shown}} affichées — {{exact}} exactes et {{related}} où le terme apparaît dans la description",
+    "descriptionMatchChip": "dans la description"
   },
   "accountPage": {
     "statusSaveFailed": "Impossible d'enregistrer ce statut — réessayez.",

@@ -385,13 +385,32 @@ describe("typo tolerance fires below a useful threshold", () => {
     // genuinely useful result set would dilute it.
     expect(n).toBeGreaterThan(5);
     expect(n).toBeLessThanOrEqual(30);
-    expect(index).toContain("total < FUZZY_AUGMENT_BELOW");
+    // The WHOLE page, not the exact segment. Under two segments a query with 2
+    // exact and 300 related matches already has a full page, and padding it
+    // would dilute a result set that needs no rescuing.
+    expect(index).toContain("pageTotal < FUZZY_AUGMENT_BELOW");
   });
 
-  it("still stands down when filters are active", () => {
-    // A typo'd query on a company lander must not surface other companies'
-    // jobs — the fence that broke once already.
-    expect(index).toMatch(/total < FUZZY_AUGMENT_BELOW[\s\S]{0,120}!filtersActive/);
+  it("cannot surface another company's jobs under a filter — now by binding, not by refusing", () => {
+    // The original rule was "stand down whenever a filter is active", and the
+    // reason was real: a typo'd query on a company lander must not pad the page
+    // with other companies' jobs. But the reason was a LIMITATION, not a
+    // principle — the rescue RPC took no filter arguments, so refusing to run
+    // was the only honest option available.
+    //
+    // It takes them now. The augmentation binds the caller's filters into the
+    // call, so a company lander asks for close matches AT THAT COMPANY and gets
+    // them. Refusing outright was costing every filtered typo search a page it
+    // could have had: measured live, one mistyped letter plus any filter
+    // returned zero rows and no disclosure.
+    const gate = /pageTotal < FUZZY_AUGMENT_BELOW[\s\S]{0,1400}?rescueFilterParams\(\)/;
+    expect(gate.test(index),
+      "the augmentation must bind the caller's filters into the rescue call").toBe(true);
+    // And the fence must not creep back in front of it.
+    const blk = /const FUZZY_AUGMENT_BELOW = 20;[\s\S]{0,700}/.exec(index)?.[0] ?? "";
+    expect(blk, "the augmentation block is missing").not.toBe("");
+    expect(/!filtersActive/.test(blk),
+      "it binds the filters now; refusing to run as well would just be the old bug").toBe(false);
   });
 });
 
@@ -476,7 +495,11 @@ describe("the countOnly exit is not exempt from the honesty contract", () => {
     }
     expect(end, "should have found the closing brace").toBeGreaterThan(start);
     const seg = code.slice(start, end);
-    const returns = seg.match(/return json\(\{ total:/g) ?? [];
+    // COUNT EVERY RETURN, not the ones that happen to fit on one line. The
+    // two-segment count exit is a multi-line literal, and the old pattern could
+    // not see it — so the file could grow a countOnly return that names no
+    // dropped filter while this guard reported a tidy balance.
+    const returns = seg.match(/return json\(\{/g) ?? [];
     expect(returns.length, "countOnly should have several return sites").toBeGreaterThan(1);
     const carried = seg.match(/\.\.\.countHonesty/g) ?? [];
     expect(carried.length, `${returns.length} countOnly returns, ${carried.length} carry ignoredFilters`)

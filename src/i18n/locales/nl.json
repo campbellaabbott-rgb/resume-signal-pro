@@ -4001,7 +4001,9 @@
     "loadMoreRetry": "Opnieuw proberen",
     "moreLocations_one": "Dezelfde functie op nog {{count}} locatie",
     "moreLocations_other": "Dezelfde functie op {{count}} andere locaties",
-    "savedWithoutActivelyHiring": "Het filter 'Actief aan het werven' werkt in je browser, niet op het bord, dus deze opgeslagen zoekopdracht bevat het niet."
+    "savedWithoutActivelyHiring": "Het filter 'Actief aan het werven' werkt in je browser, niet op het bord, dus deze opgeslagen zoekopdracht bevat het niet.",
+    "resultsSummarySegmented": "{{shown}} getoond — {{exact}} exact en {{related}} waar de term in de beschrijving voorkomt",
+    "descriptionMatchChip": "in de beschrijving"
   },
   "accountPage": {
     "statusSaveFailed": "Kon die status niet opslaan — probeer het opnieuw.",

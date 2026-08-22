@@ -4001,7 +4001,9 @@
     "loadMoreRetry": "फिर कोशिश करें",
     "moreLocations_one": "वही भूमिका {{count}} और स्थान पर",
     "moreLocations_other": "यही रोल {{count}} और लोकेशन में",
-    "savedWithoutActivelyHiring": "“अभी भर्ती कर रहे” फ़िल्टर आपके ब्राउज़र में लगता है, बोर्ड पर नहीं — इसलिए यह सहेजी गई खोज उसे शामिल नहीं करती।"
+    "savedWithoutActivelyHiring": "“अभी भर्ती कर रहे” फ़िल्टर आपके ब्राउज़र में लगता है, बोर्ड पर नहीं — इसलिए यह सहेजी गई खोज उसे शामिल नहीं करती।",
+    "resultsSummarySegmented": "{{shown}} दिखा रहे हैं — {{exact}} सटीक और {{related}} जिनमें यह शब्द विवरण में आता है",
+    "descriptionMatchChip": "विवरण में"
   },
   "accountPage": {
     "statusSaveFailed": "यह स्थिति सहेजी नहीं जा सकी — कृपया फिर से प्रयास करें।",

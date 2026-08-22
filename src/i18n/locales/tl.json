@@ -4001,7 +4001,9 @@
     "loadMoreRetry": "Subukan ulit",
     "moreLocations_one": "Parehong tungkulin sa {{count}} pang lokasyon",
     "moreLocations_other": "Parehong role sa {{count}} pang lokasyon",
-    "savedWithoutActivelyHiring": "Ang filter na “Aktibong kumukuha” ay inilalapat sa iyong browser, hindi sa board, kaya hindi ito kasama sa naka-save na paghahanap na ito."
+    "savedWithoutActivelyHiring": "Ang filter na “Aktibong kumukuha” ay inilalapat sa iyong browser, hindi sa board, kaya hindi ito kasama sa naka-save na paghahanap na ito.",
+    "resultsSummarySegmented": "Ipinapakita ang {{shown}} — {{exact}} eksakto at {{related}} kung saan lumalabas ang termino sa paglalarawan",
+    "descriptionMatchChip": "sa paglalarawan"
   },
   "accountPage": {
     "statusSaveFailed": "Hindi na-save ang status na iyon — pakisubukan muli.",

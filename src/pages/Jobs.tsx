@@ -104,6 +104,8 @@ interface BoardJob {
   /** True on rows the trigram tier APPENDED to a thin exact-match page — the
    *  card labels these "close match"; they are never passed off as exact. */
   closeMatch?: boolean;
+  /** Which segment this row came from — a title hit, or description-only. */
+  matchScope?: "title" | "description";
 }
 
 // A company with several fresh, still-open roles is demonstrably hiring — the
@@ -152,7 +154,22 @@ interface BoardResponse {
   // null when the exact count timed out server-side (broad freshness windows on
   // the 570k table trip the statement limit). Never render a number from this
   // without a typeof check — the server sends null rather than a wrong 0.
+  /**
+   * The EXACT segment: postings whose TITLE matches. Always the published
+   * figure, and monotone — filters are conjuncts, so it can only shrink.
+   */
   total: number | null;
+  /**
+   * The RELATED segment: postings that match only in the description.
+   *
+   * Optional-ABSENT on purpose. `undefined` means the server did not compute a
+   * second segment for this request; `0` means it did and found none. Collapsing
+   * those two into one number is how "no related matches" becomes
+   * indistinguishable from "this build does not have segments", which is the
+   * emitter-with-no-reader shape all over again.
+   */
+  relatedTotal?: number;
+  relatedCapped?: boolean;
   countUnavailable?: boolean;
   // The count stopped at the server's cap: the true figure is higher, so render
   // it as "10,000+" rather than as an exact total.
@@ -2359,6 +2376,16 @@ export default function Jobs() {
   // under a line reading "Showing 60". Counting grouped rows also matches what
   // a user can actually point at, since collapsed duplicates render as one card.
   const shownCount = groupedJobs.length;
+  /**
+   * How many postings this search reaches, across BOTH segments.
+   *
+   * `data.total` is the exact segment — titles that match — and a page can hold
+   * rows from the related segment too, so anything reading `total` alone as
+   * "how many results" prints 0 over a full page. Falls back to the rows on
+   * screen when the server sent no total at all, which is what the branches
+   * below did individually before they shared one definition.
+   */
+  const pageTotalCount = (data?.total ?? 0) + (data?.relatedTotal ?? 0) || (data?.total ?? jobs.length);
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
   // New-since-last-visit: where the divider goes in the (recency-sorted) list —
@@ -2707,8 +2734,13 @@ export default function Jobs() {
   const [zeroHelp, setZeroHelp] = useState<Array<{ key: string; label: string; count: number; capped: boolean; clear: () => void }> | null>(null);
   const zeroSigRef = useRef("");
   useEffect(() => {
-    if (loading || refreshing || error || !data || data.total !== 0) { setZeroHelp(null); return; }
-    const sig = JSON.stringify([q, location, category, experience, company, salaryFloor, remoteOnly, workMode, country, freshness]);
+    // ROWS ON SCREEN MEAN THIS IS NOT A ZERO RESULT. `data.total` is the EXACT
+    // segment, so a query matching only in descriptions has total 0 and a full
+    // page — and without the second term every such search burned a four-probe
+    // countOnly burst to offer "remove a filter" help underneath results the
+    // visitor is already reading.
+    if (loading || refreshing || error || !data || data.total !== 0 || jobs.length > 0) { setZeroHelp(null); return; }
+    const sig = JSON.stringify([q, location, category, experience, company, salaryFloor, remoteOnly, workMode, country, freshness, jobs.length > 0]);
     if (zeroSigRef.current === sig) return;
     zeroSigRef.current = sig;
     // The probe must carry EVERY active filter. It used to omit workMode and
@@ -2740,8 +2772,13 @@ export default function Jobs() {
           // figure: "Remove country — 10,000 openings" when the truth is more.
           // This is the same defect just fixed server-side, surviving on the
           // client because the flag was never asked for.
-          const { data: r } = await invokeBoard<{ total?: number; countCapped?: boolean }>({ ...base, ...OVERRIDES[c.key] });
-          return { ...c, count: r?.total ?? 0, capped: r?.countCapped === true };
+          const { data: r } = await invokeBoard<{ total?: number; relatedTotal?: number; countCapped?: boolean; relatedCapped?: boolean }>({ ...base, ...OVERRIDES[c.key] });
+          // BOTH SEGMENTS, and before the `> 0` filter below. Counting only the
+          // exact segment would advertise "1 opening" for a relaxation that
+          // surfaces 94 rows, or drop the button entirely when the relaxation
+          // surfaces nothing but description matches — which is the case a
+          // stuck visitor most needs offered.
+          return { ...c, count: (r?.total ?? 0) + (r?.relatedTotal ?? 0), capped: r?.countCapped === true || r?.relatedCapped === true };
         } catch { return { ...c, count: 0, capped: false }; }
       }));
       if (!cancelled) setZeroHelp(results.filter((r) => r.count > 0).sort((a, b) => b.count - a.count));
@@ -3329,7 +3366,7 @@ export default function Jobs() {
               a capped count renders "10,000+", never as an exact figure; zero
               open roles gets a plain honest "No … right now" instead of the
               question hanging unanswered; and counts are locale-formatted. */}
-          {landerCompany && typeof data?.total === "number" && data.total > 0 && (
+          {landerCompany && ((data?.total ?? 0) + (data?.relatedTotal ?? 0)) > 0 && (
             <p className="text-sm font-semibold text-success mb-1">
               {data.countCapped
                 // Past the count cap the true figure is HIGHER — "10,000+" is
@@ -3345,7 +3382,14 @@ export default function Jobs() {
                   })}
             </p>
           )}
-          {landerCompany && data?.total === 0 && !loading && !refreshing && (
+          {/* THE SHIP-BLOCKER. `total` is the EXACT segment now, so a company page
+                whose query matches only in descriptions has total 0 and a full
+                page of that company's roles. Measured: /jobs/company/bayada with
+                q="benefits" is 0 title matches and 1,314 description matches —
+                this branch would have printed "BAYADA has no open roles on their
+                job board at the moment" directly above 1,314 BAYADA roles, on an
+                indexed page. Both segments decide whether the board is empty. */}
+            {landerCompany && ((data?.total ?? 0) + (data?.relatedTotal ?? 0)) === 0 && !loading && !refreshing && (
             <p className="text-sm font-semibold text-muted-foreground mb-1">
               {t("jobsPage.companyNotHiring", "Not right now — {{company}} has no open roles on their job board at the moment. Watch the company below and we'll email you when new roles appear.", { company: landerCompanyName })}
             </p>
@@ -4575,6 +4619,13 @@ export default function Jobs() {
                   </div>
                 </div>
               )}
+              {/* ONE DEFINITION OF "HOW MANY", SHARED BY EVERY BRANCH.
+                  `total` is the EXACT segment now — titles that match. A page
+                  can hold rows from both segments, so a headline built from
+                  `total` alone reads "Showing 60 of 0" on any query that matches
+                  only in descriptions. Every branch of the summary below sums
+                  them; the split is disclosed on its own line rather than
+                  crammed into four separate strings. */}
               <p className="text-xs text-muted-foreground mb-3" aria-live="polite">
                 {data?.countUnavailable
                   // The server couldn't compute an exact total for this filter.
@@ -4588,9 +4639,9 @@ export default function Jobs() {
                       // The two branches below already do both of these; this one
                       // did neither, so a company lander printed a bare capped
                       // count and an unseparated five-digit number.
-                      total: data?.countCapped
-                        ? `${(data?.total ?? 0).toLocaleString()}+`
-                        : (data?.total ?? jobs.length).toLocaleString(),
+                      total: data?.countCapped || data?.relatedCapped
+                        ? `${pageTotalCount.toLocaleString()}+`
+                        : pageTotalCount.toLocaleString(),
                       company: landerCompanyName,
                     })
                   // "across N companies" only when nothing narrows the list:
@@ -4602,19 +4653,34 @@ export default function Jobs() {
                   : (q.trim() || country || activeFilterCount > 0)
                   ? t("jobsPage.resultsSummaryFiltered", "Showing {{shown}} of {{total}} matching openings", {
                   shown: shownCount,
-                  total: data?.countCapped
-                    ? `${(data?.total ?? 0).toLocaleString()}+`
-                    : (data?.total ?? jobs.length).toLocaleString(),
+                  total: data?.countCapped || data?.relatedCapped
+                    ? `${pageTotalCount.toLocaleString()}+`
+                    : pageTotalCount.toLocaleString(),
                 })
                   : t("jobsPage.resultsSummary", "Showing {{shown}} of {{total}} matching openings across {{companyFeeds}} company feeds", {
                   shown: shownCount,
                   // The server caps counting for speed; above the cap it says so,
                   // and we render "10,000+" rather than passing the cap off as exact.
-                  total: data?.countCapped
-                    ? `${(data?.total ?? 0).toLocaleString()}+`
-                    : (data?.total ?? jobs.length).toLocaleString(),
+                  total: data?.countCapped || data?.relatedCapped
+                    ? `${pageTotalCount.toLocaleString()}+`
+                    : pageTotalCount.toLocaleString(),
                   companyFeeds: (data?.companiesCount ?? companies.length).toLocaleString(),
                 })}
+                {/* THE SPLIT, SAID ONCE. Rendered only when the server actually
+                    computed a second segment AND found something in it —
+                    `relatedTotal` is optional-absent, so "this build has no
+                    segments" and "no related matches" stay distinguishable, and
+                    a zero would otherwise read as "37 exact and 0 in the
+                    description", which is noise. */}
+                {typeof data?.relatedTotal === "number" && data.relatedTotal > 0 && (
+                  <span className="block text-[12px] text-muted-foreground mt-1">
+                    {t("jobsPage.resultsSummarySegmented", "Showing {{shown}} — {{exact}} exact and {{related}} where the term appears in the description", {
+                      shown: shownCount,
+                      exact: (data?.total ?? 0).toLocaleString(),
+                      related: `${data.relatedTotal.toLocaleString()}${data.relatedCapped ? "+" : ""}`,
+                    })}
+                  </span>
+                )}
                 {/* THE REVENUE PRODUCT, ON THE SURFACE THAT CARRIES THE TRAFFIC.
                     Placed here rather than in the hero deliberately: a visitor
                     reading the results line is looking at real roles, which is
@@ -4928,6 +4994,18 @@ export default function Jobs() {
                           {job.closeMatch && (
                             <span className="inline-flex items-center text-[11px] text-warning mt-1 mr-1.5 border border-warning/40 rounded-full px-2 py-0.5">
                               {t("jobsPage.closeMatchChip", "close match")}
+                            </span>
+                          )}
+                          {/* WHY THIS ROW IS HERE. A description-only match is a
+                              real answer — a skill lives in the description by
+                              definition — but it is not the same claim as a title
+                              match, and an unlabelled mix is how "manager" ended
+                              up returning Data Steward. Suppressed when the row
+                              already carries the close-match chip: two hedges on
+                              one card say less than one. */}
+                          {(job as { matchScope?: string }).matchScope === "description" && !(job as { closeMatch?: boolean }).closeMatch && (
+                            <span className="inline-flex items-center rounded-md bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground">
+                              {t("jobsPage.descriptionMatchChip", "in description")}
                             </span>
                           )}
                           {/* Experience level: the cited minimum years when the posting
@@ -5260,7 +5338,7 @@ export default function Jobs() {
                   );
                 })}
               </ul>
-              {data && (typeof data.total === "number" ? jobs.length < data.total : !!data.hasMore) && (
+              {data && (typeof data.total === "number" ? jobs.length < pageTotalCount : !!data.hasMore) && (
                 <div className="text-center mt-6">
                   {/* A failed "Load more" keeps every job already on screen and
                       retries in place. It used to replace the whole list with

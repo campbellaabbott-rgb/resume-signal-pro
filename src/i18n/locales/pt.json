@@ -4001,7 +4001,9 @@
     "loadMoreRetry": "Tentar novamente",
     "moreLocations_one": "A mesma função em mais {{count}} localização",
     "moreLocations_other": "A mesma vaga em mais {{count}} localizações",
-    "savedWithoutActivelyHiring": "O filtro «A contratar agora» é aplicado no teu navegador, não no quadro, por isso esta pesquisa guardada não o inclui."
+    "savedWithoutActivelyHiring": "O filtro «A contratar agora» é aplicado no teu navegador, não no quadro, por isso esta pesquisa guardada não o inclui.",
+    "resultsSummarySegmented": "A mostrar {{shown}} — {{exact}} exatas e {{related}} em que o termo aparece na descrição",
+    "descriptionMatchChip": "na descrição"
   },
   "accountPage": {
     "statusSaveFailed": "Não foi possível salvar esse status — tente novamente.",

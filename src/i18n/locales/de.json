@@ -4001,7 +4001,9 @@
     "loadMoreRetry": "Erneut versuchen",
     "moreLocations_one": "Gleiche Stelle an {{count}} weiterem Standort",
     "moreLocations_other": "Gleiche Stelle an {{count}} weiteren Standorten",
-    "savedWithoutActivelyHiring": "Der Filter „Aktiv auf Personalsuche“ wirkt in deinem Browser, nicht auf dem Board — diese gespeicherte Suche enthält ihn daher nicht."
+    "savedWithoutActivelyHiring": "Der Filter „Aktiv auf Personalsuche“ wirkt in deinem Browser, nicht auf dem Board — diese gespeicherte Suche enthält ihn daher nicht.",
+    "resultsSummarySegmented": "{{shown}} angezeigt — {{exact}} exakt und {{related}}, bei denen der Begriff in der Beschreibung vorkommt",
+    "descriptionMatchChip": "in der Beschreibung"
   },
   "accountPage": {
     "statusSaveFailed": "Status konnte nicht gespeichert werden — bitte erneut versuchen.",

@@ -93,7 +93,8 @@ RETURNS TABLE (
   salary_min_annual numeric, salary_max_annual numeric,
   salary_period text, salary_currency text,
   experience_band text,
-  min_years integer, last_seen timestamptz, total_rows bigint, snippet text
+  min_years integer, last_seen timestamptz, total_rows bigint,
+  related_rows bigint, title_match boolean, snippet text
 )
 LANGUAGE plpgsql
 STABLE
@@ -105,6 +106,7 @@ DECLARE
   filters text := ' AND p.effective_posted >= $2 AND p.missing_since IS NULL';
   title_total bigint;
   total bigint;
+  related bigint;
   tsv_col text := 'p.title_tsv';
   snippet_sql text := 'NULL::text';
   cols text :=
@@ -115,11 +117,26 @@ DECLARE
 BEGIN
   IF p_location IS NOT NULL THEN filters := filters || ' AND p.location ILIKE ''%'' || $3 || ''%'''; END IF;
   IF p_remote IS TRUE THEN filters := filters || ' AND p.remote'; END IF;
-  -- A SELECTION OF COUNTRIES, THE SAME WAY A SELECTION OF FIELDS ALREADY WORKS.
-  -- Equality could only ever express one, so "DE,GB" matched the literal string
-  -- and returned zero. This is the split the category line two rows down has
-  -- used since the unsorted bucket shipped; the parameter list is untouched, so
-  -- there is no new signature and no ambiguity exposure.
+  -- MULTI-COUNTRY WITHOUT A NEW PARAMETER, AND THEREFORE WITHOUT AN AMBIGUOUS
+  -- OVERLOAD. p_country is already text, so widening it is an OPERATOR change,
+  -- not a signature change: the parameter list above is byte-identical to the
+  -- one the DROP names. The field filter on the next line already splits its own
+  -- text parameter the same way and has since 20260806020000; this is that
+  -- trick, applied to the filter beside it.
+  --
+  -- MEASURED on the deployed function before this edit: a two-country value
+  -- returned 0, because equality compared the whole literal. The field filter,
+  -- already split, returned 11,031 for a two-field value against 3,878 + 7,153
+  -- measured separately — an exact union, order-blind, duplicate-safe, and inert
+  -- for unknown members.
+  --
+  -- A COMMA CANNOT ARRIVE FROM A CALLER. The edge function validates every
+  -- element and names the rest in its ignored-filters list, so the joined value
+  -- only ever holds codes this board already accepted one at a time. Splitting
+  -- is a separator here, never a widening nobody asked for.
+  --
+  -- A SINGLE VALUE BEHAVES EXACTLY AS BEFORE, which is what makes this edit
+  -- inert until the edge function starts sending two.
   IF p_country IS NOT NULL THEN filters := filters || ' AND p.country = ANY(string_to_array($4, '','')) '; END IF;
   IF p_category IS NOT NULL THEN filters := filters || ' AND p.category = ANY(string_to_array($5, '','')) '; END IF;
   IF p_experience IS NOT NULL THEN filters := filters || ' AND p.experience_band = ANY($6)'; END IF;
@@ -150,17 +167,56 @@ BEGIN
     INTO title_total
     USING q, p_fresh_cutoff, p_location, p_country, p_category, p_experience, p_salary_floor, p_companies, p_posted_after, p_max_age_days, p_sources;
 
+  -- THE PUBLISHED TOTAL IS THE FILTERED TITLE COUNT, ON EVERY PATH. Assigned
+  -- HERE, before the branch, so that no path below can publish anything else.
+  total := title_total;
+
   IF title_total < 200 THEN
     tsv_col := 'p.search_tsv';
     snippet_sql := 'ts_headline(''english'', left(coalesce(p.description, ''''), 4000), $1, ''StartSel=[[, StopSel=]], MaxWords=18, MinWords=8, MaxFragments=1'')';
-    EXECUTE 'SELECT count(*) FROM (SELECT 1 FROM public.job_board_postings p WHERE p.search_tsv @@ $1' || filters || ' LIMIT 3000) c'
-      INTO total
+    -- ORDERED, AND THE ORDER BY IS A PLAN FIX WITH A MEASUREMENT BEHIND IT.
+    -- The value is unchanged either way: a count over a 3000-row cap is
+    -- min(N, 3000) whether or not the rows arrive sorted. What changes is the
+    -- plan. Unordered, the planner takes a date-index scan and rechecks the
+    -- description vector row by row, detoasting it each time. Measured live at
+    -- concurrency 4 on the deployed function, q=salary returned a statement
+    -- timeout 4 of 4 at 3.26-3.54s, and it did so at a page size of 1 as well as
+    -- 60 — so the cost was in THIS count, not in the page. Re-measured at the
+    -- real 3000-row cap with cooldowns between batches: ordered 200 in
+    -- 0.64-0.72s, unordered a timeout 4 of 4 at 3.30s. Across every OTHER term
+    -- that actually reaches this statement — the ones whose filtered title count
+    -- is under the threshold: overtime, sql, docker, tableau, osha, hipaa, cpr,
+    -- startup, 401k, pto, teamwork, medicare, phlebotomy — neither shape failed,
+    -- ordered 0.25-0.48s against unordered 0.22-0.56s.
+    --
+    -- ONE KNOWN INVERSION, RECORDED SO IT IS NOT REDISCOVERED AS A SURPRISE:
+    -- q=manager is the opposite way round at this cap (ordered times out 4 of 4,
+    -- unordered answers in 1.78-2.31s). manager has 90,263 title matches and can
+    -- never reach this branch, so it is a watch item rather than a live risk —
+    -- but if a manager-shaped term ever drops under the threshold, this is the
+    -- statement that will fail, and the sweep in the verification script is what
+    -- catches it.
+    --
+    -- It also makes this count describe the set the rows actually come from. The
+    -- retrieval below takes the NEWEST 3000; this counted an arbitrary 3000 of
+    -- the same predicate. Same number, different rows, and only one of them was
+    -- ever the answer.
+    EXECUTE 'SELECT count(*) FROM (SELECT 1 FROM public.job_board_postings p WHERE p.search_tsv @@ $1' || filters || ' ORDER BY p.effective_posted DESC LIMIT 3000) c'
+      INTO related
       USING q, p_fresh_cutoff, p_location, p_country, p_category, p_experience, p_salary_floor, p_companies, p_posted_after, p_max_age_days, p_sources;
-  ELSE
-    total := title_total;
+    -- The description vector contains the title vector, so the combined count
+    -- minus the title count IS the description-only count — no second scan.
+    -- Verified against directly measured segment counts: 257-65=192, 95-1=94,
+    -- 39-0=39. The floor is defensive: a query satisfied only by a negated term
+    -- can break that containment, and a negative published beside a total would
+    -- be worse than a zero.
+    related := GREATEST(coalesce(related, 0) - title_total, 0);
   END IF;
 
-  -- total/limit/offset are $12/$13/$14 — the FILTER numbering stays contiguous.
+  -- total/limit/offset are $12/$13/$14 — the FILTER numbering stays contiguous,
+  -- and the second segment's count is appended PAST them as $15 so that neither
+  -- of those two clauses moves. Renumbering them is unnecessary here and would
+  -- break two guards that pin their current positions.
   IF tsv_col = 'p.search_tsv' THEN
     RETURN QUERY EXECUTE
       'WITH title_hits AS ('
@@ -176,17 +232,30 @@ BEGIN
       || '  SELECT p.id AS pid FROM sample JOIN public.job_board_postings p ON p.id = sample.sid'
       || '  ORDER BY ts_rank_cd(p.title_tsv, $1) DESC, p.effective_posted DESC, p.id ASC'
       || '  LIMIT GREATEST(LEAST($13, 200), 1) OFFSET GREATEST($14, 0)'
-      || ') SELECT ' || cols || '$12::bigint AS total_rows, ' || snippet_sql || ' AS snippet '
+      -- The per-row segment flag is the PREDICATE, never an inference from the
+      -- score. It sits in the OUTER select, after the materialised page CTE, so
+      -- it is evaluated only on the at-most-200 rows that ship — it cannot
+      -- reintroduce the per-skipped-row cost this file exists to remove, and the
+      -- title vector it reads is a small stored column the ranking has already
+      -- touched. Computing it from the predicate rather than from a zero rank
+      -- also keeps a query satisfied only by a negated term from being
+      -- mislabelled.
+      || ') SELECT ' || cols || '$12::bigint AS total_rows, $15::bigint AS related_rows, (p.title_tsv @@ $1) AS title_match, ' || snippet_sql || ' AS snippet '
       || 'FROM page JOIN public.job_board_postings p ON p.id = page.pid '
       || 'ORDER BY ts_rank_cd(p.title_tsv, $1) DESC, p.effective_posted DESC, p.id ASC'
-      USING q, p_fresh_cutoff, p_location, p_country, p_category, p_experience, p_salary_floor, p_companies, p_posted_after, p_max_age_days, p_sources, total, p_limit, p_offset;
+      USING q, p_fresh_cutoff, p_location, p_country, p_category, p_experience, p_salary_floor, p_companies, p_posted_after, p_max_age_days, p_sources, total, p_limit, p_offset, related;
   ELSE
+    -- Every row on this path matched the title predicate by construction, so the
+    -- flag is a constant. The second count is NULL and NULL is the honest value:
+    -- this path never looked for description matches, which is a different
+    -- statement from finding none. Binding it in BOTH branches also means every
+    -- branch references every argument it is handed.
     RETURN QUERY EXECUTE
-      'SELECT ' || cols || '$12::bigint AS total_rows, NULL::text AS snippet '
+      'SELECT ' || cols || '$12::bigint AS total_rows, $15::bigint AS related_rows, TRUE AS title_match, NULL::text AS snippet '
       || 'FROM public.job_board_postings p WHERE p.title_tsv @@ $1' || filters
       || ' ORDER BY ts_rank_cd(p.title_tsv, $1) DESC, p.effective_posted DESC, p.id ASC'
       || ' LIMIT GREATEST(LEAST($13, 200), 1) OFFSET GREATEST($14, 0)'
-      USING q, p_fresh_cutoff, p_location, p_country, p_category, p_experience, p_salary_floor, p_companies, p_posted_after, p_max_age_days, p_sources, total, p_limit, p_offset;
+      USING q, p_fresh_cutoff, p_location, p_country, p_category, p_experience, p_salary_floor, p_companies, p_posted_after, p_max_age_days, p_sources, total, p_limit, p_offset, related;
   END IF;
 END;
 $$;
@@ -224,8 +293,11 @@ DECLARE
 BEGIN
   IF p_location IS NOT NULL THEN filters := filters || ' AND p.location ILIKE ''%'' || $2 || ''%'''; END IF;
   IF p_remote IS TRUE THEN filters := filters || ' AND p.remote'; END IF;
-  -- Same split as search_jobs, or the headline answers a different question
-  -- from the rows it sits over.
+  -- The count must ask the question the list answers. search_jobs above now
+  -- splits this parameter; leaving the count on equality would have made a
+  -- two-country page publish a headline of zero over a full page of rows — the
+  -- same class of disagreement as the deep-page defect at the top of this file,
+  -- except the headline would be the honest-looking number.
   IF p_country IS NOT NULL THEN filters := filters || ' AND p.country = ANY(string_to_array($3, '','')) '; END IF;
   IF p_category IS NOT NULL THEN filters := filters || ' AND p.category = ANY(string_to_array($4, '','')) '; END IF;
   IF p_experience IS NOT NULL THEN filters := filters || ' AND p.experience_band = ANY($5)'; END IF;

@@ -4001,7 +4001,9 @@
     "loadMoreRetry": "Try again",
     "moreLocations_one": "Same role in {{count}} more location",
     "moreLocations_other": "Same role in {{count}} more locations",
-    "savedWithoutActivelyHiring": "The Actively hiring filter is applied in your browser, not on the board, so this saved search does not include it."
+    "savedWithoutActivelyHiring": "The Actively hiring filter is applied in your browser, not on the board, so this saved search does not include it.",
+    "resultsSummarySegmented": "Showing {{shown}} — {{exact}} exact and {{related}} where the term appears in the description",
+    "descriptionMatchChip": "in description"
   },
   "accountPage": {
     "statusSaveFailed": "Couldn't save that status — please try again.",

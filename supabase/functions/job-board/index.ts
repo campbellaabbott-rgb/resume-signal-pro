@@ -2125,6 +2125,13 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
         if (!open) return undefined;
         const [sal, wm, exp] = await Promise.all([
           one("salary_rank_usd", "not.is.null"),
+          // One more head-count inside a pass that already runs, so it is free.
+          // Measured live: 0.099. A pay CEILING could only ever address 10% of
+          // the board, and a floor addresses 13.2% — the docstring on
+          // coverageDisclosure below already says a searcher who sets a floor is
+          // seeing an eighth of the market and has no way to know it. This is the
+          // number that finishes that sentence on screen.
+          one("salary_max_annual", "not.is.null"),
           one("work_mode", "not.is.null"),
           one("experience_band", "neq.unspecified"),
         ]);
@@ -6744,6 +6751,15 @@ const rowToJob = (r: any) => ({
   // Tier-2 ranked searches only: the ts_headline fragment showing WHERE a
   // description-matched result matched ([[ ]] delimiters, client-rendered).
   ...(typeof r.snippet === "string" && r.snippet.includes("[[") ? { snippet: r.snippet } : {}),
+  // WHICH SEGMENT THIS ROW IS IN, straight from the predicate rather than from
+  // a substring test on the title. Present only on the ranked path — the browse
+  // and rescue retrievers do not select the column. OMITTED rather than
+  // defaulted to "title", which is also the deploy-window tolerance: if this
+  // function ships before the migration applies, the column is absent, the key
+  // is absent, and the client renders exactly today's page.
+  ...(typeof r.title_match === "boolean"
+    ? { matchScope: r.title_match ? ("title" as const) : ("description" as const) }
+    : {}),
 });
 
 // One employer's role, reposted per location, was eating up to 35% of a
@@ -7740,8 +7756,30 @@ async function serveList(
           // the 3,000 cap as an exact figure. Proven at the RPC: loan officer,
           // sql developer and php developer all return snippet as a
           // zero-length string at p_limit 1.
+          // TWO SEGMENTS HERE TOO. The probe sends a page size of 1 and that is
+          // fine: both figures are computed independently of the page and ride
+          // on the first row. Leaving this single-segment would make "Remove
+          // country — N openings" promise a number the resulting page does not
+          // show, which is the 4.3x disagreement this file has had once already.
+          const rrC = Number((rc[0] as { related_rows?: number | null } | undefined)?.related_rows);
+          const relC = rc.length && Number.isFinite(rrC) ? rrC : null;
           const tier2C = (rc as Array<{ snippet?: unknown }>).some((r) => typeof r.snippet === "string");
-          return json({ total: tC, ...(tC >= (tier2C ? 3_000 : 10_000) ? { countCapped: true } : {}), ...countHonesty });
+          // The headline's ceiling is the title ceiling once the migration is
+          // live, because the headline is now always the title count. The
+          // tier-sniff branch is deploy-window cover only — delete it after the
+          // SQL is verified.
+          const cappedC = relC === null ? tC >= (tier2C ? 3_000 : 10_000) : tC >= 10_000;
+          return json({
+            total: tC,
+            ...(cappedC ? { countCapped: true } : {}),
+            // Omitted when the segment was not built, and omitted when it is
+            // empty. An absent field is "we did not look"; a zero segment header
+            // over an empty segment is noise.
+            ...(relC === null || relC === 0
+              ? {}
+              : { relatedTotal: relC, ...(tC + relC >= 3_000 ? { relatedCapped: true } : {}) }),
+            ...countHonesty,
+          });
         }
       } catch { /* migration lag or malformed query — the capped/ILIKE path below still answers */ }
     }
@@ -8121,6 +8159,20 @@ async function serveList(
         // above. A real zero must survive; only an absent total falls back.
         const trR = Number((ranked[0] as { total_rows?: number } | undefined)?.total_rows);
         const total = ranked.length ? (Number.isFinite(trR) ? trR : ranked.length) : (offset > 0 ? null : 0);
+        // THE SECOND SEGMENT. `total` above is now the EXACT (title) count on
+        // every path; this is the description-only count beside it. NULL is
+        // load-bearing three ways and none of them is zero: the title tier did
+        // not build the segment, the migration has not applied yet, or the count
+        // was not computed. Finiteness, not truthiness — a real zero must
+        // survive, same reason as the line above it.
+        const rrR = Number((ranked[0] as { related_rows?: number | null } | undefined)?.related_rows);
+        const related = ranked.length && Number.isFinite(rrR) ? rrR : null;
+        // THE PAGINATION FIGURE, WHICH IS NOT THE PUBLISHED FIGURE. Every
+        // arithmetic use below — has-more, the augmentation gate — asks "how many
+        // rows can this query reach", and the answer is both segments. Only the
+        // HEADLINE is the exact count. Conflating the two is how a page of 39
+        // related rows would report itself finished at row zero.
+        const pageTotal = total === null ? null : total + (related ?? 0);
         // search_jobs counts inside a LIMIT — 10,000 on the title tier, 3,000 on
         // the sampled description tier — so a broad term like "engineer" or
         // "nurse" comes back as EXACTLY the ceiling. Reported bare that reads as
@@ -8135,9 +8187,20 @@ async function serveList(
         // whose whole window has empty descriptions would under-report here too.
         // Leaving one of the two sniffs wrong is how the count and the list
         // start disagreeing again.
+        // THE HEADLINE'S CEILING IS NOW ALWAYS THE TITLE CEILING, because the
+        // headline is now always the title count — the snippet sniff no longer
+        // decides which cap applies to it. Applying the description tier's 3,000
+        // ceiling to a title count would flag a 3,000-exact-match query as capped
+        // when it is not. The old branch is deploy-window cover ONLY; delete it
+        // once the migration is verified.
         const rankedTier2 = (ranked as Array<{ snippet?: unknown }>).some((r) => typeof r.snippet === "string");
-        const rankedCap = rankedTier2 ? 3_000 : 10_000;
-        const rankedCapped = (total ?? 0) >= rankedCap;
+        const rankedCapped = related === null
+          ? (total ?? 0) >= (rankedTier2 ? 3_000 : 10_000)
+          : (total ?? 0) >= 10_000;
+        // The related segment reads the newest 3,000 description matches, so a
+        // related count that fills what is left of that window is a FLOOR, not a
+        // total, and has to say so.
+        const relatedCapped = related !== null && (total ?? 0) + related >= 3_000;
         const v0 = (meta?.v ?? {}) as Record<string, unknown>;
         // FILTER GATE — shared by every rescue tier (fuzzy replacement,
         // semantic, and the low-result fuzzy augmentation below). None of the
@@ -8599,16 +8662,19 @@ async function serveList(
                 // returned posting must share a real token with the query.
                 // A rescue tier that cannot say "no" is worse than no rescue,
                 // because the user cannot tell a match from a shrug.
+                // Checked on the rows that will actually SHIP, not on the
+                // pre-filter candidates. Anchoring on a row a filter removed
+                // would let the tier answer on evidence it is not showing.
                 const qTokens = qText.toLowerCase().split(/[^a-z0-9]+/i).filter((w) => w.length >= 3);
-                const anchored = Array.isArray(sem) && (sem as Array<Record<string, unknown>>).some((r) => {
+                const anchored = semSource.some((r) => {
                   const hay = `${String(r.title ?? "")} ${String(r.company ?? "")}`.toLowerCase();
                   return qTokens.some((w) => hay.includes(w));
                 });
-                if (!sErr && Array.isArray(sem) && sem.length > 0 && anchored) {
+                if (!sErr && semSource.length > 0 && anchored) {
                   // Same-role-many-locations clones are mutually nearest in
                   // embedding space, so the top-k is especially prone to being
                   // one job repeated — collapse exactly like the other tiers.
-                  const semRows = (sem as unknown[]).map(rowToJob) as Array<Record<string, unknown>>;
+                  const semRows = (semSource as unknown[]).map(rowToJob) as Array<Record<string, unknown>>;
                   const semGrouped = groupSimilar
                     ? collapseClusters(semRows, limit)
                     : { jobs: semRows.slice(0, limit), rawConsumed: Math.min(semRows.length, limit) };
@@ -8841,14 +8907,24 @@ async function serveList(
         // real but modest win, and a weaker case than the one I first wrote down.
         //
         // 20 is where exact matches start filling a 60-row page. The trigram tier
-        // is index-backed (gin on title), offset-0 only, and stands down whenever
-        // a filter is active, so the extra reach is cheap.
+        // is index-backed (gin on title) and offset-0 only, so the extra reach is
+        // cheap. It no longer stands down under a narrowing: the RPC takes the
+        // filters now, so a lightly-matched FILTERED query gets correctly-filtered
+        // close matches appended instead of nothing. Reproduced live before the
+        // change: {"q":"desinger","country":"US"} returned exactly 1 exact row —
+        // inside the augmentation band — and the visitor saw that single junk
+        // result with no close matches offered.
         const FUZZY_AUGMENT_BELOW = 20;
         let fuzzyExtraOut: { q: string; count: number } | null = null;
-        if (total !== null && total > 0 && total < FUZZY_AUGMENT_BELOW && offset === 0 && !countOnly && !filtersActive && qText.length >= 3) {
+        // GATED ON THE WHOLE PAGE, NOT ON THE EXACT SEGMENT, and no longer fenced
+        // by a narrowing. A query with 2 exact and 300 related matches has a full
+        // page already; padding it would dilute a result set that does not need
+        // rescuing and push close matches above 300 legitimate description hits.
+        if (pageTotal !== null && pageTotal > 0 && pageTotal < FUZZY_AUGMENT_BELOW && offset === 0 && !countOnly && qText.length >= 3) {
           try {
             const { data: fz, error: fzErr } = await client.rpc("fuzzy_title_search", {
               p_q: qText, p_fresh_cutoff: freshCutoffIso, p_limit: limit,
+              ...rescueFilterParams(),
             });
             if (!fzErr && Array.isArray(fz) && fz.length > 0) {
               // Dedupe by CLUSTER, not by id. An id-only check let a fuzzy row
@@ -8962,13 +9038,23 @@ async function serveList(
             ? (rankedSequence.length > rankedGrouped.rawConsumed || rankedRows.length >= fetchLimit)
             : (newestFirst || scoreRanked)
             ? (rankedSequence.length > rankedGrouped.rawConsumed
-              || (deepPageable && total !== null && offset + rankedGrouped.rawConsumed < total))
+              || (deepPageable && pageTotal !== null && offset + rankedGrouped.rawConsumed < pageTotal))
             : (rankedSequence.length > rankedGrouped.rawConsumed || rankedSequence.length >= fetchLimit),
           // null once close matches are appended: `total` counts EXACT matches,
           // and the page now holds exact + close, so it no longer describes what
           // is on screen. Leaving it in beside countUnavailable published a
           // payload that contradicted itself (rows=60, total=18).
           total: augmented ? null : total,
+          // THE SECOND SEGMENT, PUBLISHED AS ITS OWN FIELD RATHER THAN FOLDED
+          // INTO THE FIRST. Omitted — not zeroed — when the description segment
+          // was not built, and omitted when it is EMPTY. An absent field is "we
+          // did not look"; a zero is "we looked and there are none"; and a
+          // segment header over an empty segment is neither. Suppressed under
+          // augmentation for the same reason `total` is: once close matches are
+          // appended, no published figure describes what is on screen.
+          ...(augmented || related === null || related === 0
+            ? {}
+            : { relatedTotal: related, ...(relatedCapped ? { relatedCapped: true } : {}) }),
           ...(rankedCapped ? { countCapped: true } : {}),
           totalAllCompanies: safeMetaTotal ?? total,
           companies: includeFacets0

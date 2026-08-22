@@ -4001,7 +4001,9 @@
     "loadMoreRetry": "Reintentar",
     "moreLocations_one": "El mismo puesto en {{count}} ubicación más",
     "moreLocations_other": "Mismo puesto en {{count}} ubicaciones más",
-    "savedWithoutActivelyHiring": "El filtro «Contratando ahora» se aplica en tu navegador, no en el tablón, así que esta búsqueda guardada no lo incluye."
+    "savedWithoutActivelyHiring": "El filtro «Contratando ahora» se aplica en tu navegador, no en el tablón, así que esta búsqueda guardada no lo incluye.",
+    "resultsSummarySegmented": "Mostrando {{shown}}: {{exact}} exactas y {{related}} donde el término aparece en la descripción",
+    "descriptionMatchChip": "en la descripción"
   },
   "accountPage": {
     "statusSaveFailed": "No se pudo guardar ese estado; inténtalo de nuevo.",

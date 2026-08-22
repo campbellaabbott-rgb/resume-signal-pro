@@ -1718,8 +1718,13 @@ describe("slow work degrades instead of failing the request", () => {
   it("the semantic tier can say no", () => {
     // A vector search always returns SOMETHING; it has no notion of "nothing is
     // close". 'zzzqqxwv' came back with one confident unrelated job, 2/2.
-    expect(fn).toMatch(/const anchored = Array\.isArray\(sem\)/);
-    expect(fn).toMatch(/sem\.length > 0 && anchored/);
+    // Anchored against the rows that will actually SHIP, not the raw vector
+    // result. The semantic tier cannot filter in SQL, so its ids are hydrated
+    // back through the filter binder — and checking confidence on the unfiltered
+    // list would pass on a strong match the caller's filters then remove,
+    // leaving a page of weak ones under a claim of closeness.
+    expect(fn).toMatch(/const anchored = semSource\.some\(/);
+    expect(fn).toMatch(/semSource\.length > 0 && anchored/);
   });
 
   it("an unhonourable filter value is named, not dropped", () => {
