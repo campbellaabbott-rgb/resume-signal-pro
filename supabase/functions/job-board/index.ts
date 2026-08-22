@@ -100,7 +100,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-21.6";
+const BUILD_VERSION = "2026-08-21.7";
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -7379,26 +7379,84 @@ async function serveList(
   // simply absent, and an absent count renders as no count at all — the state
   // the dropdown is already in today. It never renders a zero it did not
   // measure.
+  // DERIVED ONCE, HERE, because the facet counts need it too and a second
+  // derivation is what the filter contract forbids — two copies drift until the
+  // sidebar answers a different question from the page.
+  const qt = queryTerms(body.q);
+  const qText = qt.terms.join(" ").slice(0, 200) || (qt.liftedSalary ? "" : String(body.q ?? "").trim().slice(0, 200));
+
   if (body.facetCounts === true) {
+    // THE COUNTS BESIDE THE RESULTS HAVE TO BE THE SAME KIND OF NUMBER.
+    //
+    // Measured live, same request body:
+    //   country=US   list total 10,000   facet sum 264,893
+    //   q="IT"       list total (none)   facet sum 128,186
+    //   q="welder"   list total 417      facet sum 465
+    // Two independent defects were producing that.
+    //
+    // 1. SCALE. The list caps at COUNT_CAP and says so; the facets counted
+    //    exactly and without a cap. A sidebar promising 264,893 next to a
+    //    header saying 10,000 is not a rounding difference, and the visitor has
+    //    no way to know which to believe.
+    // 2. ENGINE. With a text query the list is served by the tsquery RPC while
+    //    the facets used buildQuery's substring ILIKE — different matchers, and
+    //    the audit measured them 7,343x apart on q="IT". The facets were
+    //    answering a question the page never asked.
+    //
+    // With a query present the facets now go through the SAME count the list
+    // uses. Measured at the existing chunk size: 6 concurrent count_jobs_capped
+    // calls run 0.62-1.13s, so 18 categories in three chunks fits the budget.
     const FACET_CHUNK = 6;
-    const FACET_DEADLINE = Date.now() + 4_000;
+    const FACET_DEADLINE = Date.now() + (qText ? 6_000 : 4_000);
     const counts: Record<string, number> = {};
+    let facetCapped = false;
     const cats = [...JOB_CATEGORIES];
     for (let i = 0; i < cats.length; i += FACET_CHUNK) {
       if (Date.now() > FACET_DEADLINE) break;
       const chunk = cats.slice(i, i + FACET_CHUNK);
       const settled = await Promise.all(chunk.map(async (c) => {
         try {
+          if (qText) {
+            const { data, error } = await client.rpc("count_jobs_capped", {
+              p_fresh_cutoff: freshCutoffIso,
+              p_q: qText,
+              ...(applied.location ? { p_location: rankedLocationParam(body.location) } : {}),
+              ...(applied.remote ? { p_remote: true } : {}),
+              ...(applied.country ? { p_country: applied.country } : {}),
+              p_category: c,
+              ...(applied.experience.length ? { p_experience: applied.experience } : {}),
+              ...(applied.salaryFloor !== null ? { p_salary_floor: applied.salaryFloor } : {}),
+              ...(applied.companies.length ? { p_companies: applied.companies } : {}),
+              ...(applied.workMode ? { p_work_mode: applied.workMode } : {}),
+              p_cap: COUNT_CAP,
+            });
+            if (error) return [c, null, false] as const;
+            const row = Array.isArray(data) ? data[0] as { n?: number; capped?: boolean } : null;
+            return [c, Number(row?.n ?? 0), !!row?.capped] as const;
+          }
           const r = await buildQuery("effective_posted", true, c).range(0, 0);
-          return [c, r.error ? null : (r.count ?? 0)] as const;
+          if (r.error) return [c, null, false] as const;
+          // Capped to the SAME ceiling the list uses, so the two numbers on
+          // screen are the same kind of number.
+          const n = r.count ?? 0;
+          return [c, Math.min(n, COUNT_CAP), n > COUNT_CAP] as const;
         } catch {
-          return [c, null] as const;
+          return [c, null, false] as const;
         }
       }));
-      for (const [c, n] of settled) if (typeof n === "number") counts[c] = n;
+      for (const [c, n, capped] of settled) {
+        if (typeof n === "number") counts[c] = n;
+        if (capped) facetCapped = true;
+      }
     }
     return json({
       categories: counts,
+      // Said out loud for the same reason the list says it: a capped figure
+      // presented as exact is a number that cannot be checked.
+      ...(facetCapped ? { countCapped: true } : {}),
+      // Which matcher produced these. With a query they come from the same
+      // count the list uses; without one, from the filter query directly.
+      facetSource: qText ? "ranked" : "filters",
       // Says which filters these counts are FOR, so a stale response arriving
       // after the visitor changed a filter can be discarded rather than
       // painted over the new selection.
@@ -7502,8 +7560,7 @@ async function serveList(
   // guard. If only one of the two changes, the count and the rows answer
   // DIFFERENT questions — that divergence is the shape of the incident where
   // 60 rows rendered under a total of 36.
-  const qt = queryTerms(body.q);
-  const qText = qt.terms.join(" ").slice(0, 200) || (qt.liftedSalary ? "" : String(body.q ?? "").trim().slice(0, 200));
+  // (qText is derived above the facet block — see the note there.)
   // "NEWEST" USED TO DROP THE ENTIRE SEARCH ENGINE.
   //
   // The guard excluded sort==="newest", so choosing Newest from the sort
@@ -8380,6 +8437,18 @@ async function serveList(
   // did. That containment is deliberate: this is the second attempt at the
   // problem and the first one reached production.
   const twoSubset = !!applied.category && applied.includeUncategorised;
+  // THE SIZE THIS REQUEST ACTUALLY FETCHES, which is not always fetchLimit.
+  //
+  // The two-subset pager caps its own fetch at `limit` so the two category
+  // queries stay bounded, while hasMore asked whether the page came back equal
+  // to fetchLimit — 3x limit when grouping is on. That comparison can never be
+  // true on this path, so Load More died on page ONE. Measured live:
+  //   category=engineering                        50 rows, hasMore TRUE
+  //   category=engineering + includeUncategorised 48 rows, hasMore FALSE
+  // both under a total of 10,000. Opting in to see uncategorised jobs cost the
+  // visitor every page after the first.
+  const twoSubsetLimit = Math.min(fetchLimit, limit);
+  const fetchUsed = twoSubset ? twoSubsetLimit : fetchLimit;
 
   // deno-lint-ignore no-explicit-any
   const ordered = (q: any, dateCol: string, salaryCol: string) =>
@@ -8425,7 +8494,6 @@ async function serveList(
     // This BOUNDS the cost, it does not fix it: ~5s against a normal ~0.3s
     // page. The real fix is an index for (category, country, effective_posted),
     // which is a migration and a separate decision.
-    const twoSubsetLimit = Math.min(fetchLimit, limit);
     const s = splitPage(offset, twoSubsetLimit, countA);
 
     const [ra, rb] = await Promise.all([
@@ -8694,7 +8762,10 @@ async function serveList(
     ...(cappedRes?.capped ? { countCapped: true } : {}),
     // A full page means there is at least one more; the client needs this to
     // keep "load more" alive when it has no total to compare against.
-    hasMore: (data ?? []).length > grouped.rawConsumed || (data ?? []).length === fetchLimit,
+    // Compared against fetchUsed, not fetchLimit: the two-subset path fetches
+    // fewer rows by design, and measuring "was the page full?" against a size
+    // it never requests answers no every time.
+    hasMore: (data ?? []).length > grouped.rawConsumed || (data ?? []).length === fetchUsed,
     totalAllCompanies: (v.total as number) ?? count ?? 0,
     companies: servedCompanies,
     companiesCount: fullCompanies.length,

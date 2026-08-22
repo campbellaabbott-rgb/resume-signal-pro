@@ -51,7 +51,7 @@ describe("filtered category counts are computed, not guessed or dropped", () => 
 
   it("is bounded by BOTH chunked concurrency and a deadline", () => {
     expect(FACET).toMatch(/FACET_CHUNK = \d+/);
-    expect(FACET).toMatch(/FACET_DEADLINE = Date\.now\(\) \+ \d+_?\d*/);
+    expect(FACET).toMatch(/FACET_DEADLINE = Date\.now\(\) \+ \(qText \? \d[\d_]*_?\d* : \d[\d_]*\)/);
     expect(FACET).toMatch(/if \(Date\.now\(\) > FACET_DEADLINE\) break;/);
     const chunk = Number(/FACET_CHUNK = (\d+)/.exec(FACET)![1]);
     expect(chunk).toBeGreaterThan(0);
@@ -62,7 +62,7 @@ describe("filtered category counts are computed, not guessed or dropped", () => 
     // Absent means "no count", which is the state the dropdown is already in.
     // A fabricated 0 would tell the visitor a field is empty when it is not.
     expect(FACET).toMatch(/if \(typeof n === "number"\) counts\[c\] = n;/);
-    expect(FACET).toMatch(/r\.error \? null : \(r\.count \?\? 0\)/);
+    expect(FACET).toMatch(/if \(r\.error\) return \[c, null, false\] as const;/);
   });
 
   it("the client debounces and discards superseded responses", () => {

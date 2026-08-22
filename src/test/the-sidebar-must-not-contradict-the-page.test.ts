@@ -1,0 +1,82 @@
+import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
+/**
+ * THE FILTER COUNTS CONTRADICTED THE RESULTS ON THE SAME SCREEN.
+ *
+ * Measured live, identical request bodies:
+ *   country=US    list total 10,000   facet sum 264,893
+ *   q="IT"        list total (none)   facet sum 128,186
+ *   q="welder"    list total 417      facet sum 465
+ *
+ * Two independent defects produced that, and both had to go:
+ *
+ * SCALE — the list caps at COUNT_CAP and says so, while the facets counted
+ * exactly and without any cap. A sidebar promising 264,893 beside a header
+ * reading 10,000 is not a rounding difference; the visitor cannot tell which
+ * number is the lie.
+ *
+ * ENGINE — with a text query the list is served by the tsquery RPC while the
+ * facets used buildQuery's substring ILIKE. Different matchers, measured 7,343x
+ * apart on q="IT". The sidebar was answering a question the page never asked.
+ *
+ * SEPARATELY, `includeUncategorised` killed Load More on page one: the
+ * two-subset pager caps its own fetch at `limit` while hasMore compared against
+ * fetchLimit (3x limit when grouping), so the comparison could never be true.
+ *   category=engineering                        50 rows, hasMore TRUE
+ *   category=engineering + includeUncategorised 48 rows, hasMore FALSE
+ * both under a total of 10,000.
+ */
+const FN = readFileSync(resolve(__dirname, "../../supabase/functions/job-board/index.ts"), "utf8");
+const FACET = /if \(body\.facetCounts === true\) \{[\s\S]*?\n  \}\n/.exec(FN)?.[0] ?? "";
+
+describe("the sidebar must not contradict the page", () => {
+  it("counts facets with the SAME engine the list uses when there is a query", () => {
+    expect(FACET, "the facetCounts block is missing").not.toBe("");
+    // buildQuery is the substring matcher; the list uses count_jobs_capped.
+    expect(/if \(qText\) \{[\s\S]*?count_jobs_capped/.test(FACET),
+      "a text query must be counted by the same RPC that serves the rows").toBe(true);
+    // The filter-only case keeps the fast exact count — same engine as its list.
+    expect(/buildQuery\("effective_posted", true, c\)/.test(FACET)).toBe(true);
+  });
+
+  it("caps facet counts to the same ceiling as the list", () => {
+    expect(/Math\.min\(n, COUNT_CAP\)/.test(FACET), "an uncapped facet beside a capped list is the contradiction").toBe(true);
+    expect(/p_cap: COUNT_CAP,/.test(FACET), "the RPC path must use the same cap").toBe(true);
+    expect(/countCapped: true/.test(FACET), "a capped figure presented as exact cannot be checked").toBe(true);
+  });
+
+  it("names which matcher produced the counts", () => {
+    expect(/facetSource: qText \? "ranked" : "filters",/.test(FACET)).toBe(true);
+  });
+
+  it("binds the SAME filters into the facet count as the list", () => {
+    // A facet counted without the active filters answers for the whole board.
+    for (const f of ["p_country", "p_experience", "p_salary_floor", "p_companies", "p_work_mode", "p_remote"]) {
+      expect(FACET, `the facet count must bind ${f}`).toContain(f);
+    }
+  });
+
+  it("derives qText ONCE, above the facet block", () => {
+    // Two derivations drift until the sidebar and the page disagree — which is
+    // the defect this whole file is about.
+    // Counted on the DECLARATION, not on one spelling of its right-hand side —
+    // mutation-testing slipped a second `const qText = qt2.terms.join(...)`
+    // past the narrower version of this check.
+    expect((FN.match(/const qText\s*=/g) ?? []).length, "exactly one qText declaration").toBe(1);
+    const qAt = FN.indexOf("const qText = qt.terms.join");
+    const facetAt = FN.indexOf("if (body.facetCounts === true)");
+    expect(qAt).toBeGreaterThan(-1);
+    expect(qAt < facetAt, "qText must be derived before the facet block that reads it").toBe(true);
+  });
+
+  it("measures Load More against what the request actually fetched", () => {
+    // The two-subset pager fetches fewer rows by design; comparing against a
+    // size it never requests answers "no more" every time.
+    expect(/const fetchUsed = twoSubset \? twoSubsetLimit : fetchLimit;/.test(FN)).toBe(true);
+    expect(/\(data \?\? \[\]\)\.length === fetchUsed,/.test(FN)).toBe(true);
+    expect(/\(data \?\? \[\]\)\.length === fetchLimit,/.test(FN),
+      "the old comparison must be gone, or opting in to uncategorised jobs still costs every page after the first").toBe(false);
+  });
+});
