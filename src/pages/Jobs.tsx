@@ -730,6 +730,22 @@ export default function Jobs() {
   // results with an error card.
   const [loadMoreError, setLoadMoreError] = useState(false);
   const reqSeq = useRef(0);
+  // WHICH FILTER SET THE VISIBLE LIST WAS BUILT FROM.
+  //
+  // reqSeq answers "is this the newest request?" but never "does this response
+  // describe the filters currently on screen?", and those come apart in one
+  // ordinary sequence: change a filter (seq N), then press Load more before the
+  // new page paints (seq N+1). The load-more is NEWER, so it survives the seq
+  // check and appends — while the page-0 request for the same filters is
+  // discarded for being older. The list is then permanently a mix of two filter
+  // sets, and no further interaction repairs it.
+  //
+  // The server emits appliedSignature for exactly this, but on the facets exit
+  // only — zero of the eight list exits carry it, and comparing against it would
+  // mean the client rebuilding the server's normalised filter object field for
+  // field. That copy would go stale, which is the failure this repo keeps
+  // finding. The client already holds the thing it needs: the body it sent.
+  const listSig = useRef("");
   const { session } = useAuth();
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
   // Postings the user has ALREADY APPLIED to (tracker status beyond saved) —
@@ -1114,6 +1130,10 @@ export default function Jobs() {
           cursor: offset > 0 ? nextCursorRef.current ?? undefined : undefined,
           includeFacets: companiesCache.current.length === 0,
         };
+        // Everything in the body EXCEPT where we are in it. Two requests with
+        // the same signature describe the same result set, so their rows may be
+        // concatenated; two with different signatures may not, at any offset.
+        const sig = JSON.stringify({ ...body, offset: 0, cursor: undefined, includeFacets: undefined });
         let { data: res, error: err } = await supabase.functions.invoke("job-board", { body });
         if (err || !res?.jobs) {
           // One quiet retry: a refresh slice hitting the function's resource
@@ -1136,6 +1156,11 @@ export default function Jobs() {
           searchId: br.searchId,
           rank: offset + i + 1,
         }));
+        // A page-0 response DEFINES the current list; a later page may only
+        // extend one built from the same filters. Refusing the mismatch is the
+        // whole fix — appending it is what stranded the list.
+        if (offset > 0 && listSig.current !== sig) return;
+        listSig.current = sig;
         setData(br);
         setJobs((prev) => (offset === 0 ? br.jobs : [...prev, ...br.jobs]));
       } catch (e) {
@@ -4225,126 +4250,142 @@ export default function Jobs() {
               rows rendered no coverage line at all. "Pay is stated on 13% of
               postings" is advice on an empty page and trivia on a full one, and
               it was showing only on the full one. */}
-          {!loading && !error && (
-            <>
-                {/* The server names any filter it could not honour. Until now nothing
-                    read the field: the fence was satisfied in the payload and broken
-                    on screen — an active filter chip, results that ignore it, and no
-                    word to the user. A filter that did nothing has to SAY so where
-                    the results are, not only in the JSON. */}
-                {Array.isArray(data?.droppedTerms) && data.droppedTerms.length > 0 && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {t("jobsPage.droppedTerms", "Searched titles for the rest — ignored {{words}}, which don't appear in job titles.", {
-                      words: data.droppedTerms.map((w) => `"${w}"`).join(", "),
-                    })}
-                  </p>
-                )}
-                {/* TWO KINDS OF DROP, AND ONE SENTENCE CANNOT COVER BOTH.
-                    Most ignored filters NARROW: "those results are unfiltered
-                    by it" is then true and useful. But includeUncategorised
-                    WIDENS — it asks to ADD unsorted postings — and it is dropped
-                    when sorting by pay. Measured live: {includeUncategorised:
-                    true, category:"design", sort:"salary"} returns
-                    ignoredFilters:["includeUncategorised"], and the old copy
-                    rendered "We couldn't apply includeUncategorised — those
-                    results are unfiltered by it": a raw camelCase identifier,
-                    and the precise opposite of what happened. That page is MORE
-                    filtered than asked, not less. */}
-                {(() => {
-                  const ig = Array.isArray(data?.ignoredFilters) ? data.ignoredFilters : [];
-                  if (!ig.length) return null;
-                  const WIDENING = new Set(["includeUncategorised"]);
-                  const narrowed = ig.filter((f) => !WIDENING.has(f));
-                  const widened = ig.filter((f) => WIDENING.has(f));
-                  const name = (f: string) => t(`jobsPage.filterName.${f}`, f);
-                  return (
-                    <>
-                      {narrowed.length > 0 && (
-                        <p className="text-xs text-warning mb-2" role="status">
-                          {t("jobsPage.ignoredFilters", "We couldn't apply {{filters}} — those results are unfiltered by it. Everything else you selected did apply.", { filters: narrowed.map(name).join(", ") })}
-                        </p>
-                      )}
-                      {widened.length > 0 && (
-                        <p className="text-xs text-warning mb-2" role="status">
-                          {t("jobsPage.ignoredWidening", "We couldn't add {{filters}} to this page, so those postings are left out here.", { filters: widened.map(name).join(", ") })}
-                        </p>
-                      )}
-                    </>
-                  );
-                })()}
-                {/* WHAT A FILTER CAN EVEN SEE.
-                    The single most useful thing on this page and it shipped mute.
-                    A pay filter searches the 13% of postings that state pay; the
-                    other 87% are not "jobs that pay less", they are jobs that did
-                    not say. Without this line a thin result set reads as a verdict
-                    on the market instead of on the data. */}
-                {(() => {
-                  const fc = data?.filterCoverage;
-                  if (!fc) return null;
-                  const parts: string[] = [];
-                  if (typeof fc.salaryFloor === "number") parts.push(t("jobsPage.coveragePay", "pay on {{pct}}%", { pct: Math.round(fc.salaryFloor * 100) }));
-                  if (typeof fc.workMode === "number") parts.push(t("jobsPage.coverageWorkMode", "work mode on {{pct}}%", { pct: Math.round(fc.workMode * 100) }));
-                  if (typeof fc.experience === "number") parts.push(t("jobsPage.coverageExperience", "experience level on {{pct}}%", { pct: Math.round(fc.experience * 100) }));
-                  if (!parts.length) return null;
-                  return (
-                    <p className="text-xs text-muted-foreground mb-2" role="status">
-                      {t("jobsPage.filterCoverage", "Employers state {{fields}} of postings. A filter can only search what was published — roles that don't say are hidden here, not absent.", { fields: parts.join(", ") })}
+          {/* ONE PERSISTENT LIVE REGION, MOUNTED WHETHER OR NOT IT HAS ANYTHING TO SAY.
+
+              Each of these lines used to carry its own role="status", which is a
+              live region that only exists while the message does. A region
+              mounted at the same moment as its content is generally not
+              announced at all — assistive tech watches regions that were
+              already present for CHANGES. So the honesty work was, to a screen
+              reader, silent: the coverage line, the rewritten query, the
+              dropped filter, none of them spoke.
+
+              The wrapper is always in the tree and the messages appear inside
+              it, which is the shape that actually announces. Nested regions are
+              removed with the same change — a region inside a region announces
+              twice. */}
+          <div aria-live="polite" aria-atomic="false">
+            {!loading && !error && (
+              <>
+                  {/* The server names any filter it could not honour. Until now nothing
+                      read the field: the fence was satisfied in the payload and broken
+                      on screen — an active filter chip, results that ignore it, and no
+                      word to the user. A filter that did nothing has to SAY so where
+                      the results are, not only in the JSON. */}
+                  {Array.isArray(data?.droppedTerms) && data.droppedTerms.length > 0 && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {t("jobsPage.droppedTerms", "Searched titles for the rest — ignored {{words}}, which don't appear in job titles.", {
+                        words: data.droppedTerms.map((w) => `"${w}"`).join(", "),
+                      })}
                     </p>
-                  );
-                })()}
-                {/* We rewrote their query. Say so. */}
-                {Array.isArray(data?.intentFilters) && data.intentFilters.length > 0 && (
-                  <p className="text-xs text-muted-foreground mb-2" role="status">
-                    {t("jobsPage.intentFilters", "Read {{phrases}} as a filter and applied it, rather than searching for those words.", {
-                      phrases: data.intentFilters.map((p) => `“${p}”`).join(", "),
-                    })}
-                  </p>
-                )}
-                {/* A pay-sorted page is a filtered page. It never said so. */}
-                {data?.salaryStatedOnly && (
-                  <p className="text-xs text-muted-foreground mb-2" role="status">
-                    {t("jobsPage.salaryStatedOnly", "Sorted by pay, so only roles that state a salary appear here.")}
-                  </p>
-                )}
-                {data?.locationExpandedFrom && Array.isArray(data?.locationSearched) && data.locationSearched.length > 0 && (
-                  <p className="text-xs text-muted-foreground mb-2" role="status">
-                    {t("jobsPage.locationExpanded", "Searched {{from}} as {{places}}.", {
-                      from: `“${data.locationExpandedFrom}”`,
-                      places: data.locationSearched.join(", "),
-                    })}
-                  </p>
-                )}
-                {typeof data?.salaryFromQuery === "number" && (
-                  <p className="text-xs text-muted-foreground mb-2" role="status">
-                    {t("jobsPage.salaryFromQuery", "Read {{amount}} in your search as a minimum pay filter.", {
-                      amount: data.salaryFromQuery.toLocaleString(),
-                    })}
-                  </p>
-                )}
-                {typeof data?.maxAgeClampedTo === "number" && (
-                  <p className="text-xs text-muted-foreground mb-2" role="status">
-                    {t("jobsPage.maxAgeClamped", "The board keeps {{days}} days of postings, so that is the window searched.", {
-                      days: data.maxAgeClampedTo,
-                    })}
-                  </p>
-                )}
-                {data?.postedAfterUsesStatedDate && (
-                  <p className="text-xs text-muted-foreground mb-2" role="status">
-                    {t("jobsPage.postedAfterStatedDate", "Counted from the date each employer stated, not from when we found the posting.")}
-                  </p>
-                )}
-                {data?.companyMatched && (
-                  <p className="text-xs text-muted-foreground mb-2" role="status">
-                    {t("jobsPage.companyMatched", "Matched an employer name — showing roles at {{company}}.", { company: data.companyMatched })}
-                  </p>
-                )}
-                {data?.exactWordMatch && (
-                  <p className="text-xs text-muted-foreground mb-2" role="status">
-                    {t("jobsPage.exactWordMatch", "Showing exact whole-word matches for “{{q}}”.", { q: data.exactWordMatch })}
-                  </p>
-                )}
-            </>
-          )}
+                  )}
+                  {/* TWO KINDS OF DROP, AND ONE SENTENCE CANNOT COVER BOTH.
+                      Most ignored filters NARROW: "those results are unfiltered
+                      by it" is then true and useful. But includeUncategorised
+                      WIDENS — it asks to ADD unsorted postings — and it is dropped
+                      when sorting by pay. Measured live: {includeUncategorised:
+                      true, category:"design", sort:"salary"} returns
+                      ignoredFilters:["includeUncategorised"], and the old copy
+                      rendered "We couldn't apply includeUncategorised — those
+                      results are unfiltered by it": a raw camelCase identifier,
+                      and the precise opposite of what happened. That page is MORE
+                      filtered than asked, not less. */}
+                  {(() => {
+                    const ig = Array.isArray(data?.ignoredFilters) ? data.ignoredFilters : [];
+                    if (!ig.length) return null;
+                    const WIDENING = new Set(["includeUncategorised"]);
+                    const narrowed = ig.filter((f) => !WIDENING.has(f));
+                    const widened = ig.filter((f) => WIDENING.has(f));
+                    const name = (f: string) => t(`jobsPage.filterName.${f}`, f);
+                    return (
+                      <>
+                        {narrowed.length > 0 && (
+                          <p className="text-xs text-warning mb-2">
+                            {t("jobsPage.ignoredFilters", "We couldn't apply {{filters}} — those results are unfiltered by it. Everything else you selected did apply.", { filters: narrowed.map(name).join(", ") })}
+                          </p>
+                        )}
+                        {widened.length > 0 && (
+                          <p className="text-xs text-warning mb-2">
+                            {t("jobsPage.ignoredWidening", "We couldn't add {{filters}} to this page, so those postings are left out here.", { filters: widened.map(name).join(", ") })}
+                          </p>
+                        )}
+                      </>
+                    );
+                  })()}
+                  {/* WHAT A FILTER CAN EVEN SEE.
+                      The single most useful thing on this page and it shipped mute.
+                      A pay filter searches the 13% of postings that state pay; the
+                      other 87% are not "jobs that pay less", they are jobs that did
+                      not say. Without this line a thin result set reads as a verdict
+                      on the market instead of on the data. */}
+                  {(() => {
+                    const fc = data?.filterCoverage;
+                    if (!fc) return null;
+                    const parts: string[] = [];
+                    if (typeof fc.salaryFloor === "number") parts.push(t("jobsPage.coveragePay", "pay on {{pct}}%", { pct: Math.round(fc.salaryFloor * 100) }));
+                    if (typeof fc.workMode === "number") parts.push(t("jobsPage.coverageWorkMode", "work mode on {{pct}}%", { pct: Math.round(fc.workMode * 100) }));
+                    if (typeof fc.experience === "number") parts.push(t("jobsPage.coverageExperience", "experience level on {{pct}}%", { pct: Math.round(fc.experience * 100) }));
+                    if (!parts.length) return null;
+                    return (
+                      <p className="text-xs text-muted-foreground mb-2">
+                        {t("jobsPage.filterCoverage", "Employers state {{fields}} of postings. A filter can only search what was published — roles that don't say are hidden here, not absent.", { fields: parts.join(", ") })}
+                      </p>
+                    );
+                  })()}
+                  {/* We rewrote their query. Say so. */}
+                  {Array.isArray(data?.intentFilters) && data.intentFilters.length > 0 && (
+                    <p className="text-xs text-muted-foreground mb-2">
+                      {t("jobsPage.intentFilters", "Read {{phrases}} as a filter and applied it, rather than searching for those words.", {
+                        phrases: data.intentFilters.map((p) => `“${p}”`).join(", "),
+                      })}
+                    </p>
+                  )}
+                  {/* A pay-sorted page is a filtered page. It never said so. */}
+                  {data?.salaryStatedOnly && (
+                    <p className="text-xs text-muted-foreground mb-2">
+                      {t("jobsPage.salaryStatedOnly", "Sorted by pay, so only roles that state a salary appear here.")}
+                    </p>
+                  )}
+                  {data?.locationExpandedFrom && Array.isArray(data?.locationSearched) && data.locationSearched.length > 0 && (
+                    <p className="text-xs text-muted-foreground mb-2">
+                      {t("jobsPage.locationExpanded", "Searched {{from}} as {{places}}.", {
+                        from: `“${data.locationExpandedFrom}”`,
+                        places: data.locationSearched.join(", "),
+                      })}
+                    </p>
+                  )}
+                  {typeof data?.salaryFromQuery === "number" && (
+                    <p className="text-xs text-muted-foreground mb-2">
+                      {t("jobsPage.salaryFromQuery", "Read {{amount}} in your search as a minimum pay filter.", {
+                        amount: data.salaryFromQuery.toLocaleString(),
+                      })}
+                    </p>
+                  )}
+                  {typeof data?.maxAgeClampedTo === "number" && (
+                    <p className="text-xs text-muted-foreground mb-2">
+                      {t("jobsPage.maxAgeClamped", "The board keeps {{days}} days of postings, so that is the window searched.", {
+                        days: data.maxAgeClampedTo,
+                      })}
+                    </p>
+                  )}
+                  {data?.postedAfterUsesStatedDate && (
+                    <p className="text-xs text-muted-foreground mb-2">
+                      {t("jobsPage.postedAfterStatedDate", "Counted from the date each employer stated, not from when we found the posting.")}
+                    </p>
+                  )}
+                  {data?.companyMatched && (
+                    <p className="text-xs text-muted-foreground mb-2">
+                      {t("jobsPage.companyMatched", "Matched an employer name — showing roles at {{company}}.", { company: data.companyMatched })}
+                    </p>
+                  )}
+                  {data?.exactWordMatch && (
+                    <p className="text-xs text-muted-foreground mb-2">
+                      {t("jobsPage.exactWordMatch", "Showing exact whole-word matches for “{{q}}”.", { q: data.exactWordMatch })}
+                    </p>
+                  )}
+              </>
+            )}
+          </div>
           {/* Results */}
           {loading ? (
             // Skeleton cards: the page keeps its shape while the first load

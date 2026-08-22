@@ -200,6 +200,35 @@ describe("a disclosure nobody renders is not a disclosure", () => {
     }
   });
 
+  it("no board string exists only as an inline English default", () => {
+    // PARITY CANNOT CATCH THIS, WHICH IS WHY IT SURVIVED.
+    // The i18n parity test compares the nine locale files against each other. A
+    // key present in ZERO of them is in perfect parity — and renders its inline
+    // English default to a German, Spanish, French, Hindi, Dutch, Portuguese or
+    // Filipino reader. Twenty keys were in that state, including the apply
+    // agent's price and the sentence describing what it will not do.
+    //
+    // So the check has to run the other way: from the CALL SITES to the files.
+    const JOBS = readFileSync(resolve(ROOT, "src/pages/Jobs.tsx"), "utf8");
+    const en = JSON.parse(readFileSync(resolve(LOCALE_DIR, "en.json"), "utf8"));
+    const lookup = (key: string) => key.split(".").reduce<unknown>(
+      (cur, part) => (cur && typeof cur === "object" && part in (cur as Record<string, unknown>))
+        ? (cur as Record<string, unknown>)[part]
+        : undefined,
+      en,
+    );
+    // The negative lookbehind keeps `p.set("remote", "1")` out — it ends in the
+    // same two characters as a t() call and would otherwise read as one.
+    const calls = [...JOBS.matchAll(/(?<![A-Za-z0-9_.])t\(\s*"(jobsPage\.[A-Za-z0-9_.]+)"\s*,\s*"/g)].map((m) => m[1]);
+    expect(calls.length, "no t() calls found — the matcher has rotted").toBeGreaterThan(50);
+    const orphans = [...new Set(calls)].filter((k) => typeof lookup(k) !== "string");
+    expect(
+      orphans,
+      "these render an inline English default to every non-English visitor because no " +
+        `locale file has the key: ${orphans.join(", ")}`,
+    ).toEqual([]);
+  });
+
   it("the intent lift does not strip a phrase whose filter will be discarded", () => {
     // q="work from home nurse" with workMode=onsite used to delete the phrase
     // from the query AND have its remote:true dropped by the precedence in
