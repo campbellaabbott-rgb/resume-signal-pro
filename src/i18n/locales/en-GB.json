@@ -3961,7 +3961,20 @@
     "companiesChip": "{{n}} companies",
     "firstSeenToday": "first seen today",
     "firstSeenDaysAgo": "first seen {{count}}d ago",
-    "firstSeenProvenance": "This employer states no posting date, so no age is shown. This is when the posting first appeared on our board — it caps how old the posting can be, but it is our discovery date, not the employer's."
+    "firstSeenProvenance": "This employer states no posting date, so no age is shown. This is when the posting first appeared on our board — it caps how old the posting can be, but it is our discovery date, not the employer's.",
+    "droppedTerms": "Searched titles for the rest — ignored {{words}}, which don't appear in job titles.",
+    "filterCoverage": "Employers state {{fields}} of postings. A filter can only search what was published — roles that don't say are hidden here, not absent.",
+    "coveragePay": "pay on {{pct}}%",
+    "coverageWorkMode": "working pattern on {{pct}}%",
+    "coverageExperience": "experience level on {{pct}}%",
+    "intentFilters": "Read {{phrases}} as a filter and applied it, rather than searching for those words.",
+    "salaryStatedOnly": "Sorted by pay, so only roles that state a salary appear here.",
+    "locationExpanded": "Searched {{from}} as {{places}}.",
+    "salaryFromQuery": "Read {{amount}} in your search as a minimum pay filter.",
+    "maxAgeClamped": "The board keeps {{days}} days of postings, so that is the window searched.",
+    "postedAfterStatedDate": "Counted from the date each employer stated, not from when we found the posting.",
+    "companyMatched": "Matched an employer name — showing roles at {{company}}.",
+    "exactWordMatch": "Showing exact whole-word matches for “{{q}}”."
   },
   "accountPage": {
     "statusSaveFailed": "Couldn't save that status — please try again.",

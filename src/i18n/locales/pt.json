@@ -3961,7 +3961,20 @@
     "companiesChip": "{{n}} empresas",
     "firstSeenToday": "vista pela primeira vez hoje",
     "firstSeenDaysAgo": "vista pela primeira vez há {{count}}d",
-    "firstSeenProvenance": "Este empregador não indica data de publicação, por isso não se mostra idade. Esta é a data em que a vaga apareceu pela primeira vez no nosso mural — limita a idade máxima possível, mas é a nossa data de descoberta, não a do empregador."
+    "firstSeenProvenance": "Este empregador não indica data de publicação, por isso não se mostra idade. Esta é a data em que a vaga apareceu pela primeira vez no nosso mural — limita a idade máxima possível, mas é a nossa data de descoberta, não a do empregador.",
+    "droppedTerms": "Pesquisámos nos títulos para o resto — {{words}} ignorado, não aparece nos títulos das vagas.",
+    "filterCoverage": "Os empregadores indicam {{fields}} das vagas. Um filtro só pode pesquisar o que foi publicado — as vagas que não indicam ficam ocultas aqui, não ausentes.",
+    "coveragePay": "o salário em {{pct}} %",
+    "coverageWorkMode": "o modelo de trabalho em {{pct}} %",
+    "coverageExperience": "o nível de experiência em {{pct}} %",
+    "intentFilters": "Interpretámos {{phrases}} como um filtro e aplicámos, em vez de procurar essas palavras.",
+    "salaryStatedOnly": "Ordenado por salário — só aparecem aqui as vagas que o indicam.",
+    "locationExpanded": "Pesquisámos {{from}} como {{places}}.",
+    "salaryFromQuery": "Interpretámos {{amount}} na tua pesquisa como salário mínimo.",
+    "maxAgeClamped": "O quadro guarda {{days}} dias de vagas, por isso é esse o período pesquisado.",
+    "postedAfterStatedDate": "Contado a partir da data indicada por cada empregador, não de quando encontrámos a vaga.",
+    "companyMatched": "Corresponde ao nome de uma empresa — a mostrar vagas na {{company}}.",
+    "exactWordMatch": "A mostrar correspondências exatas de palavra para “{{q}}”."
   },
   "accountPage": {
     "statusSaveFailed": "Não foi possível salvar esse status — tente novamente.",

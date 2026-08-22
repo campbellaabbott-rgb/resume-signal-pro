@@ -3371,6 +3371,27 @@ const INTENT_FILTERS: Array<{ re: RegExp; label: string; patch: Record<string, u
 ];
 
 /**
+ * Which request fields ALSO speak for a lifted patch key.
+ *
+ * `remote` and `workMode` are the same question asked two ways, and workMode is
+ * the one that WINS — filters.ts computes `remote: body.remote === true &&
+ * !workMode`. Checking only the patch's own key let the lift fire anyway:
+ * q="work from home nurse" with workMode=onsite stripped the phrase from the
+ * query AND had its remote:true discarded downstream, returning 2,205 rows
+ * identical to q="nurse"+onsite while the payload claimed it had applied
+ * "work from home". The phrase was deleted from the search and its filter
+ * thrown away, and the response asserted the opposite of both.
+ *
+ * maxAgeDays and postedAfter are likewise one question — a caller who sent a
+ * watermark has already said how fresh they want it.
+ */
+const INTENT_CONFLICTS: Record<string, string[]> = {
+  remote: ["remote", "workMode"],
+  experience: ["experience"],
+  maxAgeDays: ["maxAgeDays", "postedAfter"],
+};
+
+/**
  * Lift any intent phrases out of the query and into filters.
  *
  * Returns the patch to apply, the phrases recognised (for disclosure), and the
@@ -3393,8 +3414,11 @@ function liftIntentFilters(
   const labels: string[] = [];
   for (const { re, label, patch: p } of INTENT_FILTERS) {
     if (!re.test(residual)) continue;
-    // Skip when the caller already spoke for this field.
-    if (Object.keys(p).some((k) => body[k] !== undefined && body[k] !== null)) continue;
+    // Skip when the caller already spoke for this field — BY ANY OF ITS NAMES.
+    // Leaving the phrase in the query is the honest outcome: the words then go
+    // through queryTerms like any others and, when they do not appear in job
+    // titles, come back as droppedTerms, which the page already renders.
+    if (Object.keys(p).some((k) => (INTENT_CONFLICTS[k] ?? [k]).some((f) => body[f] !== undefined && body[f] !== null))) continue;
     residual = residual.replace(re, " ");
     Object.assign(patch, p);
     labels.push(label);
@@ -7174,6 +7198,12 @@ async function serveList(
     return json({
       jobs: [], total: safeMetaTotal, hasMore: false, nextOffset: offset,
       ...(safeMetaTotal === null ? { countUnavailable: true } : {}),
+      // The empty page past the end is still a LIST response, and the client
+      // renders the same chrome around it. Shipping a short shape here is the
+      // same defect as the SALARY exit, just on a page with no rows to hide it.
+      searchId, totalAllCompanies: safeMetaTotal ?? 0,
+      companies: [], companiesCount: 0, categories: {}, failedSources: [],
+      refreshedAt: null,
     });
   }
   // withCount is separable from wantCount so a page can be re-run WITHOUT the
@@ -7869,6 +7899,23 @@ async function serveList(
         totalAllCompanies: safeMetaTotal ?? 0,
         companies: [],
         companiesCount: ((metaV.companiesFacet as unknown[]) ?? []).length,
+        // THE SHAPE IS PART OF THE CONTRACT, NOT JUST THE VALUES.
+        //
+        // This exit shipped without these two and CRASHED THE WHOLE JOBS PAGE:
+        // Jobs.tsx read `data.failedSources.length` with no guard — correctly,
+        // as far as TypeScript could see, because the client type declared the
+        // field non-optional and every other exit sends it. Measured on
+        // production 2026-08-22: resumebooster.work/jobs?q=nurse&sort=salary
+        // rendered "Something went wrong" and nothing else. Every pay-sorted
+        // keyword search was a dead page, on the exact surface the last release
+        // note advertised as fixed.
+        //
+        // An exit that omits a field the contract promises is a breaking change
+        // that no type checker on either side can see: the server is untyped
+        // against the client, and the client's own type says the field is always
+        // there. Emit the full shape.
+        categories: {},
+        failedSources: [],
         refreshedAt: (metaV.refreshedAt as string) ?? null,
       });
     }
@@ -7923,6 +7970,9 @@ async function serveList(
           totalAllCompanies: safeMetaTotal ?? 0,
           companies: [],
           companiesCount: ((metaV.companiesFacet as unknown[]) ?? []).length,
+          // Same core shape as every other exit — see the SALARY exit above.
+          categories: {},
+          failedSources: [],
           refreshedAt: (metaV.refreshedAt as string) ?? null,
         });
       }
@@ -8245,6 +8295,8 @@ async function serveList(
                 totalAllCompanies: safeMetaTotal ?? 0,
                 companies: [],
                 companiesCount: ((v0.companiesFacet as unknown[]) ?? []).length,
+                categories: {},
+                failedSources: [],
                 refreshedAt: (v0.refreshedAt as string) ?? null,
               });
             }
@@ -8373,6 +8425,10 @@ async function serveList(
                     ...honesty(semGrouped.jobs),
                     total: semGrouped.jobs.length,
                     hasMore: false,
+                    // Present even though hasMore is false: a client that pages
+                    // on nextOffset rather than hasMore would otherwise read
+                    // undefined and restart at the top of the feed.
+                    nextOffset: offset + semGrouped.jobs.length,
                     totalAllCompanies: safeMetaTotal ?? 0,
                     companies: [],
                     companiesCount: ((v0.companiesFacet as unknown[]) ?? []).length,

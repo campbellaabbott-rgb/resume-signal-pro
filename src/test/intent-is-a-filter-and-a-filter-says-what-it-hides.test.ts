@@ -75,12 +75,39 @@ describe("intent becomes a filter, and a filter says what it hides", () => {
     expect(/q: intentLift\.residualQ/.test(FN)).toBe(true);
   });
 
-  it("never overrides a filter the caller set themselves", () => {
+  it("never overrides a filter the caller set themselves — BY ANY OF ITS NAMES", () => {
+    // Someone who set remote=false and typed "work from home" has contradicted
+    // themselves, and the explicit control is the one they can see and change.
+    //
+    // This used to pin the literal `body[k]` check, and passed while the guard
+    // was HALF BUILT. The patch sets `remote`, so it only ever looked at
+    // body.remote — but filters.ts resolves `remote: body.remote === true &&
+    // !workMode`, so workMode is the field that actually wins. A caller sending
+    // workMode=onsite with q="work from home nurse" got the phrase stripped from
+    // the query AND the injected remote:true discarded downstream, returning
+    // 2,205 rows byte-identical to q="nurse"+onsite while the payload claimed
+    // intentFilters ["work from home"]. The words were deleted from the search,
+    // the filter was thrown away, and the response asserted both had applied.
+    //
+    // So the property is "no field that speaks for this patch was set", not
+    // "the patch's own key was set".
+    expect(FN).toMatch(/const INTENT_CONFLICTS: Record<string, string\[\]> = \{/);
     expect(
-      /if \(Object\.keys\(p\)\.some\(\(k\) => body\[k\] !== undefined && body\[k\] !== null\)\) continue;/.test(FN),
-      "someone who set remote=false and typed 'work from home' has contradicted themselves; " +
-        "the explicit control is the one they can see",
+      /INTENT_CONFLICTS\[k\] \?\? \[k\]\)\.some\(\(f\) => body\[f\] !== undefined && body\[f\] !== null\)/.test(FN),
+      "the skip guard must consult every field that speaks for the patched one",
     ).toBe(true);
+    // workMode wins over remote in filters.ts, so it must appear here.
+    expect(FN).toMatch(/remote: \["remote", "workMode"\]/);
+    // postedAfter and maxAgeDays are one question asked two ways.
+    expect(FN).toMatch(/maxAgeDays: \["maxAgeDays", "postedAfter"\]/);
+    // Every patch key any INTENT_FILTERS entry sets must have an entry, or the
+    // next phrase added silently reverts to the half-built behaviour.
+    const entries = [...FN.matchAll(/patch: \{ (\w+):/g)].map((m) => m[1]);
+    expect(entries.length, "no INTENT_FILTERS patches found").toBeGreaterThan(0);
+    const conflicts = FN.slice(FN.indexOf("const INTENT_CONFLICTS"), FN.indexOf("};", FN.indexOf("const INTENT_CONFLICTS")));
+    for (const k of new Set(entries)) {
+      expect(conflicts, `INTENT_CONFLICTS has no entry for patch key "${k}"`).toContain(`${k}:`);
+    }
   });
 
   it("ACTUALLY APPLIES the lift — the sibling feature lost exactly this and stayed green", () => {

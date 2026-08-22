@@ -159,6 +159,35 @@ interface BoardResponse {
   countCapped?: boolean;
   ignoredFilters?: string[];
   droppedTerms?: string[];
+  // ── DISCLOSURES THE SERVER HAS ALWAYS SENT AND NOTHING READ ───────────────
+  // Ten keys were spread across all seven list exits, guarded by tests that
+  // assert the SERVER emits them, and rendered by nothing. The tests passed the
+  // whole time. Same shape as the keyset cursor that was null on every response
+  // for five days: confirmed present, doing nothing.
+  /** Fraction of the board (0-1) each ACTIVE filter can even see. Measured live:
+   *  pay stated on 13.2%, work mode 29.6%, experience 40.8%. A searcher who sets
+   *  a pay floor and gets twelve results cannot otherwise tell whether the market
+   *  is empty or whether they are looking at an eighth of it. */
+  filterCoverage?: { salaryFloor?: number; workMode?: number; experience?: number };
+  /** Phrases lifted OUT of the query and applied as filters instead — typing
+   *  "work from home nurse" searches "nurse" among remote roles. The rewrite is
+   *  good; doing it silently is not. */
+  intentFilters?: string[];
+  /** A pay-sorted page excludes every posting with no stated salary. */
+  salaryStatedOnly?: boolean;
+  /** The location typed, and the places actually searched on its behalf. */
+  locationExpandedFrom?: string;
+  locationSearched?: string[];
+  /** A pay figure was read out of the query TEXT and applied as a floor. */
+  salaryFromQuery?: number;
+  /** The freshness window asked for was wider than the board retains. */
+  maxAgeClampedTo?: number;
+  /** A "new since" window counts the employer's stated date, not our crawl. */
+  postedAfterUsesStatedDate?: boolean;
+  /** The query matched an employer name; this is the name that matched. */
+  companyMatched?: string;
+  /** Exact whole-word tier answered, rather than the ranked scorer. */
+  exactWordMatch?: string;
   // Server-computed "a full page came back", so pagination survives a missing total.
   hasMore?: boolean;
   // Raw rows the server consumed for this page. Once same-role-different-location
@@ -171,8 +200,15 @@ interface BoardResponse {
   // count) for payload weight, so stat displays must use this, not .length.
   companiesCount?: number;
   companies: Array<{ token: string; name: string; count: number }>;
-  categories: Record<string, number>;
-  failedSources: string[];
+  categories?: Record<string, number>;
+  // OPTIONAL ON PURPOSE, and it is not a style choice. Declared as
+  // `string[]` this read `data.failedSources.length` with no guard and
+  // TypeScript was satisfied — while the SALARY exit did not send the field at
+  // all, so every pay-sorted keyword search threw and the whole page fell into
+  // the error boundary (live on production until 2026-08-22). A response field
+  // is only non-optional if EVERY server exit emits it, and nothing checks that
+  // across the runtime boundary. Optional makes the compiler ask for the guard.
+  failedSources?: string[];
   refreshedAt: string | null;
   /** Ranked path: role-alias phrases the server also searched (disclosed in the UI). */
   aliases?: string[];
@@ -4349,6 +4385,77 @@ export default function Jobs() {
                   })}
                 </p>
               )}
+              {/* WHAT A FILTER CAN EVEN SEE.
+                  The single most useful thing on this page and it shipped mute.
+                  A pay filter searches the 13% of postings that state pay; the
+                  other 87% are not "jobs that pay less", they are jobs that did
+                  not say. Without this line a thin result set reads as a verdict
+                  on the market instead of on the data. */}
+              {(() => {
+                const fc = data?.filterCoverage;
+                if (!fc) return null;
+                const parts: string[] = [];
+                if (typeof fc.salaryFloor === "number") parts.push(t("jobsPage.coveragePay", "pay on {{pct}}%", { pct: Math.round(fc.salaryFloor * 100) }));
+                if (typeof fc.workMode === "number") parts.push(t("jobsPage.coverageWorkMode", "work mode on {{pct}}%", { pct: Math.round(fc.workMode * 100) }));
+                if (typeof fc.experience === "number") parts.push(t("jobsPage.coverageExperience", "experience level on {{pct}}%", { pct: Math.round(fc.experience * 100) }));
+                if (!parts.length) return null;
+                return (
+                  <p className="text-xs text-muted-foreground mb-2" role="status">
+                    {t("jobsPage.filterCoverage", "Employers state {{fields}} of postings. A filter can only search what was published — roles that don't say are hidden here, not absent.", { fields: parts.join(", ") })}
+                  </p>
+                );
+              })()}
+              {/* We rewrote their query. Say so. */}
+              {Array.isArray(data?.intentFilters) && data.intentFilters.length > 0 && (
+                <p className="text-xs text-muted-foreground mb-2" role="status">
+                  {t("jobsPage.intentFilters", "Read {{phrases}} as a filter and applied it, rather than searching for those words.", {
+                    phrases: data.intentFilters.map((p) => `“${p}”`).join(", "),
+                  })}
+                </p>
+              )}
+              {/* A pay-sorted page is a filtered page. It never said so. */}
+              {data?.salaryStatedOnly && (
+                <p className="text-xs text-muted-foreground mb-2" role="status">
+                  {t("jobsPage.salaryStatedOnly", "Sorted by pay, so only roles that state a salary appear here.")}
+                </p>
+              )}
+              {data?.locationExpandedFrom && Array.isArray(data?.locationSearched) && data.locationSearched.length > 0 && (
+                <p className="text-xs text-muted-foreground mb-2" role="status">
+                  {t("jobsPage.locationExpanded", "Searched {{from}} as {{places}}.", {
+                    from: `“${data.locationExpandedFrom}”`,
+                    places: data.locationSearched.join(", "),
+                  })}
+                </p>
+              )}
+              {typeof data?.salaryFromQuery === "number" && (
+                <p className="text-xs text-muted-foreground mb-2" role="status">
+                  {t("jobsPage.salaryFromQuery", "Read {{amount}} in your search as a minimum pay filter.", {
+                    amount: data.salaryFromQuery.toLocaleString(),
+                  })}
+                </p>
+              )}
+              {typeof data?.maxAgeClampedTo === "number" && (
+                <p className="text-xs text-muted-foreground mb-2" role="status">
+                  {t("jobsPage.maxAgeClamped", "The board keeps {{days}} days of postings, so that is the window searched.", {
+                    days: data.maxAgeClampedTo,
+                  })}
+                </p>
+              )}
+              {data?.postedAfterUsesStatedDate && (
+                <p className="text-xs text-muted-foreground mb-2" role="status">
+                  {t("jobsPage.postedAfterStatedDate", "Counted from the date each employer stated, not from when we found the posting.")}
+                </p>
+              )}
+              {data?.companyMatched && (
+                <p className="text-xs text-muted-foreground mb-2" role="status">
+                  {t("jobsPage.companyMatched", "Matched an employer name — showing roles at {{company}}.", { company: data.companyMatched })}
+                </p>
+              )}
+              {data?.exactWordMatch && (
+                <p className="text-xs text-muted-foreground mb-2" role="status">
+                  {t("jobsPage.exactWordMatch", "Showing exact whole-word matches for “{{q}}”.", { q: data.exactWordMatch })}
+                </p>
+              )}
               <p className="text-xs text-muted-foreground mb-3" aria-live="polite">
                 {data?.countUnavailable
                   // The server couldn't compute an exact total for this filter.
@@ -4431,9 +4538,9 @@ export default function Jobs() {
                 {t("jobsPage.healthUnavailable", "hiring-pace data unavailable right now")}
               </span>
             )}
-            {!landerCompany && data && data.failedSources.length > 0 && (
+            {!landerCompany && data && (data.failedSources?.length ?? 0) > 0 && (
                   <span> · {t("jobsPage.sourcesDown", {
-                    count: data.failedSources.length,
+                    count: data.failedSources?.length ?? 0,
                     defaultValue_one: "{{count}} company feed is unreachable right now",
                     defaultValue_other: "{{count}} company feeds are unreachable right now",
                   })}</span>

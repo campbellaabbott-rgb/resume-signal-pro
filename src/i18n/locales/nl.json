@@ -3961,7 +3961,20 @@
     "companiesChip": "{{n}} bedrijven",
     "firstSeenToday": "voor het eerst gezien vandaag",
     "firstSeenDaysAgo": "voor het eerst gezien {{count}}d geleden",
-    "firstSeenProvenance": "Deze werkgever vermeldt geen plaatsingsdatum, dus er wordt geen leeftijd getoond. Dit is wanneer de vacature voor het eerst op ons bord verscheen — het begrenst hoe oud ze hoogstens kan zijn, maar het is onze ontdekkingsdatum, niet die van de werkgever."
+    "firstSeenProvenance": "Deze werkgever vermeldt geen plaatsingsdatum, dus er wordt geen leeftijd getoond. Dit is wanneer de vacature voor het eerst op ons bord verscheen — het begrenst hoe oud ze hoogstens kan zijn, maar het is onze ontdekkingsdatum, niet die van de werkgever.",
+    "droppedTerms": "Voor de rest is in functietitels gezocht — {{words}} genegeerd, die komen niet voor in functietitels.",
+    "filterCoverage": "Werkgevers vermelden {{fields}} van de vacatures. Een filter kan alleen zoeken in wat is gepubliceerd — vacatures zonder vermelding zijn hier verborgen, niet afwezig.",
+    "coveragePay": "salaris bij {{pct}}%",
+    "coverageWorkMode": "werkvorm bij {{pct}}%",
+    "coverageExperience": "ervaringsniveau bij {{pct}}%",
+    "intentFilters": "{{phrases}} is als filter opgevat en toegepast, in plaats van op die woorden te zoeken.",
+    "salaryStatedOnly": "Gesorteerd op salaris — alleen vacatures met een vermeld salaris verschijnen hier.",
+    "locationExpanded": "{{from}} is gezocht als {{places}}.",
+    "salaryFromQuery": "{{amount}} in je zoekopdracht is toegepast als minimumsalaris.",
+    "maxAgeClamped": "Het bord bewaart {{days}} dagen aan vacatures, dus dat is de doorzochte periode.",
+    "postedAfterStatedDate": "Geteld vanaf de datum die de werkgever noemt, niet vanaf het moment dat wij de vacature vonden.",
+    "companyMatched": "Werkgeversnaam herkend — vacatures bij {{company}}.",
+    "exactWordMatch": "Exacte woordovereenkomsten voor “{{q}}”."
   },
   "accountPage": {
     "statusSaveFailed": "Kon die status niet opslaan — probeer het opnieuw.",

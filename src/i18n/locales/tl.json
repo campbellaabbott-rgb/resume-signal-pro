@@ -3961,7 +3961,20 @@
     "companiesChip": "{{n}} kumpanya",
     "firstSeenToday": "unang nakita ngayong araw",
     "firstSeenDaysAgo": "unang nakita {{count}} araw na nakalipas",
-    "firstSeenProvenance": "Walang isinasaad na petsa ng paglalathala ang employer na ito, kaya walang ipinapakitang edad. Ito ang petsa nang unang lumitaw ang posisyon sa aming board — nililimitahan nito kung gaano na ito katanda, pero petsa ito ng aming pagkakadiskubre, hindi sa employer."
+    "firstSeenProvenance": "Walang isinasaad na petsa ng paglalathala ang employer na ito, kaya walang ipinapakitang edad. Ito ang petsa nang unang lumitaw ang posisyon sa aming board — nililimitahan nito kung gaano na ito katanda, pero petsa ito ng aming pagkakadiskubre, hindi sa employer.",
+    "droppedTerms": "Hinanap sa mga pamagat ang natitira — hindi isinama ang {{words}}, hindi ito lumalabas sa mga pamagat ng trabaho.",
+    "filterCoverage": "Isinasaad ng mga employer ang {{fields}} ng mga anunsyo. Ang isang filter ay makakahanap lamang ng inilathala — ang mga trabahong hindi nagsasaad ay nakatago rito, hindi wala.",
+    "coveragePay": "sahod sa {{pct}}%",
+    "coverageWorkMode": "paraan ng trabaho sa {{pct}}%",
+    "coverageExperience": "antas ng karanasan sa {{pct}}%",
+    "intentFilters": "Binasa ang {{phrases}} bilang filter at inilapat ito, sa halip na hanapin ang mga salitang iyon.",
+    "salaryStatedOnly": "Nakaayos ayon sa sahod — kaya ang mga trabahong may nakasaad na sahod lang ang lumalabas dito.",
+    "locationExpanded": "Hinanap ang {{from}} bilang {{places}}.",
+    "salaryFromQuery": "Binasa ang {{amount}} sa iyong paghahanap bilang pinakamababang sahod.",
+    "maxAgeClamped": "{{days}} araw na anunsyo ang itinatago ng board, kaya iyon ang panahong hinanap.",
+    "postedAfterStatedDate": "Binilang mula sa petsang isinaad ng bawat employer, hindi mula nang matagpuan namin ang anunsyo.",
+    "companyMatched": "Tumugma sa pangalan ng employer — ipinapakita ang mga trabaho sa {{company}}.",
+    "exactWordMatch": "Ipinapakita ang eksaktong buong-salitang tugma para sa “{{q}}”."
   },
   "accountPage": {
     "statusSaveFailed": "Hindi na-save ang status na iyon — pakisubukan muli.",

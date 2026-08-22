@@ -3961,7 +3961,20 @@
     "companiesChip": "{{n}} Unternehmen",
     "firstSeenToday": "zuerst gesehen: heute",
     "firstSeenDaysAgo": "zuerst gesehen vor {{count}} Tagen",
-    "firstSeenProvenance": "Dieser Arbeitgeber nennt kein Veröffentlichungsdatum, daher wird kein Alter angezeigt. Dies ist der Zeitpunkt, an dem die Anzeige zuerst auf unserem Board erschien — er begrenzt, wie alt sie höchstens sein kann, ist aber unser Entdeckungsdatum, nicht das des Arbeitgebers."
+    "firstSeenProvenance": "Dieser Arbeitgeber nennt kein Veröffentlichungsdatum, daher wird kein Alter angezeigt. Dies ist der Zeitpunkt, an dem die Anzeige zuerst auf unserem Board erschien — er begrenzt, wie alt sie höchstens sein kann, ist aber unser Entdeckungsdatum, nicht das des Arbeitgebers.",
+    "droppedTerms": "Für den Rest wurden Stellentitel durchsucht — {{words}} ignoriert, da diese Wörter in Stellentiteln nicht vorkommen.",
+    "filterCoverage": "Arbeitgeber geben {{fields}} der Anzeigen an. Ein Filter kann nur durchsuchen, was veröffentlicht wurde — Stellen ohne Angabe sind hier ausgeblendet, nicht abwesend.",
+    "coveragePay": "Gehalt bei {{pct}} %",
+    "coverageWorkMode": "Arbeitsmodell bei {{pct}} %",
+    "coverageExperience": "Erfahrungsniveau bei {{pct}} %",
+    "intentFilters": "{{phrases}} wurde als Filter verstanden und angewendet, statt nach diesen Wörtern zu suchen.",
+    "salaryStatedOnly": "Nach Gehalt sortiert — daher erscheinen hier nur Stellen mit Gehaltsangabe.",
+    "locationExpanded": "{{from}} wurde als {{places}} durchsucht.",
+    "salaryFromQuery": "{{amount}} in deiner Suche wurde als Mindestgehalt übernommen.",
+    "maxAgeClamped": "Das Board bewahrt {{days}} Tage an Anzeigen auf — das ist der durchsuchte Zeitraum.",
+    "postedAfterStatedDate": "Gezählt ab dem vom Arbeitgeber angegebenen Datum, nicht ab dem Zeitpunkt, an dem wir die Anzeige gefunden haben.",
+    "companyMatched": "Arbeitgebername erkannt — Stellen bei {{company}}.",
+    "exactWordMatch": "Exakte Wortübereinstimmungen für „{{q}}“."
   },
   "accountPage": {
     "statusSaveFailed": "Status konnte nicht gespeichert werden — bitte erneut versuchen.",
