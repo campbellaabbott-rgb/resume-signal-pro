@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { collapseClusters } from "../../supabase/functions/job-board/clusters";
+import { collapseClusters, mergeCompanyFacet } from "../../supabase/functions/job-board/clusters";
 
 /**
  * "ALSO HIRING IN 84 MORE LOCATIONS" — ABOUT A ROLE IN ONE CITY.
@@ -78,5 +78,41 @@ describe("a location count counts locations", () => {
     const { jobs, rawConsumed } = collapseClusters(rows, 60);
     expect(jobs).toHaveLength(2);
     expect(rawConsumed).toBe(6);
+  });
+});
+
+describe("a company name is not a company identity", () => {
+  it("two companies sharing a name stay two dropdown entries", () => {
+    // Measured 2026-08-23: the Greenhouse fintech "Flex" and the Workday
+    // manufacturer "Flex" (flextronics~wd1~Careers) merged into one facet row
+    // with zero title overlap — 52 names, 4,575 postings in that state. The
+    // tenant stem is the tell, and ambiguity resolves toward NOT merging:
+    // an unmerged pair shows a name twice, a wrong merge hands one company's
+    // filter the other company's jobs.
+    const out = mergeCompanyFacet([
+      { token: "flextronics~wd1~Careers", name: "Flex", count: 572 },
+      { token: "flex", name: "Flex", count: 9 },
+    ]);
+    expect(out).toHaveLength(2);
+  });
+
+  it("one company's sub-boards still fold — the reason the merge exists", () => {
+    const out = mergeCompanyFacet([
+      { token: "pwc~wd3~Global_Experienced_Careers", name: "PwC", count: 900 },
+      { token: "pwc~wd3~global_campus_careers", name: "PwC", count: 400 },
+      { token: "pwc~wd3~US_Experienced_Careers", name: "PwC", count: 700 },
+    ]);
+    expect(out).toHaveLength(1);
+    expect(out[0].count).toBe(2000);
+    expect(out[0].token, "the primary token is the largest sub-board's").toBe("pwc~wd3~Global_Experienced_Careers");
+    expect(out[0].tokens).toHaveLength(3);
+  });
+
+  it("a nameless row passes through untouched", () => {
+    const out = mergeCompanyFacet([
+      { token: "a~x", name: "", count: 1 },
+      { token: "a~y", name: "", count: 2 },
+    ]);
+    expect(out).toHaveLength(2);
   });
 });

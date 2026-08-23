@@ -60,7 +60,7 @@ import { detectExperience, isExperienceBand } from "./experience.ts";
 import { categoryParam, filterViolations, isUnfiltered, normalizeFilters, rescueVendorsParam, sendableSourcesParam, splitPage, salaryFromQueryText, SALARY_IN_QUERY } from "./filters.ts";
 import { pickRoute, rerankWindow, RETRIEVER_FOR } from "./search-routing.ts";
 import { planRankedPage } from "./paging.ts";
-import { collapseClusters, GROUP_OVERFETCH, interleaveByCompany, visibleCategories } from "./clusters.ts";
+import { collapseClusters, GROUP_OVERFETCH, interleaveByCompany, visibleCategories, mergeCompanyFacet } from "./clusters.ts";
 import { EMPLOYER_ALIASES } from "./employer-aliases.ts";
 import { expandQuery } from "./search-alias.ts";
 import { classifyQuestion } from "../_shared/application-questions.ts";
@@ -6939,33 +6939,7 @@ const rowToJob = (r: any) => ({
 // Cluster folding lives in ./clusters.ts so a test can WALK it — see the
 // header there for the phantom-location incident that forced the move.
 
-// One employer, several feed tokens (PwC ships five Workday sub-sites; 76 such
-// employers in the top 1,500 alone, 43k postings). Serving the facet raw put
-// "PwC" in the company dropdown five times, each filtering to a fifth of the
-// real roles. Merge by display name: one row, counts summed, every token
-// carried so the filter can cover them all. The primary token is the largest
-// sub-board's (stable for links).
-function mergeCompanyFacet(rows: Array<{ token?: string; name?: string; count?: number }>): Array<{ token?: string; name?: string; count?: number; tokens?: string[] }> {
-  const byName = new Map<string, { token?: string; name?: string; count: number; tokens: string[]; top: number }>();
-  const out: Array<{ token?: string; name?: string; count?: number; tokens?: string[] }> = [];
-  for (const r of rows) {
-    const key = (r.name ?? "").trim().toLowerCase();
-    if (!key) { out.push(r); continue; }
-    const hit = byName.get(key);
-    const n = r.count ?? 0;
-    if (!hit) {
-      byName.set(key, { token: r.token, name: r.name, count: n, tokens: r.token ? [r.token] : [], top: n });
-    } else {
-      hit.count += n;
-      if (r.token) hit.tokens.push(r.token);
-      if (n > hit.top) { hit.top = n; hit.token = r.token; }
-    }
-  }
-  for (const v of byName.values()) {
-    out.push(v.tokens.length > 1 ? { token: v.token, name: v.name, count: v.count, tokens: v.tokens } : { token: v.token, name: v.name, count: v.count });
-  }
-  return out;
-}
+// mergeCompanyFacet lives in ./clusters.ts with the other page-shaping folds.
 
 async function serveList(
   client: SupabaseClient,

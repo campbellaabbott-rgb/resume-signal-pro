@@ -167,3 +167,46 @@ export function collapseClusters(
   }
   return { jobs: out, rawConsumed };
 }
+
+// One employer, several feed tokens (PwC ships five Workday sub-sites; 76 such
+// employers in the top 1,500 alone, 43k postings). Serving the facet raw put
+// "PwC" in the company dropdown five times, each filtering to a fifth of the
+// real roles. Merge by display name: one row, counts summed, every token
+// carried so the filter can cover them all. The primary token is the largest
+// sub-board's (stable for links).
+export function mergeCompanyFacet(rows: Array<{ token?: string; name?: string; count?: number }>): Array<{ token?: string; name?: string; count?: number; tokens?: string[] }> {
+  const byName = new Map<string, { token?: string; name?: string; count: number; tokens: string[]; top: number }>();
+  const out: Array<{ token?: string; name?: string; count?: number; tokens?: string[] }> = [];
+  for (const r of rows) {
+    // NAME ALONE IS NOT AN IDENTITY. Two unrelated companies can share one:
+    // measured 2026-08-23, the Greenhouse fintech "Flex" (9 postings) and the
+    // Workday manufacturer "Flex" (572, token flextronics~wd1~Careers) became
+    // ONE dropdown entry with zero title overlap — 52 names, 4,575 postings in
+    // that state. The tenant stem (the token's first ~-segment) is the tell:
+    // PwC's five sub-sites all stem "pwc" and keep folding; the two Flexes
+    // stem "flex" vs "flextronics" and stay apart. The failure directions are
+    // not symmetric — an unmerged pair shows a name twice and each row still
+    // filters correctly, while a wrong merge hands one company's filter the
+    // other company's jobs — so ambiguity resolves toward NOT merging.
+    const stem = (r.token ?? "").split("~")[0].trim().toLowerCase();
+    const nm = (r.name ?? "").trim().toLowerCase();
+    // A nameless row has nothing to merge ON — pass it through untouched, as
+    // the name-only key always did (the compound key is never empty, so the
+    // old falsy check would silently stop firing here).
+    if (!nm) { out.push(r); continue; }
+    const key = nm + "|" + stem;
+    const hit = byName.get(key);
+    const n = r.count ?? 0;
+    if (!hit) {
+      byName.set(key, { token: r.token, name: r.name, count: n, tokens: r.token ? [r.token] : [], top: n });
+    } else {
+      hit.count += n;
+      if (r.token) hit.tokens.push(r.token);
+      if (n > hit.top) { hit.top = n; hit.token = r.token; }
+    }
+  }
+  for (const v of byName.values()) {
+    out.push(v.tokens.length > 1 ? { token: v.token, name: v.name, count: v.count, tokens: v.tokens } : { token: v.token, name: v.name, count: v.count });
+  }
+  return out;
+}
