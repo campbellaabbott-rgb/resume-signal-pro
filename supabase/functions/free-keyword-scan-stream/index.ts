@@ -6406,7 +6406,7 @@ function computeIndustryBenchmarkFallback(
 // for a given industry (the RPC itself enforces a minimum sample size) or if
 // the query fails for any reason — this should never block a scan result.
 async function computeIndustryBenchmark(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   score: number,
   industry: string
 ): Promise<{
