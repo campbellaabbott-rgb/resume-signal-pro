@@ -19,11 +19,6 @@ fi
 # Pre-existing type debt, excluded until burned down. Do NOT add new entries —
 # new functions must pass. Remove entries as they're fixed.
 EXCLUDE=(
-  free-keyword-scan-stream   # legacy fallback fork, 44 errors
-  parse-docx                 # 3 errors
-  parse-pdf                  # 2 errors
-  process-email-queue        # 5 errors
-  send-market-pulse          # 1 error
 )
 
 fails=0
