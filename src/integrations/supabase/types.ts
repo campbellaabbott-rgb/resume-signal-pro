@@ -3275,6 +3275,13 @@ export type Database = {
           relisted: boolean
         }[]
       }
+      get_apply_hosts: {
+        Args: never
+        Returns: {
+          host: string
+          postings: number
+        }[]
+      }
       get_audit_result: { Args: never; Returns: Json }
       get_board_flow: {
         Args: { p_hours?: number }
