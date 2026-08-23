@@ -515,9 +515,12 @@ describe("the countOnly exit is not exempt from the honesty contract", () => {
 });
 
 describe("a category lander may publish its OWN count, never the whole facet", () => {
-  const FN = readFileSync(
-    resolve(__dirname, "../../supabase/functions/job-board/index.ts"), "utf8",
-  );
+  // index.ts PLUS clusters.ts: the page-shaping functions these assertions pin
+// (visibleCategories, interleaveByCompany, collapseClusters) moved to a pure
+// module on 2026-08-23 so they could be walked by tests instead of grepped.
+// The properties are about the functions wherever they live.
+const FN = readFileSync(resolve(__dirname, "../../supabase/functions/job-board/index.ts"), "utf8")
+  + readFileSync(resolve(__dirname, "../../supabase/functions/job-board/clusters.ts"), "utf8");
 
   it("withholds the board-wide facet on any filtered view", () => {
     // The original rule, and it stays: board-wide category counts rendered

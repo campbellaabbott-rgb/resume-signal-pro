@@ -4009,7 +4009,8 @@
     "clearFields": "I-clear ang mga larangan",
     "clearCountries": "I-clear ang mga bansa",
     "fieldsAtMax": "Tatlong larangan lang nang sabay — mas marami pa ay sobrang bagal kaysa gumawa ng pangalawang paghahanap.",
-    "countriesAtMax": "Limang bansa lang nang sabay."
+    "countriesAtMax": "Limang bansa lang nang sabay.",
+    "sameLocationOpenings": "{{count}} bakante sa lokasyong ito"
   },
   "accountPage": {
     "statusSaveFailed": "Hindi na-save ang status na iyon — pakisubukan muli.",

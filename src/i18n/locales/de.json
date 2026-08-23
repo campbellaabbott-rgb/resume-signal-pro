@@ -4009,7 +4009,8 @@
     "clearFields": "Bereiche zurücksetzen",
     "clearCountries": "Länder zurücksetzen",
     "fieldsAtMax": "Drei Bereiche gleichzeitig — mehr ist so langsam, dass eine zweite Suche schneller wäre.",
-    "countriesAtMax": "Fünf Länder gleichzeitig."
+    "countriesAtMax": "Fünf Länder gleichzeitig.",
+    "sameLocationOpenings": "{{count}} offene Stellen an diesem Standort"
   },
   "accountPage": {
     "statusSaveFailed": "Status konnte nicht gespeichert werden — bitte erneut versuchen.",

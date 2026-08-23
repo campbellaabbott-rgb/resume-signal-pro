@@ -4009,7 +4009,8 @@
     "clearFields": "क्षेत्र साफ़ करें",
     "clearCountries": "देश साफ़ करें",
     "fieldsAtMax": "एक साथ तीन क्षेत्र — इससे ज़्यादा इतना धीमा है कि दूसरी खोज करना बेहतर रहेगा।",
-    "countriesAtMax": "एक साथ पाँच देश।"
+    "countriesAtMax": "एक साथ पाँच देश।",
+    "sameLocationOpenings": "इस स्थान पर {{count}} रिक्तियाँ"
   },
   "accountPage": {
     "statusSaveFailed": "यह स्थिति सहेजी नहीं जा सकी — कृपया फिर से प्रयास करें।",

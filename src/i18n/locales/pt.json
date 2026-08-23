@@ -4009,7 +4009,8 @@
     "clearFields": "Limpar áreas",
     "clearCountries": "Limpar países",
     "fieldsAtMax": "Três áreas de cada vez — mais do que isso é tão lento que compensa fazer outra pesquisa.",
-    "countriesAtMax": "Cinco países de cada vez."
+    "countriesAtMax": "Cinco países de cada vez.",
+    "sameLocationOpenings": "{{count}} vagas neste local"
   },
   "accountPage": {
     "statusSaveFailed": "Não foi possível salvar esse status — tente novamente.",

@@ -4009,7 +4009,8 @@
     "clearFields": "Vakgebieden wissen",
     "clearCountries": "Landen wissen",
     "fieldsAtMax": "Drie vakgebieden tegelijk — meer is zo traag dat een tweede zoekopdracht sneller is.",
-    "countriesAtMax": "Vijf landen tegelijk."
+    "countriesAtMax": "Vijf landen tegelijk.",
+    "sameLocationOpenings": "{{count}} vacatures op deze locatie"
   },
   "accountPage": {
     "statusSaveFailed": "Kon die status niet opslaan — probeer het opnieuw.",

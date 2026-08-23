@@ -60,6 +60,7 @@ import { detectExperience, isExperienceBand } from "./experience.ts";
 import { categoryParam, filterViolations, isUnfiltered, normalizeFilters, rescueVendorsParam, sendableSourcesParam, splitPage, salaryFromQueryText, SALARY_IN_QUERY } from "./filters.ts";
 import { pickRoute, rerankWindow, RETRIEVER_FOR } from "./search-routing.ts";
 import { planRankedPage } from "./paging.ts";
+import { collapseClusters, GROUP_OVERFETCH, interleaveByCompany, visibleCategories } from "./clusters.ts";
 import { EMPLOYER_ALIASES } from "./employer-aliases.ts";
 import { expandQuery } from "./search-alias.ts";
 import { classifyQuestion } from "../_shared/application-questions.ts";
@@ -6864,146 +6865,8 @@ const rowToJob = (r: any) => ({
     : {}),
 });
 
-// One employer's role, reposted per location, was eating up to 35% of a
-// results page (measured 2026-07-25). Collapse those into a single result that
-// says how many locations it covers, instead of spending 13 slots on it.
-const GROUP_OVERFETCH = 3;
-const GROUP_SAMPLE_LOCATIONS = 6;
-
-/**
- * Fold rows sharing a cluster key into one, carrying a location count.
- *
- * `rawConsumed` is the number of SOURCE rows this page swallowed, which is what
- * the next page must offset by — the displayed row count no longer equals the
- * rows read, so paginating by jobs.length would re-show siblings as if they
- * were new results. Consumption deliberately continues past the limit for rows
- * that join an ALREADY-emitted cluster, and stops at the first row that would
- * open a new one, so no row is ever skipped or shown twice.
- */
-// "Newest first" was, on the default board, one refresh batch sorted
-// alphabetically by employer.
-//
-// The serving sort is `effective_posted DESC, id ASC`. effective_posted is
-// coalesce(posted_at, first_seen), and first_seen defaults to now() — which is
-// transaction-stable, so every row in a 250-row upsert chunk shares one
-// timestamp. Ingest runs per board, so a tie group is ONE employer's postings.
-// The id tie-break is `source:token:externalId`, which then walks those
-// employers in alphabetical order.
-//
-// Measured 2026-07-29: 13 of the 60 first-page slots (22%) were taken by two
-// employers, in runs of 7 and 6. The data underneath is accurate; the page just
-// looks like a low-quality board, and page 1 is what every visitor judges us on.
-//
-// This does not re-sort — reordering by recency would be a lie about data whose
-// recency genuinely ties. It caps how many CONSECUTIVE cards one employer may
-// hold, deferring the overflow a little further down. Every posting still
-// appears, in the same tie group, so pagination stays stable and no card claims
-// to be newer than it is.
-const MAX_CONSECUTIVE_PER_COMPANY = 2;
-
-function interleaveByCompany(rows: Array<Record<string, unknown>>): Array<Record<string, unknown>> {
-  const out: Array<Record<string, unknown>> = [];
-  let deferred: Array<Record<string, unknown>> = [];
-  let runKey = "";
-  let runLen = 0;
-  const keyOf = (r: Record<string, unknown>) => String(r.company ?? r.company_token ?? "");
-  // The TIE GROUP a row belongs to. Reordering is only honest inside one:
-  // rows sharing an effective_posted are genuinely equally recent, so their
-  // relative order carries no information and may be permuted freely. Moving a
-  // row ACROSS groups would make the page claim a recency it does not have —
-  // which the previous version did, inverting 22 of 59 adjacent pairs (max
-  // 55.3s) while its own comment promised the opposite.
-  const tieOf = (r: Record<string, unknown>) => String(r.postedAt ?? r.effective_posted ?? r.firstSeen ?? "");
-  let tie = rows.length ? tieOf(rows[0]) : "";
-  const flush = () => { out.push(...deferred); deferred = []; runKey = ""; runLen = 0; };
-  for (const r of rows) {
-    const t = tieOf(r);
-    if (t !== tie) { flush(); tie = t; }   // group boundary: nothing crosses it
-    const k = keyOf(r);
-    if (k && k === runKey && runLen >= MAX_CONSECUTIVE_PER_COMPANY) { deferred.push(r); continue; }
-    // A deferred row is eligible again as soon as a different employer breaks
-    // the run, so nothing is pushed to the end of the group wholesale.
-    if (k === runKey) runLen++; else { runKey = k; runLen = 1; }
-    out.push(r);
-    if (deferred.length) {
-      const i = deferred.findIndex((d) => keyOf(d) !== runKey);
-      if (i >= 0) {
-        const [d] = deferred.splice(i, 1);
-        runKey = keyOf(d); runLen = 1;
-        out.push(d);
-      }
-    }
-  }
-  flush();
-  return out;
-}
-
-/**
- * The categories facet a response may honestly publish.
- *
- * BOARD-WIDE COUNTS INSIDE A FILTERED VIEW OVERSTATED BY 15.7x TO 45x, which is
- * why `categories` is withheld unless the request is unfiltered. That rule is
- * right and stays.
- *
- * But it took a true number away from the one page that needs it most. A
- * category lander (/jobs/field/engineering) IS filtered, so it got nothing, and
- * the page fell back to the capped `total` — rendering "10,000+" under a Google
- * snippet promising "68,347+". The count that won the click did not survive it.
- *
- * The single ACTIVE category is a different claim from the whole facet: it is
- * scoped to exactly what the reader filtered, so it cannot overstate. Publish
- * that one entry, and nothing else.
- */
-function visibleCategories(
-  facet: Record<string, number> | undefined,
-  unfiltered: boolean,
-  activeCategory: string | null,
-): Record<string, number> | undefined {
-  if (unfiltered) return facet ?? {};
-  if (!activeCategory || !facet) return undefined;
-  const n = facet[activeCategory];
-  return typeof n === "number" ? { [activeCategory]: n } : undefined;
-}
-
-function collapseClusters(
-  rows: Array<Record<string, unknown>>,
-  limit: number,
-): { jobs: Array<Record<string, unknown>>; rawConsumed: number } {
-  const out: Array<Record<string, unknown>> = [];
-  const byKey = new Map<string, Record<string, unknown>>();
-  let rawConsumed = 0;
-  for (const r of rows) {
-    // Keyed on the display NAME, not the feed token: PwC's five sub-boards
-    // must fold together. Two different employers sharing an identical display
-    // name AND an identical title is the residual risk, accepted — users could
-    // not tell those cards apart anyway.
-    const key = clusterKey(String(r.company ?? r.token ?? ""), String(r.title ?? ""));
-    const hit = byKey.get(key);
-    if (!hit && out.length >= limit) break; // next page starts exactly here
-    rawConsumed++;
-    if (hit) {
-      hit.locationCount = (Number(hit.locationCount) || 1) + 1;
-      const locs = hit.otherLocations as string[];
-      const loc = typeof r.location === "string" ? r.location.trim() : "";
-      // Distinct locations only — the same town genuinely recurs (one employer
-      // had the same role twice in Pueblo, CO), and listing it twice would be
-      // noise. locationCount above still counts every posting.
-      if (loc && loc !== hit.location && locs.length < GROUP_SAMPLE_LOCATIONS && !locs.includes(loc)) locs.push(loc);
-      continue;
-    }
-    const row = { ...r, locationCount: 1, otherLocations: [] as string[] };
-    byKey.set(key, row);
-    out.push(row);
-  }
-  // Only surface the grouping fields when there is actually a group.
-  for (const row of out) {
-    if ((Number(row.locationCount) || 1) < 2) {
-      delete row.locationCount;
-      delete row.otherLocations;
-    }
-  }
-  return { jobs: out, rawConsumed };
-}
+// Cluster folding lives in ./clusters.ts so a test can WALK it — see the
+// header there for the phantom-location incident that forced the move.
 
 // One employer, several feed tokens (PwC ships five Workday sub-sites; 76 such
 // employers in the top 1,500 alone, 43k postings). Serving the facet raw put

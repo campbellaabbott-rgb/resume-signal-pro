@@ -4009,7 +4009,8 @@
     "clearFields": "Clear fields",
     "clearCountries": "Clear countries",
     "fieldsAtMax": "Three fields at a time — more than that is slow enough to be worse than a second search.",
-    "countriesAtMax": "Five countries at a time."
+    "countriesAtMax": "Five countries at a time.",
+    "sameLocationOpenings": "{{count}} openings at this location"
   },
   "accountPage": {
     "statusSaveFailed": "Couldn't save that status — please try again.",

@@ -172,8 +172,10 @@ describe("windows, denominators and units are never asserted by hand", () => {
 // "98.8% confirmed live" as the board's accuracy. Cause: the per-vendor draw
 // used a deep OFFSET that fails on a 303k slice, and discarded the error.
 describe("the self-audit cannot silently drop a hiring system", () => {
+  // Plus clusters.ts — interleaveByCompany moved there 2026-08-23.
   const fn = readFileSync(
-    resolve(root, "supabase/functions/job-board/index.ts"), "utf8");
+    resolve(root, "supabase/functions/job-board/index.ts"), "utf8")
+    + readFileSync(resolve(root, "supabase/functions/job-board/clusters.ts"), "utf8");
 
   it("draws by keyset, never by deep OFFSET", () => {
     // .range(off, ...) with off scaled to the vendor's row count is the exact
@@ -309,7 +311,9 @@ describe("freshness and repost claims carry no false absolutes", () => {
 // words, and understating the true feed p50 (~83 min) by roughly 100x.
 describe("the re-check chip shows real re-verification, not insert time", () => {
   const jobs = readFileSync(resolve(root, "src/pages/Jobs.tsx"), "utf8");
-  const fn = readFileSync(resolve(root, "supabase/functions/job-board/index.ts"), "utf8");
+  // Plus clusters.ts — the page-shaping fold moved there 2026-08-23.
+  const fn = readFileSync(resolve(root, "supabase/functions/job-board/index.ts"), "utf8")
+    + readFileSync(resolve(root, "supabase/functions/job-board/clusters.ts"), "utf8");
 
   it("the chip renders recheckedAt, never lastSeen", () => {
     expect(jobs).toMatch(/detailJob\.recheckedAt &&/);
@@ -430,7 +434,9 @@ describe("the Workday date comments describe what the code does", () => {
 // served as live results. Verified 2026-07-28: rows stamped that same hour
 // were still returnable.
 describe("postings the employer feed already dropped are not served", () => {
-  const fn = readFileSync(resolve(root, "supabase/functions/job-board/index.ts"), "utf8");
+  // Plus clusters.ts — the page-shaping fold moved there 2026-08-23.
+  const fn = readFileSync(resolve(root, "supabase/functions/job-board/index.ts"), "utf8")
+    + readFileSync(resolve(root, "supabase/functions/job-board/clusters.ts"), "utf8");
   const mig = readFileSync(
     resolve(root, "supabase/migrations/20260728120000_stop_serving_dropped_postings.sql"), "utf8");
 
@@ -471,7 +477,9 @@ describe("postings the employer feed already dropped are not served", () => {
 // descriptions"). Those two were moved to the slice cadence; the posted
 // backfill was left behind.
 describe("the posted-date backfill is reachable without a full rotation", () => {
-  const fn = readFileSync(resolve(root, "supabase/functions/job-board/index.ts"), "utf8");
+  // Plus clusters.ts — the page-shaping fold moved there 2026-08-23.
+  const fn = readFileSync(resolve(root, "supabase/functions/job-board/index.ts"), "utf8")
+    + readFileSync(resolve(root, "supabase/functions/job-board/clusters.ts"), "utf8");
 
   it("runs as a maintenance track, not only at pass end", () => {
     const mk = fn.slice(fn.indexOf("async function maybeKickMaintenance"));
@@ -513,7 +521,9 @@ describe("the posted-date backfill is reachable without a full rotation", () => 
 // out of our own late knowledge. The stat hasn't shipped, so this is cheap to
 // get right now and expensive to unpick later.
 describe("exit ledger keeps learned age separate from observed age", () => {
-  const fn = readFileSync(resolve(root, "supabase/functions/job-board/index.ts"), "utf8");
+  // Plus clusters.ts — the page-shaping fold moved there 2026-08-23.
+  const fn = readFileSync(resolve(root, "supabase/functions/job-board/index.ts"), "utf8")
+    + readFileSync(resolve(root, "supabase/functions/job-board/clusters.ts"), "utf8");
 
   it("no exit site hardcodes aged_out", () => {
     expect(fn).not.toMatch(/exit_reason:\s*"aged_out"/);
@@ -555,7 +565,9 @@ describe("exit ledger keeps learned age separate from observed age", () => {
 // Rippling keep ingesting undated postings daily. The backlog would regrow and
 // the only remedy would be a human bumping a constant.
 describe("the posted-date sweep re-arms instead of latching", () => {
-  const fn = readFileSync(resolve(root, "supabase/functions/job-board/index.ts"), "utf8");
+  // Plus clusters.ts — the page-shaping fold moved there 2026-08-23.
+  const fn = readFileSync(resolve(root, "supabase/functions/job-board/index.ts"), "utf8")
+    + readFileSync(resolve(root, "supabase/functions/job-board/clusters.ts"), "utf8");
   // postedBackfillDue moved to _shared/posted-backfill.ts on 2026-08-08 so the
   // rule could be tested by CALLING it rather than by reading it — see
   // posted-date-backfill-rearm.test.ts, which exercises the real function.
@@ -592,7 +604,9 @@ describe("the posted-date sweep re-arms instead of latching", () => {
 // that never fired. job_board_meta is RLS-hidden (42501 for anon), so telling
 // them apart needed dashboard SQL — the exact gap embedSweep was added to close.
 describe("the posted-date sweep reports its own state", () => {
-  const fn = readFileSync(resolve(root, "supabase/functions/job-board/index.ts"), "utf8");
+  // Plus clusters.ts — the page-shaping fold moved there 2026-08-23.
+  const fn = readFileSync(resolve(root, "supabase/functions/job-board/index.ts"), "utf8")
+    + readFileSync(resolve(root, "supabase/functions/job-board/clusters.ts"), "utf8");
   // Sliced to the END OF THE BLOCK, not to a fixed character count. It was
   // `+ 1200`, and adding the backlog fields pushed `due:` past that window —
   // so the assertion silently stopped seeing its own target. A window that can
@@ -855,7 +869,9 @@ describe("Ghost Job Index age stats use the company's date, not our discovery ti
 });
 
 describe("dropped postings are unreachable by EVERY route", () => {
-  const fn = readFileSync(resolve(root, "supabase/functions/job-board/index.ts"), "utf8");
+  // Plus clusters.ts — the page-shaping fold moved there 2026-08-23.
+  const fn = readFileSync(resolve(root, "supabase/functions/job-board/index.ts"), "utf8")
+    + readFileSync(resolve(root, "supabase/functions/job-board/clusters.ts"), "utf8");
 
   it("the detail action filters them", () => {
     // 20260728120000 claimed to cover "every query shape" and missed this one,
@@ -871,7 +887,9 @@ describe("dropped postings are unreachable by EVERY route", () => {
 });
 
 describe("verify-on-apply cannot destroy a live posting on one probe", () => {
-  const fn = readFileSync(resolve(root, "supabase/functions/job-board/index.ts"), "utf8");
+  // Plus clusters.ts — the page-shaping fold moved there 2026-08-23.
+  const fn = readFileSync(resolve(root, "supabase/functions/job-board/index.ts"), "utf8")
+    + readFileSync(resolve(root, "supabase/functions/job-board/clusters.ts"), "utf8");
   const verify = fn.slice(fn.indexOf("const deadIds: string[] = []"));
 
   it("a first miss stamps, it does not delete", () => {
@@ -1147,7 +1165,9 @@ describe("locale guards actually check every locale", () => {
 // chain(), but the failure being diagnosed is that the chain never reaches hop
 // 2 — so note stayed null on a live deploy while the sweep sat at 0% dated.
 describe("the sweep's hop outcome does not depend on the chain surviving", () => {
-  const fn = readFileSync(resolve(root, "supabase/functions/job-board/index.ts"), "utf8");
+  // Plus clusters.ts — the page-shaping fold moved there 2026-08-23.
+  const fn = readFileSync(resolve(root, "supabase/functions/job-board/index.ts"), "utf8")
+    + readFileSync(resolve(root, "supabase/functions/job-board/clusters.ts"), "utf8");
 
   it("writes the outcome directly, not only through chain()", () => {
     const hop = fn.slice(fn.indexOf("const datedTotal = (typeof body.datedTotal"));
@@ -1167,7 +1187,9 @@ describe("the sweep's hop outcome does not depend on the chain surviving", () =>
 // IDS_PER_HOP, brokeEarly suppresses the exhausted flag, and the next pass
 // breaks on its first row without advancing scanned or cursor.
 describe("the posted-date draw loop always terminates", () => {
-  const fn = readFileSync(resolve(root, "supabase/functions/job-board/index.ts"), "utf8");
+  // Plus clusters.ts — the page-shaping fold moved there 2026-08-23.
+  const fn = readFileSync(resolve(root, "supabase/functions/job-board/index.ts"), "utf8")
+    + readFileSync(resolve(root, "supabase/functions/job-board/clusters.ts"), "utf8");
 
   it("bounds the hop with a STRICT comparison", () => {
     expect(fn).not.toMatch(/scanned <= IDS_PER_HOP/);
@@ -1236,7 +1258,9 @@ describe("no locale promises a fixed re-check interval", () => {
 // alphabetically. Measured 2026-07-29: 13 of 60 first-page slots taken by two
 // employers, in runs of 7 and 6.
 describe("the board does not hand consecutive slots to one employer", () => {
-  const fn = readFileSync(resolve(root, "supabase/functions/job-board/index.ts"), "utf8");
+  // Plus clusters.ts — the page-shaping fold moved there 2026-08-23.
+  const fn = readFileSync(resolve(root, "supabase/functions/job-board/index.ts"), "utf8")
+    + readFileSync(resolve(root, "supabase/functions/job-board/clusters.ts"), "utf8");
 
   it("caps consecutive same-employer cards", () => {
     expect(fn).toMatch(/const MAX_CONSECUTIVE_PER_COMPANY = 2;/);
@@ -1361,7 +1385,9 @@ describe("the board does not hand consecutive slots to one employer", () => {
 // location 0.57% disagreement. The structural cost was larger — every
 // normaliser improvement only ever reached rows inserted after it shipped.
 describe("ingest corrects existing rows without undoing enrichment", () => {
-  const fn = readFileSync(resolve(root, "supabase/functions/job-board/index.ts"), "utf8");
+  // Plus clusters.ts — the page-shaping fold moved there 2026-08-23.
+  const fn = readFileSync(resolve(root, "supabase/functions/job-board/index.ts"), "utf8")
+    + readFileSync(resolve(root, "supabase/functions/job-board/clusters.ts"), "utf8");
   const block = fn.slice(fn.indexOf("const corrections: Array<Record<string, unknown>> = [];"),
                          fn.indexOf("for (let i = 0; i < newRows.length; i += 250)"));
 
@@ -1461,7 +1487,9 @@ describe("the verification receipt is visible before the click", () => {
 // greenhouse 3.2s -> 500, the identical query shape on rippling 0.34s -> 200,
 // because greenhouse is 99.2% dated and must scan 59,878 rows to find 482.
 describe("a slow phase cannot wedge the dating sweep", () => {
-  const fn = readFileSync(resolve(root, "supabase/functions/job-board/index.ts"), "utf8");
+  // Plus clusters.ts — the page-shaping fold moved there 2026-08-23.
+  const fn = readFileSync(resolve(root, "supabase/functions/job-board/index.ts"), "utf8")
+    + readFileSync(resolve(root, "supabase/functions/job-board/clusters.ts"), "utf8");
   // SLICED TO A STRUCTURAL TERMINATOR, NOT A CHARACTER COUNT.
   //
   // This was `indexOf(...) - 900` to `+ 1600`. Adding a comment above the
@@ -1531,7 +1559,9 @@ describe("the fill-speed repair replaces rather than overloads", () => {
 // board-wide total — 10 engineering cards under a headline of 587,793, against
 // a true 66,842. Reachable from the URL: Jobs.tsx passes ?category= through raw.
 describe("enum filters are case-folded once, at the door", () => {
-  const fn = readFileSync(resolve(root, "supabase/functions/job-board/index.ts"), "utf8");
+  // Plus clusters.ts — the page-shaping fold moved there 2026-08-23.
+  const fn = readFileSync(resolve(root, "supabase/functions/job-board/index.ts"), "utf8")
+    + readFileSync(resolve(root, "supabase/functions/job-board/clusters.ts"), "utf8");
 
   // REWRITTEN 2026-07-29, and the reason is worth keeping.
   //
@@ -1581,7 +1611,9 @@ describe("enum filters are case-folded once, at the door", () => {
 // nothing about: measured 1-2 postings duplicated onto page 2 and 1 dropped
 // FOREVER per boundary, where the control scored 0/0.
 describe("the same-employer interleave cannot lose a posting", () => {
-  const fn = readFileSync(resolve(root, "supabase/functions/job-board/index.ts"), "utf8");
+  // Plus clusters.ts — the page-shaping fold moved there 2026-08-23.
+  const fn = readFileSync(resolve(root, "supabase/functions/job-board/index.ts"), "utf8")
+    + readFileSync(resolve(root, "supabase/functions/job-board/clusters.ts"), "utf8");
 
   it("permutes only the page that is returned", () => {
     expect(fn).toMatch(/if \(!sortSalary\) grouped\.jobs = interleaveByCompany\(grouped\.jobs\);/);
@@ -1615,7 +1647,9 @@ describe("the same-employer interleave cannot lose a posting", () => {
 // being changed; the numbers live in the commit message.
 describe("filters send and show one honest definition", () => {
   const jobs = readFileSync(resolve(root, "src/pages/Jobs.tsx"), "utf8");
-  const fn = readFileSync(resolve(root, "supabase/functions/job-board/index.ts"), "utf8");
+  // Plus clusters.ts — the page-shaping fold moved there 2026-08-23.
+  const fn = readFileSync(resolve(root, "supabase/functions/job-board/index.ts"), "utf8")
+    + readFileSync(resolve(root, "supabase/functions/job-board/clusters.ts"), "utf8");
 
   it("the UI sends ONE Remote predicate, not two that AND together", () => {
     // remote=true is a strict subset of work_mode='remote', so sending both
@@ -1705,7 +1739,9 @@ describe("filters send and show one honest definition", () => {
 // Filter-audit batch 4 — the items I had deferred as "needs query plans". Most
 // did not: they needed a deadline, a ceiling, or an honest refusal.
 describe("slow work degrades instead of failing the request", () => {
-  const fn = readFileSync(resolve(root, "supabase/functions/job-board/index.ts"), "utf8");
+  // Plus clusters.ts — the page-shaping fold moved there 2026-08-23.
+  const fn = readFileSync(resolve(root, "supabase/functions/job-board/index.ts"), "utf8")
+    + readFileSync(resolve(root, "supabase/functions/job-board/clusters.ts"), "utf8");
 
   it("the count cannot hold the response open", () => {
     // Running it concurrently was never enough — Promise.all still WAITS, so a
@@ -1776,7 +1812,9 @@ describe("slow work degrades instead of failing the request", () => {
 // undefined. Live probe: three rows matching country=DE came back country:null.
 // A mapper cannot invent a field the query did not ask for; assert the fetch.
 describe("country is fetched, not just mapped", () => {
-  const fn = readFileSync(resolve(root, "supabase/functions/job-board/index.ts"), "utf8");
+  // Plus clusters.ts — the page-shaping fold moved there 2026-08-23.
+  const fn = readFileSync(resolve(root, "supabase/functions/job-board/index.ts"), "utf8")
+    + readFileSync(resolve(root, "supabase/functions/job-board/clusters.ts"), "utf8");
 
   it("the serving SELECT lists country", () => {
     expect(fn).toMatch(/id,source,company_token,company,title,location,country,remote,work_mode/);

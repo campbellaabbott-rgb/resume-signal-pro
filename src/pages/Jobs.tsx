@@ -97,7 +97,13 @@ interface BoardJob {
   /** >1 when the server folded the same role posted in several locations into
    *  this row. The siblings are real, separately-applyable postings — they are
    *  collapsed for readability, never dropped. */
+  /** DISTINCT places this fold covers — no longer the sibling-row count,
+   *  which it silently was: 2.4% of served cards claimed locations that do
+   *  not exist, the worst a single-location Kyiv role posted 85 times and
+   *  captioned "84 more locations". */
   locationCount?: number;
+  /** How many requisitions folded into this card. */
+  postingCount?: number;
   /** A few of the other locations this role is open in (server-capped). */
   otherLocations?: string[];
   /** Tier-2 ranked search only: ts_headline fragment showing where a description-matched result matched ([[term]] delimiters). */
@@ -4991,6 +4997,12 @@ export default function Jobs() {
                           {/* Same role, several locations. The siblings are real
                               postings we folded for readability, so say how many
                               and name a few — never imply the others vanished. */}
+                          {/* Same-place repeats are OPENINGS, not places. */}
+                          {(job.locationCount ?? 1) === 1 && (job.postingCount ?? 1) > 1 && (
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              {t("jobsPage.sameLocationOpenings", "{{count}} openings at this location", { count: job.postingCount })}
+                            </p>
+                          )}
                           {(job.locationCount ?? 1) > 1 && (
                             <p
                               className="text-xs text-muted-foreground mt-0.5"

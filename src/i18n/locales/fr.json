@@ -4009,7 +4009,8 @@
     "clearFields": "Effacer les domaines",
     "clearCountries": "Effacer les pays",
     "fieldsAtMax": "Trois domaines à la fois — au-delà, c'est assez lent pour qu'une seconde recherche soit préférable.",
-    "countriesAtMax": "Cinq pays à la fois."
+    "countriesAtMax": "Cinq pays à la fois.",
+    "sameLocationOpenings": "{{count}} postes à cet endroit"
   },
   "accountPage": {
     "statusSaveFailed": "Impossible d'enregistrer ce statut — réessayez.",
