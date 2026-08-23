@@ -1000,7 +1000,7 @@ interface IndustryDetectionResult {
   confidence: 'high' | 'medium' | 'low';
   signals: string[];
   score: number;
-  detectionSource?: 'server_high' | 'server_medium' | 'server_low' | 'ai_override' | 'ai_fallback';
+  detectionSource?: 'server_high' | 'server_high_ai_agree' | 'server_high_ai_overruled' | 'server_high_ai_confirmed_disagree' | 'server_medium' | 'server_medium_ai_agree' | 'ai_override_medium_parent' | 'server_medium_ai_unrelated' | 'server_low' | 'server_low_ai_agree' | 'ai_override_low' | 'ai_override' | 'ai_fallback' | 'phantom_remap' | 'phantom_force_kill' | 'ai_confirmed' | 'server_ai_confirmed' | 'server_high_ai_confirmed' | 'server_medium_ai_confirmed' | 'server_low_ai_confirmed' | 'ai_override_ai_confirmed' | 'ai_fallback_ai_confirmed';
   alternativeIndustries?: { industry: string; score: number }[];
   matchedTitlePatterns?: string[];
   matchedSkillCount?: number;
