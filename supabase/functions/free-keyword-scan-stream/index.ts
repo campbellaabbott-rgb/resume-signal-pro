@@ -8215,7 +8215,7 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
         hybridResult.signals = [...hybridResult.signals, `AI confirmation agrees: ${verifiedIndustry}`];
         if (hybridResult.confidence === 'low') hybridResult.confidence = 'medium';
         if (hybridResult.confidence === 'medium') hybridResult.confidence = 'high';
-        hybridResult.detectionSource = `${hybridResult.detectionSource || 'server'}_ai_confirmed`;
+        (hybridResult as any).detectionSource = `${hybridResult.detectionSource || 'server'}_ai_confirmed`;
       }
       
       const industryDetectionDuration = Date.now() - industryDetectionStart;
