@@ -241,14 +241,16 @@ serve(async (req) => {
       }
       if (errorName === 'InvalidPDFException') {
         trackPerformance(requestStartTime, 'parse-pdf', false, { reason: 'invalid_pdf' }, clientIp);
-        EdgeRuntime.waitUntil(
-          supabase.rpc('log_parse_failure', {
+      EdgeRuntime.waitUntil(
+        (async () => {
+          await supabase.rpc('log_parse_failure', {
             p_file_type: 'pdf',
             p_error_code: 'invalid_pdf',
             p_error_message: 'File is not a valid PDF',
             p_visitor_id: clientIp
-          })
-        );
+          });
+        })()
+      );
         return new Response(
           JSON.stringify({
             success: false,
