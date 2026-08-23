@@ -217,7 +217,11 @@ const COUNTRY_PATTERNS: ReadonlyArray<readonly [RegExp, string]> = [
   [/\baustralia\b/i, "AU"],
   [/\b(?:poland|polska)\b/i, "PL"],
   [/\b(?:spain|españa)\b/i, "ES"],
-  [/\b(?:mexico|méxico)\b/i, "MX"],
+  // (?<!new ): "Albuquerque, New Mexico" is a US state, not the country —
+  // measured 2026-08-24: 251 of 599 servable "new mexico" locations carried
+  // country=MX, including rows with an explicit "US," prefix, poisoning the
+  // country filter in both directions. "Mexico City"/"México" still match.
+  [/\b(?<!new )(?:mexico|méxico)\b/i, "MX"],
   [/\b(?:brazil|brasil)\b/i, "BR"],
   [/\bphilippines\b/i, "PH"],
   [/\b(?:sweden|sverige)\b/i, "SE"],
@@ -305,7 +309,7 @@ const P_CA_PROV_NAME = /\b(?:ontario|quebec|british columbia|alberta|manitoba|sa
 // never substring — "Santiago de Compostela" does not match "santiago".
 // Bump COUNTRY_MAP_VERSION when this table changes; the backfill-country
 // sweep re-runs stored null-country rows against the current table.
-export const COUNTRY_MAP_VERSION = 3;
+export const COUNTRY_MAP_VERSION = 4;
 const CITY_COUNTRY = new Map<string, string>([
   ["aarhus", "DK"],
   ["aberdeen", "GB"],

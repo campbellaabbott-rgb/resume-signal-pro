@@ -85,6 +85,22 @@ describe("a place we can name is not unplaceable", () => {
     expect(detectCountry("Kuala Lumpur")).toBe("MY");
   });
 
+  it("Albuquerque is not in Mexico", () => {
+    // Measured 2026-08-24: 251 of 599 servable "new mexico" locations carried
+    // country=MX — the country-name loop ran before the state names, and the
+    // "mexico" substring inside "New Mexico" claimed the row, even under an
+    // explicit US prefix. The (?<!new ) guard fixes the state; the country
+    // keeps every genuine spelling. The general state/country collision sweep
+    // was probed and refuted (CA 3/11,034, CO 0/2,703, IN 0/2,452, DE 0/272)
+    // — this is one substring bug, not a class.
+    expect(detectCountry("Albuquerque, New Mexico")).toBe("US");
+    expect(detectCountry("US, New Mexico, Albuquerque")).toBe("US");
+    expect(detectCountry("Santa Fe, New Mexico, United States")).toBe("US");
+    expect(detectCountry("Mexico City")).toBe("MX");
+    expect(detectCountry("Ciudad de México")).toBe("MX");
+    expect(detectCountry("Monterrey, Mexico")).toBe("MX");
+  });
+
   it("bumps the map version, or the backfill never re-reads the old rows", () => {
     // The table is versioned precisely so a parser change re-runs over postings
     // already stored. Adding rules without bumping it fixes only what arrives

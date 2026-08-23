@@ -102,7 +102,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-24.1";
+const BUILD_VERSION = "2026-08-24.2";
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -1375,6 +1375,13 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
           // postings.json — which we already fetch for the listing — carries the
           // full posting body. We were parsing it for titles and throwing the
           // description away, storing null on every row.
+          for (const [k, v] of listPayloadDescriptions(s, r.raw)) descs.set(k, v);
+        } else if (s.source === "icims") {
+          // Same shape as pinpoint, found the same way a year of nulls later:
+          // the list payload carries description+qualifications on every item
+          // and the parser was already written — nothing ever called it at
+          // ingest. Salary mining and experience detection start working on
+          // these rows in the same statement (lines below read descs).
           for (const [k, v] of listPayloadDescriptions(s, r.raw)) descs.set(k, v);
         // Breezy has NO description field on its /json list (verified against the
         // live API 2026-07-24) — the branch that used to sit here could never

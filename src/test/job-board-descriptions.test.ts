@@ -138,7 +138,11 @@ describe("vendor description classification", () => {
     // Ingest is insert-only, so rows predating the extraction keep their null
     // and still need a backfill — but sending them through the per-posting
     // phase would re-fetch the ENTIRE board for every single row.
-    expect([...BOARD_DESC_SOURCES].sort()).toEqual(["pinpoint", "workable"]);
+    // icims joined 2026-08-24: its list payload had carried the full
+    // description all along and the parser existed — but no ingest branch or
+    // sweep membership called it, so 18,713 servable rows (100% of the
+    // vendor) stored null. The board lane fills them at ~120/board/pass.
+    expect([...BOARD_DESC_SOURCES].sort()).toEqual(["icims", "pinpoint", "workable"]);
     for (const v of BOARD_DESC_SOURCES) {
       expect([...DETAIL_DESC_SOURCES], v).not.toContain(v);
       expect([...NO_DESC_SOURCES], v).not.toContain(v);

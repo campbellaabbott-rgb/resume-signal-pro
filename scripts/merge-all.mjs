@@ -57,6 +57,30 @@ const NAME_BLOCK = /\b(staffing|recruit(ing|ment|er)?s?|talents?|headhunt|person
 const GOV_BLOCK = /\b(city of|county of|state of|commonwealth of|government of|unified school|school district|public schools|public library|court of appeals|county commissioners|conservation district|health district|sheriff|police department|fire department|township of|municipality)\b/i;
 const TOKEN_BLOCK = /(demo|test|sample|sandbox|staging)/i;
 
+// Pinpoint seeds every trial tenant with the same 6 demo postings, and a
+// company that trials Pinpoint without going live serves ONLY those — under
+// its real name and token, so NAME_BLOCK and TOKEN_BLOCK never fire. 111
+// such tenants (469 fake servable postings) shipped through two census
+// waves before the 2026-08-24 audit caught them by content. The fingerprint
+// is the title set: a small pinpoint board whose every title is canned is a
+// sandbox, whatever its name is. Full-subset only — mixed boards
+// (pinpoint:accenture, kempinski: 2 canned of 296 real) must pass.
+const PINPOINT_DEMO_TITLES = new Set([
+  "Customer Service Rep", "Head of DEI - Belfast", "Head of DEI - UK",
+  "Head of DEI - US", "Marketing Executive", "Marketing Manager",
+]);
+async function isPinpointDemoSandbox(token) {
+  try {
+    const host = token.includes(".") ? token : `${token}.pinpointhq.com`;
+    const res = await fetch(`https://${host}/postings.json`, { signal: AbortSignal.timeout(8000) });
+    if (!res.ok) return false; // unreachable is a different problem — don't hide it here
+    const body = await res.json();
+    const titles = (Array.isArray(body?.data) ? body.data : [])
+      .map((p) => String(p?.title ?? "").trim()).filter(Boolean);
+    return titles.length > 0 && titles.every((t) => PINPOINT_DEMO_TITLES.has(t));
+  } catch { return false; }
+}
+
 // Existing catalog in BOTH entry formats: object literals ({ name, source,
 // token }) from rung 3+, and the legacy s("Name", "vendor", "token") helper.
 // The round-3 verify pass missed the object format and re-verified ~3k known
@@ -111,6 +135,11 @@ for (const vendor of VENDORS) {
     const tokenKey = `${vendor}:${b.token.toLowerCase()}`;
     const nameKey = name.toLowerCase();
     if (TOKEN_BLOCK.test(b.token)) { dropped.blockedToken++; continue; }
+    // Content fingerprint, small pinpoint boards only (sandboxes measured
+    // 2-6 postings; 12 leaves margin without fetching real boards).
+    if (vendor === "pinpoint" && b.count <= 12 && await isPinpointDemoSandbox(b.token)) {
+      dropped.pinpointDemo = (dropped.pinpointDemo ?? 0) + 1; continue;
+    }
     if (!name || NAME_BLOCK.test(name) || GOV_BLOCK.test(name)) { dropped.blockedName++; continue; }
     if (seen.has(tokenKey) || existingTokens.has(tokenKey)) { dropped.dupe++; continue; }
     // COLLISION, BUT NOT ALL COLLISIONS ARE EQUAL.

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 
 /**
@@ -77,5 +77,43 @@ describe("a demo board is not an employer", () => {
     const registered = new Set(BOARDS.map(([, , t]) => t));
     const orphans = hot.filter((t) => !registered.has(t));
     expect(orphans, "hot tokens with no board burn the fastest crawl slots on nothing").toEqual([]);
+  });
+});
+
+describe("a demo sandbox is not an employer, even when a real company owns it", () => {
+  // 111 pinpoint tenants of REAL companies served only Pinpoint's 6 canned
+  // seed titles — trial sandboxes that passed the name/token blocklist
+  // because only their CONTENT was canned. Verified as a full subset on
+  // removal day (469 rows, 6 distinct titles, 0 real). The registry entry,
+  // the stored rows, and the census door all closed in one commit; these
+  // pins keep all three closed.
+  const MIG_DIR = resolve(__dirname, "../../supabase/migrations");
+  const MIG = readFileSync(
+    resolve(MIG_DIR, readdirSync(MIG_DIR).find((f) => f.includes("a_demo_sandbox_is_not_an_employer"))!),
+    "utf8",
+  );
+  const migTokens = [...MIG.matchAll(/^\s*'([a-z0-9.-]+)',?$/gm)].map((m) => m[1]);
+
+  it("all 111 removed tokens are out of the registry", () => {
+    const registered = new Set(BOARDS.filter(([src]) => src === "pinpoint").map(([, , t]) => t));
+    expect(migTokens.length).toBe(111);
+    const still = migTokens.filter((t) => registered.has(t));
+    expect(still, "a deleted board still registered re-ingests its fake postings next pass").toEqual([]);
+  });
+
+  it("the delete is keyed (source, token) and never touches the closure machinery", () => {
+    const sql = MIG.split("\n").filter((l) => !l.trimStart().startsWith("--")).join("\n");
+    expect(sql).toMatch(/source = 'pinpoint'/);
+    expect(sql).not.toMatch(/missing_since/i);
+    expect(sql).not.toMatch(/job_board_(closures|exits)/i);
+    // The high-water lowering rides the same migration, idempotently.
+    expect(sql).toMatch(/LEAST\(\(v->>'size'\)::int, 31709\)/);
+  });
+
+  it("the census door is closed by content fingerprint, full-subset only", () => {
+    const merge = readFileSync(resolve(__dirname, "../../scripts/merge-all.mjs"), "utf8");
+    expect(merge).toMatch(/PINPOINT_DEMO_TITLES = new Set\(/);
+    expect(merge).toMatch(/titles\.length > 0 && titles\.every\(\(t\) => PINPOINT_DEMO_TITLES\.has\(t\)\)/);
+    expect(merge).toMatch(/vendor === "pinpoint" && b\.count <= 12/);
   });
 });

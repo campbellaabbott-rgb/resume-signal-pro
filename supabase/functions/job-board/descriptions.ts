@@ -27,15 +27,16 @@ export const DETAIL_DESC_SOURCES = ["workday", "smartrecruiters", "bamboohr", "o
  * their null forever, and they must NOT go in the per-posting sweep: one row
  * there would re-fetch the whole board. They get a board-level lane instead —
  * one fetch fills every null row on that board.
+ *
+ * icims joined 2026-08-24: it ships `data.description` (plus qualifications/
+ * responsibilities) on every LIST item and the parser in
+ * listPayloadDescriptions had handled it from the start — but no ingest
+ * branch and no sweep membership ever CALLED it, so 18,713 servable icims
+ * rows (100% of the vendor) stored null while the text arrived on every
+ * fetch. A dead export named LIST_DESC_SOURCES documented the intent and
+ * was imported nowhere; membership here is what actually runs.
  */
-export const BOARD_DESC_SOURCES = ["workable", "pinpoint"] as const;
-
-/**
- * Vendors whose list payload ALREADY carries the full description, so ingest
- * stores it for free and no sweep is needed: iCIMS ships `data.description`
- * (plus qualifications/responsibilities) on every list item.
- */
-export const LIST_DESC_SOURCES = ["icims"] as const;
+export const BOARD_DESC_SOURCES = ["workable", "pinpoint", "icims"] as const;
 
 /**
  * Vendors with no public description source. A null here is a measured fact, not
