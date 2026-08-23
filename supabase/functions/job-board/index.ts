@@ -3278,6 +3278,79 @@ const METRO_ALIASES: Record<string, { names: string[]; keepRaw: boolean }> = {
   dfw: { names: ["Dallas", "Fort Worth"], keepRaw: false },
   nola: { names: ["New Orleans"], keepRaw: false },
   "the city": { names: ["New York"], keepRaw: false },
+
+  // A CITY WRITTEN IN ITS OWN LANGUAGE IS A DIFFERENT STRING, AND SUBSTRING
+  // MATCHING CANNOT BRIDGE THAT. Nothing connects "Munich" to "München" — a
+  // visitor sees whichever spelling their own vocabulary happens to share with
+  // the employer's HR system, and never learns the rest exists.
+  //
+  // MEASURED LIVE 2026-08-22 (fresh, present postings), English form vs local:
+  //   Bangalore  3,074  /  Bengaluru 3,181   — either speller misses about half
+  //   Munich       966  /  München     757
+  //   Warsaw     1,017  /  Warszawa    265
+  //   Milan        642  /  Milano      240
+  //   Lisbon       535  /  Lisboa      163
+  //   Prague       449  /  Praha       113
+  //   Florence     425  /  Firenze      17
+  //   Geneva       351  /  Genève       48
+  //   Brussels     314  /  Bruxelles   124
+  //   Vienna       294  /  Wien        193
+  //   Zurich       288  /  Zürich      178
+  //   Copenhagen   206  /  København    39
+  //   Cologne      119  /  Köln        346   — the English speller sees 26%
+  //   Krakow       398  /  Kraków      148
+  //   Gothenburg    42  /  Göteborg     18
+  //
+  // EVERY LOCAL FORM WAS CHECKED FOR SUBSTRING POISON before being listed, the
+  // same test that keeps "LA" from matching "Plain City". Each of the forms
+  // below returns only its own city.
+  //
+  // ROME IS DELIBERATELY ABSENT. "%Roma%" looked like the biggest win in the
+  // set at 1,270 hits and is almost entirely ROMANIA — Bucharest, Cluj-Napoca,
+  // Timișoara. Anchoring it as "Roma," survives Romania but still collects
+  // "Roma, QLD, Australia" and "VIA ROMA," in Talamona, for 70 hits. A filter
+  // that answers "Rome" with Bucharest is worse than one that answers with
+  // less, so Rome keeps the plain substring it already had.
+  //
+  // Mumbai/Bombay and The Hague/Den Haag are absent for the opposite reason:
+  // the alternate spelling returns ZERO postings, so the entry would be dead
+  // weight pretending to be coverage.
+  munich: { names: ["Munich", "München"], keepRaw: false },
+  "münchen": { names: ["Munich", "München"], keepRaw: false },
+  muenchen: { names: ["Munich", "München"], keepRaw: false },
+  cologne: { names: ["Cologne", "Köln"], keepRaw: false },
+  "köln": { names: ["Cologne", "Köln"], keepRaw: false },
+  koeln: { names: ["Cologne", "Köln"], keepRaw: false },
+  vienna: { names: ["Vienna", "Wien"], keepRaw: false },
+  wien: { names: ["Vienna", "Wien"], keepRaw: false },
+  prague: { names: ["Prague", "Praha"], keepRaw: false },
+  praha: { names: ["Prague", "Praha"], keepRaw: false },
+  lisbon: { names: ["Lisbon", "Lisboa"], keepRaw: false },
+  lisboa: { names: ["Lisbon", "Lisboa"], keepRaw: false },
+  milan: { names: ["Milan", "Milano"], keepRaw: false },
+  milano: { names: ["Milan", "Milano"], keepRaw: false },
+  florence: { names: ["Florence", "Firenze"], keepRaw: false },
+  firenze: { names: ["Florence", "Firenze"], keepRaw: false },
+  zurich: { names: ["Zurich", "Zürich"], keepRaw: false },
+  "zürich": { names: ["Zurich", "Zürich"], keepRaw: false },
+  geneva: { names: ["Geneva", "Genève"], keepRaw: false },
+  "genève": { names: ["Geneva", "Genève"], keepRaw: false },
+  geneve: { names: ["Geneva", "Genève"], keepRaw: false },
+  copenhagen: { names: ["Copenhagen", "København"], keepRaw: false },
+  "københavn": { names: ["Copenhagen", "København"], keepRaw: false },
+  kobenhavn: { names: ["Copenhagen", "København"], keepRaw: false },
+  gothenburg: { names: ["Gothenburg", "Göteborg"], keepRaw: false },
+  "göteborg": { names: ["Gothenburg", "Göteborg"], keepRaw: false },
+  goteborg: { names: ["Gothenburg", "Göteborg"], keepRaw: false },
+  warsaw: { names: ["Warsaw", "Warszawa"], keepRaw: false },
+  warszawa: { names: ["Warsaw", "Warszawa"], keepRaw: false },
+  krakow: { names: ["Krakow", "Kraków"], keepRaw: false },
+  "kraków": { names: ["Krakow", "Kraków"], keepRaw: false },
+  cracow: { names: ["Krakow", "Kraków"], keepRaw: false },
+  brussels: { names: ["Brussels", "Bruxelles", "Brussel"], keepRaw: false },
+  bruxelles: { names: ["Brussels", "Bruxelles", "Brussel"], keepRaw: false },
+  bangalore: { names: ["Bangalore", "Bengaluru"], keepRaw: false },
+  bengaluru: { names: ["Bangalore", "Bengaluru"], keepRaw: false },
 };
 
 /**
