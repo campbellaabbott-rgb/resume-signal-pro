@@ -8415,8 +8415,8 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
       // AI cost. Precedence: target country (applying-to) → resume-detected →
       // IP → US. Fully guarded: any failure yields nulls and the scan proceeds
       // exactly as before.
-      let countryStandardsResult = null;
-      let geoResult = null;
+      let countryStandardsResult: any = null;
+      let geoResult: any = null;
       try {
         const resumeGeo = detectCountryFromResume(resumeText);
         // Low-confidence resume detection (an exact evidence tie) defers to
