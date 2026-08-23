@@ -3508,6 +3508,7 @@
     "empty": "Keine Stelle passt zu diesen Filtern. Lockern Sie einen und versuchen Sie es erneut.",
     "resultsSummary": "{{shown}} von {{total}} passenden Stellen aus {{companyFeeds}} Unternehmens-Feeds",
     "resultsSummaryNoTotal": "{{shown}} passende Stellen werden angezeigt",
+    "resultsSummaryFloor": "{{shown}} von {{floor}}+ passenden Stellen angezeigt",
     "alsoInLocations_one": "Stellt auch an {{count}} weiterem Standort ein",
     "alsoInLocations_other": "Stellt auch an {{count}} weiteren Standorten ein",
     "postedToday": "heute",

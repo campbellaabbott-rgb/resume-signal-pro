@@ -790,7 +790,7 @@ const EXPERIENCE_VERSION = 1;
 // ingest alone never reaches postings that predate the parser). v2: currency
 // capture — the sweep targets salary_currency IS NULL, which also re-covers
 // rows v1 already parsed (they have a floor but no currency).
-const SALARY_PARSE_VERSION = 5; // v5: annualMax + period stored (full range display) — re-sweep fills salary_max_annual/salary_period on stored rows
+const SALARY_PARSE_VERSION = 6; // v6 (2026-08-24): "an hour"/"a year" vocabulary + unambiguous-hourly inference for parity currencies in [7,200) — 17,641 workday vendor-stated ranges sat unannualized; whole-dollar rounding
 const COUNTRY_VERSION = 1; // v1: deterministic country from location text (names + US/CA state patterns)
 // Date-the-undated sweep: greenhouse rows predating first_published capture
 // (insert-only rows never re-see the feed). Vendors whose feeds carry no date
@@ -8762,7 +8762,15 @@ async function serveList(
                 // hasMore gate; an API consumer paging on nextOffset loops.
                 nextOffset: offset + fuzzyGrouped.jobs.length,
                 total: fzKnown ? fzTotal : null,
-                ...(fzKnown ? {} : { countUnavailable: true }),
+                // A FLOOR IS A FACT EVEN WHEN THE TOTAL IS NOT. total_rows at
+                // the cap proves "at least this many match" — measured live,
+                // 3 of 5 typo queries rendered no denominator at all while
+                // the RPC had proven one. totalAtLeast is never a total and
+                // countUnavailable still says so; the client renders "N+".
+                ...(fzKnown ? {} : {
+                  countUnavailable: true,
+                  totalAtLeast: Number.isFinite(fzTotal) && fzTotal >= limit ? fzTotal : fuzzyGrouped.jobs.length,
+                }),
                 totalAllCompanies: safeMetaTotal ?? 0,
                 companies: [],
                 companiesCount: ((v0.companiesFacet as unknown[]) ?? []).length,

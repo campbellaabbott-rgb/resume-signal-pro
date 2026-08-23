@@ -3508,6 +3508,7 @@
     "empty": "Nenhuma vaga corresponde a esses filtros. Afrouxe um deles e tente de novo.",
     "resultsSummary": "Mostrando {{shown}} de {{total}} vagas em {{companyFeeds}} feeds de empresas",
     "resultsSummaryNoTotal": "Exibindo {{shown}} vagas correspondentes",
+    "resultsSummaryFloor": "Mostrando {{shown}} de {{floor}}+ vagas correspondentes",
     "alsoInLocations_one": "Também contratando em mais {{count}} local",
     "alsoInLocations_other": "Também contratando em mais {{count}} locais",
     "postedToday": "hoje",

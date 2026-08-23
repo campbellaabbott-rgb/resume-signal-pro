@@ -3508,6 +3508,7 @@
     "empty": "No openings match those filters. Loosen one and try again.",
     "resultsSummary": "Showing {{shown}} of {{total}} matching openings across {{companyFeeds}} company feeds",
     "resultsSummaryNoTotal": "Showing {{shown}} matching openings",
+    "resultsSummaryFloor": "Showing {{shown}} of {{floor}}+ matching openings",
     "alsoInLocations_one": "Also hiring in {{count}} more location",
     "alsoInLocations_other": "Also hiring in {{count}} more locations",
     "postedToday": "today",

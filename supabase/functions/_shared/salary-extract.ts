@@ -126,10 +126,13 @@ const PARITY_MONTHLY_MAX = 35_000;
 // optional decimal ("4000", "22.5") — a bare "4000" must parse whole, not "400".
 const P_MONEY = /[$€£]?\s?(\d{1,3}(?:[.,]\d{3})+(?:[.,]\d{1,2})?|\d+(?:\.\d{1,2})?)\s?([kK])?/;
 const P_RANGE = new RegExp(P_MONEY.source + String.raw`\s*(?:-|–|—|to|through)\s*` + P_MONEY.source);
-const P_HOUR = /per[\s-]?hour|\/\s?hr\b|\/\s?hour|hourly|hour-?wage/i;
-const P_WEEK = /per[\s-]?week|\/\s?wk\b|\/\s?week|weekly/i;
-const P_MONTH = /per[\s-]?month|\/\s?mo\b|\/\s?month|monthly/i;
-const P_YEAR = /per[\s-]?(?:year|annum)|\/\s?yr\b|\/\s?year|annual|yearly|year-?salary/i;
+// "an hour"/"a year" are Workday's OWN payRange phrasing ("$29.20 an hour")
+// — absent from this vocabulary, 17,641 vendor-stated workday salaries sat
+// unannualized (measured 2026-08-24).
+const P_HOUR = /per[\s-]?hour|\/\s?hr\b|\/\s?hour|hourly|hour-?wage|\ban?\s+hour\b/i;
+const P_WEEK = /per[\s-]?week|\/\s?wk\b|\/\s?week|weekly|\ba\s+week\b/i;
+const P_MONTH = /per[\s-]?month|\/\s?mo\b|\/\s?month|monthly|\ba\s+month\b/i;
+const P_YEAR = /per[\s-]?(?:year|annum)|\/\s?yr\b|\/\s?year|annual|yearly|year-?salary|\ba\s+year\b/i;
 
 export function parseSalaryStructured(text: string | null | undefined, country?: string | null): ParsedSalary | null {
   if (!text) return null;
@@ -173,16 +176,35 @@ export function parseSalaryStructured(text: string | null | undefined, country?:
     if (min < lo || min > hi) annualMin = null;
   } else if (min >= 20_000 && min <= 2_000_000) {
     annualMin = min; // unlabeled but unambiguously annual
+  } else if (
+    // Unlabeled but unambiguously HOURLY — the symmetric case, same honesty
+    // bar. For parity currencies, [7, 200) sits inside ONLY the hourly
+    // sanity window: it is below week's floor (200), far below month's
+    // (800) and the 20k unlabeled-annual floor. "$22.00 - $24.00" cannot be
+    // anything but an hourly rate in USD. 200-500 stays unlabeled — a $300
+    // figure is ambiguous with weekly/daily and a wrong period is worse
+    // than a missing one. Non-parity currencies (MXN, INR, PHP...) skip the
+    // inference entirely: their period windows overlap at these magnitudes.
+    currency !== null && PARITY_CURRENCIES.has(currency) &&
+    min >= 7 && (max ?? min) < 200 && (max === null || max >= min)
+  ) {
+    annualMin = min * 2080;
   }
   // Upper bound follows the SAME honesty rules as the floor: annualized with
   // the floor's multiplier, dropped when the floor was dropped, and dropped
   // when the spread is implausible (a "$50k–$900k" text is not a pay range).
   let annualMax: number | null = null;
   if (annualMin !== null && max !== null && max >= min) {
-    const mult = period ? { hour: 2080, week: 52, month: 12, year: 1 }[period] : 1;
+    // The max side annualizes with WHATEVER multiplier the min side earned —
+    // stated period, inferred-hourly (annualMin/min recovers 2080), or 1.
+    const mult = period ? { hour: 2080, week: 52, month: 12, year: 1 }[period] : (min > 0 ? annualMin / min : 1);
     const am = max * mult;
     if (max / Math.max(min, 1) <= 6 && am <= 4_000_000) annualMax = am;
   }
+  // Whole dollars: 92.24 * 2080 is 191,859.199…, and a stored float tail is
+  // noise everywhere the number is displayed or compared.
+  if (annualMin !== null) annualMin = Math.round(annualMin);
+  if (annualMax !== null) annualMax = Math.round(annualMax);
   return { min, max, period, annualMin, annualMax, currency };
 }
 

@@ -3508,6 +3508,7 @@
     "empty": "Aucune offre ne correspond à ces filtres. Assouplissez-en un et réessayez.",
     "resultsSummary": "{{shown}} offres affichées sur {{total}} dans {{companyFeeds}} flux d'entreprises",
     "resultsSummaryNoTotal": "Affichage de {{shown}} offres correspondantes",
+    "resultsSummaryFloor": "Affichage de {{shown}} sur {{floor}}+ offres correspondantes",
     "alsoInLocations_one": "Recrute aussi dans {{count}} autre lieu",
     "alsoInLocations_other": "Recrute aussi dans {{count}} autres lieux",
     "postedToday": "aujourd'hui",

@@ -3508,6 +3508,7 @@
     "empty": "Geen vacature past bij deze filters. Versoepel er één en probeer opnieuw.",
     "resultsSummary": "{{shown}} van {{total}} passende vacatures uit {{companyFeeds}} bedrijfsfeeds",
     "resultsSummaryNoTotal": "{{shown}} overeenkomende vacatures worden getoond",
+    "resultsSummaryFloor": "{{shown}} van {{floor}}+ overeenkomende vacatures getoond",
     "alsoInLocations_one": "Werft ook op {{count}} andere locatie",
     "alsoInLocations_other": "Werft ook op {{count}} andere locaties",
     "postedToday": "vandaag",

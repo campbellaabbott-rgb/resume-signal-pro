@@ -134,3 +134,32 @@ describe("parseSalaryStructured", () => {
     expect(parseSalaryStructured("₱90,000 per month")?.annualMin).toBe(1_080_000);
   });
 });
+
+describe("a workday pay range is a salary even when nobody says the word hour", () => {
+  // Measured 2026-08-24: 17,641 servable workday rows carried vendor-stated
+  // salary TEXT with no structured parse. Two parser gaps, both fixed:
+  // "an hour" is Workday's own phrasing and was absent from the period
+  // vocabulary; and bare ranges like "$22.00 - $24.00" have no period word
+  // at all, but for parity currencies [7, 200) sits inside ONLY the hourly
+  // sanity window — the inference is arithmetic, not a guess. $200-500
+  // stays unlabeled (ambiguous with weekly/daily), non-parity currencies
+  // skip the inference (their windows overlap).
+  it("annualizes Workday's own phrasings", () => {
+    expect(parseSalaryStructured("$29.20 an hour", "US")?.annualMin).toBe(60736);
+    expect(parseSalaryStructured("$65,000 a year", "US")?.annualMin).toBe(65000);
+  });
+  it("annualizes an unlabeled range that can only be hourly", () => {
+    const p = parseSalaryStructured("$51.05 - $76.60", "US");
+    expect(p?.annualMin).toBe(106184);
+    expect(p?.annualMax).toBe(159328);
+    expect(p?.period, "the inference sets no stated period — it was not stated").toBeNull();
+  });
+  it("leaves the ambiguous band and non-parity currencies unlabeled", () => {
+    expect(parseSalaryStructured("$300 - $400", "US")?.annualMin, "could be weekly or daily").toBeNull();
+    expect(parseSalaryStructured("MX$80 - MX$120", "MX")?.annualMin, "MXN windows overlap at this magnitude").toBeNull();
+  });
+  it("rounds annualized values to whole dollars", () => {
+    expect(parseSalaryStructured("$92.24 - $138.36", "US")?.annualMin).toBe(191859);
+    expect(parseSalaryStructured("$92.24 - $138.36", "US")?.annualMax).toBe(287789);
+  });
+});

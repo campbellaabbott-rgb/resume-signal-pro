@@ -178,6 +178,9 @@ interface BoardResponse {
   relatedTotal?: number;
   relatedCapped?: boolean;
   countUnavailable?: boolean;
+  /** Proven floor when the exact total is unknowable (fuzzy tier at its cap):
+   *  "at least this many match". Render as "M+", never as a total. */
+  totalAtLeast?: number;
   // The count stopped at the server's cap: the true figure is higher, so render
   // it as "10,000+" rather than as an exact total.
   countCapped?: boolean;
@@ -4683,7 +4686,11 @@ export default function Jobs() {
                   // Say what we actually know instead of printing jobs.length as
                   // if it were the total — that would claim 20 matches when the
                   // filter really matches six figures.
-                  ? t("jobsPage.resultsSummaryNoTotal", "Showing {{shown}} matching openings", { shown: shownCount })
+                  ? (typeof data?.totalAtLeast === "number" && data.totalAtLeast > shownCount
+                      ? t("jobsPage.resultsSummaryFloor", "Showing {{shown}} of {{floor}}+ matching openings", {
+                          shown: shownCount, floor: data.totalAtLeast.toLocaleString(),
+                        })
+                      : t("jobsPage.resultsSummaryNoTotal", "Showing {{shown}} matching openings", { shown: shownCount }))
                   : landerCompany
                   ? t("jobsPage.companyResultsSummary", "Showing {{shown}} of {{total}} open roles at {{company}}", {
                       shown: shownCount,

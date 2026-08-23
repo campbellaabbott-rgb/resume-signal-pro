@@ -3508,6 +3508,7 @@
     "empty": "Walang opening na tumutugma sa mga filter. Luwagan ang isa at subukan ulit.",
     "resultsSummary": "Ipinapakita ang {{shown}} sa {{total}} tumutugmang opening sa {{companyFeeds}} feed ng kumpanya",
     "resultsSummaryNoTotal": "Ipinapakita ang {{shown}} tugmang bakante",
+    "resultsSummaryFloor": "Ipinapakita ang {{shown}} sa {{floor}}+ tumutugmang trabaho",
     "alsoInLocations_one": "Kumukuha rin sa {{count}} pang lokasyon",
     "alsoInLocations_other": "Kumukuha rin sa {{count}} pang mga lokasyon",
     "postedToday": "ngayon",
