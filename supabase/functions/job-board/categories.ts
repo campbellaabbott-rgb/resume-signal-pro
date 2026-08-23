@@ -8,13 +8,29 @@
 // the stored "other" rows through the current rules — so categorization
 // improvements reach the existing corpus, not just newly inserted rows
 // (the insert-only refresh never rewrites them otherwise).
+// v7 (2026-08-22): allied-health compounds, clinical credentials and named
+// clinical roles, from a 3,000-row live sample of the 159,153-row "other" pile.
+// Measured recovery on that sample: 6.5%, essentially all healthcare — roughly
+// 10,300 postings board-wide moving from unfilterable into a field. Three
+// distinct causes, not one:
+//   * COMPOUNDS the \b anchor cannot reach. "Physiotherapist" and
+//     "Ultrasonographer" contain therapist and sonograph with no word boundary
+//     in front of them, so rules that already name those terms never fired.
+//   * CREDENTIALS a clinician actually types: RN alone was 3,267 rows of the
+//     bucket, LPN 574, CNA 373.
+//   * NAMED ROLES the list simply lacked — Technologist 1,711, Surgical 565,
+//     Dentist (the rule said "dental", which does not match "Dentist").
+// EXCLUDED ON PURPOSE, having measured them: bare PRN, which marks a healthcare
+// EMPLOYER rather than a healthcare role and dragged in "Food Service Worker |
+// PRN" and "Scheduling Specialist PRN"; and EMT, which put "Firefighter EMT -
+// Wilmington Fire Dept" in healthcare. A credential does not decide the job.
 // v6 (2026-07-26): grocery/retail floor roles + Spanish title anchors, from a
 // 1,000-row live sample of the 164k-row "other" pile. The dominant unclaimed
 // clusters were grocery floor titles (clerk 69, stocker 21, deli 19, meat 17,
 // produce 16, team member ~53, shopper 13), single-word "Salesperson" (18 —
 // \bsales\b never matches inside the compound), delivery associates, and
 // Spanish-language titles (ejecutivo 16). "Other" outnumbered engineering.
-export const CATEGORIZE_VERSION = 6;
+export const CATEGORIZE_VERSION = 7;
 
 export const JOB_CATEGORIES = [
   "engineering",
@@ -46,6 +62,16 @@ export type JobCategory = (typeof JOB_CATEGORIES)[number];
 // security.
 const RULES: Array<[JobCategory, RegExp]> = [
   ["healthcare", /\b(nurs(e|ing)\w*|clinic\w*|physician\w*|doctor|psychiatr\w*|therap(ist|y)|pharmac\w*|medical|dental|veterinar\w*|care (manager|coordinator|navigator|team)|behavio(u?r)(al)? (technician|analyst|specialist)|\brbt\b|\bbcba\b|patient|case manager|direct support (professional|worker|staff)|mental health|hospice|caregiver|home health|midwife|paramedic|phlebotom\w*|optometr\w*|optician\w*|neuropsycholog\w*|audiolog\w*|radiolog\w*|sonograph\w*|chiropract\w*|podiatr\w*|orthodont\w*|hygienist\w*|krankenpfleg\w*|verpleegkundig\w*|enfermer\w*|infirmier\w*|arzt|médic\w*)\b/i],
+  // ALLIED-HEALTH COMPOUNDS. Sits after the rule above and matches WITHOUT a
+  // leading \b, because that is precisely what the rule above cannot do:
+  // "physiotherapist" and "ultrasonographer" have no boundary before the part
+  // that names the profession.
+  ["healthcare", /(?:physio|tele|radio|hydro|chemo|onco|psycho|massage)?therap(?:ist|y)|sonograph|ultrasound/i],
+  // CLINICAL CREDENTIALS. Two- and three-letter, so every one is \b-anchored
+  // and each was checked against the live bucket for collisions.
+  ["healthcare", /\b(?:rn|lpn|lvn|cna|cma|hha|crna|dnp|bsn|cota|ota|pta)\b/i],
+  // NAMED CLINICAL ROLES AND SETTINGS.
+  ["healthcare", /\b(?:technologist|surgical|perioperative|dietit\w*|nutritionist|respiratory|anesthe\w*|radiograph\w*|mammograph\w*|telemetry|icu|nicu|picu|acute care|long term care|assisted living|skilled nursing|urgent care|home care|dentist\w*|hospitalist|pathologist|obgyn|ob\/gyn|speech language|occupational therapy|physical therapy|sonographer|perfusionist|orthopa?edic\w*)\b/i],
   // Ahead of science on purpose: bare "scientist" in the science rule was
   // catching "Data Scientist", which belongs with the data roles users
   // actually look for.
