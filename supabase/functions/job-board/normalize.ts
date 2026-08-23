@@ -946,7 +946,15 @@ export function normalizeRecruitee(raw: { offers?: RecruiteeOffer[] }, company: 
         postedAt: safeIso(o.published_at ?? o.created_at),
         category: categorize(o.title ?? "", o.department),
         salary,
-        applyUrl: safeUrl(o.careers_url ?? (o.slug ? `https://${token}.recruitee.com/o/${o.slug}` : "")),
+        // THE CANONICAL HOST, NOT THE EMPLOYER'S VANITY DOMAIN. careers_url is
+        // a hostname the employer once configured and can abandon — measured
+        // 2026-08-23: 47 vanity hosts NXDOMAIN and 11 more fail TLS, stranding
+        // 233 servable postings behind an Apply button that cannot load (one
+        // was not even a valid hostname: careers.ferillis, no TLD). The
+        // canonical {token}.recruitee.com/o/{slug} — which sat here as the
+        // FALLBACK — answered HTTP 200 for all 233 of them. The vendor
+        // guarantees the canonical; the vanity host is cosmetics that rots.
+        applyUrl: safeUrl(o.slug ? `https://${token}.recruitee.com/o/${o.slug}` : (o.careers_url ?? "")),
       };
     })
     .filter((j) => j.applyUrl !== "" && j.title !== "");

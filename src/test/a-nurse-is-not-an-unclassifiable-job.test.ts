@@ -19,7 +19,14 @@ import { CATEGORIZE_VERSION, categorize } from "../../supabase/functions/job-boa
  * (116), coordinator (102) — role nouns carrying no field at all. "Quality
  * Manager" and "Inventory Planning Analyst" genuinely cannot be placed from a
  * title, and no rule should pretend otherwise. So the ceiling here is low, and
- * the measured recovery is 6.5% of the bucket rather than most of it.
+ * the measured recovery is small rather than most of it.
+ *
+ * CORRECTED 2026-08-23: this header first claimed 6.5%. A properly stratified
+ * re-measurement (per-source allocation, keyset buckets, small random chunks)
+ * puts v7 at 4.27% +/- 0.28 of the stored pile — the original 3,000-row sample
+ * was company-clustered, the same bias that made "career fair" look thirty
+ * times too common in another draw from this table. Contiguous pages of an id
+ * ordered as source:company:uuid are one or two companies, not a sample.
  *
  * A SWEEP GAP WAS RULED OUT BEFORE WRITING ANY RULES. Running the CURRENT rules
  * over the same 3,000 titles reclassified only 6 of them — 0.2% — so stored
@@ -91,6 +98,38 @@ describe("a nurse is not an unclassifiable job", () => {
     ] as const) {
       expect(categorize(t), `${t} moved`).toBe(want);
     }
+  });
+
+  it("v8: reads the concepts whose rules missed their own spellings", () => {
+    // Each class sized live before inclusion; see the v8 header in
+    // categories.ts for the counts and for what was EXCLUDED and why.
+    for (const [t, want] of [
+      ["Audit Manager - South Florida", "finance"],        // rule required auditOR/ING
+      ["Team Leader (Express)", "hospitality_retail"],     // rule stopped at "lead"
+      ["Shift Leader - Nights", "hospitality_retail"],
+      ["Director - Program & Delivery Management", "product"],
+      ["Machine Operators - 2nd Shift", "operations"],     // \b does not fall between r and s
+      ["Pflegefachkraft (m/w/d)", "healthcare"],           // the v7 compound shape, in German
+      ["Prozessingenieur im Bereich Silizium-Epitaxie", "engineering"],
+      ["Sachbearbeiter Logistik (m/w/d)", "operations"],
+      ["Técnico de Mantenimiento", "operations"],
+      ["Recepcionista", "admin"],
+      ["Säljare, Västerås", "sales"],
+      ["Zahnmedizinische Fachangestellte (m/w/d)", "healthcare"],
+    ] as const) {
+      expect(categorize(t), `${t} should be ${want}`).toBe(want);
+    }
+  });
+
+  it("v8: order protects the more specific reading", () => {
+    // The compound stems are appended AFTER the English rules, so a title that
+    // carries both signals keeps the earlier, more specific one.
+    expect(categorize("Tecnico Commerciale"), "commercial wins over técnico").toBe("sales");
+    // And the audit widening must not swallow the arts.
+    expect(categorize("Audition Coordinator")).not.toBe("finance");
+    // Bare French/Spanish "manager" stays unclassified — a field-free word in
+    // any language is still field-free.
+    expect(categorize("Responsable")).toBe("other");
   });
 
   it("bumps the version, or the sweep never re-reads the stored bucket", () => {

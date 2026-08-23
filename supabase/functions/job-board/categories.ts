@@ -8,6 +8,27 @@
 // the stored "other" rows through the current rules — so categorization
 // improvements reach the existing corpus, not just newly inserted rows
 // (the insert-only refresh never rewrites them otherwise).
+// v8 (2026-08-23): the audit's stratified re-measurement, applied. Two classes:
+//   * WORD-BOUNDARY MISSES in rules that already name the concept: bare "Audit
+//     Manager" (838 board titles unfiltered — the rule required auditOR/ING;
+//     the replacement excludes "audition"), "Team/Shift Leader" (1,132 — the
+//     rule stopped at "lead"), project/program(me) MANAGEMENT and -leader
+//     forms (483), plural "Operators" (56 — \b does not fall between r and s).
+//   * COMPOUND AND NON-ENGLISH stems, each sized live before inclusion and
+//     appended AFTER the English rules so first-match-wins keeps precedence:
+//     técnico 577, techniker 304, pfleg 190 (Pflegefachkraft — the missing-
+//     boundary shape v7 fixed for therapist), logistik 159, säljare 141,
+//     opérateur 139, ingenieur-in-compound 138, sachbearbeiter 120, myyjä 38,
+//     recepcionista 28, vendedor 13, zahnmedizin 9.
+//   EXCLUDED, measured and named: bare leiter/charge/berater/responsable/
+//   fachkraft/kaufmann — real words with no field in them; "Responsable" is
+//   "Manager" in French, and manager is the pile's biggest word for a reason.
+//   ALSO A CORRECTION: v7's header claimed 6.5% recovery. A properly
+//   stratified sample (per-source allocation, 36 keyset buckets, <=4-row
+//   chunks) measures v7 at 4.27% +/- 0.28 — the 3,000-row sample was company-
+//   clustered, the exact bias that made "career fair" look 30x too common in
+//   another draw from this table. ~6,740 postings, essentially all healthcare,
+//   still real.
 // v7 (2026-08-22): allied-health compounds, clinical credentials and named
 // clinical roles, from a 3,000-row live sample of the 159,153-row "other" pile.
 // Measured recovery on that sample: 6.5%, essentially all healthcare — roughly
@@ -30,7 +51,7 @@
 // produce 16, team member ~53, shopper 13), single-word "Salesperson" (18 —
 // \bsales\b never matches inside the compound), delivery associates, and
 // Spanish-language titles (ejecutivo 16). "Other" outnumbered engineering.
-export const CATEGORIZE_VERSION = 7;
+export const CATEGORIZE_VERSION = 8;
 
 export const JOB_CATEGORIES = [
   "engineering",
@@ -80,11 +101,11 @@ const RULES: Array<[JobCategory, RegExp]> = [
   ["education", /\b(teachers?|teaching|instructor|tutor\w*|curriculum|professor|educator|instructional|preschool|school|learning designer|lehrer\w*|leraar|profesor\w*|enseignant\w*)\b/i],
   ["data_ai", /\b(data (& |and )?ai|data platform|data (scien\w*|engineer\w*|analyst\w*|analytics)|machine learning|ml engineer\w*|ai\b.{0,20}(specialist|engineer|research\w*|scientist|automation)|artificial intelligence|research (scientist|engineer)|analytics engineer\w*|business intelligence|quant(itative)? (research\w*|analyst\w*|trad\w*|developer)|datenanalyst\w*)\b/i],
   ["design", /\b(artist|design(er|ers)|design (lead|manager|director)|ux|ui|user experience|user research\w*|creative director|art director|graphic design\w*|illustrator|brand design\w*|motion design\w*)\b/i],
-  ["product", /\b(product manager\w*|product management|product owner|product lead|technical program manager\w*|program manager\w*|product operations)\b/i],
+  ["product", /\b(product manager\w*|product management|product owner|product lead|technical program manager\w*|program(me)? (manager\w*|management|lead(er)?|officer)|program(me)?[\w &-]{0,20}management|product operations)\b/i],
   ["marketing", /\b(marketing|growth|seo|sem\b|content (strategist|writer|marketer|lead)|copywrit\w*|communications|public relations|social media|brand (manager|lead)|demand gen\w*|lifecycle|events? (manager|coordinator)|comunica\w*|kommunikation\w*|communicatie)\b/i],
   ["sales", /\b(sales\b|salesperson|account (executive|manager|director)|business development|partnerships?|revenue|solutions? (architect|consultant|engineer)|pre-?sales|customer acquisition|gtm|vertrieb\w*|verkäufer\w*|commercial\w*|ejecutivo\/?a? de (ventas|cuentas)|asesor\w* (comercial|de ventas))\b/i],
   ["customer", /\b(customer (success|support|experience|service|care)|client servic\w*|technical support|support (engineer\w*|specialist|agent)|community (manager|lead)|implementation (manager|specialist)|onboarding|kundenservice|klantenservice|premium support|community support)\b/i],
-  ["finance", /\b(teller|banker|personal banker|relationship banker|loan officer|mortgage \w+|collections? (manager|specialist|analyst|agent|representative|officer)|claims (\w+ )?(adjuster|officer|examiner|consultant|specialist|representative|manager|processor)|subrogation|adjuster|financ\w*|accountant\w*|accounting|accounts (payable|receivable)|bookkeep\w*|controller|treasury|fp&a|tax|payroll|billing|audit(or|ing)\w*|underwrit\w*|actuar\w*|credit (risk|analyst)|trad(er|ing)\w*|portfolio manager\w*|investment\w*|broker\w*|investor relations|buchhalt\w*)\b/i],
+  ["finance", /\b(teller|banker|personal banker|relationship banker|loan officer|mortgage \w+|collections? (manager|specialist|analyst|agent|representative|officer)|claims (\w+ )?(adjuster|officer|examiner|consultant|specialist|representative|manager|processor)|subrogation|adjuster|financ\w*|accountant\w*|accounting|accounts (payable|receivable)|bookkeep\w*|controller|treasury|fp&a|tax|payroll|billing|audit(?!ion)\w*|underwrit\w*|actuar\w*|credit (risk|analyst)|trad(er|ing)\w*|portfolio manager\w*|investment\w*|broker\w*|investor relations|buchhalt\w*)\b/i],
   ["legal", /\b(legal|counsel|attorney|lawyer|solicitor|barrister|paralegal|compliance|regulatory|privacy (counsel|officer)|contracts? (manager|specialist)|jurist\w*)\b/i],
   ["people_hr", /\b(recruit\w*|talent|people( (ops|operations|partner|team|experience))?|human resources|hrbp|hr (manager\w*|generalist\w*|specialist\w*|business)|total rewards|compensation|benefits (analyst|manager|specialist)|l&d|workplace|personalreferent\w*)\b/i],
   ["admin", /\b(administrative|executive assistant|office (manager|coordinator|administrator)|receptionist|executive operations)\b/i],
@@ -92,12 +113,12 @@ const RULES: Array<[JobCategory, RegExp]> = [
   // "Part-Time Oil Change Team Member" matches "team member" and lands in
   // retail. Derived from a 1,250-row sample of the uncategorised pile
   // (2026-07-24), which was 35% of the board.
-  ["operations", /\b(cdl|truck(ing)? driver|owner[- ]operator|flatbed|reefer|otr\b|dispatcher|superintendent|construction (manager|superintendent|supervisor)|oil change|body shop|auto body|workshop|auto(motive)? (tech\w*|service)|lube tech\w*|tire tech\w*|crew member|general laborer|labou?rer|foreman|journey(man|person|woman)|electrician|plumb(er|ing)|welder|carpenter|hvac|pipefitter|millwright|machinist|equipment operator|heavy equipment|operator\b|excavat\w*|scaffold\w*|glazier|roofer|mason\b|concrete|restoration (crew|tech\w*)|installer)\b/i],
+  ["operations", /\b(cdl|truck(ing)? driver|owner[- ]operator|flatbed|reefer|otr\b|dispatcher|superintendent|construction (manager|superintendent|supervisor)|oil change|body shop|auto body|workshop|auto(motive)? (tech\w*|service)|lube tech\w*|tire tech\w*|crew member|general laborer|labou?rer|foreman|journey(man|person|woman)|electrician|plumb(er|ing)|welder|carpenter|hvac|pipefitter|millwright|machinist|equipment operator|heavy equipment|operators?\b|excavat\w*|scaffold\w*|glazier|roofer|mason\b|concrete|restoration (crew|tech\w*)|installer)\b/i],
   // Grocery/retail floor roles sit AFTER the trades rule on purpose: "Oil
   // Change Team Member" must keep landing in operations before "team member"
   // is claimed here.
-  ["hospitality_retail", /\b(barista|server|chef|cook|kitchen|coffee shop|store (manager|associate|lead|team)|retail|restaurant|hotel|housekeep\w*|front desk|shift (lead|supervisor)|cashier|merchandis\w*|kellner\w*|vendeur\w*|vendeuse\w*|koch|kok\b|team member|clerk\b|stocker|bagger|deli\b|meat (cutter|clerk|manager|associate)|produce (clerk|manager|associate|team)|bakery|grocery|shopper|busser|dishwasher|host(ess)?\b|barback|cajer\w*|reponedor\w*|dependient\w*|vendedor\w*)\b/i],
-  ["operations", /\b(project (manager|coordinator|lead|director)|operat(ions|ional)\w*|continuous improvement|supply chain|logistics|warehouse|fulfil?lment|drivers?|courier|dispatch\w*|fleet|facilities|manufacturing|production (planner|supervisor|technician)|quality (assurance|control)|buyer|sourcing|procurement|field (ops|service|technician)|maintenance|mechanic\w*|\w*monteur\w*|\w*mitarbeiter\w*|\w*medewerker\w*|fahrer\w*|chauffeur\w*|lagermitarbeiter\w*|magazijn\w*|produktionsmitarbeiter\w*|reinigung\w*|einkauf\w*|district manager\w*|district management|almacén|entrepôt)\b/i],
+  ["hospitality_retail", /\b(barista|server|chef|cook|kitchen|coffee shop|store (manager|associate|lead|team)|retail|restaurant|hotel|housekeep\w*|front desk|(shift|team) (lead(er)?|supervisor)|cashier|merchandis\w*|kellner\w*|vendeur\w*|vendeuse\w*|koch|kok\b|team member|clerk\b|stocker|bagger|deli\b|meat (cutter|clerk|manager|associate)|produce (clerk|manager|associate|team)|bakery|grocery|shopper|busser|dishwasher|host(ess)?\b|barback|cajer\w*|reponedor\w*|dependient\w*|vendedor\w*)\b/i],
+  ["operations", /\b(project ?(manager\w*|management|coordinator|lead(er)?|director|officer)|operat(ions|ional)\w*|continuous improvement|supply chain|logistics|warehouse|fulfil?lment|drivers?|courier|dispatch\w*|fleet|facilities|manufacturing|production (planner|supervisor|technician)|quality (assurance|control)|buyer|sourcing|procurement|field (ops|service|technician)|maintenance|mechanic\w*|\w*monteur\w*|\w*mitarbeiter\w*|\w*medewerker\w*|fahrer\w*|chauffeur\w*|lagermitarbeiter\w*|magazijn\w*|produktionsmitarbeiter\w*|reinigung\w*|einkauf\w*|district manager\w*|district management|almacén|entrepôt)\b/i],
   ["engineering", /\b(engineer\w*|developer\w*|software|devops|sre|infrastructure|frontend|backend|full[- ]?stack|mobile|ios|android|platform|architect\w*|qa\b|sdet|(it|network|electronics|desktop|datacenter|data center) technician|information technology|service desk|helpdesk|help desk|desktop support|it (administrator|support|manager|specialist|analyst)|entwickler\w*|ingenieur\w*|ingenier\w*|ingénieur\w*|développeur\w*)\b/i],
   ["security", /\b(\w*security\w*|cyber\w*|soc analyst|threat|incident response|penetration|infosec|trust (and|&) safety|fraud (analyst\w*|investigator\w*)|investigat\w*)\b/i],
   // Bare "technician" is the single most common word in the uncategorised pile
@@ -106,6 +127,15 @@ const RULES: Array<[JobCategory, RegExp]> = [
   // "IT Technician" keep the homes they already had; only the field/service
   // technicians nothing else claims land in operations.
   ["operations", /\btechnician\b/i],
+  // ── v8 COMPOUND AND NON-ENGLISH STEMS ─────────────────────────────────────
+  // Appended after the English rules on purpose: first match wins, so
+  // "Tecnico Commerciale" is claimed by the sales rule's commercial\w* before
+  // the técnico fallback can file it under operations.
+  ["healthcare", /pfleg|zahnmedizin|l[äa]hihoitaja|sairaanhoitaja/i],
+  ["engineering", /ingenieur/i],
+  ["operations", /techniker|t[ée]cnico\b|op[ée]rateur\w*|pr[eé]parateur|logistik/i],
+  ["admin", /sachbearbeiter|\brecepcionista\w*\b/i],
+  ["sales", /\b(s[äa]ljare\w*|myyj[äa]\w*|vendedor\w*)\b/i],
   // Fallback tier: only reached when nothing above matched — bare
   // "Research" departments land in science instead of Other.
   ["science", /\bresearch\b/i],
