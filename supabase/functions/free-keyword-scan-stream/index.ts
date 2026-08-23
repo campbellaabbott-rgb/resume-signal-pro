@@ -787,7 +787,7 @@ const INDUSTRY_ALIASES: Record<string, string> = {
   
   // ==================== TECHNICAL PROGRAM MANAGEMENT ALIASES ====================
   'technical program management': 'technical_program_management', 'tpm': 'technical_program_management',
-  'technical program manager': 'technical_program_management', 'program manager': 'technical_program_management',
+  'technical program manager': 'technical_program_management',
   'engineering program manager': 'technical_program_management', 'technical project manager': 'technical_program_management',
   'senior tpm': 'technical_program_management', 'staff tpm': 'technical_program_management',
   'cross-functional leadership': 'technical_program_management', 'roadmap planning': 'technical_program_management',
