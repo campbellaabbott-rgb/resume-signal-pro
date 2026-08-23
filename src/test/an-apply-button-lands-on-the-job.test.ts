@@ -4,19 +4,27 @@ import { resolve } from "node:path";
 import { normalizeGreenhouse } from "../../supabase/functions/job-board/normalize";
 
 /**
- * 1,601 APPLY BUTTONS POINTED AT THE SAME SEARCH PAGE.
+ * THE 11,202 "SHARED APPLY URLS" WERE AN AUDIT ARTIFACT — AND THE GUARD
+ * SURVIVED BECAUSE IT REFUSED TO REPEAT THE ARTIFACT.
  *
- * Greenhouse lets an employer set absolute_url per posting, and some point
- * every posting at their careers landing page. Measured 2026-08-23: 270 apply
- * URLs on the board were shared by five or more DISTINCT titles, carrying
- * 11,202 postings — BAYADA alone hung 1,601 postings (944 titles) off
- * jobs.bayada.com/en/jobs. Every posting has SOME apply_url, zero nulls, so
- * the button looked fine and landed the reader on a search page with 944 jobs
- * to hunt through.
+ * An audit reported 270 apply URLs shared by five or more distinct titles,
+ * 11,202 postings, "BAYADA alone: 1,601 postings behind jobs.bayada.com/en/
+ * jobs". Post-deploy verification read the stored rows: every one of the
+ * named offenders — BAYADA, Carvana, EquipmentShare, Stripe, Databricks,
+ * Elastic — carries a UNIQUE ?gh_jid= query parameter. They are Greenhouse
+ * embedded-board deep links that open the specific job. The audit had grouped
+ * URLs after stripping query strings, then reported its own normalization as
+ * a defect. There was nothing to fix.
  *
- * The per-job page is reconstructible from the id already in hand —
- * job-boards.greenhouse.io/{token}/jobs/{id}, verified live — and the whole
- * board arrives in one payload, so counting distinct titles per URL is free.
+ * Both halves of the fix keyed on the FULL URL, so both were no-ops against
+ * the real data: the migration's GROUP BY matched nothing, and the ingest
+ * counter sees each gh_jid link as distinct. Had either stripped query
+ * strings the way the audit did, they would have rewritten eleven thousand
+ * WORKING employer-branded links — the "fix" would have been the defect.
+ *
+ * The detection stays, dormant, because the shape it defends against is real
+ * even though no employer currently exhibits it: a URL shared VERBATIM by
+ * five different titles is a board index, and a reader deserves the job page.
  *
  * AND THE SIBLING DEFECT ON WORKDAY: one requisition appearing on several of
  * a tenant's career sites under Workday's own "-1"/"-2" discriminator — 9,246
