@@ -881,7 +881,7 @@ const INDUSTRY_ALIASES: Record<string, string> = {
   'aspireiq': 'influencer_marketing', 'grin platform': 'influencer_marketing', 'creatoriq': 'influencer_marketing',
   
   // ==================== MARKETING ANALYTICS ALIASES ====================
-  'marketing analytics': 'marketing_analytics', 'marketing analyst': 'marketing_analytics',
+  'marketing analytics': 'marketing_analytics',
   'marketing data analyst': 'marketing_analytics', 'marketing science': 'marketing_analytics',
   'digital analytics manager': 'marketing_analytics', 'web analytics': 'marketing_analytics',
   'growth analytics': 'marketing_analytics', 'marketing intelligence': 'marketing_analytics',
