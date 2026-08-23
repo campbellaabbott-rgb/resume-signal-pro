@@ -787,7 +787,6 @@ const INDUSTRY_ALIASES: Record<string, string> = {
   
   // ==================== TECHNICAL PROGRAM MANAGEMENT ALIASES ====================
   'technical program management': 'technical_program_management', 'tpm': 'technical_program_management',
-  'technical program manager': 'technical_program_management', 'program manager': 'technical_program_management',
   'engineering program manager': 'technical_program_management', 'technical project manager': 'technical_program_management',
   'senior tpm': 'technical_program_management', 'staff tpm': 'technical_program_management',
   'cross-functional leadership': 'technical_program_management', 'roadmap planning': 'technical_program_management',
@@ -881,7 +880,7 @@ const INDUSTRY_ALIASES: Record<string, string> = {
   'aspireiq': 'influencer_marketing', 'grin platform': 'influencer_marketing', 'creatoriq': 'influencer_marketing',
   
   // ==================== MARKETING ANALYTICS ALIASES ====================
-  'marketing analytics': 'marketing_analytics', 'marketing analyst': 'marketing_analytics',
+  'marketing analytics': 'marketing_analytics',
   'marketing data analyst': 'marketing_analytics', 'marketing science': 'marketing_analytics',
   'digital analytics manager': 'marketing_analytics', 'web analytics': 'marketing_analytics',
   'growth analytics': 'marketing_analytics', 'marketing intelligence': 'marketing_analytics',
@@ -1000,7 +999,7 @@ interface IndustryDetectionResult {
   confidence: 'high' | 'medium' | 'low';
   signals: string[];
   score: number;
-  detectionSource?: 'server_high' | 'server_medium' | 'server_low' | 'ai_override' | 'ai_fallback';
+  detectionSource?: 'server_high' | 'server_high_ai_agree' | 'server_high_ai_overruled' | 'server_high_ai_confirmed_disagree' | 'server_medium' | 'server_medium_ai_agree' | 'ai_override_medium_parent' | 'server_medium_ai_unrelated' | 'server_low' | 'server_low_ai_agree' | 'ai_override_low' | 'ai_override' | 'ai_fallback' | 'phantom_remap' | 'phantom_force_kill' | 'ai_confirmed' | 'server_ai_confirmed' | 'server_high_ai_confirmed' | 'server_medium_ai_confirmed' | 'server_low_ai_confirmed' | 'ai_override_ai_confirmed' | 'ai_fallback_ai_confirmed';
   alternativeIndustries?: { industry: string; score: number }[];
   matchedTitlePatterns?: string[];
   matchedSkillCount?: number;
@@ -6406,7 +6405,7 @@ function computeIndustryBenchmarkFallback(
 // for a given industry (the RPC itself enforces a minimum sample size) or if
 // the query fails for any reason — this should never block a scan result.
 async function computeIndustryBenchmark(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   score: number,
   industry: string
 ): Promise<{
@@ -6419,9 +6418,9 @@ async function computeIndustryBenchmark(
     const { data, error } = await supabase.rpc('get_industry_score_benchmark', {
       p_industry: industry,
       p_score: Math.round(score),
-    });
+    }) as { data: any[] | null; error: any };
 
-    const row = data?.[0];
+    const row = data?.[0] as any;
     if (!error && row && row.industry_avg !== null && row.percentile !== null) {
       const avg = Number(row.industry_avg);
       const percentileRank = Number(row.percentile); // 0-100: % of real scans scoring <= this user
@@ -8096,7 +8095,7 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
       }
 
       // Parse final result with auto-repair for common JSON issues
-      let analysis = null;
+      let analysis: any = null;
       
       const tryParseJSON = (jsonString: string): any => {
         // First try direct parse
@@ -8216,7 +8215,7 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
         hybridResult.signals = [...hybridResult.signals, `AI confirmation agrees: ${verifiedIndustry}`];
         if (hybridResult.confidence === 'low') hybridResult.confidence = 'medium';
         if (hybridResult.confidence === 'medium') hybridResult.confidence = 'high';
-        hybridResult.detectionSource = `${hybridResult.detectionSource || 'server'}_ai_confirmed`;
+        (hybridResult as any).detectionSource = `${hybridResult.detectionSource || 'server'}_ai_confirmed`;
       }
       
       const industryDetectionDuration = Date.now() - industryDetectionStart;
@@ -8415,8 +8414,8 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
       // AI cost. Precedence: target country (applying-to) → resume-detected →
       // IP → US. Fully guarded: any failure yields nulls and the scan proceeds
       // exactly as before.
-      let countryStandardsResult = null;
-      let geoResult = null;
+      let countryStandardsResult: any = null;
+      let geoResult: any = null;
       try {
         const resumeGeo = detectCountryFromResume(resumeText);
         // Low-confidence resume detection (an exact evidence tie) defers to

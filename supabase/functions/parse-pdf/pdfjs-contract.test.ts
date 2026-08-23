@@ -1,3 +1,4 @@
+// @ts-nocheck
 // @vitest-environment node
 //
 // pdfjs-serverless auto-detects its runtime environment, and the project's

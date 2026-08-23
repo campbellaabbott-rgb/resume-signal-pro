@@ -180,12 +180,14 @@ serve(async (req) => {
     if (isOleCompoundFile(arrayBuffer)) {
       trackPerformance(requestStartTime, 'parse-docx', false, { reason: 'legacy_doc_or_encrypted' }, clientIp);
       EdgeRuntime.waitUntil(
-        supabase.rpc('log_parse_failure', {
-          p_file_type: 'docx',
-          p_error_code: 'legacy_doc_or_encrypted',
-          p_error_message: 'OLE compound file: legacy .doc format or password-encrypted .docx',
-          p_visitor_id: clientIp
-        })
+        (async () => {
+          await supabase.rpc('log_parse_failure', {
+            p_file_type: 'docx',
+            p_error_code: 'legacy_doc_or_encrypted',
+            p_error_message: 'OLE compound file: legacy .doc format or password-encrypted .docx',
+            p_visitor_id: clientIp
+          });
+        })()
       );
       return new Response(
         JSON.stringify({
@@ -252,12 +254,14 @@ serve(async (req) => {
       console.log("[PARSE-DOCX] Extracted text looks garbled (broken encoding).");
 
       EdgeRuntime.waitUntil(
-        supabase.rpc('log_parse_failure', {
-          p_file_type: 'docx',
-          p_error_code: 'garbled_text',
-          p_error_message: `Extracted ${text.length} chars but text appears corrupted`,
-          p_visitor_id: clientIp
-        })
+        (async () => {
+          await supabase.rpc('log_parse_failure', {
+            p_file_type: 'docx',
+            p_error_code: 'garbled_text',
+            p_error_message: `Extracted ${text.length} chars but text appears corrupted`,
+            p_visitor_id: clientIp
+          });
+        })()
       );
 
       return new Response(

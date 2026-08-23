@@ -3,5 +3,9 @@
     "strict": true,
     "noImplicitAny": false,
     "lib": ["deno.window", "deno.unstable"]
-  }
+  },
+  "exclude": [
+    "**/mammoth-contract.test.ts",
+    "**/pdfjs-contract.test.ts"
+  ]
 }
