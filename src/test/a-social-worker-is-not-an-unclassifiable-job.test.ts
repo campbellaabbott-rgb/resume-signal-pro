@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { categorize, CATEGORIZE_VERSION } from "../../supabase/functions/job-board/categories";
 
 /**
@@ -76,5 +78,37 @@ describe("a social worker is not an unclassifiable job (v9)", () => {
     ["Pracownik Ochrony", "security"], // PL guard stem, genitive tail excluded
   ] as const)("%s → %s", (title, want) => {
     expect(categorize(title)).toBe(want);
+  });
+});
+
+describe("a sweep that straddles a deploy must not stamp the new version", () => {
+  // Measured 2026-08-23, live: the v8 recategorize chain was mid-flight when
+  // v9 deployed. Its post-deploy hops ran the new code, which wrote the NEW
+  // version into the progress stamp — so the chain kept its mid-alphabet
+  // cursor, judged only the late ids under v9, and would have recorded a
+  // completed v9 sweep with every id before "personio:" never seen by the
+  // v9 rules (531 Augenoptiker rows sat in "other" with zero moved). These
+  // assertions pin the provenance contract on comment-stripped code.
+  const FN = readFileSync(resolve(__dirname, "../..", "supabase/functions/job-board/index.ts"), "utf8");
+  const code = FN.replace(/\/\*[\s\S]*?\*\//g, "").split("\n").map((l) => l.replace(/\/\/.*$/, "")).join("\n");
+
+  it("a hop from a chain started under other rules is refused, not continued", () => {
+    expect(code).toMatch(/hopVersion !== CATEGORIZE_VERSION\) \|\| \(!Number\.isFinite\(hopVersion\) && cursor\)/);
+    expect(code).toMatch(/superseded: true/);
+  });
+
+  it("both stamps carry the version the chain STARTED under", () => {
+    expect(code).toMatch(/k: "recategorize_progress", v: \{ cursor, version: CATEGORIZE_VERSION, startedUnder: CATEGORIZE_VERSION/);
+    expect(code).toMatch(/k: "category_rules_version", v: \{ version: CATEGORIZE_VERSION, startedUnder: CATEGORIZE_VERSION/);
+  });
+
+  it("every hop and every kick names its rules version", () => {
+    expect(code).toMatch(/action: "recategorize", chainKey: key, cursor, rulesVersion: CATEGORIZE_VERSION/);
+    expect(code).toMatch(/await kick\("recategorize", \{ \.\.\.\(cursor \? \{ cursor \} : \{\}\), rulesVersion: CATEGORIZE_VERSION \}\)/);
+  });
+
+  it("a completion stamp without provenance re-arms the sweep instead of being trusted", () => {
+    expect(code).toMatch(/cv\?\.version !== CATEGORIZE_VERSION \|\| Number\(cv\?\.startedUnder\) !== CATEGORIZE_VERSION/);
+    expect(code).toMatch(/Number\(prog\.v\?\.startedUnder\) === CATEGORIZE_VERSION/);
   });
 });

@@ -102,7 +102,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-23.4";
+const BUILD_VERSION = "2026-08-23.5";
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -2635,16 +2635,23 @@ async function maybeKickMaintenance(client: SupabaseClient): Promise<void> {
     // (own compute budget). Idempotent: the stamp is written only when the
     // sweep completes, so a died sweep retries later.
     const { data: catVer } = await client.from("job_board_meta").select("v").eq("k", "category_rules_version").maybeSingle();
-    if ((catVer?.v as { version?: number } | null)?.version !== CATEGORIZE_VERSION) {
+    const cv = (catVer?.v ?? null) as { version?: number; startedUnder?: number } | null;
+    // startedUnder is required, not optional: a completion stamp without it
+    // may have been written by a chain that STARTED under the previous rules
+    // and straddled the deploy (measured 2026-08-23, v8→v9) — its "done" is
+    // a lie about every id before its deploy-time cursor. Such stamps re-arm
+    // one full sweep and are then re-written with provenance.
+    if (cv?.version !== CATEGORIZE_VERSION || Number(cv?.startedUnder) !== CATEGORIZE_VERSION) {
       const prog = await alive("recategorize_progress");
       if (!prog.alive) {
-        // Resume from the dead chain's frontier — but ONLY if that frontier was
-        // cut under the CURRENT rules. A leftover stamp from a v(N-1) sweep that
-        // never completed would otherwise make the v(N) sweep skip everything
-        // before its cursor, leaving rows judged only by the old rules.
-        const sameVersion = Number(prog.v?.version) === CATEGORIZE_VERSION;
+        // Resume from the dead chain's frontier — but ONLY if that chain
+        // STARTED under the CURRENT rules. A frontier cut by a v(N-1) chain
+        // (or by a straddling chain, whose per-hop stamps claim the new
+        // version) would make the v(N) sweep skip everything before its
+        // cursor, leaving rows judged only by the old rules.
+        const sameVersion = Number(prog.v?.startedUnder) === CATEGORIZE_VERSION;
         const cursor = sameVersion && typeof prog.v?.cursor === "string" ? prog.v.cursor as string : "";
-        await kick("recategorize", cursor ? { cursor } : {});
+        await kick("recategorize", { ...(cursor ? { cursor } : {}), rulesVersion: CATEGORIZE_VERSION });
       }
       return;
     }
@@ -4781,6 +4788,21 @@ Deno.serve(async (req) => {
         return json({ error: "recategorize is a maintenance action" }, 403);
       }
       let cursor = typeof body.cursor === "string" ? body.cursor : "";
+      // A CHAIN THAT STRADDLES A DEPLOY MUST DIE, NOT CONTINUE. Measured
+      // 2026-08-23: the v8 sweep was mid-flight when v9 deployed; its
+      // post-deploy hops ran the new code, which stamped the progress row
+      // with the NEW version — so the chain kept its mid-alphabet cursor,
+      // judged only the late ids under v9, and would have stamped the
+      // completion row as a finished v9 sweep with everything before
+      // "personio:" never seen by the v9 rules. Every hop now names the
+      // version its chain started under; a hop landing on newer code
+      // aborts silently and maybeKickMaintenance restarts from "" under
+      // the current rules. A hop with a cursor but no version is a
+      // pre-provenance chain — same verdict.
+      const hopVersion = Number(body.rulesVersion);
+      if ((Number.isFinite(hopVersion) && hopVersion !== CATEGORIZE_VERSION) || (!Number.isFinite(hopVersion) && cursor)) {
+        return json({ ok: false, superseded: true, current: CATEGORIZE_VERSION });
+      }
       // Liveness + resume point. Measured 2026-07-25: the v5 sweep chain died
       // silently ~15.5k rows in (waitUntil self-invocation is best-effort, not
       // guaranteed), and with no stamp a dead chain looked identical to a live
@@ -4791,7 +4813,7 @@ Deno.serve(async (req) => {
       // (updates remove them from the 'other' pile; survivors stay judged), so
       // resuming is correct, not just cheap.
       await client.from("job_board_meta").upsert(
-        { k: "recategorize_progress", v: { cursor, version: CATEGORIZE_VERSION, at: new Date().toISOString() }, updated_at: new Date().toISOString() },
+        { k: "recategorize_progress", v: { cursor, version: CATEGORIZE_VERSION, startedUnder: CATEGORIZE_VERSION, at: new Date().toISOString() }, updated_at: new Date().toISOString() },
         { onConflict: "k" },
       );
       let scanned = 0;
@@ -4832,12 +4854,12 @@ Deno.serve(async (req) => {
         waitUntil(chainKey().then((key) => fetch(url, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "recategorize", chainKey: key, cursor }),
+          body: JSON.stringify({ action: "recategorize", chainKey: key, cursor, rulesVersion: CATEGORIZE_VERSION }),
         })).then((r) => r.text()).catch(() => {}));
         return json({ ok: true, scanned, updated, nextCursor: cursor });
       }
       await client.from("job_board_meta").upsert(
-        { k: "category_rules_version", v: { version: CATEGORIZE_VERSION, sweptAt: new Date().toISOString() }, updated_at: new Date().toISOString() },
+        { k: "category_rules_version", v: { version: CATEGORIZE_VERSION, startedUnder: CATEGORIZE_VERSION, sweptAt: new Date().toISOString() }, updated_at: new Date().toISOString() },
         { onConflict: "k" },
       );
       await client.from("job_board_meta").delete().eq("k", "recategorize_progress");
