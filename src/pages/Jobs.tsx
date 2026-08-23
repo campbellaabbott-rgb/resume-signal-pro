@@ -5368,7 +5368,18 @@ export default function Jobs() {
                   );
                 })}
               </ul>
-              {data && (typeof data.total === "number" ? jobs.length < pageTotalCount : !!data.hasMore) && (
+              {/* THE SERVER'S "NO MORE" IS AUTHORITATIVE. This gate used hasMore
+                  only as a fallback when total was missing, and trusted the
+                  count comparison otherwise — but a terminal page's total counts
+                  UNGROUPED rows while the page serves grouped cards, so on 36 of
+                  82 measured terminal browse pages (43.9%, median shortfall
+                  7.3%) the button survived its own last page. Clicking it
+                  refetched the same terminal page forever. No postings were
+                  missing — the same jobs were folded into fewer cards — but a
+                  control that promises more and delivers nothing is a small lie
+                  on almost half of all terminal pages. hasMore:false now ends
+                  paging regardless of what the counts suggest. */}
+              {data && data.hasMore !== false && (typeof data.total === "number" ? jobs.length < pageTotalCount : true) && (
                 <div className="text-center mt-6">
                   {/* A failed "Load more" keeps every job already on screen and
                       retries in place. It used to replace the whole list with

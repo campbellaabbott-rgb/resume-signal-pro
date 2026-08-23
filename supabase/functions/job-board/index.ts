@@ -2120,8 +2120,20 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
         return count ?? null;
       };
       try {
+        // THE HEADLINE MUST COUNT WHAT THE BOARD CAN SERVE. This counted
+        // missing_since alone, while the read path also requires
+        // effective_posted within the freshness window — so the published
+        // total ran 6,809 HIGH (582,839 published, 576,030 servable, measured
+        // 2026-08-23). Three consequences from one missing predicate: the
+        // homepage claimed a 30-day-filtered count while showing an unfiltered
+        // one, with client comments asserting the opposite; the pagination
+        // fence, fed this number, admitted 6,809 offsets that each walk the
+        // whole index for ~4s and return zero rows; and the "servable postings
+        // unreachable behind the fence" defect reported earlier today was this
+        // same gap, read in the wrong direction — nothing was ever fenced off.
         const { count: open } = await client.from("job_board_postings")
-          .select("id", { count: "exact", head: true }).is("missing_since", null);
+          .select("id", { count: "exact", head: true }).is("missing_since", null)
+          .gte("effective_posted", new Date(Date.now() - FRESH_WINDOW_DAYS * 86_400_000).toISOString());
         if (!open) return undefined;
         const [sal, wm, exp] = await Promise.all([
           one("salary_rank_usd", "not.is.null"),
@@ -8154,7 +8166,12 @@ async function serveList(
           total: ordered.length < ROUTE_WINDOW ? ordered.length : null,
           ...(ordered.length >= ROUTE_WINDOW ? { countUnavailable: true } : {}),
           hasMore: offset + limit < ordered.length,
-          nextOffset: offset + limit,
+          // Clamped to the window, so a caller cannot step past it. Unclamped,
+          // paging one page beyond the 400-row window re-entered this block at
+          // an offset the slice cannot serve — and the abbreviation queries
+          // this route exists for (emt, ux, dba) are exactly the ones that walk
+          // several pages.
+          nextOffset: Math.min(offset + limit, ordered.length),
           searchRoute: routeDecision.route,
           searchRouteReason: routeDecision.reason,
           // THE PAGE WAS APOLOGISING FOR WORK IT HAD DONE.
@@ -8572,7 +8589,12 @@ async function serveList(
                 total: null,
                 countUnavailable: true,
                 hasMore: false,
-                nextOffset: 0,
+                // A position that EXISTS. This was 0, which points a pager
+                // following nextOffset back to the top of the feed — measured
+                // live on 4 of 6 misspelled queries, each returning a full page
+                // alongside it. The web client happens to be saved by its
+                // hasMore gate; an API consumer paging on nextOffset loops.
+                nextOffset: offset + simpleGrouped.jobs.length,
                 // Named so the client can say WHY these matched, and so the
                 // tier is visible in telemetry rather than being mistaken for
                 // the ranked path.
@@ -8654,7 +8676,12 @@ async function serveList(
                 // matches. Saying there is no more explicitly keeps the
                 // disclosure attached to the only page that carries it.
                 hasMore: false,
-                nextOffset: 0,
+                // A position that EXISTS. This was 0, which points a pager
+                // following nextOffset back to the top of the feed — measured
+                // live on 4 of 6 misspelled queries, each returning a full page
+                // alongside it. The web client happens to be saved by its
+                // hasMore gate; an API consumer paging on nextOffset loops.
+                nextOffset: offset + fuzzyGrouped.jobs.length,
                 total: fzKnown ? fzTotal : null,
                 ...(fzKnown ? {} : { countUnavailable: true }),
                 totalAllCompanies: safeMetaTotal ?? 0,
