@@ -105,6 +105,32 @@ describe("no one checks that an apply link resolves — now the sweep does", () 
     expect(sql).toMatch(/"action":"host_sweep"/);
   });
 
+  it("a tick leaves a trace whether it lives or dies", () => {
+    // Overnight 2026-08-23→24 the cursor advanced once in ten-plus cron
+    // ticks, and arrivals-that-died were indistinguishable from ticks-that-
+    // never-fired. Arrival is stamped before probing; the completion persist
+    // is CHECKED (an unchecked upsert is a tick that silently never
+    // happened — the response reports the computed cursor either way); and
+    // status exposes both maintenance chains.
+    expect(ACTION_CODE).toMatch(/lastArrivedAt: new Date\(\)\.toISOString\(\)/);
+    expect(ACTION_CODE).toMatch(/const \{ error: persistErr \} = await client\.from\("job_board_meta"\)\.upsert\(/);
+    expect(ACTION_CODE).toMatch(/persisted: !persistErr/);
+    const statusBlock = FN.slice(FN.indexOf('if (action === "status")'), FN.indexOf("structuredSweep: {"));
+    expect(statusBlock).toMatch(/hostSweep: \{/);
+    expect(statusBlock).toMatch(/recategorize: \{/);
+  });
+
+  it("the other-pile keyset scan has its partial index — a sweep must not die at a wall", () => {
+    const mig = readFileSync(
+      resolve(MIG_DIR, readdirSync(MIG_DIR).find((f) => f.includes("a_sweep_must_not_die_at_a_wall"))!),
+      "utf8",
+    );
+    const sql = stripSql(mig);
+    expect(sql).toMatch(/CREATE INDEX IF NOT EXISTS idx_job_board_postings_other_by_id/);
+    expect(sql).toMatch(/ON public\.job_board_postings \(id\)/);
+    expect(sql).toMatch(/WHERE category = 'other'/);
+  });
+
   it("the heartbeat watches the rollup, and skips (not fails) before the first cycle", () => {
     const hb = stripTs(HB);
     expect(hb).toMatch(/job_board_host_reachability/);

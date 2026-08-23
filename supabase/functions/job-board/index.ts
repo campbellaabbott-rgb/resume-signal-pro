@@ -102,7 +102,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-23.5";
+const BUILD_VERSION = "2026-08-24.1";
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -3925,6 +3925,16 @@ Deno.serve(async (req) => {
       // second invocation inside 5 minutes is an overlap, not a schedule.
       const lockAge = state.data?.updated_at ? Date.now() - new Date(state.data.updated_at).getTime() : Infinity;
       if (lockAge < 5 * 60_000) return json({ skipped: "a sweep ran moments ago" });
+      // Stamp ARRIVAL before probing, not only completion. Overnight
+      // 2026-08-23→24 the cursor advanced once in ten-plus cron ticks and
+      // there was no way to tell arrivals-that-died from ticks-that-never-
+      // fired. The arrival stamp also moves the stampede lock to entry time,
+      // where a lock belongs.
+      const svArrive = { ...(state.data?.v as Record<string, unknown> ?? {}), lastArrivedAt: new Date().toISOString() };
+      await client.from("job_board_meta").upsert(
+        { k: "host_sweep", v: svArrive, updated_at: new Date().toISOString() },
+        { onConflict: "k" },
+      );
       const sv = (state.data?.v ?? {}) as { cursor?: number; hosts?: Record<string, { fails: number; postings: number; lastAt: string; lastErr?: string }>; cycleAt?: string; list?: Array<{ host: string; postings: number }> };
       let list = Array.isArray(sv.list) ? sv.list : [];
       let cursor = Number(sv.cursor) || 0;
@@ -3998,11 +4008,16 @@ Deno.serve(async (req) => {
           .map(([h, v]) => `${h} (${v.postings} postings, ${v.lastErr ?? "?"})`).join("; ");
         console.log(`[JOB-BOARD] host sweep cycle complete: ${list.length} hosts, ${failing.length} failing (${postingsOnFailing} postings)${worst ? " — worst: " + worst : ""}`);
       }
-      await client.from("job_board_meta").upsert(
-        { k: "host_sweep", v: { cursor: wrapped ? 0 : cursor, hosts, list: wrapped ? [] : list, cycleAt: wrapped ? new Date().toISOString() : sv.cycleAt ?? null }, updated_at: new Date().toISOString() },
+      // An unchecked persist is a tick that silently never happened: the
+      // response reports the COMPUTED cursor either way, so a failed upsert
+      // here is indistinguishable from success to every caller. Check it,
+      // log it, and say so in the response.
+      const { error: persistErr } = await client.from("job_board_meta").upsert(
+        { k: "host_sweep", v: { cursor: wrapped ? 0 : cursor, hosts, list: wrapped ? [] : list, cycleAt: wrapped ? new Date().toISOString() : sv.cycleAt ?? null, lastArrivedAt: svArrive.lastArrivedAt, lastTick: { at: new Date().toISOString(), swept: slice.length, wrapped } }, updated_at: new Date().toISOString() },
         { onConflict: "k" },
       );
-      return json({ swept: slice.length, cursor: wrapped ? 0 : cursor, of: list.length, wrapped });
+      if (persistErr) console.log(`[JOB-BOARD] host sweep persist FAILED: ${persistErr.message}`);
+      return json({ swept: slice.length, cursor: wrapped ? 0 : cursor, of: list.length, wrapped, persisted: !persistErr });
     }
 
     if (action === "status") {
@@ -4011,7 +4026,7 @@ Deno.serve(async (req) => {
       // bundle, so a stale/failed publish is visible in ONE call instead of being
       // inferred from posting counts over hours (the rung-2 "did it deploy?" pain).
       // Also the source of truth for the heartbeat's job_board_deploy check.
-      const [prog, pbMeta, rot, refreshMeta, bf, hotMeta, fresh, breaker, dateCov, boardFlow, ingestPaused, dcCache, bsMeta, dsMeta, ssMeta, esMeta, fiOk, fiBad, faMeta, aaMeta, arMeta, rsRun, rsCron] = await Promise.all([
+      const [prog, pbMeta, rot, refreshMeta, bf, hotMeta, fresh, breaker, dateCov, boardFlow, ingestPaused, dcCache, bsMeta, dsMeta, ssMeta, esMeta, fiOk, fiBad, faMeta, aaMeta, arMeta, rsRun, rsCron, hsMeta, rcProg, rcVer] = await Promise.all([
         client.from("job_board_meta").select("v, updated_at").eq("k", "refresh_progress").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "posted_backfill").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "cold_rotation").maybeSingle(),
@@ -4104,6 +4119,14 @@ Deno.serve(async (req) => {
         // see the paymentReconcile block below.
         client.from("job_board_meta").select("v, updated_at").eq("k", "reconcile_stripe_run").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "reconcile_stripe_cron").maybeSingle(),
+        // The two maintenance chains that stalled invisibly overnight
+        // 2026-08-23→24: the recategorize sweep died at a cursor wall and the
+        // host sweep lost nine of ten cron ticks, and BOTH could only be
+        // diagnosed by inference from posting counts. A chain whose liveness
+        // is not in status is a chain whose death is a research project.
+        client.from("job_board_meta").select("v, updated_at").eq("k", "host_sweep").maybeSingle(),
+        client.from("job_board_meta").select("v, updated_at").eq("k", "recategorize_progress").maybeSingle(),
+        client.from("job_board_meta").select("v, updated_at").eq("k", "category_rules_version").maybeSingle(),
 ]);
       const pgV = (prog.data?.v ?? {}) as { hot?: number; cold?: number; coldDone?: number; failedAcc?: string[] };
       const rotV = (rot.data?.v ?? {}) as { completedAt?: string; coldBoards?: number };
@@ -4337,6 +4360,23 @@ Deno.serve(async (req) => {
         // description, and a lane that walks its whole corpus filling nothing
         // looks identical to one that never ran. cursor advancing with filled
         // at 0 is the honest reading of "scanning, nothing to state here".
+        hostSweep: {
+          cursor: ((hsMeta.data?.v ?? {}) as { cursor?: number }).cursor ?? null,
+          of: Array.isArray(((hsMeta.data?.v ?? {}) as { list?: unknown[] }).list) ? (((hsMeta.data?.v ?? {}) as { list?: unknown[] }).list as unknown[]).length : null,
+          cycleAt: ((hsMeta.data?.v ?? {}) as { cycleAt?: string }).cycleAt ?? null,
+          lastArrivedAt: ((hsMeta.data?.v ?? {}) as { lastArrivedAt?: string }).lastArrivedAt ?? null,
+          lastTick: ((hsMeta.data?.v ?? {}) as { lastTick?: unknown }).lastTick ?? null,
+          ageMin: hsMeta.data?.updated_at ? Math.round((Date.now() - new Date(hsMeta.data.updated_at).getTime()) / 60_000) : null,
+        },
+        recategorize: {
+          rulesVersion: CATEGORIZE_VERSION,
+          cursor: ((rcProg.data?.v ?? {}) as { cursor?: string }).cursor ?? null,
+          startedUnder: ((rcProg.data?.v ?? {}) as { startedUnder?: number }).startedUnder ?? null,
+          progressAgeMin: rcProg.data?.updated_at ? Math.round((Date.now() - new Date(rcProg.data.updated_at).getTime()) / 60_000) : null,
+          stampedVersion: ((rcVer.data?.v ?? {}) as { version?: number }).version ?? null,
+          stampedStartedUnder: ((rcVer.data?.v ?? {}) as { startedUnder?: number }).startedUnder ?? null,
+          sweptAt: ((rcVer.data?.v ?? {}) as { sweptAt?: string }).sweptAt ?? null,
+        },
         structuredSweep: {
           vendor: ((ssMeta.data?.v ?? {}) as { vendor?: string }).vendor ?? null,
           cursor: ((ssMeta.data?.v ?? {}) as { cursor?: string }).cursor ?? null,
