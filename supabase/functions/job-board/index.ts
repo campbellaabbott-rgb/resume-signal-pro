@@ -102,7 +102,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-23.3";
+const BUILD_VERSION = "2026-08-23.4";
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -3923,7 +3923,12 @@ Deno.serve(async (req) => {
       let cursor = Number(sv.cursor) || 0;
       const hosts = sv.hosts ?? {};
       if (cursor === 0 || list.length === 0) {
-        const { data: census, error: cErr } = await client.rpc("get_apply_hosts");
+        // supabase-js caps un-ranged reads at 1,000 rows, and the first live
+        // tick returned exactly 1,000 of the ~1,400-host census — the bottom
+        // ~400 hosts (the smallest employers) would silently never be swept.
+        // range() lifts the cap; the current cycle finishes on its pinned
+        // list and the next census pull picks up the full set.
+        const { data: census, error: cErr } = await client.rpc("get_apply_hosts").range(0, 4999);
         if (cErr || !Array.isArray(census)) return json({ error: "host census unavailable" }, 503);
         list = (census as Array<{ host: string; postings: number }>).filter((h) => h.host && h.host.includes("."));
         cursor = 0;

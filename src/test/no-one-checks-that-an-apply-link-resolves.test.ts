@@ -65,6 +65,10 @@ describe("no one checks that an apply link resolves — now the sweep does", () 
     expect(ACTION_CODE).toMatch(/setTimeout\(\(\) => ctrl\.abort\(\), 6_000\)/);
     expect(ACTION_CODE).not.toMatch(/fetchWithTimeout/);
     expect(ACTION_CODE).toMatch(/const SLICE = 200;/);
+    // The census read must carry an explicit range: supabase-js caps
+    // un-ranged reads at 1,000 rows and the live census is ~1,400 hosts —
+    // measured on the first deployed tick, which returned exactly 1,000.
+    expect(ACTION_CODE).toMatch(/rpc\("get_apply_hosts"\)\.range\(0, 4999\)/);
     expect(ACTION_CODE).toMatch(/lockAge < 5 \* 60_000/);
   });
 
