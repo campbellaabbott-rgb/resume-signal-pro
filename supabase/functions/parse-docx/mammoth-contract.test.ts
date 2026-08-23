@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Regression test for the exact bug that took every .docx upload down: mammoth's
 // extractRawText() forwards its input straight to unzip.openZip(), which only
 // recognizes a `buffer`, `path`, or `file` key — never `arrayBuffer`. Passing
