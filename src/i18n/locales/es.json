@@ -3509,6 +3509,7 @@
     "resultsSummary": "Mostrando {{shown}} de {{total}} ofertas en {{companyFeeds}} fuentes de empresas",
     "resultsSummaryNoTotal": "Mostrando {{shown}} ofertas coincidentes",
     "resultsSummaryFloor": "Mostrando {{shown}} de {{floor}}+ ofertas coincidentes",
+    "didYouMean": "¿Quiso decir «{{q}}»?",
     "alsoInLocations_one": "También contrata en {{count}} ubicación más",
     "alsoInLocations_other": "También contrata en {{count}} ubicaciones más",
     "postedToday": "hoy",

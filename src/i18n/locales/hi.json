@@ -3509,6 +3509,7 @@
     "resultsSummary": "{{companyFeeds}} कंपनी फ़ीड की {{total}} मिलती ओपनिंग में से {{shown}} दिख रही हैं",
     "resultsSummaryNoTotal": "{{shown}} मिलती-जुलती नौकरियाँ दिखाई जा रही हैं",
     "resultsSummaryFloor": "{{floor}}+ मिलती-जुलती नौकरियों में से {{shown}} दिखाई जा रही हैं",
+    "didYouMean": "क्या आपका मतलब “{{q}}” था?",
     "alsoInLocations_one": "{{count}} और स्थान पर भी भर्ती",
     "alsoInLocations_other": "{{count}} और स्थानों पर भी भर्ती",
     "postedToday": "आज",

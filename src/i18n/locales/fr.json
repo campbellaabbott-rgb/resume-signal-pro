@@ -3509,6 +3509,7 @@
     "resultsSummary": "{{shown}} offres affichées sur {{total}} dans {{companyFeeds}} flux d'entreprises",
     "resultsSummaryNoTotal": "Affichage de {{shown}} offres correspondantes",
     "resultsSummaryFloor": "Affichage de {{shown}} sur {{floor}}+ offres correspondantes",
+    "didYouMean": "Vouliez-vous dire « {{q}} » ?",
     "alsoInLocations_one": "Recrute aussi dans {{count}} autre lieu",
     "alsoInLocations_other": "Recrute aussi dans {{count}} autres lieux",
     "postedToday": "aujourd'hui",

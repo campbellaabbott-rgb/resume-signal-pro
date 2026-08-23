@@ -3509,6 +3509,7 @@
     "resultsSummary": "Ipinapakita ang {{shown}} sa {{total}} tumutugmang opening sa {{companyFeeds}} feed ng kumpanya",
     "resultsSummaryNoTotal": "Ipinapakita ang {{shown}} tugmang bakante",
     "resultsSummaryFloor": "Ipinapakita ang {{shown}} sa {{floor}}+ tumutugmang trabaho",
+    "didYouMean": "Ang ibig mo bang sabihin ay “{{q}}”?",
     "alsoInLocations_one": "Kumukuha rin sa {{count}} pang lokasyon",
     "alsoInLocations_other": "Kumukuha rin sa {{count}} pang mga lokasyon",
     "postedToday": "ngayon",

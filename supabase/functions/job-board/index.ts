@@ -3714,6 +3714,24 @@ function queryTerms(raw: unknown): { terms: string[]; dropped: string[]; liftedS
  * query paths and silently miss the rest. A single helper spread at every list
  * return is the only version of this that stays true.
  */
+// Curated, MEASURED did-you-mean pairs. Each entry is verified live before it
+// enters: the key's exact results are junk or near-zero while the value's
+// pool is orders of magnitude larger. This is a DISCLOSURE, not an expansion
+// — the results themselves are untouched (no re-ranking, no filter widening,
+// none of the tier-escalation traps), the client renders a one-click
+// suggestion above them. Query-side only: it never classifies or relabels a
+// posting, so the frozen classifier stays frozen.
+const DID_YOU_MEAN: Record<string, string> = {
+  // 2026-08-24, live: 1 literal match board-wide; the German nursing pool is
+  // pflegefachkraft 55 + krankenpfleger|pflegekraft 13. The #1 "related" row
+  // was a medical-device sales rep.
+  "krankenschwester": "pflegefachkraft",
+  // 2026-08-24, live: 101 exact rows, every one an EMPLOYER's typo ("Manger
+  // Trainee") suppressing the fuzzy tier; the manager pool is ~100x larger.
+  // A genuine manger search loses nothing — its rows render unchanged.
+  "manger": "manager",
+};
+
 function searchDisclosures(
   body: Record<string, unknown>,
   applied: { salaryFloor?: number | null; postedAfter?: string | null },
@@ -3743,6 +3761,10 @@ function searchDisclosures(
   // out loud because it changes what the filter returns: the same 24-hour
   // question was 467 rows on crawl time and 90 on the company date.
   if (applied.postedAfter) out.postedAfterUsesStatedDate = true;
+  // A typo that exactly matches other people's typos defeats every rescue
+  // tier — the exact hits are real rows, just not what the searcher meant.
+  const dym = DID_YOU_MEAN[String(body.q ?? "").trim().toLowerCase()];
+  if (dym) out.didYouMean = dym;
   return out;
 }
 

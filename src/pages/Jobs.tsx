@@ -181,6 +181,10 @@ interface BoardResponse {
   /** Proven floor when the exact total is unknowable (fuzzy tier at its cap):
    *  "at least this many match". Render as "M+", never as a total. */
   totalAtLeast?: number;
+  /** Curated suggestion when the query exactly matches other people's typos
+   *  ("manger") or a term the board's stock doesn't use ("krankenschwester").
+   *  Results are untouched; this renders as a one-click banner. */
+  didYouMean?: string;
   // The count stopped at the server's cap: the true figure is higher, so render
   // it as "10,000+" rather than as an exact total.
   countCapped?: boolean;
@@ -4486,6 +4490,17 @@ export default function Jobs() {
                   {data?.exactWordMatch && (
                     <p className="text-xs text-muted-foreground mb-2">
                       {t("jobsPage.exactWordMatch", "Showing exact whole-word matches for “{{q}}”.", { q: data.exactWordMatch })}
+                    </p>
+                  )}
+                  {data?.didYouMean && (
+                    <p className="text-xs text-muted-foreground mb-2">
+                      <button
+                        type="button"
+                        className="underline underline-offset-2 hover:text-foreground"
+                        onClick={() => setQ(data.didYouMean!)}
+                      >
+                        {t("jobsPage.didYouMean", "Did you mean “{{q}}”?", { q: data.didYouMean })}
+                      </button>
                     </p>
                   )}
               </>

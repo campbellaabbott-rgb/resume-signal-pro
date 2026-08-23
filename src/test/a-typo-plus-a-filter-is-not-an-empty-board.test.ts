@@ -152,3 +152,26 @@ describe("a typo plus a filter is not an empty board", () => {
     expect(FN).toMatch(/exactWordMatch: qText/);
   });
 });
+
+describe("did-you-mean is a disclosure, never an expansion", () => {
+  // "manger" exactly matches 101 of other people's typos ("Manger Trainee"),
+  // which suppresses every rescue tier — the exact hits are real rows, just
+  // not what the searcher meant. "krankenschwester" has 1 literal match
+  // against a 68-row German nursing pool spelled pflegefachkraft. The cure
+  // for both is a curated one-click suggestion ABOVE unchanged results:
+  // re-ranking or query expansion would be the tier-escalation trap (a
+  // widened search wearing a rescue's clothing), and these pins keep it out.
+  const FN = readFileSync(resolve(__dirname, "../../supabase/functions/job-board/index.ts"), "utf8");
+  const code = FN.replace(/\/\*[\s\S]*?\*\//g, "").split("\n").map((l) => l.replace(/\/\/.*$/, "")).join("\n");
+
+  it("the map exists with the two measured pairs", () => {
+    expect(code).toMatch(/"krankenschwester": "pflegefachkraft"/);
+    expect(code).toMatch(/"manger": "manager"/);
+  });
+
+  it("the map is read exactly once, inside searchDisclosures, as a field", () => {
+    const uses = code.match(/DID_YOU_MEAN/g) ?? [];
+    expect(uses.length, "declaration + one read — a third use means someone wired it into a query").toBe(2);
+    expect(code).toMatch(/out\.didYouMean = dym/);
+  });
+});
