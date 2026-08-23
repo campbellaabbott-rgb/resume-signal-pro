@@ -138,6 +138,19 @@ const unescapeEntities = (s: string) =>
     .replace(/&#x([0-9a-f]+);/gi, (_, h) => { const c = parseInt(h, 16); return c > 0 && c < 0x110000 ? String.fromCodePoint(c) : " "; })
     .replace(/&#(\d+);/g, (_, d) => { const c = parseInt(d, 10); return c > 0 && c < 0x110000 ? String.fromCodePoint(c) : " "; })
     .replace(/&nbsp;/g, " ")
+    // Named entities — audit 2026-08-24: greenhouse's pay-transparency
+    // footer ships "&mdash;" and the numeric-only decoder left it literal in
+    // stored text, where it both rendered as garbage to readers AND broke
+    // salary mining (the range separator never matched: 17/200 sampled rows
+    // carried an entity-encoded pay block, all unparseable).
+    .replace(/&mdash;/gi, "\u2014")
+    .replace(/&ndash;/gi, "\u2013")
+    .replace(/&(rsquo|apos);/gi, "'")
+    .replace(/&lsquo;/gi, "\u2018")
+    .replace(/&rdquo;/gi, "\u201d")
+    .replace(/&ldquo;/gi, "\u201c")
+    .replace(/&hellip;/gi, "\u2026")
+    .replace(/&(bull|middot);/gi, "\u00b7")
     .replace(/&amp;/g, "&"); // last, so &amp;lt; needs the second pass, not this one
 
 export function htmlToText(html: string): string {

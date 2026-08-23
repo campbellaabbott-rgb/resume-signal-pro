@@ -18,7 +18,12 @@
 // HTML parsing without booting the edge function.
 
 /** Vendors whose description needs a per-posting fetch (the backfill sweep's scope). */
-export const DETAIL_DESC_SOURCES = ["workday", "smartrecruiters", "bamboohr", "oracle", "breezy"] as const;
+// rippling joined 2026-08-24: NO_DESC_SOURCES was measured against the LIST
+// page only (client-rendered, no JD — still true). The per-posting API the
+// posted-date backfill already calls serves description.{company,role} on
+// every probed posting; ~7-9k rows, 100% null until now. Appended LAST so it
+// queues behind breezy rather than ahead of it.
+export const DETAIL_DESC_SOURCES = ["workday", "smartrecruiters", "bamboohr", "oracle", "breezy", "rippling"] as const;
 
 /**
  * Vendors whose description rides along in the LIST payload, so ingest stores it
@@ -43,7 +48,7 @@ export const BOARD_DESC_SOURCES = ["workable", "pinpoint", "icims"] as const;
  * a hole to be filled later — keep them out of the sweep so it doesn't burn
  * requests re-failing on them every pass.
  */
-export const NO_DESC_SOURCES = ["rippling"] as const;
+export const NO_DESC_SOURCES = [] as const;
 
 /**
  * The text a posting is embedded FROM (gte-small, 384-dim, run in the edge

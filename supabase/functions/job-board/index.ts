@@ -102,7 +102,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-24.2";
+const BUILD_VERSION = "2026-08-24.3";
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -210,6 +210,21 @@ const HOT_CONCURRENCY = 2; // hot boards are giants — two multi-MB parses at o
 // matches CONCURRENCY for board fetches; 120/hop keeps a hop well inside the
 // edge wall-time limit while still clearing ~406k rows in a few thousand hops.
 const DESC_SWEEP_PER_HOP = 120;
+// STORED DESCRIPTION CAP — raised 4,000 → 12,000 on 2026-08-24, measured
+// first: 21/24 sampled at-cap postings were cut mid-content, and every tail
+// over 1,000 chars held requirements/qualifications or salary figures (the
+// greenhouse/lever pay-transparency block sits at the BOTTOM, so the old cap
+// systematically amputated exactly what salary mining reads; one sampled
+// range existed ONLY beyond char 4000). 12k captures 87.5% of postings
+// whole; the residue beyond it was legal boilerplate in every observed
+// case. ~120MB across the four worst vendors. The embed input slices to
+// 1,200 chars on its own, so ranking is untouched. RAW_HTML_CAP bounds the
+// per-item htmlToText cost and must stay ~2x the text cap or tag overhead
+// re-truncates below it. Ingest, list-payload and backfill paths share
+// these constants BECAUSE they must agree — two caps is how the 4,000
+// number would creep back.
+const STORED_DESC_CAP = 12_000;
+const RAW_HTML_CAP = 24_000;
 const DESC_SWEEP_CONCURRENCY = 8;
 // structured-sweep: vendors whose PER-POSTING DETAIL states a work mode the
 // list payload does not. Only Workday qualifies today — fetchVendorDetail
@@ -1317,12 +1332,12 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
         if (s.source === "lever") {
           for (const j of (Array.isArray(r.raw) ? r.raw : []) as Array<{ id: string; descriptionPlain?: string; descriptionBodyPlain?: string }>) {
             const text = ((j.descriptionPlain ?? "") + (j.descriptionBodyPlain ? `\n${j.descriptionBodyPlain}` : "")).trim();
-            if (text) descs.set(`lever:${s.token}:${j.id}`, text.slice(0, 4000));
+            if (text) descs.set(`lever:${s.token}:${j.id}`, text.slice(0, STORED_DESC_CAP));
           }
         } else if (s.source === "ashby") {
           for (const j of ((r.raw as { jobs?: Array<{ id: string; descriptionPlain?: string; descriptionHtml?: string }> }).jobs ?? [])) {
             const text = (j.descriptionPlain ?? (j.descriptionHtml ? htmlToText(j.descriptionHtml) : "")).trim();
-            if (text) descs.set(`ashby:${s.token}:${j.id}`, text.slice(0, 4000));
+            if (text) descs.set(`ashby:${s.token}:${j.id}`, text.slice(0, STORED_DESC_CAP));
           }
         } else if (s.source === "greenhouse" && !isLight(s.token)) {
           const ghJobs = (r.raw as { jobs?: Array<{ id: number; content?: string }> }).jobs ?? [];
@@ -1343,14 +1358,14 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
             } catch { /* re-enrolls on the next fetch — never blocks the slice */ }
           } else {
             for (const j of ghJobs) {
-              const text = j.content ? htmlToText(String(j.content).slice(0, 12000)).trim() : "";
-              if (text) descs.set(`greenhouse:${s.token}:${j.id}`, text.slice(0, 4000));
+              const text = j.content ? htmlToText(String(j.content).slice(0, RAW_HTML_CAP)).trim() : "";
+              if (text) descs.set(`greenhouse:${s.token}:${j.id}`, text.slice(0, STORED_DESC_CAP));
             }
           }
         } else if (s.source === "recruitee") {
           for (const o of ((r.raw as { offers?: Array<{ id: string | number; description?: string; requirements?: string }> }).offers ?? [])) {
-            const text = htmlToText([o.description, o.requirements].filter(Boolean).join("\n").slice(0, 12000)).trim();
-            if (text) descs.set(`recruitee:${s.token}:${o.id}`, text.slice(0, 4000));
+            const text = htmlToText([o.description, o.requirements].filter(Boolean).join("\n").slice(0, RAW_HTML_CAP)).trim();
+            if (text) descs.set(`recruitee:${s.token}:${o.id}`, text.slice(0, STORED_DESC_CAP));
           }
         } else if (s.source === "workable" && !isLight(s.token)) {
           // Same self-tuning guard as Greenhouse: details=true payloads are ~10x
@@ -1390,15 +1405,15 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
         } else if (s.source === "personio" && typeof r.raw === "string") {
           for (const block of xmlBlocks(r.raw, "position")) {
             const pid = xmlValue(block, "id");
-            const text = htmlToText(xmlBlocks(block, "jobDescription").map((d) => xmlValue(d, "value") ?? "").join("\n").slice(0, 12000)).trim();
-            if (pid && text) descs.set(`personio:${s.token}:${pid}`, text.slice(0, 4000));
+            const text = htmlToText(xmlBlocks(block, "jobDescription").map((d) => xmlValue(d, "value") ?? "").join("\n").slice(0, RAW_HTML_CAP)).trim();
+            if (pid && text) descs.set(`personio:${s.token}:${pid}`, text.slice(0, STORED_DESC_CAP));
           }
         } else if (s.source === "teamtailor" && typeof r.raw === "string") {
           for (const item of xmlBlocks(r.raw, "item")) {
             const link = xmlValue(item, "link") ?? "";
             const idMatch = link.match(/\/jobs\/(\d+)/);
-            const text = htmlToText((xmlValue(item, "description") ?? "").slice(0, 12000)).trim();
-            if (idMatch && text) descs.set(`teamtailor:${s.token}:${idMatch[1]}`, text.slice(0, 4000));
+            const text = htmlToText((xmlValue(item, "description") ?? "").slice(0, RAW_HTML_CAP)).trim();
+            if (idMatch && text) descs.set(`teamtailor:${s.token}:${idMatch[1]}`, text.slice(0, STORED_DESC_CAP));
           }
         }
         const clean = (x: string | null | undefined) => (x == null ? null : x.replace(/\u0000/g, ""));
@@ -2694,7 +2709,24 @@ async function maybeKickMaintenance(client: SupabaseClient): Promise<void> {
     // a dead chain — stale stamp, no doneAt — re-kicks within minutes. vi:0 is
     // self-resuming: filled rows have left the description-is-null filter.
     const settled = Number.isFinite(doneAt) && Date.now() - doneAt < 6 * 60 * 60_000;
-    if (!ds.alive && !settled) await kick("desc-sweep", { vi: 0 });
+    if (!ds.alive && !settled) {
+      // ROTATE THE STARTING VENDOR. vi:0 on every revival was measured
+      // starving the tail of DETAIL_DESC_SOURCES (2026-08-24): chains die on
+      // isolate recycles, every revival restarted at workday's 36k
+      // permanent-failure nulls, and breezy — 5th of 6 — had received ~10
+      // lifetime hops against an 11.6k backlog its endpoint serves fine
+      // (probed 12/12 HTTP 200). Each revival now starts one vendor past
+      // where the last chain stood; the action wraps a full rotation, so no
+      // vendor is skipped and every vendor leads eventually. Still no row
+      // cursor — the description-is-null filter remains the resume point
+      // (the original vi:0 rationale, kept for what it was right about).
+      const LEN = DETAIL_DESC_SOURCES.length;
+      const dsv = (ds.v ?? {}) as { nextStartVi?: number; runningVi?: number };
+      const startVi = Number.isFinite(Number(dsv.nextStartVi))
+        ? Math.max(0, Number(dsv.nextStartVi)) % LEN
+        : Number.isFinite(Number(dsv.runningVi)) ? (Math.max(0, Number(dsv.runningVi)) + 1) % LEN : 0;
+      await kick("desc-sweep", { vi: startVi, vstart: startVi });
+    }
   } catch (e) {
     // Maintenance is best-effort; it must never break a refresh slice.
     console.warn("[JOB-BOARD] maintenance kick skipped:", String(e).slice(0, 120));
@@ -2885,8 +2917,8 @@ function listPayloadDescriptions(s: JobSource, raw: unknown): Map<string, string
   if (s.source === "workable") {
     for (const j of ((raw as { jobs?: Array<{ shortcode?: string; description?: string }> }).jobs ?? [])) {
       const ext = j.shortcode ?? "";
-      const text = j.description ? htmlToText(String(j.description).slice(0, 12000)).trim() : "";
-      if (ext && text) out.set(`workable:${s.token}:${ext}`, text.slice(0, 4000));
+      const text = j.description ? htmlToText(String(j.description).slice(0, RAW_HTML_CAP)).trim() : "";
+      if (ext && text) out.set(`workable:${s.token}:${ext}`, text.slice(0, STORED_DESC_CAP));
     }
   } else if (s.source === "icims") {
     // iCIMS ships the full description (plus responsibilities/qualifications)
@@ -2897,8 +2929,8 @@ function listPayloadDescriptions(s: JobSource, raw: unknown): Map<string, string
       const html = [d.description, d.responsibilities, d.qualifications]
         .filter((x): x is string => typeof x === "string" && x.length > 0)
         .join("\n");
-      const text = html ? htmlToText(html.slice(0, 12000)).trim() : "";
-      if (ext && text) out.set(`icims:${s.token}:${ext}`, text.slice(0, 4000));
+      const text = html ? htmlToText(html.slice(0, RAW_HTML_CAP)).trim() : "";
+      if (ext && text) out.set(`icims:${s.token}:${ext}`, text.slice(0, STORED_DESC_CAP));
     }
   } else if (s.source === "pinpoint") {
     for (const p of (((raw as { data?: Array<Record<string, unknown>> }).data) ?? [])) {
@@ -2906,8 +2938,8 @@ function listPayloadDescriptions(s: JobSource, raw: unknown): Map<string, string
       const html = [p.description, p.key_responsibilities, p.skills_knowledge_expertise]
         .filter((x): x is string => typeof x === "string" && x.length > 0)
         .join("\n");
-      const text = html ? htmlToText(html.slice(0, 12000)).trim() : "";
-      if (ext && text) out.set(`pinpoint:${s.token}:${ext}`, text.slice(0, 4000));
+      const text = html ? htmlToText(html.slice(0, RAW_HTML_CAP)).trim() : "";
+      if (ext && text) out.set(`pinpoint:${s.token}:${ext}`, text.slice(0, STORED_DESC_CAP));
     }
   }
   return out;
@@ -3061,6 +3093,21 @@ async function fetchVendorDetail(
     const res = await fetchWithTimeout(url);
     if (res.ok) {
       const html = jobPostingLdDescription(await res.text());
+      text = html ? htmlToText(html).slice(0, DESC_CAP) || null : null;
+    }
+  } else if (src.source === "rippling") {
+    // The list payload carries no JD (re-verified 2026-08-24: __NEXT_DATA__
+    // job-posts items hold only [department, id, language, locations, name,
+    // url]) — but the official per-posting API this codebase ALREADY calls
+    // for createdOn in the posted-date backfill serves the full text:
+    // description.{company,role}, measured 20-30KB across 3 boards, no auth.
+    // role is the JD, company is the employer blurb; role leads.
+    const res = await fetchWithTimeout(`https://api.rippling.com/platform/api/ats/v1/board/${src.token}/jobs/${externalId}`);
+    if (res.ok) {
+      const body = await res.json() as { description?: { company?: string; role?: string } };
+      const html = [body?.description?.role, body?.description?.company]
+        .filter((x): x is string => typeof x === "string" && x.length > 0)
+        .join("\n");
       text = html ? htmlToText(html).slice(0, DESC_CAP) || null : null;
     }
   } else if (src.source === "pinpoint") {
@@ -5607,7 +5654,7 @@ Deno.serve(async (req) => {
           const res = await fetchWithTimeout(`https://${gh.host}/v1/boards/${gh.token}/jobs/${ghId}?questions=false`);
           if (!res.ok) continue;
           const job = (await res.json()) as { content?: string };
-          const text = job.content ? clean(htmlToText(String(job.content).slice(0, 12000)).trim()).slice(0, 4000) : "";
+          const text = job.content ? clean(htmlToText(String(job.content).slice(0, RAW_HTML_CAP)).trim()).slice(0, STORED_DESC_CAP) : "";
           if (text) {
             // Backfilled description is also the salary source for these boards
             // (GH giants fetch without content, so ingest-time mining never saw
@@ -5883,6 +5930,7 @@ Deno.serve(async (req) => {
         return json({ error: "desc-sweep is a maintenance action" }, 403);
       }
       let vi = Math.max(0, Number(body.vi) || 0);
+      const vstart = Math.max(0, Number(body.vstart) || 0) % DETAIL_DESC_SOURCES.length;
       if (vi >= DETAIL_DESC_SOURCES.length) {
         // ── Phase 2: board-level lane ────────────────────────────────────────
         // workable/pinpoint carry their descriptions in the LIST payload, so
@@ -5894,7 +5942,7 @@ Deno.serve(async (req) => {
         let bi = Math.max(0, Number(body.bi) || 0);
         if (bi >= BOARDS.length) {
           await client.from("job_board_meta").upsert(
-            { k: "desc_sweep", v: { doneAt: new Date().toISOString() }, updated_at: new Date().toISOString() },
+            { k: "desc_sweep", v: { doneAt: new Date().toISOString(), nextStartVi: (vstart + 1) % DETAIL_DESC_SOURCES.length }, updated_at: new Date().toISOString() },
             { onConflict: "k" },
           );
           return json({ ok: true, done: true });
@@ -5922,7 +5970,7 @@ Deno.serve(async (req) => {
               for (const row of nullRows ?? []) {
                 const text = map.get(String(row.id));
                 if (!text) continue;
-                const clean = text.replace(/\u0000/g, "").slice(0, 4000);
+                const clean = text.replace(/\u0000/g, "").slice(0, STORED_DESC_CAP);
                 if (!clean) continue;
                 const minedSalary = extractSalary(clean);
                 const minedParse = minedSalary ? parseSalaryStructured(minedSalary, (row as { country?: string | null }).country ?? undefined) : null;
@@ -5950,7 +5998,7 @@ Deno.serve(async (req) => {
         waitUntil(chainKey().then((key) => fetch(bUrl, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "desc-sweep", chainKey: key, vi, bi }),
+          body: JSON.stringify({ action: "desc-sweep", chainKey: key, vi, bi, vstart }),
         })).then((rr) => rr.text()).catch(() => {}));
         return json({ ok: true, phase: "boards", token: b.token, filled, nextBi: bi });
       }
@@ -6007,7 +6055,7 @@ Deno.serve(async (req) => {
               }
               continue;
             }
-            const clean = text.replace(/\u0000/g, "").slice(0, 4000);
+            const clean = text.replace(/\u0000/g, "").slice(0, STORED_DESC_CAP);
             if (!clean) continue;
             // Same rule as ingest: the description is also the salary source
             // where the vendor gave us no structured pay field. Only ever the
@@ -6075,12 +6123,18 @@ Deno.serve(async (req) => {
       // rows all fail permanently would re-select the same page forever: failed
       // rows stay null, so they'd come straight back on the next hop.
       const exhausted = queue.length < DESC_SWEEP_PER_HOP || updated === 0;
-      if (exhausted) vi += 1;
+      if (exhausted) {
+        // Wrap: the rotation is complete when it comes back around to the
+        // vendor it STARTED at, whatever that was; the length sentinel still
+        // means "enter the boards phase".
+        const next = (vi + 1) % DETAIL_DESC_SOURCES.length;
+        vi = next === vstart ? DETAIL_DESC_SOURCES.length : next;
+      }
       const url = `${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`;
       waitUntil(chainKey().then((key) => fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "desc-sweep", chainKey: key, vi }),
+        body: JSON.stringify({ action: "desc-sweep", chainKey: key, vi, vstart }),
       })).then((rr) => rr.text()).catch(() => {}));
       return json({ ok: true, vendor, scanned: queue.length, updated, nextVi: vi });
     }
@@ -6834,7 +6888,7 @@ Deno.serve(async (req) => {
         waitUntil((async () => {
           try {
             await client.from("job_board_postings").update({
-              description: description.replace(/\u0000/g, "").slice(0, 4000),
+              description: description.replace(/\u0000/g, "").slice(0, STORED_DESC_CAP),
               ...(expRead.band ? { experience_band: expRead.band, min_years: expRead.minYears } : {}),
               // Same invariant — see the desc-sweep write above.
               ...(wmRead ? { work_mode: wmRead, remote: wmRead === "remote" } : {}),

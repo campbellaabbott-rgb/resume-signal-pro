@@ -136,7 +136,7 @@ const P_YEAR = /per[\s-]?(?:year|annum)|\/\s?yr\b|\/\s?year|annual|yearly|year-?
 
 export function parseSalaryStructured(text: string | null | undefined, country?: string | null): ParsedSalary | null {
   if (!text) return null;
-  const s = String(text).slice(0, 300);
+  const s = decodeLegacyEntities(String(text).slice(0, 300));
   const num = (raw: string, k?: string): number | null => {
     const m = raw.match(/^(\d{1,3}(?:[.,]\d{3})*)(?:[.,](\d{1,2}))?$/);
     const base = m ? Number(m[1].replace(/[.,]/g, "") + (m[2] ? `.${m[2]}` : "")) : Number(raw.replace(/,/g, ""));
@@ -209,9 +209,18 @@ export function parseSalaryStructured(text: string | null | undefined, country?:
 }
 
 /** Extract the posting's own pay text, or null when nothing clearly stated. */
+// Rows stored before 2026-08-24 can carry literal named entities
+// ("$22 &mdash; $24" — greenhouse's own pay footer, un-decoded by the old
+// numeric-only entity pass). The ingest decoder is fixed, but stored text is
+// immutable until re-fetch, so the miner decodes defensively: 17/200 sampled
+// null-salary greenhouse rows held an entity-encoded pay block, every one
+// unparseable without this line.
+const decodeLegacyEntities = (s: string) =>
+  s.replace(/&mdash;/gi, "\u2014").replace(/&ndash;/gi, "\u2013").replace(/&nbsp;/gi, " ").replace(/&amp;/gi, "&");
+
 export function extractSalary(text: string | null | undefined): string | null {
   if (!text) return null;
-  const hay = text.slice(0, 12_000).replace(/\s+/g, " ");
+  const hay = decodeLegacyEntities(text.slice(0, 12_000)).replace(/\s+/g, " ");
 
   const range = hay.match(RANGE_RE);
   if (range && range.index !== undefined) {

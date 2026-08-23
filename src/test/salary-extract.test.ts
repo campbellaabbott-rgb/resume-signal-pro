@@ -163,3 +163,20 @@ describe("a workday pay range is a salary even when nobody says the word hour", 
     expect(parseSalaryStructured("$92.24 - $138.36", "US")?.annualMax).toBe(287789);
   });
 });
+
+describe("an entity-encoded dash is still a pay range", () => {
+  // Greenhouse's pay-transparency footer shipped "&mdash;" literally because
+  // the old entity decoder handled numeric forms only. 17/200 sampled
+  // null-salary greenhouse rows carried an entity-encoded pay block — every
+  // one unparseable. The ingest decoder is fixed for new rows; the miner
+  // decodes defensively for the immutable stored ones (0.5% → 9.0% measured
+  // recall on the sample).
+  it("mines and parses through &mdash;", () => {
+    const mined = extractSalary("We are an equal opportunity employer. Pay Range $22 &mdash; $24 USD");
+    expect(mined).toBe("$22 — $24");
+    expect(parseSalaryStructured(mined, "US")?.annualMin).toBe(45760);
+  });
+  it("parses a stored salary column that carries the entity", () => {
+    expect(parseSalaryStructured("$115,000 &mdash; $125,000", "US")?.annualMin).toBe(115000);
+  });
+});

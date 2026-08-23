@@ -9,6 +9,8 @@
 //
 // Every fixture below is shaped from a REAL response captured during that
 // audit, not invented.
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, it, expect } from "vitest";
 import {
   BOARD_DESC_SOURCES,
@@ -117,15 +119,48 @@ describe("jobPostingLdDescription — Breezy's only description source", () => {
 describe("vendor description classification", () => {
   it("sweeps exactly the vendors that need a per-posting fetch", () => {
     expect([...DETAIL_DESC_SOURCES].sort()).toEqual(
-      ["bamboohr", "breezy", "oracle", "smartrecruiters", "workday"].sort(),
+      ["bamboohr", "breezy", "oracle", "rippling", "smartrecruiters", "workday"].sort(),
     );
   });
 
-  it("keeps rippling out of the sweep so it cannot burn requests re-failing", () => {
-    // Rippling's board HTML is client-rendered and carries no JD (verified
-    // 2026-07-24). A stored null there is a measured fact, not a backlog item.
-    expect([...NO_DESC_SOURCES]).toContain("rippling");
-    expect([...DETAIL_DESC_SOURCES]).not.toContain("rippling");
+  it("rippling is a detail vendor now — the 2026-07-24 verdict covered only the list page", () => {
+    // "Board HTML carries no JD" was measured against the LIST page and still
+    // holds there. Re-probed 2026-08-24: the official per-posting API this
+    // codebase already calls for createdOn serves description.{company,role}
+    // on every probed posting (3/3 boards, 20-30KB, no auth) — ~7-9k rows sat
+    // at 100% null behind a verdict about a different endpoint. Appended LAST
+    // so it queues behind breezy rather than ahead of it.
+    expect([...DETAIL_DESC_SOURCES]).toContain("rippling");
+    expect(DETAIL_DESC_SOURCES[DETAIL_DESC_SOURCES.length - 1]).toBe("rippling");
+    expect([...NO_DESC_SOURCES]).toHaveLength(0);
+  });
+
+  it("revivals rotate the starting vendor — vi:0 restarts starved the tail", () => {
+    // Measured 2026-08-24: breezy (5th of 6) had received ~10 lifetime hops
+    // against an 11.6k backlog its endpoint serves fine (12/12 probed 200s),
+    // because every chain death revived at workday's permanent-failure
+    // nulls. The rotation starts each revival one vendor past the last
+    // chain's position and wraps a full rotation, so every vendor leads
+    // eventually and none is skipped.
+    const FN = readFileSync(resolve(__dirname, "../../supabase/functions/job-board/index.ts"), "utf8");
+    const code = FN.replace(/\/\*[\s\S]*?\*\//g, "").split("\n").map((l) => l.replace(/\/\/.*$/, "")).join("\n");
+    expect(code).toMatch(/await kick\("desc-sweep", \{ vi: startVi, vstart: startVi \}\)/);
+    expect(code).toMatch(/vi = next === vstart \? DETAIL_DESC_SOURCES\.length : next;/);
+    expect(code).toMatch(/nextStartVi: \(vstart \+ 1\) % DETAIL_DESC_SOURCES\.length/);
+    expect(code).not.toMatch(/kick\("desc-sweep", \{ vi: 0 \}\)/);
+  });
+
+  it("the stored-description cap is one constant, and 4000 is gone", () => {
+    // Measured 2026-08-24: 21/24 at-cap postings were cut mid-content, and
+    // every tail over 1,000 chars held requirements or salary figures — the
+    // pay-transparency block sits at the BOTTOM of greenhouse/lever posts,
+    // so the old cap amputated exactly what salary mining reads.
+    const FN = readFileSync(resolve(__dirname, "../../supabase/functions/job-board/index.ts"), "utf8");
+    const code = FN.replace(/\/\*[\s\S]*?\*\//g, "").split("\n").map((l) => l.replace(/\/\/.*$/, "")).join("\n");
+    expect(code).toMatch(/const STORED_DESC_CAP = 12_000;/);
+    expect(code).toMatch(/const RAW_HTML_CAP = 24_000;/);
+    expect(code).not.toMatch(/\.slice\(0, 4000\)/);
+    expect(code).not.toMatch(/\.slice\(0, 12000\)/);
   });
 
   it("excludes vendors already covered by the list payload", () => {
