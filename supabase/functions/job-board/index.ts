@@ -102,7 +102,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-23.2";
+const BUILD_VERSION = "2026-08-23.3";
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -3894,6 +3894,103 @@ Deno.serve(async (req) => {
         recording: rows.length > 0,
         byDay: rows,
       });
+    }
+
+    if (action === "host_sweep") {
+      // NO ONE CHECKED THAT AN APPLY LINK RESOLVES. Feed membership is blind
+      // to host rot: 23,347 servable postings sit on hosts the EMPLOYER owns,
+      // and when one lapses the feed keeps listing the job while the board
+      // serves a button that cannot load — the 233-posting Recruitee incident,
+      // as a standing class. This sweep is DETECTION ONLY. The verdict traps
+      // are measured and severe (Workday answers 200 with a 136-byte stub;
+      // vendors ship "no longer available" in i18n bundles on LIVE pages;
+      // 403/429 is a CDN), so: any HTTP response means the host is ALIVE, and
+      // only DNS/TLS/network failures count against it. It never demotes a
+      // row and never touches missing_since.
+      //
+      // Bounded per tick — a cursor walks ~200 hosts an hour, so a full cycle
+      // over the ~1,400 exposed hosts completes in a few hours and the tick
+      // never approaches the function's wall clock. The host census comes from
+      // an RPC because the group-by cannot be expressed over PostgREST.
+      const SLICE = 200;
+      const state = await client.from("job_board_meta").select("v, updated_at").eq("k", "host_sweep").maybeSingle();
+      // Same stampede lock as the refresh slice: the cron fires hourly, so a
+      // second invocation inside 5 minutes is an overlap, not a schedule.
+      const lockAge = state.data?.updated_at ? Date.now() - new Date(state.data.updated_at).getTime() : Infinity;
+      if (lockAge < 5 * 60_000) return json({ skipped: "a sweep ran moments ago" });
+      const sv = (state.data?.v ?? {}) as { cursor?: number; hosts?: Record<string, { fails: number; postings: number; lastAt: string; lastErr?: string }>; cycleAt?: string; list?: Array<{ host: string; postings: number }> };
+      let list = Array.isArray(sv.list) ? sv.list : [];
+      let cursor = Number(sv.cursor) || 0;
+      const hosts = sv.hosts ?? {};
+      if (cursor === 0 || list.length === 0) {
+        const { data: census, error: cErr } = await client.rpc("get_apply_hosts");
+        if (cErr || !Array.isArray(census)) return json({ error: "host census unavailable" }, 503);
+        list = (census as Array<{ host: string; postings: number }>).filter((h) => h.host && h.host.includes("."));
+        cursor = 0;
+      }
+      const slice = list.slice(cursor, cursor + SLICE);
+      const CONC = 8;
+      for (let i = 0; i < slice.length; i += CONC) {
+        await Promise.all(slice.slice(i, i + CONC).map(async ({ host, postings }) => {
+          const prev = hosts[host] ?? { fails: 0, postings, lastAt: "" };
+          prev.postings = postings;
+          prev.lastAt = new Date().toISOString();
+          try {
+            // Any response is life — a 403, a 429, a rejected HEAD are all
+            // responses. Only a thrown error (DNS, TLS, timeout) counts.
+            // Deliberately NOT fetchWithTimeout: its 20s budget and 429 retry
+            // are feed-fetch behavior; a liveness probe wants 6s and no retry.
+            const ctrl = new AbortController();
+            const t = setTimeout(() => ctrl.abort(), 6_000);
+            try {
+              await fetch(`https://${host}/`, { method: "HEAD", signal: ctrl.signal, redirect: "manual" });
+            } finally {
+              clearTimeout(t);
+            }
+            prev.fails = 0;
+            delete prev.lastErr;
+          } catch (e) {
+            prev.fails = (Number(prev.fails) || 0) + 1;
+            prev.lastErr = String((e as Error)?.message ?? e).slice(0, 120);
+          }
+          hosts[host] = prev;
+        }));
+      }
+      cursor += slice.length;
+      const wrapped = cursor >= list.length;
+      if (wrapped) {
+        // Publish the dated figure the way freshness already is: sample size,
+        // basis and timestamp — never a bare number (stat-provenance rule).
+        // Two consecutive failures is the bar: one can be a blip; two, a full
+        // sweep cycle apart (hours), is a host that is down.
+        const inCensus = new Set(list.map((l) => l.host));
+        for (const h of Object.keys(hosts)) if (!inCensus.has(h)) delete hosts[h]; // census churn, not death
+        const failing = Object.entries(hosts).filter(([, v]) => v.fails >= 2);
+        const postingsOnFailing = failing.reduce((n, [, v]) => n + (v.postings || 0), 0);
+        // The rollup row is WORLD-READABLE (published stats). Aggregates only:
+        // naming the failing hosts there would publish the reconnaissance
+        // surface the census RPC was revoked from anon to protect. Host-level
+        // detail stays in job_board_meta (service-role-only since 2026-07-22)
+        // and in the function log below.
+        await client.from("job_board_stats_rollup").upsert({
+          k: "reachability",
+          v: {
+            hosts_checked: list.length,
+            hosts_failing: failing.length,
+            postings_on_failing: postingsOnFailing,
+            at: new Date().toISOString(),
+          },
+          computed_at: new Date().toISOString(),
+        }, { onConflict: "k" });
+        const worst = failing.sort((a, b) => (b[1].postings || 0) - (a[1].postings || 0)).slice(0, 5)
+          .map(([h, v]) => `${h} (${v.postings} postings, ${v.lastErr ?? "?"})`).join("; ");
+        console.log(`[JOB-BOARD] host sweep cycle complete: ${list.length} hosts, ${failing.length} failing (${postingsOnFailing} postings)${worst ? " — worst: " + worst : ""}`);
+      }
+      await client.from("job_board_meta").upsert(
+        { k: "host_sweep", v: { cursor: wrapped ? 0 : cursor, hosts, list: wrapped ? [] : list, cycleAt: wrapped ? new Date().toISOString() : sv.cycleAt ?? null }, updated_at: new Date().toISOString() },
+        { onConflict: "k" },
+      );
+      return json({ swept: slice.length, cursor: wrapped ? 0 : cursor, of: list.length, wrapped });
     }
 
     if (action === "status") {

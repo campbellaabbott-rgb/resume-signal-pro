@@ -767,6 +767,43 @@ serve(async (req) => {
         skip('job_board_verification_ceiling', e instanceof Error ? e.message : 'get_stale_board_count unavailable');
       }
 
+      // Host reachability: feed membership is blind to host rot — 23,347
+      // servable postings carry apply URLs on employer-owned hosts, and when
+      // one lapses the feed keeps listing jobs behind a button that cannot
+      // load (the 233-posting Recruitee vanity-domain incident, as a class).
+      // The hourly host sweep publishes an aggregate rollup per full cycle;
+      // this reads it. Absent row = the sweep hasn't completed a first cycle
+      // yet — skip, don't fail. Present-but-old = the cron is wedged.
+      try {
+        const { data: reach } = await supabase
+          .from('job_board_stats_rollup').select('v, computed_at').eq('k', 'reachability').maybeSingle();
+        if (!reach) {
+          skip('job_board_host_reachability', 'no reachability rollup yet — host sweep has not completed a cycle');
+        } else {
+          const rv = (reach.v ?? {}) as { hosts_checked?: number; hosts_failing?: number; postings_on_failing?: number };
+          const ageH = Math.round((Date.now() - new Date(reach.computed_at).getTime()) / 3600_000);
+          // A full cycle is a few hours; 48h without one means the sweep died.
+          const stale = ageH > 48;
+          // 500 postings is ~2x the Recruitee incident: one flaky mid-size
+          // host stays quiet, a real lapse of any substantial employer pages.
+          const rotting = (rv.postings_on_failing ?? 0) >= 500;
+          checks.push({
+            name: 'job_board_host_reachability',
+            passed: !rotting && !stale,
+            responseTimeMs: 0,
+            error: rotting
+              ? `${rv.postings_on_failing} postings sit on ${rv.hosts_failing} apply-URL hosts that failed two consecutive sweeps (of ${rv.hosts_checked} checked) — their apply buttons cannot load; host names are in job_board_meta.host_sweep and the function log`
+              : stale ? `host reachability rollup is ${ageH}h old — the hourly host-sweep cron has stopped cycling` : undefined,
+          });
+          if ((rotting || stale) && overallStatus === 'healthy') {
+            overallStatus = 'degraded';
+            errorMessage = errorMessage || (rotting ? `${rv.postings_on_failing} postings on unreachable apply hosts` : 'host sweep stopped cycling');
+          }
+        }
+      } catch (e) {
+        skip('job_board_host_reachability', e instanceof Error ? e.message : 'reachability rollup unreadable');
+      }
+
       // FILTER CONTRACT: the board's core promise is that a filter is never
       // silently ignored — ask for remote roles in the US and every row you get
       // is remote and in the US, or the board honestly returns nothing. That
