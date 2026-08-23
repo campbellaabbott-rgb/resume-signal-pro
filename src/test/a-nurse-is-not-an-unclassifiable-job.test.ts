@@ -81,10 +81,13 @@ describe("a nurse is not an unclassifiable job", () => {
   });
 
   it("leaves a field-less role noun alone rather than guessing", () => {
-    // The honest core of the bucket. These are the six most common words in it
+    // The honest core of the bucket. These are the most common words in it
     // and none of them names a field; a rule that claimed them would be
-    // inventing an answer.
-    for (const t of ["Quality Manager", "Inventory Planning Analyst", "Assistant Night Manager Full Time", "Reporting Specialist", "Knowledge Manager & Action Officer"]) {
+    // inventing an answer. "Inventory Planning Analyst" left this list at v9:
+    // the measured \binventory\b term (580 live rows) claims it for
+    // operations, and inventory planning IS supply-chain work — the title was
+    // only unclassifiable to v8's vocabulary, not in itself.
+    for (const t of ["Quality Manager", "Assistant Night Manager Full Time", "Reporting Specialist", "Knowledge Manager & Action Officer"]) {
       expect(categorize(t), `${t} is genuinely unclassifiable from its title`).toBe("other");
     }
   });
