@@ -6419,9 +6419,9 @@ async function computeIndustryBenchmark(
     const { data, error } = await supabase.rpc('get_industry_score_benchmark', {
       p_industry: industry,
       p_score: Math.round(score),
-    });
+    }) as { data: any[] | null; error: any };
 
-    const row = data?.[0];
+    const row = data?.[0] as any;
     if (!error && row && row.industry_avg !== null && row.percentile !== null) {
       const avg = Number(row.industry_avg);
       const percentileRank = Number(row.percentile); // 0-100: % of real scans scoring <= this user
