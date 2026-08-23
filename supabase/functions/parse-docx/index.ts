@@ -1,7 +1,11 @@
 // deploy-stamp: 2026-07-04T18:44Z
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import mammoth from "https://esm.sh/mammoth@1.6.0";
+// mammoth's type defs export no default (TS1192); esm.sh's CJS shim serves
+// both shapes at runtime, so take the namespace and prefer .default if the
+// shim provides one — identical runtime behavior, type-checkable.
+import * as mammothNs from "https://esm.sh/mammoth@1.6.0";
+const mammoth = (mammothNs as unknown as { default?: typeof mammothNs }).default ?? mammothNs;
 import { looksGarbled, isOleCompoundFile } from "../_shared/text-validation.ts";
 
 // Declare EdgeRuntime for background tasks
@@ -208,7 +212,9 @@ serve(async (req) => {
     // Uint8Array work under the `buffer` key, but Uint8Array is the safer,
     // more conventional choice for binary data in Deno.
     const docxBuffer = new Uint8Array(arrayBuffer);
-    const result = await mammoth.extractRawText({ buffer: docxBuffer });
+    // mammoth's d.ts wants a Node Buffer; the esm.sh shim accepts any
+    // Uint8Array at runtime (exercised by every production docx scan).
+    const result = await mammoth.extractRawText({ buffer: docxBuffer } as unknown as Parameters<typeof mammoth.extractRawText>[0]);
     const text = result.value.trim();
 
     if (result.messages && result.messages.length > 0) {

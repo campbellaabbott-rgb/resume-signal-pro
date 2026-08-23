@@ -27,7 +27,10 @@ for dir in supabase/functions/*/; do
   [ "$name" = "_shared" ] && continue
   [ -f "$dir/index.ts" ] || continue
   skip=0
-  for ex in "${EXCLUDE[@]}"; do [ "$name" = "$ex" ] && skip=1; done
+  # ${arr[@]} on an EMPTY array is an "unbound variable" under set -u on
+  # bash 3.2 (macOS default) — the gate died the moment the debt list was
+  # burned down to nothing. :-} keeps the empty case legal everywhere.
+  for ex in ${EXCLUDE[@]+"${EXCLUDE[@]}"}; do [ "$name" = "$ex" ] && skip=1; done
   [ $skip -eq 1 ] && continue
   if ! deno check --quiet --config supabase/functions/deno.json "$dir/index.ts" >/dev/null 2>&1; then
     echo "FAIL: $name"
