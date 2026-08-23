@@ -1229,6 +1229,77 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
           failed.push(`${s.name} (vendor)`);
           continue;
         }
+        // ONE REQUISITION, ONE POSTING — ACROSS A TENANT'S CAREER SITES.
+        //
+        // A Workday tenant runs several sites (external, subsidiary, campus,
+        // per-language) and the same requisition appears on more than one, with
+        // Workday's own "-1"/"-2" discriminator making the ids differ so nothing
+        // upstream dedupes them. Measured 2026-08-23: 8,993 requisition groups
+        // spanned sites, 9,246 redundant postings, 99.9% with byte-identical
+        // titles — up to 54% of a single employer's board was the same jobs
+        // twice (Boeing JR2025489859 on two sites; one Allegion requisition on
+        // five language sites).
+        //
+        // THE DISCRIMINATOR IS THE CHEAP TELL: the duplicate copy carries the
+        // suffix, the original does not. So the check is one small query over
+        // only THIS board's suffixed ids — never a tenant-wide scan on the hot
+        // path — asking whether the unsuffixed requisition already exists
+        // anywhere in the tenant. The stem must keep >=3 digits before the
+        // suffix is treated as a discriminator: a naive strip turns
+        // Brighthorizons' JR-134112 into "JR" and over-merges 60k rows.
+        if (s.source === "workday" && r.jobs.length > 0) {
+          const tenant = s.token.split("~")[0];
+          const isSuffixed = (req: string) => {
+            const m = /-\d{1,2}$/.exec(req);
+            return !!m && /\d{3}/.test(req.slice(0, m.index));
+          };
+          // Distinct bases, restricted to characters a PostgREST or() pattern
+          // can carry verbatim — a requisition id with anything stranger is
+          // left alone rather than escaped creatively.
+          const bases = [...new Set(
+            r.jobs.map((j) => j.id.split(":")[2] ?? "")
+              .filter(isSuffixed)
+              .map((req) => req.replace(/-\d{1,2}$/, ""))
+              .filter((base) => /^[A-Za-z0-9_-]+$/.test(base)),
+          )];
+          // The or() is bounded: over 120 branches means an unusually suffixed
+          // page, and skipping the check for one pass only delays the dedupe —
+          // the same rows return next refresh. Never a tenant-wide read.
+          if (bases.length > 0 && bases.length <= 120) try {
+            const { data: hits } = await client.from("job_board_postings")
+              .select("id")
+              .eq("source", "workday")
+              .like("company_token", `${tenant}~%`)
+              .or(bases.map((base) => `id.like.workday:${tenant}~%:${base}`).join(","))
+              .limit(bases.length * 4);
+            const held = new Set((hits ?? []).map((h) => String((h as { id: string }).id).split(":")[2] ?? ""));
+            if (held.size > 0) {
+              // ONLY ROWS WE HAVE NEVER STORED MAY BE SKIPPED. Filtering a row
+              // that is already in the table would make it feed-absent to the
+              // prune, which two-passes it into missing_since AND WRITES A
+              // CLOSURE EVENT — 9,246 fictional takedowns into the one log
+              // this board treats as its uncopyable asset. Stored duplicates
+              // are removed by the one-off migration instead, which deletes
+              // without touching the closure machinery.
+              const suffixedIds = r.jobs
+                .map((j) => j.id)
+                .filter((id) => isSuffixed(id.split(":")[2] ?? ""));
+              const { data: own } = suffixedIds.length
+                ? await client.from("job_board_postings").select("id").in("id", suffixedIds)
+                : { data: [] as Array<{ id: string }> };
+              const alreadyStored = new Set((own ?? []).map((o) => String((o as { id: string }).id)));
+              const before = r.jobs.length;
+              r.jobs = r.jobs.filter((j) => {
+                const req = j.id.split(":")[2] ?? "";
+                if (!isSuffixed(req)) return true;
+                if (alreadyStored.has(j.id)) return true; // never route a stored row into the prune
+                return !held.has(req.replace(/-\d{1,2}$/, ""));
+              });
+              const dropped = before - r.jobs.length;
+              if (dropped > 0) console.log(`[JOB-BOARD] workday cross-site dedupe: ${s.token} skipped ${dropped} new requisition copies already held by ${tenant}'s other sites`);
+            }
+          } catch { /* dedupe is an optimisation — the board must still refresh without it */ }
+        }
         // Vendor circuit breaker: count every feed observation (quarantined or
         // not — the rate must keep updating so recovery lifts the quarantine),
         // then gate zero-feeds of quarantined vendors out of ALL processing.

@@ -662,8 +662,30 @@ interface GreenhouseJob {
 }
 
 export function normalizeGreenhouse(raw: { jobs?: GreenhouseJob[] }, company: string, token: string): JobPosting[] {
+  // AN APPLY LINK SHARED BY FIVE TITLES IS A BOARD INDEX, NOT A JOB.
+  //
+  // absolute_url is employer-configured, and some employers point every
+  // posting at their careers landing page. Measured 2026-08-23: 270 URLs on
+  // the board were shared by >=5 distinct titles, carrying 11,202 postings —
+  // BAYADA alone hung 1,601 postings (944 titles) off jobs.bayada.com/en/jobs.
+  // The button looks fine and lands the reader on a search page.
+  //
+  // The per-job page is reconstructible from data already in hand:
+  // job-boards.greenhouse.io/{token}/jobs/{id}, verified HTTP 200 against a
+  // live posting. The whole board arrives in one payload, so counting distinct
+  // titles per URL is free. Five is the audit's measured threshold — a real
+  // per-job URL is never legitimately shared by five different titles, while
+  // two or three can be one reposted role.
+  const titlesPerUrl = new Map<string, Set<string>>();
+  for (const j of raw.jobs ?? []) {
+    const u = j.absolute_url ?? "";
+    if (!u) continue;
+    if (!titlesPerUrl.has(u)) titlesPerUrl.set(u, new Set());
+    titlesPerUrl.get(u)!.add(j.title ?? "");
+  }
   return (raw.jobs ?? []).map((j) => {
     const location = j.location?.name ?? "";
+    const indexUrl = (titlesPerUrl.get(j.absolute_url ?? "")?.size ?? 0) >= 5;
     return {
       id: `greenhouse:${token}:${j.id}`,
       source: "greenhouse" as const,
@@ -680,7 +702,7 @@ export function normalizeGreenhouse(raw: { jobs?: GreenhouseJob[] }, company: st
       postedAt: j.first_published ?? null,
       category: categorize(j.title ?? "", j.departments?.[0]?.name),
       salary: null,
-      applyUrl: safeUrl(j.absolute_url),
+      applyUrl: safeUrl(indexUrl ? `https://job-boards.greenhouse.io/${token}/jobs/${j.id}` : j.absolute_url),
     };
   }).filter((j) => j.applyUrl !== "");
 }
