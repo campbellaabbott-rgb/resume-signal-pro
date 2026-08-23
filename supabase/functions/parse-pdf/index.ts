@@ -222,12 +222,14 @@ serve(async (req) => {
       if (errorName === 'PasswordException') {
         trackPerformance(requestStartTime, 'parse-pdf', false, { reason: 'password_protected' }, clientIp);
         EdgeRuntime.waitUntil(
-          supabase.rpc('log_parse_failure', {
-            p_file_type: 'pdf',
-            p_error_code: 'password_protected',
-            p_error_message: 'PDF is password-protected',
-            p_visitor_id: clientIp
-          })
+          (async () => {
+            await supabase.rpc('log_parse_failure', {
+              p_file_type: 'pdf',
+              p_error_code: 'password_protected',
+              p_error_message: 'PDF is password-protected',
+              p_visitor_id: clientIp
+            });
+          })()
         );
         return new Response(
           JSON.stringify({
