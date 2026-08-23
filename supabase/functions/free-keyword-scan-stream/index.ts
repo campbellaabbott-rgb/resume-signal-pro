@@ -8096,7 +8096,7 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
       }
 
       // Parse final result with auto-repair for common JSON issues
-      let analysis = null;
+      let analysis: any = null;
       
       const tryParseJSON = (jsonString: string): any => {
         // First try direct parse
