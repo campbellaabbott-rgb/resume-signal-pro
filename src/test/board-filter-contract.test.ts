@@ -510,7 +510,12 @@ describe("the countOnly exit is not exempt from the honesty contract", () => {
     // rows=60 alongside total=18 AND countUnavailable:true, verified live on .10.
     // The frontend reads countUnavailable first so a user saw no total, but the
     // payload contradicted itself for anyone reading `total`.
-    expect(code).toContain("total: augmented ? null : total");
+    // Strengthened 2026-08-24: the same suppression now also fires when the
+    // page holds more rows than the count claims (q=camarero published a total
+    // of 3 above 60 delivered rows, 57 of them "Camarero/a"). The invariant
+    // this test defends — an augmented page never publishes a total — is
+    // unchanged; the condition it rides on simply widened.
+    expect(code).toMatch(/total: augmented \|\| totalUnderstated \? null : total/);
   });
 });
 

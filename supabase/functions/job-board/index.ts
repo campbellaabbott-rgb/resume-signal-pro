@@ -9422,6 +9422,11 @@ async function serveList(
         // Verified live on .10 — rows=60 alongside total=18. Null it.
         const augmented = fuzzyExtraOut !== null;
         logSearch("ranked", rankedGrouped.jobs.length, augmented ? null : total);
+        // The count and the retriever do not always share a predicate — see
+        // the note on `total` below. Computed once here so every field in this
+        // response argues from the same row count.
+        const shownRowCount = rankedGrouped.jobs.length;
+        const totalUnderstated = !augmented && typeof total === "number" && (offset + shownRowCount) > total;
         return json({
           // attachRecheckedAt was MISSING here: the per-posting "re-checked N
           // minutes ago" receipt reached people who browsed and not people who
@@ -9462,7 +9467,22 @@ async function serveList(
           // and the page now holds exact + close, so it no longer describes what
           // is on screen. Leaving it in beside countUnavailable published a
           // payload that contradicted itself (rows=60, total=18).
-          total: augmented ? null : total,
+          //
+          // AND null WHENEVER THE PAGE ALREADY DISPROVES THE COUNT. The same
+          // contradiction returned by another road: the counter asks the FTS
+          // predicate while the retriever ALSO runs a prefix scan, so any
+          // title the parser welded into one lexeme is served but never
+          // counted. Measured live 2026-08-24: q=camarero published total 3
+          // above 60 delivered rows, 57 of them titled "Camarero/a"
+          // ("Camarero/a" indexes as a single lexeme, so the plain word cannot
+          // count it); cocinero published 10 above 50. The rows were right —
+          // recall is NOT the defect here, the arithmetic is.
+          //
+          // A number the page it labels already disproves cannot be repaired
+          // by a better count; it can only be withdrawn. The floor is
+          // publishable and true, and the client renders "60+".
+          total: augmented || totalUnderstated ? null : total,
+          ...(totalUnderstated ? { countUnavailable: true, totalAtLeast: offset + shownRowCount } : {}),
           // THE SECOND SEGMENT, PUBLISHED AS ITS OWN FIELD RATHER THAN FOLDED
           // INTO THE FIRST. Omitted — not zeroed — when the description segment
           // was not built, and omitted when it is EMPTY. An absent field is "we

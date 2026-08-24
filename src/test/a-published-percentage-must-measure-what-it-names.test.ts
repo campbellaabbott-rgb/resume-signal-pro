@@ -97,3 +97,21 @@ describe("the arrow keys still scroll the page", () => {
     expect(JOBS).toMatch(/const isUp = \(e\.key === "ArrowUp" && inList\) \|\| e\.key === "k";/);
   });
 });
+
+describe("a count the page disproves is withdrawn, not published", () => {
+  // Measured live 2026-08-24: q=camarero published total 3 above 60 delivered
+  // rows, 57 titled "Camarero/a"; cocinero published 10 above 50. The counter
+  // asks the FTS predicate while the retriever also runs a prefix scan, so a
+  // title the parser welded into one lexeme ("camarero/a") is served but
+  // never counted. The ROWS were right — this is arithmetic, not recall, and
+  // an audit lane that read it as a 39x recall loss was refuted by the rows
+  // themselves.
+  it("suppresses the total when the page already holds more than it claims", () => {
+    expect(CODE).toMatch(/const totalUnderstated = !augmented && typeof total === "number" && \(offset \+ shownRowCount\) > total;/);
+    expect(CODE).toMatch(/total: augmented \|\| totalUnderstated \? null : total,/);
+  });
+
+  it("publishes a provable floor in its place", () => {
+    expect(CODE).toMatch(/totalUnderstated \? \{ countUnavailable: true, totalAtLeast: offset \+ shownRowCount \}/);
+  });
+});
