@@ -767,6 +767,39 @@ serve(async (req) => {
         skip('job_board_verification_ceiling', e instanceof Error ? e.message : 'get_stale_board_count unavailable');
       }
 
+      // THE PUBLISHED FRESHNESS CAP, MEASURED. The board page states a
+      // "30-day freshness cap" as a fact about what it serves. It was false:
+      // ~20,600 servable postings sat past the cap on 2026-08-24, the oldest
+      // dated 2014, because a delete/re-insert loop put them back faster than
+      // the sweep removed them. A published promise with no monitor is a
+      // promise that goes false quietly — this is the monitor.
+      try {
+        const cutoff = new Date(Date.now() - 30 * 86_400_000).toISOString();
+        const { count: staleCount, error: staleErr } = await supabase
+          .from('job_board_postings')
+          .select('id', { count: 'exact', head: true })
+          .is('missing_since', null)
+          .lt('effective_posted', cutoff);
+        if (staleErr) throw staleErr;
+        // A trickle is the sweep's normal lag between passes; a wall means the
+        // cap is not being enforced and the public claim is false.
+        const overCap = (staleCount ?? 0) > 2000;
+        checks.push({
+          name: 'job_board_freshness_cap',
+          passed: !overCap,
+          responseTimeMs: 0,
+          error: overCap
+            ? `${staleCount} servable postings are older than the published 30-day freshness cap — the board page states that cap as a fact, so it is currently false; check the aged-out tombstone and the pass-end freshness sweep`
+            : undefined,
+        });
+        if (overCap && overallStatus === 'healthy') {
+          overallStatus = 'degraded';
+          errorMessage = errorMessage || `${staleCount} postings past the published freshness cap`;
+        }
+      } catch (e) {
+        skip('job_board_freshness_cap', e instanceof Error ? e.message : 'stale-count query failed');
+      }
+
       // Host reachability: feed membership is blind to host rot — 23,347
       // servable postings carry apply URLs on employer-owned hosts, and when
       // one lapses the feed keeps listing jobs behind a button that cannot

@@ -102,7 +102,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-24.5";
+const BUILD_VERSION = "2026-08-24.6";
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -1536,7 +1536,41 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
         const missingSinceById = new Map([...existingById].map(([k, v]) => [k, v.missing_since]));
         const existing = new Set(missingSinceById.keys());
         const liveIds = new Set(rowsById.keys());
-        const newRows = rows.filter((r) => !existing.has(r.id as string));
+        let newRows = rows.filter((r) => !existing.has(r.id as string));
+        // AN AGED-OUT POSTING MUST NOT WALK BACK IN. "Already stored" was the
+        // only thing suppressing an insert, so a row the freshness sweep had
+        // just deleted came straight back on the next rotation — and for the
+        // vendors whose list payload carries no date (bamboohr, rippling)
+        // ingest cannot tell it is stale, because isDatedBefore only drops a
+        // date it KNOWS. Measured 2026-08-24: ~20,600 rows in that loop, a
+        // 2014 posting among them with a first_seen of that morning, and an
+        // exit ledgered on every lap.
+        //
+        // An ATS posting id and its posting date are both stable, so the
+        // tombstone answers this without re-deriving anything. Best-effort by
+        // design: if the table is missing (function deployed ahead of its
+        // migration) or the read fails, ingest proceeds exactly as before
+        // rather than dropping a board's whole intake.
+        if (newRows.length > 0) {
+          try {
+            const blocked = new Set<string>();
+            const ids = newRows.map((r) => String(r.id));
+            for (let i = 0; i < ids.length; i += 200) {
+              const { data: tomb, error: tErr } = await client
+                .from("job_board_aged_out")
+                .select("id")
+                .in("id", ids.slice(i, i + 200));
+              if (tErr) throw tErr;
+              for (const t of tomb ?? []) blocked.add(String((t as { id: string }).id));
+            }
+            if (blocked.size > 0) {
+              newRows = newRows.filter((r) => !blocked.has(String(r.id)));
+              console.log(`[JOB-BOARD] ${s.token}: ${blocked.size} aged-out posting(s) refused re-entry`);
+            }
+          } catch (e) {
+            console.warn(`[JOB-BOARD] aged-out check skipped for ${s.token}:`, String((e as Error)?.message ?? e).slice(0, 120));
+          }
+        }
         const vanishedAll = [...existing].filter((id) => !liveIds.has(id));
 
         // ── Two-pass closure confirmation ────────────────────────────────────
@@ -2082,17 +2116,52 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
       // nothing here meant the aged_out side of the ghost-rate stat counted a
       // small minority of real events (bug sweep 2026-07-26). Best-effort: the
       // prune itself must never fail because the ledger did.
+      // TOMBSTONE BEFORE LEDGERING, and ledger only what is newly dead.
+      //
+      // Deleting alone did not stick: the next rotation re-inserted every row
+      // (ingest suppresses on "already stored", and the row was no longer
+      // stored), so the same postings aged out again and again — ~20,600 of
+      // them, each lap writing another exit. "Roles filled or closed today"
+      // was counting the loop. The tombstone both stops the re-entry and
+      // tells us which ids have already been counted: an id we have seen die
+      // before is not news.
+      const alreadyTombstoned = new Set<string>();
+      if (ids.length > 0) {
+        try {
+          for (let i = 0; i < ids.length; i += 200) {
+            const { data: t, error: tErr } = await client
+              .from("job_board_aged_out").select("id").in("id", ids.slice(i, i + 200));
+            if (tErr) throw tErr;
+            for (const r of t ?? []) alreadyTombstoned.add(String((r as { id: string }).id));
+          }
+        } catch (e) {
+          console.warn("[JOB-BOARD] aged-out read failed (exits may double-count this pass):", String((e as Error)?.message ?? e).slice(0, 120));
+        }
+      }
       if (ids.length > 0) {
         const exitedAt = new Date().toISOString();
         for (let i = 0; i < ids.length; i += 200) {
           const slice = ids.slice(i, i + 200);
           const { data: agedRows } = await client
             .from("job_board_postings")
-            .select("id, source, company_token, category, posted_at, first_seen")
+            .select("id, source, company_token, category, posted_at, first_seen, effective_posted")
             .in("id", slice);
           if (!agedRows?.length) continue;
-          waitUntil(Promise.resolve(client.from("job_board_exits").insert(
+          // Write the tombstone for every aged row, whether or not it is new
+          // to us — this is what keeps it from coming back.
+          waitUntil(Promise.resolve(client.from("job_board_aged_out").upsert(
             agedRows.map((r) => ({
+              id: r.id as string,
+              source: r.source as string,
+              company_token: r.company_token as string,
+              posted_at: (r.effective_posted ?? r.posted_at) as string | null,
+            })),
+            { onConflict: "id" },
+          )).then(() => {}).catch(() => {}));
+          const freshlyDead = agedRows.filter((r) => !alreadyTombstoned.has(String(r.id)));
+          if (freshlyDead.length === 0) continue;
+          waitUntil(Promise.resolve(client.from("job_board_exits").insert(
+            freshlyDead.map((r) => ({
               posting_id: r.id as string,
               source: r.source as string,
               company_token: r.company_token as string,
@@ -2113,6 +2182,14 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
         dropped += Math.min(200, ids.length - i);
       }
       if (dropped > 0) console.log(`[JOB-BOARD] freshness cap: dropped ${dropped} postings older than ${FRESH_WINDOW_DAYS}d`);
+      // Tombstones expire, so the table stays bounded and a vendor that
+      // recycles posting ids eventually gets a second chance. 180 days is far
+      // past any window in which a re-fetched id could still be the same
+      // aged-out job.
+      try {
+        await client.from("job_board_aged_out").delete()
+          .lt("aged_at", new Date(Date.now() - 180 * 86_400_000).toISOString());
+      } catch { /* bounded cleanup — never worth failing a pass over */ }
     }
 
     // Capacity governor (see CORPUS_CEILING). This gates a destructive op, so

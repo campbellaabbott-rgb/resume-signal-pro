@@ -180,7 +180,7 @@ const PINNED = {
   // never built. Bumped so the mitigation is externally identifiable.
   // 2026-08-21.5: routed retrieval. index.ts + two new modules; sources.ts
   // UNCHANGED, so nothing waits on the bootstrap lane.
-  buildVersion: "2026-08-24.5",
+  buildVersion: "2026-08-24.6",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {
