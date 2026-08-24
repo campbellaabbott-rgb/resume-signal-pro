@@ -341,6 +341,29 @@ const normalizeRow = <T extends { title: string; company: string | null }>(j: T)
 const AVATAR_HUES = [212, 262, 330, 24, 160, 96, 45, 288] as const;
 const avatarHue = (s: string) => AVATAR_HUES[[...s].reduce((n, c) => n + c.charCodeAt(0), 0) % AVATAR_HUES.length];
 
+// The served employer facet is a HEAD (top 150) — the tail arrives from
+// action:company-suggest. Local matches render instantly while the request is
+// in flight, then merge with the server's, deduped by token. Local first so
+// the list never reorders under the reader's cursor mid-type.
+function mergeCompanyOptions(
+  head: Array<{ token: string; name: string; count: number }>,
+  remote: Array<{ token: string; name: string; count: number }>,
+  query: string,
+): Array<{ token: string; name: string; count: number }> {
+  const q = query.toLowerCase();
+  const out: Array<{ token: string; name: string; count: number }> = [];
+  const seen = new Set<string>();
+  for (const c of head) {
+    if (!c?.name || !c.name.toLowerCase().includes(q) || seen.has(c.token)) continue;
+    seen.add(c.token); out.push(c);
+  }
+  for (const c of remote) {
+    if (!c?.name || seen.has(c.token)) continue;
+    seen.add(c.token); out.push(c);
+  }
+  return out.slice(0, 12);
+}
+
 export default function Jobs() {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -534,6 +557,16 @@ export default function Jobs() {
     finally { setNlLoading(false); }
   }, [nlQuery, nlLoading, t]);
   const [companyQuery, setCompanyQuery] = useState<string | null>(null);
+  // THE FACET IS A HEAD, NOT A CENSUS. The list response used to carry all
+  // 1,433 employers — 70% of its bytes — so this typeahead could filter them
+  // locally. It now carries the top 150 and the rest are reached through
+  // action:company-suggest, which reads the same cached facet server-side.
+  const [companySuggest, setCompanySuggest] = useState<Array<{ token: string; name: string; count: number }>>([]);
+  // A selected employer outside the head would otherwise render its own
+  // filter chip with no label, so every name we ever learn is remembered:
+  // from the facet, from the rows on screen (each carries its employer), and
+  // from whatever the reader picks out of the suggestions.
+  const companyNames = useRef<Record<string, string>>({});
   const [companyIdx, setCompanyIdx] = useState(-1);
   // ⌘K palette + "?" shortcuts overlay + "/" search focus.
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -1082,6 +1115,26 @@ export default function Jobs() {
   // hundreds of KB at full catalog size) and splice the cache back in.
   const companiesCache = useRef<BoardResponse["companies"]>([]);
 
+  // Ask the server only for what the head cannot answer, and only once the
+  // reader has typed enough to mean something. 180ms is below the pause
+  // between keystrokes for a name being typed deliberately.
+  useEffect(() => {
+    const term = (companyQuery ?? "").trim();
+    if (term.length < 2) { setCompanySuggest([]); return; }
+    let cancelled = false;
+    const t = setTimeout(async () => {
+      try {
+        const { data } = await supabase.functions.invoke("job-board", { body: { action: "company-suggest", q: term } });
+        const rows = ((data as { companies?: Array<{ token: string; name: string; count: number }> } | null)?.companies) ?? [];
+        if (cancelled) return;
+        for (const c of rows) if (c.token && c.name) companyNames.current[c.token] = c.name;
+        setCompanySuggest(rows);
+      } catch { /* the head still answers — a failed suggest must not clear it */ }
+    }, 180);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [companyQuery]);
+
+
   // One quiet retry for board calls: a refresh slice hitting the function's
   // resource ceiling can bounce a single request off the worker pool.
   const invokeBoard = async <T,>(body: Record<string, unknown>): Promise<{ data: T | null; error: { message?: string } | null }> => {
@@ -1192,6 +1245,13 @@ export default function Jobs() {
         nextCursorRef.current = br.nextCursor ?? null;
         if (br.companies?.length) companiesCache.current = br.companies;
         else br.companies = companiesCache.current;
+        for (const c of br.companies ?? []) if (c.token && c.name) companyNames.current[c.token] = c.name;
+        // The rows name their own employers, which covers a selected company
+        // that sits outside the served head.
+        for (const j of br.jobs ?? []) {
+          const tk = (j as { token?: string }).token, nm = (j as { company?: string }).company;
+          if (tk && nm) companyNames.current[tk] = nm;
+        }
         servedQuery.current = { q, location };
         br.jobs = br.jobs.map((row, i) => ({
           ...normalizeRow(row),
@@ -3919,13 +3979,13 @@ export default function Jobs() {
                 aria-expanded={companyQuery !== null}
                 aria-controls="company-typeahead-list"
                 aria-activedescendant={companyQuery !== null && companyIdx >= 0 ? `company-opt-${companyIdx}` : undefined}
-                value={companyQuery !== null ? companyQuery : (companies.find((c) => c.token === company)?.name ?? "")}
+                value={companyQuery !== null ? companyQuery : (companies.find((c) => c.token === company)?.name ?? companyNames.current[company] ?? "")}
                 onChange={(e) => { setCompanyQuery(e.target.value); setCompanyIdx(-1); }}
                 onFocus={() => setCompanyQuery(companyQuery ?? "")}
                 onBlur={() => setTimeout(() => { setCompanyQuery(null); setCompanyIdx(-1); }, 150)}
                 onKeyDown={(e) => {
                   if (companyQuery === null) return;
-                  const opts = companies.filter((c) => c.name.toLowerCase().includes(companyQuery.toLowerCase())).slice(0, 12);
+                  const opts = mergeCompanyOptions(companies, companySuggest, companyQuery);
                   if (e.key === "ArrowDown") { e.preventDefault(); setCompanyIdx((i) => Math.min(i + 1, opts.length - 1)); }
                   else if (e.key === "ArrowUp") { e.preventDefault(); setCompanyIdx((i) => Math.max(i - 1, -1)); }
                   else if (e.key === "Enter" && companyIdx >= 0 && opts[companyIdx]) {
@@ -3943,9 +4003,7 @@ export default function Jobs() {
                       {t("jobsPage.allCompanies", "All companies")}
                     </button>
                   )}
-                  {companies
-                    .filter((c) => c.name.toLowerCase().includes(companyQuery.toLowerCase()))
-                    .slice(0, 12)
+                  {mergeCompanyOptions(companies, companySuggest, companyQuery)
                     .map((c, ci) => (
                       <button
                         key={c.token}

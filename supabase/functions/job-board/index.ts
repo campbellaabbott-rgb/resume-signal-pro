@@ -102,7 +102,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-24.9";
+const BUILD_VERSION = "2026-08-24.10";
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -6936,6 +6936,35 @@ Deno.serve(async (req) => {
       return json(result);
     }
 
+    if (action === "company-suggest") {
+      // THE EMPLOYER TYPEAHEAD WAS COSTING EVERY VISITOR 99KB.
+      //
+      // The list response shipped the whole employer facet — measured
+      // 2026-08-24: 99,237 of 141,196 bytes, 70.3% of the payload, 1,433
+      // entries — so that a typeahead most visitors never open could filter
+      // it locally and show twelve rows. On mobile the control is hidden
+      // behind a "Filters" tap, and the facet is 2.6x the size of the jobs it
+      // decorates.
+      //
+      // The suggestions come from the same cached facet the list used, so
+      // this costs one indexed meta read and no table work at all. The list
+      // now ships a short head of that facet and asks here for the rest.
+      const q = String(body.q ?? "").trim().toLowerCase().slice(0, 80);
+      if (q.length < 2) return json({ companies: [] });
+      const { data: metaRow } = await client.from("job_board_meta").select("v").eq("k", "refresh").maybeSingle();
+      const facet = ((metaRow?.v as Record<string, unknown> | undefined)?.companiesFacet ?? []) as Array<{ token?: string; name?: string; count?: number }>;
+      const merged = mergeCompanyFacet(facet);
+      const hit = merged.filter((c) => String(c.name ?? "").toLowerCase().includes(q));
+      // A name that STARTS with what was typed is what the reader meant;
+      // count breaks ties beneath that.
+      hit.sort((a, b) => {
+        const ap = String(a.name ?? "").toLowerCase().startsWith(q) ? 0 : 1;
+        const bp = String(b.name ?? "").toLowerCase().startsWith(q) ? 0 : 1;
+        return ap - bp || (b.count ?? 0) - (a.count ?? 0);
+      });
+      return json({ companies: hit.slice(0, 12).map((c) => ({ token: c.token, name: c.name, count: c.count })) });
+    }
+
     if (action === "exists") {
       // Feature 7: the tracker asks which of a user's saved/applied job ids
       // are still live. A missing id means the company took the posting down
@@ -9504,7 +9533,7 @@ async function serveList(
           ...(rankedCapped ? { countCapped: true } : {}),
           totalAllCompanies: safeMetaTotal ?? total,
           companies: includeFacets0
-            ? mergeCompanyFacet([...fullCompanies0].sort((a, b) => (b.count ?? 0) - (a.count ?? 0)).slice(0, 1_500) as Array<{ token?: string; name?: string; count?: number }>)
+            ? facetHead(fullCompanies0 as Array<{ token?: string; name?: string; count?: number }>)
                 .sort((a, b) => (b.count ?? 0) - (a.count ?? 0))
             : [],
           companiesCount: fullCompanies0.length,
@@ -9759,10 +9788,29 @@ async function serveList(
   // response and thousands of dropdown nodes — serve the top slice by count and
   // report the full number separately so stat displays stay exact. The facets
   // RPC (used by prerender/SEO) still returns the complete set.
-  const FACET_COMPANY_LIMIT = 1_500;
+  // A HEAD, NOT A CENSUS. This was 1,500 entries and 70% of the response
+  // body. The typeahead reaches the rest through action:company-suggest,
+  // which reads the same cached facet, so nothing became unsearchable — and
+  // the selected employer is appended below whatever its rank, or its own
+  // filter chip would lose its label.
+  const FACET_COMPANY_LIMIT = 150;
+  // The selected employer must survive the cut whatever its rank, or its own
+  // filter chip renders with no label and the reader cannot see what they
+  // filtered to.
+  function facetHead(list: Array<{ token?: string; name?: string; count?: number }>) {
+    const merged = mergeCompanyFacet([...list].sort((a, b) => (b.count ?? 0) - (a.count ?? 0)));
+    const head = merged.slice(0, FACET_COMPANY_LIMIT);
+    if (applied.companies.length) {
+      const have = new Set(head.map((c) => c.token));
+      for (const c of merged) {
+        if (applied.companies.includes(String(c.token)) && !have.has(c.token)) head.push(c);
+      }
+    }
+    return head;
+  }
   const fullCompanies = (v.companiesFacet as Array<{ count?: number }>) ?? [];
   const servedCompanies = includeFacets
-    ? mergeCompanyFacet([...fullCompanies].sort((a, b) => (b.count ?? 0) - (a.count ?? 0)).slice(0, FACET_COMPANY_LIMIT) as Array<{ token?: string; name?: string; count?: number }>)
+    ? facetHead(fullCompanies as Array<{ token?: string; name?: string; count?: number }>)
         .sort((a, b) => (b.count ?? 0) - (a.count ?? 0))
     : [];
   const mappedRows = (data ?? []).map(rowToJob) as Array<Record<string, unknown>>;
