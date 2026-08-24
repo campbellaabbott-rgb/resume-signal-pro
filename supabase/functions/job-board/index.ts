@@ -102,7 +102,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-24.7";
+const BUILD_VERSION = "2026-08-24.8";
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -1778,10 +1778,19 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
               // recorded in the EXIT ledger: "still advertised at our 30-day
               // cap" is exactly the event the ghost-rate stat counts, and it
               // was previously deleted without any trace.
-              const agedRows = ((toLog ?? []) as Array<Record<string, unknown>>).filter((r) => {
+              // AN ID WE AGED OUT IS NEVER AN EMPLOYER TAKEDOWN, whatever the
+              // stored row says. This filter read the STORED posted_at, which
+              // is null for every posting whose vendor states its age only in
+              // prose — so a row the ingest filter had just aged out failed
+              // the test and fell through to the closure log as a real
+              // takedown. agedOutIds is the ingest's own record of what it
+              // dropped this pass and is therefore authoritative here.
+              const isAgedOut = (r: Record<string, unknown>) => {
+                if (agedOutIds.has(String(r.id))) return true;
                 const posted = r.posted_at ? new Date(String(r.posted_at)).getTime() : NaN;
                 return Number.isFinite(posted) && posted < freshCutoffMs;
-              });
+              };
+              const agedRows = ((toLog ?? []) as Array<Record<string, unknown>>).filter(isAgedOut);
               if (agedRows.length) {
                 waitUntil(Promise.resolve(client.from("job_board_exits").insert(
                   agedRows.map((r) => ({
@@ -1798,8 +1807,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
                 )).then(() => {}).catch(() => {}));
               }
               const rows = ((toLog ?? []) as Array<Record<string, unknown>>).filter((r) => {
-                const posted = r.posted_at ? new Date(String(r.posted_at)).getTime() : NaN;
-                if (Number.isFinite(posted) && posted < freshCutoffMs) return false; // (b) aged out, not closed
+                if (isAgedOut(r)) return false; // (b) aged out, not closed
                 const norm = normalizeCloseTitle(String(r.title ?? ""));
                 return !(liveTitles.has(norm) && recentSuperseded.has(norm)); // superseded repeat within 24h — skip
               });

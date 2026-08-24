@@ -110,9 +110,18 @@ describe("normalizeWorkday + workdayPostedDays", () => {
     expect(workdayPostedDays("Posted 30+ Days Ago")).toBe(31);
     expect(workdayPostedDays("nonsense")).toBeNull();
   });
-  it("maps CXS list items, drops the 30+day tail, dates from the stated relative age", () => {
+  it("maps CXS list items, DATES the 30+day tail for the shared filter to drop, and converts the stated relative age", () => {
     const jobs = normalizeWorkday(WD_ITEMS as never, "NVIDIA", "nvidia~wd5~NVIDIAExternalCareerSite");
-    expect(jobs).toHaveLength(2); // the 30+day posting is dropped by the freshness filter
+    // The 30+ row is no longer dropped HERE. Dropping it inside the
+    // normalizer hid it from the ingest diff, so an already-stored posting
+    // looked feed-absent — which the absence machinery reads as an employer
+    // takedown and writes to the closure log as a real one. It now carries a
+    // past-cap date and the shared ingest freshness filter claims it as an
+    // age-out, which is what actually happened.
+    expect(jobs).toHaveLength(3);
+    const ancient = jobs.find((j) => j.title === "Ancient Role")!;
+    expect(ancient, "the 30+ row must still be emitted, not silently swallowed").toBeTruthy();
+    expect(Date.parse(ancient.postedAt!)).toBeLessThan(Date.now() - 30 * 86_400_000);
     expect(jobs[0]).toMatchObject({
       id: "workday:nvidia~wd5~NVIDIAExternalCareerSite:JR2014785",
       title: "Senior Software Engineer, AI Storage",
@@ -125,7 +134,8 @@ describe("normalizeWorkday + workdayPostedDays", () => {
     const fiveDays = Date.now() - 5 * 86_400_000;
     expect(Math.abs(Date.parse(jobs[1].postedAt!) - fiveDays)).toBeLessThan(60_000);
     expect(jobs[1].remote).toBe(true); // "Remote Solutions Architect"
-    expect(jobs.some((j) => j.title === "Ancient Role")).toBe(false);
+    // ...and it is dated far enough back that isDatedBefore drops it at ingest.
+    expect(workdayPostedDays("Posted 30+ Days Ago")!).toBeGreaterThan(30);
   });
   it("rejects a malformed compound token rather than emitting broken ids", () => {
     expect(normalizeWorkday(WD_ITEMS as never, "X", "just-a-tenant")).toEqual([]);

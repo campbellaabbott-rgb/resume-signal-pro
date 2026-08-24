@@ -1339,16 +1339,54 @@ export interface WorkdayListItem {
 
 /** Relative Workday age → days, or null when unparseable. "Posted Today"=0,
  *  "Posted Yesterday"=1, "Posted N Days Ago"=N, "Posted 30+ Days Ago"=31. */
+// THE 30-DAY CAP WAS ENFORCED IN ENGLISH ONLY.
+//
+// Every branch of this parser used to require the literal word "posted", and
+// Workday localises postedOn per tenant. So a Spanish tenant saying
+// "Publicado hace más de 30 días" — the employer stating, in its own feed,
+// that the job is past our cap — parsed as null, which means undated, which
+// means kept and served with no age under a badge reading "30-day freshness
+// cap".
+//
+// Measured 2026-08-24: 23,944 servable Workday rows carry no date across 203
+// boards. Probing the top 90 of those boards (21,206 rows, 88.6%) split them
+// cleanly: 60 boards (13,910 rows) genuinely have the field disabled and are
+// honestly undated, while 30 boards (7,296 rows) state an age we were
+// throwing away. A full census of one of them, barcelo~wd3 (502 rows, 100%
+// undated, 100% servable), found 416 of 522 feed items reading "Publicado
+// hace más de 30 días" — 79.7%. Pooled across 22 localized boards, 33.1% of
+// sampled items state an age past 30 days.
+//
+// So the parser stops looking for an English verb and looks for what every
+// locale actually carries: a NUMBER, a DAY WORD, and optionally a
+// MORE-THAN marker. Anything without a day word returns null — one tenant
+// (tutorperini~wd12) puts a location in this field, "Menlo Park, CA", and a
+// parser that guessed at bare digits would date postings from street
+// numbers.
+const WD_TODAY = /\b(today|hoy|aujourd'?hui|heute|vandaag|hoje|oggi|i dag|idag|今天|本日)\b|ausgeschrieben heute/i;
+const WD_YESTERDAY = /\b(yesterday|ayer|hier|gestern|gisteren|ontem|ieri|i går|igår|昨天)\b/i;
+// Day nouns across the locales Workday serves. Chinese/Japanese carry no word
+// boundaries, so they are matched as bare characters.
+const WD_DAY_WORD = /\b(days?|d[ií]as?|jours?|tagen?|tage|dagen?|dagar?|giorni?|giorno|päivää?)\b|[天日]/i;
+// "more than N" in the same locales, plus Workday's own "N+" shorthand and
+// the trailing "or more" forms (fr "ou plus", de "oder mehr", zh "以上").
+const WD_MORE_THAN = /\+|\bm[áa]s de\b|\bplus de\b|\bmehr als\b|\bmeer dan\b|\bmais de\b|\bpi[uù] di\b|\bover\b|\bou plus\b|\boder mehr\b|\bo m[áa]s\b|\bof meer\b|\bou mais\b|超過|超过|以上/i;
+
 export function workdayPostedDays(postedOn: string | null | undefined): number | null {
   if (!postedOn) return null;
-  const s = postedOn.toLowerCase();
-  if (/posted\s+today/.test(s)) return 0;
-  if (/posted\s+yesterday/.test(s)) return 1;
-  const plus = s.match(/posted\s+(\d+)\+\s*days?\s+ago/);
-  if (plus) return Number(plus[1]) + 1; // "30+ Days Ago" → 31 (past the cap)
-  const n = s.match(/posted\s+(\d+)\s+days?\s+ago/);
-  if (n) return Number(n[1]);
-  return null;
+  const s = String(postedOn).toLowerCase();
+  if (WD_TODAY.test(s)) return 0;
+  if (WD_YESTERDAY.test(s)) return 1;
+  // A day word is required before any number is believed — see the location
+  // tenant above.
+  if (!WD_DAY_WORD.test(s)) return null;
+  const num = s.match(/(\d{1,4})/);
+  if (!num) return null;
+  const n = Number(num[1]);
+  if (!Number.isFinite(n) || n < 0 || n > 3650) return null;
+  // "30+" and "more than 30" both mean strictly more than 30, so they must
+  // land past the cap rather than exactly on it.
+  return WD_MORE_THAN.test(s) ? n + 1 : n;
 }
 
 export function normalizeWorkday(items: WorkdayListItem[], company: string, token: string): JobPosting[] {
@@ -1381,7 +1419,19 @@ export function normalizeWorkday(items: WorkdayListItem[], company: string, toke
         // (fetch time − N days, ±1d) so these postings carry provenance and
         // participate in date filters and the stated-date medians. "30+ Days
         // Ago" is unbounded — never dated, dropped via _stale.
-        postedAt: days !== null && days <= 30 ? new Date(Date.now() - days * 86_400_000).toISOString() : null,
+        // DATED EVEN WHEN PAST THE CAP, and that is the point. A row dropped
+        // for being stale used to be stripped inside this normalizer, so the
+        // ingest diff never saw it — an ALREADY-STORED posting simply vanished
+        // from the feed, which the absence machinery reads as the employer
+        // taking it down, and (its posted_at being null) logs to the closure
+        // log as a real takedown. The employer took nothing down; we aged it
+        // out. Carrying the date lets the shared ingest freshness filter claim
+        // it as an age-out instead, which is both true and already handled.
+        //
+        // For a "30+ days" bucket the exact date is unknowable, so this is a
+        // LOWER BOUND (31 days), never a precise claim — and the row is
+        // dropped on that basis, so no reader ever sees the figure.
+        postedAt: days !== null ? new Date(Date.now() - days * 86_400_000).toISOString() : null,
         category: categorize(String(j.title ?? ""), null),
         salary: null,
         country: detectCountry(loc),
@@ -1389,7 +1439,11 @@ export function normalizeWorkday(items: WorkdayListItem[], company: string, toke
         _stale: stale, // consumed + stripped by the fetcher's freshness filter
       } as JobPosting & { _stale?: boolean };
     })
-    .filter((j) => j.applyUrl !== "" && j.title !== "" && !(j as { _stale?: boolean })._stale && j.id !== `workday:${token}:`)
+    // _stale is no longer filtered here: the shared ingest path applies the
+    // freshness cap to every vendor uniformly (isDatedBefore -> agedOutIds),
+    // and routing Workday through it is what keeps an aged-out posting out of
+    // the closure log. The flag stays on the object for callers that want it.
+    .filter((j) => j.applyUrl !== "" && j.title !== "" && j.id !== `workday:${token}:`)
     .map(({ _stale: _drop, ...j }) => j as JobPosting);
 }
 
