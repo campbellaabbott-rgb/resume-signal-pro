@@ -4304,7 +4304,8 @@ export default function Jobs() {
             </select>
             {/* Why this order: the board explains its data everywhere else —
                 the ranking shouldn't be the one unexplained thing. */}
-            <span className="text-[11px] text-muted-foreground">
+            <span className="hidden sm:inline text-[11px] text-muted-foreground">
+
               {/* THE ORDER CLAIM HAS TO SURVIVE A SCORING FAILURE.
                   `fitRanking` is only a toggle, so this said "ordered by fit to
                   your résumé" over a list where nothing had been scored — the
@@ -4348,7 +4349,7 @@ export default function Jobs() {
             {/* U5: guided starting points — one-tap honest filter combos for the
                 blank-page moment. Hidden once any filter is active. */}
             {recentJobs.length === 0 && !q && !location && !category && !experience && !company && !remoteOnly && !freshness && !salaryFloor && !country && (
-              <span className="inline-flex flex-wrap items-center gap-2 ml-1">
+              <span className="hidden sm:inline-flex flex-wrap items-center gap-2 ml-1">
                 <span className="text-[11px] text-muted-foreground">{t("jobsPage.tryLabel", "Try:")}</span>
                 <button type="button" onClick={() => { setWorkMode("remote"); setRemoteOnly(false); setExperience("entry"); setCountry("US"); }}
                   className="text-xs px-3 py-1.5 rounded-full border border-dashed border-border text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors">
@@ -4429,7 +4430,7 @@ export default function Jobs() {
               560k-row newest-first firehose. Every path out of this block IS an
               intent signal, so it never shows twice. */}
           {showOrientation && !landerCompany && !q && !category && !fitRanking && (
-            <div className="rounded-2xl border border-border bg-card p-5 mb-4">
+            <div className="hidden sm:block rounded-2xl border border-border bg-card p-5 mb-4">
               <div className="flex items-center gap-2 mb-1">
                 <Compass className="w-5 h-5 text-primary shrink-0" />
                 <h2 className="text-base font-bold text-foreground">
