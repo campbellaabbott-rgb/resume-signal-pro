@@ -4115,7 +4115,7 @@ export default function Jobs() {
           )}
 
           {/* Freshness + fit-ranking row */}
-          <div className="flex flex-wrap items-center gap-2 mb-3 -mt-2">
+          <div className="flex flex-wrap items-center gap-2 mb-1.5 lg:mb-3 -mt-2">
             {([["", t("jobsPage.freshAll", "Any date")], ["day", t("jobsPage.freshDay", "Today")], ["week", t("jobsPage.freshWeek", "This week")]] as const).map(([v, label]) => (
               <button
                 key={v}
@@ -4348,7 +4348,7 @@ export default function Jobs() {
           {/* Mobile quick filters: the board's best weapons as one-tap chips —
               on desktop the sidebar owns these, so lg:hidden. Single scrollable
               row: wrapped, this block alone cost 96px of a 812px mobile fold. */}
-          <div className="flex lg:hidden flex-nowrap gap-2 mb-3 overflow-x-auto pb-1 [mask-image:linear-gradient(to_right,black_92%,transparent)]">
+          <div className="flex lg:hidden flex-nowrap gap-2 mb-1.5 overflow-x-auto pb-1 [mask-image:linear-gradient(to_right,black_92%,transparent)]">
             {([
               { key: "week", active: freshness === "week", label: t("jobsPage.chipWeek", "Posted this week"), toggle: () => setFreshness(freshness === "week" ? "" : "week") },
               { key: "remote", active: workMode === "remote", label: t("jobsPage.workMode.remote", "Remote"), toggle: () => { setWorkMode(workMode === "remote" ? "" : "remote"); setRemoteOnly(false); } },
@@ -5046,7 +5046,17 @@ export default function Jobs() {
                 </p>
               )}
               {showWelcome && !session && !q && !category && !company && !workMode && (
-                <div className="rounded-xl border border-primary/25 bg-primary/5 px-4 py-3 mb-3 flex flex-wrap items-center gap-2">
+                // DESKTOP ONLY. Measured on a 375x812 phone: this panel is
+                // 189px — the single largest block between the top of the
+                // page and the first job card, which sat 1,054px down (1.3
+                // screens) behind 40 interactive controls. Its three starter
+                // chips are also already duplicated on mobile by the
+                // lg:hidden quick-filter row above ("Posted this week" /
+                // "Actively hiring" / "$100k+"), so on a phone it cost a
+                // screen of scrolling to repeat affordances the reader had
+                // just passed. The trust sentence it carries is likewise
+                // already on screen above, in the hero and the badge row.
+                <div className="hidden lg:flex rounded-xl border border-primary/25 bg-primary/5 px-4 py-3 mb-3 flex-wrap items-center gap-2">
                   <p className="text-[13px] text-foreground basis-full sm:basis-auto sm:flex-1">
                     {t("jobsPage.welcomeLine", "Every posting here is verified live from the company's own system. Start where this board is strongest:")}
                   </p>
