@@ -175,12 +175,12 @@ const PINNED = {
   // as a matter of course this time — the .2 bump had to be made retroactively
   // after three commits shipped undeployed behind an unchanged version string,
   // and "is it live?" cost six behavioural probes to answer.
-  sourcesHash: "1b055e5a61c0116c",
+  sourcesHash: "b5d6240c96ca5783",
   // 2026-08-21.4: disables the exact-word tier's company matcher, whose index
   // never built. Bumped so the mitigation is externally identifiable.
   // 2026-08-21.5: routed retrieval. index.ts + two new modules; sources.ts
   // UNCHANGED, so nothing waits on the bootstrap lane.
-  buildVersion: "2026-08-24.13",
+  buildVersion: "2026-08-24.14",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {
