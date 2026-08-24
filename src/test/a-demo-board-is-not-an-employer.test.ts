@@ -117,3 +117,45 @@ describe("a demo sandbox is not an employer, even when a real company owns it", 
     expect(merge).toMatch(/vendor === "pinpoint" && b\.count <= 12/);
   });
 });
+
+describe("a high-water mark above the real catalog turns the prune off", () => {
+  // The stale-bundle guard is a STRICT less-than:
+  //     if (JOB_SOURCES.length < highwater) -> skip the orphan prune
+  // so a mark ONE larger than the catalog does not degrade the prune, it
+  // disables it. That shipped: the demo-sandbox migration clamped the mark
+  // to 31,709 against a real catalog of 31,708 (hand-counted with a looser
+  // regex than the bundle's own), and every pass afterwards logged "orphan
+  // prune SKIPPED". This asserts what nobody checked — that a high-water
+  // literal never exceeds the catalog the bundle actually carries. It keeps
+  // holding as the catalog GROWS, because the guard re-stamps upward on its
+  // own; only a literal above the catalog is a defect.
+  const MIG_DIR = resolve(__dirname, "../../supabase/migrations");
+  const highWaterMigs = readdirSync(MIG_DIR)
+    .filter((f) => f.endsWith(".sql"))
+    .map((f) => ({ f, sql: readFileSync(resolve(MIG_DIR, f), "utf8") }))
+    .filter(({ sql }) => /catalog_highwater/.test(sql.split("\n").filter((l) => !l.trimStart().startsWith("--")).join("\n")));
+
+  it("found the high-water migrations at all", () => {
+    expect(highWaterMigs.length, "the migration matcher has rotted").toBeGreaterThan(0);
+  });
+
+  it("the LAST clamp in migration order is at or below the real catalog", () => {
+    // The NET clamp is what production holds — migrations run in filename
+    // order and a later one corrects an earlier one, so the last is the
+    // live value. Checked this way on purpose: the migration that shipped
+    // the bad 31,709 has already run, and rewriting an applied migration
+    // would make the file lie about what production executed. Its
+    // correction sits in 20260824040000 instead, and THIS assertion is what
+    // fails if a future clamp is typed too high.
+    const last = [...highWaterMigs].sort((a, b) => a.f.localeCompare(b.f)).pop()!;
+    const sql = last.sql.split("\n").filter((l) => !l.trimStart().startsWith("--")).join("\n");
+    const literals = [...sql.matchAll(/LEAST\(\(v->>'size'\)::int,\s*(\d+)\)/g)].map((m) => Number(m[1]));
+    expect(literals.length, `${last.f} is the newest high-water migration but writes no clamp`).toBeGreaterThan(0);
+    for (const literal of literals) {
+      expect(
+        literal,
+        `${last.f} clamps the high-water to ${literal}, but the catalog carries ${BOARDS.length} boards — a mark above the catalog disables the orphan prune outright (strict <)`,
+      ).toBeLessThanOrEqual(BOARDS.length);
+    }
+  });
+});
