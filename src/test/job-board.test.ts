@@ -1031,3 +1031,33 @@ describe("adjacentRoles", () => {
     expect(adjacentRoles("nursery worker")).toEqual([]);
   });
 });
+
+describe("one clock reading per fetch, or the employer weave cannot work", () => {
+  // The board's sort caption promises "spread across employers so one company
+  // can't fill the page". The weave that delivers it may only permute rows
+  // sharing an effective_posted — crossing that boundary would claim a
+  // recency the row does not have. Workday states an age in DAYS, so every
+  // "Posted 3 Days Ago" row is the same stated date; calling Date.now() per
+  // row gave each a timestamp milliseconds apart, invented an ordering the
+  // vendor never expressed, and reduced every tie group to one row. With
+  // nothing to interleave, pages ran 12-14 consecutive rows from one employer
+  // (cigna, centene — measured 2026-08-24).
+  it("rows sharing a stated age share a timestamp", () => {
+    const items = Array.from({ length: 6 }, (_, i) => ({
+      title: `Role ${i}`, externalPath: `/job/x/Role-${i}_JR${2000 + i}`,
+      locationsText: "Austin, TX", postedOn: "Posted 3 Days Ago", bulletFields: [`JR${2000 + i}`],
+    }));
+    const jobs = normalizeWorkday(items as never, "Acme", "acme~wd1~Careers");
+    expect(jobs).toHaveLength(6);
+    expect(new Set(jobs.map((j) => j.postedAt)).size, "one stated age must be one timestamp").toBe(1);
+  });
+
+  it("different stated ages still order correctly", () => {
+    const items = [
+      { title: "New", externalPath: "/job/x/New_JR1", locationsText: "TX", postedOn: "Posted Today", bulletFields: ["JR1"] },
+      { title: "Old", externalPath: "/job/x/Old_JR2", locationsText: "TX", postedOn: "Posted 5 Days Ago", bulletFields: ["JR2"] },
+    ];
+    const jobs = normalizeWorkday(items as never, "Acme", "acme~wd1~Careers");
+    expect(Date.parse(jobs[0].postedAt!)).toBeGreaterThan(Date.parse(jobs[1].postedAt!));
+  });
+});

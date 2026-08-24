@@ -1407,6 +1407,23 @@ export function normalizeWorkday(items: WorkdayListItem[], company: string, toke
   // token = tenant~dc~site
   const [tenant, dc, site] = token.split("~");
   if (!tenant || !dc || !site) return [];
+  // ONE CLOCK READING FOR THE WHOLE FETCH, and it is not a micro-optimisation.
+  //
+  // Workday states an age in days, so every row reading "Posted 3 Days Ago"
+  // is the SAME stated date. Calling Date.now() inside the map gave each of
+  // them a timestamp a few milliseconds apart, which invented an ordering the
+  // vendor never expressed — and that ordering silently disabled the
+  // employer-spread weave downstream, which may only permute rows sharing an
+  // effective_posted (crossing that boundary would claim a recency the row
+  // does not have). With every tie group reduced to one row, the weave had
+  // nothing to interleave and a page could fill with one employer: measured
+  // 2026-08-24, runs of 12-14 consecutive rows from cigna and centene under a
+  // caption promising "spread across employers so one company can't fill the
+  // page".
+  //
+  // Sharing one reading restores the tie groups, which is also simply true:
+  // these rows are equally recent to the precision the employer published.
+  const fetchedAt = Date.now();
   const base = `https://${tenant}.${dc}.myworkdayjobs.com/en-US/${site}`;
   return (Array.isArray(items) ? items : [])
     .map((j) => {
@@ -1445,7 +1462,7 @@ export function normalizeWorkday(items: WorkdayListItem[], company: string, toke
         // For a "30+ days" bucket the exact date is unknowable, so this is a
         // LOWER BOUND (31 days), never a precise claim — and the row is
         // dropped on that basis, so no reader ever sees the figure.
-        postedAt: days !== null ? new Date(Date.now() - days * 86_400_000).toISOString() : null,
+        postedAt: days !== null ? new Date(fetchedAt - days * 86_400_000).toISOString() : null,
         category: categorize(String(j.title ?? ""), null),
         salary: null,
         country: detectCountry(loc),

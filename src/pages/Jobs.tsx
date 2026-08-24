@@ -1315,6 +1315,14 @@ export default function Jobs() {
     if (category) p.set("category", category);
     if (category && inclUncat) p.set("inclUncat", "1");
     if (agentOnly) p.set("agentOnly", "1");
+    // READ ON MOUNT, NEVER WRITTEN — the same defect the comment below records
+    // for freshness and sort, on a third control. Explore links to
+    // /jobs?activelyHiring=1 under the words "employers with a proven fill
+    // record"; this effect rebuilt the query string without it, so the address
+    // bar lost the promise before first paint and a reload or a shared link
+    // served the whole board instead. The guarding test asserted only the READ
+    // side, which is exactly how it survived.
+    if (activelyHiringOnly) p.set("activelyHiring", "1");
     if (experience) p.set("experience", experience);
     if (country) p.set("country", country);
     if (salaryFloor) p.set("salaryFloor", String(salaryFloor));
@@ -1348,7 +1356,7 @@ export default function Jobs() {
       return;
     }
     window.history.replaceState({}, "", qs ? `/jobs?${qs}` : "/jobs");
-  }, [q, location, remoteOnly, workMode, company, category, inclUncat, agentOnly, experience, country, salaryFloor, freshness, sortMode, landerCategory, landerCompany]);
+  }, [q, location, remoteOnly, workMode, company, category, inclUncat, agentOnly, activelyHiringOnly, experience, country, salaryFloor, freshness, sortMode, landerCategory, landerCompany]);
 
   // Category salary benchmarks: median advertised pay floor per field, computed
   // live from postings that state pay (RPC self-gates at n>=30 — a thin sample

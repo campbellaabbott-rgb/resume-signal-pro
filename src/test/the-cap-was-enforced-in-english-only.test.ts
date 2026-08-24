@@ -90,7 +90,10 @@ describe("an aged-out posting is never logged as an employer takedown", () => {
     // The normalizer must no longer strip stale rows itself...
     expect(n).not.toMatch(/!\(j as \{ _stale\?: boolean \}\)\._stale/);
     // ...and must carry the date that lets the shared filter claim them.
-    expect(n).toMatch(/postedAt: days !== null \? new Date\(Date\.now\(\) - days \* 86_400_000\)\.toISOString\(\) : null/);
+    // The clock read was hoisted out of the map so rows sharing a stated age
+    // share a timestamp (see the employer-weave fix); the invariant asserted
+    // here — the row is DATED even when past the cap — is unchanged.
+    expect(n).toMatch(/postedAt: days !== null \? new Date\(fetchedAt - days \* 86_400_000\)\.toISOString\(\) : null/);
   });
 
   it("the ingest's own age-out record outranks the stored date", () => {
