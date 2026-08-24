@@ -3969,6 +3969,7 @@
     "coveragePay": "salaris bij {{pct}}%",
     "coverageWorkMode": "werkvorm bij {{pct}}%",
     "coverageExperience": "ervaringsniveau bij {{pct}}%",
+    "coverageCountry": "een land bij {{pct}}%",
     "intentFilters": "{{phrases}} is als filter opgevat en toegepast, in plaats van op die woorden te zoeken.",
     "salaryStatedOnly": "Gesorteerd op salaris — alleen vacatures met een vermeld salaris verschijnen hier.",
     "locationExpanded": "{{from}} is gezocht als {{places}}.",

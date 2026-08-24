@@ -3969,6 +3969,7 @@
     "coveragePay": "sahod sa {{pct}}%",
     "coverageWorkMode": "paraan ng trabaho sa {{pct}}%",
     "coverageExperience": "antas ng karanasan sa {{pct}}%",
+    "coverageCountry": "bansa sa {{pct}}%",
     "intentFilters": "Binasa ang {{phrases}} bilang filter at inilapat ito, sa halip na hanapin ang mga salitang iyon.",
     "salaryStatedOnly": "Nakaayos ayon sa sahod — kaya ang mga trabahong may nakasaad na sahod lang ang lumalabas dito.",
     "locationExpanded": "Hinanap ang {{from}} bilang {{places}}.",

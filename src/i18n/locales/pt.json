@@ -3969,6 +3969,7 @@
     "coveragePay": "o salário em {{pct}} %",
     "coverageWorkMode": "o modelo de trabalho em {{pct}} %",
     "coverageExperience": "o nível de experiência em {{pct}} %",
+    "coverageCountry": "um país em {{pct}} %",
     "intentFilters": "Interpretámos {{phrases}} como um filtro e aplicámos, em vez de procurar essas palavras.",
     "salaryStatedOnly": "Ordenado por salário — só aparecem aqui as vagas que o indicam.",
     "locationExpanded": "Pesquisámos {{from}} como {{places}}.",

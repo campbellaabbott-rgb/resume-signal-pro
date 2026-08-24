@@ -199,7 +199,7 @@ interface BoardResponse {
    *  pay stated on 13.2%, work mode 29.6%, experience 40.8%. A searcher who sets
    *  a pay floor and gets twelve results cannot otherwise tell whether the market
    *  is empty or whether they are looking at an eighth of it. */
-  filterCoverage?: { salaryFloor?: number; workMode?: number; experience?: number };
+  filterCoverage?: { salaryFloor?: number; workMode?: number; experience?: number; country?: number };
   /** Phrases lifted OUT of the query and applied as filters instead — typing
    *  "work from home nurse" searches "nurse" among remote roles. The rewrite is
    *  good; doing it silently is not. */
@@ -2452,8 +2452,24 @@ export default function Jobs() {
       if (typeof el?.closest === "function" && el.closest("button, a, [role='button'], summary, label")) return;
       const list = groupedJobs.map((g) => g.primary);
       if (list.length === 0) return;
-      const isDown = e.key === "ArrowDown" || e.key === "j";
-      const isUp = e.key === "ArrowUp" || e.key === "k";
+      // ARROWS SCROLL A PAGE. THAT IS NOT NEGOTIABLE, AND WE TOOK IT AWAY.
+      //
+      // This handler is on `window` and the guards above only exempt form
+      // fields and controls — so on a cold load, where nothing is focused and
+      // e.target is <body>, ArrowDown reached here and was preventDefault'd.
+      // The results page is 16,038px tall on desktop and 21,971px on mobile,
+      // and neither arrow key moved it. Every keyboard user, every session,
+      // on the two keys most likely to be pressed first.
+      //
+      // So the arrows only steer the list when the reader is actually IN the
+      // list; anywhere else the browser scrolls as it always should. j/k stay
+      // global because they scroll nothing natively — nothing is taken away
+      // by claiming them.
+      const inList = typeof el?.closest === "function" && !!el.closest("[data-job-id]");
+      const isVim = e.key === "j" || e.key === "k";
+      const isDown = (e.key === "ArrowDown" && inList) || e.key === "j";
+      const isUp = (e.key === "ArrowUp" && inList) || e.key === "k";
+      if (!isVim && (e.key === "ArrowDown" || e.key === "ArrowUp") && !inList) return;
       if (isDown || isUp) {
         e.preventDefault();
         const idx = detailJob ? list.findIndex((j) => j.id === detailJob.id) : -1;
@@ -4434,6 +4450,9 @@ export default function Jobs() {
                     if (typeof fc.salaryFloor === "number") parts.push(t("jobsPage.coveragePay", "pay on {{pct}}%", { pct: Math.round(fc.salaryFloor * 100) }));
                     if (typeof fc.workMode === "number") parts.push(t("jobsPage.coverageWorkMode", "work mode on {{pct}}%", { pct: Math.round(fc.workMode * 100) }));
                     if (typeof fc.experience === "number") parts.push(t("jobsPage.coverageExperience", "experience level on {{pct}}%", { pct: Math.round(fc.experience * 100) }));
+                    // Country was the only one of the four filters with no
+                    // caveat, while being the thinnest on some vendors.
+                    if (typeof fc.country === "number") parts.push(t("jobsPage.coverageCountry", "a country on {{pct}}%", { pct: Math.round(fc.country * 100) }));
                     if (!parts.length) return null;
                     return (
                       <p className="text-xs text-muted-foreground mb-2">

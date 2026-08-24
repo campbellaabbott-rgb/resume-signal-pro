@@ -3969,6 +3969,7 @@
     "coveragePay": "Gehalt bei {{pct}} %",
     "coverageWorkMode": "Arbeitsmodell bei {{pct}} %",
     "coverageExperience": "Erfahrungsniveau bei {{pct}} %",
+    "coverageCountry": "ein Land bei {{pct}} %",
     "intentFilters": "{{phrases}} wurde als Filter verstanden und angewendet, statt nach diesen Wörtern zu suchen.",
     "salaryStatedOnly": "Nach Gehalt sortiert — daher erscheinen hier nur Stellen mit Gehaltsangabe.",
     "locationExpanded": "{{from}} wurde als {{places}} durchsucht.",

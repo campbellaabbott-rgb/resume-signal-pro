@@ -3969,6 +3969,7 @@
     "coveragePay": "वेतन {{pct}}% पर",
     "coverageWorkMode": "कार्य-प्रणाली {{pct}}% पर",
     "coverageExperience": "अनुभव स्तर {{pct}}% पर",
+    "coverageCountry": "{{pct}}% पर देश",
     "intentFilters": "{{phrases}} को फ़िल्टर समझकर लागू किया, उन शब्दों को खोजने के बजाय।",
     "salaryStatedOnly": "वेतन के अनुसार क्रमित — इसलिए यहाँ केवल वे भूमिकाएँ दिखती हैं जो वेतन बताती हैं।",
     "locationExpanded": "{{from}} को {{places}} के रूप में खोजा गया।",

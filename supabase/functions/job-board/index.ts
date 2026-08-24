@@ -102,7 +102,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-24.6";
+const BUILD_VERSION = "2026-08-24.7";
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -2285,8 +2285,16 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
     // rather than a wrong fraction — an invented coverage number would be worse
     // than none, since it would be believed.
     const coverage = await (async () => {
+      // The numerator must stand on the SAME population as the denominator.
+      // `open` below applies the freshness window; this did not, so every
+      // published fraction was a count over one population divided by the
+      // size of a smaller one — inflating each by 1.5-3%. A coverage figure
+      // whose two halves disagree about what the board is cannot be right
+      // even when it looks plausible.
+      const freshIso = new Date(Date.now() - FRESH_WINDOW_DAYS * 86_400_000).toISOString();
       const one = async (col: string, op: "not.is.null" | "neq.unspecified") => {
-        const q = client.from("job_board_postings").select("id", { count: "exact", head: true }).is("missing_since", null);
+        const q = client.from("job_board_postings").select("id", { count: "exact", head: true })
+          .is("missing_since", null).gte("effective_posted", freshIso);
         const { count } = op === "not.is.null" ? await q.not(col, "is", null) : await q.neq(col, "unspecified");
         return count ?? null;
       };
@@ -2306,20 +2314,34 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
           .select("id", { count: "exact", head: true }).is("missing_since", null)
           .gte("effective_posted", new Date(Date.now() - FRESH_WINDOW_DAYS * 86_400_000).toISOString());
         if (!open) return undefined;
-        const [sal, wm, exp] = await Promise.all([
+        // ONE PROMISE MORE THAN THERE WERE NAMES TO BIND IT TO, AND EVERY
+        // NUMBER AFTER IT SHIFTED. A fourth count (salary_max_annual) was
+        // added here for a pay-CEILING filter that was subsequently refused
+        // with data, and it was inserted SECOND in the array while the
+        // destructuring still read [sal, wm, exp]. So the board published the
+        // salary-ceiling coverage as its work-mode figure and the work-mode
+        // coverage as its experience figure, and the experience count was
+        // computed and thrown away. Measured live 2026-08-24: the page said
+        // work mode 14% (really 29.1%) and experience 30% (really 42.1%) —
+        // the board was understating its own coverage by half while the
+        // caveat text told readers to trust exactly those numbers.
+        //
+        // The ceiling count is deleted rather than bound: its only consumer
+        // was a refused feature, and a live count with no reader is what
+        // caused this.
+        const [sal, wm, exp, ctry] = await Promise.all([
           one("salary_rank_usd", "not.is.null"),
-          // One more head-count inside a pass that already runs, so it is free.
-          // Measured live: 0.099. A pay CEILING could only ever address 10% of
-          // the board, and a floor addresses 13.2% — the docstring on
-          // coverageDisclosure below already says a searcher who sets a floor is
-          // seeing an eighth of the market and has no way to know it. This is the
-          // number that finishes that sentence on screen.
-          one("salary_max_annual", "not.is.null"),
           one("work_mode", "not.is.null"),
           one("experience_band", "neq.unspecified"),
+          // Country had NO caveat at all while pay, work mode and experience
+          // each had one — and it is the thinnest of the four on some
+          // vendors (teamtailor states a country on 0 of its rows). A filter
+          // that silently hides a quarter of the board is exactly what this
+          // disclosure exists to prevent.
+          one("country", "not.is.null"),
         ]);
         const frac = (n: number | null) => (n === null ? null : Math.round((n / open) * 1000) / 1000);
-        return { open, salaryFloor: frac(sal), workMode: frac(wm), experience: frac(exp) };
+        return { open, salaryFloor: frac(sal), workMode: frac(wm), experience: frac(exp), country: frac(ctry) };
         // `open` doubles as the honest board total — see the headline note in
         // serveList. It is an EXACT count of exactly the rows a visitor can
         // page to, taken in the same pass, so it costs nothing extra.
@@ -3915,17 +3937,22 @@ function intentDisclosure(r: { labels: string[] } | null): Record<string, unknow
  * eighth of the market and currently has no way to know it.
  */
 function coverageDisclosure(
-  applied: { salaryFloor?: number | null; workMode?: string | null; experience?: string[] },
+  applied: { salaryFloor?: number | null; workMode?: string | null; experience?: string[]; country?: string | null },
   meta?: { v: Record<string, unknown> } | null,
 ): Record<string, unknown> {
   const cov = (meta?.v as Record<string, unknown> | undefined)?.coverage as
-    | { salaryFloor?: number | null; workMode?: number | null; experience?: number | null }
+    | { salaryFloor?: number | null; workMode?: number | null; experience?: number | null; country?: number | null }
     | undefined;
   if (!cov) return {};
   const out: Record<string, number> = {};
   if (applied.salaryFloor != null && typeof cov.salaryFloor === "number") out.salaryFloor = cov.salaryFloor;
   if (applied.workMode != null && typeof cov.workMode === "number") out.workMode = cov.workMode;
   if (applied.experience?.length && typeof cov.experience === "number") out.experience = cov.experience;
+  // Country was the one filter of the four with no caveat, and it is the
+  // thinnest on several vendors — teamtailor states a country on 0 of its
+  // 10,412 rows. Filtering to a country silently drops every posting that
+  // never named one, which is around a quarter of the board.
+  if (applied.country && typeof cov.country === "number") out.country = cov.country;
   return Object.keys(out).length ? { filterCoverage: out } : {};
 }
 

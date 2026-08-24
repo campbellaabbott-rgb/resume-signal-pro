@@ -3969,6 +3969,7 @@
     "coveragePay": "pay on {{pct}}%",
     "coverageWorkMode": "work mode on {{pct}}%",
     "coverageExperience": "experience level on {{pct}}%",
+    "coverageCountry": "a country on {{pct}}%",
     "intentFilters": "Read {{phrases}} as a filter and applied it, rather than searching for those words.",
     "salaryStatedOnly": "Sorted by pay, so only roles that state a salary appear here.",
     "locationExpanded": "Searched {{from}} as {{places}}.",
