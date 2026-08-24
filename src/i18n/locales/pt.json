@@ -4013,7 +4013,14 @@
     "clearCountries": "Limpar países",
     "fieldsAtMax": "Três áreas de cada vez — mais do que isso é tão lento que compensa fazer outra pesquisa.",
     "countriesAtMax": "Cinco países de cada vez.",
-    "sameLocationOpenings": "{{count}} vagas neste local"
+    "sameLocationOpenings": "{{count}} vagas neste local",
+    "a11yLoading": "Carregando vagas…",
+    "a11yError": "Não foi possível carregar as vagas. Tente novamente.",
+    "a11yNoResults": "Nenhuma vaga corresponde a estes filtros.",
+    "a11yResults": "{{count}} vagas exibidas.",
+    "experienceFieldLabel": "Nível de experiência",
+    "salaryFieldLabel": "Remuneração mínima informada",
+    "companyFieldLabel": "Empregador"
   },
   "accountPage": {
     "statusSaveFailed": "Não foi possível salvar esse status — tente novamente.",

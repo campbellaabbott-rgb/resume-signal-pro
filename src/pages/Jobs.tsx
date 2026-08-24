@@ -3449,7 +3449,29 @@ export default function Jobs() {
         path={landerCompany ? `/jobs/company/${landerCompany}` : landerCategory ? `/jobs/field/${landerCategory}` : "/jobs"}
       />
       <Header />
-      <main className="pt-20 pb-20">
+      {/* The site-wide skip link is the first focusable element in the
+          document and targets #main-content — an id only the home page
+          rendered, so on the board (the SEO landing surface) the very first
+          thing a keyboard user pressed did nothing. tabIndex={-1} makes it a
+          real focus destination rather than just an anchor. */}
+      <main id="main-content" tabIndex={-1} className="pt-20 pb-20 focus:outline-none">
+        {/* ONE REGION THAT ALWAYS SPEAKS. The existing live region sits inside
+            the `!loading && !error` arm of a four-way branch, so the three
+            transitions a screen-reader user most needs — the results arriving,
+            a filter emptying the list, and an outright error — were all
+            silent. A sighted user watches 60 rows swap; everyone else got
+            nothing. This one lives OUTSIDE the branch, carries no layout, and
+            says only what changed. role="status" is polite by definition, so
+            it never interrupts. */}
+        <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+          {loading
+            ? t("jobsPage.a11yLoading", "Loading openings…")
+            : error
+            ? t("jobsPage.a11yError", "Could not load openings. Try again.")
+            : shownCount === 0
+            ? t("jobsPage.a11yNoResults", "No openings match these filters.")
+            : t("jobsPage.a11yResults", "{{count}} openings shown.", { count: shownCount })}
+        </p>
         <div className="container max-w-4xl lg:max-w-[1400px]">
           {/* Back to Explore: when the user arrived from a discovery collection,
               give them a clear way back so the board isn't a one-way dead end. */}
@@ -3935,7 +3957,7 @@ export default function Jobs() {
               value={experience}
               onChange={(e) => setExperience(e.target.value)}
               className="px-3 py-2 rounded-lg bg-background border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-              aria-label={t("jobsPage.allExperience", "Any experience")}
+              aria-label={t("jobsPage.experienceFieldLabel", "Experience level")}
             >
               <option value="">{t("jobsPage.allExperience", "Any experience")}</option>
               {EXPERIENCE_IDS.map((x) => (
@@ -3994,7 +4016,7 @@ export default function Jobs() {
                 }}
                 placeholder={t("jobsPage.companySearch", "Company…")}
                 className="px-3 py-2 rounded-lg bg-background border border-border text-sm w-36 focus:outline-none focus:ring-2 focus:ring-primary/40"
-                aria-label={t("jobsPage.allCompanies", "All companies")}
+                aria-label={t("jobsPage.companyFieldLabel", "Employer")}
               />
               {companyQuery !== null && (
                 <div id="company-typeahead-list" role="listbox" className="absolute z-30 mt-1 w-64 max-h-72 overflow-auto rounded-lg border border-border bg-background shadow-lg text-sm">
@@ -4024,7 +4046,7 @@ export default function Jobs() {
               value={salaryFloor || ""}
               onChange={(e) => setSalaryFloor(Number(e.target.value) || 0)}
               className="px-3 py-2 rounded-lg bg-background border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-              aria-label={t("jobsPage.anySalary", "Any salary")}
+              aria-label={t("jobsPage.salaryFieldLabel", "Minimum stated pay")}
               title={t("jobsPage.salaryFloorTip", "Filters on pay the posting itself states (hourly and monthly rates annualized). Postings that don't publish pay are hidden while this is on — that's most of them.")}
             >
               <option value="">{t("jobsPage.anySalary", "Any salary")}</option>
@@ -4089,6 +4111,10 @@ export default function Jobs() {
                 key={v}
                 type="button"
                 onClick={() => setFreshness(v)}
+                // The selected chip was distinguished by colour and weight
+                // only, so a screen reader read three identical buttons and
+                // could not tell which date window was applied.
+                aria-pressed={freshness === v}
                 title={v ? t("jobsPage.freshHint", "Counts company-stated posting dates only") : undefined}
                 className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
                   freshness === v ? "border-primary bg-primary/10 text-primary font-semibold" : "border-border text-muted-foreground hover:text-foreground"
@@ -4180,6 +4206,7 @@ export default function Jobs() {
             <button
               type="button"
               onClick={toggleDensity}
+              aria-pressed={density === "compact"}
               className="hidden lg:block px-3 py-2 rounded-lg border border-border text-xs text-muted-foreground hover:text-foreground transition-colors"
               title={t("jobsPage.densityTip", "Switch list density")}
             >
@@ -5047,16 +5074,9 @@ export default function Jobs() {
                       onTouchMove={onCardTouchMove}
                       onTouchEnd={onCardTouchEnd(job)}
                       style={{ borderLeft: `3px solid ${accentFor(job.category)}` }}
-                      className={`animate-in fade-in slide-in-from-bottom-1 duration-200 rounded-2xl border bg-card ${density === "compact" ? "px-4 py-2" : "p-4"} cursor-pointer transition-all duration-150 hover:-translate-y-px hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 ${
+                      className={`animate-in fade-in slide-in-from-bottom-1 duration-200 rounded-2xl border bg-card ${density === "compact" ? "px-4 py-2" : "p-4"} cursor-pointer transition-all duration-150 hover:-translate-y-px hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
                         detailJob?.id === job.id ? "border-primary/60 bg-primary/5" : "border-border hover:border-primary/40"
                       }`}
-                      tabIndex={0}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && e.target === e.currentTarget) {
-                          e.preventDefault();
-                          void openDetail(job);
-                        }
-                      }}
                       onClick={(e) => {
                         // The whole card opens the detail panel — except clicks
                         // on its own controls (apply/save/fit/report/etc.).

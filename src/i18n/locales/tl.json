@@ -4013,7 +4013,14 @@
     "clearCountries": "I-clear ang mga bansa",
     "fieldsAtMax": "Tatlong larangan lang nang sabay — mas marami pa ay sobrang bagal kaysa gumawa ng pangalawang paghahanap.",
     "countriesAtMax": "Limang bansa lang nang sabay.",
-    "sameLocationOpenings": "{{count}} bakante sa lokasyong ito"
+    "sameLocationOpenings": "{{count}} bakante sa lokasyong ito",
+    "a11yLoading": "Nilo-load ang mga trabaho…",
+    "a11yError": "Hindi ma-load ang mga trabaho. Subukan ulit.",
+    "a11yNoResults": "Walang trabahong tumutugma sa mga filter na ito.",
+    "a11yResults": "{{count}} trabaho ang ipinapakita.",
+    "experienceFieldLabel": "Antas ng karanasan",
+    "salaryFieldLabel": "Pinakamababang nakasaad na sahod",
+    "companyFieldLabel": "Employer"
   },
   "accountPage": {
     "statusSaveFailed": "Hindi na-save ang status na iyon — pakisubukan muli.",

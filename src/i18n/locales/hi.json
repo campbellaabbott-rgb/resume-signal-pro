@@ -4013,7 +4013,14 @@
     "clearCountries": "देश साफ़ करें",
     "fieldsAtMax": "एक साथ तीन क्षेत्र — इससे ज़्यादा इतना धीमा है कि दूसरी खोज करना बेहतर रहेगा।",
     "countriesAtMax": "एक साथ पाँच देश।",
-    "sameLocationOpenings": "इस स्थान पर {{count}} रिक्तियाँ"
+    "sameLocationOpenings": "इस स्थान पर {{count}} रिक्तियाँ",
+    "a11yLoading": "नौकरियाँ लोड हो रही हैं…",
+    "a11yError": "नौकरियाँ लोड नहीं हो सकीं। पुनः प्रयास करें।",
+    "a11yNoResults": "इन फ़िल्टर से कोई नौकरी मेल नहीं खाती।",
+    "a11yResults": "{{count}} नौकरियाँ दिखाई जा रही हैं।",
+    "experienceFieldLabel": "अनुभव स्तर",
+    "salaryFieldLabel": "न्यूनतम घोषित वेतन",
+    "companyFieldLabel": "नियोक्ता"
   },
   "accountPage": {
     "statusSaveFailed": "यह स्थिति सहेजी नहीं जा सकी — कृपया फिर से प्रयास करें।",

@@ -4013,7 +4013,14 @@
     "clearCountries": "Effacer les pays",
     "fieldsAtMax": "Trois domaines à la fois — au-delà, c'est assez lent pour qu'une seconde recherche soit préférable.",
     "countriesAtMax": "Cinq pays à la fois.",
-    "sameLocationOpenings": "{{count}} postes à cet endroit"
+    "sameLocationOpenings": "{{count}} postes à cet endroit",
+    "a11yLoading": "Chargement des offres…",
+    "a11yError": "Impossible de charger les offres. Réessayez.",
+    "a11yNoResults": "Aucune offre ne correspond à ces filtres.",
+    "a11yResults": "{{count}} offres affichées.",
+    "experienceFieldLabel": "Niveau d'expérience",
+    "salaryFieldLabel": "Rémunération minimale indiquée",
+    "companyFieldLabel": "Employeur"
   },
   "accountPage": {
     "statusSaveFailed": "Impossible d'enregistrer ce statut — réessayez.",

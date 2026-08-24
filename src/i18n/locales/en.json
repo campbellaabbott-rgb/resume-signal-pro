@@ -4013,7 +4013,14 @@
     "clearCountries": "Clear countries",
     "fieldsAtMax": "Three fields at a time — more than that is slow enough to be worse than a second search.",
     "countriesAtMax": "Five countries at a time.",
-    "sameLocationOpenings": "{{count}} openings at this location"
+    "sameLocationOpenings": "{{count}} openings at this location",
+    "a11yLoading": "Loading openings…",
+    "a11yError": "Could not load openings. Try again.",
+    "a11yNoResults": "No openings match these filters.",
+    "a11yResults": "{{count}} openings shown.",
+    "experienceFieldLabel": "Experience level",
+    "salaryFieldLabel": "Minimum stated pay",
+    "companyFieldLabel": "Employer"
   },
   "accountPage": {
     "statusSaveFailed": "Couldn't save that status — please try again.",

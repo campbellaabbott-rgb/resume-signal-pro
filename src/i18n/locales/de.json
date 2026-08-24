@@ -4013,7 +4013,14 @@
     "clearCountries": "Länder zurücksetzen",
     "fieldsAtMax": "Drei Bereiche gleichzeitig — mehr ist so langsam, dass eine zweite Suche schneller wäre.",
     "countriesAtMax": "Fünf Länder gleichzeitig.",
-    "sameLocationOpenings": "{{count}} offene Stellen an diesem Standort"
+    "sameLocationOpenings": "{{count}} offene Stellen an diesem Standort",
+    "a11yLoading": "Stellen werden geladen …",
+    "a11yError": "Stellen konnten nicht geladen werden. Bitte erneut versuchen.",
+    "a11yNoResults": "Keine Stellen entsprechen diesen Filtern.",
+    "a11yResults": "{{count}} Stellen angezeigt.",
+    "experienceFieldLabel": "Erfahrungsniveau",
+    "salaryFieldLabel": "Mindestangegebene Vergütung",
+    "companyFieldLabel": "Arbeitgeber"
   },
   "accountPage": {
     "statusSaveFailed": "Status konnte nicht gespeichert werden — bitte erneut versuchen.",

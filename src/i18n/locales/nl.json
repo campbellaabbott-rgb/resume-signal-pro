@@ -4013,7 +4013,14 @@
     "clearCountries": "Landen wissen",
     "fieldsAtMax": "Drie vakgebieden tegelijk — meer is zo traag dat een tweede zoekopdracht sneller is.",
     "countriesAtMax": "Vijf landen tegelijk.",
-    "sameLocationOpenings": "{{count}} vacatures op deze locatie"
+    "sameLocationOpenings": "{{count}} vacatures op deze locatie",
+    "a11yLoading": "Vacatures laden…",
+    "a11yError": "Vacatures konden niet worden geladen. Probeer het opnieuw.",
+    "a11yNoResults": "Geen vacatures voldoen aan deze filters.",
+    "a11yResults": "{{count}} vacatures getoond.",
+    "experienceFieldLabel": "Ervaringsniveau",
+    "salaryFieldLabel": "Minimaal vermeld salaris",
+    "companyFieldLabel": "Werkgever"
   },
   "accountPage": {
     "statusSaveFailed": "Kon die status niet opslaan — probeer het opnieuw.",
