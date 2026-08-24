@@ -102,7 +102,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-24.12";
+const BUILD_VERSION = "2026-08-24.13";
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -1131,13 +1131,33 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
   if (!inHotPhase) {
     try {
       const { data: bsMeta } = await client.from("job_board_meta").select("v").eq("k", "bootstrap").maybeSingle();
-      let bs = (bsMeta?.v ?? {}) as { queue?: string[]; version?: string };
-      if (bs.version !== BUILD_VERSION) {
+      const bs = (bsMeta?.v ?? {}) as { queue?: string[]; version?: string };
+      let queue = Array.isArray(bs.queue) ? bs.queue : [];
+      // A DEPLOY MUST NOT RESTART THIS QUEUE. It re-seeded whenever
+      // BUILD_VERSION changed, and get_empty_boards returns a stable order —
+      // so every deploy sent the drain back to the front of the same list
+      // while the tail was never reached. The comment further down this file
+      // already warned that "every deploy resets the bootstrap lane"; what it
+      // did not say is that the lane therefore never finishes.
+      //
+      // Measured 2026-08-24, after twelve deploys in one day: 7,564 boards
+      // pending, and 21% of a stratified sample of the registry serving ZERO
+      // postings. Probing seven of those zero-row boards against their own
+      // vendor APIs, SEVEN returned live jobs — 110 openings across them,
+      // none genuinely empty. At roughly ten postings each that is tens of
+      // thousands of jobs the board has the right to serve and has never
+      // fetched.
+      //
+      // The queue now refills only when it is EMPTY, so progress survives a
+      // deploy and the tail is eventually reached. Boards filled in the
+      // meantime drop out naturally, because the refill asks which boards are
+      // still empty. The cold rotation remains the guarantee — this lane is
+      // only an accelerator — so a slow refill costs nothing but time.
+      if (queue.length === 0) {
         const { data: empty, error } = await client.rpc("get_empty_boards", { p_tokens: JOB_SOURCES.map((s) => s.token) });
         if (error) throw error;
-        bs = { queue: Array.isArray(empty) ? empty : [], version: BUILD_VERSION };
+        queue = Array.isArray(empty) ? empty : [];
       }
-      const queue = Array.isArray(bs.queue) ? bs.queue : [];
       if (queue.length > 0) {
         const sliceTokens = new Set([...baseSlice, ...demandBoards].map((s) => s.token));
         bootstrapBoards = queue
@@ -1146,11 +1166,11 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
           .map((t) => JOB_SOURCES.find((s) => s.token === t))
           .filter((s): s is JobSource => !!s);
       }
-      if (queue.length > 0 || bs.version !== (bsMeta?.v as { version?: string } | null)?.version) {
+      if (queue.length > 0) {
         // Optimistic drain (same rule as the cursors): a died slice skips
         // ahead rather than wedging on the same bootstrap boards.
         await client.from("job_board_meta").upsert(
-          { k: "bootstrap", v: { queue: queue.slice(BOOTSTRAP_PER_SLICE), version: bs.version }, updated_at: new Date().toISOString() },
+          { k: "bootstrap", v: { queue: queue.slice(BOOTSTRAP_PER_SLICE), version: BUILD_VERSION }, updated_at: new Date().toISOString() },
           { onConflict: "k" },
         );
       }
