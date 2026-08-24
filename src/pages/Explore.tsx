@@ -472,7 +472,14 @@ export default function Explore() {
         }
       : undefined,
     entry: { to: "/jobs?experience=entry&from=explore", label: t("explore.actionEntry", "All entry-level roles on the board") },
-    ghost: { to: "/jobs?activelyHiring=1&from=explore", label: t("explore.actionGhost", "Show only employers with a proven fill record") },
+    // "Proven fill record" was a claim the data cannot support. What the
+    // lifecycle log actually observes is a posting DISAPPEARING and not coming
+    // back — which can be a fill, a cancelled req, or a paused budget.
+    // Measured 2026-08-24 over the top 150 employers: of the 31 that qualify,
+    // the median carries 60% superseded (reposted) closure activity and 68%
+    // are majority-churn, so even the surviving signal is noisy. The label now
+    // says exactly what is measured.
+    ghost: { to: "/jobs?activelyHiring=1&from=explore", label: t("explore.actionGhost", "Show only employers whose roles close and stay closed") },
   };
 
   const INTENT_LABEL: Record<Intent, string> = {

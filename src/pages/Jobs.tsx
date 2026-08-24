@@ -848,7 +848,9 @@ export default function Jobs() {
   const [healthByToken, setHealthByToken] = useState<Record<string, HiringHealth>>({});
   // Also linkable. Same gap as `fresh`: the toggle existed in the UI and the
   // NL parser could set it, but no URL could, so Explore had no way to hand a
-  // reader "companies with a proven fill record" as a destination.
+  // reader an employers-that-close-roles destination. (That copy used to
+  // promise a fill record; the lifecycle log observes a posting disappearing,
+  // not a hire, so both surfaces now say what is measured.)
   const [activelyHiringOnly, setActivelyHiringOnly] = useState(initial.get("activelyHiring") === "1");
   const healthAttempted = useRef<Set<string>>(new Set());
   const [healthFailed, setHealthFailed] = useState(false);
@@ -4206,7 +4208,12 @@ export default function Jobs() {
               className={`hidden lg:inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border transition-colors ${
                 activelyHiringOnly ? "border-success bg-success/10 text-success font-semibold" : "border-border text-muted-foreground hover:text-foreground"
               }`}
-              title={t("jobsPage.activelyHiringTip", "Show only companies with a proven recent hiring pattern — roles they've actually filled or closed, from our lifecycle tracking (not just open listings).")}
+              // Two false claims in one tooltip: "actually filled" (the
+              // lifecycle log observes a posting disappearing, which may be a
+              // fill, a cancelled req or a paused budget) and the implication
+              // that this filters the board (it filters the rows already
+              // fetched). Both corrected.
+              title={t("jobsPage.activelyHiringTip", "Filters the openings already loaded on this page (not the whole board) down to employers whose postings have closed and stayed closed — we can see a posting disappear, but not whether it was filled.")}
             >
               <Activity className="w-3 h-3" />
               {t("jobsPage.activelyHiringFilter", "Actively hiring")}
@@ -4802,7 +4809,17 @@ export default function Jobs() {
                     "of 254". Smaller than the 234/266 it replaced, and still the
                     same lie. One number that changes meaning between two
                     searches cannot be compared, so this stops offering one. */}
-                {typeof data?.relatedTotal === "number" && data.relatedTotal > 0
+                {/* A CLIENT-SIDE FILTER MAKES EVERY SERVER COUNT WRONG.
+                    "Actively hiring" filters the rows already fetched, while
+                    every total on this line came from the unfiltered query —
+                    measured by the audit at 7 rows under a 10,000 headline.
+                    The server counts cannot describe this page, so the page
+                    stops quoting them and states only what it is showing,
+                    the same withdrawal the server performs when its own count
+                    is disproved. */}
+                {activelyHiringOnly
+                  ? t("jobsPage.resultsSummaryNoTotal", "Showing {{shown}} matching openings", { shown: shownCount })
+                  : typeof data?.relatedTotal === "number" && data.relatedTotal > 0
                   ? t("jobsPage.resultsSummarySegmented", "Showing {{shown}} — {{exact}} exact and {{related}} where the term appears in the description", {
                       shown: shownCount,
                       exact: (data?.total ?? 0).toLocaleString(),

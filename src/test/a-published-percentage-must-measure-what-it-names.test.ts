@@ -115,3 +115,33 @@ describe("a count the page disproves is withdrawn, not published", () => {
     expect(CODE).toMatch(/totalUnderstated \? \{ countUnavailable: true, totalAtLeast: offset \+ shownRowCount \}/);
   });
 });
+
+describe("a client-side filter must not quote a server count", () => {
+  // "Actively hiring" filters the rows already fetched, while every total on
+  // the summary line came from the unfiltered query — the audit measured 7
+  // rows under a 10,000 headline. The page now states only what it shows.
+  //
+  // The label was wrong too. The lifecycle log observes a posting
+  // DISAPPEARING, which may be a fill, a cancelled req or a paused budget —
+  // and measured 2026-08-24 across the top 150 employers, of the 31 that
+  // qualify the median carries 60% superseded (reposted) closure activity and
+  // 68% are majority churn, with a median tracking window of 40 days rather
+  // than the 90 the field name implies. "Proven fill record" was not a claim
+  // this data can support.
+  const JOBS_SRC = readFileSync(resolve(ROOT, "src/pages/Jobs.tsx"), "utf8");
+  const EXPLORE = readFileSync(resolve(ROOT, "src/pages/Explore.tsx"), "utf8");
+  // Comment-stripped: the code comments EXPLAIN why the old wording was wrong
+  // and therefore quote it. A negative assertion that reads its own
+  // justification fails — the ninth time this repo has hit that trap.
+  const jobsCode = stripTs(JOBS_SRC);
+  const exploreCode = stripTs(EXPLORE);
+
+  it("the summary withdraws server totals while the client filter is on", () => {
+    expect(jobsCode).toMatch(/\{activelyHiringOnly\s*\n?\s*\?\s*t\("jobsPage\.resultsSummaryNoTotal"/);
+  });
+
+  it("no surface claims a fill the lifecycle log cannot observe", () => {
+    expect(exploreCode).not.toMatch(/proven fill record/i);
+    expect(jobsCode).not.toMatch(/roles they've actually filled/i);
+  });
+});
