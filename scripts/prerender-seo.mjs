@@ -18,7 +18,7 @@
 // - Any failure logs loudly but exits 0: a broken prerender must never block
 //   a publish. Worst case is the pre-existing status quo (SPA-only).
 
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync } from "node:fs";
 import { execSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
@@ -183,6 +183,36 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
   // number down further. A "+" claim must be a promise, not a hope.
   const CHURN_MARGIN = 0.93;
   const plusClaim = (n, step) => `${(Math.floor((n * CHURN_MARGIN) / step) * step).toLocaleString("en-US")}+`;
+
+  // ---- Route-chunk preload hints ----
+  //
+  // A prerendered page named exactly ONE script: the 808KB entry chunk. So a
+  // phone had to download it, parse it, and only then let the router discover
+  // Jobs-*.js (176KB) — and after parsing THAT, Footer-*.js (92KB). Three
+  // sequential round trips before the board can paint, measured on the built
+  // output 2026-08-24.
+  //
+  // modulepreload collapses that: the browser starts all three at once. It is
+  // a HINT, not a behaviour change — a wrong or stale filename costs one
+  // ignored request, never a broken page. Filenames are read from the build
+  // output rather than hardcoded, because they carry content hashes that
+  // change on every deploy.
+  const assetDir = join(dist, "assets");
+  const assetFiles = existsSync(assetDir) ? readdirSync(assetDir) : [];
+  const chunkFor = (prefix) => assetFiles.find((f) => f.startsWith(`${prefix}-`) && f.endsWith(".js")) ?? null;
+  const JOBS_CHUNK = chunkFor("Jobs");
+  const FOOTER_CHUNK = chunkFor("Footer");
+  const preloadFor = (path) => {
+    const want = [];
+    // Footer renders on every prerendered page, so it is always on the
+    // critical path — it was simply discovered last.
+    if (FOOTER_CHUNK) want.push(FOOTER_CHUNK);
+    if (JOBS_CHUNK && (path === "/jobs" || path.startsWith("/jobs/"))) want.push(JOBS_CHUNK);
+    return want.map((f) => `<link rel="modulepreload" href="/assets/${f}">`).join("");
+  };
+  if (!JOBS_CHUNK || !FOOTER_CHUNK) {
+    console.warn(`[prerender-seo] preload hint skipped — Jobs chunk ${JOBS_CHUNK ?? "MISSING"}, Footer chunk ${FOOTER_CHUNK ?? "MISSING"}`);
+  }
 
   const template = readFileSync(join(dist, "index.html"), "utf8");
   if (!template.includes('<div id="root"></div>')) {
@@ -359,6 +389,9 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
       headExtra += `<link rel="alternate" hreflang="x-default" href="${SITE}${hreflang.en}" />\n`;
     }
     for (const ld of jsonLd) headExtra += `<script type="application/ld+json">${JSON.stringify(ld)}</script>\n`;
+    // Preload hints last in the head, so they cannot displace the meta tags
+    // above them if the template shape ever shifts.
+    headExtra += preloadFor(path);
     html = html.replace("</head>", `${headExtra}</head>`);
     const clearScript = isFallback
       ? `<script>if(location.pathname!=="/"){var r=document.getElementById("root");if(r)r.innerHTML="";}</script>`
