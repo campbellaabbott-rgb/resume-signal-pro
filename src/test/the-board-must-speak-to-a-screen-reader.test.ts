@@ -70,3 +70,30 @@ describe("the board must speak to a screen reader", () => {
     expect(JOBS).not.toMatch(/focus-visible:ring-primary\/50 \$\{\s*\n?\s*detailJob\?\.id === job\.id/);
   });
 });
+
+describe("a phone shows a job before it shows a conversion surface", () => {
+  // Measured on a 375x812 viewport: the first job card began 1,054px down —
+  // 1.3 screens — behind 40 interactive controls, with a 91px resume-upload
+  // panel among the blocks in front of it. After moving that panel below the
+  // first three cards on mobile: first card at 795px, inside the viewport,
+  // behind 33 controls. Verified in the DOM, with the panel found at y=1686,
+  // between card three (1397) and card four (1793).
+  const SRC = readFileSync(resolve(__dirname, "../../src/pages/Jobs.tsx"), "utf8");
+
+  it("one definition serves both placements", () => {
+    // Forty lines of drag handlers duplicated is how two copies drift apart.
+    expect(SRC).toMatch(/const resumeDropPanel = \(display: string\) => \(/);
+    expect((SRC.match(/Drop your résumé here/g) ?? []).length).toBe(1);
+  });
+
+  it("the desktop copy is hidden on mobile and the mobile copy on desktop", () => {
+    expect(SRC).toMatch(/resumeDropPanel\("hidden lg:flex"\)/);
+    expect(SRC).toMatch(/<li className="lg:hidden">\{resumeDropPanel\("flex"\)\}<\/li>/);
+  });
+
+  it("a short result page still gets the panel", () => {
+    // Rendering strictly before index 3 would drop it entirely on a page with
+    // fewer than four results.
+    expect(SRC).toMatch(/const mobileDropAt = Math\.min\(3, Math\.max\(groupedJobs\.length - 1, 0\)\);/);
+  });
+});

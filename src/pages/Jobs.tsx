@@ -3443,6 +3443,60 @@ export default function Jobs() {
     </>
   ) : null;
 
+  // THE RESUME DROP, RENDERED IN TWO PLACES FROM ONE DEFINITION.
+  //
+  // On a phone this panel sat above the results: 91px of a paid-conversion
+  // surface between the reader and the first job, on a page where the first
+  // card already began 1,054px down. It now appears after the third card on
+  // mobile — still early, but behind evidence that the board has jobs worth
+  // ranking — and stays where it was on desktop, where it costs nothing.
+  //
+  // One definition, two call sites: duplicating forty lines of drag handlers
+  // is how the two copies drift.
+  const resumeDropPanel = (display: string) => (
+              <div
+                onDragOver={(e) => { e.preventDefault(); setResumeDragOver(true); }}
+                onDragLeave={() => setResumeDragOver(false)}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setResumeDragOver(false);
+                  const f = e.dataTransfer.files?.[0];
+                  if (f) void handleBoardResumeFile(f);
+                }}
+                className={`rounded-xl border px-3 py-2 mb-3 ${display} flex-wrap items-center gap-x-3 gap-y-1.5 transition-colors ${
+                  resumeDragOver ? "border-primary bg-primary/10 border-dashed" : "border-primary/30 bg-primary/5"
+                }`}
+              >
+                {parsingResume ? <Loader2 className="w-4 h-4 text-primary shrink-0 animate-spin" /> : <Upload className="w-4 h-4 text-primary shrink-0" />}
+                <p className="text-[13px] text-foreground flex-1 min-w-[200px]">
+                  {parsingResume
+                    ? t("jobsPage.dropParsing", "Reading your résumé…")
+                    : t("jobsPage.dropTitleScoped", "Drop your résumé here — we'll rank the openings on this page against it in seconds.")}
+                </p>
+                <label className="inline-flex">
+                  <input
+                    type="file"
+                    accept=".pdf,.docx,.txt"
+                    className="hidden"
+                    disabled={parsingResume}
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) void handleBoardResumeFile(f);
+                      e.target.value = "";
+                    }}
+                  />
+                  <span className="cursor-pointer inline-flex items-center rounded-lg bg-primary text-primary-foreground text-[13px] font-semibold px-3 py-1 hover:bg-primary/90">
+                    {t("jobsPage.dropBrowse", "Choose file")}
+                  </span>
+                </label>
+                {/* Secondary link folds away below sm — it wrapped the banner to
+                    a third row on 375px screens; the primary path stays. */}
+                <button onClick={() => navigate("/#upload")} className="hidden sm:block text-[12px] text-muted-foreground hover:text-foreground hover:underline">
+                  {t("jobsPage.dropScannerLink", "or run the full free scan")}
+                </button>
+              </div>
+  );
+
   return (
     <div className="min-h-screen bg-background">
       <SEO
@@ -4419,49 +4473,7 @@ export default function Jobs() {
               the same server parsers as the scanner) and the board re-ranks
               itself instantly; the full scan stays one link away. Shown only to
               visitors we KNOW have no résumé yet. */}
-          {resumeAvailable === false && !fitRanking && (
-            <div
-              onDragOver={(e) => { e.preventDefault(); setResumeDragOver(true); }}
-              onDragLeave={() => setResumeDragOver(false)}
-              onDrop={(e) => {
-                e.preventDefault();
-                setResumeDragOver(false);
-                const f = e.dataTransfer.files?.[0];
-                if (f) void handleBoardResumeFile(f);
-              }}
-              className={`rounded-xl border px-3 py-2 mb-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 transition-colors ${
-                resumeDragOver ? "border-primary bg-primary/10 border-dashed" : "border-primary/30 bg-primary/5"
-              }`}
-            >
-              {parsingResume ? <Loader2 className="w-4 h-4 text-primary shrink-0 animate-spin" /> : <Upload className="w-4 h-4 text-primary shrink-0" />}
-              <p className="text-[13px] text-foreground flex-1 min-w-[200px]">
-                {parsingResume
-                  ? t("jobsPage.dropParsing", "Reading your résumé…")
-                  : t("jobsPage.dropTitleScoped", "Drop your résumé here — we'll rank the openings on this page against it in seconds.")}
-              </p>
-              <label className="inline-flex">
-                <input
-                  type="file"
-                  accept=".pdf,.docx,.txt"
-                  className="hidden"
-                  disabled={parsingResume}
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f) void handleBoardResumeFile(f);
-                    e.target.value = "";
-                  }}
-                />
-                <span className="cursor-pointer inline-flex items-center rounded-lg bg-primary text-primary-foreground text-[13px] font-semibold px-3 py-1 hover:bg-primary/90">
-                  {t("jobsPage.dropBrowse", "Choose file")}
-                </span>
-              </label>
-              {/* Secondary link folds away below sm — it wrapped the banner to
-                  a third row on 375px screens; the primary path stays. */}
-              <button onClick={() => navigate("/#upload")} className="hidden sm:block text-[12px] text-muted-foreground hover:text-foreground hover:underline">
-                {t("jobsPage.dropScannerLink", "or run the full free scan")}
-              </button>
-            </div>
-          )}
+          {resumeAvailable === false && !fitRanking && resumeDropPanel("hidden lg:flex")}
 
           {/* Split-pane on lg+: list column left, detail column right. */}
           <div className="lg:grid lg:grid-cols-[minmax(0,46%)_minmax(0,54%)] lg:gap-6 lg:items-start">
@@ -5079,7 +5091,13 @@ export default function Jobs() {
                 </div>
               )}
               <ul className="space-y-3">
+                {/* On mobile the resume drop sits after the third card rather
+                    than above the list — far enough in that the reader has
+                    seen real openings first, early enough to still be found.
+                    On a page with fewer than four results it falls back to the
+                    last card so it never disappears entirely. */}
                 {groupedJobs.map(({ primary: job, siblings }, gi) => {
+                  const mobileDropAt = Math.min(3, Math.max(groupedJobs.length - 1, 0));
                   const d = daysAgo(job.postedAt);
                   const openRoles = job.token ? companyCounts.get(job.token) : undefined;
                   const fit = fitRanking ? fits[job.id] : undefined;
@@ -5093,6 +5111,9 @@ export default function Jobs() {
                   const tier = typeof fit === "number" ? (fit >= 20 ? "strong" : fit >= 10 ? "possible" : "stretch") : null;
                   return (
                     <Fragment key={job.id}>
+                    {gi === mobileDropAt && resumeAvailable === false && !fitRanking && (
+                      <li className="lg:hidden">{resumeDropPanel("flex")}</li>
+                    )}
                     {gi === newSinceIndex && (
                       <li aria-hidden="true" className="flex items-center gap-3 py-1">
                         <span className="flex-1 h-px bg-border" />
