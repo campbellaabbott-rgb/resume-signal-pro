@@ -1,5 +1,49 @@
 {
   "changelogEntries": {
+    "jobDescriptionsCutShort": {
+      "title": "As descrições das vagas paravam a meio da frase",
+      "description": "Guardávamos apenas os primeiros 4.000 caracteres da descrição de uma vaga, e cerca de um quarto dos anúncios é mais longo do que isso — por isso o texto simplesmente parava, quase sempre a meio de uma frase. Comparámos 24 anúncios cortados com a página do próprio empregador para ver o que faltava: todos os cortes com mais de um parágrafo levavam consigo os requisitos ou as qualificações e, como as publicações do Greenhouse e da Lever colocam a faixa salarial mesmo no fim, o salário desaparecia com frequência também. Numa das vagas, a faixa salarial só existia na parte que estávamos a deitar fora. Passámos a guardar o triplo do texto, o que cobre por inteiro cerca de 88% dos anúncios. Os anúncios já existentes vão sendo repostos à medida que se atualizam nos próximos dias."
+    },
+    "fortyThousandJobsNoDescription": {
+      "title": "Cerca de 42.000 vagas não tinham descrição nenhuma",
+      "description": "Três sistemas de recrutamento respondiam por cerca de 42.000 anúncios que chegavam sem nada para ler — via o cargo e o empregador, e mais nada. Cada um tinha um motivo diferente. O iCIMS enviava a descrição completa com cada anúncio e nós estávamos a descartá-la. Quanto à Rippling, tínhamos consultado a página do quadro de vagas, concluído corretamente que aí não havia descrição e riscado o fornecedor da lista — sem consultar a página da própria vaga, que traz o texto inteiro. Na Breezy o texto esteve sempre acessível e o nosso processo de preenchimento de descrições nunca chegou tão abaixo na fila, tendo feito cerca de dez tentativas contra um atraso de onze mil vagas. Os três estão agora ligados, e a ordem de preenchimento é rotativa para que nenhum sistema fique indefinidamente à espera atrás de outro. A Rippling está praticamente concluída: faltam 177 anúncios em 11.862."
+    },
+    "payRangesNowRead": {
+      "title": "O salário estava escrito no anúncio, mas faltava nos filtros",
+      "description": "Mais de 17.000 anúncios mostravam no seu próprio texto uma faixa salarial que o filtro de salário e a ordenação por salário não conseguiam ler, pelo que se comportavam como se essas vagas nada dissessem sobre dinheiro. Duas causas distintas. O salário à hora escrito como o Workday o escreve — «$29.20 an hour», ou simplesmente «$22.00 – $24.00», sem período nenhum indicado — não era reconhecido como valor horário. E as linhas de salário em que o travessão chegava como código de formatação em vez de travessão nunca correspondiam de todo. Ambos passam a ser lidos corretamente. Quando a moeda e o valor só podem significar um valor à hora, convertemo-lo; quando o número é genuinamente ambíguo, continuamos a não dizer nada em vez de adivinhar."
+    },
+    "newMexicoIsNotMexico": {
+      "title": "Vagas em Albuquerque estavam classificadas no México",
+      "description": "251 vagas localizadas no Novo México estavam registadas como sendo no México, porque o nosso leitor de localizações encontrava a palavra «México» dentro de «Novo México» antes de consultar a lista de estados norte-americanos — incluindo anúncios que escreviam «US» logo antes. Isso estragava o filtro de país nos dois sentidos: filtrar pelos Estados Unidos escondia essas vagas, e filtrar pelo México mostrava-as. Todos os anúncios afetados foram corrigidos. Verificámos também os estados com maior probabilidade de cair na mesma armadilha — Califórnia, Colorado, Indiana e Delaware partilham a abreviatura com um código de país — e, em mais de 16.000 anúncios, o Novo México foi o único caso real."
+    },
+    "listingsThatWereNeverJobs": {
+      "title": "469 anúncios que nunca foram vagas a sério",
+      "description": "111 empresas tinham aberto uma conta de teste num sistema de recrutamento e nunca a chegaram a lançar, e todos os anúncios dessas contas eram os dados de exemplo do próprio sistema — os mesmos seis cargos inventados repetidos vezes sem conta, «Head of DEI – Belfast», «Marketing Manager», «Customer Service Rep». Estavam sob nomes de empresas reais, pelo que as verificações que fazemos a quadros novos não tinham motivo para os travar; só o conteúdo é que era falso. Os 469 foram todos removidos, e a nossa verificação de entrada passa a ler os próprios anúncios em vez de confiar no nome à porta. Os quadros que misturam dados de exemplo com vagas genuínas foram deixados de fora de propósito."
+    },
+    "didYouMeanSuggestions": {
+      "title": "Será que quis dizer…?",
+      "description": "Pesquisar «manger» devolvia 101 anúncios, todos eles erros de escrita do próprio empregador em «manager» (gestor) — e, como eram correspondências genuínas, o resgate ortográfico que normalmente apanha estes erros nunca chegava a disparar. Pesquisar «Krankenschwester» (enfermeira, em alemão) encontrava uma única vaga, quando o quadro tinha 68 vagas de enfermagem em alemão arquivadas sob outra palavra. Ambas as pesquisas mostram agora uma sugestão a um clique por cima dos resultados. Os resultados em si ficam intocados: nada é reordenado e nenhum filtro é alargado, por isso, se queria mesmo o que escreveu, não perde nada."
+    },
+    "searchSaysHowManyItFound": {
+      "title": "As pesquisas com erros de escrita não diziam quantas vagas correspondiam",
+      "description": "Nalgumas pesquisas com erros de escrita mostrávamos-lhe uma página de resultados sem total ao lado, mesmo nos casos em que já sabíamos que pelo menos sessenta vagas correspondiam. Um número em branco lê-se como um encolher de ombros. Essas pesquisas passam a dizer «Showing 38 of 60+» — um mínimo que conseguimos provar, em vez de um número exato que não conseguimos."
+    },
+    "sameJobListedSeveralTimes": {
+      "title": "A mesma vaga listada até cinco vezes em separado",
+      "description": "Um grande empregador tem muitas vezes vários sites de carreiras — um principal, um para recém-licenciados, um por idioma — e publica a mesma vaga em cada um deles. Cada cópia chegava com um número de referência ligeiramente diferente, pelo que nada as ligava e todas apareciam listadas. Medido em todos os 295.823 anúncios do Workday no quadro: 8.993 vagas apareciam em mais do que um dos sites da própria empresa, somando 9.246 anúncios duplicados e, num dos empregadores, mais de metade do quadro eram as mesmas vagas a dobrar. Os cargos coincidiam exatamente em 99,9% dos casos e as localizações em 100%. Passámos a guardar uma só cópia de cada vaga."
+    },
+    "phantomExtraLocations": {
+      "title": "«Também contrata em mais 84 locais» — para uma vaga numa só cidade",
+      "description": "Quando várias cópias da mesma vaga no mesmo empregador são agrupadas num só cartão, esse cartão dizia-lhe em quantos locais adicionais se estava a contratar. Estava a contar as cópias, não os locais. Uma única vaga em Kiev publicada 85 vezes lia-se como mais 84 locais, e 2,4% dos cartões agrupados anunciavam locais que não existiam. Os cartões passam a contar os locais distintos e a indicar o número de vagas em separado — 85 vagas numa só cidade é contratação a sério, e é um facto diferente de 85 cidades."
+    },
+    "twoCompaniesOneName": {
+      "title": "Duas empresas sem qualquer relação sob um só nome",
+      "description": "Duas empresas diferentes chamadas Flex — uma de tecnologia financeira, outra industrial — tinham sido fundidas numa única entrada do filtro de empregador, pelo que escolher uma mostrava-lhe as vagas da outra, sem qualquer sobreposição entre elas. Havia 52 nomes de empregador e 4.575 anúncios nesse estado. Os empregadores passam a ser associados pela conta de recrutamento por trás do nome, e não apenas pelo nome. Quando a evidência é ambígua, deixamos agora duas entradas em vez de fundir: ver um nome duas vezes é um problema muito menor do que o filtro de uma empresa entregar-lhe as vagas de outra."
+    },
+    "moreJobsAnswerCategoryFilter": {
+      "title": "Mais 22.000 vagas respondem agora a um filtro de categoria",
+      "description": "As vagas cuja área não conseguíamos ler a partir do título ficavam num monte «other» a que nenhum filtro de categoria chegava — um enfermeiro ou um eletricista nesse monte era invisível para quem navegasse na saúde ou nos ofícios. Medimos o monte inteiro e acrescentámos 108 padrões de título verificados: assistentes sociais, docentes e professores universitários, inspetores, orçamentistas, planeadores, consultores de ERP, cargos de salão e estética, e um grande conjunto de cargos escritos em alemão, francês, neerlandês, polaco, sueco e finlandês. Cada padrão teve de ser defendido contra todas as leituras concorrentes antes de entrar, e alguns que pareciam promissores foram descartados por errarem demasiadas vezes. O monte caiu de 142.389 anúncios para 120.259."
+    },
     "searchCouldNotSeeShortWords": {
       "title": "Pesquisar «IT» devolvia 18 vagas em 4.145",
       "description": "O nosso índice de pesquisa descartava em silêncio as palavras muito curtas e muito comuns antes de guardar seja o que for — «IT» não estava lá, e pesquisá-lo devolvia um punhado de vagas contra as 4.145 que temos de facto. A mesma falha escondia resultados a quem pesquisava «sem experiência», «a contratar agora» ou uma empresa cujo nome é uma palavra do dia a dia. As palavras curtas passaram a ser indexadas corretamente, e «IT» devolve uma página inteira de vagas reais de IT."

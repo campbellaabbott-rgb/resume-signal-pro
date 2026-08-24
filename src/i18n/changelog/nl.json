@@ -1,5 +1,49 @@
 {
   "changelogEntries": {
+    "jobDescriptionsCutShort": {
+      "title": "Vacatureteksten stopten midden in een zin",
+      "description": "We bewaarden alleen de eerste 4.000 tekens van een vacaturetekst, en ruwweg een kwart van de vacatures is langer — de tekst hield dus gewoon op, meestal midden in een zin. We hebben 24 afgekapte vacatures naast de eigen pagina van de werkgever gelegd om te zien wat er ontbrak: elke afkapping die langer was dan een alinea haalde de eisen of de kwalificaties weg, en omdat Greenhouse en Lever de salarisrange helemaal onderaan zetten, sneuvelde het salaris ook regelmatig. Bij één vacature stond de salarisrange alleen in het deel dat we weggooiden. We bewaren nu drie keer zoveel tekst, waarmee ongeveer 88% van de vacatures volledig binnenkomt. Bestaande vacatures vullen zich de komende dagen aan zodra ze worden ververst."
+    },
+    "fortyThousandJobsNoDescription": {
+      "title": "Ongeveer 42.000 vacatures hadden helemaal geen tekst",
+      "description": "Drie wervingssystemen waren samen goed voor zo'n 42.000 vacatures die binnenkwamen zonder iets om te lezen — je zag de titel en de werkgever, en verder niets. Elk had een andere oorzaak. iCIMS stuurde de volledige omschrijving bij elke vacature mee en wij gooiden die weg. Bij Rippling hadden we de overzichtspagina van de vacaturesite bekeken, daar terecht geen omschrijving gevonden en de leverancier afgeschreven — zonder naar de vacaturepagina zelf te kijken, waar de hele tekst wél staat. Bij Breezy was de tekst altijd bereikbaar en kwam onze aanvultaak simpelweg nooit zo ver in haar wachtrij: zo'n tien pogingen tegenover een achterstand van elfduizend vacatures. Alle drie zijn nu aangesloten, en de aanvulvolgorde rouleert, zodat geen enkel systeem eindeloos achter een ander blijft wachten. Rippling is al zo goed als klaar: nog 177 vacatures van de 11.862."
+    },
+    "payRangesNowRead": {
+      "title": "Het salaris stond in de vacature maar ontbrak in de filters",
+      "description": "Ruim 17.000 vacatures toonden in hun eigen tekst een salarisrange die het salarisfilter en de salarissortering niet konden lezen, dus die deden alsof die vacatures niets over geld zeiden. Twee losse oorzaken. Uurlonen zoals Workday ze schrijft — “$29.20 an hour”, of gewoon “$22.00 – $24.00” zonder dat er een periode bij genoemd wordt — werden niet als tarief herkend. En salarisregels waarin het streepje binnenkwam als opmaakcode in plaats van als streepje, matchten helemaal nooit. Allebei worden nu goed gelezen. Waar de valuta en het bedrag alleen een uurtarief kunnen betekenen, rekenen we het om; waar het cijfer echt dubbelzinnig is, zeggen we nog steeds niets in plaats van te gokken."
+    },
+    "newMexicoIsNotMexico": {
+      "title": "Vacatures in Albuquerque stonden geboekt onder Mexico",
+      "description": "251 vacatures in New Mexico stonden geregistreerd als vacatures in Mexico, omdat onze locatielezer het woord “Mexico” binnen “New Mexico” vond vóórdat hij de lijst met Amerikaanse staten raadpleegde — ook bij vacatures waar er vlak daarvoor voluit “US” stond. Het landenfilter ging daardoor beide kanten op de mist in: filteren op de Verenigde Staten verborg die vacatures, en filteren op Mexico liet ze juist zien. Elke geraakte vacature is gecorrigeerd. We hebben ook de staten gecontroleerd die het meeste kans maken op dezelfde val — Californië, Colorado, Indiana en Delaware delen hun afkorting allemaal met een landcode — en over ruim 16.000 vacatures was New Mexico het enige echte geval."
+    },
+    "listingsThatWereNeverJobs": {
+      "title": "469 vacatures die nooit echte vacatures waren",
+      "description": "111 bedrijven hadden bij één wervingssysteem een proefaccount geopend en er daarna nooit iets mee gedaan, en elke vacature op die accounts was de voorbeelddata van het systeem zelf — steeds dezelfde zes verzonnen functies, “Head of DEI – Belfast”, “Marketing Manager”, “Customer Service Rep”. Ze stonden onder echte bedrijfsnamen, dus de controles die we op nieuwe borden uitvoeren hadden geen reden om ze tegen te houden; alleen de inhoud was nep. Alle 469 zijn verwijderd, en onze toelatingscontrole leest nu de vacatures zelf in plaats van te vertrouwen op de naam op de deur. Borden die voorbeelddata mengen met echte openstaande functies hebben we bewust met rust gelaten."
+    },
+    "didYouMeanSuggestions": {
+      "title": "Bedoelde je…?",
+      "description": "Zoeken op “manger” gaf 101 vacatures, stuk voor stuk een typefout van de werkgever zelf voor “manager” — en omdat het echte treffers waren, sloeg de spellingsredding die typefouten normaal opvangt nooit aan. Zoeken op “Krankenschwester” (Duits voor verpleegkundige) vond één enkele vacature, terwijl er 68 Duitstalige zorgfuncties op het bord stonden, opgeborgen onder een ander woord. Bij allebei staat nu een suggestie boven de resultaten, met één klik te volgen. De resultaten zelf blijven ongemoeid: er wordt niets opnieuw gerangschikt en geen enkel filter wordt verbreed, dus bedoelde je precies wat je intypte, dan verlies je niets."
+    },
+    "searchSaysHowManyItFound": {
+      "title": "Verkeerd gespelde zoekopdrachten noemden geen aantal treffers",
+      "description": "Bij sommige verkeerd gespelde zoekopdrachten toonden we je een pagina met resultaten zonder totaal ernaast, zelfs als we al wisten dat er minstens zestig vacatures matchten. Een leeg getal leest als een schouderophalen. Die zoekopdrachten zeggen nu “Showing 38 of 60+” — een ondergrens die we kunnen bewijzen, in plaats van een exact getal dat we niet kunnen bewijzen."
+    },
+    "sameJobListedSeveralTimes": {
+      "title": "Dezelfde vacature stond tot vijf keer apart op het bord",
+      "description": "Een grote werkgever heeft vaak meerdere carrièresites — een hoofdsite, een voor starters, een per taal — en plaatst dezelfde functie op elk daarvan. Elke kopie kwam binnen met een net iets ander referentienummer, dus niets verbond ze en ze stonden er allemaal op. Gemeten over alle 295.823 Workday-vacatures op het bord: 8.993 functies verschenen op meer dan één site van hun eigen bedrijf, goed voor 9.246 dubbele vacatures, en bij één werkgever was ruim de helft van het bord dezelfde functies twee keer. Titels kwamen in 99,9% van de gevallen exact overeen en locaties in 100%. We houden nu één kopie van elke functie over."
+    },
+    "phantomExtraLocations": {
+      "title": "“Ook werving op 84 andere locaties” — voor een functie in één stad",
+      "description": "Als meerdere kopieën van dezelfde functie bij dezelfde werkgever tot één kaart worden samengevouwen, vertelde die kaart je op hoeveel locaties er verder nog werd geworven. Hij telde de kopieën, niet de plaatsen. Eén functie in Kyiv die 85 keer was geplaatst, las als 84 extra locaties, en 2,4% van de samengevouwen kaarten claimde locaties die niet bestonden. Kaarten tellen nu de verschillende plaatsen, en melden het aantal functies apart — 85 openstaande functies in één stad is echte werving, en dat is iets heel anders dan 85 steden."
+    },
+    "twoCompaniesOneName": {
+      "title": "Twee bedrijven zonder enig verband onder één naam",
+      "description": "Twee verschillende bedrijven die Flex heten — het ene een fintechbedrijf, het andere een fabrikant — waren in het werkgeversfilter samengevoegd tot één vermelding, dus wie het ene koos, kreeg de vacatures van het andere te zien, zonder ook maar enige overlap ertussen. 52 werkgeversnamen en 4.575 vacatures verkeerden in die staat. Werkgevers worden nu gematcht op het wervingsaccount achter de naam, niet op de naam alleen. Is het bewijs dubbelzinnig, dan laten we nu twee vermeldingen staan in plaats van samen te voegen: een naam twee keer zien is een veel kleiner probleem dan een filter van het ene bedrijf dat je de vacatures van het andere voorschotelt."
+    },
+    "moreJobsAnswerCategoryFilter": {
+      "title": "22.000 vacatures extra reageren nu op een categoriefilter",
+      "description": "Vacatures waarvan we het vakgebied niet uit de titel konden lezen, belandden op een stapel “other” die geen enkel categoriefilter kon bereiken — een verpleegkundige of een elektricien op die stapel was onzichtbaar voor wie door zorg of vakmanschap bladerde. We hebben de hele stapel doorgemeten en 108 gecontroleerde titelpatronen toegevoegd: maatschappelijk werkers, docenten en lectoren, inspecteurs, calculatoren, planners, ERP-consultants, functies in salons en beauty, en een grote set functies geschreven in het Duits, Frans, Nederlands, Pools, Zweeds en Fins. Elk patroon moest het winnen van elke concurrerende lezing voordat het live ging, en een paar veelbelovende zijn afgevallen omdat ze te vaak fout zaten. De stapel is gedaald van 142.389 vacatures naar 120.259."
+    },
     "searchCouldNotSeeShortWords": {
       "title": "Zoeken op “IT” gaf 18 vacatures van de 4.145",
       "description": "Onze zoekindex gooide heel korte en heel gewone woorden stilletjes weg voordat er iets werd opgeslagen — “IT” stond er dus helemaal niet in, en zoeken leverde een handvol vacatures op tegenover de 4.145 die we echt hebben. Dezelfde tekortkoming verborg resultaten voor wie zocht op “geen ervaring”, “nu aannemen” of een bedrijfsnaam die een alledaags woord is. Korte woorden worden nu goed geïndexeerd, en “IT” geeft een volle pagina echte IT-vacatures."

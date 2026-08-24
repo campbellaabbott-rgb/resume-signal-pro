@@ -1,5 +1,49 @@
 {
   "changelogEntries": {
+    "jobDescriptionsCutShort": {
+      "title": "Las descripciones de empleo se cortaban a mitad de frase",
+      "description": "Solo guardábamos los primeros 4.000 caracteres de la descripción de un empleo, y alrededor de una cuarta parte de las ofertas son más largas que eso — así que el texto se cortaba sin más, casi siempre a mitad de frase. Comparamos 24 ofertas truncadas con la propia página del empleador para ver qué faltaba: todo corte de más de un párrafo se llevaba los requisitos o la titulación exigida, y como las ofertas de Greenhouse y Lever ponen el rango salarial justo al final, el salario también se perdía a menudo. En una de ellas, el rango salarial existía únicamente en la parte que estábamos tirando. Ahora guardamos el triple de texto, lo que cubre íntegras alrededor del 88% de las ofertas. Las ofertas ya publicadas se van completando a medida que se actualizan en los próximos días."
+    },
+    "fortyThousandJobsNoDescription": {
+      "title": "Unos 42.000 empleos no traían ninguna descripción",
+      "description": "Tres sistemas de contratación explicaban unas 42.000 ofertas que llegaban sin nada que leer: veías el título y el empleador, y nada más. Cada uno por un motivo distinto. iCIMS enviaba la descripción completa con cada oferta y nosotros la descartábamos. Con Rippling habíamos mirado la página de su portal de empleo, comprobamos correctamente que allí no había descripción y dimos el proveedor por perdido — sin mirar la página de la oferta en sí, que lleva el texto entero. Con Breezy el texto siempre estuvo al alcance y nuestro proceso de relleno de descripciones sencillamente nunca llegaba tan abajo en su cola: había hecho unos diez intentos frente a un atasco de once mil empleos. Los tres están ya conectados, y el orden de relleno rota para que ningún sistema espere indefinidamente detrás de otro. Rippling está prácticamente terminado: quedan 177 ofertas de 11.862."
+    },
+    "payRangesNowRead": {
+      "title": "El salario estaba impreso en la oferta, pero no llegaba a los filtros",
+      "description": "Más de 17.000 ofertas mostraban en su propio texto un rango salarial que ni el filtro de salario ni la ordenación por salario sabían leer, así que se comportaban como si esos empleos no dijeran nada sobre dinero. Dos causas distintas. El salario por hora escrito como lo escribe Workday —«$29.20 an hour», o simplemente «$22.00 – $24.00», sin nombrar ningún periodo— no se reconocía como tarifa. Y las líneas de salario en las que el guion llegaba como un código de formato en lugar de como un guion no coincidían nunca. Ambas se leen ya correctamente. Cuando la moneda y la cifra solo pueden significar una tarifa por hora, la convertimos; cuando la cifra es genuinamente ambigua, seguimos sin decir nada en vez de adivinar."
+    },
+    "newMexicoIsNotMexico": {
+      "title": "Los empleos de Albuquerque estaban archivados bajo México",
+      "description": "251 empleos ubicados en Nuevo México constaban como si estuvieran en México, porque nuestro lector de ubicaciones encontraba la palabra «México» dentro de «Nuevo México» antes de consultar la lista de estados de EE. UU. — incluso en ofertas que escribían «US» justo delante. Rompía el filtro de país en las dos direcciones: filtrar por Estados Unidos ocultaba esos empleos, y filtrar por México los mostraba. Todas las ofertas afectadas están corregidas. También revisamos los estados con más papeletas de caer en la misma trampa —California, Colorado, Indiana y Delaware comparten abreviatura con un código de país— y, en más de 16.000 ofertas, Nuevo México era el único caso real."
+    },
+    "listingsThatWereNeverJobs": {
+      "title": "469 ofertas que nunca fueron empleos reales",
+      "description": "111 empresas habían abierto una cuenta de prueba en un sistema de contratación y nunca la llegaron a poner en marcha, y todas las ofertas de esas cuentas eran los datos de ejemplo del propio sistema: los mismos seis puestos inventados repetidos una y otra vez, «Head of DEI – Belfast», «Marketing Manager», «Customer Service Rep». Estaban bajo nombres de empresas reales, así que las comprobaciones que hacemos con los portales nuevos no tenían motivo para frenarlas; lo único falso era el contenido. Las 469 están eliminadas, y nuestra comprobación de entrada lee ahora las propias ofertas en lugar de fiarse del nombre de la puerta. Los portales que mezclan datos de ejemplo con vacantes genuinas se han dejado en paz a propósito."
+    },
+    "didYouMeanSuggestions": {
+      "title": "¿Quisiste decir…?",
+      "description": "Buscar «manger» devolvía 101 ofertas, todas ellas con la misma errata del propio empleador: «manger» en lugar de «manager» — y, como eran coincidencias genuinas, el rescate ortográfico que normalmente atrapa las erratas no se activaba nunca. Buscar «Krankenschwester» (enfermera, en alemán) encontraba un único empleo mientras el tablón tenía 68 puestos de enfermería en alemán archivados bajo otra palabra. Ambas búsquedas muestran ahora una sugerencia de un clic encima de los resultados. Los resultados en sí quedan intactos: no se reordena nada ni se amplía ningún filtro, así que, si querías decir exactamente lo que escribiste, no pierdes nada."
+    },
+    "searchSaysHowManyItFound": {
+      "title": "Las búsquedas con erratas no decían cuántos empleos coincidían",
+      "description": "En algunas búsquedas mal escritas te mostrábamos una página de resultados sin ningún total al lado, incluso cuando ya sabíamos que coincidían al menos sesenta empleos. Un número en blanco se lee como un encogimiento de hombros. Esas búsquedas dicen ahora «Showing 38 of 60+» (mostrando 38 de más de 60): un mínimo que podemos demostrar, en lugar de una cifra exacta que no podemos."
+    },
+    "sameJobListedSeveralTimes": {
+      "title": "El mismo empleo listado hasta cinco veces distintas",
+      "description": "Un gran empleador suele tener varios portales de empleo —uno principal, uno para recién titulados, uno por idioma— y publica la misma vacante en todos. Cada copia llegaba con un número de referencia ligeramente distinto, así que nada las conectaba y todas se listaban. Medido sobre las 295.823 ofertas de Workday del tablón: 8.993 vacantes aparecían en más de uno de los portales de su propia empresa, sumando 9.246 ofertas duplicadas, y en un empleador más de la mitad de lo que había en el tablón eran los mismos empleos dos veces. Los títulos coincidían exactamente en el 99,9% de los casos y las ubicaciones en el 100%. Ahora conservamos una sola copia de cada vacante."
+    },
+    "phantomExtraLocations": {
+      "title": "«También contrata en 84 ubicaciones más» — para un empleo en una sola ciudad",
+      "description": "Cuando varias copias del mismo puesto en el mismo empleador se agrupan en una sola tarjeta, esa tarjeta te decía en cuántas ubicaciones más se estaba contratando. Contaba las copias, no los lugares. Un único puesto en Kiev publicado 85 veces se leía como 84 ubicaciones extra, y el 2,4% de las tarjetas agrupadas afirmaba tener ubicaciones que no existían. Las tarjetas cuentan ahora los lugares distintos e indican el número de vacantes por separado: 85 vacantes en una ciudad es contratación real, y es un hecho distinto de 85 ciudades."
+    },
+    "twoCompaniesOneName": {
+      "title": "Dos empresas sin relación archivadas bajo un mismo nombre",
+      "description": "Dos empresas distintas llamadas Flex —una de tecnología financiera y otra fabricante— estaban fundidas en una sola entrada del filtro de empleador, así que elegir una te mostraba los empleos de la otra, sin ningún solapamiento entre ambas. 52 nombres de empleador y 4.575 ofertas estaban en ese estado. Los empleadores se cotejan ahora por la cuenta de contratación que hay detrás del nombre, no solo por el nombre. Cuando la evidencia es ambigua, dejamos dos entradas en vez de fusionar: ver un nombre dos veces es un problema mucho menor que un filtro de una empresa que te entrega los empleos de otra."
+    },
+    "moreJobsAnswerCategoryFilter": {
+      "title": "22.000 empleos más responden ya a un filtro de categoría",
+      "description": "Los empleos cuyo campo no podíamos leer en el título quedaban en un montón de «other» (otros) al que ningún filtro de categoría llegaba: una enfermera o un electricista en ese montón eran invisibles para quien navegaba por sanidad o por los oficios especializados. Medimos el montón entero y añadimos 108 patrones de título comprobados: trabajadores sociales, profesorado y docentes, inspectores, presupuestadores, planificadores, consultores de ERP, puestos de peluquería y estética, y un buen conjunto de puestos escritos en alemán, francés, neerlandés, polaco, sueco y finés. Cada patrón tuvo que defenderse frente a todas las lecturas rivales antes de entrar, y unos cuantos que prometían se descartaron por fallar demasiado a menudo. El montón ha bajado de 142.389 ofertas a 120.259."
+    },
     "searchCouldNotSeeShortWords": {
       "title": "Buscar «IT» devolvía 18 empleos de 4.145",
       "description": "Nuestro índice de búsqueda descartaba en silencio las palabras muy cortas y muy comunes antes de guardar nada: «IT» no estaba en él, y buscarlo devolvía un puñado de empleos frente a los 4.145 que realmente tenemos. La misma laguna ocultaba resultados a quien buscaba «sin experiencia», «contratando ahora» o una empresa cuyo nombre es una palabra corriente. Ahora las palabras cortas se indexan bien, y «IT» devuelve una página completa de empleos reales de IT."

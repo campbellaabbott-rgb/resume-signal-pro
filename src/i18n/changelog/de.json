@@ -1,5 +1,49 @@
 {
   "changelogEntries": {
+    "jobDescriptionsCutShort": {
+      "title": "Stellenbeschreibungen brachen mitten im Satz ab",
+      "description": "Wir haben nur die ersten 4.000 Zeichen einer Stellenbeschreibung gespeichert, und rund ein Viertel aller Anzeigen ist länger als das — der Text hörte also einfach auf, meist mitten im Satz. Wir haben 24 abgeschnittene Anzeigen mit der Seite des Arbeitgebers selbst verglichen, um zu sehen, was fehlte: Jeder Schnitt, der länger als ein Absatz war, entfernte die Anforderungen oder Qualifikationen, und weil Greenhouse und Lever die Gehaltsspanne ganz unten platzieren, fiel häufig auch das Gehalt weg. Bei einer Anzeige stand die Gehaltsspanne ausschließlich in dem Teil, den wir weggeworfen haben. Wir behalten jetzt dreimal so viel Text, was etwa 88 % der Anzeigen vollständig abdeckt. Bestehende Anzeigen füllen sich in den nächsten Tagen mit jeder Aktualisierung nach."
+    },
+    "fortyThousandJobsNoDescription": {
+      "title": "Rund 42.000 Stellen hatten überhaupt keine Beschreibung",
+      "description": "Auf drei Bewerbersysteme entfielen rund 42.000 Anzeigen, die ohne jeden Text bei uns ankamen — Titel und Arbeitgeber waren zu sehen, sonst nichts. Jedes hatte einen anderen Grund. iCIMS lieferte die vollständige Beschreibung mit jeder Anzeige mit, und wir haben sie verworfen. Bei Rippling hatten wir die Seite der Jobbörse geprüft, dort korrekt keine Beschreibung gefunden und den Anbieter abgehakt — ohne die Stellenseite selbst zu prüfen, die den ganzen Text trägt. Bei Breezy war der Text immer erreichbar, und unser Job zum Nachfüllen der Beschreibungen kam in seiner Warteschlange schlicht nie so weit nach unten: Auf einen Rückstand von elftausend Stellen kamen etwa zehn Versuche. Alle drei sind jetzt angebunden, und die Reihenfolge beim Nachfüllen rotiert, sodass kein System unbegrenzt hinter einem anderen wartet. Rippling ist schon so gut wie fertig: noch 177 Anzeigen von 11.862."
+    },
+    "payRangesNowRead": {
+      "title": "Das Gehalt stand in der Anzeige, fehlte aber in den Filtern",
+      "description": "Mehr als 17.000 Anzeigen zeigten in ihrem eigenen Text eine Gehaltsspanne, die der Gehaltsfilter und die Gehaltssortierung nicht lesen konnten — beide taten also so, als sagten diese Stellen nichts über Geld. Zwei getrennte Ursachen. Stundenlöhne in der Schreibweise von Workday — „$29.20 an hour“ oder schlicht „$22.00 – $24.00“ ganz ohne genannten Zeitraum — wurden nicht als Stundensatz erkannt. Und Gehaltszeilen, in denen der Gedankenstrich als Formatierungscode statt als Strich ankam, passten überhaupt nie. Beides wird jetzt korrekt gelesen. Wo Währung und Betrag nur einen Stundensatz bedeuten können, rechnen wir um; wo die Zahl wirklich mehrdeutig ist, sagen wir weiterhin nichts, statt zu raten."
+    },
+    "newMexicoIsNotMexico": {
+      "title": "Stellen in Albuquerque liefen unter Mexiko",
+      "description": "251 Stellen in New Mexico waren als in Mexiko liegend erfasst, weil unsere Standorterkennung das Wort „Mexico“ innerhalb von „New Mexico“ fand, bevor sie die Liste der US-Bundesstaaten prüfte — auch bei Anzeigen, in denen unmittelbar davor „US“ ausgeschrieben stand. Das brach den Länderfilter in beide Richtungen: Wer auf die Vereinigten Staaten filterte, sah diese Stellen nicht, wer auf Mexiko filterte, bekam sie angezeigt. Jede betroffene Anzeige ist korrigiert. Wir haben außerdem die Bundesstaaten geprüft, die am ehesten in dieselbe Falle laufen — Kalifornien, Colorado, Indiana und Delaware teilen ihr Kürzel jeweils mit einem Ländercode — und über mehr als 16.000 Anzeigen hinweg war New Mexico der einzige echte Fall."
+    },
+    "listingsThatWereNeverJobs": {
+      "title": "469 Anzeigen, die nie echte Stellen waren",
+      "description": "111 Unternehmen hatten bei einem Bewerbersystem ein Testkonto eröffnet und nie in Betrieb genommen, und jede Anzeige auf diesen Konten stammte aus den Beispieldaten des Systems selbst — dieselben sechs erfundenen Rollen immer wieder, „Head of DEI – Belfast“, „Marketing Manager“, „Customer Service Rep“. Sie liefen unter echten Firmennamen, also hatten unsere Prüfungen für neue Boards keinen Anlass, sie zu stoppen; falsch war allein der Inhalt. Alle 469 sind entfernt, und unsere Aufnahmeprüfung liest jetzt die Anzeigen selbst, statt dem Namen am Türschild zu vertrauen. Boards, die Beispieldaten mit echten offenen Stellen mischen, haben wir bewusst in Ruhe gelassen."
+    },
+    "didYouMeanSuggestions": {
+      "title": "Meinten Sie …?",
+      "description": "Die Suche nach „manger“ lieferte 101 Anzeigen — jede einzelne davon ein Tippfehler des Arbeitgebers selbst: „manager“ ohne das mittlere a. Und weil das echte Treffer waren, sprang die Rechtschreibkorrektur, die Tippfehler sonst auffängt, gar nicht erst an. Die Suche nach „Krankenschwester“ fand eine einzige Stelle, während auf dem Board 68 deutschsprachige Pflegestellen unter einem anderen Wort lagen. Beide Suchen zeigen jetzt über den Ergebnissen einen Vorschlag, der mit einem Klick übernommen wird. Die Ergebnisse selbst bleiben unangetastet: Nichts wird umsortiert und kein Filter geweitet — wenn Sie genau das meinten, was Sie getippt haben, verlieren Sie nichts."
+    },
+    "searchSaysHowManyItFound": {
+      "title": "Verschriebene Suchen nannten nicht, wie viele Stellen passten",
+      "description": "Bei manchen verschriebenen Suchanfragen zeigten wir Ihnen eine Seite mit Ergebnissen, aber keine Gesamtzahl daneben — selbst in Fällen, in denen wir bereits wussten, dass mindestens sechzig Stellen passten. Eine leere Zahl wirkt wie ein Achselzucken. Diese Suchen sagen jetzt „Showing 38 of 60+“ (38 von mehr als 60 angezeigt) — eine Untergrenze, die wir belegen können, statt einer exakten Zahl, die wir nicht belegen können."
+    },
+    "sameJobListedSeveralTimes": {
+      "title": "Dieselbe Stelle bis zu fünfmal einzeln ausgeschrieben",
+      "description": "Ein großer Arbeitgeber betreibt oft mehrere Karriereseiten — eine allgemeine, eine für Berufseinsteiger, eine je Sprache — und veröffentlicht dieselbe offene Stelle auf jeder davon. Jede Kopie kam mit einer leicht abweichenden Referenznummer an, also verband nichts sie miteinander und alle wurden gelistet. Gemessen über alle 295.823 Workday-Anzeigen auf dem Board: 8.993 offene Stellen erschienen auf mehr als einer Seite ihres eigenen Unternehmens und brachten 9.246 doppelte Anzeigen mit sich, und bei einem Arbeitgeber war mehr als die Hälfte seiner Anzeigen dieselbe Stelle doppelt. Die Titel stimmten in 99,9 % der Fälle exakt überein, die Standorte in 100 %. Wir behalten jetzt eine Kopie je offener Stelle."
+    },
+    "phantomExtraLocations": {
+      "title": "„Stellt auch an 84 weiteren Standorten ein“ — für eine Stelle in einer Stadt",
+      "description": "Wenn mehrere Kopien derselben Rolle beim selben Arbeitgeber zu einer Karte zusammengefasst werden, nannte diese Karte, an wie vielen weiteren Standorten eingestellt wird. Gezählt wurden aber die Kopien, nicht die Orte. Eine einzige Rolle in Kiew, 85-mal ausgeschrieben, las sich als 84 zusätzliche Standorte, und 2,4 % der zusammengefassten Karten behaupteten Standorte, die es gar nicht gab. Karten zählen jetzt die unterschiedlichen Orte und nennen die Zahl der offenen Stellen getrennt davon — 85 offene Stellen in einer Stadt sind echte Einstellungen, und das ist etwas anderes als 85 Städte."
+    },
+    "twoCompaniesOneName": {
+      "title": "Zwei unabhängige Unternehmen unter einem Namen geführt",
+      "description": "Zwei verschiedene Unternehmen namens Flex — eines aus der Finanztechnologie, eines ein Hersteller — waren im Arbeitgeberfilter zu einem einzigen Eintrag verschmolzen, sodass die Wahl des einen Ihnen die Stellen des anderen zeigte, ohne jede Überschneidung zwischen beiden. 52 Arbeitgebernamen und 4.575 Anzeigen waren in diesem Zustand. Arbeitgeber werden jetzt über das Konto im Bewerbersystem hinter dem Namen abgeglichen, nicht über den Namen allein. Wo die Belege mehrdeutig sind, lassen wir jetzt lieber zwei Einträge stehen, statt zusammenzuführen: Einen Namen zweimal zu sehen ist ein weit kleineres Problem, als wenn der Filter des einen Unternehmens Ihnen die Stellen eines anderen ausliefert."
+    },
+    "moreJobsAnswerCategoryFilter": {
+      "title": "22.000 weitere Stellen reagieren jetzt auf einen Kategoriefilter",
+      "description": "Stellen, deren Bereich wir dem Titel nicht entnehmen konnten, lagen auf einem Stapel „other“ (Sonstiges), den kein Kategoriefilter erreichte — eine Pflegekraft oder ein Elektriker auf diesem Stapel war für alle unsichtbar, die im Gesundheitswesen oder im Handwerk stöberten. Wir haben den gesamten Stapel vermessen und 108 geprüfte Titelmuster ergänzt: Sozialarbeit, Lehrende und Dozenten, Prüfer, Kalkulatoren, Disponenten, ERP-Beratung, Salon- und Beautyberufe sowie eine große Menge Rollen auf Deutsch, Französisch, Niederländisch, Polnisch, Schwedisch und Finnisch. Jedes Muster musste sich vor der Aufnahme gegen jede konkurrierende Lesart behaupten, und einige, die vielversprechend aussahen, haben wir verworfen, weil sie zu oft danebenlagen. Der Stapel ist von 142.389 Anzeigen auf 120.259 gesunken."
+    },
     "searchCouldNotSeeShortWords": {
       "title": "Die Suche nach „IT“ lieferte 18 von 4.145 Stellen",
       "description": "Unser Suchindex verwarf sehr kurze und sehr häufige Wörter, bevor überhaupt etwas gespeichert wurde – „IT“ war darin gar nicht enthalten, und die Suche danach lieferte eine Handvoll Stellen statt der 4.145, die wir tatsächlich haben. Dieselbe Lücke verbarg Treffer für „ohne Erfahrung“, „jetzt einstellen“ oder Firmennamen, die Alltagswörter sind. Kurze Wörter werden jetzt korrekt indexiert, und „IT“ liefert eine volle Seite echter IT-Stellen."

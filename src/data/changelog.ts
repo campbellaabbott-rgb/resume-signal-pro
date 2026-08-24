@@ -23,6 +23,17 @@ export interface ChangelogEntry {
 }
 
 export const changelog: ChangelogEntry[] = [
+  { id: "jobDescriptionsCutShort", date: "2026-08-24", tags: ["fixed", "improved"] },
+  { id: "fortyThousandJobsNoDescription", date: "2026-08-24", tags: ["fixed"] },
+  { id: "payRangesNowRead", date: "2026-08-24", tags: ["fixed", "improved"] },
+  { id: "newMexicoIsNotMexico", date: "2026-08-24", tags: ["fixed"] },
+  { id: "listingsThatWereNeverJobs", date: "2026-08-24", tags: ["fixed"] },
+  { id: "didYouMeanSuggestions", date: "2026-08-24", tags: ["new"] },
+  { id: "searchSaysHowManyItFound", date: "2026-08-24", tags: ["improved"] },
+  { id: "sameJobListedSeveralTimes", date: "2026-08-23", tags: ["fixed"] },
+  { id: "phantomExtraLocations", date: "2026-08-23", tags: ["fixed"] },
+  { id: "twoCompaniesOneName", date: "2026-08-23", tags: ["fixed"] },
+  { id: "moreJobsAnswerCategoryFilter", date: "2026-08-23", tags: ["improved"] },
   { id: "commonSearchesShowTheRealRole", date: "2026-08-22", tags: ["fixed", "improved"] },
   { id: "employerNamesFindTheirJobs", date: "2026-08-22", tags: ["fixed"] },
   { id: "searchCouldNotSeeShortWords", date: "2026-08-22", tags: ["fixed"] },

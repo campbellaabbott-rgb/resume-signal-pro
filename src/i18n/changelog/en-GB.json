@@ -1,5 +1,49 @@
 {
   "changelogEntries": {
+    "jobDescriptionsCutShort": {
+      "title": "Job descriptions stopped mid-sentence",
+      "description": "We only stored the first 4,000 characters of a job description, and roughly a quarter of listings are longer than that — so the text just stopped, usually in the middle of a sentence. We checked 24 cut-off listings against the employer's own page to see what was missing: every cut longer than a paragraph removed the requirements or qualifications, and because Greenhouse and Lever postings put the pay range at the very bottom, the salary was frequently cut off too. One listing's pay range existed only in the part we were throwing away. We now keep three times as much text, which covers about 88% of listings in full. Existing listings refill as they refresh over the next few days."
+    },
+    "fortyThousandJobsNoDescription": {
+      "title": "About 42,000 jobs had no description at all",
+      "description": "Three hiring systems accounted for roughly 42,000 listings that arrived with nothing to read — you could see the title and the employer, and nothing else. Each had a different reason. iCIMS sent the full description with every listing and we were discarding it. For Rippling we had checked the job board page, correctly found no description there, and written the vendor off — without checking the job page itself, which carries the whole text. For Breezy the text was always reachable and our description-filling job simply never reached that far down its queue, so it had made about ten attempts against an eleven-thousand-job backlog. All three are now wired in, and the filling order rotates so no system waits behind another indefinitely. Rippling is already all but complete: 177 listings left of 11,862."
+    },
+    "payRangesNowRead": {
+      "title": "Pay was printed on the listing but missing from the filters",
+      "description": "More than 17,000 listings displayed a pay range in their own text that the pay filter and the pay sort could not read, so they behaved as though those jobs said nothing about money. Two separate causes. Hourly pay written the way Workday writes it — “$29.20 an hour”, or simply “$22.00 – $24.00” with no pay period named at all — was not recognised as a rate. And pay lines where the dash arrived as a formatting code rather than a dash never matched at all. Both now read correctly. Where the currency and the amount can only mean an hourly rate we convert it; where the figure is genuinely ambiguous we still say nothing rather than guess."
+    },
+    "newMexicoIsNotMexico": {
+      "title": "Jobs in Albuquerque were filed under Mexico",
+      "description": "251 jobs located in New Mexico were recorded as being in Mexico, because our location reader found the word “Mexico” inside “New Mexico” before it checked the list of US states — including listings that spelled out “US” immediately beforehand. It broke the country filter in both directions: filtering to the United States hid those jobs, and filtering to Mexico showed them. Every affected listing has been corrected. We also checked the states most likely to hit the same trap — California, Colorado, Indiana and Delaware all share their abbreviation with a country code — and across more than 16,000 listings New Mexico was the only real case."
+    },
+    "listingsThatWereNeverJobs": {
+      "title": "469 listings that were never real jobs",
+      "description": "111 companies had opened a trial account with one hiring system and never launched it, and every listing on those accounts was the system's own sample data — the same six invented roles repeated over and over, “Head of DEI – Belfast”, “Marketing Manager”, “Customer Service Rep”. They were under real company names, so the checks we run on new boards had no reason to stop them; only the content was fake. All 469 are removed, and our intake check now reads the listings themselves rather than trusting the name on the door. Boards that mix sample data with genuine openings were deliberately left alone."
+    },
+    "didYouMeanSuggestions": {
+      "title": "Did you mean…?",
+      "description": "Searching “manger” returned 101 listings, every one an employer's own typo of “manager” — and because those were genuine matches, the spelling rescue that normally catches typos never triggered. Searching “Krankenschwester” — German for “nurse” — found a single job while the board held 68 German nursing roles filed under a different word. Both searches now show a one-click suggestion above the results. The results themselves are untouched: nothing is re-ordered and no filter is widened, so if you meant exactly what you typed, you lose nothing."
+    },
+    "searchSaysHowManyItFound": {
+      "title": "Misspelled searches would not say how many jobs matched",
+      "description": "On some misspelled searches we showed you a page of results with no total next to it, even in cases where we already knew at least sixty jobs matched. A blank number reads like a shrug. Those searches now say “Showing 38 of 60+” — a floor we can prove, rather than an exact figure we cannot."
+    },
+    "sameJobListedSeveralTimes": {
+      "title": "The same job listed up to five separate times",
+      "description": "A large employer often runs several career sites — a main one, a graduate one, one per language — and publishes the same opening to each. Every copy arrived with a slightly different reference number, so nothing connected them and all of them were listed. Measured across all 295,823 Workday listings on the board: 8,993 openings appeared on more than one of their own company's sites, adding 9,246 duplicate listings, and for one employer more than half the board was the same jobs twice. Titles matched exactly in 99.9% of cases and locations in 100%. We now keep one copy of each opening."
+    },
+    "phantomExtraLocations": {
+      "title": "“Also hiring in 84 more locations” — for a job in one city",
+      "description": "When several copies of the same role at the same employer are folded into one card, that card told you how many more locations were hiring. It was counting the copies, not the places. A single role in Kyiv posted 85 times read as 84 extra locations, and 2.4% of folded cards claimed locations that did not exist. Cards now count the distinct places, and report the number of openings separately — 85 openings in one city is real hiring, and it is a different fact from 85 cities."
+    },
+    "twoCompaniesOneName": {
+      "title": "Two unrelated companies filed under one name",
+      "description": "Two different companies called Flex — one a financial-technology firm, one a manufacturer — were merged into a single entry in the employer filter, so choosing one showed you the other's jobs, with no overlap between them at all. 52 employer names and 4,575 listings were in that state. Employers are now matched on the hiring account behind the name, not the name alone. Where the evidence is ambiguous we now leave two entries rather than merge: seeing a name twice is a much smaller problem than one company's filter handing you another company's jobs."
+    },
+    "moreJobsAnswerCategoryFilter": {
+      "title": "22,000 more jobs now answer a category filter",
+      "description": "Jobs whose field we could not read from the title sat in an “other” pile that no category filter could reach — a nurse or an electrician in that pile was invisible to anyone browsing healthcare or the trades. We measured the whole pile and added 108 checked title patterns: social workers, academics and lecturers, inspectors, estimators, schedulers, ERP consultants, salon and beauty roles, and a large set of roles written in German, French, Dutch, Polish, Swedish and Finnish. Each pattern had to be argued against every competing reading before it shipped, and a few that looked promising were dropped for being wrong too often. The pile has fallen from 142,389 listings to 120,259."
+    },
     "searchCouldNotSeeShortWords": {
       "title": "Searching for “IT” returned 18 jobs out of 4,145",
       "description": "Our search index quietly threw away very common and very short words before storing anything — so “IT” was not in it at all, and searching for it returned a handful of jobs against the 4,145 we actually hold. The same gap hid roles for anyone searching “no experience”, “hiring now” or a company whose name is an everyday word. Short words are now indexed properly, and “IT” returns a full page of real IT roles."
