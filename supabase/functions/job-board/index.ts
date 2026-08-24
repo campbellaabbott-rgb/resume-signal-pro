@@ -102,7 +102,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-24.14";
+const BUILD_VERSION = "2026-08-24.15";
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -547,7 +547,16 @@ async function fetchOracle(s: JobSource): Promise<{ items: unknown[]; raw: unkno
   return { items: all, raw: { items: all }, windowed: !exhausted, feedTotal };
 }
 
-async function fetchBoard(s: JobSource): Promise<{ jobs: JobPosting[]; raw: unknown; windowed?: boolean; feedTotal?: number } | null> {
+// onFail receives a COMPACT reason. The reason was already known here and
+// thrown away by `return null`, so every failure reached the operator as the
+// bare word "(vendor)" — 110 boards reported identically whether they were
+// deleted, rate-limited or slow. Diagnosing that cost an afternoon of probing
+// each board by hand against its own API, to recover information this
+// function had already computed and discarded.
+async function fetchBoard(
+  s: JobSource,
+  onFail?: (reason: string) => void,
+): Promise<{ jobs: JobPosting[]; raw: unknown; windowed?: boolean; feedTotal?: number } | null> {
   try {
     if (s.source === "oracle") {
       const { items, raw, windowed, feedTotal } = await fetchOracle(s);
@@ -689,7 +698,20 @@ async function fetchBoard(s: JobSource): Promise<{ jobs: JobPosting[]; raw: unkn
     }
     return { jobs, raw };
   } catch (e) {
-    console.warn(`[JOB-BOARD] board ${s.source}:${s.token} failed:`, String(e).slice(0, 100));
+    const raw = String((e as Error)?.message ?? e);
+    // Classify into something countable. An operator needs to tell "the board
+    // is gone" from "the vendor throttled us" at a glance, because those have
+    // opposite remedies: one is a registry removal, the other a backoff.
+    const http = raw.match(/HTTP (\d{3})/)?.[1];
+    const reason = http
+      ? `HTTP ${http}`
+      : /abort|timed? ?out|deadline/i.test(raw)
+        ? "timeout"
+        : /dns|resolve|certificate|tls|connection|network/i.test(raw)
+          ? "network"
+          : raw.slice(0, 40);
+    console.warn(`[JOB-BOARD] board ${s.source}:${s.token} failed:`, raw.slice(0, 100));
+    onFail?.(reason);
     return null;
   }
 }
@@ -1259,9 +1281,10 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
         // Dormant, not due for recheck: skip the dead fetch (no postings to gain,
         // ~20s of FETCH_TIMEOUT to lose). Not counted as attempted below.
         if (skipTokens.has(s.token)) continue;
-        const r = await fetchBoard(s);
+        let failReason = "";
+        const r = await fetchBoard(s, (m) => { failReason = m; });
         if (!r) {
-          failed.push(`${s.name} (vendor)`);
+          failed.push(`${s.name} (vendor${failReason ? `: ${failReason}` : ""})`);
           continue;
         }
         // ONE REQUISITION, ONE POSTING — ACROSS A TENANT'S CAREER SITES.
