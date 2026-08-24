@@ -678,6 +678,20 @@ interface GreenhouseJob {
   departments?: Array<{ name?: string }>;
 }
 
+// A PLACE NAME IS NOT A LATITUDE. Some Greenhouse employers append the
+// geocode to the location string, and the board rendered it verbatim:
+// "Waipahu, HI 96797 | 21.396369637 | -158.01142287". Measured 2026-08-24:
+// 398 of 1,000 sampled pipe-bearing locations carry this suffix, every one of
+// them Greenhouse.
+//
+// The pattern is narrow ON PURPOSE. A pipe in a location is usually REAL —
+// "Latin & South America | Remote", "3 Locations   |   PT-Orlando" — so only
+// a trailing run of decimal numbers is removed, never the separator itself.
+const COORD_SUFFIX = /\s*\|\s*-?\d{1,3}\.\d{3,}(?:\s*\|\s*-?\d{1,3}\.\d{3,})?\s*$/;
+export function stripCoordinateSuffix(location: string): string {
+  return location.replace(COORD_SUFFIX, "").trim();
+}
+
 export function normalizeGreenhouse(raw: { jobs?: GreenhouseJob[] }, company: string, token: string): JobPosting[] {
   // AN APPLY LINK SHARED BY FIVE TITLES IS A BOARD INDEX, NOT A JOB.
   //
@@ -701,7 +715,7 @@ export function normalizeGreenhouse(raw: { jobs?: GreenhouseJob[] }, company: st
     titlesPerUrl.get(u)!.add(j.title ?? "");
   }
   return (raw.jobs ?? []).map((j) => {
-    const location = j.location?.name ?? "";
+    const location = stripCoordinateSuffix(j.location?.name ?? "");
     const indexUrl = (titlesPerUrl.get(j.absolute_url ?? "")?.size ?? 0) >= 5;
     return {
       id: `greenhouse:${token}:${j.id}`,
