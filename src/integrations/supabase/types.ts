@@ -1342,6 +1342,30 @@ export type Database = {
         }
         Relationships: []
       }
+      job_board_aged_out: {
+        Row: {
+          aged_at: string
+          company_token: string | null
+          id: string
+          posted_at: string | null
+          source: string | null
+        }
+        Insert: {
+          aged_at?: string
+          company_token?: string | null
+          id: string
+          posted_at?: string | null
+          source?: string | null
+        }
+        Update: {
+          aged_at?: string
+          company_token?: string | null
+          id?: string
+          posted_at?: string | null
+          source?: string | null
+        }
+        Relationships: []
+      }
       job_board_closure_rollup: {
         Row: {
           category: string
