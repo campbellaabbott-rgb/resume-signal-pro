@@ -102,7 +102,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-24.4";
+const BUILD_VERSION = "2026-08-24.5";
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -4016,14 +4016,36 @@ Deno.serve(async (req) => {
       let cursor = Number(sv.cursor) || 0;
       const hosts = sv.hosts ?? {};
       if (cursor === 0 || list.length === 0) {
-        // supabase-js caps un-ranged reads at 1,000 rows, and the first live
-        // tick returned exactly 1,000 of the ~1,400-host census — the bottom
-        // ~400 hosts (the smallest employers) would silently never be swept.
-        // range() lifts the cap; the current cycle finishes on its pinned
-        // list and the next census pull picks up the full set.
-        const { data: census, error: cErr } = await client.rpc("get_apply_hosts").range(0, 4999);
-        if (cErr || !Array.isArray(census)) return json({ error: "host census unavailable" }, 503);
-        list = (census as Array<{ host: string; postings: number }>).filter((h) => h.host && h.host.includes("."));
+        // PAGED, because the 1,000-row ceiling is the SERVER's, not the
+        // client's. The first live tick returned exactly 1,000 of the
+        // ~1,400-host census and I read that as supabase-js's un-ranged
+        // default, so range(0, 4999) went out as the fix. It changed nothing:
+        // PostgREST enforces its own max-rows on every response, RPCs
+        // included, and asking a 570k-row table for 2,000 rows still returns
+        // 1,000 (measured 2026-08-24). A round number that survives a fix is
+        // the fix being wrong, not the number being real. The bottom ~400
+        // hosts — the smallest employers, the ones likeliest to let a domain
+        // lapse — were still never swept.
+        //
+        // Pages until a short one arrives. The RPC's ORDER BY carries a
+        // tiebreak on host so the page boundary is deterministic; the Map
+        // dedupes anyway, because a census that shifts under paging must
+        // cost a duplicate probe, never a silently skipped host.
+        const seen = new Map<string, { host: string; postings: number }>();
+        for (let from = 0; from < 20_000; from += 1_000) {
+          const { data: page, error: cErr } = await client.rpc("get_apply_hosts").range(from, from + 999);
+          if (cErr || !Array.isArray(page)) {
+            if (from === 0) return json({ error: "host census unavailable" }, 503);
+            console.log(`[JOB-BOARD] host census truncated at ${seen.size} hosts: ${cErr?.message ?? "non-array page"}`);
+            break;
+          }
+          for (const h of page as Array<{ host: string; postings: number }>) {
+            if (h.host && h.host.includes(".")) seen.set(h.host, h);
+          }
+          if (page.length < 1_000) break;
+        }
+        const census = [...seen.values()];
+        list = census;
         cursor = 0;
       }
       const slice = list.slice(cursor, cursor + SLICE);

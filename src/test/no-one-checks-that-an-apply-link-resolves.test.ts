@@ -65,10 +65,15 @@ describe("no one checks that an apply link resolves — now the sweep does", () 
     expect(ACTION_CODE).toMatch(/setTimeout\(\(\) => ctrl\.abort\(\), 6_000\)/);
     expect(ACTION_CODE).not.toMatch(/fetchWithTimeout/);
     expect(ACTION_CODE).toMatch(/const SLICE = 200;/);
-    // The census read must carry an explicit range: supabase-js caps
-    // un-ranged reads at 1,000 rows and the live census is ~1,400 hosts —
-    // measured on the first deployed tick, which returned exactly 1,000.
-    expect(ACTION_CODE).toMatch(/rpc\("get_apply_hosts"\)\.range\(0, 4999\)/);
+    // The census must PAGE. The 1,000-row ceiling is PostgREST's own
+    // max-rows, applied to every response including RPCs, so a single
+    // wider range() cannot lift it — that was shipped as a fix and
+    // measured to change nothing (a 570k-row table still returns 1,000
+    // when asked for 2,000). Pin the loop, not a range literal.
+    expect(ACTION_CODE).toMatch(/for \(let from = 0; from < 20_000; from \+= 1_000\)/);
+    expect(ACTION_CODE).toMatch(/rpc\("get_apply_hosts"\)\.range\(from, from \+ 999\)/);
+    expect(ACTION_CODE).toMatch(/if \(page\.length < 1_000\) break;/);
+    expect(ACTION_CODE).not.toMatch(/range\(0, 4999\)/);
     expect(ACTION_CODE).toMatch(/lockAge < 5 \* 60_000/);
   });
 
@@ -89,6 +94,20 @@ describe("no one checks that an apply link resolves — now the sweep does", () 
     expect(sql).toMatch(/REVOKE EXECUTE ON FUNCTION public\.get_apply_hosts\(\) FROM PUBLIC;/);
     expect(sql).toMatch(/REVOKE EXECUTE ON FUNCTION public\.get_apply_hosts\(\) FROM anon;/);
     expect(sql).toMatch(/GRANT EXECUTE ON FUNCTION public\.get_apply_hosts\(\) TO service_role;/);
+  });
+
+  it("the census orders totally, so a paged read cannot skip a host", () => {
+    // Ordering by posting count alone leaves the long tail (a wall of 1s and
+    // 2s) free to reorder between calls, which under paging puts a host on
+    // two pages or on none. The tiebreak makes page N+1 start where page N
+    // ended; the caller dedupes too, because a duplicate probe costs one
+    // HEAD and a skipped host costs a dead apply button nobody notices.
+    const dir = readdirSync(MIG_DIR).filter((f) => f.includes("get_apply_hosts") || f.includes("apply_link_resolves") || f.includes("paged_census"));
+    const newest = dir.sort().pop()!;
+    const sql = stripSql(readFileSync(resolve(MIG_DIR, newest), "utf8"));
+    expect(newest, "the newest get_apply_hosts definition should be the paged-census one").toContain("paged_census");
+    expect(sql).toMatch(/ORDER BY 2 DESC, 1 ASC;/);
+    expect(sql).toMatch(/REVOKE EXECUTE ON FUNCTION public\.get_apply_hosts\(\) FROM anon;/);
   });
 
   it("the census excludes vendor-canonical hosts — their uptime is the vendor's", () => {
