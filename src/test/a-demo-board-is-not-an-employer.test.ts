@@ -139,6 +139,18 @@ describe("a high-water mark above the real catalog turns the prune off", () => {
     expect(highWaterMigs.length, "the migration matcher has rotted").toBeGreaterThan(0);
   });
 
+  it("the guard's own state is published, so the next off-by-one is visible", () => {
+    // The 31,709-vs-31,708 defect could not be confirmed from outside at all:
+    // job_board_meta is service-role-only, so the only evidence that the
+    // prune had stopped was a log line. status now carries the mark and a
+    // derived boolean, which is what made this verifiable.
+    const FN = readFileSync(resolve(__dirname, "../../supabase/functions/job-board/index.ts"), "utf8");
+    const code = FN.replace(/\/\*[\s\S]*?\*\//g, "").split("\n").map((l) => l.replace(/\/\/.*$/, "")).join("\n");
+    expect(code).toMatch(/catalogHighwater:/);
+    expect(code).toMatch(/orphanPruneBlocked: JOB_SOURCES\.length < /);
+    expect(code).toMatch(/eq\("k", "catalog_highwater"\)/);
+  });
+
   it("the LAST clamp in migration order is at or below the real catalog", () => {
     // The NET clamp is what production holds — migrations run in filename
     // order and a later one corrects an earlier one, so the last is the

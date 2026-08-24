@@ -102,7 +102,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-24.3";
+const BUILD_VERSION = "2026-08-24.4";
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -4102,7 +4102,7 @@ Deno.serve(async (req) => {
       // bundle, so a stale/failed publish is visible in ONE call instead of being
       // inferred from posting counts over hours (the rung-2 "did it deploy?" pain).
       // Also the source of truth for the heartbeat's job_board_deploy check.
-      const [prog, pbMeta, rot, refreshMeta, bf, hotMeta, fresh, breaker, dateCov, boardFlow, ingestPaused, dcCache, bsMeta, dsMeta, ssMeta, esMeta, fiOk, fiBad, faMeta, aaMeta, arMeta, rsRun, rsCron, hsMeta, rcProg, rcVer] = await Promise.all([
+      const [prog, pbMeta, rot, refreshMeta, bf, hotMeta, fresh, breaker, dateCov, boardFlow, ingestPaused, dcCache, bsMeta, dsMeta, ssMeta, esMeta, fiOk, fiBad, faMeta, aaMeta, arMeta, rsRun, rsCron, hsMeta, rcProg, rcVer, hwMeta] = await Promise.all([
         client.from("job_board_meta").select("v, updated_at").eq("k", "refresh_progress").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "posted_backfill").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "cold_rotation").maybeSingle(),
@@ -4203,6 +4203,14 @@ Deno.serve(async (req) => {
         client.from("job_board_meta").select("v, updated_at").eq("k", "host_sweep").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "recategorize_progress").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "category_rules_version").maybeSingle(),
+        // The stale-bundle guard's own state. It is a STRICT less-than against
+        // this number, so a mark ONE above the real catalog does not degrade
+        // the orphan prune, it disables it — and the only evidence was a log
+        // line nobody reads. That shipped on 2026-08-24 (31,709 clamped
+        // against a 31,708 catalog) and could not be confirmed from outside at
+        // all, because job_board_meta is service-role-only. Published here as
+        // a derived boolean plus the two numbers behind it.
+        client.from("job_board_meta").select("v").eq("k", "catalog_highwater").maybeSingle(),
 ]);
       const pgV = (prog.data?.v ?? {}) as { hot?: number; cold?: number; coldDone?: number; failedAcc?: string[] };
       const rotV = (rot.data?.v ?? {}) as { completedAt?: string; coldBoards?: number };
@@ -4420,6 +4428,10 @@ Deno.serve(async (req) => {
           };
         })(),
         catalogSize: JOB_SOURCES.length,
+        catalogHighwater: Number((hwMeta.data?.v as { size?: number } | null)?.size) || null,
+        // true = every refresh pass is skipping the orphan prune, so a board
+        // removed from the catalog keeps serving its postings.
+        orphanPruneBlocked: JOB_SOURCES.length < (Number((hwMeta.data?.v as { size?: number } | null)?.size) || 0),
         categorizeVersion: CATEGORIZE_VERSION,
         hotTier: Array.isArray(hotTokens) && hotTokens.length >= 50 ? hotTokens.length : HOT_SIZE,
         // Per-posting description sweep: which vendor it's on, and how long
