@@ -242,3 +242,41 @@ describe("a slow search must say WHERE it was slow", () => {
     }
   });
 });
+
+describe("a phase mark must measure what the request waited on", () => {
+  // withDeadline is a Promise.race and does NOT cancel the losing promise. The
+  // count RPC's mark lived INSIDE cappedCount(), while the raced call site
+  // stops waiting at COUNT_DEADLINE_MS = 1_500. So the abandoned RPC kept
+  // running and stamped its full settle time — up to 8,237ms observed — under
+  // the same phase name, against a request that waited 1.5s for it.
+  //
+  // Everything computed from that number was wrong in both directions: the
+  // count looked like the dominant cost when it was off the critical path, and
+  // "tookMs minus the phase sum" UNDERSTATED the genuinely unmarked time,
+  // because the marked side was inflated. Two latency fixes were aimed at this
+  // phantom before the instrument itself was checked.
+  it("the raced count marks the race, not the RPC", () => {
+    expect(CODE).toMatch(/const t_count_raced = Date\.now\(\);/);
+    expect(CODE).toMatch(/markFrom\("count_jobs_capped", t_count_raced\);/);
+  });
+
+  it("the settle time is kept, under a name that says so", () => {
+    // Worth having — it is how you see an RPC that is slow but deadlined —
+    // but it must never be summed with critical-path phases.
+    expect(CODE).toMatch(/markFrom\("count_jobs_capped_settle", t_count_jobs_capped_6\);/);
+    expect(CODE).toMatch(/markFrom\("count_jobs_capped_settle", t_count_jobs_capped_5\);/);
+  });
+
+  it("the unraced call site still measures its own wait", () => {
+    // cappedCount() is also awaited directly, where settle time IS wait time.
+    expect(CODE).toMatch(/const t_count_direct = Date\.now\(\);/);
+    expect(CODE).toMatch(/markFrom\("count_jobs_capped", t_count_direct\);/);
+  });
+
+  it("no phase name is stamped both inside and outside the same race", () => {
+    // markFrom ACCUMULATES (phase[name] = (phase[name] ?? 0) + delta), so a
+    // name marked on both sides of a race double-counts silently.
+    const inner = (CODE.match(/markFrom\("count_jobs_capped",/g) ?? []).length;
+    expect(inner, "count_jobs_capped must be stamped once per call site, never nested").toBe(2);
+  });
+});

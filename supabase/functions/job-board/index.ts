@@ -102,7 +102,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-25.10";
+const BUILD_VERSION = "2026-08-25.11";
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -8117,7 +8117,7 @@ async function serveList(
         p_work_mode: applied.workMode,
         p_cap: COUNT_CAP,
       });
-      markFrom("count_jobs_capped", t_count_jobs_capped_6);
+      markFrom("count_jobs_capped_settle", t_count_jobs_capped_6);
       if (error || !Array.isArray(data) || !data.length) return null;
       const row = data[0] as { n?: number | string; capped?: boolean };
       const n = Number(row.n);
@@ -8244,7 +8244,7 @@ async function serveList(
               ...(applied.workMode ? { p_work_mode: applied.workMode } : {}),
               p_cap: COUNT_CAP,
             });
-            markFrom("count_jobs_capped", t_count_jobs_capped_5);
+            markFrom("count_jobs_capped_settle", t_count_jobs_capped_5);
             if (error) return [c, null, false] as const;
             const row = Array.isArray(data) ? data[0] as { n?: number; capped?: boolean } : null;
             return [c, Number(row?.n ?? 0), !!row?.capped] as const;
@@ -8491,7 +8491,9 @@ async function serveList(
         }
       } catch { /* migration lag or malformed query — the capped/ILIKE path below still answers */ }
     }
+    const t_count_direct = Date.now();
     const capped = await cappedCount();
+    markFrom("count_jobs_capped", t_count_direct);
     if (capped) return json({ total: capped.n, ...(capped.capped ? { countCapped: true } : {}), ...countHonesty });
     let { count, error } = await buildQuery("effective_posted").range(0, 0);
     if (missingColumn(error)) ({ count, error } = await buildQuery("posted_at").range(0, 0));
@@ -10028,11 +10030,21 @@ async function serveList(
   // countUnavailable becomes "Showing 60 of 60+ matching openings" rather than
   // a blank, since the floor shipped this week. Rows are never delayed by it.
   const COUNT_DEADLINE_MS = 1_500;
+  const t_count_raced = Date.now();
   const [firstPage, cappedRes] = await Promise.all([
     pageWith("effective_posted", "salary_rank_usd", false),
     wantCount
       ? withDeadline(cappedCount() as unknown as PromiseLike<{ n: number; capped?: boolean } | null>, COUNT_DEADLINE_MS)
-          .then((r) => (r && typeof (r as { n?: number }).n === "number" ? r as { n: number; capped?: boolean } : null))
+          .then((r) => {
+            // MARK THE RACE, NOT THE RPC. The mark inside cappedCount() keeps
+            // running after this deadline is lost, because withDeadline is a
+            // Promise.race and does not cancel. Recording that settle time
+            // under the same name put up to 6.7s of phase against a request
+            // that waited 1.5s, and every "share of tookMs" computed from it
+            // was therefore measuring something the user never experienced.
+            markFrom("count_jobs_capped", t_count_raced);
+            return r && typeof (r as { n?: number }).n === "number" ? r as { n: number; capped?: boolean } : null;
+          })
       : Promise.resolve(null),
   ]);
   // Only fall back to the old inline exact count when the capped RPC isn't
