@@ -102,7 +102,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-25.8";
+const BUILD_VERSION = "2026-08-25.9";
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -7754,6 +7754,33 @@ async function serveList(
   const phase: Record<string, number> = {};
   attachMsAccum = 0;
   const markFrom = (name: string, t0: number) => { phase[name] = (phase[name] ?? 0) + (Date.now() - t0); };
+
+  // ONE BUDGET FOR THE REQUEST, because the rescue tiers run in SEQUENCE and
+  // their deadlines therefore SUM.
+  //
+  // The ladder is: exact-word (7s) -> fuzzy RPC -> embed + semantic (5s, plus
+  // 4s to re-filter when a filter is active) -> head-term ring (4s). Each
+  // budget is defensible alone; in series they permit twenty seconds, and a
+  // query that finds nothing pays ALL of them before being told nothing was
+  // found. Measured live on 2026-08-25.6:
+  //
+  //   q=zzzqqq (0 results)  22.9s wall, 21.9s tookMs, 2.9s marked -> 19.0s in tiers
+  //   q=krankenschwester    24.1s wall, 23.0s tookMs, 4.4s marked -> 18.6s
+  //   q=enfermera           22.9-24.9s, and one run returned no response at all
+  //   q=zzzqqq + remote      3.6s wall — the SAME query with a filter, which
+  //                          changes which tiers are reachable
+  //
+  // A user who searches a Spanish or German job title, or makes a typo, waits
+  // twenty-three seconds to be told there is nothing. That is the whole defect.
+  //
+  // 9_000 is chosen to sit ABOVE the exact-word tier's measured 7s need, so
+  // that tier — the first to run, and the one pinned by its own determinism
+  // test — keeps its full deadline in the normal case and the clamp only bites
+  // on tiers that come AFTER seven seconds have already been spent. A smaller
+  // whole-request budget would starve the semantic rescue on exactly the empty
+  // pages it exists to serve.
+  const REQUEST_BUDGET_MS = 9_000;
+  const budgetLeft = () => Math.max(300, REQUEST_BUDGET_MS - (Date.now() - reqStart));
   const honesty = (jobs: Array<Record<string, unknown>>): Record<string, unknown> => {
     const v = filterViolations(jobs, applied);
     if (v.length) {
@@ -9132,7 +9159,7 @@ async function serveList(
               // warm-up cannot be compared week to week — and it makes every
               // relevance measurement a coin toss, which is how "IT is fixed"
               // got reported off a lucky draw.
-              7_000,
+              Math.min(7_000, budgetLeft()),
             ) as { data: unknown[] | null; error?: unknown };
             markFrom("simple_config", t_simple_config);
             // A deadline miss now leaves a trace. withDeadline resolves
@@ -9314,7 +9341,17 @@ async function serveList(
           // (filtersActive computed once above, shared with the fuzzy tier.)
           if (qText.length >= 3) {
             try {
-              const qVec = await embedText(qText);
+              // DEADLINED AND MARKED. This loads a local gte-small session on
+              // first use in an isolate, so a cold request paid an unbounded
+              // model load INSIDE the rescue ladder — invisible, because the
+              // phase record only ever wrapped RPCs. A cold isolate that
+              // cannot produce a vector in time now skips the semantic rescue
+              // instead of holding the whole request open for it.
+              const t_embed_query = Date.now();
+              const qVecRaw = await withDeadline(embedText(qText), Math.min(2_500, budgetLeft()));
+              markFrom("embed_query", t_embed_query);
+              const qVec = Array.isArray(qVecRaw) ? qVecRaw as number[] : null;
+              if (!qVec) console.warn(`[JOB-BOARD] query embedding unavailable or past deadline for q=${JSON.stringify(qText)}`);
               if (qVec) {
                 // DEADLINED. This RPC carries a 15s server-side statement timeout
                 // and had no client-side race, and filtered-empty is now the
@@ -9326,7 +9363,7 @@ async function serveList(
                     p_embedding: JSON.stringify(qVec),
                     p_limit: fetchLimit,
                   }),
-                  5_000,
+                  Math.min(5_000, budgetLeft()),
                 ).catch(() => ({ data: null, error: new Error("semantic deadline") })) as
                   { data: unknown; error: unknown };
                 markFrom("semantic", t_semantic);
@@ -9358,7 +9395,7 @@ async function serveList(
                     buildQuery("effective_posted", false, undefined, { skipTerms: true })
                       .in("id", semIds)
                       .range(0, Math.max(semIds.length - 1, 0)),
-                    4_000,
+                    Math.min(4_000, budgetLeft()),
                   ) as { data: unknown[] | null };
                   markFrom("semantic_filtered", t_semantic_filtered);
                   // withDeadline is Promise.race and resolves { data: null },
@@ -9507,7 +9544,7 @@ async function serveList(
                 .order("effective_posted", { ascending: false })
                 .order("id", { ascending: true })
                 .range(0, 199),
-              4_000,
+              Math.min(4_000, budgetLeft()),
             ) as { data: unknown[] | null };
             markFrom("head_ring", t_head_ring);
             if (Array.isArray(hr)) headRows = (hr as unknown[]).map(rowToJob) as Array<Record<string, unknown>>;

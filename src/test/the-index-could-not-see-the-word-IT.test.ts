@@ -90,7 +90,22 @@ describe("the index can see the words people search for", () => {
     // QUERY returned two different answers. Non-determinism is worse than
     // either answer — it makes the telemetry unreadable and turns every
     // relevance check into a coin toss.
-    expect(/\n\s*7_000,/.test(blk), "the deadline must cover the measured cold-start spike").toBe(true);
+    // The tier keeps its own 7s literal, now clamped against a request-wide
+    // budget. The clamp was added because the FOUR rescue tiers run in
+    // sequence, so their deadlines summed to twenty seconds: q=zzzqqq, which
+    // matches nothing, took 22.9s wall to say so (19.0s of it inside unmarked
+    // tiers), and q=krankenschwester 24.1s. The budget is deliberately larger
+    // than this tier's 7s and this tier runs FIRST, so in the normal case it
+    // still gets every millisecond the cold-start measurement said it needs —
+    // the clamp only bites on tiers reached AFTER seven seconds are already
+    // gone, where the alternative is making the user wait twelve seconds more.
+    expect(/\n\s*Math\.min\(7_000, budgetLeft\(\)\),/.test(blk),
+      "the deadline must cover the measured cold-start spike").toBe(true);
+    // If the budget were ever set at or below this tier's own deadline, the
+    // clamp would silently shorten the guarded tier and the non-determinism
+    // this test exists to prevent would come straight back.
+    const budget = Number(/const REQUEST_BUDGET_MS = ([0-9_]+);/.exec(FN)?.[1]?.replace(/_/g, "") ?? 0);
+    expect(budget, "the request budget must leave the guarded tier its full 7s").toBeGreaterThan(7_000);
     // And a miss must leave a trace: withDeadline resolves { data: null }, which
     // is indistinguishable from "no matches".
     expect(/exceeded its deadline/.test(blk), "a silent degradation is the bug this repo keeps rediscovering").toBe(true);
