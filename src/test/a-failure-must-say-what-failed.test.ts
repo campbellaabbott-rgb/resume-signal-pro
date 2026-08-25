@@ -65,3 +65,25 @@ describe("an empty board is not an outage", () => {
     expect(CODE).toMatch(/throw new Error\("personio feed unavailable on \.de\/\.com"\)/);
   });
 });
+
+describe("a login page is not a job feed", () => {
+  // 11 failures reported `Unexpected token '<', "<!DOCTYPE "...`, which reads
+  // like a parser bug. Every one was a BambooHR tenant answering 302 ->
+  // /login.php: the employer turned public access off. We use public feeds
+  // only and never authenticate, so this is terminal, not transient — and it
+  // deserves to say so in one line instead of being diagnosed from a JSON
+  // parser's complaint.
+  it("a non-JSON body is named before it is parsed", () => {
+    expect(CODE).toMatch(/const ct = res\.headers\.get\("content-type"\)/);
+    expect(CODE).toMatch(/if \(!\/json\/i\.test\(ct\)\)/);
+  });
+
+  it("an auth redirect is called what it is", () => {
+    expect(CODE).toMatch(/careers list is not public \(redirected to/);
+    expect(CODE).toMatch(/\/login\|signin\|auth\/i\.test\(where\)/);
+  });
+
+  it("any other non-JSON body still reports its type and path", () => {
+    expect(CODE).toMatch(/non-JSON response \(\$\{ct\.split\(";"\)\[0\] \|\| "unknown"\}\) at \$\{where\}/);
+  });
+});

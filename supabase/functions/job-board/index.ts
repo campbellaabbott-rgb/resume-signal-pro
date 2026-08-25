@@ -102,7 +102,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-24.16";
+const BUILD_VERSION = "2026-08-24.17";
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -689,6 +689,25 @@ async function fetchBoard(
     const raw = s.source === "smartrecruiters" ? await fetchSmartRecruiters(s) : await (async () => {
       const res = await fetchWithTimeout(listUrl(s));
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      // A LOGIN PAGE IS NOT A PARSE ERROR. When an employer turns their public
+      // careers list off, the vendor answers 302 -> /login.php and serves HTML;
+      // res.json() then failed with `Unexpected token '<', "<!DOCTYPE "...`,
+      // which reads like our bug and is actually the board being private.
+      // Measured 2026-08-24: 11 of 120 board failures were exactly this, every
+      // one a BambooHR tenant redirected to a login page.
+      //
+      // We use public feeds only and never authenticate, so this is a terminal
+      // state for the board, not a transient error — and it deserves to say so
+      // in one line rather than be diagnosed from a JSON parser's complaint.
+      const ct = res.headers.get("content-type") ?? "";
+      if (!/json/i.test(ct)) {
+        const where = (() => { try { return new URL(res.url).pathname; } catch { return res.url; } })();
+        throw new Error(
+          /login|signin|auth/i.test(where)
+            ? `careers list is not public (redirected to ${where})`
+            : `non-JSON response (${ct.split(";")[0] || "unknown"}) at ${where}`,
+        );
+      }
       return await res.json();
     })();
     const jobs =

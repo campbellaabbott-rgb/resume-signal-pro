@@ -17000,7 +17000,6 @@ export const JOB_SOURCES: JobSource[] = [
   { name: "Enterbridgetech", source: "bamboohr", token: "enterbridgetech" },
   { name: "Epicchq", source: "bamboohr", token: "epicchq" },
   { name: "Fenix24", source: "bamboohr", token: "fenix24" },
-  { name: "Foundervine", source: "bamboohr", token: "foundervine" },
   { name: "Fswe", source: "bamboohr", token: "fswe" },
   { name: "Fulcrumairinc", source: "bamboohr", token: "fulcrumairinc" },
   { name: "Fullersgroup", source: "bamboohr", token: "fullersgroup" },
@@ -17016,7 +17015,6 @@ export const JOB_SOURCES: JobSource[] = [
   { name: "Growcer", source: "bamboohr", token: "growcer" },
   { name: "Hacksawoperations", source: "bamboohr", token: "hacksawoperations" },
   { name: "Henrycarlson", source: "bamboohr", token: "henrycarlson" },
-  { name: "Homeofpotential", source: "bamboohr", token: "homeofpotential" },
   { name: "Iar", source: "bamboohr", token: "iar" },
   { name: "Icmp", source: "bamboohr", token: "icmp" },
   { name: "Idesignedu", source: "bamboohr", token: "idesignedu" },
@@ -18144,7 +18142,6 @@ export const JOB_SOURCES: JobSource[] = [
   { name: "Alivation", source: "bamboohr", token: "alivation" },
   { name: "Allcarehha", source: "bamboohr", token: "allcarehha" },
   { name: "Atlasinsurancemalta", source: "bamboohr", token: "atlasinsurancemalta" },
-  { name: "Avantsupportedliving", source: "bamboohr", token: "avantsupportedliving" },
   { name: "Canyoncontracting", source: "bamboohr", token: "canyoncontracting" },
   { name: "Efmpc", source: "bamboohr", token: "efmpc" },
   { name: "Epichealthpartners", source: "bamboohr", token: "epichealthpartners" },
@@ -18217,7 +18214,6 @@ export const JOB_SOURCES: JobSource[] = [
   { name: "Fmsaerospace", source: "bamboohr", token: "fmsaerospace" },
   { name: "Jssolutions", source: "bamboohr", token: "jssolutions" },
   { name: "Laurenservices", source: "bamboohr", token: "laurenservices" },
-  { name: "Loudragency", source: "bamboohr", token: "loudragency" },
   { name: "Montanaaleworks", source: "bamboohr", token: "montanaaleworks" },
   { name: "Mtlebanon", source: "bamboohr", token: "mtlebanon" },
   { name: "Mustad", source: "bamboohr", token: "mustad" },
@@ -18292,7 +18288,6 @@ export const JOB_SOURCES: JobSource[] = [
   { name: "Formulafig", source: "bamboohr", token: "formulafig" },
   { name: "Fulcroengineering", source: "bamboohr", token: "fulcroengineering" },
   { name: "Gms", source: "bamboohr", token: "gms" },
-  { name: "Gomomentum", source: "bamboohr", token: "gomomentum" },
   { name: "Linc", source: "bamboohr", token: "linc" },
   { name: "Makorecruiting", source: "bamboohr", token: "makorecruiting" },
   { name: "Moapabandofpaiutes", source: "bamboohr", token: "moapabandofpaiutes" },
@@ -18590,7 +18585,6 @@ export const JOB_SOURCES: JobSource[] = [
   { name: "Baldwin", source: "bamboohr", token: "baldwin" },
   { name: "Bluefield", source: "bamboohr", token: "bluefield" },
   { name: "Bonitzga", source: "bamboohr", token: "bonitzga" },
-  { name: "Boombit", source: "bamboohr", token: "boombit" },
   { name: "Breuckelenathletic", source: "bamboohr", token: "breuckelenathletic" },
   { name: "Bridgescsa", source: "bamboohr", token: "bridgescsa" },
   { name: "Brooklynlaboratoryschool", source: "bamboohr", token: "brooklynlaboratoryschool" },
@@ -18645,7 +18639,6 @@ export const JOB_SOURCES: JobSource[] = [
   { name: "Lbmx", source: "bamboohr", token: "lbmx" },
   { name: "Mareislandhomehealth", source: "bamboohr", token: "mareislandhomehealth" },
   { name: "Mcinnisconstructs", source: "bamboohr", token: "mcinnisconstructs" },
-  { name: "Mgaworks", source: "bamboohr", token: "mgaworks" },
   { name: "Montrosecenter", source: "bamboohr", token: "montrosecenter" },
   { name: "Mosai", source: "bamboohr", token: "mosai" },
   { name: "Mylogically", source: "bamboohr", token: "mylogically" },
@@ -18681,7 +18674,6 @@ export const JOB_SOURCES: JobSource[] = [
   { name: "Signsandlinesbystretch", source: "bamboohr", token: "signsandlinesbystretch" },
   { name: "Summercollab", source: "bamboohr", token: "summercollab" },
   { name: "Sunshinegospel", source: "bamboohr", token: "sunshinegospel" },
-  { name: "Superai", source: "bamboohr", token: "superai" },
   { name: "Tailwindvoiceanddata", source: "bamboohr", token: "tailwindvoiceanddata" },
   { name: "The10group", source: "bamboohr", token: "the10group" },
   { name: "Theauditgroup", source: "bamboohr", token: "theauditgroup" },
@@ -18699,7 +18691,6 @@ export const JOB_SOURCES: JobSource[] = [
   { name: "Voneus", source: "bamboohr", token: "voneus" },
   { name: "Vrl", source: "bamboohr", token: "vrl" },
   { name: "Wellsouth", source: "bamboohr", token: "wellsouth" },
-  { name: "Whitelabelcasinos", source: "bamboohr", token: "whitelabelcasinos" },
   { name: "Accuratenetworks", source: "bamboohr", token: "accuratenetworks" },
   { name: "Aerovisionglobal", source: "bamboohr", token: "aerovisionglobal" },
   { name: "Allenleighconsulting", source: "bamboohr", token: "allenleighconsulting" },
@@ -18872,7 +18863,6 @@ export const JOB_SOURCES: JobSource[] = [
   { name: "Wildwoodschool", source: "bamboohr", token: "wildwoodschool" },
   { name: "Willbee", source: "bamboohr", token: "willbee" },
   { name: "Windsorbrokers", source: "bamboohr", token: "windsorbrokers" },
-  { name: "Wizesolutions", source: "bamboohr", token: "wizesolutions" },
   { name: "Zoomair", source: "bamboohr", token: "zoomair" },
   { name: "Die Grenze", source: "recruitee", token: "diegrenze" },
   { name: "VluchtelingenWerk | Vrijwilligers", source: "recruitee", token: "vluchtelingenwerkvrijwilligers" },
@@ -31920,4 +31910,8 @@ export const JOB_SOURCES: JobSource[] = [
   // vendor API and answered 404/410 — the employer closed the ATS account or
   // renamed the token. They were failing on every rotation, burning a fetch
   // slot and filling failedSources with noise that hid real breakage.
+  // 10 bamboohr boards removed 2026-08-24: each answers 302 -> /login.php,
+  // meaning the employer turned their public careers list off. We use public
+  // feeds only and never authenticate, so this is terminal, not transient.
+  // All held zero postings, so nothing is deleted with them.
 ];
