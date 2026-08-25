@@ -31,8 +31,12 @@ const FN = readFileSync(
 
 describe("the per-posting freshness stamp reaches the page", () => {
   it("reads the field name rowToJob actually emits", () => {
-    const fn = /async function attachRecheckedAt\([\s\S]*?\n}/.exec(FN)?.[0] ?? "";
-    expect(fn, "attachRecheckedAt not found").not.toBe("");
+    // The logic lives in attachRecheckedAtInner since the outer function became
+    // a timing wrapper (the per-phase search instrumentation). This assertion
+    // is about the LOOKUP, so it follows the lookup — anchoring on the wrapper
+    // would have silently passed against a two-line function.
+    const fn = /async function attachRecheckedAtInner\([\s\S]*?\n}/.exec(FN)?.[0] ?? "";
+    expect(fn, "attachRecheckedAtInner not found").not.toBe("");
     // Both the token-collection and the per-row lookup must use `token`.
     expect(fn).toMatch(/jobs\.map\(\(j\) => String\(j\.token \?\? ""\)\)/);
     expect(fn).toMatch(/byToken\.get\(String\(j\.token \?\? ""\)\)/);
@@ -67,7 +71,7 @@ describe("the per-posting freshness stamp reaches the page", () => {
     // The bug this function exists to remove was showing last_seen as
     // freshness, which understated the board ~100x. On failure the field must
     // stay absent — never fall back to a different timestamp.
-    const fn = /async function attachRecheckedAt\([\s\S]*?\n}/.exec(FN)?.[0] ?? "";
+    const fn = /async function attachRecheckedAtInner\([\s\S]*?\n}/.exec(FN)?.[0] ?? "";
     expect(fn).toMatch(/if \(error \|\| !Array\.isArray\(data\)\) return jobs;/);
     const codeOnly = fn.split("\n").filter((l) => !l.trim().startsWith("//")).join("\n");
     expect(codeOnly).not.toMatch(/lastSeen|last_seen/);

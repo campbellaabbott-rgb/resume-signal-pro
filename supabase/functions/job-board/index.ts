@@ -102,7 +102,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-25.1";
+const BUILD_VERSION = "2026-08-25.2";
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -7394,7 +7394,25 @@ Deno.serve(async (req) => {
 // job_board_verifications.verified_at is the honest value: when we last fetched
 // THAT BOARD's feed. Keyed by company_token, so one .in() over a page's
 // distinct tokens covers the page on the primary key.
+// Time spent inside attachRecheckedAt on the current request. A module-level
+// accumulator because this helper is called from eight list exits and adding a
+// parameter to each is more edit surface than the measurement is worth; the
+// handler zeroes it per request.
+let attachMsAccum = 0;
+
 async function attachRecheckedAt(
+  client: SupabaseClient,
+  jobs: Array<Record<string, unknown>>,
+): Promise<Array<Record<string, unknown>>> {
+  const tAttach = Date.now();
+  try {
+    return await attachRecheckedAtInner(client, jobs);
+  } finally {
+    attachMsAccum += Date.now() - tAttach;
+  }
+}
+
+async function attachRecheckedAtInner(
   client: SupabaseClient,
   jobs: Array<Record<string, unknown>>,
 ): Promise<Array<Record<string, unknown>>> {
@@ -7725,6 +7743,17 @@ async function serveList(
   // tier is expensive across real traffic. One clock read, carried into the
   // log and the response.
   const reqStart = Date.now();
+  // PER-PHASE, because the total pointed at the wrong thing. Measured
+  // 2026-08-25: search_jobs — the ranked RPC that computes BOTH capped counts
+  // — answers in 230-465ms when called directly, while this function reports
+  // tookMs of 1,745-2,624ms for the same query. The database is not the
+  // bottleneck; the missing 1.3-2.2s is spent around it, and one total cannot
+  // say where. Recorded as point marks rather than by wrapping calls: these
+  // awaits sit inside ternaries and destructurings where an extra paren is
+  // how you break a hot path at 2am.
+  const phase: Record<string, number> = {};
+  attachMsAccum = 0;
+  const markFrom = (name: string, t0: number) => { phase[name] = (phase[name] ?? 0) + (Date.now() - t0); };
   const honesty = (jobs: Array<Record<string, unknown>>): Record<string, unknown> => {
     const v = filterViolations(jobs, applied);
     if (v.length) {
@@ -7765,6 +7794,7 @@ async function serveList(
       // them a server-side timing that can be read from outside without DB
       // access.
       tookMs: Date.now() - reqStart,
+      phaseMs: { ...phase, attachRecheckedAt: attachMsAccum },
     };
   };
   const unfiltered = isUnfiltered(applied);
@@ -8709,6 +8739,7 @@ async function serveList(
       // spelling as its own OR-branch, and the response names every added
       // phrase so the UI can show "also matching: …".
       const { q: expandedQ, expansions } = expandQuery(qText);
+      const tRanked = Date.now();
       const { data: ranked, error: rankErr } = await client.rpc("search_jobs", {
         p_q: expandedQ,
         p_fresh_cutoff: freshCutoffIso,
@@ -8761,6 +8792,7 @@ async function serveList(
         p_limit: pagePlan.pLimit,
         p_offset: pagePlan.pOffset,
       });
+      markFrom("searchJobsRpc", tRanked);
       if (!rankErr && Array.isArray(ranked)) {
         // A load-more just past an exactly-full final page must not overwrite
         // the client's header with 0 — null is "count unavailable", which the
