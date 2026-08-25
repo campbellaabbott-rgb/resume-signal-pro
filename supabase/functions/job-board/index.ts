@@ -102,7 +102,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-24.20";
+const BUILD_VERSION = "2026-08-25.1";
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -7693,6 +7693,7 @@ async function serveList(
           sendableOnly: applied.sendableOnly || undefined,
         },
         route,
+        took_ms: Date.now() - reqStart,
         rescued,
         results,
         total,
@@ -7712,6 +7713,18 @@ async function serveList(
   // most. Making it a helper called at each `return` is the same move as the
   // filter normalisation itself: the property cannot hold in three places and
   // lapse in a fourth if there is only one implementation of it.
+  // WHERE THE TIME GOES ON THE HOTTEST PATH. Measured 2026-08-25 from outside:
+  // a trivial action on this function answers in ~300ms and a plain REST round
+  // trip is ~200-400ms, so there is no cold-start floor to blame — but
+  // q=nurse costs 2.8-3.0s warm, and the twelve-query battery ran p50 3.8s /
+  // p90 5.3s. Search is the product's core interaction and it is spending
+  // roughly 2.4 seconds of its own somewhere.
+  //
+  // The search-events log already records which route answered and how many
+  // rows it returned, but never how long it took, so no one could see WHICH
+  // tier is expensive across real traffic. One clock read, carried into the
+  // log and the response.
+  const reqStart = Date.now();
   const honesty = (jobs: Array<Record<string, unknown>>): Record<string, unknown> => {
     const v = filterViolations(jobs, applied);
     if (v.length) {
@@ -7748,6 +7761,10 @@ async function serveList(
       ...(v.length
         ? { filterIntegrity: { violations: v.length, rows: jobs.length, fields: [...new Set(v.map((x) => x.field))] } }
         : {}),
+      // Every list exit spreads this helper, so one line gives all seven of
+      // them a server-side timing that can be read from outside without DB
+      // access.
+      tookMs: Date.now() - reqStart,
     };
   };
   const unfiltered = isUnfiltered(applied);
