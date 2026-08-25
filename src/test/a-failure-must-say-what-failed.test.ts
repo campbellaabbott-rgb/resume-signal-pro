@@ -116,3 +116,26 @@ describe("a cap is not a count", () => {
     expect(CODE).toMatch(/failedCount: Number\(pgV\.failedTotal\) \|\| 0,/);
   });
 });
+
+describe("advanceProgress must not drop the fields it is handed", () => {
+  // failedTotal was added to RefreshProgress and passed in by the caller, but
+  // advanceProgress builds `next` as an EXPLICIT object literal rather than a
+  // spread of `prev` — so the field was dropped on every slice and the
+  // counter read 0 forever. Shipped in .18, one build after it was introduced
+  // to fix a DIFFERENT silently-dropped number, and caught only because the
+  // verification watched it stay at zero while slices ran.
+  //
+  // Asserted behaviourally: the function must return what it was given.
+  it("carries every progress field through both return paths", async () => {
+    const { advanceProgress } = await import("../../supabase/functions/job-board/rotation");
+    const prev = { hot: 0, cold: 5, coldDone: 2, failedAcc: ["a"], failedTotal: 41 };
+    // Hot path.
+    const hot = advanceProgress({ prev, inHotPhase: true, hotSlice: 10, baseSliceLen: 10, coldListLen: 100 });
+    expect(hot.next.failedTotal, "hot path dropped failedTotal").toBe(41);
+    expect(hot.next.failedAcc).toEqual(["a"]);
+    // Cold path.
+    const cold = advanceProgress({ prev, inHotPhase: false, hotSlice: 0, baseSliceLen: 10, coldListLen: 100 });
+    expect(cold.next.failedTotal, "cold path dropped failedTotal").toBe(41);
+    expect(cold.next.failedAcc).toEqual(["a"]);
+  });
+});

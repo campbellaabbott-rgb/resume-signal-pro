@@ -49,6 +49,13 @@ export interface RefreshProgress {
   failedTotal?: number;
 }
 
+// NOTE FOR THE NEXT FIELD ADDED HERE: advanceProgress builds `next` as an
+// EXPLICIT object literal, not a spread of `prev`. A field added to this
+// interface and passed in by the caller is therefore dropped on every slice
+// unless it is also listed in both return paths below — which is precisely
+// how failedTotal shipped reading 0 forever in 2026-08-24.18, one build after
+// it was introduced to fix a different silently-dropped number.
+
 /**
  * Advance the cursors for one hop.
  *
@@ -74,13 +81,13 @@ export function advanceProgress(params: {
   const len = Math.max(1, coldListLen);
   if (inHotPhase) {
     return {
-      next: { hot: prev.hot + hotSlice, cold: prev.cold, coldDone: prev.coldDone, failedAcc: prev.failedAcc },
+      next: { hot: prev.hot + hotSlice, cold: prev.cold, coldDone: prev.coldDone, failedAcc: prev.failedAcc, failedTotal: prev.failedTotal },
       wrapped: false,
     };
   }
   const cold = (prev.cold + baseSliceLen) % len;
   return {
-    next: { hot: prev.hot, cold, coldDone: prev.coldDone + 1, failedAcc: prev.failedAcc },
+    next: { hot: prev.hot, cold, coldDone: prev.coldDone + 1, failedAcc: prev.failedAcc, failedTotal: prev.failedTotal },
     // A hop that consumed nothing (empty tail slice) hasn't wrapped, even
     // though cold === prev.cold satisfies a naive "went backwards" test.
     wrapped: baseSliceLen > 0 && cold < prev.cold,

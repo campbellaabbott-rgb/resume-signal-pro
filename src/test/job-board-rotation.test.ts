@@ -80,11 +80,19 @@ describe("advanceProgress — row shape", () => {
     // The upsert replaces the whole v JSON. A field emitted by one call site
     // and not the other is zeroed every hop — that is how the quiet lane's
     // `rot` counter sat at 0 forever and the lane never ran.
+    //
+    // AND HOW failedTotal DID THE SAME THING ON 2026-08-24. It was added to
+    // RefreshProgress and passed in by the caller, but advanceProgress builds
+    // `next` as an explicit literal, so the counter published 0 while boards
+    // were failing — one build after being introduced to fix a different
+    // silently-dropped number. This assertion is the reason the next one gets
+    // caught in CI instead of in production; keep it pinned to the exact key
+    // set rather than loosening it.
     const { next } = advanceProgress({
       prev: base({ hot: 10, cold: 20, coldDone: 1, failedAcc: ["acme"] }),
       inHotPhase: false, hotSlice: 10, baseSliceLen: 80, coldListLen: 1_000,
     });
-    expect(Object.keys(next).sort()).toEqual(["cold", "coldDone", "failedAcc", "hot"]);
+    expect(Object.keys(next).sort()).toEqual(["cold", "coldDone", "failedAcc", "failedTotal", "hot"]);
     expect(next.failedAcc).toEqual(["acme"]);
   });
 });
