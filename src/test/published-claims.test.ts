@@ -1747,7 +1747,19 @@ describe("slow work degrades instead of failing the request", () => {
     // Running it concurrently was never enough — Promise.all still WAITS, so a
     // slow count held the whole response and then took it down: HTTP 500 at
     // 35-79s on 24 of ~40 searches, while the page half is ~0.3s.
-    expect(fn).toMatch(/const COUNT_DEADLINE_MS = 4_000;/);
+    // Tightened 4,000 -> 1,500 on 2026-08-25, once per-RPC timings made the
+    // cost visible: count_jobs_capped is the DOMINANT phase of a text search
+    // (817-870ms for nurse, 2,336ms for camarero — 70% of that request)
+    // against ~300ms for the call that produces the rows. On camarero the
+    // board waited 2.3s for a count it then withdrew as untrustworthy.
+    //
+    // The invariant this test defends is that the count is BOUNDED and never
+    // gates the rows — asserted as a range so a future tune does not have to
+    // edit the test, and so it can never quietly grow back into the
+    // 35-79 second failures this was written for.
+    const ms = Number(/const COUNT_DEADLINE_MS = ([\d_]+);/.exec(fn)?.[1]?.replace(/_/g, ""));
+    expect(ms, "count deadline missing").toBeGreaterThan(0);
+    expect(ms, "a count may not hold the response open for seconds").toBeLessThanOrEqual(4_000);
     expect(fn).toMatch(/withDeadline\(cappedCount\(\)/);
   });
 

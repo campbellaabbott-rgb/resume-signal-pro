@@ -102,7 +102,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-25.3";
+const BUILD_VERSION = "2026-08-25.4";
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -9921,7 +9921,25 @@ async function serveList(
   // (countUnavailable -> "Showing N" without a denominator). A 46-second wait
   // ending in 500 is not. 4s is chosen above the measured p95 for counts that
   // DO succeed (~1-3s) and far below the ceiling where they stop being useful.
-  const COUNT_DEADLINE_MS = 4_000;
+  // 4s was chosen when nobody could see what the count actually cost. Now we
+  // can: measured 2026-08-25 with per-RPC timings on the live board,
+  // count_jobs_capped is the dominant phase of a text search — 817-870ms for
+  // q=nurse and 2,336ms for q=camarero, which is 70% of that request — while
+  // search_jobs, the call that actually produces the rows, is ~300ms. It
+  // already runs in parallel with the page fetch, so it is not sequencing that
+  // hurts; the count is simply the critical path.
+  //
+  // And on q=camarero the board waited those 2.3 seconds for a number it then
+  // WITHDREW, because the page held more rows than the count claimed (the
+  // slash-title case fixed earlier today). Paying two seconds of every
+  // searcher's time for a figure that is often a bare ceiling ("10,000+") and
+  // occasionally untrue is the wrong trade.
+  //
+  // 1.5s keeps every count that lands inside the measured normal range and
+  // drops the tail. The degradation is one the client already renders well:
+  // countUnavailable becomes "Showing 60 of 60+ matching openings" rather than
+  // a blank, since the floor shipped this week. Rows are never delayed by it.
+  const COUNT_DEADLINE_MS = 1_500;
   const [firstPage, cappedRes] = await Promise.all([
     pageWith("effective_posted", "salary_rank_usd", false),
     wantCount

@@ -145,3 +145,22 @@ describe("a client-side filter must not quote a server count", () => {
     expect(jobsCode).not.toMatch(/roles they've actually filled/i);
   });
 });
+
+describe("a count must not cost more than the rows it labels", () => {
+  // Measured 2026-08-25 with per-RPC timings on the live board:
+  //   q=nurse     count_jobs_capped 817-870ms | search_jobs ~310ms
+  //   q=camarero  count_jobs_capped 2,336ms   | search_jobs   171ms
+  // The count is the dominant phase of a text search and already runs in
+  // parallel with the page fetch, so it is the critical path, not a
+  // sequencing problem. On camarero the board waited 2.3s for a number it
+  // then WITHDREW as untrustworthy.
+  it("the count deadline is tightened to the measured normal range", () => {
+    expect(CODE).toMatch(/const COUNT_DEADLINE_MS = 1_500;/);
+  });
+
+  it("rows are never gated on the count", () => {
+    // Promise.all, not await-then-await: a slow count must never delay rows.
+    expect(CODE).toMatch(/const \[firstPage, cappedRes\] = await Promise\.all\(\[/);
+    expect(CODE).toMatch(/withDeadline\(cappedCount\(\)/);
+  });
+});
