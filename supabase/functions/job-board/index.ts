@@ -102,7 +102,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-25.12";
+const BUILD_VERSION = "2026-08-25.13";
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -9971,7 +9971,28 @@ async function serveList(
         : q.order(dateCol, { ascending: false, nullsFirst: false })
     ).order("id", { ascending: true });
 
+  // THE QUERY THAT FETCHES THE ROWS THE READER SEES, AND IT WAS NEVER MARKED.
+  //
+  // Deployed 2026-08-25.12 and measured: every rescue tier is fast —
+  // simple_config 146-188ms, semantic 166-455ms, head_ring 122-245ms,
+  // embed_query 95-98ms, fuzzy 133-264ms — and count_jobs_capped is bounded at
+  // its 1.5s deadline. Yet q=camarero limit=20 still took 5.7-8.2s with
+  // 3.2-5.5s unaccounted, and q=zzzqqq 6.3-13.3s with 2.6-9.3s unaccounted.
+  //
+  // So the rescue ladder was never the cost. I concluded twice that it was —
+  // once from the count, once from the tier deadlines summing — and the marks
+  // I added to settle the question refute both. What the instrument never
+  // covered is this function: three call sites, every one of them an awaited
+  // buildQuery, none of them timed.
+  //
+  // A wrapper rather than marks at each site, so a fourth call site cannot be
+  // added untimed.
   const pageWith = async (dateCol: string, salaryCol: string, withCount: boolean) => {
+    const t0 = Date.now();
+    try { return await pageWithInner(dateCol, salaryCol, withCount); }
+    finally { markFrom("page_query", t0); }
+  };
+  const pageWithInner = async (dateCol: string, salaryCol: string, withCount: boolean) => {
     if (!twoSubset) {
       // Keyset: WHERE ep < X OR (ep = X AND id > Y) — the exact successor set
       // of the ORDER BY (ep DESC, id ASC). Only on the date sort: the salary
