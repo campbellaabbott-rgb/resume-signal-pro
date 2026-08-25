@@ -1194,6 +1194,31 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
       const { data: bsMeta } = await client.from("job_board_meta").select("v").eq("k", "bootstrap").maybeSingle();
       const bs = (bsMeta?.v ?? {}) as { queue?: string[]; version?: string };
       let queue = Array.isArray(bs.queue) ? bs.queue : [];
+      // REFUTED, 2026-08-25 — DO NOT "FIX" THIS LANE AGAIN ON THE SAME
+      // REASONING. An audit and then I myself read the ~21-27% of registry
+      // boards holding zero rows as recoverable inventory, on the strength of
+      // probing seven of them and finding their vendor APIs serving live
+      // items (zencoder 5, helm-ai 9, integrate 9, and others). The claim was
+      // "tens of thousands of postings from employers already admitted".
+      //
+      // It was wrong, and the error was counting feed ITEMS without reading
+      // their DATES. Re-probed with dates: zencoder's 5 items are all 36 days
+      // old, helm-ai's 9 run 188 and 348 days old, integrate's 9 are 80-118
+      // days old. Every one is past the 30-day cap, so the correct number of
+      // rows to store from those boards is ZERO. The boards are empty by
+      // POLICY, not by failure.
+      //
+      // The lane itself is healthy: instrumented per slice, it reports
+      // drained 25 / selected 25 — the tokens resolve, the boards are
+      // fetched, and nothing is stored because nothing qualifies. The
+      // zero-row share RISING from 21% to 27% across that day is the
+      // freshness enforcement working (including the multilingual Workday
+      // parser shipped the same day), not a regression.
+      //
+      // Before treating an empty board as recoverable, check the AGE of what
+      // its feed carries. A board of 30+ day-old listings is a board this
+      // product deliberately does not serve.
+      //
       // A DEPLOY MUST NOT RESTART THIS QUEUE. It re-seeded whenever
       // BUILD_VERSION changed, and get_empty_boards returns a stable order —
       // so every deploy sent the drain back to the front of the same list
