@@ -15,6 +15,10 @@ import { parseSalaryStructured } from "../../supabase/functions/_shared/salary-e
 // bundle would be a third thing to forget. Pure TS with no Deno imports, the
 // same reason the salary parser above is imported straight out of _shared.
 import { isSendableVendor } from "../../supabase/functions/_shared/apply-automation";
+// Two statements from one module, deliberately: ats-coverage-counts.test.tsx
+// pins the BOARD_SOURCE_LIST import line by spelling, and the vendor filter
+// below needs the tiered list the same file exports.
+import { ATS_VENDORS, NON_ATS_SOURCES } from "@/config/ats-vendors";
 import { BOARD_SOURCE_LIST } from "@/config/ats-vendors";
 import { MultiSelectFilter } from "@/components/board/MultiSelectFilter";
 import { markDeadForRobots, clearDeadForRobots } from "@/lib/seo-robots";
@@ -232,6 +236,151 @@ const REPOST_FLAG_MIN = 3;
 // The year range is baked into each localized label (jobsPage.experience.*).
 const EXPERIENCE_IDS = ["entry", "mid", "senior", "expert"] as const;
 
+// ── STEPS FOR THE FOUR CONTROLS THAT WERE NARROWER THAN THEIR OWN API ────────
+//
+// Every list below is a CHOICE OF STEPS, not a limit: the server accepts more
+// than the page has ever offered, so a searcher who wanted the value in between
+// two chips could only get it by hand-editing the URL.
+//
+// maxYears asks the JOB-SEEKER'S question — "does not demand more than n years"
+// (min_years <= n) — not the employer's. min_years is populated on 162,032 of
+// 559,805 servable rows (28.9%), so it is disclosed like every other partly
+// populated column. Steps thin out as they climb: the difference between 1 and 2
+// years decides whether someone can apply at all; the difference between 15 and
+// 16 decides nothing.
+const MAX_YEARS_STEPS = [1, 2, 3, 5, 7, 10, 15, 20] as const;
+// The pay BAND. The floor steps are the seven this select has always offered;
+// the ceiling is their mirror plus a low rung, because a band is most useful at
+// the bottom of the market ("nothing above $80k" is how someone screens out
+// roles they are overqualified for and will not be called about).
+const SALARY_FLOOR_STEPS = [40_000, 60_000, 80_000, 100_000, 120_000, 150_000, 200_000] as const;
+const SALARY_CEILING_STEPS = [60_000, 80_000, 100_000, 120_000, 150_000, 200_000, 250_000, 300_000] as const;
+// Vendor: `source` on every posting, 100% populated — the one new filter that
+// hides nothing, which is why its coverage line reads 100% rather than being
+// omitted. ONE LIST, the same one the apply-agent tiers and the "Sources:" note
+// read; a second hand-typed vendor list is how a platform we dropped stays
+// selectable.
+//
+// EIGHT, matching VENDOR_LIMIT in filters.ts exactly. That cap REPORTS a
+// truncated list rather than slicing quietly, so a control that stopped at five
+// would refuse three choices the server would have honoured — and a control
+// that allowed nine would hand the visitor a filter the server then names as
+// only partly applied.
+const VENDOR_LIMIT = 8;
+const VENDOR_OPTIONS = [...ATS_VENDORS, ...NON_ATS_SOURCES].map((v) => ({ value: v.key, label: v.label }));
+
+/**
+ * THE ONE PLACE THIS PAGE TURNS ITS FILTER STATE INTO A REQUEST.
+ *
+ * Five call sites used to build this body by hand — the list fetch, the
+ * filtered-category facet, the zero-result rescue probe, the disclosure
+ * denominator, and the saved search — and they had already drifted: the rescue
+ * probe sent `remote: remoteOnly` where the list sends
+ * `(remoteOnly && !workMode)`, so every "remove this filter → N openings"
+ * button was counted against a query the page was not showing. The edge
+ * function keeps one normalizeFilters for exactly this reason; the client had
+ * none.
+ *
+ * Exported and pure so it can be CALLED in a test rather than grepped for. A
+ * guard that greps this file passes while the code is dead, which has caught
+ * this repo nine times.
+ *
+ * Keys are OMITTED, never sent as null: `Object.keys()` of the result is the
+ * client's answer to "is this board filtered at all", the same mechanical
+ * derivation isUnfiltered() does server-side, so a new filter counts the moment
+ * it exists here.
+ */
+export type BoardFilterState = {
+  q: string;
+  location: string;
+  remoteOnly: boolean;
+  workMode: "" | "remote" | "hybrid" | "onsite";
+  category: string;
+  inclUncat: boolean;
+  agentOnly: boolean;
+  country: string;
+  /** Comma-joined bands, exactly as the URL carries them. */
+  experience: string;
+  companyTokens: string[];
+  salaryFloor: number;
+  salaryCeiling: number;
+  payBasis: "" | "hourly" | "salaried";
+  statedPayOnly: boolean;
+  maxYears: number;
+  department: string;
+  /** Comma-joined `source` values. */
+  vendor: string;
+  /**
+   * The freshness window in DAYS, as a string, "" = any date.
+   *
+   * A string because that is what the URL carries and what this page's other
+   * multi-value filters (category, country, experience, vendor) already are —
+   * one shape from the address bar to the request body, converted to a number
+   * in exactly one place, the `maxAgeDays` line above.
+   */
+  freshness: string;
+};
+
+export function boardFilterBody(s: BoardFilterState): Record<string, unknown> {
+  const {
+    q, location, remoteOnly, workMode, category, inclUncat, agentOnly, country,
+    experience, companyTokens, salaryFloor, salaryCeiling, payBasis, statedPayOnly,
+    maxYears, department, vendor, freshness,
+  } = s;
+  const body: Record<string, unknown> = {
+    q: q.trim() || undefined,
+    location: location.trim() || undefined,
+    // ONE definition of Remote, and it now lives in one place instead of four
+    // literals. `remote:true` is a strict subset of work_mode='remote', so
+    // sending both ANDs them and drops matches the visitor's own filter should
+    // include — 7.6% on {workMode:remote,country:GB}. The legacy boolean serves
+    // only the standalone toggle, the one case where no work mode was picked.
+    remote: (remoteOnly && !workMode) || undefined,
+    workMode: workMode || undefined,
+    category: category || undefined,
+    includeUncategorised: category && inclUncat ? true : undefined,
+    // Literal true only, at every send site: a truthy STRING here narrows the
+    // board to ~5% and the server takes `=== true`.
+    sendableOnly: agentOnly ? true : undefined,
+    country: country || undefined,
+    experience: experience || undefined,
+    companies: companyTokens.length ? companyTokens : undefined,
+    salaryFloor: salaryFloor || undefined,
+    // SENT EVEN WHEN IT CONTRADICTS THE FLOOR. A ceiling below the floor is
+    // refused by normalizeFilters and named in ignoredFilters, which is how the
+    // visitor finds out; dropping it here instead would leave them looking at a
+    // band the board never applied with nothing on screen saying so.
+    salaryCeiling: salaryCeiling || undefined,
+    payBasis: payBasis || undefined,
+    hasStatedPay: statedPayOnly ? true : undefined,
+    maxYears: maxYears || undefined,
+    department: department.trim() || undefined,
+    vendor: vendor || undefined,
+    // Company-stated dates only, never our discovery time — "Today" must mean
+    // the company posted it today.
+    maxAgeDays: Number(freshness) || undefined,
+  };
+  // DELETED, not left undefined. Object.keys() of the result is this page's
+  // answer to "is the board filtered at all" — the client-side twin of
+  // isUnfiltered() — so an off filter must not leave a key behind.
+  for (const k of Object.keys(body)) if (body[k] === undefined) delete body[k];
+  return body;
+}
+
+/**
+ * Which filters are narrowing the board right now — derived MECHANICALLY from
+ * the body above rather than re-listed by hand.
+ *
+ * `q` is excluded because it lives in the always-visible search box rather than
+ * behind the mobile Filters button, and `includeUncategorised` because it
+ * WIDENS. Everything else counts, including any filter added later, which is
+ * the whole point: the number on that button was a hand-maintained list and
+ * went stale three times.
+ */
+export function activeBoardFilterKeys(s: BoardFilterState): string[] {
+  return Object.keys(boardFilterBody(s)).filter((k) => k !== "q" && k !== "includeUncategorised");
+}
+
 interface BoardResponse {
   jobs: BoardJob[];
   // Issued by the server per list response; echoed back on click so relevance
@@ -274,11 +423,33 @@ interface BoardResponse {
   // assert the SERVER emits them, and rendered by nothing. The tests passed the
   // whole time. Same shape as the keyset cursor that was null on every response
   // for five days: confirmed present, doing nothing.
-  /** Fraction of the board (0-1) each ACTIVE filter can even see. Measured live:
-   *  pay stated on 13.2%, work mode 29.6%, experience 40.8%. A searcher who sets
-   *  a pay floor and gets twelve results cannot otherwise tell whether the market
-   *  is empty or whether they are looking at an eighth of it. */
-  filterCoverage?: { salaryFloor?: number; workMode?: number; experience?: number; country?: number };
+  /**
+   * Fraction of the board (0-1) each ACTIVE filter can even see. A searcher who
+   * sets a pay floor and gets twelve results cannot otherwise tell whether the
+   * market is empty or whether they are looking at a fifth of it.
+   *
+   * ONE BLOCK, NOT TWO. This used to carry an older measurement (pay 13.2%,
+   * work mode 29.6%, experience 40.8%) stacked above the current one, so the
+   * field documented two different answers to the same question and only the
+   * lower block attached as JSDoc. Superseded numbers are replaced here, not
+   * appended.
+   *
+   * Measured on the servable board, 2026-08-25, over 559,805 rows: pay stated
+   * 112,524 (20.1%), salary_period 59,505 (10.6%), min_years 162,032 (28.9%),
+   * work_mode 157,584 (28.1%), department 226,631 (40.5%), experience_band
+   * usable 241,198 (43.1% — 318,607 of the non-null values are "unspecified"
+   * and match nothing).
+   *
+   * `vendor` IS here and IS rendered, at 100%: `source` is populated on every
+   * row, and "all of it" is a real answer to "what can this filter see".
+   * Omitting it would make the line's silence about vendor indistinguishable
+   * from its silence about a filter nobody switched on.
+   */
+  filterCoverage?: {
+    salaryFloor?: number; workMode?: number; experience?: number; country?: number;
+    salaryCeiling?: number; payBasis?: number; hasStatedPay?: number; maxYears?: number;
+    department?: number; vendor?: number;
+  };
   /** Phrases lifted OUT of the query and applied as filters instead — typing
    *  "work from home nurse" searches "nurse" among remote roles. The rewrite is
    *  good; doing it silently is not. */
@@ -490,6 +661,27 @@ export default function Jobs() {
     () => company.split(",").map((s) => s.trim()).filter(Boolean).slice(0, 12),
     [company],
   );
+  /**
+   * ADD an employer to the scope, or take one back out.
+   *
+   * The state shape has carried a list since Explore needed to hand over a
+   * collection, and the server has taken an array since long before that — the
+   * one thing that still could not express it was the control a person uses.
+   * Picking a second employer REPLACED the first, silently, so "show me
+   * openings at these three" was reachable from a hand-written URL and from
+   * nowhere on the site.
+   *
+   * Capped at the same 12 as companyTokens, so the typeahead cannot build a
+   * scope the parser then truncates behind the visitor's back.
+   */
+  const toggleCompanyToken = useCallback((token: string) => {
+    setCompany((prev) => {
+      const tokens = prev.split(",").map((x) => x.trim()).filter(Boolean);
+      if (tokens.includes(token)) return tokens.filter((x) => x !== token).join(",");
+      if (tokens.length >= 12) return prev;
+      return [...tokens, token].join(",");
+    });
+  }, []);
   const [category, setCategory] = useState(initial.get("category") ?? routeCategory ?? "");
   // ALSO SEARCH THE UNCATEGORISED BUCKET. `other` held 162,800 of 590,808
   // postings on 2026-08-05 — where a posting lands when its field could not be
@@ -517,7 +709,46 @@ export default function Jobs() {
   // strips unknown params), so we can offer a "Back to Explore" link instead
   // of leaving the user on a filtered board with no way back.
   const [cameFromExplore] = useState(() => initial.get("from") === "explore");
+  // MULTI-SELECT, comma-joined, exactly like category and country. The server
+  // has always taken a list here — filters.ts `asBands` accepts both an array
+  // and a comma string, and names any member it could not use — while this
+  // page sent one value, so "senior OR expert" was reachable from the API and
+  // from nowhere on the site. Explore's ?experience=entry links are a
+  // one-element list and keep working unchanged.
   const [experience, setExperience] = useState(initial.get("experience") ?? "");
+  // "Does not demand more than n years" — min_years <= n. 0 = off.
+  const [maxYears, setMaxYears] = useState<number>(() => {
+    const n = Number(initial.get("maxYears"));
+    return Number.isFinite(n) && n >= 1 && n <= 20 ? Math.floor(n) : 0;
+  });
+  // The employer's OWN team label, matched as a substring (ILIKE '%s%').
+  // Sampled live 2026-08-25 across three queries: 79 of 120 rows carried one,
+  // and they are as written by the employer — "Engineering", "Nursing",
+  // "Sales", but also "680 - Engineering - CoreSuite Platform" and "Sycamore
+  // Senior Living (SCL) - 6032". A substring box is the only control shape
+  // that fits text like that, which is why this is not a dropdown. Today the
+  // only way to reach it is to type into `q`, where it silently ORs with the
+  // title and the company name.
+  const [department, setDepartment] = useState(initial.get("department") ?? "");
+  // hourly | salaried, from salary_period. A SCALPEL: 10.6% of the board states
+  // a period at all, and rows with none are excluded while it is set, exactly
+  // as workMode already excludes them.
+  const [payBasis, setPayBasis] = useState<"" | "hourly" | "salaried">(() => {
+    const v = initial.get("payBasis");
+    return v === "hourly" || v === "salaried" ? v : "";
+  });
+  // "Only postings that state pay." Anyone who sets a salary floor is ALREADY
+  // narrowed to this 20.1% and is never told; making it a control of its own is
+  // the honest half of the same fact.
+  const [statedPayOnly, setStatedPayOnly] = useState(initial.get("statedPay") === "1");
+  // Which ATS the posting came from. `source` is populated on every row, so
+  // this is the only new filter that hides nothing. Until now the sole vendor
+  // control was the agent-can-apply boolean, which pins the board to 5.4%.
+  const [vendor, setVendor] = useState(() => {
+    const known = new Set(VENDOR_OPTIONS.map((v) => v.value));
+    return (initial.get("vendor") ?? "").split(",").map((v) => v.trim().toLowerCase())
+      .filter((v) => known.has(v)).slice(0, VENDOR_LIMIT).join(",");
+  });
   // Country: exact match on the deterministically extracted code. Postings
   // whose location can't be placed are excluded while active — disclosed, not
   // guessed. Facet counts come from get_country_facet at mount.
@@ -543,40 +774,55 @@ export default function Jobs() {
   const [filteredCats, setFilteredCats] = useState<Record<string, number> | null>(null);
   const catFacetSeq = useRef(0);
 
+  // THE DIRECT FACET IS THE PRIMARY SOURCE OF COUNTRY COUNTS AGAIN.
+  //
+  // Both measurements, and both dates, because the second one only means
+  // something next to the first:
+  //
+  //   2026-08-08 — get_country_facet returned error 57014 (statement timeout)
+  //     on 10 of 10 calls, 3.20-3.32s each, and the delayed retry timed out
+  //     too. The picker rendered 0% of the time, so no country was reachable
+  //     except by hand-editing the URL, and the result-set fallback below was
+  //     added to give the control something to show.
+  //
+  //   2026-08-25 — re-measured against production: it returns in 0.49s with
+  //     US 253,609 / GB 20,625 / CA 19,220 / IN 14,568 / DE 11,413. Not one
+  //     timeout. The old note claiming a permanent 57014 was describing a state
+  //     the board had already left, and it was steering a real facet — with
+  //     real counts on all twenty countries — behind a fallback that can only
+  //     ever name the handful of countries on the current page and knows no
+  //     counts at all.
+  //
+  // The FALLBACK STAYS. A filter that disappears when one RPC has a bad minute
+  // is the failure this file's own comment records, and 57014 is a timeout, not
+  // a fixed bug — it can come back the moment the table grows.
   useEffect(() => {
     let cancelled = false;
+    const read = (rows: unknown) =>
+      (Array.isArray(rows) ? rows as Array<{ country?: string; n?: number }> : [])
+        .filter((r) => typeof r.country === "string" && r.country.length === 2)
+        .map((r) => ({ country: String(r.country), n: Number(r.n) || 0 }))
+        .slice(0, 20);
+    const call = () => (supabase as unknown as {
+      rpc: (fn: string) => Promise<{ data: unknown }>;
+    }).rpc("get_country_facet");
     (async () => {
-      try {
-        const { data } = await (supabase as unknown as {
-          rpc: (fn: string) => Promise<{ data: unknown }>;
-        }).rpc("get_country_facet");
-        if (cancelled || !Array.isArray(data)) return;
-        setCountryFacet(
-          (data as Array<{ country?: string; n?: number }>)
-            .filter((r) => typeof r.country === "string" && r.country.length === 2)
-            .map((r) => ({ country: String(r.country), n: Number(r.n) || 0 }))
-            .slice(0, 20),
-        );
-      } catch { /* retry below covers the transient case */ }
-      // Live-walk finding (rank 3): on deep-link entries the country picker
-      // was observed missing — a transient facet failure hides a FILTER,
-      // which the fence forbids. One delayed retry heals it.
-      if (!cancelled) {
+      let rows: Array<{ country: string; n: number }> = [];
+      try { rows = read((await call()).data); } catch { /* the retry below covers it */ }
+      if (cancelled) return;
+      // ONE DELAYED RETRY, AND ONLY ON FAILURE. It used to run unconditionally,
+      // so every mount paid a second 3s-delayed RPC after a call that had
+      // already succeeded. Live-walk finding (rank 3): on deep-link entries the
+      // picker was observed missing — a transient facet failure hides a FILTER,
+      // which the fence forbids — so the retry is kept for the case it was
+      // written for.
+      if (rows.length === 0) {
         await new Promise((r) => setTimeout(r, 3000));
         if (cancelled) return;
-        try {
-          const { data: again } = await (supabase as unknown as {
-            rpc: (fn: string) => Promise<{ data: unknown }>;
-          }).rpc("get_country_facet");
-          if (!cancelled && Array.isArray(again) && again.length > 0) {
-            setCountryFacet((prev) => prev.length > 0 ? prev :
-              (again as Array<{ country?: string; n?: number }>)
-                .filter((r) => typeof r.country === "string" && r.country.length === 2)
-                .map((r) => ({ country: String(r.country), n: Number(r.n) || 0 }))
-                .slice(0, 20));
-          }
-        } catch { /* picker stays hidden this session — next mount retries */ }
+        try { rows = read((await call()).data); } catch { /* fallback serves this session */ }
+        if (cancelled) return;
       }
+      setCountryFacet(rows);
     })();
     return () => { cancelled = true; };
   }, []);
@@ -594,15 +840,34 @@ export default function Jobs() {
     const n = Number(initial.get("salaryFloor"));
     return Number.isFinite(n) && n > 0 ? n : 0;
   });
+  // THE OTHER END OF THE SAME BAND. `.lte` on salary_rank_usd, symmetric with
+  // the floor's `.gte` on that same column, and the API has taken any number
+  // for it while the page offered none at all. A ceiling under the floor is a
+  // contradiction the SERVER refuses and names in ignoredFilters — the page
+  // sends it rather than quietly correcting it, so the visitor is told.
+  const [salaryCeiling, setSalaryCeiling] = useState<number>(() => {
+    const n = Number(initial.get("salaryCeiling"));
+    return Number.isFinite(n) && n > 0 ? n : 0;
+  });
   // READ FROM THE URL, not just written to it. This state was set only by the
   // natural-language parser and by the UI control, while `fresh` was WRITTEN to
   // the query string on every change — so the param round-tripped visibly and
   // did nothing on arrival. A shared or bookmarked "posted today" link, and any
   // deep link from another page, silently produced an unfiltered board.
   // Validated rather than cast: an unknown value falls back to no filter.
-  const [freshness, setFreshness] = useState<"" | "day" | "week">(() => {
+  //
+  // NOW A NUMBER OF DAYS, 0 = any date. The API has always taken 1..30 and the
+  // page offered two of those thirty; "posted in the last fortnight" was
+  // reachable only by hand-editing the URL. The two LEGACY SPELLINGS are still
+  // read, because they are what every link minted before today carries — a
+  // shared "?fresh=week" must not quietly become an unfiltered board, which is
+  // the exact defect the comment above records for this same param.
+  const [freshness, setFreshness] = useState<string>(() => {
     const f = initial.get("fresh");
-    return f === "day" || f === "week" ? f : "";
+    const legacy = f === "day" || f === "week" ? f : "";
+    if (legacy) return legacy === "day" ? "1" : "7";
+    const n = Number(f);
+    return Number.isFinite(n) && n >= 1 && n <= 30 ? String(Math.floor(n)) : "";
   });
   // Natural-language search: the user describes what they want, an LLM maps
   // it to the board's REAL filters (never inventing one), and we show exactly
@@ -634,7 +899,24 @@ export default function Jobs() {
       setSalaryFloor(typeof f.salaryFloor === "number" ? f.salaryFloor : 0);
       setCountry(typeof f.country === "string" ? f.country : "");
       setLocation(typeof f.location === "string" ? f.location : "");
-      setFreshness(f.maxAgeDays === 1 ? "day" : f.maxAgeDays === 7 ? "week" : "");
+      // Any window the API takes, not just the two the chips used to offer —
+      // the parser can now say "posted in the last fortnight" and be obeyed.
+      setFreshness(
+        typeof f.maxAgeDays === "number" && f.maxAgeDays >= 1 && f.maxAgeDays <= 30
+          ? String(Math.floor(f.maxAgeDays)) : "",
+      );
+      // RESET THE ONES THE PARSER DOES NOT RETURN. nl-search maps a sentence
+      // onto the board's filters and the interpretation chips list exactly what
+      // it read; a filter left switched on from before is a constraint the
+      // interpretation does not mention and the visitor cannot see the source
+      // of. That is the defect the company reset above records, and every
+      // filter added since has to join it or repeat it.
+      setSalaryCeiling(0);
+      setPayBasis("");
+      setStatedPayOnly(false);
+      setMaxYears(0);
+      setDepartment("");
+      setVendor("");
       // Board CONTROLS the parser can now drive too (a query is a command):
       // "companies that actually hire" → the proven-fills filter; "highest
       // paying first" → salary sort. Reset like the other fields.
@@ -943,6 +1225,21 @@ export default function Jobs() {
   // promise a fill record; the lifecycle log observes a posting disappearing,
   // not a hire, so both surfaces now say what is measured.)
   const [activelyHiringOnly, setActivelyHiringOnly] = useState(initial.get("activelyHiring") === "1");
+  /**
+   * EVERY FILTER, ONCE, IN ONE OBJECT — the argument to boardFilterBody().
+   *
+   * activelyHiringOnly is deliberately NOT here: it has no board predicate and
+   * is applied in the browser against the fill record, so putting it in a
+   * request body would send a parameter the server does not know. The saved
+   * search names it for the same reason rather than saving it.
+   */
+  const filterState: BoardFilterState = useMemo(() => ({
+    q, location, remoteOnly, workMode, category, inclUncat, agentOnly, country,
+    experience, companyTokens, salaryFloor, salaryCeiling, payBasis, statedPayOnly,
+    maxYears, department, vendor, freshness,
+  }), [q, location, remoteOnly, workMode, category, inclUncat, agentOnly, country,
+    experience, companyTokens, salaryFloor, salaryCeiling, payBasis, statedPayOnly,
+    maxYears, department, vendor, freshness]);
   const healthAttempted = useRef<Set<string>>(new Set());
   const [healthFailed, setHealthFailed] = useState(false);
   // Apply-agent: the posting whose questions we're drafting (with its fetched JD
@@ -1158,15 +1455,26 @@ export default function Jobs() {
       // choice and dropped matches (7.6% on {workMode:remote,country:GB}).
       remote: (remoteOnly && !workMode) || undefined,
       workMode: workMode || undefined,
-      company: company || undefined,
+      // ONE TOKEN OR NONE, and the multi-employer case is named in the toast
+      // instead. send-search-digest hand-lists the params it forwards and sends
+      // `companies: p.company ? [p.company] : undefined` — one array element —
+      // so a comma-joined "a,b" saved here reaches the board as a single
+      // employer token spelled "a,b", which matches nothing. The digest would
+      // then never fire and never say why. Saving what the runner can honour
+      // and naming what it cannot is the same rule activelyHiring follows.
+      company: companyTokens.length === 1 ? companyTokens[0] : undefined,
       country: country || undefined,
       salaryFloor: salaryFloor || undefined,
-      maxAgeDays: freshness ? (freshness === "day" ? 1 : 7) : undefined,
+      maxAgeDays: Number(freshness) || undefined,
     };
     const name = searchName(
       params,
       category ? t(`jobsPage.categories.${category}`, category) : undefined,
-      experience ? t(`jobsPage.experience.${experience}`, experience) : undefined,
+      experience
+        ? (experience.split(",").filter(Boolean).length === 1
+          ? t(`jobsPage.experience.${experience}`, experience)
+          : t("jobsPage.nExperience", "{{n}} levels", { n: experience.split(",").filter(Boolean).length }))
+        : undefined,
     );
     let { error: err } = await searchesTable().insert({
       user_id: session.user.id, name, params,
@@ -1187,6 +1495,16 @@ export default function Jobs() {
       toast({ title: t("jobsPage.saveFailed", "Couldn't save — try again.") });
       return;
     }
+    const filterLabel = (k: string) => t(`jobsPage.filterName.${k}`, k);
+    const unsavedFilters = [
+      salaryCeiling ? filterLabel("salaryCeiling") : "",
+      payBasis ? filterLabel("payBasis") : "",
+      statedPayOnly ? filterLabel("hasStatedPay") : "",
+      maxYears ? filterLabel("maxYears") : "",
+      department ? filterLabel("department") : "",
+      vendor ? filterLabel("vendor") : "",
+      companyTokens.length > 1 ? filterLabel("companies") : "",
+    ].filter(Boolean);
     // ACTIVELY HIRING CANNOT RIDE ALONG, SO IT IS NAMED INSTEAD OF SAVED.
     // It filters the fetched page in the browser (jobs.filter on the fill
     // record); the board has no such predicate, so the nightly runner cannot
@@ -1199,6 +1517,17 @@ export default function Jobs() {
       description: [
         t("jobsPage.searchSavedDesc", "Your account shows how many new postings match since your last look."),
         activelyHiringOnly ? t("jobsPage.savedWithoutActivelyHiring", "The Actively hiring filter is applied in your browser, not on the board, so this saved search does not include it.") : "",
+        // THE FILTERS THE NIGHTLY RUNNER CANNOT REPRODUCE, NAMED RATHER THAN
+        // SAVED. send-search-digest builds its board call from a hand-listed
+        // set of params; anything outside that list is stored and ignored, and
+        // a saved search that quietly drops half its filters mails postings the
+        // screen it was saved from excluded. Measured against the deployed
+        // function's own body, which forwards exactly q, category, location,
+        // remote, workMode, companies, experience, country, salaryFloor and
+        // maxAgeDays.
+        unsavedFilters.length
+          ? t("jobsPage.savedWithoutFilters", "These are applied on the board but not in the email yet, so the alert leaves them out: {{filters}}.", { filters: unsavedFilters.join(", ") })
+          : "",
         t("jobsPage.queueBridge", "Want ready-to-review picks every morning instead? The Apply Agent runs your search nightly — Morning Queue, in your account."),
       ].filter(Boolean).join(" "),
     });
@@ -1248,8 +1577,11 @@ export default function Jobs() {
   // slider does not fire eighteen counts per pixel, and sequence-guarded so a
   // slow response for last filter set cannot paint over the current one.
   useEffect(() => {
-    const activeFilters = !!(q || location || remoteOnly || workMode || category ||
-      agentOnly || country || experience.length || salaryFloor || freshness || companyTokens.length);
+    // DERIVED, not re-listed. This was a hand-written disjunction of eleven
+    // filters, which is a list that goes stale the first time a twelfth is
+    // added — and then the effect asks a board-wide question underneath a
+    // narrowed page, which is the exact defect this whole file guards.
+    const activeFilters = Object.keys(boardFilterBody(filterState)).length > 0;
     if (!activeFilters) { setFilteredCats(null); return; } // unfiltered: the cached board-wide facet is correct
     const seq = ++catFacetSeq.current;
     const timer = setTimeout(async () => {
@@ -1257,15 +1589,10 @@ export default function Jobs() {
         const { data: res } = await supabase.functions.invoke("job-board", {
           body: {
             action: "list", facetCounts: true,
-            q: q || undefined, location: location || undefined,
-            remote: (remoteOnly && !workMode) || undefined,
-            workMode: workMode || undefined,
-            sendableOnly: agentOnly ? true : undefined,
-            country: country || undefined,
-            experience: experience.length ? experience : undefined,
-            companies: companyTokens.length ? companyTokens : undefined,
-            salaryFloor: salaryFloor || undefined,
-            maxAgeDays: freshness ? (freshness === "day" ? 1 : 7) : undefined,
+            ...boardFilterBody(filterState),
+            // The facet answers "how many in each field", so it must not be
+            // pre-narrowed to one field.
+            category: undefined, includeUncategorised: undefined,
           },
         });
         if (seq !== catFacetSeq.current) return; // a newer filter set superseded this
@@ -1274,7 +1601,7 @@ export default function Jobs() {
       } catch { /* counts are an enhancement — the dropdown works without them */ }
     }, 400);
     return () => clearTimeout(timer);
-  }, [q, location, remoteOnly, workMode, category, agentOnly, country, experience, salaryFloor, freshness, companyTokens]);
+  }, [q, filterState]);
 
   const fetchJobs = useCallback(
     async (offset: number) => {
@@ -1291,28 +1618,13 @@ export default function Jobs() {
       try {
         const body = {
           action: "list",
-          q: q || undefined,
-          location: location || undefined,
-          // ONE definition of Remote. `remote:true` is a strict subset of
-          // work_mode='remote', so sending both ANDed them and silently dropped
-          // matches the user's own filter should include — 7.6% on
-          // {workMode:remote,country:GB}, 5.2% design, 11.3% data_ai. The legacy
-          // boolean now serves only the standalone "Remote only" toggle, the one
-          // case where the user picked no work mode at all.
-          remote: (remoteOnly && !workMode) || undefined,
-      workMode: workMode || undefined,
-          category: category || undefined,
-          includeUncategorised: category && inclUncat ? true : undefined,
-          sendableOnly: agentOnly ? true : undefined,
-          country: country || undefined,
-          experience: experience || undefined,
-          companies: companyTokens.length ? companyTokens : undefined,
-          salaryFloor: salaryFloor || undefined,
+          // EVERY filter, from the one derivation. The eighteen hand-written
+          // lines this replaces are where the client's filter defects came
+          // from: four bodies, four chances for one of them to be missing the
+          // filter the visitor can see on screen.
+          ...boardFilterBody(filterState),
           // Searches default to relevance ranking; the toggle bypasses it.
           sort: sortMode === "salary" ? "salary" : q && searchNewestFirst ? "newest" : undefined,
-          // Company-stated dates only (maxAgeDays), never our discovery time —
-          // "Today" must mean the company posted it today.
-          maxAgeDays: freshness ? (freshness === "day" ? 1 : 7) : undefined,
           limit: PAGE,
           offset,
           cursor: offset > 0 ? nextCursorRef.current ?? undefined : undefined,
@@ -1392,7 +1704,7 @@ export default function Jobs() {
         }
       }
     },
-    [q, location, remoteOnly, workMode, company, category, inclUncat, agentOnly, experience, country, salaryFloor, sortMode, freshness, searchNewestFirst],
+    [filterState, q, sortMode, searchNewestFirst],
   );
 
   // Keep the URL shareable — filters in, defaults out. A category lander
@@ -1419,6 +1731,16 @@ export default function Jobs() {
     if (experience) p.set("experience", experience);
     if (country) p.set("country", country);
     if (salaryFloor) p.set("salaryFloor", String(salaryFloor));
+    // WRITTEN AS WELL AS READ. Every filter added to this page that was read on
+    // mount and never written back produced the same bug three times: the
+    // control works, the address bar loses it, and a reload or a shared link
+    // silently serves an unfiltered board under a chip that still says it is on.
+    if (salaryCeiling) p.set("salaryCeiling", String(salaryCeiling));
+    if (payBasis) p.set("payBasis", payBasis);
+    if (statedPayOnly) p.set("statedPay", "1");
+    if (maxYears) p.set("maxYears", String(maxYears));
+    if (department) p.set("department", department);
+    if (vendor) p.set("vendor", vendor);
     // The detail panel's ?job= deep link isn't filter state — preserve it, or
     // this rewrite clobbers a shared link on mount before the panel can open.
     const jobParam = new URLSearchParams(window.location.search).get("job");
@@ -1440,16 +1762,22 @@ export default function Jobs() {
     // agentOnly and inclUncat are filters too, and the lander form carries no
     // query string — dropping into it with either one on silently discards it
     // from a shared or reloaded link while the chip still shows on screen.
-    if (landerCompany && company === landerCompany && !q && !location && !remoteOnly && !workMode && !category && !experience && !salaryFloor && !country && !freshness && !agentOnly && sortMode !== "salary") {
+    // EVERY filter belongs in both gates. The lander form carries no query
+    // string, so dropping into it with one of these on discards it from a
+    // shared or reloaded link while the chip on screen still says it applies —
+    // measured for workMode, agentOnly and inclUncat before, and true by
+    // construction for each filter added since.
+    const extraFilters = !!(salaryCeiling || payBasis || statedPayOnly || maxYears || department || vendor);
+    if (landerCompany && company === landerCompany && !q && !location && !remoteOnly && !workMode && !category && !experience && !salaryFloor && !country && !freshness && !agentOnly && !extraFilters && sortMode !== "salary") {
       window.history.replaceState({}, "", `/jobs/company/${landerCompany}${jobParam ? `?job=${encodeURIComponent(jobParam)}` : ""}`);
       return;
     }
-    if (landerCategory && category === landerCategory && !q && !location && !remoteOnly && !workMode && !company && !experience && !salaryFloor && !country && !freshness && !agentOnly && !inclUncat && sortMode !== "salary") {
+    if (landerCategory && category === landerCategory && !q && !location && !remoteOnly && !workMode && !company && !experience && !salaryFloor && !country && !freshness && !agentOnly && !inclUncat && !extraFilters && sortMode !== "salary") {
       window.history.replaceState({}, "", `/jobs/field/${landerCategory}${jobParam ? `?job=${encodeURIComponent(jobParam)}` : ""}`);
       return;
     }
     window.history.replaceState({}, "", qs ? `/jobs?${qs}` : "/jobs");
-  }, [q, location, remoteOnly, workMode, company, category, inclUncat, agentOnly, activelyHiringOnly, experience, country, salaryFloor, freshness, sortMode, landerCategory, landerCompany]);
+  }, [q, location, remoteOnly, workMode, company, category, inclUncat, agentOnly, activelyHiringOnly, experience, country, salaryFloor, salaryCeiling, payBasis, statedPayOnly, maxYears, department, vendor, freshness, sortMode, landerCategory, landerCompany]);
 
   // Category salary benchmarks: median advertised pay floor per field, computed
   // live from postings that state pay (RPC self-gates at n>=30 — a thin sample
@@ -2774,10 +3102,13 @@ export default function Jobs() {
   // Badge on the mobile Filters button: how many secondary filters are active
   // (q lives in the always-visible search bar, so it doesn't count).
   const activeFilterCount = useMemo(
-    // Same set as the chips above, for the same reason: a filter that narrows
-    // the board and is not counted here is a filter the visitor cannot see.
-    () => [location, category, experience, company, country, salaryFloor > 0, remoteOnly || workMode, freshness, agentOnly, activelyHiringOnly].filter(Boolean).length,
-    [location, category, experience, company, country, salaryFloor, remoteOnly, workMode, freshness, agentOnly, activelyHiringOnly],
+    // DERIVED, not re-listed. This was a hand-written array and it is the badge
+    // that tells a phone user how much is hiding behind the Filters button — a
+    // filter missing from it is a filter narrowing the board invisibly.
+    // activelyHiringOnly is added on because it is a browser-side filter with no
+    // request key, so the mechanical derivation cannot see it.
+    () => activeBoardFilterKeys(filterState).length + (activelyHiringOnly ? 1 : 0),
+    [filterState, activelyHiringOnly],
   );
 
   // Keep the last facet we were handed, and use it to replace a vague capped
@@ -2828,7 +3159,20 @@ export default function Jobs() {
         clear: () => setCategory(""),
       });
     }
-    if (experience) f.push({ key: "experience", label: t(`jobsPage.experience.${experience}`, experience), clear: () => setExperience("") });
+    // A comma-joined selection cannot be a translation key, the same trap the
+    // category chip above records: `experience.senior,expert` resolves to
+    // nothing and the chip prints the raw slug list.
+    if (experience) {
+      const bands = experience.split(",").filter(Boolean);
+      f.push({
+        key: "experience",
+        label: bands.length === 1
+          ? t(`jobsPage.experience.${bands[0]}`, bands[0])
+          : t("jobsPage.nExperience", "{{n}} levels", { n: bands.length }),
+        clear: () => setExperience(""),
+      });
+    }
+    if (maxYears) f.push({ key: "maxYears", label: t("jobsPage.maxYearsOption", "Asks {{n}} yrs or fewer", { n: maxYears }), clear: () => setMaxYears(0) });
     // A multi-employer filter gets a count, not a 400-character wall of raw
     // tokens. One employer still shows its name — the resolved display name
     // where the facet knows it, the token only as a last resort.
@@ -2846,9 +3190,36 @@ export default function Jobs() {
       });
     }
     if (salaryFloor > 0) f.push({ key: "salaryFloor", label: `$${salaryFloor / 1000}k+`, clear: () => setSalaryFloor(0) });
+    if (salaryCeiling > 0) f.push({ key: "salaryCeiling", label: `≤$${salaryCeiling / 1000}k`, clear: () => setSalaryCeiling(0) });
+    if (payBasis) f.push({ key: "payBasis", label: payBasis === "hourly" ? t("jobsPage.payBasisHourly", "Paid hourly") : t("jobsPage.payBasisSalaried", "Salaried"), clear: () => setPayBasis("") });
+    if (statedPayOnly) f.push({ key: "statedPay", label: t("jobsPage.statedPay", "States pay"), clear: () => setStatedPayOnly(false) });
+    if (department) f.push({ key: "department", label: department, clear: () => setDepartment("") });
+    if (vendor) {
+      const vs = vendor.split(",").filter(Boolean);
+      f.push({
+        key: "vendor",
+        label: vs.length === 1
+          ? (VENDOR_OPTIONS.find((v) => v.value === vs[0])?.label ?? vs[0])
+          : t("jobsPage.nVendors", "{{n}} sources", { n: vs.length }),
+        clear: () => setVendor(""),
+      });
+    }
     if (remoteOnly && !workMode) f.push({ key: "remote", label: t("jobsPage.remoteBadge", "Remote"), clear: () => setRemoteOnly(false) });
     if (workMode) f.push({ key: "mode", label: t(`jobsPage.workMode.${workMode}`, workMode), clear: () => { setWorkMode(""); setRemoteOnly(false); } });
-    if (freshness) f.push({ key: "freshness", label: freshness === "day" ? t("jobsPage.freshDay", "Today") : t("jobsPage.freshWeek", "This week"), clear: () => setFreshness("") });
+    // A LABEL PER STEP, not a two-way guess. With only "day" and "week" in the
+    // state a ternary covered it; over 1..30 the same ternary would print "This
+    // week" on a fourteen-day window.
+    if (freshness) {
+      f.push({
+        key: "freshness",
+        label: freshness === "1"
+          ? t("jobsPage.freshDay", "Today")
+          : freshness === "7"
+          ? t("jobsPage.freshWeek", "This week")
+          : t("jobsPage.freshDays", "Last {{n}} days", { n: Number(freshness) }),
+        clear: () => setFreshness(""),
+      });
+    }
     // THREE FILTERS USED TO NARROW THE BOARD WITH NO CHIP AND NO WAY OUT.
     //
     // "Clear all" is literally `activeFilters.forEach((f) => f.clear())`, so
@@ -2866,7 +3237,7 @@ export default function Jobs() {
     if (category && inclUncat) f.push({ key: "inclUncat", label: t("jobsPage.chipInclUncat", "+ unsorted"), clear: () => setInclUncat(false) });
     return f;
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [q, location, category, experience, company, companyTokens, country, salaryFloor, remoteOnly, workMode, freshness, companies, agentOnly, activelyHiringOnly, inclUncat, t]);
+  }, [q, location, category, experience, maxYears, company, companyTokens, country, salaryFloor, salaryCeiling, payBasis, statedPayOnly, department, vendor, remoteOnly, workMode, freshness, companies, agentOnly, activelyHiringOnly, inclUncat, t]);
   // S1: search suggestions — recent searches (local), matching companies
   // (served facet), matching category pages, and a curated common-role list.
   // Everything suggested is real and clickable; nothing invented.
@@ -2924,8 +3295,8 @@ export default function Jobs() {
   const paletteActions: PaletteAction[] = useMemo(() => [
     { id: "search", label: t("jobsPage.paFocusSearch", "Search postings"), hint: "/", run: () => (document.getElementById("board-search") as HTMLInputElement | null)?.focus() },
     { id: "remote", label: workMode === "remote" ? t("jobsPage.paRemoteOff", "Show all locations") : t("jobsPage.paRemoteOn", "Remote only"), run: () => { setWorkMode(workMode === "remote" ? "" : "remote"); setRemoteOnly(false); } },
-    { id: "week", label: t("jobsPage.paWeek", "Posted this week"), run: () => setFreshness("week") },
-    { id: "today", label: t("jobsPage.paToday", "Posted today"), run: () => setFreshness("day") },
+    { id: "week", label: t("jobsPage.paWeek", "Posted this week"), run: () => setFreshness("7") },
+    { id: "today", label: t("jobsPage.paToday", "Posted today"), run: () => setFreshness("1") },
     { id: "entry", label: t("jobsPage.paEntry", "Entry-level roles"), run: () => setExperience("entry") },
     { id: "salary100", label: t("jobsPage.paSalary", "Stated pay $100k+"), run: () => setSalaryFloor(100000) },
     { id: "clear", label: t("jobsPage.paClear", "Clear all filters"), run: () => activeFilters.forEach((f) => f.clear()) },
@@ -2951,27 +3322,35 @@ export default function Jobs() {
     // countOnly burst to offer "remove a filter" help underneath results the
     // visitor is already reading.
     if (loading || refreshing || error || !data || data.total !== 0 || jobs.length > 0) { setZeroHelp(null); return; }
-    const sig = JSON.stringify([q, location, category, experience, company, salaryFloor, remoteOnly, workMode, country, freshness, jobs.length > 0]);
+    const sig = JSON.stringify([boardFilterBody(filterState), jobs.length > 0]);
     if (zeroSigRef.current === sig) return;
     zeroSigRef.current = sig;
-    // The probe must carry EVERY active filter. It used to omit workMode and
-    // country, so each "remove X → N results" button was counted against a
-    // looser query than the one on screen — the promised N could land on
-    // another zero. A rescue count that overstates is a broken promise at the
-    // exact moment the user is most likely to give up.
-    const base: Record<string, unknown> = {
-      action: "list", countOnly: true, includeFacets: false,
-      q: q || undefined, location: location || undefined, remote: remoteOnly || undefined,
-      workMode: workMode || undefined, country: country || undefined,
-      category: category || undefined, experience: experience || undefined,
-      companies: companyTokens.length ? companyTokens : undefined, salaryFloor: salaryFloor || undefined,
-      maxAgeDays: freshness ? (freshness === "day" ? 1 : 7) : undefined,
-    };
-    const OVERRIDES: Record<string, Record<string, unknown>> = {
-      q: { q: undefined }, location: { location: undefined }, category: { category: undefined },
-      experience: { experience: undefined }, company: { companies: undefined },
-      salaryFloor: { salaryFloor: undefined }, remote: { remote: undefined }, freshness: { maxAgeDays: undefined },
-      mode: { workMode: undefined, remote: undefined }, country: { country: undefined },
+    // The probe must carry EVERY active filter. It used to build its own body
+    // and had already drifted twice: it omitted workMode and country (each
+    // "remove X → N results" button was counted against a looser query than the
+    // one on screen), and it sent `remote: remoteOnly` where the list sends
+    // `(remoteOnly && !workMode)`. A rescue count that overstates is a broken
+    // promise at the exact moment the visitor is most likely to give up, so
+    // this now asks the SAME derivation the page was served from.
+    // A RELAXATION IS A CHANGE OF STATE, NOT A PATCH TO THE BODY. Each entry
+    // switches one control off and the body is DERIVED again, so a relaxation
+    // can never disagree with the request the page was served from — the way
+    // the body patches it replaced already had: they patched `companies` while
+    // the list sends it from companyTokens, and `remote` while the list sends
+    // `(remoteOnly && !workMode)`.
+    //
+    // One entry per chip key. A chip with no entry relaxes nothing, so its
+    // button would re-count the identical query and hand a stuck visitor a way
+    // out that leads back to the same zero.
+    const RELAX: Record<string, Partial<BoardFilterState>> = {
+      q: { q: "" }, location: { location: "" }, category: { category: "" },
+      experience: { experience: "" }, company: { companyTokens: [] },
+      salaryFloor: { salaryFloor: 0 }, remote: { remoteOnly: false }, freshness: { freshness: "" },
+      mode: { workMode: "", remoteOnly: false }, country: { country: "" },
+      salaryCeiling: { salaryCeiling: 0 }, payBasis: { payBasis: "" },
+      statedPay: { statedPayOnly: false }, maxYears: { maxYears: 0 },
+      department: { department: "" }, vendor: { vendor: "" },
+      agentOnly: { agentOnly: false }, inclUncat: { inclUncat: false },
     };
     const candidates = activeFilters.slice(0, 4);
     let cancelled = false;
@@ -2983,7 +3362,10 @@ export default function Jobs() {
           // figure: "Remove country — 10,000 openings" when the truth is more.
           // This is the same defect just fixed server-side, surviving on the
           // client because the flag was never asked for.
-          const { data: r } = await invokeBoard<{ total?: number; relatedTotal?: number; countCapped?: boolean; relatedCapped?: boolean }>({ ...base, ...OVERRIDES[c.key] });
+          const { data: r } = await invokeBoard<{ total?: number; relatedTotal?: number; countCapped?: boolean; relatedCapped?: boolean }>({
+            action: "list", countOnly: true, includeFacets: false,
+            ...boardFilterBody({ ...filterState, ...RELAX[c.key] }),
+          });
           // BOTH SEGMENTS, and before the `> 0` filter below. Counting only the
           // exact segment would advertise "1 opening" for a relaxation that
           // surfaces 94 rows, or drop the button entirely when the relaxation
@@ -2996,7 +3378,7 @@ export default function Jobs() {
     })();
     return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, refreshing, error, data, activeFilters]);
+  }, [loading, refreshing, error, data, activeFilters, filterState]);
 
   // Disclosure-aware filtering: some filters can only match postings whose
   // employer DISCLOSED the field, so switching one on silently drops every
@@ -3015,14 +3397,20 @@ export default function Jobs() {
     // of it. The honest denominator here is NOT "everything without the filter"
     // (the user doesn't want other fields) — it's specifically the postings we
     // couldn't classify, so we count category='other' against the same filters.
+    // EVERY pay control counts as the pay disclosure, not just the floor. The
+    // ceiling, the hourly/salaried basis and the stated-pay flag all read the
+    // same published figure and hide the same silent majority; only the floor
+    // used to trigger this line, so the three new ways to ask the question
+    // would each have hidden 80% of the board without the sentence that says so.
     const kind: "salary" | "workMode" | null =
-      salaryFloor ? "salary" : (workMode || remoteOnly) ? "workMode" : null;
+      (salaryFloor || salaryCeiling || payBasis || statedPayOnly) ? "salary"
+        : (workMode || remoteOnly) ? "workMode" : null;
     if (!kind || loading || refreshing || error || !data || typeof data.total !== "number" || data.total === 0) {
       setDisclosure(null);
       discSigRef.current = "";
       return;
     }
-    const sig = JSON.stringify([kind, q, location, category, experience, company, salaryFloor, remoteOnly, workMode, freshness, country, data.total]);
+    const sig = JSON.stringify([kind, boardFilterBody(filterState), data.total]);
     if (discSigRef.current === sig) return;
     discSigRef.current = sig;
     let cancelled = false;
@@ -3030,15 +3418,18 @@ export default function Jobs() {
       try {
         const { data: r } = await invokeBoard<{ total?: number; countCapped?: boolean }>({
           action: "list", countOnly: true, includeFacets: false,
-          q: q || undefined, location: location || undefined,
-          category: category || undefined, experience: experience || undefined,
-          companies: companyTokens.length ? companyTokens : undefined, country: country || undefined,
-          maxAgeDays: freshness ? (freshness === "day" ? 1 : 7) : undefined,
-          // Drop ONLY the disclosure-dependent filter; every other constraint stays.
-          ...(kind === "salary"
-            ? { remote: remoteOnly || undefined, workMode: workMode || undefined }
-            : {}),
-          ...(kind === "workMode" ? { salaryFloor: salaryFloor || undefined } : {}),
+          // Drop ONLY the disclosure-dependent controls and re-derive; every
+          // other constraint stays. The whole pay BAND goes together — floor,
+          // ceiling, basis and the stated-pay flag all narrow to the same
+          // published figure, so dropping one and keeping the others would
+          // count a denominator that is still hiding the postings this line
+          // exists to count.
+          ...boardFilterBody({
+            ...filterState,
+            ...(kind === "salary"
+              ? { salaryFloor: 0, salaryCeiling: 0, payBasis: "" as const, statedPayOnly: false }
+              : { workMode: "" as const, remoteOnly: false }),
+          }),
         });
         const without = r?.total;
         if (cancelled || typeof without !== "number") return;
@@ -3055,7 +3446,7 @@ export default function Jobs() {
     })();
     return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, refreshing, error, data, salaryFloor, workMode, remoteOnly, q, location, category, experience, company, country, freshness]);
+  }, [loading, refreshing, error, data, salaryFloor, salaryCeiling, payBasis, statedPayOnly, workMode, remoteOnly, filterState]);
 
   // Inline keyword highlighting: the posting's own text with the fit
   // keywords marked in place — green for terms the resume covers, amber for
@@ -4108,26 +4499,60 @@ export default function Jobs() {
                 ) : null}
               </label>
             )}
-            <select
-              value={experience}
-              onChange={(e) => setExperience(e.target.value)}
-              className="px-3 py-2 rounded-lg bg-background border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-              aria-label={t("jobsPage.experienceFieldLabel", "Experience level")}
-            >
-              <option value="">{t("jobsPage.allExperience", "Any experience")}</option>
-              {EXPERIENCE_IDS.map((x) => (
-                <option key={x} value={x}>
-                  {t(`jobsPage.experience.${x}`, x)}
-                </option>
-              ))}
-            </select>
-            {/* Not gated on the facet. get_country_facet returns 57014 on every
-                call in production (10 of 10, 3.20-3.32s), and the code's own
-                retry fails too — so this control rendered 0% of the time and no
-                country was reachable except by hand-editing the URL. Counts are
-                an enrichment; their absence must not remove the filter itself.
-                When the facet is empty we fall back to the countries actually
-                present in the current result set. */}
+            {/* THE TWO WAYS A POSTING STATES WHAT IT WANTS FROM YOU, named as
+                one group so a screen reader hears "Experience level" once and
+                then the two distinct controls inside it. They are separate
+                columns with separate coverage (experience_band usable on 43.1%,
+                min_years on 28.9%) and they AND together, so they cannot be one
+                control. */}
+            <div role="group" aria-label={t("jobsPage.experienceFieldLabel", "Experience level")} className="flex flex-wrap gap-2">
+              {/* FOUR BANDS AT ONCE. The cap IS the list, so nothing is ever
+                  disabled — but the at-max note still fires at 4 of 4, and it
+                  has to. Picking every band is NOT the same as picking none:
+                  318,607 rows read "unspecified" and match no band at all, so
+                  a full selection still hides them. `asBands` in filters.ts has
+                  accepted a comma list since the day it was written; only this
+                  control refused to send one. */}
+              <MultiSelectFilter
+                value={experience}
+                onChange={setExperience}
+                max={EXPERIENCE_IDS.length}
+                options={EXPERIENCE_IDS.map((x) => ({ value: x, label: t(`jobsPage.experience.${x}`, x) }))}
+                allLabel={t("jobsPage.allExperience", "Any experience")}
+                ariaLabel={t("jobsPage.experienceBandsLabel", "Seniority bands")}
+                selectedLabel={(n) => t("jobsPage.nExperience", "{{n}} levels", { n })}
+                atMaxNote={t("jobsPage.experienceAtMax", "That is every band the board records.")}
+                clearLabel={t("jobsPage.clearExperience", "Clear experience")}
+                title={t("jobsPage.experienceTip", "The band read from the posting's own wording. Postings that don't say are excluded while this is on — that is most of the board.")}
+              />
+              {/* THE JOB-SEEKER'S QUESTION, not the employer's: "does not demand
+                  more than n years". min_years <= n. */}
+              <select
+                value={maxYears || ""}
+                onChange={(e) => setMaxYears(Number(e.target.value) || 0)}
+                className="px-3 py-2 rounded-lg bg-background border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                aria-label={t("jobsPage.maxYearsFieldLabel", "Maximum years of experience required")}
+                title={t("jobsPage.maxYearsTip", "Hides postings that ask for more than this many years. Only postings that state a number can be matched — 29% of the board — so the rest are hidden while this is on.")}
+              >
+                <option value="">{t("jobsPage.anyMaxYears", "Any years required")}</option>
+                {MAX_YEARS_STEPS.map((y) => (
+                  <option key={y} value={y}>
+                    {t("jobsPage.maxYearsOption", "Asks {{n}} yrs or fewer", { n: y })}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {/* THE DIRECT FACET FIRST, THE RESULT SET ONLY IF IT FAILS.
+                get_country_facet DID return 57014 on 10 of 10 calls (3.20-3.32s,
+                2026-08-08), which is why the fallback exists and why this
+                control is not gated on the facet arriving. Re-measured against
+                production on 2026-08-25 it answers in 0.49s with US 253,609 /
+                GB 20,625 / CA 19,220 / IN 14,568 / DE 11,413 — twenty countries
+                with real counts, which the fallback can never produce: it can
+                only name the handful of countries on the page in front of you,
+                with no counts at all. So the facet is the source and the result
+                set is the safety net, not the other way round. Counts are an
+                enrichment; their absence must never remove the filter itself. */}
             {(countryFacet.length > 0 || fallbackCountries.length > 0) && (
               <MultiSelectFilter
                 value={country}
@@ -4156,7 +4581,15 @@ export default function Jobs() {
                 aria-expanded={companyQuery !== null}
                 aria-controls="company-typeahead-list"
                 aria-activedescendant={companyQuery !== null && companyIdx >= 0 ? `company-opt-${companyIdx}` : undefined}
-                value={companyQuery !== null ? companyQuery : (companies.find((c) => c.token === company)?.name ?? companyNames.current[company] ?? "")}
+                // Several employers cannot be spelled into one text box, so the
+                // box says how many and the chip row names them — the same
+                // choice the multi-select trigger and the company chip already
+                // make rather than printing a wall of tokens.
+                value={companyQuery !== null
+                  ? companyQuery
+                  : companyTokens.length > 1
+                  ? t("jobsPage.companiesChip", "{{n}} companies", { n: companyTokens.length })
+                  : (companies.find((c) => c.token === company)?.name ?? companyNames.current[company] ?? "")}
                 onChange={(e) => { setCompanyQuery(e.target.value); setCompanyIdx(-1); }}
                 onFocus={() => setCompanyQuery(companyQuery ?? "")}
                 onBlur={() => setTimeout(() => { setCompanyQuery(null); setCompanyIdx(-1); }, 150)}
@@ -4166,7 +4599,7 @@ export default function Jobs() {
                   if (e.key === "ArrowDown") { e.preventDefault(); setCompanyIdx((i) => Math.min(i + 1, opts.length - 1)); }
                   else if (e.key === "ArrowUp") { e.preventDefault(); setCompanyIdx((i) => Math.max(i - 1, -1)); }
                   else if (e.key === "Enter" && companyIdx >= 0 && opts[companyIdx]) {
-                    e.preventDefault(); setCompany(opts[companyIdx].token); setCompanyQuery(null); setCompanyIdx(-1);
+                    e.preventDefault(); toggleCompanyToken(opts[companyIdx].token); setCompanyQuery(""); setCompanyIdx(-1);
                   } else if (e.key === "Escape") { setCompanyQuery(null); setCompanyIdx(-1); }
                 }}
                 placeholder={t("jobsPage.companySearch", "Company…")}
@@ -4176,7 +4609,7 @@ export default function Jobs() {
               {companyQuery !== null && (
                 <div id="company-typeahead-list" role="listbox" className="absolute z-30 mt-1 w-64 max-h-72 overflow-auto rounded-lg border border-border bg-background shadow-lg text-sm">
                   {company && (
-                    <button type="button" className="block w-full text-left px-3 py-2 hover:bg-muted text-muted-foreground" onMouseDown={() => { setCompany(""); setCompanyQuery(null); }}>
+                    <button type="button" className="block w-full text-left px-3 py-2 hover:bg-muted text-muted-foreground" onMouseDown={(e) => { e.preventDefault(); setCompany(""); setCompanyQuery(null); }}>
                       {t("jobsPage.allCompanies", "All companies")}
                     </button>
                   )}
@@ -4186,31 +4619,124 @@ export default function Jobs() {
                         key={c.token}
                         id={`company-opt-${ci}`}
                         role="option"
-                        aria-selected={ci === companyIdx}
+                        // TWO STATES, TWO ATTRIBUTES. aria-selected on a listbox
+                        // option means "chosen", and it was carrying the
+                        // keyboard cursor instead — with one token that was
+                        // nearly the same thing, but a list that accumulates has
+                        // a highlighted row and several chosen ones at once.
+                        aria-selected={companyTokens.includes(c.token)}
+                        aria-current={ci === companyIdx ? "true" : undefined}
                         type="button"
                         className={`block w-full text-left px-3 py-2 hover:bg-muted ${ci === companyIdx ? "bg-muted" : ""}`}
-                        onMouseDown={() => { setCompany(c.token); setCompanyQuery(null); setCompanyIdx(-1); }}
+                        onMouseDown={(e) => { e.preventDefault(); toggleCompanyToken(c.token); setCompanyIdx(-1); }}
                       >
+                        <span className={`mr-1.5 ${companyTokens.includes(c.token) ? "text-primary" : "text-transparent"}`} aria-hidden="true">✓</span>
                         {c.name} <span className="text-muted-foreground">({c.count})</span>
                       </button>
                     ))}
                 </div>
               )}
             </div>
-            <select
-              value={salaryFloor || ""}
-              onChange={(e) => setSalaryFloor(Number(e.target.value) || 0)}
-              className="px-3 py-2 rounded-lg bg-background border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-              aria-label={t("jobsPage.salaryFieldLabel", "Minimum stated pay")}
-              title={t("jobsPage.salaryFloorTip", "Filters on pay the posting itself states (hourly and monthly rates annualized). Postings that don't publish pay are hidden while this is on — that's most of them.")}
-            >
-              <option value="">{t("jobsPage.anySalary", "Any salary")}</option>
-              {[40_000, 60_000, 80_000, 100_000, 120_000, 150_000, 200_000].map((f) => (
-                <option key={f} value={f}>
-                  {t("jobsPage.salaryFloorOption", "{{amount}}k+ stated", { amount: f / 1000 })}
-                </option>
-              ))}
-            </select>
+            {/* PAY, AS A BAND AND AS A BASIS — three controls over the same
+                published figure, grouped so they read as one question.
+                The floor was the only one of them the page had, and it silently
+                implied the third: setting it already restricts you to the 20.1%
+                of postings that state pay, which is what "States pay" now says
+                out loud on its own. */}
+            <div role="group" aria-label={t("jobsPage.payFieldLabel", "Pay")} className="flex flex-wrap gap-2">
+              <select
+                value={salaryFloor || ""}
+                onChange={(e) => setSalaryFloor(Number(e.target.value) || 0)}
+                className="px-3 py-2 rounded-lg bg-background border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                aria-label={t("jobsPage.salaryFieldLabel", "Minimum stated pay")}
+                title={t("jobsPage.salaryFloorTip", "Filters on pay the posting itself states (hourly and monthly rates annualized). Postings that don't publish pay are hidden while this is on — that's most of them.")}
+              >
+                <option value="">{t("jobsPage.anySalary", "Any salary")}</option>
+                {SALARY_FLOOR_STEPS.map((f) => (
+                  <option key={f} value={f}>
+                    {t("jobsPage.salaryFloorOption", "{{amount}}k+ stated", { amount: f / 1000 })}
+                  </option>
+                ))}
+              </select>
+              {/* THE CEILING, beside the floor because together they are one
+                  band. Not clamped to the floor here: a ceiling under the floor
+                  is refused by the server and named in ignoredFilters, and the
+                  visitor learning that is better than the page quietly picking
+                  a number for them. */}
+              <select
+                value={salaryCeiling || ""}
+                onChange={(e) => setSalaryCeiling(Number(e.target.value) || 0)}
+                className="px-3 py-2 rounded-lg bg-background border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                aria-label={t("jobsPage.salaryCeilingFieldLabel", "Maximum stated pay")}
+                title={t("jobsPage.salaryCeilingTip", "The other end of the band, on the same annualized figure as the floor. Useful for screening out roles you're overqualified for — and, like the floor, it can only see the fifth of postings that publish pay.")}
+              >
+                <option value="">{t("jobsPage.anyCeiling", "No maximum")}</option>
+                {SALARY_CEILING_STEPS.map((c) => (
+                  <option key={c} value={c}>
+                    {t("jobsPage.salaryCeilingOption", "up to {{amount}}k stated", { amount: c / 1000 })}
+                  </option>
+                ))}
+              </select>
+              {/* HOURLY vs SALARIED, from salary_period. The thinnest filter on
+                  the board — 59,505 of 559,805 rows say which — and the
+                  coverage line beneath the results says so whenever it is on. */}
+              <select
+                value={payBasis}
+                onChange={(e) => setPayBasis(e.target.value as "" | "hourly" | "salaried")}
+                className="px-3 py-2 rounded-lg bg-background border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                aria-label={t("jobsPage.payBasisFieldLabel", "Pay basis")}
+                title={t("jobsPage.payBasisTip", "Whether the posting quotes an hourly rate or a salary. Only one posting in ten says which, and the rest are hidden while this is on — this is a scalpel, not a broad filter.")}
+              >
+                <option value="">{t("jobsPage.anyPayBasis", "Any pay basis")}</option>
+                <option value="hourly">{t("jobsPage.payBasisHourly", "Paid hourly")}</option>
+                <option value="salaried">{t("jobsPage.payBasisSalaried", "Salaried")}</option>
+              </select>
+              {/* THE HALF OF THE PAY FLOOR NOBODY WAS TOLD ABOUT, on its own.
+                  salary_min_annual IS NOT NULL — 112,524 rows. Someone who only
+                  wants postings that name a figure, at any figure, had no way to
+                  ask for that except by setting a floor they did not mean. */}
+              <label
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border bg-background text-sm whitespace-nowrap text-muted-foreground cursor-pointer"
+                title={t("jobsPage.statedPayTip", "Show only postings that publish a pay figure, whatever it is. About a fifth of the board does. Setting a pay floor already does this silently — this makes it a choice.")}
+              >
+                <input
+                  type="checkbox"
+                  checked={statedPayOnly}
+                  onChange={(e) => setStatedPayOnly(e.target.checked)}
+                  className="accent-[hsl(var(--primary))]"
+                />
+                {t("jobsPage.statedPay", "States pay")}
+              </label>
+            </div>
+            {/* THE EMPLOYER'S OWN TEAM LABEL, matched as a substring. 226,631
+                rows carry one. Until now it was reachable only by typing into
+                the search box, where it ORs with the title and the company name
+                instead of narrowing anything. */}
+            <input
+              type="text"
+              value={department}
+              onChange={(e) => setDepartment(e.target.value)}
+              placeholder={t("jobsPage.departmentPlaceholder", "Department…")}
+              className="px-3 py-2 rounded-lg bg-background border border-border text-sm w-36 focus:outline-none focus:ring-2 focus:ring-primary/40"
+              aria-label={t("jobsPage.departmentFieldLabel", "Department")}
+              title={t("jobsPage.departmentTip", "Matches the team name the employer wrote on the posting, anywhere inside it — “nurs” finds Nursing. Two postings in five carry one, and employers spell them however they like, so this narrows rather than proves.")}
+            />
+            {/* WHICH ATS THE POSTING CAME FROM. Every row has a source, so this
+                is the one new filter that hides nothing at all — and the only
+                vendor control before it was the agent-can-apply toggle, which
+                pins the board to the 5.4% the agent can drive. */}
+            <MultiSelectFilter
+              value={vendor}
+              onChange={setVendor}
+              max={VENDOR_LIMIT}
+              options={VENDOR_OPTIONS}
+              allLabel={t("jobsPage.allVendors", "Any source")}
+              ariaLabel={t("jobsPage.vendorFieldLabel", "Job board source")}
+              selectedLabel={(n) => t("jobsPage.nVendors", "{{n}} sources", { n })}
+              atMaxNote={t("jobsPage.vendorsAtMax", "Eight sources at a time — the same cap the board applies.")}
+              clearLabel={t("jobsPage.clearVendors", "Clear sources")}
+              title={t("jobsPage.vendorTip", "The platform the employer publishes on. Every posting has one, so this filter hides nothing that isn't from another source.")}
+            />
             {/* Definitive work-mode filter: only employer-stated tags match;
                 postings that don't say are excluded by the filter, honestly. */}
             <select
@@ -4224,7 +4750,7 @@ export default function Jobs() {
               <option value="hybrid">{t("jobsPage.workMode.hybrid", "Hybrid")}</option>
               <option value="onsite">{t("jobsPage.workMode.onsite", "On-site")}</option>
             </select>
-            {(q || location || remoteOnly || workMode || company || category || experience || salaryFloor > 0) && (
+            {(q || activeBoardFilterKeys(filterState).length > 0) && (
               <Button size="sm" variant="ghost" className="gap-1.5" onClick={() => saveCurrentSearch()}>
                 <BookmarkCheck className="w-3.5 h-3.5" />
                 {t("jobsPage.saveSearch", "Save this search")}
@@ -4261,7 +4787,19 @@ export default function Jobs() {
 
           {/* Freshness + fit-ranking row */}
           <div className="flex flex-wrap items-center gap-2 mb-1.5 lg:mb-3 -mt-2">
-            {([["", t("jobsPage.freshAll", "Any date")], ["day", t("jobsPage.freshDay", "Today")], ["week", t("jobsPage.freshWeek", "This week")]] as const).map(([v, label]) => (
+            {/* FIVE WINDOWS OUT OF THE THIRTY THE API TAKES, not two. The step
+                list is deliberately short — a chip row is not a slider — but it
+                now spans the whole serving window instead of stopping at a
+                week, which was the only reason "posted in the last fortnight"
+                required hand-editing the URL. */}
+            {([
+              ["", t("jobsPage.freshAll", "Any date")],
+              ["1", t("jobsPage.freshDay", "Today")],
+              ["3", t("jobsPage.fresh3", "Last 3 days")],
+              ["7", t("jobsPage.freshWeek", "This week")],
+              ["14", t("jobsPage.fresh14", "Last 2 weeks")],
+              ["30", t("jobsPage.fresh30", "Last 30 days")],
+            ] as const).map(([v, label]) => (
               <button
                 key={v}
                 type="button"
@@ -4439,18 +4977,22 @@ export default function Jobs() {
             )}
             {/* U5: guided starting points — one-tap honest filter combos for the
                 blank-page moment. Hidden once any filter is active. */}
-            {recentJobs.length === 0 && !q && !location && !category && !experience && !company && !remoteOnly && !freshness && !salaryFloor && !country && (
+            {/* A ZERO-INTENT ARRIVAL, derived rather than re-listed: any filter
+                at all — including the six added since this line was written —
+                means the visitor has expressed an intent and does not need the
+                orientation panel. */}
+            {recentJobs.length === 0 && !q && activeBoardFilterKeys(filterState).length === 0 && (
               <span className="hidden sm:inline-flex flex-wrap items-center gap-2 ml-1">
                 <span className="text-[11px] text-muted-foreground">{t("jobsPage.tryLabel", "Try:")}</span>
                 <button type="button" onClick={() => { setWorkMode("remote"); setRemoteOnly(false); setExperience("entry"); setCountry("US"); }}
                   className="text-xs px-3 py-1.5 rounded-full border border-dashed border-border text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors">
                   {t("jobsPage.presetRemoteEntry", "Remote · Entry-level · US")}
                 </button>
-                <button type="button" onClick={() => { setCategory("engineering"); setFreshness("week"); }}
+                <button type="button" onClick={() => { setCategory("engineering"); setFreshness("7"); }}
                   className="text-xs px-3 py-1.5 rounded-full border border-dashed border-border text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors">
                   {t("jobsPage.presetEngWeek", "Engineering · This week")}
                 </button>
-                <button type="button" onClick={() => { setSalaryFloor(100000); setFreshness("week"); }}
+                <button type="button" onClick={() => { setSalaryFloor(100000); setFreshness("7"); }}
                   className="text-xs px-3 py-1.5 rounded-full border border-dashed border-border text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors">
                   {t("jobsPage.presetSalary", "$100k+ · This week")}
                 </button>
@@ -4496,7 +5038,7 @@ export default function Jobs() {
               row: wrapped, this block alone cost 96px of a 812px mobile fold. */}
           <div className="flex lg:hidden flex-nowrap gap-2 mb-1.5 overflow-x-auto pb-1 [mask-image:linear-gradient(to_right,black_92%,transparent)]">
             {([
-              { key: "week", active: freshness === "week", label: t("jobsPage.chipWeek", "Posted this week"), toggle: () => setFreshness(freshness === "week" ? "" : "week") },
+              { key: "week", active: freshness === "7", label: t("jobsPage.chipWeek", "Posted this week"), toggle: () => setFreshness(freshness === "7" ? "" : "7") },
               { key: "remote", active: workMode === "remote", label: t("jobsPage.workMode.remote", "Remote"), toggle: () => { setWorkMode(workMode === "remote" ? "" : "remote"); setRemoteOnly(false); } },
               { key: "hybrid", active: workMode === "hybrid", label: t("jobsPage.workMode.hybrid", "Hybrid"), toggle: () => { setWorkMode(workMode === "hybrid" ? "" : "hybrid"); setRemoteOnly(false); } },
               { key: "pay", active: salaryFloor >= 100000, label: t("jobsPage.chip100k", "$100k+"), toggle: () => setSalaryFloor(salaryFloor >= 100000 ? 0 : 100000) },
@@ -4657,6 +5199,23 @@ export default function Jobs() {
                     // Country was the only one of the four filters with no
                     // caveat, while being the thinnest on some vendors.
                     if (typeof fc.country === "number") parts.push(t("jobsPage.coverageCountry", "a country on {{pct}}%", { pct: Math.round(fc.country * 100) }));
+                    // THE FIVE NEW PARTLY-POPULATED FILTERS, on the same line
+                    // and by the same rule: a filter over a column employers
+                    // often leave blank must publish what it can even see, or a
+                    // thin page reads as a verdict on the market instead of on
+                    // the data. `vendor` follows them, and the note beside it
+                    // says why a 100% figure is still worth printing.
+                    if (typeof fc.salaryCeiling === "number") parts.push(t("jobsPage.coverageCeiling", "a pay figure to cap on {{pct}}%", { pct: Math.round(fc.salaryCeiling * 100) }));
+                    if (typeof fc.hasStatedPay === "number") parts.push(t("jobsPage.coverageStatedPay", "any pay at all on {{pct}}%", { pct: Math.round(fc.hasStatedPay * 100) }));
+                    if (typeof fc.payBasis === "number") parts.push(t("jobsPage.coveragePayBasis", "hourly or salaried on {{pct}}%", { pct: Math.round(fc.payBasis * 100) }));
+                    if (typeof fc.maxYears === "number") parts.push(t("jobsPage.coverageMaxYears", "years of experience on {{pct}}%", { pct: Math.round(fc.maxYears * 100) }));
+                    if (typeof fc.department === "number") parts.push(t("jobsPage.coverageDepartment", "a department on {{pct}}%", { pct: Math.round(fc.department * 100) }));
+                    // 100%, and rendered anyway. The server emits it, and the
+                    // honest answer to "how much of the board can this filter
+                    // see" is sometimes "all of it" — leaving it out would make
+                    // the line's silence about vendor indistinguishable from the
+                    // silence about a filter nobody switched on.
+                    if (typeof fc.vendor === "number") parts.push(t("jobsPage.coverageVendor", "which system they post on for {{pct}}%", { pct: Math.round(fc.vendor * 100) }));
                     if (!parts.length) return null;
                     return (
                       <p className="text-xs text-muted-foreground mb-2">
@@ -5180,7 +5739,7 @@ export default function Jobs() {
                   <p className="text-[13px] text-foreground basis-full sm:basis-auto sm:flex-1">
                     {t("jobsPage.welcomeLine", "Every posting here is verified live from the company's own system. Start where this board is strongest:")}
                   </p>
-                  <button type="button" onClick={() => { trackBoard("welcome_posted_today"); dismissWelcome(); setFreshness("day"); }}
+                  <button type="button" onClick={() => { trackBoard("welcome_posted_today"); dismissWelcome(); setFreshness("1"); }}
                     className="text-xs px-3 py-1.5 rounded-full border border-border text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary">
                     {t("jobsPage.welcomePostedToday", "Posted today")}
                   </button>

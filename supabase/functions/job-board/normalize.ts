@@ -1219,7 +1219,29 @@ export function extractRipplingJobPosts(html: string): { items: RipplingJobItem[
     const data = JSON.parse(m[1]) as {
       props?: { pageProps?: { dehydratedState?: { queries?: Array<{ queryKey?: unknown[]; state?: { data?: { items?: unknown[]; totalPages?: number } } }> } } };
     };
-    const queries = data.props?.pageProps?.dehydratedState?.queries ?? [];
+    const dehydrated = data.props?.pageProps?.dehydratedState;
+    const queries = dehydrated?.queries ?? [];
+    // A BOARD WITH NO OPEN ROLES IS NOT A BROKEN PARSER.
+    //
+    // Rippling renders a perfectly healthy page for an employer that is not
+    // hiring: dehydratedState is present and `queries` is an EMPTY ARRAY,
+    // because there was nothing to prefetch. The old code could not tell that
+    // from shape drift and returned null for both, so the caller threw
+    // "rippling payload shape unrecognized" and the board was published to the
+    // operator as a vendor failure.
+    //
+    // Measured 2026-08-25 over 198 of 1,051 rippling boards: 2 hit this (1%),
+    // matching the 6 standing failures in the live failure list. Both
+    // whistler-platinum-jobs and elevationcapital return 157KB of valid page
+    // with dehydratedState present, queries [], zero occurrences of
+    // "job-posts", and the words "No open" in the rendered text. Neither is
+    // broken; neither is hiring.
+    //
+    // The drift signal is KEPT and made sharper: queries present but carrying
+    // no job-posts key still returns null, because that is what a real shape
+    // change looks like. Only the empty array is read as an honest zero — the
+    // same distinction the personio empty-feed fix drew earlier.
+    if (dehydrated && queries.length === 0) return { items: [], totalPages: 1 };
     const q = queries.find((x) => Array.isArray(x.queryKey) && x.queryKey[2] === "job-posts");
     if (!q?.state?.data || !Array.isArray(q.state.data.items)) return null;
     return { items: q.state.data.items as RipplingJobItem[], totalPages: Number(q.state.data.totalPages) || 1 };
@@ -1551,9 +1573,33 @@ export function normalizeOracle(items: OracleReq[], company: string, token: stri
     .filter((j) => j.applyUrl !== "" && j.title !== "" && j.id !== `oracle:${token}:`);
 }
 
-/** Teamtailor career-site RSS ({token}.teamtailor.com/jobs.rss). The feed is
- *  title/link/pubDate only — location isn't structured, so it stays honest-empty
- *  unless the title itself says remote. External id = the numeric slug prefix. */
+/** Teamtailor career-site RSS ({token}.teamtailor.com/jobs.rss).
+ *
+ *  THE COMMENT THAT USED TO BE HERE SAID THE FEED IS "title/link/pubDate only —
+ *  location isn't structured". That was wrong, and it cost every Teamtailor
+ *  posting its place in three filters.
+ *
+ *  The feed's own root element declares xmlns:tt="https://teamtailor.com/locations".
+ *  Measured on capiosverigeab, 100 items, 2026-08-25:
+ *
+ *    tt:city        100/100 populated   (Stockholm 22, Göteborg 10, ...)
+ *    tt:country     100/100             (Sweden)
+ *    tt:department   98/100             (Sjuksköterska 35, Läkare 21, ...)
+ *    remoteStatus   100/100             (none 80, hybrid 13, onsite 5, temporary 1)
+ *
+ *  and the board was storing location "" for 10,858 of 10,858 servable
+ *  Teamtailor rows — the entire vendor, invisible to the location filter, and
+ *  to the country filter downstream of it, and to department.
+ *
+ *  remoteStatus is read CONSERVATIVELY. Teamtailor's vocabulary maps "hybrid"
+ *  and "fully" cleanly, but "none" is 80% of this sample and means "no remote
+ *  status" as readily as it means onsite — and "onsite" exists separately in
+ *  the same feed, which is the tell. Claiming onsite for 80% of a vendor on
+ *  that inference is exactly the kind of invented field this board does not
+ *  publish, so "none" and "temporary" fall through to title detection and stay
+ *  null when the title says nothing.
+ *
+ *  External id = the numeric slug prefix. */
 export function normalizeTeamtailor(rss: string, company: string, token: string): JobPosting[] {
   return xmlBlocks(rss, "item")
     .map((item) => {
@@ -1561,16 +1607,28 @@ export function normalizeTeamtailor(rss: string, company: string, token: string)
       const link = xmlValue(item, "link") ?? "";
       const idMatch = link.match(/\/jobs\/(\d+)/);
       const externalId = idMatch ? idMatch[1] : "";
+      // City first, then country — the same "Place, Country" shape every other
+      // vendor produces, so detectCountry() downstream resolves it with no
+      // vendor-specific branch. Either half alone is still worth storing.
+      const city = xmlValue(item, "tt:city");
+      const country = xmlValue(item, "tt:country");
+      const location = [city, country].filter(Boolean).join(", ");
+      const status = (xmlValue(item, "remoteStatus") ?? "").toLowerCase();
+      const statedMode = status === "hybrid" ? "hybrid" as const
+        : status === "fully" ? "remote" as const
+        : status === "onsite" ? "onsite" as const
+        : null;
+      const workMode = statedMode ?? detectWorkMode(title, location);
       return {
         id: `teamtailor:${token}:${externalId}`,
         source: "teamtailor" as const,
         token,
         company,
         title,
-        location: "",
-        workMode: detectWorkMode(title),
-        remote: detectWorkMode(title) === "remote",
-        department: null,
+        location,
+        workMode,
+        remote: workMode === "remote",
+        department: xmlValue(item, "tt:department"),
         postedAt: safeIso(xmlValue(item, "pubDate")),
         category: categorize(title, null),
         salary: null,

@@ -111,6 +111,16 @@ describe("isUnfiltered — derived, so a new filter cannot be forgotten", () => 
       category: "engineering",
       experience: ["senior"],
       salaryFloor: 100_000,
+      // Added 2026-08-25: the six populated columns nothing could reach. Same
+      // catch again — this literal failed `npm run typecheck` the moment
+      // AppliedFilters gained them, which is the tripwire doing its job, and
+      // the loop below now proves isUnfiltered counts all six.
+      salaryCeiling: 200_000,
+      payBasis: "salaried",
+      hasStatedPay: true,
+      maxYears: 5,
+      department: "Legal",
+      vendors: ["lever"],
       companies: ["tok"],
       maxAgeDays: 7,
       postedAfter: "2026-07-01T00:00:00Z",

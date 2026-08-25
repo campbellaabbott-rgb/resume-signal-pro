@@ -228,8 +228,16 @@ describe("routed retrieval is wired so it cannot fail quietly", () => {
   it("is present, and decides the route BEFORE any SQL", () => {
     expect(BLK, "the routed branch is missing").not.toBe("");
     const routeAt = FN.indexOf("const routeDecision = qText");
-    const rankedAt = FN.indexOf('if (qText && body.sort !== "salary" && !countOnly)');
-    expect(routeAt).toBeGreaterThan(-1);
+    // Anchored on a PREFIX, not the whole condition. This used to match the
+    // full literal `if (qText && body.sort !== "salary" && !countOnly)`, so
+    // adding a legitimate conjunct to that line (the rpcBlindFilters gate, added
+    // 2026-08-25 so a filter search_jobs cannot bind is not answered by it) made
+    // indexOf return -1 and the ordering assertion compare against -1 — failing
+    // for a reason with nothing to do with routing order. A guard that breaks
+    // when unrelated code is added trains people to edit the guard.
+    const rankedAt = FN.indexOf('if (qText && body.sort !== "salary" && !countOnly');
+    expect(routeAt, "the route decision is missing").toBeGreaterThan(-1);
+    expect(rankedAt, "the ranked path's condition is missing or was respelled").toBeGreaterThan(-1);
     expect(routeAt < rankedAt, "routing must precede the ranked path, not rescue after it").toBe(true);
   });
 

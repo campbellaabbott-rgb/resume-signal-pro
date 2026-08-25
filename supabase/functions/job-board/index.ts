@@ -57,7 +57,7 @@ import { classifyDormancy, updateBoardFailures, type BoardFailureState } from ".
 import { advanceProgress, isPassDone, type RefreshProgress } from "./rotation.ts";
 import { CANARIES, rawItemCount, aggregateVendorHealth, type CanaryResult } from "./vendor-canary.ts";
 import { detectExperience, isExperienceBand } from "./experience.ts";
-import { categoryParam, filterViolations, isUnfiltered, normalizeFilters, rescueVendorsParam, sendableSourcesParam, splitPage, salaryFromQueryText, SALARY_IN_QUERY } from "./filters.ts";
+import { categoryParam, filterViolations, isUnfiltered, normalizeFilters, rpcBlindFilters, rescueVendorsParam, SALARIED_PERIODS, sendableSourcesParam, splitPage, salaryFromQueryText, SALARY_IN_QUERY } from "./filters.ts";
 import { pickRoute, rerankWindow, RETRIEVER_FOR } from "./search-routing.ts";
 import { planRankedPage } from "./paging.ts";
 import { collapseClusters, GROUP_OVERFETCH, interleaveByCompany, visibleCategories, mergeCompanyFacet } from "./clusters.ts";
@@ -102,7 +102,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-25.13";
+const BUILD_VERSION = "2026-08-25.15";
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -2487,7 +2487,11 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
           one("experience_band", "neq.unspecified"),
           // Country had NO caveat at all while pay, work mode and experience
           // each had one — and it is the thinnest of the four on some
-          // vendors (teamtailor states a country on 0 of its rows). A filter
+          // vendors. Teamtailor used to be the worst of them at 0 rows, but
+          // that was OUR parser discarding tt:country, not the vendor
+          // withholding it — fixed 2026-08-25, so those 10,858 rows resolve a
+          // country as they re-ingest. The caveat stands on its own merits: a
+          // filter
           // that silently hides a quarter of the board is exactly what this
           // disclosure exists to prevent.
           one("country", "not.is.null"),
@@ -4079,33 +4083,111 @@ function intentDisclosure(r: { labels: string[] } | null): Record<string, unknow
 }
 
 /**
+ * Coverage for filters whose column the refresh pass does NOT count.
+ *
+ * FRACTIONS, NOT PERCENTAGES. The cached figures are frac() = n/open rounded to
+ * three decimals, and Jobs.tsx renders them with Math.round(x * 100). A 10.6
+ * written here would reach the screen as "pay basis stated on 1,060% of
+ * postings" — the unit is the whole contract, so these are 0.106, never 10.6.
+ *
+ * MEASURED 2026-08-25 against the 559,805 rows the board can serve (open,
+ * inside the freshness window — the same population the cached figures use):
+ *
+ *   salary_period      59,505  10.6%   hour 41,542 | year 17,312 | month 627
+ *   salary_min_annual 112,524  20.1%
+ *   min_years         162,032  28.9%
+ *   department        226,631  40.5%
+ *   source            559,805  100%
+ *
+ * Constants rather than live counts because each one is a full count over a
+ * partly-populated column, and the pass that could take them cheaply already
+ * takes four and is the pass that once bound its results to the wrong names.
+ * The DATE is part of the number: these are a snapshot, and a snapshot with no
+ * date is what turns a measurement into a claim.
+ */
+const MEASURED_COVERAGE = {
+  payBasis: 0.106,
+  hasStatedPay: 0.201,
+  maxYears: 0.289,
+  department: 0.405,
+  vendor: 1,
+} as const;
+
+/**
  * How much of the board each ACTIVE filter can even see.
  *
  * Emitted only for filters the caller actually set — coverage for a filter
- * nobody applied is noise. Absent when the cache has no coverage figures,
+ * nobody applied is noise. NOTHING is emitted when the cache has no coverage
+ * block — not the cached figures and not the measured constants above —
  * because showing an invented fraction would be worse than showing none: a
- * number on screen gets believed.
+ * number on screen gets believed, and a page that publishes five pinned
+ * constants while four live figures are missing is claiming a measurement it
+ * did not take.
  *
  * MEASURED against 599,316 open postings: salary stated on 12.9%, work mode on
  * 29.9%, experience on 40.4%. A searcher who sets a salary floor is seeing an
  * eighth of the market and currently has no way to know it.
  */
 function coverageDisclosure(
-  applied: { salaryFloor?: number | null; workMode?: string | null; experience?: string[]; country?: string | null },
+  applied: {
+    salaryFloor?: number | null;
+    workMode?: string | null;
+    experience?: string[];
+    country?: string | null;
+    salaryCeiling?: number | null;
+    payBasis?: string | null;
+    hasStatedPay?: boolean;
+    maxYears?: number | null;
+    department?: string | null;
+    vendors?: string[];
+  },
   meta?: { v: Record<string, unknown> } | null,
 ): Record<string, unknown> {
   const cov = (meta?.v as Record<string, unknown> | undefined)?.coverage as
     | { salaryFloor?: number | null; workMode?: number | null; experience?: number | null; country?: number | null }
     | undefined;
+  // NO CACHE, NO NUMBERS — INCLUDING THE MEASURED ONES, and this early return
+  // stays exactly where it was. It is pinned by name in
+  // src/test/intent-is-a-filter-and-a-filter-says-what-it-hides.test.ts, and
+  // reordering it so the constants below survive a cold cache was how this
+  // change first went in: 630 tests passed and that one guard went red.
+  //
+  // The guard is right, and not only about invented fractions. The cached block
+  // is the freshest evidence the board has that its own coverage figures are
+  // being recomputed at all; with it missing, publishing five pinned constants
+  // beside four absent live figures says "we measured this today" on the one
+  // request where nothing was measured. Live 2026-08-25 the cache is present
+  // (filterCoverage {salaryFloor 0.201, workMode 0.281} on a real probe), so
+  // this costs the new filters nothing in practice — it only decides the cold
+  // case, and the cold case is the one where silence is honest.
   if (!cov) return {};
   const out: Record<string, number> = {};
+  // The five filters over partly-populated columns the refresh pass does not
+  // count. `vendor` is complete and still reported: silence on one active
+  // filter while four others carry a number reads as "we don't know", and for
+  // this one we do.
+  if (applied.payBasis) out.payBasis = MEASURED_COVERAGE.payBasis;
+  if (applied.hasStatedPay) out.hasStatedPay = MEASURED_COVERAGE.hasStatedPay;
+  if (applied.maxYears != null) out.maxYears = MEASURED_COVERAGE.maxYears;
+  if (applied.department) out.department = MEASURED_COVERAGE.department;
+  if (applied.vendors?.length) out.vendor = MEASURED_COVERAGE.vendor;
   if (applied.salaryFloor != null && typeof cov.salaryFloor === "number") out.salaryFloor = cov.salaryFloor;
+  // The ceiling compares against salary_rank_usd, the column the floor uses, so
+  // its coverage IS the floor's — read live rather than pinned as a sixth
+  // constant. Two constants for one column is how a number goes stale on one of
+  // its two readers.
+  if (applied.salaryCeiling != null && typeof cov.salaryFloor === "number") out.salaryCeiling = cov.salaryFloor;
   if (applied.workMode != null && typeof cov.workMode === "number") out.workMode = cov.workMode;
   if (applied.experience?.length && typeof cov.experience === "number") out.experience = cov.experience;
   // Country was the one filter of the four with no caveat, and it is the
-  // thinnest on several vendors — teamtailor states a country on 0 of its
-  // 10,412 rows. Filtering to a country silently drops every posting that
-  // never named one, which is around a quarter of the board.
+  // thinnest on several vendors. Teamtailor was cited here as stating a
+  // country on 0 of its 10,412 rows; that number was real but the cause was
+  // ours — the RSS carries tt:city and tt:country on every item and the
+  // parser dropped both. Fixed 2026-08-25; the rows resolve a country as they
+  // re-ingest, so do not quote the zero as a vendor property. Measured the
+  // same day, 156,672 of 559,854 servable rows (28%) still name no country,
+  // so filtering to one does silently drop them — which is what this
+  // disclosure is for.
   if (applied.country && typeof cov.country === "number") out.country = cov.country;
   return Object.keys(out).length ? { filterCoverage: out } : {};
 }
@@ -8067,6 +8149,43 @@ async function serveList(
     // identify (rank NULL), are excluded by the filter, honestly, not
     // guessed at. Displayed salaries stay exactly as the posting states them.
     if (applied.salaryFloor !== null) q = q.gte("salary_rank_usd", applied.salaryFloor);
+    // The CEILING, on the same approximate-USD column and therefore with the
+    // same NULL exclusion the floor has. Symmetry is the point: a band whose two
+    // ends compared different columns would return rows that clear the floor in
+    // USD and the ceiling in SEK. normalizeFilters has already refused a ceiling
+    // below the floor, so this can never bind an empty band.
+    if (applied.salaryCeiling !== null) q = q.lte("salary_rank_usd", applied.salaryCeiling);
+    // "Only postings that state pay at all." salary_min_annual, NOT
+    // salary_rank_usd: the rank column additionally requires a currency we can
+    // identify, so binding it here would answer a narrower question than the
+    // filter's name — 20.1% of the board states a figure, and fewer than that
+    // state one we can convert. Anyone who sets salaryFloor is inside this
+    // population already; this is the filter that lets them say so on purpose.
+    if (applied.hasStatedPay) q = q.not("salary_min_annual", "is", null);
+    // Hourly vs salaried. Rows with NO stated period are excluded, exactly as
+    // work mode excludes rows with no stated mode — 10.6% coverage, published by
+    // coverageDisclosure whenever this is set, because a scalpel that is not
+    // named as one gets read as a census.
+    if (applied.payBasis === "hourly") q = q.eq("salary_period", "hour");
+    else if (applied.payBasis === "salaried") q = q.in("salary_period", [...SALARIED_PERIODS]);
+    // "Does not demand more than n years" — min_years <= n. Rows that never
+    // stated a requirement are excluded by the comparison (NULL <= n is not
+    // true), honestly rather than guessed: a posting that named no requirement
+    // cannot be shown to satisfy one. Note 0 IS a stated requirement and passes
+    // every ceiling, which is the correct reading for a job-seeker.
+    if (applied.maxYears !== null) q = q.lte("min_years", applied.maxYears);
+    // Department as its OWN predicate. It has always been reachable through the
+    // free-text `q` above — which ORs it with title and company — so asking for
+    // the Legal department also returned every Legal Assistant and every
+    // company with Legal in its name, with nothing in the response saying which
+    // matched. Wildcards were stripped in normalizeFilters, so the `%` either
+    // side are ours.
+    if (applied.department) q = q.ilike("department", `%${applied.department}%`);
+    // Hiring-system filter. ANDs with the sendableOnly .in() above rather than
+    // replacing it — two .in()s on one column intersect, so {sendableOnly:true,
+    // vendor:"breezy,greenhouse"} is breezy alone, which is the honest reading
+    // of both requests at once and not a widening of either.
+    if (applied.vendors.length) q = q.in("source", applied.vendors);
     if (applied.companies.length) q = q.in("company_token", applied.companies);
     // Saved searches ask "how many NEW since I last looked" — a cheap count.
     // COMPANY-STATED DATE, not our crawl time. dateCol is effective_posted =
@@ -8123,6 +8242,18 @@ async function serveList(
     // correct against BOTH versions of the SQL. It costs one count query on a
     // filter nothing can send yet. Single-country requests are untouched.
     if (applied.country && applied.country.includes(",")) return null;
+    // AND NEITHER DOES A FILTER THIS RPC CANNOT SEE. Same shape, same reason.
+    //
+    // Six filters landed on 2026-08-25 — payBasis, hasStatedPay, salaryCeiling,
+    // maxYears, department, vendors — and they bind in buildQuery, which this
+    // RPC is not. count_jobs_capped has no parameter for any of them, so it
+    // would count the UNFILTERED population and headline a number several times
+    // the page. That is the 2026-07-25 p_work_mode defect exactly.
+    //
+    // Returning null is not a degradation: the caller falls through to an exact
+    // count through buildQuery, which binds all six. It costs one count query on
+    // requests that carry one.
+    if (rpcBlindFilters(applied).length) return null;
     // Bound from `applied`, the same object buildQuery reads. These four used to
     // be re-derived here with their own expressions; when one of those drifted
     // from the query's, the count described a different question than the page.
@@ -8450,7 +8581,10 @@ async function serveList(
     // row query below — if only one of these changes, the count and the rows
     // answer different questions, which is the 60-rows-under-a-total-of-36
     // incident.
-    if (qTextC && body.sort !== "salary") {
+    // rpcBlindFilters: search_jobs takes no parameter for the six filters added
+    // 2026-08-25, so a request carrying one must take the buildQuery path or the
+    // filter is silently dropped from the rows we serve.
+    if (qTextC && body.sort !== "salary" && !rpcBlindFilters(applied).length) {
       try {
         const { q: expQC } = expandQuery(qTextC);
         const t_search_jobs_4 = Date.now();
@@ -8848,7 +8982,9 @@ async function serveList(
     }
   } catch { /* fall through to the path this query would have taken anyway */ }
 
-  if (qText && body.sort !== "salary" && !countOnly) {
+  // Same gate as the count above: a filter search_jobs cannot bind must not be
+  // answered by search_jobs. buildQuery binds all six.
+  if (qText && body.sort !== "salary" && !countOnly && !rpcBlindFilters(applied).length) {
     try {
       // Role-alias expansion (disclosed): "swe" also searches "software
       // engineer" etc. The expanded websearch string keeps the original

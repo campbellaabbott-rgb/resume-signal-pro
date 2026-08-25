@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:tt="https://teamtailor.com/locations">
+<channel>
+<item>
+      <title>Allmänspecialist/ leg läkare till Capio vårdcentral Båstad</title>
+      <description>x</description>
+      <pubDate>Tue, 25 Aug 2026 10:48:06 +0200</pubDate>
+      <link>https://jobba.capio.se/jobs/8264989-allmanspecialist-leg-lakare-till-capio-vardcentral-bastad</link>
+      <remoteStatus>none</remoteStatus>
+      <guid>abacc3bc-cb69-4bc7-b511-cc829b1520f1</guid>
+      <tt:locations>
+        <tt:location>
+          <tt:name>Capio Vårdcentral Båstad</tt:name>
+          <tt:address>Köpmansgatan 42</tt:address>
+          <tt:zip>269 31</tt:zip>
+          <tt:city>Båstad</tt:city>
+          <tt:country>Sweden</tt:country>
+        </tt:location>
+      </tt:locations>
+      <tt:department>Läkare</tt:department>
+      <tt:role>Allmänmedicin</tt:role>
+    </item>
+<item>
+      <title>Leg psykolog/kurator med KBT-utbildning</title>
+      <description>x</description>
+      <pubDate>Wed, 19 Aug 2026 08:54:16 +0200</pubDate>
+      <link>https://jobba.capio.se/jobs/8239034-leg-psykolog-kurator-med-kbt-utbildning</link>
+      <remoteStatus>hybrid</remoteStatus>
+      <guid>c390ce19-b59c-4737-80d7-c7d16a3ddfae</guid>
+      <tt:locations>
+        <tt:location>
+          <tt:name>Capio Vårdcentral Veberöd</tt:name>
+          <tt:address>Postgatan 3A</tt:address>
+          <tt:zip>247 62</tt:zip>
+          <tt:city>Veberöd</tt:city>
+          <tt:country>Sweden</tt:country>
+        </tt:location>
+      </tt:locations>
+      <tt:department>Psykosocialt</tt:department>
+      <tt:role>Psykolog</tt:role>
+    </item>
+<item>
+      <title>Fysioterapeut</title>
+      <description>x</description>
+      <pubDate>Fri, 21 Aug 2026 11:46:57 +0200</pubDate>
+      <link>https://jobba.capio.se/jobs/8252900-fysioterapeut</link>
+      <remoteStatus>onsite</remoteStatus>
+      <guid>b529b3a7-7a9c-4c3c-ae18-28f170a3c56f</guid>
+      <tt:locations>
+        <tt:location>
+          <tt:name>Capio Hälsocentral Dragonen</tt:name>
+          <tt:address>Ridvägen 12</tt:address>
+          <tt:zip>903 25</tt:zip>
+          <tt:city>Umeå</tt:city>
+          <tt:country>Sweden</tt:country>
+        </tt:location>
+      </tt:locations>
+      <tt:department>Rehabilitering</tt:department>
+      <tt:role>Fysioterapeut</tt:role>
+    </item>
+</channel>
+</rss>

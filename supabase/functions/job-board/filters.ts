@@ -34,8 +34,72 @@
 import { JOB_CATEGORIES } from "./categories.ts";
 import { isExperienceBand } from "./experience.ts";
 import { SENDABLE_VENDORS } from "../_shared/apply-automation.ts";
+import type { JobSourceKind } from "./sources.ts";
 
 export const WORK_MODES = ["remote", "hybrid", "onsite"] as const;
+
+/** "hourly" -> salary_period = 'hour'; "salaried" -> salary_period IN ('year','month'). */
+export const PAY_BASES = ["hourly", "salaried"] as const;
+
+/**
+ * The periods a "salaried" request means, as one producer.
+ *
+ * 'week' IS in the data and is deliberately NOT here. Counted live 2026-08-25:
+ * hour 42,280 | year 17,534 | month 632 | week 24 | day 0 — and those 24 weekly
+ * rows are the whole of the gap between the servable salary_period total
+ * (59,505) and hour+year+month (59,481). They fall outside BOTH bases on
+ * purpose: "salaried" absorbing a period nobody measured it against is how it
+ * starts meaning "not hourly", which is a different question. The contract
+ * says salary_period IN ('year','month'), and 24 rows is not a reason to
+ * widen it — it is a reason to say out loud that they are excluded.
+ */
+export const SALARIED_PERIODS = ["year", "month"] as const;
+
+/**
+ * Every hiring system the board serves, as VALUES.
+ *
+ * The authoritative set is `JobSourceKind` in sources.ts — the union the
+ * catalogue's 19,701 entries are typed against — but a union is a type and a
+ * filter needs a runtime list. Importing JOB_SOURCES itself to derive one
+ * (`[...new Set(JOB_SOURCES.map(s => s.source))]`, which index.ts's audit does)
+ * would pull a 2MB module into every consumer of this file for sixteen strings,
+ * and it would also derive the CATALOGUE's vendors rather than the BOARD's:
+ * `oracle` has no catalogue entry today and still has rows in the table.
+ *
+ * So the list is written out and then PINNED to the union in both directions by
+ * the two assertions below. `satisfies` rejects a name that is not a real kind;
+ * `_kindsAreCovered` fails to compile, naming the offender, if a kind is ever
+ * added to sources.ts and not added here. Two lists that cannot drift are not
+ * two lists — this is the same contract src/config/ats-vendors.ts holds against
+ * apply-automation.ts, enforced by the typechecker instead of a test.
+ */
+export const BOARD_VENDORS = [
+  "greenhouse",
+  "lever",
+  "ashby",
+  "smartrecruiters",
+  "workable",
+  "bamboohr",
+  "recruitee",
+  "teamtailor",
+  "personio",
+  "breezy",
+  "rippling",
+  "workday",
+  "pinpoint",
+  "oracle",
+  "icims",
+  "usajobs",
+] as const satisfies readonly JobSourceKind[];
+
+type _UnlistedKind = Exclude<JobSourceKind, (typeof BOARD_VENDORS)[number]>;
+// If sources.ts gains a vendor this list does not carry, `_UnlistedKind` stops
+// being `never`, this alias becomes a tuple, and `true` no longer assigns —
+// deno check then prints the missing vendor's name in the error.
+type _KindsAreCovered = [_UnlistedKind] extends [never] ? true
+  : ["BOARD_VENDORS is missing a JobSourceKind:", _UnlistedKind];
+const _kindsAreCovered: _KindsAreCovered = true;
+void _kindsAreCovered;
 
 export type AppliedFilters = {
   q: string;
@@ -78,10 +142,126 @@ export type AppliedFilters = {
   sendableOnly: boolean;
   experience: string[];
   salaryFloor: number | null;
+  /**
+   * The other end of the pay band, on the SAME column as the floor
+   * (salary_rank_usd, approximate USD). A ceiling below the floor describes an
+   * empty band and is refused into `ignored` rather than served as a page of
+   * nothing — an empty result reads as a statement about the market, and this
+   * one would be a statement about the request.
+   *
+   * Not clamped upward. Clamping a ceiling DOWN narrows the caller's request,
+   * which is the maxAgeDays incident (a silent narrowing that reads as "the
+   * board has nothing older"), so an absurd ceiling is simply honoured — its
+   * only real effect is the NULL exclusion the floor already has.
+   */
+  salaryCeiling: number | null;
+  /**
+   * hourly | salaried. A SCALPEL: salary_period is stated on 10.6% of servable
+   * rows (59,505 of 559,805 — hour 41,542, year 17,312, month 627, measured
+   * 2026-08-25), and a row with no period is EXCLUDED, exactly as workMode
+   * excludes rows with no stated mode. coverageDisclosure publishes the 10.6%
+   * whenever this is set, because a filter that can see a tenth of the board
+   * and does not say so is a filter that lies about the market.
+   */
+  payBasis: string | null;
+  /**
+   * "Only postings that state pay at all" -> salary_min_annual IS NOT NULL.
+   *
+   * THE HONEST HALF OF A FACT THE BOARD ALREADY ACTS ON. Anyone who sets
+   * salaryFloor is ALREADY confined to this population — a posting with no
+   * stated pay cannot clear any floor — and has never been told. Making it a
+   * filter of its own means the narrowing can be asked for, seen, and taken
+   * off, instead of arriving as a side effect of moving a slider.
+   */
+  hasStatedPay: boolean;
+  /**
+   * "Does not demand more than n years" -> min_years <= n.
+   *
+   * THE JOB-SEEKER'S QUESTION, not the employer's. Every existing seniority
+   * control expresses what a posting wants; this one expresses what a person
+   * has. min_years is stated on 28.9% of servable rows, and rows that state
+   * nothing are excluded — a posting that never named a requirement cannot be
+   * shown to satisfy one.
+   */
+  maxYears: number | null;
+  /**
+   * department ILIKE '%s%'. 40.5% coverage.
+   *
+   * Reachable today ONLY by typing into free-text `q`, where buildQuery ORs it
+   * with title and company — so "Legal" as a department request also returns
+   * every Legal Assistant title and every company with Legal in its name, and
+   * nothing tells the caller which of the three matched.
+   */
+  department: string | null;
+  /**
+   * Hiring systems to restrict to -> source IN (...). Wire name is `vendor`
+   * (string CSV or array); the applied field is plural because it is a list,
+   * the way `companies` and `experience` are.
+   *
+   * 100% coverage: every row carries a source. The only vendor filter the board
+   * had was the sendableOnly boolean, which pins the visitor to 5.4% of the
+   * catalogue with no way to ask for one system.
+   */
+  vendors: string[];
   companies: string[];
   maxAgeDays: number | null;
   postedAfter: string | null;
 };
+
+/**
+ * The filters the search/count RPCs can bind, by AppliedFilters key.
+ *
+ * WHY THIS EXISTS AS DATA. search_jobs, search_jobs_semantic and
+ * count_jobs_capped each take one p_ parameter per filter, and a filter with no
+ * parameter is not refused by them — it is IGNORED. That is the defect this
+ * whole file exists to prevent, arriving through the SQL instead of the TS:
+ * measured 2026-07-25, the ranked path without p_work_mode returned 30 rows
+ * that ALL had work_mode NULL under a request for remote-only.
+ *
+ * Listed as the BOUND set rather than the blind one so it is mechanical in the
+ * direction that matters: a filter added to AppliedFilters and not to the SQL
+ * shows up in `rpcBlindFilters` on the day it exists, with no edit here.
+ */
+const RPC_BOUND_FILTERS = new Set<keyof AppliedFilters>([
+  "q",
+  "location",
+  "country",
+  "remote",
+  "workMode",
+  "category",
+  "includeUncategorised",
+  "sendableOnly",
+  "experience",
+  "salaryFloor",
+  "companies",
+  "maxAgeDays",
+  "postedAfter",
+]);
+
+/**
+ * Which ACTIVE filters no RPC can bind, i.e. which ones a route that serves RPC
+ * rows directly would drop on the floor.
+ *
+ * buildQuery binds all of them, so every route that fetches through buildQuery
+ * — recency, the facet counts, the head-term ring, the id re-fetch the semantic
+ * and routed tiers use — is already correct. The ranked `search_jobs` exit
+ * serves its RPC rows as they come back, and count_jobs_capped answers with its
+ * own parameter list, so both need this gate: non-empty means fall through to
+ * the buildQuery path (exactly as the multi-country deploy guard in
+ * cappedCount already does) rather than serve an unfiltered answer.
+ *
+ * Delete a key from the blind set by adding its p_ parameter to the SQL and its
+ * name to RPC_BOUND_FILTERS above — in that order.
+ */
+export function rpcBlindFilters(a: AppliedFilters): string[] {
+  return Object.entries(a as Record<string, unknown>)
+    .filter(([k, v]) => {
+      if (RPC_BOUND_FILTERS.has(k as keyof AppliedFilters)) return false;
+      if (Array.isArray(v)) return v.length > 0;
+      return typeof v === "boolean" ? v : v !== null && v !== "";
+    })
+    .map(([k]) => k);
+}
 
 export type NormalizedFilters = {
   applied: AppliedFilters;
@@ -238,6 +418,122 @@ export function normalizeFilters(
   const salaryFloor = Number.isFinite(floorN) && floorN > 0 ? Math.min(floorN, 2_000_000) : null;
   if (sent(body.salaryFloor) && salaryFloor === null && floorN !== 0) ignored.push("salaryFloor");
 
+  // THE OTHER END OF THE BAND, and it is derived AFTER the floor on purpose:
+  // the floor it must clear is the DERIVED one, which can come from the search
+  // box ("100k engineer") rather than from a slider. Comparing against
+  // body.salaryFloor would let {q:"200k nurse", salaryCeiling:150000} through as
+  // a band whose floor is above its ceiling — zero rows, no explanation.
+  //
+  // An inverted band is REFUSED, not served. "0 results" is the board's answer
+  // to a real question about the market; using it as the answer to an
+  // impossible request teaches a searcher something false about the market.
+  const ceilN = Number(body.salaryCeiling);
+  const ceilUsable = Number.isFinite(ceilN) && ceilN > 0;
+  const ceilUnderFloor = ceilUsable && salaryFloor !== null && ceilN < salaryFloor;
+  const salaryCeiling = ceilUsable && !ceilUnderFloor ? ceilN : null;
+  // 0 is the off position here for the same reason it is for salaryFloor and
+  // maxAgeDays — a control at rest must not hang a warning on the page.
+  if (sent(body.salaryCeiling) && salaryCeiling === null && ceilN !== 0) ignored.push("salaryCeiling");
+
+  // TWO LITERALS, and every casing of a real one binds — the workMode rule.
+  // {workMode:"Remote"} once served the entire unfiltered board to API callers
+  // because a capital R was not a work mode; a capital H must not cost a caller
+  // their pay-basis filter the same way.
+  const pbRaw = String(body.payBasis ?? "").trim().toLowerCase();
+  const payBasis = (PAY_BASES as readonly string[]).includes(pbRaw) ? pbRaw : null;
+  if (sent(body.payBasis) && !payBasis) ignored.push("payBasis");
+
+  // LITERAL true ONLY, and a non-boolean is NAMED — the shape that let
+  // {"sendableOnly":"true"} return 598,066 rows with an empty ignoredFilters.
+  // A string "false" from a query param is truthy in JS, and this filter cuts
+  // the board to a fifth; guessing at it is not an option in either direction.
+  const hasStatedPay = body.hasStatedPay === true;
+  if (body.hasStatedPay !== undefined && body.hasStatedPay !== null && typeof body.hasStatedPay !== "boolean") {
+    ignored.push("hasStatedPay");
+  }
+
+  // 1..20, REFUSED OUTSIDE IT RATHER THAN CLAMPED, which is the opposite of
+  // what maxAgeDays does one block below — and the difference is deliberate.
+  // maxAgeDays clamps because 90 days and 30 days are the same INTENT ("recent")
+  // against a board that only keeps 30; the clamp is then disclosed, because a
+  // silent one reads as "there is nothing older".
+  //
+  // maxYears has no such intent to preserve. Clamping 99 to 20 would turn "I do
+  // not mind how much experience they ask for" into "at most 20 years" — a
+  // NARROWING, invented by us, of a number the caller chose. And 0 is not an
+  // off position: no control's rest state is 0 here, so a 0 is a request we
+  // cannot bind, and a request we cannot bind is always named.
+  //
+  // AND IT MUST BE A WHOLE NUMBER, because min_years is a SMALLINT. A fraction
+  // is not a narrower filter here, it is a 400: PostgREST renders .lte() as a
+  // literal and Postgres casts that literal to the column type. Probed live
+  // 2026-08-25, read-only:
+  //   min_years=lte.3   -> a row
+  //   min_years=lte.3.5 -> {"code":"22P02","message":"invalid input syntax for
+  //                        type smallint: \"3.5\""}
+  // So {"maxYears":3.5} would have taken down the whole list query under a
+  // value that passed every bound above. salaryFloor and salaryCeiling do not
+  // need this — salary_rank_usd is `numeric`, which parses 3.5 and 1e+21 alike
+  // (probed the same day) — which is exactly why the rule belongs on THIS
+  // filter and not as a blanket one.
+  const yearsN = Number(body.maxYears);
+  const maxYears = Number.isInteger(yearsN) && yearsN >= 1 && yearsN <= 20 ? yearsN : null;
+  if (sent(body.maxYears) && maxYears === null) ignored.push("maxYears");
+
+  // ILIKE '%s%', so the ILIKE WILDCARDS COME OUT FIRST. index.ts's sanitizeTerm
+  // strips exactly this set for every other text predicate; a surviving `%`
+  // turns "eng%" into a prefix match nobody asked for, `_` matches any single
+  // character, and `\` escapes the next one. Commas deliberately STAY: this is a
+  // plain .ilike() and not an or() branch, so a comma is data here, and "Sales,
+  // Marketing" is a real department name on this board.
+  //
+  // 60 characters. The longest department in a 50-row live sample was 38
+  // ("680 - Engineering - CoreSuite Platform"); the cap is there so a filter
+  // value cannot become a query-string payload, not to trim real names.
+  //
+  // A NON-STRING IS NAMED, not coerced. String({}) is "[object Object]", which
+  // would bind as a real ILIKE and return an empty page under a filter the
+  // caller never expressed — the `companies` rule ("a non-string member IS
+  // invalid and gets named"), applied to the text filter. A number is allowed
+  // through: departments like "680 - Engineering - CoreSuite Platform" and
+  // "Technology/Imaging 40-065" exist on this board, so a digit is a plausible
+  // thing to search for.
+  const deptShapeOk = typeof body.department === "string" || typeof body.department === "number";
+  const DEPARTMENT_LIMIT = 60;
+  const department = (deptShapeOk ? String(body.department) : "")
+    .replace(/[%_\\|"]/g, "")
+    .trim()
+    .slice(0, DEPARTMENT_LIMIT)
+    .trim() || null;
+  if (sent(body.department) && !department) ignored.push("department");
+
+  // MULTI-SELECT over a CLOSED set, validated per element like country and
+  // category, and capped like both.
+  //
+  // Unknown members are NAMED, which is the opposite of how an unknown company
+  // token is treated — and the difference is the size of the space. There are
+  // 19,701 company tokens and a caller can legitimately ask about one the board
+  // does not carry, so an empty page is the true answer. There are SIXTEEN
+  // vendors; a name outside that set is a typo or a guess, never a question the
+  // board can answer, and returning an empty page for it would be answering it.
+  //
+  // EIGHT, and the cap follows the experience rule rather than the country one:
+  // a truncated list is reported. Slicing silently would mean a caller asking
+  // for nine systems gets eight and is told they got nine — the same shape as
+  // the clamp that reads as "there is nothing older".
+  const VENDOR_LIMIT = 8;
+  const vendorsAsked = [
+    ...new Set(
+      (Array.isArray(body.vendor) ? body.vendor : String(body.vendor ?? "").split(","))
+        .map((v) => String(v ?? "").trim().toLowerCase())
+        .filter(Boolean),
+    ),
+  ];
+  const vendors = vendorsAsked
+    .filter((v) => (BOARD_VENDORS as readonly string[]).includes(v))
+    .slice(0, VENDOR_LIMIT);
+  if (sent(body.vendor) && vendors.length !== vendorsAsked.length) ignored.push("vendor");
+
   const ageN = Number(body.maxAgeDays);
   const maxAgeDays = Number.isFinite(ageN) && ageN >= 1 ? Math.min(ageN, 30) : null;
   if (sent(body.maxAgeDays) && maxAgeDays === null && ageN !== 0) ignored.push("maxAgeDays");
@@ -354,6 +650,12 @@ export function normalizeFilters(
       sendableOnly,
       experience,
       salaryFloor,
+      salaryCeiling,
+      payBasis,
+      hasStatedPay,
+      maxYears,
+      department,
+      vendors,
       companies,
       maxAgeDays,
       postedAfter,
@@ -426,6 +728,39 @@ export function filterViolations(
     }
     if (a.experience.length && !a.experience.includes(String(r.experienceBand ?? ""))) {
       push("experience", a.experience.join("|"), r.experienceBand);
+    }
+    // THE SIX NEW FILTERS ARE CHECKED HERE BECAUSE ONLY ONE OF THE BOARD'S
+    // QUERY PATHS BINDS THEM. buildQuery does; the ranked search_jobs exit
+    // serves rows straight out of an RPC that has no parameter for any of them.
+    // Until those parameters exist, this self-check is what turns "the filter
+    // was ignored" into a reported filterIntegrity violation instead of a page
+    // that looks correct. See rpcBlindFilters above.
+    //
+    // salaryCeiling is EXCLUDED for the same reason salaryFloor is: both compare
+    // against salary_rank_usd, an approximate-USD generated column the mapped
+    // row does not carry, and checking the raw figure would fail SEK/JPY rows
+    // that legitimately passed.
+    if (a.payBasis) {
+      const per = String(r.salaryPeriod ?? "");
+      const ok = a.payBasis === "hourly" ? per === "hour" : (SALARIED_PERIODS as readonly string[]).includes(per);
+      if (!ok) push("payBasis", a.payBasis, r.salaryPeriod);
+    }
+    if (a.hasStatedPay && r.salaryMinAnnual == null) push("hasStatedPay", "stated", r.salaryMinAnnual);
+    // An unstated requirement is EXCLUDED by the predicate at the database, so a
+    // row with no min_years arriving under this filter is itself the defect —
+    // the same reading maxAgeDays gives an undated posting.
+    if (a.maxYears !== null) {
+      const y = r.minYears;
+      if (typeof y !== "number" || y > a.maxYears) push("maxYears", `<=${a.maxYears}`, r.minYears);
+    }
+    // Substring, case-insensitive — the same question the ILIKE asked, not a
+    // stricter one. An equality check here would flag "Hardware Engineering"
+    // under department=engineering, which the query deliberately returns.
+    if (a.department && !String(r.department ?? "").toLowerCase().includes(a.department.toLowerCase())) {
+      push("department", a.department, r.department);
+    }
+    if (a.vendors.length && !a.vendors.includes(String(r.source ?? ""))) {
+      push("vendor", a.vendors.join("|"), r.source);
     }
     if (a.remote && r.remote !== true) push("remote", "true", r.remote);
     // `token` is what rowToJob actually emits for the company feed token — NOT

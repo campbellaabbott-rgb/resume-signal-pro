@@ -50,21 +50,39 @@ describe("the teamtailor feed URL honours it", () => {
 });
 
 describe("the board's identity is unchanged by where it is fetched", () => {
+  // Both assertions below used to read `fn.slice(0, 900)` — an arbitrary
+  // character window, not the function. When normalizeTeamtailor grew (it
+  // started parsing tt:city/tt:country/tt:department, which it had been
+  // discarding for every one of 10,858 rows), `applyUrl` fell off the end of
+  // the window and the positive assertion failed for a reason that had nothing
+  // to do with apply urls.
+  //
+  // The negative assertion had the worse version of the same bug: a window too
+  // small to reach new code cannot see a `host` added below it, so it would
+  // have kept passing while the thing it forbids crept in. Bounded to the real
+  // function body instead — it ends where the next top-level export begins.
+  const teamtailorFn = (norm: string) => {
+    const start = norm.indexOf("export function normalizeTeamtailor");
+    expect(start, "normalizeTeamtailor not found").toBeGreaterThan(-1);
+    const next = norm.indexOf("\nexport ", start + 10);
+    const body = norm.slice(start, next > start ? next : undefined);
+    expect(body.length, "function body looks truncated").toBeGreaterThan(900);
+    return body;
+  };
+
   it("posting ids are still keyed on token, not host", () => {
     // `teamtailor:${token}:${externalId}` — if this ever became host-keyed, a
     // company moving to or from a custom domain would orphan every saved job,
     // tracker row and application that referenced its postings.
     const norm = read("supabase/functions/job-board/normalize.ts");
     expect(norm).toMatch(/teamtailor:\$\{token\}:/);
-    const fn = norm.slice(norm.indexOf("export function normalizeTeamtailor"));
-    expect(fn.slice(0, 900)).not.toContain("host");
+    expect(teamtailorFn(norm)).not.toContain("host");
   });
 
   it("apply urls come from the feed's own link", () => {
     // Which is why a custom-domain board's apply urls land on the custom
     // domain automatically, and why the worker's adapter needs no change.
     const norm = read("supabase/functions/job-board/normalize.ts");
-    const fn = norm.slice(norm.indexOf("export function normalizeTeamtailor"));
-    expect(fn.slice(0, 900)).toMatch(/applyUrl:\s*safeUrl\(link\)/);
+    expect(teamtailorFn(norm)).toMatch(/applyUrl:\s*safeUrl\(link\)/);
   });
 });
