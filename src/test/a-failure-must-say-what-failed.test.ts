@@ -87,3 +87,32 @@ describe("a login page is not a job feed", () => {
     expect(CODE).toMatch(/non-JSON response \(\$\{ct\.split\(";"\)\[0\] \|\| "unknown"\}\) at \$\{where\}/);
   });
 });
+
+describe("a cap is not a count", () => {
+  // failedAcc keeps the LAST 120 entries, and every consumer read that
+  // ceiling as the number of failing boards — the list response, status, and
+  // a full day of my own analysis. A pass failing 120 boards and one failing
+  // 3,000 were indistinguishable, and the class breakdown drawn from the
+  // retained window samples the pass's TAIL, not its population.
+  //
+  // Caught because the number was 120 on four consecutive readings. The
+  // runbook rule written this same morning says a suspiciously round number
+  // that survives is the measurement being wrong, and I read past it three
+  // times before applying it.
+  it("the count is accumulated separately from the capped sample", () => {
+    expect(CODE).toMatch(/const failedTotal = \(Number\(pv\.failedTotal\) \|\| 0\) \+ failed\.length;/);
+    expect(CODE).toMatch(/\.slice\(-120\)/); // the sample stays bounded
+  });
+
+  it("the count resets with the sample at the start of a pass", () => {
+    // A counter that never resets reports a lifetime total under a per-pass
+    // label — the same species of defect one level up.
+    const reset = CODE.slice(CODE.indexOf("pv.failedAcc = []"), CODE.indexOf("pv.failedAcc = []") + 90);
+    expect(reset).toMatch(/pv\.failedTotal = 0;/);
+  });
+
+  it("both surfaces publish the count beside the sample", () => {
+    expect(CODE).toMatch(/failedCount: failedTotal,/);
+    expect(CODE).toMatch(/failedCount: Number\(pgV\.failedTotal\) \|\| 0,/);
+  });
+});

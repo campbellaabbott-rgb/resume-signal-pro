@@ -102,7 +102,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-24.17";
+const BUILD_VERSION = "2026-08-24.18";
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -1144,7 +1144,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
   }
   const { hotList: HOT_LIST, coldList: COLD_LIST } = await tierLists(client);
   await loadDynamicLight(client); // auto-enrolled giant boards fetch without content
-  const pv = (prog?.v ?? {}) as { hot?: number; cold?: number; coldDone?: number; failedAcc?: string[] };
+  const pv = (prog?.v ?? {}) as { hot?: number; cold?: number; coldDone?: number; failedAcc?: string[]; failedTotal?: number };
   let hot = Math.max(0, Number(pv.hot) || 0);
   let cold = Math.max(0, Number(pv.cold) || 0) % Math.max(1, COLD_LIST.length);
   let coldDone = Math.max(0, Number(pv.coldDone) || 0);
@@ -1159,6 +1159,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
       hot = 0;
       coldDone = 0;
       pv.failedAcc = [];
+      pv.failedTotal = 0;
     }
   }
 
@@ -1291,6 +1292,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
   const progressBefore: RefreshProgress = {
     hot, cold, coldDone,
     failedAcc: Array.isArray(pv.failedAcc) ? pv.failedAcc : [],
+    failedTotal: Number(pv.failedTotal) || 0,
   };
 
   // Cursors advance BEFORE processing (optimistic): if this invocation dies
@@ -1982,9 +1984,19 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
   // boards, which come from elsewhere in the catalog and consume no cursor),
   // skipping 24% of the cold list every rotation and pushing measured P95
   // re-verification past the published claim while the median looked healthy.
+  // A CAP IS NOT A COUNT. This kept the last 120 entries, and every consumer
+  // — the list response, status, and a whole day of my own analysis — read
+  // that 120 as "the number of boards failing". It is the ceiling. The real
+  // figure was never published, so a pass failing 120 boards and one failing
+  // 3,000 were indistinguishable, and the class breakdown computed from the
+  // retained window is a sample of the pass's TAIL, not of the population.
+  //
+  // The array stays bounded (it lives in a meta row), but the count travels
+  // with it now.
   const failedAcc = [...(Array.isArray(pv.failedAcc) ? pv.failedAcc : []), ...failed].slice(-120);
+  const failedTotal = (Number(pv.failedTotal) || 0) + failed.length;
   const { next: progressAfter, wrapped } = advanceProgress({
-    prev: { ...progressBefore, failedAcc },
+    prev: { ...progressBefore, failedAcc, failedTotal },
     ...advanceArgs,
   });
   hot = progressAfter.hot;
@@ -2441,6 +2453,8 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
       total: f.total, // includes just-pruned orphans until the next pass recomputes — harmless
       boards: companies.length,
       failedSources: failedAcc,
+      // How many actually failed, versus how many fit in the sample above.
+      failedCount: failedTotal,
       companiesFacet: companies,
       categoriesFacet: f.categoriesFacet ?? {},
       ...(coverage ? { coverage } : {}),
@@ -4427,7 +4441,7 @@ Deno.serve(async (req) => {
         // a derived boolean plus the two numbers behind it.
         client.from("job_board_meta").select("v").eq("k", "catalog_highwater").maybeSingle(),
 ]);
-      const pgV = (prog.data?.v ?? {}) as { hot?: number; cold?: number; coldDone?: number; failedAcc?: string[] };
+      const pgV = (prog.data?.v ?? {}) as { hot?: number; cold?: number; coldDone?: number; failedAcc?: string[]; failedTotal?: number };
       const rotV = (rot.data?.v ?? {}) as { completedAt?: string; coldBoards?: number };
       const rfV = (refreshMeta.data?.v ?? {}) as { total?: number };
       const dormant = ((bf.data?.v ?? {}) as { dormant?: Record<string, number> }).dormant ?? {};
@@ -4781,6 +4795,9 @@ Deno.serve(async (req) => {
         lastSliceAgeMin: ageMin(prog.data?.updated_at),
         lastRotationAgeMin: ageMin(rotV.completedAt ?? rot.data?.updated_at ?? null),
         recentFailures: Array.isArray(pgV.failedAcc) ? pgV.failedAcc.slice(-10) : [],
+        // The sample above is capped at 120 and these ten are its tail; this
+        // is the population it was drawn from.
+        failedCount: Number(pgV.failedTotal) || 0,
         // Measured freshness: re-verification age across all stamped boards.
         // THE number behind the public "within a few hours" claim.
         freshness: Array.isArray((fresh as { data?: unknown }).data) && ((fresh as { data: unknown[] }).data)[0]

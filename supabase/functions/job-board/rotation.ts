@@ -38,6 +38,15 @@ export interface RefreshProgress {
   coldDone: number;
   /** recent failed board names, for the status endpoint (bounded by the caller) */
   failedAcc: string[];
+  /**
+   * How many boards actually failed this pass. failedAcc is CAPPED at the last
+   * 120 entries, and every consumer read that ceiling as the count — so a pass
+   * failing 120 boards looked identical to one failing 3,000, and any class
+   * breakdown drawn from the array samples the pass's tail rather than its
+   * population. The cap stays (the array lives in a meta row); the count
+   * travels beside it.
+   */
+  failedTotal?: number;
 }
 
 /**
