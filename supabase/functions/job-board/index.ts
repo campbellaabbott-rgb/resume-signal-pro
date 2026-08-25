@@ -102,7 +102,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-25.4";
+const BUILD_VERSION = "2026-08-25.5";
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -8161,7 +8161,26 @@ async function serveList(
     // uses. Measured at the existing chunk size: 6 concurrent count_jobs_capped
     // calls run 0.62-1.13s, so 18 categories in three chunks fits the budget.
     const FACET_CHUNK = 6;
-    const FACET_DEADLINE = Date.now() + (qText ? 6_000 : 4_000);
+    // THE BUDGET NEVER FIRED, SO IT NEVER BOUNDED ANYTHING.
+    //
+    // Measured 2026-08-25 with per-RPC timings: on a text query these
+    // per-category counts are the single largest cost of the whole request —
+    // count_jobs_capped totalled 2,238-2,489ms across the 18 categories for
+    // q=camarero, against 156-291ms for search_jobs, the call that actually
+    // produces the rows. Three chunks of six finish in ~2.4s, comfortably
+    // inside a 6s budget, so the deadline was never reached and every text
+    // search paid the full price to number the category rail.
+    //
+    // 1.5s buys roughly the first chunk. Categories past it keep their chip
+    // and lose their number, which is a degradation this loop already
+    // performs (it breaks between chunks) and which the rail already renders.
+    // A number nobody waited two seconds for beats a complete set nobody
+    // stayed to read.
+    //
+    // NOT lowering the facet cap instead: a guard requires facet and list to
+    // share COUNT_CAP so the sidebar cannot contradict the page, and that
+    // invariant is worth more than the milliseconds a smaller cap would save.
+    const FACET_DEADLINE = Date.now() + (qText ? 1_500 : 4_000);
     const counts: Record<string, number> = {};
     let facetCapped = false;
     const cats = [...JOB_CATEGORIES];

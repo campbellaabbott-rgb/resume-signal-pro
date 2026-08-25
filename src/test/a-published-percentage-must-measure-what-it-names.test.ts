@@ -164,3 +164,28 @@ describe("a count must not cost more than the rows it labels", () => {
     expect(CODE).toMatch(/withDeadline\(cappedCount\(\)/);
   });
 });
+
+describe("the facet budget must actually bound the facets", () => {
+  // Measured 2026-08-25: the per-category counts are the single largest cost
+  // of a text search — 2,238-2,489ms across 18 categories for q=camarero,
+  // against 156-291ms for search_jobs. Three chunks of six finish in ~2.4s,
+  // inside the old 6s budget, so the deadline never fired and every text
+  // search paid in full to number the category rail.
+  //
+  // Lowering the facet CAP was the other option and was rejected: a guard
+  // requires facet and list to share COUNT_CAP so the sidebar cannot
+  // contradict the page. Bounding the time respects that invariant; changing
+  // the cap would have broken it for a few hundred milliseconds.
+  it("a text query gets a budget the loop can actually hit", () => {
+    expect(CODE).toMatch(/const FACET_DEADLINE = Date\.now\(\) \+ \(qText \? 1_500 : 4_000\);/);
+  });
+
+  it("the loop still checks the budget between chunks", () => {
+    expect(CODE).toMatch(/if \(Date\.now\(\) > FACET_DEADLINE\) break;/);
+  });
+
+  it("facet and list still share one ceiling", () => {
+    expect(CODE).not.toMatch(/FACET_COUNT_CAP/);
+    expect(CODE).toMatch(/const COUNT_CAP = 10_000;/);
+  });
+});
