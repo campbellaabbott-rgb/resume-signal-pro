@@ -102,7 +102,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-25.2";
+const BUILD_VERSION = "2026-08-25.3";
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -8071,6 +8071,7 @@ async function serveList(
     const qTerms = queryTerms(body.q).terms;
     if (qTerms.length > 1) return null;
     try {
+      const t_count_jobs_capped_6 = Date.now();
       const { data, error } = await client.rpc("count_jobs_capped", {
         p_fresh_cutoff: freshCutoffIso,
         p_q: qTerms.length === 1 ? qTerms[0] : null,
@@ -8089,6 +8090,7 @@ async function serveList(
         p_work_mode: applied.workMode,
         p_cap: COUNT_CAP,
       });
+      markFrom("count_jobs_capped", t_count_jobs_capped_6);
       if (error || !Array.isArray(data) || !data.length) return null;
       const row = data[0] as { n?: number | string; capped?: boolean };
       const n = Number(row.n);
@@ -8169,6 +8171,7 @@ async function serveList(
       const settled = await Promise.all(chunk.map(async (c) => {
         try {
           if (qText) {
+            const t_count_jobs_capped_5 = Date.now();
             const { data, error } = await client.rpc("count_jobs_capped", {
               p_fresh_cutoff: freshCutoffIso,
               p_q: qText,
@@ -8182,6 +8185,7 @@ async function serveList(
               ...(applied.workMode ? { p_work_mode: applied.workMode } : {}),
               p_cap: COUNT_CAP,
             });
+            markFrom("count_jobs_capped", t_count_jobs_capped_5);
             if (error) return [c, null, false] as const;
             const row = Array.isArray(data) ? data[0] as { n?: number; capped?: boolean } : null;
             return [c, Number(row?.n ?? 0), !!row?.capped] as const;
@@ -8345,6 +8349,7 @@ async function serveList(
     if (qTextC && body.sort !== "salary") {
       try {
         const { q: expQC } = expandQuery(qTextC);
+        const t_search_jobs_4 = Date.now();
         const { data: rc, error: ec } = await client.rpc("search_jobs", {
           p_q: expQC,
           p_fresh_cutoff: freshCutoffIso,
@@ -8362,6 +8367,7 @@ async function serveList(
           p_limit: 1,
           p_offset: 0,
         });
+        markFrom("search_jobs", t_search_jobs_4);
         if (!ec && Array.isArray(rc)) {
           // `|| rc.length`, which this used to be, treats a legitimate ZERO
           // total as absent and substitutes the row count. It cannot fire today
@@ -8739,7 +8745,7 @@ async function serveList(
       // spelling as its own OR-branch, and the response names every added
       // phrase so the UI can show "also matching: …".
       const { q: expandedQ, expansions } = expandQuery(qText);
-      const tRanked = Date.now();
+      const t_search_jobs_3 = Date.now();
       const { data: ranked, error: rankErr } = await client.rpc("search_jobs", {
         p_q: expandedQ,
         p_fresh_cutoff: freshCutoffIso,
@@ -8792,7 +8798,7 @@ async function serveList(
         p_limit: pagePlan.pLimit,
         p_offset: pagePlan.pOffset,
       });
-      markFrom("searchJobsRpc", tRanked);
+      markFrom("search_jobs", t_search_jobs_3);
       if (!rankErr && Array.isArray(ranked)) {
         // A load-more just past an exactly-full final page must not overwrite
         // the client's header with 0 — null is "count unavailable", which the
@@ -9163,10 +9169,12 @@ async function serveList(
           // hydrating the unfiltered top 60 and narrowing after kept 2 of 60 GB
           // rows for q=nurrse, where the complete trigram set is about 28% GB.
           if (qText.length >= 3) try {
+            const t_fuzzy_title_search_2 = Date.now();
             const { data: fuzzy, error: fErr } = await client.rpc("fuzzy_title_search", {
               p_q: qText, p_fresh_cutoff: freshCutoffIso, p_limit: limit,
               ...rescueFilterParams(),
             });
+            markFrom("fuzzy_title_search", t_fuzzy_title_search_2);
             if (!fErr && Array.isArray(fuzzy) && fuzzy.length > 0) {
               // Same-company+title clones flood trigram results exactly like
               // the other tiers — collapse them the same way (audit: adjacent
@@ -9516,6 +9524,7 @@ async function serveList(
         // second fetch appended in a different ordering.
         if (!newestFirst && !scoreRanked && groupSimilar && rankedGrouped.jobs.length < limit && rankedRows.length >= fetchLimit) {
           try {
+            const t_search_jobs_1 = Date.now();
             const { data: more, error: moreErr } = await client.rpc("search_jobs", {
               p_q: expandedQ,
               p_fresh_cutoff: freshCutoffIso,
@@ -9533,6 +9542,7 @@ async function serveList(
               p_limit: fetchLimit,
               p_offset: offset + rankedRows.length,
             });
+            markFrom("search_jobs", t_search_jobs_1);
             if (!moreErr && Array.isArray(more) && more.length) {
               rankedSequence = [...rankedRows, ...(more as unknown[]).map(rowToJob) as Array<Record<string, unknown>>];
               rankedGrouped = collapseClusters(rankedSequence, limit);
@@ -9583,10 +9593,12 @@ async function serveList(
         // rescuing and push close matches above 300 legitimate description hits.
         if (pageTotal !== null && pageTotal > 0 && pageTotal < FUZZY_AUGMENT_BELOW && offset === 0 && !countOnly && qText.length >= 3) {
           try {
+            const t_fuzzy_title_search_0 = Date.now();
             const { data: fz, error: fzErr } = await client.rpc("fuzzy_title_search", {
               p_q: qText, p_fresh_cutoff: freshCutoffIso, p_limit: limit,
               ...rescueFilterParams(),
             });
+            markFrom("fuzzy_title_search", t_fuzzy_title_search_0);
             if (!fzErr && Array.isArray(fz) && fz.length > 0) {
               // Dedupe by CLUSTER, not by id. An id-only check let a fuzzy row
               // that is a collapsed sibling of an exact match through (different
