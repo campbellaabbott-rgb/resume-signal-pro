@@ -221,13 +221,20 @@ export function vendorWorkMode(v: string | null | undefined): "remote" | "hybrid
 // because "London" could be Ontario and "Georgia" could be Tbilisi.
 const COUNTRY_PATTERNS: ReadonlyArray<readonly [RegExp, string]> = [
   [/\b(?:united states|u\.?s\.?a\.?|estados unidos)\b/i, "US"],
-  [/\b(?:united kingdom|england|scotland|wales|northern ireland)\b|\bUK\b/i, "GB"],
+  // "wales" is guarded against NEW SOUTH WALES, which is in Australia. The GB
+  // pattern sits at index 1 and the AU pattern at index 7, so on "Sydney, New
+  // South Wales, Australia" the word Wales won the race and the row shipped as
+  // United Kingdom. Measured live 2026-08-25: 25 of 25 rows returned for
+  // location="New South Wales" carried country GB. Plain "South Wales" IS
+  // Welsh, so only the "new south" prefix is excluded — same shape as the
+  // (?<!new ) guard on Mexico below.
+  [/\b(?:united kingdom|england|scotland|(?<!new south )wales|northern ireland)\b|\bUK\b/i, "GB"],
   [/\b(?:germany|deutschland)\b/i, "DE"],
   [/\bcanada\b/i, "CA"],
   [/\bfrance\b/i, "FR"],
   [/\b(?:netherlands|nederland)\b/i, "NL"],
   [/\bindia\b/i, "IN"],
-  [/\baustralia\b/i, "AU"],
+  [/\b(?:australia|new south wales)\b/i, "AU"],
   [/\b(?:poland|polska)\b/i, "PL"],
   [/\b(?:spain|españa)\b/i, "ES"],
   // (?<!new ): "Albuquerque, New Mexico" is a US state, not the country —
@@ -322,7 +329,7 @@ const P_CA_PROV_NAME = /\b(?:ontario|quebec|british columbia|alberta|manitoba|sa
 // never substring — "Santiago de Compostela" does not match "santiago".
 // Bump COUNTRY_MAP_VERSION when this table changes; the backfill-country
 // sweep re-runs stored null-country rows against the current table.
-export const COUNTRY_MAP_VERSION = 4;
+export const COUNTRY_MAP_VERSION = 5;
 const CITY_COUNTRY = new Map<string, string>([
   ["aarhus", "DK"],
   ["aberdeen", "GB"],
