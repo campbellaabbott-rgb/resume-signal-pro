@@ -207,3 +207,38 @@ describe("the facet chunk races its budget, not the gap between chunks", () => {
     expect(CODE).toMatch(/const settled = Array\.isArray\(raced\) \? raced : \[\];/);
   });
 });
+
+describe("a slow search must say WHERE it was slow", () => {
+  // Measured on the live board 2026-08-25, five runs of q=camarero: 9.0s,
+  // 9.5s, 14.1s, 14.2s, 18.8s wall, tookMs 8393-13549. The published phase
+  // record summed to ~1.8-2.1s, so 6.5-11.5s of every one of those requests
+  // was invisible. q=nurse, by contrast, accounted for ~80% of its 1.4s.
+  //
+  // The gap was structural, not accidental: `phase` was only ever stamped
+  // around RPC calls. Seven deadline-bounded PostgREST queries — the
+  // salary-sorted route, the routed retriever, the related count, and the
+  // four rescue tiers — carried no mark at all, so a request that spent ten
+  // seconds in them reported spending two.
+  //
+  // Two fixes were attempted against guesses about which query it was, and
+  // both were wrong. This pins the instrument rather than a hypothesis: every
+  // deadline-bounded query on the search path reports its own time, so the
+  // NEXT measurement names the culprit instead of nominating one.
+  it("every deadline-bounded query on the search path is marked", () => {
+    for (const name of [
+      "salary_sorted", "routed_retriever", "related_count",
+      "simple_config", "semantic", "semantic_filtered", "head_ring",
+    ]) {
+      expect(CODE, `${name} runs under a deadline but reports no time`)
+        .toMatch(new RegExp(`markFrom\\("${name}", t_${name}\\);`));
+    }
+  });
+
+  it("a mark measures the query, not the whole handler", () => {
+    // t0 read immediately before the await, not once at the top: a shared
+    // start time would charge each tier for everything that preceded it.
+    for (const name of ["salary_sorted", "head_ring", "semantic"]) {
+      expect(CODE).toMatch(new RegExp(`const t_${name} = Date\\.now\\(\\);`));
+    }
+  });
+});

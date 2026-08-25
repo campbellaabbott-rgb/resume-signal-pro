@@ -102,7 +102,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-25.6";
+const BUILD_VERSION = "2026-08-25.8";
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -8349,11 +8349,13 @@ async function serveList(
         rqC = routedRetriever === "company" && routeDecision.tokens?.length
           ? rqC.in("company_token", routeDecision.tokens)
           : rqC.textSearch("title", ftsQuery(qText), { type: "websearch", config: "simple" });
+        const t_related_count = Date.now();
         const { data: rcRows, error: rcErr } = await withDeadline(
           rqC.order("effective_posted", { ascending: false }).order("id", { ascending: true })
             .range(0, ROUTE_WINDOW - 1),
           7_000,
         ) as { data: unknown[] | null; error?: unknown };
+        markFrom("related_count", t_related_count);
         if (rcRows === null) console.warn(`[JOB-BOARD] routed count (${routeDecision.route}) hit its deadline for q=${JSON.stringify(qText)}`);
         // Empty window falls through, because the LIST falls through on an empty
         // window too — matching its behaviour is the whole point of this block.
@@ -8617,6 +8619,7 @@ async function serveList(
   const salaryTextSort = !countOnly && !!qText && body.sort === "salary" && onlyQuery;
 
   if (salaryTextSort) try {
+    const t_salary_sorted = Date.now();
     const { data: salRows, error: salErr } = await withDeadline(
       buildQuery("effective_posted", false, undefined, { skipTerms: true })
         .textSearch("title", ftsQuery(qText), { type: "websearch", config: "simple" })
@@ -8626,6 +8629,7 @@ async function serveList(
         .range(offset, offset + limit - 1),
       7_000,
     ) as { data: unknown[] | null; error?: unknown };
+    markFrom("salary_sorted", t_salary_sorted);
     if (salRows === null) console.warn(`[JOB-BOARD] salary-sorted search hit its deadline for q=${JSON.stringify(qText)}`);
     if (!salErr && Array.isArray(salRows) && salRows.length > 0) {
       const salJobs = (salRows as unknown[]).map(rowToJob) as Array<Record<string, unknown>>;
@@ -8709,11 +8713,13 @@ async function serveList(
         routedExpand.expansions.length ? ftsSafe(routedExpand.q) : ftsQuery(qText),
         { type: "websearch", config: "simple" },
       );
+    const t_routed_retriever = Date.now();
     const { data: routedRows, error: rErr } = await withDeadline(
       rq.order("effective_posted", { ascending: false }).order("id", { ascending: true })
         .range(0, ROUTE_WINDOW - 1),
       7_000,
     ) as { data: unknown[] | null; error?: unknown };
+    markFrom("routed_retriever", t_routed_retriever);
     if (routedRows === null) {
       console.warn(`[JOB-BOARD] routed retrieval (${routeDecision.route}) hit its deadline for q=${JSON.stringify(qText)}`);
     }
@@ -9055,6 +9061,7 @@ async function serveList(
             // the window is bounded to limit*2 rows and why this only fires on
             // an already-empty page: an abandoned query still costs the
             // database, so it must be small and rare.
+            const t_simple_config = Date.now();
             const { data: simpleRows, error: sErr2 } = await withDeadline(
               // TWO INDEXED QUERIES, NOT ONE or(). An employer name lives in
               // company, and leaving company out is why q="AT&T" reached the 23
@@ -9127,6 +9134,7 @@ async function serveList(
               // got reported off a lucky draw.
               7_000,
             ) as { data: unknown[] | null; error?: unknown };
+            markFrom("simple_config", t_simple_config);
             // A deadline miss now leaves a trace. withDeadline resolves
             // { data: null }, which is indistinguishable from "no matches" —
             // and a tier that silently degrades is exactly the failure this
@@ -9312,6 +9320,7 @@ async function serveList(
                 // and had no client-side race, and filtered-empty is now the
                 // COMMON path rather than a rarity — so an unbounded tier here
                 // would set the floor on how long an empty page takes.
+                const t_semantic = Date.now();
                 const { data: sem, error: sErr } = await withDeadline(
                   client.rpc("search_jobs_semantic", {
                     p_embedding: JSON.stringify(qVec),
@@ -9320,6 +9329,7 @@ async function serveList(
                   5_000,
                 ).catch(() => ({ data: null, error: new Error("semantic deadline") })) as
                   { data: unknown; error: unknown };
+                markFrom("semantic", t_semantic);
                 // HYDRATE-AND-REFILTER, because this RPC cannot take filters and
                 // its rows cannot be narrowed afterwards either: the result set
                 // has no country column at all, so the row mapper emits null for
@@ -9343,12 +9353,14 @@ async function serveList(
                 if (!sErr && filtersActive && semSource.length > 0) {
                   const semIds = semSource.map((r) => String(r.id ?? "")).filter(Boolean);
                   const semRank = new Map(semIds.map((id, i) => [id, i]));
+                  const t_semantic_filtered = Date.now();
                   const { data: semFiltered } = await withDeadline(
                     buildQuery("effective_posted", false, undefined, { skipTerms: true })
                       .in("id", semIds)
                       .range(0, Math.max(semIds.length - 1, 0)),
                     4_000,
                   ) as { data: unknown[] | null };
+                  markFrom("semantic_filtered", t_semantic_filtered);
                   // withDeadline is Promise.race and resolves { data: null },
                   // which is indistinguishable from "the filters removed
                   // everything". A tier that degrades silently is the bug this
@@ -9488,6 +9500,7 @@ async function serveList(
         let headRows: Array<Record<string, unknown>> = [];
         if (scoreRanked && headTermRing && !deepPage) {
           try {
+            const t_head_ring = Date.now();
             const { data: hr } = await withDeadline(
               buildQuery("effective_posted", false, undefined, { skipTerms: true })
                 .ilike("title", `${sanitizeTerm(qText)}%`)
@@ -9496,6 +9509,7 @@ async function serveList(
                 .range(0, 199),
               4_000,
             ) as { data: unknown[] | null };
+            markFrom("head_ring", t_head_ring);
             if (Array.isArray(hr)) headRows = (hr as unknown[]).map(rowToJob) as Array<Record<string, unknown>>;
             else console.warn(`[JOB-BOARD] head-term ring missed its deadline for q=${JSON.stringify(qText)}`);
           } catch { /* the ranked window alone is still a valid page */ }
