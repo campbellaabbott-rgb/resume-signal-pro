@@ -189,3 +189,21 @@ describe("the facet budget must actually bound the facets", () => {
     expect(CODE).toMatch(/const COUNT_CAP = 10_000;/);
   });
 });
+
+describe("the facet chunk races its budget, not the gap between chunks", () => {
+  // Checking the deadline BETWEEN chunks never bounded anything: the first
+  // chunk of six always runs in full. Measured 2026-08-25 after tightening
+  // the between-chunk budget to 1.5s, q=camarero still spent 2,257-2,314ms in
+  // count_jobs_capped and still took 5.7s end to end, because six concurrent
+  // counts are issued before the deadline is consulted again.
+  it("the chunk itself is raced", () => {
+    expect(CODE).toMatch(/const chunkBudget = Math\.max\(250, FACET_DEADLINE - Date\.now\(\)\);/);
+    expect(CODE).toMatch(/const raced = await withDeadline\(chunkWork, chunkBudget\);/);
+  });
+
+  it("a missed budget yields no numbers, never a crash", () => {
+    // withDeadline resolves { data: null } on a miss — the shape its other
+    // callers destructure — so this must test for the array, not for null.
+    expect(CODE).toMatch(/const settled = Array\.isArray\(raced\) \? raced : \[\];/);
+  });
+});

@@ -102,7 +102,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-25.5";
+const BUILD_VERSION = "2026-08-25.6";
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -8187,7 +8187,20 @@ async function serveList(
     for (let i = 0; i < cats.length; i += FACET_CHUNK) {
       if (Date.now() > FACET_DEADLINE) break;
       const chunk = cats.slice(i, i + FACET_CHUNK);
-      const settled = await Promise.all(chunk.map(async (c) => {
+      // BETWEEN chunks was never a bound, because the FIRST chunk always runs
+      // in full. Measured 2026-08-25 after tightening the between-chunk
+      // budget: q=camarero still spent 2,257-2,314ms here and still took
+      // 5.7s, because six concurrent counts are issued before the deadline is
+      // consulted again. The comment above this loop claims 0.62-1.13s per
+      // chunk; that number is stale.
+      //
+      // So the chunk itself races the remaining budget. withDeadline does not
+      // cancel the query — the established pattern in this file — so a slow
+      // count finishes server-side while the reader gets their rows, and the
+      // category simply arrives without a number, which the rail already
+      // renders for every category past the budget.
+      const chunkBudget = Math.max(250, FACET_DEADLINE - Date.now());
+      const chunkWork = Promise.all(chunk.map(async (c) => {
         try {
           if (qText) {
             const t_count_jobs_capped_5 = Date.now();
@@ -8219,6 +8232,11 @@ async function serveList(
           return [c, null, false] as const;
         }
       }));
+      // withDeadline resolves { data: null } on a miss, not null — the shape
+      // its other callers destructure. Anything that is not the array we
+      // awaited means the budget won, and the chunk's categories go unnumbered.
+      const raced = await withDeadline(chunkWork, chunkBudget);
+      const settled = Array.isArray(raced) ? raced : [];
       for (const [c, n, capped] of settled) {
         if (typeof n === "number") counts[c] = n;
         if (capped) facetCapped = true;
