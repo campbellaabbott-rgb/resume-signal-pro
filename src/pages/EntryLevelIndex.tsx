@@ -88,7 +88,7 @@ export default function EntryLevelIndex() {
     <div className="min-h-screen bg-background">
       <SEO
         title="The Entry-Level Index — who's actually hiring entry-level right now?"
-        description="A live ranking of companies with real entry-level openings — junior, graduate, and early-career roles counted from companies' official job boards, refreshed all day. No aggregators, nothing older than 30 days."
+        description="A live ranking of companies with real entry-level openings — junior, graduate, and early-career roles counted from companies' official job boards, refreshed all day. No aggregators, no dated posting older than 30 days."
         path="/entry-level-index"
       />
       <Header />
@@ -111,7 +111,7 @@ export default function EntryLevelIndex() {
           Counted live from employers' <b>official</b> job boards (Workday, Greenhouse, SmartRecruiters, Ashby,
           iCIMS, Oracle, Lever, Workable, BambooHR, Recruitee, Teamtailor, Personio, Breezy, Rippling and
           Pinpoint) and the U.S. federal government's own system (USAJOBS) — never an aggregator or a
-          scrape, and nothing older than 30 days.
+          scrape, and no dated posting older than 30 days.
         </p>
 
         {/* Headline stats */}

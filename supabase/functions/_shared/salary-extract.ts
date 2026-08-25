@@ -60,7 +60,7 @@ function plausible(lo: number, hi: number, hourly: boolean): boolean {
 export interface ParsedSalary {
   min: number;
   max: number | null;
-  period: "hour" | "week" | "month" | "year" | null;
+  period: "hour" | "day" | "week" | "month" | "year" | null;
   /** Annualized lower bound, null when the period can't be honestly determined. */
   annualMin: number | null;
   /** Annualized upper bound — only when a real range parsed AND the spread is
@@ -73,6 +73,26 @@ export interface ParsedSalary {
    * so aggregates can group by currency instead of mixing € with $.
    */
   currency: string | null;
+  /**
+   * The factor `min` was multiplied by to get `annualMin` — 2080 for an hourly
+   * rate, 260 for a day rate, 52 weekly, 12 monthly, 1 for an already-annual
+   * figure; null exactly when annualMin is null.
+   *
+   * This exists so the annual figure and the salary string the board DISPLAYS
+   * can be checked against each other instead of trusted: annualMin is always
+   * Math.round(min * annualMultiplier), and when `period` is stated the
+   * multiplier is always PERIOD_MULTIPLIER[period]. The "$160-160/per-day-wage"
+   * incident was exactly this disagreement — the text said day, the stored
+   * annual (332,800) had been computed at 2080 h/yr — and nothing in the
+   * returned shape made the contradiction visible.
+   */
+  annualMultiplier: number | null;
+  /**
+   * The literal part-time / casual / as-needed signal found in the posting, or
+   * null. Reported even when it changed nothing (a stated annual salary is not
+   * re-derived from hours), so callers can see WHY a rate went un-annualized.
+   */
+  partTimeSignal: string | null;
 }
 
 // Explicit ISO codes beat symbols; dollar-prefix variants beat the bare $.
@@ -133,8 +153,185 @@ const P_HOUR = /per[\s-]?hour|\/\s?hr\b|\/\s?hour|hourly|hour-?wage|\ban?\s+hour
 const P_WEEK = /per[\s-]?week|\/\s?wk\b|\/\s?week|weekly|\ba\s+week\b/i;
 const P_MONTH = /per[\s-]?month|\/\s?mo\b|\/\s?month|monthly|\ba\s+month\b/i;
 const P_YEAR = /per[\s-]?(?:year|annum)|\/\s?yr\b|\/\s?year|annual|yearly|year-?salary|\ba\s+year\b/i;
+// Day rates ("$160-160/per-day-wage" is lever's own wording for a substitute
+// teacher's daily pay). Tested LAST so a posting that says both "annual" and
+// "a day" resolves to the annual figure — a day rate mistaken for a salary is
+// a 260x error, the reverse is a 1/260x one, and both are worse than the
+// conservative reading. Before this existed, "day" matched no period at all,
+// fell through to the unlabeled-hourly inference below, and a $160 day rate
+// was served as salaryMinAnnual 332,800 (live, 2026-08-25).
+const P_DAY = /per[\s-]?day|\/\s?day\b|\bdaily\b|day-?rate|day-?wage|\ba\s+day\b|\bdiem\s+rate\b/i;
 
-export function parseSalaryStructured(text: string | null | undefined, country?: string | null): ParsedSalary | null {
+// Annualization factors. hour=2080 is 40h x 52w; day=260 is 5d x 52w, chosen
+// so the family stays internally CONSISTENT — 2080 / 260 = 8, i.e. a posting
+// quoting "$20/hour" and one quoting "$160/day" for the same 8-hour day
+// annualize to the same 41,600. 260 is the gross working-day count (paid leave
+// sits inside it), not the calendar year (365) and not a net-of-holidays count
+// (~250 US, ~228 UK): the hourly factor already uses the gross convention, and
+// mixing conventions would make two ways of stating one wage disagree.
+export const PERIOD_MULTIPLIER = { hour: 2080, day: 260, week: 52, month: 12, year: 1 } as const;
+
+// Periods whose annualization is an assumption about HOW MUCH the person works
+// (a full-time load), not arithmetic on a figure the employer already stated
+// per year. Only these are suppressed by the part-time guard below; a stated
+// monthly or annual salary is the employer's own number and is left alone.
+const LOAD_DEPENDENT = new Set<string>(["hour", "day", "week"]);
+
+// ── part-time / casual guard ────────────────────────────────────────────────
+// Every load-dependent factor above silently assumes a full-time schedule. For
+// a part-time, casual or as-needed posting that assumption inverts the salary
+// floor: measured 2026-08-25, {"q":"teacher","salaryFloor":90000} returned 15
+// jobs and 14 were hourly, among them an after-school gymnastics teacher at
+// USD 44/hour served as 91,520 (the employer's own page: "part-time, hourly
+// positions... clubs are 1.25 to 2.5 hours long") and a substitute teacher at
+// $75/hour served as 156,000.
+//
+// The honest behaviour is to REFUSE the annual figure, not to guess a smaller
+// load. A guessed load (say 20h/week) would put a number we invented into a
+// filter the user believes is comparing salaries, and it would contradict the
+// salary text the board displays beside it — "$44 per hour" next to "$45,760"
+// reconciles to no schedule the posting states. A null keeps the row out of
+// the salary-floor filter and off the pay sorts while the verbatim rate stays
+// visible on the card, which is exactly what the posting supports.
+//
+// The guard errs toward NOT firing: a false part-time detection hides a real
+// full-time job from the filter, so every term below is either an employment
+// type stated in a short declarative field, or an unambiguous compound.
+
+export interface SalaryContext {
+  /** Posting title. Titles are declarations, not prose — "Substitute Teacher",
+   *  "... - Part Time", "Infusion Nurse Practitioner (PRN)". */
+  title?: string | null;
+  /** Posting description. Prose, so only unambiguous compounds are matched and
+   *  every hit must survive the boilerplate window check. */
+  description?: string | null;
+  /** A vendor employment-type field where one is carried ("Part Time",
+   *  "Casual", "Temporary") — iCIMS/Pinpoint expose one. Treated like a title. */
+  employmentType?: string | null;
+}
+
+// Short declarative fields: a bare employment word here IS the employment type.
+const PT_SHORT: RegExp[] = [
+  /\bpart[\s-]?time\b/i,
+  // "Casual Dining" / "business casual" are cuisine and dress codes, not a
+  // contract type — the only forms of the word that are NOT an employment type.
+  /\bcasual\b(?!\s*(?:dining|dress|attire|wear|friday))/i,
+  /\bsessional\b/i,
+  /\bzero[\s-]?hours?\b/i,
+  /\bper[\s-]?diem\b/i,
+  /\bprn\b/i,
+  /\bsubstitute\b/i,
+  /\bsupply\s+(?:teacher|staff|work)/i,
+  /\bas[\s-]?needed\b|\bas\s+and\s+when\b|\bwhen\s+needed\b/i,
+  /\bon[\s-]?call\b/i,
+  /\bad[\s-]?hoc\b/i,
+  /\bterm[\s-]?time\s+only\b/i,
+  /\bbank\s+(?:staff|nurse|worker|shifts?|hours?|contract)\b|\bnhs\s+bank\b/i,
+  /\brelief\s+(?:staff|work(?:er)?s?|shifts?|cover|basis|pool)\b/i,
+];
+
+// Prose: only forms that cannot mean anything else. "casual" alone is dropped
+// here because "casual work environment" and "business casual" are everywhere
+// in US descriptions; "as needed" is dropped because live full-time nursing
+// descriptions say "evaluates data as frequently as needed" and "seeking
+// assistance as needed" (Stanford Clinical Nurse RN 1.0 FTE, checked today) —
+// both would have hidden a genuinely full-time $96.35/hour job.
+const PT_PROSE: RegExp[] = [
+  /\bpart[\s-]?time\b/i,
+  /\bcasual\s+(?:hours?|basis|contract|work(?:ers?)?|staff|shifts?|position|role|employment|vacanc)/i,
+  /\bzero[\s-]?hours?\s+contract\b/i,
+  /\bsessional\b/i,
+  /\bterm[\s-]?time\s+only\b/i,
+  /\bbank\s+(?:staff|nurse|worker|shifts?|hours?|contract)\b|\bnhs\s+bank\b/i,
+  /\brelief\s+(?:staff|work(?:er)?s?|shifts?|cover|basis|pool)\b/i,
+];
+
+// A prose hit inside benefits / EEO / pay-policy boilerplate describes the
+// employer's POLICY, not this posting's schedule. Every term below was added
+// from a real false positive measured against 183 live rows on 2026-08-25:
+//   "Part-time employees have access to a wide range of voluntary benefits"
+//     (Registered Behavior Technician, $29.00/hr — genuinely part-time, but
+//      this sentence is not what says so)
+//   "These benefits also apply to part-time employees"
+//     (Weld Technician 1st Shift, $29.60/hr — a FULL-TIME job the guard would
+//      have hidden from the salary floor)
+//   "Salaries for part-time roles will be prorated based upon the agreed upon
+//    number of hours" (Capital One Lead Software Engineer, $197,300)
+// Checked against +/-80 chars of the hit, the same windowing NOT_PAY uses
+// above, and every occurrence is walked — an early boilerplate mention never
+// masks a later real one.
+// Deliberately shaped, not just the word "benefits": the VI-teacher posting
+// says "Job Types: Full-Time, Part-Time, Contract / Pay: $90 per hour /
+// Expected Hours: 10-40 per week / Benefits: ..." — a bare `benefit` term put
+// that (a real 187,200 overstatement) back into the salary floor.
+const PT_BOILERPLATE = /eligib|benefits?\s+(?:package|plan|program|are|also\s+apply|apply|extend|include)|401\(?k|equal\s+opportunit|discriminat|regardless\s+of|reasonable\s+accommodat|paid\s+time\s+off|\bPTO\b|health\s+insurance|pro[\s-]?rate|employees?\s+(?:are|have|has|may|will|receive|also|with|and)/i;
+
+// A stated weekly load below the 30h ACA full-time line is the clearest signal
+// there is: the posting itself says how much work there is. Every stated
+// figure is collected and the LARGEST wins, so "10-40 hours per week" (a real
+// VI-teacher posting, $90/hour) is read as up to full-time and does NOT fire
+// here — that posting is caught by its own "Job Types: Full-Time, Part-Time".
+const WEEKLY_HOURS = /(\d{1,2})(?:\s*(?:-|–|—|to)\s*(\d{1,2}))?\s*(?:hours?|hrs?)\s*(?:per|a|each|\/)\s*week/gi;
+const FULL_TIME_WEEKLY_HOURS = 30;
+
+function scanShort(s: string): string | null {
+  for (const re of PT_SHORT) { const m = s.match(re); if (m) return m[0].toLowerCase(); }
+  return null;
+}
+
+function scanProse(s: string): string | null {
+  for (const re of PT_PROSE) {
+    // Walk every occurrence: the first may be boilerplate while a later one is
+    // the posting's actual schedule statement.
+    const g = new RegExp(re.source, re.flags.includes("g") ? re.flags : re.flags + "g");
+    for (const m of s.matchAll(g)) {
+      const i = m.index ?? 0;
+      const ctx = s.slice(Math.max(0, i - 80), i + m[0].length + 80);
+      if (!PT_BOILERPLATE.test(ctx)) return m[0].toLowerCase();
+    }
+  }
+  let maxHours = 0;
+  for (const m of s.matchAll(WEEKLY_HOURS)) {
+    maxHours = Math.max(maxHours, Number(m[2] ?? m[1]) || 0, Number(m[1]) || 0);
+  }
+  if (maxHours > 0 && maxHours < FULL_TIME_WEEKLY_HOURS) return `${maxHours} hours per week`;
+  return null;
+}
+
+// A title (or vendor employment-type field) that DECLARES full time outranks a
+// part-time word found in description prose. Measured 2026-08-25 over 155 live
+// rows pulled with their descriptions: exactly one row fired on prose while its
+// own title said otherwise — "Genetics Counselor II — … — Full Time"
+// ($41.10-$61.65/hour, 85,488), whose only "part-time" sits inside "Eligibility
+// for programs listed above may depend on your FTE or status (e.g., full-time,
+// part-time, per diem, temporary, etc.)". That word lands 89 chars after
+// "Eligibility" — nine characters outside the ±80 boilerplate window — so the
+// window alone could not reject it, and the guard hid a declared full-time job
+// from the salary floor, which is the one failure this guard must not cause.
+// Scoped to the SHORT fields only: a DESCRIPTION reading "Job Types: Full-Time,
+// Part-Time" is a posting offering both, not a full-time declaration.
+const FT_DECLARED = /\bfull[\s-]?time\b/i;
+
+/**
+ * The clearest part-time / casual / as-needed signal in a posting, or null.
+ * Exported so the rule can be tested and audited directly against real rows.
+ */
+export function detectPartTime(ctx: SalaryContext | null | undefined): string | null {
+  if (!ctx) return null;
+  const short = `${ctx.title ?? ""}\n${ctx.employmentType ?? ""}`;
+  // A short-field signal wins outright, including over a full-time word in the
+  // same field: "Full Time / Part Time Barista" states both and is ambiguous.
+  const stated = scanShort(short);
+  if (stated) return stated;
+  if (FT_DECLARED.test(short)) return null;
+  return scanProse(String(ctx.description ?? "").slice(0, 20_000));
+}
+
+export function parseSalaryStructured(
+  text: string | null | undefined,
+  country?: string | null,
+  context?: SalaryContext | null,
+): ParsedSalary | null {
   if (!text) return null;
   const s = decodeLegacyEntities(String(text).slice(0, 300));
   const num = (raw: string, k?: string): number | null => {
@@ -144,7 +341,8 @@ export function parseSalaryStructured(text: string | null | undefined, country?:
     return k ? base * 1000 : base;
   };
   const period: ParsedSalary["period"] =
-    P_HOUR.test(s) ? "hour" : P_WEEK.test(s) ? "week" : P_MONTH.test(s) ? "month" : P_YEAR.test(s) ? "year" : null;
+    P_HOUR.test(s) ? "hour" : P_WEEK.test(s) ? "week" : P_MONTH.test(s) ? "month"
+    : P_YEAR.test(s) ? "year" : P_DAY.test(s) ? "day" : null;
 
   let min: number | null = null;
   let max: number | null = null;
@@ -162,20 +360,33 @@ export function parseSalaryStructured(text: string | null | undefined, country?:
   if (min === null || min <= 0) return null;
 
   const currency = detectCurrency(s, country);
-  const MULT = { hour: 2080, week: 52, month: 12, year: 1 } as const;
+  const MULT = PERIOD_MULTIPLIER;
+  // `mult` and `annualMin` move together and are never assigned apart, so the
+  // returned annualMin cannot drift from the multiplier that produced it.
   let annualMin: number | null = null;
+  let mult: number | null = null;
+  // The period the annual figure is actually derived from: the stated one, or
+  // "hour" when the unlabeled-hourly inference below fires. This — not the
+  // stated `period`, which stays null for an inference — is what the part-time
+  // guard tests, so a part-time "$44.00 - $52.00" with no period word is
+  // suppressed exactly like a part-time "$44 per hour".
+  let basis: string | null = period;
   if (period) {
-    annualMin = min * MULT[period];
+    mult = MULT[period];
+    annualMin = min * mult;
     // magnitude sanity per period — a "$5/hour" or "$9,000/hour" is bad data
-    const lo = period === "hour" ? 7 : period === "week" ? 200 : period === "month" ? 800 : 10_000;
+    const lo = period === "hour" ? 7 : period === "day" ? 40 : period === "week" ? 200 : period === "month" ? 800 : 10_000;
     const hi =
       period === "hour" ? 500
+      : period === "day" ? 5_000
       : period === "week" ? 20_000
       : period === "month" ? (currency && PARITY_CURRENCIES.has(currency) ? PARITY_MONTHLY_MAX : 90_000)
       : 2_000_000;
-    if (min < lo || min > hi) annualMin = null;
+    if (min < lo || min > hi) { annualMin = null; mult = null; basis = null; }
   } else if (min >= 20_000 && min <= 2_000_000) {
     annualMin = min; // unlabeled but unambiguously annual
+    mult = 1;
+    basis = "year";
   } else if (
     // Unlabeled but unambiguously HOURLY — the symmetric case, same honesty
     // bar. For parity currencies, [7, 200) sits inside ONLY the hourly
@@ -188,16 +399,27 @@ export function parseSalaryStructured(text: string | null | undefined, country?:
     currency !== null && PARITY_CURRENCIES.has(currency) &&
     min >= 7 && (max ?? min) < 200 && (max === null || max >= min)
   ) {
-    annualMin = min * 2080;
+    mult = MULT.hour;
+    annualMin = min * mult;
+    basis = "hour";
+  }
+
+  // Part-time / casual guard. Only load-dependent bases are suppressed: a
+  // stated monthly or annual figure is the employer's own number, and refusing
+  // it would hide a real part-time salary that the posting itself annualized.
+  const partTimeSignal = detectPartTime(context);
+  if (partTimeSignal && basis !== null && LOAD_DEPENDENT.has(basis)) {
+    annualMin = null;
+    mult = null;
   }
   // Upper bound follows the SAME honesty rules as the floor: annualized with
   // the floor's multiplier, dropped when the floor was dropped, and dropped
   // when the spread is implausible (a "$50k–$900k" text is not a pay range).
   let annualMax: number | null = null;
-  if (annualMin !== null && max !== null && max >= min) {
-    // The max side annualizes with WHATEVER multiplier the min side earned —
-    // stated period, inferred-hourly (annualMin/min recovers 2080), or 1.
-    const mult = period ? { hour: 2080, week: 52, month: 12, year: 1 }[period] : (min > 0 ? annualMin / min : 1);
+  if (annualMin !== null && mult !== null && max !== null && max >= min) {
+    // The max side annualizes with the SAME multiplier the min side earned —
+    // read off `mult` now rather than re-derived, so the two ends of a range
+    // can never be annualized on different assumptions.
     const am = max * mult;
     if (max / Math.max(min, 1) <= 6 && am <= 4_000_000) annualMax = am;
   }
@@ -205,7 +427,7 @@ export function parseSalaryStructured(text: string | null | undefined, country?:
   // noise everywhere the number is displayed or compared.
   if (annualMin !== null) annualMin = Math.round(annualMin);
   if (annualMax !== null) annualMax = Math.round(annualMax);
-  return { min, max, period, annualMin, annualMax, currency };
+  return { min, max, period, annualMin, annualMax, currency, annualMultiplier: mult, partTimeSignal };
 }
 
 /** Extract the posting's own pay text, or null when nothing clearly stated. */

@@ -55,6 +55,85 @@ import { isBoardCategory } from "@/lib/job-board-categories";
 const appsTable = () => (supabase as unknown as { from: (t: string) => any }).from("user_applications");
 const searchesTable = () => (supabase as unknown as { from: (t: string) => any }).from("user_job_searches");
 
+/**
+ * A CAP IS NOT A COUNT.
+ *
+ * `failedSources` is a SAMPLE: the refresh loop keeps `.slice(-120)` of the
+ * failures it has seen, so the array length saturates at 120 and stops moving
+ * while the real number keeps climbing. Measured 2026-08-25: the board rendered
+ * exactly 120 on every poll for 45 minutes, then 112 once a pass landed — the
+ * reader could not tell the ceiling from the census. The refresh loop publishes
+ * the uncapped total separately as `failedCount` (job-board/index.ts writes it
+ * into job_board_meta and the `status` action returns it — live status read 23
+ * while the list's sample read 112 on the same minute), so prefer it whenever
+ * it is present.
+ *
+ * When only the capped sample is available — every list exit today omits
+ * failedCount — the honest render is "at least N", never a bare N: N is a floor
+ * we can defend, and the sentence says so.
+ *
+ * Returns null when there is nothing to report, so the caller renders nothing
+ * rather than "0 company feeds are unreachable".
+ */
+export function unreachableFeeds(
+  failedCount: number | undefined,
+  sampleLength: number,
+): { count: number; exact: boolean } | null {
+  if (typeof failedCount === "number" && Number.isFinite(failedCount) && failedCount >= 0) {
+    return failedCount > 0 ? { count: failedCount, exact: true } : null;
+  }
+  return sampleLength > 0 ? { count: sampleLength, exact: false } : null;
+}
+
+/**
+ * THE DETAIL "ROUTE" IS A QUERY PARAM, NOT A PATH SEGMENT.
+ *
+ * App.tsx routes exactly three board paths — /jobs, /jobs/field/:category and
+ * /jobs/company/:companyToken — so a POSTING is addressed as /jobs?job=<id>.
+ * That is the shape the sitemap emits (job-board/index.ts), the shape the
+ * canonical link takes while a panel is open, and the `url` in the JobPosting
+ * JSON-LD. Every job-title anchor must use this one, or the crawlable href and
+ * the indexed URL disagree and the deep link is worthless.
+ */
+export function jobDetailHref(id: string): string {
+  return `/jobs?job=${encodeURIComponent(id)}`;
+}
+
+/**
+ * A modified click on a link is the user asking the BROWSER for it: cmd/ctrl
+ * for a new tab, shift for a new window, alt to download, middle button for a
+ * background tab. preventDefault-ing those is what makes an <a> feel like a
+ * counterfeit link — the href exists for crawlers but "open in new tab" does
+ * nothing. The plain left click still belongs to the detail panel.
+ */
+export function opensInNewContext(e: {
+  metaKey?: boolean; ctrlKey?: boolean; shiftKey?: boolean; altKey?: boolean; button?: number;
+}): boolean {
+  return !!(e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) || (e.button ?? 0) !== 0;
+}
+
+/**
+ * THE SKIP LINK IS DEAD ON ARRIVAL, AND THE PRESS IS NOT RECOVERABLE LATER.
+ *
+ * index.html ships `<a href="#main-content">` as the first focusable element of
+ * every page, but the id is added by React: the prerendered shell emits a bare
+ * `<main class="pt-10 pb-20">` (verified live 2026-08-25 — "main-content"
+ * occurs exactly ONCE in the served /jobs HTML, in the link's own href), so for
+ * the whole 1.0-2.7s hydration window the first key a keyboard user presses
+ * moves nothing. The browser still writes the fragment to the URL, so the press
+ * leaves a trace: when the page mounts and the target finally exists, honour it.
+ *
+ * The real repair is in the prerender shell (see the report on
+ * scripts/prerender-seo.mjs) — this is the half that belongs to this page.
+ */
+export function honourPendingSkipLink(hash: string, doc: Document = document): boolean {
+  if (hash !== "#main-content") return false;
+  const el = doc.getElementById("main-content") as HTMLElement | null;
+  if (!el) return false;
+  el.focus();
+  return doc.activeElement === el;
+}
+
 interface BoardJob {
   id: string;
   // SEARCH ATTRIBUTION, stamped per row rather than read off the response.
@@ -240,6 +319,11 @@ interface BoardResponse {
   // is only non-optional if EVERY server exit emits it, and nothing checks that
   // across the runtime boundary. Optional makes the compiler ask for the guard.
   failedSources?: string[];
+  /** The UNCAPPED number of failing feeds, beside the capped sample above.
+   *  Optional for the same reason as failedSources and then some: today NO
+   *  list exit sends it (only `status` does), so the page must be able to say
+   *  "at least N" from the sample alone. See unreachableFeeds(). */
+  failedCount?: number;
   refreshedAt: string | null;
   /** Ranked path: role-alias phrases the server also searched (disclosed in the UI). */
   aliases?: string[];
@@ -496,6 +580,13 @@ export default function Jobs() {
     })();
     return () => { cancelled = true; };
   }, []);
+  // A SKIP-LINK PRESS THAT LANDED DURING HYDRATION IS STILL A PRESS.
+  // The served HTML's #main-content target does not exist until React mounts
+  // (the prerendered shell emits a bare <main>), so the first key a keyboard
+  // user hits on the SEO landing surface moves nothing for 1.0-2.7s. The
+  // browser does write the fragment, so the intent survives — honour it the
+  // moment the target exists rather than making them press it twice.
+  useEffect(() => { honourPendingSkipLink(window.location.hash); }, []);
   // Salary floor filters on the posting's OWN stated pay, annualized (hourly
   // ×2080 etc.) but never currency-converted — postings that don't state pay
   // are excluded while the floor is active.
@@ -3194,7 +3285,7 @@ export default function Jobs() {
                       {/* Basis suffix: the median blends hourly/monthly rates
                           annualized (hourly ×2080) — without saying so the
                           number reads as a pure annual-salary median. */}
-                      {" · "}{t("jobsPage.salaryContextBasis", "hourly and monthly rates annualized (hourly ×2080)")}
+                      {" · "}{t("jobsPage.salaryContextBasis", "hourly, daily and monthly rates annualized (hourly ×2080, daily ×260); part-time and casual rates are left un-annualized")}
                       {detailSalaryContext.pct !== 0 && (
                         <span className={detailSalaryContext.pct > 0 ? "text-success" : "text-warning"}>
                           {" · "}
@@ -4928,13 +5019,29 @@ export default function Jobs() {
                 {t("jobsPage.healthUnavailable", "hiring-pace data unavailable right now")}
               </span>
             )}
-            {!landerCompany && data && (data.failedSources?.length ?? 0) > 0 && (
-                  <span> · {t("jobsPage.sourcesDown", {
-                    count: data.failedSources?.length ?? 0,
-                    defaultValue_one: "{{count}} company feed is unreachable right now",
-                    defaultValue_other: "{{count}} company feeds are unreachable right now",
-                  })}</span>
-                )}
+            {/* A CAP RENDERED AS A COUNT. failedSources is the last 120
+                failures, so this line read exactly 120 for 45 minutes straight
+                (2026-08-25) and then 112 — a ceiling and a census, printed in
+                the same sentence with no way to tell them apart. unreachableFeeds
+                prefers the uncapped failedCount and, when only the sample is
+                available, says "at least" — which is the true claim. */}
+            {!landerCompany && data && (() => {
+                  const feeds = unreachableFeeds(data.failedCount, data.failedSources?.length ?? 0);
+                  if (!feeds) return null;
+                  return (
+                    <span> · {feeds.exact
+                      ? t("jobsPage.sourcesDown", {
+                          count: feeds.count,
+                          defaultValue_one: "{{count}} company feed is unreachable right now",
+                          defaultValue_other: "{{count}} company feeds are unreachable right now",
+                        })
+                      : t("jobsPage.sourcesDownAtLeast", {
+                          count: feeds.count,
+                          defaultValue_one: "at least {{count}} company feed is unreachable right now",
+                          defaultValue_other: "at least {{count}} company feeds are unreachable right now",
+                        })}</span>
+                  );
+                })()}
                 {refreshing && <span className="text-primary"> · {t("jobsPage.updating", "updating…")}</span>}
                 {dismissedIds.size > 0 && (
                   <span>
@@ -5151,18 +5258,41 @@ export default function Jobs() {
                         </div>
                         <div className="flex-1 min-w-[220px]">
                           {/* The title IS the open-details control: a real
-                              button screen readers can find (the li's Enter
+                              control screen readers can find (the li's Enter
                               handler was invisible to them), clamped to two
                               lines so multi-segment ATS titles can't wall the
-                              list (full text in the tooltip). */}
-                          <button
-                            type="button"
-                            onClick={(e) => { e.stopPropagation(); void openDetail(job); }}
+                              list (full text in the tooltip).
+
+                              IT IS NOW AN ANCHOR, because as a <button> it gave
+                              the page NO CRAWLABLE PATH TO A JOB: measured on
+                              the hydrated board, all 60 a[href^="/jobs/"] were
+                              /jobs/company/<token> links and zero pointed at a
+                              posting. Every posting is in the sitemap as
+                              /jobs?job=<id>, and the only in-page route to it
+                              was a JS click handler — a crawler (and anyone
+                              cmd-clicking, middle-clicking, or copying a link)
+                              got nothing.
+
+                              The interaction is unchanged for the mouse: a
+                              plain left click is preventDefault-ed and the
+                              detail panel opens exactly as before, including
+                              its history push. Modified clicks are left to the
+                              browser so "open in new tab" genuinely opens the
+                              posting. Still ONE tab stop per card — this
+                              replaces the button, it does not join it. */}
+                          <Link
+                            to={jobDetailHref(job.id)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (opensInNewContext(e)) return; // the browser's job, not ours
+                              e.preventDefault();
+                              void openDetail(job);
+                            }}
                             title={job.title}
                             className={`block text-left font-semibold leading-snug line-clamp-2 focus-visible:outline-none focus-visible:underline ${viewedIds.has(job.id) && detailJob?.id !== job.id ? "text-muted-foreground" : "text-foreground"}`}
                           >
                             {job.title}
-                          </button>
+                          </Link>
                           <p className="text-sm text-muted-foreground mt-0.5">
                             {job.token
                               ? <Link to={`/jobs/company/${job.token}`} className="hover:text-primary hover:underline">{job.company}</Link>

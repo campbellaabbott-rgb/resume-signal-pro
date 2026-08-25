@@ -74,7 +74,14 @@ function listExits(): Array<{ line: number; block: string }> {
  */
 const CORE = [
   "jobs:", "total:", "hasMore:", "nextOffset:", "totalAllCompanies:",
-  "companies:", "companiesCount:", "categories:", "failedSources:", "refreshedAt:",
+  "companies:", "companiesCount:", "categories:", "failedSources:",
+  // failedCount is the UNCAPPED total beside the capped failedSources sample.
+  // Without it the client can only render min(total, 120) and cannot tell a
+  // saturated ceiling from a true count — it read exactly 120 for 45 minutes,
+  // then 112, and the sentence "N company feeds are unreachable" was the same
+  // either way. An exit that ships the sample and not the total puts the
+  // reader back in front of a cap dressed as a census.
+  "failedCount:", "refreshedAt:",
 ];
 
 describe("every list exit ships the whole shape", () => {

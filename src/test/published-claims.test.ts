@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { readFileSync, readdirSync } from "node:fs";
+import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { isUnfiltered, normalizeFilters } from "../../supabase/functions/job-board/filters.ts";
 import { BOARD_SOURCE_LIST } from "../config/ats-vendors";
@@ -371,8 +371,28 @@ describe("the re-check chip shows real re-verification, not insert time", () => 
 //   boardHero.trustFresh       "Nothing older than 30 days — stale listings removed"
 // GhostJobIndex has carried the correct sentence all along; the hero and the
 // badge never inherited its second half.
+//
+// WIDENED 2026-08-25. Everything above scanned locale JSON and one component
+// and passed for four weeks while the prerendered page Google indexes carried
+// the absolute claim five times. A guard that scans the wrong files passes
+// while the claim is false — that is the defect this block now exists to
+// catch, and it is why the file list below is a directory scan asserted to be
+// non-empty rather than three paths somebody typed once. Details at the
+// second header, mid-block.
 describe("the 30-day cap is never stated as covering the whole board", () => {
-  const ABSOLUTE = /(nothing|no postings?|no roles?|none)\s+older than 30 days/i;
+  // The noun is not the point — the absoluteness is. "no listing", "no job",
+  // "no opening", "everything" say exactly what "nothing" said, so a rewrite
+  // that swaps the noun is the same false claim and must fail the same way.
+  // "no DATED posting older than 30 days" is the true statement and is the
+  // one thing excluded, by the lookahead.
+  const ABS_CORE =
+    "(nothing|anything|everything|none|no (?!dated )(?:postings?|roles?|listings?|jobs?|openings?))\\s+older than 30 days";
+  // Sentence context, stopping at a full stop or any template/HTML delimiter.
+  const CTX = "[^.<>{}\"`]";
+  const ABSOLUTE = new RegExp(ABS_CORE, "i");
+  // Same phrase, global + a little context either side so a failure names
+  // the offending sentence instead of just saying "true !== false".
+  const ABSOLUTE_G = new RegExp(`${CTX}{0,60}${ABS_CORE}${CTX}{0,40}`, "gi");
 
   for (const file of locales) {
     it(`${file} does not claim the cap covers undated postings`, () => {
@@ -392,6 +412,102 @@ describe("the 30-day cap is never stated as covering the whole board", () => {
     const hero = readFileSync(resolve(root, "src/components/JobBoardHero.tsx"), "utf8");
     expect(hero).not.toMatch(/Nothing older than 30 days/);
     expect(hero).toMatch(/undated ones show no age/);
+  });
+
+  // MEASURED 2026-08-25. The block above was written on 2026-07-28 and it
+  // passed every day since — while the page Google actually indexes said the
+  // opposite. `curl -A Googlebot/2.1 https://resumebooster.work/jobs` returned
+  // HTTP 200, ~10,598 B, carrying "nothing older than 30 days" FIVE times,
+  // once inside the CollectionPage JSON-LD. False for ~27,000 undated servable
+  // rows. The in-app copy had already been corrected; only the crawler copy
+  // drifted, because the guard read src/i18n/locales/*.json and one .tsx and
+  // nothing else.
+  //
+  // THAT is the defect class: a guard which scans the wrong files passes
+  // while the claim is false, and its green tick is read as evidence the
+  // claim is true. Under-specifying the file list is the whole bug — so the
+  // list below is built by SCANNING DIRECTORIES rather than by naming files,
+  // and the scan asserts it found something before it asserts anything about
+  // what it found. An empty file list is a silent pass, and a silent pass is
+  // what shipped this.
+  //
+  // Same page, same read: "the live board always shows the current number"
+  // sat above a refreshedAt that had not moved in 85-101 minutes across every
+  // probe. Counts refresh periodically; they are not live. Guarded below.
+  //
+  // These are build scripts with top-level side effects (they write dist/),
+  // so they cannot be imported and called the way filters.ts is above —
+  // source text is the only available surface. To keep that honest, comments
+  // are stripped first, but only WHOLE comment lines: a `//` mid-line would
+  // otherwise truncate a copy string containing "https://" and turn a live
+  // false claim into a pass. A stray claim inside a trailing comment fails
+  // loudly instead, which is the safe direction to be wrong in.
+  const stripComments = (src: string) =>
+    src
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .split("\n")
+      .filter((l) => !/^\s*\/\//.test(l))
+      .join("\n");
+
+  const scriptDir = resolve(root, "scripts");
+  // Directory scan, not a hand-written list: any prerender/emit script added
+  // later is covered on the day it lands, with nobody remembering to do it.
+  const crawlerScripts = readdirSync(scriptDir)
+    // Dotfiles are gitignored build caches (scripts/.prerender-data.mjs): they
+    // exist locally and not on CI, so including them makes the guard scan a
+    // different set in the two places it runs.
+    .filter((f) => f.endsWith(".mjs") && !f.startsWith("."))
+    .map((f) => `scripts/${f}`);
+  // Rendered-copy surfaces that are not locale JSON. Short and reviewable:
+  // a reader can see at a glance whether it is complete.
+  // A HAND-WRITTEN LIST IS ONLY AS GOOD AS ITS LAST AUDIT. This one held a
+  // single file, and while it did, three more surfaces kept the absolute
+  // claim: src/pages/EntryLevelIndex.tsx (both the <meta description> and the
+  // body), and public/llms.txt — the file AI crawlers read as the site's
+  // canonical self-description, which is arguably the highest-leverage
+  // instance of all. Adding files here is not the durable fix; the durable
+  // fix is the sweep below, which greps the WHOLE of src/ and public/ so a
+  // new surface cannot quietly opt out of the guard by not being listed.
+  const appCopyFiles = [
+    "src/components/JobBoardHero.tsx",
+    "src/pages/EntryLevelIndex.tsx",
+    "public/llms.txt",
+  ];
+  const scannedFiles = [...crawlerScripts, ...appCopyFiles];
+
+  it("the guard's own file list is non-empty and includes the crawler page", () => {
+    // The assertion the 2026-07-28 version was missing. A list that silently
+    // resolves to [] makes every claim test below vacuously green.
+    expect(locales.length, "no locale files found").toBeGreaterThan(0);
+    expect(crawlerScripts.length, "no build scripts found — scan path is wrong").toBeGreaterThan(0);
+    expect(scannedFiles).toContain("scripts/prerender-seo.mjs");
+    expect(appCopyFiles.every((f) => existsSync(resolve(root, f))), "listed app copy file is gone").toBe(true);
+  });
+
+  for (const rel of scannedFiles) {
+    it(`${rel} does not claim the cap covers undated postings`, () => {
+      const src = stripComments(readFileSync(resolve(root, rel), "utf8"));
+      const offenders = (src.match(ABSOLUTE_G) || []).map((m) => m.trim());
+      expect(offenders, `${rel} states the 30-day cap absolutely`).toEqual([]);
+    });
+  }
+
+  it("the crawler page qualifies the cap and discloses undated rows", () => {
+    // Positive half: absence of the bad phrase is satisfiable by deleting the
+    // claim entirely, which would quietly drop a true selling point. The page
+    // must still say the cap applies, and must say what happens to the rest.
+    const seo = stripComments(readFileSync(resolve(root, "scripts/prerender-seo.mjs"), "utf8"));
+    expect(seo, "the qualified cap sentence is gone").toMatch(/no dated posting older than 30 days/i);
+    expect(seo, "undated rows are not disclosed anywhere on the crawler page").toMatch(/show no age/i);
+  });
+
+  it("no page promises a count that is live when it is periodic", () => {
+    // refreshedAt was frozen 85-101 minutes on every read of 2026-08-25;
+    // "always shows the current number" is not a thing the board can keep.
+    for (const rel of crawlerScripts) {
+      const src = stripComments(readFileSync(resolve(root, rel), "utf8"));
+      expect(src, `${rel} promises a live count`).not.toMatch(/always shows the current number/i);
+    }
   });
 });
 
@@ -1887,5 +2003,48 @@ describe("search cannot drop a title match before ranking", () => {
     expect(params).toMatch(/p_q text,/);
     expect(params).toMatch(/p_offset integer DEFAULT 0/);
     expect(mig).toMatch(/GRANT EXECUTE ON FUNCTION public\.search_jobs\(text, timestamptz, text, boolean, text, text, text\[\], numeric, text\[\], timestamptz, integer, text, integer, integer\)/);
+  });
+});
+
+describe("no surface may opt out of the freshness claim by not being listed", () => {
+  // The listed-file guards above are a belt; this is the braces. Every claim
+  // fix so far was found by a human noticing a file, and each time the list
+  // was updated and the NEXT unlisted file kept the false claim. Measured
+  // 2026-08-25: with the list at one entry, EntryLevelIndex.tsx and
+  // public/llms.txt both still read "nothing older than 30 days" while the
+  // guard was green.
+  //
+  // The cap can only be enforced where the employer states a date. Roughly
+  // 27,000 servable rows are undated, so any ABSOLUTE phrasing is false no
+  // matter which file it lives in.
+  const ROOT = resolve(__dirname, "../..");
+  const ABS = /(nothing|anything|everything|none|no (?!dated )(?:postings?|roles?|listings?|jobs?|openings?))[^.\n]{0,40}older than 30 days/i;
+
+  const walk = (dir: string, out: string[] = []): string[] => {
+    for (const e of readdirSync(resolve(ROOT, dir), { withFileTypes: true })) {
+      const rel = `${dir}/${e.name}`;
+      if (e.isDirectory()) { if (e.name !== "node_modules" && e.name !== "test") walk(rel, out); }
+      else if (/\.(tsx?|jsx?|mjs|json|txt|html|md)$/.test(e.name)) out.push(rel);
+    }
+    return out;
+  };
+
+  it("sweeps src/, public/ and scripts/ and finds no absolute freshness claim", () => {
+    const files = [...walk("src"), ...walk("public"), ...walk("scripts")];
+    expect(files.length, "the sweep found no files — the walk is broken").toBeGreaterThan(50);
+    const offenders: string[] = [];
+    for (const f of files) {
+      // Comments stripped: an explanatory comment ABOUT the false claim is not
+      // the false claim, and this repo has failed guards on that distinction
+      // nine times. Changelog entries are historical records of what was
+      // announced, not live promises, so they are excluded by path.
+      if (f.includes("/changelog/")) continue;
+      const src = readFileSync(resolve(ROOT, f), "utf8")
+        .replace(/\/\*[\s\S]*?\*\//g, "")
+        .split("\n").map((l) => l.replace(/^\s*\/\/.*$/, "")).join("\n");
+      const m = ABS.exec(src);
+      if (m) offenders.push(`${f}: ${JSON.stringify(m[0])}`);
+    }
+    expect(offenders, `absolute freshness claim still published:\n${offenders.join("\n")}`).toEqual([]);
   });
 });

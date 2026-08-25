@@ -102,7 +102,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-25.11";
+const BUILD_VERSION = "2026-08-25.12";
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -865,7 +865,8 @@ const EXPERIENCE_VERSION = 1;
 // ingest alone never reaches postings that predate the parser). v2: currency
 // capture — the sweep targets salary_currency IS NULL, which also re-covers
 // rows v1 already parsed (they have a floor but no currency).
-const SALARY_PARSE_VERSION = 6; // v6 (2026-08-24): "an hour"/"a year" vocabulary + unambiguous-hourly inference for parity currencies in [7,200) — 17,641 workday vendor-stated ranges sat unannualized; whole-dollar rounding
+const SALARY_PARSE_VERSION = 7; // v7 (2026-08-25): day rates (x260) + a part-time/casual guard that REFUSES to annualise a load-dependent rate — {"q":"teacher","salaryFloor":90000} was serving 14 hourly part-timers out of 15, incl. $44/hr read as 91,520 and a $160/day substitute read as 332,800
+// v6 (2026-08-24): // v6 (2026-08-24): "an hour"/"a year" vocabulary + unambiguous-hourly inference for parity currencies in [7,200) — 17,641 workday vendor-stated ranges sat unannualized; whole-dollar rounding
 const COUNTRY_VERSION = 1; // v1: deterministic country from location text (names + US/CA state patterns)
 // Date-the-undated sweep: greenhouse rows predating first_published capture
 // (insert-only rows never re-see the feed). Vendors whose feeds carry no date
@@ -1592,7 +1593,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
             // an empty-string vendor salary must not block extraction.
             salary: salaryText,
             ...(() => {
-              const p = parseSalaryStructured(salaryText, j.country ?? detectCountry(j.location));
+              const p = parseSalaryStructured(salaryText, j.country ?? detectCountry(j.location), { title: j.title ?? null, description: lightDescs ? null : (descs.get(j.id) ?? null) });
               return {
                 salary_min_annual: p?.annualMin ?? null,
                 salary_max_annual: p?.annualMax ?? null,
@@ -5760,7 +5761,7 @@ Deno.serve(async (req) => {
       for (let page = 0; page < PAGES; page++) {
         let q = client
           .from("job_board_postings")
-          .select("id,salary,country,salary_min_annual,salary_max_annual,salary_period,salary_currency")
+          .select("id,salary,country,title,description,salary_min_annual,salary_max_annual,salary_period,salary_currency")
           .not("salary", "is", null)
           .order("id")
           .limit(1000);
@@ -5770,7 +5771,7 @@ Deno.serve(async (req) => {
         for (const r of rows ?? []) {
           scanned++;
           const row = r as { id: string; salary?: string | null; country?: string | null; salary_min_annual?: number | string | null; salary_max_annual?: number | string | null; salary_period?: string | null; salary_currency?: string | null };
-          const p = parseSalaryStructured(row.salary, row.country);
+          const p = parseSalaryStructured(row.salary, row.country, { title: (row as { title?: string | null }).title ?? null, description: (row as { description?: string | null }).description ?? null });
           const nextMin = p?.annualMin ?? null;
           const nextMax = p?.annualMax ?? null;
           const nextPer = p?.period ?? null;
@@ -5941,7 +5942,7 @@ Deno.serve(async (req) => {
         // country rides along: parseSalaryStructured resolves a bare "$" by
         // country, so without it a Toronto posting saying "$120,000" is stored
         // as USD — inflating its rank ~1.37x and misstating the offer.
-        .select("id, country")
+        .select("id, country, title")
         .eq("company_token", s.token)
         .is("description", null)
         .order("id")
@@ -5963,7 +5964,7 @@ Deno.serve(async (req) => {
             // (GH giants fetch without content, so ingest-time mining never saw
             // it). Only set when extraction finds the company's own pay text.
             const minedSalary = extractSalary(text);
-            const minedParse = minedSalary ? parseSalaryStructured(minedSalary, (row as { country?: string | null }).country ?? undefined) : null;
+            const minedParse = minedSalary ? parseSalaryStructured(minedSalary, (row as { country?: string | null }).country ?? undefined, { title: (row as { title?: string | null }).title ?? null, description: text }) : null;
             const { error } = await client.from("job_board_postings")
               .update({
                 description: text,
@@ -6260,7 +6261,7 @@ Deno.serve(async (req) => {
         // over ~1,700 boards costs almost nothing.
         const { data: nullRows } = await client
           .from("job_board_postings")
-          .select("id, country") // country → correct bare-$ currency (see backfill-desc)
+          .select("id, country, title") // country → correct bare-$ currency (see backfill-desc)
           .eq("company_token", b.token)
           .is("description", null)
           .limit(DESC_SWEEP_PER_HOP);
@@ -6276,7 +6277,7 @@ Deno.serve(async (req) => {
                 const clean = text.replace(/\u0000/g, "").slice(0, STORED_DESC_CAP);
                 if (!clean) continue;
                 const minedSalary = extractSalary(clean);
-                const minedParse = minedSalary ? parseSalaryStructured(minedSalary, (row as { country?: string | null }).country ?? undefined) : null;
+                const minedParse = minedSalary ? parseSalaryStructured(minedSalary, (row as { country?: string | null }).country ?? undefined, { title: (row as { title?: string | null }).title ?? null, description: clean }) : null;
                 const { error } = await client.from("job_board_postings")
                   .update({
                     description: clean,
@@ -6364,7 +6365,7 @@ Deno.serve(async (req) => {
             // where the vendor gave us no structured pay field. Only ever the
             // company's own words — never an estimate.
             const minedSalary = extractSalary(clean);
-            const minedParse = minedSalary ? parseSalaryStructured(minedSalary, (row as { country?: string | null }).country) : null;
+            const minedParse = minedSalary ? parseSalaryStructured(minedSalary, (row as { country?: string | null }).country, { title: (row as { title?: string | null }).title ?? null, description: clean }) : null;
             // The three fields below are DERIVED FROM DESCRIPTION TEXT but were
             // only ever computed at ingest, so the description backfill left
             // them stale — measured coverage was experience 26.4%, work mode
@@ -7178,6 +7179,43 @@ Deno.serve(async (req) => {
       // working apply button. That is precisely the posting the Ghost Job Index
       // exists to name.
       const { data: jobRow } = await client.from("job_board_postings").select("*").eq("id", id).is("missing_since", null).maybeSingle();
+      // THE 30-DAY CAP WAS A PROPERTY OF THE LIST PATH ONLY.
+      //
+      // Every serving route binds `.gte("effective_posted", freshCutoffIso)`
+      // through buildQuery — every route except this one. This action's 78
+      // lines contained no freshness predicate at all, so anyone holding an id
+      // (a bookmark, a sitemap entry, a crawler, a shared link) got a past-cap
+      // posting rendered in full, with a working apply button, under a board
+      // that advertises a 30-day cap. The apply button is the harm: the whole
+      // point of the cap is not to send someone at a role that is gone.
+      //
+      // effective_posted is coalesce(posted_at, first_seen), so this is the
+      // SAME rule the list applies — undated rows age out 30 days after we
+      // first saw them, dated rows 30 days after the employer's date. Using
+      // any other definition here would just relocate the inconsistency.
+      //
+      // Answered like the closure case below rather than with a bare 404: we
+      // know the title and the date, so the client can say what happened and
+      // offer live alternatives instead of a dead end. Checked BEFORE the
+      // description fetch so an aged-out row never costs a vendor round trip.
+      const detailCutoffMs = Date.now() - FRESH_WINDOW_DAYS * 86_400_000;
+      if (jobRow) {
+        const eff = (jobRow as Record<string, unknown>).effective_posted
+          ?? (jobRow as Record<string, unknown>).posted_at
+          ?? (jobRow as Record<string, unknown>).first_seen;
+        const effMs = eff ? Date.parse(String(eff)) : NaN;
+        if (Number.isFinite(effMs) && effMs < detailCutoffMs) {
+          return json({
+            job: null,
+            agedOut: {
+              title: (jobRow.title as string) ?? null,
+              company: (jobRow.company as string) ?? null,
+              postedAt: (jobRow.posted_at as string) ?? null,
+              capDays: FRESH_WINDOW_DAYS,
+            },
+          });
+        }
+      }
       const stored = (jobRow?.description && jobRow.description.length > 200) ? jobRow.description as string : null;
       const description = stored ?? await getDescription(src, id, externalId, jobRow?.apply_url as string | undefined);
       if (!description && !jobRow) {
@@ -7208,7 +7246,7 @@ Deno.serve(async (req) => {
       // write must never break the read.
       if (!stored && description && jobRow) {
         const minedSalary = jobRow.salary ? null : extractSalary(description);
-        const minedParse = minedSalary ? parseSalaryStructured(minedSalary, jobRow.country as string | null) : null;
+        const minedParse = minedSalary ? parseSalaryStructured(minedSalary, jobRow.country as string | null, { title: jobRow.title as string | null, description }) : null;
         // Same re-derivation as the sweep: these fields come from description
         // text, so a row that gains a description here should gain them too,
         // rather than waiting for the sweep to reach it. Fill-only for work
@@ -7897,7 +7935,7 @@ async function serveList(
       // renders the same chrome around it. Shipping a short shape here is the
       // same defect as the SALARY exit, just on a page with no rows to hide it.
       searchId, totalAllCompanies: safeMetaTotal ?? 0,
-      companies: [], companiesCount: 0, categories: {}, failedSources: [],
+      companies: [], companiesCount: 0, categories: {}, failedSources: [], failedCount: 0,
       refreshedAt: null,
     });
   }
@@ -8708,7 +8746,7 @@ async function serveList(
         // against the client, and the client's own type says the field is always
         // there. Emit the full shape.
         categories: {},
-        failedSources: [],
+        failedSources: [], failedCount: 0,
         refreshedAt: (metaV.refreshedAt as string) ?? null,
       });
     }
@@ -8803,7 +8841,7 @@ async function serveList(
           companiesCount: ((metaV.companiesFacet as unknown[]) ?? []).length,
           // Same core shape as every other exit — see the SALARY exit above.
           categories: {},
-          failedSources: [],
+          failedSources: [], failedCount: 0,
           refreshedAt: (metaV.refreshedAt as string) ?? null,
         });
       }
@@ -9219,7 +9257,7 @@ async function serveList(
                 companies: [],
                 companiesCount: ((v0.companiesFacet as unknown[]) ?? []).length,
                 categories: {},
-                failedSources: [],
+                failedSources: [], failedCount: 0,
                 refreshedAt: (v0.refreshedAt as string) ?? null,
               });
             }
@@ -9321,6 +9359,7 @@ async function serveList(
           // cannot scope to the query is a count we should not publish.
           categories: visibleCategories(v0.categoriesFacet as Record<string, number> | undefined, unfiltered, applied.category),
                 failedSources: (v0.failedSources as string[]) ?? [],
+          failedCount: (v0.failedCount as number | undefined) ?? 0,
                 refreshedAt: (v0.refreshedAt as string) ?? null,
                 fuzzy: qText,
               });
@@ -9461,6 +9500,7 @@ async function serveList(
           // cannot scope to the query is a count we should not publish.
           categories: visibleCategories(v0.categoriesFacet as Record<string, number> | undefined, unfiltered, applied.category),
                     failedSources: (v0.failedSources as string[]) ?? [],
+          failedCount: (v0.failedCount as number | undefined) ?? 0,
                     refreshedAt: (v0.refreshedAt as string) ?? null,
                     semantic: qText,
                   });
@@ -9853,6 +9893,7 @@ async function serveList(
           // cannot scope to the query is a count we should not publish.
           categories: visibleCategories(v0.categoriesFacet as Record<string, number> | undefined, unfiltered, applied.category),
           failedSources: (v0.failedSources as string[]) ?? [],
+          failedCount: (v0.failedCount as number | undefined) ?? 0,
           refreshedAt: (v0.refreshedAt as string) ?? null,
           ranked: true,
           ...(expansions.length ? { aliases: expansions } : {}),
@@ -10319,6 +10360,7 @@ async function serveList(
     // all of them; this is the fourth.
     categories: visibleCategories(v.categoriesFacet as Record<string, number> | undefined, unfiltered, applied.category),
     failedSources: (v.failedSources as string[]) ?? [],
+    failedCount: (v.failedCount as number | undefined) ?? 0,
     refreshedAt: (v.refreshedAt as string) ?? null,
   });
 }

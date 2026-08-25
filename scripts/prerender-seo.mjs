@@ -301,7 +301,7 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
           <a href="/jobs" class="hover:text-foreground">Job board</a>
         </nav>
       </div></header>
-      <main class="pt-10 pb-20"><div class="container max-w-3xl">${contentHtml}</div></main>
+      <main id="main-content" tabindex="-1" class="pt-10 pb-20"><div class="container max-w-3xl">${contentHtml}</div></main>
       <footer class="py-10 border-t border-border"><div class="container">
         <nav class="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs text-muted-foreground">
           <a href="/resume-checker" class="hover:text-foreground">Free resume checker</a>
@@ -827,7 +827,7 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
     ],
     content: `
       <h1 class="text-3xl font-bold mb-3">Every job here is real. The agent applies for you.</h1>
-      <p class="text-muted-foreground mb-6">${BOARD_TOTAL ? `${plusClaim(BOARD_TOTAL, 50000)} verified openings` : "Verified openings"}${BOARD_COMPANIES ? ` from ${plusClaim(BOARD_COMPANIES, 1000)} companies` : ""}, every one pulled straight from the employer's own hiring system — never scraped, nothing older than 30 days, re-checked live at the moment you apply. Upload your CV and an AI apply agent ranks every opening against it, writes each application honestly (it will state what you do not have rather than invent it), and submits on the systems where employers allow it. <a href="/jobs" class="text-primary">Browse the live board →</a></p>
+      <p class="text-muted-foreground mb-6">${BOARD_TOTAL ? `${plusClaim(BOARD_TOTAL, 50000)} verified openings` : "Verified openings"}${BOARD_COMPANIES ? ` from ${plusClaim(BOARD_COMPANIES, 1000)} companies` : ""}, every one pulled straight from the employer's own hiring system — never scraped, no dated posting older than 30 days, re-checked live at the moment you apply. Where a company publishes no date we keep the posting and show no age rather than guess one. Upload your CV and an AI apply agent ranks every opening against it, writes each application honestly (it will state what you do not have rather than invent it), and submits on the systems where employers allow it. <a href="/jobs" class="text-primary">Browse the live board →</a></p>
       <section class="mt-8 mb-8">
         <h2 class="text-xl font-bold mb-3">What the AI apply agent does</h2>
         <ul class="space-y-1.5">
@@ -983,7 +983,7 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
         content: `
           <h1>Live ${label} jobs</h1>
           <p>${countPhrase[0].toUpperCase()}${countPhrase.slice(1)}${boardTotal ? ` — part of ${fmt(boardTotal)} live postings across ${fmt(boardCompanies)} companies` : ""}, pulled directly from the official job boards companies publish on Greenhouse, Workday, Lever, Ashby, SmartRecruiters, Oracle, Workable, BambooHR, Recruitee, Teamtailor, Personio, Breezy, Rippling, and Pinpoint. No scraped listings, no aggregators, no reposts: every opening belongs to the company that published it, and applying happens on the company's own site.</p>
-          <p>The largest boards are re-checked about every 10–15 minutes and the whole catalog rotates continuously — every feed re-verified within a few hours — so postings a company takes down disappear on the next pass. Counts on this page were measured when it was last built; the live board always shows the current number.</p>
+          <p>The largest boards are re-checked about every 10–15 minutes and the whole catalog rotates continuously — every feed re-verified within a few hours — so postings a company takes down disappear on the next pass. Counts on this page were measured when it was last built; the board's own count refreshes periodically through the day.</p>
           <p><a href="/jobs/field/${slug}">Browse ${label} openings on the live board</a> — filter by keyword, location, remote, and company; save searches with a free account; and check any posting against your resume with the <a href="/">free resume scan</a> before you spend an application on it.</p>
           <p>Other fields: ${siblings} — or see <a href="/jobs">the full job board</a>.</p>
         `,
@@ -1056,7 +1056,7 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
           description: `Browse ${fmt(c.count)} open roles at ${nm}, pulled straight from ${nm}'s own job board and re-verified all day — no aggregators, no reposts. Check your resume's fit free, then apply on ${nm}'s own site.`,
           content: `
             <h1>Open roles at ${esc(nm)}</h1>
-            <p>${fmt(c.count)} verified ${esc(nm)} openings right now, pulled straight from ${esc(nm)}'s own official job board (Greenhouse, Workday, Lever, Ashby, SmartRecruiters, Oracle, Workable, BambooHR, Recruitee, Teamtailor, Personio, Breezy, Rippling, or Pinpoint) and re-verified all day. No aggregators, no reposts, no scraped copies — every role belongs to ${esc(nm)}, and applying happens on ${esc(nm)}'s own site. Counts were measured when this page was last built; the live board always shows the current number.</p>
+            <p>${fmt(c.count)} verified ${esc(nm)} openings right now, pulled straight from ${esc(nm)}'s own official job board (Greenhouse, Workday, Lever, Ashby, SmartRecruiters, Oracle, Workable, BambooHR, Recruitee, Teamtailor, Personio, Breezy, Rippling, or Pinpoint) and re-verified all day. No aggregators, no reposts, no scraped copies — every role belongs to ${esc(nm)}, and applying happens on ${esc(nm)}'s own site. Counts were measured when this page was last built; the board's own count refreshes periodically through the day.</p>
             <p><a href="/jobs/company/${c.token}">Browse all ${esc(nm)} openings on the live board</a> — filter by role, location, experience, and remote, and check any posting against your resume with the <a href="/">free resume scan</a> before you spend an application on it.</p>
             <p>See <a href="/jobs">the full job board</a>${boardCompanies ? ` for openings across ${fmt(boardCompanies)} companies` : ""}.</p>
           `,
@@ -1100,10 +1100,10 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
         title: boardTotal
           ? `Live Job Board — ${plusClaim(boardTotal, 50000)} Openings Direct From Company Career Pages`
           : "Live Job Board — Openings Direct From Company Career Pages",
-        description: `Browse ${jobsPhrase} — straight from official company job boards. No aggregators; nothing older than 30 days.`,
+        description: `Browse ${jobsPhrase} — straight from official company job boards. No aggregators; no dated posting older than 30 days.`,
         content: `
           <h1>Live job board</h1>
-          <p>${jobsPhrase[0].toUpperCase()}${jobsPhrase.slice(1)}, pulled directly from the official job boards companies publish on Greenhouse, Workday, Lever, Ashby, SmartRecruiters, Oracle, Workable, BambooHR, Recruitee, Teamtailor, Personio, Breezy, Rippling, and Pinpoint. No scraped listings, no aggregators, no reposts — every opening belongs to the company that published it, applying happens on the company's own site, and nothing older than 30 days stays on the board. Counts were measured when this page was last built; the live board always shows the current number.</p>
+          <p>${jobsPhrase[0].toUpperCase()}${jobsPhrase.slice(1)}, pulled directly from the official job boards companies publish on Greenhouse, Workday, Lever, Ashby, SmartRecruiters, Oracle, Workable, BambooHR, Recruitee, Teamtailor, Personio, Breezy, Rippling, and Pinpoint. No scraped listings, no aggregators, no reposts — every opening belongs to the company that published it, applying happens on the company's own site, and no dated posting older than 30 days stays on the board. Where a company states no date at all we can't judge the posting old, so we keep it and show no age rather than guess one. Counts were measured when this page was last built; the board's own count refreshes periodically through the day.</p>
           <p>Browse by field: ${CATEGORY_LANDERS.map(([s, l]) => `<a href="/jobs/field/${s}">${l} jobs</a>`).join(" · ")}.</p>
           <p>Check any posting against your resume with the <a href="/">free resume scan</a> before you spend an application on it, and save searches with a free account.</p>
         `,
@@ -1111,7 +1111,7 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
           "@context": "https://schema.org",
           "@type": "CollectionPage",
           name: "Live job board",
-          description: "Live openings from companies' official job boards (Greenhouse, Lever, Ashby, SmartRecruiters, Workable, BambooHR), re-verified throughout the day — no aggregators, nothing older than 30 days.",
+          description: "Live openings from companies' official job boards (Greenhouse, Lever, Ashby, SmartRecruiters, Workable, BambooHR), re-verified throughout the day — no aggregators, no dated posting older than 30 days.",
           url: `${SITE}/jobs`,
           isPartOf: { "@type": "WebSite", name: "Resume Booster", url: SITE },
         }],
@@ -1129,7 +1129,7 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
         content: `
           <h1>The Ghost Job Index</h1>
           <p>Ghost jobs — postings that are stale, already filled, or never real — waste job seekers' time everywhere. This page is our live, honest measure of the opposite: postings that are verified, fresh, and from companies actually hiring.</p>
-          <p>Every figure is computed from the full lifecycle of postings on companies' official job boards (Greenhouse, Lever, Ashby, SmartRecruiters, Workable, BambooHR) — never an aggregator or a scrape. Any role whose posting date passes 30 days is automatically dropped, we log every closure to measure which employers truly fill roles, we sample random listings daily and re-check them against the companies' own systems, and every posting is re-checked live the moment you click Apply.</p>
+          <p>Every figure is computed from the full lifecycle of postings on companies' official job boards (Greenhouse, Lever, Ashby, SmartRecruiters, Workable, BambooHR) — never an aggregator or a scrape. Any posting whose company-stated date passes 30 days is dropped automatically, we log every closure to measure which employers truly fill roles, we sample random listings daily and re-check them against the companies' own systems, and every posting is re-checked live the moment you click Apply. Where a company states no date at all we can't judge the posting old, so we keep it and show no age rather than guess one.</p>
           <p><a href="/jobs">Browse the live board</a> — or check any posting against your resume with the <a href="/">free resume scan</a> first.</p>
         `,
         jsonLd: [{
@@ -1149,11 +1149,11 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
       write({
         path: "/entry-level-index",
         title: "The Entry-Level Index — who's actually hiring entry-level right now?",
-        description: "A live ranking of companies with real entry-level openings — junior, graduate, and early-career roles counted from companies' official job boards, refreshed all day. No aggregators, nothing older than 30 days.",
+        description: "A live ranking of companies with real entry-level openings — junior, graduate, and early-career roles counted from companies' official job boards, refreshed all day. No aggregators, no dated posting older than 30 days.",
         content: `
           <h1>The Entry-Level Index</h1>
           <p>"Entry-level, 5 years' experience required" is a running joke for a reason. This page counts the real thing: openings whose own titles and requirements say early-career — internships, junior, graduate, and 0–2 year roles — and ranks the companies that post the most of them.</p>
-          <p>Every count comes live from companies' official job boards (Greenhouse, Lever, Ashby, SmartRecruiters, Workable, BambooHR, Recruitee, Teamtailor, Personio, Breezy, Rippling, Workday) — never an aggregator or a scrape, and nothing older than 30 days. A role counts as entry-level when its own title or stated requirements say so; we never guess.</p>
+          <p>Every count comes live from companies' official job boards (Greenhouse, Lever, Ashby, SmartRecruiters, Workable, BambooHR, Recruitee, Teamtailor, Personio, Breezy, Rippling, Workday) — never an aggregator or a scrape, and no dated posting older than 30 days (undated ones show no age rather than a guessed one). A role counts as entry-level when its own title or stated requirements say so; we never guess.</p>
           <p><a href="/jobs?experience=entry">Browse all verified entry-level openings</a>, check the <a href="/hiring-trends">weekly hiring trends</a>, or scan your resume against any posting with the <a href="/">free resume scan</a>.</p>
         `,
         jsonLd: [{
