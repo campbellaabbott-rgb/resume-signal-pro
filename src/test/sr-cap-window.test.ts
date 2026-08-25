@@ -83,7 +83,13 @@ describe("truncation is reported, not inferred", () => {
   });
 
   it("propagates it out of fetchBoard, where it used to die", () => {
-    expect(SRC).toMatch(/return \{ jobs, raw, windowed: sr\.windowed === true, feedTotal: sr\.feedTotal \?\? 0 \};/);
+    // Asserted as an INVARIANT, not as a literal line. This used to pin the whole
+    // return statement including its closing brace, so adding a field beside
+    // windowed/feedTotal — nextOffset, when the capped vendors learned to resume
+    // where the last pass stopped — failed a TRUNCATION guard for a reason that
+    // had nothing to do with truncation. What must hold is that both values come
+    // off `sr` and leave fetchBoard, not the punctuation after them.
+    expect(SRC).toMatch(/return \{ jobs, raw, windowed: sr\.windowed === true, feedTotal: sr\.feedTotal \?\? 0[,}]/);
   });
 
   it("the closure guard reads the reported signal, not a row-count proxy", () => {

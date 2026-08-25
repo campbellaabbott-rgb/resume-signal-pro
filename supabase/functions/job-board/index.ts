@@ -102,7 +102,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-25.15";
+const BUILD_VERSION = "2026-08-25.16";
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -304,7 +304,9 @@ export function greenhouseApi(token: string): { host: string; token: string } {
     : { host: "boards-api.greenhouse.io", token };
 }
 
-const listUrl = (s: JobSource) =>
+// startOffset is honoured only by the paginating vendors; every other branch
+// fetches a whole feed and ignores it.
+const listUrl = (s: JobSource, startOffset = 0) =>
   s.source === "greenhouse"
     // content=true costs a bigger payload but delivers every description in
     // ONE call — fit-ranking coverage for GH boards, plus real departments.
@@ -314,7 +316,7 @@ const listUrl = (s: JobSource) =>
       : s.source === "ashby"
         ? `https://api.ashbyhq.com/posting-api/job-board/${s.token}?includeCompensation=true`
         : s.source === "smartrecruiters"
-          ? `https://api.smartrecruiters.com/v1/companies/${s.token}/postings?limit=100`
+          ? `https://api.smartrecruiters.com/v1/companies/${s.token}/postings?limit=100${startOffset ? `&offset=${startOffset}` : ""}`
           : s.source === "workable"
             // details=true returns every posting's FULL description in the SAME
             // single call (measured 2026-07-24: 88KB vs 8KB on a 20-job board) —
@@ -369,8 +371,13 @@ const listUrl = (s: JobSource) =>
 const SR_PAGE = 100;
 const SR_PAGE_CAP = 20;
 const SR_CAP = SR_PAGE * SR_PAGE_CAP; // 2,000/board/pass
-async function fetchSmartRecruiters(s: JobSource): Promise<{ content: unknown[]; windowed: boolean; feedTotal: number }> {
-  const first = await fetchWithTimeout(listUrl(s));
+async function fetchSmartRecruiters(s: JobSource, startOffset = 0): Promise<{ content: unknown[]; windowed: boolean; feedTotal: number; nextOffset: number }> {
+  // Same rotation as Workday: a board bigger than SR_CAP is read a tranche per
+  // pass instead of the same first tranche forever. Measured 2026-08-25: one
+  // board (dominos, 2,080 rows) sits at this cap today, so the win here is
+  // small — but a ceiling that only bites on the largest employers is exactly
+  // the one nobody notices until an employer grows into it.
+  const first = await fetchWithTimeout(listUrl(s, startOffset));
   if (!first.ok) throw new Error(`HTTP ${first.status}`);
   const page1 = await first.json();
   // The vendor's own advertised count, kept whole — NOT clamped to the cap.
@@ -381,7 +388,7 @@ async function fetchSmartRecruiters(s: JobSource): Promise<{ content: unknown[];
   const total = Math.min(feedTotal, SR_CAP);
   const content: unknown[] = [...(page1.content ?? [])];
   for (let offset = SR_PAGE; offset < total; offset += SR_PAGE) {
-    const res = await fetchWithTimeout(`https://api.smartrecruiters.com/v1/companies/${s.token}/postings?limit=${SR_PAGE}&offset=${offset}`);
+    const res = await fetchWithTimeout(`https://api.smartrecruiters.com/v1/companies/${s.token}/postings?limit=${SR_PAGE}&offset=${startOffset + offset}`);
     if (!res.ok) break; // partial page set is fine — prune guard keys off success of THIS board overall
     const page = await res.json();
     content.push(...(page.content ?? []));
@@ -392,7 +399,9 @@ async function fetchSmartRecruiters(s: JobSource): Promise<{ content: unknown[];
   // and guards the prune. SR previously had no feedTotal at all, so truncation
   // was inferred from `rowsById.size >= SR_CAP` — a proxy that cannot tell a
   // board of exactly 2,000 from one of 24,566.
-  return { content, windowed: feedTotal > content.length, feedTotal };
+  const advancedSr = startOffset + content.length;
+  const nextOffset = content.length === 0 || (feedTotal > 0 && advancedSr >= feedTotal) ? 0 : advancedSr;
+  return { content, windowed: feedTotal > content.length, feedTotal, nextOffset };
 }
 
 async function fetchWithTimeout(url: string, init?: RequestInit): Promise<Response> {
@@ -464,22 +473,42 @@ async function fetchPersonio(s: JobSource): Promise<{ xml: string; host: string 
 // (200 jobs) — Rippling boards are small-company boards; a board past the cap
 // still ingests its first 200 postings rather than failing.
 const RIPPLING_PAGE_CAP = 10;
-async function fetchRippling(s: JobSource): Promise<{ items: unknown[]; raw: string }> {
-  const first = await fetchWithTimeout(`https://ats.rippling.com/${s.token}/jobs`);
+// startOffset is in ITEMS and converts to Rippling's page number. Measured
+// 2026-08-25 across 198 of 1,051 boards, one exceeds the 10-page cap —
+// medcbo-inc at 64 pages, which loses 1,080 postings, roughly 5,700 across the
+// catalogue. Concentrated in a handful of large boards rather than spread.
+async function fetchRippling(s: JobSource, startOffset = 0): Promise<{ items: unknown[]; raw: string; windowed: boolean; feedTotal: number; nextOffset: number }> {
+  const RIPPLING_PER_PAGE = 20;
+  const startPage = Math.max(0, Math.floor(startOffset / RIPPLING_PER_PAGE));
+  const pageUrl = (p: number) => `https://ats.rippling.com/${s.token}/jobs${p ? `?page=${p}` : ""}`;
+  const first = await fetchWithTimeout(pageUrl(startPage));
   if (!first.ok) throw new Error(`HTTP ${first.status}`);
   const html = await first.text();
   const page0 = extractRipplingJobPosts(html);
   if (!page0) throw new Error("rippling payload shape unrecognized");
   const items = [...page0.items];
-  const pages = Math.min(page0.totalPages, RIPPLING_PAGE_CAP);
-  for (let p = 1; p < pages; p++) {
-    const res = await fetchWithTimeout(`https://ats.rippling.com/${s.token}/jobs?page=${p}`);
+  const totalPages = Math.max(1, page0.totalPages);
+  // Walk at most RIPPLING_PAGE_CAP pages from wherever we started.
+  const lastPage = Math.min(totalPages, startPage + RIPPLING_PAGE_CAP);
+  let ranOut = items.length === 0;
+  for (let p = startPage + 1; p < lastPage; p++) {
+    const res = await fetchWithTimeout(pageUrl(p));
     if (!res.ok) break;
     const more = extractRipplingJobPosts(await res.text());
-    if (!more || more.items.length === 0) break;
+    if (!more || more.items.length === 0) { ranOut = true; break; }
     items.push(...more.items);
   }
-  return { items, raw: html };
+  const reachedEnd = ranOut || lastPage >= totalPages;
+  const feedTotal = totalPages * RIPPLING_PER_PAGE; // pages is all the vendor tells us
+  return {
+    items,
+    raw: html,
+    // A board inside the cap is read whole, so absence IS provable and the
+    // prune must stay on for it. Only a genuinely deeper board is windowed.
+    windowed: totalPages > RIPPLING_PAGE_CAP,
+    feedTotal,
+    nextOffset: reachedEnd ? 0 : lastPage * RIPPLING_PER_PAGE,
+  };
 }
 
 // Workday CXS: POST-paginated first-party list endpoint. Compound token
@@ -495,24 +524,45 @@ const WORKDAY_PAGE_CAP = 25; // 25 × 20 = up to 500 postings/board/pass
 // postings/board/pass, which exhausts every tenant in the first tranche.
 const ORACLE_PAGE_SIZE = 100;
 const ORACLE_PAGE_CAP = 20;
-async function fetchWorkday(s: JobSource): Promise<{ jobPostings: unknown[]; raw: unknown; windowed: boolean; feedTotal: number }> {
+// A CAP THAT ALWAYS RESTARTS AT ZERO IS NOT A CAP, IT IS A CEILING.
+//
+// Every pass fetched pages 0..24 — the same 500 postings, forever. A tenant
+// with more than 500 could never be read past the first 500, no matter how
+// many times we visited it. Measured 2026-08-25 against the four largest
+// at-cap boards: we hold 2,404 of 41,221 live postings, 6%. CVS Health serves
+// 19,265 and we store 678. Across the 160 Workday boards sitting at the cap,
+// a 24-board sample says roughly 276,000 postings were never fetched — and
+// that is a LOWER bound, because several tenants report exactly 2000, which is
+// Workday's own reporting cap rather than a count.
+//
+// `startOffset` continues where the previous pass stopped, so the SAME
+// per-pass cost walks the whole board over successive passes and wraps at the
+// end. Raising the cap instead would slow every pass and shrink how many
+// boards the rotation reaches, which is the trade the cap was chosen to make.
+//
+// This only works because a windowed board no longer absence-prunes (see the
+// partialRead branch in the ingest): otherwise each pass would delete the
+// window the previous pass just stored, and the board would churn instead of
+// filling. The two changes are one change.
+async function fetchWorkday(s: JobSource, startOffset = 0): Promise<{ jobPostings: unknown[]; raw: unknown; windowed: boolean; feedTotal: number; nextOffset: number }> {
   const [tenant, dc, site] = s.token.split("~");
   if (!tenant || !dc || !site) throw new Error("bad workday token");
   const url = `https://${tenant}.${dc}.myworkdayjobs.com/wday/cxs/${tenant}/${site}/jobs`;
   const all: unknown[] = [];
   let feedTotal = 0;
+  let exhausted = false;
   for (let page = 0; page < WORKDAY_PAGE_CAP; page++) {
     const res = await fetchWithTimeout(url, {
       method: "POST",
       headers: { "Content-Type": "application/json", "Accept": "application/json" },
-      body: JSON.stringify({ limit: 20, offset: page * 20, searchText: "", appliedFacets: {} }),
+      body: JSON.stringify({ limit: 20, offset: startOffset + page * 20, searchText: "", appliedFacets: {} }),
     });
     if (!res.ok) { if (page === 0) throw new Error(`HTTP ${res.status}`); break; }
     const body = await res.json();
     if (page === 0) feedTotal = Number((body as { total?: number }).total ?? 0) || 0;
     const items = Array.isArray((body as { jobPostings?: unknown[] }).jobPostings) ? (body as { jobPostings: unknown[] }).jobPostings : [];
     all.push(...items);
-    if (items.length < 20) break; // last page
+    if (items.length < 20) { exhausted = true; break; } // last page — wrap next pass
   }
   // Empty page with a non-zero advertised total = the tenant refused/failed us
   // (rate-limit, transient) — NOT an empty board. Throwing marks the board
@@ -527,14 +577,26 @@ async function fetchWorkday(s: JobSource): Promise<{ jobPostings: unknown[]; raw
   // feedTotal is the company's own advertised count — stored on the
   // verification stamp so the UI can say "500+" instead of a false-precision
   // floor (Caterpillar showed "503 open" while advertising 942).
-  return { jobPostings: all, raw: { jobPostings: all }, windowed: feedTotal > all.length, feedTotal };
+  // Wrap when the feed ran out OR when the next offset would pass the tenant's
+  // own advertised total — otherwise a board whose total shrinks between passes
+  // would page forever into empty responses.
+  const advanced = startOffset + all.length;
+  const nextOffset = exhausted || (feedTotal > 0 && advanced >= feedTotal) ? 0 : advanced;
+  // windowed compares the WHOLE feed against this pass's slice, not against the
+  // running total, so it stays true for every pass of a multi-pass board — which
+  // is what keeps the prune off while the board fills.
+  return { jobPostings: all, raw: { jobPostings: all }, windowed: feedTotal > all.length, feedTotal, nextOffset };
 }
 
 // Oracle Recruiting Cloud: paginated public CE REST. The finder carries the
 // site number and paging; items[0].TotalJobsCount is the tenant's own advertised
 // total, so (like Workday) we can tell a windowed fetch from an exhaustive one
 // and refuse to prune on a partial read.
-async function fetchOracle(s: JobSource): Promise<{ items: unknown[]; raw: unknown; windowed: boolean; feedTotal: number }> {
+// startOffset rotates a tenant bigger than ORACLE_PAGE_CAP x ORACLE_PAGE_SIZE
+// across passes. No oracle board sits at that 2,000 ceiling today (measured
+// 2026-08-25: zero), so this is a ceiling being removed before an employer
+// grows into it rather than a backlog being drained.
+async function fetchOracle(s: JobSource, startOffset = 0): Promise<{ items: unknown[]; raw: unknown; windowed: boolean; feedTotal: number; nextOffset: number }> {
   const [tenant, region, site] = s.token.split("~");
   if (!tenant || !region || !site) throw new Error("bad oracle token");
   const base = `https://${tenant}.fa.${region}.oraclecloud.com/hcmRestApi/resources/latest/recruitingCEJobRequisitions`;
@@ -548,7 +610,7 @@ async function fetchOracle(s: JobSource): Promise<{ items: unknown[]; raw: unkno
   // barred from closure logging, so they'd never contribute fill data.
   let exhausted = false;
   for (let page = 0; page < ORACLE_PAGE_CAP; page++) {
-    const finder = `findReqs;siteNumber=${site},limit=${ORACLE_PAGE_SIZE},offset=${page * ORACLE_PAGE_SIZE},sortBy=POSTING_DATES_DESC`;
+    const finder = `findReqs;siteNumber=${site},limit=${ORACLE_PAGE_SIZE},offset=${startOffset + page * ORACLE_PAGE_SIZE},sortBy=POSTING_DATES_DESC`;
     const res = await fetchWithTimeout(`${base}?onlyData=true&expand=requisitionList&finder=${encodeURIComponent(finder)}`);
     if (!res.ok) { if (page === 0) throw new Error(`HTTP ${res.status}`); break; }
     const body = await res.json();
@@ -563,7 +625,9 @@ async function fetchOracle(s: JobSource): Promise<{ items: unknown[]; raw: unkno
   // a refusal (rate-limit/transient), NOT an empty board. Throwing marks the
   // board failed so the orphan prune never deletes a live tenant.
   if (all.length === 0 && feedTotal > 0) throw new Error(`empty page but total=${feedTotal}`);
-  return { items: all, raw: { items: all }, windowed: !exhausted, feedTotal };
+  const advancedOr = startOffset + all.length;
+  const nextOffset = exhausted || (feedTotal > 0 && advancedOr >= feedTotal) ? 0 : advancedOr;
+  return { items: all, raw: { items: all }, windowed: !exhausted, feedTotal, nextOffset };
 }
 
 // onFail receives a COMPACT reason. The reason was already known here and
@@ -575,11 +639,16 @@ async function fetchOracle(s: JobSource): Promise<{ items: unknown[]; raw: unkno
 async function fetchBoard(
   s: JobSource,
   onFail?: (reason: string) => void,
-): Promise<{ jobs: JobPosting[]; raw: unknown; windowed?: boolean; feedTotal?: number } | null> {
+  // Where the previous pass stopped on this board. Only the capped vendors read
+  // it; everyone else fetches whole feeds and ignores it. `nextOffset` comes
+  // back on the same shape so the caller can persist it without knowing which
+  // vendor paginates.
+  startOffset = 0,
+): Promise<{ jobs: JobPosting[]; raw: unknown; windowed?: boolean; feedTotal?: number; nextOffset?: number } | null> {
   try {
     if (s.source === "oracle") {
-      const { items, raw, windowed, feedTotal } = await fetchOracle(s);
-      return { jobs: normalizeOracle(items as never, s.name, s.token), raw, windowed, feedTotal };
+      const { items, raw, windowed, feedTotal, nextOffset } = await fetchOracle(s, startOffset);
+      return { jobs: normalizeOracle(items as never, s.name, s.token), raw, windowed, feedTotal, nextOffset };
     }
     if (s.source === "icims") {
       // The employer's own career-site JSON (token IS the host). Paginated at
@@ -650,8 +719,8 @@ async function fetchBoard(
       return { jobs: normalizeUsajobs(all as never, s.name, s.token), raw: { items: all }, windowed: !exhausted, feedTotal };
     }
     if (s.source === "rippling") {
-      const { items, raw } = await fetchRippling(s);
-      return { jobs: normalizeRippling(items as never, s.name, s.token), raw };
+      const { items, raw, windowed, feedTotal, nextOffset } = await fetchRippling(s, startOffset);
+      return { jobs: normalizeRippling(items as never, s.name, s.token), raw, windowed, feedTotal, nextOffset };
     }
     if (s.source === "pinpoint") {
       // Documented public JSON — single unpaginated list.
@@ -672,8 +741,8 @@ async function fetchBoard(
       return { jobs: normalizePinpoint(data as never, s.name, s.token), raw: body };
     }
     if (s.source === "workday") {
-      const { jobPostings, raw, windowed, feedTotal } = await fetchWorkday(s);
-      return { jobs: normalizeWorkday(jobPostings as never, s.name, s.token), raw, windowed, feedTotal };
+      const { jobPostings, raw, windowed, feedTotal, nextOffset } = await fetchWorkday(s, startOffset);
+      return { jobs: normalizeWorkday(jobPostings as never, s.name, s.token), raw, windowed, feedTotal, nextOffset };
     }
     // XML vendors first — their raw payload is text, not JSON.
     if (s.source === "personio") {
@@ -686,7 +755,7 @@ async function fetchBoard(
       const rss = await res.text();
       return { jobs: normalizeTeamtailor(rss, s.name, s.token), raw: rss };
     }
-    const raw = s.source === "smartrecruiters" ? await fetchSmartRecruiters(s) : await (async () => {
+    const raw = s.source === "smartrecruiters" ? await fetchSmartRecruiters(s, startOffset) : await (async () => {
       const res = await fetchWithTimeout(listUrl(s));
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       // A LOGIN PAGE IS NOT A PARSE ERROR. When an employer turns their public
@@ -731,8 +800,8 @@ async function fetchBoard(
     // died here at the return, and downstream kept inferring truncation from a
     // row-count proxy.
     if (s.source === "smartrecruiters") {
-      const sr = raw as { windowed?: boolean; feedTotal?: number };
-      return { jobs, raw, windowed: sr.windowed === true, feedTotal: sr.feedTotal ?? 0 };
+      const sr = raw as { windowed?: boolean; feedTotal?: number; nextOffset?: number };
+      return { jobs, raw, windowed: sr.windowed === true, feedTotal: sr.feedTotal ?? 0, nextOffset: sr.nextOffset };
     }
     return { jobs, raw };
   } catch (e) {
@@ -1292,6 +1361,23 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
   const startIso = new Date().toISOString();
   const freshCutoffMs = Date.now() - FRESH_WINDOW_DAYS * 86_400_000; // roles older than this are dropped
 
+  // DEEP CURSORS — where each capped board's last pass stopped.
+  //
+  // One small meta row, token -> offset, only ever holding entries for boards
+  // the vendor says are bigger than one pass can read. A board that wraps is
+  // deleted from the map rather than stored as 0, so the row tracks the boards
+  // still filling and nothing else.
+  const deepCursors: Record<string, number> = await (async () => {
+    try {
+      const { data } = await client.from("job_board_meta").select("v").eq("k", "deep_cursor").maybeSingle();
+      const v = (data?.v ?? {}) as Record<string, unknown>;
+      const out: Record<string, number> = {};
+      for (const [k, n] of Object.entries(v)) if (Number.isInteger(n) && (n as number) > 0) out[k] = n as number;
+      return out;
+    } catch { return {}; } // a missing cursor costs one restart, never a failure
+  })();
+  let deepCursorsDirty = false;
+
   // Board-failure state (streaks + dormancy) drives both the consecutive-failure
   // prune and the dormancy skip-list. Read once here so hot and cold hops share a
   // single read/write, and so cold slices know which dead boards to skip BEFORE
@@ -1373,10 +1459,18 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
         // ~20s of FETCH_TIMEOUT to lose). Not counted as attempted below.
         if (skipTokens.has(s.token)) continue;
         let failReason = "";
-        const r = await fetchBoard(s, (m) => { failReason = m; });
+        const r = await fetchBoard(s, (m) => { failReason = m; }, deepCursors[s.token] ?? 0);
         if (!r) {
           failed.push(`${s.name} (vendor${failReason ? `: ${failReason}` : ""})`);
           continue;
+        }
+        // Advance (or wrap) this board's cursor. Written only for boards that
+        // actually paginate, and cleared the moment one wraps, so the row does
+        // not accumulate an entry per board in the catalogue.
+        if (typeof r.nextOffset === "number") {
+          const prev = deepCursors[s.token] ?? 0;
+          if (r.nextOffset > 0) { if (prev !== r.nextOffset) { deepCursors[s.token] = r.nextOffset; deepCursorsDirty = true; } }
+          else if (prev !== 0) { delete deepCursors[s.token]; deepCursorsDirty = true; }
         }
         // ONE REQUISITION, ONE POSTING — ACROSS A TENANT'S CAREER SITES.
         //
@@ -1734,9 +1828,31 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
           if (bigShrink && vanishedAll.length) {
             console.warn(`[JOB-BOARD] ${s.token}: ${vanishedAll.length}/${existing.size} postings vanished in one pass — shrink ratchet holds closures for 6h`);
           }
+          // A PARTIAL READ CANNOT PROVE ABSENCE.
+          //
+          // `windowed` means the vendor advertises more postings than our page
+          // cap let us fetch, so every id past the window is "missing" from
+          // this pass for a reason that has nothing to do with the employer.
+          // Closure LOGGING was already suppressed for exactly this (see
+          // truncatedFetch below, and the 2026-07-21 finding that 7 of 8 sampled
+          // "closures" on a windowed board were still live) — but the DELETE was
+          // not: the `else if (vanished.length)` branch culls them anyway, just
+          // silently. With GRACE_MS at five minutes that is close to immediate.
+          //
+          // Measured 2026-08-25 on the four largest at-cap Workday boards: we
+          // hold 2,404 of 41,221 live postings, 6%. CVS Health serves 19,265 and
+          // we store 678. A board can only reach 500-a-pass and then lose the
+          // overflow, which is why they all sit just above the cap.
+          //
+          // Age-outs still go, because those are OUR freshness rule and we can
+          // prove the date. Everything else on a windowed board waits for the
+          // 30-day cap. The cost is that a genuinely closed role on a big board
+          // can linger; the alternative is serving 6% of the employer's jobs.
+          const partialRead = r.windowed === true;
           vanished = [];
           for (const id of vanishedAll) {
             if (agedOutIds.has(id)) { vanished.push(id); continue; } // freshness cap — no grace, no log
+            if (partialRead) continue; // absence unprovable — do not stamp, do not delete
             const stamp = missingSinceById.get(id);
             if (stamp && nowMs - new Date(stamp).getTime() >= needMs) vanished.push(id); // confirmed gone
             else if (!stamp) toStamp.push(id); // first miss — stamp only
@@ -2101,6 +2217,12 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
         console.warn(`[JOB-BOARD] board ${tk} dormant after ${DEAD_BOARD_THRESHOLD} consecutive failures (${n} postings pruned and logged as board_dormant; fetch skipped until recheck)`);
       }
       await client.from("job_board_meta").upsert({ k: "board_failures", v: { streaks, dormant }, updated_at: new Date().toISOString() }, { onConflict: "k" });
+      if (deepCursorsDirty) {
+        // Best-effort: losing this costs a board one restarted pass, never a row.
+        await client.from("job_board_meta")
+          .upsert({ k: "deep_cursor", v: deepCursors, updated_at: new Date().toISOString() }, { onConflict: "k" })
+          .then(({ error }) => { if (error) console.warn("[JOB-BOARD] deep_cursor write failed:", error.message?.slice(0, 120)); });
+      }
     }
   }
 
