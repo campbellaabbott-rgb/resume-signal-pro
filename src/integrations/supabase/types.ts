@@ -1731,6 +1731,7 @@ export type Database = {
           results: number
           route: string
           search_id: string
+          took_ms: number | null
           total: number | null
         }
         Insert: {
@@ -1744,6 +1745,7 @@ export type Database = {
           results?: number
           route?: string
           search_id: string
+          took_ms?: number | null
           total?: number | null
         }
         Update: {
@@ -1757,6 +1759,7 @@ export type Database = {
           results?: number
           route?: string
           search_id?: string
+          took_ms?: number | null
           total?: number | null
         }
         Relationships: []
