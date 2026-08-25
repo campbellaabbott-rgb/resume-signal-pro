@@ -102,7 +102,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-24.19";
+const BUILD_VERSION = "2026-08-24.20";
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -1230,8 +1230,33 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
       if (queue.length > 0) {
         // Optimistic drain (same rule as the cursors): a died slice skips
         // ahead rather than wedging on the same bootstrap boards.
+        // WHAT THE LANE ACTUALLY DID, not what it was asked to do.
+        //
+        // The queue drains 25 tokens per slice unconditionally, so "pending
+        // is falling" proves only that the cursor moved. Measured across a
+        // day: the queue fell 7,564 -> 386, refilled to 7,767, drained again
+        // at ~80/min — and the share of registry boards with zero rows ROSE
+        // from 21% to 27%. Boards are being drained without being filled, and
+        // with only ~5 failures per ~80 drained they are not failing either.
+        //
+        // Three states are indistinguishable from outside: the token never
+        // resolved to a JobSource, it resolved and was never fetched, or it
+        // was fetched and legitimately had nothing. `selected` separates the
+        // first from the rest, which is the fork I have guessed at twice.
         await client.from("job_board_meta").upsert(
-          { k: "bootstrap", v: { queue: queue.slice(BOOTSTRAP_PER_SLICE), version: BUILD_VERSION }, updated_at: new Date().toISOString() },
+          {
+            k: "bootstrap",
+            v: {
+              queue: queue.slice(BOOTSTRAP_PER_SLICE),
+              version: BUILD_VERSION,
+              lastSlice: {
+                at: new Date().toISOString(),
+                drained: Math.min(BOOTSTRAP_PER_SLICE, queue.length),
+                selected: bootstrapBoards.length,
+              },
+            },
+            updated_at: new Date().toISOString(),
+          },
           { onConflict: "k" },
         );
       }
@@ -4791,7 +4816,16 @@ Deno.serve(async (req) => {
         coldBoards: rotV.coldBoards ?? null,
         dormantBoards: Object.keys(dormant).length,
         cursor: { hot: pgV.hot ?? 0, cold: pgV.cold ?? 0, coldDone: pgV.coldDone ?? 0 },
-        bootstrapQueue: (() => { const b = (bsMeta.data?.v ?? {}) as { queue?: unknown[]; version?: string }; return { pending: Array.isArray(b.queue) ? b.queue.length : 0, forVersion: b.version ?? null }; })(),
+        // pending alone says only that the cursor moved. lastSlice says
+        // whether the drained tokens ever became boards to fetch.
+        bootstrapQueue: (() => {
+          const b = (bsMeta.data?.v ?? {}) as { queue?: unknown[]; version?: string; lastSlice?: unknown };
+          return {
+            pending: Array.isArray(b.queue) ? b.queue.length : 0,
+            forVersion: b.version ?? null,
+            lastSlice: b.lastSlice ?? null,
+          };
+        })(),
         lastSliceAgeMin: ageMin(prog.data?.updated_at),
         lastRotationAgeMin: ageMin(rotV.completedAt ?? rot.data?.updated_at ?? null),
         recentFailures: Array.isArray(pgV.failedAcc) ? pgV.failedAcc.slice(-10) : [],
