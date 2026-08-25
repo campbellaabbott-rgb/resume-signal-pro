@@ -22,6 +22,13 @@
       "when": 1787702127419,
       "tag": "0002_the_or_tree_had_two_unindexed_arms",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1787702204111,
+      "tag": "0003_a_search_must_say_how_far_back_it_looked",
+      "breakpoints": true
     }
   ]
 }
