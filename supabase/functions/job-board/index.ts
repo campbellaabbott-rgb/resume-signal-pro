@@ -102,7 +102,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-24.15";
+const BUILD_VERSION = "2026-08-24.16";
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -427,12 +427,31 @@ async function fetchWithTimeout(url: string, init?: RequestInit): Promise<Respon
 // company's region setup — try .de first (the majority), fall back to .com.
 // The winning host is carried so Apply links land on the right domain.
 async function fetchPersonio(s: JobSource): Promise<{ xml: string; host: string }> {
+  // AN EMPTY BOARD IS NOT AN OUTAGE.
+  //
+  // This accepted a response only if it contained "<position", so an employer
+  // with no open roles — a perfectly healthy feed answering
+  // `<workzag-jobs></workzag-jobs>` in 72 bytes — was reported as
+  // "personio feed unavailable on .de/.com". Measured 2026-08-24, the first
+  // day failure reasons were visible: 41 of 120 board failures were personio,
+  // and probing all 41 found 32 answering HTTP 200 with a valid empty feed.
+  // A third of the board's entire failure list was employers who simply
+  // weren't hiring.
+  //
+  // The consequence is worse than the noise. A failed fetch means the board
+  // is skipped by the prune, so a personio employer who closes their last
+  // role would keep those postings on a board that advertises zero ghost
+  // jobs — indefinitely, but for the 30-day freshness cap catching them
+  // later. Three such postings were being served when this was found.
+  //
+  // The document root is the health signal; the positions inside it are the
+  // inventory. Those are different questions and this asked the wrong one.
   for (const host of ["jobs.personio.de", "jobs.personio.com"]) {
     try {
       const res = await fetchWithTimeout(`https://${s.token}.${host}/xml`);
       if (res.ok) {
         const xml = await res.text();
-        if (xml.includes("<position")) return { xml, host };
+        if (xml.includes("<workzag-jobs") || xml.includes("<position")) return { xml, host };
       }
     } catch { /* try the other host */ }
   }

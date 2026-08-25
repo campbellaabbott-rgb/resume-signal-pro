@@ -42,3 +42,26 @@ describe("a failure must say what failed", () => {
     expect(CODE).not.toMatch(/failed\.push\(`\$\{s\.name\} \(vendor\)`\)/);
   });
 });
+
+describe("an empty board is not an outage", () => {
+  // The first day failure reasons were visible, one message was a third of
+  // the whole list: 41 of 120 failures were "personio feed unavailable on
+  // .de/.com". Probing all 41 found 32 answering HTTP 200 with a valid,
+  // EMPTY feed — `<workzag-jobs></workzag-jobs>`, 72 bytes — because the
+  // fetcher accepted a response only if it contained "<position". Employers
+  // who simply weren't hiring were being reported as broken vendors.
+  //
+  // The consequence outranks the noise: a failed fetch skips the prune, so a
+  // personio employer closing their last role would keep those postings on a
+  // board advertising zero ghost jobs. Three were being served when found.
+  it("a valid empty feed is accepted, not thrown away", () => {
+    expect(CODE).toMatch(/xml\.includes\("<workzag-jobs"\) \|\| xml\.includes\("<position"\)/);
+  });
+
+  it("a genuinely unreachable feed still fails", () => {
+    // Both hosts must be tried and the throw must remain for the real case —
+    // 9 of the 41 were genuinely unreachable, some of them rate-limited.
+    expect(CODE).toMatch(/for \(const host of \["jobs\.personio\.de", "jobs\.personio\.com"\]\)/);
+    expect(CODE).toMatch(/throw new Error\("personio feed unavailable on \.de\/\.com"\)/);
+  });
+});
