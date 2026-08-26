@@ -772,6 +772,106 @@ export type Database = {
         }
         Relationships: []
       }
+      api_keys: {
+        Row: {
+          created_at: string
+          daily_quota: number
+          id: string
+          key_hash: string
+          key_prefix: string
+          last_used_at: string | null
+          name: string
+          notes: string | null
+          owner_email: string
+          rate_per_min: number
+          revoked_at: string | null
+          tier: string
+        }
+        Insert: {
+          created_at?: string
+          daily_quota?: number
+          id?: string
+          key_hash: string
+          key_prefix: string
+          last_used_at?: string | null
+          name: string
+          notes?: string | null
+          owner_email: string
+          rate_per_min?: number
+          revoked_at?: string | null
+          tier?: string
+        }
+        Update: {
+          created_at?: string
+          daily_quota?: number
+          id?: string
+          key_hash?: string
+          key_prefix?: string
+          last_used_at?: string | null
+          name?: string
+          notes?: string | null
+          owner_email?: string
+          rate_per_min?: number
+          revoked_at?: string | null
+          tier?: string
+        }
+        Relationships: []
+      }
+      api_rate: {
+        Row: {
+          calls: number
+          key_id: string
+          minute: string
+        }
+        Insert: {
+          calls?: number
+          key_id: string
+          minute: string
+        }
+        Update: {
+          calls?: number
+          key_id?: string
+          minute?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "api_rate_key_id_fkey"
+            columns: ["key_id"]
+            isOneToOne: false
+            referencedRelation: "api_keys"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      api_usage: {
+        Row: {
+          calls: number
+          day: string
+          endpoint: string
+          key_id: string
+        }
+        Insert: {
+          calls?: number
+          day: string
+          endpoint: string
+          key_id: string
+        }
+        Update: {
+          calls?: number
+          day?: string
+          endpoint?: string
+          key_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "api_usage_key_id_fkey"
+            columns: ["key_id"]
+            isOneToOne: false
+            referencedRelation: "api_keys"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       apply_tenant_walls: {
         Row: {
           checked_at: string
@@ -3053,6 +3153,19 @@ export type Database = {
         Args: { p_claimed?: number; p_version?: string; p_worker: string }
         Returns: undefined
       }
+      api_key_check: {
+        Args: { p_endpoint: string; p_key_hash: string }
+        Returns: {
+          allowed: boolean
+          daily_quota: number
+          daily_used: number
+          key_id: string
+          rate_limit: number
+          rate_used: number
+          reason: string
+          tier: string
+        }[]
+      }
       apply_posting_corrections: { Args: { p_patches: Json }; Returns: number }
       board_recency_ladder: {
         Args: { p_fresh_days?: number; p_step?: number }
@@ -3117,8 +3230,10 @@ export type Database = {
           p_country?: string
           p_experience?: string[]
           p_fresh_cutoff: string
+          p_include_unstated?: boolean
           p_location?: string
           p_max_age_days?: number
+          p_pay_stated?: boolean
           p_posted_after?: string
           p_q?: string
           p_remote?: boolean
@@ -3180,9 +3295,11 @@ export type Database = {
           p_country?: string
           p_experience?: string[]
           p_fresh_cutoff: string
+          p_include_unstated?: boolean
           p_limit?: number
           p_location?: string
           p_max_age_days?: number
+          p_pay_stated?: boolean
           p_posted_after?: string
           p_q: string
           p_remote?: boolean
@@ -4193,10 +4310,12 @@ export type Database = {
           p_country?: string
           p_experience?: string[]
           p_fresh_cutoff: string
+          p_include_unstated?: boolean
           p_limit?: number
           p_location?: string
           p_max_age_days?: number
           p_offset?: number
+          p_pay_stated?: boolean
           p_posted_after?: string
           p_q: string
           p_remote?: boolean
