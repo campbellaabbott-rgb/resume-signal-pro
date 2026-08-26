@@ -4,12 +4,17 @@
 // states what's in it, what's deliberately NOT in it (zero jobseeker data —
 // résumés are never stored), the access tiers, and the integrity fence:
 // data access never includes editing rights. EN-only, like the other data
-// pages (Ghost Job Index / Hiring Trends precedent). Access requests are a
-// mailto for now — no self-serve keys until there's a customer to justify it.
+// pages (Ghost Job Index / Hiring Trends precedent).
+//
+// SELF-SERVE KEYS ARE LIVE (2026-08-26). The header used to say "mailto for
+// now — no self-serve keys until there's a customer to justify it", and that
+// reasoning had it backwards: an API nobody can try is an API nobody becomes a
+// customer of. The free tier below exists to be used before anyone is billed.
+// BULK licensing stays a mailto, because that genuinely is a conversation.
 
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Database, ShieldCheck, Scale, Newspaper, FlaskConical, Building2, CheckCircle2, XCircle, Mail } from "lucide-react";
+import { Database, ShieldCheck, Scale, Newspaper, FlaskConical, Building2, CheckCircle2, XCircle, Mail, KeyRound, Terminal, Copy, Check, Loader2 } from "lucide-react";
 import { SEO } from "@/components/seo/SEO";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -21,6 +26,105 @@ const rpc = (fn: string, args?: Record<string, unknown>) =>
 const fmt = (n: number | null | undefined) => (typeof n === "number" ? n.toLocaleString() : "—");
 
 const CONTACT = "resumeboostersupp@gmail.com";
+
+// Read from the same env the client is built with, so the documented base URL
+// cannot drift from the project these docs are served by.
+const API_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/public-api`;
+
+const ENDPOINTS: Array<{ path: string; body: string; params?: string }> = [
+  {
+    path: "GET /v1/jobs",
+    body: "Live postings, newest first. Every result is still open in the employer's own feed and posted within the last 30 days.",
+    params: "q, country, category, company_token, work_mode, source, remote, salary_min, include_unstated_pay, posted_after, limit (max 100), offset",
+  },
+  { path: "GET /v1/jobs/{id}", body: "One posting. Returns 404 once the employer withdraws it — never a stale 200, so you can tell 'gone' from 'we stopped looking'." },
+  { path: "GET /v1/companies", body: "Employers ranked by open postings, from the same cached facet the board itself renders. Carries asOf." },
+  { path: "GET /v1/stats", body: "Headline counts: live postings, companies, freshness window. Carries asOf and names its basis." },
+];
+
+/** Self-serve issuance. The key is shown once — only its hash is stored. */
+function GetAKey() {
+  const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [issued, setIssued] = useState<{ key: string; limits: { perMinute: number; perDay: number }; emailed: boolean; rotated: boolean } | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true); setErr(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("api-key-request", { body: { email, name } });
+      const d = data as { key?: string; limits?: { perMinute: number; perDay: number }; emailed?: boolean; rotated?: boolean; error?: { message?: string } } | null;
+      if (error || !d?.key) { setErr(d?.error?.message ?? "Could not issue a key. Try again shortly."); return; }
+      setIssued({ key: d.key, limits: d.limits ?? { perMinute: 60, perDay: 1000 }, emailed: !!d.emailed, rotated: !!d.rotated });
+    } catch {
+      setErr("Could not reach the key service. Try again shortly.");
+    } finally { setBusy(false); }
+  };
+
+  if (issued) {
+    return (
+      <div className="p-6 rounded-2xl bg-card border border-border">
+        <h3 className="font-semibold mb-2 flex items-center gap-2"><KeyRound className="w-4 h-4 text-primary" /> Your key</h3>
+        {/* Shown once, and said so plainly: only a hash is stored, so there is
+            no screen anywhere that can show it again. */}
+        <p className="text-sm text-muted-foreground mb-3">
+          Copy this now — we store only a hash, so this is the only time it can be shown.
+          {issued.emailed ? " A copy is in your inbox." : " (We could not send the email copy, so this really is the only one.)"}
+        </p>
+        <div className="flex items-center gap-2 mb-3">
+          <code className="flex-1 px-3 py-2 rounded-lg bg-muted text-xs overflow-x-auto whitespace-nowrap">{issued.key}</code>
+          <button
+            type="button"
+            onClick={() => { navigator.clipboard?.writeText(issued.key); setCopied(true); setTimeout(() => setCopied(false), 1500); }}
+            className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border text-sm hover:text-foreground text-muted-foreground"
+          >
+            {copied ? <Check className="w-4 h-4 text-success" /> : <Copy className="w-4 h-4" />} {copied ? "Copied" : "Copy"}
+          </button>
+        </div>
+        {issued.rotated && (
+          <p className="text-sm text-warning mb-3">Your previous key was revoked when this one was issued.</p>
+        )}
+        <p className="text-sm text-muted-foreground">
+          Free tier: {issued.limits.perMinute} requests/minute, {issued.limits.perDay.toLocaleString()}/day.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <form onSubmit={submit} className="p-6 rounded-2xl bg-card border border-border">
+      <h3 className="font-semibold mb-2 flex items-center gap-2"><KeyRound className="w-4 h-4 text-primary" /> Get a free key</h3>
+      <p className="text-sm text-muted-foreground mb-4">
+        No account, no card. The key arrives on screen and by email.
+      </p>
+      <div className="grid sm:grid-cols-2 gap-3 mb-3">
+        <input
+          type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
+          placeholder="you@company.com" aria-label="Email address"
+          className="px-3 py-2.5 rounded-lg bg-background border border-border text-sm"
+        />
+        <input
+          type="text" value={name} onChange={(e) => setName(e.target.value)}
+          placeholder="What are you building? (optional)" aria-label="Key name"
+          className="px-3 py-2.5 rounded-lg bg-background border border-border text-sm"
+        />
+      </div>
+      {err && <p className="text-sm text-destructive mb-3">{err}</p>}
+      <button
+        type="submit" disabled={busy}
+        className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60"
+      >
+        {busy ? <><Loader2 className="w-4 h-4 animate-spin" /> Issuing…</> : <>Get a key</>}
+      </button>
+      <p className="text-xs text-muted-foreground mt-3">
+        Asking again issues a new key and revokes the old one.
+      </p>
+    </form>
+  );
+}
 
 export default function DataApi() {
   const [stats, setStats] = useState<{ total_open?: number; total_companies?: number; total_company_names?: number; closed_90d?: number; tracking_days?: number; observed_days?: number } | null>(null);
@@ -171,13 +275,72 @@ export default function DataApi() {
           </div>
         </section>
 
+        {/* Self-serve + reference. Placed ABOVE the licensing tiers on purpose:
+            the fastest way to sell a dataset is to let someone query it. */}
+        <section className="py-16 border-t border-border">
+          <div className="container">
+            <div className="text-center mb-12">
+              <h2 className="text-3xl font-bold mb-4">Query it yourself</h2>
+              <p className="text-muted-foreground max-w-2xl mx-auto">
+                A read-only JSON API over the live board. Free tier, self-serve, no card.
+              </p>
+            </div>
+
+            <div className="max-w-3xl mx-auto mb-10">
+              <GetAKey />
+            </div>
+
+            <div className="max-w-3xl mx-auto">
+              <div className="p-6 rounded-2xl bg-card border border-border mb-6">
+                <h3 className="font-semibold mb-3 flex items-center gap-2"><Terminal className="w-4 h-4 text-primary" /> First call</h3>
+                <pre className="text-xs overflow-x-auto p-3 rounded-lg bg-muted"><code>{`curl "${API_BASE}/v1/jobs?q=nurse&country=US&limit=5" \\
+  -H "Authorization: Bearer YOUR_KEY"`}</code></pre>
+                <p className="text-sm text-muted-foreground mt-3">
+                  Every response carries <code className="text-xs">X-RateLimit-Remaining</code> and{" "}
+                  <code className="text-xs">X-Quota-Remaining</code>. Refusals carry a machine-readable{" "}
+                  <code className="text-xs">error.code</code> — <code className="text-xs">rate_limited</code>,{" "}
+                  <code className="text-xs">quota_exceeded</code>, <code className="text-xs">invalid_key</code> — so a
+                  client can tell "slow down" from "you are not who you say you are".
+                </p>
+              </div>
+
+              <div className="rounded-2xl bg-card border border-border divide-y divide-border">
+                {ENDPOINTS.map((e) => (
+                  <div key={e.path} className="p-5">
+                    <code className="text-sm font-semibold text-primary">{e.path}</code>
+                    <p className="text-sm text-muted-foreground mt-1">{e.body}</p>
+                    {e.params && (
+                      <p className="text-xs text-muted-foreground mt-2">
+                        <span className="font-medium">Params:</span> <code className="text-xs">{e.params}</code>
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* The same fences the board serves under, stated to the people
+                  most likely to resell the data onward. */}
+              <div className="mt-6 p-5 rounded-xl bg-muted/40 border border-border">
+                <h4 className="font-semibold text-sm mb-2">What the API will never return</h4>
+                <ul className="text-sm text-muted-foreground space-y-1.5">
+                  <li>• A posting the employer has already withdrawn — those become 404, not stale rows.</li>
+                  <li>• Anything older than the 30-day freshness window.</li>
+                  <li>• Estimated or modelled fields. Salary is what the employer stated, or null.</li>
+                  <li>• Any jobseeker data. Résumés are never stored, so there is none to return.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* Tiers */}
         <section className="py-16 border-t border-border bg-muted/20">
           <div className="container">
             <div className="text-center mb-12">
               <h2 className="text-3xl font-bold mb-4">Access</h2>
               <p className="text-muted-foreground max-w-2xl mx-auto">
-                No self-serve keys yet — every request gets a human reply, usually within a day.
+                The free tier above is self-serve. These are for volume, history and bulk export —
+                every request gets a human reply, usually within a day.
               </p>
             </div>
             <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">

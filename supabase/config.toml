@@ -146,3 +146,9 @@ project_id = "bwhdazbotpblihdxcmho"
   # Public by necessity: callers authenticate with an API key of ours, not a
   # Supabase JWT they could not have. The key check is the first thing the
   # handler does and every endpoint is read-only.
+
+  [functions.api-key-request]
+    verify_jwt = false
+  # Public by necessity: this is where a developer with no account at all gets
+  # their first credential. Bounded by a per-address ceiling in api_key_issue,
+  # and it can only ever mint a free-tier key.
