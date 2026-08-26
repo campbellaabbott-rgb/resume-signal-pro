@@ -208,7 +208,12 @@ const PINNED = {
   // reason this guard's .2 entry records — a version that does not move across
   // a deploy boundary cannot answer "is it live?", and the behaviour here is
   // otherwise invisible from outside except as a timestamp moving sooner.
-  buildVersion: "2026-08-25.22",
+  // 2026-08-25.23: publishes coverage.tracked — the corpus INCLUDING closed
+  // postings — beside the servable headline. index.ts only, sources.ts
+  // UNCHANGED. The headline itself does not move: tracked is a second figure
+  // with its own label, never a replacement, and it is omitted rather than
+  // defaulted when the count has not been taken.
+  buildVersion: "2026-08-25.23",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {

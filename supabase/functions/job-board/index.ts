@@ -102,7 +102,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-25.22";
+const BUILD_VERSION = "2026-08-25.23";
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -8289,6 +8289,23 @@ async function serveList(
     return Number.isFinite(n) && n > 0 ? n : null;
   })();
   const safeMetaTotal = openTotal ?? (Number.isFinite(metaTotal) && metaTotal > 0 ? metaTotal : null);
+  // THE SECOND TRUE NUMBER: the corpus INCLUDING postings that have closed.
+  //
+  // safeMetaTotal above is what a visitor can page to and stays the headline —
+  // publishing this one in its place would overstate searchable jobs by the
+  // ~91k withdrawn postings the table still holds, and "no ghost jobs" is the
+  // claim the whole page rests on. Published BESIDE it, labelled, it is the
+  // thing this product actually owns: a live feed cannot tell you what closed
+  // last week, and this corpus can.
+  //
+  // Null rather than a fallback when absent. A tracked figure that silently
+  // degrades to the servable count would quietly assert the two are equal,
+  // which is the exact shape of claim drift this file keeps being bitten by.
+  const trackedTotal = (() => {
+    const cov = (meta?.v as Record<string, unknown> | undefined)?.coverage as { tracked?: unknown } | undefined;
+    const n = Number(cov?.tracked);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  })();
 
   // AN OFFSET PAST THE END MUST BE AN EMPTY PAGE, NOT A TABLE SCAN.
   //
@@ -8313,6 +8330,7 @@ async function serveList(
       // renders the same chrome around it. Shipping a short shape here is the
       // same defect as the SALARY exit, just on a page with no rows to hide it.
       searchId, totalAllCompanies: safeMetaTotal ?? 0,
+          ...(trackedTotal !== null ? { trackedTotal } : {}),
       companies: [], companiesCount: 0, categories: {}, failedSources: [], failedCount: 0,
       refreshedAt: null,
     });
@@ -9169,6 +9187,7 @@ async function serveList(
         // a table of 606,295 and a servable set of 601,760. A board-wide number
         // larger than the table it describes cannot be true.
         totalAllCompanies: safeMetaTotal ?? 0,
+          ...(trackedTotal !== null ? { trackedTotal } : {}),
         companies: [],
         companiesCount: ((metaV.companiesFacet as unknown[]) ?? []).length,
         // THE SHAPE IS PART OF THE CONTRACT, NOT JUST THE VALUES.
@@ -9278,6 +9297,7 @@ async function serveList(
           ...(routedExpand.expansions.length ? { aliases: routedExpand.expansions } : {}),
           ...(routeDecision.matchedName ? { companyMatched: routeDecision.matchedName } : {}),
           totalAllCompanies: safeMetaTotal ?? 0,
+          ...(trackedTotal !== null ? { trackedTotal } : {}),
           companies: [],
           companiesCount: ((metaV.companiesFacet as unknown[]) ?? []).length,
           // Same core shape as every other exit — see the SALARY exit above.
@@ -9751,6 +9771,7 @@ async function serveList(
                 // the ranked path.
                 exactWordMatch: qText,
                 totalAllCompanies: safeMetaTotal ?? 0,
+          ...(trackedTotal !== null ? { trackedTotal } : {}),
                 companies: [],
                 companiesCount: ((v0.companiesFacet as unknown[]) ?? []).length,
                 categories: {},
@@ -9846,6 +9867,7 @@ async function serveList(
                   totalAtLeast: Number.isFinite(fzTotal) && fzTotal >= limit ? fzTotal : fuzzyGrouped.jobs.length,
                 }),
                 totalAllCompanies: safeMetaTotal ?? 0,
+          ...(trackedTotal !== null ? { trackedTotal } : {}),
                 companies: [],
                 companiesCount: ((v0.companiesFacet as unknown[]) ?? []).length,
                 // Board-wide, from the cached facet row — CORRECT only on the unfiltered
@@ -9987,6 +10009,7 @@ async function serveList(
                     // undefined and restart at the top of the feed.
                     nextOffset: offset + semGrouped.jobs.length,
                     totalAllCompanies: safeMetaTotal ?? 0,
+          ...(trackedTotal !== null ? { trackedTotal } : {}),
                     companies: [],
                     companiesCount: ((v0.companiesFacet as unknown[]) ?? []).length,
                     // Board-wide, from the cached facet row — CORRECT only on the unfiltered

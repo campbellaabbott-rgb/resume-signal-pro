@@ -52,7 +52,10 @@ describe("the headline was a whole pass behind", () => {
       .not.toMatch(/INSERT INTO public\.job_board_meta|ON CONFLICT \(k\)/);
     expect(MIG_CODE).toMatch(/UPDATE public\.job_board_meta/);
     expect(MIG_CODE).toMatch(/WHERE k = 'refresh'/);
-    expect(MIG_CODE).toMatch(/jsonb_build_object\('open', v_open, 'openAt', now\(\)\)/);
+    // Shape, not an exact key list: a later change legitimately added
+    // 'tracked' to the same object, and a guard that pins the literal fails on
+    // an addition it has no opinion about.
+    expect(MIG_CODE).toMatch(/jsonb_build_object\('open', v_open,[^)]*'openAt', now\(\)\)/);
   });
 
   it("creates the coverage object when it is absent", () => {

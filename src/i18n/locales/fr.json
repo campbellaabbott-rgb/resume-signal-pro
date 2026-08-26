@@ -4073,7 +4073,8 @@
     "inclUnstatedPay": "Incl. salaire non indiqué",
     "inclUnstatedPayTip": "Conserve les offres sans salaire publié. Seul un employeur sur cinq environ l'indique : un salaire minimum masque les autres, ceci les rétablit.",
     "industriesAll": "Tous les secteurs",
-    "industriesLess": "Moins"
+    "industriesLess": "Moins",
+    "trackedCorpus": "{{n}} offres suivies, postes clôturés compris"
   },
   "accountPage": {
     "statusSaveFailed": "Impossible d'enregistrer ce statut — réessayez.",

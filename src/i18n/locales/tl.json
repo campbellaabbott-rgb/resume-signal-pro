@@ -4073,7 +4073,8 @@
     "inclUnstatedPay": "Kasama ang walang nakasaad na sahod",
     "inclUnstatedPayTip": "Panatilihin ang mga trabahong hindi naglalathala ng sahod. Humigit-kumulang ikalima lamang ng mga employer ang nagsasaad nito, kaya itinatago ng pinakamababang sahod ang iba — ibinabalik ito ng opsyong ito.",
     "industriesAll": "Lahat ng industriya",
-    "industriesLess": "Bawasan"
+    "industriesLess": "Bawasan",
+    "trackedCorpus": "{{n}} trabahong sinusubaybayan, kasama ang mga sarado"
   },
   "accountPage": {
     "statusSaveFailed": "Hindi na-save ang status na iyon — pakisubukan muli.",

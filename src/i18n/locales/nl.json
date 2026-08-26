@@ -4073,7 +4073,8 @@
     "inclUnstatedPay": "Incl. salaris niet vermeld",
     "inclUnstatedPayTip": "Behoudt vacatures zonder salarisvermelding. Slechts ongeveer een vijfde van de werkgevers vermeldt loon, dus een ondergrens verbergt de rest — dit haalt ze terug.",
     "industriesAll": "Alle sectoren",
-    "industriesLess": "Minder"
+    "industriesLess": "Minder",
+    "trackedCorpus": "{{n}} vacatures gevolgd, inclusief gesloten"
   },
   "accountPage": {
     "statusSaveFailed": "Kon die status niet opslaan — probeer het opnieuw.",

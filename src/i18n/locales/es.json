@@ -4073,7 +4073,8 @@
     "inclUnstatedPay": "Incl. sin salario indicado",
     "inclUnstatedPayTip": "Mantiene las ofertas que no publican salario. Solo alrededor de una quinta parte de las empresas lo indica, así que un salario mínimo oculta el resto; esto lo recupera.",
     "industriesAll": "Todos los sectores",
-    "industriesLess": "Menos"
+    "industriesLess": "Menos",
+    "trackedCorpus": "{{n}} ofertas registradas, incluidas las cerradas"
   },
   "accountPage": {
     "statusSaveFailed": "No se pudo guardar ese estado; inténtalo de nuevo.",

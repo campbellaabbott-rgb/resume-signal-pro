@@ -479,6 +479,10 @@ interface BoardResponse {
   nextOffset?: number;
   nextCursor?: { ep: string; id: string } | null;
   totalAllCompanies: number;
+  /** The corpus INCLUDING closed postings. Optional: absent until the count
+   *  has been taken, and never defaulted to totalAllCompanies — equating the
+   *  two would assert something false about what is searchable. */
+  trackedTotal?: number;
   // Untrimmed company count — the served `companies` array is capped (top-N by
   // count) for payload weight, so stat displays must use this, not .length.
   companiesCount?: number;
@@ -4123,8 +4127,18 @@ export default function Jobs() {
               : t("jobsPage.subtitleShort", "Every job straight from the company's own careers system — verified, fresh, re-checked when you apply.")}
             {/* Live activity strip: the board IS alive — say so with measured
                 numbers only (each clause renders only when its data exists). */}
-            {!landerCompany && (takedownsToday !== null || recheckP50Min !== null) && (
+            {!landerCompany && (takedownsToday !== null || recheckP50Min !== null || !!data?.trackedTotal) && (
               <span className="block text-[12px] text-muted-foreground mt-0.5">
+                {/* THE TRACKED CORPUS, and it is deliberately not the headline.
+                    The line above counts what a visitor can page to; this one
+                    counts every posting the board holds INCLUDING the ~91k that
+                    have since closed. Publishing the bigger number as "live
+                    openings" would overstate the searchable board by 17% and
+                    break the claim the whole page rests on — but stated as what
+                    it is, it is the asset a live feed cannot match: a record of
+                    what closed, not just what is open. */}
+                {!!data?.trackedTotal && t("jobsPage.trackedCorpus", "{{n}} postings tracked including closed roles", { n: data.trackedTotal.toLocaleString() })}
+                {!!data?.trackedTotal && (takedownsToday !== null || recheckP50Min !== null) && " · "}
                 {takedownsToday !== null && t("jobsPage.takedownsToday", "{{n}} roles filled or closed today", { n: takedownsToday.toLocaleString() })}
                 {takedownsToday !== null && recheckP50Min !== null && " · "}
                 {recheckP50Min !== null && t("jobsPage.recheckLine", "median feed re-checked {{m}} min ago", { m: recheckP50Min })}
