@@ -694,6 +694,7 @@
     "https://deno.land/std@0.190.0/http/server.ts": "1b23463b5b36e4eebc495417f6af47a6f7d52e3294827a1226d2a1aab23d9d20",
     "https://esm.sh/@supabase/supabase-js@2.110.0": "b99c0ce7729f9de7797f836b93ab9ec94f1cfe079b4f937fa4144fe13525e979",
     "https://esm.sh/@supabase/supabase-js@2.39.3": "832d7714491bd1c8a9008a332b35cb099f24b451ad79e755ecf4d71985fd6610",
+    "https://esm.sh/@supabase/supabase-js@2.45.0": "36ae57c3f2dc3f94fd122a846b40a87114d29bb2f47e910cb46bee5575febf2e",
     "https://esm.sh/mammoth@1.6.0": "c15e7832231fce10f279a9b7d5b3c9304911ff6f79beef9ba311fbd78262106b",
     "https://esm.sh/pdfjs-serverless@0.4.1?target=deno": "4264597131cd6d651149dfea8b8d53db435a49d6f659d5eeecfb1fd178b1a231",
     "https://esm.sh/resend@2.0.0": "b222433340dc6655ed294a343815916b5a5ceeac999f07f627a5614a87cd9fe4",

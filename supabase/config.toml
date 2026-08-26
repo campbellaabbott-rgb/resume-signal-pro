@@ -140,3 +140,9 @@ project_id = "bwhdazbotpblihdxcmho"
   # cannot spam anyone.
   [functions.send-agent-digest]
     verify_jwt = false
+
+  [functions.public-api]
+    verify_jwt = false
+  # Public by necessity: callers authenticate with an API key of ours, not a
+  # Supabase JWT they could not have. The key check is the first thing the
+  # handler does and every endpoint is read-only.
