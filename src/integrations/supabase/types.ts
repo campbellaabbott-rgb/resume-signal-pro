@@ -3156,14 +3156,14 @@ export type Database = {
       api_key_check: {
         Args: { p_endpoint: string; p_key_hash: string }
         Returns: {
-          allowed: boolean
-          daily_quota: number
-          daily_used: number
-          key_id: string
+          api_key_id: string
+          deny_reason: string
+          is_allowed: boolean
+          key_tier: string
+          quota_limit: number
+          quota_used: number
           rate_limit: number
           rate_used: number
-          reason: string
-          tier: string
         }[]
       }
       api_key_issue: {
@@ -3174,13 +3174,13 @@ export type Database = {
           p_name: string
         }
         Returns: {
-          daily_quota: number
-          key_id: string
-          ok: boolean
-          rate_per_min: number
-          reason: string
-          rotated: boolean
-          tier: string
+          api_key_id: string
+          deny_reason: string
+          issued: boolean
+          key_tier: string
+          quota_limit: number
+          rate_limit: number
+          was_rotated: boolean
         }[]
       }
       apply_posting_corrections: { Args: { p_patches: Json }; Returns: number }
