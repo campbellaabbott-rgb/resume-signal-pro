@@ -203,7 +203,12 @@ const PINNED = {
   // before the lane against 11.4 with it, i.e. an 11.4h cold cycle stretched to
   // 46.2h. A deep board is a 500-posting Workday window with descriptions, not
   // a cheap bootstrap probe, so 25 of them tripled a slice.
-  buildVersion: "2026-08-25.21",
+  // 2026-08-25.22: the headline count refreshes every 15 min instead of once
+  // per rotation pass. index.ts only, sources.ts UNCHANGED. Bumped for the
+  // reason this guard's .2 entry records — a version that does not move across
+  // a deploy boundary cannot answer "is it live?", and the behaviour here is
+  // otherwise invisible from outside except as a timestamp moving sooner.
+  buildVersion: "2026-08-25.22",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {
