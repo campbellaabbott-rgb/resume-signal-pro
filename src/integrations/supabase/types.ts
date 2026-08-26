@@ -3166,6 +3166,23 @@ export type Database = {
           tier: string
         }[]
       }
+      api_key_issue: {
+        Args: {
+          p_email: string
+          p_key_hash: string
+          p_key_prefix: string
+          p_name: string
+        }
+        Returns: {
+          daily_quota: number
+          key_id: string
+          ok: boolean
+          rate_per_min: number
+          reason: string
+          rotated: boolean
+          tier: string
+        }[]
+      }
       apply_posting_corrections: { Args: { p_patches: Json }; Returns: number }
       board_recency_ladder: {
         Args: { p_fresh_days?: number; p_step?: number }
