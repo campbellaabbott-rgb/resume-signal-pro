@@ -10422,6 +10422,7 @@ async function serveList(
             : { relatedTotal: related, ...(relatedCapped ? { relatedCapped: true } : {}) }),
           ...(rankedCapped ? { countCapped: true } : {}),
           totalAllCompanies: safeMetaTotal ?? total,
+          ...(trackedTotal !== null ? { trackedTotal } : {}),
           companies: includeFacets0
             ? facetHead(fullCompanies0 as Array<{ token?: string; name?: string; count?: number }>)
                 .sort((a, b) => (b.count ?? 0) - (a.count ?? 0))
