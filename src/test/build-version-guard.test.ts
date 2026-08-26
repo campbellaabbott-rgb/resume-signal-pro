@@ -213,7 +213,11 @@ const PINNED = {
   // UNCHANGED. The headline itself does not move: tracked is a second figure
   // with its own label, never a replacement, and it is omitted rather than
   // defaulted when the count has not been taken.
-  buildVersion: "2026-08-25.23",
+  // 2026-08-25.24: deep pages are scored. Past the 200-row seam the tail was
+  // served in raw ts_rank_cd order, which rewards repetition — the ordering
+  // that buries a posting titled exactly "Sales Associate". index.ts only,
+  // sources.ts UNCHANGED.
+  buildVersion: "2026-08-25.24",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {

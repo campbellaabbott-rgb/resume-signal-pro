@@ -102,7 +102,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-25.23";
+const BUILD_VERSION = "2026-08-25.24";
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -10152,6 +10152,27 @@ async function serveList(
         let rankedGrouped = groupSimilar
           ? collapseClusters(rankedWindow, limit)
           : { jobs: rankedWindow.slice(0, limit), rawConsumed: Math.min(rankedWindow.length, limit) };
+        // DEEP PAGES ARE SCORED NOW — the follow-up the comment above promised.
+        //
+        // Past the 200-row seam the tail was served in the RPC's raw ts_rank_cd
+        // order, and ts_rank rewards repetition: "Sales Director - Sales" beats
+        // the posting titled exactly "Sales Associate". The scorer could not be
+        // applied to the WINDOW because rerankWindow permutes rows while
+        // nextOffset advances by rawConsumed — that mismatch is the "sorted page
+        // two repeated 17 of 20 rows" incident.
+        //
+        // Applying it to the CARDS instead is pagination-safe by construction:
+        // this reorders only the rows already selected for this page, after
+        // clustering has chosen them. rawConsumed is untouched, so the next page
+        // starts exactly where it would have, and no row moves between pages.
+        //
+        // HONEST LIMIT: it reorders within a page and cannot pull a better row
+        // forward from a later one. Page 3 is ordered well; a row that belongs
+        // on page 3 but sits on page 5 still sits on page 5. That is inherent to
+        // offset paging and is why the seam exists at all.
+        if (deepPage && scoreRanked && rankedGrouped.jobs.length > 1) {
+          rankedGrouped = { ...rankedGrouped, jobs: rerankWindow(rankedGrouped.jobs, qText) };
+        }
 
         // THE SAME TOP-UP THE BROWSE PATH GOT, because this is the path that
         // actually needed it. The first version shipped only on the recency
