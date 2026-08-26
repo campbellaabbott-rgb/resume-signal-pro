@@ -19,6 +19,19 @@ const API_VERSION = "2026-08-26.1";
 const FRESH_WINDOW_DAYS = 30;
 const MAX_LIMIT = 100;
 const DEFAULT_LIMIT = 25;
+// OFFSET IS CAPPED BECAUSE POSTGRES IMPLEMENTS IT BY WALKING AND DISCARDING.
+//
+// Measured on this endpoint before the cursor existed: offset 0 answered in
+// 0.7s, offset 100,000 in 8.7s. It returned 200 the whole way, which is what
+// makes it dangerous — nothing fails, the database just does more work per page
+// the deeper a caller goes, and walking a corpus is the FIRST thing an API
+// consumer does. The board took a real outage from this shape (offset 583,921
+// -> HTTP 500 after 9.1s) and answers it with a keyset cursor; so does this.
+//
+// Offset is kept, and kept working, up to the depth where it is still cheap:
+// breaking existing callers to fix a performance cliff they may never have hit
+// would be its own regression. Past the cap the error names the cursor.
+const MAX_OFFSET = 10_000;
 
 // The columns /v1 promises. Listed once, explicitly, because `select("*")`
 // would silently publish every column added to the table later — including
@@ -80,7 +93,7 @@ Deno.serve(async (req) => {
     return json({
       apiVersion: API_VERSION,
       docs: "https://resumebooster.work/data-api",
-      endpoints: ["/v1/jobs", "/v1/jobs/{id}", "/v1/companies", "/v1/stats"],
+      endpoints: ["/v1/jobs", "/v1/jobs/{id}", "/v1/changes", "/v1/companies", "/v1/stats", "/v1/usage"],
       auth: "Authorization: Bearer <your key>",
     });
   }
@@ -129,11 +142,34 @@ Deno.serve(async (req) => {
     "X-Api-Version": API_VERSION,
   };
 
+  // CONDITIONAL REQUESTS. The dominant traffic shape for an API like this is a
+  // client polling the same query on a timer, and most of those polls return
+  // bytes the caller already has. An ETag lets them say so and get a 304.
+  //
+  // The quota is still spent on a 304, deliberately: authentication, rate and
+  // quota accounting all ran before the route did, and the database work that
+  // produced the comparison happened. Free 304s would also be an obvious way to
+  // poll a paid endpoint for nothing.
+  const conditional = async (res: Response): Promise<Response> => {
+    if (res.status !== 200) return res;
+    const body = await res.text();
+    const digest = await crypto.subtle.digest("SHA-1", new TextEncoder().encode(body));
+    const etag = `W/"${[...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 32)}"`;
+    const headersOut = new Headers(res.headers);
+    headersOut.set("ETag", etag);
+    if ((req.headers.get("if-none-match") ?? "").split(",").map((x) => x.trim()).includes(etag)) {
+      return new Response(null, { status: 304, headers: headersOut });
+    }
+    return new Response(body, { status: 200, headers: headersOut });
+  };
+
   try {
-    if (path === "/v1/jobs") return await listJobs(client, url, rateHeaders);
-    if (path.startsWith("/v1/jobs/")) return await oneJob(client, decodeURIComponent(path.slice("/v1/jobs/".length)), rateHeaders);
-    if (path === "/v1/companies") return await companies(client, url, rateHeaders);
-    if (path === "/v1/stats") return await stats(client, rateHeaders);
+    if (path === "/v1/jobs") return await conditional(await listJobs(client, url, rateHeaders));
+    if (path.startsWith("/v1/jobs/")) return await conditional(await oneJob(client, decodeURIComponent(path.slice("/v1/jobs/".length)), rateHeaders));
+    if (path === "/v1/changes") return await conditional(await changes(client, url, rateHeaders));
+    if (path === "/v1/companies") return await conditional(await companies(client, url, rateHeaders));
+    if (path === "/v1/stats") return await conditional(await stats(client, rateHeaders));
+    if (path === "/v1/usage") return await usage(client, d.api_key_id, rateHeaders);
     return fail(404, "no_such_endpoint", `Unknown path ${path}. See /v1 for the endpoint list.`);
   } catch (e) {
     console.error("[PUBLIC-API] handler threw:", e instanceof Error ? `${e.name}: ${e.message}` : String(e));
@@ -141,14 +177,47 @@ Deno.serve(async (req) => {
   }
 });
 
+/** Opaque to the caller by construction: base64url of the sort key it encodes.
+ *  Opaque so the ordering can change later without breaking anyone who stored
+ *  one, and so nobody hand-crafts a cursor into a scan we did not intend. */
+function encodeCursor(ep: string, id: string): string {
+  return btoa(JSON.stringify({ ep, id })).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+function decodeCursor(raw: string): { ep: string; id: string } | null {
+  try {
+    const b64 = raw.replace(/-/g, "+").replace(/_/g, "/");
+    const o = JSON.parse(atob(b64 + "=".repeat((4 - (b64.length % 4)) % 4))) as { ep?: unknown; id?: unknown };
+    if (typeof o.ep !== "string" || typeof o.id !== "string") return null;
+    // A quote would break out of the quoted PostgREST value below. Vendor ids
+    // do not contain one; a cursor that does was not issued by us.
+    if (/["\\]/.test(o.ep) || /["\\]/.test(o.id)) return null;
+    return { ep: o.ep, id: o.id };
+  } catch { return null; }
+}
+
 async function listJobs(client: SupabaseClient, url: URL, headers: Record<string, string>) {
   const p = url.searchParams;
   const limit = Math.min(Math.max(Number(p.get("limit")) || DEFAULT_LIMIT, 1), MAX_LIMIT);
   const offset = Math.max(Number(p.get("offset")) || 0, 0);
+  const cursorRaw = (p.get("cursor") ?? "").trim();
+  const cursor = cursorRaw ? decodeCursor(cursorRaw) : null;
+  if (cursorRaw && !cursor) {
+    return fail(400, "bad_cursor", "That cursor is not one we issued. Start from the first page and follow page.nextCursor.", headers);
+  }
+  if (!cursor && offset > MAX_OFFSET) {
+    return fail(400, "offset_too_deep",
+      `offset is capped at ${MAX_OFFSET.toLocaleString()} because the database walks and discards every skipped row. Page with cursor= instead: each response carries page.nextCursor.`,
+      headers);
+  }
 
+  // effective_posted is selected but NOT published: it is the column the query
+  // sorts by, so the cursor has to be built from it, and building one from
+  // posted_at instead would produce a key that does not match the ordering —
+  // pages that silently skip and repeat rows. It is stripped from every row
+  // before the response so the documented field list stays exactly as documented.
   let q = client
     .from("job_board_postings")
-    .select(JOB_FIELDS, { count: "estimated" })
+    .select(`${JOB_FIELDS},effective_posted`, { count: "estimated" })
     .is("missing_since", null)                       // fence: never serve a withdrawn posting
     .gte("effective_posted", freshCutoff());          // fence: never serve past the window
 
@@ -161,6 +230,15 @@ async function listJobs(client: SupabaseClient, url: URL, headers: Record<string
   eq("company_token", "company_token");
   eq("work_mode", "work_mode");
   eq("source", "source");
+  eq("experience_band", "experience_band");
+  // Substring rather than equality: department is the employer's own free text
+  // ("EVOLV - CPP"), so an exact match would be unusable.
+  const dept = (p.get("department") ?? "").trim().slice(0, 80).replace(/[%_,()]/g, " ").trim();
+  if (dept) q = q.ilike("department", `%${dept}%`);
+  const salaryMax = Number(p.get("salary_max"));
+  if (Number.isFinite(salaryMax) && salaryMax > 0) q = q.lte("salary_rank_usd", salaryMax);
+  const postedBefore = p.get("posted_before");
+  if (postedBefore && !Number.isNaN(Date.parse(postedBefore))) q = q.lte("posted_at", new Date(postedBefore).toISOString());
 
   if (p.get("remote") === "true") q = q.eq("remote", true);
   const salaryMin = Number(p.get("salary_min"));
@@ -184,20 +262,56 @@ async function listJobs(client: SupabaseClient, url: URL, headers: Record<string
     if (safe) q = q.textSearch("title", safe, { type: "websearch", config: "simple" });
   }
 
-  const { data, error, count } = await q
+  // KEYSET: start strictly after the last row of the previous page, in the same
+  // (effective_posted DESC, id ASC) order the query is already sorted by. Cost
+  // is flat with depth because the index seeks rather than walks.
+  if (cursor) {
+    q = q.or(`effective_posted.lt."${cursor.ep}",and(effective_posted.eq."${cursor.ep}",id.gt."${cursor.id}")`);
+  }
+
+  const { data: rawData, error, count } = await q
     .order("effective_posted", { ascending: false, nullsFirst: false })
     .order("id", { ascending: true })
-    .range(offset, offset + limit - 1);
+    .range(cursor ? 0 : offset, (cursor ? 0 : offset) + limit - 1);
+  // The select string is built at runtime, so supabase-js cannot infer a row
+  // type from it. The shape is JOB_FIELDS plus the ordering column, which this
+  // function owns end to end.
+  const data = rawData as unknown as Array<Record<string, unknown>> | null;
 
   if (error) {
     console.error("[PUBLIC-API] /v1/jobs query failed:", error.message?.slice(0, 160));
     return fail(500, "query_failed", "The query could not be completed.");
   }
 
+  // Strip the ordering column back off. Done once, here, rather than in the
+  // select, because the cursor above needs it and the contract does not.
+  const publicRows = ((data ?? []) as Array<Record<string, unknown>>).map((r) => {
+    const { effective_posted: _sortKey, ...rest } = r;
+    return rest;
+  });
+
   return json({
     apiVersion: API_VERSION,
-    data: data ?? [],
-    page: { limit, offset, returned: (data ?? []).length, nextOffset: (data ?? []).length === limit ? offset + limit : null },
+    data: publicRows,
+    page: (() => {
+      const rows = (data ?? []) as Array<Record<string, unknown>>;
+      const last = rows[rows.length - 1];
+      const full = rows.length === limit;
+      // effective_posted is not in JOB_FIELDS (it is an internal ordering
+      // column), so the cursor is built from the sort key the query used, read
+      // back off the row. When it is absent the cursor is null rather than
+      // wrong — a cursor that silently restarts a walk is worse than none.
+      const ep = last?.effective_posted ?? null;
+      return {
+        limit,
+        ...(cursor ? {} : { offset }),
+        returned: rows.length,
+        nextCursor: full && typeof ep === "string" && typeof last?.id === "string" ? encodeCursor(ep, last.id as string) : null,
+        // Kept for callers already paging by offset, and null once they are past
+        // the cap so the field cannot walk them off the cliff.
+        nextOffset: !cursor && full && offset + limit <= MAX_OFFSET ? offset + limit : null,
+      };
+    })(),
     // "estimated" is named as estimated. An exact count over this table costs
     // seconds and the board already learned not to pay it per request.
     total: { value: count ?? null, basis: "estimated" },
@@ -227,6 +341,97 @@ async function oneJob(client: SupabaseClient, id: string, headers: Record<string
   // product: a caller must be able to tell "gone" from "we stopped looking".
   if (!data) return fail(404, "not_found", "No live posting with that id. It may have been withdrawn by the employer.");
   return json({ apiVersion: API_VERSION, data }, 200, headers);
+}
+
+/**
+ * /v1/changes — what OPENED and what CLOSED since a timestamp.
+ *
+ * This is the endpoint the rest of the API exists to make credible. Anyone can
+ * serve a list of open jobs; almost nobody can tell you what came down last
+ * Tuesday, or distinguish a role that was FILLED from one quietly re-listed
+ * under a new id. Both are recorded here as a matter of course, because the
+ * board has to know them to keep its own promises.
+ */
+async function changes(client: SupabaseClient, url: URL, headers: Record<string, string>) {
+  const p = url.searchParams;
+  const raw = p.get("since") ?? "";
+  const since = Date.parse(raw);
+  if (!raw || Number.isNaN(since)) {
+    return fail(400, "missing_since", "Pass ?since=<ISO timestamp>, e.g. since=2026-08-26T00:00:00Z", headers);
+  }
+  // A window, not an epoch: `since=1970` would ask for a full-corpus scan on a
+  // keyed endpoint, which is how a polling client accidentally DDoSes a
+  // database. 30 days is the freshness window, so nothing beyond it is servable
+  // anyway.
+  const oldest = Date.now() - FRESH_WINDOW_DAYS * 86_400_000;
+  if (since < oldest) {
+    return fail(400, "since_too_old", `since must be within the last ${FRESH_WINDOW_DAYS} days — the board does not serve postings older than that.`, headers);
+  }
+  const sinceIso = new Date(since).toISOString();
+  const limit = Math.min(Math.max(Number(p.get("limit")) || DEFAULT_LIMIT, 1), MAX_LIMIT);
+
+  const [openedRes, closedRes] = await Promise.all([
+    client.from("job_board_postings")
+      .select("id,source,company_token,company,title,location,country,category,posted_at,first_seen,apply_url")
+      .is("missing_since", null)
+      .gte("first_seen", sinceIso)
+      .order("first_seen", { ascending: false })
+      .limit(limit),
+    client.from("job_board_closures")
+      .select("posting_id,source,company_token,company,title,category,first_seen,posted_at,closed_at,superseded")
+      .gte("closed_at", sinceIso)
+      .order("closed_at", { ascending: false })
+      .limit(limit),
+  ]);
+
+  if (openedRes.error || closedRes.error) {
+    console.error("[PUBLIC-API] /v1/changes failed:", (openedRes.error ?? closedRes.error)?.message?.slice(0, 160));
+    return fail(500, "query_failed", "The query could not be completed.", headers);
+  }
+
+  return json({
+    apiVersion: API_VERSION,
+    since: sinceIso,
+    opened: openedRes.data ?? [],
+    closed: (closedRes.data ?? []).map((c) => ({
+      ...c,
+      // Named, not left as a bare boolean: `superseded` means the posting was
+      // re-listed under a new id rather than genuinely closing, and a consumer
+      // counting "roles filled" must not count those.
+      outcome: (c as { superseded?: boolean }).superseded ? "relisted" : "closed",
+    })),
+    page: { limit, openedReturned: (openedRes.data ?? []).length, closedReturned: (closedRes.data ?? []).length },
+    note: "opened = first seen in the employer's feed since `since`. closed = gone from it. outcome distinguishes a genuine close from a re-list under a new id.",
+  }, 200, headers);
+}
+
+/** /v1/usage — a customer can see what they have spent before an invoice does. */
+async function usage(client: SupabaseClient, keyId: string | null, headers: Record<string, string>) {
+  if (!keyId) return fail(500, "no_key_context", "Key context unavailable.", headers);
+  const since = new Date(Date.now() - 30 * 86_400_000).toISOString().slice(0, 10);
+  const { data, error } = await client
+    .from("api_usage")
+    .select("day,endpoint,calls")
+    .eq("key_id", keyId)
+    .gte("day", since)
+    .order("day", { ascending: false });
+  if (error) {
+    console.error("[PUBLIC-API] /v1/usage failed:", error.message?.slice(0, 160));
+    return fail(500, "query_failed", "The query could not be completed.", headers);
+  }
+  const rows = (data ?? []) as Array<{ day: string; endpoint: string; calls: number }>;
+  const byDay: Record<string, number> = {};
+  for (const r of rows) byDay[r.day] = (byDay[r.day] ?? 0) + (r.calls ?? 0);
+  return json({
+    apiVersion: API_VERSION,
+    // Only ever this key's own usage: key_id comes from the authenticated
+    // decision, never from the query string, so one customer cannot read
+    // another's consumption by guessing an id.
+    limits: { perMinute: Number(headers["X-RateLimit-Limit"]), perDay: Number(headers["X-Quota-Limit"]) },
+    remaining: { thisMinute: Number(headers["X-RateLimit-Remaining"]), today: Number(headers["X-Quota-Remaining"]) },
+    byDay,
+    byEndpoint: rows,
+  }, 200, headers);
 }
 
 async function companies(client: SupabaseClient, url: URL, headers: Record<string, string>) {

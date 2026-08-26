@@ -34,12 +34,18 @@ const API_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/public-api`;
 const ENDPOINTS: Array<{ path: string; body: string; params?: string }> = [
   {
     path: "GET /v1/jobs",
-    body: "Live postings, newest first. Every result is still open in the employer's own feed and posted within the last 30 days.",
-    params: "q, country, category, company_token, work_mode, source, remote, salary_min, include_unstated_pay, posted_after, limit (max 100), offset",
+    body: "Live postings, newest first. Every result is still open in the employer's own feed and posted within the last 30 days. Page with cursor= — each response carries page.nextCursor.",
+    params: "q, country, category, company_token, work_mode, source, experience_band, department, remote, salary_min, salary_max, include_unstated_pay, posted_after, posted_before, limit (max 100), cursor",
   },
   { path: "GET /v1/jobs/{id}", body: "One posting. Returns 404 once the employer withdraws it — never a stale 200, so you can tell 'gone' from 'we stopped looking'." },
+  {
+    path: "GET /v1/changes",
+    body: "What opened and what closed since a timestamp — and for each close, whether the role genuinely came down or was re-listed under a new id. Almost nobody else can answer the second half.",
+    params: "since (ISO, within the last 30 days), limit (max 100)",
+  },
   { path: "GET /v1/companies", body: "Employers ranked by open postings, from the same cached facet the board itself renders. Carries asOf." },
   { path: "GET /v1/stats", body: "Headline counts: live postings, companies, freshness window. Carries asOf and names its basis." },
+  { path: "GET /v1/usage", body: "Your own consumption for the last 30 days, by day and by endpoint, plus what is left of your limits today." },
 ];
 
 /** Self-serve issuance. The key is shown once — only its hash is stored. */
@@ -295,6 +301,14 @@ export default function DataApi() {
                 <h3 className="font-semibold mb-3 flex items-center gap-2"><Terminal className="w-4 h-4 text-primary" /> First call</h3>
                 <pre className="text-xs overflow-x-auto p-3 rounded-lg bg-muted"><code>{`curl "${API_BASE}/v1/jobs?q=nurse&country=US&limit=5" \\
   -H "Authorization: Bearer YOUR_KEY"`}</code></pre>
+                <p className="text-sm text-muted-foreground mt-3">
+                  Paginate with <code className="text-xs">cursor=</code>, not <code className="text-xs">offset=</code>:
+                  a cursor seeks, an offset makes the database walk and discard every row it skips, so deep
+                  offsets get slower the further you go (they are capped at 10,000 for that reason).
+                  Responses are <code className="text-xs">ETag</code>ged — send{" "}
+                  <code className="text-xs">If-None-Match</code> and a poll that would return what you already
+                  have answers <code className="text-xs">304</code>.
+                </p>
                 <p className="text-sm text-muted-foreground mt-3">
                   Every response carries <code className="text-xs">X-RateLimit-Remaining</code> and{" "}
                   <code className="text-xs">X-Quota-Remaining</code>. Refusals carry a machine-readable{" "}
