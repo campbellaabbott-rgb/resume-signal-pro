@@ -4074,7 +4074,8 @@
     "inclUnstatedPayTip": "Behoudt vacatures zonder salarisvermelding. Slechts ongeveer een vijfde van de werkgevers vermeldt loon, dus een ondergrens verbergt de rest — dit haalt ze terug.",
     "industriesAll": "Alle sectoren",
     "industriesLess": "Minder",
-    "trackedCorpus": "{{n}} vacatures gevolgd, inclusief gesloten"
+    "trackedCorpus": "{{n}} vacatures gevolgd, inclusief gesloten",
+    "semanticMatchChip": "inhoudelijk verwant"
   },
   "accountPage": {
     "statusSaveFailed": "Kon die status niet opslaan — probeer het opnieuw.",

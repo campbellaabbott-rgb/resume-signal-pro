@@ -102,7 +102,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-25.24";
+const BUILD_VERSION = "2026-08-25.25";
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -9535,6 +9535,126 @@ async function serveList(
         // unfiltered typo query keeps its old call shape and keeps working, and a
         // filtered one degrades to the empty page it already shows today — no
         // regression in either deploy order.
+        // ONE SEMANTIC RETRIEVAL, TWO ENTRY POINTS.
+        //
+        // The vector tier is now reachable from two places — the empty-page
+        // rescue below, and the low-result augmentation further down — and the
+        // four properties that make it safe are subtle enough that a second
+        // copy would drift from this one within a change or two:
+        //
+        //   1. bounded: a cold isolate loads a gte-small session on first use,
+        //      so the embed is deadlined or it sets the floor on how long the
+        //      whole request takes;
+        //   2. filter-SAFE, never filter-aware: the ANN scan cannot take
+        //      predicates, so its ids are hydrated back through buildQuery —
+        //      the one filter binder — and re-sorted into embedding order.
+        //      Pushing predicates into an HNSW scan is filtered-ANN, a
+        //      different and riskier problem;
+        //   3. ANCHORED: the vector tier always returns something — it has no
+        //      notion of "nothing is close" — so 'zzzqqxwv' came back with one
+        //      confident unrelated job, 2/2. At least one row that will SHIP
+        //      must share a real token with the query. A rescue that cannot
+        //      say no is worse than no rescue;
+        //   4. anchored on the rows that SURVIVE the filters, not the
+        //      candidates, or the tier answers on evidence it is not showing.
+        //
+        // Returns null when it declines for any reason. Callers treat null and
+        // empty identically — neither is an answer.
+        const semanticRows = async (
+          want: number,
+          embedBudgetMs: number,
+          exclude?: { ids: Set<string>; keys: Set<string> },
+        ): Promise<Array<Record<string, unknown>>> => {
+          // THE ANCHOR IS DECIDED ON WHAT SHIPS, SO EXCLUSION HAPPENS IN HERE.
+          //
+          // An adversarial review caught this before it shipped, and the shape
+          // is worth keeping in front of whoever adds the third caller. The
+          // augmenting caller drops candidates already on the page — and those
+          // are exactly the rows most likely to be carrying the anchor, because
+          // a thin page's rows are lexical matches whose titles contain the
+          // query token by construction. Anchoring outside, then excluding
+          // outside, produced: q="sommelier" with 4 exact rows on the page, ANN
+          // returns those 4 plus 56 hospitality neighbours, `anchored` is
+          // satisfied by the 4, the 4 are then dropped as duplicates, and 56
+          // rows containing no "sommelier" anywhere ship under a claim that
+          // they are about the same thing. That is the 'zzzqqxwv' failure with
+          // a non-empty page in front of it.
+          //
+          // Taking the exclusion set as a PARAMETER makes "anchored on the rows
+          // that ship" an invariant of this function rather than a rule each
+          // caller has to remember.
+          //
+          // Cheap refusal first: the anchor needs a token of 3+ characters, so
+          // a query that has none (q="ai ml") can never satisfy it. Deciding
+          // that here costs nothing; deciding it after the embed costs a model
+          // load, an HNSW scan and a hydration round trip for a guaranteed [].
+          const qTokens = qText.toLowerCase().split(/[^a-z0-9]+/i).filter((w) => w.length >= 3);
+          if (qTokens.length === 0) return [];
+
+          const t_embed_query = Date.now();
+          const qVecRaw = await withDeadline(embedText(qText), Math.min(embedBudgetMs, budgetLeft()));
+          markFrom("embed_query", t_embed_query);
+          const qVec = Array.isArray(qVecRaw) ? qVecRaw as number[] : null;
+          if (!qVec) {
+            console.warn(`[JOB-BOARD] query embedding unavailable or past deadline for q=${JSON.stringify(qText)}`);
+            return [];
+          }
+          const t_semantic = Date.now();
+          const { data: sem, error: sErr } = await withDeadline(
+            client.rpc("search_jobs_semantic", { p_embedding: JSON.stringify(qVec), p_limit: want }),
+            Math.min(5_000, budgetLeft()),
+          ).catch(() => ({ data: null, error: new Error("semantic deadline") })) as { data: unknown; error: unknown };
+          markFrom("semantic", t_semantic);
+          if (sErr) return [];
+
+          let semSource = Array.isArray(sem) ? (sem as Array<Record<string, unknown>>) : [];
+          // HYDRATED UNCONDITIONALLY, not just when a filter is narrowing.
+          //
+          // This used to be gated on filtersActive, which was defensible while
+          // the tier only ever answered an EMPTY page: with nothing else on
+          // screen, raw ANN rows were the whole response and their shape was
+          // self-consistent. The augmenting caller appends them to rows that
+          // came through buildQuery, and search_jobs_semantic does not return
+          // `country` at all — so an unfiltered thin page would mix rows that
+          // have a country with rows whose country is silently null, on the
+          // same list. Hydrating always costs one indexed id-lookup and makes
+          // every served row come from the one binder.
+          if (semSource.length > 0) {
+            const semIds = semSource.map((r) => String(r.id ?? "")).filter(Boolean);
+            const semRank = new Map(semIds.map((id, i) => [id, i]));
+            const t_semantic_filtered = Date.now();
+            const { data: semFiltered } = await withDeadline(
+              buildQuery("effective_posted", false, undefined, { skipTerms: true })
+                .in("id", semIds)
+                .range(0, Math.max(semIds.length - 1, 0)),
+              Math.min(4_000, budgetLeft()),
+            ) as { data: unknown[] | null };
+            markFrom("semantic_filtered", t_semantic_filtered);
+            // withDeadline is Promise.race and resolves { data: null }, which is
+            // indistinguishable from "the filters removed everything". A tier
+            // that degrades silently is the bug this codebase keeps finding.
+            if (semFiltered === null) {
+              console.warn(`[JOB-BOARD] semantic re-filter exceeded its deadline for q=${JSON.stringify(qText)}`);
+            }
+            semSource = Array.isArray(semFiltered)
+              ? (semFiltered as Array<Record<string, unknown>>)
+                .sort((a, b) => (semRank.get(String(a.id)) ?? 0) - (semRank.get(String(b.id)) ?? 0))
+              : [];
+          }
+
+          // Exclusion BEFORE the anchor, so the rows judged are the rows served.
+          if (exclude) {
+            semSource = semSource.filter((r) =>
+              !exclude.ids.has(String(r.id ?? "")) &&
+              !exclude.keys.has(clusterKey(String(r.company ?? ""), String(r.title ?? ""))));
+          }
+          const anchored = semSource.some((r) => {
+            const hay = `${String(r.title ?? "")} ${String(r.company ?? "")}`.toLowerCase();
+            return qTokens.some((w) => hay.includes(w));
+          });
+          return anchored ? semSource : [];
+        };
+
         const rescueFilterParams = (): Record<string, unknown> => filtersActive ? {
           p_location: rankedLocationParam(applied.location),
           p_remote: applied.remote ? true : null,
@@ -9901,91 +10021,11 @@ async function serveList(
           // (filtersActive computed once above, shared with the fuzzy tier.)
           if (qText.length >= 3) {
             try {
-              // DEADLINED AND MARKED. This loads a local gte-small session on
-              // first use in an isolate, so a cold request paid an unbounded
-              // model load INSIDE the rescue ladder — invisible, because the
-              // phase record only ever wrapped RPCs. A cold isolate that
-              // cannot produce a vector in time now skips the semantic rescue
-              // instead of holding the whole request open for it.
-              const t_embed_query = Date.now();
-              const qVecRaw = await withDeadline(embedText(qText), Math.min(2_500, budgetLeft()));
-              markFrom("embed_query", t_embed_query);
-              const qVec = Array.isArray(qVecRaw) ? qVecRaw as number[] : null;
-              if (!qVec) console.warn(`[JOB-BOARD] query embedding unavailable or past deadline for q=${JSON.stringify(qText)}`);
-              if (qVec) {
-                // DEADLINED. This RPC carries a 15s server-side statement timeout
-                // and had no client-side race, and filtered-empty is now the
-                // COMMON path rather than a rarity — so an unbounded tier here
-                // would set the floor on how long an empty page takes.
-                const t_semantic = Date.now();
-                const { data: sem, error: sErr } = await withDeadline(
-                  client.rpc("search_jobs_semantic", {
-                    p_embedding: JSON.stringify(qVec),
-                    p_limit: fetchLimit,
-                  }),
-                  Math.min(5_000, budgetLeft()),
-                ).catch(() => ({ data: null, error: new Error("semantic deadline") })) as
-                  { data: unknown; error: unknown };
-                markFrom("semantic", t_semantic);
-                // HYDRATE-AND-REFILTER, because this RPC cannot take filters and
-                // its rows cannot be narrowed afterwards either: the result set
-                // has no country column at all, so the row mapper emits null for
-                // it and the response self-check would flag every row against a
-                // country filter the tier had never applied.
-                //
-                // The ids go back through buildQuery — the one filter binder — so
-                // survivors come back with every column the board serves, and the
-                // embedding order is restored by rank rather than by whatever
-                // order PostgREST returns an id set in.
-                //
-                // THIS SAMPLES BEFORE IT FILTERS, and unlike the trigram tier
-                // that is acceptable HERE: this is the last rescue, reachable
-                // only when both lexical tiers found nothing, and its top-k is a
-                // fixed nearest-neighbour list rather than a truncated match set
-                // a filter would have reordered. Pushing predicates into an HNSW
-                // scan is filtered-ANN, a different and riskier problem than a
-                // trigram scan, and not worth taking on the tier that fires
-                // least. Call it filter-SAFE, never filter-aware.
-                let semSource = Array.isArray(sem) ? (sem as Array<Record<string, unknown>>) : [];
-                if (!sErr && filtersActive && semSource.length > 0) {
-                  const semIds = semSource.map((r) => String(r.id ?? "")).filter(Boolean);
-                  const semRank = new Map(semIds.map((id, i) => [id, i]));
-                  const t_semantic_filtered = Date.now();
-                  const { data: semFiltered } = await withDeadline(
-                    buildQuery("effective_posted", false, undefined, { skipTerms: true })
-                      .in("id", semIds)
-                      .range(0, Math.max(semIds.length - 1, 0)),
-                    Math.min(4_000, budgetLeft()),
-                  ) as { data: unknown[] | null };
-                  markFrom("semantic_filtered", t_semantic_filtered);
-                  // withDeadline is Promise.race and resolves { data: null },
-                  // which is indistinguishable from "the filters removed
-                  // everything". A tier that degrades silently is the bug this
-                  // codebase keeps rediscovering.
-                  if (semFiltered === null) {
-                    console.warn(`[JOB-BOARD] semantic re-filter exceeded its deadline for q=${JSON.stringify(qText)}`);
-                  }
-                  semSource = Array.isArray(semFiltered)
-                    ? (semFiltered as Array<Record<string, unknown>>)
-                      .sort((a, b) => (semRank.get(String(a.id)) ?? 0) - (semRank.get(String(b.id)) ?? 0))
-                    : [];
-                }
-                // A nearest neighbour is not a match. The vector tier always
-                // returns SOMETHING — it has no notion of "nothing is close" —
-                // so 'zzzqqxwv' came back with one confident, unrelated job
-                // (reproduced 2/2). Require a lexical anchor: at least one
-                // returned posting must share a real token with the query.
-                // A rescue tier that cannot say "no" is worse than no rescue,
-                // because the user cannot tell a match from a shrug.
-                // Checked on the rows that will actually SHIP, not on the
-                // pre-filter candidates. Anchoring on a row a filter removed
-                // would let the tier answer on evidence it is not showing.
-                const qTokens = qText.toLowerCase().split(/[^a-z0-9]+/i).filter((w) => w.length >= 3);
-                const anchored = semSource.some((r) => {
-                  const hay = `${String(r.title ?? "")} ${String(r.company ?? "")}`.toLowerCase();
-                  return qTokens.some((w) => hay.includes(w));
-                });
-                if (!sErr && semSource.length > 0 && anchored) {
+              // Retrieval is the shared helper above; this block owns only what
+              // an EMPTY page should answer with. fetchLimit because a rescue
+              // that fires on nothing may as well fill the page.
+              const semSource = await semanticRows(fetchLimit, 2_500);
+                if (semSource.length > 0) {
                   // Same-role-many-locations clones are mutually nearest in
                   // embedding space, so the top-k is especially prone to being
                   // one job repeated — collapse exactly like the other tiers.
@@ -10025,7 +10065,6 @@ async function serveList(
                     semantic: qText,
                   });
                 }
-              }
             } catch { /* semantic is a bonus — the honest empty below stands */ }
           }
           // Neither rescue tier answered (or filters kept them fenced out):
@@ -10259,6 +10298,7 @@ async function serveList(
         // result with no close matches offered.
         const FUZZY_AUGMENT_BELOW = 20;
         let fuzzyExtraOut: { q: string; count: number } | null = null;
+        let semanticExtraOut: { q: string; count: number } | null = null;
         // GATED ON THE WHOLE PAGE, NOT ON THE EXACT SEGMENT, and no longer fenced
         // by a narrowing. A query with 2 exact and 300 related matches has a full
         // page already; padding it would dilute a result set that does not need
@@ -10347,7 +10387,63 @@ async function serveList(
         // renders no total, so a user is unaffected, but an API consumer reading
         // `total` sees a number the same response has just declared unknown.
         // Verified live on .10 — rows=60 alongside total=18. Null it.
-        const augmented = fuzzyExtraOut !== null;
+        // SEMANTIC ON A THIN PAGE, NOT ONLY ON AN EMPTY ONE.
+        //
+        // The vector tier used to be reachable only when BOTH lexical tiers
+        // returned nothing. A query landing three weak matches therefore got no
+        // help at all, even though three results is the case where a searcher
+        // most obviously wanted more — an empty page at least tells them to
+        // rephrase. This is the same widening the trigram tier already got when
+        // FUZZY_AUGMENT_BELOW went from 5 to 20.
+        //
+        // Retrieval is the SHARED helper, so the four properties that make the
+        // vector tier safe — bounded, filter-safe, lexically anchored, anchored
+        // on rows that survive the filters — hold here by construction rather
+        // than by a second implementation agreeing with the first.
+        //
+        // APPENDED LAST, BELOW THE CLOSE MATCHES. The ordering rule this file
+        // arrived at is that a title match beats a description-only match; a
+        // MEANING match is weaker still, so it sits under both. Nothing is
+        // displaced: exact rows keep their positions, and a version that let
+        // meaning-matches push exact rows off the page would have to answer
+        // where the displaced rows go on page two.
+        //
+        // BUDGET GATE. An embed is a model load on a cold isolate. Starting one
+        // with two seconds left would spend the remaining request budget and
+        // still miss, so the tier declines rather than making a thin page slow
+        // as well as thin.
+        if (
+          semanticExtraOut === null &&
+          pageTotal !== null && pageTotal > 0 && pageTotal < FUZZY_AUGMENT_BELOW &&
+          offset === 0 && !countOnly && qText.length >= 3 &&
+          rankedGrouped.jobs.length < limit && budgetLeft() > 3_000
+        ) {
+          try {
+            const room = Math.max(0, limit - rankedGrouped.jobs.length);
+            // The exclusion set goes IN, so the helper anchors on what survives
+            // it. Filtering the result afterwards is what let a page of
+            // unanchored rows ship under an anchored claim.
+            const haveIds = new Set(rankedGrouped.jobs.map((j) => String((j as Record<string, unknown>).id ?? "")));
+            const haveKeys2 = new Set(rankedGrouped.jobs.map((j) =>
+              clusterKey(String((j as Record<string, unknown>).company ?? ""), String((j as Record<string, unknown>).title ?? ""))));
+            const semSource = await semanticRows(Math.min(room * 3, 60), 1_500, { ids: haveIds, keys: haveKeys2 });
+            if (semSource.length > 0) {
+              const novelSem = (semSource as unknown[]).map(rowToJob) as Array<Record<string, unknown>>;
+              const semExtra = (groupSimilar ? collapseClusters(novelSem, room).jobs : novelSem.slice(0, room))
+                .map((j) => ({ ...(j as Record<string, unknown>), semanticMatch: true }));
+              if (semExtra.length > 0) {
+                rankedGrouped = { ...rankedGrouped, jobs: [...rankedGrouped.jobs, ...semExtra] };
+                semanticExtraOut = { q: qText, count: semExtra.length };
+              }
+            }
+          } catch { /* an augmentation is a bonus — the page it already has is correct */ }
+        }
+        // `total` counts EXACT matches, and the page now holds exact + close +
+        // meaning. Rather than inventing a combined number — they are not the
+        // same kind of match and adding them would assert they are — the page
+        // reports that it has no single honest total, exactly as it already
+        // does for the close matches.
+        const augmented = fuzzyExtraOut !== null || semanticExtraOut !== null;
         logSearch("ranked", rankedGrouped.jobs.length, augmented ? null : total);
         // The count and the retriever do not always share a predicate — see
         // the note on `total` below. Computed once here so every field in this
@@ -10441,6 +10537,11 @@ async function serveList(
           ranked: true,
           ...(expansions.length ? { aliases: expansions } : {}),
           ...(fuzzyExtraOut ? { fuzzyExtra: fuzzyExtraOut } : {}),
+          // Named separately from fuzzyExtra because they are different claims:
+          // a close match is "you may have misspelled this", a meaning match is
+          // "nothing else matched, these are about the same thing". Passing the
+          // second off as the first would be the tier lying about its evidence.
+          ...(semanticExtraOut ? { semanticExtra: semanticExtraOut } : {}),
         });
       }
     } catch (e) {

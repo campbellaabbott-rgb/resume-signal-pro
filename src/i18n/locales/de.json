@@ -4074,7 +4074,8 @@
     "inclUnstatedPayTip": "Behält Stellen ohne Gehaltsangabe. Nur etwa ein Fünftel der Arbeitgeber nennt ein Gehalt — eine Gehaltsuntergrenze blendet den Rest aus, dies holt ihn zurück.",
     "industriesAll": "Alle Branchen",
     "industriesLess": "Weniger",
-    "trackedCorpus": "{{n}} erfasste Stellen inklusive geschlossener"
+    "trackedCorpus": "{{n}} erfasste Stellen inklusive geschlossener",
+    "semanticMatchChip": "inhaltlich verwandt"
   },
   "accountPage": {
     "statusSaveFailed": "Status konnte nicht gespeichert werden — bitte erneut versuchen.",

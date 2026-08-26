@@ -1888,7 +1888,11 @@ describe("slow work degrades instead of failing the request", () => {
     // list would pass on a strong match the caller's filters then remove,
     // leaving a page of weak ones under a claim of closeness.
     expect(fn).toMatch(/const anchored = semSource\.some\(/);
-    expect(fn).toMatch(/semSource\.length > 0 && anchored/);
+    // The refusal moved INTO the shared retrieval helper when the tier gained
+    // a second entry point: it now returns the rows only when anchored, and an
+    // empty return is how it says no. Both callers treat empty and null
+    // identically, so neither can accidentally answer on an unanchored result.
+    expect(fn).toMatch(/return anchored \? semSource : \[\];/);
   });
 
   it("an unhonourable filter value is named, not dropped", () => {

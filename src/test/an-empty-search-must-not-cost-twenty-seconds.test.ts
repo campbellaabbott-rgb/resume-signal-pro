@@ -80,7 +80,14 @@ describe("an empty search must not cost twenty seconds", () => {
     // It was awaited bare. On a cold isolate that is a model load on the
     // request path, unbounded and unmeasured.
     expect(CODE).not.toMatch(/const qVec = await embedText\(qText\);/);
-    expect(CODE).toMatch(/await withDeadline\(embedText\(qText\), Math\.min\(2_500, budgetLeft\(\)\)\)/);
+    // The ceiling is a PARAMETER since the tier gained a second caller: the
+    // empty-page rescue still asks for 2,500ms, the thin-page augment asks for
+    // less because it is spending budget on a page that already has rows. What
+    // must not change is that the embed is raced against a deadline AND
+    // against whatever is left of the request budget.
+    expect(CODE).toMatch(/await withDeadline\(embedText\(qText\), Math\.min\(embedBudgetMs, budgetLeft\(\)\)\)/);
+    expect(CODE, "the empty-page rescue no longer asks for its 2.5s ceiling")
+      .toMatch(/semanticRows\(fetchLimit, 2_500\)/);
     expect(CODE).toMatch(/markFrom\("embed_query", t_embed_query\);/);
   });
 

@@ -194,6 +194,10 @@ interface BoardJob {
   /** True on rows the trigram tier APPENDED to a thin exact-match page — the
    *  card labels these "close match"; they are never passed off as exact. */
   closeMatch?: boolean;
+  /** Appended by the vector tier on a thin page: about the same thing, not
+   *  the same words. A weaker claim than closeMatch, so it is labelled
+   *  differently rather than folded in with it. */
+  semanticMatch?: boolean;
   /** Which segment this row came from — a title hit, or description-only. */
   matchScope?: "title" | "description";
 }
@@ -5997,6 +6001,20 @@ export default function Jobs() {
                           {job.closeMatch && (
                             <span className="inline-flex items-center text-[11px] text-warning mt-1 mr-1.5 border border-warning/40 rounded-full px-2 py-0.5">
                               {t("jobsPage.closeMatchChip", "close match")}
+                            </span>
+                          )}
+                          {/* A DIFFERENT CLAIM FROM "close match", and it has to
+                              read as one. A close match says the searcher may
+                              have misspelled something; this says nothing else
+                              matched and these are about the same THING. The
+                              vector tier always returns something — it has no
+                              notion of "nothing is close" — so a row it supplied
+                              must never sit unlabelled among keyword hits.
+                              Suppressed when the close-match chip is already
+                              there: two hedges on one card say less than one. */}
+                          {(job as { semanticMatch?: boolean }).semanticMatch && !job.closeMatch && (
+                            <span className="inline-flex items-center text-[11px] text-muted-foreground mt-1 mr-1.5 border border-border rounded-full px-2 py-0.5">
+                              {t("jobsPage.semanticMatchChip", "related by meaning")}
                             </span>
                           )}
                           {/* WHY THIS ROW IS HERE. A description-only match is a

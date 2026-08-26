@@ -217,7 +217,13 @@ const PINNED = {
   // served in raw ts_rank_cd order, which rewards repetition — the ordering
   // that buries a posting titled exactly "Sales Associate". index.ts only,
   // sources.ts UNCHANGED.
-  buildVersion: "2026-08-25.24",
+  // 2026-08-25.25: the vector tier reaches THIN pages, not only empty ones —
+  // a query landing three weak matches got no help before. Retrieval is now a
+  // single shared helper used by both entry points, so the four properties
+  // that make it safe (bounded, filter-safe, lexically anchored, anchored on
+  // surviving rows) cannot drift between two copies. index.ts only,
+  // sources.ts UNCHANGED.
+  buildVersion: "2026-08-25.25",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {

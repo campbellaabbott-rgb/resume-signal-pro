@@ -4074,7 +4074,8 @@
     "inclUnstatedPayTip": "Keep postings that don't publish a salary. Only about a fifth of employers state pay, so a pay floor hides the rest — this puts them back.",
     "industriesAll": "All industries",
     "industriesLess": "Fewer",
-    "trackedCorpus": "{{n}} postings tracked including closed roles"
+    "trackedCorpus": "{{n}} postings tracked including closed roles",
+    "semanticMatchChip": "related by meaning"
   },
   "accountPage": {
     "statusSaveFailed": "Couldn't save that status — please try again.",
