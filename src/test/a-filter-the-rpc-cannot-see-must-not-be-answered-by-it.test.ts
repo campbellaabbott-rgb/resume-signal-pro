@@ -40,7 +40,6 @@ const applied = (body: Record<string, unknown>) => normalizeFilters(body, 64).ap
 describe("a filter the RPC cannot see must not be answered by it", () => {
   it.each([
     ["payBasis", { payBasis: "hourly" }],
-    ["hasStatedPay", { hasStatedPay: true }],
     ["salaryCeiling", { salaryCeiling: 120000 }],
     ["maxYears", { maxYears: 3 }],
     ["department", { department: "nursing" }],
@@ -57,6 +56,16 @@ describe("a filter the RPC cannot see must not be answered by it", () => {
     expect(rpcBlindFilters(applied({ q: "nurse" }))).toEqual([]);
     expect(rpcBlindFilters(applied({ q: "nurse", country: "US", workMode: "remote", category: "engineering" }))).toEqual([]);
     expect(rpcBlindFilters(applied({ q: "nurse", experience: "senior", salaryFloor: 100000 }))).toEqual([]);
+    // hasStatedPay MOVED OUT of the blind set on 2026-08-26. 20260826041500
+    // gives all three RPCs `p_pay_stated`, binding the identical predicate
+    // buildQuery uses (salary_min_annual IS NOT NULL). While it was blind, a
+    // stated-pay search was diverted off the ranked path entirely and lost
+    // ranking, the trigram tier and the semantic tier with it — the diversion
+    // was correct given the SQL, and the SQL is what changed.
+    expect(rpcBlindFilters(applied({ hasStatedPay: true }))).toEqual([]);
+    expect(rpcBlindFilters(applied({ q: "nurse", hasStatedPay: true, salaryFloor: 100000 }))).toEqual([]);
+    // The widening twin is bound by the same migration.
+    expect(rpcBlindFilters(applied({ salaryFloor: 100000, includeUnstatedPay: true }))).toEqual([]);
   });
 
   it("an unset filter is never reported blind", () => {

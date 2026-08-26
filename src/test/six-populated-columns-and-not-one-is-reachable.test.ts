@@ -416,6 +416,7 @@ describe("isUnfiltered — mechanical, so all six are counted the day they exist
       salaryCeiling: 200_000,
       payBasis: "salaried",
       hasStatedPay: true,
+      includeUnstatedPay: true,
       maxYears: 5,
       department: "Legal",
       vendors: ["lever"],
@@ -455,7 +456,10 @@ describe("rpcBlindFilters — the six bind in ONE place, and it is not the RPCs"
       companies: ["tok"],
     }).applied)).toEqual([]);
     expect(rpcBlindFilters(norm({ payBasis: "hourly" }).applied)).toEqual(["payBasis"]);
-    expect(rpcBlindFilters(norm({ hasStatedPay: true }).applied)).toEqual(["hasStatedPay"]);
+    // NO LONGER BLIND (20260826041500 added p_pay_stated to all three RPCs).
+    // Listed here rather than deleted, because "which of the six are still
+    // blind" is the fact this test carries and one of them has moved.
+    expect(rpcBlindFilters(norm({ hasStatedPay: true }).applied)).toEqual([]);
     expect(rpcBlindFilters(norm({ salaryCeiling: 150_000 }).applied)).toEqual(["salaryCeiling"]);
     expect(rpcBlindFilters(norm({ maxYears: 3 }).applied)).toEqual(["maxYears"]);
     expect(rpcBlindFilters(norm({ department: "Legal" }).applied)).toEqual(["department"]);

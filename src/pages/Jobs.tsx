@@ -306,6 +306,7 @@ export type BoardFilterState = {
   salaryCeiling: number;
   payBasis: "" | "hourly" | "salaried";
   statedPayOnly: boolean;
+  includeUnstatedPay: boolean;
   maxYears: number;
   department: string;
   /** Comma-joined `source` values. */
@@ -324,7 +325,7 @@ export type BoardFilterState = {
 export function boardFilterBody(s: BoardFilterState): Record<string, unknown> {
   const {
     q, location, remoteOnly, workMode, category, inclUncat, agentOnly, country,
-    experience, companyTokens, salaryFloor, salaryCeiling, payBasis, statedPayOnly,
+    experience, companyTokens, salaryFloor, salaryCeiling, payBasis, statedPayOnly, includeUnstatedPay,
     maxYears, department, vendor, freshness,
   } = s;
   const body: Record<string, unknown> = {
@@ -353,6 +354,7 @@ export function boardFilterBody(s: BoardFilterState): Record<string, unknown> {
     salaryCeiling: salaryCeiling || undefined,
     payBasis: payBasis || undefined,
     hasStatedPay: statedPayOnly ? true : undefined,
+    includeUnstatedPay: includeUnstatedPay ? true : undefined,
     maxYears: maxYears || undefined,
     department: department.trim() || undefined,
     vendor: vendor || undefined,
@@ -741,6 +743,7 @@ export default function Jobs() {
   // narrowed to this 20.1% and is never told; making it a control of its own is
   // the honest half of the same fact.
   const [statedPayOnly, setStatedPayOnly] = useState(initial.get("statedPay") === "1");
+  const [includeUnstatedPay, setIncludeUnstatedPay] = useState(initial.get("inclUnstatedPay") === "1");
   // Which ATS the posting came from. `source` is populated on every row, so
   // this is the only new filter that hides nothing. Until now the sole vendor
   // control was the agent-can-apply boolean, which pins the board to 5.4%.
@@ -914,6 +917,7 @@ export default function Jobs() {
       setSalaryCeiling(0);
       setPayBasis("");
       setStatedPayOnly(false);
+      setIncludeUnstatedPay(false);
       setMaxYears(0);
       setDepartment("");
       setVendor("");
@@ -1235,10 +1239,10 @@ export default function Jobs() {
    */
   const filterState: BoardFilterState = useMemo(() => ({
     q, location, remoteOnly, workMode, category, inclUncat, agentOnly, country,
-    experience, companyTokens, salaryFloor, salaryCeiling, payBasis, statedPayOnly,
+    experience, companyTokens, salaryFloor, salaryCeiling, payBasis, statedPayOnly, includeUnstatedPay,
     maxYears, department, vendor, freshness,
   }), [q, location, remoteOnly, workMode, category, inclUncat, agentOnly, country,
-    experience, companyTokens, salaryFloor, salaryCeiling, payBasis, statedPayOnly,
+    experience, companyTokens, salaryFloor, salaryCeiling, payBasis, statedPayOnly, includeUnstatedPay,
     maxYears, department, vendor, freshness]);
   const healthAttempted = useRef<Set<string>>(new Set());
   const [healthFailed, setHealthFailed] = useState(false);
@@ -1500,6 +1504,7 @@ export default function Jobs() {
       salaryCeiling ? filterLabel("salaryCeiling") : "",
       payBasis ? filterLabel("payBasis") : "",
       statedPayOnly ? filterLabel("hasStatedPay") : "",
+      includeUnstatedPay ? filterLabel("includeUnstatedPay") : "",
       maxYears ? filterLabel("maxYears") : "",
       department ? filterLabel("department") : "",
       vendor ? filterLabel("vendor") : "",
@@ -1738,6 +1743,7 @@ export default function Jobs() {
     if (salaryCeiling) p.set("salaryCeiling", String(salaryCeiling));
     if (payBasis) p.set("payBasis", payBasis);
     if (statedPayOnly) p.set("statedPay", "1");
+    if (includeUnstatedPay) p.set("inclUnstatedPay", "1");
     if (maxYears) p.set("maxYears", String(maxYears));
     if (department) p.set("department", department);
     if (vendor) p.set("vendor", vendor);
@@ -1767,7 +1773,7 @@ export default function Jobs() {
     // shared or reloaded link while the chip on screen still says it applies —
     // measured for workMode, agentOnly and inclUncat before, and true by
     // construction for each filter added since.
-    const extraFilters = !!(salaryCeiling || payBasis || statedPayOnly || maxYears || department || vendor);
+    const extraFilters = !!(salaryCeiling || payBasis || statedPayOnly || includeUnstatedPay || maxYears || department || vendor);
     if (landerCompany && company === landerCompany && !q && !location && !remoteOnly && !workMode && !category && !experience && !salaryFloor && !country && !freshness && !agentOnly && !extraFilters && sortMode !== "salary") {
       window.history.replaceState({}, "", `/jobs/company/${landerCompany}${jobParam ? `?job=${encodeURIComponent(jobParam)}` : ""}`);
       return;
@@ -1777,7 +1783,7 @@ export default function Jobs() {
       return;
     }
     window.history.replaceState({}, "", qs ? `/jobs?${qs}` : "/jobs");
-  }, [q, location, remoteOnly, workMode, company, category, inclUncat, agentOnly, activelyHiringOnly, experience, country, salaryFloor, salaryCeiling, payBasis, statedPayOnly, maxYears, department, vendor, freshness, sortMode, landerCategory, landerCompany]);
+  }, [q, location, remoteOnly, workMode, company, category, inclUncat, agentOnly, activelyHiringOnly, experience, country, salaryFloor, salaryCeiling, payBasis, statedPayOnly, includeUnstatedPay, maxYears, department, vendor, freshness, sortMode, landerCategory, landerCompany]);
 
   // Category salary benchmarks: median advertised pay floor per field, computed
   // live from postings that state pay (RPC self-gates at n>=30 — a thin sample
@@ -3193,6 +3199,7 @@ export default function Jobs() {
     if (salaryCeiling > 0) f.push({ key: "salaryCeiling", label: `≤$${salaryCeiling / 1000}k`, clear: () => setSalaryCeiling(0) });
     if (payBasis) f.push({ key: "payBasis", label: payBasis === "hourly" ? t("jobsPage.payBasisHourly", "Paid hourly") : t("jobsPage.payBasisSalaried", "Salaried"), clear: () => setPayBasis("") });
     if (statedPayOnly) f.push({ key: "statedPay", label: t("jobsPage.statedPay", "States pay"), clear: () => setStatedPayOnly(false) });
+    if (includeUnstatedPay) f.push({ key: "inclUnstatedPay", label: t("jobsPage.inclUnstatedPay", "Incl. unstated pay"), clear: () => setIncludeUnstatedPay(false) });
     if (department) f.push({ key: "department", label: department, clear: () => setDepartment("") });
     if (vendor) {
       const vs = vendor.split(",").filter(Boolean);
@@ -4707,6 +4714,31 @@ export default function Jobs() {
                 />
                 {t("jobsPage.statedPay", "States pay")}
               </label>
+              {/* ONLY WHERE IT MEANS SOMETHING. This relaxes an ACTIVE floor to
+                  admit postings with no stated pay; with no floor set there is
+                  nothing to relax and every unpriced row is already included.
+                  Rendering it always would offer a control that does nothing,
+                  which reads as a broken filter rather than an inapplicable one.
+
+                  It exists because a floor silently discarded about four fifths
+                  of the board: salary_rank_usd is NULL for every posting whose
+                  employer states no pay, and NULL fails every comparison. The
+                  cut was disclosed by the coverage line; what there was no way
+                  to do was decline it. */}
+              {salaryFloor > 0 && (
+                <label
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border bg-background text-sm whitespace-nowrap text-muted-foreground cursor-pointer"
+                  title={t("jobsPage.inclUnstatedPayTip", "Keep postings that don't publish a salary. Only about a fifth of employers state pay, so a pay floor hides the rest — this puts them back.")}
+                >
+                  <input
+                    type="checkbox"
+                    checked={includeUnstatedPay}
+                    onChange={(e) => setIncludeUnstatedPay(e.target.checked)}
+                    className="accent-[hsl(var(--primary))]"
+                  />
+                  {t("jobsPage.inclUnstatedPay", "Incl. unstated pay")}
+                </label>
+              )}
             </div>
             {/* THE EMPLOYER'S OWN TEAM LABEL, matched as a substring. 226,631
                 rows carry one. Until now it was reachable only by typing into

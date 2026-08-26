@@ -4069,7 +4069,9 @@
     "coverageMaxYears": "taon ng karanasan sa {{pct}}%",
     "coverageDepartment": "isang departamento sa {{pct}}%",
     "coverageVendor": "kung anong sistema sila nagpo-post sa {{pct}}%",
-    "savedWithoutFilters": "Nalalapat ang mga ito sa board pero wala pa sa email, kaya hindi kasama ang mga ito sa alerto: {{filters}}."
+    "savedWithoutFilters": "Nalalapat ang mga ito sa board pero wala pa sa email, kaya hindi kasama ang mga ito sa alerto: {{filters}}.",
+    "inclUnstatedPay": "Kasama ang walang nakasaad na sahod",
+    "inclUnstatedPayTip": "Panatilihin ang mga trabahong hindi naglalathala ng sahod. Humigit-kumulang ikalima lamang ng mga employer ang nagsasaad nito, kaya itinatago ng pinakamababang sahod ang iba — ibinabalik ito ng opsyong ito."
   },
   "accountPage": {
     "statusSaveFailed": "Hindi na-save ang status na iyon — pakisubukan muli.",

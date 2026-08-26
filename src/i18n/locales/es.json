@@ -4069,7 +4069,9 @@
     "coverageMaxYears": "años de experiencia en el {{pct}} %",
     "coverageDepartment": "un departamento en el {{pct}} %",
     "coverageVendor": "en qué sistema publican en el {{pct}} %",
-    "savedWithoutFilters": "Estos se aplican en el tablón pero todavía no en el correo, así que el aviso los deja fuera: {{filters}}."
+    "savedWithoutFilters": "Estos se aplican en el tablón pero todavía no en el correo, así que el aviso los deja fuera: {{filters}}.",
+    "inclUnstatedPay": "Incl. sin salario indicado",
+    "inclUnstatedPayTip": "Mantiene las ofertas que no publican salario. Solo alrededor de una quinta parte de las empresas lo indica, así que un salario mínimo oculta el resto; esto lo recupera."
   },
   "accountPage": {
     "statusSaveFailed": "No se pudo guardar ese estado; inténtalo de nuevo.",

@@ -4069,7 +4069,9 @@
     "coverageMaxYears": "anos de experiência em {{pct}} %",
     "coverageDepartment": "um departamento em {{pct}} %",
     "coverageVendor": "em que sistema publicam em {{pct}} %",
-    "savedWithoutFilters": "Estes aplicam-se no quadro mas ainda não no e-mail, por isso o alerta deixa-os de fora: {{filters}}."
+    "savedWithoutFilters": "Estes aplicam-se no quadro mas ainda não no e-mail, por isso o alerta deixa-os de fora: {{filters}}.",
+    "inclUnstatedPay": "Incl. sem salário indicado",
+    "inclUnstatedPayTip": "Mantém as vagas que não publicam salário. Apenas cerca de um quinto dos empregadores o indica, por isso um piso salarial esconde o resto — isto traz-nas de volta."
   },
   "accountPage": {
     "statusSaveFailed": "Não foi possível salvar esse status — tente novamente.",

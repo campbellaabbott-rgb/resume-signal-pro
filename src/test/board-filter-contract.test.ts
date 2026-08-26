@@ -118,6 +118,7 @@ describe("isUnfiltered — derived, so a new filter cannot be forgotten", () => 
       salaryCeiling: 200_000,
       payBasis: "salaried",
       hasStatedPay: true,
+      includeUnstatedPay: true,
       maxYears: 5,
       department: "Legal",
       vendors: ["lever"],

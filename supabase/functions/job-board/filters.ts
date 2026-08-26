@@ -143,6 +143,14 @@ export type AppliedFilters = {
   experience: string[];
   salaryFloor: number | null;
   /**
+   * Widen an ACTIVE floor to admit rows with no stated pay.
+   *
+   * WIDENING, not narrowing, and the same shape as includeUncategorised above.
+   * It does nothing on its own: with no salaryFloor set there is no comparison
+   * to relax, and unpriced rows are already included.
+   */
+  includeUnstatedPay: boolean;
+  /**
    * The other end of the pay band, on the SAME column as the floor
    * (salary_rank_usd, approximate USD). A ceiling below the floor describes an
    * empty band and is refused into `ignored` rather than served as a page of
@@ -233,6 +241,11 @@ const RPC_BOUND_FILTERS = new Set<keyof AppliedFilters>([
   "sendableOnly",
   "experience",
   "salaryFloor",
+  // Bound as of 20260826041500. Both were previously blind, which meant a
+  // stated-pay search could never use the ranked path at all — it fell through
+  // to recency and lost ranking, the fuzzy tier and the semantic tier with it.
+  "hasStatedPay",
+  "includeUnstatedPay",
   "companies",
   "maxAgeDays",
   "postedAfter",
@@ -253,6 +266,28 @@ const RPC_BOUND_FILTERS = new Set<keyof AppliedFilters>([
  * Delete a key from the blind set by adding its p_ parameter to the SQL and its
  * name to RPC_BOUND_FILTERS above — in that order.
  */
+/**
+ * The two pay toggles as an RPC body FRAGMENT, spread into the call.
+ *
+ * ONE PRODUCER, FIVE CALL SITES. search_jobs is called three times, plus
+ * count_jobs_capped and the rescue tier's parameter set — this file's header
+ * records what happens to a filter list maintained by hand in more than one
+ * place, and `filtersActive` was rewritten for exactly that reason.
+ *
+ * Keys ABSENT when the toggle is off, never null. 20260826041500 DROPs the old
+ * signatures, so during the window where a new bundle meets old SQL (or the
+ * reverse) a call carrying an unknown key matches no function and PostgREST
+ * 404s the whole search. Omitting the keys keeps every ordinary query working
+ * against either version; only a query that actually uses a toggle depends on
+ * the migration. Same trick as sendableSourcesParam above it.
+ */
+export function payParams(a: AppliedFilters): Record<string, unknown> {
+  return {
+    ...(a.hasStatedPay ? { p_pay_stated: true } : {}),
+    ...(a.includeUnstatedPay ? { p_include_unstated: true } : {}),
+  };
+}
+
 export function rpcBlindFilters(a: AppliedFilters): string[] {
   return Object.entries(a as Record<string, unknown>)
     .filter(([k, v]) => {
@@ -448,6 +483,10 @@ export function normalizeFilters(
   // A string "false" from a query param is truthy in JS, and this filter cuts
   // the board to a fifth; guessing at it is not an option in either direction.
   const hasStatedPay = body.hasStatedPay === true;
+  // Literal true only, same contract as includeUncategorised — and like it,
+  // this WIDENS. It relaxes an active floor to admit rows with no stated pay;
+  // with no floor set there is nothing to relax and it is inert.
+  const includeUnstatedPay = body.includeUnstatedPay === true;
   if (body.hasStatedPay !== undefined && body.hasStatedPay !== null && typeof body.hasStatedPay !== "boolean") {
     ignored.push("hasStatedPay");
   }
@@ -653,6 +692,7 @@ export function normalizeFilters(
       salaryCeiling,
       payBasis,
       hasStatedPay,
+      includeUnstatedPay,
       maxYears,
       department,
       vendors,

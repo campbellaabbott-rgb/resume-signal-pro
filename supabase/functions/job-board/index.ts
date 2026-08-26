@@ -57,7 +57,7 @@ import { classifyDormancy, updateBoardFailures, type BoardFailureState } from ".
 import { advanceProgress, isPassDone, type RefreshProgress } from "./rotation.ts";
 import { CANARIES, rawItemCount, aggregateVendorHealth, type CanaryResult } from "./vendor-canary.ts";
 import { detectExperience, isExperienceBand } from "./experience.ts";
-import { categoryParam, filterViolations, isUnfiltered, normalizeFilters, rpcBlindFilters, rescueVendorsParam, SALARIED_PERIODS, sendableSourcesParam, splitPage, salaryFromQueryText, SALARY_IN_QUERY } from "./filters.ts";
+import { categoryParam, filterViolations, isUnfiltered, normalizeFilters, payParams, rpcBlindFilters, rescueVendorsParam, SALARIED_PERIODS, sendableSourcesParam, splitPage, salaryFromQueryText, SALARY_IN_QUERY } from "./filters.ts";
 import { pickRoute, rerankWindow, RETRIEVER_FOR } from "./search-routing.ts";
 import { planRankedPage } from "./paging.ts";
 import { collapseClusters, GROUP_OVERFETCH, interleaveByCompany, visibleCategories, mergeCompanyFacet } from "./clusters.ts";
@@ -8384,7 +8384,16 @@ async function serveList(
     // clear it. Postings without a stated salary, or whose currency we can't
     // identify (rank NULL), are excluded by the filter, honestly, not
     // guessed at. Displayed salaries stay exactly as the posting states them.
-    if (applied.salaryFloor !== null) q = q.gte("salary_rank_usd", applied.salaryFloor);
+    if (applied.salaryFloor !== null) {
+      // WIDENED ON REQUEST. NULL fails every comparison, so a bare floor also
+      // discards the ~80% of the board that states no pay — disclosed by
+      // coverageDisclosure, but until now not declinable. Only fires when the
+      // caller opts in, so the ordinary floor keeps its single indexed
+      // predicate rather than paying for an OR arm it does not need.
+      q = applied.includeUnstatedPay
+        ? q.or(`salary_rank_usd.gte.${applied.salaryFloor},salary_rank_usd.is.null`)
+        : q.gte("salary_rank_usd", applied.salaryFloor);
+    }
     // The CEILING, on the same approximate-USD column and therefore with the
     // same NULL exclusion the floor has. Symmetry is the point: a band whose two
     // ends compared different columns would return rows that clear the floor in
@@ -8519,6 +8528,7 @@ async function serveList(
         p_companies: applied.companies.length ? applied.companies : null,
         p_posted_after: applied.postedAfter,
         p_max_age_days: applied.maxAgeDays,
+        ...payParams(applied),
         p_work_mode: applied.workMode,
         p_cap: COUNT_CAP,
       });
@@ -8837,6 +8847,7 @@ async function serveList(
           p_companies: applied.companies.length ? applied.companies : null,
           p_posted_after: applied.postedAfter,
           p_max_age_days: applied.maxAgeDays,
+          ...payParams(applied),
           ...(applied.workMode ? { p_work_mode: applied.workMode } : {}),
           p_limit: 1,
           p_offset: 0,
@@ -9291,6 +9302,7 @@ async function serveList(
         p_companies: applied.companies.length ? applied.companies : null,
         p_posted_after: applied.postedAfter,
         p_max_age_days: applied.maxAgeDays,
+        ...payParams(applied),
         // Measured 2026-07-25: without this the ranked path silently dropped
         // the work-mode filter — workMode=remote + q=engineer returned 30 rows
         // that ALL had work_mode NULL, the exact opposite of the request.
@@ -9405,7 +9417,11 @@ async function serveList(
         // isUnfiltered already does. A conjunction that must be edited every
         // time a filter is added is a conjunction that will go stale again —
         // filters.ts's header documents that exact failure, and this is it.
-        const NON_NARROWING = new Set(["includeUncategorised", "sort", "q"]);
+        // includeUnstatedPay joins the widening set for the same reason
+        // includeUncategorised is in it: this gate asks "did the caller NARROW
+        // anything", and a toggle that only ever ADMITS more rows must not
+        // fence off the rescue tiers.
+        const NON_NARROWING = new Set(["includeUncategorised", "includeUnstatedPay", "sort", "q"]);
         const filtersActive =
           !!sanitizeTerm(String(body.location ?? "")) ||
           body.remote === true ||
@@ -9449,6 +9465,7 @@ async function serveList(
           p_companies: applied.companies.length ? applied.companies : null,
           p_posted_after: applied.postedAfter,
           p_max_age_days: applied.maxAgeDays,
+          ...payParams(applied),
           p_work_mode: applied.workMode,
           // One producer for the vendor list; this function spells the parameter
           // differently for the reason recorded in the migration.
@@ -10088,6 +10105,7 @@ async function serveList(
               p_companies: applied.companies.length ? applied.companies : null,
               p_posted_after: applied.postedAfter,
               p_max_age_days: applied.maxAgeDays,
+              ...payParams(applied),
               ...(applied.workMode ? { p_work_mode: applied.workMode } : {}),
               p_limit: fetchLimit,
               p_offset: offset + rankedRows.length,

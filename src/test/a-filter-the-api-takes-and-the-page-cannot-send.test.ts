@@ -67,7 +67,7 @@ const LOCALE_FILES = readdirSync(LOCALES).filter((f) => f.endsWith(".json"));
 const OFF: BoardFilterState = {
   q: "", location: "", remoteOnly: false, workMode: "", category: "", inclUncat: false,
   agentOnly: false, country: "", experience: "", companyTokens: [], salaryFloor: 0,
-  salaryCeiling: 0, payBasis: "", statedPayOnly: false, maxYears: 0, department: "",
+  salaryCeiling: 0, payBasis: "", statedPayOnly: false, includeUnstatedPay: false, maxYears: 0, department: "",
   vendor: "", freshness: "",
 };
 
@@ -327,7 +327,7 @@ describe("one derivation, and everything downstream reads it", () => {
     // dropping into the lander form with a filter on discards it from every
     // shared or reloaded link while the chip still shows on screen.
     expect(JOBS_CODE).toMatch(
-      /const extraFilters = !!\(salaryCeiling \|\| payBasis \|\| statedPayOnly \|\| maxYears \|\| department \|\| vendor\);/,
+      /const extraFilters = !!\(salaryCeiling \|\| payBasis \|\| statedPayOnly \|\| includeUnstatedPay \|\| maxYears \|\| department \|\| vendor\);/,
     );
     expect((JOBS_CODE.match(/&& !extraFilters &&/g) ?? []).length).toBe(2);
   });
