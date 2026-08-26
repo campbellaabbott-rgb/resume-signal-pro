@@ -744,6 +744,7 @@ export default function Jobs() {
   // the honest half of the same fact.
   const [statedPayOnly, setStatedPayOnly] = useState(initial.get("statedPay") === "1");
   const [includeUnstatedPay, setIncludeUnstatedPay] = useState(initial.get("inclUnstatedPay") === "1");
+  const [industriesOpen, setIndustriesOpen] = useState(false);
   // Which ATS the posting came from. `source` is populated on every row, so
   // this is the only new filter that hides nothing. Until now the sole vendor
   // control was the agent-can-apply boolean, which pins the board to 5.4%.
@@ -4855,25 +4856,60 @@ export default function Jobs() {
             )}
             {/* S2: the board's breadth, visible — live per-category counts as
                 one-tap pills (facet data the dropdown was hiding). */}
-            {/* One row on EVERY breakpoint: the wrap-to-two-rows desktop cloud
-                pushed the first job card below a 720px fold (measured y=820,
-                2026-07-26) — the edge mask signals the scroll, nothing is
-                dropped. Hidden on company pages: the counts are BOARD-wide,
-                and under "Open roles at {company}" they read as that
-                company's (scope-integrity finding). */}
-            {!landerCompany && (
-            <div className="basis-full overflow-x-auto pb-1 -mb-1 relative [mask-image:linear-gradient(to_right,black_92%,transparent)]">
-              <div className="flex items-center gap-2 w-max">
-                {CATEGORY_IDS
-                  .filter((c) => (data?.categories?.[c] ?? 0) > 0)
-                  .sort((a, b) => {
-                    // "Other" is the biggest bucket but the least useful pill —
-                    // always last regardless of count.
-                    if (a === "other") return 1;
-                    if (b === "other") return -1;
-                    return (data?.categories?.[b] ?? 0) - (data?.categories?.[a] ?? 0);
-                  })
-                  .slice(0, 10)
+            {/* COLLAPSED TO ONE ROW, NOT SCROLLED SIDEWAYS.
+                The fold constraint here is real and stays honoured: wrapping
+                this to a two-row cloud by default pushed the first job card
+                below a 720px fold (measured y=820, 2026-07-26), so the
+                collapsed state is still exactly one row tall.
+                What changed is how the overflow is REACHED. It used to be a
+                horizontal scroll behind an edge mask — a gesture with no
+                affordance on a trackpad or mouse, so the industries past the
+                right edge were effectively invisible. Now the row clips and an
+                explicit control opens the rest, wrapped, all at once. Same
+                collapsed height, no sideways scrolling, and the overflow is
+                something you can see and click instead of something you have
+                to discover.
+                The cap also goes: it was .slice(0, 10) of 18, so eight
+                industries could not be reached at all, scroll or no scroll.
+                Hidden on company pages: the counts are BOARD-wide, and under
+                "Open roles at {company}" they read as that company's
+                (scope-integrity finding). */}
+            {!landerCompany && (() => {
+              const cats = CATEGORY_IDS
+                .filter((c) => (data?.categories?.[c] ?? 0) > 0)
+                .sort((a, b) => {
+                  // "Other" is the biggest bucket but the least useful pill —
+                  // always last regardless of count.
+                  if (a === "other") return 1;
+                  if (b === "other") return -1;
+                  return (data?.categories?.[b] ?? 0) - (data?.categories?.[a] ?? 0);
+                });
+              // Below this there is no overflow to reveal on any width worth
+              // designing for, and a toggle that expands nothing is noise.
+              const worthToggling = cats.length > 6;
+              return (
+            <div className="basis-full min-w-0 w-full flex items-start gap-2">
+              {/* SWIPE ON TOUCH, EXPANDER ON DESKTOP — the same split this
+                  file already uses for the disclosure row above.
+                  A sideways swipe is a real, discoverable gesture on a phone,
+                  and vertical space is scarcest there, so mobile keeps the
+                  scrolling row and its edge mask exactly as before. On desktop
+                  that same row is the problem: there is no swipe, the mask is
+                  the only hint, and the industries past the right edge simply
+                  go unseen. sm+ therefore clips to one row and reveals the rest
+                  through a control you can see.
+                  44px is MEASURED, not guessed: these pills inherit the board's
+                  44px minimum touch target, so their real height is 44 and not
+                  the 28 that padding plus line-height suggests. Clipping to the
+                  smaller number cut the row in half and left NO pill fully
+                  visible — caught in the browser, not in review. */}
+              {/* min-w-0 IS LOAD-BEARING. A flex item defaults to
+                  min-width:auto, so this row refused to shrink below its
+                  content and grew to 3,255px inside a 375px viewport — the
+                  overflow-x-auto never engaged and THE PAGE scrolled sideways
+                  instead of the row. Measured, not reviewed. */}
+              <div className={`min-w-0 flex-1 flex items-center gap-2 flex-nowrap overflow-x-auto pb-1 -mb-1 [mask-image:linear-gradient(to_right,black_92%,transparent)] sm:pb-0 sm:mb-0 sm:flex-wrap sm:[mask-image:none] ${industriesOpen || !worthToggling ? "sm:overflow-visible" : "sm:max-h-[44px] sm:overflow-hidden"}`}>
+                {cats
                   .map((c) => (
                     <button
                       key={c}
@@ -4889,8 +4925,22 @@ export default function Jobs() {
                     </button>
                   ))}
               </div>
+              {worthToggling && (
+                <button
+                  type="button"
+                  onClick={() => setIndustriesOpen((v) => !v)}
+                  aria-expanded={industriesOpen}
+                  className="shrink-0 hidden sm:inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-full border border-border text-muted-foreground hover:text-foreground whitespace-nowrap transition-colors"
+                >
+                  {industriesOpen
+                    ? t("jobsPage.industriesLess", "Fewer")
+                    : t("jobsPage.industriesAll", "All industries")}
+                  <ChevronDown className={`w-3 h-3 transition-transform motion-reduce:transition-none ${industriesOpen ? "rotate-180" : ""}`} />
+                </button>
+              )}
             </div>
-            )}
+              );
+            })()}
             {/* For you | All jobs — the board's differentiator as a first-class
                 mode, not a pill to discover. "For you" without a resume routes
                 to the free scan (toggleFitRanking owns that flow). */}

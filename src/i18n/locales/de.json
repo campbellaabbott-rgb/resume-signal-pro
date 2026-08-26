@@ -4071,7 +4071,9 @@
     "coverageVendor": "das genutzte System bei {{pct}} %",
     "savedWithoutFilters": "Diese wirken auf dem Board, aber noch nicht in der E-Mail — die Benachrichtigung lässt sie daher weg: {{filters}}.",
     "inclUnstatedPay": "Inkl. ohne Gehaltsangabe",
-    "inclUnstatedPayTip": "Behält Stellen ohne Gehaltsangabe. Nur etwa ein Fünftel der Arbeitgeber nennt ein Gehalt — eine Gehaltsuntergrenze blendet den Rest aus, dies holt ihn zurück."
+    "inclUnstatedPayTip": "Behält Stellen ohne Gehaltsangabe. Nur etwa ein Fünftel der Arbeitgeber nennt ein Gehalt — eine Gehaltsuntergrenze blendet den Rest aus, dies holt ihn zurück.",
+    "industriesAll": "Alle Branchen",
+    "industriesLess": "Weniger"
   },
   "accountPage": {
     "statusSaveFailed": "Status konnte nicht gespeichert werden — bitte erneut versuchen.",

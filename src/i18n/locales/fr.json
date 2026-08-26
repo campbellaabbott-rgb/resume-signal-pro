@@ -4071,7 +4071,9 @@
     "coverageVendor": "le système utilisé sur {{pct}} %",
     "savedWithoutFilters": "Ceux-ci s'appliquent sur le tableau mais pas encore dans l'e-mail : l'alerte les laisse donc de côté : {{filters}}.",
     "inclUnstatedPay": "Incl. salaire non indiqué",
-    "inclUnstatedPayTip": "Conserve les offres sans salaire publié. Seul un employeur sur cinq environ l'indique : un salaire minimum masque les autres, ceci les rétablit."
+    "inclUnstatedPayTip": "Conserve les offres sans salaire publié. Seul un employeur sur cinq environ l'indique : un salaire minimum masque les autres, ceci les rétablit.",
+    "industriesAll": "Tous les secteurs",
+    "industriesLess": "Moins"
   },
   "accountPage": {
     "statusSaveFailed": "Impossible d'enregistrer ce statut — réessayez.",

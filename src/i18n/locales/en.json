@@ -4071,7 +4071,9 @@
     "coverageVendor": "which system they post on for {{pct}}%",
     "savedWithoutFilters": "These are applied on the board but not in the email yet, so the alert leaves them out: {{filters}}.",
     "inclUnstatedPay": "Incl. unstated pay",
-    "inclUnstatedPayTip": "Keep postings that don't publish a salary. Only about a fifth of employers state pay, so a pay floor hides the rest — this puts them back."
+    "inclUnstatedPayTip": "Keep postings that don't publish a salary. Only about a fifth of employers state pay, so a pay floor hides the rest — this puts them back.",
+    "industriesAll": "All industries",
+    "industriesLess": "Fewer"
   },
   "accountPage": {
     "statusSaveFailed": "Couldn't save that status — please try again.",
