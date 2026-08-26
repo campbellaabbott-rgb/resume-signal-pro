@@ -88,8 +88,24 @@ describe("a cap that restarts at zero is a ceiling", () => {
     expect(CODE).toMatch(/delete deepCursors\[s\.token\]; deepCursorsDirty = true;/);
   });
 
-  it("the board is handed its own cursor, not a shared one", () => {
-    expect(CODE).toMatch(/fetchBoard\(s, \(m\) => \{ failReason = m; \}, deepCursors\[s\.token\] \?\? 0\)/);
+  it("the rotation is PARKED, and the test says so out loud", () => {
+    // Deployed 2026-08-25 and withdrawn the same day. Before: CVS Health 678
+    // stored against 19,265 advertised. After a completed pass: exactly 500,
+    // and still exactly 500 eleven minutes and one refresh later. O'Reilly
+    // 571 -> 500, Trinity 570 -> 500, Wells Fargo 585 -> 498. Every at-cap
+    // board converged on one window and lost rows it had held.
+    //
+    // Rows were not churning wholesale (CVS's 500 carried first_seen across
+    // four hours, so they survived passes) but the count was pinned at exactly
+    // the window size, and job_board_meta is not anon-readable so the cursor
+    // could not be observed at all. Parked rather than left running.
+    //
+    // The plumbing below stays asserted because it is correct and it is what a
+    // re-arm builds on. THIS test is the one that must be flipped, and only
+    // once the cursor is observable — a deepCursor summary on status — so the
+    // next attempt is judged on a number instead of an inference.
+    expect(CODE).toMatch(/fetchBoard\(s, \(m\) => \{ failReason = m; \}, 0\)/);
+    expect(CODE).not.toMatch(/fetchBoard\([^)]*deepCursors\[s\.token\]/);
   });
 
   // ── the safety half ────────────────────────────────────────────────────

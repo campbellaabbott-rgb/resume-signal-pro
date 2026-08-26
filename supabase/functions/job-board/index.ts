@@ -102,7 +102,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-25.16";
+const BUILD_VERSION = "2026-08-25.17";
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -1459,7 +1459,27 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
         // ~20s of FETCH_TIMEOUT to lose). Not counted as attempted below.
         if (skipTokens.has(s.token)) continue;
         let failReason = "";
-        const r = await fetchBoard(s, (m) => { failReason = m; }, deepCursors[s.token] ?? 0);
+        // ROTATION PARKED AT ZERO — 2026-08-25, after one deploy.
+        //
+        // Measured before: CVS Health 678 stored against 19,265 advertised.
+        // Measured after a completed pass on .16: exactly 500, and still
+        // exactly 500 eleven minutes and one refresh later. O'Reilly 571 -> 500,
+        // Trinity 570 -> 500, Wells Fargo 585 -> 498. Every at-cap board
+        // converged on one window and LOST rows it previously held.
+        //
+        // Rows are not churning wholesale — CVS's 500 carry first_seen spread
+        // across four different hours today, so they survive passes. But the
+        // count is pinned at exactly the window size and 178 rows are gone, so
+        // whatever the cursor is doing it is not accumulating, and I could not
+        // read job_board_meta as anon to see whether it advanced at all.
+        //
+        // I promised to park this rather than let it run on a live board while
+        // I guessed. The plumbing stays because it is correct and tested; only
+        // the non-zero start is withdrawn, which restores exactly the previous
+        // fetch behaviour. Re-arming needs the cursor readable first — a
+        // deepCursor summary on the status action — so the next attempt can be
+        // told apart from this one by a number instead of an inference.
+        const r = await fetchBoard(s, (m) => { failReason = m; }, 0);
         if (!r) {
           failed.push(`${s.name} (vendor${failReason ? `: ${failReason}` : ""})`);
           continue;
