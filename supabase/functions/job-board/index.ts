@@ -102,7 +102,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-25.17";
+const BUILD_VERSION = "2026-08-25.18";
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -1479,7 +1479,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
         // fetch behaviour. Re-arming needs the cursor readable first — a
         // deepCursor summary on the status action — so the next attempt can be
         // told apart from this one by a number instead of an inference.
-        const r = await fetchBoard(s, (m) => { failReason = m; }, 0);
+        const r = await fetchBoard(s, (m) => { failReason = m; }, deepCursors[s.token] ?? 0);
         if (!r) {
           failed.push(`${s.name} (vendor${failReason ? `: ${failReason}` : ""})`);
           continue;
@@ -4606,7 +4606,7 @@ Deno.serve(async (req) => {
       // bundle, so a stale/failed publish is visible in ONE call instead of being
       // inferred from posting counts over hours (the rung-2 "did it deploy?" pain).
       // Also the source of truth for the heartbeat's job_board_deploy check.
-      const [prog, pbMeta, rot, refreshMeta, bf, hotMeta, fresh, breaker, dateCov, boardFlow, ingestPaused, dcCache, bsMeta, dsMeta, ssMeta, esMeta, fiOk, fiBad, faMeta, aaMeta, arMeta, rsRun, rsCron, hsMeta, rcProg, rcVer, hwMeta] = await Promise.all([
+      const [prog, pbMeta, rot, refreshMeta, bf, hotMeta, fresh, breaker, dateCov, boardFlow, ingestPaused, dcCache, bsMeta, dsMeta, ssMeta, esMeta, fiOk, fiBad, faMeta, aaMeta, arMeta, rsRun, rsCron, hsMeta, rcProg, rcVer, hwMeta, deepCur] = await Promise.all([
         client.from("job_board_meta").select("v, updated_at").eq("k", "refresh_progress").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "posted_backfill").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "cold_rotation").maybeSingle(),
@@ -4715,6 +4715,12 @@ Deno.serve(async (req) => {
         // all, because job_board_meta is service-role-only. Published here as
         // a derived boolean plus the two numbers behind it.
         client.from("job_board_meta").select("v").eq("k", "catalog_highwater").maybeSingle(),
+        // APPENDED AT THE END ON PURPOSE. This array is positionally destructured
+        // into 28 names; a query added in the MIDDLE silently shifts every
+        // variable after it onto the wrong result. It did exactly that here, and
+        // the typechecker only caught it by luck on an unrelated field. A new
+        // read goes last, next to the name it feeds.
+        client.from("job_board_meta").select("v, updated_at").eq("k", "deep_cursor").maybeSingle(),
 ]);
       const pgV = (prog.data?.v ?? {}) as { hot?: number; cold?: number; coldDone?: number; failedAcc?: string[]; failedTotal?: number };
       const rotV = (rot.data?.v ?? {}) as { completedAt?: string; coldBoards?: number };
@@ -4952,6 +4958,28 @@ Deno.serve(async (req) => {
         // description, and a lane that walks its whole corpus filling nothing
         // looks identical to one that never ran. cursor advancing with filled
         // at 0 is the honest reading of "scanning, nothing to state here".
+        // THE ROTATION'S ONLY WINDOW. Deep cursors say where each capped board
+        // stopped last pass. job_board_meta is not anon-readable, so before this
+        // existed the rotation could only be judged by watching row counts and
+        // guessing — and on 2026-08-25 I read two samples eleven minutes apart
+        // on a system whose passes run ~90 minutes, concluded it was pinned, and
+        // parked a rotation that was in fact climbing (CVS 500 -> 630 within the
+        // hour). `boards` is the count still filling; an entry is deleted when
+        // its board wraps, so a healthy steady state trends DOWN, not up.
+        deepCursor: (() => {
+          const v = (deepCur.data?.v ?? {}) as Record<string, number>;
+          const entries = Object.entries(v).filter(([, n]) => typeof n === "number" && n > 0);
+          entries.sort((a, b) => b[1] - a[1]);
+          return {
+            boards: entries.length,
+            maxOffset: entries.length ? entries[0][1] : 0,
+            sumOffset: entries.reduce((t, [, n]) => t + n, 0),
+            updatedAt: deepCur.data?.updated_at ?? null,
+            // The deepest few, so a stuck cursor is visible as an offset that
+            // does not move between two reads of this field.
+            top: entries.slice(0, 8).map(([token, offset]) => ({ token, offset })),
+          };
+        })(),
         hostSweep: {
           cursor: ((hsMeta.data?.v ?? {}) as { cursor?: number }).cursor ?? null,
           of: Array.isArray(((hsMeta.data?.v ?? {}) as { list?: unknown[] }).list) ? (((hsMeta.data?.v ?? {}) as { list?: unknown[] }).list as unknown[]).length : null,

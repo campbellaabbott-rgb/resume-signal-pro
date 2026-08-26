@@ -88,24 +88,43 @@ describe("a cap that restarts at zero is a ceiling", () => {
     expect(CODE).toMatch(/delete deepCursors\[s\.token\]; deepCursorsDirty = true;/);
   });
 
-  it("the rotation is PARKED, and the test says so out loud", () => {
-    // Deployed 2026-08-25 and withdrawn the same day. Before: CVS Health 678
-    // stored against 19,265 advertised. After a completed pass: exactly 500,
-    // and still exactly 500 eleven minutes and one refresh later. O'Reilly
-    // 571 -> 500, Trinity 570 -> 500, Wells Fargo 585 -> 498. Every at-cap
-    // board converged on one window and lost rows it had held.
+  it("the rotation is ARMED, and the cursor is observable", () => {
+    // PARKED on 2026-08-25 and re-armed the same day, because the park was a
+    // mistake about MEASUREMENT, not about the code.
     //
-    // Rows were not churning wholesale (CVS's 500 carried first_seen across
-    // four hours, so they survived passes) but the count was pinned at exactly
-    // the window size, and job_board_meta is not anon-readable so the cursor
-    // could not be observed at all. Parked rather than left running.
+    // I read CVS at 500 twice, eleven minutes apart, on a system whose refresh
+    // passes run about ninety minutes, and concluded the rotation was pinned.
+    // The next facet read — an hour later — had CVS at 630 and climbing, with
+    // 13 workday boards above the 500 window. Two samples inside one pass
+    // cannot distinguish "stuck" from "between passes", and I had no way to
+    // check because job_board_meta is not anon-readable.
     //
-    // The plumbing below stays asserted because it is correct and it is what a
-    // re-arm builds on. THIS test is the one that must be flipped, and only
-    // once the cursor is observable — a deepCursor summary on status — so the
-    // next attempt is judged on a number instead of an inference.
-    expect(CODE).toMatch(/fetchBoard\(s, \(m\) => \{ failReason = m; \}, 0\)/);
-    expect(CODE).not.toMatch(/fetchBoard\([^)]*deepCursors\[s\.token\]/);
+    // So the cursor is now published on `status`, and that is the part that
+    // must never be removed: without it the only way to judge this rotation is
+    // to infer it from row counts, which is exactly how I got it wrong.
+    expect(CODE).toMatch(/fetchBoard\(s, \(m\) => \{ failReason = m; \}, deepCursors\[s\.token\] \?\? 0\)/);
+  });
+
+  it("status publishes the cursor, so the rotation can be judged by a number", () => {
+    expect(CODE).toMatch(/deepCursor: \(\(\) => \{/);
+    // boards + maxOffset + top are the three that make a stuck cursor visible:
+    // an offset that does not move between two reads is the whole diagnosis.
+    expect(CODE).toMatch(/boards: entries\.length/);
+    expect(CODE).toMatch(/maxOffset: entries\.length \? entries\[0\]\[1\] : 0/);
+    expect(CODE).toMatch(/top: entries\.slice\(0, 8\)/);
+  });
+
+  it("the cursor read is the LAST element of a positionally destructured array", () => {
+    // Adding it in the middle shifts all 28 names onto the wrong results. That
+    // happened, and only a coincidental type error on an unrelated field caught
+    // it — the shifted reads that still typechecked would have shipped silently.
+    const arr = CODE.slice(CODE.indexOf("const [prog, pbMeta, rot, refreshMeta"));
+    const end = arr.indexOf("]);");
+    const body = arr.slice(0, end);
+    const cur = body.indexOf('eq("k", "deep_cursor")');
+    const hw = body.indexOf('eq("k", "catalog_highwater")');
+    expect(cur, "deep_cursor is not read inside the status bundle").toBeGreaterThan(-1);
+    expect(cur, "deep_cursor must come after every pre-existing read").toBeGreaterThan(hw);
   });
 
   // ── the safety half ────────────────────────────────────────────────────
