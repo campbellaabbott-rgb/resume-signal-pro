@@ -10422,6 +10422,7 @@ async function serveList(
             : { relatedTotal: related, ...(relatedCapped ? { relatedCapped: true } : {}) }),
           ...(rankedCapped ? { countCapped: true } : {}),
           totalAllCompanies: safeMetaTotal ?? total,
+          ...(trackedTotal !== null ? { trackedTotal } : {}),
           companies: includeFacets0
             ? facetHead(fullCompanies0 as Array<{ token?: string; name?: string; count?: number }>)
                 .sort((a, b) => (b.count ?? 0) - (a.count ?? 0))
@@ -10907,6 +10908,7 @@ async function serveList(
     // it never requests answers no every time.
     hasMore: (data ?? []).length > grouped.rawConsumed || (data ?? []).length === fetchUsed,
     totalAllCompanies: safeMetaTotal ?? count ?? 0,
+    ...(trackedTotal !== null ? { trackedTotal } : {}),
     companies: servedCompanies,
     companiesCount: fullCompanies.length,
     // Gated like the other three. A board-wide facet printed beside a FILTERED
