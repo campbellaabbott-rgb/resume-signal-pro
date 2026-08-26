@@ -102,7 +102,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-25.20";
+const BUILD_VERSION = "2026-08-25.21";
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -255,7 +255,33 @@ const STRUCTURED_SWEEP_PER_HOP = 24;
 const HOT_SLICE = 10;
 const COLD_SLICE = 80; // cold boards are small (that's why they're cold); 80/hop at CONCURRENCY=8 is 10 sequential rounds — well under the edge wall-time limit. Rotation speed comes from concurrency + hops-per-pass, never bigger slices (proven-safe size).
 const BOOTSTRAP_PER_SLICE = 25; // zero-row boards prepended per cold slice after a deploy — +31% slice load, still ~3 rounds under the wall-time margin; a 1,900-board merge drains in ~1.5 passes instead of waiting a full rotation for its FIRST ingest
-const DEEP_PER_SLICE = 25; // boards still filling, prepended per cold slice — same cap and shape as BOOTSTRAP_PER_SLICE because that load is already proven safe; the work list is the deep_cursor map itself, which empties as boards wrap
+// MEASURED DOWN FROM 25 — 25 COST THE ROTATION FOUR TIMES ITS SPEED.
+//
+// The cap was set to match BOOTSTRAP_PER_SLICE on the reasoning that its load
+// was "already proven safe". That reasoning was wrong, and the error is that a
+// bootstrap board and a deep board are not the same unit of work: a bootstrap
+// board is a zero-row board that usually returns almost nothing, while a deep
+// board is a 500-posting Workday window WITH descriptions — the most expensive
+// fetch this function makes. Twenty-five of those tripled the real cost of an
+// 80-board slice.
+//
+// Measured live on .20, two cold-cursor samples 422s apart:
+//   before the lane   46.0 boards/min   full cycle 11.4 h
+//   at DEEP_PER_SLICE=25   11.4 boards/min   full cycle 46.2 h
+// +80 in 422s is exactly ONE slice, so slices had gone from ~1.7 min to ~7.
+//
+// A 46-hour cold cycle is not a tuning question, it is a broken promise: the
+// board publishes that every feed is re-verified within a few hours, and
+// freshness p95 had already reached 357 min against that claim. Depth bought
+// with the freshness budget is the same mistake the removed "quiet lane" made,
+// recorded in this file's own history.
+//
+// 8 keeps the lane working — the backlog it exists to drain has already fallen
+// from 123 boards to 44, and 8/slice still sweeps that map in ~6 slices — while
+// returning the per-slice cost to roughly a third of what the regression added.
+// RE-MEASURE the cursor rate after any change to this number; it is the only
+// thing that shows the cost.
+const DEEP_PER_SLICE = 8;
 const SLICE_LOCK_MS = 3 * 60_000; // min gap between slices
 const DESC_CAP = 14_000; // matches the scanner's own input bounds
 

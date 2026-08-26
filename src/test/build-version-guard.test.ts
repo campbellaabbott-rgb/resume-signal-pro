@@ -197,7 +197,13 @@ const PINNED = {
   // and title-tier-empty searches served 0 rows against 741 real description
   // matches. The const moves above the ranked path, the catch now logs and
   // publishes `rankedFellBack`, and a guard pins the declaration order.
-  buildVersion: "2026-08-25.20",
+  // 2026-08-25.21: DEEP_PER_SLICE 25 -> 8. index.ts only, sources.ts UNCHANGED.
+  // The fast lane worked (CVS 630 -> 2,499 stored, boards-still-filling 123 ->
+  // 44) but at four times the rotation cost: measured live, 46.0 boards/min
+  // before the lane against 11.4 with it, i.e. an 11.4h cold cycle stretched to
+  // 46.2h. A deep board is a 500-posting Workday window with descriptions, not
+  // a cheap bootstrap probe, so 25 of them tripled a slice.
+  buildVersion: "2026-08-25.21",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {
