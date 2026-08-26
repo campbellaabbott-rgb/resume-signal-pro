@@ -188,7 +188,16 @@ const PINNED = {
   // rotation revisits a board only every ~11.4h. The deep_cursor map is now
   // fed back into the slice as a fourth source, capped at 25 and rotated.
   // Judge this bump ONLY by deepCursor.maxOffset exceeding 500.
-  buildVersion: "2026-08-25.19",
+  // 2026-08-25.20: ranked search was DOWN and silent. index.ts only,
+  // sources.ts UNCHANGED. `facetHead` hoists (it is a function declaration) but
+  // closes over `const FACET_COMPANY_LIMIT`, which sat ~300 lines BELOW the
+  // ranked return — so the ranked path read it from the temporal dead zone,
+  // threw ReferenceError, and the enclosing catch served the recency fallback
+  // without a word. Measured live on .19: `ranked: true` appeared on NO query,
+  // and title-tier-empty searches served 0 rows against 741 real description
+  // matches. The const moves above the ranked path, the catch now logs and
+  // publishes `rankedFellBack`, and a guard pins the declaration order.
+  buildVersion: "2026-08-25.20",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {

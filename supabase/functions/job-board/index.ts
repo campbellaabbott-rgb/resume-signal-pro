@@ -102,7 +102,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-25.19";
+const BUILD_VERSION = "2026-08-25.20";
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -9218,6 +9218,54 @@ async function serveList(
     }
   } catch { /* fall through to the path this query would have taken anyway */ }
 
+  // Surfaced on the response so a fallback is observable from outside without
+  // shell access to the function logs — the same reason `status` echoes the
+  // deployed bundle. Null on every healthy ranked search.
+  let rankedFellBack: string | null = null;
+  // DECLARED HERE, ABOVE THE RANKED PATH, AND THAT POSITION IS THE FIX.
+  //
+  // RANKED SEARCH WAS DOWN IN PRODUCTION AND NOTHING SAID SO. Every typed
+  // search silently fell through to the recency/ILIKE path; measured live on
+  // .19, no response on any query carried `ranked: true`.
+  //
+  // `facetHead` is a function DECLARATION, so it hoists and the ranked return
+  // below could name it — tsc and the deno gate both accept the call, which is
+  // why this shipped. But it closes over `FACET_COMPANY_LIMIT`, a `const` that
+  // used to be declared ~300 lines BELOW the ranked return, next to the recency
+  // path that also calls it. A hoisted function can be CALLED before a `const`
+  // it closes over is initialised; dereferencing that const then throws
+  // ReferenceError from the temporal dead zone. The enclosing
+  // `catch { /* fall through to recency path */ }` swallowed it, so the failure
+  // presented as "ranked search returns nothing" rather than as an error.
+  //
+  // The symptom that made it visible: a query whose TITLE tier matches nothing
+  // but whose description tier matches plenty served an EMPTY page —
+  // q="forklift certified" had 741 description matches in the RPC and returned
+  // 0 rows on the board. Queries with zero ranked rows were unaffected, because
+  // the rescue ladder returns before ever reaching this call, which is why
+  // typo rescue ("nurrse") kept working and hid the outage.
+  //
+  // Keep this above the first `facetHead(` call. A guard test pins the order.
+  // A HEAD, NOT A CENSUS. This was 1,500 entries and 70% of the response
+  // body. The typeahead reaches the rest through action:company-suggest,
+  // which reads the same cached facet, so nothing became unsearchable — and
+  // the selected employer is appended below whatever its rank, or its own
+  // filter chip would lose its label.
+  const FACET_COMPANY_LIMIT = 150;
+  // The selected employer must survive the cut whatever its rank, or its own
+  // filter chip renders with no label and the reader cannot see what they
+  // filtered to.
+  function facetHead(list: Array<{ token?: string; name?: string; count?: number }>) {
+    const merged = mergeCompanyFacet([...list].sort((a, b) => (b.count ?? 0) - (a.count ?? 0)));
+    const head = merged.slice(0, FACET_COMPANY_LIMIT);
+    if (applied.companies.length) {
+      const have = new Set(head.map((c) => c.token));
+      for (const c of merged) {
+        if (applied.companies.includes(String(c.token)) && !have.has(c.token)) head.push(c);
+      }
+    }
+    return head;
+  }
   // Same gate as the count above: a filter search_jobs cannot bind must not be
   // answered by search_jobs. buildQuery binds all six.
   if (qText && body.sort !== "salary" && !countOnly && !rpcBlindFilters(applied).length) {
@@ -10272,7 +10320,15 @@ async function serveList(
           ...(fuzzyExtraOut ? { fuzzyExtra: fuzzyExtraOut } : {}),
         });
       }
-    } catch { /* fall through to recency path */ }
+    } catch (e) {
+      // NOT SILENT ANY MORE. This catch is correct — a broken ranked path must
+      // still serve the reader from the recency path — but for as long as it
+      // said nothing, a total ranked-search outage was indistinguishable from
+      // "that query genuinely has no matches". It hid a ReferenceError for an
+      // unknown number of days. The fallback stays; the silence does not.
+      console.error(`[JOB-BOARD] ranked path failed, serving recency instead: ${e instanceof Error ? `${e.name}: ${e.message}` : String(e)}`);
+      rankedFellBack = e instanceof Error ? `${e.name}: ${e.message}`.slice(0, 160) : String(e).slice(0, 160);
+    }
   }
   const sortSalary = body.sort === "salary";
   // NO CATEGORY ORDERING HERE, AND THE ATTEMPT IS WORTH RECORDING.
@@ -10558,26 +10614,6 @@ async function serveList(
   // response and thousands of dropdown nodes — serve the top slice by count and
   // report the full number separately so stat displays stay exact. The facets
   // RPC (used by prerender/SEO) still returns the complete set.
-  // A HEAD, NOT A CENSUS. This was 1,500 entries and 70% of the response
-  // body. The typeahead reaches the rest through action:company-suggest,
-  // which reads the same cached facet, so nothing became unsearchable — and
-  // the selected employer is appended below whatever its rank, or its own
-  // filter chip would lose its label.
-  const FACET_COMPANY_LIMIT = 150;
-  // The selected employer must survive the cut whatever its rank, or its own
-  // filter chip renders with no label and the reader cannot see what they
-  // filtered to.
-  function facetHead(list: Array<{ token?: string; name?: string; count?: number }>) {
-    const merged = mergeCompanyFacet([...list].sort((a, b) => (b.count ?? 0) - (a.count ?? 0)));
-    const head = merged.slice(0, FACET_COMPANY_LIMIT);
-    if (applied.companies.length) {
-      const have = new Set(head.map((c) => c.token));
-      for (const c of merged) {
-        if (applied.companies.includes(String(c.token)) && !have.has(c.token)) head.push(c);
-      }
-    }
-    return head;
-  }
   const fullCompanies = (v.companiesFacet as Array<{ count?: number }>) ?? [];
   const servedCompanies = includeFacets
     ? facetHead(fullCompanies as Array<{ token?: string; name?: string; count?: number }>)
@@ -10725,6 +10761,11 @@ async function serveList(
     // page consumed — from `data`, never from grouped.jobs, because grouping
     // folds clusters and its last visible card is not the last row read.
     // Null on the paths that still page by offset.
+    // Present ONLY when the ranked path threw and this response is the
+    // fallback. Its absence is the healthy state, so nothing is published on a
+    // normal search; when it IS present, one curl says which error demoted the
+    // search instead of leaving it to look like an empty catalog.
+    ...(rankedFellBack ? { rankedFellBack } : {}),
     nextCursor: (() => {
       if (twoSubset || sortSalary) return null;
       const r = rawKeys[Math.max(0, grouped.rawConsumed - 1)];
