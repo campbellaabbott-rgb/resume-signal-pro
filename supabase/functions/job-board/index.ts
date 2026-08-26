@@ -282,6 +282,7 @@ const BOOTSTRAP_PER_SLICE = 25; // zero-row boards prepended per cold slice afte
 // RE-MEASURE the cursor rate after any change to this number; it is the only
 // thing that shows the cost.
 const DEEP_PER_SLICE = 8;
+const HEADLINE_MAX_AGE_MS = 15 * 60_000; // how stale the published board total may get before it is recounted; the count itself measured 0.63s, so this is cadence, not cost
 const SLICE_LOCK_MS = 3 * 60_000; // min gap between slices
 const DESC_CAP = 14_000; // matches the scanner's own input bounds
 
@@ -3036,6 +3037,39 @@ async function maybeKickMaintenance(client: SupabaseClient): Promise<void> {
         body: JSON.stringify({ action, chainKey: key, ...extra }),
       })).then((r) => r.text()).catch(() => {}));
     };
+
+    // HEADLINE COUNT — the cheapest independent track there is.
+    //
+    // The published board total used to move only when a rotation pass ended,
+    // so it was as stale as the pass was long: measured 2026-08-26, a pass that
+    // had just finished had STARTED 6.7 hours earlier, and the headline was
+    // still quoting that start. While the at-cap lane was adding twelve
+    // thousand postings to a single employer, the number on the page could not
+    // say so for most of a day.
+    //
+    // One RPC, one statement, 0.63s measured against 550,227 rows. It patches
+    // only the count and its own timestamp — never the whole meta row — so it
+    // cannot race the pass-end writer into dropping a facet.
+    //
+    // Kicks and FALLS THROUGH, and does not even take the kick stamp: it is a
+    // single query rather than a chain, so it cannot starve the exclusive
+    // ladder the way a returning track would. waitUntil keeps it off the
+    // response path entirely.
+    try {
+      const { data: rfRow } = await client.from("job_board_meta").select("v").eq("k", "refresh").maybeSingle();
+      const cov = ((rfRow?.v ?? {}) as { coverage?: { openAt?: string } }).coverage;
+      const openAge = cov?.openAt ? Date.now() - new Date(cov.openAt).getTime() : Infinity;
+      if (openAge > HEADLINE_MAX_AGE_MS) {
+        waitUntil((async () => {
+          try {
+            const { error } = await client.rpc("refresh_headline_open");
+            if (error) console.warn("[JOB-BOARD] headline refresh failed:", error.message?.slice(0, 120));
+          } catch (e) {
+            console.warn("[JOB-BOARD] headline refresh threw:", e instanceof Error ? e.message.slice(0, 120) : String(e));
+          }
+        })());
+      }
+    } catch { /* a stale headline is a worse number, never a broken request */ }
 
     // Country backfill runs as an INDEPENDENT track: it is pure DB work (no
     // vendor fetches), so it does not queue behind the fetch-heavy ladder.
