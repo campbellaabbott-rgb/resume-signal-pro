@@ -180,7 +180,15 @@ const PINNED = {
   // never built. Bumped so the mitigation is externally identifiable.
   // 2026-08-21.5: routed retrieval. index.ts + two new modules; sources.ts
   // UNCHANGED, so nothing waits on the bootstrap lane.
-  buildVersion: "2026-08-25.18",
+  // 2026-08-25.19: the at-cap fast lane. index.ts only, sources.ts UNCHANGED,
+  // so no board is waiting on the bootstrap lane. Cadence only — the deep
+  // cursor plumbing from .16 is untouched. .18 made the rotation observable
+  // and what it showed was boards 66 / sumOffset 33,000, exactly 66 x 500: not
+  // one capped board had ever reached a second window, because the cold
+  // rotation revisits a board only every ~11.4h. The deep_cursor map is now
+  // fed back into the slice as a fourth source, capped at 25 and rotated.
+  // Judge this bump ONLY by deepCursor.maxOffset exceeding 500.
+  buildVersion: "2026-08-25.19",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {

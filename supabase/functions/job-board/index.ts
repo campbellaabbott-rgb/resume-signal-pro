@@ -102,7 +102,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-25.18";
+const BUILD_VERSION = "2026-08-25.19";
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -255,6 +255,7 @@ const STRUCTURED_SWEEP_PER_HOP = 24;
 const HOT_SLICE = 10;
 const COLD_SLICE = 80; // cold boards are small (that's why they're cold); 80/hop at CONCURRENCY=8 is 10 sequential rounds — well under the edge wall-time limit. Rotation speed comes from concurrency + hops-per-pass, never bigger slices (proven-safe size).
 const BOOTSTRAP_PER_SLICE = 25; // zero-row boards prepended per cold slice after a deploy — +31% slice load, still ~3 rounds under the wall-time margin; a 1,900-board merge drains in ~1.5 passes instead of waiting a full rotation for its FIRST ingest
+const DEEP_PER_SLICE = 25; // boards still filling, prepended per cold slice — same cap and shape as BOOTSTRAP_PER_SLICE because that load is already proven safe; the work list is the deep_cursor map itself, which empties as boards wrap
 const SLICE_LOCK_MS = 3 * 60_000; // min gap between slices
 const DESC_CAP = 14_000; // matches the scanner's own input bounds
 
@@ -1357,16 +1358,16 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
       }
     } catch { /* bootstrap is an accelerator — on any error the rotation still reaches every board */ }
   }
-  const slice = [...demandBoards, ...bootstrapBoards, ...baseSlice];
-  const startIso = new Date().toISOString();
-  const freshCutoffMs = Date.now() - FRESH_WINDOW_DAYS * 86_400_000; // roles older than this are dropped
-
   // DEEP CURSORS — where each capped board's last pass stopped.
   //
   // One small meta row, token -> offset, only ever holding entries for boards
   // the vendor says are bigger than one pass can read. A board that wraps is
   // deleted from the map rather than stored as 0, so the row tracks the boards
   // still filling and nothing else.
+  //
+  // Read BEFORE the slice is sealed (moved up here in .19) so the lane below
+  // can use the map as its work list. Nothing between the old site and this
+  // one touched it, so the move is positional only.
   const deepCursors: Record<string, number> = await (async () => {
     try {
       const { data } = await client.from("job_board_meta").select("v").eq("k", "deep_cursor").maybeSingle();
@@ -1377,6 +1378,56 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
     } catch { return {}; } // a missing cursor costs one restart, never a failure
   })();
   let deepCursorsDirty = false;
+
+  // FAST LANE FOR BOARDS STILL FILLING (.19) — a cadence fix, not a logic fix.
+  //
+  // The cursor plumbing works and is not touched here. What did not work was
+  // how often a windowed board came round again. Measured 2026-08-26: the cold
+  // cursor advances 46 boards/min across 31,501 cold boards, so a board is
+  // revisited about every 11.4 hours. Workday serves 500 per visit, so CVS
+  // Health (19,253 advertised) needs 39 visits = 18.5 DAYS to be read once,
+  // against a 30-day freshness cap — it can never be complete and fresh at the
+  // same time. Live proof the second window was never reached: the status
+  // bundle read boards 66 / sumOffset 33,000, which is exactly 66 x 500.
+  //
+  // deepCursors IS the work list, and it maintains itself — an entry appears
+  // when a board reports a non-zero next offset and is deleted the moment it
+  // wraps. So this lane needs no queue of its own, nothing to seed, and
+  // nothing to drain: it empties itself as boards finish. That is what makes
+  // it safe to run every cold slice.
+  //
+  // Round-robin phased on the cold cursor so a board deeper in the map is not
+  // starved by the ones ahead of it, deduped against everything already in the
+  // slice so no board is fetched twice in one pass, and capped at the size the
+  // bootstrap lane already proved fits the wall-time budget.
+  let deepBoards: JobSource[] = [];
+  let deepLane: { at: string; candidates: number; selected: number; start: number } | null = null;
+  if (!inHotPhase) {
+    try {
+      const tokens = Object.keys(deepCursors);
+      if (tokens.length > 0) {
+        const taken = new Set([...baseSlice, ...demandBoards, ...bootstrapBoards].map((s) => s.token));
+        const start = cold % tokens.length;
+        // Dedupe BEFORE the cap, so a board already in this slice does not
+        // spend one of the lane's places on a fetch that will not happen.
+        deepBoards = [...tokens.slice(start), ...tokens.slice(0, start)]
+          .filter((t) => !taken.has(t))
+          .slice(0, DEEP_PER_SLICE)
+          .map((t) => JOB_SOURCES.find((s) => s.token === t))
+          .filter((s): s is JobSource => !!s);
+        // Instrumented for exactly the reason the bootstrap lane is: selected
+        // vs candidates separates a token that never resolved to a JobSource
+        // from one that was fetched and had nothing left to give. Without that
+        // split, an offset that does not move has two indistinguishable causes
+        // and gets guessed at — which is how this rotation was misread three
+        // times before it carried a number.
+        deepLane = { at: new Date().toISOString(), candidates: tokens.length, selected: deepBoards.length, start };
+      }
+    } catch { /* accelerator only — on any error the cold rotation still reaches every board */ }
+  }
+  const slice = [...demandBoards, ...bootstrapBoards, ...deepBoards, ...baseSlice];
+  const startIso = new Date().toISOString();
+  const freshCutoffMs = Date.now() - FRESH_WINDOW_DAYS * 86_400_000; // roles older than this are dropped
 
   // Board-failure state (streaks + dormancy) drives both the consecutive-failure
   // prune and the dormancy skip-list. Read once here so hot and cold hops share a
@@ -2237,10 +2288,18 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
         console.warn(`[JOB-BOARD] board ${tk} dormant after ${DEAD_BOARD_THRESHOLD} consecutive failures (${n} postings pruned and logged as board_dormant; fetch skipped until recheck)`);
       }
       await client.from("job_board_meta").upsert({ k: "board_failures", v: { streaks, dormant }, updated_at: new Date().toISOString() }, { onConflict: "k" });
-      if (deepCursorsDirty) {
+      if (deepCursorsDirty || deepLane) {
         // Best-effort: losing this costs a board one restarted pass, never a row.
+        //
+        // The lane's own counters ride in this same row under a key that is not
+        // a token, so they need no second meta key and no extra read in the
+        // status bundle. Both readers of this row keep only positive integer
+        // values, so a nested object here is inert to them: it cannot enter the
+        // cursor map, and it cannot disturb boards/maxOffset/sumOffset. Written
+        // when the lane ran even if no cursor moved — "ran and selected none"
+        // is precisely the state that has to be distinguishable.
         await client.from("job_board_meta")
-          .upsert({ k: "deep_cursor", v: deepCursors, updated_at: new Date().toISOString() }, { onConflict: "k" })
+          .upsert({ k: "deep_cursor", v: { ...deepCursors, ...(deepLane ? { __lane: deepLane } : {}) }, updated_at: new Date().toISOString() }, { onConflict: "k" })
           .then(({ error }) => { if (error) console.warn("[JOB-BOARD] deep_cursor write failed:", error.message?.slice(0, 120)); });
       }
     }
@@ -4978,6 +5037,13 @@ Deno.serve(async (req) => {
             // The deepest few, so a stuck cursor is visible as an offset that
             // does not move between two reads of this field.
             top: entries.slice(0, 8).map(([token, offset]) => ({ token, offset })),
+            // Did the fast lane actually run last cold slice, and how many
+            // boards did it put in? maxOffset stuck at 500 with a lane that
+            // selected nothing is a different bug from one that selected 25.
+            lane: (() => {
+              const l = (deepCur.data?.v as Record<string, unknown> | null | undefined)?.__lane;
+              return l && typeof l === "object" && !Array.isArray(l) ? l as Record<string, unknown> : null;
+            })(),
           };
         })(),
         hostSweep: {
