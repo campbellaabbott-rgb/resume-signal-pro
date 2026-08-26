@@ -4288,6 +4288,7 @@ export type Database = {
       }
       refresh_explore_cache: { Args: never; Returns: undefined }
       refresh_ghost_stats: { Args: never; Returns: undefined }
+      refresh_headline_open: { Args: never; Returns: number }
       refresh_job_board_facets: { Args: never; Returns: Json }
       refresh_job_board_stats: { Args: never; Returns: undefined }
       refresh_recency_ladder: { Args: never; Returns: Json }
