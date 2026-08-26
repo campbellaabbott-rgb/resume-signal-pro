@@ -57,14 +57,16 @@ Deno.serve(async (req) => {
     console.error("[API-KEY-REQUEST] issue failed:", error.message?.slice(0, 160));
     return json({ error: { code: "issue_failed", message: "Could not issue a key right now. Try again shortly." } }, 503);
   }
+  // Names mirror the RPC's OUT parameters, renamed in 20260826161200 so that
+  // none of them collides with a real column of api_keys.
   const d = (data ?? null) as
-    | { ok: boolean; reason: string; tier: string; rate_per_min: number; daily_quota: number; rotated: boolean }
+    | { issued: boolean; deny_reason: string; key_tier: string; rate_limit: number; quota_limit: number; was_rotated: boolean }
     | null;
-  if (!d?.ok) {
-    if (d?.reason === "too_many_requests") {
+  if (!d?.issued) {
+    if (d?.deny_reason === "too_many_requests") {
       return json({ error: { code: "too_many_requests", message: "That address has requested several keys today. Use the most recent one, or try again tomorrow." } }, 429);
     }
-    return json({ error: { code: d?.reason ?? "issue_failed", message: "Could not issue a key for that address." } }, 400);
+    return json({ error: { code: d?.deny_reason ?? "issue_failed", message: "Could not issue a key for that address." } }, 400);
   }
 
   // Email is BEST EFFORT and never blocks the response. The key is already
@@ -85,11 +87,11 @@ Deno.serve(async (req) => {
             <h2 style="margin:0 0 12px">Your API key</h2>
             <p style="margin:0 0 12px">Here is your key. We store only a hash of it, so this email is the only copy — keep it somewhere safe.</p>
             <pre style="background:#f4f4f5;padding:12px 14px;border-radius:8px;overflow-x:auto;font-size:13px"><code>${raw}</code></pre>
-            <p style="margin:12px 0"><strong>Free tier:</strong> ${d.rate_per_min} requests/minute, ${d.daily_quota}/day.</p>
+            <p style="margin:12px 0"><strong>Free tier:</strong> ${d.rate_limit} requests/minute, ${d.quota_limit}/day.</p>
             <pre style="background:#f4f4f5;padding:12px 14px;border-radius:8px;overflow-x:auto;font-size:12px"><code>curl https://bwhdazbotpblihdxcmho.supabase.co/functions/v1/public-api/v1/jobs?limit=5 \\
   -H "Authorization: Bearer ${raw}"</code></pre>
             <p style="margin:12px 0">Docs: <a href="https://resumebooster.work/data-api">resumebooster.work/data-api</a></p>
-            ${d.rotated ? '<p style="margin:12px 0;color:#b45309"><strong>Your previous key was revoked</strong> when this one was issued.</p>' : ""}
+            ${d.was_rotated ? '<p style="margin:12px 0;color:#b45309"><strong>Your previous key was revoked</strong> when this one was issued.</p>' : ""}
             <p style="margin:16px 0 0;color:#71717a;font-size:13px">If you did not request this, you can ignore it — the key is useless without the request you did not make, and it will simply go unused.</p>
           </div>`,
         }),
@@ -105,9 +107,9 @@ Deno.serve(async (req) => {
     key: raw,
     shownOnce: true,
     emailed,
-    tier: d.tier,
-    limits: { perMinute: d.rate_per_min, perDay: d.daily_quota },
-    rotated: d.rotated,
+    tier: d.key_tier,
+    limits: { perMinute: d.rate_limit, perDay: d.quota_limit },
+    rotated: d.was_rotated,
     docs: "https://resumebooster.work/data-api",
   });
 });

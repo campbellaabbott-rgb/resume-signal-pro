@@ -27,12 +27,19 @@ const ROOT = resolve(__dirname, "../..");
 const FN = readFileSync(resolve(ROOT, "supabase/functions/public-api/index.ts"), "utf8");
 const CODE = FN.replace(/\/\*[\s\S]*?\*\//g, "")
   .split("\n").map((l) => (/^\s*\/\//.test(l) ? "" : l)).join("\n");
-const MIG = (() => {
+/** Newest migration containing `needle`. Function and table definitions stop
+ *  living in the same file the moment a function is re-issued, and conflating
+ *  the two is how these assertions started reading the wrong migration. */
+const newestWith = (needle: string) => {
   const dir = resolve(ROOT, "supabase/migrations");
   const f = readdirSync(dir).filter((x) => x.endsWith(".sql"))
-    .filter((x) => readFileSync(resolve(dir, x), "utf8").includes("FUNCTION public.api_key_check(")).sort().pop();
+    .filter((x) => readFileSync(resolve(dir, x), "utf8").includes(needle)).sort().pop();
   return f ? readFileSync(resolve(dir, f), "utf8") : "";
-})();
+};
+/** The live definition of the checker. */
+const MIG = newestWith("FUNCTION public.api_key_check(");
+/** Where the tables and their RLS actually live. */
+const MIG_TBL = newestWith("CREATE TABLE IF NOT EXISTS public.api_keys");
 
 describe("a public API is a promise to someone else's code", () => {
   it("every posting read is fenced against withdrawn postings", () => {
@@ -60,8 +67,8 @@ describe("a public API is a promise to someone else's code", () => {
 
   it("the raw key is never stored — only its hash is looked up", () => {
     expect(CODE, "the raw key is sent to the database").toMatch(/p_key_hash: await sha256Hex\(raw\)/);
-    expect(MIG).toMatch(/key_hash text NOT NULL UNIQUE/);
-    expect(MIG, "a column that would hold the raw secret").not.toMatch(/\bkey_raw\b|\bsecret text\b|\bkey text NOT NULL\b/);
+    expect(MIG_TBL).toMatch(/key_hash text NOT NULL UNIQUE/);
+    expect(MIG_TBL, "a column that would hold the raw secret").not.toMatch(/\bkey_raw\b|\bsecret text\b|\bkey text NOT NULL\b/);
   });
 
   it("it does NOT share the front door's rate budget", () => {
@@ -69,22 +76,22 @@ describe("a public API is a promise to someone else's code", () => {
     // to scope that sum after board browsing starved upload and checkout.
     expect(CODE, "the API writes to the shared rate_limits table")
       .not.toMatch(/check_rate_limit|rate_limits/);
-    expect(MIG).toMatch(/CREATE TABLE IF NOT EXISTS public\.api_rate/);
+    expect(MIG_TBL).toMatch(/CREATE TABLE IF NOT EXISTS public\.api_rate/);
     // Keyed on the API key, not the IP — two callers behind one NAT are two
     // budgets, which is the right answer for an API.
-    expect(MIG).toMatch(/PRIMARY KEY \(key_id, minute\)/);
+    expect(MIG_TBL).toMatch(/PRIMARY KEY \(key_id, minute\)/);
   });
 
   it("the limiter increments atomically, so two callers cannot both pass", () => {
     // The upsert IS the increment; a read-then-write would let concurrent calls
     // both observe the last allowed value.
-    expect(MIG).toMatch(/ON CONFLICT \(key_id, minute\) DO UPDATE SET calls = public\.api_rate\.calls \+ 1/);
-    expect(MIG).toMatch(/RETURNING calls INTO v_rate/);
+    expect(MIG).toMatch(/ON CONFLICT \(key_id, minute\) DO UPDATE SET calls = (?:public\.api_rate|r)\.calls \+ 1/);
+    expect(MIG).toMatch(/RETURNING (?:r\.)?calls INTO v_rate/);
   });
 
   it("the key tables are not readable by anon", () => {
     for (const t of ["api_keys", "api_usage", "api_rate"]) {
-      expect(MIG, `${t} has no RLS`).toMatch(new RegExp(`ALTER TABLE public\\.${t} ENABLE ROW LEVEL SECURITY`));
+      expect(MIG_TBL, `${t} has no RLS`).toMatch(new RegExp(`ALTER TABLE public\\.${t} ENABLE ROW LEVEL SECURITY`));
     }
     // Definer function that reads keys and mutates counters: locked down the
     // same way the rest of this schema's definer functions are.

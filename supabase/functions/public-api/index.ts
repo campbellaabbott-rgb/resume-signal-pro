@@ -36,9 +36,14 @@ const cors = {
   "Access-Control-Allow-Methods": "GET, OPTIONS",
 };
 
+// Field names mirror the RPC's OUT parameters, which were RENAMED in
+// 20260826161200. They are deliberately not `key_id`/`tier`/`daily_quota`: those
+// are real columns of the tables the function touches, and a plpgsql OUT
+// parameter that shares a column name made every authenticated call fail with
+// 42702 "column reference is ambiguous".
 type Decision = {
-  allowed: boolean; reason: string; key_id: string | null; tier: string | null;
-  rate_limit: number; rate_used: number; daily_quota: number; daily_used: number;
+  is_allowed: boolean; deny_reason: string; api_key_id: string | null; key_tier: string | null;
+  rate_limit: number; rate_used: number; quota_limit: number; quota_used: number;
 };
 
 const json = (body: unknown, status = 200, extra: Record<string, string> = {}) =>
@@ -98,20 +103,20 @@ Deno.serve(async (req) => {
     return fail(503, "auth_unavailable", "Key verification is temporarily unavailable. Retry shortly.");
   }
   const d = (dec ?? null) as Decision | null;
-  if (!d || !d.allowed) {
-    const reason = d?.reason ?? "unknown_key";
+  if (!d || !d.is_allowed) {
+    const reason = d?.deny_reason ?? "unknown_key";
     // Rate headers ride on the refusal too — that is the response a client most
     // needs them on.
     const headers: Record<string, string> = d
       ? {
           "X-RateLimit-Limit": String(d.rate_limit),
           "X-RateLimit-Remaining": String(Math.max(0, d.rate_limit - d.rate_used)),
-          "X-Quota-Limit": String(d.daily_quota),
-          "X-Quota-Remaining": String(Math.max(0, d.daily_quota - d.daily_used)),
+          "X-Quota-Limit": String(d.quota_limit),
+          "X-Quota-Remaining": String(Math.max(0, d.quota_limit - d.quota_used)),
         }
       : {};
     if (reason === "rate_limited") return fail(429, "rate_limited", `Over ${d!.rate_limit} requests/minute.`, { ...headers, "Retry-After": "60" });
-    if (reason === "quota_exceeded") return fail(429, "quota_exceeded", `Daily quota of ${d!.daily_quota} requests used.`, { ...headers, "Retry-After": "3600" });
+    if (reason === "quota_exceeded") return fail(429, "quota_exceeded", `Daily quota of ${d!.quota_limit} requests used.`, { ...headers, "Retry-After": "3600" });
     if (reason === "revoked") return fail(403, "key_revoked", "This key has been revoked.", headers);
     return fail(401, "invalid_key", "That key is not recognised.");
   }
@@ -119,8 +124,8 @@ Deno.serve(async (req) => {
   const rateHeaders = {
     "X-RateLimit-Limit": String(d.rate_limit),
     "X-RateLimit-Remaining": String(Math.max(0, d.rate_limit - d.rate_used)),
-    "X-Quota-Limit": String(d.daily_quota),
-    "X-Quota-Remaining": String(Math.max(0, d.daily_quota - d.daily_used)),
+    "X-Quota-Limit": String(d.quota_limit),
+    "X-Quota-Remaining": String(Math.max(0, d.quota_limit - d.quota_used)),
     "X-Api-Version": API_VERSION,
   };
 

@@ -34,6 +34,10 @@ const COLUMNS_BY_TABLE: Record<string, string[]> = {
   job_board_postings: ["first_seen", "last_seen", "missing_since", "effective_posted", "posted_at", "category", "source", "company_token", "remote", "salary", "title", "location", "work_mode"],
   job_board_exits: ["exited_at", "exit_reason", "days_on_board", "posting_id", "category", "source", "company_token"],
   job_board_pool_samples: ["sampled_at", "serving", "total"],
+  // Added after the SECOND occurrence of this defect, 2026-08-26.
+  api_keys: ["id", "key_hash", "key_prefix", "name", "owner_email", "tier", "rate_per_min", "daily_quota", "created_at", "last_used_at", "revoked_at", "notes"],
+  api_usage: ["key_id", "day", "endpoint", "calls"],
+  api_rate: ["key_id", "minute", "calls"],
 };
 
 /** Strip SQL comments so prose about a name is never mistaken for a reference. */
@@ -120,4 +124,50 @@ describe("plpgsql OUT parameters cannot silently capture a column", () => {
       `every table must carry an alias so its columns can be qualified: ${unaliased.join(", ")}`,
     ).toEqual([]);
   });
+});
+
+/**
+ * SECOND OCCURRENCE, 2026-08-26 — and it cost the API its first working hour.
+ *
+ * api_key_check declared key_id, tier and daily_quota in RETURNS TABLE. All
+ * three are real columns of api_keys / api_usage / api_rate, and the body used
+ * one in an ON CONFLICT inference clause:
+ *
+ *     ON CONFLICT (key_id, minute) DO UPDATE ...
+ *
+ * Every authenticated call returned 42702 and the caller saw a flat 503. Key
+ * ISSUANCE worked throughout, which is what disguised it: api_key_issue names
+ * the same words but only inside an INSERT column list, and a column list is
+ * not an expression, so nothing is substituted there. A key could be minted and
+ * then never authenticated.
+ *
+ * The rule above says "qualify the collision through an alias". An ON CONFLICT
+ * target cannot be alias-qualified, so for these functions the standard is
+ * stricter and simpler: DO NOT COLLIDE. Every OUT name is checked against every
+ * column of every table the body touches, and the answer must be none.
+ */
+describe("the API key functions do not name a column in their return shape", () => {
+  for (const fn of ["api_key_check", "api_key_issue"]) {
+    it(`${fn}: no OUT parameter shares a name with a column it touches`, () => {
+      const { file, sql } = newestDefining(fn);
+      expect(file, `no migration defines ${fn}`).toBeTruthy();
+      const defAt = sql.indexOf(`FUNCTION public.${fn}(`);
+      const outs = /RETURNS TABLE \(([\s\S]*?)\)\s*\nLANGUAGE/.exec(sql.slice(defAt))?.[1] ?? "";
+      expect(outs, "RETURNS TABLE not found").not.toBe("");
+      const outNames = outs.split("\n").map((l) => l.trim().split(/\s+/)[0].replace(/,$/, "")).filter(Boolean);
+      expect(outNames.length, "parsed no OUT names — the check would be vacuous").toBeGreaterThan(3);
+
+      const body = stripComments(sql.slice(defAt));
+      const tablesTouched = Object.keys(COLUMNS_BY_TABLE).filter((t) => new RegExp(`public\\.${t}\\b`).test(body));
+      expect(tablesTouched.length, "body touches no known table — update COLUMNS_BY_TABLE").toBeGreaterThan(0);
+
+      const colliding = outNames.filter((n) => tablesTouched.some((t) => COLUMNS_BY_TABLE[t].includes(n)));
+      expect(
+        colliding,
+        `${fn} declares OUT parameter(s) that are also columns of ${tablesTouched.join(", ")}. ` +
+          `An ON CONFLICT target cannot be alias-qualified, so this must be fixed by RENAMING ` +
+          `the OUT parameter, not by qualifying it. Colliding:`,
+      ).toEqual([]);
+    });
+  }
 });

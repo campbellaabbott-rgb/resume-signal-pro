@@ -53,13 +53,13 @@ describe("a key nobody can get is not a product", () => {
   it("the ceiling is per ADDRESS, never per IP", () => {
     // Shared egress (an office, a university, mobile CGNAT) would divide one
     // allowance among everyone behind it.
-    expect(MIG).toMatch(/lower\(owner_email\) = v_email AND created_at > now\(\) - interval '24 hours'/);
+    expect(MIG).toMatch(/lower\((?:ak\.)?owner_email\) = v_email AND (?:ak\.)?created_at > now\(\) - interval '24 hours'/);
     expect(MIG_CODE, "issuance counts IPs").not.toMatch(/\bip\b|inet|x-forwarded-for/i);
     expect(CODE, "the function reads the caller IP").not.toMatch(/x-forwarded-for|cf-connecting-ip/i);
   });
 
   it("asking again rotates rather than accumulating live credentials", () => {
-    expect(MIG).toMatch(/UPDATE public\.api_keys\s*\n\s*SET revoked_at = now\(\)/);
+    expect(MIG).toMatch(/UPDATE public\.api_keys(?: ak)?\s*\n\s*SET revoked_at = now\(\)/);
     expect(CODE).toMatch(/rotated/);
   });
 
