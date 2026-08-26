@@ -3054,6 +3054,10 @@ export type Database = {
         Returns: undefined
       }
       apply_posting_corrections: { Args: { p_patches: Json }; Returns: number }
+      board_recency_ladder: {
+        Args: { p_fresh_days?: number; p_step?: number }
+        Returns: Json
+      }
       board_serving_count: { Args: never; Returns: number }
       build_missing_since_index_oneshot: { Args: never; Returns: undefined }
       build_sitemap_day_index_oneshot: { Args: never; Returns: undefined }
@@ -4152,6 +4156,7 @@ export type Database = {
       refresh_ghost_stats: { Args: never; Returns: undefined }
       refresh_job_board_facets: { Args: never; Returns: Json }
       refresh_job_board_stats: { Args: never; Returns: undefined }
+      refresh_recency_ladder: { Args: never; Returns: Json }
       refresh_stats_cache: { Args: never; Returns: undefined }
       refresh_transparency_cache: { Args: never; Returns: undefined }
       register_affiliate: {
