@@ -102,7 +102,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-25.34";
+const BUILD_VERSION = "2026-08-25.35";
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -2811,12 +2811,37 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
       // whose two halves disagree about what the board is cannot be right
       // even when it looks plausible.
       const freshIso = new Date(Date.now() - FRESH_WINDOW_DAYS * 86_400_000).toISOString();
+      // A FAILED COUNT WAS INDISTINGUISHABLE FROM A COLUMN NOBODY POPULATES.
+      //
+      // This discarded the error and returned null, and null is published as
+      // "no figure" — so a count that timed out deleted a disclosure instead of
+      // reporting a problem. Measured live 2026-08-27: filterCoverage was
+      // publishing ONE of its four figures ({"experience":0.394}), meaning a
+      // searcher who set a pay floor was seeing ~20% of the board and being
+      // told nothing, and one who set a work mode was seeing ~28% and being
+      // told nothing. These disclosures are the whole reason a NULL-discarding
+      // filter is allowed to exist here.
+      const coverageFailed: string[] = [];
       const one = async (col: string, op: "not.is.null" | "neq.unspecified") => {
         const q = client.from("job_board_postings").select("id", { count: "exact", head: true })
           .is("missing_since", null).gte("effective_posted", freshIso);
-        const { count } = op === "not.is.null" ? await q.not(col, "is", null) : await q.neq(col, "unspecified");
+        const { count, error } = op === "not.is.null" ? await q.not(col, "is", null) : await q.neq(col, "unspecified");
+        if (error) {
+          coverageFailed.push(col);
+          console.error(`[JOB-BOARD] filter coverage count failed for ${col}: ${error.code ?? ""} ${String(error.message ?? "").slice(0, 120)}`);
+        }
         return count ?? null;
       };
+      // The previous figures, read by JSON PATH so this costs a few bytes rather
+      // than the 1.3-1.6MB the whole meta row weighs.
+      const prevCoverage = await (async () => {
+        try {
+          const { data } = await client.from("job_board_meta")
+            .select("coverage:v->coverage").eq("k", "refresh").maybeSingle();
+          const c = (data as { coverage?: unknown } | null)?.coverage;
+          return c && typeof c === "object" ? c as Record<string, unknown> : null;
+        } catch { return null; }
+      })();
       try {
         // THE HEADLINE MUST COUNT WHAT THE BOARD CAN SERVE. This counted
         // missing_since alone, while the read path also requires
@@ -2864,7 +2889,30 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
           one("country", "not.is.null"),
         ]);
         const frac = (n: number | null) => (n === null ? null : Math.round((n / open) * 1000) / 1000);
-        return { open, salaryFloor: frac(sal), workMode: frac(wm), experience: frac(exp), country: frac(ctry) };
+        // A STALE-BUT-REAL FIGURE BEATS AN ABSENT ONE. Overwriting a working
+        // number with null on a transient failure deletes the caveat entirely,
+        // and the filter it describes keeps hiding the same share of the board
+        // with nothing on screen to say so. Coverage moves by fractions of a
+        // percent between passes, so last pass's figure is still true enough to
+        // warn with — and it is replaced the moment a count succeeds again.
+        const prevCov = (prevCoverage ?? {}) as Record<string, unknown>;
+        const keep = (name: string, n: number | null) => {
+          const f = frac(n);
+          if (f !== null) return f;
+          const old = prevCov[name];
+          return typeof old === "number" ? old : null;
+        };
+        if (coverageFailed.length) {
+          console.warn(`[JOB-BOARD] filter coverage carried forward for: ${coverageFailed.join(", ")}`);
+        }
+        return {
+          open,
+          salaryFloor: keep("salaryFloor", sal),
+          workMode: keep("workMode", wm),
+          experience: keep("experience", exp),
+          country: keep("country", ctry),
+          ...(coverageFailed.length ? { staleParts: coverageFailed } : {}),
+        };
         // `open` doubles as the honest board total — see the headline note in
         // serveList. It is an EXACT count of exactly the rows a visitor can
         // page to, taken in the same pass, so it costs nothing extra.

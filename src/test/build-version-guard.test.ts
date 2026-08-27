@@ -281,7 +281,14 @@ const PINNED = {
   // applied at attachRecheckedAt, the one function every posting path already
   // calls, as an EXPLICIT parameter (module state would leak one visitor's
   // exclusions into another's results). index.ts + search-routing.ts, sources.ts UNCHANGED.
-  buildVersion: "2026-08-25.34",
+  // 2026-08-25.35: filterCoverage stops going dark. A failed count returned
+  // null and null publishes as "no figure", so a timed-out count DELETED a
+  // disclosure instead of reporting a problem — live it was publishing one of
+  // its four figures, leaving a pay-floor searcher (~20% of the board) and a
+  // work-mode searcher (~28%) told nothing at all. Errors are logged, the
+  // previous figure is carried forward, and staleParts names what is stale.
+  // index.ts only, sources.ts UNCHANGED.
+  buildVersion: "2026-08-25.35",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {
