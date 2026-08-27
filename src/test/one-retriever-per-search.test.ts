@@ -367,10 +367,20 @@ describe("the head-term ring fetches what the scorer cannot reach", () => {
     // never a scrambled one.
     const blk = /let headRows: Array<Record<string, unknown>> = \[\];[\s\S]*?\n        \}/.exec(FN2)?.[0] ?? "";
     expect(blk, "the head ring block is missing").not.toBe("");
-    expect(/withDeadline\(/.test(blk), "must be deadline-bounded").toBe(true);
+    // The deadline moved to where the query is now ISSUED — before search_jobs,
+    // so the two round trips overlap — and the await site only consumes the
+    // promise. Assert it on the declaration, which is where it now lives.
+    const decl = /const headRingP[\s\S]*?\.catch\(\(\) => \(\{ data: null \}\)\)/.exec(FN2)?.[0] ?? "";
+    expect(decl, "the head ring promise declaration is missing").not.toBe("");
+    expect(/withDeadline\(/.test(decl), "must be deadline-bounded").toBe(true);
+    // And it must neutralise its own failure at CREATION: an unawaited promise
+    // that rejects before anyone looks at it is an unhandled rejection.
+    expect(/\.catch\(\(\) => \(\{ data: null \}\)\)/.test(decl), "must catch at creation").toBe(true);
     expect(/catch \{/.test(blk), "a failure must leave the ranked window standing").toBe(true);
     expect(/missed its deadline/.test(blk), "a silent miss is indistinguishable from no matches").toBe(true);
-    expect(/\.range\(0, 199\)/.test(blk), "the ring must be bounded").toBe(true);
+    // Also on the declaration now — the window is part of the query, and the
+    // query moved to where it is issued.
+    expect(/\.range\(0, 199\)/.test(decl), "the ring must be bounded").toBe(true);
   });
 
   it("sanitises the term before it reaches an ILIKE pattern", () => {

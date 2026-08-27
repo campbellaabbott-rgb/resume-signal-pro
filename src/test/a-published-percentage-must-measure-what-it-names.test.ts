@@ -235,8 +235,13 @@ describe("a slow search must say WHERE it was slow", () => {
       "salary_sorted", "routed_retriever", "related_count",
       "simple_config", "semantic", "semantic_filtered", "head_ring",
     ]) {
+      // The start variable is not always `t_<name>`: head_ring is now ISSUED
+      // before search_jobs and awaited later, so it measures from
+      // t_head_ring_started. What matters is that the mark is anchored to a
+      // timestamp taken when the query was issued — not that the two share a
+      // spelling.
       expect(CODE, `${name} runs under a deadline but reports no time`)
-        .toMatch(new RegExp(`markFrom\\("${name}", t_${name}\\);`));
+        .toMatch(new RegExp(`markFrom\\("${name}", (t_${name}|t_${name}_started)\\);`));
     }
   });
 
@@ -244,7 +249,7 @@ describe("a slow search must say WHERE it was slow", () => {
     // t0 read immediately before the await, not once at the top: a shared
     // start time would charge each tier for everything that preceded it.
     for (const name of ["salary_sorted", "head_ring", "semantic"]) {
-      expect(CODE).toMatch(new RegExp(`const t_${name} = Date\\.now\\(\\);`));
+      expect(CODE).toMatch(new RegExp(`const t_${name}(_started)? = Date\\.now\\(\\);`));
     }
   });
 });

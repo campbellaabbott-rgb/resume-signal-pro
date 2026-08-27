@@ -102,7 +102,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-25.30";
+const BUILD_VERSION = "2026-08-25.31";
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -6445,6 +6445,15 @@ Deno.serve(async (req) => {
     }
 
     if (action === "list") {
+      // THE CLOCK STARTS HERE, NOT INSIDE serveList.
+      //
+      // reqStart was assigned AFTER this meta read, so the ~1.3-1.6MB facet row
+      // fetched on the line below was outside every number the function
+      // publishes about itself. Measured against a probe that does the same read
+      // and nothing else, a median ~958ms of a list request was invisible —
+      // tookMs and phaseMs were reporting roughly a quarter of real server time,
+      // and two previous latency fixes were aimed with that instrument.
+      const t_entry = Date.now();
       const { data: meta } = await client.from("job_board_meta").select("v, updated_at").eq("k", "refresh").maybeSingle();
 
       if (!meta) {
@@ -6452,12 +6461,12 @@ Deno.serve(async (req) => {
         // refresh seeds the table; afterwards this path never runs again.
         const seeded = await runRefresh(client, true);
         if (!seeded.ok) return json({ error: "Job board is initializing — try again shortly" }, 503);
-        return await serveList(client, body);
+        return await serveList(client, body, undefined, t_entry);
       }
       if (Date.now() - new Date(meta.updated_at).getTime() > STALE_MS) {
         waitUntil(runRefresh(client)); // serve stale, refresh behind the scenes
       }
-      return await serveList(client, body, meta);
+      return await serveList(client, body, meta, t_entry);
     }
 
     if (action === "fit-batch") {
@@ -8189,6 +8198,8 @@ async function serveList(
   client: SupabaseClient,
   body: Record<string, unknown>,
   meta?: { v: Record<string, unknown>; updated_at: string } | null,
+  /** When the request actually entered the function — see the two clocks below. */
+  entryAt?: number,
 ) {
   // WHOLE ROWS, OR THE PAGER HANDS BACK A POSITION THAT CANNOT EXIST.
   //
@@ -8389,7 +8400,21 @@ async function serveList(
   // rows it returned, but never how long it took, so no one could see WHICH
   // tier is expensive across real traffic. One clock read, carried into the
   // log and the response.
-  const reqStart = Date.now();
+  // TWO CLOCKS, BECAUSE reqStart WAS DOING TWO JOBS.
+  //
+  // It fed both the REPORTING numbers (tookMs, the search-event log) and the
+  // request BUDGET — budgetLeft(), which sizes six downstream deadlines: the
+  // embed, the semantic ANN, the semantic re-filter, the simple_config tier, the
+  // head ring and the fuzzy augment gate. Simply moving reqStart earlier, which
+  // is what "start the clock at entry" sounds like, would silently shorten all
+  // six by ~958ms — and the 7s at the simple_config tier is explicitly sized
+  // against a measured 7.9s cold spike. Fixing an instrument must not move the
+  // thing it measures.
+  //
+  // So: reporting counts the meta read, and the budget still starts where the
+  // work does.
+  const reqStart = entryAt ?? Date.now();
+  const budgetStart = Date.now();
   // PER-PHASE, because the total pointed at the wrong thing. Measured
   // 2026-08-25: search_jobs — the ranked RPC that computes BOTH capped counts
   // — answers in 230-465ms when called directly, while this function reports
@@ -8427,7 +8452,7 @@ async function serveList(
   // whole-request budget would starve the semantic rescue on exactly the empty
   // pages it exists to serve.
   const REQUEST_BUDGET_MS = 9_000;
-  const budgetLeft = () => Math.max(300, REQUEST_BUDGET_MS - (Date.now() - reqStart));
+  const budgetLeft = () => Math.max(300, REQUEST_BUDGET_MS - (Date.now() - budgetStart));
   const honesty = (jobs: Array<Record<string, unknown>>): Record<string, unknown> => {
     const v = filterViolations(jobs, applied);
     if (v.length) {
@@ -8564,6 +8589,14 @@ async function serveList(
           ...(trackedTotal !== null ? { trackedTotal } : {}),
       companies: [], companiesCount: 0, categories: {}, failedSources: [], failedCount: 0,
       refreshedAt: null,
+      // TIMED, BECAUSE THIS IS THE EXIT THAT ISOLATES THE META READ. It does no
+      // query of its own, so tookMs here is almost entirely the facet-row fetch
+      // plus transport — the cleanest measurement of the gap the two clocks
+      // above were split to expose, and it was the one exit reporting nothing.
+      // honesty() is deliberately not spread: it fires a 2% filter-integrity
+      // meta upsert, which has no business running on an empty page.
+      tookMs: Date.now() - reqStart,
+      phaseMs: { ...phase },
     });
   }
   // withCount is separable from wantCount so a page can be re-run WITHOUT the
@@ -9610,6 +9643,42 @@ async function serveList(
       // spelling as its own OR-branch, and the response names every added
       // phrase so the UI can show "also matching: …".
       const { q: expandedQ, expansions } = expandQuery(qText);
+
+      // THE HEAD-TERM RING STARTS HERE AND IS AWAITED ~700 LINES BELOW.
+      //
+      // It is an independent query — a title prefix scan that ADDS candidates
+      // to the ranked window — and it was issued only after search_jobs had
+      // already returned, so the two ran back to back for no reason. Measured
+      // at roughly 473ms of the pair, about 18% of felt latency on the hottest
+      // path in the function.
+      //
+      // NOT Promise.all, and that is the whole point. Racing them together
+      // would let a ring rejection take down the ranked call with it, and the
+      // request would demote to the recency path — trading 473ms for a strictly
+      // worse page. The promise is started, its failure is neutralised AT
+      // CREATION, and it is awaited on its own. An unawaited promise that
+      // rejects before anyone looks at it is an unhandled rejection in this
+      // runtime, so the catch cannot wait until the await site.
+      //
+      // Gated exactly as the await site is gated, so nothing new fires. The one
+      // cost: on a query whose ranked window comes back empty the code takes a
+      // rescue path and never awaits this, so the round trip is spent for
+      // nothing. It is bounded — the ring only ever runs for SHORT queries,
+      // which are the ones least likely to come back empty.
+      const headRingP: Promise<{ data: unknown[] | null }> | null =
+        (scoreRanked && headTermRing && !deepPage)
+          ? (withDeadline(
+              buildQuery("effective_posted", false, undefined, { skipTerms: true })
+                .ilike("title", `${sanitizeTerm(qText)}%`)
+                .order("effective_posted", { ascending: false })
+                .order("id", { ascending: true })
+                .range(0, 199),
+              Math.min(4_000, budgetLeft()),
+            ) as Promise<{ data: unknown[] | null }>)
+              .catch(() => ({ data: null }))
+          : null;
+      const t_head_ring_started = Date.now();
+
       const t_search_jobs_3 = Date.now();
       const { data: ranked, error: rankErr } = await client.rpc("search_jobs", {
         p_q: expandedQ,
@@ -10410,18 +10479,15 @@ async function serveList(
         // path in the function — it is not free and should not fire when it
         // cannot help.
         let headRows: Array<Record<string, unknown>> = [];
-        if (scoreRanked && headTermRing && !deepPage) {
+        if (headRingP) {
           try {
-            const t_head_ring = Date.now();
-            const { data: hr } = await withDeadline(
-              buildQuery("effective_posted", false, undefined, { skipTerms: true })
-                .ilike("title", `${sanitizeTerm(qText)}%`)
-                .order("effective_posted", { ascending: false })
-                .order("id", { ascending: true })
-                .range(0, 199),
-              Math.min(4_000, budgetLeft()),
-            ) as { data: unknown[] | null };
-            markFrom("head_ring", t_head_ring);
+            // Started before search_jobs — see the comment there. By the time we
+            // get here it has usually already resolved, so this await is free.
+            // markFrom still measures from when the query was ISSUED, not from
+            // here, or the phase record would report ~0ms for a real round trip
+            // and hide the cost it exists to expose.
+            const { data: hr } = await headRingP;
+            markFrom("head_ring", t_head_ring_started);
             if (Array.isArray(hr)) headRows = (hr as unknown[]).map(rowToJob) as Array<Record<string, unknown>>;
             else console.warn(`[JOB-BOARD] head-term ring missed its deadline for q=${JSON.stringify(qText)}`);
           } catch { /* the ranked window alone is still a valid page */ }

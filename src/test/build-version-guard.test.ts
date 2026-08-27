@@ -255,7 +255,15 @@ const PINNED = {
   // nothing". The page then claimed the corpus had no answer. semanticDegraded
   // now names the four infrastructure failures and is surfaced on the response
   // like rankedFellBack. index.ts only, sources.ts UNCHANGED.
-  buildVersion: "2026-08-25.30",
+  // 2026-08-25.31: the request clock started after the 1.3-1.6MB facet read, so
+  // a median ~958ms of every list request was outside tookMs/phaseMs entirely.
+  // Split in two rather than moved: reqStart also fed budgetLeft(), which sizes
+  // six downstream deadlines, and moving it earlier would have silently
+  // shortened all six. Reporting now counts the meta read; the budget still
+  // starts where the work does. The head-term ring is also issued before
+  // search_jobs instead of after it (~473ms of the pair), catching at creation
+  // so an early rejection is not unhandled. index.ts only, sources.ts UNCHANGED.
+  buildVersion: "2026-08-25.31",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {

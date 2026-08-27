@@ -45,7 +45,13 @@ const CODE = FN.replace(/\/\*[\s\S]*?\*\//g, "").split("\n").map((l) => l.replac
 describe("an empty search must not cost twenty seconds", () => {
   it("the request carries one budget, and it is finite", () => {
     expect(CODE).toMatch(/const REQUEST_BUDGET_MS = 9_000;/);
-    expect(CODE).toMatch(/const budgetLeft = \(\) => Math\.max\(300, REQUEST_BUDGET_MS - \(Date\.now\(\) - reqStart\)\);/);
+    // ANCHORED TO budgetStart, NOT reqStart, AND THAT IS THE POINT. reqStart
+    // now starts at function entry so the reporting numbers include the
+    // 1.3-1.6MB facet read that used to be invisible. Leaving the budget on the
+    // same clock would have silently shortened all six downstream deadlines by
+    // that ~958ms — fixing an instrument must not move the thing it measures.
+    expect(CODE).toMatch(/const budgetLeft = \(\) => Math\.max\(300, REQUEST_BUDGET_MS - \(Date\.now\(\) - budgetStart\)\);/);
+    expect(CODE).toMatch(/const budgetStart = Date\.now\(\);/);
   });
 
   it("every rescue tier draws from that budget instead of its own clock", () => {
