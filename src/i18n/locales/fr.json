@@ -3990,6 +3990,8 @@
     "postedAfterStatedDate": "Compté à partir de la date indiquée par chaque employeur, pas de celle où nous avons trouvé l'offre.",
     "companyMatched": "Nom d'employeur reconnu — offres chez {{company}}.",
     "exactWordMatch": "Correspondances de mot exactes pour «{{q}}».",
+    "locationSplit": "« {{place}} » a été lu comme un lieu — offres « {{q}} » à {{place}}.",
+    "locationSplitApply": "Définir comme filtre de lieu",
     "ignoredWidening": "Nous n'avons pas pu ajouter {{filters}} à cette page, ces offres sont donc absentes ici.",
     "chipAgentOnly": "L'agent peut postuler",
     "chipActivelyHiring": "Recrute activement",

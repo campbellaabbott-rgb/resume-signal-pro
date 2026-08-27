@@ -296,7 +296,10 @@ const PINNED = {
   // protection. index.ts only, sources.ts UNCHANGED.
   // 2026-08-25.37: no job-board change; version moved with the batch that fixed
   // check-alerts, send-scan-report and the multi-select "Clear all".
-  buildVersion: "2026-08-25.37",
+  // 2026-08-27.38: the location-split tier — a zero-title-count query whose
+  // tail names a place ("nurse london") is split and re-run as q+location,
+  // disclosed as locationSplit. The eighth list exit.
+  buildVersion: "2026-08-27.38",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {

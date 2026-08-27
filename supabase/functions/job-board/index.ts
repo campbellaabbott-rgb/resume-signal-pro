@@ -102,7 +102,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-25.37";
+const BUILD_VERSION = "2026-08-27.38"; // .38: location-split tier — "nurse london" searches nurse IN London when the title count is zero
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -10230,6 +10230,164 @@ async function serveList(
           // differently for the reason recorded in the migration.
           ...rescueVendorsParam(applied),
         } : {};
+        // ── THE LOCATION SPLIT TIER ───────────────────────────────────
+        //
+        // "nurse london" RETURNED A SCHOOL NURSE IN NEW SOUTH WALES.
+        //
+        // MEASURED live 2026-08-27:
+        //   q="nurse"                        title matches 10,000 (capped)
+        //   q="nurse london"                 title matches 0, 121 description
+        //   q="nurse" + location=london      title matches 30, 105 description
+        //
+        // Typing the city into the search box does not search that city. The
+        // words are ANDed against title_tsv, no title contains both, and the
+        // function escalates to search_tsv — so "london" is matched wherever it
+        // appears in four thousand characters of description. The top three
+        // results for "nurse london" were London Ontario, MARSDEN PARK NEW SOUTH
+        // WALES, and London Kentucky. "software engineer austin" is the same
+        // shape: 0 title matches against 116 with the location filter set.
+        //
+        // Putting the place in the box is the most ordinary thing a searcher
+        // does, and it was the query most likely to be answered with noise.
+        //
+        // NO GAZETTEER. The board decides what a place is, by asking: split the
+        // query, treat the tail as a location, and see whether the head has real
+        // TITLE matches inside it. That test is self-validating and it is what
+        // makes this safe on queries that merely look like they end in a place:
+        //   "drive a truck at night"     location "night"   -> no such place
+        //   "help old people at home"    location "at home" -> head "help old
+        //                                people" has no title matches anyway
+        // Both fall through untouched. A static city list would need maintaining
+        // and would still be wrong about Reading, Mobile and Jordan; this asks
+        // the corpus instead, and the corpus is the thing being searched.
+        //
+        // COSTS NOTHING ON A HEALTHY SEARCH. It runs only where the title count
+        // is ZERO and the page is therefore description-only guessing — the
+        // state this fixes. A search with title matches never reaches here.
+        //
+        // TWO SPLITS, LONGEST FIRST, so "new york" and "san francisco" are tried
+        // whole before "york" and "francisco". Issued concurrently: the pair
+        // costs one round trip, and the two-word answer wins when both hit.
+        if (
+          total === 0 && ranked.length > 0 && offset === 0 && !countOnly &&
+          !applied.location && !newestFirst
+        ) {
+          try {
+            const words = qText.trim().split(/\s+/).filter(Boolean);
+            const splits: Array<{ head: string; place: string }> = [];
+            for (const n of [2, 1]) {
+              if (words.length <= n) continue;
+              const place = words.slice(-n).join(" ");
+              // Letters, spaces and the punctuation real place names carry.
+              // A tail with digits or symbols is not a city and probing it is
+              // a wasted round trip.
+              if (!/^[\p{L}][\p{L}\s.'-]*$/u.test(place)) continue;
+              splits.push({ head: words.slice(0, -n).join(" "), place });
+            }
+            if (splits.length > 0) {
+              const t_location_split = Date.now();
+              const probes = await Promise.all(splits.map((sp) =>
+                (withDeadline(
+                  client.rpc("search_jobs", {
+                    p_q: sp.head,
+                    p_fresh_cutoff: freshCutoffIso,
+                    p_location: rankedLocationParam(sp.place),
+                    p_remote: applied.remote ? true : null,
+                    p_country: applied.country,
+                    p_category: categoryParam(applied),
+                    ...sendableSourcesParam(applied),
+                    p_experience: applied.experience.length ? applied.experience : null,
+                    p_salary_floor: applied.salaryFloor,
+                    p_companies: applied.companies.length ? applied.companies : null,
+                    p_posted_after: applied.postedAfter,
+                    p_max_age_days: applied.maxAgeDays,
+                    ...payParams(applied),
+                    ...(applied.workMode ? { p_work_mode: applied.workMode } : {}),
+                    p_limit: Math.max(limit * 2, 40),
+                    p_offset: 0,
+                  }),
+                  // Half the exact-word tier's budget. This is a bonus on a page
+                  // that already has rows to serve, so it must never be the
+                  // reason a response is slow — if it does not finish, the
+                  // description-only page below stands.
+                  Math.min(3_500, budgetLeft()),
+                ) as Promise<{ data: unknown[] | null }>)
+                  .catch(() => ({ data: null }))
+              ));
+              markFrom("location_split", t_location_split);
+              // LONGEST SPLIT FIRST, and the acceptance test is TITLE matches —
+              // total_rows, not row count. A head with only description matches
+              // inside the location is the same guessing this tier exists to
+              // replace, so it is not an improvement and is not taken.
+              let won: { rows: Array<Record<string, unknown>>; head: string; place: string; hits: number } | null = null;
+              for (let i = 0; i < splits.length && !won; i++) {
+                const rows = probes[i]?.data;
+                if (!Array.isArray(rows) || rows.length === 0) continue;
+                const hits = Number((rows[0] as { total_rows?: number } | undefined)?.total_rows);
+                if (!Number.isFinite(hits) || hits <= 0) continue;
+                won = {
+                  rows: (rows as unknown[]).map(rowToJob) as Array<Record<string, unknown>>,
+                  head: splits[i].head,
+                  place: splits[i].place,
+                  hits,
+                };
+              }
+              if (won) {
+                // Exclusions ("nurse not travel") are applied by
+                // attachRecheckedAt below, the same seam every other tier on
+                // this route uses — one filter, one spelling of the rule.
+                const splitJobs = won.rows;
+                const splitScored = rerankWindow(splitJobs, [won.head]);
+                const splitGrouped = groupSimilar
+                  ? collapseClusters(splitScored, limit)
+                  : { jobs: splitScored.slice(0, limit), rawConsumed: Math.min(splitScored.length, limit) };
+                if (splitGrouped.jobs.length > 0) {
+                  logSearch("ranked", splitGrouped.jobs.length, won.hits, "fuzzy");
+                  return json({
+                    jobs: preferMatchedLocation(
+                      await attachRecheckedAt(client, splitGrouped.jobs, excludedTerms),
+                      locationTerms(won.place).terms,
+                    ),
+                    searchId,
+                    ...searchDisclosures(body, applied, maxAgeClamped),
+                    ...intentDisclosure(intentLift),
+                    ...exclusionDisclosure(excludedTerms),
+                    ...coverageDisclosure(applied, meta),
+                    ...honesty(splitGrouped.jobs),
+                    // A GUESS THE READER CAN SEE AND UNDO. The board changed
+                    // what was asked, so it says so in the same shape
+                    // intentFilters and excludedTerms already use — the rule
+                    // being that a filter nobody can see is a filter nobody can
+                    // remove.
+                    locationSplit: { q: won.head, location: won.place },
+                    // The title count for the SPLIT query, which is the query
+                    // these rows answer. Publishing the original query's zero
+                    // beside a full page is the contradiction this whole tier
+                    // is here to end.
+                    total: won.hits,
+                    ...(won.hits >= 10_000 ? { countCapped: true } : {}),
+                    // ONE PAGE, HONESTLY. This tier fires only at offset 0, so a
+                    // pager following nextOffset would be answered by the
+                    // ORIGINAL query's ranked path — a different row set wearing
+                    // page two's clothing. Same contract as the exact-word tier:
+                    // no second page rather than an incoherent one. The searcher
+                    // who wants more can accept the split the disclosure offers.
+                    hasMore: false,
+                    nextOffset: offset + splitGrouped.rawConsumed,
+                    totalAllCompanies: safeMetaTotal ?? 0,
+                    ...(trackedTotal !== null ? { trackedTotal } : {}),
+                    companies: [],
+                    companiesCount: ((v0.companiesCount as number | undefined) ?? ((v0.companiesFacet as unknown[]) ?? []).length),
+                    categories: {},
+                    failedSources: [], failedCount: 0,
+                    refreshedAt: (v0.refreshedAt as string) ?? null,
+                  });
+                }
+              }
+            }
+          } catch { /* the description-only page below is still a page */ }
+        }
+
         // Empty ranked result: try the FAST trigram fuzzy fallback right here
         // ("desinger" → designer), then return an honest empty. Critically we
         // do NOT fall through to the recency path — its OR-of-ILIKE with an

@@ -3990,6 +3990,8 @@
     "postedAfterStatedDate": "Gezählt ab dem vom Arbeitgeber angegebenen Datum, nicht ab dem Zeitpunkt, an dem wir die Anzeige gefunden haben.",
     "companyMatched": "Arbeitgebername erkannt — Stellen bei {{company}}.",
     "exactWordMatch": "Exakte Wortübereinstimmungen für „{{q}}“.",
+    "locationSplit": "„{{place}}“ wurde als Ort gelesen — „{{q}}“-Stellen in {{place}}.",
+    "locationSplitApply": "Als Ortsfilter übernehmen",
     "ignoredWidening": "{{filters}} ließ sich auf dieser Seite nicht ergänzen, daher fehlen diese Anzeigen hier.",
     "chipAgentOnly": "Agent kann bewerben",
     "chipActivelyHiring": "Aktiv auf Personalsuche",

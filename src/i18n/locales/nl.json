@@ -3990,6 +3990,8 @@
     "postedAfterStatedDate": "Geteld vanaf de datum die de werkgever noemt, niet vanaf het moment dat wij de vacature vonden.",
     "companyMatched": "Werkgeversnaam herkend — vacatures bij {{company}}.",
     "exactWordMatch": "Exacte woordovereenkomsten voor “{{q}}”.",
+    "locationSplit": "“{{place}}” gelezen als locatie — “{{q}}”-vacatures in {{place}}.",
+    "locationSplitApply": "Instellen als locatiefilter",
     "ignoredWidening": "We konden {{filters}} niet aan deze pagina toevoegen, dus die vacatures ontbreken hier.",
     "chipAgentOnly": "Agent kan solliciteren",
     "chipActivelyHiring": "Actief aan het werven",

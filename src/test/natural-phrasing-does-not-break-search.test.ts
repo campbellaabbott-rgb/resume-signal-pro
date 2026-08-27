@@ -111,7 +111,7 @@ describe("natural job-search phrasing survives", () => {
     // four list returns rather than the recency one alone — searchers were
     // never told what had been dropped.
     expect(FN).toMatch(/out\.droppedTerms = dropped/);
-    expect((FN.match(/\.\.\.searchDisclosures\(body, applied, maxAgeClamped\)/g) ?? []).length).toBe(7);
+    expect((FN.match(/\.\.\.searchDisclosures\(body, applied, maxAgeClamped\)/g) ?? []).length).toBe(8);
     expect(UI).toMatch(/droppedTerms\?: string\[\];/);
     expect(UI).toMatch(/jobsPage\.droppedTerms/);
   });

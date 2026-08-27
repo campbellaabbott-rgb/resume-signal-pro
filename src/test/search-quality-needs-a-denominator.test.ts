@@ -59,7 +59,7 @@ describe("search quality has a denominator and an outcome", () => {
       [...new Set(routes)].sort(),
       "every list return must log. A missing path is an invisible hole in the denominator.",
     ).toEqual(["fuzzy", "ranked", "recency", "semantic"]);
-    expect(routes.length, "seven list exits, seven logSearch calls").toBe(7);
+    expect(routes.length, "eight list exits, eight logSearch calls").toBe(8);
   });
 
   it("issues a search id and returns it on every list response", () => {
@@ -68,9 +68,9 @@ describe("search quality has a denominator and an outcome", () => {
     // from that path can never be attributed and its results are unmeasurable.
     expect(
       (FN.match(/^\s*searchId,$/gm) ?? []).length,
-      "searchId must be returned by all SEVEN list paths — a click on a page that " +
+      "searchId must be returned by all EIGHT list paths — a click on a page that " +
         "carries no search id can never be attributed to the search that produced it",
-    ).toBe(7);
+    ).toBe(8);
   });
 
   it("does not swallow a failed write", () => {

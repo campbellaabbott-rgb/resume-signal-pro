@@ -80,6 +80,6 @@ describe("engineer not manager returned managers", () => {
     expect(split).toBeGreaterThan(-1);
     expect(split, "exclusions must be split beside the intent lift").toBeLessThan(lift);
     expect(FN).toMatch(/function exclusionDisclosure\(/);
-    expect((FN.match(/\.\.\.exclusionDisclosure\(excludedTerms\),/g) ?? []).length).toBe(7);
+    expect((FN.match(/\.\.\.exclusionDisclosure\(excludedTerms\),/g) ?? []).length).toBe(8);
   });
 });

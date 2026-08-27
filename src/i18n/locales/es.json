@@ -3990,6 +3990,8 @@
     "postedAfterStatedDate": "Contado desde la fecha que indica cada empleador, no desde que encontramos la oferta.",
     "companyMatched": "Coincide con el nombre de una empresa — mostrando empleos en {{company}}.",
     "exactWordMatch": "Mostrando coincidencias exactas de palabra para «{{q}}».",
+    "locationSplit": "Leímos “{{place}}” como ubicación — mostrando empleos de “{{q}}” en {{place}}.",
+    "locationSplitApply": "Usarlo como filtro de ubicación",
     "ignoredWidening": "No pudimos añadir {{filters}} a esta página, así que esas ofertas quedan fuera aquí.",
     "chipAgentOnly": "El agente puede postular",
     "chipActivelyHiring": "Contratando ahora",

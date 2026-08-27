@@ -3990,6 +3990,8 @@
     "postedAfterStatedDate": "Contado a partir da data indicada por cada empregador, não de quando encontrámos a vaga.",
     "companyMatched": "Corresponde ao nome de uma empresa — a mostrar vagas na {{company}}.",
     "exactWordMatch": "A mostrar correspondências exatas de palavra para “{{q}}”.",
+    "locationSplit": "Lemos “{{place}}” como localização — mostrando vagas de “{{q}}” em {{place}}.",
+    "locationSplitApply": "Usar como filtro de localização",
     "ignoredWidening": "Não conseguimos acrescentar {{filters}} a esta página, por isso essas vagas ficam de fora aqui.",
     "chipAgentOnly": "O agente pode candidatar-se",
     "chipActivelyHiring": "A contratar agora",

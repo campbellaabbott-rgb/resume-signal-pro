@@ -481,6 +481,10 @@ interface BoardResponse {
   companyMatched?: string;
   /** Exact whole-word tier answered, rather than the ranked scorer. */
   exactWordMatch?: string;
+  /** The query's tail was read as a place and the search re-run as q+location
+   *  ("nurse london" -> nurse IN London). The board changed what was asked, so
+   *  it says so — and offers to make the split real. */
+  locationSplit?: { q: string; location: string };
   // Server-computed "a full page came back", so pagination survives a missing total.
   hasMore?: boolean;
   // Raw rows the server consumed for this page. Once same-role-different-location
@@ -5490,6 +5494,24 @@ export default function Jobs() {
                   {data?.exactWordMatch && (
                     <p className="text-xs text-muted-foreground mb-2">
                       {t("jobsPage.exactWordMatch", "Showing exact whole-word matches for “{{q}}”.", { q: data.exactWordMatch })}
+                    </p>
+                  )}
+                  {data?.locationSplit && (
+                    <p className="text-xs text-muted-foreground mb-2">
+                      {t("jobsPage.locationSplit", "Read “{{place}}” as a location — showing “{{q}}” jobs in {{place}}.", {
+                        q: data.locationSplit.q, place: data.locationSplit.location,
+                      })}{" "}
+                      {/* Make the guess undoable AND committable. Clicking moves
+                          the place into the real location filter, so paging,
+                          counts and every later refinement run on the honest
+                          query instead of re-deriving the split each time. */}
+                      <button
+                        type="button"
+                        className="underline underline-offset-2 hover:text-foreground"
+                        onClick={() => { setQ(data.locationSplit!.q); setLocation(data.locationSplit!.location); }}
+                      >
+                        {t("jobsPage.locationSplitApply", "Set it as the location filter")}
+                      </button>
                     </p>
                   )}
                   {data?.didYouMean && (
