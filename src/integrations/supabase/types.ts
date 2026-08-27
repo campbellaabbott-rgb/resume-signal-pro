@@ -2777,16 +2777,19 @@ export type Database = {
       used_stripe_sessions: {
         Row: {
           ip_address: string | null
+          product_type: string | null
           session_id: string
           used_at: string
         }
         Insert: {
           ip_address?: string | null
+          product_type?: string | null
           session_id: string
           used_at?: string
         }
         Update: {
           ip_address?: string | null
+          product_type?: string | null
           session_id?: string
           used_at?: string
         }
@@ -3271,15 +3274,19 @@ export type Database = {
           p_category?: string
           p_companies?: string[]
           p_country?: string
+          p_department?: string
           p_experience?: string[]
           p_fresh_cutoff: string
           p_include_unstated?: boolean
           p_location?: string
           p_max_age_days?: number
+          p_max_years?: number
+          p_pay_basis?: string
           p_pay_stated?: boolean
           p_posted_after?: string
           p_q?: string
           p_remote?: boolean
+          p_salary_ceiling?: number
           p_salary_floor?: number
           p_sources?: string[]
           p_work_mode?: string
@@ -3336,16 +3343,20 @@ export type Database = {
           p_category?: string
           p_companies?: string[]
           p_country?: string
+          p_department?: string
           p_experience?: string[]
           p_fresh_cutoff: string
           p_include_unstated?: boolean
           p_limit?: number
           p_location?: string
           p_max_age_days?: number
+          p_max_years?: number
+          p_pay_basis?: string
           p_pay_stated?: boolean
           p_posted_after?: string
           p_q: string
           p_remote?: boolean
+          p_salary_ceiling?: number
           p_salary_floor?: number
           p_vendors?: string[]
           p_work_mode?: string
@@ -4332,17 +4343,21 @@ export type Database = {
           p_category?: string
           p_companies?: string[]
           p_country?: string
+          p_department?: string
           p_experience?: string[]
           p_fresh_cutoff: string
           p_include_unstated?: boolean
           p_limit?: number
           p_location?: string
           p_max_age_days?: number
+          p_max_years?: number
           p_offset?: number
+          p_pay_basis?: string
           p_pay_stated?: boolean
           p_posted_after?: string
           p_q: string
           p_remote?: boolean
+          p_salary_ceiling?: number
           p_salary_floor?: number
           p_sources?: string[]
           p_work_mode?: string
