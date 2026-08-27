@@ -70,6 +70,30 @@ Deno.serve(async (req) => {
   try {
     const body: ScanReportRequest = await req.json();
     const email = (body.email || "").trim().toLowerCase();
+    // RATE LIMITED, because this endpoint is verify_jwt=false and sends mail
+    // FROM the project's own verified domain to whatever address the body names
+    // — and then enqueues four more over fourteen days. Unthrottled that is a
+    // mail bomb with our return address on it, and the spam complaints land on
+    // the same domain that carries password resets and purchase receipts.
+    //
+    // Per-IP, matching the shape create-product-checkout already uses. It does
+    // not make the endpoint authenticated — the free scan flow cannot require a
+    // session — but it bounds the blast radius, which nothing did before.
+    const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
+      || req.headers.get("x-real-ip") || "unknown";
+    const rlClient = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+    );
+    const { data: rlAllowed } = await rlClient.rpc("check_rate_limit", {
+      p_function: "send-scan-report", p_ip: clientIp, p_max_requests: 12, p_window_minutes: 60,
+    });
+    if (rlAllowed === false) {
+      return new Response(JSON.stringify({ success: false, error: "Too many requests. Please try again later." }), {
+        status: 429,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
       return new Response(JSON.stringify({ success: false, error: "Invalid email address" }), {
         status: 400,
@@ -96,11 +120,21 @@ Deno.serve(async (req) => {
       });
       // Market pulse opt-in — explicit checkbox in the report UI
       if (body.subscribePulse) {
+        // NO `unsubscribed_at: null` HERE, and that omission is the fix.
+        //
+        // email is the PRIMARY KEY, so this upsert is an UPDATE for anyone
+        // already in the table — and writing null to that column is precisely
+        // how send-market-pulse decides who to mail (it selects
+        // `.is("unsubscribed_at", null)`). So an opt-in on this endpoint
+        // RESURRECTED anyone who had previously unsubscribed, silently, from an
+        // unauthenticated request that only needed to know their address.
+        //
+        // Re-subscribing must be its own deliberate act, not a side effect of a
+        // checkbox on someone else's scan.
         await supabase.from("market_pulse_subscribers").upsert({
           email,
           industry: body.industry ?? "general",
           last_score: Math.round(body.score),
-          unsubscribed_at: null,
         });
       }
     } catch (e) {

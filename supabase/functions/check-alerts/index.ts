@@ -55,38 +55,53 @@ serve(async (req) => {
     
     // Gather metrics
     const metrics: Record<string, number> = {};
-    
-    // Delivery health
-    const { data: deliveryData } = await supabase.rpc('get_delivery_health', { p_hours_back: 1 });
-    if (deliveryData?.[0]) {
-      metrics.delivery_rate = deliveryData[0].delivery_rate || 100;
+    // A health check that could not RUN is not a healthy one. Every RPC below
+    // dropped its error, so a failing or timing-out check simply left its metric
+    // unset and the alert was skipped in silence — the monitor going blind and
+    // the monitor reporting "all clear" looked identical from outside.
+    const unavailable: string[] = [];
+    // deno-lint-ignore no-explicit-any
+    const health = async (fn: string): Promise<any | null> => {
+      const { data, error } = await supabase.rpc(fn, { p_hours_back: 1 });
+      if (error) {
+        unavailable.push(fn);
+        logStep("Health RPC failed — alert cannot be evaluated", { fn, error: error.message?.slice(0, 160) });
+        return null;
+      }
+      return data?.[0] ?? null;
+    };
+
+    // `?? 100`, NEVER `|| 100`, AND THIS IS THE WHOLE BUG.
+    //
+    // These were `x.delivery_rate || 100`. Zero is falsy, so a 0% success rate —
+    // every delivery failed, the AI gateway is down, the mail key was rotated —
+    // became 100. All three of these are `lt` alerts, firing when the value
+    // drops BELOW a threshold, so the total-outage case was the one case that
+    // could never trigger them. The worse the incident, the healthier it read.
+    //
+    // `??` keeps the intended behaviour for a genuinely empty window (no
+    // deliveries attempted in the last hour is not a failure) while letting a
+    // real zero through as a real zero.
+    const deliveryData = await health('get_delivery_health');
+    if (deliveryData) metrics.delivery_rate = deliveryData.delivery_rate ?? 100;
+
+    const aiData = await health('get_ai_quality_stats');
+    if (aiData) metrics.ai_success_rate = aiData.success_rate ?? 100;
+
+    const emailData = await health('get_email_health');
+    if (emailData) metrics.email_success_rate = emailData.success_rate ?? 100;
+
+    const webhookData = await health('get_webhook_health');
+    if (webhookData) {
+      const total = webhookData.total_received ?? 0;
+      metrics.webhook_failure_rate = total > 0 ? ((webhookData.processing_failed ?? 0) / total) * 100 : 0;
     }
-    
-    // AI quality
-    const { data: aiData } = await supabase.rpc('get_ai_quality_stats', { p_hours_back: 1 });
-    if (aiData?.[0]) {
-      metrics.ai_success_rate = aiData[0].success_rate || 100;
-    }
-    
-    // Email health
-    const { data: emailData } = await supabase.rpc('get_email_health', { p_hours_back: 1 });
-    if (emailData?.[0]) {
-      metrics.email_success_rate = emailData[0].success_rate || 100;
-    }
-    
-    // Webhook health
-    const { data: webhookData } = await supabase.rpc('get_webhook_health', { p_hours_back: 1 });
-    if (webhookData?.[0]) {
-      const failRate = webhookData[0].total_received > 0 
-        ? ((webhookData[0].processing_failed || 0) / webhookData[0].total_received) * 100 
-        : 0;
-      metrics.webhook_failure_rate = failRate;
-    }
-    
-    // Parse failures
-    const { data: parseData } = await supabase.rpc('get_parse_failure_stats', { p_hours_back: 1 });
-    if (parseData?.[0]) {
-      metrics.parse_failure_count = parseData[0].total_failures || 0;
+
+    const parseData = await health('get_parse_failure_stats');
+    if (parseData) metrics.parse_failure_count = parseData.total_failures ?? 0;
+
+    if (unavailable.length) {
+      logStep("ALERTS BLIND — these checks could not be evaluated", { unavailable });
     }
     
     logStep("Metrics gathered", metrics);

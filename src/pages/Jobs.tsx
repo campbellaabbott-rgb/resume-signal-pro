@@ -3277,7 +3277,13 @@ export default function Jobs() {
       f.push({
         key: `mode:${m}`,
         label: t(`jobsPage.workMode.${m}`, m),
-        clear: () => { setWorkMode(withoutMode(workMode, m)); setRemoteOnly(false); },
+        // FUNCTIONAL UPDATE, because "Clear all" invokes every chip's clear() in
+        // one pass. Each closure captured the SAME `workMode`, so removing
+        // "remote" queued "hybrid" and removing "hybrid" queued "remote" — last
+        // write won and the board stayed filtered by one mode after the visitor
+        // asked for no filters at all. Reading `prev` makes the removals compose
+        // instead of overwrite, and fixes rapid successive chip clicks too.
+        clear: () => { setWorkMode((prev) => withoutMode(prev, m)); setRemoteOnly(false); },
       });
     }
     // A LABEL PER STEP, not a two-way guess. With only "day" and "week" in the

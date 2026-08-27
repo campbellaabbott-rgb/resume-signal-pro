@@ -294,7 +294,9 @@ const PINNED = {
   // not survive between requests here: 14 consecutive requests, zero hits), and
   // so was the semantic cooldown; both are removed rather than left reading as
   // protection. index.ts only, sources.ts UNCHANGED.
-  buildVersion: "2026-08-25.36",
+  // 2026-08-25.37: no job-board change; version moved with the batch that fixed
+  // check-alerts, send-scan-report and the multi-select "Clear all".
+  buildVersion: "2026-08-25.37",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {

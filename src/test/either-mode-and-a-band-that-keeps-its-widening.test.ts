@@ -32,6 +32,11 @@ const BOARD = readFileSync(
   resolve(__dirname, "../../supabase/functions/job-board/index.ts"), "utf8");
 const API = readFileSync(
   resolve(__dirname, "../../supabase/functions/public-api/index.ts"), "utf8");
+const BOARD_UI = readFileSync(resolve(__dirname, "../pages/Jobs.tsx"), "utf8");
+const ALERTS = readFileSync(
+  resolve(__dirname, "../../supabase/functions/check-alerts/index.ts"), "utf8");
+const SCAN_REPORT = readFileSync(
+  resolve(__dirname, "../../supabase/functions/send-scan-report/index.ts"), "utf8");
 
 describe("either mode, and a band that keeps its widening", () => {
   it("accepts several work modes", () => {
@@ -82,5 +87,49 @@ describe("either mode, and a band that keeps its widening", () => {
     // be the opposite bug.
     expect(BOARD).toMatch(/: q\.lte\("salary_rank_usd", applied\.salaryCeiling\);/);
     expect(API).toMatch(/: q\.lte\("salary_rank_usd", salaryMax\);/);
+  });
+
+  it('"Clear all" actually clears every selected mode', () => {
+    // A bug I shipped with multi-select. "Clear all" invokes every removable
+    // chip's clear() in one pass, and each closure had captured the SAME
+    // workMode string — so removing "remote" queued "hybrid" and removing
+    // "hybrid" queued "remote". Last write won and the board stayed filtered by
+    // one mode after the visitor asked for no filters at all.
+    //
+    // The functional updater makes the removals compose rather than overwrite,
+    // and fixes rapid successive chip clicks for free.
+    expect(BOARD_UI).toMatch(/setWorkMode\(\(prev\) => withoutMode\(prev, m\)\)/);
+    expect(BOARD_UI, "a captured value here is the bug")
+      .not.toMatch(/setWorkMode\(withoutMode\(workMode, m\)\)/);
+  });
+
+  it("an alert that cannot fire on a total outage is not an alert", () => {
+    // check-alerts read `rate || 100`. Zero is falsy, so a 0% success rate — the
+    // whole pipeline down — became 100, and all three of these are `lt` alerts
+    // that fire when a value drops BELOW a threshold. The worse the incident,
+    // the healthier it read.
+    expect(ALERTS).toMatch(/delivery_rate \?\? 100/);
+    expect(ALERTS).toMatch(/success_rate \?\? 100/);
+    // Comments stripped: the note explaining this bug necessarily quotes the
+    // broken form, and a scanner that read it would flag the fix as the defect —
+    // the false positive this repo has now shipped five times.
+    const alertsCode = ALERTS.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/^\s*\/\/[^\n]*/gm, " ");
+    expect(alertsCode, "no falsy default may come back").not.toMatch(/_rate \|\| 100/);
+    // And a check that could not RUN must be distinguishable from a healthy one.
+    expect(ALERTS).toMatch(/unavailable\.push\(fn\)/);
+    expect(ALERTS).toMatch(/ALERTS BLIND/);
+  });
+
+  it("an opt-in cannot resurrect someone who unsubscribed", () => {
+    // email is the PRIMARY KEY, so the upsert is an UPDATE for anyone already
+    // there — and send-market-pulse selects its recipients with
+    // `.is("unsubscribed_at", null)`. Writing null to that column from an
+    // unauthenticated endpoint re-subscribed anyone whose address you knew.
+    const pulse = SCAN_REPORT.slice(SCAN_REPORT.indexOf('from("market_pulse_subscribers")'));
+    expect(pulse.slice(0, 400), "an opt-in must never clear an opt-out")
+      .not.toMatch(/unsubscribed_at: null/);
+    // And the mailer itself is bounded — it sends from the project's own domain
+    // and enqueues four more over fourteen days.
+    expect(SCAN_REPORT).toMatch(/p_function: "send-scan-report"/);
   });
 });
