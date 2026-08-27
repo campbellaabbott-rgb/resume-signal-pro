@@ -255,6 +255,10 @@ describe("the heartbeat watches the vendors that depend on the sweep", () => {
     // a skip instead of silently disappearing; and transparency_cache is
     // watched, which it never was — /pay-transparency could publish a week-old
     // measurement under a green light.
+    // 2026-08-27.2: the disk plan size is a meta row (plan_disk_gb, seeded 12
+    // by 20260827220000), not a hard-coded 8GB — the endpoint was reporting
+    // "90% of the 8GB plan" against a 12GB disk, an alarm about a limit that
+    // no longer exists.
     // The pin moves with every scan-heartbeat change, deliberately: the
     // version is the only external tell of which bundle answered.
     expect(HB).toMatch(/const BUILD_VERSION = "2026-08-27\.\d+"/);

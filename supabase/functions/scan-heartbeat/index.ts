@@ -105,7 +105,7 @@ function unanswered(r: { timedOut?: boolean; failed?: boolean }, fn: string, ms:
  *
  * BUMP ON EVERY DEPLOY of this function.
  */
-const BUILD_VERSION = "2026-08-27.1";
+const BUILD_VERSION = "2026-08-27.2";
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -328,6 +328,14 @@ serve(async (req) => {
       // correct for this one.
       const dateCovP = rpcWithin(supabase.rpc('get_date_coverage'), RPC_MS);
       const dbSizeP = rpcWithin(supabase.rpc('get_db_size_stats'), RPC_MS);
+      // THE PLAN SIZE IS OPERATOR STATE, NOT A CONSTANT. Both disk checks
+      // hard-coded 8GB and kept alarming at "90%" for weeks after the disk was
+      // widened to 12GB — a monitor crying wolf about a limit that no longer
+      // existed. The row is seeded by 20260827220000 and updated by hand when
+      // the tier changes; a missing row falls back to 8 so a fresh environment
+      // still alarms early rather than never.
+      const planDiskP = supabase
+        .from('job_board_meta').select('v').eq('k', 'plan_disk_gb').maybeSingle();
 
       // ghost-index stats and per-vendor date coverage are NOT read live here.
       // Both carry `SET statement_timeout = '20s'` and both exceed it against
@@ -714,8 +722,24 @@ serve(async (req) => {
         }
       }
 
+      // One resolution of the plan row for both disk checks. Clamped to a sane
+      // range: a fat-fingered 0 or 1200 in the meta row must not disable the
+      // one alarm that catches out-of-disk.
+      const planDiskGb = (() => {
+        let val: number | null = null;
+        return async (): Promise<number> => {
+          if (val !== null) return val;
+          try {
+            const { data } = await planDiskP;
+            const gb = Number((data?.v as { gb?: number } | null)?.gb);
+            val = Number.isFinite(gb) && gb >= 1 && gb <= 512 ? gb : 8;
+          } catch { val = 8; }
+          return val;
+        };
+      })();
+
       // Storage headroom: the scale program pushes the corpus past 300k
-      // postings on an 8GB plan. Alert at 75% database usage — the one
+      // postings on the plan disk. Alert at 75% database usage — the one
       // failure mode that takes every feature down at once is out-of-disk.
       try {
         const sfRes = await storageP;
@@ -724,15 +748,15 @@ serve(async (req) => {
         const { data: sf } = sfRes;
         const row = Array.isArray(sf) ? sf[0] : sf;
         if (row && typeof row.db_bytes === 'number') {
-          const PLAN_BYTES = 8 * 1024 ** 3;
-          const usedPct = Math.round(100 * row.db_bytes / PLAN_BYTES);
+          const planGb = await planDiskGb();
+          const usedPct = Math.round(100 * row.db_bytes / (planGb * 1024 ** 3));
           const tight = usedPct >= 75;
           checks.push({
             name: 'job_board_storage',
             passed: !tight,
             responseTimeMs: 0,
             error: tight
-              ? `database at ${usedPct}% of the 8GB plan (postings ${Math.round(row.postings_bytes / 1024 ** 2)}MB, closures ${Math.round(row.closures_bytes / 1024 ** 2)}MB) — upgrade the plan or lower the corpus governor before ingest stalls`
+              ? `database at ${usedPct}% of the ${planGb}GB plan (postings ${Math.round(row.postings_bytes / 1024 ** 2)}MB, closures ${Math.round(row.closures_bytes / 1024 ** 2)}MB) — upgrade the plan or lower the corpus governor before ingest stalls`
               : undefined,
           });
           if (tight && overallStatus === 'healthy') {
@@ -1102,20 +1126,20 @@ serve(async (req) => {
       if (!sizeErr && sizeStats) {
         const sz = sizeStats as { db_bytes?: number; postings_bytes?: number };
         const dbBytes = typeof sz.db_bytes === 'number' ? sz.db_bytes : 0;
-        const PLAN_BYTES = 8 * 1024 * 1024 * 1024; // 8 GB plan
-        const usedPct = dbBytes > 0 ? Math.round((dbBytes / PLAN_BYTES) * 100) : 0;
+        const planGb = await planDiskGb();
+        const usedPct = dbBytes > 0 ? Math.round((dbBytes / (planGb * 1024 ** 3)) * 100) : 0;
         const diskTight = usedPct >= 70;
         checks.push({
           name: 'job_board_disk',
           passed: !diskTight,
           responseTimeMs: 0,
           error: diskTight
-            ? `database at ${usedPct}% of the 8GB plan (${(dbBytes / 1e9).toFixed(2)} GB total, postings ${((sz.postings_bytes ?? 0) / 1e9).toFixed(2)} GB) — widen the DB tier before raising the row governor`
+            ? `database at ${usedPct}% of the ${planGb}GB plan (${(dbBytes / 1e9).toFixed(2)} GB total, postings ${((sz.postings_bytes ?? 0) / 1e9).toFixed(2)} GB) — widen the DB tier before raising the row governor`
             : undefined,
         });
         if (diskTight) {
           if (overallStatus === 'healthy') overallStatus = 'degraded';
-          errorMessage = errorMessage || `Database near disk cap (${usedPct}% of 8GB)`;
+          errorMessage = errorMessage || `Database near disk cap (${usedPct}% of ${planGb}GB)`;
         }
       }
     } catch (e) {
