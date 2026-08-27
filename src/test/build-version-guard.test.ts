@@ -241,7 +241,14 @@ const PINNED = {
   // so a 190ms overrun cost 5.4s instead of 0.4s (reproduced live). A timeout
   // now means "no count", which the client already renders honestly.
   // index.ts only, sources.ts UNCHANGED.
-  buildVersion: "2026-08-25.28",
+  // 2026-08-25.29: the bare word "remote" becomes a filter. It was ANDed
+  // against the job title, so q="remote python" found 3 postings where the
+  // remote filter finds 200. The exclusion was deliberate but rested on a
+  // figure about a different column; measured, the ambiguity it feared is
+  // 2.7% (168 of 6,119 "remote"-titled jobs are not work_mode=remote).
+  // remote/hybrid/onsite lift, and every remote phrase moves off the narrower
+  // `remote` boolean onto workMode. index.ts only, sources.ts UNCHANGED.
+  buildVersion: "2026-08-25.29",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {
