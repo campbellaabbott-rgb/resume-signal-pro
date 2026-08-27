@@ -30,7 +30,7 @@ const FN = readFileSync(
 /** Comments stripped — this file quotes failure shapes to explain them. */
 const CODE = FN.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ");
 // The tier sits between its gate and the empty-ranked rescue gate that follows.
-const tierStart = CODE.indexOf("total === 0 && ranked.length > 0");
+const tierStart = CODE.indexOf("total !== null && total < 30 && ranked.length > 0");
 const TIER = CODE.slice(
   tierStart,
   CODE.indexOf("if (ranked.length === 0 && offset === 0", tierStart),
@@ -39,13 +39,29 @@ const JOBS = readFileSync(resolve(__dirname, "../pages/Jobs.tsx"), "utf8");
 const EN = JSON.parse(readFileSync(resolve(__dirname, "../i18n/locales/en.json"), "utf8"));
 
 describe("a place typed into the box reaches the location filter", () => {
-  it("has the tier at all, gated on the state it fixes", () => {
-    // total === 0 && rows present is precisely "the page is description-only
-    // guessing". A query with real title matches must never pay this tier's
-    // round trip.
+  it("has the tier at all, gated on a THIN title segment — not an empty one", () => {
+    // The `total === 0` gate shipped first and was VERIFIED DEAD on its own
+    // motivating examples the day it went live: "nurse london" did not split,
+    // because "Registered Practical Nurse - AgeCare London" satisfies the
+    // ANDed query — the company name carries the city. Measured live: nurse
+    // chicago 10 combined-title matches, accountant berlin 13. The city leaks
+    // into titles and companies often enough that the count is almost never
+    // exactly zero, so zero admitted only queries where the place appears
+    // NOWHERE ("philly" — which is why philly worked and london did not).
     expect(TIER.length, "the location-split tier is gone").toBeGreaterThan(500);
+    expect(tierStart, "the gate reverted to total === 0 — dead on nurse london, measured")
+      .toBeGreaterThan(-1);
     expect(TIER, "the tier must stand down when a location filter is already set")
       .toContain("!applied.location");
+  });
+
+  it("accepts only a DECISIVE win over the title segment it replaces", () => {
+    // At total > 0 the current page holds real combined-title matches ("PMHNP
+    // Nurse Practitioner - Chicago" IS a Chicago nurse job), so a lateral move
+    // must not override what the person typed: twice the current count and an
+    // absolute floor. Those rows live in the place they name, so the winning
+    // split page retains them.
+    expect(TIER).toMatch(/hits < Math\.max\(2 \* total, 15\)\) continue/);
   });
 
   it("asks the corpus, not a city list", () => {
@@ -53,7 +69,6 @@ describe("a place typed into the box reaches the location filter", () => {
     // location — total_rows, not row count. Description matches inside the
     // location are the same guessing this tier replaces.
     expect(TIER).toMatch(/total_rows/);
-    expect(TIER, "acceptance must require real title hits").toMatch(/hits <= 0\) continue/);
     expect(CODE, "a static gazetteer will rot and be wrong about Reading and Mobile")
       .not.toMatch(/CITY_NAMES|KNOWN_CITIES|GAZETTEER/);
   });

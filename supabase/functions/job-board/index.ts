@@ -102,7 +102,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-27.39"; // .39: the five blind filters (ceiling, basis, maxYears, department, vendors) ride the ranked path; .38: location-split tier
+const BUILD_VERSION = "2026-08-27.40"; // .40: the split gate fires on a THIN title segment, not an empty one — verified dead on "nurse london" at .39
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -10277,8 +10277,20 @@ async function serveList(
         // TWO SPLITS, LONGEST FIRST, so "new york" and "san francisco" are tried
         // whole before "york" and "francisco". Issued concurrently: the pair
         // costs one round trip, and the two-word answer wins when both hit.
+        // THIN, NOT EMPTY. This gate shipped as `total === 0` and was VERIFIED
+        // DEAD on its own motivating examples the day it went live: "nurse
+        // london" did not split, because "Registered Practical Nurse - AgeCare
+        // London" matches the ANDed query — the company carries the city.
+        // Measured live 2026-08-27: nurse chicago 10 combined-title matches,
+        // accountant berlin 13, nurse london / software engineer austin 1-6.
+        // The city leaks into titles, companies and departments just often
+        // enough that the title count is almost never exactly zero, so the
+        // only query the gate admitted was one where the place name appears
+        // NOWHERE — "philly". Under 30 means the title segment cannot fill
+        // half a default page and the rest is description guessing; the
+        // acceptance bar below, not the gate, is what keeps the split honest.
         if (
-          total === 0 && ranked.length > 0 && offset === 0 && !countOnly &&
+          total !== null && total < 30 && ranked.length > 0 && offset === 0 && !countOnly &&
           !applied.location && !newestFirst
         ) {
           try {
@@ -10334,7 +10346,15 @@ async function serveList(
                 const rows = probes[i]?.data;
                 if (!Array.isArray(rows) || rows.length === 0) continue;
                 const hits = Number((rows[0] as { total_rows?: number } | undefined)?.total_rows);
-                if (!Number.isFinite(hits) || hits <= 0) continue;
+                // DECISIVELY better, not laterally different. The page being
+                // replaced can hold real combined-title matches now (a "PMHNP
+                // Nurse Practitioner - Chicago" IS a Chicago nurse job), so the
+                // split must beat the current title segment by a clear margin —
+                // twice the current count, and at least 15 rows — or the guess
+                // is not worth overriding what the person literally typed.
+                // (Those combined-title rows are located in the place they
+                // name, so the winning split page retains them.)
+                if (!Number.isFinite(hits) || hits < Math.max(2 * total, 15)) continue;
                 won = {
                   rows: (rows as unknown[]).map(rowToJob) as Array<Record<string, unknown>>,
                   head: splits[i].head,

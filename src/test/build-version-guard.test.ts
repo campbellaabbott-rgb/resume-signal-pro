@@ -302,7 +302,10 @@ const PINNED = {
   // 2026-08-27.39: salaryCeiling/payBasis/maxYears/department/vendors moved
   // out of the blind set — extraFilterParams beside every payParams spread,
   // vendors merged into p_sources. Pairs with 20260827210000.
-  buildVersion: "2026-08-27.39",
+  // 2026-08-27.40: the split gate fires on a THIN title segment (total < 30,
+  // acceptance 2x + floor 15) — the total===0 gate was verified dead on
+  // "nurse london" the day .39 went live: the company name carried the city.
+  buildVersion: "2026-08-27.40",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {
