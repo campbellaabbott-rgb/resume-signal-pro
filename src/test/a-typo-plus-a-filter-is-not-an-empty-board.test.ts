@@ -122,7 +122,19 @@ describe("a typo plus a filter is not an empty board", () => {
     const create = RESCUE_SQL.indexOf("CREATE FUNCTION public.fuzzy_title_search(");
     expect(drop, "the live three-argument signature is not dropped").toBeGreaterThan(-1);
     expect(drop).toBeLessThan(create);
-    expect(RESCUE_SQL).toMatch(/GRANT EXECUTE ON FUNCTION public\.fuzzy_title_search\(/);
+    // AND THE GRANTS COME BACK, because DROP discards them. Either spelling
+    // counts: an explicit GRANT per signature, or the catalog loop
+    // 20260827170000 uses — that migration REVOKES these three from anon (they
+    // are SECURITY DEFINER, so the grant was the whole access control, and anon
+    // could page the corpus straight off PostgREST at any offset) and re-grants
+    // service_role over every overload pg_proc actually holds. A hand-listed
+    // grant would miss an overload this database carries and the migrations do
+    // not describe.
+    const explicitGrant = /GRANT EXECUTE ON FUNCTION public\.fuzzy_title_search\(/.test(RESCUE_SQL);
+    const catalogGrant = /p\.proname IN \([^)]*'fuzzy_title_search'[^)]*\)/.test(RESCUE_SQL)
+      && /GRANT EXECUTE ON FUNCTION %s TO service_role/.test(RESCUE_SQL);
+    expect(explicitGrant || catalogGrant,
+      "DROP discards grants — the rescue must be re-granted, explicitly or from the catalog").toBe(true);
   });
 
   it("the edge function binds the filters instead of standing down", () => {

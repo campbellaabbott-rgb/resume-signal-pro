@@ -288,7 +288,13 @@ const PINNED = {
   // work-mode searcher (~28%) told nothing at all. Errors are logged, the
   // previous figure is carried forward, and staleParts names what is stale.
   // index.ts only, sources.ts UNCHANGED.
-  buildVersion: "2026-08-25.35",
+  // 2026-08-25.36: the serving path stops reading the 1.3-1.6MB facet row — the
+  // refresh pass now writes a small `refresh_head` row carrying exactly what it
+  // uses. The 60s in-isolate cache shipped in .33 was INERT (module state does
+  // not survive between requests here: 14 consecutive requests, zero hits), and
+  // so was the semantic cooldown; both are removed rather than left reading as
+  // protection. index.ts only, sources.ts UNCHANGED.
+  buildVersion: "2026-08-25.36",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {

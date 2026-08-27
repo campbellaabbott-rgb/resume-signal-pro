@@ -51,7 +51,7 @@ describe("a tier that fails must not look like a tier that declined", () => {
   });
 
   it("names every infrastructure failure, and only those", () => {
-    for (const kind of ["embed", "ann_deadline", "ann_error", "refilter_deadline", "cooldown"]) {
+    for (const kind of ["embed", "ann_deadline", "ann_error", "refilter_deadline"]) {
       expect(FN, `${kind} must set the flag`).toContain(`semanticDegraded = "${kind}"`);
     }
     // An honest "no" must stay null, or the signal means nothing: the token
@@ -59,11 +59,11 @@ describe("a tier that fails must not look like a tier that declined", () => {
     // answers, not failures.
     const decl = FN.indexOf("let semanticDegraded:");
     const setCount = (FN.slice(decl).match(/semanticDegraded = "/g) ?? []).length;
-    // FIVE NOW: the four failures plus "cooldown", the stand-down that follows
-    // one of them. It belongs here rather than being treated as a decline,
-    // because the retrieval still did not happen — the page must not claim the
-    // corpus has no answer just because the tier is resting.
-    expect(setCount, "only these five states may set it").toBe(5);
+    // BACK TO FOUR. A fifth, "cooldown", was added and then removed: it depended
+    // on module-level state surviving between requests, and that was measured
+    // not to happen here (14 consecutive requests, zero cache hits against a 60s
+    // TTL). A flag that can never be set is worse than no flag.
+    expect(setCount, "only these four states may set it").toBe(4);
   });
 
   it("surfaces it on the response, spread-when-set like rankedFellBack", () => {
@@ -88,19 +88,23 @@ describe("a tier that fails must not look like a tier that declined", () => {
     expect(JOBS).toMatch(/data\?\.semanticDegraded[\s\S]{0,200}jobsPage\.zeroBodyDegraded/);
   });
 
-  it("stands the tier down after a failure instead of paying 5s per search", () => {
-    // The race lost EVERY time while the RPC was dead: a fixed 5.0s tax on a 9s
-    // budget for nothing (58% of tookMs on a thin search), and the abandoned
-    // query kept running in Postgres for another 13-31s because walking away
-    // does not cancel it.
-    expect(FN).toMatch(/const SEMANTIC_COOLDOWN_MS = 10 \* 60_000;/);
-    expect(FN).toMatch(/semanticColdUntil = Date\.now\(\) \+ SEMANTIC_COOLDOWN_MS;/);
-    // Checked BEFORE the embed, which costs 100-200ms of the per-request CPU
-    // budget before the RPC that is going to fail is even reached.
-    const check = FN.indexOf("if (Date.now() < semanticColdUntil)");
-    const embed = FN.indexOf("const t_embed_query = Date.now();");
-    expect(check, "no cooldown check").toBeGreaterThan(-1);
-    expect(check, "the cooldown must be checked before the embed spend").toBeLessThan(embed);
+  it("does NOT rely on in-isolate state to stand the tier down", () => {
+    // A 10-minute cooldown was shipped and then removed, because module-level
+    // state does not survive between requests in this runtime. Measured on the
+    // offset-ceiling exit, which reads the meta row and runs no query of its
+    // own: fourteen consecutive requests — six on ONE TCP connection, under a
+    // second apart — cost 452-1,034ms each against a 60,000ms TTL. Zero hits.
+    // The cache was provably being seeded on those same requests, so it is a
+    // demonstration rather than an inference.
+    //
+    // Each attempt is still bounded by its own 5s deadline and semanticDegraded
+    // reports the failure from outside. A guard that cannot fire is worse than
+    // no guard: it reads as protection.
+    expect(FN, "the cooldown must not come back as in-isolate state")
+      .not.toMatch(/semanticColdUntil/);
+    expect(FN).not.toMatch(/SEMANTIC_COOLDOWN_MS/);
+    // And the reason must stay written down, or it gets re-added.
+    expect(FN).toMatch(/IN-ISOLATE STATE DOES NOT SURVIVE BETWEEN REQUESTS HERE/);
   });
 
   it("a phase duration carries its outcome", () => {

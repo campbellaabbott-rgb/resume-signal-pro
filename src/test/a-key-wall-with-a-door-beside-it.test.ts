@@ -117,4 +117,40 @@ describe("the key wall has no door beside it", () => {
       );
     }
   });
+
+  it("and the RPC door beside the table door is shut too", () => {
+    // The lockdown revoked SELECT on the corpus and then waved these three off
+    // in a comment: "the three search RPCs are SECURITY DEFINER and were already
+    // independent of this policy". Being independent of the policy is exactly
+    // what made them the remaining hole — SECURITY DEFINER means they run as
+    // their owner, so the GRANT was the entire access control.
+    //
+    // Proven live six hours later with nothing but the published anon key:
+    // POST /rest/v1/rpc/search_jobs with p_offset 40000 returned full posting
+    // rows including apply_url. p_offset has no ceiling, so walking it over a
+    // term dictionary reconstitutes the servable corpus around both the edge
+    // function and the /v1 metering.
+    const sql = stripped(readFileSync(
+      resolve(DIR, "20260827170000_the_rank_function_rewarded_keyword_stuffing.sql"), "utf8"));
+    // Revoked from the CATALOG: these functions have been widened repeatedly and
+    // this database carries functions the migrations do not describe, so a
+    // hand-listed REVOKE would miss an overload and silently leave it open.
+    expect(sql).toMatch(/FROM pg_proc p/);
+    expect(sql).toMatch(/p\.proname IN \('search_jobs', 'count_jobs_capped', 'fuzzy_title_search'\)/);
+    expect(sql).toMatch(/REVOKE ALL ON FUNCTION %s FROM PUBLIC, anon, authenticated/);
+    expect(sql).toMatch(/GRANT EXECUTE ON FUNCTION %s TO service_role/);
+    // And it proves itself as anon, because a REVOKE that missed an overload
+    // looks exactly like one that worked.
+    expect(sql).toMatch(/SET LOCAL ROLE anon/);
+    expect(sql).toMatch(/anon can still execute search_jobs/);
+  });
+
+  it("no later migration re-grants the search RPCs to anon", () => {
+    const after = FILES.filter((f) => f > "20260827170000_the_rank_function_rewarded_keyword_stuffing.sql");
+    for (const f of after) {
+      const sql = stripped(readFileSync(resolve(DIR, f), "utf8"));
+      const regrants = /GRANT[^;]*\bEXECUTE\b[^;]*ON FUNCTION public\.(search_jobs|count_jobs_capped|fuzzy_title_search)\b[^;]*TO[^;]*\banon\b/i.test(sql);
+      expect(regrants, `${f} re-grants a search RPC to anon — the corpus is pageable around the edge function again`).toBe(false);
+    }
+  });
 });

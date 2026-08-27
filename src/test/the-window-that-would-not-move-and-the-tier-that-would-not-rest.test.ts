@@ -69,17 +69,23 @@ describe("the window that would not move, and the tier that would not rest", () 
     expect(retrieval).toMatch(/\.range\(blockStart, blockStart \+ ROUTE_WINDOW - 1\)/);
   });
 
-  it("the facet row is cached in the isolate, and a failed read is not", () => {
-    // 1.3-1.6MB on every list request; median 863ms, ~47% of a plain browse.
-    // A narrower select cannot work — companiesFacet IS the payload and is
-    // needed for companiesCount — so this is a TTL cache, which adds no key
-    // that could be absent during a deploy.
-    expect(FN).toMatch(/const META_TTL_MS = 60_000;/);
-    expect(FN).toMatch(/if \(metaCache && Date\.now\(\) - metaCache\.at < META_TTL_MS\)/);
-    // Caching a failed read would serve a facet-less board for a minute and
-    // keep re-running the blocking first-boot refresh.
-    expect(FN).toMatch(/if \(meta\) metaCache = \{ at: Date\.now\(\), row: meta \};/);
-    // 60s must stay well inside the staleness the board already serves.
-    expect(FN).toMatch(/STALE_MS/);
+  it("the serving path stops reading the 1.3-1.6MB facet row at all", () => {
+    // A 60s in-isolate TTL cache was tried first and was INERT: module-level
+    // state does not survive between requests here. Fourteen consecutive
+    // offset-ceiling requests, six of them on one TCP connection under a second
+    // apart, cost 452-1,034ms each against a 60,000ms TTL — zero hits, while the
+    // cache was provably being seeded on those same requests.
+    //
+    // So the row is not cached; it is not read. The refresh pass writes a second
+    // small row carrying exactly what the serving path uses.
+    expect(FN, "no in-isolate cache may come back").not.toMatch(/META_TTL_MS|metaCache/);
+    expect(FN).toMatch(/k: "refresh_head"/);
+    expect(FN).toMatch(/\.eq\("k", "refresh_head"\)/);
+    // The head row carries the TRUE employer count explicitly. Deriving it from
+    // the truncated 200-row facet would publish "200 employers" as a fact.
+    expect(FN).toMatch(/companiesCount: companies\.length,/);
+    // And the fallback keys on that field, not on the row existing — which is
+    // what makes the deploy window safe before the next refresh pass runs.
+    expect(FN).toMatch(/typeof \(headRow\.v as Record<string, unknown> \| null\)\?\.companiesCount === "number"/);
   });
 });

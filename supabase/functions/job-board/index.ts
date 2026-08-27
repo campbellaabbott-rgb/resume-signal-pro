@@ -102,7 +102,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-25.35";
+const BUILD_VERSION = "2026-08-25.36";
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -2931,6 +2931,36 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
       refreshedAt: startIso,
     };
     await client.from("job_board_meta").upsert({ k: "refresh", v, updated_at: new Date().toISOString() }, { onConflict: "k" });
+    // THE SERVING PATH GETS ITS OWN SMALL ROW.
+    //
+    // `v` above is 1.3-1.6MB, essentially all of it companiesFacet — one entry
+    // per employer, ~23,500 of them. Every list request read the whole thing to
+    // use two things from it: the LENGTH, and the top handful for the employer
+    // chips. Measured on the offset-ceiling exit (which does this read and no
+    // query of its own): median ~700ms, 55-70% of a plain browse.
+    //
+    // An in-isolate TTL cache was tried first and does NOT work: module-level
+    // state does not survive between requests in this runtime. Fourteen
+    // consecutive offset-ceiling requests, six of them on one TCP connection
+    // less than a second apart, all cost 452-1,034ms against a 60s TTL — zero
+    // hits. So the fat row is not cached; it is simply not read.
+    //
+    // companiesCount is stored EXPLICITLY rather than left to be derived from
+    // the truncated head, because a length taken from a 200-row slice would
+    // publish "200 employers" as a fact. Its presence is also what the reader
+    // uses to tell this shape from the old one — see the read site.
+    const vHead = {
+      total: v.total,
+      boards: v.boards,
+      failedSources: v.failedSources,
+      failedCount: v.failedCount,
+      categoriesFacet: v.categoriesFacet,
+      ...(coverage ? { coverage } : {}),
+      refreshedAt: v.refreshedAt,
+      companiesCount: companies.length,
+      companiesFacet: [...companies].sort((a, b) => (b.count ?? 0) - (a.count ?? 0)).slice(0, 200),
+    };
+    await client.from("job_board_meta").upsert({ k: "refresh_head", v: vHead, updated_at: new Date().toISOString() }, { onConflict: "k" });
     // Re-rank the hot tier from what the corpus actually holds now: velocity
     // leaders (most postings first_seen inside the window — the boards where
     // new jobs actually appear) take guaranteed slots, size leaders fill the
@@ -3451,49 +3481,25 @@ function withDeadline<T>(p: PromiseLike<T>, ms: number): Promise<T | { data: nul
 // ── detail: one posting's description (bounded memo, no bulk caching) ─────
 
 /**
- * THE SEMANTIC TIER STANDS ITSELF DOWN WHEN THE RPC IS DEAD.
+ * IN-ISOLATE STATE DOES NOT SURVIVE BETWEEN REQUESTS HERE. DO NOT ADD A CACHE.
  *
- * While search_jobs_semantic was timing out, the 5s race in semanticRows lost
- * on EVERY query: a fixed 5.0s tax on a 9s request budget, for nothing. On a
- * thin search that was 58% of tookMs (measured: q="krankenschwester", 9.0s to
- * serve two rows, `semantic: 5002`). Worse, the edge function walking away does
- * not cancel the query — Postgres kept running the abandoned scan for a further
- * 13-31s against the same database serving the board, once per attempt.
+ * Two were added on 2026-08-27 and both were inert: a 60s TTL cache of the
+ * 1.3-1.6MB facet row, and a 10-minute cooldown that was meant to stand the
+ * semantic tier down after an infrastructure failure. Neither ever fired.
  *
- * Per-isolate and time-boxed, deliberately: no coordination, no storage, and it
- * heals by itself. A cold tier is a tier that declines, which is an honest
- * answer the response already knows how to report.
+ * Measured on the offset-ceiling exit, which reads the meta row and runs no
+ * query of its own: fourteen consecutive requests — six of them issued on ONE
+ * TCP connection less than a second apart — cost 452-1,034ms each against a
+ * 60,000ms TTL. Zero hits out of fourteen. The cache was provably being SEEDED
+ * on those same requests (the responses carried totals read off the row), so
+ * this is a demonstration, not an inference: the module is warm, its heap is not.
+ *
+ * The facet read is fixed by not reading the fat row at all — see `refresh_head`
+ * at the writer and the read site. The semantic cooldown is simply removed: it
+ * guarded against a dead ANN, the ANN is fixed, each attempt is still bounded by
+ * its own 5s deadline, and semanticDegraded reports it from outside. A guard
+ * that cannot fire is worse than no guard, because it reads as protection.
  */
-/**
- * THE FACET ROW, CACHED IN THE ISOLATE FOR A MINUTE.
- *
- * Every list request begins by reading the whole `refresh` meta row — 1.3-1.6MB,
- * because `companiesFacet` is the full company list. Now that the request clock
- * starts at entry the cost is finally visible, and it is the largest single term
- * in any request that is not otherwise broken: median 863ms measured on the
- * offset-ceiling exit (which does this read and no query of its own), which is
- * ~47% of a plain browse and ~45-60% of a warm typed search.
- *
- * A TTL CACHE RATHER THAN A NARROWER SELECT, and the order matters. Narrowing
- * the select cannot work as it was first scoped: companiesFacet IS the payload,
- * and it is needed for companiesCount and for the selected-employer chip label —
- * so a narrow read would have to publish a company count derived from a slice,
- * and during the deploy window where the new keys are absent it would default a
- * PUBLISHED count to 0. That is the claim-drift shape this codebase keeps being
- * bitten by. The cache has none of it: no schema change, no new keys, nothing
- * that can be absent.
- *
- * 60s is chosen against what the board already serves, not out of the air:
- * STALE_MS is 12 minutes and the refresh cron targets 10, so a minute of extra
- * staleness is strictly inside the staleness every visitor already sees. The
- * background-refresh trigger below still fires on the cached timestamp, which is
- * correct — it is asking "is the DATA stale", not "is my copy of it fresh".
- */
-const META_TTL_MS = 60_000;
-let metaCache: { at: number; row: { v: Record<string, unknown>; updated_at: string } | null } | null = null;
-
-const SEMANTIC_COOLDOWN_MS = 10 * 60_000;
-let semanticColdUntil = 0;
 
 const detailCache = new Map<string, { at: number; text: string }>();
 const DETAIL_TTL_MS = 60 * 60_000;
@@ -6554,16 +6560,23 @@ Deno.serve(async (req) => {
       // tookMs and phaseMs were reporting roughly a quarter of real server time,
       // and two previous latency fixes were aimed with that instrument.
       const t_entry = Date.now();
-      let meta: { v: Record<string, unknown>; updated_at: string } | null;
-      if (metaCache && Date.now() - metaCache.at < META_TTL_MS) {
-        meta = metaCache.row;
-      } else {
+      // THE SMALL ROW FIRST — see the writer. `refresh_head` carries exactly what
+      // this path reads, with companiesFacet truncated to the top 200 and the
+      // true employer count stored beside it.
+      //
+      // FALLING BACK ON companiesCount, not on the row's existence, and that is
+      // the whole safety of the deploy window: between this code shipping and
+      // the next refresh pass writing the row, refresh_head is absent — and if a
+      // partially-written or older-shaped row ever appeared, deriving the count
+      // from a 200-row slice would publish "200 employers" as a fact. Requiring
+      // the explicit number means the only rows accepted are ones that carry it.
+      const { data: headRow } = await client.from("job_board_meta").select("v, updated_at").eq("k", "refresh_head").maybeSingle();
+      let meta = (headRow && typeof (headRow.v as Record<string, unknown> | null)?.companiesCount === "number"
+        ? headRow
+        : null) as { v: Record<string, unknown>; updated_at: string } | null;
+      if (!meta) {
         const { data: metaRow } = await client.from("job_board_meta").select("v, updated_at").eq("k", "refresh").maybeSingle();
         meta = (metaRow ?? null) as { v: Record<string, unknown>; updated_at: string } | null;
-        // Only a real read seeds the cache. Caching a failed read would serve a
-        // board with no facets for a minute and, on the first-boot path below,
-        // would keep re-running the blocking seed refresh.
-        if (meta) metaCache = { at: Date.now(), row: meta };
       }
 
       if (!meta) {
@@ -9622,7 +9635,7 @@ async function serveList(
         totalAllCompanies: safeMetaTotal ?? 0,
           ...(trackedTotal !== null ? { trackedTotal } : {}),
         companies: [],
-        companiesCount: ((metaV.companiesFacet as unknown[]) ?? []).length,
+        companiesCount: ((metaV.companiesCount as number | undefined) ?? ((metaV.companiesFacet as unknown[]) ?? []).length),
         // THE SHAPE IS PART OF THE CONTRACT, NOT JUST THE VALUES.
         //
         // This exit shipped without these two and CRASHED THE WHOLE JOBS PAGE:
@@ -9759,7 +9772,7 @@ async function serveList(
           totalAllCompanies: safeMetaTotal ?? 0,
           ...(trackedTotal !== null ? { trackedTotal } : {}),
           companies: [],
-          companiesCount: ((metaV.companiesFacet as unknown[]) ?? []).length,
+          companiesCount: ((metaV.companiesCount as number | undefined) ?? ((metaV.companiesFacet as unknown[]) ?? []).length),
           // Same core shape as every other exit — see the SALARY exit above.
           categories: {},
           failedSources: [], failedCount: 0,
@@ -9785,7 +9798,7 @@ async function serveList(
   // "canceling statement due to statement timeout" on real query embeddings
   // right now, and the tier returns [] for it — indistinguishable from a
   // genuine no-match, on every affected search, with nothing anywhere saying so.
-  let semanticDegraded: "embed" | "ann_deadline" | "ann_error" | "refilter_deadline" | "cooldown" | null = null;
+  let semanticDegraded: "embed" | "ann_deadline" | "ann_error" | "refilter_deadline" | null = null;
   // DECLARED HERE, ABOVE THE RANKED PATH, AND THAT POSITION IS THE FIX.
   //
   // RANKED SEARCH WAS DOWN IN PRODUCTION AND NOTHING SAID SO. Every typed
@@ -10085,14 +10098,6 @@ async function serveList(
           embedBudgetMs: number,
           exclude?: { ids: Set<string>; keys: Set<string> },
         ): Promise<Array<Record<string, unknown>>> => {
-          // Stood down by a recent infrastructure failure — see
-          // SEMANTIC_COOLDOWN_MS. Checked before the embed, because the embed
-          // costs 100-200ms of the per-request CPU budget before the RPC that
-          // is going to fail is even reached.
-          if (Date.now() < semanticColdUntil) {
-            semanticDegraded = "cooldown";
-            return [];
-          }
           // THE ANCHOR IS DECIDED ON WHAT SHIPS, SO EXCLUSION HAPPENS IN HERE.
           //
           // An adversarial review caught this before it shipped, and the shape
@@ -10150,20 +10155,12 @@ async function serveList(
           if (sem === null && !sErr) {
             semanticDegraded = "ann_deadline";
             markFrom("semantic", t_semantic, "deadline");
-            // A DEAD RPC MUST NOT BE PAID FOR ON EVERY SUBSEQUENT SEARCH.
-            // While search_jobs_semantic was timing out, this race lost every
-            // time — a fixed 5.0s tax on the request budget for nothing, 58% of
-            // tookMs on a thin search, and the abandoned query kept running in
-            // Postgres for another 13-31s because nobody cancels it. One
-            // failure now stands the tier down for ten minutes per isolate.
-            semanticColdUntil = Date.now() + SEMANTIC_COOLDOWN_MS;
             console.warn(`[JOB-BOARD] semantic ANN missed its ${annMs}ms deadline (or threw) for q=${JSON.stringify(qText)}`);
             return [];
           }
           if (sErr) {
             semanticDegraded = "ann_error";
             markFrom("semantic", t_semantic, "error");
-            semanticColdUntil = Date.now() + SEMANTIC_COOLDOWN_MS;
             console.error(`[JOB-BOARD] semantic ANN failed for q=${JSON.stringify(qText)}: ${sErr.code ?? ""} ${String(sErr.message ?? sErr).slice(0, 120)}`);
             return [];
           }
@@ -10462,7 +10459,7 @@ async function serveList(
                 totalAllCompanies: safeMetaTotal ?? 0,
           ...(trackedTotal !== null ? { trackedTotal } : {}),
                 companies: [],
-                companiesCount: ((v0.companiesFacet as unknown[]) ?? []).length,
+                companiesCount: ((v0.companiesCount as number | undefined) ?? ((v0.companiesFacet as unknown[]) ?? []).length),
                 categories: {},
                 failedSources: [], failedCount: 0,
                 refreshedAt: (v0.refreshedAt as string) ?? null,
@@ -10559,7 +10556,7 @@ async function serveList(
                 totalAllCompanies: safeMetaTotal ?? 0,
           ...(trackedTotal !== null ? { trackedTotal } : {}),
                 companies: [],
-                companiesCount: ((v0.companiesFacet as unknown[]) ?? []).length,
+                companiesCount: ((v0.companiesCount as number | undefined) ?? ((v0.companiesFacet as unknown[]) ?? []).length),
                 // Board-wide, from the cached facet row — CORRECT only on the unfiltered
           // view. Rendered inside a filtered view it overstated by 15.7x to 45x
           // (sum 587,793 shown beside a filtered total of 10,000 or less), which
@@ -10622,7 +10619,7 @@ async function serveList(
                     totalAllCompanies: safeMetaTotal ?? 0,
           ...(trackedTotal !== null ? { trackedTotal } : {}),
                     companies: [],
-                    companiesCount: ((v0.companiesFacet as unknown[]) ?? []).length,
+                    companiesCount: ((v0.companiesCount as number | undefined) ?? ((v0.companiesFacet as unknown[]) ?? []).length),
                     // Board-wide, from the cached facet row — CORRECT only on the unfiltered
           // view. Rendered inside a filtered view it overstated by 15.7x to 45x
           // (sum 587,793 shown beside a filtered total of 10,000 or less), which
