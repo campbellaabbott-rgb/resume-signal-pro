@@ -88,6 +88,41 @@ describe("a number on a page is a promise", () => {
       .toMatch(/agentPitchScopePlain/);
   });
 
+  it("the prerendered head publishes the SERVABLE count, not the tracked one", () => {
+    // CAUGHT ONLY BY VERIFYING THE DEPLOY. The SPA head and index.html were
+    // fixed, the served page still said "600,000+ Verified Openings" — because
+    // get_job_board_facets CHANGED THE MEANING of `total` underneath this
+    // script. It used to be the servable count (the committed snapshot still
+    // holds that shape: total 567,936, no openTotal); it is now the tracked
+    // corpus, with the servable count moved to `openTotal`. Measured
+    // 2026-08-27: total 683,478, openTotal 561,980, board serving 561,965.
+    //
+    // The line kept working and silently started publishing the wrong number,
+    // in the one tag every search result shows.
+    const c = code(read("scripts/prerender-seo.mjs"));
+    // Resolved by SHAPE, so the old snapshot still reads correctly.
+    expect(c).toMatch(/const FACETS_NEW_SHAPE = typeof boardFacets\?\.openTotal === "number";/);
+    expect(c).toMatch(/const BOARD_TOTAL = FACETS_NEW_SHAPE\s*\n?\s*\? boardFacets\.openTotal/);
+    // The tracked figure comes from the SAME payload — it was a separate fetch
+    // against a meta key nothing is currently writing, so it was null every bake.
+    expect(c).toMatch(/const BOARD_TRACKED = FACETS_NEW_SHAPE && typeof boardFacets\?\.total === "number"/);
+    // And nothing may read the raw `total` for a servable claim any more.
+    expect(c, "a servable claim must never read boardFacets.total directly")
+      .not.toMatch(/plusClaim\(\s*(?:Number\()?boardFacets\??\.total/);
+  });
+
+  it("declares the shape flag before the constants that read it", () => {
+    // BOARD_TRACKED referenced FACETS_NEW_SHAPE from above its declaration on
+    // the first cut — a temporal dead zone throw, which is exactly how ranked
+    // search went down silently in the edge function.
+    const c = code(read("scripts/prerender-seo.mjs"));
+    const flag = c.indexOf("const FACETS_NEW_SHAPE");
+    expect(flag).toBeGreaterThan(-1);
+    for (const name of ["const BOARD_TOTAL", "const BOARD_TRACKED"]) {
+      expect(c.indexOf(name), `${name} must come after FACETS_NEW_SHAPE`).toBeGreaterThan(flag);
+    }
+  });
+
   it("the stale vendor sentence is deleted from every locale, not just English", () => {
     // A locale value OVERRIDES an inline default, so editing the English
     // default alone would have left nine translated copies of "four" rendering.

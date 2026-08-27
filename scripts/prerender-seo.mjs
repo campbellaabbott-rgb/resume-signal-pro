@@ -167,36 +167,36 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
   // local copy). plusClaim rounds DOWN to a "+" claim that stays literally
   // true through churn between bakes — the audit found the home title 120k
   // behind the /jobs prerender from the same deploy.
-  // THE TRACKED CORPUS — the second true number, fetched separately because
-  // get_job_board_facets does not carry it. Entirely fail-soft: every consumer
-  // omits its clause when this is null rather than guessing, which is the same
-  // rule BOARD_TOTAL follows.
+  // `total` CHANGED MEANING UNDERNEATH THIS LINE, and nothing said so.
   //
-  // It exists because "how big is this board" has two honest answers and the
-  // site kept giving the bigger one under the smaller one's noun: the homepage
-  // title claimed the TRACKED total (678,957) as "Verified Openings" while the
-  // board served 560,321. Both numbers get stated, each under what it means.
-  let BOARD_TRACKED = null;
-  try {
-    const envText3 = (() => { try { return readFileSync(join(root, ".env"), "utf8"); } catch { return ""; } })();
-    const grab3 = (k) => process.env[k] || (envText3.match(new RegExp(`^${k}=(.*)$`, "m")) || [])[1]?.trim().replace(/^["']|["']$/g, "");
-    const u3 = grab3("VITE_SUPABASE_URL");
-    const k3 = grab3("VITE_SUPABASE_PUBLISHABLE_KEY");
-    if (u3 && k3) {
-      const tr = await fetch(`${u3}/functions/v1/job-board`, {
-        method: "POST",
-        headers: { apikey: k3, Authorization: `Bearer ${k3}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "list", limit: 1, includeFacets: false }),
-        signal: AbortSignal.timeout(20000),
-      });
-      if (tr.ok) {
-        const tj = await tr.json();
-        if (tj && typeof tj.trackedTotal === "number" && tj.trackedTotal > 0) BOARD_TRACKED = tj.trackedTotal;
-      }
-    }
-  } catch { /* no tracked figure this bake — the copy simply omits the clause */ }
-  if (!BOARD_TRACKED) console.log("[prerender-seo] tracked total unavailable — omitting the tracked clause");
-  const BOARD_TOTAL = typeof boardFacets?.total === "number" ? boardFacets.total : null;
+  // get_job_board_facets used to return the SERVABLE count as `total` — the
+  // committed snapshot still holds that shape (total 567,936, no openTotal).
+  // It now returns the TRACKED corpus there and publishes the servable count as
+  // `openTotal`. Measured 2026-08-27: total 683,478, openTotal 561,980, against
+  // a board serving 561,965.
+  //
+  // So this line kept working and quietly started publishing the wrong number:
+  // plusClaim(683,478) is "600,000+", and the prerendered <title> every SERP
+  // shows said "600,000+ Verified Openings" over a board serving 561,965. Same
+  // defect as the SPA head and index.html, from a source I did not check
+  // because the number still looked plausible.
+  //
+  // Resolved by SHAPE, not by key name: openTotal present means the new shape,
+  // where total is the tracked corpus. Absent means the old shape (or the
+  // snapshot), where total was the servable count and there is no tracked
+  // figure to publish. Never guess one from the other.
+  const FACETS_NEW_SHAPE = typeof boardFacets?.openTotal === "number";
+  const BOARD_TOTAL = FACETS_NEW_SHAPE
+    ? boardFacets.openTotal
+    : (typeof boardFacets?.total === "number" ? boardFacets.total : null);
+  // THE TRACKED CORPUS, from the SAME payload. It was a separate fetch reading
+  // job_board_meta -> coverage.tracked, which is not currently being written —
+  // so it returned null every bake while the number sat unread in the facets
+  // response all along. One call, both numbers, each under its own name.
+  const BOARD_TRACKED = FACETS_NEW_SHAPE && typeof boardFacets?.total === "number"
+    ? boardFacets.total
+    : null;
+
   // companiesCount is the FULL number even when the facet array is a capped
   // slice (the function fallback serves top-1500; the RPC serves everything).
   const BOARD_COMPANIES = typeof boardFacets?.companiesCount === "number"
@@ -995,7 +995,8 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
   // limited to what the board verifiably does.
   {
     const catCounts = boardFacets?.categoriesFacet ?? {};
-    const boardTotal = typeof boardFacets?.total === "number" ? boardFacets.total : null;
+    // The SERVABLE count — see the BOARD_TOTAL note above; `total` is tracked.
+    const boardTotal = BOARD_TOTAL;
     const boardCompanies = typeof boardFacets?.companiesCount === "number"
       ? boardFacets.companiesCount
       : (Array.isArray(boardFacets?.companiesFacet) ? boardFacets.companiesFacet.length : null);
@@ -1591,9 +1592,9 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
     lines.push("# Resume Booster — full text for AI/answer engines");
     lines.push("");
     lines.push(`> Free diagnostic resume scanner (resumebooster.work): ATS score with a point-by-point audit trail, every quoted finding verified against the actual document, per-vendor parsing checks (Workday, Greenhouse, Lever, iCIMS), keyword expectations sourced from the U.S. Department of Labor's O*NET database. ${NIND} industries, 10 languages including native Spanish detection. Free scan, no signup, resumes never stored. See /llms.txt for the short overview.`);
-    if (boardFacets?.total) {
+    if (BOARD_TOTAL) {
       lines.push("");
-      lines.push(`> Live job board (/jobs): ${Number(boardFacets.total).toLocaleString("en-US")} postings from ${BOARD_COMPANIES ? BOARD_COMPANIES.toLocaleString("en-US") : "3,000+"} companies' OFFICIAL job-board APIs (Greenhouse, Lever, Ashby, SmartRecruiters, Workable, BambooHR) — no scraping, no aggregators; the largest boards re-check every 10-15 minutes and the whole catalog re-verifies within a few hours. Per-field pages at /jobs/field/{engineering,healthcare,finance,...}. Free deterministic resume-fit scoring against any posting.`);
+      lines.push(`> Live job board (/jobs): ${Number(BOARD_TOTAL).toLocaleString("en-US")} live postings${BOARD_TRACKED ? ` (${Number(BOARD_TRACKED).toLocaleString("en-US")} tracked in all, including roles since closed)` : ""} from ${BOARD_COMPANIES ? BOARD_COMPANIES.toLocaleString("en-US") : "3,000+"} companies' OFFICIAL job-board APIs (Greenhouse, Lever, Ashby, SmartRecruiters, Workable, BambooHR) — no scraping, no aggregators; the largest boards re-check every 10-15 minutes and the whole catalog re-verifies within a few hours. Per-field pages at /jobs/field/{engineering,healthcare,finance,...}. Free deterministic resume-fit scoring against any posting.`);
     }
     lines.push("");
     lines.push("## Guides (full text)");
