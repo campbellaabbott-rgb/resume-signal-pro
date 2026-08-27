@@ -41,6 +41,10 @@ const fake = () => {
     eq(c: string, v: unknown) { calls.push(["eq", [c, v]]); return this; },
     in(c: string, v: unknown[]) { calls.push(["in", [c, v]]); return this; },
     gte(c: string, v: unknown) { calls.push(["gte", [c, v]]); return this; },
+    // `is` joined Filterable with applyServingFences (the withdrawn-postings
+    // fence). This spy has to satisfy the whole interface even though the
+    // country rules never call it.
+    is(c: string, v: unknown) { calls.push(["is", [c, v]]); return this; },
   };
   return qb;
 };
@@ -115,7 +119,17 @@ describe("the runner applies it at BOTH query sites", () => {
   });
 
   it("imports the shared helper rather than re-parsing inline", () => {
-    expect(runner).toMatch(/import \{ applyCategory, applyCountries, applyMaxAge \}/);
+    // ASSERTED PER NAME, NOT AS ONE FROZEN LINE. This used to pin the exact
+    // import list, so adding a FOURTH shared rule broke it — and the property
+    // that matters is "each of these comes from _shared", not "the list is
+    // spelled in this order and no other rule was ever added". A guard that
+    // fails for a reason it does not care about gets deleted rather than fixed.
+    const imported = /import \{([^}]*)\} from "\.\.\/_shared\/mandate-reach\.ts";/.exec(runner);
+    expect(imported, "the runner must import its rules from _shared/mandate-reach.ts").not.toBeNull();
+    const names = imported![1].split(",").map((n) => n.trim());
+    for (const fn of ["applyCategory", "applyCountries", "applyMaxAge"]) {
+      expect(names, `${fn} must come from the shared module, not be re-parsed inline`).toContain(fn);
+    }
   });
 
   it("degrades one rung at a time, so a missing column costs only its own feature", () => {

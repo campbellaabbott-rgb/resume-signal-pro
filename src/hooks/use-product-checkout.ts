@@ -76,6 +76,21 @@ export function useProductCheckout() {
         return null;
       }
 
+      // A PRO SUBSCRIBER WHO IS SIGNED OUT. The grant that makes this product
+      // free is now minted from the verified session rather than from the email
+      // typed into the form — an email address is a claim, not proof, and
+      // keying an entitlement on one let anyone who knew a subscriber's address
+      // mint their whole catalogue. The server answers this instead of a
+      // checkout URL so we ask them to sign in rather than charging them for
+      // something their subscription already includes.
+      if (data?.proRequiresSignIn) {
+        toast({
+          title: "Sign in to use your Pro subscription",
+          description: "This tool is included with Pro. Sign in with the email on your subscription and it will be free.",
+        });
+        return null;
+      }
+
       if (data?.url) {
         // Track checkout initiated
         trackCheckoutInitiated(productId, product.priceUsd);

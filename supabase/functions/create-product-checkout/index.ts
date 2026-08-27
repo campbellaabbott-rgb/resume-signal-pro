@@ -140,7 +140,44 @@ serve(async (req) => {
     // issue a single-use server-side grant and send them straight to the
     // success page. Cache-only check keeps this path fast; the cache is
     // refreshed by check-subscription and the subscription checkout flow.
-    if (normalizedEmail) {
+    // WHO IS ASKING IS DECIDED BY THE SESSION, NOT BY THE BODY.
+    //
+    // This block mints an ENTITLEMENT — a pro_grant redeemable for any product
+    // in the catalog — and it used to key that decision on `normalizedEmail`,
+    // which is just a field in an unauthenticated POST body (verify_jwt = false
+    // for this function, supabase/config.toml:33-34). So anyone who knew the
+    // email address of one active Pro subscriber could mint that subscriber's
+    // whole paid catalogue, for free, as many times as they liked. An email
+    // address is a claim; only a signed token is proof.
+    //
+    // Same class as the streamer leak that assertPaidSession closed, but that
+    // helper CANNOT be reused here: it answers "did a purchase happen for this
+    // session id", which says nothing about who is asking, and this function is
+    // UPSTREAM of it — one of the writers that manufactures the proof it
+    // trusts. Calling it here would be circular. The invariant it documents is
+    // restored at the writer instead.
+    //
+    // Pattern copied from check-subscription/index.ts:31-37 ("Prefer the
+    // authenticated user's email over anything in the body"), with the anon-key
+    // discrimination from free-keyword-scan/index.ts:1382-1389 so the anonymous
+    // path never pays for an auth round trip. getUser() on a service-role
+    // client still validates the token against the auth server.
+    let proEmail: string | null = null;
+    const bearer = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
+    if (bearer && bearer !== (Deno.env.get("SUPABASE_ANON_KEY") ?? "")) {
+      try {
+        const { data: authData } = await supabase.auth.getUser(bearer);
+        if (authData?.user?.email) proEmail = authData.user.email.toLowerCase().trim();
+      } catch (authErr) {
+        // A bad token is an anonymous request, not an error. It must never fall
+        // through to the body email — that is the bug this block exists to fix.
+        console.error("[CREATE-PRODUCT-CHECKOUT] token check failed:", authErr);
+      }
+    }
+
+    // `normalizedEmail` keeps its OTHER job below (prefilling Stripe's
+    // customer_email at :196), which is a convenience and mints nothing.
+    if (proEmail) {
       try {
         const supabase = createClient(
           Deno.env.get("SUPABASE_URL") ?? "",
@@ -150,7 +187,7 @@ serve(async (req) => {
         const { data: proRow } = await supabase
           .from("pro_subscribers")
           .select("status, current_period_end")
-          .eq("email", normalizedEmail)
+          .eq("email", proEmail)
           .maybeSingle();
         const proActive = !!proRow && ["active", "trialing"].includes(proRow.status) &&
           (!proRow.current_period_end || new Date(proRow.current_period_end).getTime() > Date.now() - 24 * 3600 * 1000);
@@ -158,7 +195,7 @@ serve(async (req) => {
           const { data: grant, error: grantError } = await supabase
             .from("pro_grants")
             .insert({
-              email: normalizedEmail,
+              email: proEmail,
               product_id: productId,
               product_type: product.productType,
               product_name: product.name,
@@ -171,7 +208,7 @@ serve(async (req) => {
             .select("id")
             .single();
           if (!grantError && grant) {
-            console.log(`[CREATE-PRODUCT-CHECKOUT] Pro grant ${grant.id} issued to ${normalizedEmail} for ${product.name}`);
+            console.log(`[CREATE-PRODUCT-CHECKOUT] Pro grant ${grant.id} issued to ${proEmail} for ${product.name}`);
             return new Response(
               JSON.stringify({
                 url: productId.startsWith('freelance')
@@ -188,6 +225,34 @@ serve(async (req) => {
       } catch (proErr) {
         // Pro check is best-effort — never block a paying customer.
         console.error("[CREATE-PRODUCT-CHECKOUT] Pro check failed:", proErr);
+      }
+    } else if (normalizedEmail) {
+      // A PRO SUBSCRIBER WHO IS SIGNED OUT MUST NOT BE CHARGED FOR WHAT THEY OWN.
+      // Gating the grant on the session would otherwise send them to Stripe to
+      // buy a product their subscription already includes — fixing a way to
+      // take money that should not be taken by creating another one. This
+      // branch mints NOTHING, so it carries none of the entitlement risk: it
+      // only tells the page to ask them to sign in.
+      //
+      // It does reveal whether an address is a Pro subscriber, but
+      // check-subscription already answers that unauthenticated, so it opens no
+      // door that is not already open.
+      try {
+        const { data: proRow } = await supabase
+          .from("pro_subscribers")
+          .select("status, current_period_end")
+          .eq("email", normalizedEmail)
+          .maybeSingle();
+        const proActive = !!proRow && ["active", "trialing"].includes(proRow.status) &&
+          (!proRow.current_period_end || new Date(proRow.current_period_end).getTime() > Date.now() - 24 * 3600 * 1000);
+        if (proActive) {
+          return new Response(
+            JSON.stringify({ proRequiresSignIn: true }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 },
+          );
+        }
+      } catch (proErr) {
+        console.error("[CREATE-PRODUCT-CHECKOUT] signed-out Pro check failed:", proErr);
       }
     }
 

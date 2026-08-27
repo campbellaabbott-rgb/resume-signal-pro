@@ -34,6 +34,40 @@ export interface Filterable {
   in(col: string, v: any[]): this;
   // deno-lint-ignore no-explicit-any
   gte(col: string, v: any): this;
+  // deno-lint-ignore no-explicit-any
+  is(col: string, v: any): this;
+}
+
+/**
+ * The two fences every read of the corpus carries — except, until now, the one
+ * that decides what a paying subscriber's agent applies to.
+ *
+ * `missing_since IS NULL` means the employer's own feed still lists the posting.
+ * The 30-day floor is the board's serving window. Every surface that shows a
+ * posting to a person binds both: the list path, the detail route
+ * (job-board/index.ts:7790) and the public API. agent-runner bound NEITHER, at
+ * either of its two selection queries.
+ *
+ * MEASURED 2026-08-27, replaying the runner's exact predicates: 65 of 400
+ * candidate rows carried a `missing_since` stamp — 16.2%, stable across three
+ * consecutive fetches. Fenced, the same query returns a full 400 rows with those
+ * 65 swapped for live ones, so the fence costs the subscriber no reach; it only
+ * changes WHICH postings are in the pool.
+ *
+ * AND NOTHING DOWNSTREAM RE-CHECKS. apply-broker re-validates the mandate and
+ * the entitlement at claim time but never re-reads the posting; apply-agent does
+ * fetch the fenced detail route, but under a comment reading "A failure degrades
+ * the draft; it never blocks the send", so a withdrawn posting yields no
+ * description and the packet is built anyway. Selection time is the only place.
+ *
+ * 30 IS FRESH_WINDOW_DAYS in job-board, referenced rather than re-guessed — two
+ * definitions of the serving window over one corpus is how two surfaces start
+ * disagreeing about the same posting.
+ */
+export function applyServingFences<T extends Filterable>(qb: T, now: number = Date.now()): T {
+  return qb
+    .is("missing_since", null)
+    .gte("effective_posted", new Date(now - 30 * 86_400_000).toISOString());
 }
 
 /**

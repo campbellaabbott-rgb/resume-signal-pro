@@ -25,7 +25,7 @@ import { nextRunStamp } from "../_shared/run-stamp.ts";
 // so every test of it is a regex over its source — able to prove a line exists
 // and never able to prove what it does. These two decide whether a subscriber
 // sees a quarter of the board, which is worth more than a text match.
-import { applyCategory, applyCountries, applyMaxAge } from "../_shared/mandate-reach.ts";
+import { applyCategory, applyCountries, applyMaxAge, applyServingFences } from "../_shared/mandate-reach.ts";
 
 // Bumped whenever this function changes shape, so a 403 can say WHICH bundle
 // refused — the difference between "the gate is live" and "the old open build
@@ -362,6 +362,12 @@ serve(async (req) => {
       .gt("first_seen", sinceIso)
       .order("posted_at", { ascending: false, nullsFirst: false })
       .limit(CANDIDATES_PER_MANDATE);
+    // WITHDRAWN POSTINGS WERE 16.2% OF THIS POOL. `first_seen` says the board
+    // noticed it recently; it says nothing about whether the employer still
+    // lists it. Measured 2026-08-27: 65 of 400 candidates carried a
+    // missing_since stamp, and nothing downstream re-checks — see
+    // applyServingFences. Fenced, the query still returns a full page.
+    qb = applyServingFences(qb);
     // CATEGORY, AND THE QUARTER OF THE BOARD IT USED TO REMOVE. `other` held
     // 162,800 of 590,808 postings on 2026-08-05 — it is where a posting lands
     // when the classifier could not place its title, not a junk drawer — and
@@ -411,6 +417,10 @@ serve(async (req) => {
         .or(SENDABLE_VENDORS.map((v) => `id.like.${v}:*`).join(","))
         .order("posted_at", { ascending: false, nullsFirst: false })
         .limit(SENDABLE_CANDIDATES);
+      // BOTH SITES, ALWAYS. This is the auto-send pool, so a withdrawn posting
+      // here is not a bad suggestion — it is an application actually sent to a
+      // job the employer has already taken down.
+      sb2 = applyServingFences(sb2);
       // THE SECOND CALL SITE. The multi-term change shipped one commit ago with
       // a note that this file turns a mandate into a query in TWO places and
       // that patching only the obvious one leaves the feature working in the
