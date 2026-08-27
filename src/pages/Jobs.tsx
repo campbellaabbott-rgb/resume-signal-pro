@@ -3322,8 +3322,19 @@ export default function Jobs() {
   // (served facet), matching category pages, and a curated common-role list.
   // Everything suggested is real and clickable; nothing invented.
   // D2: list density — compact triples postings per screen for power scanning.
-  const [density, setDensity] = useState<"comfortable" | "compact">(() =>
-    (localStorage.getItem("rb_density") === "compact" ? "compact" : "comfortable"));
+  const [density, setDensity] = useState<"comfortable" | "compact">(() => {
+    // GUARDED, like every other storage read in this file except this one was.
+    // localStorage ACCESS THROWS — not returns null — when site data is blocked
+    // (Chrome "Block all cookies", some in-app and embedded browsers, a
+    // sandboxed iframe). This runs in a useState initializer, so the throw
+    // happened during render and took the entire board down before first paint:
+    // a blank page, not a lost preference.
+    try {
+      return localStorage.getItem("rb_density") === "compact" ? "compact" : "comfortable";
+    } catch {
+      return "comfortable";
+    }
+  });
   const toggleDensity = () => setDensity((d) => {
     const next = d === "comfortable" ? "compact" : "comfortable";
     try { localStorage.setItem("rb_density", next); } catch { /* session-only */ }

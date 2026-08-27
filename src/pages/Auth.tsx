@@ -29,10 +29,20 @@ export default function Auth() {
   const [mode, setMode] = useState<"signin" | "signup">("signup");
   // Prefill from anything the user already gave us: their session history,
   // scan-pack purchase, or report email — one less field to mistype.
-  const [email, setEmail] = useState(() =>
-    localStorage.getItem("rb_last_email")
-    || localStorage.getItem("scanCreditsEmail")
-    || "");
+  const [email, setEmail] = useState(() => {
+    // GUARDED: localStorage ACCESS THROWS, rather than returning null, when site
+    // data is blocked (Chrome "Block all cookies", some in-app and embedded
+    // browsers, a sandboxed iframe). This runs in a useState initializer, so the
+    // throw happens during render — and on THIS page that means a visitor who
+    // cannot sign in at all, on a blank screen, rather than a prefill they lose.
+    try {
+      return localStorage.getItem("rb_last_email")
+        || localStorage.getItem("scanCreditsEmail")
+        || "";
+    } catch {
+      return "";
+    }
+  });
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
