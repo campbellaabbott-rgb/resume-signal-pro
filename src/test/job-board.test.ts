@@ -784,7 +784,7 @@ describe("dormancy skip-list (cold-tail throughput)", () => {
       recheckTokens: new Set(["revived"]),
       streaks: { revived: 3 },
       dormant: { revived: NOW - RECHECK - 1 },
-      deadThreshold: 6, dormantCap: 3000, now: NOW,
+      deadThreshold: 6, minFailureAgeMs: 0, dormantCap: 3000, now: NOW,
     });
     expect(r.streaks.revived).toBeUndefined();
     expect(r.dormant.revived).toBeUndefined();
@@ -799,7 +799,7 @@ describe("dormancy skip-list (cold-tail throughput)", () => {
       recheckTokens: new Set(),
       streaks: { dying: 5 },
       dormant: {},
-      deadThreshold: 6, dormantCap: 3000, now: NOW,
+      deadThreshold: 6, minFailureAgeMs: 0, dormantCap: 3000, now: NOW,
     });
     expect(r.toPrune).toEqual(["dying"]);
     expect(r.dormant.dying).toBe(NOW);
@@ -813,7 +813,7 @@ describe("dormancy skip-list (cold-tail throughput)", () => {
       recheckTokens: new Set(["still_dead"]),
       streaks: {},
       dormant: { still_dead: NOW - RECHECK - 5 },
-      deadThreshold: 6, dormantCap: 3000, now: NOW,
+      deadThreshold: 6, minFailureAgeMs: 0, dormantCap: 3000, now: NOW,
     });
     expect(r.toPrune).toEqual([]); // no double-delete of already-pruned postings
     expect(r.dormant.still_dead).toBe(NOW); // timer reset → skipped again until next window
@@ -827,7 +827,7 @@ describe("dormancy skip-list (cold-tail throughput)", () => {
       recheckTokens: new Set(),
       streaks: { flaky: 2 },
       dormant: {},
-      deadThreshold: 6, dormantCap: 3000, now: NOW,
+      deadThreshold: 6, minFailureAgeMs: 0, dormantCap: 3000, now: NOW,
     });
     expect(r.streaks.flaky).toBe(3);
     expect(r.dormant.flaky).toBeUndefined();
@@ -839,18 +839,23 @@ describe("dormancy skip-list (cold-tail throughput)", () => {
     for (let i = 0; i < 10; i++) dormant[`d${i}`] = NOW - i * 1000; // d0 newest, d9 oldest
     const r = updateBoardFailures({
       okTokens: [], failedTokens: [], recheckTokens: new Set(),
-      streaks: {}, dormant, deadThreshold: 6, dormantCap: 3, now: NOW,
+      streaks: {}, dormant, deadThreshold: 6, minFailureAgeMs: 0, dormantCap: 3, now: NOW,
     });
     const kept = Object.keys(r.dormant).sort();
     expect(kept).toEqual(["d0", "d1", "d2"]); // three most recent survive
   });
 
+  // minFailureAgeMs: 0 in this suite preserves exactly the behaviour these tests
+  // predate — the streak alone decides. The wall-clock floor added on
+  // 2026-08-26 (so a retry lane cannot compress six attempts into eight hours
+  // and prune a live board) is exercised in
+  // a-failed-board-should-not-wait-a-whole-rotation.test.ts.
   it("does not mutate the input streaks/dormant objects", () => {
     const streaks = { a: 1 };
     const dormant = { b: NOW };
     updateBoardFailures({
       okTokens: ["b"], failedTokens: ["a"], recheckTokens: new Set(),
-      streaks, dormant, deadThreshold: 6, dormantCap: 3000, now: NOW,
+      streaks, dormant, deadThreshold: 6, minFailureAgeMs: 0, dormantCap: 3000, now: NOW,
     });
     expect(streaks).toEqual({ a: 1 }); // unchanged
     expect(dormant).toEqual({ b: NOW }); // unchanged

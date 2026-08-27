@@ -223,7 +223,14 @@ const PINNED = {
   // that make it safe (bounded, filter-safe, lexically anchored, anchored on
   // surviving rows) cannot drift between two copies. index.ts only,
   // sources.ts UNCHANGED.
-  buildVersion: "2026-08-25.25",
+  // 2026-08-25.26: the retry lane. A failed fetch cost a board a FULL rotation
+  // (8.2h measured) before anything tried again, which is what put the
+  // freshness p95 at 20.7h against a healthy p50 of 4.9h — the tail was never
+  // rotation speed, it was boards waiting a lap for a second chance. Retries
+  // now start at 15 min and back off per streak into dormancy. Capped at 5,
+  // deliberately the smallest lane on the slice. index.ts + dormancy.ts;
+  // sources.ts UNCHANGED.
+  buildVersion: "2026-08-25.26",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {

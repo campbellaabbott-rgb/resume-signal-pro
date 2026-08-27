@@ -53,7 +53,7 @@ import {
   backlogFromCoverage,
 } from "../_shared/posted-backfill.ts";
 import { extractSalary, parseSalaryStructured } from "../_shared/salary-extract.ts";
-import { classifyDormancy, updateBoardFailures, type BoardFailureState } from "./dormancy.ts";
+import { classifyDormancy, selectRetries, updateBoardFailures, type BoardFailureState } from "./dormancy.ts";
 import { advanceProgress, isPassDone, type RefreshProgress } from "./rotation.ts";
 import { CANARIES, rawItemCount, aggregateVendorHealth, type CanaryResult } from "./vendor-canary.ts";
 import { detectExperience, isExperienceBand } from "./experience.ts";
@@ -102,7 +102,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-25.25";
+const BUILD_VERSION = "2026-08-25.26";
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -282,6 +282,23 @@ const BOOTSTRAP_PER_SLICE = 25; // zero-row boards prepended per cold slice afte
 // RE-MEASURE the cursor rate after any change to this number; it is the only
 // thing that shows the cost.
 const DEEP_PER_SLICE = 8;
+// RETRY LANE — deliberately the smallest lane on the slice.
+//
+// A board only gets a verification stamp when its fetch SUCCEEDS, so one failed
+// fetch used to cost it a full rotation (8.2h measured) before anything tried
+// again. Measured 2026-08-26: 82.5% of boards sat inside one rotation while the
+// 5% tail sat at 12-25h — freshness p95 20.7h against a healthy p50 of 4.9h.
+// That tail was never a rotation-speed problem; it was boards waiting a whole
+// rotation for a second chance.
+//
+// FIVE, NOT TWENTY-FIVE, and the arithmetic is the lesson from DEEP_PER_SLICE
+// three commits ago. A retry is the most expensive fetch there is when it fails
+// again: a dead feed burns the full ~20s FETCH_TIMEOUT, which is precisely the
+// cost dormancy exists to stop paying. Five at CONCURRENCY 8 is one extra
+// round, bounded at ~20s worst case on a ~75s slice. Exponential backoff then
+// keeps the pool small in steady state, so the lane is usually far under its
+// cap. RE-MEASURE the cold-cursor rate after changing this number.
+const RETRY_PER_SLICE = 5;
 const HEADLINE_MAX_AGE_MS = 15 * 60_000; // how stale the published board total may get before it is recounted; the count itself measured 0.63s, so this is cadence, not cost
 const SLICE_LOCK_MS = 3 * 60_000; // min gap between slices
 const DESC_CAP = 14_000; // matches the scanner's own input bounds
@@ -934,6 +951,25 @@ const COLD_SLICES_PER_PASS = 160;
 // rotation cursor and sweep coverage are untouched — only the wasted fetch is
 // removed. DORMANT_CAP bounds the meta row against a mass die-off.
 const DEAD_BOARD_THRESHOLD = 6; // consecutive failures before prune + dormancy (unchanged bar from the prior prune)
+// THE PRUNE BAR IN THE UNIT IT WAS ACTUALLY CALIBRATED IN.
+//
+// DEAD_BOARD_THRESHOLD was set when attempts arrived once per rotation, so "6
+// consecutive failures" meant "dead for roughly 41 hours". The count was never
+// the point; the DURATION was — it is the whole protection between a transient
+// vendor blip and deleting a company's corpus (an exit row per posting, every
+// row for the token deleted, a 12h blackout, and first_seen reset on re-ingest).
+//
+// The retry lane decouples attempts from time: six attempts now fit inside
+// 7h45m. Shipping that without this floor would have cut a 41-hour guard to
+// under eight, and a Workday CDN throttle of the kind already recorded in this
+// file (boards answering fine from outside, blocked only for our egress IPs)
+// would have pruned boards that were never dead. An adversarial review caught
+// it before it shipped.
+//
+// 40h keeps the bar where it was measured. Both conditions must hold, so adding
+// an even faster lane later cannot erode it — which is the property that was
+// missing, not the number.
+const DEAD_BOARD_MIN_FAILING_MS = 40 * 60 * 60_000;
 const DORMANT_RECHECK_MS = 12 * 60 * 60_000; // recovery probe cadence for a dormant board
 const DORMANT_CAP = 8_000; // max tracked dormant boards (raised with the 26k-board catalog — census waves include older-crawl boards that die over time)
 
@@ -1452,17 +1488,59 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
       }
     } catch { /* accelerator only — on any error the cold rotation still reaches every board */ }
   }
-  const slice = [...demandBoards, ...bootstrapBoards, ...deepBoards, ...baseSlice];
+  // Board-failure state (streaks + dormancy + last-failure stamps) drives the
+  // consecutive-failure prune, the dormancy skip-list AND the retry lane below.
+  // Read once here so hot and cold hops share a single read/write, and so cold
+  // slices know which dead boards to skip BEFORE fetching. Demand-injected
+  // boards are never skipped (a user just opened them).
+  //
+  // Read BEFORE the slice is sealed (moved up with the retry lane) so the lane
+  // can use the failure stamps as its work list.
+  const { data: bfMeta } = await client.from("job_board_meta").select("v").eq("k", "board_failures").maybeSingle();
+  const bfV = (bfMeta?.v ?? {}) as Partial<BoardFailureState>;
+  const boardFailures: BoardFailureState = {
+    streaks: { ...(bfV.streaks ?? {}) },
+    dormant: { ...(bfV.dormant ?? {}) },
+    failedAt: { ...(bfV.failedAt ?? {}) },
+    firstFailedAt: { ...(bfV.firstFailedAt ?? {}) },
+  };
+
+  // THE RETRY LANE. A board that failed gets another attempt in minutes rather
+  // than in a full rotation — which is the only thing that moves the freshness
+  // p95, because that tail is failed fetches waiting their turn, not slow
+  // rotation. Backoff lives in dormancy.ts and recedes per streak, so a feed
+  // that is genuinely dead walks itself out of this lane and into dormancy
+  // instead of burning a timeout here every few minutes.
+  let retryBoards: JobSource[] = [];
+  let retryLane: { at: string; candidates: number; selected: number } | null = null;
+  if (!inHotPhase) {
+    try {
+      const taken = new Set([...baseSlice, ...demandBoards, ...bootstrapBoards, ...deepBoards].map((s) => s.token));
+      const dueTokens = selectRetries({
+        streaks: boardFailures.streaks,
+        failedAt: boardFailures.failedAt ?? {},
+        dormant: boardFailures.dormant,
+        exclude: taken,
+        now: Date.now(),
+        cap: RETRY_PER_SLICE,
+      });
+      retryBoards = dueTokens
+        .map((t) => JOB_SOURCES.find((s) => s.token === t))
+        .filter((s): s is JobSource => !!s);
+      // Instrumented for the reason every lane here is: "ran and selected none"
+      // and "never ran" are otherwise the same observation, and this file has
+      // guessed at that fork more than once.
+      retryLane = {
+        at: new Date().toISOString(),
+        candidates: Object.keys(boardFailures.failedAt ?? {}).length,
+        selected: retryBoards.length,
+      };
+    } catch { /* accelerator only — the rotation still reaches every board if this throws */ }
+  }
+  const slice = [...demandBoards, ...bootstrapBoards, ...deepBoards, ...retryBoards, ...baseSlice];
   const startIso = new Date().toISOString();
   const freshCutoffMs = Date.now() - FRESH_WINDOW_DAYS * 86_400_000; // roles older than this are dropped
 
-  // Board-failure state (streaks + dormancy) drives both the consecutive-failure
-  // prune and the dormancy skip-list. Read once here so hot and cold hops share a
-  // single read/write, and so cold slices know which dead boards to skip BEFORE
-  // fetching. Demand-injected boards are never skipped (a user just opened them).
-  const { data: bfMeta } = await client.from("job_board_meta").select("v").eq("k", "board_failures").maybeSingle();
-  const bfV = (bfMeta?.v ?? {}) as Partial<BoardFailureState>;
-  const boardFailures: BoardFailureState = { streaks: { ...(bfV.streaks ?? {}) }, dormant: { ...(bfV.dormant ?? {}) } };
 
   // Vendor circuit-breaker state (see constants above): decayed per-vendor
   // feed-zero counters + the currently quarantined vendor set. Key is
@@ -2299,22 +2377,28 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
       .map((s) => s.token)
       .filter((tk) => !skipTokens.has(tk) && !quarantineSkipped.has(tk) && !okSet.has(tk));
     if (okTokens.length > 0 || failedTokens.length > 0 || recheckTokens.size > 0) {
-      const { streaks, dormant, toPrune } = updateBoardFailures({
+      const { streaks, dormant, failedAt, firstFailedAt, toPrune } = updateBoardFailures({
         okTokens,
         failedTokens,
         recheckTokens,
         streaks: boardFailures.streaks,
         dormant: boardFailures.dormant,
+        failedAt: boardFailures.failedAt ?? {},
+        firstFailedAt: boardFailures.firstFailedAt ?? {},
         deadThreshold: DEAD_BOARD_THRESHOLD,
+        minFailureAgeMs: DEAD_BOARD_MIN_FAILING_MS,
         dormantCap: DORMANT_CAP,
         now: Date.now(),
       });
       for (const tk of toPrune) {
         const n = await logWholeBoardExit(client, tk, "board_dormant");
         await client.from("job_board_postings").delete().eq("company_token", tk);
-        console.warn(`[JOB-BOARD] board ${tk} dormant after ${DEAD_BOARD_THRESHOLD} consecutive failures (${n} postings pruned and logged as board_dormant; fetch skipped until recheck)`);
+        console.warn(`[JOB-BOARD] board ${tk} dormant after ${DEAD_BOARD_THRESHOLD} consecutive failures spanning at least ${Math.round(DEAD_BOARD_MIN_FAILING_MS / 3_600_000)}h (${n} postings pruned and logged as board_dormant; fetch skipped until recheck)`);
       }
-      await client.from("job_board_meta").upsert({ k: "board_failures", v: { streaks, dormant }, updated_at: new Date().toISOString() }, { onConflict: "k" });
+      await client.from("job_board_meta").upsert(
+        { k: "board_failures", v: { streaks, dormant, failedAt, firstFailedAt, ...(retryLane ? { lastRetryLane: retryLane } : {}) }, updated_at: new Date().toISOString() },
+        { onConflict: "k" },
+      );
       if (deepCursorsDirty || deepLane) {
         // Best-effort: losing this costs a board one restarted pass, never a row.
         //
@@ -5219,6 +5303,18 @@ Deno.serve(async (req) => {
         totalPostings: rfV.total ?? null,
         coldBoards: rotV.coldBoards ?? null,
         dormantBoards: Object.keys(dormant).length,
+        // THE RETRY LANE, VISIBLE. `failing` is the pre-dormancy backlog — boards
+        // that failed and are waiting out their backoff — and `lastRetryLane` says
+        // whether the lane actually ran and how many it took. Without both, a p95
+        // that does not move has two indistinguishable causes.
+        retryLane: (() => {
+          const v = (bf.data?.v ?? {}) as { failedAt?: Record<string, number>; lastRetryLane?: unknown };
+          return {
+            failing: Object.keys(v.failedAt ?? {}).length,
+            last: v.lastRetryLane ?? null,
+          };
+        })(),
+
         cursor: { hot: pgV.hot ?? 0, cold: pgV.cold ?? 0, coldDone: pgV.coldDone ?? 0 },
         // pending alone says only that the cursor moved. lastSlice says
         // whether the drained tokens ever became boards to fetch.

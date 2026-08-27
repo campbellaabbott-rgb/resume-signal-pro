@@ -40,8 +40,16 @@ const CODE = FN.replace(/\/\*[\s\S]*?\*\//g, "")
 
 describe("at-cap boards need a fast lane", () => {
   it("the lane is a fourth source in the slice, ahead of the base rotation", () => {
-    expect(CODE, "deepBoards is not in the slice at all")
-      .toMatch(/const slice = \[\.\.\.demandBoards, \.\.\.bootstrapBoards, \.\.\.deepBoards, \.\.\.baseSlice\]/);
+    // Composition, not a literal list: lanes have been added since (retry), and
+    // a guard that pins the exact spelling fails on an addition it has no
+    // opinion about. What must hold is that deepBoards is IN the slice and
+    // PREPENDED — ahead of baseSlice, so the cold cursor still advances by
+    // baseSlice.length alone.
+    const sliceLine = /const slice = \[([^\]]+)\];/.exec(CODE)?.[1] ?? "";
+    expect(sliceLine, "the slice is never assembled").not.toBe("");
+    expect(sliceLine, "deepBoards is not in the slice at all").toContain("...deepBoards");
+    expect(sliceLine.indexOf("...deepBoards"), "deepBoards is not prepended ahead of the base rotation")
+      .toBeLessThan(sliceLine.indexOf("...baseSlice"));
   });
 
   it("the cursor map is read BEFORE the slice is sealed", () => {
