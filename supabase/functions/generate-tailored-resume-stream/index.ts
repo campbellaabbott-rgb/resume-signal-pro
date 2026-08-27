@@ -31,6 +31,11 @@ serve(async (req) => {
     const { resumeText, jobTitle, jobCompany, jobDescription, matchingSkills, missingSkills, language, sessionId } = await req.json();
 
     // Paid content: confirm the caller actually purchased (see paid-session.ts).
+    // DELIBERATELY UNGATED BY PRODUCT. Unlike the five above, this endpoint has no
+    // one-to-one product_type: it is not dispatched from ProductSuccess and its
+    // callers are not enumerable from this repo, so naming an allowed set here
+    // would 402 a real buyer on a path I could not see. Existence-only is the
+    // pre-existing behaviour and is left unchanged rather than guessed at.
     const paidError = await assertPaidSession(supabase, sessionId);
     if (paidError) return new Response(JSON.stringify({ error: paidError, retryable: true }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 

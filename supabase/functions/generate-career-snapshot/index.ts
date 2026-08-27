@@ -33,7 +33,9 @@ serve(async (req) => {
     // our AI spend. The streaming twins were gated in July; the NON-STREAM
     // primaries — which is what the webhook and the success page actually call —
     // were missed, so the fix landed on the fallback and not the main path.
-    const paidError = await assertPaidSession(supabase, sessionId);
+    // Gated on WHAT was bought, not merely that something was. Without the
+    // product list a $2 scan-pack session opened every paid generator forever.
+    const paidError = await assertPaidSession(supabase, sessionId, ["career_snapshot"]);
     if (paidError) {
       return new Response(
         JSON.stringify({ error: paidError, retryable: true }),

@@ -51,7 +51,9 @@ serve(async (req) => {
     if (limitError) return new Response(JSON.stringify({ error: limitError }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
     // Paid content: confirm the caller actually purchased (see paid-session.ts).
-    const paidError = await assertPaidSession(supabase, sessionId);
+    // Gated on WHAT was bought, not merely that something was. Without the
+    // product list a $2 scan-pack session opened every paid generator forever.
+    const paidError = await assertPaidSession(supabase, sessionId, ["premium_package"]);
     if (paidError) return new Response(JSON.stringify({ error: paidError, retryable: true }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
     logStep("Starting streaming premium package generation", { 

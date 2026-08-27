@@ -21,16 +21,36 @@
 // deno-lint-ignore no-explicit-any
 type SessionLookupClient = { from: (table: string) => any };
 
+/**
+ * WHICH PRODUCT, not merely whether one was bought.
+ *
+ * This gate used to ask only whether the session id existed in
+ * used_stripe_sessions — and that table had no product column, so a session
+ * minted by the $2 scan pack was indistinguishable from one that bought the $59
+ * package. Buy the cheapest item, keep the id from the success-page URL, and
+ * every paid generator answered for as long as the row lived, which is forever:
+ * the claim is permanent by design so a real buyer can refresh the page.
+ *
+ * `allowed` is the set of product_type values the CALLING generator actually
+ * sells. Omit it and behaviour is exactly as before, which is what keeps
+ * endpoints whose product mapping is not one-to-one working unchanged.
+ *
+ * A NULL product_type is ACCEPTED. Rows claimed before 20260827180000 have no
+ * product recorded, and a real buyer's row is reused on every refresh — so
+ * rejecting NULL would 402 people who paid. The gate therefore closes for every
+ * session claimed from now on and stays open for ones already banked.
+ */
 export async function assertPaidSession(
   supabase: SessionLookupClient,
   sessionId: unknown,
+  allowed?: readonly string[],
 ): Promise<string | null> {
   if (typeof sessionId !== "string" || sessionId.length === 0) {
     return "This content requires a completed purchase.";
   }
   const { data, error } = await supabase
     .from("used_stripe_sessions")
-    .select("session_id")
+    .select("session_id, product_type")
     .eq("session_id", sessionId)
     .maybeSingle();
   // Fail closed: a real buyer's session is always present (verify claimed it
@@ -38,5 +58,9 @@ export async function assertPaidSession(
   // error is safer to reject-and-retry than to hand out premium content free.
   if (error) return "We couldn't verify your purchase just now — please refresh to try again.";
   if (!data) return "We couldn't confirm a completed purchase for this session.";
+  const bought = (data as { product_type?: string | null }).product_type ?? null;
+  if (allowed && allowed.length > 0 && bought !== null && !allowed.includes(bought)) {
+    return "That purchase does not include this tool.";
+  }
   return null;
 }

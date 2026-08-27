@@ -30,7 +30,9 @@ serve(async (req) => {
 
     // PAID CONTENT — see paid-session.ts. Gated before input validation so an
     // unpaid caller cannot probe the endpoint's behaviour or spend a token.
-    const paidError = await assertPaidSession(supabase, sessionId);
+    // Gated on WHAT was bought, not merely that something was. Without the
+    // product list a $2 scan-pack session opened every paid generator forever.
+    const paidError = await assertPaidSession(supabase, sessionId, ["graduate_gameplan"]);
     if (paidError) {
       return new Response(
         JSON.stringify({ error: paidError, retryable: true }),

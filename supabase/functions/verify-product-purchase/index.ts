@@ -198,7 +198,8 @@ serve(async (req) => {
     // claim atomic: only one caller can win the insert.
     const { error: claimError } = await supabase
       .from('used_stripe_sessions')
-      .insert({ session_id: sessionId });
+      // WHICH product, not just that one was bought — see _shared/paid-session.ts.
+      .insert({ session_id: sessionId, product_type: productType ?? null });
 
     let isFirstUse: boolean;
     if (claimError) {

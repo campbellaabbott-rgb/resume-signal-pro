@@ -373,7 +373,9 @@ serve(async (req) => {
     // ProductSuccess). That is NOT true of generate-cover-letter or
     // generate-tailored-resume, which the public job board calls for free with
     // an identical body shape — gating those would break the board.
-    const paidError = await assertPaidSession(supabase, sessionId);
+    // Gated on WHAT was bought, not merely that something was. Without the
+    // product list a $2 scan-pack session opened every paid generator forever.
+    const paidError = await assertPaidSession(supabase, sessionId, ["premium_package"]);
     if (paidError) {
       return new Response(
         JSON.stringify({ error: paidError, retryable: true }),

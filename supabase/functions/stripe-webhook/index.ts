@@ -159,7 +159,8 @@ async function triggerProductDelivery(
   // atomic: only one caller can win it.
   const { error: claimError } = await supabase
     .from('used_stripe_sessions')
-    .insert({ session_id: sessionId });
+    // WHICH product, not just that one was bought — see _shared/paid-session.ts.
+    .insert({ session_id: sessionId, product_type: productType ?? null });
 
   if (claimError) {
     if (claimError.code === '23505') {

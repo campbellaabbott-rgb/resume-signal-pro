@@ -38,7 +38,9 @@ serve(async (req) => {
     // Safe on the recovery/regenerate path this endpoint serves — ProductSuccess
     // always awaits verify-product-purchase (which claims the session) first, so a
     // real buyer's session is already present; assertPaidSession only checks it exists.
-    const paidError = await assertPaidSession(supabase, sessionId);
+    // Gated on WHAT was bought, not merely that something was. Without the
+    // product list a $2 scan-pack session opened every paid generator forever.
+    const paidError = await assertPaidSession(supabase, sessionId, ["basic_keyword_fix"]);
     if (paidError) return new Response(JSON.stringify({ error: paidError, retryable: true }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
     if (!resumeText) {
