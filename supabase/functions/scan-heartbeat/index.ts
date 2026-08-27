@@ -56,11 +56,37 @@ interface HealthCheckResult {
 // instead. The remaining four are fired concurrently and bounded by this helper:
 // a stat that can't be computed in time yields no data, and its check is
 // recorded in `skipped` — reported as unmeasured, never as passing.
-async function rpcWithin<T>(p: PromiseLike<{ data: T | null }>, ms = 6_000): Promise<{ data: T | null }> {
+/**
+ * A DEADLINE MISS AND AN EMPTY ANSWER MUST NOT LOOK THE SAME.
+ *
+ * This resolved `{ data: null }` for a timeout, for a rejection AND for a
+ * genuinely empty result — so every consumer's `if (row)` guard skipped in
+ * silence and the check simply VANISHED from the payload. No entry in `checks`,
+ * no entry in `skipped`. The surrounding try/catch could not help: this never
+ * throws, by construction.
+ *
+ * That is the same shape as the semantic tier returning [] on a deadline, and it
+ * matters more here — this endpoint IS the monitoring. A check that disappears
+ * reads exactly like a check that passed.
+ *
+ * `timedOut` distinguishes them. Callers record a skip with a reason rather than
+ * dropping the check.
+ */
+async function rpcWithin<T>(
+  p: PromiseLike<{ data: T | null }>,
+  ms = 6_000,
+): Promise<{ data: T | null; timedOut?: boolean; failed?: boolean }> {
   return await Promise.race([
-    Promise.resolve(p).then((r) => r, () => ({ data: null })),
-    new Promise<{ data: null }>((res) => setTimeout(() => res({ data: null }), ms)),
+    Promise.resolve(p).then((r) => r as { data: T | null }, () => ({ data: null, failed: true })),
+    new Promise<{ data: null; timedOut: true }>((res) => setTimeout(() => res({ data: null, timedOut: true }), ms)),
   ]);
+}
+
+/** Reason string for a check whose RPC never answered, or "" when it did. */
+function unanswered(r: { timedOut?: boolean; failed?: boolean }, fn: string, ms: number): string {
+  if (r.timedOut) return `${fn} exceeded its ${ms}ms deadline — check not evaluated`;
+  if (r.failed) return `${fn} failed — check not evaluated`;
+  return "";
 }
 
 /**
@@ -362,7 +388,7 @@ serve(async (req) => {
       // fully re-verified once per rotation; if that rotation hasn't
       // completed within the SLA, cold-tail postings are going stale even
       // though slices keep ticking. This measures freshness directly.
-      const { data: rot } = await supabase
+      const { data: rot, error: rotErr } = await supabase
         .from('job_board_meta').select('v, updated_at').eq('k', 'cold_rotation').maybeSingle();
       const rotV = (rot?.v ?? {}) as { completedAt?: string; coldBoards?: number };
       const rotAgeMin = rot ? Math.round((Date.now() - new Date(rotV.completedAt ?? rot.updated_at).getTime()) / 60000) : null;
@@ -378,12 +404,25 @@ serve(async (req) => {
       const expectedWrapMin = Math.ceil((coldBoards / 80) * 0.95);
       const COLD_ROTATION_SLA_MIN = Math.max(120, Math.ceil(expectedWrapMin * 1.4));
       const rotStale = rotAgeMin !== null && rotAgeMin > COLD_ROTATION_SLA_MIN;
+      // AN UNREADABLE ROTATION IS NOT A FRESH ONE. `rotAgeMin` is null whenever
+      // the cold_rotation row is missing or the read failed, and `rotStale` was
+      // therefore false — so the check reported PASSED on exactly the two states
+      // it exists to catch. A monitor that cannot fail is not a monitor: this is
+      // the same shape as the alert thresholds that read a 0% success rate as
+      // 100%. Unknown is reported as unknown.
+      const rotUnknown = !!rotErr || rot === null;
       checks.push({
         name: 'job_board_freshness',
-        passed: !rotStale,
+        passed: !rotStale && !rotUnknown,
         responseTimeMs: 0,
-        error: rotStale ? `cold-tail last fully re-verified ${rotAgeMin} min ago (SLA ${COLD_ROTATION_SLA_MIN}) — long-tail postings may be stale; check for failing boards or too-slow rotation` : undefined,
+        error: rotUnknown
+          ? `cold_rotation state unreadable (${rotErr?.message?.slice(0, 120) ?? 'row absent'}) — freshness cannot be evaluated`
+          : rotStale ? `cold-tail last fully re-verified ${rotAgeMin} min ago (SLA ${COLD_ROTATION_SLA_MIN}) — long-tail postings may be stale; check for failing boards or too-slow rotation` : undefined,
       });
+      if (rotUnknown) {
+        if (overallStatus === 'healthy') overallStatus = 'degraded';
+        errorMessage = errorMessage || 'Job board freshness cannot be evaluated (cold_rotation unreadable)';
+      }
       if (rotStale) {
         if (overallStatus === 'healthy') overallStatus = 'degraded';
         errorMessage = errorMessage || `Job board cold-tail freshness behind SLA (${rotAgeMin} min)`;
@@ -406,7 +445,10 @@ serve(async (req) => {
       // was watching the published "re-verified within a few hours" claim. The
       // one thing a monitor must never do quietly is stop monitoring.
       try {
-        const { data: fRows } = await freshnessP;
+        const fRes = await freshnessP;
+        const fWhy = unanswered(fRes, 'get_freshness_stats', RPC_MS);
+        if (fWhy) skip('job_board_board_freshness', fWhy);
+        const { data: fRows } = fRes;
         const f = Array.isArray(fRows) ? (fRows[0] as { boards?: number; p50_min?: number; p95_min?: number } | undefined) : undefined;
         if (!f || typeof f.p95_min !== 'number') {
           // withDeadline collapses timeout, error and empty into { data: null },
@@ -634,7 +676,10 @@ serve(async (req) => {
       // postings on an 8GB plan. Alert at 75% database usage — the one
       // failure mode that takes every feature down at once is out-of-disk.
       try {
-        const { data: sf } = await storageP;
+        const sfRes = await storageP;
+        const sfWhy = unanswered(sfRes, 'get_storage_footprint', RPC_MS);
+        if (sfWhy) skip('job_board_storage', sfWhy);
+        const { data: sf } = sfRes;
         const row = Array.isArray(sf) ? sf[0] : sf;
         if (row && typeof row.db_bytes === 'number') {
           const PLAN_BYTES = 8 * 1024 ** 3;
@@ -704,7 +749,10 @@ serve(async (req) => {
       // stats_cache stays as the fallback, so a rollup outage degrades to the
       // previous behaviour rather than to nothing.
       try {
-        const { data: covLive } = await dateCovP;
+        const covRes = await dateCovP;
+        const covWhy = unanswered(covRes, 'get_date_coverage', RPC_MS);
+        if (covWhy) skip('job_board_date_coverage', covWhy);
+        const { data: covLive } = covRes;
         const cov = (Array.isArray(covLive) && covLive.length > 0)
           ? covLive as Array<Record<string, unknown>>
           : (statsCache?.date_coverage ?? null);
@@ -744,7 +792,10 @@ serve(async (req) => {
       // re-verified in 24h — a widening count means a cursor/selection gap the
       // 48h sweep is about to start deleting around.
       try {
-        const { data: staleCount } = await staleBoardsP;
+        const staleRes = await staleBoardsP;
+        const staleWhy = unanswered(staleRes, 'get_stale_board_count', RPC_MS);
+        if (staleWhy) skip('job_board_stale_boards', staleWhy);
+        const { data: staleCount } = staleRes;
         if (typeof staleCount === 'number') {
           // Bootstrap guard: right after the verifications table ships, EVERY board
           // is unstamped (~10k) until the rotation stamps them over ~3h — that's

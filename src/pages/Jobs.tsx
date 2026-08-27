@@ -812,8 +812,19 @@ export default function Jobs() {
   // whose location can't be placed are excluded while active — disclosed, not
   // guessed. Facet counts come from get_country_facet at mount.
   const [country, setCountry] = useState(() => {
-    const c = (initial.get("country") ?? "").toUpperCase();
-    return /^[A-Z]{2}$/.test(c) ? c : "";
+    // A LIST, because the URL already WRITES one. The picker produces
+    // "?country=US,GB" and the chip reads "2 countries", but this reader
+    // required exactly two letters — so "US,GB" failed the test and reset to ""
+    // on every reload and on every shared link. The filter silently disappeared
+    // for the one case a person is most likely to share.
+    const parts = (initial.get("country") ?? "")
+      .toUpperCase().split(",").map((c) => c.trim())
+      .filter((c) => /^[A-Z]{2}$/.test(c));
+    // FIVE, matching filters.ts's COUNTRY_LIMIT exactly. A UI that accepts more
+    // than the server binds would show a filter chip for a country the board
+    // silently drops — two spellings of one limit is how the screen and the
+    // result set start disagreeing.
+    return [...new Set(parts)].slice(0, 5).join(",");
   });
   const [countryFacet, setCountryFacet] = useState<Array<{ country: string; n: number }>>([]);
 

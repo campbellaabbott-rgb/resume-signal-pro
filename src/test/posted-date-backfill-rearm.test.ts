@@ -262,7 +262,14 @@ describe("the heartbeat watches the vendors that depend on the sweep", () => {
     // coverage` was absent from the response entirely. An alarm reading a
     // stopped instrument is the failure it was built to catch.
     expect(HB).toMatch(/const dateCovP = rpcWithin\(supabase\.rpc\('get_date_coverage'\), RPC_MS\)/);
-    expect(HB).toMatch(/const \{ data: covLive \} = await dateCovP;/);
+    // The VALUE must come from that promise. The destructure moved one line
+    // when rpcWithin learned to distinguish a deadline miss from an empty answer
+    // — the check used to VANISH from the payload on a timeout, which is the
+    // same "alarm reading a stopped instrument" failure in a different disguise.
+    expect(HB).toMatch(/const covRes = await dateCovP;/);
+    expect(HB).toMatch(/const \{ data: covLive \} = covRes;/);
+    // And a timeout is now recorded rather than dropped.
+    expect(HB).toMatch(/skip\('job_board_date_coverage', covWhy\)/);
   });
 
   it("keeps stats_cache as the fallback, so a rollup outage degrades not disappears", () => {
