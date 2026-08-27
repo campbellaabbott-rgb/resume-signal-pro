@@ -92,7 +92,7 @@ describe("the endpoints that make the API worth paying for", () => {
 
   it("/v1/changes is bounded, so a poller cannot ask for the whole corpus", () => {
     expect(CODE).toMatch(/"since_too_old"/);
-    expect(CODE).toMatch(/const oldest = Date\.now\(\) - FRESH_WINDOW_DAYS \* 86_400_000;/);
+    expect(CODE).toMatch(/const oldest = Date\.now\(\) - maxDays \* 86_400_000;/);
   });
 
   it("/v1/usage can only ever read the calling key's own usage", () => {

@@ -49,13 +49,20 @@ describe("a public API is a promise to someone else's code", () => {
     // itself — both refuse. That was the FIFTH query shape in this codebase to
     // miss a fence, and the previous four were all caught the same way: by
     // someone noticing, not by a guard.
+    // AND TIED TO THE NUMBER OF READ SITES, not to a floor. Counting only
+    // "at least two of each, and equal to each other" passes just as happily
+    // with three read paths and two fenced ones — the sixth unfenced read would
+    // have sailed through the guard that exists to catch exactly that. The
+    // count of corpus reads is the thing the fences must keep up with.
+    const sites = (CODE.match(/from\("job_board_postings"\)/g) ?? []).length;
     const withdrawn = (CODE.match(/\.is\("missing_since", null\)/g) ?? []).length;
     const aged = (CODE.match(/\.gte\("effective_posted", freshCutoff\(\)\)/g) ?? []).length;
-    expect(withdrawn, "a posting read does not exclude withdrawn rows").toBeGreaterThanOrEqual(2);
-    expect(aged, "a posting read does not exclude rows past the serving window")
+    expect(sites, "no posting reads found — the assertions below would be vacuous")
       .toBeGreaterThanOrEqual(2);
-    expect(aged, "one read path binds the withdrawal fence without the freshness fence")
-      .toBe(withdrawn);
+    expect(withdrawn, `${sites} posting reads but only ${withdrawn} exclude withdrawn rows`)
+      .toBe(sites);
+    expect(aged, `${sites} posting reads but only ${aged} exclude rows past the serving window`)
+      .toBe(sites);
   });
 
   it("/v1/stats publishes the FENCED count, not the inflated corpus total", () => {
