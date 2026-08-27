@@ -100,10 +100,14 @@ serve(async (req) => {
     if (typeof sessionId === "string" && sessionId.startsWith("pro_")) {
       const grantId = sessionId.slice(4);
       const supabaseGrant = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+      // consumed_at is part of the lookup, not a note written afterwards. A
+      // replayed grant id — a bookmarked success URL, a re-sent link — finds
+      // nothing here rather than minting the product a second time.
       const { data: grant } = await supabaseGrant
         .from("pro_grants")
         .select("*")
         .eq("id", grantId)
+        .is("consumed_at", null)
         .maybeSingle();
       if (!grant) {
         return new Response(
@@ -125,11 +129,23 @@ serve(async (req) => {
           { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      await supabaseGrant
+      // The consume is the claim. Two requests can both pass the SELECT above;
+      // only one can win this UPDATE, because the filter and the write are one
+      // statement. The loser gets nothing rather than a second copy. This runs
+      // after the subscription re-check on purpose: a lapsed subscriber's grant
+      // must survive its 402 rather than being burned by it.
+      const { data: consumed } = await supabaseGrant
         .from("pro_grants")
         .update({ consumed_at: new Date().toISOString() })
         .eq("id", grantId)
-        .is("consumed_at", null);
+        .is("consumed_at", null)
+        .select("id");
+      if (!consumed || consumed.length === 0) {
+        return new Response(
+          JSON.stringify({ error: "Invalid session" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
       session = {
         payment_status: "paid",
         customer_email: grant.email,

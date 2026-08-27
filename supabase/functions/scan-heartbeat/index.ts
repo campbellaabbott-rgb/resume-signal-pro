@@ -105,7 +105,7 @@ function unanswered(r: { timedOut?: boolean; failed?: boolean }, fn: string, ms:
  *
  * BUMP ON EVERY DEPLOY of this function.
  */
-const BUILD_VERSION = "2026-08-12.1";
+const BUILD_VERSION = "2026-08-27.1";
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -346,6 +346,15 @@ serve(async (req) => {
       // publishes, not recompute them more expensively than the pages do.
       const statsCacheP = supabase
         .from('job_board_meta').select('v, updated_at').eq('k', 'stats_cache').maybeSingle();
+
+      // /pay-transparency is served entirely from this row — the two aggregates
+      // behind it (14.9s and 4.8s, measured) are cron-only, so a stalled refresh
+      // does not slow the page down, it makes the page publish old numbers with
+      // no outward sign. Same class as stats_cache, and until now nothing
+      // watched it: the public page could sit on a week-old measurement while
+      // this endpoint reported healthy.
+      const transparencyCacheP = supabase
+        .from('job_board_meta').select('updated_at').eq('k', 'transparency_cache').maybeSingle();
 
       const { data: prog, error } = await supabase
         .from('job_board_meta')
@@ -606,6 +615,39 @@ serve(async (req) => {
         if (overallStatus === 'healthy') overallStatus = 'degraded';
         errorMessage = errorMessage
           ?? `${scWhy} — two board checks have been unevaluated for ${scAgeMin === null ? 'as long as this row has been missing' : `${Math.round(scAgeMin / 60)}h`}`;
+      }
+
+      // The page names its own measurement time now, so a stale cache is
+      // honest rather than a lie. It is still a stalled job, and the bound is
+      // the same 240 minutes stats_cache uses — four missed hourly ticks, one
+      // number for both caches rather than two to keep in step.
+      try {
+        const tcRes = await transparencyCacheP;
+        const tcRow = tcRes.data as { updated_at?: string } | null;
+        const tcAgeMin = tcRow?.updated_at
+          ? Math.round((Date.now() - new Date(tcRow.updated_at).getTime()) / 60000)
+          : null;
+        if (tcRes.error) {
+          skip('job_board_transparency_cache', tcRes.error.message);
+        } else if (tcAgeMin === null) {
+          skip('job_board_transparency_cache', 'transparency_cache row missing — refresh_transparency_cache() has never run');
+        } else {
+          const tcStale = tcAgeMin > SC_STALL_DEGRADE_MIN;
+          checks.push({
+            name: 'job_board_transparency_cache',
+            passed: !tcStale,
+            responseTimeMs: 0,
+            error: tcStale
+              ? `transparency_cache is ${tcAgeMin} min old (hourly cron at :37; ${SC_STALL_DEGRADE_MIN} min bound) — /pay-transparency is publishing a ${Math.round(tcAgeMin / 60)}h-old measurement`
+              : undefined,
+          });
+          if (tcStale) {
+            if (overallStatus === 'healthy') overallStatus = 'degraded';
+            errorMessage = errorMessage ?? `transparency-cache-hourly looks stalled: ${tcAgeMin} min since the last refresh`;
+          }
+        }
+      } catch (e) {
+        skip('job_board_transparency_cache', e instanceof Error ? e.message : 'unreadable transparency_cache');
       }
 
       try {

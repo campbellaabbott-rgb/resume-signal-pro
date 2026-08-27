@@ -46,16 +46,20 @@ const CATEGORY_LABELS: Record<string, string> = {
 export default function PayTransparencyIndex() {
   const [pay, setPay] = useState<PayData | null>(null);
   const [cov, setCov] = useState<Coverage | null>(null);
+  // The cache ships its own computed_at and the page was throwing it away, then
+  // saying "Right now" over numbers up to an hour old. See the headline below.
+  const [computedAt, setComputedAt] = useState<string | null>(null);
 
   useEffect(() => {
     void Promise.resolve(rpc("get_transparency_cache")).then((r) => {
-      const c = r.data as { pay?: unknown; coverage?: unknown } | null;
+      const c = r.data as { pay?: unknown; coverage?: unknown; computed_at?: unknown } | null;
       // Object-shape checks, not truthiness: the row is NULL before the first
       // refresh, and `typeof null === "object"` would put null into state.
       const isObj = (v: unknown) => !!v && typeof v === "object" && !Array.isArray(v);
       let served = false;
       if (isObj(c?.pay)) { setPay(c!.pay as PayData); served = true; }
       if (isObj(c?.coverage)) { setCov(c!.coverage as Coverage); served = true; }
+      if (typeof c?.computed_at === "string") setComputedAt(c.computed_at);
       if (served) return;
       // Deploy-window fallback only (cache RPC absent, or row not yet primed):
       // the old direct calls. After the migration lands these are revoked from
@@ -91,10 +95,26 @@ export default function PayTransparencyIndex() {
             <p className="text-lg text-muted-foreground mb-6 max-w-3xl">
               Counted from job postings' own text and the employers' ATS fields — never estimated, never modeled.
               {pay?.overall && (
-                <> Right now <strong className="text-foreground">{pay.overall.pay_pct}%</strong> of the{" "}
+                <> <strong className="text-foreground">{pay.overall.pay_pct}%</strong> of the{" "}
                 <strong className="text-foreground">{fmt(pay.overall.total)}</strong> live postings we track state pay.</>
               )}
             </p>
+            {/* WAS "Right now". These numbers come from a cron job that runs at
+                :37 past the hour, so "right now" was wrong by up to an hour on
+                every visit, and by however long a stalled refresh lasted — the
+                page had no way to tell the difference and no way to say so.
+                Every public number on this site names its date basis; this one
+                had the timestamp in hand and discarded it.
+
+                Renders only when a real timestamp arrives. The deploy-window
+                fallback below computes live and carries no computed_at, so it
+                shows nothing rather than an invented time — no timestamp, no
+                claim, the same rule as /explore. */}
+            {computedAt && (
+              <p className="text-[13px] text-muted-foreground mb-2">
+                Measured {new Date(computedAt).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })}, refreshed hourly.
+              </p>
+            )}
             <p className="text-[13px] text-muted-foreground flex items-center gap-1.5">
               <Scale className="w-4 h-4 text-primary shrink-0" />
               Placement here cannot be bought. The only way onto this page is to state pay in your own postings — see our{" "}

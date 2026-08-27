@@ -250,9 +250,14 @@ describe("the heartbeat watches the vendors that depend on the sweep", () => {
   it("declares a bumped BUILD_VERSION so the deploy is checkable", () => {
     // 2026-08-12.1: SC_STALL_DEGRADE_MIN 720 -> 240 after the six-hour
     // stats_cache stall this endpoint slept through (its first real one).
+    // 2026-08-27.1: two changes to what this endpoint can SEE. rpcWithin now
+    // distinguishes a deadline miss from an empty answer, so four checks record
+    // a skip instead of silently disappearing; and transparency_cache is
+    // watched, which it never was — /pay-transparency could publish a week-old
+    // measurement under a green light.
     // The pin moves with every scan-heartbeat change, deliberately: the
     // version is the only external tell of which bundle answered.
-    expect(HB).toMatch(/const BUILD_VERSION = "2026-08-12\.\d+"/);
+    expect(HB).toMatch(/const BUILD_VERSION = "2026-08-27\.\d+"/);
   });
 
   it("reads the ROLLUP, not the cache that was frozen when this shipped", () => {

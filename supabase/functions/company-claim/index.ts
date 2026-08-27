@@ -170,9 +170,13 @@ serve(async (req) => {
       }
 
       // The claimed company must actually exist on the board.
-      const { count } = await supabase
+      // "We could not check" is not "you are not here". Telling a real employer
+      // their company is absent because our own query failed sends them away
+      // for good; a 503 invites the retry that actually works.
+      const { count, error: cErr } = await supabase
         .from("job_board_postings").select("id", { count: "exact", head: true })
         .eq("company_token", companyToken).limit(1);
+      if (cErr) return json({ error: "We could not verify that company right now. Please try again in a moment." }, 503);
       if (!count) return json({ error: "Company not found on the board." }, 404);
 
       const match = domainMatches(workEmail, companyToken, companyName);

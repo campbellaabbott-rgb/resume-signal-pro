@@ -138,6 +138,68 @@ describe("the page reads the cache first and falls back only unserved", () => {
     // "object" — the trap that puts null into state and crashes the render.
     expect(code).toMatch(/const isObj = \(v: unknown\) => !!v && typeof v === "object" && !Array\.isArray\(v\);/);
   });
+
+  it("does not say the numbers describe this moment", () => {
+    // The refresh runs at :37 past the hour, so the headline was wrong by up to
+    // an hour on every single visit — and by however long a stalled refresh
+    // lasted, with nothing on the page to show the difference. Comments are
+    // stripped above, so the note explaining the old wording does not fail this.
+    expect(code, 'the headline claims "Right now" over an hourly cache')
+      .not.toMatch(/Right now/);
+  });
+
+  it("keeps the timestamp the cache hands it, and shows it", () => {
+    // computed_at ships inside the payload; the page was discarding it while
+    // making a stronger claim than the data supported. Every public number on
+    // this site names its date basis.
+    expect(code, "computed_at is read from the payload").toMatch(/computed_at/);
+    expect(code, "the measurement time is never rendered").toMatch(/computedAt &&/);
+    expect(code, "no wording ties the figures to when they were measured")
+      .toMatch(/Measured \{new Date\(computedAt\)/);
+  });
+
+  it("claims nothing when the fallback served — no timestamp, no claim", () => {
+    // The deploy-window fallback computes live and carries no computed_at.
+    // Rendering must be conditional on a real timestamp rather than defaulting
+    // to now(), which would put an invented time under the numbers.
+    expect(code).not.toMatch(/computedAt \?\?\s*new Date\(\)/);
+    expect(code).toMatch(/typeof c\?\.computed_at === "string"/);
+  });
+});
+
+describe("a public page served from a cache has something watching the cache", () => {
+  const hb = readFileSync(resolve(__dirname, "../../supabase/functions/scan-heartbeat/index.ts"), "utf8")
+    .replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+
+  it("reads the transparency_cache row", () => {
+    // stats_cache had a staleness bound from the day it stalled; this row had
+    // none, so /pay-transparency could publish a week-old measurement while the
+    // heartbeat reported healthy.
+    expect(hb).toMatch(/eq\('k', 'transparency_cache'\)/);
+  });
+
+  it("degrades on a stall rather than only noting it", () => {
+    expect(hb).toMatch(/job_board_transparency_cache/);
+    const at = hb.indexOf("job_board_transparency_cache");
+    const block = hb.slice(at, at + 1400);
+    expect(block, "a stale transparency cache leaves the endpoint green")
+      .toMatch(/overallStatus = 'degraded'/);
+  });
+
+  it("shares the stats_cache bound instead of inventing a second number", () => {
+    const at = hb.indexOf("const tcStale");
+    expect(at, "the staleness test is gone").toBeGreaterThan(-1);
+    expect(hb.slice(at, at + 120)).toMatch(/SC_STALL_DEGRADE_MIN/);
+  });
+
+  it("records a skip when the row is missing or unreadable, rather than vanishing", () => {
+    // The failure this endpoint is most prone to: a check that cannot be
+    // evaluated silently disappears from the payload instead of saying so.
+    const at = hb.indexOf("transparencyCacheP");
+    const block = hb.slice(at, hb.indexOf("const g = (statsCache"));
+    expect(block).toMatch(/skip\('job_board_transparency_cache', tcRes\.error\.message\)/);
+    expect(block).toMatch(/skip\('job_board_transparency_cache', 'transparency_cache row missing/);
+  });
 });
 
 describe("the external monitor watches from outside the blast radius", () => {
