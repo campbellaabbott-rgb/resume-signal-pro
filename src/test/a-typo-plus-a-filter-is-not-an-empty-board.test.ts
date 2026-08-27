@@ -94,8 +94,22 @@ describe("a typo plus a filter is not an empty board", () => {
     expect(body).toMatch(/missing_since IS NULL/);
     // The semantic tier had the identical hole, and the claim that the trigram
     // one was "the last such path" was simply false when it was written.
-    const sem = RESCUE_SQL.slice(RESCUE_SQL.indexOf("FUNCTION public.search_jobs_semantic("));
-    expect(sem, "the semantic rescue is not in this migration").not.toBe("");
+    // RESOLVED INDEPENDENTLY, not assumed to share a file with the trigram
+    // rescue. The two used to be re-issued together; 20260827160000 rewrote the
+    // semantic tier on its own (its ANN was unbounded and timing out on every
+    // call), so the newest definition of each now lives in a different
+    // migration. Slicing the trigram file for it returned the last character of
+    // the file — a string that trivially fails the fence assertion below and
+    // says nothing about the function it was meant to check.
+    const semDir = resolve(ROOT, "supabase/migrations");
+    const SEM_SQL = readdirSync(semDir)
+      .filter((f) => f.endsWith(".sql"))
+      .sort()
+      .map((f) => readFileSync(resolve(semDir, f), "utf8"))
+      .filter((t) => t.includes("FUNCTION public.search_jobs_semantic("))
+      .pop() ?? "";
+    const sem = SEM_SQL.slice(SEM_SQL.indexOf("FUNCTION public.search_jobs_semantic("));
+    expect(sem, "the semantic rescue is not in any migration").not.toBe("");
     expect(sem).toMatch(/missing_since IS NULL/);
   });
 

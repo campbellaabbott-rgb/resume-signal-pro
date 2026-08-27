@@ -476,7 +476,13 @@ describe("buildQuery — the ONE binder actually binds all six", () => {
   // other assertion in this file is a call instead.
   it("binds each new filter to the column the contract names", () => {
     const required: Array<[string, RegExp]> = [
-      ["salaryCeiling -> salary_rank_usd", /applied\.salaryCeiling !== null\).*lte\("salary_rank_usd", applied\.salaryCeiling\)/s],
+      // The ceiling now BRANCHES on includeUnstatedPay — a plain .lte() ANDed
+      // after the floor's OR-arm silently cancelled it, because NULL fails `<=`
+      // and every unpriced row the toggle had just re-admitted was thrown back
+      // out. So this one spans lines and is matched over the block rather than
+      // one line; both arms are asserted below so a half-written binding still
+      // cannot pass.
+      ["salaryCeiling -> salary_rank_usd", /applied\.salaryCeiling !== null\)[\s\S]{0,400}?lte\("salary_rank_usd", applied\.salaryCeiling\)/s],
       ["hasStatedPay -> salary_min_annual IS NOT NULL", /applied\.hasStatedPay\).*not\("salary_min_annual", "is", null\)/s],
       ["payBasis hourly -> salary_period = 'hour'", /applied\.payBasis === "hourly"\).*eq\("salary_period", "hour"\)/s],
       ["payBasis salaried -> salary_period IN (year, month)", /applied\.payBasis === "salaried"\).*in\("salary_period", \[\.\.\.SALARIED_PERIODS\]\)/s],
@@ -487,9 +493,16 @@ describe("buildQuery — the ONE binder actually binds all six", () => {
     for (const [what, re] of required) {
       // Each predicate is matched on its OWN line-anchored fragment, so a
       // half-written binding cannot be covered by a neighbour's match.
-      const line = BUILD_QUERY.split("\n").find((l) => re.test(l));
+      const line = BUILD_QUERY.split("\n").find((l) => re.test(l))
+        ?? (re.test(BUILD_QUERY) ? "matched across lines" : undefined);
       expect(line, `buildQuery does not bind ${what}`).toBeTruthy();
     }
+    // The ceiling's widening arm, asserted by name: without it the toggle is
+    // cancelled on every banded pay search (measured: 3,375 -> 404).
+    expect(
+      BUILD_QUERY,
+      "the ceiling must share includeUnstatedPay's widening, or it re-arms the NULL discard",
+    ).toMatch(/salary_rank_usd\.lte\.\$\{applied\.salaryCeiling\},salary_rank_usd\.is\.null/);
   });
 
   it("reads the derived filters, never the raw body", () => {

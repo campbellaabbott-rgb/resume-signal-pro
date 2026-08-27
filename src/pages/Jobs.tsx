@@ -299,7 +299,9 @@ export type BoardFilterState = {
   q: string;
   location: string;
   remoteOnly: boolean;
-  workMode: "" | "remote" | "hybrid" | "onsite";
+  /** Comma-joined subset of remote|hybrid|onsite; "" = any. A LIST, so
+   *  "remote or hybrid" is askable — see the toggles in the controls row. */
+  workMode: string;
   category: string;
   inclUncat: boolean;
   agentOnly: boolean;
@@ -635,6 +637,36 @@ function mergeCompanyOptions(
   return out.slice(0, 12);
 }
 
+
+/**
+ * WORK MODE IS A LIST, and these three keep every site agreeing on what that means.
+ *
+ * It was a single value all the way down — one string here, `.eq("work_mode", …)`
+ * in the query builder, `p.work_mode = quote_literal(…)` in all three SQL
+ * functions — so "remote or hybrid" could not be asked. Measured 2026-08-27: GB
+ * has 1,476 remote and 3,765 hybrid, so the either-question is 5,241 postings
+ * against the 1,476 a searcher could reach.
+ *
+ * Comma-joined rather than an array so the wire shape, the RPC parameter and the
+ * saved-search rows all stay `text` — an unchanged p_work_mode signature is what
+ * keeps a PGRST203 overload off the table.
+ *
+ * Canonical order, always, so two selections that mean the same thing produce
+ * the same string: saved searches compare equal and the cache key does not
+ * split "remote,hybrid" from "hybrid,remote".
+ */
+export const WORK_MODE_KEYS = ["remote", "hybrid", "onsite"] as const;
+export type WorkModeKey = typeof WORK_MODE_KEYS[number];
+
+const splitModes = (v: string): WorkModeKey[] =>
+  WORK_MODE_KEYS.filter((k) => v.split(",").map((x) => x.trim()).includes(k));
+const normalizeModes = (v: string): string => splitModes(v).join(",");
+const hasMode = (v: string, m: WorkModeKey): boolean => splitModes(v).includes(m);
+const withoutMode = (v: string, m: WorkModeKey): string =>
+  splitModes(v).filter((x) => x !== m).join(",");
+const toggleMode = (v: string, m: WorkModeKey): string =>
+  hasMode(v, m) ? withoutMode(v, m) : normalizeModes(v ? `${v},${m}` : m);
+
 export default function Jobs() {
   const { t } = useTranslation();
   // How far the agent actually reaches, from the DEPLOYED bundle rather than a
@@ -653,9 +685,12 @@ export default function Jobs() {
   const [remoteOnly, setRemoteOnly] = useState(initial.get("remote") === "1");
   // Definitive work-mode filter (remote/hybrid/onsite; "" = any). The legacy
   // remote=1 URL param maps to "remote" so old links keep working.
-  const [workMode, setWorkMode] = useState<"" | "remote" | "hybrid" | "onsite">(() => {
-    const m = initial.get("mode");
-    if (m === "remote" || m === "hybrid" || m === "onsite") return m;
+  const [workMode, setWorkMode] = useState<string>(() => {
+    // Accepts a list now. Old single-value links ("?mode=remote") and the legacy
+    // "?remote=1" both still resolve to exactly what they always did.
+    const m = (initial.get("mode") ?? "").split(",")
+      .map((x) => x.trim()).filter((x) => WORK_MODE_KEYS.includes(x as WorkModeKey));
+    if (m.length) return [...new Set(m)].join(",");
     return initial.get("remote") === "1" ? "remote" : "";
   });
   const { category: pathCategory, companyToken } = useParams<{ category?: string; companyToken?: string }>();
@@ -915,8 +950,9 @@ export default function Jobs() {
       setCompany(typeof f.company === "string" ? f.company : "");
       setExperience(typeof f.experience === "string" ? f.experience : "");
       setRemoteOnly(false);
-      setWorkMode(f.workMode === "remote" || f.workMode === "hybrid" || f.workMode === "onsite"
-        ? f.workMode : f.remote === true ? "remote" : "");
+      setWorkMode(typeof f.workMode === "string" && f.workMode
+        ? normalizeModes(f.workMode)
+        : f.remote === true ? "remote" : "");
       setSalaryFloor(typeof f.salaryFloor === "number" ? f.salaryFloor : 0);
       setCountry(typeof f.country === "string" ? f.country : "");
       setLocation(typeof f.location === "string" ? f.location : "");
@@ -3230,7 +3266,17 @@ export default function Jobs() {
       });
     }
     if (remoteOnly && !workMode) f.push({ key: "remote", label: t("jobsPage.remoteBadge", "Remote"), clear: () => setRemoteOnly(false) });
-    if (workMode) f.push({ key: "mode", label: t(`jobsPage.workMode.${workMode}`, workMode), clear: () => { setWorkMode(""); setRemoteOnly(false); } });
+    // ONE CHIP PER MODE, each independently removable. Interpolating the whole
+    // value into `jobsPage.workMode.${workMode}` would ask for a key like
+    // "workMode.remote,hybrid", which does not exist — the fallback would print
+    // the raw comma-joined string at a visitor.
+    for (const m of splitModes(workMode)) {
+      f.push({
+        key: `mode:${m}`,
+        label: t(`jobsPage.workMode.${m}`, m),
+        clear: () => { setWorkMode(withoutMode(workMode, m)); setRemoteOnly(false); },
+      });
+    }
     // A LABEL PER STEP, not a two-way guess. With only "day" and "week" in the
     // state a ternary covered it; over 1..30 the same ternary would print "This
     // week" on a fourteen-day window.
@@ -3319,7 +3365,7 @@ export default function Jobs() {
 
   const paletteActions: PaletteAction[] = useMemo(() => [
     { id: "search", label: t("jobsPage.paFocusSearch", "Search postings"), hint: "/", run: () => (document.getElementById("board-search") as HTMLInputElement | null)?.focus() },
-    { id: "remote", label: workMode === "remote" ? t("jobsPage.paRemoteOff", "Show all locations") : t("jobsPage.paRemoteOn", "Remote only"), run: () => { setWorkMode(workMode === "remote" ? "" : "remote"); setRemoteOnly(false); } },
+    { id: "remote", label: hasMode(workMode, "remote") ? t("jobsPage.paRemoteOff", "Show all locations") : t("jobsPage.paRemoteOn", "Remote only"), run: () => { setWorkMode(toggleMode(workMode, "remote")); setRemoteOnly(false); } },
     { id: "week", label: t("jobsPage.paWeek", "Posted this week"), run: () => setFreshness("7") },
     { id: "today", label: t("jobsPage.paToday", "Posted today"), run: () => setFreshness("1") },
     { id: "entry", label: t("jobsPage.paEntry", "Entry-level roles"), run: () => setExperience("entry") },
@@ -4799,17 +4845,31 @@ export default function Jobs() {
             />
             {/* Definitive work-mode filter: only employer-stated tags match;
                 postings that don't say are excluded by the filter, honestly. */}
-            <select
-              value={workMode}
-              onChange={(e) => { const v = e.target.value as "" | "remote" | "hybrid" | "onsite"; setWorkMode(v); setRemoteOnly(false); }}
-              className="px-3 py-2 rounded-lg border border-border bg-background text-sm"
+            {/* TOGGLES, NOT A SELECT. A <select> can hold one value, which is
+                why "remote or hybrid" was unaskable — and hybrid is the larger
+                bucket almost everywhere, so "either" is the ordinary question.
+                Nothing selected means any mode, exactly as the empty option did. */}
+            <div
+              role="group"
               aria-label={t("jobsPage.workMode.label", "Work mode")}
+              className="inline-flex items-center gap-1 rounded-lg border border-border bg-background p-1"
             >
-              <option value="">{t("jobsPage.workMode.any", "Any work mode")}</option>
-              <option value="remote">{t("jobsPage.workMode.remote", "Remote")}</option>
-              <option value="hybrid">{t("jobsPage.workMode.hybrid", "Hybrid")}</option>
-              <option value="onsite">{t("jobsPage.workMode.onsite", "On-site")}</option>
-            </select>
+              {(WORK_MODE_KEYS).map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  aria-pressed={hasMode(workMode, m)}
+                  onClick={() => { setWorkMode(toggleMode(workMode, m)); setRemoteOnly(false); }}
+                  className={`px-2.5 py-1 rounded-md text-sm transition-colors ${
+                    hasMode(workMode, m)
+                      ? "bg-primary text-primary-foreground font-medium"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {t(`jobsPage.workMode.${m}`, m === "onsite" ? "On-site" : m === "remote" ? "Remote" : "Hybrid")}
+                </button>
+              ))}
+            </div>
             {(q || activeBoardFilterKeys(filterState).length > 0) && (
               <Button size="sm" variant="ghost" className="gap-1.5" onClick={() => saveCurrentSearch()}>
                 <BookmarkCheck className="w-3.5 h-3.5" />
@@ -5148,8 +5208,8 @@ export default function Jobs() {
           <div className="flex lg:hidden flex-nowrap gap-2 mb-1.5 overflow-x-auto pb-1 [mask-image:linear-gradient(to_right,black_92%,transparent)]">
             {([
               { key: "week", active: freshness === "7", label: t("jobsPage.chipWeek", "Posted this week"), toggle: () => setFreshness(freshness === "7" ? "" : "7") },
-              { key: "remote", active: workMode === "remote", label: t("jobsPage.workMode.remote", "Remote"), toggle: () => { setWorkMode(workMode === "remote" ? "" : "remote"); setRemoteOnly(false); } },
-              { key: "hybrid", active: workMode === "hybrid", label: t("jobsPage.workMode.hybrid", "Hybrid"), toggle: () => { setWorkMode(workMode === "hybrid" ? "" : "hybrid"); setRemoteOnly(false); } },
+              { key: "remote", active: hasMode(workMode, "remote"), label: t("jobsPage.workMode.remote", "Remote"), toggle: () => { setWorkMode(toggleMode(workMode, "remote")); setRemoteOnly(false); } },
+              { key: "hybrid", active: hasMode(workMode, "hybrid"), label: t("jobsPage.workMode.hybrid", "Hybrid"), toggle: () => { setWorkMode(toggleMode(workMode, "hybrid")); setRemoteOnly(false); } },
               { key: "pay", active: salaryFloor >= 100000, label: t("jobsPage.chip100k", "$100k+"), toggle: () => setSalaryFloor(salaryFloor >= 100000 ? 0 : 100000) },
               { key: "hiring", active: activelyHiringOnly, label: t("jobsPage.chipHiring", "Actively hiring"), toggle: () => setActivelyHiringOnly(!activelyHiringOnly) },
               // Density lives here below lg (its standalone button is desktop-

@@ -423,9 +423,30 @@ export function normalizeFilters(
   // from a query param must not silently narrow a search to 5.4% of the board.
   const sendableOnly = body.sendableOnly === true;
 
-  const wmRaw = String(body.workMode ?? "").trim().toLowerCase();
-  const workMode = (WORK_MODES as readonly string[]).includes(wmRaw) ? wmRaw : null;
-  if (sent(body.workMode) && !workMode) ignored.push("workMode");
+  // A LIST, LIKE EVERY OTHER CLOSED-SET FILTER HERE.
+  //
+  // category, country, experience and vendor all accept several values; work
+  // mode alone accepted one, so "remote or hybrid" — the ordinary thing a
+  // person wants — could not be asked. Measured 2026-08-27: GB has 1,476 remote
+  // and 3,765 hybrid, so the either-question is 5,241 postings against the
+  // 1,476 a searcher could actually reach.
+  //
+  // STILL A STRING, comma-joined, and that is deliberate: the type stays
+  // `string | null` so isUnfiltered, filterViolations, the contract test and the
+  // RPC signature all need no new shape — and an unchanged p_work_mode signature
+  // is what keeps a PGRST203 overload off the table.
+  //
+  // Validated per element and deduped, capped at the whole domain. A request
+  // whose every element is unusable is named in `ignored`, exactly as before;
+  // a request with one good and one bad element keeps the good one and still
+  // reports, which is the rule `experience` follows two blocks below.
+  const wmAsked = (Array.isArray(body.workMode) ? body.workMode : String(body.workMode ?? "").split(","))
+    .map((m) => String(m ?? "").trim().toLowerCase())
+    .filter((m) => m.length > 0);
+  const wmValid = [...new Set(wmAsked.filter((m) => (WORK_MODES as readonly string[]).includes(m)))]
+    .slice(0, WORK_MODES.length);
+  const workMode = wmValid.length ? wmValid.join(",") : null;
+  if (sent(body.workMode) && wmValid.length !== wmAsked.length) ignored.push("workMode");
 
   // Report when ANY requested band was dropped, not only when every one was. A
   // caller asking for senior+bogus gets senior and must still be told bogus did

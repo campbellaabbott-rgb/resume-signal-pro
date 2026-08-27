@@ -235,8 +235,17 @@ async function listJobs(client: SupabaseClient, url: URL, headers: Record<string
   // ("EVOLV - CPP"), so an exact match would be unusable.
   const dept = (p.get("department") ?? "").trim().slice(0, 80).replace(/[%_,()]/g, " ").trim();
   if (dept) q = q.ilike("department", `%${dept}%`);
+  // THE CEILING SHARES include_unstated_pay's WIDENING, or it cancels it.
+  // NULL fails `<=`, so a plain .lte() ANDed after the floor's OR-arm throws
+  // out every unpriced row that arm just re-admitted — the caller sets a band
+  // and include_unstated_pay=true and silently gets the floor-only answer.
+  // Same defect and same fix as the board's own query builder.
   const salaryMax = Number(p.get("salary_max"));
-  if (Number.isFinite(salaryMax) && salaryMax > 0) q = q.lte("salary_rank_usd", salaryMax);
+  if (Number.isFinite(salaryMax) && salaryMax > 0) {
+    q = p.get("include_unstated_pay") === "true"
+      ? q.or(`salary_rank_usd.lte.${salaryMax},salary_rank_usd.is.null`)
+      : q.lte("salary_rank_usd", salaryMax);
+  }
   const postedBefore = p.get("posted_before");
   if (postedBefore && !Number.isNaN(Date.parse(postedBefore))) q = q.lte("posted_at", new Date(postedBefore).toISOString());
 

@@ -102,7 +102,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-25.31";
+const BUILD_VERSION = "2026-08-25.32";
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -8673,7 +8673,10 @@ async function serveList(
     // Case-normalized (audit: {workMode:"Remote"} silently served the full
     // unfiltered board to API callers — the fence says filters are never
     // silently ignored, so at minimum every casing of a real value binds).
-    if (applied.workMode) q = q.eq("work_mode", applied.workMode);
+    // Multi-select: applied.workMode is a comma-joined subset of the closed
+    // domain, so .in() is the binding and a single value still yields one-element
+    // behaviour identical to the .eq() this replaces.
+    if (applied.workMode) q = q.in("work_mode", applied.workMode.split(","));
     // Country filter: exact match on the deterministically extracted code.
     // Postings whose location we couldn't place have country NULL and are
     // excluded by the filter — honestly, never guessed (the UI says so).
@@ -8741,7 +8744,28 @@ async function serveList(
     // ends compared different columns would return rows that clear the floor in
     // USD and the ceiling in SEK. normalizeFilters has already refused a ceiling
     // below the floor, so this can never bind an empty band.
-    if (applied.salaryCeiling !== null) q = q.lte("salary_rank_usd", applied.salaryCeiling);
+    // THE CEILING MUST SHARE THE FLOOR'S WIDENING, or it silently cancels it.
+    //
+    // includeUnstatedPay widens an active floor by ORing `salary_rank_usd IS
+    // NULL` back in. The ceiling shipped one commit later as a plain .lte(),
+    // which PostgREST ANDs — and NULL fails `<=`, so every unpriced row the OR
+    // arm had just re-admitted was thrown straight back out. Set a floor, a
+    // ceiling and the toggle and you got exactly the floor-only result, with all
+    // three controls lit.
+    //
+    // Measured live 2026-08-27, category=design at a $100k floor:
+    //   floor only ....................... 405
+    //   + includeUnstatedPay ............. 3,375   (the toggle works: +2,970)
+    //   + a $300k ceiling as well ........ 404     (the toggle contributes ZERO)
+    //
+    // This is the pay-floor NULL discard — the bug includeUnstatedPay exists to
+    // fix — re-armed by a second predicate. Two ANDed OR-arms give
+    // (in band) OR (unpriced), which is what the three lit controls claim.
+    if (applied.salaryCeiling !== null) {
+      q = applied.includeUnstatedPay
+        ? q.or(`salary_rank_usd.lte.${applied.salaryCeiling},salary_rank_usd.is.null`)
+        : q.lte("salary_rank_usd", applied.salaryCeiling);
+    }
     // "Only postings that state pay at all." salary_min_annual, NOT
     // salary_rank_usd: the rank column additionally requires a currency we can
     // identify, so binding it here would answer a narrower question than the

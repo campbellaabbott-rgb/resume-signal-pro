@@ -263,7 +263,12 @@ const PINNED = {
   // starts where the work does. The head-term ring is also issued before
   // search_jobs instead of after it (~473ms of the pair), catching at creation
   // so an early rejection is not unhandled. index.ts only, sources.ts UNCHANGED.
-  buildVersion: "2026-08-25.31",
+  // 2026-08-25.32: work mode becomes a list ("remote or hybrid" was unaskable —
+  // 5,241 postings in GB against the 1,476 a searcher could reach), and a pay
+  // ceiling stops cancelling includeUnstatedPay (design at a $100k floor: 3,375
+  // with the toggle, 404 once a ceiling is added — the pay-floor NULL discard
+  // re-armed by a second predicate). index.ts + filters.ts; sources.ts UNCHANGED.
+  buildVersion: "2026-08-25.32",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {
