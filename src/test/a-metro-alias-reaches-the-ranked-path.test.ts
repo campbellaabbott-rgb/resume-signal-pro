@@ -92,7 +92,20 @@ describe("a metro alias reaches every path, not just the one nobody types into",
   it("a plain location still behaves exactly as before", () => {
     // No pipe means a one-element array, so every existing caller is
     // unaffected whether or not it knows about this.
-    expect(MIG).toMatch(/one-element array and behaves EXACTLY as before/i);
+    //
+    // THE STRUCTURE FIRST, THEN THE SENTENCE. This assertion used to be the
+    // prose alone, and prose is not a property: it survives a rewrite that
+    // breaks the clause and it fails a rewrite that merely reflows the line
+    // (which is how it failed — a line break landed between "and" and
+    // "behaves"). The split matching below is what actually makes a pipeless
+    // location a one-element array; the sentence is the record of why.
+    const decoded = MIG.replace(/''/g, "'");
+    expect(decoded, "the alias list is no longer split on the delimiter")
+      .toContain("string_to_array($3, '|')");
+    expect(decoded, "a location is matched by equality again, so an alias list matches nothing")
+      .toContain("ILIKE '%' || alias.x || '%'");
+    expect(MIG.replace(/\n--\s*/g, " "), "the inherited location contract is no longer stated")
+      .toMatch(/one-element array and behaves EXACTLY as before/i);
   });
 
   it("strips the delimiter from user input so a typed location cannot split itself", () => {
