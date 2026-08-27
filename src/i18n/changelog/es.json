@@ -1,5 +1,13 @@
 {
   "changelogEntries": {
+    "remoteSearchNowFilters": {
+      "title": "Escribir «remoto» ahora filtra el tablón en lugar de buscar en los títulos",
+      "description": "Buscar «remote python» devolvía tres empleos. No porque hubiera tres, sino porque la palabra «remote» se comparaba con los títulos de las ofertas, así que solo veías a los empleadores que la habían escrito ahí. Filtrar por trabajo remoto encuentra doscientos. «Remoto», «híbrido» y «presencial» se entienden ahora como filtros, y la página te avisa de que lo ha hecho para que puedas deshacerlo si de verdad querías buscar esas palabras. Las mismas búsquedas que devolvían 3, 8 y 162 empleos ahora devuelven 200, 197 y 415."
+    },
+    "affiliateCommissionsNotRecorded": {
+      "title": "Las comisiones de afiliados no se estaban registrando",
+      "description": "Un fallo en nuestra base de datos hacía que, cuando una recomendación acababa en compra, la comisión no se registrara nunca. El sistema anotaba un error y continuaba, y ese registro lo describía como un duplicado inofensivo, así que desde fuera nada parecía ir mal. Ocurría desde diciembre. Ya está corregido. Si eres afiliado y crees que se pasó por alto alguna recomendación tuya, escríbenos y lo revisaremos."
+    },
     "searchUsedTheSlowerEngine": {
       "title": "Todas las búsquedas usaban en silencio el motor de reserva",
       "description": "Nuestra búsqueda por relevancia — la que decide qué empleos responden mejor a lo que escribes — había dejado de funcionar, y cada búsqueda recurría en silencio a una consulta simple ordenada por fecha. No aparecía ningún error, así que todo parecía normal; los resultados sencillamente eran peores de lo que debían. Ya está corregido y las búsquedas vuelven a ordenarse correctamente."

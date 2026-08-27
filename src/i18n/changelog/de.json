@@ -1,5 +1,13 @@
 {
   "changelogEntries": {
+    "remoteSearchNowFilters": {
+      "title": "„Remote“ filtert jetzt die Jobbörse, statt Stellentitel zu durchsuchen",
+      "description": "Die Suche nach „remote python“ lieferte drei Stellen. Nicht, weil es drei gab — sondern weil das Wort „remote“ mit den Stellentiteln abgeglichen wurde, sodass Sie nur Arbeitgeber sahen, die es zufällig dort hineingeschrieben hatten. Filtert man stattdessen nach Remote-Arbeit, sind es zweihundert. „Remote“, „hybrid“ und „vor Ort“ werden nun als Filter verstanden, und die Seite weist darauf hin, sodass Sie es rückgängig machen können, falls Sie die Wörter doch wörtlich meinten. Dieselben Suchen, die 3, 8 und 162 Stellen lieferten, liefern jetzt 200, 197 und 415."
+    },
+    "affiliateCommissionsNotRecorded": {
+      "title": "Affiliate-Provisionen wurden nicht erfasst",
+      "description": "Ein Fehler in unserer Datenbank führte dazu, dass eine Provision nie festgehalten wurde, wenn eine Empfehlung zu einem Kauf führte. Das System protokollierte einen Fehlschlag und machte weiter, und der Protokolleintrag beschrieb ihn als harmlose Dopplung — von außen sah also nichts falsch aus. Das lief seit Dezember so. Es ist behoben. Wenn Sie Affiliate sind und glauben, dass eine Ihrer Empfehlungen übersehen wurde, melden Sie sich, und wir sehen es uns an."
+    },
     "searchUsedTheSlowerEngine": {
       "title": "Jede Suche lief unbemerkt über die Ersatzsuche",
       "description": "Unsere Relevanzsuche — die entscheidet, welche Jobs am besten zu Ihrer Eingabe passen — funktionierte nicht mehr, und jede Suche fiel still auf eine einfache, rein nach Datum sortierte Abfrage zurück. Es gab keine Fehlermeldung, also wirkte alles normal; die Ergebnisse waren nur schlechter als sie sein sollten. Das ist behoben, Suchen werden wieder richtig sortiert."

@@ -1,5 +1,13 @@
 {
   "changelogEntries": {
+    "remoteSearchNowFilters": {
+      "title": "Typing “remote” now filters the board instead of searching job titles",
+      "description": "Searching for “remote python” returned three jobs. Not because there were three — because the word “remote” was being matched against job titles, so you only saw employers who happened to spell it there. Filtering for remote work instead finds two hundred. “Remote”, “hybrid” and “on-site” are now understood as filters, and the page tells you it has done that so you can undo it if you really did mean the words. The same searches that returned 3, 8 and 162 jobs now return 200, 197 and 415."
+    },
+    "affiliateCommissionsNotRecorded": {
+      "title": "Affiliate commissions were not being recorded",
+      "description": "A fault in our database meant that when a referral led to a purchase, the commission was never written down. The system logged a failure and carried on, and the log line described it as a harmless duplicate, so nothing looked wrong from the outside. It had been happening since December. It is fixed. If you are an affiliate and believe a referral of yours was missed, get in touch and we will look at it."
+    },
     "searchUsedTheSlowerEngine": {
       "title": "Every search was quietly using the fallback engine",
       "description": "Our ranked search — the one that decides which jobs best answer what you typed — had stopped working, and every search was silently falling back to a simpler date-ordered lookup. Nothing errored, so the board looked fine; the results were just worse than they should have been. It is fixed, and searches are ranked properly again."

@@ -1,5 +1,13 @@
 {
   "changelogEntries": {
+    "remoteSearchNowFilters": {
+      "title": "Taper « télétravail » filtre désormais les offres au lieu de chercher dans les intitulés",
+      "description": "Chercher « remote python » renvoyait trois offres. Non pas parce qu’il y en avait trois, mais parce que le mot « remote » était comparé aux intitulés de poste : vous ne voyiez que les employeurs qui l’avaient écrit dedans. En filtrant sur le travail à distance, on en trouve deux cents. « Remote », « hybride » et « sur site » sont maintenant compris comme des filtres, et la page vous le signale afin que vous puissiez revenir en arrière si vous cherchiez vraiment ces mots. Les mêmes recherches qui renvoyaient 3, 8 et 162 offres en renvoient désormais 200, 197 et 415."
+    },
+    "affiliateCommissionsNotRecorded": {
+      "title": "Les commissions d’affiliation n’étaient pas enregistrées",
+      "description": "Une anomalie dans notre base de données faisait que, lorsqu’une recommandation aboutissait à un achat, la commission n’était jamais enregistrée. Le système notait un échec et poursuivait, et cette ligne de journal le décrivait comme un doublon sans gravité : de l’extérieur, rien ne semblait anormal. Cela durait depuis décembre. C’est corrigé. Si vous êtes affilié et pensez qu’une de vos recommandations a été oubliée, écrivez-nous et nous l’examinerons."
+    },
     "searchUsedTheSlowerEngine": {
       "title": "Toutes les recherches passaient discrètement par le moteur de secours",
       "description": "Notre recherche par pertinence — celle qui décide quelles offres répondent le mieux à votre saisie — ne fonctionnait plus, et chaque recherche basculait silencieusement vers une simple requête triée par date. Aucune erreur ne s’affichait, tout semblait donc normal ; les résultats étaient simplement moins bons qu’ils auraient dû l’être. C’est corrigé, et les recherches sont de nouveau classées correctement."

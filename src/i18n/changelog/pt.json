@@ -1,5 +1,13 @@
 {
   "changelogEntries": {
+    "remoteSearchNowFilters": {
+      "title": "Escrever “remoto” agora filtra as vagas em vez de procurar nos títulos",
+      "description": "Procurar por “remote python” devolvia três vagas. Não porque houvesse três, mas porque a palavra “remote” era comparada com os títulos das vagas, pelo que só via os empregadores que a tinham escrito ali. Filtrar por trabalho remoto encontra duzentas. “Remoto”, “híbrido” e “presencial” são agora entendidos como filtros, e a página avisa que o fez, para que possa desfazer se realmente queria procurar essas palavras. As mesmas pesquisas que devolviam 3, 8 e 162 vagas devolvem agora 200, 197 e 415."
+    },
+    "affiliateCommissionsNotRecorded": {
+      "title": "As comissões de afiliados não estavam a ser registadas",
+      "description": "Uma falha na nossa base de dados fazia com que, quando uma indicação resultava numa compra, a comissão nunca fosse registada. O sistema registava um erro e continuava, e essa linha descrevia-o como um duplicado inofensivo, pelo que, visto de fora, nada parecia errado. Acontecia desde dezembro. Está corrigido. Se é afiliado e acredita que alguma indicação sua foi ignorada, contacte-nos e iremos verificar."
+    },
     "searchUsedTheSlowerEngine": {
       "title": "Todas as pesquisas usavam discretamente o motor de reserva",
       "description": "A nossa pesquisa por relevância — a que decide que vagas respondem melhor ao que escreve — tinha deixado de funcionar, e cada pesquisa recorria em silêncio a uma consulta simples ordenada por data. Não aparecia qualquer erro, por isso parecia tudo normal; os resultados eram apenas piores do que deviam. Já está corrigido e as pesquisas voltam a ser ordenadas corretamente."

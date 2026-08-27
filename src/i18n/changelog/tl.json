@@ -1,5 +1,13 @@
 {
   "changelogEntries": {
+    "remoteSearchNowFilters": {
+      "title": "Ang pag-type ng “remote” ay nagsasala na ngayon ng mga trabaho, hindi naghahanap sa pamagat",
+      "description": "Ang paghahanap ng “remote python” ay nagbabalik ng tatlong trabaho. Hindi dahil tatlo lang ang mayroon — kundi dahil ang salitang “remote” ay itinutugma sa pamagat ng trabaho, kaya ang nakikita mo lang ay mga employer na nagkataong isinulat iyon doon. Kapag sinala para sa remote na trabaho, dalawang daan ang lumalabas. Ang “remote”, “hybrid” at “on-site” ay nauunawaan na ngayon bilang mga salaan, at sinasabi ito ng pahina para maibalik mo kung talagang ang mga salita ang tinutukoy mo. Ang mga paghahanap na dating 3, 8 at 162 ay 200, 197 at 415 na ngayon."
+    },
+    "affiliateCommissionsNotRecorded": {
+      "title": "Hindi naitatala ang mga komisyon ng affiliate",
+      "description": "Dahil sa isang depekto sa aming database, hindi kailanman naitala ang komisyon kapag ang isang referral ay humantong sa pagbili. Nag-log ang sistema ng pagkabigo at nagpatuloy, at inilarawan ng log na iyon na isa lamang itong hindi nakakapinsalang duplicate, kaya walang mukhang mali sa labas. Nangyayari na ito mula pa noong Disyembre. Naayos na ito. Kung ikaw ay affiliate at sa tingin mo ay may referral kang hindi nabilang, makipag-ugnayan sa amin at titingnan namin ito."
+    },
     "searchUsedTheSlowerEngine": {
       "title": "Tahimik na gumagamit ng pang-reservang makina ang bawat paghahanap",
       "description": "Ang aming ranked na paghahanap — ang nagpapasya kung aling trabaho ang pinakaangkop sa tinipa mo — ay tumigil sa paggana, at bawat paghahanap ay tahimik na bumabalik sa simpleng paghahanap ayon sa petsa. Walang lumitaw na error kaya mukhang maayos ang lahat; mas mahina lang ang mga resulta kaysa nararapat. Naayos na ito at wastong nairaranggo muli ang mga paghahanap."

@@ -1,5 +1,13 @@
 {
   "changelogEntries": {
+    "remoteSearchNowFilters": {
+      "title": "“Remote” typen filtert nu het vacatureoverzicht in plaats van functietitels te doorzoeken",
+      "description": "Zoeken op “remote python” gaf drie vacatures. Niet omdat het er drie waren, maar omdat het woord “remote” werd vergeleken met functietitels, zodat je alleen werkgevers zag die het daar toevallig hadden opgeschreven. Filteren op thuiswerk levert er tweehonderd op. “Remote”, “hybride” en “op locatie” worden nu als filter begrepen, en de pagina meldt dat, zodat je het ongedaan kunt maken als je die woorden echt bedoelde. Dezelfde zoekopdrachten die 3, 8 en 162 vacatures gaven, geven nu 200, 197 en 415."
+    },
+    "affiliateCommissionsNotRecorded": {
+      "title": "Affiliatecommissies werden niet vastgelegd",
+      "description": "Door een fout in onze database werd de commissie nooit vastgelegd wanneer een verwijzing tot een aankoop leidde. Het systeem noteerde een mislukking en ging door, en die logregel omschreef het als een onschuldig duplicaat — van buitenaf leek er dus niets mis. Dit speelde al sinds december. Het is verholpen. Ben je affiliate en denk je dat een verwijzing van jou is gemist, neem dan contact op, dan kijken we ernaar."
+    },
     "searchUsedTheSlowerEngine": {
       "title": "Elke zoekopdracht gebruikte ongemerkt de reservezoekmachine",
       "description": "Onze relevantiezoekmachine — die bepaalt welke vacatures het beste passen bij wat u typt — werkte niet meer, en elke zoekopdracht viel stilletjes terug op een eenvoudige zoekopdracht op datum. Er verscheen geen foutmelding, dus alles leek normaal; de resultaten waren simpelweg slechter dan ze hoorden te zijn. Dit is verholpen en zoekopdrachten worden weer goed gerangschikt."
