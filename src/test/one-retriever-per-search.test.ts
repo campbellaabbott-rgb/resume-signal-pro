@@ -268,9 +268,21 @@ describe("routed retrieval is wired so it cannot fail quietly", () => {
   it("slices AFTER scoring, so offset indexes the order the reader sees", () => {
     // Paging a re-ranked list by a retriever-ordered offset is what made sorted
     // page two repeat page one.
-    expect(/const ordered = routedRetriever === "company" \? mapped : rerankWindow\(mapped, qText\);/.test(BLK)).toBe(true);
-    expect(/const page = ordered\.slice\(offset, offset \+ limit\);/.test(BLK)).toBe(true);
-    expect(/hasMore: offset \+ limit < ordered\.length,/.test(BLK)).toBe(true);
+    // THE WINDOW NOW FOLLOWS THE PAGE. It was anchored at rank 0, so everything
+    // past row 400 was unreachable on exactly the shorthand queries this route
+    // exists for — 84.9% of "cdl", 92.4% of "sales rep" — and the searcher was
+    // told "no more results" while the count proving otherwise appeared only on
+    // the empty page. `offset` is still a global position; the slice is taken
+    // inside the block it lands in.
+    expect(/const ordered = routedRetriever === "company" \? mapped : rerankWindow\(mapped, orderReadings\);/.test(BLK)).toBe(true);
+    expect(/const blockStart = Math\.floor\(offset \/ ROUTE_WINDOW\) \* ROUTE_WINDOW;/.test(FN)).toBe(true);
+    expect(/\.range\(blockStart, blockStart \+ ROUTE_WINDOW - 1\)/.test(FN)).toBe(true);
+    // Still sliced AFTER scoring — paging a re-ranked list by a
+    // retriever-ordered offset is what made sorted page two repeat page one.
+    expect(/const inBlock = offset - blockStart;/.test(BLK)).toBe(true);
+    expect(/const page = ordered\.slice\(inBlock, inBlock \+ limit\);/.test(BLK)).toBe(true);
+    // A full block means there is more behind it, whatever the slice says.
+    expect(/hasMore: blockFull \|\| inBlock \+ limit < ordered\.length,/.test(BLK)).toBe(true);
   });
 
   it("does not score an employer page by title similarity", () => {
@@ -280,7 +292,11 @@ describe("routed retrieval is wired so it cannot fail quietly", () => {
   });
 
   it("publishes a real total only when the window is not the cap", () => {
-    expect(/total: ordered\.length < ROUTE_WINDOW \? ordered\.length : null,/.test(BLK)).toBe(true);
+    // A short block IS the tail, so blockStart + its length is a real total; a
+    // full block is only a floor and says so.
+    expect(/const blockFull = ordered\.length >= ROUTE_WINDOW;/.test(BLK)).toBe(true);
+    expect(/const knownTotal = blockFull \? null : blockStart \+ ordered\.length;/.test(BLK)).toBe(true);
+    expect(/total: knownTotal,/.test(BLK)).toBe(true);
     expect(/countUnavailable: true/.test(BLK)).toBe(true);
   });
 
@@ -311,7 +327,10 @@ describe("the scorer reaches the path that serves most searches", () => {
     // Widened from rankedRows to mergedRows: the ranked window alone could not
     // fix q="sales", because zero of its 200 rows carry the exact title. The
     // head-term ring supplies those rows and the scorer ranks the union.
-    expect(/const rankedScored = pagePlan\.rerank \? rerankWindow\(mergedRows, qText\) : mergedRows;/.test(FN)).toBe(true);
+    // Scored against the typed query AND its alias expansions: scoring only the
+    // literal string sorted the rows the expansion had just fetched to the
+    // bottom of the window they were fetched into.
+    expect(/const rankedScored = pagePlan\.rerank \? rerankWindow\(mergedRows, \[qText, \.\.\.expansions\]\) : mergedRows;/.test(FN)).toBe(true);
     // pagePlan.rerank IS `scoreRanked && !deepPage` — the scorer still reaches
     // every page it used to; it stands down only past the re-ranked window,
     // where the rows are served in the RPC's own ts_rank_cd order. Proven by
@@ -357,7 +376,7 @@ describe("the head-term ring fetches what the scorer cannot reach", () => {
     // 2,313 prefix rows against a far larger real set. The merge is what makes
     // it safe.
     expect(/const mergedRows = \[\.\.\.headRows, \.\.\.rankedRows\]/.test(FN2)).toBe(true);
-    expect(/rerankWindow\(mergedRows, qText\)/.test(FN2)).toBe(true);
+    expect(/rerankWindow\(mergedRows, \[qText, \.\.\.expansions\]\)/.test(FN2)).toBe(true);
     expect(/mergedSeen\.has\(id\)/.test(FN2), "the merge must dedupe by id").toBe(true);
   });
 

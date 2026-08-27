@@ -102,7 +102,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-25.32";
+const BUILD_VERSION = "2026-08-25.33";
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -3402,6 +3402,51 @@ function withDeadline<T>(p: PromiseLike<T>, ms: number): Promise<T | { data: nul
 
 // ── detail: one posting's description (bounded memo, no bulk caching) ─────
 
+/**
+ * THE SEMANTIC TIER STANDS ITSELF DOWN WHEN THE RPC IS DEAD.
+ *
+ * While search_jobs_semantic was timing out, the 5s race in semanticRows lost
+ * on EVERY query: a fixed 5.0s tax on a 9s request budget, for nothing. On a
+ * thin search that was 58% of tookMs (measured: q="krankenschwester", 9.0s to
+ * serve two rows, `semantic: 5002`). Worse, the edge function walking away does
+ * not cancel the query — Postgres kept running the abandoned scan for a further
+ * 13-31s against the same database serving the board, once per attempt.
+ *
+ * Per-isolate and time-boxed, deliberately: no coordination, no storage, and it
+ * heals by itself. A cold tier is a tier that declines, which is an honest
+ * answer the response already knows how to report.
+ */
+/**
+ * THE FACET ROW, CACHED IN THE ISOLATE FOR A MINUTE.
+ *
+ * Every list request begins by reading the whole `refresh` meta row — 1.3-1.6MB,
+ * because `companiesFacet` is the full company list. Now that the request clock
+ * starts at entry the cost is finally visible, and it is the largest single term
+ * in any request that is not otherwise broken: median 863ms measured on the
+ * offset-ceiling exit (which does this read and no query of its own), which is
+ * ~47% of a plain browse and ~45-60% of a warm typed search.
+ *
+ * A TTL CACHE RATHER THAN A NARROWER SELECT, and the order matters. Narrowing
+ * the select cannot work as it was first scoped: companiesFacet IS the payload,
+ * and it is needed for companiesCount and for the selected-employer chip label —
+ * so a narrow read would have to publish a company count derived from a slice,
+ * and during the deploy window where the new keys are absent it would default a
+ * PUBLISHED count to 0. That is the claim-drift shape this codebase keeps being
+ * bitten by. The cache has none of it: no schema change, no new keys, nothing
+ * that can be absent.
+ *
+ * 60s is chosen against what the board already serves, not out of the air:
+ * STALE_MS is 12 minutes and the refresh cron targets 10, so a minute of extra
+ * staleness is strictly inside the staleness every visitor already sees. The
+ * background-refresh trigger below still fires on the cached timestamp, which is
+ * correct — it is asking "is the DATA stale", not "is my copy of it fresh".
+ */
+const META_TTL_MS = 60_000;
+let metaCache: { at: number; row: { v: Record<string, unknown>; updated_at: string } | null } | null = null;
+
+const SEMANTIC_COOLDOWN_MS = 10 * 60_000;
+let semanticColdUntil = 0;
+
 const detailCache = new Map<string, { at: number; text: string }>();
 const DETAIL_TTL_MS = 60 * 60_000;
 
@@ -6454,7 +6499,17 @@ Deno.serve(async (req) => {
       // tookMs and phaseMs were reporting roughly a quarter of real server time,
       // and two previous latency fixes were aimed with that instrument.
       const t_entry = Date.now();
-      const { data: meta } = await client.from("job_board_meta").select("v, updated_at").eq("k", "refresh").maybeSingle();
+      let meta: { v: Record<string, unknown>; updated_at: string } | null;
+      if (metaCache && Date.now() - metaCache.at < META_TTL_MS) {
+        meta = metaCache.row;
+      } else {
+        const { data: metaRow } = await client.from("job_board_meta").select("v, updated_at").eq("k", "refresh").maybeSingle();
+        meta = (metaRow ?? null) as { v: Record<string, unknown>; updated_at: string } | null;
+        // Only a real read seeds the cache. Caching a failed read would serve a
+        // board with no facets for a minute and, on the first-boot path below,
+        // would keep re-running the blocking seed refresh.
+        if (meta) metaCache = { at: Date.now(), row: meta };
+      }
 
       if (!meta) {
         // First boot (migration just applied, no pass yet): one blocking
@@ -8425,7 +8480,16 @@ async function serveList(
   // how you break a hot path at 2am.
   const phase: Record<string, number> = {};
   attachMsAccum = 0;
-  const markFrom = (name: string, t0: number) => { phase[name] = (phase[name] ?? 0) + (Date.now() - t0); };
+  // A DURATION ALONE CANNOT TELL A SUCCESS FROM A DEADLINE. `semantic: 5002`
+  // and `semantic: 5002` look identical whether the tier answered in five
+  // seconds or was cut off at its five-second deadline having answered nothing —
+  // which is how "the rescue ladder was never the cost" got recorded as settled
+  // while a tier was returning [] on every query. The outcome rides alongside.
+  const phaseOutcome: Record<string, string> = {};
+  const markFrom = (name: string, t0: number, outcome?: "ok" | "deadline" | "error" | "declined") => {
+    phase[name] = (phase[name] ?? 0) + (Date.now() - t0);
+    if (outcome) phaseOutcome[name] = outcome;
+  };
 
   // ONE BUDGET FOR THE REQUEST, because the rescue tiers run in SEQUENCE and
   // their deadlines therefore SUM.
@@ -8494,6 +8558,7 @@ async function serveList(
       // access.
       tookMs: Date.now() - reqStart,
       phaseMs: { ...phase, attachRecheckedAt: attachMsAccum },
+      ...(Object.keys(phaseOutcome).length ? { phaseOutcome: { ...phaseOutcome } } : {}),
     };
   };
   const unfiltered = isUnfiltered(applied);
@@ -8597,6 +8662,7 @@ async function serveList(
       // meta upsert, which has no business running on an empty page.
       tookMs: Date.now() - reqStart,
       phaseMs: { ...phase },
+      ...(Object.keys(phaseOutcome).length ? { phaseOutcome: { ...phaseOutcome } } : {}),
     });
   }
   // withCount is separable from wantCount so a page can be re-run WITHOUT the
@@ -9519,6 +9585,21 @@ async function serveList(
     // expanding "pa" to "physician assistant" inside a company match is wrong.
     // ftsSafe keeps " OR " intact (it strips only (),."'\:), so the expanded
     // websearch string passes through unchanged.
+    // THE WINDOW FOLLOWS THE PAGE. It used to be anchored at rank 0 always, so
+    // everything past row 400 was unreachable — on exactly the query shapes this
+    // route exists for. Measured live 2026-08-27, paging q="cdl": offset 380
+    // still returns rows and says hasMore, offset 400 returns ZERO jobs and
+    // suddenly reports total 2,646. So 2,246 of 2,646 CDL postings (84.9%) were
+    // unreachable, 4,842 of 5,242 sales-rep (92.4%), and >9,600 SWE — and the
+    // searcher was told "no more results" while the count that proved otherwise
+    // appeared only on the empty page.
+    //
+    // Blocks are disjoint because the retriever's order key is TOTAL and stable
+    // (effective_posted DESC, id ASC), so a block boundary cannot drop or repeat
+    // a row. Re-ranking still happens within a block, which means relevance
+    // restarts at each boundary — a real trade, and the honest one against
+    // "there is nothing here".
+    const blockStart = Math.floor(offset / ROUTE_WINDOW) * ROUTE_WINDOW;
     const routedExpand = routedRetriever === "company" ? { q: qText, expansions: [] as string[] } : expandQuery(qText);
     let rq = buildQuery("effective_posted", false, undefined, { skipTerms: true });
     rq = routedRetriever === "company" && routeDecision.tokens?.length
@@ -9531,7 +9612,7 @@ async function serveList(
     const t_routed_retriever = Date.now();
     const { data: routedRows, error: rErr } = await withDeadline(
       rq.order("effective_posted", { ascending: false }).order("id", { ascending: true })
-        .range(0, ROUTE_WINDOW - 1),
+        .range(blockStart, blockStart + ROUTE_WINDOW - 1),
       7_000,
     ) as { data: unknown[] | null; error?: unknown };
     markFrom("routed_retriever", t_routed_retriever);
@@ -9543,13 +9624,24 @@ async function serveList(
       // An EMPLOYER page is already exactly that employer's jobs, so scoring it
       // by title similarity would demote roles for not repeating the company
       // name. Recency is the honest order there; every other route is scored.
-      const ordered = routedRetriever === "company" ? mapped : rerankWindow(mapped, qText);
-      const page = ordered.slice(offset, offset + limit);
+      // Scored against the typed query AND every alias it was expanded to —
+      // otherwise the rows the expansion just fetched are sorted below the ones
+      // that literally spell the abbreviation, and the widening is invisible.
+      const orderReadings = [qText, ...routedExpand.expansions];
+      const ordered = routedRetriever === "company" ? mapped : rerankWindow(mapped, orderReadings);
+      // Sliced INSIDE the block: `offset` is a global position, the window is
+      // now a block of it.
+      const inBlock = offset - blockStart;
+      const page = ordered.slice(inBlock, inBlock + limit);
+      // A full block means there is more behind it; a short one means the block
+      // IS the tail, so blockStart + its length is a real total.
+      const blockFull = ordered.length >= ROUTE_WINDOW;
+      const knownTotal = blockFull ? null : blockStart + ordered.length;
       const routedGrouped = groupSimilar
         ? collapseClusters(page, limit)
         : { jobs: page.slice(0, limit), rawConsumed: Math.min(page.length, limit) };
       if (routedGrouped.jobs.length > 0) {
-        logSearch("ranked", routedGrouped.jobs.length, ordered.length < ROUTE_WINDOW ? ordered.length : null);
+        logSearch("ranked", routedGrouped.jobs.length, knownTotal);
         return json({
           jobs: preferMatchedLocation(await attachRecheckedAt(client, routedGrouped.jobs), locationTerms(body.location).terms),
           searchId,
@@ -9561,15 +9653,15 @@ async function serveList(
           // then the window IS the result set. At the cap it is only a floor, and
           // saying "unavailable" beats publishing a window size as a total —
           // the defect the fuzzy tier still carries.
-          total: ordered.length < ROUTE_WINDOW ? ordered.length : null,
-          ...(ordered.length >= ROUTE_WINDOW ? { countUnavailable: true } : {}),
-          hasMore: offset + limit < ordered.length,
+          total: knownTotal,
+          ...(blockFull ? { countUnavailable: true } : {}),
+          hasMore: blockFull || inBlock + limit < ordered.length,
           // Clamped to the window, so a caller cannot step past it. Unclamped,
           // paging one page beyond the 400-row window re-entered this block at
           // an offset the slice cannot serve — and the abbreviation queries
           // this route exists for (emt, ux, dba) are exactly the ones that walk
           // several pages.
-          nextOffset: Math.min(offset + limit, ordered.length),
+          nextOffset: blockFull ? offset + limit : Math.min(offset + limit, blockStart + ordered.length),
           searchRoute: routeDecision.route,
           searchRouteReason: routeDecision.reason,
           // THE PAGE WAS APOLOGISING FOR WORK IT HAD DONE.
@@ -9613,7 +9705,7 @@ async function serveList(
   // "canceling statement due to statement timeout" on real query embeddings
   // right now, and the tier returns [] for it — indistinguishable from a
   // genuine no-match, on every affected search, with nothing anywhere saying so.
-  let semanticDegraded: "embed" | "ann_deadline" | "ann_error" | "refilter_deadline" | null = null;
+  let semanticDegraded: "embed" | "ann_deadline" | "ann_error" | "refilter_deadline" | "cooldown" | null = null;
   // DECLARED HERE, ABOVE THE RANKED PATH, AND THAT POSITION IS THE FIX.
   //
   // RANKED SEARCH WAS DOWN IN PRODUCTION AND NOTHING SAID SO. Every typed
@@ -9758,6 +9850,17 @@ async function serveList(
         p_offset: pagePlan.pOffset,
       });
       markFrom("search_jobs", t_search_jobs_3);
+      // A RETURNED ERROR WAS CHECKED AND THROWN AWAY. `rankErr` gated the happy
+      // path and was never read again, so a ranked search that TIMED OUT looked
+      // exactly like one that was never attempted: rankedFellBack stayed null,
+      // nothing was logged, and the request quietly served the recency page.
+      // The catch below already reports thrown failures this way; a RESOLVED
+      // error is the more common shape and had no reporting at all.
+      if (rankErr) {
+        rankedFellBack = (rankErr.code ? `${rankErr.code}: ` : "") +
+          String(rankErr.message ?? rankErr).slice(0, 160);
+        console.error(`[JOB-BOARD] ranked search failed for q=${JSON.stringify(qText)}: ${rankedFellBack}`);
+      }
       if (!rankErr && Array.isArray(ranked)) {
         // A load-more just past an exactly-full final page must not overwrite
         // the client's header with 0 — null is "count unavailable", which the
@@ -9902,6 +10005,14 @@ async function serveList(
           embedBudgetMs: number,
           exclude?: { ids: Set<string>; keys: Set<string> },
         ): Promise<Array<Record<string, unknown>>> => {
+          // Stood down by a recent infrastructure failure — see
+          // SEMANTIC_COOLDOWN_MS. Checked before the embed, because the embed
+          // costs 100-200ms of the per-request CPU budget before the RPC that
+          // is going to fail is even reached.
+          if (Date.now() < semanticColdUntil) {
+            semanticDegraded = "cooldown";
+            return [];
+          }
           // THE ANCHOR IS DECIDED ON WHAT SHIPS, SO EXCLUSION HAPPENS IN HERE.
           //
           // An adversarial review caught this before it shipped, and the shape
@@ -9958,11 +10069,21 @@ async function serveList(
           // stopped answering still looked like a tier that had nothing to say.
           if (sem === null && !sErr) {
             semanticDegraded = "ann_deadline";
+            markFrom("semantic", t_semantic, "deadline");
+            // A DEAD RPC MUST NOT BE PAID FOR ON EVERY SUBSEQUENT SEARCH.
+            // While search_jobs_semantic was timing out, this race lost every
+            // time — a fixed 5.0s tax on the request budget for nothing, 58% of
+            // tookMs on a thin search, and the abandoned query kept running in
+            // Postgres for another 13-31s because nobody cancels it. One
+            // failure now stands the tier down for ten minutes per isolate.
+            semanticColdUntil = Date.now() + SEMANTIC_COOLDOWN_MS;
             console.warn(`[JOB-BOARD] semantic ANN missed its ${annMs}ms deadline (or threw) for q=${JSON.stringify(qText)}`);
             return [];
           }
           if (sErr) {
             semanticDegraded = "ann_error";
+            markFrom("semantic", t_semantic, "error");
+            semanticColdUntil = Date.now() + SEMANTIC_COOLDOWN_MS;
             console.error(`[JOB-BOARD] semantic ANN failed for q=${JSON.stringify(qText)}: ${sErr.code ?? ""} ${String(sErr.message ?? sErr).slice(0, 120)}`);
             return [];
           }
@@ -10539,7 +10660,7 @@ async function serveList(
         // collapseClusters (the shape the fuzzy augment at :8480-8488 already
         // uses); that is a follow-up, deliberately not in this patch.
         // mergedRows is the SQL page here, the ring having stood down above.
-        const rankedScored = pagePlan.rerank ? rerankWindow(mergedRows, qText) : mergedRows;
+        const rankedScored = pagePlan.rerank ? rerankWindow(mergedRows, [qText, ...expansions]) : mergedRows;
         // CLAMPED TO THE SEAM before the offset is applied, but ONLY for queries
         // that have a seam. Without the clamp a page STARTING below the seam runs
         // past it — offset 150 + limit 100 served pool positions 150-249 — and the
@@ -10574,7 +10695,7 @@ async function serveList(
         // on page 3 but sits on page 5 still sits on page 5. That is inherent to
         // offset paging and is why the seam exists at all.
         if (deepPage && scoreRanked && rankedGrouped.jobs.length > 1) {
-          rankedGrouped = { ...rankedGrouped, jobs: rerankWindow(rankedGrouped.jobs, qText) };
+          rankedGrouped = { ...rankedGrouped, jobs: rerankWindow(rankedGrouped.jobs, [qText, ...expansions]) };
         }
 
         // THE SAME TOP-UP THE BROWSE PATH GOT, because this is the path that

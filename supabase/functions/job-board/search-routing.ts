@@ -232,12 +232,39 @@ export function scoreTitle(title: string, query: string, ageDays?: number): numb
  * should not own page one, but its jobs are still real and still wanted further
  * down. Dropping them would be a different lie from the one being fixed.
  */
+/**
+ * SCORE AGAINST THE BEST READING OF THE QUERY, NOT ONLY THE TYPED ONE.
+ *
+ * `query` widened to a list because alias expansion and re-ranking were working
+ * against each other: expandQuery widens retrieval so "pm" also finds "Product
+ * Manager", and then this function scored every one of those rows against the
+ * literal string "pm" — which they do not contain. The alias rows landed at the
+ * bottom of the very window they were fetched into, so page one stayed full of
+ * whatever literally spelled "pm", and the expansion bought nothing a searcher
+ * could see. That is the whole set the alias table was written for: pm, pa, ta,
+ * np, ba, ai, rn.
+ *
+ * Math.max over the readings, so a row scores as well as its BEST
+ * interpretation — never worse than today, because the typed query is always
+ * one of the readings.
+ *
+ * Still a single string at every existing call site: the extra readings are
+ * optional and callers that pass none behave exactly as before.
+ */
 export function rerankWindow<T extends { title?: unknown; company?: unknown; token?: unknown }>(
   rows: readonly T[],
-  query: string,
+  query: string | readonly string[],
   perCompany = 2,
 ): T[] {
-  const scored = rows.map((r, i) => ({ r, i, s: scoreTitle(String(r.title ?? ""), query) }));
+  const readings = (Array.isArray(query) ? query : [query as string])
+    .map((q) => String(q ?? "").trim())
+    .filter((q) => q.length > 0);
+  const queries = readings.length ? readings : [""];
+  const scored = rows.map((r, i) => ({
+    r,
+    i,
+    s: Math.max(...queries.map((q) => scoreTitle(String(r.title ?? ""), q))),
+  }));
   // Index breaks ties so the order is total and identical on every call —
   // pagination over an unstable ordering is how page two repeated page one.
   scored.sort((a, b) => (b.s - a.s) || (a.i - b.i));

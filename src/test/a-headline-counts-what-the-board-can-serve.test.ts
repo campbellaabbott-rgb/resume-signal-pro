@@ -62,6 +62,10 @@ describe("a headline counts what the board can serve", () => {
   });
 
   it("the routed window clamps its successor to the rows it holds", () => {
-    expect(FN).toMatch(/nextOffset: Math\.min\(offset \+ limit, ordered\.length\),/);
+    // Clamped to what EXISTS, which is now block-relative: a short block is the
+    // tail so the successor cannot run past blockStart + its length, and a full
+    // block must be allowed to step into the next one — clamping there was what
+    // made everything past row 400 unreachable.
+    expect(FN).toMatch(/nextOffset: blockFull \? offset \+ limit : Math\.min\(offset \+ limit, blockStart \+ ordered\.length\),/);
   });
 });

@@ -268,7 +268,14 @@ const PINNED = {
   // ceiling stops cancelling includeUnstatedPay (design at a $100k floor: 3,375
   // with the toggle, 404 once a ceiling is added — the pay-floor NULL discard
   // re-armed by a second predicate). index.ts + filters.ts; sources.ts UNCHANGED.
-  buildVersion: "2026-08-25.32",
+  // 2026-08-25.33: the routed window follows the page (everything past row 400
+  // was unreachable — 84.9% of "cdl", 92.4% of "sales rep"); re-ranking scores
+  // against alias expansions instead of sorting the rows they fetched to the
+  // bottom; the facet row is cached in-isolate for 60s (median 863ms, ~47% of a
+  // plain browse); the semantic tier stands down for 10 min after a failure
+  // instead of paying 5.0s per search; a resolved rankErr is reported; and every
+  // phase mark carries an outcome. index.ts + search-routing.ts, sources.ts UNCHANGED.
+  buildVersion: "2026-08-25.33",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {
