@@ -13,6 +13,7 @@ import {
   normalizeEmail,
   rowIsEntitled,
 } from "./agent-entitlement.ts";
+import { listAll } from "./stripe-paging.ts";
 
 // Re-exported so a consumer never has to decide which module to trust.
 export { ENTITLEMENT_COLUMNS, entitledFromRows, rowIsEntitled };
@@ -65,10 +66,21 @@ export async function checkAgentByEmail(
   const normalized = normalizeEmail(email);
   let result: AgentStatus = { active: false, status: "inactive", currentPeriodEnd: null, stripeCustomerId: null };
 
-  const customers = await stripe.customers.list({ email: normalized, limit: 5 });
-  for (const customer of customers.data) {
-    const subs = await stripe.subscriptions.list({ customer: customer.id, status: "all", limit: 10 });
-    for (const sub of subs.data) {
+  // Paged, not truncated — see _shared/stripe-paging.ts. limit: 100 keeps the
+  // common case at one round trip.
+  const customers = await listAll<Stripe.Customer>((startingAfter) => stripe.customers.list({
+    email: normalized,
+    limit: 100,
+    ...(startingAfter ? { starting_after: startingAfter } : {}),
+  }));
+  for (const customer of customers) {
+    const subs = await listAll<Stripe.Subscription>((startingAfter) => stripe.subscriptions.list({
+      customer: customer.id,
+      status: "all",
+      limit: 100,
+      ...(startingAfter ? { starting_after: startingAfter } : {}),
+    }));
+    for (const sub of subs) {
       if (!isAgentPriced(sub.items?.data)) continue;
       const periodEnd = (sub as unknown as { current_period_end?: number }).current_period_end
         ?? (sub.items?.data?.[0] as unknown as { current_period_end?: number } | undefined)?.current_period_end;
@@ -162,7 +174,20 @@ export async function checkAgentByEmail(
       // the Account page once, and the grant silently evaporates — with the
       // symptom appearing later and somewhere else entirely, as the agent
       // quietly doing nothing.
-      await supabase.from("agent_subscribers").update(cached)
+      // AND IT MUST NOT NULL OUT THE COLUMN IT FILTERS ON. `cached` carries
+      // stripe_customer_id: result.stripeCustomerId, which is null on this
+      // branch — so the downgrade rewrote a Stripe-owned row into one that
+      // looks exactly like a manual grant, and the `.not(... is null)` guard
+      // above then skipped it forever. The row was left inactive, so nobody was
+      // wrongly entitled, but it became immune to every later correction and
+      // indistinguishable from a comp.
+      //
+      // Reachable without any of the pagination story: line 71's
+      // `if (!isAgentPriced(...)) continue` leaves stripeCustomerId null
+      // whenever an address's Customers hold only non-agent-priced
+      // subscriptions, and the deleted-Customer case lands in the same branch.
+      const { stripe_customer_id: _keepWhateverStripeIdIsThere, ...cachedDowngrade } = cached;
+      await supabase.from("agent_subscribers").update(cachedDowngrade)
         .eq("email", normalized).not("stripe_customer_id", "is", null);
     }
   } catch (_) {

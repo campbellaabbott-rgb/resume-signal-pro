@@ -3,6 +3,7 @@
 // hot paths (scan rate limits) can check status without a Stripe round trip.
 
 import Stripe from "https://esm.sh/stripe@18.5.0";
+import { listAll } from "./stripe-paging.ts";
 
 export const PRO_PRICE_CENTS = 4500;
 export const PRO_PRODUCT_NAME = "Resume Booster Pro";
@@ -28,10 +29,21 @@ export async function checkProByEmail(
   const normalized = email.trim().toLowerCase();
   let result: ProStatus = { active: false, status: "inactive", currentPeriodEnd: null, stripeCustomerId: null };
 
-  const customers = await stripe.customers.list({ email: normalized, limit: 5 });
-  for (const customer of customers.data) {
-    const subs = await stripe.subscriptions.list({ customer: customer.id, status: "all", limit: 10 });
-    for (const sub of subs.data) {
+  // Paged, not truncated — see _shared/stripe-paging.ts. limit: 100 keeps the
+  // common case at one round trip.
+  const customers = await listAll<Stripe.Customer>((startingAfter) => stripe.customers.list({
+    email: normalized,
+    limit: 100,
+    ...(startingAfter ? { starting_after: startingAfter } : {}),
+  }));
+  for (const customer of customers) {
+    const subs = await listAll<Stripe.Subscription>((startingAfter) => stripe.subscriptions.list({
+      customer: customer.id,
+      status: "all",
+      limit: 100,
+      ...(startingAfter ? { starting_after: startingAfter } : {}),
+    }));
+    for (const sub of subs) {
       // Stripe API 2025+ moved current_period_end from the subscription to
       // its items — read whichever is populated.
       const periodEnd = (sub as unknown as { current_period_end?: number }).current_period_end

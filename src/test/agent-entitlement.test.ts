@@ -213,7 +213,23 @@ describe("agent-access cannot mint a row for an address Stripe has never seen", 
     // UPDATE, not upsert: it must reach a row that is already there without
     // creating one that is not. A customer deleted outright must not stay
     // entitled just because we declined to write.
-    expect(shared).toMatch(/\.update\(cached\)\s*\n?\s*\.eq\("email", normalized\)/);
+    expect(shared).toMatch(/\.update\(cachedDowngrade\)\s*\n?\s*\.eq\("email", normalized\)/);
+  });
+
+  it("does not null out the very column the downgrade filters on", () => {
+    // It used to write `cached` wholesale, and `cached` carries
+    // stripe_customer_id: result.stripeCustomerId — null on this branch. So the
+    // downgrade rewrote a Stripe-owned row into one that looks exactly like a
+    // manual grant, and the `.not(... is null)` clause below then skipped it
+    // forever. Nobody was wrongly entitled (the row stays inactive), but it
+    // became immune to every later correction and indistinguishable from a comp.
+    //
+    // This is why the assertion above names cachedDowngrade rather than cached:
+    // the payload must be the cache row MINUS that column.
+    expect(shared).toMatch(
+      /const \{ stripe_customer_id: \w+, \.\.\.cachedDowngrade \} = cached;/);
+    expect(shared, "the downgrade payload must not carry stripe_customer_id")
+      .not.toMatch(/\.update\(cached\)\s*\n?\s*\.eq\("email", normalized\)/);
   });
 
   it("never revokes a grant Stripe did not make", () => {
