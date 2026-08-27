@@ -463,6 +463,9 @@ interface BoardResponse {
    *  "work from home nurse" searches "nurse" among remote roles. The rewrite is
    *  good; doing it silently is not. */
   intentFilters?: string[];
+  /** Terms the searcher asked NOT to see, via "not X" or "-x". Disclosed so
+   *  a filter they cannot see is not one they cannot undo. */
+  excludedTerms?: string[];
   /** A pay-sorted page excludes every posting with no stated salary. */
   salaryStatedOnly?: boolean;
   /** The location typed, and the places actually searched on its behalf. */
@@ -5404,6 +5407,17 @@ export default function Jobs() {
                     <p className="text-xs text-muted-foreground mb-2">
                       {t("jobsPage.intentFilters", "Read {{phrases}} as a filter and applied it, rather than searching for those words.", {
                         phrases: data.intentFilters.map((p) => `“${p}”`).join(", "),
+                      })}
+                    </p>
+                  )}
+                  {/* And when we removed results on their behalf. "engineer not
+                      manager" used to return managers — the words were dropped
+                      and the rest re-read as a conjunction, giving the opposite
+                      of what was asked. */}
+                  {Array.isArray(data?.excludedTerms) && data.excludedTerms.length > 0 && (
+                    <p className="text-xs text-muted-foreground mb-2">
+                      {t("jobsPage.excludedTerms", "Hiding results that mention {{terms}}. Remove the “not” or the “-” to see them.", {
+                        terms: data.excludedTerms.map((p) => `“${p}”`).join(", "),
                       })}
                     </p>
                   )}

@@ -279,3 +279,53 @@ export function rerankWindow<T extends { title?: unknown; company?: unknown; tok
   }
   return [...keep, ...demoted].map((x) => x.r);
 }
+
+/**
+ * "engineer not manager" WAS RETURNING MANAGERS.
+ *
+ * The words were dropped from the tsquery and the remainder re-read as a
+ * conjunction, so the query came back as roughly "engineer manager" — the exact
+ * opposite of what was asked. "nurse -travel" and "driver not cdl" are the same
+ * shape, and they are ordinary refinements a searcher reaches for the moment a
+ * result set is nearly right.
+ *
+ * Split BEFORE any SQL is issued, so every tier — ranked, routed, fuzzy,
+ * semantic — searches the positive query and none of them has to know this
+ * exists. The exclusion is then applied to what comes back.
+ *
+ * TWO FORMS, both common and neither ambiguous:
+ *   "-token"    a leading hyphen, the convention every search engine uses
+ *   "not X"     everything after the word "not", which reads as English
+ *
+ * A bare "not" with nothing after it, or a query that is ONLY exclusions, is
+ * left alone: stripping it would leave an empty query, and an empty query
+ * returns the whole board — "better to run the poor query the person typed
+ * than to silently ignore them", as the note above queryTerms puts it.
+ */
+export function splitExclusions(raw: string): { positive: string; excluded: string[] } {
+  const text = String(raw ?? "").trim();
+  if (!text) return { positive: text, excluded: [] };
+
+  const words = text.split(/\s+/);
+  const positive: string[] = [];
+  const excluded: string[] = [];
+  let afterNot = false;
+  for (const w of words) {
+    if (/^not$/i.test(w)) { afterNot = true; continue; }
+    if (w.length > 1 && w.startsWith("-")) { excluded.push(w.slice(1).toLowerCase()); continue; }
+    (afterNot ? excluded : positive).push(afterNot ? w.toLowerCase() : w);
+  }
+  const cleanExcluded = [...new Set(excluded.map((e) => e.replace(/[^a-z0-9+#.]/gi, "").toLowerCase()).filter((e) => e.length >= 2))];
+  // Nothing left to search means the exclusion has eaten the query. Run what
+  // they typed instead of returning the entire board.
+  if (!positive.length || !cleanExcluded.length) return { positive: text, excluded: [] };
+  return { positive: positive.join(" "), excluded: cleanExcluded };
+}
+
+/** Does a title contain any excluded term? Word-ish match, so "manager" does
+ *  not strike out "management-adjacent" by coincidence of substring. */
+export function titleExcluded(title: string, excluded: readonly string[]): boolean {
+  if (!excluded.length) return false;
+  const t = String(title ?? "").toLowerCase();
+  return excluded.some((e) => new RegExp(`(^|[^a-z0-9])${e.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}([^a-z0-9]|$)`, "i").test(t));
+}

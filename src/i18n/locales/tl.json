@@ -3982,6 +3982,7 @@
     "coverageExperience": "antas ng karanasan sa {{pct}}%",
     "coverageCountry": "bansa sa {{pct}}%",
     "intentFilters": "Binasa ang {{phrases}} bilang filter at inilapat ito, sa halip na hanapin ang mga salitang iyon.",
+    "excludedTerms": "Itinatago ang mga resultang bumabanggit ng {{terms}}. Alisin ang “not” o ang “-” para makita ang mga ito.",
     "salaryStatedOnly": "Nakaayos ayon sa sahod — kaya ang mga trabahong may nakasaad na sahod lang ang lumalabas dito.",
     "locationExpanded": "Hinanap ang {{from}} bilang {{places}}.",
     "salaryFromQuery": "Binasa ang {{amount}} sa iyong paghahanap bilang pinakamababang sahod.",

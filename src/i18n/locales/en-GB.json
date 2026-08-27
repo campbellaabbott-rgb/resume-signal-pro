@@ -3982,6 +3982,7 @@
     "coverageExperience": "experience level on {{pct}}%",
     "coverageCountry": "a country on {{pct}}%",
     "intentFilters": "Read {{phrases}} as a filter and applied it, rather than searching for those words.",
+    "excludedTerms": "Hiding results that mention {{terms}}. Remove the “not” or the “-” to see them.",
     "salaryStatedOnly": "Sorted by pay, so only roles that state a salary appear here.",
     "locationExpanded": "Searched {{from}} as {{places}}.",
     "salaryFromQuery": "Read {{amount}} in your search as a minimum pay filter.",

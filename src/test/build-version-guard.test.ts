@@ -275,7 +275,13 @@ const PINNED = {
   // plain browse); the semantic tier stands down for 10 min after a failure
   // instead of paying 5.0s per search; a resolved rankErr is reported; and every
   // phase mark carries an outcome. index.ts + search-routing.ts, sources.ts UNCHANGED.
-  buildVersion: "2026-08-25.33",
+  // 2026-08-25.34: exclusions. "engineer not manager" returned managers — the
+  // words were dropped from the tsquery and the rest re-read as a conjunction,
+  // giving the opposite of the request. Split before anything is searched and
+  // applied at attachRecheckedAt, the one function every posting path already
+  // calls, as an EXPLICIT parameter (module state would leak one visitor's
+  // exclusions into another's results). index.ts + search-routing.ts, sources.ts UNCHANGED.
+  buildVersion: "2026-08-25.34",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {

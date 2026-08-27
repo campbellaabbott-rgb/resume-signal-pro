@@ -58,7 +58,7 @@ import { advanceProgress, isPassDone, type RefreshProgress } from "./rotation.ts
 import { CANARIES, rawItemCount, aggregateVendorHealth, type CanaryResult } from "./vendor-canary.ts";
 import { detectExperience, isExperienceBand } from "./experience.ts";
 import { categoryParam, filterViolations, isUnfiltered, normalizeFilters, payParams, rpcBlindFilters, rescueVendorsParam, SALARIED_PERIODS, sendableSourcesParam, splitPage, salaryFromQueryText, SALARY_IN_QUERY } from "./filters.ts";
-import { pickRoute, rerankWindow, RETRIEVER_FOR } from "./search-routing.ts";
+import { pickRoute, rerankWindow, RETRIEVER_FOR, splitExclusions, titleExcluded } from "./search-routing.ts";
 import { planRankedPage } from "./paging.ts";
 import { collapseClusters, GROUP_OVERFETCH, interleaveByCompany, visibleCategories, mergeCompanyFacet } from "./clusters.ts";
 import { EMPLOYER_ALIASES } from "./employer-aliases.ts";
@@ -102,7 +102,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-25.33";
+const BUILD_VERSION = "2026-08-25.34";
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -4583,6 +4583,13 @@ function intentDisclosure(r: { labels: string[] } | null): Record<string, unknow
   return r && r.labels.length ? { intentFilters: r.labels } : {};
 }
 
+/** Terms the searcher asked NOT to see, named on the response so the page can
+ *  say what it removed — a filter the visitor cannot see is one they cannot
+ *  undo, which is the same rule intentFilters follows. */
+function exclusionDisclosure(excluded: readonly string[]): Record<string, unknown> {
+  return excluded.length ? { excludedTerms: [...excluded] } : {};
+}
+
 /**
  * Coverage for filters whose column the refresh pass does NOT count.
  *
@@ -8114,10 +8121,26 @@ let attachMsAccum = 0;
 async function attachRecheckedAt(
   client: SupabaseClient,
   jobs: Array<Record<string, unknown>>,
+  /**
+   * Terms the searcher asked NOT to see ("engineer not manager", "nurse
+   * -travel"). Applied HERE because this is the one function every path that
+   * returns postings already calls — the ranked tier, the routed tier, fuzzy and
+   * semantic all pass through it, so one filter covers them without any tier
+   * having to know exclusions exist.
+   *
+   * AN EXPLICIT PARAMETER, never a module-scoped request variable like
+   * attachMsAccum above. Two requests can be in flight in one isolate, and a
+   * leaked telemetry counter is a wrong number while a leaked FILTER is one
+   * visitor's exclusions silently applied to another's results.
+   */
+  excluded: readonly string[] = [],
 ): Promise<Array<Record<string, unknown>>> {
   const tAttach = Date.now();
   try {
-    return await attachRecheckedAtInner(client, jobs);
+    const kept = excluded.length
+      ? jobs.filter((j) => !titleExcluded(String((j as { title?: unknown }).title ?? ""), excluded))
+      : jobs;
+    return await attachRecheckedAtInner(client, kept);
   } finally {
     attachMsAccum += Date.now() - tAttach;
   }
@@ -8377,6 +8400,13 @@ async function serveList(
   // remains. Both rewrites happen HERE and nowhere else, ahead of the single
   // filter derivation, so the count probe, the facet query and the list all see
   // the same normalised request.
+  // EXCLUSIONS COME OUT BEFORE ANYTHING IS SEARCHED, next to the intent lift and
+  // for the same reason: one rewrite of the request, ahead of the single filter
+  // derivation, so the count probe, the facet query and the list all see the
+  // same query text.
+  const exclusion = splitExclusions(String(body.q ?? ""));
+  const excludedTerms = exclusion.excluded;
+  if (excludedTerms.length) body = { ...body, q: exclusion.positive };
   const intentLift = liftIntentFilters(body.q, body);
   if (intentLift) {
     body = { ...body, ...intentLift.patch, q: intentLift.residualQ };
@@ -9518,10 +9548,11 @@ async function serveList(
         : { jobs: salJobs.slice(0, limit), rawConsumed: Math.min(salJobs.length, limit) };
       logSearch("ranked", salGrouped.jobs.length, null);
       return json({
-        jobs: preferMatchedLocation(await attachRecheckedAt(client, salGrouped.jobs), locationTerms(body.location).terms),
+        jobs: preferMatchedLocation(await attachRecheckedAt(client, salGrouped.jobs, excludedTerms), locationTerms(body.location).terms),
         searchId,
         ...searchDisclosures(body, applied, maxAgeClamped),
         ...intentDisclosure(intentLift),
+          ...exclusionDisclosure(excludedTerms),
         ...coverageDisclosure(applied, meta),
         ...honesty(salGrouped.jobs),
         // Ordered in SQL over the whole match set, so paging is a plain offset
@@ -9643,10 +9674,11 @@ async function serveList(
       if (routedGrouped.jobs.length > 0) {
         logSearch("ranked", routedGrouped.jobs.length, knownTotal);
         return json({
-          jobs: preferMatchedLocation(await attachRecheckedAt(client, routedGrouped.jobs), locationTerms(body.location).terms),
+          jobs: preferMatchedLocation(await attachRecheckedAt(client, routedGrouped.jobs, excludedTerms), locationTerms(body.location).terms),
           searchId,
           ...searchDisclosures(body, applied, maxAgeClamped),
           ...intentDisclosure(intentLift),
+          ...exclusionDisclosure(excludedTerms),
           ...coverageDisclosure(applied, meta),
           ...honesty(routedGrouped.jobs),
           // A REAL count whenever the window came back short of the cap, because
@@ -10356,10 +10388,11 @@ async function serveList(
               logMiss("fuzzy");
               logSearch("ranked", simpleGrouped.jobs.length, null, "fuzzy");
               return json({
-                jobs: preferMatchedLocation(await attachRecheckedAt(client, simpleGrouped.jobs), locationTerms(body.location).terms),
+                jobs: preferMatchedLocation(await attachRecheckedAt(client, simpleGrouped.jobs, excludedTerms), locationTerms(body.location).terms),
                 searchId,
                 ...searchDisclosures(body, applied, maxAgeClamped),
                 ...intentDisclosure(intentLift),
+          ...exclusionDisclosure(excludedTerms),
                 ...coverageDisclosure(applied, meta),
                 ...honesty(simpleGrouped.jobs),
                 // No total: this tier reads a bounded window, so any figure it
@@ -10444,10 +10477,11 @@ async function serveList(
               const fzKnown = Number.isFinite(fzTotal) && fzTotal > 0 && fzTotal < limit;
               logSearch("fuzzy", fuzzyGrouped.jobs.length, fzKnown ? fzTotal : null, "fuzzy");
               return json({
-                jobs: preferMatchedLocation(await attachRecheckedAt(client, fuzzyGrouped.jobs), locationTerms(body.location).terms),
+                jobs: preferMatchedLocation(await attachRecheckedAt(client, fuzzyGrouped.jobs, excludedTerms), locationTerms(body.location).terms),
                 searchId,
                 ...searchDisclosures(body, applied, maxAgeClamped),
                 ...intentDisclosure(intentLift),
+          ...exclusionDisclosure(excludedTerms),
                 ...coverageDisclosure(applied, meta),
                 ...honesty(fuzzyGrouped.jobs),
                 // This page is a RESCUE, not page 1 of a result set. It omitted
@@ -10524,10 +10558,11 @@ async function serveList(
                   logMiss("semantic");
                   logSearch("semantic", semGrouped.jobs.length, semGrouped.jobs.length, "semantic");
                   return json({
-                    jobs: preferMatchedLocation(await attachRecheckedAt(client, semGrouped.jobs), locationTerms(body.location).terms),
+                    jobs: preferMatchedLocation(await attachRecheckedAt(client, semGrouped.jobs, excludedTerms), locationTerms(body.location).terms),
                     searchId,
                     ...searchDisclosures(body, applied, maxAgeClamped),
                     ...intentDisclosure(intentLift),
+          ...exclusionDisclosure(excludedTerms),
                     ...coverageDisclosure(applied, meta),
                     ...honesty(semGrouped.jobs),
                     total: semGrouped.jobs.length,
@@ -10940,10 +10975,11 @@ async function serveList(
           // minutes ago" receipt reached people who browsed and not people who
           // searched — the fourth thing today to be wired into the recency
           // path and skipped on the ranked one.
-          jobs: preferMatchedLocation(await attachRecheckedAt(client, rankedGrouped.jobs), locationTerms(body.location).terms),
+          jobs: preferMatchedLocation(await attachRecheckedAt(client, rankedGrouped.jobs, excludedTerms), locationTerms(body.location).terms),
           searchId,
           ...searchDisclosures(body, applied, maxAgeClamped),
           ...intentDisclosure(intentLift),
+          ...exclusionDisclosure(excludedTerms),
           ...coverageDisclosure(applied, meta),
           ...honesty(rankedGrouped.jobs),
           ...(augmented ? { countUnavailable: true } : {}),
@@ -11502,7 +11538,7 @@ async function serveList(
   // denominator toward searchers.
   logSearch("recency", grouped.jobs.length, countUnavailable ? null : (wantCount ? (count ?? 0) : safeMetaTotal));
   return json({
-    jobs: preferMatchedLocation(await attachRecheckedAt(client, grouped.jobs), locationTerms(body.location).terms),
+    jobs: preferMatchedLocation(await attachRecheckedAt(client, grouped.jobs, excludedTerms), locationTerms(body.location).terms),
     searchId,
     ...honesty(grouped.jobs),
     // Raw rows this page swallowed. The client MUST page by this rather than by
@@ -11511,6 +11547,7 @@ async function serveList(
     nextOffset: offset + grouped.rawConsumed,
     ...searchDisclosures(body, applied, maxAgeClamped),
     ...intentDisclosure(intentLift),
+          ...exclusionDisclosure(excludedTerms),
     ...coverageDisclosure(applied, meta),
     // The keyset successor: (effective_posted, id) of the last RAW row this
     // page consumed — from `data`, never from grouped.jobs, because grouping

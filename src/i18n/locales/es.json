@@ -3982,6 +3982,7 @@
     "coverageExperience": "el nivel de experiencia en el {{pct}} %",
     "coverageCountry": "un país en el {{pct}} %",
     "intentFilters": "Interpretamos {{phrases}} como un filtro y lo aplicamos, en lugar de buscar esas palabras.",
+    "excludedTerms": "Se ocultan los resultados que mencionan {{terms}}. Quita el «not» o el «-» para verlos.",
     "salaryStatedOnly": "Ordenado por salario, así que aquí solo aparecen las ofertas que lo indican.",
     "locationExpanded": "Buscamos {{from}} como {{places}}.",
     "salaryFromQuery": "Interpretamos {{amount}} en tu búsqueda como salario mínimo.",

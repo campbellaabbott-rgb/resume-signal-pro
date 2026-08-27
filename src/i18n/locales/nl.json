@@ -3982,6 +3982,7 @@
     "coverageExperience": "ervaringsniveau bij {{pct}}%",
     "coverageCountry": "een land bij {{pct}}%",
     "intentFilters": "{{phrases}} is als filter opgevat en toegepast, in plaats van op die woorden te zoeken.",
+    "excludedTerms": "Resultaten met {{terms}} worden verborgen. Verwijder de “not” of het “-” om ze te zien.",
     "salaryStatedOnly": "Gesorteerd op salaris — alleen vacatures met een vermeld salaris verschijnen hier.",
     "locationExpanded": "{{from}} is gezocht als {{places}}.",
     "salaryFromQuery": "{{amount}} in je zoekopdracht is toegepast als minimumsalaris.",
