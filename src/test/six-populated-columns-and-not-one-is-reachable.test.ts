@@ -455,17 +455,26 @@ describe("rpcBlindFilters — the six bind in ONE place, and it is not the RPCs"
       sendableOnly: true,
       companies: ["tok"],
     }).applied)).toEqual([]);
-    expect(rpcBlindFilters(norm({ payBasis: "hourly" }).applied)).toEqual(["payBasis"]);
-    // NO LONGER BLIND (20260826041500 added p_pay_stated to all three RPCs).
-    // Listed here rather than deleted, because "which of the six are still
-    // blind" is the fact this test carries and one of them has moved.
+    // ALL SIX HAVE NOW MOVED OUT OF THE BLIND SET, in two steps, and the
+    // history is the fact this test carries:
+    //   20260826041500 — hasStatedPay / includeUnstatedPay (p_pay_stated,
+    //   p_include_unstated).
+    //   20260827210000 — payBasis, salaryCeiling, maxYears, department
+    //   (parameters of their own), and vendors riding the existing p_sources.
+    // While blind they were correctly diverted, and the diversion was a
+    // quality cliff: any one of them cost ranking, the trigram tier, the
+    // exact-word tier and semantic, silently. The SQL is what changed —
+    // executed against real Postgres, nine combinations return the correct
+    // rows and the injection probe returns zero. Reporting one of these blind
+    // again would push its searches back off the ranked path, so the
+    // assertions flip rather than move.
+    expect(rpcBlindFilters(norm({ payBasis: "hourly" }).applied)).toEqual([]);
     expect(rpcBlindFilters(norm({ hasStatedPay: true }).applied)).toEqual([]);
-    expect(rpcBlindFilters(norm({ salaryCeiling: 150_000 }).applied)).toEqual(["salaryCeiling"]);
-    expect(rpcBlindFilters(norm({ maxYears: 3 }).applied)).toEqual(["maxYears"]);
-    expect(rpcBlindFilters(norm({ department: "Legal" }).applied)).toEqual(["department"]);
-    expect(rpcBlindFilters(norm({ vendor: "lever" }).applied)).toEqual(["vendors"]);
-    expect(rpcBlindFilters(norm({ maxYears: 3, vendor: "lever" }).applied).sort())
-      .toEqual(["maxYears", "vendors"]);
+    expect(rpcBlindFilters(norm({ salaryCeiling: 150_000 }).applied)).toEqual([]);
+    expect(rpcBlindFilters(norm({ maxYears: 3 }).applied)).toEqual([]);
+    expect(rpcBlindFilters(norm({ department: "Legal" }).applied)).toEqual([]);
+    expect(rpcBlindFilters(norm({ vendor: "lever" }).applied)).toEqual([]);
+    expect(rpcBlindFilters(norm({ maxYears: 3, vendor: "lever" }).applied)).toEqual([]);
   });
 });
 

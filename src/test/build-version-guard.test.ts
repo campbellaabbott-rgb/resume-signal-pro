@@ -299,7 +299,10 @@ const PINNED = {
   // 2026-08-27.38: the location-split tier — a zero-title-count query whose
   // tail names a place ("nurse london") is split and re-run as q+location,
   // disclosed as locationSplit. The eighth list exit.
-  buildVersion: "2026-08-27.38",
+  // 2026-08-27.39: salaryCeiling/payBasis/maxYears/department/vendors moved
+  // out of the blind set — extraFilterParams beside every payParams spread,
+  // vendors merged into p_sources. Pairs with 20260827210000.
+  buildVersion: "2026-08-27.39",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {

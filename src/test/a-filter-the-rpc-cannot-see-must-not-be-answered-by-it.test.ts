@@ -38,15 +38,37 @@ const CODE = FN.replace(/\/\*[\s\S]*?\*\//g, "").split("\n").map((l) => l.replac
 const applied = (body: Record<string, unknown>) => normalizeFilters(body, 64).applied;
 
 describe("a filter the RPC cannot see must not be answered by it", () => {
+  // THE FIVE MOVED OUT OF THE BLIND SET ON 2026-08-27. While blind they were
+  // correctly diverted — and the diversion was the quality cliff this file's
+  // header describes: any one of them cost the search ranking, the trigram
+  // tier, the exact-word tier and semantic, all at once, with nothing on
+  // screen to say so. 20260827210000 teaches all three RPCs the four
+  // parameters (p_salary_ceiling, p_pay_basis, p_max_years, p_department) and
+  // vendors rides the existing p_sources. Executed against real Postgres:
+  // nine filter combinations return the correct rows, the injection probe
+  // returns zero, and the ceiling honours the include-unstated widening the
+  // same way the floor does. So the assertion FLIPS: reporting one of these
+  // blind would push its searches back off the ranked path.
   it.each([
     ["payBasis", { payBasis: "hourly" }],
     ["salaryCeiling", { salaryCeiling: 120000 }],
     ["maxYears", { maxYears: 3 }],
     ["department", { department: "nursing" }],
     ["vendors", { vendor: "workday" }],
-  ] as const)("%s is reported blind when set", (name, body) => {
+  ] as const)("%s is RPC-bound now — never diverted off the ranked path", (name, body) => {
     const blind = rpcBlindFilters(applied({ ...body }));
-    expect(blind.length, `${name} set but rpcBlindFilters returned ${JSON.stringify(blind)}`).toBeGreaterThan(0);
+    expect(blind, `${name} is reported blind — its searches lose ranking and every rescue tier`).toEqual([]);
+  });
+
+  it("the four new parameters are actually sent when their filters are on", () => {
+    // Bound in the SET and omitted from the CALL is the guard-literals trap:
+    // the router stops diverting while the RPC never hears the filter, and the
+    // page serves unfiltered rows under lit-up chips — the exact defect this
+    // file was written about, reintroduced by its own fix.
+    expect(CODE).toMatch(/\.\.\.extraFilterParams\(applied\),/);
+    const spreads = (CODE.match(/\.\.\.extraFilterParams\(applied\),/g) ?? []).length;
+    expect(spreads, "every payParams spread site must carry extraFilterParams beside it")
+      .toBe((CODE.match(/\.\.\.payParams\(applied\),/g) ?? []).length);
   });
 
   it("a request the RPC CAN answer is not diverted", () => {

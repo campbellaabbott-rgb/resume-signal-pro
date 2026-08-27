@@ -249,6 +249,16 @@ const RPC_BOUND_FILTERS = new Set<keyof AppliedFilters>([
   "companies",
   "maxAgeDays",
   "postedAfter",
+  // Bound as of 20260827210000. All five were blind, and any ONE of them
+  // routed the search away from ranking, the fuzzy tier, the exact-word tier
+  // and semantic — a pay ceiling turned "nurse" into date-ordered ILIKE.
+  // vendors rides the existing p_sources parameter (merged with sendableOnly
+  // in sendableSourcesParam); the other four have parameters of their own.
+  "salaryCeiling",
+  "payBasis",
+  "maxYears",
+  "department",
+  "vendors",
 ]);
 
 /**
@@ -899,12 +909,54 @@ export function categoryParam(a: Pick<AppliedFilters, "category" | "includeUncat
  * of the shared constant: the fifth copy of a vendor list is the one that goes
  * stale when adapter five lands.
  */
-export function rescueVendorsParam(a: Pick<AppliedFilters, "sendableOnly">): { p_vendors: string[] } | Record<string, never> {
-  return a.sendableOnly ? { p_vendors: [...SENDABLE_VENDORS] } : {};
+/**
+ * ONE source list from TWO toggles. buildQuery applies vendors and sendableOnly
+ * as two .in("source", ...) calls, which PostgREST ANDs — the intersection. The
+ * RPCs have one p_sources parameter, so the merge happens here, and the
+ * semantics must be identical or the ranked path and the browse path answer the
+ * same request differently.
+ *
+ * An EMPTY intersection (a vendor filter naming only non-sendable systems, plus
+ * sendable-only) must match NOTHING — that is what two ANDed .in() calls
+ * produce. NULL here would mean "no filter" and quietly widen the search, so it
+ * returns an impossible sentinel value instead: no source is named "".
+ */
+function mergedSourceList(a: Pick<AppliedFilters, "sendableOnly"> & Partial<Pick<AppliedFilters, "vendors">>): string[] | null {
+  const v = a.vendors?.length ? a.vendors : null;
+  const send = a.sendableOnly ? [...SENDABLE_VENDORS] : null;
+  if (v && send) {
+    const set = new Set<string>(send);
+    const both = v.filter((x) => set.has(x));
+    return both.length ? both : [""];
+  }
+  return v ?? send;
 }
 
-export function sendableSourcesParam(a: Pick<AppliedFilters, "sendableOnly">): { p_sources: string[] } | Record<string, never> {
-  return a.sendableOnly ? { p_sources: [...SENDABLE_VENDORS] } : {};
+export function rescueVendorsParam(a: Pick<AppliedFilters, "sendableOnly"> & Partial<Pick<AppliedFilters, "vendors">>): { p_vendors: string[] } | Record<string, never> {
+  const list = mergedSourceList(a);
+  return list ? { p_vendors: list } : {};
+}
+
+export function sendableSourcesParam(a: Pick<AppliedFilters, "sendableOnly"> & Partial<Pick<AppliedFilters, "vendors">>): { p_sources: string[] } | Record<string, never> {
+  const list = mergedSourceList(a);
+  return list ? { p_sources: list } : {};
+}
+
+/**
+ * The four filters that used to be RPC-blind, as a body FRAGMENT. Keys ABSENT
+ * when off, never null — same deploy-window contract as payParams above it: an
+ * unknown key against old SQL matches no function and 404s the whole call, so
+ * ordinary searches must not carry these. A search that USES one of them
+ * against old SQL errors and falls through to the recency path, which is
+ * exactly where such a search always went.
+ */
+export function extraFilterParams(a: AppliedFilters): Record<string, unknown> {
+  return {
+    ...(a.salaryCeiling !== null ? { p_salary_ceiling: a.salaryCeiling } : {}),
+    ...(a.payBasis ? { p_pay_basis: a.payBasis } : {}),
+    ...(a.maxYears !== null ? { p_max_years: a.maxYears } : {}),
+    ...(a.department ? { p_department: a.department } : {}),
+  };
 }
 
 /**

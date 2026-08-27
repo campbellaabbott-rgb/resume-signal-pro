@@ -57,7 +57,7 @@ import { classifyDormancy, selectRetries, updateBoardFailures, type BoardFailure
 import { advanceProgress, isPassDone, type RefreshProgress } from "./rotation.ts";
 import { CANARIES, rawItemCount, aggregateVendorHealth, type CanaryResult } from "./vendor-canary.ts";
 import { detectExperience, isExperienceBand } from "./experience.ts";
-import { categoryParam, filterViolations, isUnfiltered, normalizeFilters, payParams, rpcBlindFilters, rescueVendorsParam, SALARIED_PERIODS, sendableSourcesParam, splitPage, salaryFromQueryText, SALARY_IN_QUERY } from "./filters.ts";
+import { categoryParam, extraFilterParams, filterViolations, isUnfiltered, normalizeFilters, payParams, rpcBlindFilters, rescueVendorsParam, SALARIED_PERIODS, sendableSourcesParam, splitPage, salaryFromQueryText, SALARY_IN_QUERY } from "./filters.ts";
 import { pickRoute, rerankWindow, RETRIEVER_FOR, splitExclusions, titleExcluded } from "./search-routing.ts";
 import { planRankedPage } from "./paging.ts";
 import { collapseClusters, GROUP_OVERFETCH, interleaveByCompany, visibleCategories, mergeCompanyFacet } from "./clusters.ts";
@@ -102,7 +102,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-27.38"; // .38: location-split tier — "nurse london" searches nurse IN London when the title count is zero
+const BUILD_VERSION = "2026-08-27.39"; // .39: the five blind filters (ceiling, basis, maxYears, department, vendors) ride the ranked path; .38: location-split tier
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -9052,6 +9052,7 @@ async function serveList(
         p_posted_after: applied.postedAfter,
         p_max_age_days: applied.maxAgeDays,
         ...payParams(applied),
+        ...extraFilterParams(applied),
         p_work_mode: applied.workMode,
         p_cap: COUNT_CAP,
       });
@@ -9371,6 +9372,7 @@ async function serveList(
           p_posted_after: applied.postedAfter,
           p_max_age_days: applied.maxAgeDays,
           ...payParams(applied),
+          ...extraFilterParams(applied),
           ...(applied.workMode ? { p_work_mode: applied.workMode } : {}),
           p_limit: 1,
           p_offset: 0,
@@ -9905,6 +9907,7 @@ async function serveList(
         p_posted_after: applied.postedAfter,
         p_max_age_days: applied.maxAgeDays,
         ...payParams(applied),
+        ...extraFilterParams(applied),
         // Measured 2026-07-25: without this the ranked path silently dropped
         // the work-mode filter — workMode=remote + q=engineer returned 30 rows
         // that ALL had work_mode NULL, the exact opposite of the request.
@@ -10225,6 +10228,7 @@ async function serveList(
           p_posted_after: applied.postedAfter,
           p_max_age_days: applied.maxAgeDays,
           ...payParams(applied),
+          ...extraFilterParams(applied),
           p_work_mode: applied.workMode,
           // One producer for the vendor list; this function spells the parameter
           // differently for the reason recorded in the migration.
@@ -10302,6 +10306,7 @@ async function serveList(
                     p_posted_after: applied.postedAfter,
                     p_max_age_days: applied.maxAgeDays,
                     ...payParams(applied),
+                    ...extraFilterParams(applied),
                     ...(applied.workMode ? { p_work_mode: applied.workMode } : {}),
                     p_limit: Math.max(limit * 2, 40),
                     p_offset: 0,
@@ -10972,6 +10977,7 @@ async function serveList(
               p_posted_after: applied.postedAfter,
               p_max_age_days: applied.maxAgeDays,
               ...payParams(applied),
+              ...extraFilterParams(applied),
               ...(applied.workMode ? { p_work_mode: applied.workMode } : {}),
               p_limit: fetchLimit,
               p_offset: offset + rankedRows.length,
