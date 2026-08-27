@@ -102,7 +102,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-25.26";
+const BUILD_VERSION = "2026-08-25.27";
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -1242,21 +1242,76 @@ async function isIngestPaused(client: SupabaseClient): Promise<boolean> {
   }
 }
 
+/**
+ * A CHAIN WHOSE LIVENESS IS NOT IN STATUS IS A CHAIN WHOSE DEATH IS A RESEARCH
+ * PROJECT — this file's own words, about its OTHER chains.
+ *
+ * Every maintenance track here got a liveness stamp and MAINTENANCE_STALL_MS
+ * detection after two of them stalled invisibly overnight and could only be
+ * diagnosed by inference from posting counts. The refresh chain — the one
+ * carrying the freshness SLA — got neither, and it showed: deciding whether
+ * cold slices were chaining at all took an hour of cursor sampling, and the
+ * first answer was wrong.
+ *
+ * THREE WAYS A HOP DIED SILENTLY, all now recorded:
+ *
+ *  1. `.catch(() => {})` swallowed everything, and because it was applied
+ *     BEFORE waitUntil received the promise, waitUntil's own console.warn
+ *     could never fire either. A DNS failure, a TLS error or an abort from
+ *     isolate teardown produced zero log lines in either isolate.
+ *  2. `r.ok` was never checked. A 500, or a chainKey rejection, is not a
+ *     rejected fetch promise — it is a perfectly ordinary Response.
+ *  3. WORST, because it looks healthiest: a 200 that DECLINED. The child can
+ *     answer "skipped — a slice ran moments ago" or "ingest paused" and the
+ *     chain simply stops, with a success status and no error anywhere.
+ *
+ * One writer, one key: `chain_kick`. The parent stamps what happened to its own
+ * kick, so the row can never diverge the way a meta row written from two sites
+ * does (this schema lost a whole lane to that once).
+ */
 function chainNextSlice(hop: number, client?: SupabaseClient) {
   const url = `${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`;
+  const stamp = async (v: Record<string, unknown>) => {
+    if (!client) return;
+    try {
+      await client.from("job_board_meta").upsert(
+        { k: "chain_kick", v: { at: new Date().toISOString(), fromHop: hop, ...v }, updated_at: new Date().toISOString() },
+        { onConflict: "k" },
+      );
+    } catch { /* instrumentation must never be the thing that breaks the chain */ }
+  };
   waitUntil((async () => {
     if (client && await isIngestPaused(client)) {
       console.warn(`[JOB-BOARD] ingest PAUSED — chain stopping at hop ${hop}; unset job_board_meta.ingest_paused to resume`);
+      await stamp({ outcome: "paused", note: "deliberate stop — ingest_paused is set" });
       return;
     }
     const key = await chainKey();
-    const r = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "refresh", force: true, chain: hop + 1, chainKey: key }),
-    });
-    await r.text();
-  })().catch(() => {}));
+    try {
+      const r = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "refresh", force: true, chain: hop + 1, chainKey: key }),
+      });
+      const body = (await r.text()).slice(0, 300);
+      // A 200 is not proof the chain continued. The child returns 200 for every
+      // early exit, so the DETAIL is what says whether a slice actually ran.
+      const declined = /skipped|paused|unknown action|chainkey|not authori/i.test(body);
+      const outcome = !r.ok ? "http_error" : declined ? "declined" : "continued";
+      if (outcome !== "continued") {
+        console.error(`[JOB-BOARD] chain did NOT continue past hop ${hop}: ${outcome} status=${r.status} body=${body}`);
+      }
+      await stamp({ outcome, status: r.status, detail: body });
+    } catch (e) {
+      const msg = e instanceof Error ? `${e.name}: ${e.message}` : String(e);
+      console.error(`[JOB-BOARD] chain kick threw at hop ${hop}: ${msg}`);
+      await stamp({ outcome: "threw", detail: msg.slice(0, 300) });
+    }
+  })().catch((e) => {
+    // Was `() => {}`. A swallowed rejection here is the failure mode that made
+    // the previous three invisible.
+    console.error("[JOB-BOARD] chain kick failed outside its own handler:", e);
+  }));
 }
 
 // Two-tier refresh: HOT boards (heavy inventory) re-verify on every chain
@@ -4809,7 +4864,7 @@ Deno.serve(async (req) => {
       // bundle, so a stale/failed publish is visible in ONE call instead of being
       // inferred from posting counts over hours (the rung-2 "did it deploy?" pain).
       // Also the source of truth for the heartbeat's job_board_deploy check.
-      const [prog, pbMeta, rot, refreshMeta, bf, hotMeta, fresh, breaker, dateCov, boardFlow, ingestPaused, dcCache, bsMeta, dsMeta, ssMeta, esMeta, fiOk, fiBad, faMeta, aaMeta, arMeta, rsRun, rsCron, hsMeta, rcProg, rcVer, hwMeta, deepCur] = await Promise.all([
+      const [prog, pbMeta, rot, refreshMeta, bf, hotMeta, fresh, breaker, dateCov, boardFlow, ingestPaused, dcCache, bsMeta, dsMeta, ssMeta, esMeta, fiOk, fiBad, faMeta, aaMeta, arMeta, rsRun, rsCron, hsMeta, rcProg, rcVer, hwMeta, deepCur, chainKick] = await Promise.all([
         client.from("job_board_meta").select("v, updated_at").eq("k", "refresh_progress").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "posted_backfill").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "cold_rotation").maybeSingle(),
@@ -4924,6 +4979,10 @@ Deno.serve(async (req) => {
         // the typechecker only caught it by luck on an unrelated field. A new
         // read goes last, next to the name it feeds.
         client.from("job_board_meta").select("v, updated_at").eq("k", "deep_cursor").maybeSingle(),
+        // APPENDED AT THE END, like the one above it and for the same reason:
+        // this array is positionally destructured, so a read inserted in the
+        // middle silently shifts every variable after it onto the wrong result.
+        client.from("job_board_meta").select("v, updated_at").eq("k", "chain_kick").maybeSingle(),
 ]);
       const pgV = (prog.data?.v ?? {}) as { hot?: number; cold?: number; coldDone?: number; failedAcc?: string[]; failedTotal?: number };
       const rotV = (rot.data?.v ?? {}) as { completedAt?: string; coldBoards?: number };
@@ -5307,6 +5366,26 @@ Deno.serve(async (req) => {
         // that failed and are waiting out their backoff — and `lastRetryLane` says
         // whether the lane actually ran and how many it took. Without both, a p95
         // that does not move has two indistinguishable causes.
+        // CHAIN LIVENESS — the thing this endpoint could not answer.
+        //
+        // `cursor` and `lastSliceAgeMin` look identical whether slices arrive
+        // from a self-sustaining chain or from one cron kick every ten minutes,
+        // which is a 5-8x throughput difference reported as the same numbers.
+        // Deciding which it was cost an hour of cursor sampling, and the first
+        // answer was wrong. Now it is one read: `outcome` says what happened to
+        // the most recent kick, and `ageMin` says whether kicks are still
+        // happening at all. "continued" and fresh = the chain is alive.
+        chainKick: (() => {
+          const v = (chainKick.data?.v ?? {}) as Record<string, unknown>;
+          const at = chainKick.data?.updated_at ?? null;
+          return {
+            outcome: v.outcome ?? null,       // continued | declined | http_error | threw | paused
+            fromHop: v.fromHop ?? null,
+            status: v.status ?? null,
+            detail: typeof v.detail === "string" ? v.detail.slice(0, 160) : null,
+            ageMin: at ? Math.round((Date.now() - new Date(at).getTime()) / 60_000) : null,
+          };
+        })(),
         retryLane: (() => {
           const v = (bf.data?.v ?? {}) as { failedAt?: Record<string, number>; lastRetryLane?: unknown };
           return {

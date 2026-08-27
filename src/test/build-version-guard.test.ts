@@ -230,7 +230,13 @@ const PINNED = {
   // now start at 15 min and back off per streak into dormancy. Capped at 5,
   // deliberately the smallest lane on the slice. index.ts + dormancy.ts;
   // sources.ts UNCHANGED.
-  buildVersion: "2026-08-25.26",
+  // 2026-08-25.27: chain liveness. `cursor` and `lastSliceAgeMin` read
+  // identically whether slices come from a self-sustaining chain or from one
+  // cron kick every ten minutes — a 5-8x throughput difference reported as the
+  // same numbers, which cost an hour of cursor sampling to resolve and gave the
+  // wrong answer first. status.chainKick now says what happened to the last
+  // kick. index.ts only, sources.ts UNCHANGED.
+  buildVersion: "2026-08-25.27",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {
