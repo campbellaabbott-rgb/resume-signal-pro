@@ -212,6 +212,25 @@ const dbObjects = {
   "record_scan_outcome()": await rpcState("record_scan_outcome", { p_report_id: "deploy-verify-probe", p_outcome: "interview", p_ip: "deploy-verify" }),
   "table scan_outcomes": await tableState("scan_outcomes"),
   "table job_board_postings": await tableState("job_board_postings"),
+  // THE DOOR BESIDE THE KEY WALL, re-checked on every publish. The line above
+  // only asks whether the table EXISTS (PGRST205), and permission-denied still
+  // proves that — so it would keep saying "ok" whether or not the corpus is
+  // exposed. job_board_postings was anon-readable for the life of the board:
+  // the anon key ships in the frontend bundle, so anyone could page all 565k
+  // postings straight off PostgREST and walk around the /v1 metering entirely
+  // (closed by 20260827130000, verified live before the fix). Readable is the
+  // regression, so that is the case that reports MISSING.
+  "job_board_postings anon-locked": await (async () => {
+    try {
+      const r = await fetch(`${URL_BASE}/rest/v1/job_board_postings?select=id&limit=1`, { headers: hdrs, signal: AbortSignal.timeout(15000) });
+      const j = await r.json().catch(() => null);
+      // No GRANT: 42501, the loud shape. RLS with no policy: 200 and an empty
+      // array, the silent shape. Both mean shut.
+      if (r.status === 401 || r.status === 403 || j?.code === "42501") return "ok";
+      if (Array.isArray(j) && j.length === 0) return "ok";
+      return "MISSING";
+    } catch { return "error"; }
+  })(),
   "table user_job_searches": await tableState("user_job_searches"),
   // Behavioral, not just reachable: 20260721230000 redefined closed_90d as
   // genuine-tenure fills and made tracking_days the global log span, so even a
