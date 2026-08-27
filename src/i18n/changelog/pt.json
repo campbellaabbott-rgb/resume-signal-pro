@@ -1,5 +1,45 @@
 {
   "changelogEntries": {
+    "searchUsedTheSlowerEngine": {
+      "title": "Todas as pesquisas usavam discretamente o motor de reserva",
+      "description": "A nossa pesquisa por relevância — a que decide que vagas respondem melhor ao que escreve — tinha deixado de funcionar, e cada pesquisa recorria em silêncio a uma consulta simples ordenada por data. Não aparecia qualquer erro, por isso parecia tudo normal; os resultados eram apenas piores do que deviam. Já está corrigido e as pesquisas voltam a ser ordenadas corretamente."
+    },
+    "searchesThatFoundNothing": {
+      "title": "Algumas pesquisas não mostravam nada apesar de centenas de vagas corresponderem",
+      "description": "Se as suas palavras apareciam na descrição mas não no título, a página ficava vazia. «forklift certified» não devolvia nada embora existissem 733 vagas correspondentes, e «night shift forklift certified» escondia mais 108. Essas pesquisas devolvem agora o que sempre deveriam ter devolvido."
+    },
+    "payFilterHidMostJobs": {
+      "title": "Um filtro salarial escondia quatro quintos do quadro",
+      "description": "Só cerca de um em cada cinco empregadores indica salário, e definir um mínimo removia silenciosamente todas as vagas que nada diziam sobre dinheiro — «$60k+» escondia assim a maioria dos empregos. Existe agora uma caixa para as manter, que aparece assim que define um mínimo. Uma pesquisa de enfermagem a partir de $90k passou de 1.273 para mais de 10.000 resultados."
+    },
+    "industryFiltersAllVisible": {
+      "title": "Os filtros de setor já não exigem deslocamento lateral",
+      "description": "A linha de setores deslocava-se para o lado atrás de uma margem esbatida — pouco prático com rato e fácil de não notar — e estava limitada a dez, pelo que oito setores como Educação, Jurídico e Design eram inalcançáveis. No computador, a linha abre agora com um clique e mostra os dezoito. No telemóvel mantém-se o deslize, porque aí é natural."
+    },
+    "largeEmployersFullOpenings": {
+      "title": "Grandes empregadores mostravam apenas uma fração das suas vagas",
+      "description": "Os grandes portais de carreiras entregam as vagas de 500 em 500 e nós líamos apenas a primeira página: um empregador que anunciava 19.253 vagas aparecia com cerca de 630. Percorremos agora as páginas seguintes. A CVS Health passou de cerca de 630 para 12.698 vagas, e cerca de 160 grandes empregadores estavam na mesma situação."
+    },
+    "relatedRolesWhenFewMatches": {
+      "title": "Pesquisas com poucos resultados passam a sugerir funções relacionadas",
+      "description": "Quando uma pesquisa encontra muito pouco, o quadro acrescenta funções com o mesmo significado em vez de o deixar com três resultados — «wine steward» mostra também vagas de escanção e de vinhos. Estão assinaladas como «relacionado por significado» para as distinguir sempre das correspondências literais, e nunca empurram para baixo as correspondências exatas."
+    },
+    "openingsCountUpdatesFaster": {
+      "title": "A contagem de vagas acompanha o quadro",
+      "description": "O total no topo era recalculado apenas uma vez por passagem completa por todos os feeds, pelo que numa passagem lenta podia estar horas atrás do que era realmente pesquisável. Passa agora a atualizar de quinze em quinze minutos e acompanha atualmente o número real com uma margem de algumas centenas de vagas."
+    },
+    "trackedIncludingClosedRoles": {
+      "title": "Passa a ver quantas funções acompanhámos, não apenas quantas estão abertas",
+      "description": "Ao lado da contagem de vagas abertas há agora um segundo número: todas as vagas que acompanhámos, incluindo as que os empregadores já retiraram. A contagem de abertas continua a significar exatamente isso — vagas a que pode candidatar-se hoje — e a segunda mostra o histórico de encerramentos."
+    },
+    "dataApiSelfServe": {
+      "title": "A API de dados de contratação está disponível, com chave gratuita em autosserviço",
+      "description": "O conjunto de dados por trás do quadro está agora disponível como API JSON só de leitura, e obtém uma chave na página de dados sem falar com ninguém. Cobre vagas ativas, vagas individuais, empregadores, estatísticas e um feed de alterações que indica o que abriu e o que fechou — incluindo se uma vaga fechada foi realmente preenchida ou apenas republicada com novo ID."
+    },
+    "feedsRetriedInMinutes": {
+      "title": "Um feed que falha é repetido em minutos em vez de horas",
+      "description": "Quando o sistema de recrutamento de um empregador não respondia, esse empregador esperava pela passagem completa seguinte — oito horas ou mais — até nova tentativa, e as suas vagas envelheciam enquanto tudo à volta se mantinha atual. Os feeds falhados são agora repetidos ao fim de cerca de quinze minutos, com intervalos crescentes se o problema persistir."
+    },
     "jobDescriptionsCutShort": {
       "title": "As descrições das vagas paravam a meio da frase",
       "description": "Guardávamos apenas os primeiros 4.000 caracteres da descrição de uma vaga, e cerca de um quarto dos anúncios é mais longo do que isso — por isso o texto simplesmente parava, quase sempre a meio de uma frase. Comparámos 24 anúncios cortados com a página do próprio empregador para ver o que faltava: todos os cortes com mais de um parágrafo levavam consigo os requisitos ou as qualificações e, como as publicações do Greenhouse e da Lever colocam a faixa salarial mesmo no fim, o salário desaparecia com frequência também. Numa das vagas, a faixa salarial só existia na parte que estávamos a deitar fora. Passámos a guardar o triplo do texto, o que cobre por inteiro cerca de 88% dos anúncios. Os anúncios já existentes vão sendo repostos à medida que se atualizam nos próximos dias."

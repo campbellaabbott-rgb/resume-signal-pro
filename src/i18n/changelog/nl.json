@@ -1,5 +1,45 @@
 {
   "changelogEntries": {
+    "searchUsedTheSlowerEngine": {
+      "title": "Elke zoekopdracht gebruikte ongemerkt de reservezoekmachine",
+      "description": "Onze relevantiezoekmachine — die bepaalt welke vacatures het beste passen bij wat u typt — werkte niet meer, en elke zoekopdracht viel stilletjes terug op een eenvoudige zoekopdracht op datum. Er verscheen geen foutmelding, dus alles leek normaal; de resultaten waren simpelweg slechter dan ze hoorden te zijn. Dit is verholpen en zoekopdrachten worden weer goed gerangschikt."
+    },
+    "searchesThatFoundNothing": {
+      "title": "Sommige zoekopdrachten toonden niets terwijl honderden vacatures pasten",
+      "description": "Als uw woorden in de omschrijving stonden maar niet in de titel, bleef de pagina leeg. „forklift certified” gaf niets terwijl er 733 passende vacatures waren, en „night shift forklift certified” verborg er nog eens 108. Die zoekopdrachten geven nu wat ze altijd hadden moeten geven."
+    },
+    "payFilterHidMostJobs": {
+      "title": "Een salarisfilter verborg vier vijfde van het aanbod",
+      "description": "Ongeveer één op de vijf werkgevers noemt een salaris, en een ondergrens verwijderde stilzwijgend elke vacature die niets over geld zei — „$60k+” verborg dus de meeste banen. Er is nu een vinkje om die vacatures te behouden; het verschijnt zodra u een ondergrens instelt. Een zoekopdracht naar verpleegkundige functies vanaf $90k ging van 1.273 naar ruim 10.000 resultaten."
+    },
+    "industryFiltersAllVisible": {
+      "title": "Sectorfilters hoeven niet meer zijwaarts te scrollen",
+      "description": "De sectorrij scrolde zijwaarts achter een vervaagde rand — onhandig met een muis en makkelijk te missen — en was beperkt tot tien, waardoor acht sectoren zoals Onderwijs, Juridisch en Design onbereikbaar waren. Op desktop opent de rij nu met één klik alle achttien. Op mobiel blijft vegen, omdat dat daar natuurlijk is."
+    },
+    "largeEmployersFullOpenings": {
+      "title": "Grote werkgevers toonden maar een fractie van hun vacatures",
+      "description": "Grote carrièresites leveren hun vacatures per 500 en wij lazen alleen de eerste pagina: een werkgever met 19.253 advertenties verscheen met zo’n 630. We werken nu de volgende pagina’s af. CVS Health ging van ongeveer 630 naar 12.698 vacatures, en zo’n 160 grote werkgevers hadden hetzelfde probleem."
+    },
+    "relatedRolesWhenFewMatches": {
+      "title": "Zoekopdrachten met weinig resultaten tonen nu verwante functies",
+      "description": "Vindt een zoekopdracht bijna niets, dan voegt het bord functies met dezelfde betekenis toe in plaats van u met drie resultaten achter te laten — „wine steward” toont ook sommelier- en wijnfuncties. Ze zijn gemarkeerd als „inhoudelijk verwant”, zodat u ze altijd van letterlijke treffers kunt onderscheiden, en ze duwen exacte treffers nooit naar beneden."
+    },
+    "openingsCountUpdatesFaster": {
+      "title": "Het aantal vacatures houdt het bord bij",
+      "description": "Het totaal bovenaan werd één keer per volledige ronde langs alle werkgeversfeeds herberekend, dus bij een trage ronde kon het uren achterlopen op wat u daadwerkelijk kon doorzoeken. Het wordt nu elke vijftien minuten ververst en volgt het echte cijfer momenteel tot op een paar honderd vacatures."
+    },
+    "trackedIncludingClosedRoles": {
+      "title": "U ziet nu ook hoeveel functies we hebben gevolgd, niet alleen hoeveel er openstaan",
+      "description": "Naast het aantal openstaande functies staat nu een tweede cijfer: alle vacatures die we hebben gevolgd, inclusief de inmiddels ingetrokken. Het aantal openstaande betekent nog steeds precies dat — banen waarop u vandaag kunt solliciteren — en het tweede toont de geschiedenis erachter."
+    },
+    "dataApiSelfServe": {
+      "title": "De wervingsdata-API is live, met een gratis sleutel via zelfbediening",
+      "description": "De dataset achter het bord is nu beschikbaar als alleen-lezen JSON-API, en u haalt een sleutel op de datapagina zonder met iemand te overleggen. Het omvat actuele vacatures, losse vacatures, werkgevers, kerncijfers en een wijzigingsfeed die meldt wat is geopend en gesloten — inclusief of een gesloten functie echt is vervuld of stilletjes opnieuw is geplaatst onder een nieuw ID."
+    },
+    "feedsRetriedInMinutes": {
+      "title": "Een mislukte feed wordt binnen minuten opnieuw geprobeerd, niet uren",
+      "description": "Als het wervingssysteem van een werkgever niet antwoordde, wachtte die werkgever tot de volgende volledige ronde — acht uur of meer — voordat we het opnieuw probeerden; hun vacatures verouderden terwijl alles eromheen actueel bleef. Mislukte feeds worden nu na ongeveer een kwartier opnieuw geprobeerd, met oplopende tussenpozen als het probleem aanhoudt."
+    },
     "jobDescriptionsCutShort": {
       "title": "Vacatureteksten stopten midden in een zin",
       "description": "We bewaarden alleen de eerste 4.000 tekens van een vacaturetekst, en ruwweg een kwart van de vacatures is langer — de tekst hield dus gewoon op, meestal midden in een zin. We hebben 24 afgekapte vacatures naast de eigen pagina van de werkgever gelegd om te zien wat er ontbrak: elke afkapping die langer was dan een alinea haalde de eisen of de kwalificaties weg, en omdat Greenhouse en Lever de salarisrange helemaal onderaan zetten, sneuvelde het salaris ook regelmatig. Bij één vacature stond de salarisrange alleen in het deel dat we weggooiden. We bewaren nu drie keer zoveel tekst, waarmee ongeveer 88% van de vacatures volledig binnenkomt. Bestaande vacatures vullen zich de komende dagen aan zodra ze worden ververst."

@@ -1,5 +1,45 @@
 {
   "changelogEntries": {
+    "searchUsedTheSlowerEngine": {
+      "title": "Every search was quietly using the fallback engine",
+      "description": "Our ranked search — the one that decides which jobs best answer what you typed — had stopped working, and every search was silently falling back to a simpler date-ordered lookup. Nothing errored, so the board looked fine; the results were just worse than they should have been. It is fixed, and searches are ranked properly again."
+    },
+    "searchesThatFoundNothing": {
+      "title": "Some searches showed nothing when hundreds of jobs matched",
+      "description": "If your words matched job descriptions but not job titles, the board returned an empty page. Searching “forklift certified” showed no results while 733 matching openings sat in the database, and “night shift forklift certified” hid another 108. Those searches now return what they always should have."
+    },
+    "payFilterHidMostJobs": {
+      "title": "A pay filter was hiding four fifths of the board",
+      "description": "Only about one employer in five states a salary, and setting a pay floor silently removed every listing that said nothing about money — so “£60k+” quietly hid most of the jobs. There is now a checkbox to keep those listings, and it appears as soon as you set a pay floor. A search for £90k nursing roles went from 1,273 results to over 10,000 with it switched on."
+    },
+    "industryFiltersAllVisible": {
+      "title": "Industry filters no longer need sideways scrolling",
+      "description": "The industry row scrolled sideways behind a faded edge, which is awkward with a mouse and easy to miss entirely — and it was capped at ten, so eight industries including Education, Legal and Design could not be reached at all. On desktop the row now opens with one click to show all eighteen. On phones it still swipes, because swiping is natural there."
+    },
+    "largeEmployersFullOpenings": {
+      "title": "Large employers were showing a fraction of their jobs",
+      "description": "Big career sites hand out their listings 500 at a time, and we were only ever reading the first page — so an employer advertising 19,253 roles appeared with about 630. We now work through the remaining pages. CVS Health went from roughly 630 listings to 12,698, and around 160 large employers were affected the same way."
+    },
+    "relatedRolesWhenFewMatches": {
+      "title": "Searches with only a handful of results now suggest related roles",
+      "description": "When a search finds very little, the board now adds roles that mean the same thing rather than leaving you with three results and no next step — “wine steward” also surfaces sommelier and fine wine roles. They are labelled “related by meaning” so you can always tell them from keyword matches, and they never push exact matches down the page."
+    },
+    "openingsCountUpdatesFaster": {
+      "title": "The openings count keeps up with the board",
+      "description": "The total at the top of the board was recalculated once per full sweep of every employer feed, so on a slow sweep it could be hours behind what you could actually search. It now refreshes every fifteen minutes, and currently tracks the live figure to within a few hundred listings."
+    },
+    "trackedIncludingClosedRoles": {
+      "title": "You can now see how many roles we have tracked, not just how many are open",
+      "description": "Alongside the open-roles count there is now a second figure: every posting we have followed, including the ones employers have since taken down. The open count still means exactly what it says — jobs you can search and apply to today — and the tracked figure shows the closure history behind it."
+    },
+    "dataApiSelfServe": {
+      "title": "The hiring data API is live, with a free self-serve key",
+      "description": "The dataset behind the board is now available as a read-only JSON API, and you can get a key on the data page without talking to anyone. It covers live postings, single listings, employers, headline stats, and a changes feed reporting what opened and what closed — including whether a closed role was genuinely filled or quietly re-listed under a new ID."
+    },
+    "feedsRetriedInMinutes": {
+      "title": "A feed that fails is retried in minutes instead of hours",
+      "description": "When an employer’s careers system failed to answer, that employer waited for the next full sweep of the board — eight hours or more — before we tried again, so their listings went stale while everything around them stayed fresh. Failed feeds are now retried within about fifteen minutes, backing off gradually if the problem persists."
+    },
     "jobDescriptionsCutShort": {
       "title": "Job descriptions stopped mid-sentence",
       "description": "We only stored the first 4,000 characters of a job description, and roughly a quarter of listings are longer than that — so the text just stopped, usually in the middle of a sentence. We checked 24 cut-off listings against the employer's own page to see what was missing: every cut longer than a paragraph removed the requirements or qualifications, and because Greenhouse and Lever postings put the pay range at the very bottom, the salary was frequently cut off too. One listing's pay range existed only in the part we were throwing away. We now keep three times as much text, which covers about 88% of listings in full. Existing listings refill as they refresh over the next few days."

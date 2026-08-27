@@ -1,5 +1,45 @@
 {
   "changelogEntries": {
+    "searchUsedTheSlowerEngine": {
+      "title": "Todas las búsquedas usaban en silencio el motor de reserva",
+      "description": "Nuestra búsqueda por relevancia — la que decide qué empleos responden mejor a lo que escribes — había dejado de funcionar, y cada búsqueda recurría en silencio a una consulta simple ordenada por fecha. No aparecía ningún error, así que todo parecía normal; los resultados sencillamente eran peores de lo que debían. Ya está corregido y las búsquedas vuelven a ordenarse correctamente."
+    },
+    "searchesThatFoundNothing": {
+      "title": "Algunas búsquedas no mostraban nada aunque había cientos de coincidencias",
+      "description": "Si tus palabras coincidían con la descripción pero no con el título, la página aparecía vacía. Buscar «forklift certified» no devolvía nada mientras había 733 ofertas coincidentes, y «night shift forklift certified» ocultaba otras 108. Esas búsquedas ya devuelven lo que siempre debieron devolver."
+    },
+    "payFilterHidMostJobs": {
+      "title": "Un filtro de salario ocultaba cuatro quintas partes del tablón",
+      "description": "Solo uno de cada cinco empleadores indica salario, y fijar un mínimo eliminaba en silencio toda oferta que no dijera nada sobre dinero: «$60k+» ocultaba la mayoría de los empleos. Ahora hay una casilla para conservarlas, y aparece en cuanto fijas un mínimo. Una búsqueda de enfermería desde $90k pasó de 1.273 resultados a más de 10.000 al activarla."
+    },
+    "industryFiltersAllVisible": {
+      "title": "Los filtros de sector ya no requieren desplazamiento lateral",
+      "description": "La fila de sectores se desplazaba de lado tras un borde difuminado — incómodo con ratón y fácil de pasar por alto — y estaba limitada a diez, así que ocho sectores como Educación, Legal y Diseño eran inalcanzables. En escritorio la fila ahora se abre con un clic y muestra los dieciocho. En móvil se sigue deslizando, porque ahí es lo natural."
+    },
+    "largeEmployersFullOpenings": {
+      "title": "Las grandes empresas mostraban solo una fracción de sus empleos",
+      "description": "Los grandes portales de empleo entregan sus ofertas de 500 en 500 y solo leíamos la primera página: una empresa que anunciaba 19.253 puestos aparecía con unos 630. Ahora recorremos las páginas restantes. CVS Health pasó de unas 630 ofertas a 12.698, y alrededor de 160 grandes empleadores estaban igual."
+    },
+    "relatedRolesWhenFewMatches": {
+      "title": "Las búsquedas con pocos resultados ahora sugieren puestos relacionados",
+      "description": "Cuando una búsqueda encuentra muy poco, el tablón añade puestos que significan lo mismo en lugar de dejarte con tres resultados y nada más — «wine steward» también muestra puestos de sumiller y de vinos. Se marcan como «relacionado por significado» para distinguirlos siempre de las coincidencias literales, y nunca desplazan hacia abajo las coincidencias exactas."
+    },
+    "openingsCountUpdatesFaster": {
+      "title": "El recuento de ofertas va al ritmo del tablón",
+      "description": "El total de la parte superior se recalculaba una vez por recorrido completo de todos los feeds, así que en un recorrido lento podía ir horas por detrás de lo que realmente podías buscar. Ahora se actualiza cada quince minutos y hoy sigue la cifra real con un margen de unos cientos de ofertas."
+    },
+    "trackedIncludingClosedRoles": {
+      "title": "Ahora puedes ver cuántos puestos hemos seguido, no solo cuántos están abiertos",
+      "description": "Junto al recuento de puestos abiertos hay ahora una segunda cifra: todas las ofertas que hemos seguido, incluidas las que las empresas ya han retirado. El recuento de abiertos sigue significando exactamente eso — empleos a los que puedes optar hoy — y la segunda muestra el historial de cierres."
+    },
+    "dataApiSelfServe": {
+      "title": "La API de datos de contratación está disponible, con clave gratuita y autoservicio",
+      "description": "El conjunto de datos que hay detrás del tablón ya está disponible como API JSON de solo lectura, y puedes obtener una clave en la página de datos sin hablar con nadie. Incluye ofertas activas, ofertas individuales, empresas, estadísticas y un feed de cambios que indica qué se abrió y qué se cerró, señalando si un puesto cerrado se cubrió de verdad o se volvió a publicar con otro ID."
+    },
+    "feedsRetriedInMinutes": {
+      "title": "Un feed que falla se reintenta en minutos, no en horas",
+      "description": "Cuando el sistema de empleo de una empresa no respondía, esa empresa esperaba al siguiente recorrido completo — ocho horas o más — antes de volver a intentarlo, así que sus ofertas envejecían mientras el resto seguía fresco. Ahora los feeds fallidos se reintentan en unos quince minutos, espaciándose poco a poco si el problema persiste."
+    },
     "jobDescriptionsCutShort": {
       "title": "Las descripciones de empleo se cortaban a mitad de frase",
       "description": "Solo guardábamos los primeros 4.000 caracteres de la descripción de un empleo, y alrededor de una cuarta parte de las ofertas son más largas que eso — así que el texto se cortaba sin más, casi siempre a mitad de frase. Comparamos 24 ofertas truncadas con la propia página del empleador para ver qué faltaba: todo corte de más de un párrafo se llevaba los requisitos o la titulación exigida, y como las ofertas de Greenhouse y Lever ponen el rango salarial justo al final, el salario también se perdía a menudo. En una de ellas, el rango salarial existía únicamente en la parte que estábamos tirando. Ahora guardamos el triple de texto, lo que cubre íntegras alrededor del 88% de las ofertas. Las ofertas ya publicadas se van completando a medida que se actualizan en los próximos días."

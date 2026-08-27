@@ -1,5 +1,45 @@
 {
   "changelogEntries": {
+    "searchUsedTheSlowerEngine": {
+      "title": "Tahimik na gumagamit ng pang-reservang makina ang bawat paghahanap",
+      "description": "Ang aming ranked na paghahanap — ang nagpapasya kung aling trabaho ang pinakaangkop sa tinipa mo — ay tumigil sa paggana, at bawat paghahanap ay tahimik na bumabalik sa simpleng paghahanap ayon sa petsa. Walang lumitaw na error kaya mukhang maayos ang lahat; mas mahina lang ang mga resulta kaysa nararapat. Naayos na ito at wastong nairaranggo muli ang mga paghahanap."
+    },
+    "searchesThatFoundNothing": {
+      "title": "May mga paghahanap na walang ipinakita kahit daan-daang trabaho ang tugma",
+      "description": "Kung tumugma ang iyong mga salita sa deskripsiyon ngunit hindi sa pamagat, walang laman ang pahina. Ang “forklift certified” ay walang ibinalik gayong may 733 tugmang bakante, at ang “night shift forklift certified” ay nagtago pa ng 108. Ibinabalik na ngayon ng mga paghahanap na iyon ang dapat sana nilang ibinabalik."
+    },
+    "payFilterHidMostJobs": {
+      "title": "May filter sa sahod na nagtatago sa apat-limahan ng listahan",
+      "description": "Isa lamang sa bawat limang employer ang nagsasaad ng sahod, at ang pagtatakda ng pinakamababang sahod ay tahimik na nag-aalis ng bawat listing na walang sinasabi tungkol sa pera — kaya itinatago ng “$60k+” ang karamihan ng trabaho. May checkbox na ngayon upang panatilihin ang mga iyon, at lumilitaw ito kapag nagtakda ka ng pinakamababang sahod. Ang paghahanap ng nursing mula $90k ay mula 1,273 naging mahigit 10,000 na resulta."
+    },
+    "industryFiltersAllVisible": {
+      "title": "Hindi na kailangang mag-scroll pakanan ang mga filter ng industriya",
+      "description": "Ang hanay ng industriya ay gumagalaw pakanan sa likod ng kupas na gilid — mahirap gamitin sa mouse at madaling hindi mapansin — at limitado sa sampu, kaya walong industriya kabilang ang Edukasyon, Legal at Disenyo ang hindi maaabot. Sa desktop, bumubukas na ang hanay sa isang klik upang ipakita ang lahat ng labing-walo. Sa telepono, nananatili ang pag-swipe dahil natural iyon doon."
+    },
+    "largeEmployersFullOpenings": {
+      "title": "Bahagi lamang ng kanilang trabaho ang ipinapakita ng malalaking employer",
+      "description": "Ang malalaking careers site ay naglalabas ng listing nang tig-500 at ang unang pahina lang ang binabasa namin — kaya ang employer na may 19,253 bakante ay lumilitaw na may humigit-kumulang 630. Dinadaanan na namin ngayon ang natitirang mga pahina. Ang CVS Health ay mula sa mga 630 naging 12,698 na listing, at mga 160 malalaking employer ang ganoon din ang naranasan."
+    },
+    "relatedRolesWhenFewMatches": {
+      "title": "Ang paghahanap na may kaunting resulta ay nagmumungkahi na ng kaugnay na trabaho",
+      "description": "Kapag kakaunti ang nahanap, nagdaragdag na ang listahan ng mga trabahong pareho ang kahulugan sa halip na iwan ka sa tatlong resulta — ang “wine steward” ay naglalabas din ng sommelier at mga trabahong may kinalaman sa alak. May tatak silang “kaugnay sa kahulugan” upang matukoy mo sila laban sa tugmang salita, at hindi nila kailanman itinutulak pababa ang eksaktong tugma."
+    },
+    "openingsCountUpdatesFaster": {
+      "title": "Nakakasabay na sa listahan ang bilang ng bakante",
+      "description": "Ang kabuuang bilang sa itaas ay muling kinukuwenta minsan lamang kada buong pag-ikot sa lahat ng feed ng employer, kaya sa mabagal na pag-ikot ay maaari itong maghuli nang ilang oras sa aktuwal na mahahanap. Nagre-refresh na ito tuwing labinlimang minuto at kasalukuyang sumusunod sa tunay na bilang sa loob ng ilang daang listing."
+    },
+    "trackedIncludingClosedRoles": {
+      "title": "Makikita mo na kung ilang trabaho ang sinubaybayan namin, hindi lang kung ilan ang bukas",
+      "description": "Katabi ng bilang ng bukas na trabaho ay may pangalawang numero na ngayon: lahat ng listing na sinubaybayan namin, kasama ang mga inalis na ng employer. Ang bilang ng bukas ay nangangahulugan pa rin ng eksaktong iyon — mga trabahong maaari mong aplayan ngayon — at ipinapakita ng pangalawa ang kasaysayan sa likod nito."
+    },
+    "dataApiSelfServe": {
+      "title": "Live na ang hiring data API, may libreng self-service key",
+      "description": "Ang datos sa likod ng listahan ay makukuha na bilang read-only na JSON API, at makakakuha ka ng key sa pahina ng datos nang hindi nakikipag-usap kaninuman. Saklaw nito ang aktibong listing, indibidwal na listing, employer, pangunahing estadistika, at isang changes feed na nag-uulat kung ano ang nabuksan at nagsara — pati kung ang saradong trabaho ay tunay na napunan o tahimik na inilathala muli sa bagong ID."
+    },
+    "feedsRetriedInMinutes": {
+      "title": "Ang feed na nabigo ay inuulit sa loob ng minuto, hindi oras",
+      "description": "Kapag hindi sumagot ang careers system ng isang employer, naghihintay ang employer na iyon hanggang sa susunod na buong pag-ikot — walong oras o higit pa — bago namin subukan muli, kaya lumuluma ang kanilang listing habang sariwa ang lahat sa paligid. Inuulit na ngayon ang mga nabigong feed sa loob ng mga labinlimang minuto, na unti-unting humahaba kung magpapatuloy ang problema."
+    },
     "jobDescriptionsCutShort": {
       "title": "Naputol sa gitna ng pangungusap ang mga deskripsyon ng trabaho",
       "description": "Ang unang 4,000 karakter lang ng isang deskripsyon ng trabaho ang iniimbak namin, at humigit-kumulang ikaapat na bahagi ng mga posting ay mas mahaba pa roon — kaya basta na lang humihinto ang teksto, kadalasan sa gitna ng pangungusap. Sinuri namin ang 24 na naputol na posting laban sa sariling pahina ng employer para makita kung ano ang nawawala: bawat putol na mas mahaba sa isang talata ay nag-aalis ng mga requirement o kwalipikasyon, at dahil sa pinakailalim inilalagay ng Greenhouse at Lever ang saklaw ng sahod, madalas ding naputol ang sahod. May isang posting na ang saklaw ng sahod ay nasa mismong bahaging itinatapon namin. Triple na ngayon ang teksto na itinatago namin, na sumasaklaw nang buo sa humigit-kumulang 88% ng mga posting. Mapupunan ang mga umiiral nang posting habang nagre-refresh sila sa mga susunod na araw."

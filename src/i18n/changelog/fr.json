@@ -1,5 +1,45 @@
 {
   "changelogEntries": {
+    "searchUsedTheSlowerEngine": {
+      "title": "Toutes les recherches passaient discrètement par le moteur de secours",
+      "description": "Notre recherche par pertinence — celle qui décide quelles offres répondent le mieux à votre saisie — ne fonctionnait plus, et chaque recherche basculait silencieusement vers une simple requête triée par date. Aucune erreur ne s’affichait, tout semblait donc normal ; les résultats étaient simplement moins bons qu’ils auraient dû l’être. C’est corrigé, et les recherches sont de nouveau classées correctement."
+    },
+    "searchesThatFoundNothing": {
+      "title": "Certaines recherches n’affichaient rien alors que des centaines d’offres correspondaient",
+      "description": "Si vos mots figuraient dans les descriptions mais pas dans les intitulés, la page restait vide. « forklift certified » ne renvoyait rien alors que 733 offres correspondaient, et « night shift forklift certified » en masquait 108 autres. Ces recherches renvoient désormais ce qu’elles auraient toujours dû renvoyer."
+    },
+    "payFilterHidMostJobs": {
+      "title": "Un filtre de salaire masquait quatre cinquièmes des offres",
+      "description": "Environ un employeur sur cinq indique un salaire, et fixer un minimum supprimait silencieusement toute offre muette sur la rémunération : « $60k+ » masquait donc la plupart des postes. Une case permet désormais de les conserver ; elle apparaît dès que vous fixez un minimum. Une recherche d’postes infirmiers à partir de $90k est passée de 1 273 résultats à plus de 10 000."
+    },
+    "industryFiltersAllVisible": {
+      "title": "Les filtres de secteur ne nécessitent plus de défilement latéral",
+      "description": "La rangée des secteurs défilait sur le côté derrière un bord estompé — peu pratique à la souris et facile à manquer — et était limitée à dix, si bien que huit secteurs dont Éducation, Juridique et Design étaient inaccessibles. Sur ordinateur, la rangée s’ouvre maintenant d’un clic sur les dix-huit. Sur mobile, le balayage reste, car il y est naturel."
+    },
+    "largeEmployersFullOpenings": {
+      "title": "Les grands employeurs n’affichaient qu’une fraction de leurs offres",
+      "description": "Les grands sites carrière livrent leurs offres par 500 et nous ne lisions que la première page : un employeur annonçant 19 253 postes apparaissait avec environ 630. Nous parcourons désormais les pages suivantes. CVS Health est passé d’environ 630 offres à 12 698, et près de 160 grands employeurs étaient concernés de la même façon."
+    },
+    "relatedRolesWhenFewMatches": {
+      "title": "Les recherches à faible résultat proposent maintenant des postes proches",
+      "description": "Quand une recherche trouve très peu de choses, le tableau ajoute des postes de même sens plutôt que de vous laisser avec trois résultats — « wine steward » fait aussi apparaître des postes de sommelier et de vins fins. Ils portent la mention « proche par le sens » pour toujours les distinguer des correspondances littérales, et ne repoussent jamais les correspondances exactes."
+    },
+    "openingsCountUpdatesFaster": {
+      "title": "Le nombre d’offres suit le rythme du tableau",
+      "description": "Le total affiché en haut n’était recalculé qu’une fois par passage complet sur tous les flux employeurs ; lors d’un passage lent, il pouvait avoir des heures de retard sur ce que vous pouviez réellement chercher. Il se rafraîchit désormais toutes les quinze minutes et suit aujourd’hui le chiffre réel à quelques centaines d’offres près."
+    },
+    "trackedIncludingClosedRoles": {
+      "title": "Vous voyez maintenant combien de postes nous avons suivis, pas seulement combien sont ouverts",
+      "description": "À côté du nombre de postes ouverts figure désormais un second chiffre : toutes les offres que nous avons suivies, y compris celles que les employeurs ont retirées depuis. Le nombre d’ouverts garde exactement son sens — des postes auxquels vous pouvez postuler aujourd’hui — et le second montre l’historique des clôtures."
+    },
+    "dataApiSelfServe": {
+      "title": "L’API de données de recrutement est en ligne, avec une clé gratuite en libre-service",
+      "description": "Le jeu de données derrière le tableau est désormais disponible sous forme d’API JSON en lecture seule, et vous obtenez une clé sur la page données sans passer par personne. Elle couvre les offres actives, les offres individuelles, les employeurs, les statistiques et un flux de changements indiquant ce qui s’est ouvert et fermé — en précisant si un poste clôturé a réellement été pourvu ou simplement republié sous un nouvel identifiant."
+    },
+    "feedsRetriedInMinutes": {
+      "title": "Un flux en échec est réessayé en minutes plutôt qu’en heures",
+      "description": "Quand le système de recrutement d’un employeur ne répondait pas, cet employeur attendait le passage complet suivant — huit heures ou plus — avant une nouvelle tentative, et ses offres vieillissaient pendant que tout le reste restait à jour. Les flux en échec sont désormais réessayés au bout d’un quart d’heure environ, avec un espacement progressif si le problème persiste."
+    },
     "jobDescriptionsCutShort": {
       "title": "Les descriptions de poste s'arrêtaient au milieu d'une phrase",
       "description": "Nous ne conservions que les 4 000 premiers caractères d'une description de poste, et environ un quart des offres dépassent cette longueur — le texte s'interrompait donc net, en général au milieu d'une phrase. Nous avons comparé 24 offres tronquées à la page de l'employeur lui-même pour voir ce qui manquait : chaque coupure de plus d'un paragraphe emportait le profil recherché ou les qualifications, et comme les annonces Greenhouse et Lever placent la fourchette de salaire tout en bas, le salaire disparaissait souvent aussi. Pour une offre, la fourchette de salaire n'existait que dans la partie que nous jetions. Nous gardons désormais trois fois plus de texte, ce qui couvre environ 88 % des offres en entier. Les offres déjà en ligne se complètent au fil de leur rafraîchissement dans les prochains jours."

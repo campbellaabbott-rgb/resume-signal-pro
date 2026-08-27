@@ -1,5 +1,45 @@
 {
   "changelogEntries": {
+    "searchUsedTheSlowerEngine": {
+      "title": "Jede Suche lief unbemerkt über die Ersatzsuche",
+      "description": "Unsere Relevanzsuche — die entscheidet, welche Jobs am besten zu Ihrer Eingabe passen — funktionierte nicht mehr, und jede Suche fiel still auf eine einfache, rein nach Datum sortierte Abfrage zurück. Es gab keine Fehlermeldung, also wirkte alles normal; die Ergebnisse waren nur schlechter als sie sein sollten. Das ist behoben, Suchen werden wieder richtig sortiert."
+    },
+    "searchesThatFoundNothing": {
+      "title": "Manche Suchen zeigten nichts, obwohl Hunderte Jobs passten",
+      "description": "Wenn Ihre Begriffe in Stellenbeschreibungen vorkamen, aber nicht im Titel, blieb die Seite leer. „forklift certified“ ergab keine Treffer, während 733 passende Stellen vorhanden waren; „night shift forklift certified“ verbarg weitere 108. Diese Suchen liefern jetzt, was sie immer hätten liefern sollen."
+    },
+    "payFilterHidMostJobs": {
+      "title": "Ein Gehaltsfilter verbarg vier Fünftel des Angebots",
+      "description": "Nur etwa jeder fünfte Arbeitgeber nennt ein Gehalt, und eine Untergrenze entfernte stillschweigend jede Anzeige ohne Gehaltsangabe — „$60k+“ blendete also die meisten Jobs aus. Es gibt jetzt ein Häkchen, um diese Anzeigen zu behalten; es erscheint, sobald Sie eine Untergrenze setzen. Eine Suche nach Pflegestellen ab $90k stieg damit von 1.273 auf über 10.000 Treffer."
+    },
+    "industryFiltersAllVisible": {
+      "title": "Branchenfilter brauchen kein seitliches Scrollen mehr",
+      "description": "Die Branchenleiste scrollte seitlich hinter einer weichen Kante — mit der Maus umständlich und leicht zu übersehen — und war auf zehn begrenzt, sodass acht Branchen wie Bildung, Recht und Design gar nicht erreichbar waren. Am Desktop öffnet die Leiste jetzt mit einem Klick alle achtzehn. Auf dem Handy bleibt das Wischen, weil es dort natürlich ist."
+    },
+    "largeEmployersFullOpenings": {
+      "title": "Große Arbeitgeber zeigten nur einen Bruchteil ihrer Jobs",
+      "description": "Große Karriereseiten liefern ihre Anzeigen in 500er-Blöcken, und wir lasen immer nur die erste Seite — ein Arbeitgeber mit 19.253 ausgeschriebenen Stellen erschien mit etwa 630. Wir arbeiten jetzt die weiteren Seiten ab. CVS Health stieg von rund 630 auf 12.698 Anzeigen; etwa 160 große Arbeitgeber waren gleichermaßen betroffen."
+    },
+    "relatedRolesWhenFewMatches": {
+      "title": "Suchen mit wenigen Treffern schlagen jetzt verwandte Rollen vor",
+      "description": "Findet eine Suche kaum etwas, ergänzt die Seite jetzt Rollen mit gleicher Bedeutung, statt Sie mit drei Treffern stehen zu lassen — „wine steward“ bringt auch Sommelier- und Weinfachstellen. Sie sind als „inhaltlich verwandt“ gekennzeichnet, damit Sie sie stets von Wortreffern unterscheiden können, und sie verdrängen exakte Treffer nie nach unten."
+    },
+    "openingsCountUpdatesFaster": {
+      "title": "Die Stellenanzahl hält mit dem Angebot Schritt",
+      "description": "Die Gesamtzahl oben wurde nur einmal pro vollem Durchlauf aller Arbeitgeber-Feeds neu berechnet und konnte deshalb Stunden hinter dem liegen, was tatsächlich durchsuchbar war. Sie aktualisiert sich jetzt alle fünfzehn Minuten und liegt derzeit auf wenige Hundert Anzeigen genau."
+    },
+    "trackedIncludingClosedRoles": {
+      "title": "Sie sehen jetzt auch, wie viele Stellen wir insgesamt verfolgt haben",
+      "description": "Neben der Zahl offener Stellen steht jetzt eine zweite: alle Anzeigen, die wir verfolgt haben, einschließlich der inzwischen zurückgezogenen. Die Zahl offener Stellen bedeutet weiterhin genau das — Jobs, auf die Sie sich heute bewerben können — und die zweite zeigt die Historie dahinter."
+    },
+    "dataApiSelfServe": {
+      "title": "Die Hiring-Daten-API ist live, mit kostenlosem Self-Service-Schlüssel",
+      "description": "Der Datensatz hinter der Jobbörse ist jetzt als schreibgeschützte JSON-API verfügbar, und Sie erhalten einen Schlüssel direkt auf der Datenseite. Sie umfasst aktuelle Anzeigen, Einzelanzeigen, Arbeitgeber, Kennzahlen und einen Änderungs-Feed — inklusive der Angabe, ob eine geschlossene Stelle wirklich besetzt oder nur unter neuer ID neu ausgeschrieben wurde."
+    },
+    "feedsRetriedInMinutes": {
+      "title": "Ein fehlgeschlagener Feed wird in Minuten statt Stunden erneut abgefragt",
+      "description": "Antwortete das Karrieresystem eines Arbeitgebers nicht, wartete dieser Arbeitgeber bis zum nächsten vollen Durchlauf — acht Stunden oder mehr — bis wir es erneut versuchten; seine Anzeigen veralteten, während alles daneben aktuell blieb. Fehlgeschlagene Feeds werden jetzt nach etwa fünfzehn Minuten erneut versucht, mit wachsendem Abstand, falls das Problem bleibt."
+    },
     "jobDescriptionsCutShort": {
       "title": "Stellenbeschreibungen brachen mitten im Satz ab",
       "description": "Wir haben nur die ersten 4.000 Zeichen einer Stellenbeschreibung gespeichert, und rund ein Viertel aller Anzeigen ist länger als das — der Text hörte also einfach auf, meist mitten im Satz. Wir haben 24 abgeschnittene Anzeigen mit der Seite des Arbeitgebers selbst verglichen, um zu sehen, was fehlte: Jeder Schnitt, der länger als ein Absatz war, entfernte die Anforderungen oder Qualifikationen, und weil Greenhouse und Lever die Gehaltsspanne ganz unten platzieren, fiel häufig auch das Gehalt weg. Bei einer Anzeige stand die Gehaltsspanne ausschließlich in dem Teil, den wir weggeworfen haben. Wir behalten jetzt dreimal so viel Text, was etwa 88 % der Anzeigen vollständig abdeckt. Bestehende Anzeigen füllen sich in den nächsten Tagen mit jeder Aktualisierung nach."
