@@ -236,7 +236,12 @@ const PINNED = {
   // same numbers, which cost an hour of cursor sampling to resolve and gave the
   // wrong answer first. status.chainKick now says what happened to the last
   // kick. index.ts only, sources.ts UNCHANGED.
-  buildVersion: "2026-08-25.27",
+  // 2026-08-25.28: the count deadline stops escalating. Missing the 1.5s race
+  // fell back to the UNBOUNDED inline exact count and re-fetched the page,
+  // so a 190ms overrun cost 5.4s instead of 0.4s (reproduced live). A timeout
+  // now means "no count", which the client already renders honestly.
+  // index.ts only, sources.ts UNCHANGED.
+  buildVersion: "2026-08-25.28",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {

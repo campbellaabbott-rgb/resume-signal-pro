@@ -1876,7 +1876,17 @@ describe("slow work degrades instead of failing the request", () => {
     const ms = Number(/const COUNT_DEADLINE_MS = ([\d_]+);/.exec(fn)?.[1]?.replace(/_/g, ""));
     expect(ms, "count deadline missing").toBeGreaterThan(0);
     expect(ms, "a count may not hold the response open for seconds").toBeLessThanOrEqual(4_000);
-    expect(fn).toMatch(/withDeadline\(cappedCount\(\)/);
+    // Spelling changed 2026-08-26: the count is raced EXPLICITLY rather than
+    // through withDeadline, because withDeadline resolves one sentinel for a
+    // timeout, an error and a missing RPC alike — and reading that as "the
+    // migration has not applied yet" made a lost race fall back to the
+    // UNBOUNDED inline exact count. A 190ms overrun cost 5.4s instead of 0.4s.
+    // The invariant is unchanged and now stronger: bounded, never gating the
+    // rows, and a timeout that cannot escalate.
+    expect(fn).toMatch(/const racedCount: Promise<\{ n: number; capped\?: boolean \} \| null> = wantCount/);
+    expect(fn).toMatch(/setTimeout\(\(\) => res\(\{ kind: "timeout" \}\), COUNT_DEADLINE_MS\)/);
+    expect(fn, "a lost count race can still escalate to the unbounded inline count")
+      .toMatch(/const needInlineCount = wantCount && !cappedRes && !countTimedOut;/);
   });
 
   it("the semantic tier can say no", () => {

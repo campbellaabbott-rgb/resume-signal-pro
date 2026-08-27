@@ -161,7 +161,13 @@ describe("a count must not cost more than the rows it labels", () => {
   it("rows are never gated on the count", () => {
     // Promise.all, not await-then-await: a slow count must never delay rows.
     expect(CODE).toMatch(/const \[firstPage, cappedRes\] = await Promise\.all\(\[/);
-    expect(CODE).toMatch(/withDeadline\(cappedCount\(\)/);
+    // The count is raced explicitly now rather than through withDeadline, so a
+    // TIMEOUT is distinguishable from a missing RPC — conflating them made a
+    // lost race fall back to the unbounded inline count and cost 5.4s instead
+    // of 0.4s. The property this guard protects is unchanged: rows and count
+    // are issued together, and the count can never delay the rows.
+    expect(CODE).toMatch(/const racedCount: Promise<\{ n: number; capped\?: boolean \} \| null> = wantCount/);
+    expect(CODE).toMatch(/racedCount,\n\s*\]\);/);
   });
 });
 

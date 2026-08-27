@@ -102,7 +102,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-25.27";
+const BUILD_VERSION = "2026-08-25.28";
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -10919,27 +10919,63 @@ async function serveList(
   // countUnavailable becomes "Showing 60 of 60+ matching openings" rather than
   // a blank, since the floor shipped this week. Rows are never delayed by it.
   const COUNT_DEADLINE_MS = 1_500;
+  // A DEADLINE THAT ESCALATES IS NOT A DEADLINE.
+  //
+  // withDeadline resolves { data: null } for a timeout, an error AND a missing
+  // RPC alike, and the code below read that single sentinel as "the migration
+  // has not applied yet" — then fell back to the UNBOUNDED inline exact count,
+  // the very query the capped RPC exists to replace, while throwing away the
+  // page it had already fetched.
+  //
+  // So missing the 1.5s deadline made the request dramatically slower, not
+  // faster. Reproduced live on an ordinary two-filter browse:
+  //   healthy run   count 210ms   page 139ms   tookMs 359
+  //   race lost     count 1503ms  page 3755ms  tookMs 5448   (settle: 1693ms)
+  // The count was 190ms from landing. Losing it by that margin cost 5 seconds.
+  //
+  // Tracked separately now: `timedOut` is the timeout, `null` after settling is
+  // the genuinely-missing RPC. Only the second may escalate.
+  let countTimedOut = false;
   const t_count_raced = Date.now();
+  // Hoisted out of the Promise.all below rather than nested inside it. A nested
+  // array literal there also breaks the guard that checks every destructured
+  // Promise.all binds every promise it awaits — and that guard exists because
+  // an unnamed entry silently re-labels every value after it.
+  const racedCount: Promise<{ n: number; capped?: boolean } | null> = wantCount
+    ? Promise.race([
+      (cappedCount() as unknown as PromiseLike<{ n: number; capped?: boolean } | null>)
+        .then((r) => ({ kind: "settled" as const, r })),
+      new Promise<{ kind: "timeout" }>((res) => setTimeout(() => res({ kind: "timeout" }), COUNT_DEADLINE_MS)),
+    ]).then((outcome) => {
+      const r = outcome.kind === "settled" ? outcome.r : null;
+      if (outcome.kind === "timeout") countTimedOut = true;
+      // MARK THE RACE, NOT THE RPC. The mark inside cappedCount() keeps running
+      // after this deadline is lost, because a race does not cancel. Recording
+      // that settle time under the same name put up to 6.7s of phase against a
+      // request that waited 1.5s.
+      markFrom("count_jobs_capped", t_count_raced);
+      return r && typeof (r as { n?: number }).n === "number" ? r as { n: number; capped?: boolean } : null;
+    })
+    : Promise.resolve(null);
   const [firstPage, cappedRes] = await Promise.all([
     pageWith("effective_posted", "salary_rank_usd", false),
-    wantCount
-      ? withDeadline(cappedCount() as unknown as PromiseLike<{ n: number; capped?: boolean } | null>, COUNT_DEADLINE_MS)
-          .then((r) => {
-            // MARK THE RACE, NOT THE RPC. The mark inside cappedCount() keeps
-            // running after this deadline is lost, because withDeadline is a
-            // Promise.race and does not cancel. Recording that settle time
-            // under the same name put up to 6.7s of phase against a request
-            // that waited 1.5s, and every "share of tookMs" computed from it
-            // was therefore measuring something the user never experienced.
-            markFrom("count_jobs_capped", t_count_raced);
-            return r && typeof (r as { n?: number }).n === "number" ? r as { n: number; capped?: boolean } : null;
-          })
-      : Promise.resolve(null),
+    racedCount,
   ]);
-  // Only fall back to the old inline exact count when the capped RPC isn't
-  // there (migration not applied yet).
-  const needInlineCount = wantCount && !cappedRes;
+  // Only fall back to the old inline exact count when the capped RPC ISN'T
+  // THERE (migration not applied yet) — never because it was merely slow. A
+  // count that could not be produced inside 1.5s is answered with "no count",
+  // which the client already renders honestly as "Showing 60 of 60+", not by
+  // going and fetching a slower one.
+  const needInlineCount = wantCount && !cappedRes && !countTimedOut;
+  if (countTimedOut) {
+    // Not silent: a deadline that fires regularly is a signal about the
+    // database, and the old code left it indistinguishable from a healthy
+    // response except by tookMs.
+    console.warn(`[JOB-BOARD] capped count exceeded ${COUNT_DEADLINE_MS}ms — serving the page without a total`);
+  }
   const page = (dateCol: string, salaryCol: string) => pageWith(dateCol, salaryCol, needInlineCount);
+  // firstPage was fetched concurrently and successfully; reusing it is the
+  // whole point of racing the count beside it rather than before it.
   let { data, error, count } = needInlineCount
     ? await page("effective_posted", "salary_rank_usd")
     : { data: firstPage.data, error: firstPage.error, count: cappedRes?.n ?? null };
@@ -10954,7 +10990,13 @@ async function serveList(
   // a 500 into a served page with an honest "we don't know the total".
   // countUnavailable tells the client to stop trusting `total` rather than
   // render a wrong number, and hasMore keeps pagination working without it.
-  let countUnavailable = false;
+  // Seeded from the raced deadline, and this is load-bearing. Downstream,
+  // `total` is published as `countUnavailable ? null : (count ?? 0)` — so a
+  // null count with this flag still false publishes ZERO, which the comment on
+  // that line already warns "would read as no matches and trip the zero-state
+  // on a page that is visibly full of results". Not escalating on a timeout is
+  // only safe because the timeout is declared here.
+  let countUnavailable = countTimedOut;
   if (error && wantCount) {
     // Same path as the page above, count suppressed — a second hand-written
     // builder here is how the retry ends up filtering differently from the
