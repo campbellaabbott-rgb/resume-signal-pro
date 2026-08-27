@@ -817,6 +817,32 @@ export type Database = {
         }
         Relationships: []
       }
+      api_quota: {
+        Row: {
+          calls: number
+          day: string
+          key_id: string
+        }
+        Insert: {
+          calls?: number
+          day: string
+          key_id: string
+        }
+        Update: {
+          calls?: number
+          day?: string
+          key_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "api_quota_key_id_fkey"
+            columns: ["key_id"]
+            isOneToOne: false
+            referencedRelation: "api_keys"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       api_rate: {
         Row: {
           calls: number
@@ -3176,11 +3202,11 @@ export type Database = {
         Returns: {
           api_key_id: string
           deny_reason: string
+          had_active: boolean
           issued: boolean
           key_tier: string
           quota_limit: number
           rate_limit: number
-          was_rotated: boolean
         }[]
       }
       apply_posting_corrections: { Args: { p_patches: Json }; Returns: number }
@@ -4230,36 +4256,16 @@ export type Database = {
         }[]
       }
       reconcile_stripe_tick: { Args: never; Returns: undefined }
-      record_affiliate_conversion:
-        | {
-            Args: {
-              p_product_name: string
-              p_referral_code: string
-              p_sale_amount: number
-              p_stripe_session_id: string
-            }
-            Returns: boolean
-          }
-        | {
-            Args: {
-              p_commission_override?: number
-              p_product_name: string
-              p_referral_code: string
-              p_sale_amount: number
-              p_stripe_session_id: string
-            }
-            Returns: boolean
-          }
-        | {
-            Args: {
-              p_commission_override?: number
-              p_product_name: string
-              p_referral_code: string
-              p_sale_amount: number
-              p_stripe_session_id: string
-            }
-            Returns: boolean
-          }
+      record_affiliate_conversion: {
+        Args: {
+          p_commission_override?: number
+          p_product_name: string
+          p_referral_code: string
+          p_sale_amount: number
+          p_stripe_session_id: string
+        }
+        Returns: boolean
+      }
       record_board_pool_sample: { Args: never; Returns: number }
       record_scan_feedback: {
         Args: {
