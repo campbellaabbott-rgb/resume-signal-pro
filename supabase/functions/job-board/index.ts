@@ -102,7 +102,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-25.28";
+const BUILD_VERSION = "2026-08-25.29";
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -4247,18 +4247,60 @@ function locationTerms(raw: unknown): { terms: string[]; expandedFrom: string | 
  * was there the whole time. That is also the limit of the idea — nothing is
  * added here that cannot be expressed with an existing filter.
  *
- * PHRASES, NOT WORDS, and that is deliberate. "remote" alone stays a text
- * search, because a searcher typing it may well mean a job title ("Remote
- * Support Technician") and the filter would silently discard the 70% of the
- * board with no work_mode recorded. A multi-word phrase like "work from home"
- * carries no such ambiguity.
+ * WORDS AS WELL AS PHRASES, and the reversal is MEASURED. This block used to
+ * exclude the bare word "remote" on the theory that a searcher might mean a job
+ * title ("Remote Support Technician") and that lifting it would "discard the
+ * 70% of the board with no work_mode recorded". Both halves were wrong. The
+ * 70% figure describes work_mode being NULL, but the lift patches a WORK-MODE
+ * EQUALITY, and the ambiguity it feared is a rounding error. Counted live on
+ * 2026-08-27 over the servable board (open, inside the freshness window):
+ *
+ *   title contains        total   of which NOT that work_mode   ambiguous
+ *   remote                6,119                           168        2.7%
+ *   hybrid                2,093                            41        2.0%
+ *   onsite                1,790                            69        3.9%
+ *   on-site                 416                            15        3.6%
+ *
+ * Meanwhile the AND-against-title that the exclusion preserved was discarding
+ * far more than it protected. Exact title-tier counts, same day, the word left
+ * in the query versus the word lifted to the filter:
+ *
+ *   "remote python"          3   ->  "python"        + remote    200
+ *   "remote data analyst"    8   ->  "data analyst"  + remote    197
+ *   "remote nurse"         162   ->  "nurse"         + remote    415
+ *   "remote accountant"    238   ->  "accountant"    + remote    242
+ *
+ * Never fewer, and up to 66x more. The SPREAD is the argument: the literal
+ * match only looks respectable for job families that habitually spell "Remote"
+ * in the title, and collapses for the ones that do not — so the searcher could
+ * not tell from the result count whether they had seen the market or 1.5% of
+ * it. The 2-4% residue above is the price and it is worth paying.
+ *
+ * WHAT MAKES THAT HONEST IS THE DISCLOSURE, NOT THE ODDS. Every lift is named
+ * in `intentFilters` and rendered on the page ("Read "remote" as a filter and
+ * applied it, rather than searching for those words"), so a searcher who did
+ * mean the title text can see what happened and say otherwise. A silent lift
+ * would still be the wrong trade at 2.7%.
+ *
+ * workMode, NEVER THE remote BOOLEAN, for every one of these. filters.ts
+ * computes `remote: body.remote === true && !workMode`, so the mode is the
+ * field that wins, and it is also strictly wider: work_mode='remote' is 43,773
+ * rows where remote=true is 40,325, and remote=true with work_mode NULL is
+ * ZERO. Binding the boolean threw away 3,504 postings the board itself calls
+ * remote. Two spellings of "remote" on two routes is the drift that makes
+ * counts disagree, so there is one.
  */
 const INTENT_FILTERS: Array<{ re: RegExp; label: string; patch: Record<string, unknown> }> = [
-  { re: /\bwork(?:ing)? from home\b/i, label: "work from home", patch: { remote: true } },
-  { re: /\bwfh\b/i, label: "wfh", patch: { remote: true } },
-  { re: /\btele(?:commut|work)\w*\b/i, label: "telecommute", patch: { remote: true } },
-  { re: /\bhome[- ]based\b/i, label: "home based", patch: { remote: true } },
-  { re: /\bremote(?:ly)? only\b/i, label: "remote only", patch: { remote: true } },
+  // Phrases first: a bare word below must never shred a longer phrase above it.
+  { re: /\bwork(?:ing)? from home\b/i, label: "work from home", patch: { workMode: "remote" } },
+  { re: /\bwfh\b/i, label: "wfh", patch: { workMode: "remote" } },
+  { re: /\btele(?:commut|work)\w*\b/i, label: "telecommute", patch: { workMode: "remote" } },
+  { re: /\bhome[- ]based\b/i, label: "home based", patch: { workMode: "remote" } },
+  { re: /\bremote(?:ly)? only\b/i, label: "remote only", patch: { workMode: "remote" } },
+  // The bare work-mode words, per the measurement above.
+  { re: /\bremote(?:ly)?\b/i, label: "remote", patch: { workMode: "remote" } },
+  { re: /\bhybrid\b/i, label: "hybrid", patch: { workMode: "hybrid" } },
+  { re: /\bon[- ]?site\b/i, label: "onsite", patch: { workMode: "onsite" } },
   // Seniority phrases map onto the experience band the board already stores.
   { re: /\bno experience(?: (?:required|needed|necessary))?\b/i, label: "no experience", patch: { experience: ["entry"] } },
   { re: /\bentry[- ]level\b/i, label: "entry level", patch: { experience: ["entry"] } },
@@ -4286,6 +4328,7 @@ const INTENT_FILTERS: Array<{ re: RegExp; label: string; patch: Record<string, u
  */
 const INTENT_CONFLICTS: Record<string, string[]> = {
   remote: ["remote", "workMode"],
+  workMode: ["remote", "workMode"],
   experience: ["experience"],
   maxAgeDays: ["maxAgeDays", "postedAfter"],
 };
@@ -4318,9 +4361,22 @@ function liftIntentFilters(
     // through queryTerms like any others and, when they do not appear in job
     // titles, come back as droppedTerms, which the page already renders.
     if (Object.keys(p).some((k) => (INTENT_CONFLICTS[k] ?? [k]).some((f) => body[f] !== undefined && body[f] !== null))) continue;
+    // AND A LIFT ALREADY MADE CANNOT BE OVERWRITTEN BY A LATER ONE. Now that
+    // the bare work-mode words are lifted, one query can trigger two rules that
+    // write the SAME key: q="remote hybrid analyst" matches both, and a plain
+    // Object.assign would let "hybrid" silently replace "remote" while the
+    // disclosure listed both — the response asserting two filters it did not
+    // apply. First rule wins; the loser's words stay in the query, where they
+    // go through queryTerms and come back as droppedTerms the page renders.
+    const clash = Object.keys(p).find((k) => k in patch && patch[k] !== p[k]);
+    if (clash) continue;
     residual = residual.replace(re, " ");
+    // A rule that only RESTATES a lift already made (q="wfh remote") still has
+    // its words removed — leaving them would re-impose the literal-text match —
+    // but must not be named twice in the disclosure.
+    const restates = Object.keys(p).every((k) => k in patch && patch[k] === p[k]);
     Object.assign(patch, p);
-    labels.push(label);
+    if (!restates) labels.push(label);
   }
   if (labels.length === 0) return null;
   residual = residual.replace(/\s+/g, " ").trim();

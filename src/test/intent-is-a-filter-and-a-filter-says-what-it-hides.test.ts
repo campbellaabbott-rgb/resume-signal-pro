@@ -49,22 +49,81 @@ describe("intent becomes a filter, and a filter says what it hides", () => {
   });
 
   it("maps the phrasing that was returning 0.7% of the inventory", () => {
-    const remotes = ENTRIES.filter((e) => e.patch.includes("remote: true")).map((e) => e.label);
-    expect(remotes, "work from home must reach the remote filter").toContain("work from home");
+    // ONE SPELLING OF "REMOTE", AND IT IS workMode. These used to patch
+    // {remote: true}. filters.ts resolves `remote: body.remote === true &&
+    // !workMode`, so the mode is the field that wins, and it is also strictly
+    // wider: measured 2026-08-27, work_mode='remote' is 43,773 servable rows
+    // where remote=true is 40,325, and remote=true with work_mode NULL is ZERO.
+    // The boolean was a partial denormalisation of the mode and binding it
+    // silently withheld 3,504 postings the board itself calls remote.
+    const remotes = ENTRIES.filter((e) => e.patch.includes('workMode: "remote"')).map((e) => e.label);
+    expect(remotes, "work from home must reach the work-mode filter").toContain("work from home");
     for (const l of ["wfh", "telecommute", "home based"]) {
       expect(remotes, `${l} is the same intent`).toContain(l);
     }
+    expect(
+      ENTRIES.filter((e) => e.patch.includes("remote: true")),
+      "no entry may bind the narrower boolean — two spellings of remote is the drift that makes counts disagree",
+    ).toEqual([]);
   });
 
-  it("matches PHRASES, never the bare word 'remote'", () => {
-    // A searcher typing "remote" alone may mean a job title ("Remote Support
-    // Technician"), and the filter would discard the 70% of the board with no
-    // work_mode recorded. Only unambiguous multi-word phrasing is lifted.
-    const bare = ENTRIES.find((e) => /^\/\\bremote\(\?:ly\)\?\\b\/i$/.test(e.src));
-    expect(bare, "the bare word 'remote' must not be an intent trigger").toBeUndefined();
-    const wfh = ENTRIES.find((e) => e.label === "work from home");
-    expect(wfh!.src).toContain("work");
-    expect(wfh!.src).toContain("home");
+  it("lifts the bare work-mode words too, and the 2.7% residue is measured not assumed", () => {
+    // THIS TEST USED TO ASSERT THE OPPOSITE. It banned the bare word "remote"
+    // on the theory that a searcher might mean a job title ("Remote Support
+    // Technician") and that lifting it would discard "the 70% of the board with
+    // no work_mode recorded". The 70% describes work_mode being NULL; the lift
+    // patches a work-mode EQUALITY, so that figure never applied. Counted live
+    // on 2026-08-27 over the servable board, the real ambiguity is:
+    //
+    //   titles containing "remote"  6,119, of which NOT work_mode=remote   168  (2.7%)
+    //   titles containing "hybrid"  2,093, of which NOT work_mode=hybrid    41  (2.0%)
+    //   titles containing "onsite"  1,790, of which NOT work_mode=onsite    69  (3.9%)
+    //
+    // while the ban itself was costing far more than it saved — exact title-tier
+    // counts, word in the query vs word lifted to the filter: "remote python"
+    // 3 -> 200, "remote data analyst" 8 -> 197, "remote nurse" 162 -> 415,
+    // "remote accountant" 238 -> 242. Never fewer, and up to 66x more.
+    const byLabel = (l: string) => ENTRIES.find((e) => e.label === l);
+    for (const [label, mode] of [["remote", "remote"], ["hybrid", "hybrid"], ["onsite", "onsite"]]) {
+      const e = byLabel(label);
+      expect(e, `the bare word "${label}" must be lifted`).toBeDefined();
+      expect(e!.patch, `"${label}" must bind work_mode=${mode}`).toContain(`workMode: "${mode}"`);
+    }
+
+    // ORDER IS LOAD-BEARING: a bare word must never shred a longer phrase above
+    // it. "remote only" and every multi-word remote phrase must be matched
+    // before /\bremote(?:ly)?\b/ gets a chance to eat the word.
+    const idx = (l: string) => ENTRIES.findIndex((e) => e.label === l);
+    for (const phrase of ["work from home", "wfh", "telecommute", "home based", "remote only"]) {
+      expect(idx(phrase), `"${phrase}" must precede the bare word "remote"`).toBeLessThan(idx("remote"));
+    }
+
+    // WHAT MAKES THE LIFT HONEST IS THE DISCLOSURE, NOT THE ODDS. A searcher who
+    // did mean the literal title text has to be able to see what happened; at
+    // 2.7% a SILENT lift would still be the wrong trade.
+    expect(byLabel("remote")!.label, "the lift must carry a renderable label").toBe("remote");
+    expect(FN).toContain("function intentDisclosure");
+  });
+
+  it("cannot let one work-mode word silently overwrite another", () => {
+    // q="remote hybrid analyst" matches two rules that write the SAME key. A
+    // plain Object.assign would let "hybrid" replace "remote" while the
+    // disclosure named both — the response asserting two filters it never
+    // applied. First rule wins; the loser's words stay in the query and come
+    // back as droppedTerms.
+    expect(
+      /const clash = Object\.keys\(p\)\.find\(\(k\) => k in patch && patch\[k\] !== p\[k\]\);/.test(FN)
+        && /if \(clash\) continue;/.test(FN),
+      "a second rule writing an already-lifted key must be skipped, not applied",
+    ).toBe(true);
+    // A rule that merely RESTATES a lift already made still has its words
+    // stripped — leaving them re-imposes the literal match — but must not be
+    // named twice in the disclosure.
+    expect(
+      /const restates = Object\.keys\(p\)\.every\(\(k\) => k in patch && patch\[k\] === p\[k\]\);/.test(FN),
+      "a restating rule must strip its words without duplicating the disclosure label",
+    ).toBe(true);
+    expect(/if \(!restates\) labels\.push\(label\);/.test(FN)).toBe(true);
   });
 
   it("removes the lifted phrase from the query", () => {
