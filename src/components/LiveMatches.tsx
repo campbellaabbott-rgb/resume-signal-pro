@@ -12,6 +12,7 @@ import { useTranslation } from "react-i18next";
 import { ArrowRight, Briefcase, ExternalLink, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { rolesForIndustry } from "@/data/roles";
+import { roundedFloor } from "@/hooks/use-board-totals";
 import { INDUSTRY_TO_CATEGORY } from "@/lib/job-board-categories";
 
 interface MatchJob {
@@ -27,6 +28,12 @@ interface MatchJob {
 
 export function LiveMatches({ resumeText, industry }: { resumeText: string; industry: string }) {
   const { t } = useTranslation();
+  // NO EXTRA REQUEST FOR THE NUMBER. This component already calls the board;
+  // its list response carries `total`, so the CTAs below read the count from a
+  // round trip that was happening anyway. Adding useBoardTotals here would have
+  // put a second board call on the free-report page — a hot path — to state a
+  // figure the first call already returned.
+  const [boardTotal, setBoardTotal] = useState<number | null>(null);
   const [matches, setMatches] = useState<MatchJob[] | null>(null);
   const [failed, setFailed] = useState(false);
 
@@ -41,6 +48,10 @@ export function LiveMatches({ resumeText, industry }: { resumeText: string; indu
           ? { action: "list", q: topRole, limit: 30 }
           : { action: "list", category, limit: 30 };
         let { data: res } = await supabase.functions.invoke("job-board", { body });
+        // Zero is a failed read, not a total: leaving it null keeps the CTAs on
+        // their count-free copy rather than publishing "0 verified openings".
+        const t0 = (res as { total?: number } | null)?.total;
+        if (!cancelled && typeof t0 === "number" && t0 > 0) setBoardTotal(t0);
         let jobs: Array<Record<string, unknown>> = (res as { jobs?: [] })?.jobs ?? [];
         if (jobs.length < 5 && topRole && category) {
           ({ data: res } = await supabase.functions.invoke("job-board", { body: { action: "list", category, limit: 30 } }));
@@ -98,7 +109,13 @@ export function LiveMatches({ resumeText, industry }: { resumeText: string; indu
           to="/jobs"
           className="flex items-center justify-center gap-2 w-full rounded-xl bg-gradient-to-r from-primary via-primary to-blue-500 text-primary-foreground font-bold px-5 py-3.5 shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/35 active:scale-[0.99] transition-all"
         >
-          {t("freeResults.matches.openBoardFallback", "Open the live job board — 600,000+ verified openings, ranked against your resume")}
+          {/* DERIVED, AND INTERPOLATED. A literal here is a claim frozen when it
+              was typed: this said "600,000+ verified openings", which is the
+              TRACKED total under the SERVABLE noun. The number is a parameter so
+              a translated copy cannot bake a stale one in either. */}
+          {boardTotal
+            ? t("freeResults.matches.openBoardFallbackLive", "Open the live job board — {{n}}+ verified openings, ranked against your resume", { n: roundedFloor(boardTotal).toLocaleString() })
+            : t("freeResults.matches.openBoardFallbackPlain", "Open the live job board — verified openings, ranked against your resume")}
           <ArrowRight className="w-4 h-4 shrink-0" />
         </Link>
       </div>
@@ -161,7 +178,9 @@ export function LiveMatches({ resumeText, industry }: { resumeText: string; indu
             <ArrowRight className="w-4 h-4 shrink-0" />
           </Link>
           <p className="text-[11px] text-muted-foreground text-center mt-2">
-            {t("freeResults.matches.openBoardNote", "600,000+ verified openings · save searches, watch companies, track applications")}
+            {boardTotal
+              ? t("freeResults.matches.openBoardNoteLive", "{{n}}+ verified openings · save searches, watch companies, track applications", { n: roundedFloor(boardTotal).toLocaleString() })
+              : t("freeResults.matches.openBoardNotePlain", "Verified openings · save searches, watch companies, track applications")}
           </p>
         </>
       )}

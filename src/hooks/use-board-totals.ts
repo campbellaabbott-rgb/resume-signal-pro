@@ -19,6 +19,17 @@ export interface BoardTotals {
   jobs: number;
   /** Distinct employers, 0 when the light response omitted it. */
   companies: number;
+  /**
+   * The TRACKED corpus — every posting the board has a record of, including
+   * ones it has since watched close. Null when the response omitted it.
+   *
+   * A SECOND TRUE NUMBER, NOT A BIGGER VERSION OF THE FIRST. `jobs` is what a
+   * visitor can page to right now; `tracked` is what the board has observed.
+   * They are 560,321 and 678,957 today. Any surface that states one MUST name
+   * which — the homepage spent its life claiming the tracked figure under the
+   * words "Verified Openings", which is the servable noun.
+   */
+  tracked: number | null;
 }
 
 /**
@@ -41,11 +52,14 @@ export function useBoardTotals(): BoardTotals | null {
       .invoke("job-board", { body: { action: "list", limit: 1, includeFacets: false } })
       .then(({ data }) => {
         if (cancelled) return;
-        const d = data as { total?: number; companiesCount?: number } | null;
+        const d = data as { total?: number; companiesCount?: number; trackedTotal?: number } | null;
         const jobs = d?.total || 0;
         // Zero is not a total; it is a failed read. Leaving state null keeps
         // every caller on its no-number copy instead of publishing "0 jobs".
-        if (jobs > 0) setTotals({ jobs, companies: d?.companiesCount ?? 0 });
+        // Same rule for tracked as for jobs: zero is a failed read, not a
+        // total, and null keeps every caller on copy that needs no number.
+        const tracked = typeof d?.trackedTotal === "number" && d.trackedTotal > 0 ? d.trackedTotal : null;
+        if (jobs > 0) setTotals({ jobs, companies: d?.companiesCount ?? 0, tracked });
       })
       .catch(() => { /* callers render their count-free variant */ });
     return () => { cancelled = true; };

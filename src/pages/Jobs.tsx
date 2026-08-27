@@ -23,6 +23,7 @@ import { BOARD_SOURCE_LIST } from "@/config/ats-vendors";
 import { MultiSelectFilter } from "@/components/board/MultiSelectFilter";
 import { markDeadForRobots, clearDeadForRobots } from "@/lib/seo-robots";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { useAgentReach, reachPct } from "@/hooks/use-agent-reach";
 import { useTranslation } from "react-i18next";
 import { Activity, AlertTriangle, Bell, Bookmark, BookmarkCheck, Briefcase, ChevronDown, Clock, Compass, Copy, ExternalLink, FileText, Flag, Link2, Loader2, MapPin, MessageSquare, RefreshCw, Search, ShieldCheck, SlidersHorizontal, Sparkles, Target, Upload, Info} from "lucide-react";
 import { SEO } from "@/components/seo/SEO";
@@ -636,6 +637,9 @@ function mergeCompanyOptions(
 
 export default function Jobs() {
   const { t } = useTranslation();
+  // How far the agent actually reaches, from the DEPLOYED bundle rather than a
+  // literal in this one. Shared with AgentReachNote so the two cannot disagree.
+  const agentReach = useAgentReach();
   const navigate = useNavigate();
   // Pro state for the board's honest upgrade moments (milestone toasts etc.).
   // `pro.active` false-while-loading errs toward showing free users the
@@ -5172,9 +5176,16 @@ export default function Jobs() {
               <div className="flex items-center gap-2 mb-1">
                 <Compass className="w-5 h-5 text-primary shrink-0" />
                 <h2 className="text-base font-bold text-foreground">
-                  {t("jobsPage.orientTitle", "{{total}} verified openings — where do you want to start?", {
-                    total: data?.totalAllCompanies ? data.totalAllCompanies.toLocaleString() : "500,000+",
-                  })}
+                  {/* NO COUNT RATHER THAN A STALE ONE. The fallback was a
+                      hardcoded "500,000+", which is a claim frozen at the
+                      moment it was typed and drifts silently in whichever
+                      direction the board moves. When the read fails the
+                      question still works without a number in front of it. */}
+                  {data?.totalAllCompanies
+                    ? t("jobsPage.orientTitle", "{{total}} verified openings — where do you want to start?", {
+                        total: data.totalAllCompanies.toLocaleString(),
+                      })
+                    : t("jobsPage.orientTitlePlain", "Verified openings — where do you want to start?")}
                 </h2>
               </div>
               <p className="text-[13px] text-muted-foreground mb-3">
@@ -5670,7 +5681,18 @@ export default function Jobs() {
                       {t("jobsPage.agentPitchCta", "See how it works — 7 days free, then $99/mo")}
                     </Link>
                     <span className="block text-[11px] opacity-80 mt-0.5">
-                      {t("jobsPage.agentPitchScope", "It applies on four hiring systems — about 6% of the board — and never on sites that gate applications behind a CAPTCHA. Everywhere else it prepares the application and you send it.")}
+                      {/* BOTH NUMBERS WERE WRONG, IN ALL NINE LOCALES. This said
+                          "four hiring systems — about 6% of the board" while
+                          SENDABLE_VENDORS held FIVE and the live figure was 8.2%.
+                          A count of something that grows cannot be a literal, and
+                          the old key is deleted from the locale files rather than
+                          edited, because a locale value overrides an inline
+                          default — nine translated copies of "four" would have
+                          gone on rendering. Interpolated as digits so a vendor
+                          landing never costs nine translations again. */}
+                      {agentReach
+                        ? t("jobsPage.agentPitchScopeLive", "It applies on {{n}} hiring systems — about {{pct}}% of the board — and never on sites that gate applications behind a CAPTCHA. Everywhere else it prepares the application and you send it.", { n: agentReach.vendors, pct: Math.round(reachPct(agentReach)) })
+                        : t("jobsPage.agentPitchScopePlain", "It applies on the hiring systems that allow it, and never on sites that gate applications behind a CAPTCHA. Everywhere else it prepares the application and you send it.")}
                     </span>
                   </span>
                 )}

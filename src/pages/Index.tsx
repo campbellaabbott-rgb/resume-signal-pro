@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef, lazy, Suspense } from "react";
 import { useTranslation } from "react-i18next";
+import { useBoardTotals, roundedFloor } from "@/hooks/use-board-totals";
 import { SEO } from "@/components/seo/SEO";
 import { useSearchParams, Link } from "react-router-dom";
 import { useScrollDepth } from "@/hooks/use-scroll-depth";
@@ -376,6 +377,23 @@ const MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024; // Matches parse-pdf/parse-docx'
 // intent, one scan implementation. See src/data/tool-landings.ts.
 const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLanding } = {}) => {
   const { t, i18n } = useTranslation();
+
+  // THE HEAD'S NUMBERS, DERIVED. See the comment at the <SEO> tag below.
+  //
+  // roundedFloor is a floor, never a nearest — a rounded-UP figure claims roles
+  // that do not exist, and the "+" only reads as honest over a floor. The
+  // count-free variants are not a degraded fallback; they are the correct copy
+  // when the board's own count is unavailable, because no number beats a stale
+  // one.
+  const homeTotals = useBoardTotals();
+  const homeTitle = homeTotals
+    ? `Resume Booster — Live Job Board: ${roundedFloor(homeTotals.jobs).toLocaleString()}+ Verified Openings, Zero Ghost Jobs`
+    : "Resume Booster — Live Job Board: Verified Openings, Zero Ghost Jobs";
+  const homeDescription = homeTotals
+    ? `A live job board with zero ghost jobs: ${roundedFloor(homeTotals.jobs).toLocaleString()}+ openings pulled straight from companies' own career systems, re-verified all day${
+        homeTotals.tracked ? `, and ${roundedFloor(homeTotals.tracked).toLocaleString()}+ roles tracked including ones we have watched close` : ""
+      }. Scan your resume free and see your match score on every posting.`
+    : "A live job board with zero ghost jobs: openings pulled straight from companies' own career systems, re-verified all day. Scan your resume free and see your match score on every posting.";
 
   // Spanish landing routes flip the whole app chrome to Spanish — the visitor
   // searched in Spanish; showing an English page under a Spanish URL would be
@@ -1731,9 +1749,18 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
         description: "Free diagnostic resume scan: ATS score with a full audit trail, verified quotes, per-vendor parsing checks, and a fix plan — across 59 industries and 10 languages.",
         offers: { "@type": "Offer", price: "0", priceCurrency: "USD", description: "Free resume scan — no signup required" },
       }) }} />
+      {/* TWO TRUE NUMBERS, EACH UNDER ITS OWN NOUN.
+          These were hardcoded "600,000+ Verified Openings" — the TRACKED figure
+          (678,957) wearing the SERVABLE noun, against a board serving 560,321.
+          Overstating what a visitor can actually page to by ~119,000, in the
+          document title, on a site whose entire pitch is that its numbers are
+          real. The frozen literal was also the exact failure use-board-totals
+          was extracted to end in the first place, and it grew back here.
+          Live openings and tracked roles are now both stated, both derived, and
+          the copy needs NO number when the read fails — never a stale one. */}
       <SEO
-        title={landing?.title ?? "Resume Booster — Live Job Board: 600,000+ Verified Openings, Zero Ghost Jobs"}
-        description={landing?.description ?? "A live job board with zero ghost jobs: 600,000+ openings pulled straight from companies' own career systems, re-verified all day. Scan your resume free and see your match score on every posting."}
+        title={landing?.title ?? homeTitle}
+        description={landing?.description ?? homeDescription}
         path={landing?.path ?? "/"}
       />
       {landing?.alternates && (

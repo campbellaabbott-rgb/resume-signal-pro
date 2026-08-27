@@ -40,47 +40,19 @@
  * A hardcoded "30,000+" that outlives the data it described is the exact
  * failure this component exists to prevent.
  */
-import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { supabase } from "@/integrations/supabase/client";
+import { useAgentReach, reachPct } from "@/hooks/use-agent-reach";
 import { SENDABLE_VENDORS } from "../../../supabase/functions/_shared/apply-automation";
 
-/** The shape job-board's `status` action returns under `sendable`. */
-interface Sendable {
-  /** How many vendors the DEPLOYED bundle counted. A count, not a list. */
-  vendors: number;
-  postings: number;
-  ofTotal: number;
-  pct: number | null;
-}
 
 export default function AgentReachNote() {
   const { t } = useTranslation();
-  const [reach, setReach] = useState<Sendable | null>(null);
-
-  useEffect(() => {
-    let live = true;
-    (async () => {
-      try {
-        const { data, error } = await supabase.functions.invoke("job-board", {
-          body: { action: "status" },
-        });
-        if (error) return;
-        const s = (data as { sendable?: Sendable } | null)?.sendable;
-        // Every field must be a real number. A partial payload rendering as
-        // "0 of 0 (NaN%)" is worse than an absent panel.
-        if (!s || !Number.isFinite(s.postings) || !Number.isFinite(s.ofTotal) || s.ofTotal <= 0) return;
-        if (live) setReach(s);
-      } catch {
-        /* silent: no number is honest, a made-up one is not */
-      }
-    })();
-    return () => { live = false; };
-  }, []);
+  // One derivation, shared with the board's own pitch copy — see the hook.
+  const reach = useAgentReach();
 
   if (!reach) return null;
 
-  const pct = reach.pct ?? (reach.postings / reach.ofTotal) * 100;
+  const pct = reachPct(reach);
   const fmt = (n: number) => n.toLocaleString();
 
   /**

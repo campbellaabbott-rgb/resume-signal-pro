@@ -167,6 +167,35 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
   // local copy). plusClaim rounds DOWN to a "+" claim that stays literally
   // true through churn between bakes — the audit found the home title 120k
   // behind the /jobs prerender from the same deploy.
+  // THE TRACKED CORPUS — the second true number, fetched separately because
+  // get_job_board_facets does not carry it. Entirely fail-soft: every consumer
+  // omits its clause when this is null rather than guessing, which is the same
+  // rule BOARD_TOTAL follows.
+  //
+  // It exists because "how big is this board" has two honest answers and the
+  // site kept giving the bigger one under the smaller one's noun: the homepage
+  // title claimed the TRACKED total (678,957) as "Verified Openings" while the
+  // board served 560,321. Both numbers get stated, each under what it means.
+  let BOARD_TRACKED = null;
+  try {
+    const envText3 = (() => { try { return readFileSync(join(root, ".env"), "utf8"); } catch { return ""; } })();
+    const grab3 = (k) => process.env[k] || (envText3.match(new RegExp(`^${k}=(.*)$`, "m")) || [])[1]?.trim().replace(/^["']|["']$/g, "");
+    const u3 = grab3("VITE_SUPABASE_URL");
+    const k3 = grab3("VITE_SUPABASE_PUBLISHABLE_KEY");
+    if (u3 && k3) {
+      const tr = await fetch(`${u3}/functions/v1/job-board`, {
+        method: "POST",
+        headers: { apikey: k3, Authorization: `Bearer ${k3}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "list", limit: 1, includeFacets: false }),
+        signal: AbortSignal.timeout(20000),
+      });
+      if (tr.ok) {
+        const tj = await tr.json();
+        if (tj && typeof tj.trackedTotal === "number" && tj.trackedTotal > 0) BOARD_TRACKED = tj.trackedTotal;
+      }
+    }
+  } catch { /* no tracked figure this bake — the copy simply omits the clause */ }
+  if (!BOARD_TRACKED) console.log("[prerender-seo] tracked total unavailable — omitting the tracked clause");
   const BOARD_TOTAL = typeof boardFacets?.total === "number" ? boardFacets.total : null;
   // companiesCount is the FULL number even when the facet array is a capped
   // slice (the function fallback serves top-1500; the RPC serves everything).
@@ -787,7 +816,7 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
     path: "/",
     title: BOARD_TOTAL
       ? `Resume Booster — Live Job Board: ${plusClaim(BOARD_TOTAL, 50000)} Verified Openings, Zero Ghost Jobs`
-      : "Resume Booster — Live Job Board: 450,000+ Verified Openings, Zero Ghost Jobs",
+      : "Resume Booster — Live Job Board: Verified Openings, Zero Ghost Jobs",
     // KEEP THIS UNDER 160 CHARACTERS. The previous one ran to 279 and the
     // clamp below cut it at "…Upload your CV and an AI…" — the snippet Google
     // shows literally trailed off before the word "agent", so the change that
@@ -827,7 +856,7 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
     ],
     content: `
       <h1 class="text-3xl font-bold mb-3">Every job here is real. The agent applies for you.</h1>
-      <p class="text-muted-foreground mb-6">${BOARD_TOTAL ? `${plusClaim(BOARD_TOTAL, 50000)} verified openings` : "Verified openings"}${BOARD_COMPANIES ? ` from ${plusClaim(BOARD_COMPANIES, 1000)} companies` : ""}, every one pulled straight from the employer's own hiring system — never scraped, no dated posting older than 30 days, re-checked live at the moment you apply. Where a company publishes no date we keep the posting and show no age rather than guess one. Upload your CV and an AI apply agent ranks every opening against it, writes each application honestly (it will state what you do not have rather than invent it), and submits on the systems where employers allow it. <a href="/jobs" class="text-primary">Browse the live board →</a></p>
+      <p class="text-muted-foreground mb-6">${BOARD_TOTAL ? `${plusClaim(BOARD_TOTAL, 50000)} verified openings` : "Verified openings"}${BOARD_COMPANIES ? ` from ${plusClaim(BOARD_COMPANIES, 1000)} companies` : ""}${BOARD_TRACKED ? ` — ${plusClaim(BOARD_TRACKED, 50000)} roles tracked in all, including the ones we have watched close` : ""}, every one pulled straight from the employer's own hiring system — never scraped, no dated posting older than 30 days, re-checked live at the moment you apply. Where a company publishes no date we keep the posting and show no age rather than guess one. Upload your CV and an AI apply agent ranks every opening against it, writes each application honestly (it will state what you do not have rather than invent it), and submits on the systems where employers allow it. <a href="/jobs" class="text-primary">Browse the live board →</a></p>
       <section class="mt-8 mb-8">
         <h2 class="text-xl font-bold mb-3">What the AI apply agent does</h2>
         <ul class="space-y-1.5">
