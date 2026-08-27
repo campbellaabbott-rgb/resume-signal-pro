@@ -23,6 +23,25 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // RATE LIMITED rather than key-gated, deliberately. This endpoint is
+    // verify_jwt=false and re-runs paid product generation — AI spend, and
+    // credits — so an unauthenticated caller could hammer it and amplify every
+    // pending retry. But its scheduled caller is a pg_cron net.http_post that
+    // sends NO auth header (20260725224137), and breaking delivery recovery for
+    // paying customers is a worse outcome than the abuse. A limit the cron
+    // cannot hit (it runs every four hours) bounds the blast radius without
+    // touching that chain.
+    const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("x-real-ip") || "unknown";
+    const { data: rlAllowed } = await supabase.rpc("check_rate_limit", {
+      p_function: "retry-failed-deliveries", p_ip: ip, p_max_requests: 6, p_window_minutes: 60,
+    });
+    if (rlAllowed === false) {
+      logStep("Rate limited");
+      return new Response(JSON.stringify({ error: "Too many requests." }), {
+        status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Get failed deliveries that need retry
     const { data: failedDeliveries, error: fetchError } = await supabase
       .rpc('get_failed_deliveries_for_retry', { p_limit: 5 });

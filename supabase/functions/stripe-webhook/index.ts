@@ -492,6 +492,57 @@ serve(async (req) => {
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
         
+        // THE AGENT ENTITLEMENT IS GRANTED BEFORE THE PAYMENT TEST, and it has to be.
+        //
+        // create-agent-checkout attaches `subscription_data: { trial_period_days: 7 }`
+        // unconditionally, so an agent session's amount_total is 0 and Stripe
+        // reports payment_status as 'no_payment_required' — NOT 'paid'. This whole
+        // handler body sat inside `payment_status === 'paid'`, so for the $99
+        // Morning Queue the seeding below, and the prepare kick with it, NEVER RAN.
+        // A subscriber who closed the tab instead of following the redirect had no
+        // entitlement row until they happened to load the Account page.
+        //
+        // A trial subscription is a real entitlement with nothing yet due, which is
+        // why this moves out of the gate rather than the gate widening: everything
+        // else in the block — product delivery, the affiliate conversion — is about
+        // money actually changing hands and stays exactly where it is.
+        //
+        // The isAgent test cannot rely on amount_total for the same reason (it is 0
+        // on a trial); create-agent-checkout sets metadata.product_type =
+        // "apply_agent", which is the durable signal.
+        try {
+          const paidEmail = session.customer_details?.email ?? session.customer_email ?? "";
+          const isAgent = (session.amount_total ?? 0) === AGENT_PRICE_CENTS
+            || session.metadata?.product_type === "apply_agent";
+          if (paidEmail && isAgent) {
+            const seeded = await checkAgentByEmail(stripe, supabase, paidEmail);
+            logStep("Agent entitlement seeded from webhook", {
+              email: paidEmail, active: seeded.active, status: seeded.status,
+            });
+
+            // ...and PREPARE, rather than leaving them to wait for :23.
+            //
+            // The entitlement landing instantly is only half the fix: nothing
+            // invokes apply-agent except the hourly cron, so a subscriber who
+            // paid at :24 stared at an empty queue for fifty-nine minutes at
+            // the exact moment their expectations were highest.
+            //
+            // agent_prepare_now() mirrors the cron's own vault lookup, so the
+            // maintenance key never enters application code. It returns false
+            // rather than throwing when the vault is empty, because the cron
+            // remains the floor — this only ever removes waiting.
+            //
+            // Same non-fatal treatment as the seeding above: a failure here
+            // must not 500 a webhook whose payment already succeeded.
+            if (seeded.active) {
+              const { data: kicked, error: kickErr } = await supabase.rpc("agent_prepare_now");
+              logStep("Prepare kicked", { kicked: kicked === true, error: kickErr?.message ?? null });
+            }
+          }
+        } catch (err) {
+          logStep("Agent entitlement seeding failed (Account page will repair)", { error: String(err) });
+        }
+
         if (session.payment_status === 'paid') {
           // GRANT THE APPLY AGENT ENTITLEMENT HERE, at the event that means
           // "they paid". Nothing else did.
@@ -515,38 +566,7 @@ serve(async (req) => {
           // make Stripe retry a delivery that already succeeded. The Account
           // page still repairs the row on next load, exactly as before — this
           // removes the dependency on that visit, it does not replace it.
-          try {
-            const paidEmail = session.customer_details?.email ?? session.customer_email ?? "";
-            const isAgent = (session.amount_total ?? 0) === AGENT_PRICE_CENTS
-              || session.metadata?.product_type === "apply_agent";
-            if (paidEmail && isAgent) {
-              const seeded = await checkAgentByEmail(stripe, supabase, paidEmail);
-              logStep("Agent entitlement seeded from webhook", {
-                email: paidEmail, active: seeded.active, status: seeded.status,
-              });
 
-              // ...and PREPARE, rather than leaving them to wait for :23.
-              //
-              // The entitlement landing instantly is only half the fix: nothing
-              // invokes apply-agent except the hourly cron, so a subscriber who
-              // paid at :24 stared at an empty queue for fifty-nine minutes at
-              // the exact moment their expectations were highest.
-              //
-              // agent_prepare_now() mirrors the cron's own vault lookup, so the
-              // maintenance key never enters application code. It returns false
-              // rather than throwing when the vault is empty, because the cron
-              // remains the floor — this only ever removes waiting.
-              //
-              // Same non-fatal treatment as the seeding above: a failure here
-              // must not 500 a webhook whose payment already succeeded.
-              if (seeded.active) {
-                const { data: kicked, error: kickErr } = await supabase.rpc("agent_prepare_now");
-                logStep("Prepare kicked", { kicked: kicked === true, error: kickErr?.message ?? null });
-              }
-            }
-          } catch (err) {
-            logStep("Agent entitlement seeding failed (Account page will repair)", { error: String(err) });
-          }
 
           try {
             const result = await triggerProductDelivery(session, supabase, supabaseUrl);

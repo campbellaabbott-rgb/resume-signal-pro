@@ -157,7 +157,11 @@ const logStep = (step: string, details?: Record<string, unknown>) => {
   console.log(`[CREATE-CHECKOUT] ${step}${detailsStr}`);
 };
 
-function calculateAmount(currency: string): { amount: number; currency: string } {
+/** Currencies Stripe bills in whole major units: the smallest-unit amount must
+ *  be divisible by 100. https://docs.stripe.com/currencies#special-cases */
+export const STRIPE_WHOLE_UNIT_CURRENCIES = new Set(["twd", "huf", "ugx"]);
+
+export function calculateAmount(currency: string): { amount: number; currency: string } {
   const lowerCurrency = currency.toLowerCase();
   const currencyData = CURRENCY_RATES[lowerCurrency];
   
@@ -168,7 +172,24 @@ function calculateAmount(currency: string): { amount: number; currency: string }
   
   // Multiply by minUnit BEFORE rounding — rounding major units first (e.g. 4.6 → 5)
   // then multiplying by 100 gives €5.00 instead of €4.60 (26% overcharge for GBP).
-  const amountInSmallestUnit = Math.round(BASE_PRICE_USD * currencyData.rate * currencyData.minUnit);
+  let amountInSmallestUnit = Math.round(BASE_PRICE_USD * currencyData.rate * currencyData.minUnit);
+
+  // THREE CURRENCIES STRIPE TREATS SPECIALLY, and one of them was unbuyable.
+  //
+  // Stripe requires TWD, HUF and UGX amounts to be evenly divisible by 100 — it
+  // charges them in whole major units despite presenting them with two decimal
+  // places. 5 x 32.50 x 100 = 16,250 for TWD, which is not, so every Taiwanese
+  // customer's checkout session was rejected with invalid_request_error. HUF
+  // escaped only by arithmetic luck (5 x 390 x 100 = 195,000, divisible), which
+  // is why TWD was the only one broken: it is the only rate in the table with a
+  // half unit.
+  //
+  // Rounding to the nearest whole major unit gives NT$163 rather than NT$162.50.
+  // The table is hand-edited, so the next rate with a fractional part would have
+  // reintroduced this silently — hence the test.
+  if (STRIPE_WHOLE_UNIT_CURRENCIES.has(lowerCurrency)) {
+    amountInSmallestUnit = Math.round(amountInSmallestUnit / 100) * 100;
+  }
 
   return { amount: amountInSmallestUnit, currency: lowerCurrency };
 }

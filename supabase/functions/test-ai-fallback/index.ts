@@ -1,5 +1,6 @@
 // deploy-stamp: 2026-07-04T18:44Z
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -184,6 +185,25 @@ serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+
+  // RATE LIMITED, because every call here is N PAID model invocations on the
+  // project's own key — and its only caller is /health-check, which App.tsx
+  // routes with no auth gate at all. So anyone who loads that page, or posts
+  // {"mode":"all"} in a loop, spends real AI credit with no per-caller
+  // accounting. Three an hour is ample for a health probe and useless as a
+  // drain.
+  try {
+    const rl = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
+    const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("x-real-ip") || "unknown";
+    const { data: allowed } = await rl.rpc("check_rate_limit", {
+      p_function: "test-ai-fallback", p_ip: ip, p_max_requests: 3, p_window_minutes: 60,
+    });
+    if (allowed === false) {
+      return new Response(JSON.stringify({ error: "Too many requests." }), {
+        status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+  } catch { /* limiter unavailable — fall through rather than break the health page */ }
 
   try {
     const { mode = 'quick' } = await req.json().catch(() => ({ mode: 'quick' }));

@@ -8,7 +8,7 @@ import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { BellRing, ExternalLink, Search, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { searchToQuery, type JobSearchParams } from "@/lib/job-search-params";
+import { searchToQuery, searchToBoardBody, type JobSearchParams } from "@/lib/job-search-params";
 
 interface SavedSearch {
   id: string;
@@ -41,7 +41,11 @@ export function SavedSearchesCard() {
         rows.map(async (s) => {
           try {
             const { data: res } = await supabase.functions.invoke("job-board", {
-              body: { action: "list", ...s.params, countOnly: true, postedAfter: s.last_seen_at },
+              // MAPPED, not spread. `...s.params` sent `company` — a key the
+              // board does not read — so the employer scope vanished and this
+              // badge counted the whole corpus. Watching one employer showed
+              // thousands of "new since your last visit".
+              body: { action: "list", ...searchToBoardBody(s.params as JobSearchParams), countOnly: true, postedAfter: s.last_seen_at },
             });
             // countCapped means "at least this many" — the badge shows 10,000+
             // rather than passing the board's cap off as an exact figure.

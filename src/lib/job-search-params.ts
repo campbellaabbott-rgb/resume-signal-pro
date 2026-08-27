@@ -90,3 +90,34 @@ export function searchToQuery(p: JobSearchParams): string {
   const s = qs.toString();
   return s ? `/jobs?${s}` : "/jobs";
 }
+
+/**
+ * The job-board request body for a saved search.
+ *
+ * THE BOARD READS `companies` (AN ARRAY). It never reads `company` — that name
+ * appears zero times in supabase/functions/job-board. So a caller that spread
+ * the saved params verbatim had its employer scope SILENTLY DROPPED, and the
+ * request ran against the whole corpus. Account's "new since your last visit"
+ * badge did exactly that: a one-company watch counted every new posting on the
+ * board, so watching a single employer showed thousands.
+ *
+ * The mapping lives here, once, because there are two consumers — the Account
+ * card and the board's own pills — and they had already drifted apart, one
+ * correct and one not.
+ */
+export function searchToBoardBody(p: JobSearchParams): Record<string, unknown> {
+  return {
+    q: p.q || undefined,
+    category: p.category || undefined,
+    includeUncategorised: p.includeUncategorised || undefined,
+    location: p.location || undefined,
+    remote: p.remote || undefined,
+    workMode: p.workMode || undefined,
+    companies: p.company ? [p.company] : undefined,
+    experience: p.experience || undefined,
+    country: p.country || undefined,
+    salaryFloor: p.salaryFloor || undefined,
+    maxAgeDays: p.maxAgeDays || undefined,
+    sendableOnly: p.sendableOnly || undefined,
+  };
+}

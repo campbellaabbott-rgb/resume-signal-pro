@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { searchName, searchToQuery } from "../lib/job-search-params";
+import { searchName, searchToQuery, searchToBoardBody } from "../lib/job-search-params";
 
 /**
  * Reopening a saved search landed you on a DIFFERENT search.
@@ -61,5 +61,24 @@ describe("a saved search is a promise to mail this query", () => {
     // "workMode.remote,hybrid" is not an i18n key and the raw comma-joined value
     // is not a phrase — the chip row hit exactly this.
     expect(searchName({ q: "dev", workMode: "remote,hybrid" })).toBe("dev · remote/hybrid");
+  });
+
+  it("scopes the count to the saved employer — the board never reads `company`", () => {
+    // Account's "new since your last visit" spread the saved params verbatim,
+    // and `company` is a key job-board does not read (it appears zero times in
+    // that function; only `companies`, an array). So the employer scope vanished
+    // and a one-company watch counted every new posting on the board.
+    const body = searchToBoardBody({ q: "nurse", company: "workday~cvshealth" });
+    expect(body.companies).toEqual(["workday~cvshealth"]);
+    expect(body.company, "the board ignores this key — sending it drops the scope").toBeUndefined();
+    expect(searchToBoardBody({ q: "nurse" }).companies).toBeUndefined();
+  });
+
+  it("both saved-search consumers go through the one mapper", () => {
+    // They had already drifted: the board's pills mapped company -> companies
+    // correctly while the Account card spread raw. One mapper, two callers.
+    const card = readFileSync(resolve(__dirname, "../components/account/SavedSearchesCard.tsx"), "utf8");
+    expect(card).toMatch(/searchToBoardBody\(s\.params as JobSearchParams\)/);
+    expect(card, "a raw spread is the defect").not.toMatch(/action: "list", \.\.\.s\.params/);
   });
 });
