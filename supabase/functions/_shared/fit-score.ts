@@ -20,8 +20,22 @@ const DICTIONARY: string[] = (() => {
 })();
 
 const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-const containsTerm = (haystack: string, term: string) =>
-  new RegExp(`(^|[^a-z0-9])${escapeRegex(term)}([^a-z0-9]|$)`, "i").test(haystack);
+
+// One compiled RegExp per dictionary term, built on first use. The old code
+// compiled a fresh RegExp on EVERY containsTerm call — and a fit-batch call
+// makes hundreds of thousands of them (dictionary x 60 postings, plus
+// dictionary x 60 identical resume scans). The cache is bounded by the
+// dictionary and is a per-isolate compile cache, not cross-request state —
+// its only job is to stop the same pattern being compiled twice in one call.
+const TERM_RE = new Map<string, RegExp>();
+const containsTerm = (haystack: string, term: string) => {
+  let re = TERM_RE.get(term);
+  if (!re) {
+    re = new RegExp(`(^|[^a-z0-9])${escapeRegex(term)}([^a-z0-9]|$)`, "i");
+    TERM_RE.set(term, re);
+  }
+  return re.test(haystack);
+};
 
 export interface FitResult {
   pct: number | null; // null = the posting contains no recognized terms
@@ -70,9 +84,38 @@ export interface FitResult {
  * the same fact and only one of them is a term. Closing it needs semantic
  * matching, not arithmetic.
  */
-export function computeFit(jobPosting: string, resumeText: string, maxTerms = 60): FitResult {
+/** A résumé scanned once, reusable across a whole batch of postings. */
+export interface ResumeScan {
+  lower: string;
+  terms: string[];
+}
+
+/**
+ * THE RÉSUMÉ DOES NOT CHANGE BETWEEN POSTING 1 AND POSTING 60.
+ *
+ * fit-batch called computeFit(posting, resumeText) in a loop, and every call
+ * re-lowercased the same 50KB résumé and re-walked the ENTIRE dictionary
+ * against it to rebuild the identical resumeTerms list — the full-corpus scan,
+ * the expensive half of the function, sixty times for one answer. Scan it once
+ * here and hand the result to every computeFit in the batch.
+ */
+export function scanResume(resumeText: string): ResumeScan {
+  const lower = resumeText.toLowerCase();
+  // The résumé's own breadth, scanned the SAME way as the posting so the two
+  // sides are commensurable. Deliberately uncapped: capping it at maxTerms
+  // would re-open the padding exploit, because a padded résumé would have its
+  // denominator truncated to the same 60 the posting gets.
+  const terms: string[] = [];
+  for (const term of DICTIONARY) {
+    if (terms.some((p) => p.includes(term))) continue;
+    if (containsTerm(lower, term)) terms.push(term);
+  }
+  return { lower, terms };
+}
+
+export function computeFit(jobPosting: string, resume: string | ResumeScan, maxTerms = 60): FitResult {
   const postingLower = jobPosting.toLowerCase();
-  const resumeLower = resumeText.toLowerCase();
+  const scan = typeof resume === "string" ? scanResume(resume) : resume;
 
   const postingTerms: string[] = [];
   for (const term of DICTIONARY) {
@@ -81,25 +124,18 @@ export function computeFit(jobPosting: string, resumeText: string, maxTerms = 60
     if (containsTerm(postingLower, term)) postingTerms.push(term);
   }
 
-  const matched = postingTerms.filter((t) => containsTerm(resumeLower, t));
-  const missing = postingTerms.filter((t) => !containsTerm(resumeLower, t));
+  // Against the résumé TEXT, not its term list: a posting term can be covered
+  // by a longer résumé term ("management" inside "project management") and
+  // still be a genuine match.
+  const matched = postingTerms.filter((t) => containsTerm(scan.lower, t));
+  const missing = postingTerms.filter((t) => !containsTerm(scan.lower, t));
 
   if (postingTerms.length === 0) {
     return { pct: null, matched, missing, totalRecognized: 0, coverage: 0, precision: 0 };
   }
 
-  // The résumé's own breadth, scanned the SAME way as the posting so the two
-  // sides are commensurable. Deliberately uncapped: capping it at maxTerms
-  // would re-open the exploit, because a padded résumé would have its
-  // denominator truncated to the same 60 the posting gets.
-  const resumeTerms: string[] = [];
-  for (const term of DICTIONARY) {
-    if (resumeTerms.some((p) => p.includes(term))) continue;
-    if (containsTerm(resumeLower, term)) resumeTerms.push(term);
-  }
-
   const coverage = matched.length / postingTerms.length;
-  const precision = resumeTerms.length ? matched.length / resumeTerms.length : 0;
+  const precision = scan.terms.length ? matched.length / scan.terms.length : 0;
   const pct = coverage === 0 || precision === 0
     ? 0
     : Math.round(((2 * coverage * precision) / (coverage + precision)) * 100);

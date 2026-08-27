@@ -46,7 +46,7 @@ import {
   type JobPosting,
 } from "./normalize.ts";
 import { categorize, CATEGORIZE_VERSION, JOB_CATEGORIES } from "./categories.ts";
-import { computeFit } from "../_shared/fit-score.ts";
+import { computeFit, scanResume } from "../_shared/fit-score.ts";
 import {
   POSTED_BACKFILL_VERSION,
   postedBackfillDue,
@@ -6618,9 +6618,14 @@ Deno.serve(async (req) => {
       // ("you already have: React, TypeScript") not just a bare number.
       const matched: Record<string, string[]> = {};
       let scored = 0;
+      // ONE résumé scan for the whole batch. computeFit(desc, resumeText) in
+      // this loop re-walked the entire dictionary against the same 50KB résumé
+      // per posting — the expensive half of the scorer, repeated sixty times
+      // for an input that cannot change mid-batch.
+      const resumeScan = scanResume(resumeText);
       for (const r of rows ?? []) {
         if (r.description && r.description.length > 150) {
-          const f = computeFit(r.description, resumeText, 40);
+          const f = computeFit(r.description, resumeScan, 40);
           fits[r.id] = f.pct;
           if (f.missing.length > 0) missing[r.id] = f.missing.slice(0, 4);
           if (f.matched.length > 0) matched[r.id] = f.matched.slice(0, 6);
