@@ -58,9 +58,31 @@ describe("a key nobody can get is not a product", () => {
     expect(CODE, "the function reads the caller IP").not.toMatch(/x-forwarded-for|cf-connecting-ip/i);
   });
 
-  it("asking again rotates rather than accumulating live credentials", () => {
-    expect(MIG).toMatch(/UPDATE public\.api_keys(?: ak)?\s*\n\s*SET revoked_at = now\(\)/);
-    expect(CODE).toMatch(/rotated/);
+  it("a request NEVER revokes an existing key — that was an unauthenticated DoS", () => {
+    // THE HOLE: api_key_issue revoked every active key for an address before
+    // minting a new one, and this endpoint is unauthenticated by necessity. So
+    // anyone who could guess your address could stop your key answering, and
+    // the replacement was handed to THEM in the response. Rotation was written
+    // for "I lost my key" and made losing one something a stranger could do.
+    expect(MIG, "issuing a key still revokes existing ones")
+      .not.toMatch(/UPDATE public\.api_keys(?: ak)?\s*\n\s*SET revoked_at = now\(\)/);
+    // Keys accumulate to a small cap instead, so the worst a stranger can do is
+    // spend some of an address's daily allowance.
+    expect(MIG).toMatch(/c_max_active integer := \d+;/);
+    expect(MIG).toMatch(/'too_many_active_keys'/);
+  });
+
+  it("a key for an address that already has one is emailed, never returned", () => {
+    // The other half of the hole: anything this endpoint RETURNS, it returns to
+    // whoever typed the address. A first request stays frictionless — key on
+    // screen — but any request after that goes to the inbox only, so holding a
+    // key for an address means being able to read its mail.
+    expect(CODE).toMatch(/const withhold = d\.had_active;/);
+    expect(CODE).toMatch(/\.\.\.\(withhold \? \{\} : \{ key: raw \}\)/);
+    expect(CODE, "the response claims one-time display even when withholding")
+      .toMatch(/shownOnce: !withhold/);
+    // And it says so rather than silently returning nothing.
+    expect(CODE).toMatch(/already has a key/);
   });
 
   it("the issue function is service-role only", () => {

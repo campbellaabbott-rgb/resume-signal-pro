@@ -331,7 +331,15 @@ async function oneJob(client: SupabaseClient, id: string, headers: Record<string
     .from("job_board_postings")
     .select(JOB_FIELDS)
     .eq("id", id)
-    .is("missing_since", null)
+    .is("missing_since", null)                        // fence: withdrawn by the employer
+    // FENCE TWO, MISSING UNTIL NOW. This bound `missing_since` and stopped, so
+    // /v1/jobs/{id} served postings past the 30-day window that /v1/jobs — and
+    // the board itself — both refuse. The listing had both fences from the
+    // start; the single-posting lookup was written separately and only got one.
+    // That is the fifth query shape in this codebase to miss a fence, which is
+    // why the guard now counts BOTH per read path rather than checking that
+    // "a fence" is present.
+    .gte("effective_posted", freshCutoff())           // fence: past the serving window
     .maybeSingle();
   if (error) {
     console.error("[PUBLIC-API] /v1/jobs/{id} failed:", error.message?.slice(0, 160));
@@ -339,7 +347,7 @@ async function oneJob(client: SupabaseClient, id: string, headers: Record<string
   }
   // A withdrawn posting is 404 and NOT a stale 200. The difference is the whole
   // product: a caller must be able to tell "gone" from "we stopped looking".
-  if (!data) return fail(404, "not_found", "No live posting with that id. It may have been withdrawn by the employer.");
+  if (!data) return fail(404, "not_found", "No live posting with that id. It may have been withdrawn by the employer, or aged past the 30-day window.");
   return json({ apiVersion: API_VERSION, data }, 200, headers);
 }
 
@@ -373,7 +381,14 @@ async function changes(client: SupabaseClient, url: URL, headers: Record<string,
   const [openedRes, closedRes] = await Promise.all([
     client.from("job_board_postings")
       .select("id,source,company_token,company,title,location,country,category,posted_at,first_seen,apply_url")
-      .is("missing_since", null)
+      .is("missing_since", null)                       // fence: withdrawn by the employer
+      // THE THIRD READ PATH TO MISS THIS, caught by the guard rather than by a
+      // person. `first_seen` is when WE first saw the posting; effective_posted
+      // is the date the board serves on. A posting discovered recently can
+      // still be past the window — the cap sweep lags under a day, and 2,613
+      // rows were measured sitting between 30 and 31 days old. Without this,
+      // /v1/changes reports as "opened" postings /v1/jobs would refuse.
+      .gte("effective_posted", freshCutoff())          // fence: past the serving window
       .gte("first_seen", sinceIso)
       .order("first_seen", { ascending: false })
       .limit(limit),
@@ -461,15 +476,35 @@ async function companies(client: SupabaseClient, url: URL, headers: Record<strin
 
 async function stats(client: SupabaseClient, headers: Record<string, string>) {
   const { data } = await client.from("job_board_meta").select("v, updated_at").eq("k", "refresh").maybeSingle();
-  const v = (data?.v ?? {}) as { total?: number; companiesFacet?: unknown[]; refreshedAt?: string };
+  const v = (data?.v ?? {}) as {
+    total?: number;
+    coverage?: { open?: number; tracked?: number; openAt?: string };
+    companiesFacet?: unknown[];
+    refreshedAt?: string;
+  };
+  // `v.total` IS NOT THE LIVE COUNT, and publishing it as one overstated the
+  // API by ~150,000 postings (707,247 against 556,306 servable). Its own
+  // comment in job-board calls it inflated — "includes just-pruned orphans
+  // until the next pass recomputes". The board's page learned this and
+  // publishes coverage.open, an exact count of rows a caller can actually
+  // reach; the API was still quoting the raw number.
+  //
+  // Both figures are now published under names that say which is which, the
+  // same split the jobs page makes: livePostings is what /v1/jobs can return,
+  // trackedPostings is the corpus including postings since withdrawn.
+  const open = typeof v.coverage?.open === "number" ? v.coverage.open : null;
+  const tracked = typeof v.coverage?.tracked === "number" ? v.coverage.tracked : null;
   return json({
     apiVersion: API_VERSION,
     data: {
-      livePostings: typeof v.total === "number" ? v.total : null,
+      // Null rather than a fallback to v.total: a wrong number with a confident
+      // name is worse than an absent one, and this endpoint just proved it.
+      livePostings: open,
+      trackedPostings: tracked,
       companies: Array.isArray(v.companiesFacet) ? v.companiesFacet.length : null,
       freshnessWindowDays: FRESH_WINDOW_DAYS,
     },
-    asOf: v.refreshedAt ?? data?.updated_at ?? null,
-    basis: "cached at the end of each rotation pass; not a live count",
+    asOf: v.coverage?.openAt ?? v.refreshedAt ?? data?.updated_at ?? null,
+    basis: "livePostings is an exact count of postings /v1/jobs can return (live, inside the 30-day window), recounted every ~15 minutes. trackedPostings includes postings the employer has since withdrawn.",
   }, 200, headers);
 }

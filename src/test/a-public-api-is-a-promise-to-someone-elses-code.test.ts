@@ -42,10 +42,31 @@ const MIG = newestWith("FUNCTION public.api_key_check(");
 const MIG_TBL = newestWith("CREATE TABLE IF NOT EXISTS public.api_keys");
 
 describe("a public API is a promise to someone else's code", () => {
-  it("every posting read is fenced against withdrawn postings", () => {
-    // One per read path: the listing and the single-posting lookup.
-    const fences = (CODE.match(/\.is\("missing_since", null\)/g) ?? []).length;
-    expect(fences, "a posting read exists that does not exclude withdrawn rows").toBeGreaterThanOrEqual(2);
+  it("every posting read is fenced BOTH ways, counted per read path", () => {
+    // COUNTED IN PAIRS NOW, because checking that "a fence" exists is what let
+    // /v1/jobs/{id} ship with one. It bound missing_since and stopped, so it
+    // served postings past the 30-day window that /v1/jobs — and the board
+    // itself — both refuse. That was the FIFTH query shape in this codebase to
+    // miss a fence, and the previous four were all caught the same way: by
+    // someone noticing, not by a guard.
+    const withdrawn = (CODE.match(/\.is\("missing_since", null\)/g) ?? []).length;
+    const aged = (CODE.match(/\.gte\("effective_posted", freshCutoff\(\)\)/g) ?? []).length;
+    expect(withdrawn, "a posting read does not exclude withdrawn rows").toBeGreaterThanOrEqual(2);
+    expect(aged, "a posting read does not exclude rows past the serving window")
+      .toBeGreaterThanOrEqual(2);
+    expect(aged, "one read path binds the withdrawal fence without the freshness fence")
+      .toBe(withdrawn);
+  });
+
+  it("/v1/stats publishes the FENCED count, not the inflated corpus total", () => {
+    // It published `v.total` as livePostings — the field job-board's own comment
+    // calls inflated ("includes just-pruned orphans until the next pass
+    // recomputes") — overstating the API by ~150,000 postings against what
+    // /v1/jobs can actually return.
+    expect(CODE).toMatch(/livePostings: open,/);
+    expect(CODE).toMatch(/trackedPostings: tracked,/);
+    expect(CODE, "livePostings falls back to the inflated total when the fenced count is absent")
+      .not.toMatch(/livePostings:[^,]*v\.total/);
   });
 
   it("the listing is fenced to the freshness window", () => {

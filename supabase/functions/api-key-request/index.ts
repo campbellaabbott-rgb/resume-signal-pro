@@ -60,9 +60,12 @@ Deno.serve(async (req) => {
   // Names mirror the RPC's OUT parameters, renamed in 20260826161200 so that
   // none of them collides with a real column of api_keys.
   const d = (data ?? null) as
-    | { issued: boolean; deny_reason: string; key_tier: string; rate_limit: number; quota_limit: number; was_rotated: boolean }
+    | { issued: boolean; deny_reason: string; key_tier: string; rate_limit: number; quota_limit: number; had_active: boolean }
     | null;
   if (!d?.issued) {
+    if (d?.deny_reason === "too_many_active_keys") {
+      return json({ error: { code: "too_many_active_keys", message: "That address already has the maximum number of active keys. Use one you already have, or revoke one first." } }, 409);
+    }
     if (d?.deny_reason === "too_many_requests") {
       return json({ error: { code: "too_many_requests", message: "That address has requested several keys today. Use the most recent one, or try again tomorrow." } }, 429);
     }
@@ -91,7 +94,7 @@ Deno.serve(async (req) => {
             <pre style="background:#f4f4f5;padding:12px 14px;border-radius:8px;overflow-x:auto;font-size:12px"><code>curl https://bwhdazbotpblihdxcmho.supabase.co/functions/v1/public-api/v1/jobs?limit=5 \\
   -H "Authorization: Bearer ${raw}"</code></pre>
             <p style="margin:12px 0">Docs: <a href="https://resumebooster.work/data-api">resumebooster.work/data-api</a></p>
-            ${d.was_rotated ? '<p style="margin:12px 0;color:#b45309"><strong>Your previous key was revoked</strong> when this one was issued.</p>' : ""}
+            ${d.had_active ? '<p style="margin:12px 0;color:#71717a">This address already had a key; the previous one still works. You can have up to three at a time.</p>' : ""}
             <p style="margin:16px 0 0;color:#71717a;font-size:13px">If you did not request this, you can ignore it — the key is useless without the request you did not make, and it will simply go unused.</p>
           </div>`,
         }),
@@ -103,13 +106,33 @@ Deno.serve(async (req) => {
     }
   }
 
+  // THE KEY IS WITHHELD FROM THE RESPONSE WHEN THE ADDRESS ALREADY HAD ONE.
+  //
+  // This endpoint is unauthenticated by necessity — it is where a developer
+  // with no account gets their first credential — so anything it returns, it
+  // returns to whoever typed the address. Handing back a working key for an
+  // address the requester may not own was the other half of the revocation
+  // hole: a stranger got a live credential attached to your email.
+  //
+  // First request for an address: shown on screen, because frictionless is the
+  // entire point of self-serve. Any request after that: the inbox only, so
+  // holding a key for an address means being able to read its mail. If the
+  // email could not be sent we say so rather than silently stranding them.
+  const withhold = d.had_active;
   return json({
-    key: raw,
-    shownOnce: true,
+    ...(withhold ? {} : { key: raw }),
+    shownOnce: !withhold,
     emailed,
+    ...(withhold
+      ? {
+        message: emailed
+          ? "This address already has a key, so the new one has been emailed rather than shown here."
+          : "This address already has a key, so the new one is emailed rather than shown — but the email could not be sent. Use a key you already have, or contact us.",
+      }
+      : {}),
     tier: d.key_tier,
     limits: { perMinute: d.rate_limit, perDay: d.quota_limit },
-    rotated: d.was_rotated,
+    hadActiveKey: d.had_active,
     docs: "https://resumebooster.work/data-api",
   });
 });
