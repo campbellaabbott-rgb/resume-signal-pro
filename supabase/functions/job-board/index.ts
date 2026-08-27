@@ -102,7 +102,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-25.29";
+const BUILD_VERSION = "2026-08-25.30";
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -9544,6 +9544,19 @@ async function serveList(
   // shell access to the function logs — the same reason `status` echoes the
   // deployed bundle. Null on every healthy ranked search.
   let rankedFellBack: string | null = null;
+  // The same idea for the rescue tier below, and declared up here for the same
+  // reason — a declaration sited below its use is how this file took a TDZ
+  // outage that hid the ranked path being down for an unknown period.
+  //
+  // NAMES INFRASTRUCTURE FAILURES ONLY. "The tier looked and found nothing" is
+  // an honest answer and leaves this null; a non-null value always means the
+  // retrieval did not happen, so the page cannot claim it searched everything.
+  //
+  // This is not hypothetical: search_jobs_semantic is answering 57014
+  // "canceling statement due to statement timeout" on real query embeddings
+  // right now, and the tier returns [] for it — indistinguishable from a
+  // genuine no-match, on every affected search, with nothing anywhere saying so.
+  let semanticDegraded: "embed" | "ann_deadline" | "ann_error" | "refilter_deadline" | null = null;
   // DECLARED HERE, ABOVE THE RANKED PATH, AND THAT POSITION IS THE FIX.
   //
   // RANKED SEARCH WAS DOWN IN PRODUCTION AND NOTHING SAID SO. Every typed
@@ -9827,16 +9840,39 @@ async function serveList(
           markFrom("embed_query", t_embed_query);
           const qVec = Array.isArray(qVecRaw) ? qVecRaw as number[] : null;
           if (!qVec) {
+            semanticDegraded = "embed";
             console.warn(`[JOB-BOARD] query embedding unavailable or past deadline for q=${JSON.stringify(qText)}`);
             return [];
           }
           const t_semantic = Date.now();
+          const annMs = Math.min(5_000, budgetLeft());
           const { data: sem, error: sErr } = await withDeadline(
             client.rpc("search_jobs_semantic", { p_embedding: JSON.stringify(qVec), p_limit: want }),
-            Math.min(5_000, budgetLeft()),
-          ).catch(() => ({ data: null, error: new Error("semantic deadline") })) as { data: unknown; error: unknown };
+            annMs,
+          ) as { data: unknown; error: { code?: string; message?: string } | null | undefined };
           markFrom("semantic", t_semantic);
-          if (sErr) return [];
+          // TWO DIFFERENT SILENCES, AND ONLY ONE OF THEM USED TO BE LOGGED.
+          //
+          // withDeadline is a Promise.race that RESOLVES `{ data: null }` both
+          // when the deadline passes and when the call rejects — it never
+          // throws — so on a deadline miss `error` is undefined and the sErr
+          // guard below never sees one. `data === null && !error` is exactly and
+          // only that sentinel: a successful RPC returns an array (possibly
+          // empty), a failed one returns { data: null, error }.
+          //
+          // The trailing `.catch(() => ({ data: null, error: ... }))` that used
+          // to sit here could therefore never fire, which is why a tier that had
+          // stopped answering still looked like a tier that had nothing to say.
+          if (sem === null && !sErr) {
+            semanticDegraded = "ann_deadline";
+            console.warn(`[JOB-BOARD] semantic ANN missed its ${annMs}ms deadline (or threw) for q=${JSON.stringify(qText)}`);
+            return [];
+          }
+          if (sErr) {
+            semanticDegraded = "ann_error";
+            console.error(`[JOB-BOARD] semantic ANN failed for q=${JSON.stringify(qText)}: ${sErr.code ?? ""} ${String(sErr.message ?? sErr).slice(0, 120)}`);
+            return [];
+          }
 
           let semSource = Array.isArray(sem) ? (sem as Array<Record<string, unknown>>) : [];
           // HYDRATED UNCONDITIONALLY, not just when a filter is narrowing.
@@ -9865,6 +9901,7 @@ async function serveList(
             // indistinguishable from "the filters removed everything". A tier
             // that degrades silently is the bug this codebase keeps finding.
             if (semFiltered === null) {
+              semanticDegraded = "refilter_deadline";
               console.warn(`[JOB-BOARD] semantic re-filter exceeded its deadline for q=${JSON.stringify(qText)}`);
             }
             semSource = Array.isArray(semFiltered)
@@ -9927,7 +9964,13 @@ async function serveList(
           // this". `rescued` tells the census which is which: 'none' is a real
           // gap; 'fuzzy'/'semantic' means the user was served something and
           // the gap is softer.
-          const logMiss = (rescued: "none" | "fuzzy" | "semantic") => {
+          // AND 'degraded' IS A FOURTH ANSWER, because a rescue tier that could not
+          // run is not evidence of a catalog gap. Filing a failed retrieval as
+          // 'none' quietly poisons the demand census with queries the board may
+          // well be able to answer — and the census steers what gets added to
+          // the board next, so a broken tier would have argued for sourcing
+          // jobs the board already had.
+          const logMiss = (rescued: "none" | "fuzzy" | "semantic" | "degraded") => {
             const missQ0 = qText.slice(0, 120);
             const missLoc0 = sanitizeTerm(String(body.location ?? "")).slice(0, 120);
             if (!missQ0 && !missLoc0) return;
@@ -10300,7 +10343,7 @@ async function serveList(
           }
           // Neither rescue tier answered (or filters kept them fenced out):
           // this is the real "we lack it" signal the census steers by.
-          logMiss("none");
+          logMiss(semanticDegraded ? "degraded" : "none");
         }
         const includeFacets0 = (body as { includeFacets?: boolean }).includeFacets !== false;
         const fullCompanies0 = (v0.companiesFacet as Array<{ count?: number }>) ?? [];
@@ -10766,6 +10809,10 @@ async function serveList(
           failedCount: (v0.failedCount as number | undefined) ?? 0,
           refreshedAt: (v0.refreshedAt as string) ?? null,
           ranked: true,
+          // Spread only when set, exactly like rankedFellBack: null on every
+          // healthy search, so its mere presence is the signal. This is the exit
+          // a silently-failed rescue actually lands on.
+          ...(semanticDegraded ? { semanticDegraded } : {}),
           ...(expansions.length ? { aliases: expansions } : {}),
           ...(fuzzyExtraOut ? { fuzzyExtra: fuzzyExtraOut } : {}),
           // Named separately from fuzzyExtra because they are different claims:
@@ -11263,6 +11310,7 @@ async function serveList(
     // normal search; when it IS present, one curl says which error demoted the
     // search instead of leaving it to look like an empty catalog.
     ...(rankedFellBack ? { rankedFellBack } : {}),
+    ...(semanticDegraded ? { semanticDegraded } : {}),
     nextCursor: (() => {
       if (twoSubset || sortSalary) return null;
       const r = rawKeys[Math.max(0, grouped.rawConsumed - 1)];

@@ -248,7 +248,14 @@ const PINNED = {
   // 2.7% (168 of 6,119 "remote"-titled jobs are not work_mode=remote).
   // remote/hybrid/onsite lift, and every remote phrase moves off the narrower
   // `remote` boolean onto workMode. index.ts only, sources.ts UNCHANGED.
-  buildVersion: "2026-08-25.29",
+  // 2026-08-25.30: the semantic rescue tier could not report its own failure.
+  // search_jobs_semantic is answering 57014 on real embeddings; the tier's 5s
+  // deadline wins the race first, so withDeadline hands back { data: null }
+  // with NO error and the tier returned [] — identical to "looked, found
+  // nothing". The page then claimed the corpus had no answer. semanticDegraded
+  // now names the four infrastructure failures and is surfaced on the response
+  // like rankedFellBack. index.ts only, sources.ts UNCHANGED.
+  buildVersion: "2026-08-25.30",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {

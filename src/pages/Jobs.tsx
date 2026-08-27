@@ -518,6 +518,11 @@ interface BoardResponse {
    *  search, the recency fallback answered — the sort line must not claim
    *  relevance ordering it didn't do. */
   ranked?: boolean;
+  /** Set ONLY when a semantic retrieval FAILED — deadline, or the RPC errored —
+   *  rather than looked and declined. "Nothing matched" leaves this absent, so
+   *  its presence always means the search was not as complete as it looks and
+   *  the page must not claim otherwise. */
+  semanticDegraded?: string;
   /** Set when close-match rows were APPENDED to a thin exact page (the rows
    *  themselves carry closeMatch: true). Disclosed above the list. */
   fuzzyExtra?: { q: string; count: number };
@@ -5434,11 +5439,20 @@ export default function Jobs() {
             /* Server-zero: an actionable exit, never a dead end. Each button is
                a measured single relaxation with its real result count. */
             <div className="rounded-2xl border border-border bg-card p-6 text-center my-4">
+              {/* "No openings match" is a claim about the CORPUS. It is only
+                  honest if every tier actually ran — and when the meaning-match
+                  tier fails (deadline or RPC error) it returns nothing, which is
+                  indistinguishable from finding nothing. Say which happened
+                  rather than asserting an answer the search did not produce. */}
               <p className="font-semibold text-foreground mb-1">
-                {t("jobsPage.zeroTitle", "No verified openings match all of that")}
+                {data?.semanticDegraded
+                  ? t("jobsPage.zeroTitleDegraded", "No exact matches — and our meaning-match search didn't finish")
+                  : t("jobsPage.zeroTitle", "No verified openings match all of that")}
               </p>
               <p className="text-sm text-muted-foreground mb-3">
-                {t("jobsPage.zeroBody", "We only list postings verified from companies' own systems — nothing gets padded in. Loosening one filter helps:")}
+                {data?.semanticDegraded
+                  ? t("jobsPage.zeroBodyDegraded", "That second pass looks for jobs that mean the same thing as what you typed, and it timed out this time. Try again in a moment, or loosen a filter:")
+                  : t("jobsPage.zeroBody", "We only list postings verified from companies' own systems — nothing gets padded in. Loosening one filter helps:")}
               </p>
               <div className="flex flex-wrap justify-center gap-2">
                 {(zeroHelp ?? []).map((s) => (
