@@ -68,6 +68,7 @@ const OFF: BoardFilterState = {
   q: "", location: "", remoteOnly: false, workMode: "", category: "", inclUncat: false,
   agentOnly: false, country: "", experience: "", companyTokens: [], salaryFloor: 0,
   salaryCeiling: 0, payBasis: "", statedPayOnly: false, includeUnstatedPay: false, maxYears: 0, department: "",
+  employmentType: "",
   vendor: "", freshness: "",
 };
 
@@ -274,7 +275,7 @@ describe("one derivation, and everything downstream reads it", () => {
     // The rescue probe relaxes STATE and re-derives, so a relaxation cannot
     // describe a different query from the page it is rescuing.
     expect(JOBS_CODE).toMatch(/const RELAX: Record<string, Partial<BoardFilterState>>/);
-    expect(JOBS_CODE).toMatch(/boardFilterBody\(\{ \.\.\.filterState, \.\.\.RELAX\[c\.key\] \}\)/);
+    expect(JOBS_CODE).toMatch(/boardFilterBody\(\{ \.\.\.filterState, \.\.\.\(RELAX\[c\.key\] \?\? RELAX\[c\.key\.split\(":"\)\[0\]\] \?\? \{\}\) \}\)/);
   });
 
   it("every filter chip has a relaxation and a chip of its own", () => {
@@ -327,7 +328,7 @@ describe("one derivation, and everything downstream reads it", () => {
     // dropping into the lander form with a filter on discards it from every
     // shared or reloaded link while the chip still shows on screen.
     expect(JOBS_CODE).toMatch(
-      /const extraFilters = !!\(salaryCeiling \|\| payBasis \|\| statedPayOnly \|\| includeUnstatedPay \|\| maxYears \|\| department \|\| vendor\);/,
+      /const extraFilters = !!\(salaryCeiling \|\| payBasis \|\| statedPayOnly \|\| includeUnstatedPay \|\| maxYears \|\| department \|\| vendor \|\| employmentType\);/,
     );
     expect((JOBS_CODE.match(/&& !extraFilters &&/g) ?? []).length).toBe(2);
   });

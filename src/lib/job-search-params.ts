@@ -45,6 +45,8 @@ export interface JobSearchParams {
   department?: string;
   /** Hiring-system restriction, comma-joined (wire name `vendor`). */
   vendor?: string;
+  /** Comma-joined subset of full_time|part_time|contract|temporary|internship. */
+  employmentType?: string;
 }
 
 const MODE_LABEL: Record<string, string> = {
@@ -82,6 +84,9 @@ export function searchName(p: JobSearchParams, categoryLabel?: string, experienc
       p.includeUnstatedPay ? "incl. unlisted pay" : "",
       p.department ?? "",
       p.vendor ?? "",
+      (p.employmentType ?? "").split(",").filter(Boolean)
+        .map((et) => ({ full_time: "full-time", part_time: "part-time", contract: "contract", temporary: "temp", internship: "internship" } as Record<string, string>)[et] ?? et)
+        .join("/"),
       p.maxAgeDays ? `last ${p.maxAgeDays}d` : "",
       p.sendableOnly ? "agent-ready" : "",
     ]
@@ -123,6 +128,7 @@ export function searchToQuery(p: JobSearchParams): string {
   if (p.maxYears) qs.set("maxYears", String(p.maxYears));
   if (p.department) qs.set("department", p.department);
   if (p.vendor) qs.set("vendor", p.vendor);
+  if (p.employmentType) qs.set("etype", p.employmentType);
   const s = qs.toString();
   return s ? `/jobs?${s}` : "/jobs";
 }
@@ -163,5 +169,6 @@ export function searchToBoardBody(p: JobSearchParams): Record<string, unknown> {
     department: p.department || undefined,
     // Wire name `vendor` (the board pluralises internally) — see filters.ts.
     vendor: p.vendor || undefined,
+    employmentType: p.employmentType || undefined,
   };
 }

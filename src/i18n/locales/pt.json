@@ -4082,7 +4082,15 @@
     "industriesAll": "Todos os setores",
     "industriesLess": "Menos",
     "trackedCorpus": "{{n}} vagas acompanhadas, incluindo as encerradas",
-    "semanticMatchChip": "relacionado por significado"
+    "semanticMatchChip": "relacionado por significado",
+    "employmentType": {
+      "label": "Tipo de emprego",
+      "full_time": "Tempo integral",
+      "part_time": "Meio período",
+      "contract": "Contrato",
+      "temporary": "Temporário",
+      "internship": "Estágio"
+    }
   },
   "accountPage": {
     "statusSaveFailed": "Não foi possível salvar esse status — tente novamente.",

@@ -4082,7 +4082,15 @@
     "industriesAll": "Alle sectoren",
     "industriesLess": "Minder",
     "trackedCorpus": "{{n}} vacatures gevolgd, inclusief gesloten",
-    "semanticMatchChip": "inhoudelijk verwant"
+    "semanticMatchChip": "inhoudelijk verwant",
+    "employmentType": {
+      "label": "Dienstverband",
+      "full_time": "Fulltime",
+      "part_time": "Parttime",
+      "contract": "Contract",
+      "temporary": "Tijdelijk",
+      "internship": "Stage"
+    }
   },
   "accountPage": {
     "statusSaveFailed": "Kon die status niet opslaan — probeer het opnieuw.",

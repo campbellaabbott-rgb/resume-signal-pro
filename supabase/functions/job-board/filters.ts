@@ -37,6 +37,9 @@ import { SENDABLE_VENDORS } from "../_shared/apply-automation.ts";
 import type { JobSourceKind } from "./sources.ts";
 
 export const WORK_MODES = ["remote", "hybrid", "onsite"] as const;
+/** Closed domain, matching the column CHECK — values come from vendors'
+ *  structured fields only (nine of sixteen carry one, measured 2026-08-28). */
+export const EMPLOYMENT_TYPES = ["full_time", "part_time", "contract", "temporary", "internship"] as const;
 
 /** "hourly" -> salary_period = 'hour'; "salaried" -> salary_period IN ('year','month'). */
 export const PAY_BASES = ["hourly", "salaried"] as const;
@@ -107,6 +110,8 @@ export type AppliedFilters = {
   country: string | null;
   remote: boolean;
   workMode: string | null;
+  /** Comma-joined subset of EMPLOYMENT_TYPES, same list contract as workMode. */
+  employmentType: string | null;
   /**
    * One or more field slugs, COMMA-JOINED — never an array.
    *
@@ -236,6 +241,7 @@ const RPC_BOUND_FILTERS = new Set<keyof AppliedFilters>([
   "country",
   "remote",
   "workMode",
+  "employmentType",
   "category",
   "includeUncategorised",
   "sendableOnly",
@@ -457,6 +463,18 @@ export function normalizeFilters(
     .slice(0, WORK_MODES.length);
   const workMode = wmValid.length ? wmValid.join(",") : null;
   if (sent(body.workMode) && wmValid.length !== wmAsked.length) ignored.push("workMode");
+
+  // Employment type: the same validated-comma-list shape, wire name
+  // `employmentType`. Casing folds (Full_Time binds), junk is dropped and
+  // NAMED in ignoredFilters — a filter silently not applied is the five-
+  // filters incident again.
+  const etAsked = (Array.isArray(body.employmentType) ? body.employmentType : String(body.employmentType ?? "").split(","))
+    .map((v) => String(v ?? "").trim().toLowerCase())
+    .filter(Boolean);
+  const etValid = [...new Set(etAsked.filter((t) => (EMPLOYMENT_TYPES as readonly string[]).includes(t)))]
+    .slice(0, EMPLOYMENT_TYPES.length);
+  const employmentType = etValid.length ? etValid.join(",") : null;
+  if (sent(body.employmentType) && etValid.length !== etAsked.length) ignored.push("employmentType");
 
   // Report when ANY requested band was dropped, not only when every one was. A
   // caller asking for senior+bogus gets senior and must still be told bogus did
@@ -715,6 +733,7 @@ export function normalizeFilters(
       // questions, from one request. Deciding it once means they cannot disagree.
       remote: body.remote === true && !workMode,
       workMode,
+      employmentType,
       category,
       includeUncategorised,
       sendableOnly,

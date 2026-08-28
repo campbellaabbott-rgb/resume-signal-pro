@@ -331,7 +331,12 @@ const PINNED = {
   // adversarial review and a live probe in the same hour. Now derived from
   // the augmentation's already-fetched rows (zero extra RPCs), Unicode-safe,
   // keyed to the emitter; slice timing moved to terminal returns.
-  buildVersion: "2026-08-28.46",
+  // 2026-08-28.47: employment-type filter end-to-end — nine vendors' 
+  // structured fields captured at normalize, all three RPCs re-issued with
+  // p_employment_type (the one-function-one-signature guard caught that a
+  // verbatim body copy dropped only the PRE-210000 overloads), coverage,
+  // UI toggles/chips/URL/zero-help, saved searches and the digest.
+  buildVersion: "2026-08-28.47",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {

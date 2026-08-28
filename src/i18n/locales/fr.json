@@ -4082,7 +4082,15 @@
     "industriesAll": "Tous les secteurs",
     "industriesLess": "Moins",
     "trackedCorpus": "{{n}} offres suivies, postes clôturés compris",
-    "semanticMatchChip": "proche par le sens"
+    "semanticMatchChip": "proche par le sens",
+    "employmentType": {
+      "label": "Type d'emploi",
+      "full_time": "Temps plein",
+      "part_time": "Temps partiel",
+      "contract": "Contrat",
+      "temporary": "Intérim",
+      "internship": "Stage"
+    }
   },
   "accountPage": {
     "statusSaveFailed": "Impossible d'enregistrer ce statut — réessayez.",

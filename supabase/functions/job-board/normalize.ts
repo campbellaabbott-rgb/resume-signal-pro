@@ -31,6 +31,37 @@ export interface JobPosting {
   country?: string | null;
   /** The company's own posting/application page — where Apply goes. */
   applyUrl: string;
+  /** Employment type from the vendor's STRUCTURED field only — never inferred
+      from text. Same trinary-or-nothing contract as workMode: a value only
+      when the feed states one, null otherwise, and the UI shows nothing on
+      null. Nine vendors carry it in the list payloads the ingest already
+      fetches (measured live 2026-08-28); the rest stay null. */
+  employmentType?: EmploymentType | null;
+}
+
+export type EmploymentType = "full_time" | "part_time" | "contract" | "temporary" | "internship";
+
+/**
+ * One mapper for nine vendors' vocabularies. STRUCTURED FIELDS ONLY — the
+ * input is a vendor enum/label ("FullTime", "Full-time", "permanent",
+ * "fixed_term", "Intern"), never posting prose, so a miss returns null rather
+ * than guessing. Vocabulary measured live per vendor before each entry:
+ * ashby FullTime/PartTime/Intern/Contract/Temporary; lever commitment
+ * "Full-time"/"Part-time"/"Internship"/"Contract"/"Permanent"; workable
+ * "Full-time" style; smartrecruiters typeOfEmployment id "permanent"/
+ * "contract"/... with a display label; recruitee employment_type_code
+ * fulltime/parttime/internship/temporary; personio <schedule> full-or-part-time
+ * variants; pinpoint/icims free-ish labels already threaded for salary logic.
+ */
+export function normalizeEmploymentType(raw: unknown): EmploymentType | null {
+  const v = String(raw ?? "").trim().toLowerCase().replace(/[\s_-]+/g, "");
+  if (!v) return null;
+  if (/^(fulltime|permanent|regular|cdi|festanstellung|fullorparttime)$/.test(v)) return "full_time";
+  if (/^(parttime|minijob|casual)$/.test(v)) return "part_time";
+  if (/^(contract|contractor|fixedterm|cdd|freelance|b2b)$/.test(v)) return "contract";
+  if (/^(temporary|temp|seasonal|interim)$/.test(v)) return "temporary";
+  if (/^(intern|internship|trainee|apprentice|apprenticeship|workingstudent|werkstudent)$/.test(v)) return "internship";
+  return null;
 }
 
 // Feeds are official vendor APIs, but a posting URL still passes through us
@@ -746,13 +777,15 @@ export function normalizeGreenhouse(raw: { jobs?: GreenhouseJob[] }, company: st
 }
 
 interface LeverJob {
+  // categories.commitment carries employment type ("Full-time", "Permanent",
+  // "Internship") — proven by the captured fixture and live probes.
   id: string;
   text: string;
   hostedUrl: string;
   applyUrl?: string;
   createdAt?: number; // epoch ms
   workplaceType?: string;
-  categories?: { location?: string; team?: string; allLocations?: string[] };
+  categories?: { location?: string; team?: string; allLocations?: string[]; commitment?: string };
   salaryRange?: { min?: number; max?: number; currency?: string; interval?: string };
   descriptionPlain?: string;
   descriptionBodyPlain?: string;
@@ -786,6 +819,7 @@ export function normalizeLever(raw: LeverJob[], company: string, token: string):
       postedAt: safeIso(j.createdAt),
       category: categorize(j.text ?? "", j.categories?.team),
       salary: leverSalary(j.salaryRange),
+      employmentType: normalizeEmploymentType(j.categories?.commitment),
       applyUrl: safeUrl(j.hostedUrl ?? j.applyUrl),
     };
   }).filter((j) => j.applyUrl !== "");
@@ -800,7 +834,8 @@ interface AshbyJob {
   department?: string;
   team?: string;
   isRemote?: boolean;
-  workplaceType?: string; // "Remote" | "Hybrid" | "Onsite"
+  workplaceType?: string;
+  employmentType?: string; // "Remote" | "Hybrid" | "Onsite"
   isListed?: boolean;
   publishedAt?: string;
   jobUrl?: string;
@@ -826,6 +861,7 @@ export function normalizeAshby(raw: { jobs?: AshbyJob[] }, company: string, toke
         postedAt: j.publishedAt ?? null,
         category: categorize(j.title ?? "", j.department ?? j.team),
         salary: j.compensation?.compensationTierSummary ?? j.compensation?.scrapeableCompensationSalarySummary ?? null,
+        employmentType: normalizeEmploymentType(j.employmentType),
         applyUrl: safeUrl(j.jobUrl ?? j.applyUrl),
       };
     })
@@ -839,6 +875,7 @@ interface SmartRecruitersPosting {
   location?: { city?: string; region?: string; country?: string; remote?: boolean; hybrid?: boolean; fullLocation?: string };
   function?: { label?: string };
   department?: { label?: string };
+  typeOfEmployment?: { id?: string; label?: string };
 }
 
 export function normalizeSmartRecruiters(raw: { content?: SmartRecruitersPosting[] }, company: string, token: string): JobPosting[] {
@@ -863,6 +900,8 @@ export function normalizeSmartRecruiters(raw: { content?: SmartRecruitersPosting
         postedAt: p.releasedDate ?? null,
         category: categorize(p.name ?? "", department),
         salary: null,
+        // id first ("permanent"/"contract" enums), display label second.
+        employmentType: normalizeEmploymentType(p.typeOfEmployment?.id) ?? normalizeEmploymentType(p.typeOfEmployment?.label),
         // The public posting page is deterministic from company identifier + id.
         applyUrl: safeUrl(`https://jobs.smartrecruiters.com/${token}/${p.id}`),
       };
@@ -881,6 +920,7 @@ interface WorkableJob {
   country?: string;
   city?: string;
   state?: string;
+  employment_type?: string;
 }
 
 export function normalizeWorkable(raw: { jobs?: WorkableJob[] }, company: string, token: string): JobPosting[] {
@@ -901,6 +941,7 @@ export function normalizeWorkable(raw: { jobs?: WorkableJob[] }, company: string
         postedAt: safeIso(posted),
         category: categorize(j.title ?? "", j.department),
         salary: null,
+        employmentType: normalizeEmploymentType(j.employment_type),
         applyUrl: safeUrl(j.url ?? `https://apply.workable.com/j/${j.shortcode}`),
       };
     })
@@ -979,6 +1020,7 @@ interface RecruiteeOffer {
   careers_url?: string | null;
   published_at?: string | null;
   created_at?: string | null;
+  employment_type_code?: string | null;
   salary?: { min?: string | number | null; max?: string | number | null; type?: string | null; currency?: string | null } | null;
 }
 
@@ -1014,6 +1056,7 @@ export function normalizeRecruitee(raw: { offers?: RecruiteeOffer[] }, company: 
         // canonical {token}.recruitee.com/o/{slug} — which sat here as the
         // FALLBACK — answered HTTP 200 for all 233 of them. The vendor
         // guarantees the canonical; the vanity host is cosmetics that rots.
+        employmentType: normalizeEmploymentType(o.employment_type_code),
         applyUrl: safeUrl(o.slug ? `https://${token}.recruitee.com/o/${o.slug}` : (o.careers_url ?? "")),
       };
     })
@@ -1043,6 +1086,9 @@ export function normalizePersonio(xml: string, company: string, token: string, h
         postedAt: safeIso(xmlValue(block, "createdAt")),
         category: categorize(title, department),
         salary: null, // the feed carries no compensation field
+        // <schedule> is full-time | part-time | full-or-part-time; the mapper
+        // reads full-or-part-time as full_time (the role CAN be full-time).
+        employmentType: normalizeEmploymentType(schedule),
         applyUrl: id ? safeUrl(`https://${token}.${host}/job/${id}`) : "",
       };
     })
@@ -1180,6 +1226,8 @@ export function normalizeIcims(raw: IcimsJobItem[], company: string, token: stri
         // NO job content (verified live 2026-07-26: 9/9 sampled). The sibling
         // /job path renders the actual posting; never send a seeker to a
         // data-capture page before they can even read the role.
+        // Already modeled for the salary refusal logic; now a filterable field.
+        employmentType: normalizeEmploymentType(d.employment_type),
         applyUrl: safeUrl(String(d.apply_url ?? (externalId ? `https://${token}/jobs/${externalId}/job` : "")).replace(/\/login$/, "/job")),
       };
     })
@@ -1341,6 +1389,7 @@ export function normalizePinpoint(items: PinpointPosting[], company: string, tok
         postedAt: null, // no date in the payload — undated is honest
         category: categorize(title, dept),
         salary: pinpointSalary(j),
+        employmentType: normalizeEmploymentType(j.employment_type_text),
         country: detectCountry(locFull),
         applyUrl: safeUrl(String(j.url ?? "")),
       };
@@ -1699,6 +1748,7 @@ interface UsajobsDescriptor {
   PositionLocation?: Array<{ LocationName?: unknown }>; PositionLocationDisplay?: unknown;
   RemoteIndicator?: unknown; TeleworkEligible?: unknown; PublicationStartDate?: unknown;
   PositionRemuneration?: UsajobsRemuneration[]; JobCategory?: Array<{ Name?: unknown }>;
+  PositionSchedule?: Array<{ Name?: unknown }>;
   ApplyURI?: unknown[]; PositionURI?: unknown;
 }
 interface UsajobsItem { MatchedObjectId?: unknown; MatchedObjectDescriptor?: UsajobsDescriptor }
@@ -1741,6 +1791,8 @@ export function normalizeUsajobs(items: UsajobsItem[], _company: string, token: 
         postedAt: posted,
         category: categorize(title, String(d.JobCategory?.[0]?.Name ?? "")),
         salary,
+        // PositionSchedule Name: "Full-time"/"Part-time"/"Intermittent" etc.
+        employmentType: normalizeEmploymentType(String(d.PositionSchedule?.[0]?.Name ?? "")),
         // Federal postings are US by definition; the feed also states it.
         country: "US",
         applyUrl: safeUrl(String(d.ApplyURI?.[0] ?? d.PositionURI ?? "")),

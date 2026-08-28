@@ -98,6 +98,7 @@ describe("isUnfiltered — derived, so a new filter cannot be forgotten", () => 
       country: "DE",
       remote: true,
       workMode: "remote",
+      employmentType: "part_time,contract",
       // Added 2026-08-06. This test exists so a NEW field is covered the moment
       // it exists — it caught this one at the typecheck, which is the design
       // working: `isUnfiltered` must treat "engineering + unsorted" as a

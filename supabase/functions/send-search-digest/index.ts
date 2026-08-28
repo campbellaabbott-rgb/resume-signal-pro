@@ -45,6 +45,7 @@ type SearchParams = {
   country?: string; salaryFloor?: number; maxAgeDays?: number; sendableOnly?: boolean;
   salaryCeiling?: number; payBasis?: string; hasStatedPay?: boolean;
   includeUnstatedPay?: boolean; maxYears?: number; department?: string; vendor?: string;
+  employmentType?: string;
 };
 
 function boardUrl(p: SearchParams): string {
@@ -70,6 +71,7 @@ function boardUrl(p: SearchParams): string {
   if (p.maxYears) qs.set("maxYears", String(p.maxYears));
   if (p.department) qs.set("department", p.department);
   if (p.vendor) qs.set("vendor", p.vendor);
+  if (p.employmentType) qs.set("etype", p.employmentType);
   const s = qs.toString();
   return `${SITE_URL}/jobs${s ? `?${s}` : ""}`;
 }
@@ -168,6 +170,7 @@ Deno.serve(async (req) => {
             maxYears: p.maxYears || undefined,
             department: p.department || undefined,
             vendor: p.vendor || undefined,
+            employmentType: p.employmentType || undefined,
             includeFacets: false,
             ...extra,
           }),

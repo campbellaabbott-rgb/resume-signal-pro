@@ -4082,7 +4082,15 @@
     "industriesAll": "Todos los sectores",
     "industriesLess": "Menos",
     "trackedCorpus": "{{n}} ofertas registradas, incluidas las cerradas",
-    "semanticMatchChip": "relacionado por significado"
+    "semanticMatchChip": "relacionado por significado",
+    "employmentType": {
+      "label": "Tipo de empleo",
+      "full_time": "Jornada completa",
+      "part_time": "Media jornada",
+      "contract": "Contrato",
+      "temporary": "Temporal",
+      "internship": "Prácticas"
+    }
   },
   "accountPage": {
     "statusSaveFailed": "No se pudo guardar ese estado; inténtalo de nuevo.",

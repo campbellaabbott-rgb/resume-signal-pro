@@ -4082,7 +4082,15 @@
     "industriesAll": "सभी उद्योग",
     "industriesLess": "कम",
     "trackedCorpus": "{{n}} पद ट्रैक किए गए, बंद पद भी शामिल",
-    "semanticMatchChip": "अर्थ से संबंधित"
+    "semanticMatchChip": "अर्थ से संबंधित",
+    "employmentType": {
+      "label": "रोज़गार प्रकार",
+      "full_time": "पूर्णकालिक",
+      "part_time": "अंशकालिक",
+      "contract": "अनुबंध",
+      "temporary": "अस्थायी",
+      "internship": "इंटर्नशिप"
+    }
   },
   "accountPage": {
     "statusSaveFailed": "यह स्थिति सहेजी नहीं जा सकी — कृपया फिर से प्रयास करें।",

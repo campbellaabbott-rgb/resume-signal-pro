@@ -4082,7 +4082,15 @@
     "industriesAll": "All industries",
     "industriesLess": "Fewer",
     "trackedCorpus": "{{n}} postings tracked including closed roles",
-    "semanticMatchChip": "related by meaning"
+    "semanticMatchChip": "related by meaning",
+    "employmentType": {
+      "label": "Employment type",
+      "full_time": "Full-time",
+      "part_time": "Part-time",
+      "contract": "Contract",
+      "temporary": "Temp",
+      "internship": "Internship"
+    }
   },
   "accountPage": {
     "statusSaveFailed": "Couldn't save that status — please try again.",

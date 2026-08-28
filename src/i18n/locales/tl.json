@@ -4082,7 +4082,15 @@
     "industriesAll": "Lahat ng industriya",
     "industriesLess": "Bawasan",
     "trackedCorpus": "{{n}} trabahong sinusubaybayan, kasama ang mga sarado",
-    "semanticMatchChip": "kaugnay sa kahulugan"
+    "semanticMatchChip": "kaugnay sa kahulugan",
+    "employmentType": {
+      "label": "Uri ng trabaho",
+      "full_time": "Full-time",
+      "part_time": "Part-time",
+      "contract": "Kontrata",
+      "temporary": "Pansamantala",
+      "internship": "Internship"
+    }
   },
   "accountPage": {
     "statusSaveFailed": "Hindi na-save ang status na iyon — pakisubukan muli.",

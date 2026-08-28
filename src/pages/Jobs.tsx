@@ -318,6 +318,9 @@ export type BoardFilterState = {
   department: string;
   /** Comma-joined `source` values. */
   vendor: string;
+  /** Comma-joined subset of full_time|part_time|contract|temporary|internship;
+   *  "" = any. Same list contract as workMode. */
+  employmentType: string;
   /**
    * The freshness window in DAYS, as a string, "" = any date.
    *
@@ -333,7 +336,7 @@ export function boardFilterBody(s: BoardFilterState): Record<string, unknown> {
   const {
     q, location, remoteOnly, workMode, category, inclUncat, agentOnly, country,
     experience, companyTokens, salaryFloor, salaryCeiling, payBasis, statedPayOnly, includeUnstatedPay,
-    maxYears, department, vendor, freshness,
+    maxYears, department, vendor, freshness, employmentType,
   } = s;
   const body: Record<string, unknown> = {
     q: q.trim() || undefined,
@@ -345,6 +348,7 @@ export function boardFilterBody(s: BoardFilterState): Record<string, unknown> {
     // only the standalone toggle, the one case where no work mode was picked.
     remote: (remoteOnly && !workMode) || undefined,
     workMode: workMode || undefined,
+    employmentType: employmentType || undefined,
     category: category || undefined,
     includeUncategorised: category && inclUncat ? true : undefined,
     // Literal true only, at every send site: a truthy STRING here narrows the
@@ -807,6 +811,14 @@ export default function Jobs() {
   // Which ATS the posting came from. `source` is populated on every row, so
   // this is the only new filter that hides nothing. Until now the sole vendor
   // control was the agent-can-apply boolean, which pins the board to 5.4%.
+  // Employment type: comma list, closed domain, URL param `etype`. Same list
+  // contract as workMode — junk values dropped at init so a shared link never
+  // carries a filter the board would refuse.
+  const [employmentType, setEmploymentType] = useState<string>(() => {
+    const known = ["full_time", "part_time", "contract", "temporary", "internship"];
+    return (initial.get("etype") ?? "").split(",").map((x) => x.trim().toLowerCase())
+      .filter((x) => known.includes(x)).slice(0, known.length).join(",");
+  });
   const [vendor, setVendor] = useState(() => {
     const known = new Set(VENDOR_OPTIONS.map((v) => v.value));
     return (initial.get("vendor") ?? "").split(",").map((v) => v.trim().toLowerCase())
@@ -1312,10 +1324,10 @@ export default function Jobs() {
   const filterState: BoardFilterState = useMemo(() => ({
     q, location, remoteOnly, workMode, category, inclUncat, agentOnly, country,
     experience, companyTokens, salaryFloor, salaryCeiling, payBasis, statedPayOnly, includeUnstatedPay,
-    maxYears, department, vendor, freshness,
+    maxYears, department, vendor, freshness, employmentType,
   }), [q, location, remoteOnly, workMode, category, inclUncat, agentOnly, country,
     experience, companyTokens, salaryFloor, salaryCeiling, payBasis, statedPayOnly, includeUnstatedPay,
-    maxYears, department, vendor, freshness]);
+    maxYears, department, vendor, freshness, employmentType]);
   const healthAttempted = useRef<Set<string>>(new Set());
   const [healthFailed, setHealthFailed] = useState(false);
   // Apply-agent: the posting whose questions we're drafting (with its fetched JD
@@ -1531,6 +1543,7 @@ export default function Jobs() {
       // choice and dropped matches (7.6% on {workMode:remote,country:GB}).
       remote: (remoteOnly && !workMode) || undefined,
       workMode: workMode || undefined,
+      employmentType: employmentType || undefined,
       // ONE TOKEN OR NONE, and the multi-employer case is named in the toast
       // instead. send-search-digest hand-lists the params it forwards and sends
       // `companies: p.company ? [p.company] : undefined` — one array element —
@@ -1834,6 +1847,7 @@ export default function Jobs() {
     if (maxYears) p.set("maxYears", String(maxYears));
     if (department) p.set("department", department);
     if (vendor) p.set("vendor", vendor);
+    if (employmentType) p.set("etype", employmentType);
     // The detail panel's ?job= deep link isn't filter state — preserve it, or
     // this rewrite clobbers a shared link on mount before the panel can open.
     const jobParam = new URLSearchParams(window.location.search).get("job");
@@ -1860,7 +1874,7 @@ export default function Jobs() {
     // shared or reloaded link while the chip on screen still says it applies —
     // measured for workMode, agentOnly and inclUncat before, and true by
     // construction for each filter added since.
-    const extraFilters = !!(salaryCeiling || payBasis || statedPayOnly || includeUnstatedPay || maxYears || department || vendor);
+    const extraFilters = !!(salaryCeiling || payBasis || statedPayOnly || includeUnstatedPay || maxYears || department || vendor || employmentType);
     if (landerCompany && company === landerCompany && !q && !location && !remoteOnly && !workMode && !category && !experience && !salaryFloor && !country && !freshness && !agentOnly && !extraFilters && sortMode !== "salary") {
       window.history.replaceState({}, "", `/jobs/company/${landerCompany}${jobParam ? `?job=${encodeURIComponent(jobParam)}` : ""}`);
       return;
@@ -1870,7 +1884,7 @@ export default function Jobs() {
       return;
     }
     window.history.replaceState({}, "", qs ? `/jobs?${qs}` : "/jobs");
-  }, [q, location, remoteOnly, workMode, company, category, inclUncat, agentOnly, activelyHiringOnly, experience, country, salaryFloor, salaryCeiling, payBasis, statedPayOnly, includeUnstatedPay, maxYears, department, vendor, freshness, sortMode, landerCategory, landerCompany]);
+  }, [q, location, remoteOnly, workMode, company, category, inclUncat, agentOnly, activelyHiringOnly, experience, country, salaryFloor, salaryCeiling, payBasis, statedPayOnly, includeUnstatedPay, maxYears, department, vendor, employmentType, freshness, sortMode, landerCategory, landerCompany]);
 
   // Category salary benchmarks: median advertised pay floor per field, computed
   // live from postings that state pay (RPC self-gates at n>=30 — a thin sample
@@ -3299,6 +3313,18 @@ export default function Jobs() {
       });
     }
     if (remoteOnly && !workMode) f.push({ key: "remote", label: t("jobsPage.remoteBadge", "Remote"), clear: () => setRemoteOnly(false) });
+    // One chip per employment type, same rules as the mode chips below: a
+    // per-value chip (a comma list is not a translation key) and a FUNCTIONAL
+    // update ("Clear all" runs every clear() in one pass — closures over the
+    // same snapshot make last-write win).
+    for (const et of employmentType.split(",").filter(Boolean)) {
+      f.push({
+        key: `etype:${et}`,
+        label: t(`jobsPage.employmentType.${et}`,
+          et === "full_time" ? "Full-time" : et === "part_time" ? "Part-time" : et === "contract" ? "Contract" : et === "temporary" ? "Temp" : "Internship"),
+        clear: () => setEmploymentType((prev) => prev.split(",").filter((x) => x && x !== et).join(",")),
+      });
+    }
     // ONE CHIP PER MODE, each independently removable. Interpolating the whole
     // value into `jobsPage.workMode.${workMode}` would ask for a key like
     // "workMode.remote,hybrid", which does not exist — the fallback would print
@@ -3347,7 +3373,7 @@ export default function Jobs() {
     if (category && inclUncat) f.push({ key: "inclUncat", label: t("jobsPage.chipInclUncat", "+ unsorted"), clear: () => setInclUncat(false) });
     return f;
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [q, location, category, experience, maxYears, company, companyTokens, country, salaryFloor, salaryCeiling, payBasis, statedPayOnly, department, vendor, remoteOnly, workMode, freshness, companies, agentOnly, activelyHiringOnly, inclUncat, t]);
+  }, [q, location, category, experience, maxYears, company, companyTokens, country, salaryFloor, salaryCeiling, payBasis, statedPayOnly, department, vendor, remoteOnly, workMode, employmentType, freshness, companies, agentOnly, activelyHiringOnly, inclUncat, t]);
   // S1: search suggestions — recent searches (local), matching companies
   // (served facet), matching category pages, and a curated common-role list.
   // Everything suggested is real and clickable; nothing invented.
@@ -3468,6 +3494,7 @@ export default function Jobs() {
       experience: { experience: "" }, company: { companyTokens: [] },
       salaryFloor: { salaryFloor: 0 }, remote: { remoteOnly: false }, freshness: { freshness: "" },
       mode: { workMode: "", remoteOnly: false }, country: { country: "" },
+      etype: { employmentType: "" },
       salaryCeiling: { salaryCeiling: 0 }, payBasis: { payBasis: "" },
       statedPay: { statedPayOnly: false }, maxYears: { maxYears: 0 },
       department: { department: "" }, vendor: { vendor: "" },
@@ -3485,7 +3512,11 @@ export default function Jobs() {
           // client because the flag was never asked for.
           const { data: r } = await invokeBoard<{ total?: number; relatedTotal?: number; countCapped?: boolean; relatedCapped?: boolean }>({
             action: "list", countOnly: true, includeFacets: false,
-            ...boardFilterBody({ ...filterState, ...RELAX[c.key] }),
+            // Per-value chips carry compound keys ("mode:remote",
+            // "etype:full_time"); the family prefix finds their relaxation.
+            // Without the fallback, mode chips never offered a relaxation at
+            // all — the lookup missed and the entry existed under "mode".
+            ...boardFilterBody({ ...filterState, ...(RELAX[c.key] ?? RELAX[c.key.split(":")[0]] ?? {}) }),
           });
           // BOTH SEGMENTS, and before the `> 0` filter below. Counting only the
           // exact segment would advertise "1 opening" for a relaxation that
@@ -4919,6 +4950,39 @@ export default function Jobs() {
                   {t(`jobsPage.workMode.${m}`, m === "onsite" ? "On-site" : m === "remote" ? "Remote" : "Hybrid")}
                 </button>
               ))}
+            </div>
+            {/* Employment type: same toggle-list contract as work mode — a
+                select can hold one value, and "full-time or contract" is an
+                ordinary question. Employer-stated only (nine vendors carry a
+                structured field); unstated postings are excluded while active,
+                with the coverage disclosure saying how many that hides. */}
+            <div
+              role="group"
+              aria-label={t("jobsPage.employmentType.label", "Employment type")}
+              className="inline-flex items-center gap-1 rounded-lg border border-border bg-background p-1"
+            >
+              {(["full_time", "part_time", "contract", "temporary", "internship"] as const).map((et) => {
+                const on = employmentType.split(",").includes(et);
+                return (
+                  <button
+                    key={et}
+                    type="button"
+                    aria-pressed={on}
+                    onClick={() => setEmploymentType((prev) => {
+                      const parts = prev.split(",").filter(Boolean);
+                      return (parts.includes(et) ? parts.filter((x) => x !== et) : [...parts, et]).join(",");
+                    })}
+                    className={`px-2.5 py-1 rounded-md text-sm transition-colors ${
+                      on
+                        ? "bg-primary text-primary-foreground font-medium"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {t(`jobsPage.employmentType.${et}`,
+                      et === "full_time" ? "Full-time" : et === "part_time" ? "Part-time" : et === "contract" ? "Contract" : et === "temporary" ? "Temp" : "Internship")}
+                  </button>
+                );
+              })}
             </div>
             {(q || activeBoardFilterKeys(filterState).length > 0) && (
               <Button size="sm" variant="ghost" className="gap-1.5" onClick={() => saveCurrentSearch()}>

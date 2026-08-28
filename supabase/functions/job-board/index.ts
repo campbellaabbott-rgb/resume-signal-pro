@@ -102,7 +102,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-28.46"; // .46: did-you-mean DERIVED from the augmentation\u0027s rows (the .45 version was proven dead by review + live probe); slice timing at terminal returns
+const BUILD_VERSION = "2026-08-28.47"; // .47: employment-type filter end-to-end (nine vendors, three RPCs, coverage, UI); .46: derived did-you-mean
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -1995,6 +1995,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
             country: j.country ?? detectCountry(j.location),
             remote: j.remote,
             work_mode: j.workMode ?? null,
+      employment_type: j.employmentType ?? null,
             department: clean(j.department?.slice(0, 200) ?? null),
             category: j.category,
             posted_at: posted,
@@ -2223,6 +2224,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
           put("country", row.country, prev.country, false);
           // Stated-only: silence from the vendor must not erase enrichment.
           put("work_mode", row.work_mode, prev.work_mode, false);
+          put("employment_type", (row as Record<string, unknown>).employment_type, (prev as Record<string, unknown>).employment_type, false);
           put("salary", row.salary, prev.salary, false);
           if (typeof row.remote === "boolean" && row.remote !== prev.remote) patch.remote = row.remote;
           if (Object.keys(patch).length) corrections.push({ id, ...patch });
@@ -2997,6 +2999,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
             hasStatedPay: keep("hasStatedPay"),
             maxYears: keep("maxYears"),
             department: keep("department"),
+            employmentType: keep("employmentType"),
             ...(coverageFailed.length ? { staleParts: coverageFailed } : {}),
           };
         }
@@ -3085,6 +3088,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
           hasStatedPay: carryLive("hasStatedPay"),
           maxYears: carryLive("maxYears"),
           department: carryLive("department"),
+          employmentType: carryLive("employmentType"),
           ...(coverageFailed.length ? { staleParts: coverageFailed } : {}),
         };
         // `open` doubles as the honest board total — see the headline note in
@@ -4904,6 +4908,7 @@ function coverageDisclosure(
     maxYears?: number | null;
     department?: string | null;
     vendors?: string[];
+    employmentType?: string | null;
   },
   meta?: { v: Record<string, unknown> } | null,
 ): Record<string, unknown> {
@@ -4917,6 +4922,7 @@ function coverageDisclosure(
       hasStatedPay?: number | null;
       maxYears?: number | null;
       department?: number | null;
+      employmentType?: number | null;
     }
     | undefined;
   // NO CACHE, NO NUMBERS — INCLUDING THE MEASURED ONES, and this early return
@@ -4950,6 +4956,9 @@ function coverageDisclosure(
   if (applied.maxYears != null) out.maxYears = liveOr(cov.maxYears, MEASURED_COVERAGE.maxYears);
   if (applied.department) out.department = liveOr(cov.department, MEASURED_COVERAGE.department);
   if (applied.vendors?.length) out.vendor = MEASURED_COVERAGE.vendor;
+  // New with the filter itself — live-only, no pinned constant: a snapshot
+  // for a filter that has never shipped would be an invented number.
+  if (applied.employmentType && typeof cov.employmentType === "number") out.employmentType = cov.employmentType;
   if (applied.salaryFloor != null && typeof cov.salaryFloor === "number") out.salaryFloor = cov.salaryFloor;
   // The ceiling compares against salary_rank_usd, the column the floor uses, so
   // its coverage IS the floor's — read live rather than pinned as a sixth
@@ -8520,6 +8529,7 @@ const rowToJob = (r: any) => ({
   location: r.location,
   remote: r.remote,
   workMode: r.work_mode ?? null,
+  employmentType: r.employment_type ?? null,
   // Filterable since the country filter shipped, never returned: 0 of 21
   // emitted fields carried it, so the JSON-LD could not state
   // applicantLocationRequirements and no card could show where a role is.
@@ -9007,7 +9017,7 @@ async function serveList(
     let q = client
       .from("job_board_postings")
       .select(
-        "id,source,company_token,company,title,location,country,remote,work_mode,department,category,posted_at,apply_url,salary,salary_min_annual,salary_max_annual,salary_period,salary_currency,experience_band,min_years,last_seen,missing_since,effective_posted",
+        "id,source,company_token,company,title,location,country,remote,work_mode,employment_type,department,category,posted_at,apply_url,salary,salary_min_annual,salary_max_annual,salary_period,salary_currency,experience_band,min_years,last_seen,missing_since,effective_posted",
         withCount ? { count: "exact" } : {},
       )
       .gte(dateCol, freshCutoffIso)
@@ -9060,6 +9070,7 @@ async function serveList(
     // domain, so .in() is the binding and a single value still yields one-element
     // behaviour identical to the .eq() this replaces.
     if (applied.workMode) q = q.in("work_mode", applied.workMode.split(","));
+    if (applied.employmentType) q = q.in("employment_type", applied.employmentType.split(","));
     // Country filter: exact match on the deterministically extracted code.
     // Postings whose location we couldn't place have country NULL and are
     // excluded by the filter — honestly, never guessed (the UI says so).
@@ -9280,6 +9291,7 @@ async function serveList(
         ...payParams(applied),
         ...extraFilterParams(applied),
         p_work_mode: applied.workMode,
+          ...(applied.employmentType ? { p_employment_type: applied.employmentType } : {}),
         p_cap: COUNT_CAP,
       });
       markFrom("count_jobs_capped_settle", t_count_jobs_capped_6);
@@ -9407,6 +9419,7 @@ async function serveList(
               ...(applied.salaryFloor !== null ? { p_salary_floor: applied.salaryFloor } : {}),
               ...(applied.companies.length ? { p_companies: applied.companies } : {}),
               ...(applied.workMode ? { p_work_mode: applied.workMode } : {}),
+        ...(applied.employmentType ? { p_employment_type: applied.employmentType } : {}),
               p_cap: COUNT_CAP,
             });
             markFrom("count_jobs_capped_settle", t_count_jobs_capped_5);
@@ -9600,6 +9613,7 @@ async function serveList(
           ...payParams(applied),
           ...extraFilterParams(applied),
           ...(applied.workMode ? { p_work_mode: applied.workMode } : {}),
+        ...(applied.employmentType ? { p_employment_type: applied.employmentType } : {}),
           p_limit: 1,
           p_offset: 0,
         });
@@ -10146,6 +10160,7 @@ async function serveList(
         // below, which filters work mode correctly. The filter is honoured on
         // every route; it is never quietly ignored again.
         ...(applied.workMode ? { p_work_mode: applied.workMode } : {}),
+        ...(applied.employmentType ? { p_employment_type: applied.employmentType } : {}),
         // A SORTED MODE READS A FIXED WINDOW, NOT A MOVING ONE.
         //
         // The in-memory sort permutes these rows, so a p_offset that advances in
@@ -10456,6 +10471,7 @@ async function serveList(
           ...payParams(applied),
           ...extraFilterParams(applied),
           p_work_mode: applied.workMode,
+          ...(applied.employmentType ? { p_employment_type: applied.employmentType } : {}),
           // One producer for the vendor list; this function spells the parameter
           // differently for the reason recorded in the migration.
           ...rescueVendorsParam(applied),
@@ -10546,6 +10562,7 @@ async function serveList(
                     ...payParams(applied),
                     ...extraFilterParams(applied),
                     ...(applied.workMode ? { p_work_mode: applied.workMode } : {}),
+        ...(applied.employmentType ? { p_employment_type: applied.employmentType } : {}),
                     p_limit: Math.max(limit * 2, 40),
                     p_offset: 0,
                   }),
@@ -11225,6 +11242,7 @@ async function serveList(
               ...payParams(applied),
               ...extraFilterParams(applied),
               ...(applied.workMode ? { p_work_mode: applied.workMode } : {}),
+        ...(applied.employmentType ? { p_employment_type: applied.employmentType } : {}),
               p_limit: fetchLimit,
               p_offset: offset + rankedRows.length,
             });

@@ -4082,7 +4082,15 @@
     "industriesAll": "Alle Branchen",
     "industriesLess": "Weniger",
     "trackedCorpus": "{{n}} erfasste Stellen inklusive geschlossener",
-    "semanticMatchChip": "inhaltlich verwandt"
+    "semanticMatchChip": "inhaltlich verwandt",
+    "employmentType": {
+      "label": "Anstellungsart",
+      "full_time": "Vollzeit",
+      "part_time": "Teilzeit",
+      "contract": "Befristet/Vertrag",
+      "temporary": "Zeitweise",
+      "internship": "Praktikum"
+    }
   },
   "accountPage": {
     "statusSaveFailed": "Status konnte nicht gespeichert werden — bitte erneut versuchen.",
