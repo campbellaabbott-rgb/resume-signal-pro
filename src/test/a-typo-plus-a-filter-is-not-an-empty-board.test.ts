@@ -202,8 +202,11 @@ describe("did-you-mean is a disclosure, never an expansion", () => {
     // when a curated pair exists. Still never wired into a query; the fourth
     // use is the line to refuse.
     expect(uses.length, "declaration + disclosure read + precedence gate — a fourth use means someone wired it into a query").toBe(3);
-    expect(code, "the third use must be the negation gate, nothing else")
-      .toMatch(/!DID_YOU_MEAN\[qText\.trim\(\)\.toLowerCase\(\)\]/);
+    // Keyed by body.q, NOT qText: the emitter (searchDisclosures) keys the map
+    // by body.q, and the review confirmed a qText key here could double-emit —
+    // qText has been through sanitization and the exclusion split.
+    expect(code, "the third use must be the negation gate, keyed exactly as the emitter")
+      .toMatch(/!DID_YOU_MEAN\[String\(body\.q \?\? ""\)\.trim\(\)\.toLowerCase\(\)\]/);
     expect(code).toMatch(/out\.didYouMean = dym/);
   });
 });

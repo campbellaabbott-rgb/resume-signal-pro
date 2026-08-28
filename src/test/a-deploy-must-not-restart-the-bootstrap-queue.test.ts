@@ -38,12 +38,23 @@ describe("a deploy must not restart the bootstrap queue", () => {
     expect(CODE).toMatch(/if \(queue\.length === 0\) \{[\s\S]{0,240}get_empty_boards/);
   });
 
-  it("BUILD_VERSION no longer triggers a re-seed", () => {
-    // The exact shape of the defect: comparing the stored version to the
-    // deployed one and rebuilding the queue when they differ.
+  it("a version change may APPEND, never REBUILD", () => {
+    // The 2026-08-01 defect was not the version COMPARISON — it was rebuilding
+    // the queue when versions differed, which restarted the drain and kept the
+    // tail forever out of reach. The comparison returned on 2026-08-28 for the
+    // opposite reason: refill-on-empty made a fresh MERGE wait a whole cycle
+    // (the Oracle tranche sat at zero for 2+ hours behind a 7.5k backlog), and
+    // the reconciliation appends the merge's boards at the BACK with the drain
+    // position untouched. So the property this pins is: inside the
+    // version-change branch, the existing queue must always be the PREFIX of
+    // the new one.
     const lane = CODE.slice(CODE.indexOf("let bootstrapBoards"), CODE.indexOf("const slice = ["));
-    expect(lane).not.toMatch(/bs\.version !== BUILD_VERSION/);
-    expect(lane).not.toMatch(/bs\.version !== \(bsMeta/);
+    const vb = lane.indexOf("bs.version !== BUILD_VERSION");
+    expect(vb, "the merge-append branch is gone").toBeGreaterThan(-1);
+    const branch = lane.slice(vb, vb + 900);
+    expect(branch, "the version branch REBUILDS the queue — the restart defect returns")
+      .not.toMatch(/queue = Array\.isArray/);
+    expect(branch).toMatch(/queue = \[\.\.\.queue, \.\.\.fresh\]/);
   });
 
   it("the drain is still optimistic, so a died slice cannot wedge the lane", () => {

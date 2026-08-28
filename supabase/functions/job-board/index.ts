@@ -102,7 +102,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-28.45"; // .45: earned did-you-mean on thin pools + slice_stats EMA instrumentation; .44: Oracle tranche 1 + ceiling 800k
+const BUILD_VERSION = "2026-08-28.46"; // .46: did-you-mean DERIVED from the augmentation\u0027s rows (the .45 version was proven dead by review + live probe); slice timing at terminal returns
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -1341,6 +1341,44 @@ function chainNextSlice(hop: number, client?: SupabaseClient) {
 // (full rotation bounded by tail size / slices-per-pass). Facets come from
 // the get_job_board_facets() RPC at pass end — always DB-true, no
 // accumulator bookkeeping.
+
+// Slice-duration recorder — called at runRefresh's TERMINAL returns so the
+// wall time covers everything a slice actually does: the fetch loop AND the
+// tail (dormancy pruning, deep-cursor writes, and on pass-end the facets
+// recompute + headline recount — measured 0.63s+ on its own). The first
+// version stamped before that tail and undercounted ~27% on pass-end slices;
+// a review caught it. EMA alpha 0.2, per phase. Fire-and-forget by design.
+//
+// KNOWN, ACCEPTED RACE (review finding, low): chain hops force past the slice
+// lock, so two near-simultaneous slices can interleave this read-modify-write
+// — the `slices` counter undercounts by one and the OTHER phase's EMA reverts
+// by one sample (self-correcting). Instrumentation-grade data; the wrapMin
+// stamp remains the load-bearing freshness measurement.
+function recordSliceStats(client: SupabaseClient, sliceWallStart: number, inHotPhase: boolean): void {
+  waitUntil((async () => {
+    try {
+      const sliceMs = Date.now() - sliceWallStart;
+      const phase = inHotPhase ? "hot" : "cold";
+      const { data: prevSs } = await client.from("job_board_meta").select("v").eq("k", "slice_stats").maybeSingle();
+      const pv = (prevSs?.v ?? {}) as { hotEmaMs?: number; coldEmaMs?: number; slices?: number };
+      const key = phase === "hot" ? "hotEmaMs" : "coldEmaMs";
+      const prevEma = typeof pv[key] === "number" ? pv[key]! : sliceMs;
+      await client.from("job_board_meta").upsert({
+        k: "slice_stats",
+        v: {
+          ...pv,
+          at: new Date().toISOString(),
+          lastMs: sliceMs,
+          lastPhase: phase,
+          [key]: Math.round(prevEma * 0.8 + sliceMs * 0.2),
+          slices: (Number(pv.slices) || 0) + 1,
+        },
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "k" });
+    } catch { /* instrumentation is a bonus */ }
+  })());
+}
+
 async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): Promise<{ ok: boolean; detail: string }> {
   // Checked at the ENTRY too, not only at the hop: pausing must also stop a
   // fresh chain started by pg_cron, a manual refresh, or any other trigger.
@@ -1460,6 +1498,27 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
         const { data: empty, error } = await client.rpc("get_empty_boards", { p_tokens: JOB_SOURCES.map((s) => s.token) });
         if (error) throw error;
         queue = Array.isArray(empty) ? empty : [];
+      } else if (bs.version !== BUILD_VERSION) {
+        // A MERGE MUST NOT WAIT FOR THE TAIL OF A 7.5K BACKLOG. Refill-on-empty
+        // (the 2026-08-24 fix) stopped deploys from restarting the drain — and
+        // quietly meant a freshly merged board waits for the whole cycle: the
+        // Oracle tranche sat at zero for 2+ hours while eight of its boards
+        // were probed live and verified fetchable. On a version change, the
+        // empties NOT already queued are APPENDED AT THE BACK: the drain
+        // position is preserved (no restart pathology), nothing is re-ordered,
+        // and the merge's boards are reached within this cycle instead of the
+        // next one. Already-drained empties re-enter at the back too — that is
+        // the lane re-verifying them once per deploy at its normal 25/slice
+        // budget, which is what the lane is for.
+        try {
+          const { data: empty } = await client.rpc("get_empty_boards", { p_tokens: JOB_SOURCES.map((s) => s.token) });
+          const have = new Set(queue);
+          const fresh = (Array.isArray(empty) ? (empty as string[]) : []).filter((t) => !have.has(t));
+          if (fresh.length > 0) {
+            queue = [...queue, ...fresh];
+            console.log(`[JOB-BOARD] bootstrap: appended ${fresh.length} empty board(s) on version change (queue ${have.size} -> ${queue.length})`);
+          }
+        } catch { /* the empty-refill path still covers this eventually */ }
       }
       if (queue.length > 0) {
         const sliceTokens = new Set([...baseSlice, ...demandBoards].map((s) => s.token));
@@ -2475,32 +2534,6 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
     { onConflict: "k" },
   );
 
-  // Slice-duration instrumentation, fire-and-forget. An EMA per phase (alpha
-  // 0.2 — a few slices to converge, steady after) turns "how fast is rotation
-  // really" from a two-snapshot manual ritual into a status field. Best-effort
-  // by design: instrumentation must never be the thing that slows the chain.
-  waitUntil((async () => {
-    try {
-      const sliceMs = Date.now() - sliceWallStart;
-      const phase = inHotPhase ? "hot" : "cold";
-      const { data: prevSs } = await client.from("job_board_meta").select("v").eq("k", "slice_stats").maybeSingle();
-      const pv = (prevSs?.v ?? {}) as { hotEmaMs?: number; coldEmaMs?: number; slices?: number };
-      const key = phase === "hot" ? "hotEmaMs" : "coldEmaMs";
-      const prevEma = typeof pv[key] === "number" ? pv[key]! : sliceMs;
-      await client.from("job_board_meta").upsert({
-        k: "slice_stats",
-        v: {
-          ...pv,
-          at: new Date().toISOString(),
-          lastMs: sliceMs,
-          lastPhase: phase,
-          [key]: Math.round(prevEma * 0.8 + sliceMs * 0.2),
-          slices: (Number(pv.slices) || 0) + 1,
-        },
-        updated_at: new Date().toISOString(),
-      }, { onConflict: "k" });
-    } catch { /* instrumentation is a bonus */ }
-  })());
 
   // Consecutive-failure pruning + dormancy: a feed that stops responding keeps its
   // postings (a transient blip must not wipe a company), but a feed dead for
@@ -2635,6 +2668,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
     const f = (facets ?? {}) as Record<string, unknown>;
     if (facetsErr || !f.total) {
       console.warn("[JOB-BOARD] facets RPC unavailable — previous refresh meta kept:", facetsErr?.message ?? "empty result");
+      recordSliceStats(client, sliceWallStart, inHotPhase);
       return { ok: true, detail: `pass complete but facets RPC unavailable (${facetsErr?.message ?? "empty result"}) — run migration 20260712080000` };
     }
     let companies = Array.isArray(f.companiesFacet) ? f.companiesFacet : [];
@@ -3339,6 +3373,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
     }
 
     await maybeKickMaintenance(client);
+    recordSliceStats(client, sliceWallStart, inHotPhase);
     return { ok: true, detail: `pass complete — corpus ${f.total} postings from ${companies.length} boards; cold rotation at ${cold}/${COLD_LIST.length}${lastUpsertError ? ` — last upsert error: ${String(lastUpsertError).slice(0, 120)}` : ""}` };
   }
 
@@ -3352,6 +3387,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
   await maybeKickMaintenance(client);
   if (chainHop < CHAIN_CAP) chainNextSlice(chainHop, client);
   const phase = inHotPhase ? `hot ${Math.min(hot, HOT_LIST.length)}/${HOT_LIST.length}` : `cold slice ${coldDone}/${COLD_SLICES_PER_PASS} (rotation ${cold}/${COLD_LIST.length})`;
+  recordSliceStats(client, sliceWallStart, inHotPhase);
   return { ok: true, detail: `slice done (${sliceTotal} postings, ${failed.length} failed) — ${phase}` };
 }
 
@@ -11236,6 +11272,7 @@ async function serveList(
         // inside the augmentation band — and the visitor saw that single junk
         // result with no close matches offered.
         const FUZZY_AUGMENT_BELOW = 20;
+        let fuzzyTitlesForDym: string[] | null = null;
         let fuzzyExtraOut: { q: string; count: number } | null = null;
         let semanticExtraOut: { q: string; count: number } | null = null;
         // GATED ON THE WHOLE PAGE, NOT ON THE EXACT SEGMENT, and no longer fenced
@@ -11250,6 +11287,12 @@ async function serveList(
               ...rescueFilterParams(),
             });
             markFrom("fuzzy_title_search", t_fuzzy_title_search_0);
+            // Captured for the earned did-you-mean below: the derivation reads
+            // THESE rows instead of paying a second identical RPC (a review
+            // caught the duplicate call, and with it the class mismatch — this
+            // block's own pageTotal gate IS the thin-page contract the
+            // suggestion claims).
+            if (!fzErr && Array.isArray(fz)) fuzzyTitlesForDym = (fz as Array<{ title?: unknown }>).map((r) => String(r.title ?? ""));
             if (!fzErr && Array.isArray(fz) && fz.length > 0) {
               // Dedupe by CLUSTER, not by id. An id-only check let a fuzzy row
               // that is a collapsed sibling of an exact match through (different
@@ -11389,51 +11432,52 @@ async function serveList(
         // response argues from the same row count.
         const shownRowCount = rankedGrouped.jobs.length;
         const totalUnderstated = !augmented && typeof total === "number" && (offset + shownRowCount) > total;
-        // DID-YOU-MEAN, EARNED RATHER THAN CURATED. The curated map holds two
-        // measured pairs and can never keep up with typos. When the exact pool
-        // is THIN (below FUZZY_AUGMENT_BELOW, the augmentation's own corrected
-        // boundary — the "< 5" literal once left the 5-result typo page with
-        // nothing, and that guard applies here too; zero gets the full fuzzy
-        // rescue instead), one
-        // trigram call finds what similar titles actually say, and a query token
-        // within two edits of a word that appears in three or more of them is a
-        // misspelling with a measured correction. Disclosure only — the rows on
-        // the page are untouched, the client renders the one-click suggestion —
-        // and the curated map keeps precedence (its pairs are semantic, not
-        // edit-distance reachable: krankenschwester -> pflegefachkraft).
+        // DID-YOU-MEAN, EARNED RATHER THAN CURATED — DERIVED, NEVER FETCHED.
+        //
+        // The first version of this paid its own fuzzy_title_search call and
+        // shipped DEAD: it gated on the RPC's total_rows >= 10, and total_rows
+        // is capped by the call's own LIMIT of 8 — the exact "a count that
+        // tracks p_limit" trap this file already documents. An adversarial
+        // review caught that, the duplicate RPC (the augmentation above had
+        // just fetched the same rows), the class mismatch (gating on the exact
+        // segment fired the RPC on healthy 15-exact/300-related pages), and a
+        // tokenizer that shattered "büroassistent" into a garbage correction.
+        //
+        // Now: pure CPU over the rows the augmentation ALREADY fetched, so the
+        // cost is zero and the class is exactly the augmentation's own
+        // thin-PAGE gate. A query token within two edits of a word appearing
+        // in >= 3 of >= 5 sampled titles is a misspelling with a measured
+        // correction; the curated map keeps precedence, KEYED THE SAME WAY the
+        // emitter keys it (body.q — qText has been through sanitization and
+        // the exclusion split, and a mismatch here double-emits).
         let earnedDym: string | null = null;
         if (
-          total !== null && total > 0 && total < FUZZY_AUGMENT_BELOW && offset === 0 && !countOnly && !newestFirst &&
-          !DID_YOU_MEAN[qText.trim().toLowerCase()] && budgetLeft() > 2_500
+          fuzzyTitlesForDym && fuzzyTitlesForDym.length >= 5 && !newestFirst &&
+          !DID_YOU_MEAN[String(body.q ?? "").trim().toLowerCase()]
         ) {
           try {
-            const { data: fz } = await withDeadline(
-              client.rpc("fuzzy_title_search", { p_q: qText, p_fresh_cutoff: freshCutoffIso, p_limit: 8, ...rescueFilterParams() }),
-              Math.min(2_000, budgetLeft()),
-            ) as { data: Array<{ title?: string; total_rows?: number }> | null };
-            const titles = (fz ?? []).map((r) => String(r.title ?? "").toLowerCase());
-            const fzTotal = Number((fz?.[0] as { total_rows?: number } | undefined)?.total_rows) || titles.length;
-            if (titles.length >= 3 && fzTotal >= 10) {
-              const titleWords = titles.map((t) => new Set(t.split(/[^a-z]+/).filter((w) => w.length >= 4)));
-              const allWords = new Set(titleWords.flatMap((ws) => [...ws]));
-              const tokens = qText.toLowerCase().split(/[^a-z]+/).filter((w) => w.length >= 4);
-              for (const tok of tokens) {
-                if (allWords.has(tok)) continue; // spelled right — appears verbatim in similar titles
-                for (const w of allWords) {
-                  if (w === tok || !within2Edits(tok, w)) continue;
-                  // Consistency bar: the correction must appear across the pool,
-                  // not in one lucky title.
-                  const support = titleWords.filter((ws) => ws.has(w)).length;
-                  if (support >= 3) {
-                    // Word-boundary, not substring: a bare replace("art", ...) on
-            // "cart art designer" corrupts "cart" first. tok is [a-z]+ by
-            // construction (split on non-letters), so it is regex-safe.
-            earnedDym = qText.toLowerCase().replace(new RegExp(`\\b${tok}\\b`), w);
-                    break;
-                  }
+            const titles = fuzzyTitlesForDym.map((t) => t.toLowerCase());
+            // Unicode letters, not [a-z]: splitting on ä/é shatters a word and
+            // then "corrects" the fragment inside it.
+            const titleWords = titles.map((t) => new Set(t.split(/[^\p{L}]+/u).filter((w) => w.length >= 4)));
+            const allWords = new Set(titleWords.flatMap((ws) => [...ws]));
+            const tokens = qText.toLowerCase().split(/[^\p{L}]+/u).filter((w) => w.length >= 4);
+            for (const tok of tokens) {
+              if (allWords.has(tok)) continue; // spelled right — appears verbatim in similar titles
+              for (const w of allWords) {
+                if (w === tok || !within2Edits(tok, w)) continue;
+                // Consistency bar: the correction must appear across the pool,
+                // not in one lucky title.
+                const support = titleWords.filter((ws) => ws.has(w)).length;
+                if (support >= 3) {
+                  // Word-boundary, not substring: replace("art", ...) on
+                  // "cart art designer" corrupts "cart" first. \p{L} tokens
+                  // are regex-safe by construction.
+                  earnedDym = qText.toLowerCase().replace(new RegExp(`(?<=^|[^\\p{L}])${tok}(?=$|[^\\p{L}])`, "u"), w);
+                  break;
                 }
-                if (earnedDym) break;
               }
+              if (earnedDym) break;
             }
           } catch { /* a suggestion is a bonus — the thin page stands */ }
         }

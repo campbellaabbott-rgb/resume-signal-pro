@@ -326,7 +326,12 @@ const PINNED = {
   // 2026-08-28.45: earned did-you-mean (thin exact pools, trigram-supported
   // corrections within two edits, curated map keeps precedence) + slice_stats
   // EMA instrumentation exposed on status.
-  buildVersion: "2026-08-28.45",
+  // 2026-08-28.46: the .45 did-you-mean was DEAD ON ARRIVAL — gated on the
+  // RPC's total_rows, which its own LIMIT caps below the gate; proven by an
+  // adversarial review and a live probe in the same hour. Now derived from
+  // the augmentation's already-fetched rows (zero extra RPCs), Unicode-safe,
+  // keyed to the emitter; slice timing moved to terminal returns.
+  buildVersion: "2026-08-28.46",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {
