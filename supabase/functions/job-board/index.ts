@@ -920,8 +920,21 @@ async function tierLists(client: SupabaseClient): Promise<{ hotList: JobSource[]
     coldList: interleaveByVendor(JOB_SOURCES.filter((s) => !hot.has(s.token))),
   };
 }
-// 80×120 = 9,600 cold boards/pass. Slice size stays the proven-safe 80 — more
-// hops, never bigger hops. SR_CAP still bounds any single board's fetch.
+// 80x160 = 12,800 cold boards/pass (the header said 9,600 for a week after the
+// 160 raise — stale wrap math is how rotation health gets misjudged, so the
+// arithmetic lives next to the constant it describes). Slice size stays the
+// proven-safe 80 — more hops, never bigger hops. SR_CAP still bounds any
+// single board's fetch.
+//
+// MEASURED 2026-08-27 at 31.5k cold boards, two windows: the pure cold-phase
+// rate is ~52 boards/min (one 80-board slice per ~1.5 min) — AT the 46/min
+// benchmark — while the wrap in flight was already ~16h old, half again the
+// ~11.4h a benchmark wrap takes. Slice throughput is healthy; the missing
+// time is BETWEEN slices and passes: hot phases (~110 giants at ~13s each,
+// ~24 min/pass), pass-end blocks, idle gaps to the next cron kick, and any
+// mid-wrap chain death the backup cron had to recover. Judge wraps by the
+// wrapMin stamp (written at wrap since .41), never by a rate window inside a
+// hot phase — the cold cursor legitimately parks for ~25 minutes there.
 //
 // Sized from measurement, not intuition (2026-07-25, 28,055-board catalog):
 // a cold hop takes ~12-18s, so 48 hops is only ~12 min of work — yet a full
@@ -3031,7 +3044,8 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
     // anyway, which is the kind of half-fix that reads as done and is not.
     //
     // Cadence only, never coverage: an excluded board keeps full cold-tier
-    // refresh. The hot tier re-fetches every ~10-15 min at HOT_CONCURRENCY=2
+    // refresh. The hot tier re-fetches once per PASS (~60-90+ min at 160 cold
+    // slices — the old "~10-15 min" here predates the 120/160 raises) at HOT_CONCURRENCY=2
     // because its members are giants; a per-store delivery-driver vacancy does
     // not need that, and the slot goes to a board where a stale posting costs
     // someone a real application.
