@@ -102,7 +102,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-27.42"; // .42: census CC-MAIN-2026-34 merge — 1,031 boards. The bump is what puts them in the bootstrap lane (2026-08-01 incident); .41: coverage one-scan + wrapMin
+const BUILD_VERSION = "2026-08-27.43"; // .43: the homepage said 200 companies — two sites derived the count from the head row\u0027s truncated facet, and the head row lacked coverage.tracked; .42: census merge
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -3053,7 +3053,13 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
       failedSources: v.failedSources,
       failedCount: v.failedCount,
       categoriesFacet: v.categoriesFacet,
-      ...(coverage ? { coverage } : {}),
+      // tracked rides in coverage because that is where trackedTotal reads it.
+      // refresh_headline_open patched ONLY the fat row, so the moment serving
+      // preferred the head row the homepage lost its tracked figure — f.total
+      // IS the tracked corpus (the unfiltered count this same pass took), and
+      // 20260828001000 teaches the patcher to keep both rows fresh between
+      // passes.
+      ...(coverage ? { coverage: { ...coverage, tracked: v.total } } : {}),
       refreshedAt: v.refreshedAt,
       companiesCount: companies.length,
       companiesFacet: [...companies].sort((a, b) => (b.count ?? 0) - (a.count ?? 0)).slice(0, 200),
@@ -11392,7 +11398,12 @@ async function serveList(
             ? facetHead(fullCompanies0 as Array<{ token?: string; name?: string; count?: number }>)
                 .sort((a, b) => (b.count ?? 0) - (a.count ?? 0))
             : [],
-          companiesCount: fullCompanies0.length,
+          // NEVER the slice's length. The serving row is refresh_head now,
+          // whose companiesFacet is deliberately truncated to 200 — deriving
+          // the count from it published "200 companies" on the homepage the
+          // first evening the head row qualified. The stored count first, the
+          // length only for the fat-row fallback whose facet is complete.
+          companiesCount: ((v0.companiesCount as number | undefined) ?? fullCompanies0.length),
           // Board-wide, from the cached facet row — CORRECT only on the unfiltered
           // view. Rendered inside a filtered view it overstated by 15.7x to 45x
           // (sum 587,793 shown beside a filtered total of 10,000 or less), which
@@ -11928,7 +11939,8 @@ async function serveList(
     totalAllCompanies: safeMetaTotal ?? count ?? 0,
     ...(trackedTotal !== null ? { trackedTotal } : {}),
     companies: servedCompanies,
-    companiesCount: fullCompanies.length,
+    // Same rule as the ranked sites: the head row's facet is a 200-row slice.
+    companiesCount: ((v.companiesCount as number | undefined) ?? fullCompanies.length),
     // Gated like the other three. A board-wide facet printed beside a FILTERED
     // result set promises more jobs than the filter can deliver — "Engineering
     // 67,898" next to a country=GB page whose entire scope is 19,633. Today's fix

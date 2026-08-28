@@ -314,7 +314,11 @@ const PINNED = {
   // "clears" (Gotham, Symicor, UBT) were convicted by reading real posting
   // text and excluded. The bump is load-bearing: without it the new boards
   // queue invisibly behind the full cold rotation (2026-08-01).
-  buildVersion: "2026-08-27.42",
+  // 2026-08-27.43: the homepage said "200 companies" — two response sites
+  // published the head row's truncated facet length as the employer count,
+  // and the head row lacked coverage.tracked so trackedTotal vanished. Pairs
+  // with 20260828001000 (the headline patcher now patches both rows).
+  buildVersion: "2026-08-27.43",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {
