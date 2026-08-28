@@ -13,6 +13,7 @@
     "test:watch": "vitest",
     "typecheck": "tsc -p tsconfig.app.json --noEmit",
     "prepare": "node scripts/install-hooks.mjs",
+    "postinstall": "cd worker && (bun install --silent || npm install --silent) && cd ..",
     "hooks:install": "node scripts/install-hooks.mjs",
     "check:functions": "bash scripts/check-functions.sh",
     "smoke": "node scripts/post-publish-smoke.mjs",
