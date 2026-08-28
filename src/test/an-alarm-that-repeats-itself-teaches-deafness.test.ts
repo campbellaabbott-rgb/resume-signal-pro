@@ -29,9 +29,19 @@ describe("the heartbeat alerts on change, not on schedule", () => {
       .toMatch(/eq\('k', 'heartbeat_alert_state'\)/);
   });
 
-  it("suppresses a repeat of the same failing set for a day", () => {
+  it("a flapping check emails once per day, and a shrink never emails", () => {
+    // Measured on the user's own inbox: verification_ceiling flapped in and
+    // out of the failing set as rotation caught up, and fingerprint EQUALITY
+    // emailed every flip — including the shrink, an email whose only news was
+    // "less is wrong than before". News is now per-CHECK with a 24h clock;
+    // getting better is only ever announced by the whole-board recovery note.
     expect(CODE).toMatch(/const REMIND_MS = 24 \* 60 \* 60_000/);
-    expect(CODE).toMatch(/sameState && Number\.isFinite\(lastSent\) && Date\.now\(\) - lastSent < REMIND_MS/);
+    expect(CODE, "per-check alert clock is gone").toMatch(/const newsChecks = failedChecks\.filter/);
+    expect(CODE, "escalation to down must always send")
+      .toMatch(/status === 'down' && !String\(prev\.fingerprint \?\? ''\)\.startsWith\('down'\)/);
+    expect(CODE, "the daily reminder must survive").toMatch(/remindDue/);
+    expect(CODE, "a silent run must still keep the state row current — the recovery note depends on it")
+      .toMatch(/lastSentAt: shouldSend \? new Date\(\)\.toISOString\(\) : \(prev\.lastSentAt/);
   });
 
   it("keeps the rate cap as a flap backstop, after the fingerprint gate", () => {

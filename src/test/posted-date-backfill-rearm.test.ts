@@ -263,6 +263,8 @@ describe("the heartbeat watches the vendors that depend on the sweep", () => {
     // version is the only external tell of which bundle answered.
     // 2026-08-28.4: facets and explore_cache staleness checks — the last two
     // cron-built rows real pages serve from that nothing watched.
+    // 2026-08-28.5: per-check alert clocks — a flapping check emails once per
+    // day and a set-shrink never emails (the user's inbox measured the flap).
     expect(HB).toMatch(/const BUILD_VERSION = "2026-08-2[78]\.\d+"/);
   });
 

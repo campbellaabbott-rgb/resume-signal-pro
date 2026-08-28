@@ -105,7 +105,7 @@ function unanswered(r: { timedOut?: boolean; failed?: boolean }, fn: string, ms:
  *
  * BUMP ON EVERY DEPLOY of this function.
  */
-const BUILD_VERSION = "2026-08-28.4";
+const BUILD_VERSION = "2026-08-28.5";
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -1989,18 +1989,53 @@ async function sendHeartbeatAlert(
         const stateClient = createClient(supabaseUrl, serviceKey);
         const { data: st } = await stateClient
           .from('job_board_meta').select('v').eq('k', 'heartbeat_alert_state').maybeSingle();
-        const prev = (st?.v ?? {}) as { fingerprint?: string; lastSentAt?: string };
+        const prev = (st?.v ?? {}) as { fingerprint?: string; lastSentAt?: string; alerted?: Record<string, string> };
         const lastSent = Date.parse(prev.lastSentAt ?? '');
-        const sameState = prev.fingerprint === fingerprint;
         const REMIND_MS = 24 * 60 * 60_000;
-        if (sameState && Number.isFinite(lastSent) && Date.now() - lastSent < REMIND_MS) {
-          console.log(`[SCAN-HEARTBEAT] Alert suppressed — same failing set already reported ${Math.round((Date.now() - lastSent) / 60_000)}m ago (daily reminder pending)`);
-          return;
+        const alerted = (prev.alerted && typeof prev.alerted === 'object') ? prev.alerted : {};
+
+        // FLAP-PROOF, measured on the user's own inbox: verification_ceiling
+        // oscillated in and out of the failing set as rotation caught up, and
+        // under fingerprint-equality EVERY flip emailed — including the SHRINK
+        // (an email whose news was "less is wrong than before"). Two rules
+        // replace equality:
+        //   * a check is NEWS only if it has not been alerted in 24h — a
+        //     flapping check emails once per day, not once per flip;
+        //   * a shrink is never news — the whole-board recovery note is the
+        //     only "getting better" email worth sending.
+        // Escalation to DOWN always sends: a worsening severity is news even
+        // when the failing set is unchanged.
+        const now = Date.now();
+        const newsChecks = failedChecks.filter((c) => {
+          const at = Date.parse(alerted[c.name] ?? '');
+          return !Number.isFinite(at) || now - at >= REMIND_MS;
+        });
+        const escalated = status === 'down' && !String(prev.fingerprint ?? '').startsWith('down');
+        const remindDue = prev.fingerprint === fingerprint && Number.isFinite(lastSent) && now - lastSent >= REMIND_MS;
+        const shouldSend = newsChecks.length > 0 || escalated || remindDue;
+
+        // The state row is kept CURRENT even when silent, so the recovery note
+        // and the reminder clock stay truthful across silent shrinks.
+        const nextAlerted: Record<string, string> = {};
+        for (const c of failedChecks) {
+          nextAlerted[c.name] = shouldSend ? new Date().toISOString() : (alerted[c.name] ?? new Date().toISOString());
         }
         await stateClient.from('job_board_meta').upsert(
-          { k: 'heartbeat_alert_state', v: { fingerprint, lastSentAt: new Date().toISOString() }, updated_at: new Date().toISOString() },
+          {
+            k: 'heartbeat_alert_state',
+            v: {
+              fingerprint,
+              lastSentAt: shouldSend ? new Date().toISOString() : (prev.lastSentAt ?? new Date().toISOString()),
+              alerted: nextAlerted,
+            },
+            updated_at: new Date().toISOString(),
+          },
           { onConflict: 'k' },
         );
+        if (!shouldSend) {
+          console.log(`[SCAN-HEARTBEAT] Alert suppressed — no unalerted check (24h/check), no escalation, no reminder due (${fingerprint})`);
+          return;
+        }
       }
     } catch (_e) { /* fall through — the cap below still bounds the volume */ }
 
