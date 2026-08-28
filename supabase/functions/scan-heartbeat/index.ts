@@ -105,7 +105,7 @@ function unanswered(r: { timedOut?: boolean; failed?: boolean }, fn: string, ms:
  *
  * BUMP ON EVERY DEPLOY of this function.
  */
-const BUILD_VERSION = "2026-08-27.3";
+const BUILD_VERSION = "2026-08-28.4";
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -363,6 +363,15 @@ serve(async (req) => {
       // this endpoint reported healthy.
       const transparencyCacheP = supabase
         .from('job_board_meta').select('updated_at').eq('k', 'transparency_cache').maybeSingle();
+      // The other two cron-built rows real pages serve from, with the same
+      // blind spot transparency_cache had until 2026-08-27: nothing watched
+      // them. facets feeds the /jobs filter rail every 15 minutes; explore
+      // feeds /explore hourly. A stalled refresh does not slow either page —
+      // it silently serves older and older numbers.
+      const facetsCacheP = supabase
+        .from('job_board_meta').select('updated_at').eq('k', 'facets').maybeSingle();
+      const exploreCacheP = supabase
+        .from('job_board_meta').select('updated_at').eq('k', 'explore_cache').maybeSingle();
 
       const { data: prog, error } = await supabase
         .from('job_board_meta')
@@ -701,6 +710,39 @@ serve(async (req) => {
         }
       } catch (e) {
         skip('job_board_transparency_cache', e instanceof Error ? e.message : 'unreadable transparency_cache');
+      }
+
+      // Same skip/degrade contract as transparency_cache, bounds scaled to
+      // each cron: facets runs every 15 minutes (60-min bound = four missed
+      // ticks), explore hourly (the shared 240-min bound).
+      for (const [checkName, prom, boundMin, cadence] of [
+        ['job_board_facets_cache', facetsCacheP, 60, '15-min cron'],
+        ['job_board_explore_cache', exploreCacheP, SC_STALL_DEGRADE_MIN, 'hourly cron'],
+      ] as const) {
+        try {
+          const res = await prom;
+          const row = res.data as { updated_at?: string } | null;
+          const ageMin = row?.updated_at
+            ? Math.round((Date.now() - new Date(row.updated_at).getTime()) / 60000)
+            : null;
+          if (res.error) skip(checkName, res.error.message);
+          else if (ageMin === null) skip(checkName, `${checkName.replace('job_board_', '')} row missing — its refresh has never run`);
+          else {
+            const stale = ageMin > boundMin;
+            checks.push({
+              name: checkName,
+              passed: !stale,
+              responseTimeMs: 0,
+              error: stale ? `${checkName.replace('job_board_', '')} is ${ageMin} min old (${cadence}; ${boundMin} min bound) — the page it feeds is serving stale numbers` : undefined,
+            });
+            if (stale) {
+              if (overallStatus === 'healthy') overallStatus = 'degraded';
+              errorMessage = errorMessage ?? `${checkName.replace('job_board_', '')} refresh looks stalled (${ageMin} min)`;
+            }
+          }
+        } catch (e) {
+          skip(checkName, e instanceof Error ? e.message : 'unreadable');
+        }
       }
 
       try {

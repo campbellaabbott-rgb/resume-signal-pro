@@ -192,6 +192,15 @@ describe("a public page served from a cache has something watching the cache", (
     expect(hb.slice(at, at + 120)).toMatch(/SC_STALL_DEGRADE_MIN/);
   });
 
+  it("watches the facets and explore rows with the same contract", () => {
+    // The remaining two cron-built rows real pages serve from. Same rule:
+    // a stalled refresh must degrade, an unreadable row must skip loudly.
+    expect(hb).toMatch(/job_board_facets_cache/);
+    expect(hb).toMatch(/job_board_explore_cache/);
+    expect(hb).toMatch(/eq\('k', 'facets'\)/);
+    expect(hb).toMatch(/eq\('k', 'explore_cache'\)/);
+  });
+
   it("records a skip when the row is missing or unreadable, rather than vanishing", () => {
     // The failure this endpoint is most prone to: a check that cannot be
     // evaluated silently disappears from the payload instead of saying so.

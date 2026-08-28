@@ -261,7 +261,9 @@ describe("the heartbeat watches the vendors that depend on the sweep", () => {
     // no longer exists.
     // The pin moves with every scan-heartbeat change, deliberately: the
     // version is the only external tell of which bundle answered.
-    expect(HB).toMatch(/const BUILD_VERSION = "2026-08-27\.\d+"/);
+    // 2026-08-28.4: facets and explore_cache staleness checks — the last two
+    // cron-built rows real pages serve from that nothing watched.
+    expect(HB).toMatch(/const BUILD_VERSION = "2026-08-2[78]\.\d+"/);
   });
 
   it("reads the ROLLUP, not the cache that was frozen when this shipped", () => {
