@@ -37,19 +37,30 @@ const EN = JSON.parse(read("src/i18n/locales/en.json"));
 const JOBS = read("src/pages/Jobs.tsx");
 
 describe("the rotation SLA is anchored on what rotations measurably take", () => {
-  it("the wrap writer stamps the measured duration", () => {
+  it("the wrap writer stamps the measured duration, and never a poisoned one", () => {
     expect(BOARD, "wrapMin is not written — the SLA has no measured basis")
       .toMatch(/wrapMin !== null \? \{ wrapMin \} : \{\}/);
-    // Duration is previous-stamp-to-now, so the very first wrap has no basis
-    // and must not invent one.
-    expect(BOARD).toMatch(/Number\.isFinite\(prevAt\) \? Math\.round\(\(Date\.now\(\) - prevAt\) \/ 60_000\) : null/);
+    // The pre-wrap read's error must be CHECKED: this upsert replaces the
+    // whole v row, so a silently failed read would delete the measurement and
+    // revert the SLA to the fallback with nothing logged (review finding).
+    expect(BOARD, "the pre-wrap read discards its error again")
+      .toMatch(/prevRotErr/);
+    expect(BOARD, "a failed read must be loud").toMatch(/cold_rotation pre-wrap read failed/);
+    // And never wrapMin 0: chain hops force past the slice lock, so two
+    // chains wrapping within a minute could stamp a zero the reader discards.
+    expect(BOARD).toMatch(/rawWrap >= 1 \? rawWrap : null/);
   });
 
   it("the SLA prefers the measured wrap and keeps both backstops", () => {
     expect(HB, "the measured basis is gone").toMatch(/lastWrapMin \* 1\.5/);
-    // Floor: never below the formula's own expectation — measurement must not
-    // excuse a rotation the shape itself says should be faster.
-    expect(HB).toMatch(/Math\.max\(120, Math\.ceil\(expectedWrapMin \* 1\.4\), slaBasis\)/);
+    // Floor: never below the benchmark expectation — one freak-fast wrap must
+    // not ratchet the SLA down and alarm on the next normal one. The
+    // expectation itself uses the MEASURED 46 boards/min benchmark, not the
+    // 0.95-min/hop hope: with the old constant the no-measurement fallback was
+    // itself the structurally-red alarm (525-min SLA vs healthy 685-960-min
+    // wraps), so a single unstamped wrap rearmed the disease.
+    expect(HB).toMatch(/coldBoards \/ 46/);
+    expect(HB).toMatch(/Math\.max\(120, Math\.ceil\(expectedWrapMin \* 1\.5\), slaBasis\)/);
     // Ceiling: no history of slow wraps normalizes slower-than-daily.
     expect(HB).toMatch(/Math\.min\(1440,/);
   });

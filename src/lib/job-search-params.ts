@@ -73,7 +73,13 @@ export function searchName(p: JobSearchParams, categoryLabel?: string, experienc
       p.salaryCeiling ? `≤$${Math.round(p.salaryCeiling / 1000)}k` : "",
       p.payBasis ?? "",
       p.hasStatedPay ? "pay stated" : "",
-      p.maxYears != null ? `≤${p.maxYears} yrs` : "",
+      // Truthy, not != null: 0 is the picker's off position and is refused by
+      // the board (1..20), so it must never surface as "≤0 yrs".
+      p.maxYears ? `≤${p.maxYears} yrs` : "",
+      // Two searches differing ONLY in this widening must not share a name —
+      // UNIQUE(user_id, name) would refuse the second save with "already
+      // saved", silently (review finding).
+      p.includeUnstatedPay ? "incl. unlisted pay" : "",
       p.department ?? "",
       p.vendor ?? "",
       p.maxAgeDays ? `last ${p.maxAgeDays}d` : "",
@@ -114,7 +120,7 @@ export function searchToQuery(p: JobSearchParams): string {
   if (p.payBasis) qs.set("payBasis", p.payBasis);
   if (p.hasStatedPay) qs.set("statedPay", "1");
   if (p.includeUnstatedPay) qs.set("inclUnstatedPay", "1");
-  if (p.maxYears != null) qs.set("maxYears", String(p.maxYears));
+  if (p.maxYears) qs.set("maxYears", String(p.maxYears));
   if (p.department) qs.set("department", p.department);
   if (p.vendor) qs.set("vendor", p.vendor);
   const s = qs.toString();
@@ -153,7 +159,7 @@ export function searchToBoardBody(p: JobSearchParams): Record<string, unknown> {
     payBasis: p.payBasis || undefined,
     hasStatedPay: p.hasStatedPay || undefined,
     includeUnstatedPay: p.includeUnstatedPay || undefined,
-    maxYears: p.maxYears ?? undefined,
+    maxYears: p.maxYears || undefined,
     department: p.department || undefined,
     // Wire name `vendor` (the board pluralises internally) — see filters.ts.
     vendor: p.vendor || undefined,

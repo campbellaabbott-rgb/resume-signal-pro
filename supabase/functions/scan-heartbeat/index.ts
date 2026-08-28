@@ -435,12 +435,24 @@ serve(async (req) => {
       // and a hard 24h ceiling means no history of slow wraps can ever excuse
       // a rotation slower than daily — the absolute promise the 30-day window
       // and verify-on-apply do not cover on their own.
-      const expectedWrapMin = Math.ceil((coldBoards / 80) * 0.95);
+      // The fallback's per-hop constant is the MEASURED benchmark now, not the
+      // 0.95-min hope: 46 cold boards/min was measured twice (the fast-lane
+      // incident, and re-confirmed 2026-08-27 at 52.6/min in a pure cold-phase
+      // window). With the old constant the no-measurement fallback promised a
+      // 525-min SLA against healthy 685-960-min wraps — so any pass that
+      // failed to stamp wrapMin (first wrap, or a failed pre-wrap read, which
+      // the writer now logs) rearmed the structurally-red alarm this change
+      // exists to kill.
+      const expectedWrapMin = Math.ceil(coldBoards / 46);
       const lastWrapMin = typeof (rotV as { wrapMin?: number }).wrapMin === 'number' && (rotV as { wrapMin?: number }).wrapMin! > 0
         ? (rotV as { wrapMin?: number }).wrapMin!
         : null;
-      const slaBasis = lastWrapMin !== null ? Math.ceil(lastWrapMin * 1.5) : Math.ceil(expectedWrapMin * 1.4);
-      const COLD_ROTATION_SLA_MIN = Math.min(1440, Math.max(120, Math.ceil(expectedWrapMin * 1.4), slaBasis));
+      const slaBasis = lastWrapMin !== null ? Math.ceil(lastWrapMin * 1.5) : Math.ceil(expectedWrapMin * 1.5);
+      // max() keeps the benchmark expectation as a FLOOR: one freakishly fast
+      // wrap must not ratchet the SLA down and then alarm on the next normal
+      // one. min() keeps the daily ceiling: no history of slow wraps excuses
+      // slower-than-daily.
+      const COLD_ROTATION_SLA_MIN = Math.min(1440, Math.max(120, Math.ceil(expectedWrapMin * 1.5), slaBasis));
       const rotStale = rotAgeMin !== null && rotAgeMin > COLD_ROTATION_SLA_MIN;
       // AN UNREADABLE ROTATION IS NOT A FRESH ONE. `rotAgeMin` is null whenever
       // the cold_rotation row is missing or the read failed, and `rotStale` was

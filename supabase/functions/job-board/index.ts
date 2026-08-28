@@ -102,7 +102,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-27.41"; // .41: nine coverage figures from one scan + measured wrap duration; .40: thin-segment split gate
+const BUILD_VERSION = "2026-08-27.42"; // .42: census CC-MAIN-2026-34 merge — 1,031 boards. The bump is what puts them in the bootstrap lane (2026-08-01 incident); .41: coverage one-scan + wrapMin
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -2428,10 +2428,22 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
     // Alarms compare against what rotations MEASURABLY take, not what a
     // constant hoped. lastWrapMin is null on the first wrap ever; the reader
     // falls back to the formula until one real duration exists.
-    const { data: prevRot } = await client.from("job_board_meta")
+    // ERROR-CHECKED, because this upsert replaces the whole v row: a read
+    // that failed silently would write a stamp WITHOUT wrapMin and revert the
+    // heartbeat to its fallback SLA for the entire next rotation, with the
+    // failure indistinguishable from "first wrap ever". A review agent caught
+    // exactly that — the discarded error — before it shipped.
+    const { data: prevRot, error: prevRotErr } = await client.from("job_board_meta")
       .select("v").eq("k", "cold_rotation").maybeSingle();
+    if (prevRotErr) {
+      console.error(`[JOB-BOARD] cold_rotation pre-wrap read failed (${prevRotErr.code ?? ""} ${String(prevRotErr.message ?? "").slice(0, 100)}) — this wrap's duration will not be stamped`);
+    }
     const prevAt = Date.parse(String((prevRot?.v as { completedAt?: string } | null)?.completedAt ?? ""));
-    const wrapMin = Number.isFinite(prevAt) ? Math.round((Date.now() - prevAt) / 60_000) : null;
+    // >= 1, not merely finite: chain hops run with force=true past the slice
+    // lock, so two chains wrapping within a minute could stamp wrapMin 0 —
+    // which the reader would discard anyway. Better never to write it.
+    const rawWrap = Number.isFinite(prevAt) ? Math.round((Date.now() - prevAt) / 60_000) : 0;
+    const wrapMin = !prevRotErr && rawWrap >= 1 ? rawWrap : null;
     await client.from("job_board_meta").upsert(
       {
         k: "cold_rotation",
@@ -2977,12 +2989,26 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
         if (coverageFailed.length) {
           console.warn(`[JOB-BOARD] filter coverage carried forward for: ${coverageFailed.join(", ")}`);
         }
+        // THE FIVE LIVE FIGURES THE ONE-SCAN RPC PRODUCES must survive a pass
+        // where the RPC fails and this fallback runs — the upsert replaces v
+        // whole, so leaving them out of this return DELETES them and the
+        // disclosure silently reverts to the dated pinned constants. Carried
+        // from prevCoverage exactly like a failed count's own figure is.
+        const carryLive = (name: string) => {
+          const old = (prevCoverage ?? {} as Record<string, unknown>)[name];
+          if (typeof old === "number") { coverageFailed.push(name); return old; }
+          return null;
+        };
         return {
           open,
           salaryFloor: keep("salaryFloor", sal),
           workMode: keep("workMode", wm),
           experience: keep("experience", exp),
           country: keep("country", ctry),
+          payBasis: carryLive("payBasis"),
+          hasStatedPay: carryLive("hasStatedPay"),
+          maxYears: carryLive("maxYears"),
+          department: carryLive("department"),
           ...(coverageFailed.length ? { staleParts: coverageFailed } : {}),
         };
         // `open` doubles as the honest board total — see the headline note in

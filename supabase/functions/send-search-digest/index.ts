@@ -67,7 +67,7 @@ function boardUrl(p: SearchParams): string {
   if (p.payBasis) qs.set("payBasis", p.payBasis);
   if (p.hasStatedPay) qs.set("statedPay", "1");
   if (p.includeUnstatedPay) qs.set("inclUnstatedPay", "1");
-  if (p.maxYears != null) qs.set("maxYears", String(p.maxYears));
+  if (p.maxYears) qs.set("maxYears", String(p.maxYears));
   if (p.department) qs.set("department", p.department);
   if (p.vendor) qs.set("vendor", p.vendor);
   const s = qs.toString();
@@ -165,7 +165,7 @@ Deno.serve(async (req) => {
             payBasis: p.payBasis || undefined,
             hasStatedPay: p.hasStatedPay || undefined,
             includeUnstatedPay: p.includeUnstatedPay || undefined,
-            maxYears: p.maxYears ?? undefined,
+            maxYears: p.maxYears || undefined,
             department: p.department || undefined,
             vendor: p.vendor || undefined,
             includeFacets: false,

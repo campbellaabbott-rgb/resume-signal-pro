@@ -1551,7 +1551,11 @@ export default function Jobs() {
       payBasis: payBasis || undefined,
       hasStatedPay: statedPayOnly || undefined,
       includeUnstatedPay: includeUnstatedPay || undefined,
-      maxYears: maxYears ?? undefined,
+      // || not ??: this control's rest state is 0 ("0 = off"), and filters.ts
+      // refuses 0 outright (1..20) — saving it stamped a phantom "≤0 yrs" into
+      // every saved search's name and a standing ignoredFilters warning into
+      // every digest run (review finding, caught before shipping).
+      maxYears: maxYears || undefined,
       department: department || undefined,
       vendor: vendor || undefined,
     };

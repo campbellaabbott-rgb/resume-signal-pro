@@ -175,7 +175,7 @@ const PINNED = {
   // as a matter of course this time — the .2 bump had to be made retroactively
   // after three commits shipped undeployed behind an unchanged version string,
   // and "is it live?" cost six behavioural probes to answer.
-  sourcesHash: "00d5b6f6d8749589",
+  sourcesHash: "f90afd0af2f5cf5c",
   // 2026-08-21.4: disables the exact-word tier's company matcher, whose index
   // never built. Bumped so the mitigation is externally identifiable.
   // 2026-08-21.5: routed retrieval. index.ts + two new modules; sources.ts
@@ -309,7 +309,12 @@ const PINNED = {
   // figures — three of four separate counts were dying of timeouts), the five
   // pinned constants demoted to deploy-window fallbacks, and the wrap writer
   // stamps wrapMin so the freshness SLA can anchor on measurement.
-  buildVersion: "2026-08-27.41",
+  // 2026-08-27.42: census CC-MAIN-2026-34 merged — 1,031 boards (~34k visible
+  // postings) after blocklist/collision/mill screening; three titles-only
+  // "clears" (Gotham, Symicor, UBT) were convicted by reading real posting
+  // text and excluded. The bump is load-bearing: without it the new boards
+  // queue invisibly behind the full cold rotation (2026-08-01).
+  buildVersion: "2026-08-27.42",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {
