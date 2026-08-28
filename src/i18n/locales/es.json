@@ -3517,7 +3517,7 @@
     "checkFit": "Comprobar mi encaje — escaneo gratis",
     "apply": "Postularme en el sitio de {{company}}",
     "loadMore": "Cargar más",
-    "sourceNote": "Fuentes: las API públicas oficiales que las empresas publican en {{vendors}}. Los tablones más grandes se revisan con más frecuencia y el resto del catálogo rota de forma continua — la mayoría de las fuentes se vuelven a verificar en algunas horas — la mediana y el percentil 95 de antigüedad en vivo se publican en el Ghost Job Index, y una pequeña cola de fuentes lentas o con límite de tasa tarda más — y las ofertas retiradas desaparecen en la siguiente pasada. Una fuente que deja de responder sale del tablón en lugar de romperlo.",
+    "sourceNote": "Fuentes: las API públicas oficiales de bolsas de empleo que las empresas publican en {{vendors}}. Los tableros más grandes se verifican con mayor frecuencia y todo el catálogo rota sin parar — la mediana y el percentil 95 de las edades de verificación se publican en vivo en el Ghost Job Index — y las ofertas que una empresa retira desaparecen en la siguiente pasada. Un feed que deja de responder sale del tablero en lugar de romperlo.",
     "fitFetchErrorTitle": "No se pudo cargar esa oferta",
     "fitFetchError": "La fuente de la empresa no devolvió la descripción. Abre la oferta y pégala en el escáner.",
     "fitLoadedTitle": "Descripción del puesto cargada",

@@ -418,8 +418,29 @@ serve(async (req) => {
       // by the airtight 30-day read cap and live verify-on-apply, so a longer honest
       // rotation is a freshness nuance, never a stale board.
       const coldBoards = typeof rotV.coldBoards === 'number' && rotV.coldBoards > 0 ? rotV.coldBoards : 8700;
+      // THE 0.95 MIN/HOP CONSTANT WAS A HOPE, NOT A MEASUREMENT. At 31.5k cold
+      // boards it promised a 375-min wrap and a 525-min SLA — while the
+      // measured healthy rotation rate (46 boards/min, the benchmark the
+      // fast-lane incident itself established) takes ~685 min. A HEALTHY
+      // rotation breached the SLA structurally, so this check sat red for
+      // weeks and taught people to ignore it — the same disease as the disk
+      // alarm that divided by a plan we are not on.
+      //
+      // The SLA is anchored on what the LAST rotation measurably took
+      // (wrapMin, stamped by the wrap writer since board .41): 1.5x the last
+      // real duration flags a genuine slowdown. The old formula remains only
+      // as the fallback until one measured duration exists. Two backstops keep
+      // measurement from normalizing decay: the floor never drops below the
+      // formula's own expectation (a fast board stays held to at least that),
+      // and a hard 24h ceiling means no history of slow wraps can ever excuse
+      // a rotation slower than daily — the absolute promise the 30-day window
+      // and verify-on-apply do not cover on their own.
       const expectedWrapMin = Math.ceil((coldBoards / 80) * 0.95);
-      const COLD_ROTATION_SLA_MIN = Math.max(120, Math.ceil(expectedWrapMin * 1.4));
+      const lastWrapMin = typeof (rotV as { wrapMin?: number }).wrapMin === 'number' && (rotV as { wrapMin?: number }).wrapMin! > 0
+        ? (rotV as { wrapMin?: number }).wrapMin!
+        : null;
+      const slaBasis = lastWrapMin !== null ? Math.ceil(lastWrapMin * 1.5) : Math.ceil(expectedWrapMin * 1.4);
+      const COLD_ROTATION_SLA_MIN = Math.min(1440, Math.max(120, Math.ceil(expectedWrapMin * 1.4), slaBasis));
       const rotStale = rotAgeMin !== null && rotAgeMin > COLD_ROTATION_SLA_MIN;
       // AN UNREADABLE ROTATION IS NOT A FRESH ONE. `rotAgeMin` is null whenever
       // the cold_rotation row is missing or the read failed, and `rotStale` was
@@ -434,7 +455,7 @@ serve(async (req) => {
         responseTimeMs: 0,
         error: rotUnknown
           ? `cold_rotation state unreadable (${rotErr?.message?.slice(0, 120) ?? 'row absent'}) — freshness cannot be evaluated`
-          : rotStale ? `cold-tail last fully re-verified ${rotAgeMin} min ago (SLA ${COLD_ROTATION_SLA_MIN}) — long-tail postings may be stale; check for failing boards or too-slow rotation` : undefined,
+          : rotStale ? `cold-tail last fully re-verified ${rotAgeMin} min ago (SLA ${COLD_ROTATION_SLA_MIN}, ${lastWrapMin !== null ? `1.5x the last measured wrap of ${lastWrapMin} min` : 'formula fallback — no measured wrap yet'}) — long-tail postings may be stale; check for failing boards or too-slow rotation` : undefined,
       });
       if (rotUnknown) {
         if (overallStatus === 'healthy') overallStatus = 'degraded';
@@ -475,7 +496,7 @@ serve(async (req) => {
             name: 'job_board_freshness_claim',
             passed: false,
             responseTimeMs: 0,
-            error: 'get_freshness_stats returned no usable measurement (timed out, errored, or empty) — the published "re-verified within a few hours" claim is currently UNWATCHED; check the job-board-stats-rollup cron',
+            error: 'get_freshness_stats returned no usable measurement (timed out, errored, or empty) — the published freshness promise is currently UNWATCHED; check the job-board-stats-rollup cron',
           });
           if (overallStatus === 'healthy') overallStatus = 'degraded';
           errorMessage = errorMessage || 'Board freshness claim unwatched (get_freshness_stats unavailable)';
@@ -483,14 +504,26 @@ serve(async (req) => {
           skip('job_board_freshness_claim', `only ${f.boards ?? 0} stamped boards — too thin a sample to judge the published claim`);
         }
         if (f && typeof f.p95_min === 'number' && (f.boards ?? 0) > 1000) {
-          const CLAIM_P95_MIN = 300; // "a few hours", with margin
-          const claimBreach = f.p95_min > CLAIM_P95_MIN;
+          // MIRRORS THE PUBLISHED COPY, and moves when it moves. The copy used
+          // to promise "most feeds re-verified within a few hours"; the
+          // measured median reached 5.6h and P95 13.6h, so the sentence was
+          // false and this check was permanently red about it. The copy now
+          // promises around-the-clock rotation with the live median/P95
+          // PUBLISHED on the Ghost Job Index — so the bounds here guard that
+          // promise: the median must stay a same-day number (several passes a
+          // day) and no feed's P95 may exceed daily. If the public sentence
+          // ever names a number again, these constants move with it — the
+          // claim-drift rule.
+          const CLAIM_MEDIAN_MIN = 480;  // "rotates around the clock" — median at least ~3x/day
+          const CLAIM_P95_MIN = 1440;    // absolute: no tail slower than daily
+          const claimBreach = f.p95_min > CLAIM_P95_MIN ||
+            (typeof f.p50_min === 'number' && f.p50_min > CLAIM_MEDIAN_MIN);
           checks.push({
             name: 'job_board_freshness_claim',
             passed: !claimBreach,
             responseTimeMs: 0,
             error: claimBreach
-              ? `measured re-verification P95 is ${(f.p95_min / 60).toFixed(1)}h (median ${Math.round(f.p50_min ?? 0)}m) — the public "within a few hours" claim is drifting false; raise rotation throughput or fix failing slices`
+              ? `measured re-verification median ${Math.round(f.p50_min ?? 0)}m / P95 ${(f.p95_min / 60).toFixed(1)}h — outside the published "around the clock" promise (median bound ${CLAIM_MEDIAN_MIN}m, P95 bound ${CLAIM_P95_MIN}m); raise rotation throughput or fix failing slices`
               : undefined,
           });
           if (claimBreach) {
@@ -505,7 +538,7 @@ serve(async (req) => {
           name: 'job_board_freshness_claim',
           passed: false,
           responseTimeMs: 0,
-          error: `get_freshness_stats unavailable (${e instanceof Error ? e.message : 'unknown error'}) — the published "re-verified within a few hours" claim is currently UNWATCHED`,
+          error: `get_freshness_stats unavailable (${e instanceof Error ? e.message : 'unknown error'}) — the published freshness promise is currently UNWATCHED`,
         });
         if (overallStatus === 'healthy') overallStatus = 'degraded';
         errorMessage = errorMessage || 'Board freshness claim unwatched (get_freshness_stats unavailable)';

@@ -305,7 +305,11 @@ const PINNED = {
   // 2026-08-27.40: the split gate fires on a THIN title segment (total < 30,
   // acceptance 2x + floor 15) — the total===0 gate was verified dead on
   // "nurse london" the day .39 went live: the company name carried the city.
-  buildVersion: "2026-08-27.40",
+  // 2026-08-27.41: coverage from get_filter_coverage() (one scan, nine
+  // figures — three of four separate counts were dying of timeouts), the five
+  // pinned constants demoted to deploy-window fallbacks, and the wrap writer
+  // stamps wrapMin so the freshness SLA can anchor on measurement.
+  buildVersion: "2026-08-27.41",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {

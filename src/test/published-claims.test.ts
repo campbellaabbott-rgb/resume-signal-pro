@@ -1112,7 +1112,10 @@ describe("the accuracy alarm rests on a sample big enough to mean something", ()
     // and failed on EVERY call, so the check vanished from the heartbeat output
     // and the published "re-verified within a few hours" claim went unwatched —
     // with no signal that watching had stopped.
-    expect(hb).toMatch(/claim is currently UNWATCHED/);
+    // Wording moved with the copy (.2): the public sentence no longer promises
+    // "a few hours", so the unwatched message names the freshness promise
+    // rather than quoting a claim that no longer exists.
+    expect(hb).toMatch(/freshness promise is currently UNWATCHED/);
     expect(hb).toMatch(/Board freshness claim unwatched/);
     // The two RPC-unavailable paths (empty result, and throw) must not skip.
     // The remaining skip — "too thin a sample to judge" — is a different and

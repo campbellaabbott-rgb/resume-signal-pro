@@ -3517,7 +3517,7 @@
     "checkFit": "I-check ang fit ko — libreng scan",
     "apply": "Mag-apply sa site ng {{company}}",
     "loadMore": "Mag-load pa",
-    "sourceNote": "Mga source: ang opisyal na pampublikong job-board API na inilalathala ng mga kumpanya sa {{vendors}}. Ang pinakamalalaking board ay pinakamadalas na muling sinusuri at ang natitirang catalog ay patuloy na umiikot — karamihan sa mga feed ay muling bineberipika sa loob ng ilang oras — ang live na median at 95th percentile na edad ay nakalathala sa Ghost Job Index, at may maliit na bahagi ng mabagal o rate-limited na feed na mas matagal — at ang mga tinanggal na posting ay nawawala sa susunod na pasada. Ang feed na tumigil sumagot ay natatanggal sa board sa halip na sirain ito.",
+    "sourceNote": "Mga pinagmulan: ang mga opisyal na pampublikong job-board API na inilalathala ng mga kumpanya sa {{vendors}}. Ang pinakamalalaking board ay mas madalas sinusuri at ang buong katalogo ay umiikot buong araw — ang median at ika-95 percentile ng edad ng pagsusuri ay live na inilalathala sa Ghost Job Index — at ang mga posting na tinanggal ng kumpanya ay nawawala sa susunod na pasada. Ang feed na tumigil sa pagtugon ay natatanggal sa board sa halip na sirain ito.",
     "fitFetchErrorTitle": "Hindi ma-load ang posting na iyon",
     "fitFetchError": "Walang ibinalik na deskripsyon ang feed ng kumpanya. Buksan ang posting at i-paste ito sa scanner.",
     "fitLoadedTitle": "Na-load ang job description",

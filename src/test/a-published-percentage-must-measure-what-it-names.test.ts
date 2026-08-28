@@ -61,7 +61,11 @@ describe("a published percentage must measure what it names", () => {
   });
 
   it("the refused pay-ceiling count is gone, not merely unbound", () => {
-    const cov = CODE.slice(CODE.indexOf("const coverage = await"), CODE.indexOf("const frac ="));
+    // The slice used to end at `const frac =` — which was unique until the
+    // one-scan RPC branch (.41) introduced its own frac above the fallback,
+    // cutting the extract short of the counts it asserts on. End at the
+    // block's own boundary instead of a line that can move.
+    const cov = CODE.slice(CODE.indexOf("const coverage = await"), CODE.indexOf("const v = {"));
     expect(cov).not.toMatch(/salary_max_annual/);
     expect(cov).toMatch(/one\("work_mode", "not\.is\.null"\)/);
     expect(cov).toMatch(/one\("experience_band", "neq\.unspecified"\)/);

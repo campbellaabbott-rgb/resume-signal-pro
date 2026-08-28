@@ -3517,7 +3517,7 @@
     "checkFit": "Check mijn match — gratis scan",
     "apply": "Solliciteer op de site van {{company}}",
     "loadMore": "Meer laden",
-    "sourceNote": "Bronnen: de officiële publieke vacature-API's die bedrijven publiceren op {{vendors}}. De grootste borden worden het vaakst opnieuw gecheckt en de rest van de catalogus roteert continu — de meeste feeds worden binnen enkele uren opnieuw geverifieerd — de actuele mediaan en het 95e percentiel van de leeftijd worden gepubliceerd op de Ghost Job Index, en een kleine staart van trage feeds of feeds met een snelheidslimiet duurt langer — en ingetrokken vacatures verdwijnen bij de volgende ronde. Een feed die niet meer reageert valt van het bord af in plaats van het te breken.",
+    "sourceNote": "Bronnen: de officiële openbare vacature-API's die bedrijven op {{vendors}} publiceren. De grootste boards worden het vaakst gecontroleerd en de hele catalogus roteert de klok rond — de mediaan en het 95e percentiel van de controleleeftijden worden live gepubliceerd op de Ghost Job Index — en vacatures die een bedrijf weghaalt, verdwijnen bij de volgende ronde. Een feed die stopt met reageren valt van het board in plaats van het te breken.",
     "fitFetchErrorTitle": "Kon die vacature niet laden",
     "fitFetchError": "De feed van het bedrijf gaf geen omschrijving terug. Open de vacature en plak hem in de scanner.",
     "fitLoadedTitle": "Vacaturetekst geladen",

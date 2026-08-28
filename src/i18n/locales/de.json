@@ -3517,7 +3517,7 @@
     "checkFit": "Passung prüfen — Gratis-Scan",
     "apply": "Auf der Seite von {{company}} bewerben",
     "loadMore": "Mehr laden",
-    "sourceNote": "Quellen: die offiziellen öffentlichen Job-Board-APIs, die Unternehmen auf {{vendors}} veröffentlichen. Die größten Boards werden am häufigsten neu geprüft, der übrige Katalog rotiert kontinuierlich — die meisten Feeds werden innerhalb einiger Stunden neu verifiziert — der aktuelle Median und das 95. Perzentil des Alters werden im Ghost Job Index veröffentlicht, und ein kleiner Teil langsamer oder ratenbegrenzter Feeds braucht länger — und zurückgezogene Stellen verschwinden im nächsten Durchlauf. Ein Feed, der nicht mehr antwortet, fällt aus der Börse, statt sie zu brechen.",
+    "sourceNote": "Quellen: die offiziellen öffentlichen Job-Board-APIs, die Unternehmen auf {{vendors}} veröffentlichen. Die größten Boards werden am häufigsten geprüft, und der gesamte Katalog rotiert rund um die Uhr — Median und 95. Perzentil der Prüfalter werden live im Ghost Job Index veröffentlicht — und Stellen, die ein Unternehmen entfernt, verschwinden beim nächsten Durchlauf. Ein Feed, der nicht mehr antwortet, fällt vom Board, statt es zu brechen.",
     "fitFetchErrorTitle": "Diese Stelle konnte nicht geladen werden",
     "fitFetchError": "Der Feed des Unternehmens lieferte keine Beschreibung. Öffnen Sie die Stelle und fügen Sie sie in den Scanner ein.",
     "fitLoadedTitle": "Stellenbeschreibung geladen",

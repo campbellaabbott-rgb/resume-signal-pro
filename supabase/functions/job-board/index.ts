@@ -102,7 +102,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-27.40"; // .40: the split gate fires on a THIN title segment, not an empty one — verified dead on "nurse london" at .39
+const BUILD_VERSION = "2026-08-27.41"; // .41: nine coverage figures from one scan + measured wrap duration; .40: thin-segment split gate
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -2405,8 +2405,26 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
   // (max staleness of any cold posting = time since this stamp). The heartbeat
   // alerts if it ever falls behind the SLA.
   if (wrapped) {
+    // wrapMin — how long THIS full rotation actually took (previous stamp to
+    // now) — rides along for the heartbeat. Its SLA used to be computed from a
+    // constant 0.95 min/hop, which reality outgrew: at 31.5k cold boards the
+    // formula promised a 375-min wrap while the measured healthy rate
+    // (46 boards/min, the fast-lane incident's own benchmark) takes ~685 min —
+    // so the freshness check was structurally red on a healthy rotation, the
+    // same disease as the disk alarm that divided by a plan we are not on.
+    // Alarms compare against what rotations MEASURABLY take, not what a
+    // constant hoped. lastWrapMin is null on the first wrap ever; the reader
+    // falls back to the formula until one real duration exists.
+    const { data: prevRot } = await client.from("job_board_meta")
+      .select("v").eq("k", "cold_rotation").maybeSingle();
+    const prevAt = Date.parse(String((prevRot?.v as { completedAt?: string } | null)?.completedAt ?? ""));
+    const wrapMin = Number.isFinite(prevAt) ? Math.round((Date.now() - prevAt) / 60_000) : null;
     await client.from("job_board_meta").upsert(
-      { k: "cold_rotation", v: { completedAt: new Date().toISOString(), coldBoards: COLD_LIST.length }, updated_at: new Date().toISOString() },
+      {
+        k: "cold_rotation",
+        v: { completedAt: new Date().toISOString(), coldBoards: COLD_LIST.length, ...(wrapMin !== null ? { wrapMin } : {}) },
+        updated_at: new Date().toISOString(),
+      },
       { onConflict: "k" },
     );
   }
@@ -2842,7 +2860,48 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
           return c && typeof c === "object" ? c as Record<string, unknown> : null;
         } catch { return null; }
       })();
+      // ONE SCAN, NINE COUNTS — get_filter_coverage() (20260827230000). The
+      // four separate PostgREST exact counts below are the reason three of the
+      // four figures were dying: each is its own full scan against its own
+      // statement budget. The SQL function computes all nine (the four here
+      // plus the five that rode pinned constants) in a single pass over the
+      // serving population. The old path is kept ONLY as the deploy-window
+      // fallback for the bundle-before-migration ordering, and behaves exactly
+      // as today when the RPC is absent.
       try {
+        const { data: fcRaw, error: fcErr } = await client.rpc("get_filter_coverage");
+        const fc = fcRaw as Record<string, unknown> | null;
+        if (!fcErr && fc && typeof fc === "object" && typeof fc.open === "number" && (fc.open as number) > 0) {
+          const open = fc.open as number;
+          const frac = (n: unknown) => (typeof n === "number" ? Math.round((n / open) * 1000) / 1000 : null);
+          const prevCov = (prevCoverage ?? {}) as Record<string, unknown>;
+          // Same carry-forward contract as the fallback path: a figure the
+          // scan could not produce keeps last pass's value rather than
+          // deleting the disclosure.
+          const keep = (name: string) => {
+            const f = frac(fc[name]);
+            if (f !== null) return f;
+            coverageFailed.push(name);
+            const old = prevCov[name];
+            return typeof old === "number" ? old : null;
+          };
+          return {
+            open,
+            salaryFloor: keep("salaryFloor"),
+            workMode: keep("workMode"),
+            experience: keep("experience"),
+            country: keep("country"),
+            // The five that were pinned constants until this scan existed.
+            payBasis: keep("payBasis"),
+            hasStatedPay: keep("hasStatedPay"),
+            maxYears: keep("maxYears"),
+            department: keep("department"),
+            ...(coverageFailed.length ? { staleParts: coverageFailed } : {}),
+          };
+        }
+        if (fcErr) {
+          console.warn(`[JOB-BOARD] get_filter_coverage unavailable (${fcErr.code ?? ""} ${String(fcErr.message ?? "").slice(0, 80)}) — falling back to per-column counts`);
+        }
         // THE HEADLINE MUST COUNT WHAT THE BOARD CAN SERVE. This counted
         // missing_since alone, while the read path also requires
         // effective_posted within the freshness window — so the published
@@ -4706,7 +4765,16 @@ function coverageDisclosure(
   meta?: { v: Record<string, unknown> } | null,
 ): Record<string, unknown> {
   const cov = (meta?.v as Record<string, unknown> | undefined)?.coverage as
-    | { salaryFloor?: number | null; workMode?: number | null; experience?: number | null; country?: number | null }
+    | {
+      salaryFloor?: number | null;
+      workMode?: number | null;
+      experience?: number | null;
+      country?: number | null;
+      payBasis?: number | null;
+      hasStatedPay?: number | null;
+      maxYears?: number | null;
+      department?: number | null;
+    }
     | undefined;
   // NO CACHE, NO NUMBERS — INCLUDING THE MEASURED ONES, and this early return
   // stays exactly where it was. It is pinned by name in
@@ -4724,14 +4792,20 @@ function coverageDisclosure(
   // case, and the cold case is the one where silence is honest.
   if (!cov) return {};
   const out: Record<string, number> = {};
-  // The five filters over partly-populated columns the refresh pass does not
-  // count. `vendor` is complete and still reported: silence on one active
-  // filter while four others carry a number reads as "we don't know", and for
-  // this one we do.
-  if (applied.payBasis) out.payBasis = MEASURED_COVERAGE.payBasis;
-  if (applied.hasStatedPay) out.hasStatedPay = MEASURED_COVERAGE.hasStatedPay;
-  if (applied.maxYears != null) out.maxYears = MEASURED_COVERAGE.maxYears;
-  if (applied.department) out.department = MEASURED_COVERAGE.department;
+  // LIVE FIRST, SNAPSHOT AS FALLBACK. These four rode pinned constants because
+  // the pass could not afford four more separate scans; get_filter_coverage()
+  // (20260827230000) counts them in the same single pass as the original four,
+  // so a cached live figure now exists on any pass that ran against the
+  // migration. The dated constants remain ONLY for the deploy window where the
+  // cache was written by an older pass — a 2026-08-25 snapshot beats silence
+  // for a filter that is actively hiding rows, and it is replaced by the next
+  // completed pass. `vendor` stays pinned at 1: source is complete by
+  // construction and a count would be a scan proving a tautology.
+  const liveOr = (live: unknown, pinned: number) => (typeof live === "number" ? live : pinned);
+  if (applied.payBasis) out.payBasis = liveOr(cov.payBasis, MEASURED_COVERAGE.payBasis);
+  if (applied.hasStatedPay) out.hasStatedPay = liveOr(cov.hasStatedPay, MEASURED_COVERAGE.hasStatedPay);
+  if (applied.maxYears != null) out.maxYears = liveOr(cov.maxYears, MEASURED_COVERAGE.maxYears);
+  if (applied.department) out.department = liveOr(cov.department, MEASURED_COVERAGE.department);
   if (applied.vendors?.length) out.vendor = MEASURED_COVERAGE.vendor;
   if (applied.salaryFloor != null && typeof cov.salaryFloor === "number") out.salaryFloor = cov.salaryFloor;
   // The ceiling compares against salary_rank_usd, the column the floor uses, so

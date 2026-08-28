@@ -3517,7 +3517,7 @@
     "checkFit": "Checar meu encaixe — escaneio grátis",
     "apply": "Candidatar-se no site da {{company}}",
     "loadMore": "Carregar mais",
-    "sourceNote": "Fontes: as APIs públicas oficiais que as empresas publicam no {{vendors}}. Os murais maiores são reverificados com mais frequência e o restante do catálogo gira continuamente — a maioria dos feeds é reverificada em algumas horas — a mediana e o percentil 95 de idade ao vivo são publicados no Ghost Job Index, e uma pequena cauda de feeds lentos ou limitados por taxa demora mais — e vagas retiradas somem na próxima passada. Um feed que para de responder sai do mural em vez de quebrá-lo.",
+    "sourceNote": "Fontes: as APIs públicas oficiais de vagas que as empresas publicam em {{vendors}}. Os maiores quadros são verificados com mais frequência e todo o catálogo gira sem parar — a mediana e o percentil 95 das idades de verificação são publicados ao vivo no Ghost Job Index — e as vagas que uma empresa remove desaparecem na passagem seguinte. Um feed que para de responder sai do quadro em vez de quebrá-lo.",
     "fitFetchErrorTitle": "Não foi possível carregar essa vaga",
     "fitFetchError": "O feed da empresa não retornou a descrição. Abra a vaga e cole-a no escâner.",
     "fitLoadedTitle": "Descrição da vaga carregada",
