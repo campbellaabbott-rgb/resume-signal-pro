@@ -197,7 +197,13 @@ describe("did-you-mean is a disclosure, never an expansion", () => {
 
   it("the map is read exactly once, inside searchDisclosures, as a field", () => {
     const uses = code.match(/DID_YOU_MEAN/g) ?? [];
-    expect(uses.length, "declaration + one read — a third use means someone wired it into a query").toBe(2);
+    // THREE since .45: declaration, the searchDisclosures read, and the earned
+    // did-you-mean's PRECEDENCE GATE — which reads the map only to stand down
+    // when a curated pair exists. Still never wired into a query; the fourth
+    // use is the line to refuse.
+    expect(uses.length, "declaration + disclosure read + precedence gate — a fourth use means someone wired it into a query").toBe(3);
+    expect(code, "the third use must be the negation gate, nothing else")
+      .toMatch(/!DID_YOU_MEAN\[qText\.trim\(\)\.toLowerCase\(\)\]/);
     expect(code).toMatch(/out\.didYouMean = dym/);
   });
 });

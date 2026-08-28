@@ -323,7 +323,10 @@ const PINNED = {
   // AutoZone, Providence, Quest Diagnostics...), gov/mill-screened on real
   // posting text, tranche-capped to the ceiling raise (750k -> 800k on
   // remeasured 9.4KB/row bytes at the 12GB plan).
-  buildVersion: "2026-08-28.44",
+  // 2026-08-28.45: earned did-you-mean (thin exact pools, trigram-supported
+  // corrections within two edits, curated map keeps precedence) + slice_stats
+  // EMA instrumentation exposed on status.
+  buildVersion: "2026-08-28.45",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {

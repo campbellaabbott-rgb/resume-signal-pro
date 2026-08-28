@@ -102,7 +102,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-28.44"; // .44: Oracle tranche 1 (39 boards, ~82k postings, names resolved from recruitingCESites) + ceiling 800k on remeasured bytes; .43: the 200-companies fix
+const BUILD_VERSION = "2026-08-28.45"; // .45: earned did-you-mean on thin pools + slice_stats EMA instrumentation; .44: Oracle tranche 1 + ceiling 800k
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -1353,6 +1353,12 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
   if (!force && prog && Date.now() - new Date(prog.updated_at).getTime() < SLICE_LOCK_MS) {
     return { ok: true, detail: "skipped — a slice ran moments ago" };
   }
+  // Wall clock for THIS invocation — one slice. Written to slice_stats below;
+  // the rotation-tuning rule (memory: judge by measurement, never a window
+  // inside a hot phase) has so far required hand-run cursor snapshots to get
+  // this number. Starts after the lock check so skipped invocations record
+  // nothing.
+  const sliceWallStart = Date.now();
   const { hotList: HOT_LIST, coldList: COLD_LIST } = await tierLists(client);
   await loadDynamicLight(client); // auto-enrolled giant boards fetch without content
   const pv = (prog?.v ?? {}) as { hot?: number; cold?: number; coldDone?: number; failedAcc?: string[]; failedTotal?: number };
@@ -2468,6 +2474,33 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
     { k: "refresh_progress", v: progressAfter, updated_at: new Date().toISOString() },
     { onConflict: "k" },
   );
+
+  // Slice-duration instrumentation, fire-and-forget. An EMA per phase (alpha
+  // 0.2 — a few slices to converge, steady after) turns "how fast is rotation
+  // really" from a two-snapshot manual ritual into a status field. Best-effort
+  // by design: instrumentation must never be the thing that slows the chain.
+  waitUntil((async () => {
+    try {
+      const sliceMs = Date.now() - sliceWallStart;
+      const phase = inHotPhase ? "hot" : "cold";
+      const { data: prevSs } = await client.from("job_board_meta").select("v").eq("k", "slice_stats").maybeSingle();
+      const pv = (prevSs?.v ?? {}) as { hotEmaMs?: number; coldEmaMs?: number; slices?: number };
+      const key = phase === "hot" ? "hotEmaMs" : "coldEmaMs";
+      const prevEma = typeof pv[key] === "number" ? pv[key]! : sliceMs;
+      await client.from("job_board_meta").upsert({
+        k: "slice_stats",
+        v: {
+          ...pv,
+          at: new Date().toISOString(),
+          lastMs: sliceMs,
+          lastPhase: phase,
+          [key]: Math.round(prevEma * 0.8 + sliceMs * 0.2),
+          slices: (Number(pv.slices) || 0) + 1,
+        },
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "k" });
+    } catch { /* instrumentation is a bonus */ }
+  })());
 
   // Consecutive-failure pruning + dormancy: a feed that stops responding keeps its
   // postings (a transient blip must not wipe a company), but a feed dead for
@@ -4694,6 +4727,25 @@ function queryTerms(raw: unknown): { terms: string[]; dropped: string[]; liftedS
 // none of the tier-escalation traps), the client renders a one-click
 // suggestion above them. Query-side only: it never classifies or relabels a
 // posting, so the frozen classifier stays frozen.
+/** Bounded Levenshtein: true when edit distance <= 2. Early-exits on length
+ *  gap; the full matrix on two short words is ~100 cells, nothing more. */
+function within2Edits(a: string, b: string): boolean {
+  if (Math.abs(a.length - b.length) > 2) return false;
+  const m = a.length, n = b.length;
+  let prev = Array.from({ length: n + 1 }, (_, j) => j);
+  for (let i = 1; i <= m; i++) {
+    const cur = [i];
+    let rowMin = i;
+    for (let j = 1; j <= n; j++) {
+      cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+      if (cur[j] < rowMin) rowMin = cur[j];
+    }
+    if (rowMin > 2) return false;
+    prev = cur;
+  }
+  return prev[n] <= 2;
+}
+
 const DID_YOU_MEAN: Record<string, string> = {
   // 2026-08-24, live: 1 literal match board-wide; the German nursing pool is
   // pflegefachkraft 55 + krankenpfleger|pflegekraft 13. The #1 "related" row
@@ -5155,7 +5207,7 @@ Deno.serve(async (req) => {
       // bundle, so a stale/failed publish is visible in ONE call instead of being
       // inferred from posting counts over hours (the rung-2 "did it deploy?" pain).
       // Also the source of truth for the heartbeat's job_board_deploy check.
-      const [prog, pbMeta, rot, refreshMeta, bf, hotMeta, fresh, breaker, dateCov, boardFlow, ingestPaused, dcCache, bsMeta, dsMeta, ssMeta, esMeta, fiOk, fiBad, faMeta, aaMeta, arMeta, rsRun, rsCron, hsMeta, rcProg, rcVer, hwMeta, deepCur, chainKick] = await Promise.all([
+      const [prog, pbMeta, rot, refreshMeta, bf, hotMeta, fresh, breaker, dateCov, boardFlow, ingestPaused, dcCache, bsMeta, dsMeta, ssMeta, esMeta, fiOk, fiBad, faMeta, aaMeta, arMeta, rsRun, rsCron, hsMeta, rcProg, rcVer, hwMeta, deepCur, chainKick, sliceStatsRow] = await Promise.all([
         client.from("job_board_meta").select("v, updated_at").eq("k", "refresh_progress").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "posted_backfill").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "cold_rotation").maybeSingle(),
@@ -5274,7 +5326,8 @@ Deno.serve(async (req) => {
         // this array is positionally destructured, so a read inserted in the
         // middle silently shifts every variable after it onto the wrong result.
         client.from("job_board_meta").select("v, updated_at").eq("k", "chain_kick").maybeSingle(),
-]);
+        client.from("job_board_meta").select("v").eq("k", "slice_stats").maybeSingle(),
+      ]);
       const pgV = (prog.data?.v ?? {}) as { hot?: number; cold?: number; coldDone?: number; failedAcc?: string[]; failedTotal?: number };
       const rotV = (rot.data?.v ?? {}) as { completedAt?: string; coldBoards?: number };
       const rfV = (refreshMeta.data?.v ?? {}) as { total?: number };
@@ -5519,6 +5572,9 @@ Deno.serve(async (req) => {
         // parked a rotation that was in fact climbing (CVS 500 -> 630 within the
         // hour). `boards` is the count still filling; an entry is deleted when
         // its board wraps, so a healthy steady state trends DOWN, not up.
+        // Live slice timing (EMA per phase) — the number every rotation-tuning
+        // decision needs and used to require two hand-run cursor snapshots.
+        sliceStats: (sliceStatsRow?.data?.v ?? null),
         deepCursor: (() => {
           const v = (deepCur.data?.v ?? {}) as Record<string, number>;
           const entries = Object.entries(v).filter(([, n]) => typeof n === "number" && n > 0);
@@ -11333,6 +11389,55 @@ async function serveList(
         // response argues from the same row count.
         const shownRowCount = rankedGrouped.jobs.length;
         const totalUnderstated = !augmented && typeof total === "number" && (offset + shownRowCount) > total;
+        // DID-YOU-MEAN, EARNED RATHER THAN CURATED. The curated map holds two
+        // measured pairs and can never keep up with typos. When the exact pool
+        // is THIN (below FUZZY_AUGMENT_BELOW, the augmentation's own corrected
+        // boundary — the "< 5" literal once left the 5-result typo page with
+        // nothing, and that guard applies here too; zero gets the full fuzzy
+        // rescue instead), one
+        // trigram call finds what similar titles actually say, and a query token
+        // within two edits of a word that appears in three or more of them is a
+        // misspelling with a measured correction. Disclosure only — the rows on
+        // the page are untouched, the client renders the one-click suggestion —
+        // and the curated map keeps precedence (its pairs are semantic, not
+        // edit-distance reachable: krankenschwester -> pflegefachkraft).
+        let earnedDym: string | null = null;
+        if (
+          total !== null && total > 0 && total < FUZZY_AUGMENT_BELOW && offset === 0 && !countOnly && !newestFirst &&
+          !DID_YOU_MEAN[qText.trim().toLowerCase()] && budgetLeft() > 2_500
+        ) {
+          try {
+            const { data: fz } = await withDeadline(
+              client.rpc("fuzzy_title_search", { p_q: qText, p_fresh_cutoff: freshCutoffIso, p_limit: 8, ...rescueFilterParams() }),
+              Math.min(2_000, budgetLeft()),
+            ) as { data: Array<{ title?: string; total_rows?: number }> | null };
+            const titles = (fz ?? []).map((r) => String(r.title ?? "").toLowerCase());
+            const fzTotal = Number((fz?.[0] as { total_rows?: number } | undefined)?.total_rows) || titles.length;
+            if (titles.length >= 3 && fzTotal >= 10) {
+              const titleWords = titles.map((t) => new Set(t.split(/[^a-z]+/).filter((w) => w.length >= 4)));
+              const allWords = new Set(titleWords.flatMap((ws) => [...ws]));
+              const tokens = qText.toLowerCase().split(/[^a-z]+/).filter((w) => w.length >= 4);
+              for (const tok of tokens) {
+                if (allWords.has(tok)) continue; // spelled right — appears verbatim in similar titles
+                for (const w of allWords) {
+                  if (w === tok || !within2Edits(tok, w)) continue;
+                  // Consistency bar: the correction must appear across the pool,
+                  // not in one lucky title.
+                  const support = titleWords.filter((ws) => ws.has(w)).length;
+                  if (support >= 3) {
+                    // Word-boundary, not substring: a bare replace("art", ...) on
+            // "cart art designer" corrupts "cart" first. tok is [a-z]+ by
+            // construction (split on non-letters), so it is regex-safe.
+            earnedDym = qText.toLowerCase().replace(new RegExp(`\\b${tok}\\b`), w);
+                    break;
+                  }
+                }
+                if (earnedDym) break;
+              }
+            }
+          } catch { /* a suggestion is a bonus — the thin page stands */ }
+        }
+
         return json({
           // attachRecheckedAt was MISSING here: the per-posting "re-checked N
           // minutes ago" receipt reached people who browsed and not people who
@@ -11341,6 +11446,7 @@ async function serveList(
           jobs: preferMatchedLocation(await attachRecheckedAt(client, rankedGrouped.jobs, excludedTerms), locationTerms(body.location).terms),
           searchId,
           ...searchDisclosures(body, applied, maxAgeClamped),
+          ...(earnedDym ? { didYouMean: earnedDym } : {}),
           ...intentDisclosure(intentLift),
           ...exclusionDisclosure(excludedTerms),
           ...coverageDisclosure(applied, meta),

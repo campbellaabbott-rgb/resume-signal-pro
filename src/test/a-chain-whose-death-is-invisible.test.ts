@@ -89,10 +89,15 @@ describe("a chain whose death is invisible", () => {
     // This array is positionally destructured; a read added in the middle
     // silently shifts every variable after it onto the wrong result, which has
     // happened here before.
-    const arr = CODE.slice(CODE.indexOf("hwMeta, deepCur, chainKick] = await Promise.all(["));
+    // The anchor names the array TAIL, so it moves whenever a read is
+    // appended — which is the rule working, not the guard breaking (.45
+    // appended sliceStatsRow and this anchor moved with it).
+    const arr = CODE.slice(CODE.indexOf("hwMeta, deepCur, chainKick, sliceStatsRow] = await Promise.all(["));
     const deep = arr.indexOf('eq("k", "deep_cursor")');
     const chain = arr.indexOf('eq("k", "chain_kick")');
+    const sliceRead = arr.indexOf('eq("k", "slice_stats")');
     expect(deep).toBeGreaterThan(-1);
     expect(chain, "chain_kick was inserted before an existing read").toBeGreaterThan(deep);
+    expect(sliceRead, "slice_stats was inserted before an existing read — every later variable shifts").toBeGreaterThan(chain);
   });
 });
