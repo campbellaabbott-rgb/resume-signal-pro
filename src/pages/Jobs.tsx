@@ -1542,6 +1542,18 @@ export default function Jobs() {
       country: country || undefined,
       salaryFloor: salaryFloor || undefined,
       maxAgeDays: Number(freshness) || undefined,
+      // The seven that were named in the "left out" toast instead of saved.
+      // The digest forwards them since the parity change, so a saved search
+      // finally mails THIS query — band, basis, years, department, vendor and
+      // all. Only multi-employer and Actively hiring remain genuinely
+      // un-mailable (no server predicate), and they stay named below.
+      salaryCeiling: salaryCeiling || undefined,
+      payBasis: payBasis || undefined,
+      hasStatedPay: statedPayOnly || undefined,
+      includeUnstatedPay: includeUnstatedPay || undefined,
+      maxYears: maxYears ?? undefined,
+      department: department || undefined,
+      vendor: vendor || undefined,
     };
     const name = searchName(
       params,
@@ -1572,14 +1584,13 @@ export default function Jobs() {
       return;
     }
     const filterLabel = (k: string) => t(`jobsPage.filterName.${k}`, k);
+    // WAS seven filters longer. salaryCeiling, payBasis, hasStatedPay,
+    // includeUnstatedPay, maxYears, department and vendor are SAVED now and the
+    // digest forwards them — naming a filter as un-mailable while mailing it
+    // would be the same drift this toast exists to prevent, inverted. Only the
+    // genuinely un-mailable remain: a multi-employer scope (the digest runner
+    // sends one token) and Actively hiring (browser-side, no server predicate).
     const unsavedFilters = [
-      salaryCeiling ? filterLabel("salaryCeiling") : "",
-      payBasis ? filterLabel("payBasis") : "",
-      statedPayOnly ? filterLabel("hasStatedPay") : "",
-      includeUnstatedPay ? filterLabel("includeUnstatedPay") : "",
-      maxYears ? filterLabel("maxYears") : "",
-      department ? filterLabel("department") : "",
-      vendor ? filterLabel("vendor") : "",
       companyTokens.length > 1 ? filterLabel("companies") : "",
     ].filter(Boolean);
     // ACTIVELY HIRING CANNOT RIDE ALONG, SO IT IS NAMED INSTEAD OF SAVED.

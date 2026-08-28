@@ -385,18 +385,27 @@ describe("a filter over a column employers leave blank says so", () => {
     );
   });
 
-  it("what the saved-search email cannot carry is named, not silently dropped", () => {
-    // send-search-digest builds its board call from a hand-listed set of params
-    // (q, category, location, remote, workMode, companies, experience, country,
-    // salaryFloor, maxAgeDays). Anything else is stored and ignored, and a saved
-    // search that quietly drops half its filters mails postings the screen it
-    // was saved from excluded.
+  it("what the saved-search email carries is EVERYTHING the board filters on", () => {
+    // This assertion used to be the inverse — the digest hand-listed ten params
+    // and the save-side toast NAMED the seven it dropped, with the failure
+    // message here reading "now rides along — save it instead of naming it".
+    // That day came (2026-08-27): the digest forwards the full filter set, the
+    // params are saved, and the toast names only what genuinely cannot ride.
     const digest = readFileSync(resolve(root, "supabase/functions/send-search-digest/index.ts"), "utf8");
-    for (const k of ["salaryCeiling", "payBasis", "hasStatedPay", "maxYears", "department", "vendor"]) {
-      expect(digest, `${k} now rides along — save it instead of naming it`).not.toContain(`p.${k}`);
+    for (const k of ["salaryCeiling", "payBasis", "hasStatedPay", "includeUnstatedPay", "maxYears", "department", "vendor", "sendableOnly", "includeUncategorised"]) {
+      expect(digest, `${k} dropped from the digest body — the email mails a wider search than the one saved`)
+        .toMatch(new RegExp(`${k}: p\.${k}`));
     }
+    // And the save side actually stores them, or the digest forwards nothing.
+    for (const k of ["salaryCeiling", "payBasis", "maxYears", "vendor"]) {
+      expect(JOBS_CODE, `${k} is not saved — parity is one-sided`).toMatch(new RegExp(`${k}: `));
+    }
+    // The toast now names ONLY the genuinely un-mailable: a multi-employer
+    // scope (the runner sends one token) and Actively hiring (browser-side).
     expect(JOBS_CODE).toMatch(/const unsavedFilters = \[/);
     expect(JOBS_CODE).toContain("jobsPage.savedWithoutFilters");
+    expect(JOBS_CODE, "the toast still names a filter that now rides along")
+      .not.toMatch(/payBasis \? filterLabel/);
     // The digest sends `companies: p.company ? [p.company] : undefined` — ONE
     // element — so a comma-joined "a,b" reaches the board as a single employer
     // token spelled "a,b" and matches nothing. Save what the runner honours.

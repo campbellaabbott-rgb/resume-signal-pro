@@ -39,7 +39,13 @@ async function hmacToken(id: string): Promise<string> {
 // digest drops widens the email past what the user saw. country, workMode and
 // the freshness window were missing — a US-only alert mailed worldwide roles
 // (bug sweep 2026-07-26).
-type SearchParams = { q?: string; category?: string; location?: string; remote?: boolean; workMode?: string; company?: string; experience?: string; country?: string; salaryFloor?: number; maxAgeDays?: number };
+type SearchParams = {
+  q?: string; category?: string; includeUncategorised?: boolean; location?: string;
+  remote?: boolean; workMode?: string; company?: string; experience?: string;
+  country?: string; salaryFloor?: number; maxAgeDays?: number; sendableOnly?: boolean;
+  salaryCeiling?: number; payBasis?: string; hasStatedPay?: boolean;
+  includeUnstatedPay?: boolean; maxYears?: number; department?: string; vendor?: string;
+};
 
 function boardUrl(p: SearchParams): string {
   const qs = new URLSearchParams();
@@ -52,6 +58,18 @@ function boardUrl(p: SearchParams): string {
   if (p.experience) qs.set("experience", p.experience);
   if (p.country) qs.set("country", p.country);
   if (p.salaryFloor) qs.set("salaryFloor", String(p.salaryFloor));
+  // Board URL spellings, verbatim from Jobs.tsx's initial.get sync — statedPay
+  // and inclUnstatedPay are flags ("1"), fresh is the freshness window's name.
+  if (p.category && p.includeUncategorised) qs.set("inclUncat", "1");
+  if (p.sendableOnly) qs.set("agentOnly", "1");
+  if (p.maxAgeDays) qs.set("fresh", String(p.maxAgeDays));
+  if (p.salaryCeiling) qs.set("salaryCeiling", String(p.salaryCeiling));
+  if (p.payBasis) qs.set("payBasis", p.payBasis);
+  if (p.hasStatedPay) qs.set("statedPay", "1");
+  if (p.includeUnstatedPay) qs.set("inclUnstatedPay", "1");
+  if (p.maxYears != null) qs.set("maxYears", String(p.maxYears));
+  if (p.department) qs.set("department", p.department);
+  if (p.vendor) qs.set("vendor", p.vendor);
   const s = qs.toString();
   return `${SITE_URL}/jobs${s ? `?${s}` : ""}`;
 }
@@ -123,7 +141,36 @@ Deno.serve(async (req) => {
         fetch(boardBase, {
           method: "POST",
           headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "list", q: p.q || undefined, category: p.category || undefined, location: p.location || undefined, remote: p.remote || undefined, workMode: p.workMode || undefined, companies: p.company ? [p.company] : undefined, experience: p.experience || undefined, country: p.country || undefined, salaryFloor: p.salaryFloor || undefined, maxAgeDays: p.maxAgeDays || undefined, includeFacets: false, ...extra }),
+          // EVERY field the board can filter on, or the digest mails a wider
+          // search than the one saved. The seven that were hand-list-dropped
+          // (ceiling, basis, stated-pay, unstated widening, years, department,
+          // vendor) plus the two silent omissions (includeUncategorised,
+          // sendableOnly) all ride now; the save-side toast stopped naming
+          // them as left out in the same change.
+          body: JSON.stringify({
+            action: "list",
+            q: p.q || undefined,
+            category: p.category || undefined,
+            includeUncategorised: p.includeUncategorised || undefined,
+            location: p.location || undefined,
+            remote: p.remote || undefined,
+            workMode: p.workMode || undefined,
+            companies: p.company ? [p.company] : undefined,
+            experience: p.experience || undefined,
+            country: p.country || undefined,
+            salaryFloor: p.salaryFloor || undefined,
+            maxAgeDays: p.maxAgeDays || undefined,
+            sendableOnly: p.sendableOnly || undefined,
+            salaryCeiling: p.salaryCeiling || undefined,
+            payBasis: p.payBasis || undefined,
+            hasStatedPay: p.hasStatedPay || undefined,
+            includeUnstatedPay: p.includeUnstatedPay || undefined,
+            maxYears: p.maxYears ?? undefined,
+            department: p.department || undefined,
+            vendor: p.vendor || undefined,
+            includeFacets: false,
+            ...extra,
+          }),
         }).then((r) => r.json()).catch(() => null);
 
       const countRes = await callBoard({ countOnly: true, postedAfter: since });

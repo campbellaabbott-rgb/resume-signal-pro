@@ -31,6 +31,20 @@ export interface JobSearchParams {
   maxAgeDays?: number;
   /** Only postings the apply agent can submit on. */
   sendableOnly?: boolean;
+  /** Annualized ceiling on stated pay — the top of a band. */
+  salaryCeiling?: number;
+  /** hourly | salaried. */
+  payBasis?: string;
+  /** Only postings that state pay at all. */
+  hasStatedPay?: boolean;
+  /** Widen a pay band to postings with no stated pay. */
+  includeUnstatedPay?: boolean;
+  /** Max years of required experience (min_years <= N). */
+  maxYears?: number;
+  /** Department containment match. */
+  department?: string;
+  /** Hiring-system restriction, comma-joined (wire name `vendor`). */
+  vendor?: string;
 }
 
 const MODE_LABEL: Record<string, string> = {
@@ -56,6 +70,12 @@ export function searchName(p: JobSearchParams, categoryLabel?: string, experienc
       modes || (p.remote ? "remote" : ""),
       p.company,
       p.salaryFloor ? `$${Math.round(p.salaryFloor / 1000)}k+` : "",
+      p.salaryCeiling ? `≤$${Math.round(p.salaryCeiling / 1000)}k` : "",
+      p.payBasis ?? "",
+      p.hasStatedPay ? "pay stated" : "",
+      p.maxYears != null ? `≤${p.maxYears} yrs` : "",
+      p.department ?? "",
+      p.vendor ?? "",
       p.maxAgeDays ? `last ${p.maxAgeDays}d` : "",
       p.sendableOnly ? "agent-ready" : "",
     ]
@@ -87,6 +107,16 @@ export function searchToQuery(p: JobSearchParams): string {
   // does not read reopens WITHOUT that filter, silently, which is the whole
   // defect this file had.
   if (p.maxAgeDays) qs.set("fresh", String(p.maxAgeDays));
+  // The seven filters that were saved-and-dropped: each spelled exactly as the
+  // board's URL sync reads it (Jobs.tsx initial.get) — statedPay and
+  // inclUnstatedPay are FLAGS ("1"), not booleans-as-words.
+  if (p.salaryCeiling) qs.set("salaryCeiling", String(p.salaryCeiling));
+  if (p.payBasis) qs.set("payBasis", p.payBasis);
+  if (p.hasStatedPay) qs.set("statedPay", "1");
+  if (p.includeUnstatedPay) qs.set("inclUnstatedPay", "1");
+  if (p.maxYears != null) qs.set("maxYears", String(p.maxYears));
+  if (p.department) qs.set("department", p.department);
+  if (p.vendor) qs.set("vendor", p.vendor);
   const s = qs.toString();
   return s ? `/jobs?${s}` : "/jobs";
 }
@@ -119,5 +149,13 @@ export function searchToBoardBody(p: JobSearchParams): Record<string, unknown> {
     salaryFloor: p.salaryFloor || undefined,
     maxAgeDays: p.maxAgeDays || undefined,
     sendableOnly: p.sendableOnly || undefined,
+    salaryCeiling: p.salaryCeiling || undefined,
+    payBasis: p.payBasis || undefined,
+    hasStatedPay: p.hasStatedPay || undefined,
+    includeUnstatedPay: p.includeUnstatedPay || undefined,
+    maxYears: p.maxYears ?? undefined,
+    department: p.department || undefined,
+    // Wire name `vendor` (the board pluralises internally) — see filters.ts.
+    vendor: p.vendor || undefined,
   };
 }
