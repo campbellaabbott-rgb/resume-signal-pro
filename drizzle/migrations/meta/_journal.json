@@ -36,6 +36,13 @@
       "when": 1787761941106,
       "tag": "0004_an_out_param_that_is_also_a_column_is_a_400",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1787879624532,
+      "tag": "0005_nine_coverage_figures_one_scan",
+      "breakpoints": true
     }
   ]
 }
