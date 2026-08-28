@@ -1498,7 +1498,9 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
         const { data: empty, error } = await client.rpc("get_empty_boards", { p_tokens: JOB_SOURCES.map((s) => s.token) });
         if (error) throw error;
         queue = Array.isArray(empty) ? empty : [];
-      } else if (bs.version !== BUILD_VERSION) {
+      }
+      let bootstrapAppendDone = true;
+      if (queue.length > 0 && bs.version !== BUILD_VERSION) {
         // A MERGE MUST NOT WAIT FOR THE TAIL OF A 7.5K BACKLOG. Refill-on-empty
         // (the 2026-08-24 fix) stopped deploys from restarting the drain — and
         // quietly meant a freshly merged board waits for the whole cycle: the
@@ -1511,14 +1513,23 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
         // the lane re-verifying them once per deploy at its normal 25/slice
         // budget, which is what the lane is for.
         try {
-          const { data: empty } = await client.rpc("get_empty_boards", { p_tokens: JOB_SOURCES.map((s) => s.token) });
+          const { data: empty, error: ebErr } = await client.rpc("get_empty_boards", { p_tokens: JOB_SOURCES.map((s) => s.token) });
+          if (ebErr) throw new Error(ebErr.message ?? "get_empty_boards error");
           const have = new Set(queue);
           const fresh = (Array.isArray(empty) ? (empty as string[]) : []).filter((t) => !have.has(t));
           if (fresh.length > 0) {
             queue = [...queue, ...fresh];
             console.log(`[JOB-BOARD] bootstrap: appended ${fresh.length} empty board(s) on version change (queue ${have.size} -> ${queue.length})`);
           }
-        } catch { /* the empty-refill path still covers this eventually */ }
+        } catch (e) {
+          // RETRY NEXT SLICE, LOUDLY. The first version swallowed this and let
+          // the drain write stamp BUILD_VERSION anyway — one failed RPC (the
+          // token payload is ~550KB) and the merge's boards silently never
+          // entered the lane, with nothing logged. Holding the version back
+          // makes the next slice try again until one append lands.
+          bootstrapAppendDone = false;
+          console.error(`[JOB-BOARD] bootstrap version-append failed (will retry next slice): ${e instanceof Error ? e.message.slice(0, 120) : e}`);
+        }
       }
       if (queue.length > 0) {
         const sliceTokens = new Set([...baseSlice, ...demandBoards].map((s) => s.token));
@@ -1549,7 +1560,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
             k: "bootstrap",
             v: {
               queue: queue.slice(BOOTSTRAP_PER_SLICE),
-              version: BUILD_VERSION,
+              version: bootstrapAppendDone ? BUILD_VERSION : (bs.version ?? ""),
               lastSlice: {
                 at: new Date().toISOString(),
                 drained: Math.min(BOOTSTRAP_PER_SLICE, queue.length),

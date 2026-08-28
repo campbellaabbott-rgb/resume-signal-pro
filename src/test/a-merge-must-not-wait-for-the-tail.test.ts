@@ -20,8 +20,8 @@ const BOARD = readFileSync(
   .replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ");
 
 describe("a merge must not wait for the tail", () => {
-  const at = BOARD.indexOf("else if (bs.version !== BUILD_VERSION)");
-  const block = at >= 0 ? BOARD.slice(at, at + 900) : "";
+  const at = BOARD.indexOf("if (queue.length > 0 && bs.version !== BUILD_VERSION)");
+  const block = at >= 0 ? BOARD.slice(at, at + 1600) : "";
 
   it("appends on version change, only when the queue is NON-empty", () => {
     // Empty queue takes the plain refill; this branch exists solely for the
@@ -29,7 +29,10 @@ describe("a merge must not wait for the tail", () => {
     expect(at, "the append branch is gone — a merge waits a full cycle again").toBeGreaterThan(-1);
     const seedAt = BOARD.indexOf("if (queue.length === 0) {");
     expect(seedAt).toBeGreaterThan(-1);
-    expect(at, "must be the else-branch of the empty-refill").toBeGreaterThan(seedAt);
+    // No longer an else-branch (the retry restructure hoisted it), but the
+    // queue.length > 0 conjunct in the anchor above keeps the same property:
+    // an empty queue takes the plain refill, never this branch.
+    expect(at).toBeGreaterThan(seedAt);
   });
 
   it("appends at the BACK and never re-orders", () => {
@@ -44,7 +47,14 @@ describe("a merge must not wait for the tail", () => {
     expect(block).toMatch(/filter\(\(t\) => !have\.has\(t\)\)/);
   });
 
-  it("fails open — an RPC error leaves the queue untouched", () => {
-    expect(block).toMatch(/catch \{/);
+  it("a failed append RETRIES — the version is stamped only when it lands", () => {
+    // The first version swallowed the RPC error while the drain write stamped
+    // BUILD_VERSION anyway: one failed call and the merge's boards silently
+    // never entered the lane. Verified against a live symptom — the Oracle
+    // tranche still at zero with the append branch already deployed.
+    expect(block).toMatch(/bootstrapAppendDone = false/);
+    expect(block).toMatch(/will retry next slice/);
+    expect(BOARD, "the drain write must hold the old version until an append lands")
+      .toMatch(/version: bootstrapAppendDone \? BUILD_VERSION : \(bs\.version \?\? ""\)/);
   });
 });
