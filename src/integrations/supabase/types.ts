@@ -3676,6 +3676,7 @@ export type Database = {
           stripe_session_id: string
         }[]
       }
+      get_filter_coverage: { Args: never; Returns: Json }
       get_freshness_stats: {
         Args: never
         Returns: {
