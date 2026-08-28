@@ -51,7 +51,11 @@ describe("the headline was a whole pass behind", () => {
     expect(MIG_CODE, "the refresher upserts the meta row wholesale")
       .not.toMatch(/INSERT INTO public\.job_board_meta|ON CONFLICT \(k\)/);
     expect(MIG_CODE).toMatch(/UPDATE public\.job_board_meta/);
-    expect(MIG_CODE).toMatch(/WHERE k = 'refresh'/);
+    // BOTH serving rows since 20260828001000: serving moved to refresh_head
+    // and this patcher kept freshening a row nobody read — trackedTotal
+    // vanished from the homepage the first evening the head row qualified.
+    // Still a PATCH (jsonb merge), never a second whole-row writer.
+    expect(MIG_CODE).toMatch(/WHERE k IN \('refresh', 'refresh_head'\)/);
     // Shape, not an exact key list: a later change legitimately added
     // 'tracked' to the same object, and a guard that pins the literal fails on
     // an addition it has no opinion about.
