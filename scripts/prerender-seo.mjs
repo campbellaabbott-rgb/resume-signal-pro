@@ -351,6 +351,13 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
                until now no served page linked to it, so every non-JS crawler saw
                a sitemap-only orphan — the exact condition Footer.tsx warns about. -->
           <a href="/explore" class="hover:text-foreground">Explore employers</a>
+          <!-- /companies is the directory that keeps 500 company pages from
+               being sitemap-only orphans (387 measured, audit 2026-08-28);
+               /agent was on the same orphan list — the money page, linked from
+               no prerendered page at all. -->
+          <a href="/companies" class="hover:text-foreground">All companies</a>
+          <a href="/pay-transparency" class="hover:text-foreground">Pay Transparency Index</a>
+          <a href="/agent" class="hover:text-foreground">Apply Agent</a>
         </nav>
       </div></footer>
     </div>`;
@@ -1121,6 +1128,41 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
         });
       }
       console.log(`[prerender-seo] company pages: ${topCompanies.length} (${consolidated} canonicalized to a larger board of the same employer)`);
+
+      // ---- /companies: the directory that links every company page ----
+      //
+      // 387 of the sitemap's URLs were company pages LINKED FROM NO PAGE
+      // (audit 2026-08-28) — submitted for indexing, then left unreachable by
+      // any crawl path, which wastes their PageRank and slows discovery. This
+      // hub links every prerendered company page (consolidated duplicates
+      // excluded — linking a page whose canonical points elsewhere would
+      // resurrect the duplicate-signal problem), grouped alphabetically.
+      {
+        const primaries = topCompanies.filter((c) => {
+          const primary = primaryByName.get(c.name.trim().toLowerCase());
+          return primary.token === c.token;
+        });
+        const byLetter = new Map();
+        for (const c of [...primaries].sort((a, b) => a.name.localeCompare(b.name))) {
+          const letter = /^[a-z]/i.test(c.name.trim()) ? c.name.trim()[0].toUpperCase() : "#";
+          if (!byLetter.has(letter)) byLetter.set(letter, []);
+          byLetter.get(letter).push(c);
+        }
+        const sections = [...byLetter.entries()].map(([letter, cs]) => `
+          <h2 class="text-lg font-semibold mt-8 mb-3">${letter}</h2>
+          <ul class="grid gap-x-6 gap-y-1 sm:grid-cols-2 text-sm">
+            ${cs.map((c) => `<li><a href="${publicHref(`/jobs/company/${c.token}`)}" class="text-primary hover:underline">${esc(c.name)}</a> <span class="text-muted-foreground">— ${fmt(c.count)} openings</span></li>`).join("\n            ")}
+          </ul>`).join("\n");
+        write({
+          path: "/companies",
+          title: `${fmt(primaries.length)} Companies Hiring Now — Verified Job Boards`,
+          description: `Every employer on the board with a dedicated page: ${fmt(primaries.length)} companies, each pulled straight from its own official career system and re-verified all day. No aggregators, no reposts.`,
+          content: `
+            <h1 class="text-2xl font-bold mb-3">Companies hiring on the board</h1>
+            <p class="text-muted-foreground mb-6">${fmt(primaries.length)} employers with dedicated pages, listed A–Z — every posting comes from the company's own hiring system. Looking for a specific role instead? <a href="/jobs" class="text-primary underline">Search the live board</a>.</p>
+            ${sections}`,
+        });
+      }
     }
 
     // Main board page — the parent of the field landers. Without its own write()

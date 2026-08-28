@@ -62,6 +62,7 @@ const GuidesIndex = lazy(() => import("./pages/GuidesIndex"));
 const GuideArticle = lazy(() => import("./pages/GuideArticle"));
 const ScoreStudy = lazy(() => import("./pages/ScoreStudy"));
 const NotFound = lazy(() => import("./pages/NotFound"));
+const Companies = lazy(() => import("./pages/Companies"));
 
 const queryClient = new QueryClient();
 
@@ -96,6 +97,7 @@ const App = () => (
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/pricing" element={<Pricing />} />
           <Route path="/methodology" element={<Methodology />} />
+          <Route path="/companies" element={<Companies />} />
           <Route path="/affiliates" element={<Affiliates />} />
           <Route path="/r/:code" element={<AffiliateRedirect />} />
           <Route path="/dev/checkout-test" element={<DevCheckoutTest />} />

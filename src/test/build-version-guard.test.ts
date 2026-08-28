@@ -175,7 +175,7 @@ const PINNED = {
   // as a matter of course this time — the .2 bump had to be made retroactively
   // after three commits shipped undeployed behind an unchanged version string,
   // and "is it live?" cost six behavioural probes to answer.
-  sourcesHash: "f90afd0af2f5cf5c",
+  sourcesHash: "19001a25cffc34eb",
   // 2026-08-21.4: disables the exact-word tier's company matcher, whose index
   // never built. Bumped so the mitigation is externally identifiable.
   // 2026-08-21.5: routed retrieval. index.ts + two new modules; sources.ts
@@ -318,7 +318,12 @@ const PINNED = {
   // published the head row's truncated facet length as the employer count,
   // and the head row lacked coverage.tracked so trackedTotal vanished. Pairs
   // with 20260828001000 (the headline patcher now patches both rows).
-  buildVersion: "2026-08-27.43",
+  // 2026-08-28.44: Oracle tranche 1 — 38 boards / ~80k postings behind names
+  // resolved from each tenant's own recruitingCESites branding (Kroger,
+  // AutoZone, Providence, Quest Diagnostics...), gov/mill-screened on real
+  // posting text, tranche-capped to the ceiling raise (750k -> 800k on
+  // remeasured 9.4KB/row bytes at the 12GB plan).
+  buildVersion: "2026-08-28.44",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {

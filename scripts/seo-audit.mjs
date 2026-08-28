@@ -99,7 +99,13 @@ for (const p of pages) {
   }
 
   // ---- internal links (for orphan analysis) ----
-  for (const m of html.matchAll(/href="(\/[a-z0-9\-_/]*)"/gi)) allInternalLinks.add(m[1].replace(/\/$/, "") || "/");
+  // `.` and `~` belong in the class: company paths are host-shaped
+  // (/jobs/company/careers.mastec.com/) and Workday-shaped
+  // (/jobs/company/cvshealth~wd1~CVS_Health_Careers). Without them every
+  // company link on every page was invisible to this collector, so all 387
+  // company pages read as orphans even after the /companies hub linked each
+  // one (2026-08-28).
+  for (const m of html.matchAll(/href="(\/[a-z0-9\-_/.~]*)"/gi)) allInternalLinks.add(m[1].replace(/\/$/, "") || "/");
 }
 
 // ---- hreflang reciprocity + self-reference ----
@@ -119,7 +125,11 @@ for (const [path, cluster] of hreflangMap) {
 // ---- orphans: sitemap URLs never linked from any page ----
 const sitemap = readFileSync(join(DIST, "sitemap.xml"), "utf8");
 const smUrls = [...sitemap.matchAll(/<loc>https:\/\/resumebooster\.work(\/[^<]*)<\/loc>/g)].map((m) => m[1]);
-const orphans = smUrls.filter((u) => u !== "/" && !allInternalLinks.has(u));
+// Same normalization as the collector (which strips trailing slashes): the
+// sitemap deliberately lists dotted company pages in their slashed publicHref
+// form, and comparing the raw string against the stripped set read all 27 of
+// them as orphans while every one was linked from the /companies hub.
+const orphans = smUrls.filter((u) => u !== "/" && !allInternalLinks.has(u.replace(/\/$/, "")));
 if (orphans.length) issues.warn.push(`ORPHANS (in sitemap, linked from no page): ${orphans.length} — ${orphans.slice(0, 12).join(", ")}${orphans.length > 12 ? "…" : ""}`);
 
 // ---- report ----

@@ -102,7 +102,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-27.43"; // .43: the homepage said 200 companies — two sites derived the count from the head row\u0027s truncated facet, and the head row lacked coverage.tracked; .42: census merge
+const BUILD_VERSION = "2026-08-28.44"; // .44: Oracle tranche 1 (39 boards, ~82k postings, names resolved from recruitingCESites) + ceiling 800k on remeasured bytes; .43: the 200-companies fix
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -1103,11 +1103,20 @@ const CHAIN_CAP = Math.ceil(HOT_SIZE / HOT_SLICE) + COLD_SLICES_PER_PASS + 4; //
 // 750k step (2026-07-17): the snapshot 7-14 census wave (5-7k verified new
 // boards incl. two Workday batches) projects the corpus into the 420-500k+
 // range — at 500k the governor would evict fresh inventory on arrival. Row
-// math: ~5-6KB all-in → 750k ≈ 4.1GB ≈ 51% of the 8GB plan; the storage
-// heartbeat (75% alarm) passes at 307k and flags the true ceiling before it
-// binds. Next stop (1M) only after a bigger DB plan.
-const CORPUS_CEILING = 750_000; // arm eviction above this
-const CORPUS_TARGET = 720_000;  // evict down to this
+// math THEN: ~5-6KB all-in → 750k ≈ 4.1GB ≈ 51% of the 8GB plan.
+// 800k step (2026-08-28): the Oracle tranche (39 boards, ~82k postings behind
+// resolved names — Kroger 12.5k, AutoZone 11.2k) lands with the corpus at
+// ~696k; at 750k the governor would evict ~28k of the freshest inventory on
+// arrival, through the one delete path that leaves no lifecycle trace. Row
+// math REDONE from live bytes, not the stale 5-6KB estimate: measured
+// 2026-08-27, postings table 6.4GB at 683k rows = ~9.4KB/row all-in (the
+// 4k→12k description-cap raise is most of the difference). 800k ≈ 7.5GB
+// postings + 1.36GB everything else ≈ 8.9GB ≈ 74% of the 12GB plan (the plan
+// size is the plan_disk_gb meta row now) — inside the storage alarm's 75%
+// line, which remains the tripwire that flags the true ceiling before it
+// binds. Next stop only after a wider plan or a byte-diet on descriptions.
+const CORPUS_CEILING = 800_000; // arm eviction above this
+const CORPUS_TARGET = 770_000;  // evict down to this
 
 // Freshness cap: the board shows only roles posted within this window. Dated
 // postings past it are dropped at ingestion (never stored) and swept from the
