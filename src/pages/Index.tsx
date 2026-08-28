@@ -387,8 +387,11 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
   // one.
   const homeTotals = useBoardTotals();
   const homeTitle = homeTotals
-    ? `Resume Booster — Live Job Board: ${roundedFloor(homeTotals.jobs).toLocaleString()}+ Verified Openings, Zero Ghost Jobs`
-    : "Resume Booster — Live Job Board: Verified Openings, Zero Ghost Jobs";
+    // Mirrors prerender-seo.mjs:818 — the two must not drift (claim-drift
+    // rule). 61 chars; "Live Job Board: " was cut when the 76-char version
+    // truncated in the SERP at "Zero Ghost…".
+    ? `Resume Booster — ${roundedFloor(homeTotals.jobs).toLocaleString()}+ Verified Openings, Zero Ghost Jobs`
+    : "Resume Booster — Verified Openings, Zero Ghost Jobs";
   const homeDescription = homeTotals
     ? `A live job board with zero ghost jobs: ${roundedFloor(homeTotals.jobs).toLocaleString()}+ openings pulled straight from companies' own career systems, re-verified all day${
         homeTotals.tracked ? `, and ${roundedFloor(homeTotals.tracked).toLocaleString()}+ roles tracked including ones we have watched close` : ""

@@ -18,13 +18,18 @@ const pages = [];
 })(DIST);
 pages.push(join(DIST, "index.html")); // homepage
 
-const issues = { critical: [], warn: [] };
+const issues = { critical: [], warn: [], info: [] };
 const titles = new Map();
 const hreflangMap = new Map(); // url -> {lang: href}
 const allInternalLinks = new Set();
 const pathOf = (p) => p.replace(DIST, "").replace(/\.html$/, "").replace(/\/index$/, "") || "/";
 
 const get = (re, html) => (html.match(re) || [])[1] ?? null;
+
+// Every audited path, so a cross-canonical can be told from a broken one: a
+// canonical pointing at a page that exists in this same crawl is the
+// generator's same-employer consolidation, not a defect.
+const allPaths = new Set(pages.map(pathOf));
 
 for (const p of pages) {
   const html = readFileSync(p, "utf8");
@@ -43,11 +48,30 @@ for (const p of pages) {
     if (titles.has(title)) issues.critical.push(`${path}: DUPLICATE title with ${titles.get(title)}: "${title.slice(0, 60)}"`);
     else titles.set(title, path);
   }
+  const noindex = /name="robots"[^>]*noindex/.test(html);
   if (!desc) issues.critical.push(`${path}: missing meta description`);
-  else if (desc.length < 50) issues.warn.push(`${path}: thin description (${desc.length} chars)`);
+  // A noindex page's description reaches no SERP — /shortlist is an auth wall
+  // with a one-line description BY DESIGN, and warning about it every audit
+  // teaches the same deafness as any repeated false alarm.
+  else if (desc.length < 50 && !noindex) issues.warn.push(`${path}: thin description (${desc.length} chars)`);
   else if (desc.length > 170) issues.warn.push(`${path}: long description (${desc.length} chars)`);
   if (path !== "/" && !canonical) issues.critical.push(`${path}: missing canonical`);
-  if (canonical && canonical !== `${SITE}${path}`) issues.critical.push(`${path}: canonical mismatch → ${canonical}`);
+  // TWO SHAPES OF CROSS-CANONICAL ARE THE GENERATOR'S OWN DESIGN, not defects
+  // (this check flagged 32 of them as critical on 2026-08-28 and buried the
+  // real findings):
+  //  * dotted (host-shaped) paths canonicalize to the trailing-slash form,
+  //    because the slashless form deterministically 404s on the host
+  //    (measured 25/25 — see publicHref in prerender-seo.mjs);
+  //  * a smaller board of the same employer names the largest as canonical
+  //    (consolidation), and such pages are excluded from the sitemap.
+  // A canonical pointing at a page that EXISTS in this crawl is consolidation;
+  // anything else is still critical.
+  const selfForms = new Set([`${SITE}${path}`, /\.[^/]*$/.test(path) ? `${SITE}${path}/` : null].filter(Boolean));
+  if (canonical && !selfForms.has(canonical)) {
+    const target = canonical.replace(SITE, "").replace(/\/$/, "");
+    if (allPaths.has(target)) issues.info.push(`${path}: canonicalized to ${target} (same-employer consolidation)`);
+    else issues.critical.push(`${path}: canonical mismatch → ${canonical}`);
+  }
   if (h1s === 0) issues.warn.push(`${path}: no <h1>`);
   if (h1s > 1) issues.warn.push(`${path}: ${h1s} <h1> tags`);
 
@@ -104,3 +128,6 @@ console.log(`CRITICAL (${issues.critical.length}):`);
 for (const i of issues.critical.slice(0, 2000)) console.log("  ✗", i);
 console.log(`\nWARN (${issues.warn.length}):`);
 for (const i of issues.warn.slice(0, 2000)) console.log("  ⚠", i);
+console.log(`\nINFO (${issues.info.length}) — working as designed, listed for the record:`);
+for (const i of issues.info.slice(0, 50)) console.log("  ·", i);
+if (issues.info.length > 50) console.log(`  … ${issues.info.length - 50} more`);

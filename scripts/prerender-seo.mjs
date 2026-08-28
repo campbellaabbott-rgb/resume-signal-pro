@@ -815,8 +815,12 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
     isFallback: true,
     path: "/",
     title: BOARD_TOTAL
-      ? `Resume Booster — Live Job Board: ${plusClaim(BOARD_TOTAL, 50000)} Verified Openings, Zero Ghost Jobs`
-      : "Resume Booster — Live Job Board: Verified Openings, Zero Ghost Jobs",
+      // 61 chars with the number in — was 76 with "Live Job Board: " wedged
+      // in the middle, and Google truncated it at "Zero Ghost…" (audit
+      // 2026-08-28). The two claims that sell are the count and the ghost
+      // promise; the product category survives in the description.
+      ? `Resume Booster — ${plusClaim(BOARD_TOTAL, 50000)} Verified Openings, Zero Ghost Jobs`
+      : "Resume Booster — Verified Openings, Zero Ghost Jobs",
     // KEEP THIS UNDER 160 CHARACTERS. The previous one ran to 279 and the
     // clamp below cut it at "…Upload your CV and an AI…" — the snippet Google
     // shows literally trailed off before the word "agent", so the change that
@@ -1082,7 +1086,16 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
         write({
           path: `/jobs/company/${c.token}`,
           canonical: isPrimary ? null : `/jobs/company/${primary.token}`,
-          title: `${nm} Jobs — ${fmt(c.count)} Verified Openings`,
+          // 68-char SERP budget: a long employer name ("National Federation
+          // of Independent Business (NFIB)") overflowed at 79 chars and
+          // truncated mid-claim. The name always stays whole — the count
+          // phrase gives way first, "Verified" before "Openings".
+          title: (() => {
+            const full = `${nm} Jobs — ${fmt(c.count)} Verified Openings`;
+            if (full.length <= 68) return full;
+            const short = `${nm} Jobs — ${fmt(c.count)} Openings`;
+            return short.length <= 68 ? short : `${nm} Jobs`;
+          })(),
           description: `Browse ${fmt(c.count)} open roles at ${nm}, pulled straight from ${nm}'s own job board and re-verified all day — no aggregators, no reposts. Check your resume's fit free, then apply on ${nm}'s own site.`,
           content: `
             <h1>Open roles at ${esc(nm)}</h1>

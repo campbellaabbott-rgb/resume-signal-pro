@@ -105,7 +105,7 @@ function unanswered(r: { timedOut?: boolean; failed?: boolean }, fn: string, ms:
  *
  * BUMP ON EVERY DEPLOY of this function.
  */
-const BUILD_VERSION = "2026-08-27.2";
+const BUILD_VERSION = "2026-08-27.3";
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -1407,9 +1407,13 @@ serve(async (req) => {
 
     console.log(`[SCAN-HEARTBEAT] ${overallStatus} | Total: ${totalTime}ms | Checks: ${checks.map(c => `${c.name}:${c.passed}`).join(', ')}${skipped.length ? ` | SKIPPED: ${skipped.map(s => s.name).join(', ')}` : ''}`);
 
-    // Send alert if status is not healthy
+    // Send alert if status is not healthy — and a single recovery note when a
+    // previously-alerted state clears, so the inbox learns the incident ended
+    // without anyone re-curling the endpoint.
     if (overallStatus !== 'healthy') {
       EdgeRuntime.waitUntil(sendHeartbeatAlert(overallStatus, errorMessage, checks, totalTime));
+    } else {
+      EdgeRuntime.waitUntil(sendRecoveryIfAlerted());
     }
 
     // The apply worker runs on hardware we do not control — currently a laptop,
@@ -1868,6 +1872,46 @@ async function sendSenderOfflineAlert(state: SenderState): Promise<void> {
   }
 }
 
+// One recovery note when a previously-alerted state clears. Reads the same
+// durable fingerprint the alert path writes; sends nothing when the last
+// stored state was already healthy (or absent), so a healthy board costs zero
+// email. Best-effort throughout.
+async function sendRecoveryIfAlerted(): Promise<void> {
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!supabaseUrl || !serviceKey) return;
+    // Its own client, like sendHeartbeatAlert's dedupeClient: passing the
+    // outer client fails deno check on generics (see evaluateSenderState's
+    // note), and this path runs a handful of times a day at most.
+    const client = createClient(supabaseUrl, serviceKey);
+    const { data: st } = await client
+      .from('job_board_meta').select('v').eq('k', 'heartbeat_alert_state').maybeSingle();
+    const prev = ((st as { v?: unknown } | null)?.v ?? {}) as { fingerprint?: string };
+    if (!prev.fingerprint || prev.fingerprint.startsWith('healthy')) return;
+    await client.from('job_board_meta').upsert(
+      { k: 'heartbeat_alert_state', v: { fingerprint: 'healthy', lastSentAt: new Date().toISOString() }, updated_at: new Date().toISOString() },
+      { onConflict: 'k' },
+    );
+    const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+    const ADMIN_EMAIL = Deno.env.get("ADMIN_EMAIL") || "resumeboostersupp@gmail.com";
+    if (!RESEND_API_KEY) return;
+    await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        from: "Resume Booster Alerts <onboarding@resend.dev>",
+        to: [ADMIN_EMAIL],
+        subject: `✅ Heartbeat recovered: all checks passing`,
+        html: `<h2>Heartbeat recovered</h2><p>The previously reported failing state (<code>${prev.fingerprint}</code>) has cleared — all checks pass as of ${new Date().toISOString()}.</p>`,
+      }),
+    });
+    console.log('[SCAN-HEARTBEAT] Recovery email sent');
+  } catch (e) {
+    console.error('[SCAN-HEARTBEAT] Recovery email failed:', e);
+  }
+}
+
 // Send alert email for heartbeat failures
 async function sendHeartbeatAlert(
   status: string, 
@@ -1883,10 +1927,44 @@ async function sendHeartbeatAlert(
 
     if (!RESEND_API_KEY) return;
 
-    // Durable dedupe, same pattern as free-keyword-scan's alerts: on a 10-min
-    // schedule an outage would otherwise mean 6 emails/hour. check_rate_limit
-    // is atomic and global across isolates; cap 2/hour. Best-effort — a
-    // dedupe failure must never swallow a real alert.
+    const failedChecks = checks.filter(c => !c.passed);
+
+    // ALERT ON CHANGE, REMIND RARELY. The old gate was a 2/hour rate cap — on
+    // a 10-minute cron a PERSISTENT degraded state (a slow census digestion, a
+    // week of a miscalibrated SLA) meant 48 identical emails a day, and the
+    // inbox learned to ignore them, which is how alerting dies. The state that
+    // matters is the FAILING SET: email when it changes (a new check fails,
+    // the status escalates, part of it recovers), remind at most once a day
+    // while it persists, and send one recovery note when it clears. The
+    // fingerprint lives in job_board_meta so it survives isolates; every read
+    // and write is best-effort — a dedupe failure must never swallow a real
+    // alert, so on any error we fall through to the rate cap below and send.
+    const fingerprint = `${status}|${failedChecks.map((c) => c.name).sort().join(",")}`;
+    try {
+      const supabaseUrl = Deno.env.get("SUPABASE_URL");
+      const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+      if (supabaseUrl && serviceKey) {
+        const stateClient = createClient(supabaseUrl, serviceKey);
+        const { data: st } = await stateClient
+          .from('job_board_meta').select('v').eq('k', 'heartbeat_alert_state').maybeSingle();
+        const prev = (st?.v ?? {}) as { fingerprint?: string; lastSentAt?: string };
+        const lastSent = Date.parse(prev.lastSentAt ?? '');
+        const sameState = prev.fingerprint === fingerprint;
+        const REMIND_MS = 24 * 60 * 60_000;
+        if (sameState && Number.isFinite(lastSent) && Date.now() - lastSent < REMIND_MS) {
+          console.log(`[SCAN-HEARTBEAT] Alert suppressed — same failing set already reported ${Math.round((Date.now() - lastSent) / 60_000)}m ago (daily reminder pending)`);
+          return;
+        }
+        await stateClient.from('job_board_meta').upsert(
+          { k: 'heartbeat_alert_state', v: { fingerprint, lastSentAt: new Date().toISOString() }, updated_at: new Date().toISOString() },
+          { onConflict: 'k' },
+        );
+      }
+    } catch (_e) { /* fall through — the cap below still bounds the volume */ }
+
+    // The rate cap survives as a BACKSTOP for a flapping fingerprint (a check
+    // oscillating in and out of the failing set would otherwise email every
+    // flip): still at most 2 emails an hour, no matter what.
     try {
       const supabaseUrl = Deno.env.get("SUPABASE_URL");
       const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -1904,8 +1982,6 @@ async function sendHeartbeatAlert(
         }
       }
     } catch (_e) { /* fall through and send */ }
-
-    const failedChecks = checks.filter(c => !c.passed);
     const statusEmoji = status === 'down' ? '🔴' : '🟡';
 
     await fetch("https://api.resend.com/emails", {
@@ -1917,7 +1993,10 @@ async function sendHeartbeatAlert(
       body: JSON.stringify({
         from: "Resume Booster Alerts <onboarding@resend.dev>",
         to: [ADMIN_EMAIL],
-        subject: `${statusEmoji} Scan Heartbeat Alert: ${status.toUpperCase()}`,
+        // The failing set in the subject: identical subjects for different
+        // incidents thread together in Gmail and hide each other; a stable
+        // subject PER FINGERPRINT threads one incident as one conversation.
+        subject: `${statusEmoji} Heartbeat ${status.toUpperCase()}: ${failedChecks.map((c) => c.name.replace(/^job_board_/, "")).sort().join(", ").slice(0, 140) || "no failing checks"}`,
         html: `
           <h2>Free Scan Heartbeat Alert</h2>
           <p><strong>Status:</strong> ${status.toUpperCase()}</p>

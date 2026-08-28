@@ -58,7 +58,7 @@ describe("a number on a page is a promise", () => {
     expect(c).toMatch(/roundedFloor\(homeTotals\.tracked\)/);
     expect(c).toMatch(/tracked including ones we have watched close/);
     // And a variant that needs no number at all.
-    expect(c).toMatch(/"Resume Booster — Live Job Board: Verified Openings, Zero Ghost Jobs"/);
+    expect(c).toMatch(/"Resume Booster — Verified Openings, Zero Ghost Jobs"/);
   });
 
   it("the hook exposes tracked as its own field, not as a bigger `jobs`", () => {
