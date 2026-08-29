@@ -102,7 +102,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-29.51"; // .51: six-lens sweep — ring seam partitions (RING_WINDOW), routed block clamp, \b-as-bytes lifts, multi-select self-check, exclusion-honest counts; .50: corrections cap
+const BUILD_VERSION = "2026-08-29.52"; // .52: a facets failure no longer aborts the pass-end (sweep/hygiene/governor/stamps run; facets carried, prune gated) — the {facets_cache, freshness_cap} loop; .51: six-lens sweep
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -2694,11 +2694,44 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
     // orphan prune below DELETES postings from the company list it gets back. A
     // destructive path computes its own input rather than trusting a cache.
     const { data: facets, error: facetsErr } = await client.rpc("refresh_job_board_facets");
-    const f = (facets ?? {}) as Record<string, unknown>;
-    if (facetsErr || !f.total) {
-      console.warn("[JOB-BOARD] facets RPC unavailable — previous refresh meta kept:", facetsErr?.message ?? "empty result");
-      recordSliceStats(client, sliceWallStart, inHotPhase);
-      return { ok: true, detail: `pass complete but facets RPC unavailable (${facetsErr?.message ?? "empty result"}) — run migration 20260712080000` };
+    let f = (facets ?? {}) as Record<string, unknown>;
+    const facetsOk = !facetsErr && !!f.total;
+    // ONE FAILING AGGREGATE MUST NOT SWITCH OFF SIX UNRELATED DUTIES.
+    //
+    // This used to `return` here, keeping the previous refresh meta — correct
+    // for the meta, catastrophic for everything below it: the freshness sweep,
+    // date hygiene, the capacity governor, coverage, and the refresh stamps
+    // all sit downstream, so every pass while the facets RPC struggled skipped
+    // ALL of them, with `ok: true`. Measured 2026-08-29: facets started timing
+    // out at ~09:52Z under write pressure, the sweep stopped trimming the aged
+    // tail, the table grew, the aggregate got heavier — a feedback loop that
+    // held the whole pass-end hostage for 4+ hours and tripped
+    // {facets_cache, freshness_cap} together on the heartbeat (that pairing IS
+    // this return's signature). Now: carry the PREVIOUS facet fields forward —
+    // the same contract coverage already uses for a failed count — and let the
+    // maintenance run. Only the orphan prune stays gated on FRESH facets,
+    // because it deletes rows based on the company list.
+    let facetsCarried = false;
+    if (!facetsOk) {
+      console.warn("[JOB-BOARD] facets RPC unavailable — carrying previous facets, maintenance continues:", facetsErr?.message ?? "empty result");
+      // Attempt receipt: without it, "the cron ran and the aggregate failed"
+      // and "nothing ever fired" are indistinguishable from meta alone.
+      waitUntil(Promise.resolve(client.from("job_board_meta").upsert(
+        { k: "facets_attempt", v: { at: new Date().toISOString(), error: String(facetsErr?.message ?? "empty result").slice(0, 200) }, updated_at: new Date().toISOString() },
+        { onConflict: "k" },
+      )).then(() => {}).catch(() => {}));
+      const { data: prevRefresh } = await client.from("job_board_meta").select("v").eq("k", "refresh").maybeSingle();
+      const pv = (prevRefresh?.v ?? {}) as Record<string, unknown>;
+      if (pv.total) {
+        f = { total: pv.total, companiesFacet: pv.companiesFacet ?? [], categoriesFacet: pv.categoriesFacet ?? {} };
+        facetsCarried = true;
+      } else {
+        // Cold database AND a failed aggregate: nothing to carry, nothing the
+        // maintenance below could safely stand on. The original early return
+        // is still right for exactly this corner.
+        recordSliceStats(client, sliceWallStart, inHotPhase);
+        return { ok: true, detail: `pass complete but facets RPC unavailable (${facetsErr?.message ?? "empty result"}) and no previous facets to carry` };
+      }
     }
     let companies = Array.isArray(f.companiesFacet) ? f.companiesFacet : [];
 
@@ -2717,7 +2750,13 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
     const validTokens = new Set(JOB_SOURCES.map((s) => s.token));
     const { data: hwRow } = await client.from("job_board_meta").select("v").eq("k", "catalog_highwater").maybeSingle();
     const highwater = Number((hwRow?.v as { size?: number } | null)?.size) || 0;
-    if (JOB_SOURCES.length < highwater) {
+    if (!facetsOk) {
+      // Carried facets are yesterday's company list — good enough to SERVE,
+      // never good enough to DELETE by. A destructive path computes its own
+      // input (the rule stated on the RPC call above), and a carried input is
+      // not its own.
+      console.warn("[JOB-BOARD] orphan prune SKIPPED: facets carried, not computed — no deletions from a stale company list");
+    } else if (JOB_SOURCES.length < highwater) {
       console.warn(`[JOB-BOARD] orphan prune SKIPPED: bundle catalog ${JOB_SOURCES.length} < high-water ${highwater} — stale deploy must not wipe newer boards`);
     } else {
       if (JOB_SOURCES.length > highwater) {
@@ -3133,6 +3172,10 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
       companiesFacet: companies,
       categoriesFacet: f.categoriesFacet ?? {},
       ...(coverage ? { coverage } : {}),
+      // Facet fields above are LAST pass's, carried through an aggregate
+      // failure so the upsert-replaces-whole-v write cannot clobber them —
+      // named so a reader of this row can tell a carried total from a fresh one.
+      ...(facetsCarried ? { facetsCarried: true } : {}),
       refreshedAt: startIso,
     };
     await client.from("job_board_meta").upsert({ k: "refresh", v, updated_at: new Date().toISOString() }, { onConflict: "k" });

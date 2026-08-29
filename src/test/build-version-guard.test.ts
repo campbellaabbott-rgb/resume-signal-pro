@@ -356,7 +356,13 @@ const PINNED = {
   // employmentType/postedAfter, counts withdraw under exclusions, facet counts
   // bind every list filter, and the fuzzy total is tested against the RPC's
   // own 60-row cap.
-  buildVersion: "2026-08-29.51",
+  // 2026-08-29.52: the pass-end no longer returns early when the facets
+  // aggregate fails — the freshness sweep, date hygiene, capacity governor and
+  // refresh stamps run regardless (facet fields carried forward; orphan prune
+  // alone stays gated on FRESH facets). Live incident: facets timing out from
+  // ~09:52Z silently switched off all maintenance for 4+ hours and tripped
+  // {facets_cache, freshness_cap} together — that pairing was this return.
+  buildVersion: "2026-08-29.52",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {
