@@ -105,7 +105,7 @@ function unanswered(r: { timedOut?: boolean; failed?: boolean }, fn: string, ms:
  *
  * BUMP ON EVERY DEPLOY of this function.
  */
-const BUILD_VERSION = "2026-08-28.5";
+const BUILD_VERSION = "2026-08-29.6"; // .6: 4h degraded cooldown (one incident, one email) + news slots stamped only when actually announced
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -2012,13 +2012,29 @@ async function sendHeartbeatAlert(
         });
         const escalated = status === 'down' && !String(prev.fingerprint ?? '').startsWith('down');
         const remindDue = prev.fingerprint === fingerprint && Number.isFinite(lastSent) && now - lastSent >= REMIND_MS;
-        const shouldSend = newsChecks.length > 0 || escalated || remindDue;
+        // ONE INCIDENT, ONE EMAIL PER FOUR HOURS. During a real incident the
+        // failing set grows in waves — facets stalls, then the deploy check
+        // trips on the same load — and "a new member is news" sent an email
+        // per wave (three in one morning, measured on the user's inbox, all
+        // one underlying story). Degraded-severity emails now share a 4-hour
+        // cooldown; a check that trips inside it is announced when the window
+        // opens, IF it is still failing. Escalation to DOWN and the recovery
+        // note bypass the cooldown — a worsening board and a healed board are
+        // always worth one email.
+        const DEGRADED_COOLDOWN_MS = 4 * 60 * 60_000;
+        const cooled = status !== 'down' && Number.isFinite(lastSent) && now - lastSent < DEGRADED_COOLDOWN_MS;
+        const shouldSend = (newsChecks.length > 0 && !cooled) || escalated || remindDue;
 
         // The state row is kept CURRENT even when silent, so the recovery note
-        // and the reminder clock stay truthful across silent shrinks.
+        // and the reminder clock stay truthful across silent shrinks. But a
+        // check is stamped as announced ONLY when an email actually went out:
+        // initializing first-seen names on silent runs consumed their news
+        // slot with no email ever sent, so a check that first failed during a
+        // cooldown would stay unannounced for a full day.
         const nextAlerted: Record<string, string> = {};
         for (const c of failedChecks) {
-          nextAlerted[c.name] = shouldSend ? new Date().toISOString() : (alerted[c.name] ?? new Date().toISOString());
+          if (shouldSend) nextAlerted[c.name] = new Date().toISOString();
+          else if (alerted[c.name]) nextAlerted[c.name] = alerted[c.name];
         }
         await stateClient.from('job_board_meta').upsert(
           {

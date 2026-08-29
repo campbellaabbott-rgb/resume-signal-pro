@@ -44,6 +44,25 @@ describe("the heartbeat alerts on change, not on schedule", () => {
       .toMatch(/lastSentAt: shouldSend \? new Date\(\)\.toISOString\(\) : \(prev\.lastSentAt/);
   });
 
+  it("one incident is one email per four hours", () => {
+    // Three emails in one morning for one underlying story (facets stalls,
+    // then the deploy check trips on the same load) — measured on the user's
+    // inbox. Degraded emails share a cooldown; DOWN-escalation and the
+    // recovery note bypass it, because a worsening or healed board is always
+    // worth one email.
+    expect(CODE).toMatch(/DEGRADED_COOLDOWN_MS = 4 \* 60 \* 60_000/);
+    expect(CODE).toMatch(/status !== 'down' && Number\.isFinite\(lastSent\) && now - lastSent < DEGRADED_COOLDOWN_MS/);
+    expect(CODE, "escalation must bypass the cooldown").toMatch(/\|\| escalated \|\| remindDue/);
+  });
+
+  it("a news slot is spent only by an actual email", () => {
+    // Initializing first-seen names on silent runs consumed their slot with
+    // no email sent — a check first failing inside a cooldown would then stay
+    // unannounced for a full day.
+    expect(CODE).toMatch(/if \(shouldSend\) nextAlerted\[c\.name\] = new Date\(\)\.toISOString\(\);/);
+    expect(CODE).toMatch(/else if \(alerted\[c\.name\]\) nextAlerted\[c\.name\] = alerted\[c\.name\];/);
+  });
+
   it("keeps the rate cap as a flap backstop, after the fingerprint gate", () => {
     const fp = CODE.indexOf("heartbeat_alert_state");
     const cap = CODE.indexOf("'alert:heartbeat'");

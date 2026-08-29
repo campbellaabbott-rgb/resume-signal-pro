@@ -265,7 +265,7 @@ describe("the heartbeat watches the vendors that depend on the sweep", () => {
     // cron-built rows real pages serve from that nothing watched.
     // 2026-08-28.5: per-check alert clocks — a flapping check emails once per
     // day and a set-shrink never emails (the user's inbox measured the flap).
-    expect(HB).toMatch(/const BUILD_VERSION = "2026-08-2[78]\.\d+"/);
+    expect(HB).toMatch(/const BUILD_VERSION = "2026-08-\d\d\.\d+"/);
   });
 
   it("reads the ROLLUP, not the cache that was frozen when this shipped", () => {
