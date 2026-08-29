@@ -88,6 +88,18 @@ describe("the migration ships whole", () => {
   });
 });
 
+describe("the corrections RPC patches it — the silently-dropped-field class", () => {
+  it("apply_posting_corrections carries the employment_type CASE branch", () => {
+    // The fourth appearance of one defect class in a week: a hand-built
+    // object dropping fields it was not taught. Measured live: hours after
+    // .47, THREE typed rows corpus-wide — inserts only — because every
+    // re-ingest patch went through an RPC that hand-lists its columns.
+    const CORR = read("supabase/migrations/20260828140000_the_corrections_rpc_dropped_the_new_column.sql");
+    expect(CORR).toMatch(/employment_type = CASE WHEN patch\.p \? 'employment_type'/);
+    expect(CORR, "the comment must warn the next field-adder").toMatch(/ADDING A PATCHED FIELD AT THE EDGE REQUIRES ADDING IT HERE/);
+  });
+});
+
 describe("the person can see, share, save and be mailed the filter", () => {
   it("control, URL both directions, chips, zero-help", () => {
     expect(JOBS).toMatch(/aria-label=\{t\("jobsPage\.employmentType\.label"/);
