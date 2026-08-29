@@ -102,7 +102,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-28.49"; // .49: prev-row select gains employment_type — without it every typed row re-patched on EVERY visit (eternal churn, measured as DB pressure); .48: accuracy round
+const BUILD_VERSION = "2026-08-29.50"; // .50: corrections capped per visit — the employment-type first-fill wave saturated writes (slices 23s->99s); .49: churn fix
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -2252,6 +2252,22 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
         // column and leaves anything the patch did not mention untouched. A
         // plain bulk update would null out an employer's real salary because a
         // different row's title moved.
+        // CAPPED PER BOARD-VISIT, because a backfill wave is a denial of
+        // service against your own database. When a new patched field ships
+        // (employment_type, 2026-08-29), every typed row of every visited
+        // board queues a correction in the same slice — and each row UPDATE
+        // touches every index on a 12-index table. Measured live: cold slices
+        // 23s -> 99s, the facets cron 8 ticks behind, the heartbeat itself at
+        // 32-57s while the wave saturated writes. The cap bounds one slice's
+        // write bill; rows beyond it are NOT lost — the same board's next
+        // rotation visit patches the remainder, so the wave completes over
+        // ~a rotation instead of all at once. Steady-state (a handful of
+        // genuine vendor edits per board) never hits the cap.
+        const CORRECTIONS_PER_VISIT = 1_000;
+        if (corrections.length > CORRECTIONS_PER_VISIT) {
+          console.log(`[JOB-BOARD] corrections capped for ${s.token}: applying ${CORRECTIONS_PER_VISIT} of ${corrections.length} (remainder on next rotation visit)`);
+          corrections.length = CORRECTIONS_PER_VISIT;
+        }
         for (let i = 0; i < corrections.length; i += 200) {
           const chunk = corrections.slice(i, i + 200);
           const { error: cErr } = await client.rpc("apply_posting_corrections", { p_patches: chunk });

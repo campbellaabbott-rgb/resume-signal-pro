@@ -44,6 +44,16 @@ describe("capture: structured fields only, nine vendors", () => {
 });
 
 describe("the value reaches storage and every query path", () => {
+  it("a backfill wave is capped per visit — it must not besiege the database", () => {
+    // The first-fill wave patched every typed row of every visited board in
+    // one slice; each UPDATE touches every index on a 12-index table.
+    // Measured live: cold slices 23s -> 99s, the facets cron 8 ticks behind.
+    // The cap bounds one slice's write bill; the remainder patches on the
+    // board's next rotation visit, so nothing is lost — just spread.
+    expect(BOARD).toMatch(/const CORRECTIONS_PER_VISIT = 1_000/);
+    expect(BOARD).toMatch(/corrections\.length = CORRECTIONS_PER_VISIT/);
+  });
+
   it("the prev-row select carries the column — or every typed row churns forever", () => {
     // put() compares row vs prev; a prev fetched WITHOUT employment_type reads
     // undefined, so the patch fired on EVERY visit of every typed row — write

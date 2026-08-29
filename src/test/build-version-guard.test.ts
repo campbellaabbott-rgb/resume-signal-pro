@@ -344,7 +344,11 @@ const PINNED = {
   // 2026-08-28.49: the prev-row select gains employment_type — without it
   // put() compared against undefined and re-patched every typed row on every
   // visit, an eternal write amplification measured live as DB pressure.
-  buildVersion: "2026-08-28.49",
+  // 2026-08-29.50: corrections capped at 1,000 per board visit — the
+  // employment-type first-fill wave saturated writes (slices 23s->99s, the
+  // facets cron 8 ticks behind); the remainder patches on the next rotation
+  // visit, so the wave completes gently instead of all at once.
+  buildVersion: "2026-08-29.50",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {
