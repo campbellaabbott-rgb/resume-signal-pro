@@ -57,6 +57,13 @@
       "when": 1787970055589,
       "tag": "0007_employment_type_rides_every_path",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1787970077299,
+      "tag": "0008_employment_type_index_one_shot",
+      "breakpoints": true
     }
   ]
 }
