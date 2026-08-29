@@ -44,6 +44,14 @@ describe("capture: structured fields only, nine vendors", () => {
 });
 
 describe("the value reaches storage and every query path", () => {
+  it("the prev-row select carries the column — or every typed row churns forever", () => {
+    // put() compares row vs prev; a prev fetched WITHOUT employment_type reads
+    // undefined, so the patch fired on EVERY visit of every typed row — write
+    // amplification measured live as database-wide pressure within an hour of
+    // the corrections fix landing (fuzzy at its 8s timeout, search at 2.2s).
+    expect(BOARD).toMatch(/id,missing_since,title,location,country,apply_url,work_mode,employment_type,remote,salary/);
+  });
+
   it("row write and stated-only patch", () => {
     expect(BOARD).toMatch(/employment_type: j\.employmentType \?\? null/);
     expect(BOARD, "vendor silence must never overwrite a stated value")

@@ -102,7 +102,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-28.48"; // .48: coverage-armed employment-type intent lifts + did-you-mean support-ratio veto; .47: employment-type filter
+const BUILD_VERSION = "2026-08-28.49"; // .49: prev-row select gains employment_type — without it every typed row re-patched on EVERY visit (eternal churn, measured as DB pressure); .48: accuracy round
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -2058,7 +2058,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
         for (let from = 0; ; from += 1000) {
           let res = await client
             .from("job_board_postings")
-            .select("id,missing_since,title,location,country,apply_url,work_mode,remote,salary")
+            .select("id,missing_since,title,location,country,apply_url,work_mode,employment_type,remote,salary")
             .eq("company_token", s.token)
             .order("id")
             .range(from, from + 999);

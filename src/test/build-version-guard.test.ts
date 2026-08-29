@@ -341,7 +341,10 @@ const PINNED = {
   // lift would replace a working literal search with a near-empty filter);
   // and the did-you-mean presence veto became a 3x support ratio, which
   // generalises the curated "manger" employer-typo entry.
-  buildVersion: "2026-08-28.48",
+  // 2026-08-28.49: the prev-row select gains employment_type — without it
+  // put() compared against undefined and re-patched every typed row on every
+  // visit, an eternal write amplification measured live as DB pressure.
+  buildVersion: "2026-08-28.49",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {
