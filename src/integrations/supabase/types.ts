@@ -1732,6 +1732,7 @@ export type Database = {
           department: string | null
           description: string | null
           effective_posted: string | null
+          employment_type: string | null
           experience_band: string | null
           first_seen: string
           id: string
@@ -1762,6 +1763,7 @@ export type Database = {
           department?: string | null
           description?: string | null
           effective_posted?: string | null
+          employment_type?: string | null
           experience_band?: string | null
           first_seen?: string
           id: string
@@ -1792,6 +1794,7 @@ export type Database = {
           department?: string | null
           description?: string | null
           effective_posted?: string | null
+          employment_type?: string | null
           experience_band?: string | null
           first_seen?: string
           id?: string
