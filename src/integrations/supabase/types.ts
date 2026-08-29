@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.17"
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
@@ -1732,6 +1732,7 @@ export type Database = {
           department: string | null
           description: string | null
           effective_posted: string | null
+          employment_type: string | null
           experience_band: string | null
           first_seen: string
           id: string
@@ -1762,6 +1763,7 @@ export type Database = {
           department?: string | null
           description?: string | null
           effective_posted?: string | null
+          employment_type?: string | null
           experience_band?: string | null
           first_seen?: string
           id: string
@@ -1792,6 +1794,7 @@ export type Database = {
           department?: string | null
           description?: string | null
           effective_posted?: string | null
+          employment_type?: string | null
           experience_band?: string | null
           first_seen?: string
           id?: string
@@ -3275,6 +3278,7 @@ export type Database = {
           p_companies?: string[]
           p_country?: string
           p_department?: string
+          p_employment_type?: string
           p_experience?: string[]
           p_fresh_cutoff: string
           p_include_unstated?: boolean
@@ -3344,6 +3348,7 @@ export type Database = {
           p_companies?: string[]
           p_country?: string
           p_department?: string
+          p_employment_type?: string
           p_experience?: string[]
           p_fresh_cutoff: string
           p_include_unstated?: boolean
@@ -3368,6 +3373,7 @@ export type Database = {
           company_token: string
           country: string
           department: string
+          employment_type: string
           experience_band: string
           id: string
           last_seen: string
@@ -4345,6 +4351,7 @@ export type Database = {
           p_companies?: string[]
           p_country?: string
           p_department?: string
+          p_employment_type?: string
           p_experience?: string[]
           p_fresh_cutoff: string
           p_include_unstated?: boolean
@@ -4370,6 +4377,7 @@ export type Database = {
           company_token: string
           country: string
           department: string
+          employment_type: string
           experience_band: string
           id: string
           last_seen: string

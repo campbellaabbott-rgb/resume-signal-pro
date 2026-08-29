@@ -1,0 +1,1 @@
+SELECT cron.schedule('employment-type-index-one-shot', '* * * * *', 'CREATE INDEX CONCURRENTLY IF NOT EXISTS job_board_postings_employment_type_posted_idx ON public.job_board_postings (employment_type, effective_posted DESC) WHERE employment_type IS NOT NULL;');

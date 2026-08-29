@@ -43,6 +43,27 @@
       "when": 1787879624532,
       "tag": "0005_nine_coverage_figures_one_scan",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1787969960494,
+      "tag": "0006_employment_type_column",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1787970055589,
+      "tag": "0007_employment_type_rides_every_path",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1787970077299,
+      "tag": "0008_employment_type_index_one_shot",
+      "breakpoints": true
     }
   ]
 }
