@@ -3522,6 +3522,20 @@ export default function Jobs() {
       statedPay: { statedPayOnly: false }, maxYears: { maxYears: 0 },
       department: { department: "" }, vendor: { vendor: "" },
       agentOnly: { agentOnly: false }, inclUncat: { inclUncat: false },
+      inclUnstatedPay: { includeUnstatedPay: false },
+      // activelyHiring has NO board predicate — the chip filters the rows
+      // already served, in the browser, against the fill record, which is why
+      // its state sits outside BoardFilterState. Its clear() changes nothing
+      // the server sees, so the patch that matches it exactly is EMPTY: the
+      // probe re-counts the page's own query, a server-side zero counts 0,
+      // and the count>0 filter below drops the button — correctly, because
+      // switching a browser-side filter off cannot surface rows the server
+      // did not send. When THIS toggle is what emptied a served page, the
+      // rescue never runs (jobs.length > 0) and the activelyHiringEmpty line
+      // offers the way out instead. The entry exists so the chip key is
+      // accounted for here rather than silently reaching the same {} through
+      // the fallback lookup.
+      activelyHiring: {},
     };
     // Per-value chips carry compound keys ("mode:remote", "etype:full_time")
     // and their clear() removes ONE value from the family's comma list. The
