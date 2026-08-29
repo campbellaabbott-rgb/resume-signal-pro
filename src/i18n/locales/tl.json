@@ -4090,7 +4090,8 @@
       "contract": "Kontrata",
       "temporary": "Pansamantala",
       "internship": "Internship"
-    }
+    },
+    "relatedSeam": "Dito nagtatapos ang eksaktong tugma — sa ibaba, tugma lamang sa teksto ng posting"
   },
   "accountPage": {
     "statusSaveFailed": "Hindi na-save ang status na iyon — pakisubukan muli.",

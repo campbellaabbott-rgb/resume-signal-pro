@@ -4090,7 +4090,8 @@
       "contract": "Contrato",
       "temporary": "Temporal",
       "internship": "Prácticas"
-    }
+    },
+    "relatedSeam": "Aquí terminan las coincidencias exactas — debajo, solo coincidencias en el texto del anuncio"
   },
   "accountPage": {
     "statusSaveFailed": "No se pudo guardar ese estado; inténtalo de nuevo.",

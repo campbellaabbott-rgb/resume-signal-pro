@@ -88,6 +88,22 @@ describe("the migration ships whole", () => {
   });
 });
 
+describe("intent lifts arm themselves on coverage", () => {
+  it("'part time' lifts into the filter ONLY above the coverage floor", () => {
+    // Against a thin corpus the lift would REPLACE a working literal-text
+    // search with a near-empty filter — the exact downgrade the work-mode
+    // lifts were measured not to be. The sentinel trips the caller's-own-
+    // filter conflict rule, so below the floor the words stay in the query
+    // and behaviour is byte-identical to before the lifts existed.
+    expect(BOARD).toMatch(/etCovRaw >= 0\.25/);
+    expect(BOARD).toMatch(/employmentType: "__uncovered"/);
+    expect(BOARD, "the lift rules themselves").toMatch(/patch: \{ employmentType: "part_time" \}/);
+    expect(BOARD).toMatch(/patch: \{ employmentType: "internship" \}/);
+    expect(BOARD, "a caller's explicit filter must keep winning")
+      .toMatch(/employmentType: \["employmentType"\]/);
+  });
+});
+
 describe("the corrections RPC patches it — the silently-dropped-field class", () => {
   it("apply_posting_corrections carries the employment_type CASE branch", () => {
     // The fourth appearance of one defect class in a week: a hand-built

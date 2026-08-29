@@ -6104,6 +6104,16 @@ export default function Jobs() {
                     last card so it never disappears entirely. */}
                 {groupedJobs.map(({ primary: job, siblings }, gi) => {
                   const mobileDropAt = Math.min(3, Math.max(groupedJobs.length - 1, 0));
+                  // THE SEAM, MADE STRUCTURAL. Per-card "matched in
+                  // description" badges tell the truth row by row; this names
+                  // the boundary once, where the exact segment ends — so a
+                  // reader knows everything below matched only in posting
+                  // text, instead of inferring it badge by badge. Rendered
+                  // only at a genuine transition on a searched list.
+                  const prevJob = gi > 0 ? groupedJobs[gi - 1].primary : null;
+                  const crossesSeam = !!q && gi > 0 &&
+                    (job as { matchScope?: string }).matchScope === "description" &&
+                    (prevJob as { matchScope?: string } | null)?.matchScope === "title";
                   const d = daysAgo(job.postedAt);
                   const openRoles = job.token ? companyCounts.get(job.token) : undefined;
                   const fit = fitRanking ? fits[job.id] : undefined;
@@ -6117,6 +6127,15 @@ export default function Jobs() {
                   const tier = typeof fit === "number" ? (fit >= 20 ? "strong" : fit >= 10 ? "possible" : "stretch") : null;
                   return (
                     <Fragment key={job.id}>
+                    {crossesSeam && (
+                      <li aria-hidden="true" className="flex items-center gap-3 py-1">
+                        <span className="flex-1 h-px bg-border" />
+                        <span className="text-[11px] text-muted-foreground whitespace-nowrap">
+                          {t("jobsPage.relatedSeam", "Exact matches end here — below matched in posting text only")}
+                        </span>
+                        <span className="flex-1 h-px bg-border" />
+                      </li>
+                    )}
                     {gi === mobileDropAt && resumeAvailable === false && !fitRanking && (
                       <li className="lg:hidden">{resumeDropPanel("flex")}</li>
                     )}

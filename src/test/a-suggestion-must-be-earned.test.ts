@@ -48,10 +48,16 @@ describe("a suggestion is derived, never fetched", () => {
     expect(block, "a dense sample is required instead").toMatch(/fuzzyTitlesForDym\.length >= 5/);
   });
 
-  it("requires cross-title support", () => {
-    expect(block).toMatch(/support >= 3/);
-    expect(block, "a token already spelled right must never be corrected")
-      .toMatch(/if \(allWords\.has\(tok\)\) continue/);
+  it("requires cross-title support that OUTWEIGHS the typo's own", () => {
+    // The presence veto trusted three employers' identical misspelling
+    // ("recepcionist" got no suggestion over a 30-title correct pool,
+    // measured live). Corroboration is a ratio now: the correction must beat
+    // the typo three-to-one — which also generalises the curated "manger"
+    // entry, where 101 employer-typo rows lose to an overwhelming pool.
+    expect(block).toMatch(/support >= 3 && support >= tokSupport \* 3/);
+    expect(block).toMatch(/const tokSupport = titleWords\.filter/);
+    expect(block, "the absolute presence veto is the measured defect returning")
+      .not.toMatch(/allWords\.has\(tok\)\) continue/);
   });
 
   it("tokenizes Unicode letters, both sides", () => {

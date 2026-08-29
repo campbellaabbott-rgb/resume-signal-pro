@@ -4090,7 +4090,8 @@
       "contract": "Contrato",
       "temporary": "Temporário",
       "internship": "Estágio"
-    }
+    },
+    "relatedSeam": "As correspondências exatas terminam aqui — abaixo, apenas correspondências no texto da vaga"
   },
   "accountPage": {
     "statusSaveFailed": "Não foi possível salvar esse status — tente novamente.",

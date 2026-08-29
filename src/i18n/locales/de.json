@@ -4090,7 +4090,8 @@
       "contract": "Befristet/Vertrag",
       "temporary": "Zeitweise",
       "internship": "Praktikum"
-    }
+    },
+    "relatedSeam": "Exakte Treffer enden hier — darunter nur Treffer im Anzeigentext"
   },
   "accountPage": {
     "statusSaveFailed": "Status konnte nicht gespeichert werden — bitte erneut versuchen.",

@@ -4090,7 +4090,8 @@
       "contract": "Contract",
       "temporary": "Tijdelijk",
       "internship": "Stage"
-    }
+    },
+    "relatedSeam": "Exacte matches eindigen hier — hieronder alleen matches in de vacaturetekst"
   },
   "accountPage": {
     "statusSaveFailed": "Kon die status niet opslaan — probeer het opnieuw.",

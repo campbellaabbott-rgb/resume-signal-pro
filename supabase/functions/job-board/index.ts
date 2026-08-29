@@ -102,7 +102,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-28.47"; // .47: employment-type filter end-to-end (nine vendors, three RPCs, coverage, UI); .46: derived did-you-mean
+const BUILD_VERSION = "2026-08-28.48"; // .48: coverage-armed employment-type intent lifts + did-you-mean support-ratio veto; .47: employment-type filter
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -4602,6 +4602,16 @@ const INTENT_FILTERS: Array<{ re: RegExp; label: string; patch: Record<string, u
   { re: /\bno experience(?: (?:required|needed|necessary))?\b/i, label: "no experience", patch: { experience: ["entry"] } },
   { re: /\bentry[- ]level\b/i, label: "entry level", patch: { experience: ["entry"] } },
   { re: /\bgraduate scheme\b/i, label: "graduate scheme", patch: { experience: ["entry"] } },
+  // Employment-type phrasing — the filter shipped 2026-08-28 and these are
+  // among the most-typed qualifiers on any job board. Phrases before the bare
+  // "intern" word, same ordering rule as the work-mode block; "temp" alone is
+  // NOT lifted (too ambiguous — "temp agency", "temperature controlled").
+  { re: /part[- ]?time/i, label: "part time", patch: { employmentType: "part_time" } },
+  { re: /full[- ]?time/i, label: "full time", patch: { employmentType: "full_time" } },
+  { re: /internships?/i, label: "internship", patch: { employmentType: "internship" } },
+  { re: /intern/i, label: "intern", patch: { employmentType: "internship" } },
+  { re: /temporary/i, label: "temporary", patch: { employmentType: "temporary" } },
+  { re: /contract(?:or|ing)? (?:role|position|work|job)s?/i, label: "contract role", patch: { employmentType: "contract" } },
   // Freshness phrasing — maxAgeDays is an existing, indexed predicate.
   { re: /\bhiring (?:now|immediately)\b/i, label: "hiring now", patch: { maxAgeDays: 7 } },
   { re: /\bimmediate start\b/i, label: "immediate start", patch: { maxAgeDays: 7 } },
@@ -4628,6 +4638,7 @@ const INTENT_CONFLICTS: Record<string, string[]> = {
   workMode: ["remote", "workMode"],
   experience: ["experience"],
   maxAgeDays: ["maxAgeDays", "postedAfter"],
+  employmentType: ["employmentType"],
 };
 
 /**
@@ -8715,7 +8726,20 @@ async function serveList(
   const exclusion = splitExclusions(String(body.q ?? ""));
   const excludedTerms = exclusion.excluded;
   if (excludedTerms.length) body = { ...body, q: exclusion.positive };
-  const intentLift = liftIntentFilters(body.q, body);
+  // EMPLOYMENT-TYPE LIFTS ARM THEMSELVES ON COVERAGE. Lifting "part time"
+  // out of the query and into the filter is only an upgrade once enough of
+  // the corpus carries a typed value — against thin coverage it would REPLACE
+  // a working literal-text search with a near-empty filter (the exact
+  // downgrade the work-mode lifts were measured NOT to be). Below the floor,
+  // a sentinel in the lift's view of the body trips the caller's-own-filter
+  // conflict rule for exactly those lifts: the words stay in the query and
+  // behaviour is byte-identical to before the lifts existed. The gate reads
+  // the same cached coverage figure the disclosure serves, so the feature
+  // switches on by itself as rotation types the corpus.
+  const etCovRaw = ((meta?.v as Record<string, unknown> | undefined)?.coverage as { employmentType?: unknown } | undefined)?.employmentType;
+  const etLiftArmed = typeof etCovRaw === "number" && etCovRaw >= 0.25;
+  const liftView = etLiftArmed || (body.employmentType != null && body.employmentType !== "") ? body : { ...body, employmentType: "__uncovered" };
+  const intentLift = liftIntentFilters(body.q, liftView);
   if (intentLift) {
     body = { ...body, ...intentLift.patch, q: intentLift.residualQ };
   }
@@ -11492,13 +11516,22 @@ async function serveList(
             const allWords = new Set(titleWords.flatMap((ws) => [...ws]));
             const tokens = qText.toLowerCase().split(/[^\p{L}]+/u).filter((w) => w.length >= 4);
             for (const tok of tokens) {
-              if (allWords.has(tok)) continue; // spelled right — appears verbatim in similar titles
+              // SUPPORT RATIO, not presence: "recepcionist" appears verbatim in
+              // three titles because three EMPLOYERS misspelled it the same
+              // way, and a presence veto trusted them (measured live — no
+              // suggestion on a 30-title correct pool). A token is only
+              // "spelled right" when the pool actually corroborates it; a
+              // correction must beat it three-to-one. This also generalises
+              // the curated "manger" entry: 101 employer-typo rows lose to a
+              // correction the pool overwhelmingly carries.
+              const tokSupport = titleWords.filter((ws) => ws.has(tok)).length;
               for (const w of allWords) {
                 if (w === tok || !within2Edits(tok, w)) continue;
                 // Consistency bar: the correction must appear across the pool,
-                // not in one lucky title.
+                // not in one lucky title — and must outweigh the typo's own
+                // corroboration by 3x.
                 const support = titleWords.filter((ws) => ws.has(w)).length;
-                if (support >= 3) {
+                if (support >= 3 && support >= tokSupport * 3) {
                   // Word-boundary, not substring: replace("art", ...) on
                   // "cart art designer" corrupts "cart" first. \p{L} tokens
                   // are regex-safe by construction.

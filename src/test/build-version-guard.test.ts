@@ -336,7 +336,12 @@ const PINNED = {
   // p_employment_type (the one-function-one-signature guard caught that a
   // verbatim body copy dropped only the PRE-210000 overloads), coverage,
   // UI toggles/chips/URL/zero-help, saved searches and the digest.
-  buildVersion: "2026-08-28.47",
+  // 2026-08-28.48: "part time nurse" lifts into the employment-type filter —
+  // but ONLY once cached coverage crosses 0.25 (against a thin corpus the
+  // lift would replace a working literal search with a near-empty filter);
+  // and the did-you-mean presence veto became a 3x support ratio, which
+  // generalises the curated "manger" employer-typo entry.
+  buildVersion: "2026-08-28.48",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {

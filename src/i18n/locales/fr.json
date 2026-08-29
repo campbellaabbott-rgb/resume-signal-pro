@@ -4090,7 +4090,8 @@
       "contract": "Contrat",
       "temporary": "Intérim",
       "internship": "Stage"
-    }
+    },
+    "relatedSeam": "Fin des correspondances exactes — en dessous, correspondances dans le texte de l'annonce uniquement"
   },
   "accountPage": {
     "statusSaveFailed": "Impossible d'enregistrer ce statut — réessayez.",

@@ -4090,7 +4090,8 @@
       "contract": "Contract",
       "temporary": "Temp",
       "internship": "Internship"
-    }
+    },
+    "relatedSeam": "Exact matches end here — below matched in posting text only"
   },
   "accountPage": {
     "statusSaveFailed": "Couldn't save that status — please try again.",
