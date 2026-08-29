@@ -23,6 +23,16 @@ export interface ChangelogEntry {
 }
 
 export const changelog: ChangelogEntry[] = [
+  { id: "employmentTypeFilter", date: "2026-08-28", tags: ["new"] },
+  { id: "biggestEmployersJoinTheBoard", date: "2026-08-28", tags: ["new"] },
+  { id: "aThousandNewEmployers", date: "2026-08-28", tags: ["new"] },
+  { id: "companiesDirectory", date: "2026-08-28", tags: ["new"] },
+  { id: "spellingSuggestionsLearned", date: "2026-08-28", tags: ["improved"] },
+  { id: "exactMatchesEndHere", date: "2026-08-28", tags: ["improved"] },
+  { id: "companyCountWasWrong", date: "2026-08-28", tags: ["fixed"] },
+  { id: "typeACityWithYourSearch", date: "2026-08-27", tags: ["new"] },
+  { id: "relatedRolesInBetterOrder", date: "2026-08-27", tags: ["improved"] },
+  { id: "savedSearchesKeepEveryFilter", date: "2026-08-27", tags: ["fixed"] },
   { id: "remoteSearchNowFilters", date: "2026-08-27", tags: ["fixed", "improved"] },
   { id: "affiliateCommissionsNotRecorded", date: "2026-08-27", tags: ["fixed"] },
   { id: "searchUsedTheSlowerEngine", date: "2026-08-26", tags: ["fixed"] },
