@@ -3278,6 +3278,7 @@ export type Database = {
           p_companies?: string[]
           p_country?: string
           p_department?: string
+          p_employment_type?: string
           p_experience?: string[]
           p_fresh_cutoff: string
           p_include_unstated?: boolean
@@ -3347,6 +3348,7 @@ export type Database = {
           p_companies?: string[]
           p_country?: string
           p_department?: string
+          p_employment_type?: string
           p_experience?: string[]
           p_fresh_cutoff: string
           p_include_unstated?: boolean
@@ -3371,6 +3373,7 @@ export type Database = {
           company_token: string
           country: string
           department: string
+          employment_type: string
           experience_band: string
           id: string
           last_seen: string
@@ -4348,6 +4351,7 @@ export type Database = {
           p_companies?: string[]
           p_country?: string
           p_department?: string
+          p_employment_type?: string
           p_experience?: string[]
           p_fresh_cutoff: string
           p_include_unstated?: boolean
@@ -4373,6 +4377,7 @@ export type Database = {
           company_token: string
           country: string
           department: string
+          employment_type: string
           experience_band: string
           id: string
           last_seen: string

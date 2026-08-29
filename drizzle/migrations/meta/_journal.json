@@ -50,6 +50,13 @@
       "when": 1787969960494,
       "tag": "0006_employment_type_column",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1787970055589,
+      "tag": "0007_employment_type_rides_every_path",
+      "breakpoints": true
     }
   ]
 }
