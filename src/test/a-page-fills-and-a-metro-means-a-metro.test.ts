@@ -106,39 +106,31 @@ describe("a page fills up", () => {
     expect(FN).toMatch(/const lastRaw = rawKeys\[rawKeys\.length - 1\];/);
   });
 
-  it("tops up the RANKED path too — the one a typed query uses", () => {
-    // The first version shipped only on the recency path and MEASURED as
-    // changing nothing: "retail sales" still returned 37 cards of 60,
-    // "customer service" 41, because a typed query is served by the ranked
-    // path and returns long before that code runs.
-    // Re-anchored: the sequence is now the sorted WINDOW on a sorted page and
-    // the raw rows otherwise. What this protects is unchanged — the top-up must
-    // act on the ranked path's own sequence, not the recency one.
-    expect(FN).toMatch(/let rankedSequence = rankedWindow;/);
-    expect(FN).toMatch(/rankedGrouped\.jobs\.length < limit && rankedRows\.length >= fetchLimit/);
-    // And it must NOT run on a sorted page: its p_offset arithmetic is in
-    // relevance order, which a sorted window has already left behind.
-    // The top-up pages from `offset + rankedRows.length`, which is
-    // relevance-order arithmetic. It must stand down for a SORTED page and now
-    // also for a SCORED one — both have left that ordering behind, and both
-    // already read the RPC's entire 200-row cap, so there is nothing behind the
-    // window to top up with.
-    expect(FN).toMatch(/if \(!newestFirst && !scoreRanked && groupSimilar && rankedGrouped\.jobs\.length < limit/);
-    // Paged by p_offset past everything already read — no cursor arithmetic.
-    expect(FN).toMatch(/p_offset: offset \+ rankedRows\.length,/);
-    // hasMore must count the MERGED rows or "Load more" disappears early.
+  it("the ranked top-up stayed deleted, and hasMore still measures the merged sequence", () => {
+    // The ranked top-up this test used to pin was DEAD CODE: inside the ranked
+    // block scoreRanked is exactly !newestFirst, so its gate
+    // `!newestFirst && !scoreRanked` was unsatisfiable and the second fetch it
+    // promised for short pages never ran once (2026-08-29 six-lens sweep).
+    // What this test protected — "retail sales" returning 37 cards of 60 —
+    // was never protected by that block, and its p_offset arithmetic
+    // (`offset + rankedRows.length`, relevance coordinates) is unsafe in both
+    // the windowed and the deep regime. It is deleted, not revived; a short
+    // page with a correct nextOffset is the honest behaviour.
+    expect(FN).toMatch(/const rankedSequence = rankedWindow;/);
+    const stripped = FN.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+    expect(stripped, "the unsatisfiable gate must not return").not.toMatch(/!newestFirst && !scoreRanked && groupSimilar/);
     // hasMore must be derived from the MERGED sequence, not the raw rows, or
     // "Load more" disappears while results remain. Asserted on the expression
-    // rather than one line of it: hasMore is now a ternary (sorted pages read a
-    // finite window), and pinning the old single-line spelling would fail on a
-    // correct refactor and teach the next person to delete the check.
-    const hm = /hasMore: deepPage[\s\S]{0,520}?,\n/.exec(FN)?.[0] ?? "";
+    // rather than one line of it. FOUR branches now: deep, ring-merged
+    // sub-seam, windowed, and plain — each must measure what is left in the
+    // sequence it serves from.
+    const hm = /hasMore: deepPage[\s\S]{0,1200}?,\n/.exec(FN)?.[0] ?? "";
     expect(hm, "the ranked hasMore expression could not be located").not.toBe("");
     expect(
       (hm.match(/rankedSequence\.length > rankedGrouped\.rawConsumed/g) ?? []).length,
       "EVERY branch must measure what is left in the merged sequence — there are " +
-        "three now that a deep page is served straight from SQL rank",
-    ).toBe(3);
+        "four now that a ring-merged query has its own seam",
+    ).toBe(4);
   });
 
   it("serves the page it already has if the top-up fails", () => {

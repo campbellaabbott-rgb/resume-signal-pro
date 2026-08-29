@@ -80,6 +80,11 @@ describe("engineer not manager returned managers", () => {
     expect(split).toBeGreaterThan(-1);
     expect(split, "exclusions must be split beside the intent lift").toBeLessThan(lift);
     expect(FN).toMatch(/function exclusionDisclosure\(/);
-    expect((FN.match(/\.\.\.exclusionDisclosure\(excludedTerms\),/g) ?? []).length).toBe(8);
+    // NINE since 2026-08-29: the eight list exits plus countHonesty, which now
+    // discloses (and withdraws its count) for the countOnly probes — a
+    // relaxation button quoting an unexcluded number promises rows the click
+    // then hides. Paired one-to-one with exclusionCountsCaveat, asserted in
+    // a-ring-that-breaks-a-seam-serves-a-row-twice.test.ts.
+    expect((FN.match(/\.\.\.exclusionDisclosure\(excludedTerms\),/g) ?? []).length).toBe(9);
   });
 });

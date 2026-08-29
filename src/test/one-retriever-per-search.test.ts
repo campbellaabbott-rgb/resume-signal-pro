@@ -340,11 +340,15 @@ describe("the scorer reaches the path that serves most searches", () => {
     // Scoring permutes the rows, so below the seam it needs the SAME fixed
     // window a sort does.
     expect(/pLimit: windowed && !deepPage \? w : opts\.fetchLimit,/.test(PAGING)).toBe(true);
-    expect(/pOffset: windowed && !deepPage \? 0 : opts\.offset,/.test(PAGING)).toBe(true);
+    // The deep offset maps back onto SQL rank for ring-merged queries — the
+    // pool below their 400 seam carried ranks 0..199, so rank 200 is reached
+    // at offset 400 (walked in a-ring-that-breaks-a-seam-serves-a-row-twice).
+    expect(/pOffset: windowed && !deepPage \? 0 : deepPage && opts\.ringMerged \? opts\.offset - \(RING_WINDOW - w\) : opts\.offset,/.test(PAGING)).toBe(true);
     expect(/rankedScored\.slice\(pagePlan\.sliceStart, pagePlan\.sliceEnd\)/.test(FN)).toBe(true);
     expect(/hasMore: deepPage/.test(FN)).toBe(true);
-    // And the top-up pages in relevance order, which a scored window has left.
-    expect(/if \(!newestFirst && !scoreRanked && groupSimilar/.test(FN)).toBe(true);
+    // The ranked top-up was deleted 2026-08-29 — its gate was unsatisfiable
+    // and its p_offset arithmetic unsafe; nothing here to pin but its absence.
+    expect(/if \(!newestFirst && !scoreRanked && groupSimilar/.test(FN)).toBe(false);
   });
 
   it("does not override an ordering the reader chose", () => {
@@ -375,7 +379,10 @@ describe("the head-term ring fetches what the scorer cannot reach", () => {
     // Prefix alone would lose every "Software Engineer" for q="engineer" —
     // 2,313 prefix rows against a far larger real set. The merge is what makes
     // it safe.
-    expect(/const mergedRows = \[\.\.\.headRows, \.\.\.rankedRows\]/.test(FN2)).toBe(true);
+    // Below the seam it still merges (the else branch); on a ring-merged DEEP
+    // page the ring flips to an exclusion set, which is subtraction — the
+    // a-ring-that-breaks-a-seam test walks that regime.
+    expect(/mergedRows = \[\.\.\.headRows, \.\.\.rankedRows\]/.test(FN2)).toBe(true);
     expect(/rerankWindow\(mergedRows, \[qText, \.\.\.expansions\]\)/.test(FN2)).toBe(true);
     expect(/mergedSeen\.has\(id\)/.test(FN2), "the merge must dedupe by id").toBe(true);
   });

@@ -31,9 +31,14 @@ const board = readFileSync(
 const jobs = readFileSync(resolve(__dirname, "../pages/Jobs.tsx"), "utf8");
 
 const DIR = resolve(__dirname, "../../supabase/migrations");
+// The newest migration that DEFINES search_jobs with the widened binding —
+// not merely the newest one mentioning string_to_array: 20260829120000
+// redefines only fuzzy_title_search (same signature, CREATE OR REPLACE) and
+// matching it here made this test assert search_jobs exists in a file that
+// deliberately does not carry it.
 const sql = readdirSync(DIR).filter((f) => f.endsWith(".sql"))
   .map((f) => readFileSync(resolve(DIR, f), "utf8"))
-  .filter((t) => t.includes("string_to_array")).pop() ?? "";
+  .filter((t) => t.includes("string_to_array") && /FUNCTION public\.search_jobs\(/.test(t)).pop() ?? "";
 
 // 200 is the company-token cap the board itself passes; irrelevant here, but
 // the signature requires it and vitest would never have told me.

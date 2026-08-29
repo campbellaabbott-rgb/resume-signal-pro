@@ -87,7 +87,7 @@ describe("an instrument that starts late measures the wrong thing", () => {
     expect(decl, "the ring promise must catch at creation").toMatch(/\.catch\(\(\) => \(\{ data: null \}\)\)/);
 
     // Gated exactly as the await site is gated, so nothing new fires.
-    expect(decl).toMatch(/\(scoreRanked && headTermRing && !deepPage\)/);
+    expect(decl).toMatch(/\(scoreRanked && headTermRing && \(!deepPage \|\| ringMerged\)\)/);
   });
 
   it("still measures the ring from when it was ISSUED", () => {

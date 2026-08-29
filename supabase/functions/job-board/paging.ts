@@ -38,6 +38,29 @@
  */
 export const RANKED_WINDOW = 200;
 
+/**
+ * The seam for a query whose window is MERGED with the head-term ring.
+ *
+ * The ring adds up to 200 title-prefix rows to the SQL top-200, so the served
+ * pool is up to 400 rows — and clamping that pool at 200 breaks the seam
+ * contract twice over: ring-only rows (SQL rank >= 200) served below the seam
+ * are re-served by deep pages as duplicates, while the SQL top-200 rows they
+ * displaced past position 200 are never served at ANY offset though `total`
+ * counts them. Measured on q="sales": ~27 exact "Sales Associate" rows
+ * duplicated past the seam and as many rows permanently unreachable.
+ *
+ * So a ring-merged query gets a seam at the pool's MAXIMUM — a constant, which
+ * is what lets one request plan a deep page without first fetching the pool to
+ * learn its length. Below 400 the regime serves pool positions (the pool ends
+ * wherever it ends; a slice past its true length is an empty page whose
+ * nextOffset points at the seam). At and above 400 the SQL regime resumes at
+ * rank `offset - (RING_WINDOW - RANKED_WINDOW)`, i.e. rank 200 exactly where
+ * the pool's SQL content ended — and the deep page re-runs the cheap ring
+ * prefix query to DROP any row the ring already served below the seam.
+ * No overlap, no hole, and page one is byte-identical to the pre-fix board.
+ */
+export const RING_WINDOW = 400;
+
 export type RankedPagePlan = {
   /** Serving from SQL rank rather than from the re-ranked window. */
   deepPage: boolean;
@@ -71,24 +94,37 @@ export function planRankedPage(opts: {
   scoreRanked: boolean;
   newestFirst: boolean;
   deepPageable: boolean;
+  /**
+   * The head-term ring merges into this query's window, so the below-seam pool
+   * is up to RING_WINDOW rows rather than exactly the SQL top-200. Moves the
+   * seam to RING_WINDOW and offset-maps the deep regime back onto SQL rank —
+   * see the RING_WINDOW note for the duplicate/hole pair this prevents.
+   * Meaningful only alongside deepPageable; a query with no SQL regime to meet
+   * has no seam either way.
+   */
+  ringMerged?: boolean;
   rankedWindow?: number;
 }): RankedPagePlan {
   const w = opts.rankedWindow ?? RANKED_WINDOW;
+  const seam = opts.ringMerged ? RING_WINDOW : w;
   // "Windowed" is the pre-existing condition for reading a fixed window at
   // rank 0: a re-sorted page cannot page by an offset into an ordering the
   // sort has already destroyed.
   const windowed = opts.newestFirst || opts.scoreRanked;
-  const deepPage = opts.deepPageable && opts.offset >= w;
+  const deepPage = opts.deepPageable && opts.offset >= seam;
   return {
     deepPage,
     pLimit: windowed && !deepPage ? w : opts.fetchLimit,
-    pOffset: windowed && !deepPage ? 0 : opts.offset,
+    // A ring-merged deep page maps its offset back into SQL rank: the pool
+    // below the seam carried SQL ranks 0..w-1 (plus ring rows), so the first
+    // rank the deep regime owns is w, reached at offset RING_WINDOW.
+    pOffset: windowed && !deepPage ? 0 : deepPage && opts.ringMerged ? opts.offset - (RING_WINDOW - w) : opts.offset,
     rerank: opts.scoreRanked && !deepPage,
     sliceStart: deepPage ? 0 : windowed ? opts.offset : 0,
     // Clamped ONLY where there is a seam to protect. Clamping a query with no
     // SQL regime to meet buys nothing and costs cards: fetchLimit is
     // min(limit*3, 200), so at limit >= 67 the collapse can consume a merged
     // pool larger than the window (measured 189 cards from a 293-row pool).
-    sliceEnd: deepPage ? undefined : windowed && opts.deepPageable ? w : undefined,
+    sliceEnd: deepPage ? undefined : windowed && opts.deepPageable ? seam : undefined,
   };
 }

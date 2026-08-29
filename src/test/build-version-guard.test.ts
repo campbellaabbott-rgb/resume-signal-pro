@@ -348,7 +348,15 @@ const PINNED = {
   // employment-type first-fill wave saturated writes (slices 23s->99s, the
   // facets cron 8 ticks behind); the remainder patches on the next rotation
   // visit, so the wave completes gently instead of all at once.
-  buildVersion: "2026-08-29.50",
+  // 2026-08-29.51: the six-lens accuracy sweep — the ring-merged seam moves to
+  // RING_WINDOW with deep pages deduping the ring (no duplicate past offset
+  // 200, no unreachable top-200 row), the routed blockFull nextOffset lands on
+  // the block boundary, the six employment-type lifts trade literal 0x08 bytes
+  // for real \b anchors, filterViolations learns multi-select and
+  // employmentType/postedAfter, counts withdraw under exclusions, facet counts
+  // bind every list filter, and the fuzzy total is tested against the RPC's
+  // own 60-row cap.
+  buildVersion: "2026-08-29.51",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {

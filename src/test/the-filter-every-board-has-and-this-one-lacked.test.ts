@@ -73,9 +73,15 @@ describe("the value reaches storage and every query path", () => {
     expect(BOARD).toMatch(/remote,work_mode,employment_type,department/);
   });
 
-  it("all seven RPC sites pass it, spread-guarded for the deploy window", () => {
+  it("all six RPC sites pass it, spread-guarded for the deploy window", () => {
+    // Seven until 2026-08-29: the ranked path's top-up carried the seventh,
+    // and the six-lens sweep proved that whole block dead code (its gate
+    // `!newestFirst && !scoreRanked` is unsatisfiable inside the ranked block)
+    // — it was deleted rather than revived, taking its RPC site with it. The
+    // remaining six are ranked search, cappedCount, facet counts, the countOnly
+    // probe, and the two rescue tiers.
     const sites = BOARD.match(/p_employment_type: applied\.employmentType/g) ?? [];
-    expect(sites.length, "a ranked/count/rescue site dropped the filter — the five-filters incident").toBe(7);
+    expect(sites.length, "a ranked/count/rescue site dropped the filter — the five-filters incident").toBe(6);
   });
 
   it("filters.ts validates the closed domain and names junk in ignoredFilters", () => {

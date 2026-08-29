@@ -59,7 +59,7 @@ import { CANARIES, rawItemCount, aggregateVendorHealth, type CanaryResult } from
 import { detectExperience, isExperienceBand } from "./experience.ts";
 import { categoryParam, extraFilterParams, filterViolations, isUnfiltered, normalizeFilters, payParams, rpcBlindFilters, rescueVendorsParam, SALARIED_PERIODS, sendableSourcesParam, splitPage, salaryFromQueryText, SALARY_IN_QUERY } from "./filters.ts";
 import { pickRoute, rerankWindow, RETRIEVER_FOR, splitExclusions, titleExcluded } from "./search-routing.ts";
-import { planRankedPage } from "./paging.ts";
+import { planRankedPage, RANKED_WINDOW, RING_WINDOW } from "./paging.ts";
 import { collapseClusters, GROUP_OVERFETCH, interleaveByCompany, visibleCategories, mergeCompanyFacet } from "./clusters.ts";
 import { EMPLOYER_ALIASES } from "./employer-aliases.ts";
 import { expandQuery } from "./search-alias.ts";
@@ -102,7 +102,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-29.50"; // .50: corrections capped per visit — the employment-type first-fill wave saturated writes (slices 23s->99s); .49: churn fix
+const BUILD_VERSION = "2026-08-29.51"; // .51: six-lens sweep — ring seam partitions (RING_WINDOW), routed block clamp, \b-as-bytes lifts, multi-select self-check, exclusion-honest counts; .50: corrections cap
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -4622,12 +4622,23 @@ const INTENT_FILTERS: Array<{ re: RegExp; label: string; patch: Record<string, u
   // among the most-typed qualifiers on any job board. Phrases before the bare
   // "intern" word, same ordering rule as the work-mode block; "temp" alone is
   // NOT lifted (too ambiguous — "temp agency", "temperature controlled").
-  { re: /part[- ]?time/i, label: "part time", patch: { employmentType: "part_time" } },
-  { re: /full[- ]?time/i, label: "full time", patch: { employmentType: "full_time" } },
-  { re: /internships?/i, label: "internship", patch: { employmentType: "internship" } },
-  { re: /intern/i, label: "intern", patch: { employmentType: "internship" } },
-  { re: /temporary/i, label: "temporary", patch: { employmentType: "temporary" } },
-  { re: /contract(?:or|ing)? (?:role|position|work|job)s?/i, label: "contract role", patch: { employmentType: "contract" } },
+  // \b ANCHORS, AS TWO-CHARACTER ESCAPES — NOT THE BYTES THEY NAME. These
+  // six rules shipped carrying literal BACKSPACE characters (0x08) where \b
+  // belonged: invisible in every editor and review, and a regex that matches
+  // only queries containing actual backspaces — i.e. never. The most-typed
+  // qualifiers on any job board ("part time nurse", "internship") lifted
+  // nothing for a day while the code read correctly. And the obvious repair,
+  // retyping the anchors as plain letters, would have been worse: unanchored,
+  // /intern/i matches INSIDE "international sales manager", patching
+  // employmentType=internship and deleting the letters from inside the word.
+  // The guard test greps this file for raw 0x08 bytes now — fifth member of
+  // the invisible-spelling class the guard-literals tests exist for.
+  { re: /\bpart[- ]?time\b/i, label: "part time", patch: { employmentType: "part_time" } },
+  { re: /\bfull[- ]?time\b/i, label: "full time", patch: { employmentType: "full_time" } },
+  { re: /\binternships?\b/i, label: "internship", patch: { employmentType: "internship" } },
+  { re: /\binterns?\b/i, label: "intern", patch: { employmentType: "internship" } },
+  { re: /\btemporary\b/i, label: "temporary", patch: { employmentType: "temporary" } },
+  { re: /\bcontract(?:or|ing)? (?:role|position|work|job)s?\b/i, label: "contract role", patch: { employmentType: "contract" } },
   // Freshness phrasing — maxAgeDays is an existing, indexed predicate.
   { re: /\bhiring (?:now|immediately)\b/i, label: "hiring now", patch: { maxAgeDays: 7 } },
   { re: /\bimmediate start\b/i, label: "immediate start", patch: { maxAgeDays: 7 } },
@@ -4886,6 +4897,30 @@ function intentDisclosure(r: { labels: string[] } | null): Record<string, unknow
  *  undo, which is the same rule intentFilters follows. */
 function exclusionDisclosure(excluded: readonly string[]): Record<string, unknown> {
   return excluded.length ? { excludedTerms: [...excluded] } : {};
+}
+
+/**
+ * NO COUNT SURVIVES AN EXCLUSION, because none of them ever saw one.
+ *
+ * splitExclusions strips "-travel" / "not manager" from q BEFORE any SQL, and
+ * the excluded titles are pruned per page in attachRecheckedAt AFTER every
+ * tier has computed its total, its floor and its related count. So every
+ * number those tiers publish counts rows the pages will then hide —
+ * "engineer -senior" advertised every Senior Engineer it would never show,
+ * and each page quietly ran short of its own header. Until the predicate
+ * reaches SQL, the honest total under an exclusion is "we don't know":
+ * countUnavailable already has a rendering contract ("Showing N matching
+ * openings"), and the excludedTerms chip says why.
+ *
+ * Spread AFTER the exit's own total/countUnavailable/totalAtLeast fields so it
+ * wins; `undefined` values serialize to absent keys. Every list exit that
+ * spreads exclusionDisclosure must spread this too — the battery greps for the
+ * pairing.
+ */
+function exclusionCountsCaveat(excluded: readonly string[]): Record<string, unknown> {
+  return excluded.length
+    ? { total: null, countUnavailable: true, totalAtLeast: undefined, relatedTotal: undefined }
+    : {};
 }
 
 /**
@@ -9458,19 +9493,32 @@ async function serveList(
       const chunkWork = Promise.all(chunk.map(async (c) => {
         try {
           if (qText) {
+            // EVERY predicate the list binds, or the rail promises a different
+            // board than clicking delivers. This branch hand-picked nine of the
+            // RPC's parameters and omitted freshness (p_max_age_days /
+            // p_posted_after), the agent-ready set (sendableSourcesParam — a
+            // ~18x overstatement under agentOnly), the pay toggles and the
+            // 2026-08-25 extras — while the response stamped appliedSignature
+            // as if all of them were bound. The binding below mirrors
+            // cappedCount, the complete one, spread-idioms included.
             const t_count_jobs_capped_5 = Date.now();
             const { data, error } = await client.rpc("count_jobs_capped", {
               p_fresh_cutoff: freshCutoffIso,
               p_q: qText,
-              ...(applied.location ? { p_location: rankedLocationParam(body.location) } : {}),
+              ...(applied.location ? { p_location: rankedLocationParam(applied.location) } : {}),
               ...(applied.remote ? { p_remote: true } : {}),
               ...(applied.country ? { p_country: applied.country } : {}),
               p_category: c,
+              ...sendableSourcesParam(applied),
               ...(applied.experience.length ? { p_experience: applied.experience } : {}),
               ...(applied.salaryFloor !== null ? { p_salary_floor: applied.salaryFloor } : {}),
               ...(applied.companies.length ? { p_companies: applied.companies } : {}),
+              p_posted_after: applied.postedAfter,
+              p_max_age_days: applied.maxAgeDays,
+              ...payParams(applied),
+              ...extraFilterParams(applied),
               ...(applied.workMode ? { p_work_mode: applied.workMode } : {}),
-        ...(applied.employmentType ? { p_employment_type: applied.employmentType } : {}),
+              ...(applied.employmentType ? { p_employment_type: applied.employmentType } : {}),
               p_cap: COUNT_CAP,
             });
             markFrom("count_jobs_capped_settle", t_count_jobs_capped_5);
@@ -9576,6 +9624,12 @@ async function serveList(
     const countHonesty = {
       ...(ignoredFilters.length ? { ignoredFilters } : {}),
       ...(maxAgeClamped ? { maxAgeClampedTo: 30 } : {}),
+      // Spread LAST in every count exit, so under an exclusion it overrides the
+      // exit's own total — a count never sees the exclusion predicate (see
+      // exclusionCountsCaveat), and a relaxation button quoting an unexcluded
+      // number promises rows the click then hides.
+      ...exclusionDisclosure(excludedTerms),
+      ...exclusionCountsCaveat(excludedTerms),
     };
     if (!wantCount) return json({ total: safeMetaTotal, ...(safeMetaTotal === null ? { countUnavailable: true } : {}), ...countHonesty }); // unfiltered — the maintained catalog total, degraded to null when the cache is unreadable
     // ONE BODY, ONE ANSWER — the count asks the SAME retriever the list used.
@@ -9602,9 +9656,20 @@ async function serveList(
     if (qText && body.sort !== "salary" && (routedRetriever === "company" || routedRetriever === "simple")) {
       try {
         let rqC = buildQuery("effective_posted", false, undefined, { skipTerms: true });
+        // THE SAME EXPANSION THE LIST BINDS, or the two answer different
+        // questions: the routed list searches "k8s OR kubernetes" while this
+        // count searched the literal token alone — a small exact number
+        // published over a many-times-larger list, the one-body-two-answers
+        // defect this block exists to prevent. Mirrors the routed list's
+        // ternary exactly, including the ftsSafe/ftsQuery split.
+        const rcExpand = routedRetriever === "company" ? { q: qText, expansions: [] as string[] } : expandQuery(qText);
         rqC = routedRetriever === "company" && routeDecision.tokens?.length
           ? rqC.in("company_token", routeDecision.tokens)
-          : rqC.textSearch("title", ftsQuery(qText), { type: "websearch", config: "simple" });
+          : rqC.textSearch(
+            "title",
+            rcExpand.expansions.length ? ftsSafe(rcExpand.q) : ftsQuery(qText),
+            { type: "websearch", config: "simple" },
+          );
         const t_related_count = Date.now();
         const { data: rcRows, error: rcErr } = await withDeadline(
           rqC.order("effective_posted", { ascending: false }).order("id", { ascending: true })
@@ -9824,15 +9889,24 @@ async function serveList(
   // 100 returns 100 rows with hasMore:false, offset 200 returns 0, against a
   // published total of 201. limit=60 with grouping walked 118 cards and stopped.
   //
-  // TWO REGIMES, ONE SEAM AT RANKED_WINDOW. Below the seam the page is served
-  // exactly as before — window, head-term ring, scorer, slice — and is CLAMPED
-  // to end at the seam. At or above it, search_jobs pages itself with p_offset
-  // in ts_rank_cd order and nothing is re-ranked, so `offset` means SQL rank and
-  // the regimes meet at rank 200 with no overlap and no hole. The seam CANNOT be
-  // the pool length: the pool is 200 plus whatever novel rows the head-term ring
-  // found (measured 200 / 293 / 399 for different queries) and it moves with
-  // whether the ring made its 4s deadline. RANKED_WINDOW is a constant known
-  // before any SQL is issued, which is also what lets ONE query serve a deep page.
+  // TWO REGIMES, ONE SEAM. Below the seam the page is served exactly as before
+  // — window, head-term ring, scorer, slice — and is CLAMPED to end at the
+  // seam. At or above it, search_jobs pages itself with p_offset in ts_rank_cd
+  // order and nothing is re-ranked, so `offset` means SQL rank there.
+  //
+  // THE SEAM IS 200 ONLY WHEN THE POOL IS THE SQL TOP-200. A ring-merged query
+  // serves a pool of up to 400 rows (200 prefix + 200 ranked, deduped), and
+  // clamping THAT pool at 200 broke the contract both ways at once: ring-only
+  // rows (SQL rank >= 200) served below the seam were re-served by deep pages
+  // as duplicates, and every one of them displaced an SQL top-200 row past
+  // merged position 200 — unreachable at ANY offset while `total` counted it
+  // (measured ~27 of each on q="sales"). So a ring-merged query's seam is
+  // RING_WINDOW (400), the pool's MAXIMUM — still a constant known before any
+  // SQL, which is what lets one request plan a deep page. The pool ends
+  // wherever it ends; the page that exhausts it hands nextOffset=400, and the
+  // deep regime maps offset back onto SQL rank 200 and drops the ring's ids,
+  // which by then have all been served below. The seam still CANNOT be the
+  // pool LENGTH — that moves with the ring's 4s deadline; the maximum doesn't.
   //
   // NOT FOR sort=newest — its rows are date-permuted, so a relevance-ordered
   // continuation would not be "newer than page three".
@@ -9853,7 +9927,14 @@ async function serveList(
   // The seam arithmetic lives in paging.ts so a test can walk every offset
   // across it and prove no rank is served twice or skipped. It used to be
   // inline, which is why the 200-row wall was never caught.
-  const pagePlan = planRankedPage({ offset, fetchLimit, scoreRanked, newestFirst, deepPageable });
+  //
+  // ringMerged mirrors the ring's own firing condition (scoreRanked +
+  // short-query shape) so the plan and the merge agree on what the pool holds.
+  // It deliberately does NOT depend on whether the ring RESPONDS — a deep page
+  // must dedupe against what sub-seam pages COULD have served, and the seam
+  // position may not move with a deadline.
+  const ringMerged = scoreRanked && headTermRing && deepPageable;
+  const pagePlan = planRankedPage({ offset, fetchLimit, scoreRanked, newestFirst, deepPageable, ringMerged });
   const deepPage = pagePlan.deepPage;
   const metaV = (meta?.v ?? {}) as Record<string, unknown>;
 
@@ -9925,6 +10006,7 @@ async function serveList(
         // missing_since-stamped and aged-out rows, and measured 615,366 against
         // a table of 606,295 and a servable set of 601,760. A board-wide number
         // larger than the table it describes cannot be true.
+        ...exclusionCountsCaveat(excludedTerms),
         totalAllCompanies: safeMetaTotal ?? 0,
           ...(trackedTotal !== null ? { trackedTotal } : {}),
         companies: [],
@@ -10047,7 +10129,18 @@ async function serveList(
           // an offset the slice cannot serve — and the abbreviation queries
           // this route exists for (emt, ux, dba) are exactly the ones that walk
           // several pages.
-          nextOffset: blockFull ? offset + limit : Math.min(offset + limit, blockStart + ordered.length),
+          //
+          // CLAMPED ON THE blockFull BRANCH TOO. It wasn't, and whenever limit
+          // does not divide ROUTE_WINDOW the walk overshot the boundary: q="cdl"
+          // limit 60 at offset 360 served 40 rows and handed nextOffset 420, so
+          // the next request entered block two at inBlock=20 — permanently
+          // skipping the first 20 positions of the re-ranked block, which are
+          // precisely its HIGHEST-scoring rows. Landing exactly on the boundary
+          // makes the next request compute inBlock=0 and serve the block from
+          // its top.
+          nextOffset: blockFull
+            ? Math.min(offset + limit, blockStart + ROUTE_WINDOW)
+            : Math.min(offset + limit, blockStart + ordered.length),
           searchRoute: routeDecision.route,
           searchRouteReason: routeDecision.reason,
           // THE PAGE WAS APOLOGISING FOR WORK IT HAD DONE.
@@ -10062,6 +10155,7 @@ async function serveList(
           // line can never claim a phrase the query did not look for.
           ...(routedExpand.expansions.length ? { aliases: routedExpand.expansions } : {}),
           ...(routeDecision.matchedName ? { companyMatched: routeDecision.matchedName } : {}),
+          ...exclusionCountsCaveat(excludedTerms),
           totalAllCompanies: safeMetaTotal ?? 0,
           ...(trackedTotal !== null ? { trackedTotal } : {}),
           companies: [],
@@ -10167,8 +10261,14 @@ async function serveList(
       // rescue path and never awaits this, so the round trip is spent for
       // nothing. It is bounded — the ring only ever runs for SHORT queries,
       // which are the ones least likely to come back empty.
+      //
+      // ON DEEP PAGES TOO, as the EXCLUSION set rather than the merge: every
+      // ring row is served below the RING_WINDOW seam, so a deep page must
+      // drop them or re-serve them as apparent new results — the measured
+      // "page-one cards repeat just past the seam" defect. A prefix ILIKE on
+      // the title index for 200 rows is the cheap half of this pair.
       const headRingP: Promise<{ data: unknown[] | null }> | null =
-        (scoreRanked && headTermRing && !deepPage)
+        (scoreRanked && headTermRing && (!deepPage || ringMerged))
           ? (withDeadline(
               buildQuery("effective_posted", false, undefined, { skipTerms: true })
                 .ilike("title", `${sanitizeTerm(qText)}%`)
@@ -10652,10 +10752,15 @@ async function serveList(
                 };
               }
               if (won) {
-                // Exclusions ("nurse not travel") are applied by
-                // attachRecheckedAt below, the same seam every other tier on
-                // this route uses — one filter, one spelling of the rule.
-                const splitJobs = won.rows;
+                // Exclusions pruned HERE, before the gate and the collapse —
+                // not left to attachRecheckedAt. Pruning after the
+                // jobs.length>0 gate let a split whose page was entirely
+                // excluded ship jobs:[] under total: won.hits ("Showing 0 of
+                // 40") with hasMore:false. attachRecheckedAt still re-filters
+                // idempotently, so the one spelling of the rule still holds.
+                const splitJobs = excludedTerms.length
+                  ? won.rows.filter((r) => !titleExcluded(String(r.title ?? ""), excludedTerms))
+                  : won.rows;
                 const splitScored = rerankWindow(splitJobs, [won.head]);
                 const splitGrouped = groupSimilar
                   ? collapseClusters(splitScored, limit)
@@ -10693,6 +10798,7 @@ async function serveList(
                     // who wants more can accept the split the disclosure offers.
                     hasMore: false,
                     nextOffset: offset + splitGrouped.rawConsumed,
+                    ...exclusionCountsCaveat(excludedTerms),
                     totalAllCompanies: safeMetaTotal ?? 0,
                     ...(trackedTotal !== null ? { trackedTotal } : {}),
                     companies: [],
@@ -10933,6 +11039,7 @@ async function serveList(
                 // tier is visible in telemetry rather than being mistaken for
                 // the ranked path.
                 exactWordMatch: qText,
+                ...exclusionCountsCaveat(excludedTerms),
                 totalAllCompanies: safeMetaTotal ?? 0,
           ...(trackedTotal !== null ? { trackedTotal } : {}),
                 companies: [],
@@ -10995,8 +11102,18 @@ async function serveList(
               // honest answer is that we don't know, which the response already
               // has a contract for — countUnavailable renders "Showing N
               // matching openings" with no total rather than inventing one.
+              // AGAINST THE RPC'S OWN CAP, NOT THE CALLER'S LIMIT. The SQL
+              // clamps p_limit to 60 (LIMIT GREATEST(LEAST(p_limit, 60), 1)),
+              // so total_rows can never exceed 60 — and testing it against a
+              // request limit of 100-200 (the public API allows up to 200)
+              // declared 60 "below the limit, therefore exact" and published a
+              // fabricated total:60 with hasMore:false over 200+ real matches.
+              // The same trap this comment block already documents, one cap
+              // deeper.
+              const FUZZY_RPC_CAP = 60;
+              const fzCap = Math.min(limit, FUZZY_RPC_CAP);
               const fzTotal = Number((fuzzy[0] as { total_rows?: number }).total_rows);
-              const fzKnown = Number.isFinite(fzTotal) && fzTotal > 0 && fzTotal < limit;
+              const fzKnown = Number.isFinite(fzTotal) && fzTotal > 0 && fzTotal < fzCap;
               logSearch("fuzzy", fuzzyGrouped.jobs.length, fzKnown ? fzTotal : null, "fuzzy");
               return json({
                 jobs: preferMatchedLocation(await attachRecheckedAt(client, fuzzyGrouped.jobs, excludedTerms), locationTerms(body.location).terms),
@@ -11028,8 +11145,9 @@ async function serveList(
                 // countUnavailable still says so; the client renders "N+".
                 ...(fzKnown ? {} : {
                   countUnavailable: true,
-                  totalAtLeast: Number.isFinite(fzTotal) && fzTotal >= limit ? fzTotal : fuzzyGrouped.jobs.length,
+                  totalAtLeast: Number.isFinite(fzTotal) && fzTotal >= fzCap ? fzTotal : fuzzyGrouped.jobs.length,
                 }),
+                ...exclusionCountsCaveat(excludedTerms),
                 totalAllCompanies: safeMetaTotal ?? 0,
           ...(trackedTotal !== null ? { trackedTotal } : {}),
                 companies: [],
@@ -11093,6 +11211,7 @@ async function serveList(
                     // on nextOffset rather than hasMore would otherwise read
                     // undefined and restart at the top of the feed.
                     nextOffset: offset + semGrouped.jobs.length,
+                    ...exclusionCountsCaveat(excludedTerms),
                     totalAllCompanies: safeMetaTotal ?? 0,
           ...(trackedTotal !== null ? { trackedTotal } : {}),
                     companies: [],
@@ -11199,12 +11318,40 @@ async function serveList(
         // which is the difference between this and the multi-arm fusion three
         // judges rejected.
         const mergedSeen = new Set<string>();
-        const mergedRows = [...headRows, ...rankedRows].filter((r) => {
-          const id = String((r as Record<string, unknown>).id ?? "");
-          if (!id || mergedSeen.has(id)) return false;
-          mergedSeen.add(id);
-          return true;
-        });
+        let mergedRows: Array<Record<string, unknown>>;
+        // Ring-merged DEEP page: the ring is an EXCLUSION set, not a merge.
+        // Every ring row is served below the RING_WINDOW seam, so a deep page
+        // that kept them would re-serve page-one cards as apparent new results
+        // — the measured seam-duplicate defect. Dropped rows still occupied
+        // SQL ranks, so nextOffset must advance by RAW rows consumed, dropped
+        // ones included; this maps "survivors consumed" back to that number.
+        let deepRingRawUsed: ((consumedSurvivors: number) => number) | null = null;
+        if (deepPage && ringMerged) {
+          const ringIds = new Set(headRows.map((r) => String((r as Record<string, unknown>).id ?? "")).filter(Boolean));
+          const rawIndexOfSurvivor: number[] = [];
+          mergedRows = rankedRows.filter((r, i) => {
+            const keep = !ringIds.has(String((r as Record<string, unknown>).id ?? ""));
+            if (keep) rawIndexOfSurvivor.push(i);
+            return keep;
+          });
+          deepRingRawUsed = (n) =>
+            // Consumed nothing with survivors available: the walk has not
+            // advanced. Consumed everything (or the fetch was all ring rows):
+            // skip past the whole raw fetch — trailing dropped rows must not
+            // be re-fetched just to be dropped again.
+            n <= 0
+              ? (mergedRows.length === 0 ? rankedRows.length : 0)
+              : n >= rawIndexOfSurvivor.length
+              ? rankedRows.length
+              : rawIndexOfSurvivor[n - 1] + 1;
+        } else {
+          mergedRows = [...headRows, ...rankedRows].filter((r) => {
+            const id = String((r as Record<string, unknown>).id ?? "");
+            if (!id || mergedSeen.has(id)) return false;
+            mergedSeen.add(id);
+            return true;
+          });
+        }
         // A deep page is served in the RPC's own ts_rank_cd order. This is a
         // REAL quality drop and it should be said plainly rather than called
         // noise: index.ts:8290-8320 documents that without rerankWindow all 959
@@ -11229,10 +11376,22 @@ async function serveList(
         // a 293-row pool). Non-deep-pageable queries — sort=newest, EMPLOYER,
         // SIMPLE, SYMBOL — are not clamped and behave exactly as today.
         const rankedWindow = rankedScored.slice(pagePlan.sliceStart, pagePlan.sliceEnd);
-        let rankedSequence = rankedWindow;
+        const rankedSequence = rankedWindow;
         let rankedGrouped = groupSimilar
           ? collapseClusters(rankedWindow, limit)
           : { jobs: rankedWindow.slice(0, limit), rawConsumed: Math.min(rankedWindow.length, limit) };
+        // Ring-merged deep page: convert rawConsumed from survivor units to
+        // RAW SQL rows so nextOffset keeps walking SQL rank — see the mapper.
+        if (deepRingRawUsed) {
+          rankedGrouped = { ...rankedGrouped, rawConsumed: deepRingRawUsed(rankedGrouped.rawConsumed) };
+        }
+        // Ring-merged sub-seam page that exhausts the pool: the walk continues
+        // in the SQL regime, which starts at the FIXED seam — never at
+        // offset+rawConsumed, which is a position in pool coordinates that the
+        // deep regime would misread as SQL rank. The pool's true length moves
+        // with the ring (measured 200/293/399); the seam does not.
+        const poolExhausted = ringMerged && !deepPage &&
+          offset + rankedGrouped.rawConsumed >= rankedScored.length;
         // DEEP PAGES ARE SCORED NOW — the follow-up the comment above promised.
         //
         // Past the 200-row seam the tail was served in the RPC's raw ts_rank_cd
@@ -11255,55 +11414,17 @@ async function serveList(
           rankedGrouped = { ...rankedGrouped, jobs: rerankWindow(rankedGrouped.jobs, [qText, ...expansions]) };
         }
 
-        // THE SAME TOP-UP THE BROWSE PATH GOT, because this is the path that
-        // actually needed it. The first version shipped only on the recency
-        // path, and MEASURED after deploy it changed nothing: "retail sales"
-        // still returned 37 cards of 60 and "customer service" 41, because a
-        // typed query is served HERE and returns long before that code. The
-        // browse path I fixed is the one people do not type into.
-        //
-        // Same three bounds as the other one: fires only when the buffer was
-        // genuinely exhausted, runs EXACTLY once (a loop is the amplification
-        // shape that took the board down on 2026-08-17), and serves the page
-        // it already has if the second call fails. Paged by p_offset, which is
-        // how this RPC has always paged, so there is no cursor arithmetic to
-        // get wrong.
-        // NOT ON A SORTED PAGE. The top-up pages from `offset + rankedRows.length`,
-        // which is relevance-order arithmetic — the same coordinate mix-up that
-        // made sorted page two repeat page one. A sorted mode has already read
-        // the RPC's entire 200-row cap as one window, so there is nothing behind
-        // it to top up with: the correct behaviour is a short final page, not a
-        // second fetch appended in a different ordering.
-        if (!newestFirst && !scoreRanked && groupSimilar && rankedGrouped.jobs.length < limit && rankedRows.length >= fetchLimit) {
-          try {
-            const t_search_jobs_1 = Date.now();
-            const { data: more, error: moreErr } = await client.rpc("search_jobs", {
-              p_q: expandedQ,
-              p_fresh_cutoff: freshCutoffIso,
-              p_location: rankedLocationParam(applied.location),
-              p_remote: applied.remote ? true : null,
-              p_country: applied.country,
-              p_category: categoryParam(applied),
-              ...sendableSourcesParam(applied),
-              p_experience: applied.experience.length ? applied.experience : null,
-              p_salary_floor: applied.salaryFloor,
-              p_companies: applied.companies.length ? applied.companies : null,
-              p_posted_after: applied.postedAfter,
-              p_max_age_days: applied.maxAgeDays,
-              ...payParams(applied),
-              ...extraFilterParams(applied),
-              ...(applied.workMode ? { p_work_mode: applied.workMode } : {}),
-        ...(applied.employmentType ? { p_employment_type: applied.employmentType } : {}),
-              p_limit: fetchLimit,
-              p_offset: offset + rankedRows.length,
-            });
-            markFrom("search_jobs", t_search_jobs_1);
-            if (!moreErr && Array.isArray(more) && more.length) {
-              rankedSequence = [...rankedRows, ...(more as unknown[]).map(rowToJob) as Array<Record<string, unknown>>];
-              rankedGrouped = collapseClusters(rankedSequence, limit);
-            }
-          } catch { /* the page we already have is correct — serve it */ }
-        }
+        // THE TOP-UP THAT USED TO SIT HERE WAS DEAD CODE, and it is deleted
+        // rather than "revived". Its gate was `!newestFirst && !scoreRanked`,
+        // and inside this block (sort !== "salary", !countOnly are the entry
+        // guards) scoreRanked is exactly !newestFirst — the conjunction is
+        // unsatisfiable, so the second fetch it promised for short pages never
+        // ran once. Reviving it would need new offset arithmetic first: it
+        // paged from `offset + rankedRows.length`, relevance-order coordinates
+        // that are wrong in both the windowed and the deep regime — the
+        // "sorted page two repeated 17 of 20 rows" incident shape. Until
+        // someone does that work, a short page with a correct nextOffset is
+        // the honest behaviour, and the client's Load More continues the walk.
         // LOW-RESULT AUGMENTATION. The rescue tiers used to fire only on
         // total === 0, so ONE posting that happened to share the user's typo
         // ("desinger" appearing verbatim in a single title) suppressed the
@@ -11348,7 +11469,15 @@ async function serveList(
         // by a narrowing. A query with 2 exact and 300 related matches has a full
         // page already; padding it would dilute a result set that does not need
         // rescuing and push close matches above 300 legitimate description hits.
-        if (pageTotal !== null && pageTotal > 0 && pageTotal < FUZZY_AUGMENT_BELOW && offset === 0 && !countOnly && qText.length >= 3) {
+        // NOT ON sort=newest — the same exclusion the split tier and the earned
+        // did-you-mean already carry, and this gate lacked. The augment
+        // re-partitions the page into [title hits, close matches, body-only],
+        // which destroys the date order the user explicitly chose: the newest
+        // rows on the page (often description-matched) sank below appended
+        // trigram matches that carry no date ordering at all, with nothing in
+        // the response saying the chosen sort no longer held. A thin
+        // newest-sorted page stays thin; the user asked for a date walk.
+        if (pageTotal !== null && pageTotal > 0 && pageTotal < FUZZY_AUGMENT_BELOW && offset === 0 && !countOnly && !newestFirst && qText.length >= 3) {
           try {
             const t_fuzzy_title_search_0 = Date.now();
             const { data: fz, error: fzErr } = await client.rpc("fuzzy_title_search", {
@@ -11375,8 +11504,12 @@ async function serveList(
               }));
               const fuzzyRows = (fz as unknown[]).map(rowToJob) as Array<Record<string, unknown>>;
               const room = Math.max(0, limit - rankedGrouped.jobs.length);
+              // Excluded titles pruned BEFORE the extras are counted, or the
+              // fuzzyExtra banner claims close matches attachRecheckedAt then
+              // deletes — "10 close-match titles below" over 6 surviving cards.
               const novel = fuzzyRows.filter((r) =>
-                !haveKeys.has(clusterKey(String(r.company ?? r.token ?? ""), String(r.title ?? ""))));
+                !haveKeys.has(clusterKey(String(r.company ?? r.token ?? ""), String(r.title ?? ""))) &&
+                !(excludedTerms.length && titleExcluded(String(r.title ?? ""), excludedTerms)));
               const extra = (groupSimilar ? collapseClusters(novel, room).jobs : novel.slice(0, room))
                 .map((j) => ({ ...(j as Record<string, unknown>), closeMatch: true }));
               if (extra.length > 0) {
@@ -11466,7 +11599,10 @@ async function serveList(
         if (
           semanticExtraOut === null &&
           pageTotal !== null && pageTotal > 0 && pageTotal < FUZZY_AUGMENT_BELOW &&
-          offset === 0 && !countOnly && qText.length >= 3 &&
+          // Same !newestFirst as the fuzzy augment above: appending
+          // meaning-matches to page one of a date walk inserts undated rows
+          // mid-sequence — page two continues in dates the extras never had.
+          offset === 0 && !countOnly && !newestFirst && qText.length >= 3 &&
           rankedGrouped.jobs.length < limit && budgetLeft() > 3_000
         ) {
           try {
@@ -11479,7 +11615,11 @@ async function serveList(
               clusterKey(String((j as Record<string, unknown>).company ?? ""), String((j as Record<string, unknown>).title ?? ""))));
             const semSource = await semanticRows(Math.min(room * 3, 60), 1_500, { ids: haveIds, keys: haveKeys2 });
             if (semSource.length > 0) {
-              const novelSem = (semSource as unknown[]).map(rowToJob) as Array<Record<string, unknown>>;
+              // Same pre-count prune as the fuzzy extras above: the
+              // semanticExtra count must describe rows that survive the
+              // exclusion filter, not rows it is about to delete.
+              const novelSem = ((semSource as unknown[]).map(rowToJob) as Array<Record<string, unknown>>)
+                .filter((r) => !(excludedTerms.length && titleExcluded(String(r.title ?? ""), excludedTerms)));
               const semExtra = (groupSimilar ? collapseClusters(novelSem, room).jobs : novelSem.slice(0, room))
                 .map((j) => ({ ...(j as Record<string, unknown>), semanticMatch: true }));
               if (semExtra.length > 0) {
@@ -11574,7 +11714,12 @@ async function serveList(
           ...coverageDisclosure(applied, meta),
           ...honesty(rankedGrouped.jobs),
           ...(augmented ? { countUnavailable: true } : {}),
-          nextOffset: offset + rankedGrouped.rawConsumed,
+          // A ring-merged page that exhausts its pool hands the walk to the SQL
+          // regime at the FIXED seam — offset+rawConsumed is a pool position,
+          // and the deep regime would misread it as SQL rank (the hole half of
+          // the seam defect: SQL ranks between the pool's end and the number it
+          // happened to reach were skipped forever).
+          nextOffset: poolExhausted ? RING_WINDOW : offset + rankedGrouped.rawConsumed,
           // On a sorted search the window is finite and known, so "more" means
           // more rows LEFT IN IT — never the fetch-size heuristic, which would
           // promise a page four that cannot exist.
@@ -11592,8 +11737,17 @@ async function serveList(
           // deepPageable so sort=newest and the EMPLOYER/SIMPLE routes — whose
           // windows genuinely end at their edge — never promise a page that
           // would come back empty.
+          //
+          // Ring-merged sub-seam: "more behind the window" means the sequence
+          // extends past SQL rank 200 (pageTotal counts the walkable set), not
+          // a pool-coordinate comparison against pageTotal — the pool can hold
+          // ring rows the count never counted, and the comparison of two
+          // different coordinate systems is the class this seam fix retires.
           hasMore: deepPage
             ? (rankedSequence.length > rankedGrouped.rawConsumed || rankedRows.length >= fetchLimit)
+            : ringMerged
+            ? (rankedSequence.length > rankedGrouped.rawConsumed
+              || (pageTotal !== null && pageTotal > RANKED_WINDOW))
             : (newestFirst || scoreRanked)
             ? (rankedSequence.length > rankedGrouped.rawConsumed
               || (deepPageable && pageTotal !== null && offset + rankedGrouped.rawConsumed < pageTotal))
@@ -11629,6 +11783,7 @@ async function serveList(
             ? {}
             : { relatedTotal: related, ...(relatedCapped ? { relatedCapped: true } : {}) }),
           ...(rankedCapped ? { countCapped: true } : {}),
+          ...exclusionCountsCaveat(excludedTerms),
           totalAllCompanies: safeMetaTotal ?? total,
           ...(trackedTotal !== null ? { trackedTotal } : {}),
           companies: includeFacets0
@@ -12173,6 +12328,7 @@ async function serveList(
     // fewer rows by design, and measuring "was the page full?" against a size
     // it never requests answers no every time.
     hasMore: (data ?? []).length > grouped.rawConsumed || (data ?? []).length === fetchUsed,
+    ...exclusionCountsCaveat(excludedTerms),
     totalAllCompanies: safeMetaTotal ?? count ?? 0,
     ...(trackedTotal !== null ? { trackedTotal } : {}),
     companies: servedCompanies,

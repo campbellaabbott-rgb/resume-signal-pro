@@ -62,10 +62,13 @@ describe("a headline counts what the board can serve", () => {
   });
 
   it("the routed window clamps its successor to the rows it holds", () => {
-    // Clamped to what EXISTS, which is now block-relative: a short block is the
-    // tail so the successor cannot run past blockStart + its length, and a full
-    // block must be allowed to step into the next one — clamping there was what
-    // made everything past row 400 unreachable.
-    expect(FN).toMatch(/nextOffset: blockFull \? offset \+ limit : Math\.min\(offset \+ limit, blockStart \+ ordered\.length\),/);
+    // Clamped on BOTH branches now. A short block is the tail, so the successor
+    // cannot run past blockStart + its length. A full block steps into the next
+    // one — but must land exactly ON the boundary: unclamped, q="cdl" at limit
+    // 60 walked 360 -> 420, entered block two at inBlock=20, and permanently
+    // skipped the 20 highest-scoring positions of every subsequent block
+    // (confirmed by the 2026-08-29 six-lens sweep). Landing on
+    // blockStart + ROUTE_WINDOW makes the next request compute inBlock=0.
+    expect(FN).toMatch(/nextOffset: blockFull\s*\?\s*Math\.min\(offset \+ limit, blockStart \+ ROUTE_WINDOW\)\s*:\s*Math\.min\(offset \+ limit, blockStart \+ ordered\.length\),/);
   });
 });

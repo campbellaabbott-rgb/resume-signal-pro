@@ -678,6 +678,14 @@ const withoutMode = (v: string, m: WorkModeKey): string =>
 const toggleMode = (v: string, m: WorkModeKey): string =>
   hasMode(v, m) ? withoutMode(v, m) : normalizeModes(v ? `${v},${m}` : m);
 
+// Employment type shares workMode's list contract, including the canonical
+// order — the order the five toggles render in. One selection must produce ONE
+// stored string whatever the click order: searchName joins in stored order, so
+// "full_time,contract" vs "contract,full_time" named two saved searches for
+// the same query, slipping past the UNIQUE(user_id, name) duplicate-save guard
+// and mailing two look-alike daily digests.
+const EMPLOYMENT_TYPE_KEYS = ["full_time", "part_time", "contract", "temporary", "internship"] as const;
+
 export default function Jobs() {
   const { t } = useTranslation();
   // How far the agent actually reaches, from the DEPLOYED bundle rather than a
@@ -699,9 +707,10 @@ export default function Jobs() {
   const [workMode, setWorkMode] = useState<string>(() => {
     // Accepts a list now. Old single-value links ("?mode=remote") and the legacy
     // "?remote=1" both still resolve to exactly what they always did.
-    const m = (initial.get("mode") ?? "").split(",")
-      .map((x) => x.trim()).filter((x) => WORK_MODE_KEYS.includes(x as WorkModeKey));
-    if (m.length) return [...new Set(m)].join(",");
+    // normalizeModes dedupes AND stores canonical order, so a shared link's
+    // ordering can never differ from what the toggles themselves compose.
+    const m = normalizeModes(initial.get("mode") ?? "");
+    if (m) return m;
     return initial.get("remote") === "1" ? "remote" : "";
   });
   const { category: pathCategory, companyToken } = useParams<{ category?: string; companyToken?: string }>();
@@ -815,14 +824,20 @@ export default function Jobs() {
   // contract as workMode — junk values dropped at init so a shared link never
   // carries a filter the board would refuse.
   const [employmentType, setEmploymentType] = useState<string>(() => {
-    const known = ["full_time", "part_time", "contract", "temporary", "internship"];
-    return (initial.get("etype") ?? "").split(",").map((x) => x.trim().toLowerCase())
-      .filter((x) => known.includes(x)).slice(0, known.length).join(",");
+    // Filtering the DOMAIN by URL membership — splitModes' idiom — dedupes,
+    // caps and canonicalizes in one move: repeated values in a hand-edited URL
+    // cannot crowd a real second value out of the cap, and a shared link's
+    // ordering cannot mint a second saved-search name for the same selection.
+    const parts = new Set((initial.get("etype") ?? "").split(",").map((x) => x.trim().toLowerCase()));
+    return EMPLOYMENT_TYPE_KEYS.filter((k) => parts.has(k)).join(",");
   });
   const [vendor, setVendor] = useState(() => {
     const known = new Set(VENDOR_OPTIONS.map((v) => v.value));
-    return (initial.get("vendor") ?? "").split(",").map((v) => v.trim().toLowerCase())
-      .filter((v) => known.has(v)).slice(0, VENDOR_LIMIT).join(",");
+    // Dedupe BEFORE the cap, as workMode and country already do — five copies
+    // of one vendor must not push a real second one past VENDOR_LIMIT.
+    const parts = (initial.get("vendor") ?? "").split(",").map((v) => v.trim().toLowerCase())
+      .filter((v) => known.has(v));
+    return [...new Set(parts)].slice(0, VENDOR_LIMIT).join(",");
   });
   // Country: exact match on the deterministically extracted code. Postings
   // whose location can't be placed are excluded while active — disclosed, not
@@ -1005,6 +1020,11 @@ export default function Jobs() {
       setMaxYears(0);
       setDepartment("");
       setVendor("");
+      // employmentType and agentOnly had both skipped this block: nl-search
+      // emits neither, so a toggle left on from before kept constraining the
+      // interpreted search with nothing in the chips saying so.
+      setEmploymentType("");
+      setAgentOnly(false);
       // Board CONTROLS the parser can now drive too (a query is a command):
       // "companies that actually hire" → the proven-fills filter; "highest
       // paying first" → salary sort. Reset like the other fields.
@@ -1873,13 +1893,16 @@ export default function Jobs() {
     // string, so dropping into it with one of these on discards it from a
     // shared or reloaded link while the chip on screen still says it applies —
     // measured for workMode, agentOnly and inclUncat before, and true by
-    // construction for each filter added since.
+    // construction for each filter added since. activelyHiringOnly joined the
+    // write side (above) but skipped both gates, so a lander with only
+    // "Actively hiring" on rewrote the bare lander URL and a reload or shared
+    // link served every employer again under the chip.
     const extraFilters = !!(salaryCeiling || payBasis || statedPayOnly || includeUnstatedPay || maxYears || department || vendor || employmentType);
-    if (landerCompany && company === landerCompany && !q && !location && !remoteOnly && !workMode && !category && !experience && !salaryFloor && !country && !freshness && !agentOnly && !extraFilters && sortMode !== "salary") {
+    if (landerCompany && company === landerCompany && !q && !location && !remoteOnly && !workMode && !category && !experience && !salaryFloor && !country && !freshness && !agentOnly && !activelyHiringOnly && !extraFilters && sortMode !== "salary") {
       window.history.replaceState({}, "", `/jobs/company/${landerCompany}${jobParam ? `?job=${encodeURIComponent(jobParam)}` : ""}`);
       return;
     }
-    if (landerCategory && category === landerCategory && !q && !location && !remoteOnly && !workMode && !company && !experience && !salaryFloor && !country && !freshness && !agentOnly && !inclUncat && !extraFilters && sortMode !== "salary") {
+    if (landerCategory && category === landerCategory && !q && !location && !remoteOnly && !workMode && !company && !experience && !salaryFloor && !country && !freshness && !agentOnly && !activelyHiringOnly && !inclUncat && !extraFilters && sortMode !== "salary") {
       window.history.replaceState({}, "", `/jobs/field/${landerCategory}${jobParam ? `?job=${encodeURIComponent(jobParam)}` : ""}`);
       return;
     }
@@ -3500,6 +3523,22 @@ export default function Jobs() {
       department: { department: "" }, vendor: { vendor: "" },
       agentOnly: { agentOnly: false }, inclUncat: { inclUncat: false },
     };
+    // Per-value chips carry compound keys ("mode:remote", "etype:full_time")
+    // and their clear() removes ONE value from the family's comma list. The
+    // family-prefix fallback alone probed those with the WHOLE family cleared,
+    // so with two types selected and zero results the button advertised the
+    // family-cleared count while clicking left the other value on — a strict
+    // subset of the same zero, another dead end behind a number that promised
+    // openings. Each active value gets an EXACT entry whose patch is precisely
+    // what its chip's clear() does; the family fallback then only serves a
+    // compound key nothing here specializes.
+    for (const et of filterState.employmentType.split(",").filter(Boolean)) {
+      RELAX[`etype:${et}`] = { employmentType: filterState.employmentType.split(",").filter((x) => x && x !== et).join(",") };
+    }
+    for (const m of splitModes(filterState.workMode)) {
+      // remoteOnly resets alongside, exactly as the mode chip's clear() does.
+      RELAX[`mode:${m}`] = { workMode: withoutMode(filterState.workMode, m), remoteOnly: false };
+    }
     const candidates = activeFilters.slice(0, 4);
     let cancelled = false;
     (async () => {
@@ -3512,10 +3551,8 @@ export default function Jobs() {
           // client because the flag was never asked for.
           const { data: r } = await invokeBoard<{ total?: number; relatedTotal?: number; countCapped?: boolean; relatedCapped?: boolean }>({
             action: "list", countOnly: true, includeFacets: false,
-            // Per-value chips carry compound keys ("mode:remote",
-            // "etype:full_time"); the family prefix finds their relaxation.
-            // Without the fallback, mode chips never offered a relaxation at
-            // all — the lookup missed and the entry existed under "mode".
+            // Compound keys hit their exact per-value entry above; the family
+            // prefix stays as the fallback for any key left unspecialized.
             ...boardFilterBody({ ...filterState, ...(RELAX[c.key] ?? RELAX[c.key.split(":")[0]] ?? {}) }),
           });
           // BOTH SEGMENTS, and before the `> 0` filter below. Counting only the
@@ -4961,7 +4998,7 @@ export default function Jobs() {
               aria-label={t("jobsPage.employmentType.label", "Employment type")}
               className="inline-flex items-center gap-1 rounded-lg border border-border bg-background p-1"
             >
-              {(["full_time", "part_time", "contract", "temporary", "internship"] as const).map((et) => {
+              {EMPLOYMENT_TYPE_KEYS.map((et) => {
                 const on = employmentType.split(",").includes(et);
                 return (
                   <button
@@ -4969,8 +5006,12 @@ export default function Jobs() {
                     type="button"
                     aria-pressed={on}
                     onClick={() => setEmploymentType((prev) => {
+                      // Canonical order at composition time, normalizeModes'
+                      // rule — appending made click order name the saved
+                      // search (see EMPLOYMENT_TYPE_KEYS).
                       const parts = prev.split(",").filter(Boolean);
-                      return (parts.includes(et) ? parts.filter((x) => x !== et) : [...parts, et]).join(",");
+                      const next = parts.includes(et) ? parts.filter((x) => x !== et) : [...parts, et];
+                      return EMPLOYMENT_TYPE_KEYS.filter((k) => next.includes(k)).join(",");
                     })}
                     className={`px-2.5 py-1 rounded-md text-sm transition-colors ${
                       on

@@ -80,7 +80,10 @@ describe("a typo plus a filter is not an empty board", () => {
     // emitted null for both and filterViolations flagged every rescued row
     // against a filter the database HAD honoured. A rescue that cannot be
     // audited is a rescue that gets switched off again.
-    const ret = RESCUE_SQL.slice(RESCUE_SQL.indexOf("CREATE FUNCTION public.fuzzy_title_search("));
+    // Either creation spelling: a same-signature redefinition uses CREATE OR
+    // REPLACE (20260829120000 — no arity change, no DROP, grants kept).
+    const retStart = RESCUE_SQL.search(/CREATE (OR REPLACE )?FUNCTION public\.fuzzy_title_search\(/);
+    const ret = RESCUE_SQL.slice(retStart);
     const table = ret.slice(ret.indexOf("RETURNS TABLE"), ret.indexOf("LANGUAGE"));
     expect(table).toMatch(/\bcountry text\b/);
     expect(table).toMatch(/\bwork_mode text\b/);
@@ -90,7 +93,7 @@ describe("a typo plus a filter is not an empty board", () => {
     // It had no presence predicate at all — the one read path still able to
     // show a job stamped as gone from its employer's feed, on the queries where
     // the board has least else to offer and a dead link is most likely clicked.
-    const body = RESCUE_SQL.slice(RESCUE_SQL.indexOf("CREATE FUNCTION public.fuzzy_title_search("));
+    const body = RESCUE_SQL.slice(RESCUE_SQL.search(/CREATE (OR REPLACE )?FUNCTION public\.fuzzy_title_search\(/));
     expect(body).toMatch(/missing_since IS NULL/);
     // The semantic tier had the identical hole, and the claim that the trigram
     // one was "the last such path" was simply false when it was written.
@@ -113,23 +116,29 @@ describe("a typo plus a filter is not an empty board", () => {
     expect(sem).toMatch(/missing_since IS NULL/);
   });
 
-  it("the arity change drops the signature that is actually live", () => {
-    // A DROP naming a signature that no longer exists is a silent no-op, and
-    // the plain CREATE after it then fails with "already exists". A missed DROP
-    // on an arity change leaves two candidates and PostgREST answers the
-    // ambiguity code to EVERY call — the outage this repo took on 2026-08-20.
+  it("an arity change drops the live signature; a same-signature redefinition drops nothing", () => {
+    // TWO legal shapes, and the file must be wholly one of them.
+    //
+    // ARITY CHANGE (plain CREATE): a DROP naming a signature that no longer
+    // exists is a silent no-op and the CREATE then fails with "already
+    // exists"; a missed DROP leaves two candidates and PostgREST answers the
+    // ambiguity code to EVERY call — the 2026-08-20 outage. The DROP must
+    // precede the CREATE, and the grants must come back (DROP discards them),
+    // explicitly or via the catalog loop.
+    //
+    // SAME SIGNATURE (CREATE OR REPLACE, e.g. 20260829120000's location-alias
+    // fix): no overload can be added, grants survive, and a DROP here would
+    // only discard them for nothing — so the file must carry NONE.
+    const orReplace = RESCUE_SQL.includes("CREATE OR REPLACE FUNCTION public.fuzzy_title_search(");
+    if (orReplace) {
+      expect(RESCUE_SQL.includes("DROP FUNCTION IF EXISTS public.fuzzy_title_search"),
+        "a same-signature redefinition must not DROP — that discards grants and invites the trio dance for nothing").toBe(false);
+      return;
+    }
     const drop = RESCUE_SQL.indexOf("DROP FUNCTION IF EXISTS public.fuzzy_title_search(text, timestamptz, integer)");
     const create = RESCUE_SQL.indexOf("CREATE FUNCTION public.fuzzy_title_search(");
     expect(drop, "the live three-argument signature is not dropped").toBeGreaterThan(-1);
     expect(drop).toBeLessThan(create);
-    // AND THE GRANTS COME BACK, because DROP discards them. Either spelling
-    // counts: an explicit GRANT per signature, or the catalog loop
-    // 20260827170000 uses — that migration REVOKES these three from anon (they
-    // are SECURITY DEFINER, so the grant was the whole access control, and anon
-    // could page the corpus straight off PostgREST at any offset) and re-grants
-    // service_role over every overload pg_proc actually holds. A hand-listed
-    // grant would miss an overload this database carries and the migrations do
-    // not describe.
     const explicitGrant = /GRANT EXECUTE ON FUNCTION public\.fuzzy_title_search\(/.test(RESCUE_SQL);
     const catalogGrant = /p\.proname IN \([^)]*'fuzzy_title_search'[^)]*\)/.test(RESCUE_SQL)
       && /GRANT EXECUTE ON FUNCTION %s TO service_role/.test(RESCUE_SQL);

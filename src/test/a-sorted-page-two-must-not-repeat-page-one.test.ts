@@ -186,8 +186,8 @@ describe("a sorted page two must not repeat page one", () => {
     // The wall survived years of guards because the arithmetic was inline and
     // the guards matched source text. If it moves back inline, this file goes
     // blind again — so the wiring itself is asserted.
-    expect(FN).toMatch(/import \{ planRankedPage \} from "\.\/paging\.ts";/);
-    expect(FN).toMatch(/const pagePlan = planRankedPage\(\{ offset, fetchLimit, scoreRanked, newestFirst, deepPageable \}\);/);
+    expect(FN).toMatch(/import \{ planRankedPage, RANKED_WINDOW, RING_WINDOW \} from "\.\/paging\.ts";/);
+    expect(FN).toMatch(/const pagePlan = planRankedPage\(\{ offset, fetchLimit, scoreRanked, newestFirst, deepPageable, ringMerged \}\);/);
     expect(FN).toMatch(/p_limit: pagePlan\.pLimit,/);
     expect(FN).toMatch(/p_offset: pagePlan\.pOffset,/);
     expect(FN).toMatch(/rankedScored\.slice\(pagePlan\.sliceStart, pagePlan\.sliceEnd\)/);

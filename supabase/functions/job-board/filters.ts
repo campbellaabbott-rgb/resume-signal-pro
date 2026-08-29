@@ -384,10 +384,16 @@ export function normalizeFilters(
     .map((c) => String(c ?? "").trim())
     .filter((c) => /^[A-Za-z]{2}$/.test(c))
     .map((c) => c.toUpperCase());
-  const country = countryList.length
-    ? [...new Set(countryList)].slice(0, COUNTRY_LIMIT).join(",")
+  const countryAsked = [...new Set(countryList)];
+  const country = countryAsked.length
+    ? countryAsked.slice(0, COUNTRY_LIMIT).join(",")
     : null;
-  if (sent(body.country) && !country) ignored.push("country");
+  // The vendor rule, not the silent slice: a truncated list is REPORTED. Asking
+  // for six countries, getting five, and being told all six applied reads as
+  // "the board carries nothing in the sixth" — the same shape as the
+  // maxAgeDays clamp incident. Only API/URL callers can exceed the cap (the UI
+  // stops at five), and the API caller is exactly who ignoredFilters exists for.
+  if (sent(body.country) && (!country || countryAsked.length > COUNTRY_LIMIT)) ignored.push("country");
 
   // MULTI-SELECT, and the trimming is load-bearing rather than tidy: the SQL
   // splits on a BARE comma and does not trim, so " design , legal " matched
@@ -406,10 +412,12 @@ export function normalizeFilters(
   const categoryList = (Array.isArray(body.category) ? body.category : String(body.category ?? "").split(","))
     .map((c) => String(c ?? "").trim().toLowerCase())
     .filter((c) => (JOB_CATEGORIES as readonly string[]).includes(c));
-  const category = categoryList.length
-    ? [...new Set(categoryList)].slice(0, CATEGORY_LIMIT).join(",")
+  const categoryAsked = [...new Set(categoryList)];
+  const category = categoryAsked.length
+    ? categoryAsked.slice(0, CATEGORY_LIMIT).join(",")
     : null;
-  if (sent(body.category) && !category) ignored.push("category");
+  // Same truncation-is-reported rule as country above.
+  if (sent(body.category) && (!category || categoryAsked.length > CATEGORY_LIMIT)) ignored.push("category");
 
   // Only meaningful alongside a category — with no category the bucket is
   // already included, so accepting it there would be a no-op that reads like a
@@ -795,10 +803,27 @@ export function filterViolations(
     if (out.length < 20) out.push({ field, want, got: String(got ?? "null") });
   };
   const cutoff = a.maxAgeDays === null ? null : Date.now() - a.maxAgeDays * 86_400_000;
+  // SPLIT, NEVER COMPARED WHOLE. country/workMode/category/employmentType are
+  // comma-joined multi-selects now (the Remote+Hybrid toggles are a mainstream
+  // gesture), and testing a row by EQUALITY against the joined string flagged
+  // every correct row of every multi-select page: workMode="remote,hybrid"
+  // against a row's "remote" produced a violation per row, a false
+  // filterIntegrity block on the payload, a console.error per request, and an
+  // UNSAMPLED incident row overwriting the sensor on every page view —
+  // drowning the one channel built to catch a tier that genuinely serves
+  // filter-violating rows. Verified by executing the old checks: 6 violations
+  // across two perfectly matching rows. The row satisfies the filter when its
+  // value is ANY member of the list, which is exactly the question the SQL's
+  // string_to_array/IN asked.
+  const wantCountry = a.country ? a.country.split(",") : null;
+  const wantModes = a.workMode ? a.workMode.split(",") : null;
+  const wantCats = a.category ? a.category.split(",") : null;
+  const wantEt = a.employmentType ? a.employmentType.split(",") : null;
+  const postedFloor = a.postedAfter ? Date.parse(a.postedAfter) : null;
   for (const r of rows) {
-    if (a.country && String(r.country ?? "") !== a.country) push("country", a.country, r.country);
-    if (a.workMode && String(r.workMode ?? "").toLowerCase() !== a.workMode) {
-      push("workMode", a.workMode, r.workMode);
+    if (wantCountry && !wantCountry.includes(String(r.country ?? ""))) push("country", a.country as string, r.country);
+    if (wantModes && !wantModes.includes(String(r.workMode ?? "").toLowerCase())) {
+      push("workMode", a.workMode as string, r.workMode);
     }
     // `other` is LEGITIMATE under the opt-in — the two-subset pager returns it
     // by design. Without this allowance every opted-in page with any `other`
@@ -806,9 +831,25 @@ export function filterViolations(
     // permanent red light over a working feature. Found 2026-08-07 while adding
     // the sendable check below, one day after the opt-in shipped; nothing had
     // used the opt-in yet, which is the only reason the incident log is clean.
-    if (a.category && String(r.category ?? "") !== a.category) {
+    if (wantCats && !wantCats.includes(String(r.category ?? ""))) {
       const allowedOther = a.includeUncategorised && String(r.category ?? "") === "other";
-      if (!allowedOther) push("category", a.category, r.category);
+      if (!allowedOther) push("category", a.category as string, r.category);
+    }
+    // The newest filter, checked like workMode: closed domain, list
+    // membership, NULL excluded by the predicate so a NULL row arriving under
+    // the filter is itself the defect. This is the sensor for the next
+    // p_work_mode-shaped regression (an RPC overload drop, a deploy-window
+    // skew) — the 30-NULL-rows-under-a-remote-filter incident class, which
+    // this check turns from a silent page into a reported violation.
+    if (wantEt && !wantEt.includes(String(r.employmentType ?? ""))) {
+      push("employmentType", a.employmentType as string, r.employmentType);
+    }
+    // postedAfter is exactly decidable the same way maxAgeDays below is —
+    // undated rows are excluded by the predicate, so one arriving under the
+    // filter is the defect.
+    if (postedFloor !== null && Number.isFinite(postedFloor)) {
+      const pp = r.postedAt ? Date.parse(String(r.postedAt)) : NaN;
+      if (!Number.isFinite(pp) || pp < postedFloor) push("postedAfter", `>=${a.postedAfter}`, r.postedAt);
     }
     // The agent-ready filter, checked against the same mirror the query used.
     // `source` is the key rowToJob actually emits — verified, not assumed,
