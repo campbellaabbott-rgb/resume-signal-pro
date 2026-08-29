@@ -1,0 +1,1 @@
+SELECT cron.unschedule('employment-type-index-one-shot');
