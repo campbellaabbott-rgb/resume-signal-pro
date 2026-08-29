@@ -152,3 +152,12 @@ project_id = "bwhdazbotpblihdxcmho"
   # Public by necessity: this is where a developer with no account at all gets
   # their first credential. Bounded by a per-address ceiling in api_key_issue,
   # and it can only ever mint a free-tier key.
+
+  [functions.agent-mcp]
+    verify_jwt = false
+  # Public by necessity, same argument as public-api: an MCP client
+  # authenticates with an rb_live_ key of ours, not a Supabase JWT it could
+  # not have. initialize/tools/list are open discovery; every tools/call is
+  # key-checked and metered through api_key_check, and the two tools that can
+  # act on an account additionally require a key minted from a signed-in
+  # session (agent-connect), an Agent plan, and a mandate.

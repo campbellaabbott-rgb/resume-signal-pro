@@ -294,6 +294,11 @@ export default function DataApi() {
 
             <div className="max-w-3xl mx-auto mb-10">
               <GetAKey />
+              <p className="text-sm text-muted-foreground text-center mt-4">
+                Pointing an AI agent at this data instead of writing code? The same free keys work on our{" "}
+                <Link to="/agents" className="text-primary hover:underline">MCP server</Link> — connect Claude,
+                ChatGPT, Cursor, or your own.
+              </p>
             </div>
 
             <div className="max-w-3xl mx-auto">

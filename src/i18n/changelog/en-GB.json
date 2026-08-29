@@ -1,5 +1,9 @@
 {
   "changelogEntries": {
+    "connectYourAgent": {
+      "title": "Connect your AI agent",
+      "description": "Point any MCP-capable agent — Claude, ChatGPT, Cursor, or your own — at the board and it can search 700,000+ postings pulled from employers' own hiring systems, read full descriptions, and see the same honest counts and disclosures you do. On the Agent plan, it can also ask your apply agent to submit applications for you — through the exact same pipeline as always: your off switch wins, answers are never invented, and every refusal is named. Setup takes two minutes at /agents."
+    },
     "pageFourNeverRepeatsPageOne": {
       "title": "Deep pages stopped repeating page one",
       "description": "On short searches like “sales” or “nurse”, walking far into the results could show cards you had already seen — and quietly made an equal number of real matches unreachable on any page. We ran a six-way adversarial audit of the search engine, found the boundary where the re-ranked first pages hand over to the rest of the list, and rebuilt it so every advertised match appears exactly once. Same page one, honest page nine."

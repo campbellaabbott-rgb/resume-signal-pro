@@ -1,5 +1,9 @@
 {
   "changelogEntries": {
+    "connectYourAgent": {
+      "title": "Conecte seu agente de IA",
+      "description": "Aponte qualquer agente compatível com MCP — Claude, ChatGPT, Cursor ou o seu próprio — para o quadro: ele busca entre mais de 700.000 vagas vindas dos sistemas de contratação dos próprios empregadores, lê descrições completas e vê as mesmas contagens honestas que você. No plano Agent, também pode pedir ao seu agente de candidaturas que aplique por você — pela mesma esteira de sempre: seu botão de desligar vence, respostas nunca são inventadas e cada recusa é nomeada. Configuração em dois minutos em /agents."
+    },
     "pageFourNeverRepeatsPageOne": {
       "title": "Páginas profundas pararam de repetir a página um",
       "description": "Em buscas curtas como “sales” ou “nurse”, avançar fundo nos resultados podia mostrar cartões já vistos — e deixava igual número de vagas reais inalcançáveis. Auditamos o buscador em seis frentes adversariais, achamos a fronteira onde as primeiras páginas reordenadas entregam o resto da lista e a reconstruímos: cada vaga anunciada aparece exatamente uma vez."

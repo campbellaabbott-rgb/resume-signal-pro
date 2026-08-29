@@ -1,5 +1,9 @@
 {
   "changelogEntries": {
+    "connectYourAgent": {
+      "title": "Verbinde deinen KI-Agenten",
+      "description": "Richte einen MCP-fähigen Agenten — Claude, ChatGPT, Cursor oder deinen eigenen — auf das Board: Er durchsucht über 700.000 Stellen direkt aus den Bewerbungssystemen der Arbeitgeber, liest vollständige Beschreibungen und sieht dieselben ehrlichen Zahlen wie du. Mit dem Agent-Plan kann er zudem deinen Bewerbungs-Agenten losschicken — durch exakt dieselbe Pipeline wie immer: dein Aus-Schalter gewinnt, Antworten werden nie erfunden, jede Ablehnung wird benannt. Einrichtung in zwei Minuten unter /agents."
+    },
     "pageFourNeverRepeatsPageOne": {
       "title": "Spätere Seiten wiederholen Seite eins nicht mehr",
       "description": "Bei kurzen Suchen wie „sales“ oder „nurse“ konnten beim Weiterblättern bereits gesehene Karten erneut erscheinen — und ebenso viele echte Treffer waren auf keiner Seite erreichbar. Wir haben die Suchmaschine einer sechsfachen Prüfung unterzogen, die Nahtstelle zwischen den neu sortierten ersten Seiten und dem Rest der Liste gefunden und neu gebaut: Jeder angekündigte Treffer erscheint genau einmal. Gleiche Seite eins, ehrliche Seite neun."

@@ -35,7 +35,7 @@ const COLUMNS_BY_TABLE: Record<string, string[]> = {
   job_board_exits: ["exited_at", "exit_reason", "days_on_board", "posting_id", "category", "source", "company_token"],
   job_board_pool_samples: ["sampled_at", "serving", "total"],
   // Added after the SECOND occurrence of this defect, 2026-08-26.
-  api_keys: ["id", "key_hash", "key_prefix", "name", "owner_email", "tier", "rate_per_min", "daily_quota", "created_at", "last_used_at", "revoked_at", "notes"],
+  api_keys: ["id", "key_hash", "key_prefix", "name", "owner_email", "tier", "rate_per_min", "daily_quota", "created_at", "last_used_at", "revoked_at", "notes", "user_id"],
   api_usage: ["key_id", "day", "endpoint", "calls"],
   api_rate: ["key_id", "minute", "calls"],
 };
@@ -147,7 +147,7 @@ describe("plpgsql OUT parameters cannot silently capture a column", () => {
  * column of every table the body touches, and the answer must be none.
  */
 describe("the API key functions do not name a column in their return shape", () => {
-  for (const fn of ["api_key_check", "api_key_issue"]) {
+  for (const fn of ["api_key_check", "api_key_issue", "api_key_issue_agent"]) {
     it(`${fn}: no OUT parameter shares a name with a column it touches`, () => {
       const { file, sql } = newestDefining(fn);
       expect(file, `no migration defines ${fn}`).toBeTruthy();

@@ -1,5 +1,9 @@
 {
   "changelogEntries": {
+    "connectYourAgent": {
+      "title": "Verbind je AI-agent",
+      "description": "Richt elke MCP-compatibele agent — Claude, ChatGPT, Cursor of je eigen — op het bord: hij doorzoekt 700.000+ vacatures rechtstreeks uit de wervingssystemen van werkgevers, leest volledige omschrijvingen en ziet dezelfde eerlijke aantallen als jij. Met het Agent-plan kan hij ook je sollicitatie-agent vragen om voor je te solliciteren — via exact dezelfde pijplijn als altijd: jouw uit-knop wint, antwoorden worden nooit verzonnen en elke weigering wordt benoemd. Instellen duurt twee minuten op /agents."
+    },
     "pageFourNeverRepeatsPageOne": {
       "title": "Diepe pagina’s herhalen pagina één niet meer",
       "description": "Bij korte zoekopdrachten als “sales” of “nurse” kon ver doorbladeren al geziene kaarten opnieuw tonen — en evenveel echte matches onbereikbaar maken. Na een zesvoudige adversariale audit van de zoekmachine hebben we de naad tussen de herschikte eerste pagina’s en de rest van de lijst herbouwd: elke aangekondigde match verschijnt precies één keer."

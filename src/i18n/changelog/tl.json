@@ -1,5 +1,9 @@
 {
   "changelogEntries": {
+    "connectYourAgent": {
+      "title": "Ikonekta ang iyong AI agent",
+      "description": "Ituro ang kahit anong MCP-capable na agent — Claude, ChatGPT, Cursor, o sarili mo — sa board: maghahanap ito sa 700,000+ trabahong galing mismo sa hiring systems ng mga employer, magbabasa ng buong deskripsyon, at makikita ang parehong tapat na bilang na nakikita mo. Sa Agent plan, maaari rin nitong hilingin sa iyong apply agent na mag-apply para sa iyo — sa eksaktong parehong pipeline gaya ng dati: panalo lagi ang iyong off switch, hindi kailanman iniimbento ang mga sagot, at bawat pagtanggi ay pinapangalanan. Dalawang minutong setup sa /agents."
+    },
     "pageFourNeverRepeatsPageOne": {
       "title": "Hindi na inuulit ng malalalim na pahina ang pahina uno",
       "description": "Sa maiikling paghahanap tulad ng “sales” o “nurse”, ang paglalim sa mga resulta ay maaaring magpakita ng mga card na nakita mo na — at ganoon din karaming tunay na tugma ang hindi na maabot sa kahit anong pahina. Sinuri namin ang search engine sa anim na anggulo, natagpuan ang hangganan kung saan ipinapasa ng muling-inayos na unang mga pahina ang natitirang listahan, at itinayo itong muli: bawat inanunsyong tugma ay lalabas nang eksaktong isang beses."

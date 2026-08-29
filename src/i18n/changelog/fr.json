@@ -1,5 +1,9 @@
 {
   "changelogEntries": {
+    "connectYourAgent": {
+      "title": "Connectez votre agent IA",
+      "description": "Pointez n'importe quel agent compatible MCP — Claude, ChatGPT, Cursor ou le vôtre — vers le tableau : il cherche parmi plus de 700 000 offres tirées des systèmes de recrutement des employeurs eux-mêmes, lit les descriptions complètes et voit les mêmes chiffres honnêtes que vous. Avec le plan Agent, il peut aussi demander à votre agent de candidature de postuler pour vous — par exactement la même chaîne que d'habitude : votre interrupteur d'arrêt gagne, les réponses ne sont jamais inventées, chaque refus est nommé. Installation en deux minutes sur /agents."
+    },
     "pageFourNeverRepeatsPageOne": {
       "title": "Les pages profondes ne répètent plus la page un",
       "description": "Sur des recherches courtes comme « sales » ou « nurse », avancer loin dans les résultats pouvait réafficher des cartes déjà vues — et rendait autant de vraies correspondances inaccessibles. Après un audit adversarial en six angles du moteur, nous avons reconstruit la jonction entre les premières pages reclassées et le reste de la liste : chaque correspondance annoncée apparaît exactement une fois."
