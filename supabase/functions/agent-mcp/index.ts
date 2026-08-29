@@ -144,6 +144,11 @@ function disclosures(r: Record<string, unknown>): Record<string, unknown> {
       "ignoredFilters", "excludedTerms", "intentFilters", "aliases", "didYouMean",
       "droppedTerms", "locationSplit", "coverage", "fuzzyExtra", "semanticExtra",
       "locationExpandedFrom", "locationSearched", "maxAgeClampedTo", "searchRoute",
+      // salaryStatedOnly is ROW-SELECTING, not cosmetic: a pay-sorted search
+      // drops the ~87% of the board with no stated pay. An agent that isn't
+      // told that reads a filtered page as the whole market — the exact
+      // disclosure the site shows and the MCP layer must never swallow.
+      "salaryStatedOnly",
     ]
   ) if (r[k] !== undefined && r[k] !== null) out[k] = r[k];
   return out;

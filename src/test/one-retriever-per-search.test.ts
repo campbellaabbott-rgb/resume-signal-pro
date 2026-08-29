@@ -253,16 +253,20 @@ describe("routed retrieval is wired so it cannot fail quietly", () => {
     // The routed window is capped at 400. Applying a filter on top of a capped
     // window silently answers from a subset of the matches — the honest place
     // for a filtered query is the ranked path, which binds filters in SQL.
-    // NOT isUnfiltered() — that asks "is this the bare board?" and counts the
-    // QUERY itself as a filter, so gating on it stood the router down on every
-    // search. Verified live before the fix: AT&T and IT returned no searchRoute
-    // at all. The gate must test the filter fields, excluding q.
+    // The gate must consider EVERY filter, excluding q — and it does so
+    // MECHANICALLY now, via isUnfiltered over a q-blanked copy of applied,
+    // rather than a hand-listed conjunction. The old hand-list omitted the
+    // seven filters added after it was written, so a filtered abbreviation
+    // search still routed through the recency-capped window (2026-08-29 sweep
+    // #2). isUnfiltered checks every field of applied, so a new filter counts
+    // the moment it exists. What it must NOT be is the bare isUnfiltered(applied)
+    // — that counts q itself and stood the router down on every search (AT&T,
+    // IT returned no searchRoute); blanking q is the whole point.
     const gate = FN.slice(FN.indexOf("const onlyQuery"), FN.indexOf("const routedRetriever"));
     expect(gate, "the routing gate is missing").not.toBe("");
-    expect(/isUnfiltered\(applied\)/.test(gate), "isUnfiltered treats q as a filter — it blocks every route").toBe(false);
-    for (const f of ["country", "category", "workMode", "salaryFloor", "maxAgeDays", "postedAfter", "remote", "experience", "companies", "location"]) {
-      expect(gate, `the gate must consider ${f}`).toContain(f);
-    }
+    expect(/isUnfiltered\(applied\)/.test(gate), "isUnfiltered(applied) counts q as a filter — it blocks every route").toBe(false);
+    expect(/isUnfiltered\(\{ \.\.\.applied, q: "" \}\)/.test(gate),
+      "the gate must derive filtered-ness mechanically from applied with q blanked, so future filters count automatically").toBe(true);
   });
 
   it("slices AFTER scoring, so offset indexes the order the reader sees", () => {

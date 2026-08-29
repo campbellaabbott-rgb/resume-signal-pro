@@ -702,16 +702,24 @@ export default function Jobs() {
   const [q, setQ] = useState(initial.get("q") ?? "");
   const [location, setLocation] = useState(initial.get("location") ?? "");
   const [remoteOnly, setRemoteOnly] = useState(initial.get("remote") === "1");
-  // Definitive work-mode filter (remote/hybrid/onsite; "" = any). The legacy
-  // remote=1 URL param maps to "remote" so old links keep working.
+  // Definitive work-mode filter (remote/hybrid/onsite; "" = any). A legacy
+  // remote=1 URL param is NOT mapped here — it is the standalone-remote toggle,
+  // read into remoteOnly below.
   const [workMode, setWorkMode] = useState<string>(() => {
-    // Accepts a list now. Old single-value links ("?mode=remote") and the legacy
-    // "?remote=1" both still resolve to exactly what they always did.
-    // normalizeModes dedupes AND stores canonical order, so a shared link's
-    // ordering can never differ from what the toggles themselves compose.
-    const m = normalizeModes(initial.get("mode") ?? "");
-    if (m) return m;
-    return initial.get("remote") === "1" ? "remote" : "";
+    // Accepts a list now. Old single-value links ("?mode=remote") resolve to
+    // exactly what they always did; normalizeModes dedupes AND stores canonical
+    // order, so a shared link's ordering can never differ from what the toggles
+    // themselves compose.
+    //
+    // A legacy "?remote=1" (no mode) is deliberately left to remoteOnly, not
+    // mapped to workMode="remote": boardFilterBody sends remote:true only when
+    // (remoteOnly && !workMode), and remote:true is a strict SUBSET of
+    // work_mode='remote'. Reopening a pre-2026-08-27 saved search as
+    // workMode="remote" bound the broader predicate while its saved-search
+    // digest still mailed remote:true, so the reopened board showed a different
+    // query than the alert (finding). Leaving workMode empty makes reopen bind
+    // the same remote:true the digest sends.
+    return normalizeModes(initial.get("mode") ?? "");
   });
   const { category: pathCategory, companyToken } = useParams<{ category?: string; companyToken?: string }>();
   const routeCategory = isBoardCategory(pathCategory) ? pathCategory : undefined;
@@ -1017,6 +1025,10 @@ export default function Jobs() {
       setPayBasis("");
       setStatedPayOnly(false);
       setIncludeUnstatedPay(false);
+      // The category widener nl-search never emits: a stale "+ unsorted" left on
+      // silently reactivated under the interpreted search with nothing in the
+      // interpretation chips naming it.
+      setInclUncat(false);
       setMaxYears(0);
       setDepartment("");
       setVendor("");
@@ -1342,10 +1354,17 @@ export default function Jobs() {
    * search names it for the same reason rather than saving it.
    */
   const filterState: BoardFilterState = useMemo(() => ({
-    q, location, remoteOnly, workMode, category, inclUncat, agentOnly, country,
+    q, location, remoteOnly, workMode, category,
+    // Under a salary sort normalizeFilters DROPS includeUncategorised and names
+    // it in ignoredFilters, so a stale opt-in here would send a flag the board
+    // refuses AND raise a spurious "we ignored + unsorted" disclosure while its
+    // box sits disabled. Gate it to the checkbox's checked={inclUncat &&
+    // sortMode!=="salary"} so the body agrees with what the visitor can see.
+    inclUncat: inclUncat && sortMode !== "salary",
+    agentOnly, country,
     experience, companyTokens, salaryFloor, salaryCeiling, payBasis, statedPayOnly, includeUnstatedPay,
     maxYears, department, vendor, freshness, employmentType,
-  }), [q, location, remoteOnly, workMode, category, inclUncat, agentOnly, country,
+  }), [q, location, remoteOnly, workMode, category, inclUncat, sortMode, agentOnly, country,
     experience, companyTokens, salaryFloor, salaryCeiling, payBasis, statedPayOnly, includeUnstatedPay,
     maxYears, department, vendor, freshness, employmentType]);
   const healthAttempted = useRef<Set<string>>(new Set());
@@ -1843,7 +1862,10 @@ export default function Jobs() {
     if (workMode) p.set("mode", workMode);
     if (company) p.set("company", company);
     if (category) p.set("category", category);
-    if (category && inclUncat) p.set("inclUncat", "1");
+    // Gated on the sort too, matching the checkbox and the request body: the
+    // server drops includeUncategorised under a salary sort, so a written
+    // ?inclUncat=1 there would reopen a filter the board refuses.
+    if (category && inclUncat && sortMode !== "salary") p.set("inclUncat", "1");
     if (agentOnly) p.set("agentOnly", "1");
     // READ ON MOUNT, NEVER WRITTEN — the same defect the comment below records
     // for freshness and sort, on a third control. Explore links to
@@ -3392,11 +3414,13 @@ export default function Jobs() {
     if (agentOnly) f.push({ key: "agentOnly", label: t("jobsPage.chipAgentOnly", "Agent can apply"), clear: () => setAgentOnly(false) });
     if (activelyHiringOnly) f.push({ key: "activelyHiring", label: t("jobsPage.chipActivelyHiring", "Actively hiring"), clear: () => setActivelyHiringOnly(false) });
     // A WIDENING toggle, so it gets a chip for visibility and for Clear all, but
-    // it only means anything alongside a category.
-    if (category && inclUncat) f.push({ key: "inclUncat", label: t("jobsPage.chipInclUncat", "+ unsorted"), clear: () => setInclUncat(false) });
+    // it only means anything alongside a category. Gated on the sort, matching
+    // the checkbox: under a salary sort the server drops the opt-in, so a chip
+    // claiming it is active would name a filter the board is not applying.
+    if (category && inclUncat && sortMode !== "salary") f.push({ key: "inclUncat", label: t("jobsPage.chipInclUncat", "+ unsorted"), clear: () => setInclUncat(false) });
     return f;
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [q, location, category, experience, maxYears, company, companyTokens, country, salaryFloor, salaryCeiling, payBasis, statedPayOnly, department, vendor, remoteOnly, workMode, employmentType, freshness, companies, agentOnly, activelyHiringOnly, inclUncat, t]);
+  }, [q, location, category, experience, maxYears, company, companyTokens, country, salaryFloor, salaryCeiling, payBasis, statedPayOnly, department, vendor, remoteOnly, workMode, employmentType, freshness, companies, agentOnly, activelyHiringOnly, inclUncat, sortMode, t]);
   // S1: search suggestions — recent searches (local), matching companies
   // (served facet), matching category pages, and a curated common-role list.
   // Everything suggested is real and clickable; nothing invented.
@@ -6672,18 +6696,23 @@ export default function Jobs() {
                   );
                 })}
               </ul>
-              {/* THE SERVER'S "NO MORE" IS AUTHORITATIVE. This gate used hasMore
-                  only as a fallback when total was missing, and trusted the
-                  count comparison otherwise — but a terminal page's total counts
-                  UNGROUPED rows while the page serves grouped cards, so on 36 of
-                  82 measured terminal browse pages (43.9%, median shortfall
-                  7.3%) the button survived its own last page. Clicking it
-                  refetched the same terminal page forever. No postings were
-                  missing — the same jobs were folded into fewer cards — but a
-                  control that promises more and delivers nothing is a small lie
-                  on almost half of all terminal pages. hasMore:false now ends
-                  paging regardless of what the counts suggest. */}
-              {data && data.hasMore !== false && (typeof data.total === "number" ? jobs.length < pageTotalCount : true) && (
+              {/* THE SERVER'S hasMore IS AUTHORITATIVE IN BOTH DIRECTIONS. This
+                  gate used hasMore only as a fallback when total was missing,
+                  and trusted the count comparison otherwise — but a terminal
+                  page's total counts UNGROUPED rows while the page serves grouped
+                  cards, so on 36 of 82 measured terminal browse pages (43.9%,
+                  median shortfall 7.3%) the button survived its own last page.
+                  Clicking it refetched the same terminal page forever. No
+                  postings were missing — the same jobs were folded into fewer
+                  cards — but a control that promises more and delivers nothing is
+                  a small lie on almost half of all terminal pages. hasMore:false
+                  now ends paging regardless of what the counts suggest — and
+                  hasMore:true KEEPS it going regardless of them, so the
+                  ranked/ring path's rows beyond the exact `total` (ring rows the
+                  FTS count never includes) stay reachable instead of being fenced
+                  off once jobs.length catches the count. The count comparison
+                  decides only when the server is silent on hasMore. */}
+              {data && data.hasMore !== false && (data.hasMore === true || typeof data.total !== "number" || jobs.length < pageTotalCount) && (
                 <div className="text-center mt-6">
                   {/* A failed "Load more" keeps every job already on screen and
                       retries in place. It used to replace the whole list with

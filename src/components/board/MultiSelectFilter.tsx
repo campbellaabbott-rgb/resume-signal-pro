@@ -58,11 +58,19 @@ export function MultiSelectFilter({
 
   const toggle = (v: string) => {
     const has = selected.includes(v);
-    // Preserve the order the visitor picked in; a re-sorted list makes the
-    // chip and the URL churn for no reason.
-    const next = has ? selected.filter((x) => x !== v) : [...selected, v];
     if (!has && selected.length >= max) return;
-    onChange(next.join(","));
+    const picked = has ? selected.filter((x) => x !== v) : [...selected, v];
+    // CANONICAL ORDER = the options' own order, so one selection produces one
+    // stored string whatever the click sequence. Pick-order stored "US,GB" and
+    // "GB,US" as different values, which minted two saved-search NAMES for the
+    // same query and slipped past the UNIQUE(user_id, name) guard — the hole
+    // just closed for workMode/employmentType (see EMPLOYMENT_TYPE_KEYS). A
+    // value not in `options` (a country rarer than the facet lists) keeps its
+    // place at the end rather than being dropped, and the stored order is stable
+    // so the chip and the URL do not churn.
+    const rank = new Map(options.map((o, i) => [o.value, i]));
+    picked.sort((a, b) => (rank.get(a) ?? options.length) - (rank.get(b) ?? options.length));
+    onChange(picked.join(","));
   };
 
   const triggerText =

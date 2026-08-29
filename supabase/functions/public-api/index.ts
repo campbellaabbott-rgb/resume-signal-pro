@@ -277,78 +277,113 @@ async function listJobs(client: SupabaseClient, url: URL, headers: Record<string
       headers);
   }
 
+  // Values derived from the query string once, then applied by baseQuery() below
+  // to BOTH the row query and the count query. salaryMin is also read by the
+  // coverage block after the fetch, so it lives out here.
+  const dept = (p.get("department") ?? "").trim().slice(0, 80).replace(/[%_,()]/g, " ").trim();
+  const includeUnstated = p.get("include_unstated_pay") === "true";
+  const salaryMax = Number(p.get("salary_max"));
+  const salaryMin = Number(p.get("salary_min"));
+  const postedBefore = p.get("posted_before");
+  const postedAfter = p.get("posted_after");
+  // Title/company only, and websearch rather than raw ILIKE: the description
+  // tier is what makes board search expensive, and an API caller paging a broad
+  // term would pay that cost on every page.
+  const term = (p.get("q") ?? "").trim().slice(0, 200);
+  const safeTerm = term.replace(/[|"%_\\]/g, " ").trim();
+
+  // remote is a BOOLEAN, not a presence flag. A bare `=== "true"` test silently
+  // dropped remote=false (and every typo) and returned the WHOLE corpus under a
+  // filtered-looking total. Bind both values; reject anything else with the same
+  // 400 shape an unknown parameter gets, rather than treating it as "no filter".
+  const remoteRaw = p.get("remote");
+  let remoteFilter: boolean | undefined;
+  if (remoteRaw !== null) {
+    if (remoteRaw === "true") remoteFilter = true;
+    else if (remoteRaw === "false") remoteFilter = false;
+    else return fail(400, "invalid_value", `remote must be "true" or "false", got "${remoteRaw}".`, headers);
+  }
+
   // effective_posted is selected but NOT published: it is the column the query
   // sorts by, so the cursor has to be built from it, and building one from
   // posted_at instead would produce a key that does not match the ordering —
   // pages that silently skip and repeat rows. It is stripped from every row
   // before the response so the documented field list stays exactly as documented.
-  let q = client
-    .from("job_board_postings")
-    .select(`${JOB_FIELDS},effective_posted`, { count: "estimated" })
-    .is("missing_since", null)                       // fence: never serve a withdrawn posting
-    .gte("effective_posted", freshCutoff());          // fence: never serve past the window
-
-  const eq = (param: string, col: string) => {
-    const v = p.get(param);
-    if (v) q = q.eq(col, v);
+  //
+  // Base filters WITHOUT the keyset predicate, as a factory so the row query and
+  // the count query are built independently. The COUNT must not carry the keyset
+  // `.or` clause below: with it applied, count "estimated" measures only the
+  // rows still AHEAD of the cursor, so total.value shrank on every page a caller
+  // walked. Built here once and shared by both reads for filter parity.
+  const baseQuery = (opts: { count?: "estimated"; head?: boolean } = {}) => {
+    let qb = client
+      .from("job_board_postings")
+      .select(`${JOB_FIELDS},effective_posted`, opts)
+      .is("missing_since", null)                       // fence: never serve a withdrawn posting
+      .gte("effective_posted", freshCutoff());          // fence: never serve past the window
+    const eq = (param: string, col: string) => {
+      const v = p.get(param);
+      if (v) qb = qb.eq(col, v);
+    };
+    eq("country", "country");
+    eq("category", "category");
+    eq("company_token", "company_token");
+    eq("work_mode", "work_mode");
+    eq("source", "source");
+    eq("experience_band", "experience_band");
+    // Substring rather than equality: department is the employer's own free text
+    // ("EVOLV - CPP"), so an exact match would be unusable.
+    if (dept) qb = qb.ilike("department", `%${dept}%`);
+    // THE CEILING SHARES include_unstated_pay's WIDENING, or it cancels it.
+    // NULL fails `<=`, so a plain .lte() ANDed after the floor's OR-arm throws
+    // out every unpriced row that arm just re-admitted — the caller sets a band
+    // and include_unstated_pay=true and silently gets the floor-only answer.
+    // Same defect and same fix as the board's own query builder.
+    if (Number.isFinite(salaryMax) && salaryMax > 0) {
+      qb = includeUnstated
+        ? qb.or(`salary_rank_usd.lte.${salaryMax},salary_rank_usd.is.null`)
+        : qb.lte("salary_rank_usd", salaryMax);
+    }
+    if (postedBefore && !Number.isNaN(Date.parse(postedBefore))) qb = qb.lte("posted_at", new Date(postedBefore).toISOString());
+    if (remoteFilter !== undefined) qb = qb.eq("remote", remoteFilter);
+    if (Number.isFinite(salaryMin) && salaryMin > 0) {
+      // Same semantics the board uses, and the same disclosure obligation: only
+      // about a fifth of postings state pay, so this filter is a narrow slice and
+      // the response says so rather than letting a caller mistake it for a census.
+      qb = includeUnstated
+        ? qb.or(`salary_rank_usd.gte.${salaryMin},salary_rank_usd.is.null`)
+        : qb.gte("salary_rank_usd", salaryMin);
+    }
+    if (postedAfter && !Number.isNaN(Date.parse(postedAfter))) qb = qb.gte("posted_at", new Date(postedAfter).toISOString());
+    if (safeTerm) qb = qb.textSearch("title", safeTerm, { type: "websearch", config: "simple" });
+    return qb;
   };
-  eq("country", "country");
-  eq("category", "category");
-  eq("company_token", "company_token");
-  eq("work_mode", "work_mode");
-  eq("source", "source");
-  eq("experience_band", "experience_band");
-  // Substring rather than equality: department is the employer's own free text
-  // ("EVOLV - CPP"), so an exact match would be unusable.
-  const dept = (p.get("department") ?? "").trim().slice(0, 80).replace(/[%_,()]/g, " ").trim();
-  if (dept) q = q.ilike("department", `%${dept}%`);
-  // THE CEILING SHARES include_unstated_pay's WIDENING, or it cancels it.
-  // NULL fails `<=`, so a plain .lte() ANDed after the floor's OR-arm throws
-  // out every unpriced row that arm just re-admitted — the caller sets a band
-  // and include_unstated_pay=true and silently gets the floor-only answer.
-  // Same defect and same fix as the board's own query builder.
-  const salaryMax = Number(p.get("salary_max"));
-  if (Number.isFinite(salaryMax) && salaryMax > 0) {
-    q = p.get("include_unstated_pay") === "true"
-      ? q.or(`salary_rank_usd.lte.${salaryMax},salary_rank_usd.is.null`)
-      : q.lte("salary_rank_usd", salaryMax);
-  }
-  const postedBefore = p.get("posted_before");
-  if (postedBefore && !Number.isNaN(Date.parse(postedBefore))) q = q.lte("posted_at", new Date(postedBefore).toISOString());
-
-  if (p.get("remote") === "true") q = q.eq("remote", true);
-  const salaryMin = Number(p.get("salary_min"));
-  if (Number.isFinite(salaryMin) && salaryMin > 0) {
-    // Same semantics the board uses, and the same disclosure obligation: only
-    // about a fifth of postings state pay, so this filter is a narrow slice and
-    // the response says so rather than letting a caller mistake it for a census.
-    q = p.get("include_unstated_pay") === "true"
-      ? q.or(`salary_rank_usd.gte.${salaryMin},salary_rank_usd.is.null`)
-      : q.gte("salary_rank_usd", salaryMin);
-  }
-  const postedAfter = p.get("posted_after");
-  if (postedAfter && !Number.isNaN(Date.parse(postedAfter))) q = q.gte("posted_at", new Date(postedAfter).toISOString());
-
-  const term = (p.get("q") ?? "").trim().slice(0, 200);
-  if (term) {
-    // Title/company only, and websearch rather than raw ILIKE: the description
-    // tier is what makes board search expensive, and an API caller paging a
-    // broad term would pay that cost on every page.
-    const safe = term.replace(/[|"%_\\]/g, " ").trim();
-    if (safe) q = q.textSearch("title", safe, { type: "websearch", config: "simple" });
-  }
 
   // KEYSET: start strictly after the last row of the previous page, in the same
   // (effective_posted DESC, id ASC) order the query is already sorted by. Cost
-  // is flat with depth because the index seeks rather than walks.
+  // is flat with depth because the index seeks rather than walks. Applied to the
+  // ROW query only — never to the count (see baseQuery above).
+  let rowQuery = baseQuery();
   if (cursor) {
-    q = q.or(`effective_posted.lt."${cursor.ep}",and(effective_posted.eq."${cursor.ep}",id.gt."${cursor.id}")`);
+    rowQuery = rowQuery.or(`effective_posted.lt."${cursor.ep}",and(effective_posted.eq."${cursor.ep}",id.gt."${cursor.id}")`);
   }
 
-  const { data: rawData, error, count } = await q
-    .order("effective_posted", { ascending: false, nullsFirst: false })
-    .order("id", { ascending: true })
-    .range(cursor ? 0 : offset, (cursor ? 0 : offset) + limit - 1);
+  // The count is computed ONCE from the filtered-but-not-keyset query, so
+  // total.value is stable for a given query across every cursor page. head:true
+  // means the count query returns no rows — just the planner's estimate.
+  const [rowRes, countRes] = await Promise.all([
+    rowQuery
+      .order("effective_posted", { ascending: false, nullsFirst: false })
+      .order("id", { ascending: true })
+      .range(cursor ? 0 : offset, (cursor ? 0 : offset) + limit - 1),
+    baseQuery({ count: "estimated", head: true }),
+  ]);
+  const { data: rawData, error } = rowRes;
+  if (countRes.error) {
+    // A count failure must not sink an otherwise-good page; report a null total.
+    console.error("[PUBLIC-API] /v1/jobs count failed:", countRes.error.message?.slice(0, 160));
+  }
+  const count = countRes.count ?? null;
   // The select string is built at runtime, so supabase-js cannot infer a row
   // type from it. The shape is JOB_FIELDS plus the ordering column, which this
   // function owns end to end.

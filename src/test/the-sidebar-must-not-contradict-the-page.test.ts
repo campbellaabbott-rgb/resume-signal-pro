@@ -34,10 +34,18 @@ const FACET = /if \(body\.facetCounts === true\) \{[\s\S]*?\n  \}\n/.exec(FN)?.[
 describe("the sidebar must not contradict the page", () => {
   it("counts facets with the SAME engine the list uses when there is a query", () => {
     expect(FACET, "the facetCounts block is missing").not.toBe("");
-    // buildQuery is the substring matcher; the list uses count_jobs_capped.
-    expect(/if \(qText\) \{[\s\S]*?count_jobs_capped/.test(FACET),
-      "a text query must be counted by the same RPC that serves the rows").toBe(true);
-    // The filter-only case keeps the fast exact count — same engine as its list.
+    // A SINGLE-TERM text query is counted by count_jobs_capped — the same RPC
+    // the list total uses. A MULTI-WORD query is NOT: count_jobs_capped treats
+    // p_q as one contiguous ILIKE while the list ANDs each term (title OR
+    // company OR department, per term), so "senior nurse" would undercount and
+    // the chip would promise fewer than clicking delivers (2026-08-29 sweep #2).
+    // Multi-term falls through to buildQuery, the list's own matcher — the same
+    // stand-down cappedCount already does.
+    expect(/facetUseRpc = qText && facetQ\.length <= 1/.test(FACET),
+      "multi-word queries must not use count_jobs_capped's contiguous ILIKE").toBe(true);
+    expect(/if \(facetUseRpc\) \{[\s\S]*?count_jobs_capped/.test(FACET),
+      "a single-term text query must be counted by the same RPC that serves the rows").toBe(true);
+    // The filter-only AND multi-word cases use buildQuery — the list's matcher.
     expect(/buildQuery\("effective_posted", true, c\)/.test(FACET)).toBe(true);
   });
 

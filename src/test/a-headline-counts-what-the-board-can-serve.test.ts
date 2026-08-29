@@ -43,12 +43,16 @@ describe("a headline counts what the board can serve", () => {
       .toMatch(/\.gte\("effective_posted", new Date\(Date\.now\(\) - FRESH_WINDOW_DAYS \* 86_400_000\)\.toISOString\(\)\)/);
   });
 
-  it("the client ends paging when the server says so", () => {
-    // hasMore:false is authoritative. The count comparison stays only as the
-    // reason to KEEP going when the server is silent — it must never overrule
-    // an explicit no.
-    expect(JOBS).toMatch(/data && data\.hasMore !== false && \(typeof data\.total === "number" \? jobs\.length < pageTotalCount : true\) && \(/);
-    expect(JOBS).not.toMatch(/typeof data\.total === "number" \? jobs\.length < pageTotalCount : !!data\.hasMore/);
+  it("the client ends paging when the server says so — and hasMore:true overrules the count", () => {
+    // hasMore:false is authoritative and ends paging. hasMore:TRUE is now also
+    // authoritative in the other direction: the ranked/ring path serves rows
+    // beyond the exact `total` (ring rows the FTS count never includes), so a
+    // true hasMore must KEEP paging even once jobs.length catches the count —
+    // otherwise those rows are fenced off (2026-08-29 sweep #2). The count
+    // comparison decides only when the server is SILENT on hasMore.
+    expect(JOBS).toMatch(/data && data\.hasMore !== false && \(data\.hasMore === true \|\| typeof data\.total !== "number" \|\| jobs\.length < pageTotalCount\) && \(/);
+    // The old form let the count overrule a true hasMore — must not return.
+    expect(JOBS).not.toMatch(/\(typeof data\.total === "number" \? jobs\.length < pageTotalCount : true\)/);
   });
 
   it("every rescue exit hands back a position that exists", () => {

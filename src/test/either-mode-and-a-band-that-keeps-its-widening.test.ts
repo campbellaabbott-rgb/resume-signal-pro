@@ -86,7 +86,7 @@ describe("either mode, and a band that keeps its widening", () => {
     // Still a plain ceiling when the toggle is off — widening unasked-for would
     // be the opposite bug.
     expect(BOARD).toMatch(/: q\.lte\("salary_rank_usd", applied\.salaryCeiling\);/);
-    expect(API).toMatch(/: q\.lte\("salary_rank_usd", salaryMax\);/);
+    expect(API).toMatch(/: qb\.lte\("salary_rank_usd", salaryMax\);/);
   });
 
   it('"Clear all" actually clears every selected mode', () => {

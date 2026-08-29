@@ -3210,6 +3210,12 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
       // 20260828001000 teaches the patcher to keep both rows fresh between
       // passes.
       ...(coverage ? { coverage: { ...coverage, tracked: v.total } } : {}),
+      // The carried-facets marker must ride the SERVED row, not only the fat
+      // one — serving reads refresh_head. Stamped here it left no trace on the
+      // row anyone actually reads, so a carried (stale) total served as current
+      // was indistinguishable from a freshly computed one. Now the served row
+      // says which it is.
+      ...(facetsCarried ? { facetsCarried: true, facetsCarriedAt: v.refreshedAt } : {}),
       refreshedAt: v.refreshedAt,
       companiesCount: companies.length,
       companiesFacet: [...companies].sort((a, b) => (b.count ?? 0) - (a.count ?? 0)).slice(0, 200),
@@ -9533,9 +9539,20 @@ async function serveList(
       // category simply arrives without a number, which the rail already
       // renders for every category past the budget.
       const chunkBudget = Math.max(250, FACET_DEADLINE - Date.now());
+      // ONE MATCHER FOR THE RAIL AND THE LIST. count_jobs_capped treats p_q as a
+      // single contiguous ILIKE, but the list ANDs each query term (title OR
+      // company OR department, per term). For a multi-word query the two
+      // disagree — "senior nurse" matches "Senior Registered Nurse" on the page
+      // but not in the RPC's count — so a category chip undercounts and clicking
+      // it delivers MORE than the rail promised. cappedCount already stands down
+      // to buildQuery for multi-term (its guard at the top of this file); the
+      // rail must too. buildQuery's else-branch below IS that matcher, so send
+      // multi-term queries down it rather than to the RPC.
+      const facetQ = queryTerms(body.q).terms;
+      const facetUseRpc = qText && facetQ.length <= 1;
       const chunkWork = Promise.all(chunk.map(async (c) => {
         try {
-          if (qText) {
+          if (facetUseRpc) {
             // EVERY predicate the list binds, or the rail promises a different
             // board than clicking delivers. This branch hand-picked nine of the
             // RPC's parameters and omitted freshness (p_max_age_days /
@@ -9633,12 +9650,15 @@ async function serveList(
   // it is asking "is this the bare board?" — so gating on it meant the router
   // stood down on EVERY search, which is every case it exists for. Verified
   // live: AT&T and IT both came back with no searchRoute at all.
-  const onlyQuery = applied.country === null && applied.category === null
-    && applied.workMode === null && applied.salaryFloor === null
-    && applied.maxAgeDays === null && applied.postedAfter === null
-    && !applied.remote && !applied.sendableOnly
-    && applied.experience.length === 0 && applied.companies.length === 0
-    && applied.location === "";
+  // "No filters BESIDES the query", derived MECHANICALLY. The hand-written
+  // conjunction here omitted the seven filters added after it was written
+  // (vendors, payBasis, hasStatedPay, includeUnstatedPay, salaryCeiling,
+  // maxYears, department, employmentType), so a filtered abbreviation or
+  // employer search still routed through the recency-capped window and answered
+  // from a subset — the very hand-maintained-list rot isUnfiltered exists to
+  // end. isUnfiltered counts q itself as a filter, so blank q to ask "is this
+  // the bare board plus a query?"; any real filter, present or future, trips it.
+  const onlyQuery = isUnfiltered({ ...applied, q: "" });
   const routeDecision = qText && onlyQuery
     ? pickRoute(qText, EMPLOYER_ALIASES)
     : { route: "BROWSE" as const, reason: "not routable", tokens: undefined as string[] | undefined, matchedName: undefined as string | undefined };
@@ -11343,6 +11363,16 @@ async function serveList(
         // path in the function — it is not free and should not fire when it
         // cannot help.
         let headRows: Array<Record<string, unknown>> = [];
+        // WHETHER THE RING RESOLVED, distinct from whether it returned rows.
+        // withDeadline resolves {data:null} on a timeout and the .catch maps a
+        // rejection to the same shape, so an EMPTY result and a MISS look
+        // identical downstream. They are not the same: an empty ring means
+        // "there are no title-prefix rows", a missed ring means "we do not know
+        // what the ring would have excluded". Treating a miss as empty is what
+        // let a slow deep-page ring re-serve below-seam rows as duplicates
+        // (2026-08-29 sweep #2). Tracked here so the exclusion path can fail
+        // safe instead of silently proceeding with an empty exclusion set.
+        let ringResolved = headRingP === null; // no ring wanted == trivially "known: nothing"
         if (headRingP) {
           try {
             // Started before search_jobs — see the comment there. By the time we
@@ -11352,8 +11382,12 @@ async function serveList(
             // and hide the cost it exists to expose.
             const { data: hr } = await headRingP;
             markFrom("head_ring", t_head_ring_started);
-            if (Array.isArray(hr)) headRows = (hr as unknown[]).map(rowToJob) as Array<Record<string, unknown>>;
-            else console.warn(`[JOB-BOARD] head-term ring missed its deadline for q=${JSON.stringify(qText)}`);
+            if (Array.isArray(hr)) {
+              headRows = (hr as unknown[]).map(rowToJob) as Array<Record<string, unknown>>;
+              ringResolved = true;
+            } else {
+              console.warn(`[JOB-BOARD] head-term ring missed its deadline for q=${JSON.stringify(qText)}`);
+            }
           } catch { /* the ranked window alone is still a valid page */ }
         }
         // Deduped by id, prefix first. If the ring fails the page degrades to
@@ -11370,10 +11404,26 @@ async function serveList(
         // ones included; this maps "survivors consumed" back to that number.
         let deepRingRawUsed: ((consumedSurvivors: number) => number) | null = null;
         if (deepPage && ringMerged) {
-          const ringIds = new Set(headRows.map((r) => String((r as Record<string, unknown>).id ?? "")).filter(Boolean));
+          // FAIL SAFE WHEN THE EXCLUSION SET IS UNKNOWN. If the deep-page ring
+          // re-fetch resolved, drop exactly the ids it names. If it MISSED, the
+          // ids are unknown and proceeding with an empty set re-serves
+          // below-seam rows as duplicates — so fall back to the ring's OWN
+          // predicate (title starts with the query prefix, the exact ILIKE the
+          // ring runs) evaluated in JS. That drops every possible collision; its
+          // only cost is a rare over-drop for a query with >200 title-prefix
+          // rows, which is a narrow, bounded hole and strictly better than
+          // serving the same job twice. Only reachable on an actual ring miss.
+          const ringIds = ringResolved
+            ? new Set(headRows.map((r) => String((r as Record<string, unknown>).id ?? "")).filter(Boolean))
+            : null;
+          const ringPrefix = sanitizeTerm(qText).toLowerCase();
+          const excluded = (r: Record<string, unknown>) =>
+            ringIds
+              ? ringIds.has(String(r.id ?? ""))
+              : ringPrefix.length > 0 && String(r.title ?? "").toLowerCase().startsWith(ringPrefix);
           const rawIndexOfSurvivor: number[] = [];
           mergedRows = rankedRows.filter((r, i) => {
-            const keep = !ringIds.has(String((r as Record<string, unknown>).id ?? ""));
+            const keep = !excluded(r as Record<string, unknown>);
             if (keep) rawIndexOfSurvivor.push(i);
             return keep;
           });
@@ -11431,10 +11481,23 @@ async function serveList(
         // Ring-merged sub-seam page that exhausts the pool: the walk continues
         // in the SQL regime, which starts at the FIXED seam — never at
         // offset+rawConsumed, which is a position in pool coordinates that the
-        // deep regime would misread as SQL rank. The pool's true length moves
-        // with the ring (measured 200/293/399); the seam does not.
-        const poolExhausted = ringMerged && !deepPage &&
-          offset + rankedGrouped.rawConsumed >= rankedScored.length;
+        // deep regime would misread as SQL rank.
+        //
+        // rankedScored.length is the POOL length, and the pool moves with the
+        // ring (measured 200/293/399) — so keying exhaustion off it is only
+        // safe when the ring RESOLVED this request. If the ring MISSED, the
+        // pool collapsed to the SQL top-200, and comparing a mid-walk offset
+        // against that shrunk length would jump to the deep regime early and
+        // skip rows (2026-08-29 sweep #2). When the ring missed, anchor the
+        // handoff to the STABLE boundary instead: the reader belongs in the deep
+        // regime exactly once they are past SQL rank 200 (RANKED_WINDOW), a
+        // coordinate that does not move with the ring. Below it, keep serving
+        // the SQL top-200 content the shrunk pool still holds.
+        const poolExhausted = ringMerged && !deepPage && (
+          ringResolved
+            ? offset + rankedGrouped.rawConsumed >= rankedScored.length
+            : offset + rankedGrouped.rawConsumed >= RANKED_WINDOW
+        );
         // DEEP PAGES ARE SCORED NOW — the follow-up the comment above promised.
         //
         // Past the 200-row seam the tail was served in the RPC's raw ts_rank_cd
@@ -11822,7 +11885,14 @@ async function serveList(
           // segment header over an empty segment is neither. Suppressed under
           // augmentation for the same reason `total` is: once close matches are
           // appended, no published figure describes what is on screen.
-          ...(augmented || related === null || related === 0
+          // Stands down whenever `total` was WITHDRAWN, not only under
+          // augmentation. When totalUnderstated nulls the exact count (the page
+          // already disproves it — a welded-lexeme title served but not
+          // counted), shipping relatedTotal beside a null total made the client
+          // render "0 exact" over a page of exact matches: the segmented branch
+          // read relatedTotal and reported the exact segment as zero. One
+          // withdrawal, both fields.
+          ...(augmented || totalUnderstated || related === null || related === 0
             ? {}
             : { relatedTotal: related, ...(relatedCapped ? { relatedCapped: true } : {}) }),
           ...(rankedCapped ? { countCapped: true } : {}),

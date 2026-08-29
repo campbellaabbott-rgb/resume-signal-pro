@@ -116,6 +116,6 @@ describe("the endpoints that make the API worth paying for", () => {
     for (const f of ["experience_band", "department", "salary_max", "posted_before"]) {
       expect(CODE, `${f} is documented or added but never bound`).toContain(f);
     }
-    expect(CODE).toMatch(/q\.ilike\("department", `%\$\{dept\}%`\)/);
+    expect(CODE).toMatch(/qb\.ilike\("department", `%\$\{dept\}%`\)/);
   });
 });

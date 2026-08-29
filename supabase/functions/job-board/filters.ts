@@ -470,7 +470,11 @@ export function normalizeFilters(
   const wmValid = [...new Set(wmAsked.filter((m) => (WORK_MODES as readonly string[]).includes(m)))]
     .slice(0, WORK_MODES.length);
   const workMode = wmValid.length ? wmValid.join(",") : null;
-  if (sent(body.workMode) && wmValid.length !== wmAsked.length) ignored.push("workMode");
+  // Compare against the DEDUPED asked set, or a request that merely repeats a
+  // valid value ("remote,remote") or varies its case ("Remote,remote") reports
+  // the filter as ignored though every value bound — a false "we couldn't do
+  // that" on a correct request. Casing already folded above; dedup here.
+  if (sent(body.workMode) && wmValid.length !== new Set(wmAsked).size) ignored.push("workMode");
 
   // Employment type: the same validated-comma-list shape, wire name
   // `employmentType`. Casing folds (Full_Time binds), junk is dropped and
@@ -482,7 +486,9 @@ export function normalizeFilters(
   const etValid = [...new Set(etAsked.filter((t) => (EMPLOYMENT_TYPES as readonly string[]).includes(t)))]
     .slice(0, EMPLOYMENT_TYPES.length);
   const employmentType = etValid.length ? etValid.join(",") : null;
-  if (sent(body.employmentType) && etValid.length !== etAsked.length) ignored.push("employmentType");
+  // Deduped comparison, same reason as workMode: "contract,contract" must not
+  // report the filter as ignored.
+  if (sent(body.employmentType) && etValid.length !== new Set(etAsked).size) ignored.push("employmentType");
 
   // Report when ANY requested band was dropped, not only when every one was. A
   // caller asking for senior+bogus gets senior and must still be told bogus did
@@ -546,6 +552,13 @@ export function normalizeFilters(
   const includeUnstatedPay = body.includeUnstatedPay === true;
   if (body.hasStatedPay !== undefined && body.hasStatedPay !== null && typeof body.hasStatedPay !== "boolean") {
     ignored.push("hasStatedPay");
+  }
+  // Same non-boolean guard as its sibling above: a query-string
+  // {"includeUnstatedPay":"true"} is not the literal true this reads, so it
+  // silently fails to widen — and without this line it is never named, the
+  // exact sendableOnly:"true" shape the comment above records.
+  if (body.includeUnstatedPay !== undefined && body.includeUnstatedPay !== null && typeof body.includeUnstatedPay !== "boolean") {
+    ignored.push("includeUnstatedPay");
   }
 
   // 1..20, REFUSED OUTSIDE IT RATHER THAN CLAMPED, which is the opposite of

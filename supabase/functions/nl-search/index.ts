@@ -53,7 +53,7 @@ The board has EXACTLY these filters — never invent others:
 - salaryFloor: a number (annual, no currency symbol) when the user states a minimum pay.
 - country: a 2-letter ISO code only if a country is named (US, GB, CA, DE...).
 - location: a city/region string if a specific place is named (not a country).
-- maxAgeDays: 1 for "today", 7 for "this week"/"recent"/"new".
+- maxAgeDays: 1 for "today", 7 for "this week"/"recent"/"new", or N for "last N days" / "past N weeks" (a whole number of days, up to 30).
 - activelyHiring: true when the user asks for companies that really hire / actually fill roles / proven hirers / no ghost jobs.
 - sort: "salary" when they ask for highest-paying/best-paid first; "newest" when they explicitly ask newest-first.
 
@@ -90,7 +90,7 @@ RULES:
                 salaryFloor: { type: "number", description: "Annual minimum, no currency symbol" },
                 country: { type: "string", description: "2-letter ISO code" },
                 location: { type: "string", description: "City or region (not a country)" },
-                maxAgeDays: { type: "number", description: "1 for today, 7 for this week/recent" },
+                maxAgeDays: { type: "number", description: "Whole days, 1-30: 1 for today, 7 for this week/recent, or N for 'last N days'" },
                 activelyHiring: { type: "boolean", description: "true only when the user wants companies with a proven fill record" },
                 sort: { type: "string", description: "salary for highest-paying first, newest for newest first" },
                 interpreted: { type: "array", items: { type: "string" }, description: "2-6 short chips of what was understood" },
@@ -130,7 +130,14 @@ RULES:
     if (typeof parsed.salaryFloor === "number" && parsed.salaryFloor > 0) filters.salaryFloor = Math.min(Math.round(parsed.salaryFloor), 2_000_000);
     if (typeof parsed.country === "string" && /^[A-Za-z]{2}$/.test(parsed.country)) filters.country = parsed.country.toUpperCase();
     if (typeof parsed.location === "string" && parsed.location.trim()) filters.location = parsed.location.trim().slice(0, 80);
-    if (parsed.maxAgeDays === 1 || parsed.maxAgeDays === 7) filters.maxAgeDays = parsed.maxAgeDays;
+    // 1..30, the same window the board and applyNlSearch accept — NOT just 1 or
+    // 7. A "last 14 days" intent used to be dropped here while its interpreted
+    // chip still claimed it, so the chips (rendered from `filters`) now match
+    // what actually survives.
+    if (typeof parsed.maxAgeDays === "number" && Number.isFinite(parsed.maxAgeDays)) {
+      const days = Math.round(parsed.maxAgeDays);
+      if (days >= 1 && days <= 30) filters.maxAgeDays = days;
+    }
     if (parsed.activelyHiring === true) filters.activelyHiring = true;
     if (parsed.sort === "salary" || parsed.sort === "newest") filters.sort = parsed.sort;
 
