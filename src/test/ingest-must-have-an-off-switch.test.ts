@@ -54,11 +54,18 @@ describe("the ingest has an off switch that actually stops it", () => {
     expect(body).not.toMatch(/if \(force \|\|/);
   });
 
-  it("FAILS OPEN — an unreadable flag keeps the ingest running", () => {
+  it("FAILS OPEN — but boundedly, retried, and LOUD (sweep-3 hardening)", () => {
+    // The property is unchanged: an unreadable flag keeps the ingest running,
+    // because a transient meta error silently stopping ingest for hours is the
+    // worse failure. What changed: the read is bounded (800ms — a hung read on
+    // a distressed database must not hold a hop hostage), retried once, and an
+    // un-honoured pause now logs loudly instead of dissolving invisibly.
     const fn = /async function isIngestPaused\([\s\S]*?\n}/.exec(FN)?.[0] ?? "";
     expect(fn, "isIngestPaused not found").not.toBe("");
-    expect(fn).toMatch(/if \(error\) return false;/);
-    expect(fn).toMatch(/catch \{\s*return false;/);
+    expect(fn).toMatch(/setTimeout\(\(\) => res\("timeout"\), 800\)/);
+    expect(fn).toMatch(/const second = await readOnce\(\);/);
+    expect(fn).toMatch(/ingest_paused UNREADABLE twice/);
+    expect(fn, "still fails open at the end — deliberately").toMatch(/return false;\n}$/);
     // Pausing requires a positive, readable true — never a truthy coincidence.
     expect(fn).toMatch(/\.paused === true/);
   });

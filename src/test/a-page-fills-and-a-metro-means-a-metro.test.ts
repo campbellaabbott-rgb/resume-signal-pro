@@ -58,7 +58,7 @@ describe("a page fills up", () => {
   it("tops up only when the buffer was genuinely exhausted", () => {
     // Not "fewer than limit" alone — a search with 12 real matches must not
     // trigger a pointless second query on every request.
-    expect(FN).toMatch(/grouped\.jobs\.length < limit &&\s*\n\s*mappedRows\.length >= fetchLimit/);
+    expect(FN).toMatch(/grouped\.jobs\.length < limit &&\s*\n\s*!newestFirst &&[^\n]*\n\s*mappedRows\.length >= fetchLimit/);
   });
 
   it("tops up EXACTLY ONCE — never loops until full", () => {

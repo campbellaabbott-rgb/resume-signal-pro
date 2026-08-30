@@ -142,3 +142,41 @@ describe("a decoration must never hold the page", () => {
     expect(VAC2).not.toMatch(/cron\.schedule/);
   });
 });
+
+describe("sweep-3 restart findings, pinned", () => {
+  it("the HOT phase has a shed lever, and the cursor advances by the effective take", () => {
+    // The signal reads hotEmaMs when inHotPhase, but every lever was cold-only
+    // — so the exact phase whose EMA trips the shedder ran full size (measured
+    // live: 341s hot slices at shedLevel 2 while browse climbed 1s -> 3.6s).
+    expect(BOARD).toMatch(/const effHotSlice = shedLevel === 2 \? 3 : shedLevel === 1 \? 5 : HOT_SLICE;/);
+    expect(BOARD).toMatch(/HOT_LIST\.slice\(hot, hot \+ effHotSlice\)/);
+    expect(BOARD, "advancing by the constant while taking fewer skips giants' freshness")
+      .toMatch(/hotSlice: effHotSlice,/);
+    const stripped = BOARD.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+    expect(stripped).not.toMatch(/hotSlice: HOT_SLICE,/);
+  });
+
+  it("a frozen slice-stats row is distress, not health", () => {
+    // recordSliceStats runs only on COMPLETED slices — when every slice dies
+    // the row freezes at its last healthy number and read L0 at peak distress.
+    expect(BOARD).toMatch(/if \(rowAge > 30 \* 60_000\) return \{ kind: "stale" as const \};/);
+    expect(BOARD).toMatch(/: shedSignal\.kind === "stale" \? 1/);
+  });
+
+  it("a stale reset never re-enters the hot phase that killed the pass", () => {
+    expect(BOARD).toMatch(/const diedMidHot = !storedDone && hot > 0 && hot < HOT_LIST\.length;/);
+    expect(BOARD).toMatch(/if \(!diedMidHot\) hot = 0;/);
+  });
+
+  it("the operator's pause is read boundedly, retried once, and loud when unreadable", () => {
+    expect(BOARD).toMatch(/ingest_paused UNREADABLE twice/);
+    expect(BOARD).toMatch(/setTimeout\(\(\) => res\("timeout"\), 800\)/);
+  });
+
+  it("the ONE chain_kick writer stamps 'kicked' before the fetch", () => {
+    // Satisfies two findings inside the single-writer invariant: the stale
+    // "paused" clears on the first post-resume kick, and liveness no longer
+    // requires the parent isolate to outlive the child's entire slice.
+    expect(BOARD).toMatch(/await stamp\(\{ outcome: "kicked" \}\);/);
+  });
+});

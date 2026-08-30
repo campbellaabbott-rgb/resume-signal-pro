@@ -175,7 +175,7 @@ const PINNED = {
   // as a matter of course this time — the .2 bump had to be made retroactively
   // after three commits shipped undeployed behind an unchanged version string,
   // and "is it live?" cost six behavioural probes to answer.
-  sourcesHash: "19001a25cffc34eb",
+  sourcesHash: "8c632ebf94a46810",
   // 2026-08-21.4: disables the exact-word tier's company matcher, whose index
   // never built. Bumped so the mitigation is externally identifiable.
   // 2026-08-21.5: routed retrieval. index.ts + two new modules; sources.ts
@@ -394,7 +394,22 @@ const PINNED = {
   // bounded+marked); the past-the-end exit stops answering filtered requests
   // with the bare board's total; sort=newest stops issuing cursors its own
   // reader refuses.
-  buildVersion: "2026-08-30.6",
+  //
+  // 2026-08-30.7: sources.ts CHANGED — +360 Oracle boards / 42,773 postings
+  // (the corporate tranche of the round-3 census, screened inside
+  // merge-oracle's own expand=requisitionList sampler; 9 gov boards, 22 name
+  // collisions, 7 blocked names, 4 mill-unreadable dropped and logged). They
+  // enter via the bootstrap lane this hash exists to arm — which is exactly
+  // why the bump and the merge share a commit. Rode along: sweep-3 rotation
+  // hardening in index.ts (hot-phase shed lever, stale shed signal fails
+  // closed, mid-hot death resumes instead of restarting, raceMeta reads a
+  // resolved-with-error as META_TIMEOUT so a flaky read cannot fire a forced
+  // seed, chain kicks stamped before the fetch, isIngestPaused bounded +
+  // retried + loud) and four ranking-core fixes in search-routing.ts (the
+  // one-letter scorer hang, 16 place-name/common-word alias keys guarded,
+  // "not" claims exactly one token with a stopword veto, scoreTitle splits
+  // query tokens the way titles are split and folds diacritics).
+  buildVersion: "2026-08-30.7",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {

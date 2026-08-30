@@ -22,8 +22,14 @@
  * These are imported and executed by the tests.
  */
 
-/** Fold to letters and digits: "AT&T" -> "att", "Domino's" -> "dominos". */
-export const foldName = (s: string): string => s.toLowerCase().replace(/[^a-z0-9]+/g, "");
+/** Fold to letters and digits: "AT&T" -> "att", "Domino's" -> "dominos".
+ *
+ *  Diacritics TRANSLITERATE (NFD, strip the combining marks), never delete:
+ *  the old fold removed the accented letter wholesale, so "L'Oréal" became
+ *  "loral" — a string that matches neither the typed name nor anything the
+ *  board stores, which silently unreached every accented employer. */
+export const foldName = (s: string): string =>
+  s.normalize("NFD").replace(/\p{M}+/gu, "").toLowerCase().replace(/[^a-z0-9]+/g, "");
 
 /**
  * Occupations and ordinary words that must NEVER resolve to an employer.
@@ -49,6 +55,16 @@ export const OCCUPATION_GUARD: ReadonlySet<string> = new Set([
   "horizon", "unity", "spark", "match", "monster", "indeed", "visa", "discover",
   "guardian", "liberty", "progressive", "cardinal", "sage", "stripe", "square",
   "orange", "gap", "boots", "sky", "three", "giant", "remote", "hybrid",
+  // Place names + common words from the 2026-08-21 alias regeneration. Each of
+  // these IS a real alias key — pickRoute("wisconsin") collapsed the whole
+  // board to the University of Wisconsin, "flex" to Flextronics, "mars" to the
+  // candy company — and the rule is the same one the block above paid for: a
+  // common word must never silently collapse the board to one employer. The
+  // regeneration will keep minting keys like these; anything a person types as
+  // a place, an acronym or an English word belongs here, not in the aliases.
+  "ace", "arrow", "benchmark", "card", "continental", "flex", "infuse", "ing",
+  "intuitive", "mars", "nov", "republic", "rochester", "sec", "wisconsin",
+  "wood",
 ]);
 
 /** English stopwords the 'english' tsvector discards, so a query containing one
@@ -162,12 +178,32 @@ export function pickRoute(
   return { route: "RANKED", reason: "default" };
 }
 
-/** Whole-word occurrences of `term` in `text`. */
-const wordCount = (text: string, term: string): number => {
+/**
+ * Whole-word occurrences of `term` in `text`. Exported so the tests execute
+ * the real counter rather than a copy of it.
+ *
+ * THE REWIND IS LOAD-BEARING: each match consumes its trailing boundary
+ * character, which is the LEADING boundary of an adjacent occurrence, so
+ * without stepping back one the 4x-"Sales" titles the repetition penalty
+ * exists for count as 2, not 4. But rewinding by one re-finds the SAME match
+ * forever when the whole match is a single character with empty boundaries on
+ * both sides — foldName("c++") is "c", a retrieved title "C" matches at
+ * [0,1), the rewind put the cursor back to 0, and scoreTitle("C", "c++")
+ * never returned. One one-letter title in the window hung the entire search.
+ * Forward progress is now guaranteed: the cursor never lands at or behind the
+ * start of the match it just counted, which changes no count on any input the
+ * old loop could finish.
+ */
+export const wordCount = (text: string, term: string): number => {
   if (!term) return 0;
   const re = new RegExp(`(^|[^a-z0-9])${term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}([^a-z0-9]|$)`, "gi");
   let n = 0;
-  while (re.exec(text) !== null) { n++; if (re.lastIndex > 0) re.lastIndex--; }
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text)) !== null) {
+    n++;
+    if (re.lastIndex > 0) re.lastIndex--;
+    if (re.lastIndex <= m.index) re.lastIndex = m.index + 1;
+  }
   return n;
 };
 
@@ -191,7 +227,13 @@ export function scoreTitle(title: string, query: string, ageDays?: number): numb
   const t = String(title ?? "");
   const tl = t.toLowerCase();
   const qRaw = String(query ?? "").trim();
-  const qTokens = qRaw.toLowerCase().split(/\s+/).map(foldName).filter(Boolean);
+  // Split on NON-ALPHANUMERICS — the SAME split the titles get below. The old
+  // whitespace-split-then-foldName fused punctuated queries into tokens no
+  // title tokenization can produce: "k-8 teacher" carried a token "k8" that
+  // matched nothing, so "Teacher, K-8" scored BELOW "Math Teacher"; "c++/c#"
+  // became "cc" and lost to "CEO". qRaw stays untouched on purpose — the
+  // literal-substring rule below is the entire c++/c# signal and reads it raw.
+  const qTokens = qRaw.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
   if (qTokens.length === 0) return 0;
 
   // Coverage is the floor everything else modifies: a title missing half the
@@ -295,13 +337,28 @@ export function rerankWindow<T extends { title?: unknown; company?: unknown; tok
  *
  * TWO FORMS, both common and neither ambiguous:
  *   "-token"    a leading hyphen, the convention every search engine uses
- *   "not X"     everything after the word "not", which reads as English
+ *   "not X"     the ONE token after the word "not", which reads as English
+ *
+ * ONE TOKEN, not the remainder. "not" used to claim everything after it, and
+ * "director not for profit" — a search FOR nonprofit titles — came back as
+ * excluded:["for","profit"]: it struck the exact titles asked for AND every
+ * title containing the word "for". And when the token after "not" is a
+ * stopword, the "not" is the English word inside a phrase, not an operator at
+ * all, so both words stay in the positive query.
  *
  * A bare "not" with nothing after it, or a query that is ONLY exclusions, is
  * left alone: stripping it would leave an empty query, and an empty query
  * returns the whole board — "better to run the poor query the person typed
  * than to silently ignore them", as the note above queryTerms puts it.
  */
+
+/** Stopword-grade words that must never become an exclusion. A "not" followed
+ *  by one of these is part of a phrase ("not for profit"), and excluding a
+ *  stopword strikes half the board by coincidence of grammar. */
+const EXCLUSION_STOPWORDS: ReadonlySet<string> = new Set([
+  "for", "the", "a", "an", "of", "in", "at", "to", "on",
+]);
+
 export function splitExclusions(raw: string): { positive: string; excluded: string[] } {
   const text = String(raw ?? "").trim();
   if (!text) return { positive: text, excluded: [] };
@@ -309,11 +366,19 @@ export function splitExclusions(raw: string): { positive: string; excluded: stri
   const words = text.split(/\s+/);
   const positive: string[] = [];
   const excluded: string[] = [];
-  let afterNot = false;
+  let pendingNot: string | null = null;
   for (const w of words) {
-    if (/^not$/i.test(w)) { afterNot = true; continue; }
+    if (pendingNot !== null) {
+      // "not" marks exactly this one token — never the whole remainder — and
+      // a stopword-grade token vetoes the operator reading entirely.
+      if (EXCLUSION_STOPWORDS.has(w.toLowerCase())) positive.push(pendingNot, w);
+      else excluded.push(w.toLowerCase());
+      pendingNot = null;
+      continue;
+    }
+    if (/^not$/i.test(w)) { pendingNot = w; continue; }
     if (w.length > 1 && w.startsWith("-")) { excluded.push(w.slice(1).toLowerCase()); continue; }
-    (afterNot ? excluded : positive).push(afterNot ? w.toLowerCase() : w);
+    positive.push(w);
   }
   const cleanExcluded = [...new Set(excluded.map((e) => e.replace(/[^a-z0-9+#.]/gi, "").toLowerCase()).filter((e) => e.length >= 2))];
   // Nothing left to search means the exclusion has eaten the query. Run what

@@ -1,63 +1,9 @@
 [
  {
-  "vendor": "greenhouse",
-  "token": "pulse",
-  "name": "Pulse Healthcare",
-  "count": 2649
- },
- {
-  "vendor": "greenhouse",
-  "token": "herewithgmbh",
-  "name": "Herewith Caregivers",
-  "count": 605
- },
- {
-  "vendor": "greenhouse",
-  "token": "oosmanagementcorp",
-  "name": "OOS Management Corp.",
-  "count": 567
- },
- {
-  "vendor": "greenhouse",
-  "token": "connectionshealthsolutions",
-  "name": "Connections Health Solutions",
-  "count": 155
- },
- {
-  "vendor": "greenhouse",
-  "token": "judihealth",
-  "name": "Judi Health",
-  "count": 115
- },
- {
-  "vendor": "ashby",
-  "token": "voodoo",
-  "name": "Voodoo",
-  "count": 105
- },
- {
-  "vendor": "smartrecruiters",
-  "token": "EndeavorITSolution",
-  "name": "Endeavor IT Solution",
-  "count": 8478
- },
- {
   "vendor": "smartrecruiters",
   "token": "Collabera2",
   "name": "Collabera",
   "count": 1683
- },
- {
-  "vendor": "smartrecruiters",
-  "token": "MSXInternational",
-  "name": "MSX International",
-  "count": 388
- },
- {
-  "vendor": "smartrecruiters",
-  "token": "Konecranes",
-  "name": "Konecranes",
-  "count": 380
  },
  {
   "vendor": "workable",
@@ -79,69 +25,15 @@
  },
  {
   "vendor": "workable",
-  "token": "rebel-convenience-stores",
-  "name": "Rebel Convenience Stores",
-  "count": 366
- },
- {
-  "vendor": "workable",
-  "token": "avamere-skilled-advisors-llc",
-  "name": "Avamere Skilled Advisors, LLC",
-  "count": 242
- },
- {
-  "vendor": "workable",
   "token": "the-symicor-group-1",
   "name": "The Symicor Group",
   "count": 239
  },
  {
   "vendor": "workable",
-  "token": "european-dynamics",
-  "name": "EUROPEAN DYNAMICS",
-  "count": 184
- },
- {
-  "vendor": "workable",
-  "token": "eva-pharma",
-  "name": "Eva Pharma",
-  "count": 168
- },
- {
-  "vendor": "workable",
-  "token": "prime-system",
-  "name": "Prime System Solutions",
-  "count": 129
- },
- {
-  "vendor": "workable",
   "token": "ubteam",
   "name": "Universal Business Team",
   "count": 124
- },
- {
-  "vendor": "teamtailor",
-  "token": "abdulrauf1-1741255834",
-  "name": "Burjline Builders",
-  "count": 100
- },
- {
-  "vendor": "teamtailor",
-  "token": "alehop",
-  "name": "ALE-HOP",
-  "count": 100
- },
- {
-  "vendor": "teamtailor",
-  "token": "autohellasgroup",
-  "name": "Autohellas Group",
-  "count": 100
- },
- {
-  "vendor": "teamtailor",
-  "token": "axiansgroup",
-  "name": "Axians Portugal Group",
-  "count": 100
  },
  {
   "vendor": "teamtailor",
@@ -157,38 +49,8 @@
  },
  {
   "vendor": "teamtailor",
-  "token": "dmf",
-  "name": "DMF Sales & Marketing",
-  "count": 100
- },
- {
-  "vendor": "teamtailor",
   "token": "groupelrtechnologies",
   "name": "Groupe LR Technologies",
-  "count": 100
- },
- {
-  "vendor": "teamtailor",
-  "token": "lagardere",
-  "name": "Lagardère",
-  "count": 100
- },
- {
-  "vendor": "teamtailor",
-  "token": "letuelezioni",
-  "name": "LeTueLezioni",
-  "count": 100
- },
- {
-  "vendor": "teamtailor",
-  "token": "knowmadmood",
-  "name": "knowmad mood",
-  "count": 100
- },
- {
-  "vendor": "teamtailor",
-  "token": "nexergroup",
-  "name": "Nexer Group",
   "count": 100
  },
  {
@@ -199,26 +61,8 @@
  },
  {
   "vendor": "rippling",
-  "token": "carbon-health",
-  "name": "Carbon Health",
-  "count": 396
- },
- {
-  "vendor": "rippling",
   "token": "barrys-careers",
   "name": "Barrys Careers",
   "count": 232
- },
- {
-  "vendor": "pinpoint",
-  "token": "impulsespace",
-  "name": "Impulsespace",
-  "count": 158
- },
- {
-  "vendor": "pinpoint",
-  "token": "isginc",
-  "name": "Isginc",
-  "count": 119
  }
 ]

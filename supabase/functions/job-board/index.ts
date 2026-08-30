@@ -102,7 +102,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-30.6"; // .6: every decoration bounded (fuzzy augment gains gate+deadline, fuzzy rescue joins the ladder budget, browse top-up bounded+marked); past-the-end exit honest for filtered requests; sort=newest stops issuing cursors its reader refuses
+const BUILD_VERSION = "2026-08-30.7"; // .7: rotation hardening (hot-phase shed lever, stale-signal fails closed, mid-hot death resumes, meta errors read as timeouts, kicked stamped pre-fetch, pause read bounded+loud); ranking-core fixes (wordCount forward progress, +16 guard keys, not-claims-one-token, scoreTitle tokenizes+folds diacritics); +360 Oracle boards
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -1254,14 +1254,30 @@ function chainKey(): Promise<string> {
 // that failure mode is invisible for hours and is precisely what today's
 // incident was made of. Pausing requires a positive, readable `true`.
 async function isIngestPaused(client: SupabaseClient): Promise<boolean> {
-  try {
-    const { data, error } = await client
-      .from("job_board_meta").select("v").eq("k", "ingest_paused").maybeSingle();
-    if (error) return false;
-    return (data?.v as { paused?: boolean } | null)?.paused === true;
-  } catch {
-    return false;
-  }
+  // Fail-open is DELIBERATE here (a transient meta error must never silently
+  // stop the ingest for hours) — but an un-honoured operator pause is its own
+  // incident, so the open must be OBSERVABLE and earned: bounded read, one
+  // retry, loud warning. On the distressed database where the operator most
+  // needs the pause, a hung read no longer holds a hop hostage either.
+  const readOnce = async (): Promise<boolean | null> => {
+    try {
+      const res = await Promise.race([
+        client.from("job_board_meta").select("v").eq("k", "ingest_paused").maybeSingle()
+          .then((r) => r, () => ({ data: null, error: { message: "rejected" } })),
+        new Promise<"timeout">((res) => setTimeout(() => res("timeout"), 800)),
+      ]);
+      if (res === "timeout" || (res as { error?: unknown }).error) return null;
+      return ((res as { data?: { v?: { paused?: boolean } } }).data?.v)?.paused === true;
+    } catch {
+      return null;
+    }
+  };
+  const first = await readOnce();
+  if (first !== null) return first;
+  const second = await readOnce();
+  if (second !== null) return second;
+  console.warn("[JOB-BOARD] ingest_paused UNREADABLE twice — proceeding as unpaused (fail-open); an operator pause may not be honoured this hop");
+  return false;
 }
 
 /**
@@ -1308,6 +1324,13 @@ function chainNextSlice(hop: number, client?: SupabaseClient) {
       await stamp({ outcome: "paused", note: "deliberate stop — ingest_paused is set" });
       return;
     }
+    // Stamped BEFORE the fetch, from the same single writer. The outcome
+    // stamp below requires this parent isolate to survive the child's ENTIRE
+    // slice (the awaited body), which after a pause is exactly when slices
+    // run longest — operators watched a stale "paused" for 70 minutes while
+    // the cursor advanced. "kicked" is overwritten by the real outcome when
+    // the parent lives to see it, and is honest on its own when it does not.
+    await stamp({ outcome: "kicked" });
     const key = await chainKey();
     try {
       const r = await fetch(url, {
@@ -1411,7 +1434,13 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
     const progAge = prog ? Date.now() - new Date(prog.updated_at).getTime() : Infinity;
     const storedDone = hot >= HOT_LIST.length && coldDone >= COLD_SLICES_PER_PASS;
     if (storedDone || progAge > 45 * 60_000) {
-      hot = 0;
+      // A stale pass that died MID-HOT keeps its hot cursor. Zeroing it sent
+      // every 45-minute death back to hot board #0, so under sustained
+      // distress the rotation re-entered the one phase whose slices could not
+      // complete, forever — the post-pause "cursor advancing, nothing
+      // completing" signature. A finished pass still resets fully.
+      const diedMidHot = !storedDone && hot > 0 && hot < HOT_LIST.length;
+      if (!diedMidHot) hot = 0;
       coldDone = 0;
       pv.failedAcc = [];
       pv.failedTotal = 0;
@@ -1460,14 +1489,22 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
   const shedSignal = await (async () => {
     try {
       const res = await Promise.race([
-        client.from("job_board_meta").select("v").eq("k", "slice_stats").maybeSingle()
+        client.from("job_board_meta").select("v, updated_at").eq("k", "slice_stats").maybeSingle()
           .then((r) => r, () => ({ data: null, error: { message: "read rejected" } })),
         new Promise<typeof SHED_READ_TIMEOUT>((res) => setTimeout(() => res(SHED_READ_TIMEOUT), 500)),
       ]);
       if (res === SHED_READ_TIMEOUT) return { kind: "unreadable" as const };
       if ((res as { error?: unknown }).error) return { kind: "unreadable" as const };
-      const v = ((res as { data?: { v?: unknown } }).data?.v ?? null) as { hotEmaMs?: number; coldEmaMs?: number } | null;
+      const row = (res as { data?: { v?: unknown; updated_at?: string } }).data ?? null;
+      const v = (row?.v ?? null) as { hotEmaMs?: number; coldEmaMs?: number } | null;
       if (v === null) return { kind: "absent" as const };
+      // A FROZEN EMA IS SURVIVOR BIAS. recordSliceStats runs only on COMPLETED
+      // slices, so when every slice dies the row stops moving and its last
+      // healthy number reads L0 at peak distress. A stats row untouched for
+      // 30+ minutes while the cursor is advancing means slices are dying, not
+      // resting — floor the shed at L1 rather than trusting the ghost.
+      const rowAge = row?.updated_at ? Date.now() - new Date(row.updated_at).getTime() : 0;
+      if (rowAge > 30 * 60_000) return { kind: "stale" as const };
       const n = Number(inHotPhase ? v.hotEmaMs : v.coldEmaMs);
       return Number.isFinite(n) && n > 0 ? { kind: "ema" as const, ms: n } : { kind: "absent" as const };
     } catch {
@@ -1478,6 +1515,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
   // healthy slice the constants above were sized for, not round numbers.
   const shedLevel = shedSignal.kind === "unreadable" ? 2
     : shedSignal.kind === "absent" ? 1
+    : shedSignal.kind === "stale" ? 1
     : shedSignal.ms > 60_000 ? 2
     : shedSignal.ms > 40_000 ? 1
     : 0;
@@ -1487,6 +1525,13 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
   // The deep lane is the most expensive work a hop does and the least urgent —
   // it re-pages boards we already carry. It is the first thing to go.
   const effDeepPerSlice = shedLevel === 2 ? 0 : shedLevel === 1 ? 4 : DEEP_PER_SLICE;
+  // THE HOT PHASE GETS A LEVER TOO. The signal reads hotEmaMs when inHotPhase,
+  // but every knob above is cold-only — so the exact phase whose EMA trips the
+  // shedder ran at full size regardless (measured live during the post-pause
+  // catch-up: hot slices at 341s, hotEma 283s, shedLevel 2, and the hop took
+  // its full 10 giants anyway while browse latency climbed 1s -> 3.6s). Fewer
+  // giants per hop is the one cut that shortens a hot slice.
+  const effHotSlice = shedLevel === 2 ? 3 : shedLevel === 1 ? 5 : HOT_SLICE;
   // THE ACCELERATOR LANES SHED TOO, or shedding inverts the slice. The first
   // version cut only the cursor-bearing baseSlice: at L2 that left 24 rotation
   // boards beside a 25-board bootstrap lane and a 5-board retry lane, so the
@@ -1497,11 +1542,11 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
   const effBootstrapPerSlice = shedLevel === 2 ? 0 : shedLevel === 1 ? 10 : BOOTSTRAP_PER_SLICE;
   const effRetryPerSlice = shedLevel === 2 ? 0 : shedLevel === 1 ? 2 : RETRY_PER_SLICE;
   if (shedLevel > 0) {
-    console.warn(`[JOB-BOARD] load shedding L${shedLevel}: ${inHotPhase ? "hot" : "cold"} EMA ${Math.round(shedEma / 1000)}s -> slice ${effColdSlice}, concurrency ${effConcurrency}, deep ${effDeepPerSlice}, bootstrap ${effBootstrapPerSlice}, retry ${effRetryPerSlice}`);
+    console.warn(`[JOB-BOARD] load shedding L${shedLevel}: ${inHotPhase ? "hot" : "cold"} EMA ${Math.round(shedEma / 1000)}s -> ${inHotPhase ? `hotSlice ${effHotSlice}` : `slice ${effColdSlice}, concurrency ${effConcurrency}, deep ${effDeepPerSlice}, bootstrap ${effBootstrapPerSlice}, retry ${effRetryPerSlice}`}`);
   }
 
   const baseSlice = inHotPhase
-    ? HOT_LIST.slice(hot, hot + HOT_SLICE)
+    ? HOT_LIST.slice(hot, hot + effHotSlice)
     : COLD_LIST.slice(cold, cold + effColdSlice);
   // Feature 3 (demand-driven freshness): boards a user just opened/verified
   // jump the queue. Injected only on COLD slices — hot boards already
@@ -1817,7 +1862,10 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
   // copies. Both writes emit the WHOLE row it returns.
   const advanceArgs = {
     inHotPhase,
-    hotSlice: HOT_SLICE,
+    // The EFFECTIVE hot take, never the constant: advancing by 10 while
+    // shedding took 3 would skip 7 giants' freshness every shed hop — the
+    // same skip-by-constant defect rotation.ts documents for the cold side.
+    hotSlice: effHotSlice,
     baseSliceLen: baseSlice.length,
     coldListLen: COLD_LIST.length,
   };
@@ -7052,9 +7100,17 @@ Deno.serve(async (req) => {
       // and seeds the table. Conflating them is what turned a slow database
       // into a self-inflicted refresh storm, so the marker is explicit.
       const META_TIMEOUT = Symbol("meta-timeout");
-      const raceMeta = async (q: PromiseLike<{ data: unknown }>) =>
+      // A rejected promise AND a resolved-with-.error read both mean "we do
+      // not know", exactly like a timeout — the .4 fix mapped rejections to
+      // {data:null}, which is byte-identical to "no such row", so an errored
+      // read still fell into the first-boot seed the fix existed to stop.
+      const raceMeta = async (q: PromiseLike<{ data: unknown; error?: unknown }>): Promise<{ data: unknown } | typeof META_TIMEOUT> =>
         await Promise.race([
-          Promise.resolve(q).then((r) => r as { data: unknown }, () => ({ data: null })),
+          Promise.resolve(q).then(
+            (r): { data: unknown } | typeof META_TIMEOUT =>
+              ((r as { error?: unknown }).error ? META_TIMEOUT : (r as { data: unknown })),
+            (): typeof META_TIMEOUT => META_TIMEOUT,
+          ),
           new Promise<typeof META_TIMEOUT>((res) =>
             setTimeout(() => res(META_TIMEOUT), Math.max(150, META_DEADLINE_MS - (Date.now() - t_meta)))
           ),
@@ -12612,6 +12668,7 @@ async function serveList(
   if (
     groupSimilar && !twoSubset && !sortSalary && !countOnly &&
     grouped.jobs.length < limit &&
+    !newestFirst &&                          // a thin newest page stays thin — the cursor emitter wrote this rationale; the top-up anchors in effective_posted, which is not the order a newest page walks
     mappedRows.length >= fetchLimit          // the buffer was exhausted, not just short
   ) {
     const lastRaw = rawKeys[rawKeys.length - 1];

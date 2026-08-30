@@ -136,3 +136,14 @@ describe("edge exits answer the question they were asked", () => {
     expect(BOARD).toMatch(/if \(twoSubset \|\| sortSalary \|\| newestFirst\) return null;/);
   });
 });
+
+describe("an errored meta read is an unknown, never an absent row", () => {
+  it("raceMeta maps rejection AND resolved-with-error to the timeout marker", () => {
+    const BOARD2 = readFileSync(resolve(__dirname, "../../supabase/functions/job-board/index.ts"), "utf8");
+    // The .4 fix mapped rejections to {data:null} — byte-identical to "no such
+    // row" — so an errored read still reached the first-boot seed. Both error
+    // shapes now land on META_TIMEOUT, and only a genuine empty answer seeds.
+    expect(BOARD2).toMatch(/\(r as \{ error\?: unknown \}\)\.error \? META_TIMEOUT : \(r as \{ data: unknown \}\)/);
+    expect(BOARD2).toMatch(/\(\): typeof META_TIMEOUT => META_TIMEOUT,/);
+  });
+});
