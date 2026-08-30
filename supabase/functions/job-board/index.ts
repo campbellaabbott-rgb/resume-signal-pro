@@ -102,7 +102,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-30.3"; // .3: the meta read bounded+measured (the 13.6s that belonged to nobody), no blocking refresh on a user request, a widening flag stops making the bare board count itself, a null count no longer publishes 0
+const BUILD_VERSION = "2026-08-30.4"; // .4: URGENT — .3 set the meta deadline (800ms) BELOW its own measured median (~958ms), so it expired on healthy requests, stripped the headline/facets, and fired a forced refresh per request. Budget raised to 3s, timeout distinguished from absent, no seed on timeout
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -7005,51 +7005,76 @@ Deno.serve(async (req) => {
       // the page." serveList handles an absent meta end to end (safeMetaTotal
       // null publishes countUnavailable, facets come back empty). The read was
       // simply never held to the rule it feeds.
-      const META_DEADLINE_MS = 800;
+      // BOUNDED, MEASURED — AND WITH A BUDGET ABOVE THE MEASURED MEDIAN.
+      //
+      // The first version of this set the deadline to 800ms. The comment forty
+      // lines up records the median for this very read as ~958ms. So it expired
+      // on a HEALTHY board, on most requests, and the consequences compounded:
+      // meta went null, the page lost its headline, its employer count, its
+      // categories and refreshedAt (measured live: totalAllCompanies 0,
+      // companiesCount 0, categories 0) — and the "no meta means first boot"
+      // branch below then fired a FORCED refresh on every one of those
+      // requests. Traffic became load: more visitors, more forced passes, a
+      // slower database, more expired reads. page_query went back to 27.5s.
+      // Setting a timeout below the number the file already published as the
+      // median was the whole mistake.
+      //
+      // 3s is well clear of that median and still a bound: it exists to stop a
+      // hung service_role read (no statement_timeout) from holding a page for
+      // thirteen seconds, which is the failure it was added for.
+      const META_DEADLINE_MS = 3_000;
       const t_meta = Date.now();
-      const headRes = await withDeadline(
+      // A TIMEOUT AND AN ABSENT ROW MUST NOT LOOK THE SAME. withDeadline
+      // resolves {data:null} on expiry, which is byte-identical to "this row
+      // does not exist" — and the branch below treats the latter as first boot
+      // and seeds the table. Conflating them is what turned a slow database
+      // into a self-inflicted refresh storm, so the marker is explicit.
+      const META_TIMEOUT = Symbol("meta-timeout");
+      const raceMeta = async (q: PromiseLike<{ data: unknown }>) =>
+        await Promise.race([
+          Promise.resolve(q).then((r) => r as { data: unknown }, () => ({ data: null })),
+          new Promise<typeof META_TIMEOUT>((res) =>
+            setTimeout(() => res(META_TIMEOUT), Math.max(150, META_DEADLINE_MS - (Date.now() - t_meta)))
+          ),
+        ]);
+
+      let metaTimedOut = false;
+      const headRes = await raceMeta(
         client.from("job_board_meta").select("v, updated_at").eq("k", "refresh_head").maybeSingle(),
-        META_DEADLINE_MS,
-      ) as { data: { v: Record<string, unknown>; updated_at: string } | null };
-      const headRow = headRes.data;
+      );
+      if (headRes === META_TIMEOUT) metaTimedOut = true;
+      const headRow = headRes === META_TIMEOUT
+        ? null
+        : (headRes.data as { v: Record<string, unknown>; updated_at: string } | null);
       let meta = (headRow && typeof (headRow.v as Record<string, unknown> | null)?.companiesCount === "number"
         ? headRow
         : null) as { v: Record<string, unknown>; updated_at: string } | null;
-      if (!meta) {
-        // The fat row (1.3-1.6MB) gets what is LEFT of the budget, never a
-        // second full one: two sequential 800ms waits for decoration is the
-        // same mistake twice.
-        const leftMs = Math.max(150, META_DEADLINE_MS - (Date.now() - t_meta));
-        const fatRes = await withDeadline(
+      if (!meta && !metaTimedOut) {
+        // The fat row (1.3-1.6MB) gets what is LEFT of the one budget — never a
+        // second full one. Skipped entirely if the head read already expired:
+        // a database too slow to answer the small row will not answer the big
+        // one, and asking is another second of a visitor's time.
+        const fatRes = await raceMeta(
           client.from("job_board_meta").select("v, updated_at").eq("k", "refresh").maybeSingle(),
-          leftMs,
-        ) as { data: { v: Record<string, unknown>; updated_at: string } | null };
-        meta = (fatRes.data ?? null) as { v: Record<string, unknown>; updated_at: string } | null;
+        );
+        if (fatRes === META_TIMEOUT) metaTimedOut = true;
+        meta = (fatRes === META_TIMEOUT
+          ? null
+          : (fatRes.data ?? null)) as { v: Record<string, unknown>; updated_at: string } | null;
       }
-      // Published as a phase so this can never go unattributed again. Seeded
-      // into serveList's phase map rather than measured inside it, because the
-      // read happens before serveList is called — which is exactly why it was
-      // invisible.
       const preMs: Record<string, number> = { meta_read: Date.now() - t_meta };
 
       if (!meta) {
-        // NEVER A BLOCKING REFRESH ON A USER'S REQUEST.
+        // A SEED ONLY WHEN WE KNOW THERE IS NOTHING TO READ.
         //
-        // This read "first boot (no pass yet): one blocking refresh seeds the
-        // table; afterwards this path never runs again". The guard is `!meta`,
-        // and meta is null whenever both reads come back empty — which, now
-        // that they are deadlined (and before that, whenever they errored,
-        // since both errors were discarded), includes "the database is too slow
-        // to answer right now". So the branch that was reasoned about as
-        // once-per-lifetime became reachable during exactly the incident where
-        // it does the most damage: runRefresh(force=true) bypasses the slice
-        // lock and runs a full board-fetching pass inline, and sliceStats
-        // measured lastMs at 184,951ms during this one. That is a three-minute
-        // wait handed to a visitor who asked for a job list.
-        //
-        // Kick it in the background and serve the page. A board with no
-        // headline number beats a board that does not answer.
-        waitUntil(runRefresh(client, true));
+        // `!meta` alone is not that knowledge — it is also every read that
+        // expired. runRefresh(force=true) bypasses the slice lock, so firing it
+        // from the serving path on a slow database means one forced pass PER
+        // REQUEST. Gated on metaTimedOut, this fires only on a genuine empty
+        // answer (true first boot), and a struggling board simply serves a page
+        // with no headline instead of organising its own stampede.
+        if (!metaTimedOut) waitUntil(runRefresh(client, true));
+        else console.warn(`[JOB-BOARD] meta read expired after ${Date.now() - t_meta}ms — serving without the headline, NOT seeding`);
         return await serveList(client, body, undefined, t_entry, preMs);
       }
       if (Date.now() - new Date(meta.updated_at).getTime() > STALE_MS) {

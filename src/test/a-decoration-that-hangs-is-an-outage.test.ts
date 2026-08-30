@@ -17,11 +17,28 @@ import { isUnfiltered, WIDENING_FILTERS, normalizeFilters } from "../../supabase
 const BOARD = readFileSync(resolve(__dirname, "../../supabase/functions/job-board/index.ts"), "utf8");
 
 describe("the meta read is bounded, measured, and cannot escalate", () => {
-  it("both reads race a deadline, and the fat row gets what is LEFT of it", () => {
-    expect(BOARD).toMatch(/const META_DEADLINE_MS = 800;/);
-    expect(BOARD).toMatch(/withDeadline\(\s*\n\s*client\.from\("job_board_meta"\)\.select\("v, updated_at"\)\.eq\("k", "refresh_head"\)/);
-    expect(BOARD, "two sequential full budgets for decoration is the same mistake twice")
-      .toMatch(/const leftMs = Math\.max\(150, META_DEADLINE_MS - \(Date\.now\(\) - t_meta\)\);/);
+  it("the budget is ABOVE the median this read was already measured at", () => {
+    // The first version used 800ms against a median the file itself publishes
+    // as ~958ms, so it expired on a healthy board and took the headline,
+    // employer count, categories and refreshedAt down with it on most requests.
+    // A timeout set below the measured median is not a bound, it is an outage.
+    const m = /const META_DEADLINE_MS = ([0-9_]+);/.exec(BOARD);
+    expect(m, "the meta deadline constant is missing").not.toBeNull();
+    expect(Number(m![1].replace(/_/g, "")), "must clear the ~958ms measured median with room")
+      .toBeGreaterThanOrEqual(2_000);
+  });
+
+  it("both reads share ONE budget — the fat row never gets a second full one", () => {
+    expect(BOARD).toMatch(/Math\.max\(150, META_DEADLINE_MS - \(Date\.now\(\) - t_meta\)\)/);
+  });
+
+  it("a timeout and an absent row are told apart", () => {
+    // withDeadline resolves {data:null} on expiry, which is byte-identical to
+    // "no such row" — and the branch below treats the latter as first boot.
+    expect(BOARD).toMatch(/const META_TIMEOUT = Symbol\("meta-timeout"\);/);
+    expect(BOARD).toMatch(/if \(headRes === META_TIMEOUT\) metaTimedOut = true;/);
+    expect(BOARD, "a slow head read must not be followed by an equally slow fat read")
+      .toMatch(/if \(!meta && !metaTimedOut\) \{/);
   });
 
   it("the read is published as a phase, so it can never go unattributed again", () => {
@@ -35,7 +52,11 @@ describe("the meta read is bounded, measured, and cannot escalate", () => {
     // board-fetching pass; sliceStats measured lastMs at 184,951ms during this
     // incident. The `!meta` guard became reachable under load once the reads
     // could come back empty, so this branch had to stop blocking.
-    expect(BOARD).toMatch(/waitUntil\(runRefresh\(client, true\)\);/);
+    // And it must be gated on a GENUINE empty answer. runRefresh(force=true)
+    // bypasses the slice lock, so firing it whenever meta is null meant one
+    // forced pass PER REQUEST on a slow database — traffic became load, and the
+    // board organised its own stampede (measured: page_query back to 27.5s).
+    expect(BOARD).toMatch(/if \(!metaTimedOut\) waitUntil\(runRefresh\(client, true\)\);/);
     const stripped = BOARD.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
     expect(stripped, "no awaited seeding refresh may remain on the request path")
       .not.toMatch(/const seeded = await runRefresh\(client, true\)/);

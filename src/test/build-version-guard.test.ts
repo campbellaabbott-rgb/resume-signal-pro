@@ -379,7 +379,13 @@ const PINNED = {
   // is deadlined and published as phaseMs.meta_read; the first-boot seed no
   // longer runs a full refresh inline on a visitor's request; includeUnstatedPay
   // stops making the bare board count itself; a null count publishes null.
-  buildVersion: "2026-08-30.3",
+  // 2026-08-30.4: .3 regressed the board. Its 800ms meta deadline sat BELOW the
+  // ~958ms median this file already published for that read, so it expired on
+  // healthy requests — stripping the headline, employer count, categories and
+  // refreshedAt — and the "no meta = first boot" branch then fired a FORCED
+  // refresh on each one, turning traffic into load. Budget is 3s, a timeout is
+  // told apart from an absent row, and a timeout never seeds.
+  buildVersion: "2026-08-30.4",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {
