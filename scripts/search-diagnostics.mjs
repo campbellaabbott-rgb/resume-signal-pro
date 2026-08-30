@@ -72,9 +72,14 @@ const CASES = [
     },
   },
   {
-    name: "a filter behind rpcBlind forces the buildQuery path",
+    name: "a bound filter (maxYears) is NOT rpcBlind — it stays on the ranked path",
+    // maxYears joined RPC_BOUND_FILTERS (search_jobs binds p_max_years), so a
+    // maxYears query must NOT be forced off the ranked path. The board reports
+    // the truth; a diagnostic that assumed otherwise would be the stale-list rot
+    // rpcBlind exists to prevent — this check now asserts the binding is live.
     body: { q: "developer", maxYears: 3 },
-    checks: (t) => (t.filters?.rpcBlind ?? []).length === 0 ? ["maxYears should appear in rpcBlind"] : [],
+    checks: (t) => (t.filters?.rpcBlind ?? []).includes("maxYears")
+      ? ["maxYears is bound now (RPC_BOUND_FILTERS); it must not appear in rpcBlind"] : [],
   },
   {
     name: "an abbreviation with NO filters routes; with one it stands down",

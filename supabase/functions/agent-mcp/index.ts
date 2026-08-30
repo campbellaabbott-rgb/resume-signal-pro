@@ -46,7 +46,7 @@ import {
 // batching. A client that only speaks an older revision still gets a clean
 // negotiation: we answer initialize with this version and it decides.
 const MCP_PROTOCOL_VERSIONS = ["2025-06-18"];
-const SERVER_INFO = { name: "resumebooster-job-board", version: "2026-08-29.2" }; // .2: debug_search tool
+const SERVER_INFO = { name: "resumebooster-job-board", version: "2026-08-29.3" }; // .2: debug_search tool; .3: search filter parity (department, pay ceiling/basis/stated, maxYears, vendor)
 const DOCS_URL = "https://resumebooster.work/agents";
 
 // EXPOSED, OR THEY MIGHT AS WELL NOT BE SENT — same lesson public-api learned:
