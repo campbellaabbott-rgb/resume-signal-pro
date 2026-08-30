@@ -48,12 +48,17 @@ const ENDPOINTS: Array<{ path: string; body: string; params?: string }> = [
   { path: "GET /v1/usage", body: "Your own consumption for the last 30 days, by day and by endpoint, plus what is left of your limits today." },
 ];
 
-/** Self-serve issuance. The key is shown once — only its hash is stored. */
+/** Self-serve issuance. A first key is shown once on screen — only its hash is
+    stored. An address that already holds an active key gets the new one by
+    email only, and nothing is ever revoked by asking: keys accumulate to a cap
+    of three per address (migration 20260826214700 removed request-time
+    rotation, which was an unauthenticated DoS against anyone whose address you
+    could guess). */
 function GetAKey() {
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
-  const [issued, setIssued] = useState<{ key: string; limits: { perMinute: number; perDay: number }; emailed: boolean; rotated: boolean } | null>(null);
+  const [issued, setIssued] = useState<{ key: string | null; limits: { perMinute: number; perDay: number }; emailed: boolean; message: string | null } | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -62,9 +67,21 @@ function GetAKey() {
     setBusy(true); setErr(null);
     try {
       const { data, error } = await supabase.functions.invoke("api-key-request", { body: { email, name } });
-      const d = data as { key?: string; limits?: { perMinute: number; perDay: number }; emailed?: boolean; rotated?: boolean; error?: { message?: string } } | null;
-      if (error || !d?.key) { setErr(d?.error?.message ?? "Could not issue a key. Try again shortly."); return; }
-      setIssued({ key: d.key, limits: d.limits ?? { perMinute: 60, perDay: 1000 }, emailed: !!d.emailed, rotated: !!d.rotated });
+      if (error) {
+        // Refusals (invalid address, the three-active-keys 409, the daily 429)
+        // are non-2xx, so invoke() leaves data null — the function's own
+        // message rides on the response in error.context.
+        let message = "Could not issue a key. Try again shortly.";
+        try {
+          const body = await (error as { context?: Response }).context?.json() as { error?: { message?: string } } | undefined;
+          if (body?.error?.message) message = body.error.message;
+        } catch { /* the generic message stands */ }
+        setErr(message);
+        return;
+      }
+      const d = data as { key?: string; limits?: { perMinute: number; perDay: number }; emailed?: boolean; message?: string; hadActiveKey?: boolean } | null;
+      if (!d?.key && !d?.hadActiveKey) { setErr("Could not issue a key. Try again shortly."); return; }
+      setIssued({ key: d.key ?? null, limits: d.limits ?? { perMinute: 60, perDay: 1000 }, emailed: !!d.emailed, message: d.message ?? null });
     } catch {
       setErr("Could not reach the key service. Try again shortly.");
     } finally { setBusy(false); }
@@ -73,25 +90,34 @@ function GetAKey() {
   if (issued) {
     return (
       <div className="p-6 rounded-2xl bg-card border border-border">
-        <h3 className="font-semibold mb-2 flex items-center gap-2"><KeyRound className="w-4 h-4 text-primary" /> Your key</h3>
-        {/* Shown once, and said so plainly: only a hash is stored, so there is
-            no screen anywhere that can show it again. */}
-        <p className="text-sm text-muted-foreground mb-3">
-          Copy this now — we store only a hash, so this is the only time it can be shown.
-          {issued.emailed ? " A copy is in your inbox." : " (We could not send the email copy, so this really is the only one.)"}
-        </p>
-        <div className="flex items-center gap-2 mb-3">
-          <code className="flex-1 px-3 py-2 rounded-lg bg-muted text-xs overflow-x-auto whitespace-nowrap">{issued.key}</code>
-          <button
-            type="button"
-            onClick={() => { navigator.clipboard?.writeText(issued.key); setCopied(true); setTimeout(() => setCopied(false), 1500); }}
-            className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border text-sm hover:text-foreground text-muted-foreground"
-          >
-            {copied ? <Check className="w-4 h-4 text-success" /> : <Copy className="w-4 h-4" />} {copied ? "Copied" : "Copy"}
-          </button>
-        </div>
-        {issued.rotated && (
-          <p className="text-sm text-warning mb-3">Your previous key was revoked when this one was issued.</p>
+        <h3 className="font-semibold mb-2 flex items-center gap-2"><KeyRound className="w-4 h-4 text-primary" /> {issued.key ? "Your key" : "Key issued"}</h3>
+        {issued.key ? (
+          <>
+            {/* Shown once, and said so plainly: only a hash is stored, so there
+                is no screen anywhere that can show it again. */}
+            <p className="text-sm text-muted-foreground mb-3">
+              Copy this now — we store only a hash, so this is the only time it can be shown.
+              {issued.emailed ? " A copy is in your inbox." : " (We could not send the email copy, so this really is the only one.)"}
+            </p>
+            <div className="flex items-center gap-2 mb-3">
+              <code className="flex-1 px-3 py-2 rounded-lg bg-muted text-xs overflow-x-auto whitespace-nowrap">{issued.key}</code>
+              <button
+                type="button"
+                onClick={() => { navigator.clipboard?.writeText(issued.key ?? ""); setCopied(true); setTimeout(() => setCopied(false), 1500); }}
+                className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border text-sm hover:text-foreground text-muted-foreground"
+              >
+                {copied ? <Check className="w-4 h-4 text-success" /> : <Copy className="w-4 h-4" />} {copied ? "Copied" : "Copy"}
+              </button>
+            </div>
+          </>
+        ) : (
+          /* The address already held an active key, so the function put the new
+             one in the inbox instead of the response — showing it here would
+             hand a live credential to whoever typed the address. Its message
+             also covers the case where that email could not be sent. */
+          <p className="text-sm text-muted-foreground mb-3">
+            {issued.message ?? "This address already has a key, so the new one has been emailed rather than shown here."}
+          </p>
         )}
         <p className="text-sm text-muted-foreground">
           Free tier: {issued.limits.perMinute} requests/minute, {issued.limits.perDay.toLocaleString()}/day.
@@ -104,7 +130,7 @@ function GetAKey() {
     <form onSubmit={submit} className="p-6 rounded-2xl bg-card border border-border">
       <h3 className="font-semibold mb-2 flex items-center gap-2"><KeyRound className="w-4 h-4 text-primary" /> Get a free key</h3>
       <p className="text-sm text-muted-foreground mb-4">
-        No account, no card. The key arrives on screen and by email.
+        No account, no card. Your first key arrives on screen and by email.
       </p>
       <div className="grid sm:grid-cols-2 gap-3 mb-3">
         <input
@@ -126,7 +152,8 @@ function GetAKey() {
         {busy ? <><Loader2 className="w-4 h-4 animate-spin" /> Issuing…</> : <>Get a key</>}
       </button>
       <p className="text-xs text-muted-foreground mt-3">
-        Asking again issues a new key and revokes the old one.
+        Asking again issues another key by email and never revokes the ones you have — up to three can be
+        active per address.
       </p>
     </form>
   );
