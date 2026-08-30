@@ -65,8 +65,13 @@ describe("at-cap boards need a fast lane", () => {
 
   it("the added work is capped, and the cap is a named constant", () => {
     expect(CODE).toMatch(/const DEEP_PER_SLICE = \d+;/);
+    // The cap APPLIED is effDeepPerSlice, which is DEEP_PER_SLICE at rest and
+    // smaller (0 at L2) while the rotation is shedding load — the ceiling this
+    // test guards is still the named constant.
     expect(CODE, "the lane takes the whole map instead of a capped page")
-      .toMatch(/\.slice\(0, DEEP_PER_SLICE\)/);
+      .toMatch(/\.slice\(0, effDeepPerSlice\)/);
+    expect(CODE, "the shed ceiling must derive from the named constant")
+      .toMatch(/const effDeepPerSlice = shedLevel === 2 \? 0 : shedLevel === 1 \? 4 : DEEP_PER_SLICE;/);
     const cap = Number(/const DEEP_PER_SLICE = (\d+);/.exec(CODE)?.[1]);
     // 160 at-cap boards x 500 postings is real work. The bootstrap lane's 25
     // is the largest per-slice prepend this function has actually survived.
@@ -79,7 +84,7 @@ describe("at-cap boards need a fast lane", () => {
     // the lane's places with fetches that never happen — the lane would report
     // 25 selected and deliver fewer.
     const filterAt = CODE.indexOf("!taken.has(t)");
-    const capAt = CODE.indexOf(".slice(0, DEEP_PER_SLICE)");
+    const capAt = CODE.indexOf(".slice(0, effDeepPerSlice)");
     expect(filterAt, "the lane does not dedupe against the slice").toBeGreaterThan(-1);
     expect(capAt).toBeGreaterThan(-1);
     expect(filterAt, "the cap is applied before the dedupe").toBeLessThan(capAt);

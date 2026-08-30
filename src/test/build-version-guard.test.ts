@@ -366,7 +366,12 @@ const PINNED = {
   // filters applied vs ignored, ranking regime, seam) before any SQL runs —
   // the board explaining its own reasoning, exposed as the debug_search MCP
   // tool and the /v1/explain endpoint.
-  buildVersion: "2026-08-29.53",
+  // 2026-08-30.1: adaptive load shedding. The rotation reads the slice EMA it
+  // already records and, while the database is distressed, takes fewer boards
+  // per hop, runs fewer workers and stops paying for the deep lane — lifting
+  // the levels itself as the EMA recovers. Shipped beside the autovacuum
+  // tuning migration during a live 30-second-browse incident.
+  buildVersion: "2026-08-30.1",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {

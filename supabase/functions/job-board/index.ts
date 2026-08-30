@@ -102,7 +102,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-29.53"; // .53: `explain` decision-trace mode (diagnose) + sweep-2 fixes (ring-flicker fail-safe, mechanical route gate, multi-word facet matcher); .52: facets failure no longer aborts pass-end
+const BUILD_VERSION = "2026-08-30.1"; // .1: adaptive load shedding — rotation reads its own slice EMA and takes fewer boards/workers and no deep lane while the DB is distressed, restoring itself as it recovers
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -1419,9 +1419,59 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
   }
 
   const inHotPhase = hot < HOT_LIST.length;
+
+  // ── ADAPTIVE LOAD SHEDDING ────────────────────────────────────────────────
+  //
+  // The ingest and the people using the board share one small database, and
+  // when it saturates the ingest is what pushes it over. MEASURED 2026-08-30:
+  // a bare {limit:1} browse — the cheapest query the board has — took 30.2s
+  // (page_query 29,455ms) while sliceStats read lastMs 184,951 and hotEma
+  // 176,371 against a healthy ~20-25s. Both numbers are the same event, and
+  // rotation kept demanding its full slice the whole way down.
+  //
+  // So the rotation now reads its OWN measurement and stands down. The EMA it
+  // already records per slice is the signal; when it climbs, each hop takes
+  // fewer boards, runs fewer workers, and stops paying for the deep lane. When
+  // it recovers the levels lift on their own — nothing to remember to undo,
+  // which is the failure mode of every static "temporary" cut.
+  //
+  // GRADUATED rather than on/off, and stateless: the level is a pure function
+  // of the EMA the last hop wrote. The EMA is 0.8/0.2 smoothed, so it cannot
+  // whipsaw between levels hop to hop, and a request that lands exactly on a
+  // boundary just alternates between two adjacent levels — harmless.
+  //
+  // SAFE FOR THE CURSOR, and that is not an assumption: rotation.ts's
+  // advanceProgress takes `baseSliceLen` — "the number of COLD_LIST boards
+  // this hop consumed" — and its own docs say the caller must NOT substitute
+  // the COLD_SLICE constant because the tail slice is already shorter. A
+  // variable slice is the case that arithmetic was written for. What shedding
+  // costs is rotation SPEED (fewer boards per hop → a longer full wrap), which
+  // is the right thing to trade for a board people can actually use.
+  const shedEma = await (async () => {
+    try {
+      const { data } = await client.from("job_board_meta").select("v").eq("k", "slice_stats").maybeSingle();
+      const v = (data?.v ?? {}) as { hotEmaMs?: number; coldEmaMs?: number };
+      const n = Number(inHotPhase ? v.hotEmaMs : v.coldEmaMs);
+      return Number.isFinite(n) && n > 0 ? n : 0;
+    } catch {
+      return 0; // no measurement is not evidence of distress — run at full size
+    }
+  })();
+  // 0 = healthy, 1 = strained, 2 = distressed. Thresholds are multiples of the
+  // healthy slice the constants above were sized for, not round numbers.
+  const shedLevel = shedEma === 0 ? 0 : shedEma > 60_000 ? 2 : shedEma > 40_000 ? 1 : 0;
+  const effColdSlice = shedLevel === 2 ? 24 : shedLevel === 1 ? 48 : COLD_SLICE;
+  const effConcurrency = shedLevel === 2 ? 3 : shedLevel === 1 ? 5 : CONCURRENCY;
+  // The deep lane is the most expensive work a hop does and the least urgent —
+  // it re-pages boards we already carry. It is the first thing to go.
+  const effDeepPerSlice = shedLevel === 2 ? 0 : shedLevel === 1 ? 4 : DEEP_PER_SLICE;
+  if (shedLevel > 0) {
+    console.warn(`[JOB-BOARD] load shedding L${shedLevel}: ${inHotPhase ? "hot" : "cold"} EMA ${Math.round(shedEma / 1000)}s -> slice ${effColdSlice}, concurrency ${effConcurrency}, deep ${effDeepPerSlice}`);
+  }
+
   const baseSlice = inHotPhase
     ? HOT_LIST.slice(hot, hot + HOT_SLICE)
-    : COLD_LIST.slice(cold, cold + COLD_SLICE);
+    : COLD_LIST.slice(cold, cold + effColdSlice);
   // Feature 3 (demand-driven freshness): boards a user just opened/verified
   // jump the queue. Injected only on COLD slices — hot boards already
   // re-check every pass (~10 min), and cold slices have the compute headroom
@@ -1628,7 +1678,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
         // spend one of the lane's places on a fetch that will not happen.
         deepBoards = [...tokens.slice(start), ...tokens.slice(0, start)]
           .filter((t) => !taken.has(t))
-          .slice(0, DEEP_PER_SLICE)
+          .slice(0, effDeepPerSlice)
           .map((t) => JOB_SOURCES.find((s) => s.token === t))
           .filter((s): s is JobSource => !!s);
         // Instrumented for exactly the reason the bootstrap lane is: selected
@@ -1760,7 +1810,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
   let lastUpsertError: string | null = null;
 
   await Promise.all(
-    Array.from({ length: inHotPhase ? HOT_CONCURRENCY : CONCURRENCY }, async () => {
+    Array.from({ length: inHotPhase ? HOT_CONCURRENCY : effConcurrency }, async () => {
       for (;;) {
         const s = queue.shift();
         if (!s) return;
@@ -3468,7 +3518,9 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
   if (chainHop < CHAIN_CAP) chainNextSlice(chainHop, client);
   const phase = inHotPhase ? `hot ${Math.min(hot, HOT_LIST.length)}/${HOT_LIST.length}` : `cold slice ${coldDone}/${COLD_SLICES_PER_PASS} (rotation ${cold}/${COLD_LIST.length})`;
   recordSliceStats(client, sliceWallStart, inHotPhase);
-  return { ok: true, detail: `slice done (${sliceTotal} postings, ${failed.length} failed) — ${phase}` };
+  // The shed level rides the summary, because a rotation that is deliberately
+  // running small must not look like a rotation that is mysteriously slow.
+  return { ok: true, detail: `slice done (${sliceTotal} postings, ${failed.length} failed) — ${phase}${shedLevel > 0 ? ` [shedding L${shedLevel}]` : ""}` };
 }
 
 // ── maintenance kicks ──────────────────────────────────────────────────────
