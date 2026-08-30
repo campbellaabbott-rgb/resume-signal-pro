@@ -362,7 +362,11 @@ const PINNED = {
   // alone stays gated on FRESH facets). Live incident: facets timing out from
   // ~09:52Z silently switched off all maintenance for 4+ hours and tripped
   // {facets_cache, freshness_cap} together — that pairing was this return.
-  buildVersion: "2026-08-29.52",
+  // 2026-08-29.53: `explain: true` returns a read-only decision trace (route,
+  // filters applied vs ignored, ranking regime, seam) before any SQL runs —
+  // the board explaining its own reasoning, exposed as the debug_search MCP
+  // tool and the /v1/explain endpoint.
+  buildVersion: "2026-08-29.53",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {

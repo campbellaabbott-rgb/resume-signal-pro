@@ -256,6 +256,10 @@ const JOBS_PARAMS = [
   "limit", "offset", "cursor", "q", "company_token", "source", "category", "country",
   "work_mode", "experience_band", "department", "remote",
   "salary_min", "salary_max", "include_unstated_pay", "posted_after", "posted_before",
+  // explain=1 appends a `diagnostics` block describing what this endpoint did —
+  // which filters bound, the fences, the count basis, the paging mode — so an
+  // integrator can see WHY a query returned what it did without guessing.
+  "explain",
 ] as const;
 const CHANGES_PARAMS = ["since", "limit", "opened_cursor", "closed_cursor"] as const;
 const COMPANIES_PARAMS = ["limit", "q", "cursor"] as const;
@@ -433,6 +437,39 @@ async function listJobs(client: SupabaseClient, url: URL, headers: Record<string
         ? { statedPayShare: 0.201, statedPayNote: "About 20% of postings state pay; a salary filter can only ever see those unless include_unstated_pay=true." }
         : {}),
     },
+    // explain=1: the endpoint's own decision trace. Honest about THIS engine —
+    // /v1 runs a title/company websearch with exact filter binding, NOT the
+    // site's ranked/ring path, so it names what it actually did rather than
+    // borrowing a richer engine's reasoning. (For the ranked engine's trace,
+    // the site and the MCP debug_search tool expose job-board's `explain`.)
+    ...(p.get("explain") === "1" || p.get("explain") === "true"
+      ? {
+        diagnostics: {
+          matcher: safeTerm ? "websearch(title, simple) + exact filter binding" : "exact filter binding only (no text query)",
+          boundFilters: {
+            ...(safeTerm ? { q: safeTerm } : {}),
+            ...(p.get("country") ? { country: p.get("country") } : {}),
+            ...(p.get("category") ? { category: p.get("category") } : {}),
+            ...(p.get("company_token") ? { company_token: p.get("company_token") } : {}),
+            ...(p.get("work_mode") ? { work_mode: p.get("work_mode") } : {}),
+            ...(p.get("source") ? { source: p.get("source") } : {}),
+            ...(p.get("experience_band") ? { experience_band: p.get("experience_band") } : {}),
+            ...(dept ? { department: `ilike %${dept}%` } : {}),
+            ...(remoteFilter !== undefined ? { remote: remoteFilter } : {}),
+            ...(Number.isFinite(salaryMin) && salaryMin > 0 ? { salary_min: salaryMin, statedPayOnly: !includeUnstated } : {}),
+            ...(Number.isFinite(salaryMax) && salaryMax > 0 ? { salary_max: salaryMax } : {}),
+            ...(postedAfter ? { posted_after: postedAfter } : {}),
+            ...(postedBefore ? { posted_before: postedBefore } : {}),
+            ...(includeUnstated ? { include_unstated_pay: true } : {}),
+          },
+          fences: ["missing_since IS NULL", `effective_posted >= now-${FRESH_WINDOW_DAYS}d`],
+          order: "effective_posted DESC, id ASC",
+          paging: cursor ? "keyset (cursor)" : "offset",
+          countBasis: "estimated (planner, keyset-independent so it is stable across pages)",
+          note: "This is /v1's own simpler engine — title/company text match, no relevance ranking, no rescue tiers. The site's ranked search differs.",
+        },
+      }
+      : {}),
   }, 200, headers);
 }
 

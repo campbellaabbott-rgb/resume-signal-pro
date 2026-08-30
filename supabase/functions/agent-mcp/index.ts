@@ -46,7 +46,7 @@ import {
 // batching. A client that only speaks an older revision still gets a clean
 // negotiation: we answer initialize with this version and it decides.
 const MCP_PROTOCOL_VERSIONS = ["2025-06-18"];
-const SERVER_INFO = { name: "resumebooster-job-board", version: "2026-08-29.1" };
+const SERVER_INFO = { name: "resumebooster-job-board", version: "2026-08-29.2" }; // .2: debug_search tool
 const DOCS_URL = "https://resumebooster.work/agents";
 
 // EXPOSED, OR THEY MIGHT AS WELL NOT BE SENT — same lesson public-api learned:
@@ -231,11 +231,38 @@ const TOOLS = [
     description: "Live board statistics from cache (cheap to call): posting totals, employer count, category set, freshness stamp.",
     inputSchema: { type: "object", properties: {} },
   },
+  {
+    name: "debug_search",
+    description:
+      "Explain WHY a search returns what it does — the board's own decision trace merged with the run's outcome. " +
+      "Shows the parsed query (terms, exclusions, intent-lifts, alias expansions), which filters were applied vs " +
+      "IGNORED and why, the route and retriever chosen, the ranking regime (ranked/ring-merged/deep-page and the " +
+      "seam), plus the real run's route, timings, count basis and any fallback. Use this when a search returns " +
+      "surprising, empty, or mis-ranked results — it turns 'why?' into one call. Takes the SAME arguments as search_jobs.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        query: { type: "string" },
+        location: { type: "string" },
+        country: { type: "string" },
+        remote: { type: "boolean" },
+        workMode: { type: "string" },
+        employmentType: { type: "string" },
+        category: { type: "string" },
+        maxAgeDays: { type: "number" },
+        salaryMin: { type: "number" },
+        agentReadyOnly: { type: "boolean" },
+        sort: { type: "string", enum: ["relevance", "newest", "salary"] },
+        offset: { type: "number" },
+      },
+    },
+  },
 ];
 
-async function runSearchJobs(args: Record<string, unknown>): Promise<unknown> {
+/** The board `list` body for a tool's args — one mapping, shared by search and debug. */
+function searchBody(args: Record<string, unknown>): Record<string, unknown> {
   const limit = Math.max(1, Math.min(60, Number(args.limit ?? 20) || 20));
-  const body: Record<string, unknown> = {
+  return {
     action: "list", limit, includeFacets: false,
     ...(args.query ? { q: String(args.query) } : {}),
     ...(args.location ? { location: String(args.location) } : {}),
@@ -250,9 +277,36 @@ async function runSearchJobs(args: Record<string, unknown>): Promise<unknown> {
     ...(args.sort === "newest" ? { sort: "newest" } : args.sort === "salary" ? { sort: "salary" } : {}),
     ...(args.offset ? { offset: Number(args.offset) } : {}),
   };
-  const r = await board(body);
+}
+
+async function runSearchJobs(args: Record<string, unknown>): Promise<unknown> {
+  const r = await board(searchBody(args));
   const jobs = (Array.isArray(r.jobs) ? r.jobs : []) as Array<Record<string, unknown>>;
   return { jobs: jobs.map(compactJob), ...disclosures(r) };
+}
+
+async function runDebugSearch(args: Record<string, unknown>): Promise<unknown> {
+  const base = searchBody(args);
+  // Decision (no SQL) and outcome (the real run) in parallel — the board's own
+  // trace plus what actually happened, so an agent sees BOTH why the board
+  // decided and what it then served.
+  const [decision, outcome] = await Promise.all([
+    board({ ...base, explain: true }),
+    board(base),
+  ]);
+  const out = outcome as Record<string, unknown>;
+  const jobs = (Array.isArray(out.jobs) ? out.jobs : []) as Array<Record<string, unknown>>;
+  return {
+    decision,
+    outcome: {
+      rowsServed: jobs.length,
+      topTitles: jobs.slice(0, 5).map((j) => j.title),
+      ...disclosures(out),
+      phaseMs: out.phaseMs ?? null,
+      tookMs: out.tookMs ?? null,
+      rankedFellBack: out.rankedFellBack ?? null,
+    },
+  };
 }
 
 async function runGetJob(args: Record<string, unknown>): Promise<unknown> {
@@ -562,6 +616,7 @@ async function callTool(
 ): Promise<unknown> {
   switch (name) {
     case "search_jobs": return toolOk(await runSearchJobs(args));
+    case "debug_search": return toolOk(await runDebugSearch(args));
     case "get_job": return toolOk(await runGetJob(args));
     case "board_stats": return toolOk(await runBoardStats());
     case "check_apply_support": return toolOk(await runCheckApplySupport(client, args));

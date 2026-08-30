@@ -102,7 +102,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-29.52"; // .52: a facets failure no longer aborts the pass-end (sweep/hygiene/governor/stamps run; facets carried, prune gated) — the {facets_cache, freshness_cap} loop; .51: six-lens sweep
+const BUILD_VERSION = "2026-08-29.53"; // .53: `explain` decision-trace mode (diagnose) + sweep-2 fixes (ring-flicker fail-safe, mechanical route gate, multi-word facet matcher); .52: facets failure no longer aborts pass-end
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -10000,6 +10000,73 @@ async function serveList(
   const pagePlan = planRankedPage({ offset, fetchLimit, scoreRanked, newestFirst, deepPageable, ringMerged });
   const deepPage = pagePlan.deepPage;
   const metaV = (meta?.v ?? {}) as Record<string, unknown>;
+
+  // ── DIAGNOSE: the board explaining its own reasoning ──────────────────────
+  //
+  // A read-only decision trace, returned BEFORE any search SQL runs. Every
+  // variable it reports is the exact one the serving path below is about to
+  // act on — the parsed query, the filters kept and the ones refused (with the
+  // refusal named in `ignored`), the route and retriever chosen, and the
+  // ranking regime (ring-merged? deep page? which seam?). Two adversarial
+  // sweeps this week found their bugs by reconstructing this trace agent by
+  // agent; this makes it a single call. It executes no query, so it cannot
+  // perturb what it measures and costs nothing but the pure decision fns.
+  // The OUTCOME half (searchRoute, phaseMs, rankedFellBack, total, hasMore)
+  // comes from running the same body without `explain`; the debug tools merge
+  // the two. Not offered on the countOnly/facetCounts branches, which returned
+  // above — `explain` is for list queries.
+  if (body.explain === true) {
+    const { expansions } = expandQuery(qText);
+    return json({
+      diagnose: true,
+      query: {
+        raw: String(body.q ?? ""),
+        parsed: qText,
+        terms: qt.terms,
+        droppedTerms: qt.dropped ?? [],
+        liftedSalary: qt.liftedSalary ?? null,
+        exclusions: [...excludedTerms],
+        intentLifts: intentLift?.labels ?? [],
+        intentPatch: intentLift?.patch ?? {},
+        aliasExpansions: expansions,
+      },
+      filters: {
+        applied,
+        ignored: ignoredFilters,
+        // rpcBlind: filters search_jobs has no parameter for, which force the
+        // buildQuery path — the single most common "why did my filter behave
+        // oddly" cause.
+        rpcBlind: rpcBlindFilters(applied),
+        unfiltered: isUnfiltered(applied),
+        maxAgeClamped,
+        coverage: coverageDisclosure(applied, meta),
+      },
+      routing: {
+        route: routeDecision.route,
+        reason: routeDecision.reason,
+        retriever: routedRetriever,
+        onlyQuery,
+        matchedCompany: routeDecision.matchedName ?? null,
+      },
+      ranking: {
+        sort: String(body.sort ?? "relevance"),
+        newestFirst,
+        scoreRanked,
+        headTermRing,
+        deepPageable,
+        ringMerged,
+        deepPage,
+        seam: ringMerged ? RING_WINDOW : RANKED_WINDOW,
+        plan: pagePlan,
+        offset,
+        limit,
+        fetchLimit,
+      },
+      disclosures: searchDisclosures(body, applied, maxAgeClamped),
+      note:
+        "Decision trace only — no search was executed. Re-send this body without `explain` to run it; the response's searchRoute, phaseMs, rankedFellBack, total and hasMore are the OUTCOME. The debug_search MCP tool and /v1/explain merge both halves.",
+    });
+  }
 
   // A SALARY-SORTED SEARCH CAN HAVE BOTH CORRECT MATCHING AND A GLOBAL ORDER.
   //
