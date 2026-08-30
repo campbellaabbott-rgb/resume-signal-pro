@@ -102,7 +102,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-30.4"; // .4: URGENT — .3 set the meta deadline (800ms) BELOW its own measured median (~958ms), so it expired on healthy requests, stripped the headline/facets, and fired a forced refresh per request. Budget raised to 3s, timeout distinguished from absent, no seed on timeout
+const BUILD_VERSION = "2026-08-30.5"; // .5: shedding fails CLOSED (an unreadable slice-stats read sheds to L2 instead of running full size on the most distressed database) — pairs with the ingest-pause migration
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -1447,19 +1447,41 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
   // variable slice is the case that arithmetic was written for. What shedding
   // costs is rotation SPEED (fewer boards per hop → a longer full wrap), which
   // is the right thing to trade for a board people can actually use.
-  const shedEma = await (async () => {
+  // FAIL CLOSED. The first version returned 0 ("healthy, full size") when this
+  // read errored or the row was missing — so on the MOST distressed database,
+  // where meta reads themselves start failing, shedding switched itself OFF
+  // and a full-throttle rotation piled onto the saturation (measured in the
+  // second spiral of 2026-08-30: browse latency RISING 27s->42s->66s with
+  // shedding "on"). An unreadable pulse is evidence of distress, not health:
+  // a read that errors or cannot answer inside 500ms sheds to L2; a row that
+  // is genuinely absent (fresh deploy, first-ever slice) sheds to L1, which
+  // costs one mild hop before the first real measurement exists.
+  const SHED_READ_TIMEOUT = Symbol("shed-read-timeout");
+  const shedSignal = await (async () => {
     try {
-      const { data } = await client.from("job_board_meta").select("v").eq("k", "slice_stats").maybeSingle();
-      const v = (data?.v ?? {}) as { hotEmaMs?: number; coldEmaMs?: number };
+      const res = await Promise.race([
+        client.from("job_board_meta").select("v").eq("k", "slice_stats").maybeSingle()
+          .then((r) => r, () => ({ data: null, error: { message: "read rejected" } })),
+        new Promise<typeof SHED_READ_TIMEOUT>((res) => setTimeout(() => res(SHED_READ_TIMEOUT), 500)),
+      ]);
+      if (res === SHED_READ_TIMEOUT) return { kind: "unreadable" as const };
+      if ((res as { error?: unknown }).error) return { kind: "unreadable" as const };
+      const v = ((res as { data?: { v?: unknown } }).data?.v ?? null) as { hotEmaMs?: number; coldEmaMs?: number } | null;
+      if (v === null) return { kind: "absent" as const };
       const n = Number(inHotPhase ? v.hotEmaMs : v.coldEmaMs);
-      return Number.isFinite(n) && n > 0 ? n : 0;
+      return Number.isFinite(n) && n > 0 ? { kind: "ema" as const, ms: n } : { kind: "absent" as const };
     } catch {
-      return 0; // no measurement is not evidence of distress — run at full size
+      return { kind: "unreadable" as const };
     }
   })();
   // 0 = healthy, 1 = strained, 2 = distressed. Thresholds are multiples of the
   // healthy slice the constants above were sized for, not round numbers.
-  const shedLevel = shedEma === 0 ? 0 : shedEma > 60_000 ? 2 : shedEma > 40_000 ? 1 : 0;
+  const shedLevel = shedSignal.kind === "unreadable" ? 2
+    : shedSignal.kind === "absent" ? 1
+    : shedSignal.ms > 60_000 ? 2
+    : shedSignal.ms > 40_000 ? 1
+    : 0;
+  const shedEma = shedSignal.kind === "ema" ? shedSignal.ms : 0;
   const effColdSlice = shedLevel === 2 ? 24 : shedLevel === 1 ? 48 : COLD_SLICE;
   const effConcurrency = shedLevel === 2 ? 3 : shedLevel === 1 ? 5 : CONCURRENCY;
   // The deep lane is the most expensive work a hop does and the least urgent —

@@ -385,7 +385,11 @@ const PINNED = {
   // refreshedAt — and the "no meta = first boot" branch then fired a FORCED
   // refresh on each one, turning traffic into load. Budget is 3s, a timeout is
   // told apart from an absent row, and a timeout never seeds.
-  buildVersion: "2026-08-30.4",
+  // 2026-08-30.5: shedding fails CLOSED. Its signal read returned "healthy" on
+  // error/timeout, so at peak distress the shedder switched itself off —
+  // measured as browse latency rising 27s->42s->66s with it deployed. Ships
+  // beside the emergency ingest-pause migration (resume held as .sql.hold).
+  buildVersion: "2026-08-30.5",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {

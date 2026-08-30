@@ -20,14 +20,41 @@ const VAC = readFileSync(resolve(__dirname, "../../supabase/migrations/202608302
 
 describe("the rotation reads its own pulse and stands down", () => {
   it("derives the shed level from the EMA it already records", () => {
-    expect(BOARD).toMatch(/const shedLevel = shedEma === 0 \? 0 : shedEma > 60_000 \? 2 : shedEma > 40_000 \? 1 : 0;/);
+    expect(BOARD).toMatch(/: shedSignal\.ms > 60_000 \? 2/);
+    expect(BOARD).toMatch(/: shedSignal\.ms > 40_000 \? 1/);
     expect(BOARD, "the phase-appropriate EMA, not a blend").toMatch(/inHotPhase \? v\.hotEmaMs : v\.coldEmaMs/);
   });
 
-  it("no measurement is not evidence of distress — it runs at full size", () => {
-    expect(BOARD).toMatch(/return 0; \/\/ no measurement is not evidence of distress/);
+  it("an unreadable pulse FAILS CLOSED — the exact opposite of the first version", () => {
+    // The original rule here was "no measurement is not evidence of distress —
+    // run at full size". Production falsified it within hours: on the most
+    // distressed database the slice-stats read itself fails, so shedding
+    // switched OFF at peak load and browse latency ROSE 27s->42s->66s with the
+    // shedder nominally deployed. An unreadable signal now sheds to L2, a
+    // genuinely absent row (fresh deploy) to L1, and only a real healthy EMA
+    // runs full size.
+    expect(BOARD).toMatch(/shedSignal\.kind === "unreadable" \? 2/);
+    expect(BOARD).toMatch(/: shedSignal\.kind === "absent" \? 1/);
+    expect(BOARD, "the shed read itself must be bounded — waiting on it is the distress it detects")
+      .toMatch(/setTimeout\(\(\) => res\(SHED_READ_TIMEOUT\), 500\)/);
     expect(BOARD, "level 0 must resolve to the unshed constants")
       .toMatch(/const effColdSlice = shedLevel === 2 \? 24 : shedLevel === 1 \? 48 : COLD_SLICE;/);
+    const stripped = BOARD.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+    expect(stripped, "the fail-open form must not return").not.toMatch(/return 0; \/\/ no measurement/);
+  });
+
+  it("the emergency pause exists, is honoured by force, and its resume is HELD", () => {
+    const PAUSE = readFileSync(resolve(__dirname, "../../supabase/migrations/20260830230000_stop_the_ingest_until_the_database_can_breathe.sql"), "utf8");
+    expect(PAUSE).toMatch(/'paused', true/);
+    expect(PAUSE).toMatch(/RAISE EXCEPTION 'ingest_paused flag did not persist'/);
+    // force must NOT override the pause — the code's own words.
+    expect(BOARD).toMatch(/`force` does NOT override this/);
+    // The resume ships disarmed: a bulk migration apply must not un-pause.
+    const { existsSync } = require("node:fs");
+    expect(existsSync(resolve(__dirname, "../../supabase/migrations/20260830240000_HOLD_resume_ingest_when_healthy.sql.hold")),
+      "the resume migration must exist, held").toBe(true);
+    expect(existsSync(resolve(__dirname, "../../supabase/migrations/20260830240000_HOLD_resume_ingest_when_healthy.sql")),
+      "the resume migration must not be armed in the repo").toBe(false);
   });
 
   it("sheds all three costs: slice size, workers, and the deep lane first", () => {
