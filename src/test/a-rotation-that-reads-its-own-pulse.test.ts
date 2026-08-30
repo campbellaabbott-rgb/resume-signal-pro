@@ -49,12 +49,13 @@ describe("the rotation reads its own pulse and stands down", () => {
     expect(PAUSE).toMatch(/RAISE EXCEPTION 'ingest_paused flag did not persist'/);
     // force must NOT override the pause — the code's own words.
     expect(BOARD).toMatch(/`force` does NOT override this/);
-    // The resume ships disarmed: a bulk migration apply must not un-pause.
+    // ARMED 2026-08-30 after six stability ticks (browse 0.4-1.1s, search
+    // trending 8.7s -> 0.7s) — the held form served its purpose and the resume
+    // is now an ordinary migration. The restart is guarded by the fail-closed
+    // shedder above.
     const { existsSync } = require("node:fs");
-    expect(existsSync(resolve(__dirname, "../../supabase/migrations/20260830240000_HOLD_resume_ingest_when_healthy.sql.hold")),
-      "the resume migration must exist, held").toBe(true);
-    expect(existsSync(resolve(__dirname, "../../supabase/migrations/20260830240000_HOLD_resume_ingest_when_healthy.sql")),
-      "the resume migration must not be armed in the repo").toBe(false);
+    expect(existsSync(resolve(__dirname, "../../supabase/migrations/20260830240000_resume_ingest_when_healthy.sql")),
+      "the armed resume migration must exist").toBe(true);
   });
 
   it("sheds all three costs: slice size, workers, and the deep lane first", () => {
