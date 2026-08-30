@@ -108,6 +108,10 @@ Deno.serve(async (req) => {
       docs: "https://resumebooster.work/data-api",
       endpoints: ["/v1/jobs", "/v1/jobs/{id}", "/v1/changes", "/v1/companies", "/v1/stats", "/v1/usage"],
       auth: "Authorization: Bearer <your key>",
+      modes: {
+        explain: "/v1/jobs?explain=1 — appends a diagnostics block explaining what the query did.",
+        rankedEngine: "/v1/jobs?engine=ranked (paid) — the site's full relevance/rescue engine instead of the default title match.",
+      },
     });
   }
 
@@ -177,7 +181,7 @@ Deno.serve(async (req) => {
   };
 
   try {
-    if (path === "/v1/jobs") return await conditional(await listJobs(client, url, rateHeaders));
+    if (path === "/v1/jobs") return await conditional(await listJobs(client, url, rateHeaders, d.key_tier));
     if (path.startsWith("/v1/jobs/")) {
       // decodeURIComponent THROWS on malformed percent-encoding, which reached
       // the outer catch and came back as a 500 — telling a machine client to
@@ -260,14 +264,138 @@ const JOBS_PARAMS = [
   // which filters bound, the fences, the count basis, the paging mode — so an
   // integrator can see WHY a query returned what it did without guessing.
   "explain",
+  // engine=ranked (paid) routes the query through the site's full ranked engine
+  // — relevance ranking, alias/typo rescue, honest disclosures — instead of
+  // /v1's default title/company websearch. Opt-in, because it is the heavier
+  // path; the default stays cheap and flat-latency for high-volume callers.
+  "engine",
 ] as const;
 const CHANGES_PARAMS = ["since", "limit", "opened_cursor", "closed_cursor"] as const;
 const COMPANIES_PARAMS = ["limit", "q", "cursor"] as const;
 
-async function listJobs(client: SupabaseClient, url: URL, headers: Record<string, string>) {
+/**
+ * Call the job-board function's ranked `list` — the SAME engine the site and
+ * the MCP use. The anon key is the right credential: this is the public serving
+ * path, and /v1 must hold no more search power than the site does.
+ */
+async function board(body: Record<string, unknown>): Promise<Record<string, unknown>> {
+  const anon = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+  const res = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${anon}`, apikey: anon },
+    body: JSON.stringify(body),
+  });
+  const out = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(String((out as { error?: string }).error ?? `board ${res.status}`));
+  return out as Record<string, unknown>;
+}
+
+/**
+ * engine=ranked: the site's full relevance/rescue engine, translated into the
+ * /v1 envelope. Offset-paged (the ranked engine does not keyset), so `cursor`
+ * and `posted_before` — which this engine has no equivalent for — are refused
+ * rather than silently dropped. Every honesty disclosure the board emits is
+ * passed through, so the ranked API is exactly as candid as the site.
+ */
+async function listJobsRanked(url: URL, headers: Record<string, string>) {
+  const p = url.searchParams;
+  if ((p.get("cursor") ?? "").trim()) {
+    return fail(400, "unsupported_param", "engine=ranked pages by offset, not cursor. Use ?offset= and follow page.nextOffset.", headers);
+  }
+  if (p.get("posted_before")) {
+    return fail(400, "unsupported_param", "engine=ranked has no posted_before filter. Use posted_after and/or default-engine keyset paging.", headers);
+  }
+  const limit = Math.min(Math.max(Number(p.get("limit")) || DEFAULT_LIMIT, 1), MAX_LIMIT);
+  const offset = Math.max(Number(p.get("offset")) || 0, 0);
+  if (offset > MAX_OFFSET) {
+    return fail(400, "offset_too_deep", `offset cannot exceed ${MAX_OFFSET}.`, headers);
+  }
+  const salaryMin = Number(p.get("salary_min"));
+  const salaryMax = Number(p.get("salary_max"));
+  // snake_case /v1 params -> camelCase board body. Names differ where the board
+  // and the public API named the same predicate differently (company_token ->
+  // companies, source -> vendor, experience_band -> experience).
+  const body: Record<string, unknown> = {
+    action: "list", limit, offset, includeFacets: false,
+    ...(p.get("q") ? { q: p.get("q") } : {}),
+    ...(p.get("country") ? { country: p.get("country") } : {}),
+    ...(p.get("category") ? { category: p.get("category") } : {}),
+    ...(p.get("company_token") ? { companies: p.get("company_token") } : {}),
+    ...(p.get("work_mode") ? { workMode: p.get("work_mode") } : {}),
+    ...(p.get("experience_band") ? { experience: p.get("experience_band") } : {}),
+    ...(p.get("department") ? { department: p.get("department") } : {}),
+    ...(p.get("source") ? { vendor: p.get("source") } : {}),
+    ...(p.get("remote") === "true" ? { remote: true } : {}),
+    ...(Number.isFinite(salaryMin) && salaryMin > 0 ? { salaryFloor: salaryMin } : {}),
+    ...(Number.isFinite(salaryMax) && salaryMax > 0 ? { salaryCeiling: salaryMax } : {}),
+    ...(p.get("include_unstated_pay") === "true" ? { includeUnstatedPay: true } : {}),
+    ...(p.get("posted_after") ? { postedAfter: p.get("posted_after") } : {}),
+  };
+
+  let r: Record<string, unknown>;
+  try {
+    r = await board(body);
+  } catch (e) {
+    console.error("[PUBLIC-API] ranked engine call failed:", String((e as Error)?.message ?? e).slice(0, 160));
+    return fail(502, "ranked_unavailable", "The ranked engine did not respond. Retry, or drop engine=ranked to use the default.", headers);
+  }
+  const jobs = (Array.isArray(r.jobs) ? r.jobs : []) as Array<Record<string, unknown>>;
+  const toV1 = (j: Record<string, unknown>) => ({
+    id: j.id, source: j.source, company_token: j.token, company: j.company,
+    title: j.title, location: j.location, country: j.country, remote: j.remote,
+    work_mode: j.workMode ?? null, department: j.department ?? null, category: j.category ?? null,
+    posted_at: j.postedAt ?? null,
+    // The ranked engine does not carry first_seen; null rather than a guess.
+    first_seen: null, last_seen: j.lastSeen ?? null,
+    apply_url: j.applyUrl, salary: j.salary ?? null,
+    salary_min_annual: j.salaryMinAnnual ?? null, salary_max_annual: j.salaryMaxAnnual ?? null,
+    salary_period: j.salaryPeriod ?? null, salary_currency: j.salaryCurrency ?? null,
+    experience_band: j.experienceBand ?? null, min_years: j.minYears ?? null,
+  });
+  const total = typeof r.total === "number" ? r.total : null;
+  const disc: Record<string, unknown> = {};
+  for (const k of ["ignoredFilters", "excludedTerms", "intentFilters", "aliases", "didYouMean", "searchRoute", "coverage", "salaryStatedOnly"]) {
+    if (r[k] !== undefined && r[k] !== null) disc[k] = r[k];
+  }
+  return json({
+    apiVersion: API_VERSION,
+    engine: "ranked",
+    data: jobs.map(toV1),
+    page: {
+      limit,
+      offset,
+      returned: jobs.length,
+      nextCursor: null,
+      nextOffset: r.hasMore === true && typeof r.nextOffset === "number" && (r.nextOffset as number) <= MAX_OFFSET ? r.nextOffset : null,
+    },
+    total: { value: r.countUnavailable === true ? null : total, basis: r.countUnavailable === true ? "unavailable" : (r.countCapped === true ? "capped" : "ranked") },
+    coverage: {
+      freshnessWindowDays: FRESH_WINDOW_DAYS,
+      note: "Only postings still live in the employer's own feed within the last 30 days.",
+    },
+    // The board's own honesty, verbatim — filters it could not honour, words it
+    // read as filters, spelling suggestions, the route it took.
+    ...(Object.keys(disc).length ? { disclosures: disc } : {}),
+  }, 200, headers);
+}
+
+async function listJobs(client: SupabaseClient, url: URL, headers: Record<string, string>, tier: string | null = null) {
   const bad = rejectUnknownParams(url, JOBS_PARAMS, headers);
   if (bad) return bad;
   const p = url.searchParams;
+
+  // OPT-IN RANKED ENGINE, paid only. The default engine below is untouched.
+  const engine = (p.get("engine") ?? "").trim().toLowerCase();
+  if (engine && engine !== "simple" && engine !== "ranked") {
+    return fail(400, "invalid_value", `engine must be "simple" (default) or "ranked", got "${engine}".`, headers);
+  }
+  if (engine === "ranked") {
+    const paid = tier != null && tier !== "free" && tier !== "trial";
+    if (!paid) {
+      return fail(402, "upgrade_required", "engine=ranked is a paid feature — the site's full relevance/rescue engine. The default engine stays available on your key. See https://resumebooster.work/data-api.", headers);
+    }
+    return await listJobsRanked(url, headers);
+  }
   const limit = Math.min(Math.max(Number(p.get("limit")) || DEFAULT_LIMIT, 1), MAX_LIMIT);
   const offset = Math.max(Number(p.get("offset")) || 0, 0);
   const cursorRaw = (p.get("cursor") ?? "").trim();
