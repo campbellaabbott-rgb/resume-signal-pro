@@ -137,8 +137,13 @@ describe("a public API is a promise to someone else's code", () => {
 
   it("counts and cached figures say what they are", () => {
     // A number whose basis is not stated gets read as exact — the mistake this
-    // repo has made with stat provenance more than once.
-    expect(CODE).toMatch(/basis: "estimated"/);
+    // repo has made with stat provenance more than once. The basis is DYNAMIC
+    // now ("estimated" | "planned" | "unavailable"): PostgREST's estimated
+    // count escalates to an exact one on narrow plans and times out over a text
+    // predicate, so the planner-only figure is the fallback and the response
+    // names whichever answered. Still stated, never assumed.
+    expect(CODE).toMatch(/basis: countBasis/);
+    expect(CODE).toMatch(/countBasis: "estimated" \| "planned" \| "unavailable"/);
     expect(CODE).toMatch(/asOf/);
     expect(CODE).toMatch(/statedPayShare/);
   });

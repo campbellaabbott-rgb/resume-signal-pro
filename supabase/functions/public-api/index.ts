@@ -447,7 +447,7 @@ async function listJobs(client: SupabaseClient, url: URL, headers: Record<string
   // `.or` clause below: with it applied, count "estimated" measures only the
   // rows still AHEAD of the cursor, so total.value shrank on every page a caller
   // walked. Built here once and shared by both reads for filter parity.
-  const baseQuery = (opts: { count?: "estimated"; head?: boolean } = {}) => {
+  const baseQuery = (opts: { count?: "estimated" | "planned"; head?: boolean } = {}) => {
     let qb = client
       .from("job_board_postings")
       .select(`${JOB_FIELDS},effective_posted`, opts)
@@ -502,7 +502,7 @@ async function listJobs(client: SupabaseClient, url: URL, headers: Record<string
 
   // The count is computed ONCE from the filtered-but-not-keyset query, so
   // total.value is stable for a given query across every cursor page. head:true
-  // means the count query returns no rows — just the planner's estimate.
+  // means the count query returns no rows — just the count.
   const [rowRes, countRes] = await Promise.all([
     rowQuery
       .order("effective_posted", { ascending: false, nullsFirst: false })
@@ -511,11 +511,39 @@ async function listJobs(client: SupabaseClient, url: URL, headers: Record<string
     baseQuery({ count: "estimated", head: true }),
   ]);
   const { data: rawData, error } = rowRes;
-  if (countRes.error) {
-    // A count failure must not sink an otherwise-good page; report a null total.
-    console.error("[PUBLIC-API] /v1/jobs count failed:", countRes.error.message?.slice(0, 160));
+
+  // ESTIMATED CAN ESCALATE TO EXACT, AND EXACT OVER A TEXT PREDICATE TIMES OUT.
+  //
+  // PostgREST's `estimated` returns the planner figure only while that figure
+  // is ABOVE its threshold; below it, it runs a real count. A filter-only query
+  // plans in the hundreds of thousands and answers instantly, but a websearch
+  // tsquery plans small, so the fallback exact count walked the FTS predicate
+  // over ~575k rows and hit the statement timeout. Measured live the hour this
+  // shipped: total.value was a number for every filter-only query and NULL for
+  // EVERY text query — an API whose headline count vanished the moment anyone
+  // searched.
+  //
+  // `planned` is the planner estimate and nothing else: it cannot escalate, so
+  // it cannot time out. It is less precise on narrow result sets, which is why
+  // it is the FALLBACK rather than the default — and the basis says which one
+  // answered, because a number whose provenance is unstated is the kind of
+  // figure this file exists to refuse.
+  let count = countRes.count ?? null;
+  let countBasis: "estimated" | "planned" | "unavailable" = "estimated";
+  if (countRes.error || count === null) {
+    if (countRes.error) {
+      console.warn("[PUBLIC-API] /v1/jobs estimated count failed, falling back to planned:", countRes.error.message?.slice(0, 160));
+    }
+    const planned = await baseQuery({ count: "planned", head: true });
+    if (!planned.error && typeof planned.count === "number") {
+      count = planned.count;
+      countBasis = "planned";
+    } else {
+      count = null;
+      countBasis = "unavailable";
+      console.error("[PUBLIC-API] /v1/jobs planned count also failed:", planned.error?.message?.slice(0, 160));
+    }
   }
-  const count = countRes.count ?? null;
   // The select string is built at runtime, so supabase-js cannot infer a row
   // type from it. The shape is JOB_FIELDS plus the ordering column, which this
   // function owns end to end.
@@ -557,7 +585,7 @@ async function listJobs(client: SupabaseClient, url: URL, headers: Record<string
     })(),
     // "estimated" is named as estimated. An exact count over this table costs
     // seconds and the board already learned not to pay it per request.
-    total: { value: count ?? null, basis: "estimated" },
+    total: { value: count, basis: countBasis },
     coverage: {
       freshnessWindowDays: FRESH_WINDOW_DAYS,
       note: "Only postings still live in the employer's own feed within the last 30 days. Withdrawn postings are excluded, never re-dated.",
@@ -593,7 +621,7 @@ async function listJobs(client: SupabaseClient, url: URL, headers: Record<string
           fences: ["missing_since IS NULL", `effective_posted >= now-${FRESH_WINDOW_DAYS}d`],
           order: "effective_posted DESC, id ASC",
           paging: cursor ? "keyset (cursor)" : "offset",
-          countBasis: "estimated (planner, keyset-independent so it is stable across pages)",
+          countBasis: `${countBasis} (keyset-independent, so it is stable across pages)`,
           note: "This is /v1's own simpler engine — title/company text match, no relevance ranking, no rescue tiers. The site's ranked search differs.",
         },
       }

@@ -54,3 +54,25 @@ describe("the ranked engine is opt-in and paid", () => {
     expect(API).toMatch(/basis: r\.countUnavailable === true \? "unavailable"/);
   });
 });
+
+describe("the headline count survives a text query", () => {
+  it("falls back to planned when estimated fails, and never publishes a bare null", () => {
+    // MEASURED LIVE the hour engine=ranked shipped: total.value was a number
+    // for every filter-only query and NULL for EVERY text query. PostgREST's
+    // `estimated` returns the planner figure only while it is ABOVE a
+    // threshold; a websearch tsquery plans small, so it escalated to a real
+    // count over ~575k rows and hit the statement timeout. `planned` cannot
+    // escalate, so it cannot time out — it is the fallback, and the basis says
+    // which one answered.
+    expect(API).toMatch(/count: "planned", head: true/);
+    expect(API).toMatch(/countBasis: "estimated" \| "planned" \| "unavailable"/);
+    expect(API, "the envelope must report the basis that actually answered")
+      .toMatch(/total: \{ value: count, basis: countBasis \}/);
+    expect(API, "a hardcoded basis is a claim the count cannot back")
+      .not.toMatch(/basis: "estimated" \}/);
+  });
+
+  it("baseQuery accepts both count modes, so the fallback can use it", () => {
+    expect(API).toMatch(/count\?: "estimated" \| "planned"/);
+  });
+});
