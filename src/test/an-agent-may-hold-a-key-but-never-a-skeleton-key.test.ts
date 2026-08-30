@@ -175,8 +175,8 @@ describe("MCP protocol surface", () => {
       .toMatch(/isError: true/);
   });
 
-  it("declares exactly the six tools the docs promise", () => {
-    for (const t of ["search_jobs", "get_job", "check_apply_support", "request_application", "application_status", "board_stats"]) {
+  it("declares the tools the docs promise", () => {
+    for (const t of ["search_jobs", "debug_search", "get_job", "check_apply_support", "request_application", "application_status", "board_stats"]) {
       expect(MCP.includes(`name: "${t}"`), `tool ${t} missing`).toBe(true);
     }
   });
