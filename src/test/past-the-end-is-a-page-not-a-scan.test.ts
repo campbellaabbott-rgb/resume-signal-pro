@@ -26,8 +26,12 @@ describe("an offset past the end is an empty page, never a table scan", () => {
     expect(query, "buildQuery not found").toBeGreaterThan(guard);
     // The guard must short-circuit with a response, not just clamp the number —
     // a clamped offset would still run a full page query and misreport the page.
-    const block = FN.slice(guard, guard + 600);
-    expect(block).toMatch(/return json\(\{\s*jobs: \[\], total: safeMetaTotal, hasMore: false/);
+    // 1200, not 600: the exit gained its honesty comment + disclosure spreads
+    // (2026-08-30) and the jobs line moved past the old window. The property —
+    // a short-circuit RESPONSE before any query — is what matters, not where
+    // in the literal it sits.
+    const block = FN.slice(guard, guard + 1200);
+    expect(block).toMatch(/jobs: \[\], total: unfiltered \? safeMetaTotal : null, hasMore: false/);
   });
 
   it("bounds by the corpus total AND a hard ceiling, and exempts countOnly", () => {

@@ -85,6 +85,8 @@ describe("engineer not manager returned managers", () => {
     // relaxation button quoting an unexcluded number promises rows the click
     // then hides. Paired one-to-one with exclusionCountsCaveat, asserted in
     // a-ring-that-breaks-a-seam-serves-a-row-twice.test.ts.
-    expect((FN.match(/\.\.\.exclusionDisclosure\(excludedTerms\),/g) ?? []).length).toBe(9);
+    // TEN since 2026-08-30: the past-the-end exit joined (it was answering a
+    // filtered request with the bare board's total and no disclosures at all).
+    expect((FN.match(/\.\.\.exclusionDisclosure\(excludedTerms\),/g) ?? []).length).toBe(10);
   });
 });

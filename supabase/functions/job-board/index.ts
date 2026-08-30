@@ -102,7 +102,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-30.5"; // .5: shedding fails CLOSED (an unreadable slice-stats read sheds to L2 instead of running full size on the most distressed database) — pairs with the ingest-pause migration
+const BUILD_VERSION = "2026-08-30.6"; // .6: every decoration bounded (fuzzy augment gains gate+deadline, fuzzy rescue joins the ladder budget, browse top-up bounded+marked); past-the-end exit honest for filtered requests; sort=newest stops issuing cursors its reader refuses
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -9287,8 +9287,18 @@ async function serveList(
   const OFFSET_CEILING = 1_000_000;
   if (!countOnly && (offset >= OFFSET_CEILING || (safeMetaTotal !== null && offset >= safeMetaTotal))) {
     return json({
-      jobs: [], total: safeMetaTotal, hasMore: false, nextOffset: offset,
-      ...(safeMetaTotal === null ? { countUnavailable: true } : {}),
+      // The board-wide count answers the BARE board's question only. This exit
+      // fired for ANY offset past safeMetaTotal, filtered or not — so
+      // {"q":"welder","country":"USA","offset":900000} answered an empty page
+      // under total: 601,760, a headline about a different query. Filtered
+      // requests get null + countUnavailable, and the disclosure fields ride
+      // along: the fence holds on every exit or it holds on none.
+      jobs: [], total: unfiltered ? safeMetaTotal : null, hasMore: false, nextOffset: offset,
+      ...(!unfiltered || safeMetaTotal === null ? { countUnavailable: true } : {}),
+      ...(ignoredFilters.length ? { ignoredFilters } : {}),
+      ...(maxAgeClamped ? { maxAgeClampedTo: 30 } : {}),
+      ...exclusionDisclosure(excludedTerms),
+      ...exclusionCountsCaveat(excludedTerms),
       // The empty page past the end is still a LIST response, and the client
       // renders the same chrome around it. Shipping a short shape here is the
       // same defect as the SALARY exit, just on a page with no rows to hide it.
@@ -11384,10 +11394,19 @@ async function serveList(
           // rows for q=nurrse, where the complete trigram set is about 28% GB.
           if (qText.length >= 3) try {
             const t_fuzzy_title_search_2 = Date.now();
-            const { data: fuzzy, error: fErr } = await client.rpc("fuzzy_title_search", {
-              p_q: qText, p_fresh_cutoff: freshCutoffIso, p_limit: limit,
-              ...rescueFilterParams(),
-            });
+            // Bounded like every sibling on this ladder (simple_config, embed,
+            // semantic, head_ring all clamp to budgetLeft). This tier sits
+            // AFTER the exact-word tier's measured 7s, and unbounded deadlines
+            // SUM — the exact failure REQUEST_BUDGET_MS was introduced to cap.
+            // A miss resolves {data:null}; Array.isArray already treats that as
+            // "no rescue rows" and the honest empty page below stands.
+            const { data: fuzzy, error: fErr } = await withDeadline(
+              client.rpc("fuzzy_title_search", {
+                p_q: qText, p_fresh_cutoff: freshCutoffIso, p_limit: limit,
+                ...rescueFilterParams(),
+              }),
+              Math.min(4_000, budgetLeft()),
+            ) as { data: unknown[] | null; error?: unknown };
             markFrom("fuzzy_title_search", t_fuzzy_title_search_2);
             if (!fErr && Array.isArray(fuzzy) && fuzzy.length > 0) {
               // Same-company+title clones flood trigram results exactly like
@@ -11834,13 +11853,20 @@ async function serveList(
         // trigram matches that carry no date ordering at all, with nothing in
         // the response saying the chosen sort no longer held. A thin
         // newest-sorted page stays thin; the user asked for a date walk.
-        if (pageTotal !== null && pageTotal > 0 && pageTotal < FUZZY_AUGMENT_BELOW && offset === 0 && !countOnly && !newestFirst && qText.length >= 3) {
+        // budgetLeft() > 2_000: this augment decorates a page that ALREADY has
+        // 1-19 real results — the only ranked-path decoration that had neither
+        // a deadline nor a budget gate while both its siblings (location_split,
+        // semantic extras) have both. A bonus must not outspend the page.
+        if (pageTotal !== null && pageTotal > 0 && pageTotal < FUZZY_AUGMENT_BELOW && offset === 0 && !countOnly && !newestFirst && qText.length >= 3 && budgetLeft() > 2_000) {
           try {
             const t_fuzzy_title_search_0 = Date.now();
-            const { data: fz, error: fzErr } = await client.rpc("fuzzy_title_search", {
-              p_q: qText, p_fresh_cutoff: freshCutoffIso, p_limit: limit,
-              ...rescueFilterParams(),
-            });
+            const { data: fz, error: fzErr } = await withDeadline(
+              client.rpc("fuzzy_title_search", {
+                p_q: qText, p_fresh_cutoff: freshCutoffIso, p_limit: limit,
+                ...rescueFilterParams(),
+              }),
+              Math.min(2_000, budgetLeft()),
+            ) as { data: unknown[] | null; error?: unknown };
             markFrom("fuzzy_title_search", t_fuzzy_title_search_0);
             // Captured for the earned did-you-mean below: the derivation reads
             // THESE rows instead of paying a second identical RPC (a review
@@ -12593,13 +12619,24 @@ async function serveList(
       try {
         // Keyset-anchored, exactly like page 2: start strictly after the last
         // raw row this page read, so the top-up cannot repeat or skip.
-        const topUp = await ordered(
-          buildQuery("effective_posted", false).or(
-            `effective_posted.lt."${lastRaw.effective_posted}",and(effective_posted.eq."${lastRaw.effective_posted}",id.gt."${lastRaw.id}")`,
-          ),
-          "effective_posted",
-          "salary_rank_usd",
-        ).limit(fetchLimit);
+        // Bounded and MARKED: this is a whole second page query, and it was the
+        // only awaited query in serveList outside the pageWith wrapper — its
+        // cost landed in the unaccounted bucket on the exact path the
+        // 2026-08-30 incident was measured on. A miss yields {data:null}, the
+        // ?? [] below serves the short page, and the catch's own words apply:
+        // "the page we already have is still correct — serve it".
+        const t_topup = Date.now();
+        const topUp = await withDeadline(
+          ordered(
+            buildQuery("effective_posted", false).or(
+              `effective_posted.lt."${lastRaw.effective_posted}",and(effective_posted.eq."${lastRaw.effective_posted}",id.gt."${lastRaw.id}")`,
+            ),
+            "effective_posted",
+            "salary_rank_usd",
+          ).limit(fetchLimit),
+          Math.min(1_500, budgetLeft()),
+        ) as { data: unknown[] | null };
+        markFrom("page_topup", t_topup);
         const extra = (topUp.data ?? []).map(rowToJob) as Array<Record<string, unknown>>;
         if (extra.length) {
           rawSequence = [...mappedRows, ...extra];
@@ -12684,7 +12721,12 @@ async function serveList(
     ...(rankedFellBack ? { rankedFellBack } : {}),
     ...(semanticDegraded ? { semanticDegraded } : {}),
     nextCursor: (() => {
-      if (twoSubset || sortSalary) return null;
+      // The SAME condition the cursor READER uses. A cursor written in
+      // effective_posted cannot describe the posted_at ordering sort=newest
+      // pages in, so issuing one under that sort promises a seek the very next
+      // request refuses — silently falling back to offset paging from a
+      // coordinate the caller thinks is a cursor.
+      if (twoSubset || sortSalary || newestFirst) return null;
       const r = rawKeys[Math.max(0, grouped.rawConsumed - 1)];
       return r?.effective_posted && r?.id ? { ep: r.effective_posted, id: r.id } : null;
     })(),

@@ -68,7 +68,7 @@ describe("board pages are anchored to rows, not row counts", () => {
     expect(emit).not.toMatch(/grouped\.jobs\[/);
     expect(emit).not.toMatch(/rawSequence/);
     // Paths that still page by offset must say so with null, not a wrong cursor.
-    expect(emit).toMatch(/if \(twoSubset \|\| sortSalary\) return null;/);
+    expect(emit).toMatch(/if \(twoSubset \|\| sortSalary \|\| newestFirst\) return null;/);
   });
 
   it("selects the ordering column the cursor is built from", () => {

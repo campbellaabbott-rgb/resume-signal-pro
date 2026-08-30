@@ -97,3 +97,42 @@ describe("a count we do not have is unknown, never zero", () => {
     expect(BOARD).toMatch(/let countUnavailable = countTimedOut \|\| \(wantCount && count === null\);/);
   });
 });
+
+describe("every decoration on the serving path is bounded", () => {
+  it("the thin-page fuzzy augment has both a budget gate and a deadline, like its siblings", () => {
+    expect(BOARD).toMatch(/qText\.length >= 3 && budgetLeft\(\) > 2_000\) \{/);
+    const augment = BOARD.slice(BOARD.indexOf("const t_fuzzy_title_search_0"), BOARD.indexOf("const t_fuzzy_title_search_0") + 700);
+    expect(augment, "the augment RPC must race the budget").toMatch(/Math\.min\(2_000, budgetLeft\(\)\)/);
+  });
+
+  it("the empty-page fuzzy rescue joins the ladder's budget", () => {
+    const rescue = BOARD.slice(BOARD.indexOf("const t_fuzzy_title_search_2"), BOARD.indexOf("const t_fuzzy_title_search_2") + 900);
+    expect(rescue, "unbounded deadlines SUM — the failure REQUEST_BUDGET_MS exists to cap")
+      .toMatch(/Math\.min\(4_000, budgetLeft\(\)\)/);
+  });
+
+  it("the browse top-up is bounded AND marked — it was serveList's only unmarked query", () => {
+    expect(BOARD).toMatch(/markFrom\("page_topup", t_topup\)/);
+    const topup = BOARD.slice(BOARD.indexOf("const t_topup"), BOARD.indexOf("const t_topup") + 900);
+    expect(topup).toMatch(/Math\.min\(1_500, budgetLeft\(\)\)/);
+  });
+
+  it("no bare await of fuzzy_title_search remains", () => {
+    const stripped = BOARD.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+    expect(stripped, "every fuzzy call must go through withDeadline now")
+      .not.toMatch(/= await client\.rpc\("fuzzy_title_search"/);
+  });
+});
+
+describe("edge exits answer the question they were asked", () => {
+  it("the past-the-end exit is honest for FILTERED requests", () => {
+    // {"q":"welder","country":"USA","offset":900000} used to answer an empty
+    // page under total: 601,760 — the bare board's number over a ~417-row set.
+    expect(BOARD).toMatch(/total: unfiltered \? safeMetaTotal : null, hasMore: false, nextOffset: offset,/);
+    expect(BOARD).toMatch(/\.\.\.\(!unfiltered \|\| safeMetaTotal === null \? \{ countUnavailable: true \} : \{\}\),/);
+  });
+
+  it("sort=newest never issues a cursor its own reader refuses", () => {
+    expect(BOARD).toMatch(/if \(twoSubset \|\| sortSalary \|\| newestFirst\) return null;/);
+  });
+});

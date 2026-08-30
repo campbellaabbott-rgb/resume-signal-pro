@@ -389,7 +389,12 @@ const PINNED = {
   // error/timeout, so at peak distress the shedder switched itself off —
   // measured as browse latency rising 27s->42s->66s with it deployed. Ships
   // beside the emergency ingest-pause migration (resume held as .sql.hold).
-  buildVersion: "2026-08-30.5",
+  // 2026-08-30.6: every decoration on the serving path is bounded (fuzzy
+  // augment gate+deadline, fuzzy rescue on the ladder budget, browse top-up
+  // bounded+marked); the past-the-end exit stops answering filtered requests
+  // with the bare board's total; sort=newest stops issuing cursors its own
+  // reader refuses.
+  buildVersion: "2026-08-30.6",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {
