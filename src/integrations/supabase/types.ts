@@ -786,6 +786,7 @@ export type Database = {
           rate_per_min: number
           revoked_at: string | null
           tier: string
+          user_id: string | null
         }
         Insert: {
           created_at?: string
@@ -800,6 +801,7 @@ export type Database = {
           rate_per_min?: number
           revoked_at?: string | null
           tier?: string
+          user_id?: string | null
         }
         Update: {
           created_at?: string
@@ -814,6 +816,7 @@ export type Database = {
           rate_per_min?: number
           revoked_at?: string | null
           tier?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -3213,6 +3216,20 @@ export type Database = {
           key_tier: string
           quota_limit: number
           rate_limit: number
+        }[]
+      }
+      api_key_issue_agent: {
+        Args: {
+          p_email: string
+          p_key_hash: string
+          p_key_prefix: string
+          p_user_id: string
+        }
+        Returns: {
+          deny_reason: string
+          issued_key_id: string
+          issued_ok: boolean
+          rotated_prior: boolean
         }[]
       }
       apply_posting_corrections: { Args: { p_patches: Json }; Returns: number }
