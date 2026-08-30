@@ -47,6 +47,27 @@ describe("the rotation reads its own pulse and stands down", () => {
       .not.toMatch(/baseSliceLen: COLD_SLICE/);
   });
 
+  it("sheds the ACCELERATOR lanes too, or shedding inverts the slice", () => {
+    // Cutting only baseSlice left 24 rotation boards beside a 25-board
+    // bootstrap and a 5-board retry lane — the lanes consuming no cursor became
+    // the majority of the hop while the freshness-bearing part took the cut.
+    expect(BOARD).toMatch(/const effBootstrapPerSlice = shedLevel === 2 \? 0 : shedLevel === 1 \? 10 : BOOTSTRAP_PER_SLICE;/);
+    expect(BOARD).toMatch(/const effRetryPerSlice = shedLevel === 2 \? 0 : shedLevel === 1 \? 2 : RETRY_PER_SLICE;/);
+  });
+
+  it("the bootstrap DRAIN moves with the SELECT, or boards are discarded unfetched", () => {
+    // The queue drain and the fetch selection must use the same number. If the
+    // drain kept the constant while the selection shed, every shed hop would
+    // discard boards from the queue that were never fetched — the "drained
+    // without being filled" failure that block already documents.
+    expect(BOARD).toMatch(/\.slice\(0, effBootstrapPerSlice\)/);
+    expect(BOARD).toMatch(/queue: queue\.slice\(effBootstrapPerSlice\),/);
+    expect(BOARD).toMatch(/drained: Math\.min\(effBootstrapPerSlice, queue\.length\),/);
+    const stripped = BOARD.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+    expect(stripped, "no drain site may still use the raw constant")
+      .not.toMatch(/queue\.slice\(BOOTSTRAP_PER_SLICE\)/);
+  });
+
   it("says out loud when it is running small", () => {
     expect(BOARD).toMatch(/load shedding L\$\{shedLevel\}/);
     expect(BOARD, "a deliberately small rotation must not read as a mysteriously slow one")
@@ -69,5 +90,27 @@ describe("the hot table is no longer on default autovacuum", () => {
 
   it("verifies itself rather than silently no-opping", () => {
     expect(VAC).toMatch(/RAISE EXCEPTION 'autovacuum tuning did not apply/);
+  });
+});
+
+describe("a decoration must never hold the page", () => {
+  it("the recheckedAt stamp is bounded by a deadline", () => {
+    // MEASURED 2026-08-30: phaseMs.attachRecheckedAt = 15,104ms of a 30,728ms
+    // response — a PK probe for ONE token, while the rows took 2s. The rows are
+    // the product; a late caption is simply an absent caption.
+    expect(BOARD).toMatch(/await withDeadline\(\s*\n\s*client\.from\("job_board_verifications"\)/);
+    expect(BOARD).toMatch(/1_500,\s*\n\s*\) as \{ data: unknown\[\] \| null; error\?: unknown \}/);
+  });
+
+  it("the churn tables the first migration missed are tuned", () => {
+    const VAC2 = readFileSync(resolve(__dirname, "../../supabase/migrations/20260830210000_the_small_hot_tables_were_missed.sql"), "utf8");
+    expect(VAC2).toMatch(/'job_board_verifications'/);
+    expect(VAC2, "a small table needs a small THRESHOLD, not a 20% scale factor")
+      .toMatch(/autovacuum_vacuum_threshold = 200/);
+    expect(VAC2, "verified_at is unindexed, so HOT updates are available with page room")
+      .toMatch(/fillfactor = 70/);
+    expect(VAC2, "must skip tables that do not exist rather than aborting the migration")
+      .toMatch(/IF EXISTS \(SELECT 1 FROM pg_class/);
+    expect(VAC2).not.toMatch(/cron\.schedule/);
   });
 });

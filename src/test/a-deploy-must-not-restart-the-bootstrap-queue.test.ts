@@ -58,7 +58,13 @@ describe("a deploy must not restart the bootstrap queue", () => {
   });
 
   it("the drain is still optimistic, so a died slice cannot wedge the lane", () => {
-    expect(CODE).toMatch(/queue: queue\.slice\(BOOTSTRAP_PER_SLICE\)/);
+    // Still unconditional — what changed is the AMOUNT. Under load shedding the
+    // lane selects effBootstrapPerSlice boards, and the drain must move by the
+    // same number or it discards boards it never fetched. The optimism this
+    // test guards (drain regardless of slice outcome) is unchanged.
+    expect(CODE).toMatch(/queue: queue\.slice\(effBootstrapPerSlice\)/);
+    expect(CODE, "the drain must equal the selection, shed or not")
+      .toMatch(/\.slice\(0, effBootstrapPerSlice\)/);
   });
 
   it("the lane stays an accelerator — a failure never breaks the rotation", () => {

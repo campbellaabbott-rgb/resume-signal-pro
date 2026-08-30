@@ -102,7 +102,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-30.1"; // .1: adaptive load shedding — rotation reads its own slice EMA and takes fewer boards/workers and no deep lane while the DB is distressed, restoring itself as it recovers
+const BUILD_VERSION = "2026-08-30.2"; // .2: attachRecheckedAt bounded (15.1s of a 30.7s response for a one-token PK probe) + the accelerator lanes shed with the slice
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -1465,8 +1465,17 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
   // The deep lane is the most expensive work a hop does and the least urgent —
   // it re-pages boards we already carry. It is the first thing to go.
   const effDeepPerSlice = shedLevel === 2 ? 0 : shedLevel === 1 ? 4 : DEEP_PER_SLICE;
+  // THE ACCELERATOR LANES SHED TOO, or shedding inverts the slice. The first
+  // version cut only the cursor-bearing baseSlice: at L2 that left 24 rotation
+  // boards beside a 25-board bootstrap lane and a 5-board retry lane, so the
+  // lanes that consume NO cursor became more than half the hop while the part
+  // carrying the freshness claim took the entire cut. Retries are also the most
+  // expensive fetch there is when they fail again — a dead feed burns the full
+  // FETCH_TIMEOUT — which is why they go first and completely.
+  const effBootstrapPerSlice = shedLevel === 2 ? 0 : shedLevel === 1 ? 10 : BOOTSTRAP_PER_SLICE;
+  const effRetryPerSlice = shedLevel === 2 ? 0 : shedLevel === 1 ? 2 : RETRY_PER_SLICE;
   if (shedLevel > 0) {
-    console.warn(`[JOB-BOARD] load shedding L${shedLevel}: ${inHotPhase ? "hot" : "cold"} EMA ${Math.round(shedEma / 1000)}s -> slice ${effColdSlice}, concurrency ${effConcurrency}, deep ${effDeepPerSlice}`);
+    console.warn(`[JOB-BOARD] load shedding L${shedLevel}: ${inHotPhase ? "hot" : "cold"} EMA ${Math.round(shedEma / 1000)}s -> slice ${effColdSlice}, concurrency ${effConcurrency}, deep ${effDeepPerSlice}, bootstrap ${effBootstrapPerSlice}, retry ${effRetryPerSlice}`);
   }
 
   const baseSlice = inHotPhase
@@ -1584,7 +1593,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
       if (queue.length > 0) {
         const sliceTokens = new Set([...baseSlice, ...demandBoards].map((s) => s.token));
         bootstrapBoards = queue
-          .slice(0, BOOTSTRAP_PER_SLICE)
+          .slice(0, effBootstrapPerSlice)
           .filter((t) => !sliceTokens.has(t))
           .map((t) => JOB_SOURCES.find((s) => s.token === t))
           .filter((s): s is JobSource => !!s);
@@ -1609,11 +1618,16 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
           {
             k: "bootstrap",
             v: {
-              queue: queue.slice(BOOTSTRAP_PER_SLICE),
+              // effBootstrapPerSlice, NOT the constant: the drain must equal
+              // what was actually SELECTED above or the lane discards boards it
+              // never fetched — the "drained without being filled" failure this
+              // block's own comment documents, which shedding would otherwise
+              // reintroduce every hop.
+              queue: queue.slice(effBootstrapPerSlice),
               version: bootstrapAppendDone ? BUILD_VERSION : (bs.version ?? ""),
               lastSlice: {
                 at: new Date().toISOString(),
-                drained: Math.min(BOOTSTRAP_PER_SLICE, queue.length),
+                drained: Math.min(effBootstrapPerSlice, queue.length),
                 selected: bootstrapBoards.length,
               },
             },
@@ -1725,7 +1739,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
         dormant: boardFailures.dormant,
         exclude: taken,
         now: Date.now(),
-        cap: RETRY_PER_SLICE,
+        cap: effRetryPerSlice,
       });
       retryBoards = dueTokens
         .map((t) => JOB_SOURCES.find((s) => s.token === t))
@@ -8634,10 +8648,26 @@ async function attachRecheckedAtInner(
   // legitimate state this function is designed to degrade into.
   const tokens = [...new Set(jobs.map((j) => String(j.token ?? "")).filter(Boolean))].slice(0, 80);
   if (tokens.length === 0) return jobs;
-  const { data, error } = await client
-    .from("job_board_verifications")
-    .select("company_token,verified_at")
-    .in("company_token", tokens);
+  // BOUNDED, BECAUSE A DECORATION MUST NEVER HOLD THE PAGE.
+  //
+  // This is a primary-key probe on a ~24k-row table — microseconds when that
+  // table is healthy. MEASURED 2026-08-30 when it was not:
+  // phaseMs.attachRecheckedAt = 15,104ms of a 30,728ms response, for a lookup
+  // of ONE token, on the cheapest call the board serves, while the rows
+  // themselves came back in 2s. job_board_verifications is UPDATEd for every
+  // board on every rotation pass, so it earns dead tuples faster than anything
+  // else here (20260830210000 tunes its autovacuum) — but the deeper fault is
+  // that a "re-checked N minutes ago" caption could hold a page hostage at all.
+  //
+  // Same rule the public API already follows for its count: the rows are the
+  // product, the stamp is a nice-to-have, and a nice-to-have that is late is
+  // simply absent. withDeadline resolves {data:null} instead of throwing, and
+  // the guard below already returns the jobs untouched on a non-array, so a
+  // miss degrades to exactly the page this function exists to decorate.
+  const { data, error } = await withDeadline(
+    client.from("job_board_verifications").select("company_token,verified_at").in("company_token", tokens),
+    1_500,
+  ) as { data: unknown[] | null; error?: unknown };
   // On failure leave the field ABSENT. Falling back to last_seen would restore
   // the exact bug this removes.
   if (error || !Array.isArray(data)) return jobs;

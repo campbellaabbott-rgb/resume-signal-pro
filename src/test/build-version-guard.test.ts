@@ -371,7 +371,10 @@ const PINNED = {
   // per hop, runs fewer workers and stops paying for the deep lane — lifting
   // the levels itself as the EMA recovers. Shipped beside the autovacuum
   // tuning migration during a live 30-second-browse incident.
-  buildVersion: "2026-08-30.1",
+  // 2026-08-30.2: attachRecheckedAt is bounded (it was 15,104ms of a 30,728ms
+  // response for a single-token primary-key probe), and the bootstrap/retry
+  // lanes shed alongside the slice so shedding cannot invert the hop.
+  buildVersion: "2026-08-30.2",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {

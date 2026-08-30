@@ -40,14 +40,18 @@
 -- THE FIX IS A STORAGE PARAMETER, NOT A CRON JOB. 20260827181000's post-mortem
 -- is explicit that scheduled VACUUMs on this table were the previous cure that
 -- became the disease: they take a ShareUpdateExclusiveLock and compete with
--- both the rotation and every serving query, and one of them could not even
+-- for I/O with both the rotation and every serving query, and one of them could not even
 -- unschedule itself (VACUUM cannot run inside pg_cron's transaction). This
 -- migration schedules NOTHING. It changes when autovacuum — which is already
 -- running, already throttled, and already able to yield to queries — decides
 -- this table is dirty enough to visit.
 --
 -- ALTER TABLE ... SET (...) is a catalog-only change. It takes a brief
--- ACCESS EXCLUSIVE lock, applies in milliseconds, and rewrites no data.
+-- SHARE UPDATE EXCLUSIVE lock — it does NOT block reads or writes, only other
+-- vacuum/DDL on this table — applies in milliseconds, and rewrites no data.
+-- Stated precisely because the first draft of this line said ACCESS EXCLUSIVE,
+-- which is the lock that WOULD stall every query, and that is exactly the
+-- sentence that decides whether a fix ships during an incident or after it.
 ALTER TABLE public.job_board_postings SET (
   -- 2% instead of 20%: autovacuum wakes at ~14k dead rows rather than ~140k, so
   -- it runs often and briefly instead of rarely and catastrophically.
