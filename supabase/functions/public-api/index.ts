@@ -93,6 +93,31 @@ const db = (): SupabaseClient =>
 /** Freshness fence, applied to every listing query. */
 const freshCutoff = () => new Date(Date.now() - FRESH_WINDOW_DAYS * 86_400_000).toISOString();
 
+/**
+ * A COUNT IS A NICE-TO-HAVE; THE ROWS ARE THE PRODUCT.
+ *
+ * Measured on production: q=engineer and q=sales made a caller wait 17-22
+ * SECONDS and then answered total:null — two statement timeouts served back to
+ * back (the estimated count escalating to an exact one over the FTS predicate,
+ * then the planned fallback), while the rows themselves were ready in a few.
+ * Nobody is helped by a page that arrives four times slower to say it does not
+ * know a number.
+ *
+ * So every count attempt races a deadline. Like the board's own withDeadline
+ * this does NOT cancel the statement — the database finishes it unobserved —
+ * but the caller gets their page on time and an honest basis instead of a long
+ * silence. The value is a count or it is `null`; it is never a guess.
+ */
+const COUNT_DEADLINE_MS = 3_000;
+function raceCount<T>(p: PromiseLike<T>, ms: number): Promise<T | { count: null; error: { message: string } }> {
+  return Promise.race([
+    Promise.resolve(p).then((r) => r, (e) => ({ count: null, error: { message: String(e?.message ?? e) } })),
+    new Promise<{ count: null; error: { message: string } }>((resolve) =>
+      setTimeout(() => resolve({ count: null, error: { message: `count exceeded ${ms}ms` } }), ms)
+    ),
+  ]);
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
   if (req.method !== "GET") return fail(405, "method_not_allowed", "This API is read-only; use GET.");
@@ -508,7 +533,7 @@ async function listJobs(client: SupabaseClient, url: URL, headers: Record<string
       .order("effective_posted", { ascending: false, nullsFirst: false })
       .order("id", { ascending: true })
       .range(cursor ? 0 : offset, (cursor ? 0 : offset) + limit - 1),
-    baseQuery({ count: "estimated", head: true }),
+    raceCount(baseQuery({ count: "estimated", head: true }), COUNT_DEADLINE_MS),
   ]);
   const { data: rawData, error } = rowRes;
 
@@ -534,7 +559,10 @@ async function listJobs(client: SupabaseClient, url: URL, headers: Record<string
     if (countRes.error) {
       console.warn("[PUBLIC-API] /v1/jobs estimated count failed, falling back to planned:", countRes.error.message?.slice(0, 160));
     }
-    const planned = await baseQuery({ count: "planned", head: true });
+    // Shorter still: this is the cheap planner-only figure, so if it cannot
+    // answer quickly it is not going to answer at all, and the caller has
+    // already spent the first deadline.
+    const planned = await raceCount(baseQuery({ count: "planned", head: true }), 1_500);
     if (!planned.error && typeof planned.count === "number") {
       count = planned.count;
       countBasis = "planned";

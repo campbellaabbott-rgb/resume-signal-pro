@@ -76,3 +76,21 @@ describe("the headline count survives a text query", () => {
     expect(API).toMatch(/count\?: "estimated" \| "planned"/);
   });
 });
+
+describe("a slow count never holds the rows hostage", () => {
+  it("races every count attempt against a deadline", () => {
+    // MEASURED: q=engineer and q=sales took 17-22s and then answered
+    // total:null — two statement timeouts back to back while the rows were
+    // ready in a few seconds. The count is a nice-to-have; the rows are the
+    // product.
+    expect(API).toMatch(/function raceCount</);
+    expect(API).toMatch(/raceCount\(baseQuery\(\{ count: "estimated", head: true \}\), COUNT_DEADLINE_MS\)/);
+    expect(API, "the planned fallback must be bounded too — the caller already spent one deadline")
+      .toMatch(/raceCount\(baseQuery\(\{ count: "planned", head: true \}\), 1_500\)/);
+  });
+
+  it("a missed deadline yields an honest basis, never a guessed number", () => {
+    expect(API).toMatch(/count exceeded \$\{ms\}ms/);
+    expect(API).toMatch(/countBasis = "unavailable"/);
+  });
+});
