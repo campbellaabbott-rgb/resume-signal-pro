@@ -6,6 +6,7 @@ import {
   BOARD_VENDORS,
   filterViolations,
   isUnfiltered,
+  WIDENING_FILTERS,
   normalizeFilters,
   rpcBlindFilters,
 } from "../../supabase/functions/job-board/filters.ts";
@@ -428,9 +429,26 @@ describe("isUnfiltered — mechanical, so all six are counted the day they exist
     const empty = norm({}).applied as unknown as Record<string, unknown>;
     const keys = Object.keys(filled) as Array<keyof AppliedFilters>;
     expect(keys.length).toBeGreaterThanOrEqual(19);
-    for (const k of keys) {
+    // WIDENING FLAGS ARE EXEMPT, and the exemption is pinned below so it cannot
+    // quietly grow. They admit rows and bind no predicate ALONE —
+    // includeUnstatedPay only relaxes an ACTIVE pay floor, includeUncategorised
+    // only widens an ACTIVE category — so counting one as a narrowing made an
+    // otherwise-bare request stop reading its maintained total and run a capped
+    // count, publishing "10,000 (capped)" beside a real ~600k (measured
+    // 2026-08-30). The concern this test records — "engineering + unsorted must
+    // read as filtered" — is untouched: `category` is still counted, so that
+    // request is still filtered.
+    for (const k of keys.filter((k) => !WIDENING_FILTERS.has(String(k)))) {
       const one = { ...empty, [k]: (filled as Record<string, unknown>)[k] } as unknown as AppliedFilters;
       expect(isUnfiltered(one), `field "${String(k)}" is not counted as a filter`).toBe(false);
+    }
+    // The hole is exactly two wide, and each is exempt because ALONE it binds
+    // nothing. A third one has to be argued for, which is the point of a
+    // mechanical rule with a NAMED hole rather than a hand-maintained list.
+    expect([...WIDENING_FILTERS].sort()).toEqual(["includeUncategorised", "includeUnstatedPay"]);
+    for (const w of WIDENING_FILTERS) {
+      const only = { ...empty, [w]: true } as unknown as AppliedFilters;
+      expect(isUnfiltered(only), `widening flag "${w}" must not filter the bare board`).toBe(true);
     }
   });
 });

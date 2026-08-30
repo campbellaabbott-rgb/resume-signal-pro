@@ -783,9 +783,37 @@ export function normalizeFilters(
 // filtered page, and a hand-maintained one would go stale again the first time
 // somebody adds a filter and updates three sites out of four. Any non-empty
 // applied value means filtered, so a new field is counted the moment it exists.
+/**
+ * Toggles that only ever ADMIT rows. They are not narrowings, so they must not
+ * make an otherwise-bare request look filtered. The same set serveList's rescue
+ * gate calls NON_NARROWING — exported so the two answers cannot drift.
+ */
+export const WIDENING_FILTERS: ReadonlySet<string> = new Set(["includeUncategorised", "includeUnstatedPay"]);
+
+/**
+ * A WIDENING FLAG IS NOT A FILTER, and counting one as a filter made the bare
+ * board count itself. includeUnstatedPay is the one widening flag that can be
+ * true ALONE (the checkbox only renders under a pay floor, but the state
+ * survives clearing the floor and round-trips through the URL as
+ * inclUnstatedPay=1). With it set and nothing else, buildQuery binds no
+ * predicate at all — the rows are byte-identical to the bare board — but
+ * isUnfiltered returned false, so the commonest request on the site stopped
+ * reading its maintained total and ran a capped count instead, publishing
+ * "10,000 (capped)" beside a totalAllCompanies of 601,760.
+ *
+ * Mechanical over EVERY field is still the rule (a hand-maintained list is what
+ * published 587,793 over a filtered page); the exemption is one named set, not
+ * a per-field opinion.
+ */
 export const isUnfiltered = (a: AppliedFilters): boolean =>
-  !Object.values(a as Record<string, unknown>).some((v) =>
-    Array.isArray(v) ? v.length > 0 : typeof v === "boolean" ? v : v !== null && v !== ""
+  !Object.entries(a as Record<string, unknown>).some(([k, v]) =>
+    WIDENING_FILTERS.has(k)
+      ? false
+      : Array.isArray(v)
+      ? v.length > 0
+      : typeof v === "boolean"
+      ? v
+      : v !== null && v !== ""
   );
 
 export type FilterViolation = { field: string; want: string; got: string };

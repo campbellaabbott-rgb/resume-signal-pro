@@ -57,7 +57,7 @@ import { classifyDormancy, selectRetries, updateBoardFailures, type BoardFailure
 import { advanceProgress, isPassDone, type RefreshProgress } from "./rotation.ts";
 import { CANARIES, rawItemCount, aggregateVendorHealth, type CanaryResult } from "./vendor-canary.ts";
 import { detectExperience, isExperienceBand } from "./experience.ts";
-import { categoryParam, extraFilterParams, filterViolations, isUnfiltered, normalizeFilters, payParams, rpcBlindFilters, rescueVendorsParam, SALARIED_PERIODS, sendableSourcesParam, splitPage, salaryFromQueryText, SALARY_IN_QUERY } from "./filters.ts";
+import { categoryParam, extraFilterParams, filterViolations, isUnfiltered, normalizeFilters, payParams, rpcBlindFilters, rescueVendorsParam, SALARIED_PERIODS, sendableSourcesParam, splitPage, salaryFromQueryText, SALARY_IN_QUERY, WIDENING_FILTERS } from "./filters.ts";
 import { pickRoute, rerankWindow, RETRIEVER_FOR, splitExclusions, titleExcluded } from "./search-routing.ts";
 import { planRankedPage, RANKED_WINDOW, RING_WINDOW } from "./paging.ts";
 import { collapseClusters, GROUP_OVERFETCH, interleaveByCompany, visibleCategories, mergeCompanyFacet } from "./clusters.ts";
@@ -102,7 +102,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-30.2"; // .2: attachRecheckedAt bounded (15.1s of a 30.7s response for a one-token PK probe) + the accelerator lanes shed with the slice
+const BUILD_VERSION = "2026-08-30.3"; // .3: the meta read bounded+measured (the 13.6s that belonged to nobody), no blocking refresh on a user request, a widening flag stops making the bare board count itself, a null count no longer publishes 0
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -6988,26 +6988,74 @@ Deno.serve(async (req) => {
       // partially-written or older-shaped row ever appeared, deriving the count
       // from a 200-row slice would publish "200 employers" as a fact. Requiring
       // the explicit number means the only rows accepted are ones that carry it.
-      const { data: headRow } = await client.from("job_board_meta").select("v, updated_at").eq("k", "refresh_head").maybeSingle();
+      // BOUNDED AND MEASURED, because this read is pure decoration and was
+      // neither. MEASURED 2026-08-30 during the saturation incident: a
+      // {limit:1} call took 30,728ms of which page_query was 2,015 and
+      // attachRecheckedAt 15,104 — leaving ~13,600ms attributed to NOTHING.
+      // These two reads are the only unmarked awaited I/O on that path, they
+      // carry no deadline, and db() authenticates as service_role, which has no
+      // statement_timeout — so a meta read can hang for thirteen seconds and
+      // still return successfully, with no error and no log line.
+      //
+      // Nothing in the ROWS depends on this row. Everything it feeds is a
+      // nice-to-have — the headline total, trackedTotal, the category and
+      // employer facets, refreshedAt, the coverage disclosure — and this file
+      // already states the rule three lines from where it consumes it: "A
+      // missing headline number must degrade the HEADLINE ('many jobs'), never
+      // the page." serveList handles an absent meta end to end (safeMetaTotal
+      // null publishes countUnavailable, facets come back empty). The read was
+      // simply never held to the rule it feeds.
+      const META_DEADLINE_MS = 800;
+      const t_meta = Date.now();
+      const headRes = await withDeadline(
+        client.from("job_board_meta").select("v, updated_at").eq("k", "refresh_head").maybeSingle(),
+        META_DEADLINE_MS,
+      ) as { data: { v: Record<string, unknown>; updated_at: string } | null };
+      const headRow = headRes.data;
       let meta = (headRow && typeof (headRow.v as Record<string, unknown> | null)?.companiesCount === "number"
         ? headRow
         : null) as { v: Record<string, unknown>; updated_at: string } | null;
       if (!meta) {
-        const { data: metaRow } = await client.from("job_board_meta").select("v, updated_at").eq("k", "refresh").maybeSingle();
-        meta = (metaRow ?? null) as { v: Record<string, unknown>; updated_at: string } | null;
+        // The fat row (1.3-1.6MB) gets what is LEFT of the budget, never a
+        // second full one: two sequential 800ms waits for decoration is the
+        // same mistake twice.
+        const leftMs = Math.max(150, META_DEADLINE_MS - (Date.now() - t_meta));
+        const fatRes = await withDeadline(
+          client.from("job_board_meta").select("v, updated_at").eq("k", "refresh").maybeSingle(),
+          leftMs,
+        ) as { data: { v: Record<string, unknown>; updated_at: string } | null };
+        meta = (fatRes.data ?? null) as { v: Record<string, unknown>; updated_at: string } | null;
       }
+      // Published as a phase so this can never go unattributed again. Seeded
+      // into serveList's phase map rather than measured inside it, because the
+      // read happens before serveList is called — which is exactly why it was
+      // invisible.
+      const preMs: Record<string, number> = { meta_read: Date.now() - t_meta };
 
       if (!meta) {
-        // First boot (migration just applied, no pass yet): one blocking
-        // refresh seeds the table; afterwards this path never runs again.
-        const seeded = await runRefresh(client, true);
-        if (!seeded.ok) return json({ error: "Job board is initializing — try again shortly" }, 503);
-        return await serveList(client, body, undefined, t_entry);
+        // NEVER A BLOCKING REFRESH ON A USER'S REQUEST.
+        //
+        // This read "first boot (no pass yet): one blocking refresh seeds the
+        // table; afterwards this path never runs again". The guard is `!meta`,
+        // and meta is null whenever both reads come back empty — which, now
+        // that they are deadlined (and before that, whenever they errored,
+        // since both errors were discarded), includes "the database is too slow
+        // to answer right now". So the branch that was reasoned about as
+        // once-per-lifetime became reachable during exactly the incident where
+        // it does the most damage: runRefresh(force=true) bypasses the slice
+        // lock and runs a full board-fetching pass inline, and sliceStats
+        // measured lastMs at 184,951ms during this one. That is a three-minute
+        // wait handed to a visitor who asked for a job list.
+        //
+        // Kick it in the background and serve the page. A board with no
+        // headline number beats a board that does not answer.
+        waitUntil(runRefresh(client, true));
+        return await serveList(client, body, undefined, t_entry, preMs);
       }
       if (Date.now() - new Date(meta.updated_at).getTime() > STALE_MS) {
         waitUntil(runRefresh(client)); // serve stale, refresh behind the scenes
       }
-      return await serveList(client, body, meta, t_entry);
+      return await serveList(client, body, meta, t_entry, preMs);
     }
 
     if (action === "fit-batch") {
@@ -8779,6 +8827,9 @@ async function serveList(
   meta?: { v: Record<string, unknown>; updated_at: string } | null,
   /** When the request actually entered the function — see the two clocks below. */
   entryAt?: number,
+  /** Phases measured BEFORE serveList was called (the meta read), so work done
+   *  outside this function still appears in phaseMs instead of vanishing. */
+  pre?: Record<string, number>,
 ) {
   // WHOLE ROWS, OR THE PAGER HANDS BACK A POSITION THAT CANNOT EXIST.
   //
@@ -8925,7 +8976,7 @@ async function serveList(
   if (intentLift) {
     body = { ...body, ...intentLift.patch, q: intentLift.residualQ };
   }
-  const { applied, ignored: ignoredFilters, maxAgeClamped } = intentLift
+  const { applied, ignored: ignoredFilters, maxAgeClamped } = (intentLift || excludedTerms.length)
     ? normalizeFilters(body, JOB_SOURCES.length)
     : preFilters;
 
@@ -9022,7 +9073,7 @@ async function serveList(
   // say where. Recorded as point marks rather than by wrapping calls: these
   // awaits sit inside ternaries and destructurings where an extra paren is
   // how you break a hot path at 2am.
-  const phase: Record<string, number> = {};
+  const phase: Record<string, number> = { ...(pre ?? {}) };
   attachMsAccum = 0;
   // A DURATION ALONE CANNOT TELL A SUCCESS FROM A DEADLINE. `semantic: 5002`
   // and `semantic: 5002` look identical whether the tier answered in five
@@ -10641,7 +10692,11 @@ async function serveList(
         // includeUncategorised is in it: this gate asks "did the caller NARROW
         // anything", and a toggle that only ever ADMITS more rows must not
         // fence off the rescue tiers.
-        const NON_NARROWING = new Set(["includeUncategorised", "includeUnstatedPay", "sort", "q"]);
+        // Built FROM the shared set, not beside it: these two answers to "does
+        // this key narrow anything" drifted once already (isUnfiltered counted
+        // includeUnstatedPay as a narrowing while this gate did not), and the
+        // bare board paid for it with a capped count.
+        const NON_NARROWING = new Set([...WIDENING_FILTERS, "sort", "q"]);
         const filtersActive =
           !!sanitizeTerm(String(body.location ?? "")) ||
           body.remote === true ||
@@ -12359,7 +12414,16 @@ async function serveList(
   // that line already warns "would read as no matches and trip the zero-state
   // on a page that is visibly full of results". Not escalating on a timeout is
   // only safe because the timeout is declared here.
-  let countUnavailable = countTimedOut;
+  // A COUNT WE DO NOT HAVE IS "UNKNOWN", NEVER ZERO. countUnavailable was
+  // seeded only from the raced deadline, but three paths above can leave
+  // `count` null with NO error — the two-subset `other`-bucket count hitting
+  // its statement timeout, and the two graceful-degrade re-runs that drop the
+  // raced count. The published field is
+  // `total: countUnavailable ? null : (count ?? 0)`, so a null count with the
+  // flag still false publishes ZERO: measured shape is 48 real rows served
+  // under "Showing 48 of 0 matching openings". The comment above already
+  // reasoned about this and then did not guard it.
+  let countUnavailable = countTimedOut || (wantCount && count === null);
   if (error && wantCount) {
     // Same path as the page above, count suppressed — a second hand-written
     // builder here is how the retry ends up filtering differently from the

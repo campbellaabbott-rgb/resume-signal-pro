@@ -34,8 +34,13 @@ describe("an instrument that starts late measures the wrong thing", () => {
     expect(entry, "the clock must start BEFORE the facet read it was hiding").toBeLessThan(metaRead);
     // And it must actually reach serveList — computing it and dropping it is
     // the sibling failure this codebase has shipped before.
-    expect(FN).toMatch(/serveList\(client, body, meta, t_entry\)/);
-    expect(FN).toMatch(/serveList\(client, body, undefined, t_entry\)/);
+    expect(FN).toMatch(/serveList\(client, body, meta, t_entry, preMs\)/);
+    // Both call sites carry preMs now: the meta read is measured OUTSIDE
+    // serveList, so its duration has to be handed in or it vanishes from
+    // phaseMs — which is how ~13.6s of a 30.7s response went unattributed on
+    // 2026-08-30, the same class of blindness this file exists for.
+    expect(FN).toMatch(/serveList\(client, body, undefined, t_entry, preMs\)/);
+    expect(FN, "the meta read must be published as a phase").toMatch(/meta_read: Date\.now\(\) - t_meta/);
   });
 
   it("keeps the budget clock where the work starts", () => {

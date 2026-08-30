@@ -41,7 +41,7 @@ describe("a deadline that escalates is not a deadline", () => {
     // total is `countUnavailable ? null : (count ?? 0)`, so a null count with
     // the flag unset publishes ZERO on a page full of results. Not escalating
     // is only safe because the flag is seeded from the timeout.
-    expect(CODE).toMatch(/let countUnavailable = countTimedOut;/);
+    expect(CODE).toMatch(/let countUnavailable = countTimedOut \|\| \(wantCount && count === null\);/);
   });
 
   it("the deadline miss is logged, not silent", () => {

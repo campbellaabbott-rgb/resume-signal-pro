@@ -374,7 +374,12 @@ const PINNED = {
   // 2026-08-30.2: attachRecheckedAt is bounded (it was 15,104ms of a 30,728ms
   // response for a single-token primary-key probe), and the bootstrap/retry
   // lanes shed alongside the slice so shedding cannot invert the hop.
-  buildVersion: "2026-08-30.2",
+  // 2026-08-30.3: the job_board_meta read — the only unmarked awaited I/O on
+  // the cheapest path, and the home of the 13.6s that no phase accounted for —
+  // is deadlined and published as phaseMs.meta_read; the first-boot seed no
+  // longer runs a full refresh inline on a visitor's request; includeUnstatedPay
+  // stops making the bare board count itself; a null count publishes null.
+  buildVersion: "2026-08-30.3",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {
