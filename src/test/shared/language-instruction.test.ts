@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildLanguageInstruction } from "./language-instruction";
+import { buildLanguageInstruction } from "../../../supabase/functions/_shared/language-instruction";
 
 describe("buildLanguageInstruction", () => {
   it("returns an empty string for English (no need to instruct the default)", () => {

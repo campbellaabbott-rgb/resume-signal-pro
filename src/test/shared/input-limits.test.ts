@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { checkInputLimits, MAX_RESUME_LENGTH, MAX_JOB_DESCRIPTION_LENGTH } from "./input-limits";
+import { checkInputLimits, MAX_RESUME_LENGTH, MAX_JOB_DESCRIPTION_LENGTH } from "../../../supabase/functions/_shared/input-limits";
 
 // Regression coverage for the public-generator input cap (bounds per-call AI
 // token cost). Rule: no fix without a test that would have caught its absence.

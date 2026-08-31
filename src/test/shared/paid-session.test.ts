@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { assertPaidSession } from "./paid-session";
+import { assertPaidSession } from "../../../supabase/functions/_shared/paid-session";
 
 // Fake Supabase client whose used_stripe_sessions lookup returns a fixed result.
 const clientReturning = (result: { data: unknown; error: { message?: string } | null }) => ({

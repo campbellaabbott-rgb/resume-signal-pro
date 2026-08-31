@@ -7,7 +7,7 @@
  * symptom would be an absence. Nobody files a bug against an absence.
  */
 import { describe, it, expect } from "vitest";
-import { validateCoverNote, coverNotePrompt, gateCanCheck, MIN_CHARS, MAX_CHARS } from "./cover-note";
+import { validateCoverNote, coverNotePrompt, gateCanCheck, MIN_CHARS, MAX_CHARS } from "../../../supabase/functions/_shared/cover-note";
 
 const RESUME = `Jane Okafor
 Senior Backend Engineer
@@ -48,7 +48,7 @@ The payments platform you describe is the closest thing to that work I have seen
 describe("validateCoverNote — accepts honest notes", () => {
   it("accepts a note grounded in the résumé, the posting and the base note", () => {
     const v = validateCoverNote({ ...ctx, note: HONEST });
-    if (!v.ok) console.error("unexpected issues:", v.issues);
+    if (!v.ok) console.error("unexpected issues:", (v as { issues: string[] }).issues);
     expect(v.ok).toBe(true);
   });
 
@@ -75,7 +75,7 @@ Working at Meridian Health taught me that. Before that, Python and Go were my da
 
 Should the team want someone who has already carried a payments migration end to end, I would be glad to talk. Mentoring is something I would want to keep doing.`;
     const v = validateCoverNote({ ...ctx, note });
-    if (!v.ok) console.error("unexpected issues:", v.issues);
+    if (!v.ok) console.error("unexpected issues:", (v as { issues: string[] }).issues);
     expect(v.ok).toBe(true);
   });
 
@@ -92,35 +92,35 @@ describe("validateCoverNote — rejects fabrication", () => {
     const note = HONEST.replace("At Meridian Health", "At Google");
     const v = validateCoverNote({ ...ctx, note });
     expect(v.ok).toBe(false);
-    if (!v.ok) expect(v.issues.join(" ")).toContain("Google");
+    if (!v.ok) expect((v as { issues: string[] }).issues.join(" ")).toContain("Google");
   });
 
   it("rejects a school that appears nowhere", () => {
     const note = HONEST + "\n\nMy MIT coursework covered distributed systems.";
     const v = validateCoverNote({ ...ctx, note });
     expect(v.ok).toBe(false);
-    if (!v.ok) expect(v.issues.join(" ")).toContain("MIT");
+    if (!v.ok) expect((v as { issues: string[] }).issues.join(" ")).toContain("MIT");
   });
 
   it("rejects a technology the candidate never listed", () => {
     const note = HONEST.replace("plus the Kubernetes familiarity", "plus deep Haskell experience");
     const v = validateCoverNote({ ...ctx, note });
     expect(v.ok).toBe(false);
-    if (!v.ok) expect(v.issues.join(" ")).toContain("Haskell");
+    if (!v.ok) expect((v as { issues: string[] }).issues.join(" ")).toContain("Haskell");
   });
 
   it("rejects an invented figure", () => {
     const note = HONEST.replace("cut query latency by 40%", "cut query latency by 92%");
     const v = validateCoverNote({ ...ctx, note });
     expect(v.ok).toBe(false);
-    if (!v.ok) expect(v.issues.join(" ")).toMatch(/92/);
+    if (!v.ok) expect((v as { issues: string[] }).issues.join(" ")).toMatch(/92/);
   });
 
   it("rejects an unfilled placeholder", () => {
     const note = HONEST.replace("this role", "the [Job Title] role");
     const v = validateCoverNote({ ...ctx, note });
     expect(v.ok).toBe(false);
-    if (!v.ok) expect(v.issues.join(" ")).toContain("placeholder");
+    if (!v.ok) expect((v as { issues: string[] }).issues.join(" ")).toContain("placeholder");
   });
 
   it.each([
@@ -130,19 +130,19 @@ describe("validateCoverNote — rejects fabrication", () => {
   ])("refuses to volunteer a standing answer: %s", (sentence, expected) => {
     const v = validateCoverNote({ ...ctx, note: `${HONEST}\n\n${sentence}` });
     expect(v.ok).toBe(false);
-    if (!v.ok) expect(v.issues.join(" ").toLowerCase()).toContain(expected);
+    if (!v.ok) expect((v as { issues: string[] }).issues.join(" ").toLowerCase()).toContain(expected);
   });
 
   it("rejects a note that is too short to be one", () => {
     const v = validateCoverNote({ ...ctx, note: "I would like the job." });
     expect(v.ok).toBe(false);
-    if (!v.ok) expect(v.issues.join(" ")).toContain("Too short");
+    if (!v.ok) expect((v as { issues: string[] }).issues.join(" ")).toContain("Too short");
   });
 
   it("rejects a note past the ceiling", () => {
     const v = validateCoverNote({ ...ctx, note: "Correctness matters. ".repeat(120) });
     expect(v.ok).toBe(false);
-    if (!v.ok) expect(v.issues.join(" ")).toContain("Too long");
+    if (!v.ok) expect((v as { issues: string[] }).issues.join(" ")).toContain("Too long");
   });
 
   it("rejects an empty note without throwing", () => {
@@ -153,7 +153,7 @@ describe("validateCoverNote — rejects fabrication", () => {
     const note = HONEST + "\n\nAWS is where I spent four of those years.";
     const v = validateCoverNote({ ...ctx, note });
     expect(v.ok).toBe(false);
-    if (!v.ok) expect(v.issues.join(" ")).toContain("AWS");
+    if (!v.ok) expect((v as { issues: string[] }).issues.join(" ")).toContain("AWS");
   });
 });
 
@@ -187,7 +187,7 @@ describe("the gate knows which languages it can actually check", () => {
     });
     expect(v.ok).toBe(false);
     if (!v.ok) {
-      const joined = v.issues.join(" ");
+      const joined = (v as { issues: string[] }).issues.join(" ");
       expect(joined).toMatch(/Erfahrung|Beitrag|Ihrem|Kenntnisse/);
     }
   });
