@@ -143,6 +143,17 @@ describe("a cap that restarts at zero is a ceiling", () => {
     expect(loop.indexOf("agedOutIds.has(id)")).toBeLessThan(loop.indexOf("if (partialRead) continue;"));
   });
 
+  it("a named giant can be given a wider window, everyone else keeps the default", () => {
+    // Measured 2026-08-30: Kroger advertises 12,350 postings against the
+    // default 2,000-per-pass window — the deep cursor alone needs ~25 passes
+    // to reach the tail once, and the 30-day sweep laps it. The per-board
+    // `pages` override (the icims/PetSmart contract) is the fix, and it must
+    // stay an OVERRIDE: the floor of 1 and the ?? mean an absent field keeps
+    // the proven default, so one giant's window can never widen the fleet's.
+    expect(CODE).toMatch(/const oraclePageCap = Math\.max\(1, s\.pages \?\? ORACLE_PAGE_CAP\);/);
+    expect(CODE).toMatch(/page < oraclePageCap/);
+  });
+
   it("a board read WHOLE still prunes normally", () => {
     // The relaxation is scoped to windowed boards. If `windowed` were hardcoded
     // true anywhere, every board would stop pruning and closures would stall.

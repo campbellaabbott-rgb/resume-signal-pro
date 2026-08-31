@@ -104,7 +104,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-30.8"; // .8: Paylocity is the 17th source (adapter + desc sweep + canaries; shell-is-failure, IsInternal excluded); +166 census-tail boards; a convicted mill is now blocked by token, not by memory
+const BUILD_VERSION = "2026-08-30.9"; // .9: +732 Oracle boards via the per-site split of multi-brand tenants, +1,858 Paylocity boards (first tranche of the 17th source), 7 windowed giants get pages overrides (oracle fetcher now honors s.pages), corpus governor 800k -> 1M for the 20GB disk
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -677,7 +677,13 @@ async function fetchOracle(s: JobSource, startOffset = 0): Promise<{ items: unkn
   // would mark a fully-read board "windowed" forever — and windowed boards are
   // barred from closure logging, so they'd never contribute fill data.
   let exhausted = false;
-  for (let page = 0; page < ORACLE_PAGE_CAP; page++) {
+  // Per-board pages override, same contract as icims (the PetSmart precedent):
+  // named giants get a window sized to what they advertise, everyone else
+  // keeps the proven default. Kroger advertises 12,350 against the default
+  // window's 500 (measured 2026-08-30) — the deep cursor alone needs ~25
+  // passes to see the tail once, and the 30-day sweep is faster than that.
+  const oraclePageCap = Math.max(1, s.pages ?? ORACLE_PAGE_CAP);
+  for (let page = 0; page < oraclePageCap; page++) {
     const finder = `findReqs;siteNumber=${site},limit=${ORACLE_PAGE_SIZE},offset=${startOffset + page * ORACLE_PAGE_SIZE},sortBy=POSTING_DATES_DESC`;
     const res = await fetchWithTimeout(`${base}?onlyData=true&expand=requisitionList&finder=${encodeURIComponent(finder)}`);
     if (!res.ok) { if (page === 0) throw new Error(`HTTP ${res.status}`); break; }
@@ -1142,8 +1148,18 @@ const CHAIN_CAP = Math.ceil(HOT_SIZE / HOT_SLICE) + COLD_SLICES_PER_PASS + 4; //
 // size is the plan_disk_gb meta row now) — inside the storage alarm's 75%
 // line, which remains the tripwire that flags the true ceiling before it
 // binds. Next stop only after a wider plan or a byte-diet on descriptions.
-const CORPUS_CEILING = 800_000; // arm eviction above this
-const CORPUS_TARGET = 770_000;  // evict down to this
+// 1M step (2026-08-30): the disk was resized 12GB -> 20GB for exactly this.
+// Inbound at the time of the step: ~741k tracked after the .8 deploy, plus the
+// Oracle remainder (~85k across direct-resolved boards and the per-site split
+// of multi-brand tenants) and the first Paylocity tranche. At 800k the
+// governor would have evicted the freshest of that inventory on arrival. Same
+// measured row math as the 800k step (9.4KB/row all-in, 2026-08-27): 1M ~=
+// 9.4GB postings + ~1.4GB everything else ~= 54% of the 20GB plan
+// (plan_disk_gb meta row, updated by migration 20260830260000 in this same
+// commit) — well inside the storage alarm's 75% line, which stays the
+// tripwire that flags the true ceiling before it binds.
+const CORPUS_CEILING = 1_000_000; // arm eviction above this
+const CORPUS_TARGET = 960_000;    // evict down to this
 
 // Freshness cap: the board shows only roles posted within this window. Dated
 // postings past it are dropped at ingestion (never stored) and swept from the

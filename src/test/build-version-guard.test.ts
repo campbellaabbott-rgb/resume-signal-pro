@@ -175,7 +175,7 @@ const PINNED = {
   // as a matter of course this time — the .2 bump had to be made retroactively
   // after three commits shipped undeployed behind an unchanged version string,
   // and "is it live?" cost six behavioural probes to answer.
-  sourcesHash: "f01bfd8e49977c48",
+  sourcesHash: "e35a83829187654d",
   // 2026-08-21.4: disables the exact-word tier's company matcher, whose index
   // never built. Bumped so the mitigation is externally identifiable.
   // 2026-08-21.5: routed retrieval. index.ts + two new modules; sources.ts
@@ -422,7 +422,23 @@ const PINNED = {
   // detail-page JSON-LD feeds the description sweep, two live-verified
   // canaries). No paylocity boards ride this bump — the census sweep runs
   // separately and its tranche will force the next one.
-  buildVersion: "2026-08-30.8",
+  //
+  // 2026-08-30.9: the biggest single catalog step since launch — sources.ts
+  // gained 2,590 boards in one bump. +732 Oracle boards (~122k postings) from
+  // the per-site split of multi-brand tenants: resolve-oracle-sites.mjs reads
+  // each ambiguous tenant's recruitingCESites and emits one candidate per
+  // BRANDED ACTIVE site (the token's third segment is the site), which is how
+  // Macy's/Bloomingdale's/bluemercury stop hiding behind one unnameable
+  // tenant. +1,858 Paylocity boards (~40k postings), the 17th source's first
+  // tranche, every >=100p board description-screened (61 cleared, 3 franchise
+  // operators excluded). Seven windowed giants (Kroger 12,350 advertised,
+  // AutoZone, JCPenney, UHS, Foot Locker, Landry's, Lifepoint) get per-board
+  // pages overrides — fetchOracle honors s.pages now, same contract as the
+  // icims/PetSmart precedent. The corpus governor steps 800k -> 1M (disk grew
+  // 12 -> 20GB; migration 20260830260000 tells the storage alarm). The
+  // bootstrap lane this hash arms is about to swallow ~2,600 boards — the
+  // shed system is what keeps that survivable.
+  buildVersion: "2026-08-30.9",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {

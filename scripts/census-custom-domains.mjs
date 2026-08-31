@@ -59,10 +59,21 @@ const VENDOR_BY_CNAME = [
   [/d3p6l7ched4xva\.cloudfront\.net/i, "pinpoint"],
   [/\.breezy\.hr/i, "breezy"],
   [/\.personio\./i, "personio"],
+  // iCIMS hosts customer career sites on two apex targets (dug live
+  // 2026-08-30: careers.84lumber.com -> career.page, careers.aarp.org and
+  // careers.petsmart.com -> jibeapply.com). This is the ONLY census channel
+  // for the vendor: its shared icims.com subdomains 404 the /api/jobs feed,
+  // so a crawl SURT enumerates hosts our fetcher cannot read — the feed
+  // lives solely on these custom domains. The token IS the host.
+  [/\.career\.page/i, "icims"],
+  [/\.jibeapply\.com/i, "icims"],
 ];
 
 /** Where each vendor serves a machine-readable feed on a custom domain. */
 const FEED = {
+  // The same endpoint and shape the board fetcher reads (index.ts icims
+  // adapter): totalCount is the vendor-stated board size, jobs the page.
+  icims: { path: "/api/jobs?page=1&limit=25", count: (d) => Number(d?.totalCount) || (d?.jobs ?? []).length, name: () => "" },
   teamtailor: { path: "/jobs.json", count: (d) => (d?.items ?? []).length, name: (d) => d?.title ?? "" },
   pinpoint: { path: "/postings.json", count: (d) => (Array.isArray(d) ? d : d?.data ?? []).length, name: () => "" },
   breezy: { path: "/json", count: (d) => (Array.isArray(d) ? d : []).length, name: () => "" },
