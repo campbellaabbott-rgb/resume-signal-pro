@@ -151,7 +151,12 @@ describe("a cap that restarts at zero is a ceiling", () => {
     // stay an OVERRIDE: the floor of 1 and the ?? mean an absent field keeps
     // the proven default, so one giant's window can never widen the fleet's.
     expect(CODE).toMatch(/const oraclePageCap = Math\.max\(1, s\.pages \?\? ORACLE_PAGE_CAP\);/);
-    expect(CODE).toMatch(/page < oraclePageCap/);
+    // The walk went CHUNKED on 2026-08-31 (a 130-page serial walk was a
+    // 160-second hot slice); the cap now bounds the chunk starts and each
+    // chunk's tail, and a short page anywhere ends the whole walk.
+    expect(CODE).toMatch(/start < oraclePageCap; start \+= ORACLE_CHUNK/);
+    expect(CODE).toMatch(/Math\.min\(start \+ ORACLE_CHUNK, oraclePageCap\)/);
+    expect(CODE).toMatch(/\{ exhausted = true; break outer; \}/);
   });
 
   it("a board read WHOLE still prunes normally", () => {

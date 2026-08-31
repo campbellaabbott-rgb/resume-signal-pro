@@ -175,7 +175,7 @@ const PINNED = {
   // as a matter of course this time — the .2 bump had to be made retroactively
   // after three commits shipped undeployed behind an unchanged version string,
   // and "is it live?" cost six behavioural probes to answer.
-  sourcesHash: "f4ade97ae3a16a70",
+  sourcesHash: "a765a394a917ed6a",
   // 2026-08-21.4: disables the exact-word tier's company matcher, whose index
   // never built. Bumped so the mitigation is externally identifiable.
   // 2026-08-21.5: routed retrieval. index.ts + two new modules; sources.ts
@@ -448,7 +448,22 @@ const PINNED = {
   // Global and a tobacco chain posting one title 114 times were convicted on
   // evidence and now live in MILL_BLOCK; an unreadable Paylocity board HOLDs
   // out rather than riding in on a thin sample.
-  buildVersion: "2026-08-30.10",
+  //
+  // 2026-08-30.11: the iCIMS unlock ships. The CNAME census (customer career
+  // domains point at career.page / jibeapply.com — the vendor's fetchable
+  // front door, unlike its own 404ing subdomains) yielded 190 clean boards
+  // (~99k postings; Costco 19.8k, Ulta 10k) after 23 alias kills, three
+  // evidence convictions (CTG staffing, and the State Farm / Principal
+  // agent-office pattern), and a mill-screen precision fix: the phrases now
+  // demand RECRUITMENT SYNTAX, because "foster our client's success" and
+  // "offsites on behalf of the MD" convicted Booking.com, Tufts and S&P
+  // Global on service prose while the singular "position for our client"
+  // still convicts CTG at 10/12. +231 teamtailor tenants resolved from
+  // custom domains rode along. In index.ts, fetchOracle's page walk went
+  // chunked: the .9 pages overrides made Kroger a 160-second serial hot
+  // slice that pinned the shed at L2 and stalled the bootstrap drain — the
+  // reviewer called this exact cost when the override landed.
+  buildVersion: "2026-08-30.11",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {

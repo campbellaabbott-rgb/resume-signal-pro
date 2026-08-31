@@ -104,7 +104,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-30.10"; // .10: the crawl-waves 25/21 harvest — +2,657 boards (~43k postings): +2,397 Paylocity, +81 Oracle (resolve+split), +179 across ten vendors; four fresh mill convictions enforced by token
+const BUILD_VERSION = "2026-08-30.11"; // .11: the iCIMS custom-domain tranche (+190 boards/~99k postings incl Costco+Ulta) and 231 teamtailor tenants; fetchOracle pages go CHUNKED (a 130-page serial walk was a 160s hot slice pinning the shed at L2)
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -683,17 +683,33 @@ async function fetchOracle(s: JobSource, startOffset = 0): Promise<{ items: unkn
   // window's 500 (measured 2026-08-30) — the deep cursor alone needs ~25
   // passes to see the tail once, and the 30-day sweep is faster than that.
   const oraclePageCap = Math.max(1, s.pages ?? ORACLE_PAGE_CAP);
-  for (let page = 0; page < oraclePageCap; page++) {
-    const finder = `findReqs;siteNumber=${site},limit=${ORACLE_PAGE_SIZE},offset=${startOffset + page * ORACLE_PAGE_SIZE},sortBy=POSTING_DATES_DESC`;
-    const res = await fetchWithTimeout(`${base}?onlyData=true&expand=requisitionList&finder=${encodeURIComponent(finder)}`);
-    if (!res.ok) { if (page === 0) throw new Error(`HTTP ${res.status}`); break; }
-    const body = await res.json();
-    const item = (Array.isArray((body as { items?: unknown[] }).items) ? (body as { items: Record<string, unknown>[] }).items[0] : null) ?? null;
-    if (!item) { exhausted = true; break; }
-    if (page === 0) feedTotal = Number(item.TotalJobsCount ?? 0) || 0;
-    const reqs = Array.isArray(item.requisitionList) ? item.requisitionList as unknown[] : [];
-    all.push(...reqs);
-    if (reqs.length < ORACLE_PAGE_SIZE) { exhausted = true; break; } // last page
+  // Chunked like icims, and for the same reason at the other end of the wire:
+  // one-request-per-RTT made a 130-page giant a 160-second hot slice
+  // (measured 2026-08-31 — the shed pinned at level 2 and the bootstrap
+  // drain stalled behind two supermarket chains). Four concurrent per host
+  // matches the census tooling's politeness; results are consumed IN ORDER,
+  // and a short page or empty item anywhere in a chunk ends the walk so a
+  // chunk member past the feed's end is never read as data.
+  const ORACLE_CHUNK = 4;
+  outer: for (let start = 0; start < oraclePageCap; start += ORACLE_CHUNK) {
+    const pages: number[] = [];
+    for (let p = start; p < Math.min(start + ORACLE_CHUNK, oraclePageCap); p++) pages.push(p);
+    const bodies = await Promise.all(pages.map(async (page) => {
+      const finder = `findReqs;siteNumber=${site},limit=${ORACLE_PAGE_SIZE},offset=${startOffset + page * ORACLE_PAGE_SIZE},sortBy=POSTING_DATES_DESC`;
+      const res = await fetchWithTimeout(`${base}?onlyData=true&expand=requisitionList&finder=${encodeURIComponent(finder)}`);
+      if (!res.ok) { if (page === 0) throw new Error(`HTTP ${res.status}`); return null; }
+      return await res.json();
+    }));
+    for (let i = 0; i < bodies.length; i++) {
+      const body = bodies[i];
+      if (body === null) break outer; // mid-walk HTTP failure — keep what we have, same as the serial loop's break
+      const item = (Array.isArray((body as { items?: unknown[] }).items) ? (body as { items: Record<string, unknown>[] }).items[0] : null) ?? null;
+      if (!item) { exhausted = true; break outer; }
+      if (pages[i] === 0) feedTotal = Number(item.TotalJobsCount ?? 0) || 0;
+      const reqs = Array.isArray(item.requisitionList) ? item.requisitionList as unknown[] : [];
+      all.push(...reqs);
+      if (reqs.length < ORACLE_PAGE_SIZE) { exhausted = true; break outer; } // last page
+    }
   }
   // Same guard as Workday: an empty read against a non-zero advertised total is
   // a refusal (rate-limit/transient), NOT an empty board. Throwing marks the
