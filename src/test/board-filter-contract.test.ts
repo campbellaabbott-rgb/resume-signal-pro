@@ -127,6 +127,11 @@ describe("isUnfiltered — derived, so a new filter cannot be forgotten", () => 
       companies: ["tok"],
       maxAgeDays: 7,
       postedAfter: "2026-07-01T00:00:00Z",
+      // Added 2026-08-31: the agency opt-out (charter change). The literal
+      // failing the typecheck the day AppliedFilters grew is this tripwire
+      // doing its job again; the loop below proves isUnfiltered counts it —
+      // a request hiding disclosed inventory is NOT the bare board.
+      excludeAgencies: true,
     };
     const empty = norm({}).applied as unknown as Record<string, unknown>;
     const keys = Object.keys(filled) as Array<keyof AppliedFilters>;

@@ -428,6 +428,9 @@ describe("isUnfiltered — mechanical, so all six are counted the day they exist
       companies: ["tok"],
       maxAgeDays: 7,
       postedAfter: "2026-07-01T00:00:00Z",
+      // 2026-08-31: the agency opt-out — the typed-literal tripwire fired
+      // here exactly as designed when AppliedFilters gained it.
+      excludeAgencies: true,
     };
     const empty = norm({}).applied as unknown as Record<string, unknown>;
     const keys = Object.keys(filled) as Array<keyof AppliedFilters>;

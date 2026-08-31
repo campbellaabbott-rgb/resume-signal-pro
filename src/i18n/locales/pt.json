@@ -3509,6 +3509,7 @@
     "resultsSummary": "Mostrando {{shown}} de {{total}} vagas em {{companyFeeds}} feeds de empresas",
     "resultsSummaryNoTotal": "Exibindo {{shown}} vagas correspondentes",
     "resultsSummaryFloor": "Mostrando {{shown}} de {{floor}}+ vagas correspondentes",
+    "resultsSummaryCeiling": "Mostrando {{shown}} de até {{ceiling}} vagas antes das suas exclusões",
     "didYouMean": "Você quis dizer “{{q}}”?",
     "alsoInLocations_one": "Também contratando em mais {{count}} local",
     "alsoInLocations_other": "Também contratando em mais {{count}} locais",
@@ -3969,7 +3970,8 @@
       "hasStatedPay": "indica remuneração",
       "maxYears": "anos exigidos",
       "department": "departamento",
-      "vendor": "fonte"
+      "vendor": "fonte",
+      "excludeAgencies": "ocultar agências"
     },
     "companiesChip": "{{n}} empresas",
     "firstSeenToday": "vista pela primeira vez hoje",
@@ -4091,7 +4093,13 @@
       "temporary": "Temporário",
       "internship": "Estágio"
     },
-    "relatedSeam": "As correspondências exatas terminam aqui — abaixo, apenas correspondências no texto da vaga"
+    "relatedSeam": "As correspondências exatas terminam aqui — abaixo, apenas correspondências no texto da vaga",
+    "hideAgencies": "Ocultar agências de recrutamento",
+    "hideAgenciesTip": "Oculta vagas publicadas por agências de recrutamento e de trabalho temporário. Os cartões delas levam o selo «Agência de recrutamento»; este filtro tira-as por completo da página. Desligado por padrão — uma vaga de agência é uma vaga real.",
+    "chipNoAgencies": "Sem agências de recrutamento",
+    "agencyBadge": "Agência de recrutamento",
+    "agencyBadgeTip": "Este empregador é uma agência de recrutamento ou de trabalho temporário — a vaga pode ser preenchida por conta de um cliente. Use «Ocultar agências de recrutamento» nos filtros para excluí-las.",
+    "agenciesExcluded": "As vagas de agências de recrutamento estão ocultas pelo seu filtro — os totais contam apenas empregadores diretos."
   },
   "accountPage": {
     "statusSaveFailed": "Não foi possível salvar esse status — tente novamente.",

@@ -21,7 +21,13 @@ const SRC = readFileSync(resolve(__dirname, "../../supabase/functions/job-board/
 
 const BOARDS: Array<[string, string, string]> = [
   ...[...SRC.matchAll(/s\("([^"]+)",\s*"(\w+)",\s*"([^"]+)"\)/g)].map((m) => [m[1], m[2], m[3]] as [string, string, string]),
-  ...[...SRC.matchAll(/\{ name: "([^"]+)", source: "(\w+)", token: "([^"]+)" \}/g)].map((m) => [m[1], m[2], m[3]] as [string, string, string]),
+  // Tolerates the two optional entry suffixes (the per-board window override
+  // and the agency disclosure flag, both 2026-08-31). This matcher anchored
+  // straight onto the closing brace, so a suffixed entry fell OUT of the demo
+  // screen — the exact parser blindness that unmoored PetSmart from the
+  // catalog invariants, here pointed at the screen that keeps fictional
+  // postings off the board.
+  ...[...SRC.matchAll(/\{ name: "([^"]+)", source: "(\w+)", token: "([^"]+)"(?:, pages: \d+)?(?:, agency: true)? \}/g)].map((m) => [m[1], m[2], m[3]] as [string, string, string]),
 ];
 
 describe("a demo board is not an employer", () => {

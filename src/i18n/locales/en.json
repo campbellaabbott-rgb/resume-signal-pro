@@ -3509,6 +3509,7 @@
     "resultsSummary": "Showing {{shown}} of {{total}} matching openings across {{companyFeeds}} company feeds",
     "resultsSummaryNoTotal": "Showing {{shown}} matching openings",
     "resultsSummaryFloor": "Showing {{shown}} of {{floor}}+ matching openings",
+    "resultsSummaryCeiling": "Showing {{shown}} of up to {{ceiling}} openings before your exclusions",
     "didYouMean": "Did you mean “{{q}}”?",
     "alsoInLocations_one": "Also hiring in {{count}} more location",
     "alsoInLocations_other": "Also hiring in {{count}} more locations",
@@ -3969,7 +3970,8 @@
       "hasStatedPay": "states pay",
       "maxYears": "years required",
       "department": "department",
-      "vendor": "source"
+      "vendor": "source",
+      "excludeAgencies": "hide staffing agencies"
     },
     "companiesChip": "{{n}} companies",
     "firstSeenToday": "first seen today",
@@ -4091,7 +4093,13 @@
       "temporary": "Temp",
       "internship": "Internship"
     },
-    "relatedSeam": "Exact matches end here — below matched in posting text only"
+    "relatedSeam": "Exact matches end here — below matched in posting text only",
+    "hideAgencies": "Hide staffing agencies",
+    "hideAgenciesTip": "Hide postings from staffing and recruiting agencies. Their cards carry a “Staffing agency” badge; this takes them off the page entirely. Off by default — agency openings are real openings.",
+    "chipNoAgencies": "No staffing agencies",
+    "agencyBadge": "Staffing agency",
+    "agencyBadgeTip": "This employer is a staffing or recruiting agency — the role may be filled on behalf of a client. Use “Hide staffing agencies” in the filters to exclude these.",
+    "agenciesExcluded": "Staffing-agency postings are hidden by your filter — the totals count only direct employers."
   },
   "accountPage": {
     "statusSaveFailed": "Couldn't save that status — please try again.",

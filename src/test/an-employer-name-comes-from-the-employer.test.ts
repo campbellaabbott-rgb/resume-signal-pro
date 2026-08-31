@@ -32,8 +32,11 @@ const registry = new Map<string, string>();
 // entry from this registry — the same parser blindness made corrected boards
 // read as "undefined" the day the Workday giants were widened (2026-08-31),
 // and made overridden entries vanish from the catalog invariants the day
-// before. Tolerate it explicitly.
-for (const m of SRC.matchAll(/\{ name: "((?:[^"\\]|\\.)*)", source: "(\w+)", token: "([^"]+)"(?:, pages: \d+)? \}/g)) {
+// before. Tolerate it explicitly — and the agency disclosure flag too, the
+// second optional suffix (charter change, same day): a corrected employer
+// that later gets tagged as a staffing agency would otherwise vanish from
+// this registry and its name fix would silently expire on re-ingest.
+for (const m of SRC.matchAll(/\{ name: "((?:[^"\\]|\\.)*)", source: "(\w+)", token: "([^"]+)"(?:, pages: \d+)?(?:, agency: true)? \}/g)) {
   registry.set(`${m[2]}:${m[3]}`, m[1]);
 }
 for (const m of SRC.matchAll(/s\("((?:[^"\\]|\\.)*)",\s*"(\w+)",\s*"([^"]+)"\)/g)) {

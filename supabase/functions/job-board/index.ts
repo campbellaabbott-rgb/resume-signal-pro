@@ -108,7 +108,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-30.15"; // .15: the Workday deep unlock — chunked pager honoring s.pages, 305 measured giants widened (Dollar Tree 24k, CVS 19k, O'Reilly 18k; ~226k postings past the old 500 window)
+const BUILD_VERSION = "2026-08-30.16"; // .16: search upgrades — routed deadline shape-sized (the 9.4s not-for-profit query), zero-result ladder stops paying for proven emptiness, exclusion searches get an honest labelled ceiling, agency disclosure ships (139 tagged boards, badge + opt-in filter, migration 20260831120000); +285 named ADP boards
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -2288,6 +2288,11 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
             remote: j.remote,
             work_mode: j.workMode ?? null,
       employment_type: j.employmentType ?? null,
+            // AGENCY DISCLOSURE (2026-08-31 charter): the flag rides the
+            // CATALOG entry, stamped here onto every row — never inferred
+            // per posting, because a staffing agency is one on all of its
+            // postings or none. Absent on the entry means false.
+            agency: s.agency === true,
             department: clean(j.department?.slice(0, 200) ?? null),
             category: j.category,
             posted_at: posted,
@@ -2332,17 +2337,30 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
           id: string; missing_since: string | null;
           title?: string | null; location?: string | null; country?: string | null;
           apply_url?: string | null; work_mode?: string | null; remote?: boolean | null;
-          salary?: string | null;
+          salary?: string | null; agency?: boolean | null; employment_type?: string | null;
         };
         const existingRows: Array<ExistingRow> = [];
         let missingColUnknown = false; // pre-migration: column absent → legacy single-pass behavior
         for (let from = 0; ; from += 1000) {
           let res = await client
             .from("job_board_postings")
-            .select("id,missing_since,title,location,country,apply_url,work_mode,employment_type,remote,salary")
+            .select("id,missing_since,title,location,country,apply_url,work_mode,employment_type,remote,salary,agency")
             .eq("company_token", s.token)
             .order("id")
             .range(from, from + 999);
+          // Deploy-window tolerance for the disclosure column (20260831120000):
+          // a select naming a column the migration has not created yet fails the
+          // WHOLE board read, which is a full ingest outage from one optional
+          // field. Retry without it; the correction guard already treats an
+          // absent prev value as "do not patch", so the window is quiet.
+          if (res.error?.message?.includes("agency")) {
+            res = (await client
+              .from("job_board_postings")
+              .select("id,missing_since,title,location,country,apply_url,work_mode,employment_type,remote,salary")
+              .eq("company_token", s.token)
+              .order("id")
+              .range(from, from + 999)) as typeof res;
+          }
           if (res.error?.message?.includes("missing_since")) {
             missingColUnknown = true;
             res = (await client
@@ -2363,6 +2381,15 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
             title: r.title ?? null, location: r.location ?? null, country: r.country ?? null,
             apply_url: r.apply_url ?? null, work_mode: r.work_mode ?? null,
             remote: r.remote ?? null, salary: r.salary ?? null,
+            // The prev value MUST ride along or every visited row of a tagged
+            // board reads prev undefined, the patch fires on every visit, and
+            // the corrections wave never converges — the write-amplification
+            // incident. employment_type had fallen into exactly that hole:
+            // the SELECT above carried it (and a test pins that) but this
+            // mapping dropped it, so put() compared every typed row against
+            // undefined and re-patched it each rotation visit. The select is
+            // only half the chain; the mapping is the half nothing pinned.
+            agency: r.agency ?? null, employment_type: r.employment_type ?? null,
           })));
           if (!page || page.length < 1000) break;
         }
@@ -2519,6 +2546,15 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
           put("employment_type", (row as Record<string, unknown>).employment_type, (prev as Record<string, unknown>).employment_type, false);
           put("salary", row.salary, prev.salary, false);
           if (typeof row.remote === "boolean" && row.remote !== prev.remote) patch.remote = row.remote;
+          // Catalog-authoritative on every fetch, in BOTH directions: this is
+          // how the 226 boards tagged on 2026-08-31 reach their EXISTING rows
+          // (one rotation, capped per visit like any correction wave), and
+          // how an un-tagged board's rows shed the flag. prev.agency is null
+          // only in the deploy window before the column exists — no patch
+          // then, so the window costs nothing.
+          if (typeof row.agency === "boolean" && typeof prev.agency === "boolean" && row.agency !== prev.agency) {
+            patch.agency = row.agency;
+          }
           if (Object.keys(patch).length) corrections.push({ id, ...patch });
         }
         // ONE ROUND TRIP PER CHUNK, not per row. This loop used to issue a
@@ -2578,6 +2614,18 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
           // the chunk without it; the version-gated backfill fills it later.
           if (error?.message?.includes("country")) {
             const stripped = newRows.slice(i, i + 250).map((r) => { const { country: _c, ...rest } = r as Record<string, unknown>; return rest; });
+            ({ error } = await client.from("job_board_postings").upsert(stripped, { onConflict: "id" }));
+          }
+          // Same deploy-window tolerance for the disclosure flag: the column
+          // ships in 20260831120000, and until it applies the insert must
+          // proceed without the field — the corrections path stamps it on the
+          // board's first post-migration visit, so nothing is lost but time.
+          if (error?.message?.includes("agency")) {
+            // Compose with the country retry: strip BOTH optional columns, so
+            // a database missing the pair still takes the chunk — mapping the
+            // original slice here would re-introduce country after its own
+            // retry already removed it.
+            const stripped = newRows.slice(i, i + 250).map((r) => { const { agency: _a, country: _c, ...rest } = r as Record<string, unknown>; return rest; });
             ({ error } = await client.from("job_board_postings").upsert(stripped, { onConflict: "id" }));
           }
           if (error) {
@@ -5205,7 +5253,7 @@ const DID_YOU_MEAN: Record<string, string> = {
 
 function searchDisclosures(
   body: Record<string, unknown>,
-  applied: { salaryFloor?: number | null; postedAfter?: string | null },
+  applied: { salaryFloor?: number | null; postedAfter?: string | null; excludeAgencies?: boolean },
   maxAgeClamped = false,
 ): Record<string, unknown> {
   const out: Record<string, unknown> = {};
@@ -5232,6 +5280,13 @@ function searchDisclosures(
   // out loud because it changes what the filter returns: the same 24-hour
   // question was 467 rows on crawl time and 90 on the company date.
   if (applied.postedAfter) out.postedAfterUsesStatedDate = true;
+  // The agency opt-out, named back like every other row-selecting choice: a
+  // filter the page cannot show is one the reader cannot take off, and a
+  // total that quietly omits the disclosed-agency inventory reads as "the
+  // market has no such openings" — the postedAfter lesson with a charter
+  // attached. Read off the DERIVED filter, so a refused non-boolean (named
+  // in ignoredFilters) never claims here to have applied.
+  if (applied.excludeAgencies) out.agenciesExcluded = true;
   // A typo that exactly matches other people's typos defeats every rescue
   // tier — the exact hits are real rows, just not what the searcher meant.
   const dym = DID_YOU_MEAN[String(body.q ?? "").trim().toLowerCase()];
@@ -5277,6 +5332,29 @@ function exclusionDisclosure(excluded: readonly string[]): Record<string, unknow
 function exclusionCountsCaveat(excluded: readonly string[]): Record<string, unknown> {
   return excluded.length
     ? { total: null, countUnavailable: true, totalAtLeast: undefined, relatedTotal: undefined }
+    : {};
+}
+
+/**
+ * THE ONE FIGURE AN EXCLUSION LEAVES STANDING, under a name that cannot lie.
+ *
+ * MEASURED 2026-08-31 (battery): q="engineer not manager" served a full page
+ * with no number anywhere on it — the caveat above rightly withdrew `total`,
+ * but the positive query's count had been COMPUTED and was then thrown away.
+ * Removing rows can only shrink a set, so that count is a true CEILING of the
+ * post-exclusion matches; what it must never be is the total, which is exactly
+ * the field the caveat withdraws. Named for what it counts, the client can say
+ * "of up to N before exclusions" instead of saying nothing.
+ *
+ * Spread AFTER exclusionCountsCaveat at the exits that have an honest ceiling
+ * to offer — it adds a labelled bound beside the withdrawal, never in place of
+ * it. Exits whose figure is a window size or an already-disproven count pass
+ * null and publish nothing, same rule as everywhere else in this file: a
+ * number we cannot stand behind is a number we do not print.
+ */
+function exclusionCeiling(excluded: readonly string[], ceiling: number | null): Record<string, unknown> {
+  return excluded.length && typeof ceiling === "number" && Number.isFinite(ceiling) && ceiling >= 0
+    ? { totalBeforeExclusions: ceiling }
     : {};
 }
 
@@ -6400,6 +6478,11 @@ Deno.serve(async (req) => {
         { name: "category=Design (case)", body: { category: "Design" }, col: "category", val: "design" },
         { name: "workMode=HYBRID (case)", body: { workMode: "HYBRID" }, col: "work_mode", val: "hybrid" },
         { name: "combo DE+design", body: { country: "DE", category: "design" } },
+        // The agency opt-out. No col/val recall pair (exactCount compares
+        // string equality and this column is boolean); precision is the check
+        // that matters — a tagged row leaking under the opt-out is the
+        // violation filterViolations now names.
+        { name: "excludeAgencies=true", body: { excludeAgencies: true } },
       ];
       // Filter values we must NEVER honour silently. The fence is that a filter
       // is named or applied, never dropped — experience:["bogus"] breached it.
@@ -6410,6 +6493,9 @@ Deno.serve(async (req) => {
         { name: "experience=[senior,bogus]", body: { experience: ["senior", "bogus"] }, expect: "experience" },
         { name: "category=nonsense", body: { category: "nonsense" }, expect: "category" },
         { name: "workMode=hovering", body: { workMode: "hovering" }, expect: "workMode" },
+        // The query-string boolean shape — the exact sendableOnly:"true"
+        // silence, pointed at the newest strict-boolean filter.
+        { name: 'excludeAgencies="true"', body: { excludeAgencies: "true" }, expect: "excludeAgencies" },
       ];
       // Relevance corpus. Asserted as PROPERTIES, never as literal substrings:
       // `swe` legitimately returns "Software Engineer" through alias expansion,
@@ -9081,6 +9167,17 @@ const rowToJob = (r: any) => ({
   // never show a "re-checked" chip: the feed WAS re-checked and the posting
   // was not in it.
   missingSince: r.missing_since ?? null,
+  // AGENCY DISCLOSURE (2026-08-31 charter): true when the posting's board is
+  // a tagged staffing agency — the card badge and the opt-out filter both
+  // read this. OMITTED when the row does not carry the column, exactly like
+  // matchScope below: the ranked search_jobs exit serves RPC rows whose
+  // shape predates the column (and the deploy window has no column at all),
+  // and a hard-coded false there would be a claim, not a disclosure.
+  ...(typeof r.agency === "boolean"
+    ? {
+      agency: r.agency,
+    }
+    : {}),
   // Tier-2 ranked searches only: the ts_headline fragment showing WHERE a
   // description-matched result matched ([[ ]] delimiters, client-rendered).
   ...(typeof r.snippet === "string" && r.snippet.includes("[[") ? { snippet: r.snippet } : {}),
@@ -9574,7 +9671,7 @@ async function serveList(
     let q = client
       .from("job_board_postings")
       .select(
-        "id,source,company_token,company,title,location,country,remote,work_mode,employment_type,department,category,posted_at,apply_url,salary,salary_min_annual,salary_max_annual,salary_period,salary_currency,experience_band,min_years,last_seen,missing_since,effective_posted",
+        "id,source,company_token,company,title,location,country,remote,work_mode,employment_type,department,category,posted_at,apply_url,salary,salary_min_annual,salary_max_annual,salary_period,salary_currency,experience_band,min_years,agency,last_seen,missing_since,effective_posted",
         withCount ? { count: "exact" } : {},
       )
       .gte(dateCol, freshCutoffIso)
@@ -9749,6 +9846,14 @@ async function serveList(
     // of both requests at once and not a widening of either.
     if (applied.vendors.length) q = q.in("source", applied.vendors);
     if (applied.companies.length) q = q.in("company_token", applied.companies);
+    // "Hide staffing agencies" — the opt-in decline of the 2026-08-31
+    // charter's disclosed inventory. A NARROWING and only ever that: agency
+    // is NOT NULL DEFAULT false, so this equality has 100% coverage (no
+    // unstated population is silently discarded, unlike workMode) and its
+    // absence is already the widest answer. No RPC binds it yet — the
+    // blind-set gate routes every request carrying it through this builder,
+    // so this .eq() is the single place the predicate exists.
+    if (applied.excludeAgencies) q = q.eq("agency", false);
     // Saved searches ask "how many NEW since I last looked" — a cheap count.
     // COMPANY-STATED DATE, not our crawl time. dateCol is effective_posted =
     // coalesce(posted_at, first_seen), so binding postedAfter to it answered
@@ -10089,6 +10194,29 @@ async function serveList(
   // copies would drift, and the count would then say countUnavailable at a
   // different size than the list slices.
   const ROUTE_WINDOW = 400;
+  // ONE deadline for the pair too, and it is sized by the query's SHAPE.
+  //
+  // MEASURED 2026-08-31 (search battery, snap-2026-08-31-pre-agency):
+  // q="director not for profit" took 9,381ms. The stopword rule sends it down
+  // the SIMPLE route, whose retriever builds a four-token AND — and a rare
+  // multi-token conjunction under ORDER BY effective_posted is the planner
+  // shape this file already documents: the date index is walked row by row
+  // testing the match, the deadline expires having answered nothing, and the
+  // request then STILL pays search_jobs and every decoration behind it,
+  // because this route falls through rather than erroring. A deadline on the
+  // primary path sums with the whole pipeline behind it, so a bare 7_000 here
+  // ran the request past every decoration deadline and burned the entire
+  // budget to serve a page the fall-through would have served at ~2s.
+  //
+  // The 7s figure stays for the one- and two-token queries this route exists
+  // for (rn, swe, it manager): it was sized against a measured cold-start
+  // spike on exactly that shape, and shortening it would re-open the
+  // same-query-two-answers coin toss the exact-word tier's own test pins. A
+  // wide conjunction that has not answered in 2.5s is already degenerating —
+  // the measured run spent its full seven seconds to return nothing — and
+  // the english reading of the same words is one fall-through away.
+  const routedQueryTokens = qText.split(/\s+/).filter(Boolean).length;
+  const ROUTED_DEADLINE_MS = routedQueryTokens >= 3 ? 2_500 : 7_000;
 
   if (countOnly) {
     // countOnly is the FIFTH exit, and I missed it when wiring the honesty
@@ -10159,7 +10287,9 @@ async function serveList(
         const { data: rcRows, error: rcErr } = await withDeadline(
           rqC.order("effective_posted", { ascending: false }).order("id", { ascending: true })
             .range(0, ROUTE_WINDOW - 1),
-          7_000,
+          // The shared shape-sized deadline, clamped to the request budget —
+          // the count mirrors the list, and that includes how long it may run.
+          Math.min(ROUTED_DEADLINE_MS, budgetLeft()),
         ) as { data: unknown[] | null; error?: unknown };
         markFrom("related_count", t_related_count);
         if (rcRows === null) console.warn(`[JOB-BOARD] routed count (${routeDecision.route}) hit its deadline for q=${JSON.stringify(qText)}`);
@@ -10167,7 +10297,10 @@ async function serveList(
         // window too — matching its behaviour is the whole point of this block.
         if (!rcErr && Array.isArray(rcRows) && rcRows.length > 0) {
           const rcCapped = rcRows.length >= ROUTE_WINDOW;
-          return json({ total: rcCapped ? null : rcRows.length, ...(rcCapped ? { countUnavailable: true } : {}), ...countHonesty });
+          // A full window is a FLOOR, and a floor is a fact even when the
+          // total is not — the fuzzy tier's own contract, mirrored here so the
+          // count answers exactly what the list's capped page answers.
+          return json({ total: rcCapped ? null : rcRows.length, ...(rcCapped ? { countUnavailable: true, totalAtLeast: rcRows.length } : {}), ...countHonesty });
         }
       } catch { /* fall through to the search_jobs count below — the same path the list falls through to */ }
     }
@@ -10632,7 +10765,10 @@ async function serveList(
     const { data: routedRows, error: rErr } = await withDeadline(
       rq.order("effective_posted", { ascending: false }).order("id", { ascending: true })
         .range(blockStart, blockStart + ROUTE_WINDOW - 1),
-      7_000,
+      // Shape-sized (see ROUTED_DEADLINE_MS) and clamped to the request
+      // budget, like every sibling on the serving path — a bare deadline here
+      // sums with the entire fall-through pipeline behind it.
+      Math.min(ROUTED_DEADLINE_MS, budgetLeft()),
     ) as { data: unknown[] | null; error?: unknown };
     markFrom("routed_retriever", t_routed_retriever);
     if (routedRows === null) {
@@ -10674,7 +10810,14 @@ async function serveList(
           // saying "unavailable" beats publishing a window size as a total —
           // the defect the fuzzy tier still carries.
           total: knownTotal,
-          ...(blockFull ? { countUnavailable: true } : {}),
+          // A full block withholds the total honestly — but it PROVES a floor,
+          // and a floor is a fact even when the total is not (the fuzzy tier's
+          // own words). MEASURED 2026-08-31: q="RN" served a full page under
+          // no number at all, while the window in hand had just demonstrated
+          // at least 400 matches. The client renders "N+"; under an exclusion
+          // the caveat below still withdraws it, because a pre-exclusion floor
+          // counts rows the pruning may then hide.
+          ...(blockFull ? { countUnavailable: true, totalAtLeast: blockStart + ordered.length } : {}),
           hasMore: blockFull || inBlock + limit < ordered.length,
           // Clamped to the window, so a caller cannot step past it. Unclamped,
           // paging one page beyond the 400-row window re-entered this block at
@@ -10708,6 +10851,9 @@ async function serveList(
           ...(routedExpand.expansions.length ? { aliases: routedExpand.expansions } : {}),
           ...(routeDecision.matchedName ? { companyMatched: routeDecision.matchedName } : {}),
           ...exclusionCountsCaveat(excludedTerms),
+          // The pre-exclusion figure, republished as the labelled ceiling it
+          // is. knownTotal is null at the cap, so a full block offers nothing.
+          ...exclusionCeiling(excludedTerms, knownTotal),
           totalAllCompanies: safeMetaTotal ?? 0,
           ...(trackedTotal !== null ? { trackedTotal } : {}),
           companies: [],
@@ -11420,6 +11566,20 @@ async function serveList(
               }),
             ).then(() => {}).catch(() => {}));
           };
+          // PROOF OF ABSENCE, CARRIED DOWN THE LADDER. Reaching a tier because
+          // the ones above found nothing and reaching it because they FAILED
+          // are different facts, and only the first is evidence about the
+          // corpus. Each flag is set exclusively on a resolved, error-free,
+          // genuinely empty answer — a deadline miss, a thrown half or a
+          // skipped tier leaves it false, so a degraded ladder keeps every
+          // rescue it has today. What the pair eventually proves is that no
+          // lexical engine can see the query anywhere: search_jobs already
+          // said zero for title AND description (that is how this block was
+          // entered), the exact-word pair adds title AND company under the
+          // simple config, and the trigram tier adds "no title is even
+          // NEAR it". The semantic gate below spends that proof.
+          let simpleTierProvedEmpty = false;
+          let fuzzyTierProvedEmpty = false;
           // ── THE SIMPLE-CONFIG TIER ────────────────────────────────────
           //
           // Runs FIRST among the rescues, because it is exact word matching and
@@ -11516,18 +11676,28 @@ async function serveList(
                   .order("effective_posted", { ascending: false })
                   .order("id", { ascending: true })
                   .range(0, Math.max(limit * 2 - 1, 0)),
-              ]).then((settled) => ({
+              ]).then((settled) => {
                 // A failure on EITHER side is survivable — the other still
                 // answers. The company index may not exist yet, and a tier that
                 // dies entirely because half of it is unindexed would be worse
                 // than the empty page it replaces.
-                data: settled.flatMap((r) =>
-                  r.status === "fulfilled"
-                    ? ((r.value as { data?: unknown[] })?.data ?? [])
-                    : []
-                ),
-                error: null,
-              })),
+                const halves = settled.map((r) =>
+                  r.status === "fulfilled" ? r.value as { data?: unknown[] | null; error?: unknown } : null);
+                // Proof, not absence-of-rows: only when BOTH halves resolved
+                // as error-free arrays does an empty merge mean "the corpus
+                // holds no such word". A rejected or errored half yields the
+                // same [] downstream, and treating that as proof is how a
+                // degraded tier gets mistaken for a decisive one. Set in this
+                // closure so the fact lands even if the deadline race was
+                // lost — late evidence is still evidence, and it is only ever
+                // read further down the ladder.
+                simpleTierProvedEmpty = halves.every((h) =>
+                  h && !h.error && Array.isArray(h.data) && h.data.length === 0);
+                return {
+                  data: halves.flatMap((h) => (h?.data ?? []) as unknown[]),
+                  error: null,
+                };
+              }),
               // 7s, not 4s. MEASURED: the pair costs ~1.3s warm (title 0.25s,
               // company 1.13s, issued concurrently), but eight identical calls
               // to q="IT" produced 7.9s, 6.5s, then six between 2.6s and 3.0s —
@@ -11640,6 +11810,10 @@ async function serveList(
               Math.min(4_000, budgetLeft()),
             ) as { data: unknown[] | null; error?: unknown };
             markFrom("fuzzy_title_search", t_fuzzy_title_search_2);
+            // A resolved, error-free empty answer is a finding: no title on
+            // the board is even trigram-NEAR the query. A deadline miss
+            // resolves {data:null} and proves nothing.
+            if (!fErr && Array.isArray(fuzzy)) fuzzyTierProvedEmpty = fuzzy.length === 0;
             if (!fErr && Array.isArray(fuzzy) && fuzzy.length > 0) {
               // Same-company+title clones flood trigram results exactly like
               // the other tiers — collapse them the same way (audit: adjacent
@@ -11746,7 +11920,32 @@ async function serveList(
           // restrictive filter active the semantic tier stands down and the
           // honest empty (which respects the filters) is the answer.
           // (filtersActive computed once above, shared with the fuzzy tier.)
-          if (qText.length >= 3) {
+          //
+          // EMPTINESS, ONCE PROVEN, IS AN ANSWER — STOP PAYING FOR IT.
+          //
+          // MEASURED 2026-08-31 (battery): q="Collabera" returned zero results
+          // in 6,489ms — the ladder walked every tier to concede what the
+          // first ones had already demonstrated. This tier can only SHIP rows
+          // that pass its lexical anchor: some served title or company must
+          // contain a query token of 3+ characters as a substring. By the time
+          // both proof flags are set, three engines have resolved empty on the
+          // same corpus — search_jobs (title AND description words), the
+          // exact-word pair (title AND company words), and the trigram tier —
+          // so a title anchor cannot exist (a substring IS heavy trigram
+          // overlap, which the fuzzy tier just searched for), and a company
+          // anchor would need the token buried inside a longer word of a name
+          // whose rows the ANN also happened to rank near a query no engine
+          // can see. That residue is not worth an embed: deciding AFTER it
+          // costs a cold-isolate model load, an HNSW scan and a hydration
+          // round trip for a page the anchor then refuses — the helper's own
+          // cheap-refusal rule, applied one fact earlier. A failed or
+          // deadlined tier leaves its flag false, so a degraded ladder still
+          // tries the rescue it has today.
+          // The emptiness proofs are whole-query facts; for a multi-token query a
+          // rescue could still match a subset, so the skip stays single-token
+          // (the measured zero-result offender class: bare company names).
+          const qTokenCount = qText.trim().split(/\s+/).filter(Boolean).length;
+          if (qText.length >= 3 && !(simpleTierProvedEmpty && fuzzyTierProvedEmpty && qTokenCount <= 1)) {
             try {
               // Retrieval is the shared helper above; this block owns only what
               // an EMPTY page should answer with. fetchLimit because a rescue
@@ -12406,6 +12605,14 @@ async function serveList(
             : { relatedTotal: related, ...(relatedCapped ? { relatedCapped: true } : {}) }),
           ...(rankedCapped ? { countCapped: true } : {}),
           ...exclusionCountsCaveat(excludedTerms),
+          // The exact-segment count the caveat just withdrew, republished as
+          // the labelled ceiling it is — MEASURED 2026-08-31, q="engineer not
+          // manager" shipped a full page with no figure at all. Withheld when
+          // the page already disproved the count (totalUnderstated) or holds
+          // appended close matches (augmented): a ceiling of the exact segment
+          // over a mixed page is the "Showing 40 of 18" contradiction again.
+          // countCapped above still rides along, so 10,000 reads as "10,000+".
+          ...(augmented || totalUnderstated ? {} : exclusionCeiling(excludedTerms, total)),
           totalAllCompanies: safeMetaTotal ?? total,
           ...(trackedTotal !== null ? { trackedTotal } : {}),
           companies: includeFacets0

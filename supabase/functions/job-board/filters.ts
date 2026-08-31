@@ -221,6 +221,22 @@ export type AppliedFilters = {
   companies: string[];
   maxAgeDays: number | null;
   postedAfter: string | null;
+  /**
+   * "Hide staffing agencies" -> agency = false. OPT-IN, and a NARROWING only:
+   * the 2026-08-31 charter carries agency boards (disclosed with a badge, the
+   * flag riding the catalog entry), and this is the reader's way to decline
+   * them. agency is NOT NULL DEFAULT false, so the predicate has 100%
+   * coverage — unlike workMode there is no "not stated" population for the
+   * filter to silently discard, and no coverage disclosure is owed.
+   *
+   * Deliberately NOT in RPC_BOUND_FILTERS yet: no search RPC takes a
+   * parameter for it, so the blind-set gate routes any request carrying it
+   * through buildQuery — which binds it — instead of letting an RPC answer
+   * with rows it never filtered. That trades ranking for honesty on exactly
+   * the requests that opt in, which is the five-filters lesson applied in
+   * the safe direction; binding it in SQL later deletes the trade.
+   */
+  excludeAgencies: boolean;
 };
 
 /**
@@ -448,6 +464,13 @@ export function normalizeFilters(
   // Literal true only, same contract as includeUncategorised: a truthy string
   // from a query param must not silently narrow a search to 5.4% of the board.
   const sendableOnly = body.sendableOnly === true;
+
+  // The agency opt-out, literal true only for the same reason — and it may
+  // ONLY ever narrow. A widening reading ("show agencies too") does not
+  // exist: agencies are served by default under the charter, so the flag's
+  // absence is already the widest answer, and any bug that let this admit
+  // rows would be the tier-escalation defect (a filter that widens a search).
+  const excludeAgencies = body.excludeAgencies === true;
 
   // A LIST, LIKE EVERY OTHER CLOSED-SET FILTER HERE.
   //
@@ -739,6 +762,14 @@ export function normalizeFilters(
   if (body.includeUncategorised !== undefined && body.includeUncategorised !== null && typeof body.includeUncategorised !== "boolean") {
     ignored.push("includeUncategorised");
   }
+  // Same non-boolean guard as sendableOnly directly above: a query-string
+  // {"excludeAgencies":"true"} is not the literal true the strictness reads,
+  // so it fails to narrow — and a reader who asked to hide agencies and was
+  // silently shown them anyway is the exact person a disclosure feature must
+  // never lie to.
+  if (body.excludeAgencies !== undefined && body.excludeAgencies !== null && typeof body.excludeAgencies !== "boolean") {
+    ignored.push("excludeAgencies");
+  }
 
   const paRaw = body.postedAfter;
   const postedAfter = typeof paRaw === "string" && !Number.isNaN(Date.parse(paRaw)) ? paRaw : null;
@@ -772,6 +803,7 @@ export function normalizeFilters(
       companies,
       maxAgeDays,
       postedAfter,
+      excludeAgencies,
     },
     ignored,
     maxAgeClamped,
@@ -937,6 +969,13 @@ export function filterViolations(
       push("vendor", a.vendors.join("|"), r.source);
     }
     if (a.remote && r.remote !== true) push("remote", "true", r.remote);
+    // The agency opt-out, checked exactly as strictly as it binds: the column
+    // is NOT NULL so rowToJob always emits a boolean, and a tagged row
+    // arriving under the opt-out is the defect. This is the sensor for the
+    // day an RPC gains rows this filter never reached — the p_work_mode
+    // regression class — since no RPC can bind it yet and the blind-set gate
+    // is the only thing keeping those paths away.
+    if (a.excludeAgencies && r.agency === true) push("excludeAgencies", "agency=false", r.agency);
     // `token` is what rowToJob actually emits for the company feed token — NOT
     // `companyToken`, which is what this line read when it was first written.
     // Consequence had it shipped: with a companies filter active every row would

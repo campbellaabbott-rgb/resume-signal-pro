@@ -3509,6 +3509,7 @@
     "resultsSummary": "{{shown}} van {{total}} passende vacatures uit {{companyFeeds}} bedrijfsfeeds",
     "resultsSummaryNoTotal": "{{shown}} overeenkomende vacatures worden getoond",
     "resultsSummaryFloor": "{{shown}} van {{floor}}+ overeenkomende vacatures getoond",
+    "resultsSummaryCeiling": "{{shown}} van maximaal {{ceiling}} vacatures vóór je uitsluitingen",
     "didYouMean": "Bedoelde u “{{q}}”?",
     "alsoInLocations_one": "Werft ook op {{count}} andere locatie",
     "alsoInLocations_other": "Werft ook op {{count}} andere locaties",
@@ -3969,7 +3970,8 @@
       "hasStatedPay": "vermeldt salaris",
       "maxYears": "gevraagde jaren",
       "department": "afdeling",
-      "vendor": "bron"
+      "vendor": "bron",
+      "excludeAgencies": "bureaus verbergen"
     },
     "companiesChip": "{{n}} bedrijven",
     "firstSeenToday": "voor het eerst gezien vandaag",
@@ -4091,7 +4093,13 @@
       "temporary": "Tijdelijk",
       "internship": "Stage"
     },
-    "relatedSeam": "Exacte matches eindigen hier — hieronder alleen matches in de vacaturetekst"
+    "relatedSeam": "Exacte matches eindigen hier — hieronder alleen matches in de vacaturetekst",
+    "hideAgencies": "Uitzend- en wervingsbureaus verbergen",
+    "hideAgenciesTip": "Verbergt vacatures van uitzend- en wervingsbureaus. Hun kaarten dragen de badge 'Uitzend-/wervingsbureau'; dit filter haalt ze volledig van de pagina. Standaard uit — een bureauvacature is een echte vacature.",
+    "chipNoAgencies": "Geen uitzendbureaus",
+    "agencyBadge": "Uitzend-/wervingsbureau",
+    "agencyBadgeTip": "Deze werkgever is een uitzend- of wervingsbureau — de functie wordt mogelijk namens een klant vervuld. Gebruik 'Uitzend- en wervingsbureaus verbergen' in de filters om ze uit te sluiten.",
+    "agenciesExcluded": "Vacatures van uitzendbureaus zijn door je filter verborgen — de totalen tellen alleen directe werkgevers."
   },
   "accountPage": {
     "statusSaveFailed": "Kon die status niet opslaan — probeer het opnieuw.",

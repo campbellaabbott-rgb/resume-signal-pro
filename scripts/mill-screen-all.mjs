@@ -280,11 +280,14 @@ for (const b of worklist) {
     console.log(`EXCLUDE ${b.vendor}:${b.token} "${b.name}" — ${distinct} distinct title(s) across ${firstLines.length} sampled of ${b.count} postings`);
   } else if (hits > 0) {
     // CHARTER CHANGE 2026-08-31: phrase evidence no longer excludes — the
-    // operator decided staffing agencies are carried. The evidence still
-    // prints so the tag is available the day agency postings get a
-    // disclosure badge; only duplicate-title spam and unreadable boards
-    // still fail this screen.
-    cleared.push({ vendor: b.vendor, token: b.token });
+    // operator decided staffing agencies are carried. The evidence RIDES THE
+    // CLEARED FILE as a boolean now, not just the console: merge-all reads it
+    // and stamps the board's catalog entry with the disclosure flag, so the
+    // badge the reader sees traces back to the postings that earned it. A
+    // printed line alone was memory in a human's head — the same failure mode
+    // the conviction ledger exists to prevent. Only duplicate-title spam and
+    // unreadable boards still fail this screen.
+    cleared.push({ vendor: b.vendor, token: b.token, agency: true });
     console.log(`clear~  ${b.vendor}:${b.token} "${b.name}" — ${hits}/${texts.length} agency-evidence postings (carried under the 2026-08-31 charter)`);
   } else {
     cleared.push({ vendor: b.vendor, token: b.token });

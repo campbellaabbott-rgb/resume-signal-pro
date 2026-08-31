@@ -175,7 +175,7 @@ const PINNED = {
   // as a matter of course this time — the .2 bump had to be made retroactively
   // after three commits shipped undeployed behind an unchanged version string,
   // and "is it live?" cost six behavioural probes to answer.
-  sourcesHash: "f1473db26eb545c8",
+  sourcesHash: "0612c4ff593f4e54",
   // 2026-08-21.4: disables the exact-word tier's company matcher, whose index
   // never built. Bumped so the mitigation is externally identifiable.
   // 2026-08-21.5: routed retrieval. index.ts + two new modules; sources.ts
@@ -514,7 +514,23 @@ const PINNED = {
   // waits on the 1.5M disk step. Overrides cap at 250 pages — beyond 5,000
   // postings/pass the offset rotation still wraps, and the shed system
   // remains the governor of wall-time.
-  buildVersion: "2026-08-30.15",
+  //
+  // 2026-08-30.16: the search-upgrade round, measured end to end. The
+  // snapshot harness's very first battery convicted three defects: the
+  // routed path's bare 7s deadline let a four-token exclusion query burn
+  // 9.4s (now shape-sized: 2.5s for >=3 tokens, 7s kept for the abbreviation
+  // shape it was built for); the zero-result rescue ladder paid a cold embed
+  // for pages two tiers had already proven empty (it declines now — single-
+  // token only, the reviewer's narrowing); and exclusion searches served no
+  // figure at all (they publish a labelled totalBeforeExclusions ceiling,
+  // rendered in all nine locales). Agency disclosure ships the transparency
+  // answer to the charter change: 139 boards tagged (the first draft tagged
+  // 226 — "talent"/"workforce" were catching employers' own in-house
+  // portals), a badge, an opt-in excludeAgencies filter, and migration
+  // 20260831120000 whose malformed-patch guard is a spelling whitelist,
+  // because a bad string throws before COALESCE can help. +285 ADP boards
+  // named from their employers' own prose rode along.
+  buildVersion: "2026-08-30.16",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {

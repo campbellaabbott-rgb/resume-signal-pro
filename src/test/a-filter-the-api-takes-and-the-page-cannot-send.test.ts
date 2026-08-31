@@ -69,6 +69,10 @@ const OFF: BoardFilterState = {
   agentOnly: false, country: "", experience: "", companyTokens: [], salaryFloor: 0,
   salaryCeiling: 0, payBasis: "", statedPayOnly: false, includeUnstatedPay: false, maxYears: 0, department: "",
   employmentType: "",
+  // Added 2026-08-31 (agency disclosure): the literal failing the typecheck
+  // the day BoardFilterState grew is this tripwire doing its job, same as the
+  // server-side AppliedFilters literal.
+  hideAgencies: false,
   vendor: "", freshness: "",
 };
 
@@ -327,8 +331,11 @@ describe("one derivation, and everything downstream reads it", () => {
     // /jobs/company/:token and /jobs/field/:slug carry no query string, so
     // dropping into the lander form with a filter on discards it from every
     // shared or reloaded link while the chip still shows on screen.
+    // hideAgencies joined the gate 2026-08-31 (agency disclosure): a lander
+    // URL with only "hide staffing agencies" on would otherwise rewrite to the
+    // bare lander and a reload served the agencies back under a lit chip.
     expect(JOBS_CODE).toMatch(
-      /const extraFilters = !!\(salaryCeiling \|\| payBasis \|\| statedPayOnly \|\| includeUnstatedPay \|\| maxYears \|\| department \|\| vendor \|\| employmentType\);/,
+      /const extraFilters = !!\(salaryCeiling \|\| payBasis \|\| statedPayOnly \|\| includeUnstatedPay \|\| maxYears \|\| department \|\| vendor \|\| employmentType \|\| hideAgencies\);/,
     );
     expect((JOBS_CODE.match(/&& !extraFilters &&/g) ?? []).length).toBe(2);
   });

@@ -3509,6 +3509,7 @@
     "resultsSummary": "Ipinapakita ang {{shown}} sa {{total}} tumutugmang opening sa {{companyFeeds}} feed ng kumpanya",
     "resultsSummaryNoTotal": "Ipinapakita ang {{shown}} tugmang bakante",
     "resultsSummaryFloor": "Ipinapakita ang {{shown}} sa {{floor}}+ tumutugmang trabaho",
+    "resultsSummaryCeiling": "Ipinapakita ang {{shown}} sa hanggang {{ceiling}} na trabaho bago ang iyong mga exclusion",
     "didYouMean": "Ang ibig mo bang sabihin ay “{{q}}”?",
     "alsoInLocations_one": "Kumukuha rin sa {{count}} pang lokasyon",
     "alsoInLocations_other": "Kumukuha rin sa {{count}} pang mga lokasyon",
@@ -3969,7 +3970,8 @@
       "hasStatedPay": "may nakasaad na sahod",
       "maxYears": "hinihinging taon",
       "department": "departamento",
-      "vendor": "pinagmulan"
+      "vendor": "pinagmulan",
+      "excludeAgencies": "itago ang mga ahensya"
     },
     "companiesChip": "{{n}} kumpanya",
     "firstSeenToday": "unang nakita ngayong araw",
@@ -4091,7 +4093,13 @@
       "temporary": "Pansamantala",
       "internship": "Internship"
     },
-    "relatedSeam": "Dito nagtatapos ang eksaktong tugma — sa ibaba, tugma lamang sa teksto ng posting"
+    "relatedSeam": "Dito nagtatapos ang eksaktong tugma — sa ibaba, tugma lamang sa teksto ng posting",
+    "hideAgencies": "Itago ang mga staffing agency",
+    "hideAgenciesTip": "Itinatago ang mga posting mula sa mga staffing at recruitment agency. May badge na \"Staffing agency\" ang kanilang mga card; tuluyang inaalis ng filter na ito ang mga iyon sa pahina. Naka-off bilang default — totoong trabaho pa rin ang mga bakante ng ahensya.",
+    "chipNoAgencies": "Walang staffing agency",
+    "agencyBadge": "Staffing agency",
+    "agencyBadgeTip": "Ang employer na ito ay isang staffing o recruitment agency — maaaring punan ang posisyon para sa isang kliyente. Gamitin ang \"Itago ang mga staffing agency\" sa mga filter para ibukod ang mga ito.",
+    "agenciesExcluded": "Nakatago ang mga posting ng staffing agency dahil sa iyong filter — mga direktang employer lang ang binibilang sa kabuuan."
   },
   "accountPage": {
     "statusSaveFailed": "Hindi na-save ang status na iyon — pakisubukan muli.",

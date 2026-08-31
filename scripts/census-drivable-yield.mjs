@@ -153,7 +153,13 @@ function carriedBoards() {
   const rows = [
     ...[...src.matchAll(/\bs\(\s*"((?:[^"\\]|\\.)*)"\s*,\s*"([a-z0-9_]+)"\s*,\s*"((?:[^"\\]|\\.)*)"\s*\)/g)]
       .map((m) => ({ name: m[1], vendor: m[2], token: m[3] })),
-    ...[...src.matchAll(/\{\s*name:\s*"((?:[^"\\]|\\.)*)"\s*,\s*source:\s*"([a-z0-9_]+)"\s*,\s*token:\s*"((?:[^"\\]|\\.)*)"\s*\}/g)]
+    // Tolerates the optional suffixes (per-board window override, agency
+    // disclosure flag — both 2026-08-31): this parse anchored straight onto
+    // the closing brace and silently unmatched every suffixed entry. The
+    // zero-boards guard below only fires when a whole VENDOR vanishes, so a
+    // few dozen tagged pinpoint/breezy boards dropping out would have skewed
+    // the yield table without tripping anything.
+    ...[...src.matchAll(/\{\s*name:\s*"((?:[^"\\]|\\.)*)"\s*,\s*source:\s*"([a-z0-9_]+)"\s*,\s*token:\s*"((?:[^"\\]|\\.)*)"(?:,\s*pages:\s*\d+)?(?:,\s*agency:\s*true)?\s*\}/g)]
       .map((m) => ({ name: m[1], vendor: m[2], token: m[3] })),
   ];
   for (const vendor of DRIVABLE) {

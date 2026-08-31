@@ -161,6 +161,10 @@ interface BoardJob {
   salary?: string | null;
   /** Definitive employer-stated work mode; null = the posting doesn't say (no tag shown). */
   workMode?: "remote" | "hybrid" | "onsite" | null;
+  /** The board is a tagged staffing agency (2026-08-31 charter: carried and
+   *  DISCLOSED — a badge, never a hidden trait). Absent on ranked-RPC rows
+   *  whose shape predates the column; the badge renders only on true. */
+  agency?: boolean;
   /** ISO-2 country when the feed or location text states one (serveList sends it). */
   country?: string | null;
   salaryMinAnnual?: number | null;
@@ -321,6 +325,9 @@ export type BoardFilterState = {
   /** Comma-joined subset of full_time|part_time|contract|temporary|internship;
    *  "" = any. Same list contract as workMode. */
   employmentType: string;
+  /** "Hide staffing agencies" — the opt-in decline of the charter's disclosed
+   *  agency inventory. Off by default: agencies serve unless asked away. */
+  hideAgencies: boolean;
   /**
    * The freshness window in DAYS, as a string, "" = any date.
    *
@@ -336,7 +343,7 @@ export function boardFilterBody(s: BoardFilterState): Record<string, unknown> {
   const {
     q, location, remoteOnly, workMode, category, inclUncat, agentOnly, country,
     experience, companyTokens, salaryFloor, salaryCeiling, payBasis, statedPayOnly, includeUnstatedPay,
-    maxYears, department, vendor, freshness, employmentType,
+    maxYears, department, vendor, freshness, employmentType, hideAgencies,
   } = s;
   const body: Record<string, unknown> = {
     q: q.trim() || undefined,
@@ -369,6 +376,9 @@ export function boardFilterBody(s: BoardFilterState): Record<string, unknown> {
     maxYears: maxYears || undefined,
     department: department.trim() || undefined,
     vendor: vendor || undefined,
+    // Literal true only, the sendableOnly rule — the server refuses (and
+    // names) anything else, and a narrowing must never ride a truthy string.
+    excludeAgencies: hideAgencies ? true : undefined,
     // Company-stated dates only, never our discovery time — "Today" must mean
     // the company posted it today.
     maxAgeDays: Number(freshness) || undefined,
@@ -481,6 +491,9 @@ interface BoardResponse {
   maxAgeClampedTo?: number;
   /** A "new since" window counts the employer's stated date, not our crawl. */
   postedAfterUsesStatedDate?: boolean;
+  /** The opt-out hid staffing-agency postings from this page — row-selecting,
+   *  so it is echoed like every other narrowing the totals rode through. */
+  agenciesExcluded?: boolean;
   /** The query matched an employer name; this is the name that matched. */
   companyMatched?: string;
   /** Exact whole-word tier answered, rather than the ranked scorer. */
@@ -540,6 +553,7 @@ interface BoardResponse {
   /** Set when close-match rows were APPENDED to a thin exact page (the rows
    *  themselves carry closeMatch: true). Disclosed above the list. */
   fuzzyExtra?: { q: string; count: number };
+  totalBeforeExclusions?: number;
 }
 
 // Mirrors JOB_CATEGORIES in the edge function — the filterable fields.
@@ -824,6 +838,11 @@ export default function Jobs() {
   // the honest half of the same fact.
   const [statedPayOnly, setStatedPayOnly] = useState(initial.get("statedPay") === "1");
   const [includeUnstatedPay, setIncludeUnstatedPay] = useState(initial.get("inclUnstatedPay") === "1");
+  // "Hide staffing agencies" — the opt-in decline of the inventory the
+  // 2026-08-31 charter carries disclosed (the badge on tagged cards). Off by
+  // default on purpose: hiding disclosed inventory is the reader's choice,
+  // never the page's.
+  const [hideAgencies, setHideAgencies] = useState(initial.get("noAgencies") === "1");
   const [industriesOpen, setIndustriesOpen] = useState(false);
   // Which ATS the posting came from. `source` is populated on every row, so
   // this is the only new filter that hides nothing. Until now the sole vendor
@@ -1037,6 +1056,11 @@ export default function Jobs() {
       // interpreted search with nothing in the chips saying so.
       setEmploymentType("");
       setAgentOnly(false);
+      // The agency opt-out joins the reset the day it exists — nl-search does
+      // not emit it, and a stale "hide staffing agencies" quietly excluding
+      // disclosed inventory under an interpretation that never mentions it is
+      // this block's founding defect wearing the newest filter.
+      setHideAgencies(false);
       // Board CONTROLS the parser can now drive too (a query is a command):
       // "companies that actually hire" → the proven-fills filter; "highest
       // paying first" → salary sort. Reset like the other fields.
@@ -1363,10 +1387,10 @@ export default function Jobs() {
     inclUncat: inclUncat && sortMode !== "salary",
     agentOnly, country,
     experience, companyTokens, salaryFloor, salaryCeiling, payBasis, statedPayOnly, includeUnstatedPay,
-    maxYears, department, vendor, freshness, employmentType,
+    maxYears, department, vendor, freshness, employmentType, hideAgencies,
   }), [q, location, remoteOnly, workMode, category, inclUncat, sortMode, agentOnly, country,
     experience, companyTokens, salaryFloor, salaryCeiling, payBasis, statedPayOnly, includeUnstatedPay,
-    maxYears, department, vendor, freshness, employmentType]);
+    maxYears, department, vendor, freshness, employmentType, hideAgencies]);
   const healthAttempted = useRef<Set<string>>(new Set());
   const [healthFailed, setHealthFailed] = useState(false);
   // Apply-agent: the posting whose questions we're drafting (with its fetched JD
@@ -1610,6 +1634,10 @@ export default function Jobs() {
       maxYears: maxYears || undefined,
       department: department || undefined,
       vendor: vendor || undefined,
+      // The agency opt-out joins the save the day it exists, or the digest
+      // mails agency postings a screen that hid them — the country/freshness
+      // drop of 2026-07-26 in new clothes.
+      excludeAgencies: hideAgencies || undefined,
     };
     const name = searchName(
       params,
@@ -1890,6 +1918,7 @@ export default function Jobs() {
     if (department) p.set("department", department);
     if (vendor) p.set("vendor", vendor);
     if (employmentType) p.set("etype", employmentType);
+    if (hideAgencies) p.set("noAgencies", "1");
     // The detail panel's ?job= deep link isn't filter state — preserve it, or
     // this rewrite clobbers a shared link on mount before the panel can open.
     const jobParam = new URLSearchParams(window.location.search).get("job");
@@ -1919,7 +1948,7 @@ export default function Jobs() {
     // write side (above) but skipped both gates, so a lander with only
     // "Actively hiring" on rewrote the bare lander URL and a reload or shared
     // link served every employer again under the chip.
-    const extraFilters = !!(salaryCeiling || payBasis || statedPayOnly || includeUnstatedPay || maxYears || department || vendor || employmentType);
+    const extraFilters = !!(salaryCeiling || payBasis || statedPayOnly || includeUnstatedPay || maxYears || department || vendor || employmentType || hideAgencies);
     if (landerCompany && company === landerCompany && !q && !location && !remoteOnly && !workMode && !category && !experience && !salaryFloor && !country && !freshness && !agentOnly && !activelyHiringOnly && !extraFilters && sortMode !== "salary") {
       window.history.replaceState({}, "", `/jobs/company/${landerCompany}${jobParam ? `?job=${encodeURIComponent(jobParam)}` : ""}`);
       return;
@@ -1929,7 +1958,7 @@ export default function Jobs() {
       return;
     }
     window.history.replaceState({}, "", qs ? `/jobs?${qs}` : "/jobs");
-  }, [q, location, remoteOnly, workMode, company, category, inclUncat, agentOnly, activelyHiringOnly, experience, country, salaryFloor, salaryCeiling, payBasis, statedPayOnly, includeUnstatedPay, maxYears, department, vendor, employmentType, freshness, sortMode, landerCategory, landerCompany]);
+  }, [q, location, remoteOnly, workMode, company, category, inclUncat, agentOnly, activelyHiringOnly, experience, country, salaryFloor, salaryCeiling, payBasis, statedPayOnly, includeUnstatedPay, maxYears, department, vendor, employmentType, hideAgencies, freshness, sortMode, landerCategory, landerCompany]);
 
   // Category salary benchmarks: median advertised pay floor per field, computed
   // live from postings that state pay (RPC self-gates at n>=30 — a thin sample
@@ -3346,6 +3375,7 @@ export default function Jobs() {
     if (payBasis) f.push({ key: "payBasis", label: payBasis === "hourly" ? t("jobsPage.payBasisHourly", "Paid hourly") : t("jobsPage.payBasisSalaried", "Salaried"), clear: () => setPayBasis("") });
     if (statedPayOnly) f.push({ key: "statedPay", label: t("jobsPage.statedPay", "States pay"), clear: () => setStatedPayOnly(false) });
     if (includeUnstatedPay) f.push({ key: "inclUnstatedPay", label: t("jobsPage.inclUnstatedPay", "Incl. unstated pay"), clear: () => setIncludeUnstatedPay(false) });
+    if (hideAgencies) f.push({ key: "noAgencies", label: t("jobsPage.chipNoAgencies", "No staffing agencies"), clear: () => setHideAgencies(false) });
     if (department) f.push({ key: "department", label: department, clear: () => setDepartment("") });
     if (vendor) {
       const vs = vendor.split(",").filter(Boolean);
@@ -3420,7 +3450,7 @@ export default function Jobs() {
     if (category && inclUncat && sortMode !== "salary") f.push({ key: "inclUncat", label: t("jobsPage.chipInclUncat", "+ unsorted"), clear: () => setInclUncat(false) });
     return f;
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [q, location, category, experience, maxYears, company, companyTokens, country, salaryFloor, salaryCeiling, payBasis, statedPayOnly, department, vendor, remoteOnly, workMode, employmentType, freshness, companies, agentOnly, activelyHiringOnly, inclUncat, sortMode, t]);
+  }, [q, location, category, experience, maxYears, company, companyTokens, country, salaryFloor, salaryCeiling, payBasis, statedPayOnly, hideAgencies, department, vendor, remoteOnly, workMode, employmentType, freshness, companies, agentOnly, activelyHiringOnly, inclUncat, sortMode, t]);
   // S1: search suggestions — recent searches (local), matching companies
   // (served facet), matching category pages, and a curated common-role list.
   // Everything suggested is real and clickable; nothing invented.
@@ -3547,6 +3577,7 @@ export default function Jobs() {
       department: { department: "" }, vendor: { vendor: "" },
       agentOnly: { agentOnly: false }, inclUncat: { inclUncat: false },
       inclUnstatedPay: { includeUnstatedPay: false },
+      noAgencies: { hideAgencies: false },
       // activelyHiring has NO board predicate — the chip filters the rows
       // already served, in the browser, against the fill record, which is why
       // its state sits outside BoardFilterState. Its clear() changes nothing
@@ -4999,6 +5030,25 @@ export default function Jobs() {
               clearLabel={t("jobsPage.clearVendors", "Clear sources")}
               title={t("jobsPage.vendorTip", "The platform the employer publishes on. Every posting has one, so this filter hides nothing that isn't from another source.")}
             />
+            {/* HIDE STAFFING AGENCIES — the opt-in decline of the disclosed
+                agency inventory (2026-08-31 charter: agencies are carried and
+                badged, never quietly dropped). Same checkbox idiom as "States
+                pay": a strict boolean the board takes literally, so the box
+                and the request cannot disagree. Every row has a verdict (the
+                flag rides the catalog with a false default), so unlike the
+                pay and mode scalpels this hides nothing it cannot see. */}
+            <label
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border bg-background text-sm whitespace-nowrap text-muted-foreground cursor-pointer"
+              title={t("jobsPage.hideAgenciesTip", "Hide postings from staffing and recruiting agencies. Their cards carry a “Staffing agency” badge; this takes them off the page entirely. Off by default — agency openings are real openings.")}
+            >
+              <input
+                type="checkbox"
+                checked={hideAgencies}
+                onChange={(e) => setHideAgencies(e.target.checked)}
+                className="accent-[hsl(var(--primary))]"
+              />
+              {t("jobsPage.hideAgencies", "Hide staffing agencies")}
+            </label>
             {/* Definitive work-mode filter: only employer-stated tags match;
                 postings that don't say are excluded by the filter, honestly. */}
             {/* TOGGLES, NOT A SELECT. A <select> can hold one value, which is
@@ -5644,6 +5694,11 @@ export default function Jobs() {
                       {t("jobsPage.postedAfterStatedDate", "Counted from the date each employer stated, not from when we found the posting.")}
                     </p>
                   )}
+                  {data?.agenciesExcluded && (
+                    <p className="text-xs text-muted-foreground mb-2">
+                      {t("jobsPage.agenciesExcluded", "Staffing-agency postings are hidden by your filter — the totals count only direct employers.")}
+                    </p>
+                  )}
                   {data?.companyMatched && (
                     <p className="text-xs text-muted-foreground mb-2">
                       {t("jobsPage.companyMatched", "Matched an employer name — showing roles at {{company}}.", { company: data.companyMatched })}
@@ -5903,6 +5958,14 @@ export default function Jobs() {
                   ? (typeof data?.totalAtLeast === "number" && data.totalAtLeast > shownCount
                       ? t("jobsPage.resultsSummaryFloor", "Showing {{shown}} of {{floor}}+ matching openings", {
                           shown: shownCount, floor: data.totalAtLeast.toLocaleString(),
+                        })
+                      // An exclusion withdraws the exact total (no count ever saw
+                      // the exclusion predicate), but the pre-exclusion count is a
+                      // true CEILING — say that, labelled as what it is, instead
+                      // of a bare number with no figure at all.
+                      : typeof data?.totalBeforeExclusions === "number" && data.totalBeforeExclusions >= shownCount
+                      ? t("jobsPage.resultsSummaryCeiling", "Showing {{shown}} of up to {{ceiling}} openings before your exclusions", {
+                          shown: shownCount, ceiling: data.totalBeforeExclusions.toLocaleString(),
                         })
                       : t("jobsPage.resultsSummaryNoTotal", "Showing {{shown}} matching openings", { shown: shownCount }))
                   : landerCompany
@@ -6500,6 +6563,22 @@ export default function Jobs() {
                               {t(`jobsPage.workMode.${job.workMode ?? "remote"}`, job.workMode ?? "remote")}
                             </Badge>
                           )}
+                          {/* AGENCY DISCLOSURE (2026-08-31 charter): agencies
+                              are carried, so the reader is told which cards
+                              are one — a stated fact beside the work mode,
+                              never a warning color. Renders only on true;
+                              ranked-path rows omit the field rather than
+                              claim false, and no badge is the right render
+                              for "not stated". */}
+                          {job.agency === true && (
+                            <Badge
+                              variant="outline"
+                              className="text-[10px]"
+                              title={t("jobsPage.agencyBadgeTip", "This employer is a staffing or recruiting agency — the role may be filled on behalf of a client. Use “Hide staffing agencies” in the filters to exclude these.")}
+                            >
+                              {t("jobsPage.agencyBadge", "Staffing agency")}
+                            </Badge>
+                          )}
                           {appliedIds.has(job.id) && (
                             <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-success shrink-0">
                               ✓ {t("jobsPage.appliedBadge", "Applied")}
@@ -7019,6 +7098,9 @@ export default function Jobs() {
                       {j.salary && <li>{j.salary}</li>}
                       {j.workMode && (
                         <li>{t(`jobsPage.workMode.${j.workMode}`, j.workMode)}</li>
+                      )}
+                      {j.agency === true && (
+                        <li>{t("jobsPage.agencyBadge", "Staffing agency")}</li>
                       )}
                       {appliedIds.has(id) && (
                         <li className="text-success">✓ {t("jobsPage.appliedBadge", "Applied")}</li>

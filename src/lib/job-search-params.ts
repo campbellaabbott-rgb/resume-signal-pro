@@ -47,6 +47,8 @@ export interface JobSearchParams {
   vendor?: string;
   /** Comma-joined subset of full_time|part_time|contract|temporary|internship. */
   employmentType?: string;
+  /** Hide postings from tagged staffing agencies (opt-in narrowing). */
+  excludeAgencies?: boolean;
 }
 
 const MODE_LABEL: Record<string, string> = {
@@ -87,6 +89,9 @@ export function searchName(p: JobSearchParams, categoryLabel?: string, experienc
       (p.employmentType ?? "").split(",").filter(Boolean)
         .map((et) => ({ full_time: "full-time", part_time: "part-time", contract: "contract", temporary: "temp", internship: "internship" } as Record<string, string>)[et] ?? et)
         .join("/"),
+      // Two searches differing only by the agency opt-out must not share a
+      // name — the includeUnstatedPay rule, for the same UNIQUE constraint.
+      p.excludeAgencies ? "no agencies" : "",
       p.maxAgeDays ? `last ${p.maxAgeDays}d` : "",
       p.sendableOnly ? "agent-ready" : "",
     ]
@@ -129,6 +134,8 @@ export function searchToQuery(p: JobSearchParams): string {
   if (p.department) qs.set("department", p.department);
   if (p.vendor) qs.set("vendor", p.vendor);
   if (p.employmentType) qs.set("etype", p.employmentType);
+  // `noAgencies`, the board's own spelling (Jobs.tsx initial.get) — a flag ("1").
+  if (p.excludeAgencies) qs.set("noAgencies", "1");
   const s = qs.toString();
   return s ? `/jobs?${s}` : "/jobs";
 }
@@ -170,5 +177,6 @@ export function searchToBoardBody(p: JobSearchParams): Record<string, unknown> {
     // Wire name `vendor` (the board pluralises internally) — see filters.ts.
     vendor: p.vendor || undefined,
     employmentType: p.employmentType || undefined,
+    excludeAgencies: p.excludeAgencies || undefined,
   };
 }

@@ -49,6 +49,18 @@ for (const f of files) {
 // boundary never matches. These are the industry's own regulated terms; no
 // manufacturer is called Zeitarbeit GmbH.
 const NAME_BLOCK = /\b(staffing|recruit(ing|ment|er)?s?|talents?|headhunt|personnel|manpower|workforce|employment\s+(agency|services)|placements?\b|temp\s|outsourc|bpo\b|int[eé]rim|travail\s+temporaire|trabajo\s+temporal|demo|test|sample|sandbox|placeholder)\b|\b(uitzend|zeitarbeit|personaldienst|jobandtalent)/i;
+// The staffing HALF of the gate above, junk terms removed, because the two
+// halves now have different fates under the 2026-08-31 charter: a junk name
+// is still refused, a staffing name is CARRIED AND DISCLOSED. This is the
+// regex that decides the catalog's disclosure flag on every future merge —
+// keep its staffing vocabulary in lockstep with NAME_BLOCK's, and with
+// scripts/tag-agencies.mjs, which stamped the existing catalog with the same
+// spelling.
+// "talent" and "workforce" were removed from this vocabulary 2026-08-31:
+// they tagged employers' own in-house portals (Cummins Talent Acquisition,
+// Molina Talent...) as staffing firms. A true agency almost always carries
+// the remaining words or sits in the conviction list by token.
+const AGENCY_NAME = /\b(staffing|recruit(ing|ment|er)?s?|headhunt|personnel|manpower|employment\s+(agency|services)|placements?\b|temp\s|outsourc|bpo\b|int[eé]rim|travail\s+temporaire|trabajo\s+temporal)\b|\b(uitzend|zeitarbeit|personaldienst|jobandtalent)/i;
 // Corporate-only policy: public-sector entities never enter the catalog
 // (mobile audit 2026-07-18 found City of Baltimore et al. had slipped in
 // through census waves — 22 boards curated out, these patterns keep the
@@ -77,6 +89,11 @@ const MILL_BLOCK = new Set([
   "paylocity:3b20a513-df4d-4667-8583-8968328f0ac9", // 2026-08-31: 1 title x 104 — duplicate spam
   "paylocity:668dc5ae-50dc-451f-bc59-bdc869ac7bbe", // 2026-08-31: 1 title x 114 — duplicate spam
   "greenhouse:n2alljobs",            // 2026-08-31: duplicate all-jobs board — double-counts, any charter
+  // Greenhouse's own documentation tenant. Removed once (the King-of-Rohan
+  // sweep), re-merged by the 2026-08-31 census wave because neither the token
+  // gate nor the junk-name gate matches its spelling — the demo-tenant screen
+  // caught it at battery time instead of merge time. Fake in any charter.
+  "greenhouse:example",              // 2026-08-31: vendor demo tenant (Democorp), fictional postings
 ]);
 
 // Paylocity boards self-name with a page heading the employer typed, and
@@ -136,6 +153,14 @@ async function isPinpointDemoSandbox(token) {
 // token }) from rung 3+, and the legacy s("Name", "vendor", "token") helper.
 // The round-3 verify pass missed the object format and re-verified ~3k known
 // boards — this dedupe is the backstop that keeps them out twice.
+//
+// Every regex here stops at the field it reads and never anchors on the
+// closing brace: object entries carry optional suffixes now (the per-board
+// window override, then the agency disclosure flag — both added 2026-08-31),
+// and a brace-anchored parse goes blind to exactly the entries that carry
+// one. A dedupe blind to a suffixed entry re-merges the board it already
+// holds, which the catalog-invariants duplicate guard then has to catch —
+// and that guard was itself the first parser to fall into this trap.
 const existingTokens = new Set([
   ...[...src.matchAll(/source:\s*"(\w+)",\s*token:\s*"([^"]+)"/g)].map((m) => `${m[1]}:${m[2].toLowerCase()}`),
   ...[...src.matchAll(/s\("(?:[^"\\]|\\.)*",\s*"(\w+)",\s*"([^"]+)"/g)].map((m) => `${m[1]}:${m[2].toLowerCase()}`),
@@ -248,7 +273,16 @@ if (!APPLY) {
 }
 
 let cleared = null;
-try { cleared = new Set(JSON.parse(fs.readFileSync("round3-mill-cleared.json", "utf8")).map((x) => `${x.vendor}:${x.token}`)); } catch { /* no file */ }
+// Boards the mill screen cleared WITH phrase evidence (the clear~ verdict).
+// Under the 2026-08-31 charter that evidence no longer excludes — it earns
+// the catalog entry a disclosure flag instead, and the cleared file is how
+// the evidence travels from the screen to this merge.
+const agencyEvidence = new Set();
+try {
+  const clearedRows = JSON.parse(fs.readFileSync("round3-mill-cleared.json", "utf8"));
+  cleared = new Set(clearedRows.map((x) => `${x.vendor}:${x.token}`));
+  for (const x of clearedRows) if (x.agency === true) agencyEvidence.add(`${x.vendor}:${x.token}`);
+} catch { /* no file */ }
 if (millWorklist.length > 0 && !cleared) {
   console.error("REFUSING to apply: mill-screen worklist is non-empty and round3-mill-cleared.json is missing.");
   process.exit(1);
@@ -261,9 +295,18 @@ if (cleared) {
 
 const esc = (s) => s.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 const lines = [];
+let taggedAgencies = 0;
 for (const vendor of VENDORS) {
   for (const b of keep[vendor]) {
-    lines.push(`  { name: "${esc(b.name)}", source: "${vendor}", token: "${esc(b.token)}" },`);
+    // AGENCY DISCLOSURE rides the entry from the moment it merges: a staffing
+    // name, or phrase evidence the mill screen carried through the cleared
+    // file, stamps the flag that ingest copies onto every posting row. This
+    // merge never emits a pages override, so the flag is the last field —
+    // when a board later gains one, the override goes BEFORE the flag, the
+    // one suffix order every catalog parser tolerates.
+    const isAgency = AGENCY_NAME.test(b.name) || agencyEvidence.has(`${vendor}:${b.token}`);
+    if (isAgency) taggedAgencies++;
+    lines.push(`  { name: "${esc(b.name)}", source: "${vendor}", token: "${esc(b.token)}"${isAgency ? ", agency: true" : ""} },`);
   }
 }
 const marker = src.lastIndexOf("];");
@@ -271,4 +314,4 @@ if (marker === -1) { console.error("sources.ts: JOB_SOURCES closing not found");
 const banner = `  // ── Census round 3 + Rippling (merged ${new Date().toISOString().slice(0, 10)}): all vendors, official-API verified ≥3 postings, mill-screened ──\n`;
 const next = src.slice(0, marker) + banner + lines.join("\n") + "\n" + src.slice(marker);
 fs.writeFileSync(SOURCES, next);
-console.log(`\nAPPLIED: ${lines.length} boards appended to sources.ts`);
+console.log(`\nAPPLIED: ${lines.length} boards appended to sources.ts (${taggedAgencies} carry the agency disclosure flag)`);

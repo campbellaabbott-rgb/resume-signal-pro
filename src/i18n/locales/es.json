@@ -3509,6 +3509,7 @@
     "resultsSummary": "Mostrando {{shown}} de {{total}} ofertas en {{companyFeeds}} fuentes de empresas",
     "resultsSummaryNoTotal": "Mostrando {{shown}} ofertas coincidentes",
     "resultsSummaryFloor": "Mostrando {{shown}} de {{floor}}+ ofertas coincidentes",
+    "resultsSummaryCeiling": "Mostrando {{shown}} de hasta {{ceiling}} vacantes antes de tus exclusiones",
     "didYouMean": "¿Quiso decir «{{q}}»?",
     "alsoInLocations_one": "También contrata en {{count}} ubicación más",
     "alsoInLocations_other": "También contrata en {{count}} ubicaciones más",
@@ -3969,7 +3970,8 @@
       "hasStatedPay": "indica salario",
       "maxYears": "años exigidos",
       "department": "departamento",
-      "vendor": "fuente"
+      "vendor": "fuente",
+      "excludeAgencies": "ocultar agencias"
     },
     "companiesChip": "{{n}} empresas",
     "firstSeenToday": "vista por primera vez hoy",
@@ -4091,7 +4093,13 @@
       "temporary": "Temporal",
       "internship": "Prácticas"
     },
-    "relatedSeam": "Aquí terminan las coincidencias exactas — debajo, solo coincidencias en el texto del anuncio"
+    "relatedSeam": "Aquí terminan las coincidencias exactas — debajo, solo coincidencias en el texto del anuncio",
+    "hideAgencies": "Ocultar agencias de empleo",
+    "hideAgenciesTip": "Oculta las ofertas publicadas por agencias de empleo y de selección de personal. Sus tarjetas llevan la insignia «Agencia de empleo»; este filtro las quita por completo de la página. Desactivado por defecto: una vacante de agencia es una vacante real.",
+    "chipNoAgencies": "Sin agencias de empleo",
+    "agencyBadge": "Agencia de empleo",
+    "agencyBadgeTip": "Este empleador es una agencia de empleo o de selección de personal: el puesto puede cubrirse por cuenta de un cliente. Usa «Ocultar agencias de empleo» en los filtros para excluirlas.",
+    "agenciesExcluded": "Tu filtro oculta las ofertas de agencias de empleo: los totales solo cuentan empleadores directos."
   },
   "accountPage": {
     "statusSaveFailed": "No se pudo guardar ese estado; inténtalo de nuevo.",

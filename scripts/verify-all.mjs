@@ -48,6 +48,14 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // ── existing catalog: never re-verify what we already serve ────────────────
 const srcText = fs.readFileSync(new URL("../supabase/functions/job-board/sources.ts", import.meta.url), "utf8");
+// BOTH parses below deliberately stop at the token and never touch the
+// closing brace. Catalog entries grew optional suffixes twice on 2026-08-31
+// (the per-board window override, then the agency disclosure flag), and every
+// parser that anchored past the token went blind to the suffixed entries —
+// the catalog-invariants regex lost PetSmart that way. A dedupe that
+// unmatches on a suffix re-probes (and re-merges) boards the catalog already
+// carries, which is the ~2.7k-wasted-probes failure with a duplicate-entry
+// chaser. Keep them prefix-anchored.
 const existing = new Set();
 for (const m of srcText.matchAll(/s\("(?:[^"\\]|\\.)*",\s*"([a-z]+)",\s*"([^"]+)"/g)) {
   existing.add(`${m[1]}:${m[2].toLowerCase()}`);

@@ -330,7 +330,11 @@ describe("the re-check chip shows real re-verification, not insert time", () => 
   it("a posting the feed already dropped gets no chip", () => {
     // verified_at says the FEED was read, not that this posting was in it.
     expect(fn).toMatch(/if \(v && !j\.missingSince\) j\.recheckedAt = v;/);
-    expect(fn).toMatch(/min_years,last_seen,missing_since/);
+    // The property is that the list SELECT fetches missing_since at all —
+    // pinned loosely enough that a column landing between min_years and
+    // last_seen (the agency disclosure flag did, 2026-08-31) does not read
+    // as the fence being dropped.
+    expect(fn).toMatch(/last_seen,missing_since/);
   });
 
   it("a failed lookup leaves the field absent rather than falling back", () => {

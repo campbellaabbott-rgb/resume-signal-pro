@@ -132,6 +132,11 @@ function compactJob(j: Record<string, unknown>): Record<string, unknown> {
   if (j.closeMatch) out.closeMatch = true;
   if (j.semanticMatch) out.semanticMatch = true;
   if (j.recheckedAt) out.recheckedAt = j.recheckedAt;
+  // Staffing-agency disclosure (2026-08-31 charter: carried, badged, opt-out
+  // by filter). Emitted only when true, the compact-card rule — but an agent
+  // relaying jobs to a person inherits the disclosure duty, so it must not
+  // be dropped here the way salaryStatedOnly must not be swallowed.
+  if (j.agency === true) out.agency = true;
   return out;
 }
 
@@ -149,6 +154,9 @@ function disclosures(r: Record<string, unknown>): Record<string, unknown> {
       // told that reads a filtered page as the whole market — the exact
       // disclosure the site shows and the MCP layer must never swallow.
       "salaryStatedOnly",
+      // Row-selecting for the same reason: the agency opt-out hides disclosed
+      // inventory, and an agent must be able to say the market view excludes it.
+      "agenciesExcluded",
     ]
   ) if (r[k] !== undefined && r[k] !== null) out[k] = r[k];
   return out;
@@ -182,6 +190,7 @@ const TOOLS = [
         payBasis: { type: "string", enum: ["hourly", "salaried"], description: "Restrict to hourly or salaried pay." },
         maxYears: { type: "number", description: "Only roles asking for at most N years of experience." },
         vendor: { type: "string", description: "Comma list of hiring-system vendors (greenhouse, lever, ashby, …), max 8." },
+        excludeAgencies: { type: "boolean", description: "Hide postings from staffing/recruiting agencies (their job cards carry agency:true). Agencies are served by default; this is an opt-in narrowing." },
         agentReadyOnly: { type: "boolean", description: "Only jobs the apply agent can submit to on the user's behalf." },
         sort: { type: "string", enum: ["relevance", "newest", "salary"], description: "Default relevance." },
         limit: { type: "number", description: "Rows per page, 1-60. Default 20." },
@@ -257,6 +266,7 @@ const TOOLS = [
         category: { type: "string" },
         maxAgeDays: { type: "number" },
         salaryMin: { type: "number" },
+        excludeAgencies: { type: "boolean" },
         agentReadyOnly: { type: "boolean" },
         sort: { type: "string", enum: ["relevance", "newest", "salary"] },
         offset: { type: "number" },
@@ -285,6 +295,7 @@ function searchBody(args: Record<string, unknown>): Record<string, unknown> {
     ...(args.payBasis === "hourly" || args.payBasis === "salaried" ? { payBasis: String(args.payBasis) } : {}),
     ...(args.maxYears ? { maxYears: Number(args.maxYears) } : {}),
     ...(args.vendor ? { vendor: String(args.vendor) } : {}),
+    ...(args.excludeAgencies === true ? { excludeAgencies: true } : {}),
     ...(args.agentReadyOnly === true ? { sendableOnly: true } : {}),
     ...(args.sort === "newest" ? { sort: "newest" } : args.sort === "salary" ? { sort: "salary" } : {}),
     ...(args.offset ? { offset: Number(args.offset) } : {}),

@@ -3509,6 +3509,7 @@
     "resultsSummary": "{{shown}} offres affichées sur {{total}} dans {{companyFeeds}} flux d'entreprises",
     "resultsSummaryNoTotal": "Affichage de {{shown}} offres correspondantes",
     "resultsSummaryFloor": "Affichage de {{shown}} sur {{floor}}+ offres correspondantes",
+    "resultsSummaryCeiling": "{{shown}} sur un maximum de {{ceiling}} offres avant vos exclusions",
     "didYouMean": "Vouliez-vous dire « {{q}} » ?",
     "alsoInLocations_one": "Recrute aussi dans {{count}} autre lieu",
     "alsoInLocations_other": "Recrute aussi dans {{count}} autres lieux",
@@ -3969,7 +3970,8 @@
       "hasStatedPay": "rémunération indiquée",
       "maxYears": "années exigées",
       "department": "service",
-      "vendor": "source"
+      "vendor": "source",
+      "excludeAgencies": "masquer les agences"
     },
     "companiesChip": "{{n}} entreprises",
     "firstSeenToday": "vue pour la première fois aujourd'hui",
@@ -4091,7 +4093,13 @@
       "temporary": "Intérim",
       "internship": "Stage"
     },
-    "relatedSeam": "Fin des correspondances exactes — en dessous, correspondances dans le texte de l'annonce uniquement"
+    "relatedSeam": "Fin des correspondances exactes — en dessous, correspondances dans le texte de l'annonce uniquement",
+    "hideAgencies": "Masquer les agences de recrutement",
+    "hideAgenciesTip": "Masque les offres publiées par des agences d'intérim et cabinets de recrutement. Leurs cartes portent le badge « Agence de recrutement » ; ce filtre les retire entièrement de la page. Désactivé par défaut — une offre d'agence reste une vraie offre.",
+    "chipNoAgencies": "Sans agences de recrutement",
+    "agencyBadge": "Agence de recrutement",
+    "agencyBadgeTip": "Cet employeur est une agence d'intérim ou un cabinet de recrutement — le poste peut être pourvu pour le compte d'un client. Utilisez « Masquer les agences de recrutement » dans les filtres pour les exclure.",
+    "agenciesExcluded": "Les offres d'agences de recrutement sont masquées par votre filtre — les totaux ne comptent que les employeurs directs."
   },
   "accountPage": {
     "statusSaveFailed": "Impossible d'enregistrer ce statut — réessayez.",

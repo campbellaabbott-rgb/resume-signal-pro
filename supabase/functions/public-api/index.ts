@@ -45,6 +45,10 @@ const JOB_FIELDS = [
   "remote", "work_mode", "department", "category", "posted_at", "first_seen",
   "last_seen", "apply_url", "salary", "salary_min_annual", "salary_max_annual",
   "salary_period", "salary_currency", "experience_band", "min_years",
+  // AGENCY DISCLOSURE (2026-08-31 charter): the employer's board is a tagged
+  // staffing agency. Disclosed on every job object because an API consumer
+  // republishing these rows inherits the disclosure duty with the data.
+  "agency",
 ].join(",");
 
 // EXPOSED, OR THEY MIGHT AS WELL NOT BE SENT. A browser can only read a
@@ -285,6 +289,10 @@ const JOBS_PARAMS = [
   "limit", "offset", "cursor", "q", "company_token", "source", "category", "country",
   "work_mode", "experience_band", "department", "remote",
   "salary_min", "salary_max", "include_unstated_pay", "posted_after", "posted_before",
+  // exclude_agencies=true hides postings whose board is a tagged staffing
+  // agency (see the agency field). OPT-IN narrowing; agencies serve by default
+  // under the 2026-08-31 charter.
+  "exclude_agencies",
   // explain=1 appends a `diagnostics` block describing what this endpoint did —
   // which filters bound, the fences, the count basis, the paging mode — so an
   // integrator can see WHY a query returned what it did without guessing.
@@ -355,7 +363,15 @@ async function listJobsRanked(url: URL, headers: Record<string, string>) {
     ...(Number.isFinite(salaryMax) && salaryMax > 0 ? { salaryCeiling: salaryMax } : {}),
     ...(p.get("include_unstated_pay") === "true" ? { includeUnstatedPay: true } : {}),
     ...(p.get("posted_after") ? { postedAfter: p.get("posted_after") } : {}),
+    // The board treats this as a strict boolean and NAMES a non-boolean in
+    // ignoredFilters, so the honest mapping is literal "true" or nothing —
+    // any other value stays out of the body and the fence below refuses it.
+    ...(p.get("exclude_agencies") === "true" ? { excludeAgencies: true } : {}),
   };
+  const exclRaw = p.get("exclude_agencies");
+  if (exclRaw !== null && exclRaw !== "true" && exclRaw !== "false") {
+    return fail(400, "invalid_value", `exclude_agencies must be "true" or "false", got "${exclRaw}".`, headers);
+  }
 
   let r: Record<string, unknown>;
   try {
@@ -376,10 +392,14 @@ async function listJobsRanked(url: URL, headers: Record<string, string>) {
     salary_min_annual: j.salaryMinAnnual ?? null, salary_max_annual: j.salaryMaxAnnual ?? null,
     salary_period: j.salaryPeriod ?? null, salary_currency: j.salaryCurrency ?? null,
     experience_band: j.experienceBand ?? null, min_years: j.minYears ?? null,
+    // The ranked engine omits the flag on rows its RPC shape predates (the
+    // board's own honesty rule); null here means "not stated by this path",
+    // never "not an agency".
+    agency: typeof j.agency === "boolean" ? j.agency : null,
   });
   const total = typeof r.total === "number" ? r.total : null;
   const disc: Record<string, unknown> = {};
-  for (const k of ["ignoredFilters", "excludedTerms", "intentFilters", "aliases", "didYouMean", "searchRoute", "coverage", "salaryStatedOnly"]) {
+  for (const k of ["ignoredFilters", "excludedTerms", "intentFilters", "aliases", "didYouMean", "searchRoute", "coverage", "salaryStatedOnly", "agenciesExcluded"]) {
     if (r[k] !== undefined && r[k] !== null) disc[k] = r[k];
   }
   return json({
@@ -461,6 +481,19 @@ async function listJobs(client: SupabaseClient, url: URL, headers: Record<string
     else return fail(400, "invalid_value", `remote must be "true" or "false", got "${remoteRaw}".`, headers);
   }
 
+  // Same strict-boolean contract as remote, for the same reason: a caller who
+  // sent exclude_agencies=1 and got a 200 would read the whole corpus as
+  // agency-free. "false" binds nothing — agencies serve by default under the
+  // 2026-08-31 charter, so declining the opt-out is the unfiltered board.
+  const exclAgenciesRaw = p.get("exclude_agencies");
+  let excludeAgencies = false;
+  if (exclAgenciesRaw !== null) {
+    if (exclAgenciesRaw === "true") excludeAgencies = true;
+    else if (exclAgenciesRaw !== "false") {
+      return fail(400, "invalid_value", `exclude_agencies must be "true" or "false", got "${exclAgenciesRaw}".`, headers);
+    }
+  }
+
   // effective_posted is selected but NOT published: it is the column the query
   // sorts by, so the cursor has to be built from it, and building one from
   // posted_at instead would produce a key that does not match the ordering —
@@ -503,6 +536,9 @@ async function listJobs(client: SupabaseClient, url: URL, headers: Record<string
     }
     if (postedBefore && !Number.isNaN(Date.parse(postedBefore))) qb = qb.lte("posted_at", new Date(postedBefore).toISOString());
     if (remoteFilter !== undefined) qb = qb.eq("remote", remoteFilter);
+    // Opt-in only, and only ever narrowing: agency is NOT NULL DEFAULT false,
+    // so this equality sees every row — no unstated population to disclose.
+    if (excludeAgencies) qb = qb.eq("agency", false);
     if (Number.isFinite(salaryMin) && salaryMin > 0) {
       // Same semantics the board uses, and the same disclosure obligation: only
       // about a fifth of postings state pay, so this filter is a narrow slice and
@@ -640,6 +676,7 @@ async function listJobs(client: SupabaseClient, url: URL, headers: Record<string
             ...(p.get("experience_band") ? { experience_band: p.get("experience_band") } : {}),
             ...(dept ? { department: `ilike %${dept}%` } : {}),
             ...(remoteFilter !== undefined ? { remote: remoteFilter } : {}),
+            ...(excludeAgencies ? { exclude_agencies: true } : {}),
             ...(Number.isFinite(salaryMin) && salaryMin > 0 ? { salary_min: salaryMin, statedPayOnly: !includeUnstated } : {}),
             ...(Number.isFinite(salaryMax) && salaryMax > 0 ? { salary_max: salaryMax } : {}),
             ...(postedAfter ? { posted_after: postedAfter } : {}),

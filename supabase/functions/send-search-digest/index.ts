@@ -45,7 +45,7 @@ type SearchParams = {
   country?: string; salaryFloor?: number; maxAgeDays?: number; sendableOnly?: boolean;
   salaryCeiling?: number; payBasis?: string; hasStatedPay?: boolean;
   includeUnstatedPay?: boolean; maxYears?: number; department?: string; vendor?: string;
-  employmentType?: string;
+  employmentType?: string; excludeAgencies?: boolean;
 };
 
 function boardUrl(p: SearchParams): string {
@@ -72,6 +72,7 @@ function boardUrl(p: SearchParams): string {
   if (p.department) qs.set("department", p.department);
   if (p.vendor) qs.set("vendor", p.vendor);
   if (p.employmentType) qs.set("etype", p.employmentType);
+  if (p.excludeAgencies) qs.set("noAgencies", "1");
   const s = qs.toString();
   return `${SITE_URL}/jobs${s ? `?${s}` : ""}`;
 }
@@ -171,6 +172,9 @@ Deno.serve(async (req) => {
             department: p.department || undefined,
             vendor: p.vendor || undefined,
             employmentType: p.employmentType || undefined,
+            // The agency opt-out rides the digest the day it is savable, or
+            // the alert mails postings the saved screen hid.
+            excludeAgencies: p.excludeAgencies || undefined,
             includeFacets: false,
             ...extra,
           }),
