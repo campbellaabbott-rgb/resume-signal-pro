@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { looksGarbled, isOleCompoundFile } from "./text-validation";
+import { looksGarbled, isOleCompoundFile } from "../../../supabase/functions/_shared/text-validation";
 
 describe("looksGarbled", () => {
   it("does not flag a normal English resume", () => {

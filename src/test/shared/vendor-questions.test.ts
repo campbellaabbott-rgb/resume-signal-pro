@@ -19,7 +19,7 @@ import { fileURLToPath } from "node:url";
 import {
   parseBreezyQuestions, parsePinpointQuestions,
   breezyApplyUrl, pinpointApplyUrl,
-} from "./vendor-questions";
+} from "../../../supabase/functions/_shared/vendor-questions";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const fixture = (n: string) => readFileSync(resolve(here, "__fixtures__", n), "utf8");

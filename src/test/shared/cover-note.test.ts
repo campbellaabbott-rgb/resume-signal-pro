@@ -7,7 +7,7 @@
  * symptom would be an absence. Nobody files a bug against an absence.
  */
 import { describe, it, expect } from "vitest";
-import { validateCoverNote, coverNotePrompt, gateCanCheck, MIN_CHARS, MAX_CHARS } from "./cover-note";
+import { validateCoverNote, coverNotePrompt, gateCanCheck, MIN_CHARS, MAX_CHARS } from "../../../supabase/functions/_shared/cover-note";
 
 const RESUME = `Jane Okafor
 Senior Backend Engineer

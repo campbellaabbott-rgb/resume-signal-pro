@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { checkAiGatewayResponse } from "./ai-gateway-response";
+import { checkAiGatewayResponse } from "../../../supabase/functions/_shared/ai-gateway-response";
 
 const corsHeaders = { "Access-Control-Allow-Origin": "*" };
 
