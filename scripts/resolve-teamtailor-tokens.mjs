@@ -40,7 +40,21 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 
 const run = promisify(execFile);
+
+// Politeness gate, added for the 765-host custom-domain sweep (2026-08-30).
+// The original shape — 8 workers, no spacing — was tuned for the 54-row UK +
+// Nordic census. It does not scale politely: every guess probe lands on
+// teamtailor.com itself regardless of which custom host is being resolved, so
+// worker count IS the per-origin concurrency. Cap: 5 in flight, ~200ms
+// between request starts, enforced globally rather than per worker.
+let nextSlot = 0;
+const paced = () => {
+  const wait = Math.max(nextSlot - Date.now(), 0);
+  nextSlot = Math.max(nextSlot, Date.now()) + 200;
+  return new Promise((r) => setTimeout(r, wait));
+};
 const sh = async (...a) => {
+  await paced();
   try { return (await run(a[0], a.slice(1), { timeout: 25_000 })).stdout; }
   catch { return ""; }
 };
@@ -125,7 +139,7 @@ async function main() {
 
   const out = [];
   let i = 0;
-  await Promise.all(Array.from({ length: 8 }, async () => {
+  await Promise.all(Array.from({ length: 5 }, async () => {
     while (i < cands.length) out.push(await resolve(cands[i++]));
   }));
 
