@@ -1,37 +1,37 @@
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+// Turns an employer's application form into a filled packet — and, just as
+// importantly, decides where the agent must STOP.
+//
+// This is the file where "auto-apply" either stays honest or stops being worth
+// having. An agent that fills every box will, sooner or later, put a confident
+// sentence about Kubernetes into an application belonging to someone who has
+// never run it — and that person then sits in an interview defending a claim
+// they never made. The platform's existing answer generator already refuses that
+// (it returns supported:false with a note rather than inventing). This module is
+// what makes the refusal matter: an unsupported answer becomes a BLOCKER, the
+// packet cannot be marked ready, and nothing is sent.
+//
+// So the rule is: the agent applies by itself wherever it has real material for
+// every required field, and hands back to the human wherever it does not. The
+// share of applications it can finish alone is then a measurement, not a policy
+// setting — and it is high, because most fields are identity and a résumé.
 import { classifyQuestion, type QuestionClass } from "./application-questions.ts";
 
 export type PacketQuestion = {
   label: string;
   required?: boolean;
   fieldType?: string;
-  
+  /** Only Greenhouse publishes real questions; everywhere else this is false. */
   real?: boolean;
 };
 
-
+/** What the candidate configured once, so factual questions stop being blockers. */
 export type StandingAnswers = {
   workAuthorized?: boolean | null;
   requiresSponsorship?: boolean | null;
   salaryExpectation?: string;
   earliestStart?: string;
   willingToRelocate?: boolean | null;
-  
+  /** Demographic/EEO: honoured as given, defaulting to declining to answer. */
   shareDemographics?: boolean;
 };
 
@@ -48,34 +48,34 @@ export type Profile = {
 
 export type DraftedAnswer = { label: string; answer: string; supported: boolean; note?: string };
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+/**
+ * Reserved key carrying the cover note through `fields` to the worker.
+ *
+ * Every other key in `fields` is a QUESTION LABEL read off the employer's form.
+ * This one is not, and the underscores say so. It rides here because `fields`
+ * already travels intact from apply-agent → agent_submissions → apply-broker →
+ * the worker, so a note added at prep time reaches the browser with no schema
+ * change and no new broker action to keep in sync.
+ *
+ * It is excluded from `autoFilled` and `total` below — those are counts a
+ * candidate reads as "how much of this form did the agent fill", and a pseudo
+ * field that is not on the form would make them overstate by one.
+ */
 export const COVER_NOTE_FIELD_KEY = "__coverNote";
 
 export type FilledField = {
   key: string;
   value: string;
-  
-
+  /** Where the value came from — a reviewer must be able to tell a fact from a
+   *  generated sentence without reading both and guessing. */
   source: "profile" | "standing" | "resume" | "drafted" | "declined";
 };
 
 export type Blocker = {
-  
-  
-  
-  
+  // `needs-candidate` is distinct from `missing-standing` on purpose: a standing
+  // answer is one the candidate can set ONCE in their profile and stop being
+  // asked. A consent is per-employer and per-document, so there is nothing to
+  // pre-fill and telling them to "set this once" would be wrong advice.
   kind:
     | "captcha" | "missing-file" | "missing-standing" | "unsupported-answer"
     | "unknown-form" | "needs-candidate";
@@ -85,17 +85,17 @@ export type Blocker = {
 export type Packet = {
   fields: FilledField[];
   blockers: Blocker[];
-  
+  /** True only when every required field is filled and nothing blocks a send. */
   ready: boolean;
-  
+  /** Of the questions on the form, how many the agent filled unaided. */
   autoFilled: number;
   total: number;
 };
 
 const t = (v: unknown): string => String(v ?? "").trim();
 
-
-
+// Identity questions map to profile fields by intent, not by exact label —
+// "Full name", "Your name" and "Name" are the same box.
 function identityValue(label: string, p: Profile): string {
   const l = label.toLowerCase();
   if (/e-?mail/.test(l)) return t(p.email);
@@ -108,11 +108,11 @@ function identityValue(label: string, p: Profile): string {
   return "";
 }
 
-
-
-
-
-
+// Factual questions are the ones a résumé genuinely cannot answer — work
+// authorisation, sponsorship, salary, start date, relocation. Guessing at these
+// is not a smaller sin than inventing experience; a wrong sponsorship answer can
+// void an application outright. They come from what the candidate configured, or
+// they block.
 function standingValue(label: string, s: StandingAnswers): string | null {
   const l = label.toLowerCase();
   const yn = (b: boolean | null | undefined) => (b === true ? "Yes" : b === false ? "No" : null);
@@ -131,15 +131,15 @@ export function buildPacket(opts: {
   profile: Profile;
   standing: StandingAnswers;
   drafted: readonly DraftedAnswer[];
-  
+  /** From apply-automation.ts — 'click' means a CAPTCHA is known to be present. */
   automationTier: "auto" | "signup" | "click" | "unknown";
-  
-
-
-
-
-
-
+  /**
+   * The note to put in whatever cover-letter box the form turns out to have.
+   * `tailored` records whether it was written for THIS posting and passed the
+   * grounding gate, or is the candidate's standing note sent as-is — the two
+   * must stay distinguishable on the row, because a reviewer has to be able to
+   * tell a generated sentence from one the candidate wrote themselves.
+   */
   coverNote?: { value: string; tailored: boolean };
 }): Packet {
   const { questions, profile, standing, drafted, automationTier } = opts;
@@ -171,9 +171,9 @@ export function buildPacket(opts: {
     }
 
     if (cls === "demographic") {
-      
-      
-      
+      // EEO/demographic questions are voluntary by law and by design. The agent
+      // declines on the candidate's behalf unless they explicitly opted in —
+      // silence is the safe default, and it is never a reason to block a send.
       if (!standing.shareDemographics) {
         fields.push({ key: label, value: "Decline to self-identify", source: "declined" });
       }
@@ -181,16 +181,16 @@ export function buildPacket(opts: {
     }
 
     if (cls === "consent") {
-      
-      
-      
-      
-      
-      
-      
-      
-      
-      
+      // NEVER answered, and unlike a demographic question it is never declined
+      // on the candidate's behalf either. "I have read and agree to the privacy
+      // notice" is a statement about something a specific person did; ticking it
+      // for them is a false statement to an employer, and leaving a required one
+      // silently unticked is a submission the employer will treat as consented.
+      //
+      // A required consent therefore BLOCKS. On the click-to-submit path that
+      // costs nothing — the candidate is already at the form, and the link is
+      // one they should read. On the unattended path it is the difference
+      // between the agent declining to attest and the agent attesting.
       if (q.required) {
         blockers.push({
           kind: "needs-candidate",
@@ -212,13 +212,13 @@ export function buildPacket(opts: {
       continue;
     }
 
-    
+    // draftable
     const d = draftMap.get(label.toLowerCase().trim());
     if (d && d.supported && t(d.answer)) {
       fields.push({ key: label, value: t(d.answer), source: "drafted" });
     } else if (q.required) {
-      
-      
+      // THE LINE. An unsupported answer is a gap in the résumé, not a sentence to
+      // send. Blocking here is what stops auto-apply from becoming auto-fiction.
       blockers.push({
         kind: "unsupported-answer",
         detail: d?.note
@@ -232,12 +232,12 @@ export function buildPacket(opts: {
     blockers.push({ kind: "captcha", detail: "this employer's form shows a CAPTCHA — one click from you" });
   }
   if (automationTier === "unknown") {
-    
+    // Never claim a form we have never looked at can be completed unattended.
     blockers.push({ kind: "unknown-form", detail: "we haven't measured this employer's form yet" });
   }
 
-  
-  
+  // Carried, not counted. Added after the loop so it can never be mistaken for
+  // an answer to one of the employer's questions.
   if (opts.coverNote && t(opts.coverNote.value)) {
     fields.push({
       key: COVER_NOTE_FIELD_KEY,
@@ -246,10 +246,10 @@ export function buildPacket(opts: {
     });
   }
 
-  
-  
-  
-  
+  // Both counts ignore the reserved key. `autoFilled` is read as "how many of
+  // this form's questions did the agent fill", and `ready` must not be able to
+  // flip true on a packet whose only field is a note for a box that may not
+  // even exist on the form.
   const answered = fields.filter((f) => f.key !== COVER_NOTE_FIELD_KEY).length;
 
   return {

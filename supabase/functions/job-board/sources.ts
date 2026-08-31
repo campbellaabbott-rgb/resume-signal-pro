@@ -1,16 +1,16 @@
-
-
-
-
-
-
-
-
-
-
-
-
-
+// The job board's company allowlist. Every entry was LIVE-VERIFIED against
+// the ATS's official public job-board API before shipping (200 + >0 postings,
+// last sweep 2026-07-11, 870 companies). These endpoints are published by the vendors for exactly
+// this consumption — no scraping, no auth, no ToS gray zone:
+//   Greenhouse: https://boards-api.greenhouse.io/v1/boards/{token}/jobs
+//   Lever:      https://api.lever.co/v0/postings/{token}?mode=json
+//   Ashby:      https://api.ashbyhq.com/posting-api/job-board/{token}
+//   Recruitee:  https://{token}.recruitee.com/api/offers/
+//   Personio:   https://{token}.jobs.personio.de/xml (.com fallback)
+//   Breezy:     https://{token}.breezy.hr/json
+//   Teamtailor: https://{token}.teamtailor.com/jobs.rss
+// Tokens rot when companies migrate ATSs; the fetcher tolerates failures and
+// reports failedSources so a dead token degrades, never breaks, the board.
 
 export type JobSourceKind =
   | "greenhouse" | "lever" | "ashby" | "smartrecruiters" | "workable" | "bamboohr"
@@ -18,52 +18,52 @@ export type JobSourceKind =
   | "oracle" | "icims" | "paylocity" | "usajobs";
 
 export interface JobSource {
-  name: string; 
+  name: string; // display name
   source: JobSourceKind;
-  token: string; 
-  
-
-
-
-
-
-
-
-
-
-
+  token: string; // the company's board token on that ATS
+  /**
+   * Per-tenant page budget for paginated vendors (iCIMS only, today).
+   *
+   * The global iCIMS cap is 12 pages (1,200 postings) so one giant board
+   * cannot wedge a refresh slice. PetSmart (careers.petsmart.com, found by the
+   * 2026-08-19 census probe) holds 10,911 postings — the cap would silently
+   * window it at 11%. This field raises the budget for NAMED giants only;
+   * everything else keeps the slice-protecting default. The fetch runs pages
+   * in small parallel chunks, so a 110-page board costs ~23 sequential rounds
+   * — the same order as Oracle's tolerated 20.
+   */
   pages?: number;
-  
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+  /**
+   * Serve this board from the employer's OWN hostname instead of the vendor's.
+   *
+   * Added 2026-08-01 after sweeping all 1M Tranco domains: 806 live ATS boards
+   * sit on custom domains (careers.motorpoint.co.uk, careers.savills.com), and
+   * 90% of the ones we could resolve were absent from a catalog built entirely
+   * from subdomain censuses. The two channels barely overlap.
+   *
+   * WHY THIS RATHER THAN RESOLVING THE TENANT. Every custom-domain board DOES
+   * have a {token}.teamtailor.com behind it — careers.telenor.se is
+   * telenorsweden — so the first conclusion was that no override was needed.
+   * That held for the 437 whose token a name-derived guess list could find, and
+   * failed for the other 364. Teamtailor rewrites every absolute URL to the
+   * custom domain: not the JSON feed, not the RSS channel link, not the page
+   * markup carries the tenant. There is no reliable reverse lookup.
+   *
+   * Fetching the custom host needs no lookup at all — the same /jobs.rss is
+   * served there. So the override is the cheaper AND more reliable path, which
+   * reverses my earlier "no host override needed" call.
+   *
+   * `token` stays the board's identity (posting ids, company pages, dedupe);
+   * `host` only decides where the feed is fetched from. A board whose employer
+   * later drops the custom domain fails visibly — the feed 404s and the
+   * dead-board sweep catches it — rather than silently serving stale rows.
+   */
   host?: string;
 }
 
-
-
-
+// Boards with heavy inventory get re-checked every cycle (~10 min); the
+// long tail rotates through cold slices (full rotation ≤ ~1 hour). The set
+// is recomputed at each discovery sweep from verified posting counts.
 export const HOT_TOKENS: Set<string> = new Set([
   "boxlunch", "eosfitness", "bayada", "andurilindustries", "carvana",
   "spacex", "insomniacookies", "afg", "lifestance", "speechify",
@@ -84,49 +84,49 @@ export const HOT_TOKENS: Set<string> = new Set([
   "Talan", "ServiceNow", "MedHealth3", "anthropic", "Wise", "sumup",
   "renuity", "MinorInternational", "Sears2", "benchmarkpt", "stone", "leverdemo",
   "mongodb", "thesciongroupllc", "infuse", "betterhomes", "hellofresh", "waymo",
-  
+  // Rung-3 heavy boards (>=200 verified postings, identity-reviewed):
   "transperfect", "duravermeer", "careyn", "aaff", "family-resource-home-care", "tether", "1komma5grad", "sparcareers", "national-assemblers-inc", "drhouse-inc", "everlight-solar", "flatpay", "mktg",
 ]);
 
-
-
-
-
-
-
-
-
-
+// Greenhouse giants whose per-posting HTML would blow the per-invocation
+// CPU budget (measured 2026-07-12: htmlToText over ~9k descriptions killed
+// the slice). Fetched WITHOUT content on the refresh path; the daily
+// backfill-desc sweep fills their descriptions via Greenhouse's per-job
+// endpoint in its own budgeted invocation, so degradation is temporary.
+// stripe/zscaler re-added 2026-07-15: their content=true payloads measure
+// 3.9 MB / 4.9 MB (521 / 338 feed jobs), and they were the only two hot
+// boards never receiving verification stamps — the heavy parse killed the
+// isolate before the per-board success site.
 export const LIGHT_DESC_TOKENS: Set<string> = new Set(["stripe", "zscaler"]);
 
-
-
-
-
-
+// Entry constructor: building 11,900+ elements as raw object literals makes
+// TypeScript compute a union of thousands of distinct literal types and die
+// with TS2590. A constructor types each element as JobSource at the call site
+// (vendor typos still fail the build). NOTE for census tooling: entries are
+// now s("Name", "vendor", "token") lines, not object literals.
 const s = (name: string, source: JobSourceKind, token: string): JobSource => ({ name, source, token });
 
 export const JOB_SOURCES: JobSource[] = [
-  
-  
-  
-  
-  
-  
-  
+  // Oracle Recruiting Cloud, first tranche (2026-07-24). Token = tenant~region~site.
+  // ORC's tenant code is opaque and the feed does NOT name the employer, so every
+  // entry here was identified by reading that tenant's own postings and its
+  // CorporateDescriptionStr, then live-verified (feed 200 + >0 postings + the
+  // apply URL resolving 200). Deliberately limited to professional/office-heavy
+  // employers — the consumer-chain ORC tenants (Albertsons, Hilton) are ~half
+  // hourly frontline roles and were left out of this tranche by decision.
   s("Fortinet", "oracle", "edel~us2~CX_1"),
   s("DTCC", "oracle", "ebxr~us2~CX_1"),
   s("Texas Instruments", "oracle", "edbz~us2~CX_1"),
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
+  // Tranche 2 (2026-07-24): the professional-heavy tail. All 90 remaining named
+  // ORC tenants were classified by sampling 20 live titles each; only 29 came
+  // back >=60% professional and <=15% frontline, and these are that tier's top
+  // 10 by volume (~5,200 postings — 81% of the tier's value). Deliberately
+  // skipped: the frontline-heavy tenants (~19,600 postings of hourly retail and
+  // hospitality) and 14 public-sector/university tenants that fail
+  // corporate-only. Every name below came from the tenant's OWN careers-page
+  // title (a first-party source that also independently confirmed "BDO USA"),
+  // and each was collision-checked against the catalog — "Oracle Law Global"
+  // and "Woodthilsted" are unrelated companies that merely share a prefix.
   s("Oracle", "oracle", "eeho~us2~CX_1"),
   s("Wood", "oracle", "ehif~em2~CX_1"),
   s("McDermott", "oracle", "edsv~us2~CX_1"),
@@ -137,15 +137,15 @@ export const JOB_SOURCES: JobSource[] = [
   s("Euroclear", "oracle", "don~em2~CX_1"),
   s("MUFG Pension & Market Services", "oracle", "hcmn~ap1~CX_1"),
   s("Canon", "oracle", "ejqe~em2~CX_1"),
-  
-  
-  
-  
-  
+  // "BDO USA", not "BDO": the board already carries other BDO member firms
+  // (BDO4 on SmartRecruiters, bdoau, bdozambia). BDO is a network of legally
+  // separate firms, and a bare "BDO" here would silently merge four of them
+  // into one company page, count, and Hiring-Health score. This tenant's
+  // postings are 100% US (sampled 60/60), which grounds the name.
   s("BDO USA", "oracle", "ebqb~us2~CX_1"),
-  
-  
-  
+  // ORC census wave 2 (2026-07-25): the previously unnamed tenants, identified
+  // via each careers page title. Corporate employers only; unidentifiable
+  // (default-titled) tenants and portal-named sites were left out.
   s("Albertsons Companies", "oracle", "eofd~us6~CX_1"),
   s("Hilton", "oracle", "efet~us2~CX_1"),
   s("Sherwin-Williams", "oracle", "ejhp~us6~CX_1"),
@@ -220,8 +220,8 @@ export const JOB_SOURCES: JobSource[] = [
   s("SLAB_Careersite", "oracle", "efpb~em3~CX_1"),
   s("Hoffman Equipment Yard", "oracle", "efsp~us6~CX_1"),
   s("Citizens", "oracle", "eeab~us2~CX_1"),
-  
-  
+  // Corporate re-weighting sweep (2026-07-12): 69 tech/professional
+  // employers (Greenhouse/Lever/Ashby), big and very small, ~38716 postings.
   s("Speechify", "greenhouse", "speechify"),
   s("Upstream Rehabilitation", "greenhouse", "urpt"),
   s("WPP Media", "greenhouse", "wppmedia"),
@@ -289,16 +289,16 @@ export const JOB_SOURCES: JobSource[] = [
   s("21st Century Home Health Services Inc.", "lever", "21hhs"),
   s("JETSET Pilates", "lever", "jetsetpilates"),
   s("Go RH", "lever", "gorh"),
-  
-  
-  
+  // CDX census sweep (2026-07-12): Wayback CDX enumeration of vendor domains,
+  // every board live-verified via the vendor's official public API and named
+  // from the vendor's own metadata. 14 boards, ~37782 postings at selection time.
   s("SGS", "smartrecruiters", "SGS"),
   s("AECOM", "smartrecruiters", "AECOM2"),
   s("Veolia Environnement SA", "smartrecruiters", "VeoliaEnvironnementSA"),
   s("Turner & Townsend", "smartrecruiters", "TurnerTownsend"),
   s("Eurofins", "smartrecruiters", "Eurofins"),
   s("Sopra Steria", "smartrecruiters", "SopraSteria1"),
-  
+  // Sweep #5 (2026-07-11): 261 boards from public link corpora + YC remainder.
   s("8vc", "ashby", "8vc"),
   s("ABACUS", "greenhouse", "abacus"),
   s("Able", "greenhouse", "able"),
@@ -554,8 +554,8 @@ export const JOB_SOURCES: JobSource[] = [
   s("XPENG", "greenhouse", "xpengmotors"),
   s("Yotta", "ashby", "yotta"),
   s("Zencoder", "greenhouse", "zencoder"),
-  
-  
+  // Mass discovery (YC directory sweep, 2026-07-11): 415 boards.
+  // Greenhouse names come from the vendor's own board meta (collision-proof).
   s("Abacum", "ashby", "abacum"),
   s("Abstra", "bamboohr", "abstra"),
   s("Abundant", "ashby", "abundant"),
@@ -965,7 +965,7 @@ export const JOB_SOURCES: JobSource[] = [
   s("Ziina", "ashby", "ziina"),
   s("Zip", "ashby", "zip"),
   s("Zippi", "lever", "zippi"),
-  
+  // Sweep #4 (2026-07-11): 35 boards
   s("SpaceX", "greenhouse", "spacex"),
   s("OpenAI", "ashby", "openai"),
   s("ServiceNow", "smartrecruiters", "ServiceNow"),
@@ -999,7 +999,7 @@ export const JOB_SOURCES: JobSource[] = [
   s("Zed", "ashby", "zed"),
   s("Thales", "smartrecruiters", "Thales"),
   s("Ledger", "lever", "ledger"),
-  
+  // SmartRecruiters (enterprise; API caps our fetch at 500/board)
   s("Bosch Group", "smartrecruiters", "BoschGroup"),
   s("Devoteam", "smartrecruiters", "Devoteam"),
   s("Continental", "smartrecruiters", "Continental"),
@@ -1009,7 +1009,7 @@ export const JOB_SOURCES: JobSource[] = [
   s("Colliers", "smartrecruiters", "Colliers"),
   s("McDonald's", "smartrecruiters", "McDonaldsCorporation"),
   s("Visa", "smartrecruiters", "visa"),
-  
+  // Workable
   s("Blueground", "workable", "blueground"),
   s("Plum", "workable", "withplum"),
   s("Affirm", "greenhouse", "affirm"),
@@ -1155,7 +1155,7 @@ export const JOB_SOURCES: JobSource[] = [
   s("Zipline", "greenhouse", "flyzipline"),
   s("Zocdoc", "greenhouse", "zocdoc"),
   s("Zoox", "lever", "zoox"),
-  
+  // ── Pool expansion 2026-07-13: +1427 live-verified official boards (CDX census, 200 + >0 postings). ──
   s("BJAK", "ashby", "bjakcareer"),
   s("Airwallex", "ashby", "airwallex"),
   s("Aisle And Abroad", "lever", "aisle_and_abroad"),
@@ -2549,7 +2549,7 @@ export const JOB_SOURCES: JobSource[] = [
   s("Citizen", "ashby", "Citizen"),
   s("Chilipiper", "ashby", "chilipiper"),
   s("Coefficientgiving", "ashby", "coefficientgiving"),
-  
+  // ── Pool expansion R2 2026-07-13: +532 live-verified boards (ashby/lever/greenhouse/bamboohr; SmartRecruiters held for classification). ──
   s("Crusoe", "ashby", "Crusoe"),
   s("Fira Health", "ashby", "fira-health"),
   s("Fluidstack", "ashby", "fluidstack"),
@@ -3072,7 +3072,7 @@ export const JOB_SOURCES: JobSource[] = [
   s("Adterra", "bamboohr", "adterra"),
   s("Advancedrx", "bamboohr", "advancedrx"),
   s("Advantagelumber", "bamboohr", "advantagelumber"),
-  
+  // ── Pool expansion R2b 2026-07-13: +997 SmartRecruiters boards, corporate-role-classified (categorize() sample: mostly professional roles, not store/gig; aggregators + staffing body-shops screened out; brands OK when the openings are corporate). ──
   s("JYSK", "smartrecruiters", "JYSK"),
   s("AbbVie", "smartrecruiters", "AbbVie"),
   s("H&M Group", "smartrecruiters", "HMGroup"),
@@ -4070,12 +4070,12 @@ export const JOB_SOURCES: JobSource[] = [
   s("Xprolabs", "smartrecruiters", "Xprolabs"),
   s("Yassir Gmbh", "smartrecruiters", "YassirGmbh"),
   s("Yuxi Global", "smartrecruiters", "YuxiGlobal1"),
-  
-  
-  
-  
-  
-  
+  // Capacity scale-up (2026-07-13): the 8GB DB plan removed the old ~97k corpus
+  // ceiling, so every remaining clean verified board from the census joins — no
+  // capacity cut. Same provenance as all others: live-verified against the
+  // vendor's official public API and named from the vendor's own metadata.
+  // 3327 boards, ~100080 postings at selection time. SmartRecruiters excluded
+  // pending corporate-role classification.
   s("EōS Fitness", "greenhouse", "eosfitness"),
   s("BAYADA Home Health Care", "greenhouse", "bayada"),
   s("Carvana", "greenhouse", "carvana"),
@@ -7373,9 +7373,9 @@ export const JOB_SOURCES: JobSource[] = [
   s("Circonomit", "workable", "circonomit"),
   s("Caresyntax", "workable", "caresyntax-2"),
   s("Christian Senior Care Services", "workable", "christian-senior-care-services"),
-  
-  
-  
+  // Ashby scale-up fix-up (2026-07-13): names resolved from the public board
+  // page title (the posting API carries no organization name). Same live
+  // verification as every other entry.
   s("Renuity", "ashby", "renuity"),
   s("LILT (Production)", "ashby", "lilt-production"),
   s("Enpal", "ashby", "enpal"),
@@ -8813,11 +8813,11 @@ export const JOB_SOURCES: JobSource[] = [
   s("Yutori", "ashby", "yutori"),
   s("Zencastr", "ashby", "zencastr"),
   s("Zeno", "ashby", "zeno"),
-  
-  
-  
-  
-  
+  // SmartRecruiters corporate round 2 (2026-07-13): the verified boards held
+  // back at the last census, now classified by role mix with the production
+  // categorizer (professional >= 50%, retail <= 20% of sampled titles) per the
+  // corporate-roles-only rule. Names from SmartRecruiters' own records.
+  // 173 boards, ~11040 postings (SR_CAP-adjusted) at selection time.
   s("Nagarro", "smartrecruiters", "Nagarro1"),
   s("KIPP", "smartrecruiters", "KIPP"),
   s("PSG Global Solutions", "smartrecruiters", "PSGGlobalSolutions2"),
@@ -8980,12 +8980,12 @@ export const JOB_SOURCES: JobSource[] = [
   s("Toomey Technologies", "smartrecruiters", "toomeytechnologies"),
   s("Venerate Digital Media", "smartrecruiters", "VenerateDigitalMedia"),
   s("Yggdrasil", "smartrecruiters", "YggdrasilSandbox"),
-  
-  
-  
-  
-  
-  
+  // Common Crawl census (2026-07-14): enumeration of the vendors' board URLs
+  // from the Common Crawl public web index — a far deeper corpus than the
+  // Wayback CDX used in earlier rounds. Every board live-verified against the
+  // vendor's official public API and named from vendor-published metadata
+  // (BambooHR names from the careers page og:site_name). 3049 boards,
+  // ~48826 postings at selection time.
   s("Checkout.com", "ashby", "checkout.com"),
   s("T1 Energy", "ashby", "t1energy"),
   s("Thumbtack", "ashby", "thumbtack"),
@@ -12029,13 +12029,13 @@ export const JOB_SOURCES: JobSource[] = [
   s("Wildlife Works", "workable", "wildlife-works"),
   s("Workbox Holdings, Inc.", "workable", "workbox-company"),
   s("YourHero/Douleutaras", "workable", "yourhero-douleutaras"),
-  
-  
-  
-  
-  
-  
-  
+  // SmartRecruiters via Common Crawl census (2026-07-14): classified corporate
+  // by role mix + evidence mill-screen, same protocol as round 2.
+  // SmartRecruiters corporate round 2 (2026-07-13): the verified boards held
+  // back at the last census, now classified by role mix with the production
+  // categorizer (professional >= 50%, retail <= 20% of sampled titles) per the
+  // corporate-roles-only rule. Names from SmartRecruiters' own records.
+  // 59 boards, ~6060 postings (SR_CAP-adjusted) at selection time.
   s("Renesas Electronics", "smartrecruiters", "RenesasElectronics"),
   s("Wabtec", "smartrecruiters", "Wabtec"),
   s("Tieto", "smartrecruiters", "Tieto2"),
@@ -12093,7 +12093,7 @@ export const JOB_SOURCES: JobSource[] = [
   s("Cerby, Inc.", "smartrecruiters", "CerbyInc"),
   s("RF Connect", "smartrecruiters", "RFConnect"),
   s("Unowhy", "smartrecruiters", "unowhy"),
-  
+  // ── Rung 3 (merged 2026-07-15): Recruitee/Teamtailor/Personio/Breezy, census-verified ≥3 postings ──
   { name: "TransPerfect", source: "recruitee", token: "transperfect" },
   { name: "Dura Vermeer", source: "recruitee", token: "duravermeer" },
   { name: "Careyn", source: "recruitee", token: "careyn" },
@@ -15079,7 +15079,7 @@ export const JOB_SOURCES: JobSource[] = [
   { name: "West End Dental", source: "personio", token: "west-end-dental" },
   { name: "Windotec", source: "personio", token: "windotec" },
   { name: "Zipfelmuetzen", source: "personio", token: "zipfelmuetzen" },
-  
+  // ── Census round 3 + Rippling (merged 2026-07-17): all vendors, official-API verified ≥3 postings, mill-screened ──
   { name: "Svetness Personal Training", source: "greenhouse", token: "svetness" },
   { name: "Soho House & Co.", source: "greenhouse", token: "sohohouseco" },
   { name: "VitalCaring Group", source: "greenhouse", token: "vitalcaringgroup" },
@@ -17723,7 +17723,7 @@ export const JOB_SOURCES: JobSource[] = [
   { name: "Wanta Thome", source: "rippling", token: "wanta-thome" },
   { name: "Within Health Provider Services", source: "rippling", token: "within-health-provider-services" },
   { name: "Youth Haven Inc", source: "rippling", token: "youth-haven-inc" },
-  
+  // ── Census round 3 + Rippling (merged 2026-07-17): all vendors, official-API verified ≥3 postings, mill-screened ──
   { name: "House Buyers of America", source: "greenhouse", token: "housebuyersofamerica" },
   { name: "Block", source: "greenhouse", token: "block" },
   { name: "At Home Healthcare", source: "greenhouse", token: "athomehealth" },
@@ -20135,7 +20135,7 @@ export const JOB_SOURCES: JobSource[] = [
   { name: "Robbins Children's Programs", source: "breezy", token: "robbins-children-s-programs" },
   { name: "School of the Nations, Macau", source: "breezy", token: "school-of-the-nations" },
   { name: "SEIDOR", source: "breezy", token: "seidor" },
-  
+  // ── Census round 3 + Rippling (merged 2026-07-17): all vendors, official-API verified ≥3 postings, mill-screened ──
   { name: "3m", source: "workday", token: "3m~wd1~Search" },
   { name: "Abcfws", source: "workday", token: "abcfws~wd1~abcfws" },
   { name: "Abglobal", source: "workday", token: "abglobal~wd1~alliancebernsteincareers" },
@@ -21504,7 +21504,7 @@ export const JOB_SOURCES: JobSource[] = [
   { name: "Slc", source: "workday", token: "slc~wd3~SLC_Careers" },
   { name: "Sunlife", source: "workday", token: "sunlife~wd3~Campus" },
   { name: "Anaheimducks", source: "workday", token: "anaheimducks~wd5~SDG" },
-  
+  // ── Census round 3 + Rippling (merged 2026-07-17): all vendors, official-API verified ≥3 postings, mill-screened ──
   { name: "BlueSky Telepsych", source: "greenhouse", token: "blueskytelepsych" },
   { name: "VML", source: "greenhouse", token: "wundermanthompson" },
   { name: "Loenbro", source: "greenhouse", token: "loenbro" },
@@ -22876,7 +22876,7 @@ export const JOB_SOURCES: JobSource[] = [
   { name: "Transamerica", source: "workday", token: "transamerica~wd5~AUK_JobSite" },
   { name: "Employeeownedbrands", source: "workday", token: "employeeownedbrands~wd501~Dexter_Laundry" },
   { name: "9dot", source: "workday", token: "9dot~wd503~PIE-IL_Careers" },
-  
+  // ── Census round 3 + Rippling (merged 2026-07-18): all vendors, official-API verified ≥3 postings, mill-screened ──
   { name: "ASM", source: "greenhouse", token: "asm" },
   { name: "Picnic", source: "greenhouse", token: "teampicnic" },
   { name: "Nscale", source: "greenhouse", token: "eu~nscaleoperationsukltd" },
@@ -23105,9 +23105,9 @@ export const JOB_SOURCES: JobSource[] = [
   { name: "Telana", source: "greenhouse", token: "ancoris" },
   { name: "PHENOGY AG", source: "greenhouse", token: "phenogyag" },
   { name: "PlanOmatic HQ", source: "greenhouse", token: "planomatichq" },
-  
-  
-  
+  // globalelitecareers removed 2026-07-21: "Work From Home - Break Free of the
+  // 9-5" posted hundreds of times — MLM-style recruiting spam, violates the
+  // Zero Ghost Jobs promise (legitimacy bar).
   { name: "Usasurveyjob", source: "lever", token: "usasurveyjob" },
   { name: "Shieldai", source: "lever", token: "shieldai" },
   { name: "Binance", source: "lever", token: "binance" },
@@ -26376,7 +26376,7 @@ export const JOB_SOURCES: JobSource[] = [
   { name: "Thorne", source: "pinpoint", token: "thorne" },
   { name: "Together Group", source: "pinpoint", token: "togethergroup" },
   { name: "Pinpoint", source: "pinpoint", token: "workwithus" },
-  
+  // ── Census round 3 + Rippling (merged 2026-07-18): all vendors, official-API verified ≥3 postings, mill-screened ──
   { name: "Sunshine House", source: "workable", token: "sunshine-house" },
   { name: "Survey Solutions", source: "workable", token: "survey-solutions-2" },
   { name: "Printec", source: "workable", token: "printec" },
@@ -26840,8 +26840,8 @@ export const JOB_SOURCES: JobSource[] = [
   { name: "Wellstar", source: "workday", token: "wellstar~wd1~wellstarprovidercareers" },
   { name: "Welocalize", source: "workday", token: "welocalize~wd1~Welocalize" },
   { name: "Ymcaatlanta", source: "workday", token: "ymcaatlanta~wd1~YMCA-Careers" },
-  
-  
+  // sggovterp~wd102~PublicServiceCareers removed 2026-07-21: Singapore Public
+  // Service Careers — government board, violates the corporate-only catalog rule.
   { name: "Canarywharf", source: "workday", token: "canarywharf~wd103~CanaryWharf" },
   { name: "Circles", source: "workday", token: "circles~wd103~Circles" },
   { name: "Dsvgruppe", source: "workday", token: "dsvgruppe~wd103~DSV" },
@@ -28267,9 +28267,9 @@ export const JOB_SOURCES: JobSource[] = [
   { name: "Web", source: "workday", token: "web~wd1~HostGator" },
   { name: "Wfscorp", source: "workday", token: "wfscorp~wd5~wfscareers-uk" },
   { name: "Wilhelmsen", source: "workday", token: "wilhelmsen~wd3~Norsea_Norway" },
-  
-  
-  
+  // Wayback-CDX census 2026-07-26: 13 tenants the Common Crawl sweeps never saw,
+  // each live-verified against the official CXS API and named from the employer's
+  // own posting data (996 postings at verification).
   { name: "ACS Auto Club Services", source: "workday", token: "acg~wd1~Careers" },
   { name: "Advance Polybag", source: "workday", token: "apicorp~wd1~Accredo-External-Careers" },
   { name: "Alta Performance Materials", source: "workday", token: "altapm~wd1~ALTACareers" },
@@ -28283,34 +28283,34 @@ export const JOB_SOURCES: JobSource[] = [
   { name: "Columbus State Community College", source: "workday", token: "cscc~wd1~CSCC_ext" },
   { name: "Easterseals Northern California", source: "workday", token: "catalight~wd1~catalight" },
   { name: "Freedom Mortgage", source: "workday", token: "archwellessentials~wd1~careers" },
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
+  // iCIMS, vendor #15 (census + live verification 2026-07-26). Token is the
+  // employer's own career-site host — the JSON API lives at {token}/api/jobs.
+  // Richest feed we ingest: real posted dates, ISO country codes, stated
+  // salary, and full descriptions in the list payload (2,852 postings at
+  // verification). AIDT excluded: state workforce agency, corporate-only bar.
+  //
+  // ROUND 2, 2026-08-12: +18 employers / 9,282 postings, two-hop discovery.
+  // Hop 1 is a Wayback CDX pull on icims.com for tenant hosts; hop 2 derives
+  // {careers,jobs}.{company}.{tld} from each tenant slug and probes /api/jobs.
+  // The hops are needed because the JSON API lives ONLY on custom career-site
+  // domains — measured: it returns HTML on every *.icims.com host, including
+  // the tenant host that named the company — so the CDX corpus finds WHO uses
+  // iCIMS and the probe finds WHERE their feed is. 1,907 candidates -> 22 live
+  // feeds; every one verified live before landing here.
+  //
+  // Three exclusions, all on the collision rule rather than on feed quality:
+  // Gallagher (the board already carries Gallagher Europe BV — a different
+  // legal entity, and this catalog has mapped slugs to the wrong employer
+  // before), Aptive and Pinion (exact name matches already carried).
+  // Foot Locker answered on careers. AND jobs.; one host per employer, or the
+  // same 2,890 postings are ingested twice under two tokens.
+  //
+  // Names are `hiring_organization` from the employer's own posting payload,
+  // never the tenant slug — postholdings.icims.com posts as Michael Foods Inc.
+  // Casing is theirs: AVI-SPL is not "Avi-spl".
   { name: "84 Lumber", source: "icims", token: "careers.84lumber.com" },
   { name: "AARP", source: "icims", token: "careers.aarp.org" },
-  { name: "PetSmart", source: "icims", token: "careers.petsmart.com", pages: 115 }, 
+  { name: "PetSmart", source: "icims", token: "careers.petsmart.com", pages: 115 }, // 10,911 postings measured 2026-08-19 — the pages budget is why it is not windowed at 1,200
   { name: "AccentCare", source: "icims", token: "careers.accentcare.com" },
   { name: "Acentra Health", source: "icims", token: "careers.acentra.com" },
   { name: "Adisseo France S.A.S", source: "icims", token: "careers.adisseo.com" },
@@ -28327,13 +28327,13 @@ export const JOB_SOURCES: JobSource[] = [
   { name: "AprilAire", source: "icims", token: "careers.aprilaire.com" },
   { name: "Aptean", source: "icims", token: "careers.aptean.com" },
   { name: "Aurobindo Pharma USA", source: "icims", token: "careers.acrotechbiopharma.com" },
-  
-  
-  
-  
-  
-  
-  
+  // iCIMS deep census 2026-07-26 (Wayback alphabetical partitions + Common
+  // Crawl; 1,744 candidate hosts -> 137 live). Protocol applied: exact-domain
+  // dedupe, same-INSTANCE dedupe (Reyes Holdings fronts one iCIMS with five
+  // brand domains; Chick-fil-A supply likewise), names sourced from each
+  // feed's hiring_organization, mill screen on all 60 boards >=100 postings
+  // (1 flag, cleared by reading the text), Harrow Council and AIDT dropped
+  // as public-sector. 105 employers, 36,745 postings at verification.
   { name: "Ajinomoto Foods North America", source: "icims", token: "www.ajinomotocareers.com" },
   { name: "Arcus FM", source: "icims", token: "careers.arcusfm.com" },
   { name: "AVI-SPL", source: "icims", token: "careers.avispl.com" },
@@ -28447,14 +28447,14 @@ export const JOB_SOURCES: JobSource[] = [
   { name: "Velosio", source: "icims", token: "careers.velosio.com" },
   { name: "Verbal Beginnings", source: "icims", token: "careers.verbalbeginnings.com" },
   { name: "YMCA of Greater Kansas City", source: "icims", token: "careers.kansascityymca.org" },
-  
-  
-  
-  
-  
-  
-  
-  
+  // iCIMS census close-out (2026-07-26): the 1,296 remaining Wayback tokens
+  // probed live — 1 answered (Xactly, below); the tail is dead tenants. These
+  // are the census-verified hosts the rung-5 merge missed, after the standard
+  // screens: same-instance dedupe dropped Reyes×4/Chick-fil-A×2/Exelon×1/
+  // Busy Bees×1 (already carried under their primary domains), harrow.gov.uk
+  // and AIDT fell to the corporate-only fence, and careers.reliance.com was
+  // excluded because neither its feed nor its site names the employer. Names
+  // below are from each site's own title/og tags.
   { name: "UHS", source: "icims", token: "jobs.uhsinc.com", pages: 64 },
   { name: "Landry's", source: "icims", token: "careers.landrysinc.com", pages: 29 },
   { name: "WakeMed", source: "icims", token: "jobs.wakemed.org" },
@@ -28463,14 +28463,14 @@ export const JOB_SOURCES: JobSource[] = [
   { name: "Xactly", source: "icims", token: "careers.xactlycorp.com" },
   { name: "DataBank", source: "icims", token: "careers.databankimx.com" },
   { name: "Sarnova", source: "icims", token: "careers.sarnova.com" },
-  
-  
-  
-  
-  
+  // Found by mining Phenom career sites for the Workday board their apply
+  // links point at (2026-07-26). Phenom is a career-site LAYER over an ATS,
+  // so it is a discovery channel, not a vendor to ingest — 9 of 11 Phenom
+  // sites probed were employers already in this catalog via Workday.
+  // These two were not: Kohl's (2,000+) and Humana's CenterWell (1,837).
   { name: "Kohl's", source: "workday", token: "kohls~wd504~kohlscareers" },
   { name: "CenterWell (Humana)", source: "workday", token: "humana~wd5~CenterWell_External_Career_Site" },
-  
+  // ── Census round 3 + Rippling (merged 2026-08-05): all vendors, official-API verified ≥3 postings, mill-screened ──
   { name: "Avaaz", source: "pinpoint", token: "avaaz" },
   { name: "Cls", source: "pinpoint", token: "cls" },
   { name: "Elfbeauty", source: "pinpoint", token: "elfbeauty" },
@@ -28478,7 +28478,7 @@ export const JOB_SOURCES: JobSource[] = [
   { name: "Savannainstitute", source: "pinpoint", token: "savannainstitute" },
   { name: "Systematica", source: "pinpoint", token: "systematica" },
   { name: "Xeneta", source: "pinpoint", token: "xeneta" },
-  
+  // ── Census round 3 + Rippling (merged 2026-08-05): all vendors, official-API verified ≥3 postings, mill-screened ──
   { name: "Accenture", source: "pinpoint", token: "accenture" },
   { name: "Ada", source: "pinpoint", token: "ada" },
   { name: "Appvia", source: "pinpoint", token: "appvia" },
@@ -28487,7 +28487,7 @@ export const JOB_SOURCES: JobSource[] = [
   { name: "Dayshape", source: "pinpoint", token: "dayshape" },
   { name: "Ipsos", source: "pinpoint", token: "ipsos" },
   { name: "Teya", source: "pinpoint", token: "teya" },
-  
+  // ── Census round 3 + Rippling (merged 2026-08-05): all vendors, official-API verified ≥3 postings, mill-screened ──
   { name: "Getyourguide", source: "pinpoint", token: "getyourguide" },
   { name: "Goodlord", source: "pinpoint", token: "goodlord" },
   { name: "Helsing", source: "pinpoint", token: "helsing" },
@@ -28511,7 +28511,7 @@ export const JOB_SOURCES: JobSource[] = [
   { name: "Tenstorrent", source: "pinpoint", token: "tenstorrent" },
   { name: "Tradinghub", source: "pinpoint", token: "tradinghub" },
   { name: "Versapay", source: "pinpoint", token: "versapay" },
-  
+  // ── Census round 3 + Rippling (merged 2026-08-07): all vendors, official-API verified ≥3 postings, mill-screened ──
   { name: "Savills", source: "teamtailor", token: "savills" },
   { name: "Aroma-Zone", source: "teamtailor", token: "aromazone" },
   { name: "Easyfairs Nederland", source: "teamtailor", token: "easyfairs" },
@@ -28646,7 +28646,7 @@ export const JOB_SOURCES: JobSource[] = [
   { name: "bookingkit GmbH", source: "teamtailor", token: "bookingkitgmbh" },
   { name: "Questback", source: "teamtailor", token: "questback" },
   { name: "River Island", source: "pinpoint", token: "careers.riverisland.com" },
-  
+  // ── Census round 3 + Rippling (merged 2026-08-07): all vendors, official-API verified ≥3 postings, mill-screened ──
   { name: "VPZ", source: "teamtailor", token: "vpz" },
   { name: "3 Danmark", source: "teamtailor", token: "3danmark" },
   { name: "Neat", source: "teamtailor", token: "neat" },
@@ -28666,7 +28666,7 @@ export const JOB_SOURCES: JobSource[] = [
   { name: "Hitta.se", source: "teamtailor", token: "hittase" },
   { name: "Perigee", source: "teamtailor", token: "perigee" },
   { name: "Hydroscand Norge", source: "teamtailor", token: "hydroscandno" },
-  
+  // ── Census round 3 + Rippling (merged 2026-08-07): all vendors, official-API verified ≥3 postings, mill-screened ──
   { name: "Birn+Partners", source: "teamtailor", token: "birnpartners" },
   { name: "ERGO", source: "teamtailor", token: "ergobaltics" },
   { name: "CybelAngel", source: "teamtailor", token: "cybelangel" },
@@ -28991,7 +28991,7 @@ export const JOB_SOURCES: JobSource[] = [
   { name: "Safetywing", source: "pinpoint", token: "safetywing" },
   { name: "Kenwayconsulting", source: "pinpoint", token: "kenwayconsulting" },
   { name: "Article", source: "pinpoint", token: "article" },
-  
+  // ── Census round 3 + Rippling (merged 2026-08-07): all vendors, official-API verified ≥3 postings, mill-screened ──
   { name: "Langan Engineering & Environmental Services", source: "greenhouse", token: "langanengineeringandenvironmentalservicesllc" },
   { name: "Internal Job Board", source: "greenhouse", token: "internaljobsatlush" },
   { name: "Cortland", source: "greenhouse", token: "cortland" },
@@ -30057,7 +30057,7 @@ export const JOB_SOURCES: JobSource[] = [
   { name: "Psomagen", source: "rippling", token: "psomagen" },
   { name: "Simeon Global Consulting", source: "rippling", token: "simeon-global-consulting" },
   { name: "Voltaiq Careers", source: "rippling", token: "voltaiq-careers" },
-  
+  // ── Census round 3 + Rippling (merged 2026-08-08): all vendors, official-API verified ≥3 postings, mill-screened ──
   { name: "Proxima", source: "teamtailor", token: "proxima" },
   { name: "Securitas", source: "teamtailor", token: "securitas" },
   { name: "Atomos", source: "teamtailor", token: "atomoswealth" },
@@ -30108,12 +30108,12 @@ export const JOB_SOURCES: JobSource[] = [
   { name: "HUMANA Second Hand", source: "teamtailor", token: "miljoochbistandsforeningenhumanasver" },
   { name: "NTE AS", source: "teamtailor", token: "nteas" },
   { name: "North Richmond Community Health", source: "teamtailor", token: "northrichmondcommunityhealth" },
-  
-  
-  
-  
-  
-  
+  // 2026-08-13 sendable-vendor census: Wayback CDX round over the four
+  // vendors the apply agent can submit to. Every board probed live, every
+  // name from the employer's own payload (breezy company.name, teamtailor
+  // RSS channel title) or its own careers page title (pinpoint, personio;
+  // unparseable titles were SKIPPED, never guessed). Staffing-named boards
+  // held out, exact-name duplicates of carried employers skipped.
   { name: "500", source: "teamtailor", token: "500stockholm-1733324549" },
   { name: "AAF - Power & Industrial", source: "teamtailor", token: "aaf" },
   { name: "Aalto EE, F.E.C Programs", source: "teamtailor", token: "aaltofec" },
@@ -30186,12 +30186,12 @@ export const JOB_SOURCES: JobSource[] = [
   { name: "Arku Maschinenbau Gmbh", source: "personio", token: "arku-maschinenbau-gmbh" },
   { name: "Cafico International", source: "personio", token: "cafico-international" },
   { name: "Xempus", source: "personio", token: "xempus" },
-  
-  
-  
-  
-  
-  
+  // 2026-08-13 sendable-vendor census: Wayback CDX round over the four
+  // vendors the apply agent can submit to. Every board probed live, every
+  // name from the employer's own payload (breezy company.name, teamtailor
+  // RSS channel title) or its own careers page title (pinpoint, personio;
+  // unparseable titles were SKIPPED, never guessed). Staffing-named boards
+  // held out, exact-name duplicates of carried employers skipped.
   { name: "42DIGITAL GmbH", source: "personio", token: "42digital" },
   { name: "44.01", source: "personio", token: "4401" },
   { name: "A EINS Business Intelligence GmbH", source: "personio", token: "a-eins-digital-innovation-gmbh" },
@@ -30480,12 +30480,12 @@ export const JOB_SOURCES: JobSource[] = [
   { name: "St. George's - The British International School - Holding", source: "personio", token: "aera-verlag-gmbh" },
   { name: "The Calligraphy Cut Company GmbH", source: "personio", token: "calligraphy-cut" },
   { name: "vibe", source: "personio", token: "egocentric-systems-gmbh" },
-  
-  
-  
-  
-  
-  
+  // 2026-08-13 round 2 (deeper Wayback pagination, 2022-2026). Common Crawl
+  // was tried first and 504s on wildcard host queries — its index is not a
+  // usable second corpus today, recorded so the next round does not retry it
+  // blind. The deeper pull returned mostly apex-path URLs, so breezy and
+  // teamtailor yielded ZERO net-new tenants: round 1 had already saturated
+  // those namespaces. Same probe-live, name-from-the-employer discipline.
   { name: "ADENTICS - Die Kieferorthopäden", source: "personio", token: "adentics" },
   { name: "AEC Europe GmbH", source: "personio", token: "aeceurope" },
   { name: "Agentur Frau Wenk +++ GmbH", source: "personio", token: "agentur-frau-wenk-gmbh" },
@@ -30573,12 +30573,12 @@ export const JOB_SOURCES: JobSource[] = [
   { name: "Altus Pediatric Billing", source: "breezy", token: "altus-pediatric-billing" },
   { name: "Founder's CPA", source: "breezy", token: "founder-s-cpa" },
   { name: "ICA.ai", source: "breezy", token: "international-consulting-associates-inc" },
-  
-  
-  
-  
-  
-  
+  // 2026-08-13 sendable-vendor census: Wayback CDX round over the four
+  // vendors the apply agent can submit to. Every board probed live, every
+  // name from the employer's own payload (breezy company.name, teamtailor
+  // RSS channel title) or its own careers page title (pinpoint, personio;
+  // unparseable titles were SKIPPED, never guessed). Staffing-named boards
+  // held out, exact-name duplicates of carried employers skipped.
   { name: "1234S.org", source: "breezy", token: "1234s" },
   { name: "360 Apartment Renovations", source: "breezy", token: "360-apartment-renovations" },
   { name: "7AM Enfant Inc.", source: "breezy", token: "7am-enfant-inc" },
@@ -30785,12 +30785,12 @@ export const JOB_SOURCES: JobSource[] = [
   { name: "Carto", source: "pinpoint", token: "carto" },
   { name: "Naimaudio", source: "pinpoint", token: "naimaudio" },
   { name: "Keck", source: "pinpoint", token: "keck" },
-  
-  
-  
-  
-  
-  
+  // 2026-08-13 sendable-vendor census: Wayback CDX round over the four
+  // vendors the apply agent can submit to. Every board probed live, every
+  // name from the employer's own payload (breezy company.name, teamtailor
+  // RSS channel title) or its own careers page title (pinpoint, personio;
+  // unparseable titles were SKIPPED, never guessed). Staffing-named boards
+  // held out, exact-name duplicates of carried employers skipped.
   { name: "5 Star Nutrition | 5 Star Nutrition", source: "pinpoint", token: "5starnutrition" },
   { name: "AccelerComm Ltd | AccelerComm Ltd", source: "pinpoint", token: "accelercomm" },
   { name: "Acrobat Talent | Acrobat Talent", source: "pinpoint", token: "acrobat" },
@@ -31078,7 +31078,7 @@ export const JOB_SOURCES: JobSource[] = [
   { name: "The City of Liverpool College | The City of Liverpool College", source: "pinpoint", token: "liv-coll" },
   { name: "The Duke of Edinburgh's Award | The Duke of Edinburgh's Award", source: "pinpoint", token: "dofe" },
   { name: "TTEP UK&I Investments Ltd | TTEP UK&I Investments Ltd", source: "pinpoint", token: "epuki" },
-  
+  // ── Census round 3 + Rippling (merged 2026-08-08): all vendors, official-API verified ≥3 postings, mill-screened ──
   { name: "Western Veterinary Partners, LLC", source: "greenhouse", token: "westernveterinarypartnersllc" },
   { name: "Picnic Delivery", source: "greenhouse", token: "try-picnic" },
   { name: "Sands Investment Group", source: "greenhouse", token: "sandsinvestmentgroup" },
@@ -31880,7 +31880,7 @@ export const JOB_SOURCES: JobSource[] = [
   { name: "Civie", source: "rippling", token: "civie" },
   { name: "Contextual Careers", source: "rippling", token: "contextual-careers" },
   { name: "Paraconsulting", source: "rippling", token: "paraconsulting" },
-  
+  // ── Census round 3 + Rippling (merged 2026-08-10): all vendors, official-API verified ≥3 postings, mill-screened ──
   { name: "METRO AEBE", source: "workable", token: "metro-aebe" },
   { name: "Unison Group", source: "workable", token: "unisongroup" },
   { name: "SSC HR Solutions", source: "workable", token: "ssc-hr" },
@@ -31892,29 +31892,29 @@ export const JOB_SOURCES: JobSource[] = [
   { name: "The Recovery Village", source: "workable", token: "therecoveryvillage" },
   { name: "Enterprise Electrical", source: "workable", token: "enterprise-electrical" },
   { name: "Renmoney", source: "workable", token: "renmoney" },
-  
+  // ── Census round 3 + Rippling (merged 2026-08-10): all vendors, official-API verified ≥3 postings, mill-screened ──
   { name: "Domino's", source: "smartrecruiters", token: "dominos" },
-  
-  
-  
-  
-  
-  
+  // THE ONE SINGLE-SOURCE VENDOR: the U.S. federal government's official API,
+  // one national feed instead of per-employer tenants. Token is fixed; the
+  // hiring AGENCY travels in each posting and becomes the displayed employer,
+  // so the company facet shows "Veterans Affairs", never one giant "USAJOBS"
+  // blob. Requires USAJOBS_API_KEY + USAJOBS_USER_AGENT secrets; without them
+  // the fetcher returns empty rather than failing the board.
   { name: "USAJOBS", source: "usajobs", token: "usajobs" },
 
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
+  // 111 pinpoint tokens removed 2026-08-24: pure demo sandboxes — every posting
+  // drawn from Pinpoint's 6 canned seed titles, verified as a full subset on
+  // removal day (469 rows, 0 real titles). The merge protocol now screens for
+  // the same fingerprint (scripts/merge-all.mjs PINPOINT_DEMO_TITLES).
+  // 77 boards removed 2026-08-24: every one probed against its own
+  // vendor API and answered 404/410 — the employer closed the ATS account or
+  // renamed the token. They were failing on every rotation, burning a fetch
+  // slot and filling failedSources with noise that hid real breakage.
+  // 10 bamboohr boards removed 2026-08-24: each answers 302 -> /login.php,
+  // meaning the employer turned their public careers list off. We use public
+  // feeds only and never authenticate, so this is terminal, not transient.
+  // All held zero postings, so nothing is deleted with them.
+  // ── Census round 3 + Rippling (merged 2026-08-28): all vendors, official-API verified ≥3 postings, mill-screened ──
   { name: "Pulse Healthcare", source: "greenhouse", token: "pulse" },
   { name: "Herewith Caregivers", source: "greenhouse", token: "herewithgmbh" },
   { name: "OOS Management Corp.", source: "greenhouse", token: "oosmanagementcorp" },
@@ -32946,7 +32946,7 @@ export const JOB_SOURCES: JobSource[] = [
   { name: "Harpercollins", source: "pinpoint", token: "harpercollins" },
   { name: "Ouswre", source: "pinpoint", token: "ouswre" },
 
-  
+  // ── Oracle census (merged 2026-08-28): names resolved from each tenant's own recruitingCESites branding, mill-screened on real posting text, tranche-capped to governor headroom ──
   { name: "The Kroger Co.", source: "oracle", token: "eluq~us2~CX_1", pages: 130 },
   { name: "AutoZone", source: "oracle", token: "egud~us2~CX_1", pages: 115 },
   { name: "Tata Capital", source: "oracle", token: "eofh~em2~CX_1" },
@@ -32986,7 +32986,7 @@ export const JOB_SOURCES: JobSource[] = [
   { name: "Westpac Group", source: "oracle", token: "ebuu~ap1~CX_1" },
   { name: "Dubai World Trade Centre -", source: "oracle", token: "bun~em2~CX_1" },
 
-  
+  // ── Oracle census (merged 2026-08-28): names resolved from each tenant's own recruitingCESites branding, mill-screened on real posting text, tranche-capped to governor headroom ──
   { name: "Uber", source: "oracle", token: "iaziqy~ocs~CX_1" },
   { name: "onsemi", source: "oracle", token: "hctz~us2~CX_1" },
   { name: "J.D. Irving, Limited", source: "oracle", token: "hcpd~ca2~CX_1" },
@@ -33347,7 +33347,7 @@ export const JOB_SOURCES: JobSource[] = [
   { name: "Victoria University", source: "oracle", token: "fa-ercy-saasfaprod1~ocs~CX_1" },
   { name: "MBC Group", source: "oracle", token: "ehff~em2~CX_1" },
   { name: "University of Al Dhaid", source: "oracle", token: "iabzey~ocs~CX_1" },
-  
+  // ── Census round 3 + Rippling (merged 2026-08-31): all vendors, official-API verified ≥3 postings, mill-screened ──
   { name: "dmg::media", source: "greenhouse", token: "dmgmedia" },
   { name: "Private Job Board", source: "greenhouse", token: "privatejobs" },
   { name: "Weber Shandwick", source: "greenhouse", token: "webershandwick" },
@@ -33514,7 +33514,7 @@ export const JOB_SOURCES: JobSource[] = [
   { name: "Rising Sun Center For Opportunity", source: "rippling", token: "rising-sun-center-for-opportunity" },
   { name: "Tidalwave Holdings", source: "rippling", token: "tidalwave-holdings" },
 
-  
+  // ── Oracle census (merged 2026-08-28): names resolved from each tenant's own recruitingCESites branding, mill-screened on real posting text, tranche-capped to governor headroom ──
   { name: "Marriott", source: "oracle", token: "ejwl~us2~CX" },
   { name: "Kotak", source: "oracle", token: "hcbt~em2~CX_1001" },
   { name: "SBH", source: "oracle", token: "eigx~us6~CX" },
@@ -34247,7 +34247,7 @@ export const JOB_SOURCES: JobSource[] = [
   { name: "Sterling Estates of West Cobb", source: "oracle", token: "eexs~us2~CX_34005" },
   { name: "Delaney at South Shore", source: "oracle", token: "eexs~us2~CX_11007" },
   { name: "Training Community", source: "oracle", token: "eexs~us2~CX_18005" },
-  
+  // ── Census round 3 + Rippling (merged 2026-08-31): all vendors, official-API verified ≥3 postings, mill-screened ──
   { name: "Taco Bell - Hospitality Restaurant Group", source: "paylocity", token: "4c0bba55-9bc2-4496-8afe-0fff901e9cde" },
   { name: "HEALTHY KIDS PROGRAMS", source: "paylocity", token: "7fc41a6e-848a-4a03-989b-deb9a4c28f27" },
   { name: "Cogir Management, USA Inc", source: "paylocity", token: "2aa7b2c9-a8ae-41e4-adb4-2a709c95429e" },
@@ -36107,7 +36107,7 @@ export const JOB_SOURCES: JobSource[] = [
   { name: "University of Illinois Foundation", source: "paylocity", token: "fde70dc9-a8f3-4155-8a35-ec3538360252" },
   { name: "Marshall Community Credit Union", source: "paylocity", token: "ff4a71a1-be3f-4303-b17e-ec6987608a61" },
 
-  
+  // ── Oracle census (merged 2026-08-28): names resolved from each tenant's own recruitingCESites branding, mill-screened on real posting text, tranche-capped to governor headroom ──
   { name: "Essar", source: "oracle", token: "ekjy~em2~CX_1" },
   { name: "Nabors", source: "oracle", token: "fa-eyem-saasfaprod1~ocs~CX_1" },
   { name: "ICHOR", source: "oracle", token: "fa-eovh-saasfaprod1~ocs~CX_1" },
@@ -36189,7 +36189,7 @@ export const JOB_SOURCES: JobSource[] = [
   { name: "D.B. Group ITA", source: "oracle", token: "fa-eozc-saasfaprod1~ocs~CX_8001" },
   { name: "Dordt University", source: "oracle", token: "ibmxjb~ocs~CX_2" },
   { name: "Banco Original", source: "oracle", token: "epdm~la1~CX_4001" },
-  
+  // ── Census round 3 + Rippling (merged 2026-08-31): all vendors, official-API verified ≥3 postings, mill-screened ──
   { name: "Insurtech Insights", source: "greenhouse", token: "insurtechinsights" },
   { name: "Mente Group", source: "greenhouse", token: "mentegroup" },
   { name: "TrussWorks, Inc", source: "greenhouse", token: "trussworksinc" },

@@ -1,58 +1,58 @@
-
-
-
+// Pure normalization + filtering for the job board. No Deno APIs — this
+// module is unit-tested by vitest against REAL payload fixtures captured
+// from each ATS's public API (src/test/job-board.test.ts).
 
 import type { JobSourceKind } from "./sources.ts";
 import { categorize, type JobCategory } from "./categories.ts";
 
 export interface JobPosting {
-  
+  /** `${source}:${token}:${externalId}` — stable across refreshes. */
   id: string;
   source: JobSourceKind;
-  
+  /** Board token — needed for the detail lookup. */
   token: string;
   company: string;
   title: string;
   location: string;
-  
+  /** True only when workMode is definitively "remote" (kept for filters/stats). */
   remote: boolean;
-  
-
+  /** Definitive work mode: vendor structured field first, explicit title/location
+      text second, null when the posting doesn't say — and the UI shows nothing. */
   workMode: "remote" | "hybrid" | "onsite" | null;
   department: string | null;
-  
+  /** ISO date, null when the ATS doesn't expose one in the list payload. */
   postedAt: string | null;
-  
+  /** Deterministic field bucket (department-first, title fallback). */
   category: JobCategory;
-  
+  /** Freeform salary summary when the feed provides one; null otherwise. */
   salary: string | null;
-  
-
+  /** ISO-3166 alpha-2 when the FEED states it structurally (Rippling does);
+      absent → ingest falls back to detectCountry(location). */
   country?: string | null;
-  
+  /** The company's own posting/application page — where Apply goes. */
   applyUrl: string;
-  
-
-
-
-
+  /** Employment type from the vendor's STRUCTURED field only — never inferred
+      from text. Same trinary-or-nothing contract as workMode: a value only
+      when the feed states one, null otherwise, and the UI shows nothing on
+      null. Nine vendors carry it in the list payloads the ingest already
+      fetches (measured live 2026-08-28); the rest stay null. */
   employmentType?: EmploymentType | null;
 }
 
 export type EmploymentType = "full_time" | "part_time" | "contract" | "temporary" | "internship";
 
-
-
-
-
-
-
-
-
-
-
-
-
+/**
+ * One mapper for nine vendors' vocabularies. STRUCTURED FIELDS ONLY — the
+ * input is a vendor enum/label ("FullTime", "Full-time", "permanent",
+ * "fixed_term", "Intern"), never posting prose, so a miss returns null rather
+ * than guessing. Vocabulary measured live per vendor before each entry:
+ * ashby FullTime/PartTime/Intern/Contract/Temporary; lever commitment
+ * "Full-time"/"Part-time"/"Internship"/"Contract"/"Permanent"; workable
+ * "Full-time" style; smartrecruiters typeOfEmployment id "permanent"/
+ * "contract"/... with a display label; recruitee employment_type_code
+ * fulltime/parttime/internship/temporary; personio <schedule> full-or-part-time
+ * variants; pinpoint/icims free-ish labels already threaded for salary logic.
+ */
 export function normalizeEmploymentType(raw: unknown): EmploymentType | null {
   const v = String(raw ?? "").trim().toLowerCase().replace(/[\s_-]+/g, "");
   if (!v) return null;
@@ -64,116 +64,116 @@ export function normalizeEmploymentType(raw: unknown): EmploymentType | null {
   return null;
 }
 
-
-
-
+// Feeds are official vendor APIs, but a posting URL still passes through us
+// into an <a href> — http gets upgraded to https (One Medical ships http://
+// apply URLs), anything that isn't http(s) becomes "" and the posting drops.
 const safeUrl = (u: unknown): string => {
   if (typeof u !== "string") return "";
-  if (/^https:\/\
-  if (/^http:\/\
+  if (/^https:\/\//i.test(u)) return u;
+  if (/^http:\/\//i.test(u)) return "https://" + u.slice(7);
   return "";
 };
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+// Oldest posted_at we'll trust from a feed. Beyond this it's almost certainly
+// bad data (some feeds return epoch-ish or decade-old timestamps — e.g. a
+// Palantir role dated 2009) or an evergreen pipeline req that shouldn't wear a
+// stale date. Kept here so ingestion and any date-hygiene share one bound.
+// Garbage-date floor: only dates before this are feed junk (epoch zeros,
+// mis-parsed typos, the live 2009 Palantir date — Lever didn't exist yet).
+// A REAL old date — a 3.5-year-old evergreen Lever req — must SURVIVE
+// sanitization so the freshness cap can drop the posting. The previous
+// ~3-year "absurdly old → null" rule laundered exactly those evergreens into
+// undated-KEPT postings (live incident: a 1,295-day-old req served on a board
+// that promises nothing older than 30 days; 42% of Lever rows were undated
+// this way). 2010 predates every ATS we ingest, so anything earlier cannot be
+// a real posting date.
 export const POSTED_AT_GARBAGE_FLOOR_MS = Date.parse("2010-01-01T00:00:00Z");
 
-
-
-
-
-
-
+// A posted_at is trustworthy only if it parses and sits in a sane window: not
+// in the future (small clock-skew grace) and not pre-2000 junk. Garbage dates
+// collapse to null — so effective_posted falls back to first-seen for sorting
+// and the card shows no date instead of "posted 6000 days ago". Real-but-old
+// dates pass through untouched: the ingestion freshness cap is what drops
+// those postings, and nulling them would keep the posting alive undated.
 export function sanePostedAt(iso: string | null | undefined, now: number = Date.now()): string | null {
   if (!iso || typeof iso !== "string") return null;
   const t = Date.parse(iso);
   if (!Number.isFinite(t)) return null;
-  if (t > now + 2 * 86_400_000) return null;      
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
+  if (t > now + 2 * 86_400_000) return null;      // future beyond clock-skew grace
+  // Inside the grace window, CLAMP to now rather than storing a future date.
+  // The grace exists because vendors emit date-only values that parse as UTC
+  // midnight from boards several hours ahead (AU/Asia Workday) — that is skew,
+  // and the honest reading of skew is "posted now", not "posted tomorrow".
+  // Storing the future value had two visible consequences: default sort is
+  // effective_posted DESC so all 23 such rows occupied the entire top of the
+  // board, and daysAgo() in Jobs.tsx returns null for a negative age, so those
+  // cards rendered with no posted-age label at all. Measured 2026-07-28: 19
+  // Workday rows stamped 2026-07-29T00:00:00Z plus 4 Personio rows 1-57 min
+  // ahead. Nothing is invented here — a posting cannot have been posted later
+  // than the moment we read it.
   if (t > now) return new Date(now).toISOString();
-  if (t < POSTED_AT_GARBAGE_FLOOR_MS) return null; 
+  if (t < POSTED_AT_GARBAGE_FLOOR_MS) return null; // epoch-zero / typo junk
   return iso;
 }
 
-
-
-
-
-
-
-
+// Closure "superseded" detection compares a vanished posting's title against
+// the board's still-live titles — but companies decorate reposts with req-id
+// noise ("Behavior Technician (R-48213)", "Nurse - #10422"), so exact-string
+// matching under-detects relisting churn and inflates fill-rate stats. Strip
+// only id-shaped noise: bracketed segments containing digits and trailing
+// req/id numbers. NEVER strip words (a Senior Engineer closing while Engineer
+// stays live is not automatically a repost).
 export function normalizeCloseTitle(title: string): string {
   return title
     .toLowerCase()
-    .replace(/[([{][^)\]}]*\d[^)\]}]*[)\]}]/g, " ")          
-    .replace(/\s*[-–—#·|]\s*(?:req|job|id|jr)?[\s#:-]*\d{3,}\s*$/i, " ") 
+    .replace(/[([{][^)\]}]*\d[^)\]}]*[)\]}]/g, " ")          // (R-48213), [Req 10422]
+    .replace(/\s*[-–—#·|]\s*(?:req|job|id|jr)?[\s#:-]*\d{3,}\s*$/i, " ") // trailing "- 10422" / "#10422"
     .replace(/\s+/g, " ")
     .trim();
 }
 
-
-
-
-
-
-
-
+// Convert a feed's raw date value (epoch number, ISO/date string, whatever the
+// vendor sends) to an ISO string — WITHOUT throwing. `new Date(x).toISOString()`
+// raises a RangeError on an invalid date, and a normalizer that throws fails its
+// ENTIRE board upstream (fetchBoard swallows it → the board silently stops
+// ingesting, the same class as a fetch timeout). A non-empty garbage date string
+// is exactly the input that trips this. Bad or absent values collapse to null;
+// window-sanity (future/too-old) stays a separate concern for sanePostedAt.
 export function safeIso(value: unknown): string | null {
   if (value === null || value === undefined || value === "") return null;
   const d = new Date(value as string | number);
   return Number.isNaN(d.getTime()) ? null : d.toISOString();
 }
 
-
-
-
-
+// Freshness-cap decision: a posting is dropped on age ONLY when it carries a
+// trustworthy date older than the cutoff. A null (undated or garbage-dated,
+// per sanePostedAt) posting is never dropped on age — we can't prove it's old,
+// and the vast majority of feeds do date their postings anyway.
 export function isDatedBefore(sanitizedPostedAt: string | null, cutoffMs: number): boolean {
   return sanitizedPostedAt !== null && Date.parse(sanitizedPostedAt) < cutoffMs;
 }
 
-
-
-
-
+// Greenhouse escapes the HTML it returns (&lt;p&gt;…) — and entities INSIDE
+// that HTML arrive double-escaped (&amp;nbsp;), so unescape must run twice:
+// once to recover the markup, once to recover the text's own entities.
+// Two passes are a no-op on plain text.
 const unescapeEntities = (s: string) =>
   s
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
     .replace(/&quot;/g, '"')
-    
-    
-    
-    
+    // Numeric entities — audit 2026-07-25: workday descriptions shipped raw
+    // &#160;/&#8217; to users because only the named set was decoded. NUL and
+    // out-of-range code points become spaces (a NUL here would make the row
+    // grep-invisible and break downstream matching).
     .replace(/&#x([0-9a-f]+);/gi, (_, h) => { const c = parseInt(h, 16); return c > 0 && c < 0x110000 ? String.fromCodePoint(c) : " "; })
     .replace(/&#(\d+);/g, (_, d) => { const c = parseInt(d, 10); return c > 0 && c < 0x110000 ? String.fromCodePoint(c) : " "; })
     .replace(/&nbsp;/g, " ")
-    
-    
-    
-    
-    
+    // Named entities — audit 2026-08-24: greenhouse's pay-transparency
+    // footer ships "&mdash;" and the numeric-only decoder left it literal in
+    // stored text, where it both rendered as garbage to readers AND broke
+    // salary mining (the range separator never matched: 17/200 sampled rows
+    // carried an entity-encoded pay block, all unparseable).
     .replace(/&mdash;/gi, "\u2014")
     .replace(/&ndash;/gi, "\u2013")
     .replace(/&(rsquo|apos);/gi, "'")
@@ -182,7 +182,7 @@ const unescapeEntities = (s: string) =>
     .replace(/&ldquo;/gi, "\u201c")
     .replace(/&hellip;/gi, "\u2026")
     .replace(/&(bull|middot);/gi, "\u00b7")
-    .replace(/&amp;/g, "&"); 
+    .replace(/&amp;/g, "&"); // last, so &amp;lt; needs the second pass, not this one
 
 export function htmlToText(html: string): string {
   const unescaped = unescapeEntities(unescapeEntities(html));
@@ -198,12 +198,12 @@ export function htmlToText(html: string): string {
 
 const looksRemote = (s: string) => /\bremote\b/i.test(s);
 
-
-
-
-
-
-
+// Trinary work-mode detection from explicit title/location text — the same
+// precision bar as looksRemote (clear words only; descriptions are never
+// inferred from). Hybrid outranks remote ("Hybrid remote" is hybrid); onsite
+// needs the explicit phrase. null = the posting doesn't say, and the board
+// shows nothing rather than a guess. Multilingual: the board carries DE/FR/
+// ES/NL/PT postings.
 const P_HYBRID = /\bhybrid\b|\bhybride\b|\bh[íi]brido?\b/i;
 const P_REMOTE = /\bremote\b|\bwork from home\b|\bwfh\b|\bt[ée]l[ée]travail\b|\bhome\s?office\b|\bremoto\b|\bthuiswerken\b|\bteletrabajo\b/i;
 const P_ONSITE = /\bon-?site\b|\bin-?office\b|\bvor ort\b|\bpresencial\b|\bsur site\b/i;
@@ -215,50 +215,50 @@ export function detectWorkMode(...parts: Array<string | null | undefined>): "rem
   if (P_ONSITE.test(s)) return "onsite";
   return null;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+// A Map, not an object literal — the third instance of this hazard in this
+// codebase (see NAME_FIXES in company-display.ts and CATEGORY_ACCENT in
+// category-accent.ts). `VENDOR_MODE[v]` reaches Object.prototype, so a vendor
+// sending WorkplaceTypeCode "constructor" or "toString" would return a
+// FUNCTION, and `?? null` does not catch it because a function is not nullish.
+// Record<string,...> describes inherited keys as valid values, so TypeScript
+// cannot see it.
+//
+// The ORA_* codes are Oracle Recruiting Cloud's own vocabulary. Measured
+// 2026-07-29: where a vendor STATES a work mode we disagreed 72.3% of the time
+// (598 of 915 stored NULL, 64 stored wrong) — and Oracle was a large share of
+// that, because `ORA_REMOTE`.toLowerCase() is `ora_remote`, which matched
+// nothing here and fell through to null. 14,678 oracle postings, ~33% of which
+// carry a stated code.
 const VENDOR_MODE = new Map<string, "remote" | "hybrid" | "onsite">([
   ["remote", "remote"], ["hybrid", "hybrid"], ["onsite", "onsite"], ["on_site", "onsite"],
-  
+  // Oracle Recruiting Cloud
   ["ora_remote", "remote"], ["ora_hybrid", "hybrid"], ["ora_onsite", "onsite"],
   ["ora_on_site", "onsite"], ["ora_office", "onsite"],
-  
+  // Other spellings seen in vendor payloads
   ["fully_remote", "remote"], ["remote_working", "remote"], ["work_from_home", "remote"],
   ["telecommute", "remote"], ["in_office", "onsite"], ["in_person", "onsite"],
   ["office", "onsite"], ["flexible", "hybrid"], ["partially_remote", "hybrid"],
 ]);
-
+/** Map a vendor's workplace enum (any casing, ON_SITE variants) to our trinary. */
 export function vendorWorkMode(v: string | null | undefined): "remote" | "hybrid" | "onsite" | null {
   if (typeof v !== "string") return null;
   return VENDOR_MODE.get(v.toLowerCase().replace(/[\s-]+/g, "_")) ?? null;
 }
 
-
-
-
-
-
+// Country from free-text location — deterministic and CONSERVATIVE: an explicit
+// country name, a comma-prefixed US state / Canadian province code, or a full
+// state/province name. No city geocoding, no guessing: a location we can't
+// place stays NULL and is simply excluded from the country filter (disclosed),
+// because "London" could be Ontario and "Georgia" could be Tbilisi.
 const COUNTRY_PATTERNS: ReadonlyArray<readonly [RegExp, string]> = [
   [/\b(?:united states|u\.?s\.?a\.?|estados unidos)\b/i, "US"],
-  
-  
-  
-  
-  
-  
-  
+  // "wales" is guarded against NEW SOUTH WALES, which is in Australia. The GB
+  // pattern sits at index 1 and the AU pattern at index 7, so on "Sydney, New
+  // South Wales, Australia" the word Wales won the race and the row shipped as
+  // United Kingdom. Measured live 2026-08-25: 25 of 25 rows returned for
+  // location="New South Wales" carried country GB. Plain "South Wales" IS
+  // Welsh, so only the "new south" prefix is excluded — same shape as the
+  // (?<!new ) guard on Mexico below.
   [/\b(?:united kingdom|england|scotland|(?<!new south )wales|northern ireland)\b|\bUK\b/i, "GB"],
   [/\b(?:germany|deutschland)\b/i, "DE"],
   [/\bcanada\b/i, "CA"],
@@ -268,10 +268,10 @@ const COUNTRY_PATTERNS: ReadonlyArray<readonly [RegExp, string]> = [
   [/\b(?:australia|new south wales)\b/i, "AU"],
   [/\b(?:poland|polska)\b/i, "PL"],
   [/\b(?:spain|españa)\b/i, "ES"],
-  
-  
-  
-  
+  // (?<!new ): "Albuquerque, New Mexico" is a US state, not the country —
+  // measured 2026-08-24: 251 of 599 servable "new mexico" locations carried
+  // country=MX, including rows with an explicit "US," prefix, poisoning the
+  // country filter in both directions. "Mexico City"/"México" still match.
   [/\b(?<!new )(?:mexico|méxico)\b/i, "MX"],
   [/\b(?:brazil|brasil)\b/i, "BR"],
   [/\bphilippines\b/i, "PH"],
@@ -308,11 +308,11 @@ const COUNTRY_PATTERNS: ReadonlyArray<readonly [RegExp, string]> = [
   [/\b(?:turkey|türkiye)\b/i, "TR"],
   [/\bukraine\b/i, "UA"],
   [/\bcosta rica\b/i, "CR"],
-  
-  
-  
-  
-  
+  // THIRTEEN COUNTRIES WHOSE OWN NAME DID NOT RESOLVE TO THEM.
+  // Found by sampling 5,000 postings that carry location text and no parsed
+  // country: 38 of them name a country outright and were still filed as
+  // unplaceable — "China", "Pakistan", "Ecuador". Roughly 1,280 postings
+  // board-wide. Not inference and not a guess; the text says where it is.
   [/\bchina\b/i, "CN"],
   [/\bpakistan\b/i, "PK"],
   [/\btaiwan\b/i, "TW"],
@@ -328,38 +328,38 @@ const COUNTRY_PATTERNS: ReadonlyArray<readonly [RegExp, string]> = [
   [/\becuador\b/i, "EC"],
   [/\buruguay\b/i, "UY"],
 ];
-
-
+// Comma-prefixed uppercase state/province codes only — "Austin, TX" yes,
+// stray "in" or "or" inside words no.
 const P_US_STATE_CODE = /,\s*(AL|AK|AZ|AR|CA|CO|CT|DE|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY|DC)(?![A-Za-z])/;
 const P_CA_PROV_CODE = /,\s*(ON|QC|BC|AB|MB|SK|NS|NB|PE|NL|YT|NT|NU)(?![A-Za-z])/;
-
-
-
-
-
-
-
-
-
-
-
-
-
+// SOME FEEDS PUT THE STATE FIRST: "AR Hot Springs", "NC - Raleigh". The
+// comma-prefixed pattern above cannot see those, and they are the largest
+// recoverable class in the unplaced set — 146 of 5,000 sampled, roughly 4,900
+// postings board-wide.
+//
+// THE CODE LIST IS DELIBERATELY SHORTER THAN FIFTY. A leading two-letter token
+// is far weaker evidence than a trailing one: "OR Tambo" is an airport in
+// Johannesburg, "IN" and "ME" and "OK" and "HI" are English words, "DE" and
+// "LA" and "MA" open place names in other languages. Only codes that are not
+// words in English or common romance/germanic prefixes are listed, so a miss
+// here leaves a posting unplaced — which is the board's stated behaviour — and
+// never places it wrongly. GA is absent for the same reason it is absent from
+// the state-NAME pattern: Georgia is also a country.
 const P_US_STATE_CODE_LEADING =
   /^(AK|AR|AZ|CT|FL|IA|KS|KY|MN|NC|ND|NH|NJ|NM|NV|NY|RI|SD|TN|TX|UT|VT|WI|WV|WY|IL|MO)\s*[-–—]?\s+[A-Za-z]/;
 const P_US_STATE_NAME = /\b(?:alabama|alaska|arizona|arkansas|california|colorado|connecticut|delaware|florida|hawaii|idaho|illinois|indiana|iowa|kansas|kentucky|louisiana|maine|maryland|massachusetts|michigan|minnesota|mississippi|missouri|montana|nebraska|nevada|new hampshire|new jersey|new mexico|new york|north carolina|north dakota|ohio|oklahoma|oregon|pennsylvania|rhode island|south carolina|south dakota|tennessee|texas|utah|vermont|virginia|washington|west virginia|wisconsin|wyoming)\b/i;
 const P_CA_PROV_NAME = /\b(?:ontario|quebec|british columbia|alberta|manitoba|saskatchewan|nova scotia|new brunswick|newfoundland)\b/i;
 
-
-
-
-
-
-
-
-
-
-
+// City→country fallback for locations with no country/state qualifier at all
+// ("Kuala Lumpur", "Pune, Maharashtra", bare "London"). Runs LAST, after every
+// country pattern and US-state/CA-province check — which is what makes the
+// ambiguous names safe: North American feeds essentially always qualify their
+// cities ("Melbourne, FL", "London, ON", "Dublin, OH"), so those resolve via
+// state/province BEFORE this table is consulted, and a bare segment is the
+// non-NA reading. Matching is exact-SEGMENT equality (split on commas etc.),
+// never substring — "Santiago de Compostela" does not match "santiago".
+// Bump COUNTRY_MAP_VERSION when this table changes; the backfill-country
+// sweep re-runs stored null-country rows against the current table.
 export const COUNTRY_MAP_VERSION = 5;
 const CITY_COUNTRY = new Map<string, string>([
   ["aarhus", "DK"],
@@ -686,7 +686,7 @@ const CITY_COUNTRY = new Map<string, string>([
   ["zurich", "CH"],
 ]);
 
-
+/** Country from a bare city segment; exact segment match only, else null. */
 export function cityCountry(location: string): string | null {
   for (const seg of location.toLowerCase().split(/[,;·|/]+/)) {
     const t = seg.trim().replace(/\s+/g, " ");
@@ -702,7 +702,7 @@ export function detectCountry(location: string | null | undefined): string | nul
   for (const [re, code] of COUNTRY_PATTERNS) if (re.test(s)) return code;
   if (P_US_STATE_CODE.test(s) || P_US_STATE_NAME.test(s) || P_US_STATE_CODE_LEADING.test(s)) return "US";
   if (P_CA_PROV_CODE.test(s) || P_CA_PROV_NAME.test(s)) return "CA";
-  if (/\bUS\b/.test(s)) return "US"; 
+  if (/\bUS\b/.test(s)) return "US"; // "Remote - US", "US Remote" — after state codes so ", USA" paths won
   return cityCountry(s);
 }
 
@@ -716,35 +716,35 @@ interface GreenhouseJob {
   departments?: Array<{ name?: string }>;
 }
 
-
-
-
-
-
-
-
-
-
+// A PLACE NAME IS NOT A LATITUDE. Some Greenhouse employers append the
+// geocode to the location string, and the board rendered it verbatim:
+// "Waipahu, HI 96797 | 21.396369637 | -158.01142287". Measured 2026-08-24:
+// 398 of 1,000 sampled pipe-bearing locations carry this suffix, every one of
+// them Greenhouse.
+//
+// The pattern is narrow ON PURPOSE. A pipe in a location is usually REAL —
+// "Latin & South America | Remote", "3 Locations   |   PT-Orlando" — so only
+// a trailing run of decimal numbers is removed, never the separator itself.
 const COORD_SUFFIX = /\s*\|\s*-?\d{1,3}\.\d{3,}(?:\s*\|\s*-?\d{1,3}\.\d{3,})?\s*$/;
 export function stripCoordinateSuffix(location: string): string {
   return location.replace(COORD_SUFFIX, "").trim();
 }
 
 export function normalizeGreenhouse(raw: { jobs?: GreenhouseJob[] }, company: string, token: string): JobPosting[] {
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
+  // AN APPLY LINK SHARED BY FIVE TITLES IS A BOARD INDEX, NOT A JOB.
+  //
+  // absolute_url is employer-configured, and some employers point every
+  // posting at their careers landing page. Measured 2026-08-23: 270 URLs on
+  // the board were shared by >=5 distinct titles, carrying 11,202 postings —
+  // BAYADA alone hung 1,601 postings (944 titles) off jobs.bayada.com/en/jobs.
+  // The button looks fine and lands the reader on a search page.
+  //
+  // The per-job page is reconstructible from data already in hand:
+  // job-boards.greenhouse.io/{token}/jobs/{id}, verified HTTP 200 against a
+  // live posting. The whole board arrives in one payload, so counting distinct
+  // titles per URL is free. Five is the audit's measured threshold — a real
+  // per-job URL is never legitimately shared by five different titles, while
+  // two or three can be one reposted role.
   const titlesPerUrl = new Map<string, Set<string>>();
   for (const j of raw.jobs ?? []) {
     const u = j.absolute_url ?? "";
@@ -765,9 +765,9 @@ export function normalizeGreenhouse(raw: { jobs?: GreenhouseJob[] }, company: st
       workMode: detectWorkMode(location, j.title),
       remote: detectWorkMode(location, j.title) === "remote",
       department: j.departments?.[0]?.name ?? null,
-      
-      
-      
+      // first_published only — updated_at re-stamps on any edit, so using it
+      // as a posting date silently biases every age stat young. Undated is
+      // honest; mis-dated is not.
       postedAt: j.first_published ?? null,
       category: categorize(j.title ?? "", j.departments?.[0]?.name),
       salary: null,
@@ -777,13 +777,13 @@ export function normalizeGreenhouse(raw: { jobs?: GreenhouseJob[] }, company: st
 }
 
 interface LeverJob {
-  
-  
+  // categories.commitment carries employment type ("Full-time", "Permanent",
+  // "Internship") — proven by the captured fixture and live probes.
   id: string;
   text: string;
   hostedUrl: string;
   applyUrl?: string;
-  createdAt?: number; 
+  createdAt?: number; // epoch ms
   workplaceType?: string;
   categories?: { location?: string; team?: string; allLocations?: string[]; commitment?: string };
   salaryRange?: { min?: number; max?: number; currency?: string; interval?: string };
@@ -835,7 +835,7 @@ interface AshbyJob {
   team?: string;
   isRemote?: boolean;
   workplaceType?: string;
-  employmentType?: string; 
+  employmentType?: string; // "Remote" | "Hybrid" | "Onsite"
   isListed?: boolean;
   publishedAt?: string;
   jobUrl?: string;
@@ -900,9 +900,9 @@ export function normalizeSmartRecruiters(raw: { content?: SmartRecruitersPosting
         postedAt: p.releasedDate ?? null,
         category: categorize(p.name ?? "", department),
         salary: null,
-        
+        // id first ("permanent"/"contract" enums), display label second.
         employmentType: normalizeEmploymentType(p.typeOfEmployment?.id) ?? normalizeEmploymentType(p.typeOfEmployment?.label),
-        
+        // The public posting page is deterministic from company identifier + id.
         applyUrl: safeUrl(`https://jobs.smartrecruiters.com/${token}/${p.id}`),
       };
     })
@@ -975,7 +975,7 @@ export function normalizeBambooHR(raw: { result?: BambooJob[] }, company: string
         workMode: j.isRemote === true ? "remote" as const : detectWorkMode(location, j.jobOpeningName),
         remote: j.isRemote === true || detectWorkMode(location, j.jobOpeningName) === "remote",
         department: j.departmentLabel ?? null,
-        postedAt: null, 
+        postedAt: null, // the list feed carries no dates
         category: categorize(j.jobOpeningName ?? "", j.departmentLabel),
         salary: null,
         applyUrl: safeUrl(`https://${token}.bamboohr.com/careers/${j.id}`),
@@ -984,12 +984,12 @@ export function normalizeBambooHR(raw: { result?: BambooJob[] }, company: string
     .filter((j) => j.applyUrl !== "");
 }
 
+// ── Rung-3 vendors ──────────────────────────────────────────────────────────
+// Two of these feeds are XML (Personio's official feed, Teamtailor's RSS), so a
+// pair of tiny CDATA-aware helpers stands in for a parser dependency. They only
+// need to handle the well-formed, machine-generated feeds these vendors emit.
 
-
-
-
-
-
+/** All <tag>…</tag> block contents in document order. */
 export function xmlBlocks(xml: string, tag: string): string[] {
   const out: string[] = [];
   const re = new RegExp(`<${tag}(?:\\s[^>]*)?>([\\s\\S]*?)</${tag}>`, "gi");
@@ -998,7 +998,7 @@ export function xmlBlocks(xml: string, tag: string): string[] {
   return out;
 }
 
-
+/** First <tag> value inside a block, CDATA unwrapped, trimmed; null if absent. */
 export function xmlValue(block: string, tag: string): string | null {
   const m = block.match(new RegExp(`<${tag}(?:\\s[^>]*)?>([\\s\\S]*?)</${tag}>`, "i"));
   if (!m) return null;
@@ -1048,14 +1048,14 @@ export function normalizeRecruitee(raw: { offers?: RecruiteeOffer[] }, company: 
         postedAt: safeIso(o.published_at ?? o.created_at),
         category: categorize(o.title ?? "", o.department),
         salary,
-        
-        
-        
-        
-        
-        
-        
-        
+        // THE CANONICAL HOST, NOT THE EMPLOYER'S VANITY DOMAIN. careers_url is
+        // a hostname the employer once configured and can abandon — measured
+        // 2026-08-23: 47 vanity hosts NXDOMAIN and 11 more fail TLS, stranding
+        // 233 servable postings behind an Apply button that cannot load (one
+        // was not even a valid hostname: careers.ferillis, no TLD). The
+        // canonical {token}.recruitee.com/o/{slug} — which sat here as the
+        // FALLBACK — answered HTTP 200 for all 233 of them. The vendor
+        // guarantees the canonical; the vanity host is cosmetics that rots.
         employmentType: normalizeEmploymentType(o.employment_type_code),
         applyUrl: safeUrl(o.slug ? `https://${token}.recruitee.com/o/${o.slug}` : (o.careers_url ?? "")),
       };
@@ -1063,8 +1063,8 @@ export function normalizeRecruitee(raw: { offers?: RecruiteeOffer[] }, company: 
     .filter((j) => j.applyUrl !== "" && j.title !== "");
 }
 
-
-
+/** Personio's official XML feed ({token}.jobs.personio.de/xml). `host` is the
+ *  feed host that answered (.de or .com) so Apply lands on the right domain. */
 export function normalizePersonio(xml: string, company: string, token: string, host: string): JobPosting[] {
   return xmlBlocks(xml, "position")
     .map((block) => {
@@ -1085,9 +1085,9 @@ export function normalizePersonio(xml: string, company: string, token: string, h
         department,
         postedAt: safeIso(xmlValue(block, "createdAt")),
         category: categorize(title, department),
-        salary: null, 
-        
-        
+        salary: null, // the feed carries no compensation field
+        // <schedule> is full-time | part-time | full-or-part-time; the mapper
+        // reads full-or-part-time as full_time (the role CAN be full-time).
         employmentType: normalizeEmploymentType(schedule),
         applyUrl: id ? safeUrl(`https://${token}.${host}/job/${id}`) : "",
       };
@@ -1130,21 +1130,21 @@ export function normalizeBreezy(raw: BreezyPosition[], company: string, token: s
     .filter((j) => j.applyUrl !== "" && j.title !== "" && j.id !== `breezy:${token}:`);
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+// ── iCIMS ───────────────────────────────────────────────────────────────────
+// iCIMS hosts each employer's modern career site on the employer's OWN domain
+// (careers.company.com), and that site's frontend calls a public JSON endpoint:
+//   GET https://{careersite-domain}/api/jobs?page={n}&limit=100
+// No auth, no cookies, no JS. Each item nests its fields under `data`.
+//
+// Richest feed of any vendor we ingest: real posted_date (ISO), structured
+// city/state/country, employment_type, AND stated salary min/max — the only
+// source besides description-mined text that gives us pay directly.
+//
+// Discovery is two-hop (2026-07-26 census): CDX/CT enumeration finds the
+// classic careers-{tenant}.icims.com portal, whose /jobs/search?ss=1&in_iframe=1
+// returns a tiny JS redirect naming the modern domain, which is what we store
+// as the token. Token = the career-site host itself (dots and all), so the
+// fetcher needs no separate mapping.
 export interface IcimsJobData {
   req_id?: string | number | null;
   title?: string | null;
@@ -1170,9 +1170,9 @@ export interface IcimsJobData {
 }
 export interface IcimsJobItem { data?: IcimsJobData | null }
 
-
-
-
+/** iCIMS stated pay → the board's freeform salary string. Zeros mean "the
+ *  feed carries the field but this posting states nothing" — never rendered
+ *  as "$0", the same honesty rule the salary miner follows. */
 function icimsSalary(d: IcimsJobData): string | null {
   const num = (v: unknown): number | null => {
     const n = typeof v === "string" ? Number(v.replace(/[^0-9.]/g, "")) : typeof v === "number" ? v : NaN;
@@ -1198,8 +1198,8 @@ export function normalizeIcims(raw: IcimsJobItem[], company: string, token: stri
       const dept = typeof d.department === "string" && d.department.trim() ? d.department.trim() : null;
       const cat = Array.isArray(d.category) ? d.category.filter(Boolean).map((c) => String(c).trim()).join(", ")
         : typeof d.category === "string" ? d.category.trim() : "";
-      
-      
+      // location_type is the vendor's own structured field; text detection only
+      // fills in when the feed doesn't state one (never guessed from prose).
       const lt = String(d.location_type ?? "").toLowerCase();
       const structuredMode = lt.includes("remote") ? "remote" as const
         : lt.includes("hybrid") ? "hybrid" as const
@@ -1219,14 +1219,14 @@ export function normalizeIcims(raw: IcimsJobItem[], company: string, token: stri
         postedAt: safeIso(d.posted_date ?? d.create_date),
         category: categorize(String(d.title ?? ""), dept ?? cat),
         salary: icimsSalary(d),
-        
-        
+        // country_code is the FEED's own ISO-2 — better than location-text
+        // detection, same treatment Rippling gets.
         country: /^[A-Za-z]{2}$/.test(String(d.country_code ?? "")) ? String(d.country_code).toUpperCase() : null,
-        
-        
-        
-        
-        
+        // The feed's apply_url ends in /login — an email-collection wall with
+        // NO job content (verified live 2026-07-26: 9/9 sampled). The sibling
+        // /job path renders the actual posting; never send a seeker to a
+        // data-capture page before they can even read the role.
+        // Already modeled for the salary refusal logic; now a filterable field.
         employmentType: normalizeEmploymentType(d.employment_type),
         applyUrl: safeUrl(String(d.apply_url ?? (externalId ? `https://${token}/jobs/${externalId}/job` : "")).replace(/\/login$/, "/job")),
       };
@@ -1234,15 +1234,15 @@ export function normalizeIcims(raw: IcimsJobItem[], company: string, token: stri
     .filter((j) => j.applyUrl !== "" && j.title !== "" && !j.id.endsWith(":"));
 }
 
-
-
-
-
-
-
-
-
-
+// ── Rippling ATS ────────────────────────────────────────────────────────────
+// Rippling publishes no documented list API; the public board page embeds the
+// job list as first-party structured JSON (Next.js __NEXT_DATA__, react-query
+// dehydratedState). That's still the vendor's own data channel — user decision
+// 2026-07-16 to include it — but it's an implementation detail that can move,
+// so the vendor canary watches it and the breaker quarantines on drift.
+// List items carry NO posted date and NO description (undated postings stay
+// honest-undated; boards are light by nature), but DO carry structured
+// country codes — better than location-text detection.
 export interface RipplingJobItem {
   id?: string | number;
   name?: string;
@@ -1253,13 +1253,13 @@ export interface RipplingJobItem {
     country?: string;
     countryCode?: string;
     city?: string;
-    workplaceType?: string; 
+    workplaceType?: string; // ON_SITE | REMOTE | HYBRID
   }> | null;
 }
 
-
-
-
+/** Pull the job-posts page out of a Rippling board page's __NEXT_DATA__.
+ *  Returns null when the payload shape isn't recognizable (drift signal —
+ *  distinct from a legitimately empty items array). */
 export function extractRipplingJobPosts(html: string): { items: RipplingJobItem[]; totalPages: number } | null {
   const m = html.match(/__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/);
   if (!m) return null;
@@ -1511,20 +1511,20 @@ export function normalizePinpoint(items: PinpointPosting[], company: string, tok
 // a RELATIVE posting age ("Posted 5 Days Ago").
 //
 // CORRECTED 2026-07-28. This header used to say we "never store that as a
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+// date" and that "kept postings are honest-undated (like BambooHR)". Both
+// stopped being true one day after it was written, and the header was never
+// updated — the behaviour is inverted 50-odd lines below. Workday postings get
+// a date by TWO paths:
+//   1. the relative list age, converted to an absolute day-precision date
+//      (fetch time − N days, ±1d) when N <= 30. "30+ Days Ago" is unbounded, so
+//      it stays null AND is authority to drop the posting.
+//   2. an EXACT startDate from the CXS detail payload, which for workday
+//      REPLACES the converted value (see the precedence in index.ts).
+// Only the "30+ Days Ago" tail is genuinely undated. BambooHR is a different
+// case entirely: its list feed states no date at all, at any age.
+//
+// This exact drift is the claim-drift failure mode — a header like this is what
+// a methodology page, a coverage table or llms.txt gets written from.
 export interface WorkdayListItem {
   title?: string;
   externalPath?: string;
@@ -1533,39 +1533,39 @@ export interface WorkdayListItem {
   bulletFields?: string[];
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+/** Relative Workday age → days, or null when unparseable. "Posted Today"=0,
+ *  "Posted Yesterday"=1, "Posted N Days Ago"=N, "Posted 30+ Days Ago"=31. */
+// THE 30-DAY CAP WAS ENFORCED IN ENGLISH ONLY.
+//
+// Every branch of this parser used to require the literal word "posted", and
+// Workday localises postedOn per tenant. So a Spanish tenant saying
+// "Publicado hace más de 30 días" — the employer stating, in its own feed,
+// that the job is past our cap — parsed as null, which means undated, which
+// means kept and served with no age under a badge reading "30-day freshness
+// cap".
+//
+// Measured 2026-08-24: 23,944 servable Workday rows carry no date across 203
+// boards. Probing the top 90 of those boards (21,206 rows, 88.6%) split them
+// cleanly: 60 boards (13,910 rows) genuinely have the field disabled and are
+// honestly undated, while 30 boards (7,296 rows) state an age we were
+// throwing away. A full census of one of them, barcelo~wd3 (502 rows, 100%
+// undated, 100% servable), found 416 of 522 feed items reading "Publicado
+// hace más de 30 días" — 79.7%. Pooled across 22 localized boards, 33.1% of
+// sampled items state an age past 30 days.
+//
+// So the parser stops looking for an English verb and looks for what every
+// locale actually carries: a NUMBER, a DAY WORD, and optionally a
+// MORE-THAN marker. Anything without a day word returns null — one tenant
+// (tutorperini~wd12) puts a location in this field, "Menlo Park, CA", and a
+// parser that guessed at bare digits would date postings from street
+// numbers.
 const WD_TODAY = /\b(today|hoy|aujourd'?hui|heute|vandaag|hoje|oggi|i dag|idag|今天|本日)\b|ausgeschrieben heute/i;
 const WD_YESTERDAY = /\b(yesterday|ayer|hier|gestern|gisteren|ontem|ieri|i går|igår|昨天)\b/i;
 // Day nouns across the locales Workday serves. Chinese/Japanese carry no word
 // boundaries, so they are matched as bare characters.
 const WD_DAY_WORD = /\b(days?|d[ií]as?|jours?|tagen?|tage|dagen?|dagar?|giorni?|giorno|päivää?)\b|[天日]/i;
 // "more than N" in the same locales, plus Workday's own "N+" shorthand and
-
+// the trailing "or more" forms (fr "ou plus", de "oder mehr", zh "以上").
 const WD_MORE_THAN = /\+|\bm[áa]s de\b|\bplus de\b|\bmehr als\b|\bmeer dan\b|\bmais de\b|\bpi[uù] di\b|\bover\b|\bou plus\b|\boder mehr\b|\bo m[áa]s\b|\bof meer\b|\bou mais\b|超過|超过|以上/i;
 
 export function workdayPostedDays(postedOn: string | null | undefined): number | null {
@@ -1573,50 +1573,50 @@ export function workdayPostedDays(postedOn: string | null | undefined): number |
   const s = String(postedOn).toLowerCase();
   if (WD_TODAY.test(s)) return 0;
   if (WD_YESTERDAY.test(s)) return 1;
-  
-  
+  // A day word is required before any number is believed — see the location
+  // tenant above.
   if (!WD_DAY_WORD.test(s)) return null;
   const num = s.match(/(\d{1,4})/);
   if (!num) return null;
   const n = Number(num[1]);
   if (!Number.isFinite(n) || n < 0 || n > 3650) return null;
-  
-  
+  // "30+" and "more than 30" both mean strictly more than 30, so they must
+  // land past the cap rather than exactly on it.
   return WD_MORE_THAN.test(s) ? n + 1 : n;
 }
 
 export function normalizeWorkday(items: WorkdayListItem[], company: string, token: string): JobPosting[] {
-  
+  // token = tenant~dc~site
   const [tenant, dc, site] = token.split("~");
   if (!tenant || !dc || !site) return [];
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
+  // ONE CLOCK READING FOR THE WHOLE FETCH, and it is not a micro-optimisation.
+  //
+  // Workday states an age in days, so every row reading "Posted 3 Days Ago"
+  // is the SAME stated date. Calling Date.now() inside the map gave each of
+  // them a timestamp a few milliseconds apart, which invented an ordering the
+  // vendor never expressed — and that ordering silently disabled the
+  // employer-spread weave downstream, which may only permute rows sharing an
+  // effective_posted (crossing that boundary would claim a recency the row
+  // does not have). With every tie group reduced to one row, the weave had
+  // nothing to interleave and a page could fill with one employer: measured
+  // 2026-08-24, runs of 12-14 consecutive rows from cigna and centene under a
+  // caption promising "spread across employers so one company can't fill the
+  // page".
+  //
+  // Sharing one reading restores the tie groups, which is also simply true:
+  // these rows are equally recent to the precision the employer published.
   const fetchedAt = Date.now();
   const base = `https://${tenant}.${dc}.myworkdayjobs.com/en-US/${site}`;
   return (Array.isArray(items) ? items : [])
     .map((j) => {
       const path = String(j.externalPath ?? "");
-      
+      // Requisition id: the `_JR…` suffix on the path, else the first bulletField.
       const reqId = path.split("_").pop() || (Array.isArray(j.bulletFields) ? j.bulletFields[0] : "") || "";
       const loc = String(j.locationsText ?? "").trim();
-      
-      
+      // "2 Locations" is a multi-site placeholder, not a place — keep it as
+      // display text but it won't resolve to a country (honest).
       const days = workdayPostedDays(j.postedOn);
-      const stale = days !== null && days > 30; 
+      const stale = days !== null && days > 30; // Workday says it's past our cap
       return {
         id: `workday:${token}:${reqId}`,
         source: "workday" as const,
@@ -1627,54 +1627,54 @@ export function normalizeWorkday(items: WorkdayListItem[], company: string, toke
         workMode: detectWorkMode(loc, String(j.title ?? "")),
         remote: detectWorkMode(loc, String(j.title ?? "")) === "remote",
         department: null,
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
+        // Workday's list states a relative age ("Posted 3 Days Ago") — that IS
+        // the company's stated date, at day precision. Convert to absolute
+        // (fetch time − N days, ±1d) so these postings carry provenance and
+        // participate in date filters and the stated-date medians. "30+ Days
+        // Ago" is unbounded — never dated, dropped via _stale.
+        // DATED EVEN WHEN PAST THE CAP, and that is the point. A row dropped
+        // for being stale used to be stripped inside this normalizer, so the
+        // ingest diff never saw it — an ALREADY-STORED posting simply vanished
+        // from the feed, which the absence machinery reads as the employer
+        // taking it down, and (its posted_at being null) logs to the closure
+        // log as a real takedown. The employer took nothing down; we aged it
+        // out. Carrying the date lets the shared ingest freshness filter claim
+        // it as an age-out instead, which is both true and already handled.
+        //
+        // For a "30+ days" bucket the exact date is unknowable, so this is a
+        // LOWER BOUND (31 days), never a precise claim — and the row is
+        // dropped on that basis, so no reader ever sees the figure.
         postedAt: days !== null ? new Date(fetchedAt - days * 86_400_000).toISOString() : null,
         category: categorize(String(j.title ?? ""), null),
         salary: null,
         country: detectCountry(loc),
         applyUrl: safeUrl(path ? `${base}${path}` : ""),
-        _stale: stale, 
+        _stale: stale, // consumed + stripped by the fetcher's freshness filter
       } as JobPosting & { _stale?: boolean };
     })
-    
-    
-    
-    
+    // _stale is no longer filtered here: the shared ingest path applies the
+    // freshness cap to every vendor uniformly (isDatedBefore -> agedOutIds),
+    // and routing Workday through it is what keeps an aged-out posting out of
+    // the closure log. The flag stays on the object for callers that want it.
     .filter((j) => j.applyUrl !== "" && j.title !== "" && j.id !== `workday:${token}:`)
     .map(({ _stale: _drop, ...j }) => j as JobPosting);
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+// ── Oracle Recruiting Cloud (Oracle Fusion HCM) ───────────────────────────
+// Large enterprises that run Oracle Fusion HCM publish their careers site off a
+// first-party public REST API — the same data the tenant serves its own
+// applicants, no auth, no scraping:
+//   GET /hcmRestApi/resources/latest/recruitingCEJobRequisitions
+//       ?onlyData=true&expand=requisitionList&finder=findReqs;siteNumber=CX_1,limit=N,offset=M
+// Token is a compound `tenant~region~site` (the three pieces the host and
+// finder need); the host is {tenant}.fa.{region}.oraclecloud.com.
+//
+// Census note (2026-07-24): identity is NOT in this feed — the tenant is an
+// opaque 4-letter code and only ~41% of tenants name themselves anywhere. So
+// ORC boards are added ONLY as hand-verified sources.ts entries whose display
+// name was confirmed against that tenant's own postings; there is no automatic
+// discovery path. One tenant (eubt.fa.us6) serves 78k system-generated template
+// requisitions — never add a tenant without reading its titles first.
 export interface OracleReq {
   Id?: number | string;
   Title?: string;
@@ -1695,8 +1695,8 @@ export function normalizeOracle(items: OracleReq[], company: string, token: stri
       const title = String(j.Title ?? "").trim();
       const location = String(j.PrimaryLocation ?? "").trim();
       const id = String(j.Id ?? "").trim();
-      
-      
+      // PostedDate is a plain YYYY-MM-DD the employer stated — keep it as a
+      // real date (unlike Workday's relative "Posted 3 Days Ago").
       const posted = /^\d{4}-\d{2}-\d{2}/.test(String(j.PostedDate ?? ""))
         ? new Date(`${String(j.PostedDate).slice(0, 10)}T00:00:00Z`).toISOString()
         : null;
@@ -1714,9 +1714,9 @@ export function normalizeOracle(items: OracleReq[], company: string, token: stri
         department: dept,
         postedAt: posted,
         category: categorize(title, dept),
-        salary: null, 
-        
-        
+        salary: null, // ORC exposes no structured compensation on the list payload
+        // PrimaryLocationCountry is a 2-letter ISO code straight from the
+        // employer — trust it over parsing the free-text location.
         country: (typeof j.PrimaryLocationCountry === "string" && /^[A-Za-z]{2}$/.test(j.PrimaryLocationCountry))
           ? j.PrimaryLocationCountry.toUpperCase()
           : detectCountry(location),
@@ -1726,33 +1726,33 @@ export function normalizeOracle(items: OracleReq[], company: string, token: stri
     .filter((j) => j.applyUrl !== "" && j.title !== "" && j.id !== `oracle:${token}:`);
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+/** Teamtailor career-site RSS ({token}.teamtailor.com/jobs.rss).
+ *
+ *  THE COMMENT THAT USED TO BE HERE SAID THE FEED IS "title/link/pubDate only —
+ *  location isn't structured". That was wrong, and it cost every Teamtailor
+ *  posting its place in three filters.
+ *
+ *  The feed's own root element declares xmlns:tt="https://teamtailor.com/locations".
+ *  Measured on capiosverigeab, 100 items, 2026-08-25:
+ *
+ *    tt:city        100/100 populated   (Stockholm 22, Göteborg 10, ...)
+ *    tt:country     100/100             (Sweden)
+ *    tt:department   98/100             (Sjuksköterska 35, Läkare 21, ...)
+ *    remoteStatus   100/100             (none 80, hybrid 13, onsite 5, temporary 1)
+ *
+ *  and the board was storing location "" for 10,858 of 10,858 servable
+ *  Teamtailor rows — the entire vendor, invisible to the location filter, and
+ *  to the country filter downstream of it, and to department.
+ *
+ *  remoteStatus is read CONSERVATIVELY. Teamtailor's vocabulary maps "hybrid"
+ *  and "fully" cleanly, but "none" is 80% of this sample and means "no remote
+ *  status" as readily as it means onsite — and "onsite" exists separately in
+ *  the same feed, which is the tell. Claiming onsite for 80% of a vendor on
+ *  that inference is exactly the kind of invented field this board does not
+ *  publish, so "none" and "temporary" fall through to title detection and stay
+ *  null when the title says nothing.
+ *
+ *  External id = the numeric slug prefix. */
 export function normalizeTeamtailor(rss: string, company: string, token: string): JobPosting[] {
   return xmlBlocks(rss, "item")
     .map((item) => {
@@ -1760,9 +1760,9 @@ export function normalizeTeamtailor(rss: string, company: string, token: string)
       const link = xmlValue(item, "link") ?? "";
       const idMatch = link.match(/\/jobs\/(\d+)/);
       const externalId = idMatch ? idMatch[1] : "";
-      
-      
-      
+      // City first, then country — the same "Place, Country" shape every other
+      // vendor produces, so detectCountry() downstream resolves it with no
+      // vendor-specific branch. Either half alone is still worth storing.
       const city = xmlValue(item, "tt:city");
       const country = xmlValue(item, "tt:country");
       const location = [city, country].filter(Boolean).join(", ");
@@ -1796,12 +1796,12 @@ export interface JobFilter {
   location?: string;
   remote?: boolean;
   category?: string;
-  
+  /** Board tokens to include; empty/undefined = all. */
   companies?: string[];
 }
 
-
-
+// Multi-term AND across title+company+department; location is its own field
+// so "engineer berlin" in q doesn't silently return nothing.
 export function filterJobs(jobs: JobPosting[], f: JobFilter): JobPosting[] {
   const terms = (f.q ?? "").toLowerCase().split(/\s+/).filter(Boolean).slice(0, 8);
   const loc = (f.location ?? "").toLowerCase().trim();
@@ -1819,7 +1819,7 @@ export function filterJobs(jobs: JobPosting[], f: JobFilter): JobPosting[] {
   });
 }
 
-
+/** Newest first; postings without a date sink to the end. */
 export function sortJobs(jobs: JobPosting[]): JobPosting[] {
   return [...jobs].sort((a, b) => {
     if (a.postedAt && b.postedAt) return b.postedAt.localeCompare(a.postedAt);
@@ -1829,23 +1829,23 @@ export function sortJobs(jobs: JobPosting[]): JobPosting[] {
   });
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+/** USAJOBS — the U.S. federal government's official job API.
+ *
+ *  A SINGLE-SOURCE VENDOR, unlike every other adapter here: one national feed
+ *  rather than per-employer tenants, so `token` is the fixed string "usajobs"
+ *  and the hiring agency travels in each posting's own fields. That makes the
+ *  displayed company the AGENCY (Veterans Affairs, Forest Service), not
+ *  "USAJOBS" — a visitor is applying to the agency, and the board's employer
+ *  facet would otherwise show one 15,000-job blob called "USAJOBS".
+ *
+ *  Provenance is the cleanest on the board: PublicationStartDate is the
+ *  government's own stated publication date, and ApplyURI points at the
+ *  official posting. Salary is structured and honest (federal ranges are
+ *  published by law), so it is read rather than left null.
+ *
+ *  NOT AGENT-SENDABLE: federal applications run through USAJOBS accounts and
+ *  agency assessments. The board must never badge these as agent-ready.
+ */
 interface UsajobsRemuneration { MinimumRange?: unknown; MaximumRange?: unknown }
 interface UsajobsDescriptor {
   PositionID?: unknown; PositionTitle?: unknown; OrganizationName?: unknown; DepartmentName?: unknown;
@@ -1863,14 +1863,14 @@ export function normalizeUsajobs(items: UsajobsItem[], _company: string, token: 
       const d = (wrap?.MatchedObjectDescriptor ?? {}) as UsajobsDescriptor;
       const externalId = String(wrap?.MatchedObjectId ?? d.PositionID ?? "").trim();
       const title = String(d.PositionTitle ?? "").trim();
-      
-      
+      // The agency IS the employer here; OrganizationName is the parent
+      // department, DepartmentName the sub-agency. Prefer the specific one.
       const agency = String(d.OrganizationName ?? d.DepartmentName ?? "").trim();
       const loc = Array.isArray(d.PositionLocation) && d.PositionLocation.length
         ? String(d.PositionLocation[0]?.LocationName ?? "").trim()
         : String(d.PositionLocationDisplay ?? "").trim();
-      
-      
+      // Federal remote/telework is stated structurally; text detection only
+      // fills the gap, never overrides the government's own field.
       const stated = d.RemoteIndicator === true ? "remote" as const
         : String(d.TeleworkEligible ?? "").toLowerCase() === "true" ? "hybrid" as const
         : null;
@@ -1895,9 +1895,9 @@ export function normalizeUsajobs(items: UsajobsItem[], _company: string, token: 
         postedAt: posted,
         category: categorize(title, String(d.JobCategory?.[0]?.Name ?? "")),
         salary,
-        
+        // PositionSchedule Name: "Full-time"/"Part-time"/"Intermittent" etc.
         employmentType: normalizeEmploymentType(String(d.PositionSchedule?.[0]?.Name ?? "")),
-        
+        // Federal postings are US by definition; the feed also states it.
         country: "US",
         applyUrl: safeUrl(String(d.ApplyURI?.[0] ?? d.PositionURI ?? "")),
       };

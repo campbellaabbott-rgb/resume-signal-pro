@@ -1,20 +1,20 @@
+/**
+ * Market Intelligence Module
+ *
+ * Capabilities:
+ * 1. Country + industry market insights injected into AI prompt
+ * 2. Skills recency scoring (aging vs fresh skills per industry)
+ * 3. Career trajectory analysis (upward / lateral / transition / regression)
+ * 4. ATS system detection from job description text
+ *
+ * Geo/country detection deliberately does NOT live here — use the per-function
+ * copies (free-keyword-scan/market-intelligence.ts and the -stream fork), which
+ * carry fixes this shared copy never received. Do not re-add a detector here.
+ *
+ * All functions are pure / synchronous — no network calls.
+ */
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+// ─── 1. GEO DETECTION TYPES ──────────────────────────────────────────────────
 
 export interface GeoDetectionResult {
   country: string | null;
@@ -23,24 +23,24 @@ export interface GeoDetectionResult {
   source: 'phone' | 'address' | 'institution' | 'currency' | 'ip' | 'none';
 }
 
-
+// ─── 2. MARKET INTELLIGENCE DATA ─────────────────────────────────────────────
 
 interface MarketInsight {
-  marketSummary: string;                
-  hotSkills: string[];                  
-  risingKeywords: string[];             
-  cvNorms: string[];                    
-  salaryContext?: string;               
-  uniqueSignals?: string[];             
+  marketSummary: string;                // 1-2 sentence market overview
+  hotSkills: string[];                  // Skills in high demand right now
+  risingKeywords: string[];             // Keywords trending up in job postings
+  cvNorms: string[];                    // Country-specific CV/resume formatting norms
+  salaryContext?: string;               // Comp context if relevant
+  uniqueSignals?: string[];             // Differentiating factors in this market
 }
 
 type CountryIndustryKey = `${string}:${string}` | string;
 
-
-
+// Market data keyed by "country:industry" with country-only fallbacks.
+// Reflects market conditions as of mid-2025.
 const MARKET_DATA: Record<CountryIndustryKey, MarketInsight> = {
 
-  
+  // ── UNITED KINGDOM ──
   'GB:technology': {
     marketSummary: 'UK tech hiring is recovering in 2025 with strong demand in AI, fintech, and cybersecurity. London remains the hub but Manchester and Bristol are growing fast.',
     hotSkills: ['Python', 'Kubernetes', 'TypeScript', 'LLM/GenAI', 'Terraform', 'Golang'],
@@ -72,7 +72,7 @@ const MARKET_DATA: Record<CountryIndustryKey, MarketInsight> = {
     uniqueSignals: ['NHS banding knowledge expected', 'Right to work + GMC registration are hard gates'],
   },
 
-  
+  // ── AUSTRALIA ──
   'AU:technology': {
     marketSummary: 'Australian tech market is tight but resilient. Sydney and Melbourne dominate; gov digital transformation projects are creating strong demand.',
     hotSkills: ['Python', 'AWS', 'React', 'TypeScript', 'Kubernetes', 'Terraform'],
@@ -97,7 +97,7 @@ const MARKET_DATA: Record<CountryIndustryKey, MarketInsight> = {
     uniqueSignals: ['AHPRA registration status is a hard requirement — always list it prominently', 'Aged Care Quality Standards compliance knowledge is valued'],
   },
 
-  
+  // ── GERMANY ──
   'DE:technology': {
     marketSummary: 'Germany\'s tech sector is growing, particularly in Berlin, Munich, and Hamburg. Mittelstand companies increasingly digital. English-language roles common in Berlin startup scene.',
     hotSkills: ['Java', 'Python', 'SAP', 'Kubernetes', 'TypeScript', 'AWS'],
@@ -114,7 +114,7 @@ const MARKET_DATA: Record<CountryIndustryKey, MarketInsight> = {
     uniqueSignals: ['Automotive supply chain knowledge (Tier 1/Tier 2) is extremely marketable', 'TÜV certifications valued'],
   },
 
-  
+  // ── INDIA ──
   'IN:technology': {
     marketSummary: 'India\'s tech market is the world\'s largest IT services employer. Product-based companies (hyperscalers + unicorns) command premium pay. Services (TCS, Infosys, Wipro) have high volume hiring.',
     hotSkills: ['Java', 'Python', 'React', 'AWS', 'Microservices', 'SQL', 'DSA'],
@@ -131,7 +131,7 @@ const MARKET_DATA: Record<CountryIndustryKey, MarketInsight> = {
     uniqueSignals: ['CA qualification from ICAI is the gold standard — equivalent to CPA+CFA combined in US market', 'SEBI/RBI regulatory experience is a major differentiator'],
   },
 
-  
+  // ── SINGAPORE ──
   'SG:technology': {
     marketSummary: 'Singapore is APAC\'s tech hub. Strong government investment in digital economy; hyperscalers (AWS, Google, Meta, ByteDance) have major offices. Fintech and healthtech booming.',
     hotSkills: ['Python', 'Kubernetes', 'TypeScript', 'AWS/GCP', 'Golang', 'Data Engineering'],
@@ -149,7 +149,7 @@ const MARKET_DATA: Record<CountryIndustryKey, MarketInsight> = {
     cvNorms: ['2 pages standard', 'Include Singapore PR/EP/DP status explicitly', 'State MAS licences held (CMS, CMSL) explicitly', 'Include expected salary range'],
   },
 
-  
+  // ── UAE ──
   'AE:technology': {
     marketSummary: 'Dubai and Abu Dhabi are investing heavily in tech. Strong demand from government digital initiatives, fintech, and e-commerce. Tax-free compensation is a draw.',
     hotSkills: ['Python', 'AWS', 'React', 'TypeScript', 'cloud', 'AI/ML'],
@@ -159,7 +159,7 @@ const MARKET_DATA: Record<CountryIndustryKey, MarketInsight> = {
     uniqueSignals: ['UAE Golden Visa eligibility for tech talent is a differentiator', 'ADGM/DIFC regulatory knowledge valued in fintech', 'Arabic language a significant differentiator in government projects'],
   },
 
-  
+  // ── CANADA ──
   'CA:technology': {
     marketSummary: 'Canadian tech market is strong in Toronto, Vancouver, and Waterloo. US companies have major offices; homegrown AI research community is world-class.',
     hotSkills: ['Python', 'TypeScript', 'AWS', 'Kubernetes', 'React', 'ML/AI'],
@@ -169,7 +169,7 @@ const MARKET_DATA: Record<CountryIndustryKey, MarketInsight> = {
     uniqueSignals: ['Canadian permanent residency/citizenship often required for certain gov/defence contracts', 'Federal government positions require enhanced reliability screening or secret clearance'],
   },
 
-  
+  // ── US (DEFAULT) ──
   'US:technology': {
     marketSummary: 'US tech hiring in 2025 is bifurcated: hyperscalers and AI companies are hiring aggressively while mid-size SaaS companies are more selective. Strong demand for AI/ML, platform, and security engineers.',
     hotSkills: ['Python', 'TypeScript', 'Kubernetes', 'LLM APIs', 'Terraform', 'Golang', 'Rust'],
@@ -222,7 +222,7 @@ const MARKET_DATA: Record<CountryIndustryKey, MarketInsight> = {
     uniqueSignals: ['AI/ML product experience commands 20-40% salary premium', 'Technical PM credentials (CS degree, coding skills) are differentiators at most companies now'],
   },
 
-  
+  // Fallback for any country with no specific data
   'DEFAULT': {
     marketSummary: 'Ensure your resume is optimized for ATS systems used in your target market.',
     hotSkills: [],
@@ -231,10 +231,10 @@ const MARKET_DATA: Record<CountryIndustryKey, MarketInsight> = {
   },
 };
 
-
-
-
-
+/**
+ * Get market insight for a country + industry combination.
+ * Falls back to US data, then country-only, then DEFAULT.
+ */
 export function getMarketInsight(country: string | null, industry: string): MarketInsight & { countryName: string } {
   const c = (country || 'US').toUpperCase();
 
@@ -249,7 +249,7 @@ export function getMarketInsight(country: string | null, industry: string): Mark
   const specific = MARKET_DATA[`${c}:${industry}`];
   if (specific) return { ...specific, countryName: COUNTRY_NAMES[c] || c };
 
-  
+  // Try broader industry match with US
   const usIndustry = MARKET_DATA[`US:${industry}`];
   if (usIndustry) return { ...usIndustry, countryName: COUNTRY_NAMES[c] || c };
 
@@ -284,9 +284,9 @@ export function formatGeoContextForPrompt(
   return lines.join('\n');
 }
 
+// ─── 3. SKILLS RECENCY SCORING ────────────────────────────────────────────────
 
-
-
+// Skills that are declining in job postings as of 2025
 const AGING_SKILLS_BY_INDUSTRY: Record<string, string[]> = {
   technology: [
     'jquery', 'backbone.js', 'angularjs', 'angular.js', 'coffeescript',
@@ -325,7 +325,7 @@ const AGING_SKILLS_BY_INDUSTRY: Record<string, string[]> = {
   ],
 };
 
-
+// Skills that are rising in job postings as of 2025
 const FRESH_SKILLS_BY_INDUSTRY: Record<string, string[]> = {
   technology: [
     'llm', 'langchain', 'rag', 'vector database', 'embedding',
@@ -364,8 +364,8 @@ const FRESH_SKILLS_BY_INDUSTRY: Record<string, string[]> = {
 
 export interface SkillsRecencyResult {
   agingSkills: string[];
-  freshSkills: string[];    
-  freshnessScore: number;   
+  freshSkills: string[];    // Skills in resume that match fresh/in-demand list
+  freshnessScore: number;   // 0-100, higher = more current skill set
   hasAgingSignals: boolean;
 }
 
@@ -377,7 +377,7 @@ export function analyzeSkillsRecency(resumeText: string, industry: string): Skil
   const agingSkills = agingList.filter(s => lower.includes(s.toLowerCase()));
   const freshSkills = freshList.filter(s => lower.includes(s.toLowerCase()));
 
-  
+  // Score: start at 70, +5 per fresh skill (max +30), -8 per aging skill (min 20)
   const freshnessScore = Math.max(20, Math.min(100,
     70 + freshSkills.length * 5 - agingSkills.length * 8
   ));
@@ -406,7 +406,7 @@ export function formatSkillsRecencyForPrompt(recency: SkillsRecencyResult, indus
   return lines.join('\n');
 }
 
-
+// ─── 4. CAREER TRAJECTORY ANALYSIS ──────────────────────────────────────────
 
 export type TrajectoryType = 'upward' | 'lateral' | 'transition' | 'regression' | 'early_career' | 'unknown';
 
@@ -431,7 +431,7 @@ const SENIORITY_RANK: Record<string, number> = {
 
 function extractSeniorityFromTitle(title: string): number {
   const lower = title.toLowerCase();
-  let rank = 2; 
+  let rank = 2; // default = individual contributor
   for (const [kw, r] of Object.entries(SENIORITY_RANK)) {
     if (lower.includes(kw) && r > rank) rank = r;
   }
@@ -466,28 +466,28 @@ export function analyzeCareerTrajectory(
     };
   }
 
-  
+  // Seniority ranks in reverse-chron order (most recent first)
   const ranks = allTitles.map(extractSeniorityFromTitle);
   const mostRecent = ranks[0];
   const oldest = ranks[ranks.length - 1];
 
-  
+  // Count promotions (rank increases between adjacent roles)
   let promotionCount = 0;
   for (let i = 0; i < ranks.length - 1; i++) {
     if (ranks[i] > ranks[i + 1]) promotionCount++;
   }
 
-  
+  // Detect regressions (only meaningful if followed by recent recovery)
   const regressionCount = ranks.filter((r, i) => i > 0 && r < ranks[i - 1]).length;
 
-  
+  // Determine trajectory
   let trajectory: TrajectoryType;
   if (mostRecent > oldest + 1) trajectory = 'upward';
   else if (mostRecent < oldest) trajectory = 'regression';
   else if (promotionCount >= 2) trajectory = 'upward';
   else trajectory = 'lateral';
 
-  
+  // Industry transition detection
   const lowerText = resumeText.toLowerCase();
   let industryTransitionDetected = false;
   let fromIndustry: string | undefined;
@@ -500,7 +500,7 @@ export function analyzeCareerTrajectory(
     }
   }
 
-  
+  // Build human-readable summary
   const titleFlow = allTitles.slice(0, 4).reverse().join(' → ');
   const progressionSummary = (() => {
     if (trajectory === 'upward') return `Clear upward trajectory: ${titleFlow}. ${promotionCount} promotion${promotionCount !== 1 ? 's' : ''} detected.`;
@@ -540,7 +540,7 @@ export function formatCareerTrajectoryForPrompt(traj: CareerTrajectory): string 
   return lines.join('\n');
 }
 
-
+// ─── 5. ATS SYSTEM DETECTION ─────────────────────────────────────────────────
 
 export type AtsSystem = 'greenhouse' | 'lever' | 'workday' | 'taleo' | 'icims' | 'smartrecruiters' | 'ashby' | 'jobvite' | 'brassring' | 'successfactors' | 'unknown';
 
@@ -620,7 +620,7 @@ const ATS_PROFILES: Record<AtsSystem, AtsSystemProfile> = {
   },
 };
 
-
+// Signals in job descriptions that indicate which ATS is being used
 const ATS_DETECTION_SIGNALS: Array<{ system: AtsSystem; patterns: RegExp[] }> = [
   { system: 'greenhouse', patterns: [/greenhouse\.io/i, /boards\.greenhouse\.io/i, /gh\.io/i] },
   { system: 'lever', patterns: [/lever\.co/i, /jobs\.lever\.co/i] },
@@ -634,7 +634,7 @@ const ATS_DETECTION_SIGNALS: Array<{ system: AtsSystem; patterns: RegExp[] }> = 
   { system: 'successfactors', patterns: [/successfactors\.com/i, /jobs\.sap\.com/i, /career\.sap\./i, /sap\.taleo/i] },
 ];
 
-
+// Company patterns that strongly indicate a specific ATS
 const COMPANY_ATS_MAP: Array<{ pattern: RegExp; system: AtsSystem }> = [
   { pattern: /google|alphabet|youtube|deepmind|waymo/i, system: 'greenhouse' },
   { pattern: /stripe|linear|vercel|notion|figma|loom|mercury/i, system: 'lever' },
@@ -650,12 +650,12 @@ export function detectAtsSystem(jobDescriptionText: string | null | undefined, c
 
   const combined = `${jobDescriptionText || ''} ${companyName || ''}`;
 
-  
+  // URL-based detection (highest confidence)
   for (const { system, patterns } of ATS_DETECTION_SIGNALS) {
     if (patterns.some(p => p.test(combined))) return system;
   }
 
-  
+  // Company name inference (medium confidence)
   for (const { pattern, system } of COMPANY_ATS_MAP) {
     if (pattern.test(combined)) return system;
   }
@@ -670,7 +670,7 @@ export function formatAtsSystemForPrompt(atsSystem: AtsSystem, resumeText: strin
   const lines = ['\n\n<ats_system_context>'];
   lines.push(`Detected ATS: ${profile.name} (${profile.parsingStrength} parser)`);
 
-  
+  // Check if the resume has formatting issues that are known problems for this ATS
   const hasMultiColumn = /\t{3,}|  {6,}/.test(resumeText);
   const hasTables = /\|.*\|/.test(resumeText);
   const hasTextBox = /■|▪|◆|►/.test(resumeText);
@@ -695,10 +695,10 @@ export function formatAtsSystemForPrompt(atsSystem: AtsSystem, resumeText: strin
   return lines.join('\n');
 }
 
+// ─── COMPETITIVE KEYWORD GAP ─────────────────────────────────────────────────
 
-
-
-
+// Top-quartile keywords per industry + seniority tier.
+// These appear in 70%+ of top-scoring resumes at each level.
 const COMPETITIVE_KEYWORDS: Record<string, Record<string, string[]>> = {
   technology: {
     entry: ['github', 'git', 'api', 'agile', 'unit testing', 'pull request', 'sql', 'rest'],
@@ -745,9 +745,9 @@ const COMPETITIVE_KEYWORDS: Record<string, Record<string, string[]>> = {
 };
 
 export interface CompetitiveGapResult {
-  missingHighFrequency: string[];   
-  presentHighFrequency: string[];   
-  gapScore: number;                 
+  missingHighFrequency: string[];   // Keywords present in 70%+ of top resumes but absent from this one
+  presentHighFrequency: string[];   // Keywords present in both top resumes and this resume (strengths)
+  gapScore: number;                 // 0-100, lower = more gaps
 }
 
 export function analyzeCompetitiveKeywordGap(
@@ -788,13 +788,13 @@ export function formatCompetitiveGapForPrompt(gap: CompetitiveGapResult, industr
   return lines.join('\n');
 }
 
-
+// ─── 6. RESUME TIMELINE EXTRACTION ──────────────────────────────────────────
 
 export interface TimelineEntry {
   title: string;
   company?: string;
   startYear: number;
-  endYear: number | null; 
+  endYear: number | null; // null = present
   durationMonths: number;
 }
 
@@ -804,8 +804,8 @@ export interface TimelineResult {
   gapPeriods: Array<{ afterTitle: string; monthsGap: number }>;
   longestTenureMonths: number;
   averageTenureMonths: number;
-  hasSignificantGap: boolean; 
-  hasShortTenures: boolean;   
+  hasSignificantGap: boolean; // gap > 6 months
+  hasShortTenures: boolean;   // any role < 12 months
   formattedSummary: string;
 }
 
@@ -818,32 +818,32 @@ const MONTH_MAP: Record<string, number> = {
 
 function parseYearMonth(raw: string): { year: number; month: number } {
   const lower = raw.toLowerCase().trim();
-  
+  // "Jan 2020" / "January 2020"
   for (const [name, m] of Object.entries(MONTH_MAP)) {
     const re = new RegExp(`${name}[a-z]*[\\s,/]+([12]\\d{3})`);
     const match = lower.match(re);
     if (match) return { year: parseInt(match[1]), month: m };
   }
-  
+  // "2020/01" or "01/2020"
   const slash1 = lower.match(/(\d{1,2})[\/\-]([12]\d{3})/);
   if (slash1) return { year: parseInt(slash1[2]), month: parseInt(slash1[1]) };
-  
+  // Bare year
   const bareYear = lower.match(/([12]\d{3})/);
-  if (bareYear) return { year: parseInt(bareYear[1]), month: 6 }; 
+  if (bareYear) return { year: parseInt(bareYear[1]), month: 6 }; // mid-year estimate
   return { year: 2020, month: 1 };
 }
 
-
-
-
-
+/**
+ * Extract employment timeline from resume text — parses date ranges like
+ * "Jan 2020 – Mar 2022", "2019 - Present", "03/2021 to 08/2023".
+ */
 export function extractTimeline(resumeText: string): TimelineResult {
   const lines = resumeText.split('\n').map(l => l.trim()).filter(Boolean);
   const now = new Date();
   const nowYear = now.getFullYear();
   const nowMonth = now.getMonth() + 1;
 
-  
+  // Regex to catch date ranges on a line
   const RANGE_RE = /([A-Za-z]+[\s,\/]*[12]\d{3}|[12]\d{3})\s*[–—\-–to]+\s*([A-Za-z]+[\s,\/]*[12]\d{3}|present|current|now)/i;
   const YEAR_ONLY_RANGE = /([12]\d{3})\s*[–—\-–]+\s*([12]\d{3}|present|current|now)/i;
 
@@ -886,10 +886,10 @@ export function extractTimeline(resumeText: string): TimelineResult {
     });
   }
 
-  
+  // Sort chronologically (oldest first for gap detection)
   entries.sort((a, b) => a.startYear - b.startYear);
 
-  
+  // Detect gaps between consecutive roles
   const gapPeriods: Array<{ afterTitle: string; monthsGap: number }> = [];
   for (let i = 1; i < entries.length; i++) {
     const prev = entries[i - 1];
@@ -941,11 +941,11 @@ export function formatTimelineForPrompt(timeline: TimelineResult): string {
   return lines.join('\n');
 }
 
+// ─── 7. KEYWORD FREQUENCY WEIGHTS (gap prioritization) ───────────────────────
 
-
-
-
-
+// Relative frequency in job postings per industry × seniority tier.
+// Scale: 3 = appears in 80%+ of postings, 2 = 50-79%, 1 = 20-49%.
+// Used to sort missing keywords so the highest-impact gaps appear first.
 
 export const KEYWORD_FREQUENCY: Record<string, Record<string, number>> = {
   technology: {
@@ -1007,26 +1007,26 @@ export const KEYWORD_FREQUENCY: Record<string, Record<string, number>> = {
   },
 };
 
-
-
-
-
+/**
+ * Return a frequency weight (3/2/1/0) for a keyword in the given industry.
+ * Also checks bigram/trigram partial matches.
+ */
 export function getKeywordFrequencyWeight(keyword: string, industry: string): number {
   const table = KEYWORD_FREQUENCY[industry];
   if (!table) return 1;
   const norm = keyword.toLowerCase().trim();
-  
+  // Exact match
   if (table[norm] !== undefined) return table[norm];
-  
+  // Partial: keyword contains a high-freq term or vice versa
   for (const [kw, freq] of Object.entries(table)) {
     if (norm.includes(kw) || kw.includes(norm)) return freq;
   }
   return 1;
 }
 
-
-
-
+/**
+ * Sort missing keywords by frequency weight descending, then alphabetically.
+ */
 export function prioritizeKeywordGaps(
   missingKeywords: string[],
   industry: string
@@ -1036,12 +1036,12 @@ export function prioritizeKeywordGaps(
     .sort((a, b) => b.weight - a.weight || a.keyword.localeCompare(b.keyword));
 }
 
+// ─── 8. PHRASE-LEVEL KEYWORD MATCHING ────────────────────────────────────────
 
-
-
-
-
-
+/**
+ * Bigram and trigram phrases commonly found in job descriptions.
+ * These are frequently split by naive word-by-word matching, causing false "missing" results.
+ */
 const PHRASE_PATTERNS: Record<string, RegExp[]> = {
   technology: [
     /\bmachine\s+learning\b/i, /\bdeep\s+learning\b/i, /\bci[\s\/]cd\b/i,
@@ -1088,25 +1088,25 @@ const PHRASE_PATTERNS: Record<string, RegExp[]> = {
   ],
 };
 
-
-
-
-
+/**
+ * Check whether a multi-word phrase appears in resume text using phrase-aware matching.
+ * Handles hyphenation, spacing variants, and abbreviations better than simple includes().
+ */
 export function phraseMatchesResume(phrase: string, resumeText: string): boolean {
   const lower = resumeText.toLowerCase();
   const norm = phrase.toLowerCase().trim();
 
-  
+  // 1. Direct substring (fast path)
   if (lower.includes(norm)) return true;
 
-  
+  // 2. No-space variant ("fullstack", "cicd")
   if (lower.includes(norm.replace(/[\s\-\/]+/g, ''))) return true;
 
-  
+  // 3. Hyphen ↔ space swap
   if (lower.includes(norm.replace(/\s+/g, '-'))) return true;
   if (lower.includes(norm.replace(/-/g, ' '))) return true;
 
-  
+  // 4. Abbreviation expansion — "ml" ↔ "machine learning"
   const abbrevMap: Record<string, string> = {
     'ml': 'machine learning', 'dl': 'deep learning', 'nlp': 'natural language processing',
     'cv': 'computer vision', 'ux': 'user experience', 'ui': 'user interface',
@@ -1117,7 +1117,7 @@ export function phraseMatchesResume(phrase: string, resumeText: string): boolean
     'ci/cd': 'continuous integration', 'oop': 'object oriented programming',
   };
   if (abbrevMap[norm] && lower.includes(abbrevMap[norm])) return true;
-  
+  // Check if phrase matches an abbreviation in the resume
   for (const [abbrev, expanded] of Object.entries(abbrevMap)) {
     if (norm === expanded && lower.includes(abbrev)) return true;
   }
@@ -1125,10 +1125,10 @@ export function phraseMatchesResume(phrase: string, resumeText: string): boolean
   return false;
 }
 
-
-
-
-
+/**
+ * Check all pre-defined phrase patterns for an industry — returns matched phrases.
+ * Used to supplement single-word keyword matching with compound phrases.
+ */
 export function findPhraseMatches(resumeText: string, industry: string): string[] {
   const patterns = PHRASE_PATTERNS[industry] || [];
   return patterns

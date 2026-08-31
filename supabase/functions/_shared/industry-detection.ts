@@ -1,20 +1,20 @@
+/**
+ * Industry Detection Engine
+ *
+ * Uses weighted keyword frequency, section awareness, co-occurrence clustering,
+ * job title anchoring, employer name lookup, and recency-weighted bullet scoring
+ * to detect industry with high accuracy.
+ */
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+/**
+ * Well-known employer → industry map.
+ * Used as a high-confidence anchor: if the resume mentions a recognizable employer,
+ * boost that industry's score before keyword scoring runs.
+ * Score boost is ~3pts — meaningful for ties, but can't override a clear title mismatch
+ * (e.g. SWE at Goldman still scores technology because title match gives 16+ pts).
+ */
 const KNOWN_EMPLOYERS: Record<string, string> = {
-  
+  // Technology
   'google': 'technology', 'alphabet': 'technology', 'deepmind': 'technology',
   'apple': 'technology', 'microsoft': 'technology', 'meta': 'technology',
   'facebook': 'technology', 'instagram': 'technology', 'whatsapp': 'technology',
@@ -49,29 +49,29 @@ const KNOWN_EMPLOYERS: Record<string, string> = {
   'toast': 'technology', 'mindbody': 'technology', 'procore': 'technology',
   'costar': 'technology', 'zillow': 'technology', 'redfin': 'technology',
   'opendoor': 'technology', 'compass': 'technology',
-  
+  // Fintech / Digital payments
   'klarna': 'finance', 'wise': 'finance', 'revolut': 'finance',
   'transferwise': 'finance', 'chime': 'finance', 'affirm': 'finance',
   'plaid': 'finance', 'brex': 'finance', 'ramp': 'finance',
-  
+  // GenAI / LLM-native companies
   'hugging face': 'machine_learning', 'stability ai': 'machine_learning',
   'character.ai': 'machine_learning', 'together.ai': 'machine_learning',
   'replicate': 'machine_learning', 'modal': 'machine_learning',
   'langchain': 'machine_learning', 'llamaindex': 'machine_learning',
   'perplexity': 'machine_learning', 'inflection': 'machine_learning',
-  
+  // Chinese / Asian tech
   'alibaba': 'technology', 'tencent': 'technology', 'bytedance': 'technology',
   'baidu': 'technology', 'xiaomi': 'technology', 'grab': 'technology',
   'sea limited': 'technology', 'shopee': 'technology',
-  
+  // Collaboration / no-code / design tools
   'miro': 'technology', 'monday.com': 'technology',
   'asana': 'technology', 'webflow': 'technology', 'retool': 'technology',
   'zapier': 'technology', 'loom': 'technology',
   'doordash': 'technology', 'booking.com': 'technology',
-  
+  // HR tech
   'lattice': 'technology', 'rippling': 'technology', 'deel': 'technology',
   'remote.com': 'technology', 'personio': 'technology',
-  
+  // Finance / Banking / Investment
   'goldman sachs': 'finance', 'goldman': 'finance',
   'morgan stanley': 'finance', 'jp morgan': 'finance', 'jpmorgan': 'finance',
   'bank of america': 'finance', 'wells fargo': 'finance',
@@ -97,7 +97,7 @@ const KNOWN_EMPLOYERS: Record<string, string> = {
   'visa': 'finance', 'mastercard': 'finance', 'discover': 'finance',
   'nerdwallet': 'finance', 'sofi': 'finance', 'robinhood': 'finance',
   'coinbase': 'finance', 'kraken': 'finance',
-  
+  // Consulting
   'mckinsey': 'consulting', 'bain': 'consulting', 'bcg': 'consulting',
   'boston consulting group': 'consulting',
   'deloitte': 'consulting', 'pwc': 'consulting', 'kpmg': 'consulting',
@@ -112,7 +112,7 @@ const KNOWN_EMPLOYERS: Record<string, string> = {
   'cognizant': 'consulting', 'wipro': 'consulting', 'infosys': 'consulting',
   'tata consultancy': 'consulting', 'tcs': 'consulting',
   'icf': 'consulting', 'l.e.k.': 'consulting',
-  
+  // Healthcare
   'mayo clinic': 'healthcare', 'cleveland clinic': 'healthcare',
   'johns hopkins': 'healthcare', 'kaiser permanente': 'healthcare',
   'hca healthcare': 'healthcare', 'ascension': 'healthcare',
@@ -132,7 +132,7 @@ const KNOWN_EMPLOYERS: Record<string, string> = {
   'biogen': 'healthcare', 'gilead': 'healthcare', 'regeneron': 'healthcare',
   'moderna': 'healthcare', 'biontech': 'healthcare', 'illumina': 'healthcare',
   'quest diagnostics': 'healthcare', 'labcorp': 'healthcare',
-  
+  // Legal
   'skadden': 'legal', 'sullivan & cromwell': 'legal',
   'latham & watkins': 'legal', 'kirkland & ellis': 'legal',
   'wachtell': 'legal', 'cravath': 'legal', 'davis polk': 'legal',
@@ -143,7 +143,7 @@ const KNOWN_EMPLOYERS: Record<string, string> = {
   'dla piper': 'legal', 'greenberg traurig': 'legal',
   'morgan lewis': 'legal', 'hogan lovells': 'legal', 'freshfields': 'legal',
   'linklaters': 'legal', 'allen & overy': 'legal', 'clifford chance': 'legal',
-  
+  // Manufacturing / Industrial
   'general electric': 'manufacturing', 'ge': 'manufacturing',
   '3m': 'manufacturing', 'honeywell': 'manufacturing',
   'caterpillar': 'manufacturing', 'deere': 'manufacturing',
@@ -163,7 +163,7 @@ const KNOWN_EMPLOYERS: Record<string, string> = {
   'l3harris': 'manufacturing', 'bae systems': 'manufacturing',
   'dupont': 'manufacturing', 'basf': 'manufacturing', 'dow': 'manufacturing',
   'exxon': 'manufacturing', 'chevron': 'manufacturing', 'shell': 'manufacturing',
-  
+  // Retail
   'walmart': 'retail', 'target': 'retail', 'costco': 'retail',
   'kroger': 'retail', 'home depot': 'retail', "lowe's": 'retail', 'lowes': 'retail',
   "macy's": 'retail', 'macys': 'retail', 'nordstrom': 'retail',
@@ -174,7 +174,7 @@ const KNOWN_EMPLOYERS: Record<string, string> = {
   'best buy': 'retail', 'autozone': 'retail', "o'reilly": 'retail',
   'advance auto': 'retail', 'petsmart': 'retail', 'petco': 'retail',
   'ulta': 'retail', 'sephora': 'retail',
-  
+  // Hospitality / Food & Beverage
   'marriott': 'hospitality', 'hilton': 'hospitality', 'hyatt': 'hospitality',
   'ihg': 'hospitality', 'wyndham': 'hospitality', 'four seasons': 'hospitality',
   'ritz-carlton': 'hospitality', 'ritz carlton': 'hospitality',
@@ -189,7 +189,7 @@ const KNOWN_EMPLOYERS: Record<string, string> = {
   'taco bell': 'hospitality', 'subway': 'hospitality',
   'olive garden': 'hospitality', 'cheesecake factory': 'hospitality',
   'dominos': 'hospitality', "domino's": 'hospitality',
-  
+  // Government / Public Sector
   'department of defense': 'government', 'department of state': 'government',
   'department of treasury': 'government', 'department of energy': 'government',
   'department of justice': 'government', 'department of homeland': 'government',
@@ -201,7 +201,7 @@ const KNOWN_EMPLOYERS: Record<string, string> = {
   'usaid': 'government', 'peace corps': 'government',
   'world bank': 'government', 'imf': 'government',
   'united nations': 'government', 'nato': 'government',
-  
+  // Education
   'harvard': 'education', 'mit': 'education', 'stanford': 'education',
   'yale': 'education', 'columbia': 'education', 'princeton': 'education',
   'university of chicago': 'education', 'nyu': 'education',
@@ -209,12 +209,12 @@ const KNOWN_EMPLOYERS: Record<string, string> = {
   'michigan': 'education', 'penn state': 'education', 'ohio state': 'education',
   'khan academy': 'education', 'coursera': 'education', 'udemy': 'education',
   'duolingo': 'education', 'chegg': 'education', 'chegg tutors': 'education',
-  
+  // HR / Staffing
   'adp': 'hr', 'paychex': 'hr', 'aon': 'hr', 'mercer': 'hr',
   'korn ferry': 'hr', 'heidrick': 'hr', 'spencer stuart': 'hr',
   'manpower': 'hr', 'randstad': 'hr', 'adecco': 'hr', 'robert half': 'hr',
   'kelly services': 'hr', 'insight global': 'hr',
-  
+  // Expansion-batch employers — the table must know the new industries too
   'mandiant': 'cybersecurity',
   'fedex': 'logistics', 'ups': 'logistics', 'dhl': 'logistics',
   'xpo': 'logistics', 'c.h. robinson': 'logistics', 'jb hunt': 'logistics',
@@ -258,25 +258,25 @@ const KNOWN_EMPLOYERS: Record<string, string> = {
   'freeport-mcmoran': 'mining', 'newmont': 'mining', 'barrick': 'mining', 'rio tinto': 'mining',
 };
 
-
-
-
+// Section weights - job titles and summary have highest influence
+// REBALANCED: Titles increased, skills decreased to prevent misclassification
+// from skills-section noise (e.g., "Digital Marketing" in a Sales person's skills)
 const SECTION_WEIGHTS = {
-  jobTitle: 8.0,     
-  summary: 3.5,      
-  heading: 2.5,      
-  firstBullets: 2.0, 
-  otherBullets: 1.0, 
-  skills: 0.4,       
-  jobPosting: 6.0,   
-                     
-                     
-                     
-                     
-  misc: 0.3          
+  jobTitle: 8.0,     // Job titles are the STRONGEST signal (was 5.0)
+  summary: 3.5,      // Professional summary is second most important
+  heading: 2.5,      // Section headings (e.g., "Sales Experience")
+  firstBullets: 2.0, // First 2-3 bullets per role
+  otherBullets: 1.0, // Other bullet points
+  skills: 0.4,       // Skills section - LOW weight (was 0.7) — skills lists are noisy
+  jobPosting: 6.0,   // Target job posting text, when the user provides one — a stated
+                     // job title/industry in a posting the candidate is actively
+                     // applying to is a strong, unambiguous signal, but stays below
+                     // jobTitle since the resume itself is still the primary source
+                     // of truth about who the candidate actually is.
+  misc: 0.3          // Footer, education descriptions, etc.
 };
 
-
+// Industry-specific keyword dictionaries with weights
 export const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: string[]; certifications: string[]; titles: string[] }> = {
   sales: {
     titles: [
@@ -291,7 +291,7 @@ export const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: s
       'founding gtm', 'salesperson', 'sales associate', 'sales lead',
       'business development manager', 'partnerships manager',
       'revenue operations', 'revops', 'sales operations',
-      
+      // Customer-facing post-sales roles (distinct from marketing/support)
       'customer success manager', 'csm', 'account manager', 'am',
       'customer success', 'renewal manager', 'expansion manager',
       'client success manager', 'client success', 'customer growth manager',
@@ -320,7 +320,7 @@ export const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: s
       'apollo', 'rb2b', 'outbound motions',
       'consultative selling', 'objection handling',
       'cold call', 'lead generation',
-      
+      // PLG / modern SaaS sales
       'product-led growth', 'plg', 'freemium', 'free trial', 'trial conversion',
       'self-serve', 'product adoption', 'activation', 'activation funnel',
       'inbound sales', 'inbound motion', 'viral loop', 'user expansion',
@@ -352,7 +352,7 @@ export const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: s
       'fullstack engineer', 'full-stack engineer', 'full stack engineer',
       'embedded engineer', 'firmware engineer', 'game developer', 'game engineer',
       'blockchain engineer', 'web3 engineer', 'smart contract engineer',
-      
+      // System/platform admins — configure and operate tech, not sell it
       'systems administrator', 'sysadmin', 'it administrator', 'it admin',
       'salesforce administrator', 'crm administrator', 'salesforce admin',
       'salesforce developer', 'salesforce engineer', 'salesforce architect',
@@ -380,7 +380,7 @@ export const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: s
       'postgresql', 'mysql', 'mongodb', 'redis', 'elasticsearch',
       'rabbitmq', 'graphql', 'rest', 'restful',
       'github.com', 'portfolio', 'open source', 'open-source',
-      
+      // CRM/admin tools — in tech context these are admin/configuration roles, not sales
       'salesforce', 'salesforce.com', 'apex', 'soql', 'lightning', 'salesforce flow',
       'crm', 'hubspot crm', 'microsoft dynamics', 'servicenow', 'zendesk',
       'jira', 'confluence', 'atlassian', 'okta', 'active directory'
@@ -441,9 +441,9 @@ export const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: s
       'ml scientist', 'research scientist', 'experimentation analyst',
       'insights analyst', 'decision scientist', 'revenue analytics',
       'revenue operations analyst', 'go-to-market analyst',
-      
+      // BI roles that use analytics tools — included only when co-occurring with analytics keywords
       'business intelligence analyst', 'bi analyst'
-      
+      // NOTE: 'business analyst' intentionally excluded — too generic, routes to finance/consulting
     ],
     primary: [
       'statistical analysis', 'statistics', 'hypothesis testing', 'a/b testing', 'a/b test',
@@ -456,9 +456,9 @@ export const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: s
       'time series', 'time series forecasting', 'survival analysis',
       'bayesian', 'bayesian inference', 'probabilistic modeling',
       'cohort analysis', 'retention analysis', 'funnel analysis'
-      
-      
-      
+      // NOTE: 'machine learning' intentionally excluded — belongs to machine_learning industry only.
+      // A data scientist who mentions ML in a skills section should NOT match this keyword here;
+      // they score via sklearn/tensorflow in secondary keywords + co-occurrence patterns.
     ],
     secondary: [
       'r language', 'sql', 'pandas', 'numpy', 'scikit-learn', 'sklearn',
@@ -542,7 +542,7 @@ export const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: s
       'demand generation', 'demand gen', 'campaign manager', 'creative director',
       'marketing operations manager', 'marketing ops', 'revenue marketing manager',
       'lifecycle marketing manager', 'crm manager', 'retention marketing',
-      'growth engineer', 
+      'growth engineer', // growth engineers use marketing signals AND tech — see disambiguation rule
       'growth marketer', 'demand generation manager', 'performance marketing manager', 'field marketing manager', 'brand strategist', 'affiliate marketing manager'
     ],
     primary: [
@@ -551,7 +551,7 @@ export const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: s
       'social media', 'organic social', 'paid social', 'advertising',
       'media buying', 'media planning', 'creative', 'creative direction',
       'brand identity', 'brand guidelines', 'messaging', 'positioning',
-      
+      // Growth-specific primary signals — ensures growth roles beat data_science
       'mau', 'dau', 'growth rate', 'user acquisition', 'retention rate',
       'activation rate', 'referral', 'viral coefficient', 'k-factor',
       'cohort retention', 'day 30 retention', 'growth loop'
@@ -601,7 +601,7 @@ export const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: s
       'prime brokerage', 'fund accounting', 'custodian', 'sec compliance',
       'fixed income portfolio', 'equity portfolio', 'asset management',
       'securities lending', 'derivatives trading', 'swap', 'futures', 'options trading',
-      
+      // Quant/hedge fund signals — these must beat data_science scoring
       'backtest', 'backtested', 'backtesting', 'alpha', 'alpha generation',
       'signal', 'trading signal', 'factor', 'risk-adjusted', 'sharpe',
       'drawdown', 'market neutral', 'long/short', 'execution algorithm'
@@ -791,7 +791,7 @@ export const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: s
       'r&d engineer', 'research engineer', 'applications engineer',
       'construction manager', 'construction project manager', 'site manager',
       'site superintendent', 'general contractor', 'construction superintendent',
-      
+      // NOTE: 'editor' is NOT an engineering title — do NOT add it
       'geotechnical engineer', 'hvac engineer', 'piping engineer', 'instrumentation engineer', 'mechatronics engineer'
     ],
     primary: [
@@ -841,7 +841,7 @@ export const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: s
       'stakeholder alignment', 'cross-functional', 'go-to-market',
       'product metrics', 'okr', 'kpi', 'adoption', 'retention',
       'product lifecycle', 'product development', 'ideation',
-      
+      // Single-word strong signals for PM (help when multi-word phrases miss)
       'stakeholders', 'epics', 'sprints', 'retrospective', 'standup',
       'wireframes', 'prototyping', 'requirements', 'specifications'
     ],
@@ -867,16 +867,16 @@ export const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: s
       'consulting partner', 'engagement partner', 'engagement manager',
       'consulting manager', 'senior consulting manager',
       'managing director', 'managing partner',
-      
-      
+      // Note: bare 'analyst', 'manager', 'director', 'associate', 'vice president'
+      // intentionally excluded — they match too broadly on non-consulting resumes
       'it consultant', 'technology consultant', 'operations consultant',
       'hr consultant', 'financial consultant', 'risk consultant',
       'transformation lead', 'change management lead', 'implementation lead',
       'business transformation', 'organizational effectiveness',
-      
+      // Pre-sales and client-facing architects who consult rather than build
       'solutions architect', 'presales architect', 'presales engineer',
       'pre-sales architect', 'pre-sales engineer', 'customer success architect',
-      'enterprise architect', 
+      'enterprise architect', // when co-occurring with client/engagement signals
       'principal consultant', 'implementation consultant', 'engagement director'
     ],
     primary: [
@@ -1097,7 +1097,7 @@ export const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: s
       'freight broker', 'customs broker', 'import export specialist',
       'supply chain analyst', 'logistics analyst', 'materials manager',
       'fulfillment manager', 'shipping coordinator', 'dispatcher',
-      
+      // Driver roles — huge resume volume that previously had no home
       'truck driver', 'cdl driver', 'otr driver', 'delivery driver',
       'bus driver', 'route driver', 'courier', 'owner operator',
       'forklift operator', 'warehouse associate', 'package handler',
@@ -2100,11 +2100,11 @@ export const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: s
   }
 };
 
-
-
-
-
-
+// ── Spanish keyword parity ────────────────────────────────────────────────
+// Title locks catch Spanish job titles, but the keyword tables above are
+// English-only, so fully Spanish resumes previously scored on titles alone.
+// These terms are merged into each industry's primary list at module init —
+// they cannot collide with English resumes (accented/Spanish-only tokens).
 const SPANISH_INDUSTRY_TERMS: Record<string, { primary: string[]; titles: string[] }> = {
   healthcare: {
     primary: ['enfermería', 'paciente', 'pacientes', 'atención médica', 'hospitalario', 'urgencias', 'quirófano', 'historia clínica', 'signos vitales', 'medicamentos', 'cuidados intensivos', 'consulta médica', 'diagnóstico', 'tratamiento médico'],
@@ -2175,9 +2175,9 @@ for (const [industry, terms] of Object.entries(SPANISH_INDUSTRY_TERMS)) {
   }
 }
 
-
-
-
+// ── Sub-industry taxonomy ─────────────────────────────────────────────────
+// Second-level specialization within a detected industry. Detected by signal
+// counting over the resume text; requires minSignals hits to claim the sub-industry.
 export const SUB_INDUSTRY_TAXONOMY: Record<string, Array<{ id: string; label: string; signals: string[]; minSignals: number }>> = {
   healthcare: [
     { id: 'clinical', label: 'Clinical Care', signals: ['patient care', 'bedside', 'charting', 'vitals', 'medication administration', 'triage', 'acute care', 'icu', 'emergency', 'rn', 'nursing'], minSignals: 2 },
@@ -2267,7 +2267,7 @@ export function detectSubIndustry(industry: string, resumeText: string): { id: s
   return best;
 }
 
-
+// Co-occurrence patterns - keywords that appear together strongly indicate an industry
 const CO_OCCURRENCE_PATTERNS: Record<string, string[][]> = {
   sales: [
     ['quota', 'pipeline', 'crm'],
@@ -2299,7 +2299,7 @@ const CO_OCCURRENCE_PATTERNS: Record<string, string[][]> = {
     ['portfolio', 'aum', 'returns'],
     ['budget', 'forecast', 'variance'],
     ['gaap', 'financial', 'statements'],
-    
+    // Quant/hedge fund — must beat data_science when these appear together
     ['backtest', 'alpha', 'signal'],
     ['sharpe', 'drawdown', 'factor'],
     ['trading', 'execution', 'portfolio']
@@ -2376,26 +2376,26 @@ const CO_OCCURRENCE_PATTERNS: Record<string, string[][]> = {
     ['mvp', 'product', 'launch']
   ],
   data_engineering: [
-    
+    // Canonical modern data stack — strongest signal
     ['dbt', 'snowflake', 'airflow'],
     ['dbt', 'bigquery', 'airflow'],
     ['dbt', 'databricks', 'pipeline'],
     ['airflow', 'dbt', 'etl'],
     ['dbt', 'prefect', 'pipeline'],
     ['dbt', 'dagster', 'pipeline'],
-    
+    // Streaming with warehouse anchor (guards against DevOps false positive)
     ['kafka', 'spark', 'data warehouse'],
     ['kafka', 'flink', 'pipeline'],
     ['snowflake', 'bigquery', 'data warehouse'],
     ['databricks', 'delta lake', 'pipeline'],
     ['fivetran', 'stitch', 'ingestion'],
     ['airbyte', 'dbt', 'transformation'],
-    
+    // Broader warehouse + orchestration combos
     ['data pipeline', 'etl', 'warehouse'],
     ['ingestion', 'transformation', 'orchestration']
   ],
   data_science: [
-    
+    // Remove 'model, training, accuracy' — too generic (fires for finance modeling)
     ['hypothesis testing', 'a/b test', 'experiment'],
     ['jupyter', 'pandas', 'scikit'],
     ['tableau', 'power bi', 'dashboard'],
@@ -2648,90 +2648,90 @@ const CO_OCCURRENCE_PATTERNS: Record<string, string[][]> = {
   ]
 };
 
-
-
-
+// Negative keyword rules — when an industry has high title score but these
+// keywords dominate the skills/bullets, it should NOT switch to the negative industry.
+// Format: { industry: keywords_that_should_NOT_cause_reclassification_away }
 const DISAMBIGUATION_RULES: Record<string, { negativeFor: string; requiredTitleSignal: boolean }[]> = {
-  
-  
-  
+  // If someone has sales titles, marketing/technology keywords shouldn't reclassify them.
+  // Key case: SaaS Account Executive who mentions APIs, integrations, software in job bullets
+  // should stay sales — technology must not steal based on product vocabulary alone.
   sales: [
     { negativeFor: 'marketing', requiredTitleSignal: true },
     { negativeFor: 'creative', requiredTitleSignal: true },
     { negativeFor: 'technology', requiredTitleSignal: true }
   ],
-  
-  
-  
-  
+  // If someone has tech titles (SWE, DevOps, admin), other industries shouldn't reclassify.
+  // Key case: SWE at an ML company who writes Python scripts touching ML APIs should stay
+  // technology — they need a machine_learning TITLE to score as ML engineer.
+  // "Growth engineer": has "engineer" title but marketing signals — stays technology.
   technology: [
     { negativeFor: 'consulting', requiredTitleSignal: true },
     { negativeFor: 'sales', requiredTitleSignal: true },
     { negativeFor: 'marketing', requiredTitleSignal: true },
     { negativeFor: 'data_engineering', requiredTitleSignal: true },
-    { negativeFor: 'machine_learning', requiredTitleSignal: true }, 
+    { negativeFor: 'machine_learning', requiredTitleSignal: true }, // SWE at ML co ≠ ML engineer
     { negativeFor: 'data_science', requiredTitleSignal: true }
   ],
-  
-  
+  // Machine learning: strong title required — writing Python at an ML company is NOT
+  // sufficient to reclassify away from technology. ML engineer needs ML/AI title.
   machine_learning: [
     { negativeFor: 'technology', requiredTitleSignal: true },
     { negativeFor: 'data_science', requiredTitleSignal: true }
   ],
-  
+  // If someone has marketing titles, sales keywords shouldn't reclassify
   marketing: [
     { negativeFor: 'sales', requiredTitleSignal: true }
   ],
-  
+  // If someone has engineering titles, sales/consulting keywords shouldn't reclassify
   engineering: [
     { negativeFor: 'sales', requiredTitleSignal: true },
     { negativeFor: 'consulting', requiredTitleSignal: true },
     { negativeFor: 'technology', requiredTitleSignal: true }
   ],
-  
+  // If someone has healthcare titles, sales keywords shouldn't reclassify
   healthcare: [
     { negativeFor: 'sales', requiredTitleSignal: true }
   ],
-  
+  // If someone has finance titles, consulting keywords shouldn't reclassify
   finance: [
     { negativeFor: 'consulting', requiredTitleSignal: true },
     { negativeFor: 'sales', requiredTitleSignal: true }
   ],
-  
+  // If someone has HR titles, consulting/sales keywords shouldn't reclassify
   hr: [
     { negativeFor: 'consulting', requiredTitleSignal: true },
     { negativeFor: 'sales', requiredTitleSignal: true }
   ],
-  
+  // If someone has education titles, consulting keywords shouldn't reclassify
   education: [
     { negativeFor: 'consulting', requiredTitleSignal: true }
   ],
-  
+  // If someone has legal titles, consulting keywords shouldn't reclassify
   legal: [
     { negativeFor: 'consulting', requiredTitleSignal: true }
   ],
-  
+  // If someone has consulting titles, sales/PM keywords shouldn't reclassify
   consulting: [
     { negativeFor: 'sales', requiredTitleSignal: true },
     { negativeFor: 'product_management', requiredTitleSignal: true }
   ],
-  
+  // If someone has creative titles, marketing keywords shouldn't reclassify
   creative: [
     { negativeFor: 'marketing', requiredTitleSignal: true }
   ],
-  
-  
-  
+  // Data engineering titles shouldn't reclassify to generic tech or data science.
+  // Also: Kafka/Spark mention alone (from DevOps/SRE infra work) must NOT score data_engineering
+  // unless accompanied by dbt, Airflow, or a data warehouse platform — enforced in scoring weights.
   data_engineering: [
     { negativeFor: 'technology', requiredTitleSignal: true },
     { negativeFor: 'data_science', requiredTitleSignal: true }
   ],
-  
+  // Data science titles shouldn't reclassify to technology or data engineering
   data_science: [
     { negativeFor: 'technology', requiredTitleSignal: true },
     { negativeFor: 'data_engineering', requiredTitleSignal: true }
   ],
-  
+  // If someone has PM titles, technology/consulting keywords shouldn't reclassify
   product_management: [
     { negativeFor: 'technology', requiredTitleSignal: true },
     { negativeFor: 'data_engineering', requiredTitleSignal: true },
@@ -2740,175 +2740,175 @@ const DISAMBIGUATION_RULES: Record<string, { negativeFor: string; requiredTitleS
     { negativeFor: 'sales', requiredTitleSignal: true },
     { negativeFor: 'marketing', requiredTitleSignal: true }
   ],
-  
-  
+  // Government: policy analyst uses strategy/stakeholder/analysis — all consulting primary.
+  // Require consulting title signals before reclassifying away from government.
   government: [
     { negativeFor: 'consulting', requiredTitleSignal: true },
     { negativeFor: 'finance', requiredTitleSignal: true }
   ],
-  
+  // Retail: buyer/manager uses vendor/negotiation/transactions — overlaps with finance.
   retail: [
     { negativeFor: 'finance', requiredTitleSignal: true },
     { negativeFor: 'consulting', requiredTitleSignal: true }
   ],
-  
+  // Hospitality: hotel/F&B roles share 'care', 'management', 'operations' with healthcare.
   hospitality: [
     { negativeFor: 'healthcare', requiredTitleSignal: true },
     { negativeFor: 'consulting', requiredTitleSignal: true }
   ],
-  
+  // Manufacturing: production roles share engineering/design/quality with engineering.
   manufacturing: [
     { negativeFor: 'engineering', requiredTitleSignal: true },
     { negativeFor: 'consulting', requiredTitleSignal: true }
   ],
-  
+  // Security engineers mention cloud/code/APIs constantly — technology must not steal.
   cybersecurity: [
     { negativeFor: 'technology', requiredTitleSignal: true },
     { negativeFor: 'government', requiredTitleSignal: true }
   ],
-  
+  // Supply chain roles share ops/process vocabulary with manufacturing and consulting.
   logistics: [
     { negativeFor: 'manufacturing', requiredTitleSignal: true },
     { negativeFor: 'consulting', requiredTitleSignal: true }
   ],
-  
+  // Support roles share CRM/customer vocabulary with sales — sales needs a title to steal.
   customer_success: [
     { negativeFor: 'sales', requiredTitleSignal: true },
     { negativeFor: 'technology', requiredTitleSignal: true }
   ],
-  
+  // Lab scientists share data/analysis vocabulary with data_science and healthcare.
   biotech: [
     { negativeFor: 'data_science', requiredTitleSignal: true },
     { negativeFor: 'healthcare', requiredTitleSignal: true }
   ],
-  
+  // Professors share teaching vocabulary with education (K-12) — keep separate.
   academia: [
     { negativeFor: 'education', requiredTitleSignal: true },
     { negativeFor: 'data_science', requiredTitleSignal: true }
   ],
-  
+  // Journalists share content/social vocabulary with marketing.
   media: [
     { negativeFor: 'marketing', requiredTitleSignal: true },
     { negativeFor: 'creative', requiredTitleSignal: true }
   ],
-  
+  // Telecom techs mention networking constantly — technology must not steal.
   telecom: [
     { negativeFor: 'technology', requiredTitleSignal: true },
     { negativeFor: 'engineering', requiredTitleSignal: true }
   ],
-  
+  // Trainers share client/coaching vocabulary with healthcare and education.
   fitness: [
     { negativeFor: 'healthcare', requiredTitleSignal: true },
     { negativeFor: 'education', requiredTitleSignal: true }
   ],
-  
+  // Pharmacists share clinical vocabulary with healthcare — distinct field.
   pharmacy: [
     { negativeFor: 'healthcare', requiredTitleSignal: true }
   ],
-  
+  // Insurance shares finance vocabulary (premiums, risk) — finance needs titles.
   insurance: [
     { negativeFor: 'finance', requiredTitleSignal: true },
     { negativeFor: 'sales', requiredTitleSignal: true }
   ],
-  
+  // Realtors share sales vocabulary heavily — sales needs a title to steal.
   real_estate: [
     { negativeFor: 'sales', requiredTitleSignal: true },
     { negativeFor: 'finance', requiredTitleSignal: true }
   ],
-  
+  // Nonprofit fundraisers share sales/marketing vocabulary (campaigns, donors≈clients).
   nonprofit: [
     { negativeFor: 'sales', requiredTitleSignal: true },
     { negativeFor: 'marketing', requiredTitleSignal: true }
   ],
-  
+  // Production managers share PM/ops vocabulary.
   entertainment: [
     { negativeFor: 'product_management', requiredTitleSignal: true },
     { negativeFor: 'creative', requiredTitleSignal: true }
   ],
-  
+  // Construction managers share project vocabulary with PM and trade vocabulary with trades.
   construction_management: [
     { negativeFor: 'product_management', requiredTitleSignal: true },
     { negativeFor: 'skilled_trades', requiredTitleSignal: true },
     { negativeFor: 'engineering', requiredTitleSignal: true }
   ],
-  
+  // Architects share design vocabulary with creative and building vocabulary with construction.
   architecture: [
     { negativeFor: 'creative', requiredTitleSignal: true },
     { negativeFor: 'construction_management', requiredTitleSignal: true },
     { negativeFor: 'engineering', requiredTitleSignal: true }
   ],
-  
+  // Social workers share clinical vocabulary with healthcare.
   social_work: [
     { negativeFor: 'healthcare', requiredTitleSignal: true },
     { negativeFor: 'education', requiredTitleSignal: true }
   ],
-  
+  // Childcare shares teaching vocabulary with K-12 education.
   childcare: [
     { negativeFor: 'education', requiredTitleSignal: true }
   ],
-  
+  // Chefs share hospitality vocabulary — hospitality mgmt needs a title to steal.
   culinary: [
     { negativeFor: 'hospitality', requiredTitleSignal: true }
   ],
-  
+  // Officers share government/compliance vocabulary.
   law_enforcement: [
     { negativeFor: 'government', requiredTitleSignal: true },
     { negativeFor: 'legal', requiredTitleSignal: true }
   ],
-  
+  // Environmental roles share engineering/compliance vocabulary.
   environmental: [
     { negativeFor: 'engineering', requiredTitleSignal: true },
     { negativeFor: 'government', requiredTitleSignal: true },
     { negativeFor: 'energy', requiredTitleSignal: true }
   ],
-  
+  // Game devs mention code constantly — technology must not steal without a title.
   gaming: [
     { negativeFor: 'technology', requiredTitleSignal: true },
     { negativeFor: 'creative', requiredTitleSignal: true }
   ],
-  
+  // Ecommerce shares marketing/retail vocabulary heavily.
   ecommerce: [
     { negativeFor: 'marketing', requiredTitleSignal: true },
     { negativeFor: 'retail', requiredTitleSignal: true }
   ],
-  
+  // Event planners share marketing/hospitality vocabulary.
   event_planning: [
     { negativeFor: 'marketing', requiredTitleSignal: true },
     { negativeFor: 'hospitality', requiredTitleSignal: true }
   ],
-  
-  
+  // EAs support execs in every field — the SUPPORTED field must not steal
+  // (an EA to a CFO mentions budgets; an EA at a law firm mentions legal).
   administrative: [
     { negativeFor: 'hr', requiredTitleSignal: true },
     { negativeFor: 'finance', requiredTitleSignal: true },
     { negativeFor: 'legal', requiredTitleSignal: true },
     { negativeFor: 'customer_success', requiredTitleSignal: true }
   ],
-  
+  // Librarians share research/education vocabulary.
   library: [
     { negativeFor: 'education', requiredTitleSignal: true },
     { negativeFor: 'academia', requiredTitleSignal: true }
   ],
-  
+  // Chaplains share counseling vocabulary with social work.
   clergy: [
     { negativeFor: 'social_work', requiredTitleSignal: true },
     { negativeFor: 'education', requiredTitleSignal: true }
   ],
-  
+  // Mining shares heavy-industry vocabulary with energy and manufacturing.
   mining: [
     { negativeFor: 'energy', requiredTitleSignal: true },
     { negativeFor: 'manufacturing', requiredTitleSignal: true }
   ],
-  
+  // Maritime shares shipping vocabulary with logistics.
   maritime: [
     { negativeFor: 'logistics', requiredTitleSignal: true }
   ],
-  
+  // Groundskeepers share trades/agriculture vocabulary.
   landscaping: [
     { negativeFor: 'agriculture', requiredTitleSignal: true },
     { negativeFor: 'skilled_trades', requiredTitleSignal: true }
   ],
-  
+  // Custodial shares facilities vocabulary with trades and hospitality housekeeping.
   janitorial: [
     { negativeFor: 'skilled_trades', requiredTitleSignal: true },
     { negativeFor: 'hospitality', requiredTitleSignal: true }
@@ -2923,20 +2923,20 @@ interface DetectionResult {
   alternativeIndustries: Array<{ industry: string; score: number; reason?: string }>;
   secondaryIndustry?: string;
   secondaryScore?: number;
-  
+  /** More specific sub-role within the detected industry, e.g. "Frontend Engineer", "FP&A Analyst", "IB Associate" */
   subRole?: string;
-  
+  /** Top detected tech stack items for tech roles, e.g. ["Python", "Go", "Kubernetes"] */
   techStack?: string[];
-  
+  /** Degree/credential signals found in education section */
   educationSignals?: string[];
-  
+  /** Sub-industry specialization within the detected industry, e.g. { id: 'clinical', label: 'Clinical Care' } */
   subIndustry?: { id: string; label: string; matchedSignals: string[] };
-  
+  /** Industry the job description (when provided) points to, if different from the resume */
   jdIndustry?: string;
-  
+  /** Blend percentages when the candidate straddles two industries, e.g. { primaryPct: 60, secondaryPct: 40 } */
   industryBlend?: { primaryPct: number; secondaryPct: number };
-  
-
+  /** Coverage telemetry: top-3 scored industries and the winner's margin over #2.
+   *  Thin margins flag industries whose keyword tables need reinforcement. */
   telemetry?: { top3: Array<{ industry: string; score: number }>; marginRatio: number };
 }
 
@@ -2946,9 +2946,9 @@ interface SectionMatch {
   weight: number;
 }
 
-
-
-
+/**
+ * Extract sections from resume text
+ */
 function extractSections(resumeText: string): {
   jobTitles: string[];
   employers: string[];
@@ -2961,11 +2961,11 @@ function extractSections(resumeText: string): {
   const text = resumeText.toLowerCase();
   const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
   
-  
+  // Extract job titles - look for common patterns
   const jobTitles: string[] = [];
-  
-  
-  
+  // Title-detecting keywords — used to identify lines that may contain job titles
+  // NOTE: 'editor' is excluded because it causes false matches (e.g., "Photo Editor", "Video Editor")
+  // which incorrectly score as engineering. Creative/media editors are handled by the creative industry.
   const titleKeywords = [
     'manager', 'director', 'engineer', 'developer', 'analyst', 'specialist',
     'coordinator', 'consultant', 'executive', 'lead', 'head', 'vp', 'president',
@@ -2976,21 +2976,21 @@ function extractSections(resumeText: string): {
     'product owner', 'scrum master', 'product manager',
     'partner', 'superintendent', 'physician', 'doctor', 'pharmacist', 'paralegal',
     'buyer', 'planner', 'underwriter', 'actuary', 'appraiser', 'auditor',
-    
+    // Healthcare credential abbreviations used as standalone titles
     'rn', 'np', 'lpn', 'lvn', 'cna', 'emt', 'md', 'do', 'dpt', 'pa-c',
-    
+    // Hospitality service roles
     'chef', 'cook', 'bartender', 'cashier', 'concierge', 'server', 'sommelier',
-    
+    // Creative roles often absent from generic titleKeywords
     'illustrator', 'photographer', 'videographer', 'animator', 'housekeeper',
-    
+    // Technical / trade roles
     'technician', 'technologist', 'mechanic', 'electrician', 'welder', 'operator',
-    
+    // Service / civic / long-tail role nouns (matching the expanded title lists)
     'dispatcher', 'instructor', 'pastor', 'arborist', 'machinist', 'hygienist',
     'esthetician', 'phlebotomist', 'realtor', 'broker', 'deckhand', 'custodian',
     'groundskeeper', 'barber', 'stylist', 'interpreter', 'translator', 'archivist',
     'clerk', 'inspector', 'surveyor', 'assembler', 'miner', 'dietitian', 'librarian',
-    
-    
+    // Spanish role nouns — without these, Spanish title lines are never
+    // recognized as titles and the Spanish keyword tables can't anchor
     'enfermera', 'enfermero', 'médico', 'ingeniero', 'ingeniera', 'contador',
     'contadora', 'abogado', 'abogada', 'vendedor', 'vendedora', 'maestro',
     'maestra', 'profesor', 'profesora', 'gerente', 'analista', 'desarrollador',
@@ -3008,21 +3008,21 @@ function extractSections(resumeText: string): {
         let cleanTitle = '';
         let employerFragment = '';
 
-        
+        // Pattern 1: "Company, Location; Title (Date)" — semicolon separates company from title
         const semicolonMatch = line.match(/;\s*(.+?)(?:\s*\(|$)/i);
         if (semicolonMatch) {
           cleanTitle = semicolonMatch[1].trim();
           employerFragment = line.split(';')[0].trim();
         }
 
-        
+        // Pattern 2: "Title - Company" or "Title | Company" or "Title @ Company"
         if (!cleanTitle) {
           const parts = line.split(/[-–—|@]|\d{4}|january|february|march|april|may|june|july|august|september|october|november|december/i);
           cleanTitle = parts[0].trim();
           if (parts[1]) employerFragment = parts[1].trim();
         }
 
-        
+        // Pattern 3: "Title at Company"
         if (!cleanTitle || cleanTitle === line.trim()) {
           const atMatch = line.match(/^(.+?)\s+at\s+(.+?)(?:\s*\(|$)/i);
           if (atMatch) {
@@ -3041,7 +3041,7 @@ function extractSections(resumeText: string): {
     }
   }
   
-  
+  // Extract summary - usually at the top, after contact info
   let summary = '';
   const summaryIndicators = ['summary', 'profile', 'objective', 'about'];
   let inSummary = false;
@@ -3063,7 +3063,7 @@ function extractSections(resumeText: string): {
   }
   summary = summaryLines.join(' ');
   
-  
+  // If no explicit summary section, use first substantial paragraph
   if (!summary) {
     for (let i = 0; i < Math.min(15, lines.length); i++) {
       const line = lines[i];
@@ -3074,7 +3074,7 @@ function extractSections(resumeText: string): {
     }
   }
   
-  
+  // Extract headings
   const headings: string[] = [];
   const headingPatterns = [
     /^(experience|work experience|professional experience|employment|career|work history)/i,
@@ -3095,10 +3095,10 @@ function extractSections(resumeText: string): {
     }
   }
   
-  
-  
-  
-  const BLOCK_WEIGHTS = [2.0, 1.5, 1.0, 0.6]; 
+  // Build job blocks for recency-weighted bullet scoring.
+  // Each block starts at a detected title line; bullets below belong to that block.
+  // Blocks are in resume order (most recent first, reverse-chronological convention).
+  const BLOCK_WEIGHTS = [2.0, 1.5, 1.0, 0.6]; // weight by block index: most recent -> oldest
   const isBulletLine = (l: string) =>
     l.startsWith('\u2022') || l.startsWith('-') || l.startsWith('*') ||
     /^[\u2022\u2023\u25E6\u2043\u2219]/.test(l) ||
@@ -3116,7 +3116,7 @@ function extractSections(resumeText: string): {
       if (currentBlock) {
         currentBlock.push(line);
       } else {
-        
+        // Bullets before any title line — treat as most-recent block
         currentBlock = [];
         jobBlocks.push(currentBlock);
         currentBlock.push(line);
@@ -3124,14 +3124,14 @@ function extractSections(resumeText: string): {
     }
   }
 
-  
+  // Flatten blocks into weightedBullets with per-bullet recency weight
   const weightedBullets: Array<{ text: string; weight: number }> = [];
   jobBlocks.forEach((block, blockIdx) => {
     const w = BLOCK_WEIGHTS[Math.min(blockIdx, BLOCK_WEIGHTS.length - 1)];
     block.forEach(bullet => weightedBullets.push({ text: bullet, weight: w }));
   });
 
-  
+  // Extract skills section
   let skills = '';
   const skillsStart = text.indexOf('skills');
   if (skillsStart !== -1) {
@@ -3149,9 +3149,9 @@ function extractSections(resumeText: string): {
   };
 }
 
-
-
-
+/**
+ * Check for co-occurrence patterns
+ */
 function checkCoOccurrence(text: string, industry: string): number {
   const patterns = CO_OCCURRENCE_PATTERNS[industry];
   if (!patterns) return 0;
@@ -3160,16 +3160,16 @@ function checkCoOccurrence(text: string, industry: string): number {
   for (const pattern of patterns) {
     const matches = pattern.filter(keyword => text.includes(keyword));
     if (matches.length >= 2) {
-      
+      // Bonus for multiple co-occurring keywords
       score += matches.length * 0.5;
     }
   }
   return score;
 }
 
-
-
-
+/**
+ * Calculate weighted score for an industry
+ */
 function calculateIndustryScore(sections: ReturnType<typeof extractSections>, industry: string): {
   score: number;
   signals: string[];
@@ -3180,41 +3180,41 @@ function calculateIndustryScore(sections: ReturnType<typeof extractSections>, in
   let score = 0;
   const signals: string[] = [];
   
-  
+  // FALSE POSITIVE TITLE PATTERNS — prevent specific title words from matching wrong industries
   const FALSE_POSITIVE_TITLES: Record<string, string[]> = {
     engineering: ['editor', 'photo editor', 'video editor', 'copy editor', 'managing editor', 'editor-in-chief', 'content editor'],
-    
+    // Public-safety dispatchers are law enforcement, not freight
     logistics: ['911 dispatcher', 'police dispatcher', 'fire dispatcher', 'public safety dispatcher', 'emergency dispatcher'],
   };
   const falsePositives = FALSE_POSITIVE_TITLES[industry] || [];
   
-  
-  
-  
-  
-  
-  
+  // Check job titles (HIGHEST WEIGHT). Resumes are conventionally reverse-
+  // chronological, so earlier entries in this array are more recent roles —
+  // weight them more heavily than older ones, since a person's current/most
+  // recent role is a much stronger industry signal than something from years
+  // ago (e.g. someone who moved from engineering into sales 3 years ago should
+  // score as sales, not engineering).
   sections.jobTitles.forEach((title, index) => {
-    
+    // Skip if this title matches a known false positive for this industry
     const isFalsePositive = falsePositives.some(fp => title.includes(fp));
     if (isFalsePositive) return;
 
     const recencyMultiplier = Math.max(0.4, 1 - index * 0.15);
 
     for (const industryTitle of keywords.titles) {
-      
-      
+      // For very short abbreviations (≤3 chars), require word boundaries to prevent
+      // substring matches — e.g. "rn" firing inside "International", "rt" in "partner"
       const matches = industryTitle.length <= 3
         ? new RegExp(`(?<![a-z])${industryTitle}(?![a-z])`).test(title)
         : title.includes(industryTitle);
       if (matches) {
-        score += SECTION_WEIGHTS.jobTitle * 2 * recencyMultiplier; 
+        score += SECTION_WEIGHTS.jobTitle * 2 * recencyMultiplier; // Double weight for exact title match
         signals.push(`Job title match: "${industryTitle}"${index === 0 ? ' (most recent role)' : ''}`);
       }
     }
   });
   
-  
+  // Check summary
   for (const kw of [...keywords.primary, ...keywords.titles]) {
     if (sections.summary.includes(kw)) {
       score += SECTION_WEIGHTS.summary;
@@ -3222,7 +3222,7 @@ function calculateIndustryScore(sections: ReturnType<typeof extractSections>, in
     }
   }
   
-  
+  // Check bullets with per-bullet recency weight (recent job blocks score higher)
   for (const { text: bullet, weight } of sections.weightedBullets) {
     for (const kw of keywords.primary) {
       if (bullet.includes(kw)) {
@@ -3236,31 +3236,31 @@ function calculateIndustryScore(sections: ReturnType<typeof extractSections>, in
     }
   }
 
-  
-  
-  
-  
-  
-  
+  // Employer name signal: well-known employers are unambiguous industry anchors.
+  // Guard (#5): only apply the boost when the employer's industry matches what the
+  // candidate's job titles suggest. A finance analyst at Google should NOT get a
+  // +3 technology boost — the employer is known-tech but the person's role is finance.
+  // We detect title-derived industry by checking whether this industry has any title
+  // signal in the current signals array (populated earlier in this function).
   const hasTitleSignalForThisIndustry = signals.some(s => s.toLowerCase().includes('job title'));
   for (const employerFragment of sections.employers) {
     for (const [knownName, knownIndustry] of Object.entries(KNOWN_EMPLOYERS)) {
       if (knownIndustry === industry && employerFragment.includes(knownName)) {
-        
-        
+        // Only boost when employer industry aligns with title signal, OR
+        // when there are no title signals at all (employer is the only anchor)
         const titleSignalExists = sections.jobTitles.length > 0;
         if (!titleSignalExists || hasTitleSignalForThisIndustry) {
           score += 3.0;
           if (signals.length < 10) signals.push(`Known employer: "${knownName}"`);
         }
-        break; 
+        break; // one check per employer fragment
       }
     }
   }
   
-  
-  
-  
+  // Check skills section (lower weight, hard-capped at 6pts to prevent long skills
+  // lists from overwhelming the title/bullet signal — a 60-item skills section
+  // would otherwise contribute 24+ pts and swamp job titles that give 8pts each).
   const SKILLS_SCORE_CAP = 6.0;
   let skillsScore = 0;
   for (const kw of [...keywords.primary, ...keywords.secondary]) {
@@ -3271,13 +3271,13 @@ function calculateIndustryScore(sections: ReturnType<typeof extractSections>, in
   }
   score += skillsScore;
   
-  
-  
-  
-  
+  // Check certifications. A licensing certification (CPA, RN, PMP, JD, etc.) is
+  // about as unambiguous a signal as exists on a resume — someone doesn't get a
+  // CPA without being in accounting. Weight it above job titles, not level with
+  // the much noisier summary section.
   for (const cert of keywords.certifications) {
-    
-    
+    // Short abbreviations (≤4 chars) require word boundaries to prevent
+    // substring matches — e.g. 'cha' inside 'Charles River', 'ca' inside 'Chicago'
     const certMatches = cert.length <= 4
       ? new RegExp(`(?<![a-z])${cert.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![a-z])`, 'i').test(sections.fullText)
       : sections.fullText.includes(cert);
@@ -3287,20 +3287,20 @@ function calculateIndustryScore(sections: ReturnType<typeof extractSections>, in
     }
   }
   
-  
+  // Frequency analysis - count primary keyword occurrences
   for (const kw of keywords.primary) {
     const regex = new RegExp(kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
     const matches = sections.fullText.match(regex);
     if (matches && matches.length > 1) {
-      
+      // Bonus for repeated mentions
       score += (matches.length - 1) * 0.3;
     }
   }
   
-  
-  
-  
-  
+  // Co-occurrence bonus — fires after minimum score is established.
+  // Gate at 2.5 (lowered from 4): allows pattern-based rescue for roles like
+  // growth hacker or marketing analyst that have keyword signals but weaker title matches,
+  // while still blocking zero-signal false positives (DevOps→data_eng needs primary keywords first).
   if (score >= 2.5) {
     const coOccurrenceScore = checkCoOccurrence(sections.fullText, industry);
     if (coOccurrenceScore > 0) {
@@ -3312,13 +3312,13 @@ function calculateIndustryScore(sections: ReturnType<typeof extractSections>, in
   return { score, signals };
 }
 
-
-
-
-
-
-
-
+/**
+ * Score signal from a target job posting, when the user provided one for
+ * job-matching. A posting's title and required-skills section state the
+ * target industry directly — a strong signal that's otherwise sitting
+ * unused, since job-matching mode only used this text for skill-gap
+ * comparison, never for industry detection itself.
+ */
 function calculateJobPostingScore(jobDescriptionText: string, industry: string): {
   score: number;
   signals: string[];
@@ -3330,9 +3330,9 @@ function calculateJobPostingScore(jobDescriptionText: string, industry: string):
   let score = 0;
   const signals: string[] = [];
 
-  
-  
-  
+  // Job titles in a posting are usually stated plainly near the top — treat
+  // any title match anywhere in the text as a strong signal, same weight
+  // class as a resume's own job title.
   for (const title of keywords.titles) {
     if (text.includes(title)) {
       score += SECTION_WEIGHTS.jobPosting;
@@ -3349,17 +3349,17 @@ function calculateJobPostingScore(jobDescriptionText: string, industry: string):
   return { score, signals: signals.slice(0, 3) };
 }
 
-
-
-
+/**
+ * Check if the top industry has strong title-based signals
+ */
 function hasStrongTitleSignal(signals: string[]): boolean {
   return signals.some(s => s.startsWith('Job title match:'));
 }
 
-
-
-
-
+/**
+ * Apply disambiguation rules to prevent misclassification
+ * when skills-section noise from a different industry inflates scores
+ */
 function applyDisambiguation(
   scores: Array<{ industry: string; score: number; signals: string[] }>
 ): void {
@@ -3372,31 +3372,31 @@ function applyDisambiguation(
   const topHasTitles = hasStrongTitleSignal(top.signals);
   if (!topHasTitles) return;
   
-  
-  
+  // If the top industry has title matches, penalize competing industries
+  // that are marked as "negative" (i.e., noise from skills section)
   for (let i = 1; i < scores.length; i++) {
     const competitor = scores[i];
     const rule = rules.find(r => r.negativeFor === competitor.industry);
     if (rule && rule.requiredTitleSignal && !hasStrongTitleSignal(competitor.signals)) {
-      
-      
+      // Competitor has no title signal but high score → likely skills noise
+      // Penalize by 50%
       competitor.score *= 0.5;
       competitor.signals.push('Score reduced: no title signal vs dominant industry');
     }
   }
   
-  
+  // Re-sort after penalties
   scores.sort((a, b) => b.score - a.score);
 }
 
-
-
-
-
+/**
+ * Fallback keyword pass — lightweight scan when primary engine returns low scores.
+ * Uses broad keyword clusters to at least narrow down the industry family.
+ */
 function fallbackKeywordPass(text: string): { industry: string; score: number; signals: string[] } | null {
   const lowerText = text.toLowerCase();
   
-  
+  // Broad keyword clusters — less precise but catches resumes the main engine misses
   const broadClusters: Array<{ industry: string; keywords: string[]; minMatches: number }> = [
     { industry: 'finance', keywords: ['revenue', 'budget', 'financial', 'accounting', 'audit', 'tax', 'investment', 'portfolio', 'banking', 'fiscal', 'quarterly', 'annual report', 'p&l', 'balance sheet', 'cash flow', 'forecast', 'compliance'], minMatches: 3 },
     { industry: 'technology', keywords: ['software', 'code', 'programming', 'developer', 'engineer', 'api', 'database', 'cloud', 'deploy', 'agile', 'sprint', 'git', 'infrastructure', 'system', 'architecture'], minMatches: 3 },
@@ -3413,9 +3413,9 @@ function fallbackKeywordPass(text: string): { industry: string; score: number; s
     { industry: 'hospitality', keywords: ['hotel', 'guest', 'reservations', 'hospitality', 'food and beverage', 'banquet', 'catering', 'front desk', 'occupancy', 'revpar', 'restaurant', 'concierge'], minMatches: 3 },
     { industry: 'manufacturing', keywords: ['production', 'manufacturing', 'assembly', 'quality control', 'lean', 'six sigma', 'oee', 'fabrication', 'machining', 'inspection', 'safety', 'osha'], minMatches: 3 },
     { industry: 'government', keywords: ['policy', 'government', 'federal', 'regulation', 'compliance', 'grant', 'public sector', 'procurement', 'legislation', 'constituent', 'agency', 'security clearance'], minMatches: 3 },
-    
-    
-    
+    // Data/AI fallback clusters — required so these industries survive when primary scoring
+    // returns LOW confidence. Without these, data engineers / data scientists / ML engineers
+    // fall through to generic 'technology' via the technology cluster above.
     { industry: 'data_engineering', keywords: ['dbt', 'airflow', 'snowflake', 'bigquery', 'databricks', 'etl', 'data pipeline', 'data warehouse', 'kafka', 'spark', 'fivetran', 'dagster'], minMatches: 2 },
     { industry: 'data_science', keywords: ['statistical', 'hypothesis testing', 'a/b test', 'experiment', 'scikit-learn', 'tableau', 'power bi', 'looker', 'regression', 'classification', 'predictive', 'forecasting'], minMatches: 2 },
     { industry: 'machine_learning', keywords: ['pytorch', 'tensorflow', 'llm', 'fine-tuning', 'inference', 'embedding', 'vector database', 'langchain', 'hugging face', 'model deployment', 'mlflow', 'wandb'], minMatches: 2 },
@@ -3428,7 +3428,7 @@ function fallbackKeywordPass(text: string): { industry: string; score: number; s
   for (const cluster of broadClusters) {
     const matched = cluster.keywords.filter(kw => lowerText.includes(kw));
     if (matched.length >= cluster.minMatches) {
-      const score = matched.length * 2; 
+      const score = matched.length * 2; // Simple scoring
       if (!bestMatch || score > bestMatch.score) {
         bestMatch = {
           industry: cluster.industry,
@@ -3442,11 +3442,11 @@ function fallbackKeywordPass(text: string): { industry: string; score: number; s
   return bestMatch;
 }
 
-
-
-
-
-
+/**
+ * Context-aware military/operations remapping (v2).
+ * "military" isn't a real industry — detect what the person actually does.
+ * V2: More aggressive remapping — NEVER allow military/general as final.
+ */
 function remapPhantomIndustry(
   industry: string,
   text: string,
@@ -3455,7 +3455,7 @@ function remapPhantomIndustry(
   const phantomIndustries = ['military', 'general'];
   if (!phantomIndustries.includes(industry)) return industry;
   
-  
+  // Military-specific context clues for remapping
   const lowerText = text.toLowerCase();
   const contextClues: Record<string, string[]> = {
     'consulting': ['strategic planning', 'advisory', 'transformation', 'change management', 'stakeholder'],
@@ -3469,7 +3469,7 @@ function remapPhantomIndustry(
     'product_management': ['program manager', 'project manager', 'roadmap', 'cross-functional', 'stakeholder alignment'],
   };
   
-  
+  // Score each potential remap based on context keywords
   let bestRemap: { industry: string; matchCount: number } | null = null;
   for (const [targetIndustry, clues] of Object.entries(contextClues)) {
     const matchCount = clues.filter(clue => lowerText.includes(clue)).length;
@@ -3483,14 +3483,14 @@ function remapPhantomIndustry(
     return bestRemap.industry;
   }
   
-  
+  // Fall back to second-best scoring industry (lower threshold than v1)
   const secondBest = scores.find(s => !phantomIndustries.includes(s.industry) && s.score >= 3);
   if (secondBest) {
     console.log(`[INDUSTRY-DETECTION] Remapped "${industry}" → "${secondBest.industry}" (score: ${secondBest.score})`);
     return secondBest.industry;
   }
   
-  
+  // Absolute last resort: return consulting (most common for military transitions)
   if (industry === 'military') {
     console.log(`[INDUSTRY-DETECTION] Military fallback → consulting (no other signals)`);
     return 'consulting';
@@ -3499,13 +3499,13 @@ function remapPhantomIndustry(
   return industry;
 }
 
-
-
-
-
-
+/**
+ * Apply feedback loop: boost scores based on historical user corrections.
+ * DYNAMIC VERSION: accepts correction data loaded from DB at scan time.
+ * Falls back to a static map if no dynamic data is provided.
+ */
 const STATIC_CORRECTION_BOOSTS: Record<string, { target: string; boost: number }[]> = {
-  
+  // Fallback if dynamic data isn't available
   'military': [
     { target: 'consulting', boost: 5 },
     { target: 'finance', boost: 4 },
@@ -3526,19 +3526,19 @@ const STATIC_CORRECTION_BOOSTS: Record<string, { target: string; boost: number }
   ],
 };
 
-
-
-
-
-
-
-
-
-
+/**
+ * Build dynamic correction boosts from DB correction records.
+ * Format: array of { original_industry, corrected_industry, count }
+ */
+// FIX #3: COMPOUND CORRECTION LEARNING
+// Corrections are aggregated into a multiplier-based system rather than flat boosts.
+// Repeated corrections on the same original→target pattern compound logarithmically,
+// and the corrected target industry also gets a score *multiplier* so even low-signal
+// resumes get pulled in the right direction.
 export function buildDynamicCorrectionBoosts(
   corrections: Array<{ original_industry: string; corrected_industry: string; count?: number }>
 ): Record<string, { target: string; boost: number; multiplier: number }[]> {
-  
+  // Group by original→target pair and sum counts
   const grouped: Record<string, { target: string; total: number }[]> = {};
   for (const { original_industry, corrected_industry, count } of corrections) {
     if (!grouped[original_industry]) grouped[original_industry] = [];
@@ -3553,9 +3553,9 @@ export function buildDynamicCorrectionBoosts(
   const boosts: Record<string, { target: string; boost: number; multiplier: number }[]> = {};
   for (const [original, targets] of Object.entries(grouped)) {
     boosts[original] = targets.map(({ target, total }) => {
-      
+      // Flat boost: 1 correction = +2, 5 = +5, 10+ = +8 (log-scaled, capped at 8)
       const boost = Math.min(8, Math.max(2, Math.round(Math.log(total + 1) * 3.5)));
-      
+      // Multiplier for the target industry score: 1 correction = 1.1×, 10+ = 1.5× (capped)
       const multiplier = Math.min(1.5, 1 + Math.log(total + 1) * 0.12);
       return { target, boost, multiplier };
     });
@@ -3576,31 +3576,31 @@ function applyCorrectionsBoost(
     const { target, boost, multiplier } = entry as { target: string; boost: number; multiplier?: number };
     const scoreEntry = scores.find(s => s.industry === target);
     if (scoreEntry) {
-      
+      // Apply flat boost regardless of whether target had signal (corrections are strong evidence)
       const prev = scoreEntry.score;
       scoreEntry.score = (scoreEntry.score + boost) * (multiplier ?? 1.0);
       scoreEntry.signals.push(`Correction: +${boost} ×${(multiplier ?? 1).toFixed(2)} (${dynamicBoosts ? 'dynamic' : 'static'}, was ${prev.toFixed(1)})`);
       console.log(`[INDUSTRY-DETECTION] Correction boost: ${target} ${prev.toFixed(1)}→${scoreEntry.score.toFixed(1)} (from ${topIndustry})`);
     } else if (boost >= 4) {
-      
+      // Target had zero score but correction is strong — add it explicitly so it can rank
       scores.push({ industry: target, score: boost * (multiplier ?? 1.0), signals: [`Correction-introduced: ${target} (boost ${boost})`] });
     }
   }
 
-  
+  // Re-sort after boosts
   scores.sort((a, b) => b.score - a.score);
 }
 
-
-
-
-
-
+/**
+ * Parse the education section for degree/credential signals.
+ * Returns: array of { industry, boost, signal } — each representing one unambiguous
+ * credential found. A JD = legal +12, MD = healthcare +12, CPA = finance +10, etc.
+ */
 function extractEducationSignals(resumeText: string): Array<{ industry: string; boost: number; signal: string }> {
   const text = resumeText.toLowerCase();
   const results: Array<{ industry: string; boost: number; signal: string }> = [];
 
-  
+  // Helper: check with word boundaries for short tokens
   const has = (token: string) => {
     const escaped = token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const re = token.length <= 4
@@ -3609,7 +3609,7 @@ function extractEducationSignals(resumeText: string): Array<{ industry: string; 
     return re.test(text);
   };
 
-  
+  // Legal degrees — most unambiguous signals on a resume
   if (has('j.d.') || has('juris doctor') || /\bjd\b/.test(text)) {
     results.push({ industry: 'legal', boost: 12, signal: 'Degree: J.D. (Juris Doctor)' });
   }
@@ -3620,7 +3620,7 @@ function extractEducationSignals(resumeText: string): Array<{ industry: string; 
     results.push({ industry: 'legal', boost: 10, signal: 'Credential: Bar admission' });
   }
 
-  
+  // Medical degrees
   if (has('m.d.') || has('doctor of medicine') || /\bmd\b/.test(text)) {
     results.push({ industry: 'healthcare', boost: 12, signal: 'Degree: M.D.' });
   }
@@ -3637,7 +3637,7 @@ function extractEducationSignals(resumeText: string): Array<{ industry: string; 
     results.push({ industry: 'healthcare', boost: 9, signal: 'Degree: Nursing (BSN/MSN)' });
   }
 
-  
+  // Finance credentials — CPA and CFA are extremely specific
   if (/\bcpa\b/.test(text) || has('certified public accountant')) {
     results.push({ industry: 'finance', boost: 10, signal: 'Credential: CPA' });
   }
@@ -3654,12 +3654,12 @@ function extractEducationSignals(resumeText: string): Array<{ industry: string; 
     results.push({ industry: 'finance', boost: 6, signal: 'Degree: Accounting' });
   }
   if (has('mba') || has('m.b.a.') || has('master of business administration')) {
-    
+    // MBA is broad — gives modest boost to consulting + finance but doesn't lock either
     results.push({ industry: 'consulting', boost: 4, signal: 'Degree: MBA' });
     results.push({ industry: 'finance', boost: 3, signal: 'Degree: MBA' });
   }
 
-  
+  // CS / Engineering degrees → technology
   if (
     has('b.s. computer science') || has('bs computer science') ||
     has('bachelor of science in computer science') ||
@@ -3683,7 +3683,7 @@ function extractEducationSignals(resumeText: string): Array<{ industry: string; 
     results.push({ industry: 'data_science', boost: 6, signal: 'Degree: PhD Statistics/Math' });
   }
 
-  
+  // Engineering degrees → engineering
   if (
     has('b.s. mechanical engineering') || has('bs mechanical engineering') ||
     has('b.s. electrical engineering') || has('bs electrical engineering') ||
@@ -3697,12 +3697,12 @@ function extractEducationSignals(resumeText: string): Array<{ industry: string; 
     results.push({ industry: 'engineering', boost: 6, signal: 'Degree: Engineering' });
   }
 
-  
+  // Teaching certifications → education
   if (has('teaching credential') || has('teaching certificate') || has('state teaching license') || has('b.s. education') || has('b.a. education') || has('bachelor of education') || has('master of education') || has('m.ed.') || has('m.a.t.')) {
     results.push({ industry: 'education', boost: 8, signal: 'Credential: Teaching license/education degree' });
   }
 
-  
+  // ── Expansion-batch degrees — the table must know every industry we detect ──
   if (has('dvm') || has('doctor of veterinary medicine') || has('vmd')) {
     results.push({ industry: 'veterinary', boost: 12, signal: 'Degree: D.V.M.' });
   }
@@ -3752,8 +3752,8 @@ function extractEducationSignals(resumeText: string): Array<{ industry: string; 
     results.push({ industry: 'general', boost: 0, signal: 'Degree: Mortuary Science' });
   }
 
-  
-  
+  // ── Professional licenses — often the ONLY strong signal on new-grad and
+  // trade resumes, where work history is thin but the credential is decisive.
   if (has('pe license') || has('professional engineer license') || has('licensed professional engineer')) {
     results.push({ industry: 'engineering', boost: 10, signal: 'License: Professional Engineer (PE)' });
   }
@@ -3818,7 +3818,7 @@ function extractEducationSignals(resumeText: string): Array<{ industry: string; 
   return results;
 }
 
-
+// Tech stack keyword groups for sub-role detection
 const TECH_STACKS: Array<{ label: string; keywords: string[] }> = [
   { label: 'Python', keywords: ['python', 'django', 'flask', 'fastapi', 'pandas', 'numpy', 'pydantic'] },
   { label: 'Go', keywords: ['golang', ' go ', 'goroutine', 'grpc', 'gin framework'] },
@@ -3843,7 +3843,7 @@ const TECH_STACKS: Array<{ label: string; keywords: string[] }> = [
   { label: 'SQL', keywords: ['sql', 'postgresql', 'postgres', 'mysql', 'sqlite'] },
 ];
 
-
+// Sub-role patterns within a detected industry
 const TECH_SUB_ROLES: Array<{ role: string; signals: string[]; minSignals: number }> = [
   { role: 'ML Engineer', signals: ['pytorch', 'tensorflow', 'llm', 'fine-tuning', 'model training', 'inference', 'hugging face', 'mlflow', 'feature engineering', 'training pipeline'], minSignals: 2 },
   { role: 'Data Engineer', signals: ['dbt', 'airflow', 'spark', 'kafka', 'etl', 'data pipeline', 'data warehouse', 'fivetran', 'dagster', 'bigquery', 'snowflake', 'databricks'], minSignals: 2 },
@@ -3856,8 +3856,8 @@ const TECH_SUB_ROLES: Array<{ role: string; signals: string[]; minSignals: numbe
 ];
 
 const FINANCE_SUB_ROLES: Array<{ role: string; signals: string[]; minSignals: number }> = [
-  
-  
+  // VC before PE: VC resumes mention "venture capital" and "portfolio company"
+  // both, and the more specific investor profile should win.
   { role: 'Venture Capital Investor', signals: ['venture capital', 'seed stage', 'series a', 'series b', 'deal sourcing', 'investment thesis', 'term sheet', 'cap table', 'portfolio support', 'lp relations', 'limited partners', 'board seats', 'board observer', 'pre-seed', 'follow-on', 'dry powder', 'founder relationships', 'deal flow'], minSignals: 3 },
   { role: 'Investment Banker', signals: ['investment banking', 'ib', 'm&a', 'mergers and acquisitions', 'capital markets', 'ipo', 'lbo', 'leveraged buyout', 'dcf', 'pitchbook', 'deal team', 'bulge bracket', 'boutique bank', 'fairness opinion'], minSignals: 2 },
   { role: 'Private Equity', signals: ['private equity', 'pe', 'portfolio company', 'fund management', 'carried interest', 'carry', 'deal sourcing', 'lbo model', 'buyout', 'growth equity', 'venture capital', 'vc', 'cap table'], minSignals: 2 },
@@ -3867,10 +3867,10 @@ const FINANCE_SUB_ROLES: Array<{ role: string; signals: string[]; minSignals: nu
   { role: 'Quantitative Analyst', signals: ['quantitative', 'quant', 'stochastic', 'monte carlo', 'options pricing', 'derivatives', 'risk model', 'market making', 'algorithmic trading', 'backtesting', 'statistical arbitrage'], minSignals: 2 },
 ];
 
-
-
-
-
+/**
+ * Detect sub-role within the given industry using keyword pattern matching.
+ * Returns the most specific sub-role label, or undefined if no pattern fires.
+ */
 function detectSubRole(industry: string, text: string): string | undefined {
   const lower = text.toLowerCase();
   const patterns = industry === 'finance' ? FINANCE_SUB_ROLES
@@ -3888,10 +3888,10 @@ function detectSubRole(industry: string, text: string): string | undefined {
   return best?.role;
 }
 
-
-
-
-
+/**
+ * Extract the top tech stack items present in the resume text (max 3).
+ * Only meaningful for tech-industry resumes.
+ */
 function extractTechStack(text: string): string[] {
   const lower = text.toLowerCase();
   const found: Array<{ label: string; count: number }> = [];
@@ -3899,7 +3899,7 @@ function extractTechStack(text: string): string[] {
     const count = stack.keywords.filter(kw => lower.includes(kw)).length;
     if (count > 0) found.push({ label: stack.label, count });
   }
-  
+  // Sort by frequency, dedupe cloud platforms to one entry
   found.sort((a, b) => b.count - a.count);
   const result: string[] = [];
   const cloudLabels = new Set(['AWS', 'GCP', 'Azure']);
@@ -3915,11 +3915,11 @@ function extractTechStack(text: string): string[] {
   return result;
 }
 
-
-
-
-
-
+/**
+ * Build human-readable reason strings for alternative industry suggestions.
+ * These appear in IndustryConfidenceIndicator to explain why the alternative
+ * was considered (e.g. "Your Salesforce skills match RevOps roles").
+ */
 function buildAlternativeReason(primaryIndustry: string, altIndustry: string, resumeText: string): string | undefined {
   const text = resumeText.toLowerCase();
   const reasons: Record<string, Record<string, string | (() => string)>> = {
@@ -3958,161 +3958,161 @@ function buildAlternativeReason(primaryIndustry: string, altIndustry: string, re
   return typeof r === 'function' ? r() : r;
 }
 
+// ─── FIX #2: ROLE-FIRST TITLE ANCHORING ─────────────────────────────────────
 
-
-
-
+// Patterns that unambiguously lock an industry regardless of keyword scores.
+// Order matters: more specific patterns first.
 const ROLE_LOCKS: Array<{ pattern: RegExp; industry: string; label: string }> = [
-  
+  // Healthcare — clinical titles
   { pattern: /\b(registered nurse|rn\b|nurse practitioner|np\b|clinical nurse|charge nurse|staff nurse|travel nurse|lpn|lvn|cna|phlebotomist|medical assistant|radiologic technologist|respiratory therapist|occupational therapist|physical therapist|speech.*therapist|physician|surgeon|cardiologist|oncologist|radiologist|psychiatrist|anesthesiologist|hospitalist|attending physician|intern.*medicine|pediatrician|obstetrician|gynecologist|emt|paramedic|medical director|chief medical officer|cmo\b)\b/i, industry: 'healthcare', label: 'clinical title' },
-  
+  // Legal — attorney/counsel titles
   { pattern: /\b(attorney|lawyer|counsel|associate.*law|partner.*law|paralegal|legal.*assistant|law.*clerk|public defender|prosecutor|district attorney|solicitor|barrister|in-house counsel|general counsel|chief legal officer|clo\b|deputy general counsel|associate general counsel)\b/i, industry: 'legal', label: 'legal title' },
-  
-  
-  
+  // Education — teaching titles
+  // "professor/lecturer" belong to academia; "preschool/daycare teacher" to childcare —
+  // this lock only claims K-12-style teaching titles.
   { pattern: /\b((?<!preschool )(?<!daycare )(?<!montessori )(?<!infant )(?<!toddler )teacher|classroom teacher|k-12 teacher|substitute teacher|dean.*academic|principal.*school|school principal|vice principal|curriculum specialist|instructional coach|special education teacher|esl teacher|tutor|librarian.*school|school counselor)\b/i, industry: 'education', label: 'education title' },
-  
+  // Product management — PM-specific (distinct from "manager")
   { pattern: /\b(product manager|senior product manager|principal product manager|staff product manager|director of product|vp of product|chief product officer|cpo\b|group product manager|associate product manager|technical product manager|product lead)\b/i, industry: 'product_management', label: 'PM title' },
-  
+  // Data Engineering — distinct from data science
   { pattern: /\b(data engineer|senior data engineer|staff data engineer|principal data engineer|analytics engineer|etl developer|data pipeline engineer|data platform engineer|data infrastructure engineer)\b/i, industry: 'data_engineering', label: 'data engineering title' },
-  
+  // Machine Learning / AI
   { pattern: /\b(machine learning engineer|ml engineer|ai engineer|research scientist.*ml|research engineer.*ai|llm engineer|applied scientist|applied ml|mlops engineer|nlp engineer|computer vision engineer|deep learning engineer)\b/i, industry: 'machine_learning', label: 'ML/AI title' },
-  
+  // Data Science
   { pattern: /\b(data scientist|senior data scientist|staff data scientist|principal data scientist|lead data scientist|quantitative analyst|quant analyst|research analyst.*data|statistician)\b/i, industry: 'data_science', label: 'data science title' },
-  
+  // Finance — specific finance roles not in technology
   { pattern: /\b(investment banker|investment banking analyst|investment banking associate|private equity analyst|private equity associate|venture capital analyst|venture capital associate|venture capital principal|venture partner|general partner.*(fund|capital|ventures)|investment partner|managing partner.*(fund|capital|ventures)|principal.*(ventures|capital)|portfolio manager|fund manager|hedge fund|equity researcher|credit analyst|loan officer|underwriter|financial analyst|fp&a analyst|fp&a manager|financial planning|treasury analyst|risk analyst|compliance officer|aml analyst|chief financial officer|cfo\b|controller.*finance|vp.*finance|director.*finance)\b/i, industry: 'finance', label: 'finance title' },
-  
+  // Retail
   { pattern: /\b(store manager|retail manager|assistant store manager|floor manager|department manager.*retail|merchandise manager|store director|district manager.*retail|loss prevention|visual merchandiser|retail buyer|category manager.*retail|store associate|retail associate|cashier|sales associate.*retail)\b/i, industry: 'retail', label: 'retail title' },
-  
-  
+  // Hospitality
+  // Chef titles belong to culinary — this lock claims hotel/venue MANAGEMENT roles.
   { pattern: /\b(hotel manager|general manager.*hotel|front desk manager|food and beverage manager|f&b manager|restaurant manager|banquet manager|event coordinator.*hotel|catering manager|concierge|revenue manager.*hotel|housekeeping manager|room service)\b/i, industry: 'hospitality', label: 'hospitality title' },
-  
-  
+  // Manufacturing / Supply Chain
+  // Supply chain / logistics / warehouse titles belong to the logistics industry now.
   { pattern: /\b(manufacturing engineer|process engineer.*manufacturing|plant manager|production manager|quality engineer|quality assurance engineer|qc manager|lean engineer|six sigma.*engineer|operations manager.*manufacturing|industrial engineer|process improvement.*manufacturing)\b/i, industry: 'manufacturing', label: 'manufacturing title' },
-  
+  // Government / Public sector
   { pattern: /\b(policy analyst|foreign service officer|intelligence analyst|program analyst.*government|government contractor|public administrator|city manager|county manager|legislative aide|congressional staffer|federal agent|intelligence officer|security clearance.*analyst)\b/i, industry: 'government', label: 'government title' },
-  
+  // HR
   { pattern: /\b(hr business partner|hrbp|recruiter|talent acquisition|head of recruiting|director.*hr|vp.*hr|chief people officer|cpo.*people|hr director|hr manager|people operations|compensation analyst|benefits administrator|employee relations|hris analyst|workforce planning|organizational development)\b/i, industry: 'hr', label: 'HR title' },
-  
+  // Creative / Design
   { pattern: /\b(ux designer|ui designer|product designer|graphic designer|visual designer|brand designer|motion designer|creative director|art director|illustrator.*designer|interaction designer|user experience researcher|ux researcher|design lead|head of design)\b/i, industry: 'creative', label: 'design title' },
-  
+  // Cybersecurity
   { pattern: /\b(security engineer|security analyst|soc analyst|penetration tester|pentester|ciso|security architect|incident responder|threat analyst|vulnerability analyst|application security engineer|appsec engineer|malware analyst|forensics analyst)\b/i, industry: 'cybersecurity', label: 'security title' },
-  
+  // Logistics / Supply chain
   { pattern: /\b(supply chain manager|supply chain analyst|logistics coordinator|logistics manager|demand planner|supply planner|freight broker|customs broker|transportation manager|fleet manager|fulfillment manager|(?<!911 )(?<!police )(?<!fire )(?<!public safety )dispatcher)\b/i, industry: 'logistics', label: 'logistics title' },
-  
+  // Real estate
   { pattern: /\b(real estate agent|realtor|real estate broker|leasing agent|leasing consultant|property manager|escrow officer|title officer|appraiser|mortgage loan officer|loan originator|transaction coordinator)\b/i, industry: 'real_estate', label: 'real estate title' },
-  
+  // Insurance
   { pattern: /\b(claims adjuster|claims examiner|actuary|actuarial analyst|insurance agent|insurance broker|insurance producer|insurance underwriter)\b/i, industry: 'insurance', label: 'insurance title' },
-  
+  // Nonprofit
   { pattern: /\b(grant writer|grants manager|development director|major gifts officer|fundraising manager|volunteer coordinator|donor relations|philanthropy officer|executive director.*nonprofit)\b/i, industry: 'nonprofit', label: 'nonprofit title' },
-  
+  // Biotech / Lab science
   { pattern: /\b(research scientist|lab technician|laboratory technician|research associate|clinical research coordinator|clinical research associate|bench scientist|bioinformatics scientist|biostatistician|medical science liaison|qc analyst|postdoc|postdoctoral)\b/i, industry: 'biotech', label: 'lab science title' },
-  
+  // Aviation
   { pattern: /\b(commercial pilot|airline pilot|first officer|flight attendant|air traffic controller|aircraft mechanic|a&p mechanic|avionics technician|flight instructor|aircraft dispatcher)\b/i, industry: 'aviation', label: 'aviation title' },
-  
+  // Energy
   { pattern: /\b(petroleum engineer|drilling engineer|reservoir engineer|power plant operator|lineman|solar installer|solar technician|wind technician|grid operator|pipeline operator|substation technician|landman|energy trader)\b/i, industry: 'energy', label: 'energy title' },
-  
+  // Skilled trades
   { pattern: /\b(electrician|journeyman|plumber|hvac technician|hvac installer|welder|pipefitter|millwright|machinist|carpenter|crane operator|ironworker|diesel mechanic|automotive technician|auto mechanic|maintenance technician)\b/i, industry: 'skilled_trades', label: 'trade title' },
-  
+  // Customer support (distinct from sales-flavored customer success)
   { pattern: /\b(customer support specialist|customer service representative|support engineer|technical support engineer|help desk|service desk analyst|call center|contact center|escalation manager|tier [23] support)\b/i, industry: 'customer_success', label: 'support title' },
-  
+  // Pharmacy
   { pattern: /\b(pharmacist|pharmacy technician|pharm tech|pharmacy manager|pharmacy intern|pharmd)\b/i, industry: 'pharmacy', label: 'pharmacy title' },
-  
+  // Dental
   { pattern: /\b(dentist|dental hygienist|dental assistant|orthodontist|oral surgeon|endodontist|periodontist)\b/i, industry: 'dental', label: 'dental title' },
-  
+  // Veterinary
   { pattern: /\b(veterinarian|veterinary technician|vet tech|veterinary assistant|veterinary nurse)\b/i, industry: 'veterinary', label: 'veterinary title' },
-  
+  // Fitness
   { pattern: /\b(personal trainer|fitness instructor|group fitness|strength and conditioning coach|yoga instructor|pilates instructor|athletic trainer|exercise physiologist)\b/i, industry: 'fitness', label: 'fitness title' },
-  
+  // Media / Journalism
   { pattern: /\b(journalist|reporter|news editor|managing editor|staff writer|correspondent|news anchor|photojournalist|copy editor|editor in chief|news director)\b/i, industry: 'media', label: 'journalism title' },
-  
+  // Telecom
   { pattern: /\b(telecommunications engineer|telecom technician|rf engineer|fiber optic technician|tower climber|osp engineer|central office technician|voip engineer)\b/i, industry: 'telecom', label: 'telecom title' },
-  
+  // Agriculture
   { pattern: /\b(farm manager|ranch manager|agronomist|crop consultant|livestock manager|greenhouse manager|dairy manager|farm operator)\b/i, industry: 'agriculture', label: 'agriculture title' },
-  
+  // Sports management
   { pattern: /\b(athletic director|head coach|assistant coach|sports agent|recruiting coordinator|sports information director|player development|scout\b)\b/i, industry: 'sports_management', label: 'sports title' },
-  
+  // Entertainment production
   { pattern: /\b(film producer|tv producer|line producer|showrunner|casting director|production coordinator|assistant director|stage manager|gaffer|post production supervisor)\b/i, industry: 'entertainment', label: 'production title' },
-  
+  // Academia / Research
   { pattern: /\b(assistant professor|associate professor|full professor|research fellow|principal investigator|postdoctoral researcher|department chair|adjunct professor|visiting scholar)\b/i, industry: 'academia', label: 'academic title' },
-  
+  // Construction management (distinct from hands-on trades)
   { pattern: /\b(construction manager|construction project manager|construction superintendent|preconstruction manager|construction estimator|project engineer construction|construction executive)\b/i, industry: 'construction_management', label: 'construction management title' },
-  
+  // Architecture
   { pattern: /\b(architect\b(?!ure)|project architect|architectural designer|landscape architect|interior designer|bim manager|urban planner)\b/i, industry: 'architecture', label: 'architecture title' },
-  
+  // Social work / mental health
   { pattern: /\b(social worker|clinical social worker|mental health counselor|family therapist|substance abuse counselor|behavioral health specialist|school counselor|psychotherapist|child welfare specialist|victim advocate|probation officer)\b/i, industry: 'social_work', label: 'social work title' },
-  
+  // Childcare / early education
   { pattern: /\b(preschool teacher|daycare teacher|early childhood educator|childcare provider|nanny|infant teacher|toddler teacher|childcare director|montessori teacher|head start teacher)\b/i, industry: 'childcare', label: 'childcare title' },
-  
+  // Beauty / cosmetology
   { pattern: /\b(hair stylist|hairdresser|barber\b|cosmetologist|esthetician|nail technician|makeup artist|lash technician|massage therapist|colorist)\b/i, industry: 'beauty', label: 'beauty title' },
-  
+  // Culinary
   { pattern: /\b(executive chef|sous chef|head chef|chef de partie|line cook|prep cook|pastry chef|kitchen manager|culinary director|private chef)\b/i, industry: 'culinary', label: 'culinary title' },
-  
+  // Law enforcement / security
   { pattern: /\b(police officer|patrol officer|detective|sheriff deputy|state trooper|correctional officer|parole officer|security officer|security guard|loss prevention officer|private investigator|crime scene investigator)\b/i, industry: 'law_enforcement', label: 'law enforcement title' },
-  
+  // Environmental / sustainability
   { pattern: /\b(environmental scientist|environmental engineer|environmental consultant|sustainability manager|sustainability analyst|ehs specialist|ecologist|conservation scientist|esg analyst|wildlife biologist|hydrologist)\b/i, industry: 'environmental', label: 'environmental title' },
-  
+  // Gaming
   { pattern: /\b(game designer|game developer|gameplay programmer|level designer|game producer|technical artist|narrative designer|game writer|live ops manager|esports manager)\b/i, industry: 'gaming', label: 'gaming title' },
-  
+  // Ecommerce
   { pattern: /\b(ecommerce manager|e-commerce manager|ecommerce director|marketplace manager|amazon account manager|shopify manager|digital merchandiser|dtc manager|online store manager)\b/i, industry: 'ecommerce', label: 'ecommerce title' },
-  
+  // Translation / localization
   { pattern: /\b(translator|interpreter\b|localization specialist|localization manager|medical interpreter|court interpreter|conference interpreter|subtitler|transcreation)\b/i, industry: 'translation', label: 'translation title' },
-  
+  // Event planning
   { pattern: /\b(event planner|event coordinator|wedding planner|conference planner|meeting planner|event producer|special events manager|trade show manager)\b/i, industry: 'event_planning', label: 'event planning title' },
-  
+  // Administrative / office support
   { pattern: /\b(executive assistant|administrative assistant|admin assistant|office manager|office administrator|receptionist|data entry clerk|office coordinator|administrative coordinator|personal assistant|legal secretary|virtual assistant)\b/i, industry: 'administrative', label: 'administrative title' },
-  
+  // Drivers → logistics
   { pattern: /\b(truck driver|cdl driver|otr driver|delivery driver|bus driver|route driver|courier\b|owner operator|forklift operator)\b/i, industry: 'logistics', label: 'driver title' },
-  
+  // Library / archives
   { pattern: /\b(librarian|library assistant|library technician|archivist|reference librarian|cataloging librarian|records manager)\b/i, industry: 'library', label: 'library title' },
-  
+  // Clergy / religious work
   { pattern: /\b(pastor|minister\b|priest|rabbi|imam|chaplain|youth pastor|worship leader|deacon|missionary)\b/i, industry: 'clergy', label: 'clergy title' },
-  
+  // Mining
   { pattern: /\b(mining engineer|mine manager|underground miner|blaster\b|mine surveyor|mill operator|quarry manager)\b/i, industry: 'mining', label: 'mining title' },
-  
+  // Maritime
   { pattern: /\b(ship captain|deck officer|chief mate|able seaman|deckhand|marine engineer|harbor pilot|tugboat captain|merchant mariner|boatswain)\b/i, industry: 'maritime', label: 'maritime title' },
-  
+  // Landscaping / grounds
   { pattern: /\b(landscaper|landscape designer|groundskeeper|grounds manager|lawn care technician|arborist|tree climber|irrigation technician|horticulturist|golf course superintendent)\b/i, industry: 'landscaping', label: 'landscaping title' },
-  
+  // Janitorial / custodial
   { pattern: /\b(custodian|janitor\b|housekeeping supervisor|environmental services technician|evs technician|custodial supervisor|sanitation worker)\b/i, industry: 'janitorial', label: 'janitorial title' },
 ];
 
-
-
-
-
+// ─── MULTILINGUAL TITLE LOCKS ────────────────────────────────────────────────
+// The keyword tables are English, but resumes arrive in 10 languages. These
+// translated titles (es/de/fr/pt/nl) lock the industry the same way English
+// role locks do, so a German "Krankenschwester" is never misclassified.
 const MULTILINGUAL_TITLE_LOCKS: Array<{ pattern: RegExp; industry: string; label: string }> = [
-  
+  // Healthcare
   { pattern: /\b(enfermera|enfermero|krankenschwester|krankenpfleger|infirmier|infirmière|enfermeira|enfermeiro|verpleegkundige|médico|medico cirujano|arzt|ärztin|médecin|arts\b)\b/i, industry: 'healthcare', label: 'healthcare title (non-EN)' },
-  
+  // Legal
   { pattern: /\b(abogado|abogada|rechtsanwalt|rechtsanwältin|avocat|avocate|advogado|advogada|advocaat|jurist\b)\b/i, industry: 'legal', label: 'legal title (non-EN)' },
-  
+  // Education
   { pattern: /\b(profesor de|maestra|maestro de|lehrer|lehrerin|enseignant|enseignante|instituteur|professora|professor de|leraar|lerares|docent\b)\b/i, industry: 'education', label: 'teaching title (non-EN)' },
-  
+  // Engineering / tech
   { pattern: /\b(desarrollador|programador|softwareentwickler|entwicklerin|développeur|développeuse|desenvolvedor|programador de software|softwareontwikkelaar)\b/i, industry: 'technology', label: 'developer title (non-EN)' },
   { pattern: /\b(ingeniero civil|ingeniera|bauingenieur|maschinenbauingenieur|ingénieur|ingénieure|engenheiro|engenheira|ingenieur\b)\b/i, industry: 'engineering', label: 'engineering title (non-EN)' },
-  
+  // Finance / accounting
   { pattern: /\b(contador|contadora|contable|buchhalter|buchhalterin|comptable|contabilista|contador público|boekhouder|accountant\b.*\b(de|der|van)\b)\b/i, industry: 'finance', label: 'accounting title (non-EN)' },
-  
+  // Sales
   { pattern: /\b(vendedor|vendedora|ejecutivo de ventas|vertriebsmitarbeiter|vertriebsleiter|commercial\b.*(ventes|vente)|responsable commercial|vendedor de|verkoper|verkoopmedewerker)\b/i, industry: 'sales', label: 'sales title (non-EN)' },
-  
+  // HR
   { pattern: /\b(recursos humanos|personalreferent|personalleiter|ressources humaines|recursos humanos analista|personeelszaken|hr-manager\b)\b/i, industry: 'hr', label: 'HR title (non-EN)' },
-  
+  // Marketing
   { pattern: /\b(mercadotecnia|marketing digital especialista|marketingleiter|marketingmanager|responsable marketing|chef de marque|analista de marketing|marketeer\b)\b/i, industry: 'marketing', label: 'marketing title (non-EN)' },
-  
+  // Skilled trades
   { pattern: /\b(electricista|klempner|elektriker|installateur|électricien|plombier|eletricista|encanador|elektricien|loodgieter)\b/i, industry: 'skilled_trades', label: 'trade title (non-EN)' },
-  
+  // Hospitality
   { pattern: /\b(cocinero|chef de cocina|koch\b|köchin|cuisinier|chef de cuisine|cozinheiro|kok\b|hotelmanager|gerente de hotel)\b/i, industry: 'culinary', label: 'culinary title (non-EN)' },
-  
-  
-  
-  
+  // Customer service
+  // "atención/servicio al cliente" alone is a generic skill phrase every
+  // sales/retail/hospitality resume lists — only lock when it's an actual
+  // role title (representante/agente/ejecutivo de ...).
   { pattern: /\b((representante|agente|asesora?|ejecutiv[oa]) de (atención|servicio) al cliente|kundendienst|kundenservice|service client|atendimento ao cliente|klantenservice)\b/i, industry: 'customer_success', label: 'support title (non-EN)' },
-  
+  // Logistics / drivers
   { pattern: /\b(camionero|conductor de camión|lkw-fahrer|berufskraftfahrer|chauffeur routier|motorista de caminhão|vrachtwagenchauffeur|almacenista|lagerist|magasinier)\b/i, industry: 'logistics', label: 'driver/warehouse title (non-EN)' },
-  
+  // Administrative
   { pattern: /\b(asistente administrativo|asistente ejecutiva|secretaria|bürokauffrau|bürokaufmann|assistante de direction|assistente administrativo|secretaresse|administratief medewerker)\b/i, industry: 'administrative', label: 'administrative title (non-EN)' },
-  
+  // Janitorial / cleaning
   { pattern: /\b(limpieza|conserje|reinigungskraft|hausmeister|agent d'entretien|femme de ménage|auxiliar de limpeza|schoonmaker)\b/i, industry: 'janitorial', label: 'cleaning title (non-EN)' },
   // Childcare
   { pattern: /\b(niñera|educadora infantil|erzieherin|kinderpfleger|assistante maternelle|éducatrice|educadora de infância|pedagogisch medewerker)\b/i, industry: 'childcare', label: 'childcare title (non-EN)' },
@@ -4128,7 +4128,7 @@ const MULTILINGUAL_TITLE_LOCKS: Array<{ pattern: RegExp; industry: string; label
 ];
 
 // Hindi Devanagari titles need per-role routing (single regex above can't
-
+// carry multiple industries) — resolved here before the generic pass.
 const HINDI_TITLE_LOCKS: Array<{ pattern: RegExp; industry: string; label: string }> = [
   { pattern: /(नर्स|परिचारिका)/u, industry: 'healthcare', label: 'nursing title (HI)' },
   { pattern: /(चिकित्सक|डॉक्टर)/u, industry: 'healthcare', label: 'physician title (HI)' },
@@ -4141,10 +4141,10 @@ const HINDI_TITLE_LOCKS: Array<{ pattern: RegExp; industry: string; label: strin
   { pattern: /(फार्मासिस्ट|औषधालय)/u, industry: 'pharmacy', label: 'pharmacy title (HI)' },
 ];
 
-
-
-
-
+// ─── CERTIFICATION-BASED INDUSTRY LOCKING ────────────────────────────────────
+// Licenses/certifications that are near-unambiguous industry signals. Weaker
+// than a role lock (people change fields) but a strong anchor: adds a large
+// boost rather than force-locking.
 const CERT_LOCKS: Array<{ pattern: RegExp; industry: string; label: string; boost: number }> = [
   { pattern: /\b(registered nurse|rn license|bsn|msn|nclex|licensed practical nurse|lpn|cna certified)\b/i, industry: 'healthcare', label: 'nursing credential', boost: 15 },
   { pattern: /\b(md\b|do\b|board certified physician|usmle|medical license)\b/i, industry: 'healthcare', label: 'physician credential', boost: 15 },
@@ -4193,27 +4193,27 @@ function applyCertLocks(scores: Array<{ industry: string; score: number; signals
   }
 }
 
-
-
-
-
-
-
+/**
+ * Check if any job title on the resume matches a role-lock pattern.
+ * Returns the first match or null.
+ */
+// Aspirational phrasing means the candidate WANTS the role, not that they hold it —
+// "aspiring nurse seeking opportunities" in a summary must not lock healthcare.
 const ASPIRATIONAL_CONTEXT = /\b(aspiring|seeking|objective|goal|hoping to|looking to become|transitioning (in)?to|future|would like to be|dream of|interested in becoming|pursuing a career (as|in))\b/i;
 
-
-
+// Third-party phrasing means someone ELSE holds the role — "collaborated with
+// attorneys" must not lock legal for the candidate.
 const THIRD_PARTY_CONTEXT = /\b(work(ed|ing)? (closely )?with|supported?|supporting|liaised? with|collaborat\w+ with|partner\w* with|coordinat\w+ with|assist\w+|assistant to( the)?|secretary to( the)?|reporting to|reported to|on behalf of|for (the|our|their)|clients? includ\w+|alongside|team of|to the|to a\b|to our)\s*$/i;
 
-
-
-
-
+/**
+ * True when the role-lock match at `index` in `text` is a genuine claim of the
+ * role rather than an aspiration or a reference to someone else.
+ */
 function isGenuineRoleMatch(text: string, index: number): boolean {
-  
+  // Look at the ~40 chars before the match for third-party phrasing…
   const before = text.slice(Math.max(0, index - 40), index);
   if (THIRD_PARTY_CONTEXT.test(before)) return false;
-  
+  // …and at the containing line for aspirational phrasing
   const lineStart = text.lastIndexOf('\n', index) + 1;
   const lineEnd = text.indexOf('\n', index);
   const line = text.slice(lineStart, lineEnd === -1 ? undefined : lineEnd);
@@ -4226,7 +4226,7 @@ function findGenuineLock(
   text: string,
 ): { industry: string; matchedTitle: string } | null {
   for (const lock of locks) {
-    
+    // Global copy so we can walk past aspirational/third-party matches to a genuine one
     const re = new RegExp(lock.pattern.source, lock.pattern.flags.includes('g') ? lock.pattern.flags : lock.pattern.flags + 'g');
     let m: RegExpExecArray | null;
     while ((m = re.exec(text)) !== null) {
@@ -4242,8 +4242,8 @@ function applyRoleFirstAnchoring(
   jobTitles: string[],
   resumeText: string,
 ): { industry: string; matchedTitle: string } | null {
-  
-  
+  // Pass 1: extracted job titles only — these come from real employment entries,
+  // making them the strongest possible signal. No context checks needed.
   const titlesText = jobTitles.join('\n').toLowerCase();
   if (titlesText.trim()) {
     const titleLock = findGenuineLock(ROLE_LOCKS, titlesText)
@@ -4251,18 +4251,18 @@ function applyRoleFirstAnchoring(
       ?? findGenuineLock(HINDI_TITLE_LOCKS, titlesText);
     if (titleLock) return titleLock;
   }
-  
-  
+  // Pass 2: resume header/summary — weaker signal, so aspirational and
+  // third-party phrasing is filtered out before a match can lock.
   const headText = resumeText.substring(0, 500).toLowerCase();
   return findGenuineLock(ROLE_LOCKS, headText)
     ?? findGenuineLock(MULTILINGUAL_TITLE_LOCKS, headText)
     ?? findGenuineLock(HINDI_TITLE_LOCKS, headText);
 }
 
+// ─── FIX #4: REQUIRED ANCHOR TERMS ──────────────────────────────────────────
 
-
-
-
+// Each industry must have at least one of these terms present.
+// If none appear, the detection is almost certainly noise from a long skills list.
 const REQUIRED_ANCHORS: Record<string, string[]> = {
   finance: ['financial', 'revenue', 'budget', 'investment', 'accounting', 'portfolio', 'trading', 'audit', 'banking', 'p&l', 'forecast', 'valuation', 'capital'],
   technology: ['software', 'code', 'engineering', 'developer', 'programming', 'deploy', 'api', 'database', 'cloud', 'system', 'technical', 'infrastructure'],
@@ -4326,17 +4326,17 @@ const REQUIRED_ANCHORS: Record<string, string[]> = {
 
 function checkRequiredAnchors(industry: string, resumeText: string): boolean {
   const anchors = REQUIRED_ANCHORS[industry];
-  if (!anchors) return true; 
+  if (!anchors) return true; // no anchor list = don't penalize
   const lower = resumeText.toLowerCase();
   return anchors.some(a => lower.includes(a));
 }
 
-
-
-
-
-
-
+// Unambiguous, field-exclusive terms for the strong-anchor secondary path.
+// REQUIRED_ANCHORS is deliberately loose (single words like "model"/"training")
+// and would false-positive there — a nurse who mentions "staff training" must
+// NOT read as machine learning. Every term here only appears on resumes that
+// genuinely work in the field. Substring-matched on lowercased text, so avoid
+// short strings that can occur inside other words.
 const STRONG_SECONDARY_ANCHORS: Record<string, string[]> = {
   machine_learning: ['tensorflow', 'pytorch', 'deep learning', 'neural network', 'scikit-learn', 'keras', 'hugging face', 'xgboost', 'model inference'],
   data_science: ['pandas', 'scikit-learn', 'jupyter', 'statistical modeling', 'regression analysis', 'rstudio', 'r studio'],
@@ -4348,10 +4348,10 @@ const STRONG_SECONDARY_ANCHORS: Record<string, string[]> = {
   marketing: ['demand generation', 'google ads', 'marketing automation', 'brand strategy', 'content calendar'],
 };
 
+// ─── FIX #6: SENIORITY × INDUSTRY PLAUSIBILITY ───────────────────────────────
 
-
-
-
+// Patterns in job titles that suggest a seniority level (for plausibility check only;
+// this is separate from the full seniority detection engine in index.ts).
 function inferSeniorityFromTitles(titles: string[]): string {
   const joined = titles.join(' ').toLowerCase();
   if (/\b(ceo|cto|cfo|coo|cpo|cmo|chief|president|founder|co-founder|managing partner|managing director|executive vice president|evp)\b/.test(joined)) return 'executive';
@@ -4361,38 +4361,38 @@ function inferSeniorityFromTitles(titles: string[]): string {
   return 'mid';
 }
 
-
-
+// Industry × seniority combos that are genuinely implausible and likely indicate
+// misclassification. Does NOT fire for role-locked detections.
 const IMPLAUSIBLE_COMBOS: Array<{ industry: string; seniority: string; reason: string }> = [
-  
+  // A C-suite executive is almost never "retail" — they'd be "consulting" or "general"
   { industry: 'retail', seniority: 'executive', reason: 'C-suite exec rarely classified as retail' },
-  
+  // Entry-level "consulting" is extremely rare — usually misclassified from PM/ops
   { industry: 'consulting', seniority: 'entry', reason: 'Entry-level consulting is unusual — likely PM or ops' },
-  
+  // Data engineering executive is extremely rare — usually VP Engineering or CTO
   { industry: 'data_engineering', seniority: 'executive', reason: 'Exec data engineer — likely technology or engineering' },
-  
+  // Machine learning entry level without any ML-specific titles is usually technology
   { industry: 'machine_learning', seniority: 'executive', reason: 'Exec ML role — likely technology or data_science' },
-  
+  // Manufacturing executive with no mfg keywords — usually engineering or ops
   { industry: 'manufacturing', seniority: 'entry', reason: 'Entry manufacturing — verify vs engineering' },
 ];
 
 function checkSeniorityIndustryPlausibility(industry: string, seniority: string, titles: string[]): boolean {
-  
+  // Returns true if the combo is implausible (= confidence should be capped)
   const joined = titles.join(' ').toLowerCase();
   for (const combo of IMPLAUSIBLE_COMBOS) {
     if (combo.industry === industry && combo.seniority === seniority) {
-      
+      // Extra guard: if the titles explicitly contain the industry name, it's plausible
       if (REQUIRED_ANCHORS[industry]?.some(a => joined.includes(a))) return false;
-      return true; 
+      return true; // implausible
     }
   }
   return false;
 }
 
-
-
-
-
+/**
+ * Main detection function
+ * @param dynamicCorrections - Optional correction data from DB for dynamic learning
+ */
 export function detectIndustry(
   resumeText: string,
   dynamicCorrections?: Record<string, { target: string; boost: number }[]>,
@@ -4400,11 +4400,11 @@ export function detectIndustry(
 ): DetectionResult {
   const sections = extractSections(resumeText);
 
-  
+  // === EDUCATION SIGNALS — run before main scoring so boosts are baked in ===
   const educationBoosts = extractEducationSignals(resumeText);
   const educationSignalStrings = educationBoosts.map(e => e.signal);
 
-  
+  // Calculate scores for all industries
   const scores: Array<{ industry: string; score: number; signals: string[] }> = [];
 
   for (const industry of Object.keys(INDUSTRY_KEYWORDS)) {
@@ -4412,7 +4412,7 @@ export function detectIndustry(
     const signals = result.signals;
     let score = result.score;
 
-    
+    // Apply education boosts
     for (const edu of educationBoosts) {
       if (edu.industry === industry) {
         score += edu.boost;
@@ -4433,10 +4433,10 @@ export function detectIndustry(
     });
   }
 
-  
-  
-  
-  
+  // === RECENCY WEIGHTING ===
+  // Resumes are reverse-chronological: the text right after the experience
+  // heading is the CURRENT role. A 2015-2018 marketing era must not outweigh
+  // a 2021-present data era — detection should reflect who the candidate is now.
   {
     const lowerAll = resumeText.toLowerCase();
     const expHeading = lowerAll.search(/\b(work experience|professional experience|employment history|experience|work history)\b/);
@@ -4447,7 +4447,7 @@ export function detectIndustry(
         if (!kw) continue;
         let recentHits = 0;
         for (const title of kw.titles) {
-          if (recentBlock.includes(title)) recentHits += 2; 
+          if (recentBlock.includes(title)) recentHits += 2; // a recent TITLE is the strongest recency signal
         }
         for (const term of kw.primary) {
           if (recentBlock.includes(term)) recentHits += 1;
@@ -4461,21 +4461,21 @@ export function detectIndustry(
     }
   }
 
-  
+  // Sort by score
   scores.sort((a, b) => b.score - a.score);
 
-  
+  // Apply disambiguation rules to handle skills-section noise
   applyDisambiguation(scores);
 
-  
-  
-  
-  
+  // === FIX #2: ROLE-FIRST TITLE ANCHORING ===
+  // Certain job titles unambiguously lock the industry regardless of keyword scores.
+  // A "Registered Nurse" can't be technology; an "Attorney" can't be marketing.
+  // These take precedence over ANY keyword-based scoring result.
   const roleLocks = applyRoleFirstAnchoring(sections.jobTitles, resumeText);
   if (roleLocks) {
     const lockedEntry = scores.find(s => s.industry === roleLocks.industry);
     if (lockedEntry) {
-      lockedEntry.score = Math.max(lockedEntry.score, 40); 
+      lockedEntry.score = Math.max(lockedEntry.score, 40); // force to top
       lockedEntry.signals.unshift(`Role-lock: "${roleLocks.matchedTitle}" → ${roleLocks.industry}`);
     } else {
       scores.push({ industry: roleLocks.industry, score: 40, signals: [`Role-lock: "${roleLocks.matchedTitle}" → ${roleLocks.industry}`] });
@@ -4484,16 +4484,16 @@ export function detectIndustry(
     console.log(`[INDUSTRY-DETECTION] Role-lock applied: "${roleLocks.matchedTitle}" → ${roleLocks.industry}`);
   }
 
-  
-  
+  // === CERTIFICATION-BASED LOCKING ===
+  // Licenses (RN, CPA, PE, CISSP…) are near-unambiguous anchors — large boost.
   applyCertLocks(scores, resumeText);
   scores.sort((a, b) => b.score - a.score);
 
-  
-  
-  
-  
-  
+  // === JD-FIRST INDUSTRY OVERRIDE ===
+  // When a job description is provided, the TARGET role's industry should anchor
+  // the analysis — a teacher applying to an edtech PM role should be analyzed
+  // against PM expectations, not education. Compute the JD's own top industry;
+  // if it's strong and differs from the resume's top, boost it heavily.
   let jdIndustry: string | undefined;
   if (jobDescriptionText && jobDescriptionText.trim().length > 100) {
     let jdTop: { industry: string; score: number } | null = null;
@@ -4515,15 +4515,15 @@ export function detectIndustry(
     }
   }
 
-  
-  
-  
+  // === FIX #1: THIN RESUME BRANCH ===
+  // If resume is very short (< 80 words), keyword scoring is unreliable.
+  // Fall back to title-only lookup to avoid noise-driven misclassification.
   const wordCount = resumeText.split(/\s+/).filter(Boolean).length;
   if (wordCount < 80 && sections.jobTitles.length > 0) {
     const titleOnlyLock = applyRoleFirstAnchoring(sections.jobTitles, resumeText);
     if (titleOnlyLock) {
       console.log(`[INDUSTRY-DETECTION] Thin resume (${wordCount} words) — title-only override: ${titleOnlyLock.industry}`);
-      
+      // Suppress all keyword-driven scores; only keep title signal
       for (const s of scores) {
         if (s.industry !== titleOnlyLock.industry) s.score *= 0.2;
       }
@@ -4534,46 +4534,46 @@ export function detectIndustry(
   const top = scores[0];
   const second = scores[1];
 
-  
+  // === FEEDBACK LOOP: Apply correction boosts (dynamic or static) ===
   applyCorrectionsBoost(scores, top.industry, dynamicCorrections);
 
-  
+  // Re-read top/second after potential re-sort
   const adjustedTop = scores[0];
   const adjustedSecond = scores[1];
 
-  
+  // Determine confidence — with boosted thresholds for title-matched industries
   let confidence: 'high' | 'medium' | 'low';
   const hasTitles = hasStrongTitleSignal(adjustedTop.signals);
   
   if (hasTitles && adjustedTop.score >= 10) {
     confidence = 'high';
   } else if (hasTitles && adjustedTop.score >= 7 && adjustedSecond && (adjustedTop.score / adjustedSecond.score) >= 1.4) {
-    
+    // Title match + clear lead over second place — still high confidence
     confidence = 'high';
   } else if (adjustedTop.score >= 18 && (adjustedTop.score / (adjustedSecond?.score || 1)) >= 1.6) {
-    
+    // Very high keyword score with clear margin — high confidence even without title
     confidence = 'high';
   } else if (adjustedTop.score >= 11 && (adjustedTop.score / (adjustedSecond?.score || 1)) >= 1.3) {
-    
+    // Solid keyword score with reasonable margin — medium confidence
     confidence = 'medium';
   } else if (hasTitles && adjustedTop.score >= 5) {
-    
+    // Title match but weak keyword support — medium confidence
     confidence = 'medium';
   } else {
-    
+    // Weak or no title, marginal keyword score — low confidence, trust AI
     confidence = 'low';
   }
   
-  
+  // Check for mixed signals — but NOT if top has title matches
   if (!hasTitles && adjustedSecond && adjustedSecond.score > 0 && (adjustedTop.score / adjustedSecond.score) < 1.3) {
     confidence = confidence === 'high' ? 'medium' : 'low';
     adjustedTop.signals.push(`Note: Also shows signals for ${adjustedSecond.industry}`);
   }
   
-  
-  
-  
-  
+  // === FIX #4: REQUIRED ANCHOR TERMS ===
+  // Each industry has 3–4 anchor terms that any genuine resume in that field will mention.
+  // If ALL are absent, the detection is almost certainly noise from a long skills list.
+  // Cap confidence at 'medium' in that case — do not override to 'high'.
   if (confidence === 'high' && !roleLocks) {
     const anchorsPresent = checkRequiredAnchors(adjustedTop.industry, resumeText);
     if (!anchorsPresent) {
@@ -4583,12 +4583,12 @@ export function detectIndustry(
     }
   }
 
-  
+  // Determine initial industry
   let finalIndustry = adjustedTop.score >= 3 ? adjustedTop.industry : 'general';
   let finalSignals = adjustedTop.signals;
   let finalScore = adjustedTop.score;
 
-  
+  // === FALLBACK KEYWORD PASS ===
   if (confidence === 'low' || finalIndustry === 'general') {
     const fallback = fallbackKeywordPass(resumeText);
     if (fallback && fallback.score > finalScore) {
@@ -4602,12 +4602,12 @@ export function detectIndustry(
     }
   }
   
-  
-  
+  // === PHANTOM INDUSTRY REMAPPING (v3 — MANDATORY) ===
+  // Military/general should NEVER be a final result
   finalIndustry = remapPhantomIndustry(finalIndustry, resumeText, scores);
   
-  
-  
+  // DOUBLE-CHECK: If remap still returned a phantom, pick the top-scoring real industry
+  // or fall back to consulting only for military (career transition context).
   if (['military', 'general'].includes(finalIndustry)) {
     const topReal = scores.find(s => !['military', 'general'].includes(s.industry) && s.score >= 3);
     if (topReal) {
@@ -4621,15 +4621,15 @@ export function detectIndustry(
       if (confidence === 'high') confidence = 'medium';
       finalSignals.push('Military transition with no industry signals → consulting');
     } else {
-      
+      // True general resume — pick consulting as a reasonable neutral
       console.log(`[INDUSTRY-DETECTION] FORCE-KILL: genuine general resume → general (kept for low-signal profiles)`);
       finalIndustry = 'general';
     }
   }
   
-  
-  
-  
+  // === FIX #6: SENIORITY × INDUSTRY PLAUSIBILITY CHECK ===
+  // Certain industry × seniority combos are implausible and indicate misclassification.
+  // "VP, Clinical Operations" → technology is wrong; downgrade confidence to medium.
   const seniorityFromText = inferSeniorityFromTitles(sections.jobTitles);
   const implausible = checkSeniorityIndustryPlausibility(finalIndustry, seniorityFromText, sections.jobTitles);
   if (implausible && confidence === 'high' && !roleLocks) {
@@ -4638,9 +4638,9 @@ export function detectIndustry(
     console.log(`[INDUSTRY-DETECTION] Plausibility flag: ${finalIndustry} × ${seniorityFromText}`);
   }
 
-  
-  
-  
+  // === MULTI-INDUSTRY DETECTION ===
+  // If the second industry has a strong enough score relative to the first,
+  // report it as a secondary industry (useful for cross-functional roles)
   let secondaryIndustry: string | undefined;
   let secondaryScore: number | undefined;
   
@@ -4651,14 +4651,14 @@ export function detectIndustry(
   );
 
   if (nonPhantomSecond) {
-    
-    
-    
-    
-    
-    
-    
-    
+    // A secondary normally has to clear 50% of the primary's score. But when the
+    // primary is role-locked/cert-locked, that INFLATES its score and the 50% bar
+    // suppresses a genuine second field — the documented health-tech → machine
+    // learning miss (ML sits ~40% behind and gets dropped, so the confirmation
+    // strip never sees a blend to flag). Fix: if the runner-up has its OWN strong
+    // evidence (a matched job title or the field's required anchor terms), let it
+    // through at a lower 35% bar. Skills-list noise lacks title/anchor evidence,
+    // so this doesn't manufacture spurious blends.
     const strongBar = adjustedTop.score * 0.5;
     const relaxedBar = adjustedTop.score * 0.35;
     const hasOwnEvidence =
@@ -4671,11 +4671,11 @@ export function detectIndustry(
     }
   }
 
-  
-  
-  
-  
-  
+  // A role/cert-locked primary can inflate its score ~10x and crush a genuine
+  // second field below even the >=5 floor — the documented health→ML case
+  // (healthcare ~103, machine_learning ~3). The loose REQUIRED_ANCHORS can't
+  // gate this safely, so this last-resort path demands >=2 DISTINCT
+  // field-exclusive strong anchors before surfacing a low-score secondary.
   if (!secondaryIndustry) {
     const lowerResume = resumeText.toLowerCase();
     for (const s of scores) {
@@ -4693,15 +4693,15 @@ export function detectIndustry(
     }
   }
 
-  
+  // === SUB-ROLE DETECTION ===
   const subRole = detectSubRole(finalIndustry, resumeText);
 
-  
+  // === SUB-INDUSTRY TAXONOMY ===
   const subIndustry = detectSubIndustry(finalIndustry, resumeText) ?? undefined;
 
-  
-  
-  
+  // === HYBRID INDUSTRY BLEND ===
+  // When a strong secondary exists, express the split as percentages so the
+  // report can say "reads 60% data / 40% marketing".
   let industryBlend: { primaryPct: number; secondaryPct: number } | undefined;
   if (secondaryIndustry && secondaryScore && finalScore > 0) {
     const total = finalScore + secondaryScore;
@@ -4711,11 +4711,11 @@ export function detectIndustry(
     };
   }
 
-  
+  // === TECH STACK EXTRACTION (tech-family industries only) ===
   const isTechFamily = ['technology', 'machine_learning', 'data_engineering', 'data_science'].includes(finalIndustry);
   const techStack = isTechFamily ? extractTechStack(resumeText) : undefined;
 
-  
+  // === ALTERNATIVE INDUSTRIES with reason strings ===
   const altIndustries = scores
     .filter(s => s.industry !== finalIndustry && !['military', 'general'].includes(s.industry) && s.score >= 2)
     .slice(0, 3)
@@ -4748,9 +4748,9 @@ export function detectIndustry(
   };
 }
 
-
-
-
+/**
+ * Format detection result for AI prompt
+ */
 export function formatDetectionForPrompt(result: DetectionResult): string {
   const multiIndustryNote = result.secondaryIndustry 
     ? `\n- Secondary Industry: ${result.secondaryIndustry} (score: ${result.secondaryScore?.toFixed(1)})\n  NOTE: This candidate shows strong signals for BOTH industries. Tailor keywords and recommendations to cover both domains.`

@@ -1,11 +1,11 @@
-
-
-
-
-
-
-
-
+/**
+ * The cover-note gate, tested in BOTH directions.
+ *
+ * The rejection tests are the obvious half. The acceptance tests matter more:
+ * a gate that fails every honest note would send the candidate's generic note
+ * every single time, the feature would silently do nothing, and the only
+ * symptom would be an absence. Nobody files a bug against an absence.
+ */
 import { describe, it, expect } from "vitest";
 import { validateCoverNote, coverNotePrompt, gateCanCheck, MIN_CHARS, MAX_CHARS } from "./cover-note";
 
@@ -38,7 +38,7 @@ const ctx = {
   baseNote: "I care about systems where correctness matters more than speed of delivery.",
 };
 
-
+/** Grounded in the résumé, the posting and the candidate's own note. */
 const HONEST = `I care about backend systems where correctness matters more than speed of delivery, which is why this role caught my attention.
 
 At Meridian Health I led the migration of the billing service to Postgres and cut query latency by 40%, and before that I built payment reconciliation at Fintouch in Python and Go. Mentoring the junior engineers on that platform team was the part I enjoyed most.
@@ -53,7 +53,7 @@ describe("validateCoverNote — accepts honest notes", () => {
   });
 
   it("allows a figure that comes from the JOB POSTING rather than the résumé", () => {
-    
+    // Honest letters cite the employer's own numbers constantly.
     const note = HONEST.replace("caught my attention.", "caught my attention, especially shipping to 12 markets.");
     expect(validateCoverNote({ ...ctx, note }).ok).toBe(true);
   });
@@ -80,7 +80,7 @@ Should the team want someone who has already carried a payments migration end to
   });
 
   it("grounds a multi-word name when each word is grounded separately", () => {
-    
+    // "Meridian Health" in the résumé + "Robotics" in the posting.
     const note = HONEST.replace("Northwind Robotics", "Northwind Robotics").replace(
       "The payments platform", "The Northwind Robotics payments platform");
     expect(validateCoverNote({ ...ctx, note }).ok).toBe(true);
@@ -158,10 +158,10 @@ describe("validateCoverNote — rejects fabrication", () => {
 });
 
 describe("the gate knows which languages it can actually check", () => {
-  
-  
-  
-  
+  // THIS IS THE TEST THAT WAS MISSING. Every acceptance test above is in
+  // English, so nothing noticed that the whole heuristic is a property of the
+  // language. Production found it: a clean German note came back rejected over
+  // "Liefergeschwindigkeit", "Beitrag" and "Ihrem".
   it.each(["en", "en-GB", "es", "fr", "pt", "nl", "tl", undefined, ""])(
     "runs for %s, where a mid-sentence capital means a name", (lang) => {
       expect(gateCanCheck(lang)).toBe(true);
@@ -177,8 +177,8 @@ describe("the gate knows which languages it can actually check", () => {
   });
 
   it("demonstrates the German failure the check would otherwise produce", () => {
-    
-    
+    // Ordinary German prose, nothing invented — every flagged word is a common
+    // noun or a pronoun. Kept as the concrete reason gateCanCheck exists.
     const v = validateCoverNote({
       ...ctx,
       note: "Ich leitete die Migration des Abrechnungsdienstes und brachte Erfahrung mit Postgres ein. "
