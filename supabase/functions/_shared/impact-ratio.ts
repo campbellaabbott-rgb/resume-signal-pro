@@ -1,18 +1,18 @@
-// Bias-audit math for Shortlist: selection rates and impact ratios per
-// group and intersectional group, in the shape NYC Local Law 144 audits use.
-//
-// Method (Uniform Guidelines / LL144):
-//   selection rate  = advanced / total   (per group)
-//   impact ratio    = group rate / highest group rate
-//   four-fifths flag = impact ratio < 0.8
-//
-// Caveat carried into the output: the 4/5ths rule is a screening heuristic,
-// not a safe harbor — smaller gaps can still evidence disparate impact
-// (EEOC guidance). Groups below a minimum size are reported but marked
-// low-sample, since ratios on tiny groups are statistically meaningless.
+
+
+
+
+
+
+
+
+
+
+
+
 
 export interface AuditRecord {
-  advanced: boolean;          // final HUMAN decision, not the AI score
+  advanced: boolean;          
   sex?: string | null;
   raceEthnicity?: string | null;
 }
@@ -21,10 +21,10 @@ export interface GroupStat {
   group: string;
   total: number;
   advanced: number;
-  selectionRate: number;      // 0..1, rounded to 4dp
-  impactRatio: number | null; // vs highest-rate group; null when rate basis absent
-  fourFifthsFlag: boolean;    // true = below 0.8 threshold
-  lowSample: boolean;         // n < MIN_GROUP_SIZE — interpret with caution
+  selectionRate: number;      
+  impactRatio: number | null; 
+  fourFifthsFlag: boolean;    
+  lowSample: boolean;         
 }
 
 export interface ImpactAnalysis {
@@ -62,8 +62,8 @@ function computeGroups(records: Array<{ key: string; advanced: boolean }>): Grou
     lowSample: g.total < MIN_GROUP_SIZE,
   }));
 
-  // Impact ratio vs the HIGHEST selection rate among adequately-sampled groups
-  // (falling back to all groups when every group is small).
+  
+  
   const basisPool = stats.filter(s => !s.lowSample);
   const basis = Math.max(...(basisPool.length > 0 ? basisPool : stats).map(s => s.selectionRate), 0);
   for (const s of stats) {

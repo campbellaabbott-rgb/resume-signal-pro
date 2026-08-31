@@ -38,8 +38,8 @@ jane@example.com | (555) 123-4567
   });
 
   it("does not flag dense text as long as it has normal punctuation/line breaks", () => {
-    // Guards against the whitespace-ratio backstop being too aggressive on
-    // legitimately dense formatting (e.g. comma/semicolon-separated skill lists).
+    
+    
     const text = "Skills: JavaScript,TypeScript,React,Node.js,PostgreSQL,Docker,Kubernetes,AWS,GraphQL,Redis,Python,Go,Rust,SQL,NoSQL,CI/CD,Terraform,Microservices,REST,gRPC.\nCertifications: AWS Solutions Architect, CKA, PMP.\nLanguages: English, Spanish, French.";
     expect(looksGarbled(text)).toBe(false);
   });
@@ -56,7 +56,7 @@ jane@example.com | (555) 123-4567
   });
 
   it("flags a wall of glued-together text with almost no whitespace", () => {
-    const text = "a".repeat(500) + "b".repeat(500); // no whitespace at all, well over the length floor
+    const text = "a".repeat(500) + "b".repeat(500); 
     expect(looksGarbled(text)).toBe(true);
   });
 

@@ -19,7 +19,7 @@ describe("buildLanguageInstruction", () => {
   it("maps every supported locale code to a real language name, not the raw code", () => {
     for (const code of ["en-GB", "es", "hi", "tl", "de", "fr", "fr-CA", "nl", "pt"]) {
       const result = buildLanguageInstruction(code);
-      expect(result).not.toContain(`in ${code}.`); // would indicate a missing name mapping
+      expect(result).not.toContain(`in ${code}.`); 
     }
   });
 
