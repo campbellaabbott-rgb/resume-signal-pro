@@ -1727,6 +1727,7 @@ export type Database = {
       }
       job_board_postings: {
         Row: {
+          agency: boolean
           apply_url: string
           category: string
           company: string
@@ -1758,6 +1759,7 @@ export type Database = {
           work_mode: string | null
         }
         Insert: {
+          agency?: boolean
           apply_url: string
           category?: string
           company: string
@@ -1789,6 +1791,7 @@ export type Database = {
           work_mode?: string | null
         }
         Update: {
+          agency?: boolean
           apply_url?: string
           category?: string
           company?: string
