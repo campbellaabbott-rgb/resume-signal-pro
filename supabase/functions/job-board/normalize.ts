@@ -34,8 +34,10 @@ export interface JobPosting {
   /** Employment type from the vendor's STRUCTURED field only — never inferred
       from text. Same trinary-or-nothing contract as workMode: a value only
       when the feed states one, null otherwise, and the UI shows nothing on
-      null. Nine vendors carry it in the list payloads the ingest already
-      fetches (measured live 2026-08-28); the rest stay null. */
+      null. Nine vendors carried it in the list payloads the ingest already
+      fetches when measured live 2026-08-28; adp joined 2026-08-31 (its
+      client-authored work-level labels, pre-cleaned of pay-basis words before
+      the shared mapper); the rest stay null. */
   employmentType?: EmploymentType | null;
 }
 
@@ -730,6 +732,27 @@ export function stripCoordinateSuffix(location: string): string {
   return location.replace(COORD_SUFFIX, "").trim();
 }
 
+// Greenhouse and Lever both run separate EU infrastructure with its own API
+// and hosted-page hosts, and a tenant lives on exactly one side — the US host
+// answers 404 for an EU tenant, verified live 2026-08-31 (asobostudio). EU
+// boards carry a compound-token prefix (same pattern as workday's
+// tenant~dc~site); everything downstream — posting ids, the catalog, the
+// closure log — keeps the FULL prefixed token as the board's identity, and
+// only these two helpers ever strip it, at the moment a hostname is derived.
+// They live here rather than in index.ts so the fetch paths, the tests, and
+// the census tooling's live probes all derive hosts from the same functions.
+export function greenhouseApi(token: string): { host: string; token: string } {
+  return token.startsWith("eu~")
+    ? { host: "boards.eu.greenhouse.io", token: token.slice(3) }
+    : { host: "boards-api.greenhouse.io", token };
+}
+
+export function leverApi(token: string): { host: string; token: string } {
+  return token.startsWith("eu~")
+    ? { host: "api.eu.lever.co", token: token.slice(3) }
+    : { host: "api.lever.co", token };
+}
+
 export function normalizeGreenhouse(raw: { jobs?: GreenhouseJob[] }, company: string, token: string): JobPosting[] {
   // AN APPLY LINK SHARED BY FIVE TITLES IS A BOARD INDEX, NOT A JOB.
   //
@@ -752,6 +775,12 @@ export function normalizeGreenhouse(raw: { jobs?: GreenhouseJob[] }, company: st
     if (!titlesPerUrl.has(u)) titlesPerUrl.set(u, new Set());
     titlesPerUrl.get(u)!.add(j.title ?? "");
   }
+  // The reconstructed per-job page must sit on the SAME side of the Atlantic
+  // as the board: an EU tenant's pages are only served by the EU hosted-pages
+  // host, and the path wants the bare tenant slug, not the routing prefix.
+  const euBoard = token.startsWith("eu~");
+  const pageHost = euBoard ? "job-boards.eu.greenhouse.io" : "job-boards.greenhouse.io";
+  const pageToken = euBoard ? token.slice(3) : token;
   return (raw.jobs ?? []).map((j) => {
     const location = stripCoordinateSuffix(j.location?.name ?? "");
     const indexUrl = (titlesPerUrl.get(j.absolute_url ?? "")?.size ?? 0) >= 5;
@@ -771,7 +800,7 @@ export function normalizeGreenhouse(raw: { jobs?: GreenhouseJob[] }, company: st
       postedAt: j.first_published ?? null,
       category: categorize(j.title ?? "", j.departments?.[0]?.name),
       salary: null,
-      applyUrl: safeUrl(indexUrl ? `https://job-boards.greenhouse.io/${token}/jobs/${j.id}` : j.absolute_url),
+      applyUrl: safeUrl(indexUrl ? `https://${pageHost}/${pageToken}/jobs/${j.id}` : j.absolute_url),
     };
   }).filter((j) => j.applyUrl !== "");
 }
@@ -1430,6 +1459,173 @@ export function normalizePaylocity(items: PaylocityJobItem[], company: string, t
       };
     })
     .filter((j) => j.applyUrl !== "" && j.title !== "" && !j.id.endsWith(":"));
+}
+
+// ── ADP Workforce Now ─────────────────────────────────────────────────────
+// The career-center SPA at workforcenow.adp.com is a JS shell, but the JSON it
+// renders from is a public unauthenticated endpoint on the same host
+// (…/careercenter/public/events/staffing/v1/job-requisitions) — the page's own
+// data channel, confirmed by watching the live page's network calls
+// 2026-08-31. First-party but undocumented, so the canary/breaker discipline
+// applies, same as rippling and paylocity.
+//
+// Live-measured shape, 2026-08-31, 100 requisitions across four real boards
+// (7 + 13 + 82 + 19): every row carries the requisition id the detail
+// endpoint takes, a title and a real posting timestamp; a numeric share id
+// arrives in the string custom fields on 79/79 external rows and is the value
+// the SPA itself appends to a posting's share link; the employer's own salary
+// display string sits beside it on 65/79; department strings existed but were EMPTY on
+// all 100 (organizationalUnits: empty on all 100 as well), so department ships
+// only when a row actually states one. NOWHERE in any payload — list, detail,
+// branding config, page shell — does the employer's NAME appear; the catalog
+// entry is the only thing that names the board, exactly the oracle situation.
+export interface AdpNameCodedField {
+  nameCode?: { codeValue?: string };
+  stringValue?: string;
+  indicatorValue?: boolean;
+  codeValue?: string;
+  shortName?: string;
+}
+
+export interface AdpJobRequisition {
+  itemID?: string;
+  requisitionTitle?: string;
+  postDate?: string;
+  workLevelCode?: { shortName?: string };
+  customFieldGroup?: {
+    stringFields?: AdpNameCodedField[];
+    indicatorFields?: AdpNameCodedField[];
+    codeFields?: AdpNameCodedField[];
+  };
+  requisitionLocations?: Array<{
+    nameCode?: { shortName?: string };
+    address?: {
+      cityName?: string;
+      countrySubdivisionLevel1?: { codeValue?: string };
+      postalCode?: string;
+    };
+  }>;
+}
+
+/** Every custom field arrives as {nameCode:{codeValue}, value} — one finder. */
+const adpField = (fields: AdpNameCodedField[] | undefined, code: string): AdpNameCodedField | undefined =>
+  (Array.isArray(fields) ? fields : []).find((f) => f?.nameCode?.codeValue === code);
+
+/**
+ * A board token is the career-center URL's cid GUID — plus the ccId when the
+ * employer runs a non-default career center, because ccId SELECTS the board:
+ * measured live 2026-08-31, one cid answered 19 postings on its default center
+ * and 1 on its second (ccId 9200080780705_2). Compound form cid~ccId, same
+ * separator contract as workday/oracle; a bare cid means the default center.
+ */
+export function adpBoardParams(token: string): { cid: string; ccId: string } {
+  const [cid, ccId] = String(token).split("~");
+  return { cid: cid ?? "", ccId: ccId || "19000101_000001" };
+}
+
+// The vendor's own salary display string ("22.50 To 26.40 (USD) Hourly",
+// "70000.00 To 85000.00 (USD) Annually") — reshaped into the board's idiom
+// when it parses, passed through verbatim when the employer typed something
+// else. This is the string the SPA itself gates display on, so using it never
+// surfaces a range the employer chose not to render; payGradeRange also rides
+// the payload but exists on rows whose display string is absent, and mining it
+// would publish figures the career site does not show.
+const ADP_SALARY_FREQ: Record<string, string> = { hourly: "per hour", annually: "per year", monthly: "per month", weekly: "per week" };
+function adpSalary(raw: unknown): string | null {
+  const s = String(raw ?? "").trim();
+  if (!s) return null;
+  const m = s.match(/^(\d[\d,]*(?:\.\d+)?)\s+To\s+(\d[\d,]*(?:\.\d+)?)\s+\(([A-Za-z]{3})\)\s+(\w+)$/i);
+  if (!m) return s;
+  const num = (x: string) => {
+    const n = Number(x.replace(/,/g, ""));
+    if (!Number.isFinite(n)) return x;
+    // Whole figures group ("70,000"); fractional ones keep their cents
+    // ("22.50"), because an hourly rate with the cents lopped off reads as a
+    // different number.
+    return Number.isInteger(n) ? n.toLocaleString("en-US") : n.toFixed(2);
+  };
+  const freq = ADP_SALARY_FREQ[m[4].toLowerCase()] ?? m[4].toLowerCase();
+  return `${m[3].toUpperCase()} ${num(m[1])}–${num(m[2])} ${freq}`;
+}
+
+// Country never arrives as a structured field — measured 2026-08-31, zero of
+// 67 requisition locations carried a country code on the address — so it is
+// read from the tail of the location display string, which on every
+// country-bearing sample ends with a two-letter code (usually preceded by a
+// two-letter region). Two traps live here: the two-letter word people write
+// for Britain that is NOT its ISO code (normalizePaylocity paid for that one
+// already), and the tail of a countryless city-plus-state string being a US
+// state that IS some other country's ISO code — California/Canada is only the
+// loudest of a dozen such collisions. A state-shaped tail is read as a country
+// only when it follows another two-letter code (the measured three-segment
+// shape); otherwise the string falls to detectCountry, whose state patterns
+// read it as US.
+const US_STATE_TAIL = /^(AL|AK|AZ|AR|CA|CO|CT|DE|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY|DC)$/;
+function adpCountry(locationText: string): string | null {
+  const segs = locationText.split(",").map((x) => x.trim()).filter(Boolean);
+  const tail = (segs[segs.length - 1] ?? "").toUpperCase();
+  const prev = segs[segs.length - 2] ?? "";
+  if (!/^[A-Z]{2}$/.test(tail)) return detectCountry(locationText);
+  if (tail === "UK") return "GB";
+  if (US_STATE_TAIL.test(tail) && !/^[A-Za-z]{2}$/.test(prev)) return detectCountry(locationText);
+  return tail;
+}
+
+export function normalizeAdp(items: AdpJobRequisition[], company: string, token: string): JobPosting[] {
+  const { cid, ccId } = adpBoardParams(token);
+  const boardUrl = `https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=${cid}&ccId=${ccId}&lang=en_US`;
+  return (Array.isArray(items) ? items : [])
+    // The public payload marks internal-only postings with an indicator; their
+    // apply flow sits behind the employee login. Same line paylocity drew:
+    // ingest and verify must agree on what a posting is, and neither counts
+    // these.
+    .filter((j) => adpField(j.customFieldGroup?.indicatorFields, "InternalPostingFlag")?.indicatorValue !== true)
+    .map((j) => {
+      const title = String(j.requisitionTitle ?? "").trim();
+      const reqId = String(j.itemID ?? "").trim();
+      const locs = Array.isArray(j.requisitionLocations) ? j.requisitionLocations : [];
+      const first = locs[0] ?? {};
+      const firstText = String(first.nameCode?.shortName ?? "").trim() ||
+        [first.address?.cityName, first.address?.countrySubdivisionLevel1?.codeValue].filter(Boolean).join(", ").trim();
+      const location = [firstText, locs.length > 1 ? `+${locs.length - 1} more` : ""].filter(Boolean).join(" ");
+      const dept = String(adpField(j.customFieldGroup?.stringFields, "HomeDepartment")?.stringValue ?? "").trim() || null;
+      // The numeric share id the SPA's own URL builder appends to the
+      // career-center link — confirmed against the app bundle and against
+      // Google-indexed posting URLs. Distinct from the API's requisition id,
+      // which the posting id and the detail sweep use. A row without one still
+      // links to the board page, where the posting is one click away.
+      const shareId = String(adpField(j.customFieldGroup?.stringFields, "ExternalJobID")?.stringValue ?? "").trim();
+      // workLevelCode is client-authored ("Part-Time Hourly", "Full Time
+      // Employee", "Temporary/seasonal" — all measured live); pay-basis and
+      // filler words are stripped so the shared mapper sees the employment
+      // kind, and anything it still doesn't recognize stays null.
+      const employmentType = normalizeEmploymentType(
+        String(j.workLevelCode?.shortName ?? "").toLowerCase().split("/")[0].replace(/\b(hourly|salaried|salary|employee)\b/g, " ").trim(),
+      );
+      // No structured work-mode field anywhere in the measured payloads —
+      // text detection or nothing, per the trinary-or-nothing contract.
+      const workMode = detectWorkMode(location, title, dept);
+      return {
+        id: `adp:${token}:${reqId}`,
+        source: "adp" as const,
+        token,
+        company,
+        title,
+        location,
+        workMode,
+        remote: workMode === "remote",
+        department: dept,
+        // A real ISO timestamp with offset; the shared ingest window does the
+        // age filtering, the adapter does none of its own.
+        postedAt: safeIso(j.postDate),
+        category: categorize(title, dept),
+        salary: adpSalary(adpField(j.customFieldGroup?.stringFields, "SalaryRange")?.stringValue),
+        country: adpCountry(firstText),
+        employmentType,
+        applyUrl: shareId ? `${boardUrl}&jobId=${shareId}` : boardUrl,
+      };
+    })
+    .filter((j) => j.title !== "" && !j.id.endsWith(":"));
 }
 
 // ── Pinpoint ──────────────────────────────────────────────────────────────

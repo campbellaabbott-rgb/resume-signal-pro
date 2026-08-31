@@ -99,7 +99,8 @@ async function pool(items, n, fn) {
 }
 
 async function main() {
-  const [file, tld = ".co.uk", limitRaw = "4000", outPath = "custom-domains.json"] = process.argv.slice(2);
+  const [file, tld = ".co.uk", limitRaw = "4000", outPath = "custom-domains.json", prefixesRaw = "careers,jobs"] = process.argv.slice(2);
+  const PREFIXES = prefixesRaw.split(",").map((x) => x.trim()).filter(Boolean);
   if (!file) { console.error("usage: node scripts/census-custom-domains.mjs <tranco.csv> [tld] [limit] [out]"); process.exit(2); }
 
   const domains = readFileSync(file, "utf8").split("\n")
@@ -110,7 +111,7 @@ async function main() {
   // STAGE 1 — DNS. Two orders of magnitude cheaper than an HTTPS fetch, and it
   // discards ~94% of the corpus before anything is downloaded.
   const named = await pool(domains, 60, async (d) => {
-    for (const prefix of ["careers", "jobs"]) {
+    for (const prefix of PREFIXES) {
       const host = `${prefix}.${d}`;
       const cname = await sh("dig", ["+short", "+time=2", "+tries=1", "CNAME", host]);
       if (!cname || cname.includes("connection timed out")) continue;

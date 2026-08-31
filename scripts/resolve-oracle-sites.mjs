@@ -74,6 +74,24 @@ await Promise.all(Array.from({ length: CONCURRENCY }, async () => {
         .map((s) => ({ num: s.SiteNumber ?? s.Number ?? null, name: brandName(s) }))
         .filter((s) => s.num && s.name);
       if (branded.length === 0) { skipped.push({ token: t.token, why: "no branded active site" }); continue; }
+      // A DEV/DEMO instance splits into dozens of "brands" that all serve the
+      // SAME requisition pool — egue-dev12 offered 83 sites at an identical
+      // 1,777 count each (2026-08-31). Real multi-brand tenants have distinct
+      // per-site counts; more than five sites sharing one count is one pool
+      // wearing many hats, and none of them is an employer.
+      if (branded.length > 5) {
+        const probeCounts = [];
+        for (const s2 of branded.slice(0, 6)) {
+          try { probeCounts.push(await countOf(t.token, s2.num)); } catch { probeCounts.push(null); }
+          await new Promise((r) => setTimeout(r, 250));
+        }
+        const nums = probeCounts.filter((c) => typeof c === "number" && c > 0);
+        if (nums.length >= 5 && new Set(nums).size === 1) {
+          skipped.push({ token: t.token, why: `shared-pool instance: ${branded.length} sites all count ${nums[0]}` });
+          console.log(`  SKIP ${t.token} — ${branded.length} sites share one requisition pool (${nums[0]} each)`);
+          continue;
+        }
+      }
       for (const s of branded) {
         try {
           const count = await countOf(t.token, s.num);

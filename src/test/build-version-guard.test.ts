@@ -175,7 +175,7 @@ const PINNED = {
   // as a matter of course this time — the .2 bump had to be made retroactively
   // after three commits shipped undeployed behind an unchanged version string,
   // and "is it live?" cost six behavioural probes to answer.
-  sourcesHash: "a765a394a917ed6a",
+  sourcesHash: "ca54a14320a92a4e",
   // 2026-08-21.4: disables the exact-word tier's company matcher, whose index
   // never built. Bumped so the mitigation is externally identifiable.
   // 2026-08-21.5: routed retrieval. index.ts + two new modules; sources.ts
@@ -463,7 +463,21 @@ const PINNED = {
   // chunked: the .9 pages overrides made Kroger a 160-second serial hot
   // slice that pinned the shed at L2 and stalled the bootstrap drain — the
   // reviewer called this exact cost when the override landed.
-  buildVersion: "2026-08-30.11",
+  //
+  // 2026-08-30.12: two vendors' worth of reach in one bump. EU-hosted
+  // greenhouse/lever tenants fetch from the EU hosts via an eu~ token prefix
+  // (the workday compound-token pattern; hostname derivation has exactly one
+  // seam, in normalize.ts — the API host is boards.eu.greenhouse.io, and the
+  // context that said boards-api.eu was refuted live). ADP Workforce Now
+  // lands as the 18th source with its full census pipeline; its boards merge
+  // in the next bump. sources.ts grew ~1,700 boards: the waves-17/12 harvest
+  // (Paylocity 1,464 more; an 83-site Oracle DEMO instance and the Quess
+  // staffing conglomerate were caught and killed — dev tokens are blocked
+  // now, and a tenant whose "brands" all report one identical count is a
+  // shared requisition pool, not employers), plus 142 EU tenants (184 EU
+  // arms of carried employers deduped away). Giants round 2: Costco 208
+  // pages (~18.6k standing gap), Ulta 105, JCPenney 65 -> 72.
+  buildVersion: "2026-08-30.12",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {

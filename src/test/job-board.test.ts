@@ -924,12 +924,16 @@ describe("vendor schema-drift canary", () => {
     // joined 2026-07-26 (vendor #15); paylocity 2026-08-30 (vendor #17, an
     // embedded-page-payload vendor like rippling — the class the canary was
     // built for — seeded the same day its adapter landed rather than after
-    // the first silent drain).
-    const vendors = ["greenhouse", "lever", "ashby", "smartrecruiters", "workable", "bamboohr", "rippling", "workday", "pinpoint", "icims", "paylocity"];
+    // the first silent drain); adp 2026-08-31 (vendor #18, a SPA whose data
+    // channel is an undocumented public endpoint — the same class, seeded the
+    // same day for the same reason).
+    const vendors = ["greenhouse", "lever", "ashby", "smartrecruiters", "workable", "bamboohr", "rippling", "workday", "pinpoint", "icims", "paylocity", "adp"];
     for (const v of vendors) {
       expect(CANARIES.filter((c) => c.vendor === v).length).toBe(2);
     }
-    expect(CANARIES.length).toBe(22);
+    // 22 → 24 on 2026-08-31 with adp's pair — the count pin exists so a
+    // canary appearing or vanishing is a conscious act, not a drive-by.
+    expect(CANARIES.length).toBe(24);
   });
 });
 

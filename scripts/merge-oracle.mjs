@@ -40,7 +40,7 @@ const GOV_BLOCK = /\b(city of|county of|state of|commonwealth of|government of|u
 // employer has a name; a PORTAL has a domain.
 const GOV_EXTRA = /health authority|healthcareersinsask|\bnhs\b|crown corporation/i;
 const DOMAIN_NAME = /^[a-z0-9-]+(\.[a-z0-9-]+)+\.(ca|com|org|net|gov|edu|co\.uk)$/i;
-const TOKEN_BLOCK = /(demo|test|sample|sandbox|staging)/i;
+const TOKEN_BLOCK = /(demo|test|sample|sandbox|staging|-dev\d*\b)/i;
 // mill-screen-all's evidence set VERBATIM (plus "talent acquisition firm",
 // which convicted The Symicor Group in the workable wave). A looser draft here
 // with bare "our customer" convicted Kroger on "amazing experiences for our

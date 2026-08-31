@@ -241,6 +241,7 @@ describe("published source lists name every system the board actually serves", (
     workable: "Workable", bamboohr: "BambooHR", recruitee: "Recruitee",
     teamtailor: "Teamtailor", personio: "Personio", breezy: "Breezy",
     rippling: "Rippling", pinpoint: "Pinpoint", usajobs: "USAJOBS", paylocity: "Paylocity",
+    adp: "ADP Workforce Now",
   };
 
   it("the source set is non-trivial (guard would be vacuous otherwise)", () => {

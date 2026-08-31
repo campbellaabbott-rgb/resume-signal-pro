@@ -60,6 +60,18 @@ const SURTS = [
   // lowercase prefix covers every variant and the extractor matches the path
   // case-insensitively.
   { vendor: "paylocity", kind: "paylocity", surt: "com,paylocity,recruiting)/recruiting/jobs/all/", host: "recruiting.paylocity.com" },
+  // ADP Workforce Now career centers all live on ONE shared host and one page
+  // path; the board identity rides in the query string (a cid GUID, plus a
+  // ccId when the employer runs a non-default career center — the ccId
+  // SELECTS the board: one live cid answered 19 postings on its default
+  // center and 1 on its second, measured 2026-08-31). SURT keys lowercase and
+  // sort the query, so the page-path prefix covers every parameter order;
+  // confirmed against CC-MAIN-2026-30's cluster.idx before adding: the prefix
+  // owns a sample point, and its one block held 3,621 recruitment-page rows
+  // naming 1,764 distinct cids (362 of them on non-default career centers).
+  // Like paylocity, tokens are opaque GUIDs — NOT_COMPANY can never match one
+  // and naming is verify-time work, not census work.
+  { vendor: "adp", kind: "adp", surt: "com,adp,workforcenow)/mascsr/default/mdf/recruitment/recruitment.html", host: "workforcenow.adp.com" },
   { vendor: "workday", kind: "workday", surt: "com,myworkdayjobs,", hostSuffix: ".myworkdayjobs.com" },
   // Oracle Fusion recruiting. THE HIGHEST-YIELD VENDOR WE CARRY and, until
   // now, one of only two with no standing census coverage at all: 88 boards
@@ -243,6 +255,20 @@ for (const s of SURTS) {
         const m = url.pathname.match(/^\/recruiting\/jobs\/all\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(?:[\/?#]|$)/i);
         if (!m) continue;
         add("paylocity", m[1].toLowerCase()); found++;
+      } else if (s.kind === "adp") {
+        if (host !== s.host) continue;
+        if (!/^\/mascsr\/default\/mdf\/recruitment\/recruitment\.html$/i.test(url.pathname)) continue;
+        // Identity lives in the query string, and recorded page URLs mix
+        // parameter casings — read them case-insensitively. The token is the
+        // cid GUID alone for a default career center, cid~ccId for the rest,
+        // matching what the fetcher's token parser assumes.
+        const q = {};
+        for (const [k, v] of url.searchParams) q[k.toLowerCase()] ??= v;
+        const cid = String(q.cid ?? "").toLowerCase();
+        if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(cid)) continue;
+        const ccid = String(q.ccid ?? "");
+        const custom = /^[0-9]{1,20}_[0-9]{1,10}$/.test(ccid) && ccid !== "19000101_000001";
+        add("adp", custom ? `${cid}~${ccid}` : cid); found++;
       } else {
         // workday: {tenant}.{dc}.myworkdayjobs.com/(locale/)?{site}/…
         const m = host.match(/^([a-z0-9-]+)\.(wd\d+)\.myworkdayjobs\.com$/);

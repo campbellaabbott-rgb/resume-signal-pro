@@ -28,7 +28,12 @@
 // all three lists is the exact icims/breezy hole this file's header documents
 // (rows null forever, unswept and undecided). Appended LAST so it queues
 // behind rippling.
-export const DETAIL_DESC_SOURCES = ["workday", "smartrecruiters", "bamboohr", "oracle", "breezy", "rippling", "paylocity"] as const;
+// adp joined 2026-08-31, the day ITS vendor landed, for the plainer version
+// of the same measurement: the list payload carries no description field at
+// all, and the same public endpoint's per-requisition detail serves the full
+// HTML JD (6,928 chars on the sampled posting). Appended LAST so it queues
+// behind paylocity.
+export const DETAIL_DESC_SOURCES = ["workday", "smartrecruiters", "bamboohr", "oracle", "breezy", "rippling", "paylocity", "adp"] as const;
 
 /**
  * Vendors whose description rides along in the LIST payload, so ingest stores it

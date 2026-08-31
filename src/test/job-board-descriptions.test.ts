@@ -119,7 +119,7 @@ describe("jobPostingLdDescription — Breezy's only description source", () => {
 describe("vendor description classification", () => {
   it("sweeps exactly the vendors that need a per-posting fetch", () => {
     expect([...DETAIL_DESC_SOURCES].sort()).toEqual(
-      ["bamboohr", "breezy", "oracle", "paylocity", "rippling", "smartrecruiters", "workday"].sort(),
+      ["adp", "bamboohr", "breezy", "oracle", "paylocity", "rippling", "smartrecruiters", "workday"].sort(),
     );
   });
 
@@ -133,10 +133,12 @@ describe("vendor description classification", () => {
     expect([...DETAIL_DESC_SOURCES]).toContain("rippling");
     // paylocity took the tail slot 2026-08-30, the day the vendor landed —
     // same reasoning as rippling's own append (a new vendor queues behind the
-    // established backlog, never ahead of it). Rippling keeps its place in
-    // line; only the "last" pin moves.
-    expect(DETAIL_DESC_SOURCES[DETAIL_DESC_SOURCES.length - 1]).toBe("paylocity");
-    expect(DETAIL_DESC_SOURCES[DETAIL_DESC_SOURCES.length - 2]).toBe("rippling");
+    // established backlog, never ahead of it). adp took it from paylocity on
+    // 2026-08-31 for the identical reason. Everyone keeps their place in
+    // line; only the "last" pins move, dated each time.
+    expect(DETAIL_DESC_SOURCES[DETAIL_DESC_SOURCES.length - 1]).toBe("adp");
+    expect(DETAIL_DESC_SOURCES[DETAIL_DESC_SOURCES.length - 2]).toBe("paylocity");
+    expect(DETAIL_DESC_SOURCES[DETAIL_DESC_SOURCES.length - 3]).toBe("rippling");
     expect([...NO_DESC_SOURCES]).toHaveLength(0);
   });
 

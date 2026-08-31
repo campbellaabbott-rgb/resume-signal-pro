@@ -63,6 +63,14 @@ export const CANARIES: readonly Canary[] = [
   // is exactly the "fetched OK, parsed nothing" drift this list exists for.
   { vendor: "paylocity", token: "1c38e30f-9af2-4b93-a08f-3ea42d2f6872", name: "Wendy's" },
   { vendor: "paylocity", token: "c47e27a2-5dd2-408a-9ef0-c799cbdd5796", name: "Forsman Farms" },
+  // ADP Workforce Now reference boards (82 + 13 postings, live-verified
+  // 2026-08-31, the day the adapter landed). The tokens are opaque career-
+  // center GUIDs and the payload never names the employer, so these names came
+  // from the boards' own welcome text and their Google-indexed posting titles.
+  // The list endpoint is the SPA's data channel rather than a documented API —
+  // the exact vendor class this list exists for.
+  { vendor: "adp", token: "89da4960-4d45-4b46-b7aa-5959c5f71827", name: "Vince" },
+  { vendor: "adp", token: "3bb79720-acce-4bc6-88ba-203255f76c74", name: "League School" },
 ];
 
 // Count raw feed items in a vendor's payload (pre-normalization), matching each
@@ -94,6 +102,10 @@ export function rawItemCount(vendor: VendorKind, raw: unknown): number {
       // the vendor's own shape is { jobs: [...] } — accept either so a raw
       // count is never mistaken for drift.
       return Array.isArray(r.items) ? r.items.length : Array.isArray(r.jobs) ? r.jobs.length : 0;
+    case "adp":
+      // fetchAdp re-wraps the accumulated pages under the vendor's own
+      // envelope key, so raw counting reads the same shape the API serves.
+      return Array.isArray(r.jobRequisitions) ? r.jobRequisitions.length : 0;
     default:
       return 0;
   }

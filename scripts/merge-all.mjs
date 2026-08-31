@@ -16,7 +16,7 @@ const files = args.filter((a) => a !== "--apply");
 const SOURCES = "supabase/functions/job-board/sources.ts";
 const src = fs.readFileSync(SOURCES, "utf8");
 
-const VENDORS = ["greenhouse", "lever", "ashby", "smartrecruiters", "workable", "bamboohr", "recruitee", "teamtailor", "personio", "breezy", "rippling", "workday", "pinpoint", "paylocity", "icims"];
+const VENDORS = ["greenhouse", "lever", "ashby", "smartrecruiters", "workable", "bamboohr", "recruitee", "teamtailor", "personio", "breezy", "rippling", "workday", "pinpoint", "paylocity", "adp", "icims"];
 const verified = Object.fromEntries(VENDORS.map((v) => [v, []]));
 for (const f of files) {
   const data = JSON.parse(fs.readFileSync(f, "utf8"));
@@ -55,7 +55,7 @@ const NAME_BLOCK = /\b(staffing|recruit(ing|ment|er)?s?|talents?|headhunt|person
 // door shut). Word-boundary specific to avoid nuking "Gibson County Coal
 // LLC"-style private names: require the GOVERNMENTAL phrase, not the word.
 const GOV_BLOCK = /\b(city of|county of|state of|commonwealth of|government of|unified school|school district|public schools|public library|court of appeals|county commissioners|conservation district|health district|sheriff|police department|fire department|township of|municipality)\b/i;
-const TOKEN_BLOCK = /(demo|test|sample|sandbox|staging)/i;
+const TOKEN_BLOCK = /(demo|test|sample|sandbox|staging|-dev\d*\b)/i;
 
 // Boards a DESCRIPTION screen convicted as placement mills, plus recruiters
 // identified by their own self-description. The mill screen degrades to a
@@ -95,6 +95,14 @@ const MILL_BLOCK = new Set([
 // page title. Word set rather than phrase list — headings arrive in every
 // arrangement of the same few dozen words. Duplicated from verify-all by
 // hand, as the census scripts share nothing by import.
+//
+// adp shares the backstop (2026-08-31) with a harder starting point: its
+// payloads never name the employer AT ALL, so verify-all mines the branding
+// config's welcome prose and logo filename and leaves the name EMPTY when
+// neither carries identity. The empty names fall to the blockedName gate
+// above — enumerated and counted, but held out of the catalog until a name
+// resolution step earns them one, the oracle discipline. This word-set gate
+// is for the mined names that DID resolve but resolved to hiring vocabulary.
 const HIRING_VOCAB = new Set([
   "all", "and", "apply", "at", "available", "board", "career", "careers",
   "current", "currently", "default", "employment", "external", "for", "here",
@@ -194,8 +202,8 @@ for (const vendor of VENDORS) {
       dropped.pinpointDemo = (dropped.pinpointDemo ?? 0) + 1; continue;
     }
     if (!name || NAME_BLOCK.test(name) || GOV_BLOCK.test(name)) { dropped.blockedName++; continue; }
-    if (vendor === "paylocity" && headingOnly(name)) {
-      dropped.paylocityHeading = (dropped.paylocityHeading ?? 0) + 1; continue;
+    if ((vendor === "paylocity" || vendor === "adp") && headingOnly(name)) {
+      dropped.headingOnlyName = (dropped.headingOnlyName ?? 0) + 1; continue;
     }
     if (seen.has(tokenKey) || existingTokens.has(tokenKey)) { dropped.dupe++; continue; }
     // COLLISION, BUT NOT ALL COLLISIONS ARE EQUAL.

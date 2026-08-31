@@ -41,10 +41,14 @@ import {
   normalizePinpoint,
   normalizePaylocity,
   extractPaylocityPageData,
+  normalizeAdp,
+  adpBoardParams,
   extractRipplingJobPosts,
   normalizeWorkday,
   normalizeOracle,
   detectCountry,
+  greenhouseApi,
+  leverApi,
   type JobPosting,
 } from "./normalize.ts";
 import { categorize, CATEGORIZE_VERSION, JOB_CATEGORIES } from "./categories.ts";
@@ -104,7 +108,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-30.11"; // .11: the iCIMS custom-domain tranche (+190 boards/~99k postings incl Costco+Ulta) and 231 teamtailor tenants; fetchOracle pages go CHUNKED (a 130-page serial walk was a 160s hot slice pinning the shed at L2)
+const BUILD_VERSION = "2026-08-30.12"; // .12: EU boards fetch from EU hosts (eu~ token prefix, one seam in normalize.ts), ADP Workforce Now is the 18th source (adapter+pipeline, boards follow), +1,700 boards (waves 17/12 + 142 EU tenants), giants round 2 (Costco pages:208, Ulta 105, JCP 72)
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -341,15 +345,14 @@ async function loadDynamicLight(client: SupabaseClient): Promise<void> {
   } catch { /* meta unreadable — static set still applies */ }
 }
 
-// Greenhouse runs separate EU infrastructure (job-boards.eu.greenhouse.io)
-// with its own API host. EU boards carry an `eu~` token prefix (compound
-// token, same pattern as workday's `tenant~dc~site`); everything downstream
-// (ids, catalog, closure log) keeps the full prefixed token.
-export function greenhouseApi(token: string): { host: string; token: string } {
-  return token.startsWith("eu~")
-    ? { host: "boards.eu.greenhouse.io", token: token.slice(3) }
-    : { host: "boards-api.greenhouse.io", token };
-}
+// Greenhouse and Lever EU tenants live on separate infrastructure with its
+// own API hosts, and the routing lives in greenhouseApi/leverApi — moved to
+// normalize.ts (2026-08-31, when the routing grew a second vendor) so the
+// fetch paths, the applyUrl rebuild, the tests, and the census tooling's live
+// probes all derive hosts from the same two functions. EU boards carry the
+// same compound-token prefix pattern as workday's `tenant~dc~site`;
+// everything downstream (ids, catalog, closure log) keeps the full prefixed
+// token, and only the helpers strip it.
 
 // startOffset is honoured only by the paginating vendors; every other branch
 // fetches a whole feed and ignores it.
@@ -359,7 +362,7 @@ const listUrl = (s: JobSource, startOffset = 0) =>
     // ONE call — fit-ranking coverage for GH boards, plus real departments.
     ? (({ host, token }) => `https://${host}/v1/boards/${token}/jobs${isLight(s.token) ? "" : "?content=true"}`)(greenhouseApi(s.token))
     : s.source === "lever"
-      ? `https://api.lever.co/v0/postings/${s.token}?mode=json`
+      ? (({ host, token }) => `https://${host}/v0/postings/${token}?mode=json`)(leverApi(s.token))
       : s.source === "ashby"
         ? `https://api.ashbyhq.com/posting-api/job-board/${s.token}?includeCompensation=true`
         : s.source === "smartrecruiters"
@@ -577,6 +580,64 @@ async function fetchPaylocity(s: JobSource): Promise<{ items: unknown[]; raw: st
   const page = extractPaylocityPageData(html);
   if (!page) throw new Error("paylocity payload shape unrecognized");
   return { items: page.items, raw: html };
+}
+
+// ADP Workforce Now: the career-center SPA's own public JSON list endpoint
+// (…/careercenter/public/events/staffing/v1/job-requisitions), paginated.
+// Measured live 2026-08-31: the server caps every page at 20 rows no matter
+// what the page-size argument asks for, the skip argument is a 1-BASED start
+// sequence, pages past the end answer an object whose requisition array is
+// empty and whose meta is ABSENT, and meta.totalNumber on a populated page is
+// the tenant's own advertised total. Boards observed are SMB-sized (largest
+// live sample 82), so the default window reads nearly every board whole; the
+// per-board pages override keeps the icims/PetSmart contract for any giant a
+// census later finds. windowed is honest: false only when the feed itself ran
+// out, so a fully-read board absence-prunes and a deeper one never does.
+const ADP_PAGE = 20;
+const ADP_PAGE_CAP = 15; // 15 × 20 = 300 postings/board/pass
+// Four concurrent page fetches per board, matching the census tooling's
+// politeness ceiling — same chunking rationale as oracle and icims.
+const ADP_CHUNK = 4;
+async function fetchAdp(s: JobSource): Promise<{ items: unknown[]; raw: unknown; windowed: boolean; feedTotal: number }> {
+  const { cid, ccId } = adpBoardParams(s.token);
+  if (!cid) throw new Error("bad adp token");
+  const base = "https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/job-requisitions";
+  const pageUrl = (p: number) =>
+    `${base}?cid=${cid}&ccId=${ccId}&timeStamp=${Date.now()}&lang=en_US&locale=en_US&$top=${ADP_PAGE}&$skip=${1 + p * ADP_PAGE}`;
+  const pageCap = Math.max(1, s.pages ?? ADP_PAGE_CAP);
+  const all: unknown[] = [];
+  let feedTotal = 0;
+  let exhausted = false;
+  outer: for (let start = 0; start < pageCap; start += ADP_CHUNK) {
+    const pages: number[] = [];
+    for (let p = start; p < Math.min(start + ADP_CHUNK, pageCap); p++) pages.push(p);
+    const bodies = await Promise.all(pages.map(async (page) => {
+      const res = await fetchWithTimeout(pageUrl(page), { headers: { Accept: "application/json" } });
+      if (!res.ok) { if (page === 0) throw new Error(`HTTP ${res.status}`); return null; }
+      return await res.json().catch(() => undefined); // undefined = body unreadable, distinct from a mid-walk HTTP miss
+    }));
+    for (let i = 0; i < bodies.length; i++) {
+      const body = bodies[i];
+      if (body === null) break outer; // mid-walk HTTP failure — keep what we have
+      const reqs = (body as { jobRequisitions?: unknown[] } | undefined)?.jobRequisitions;
+      // A 200 whose body isn't the requisition envelope is drift or a
+      // bot-wall — the personio/rippling/paylocity line: a FAILED fetch,
+      // never an empty board. Only page 0 can prove the shape; a later page
+      // going strange ends the walk with what we already hold.
+      if (!Array.isArray(reqs)) {
+        if (pages[i] === 0) throw new Error("adp payload shape unrecognized");
+        break outer;
+      }
+      if (pages[i] === 0) feedTotal = Number((body as { meta?: { totalNumber?: number } }).meta?.totalNumber ?? 0) || 0;
+      all.push(...reqs);
+      if (reqs.length < ADP_PAGE) { exhausted = true; break outer; } // feed ran out
+    }
+  }
+  // Same guard as workday/oracle/icims: an empty read against a non-zero
+  // advertised total is a refusal, not an empty board — throwing keeps the
+  // orphan prune away from a live tenant.
+  if (all.length === 0 && feedTotal > 0) throw new Error(`empty page but total=${feedTotal}`);
+  return { items: all, raw: { jobRequisitions: all }, windowed: !exhausted, feedTotal };
 }
 
 // Workday CXS: POST-paginated first-party list endpoint. Compound token
@@ -833,6 +894,10 @@ async function fetchBoard(
     if (s.source === "paylocity") {
       const { items, raw } = await fetchPaylocity(s);
       return { jobs: normalizePaylocity(items as never, s.name, s.token), raw };
+    }
+    if (s.source === "adp") {
+      const { items, raw, windowed, feedTotal } = await fetchAdp(s);
+      return { jobs: normalizeAdp(items as never, s.name, s.token), raw, windowed, feedTotal };
     }
     if (s.source === "workday") {
       const { jobPostings, raw, windowed, feedTotal, nextOffset } = await fetchWorkday(s, startOffset);
@@ -4012,7 +4077,8 @@ async function checkLive(src: JobSource, externalId: string, applyUrl?: string |
       return res.status === 404 ? false : res.ok ? true : null;
     }
     if (src.source === "lever") {
-      const res = await fetchWithTimeout(`https://api.lever.co/v0/postings/${src.token}/${externalId}?mode=json`);
+      const lv = leverApi(src.token);
+      const res = await fetchWithTimeout(`https://${lv.host}/v0/postings/${lv.token}/${externalId}?mode=json`);
       return res.status === 404 ? false : res.ok ? true : null;
     }
     if (src.source === "smartrecruiters") {
@@ -4317,6 +4383,21 @@ async function fetchVendorDetail(
     if (res.ok) {
       const html = jobPostingLdDescription(await res.text());
       text = html ? htmlToText(html).slice(0, DESC_CAP) || null : null;
+    }
+  } else if (src.source === "adp") {
+    // The list payload carries no description at all; the per-requisition
+    // detail on the same public endpoint serves the full HTML JD (measured
+    // live 2026-08-31: 6,928 chars on a sampled retail posting against
+    // nothing in the list row). The requisition id in the posting id is
+    // exactly what the detail path takes; cid/ccId ride in the token.
+    const { cid, ccId } = adpBoardParams(src.token);
+    const res = await fetchWithTimeout(
+      `https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/job-requisitions/${externalId}?cid=${cid}&ccId=${ccId}&timeStamp=${Date.now()}&lang=en_US&locale=en_US`,
+    );
+    if (res.ok) {
+      const j = await res.json().catch(() => null) as { requisitionDescription?: string } | null;
+      const html = j?.requisitionDescription ?? "";
+      text = html ? htmlToText(String(html)).slice(0, DESC_CAP) || null : null;
     }
   } else if (src.source === "rippling") {
     // The list payload carries no JD (re-verified 2026-08-24: __NEXT_DATA__
@@ -8685,7 +8766,11 @@ Deno.serve(async (req) => {
         questions.filter((q) => q.class === "file").map((q) => `${q.label}${q.required ? " (required)" : " (optional)"}`);
 
       if (source === "greenhouse") {
-        const res = await fetchWithTimeout(`https://boards-api.greenhouse.io/v1/boards/${token}/jobs/${externalId}?questions=true`);
+        // The id's token half carries the EU routing prefix, and the questions
+        // endpoint only answers on the tenant's own side — route through the
+        // helper or every EU posting reads as "no public form".
+        const api = greenhouseApi(token);
+        const res = await fetchWithTimeout(`https://${api.host}/v1/boards/${api.token}/jobs/${externalId}?questions=true`);
         if (!res.ok) return unsupported();
         const gh = await res.json() as { questions?: Array<{ label?: string; required?: boolean; fields?: Array<{ type?: string }> }> };
         const questions: Q[] = (gh.questions ?? [])

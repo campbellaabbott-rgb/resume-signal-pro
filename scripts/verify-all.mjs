@@ -23,6 +23,25 @@ const probed = new Set(fs.existsSync(PROGRESS_PATH) ? fs.readFileSync(PROGRESS_P
 const priorHits = fs.existsSync(HITS_PATH) ? fs.readFileSync(HITS_PATH, "utf8").split("\n").filter(Boolean).map((l) => JSON.parse(l)) : [];
 if (probed.size) console.log(`resuming: ${probed.size} already probed, ${priorHits.length} prior hits`);
 const census = JSON.parse(fs.readFileSync(CENSUS_PATH, "utf8"));
+// EU tenants arrive from the census under their own keys carrying BARE tenant
+// slugs, because discovery reads hostnames and the hostname is the only place
+// the region shows. The catalog has no EU vendor — an EU board is the same
+// vendor routed to its EU hosts via the compound-token prefix — so the keys
+// fold into their vendor's candidate list here, prefixed. Folding BEFORE the
+// catalog dedupe is the point: the catalog stores EU boards under the
+// prefixed token, and an unprefixed candidate would never match its own entry
+// and be probed (and merged) twice.
+for (const [euKey, vendor] of [["greenhouse-eu", "greenhouse"], ["lever-eu", "lever"]]) {
+  const bare = census[euKey] ?? [];
+  if (!bare.length) continue;
+  const have = new Set(census[vendor] ?? []);
+  census[vendor] = [...(census[vendor] ?? [])];
+  for (const t of bare) {
+    const tok = t.startsWith("eu~") ? t : `eu~${t}`;
+    if (!have.has(tok)) { census[vendor].push(tok); have.add(tok); }
+  }
+  console.log(`${euKey}: folded ${bare.length} candidates into ${vendor} under the routing prefix`);
+}
 const MIN_POSTINGS = 3;
 const UA = { "User-Agent": "resumebooster.work job board (contact: support@resumebooster.work)" };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -204,9 +223,16 @@ const verifiers = {
     return { name: prettify(t), count: data.length };
   },
   lever: async (t) => {
-    const d = await probe(`https://api.lever.co/v0/postings/${encodeURIComponent(t)}?mode=json`);
+    // Same EU routing as greenhouse above: a tenant lives on exactly one side,
+    // and the US host answers 404 for an EU tenant (verified live 2026-08-31,
+    // asobostudio). prettify gets the STRIPPED slug — the prefix is routing,
+    // not identity, and would otherwise ship inside a display name.
+    const eu = t.startsWith("eu~");
+    const host = eu ? "api.eu.lever.co" : "api.lever.co";
+    const tok = eu ? t.slice(3) : t;
+    const d = await probe(`https://${host}/v0/postings/${encodeURIComponent(tok)}?mode=json`);
     if (!Array.isArray(d) || d.length < MIN_POSTINGS) return null;
-    return { name: prettify(t), count: d.length };
+    return { name: prettify(tok), count: d.length };
   },
   rippling: async (t) => {
     // Embedded __NEXT_DATA__ payload (same extraction the board fetcher uses).
@@ -228,6 +254,64 @@ const verifiers = {
   // a throttled or reshaped page would read as an empty board — and a heading
   // with no identity gets its name resolved from the first posting instead.
   // prettify() is useless here; tokens are opaque board GUIDs.
+  // ADP Workforce Now. Token cid or cid~ccId (the ccId selects the career
+  // center — one live cid answers 19 postings on its default center and 1 on
+  // its second, so the compound token is identity, not routing). The list
+  // endpoint is the career-center SPA's own public JSON; a response without
+  // the requisition envelope is UNREADABLE — fail, never zero. The count is
+  // the tenant's own advertised total from the page meta (the page caps at 20
+  // rows, so counting the page would report every large employer as a
+  // 20-posting board — the oracle lesson).
+  //
+  // NAMES ARE THE HARD PART, harder than paylocity's: NO payload names the
+  // employer — not the list, not the detail, not the page shell (measured
+  // across six live boards 2026-08-31; the page <title> is the vendor's own
+  // generic word). What the branding config DOES carry is the employer's own
+  // welcome prose ("Welcome to League School!") and a logo filename, so the
+  // name is resolved from those, hygiene-checked, and left EMPTY when neither
+  // carries identity — merge-all's name gate then holds the board back, the
+  // oracle discipline, instead of shipping a GUID as a display name.
+  adp: async (t) => {
+    const [cid, ccIdRaw] = String(t).split("~");
+    const ccId = ccIdRaw || "19000101_000001";
+    const base = "https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1";
+    const qs = `cid=${cid}&ccId=${ccId}&timeStamp=${Date.now()}&lang=en_US&locale=en_US`;
+    const d = await probe(`${base}/job-requisitions?${qs}&$top=20&$skip=1`);
+    const reqs = d?.jobRequisitions;
+    if (!Array.isArray(reqs)) return null;
+    const external = reqs.filter((r) => !(r?.customFieldGroup?.indicatorFields ?? [])
+      .some((f) => f?.nameCode?.codeValue === "InternalPostingFlag" && f?.indicatorValue === true));
+    const total = Number(d?.meta?.totalNumber) || 0;
+    // totalNumber counts internal-only postings the adapter refuses to serve;
+    // scale it by the sampled external share so a heavily-internal board
+    // cannot inflate its way over the mill-screen threshold.
+    const externalShare = reqs.length > 0 ? external.length / reqs.length : 1;
+    const count = total > reqs.length ? Math.round(total * externalShare) : external.length;
+    if (count < MIN_POSTINGS) return null;
+    let name = "";
+    const links = await probe(`${base}/content-links/career-center?${qs}`);
+    for (const cl of links?.contentLinks ?? []) {
+      const code = cl?.linkTypeCode?.codeValue;
+      if (code === "WELCOME-TXT") {
+        const prose = String(cl?.linkTypeCode?.longName ?? "").replace(/<[^>]+>/g, " ").replace(/&nbsp;|\s+/g, " ").trim();
+        const m = prose.match(/\bwelcome to ([^.!?|]{2,60}?)\s*[.!?|]/i) ||
+          prose.match(/\b(?:employment|a career|careers?|a position|positions?|opportunit\w+|working) (?:with|at) ([A-Z][^.!?,|]{1,60}?)\s*[.!?,|]/);
+        if (m) name = m[1].trim();
+      } else if (code === "IMG_LOGO" && !name) {
+        // Logo filenames often lead with the employer's name; strip asset
+        // vocabulary and sizes, keep what identity remains, and let the
+        // hygiene gate below throw the residue away.
+        const stem = String(cl?.linkTypeCode?.shortName ?? "").replace(/\.[a-z0-9]+$/i, "");
+        const cleaned = stem.split(/[-_\s]+/)
+          .filter((w) => w && !/^(logos?|untitled|images?|img|icons?|headers?|banners?|brand(ing)?|final|web|blk|wht|black|white|colou?r|rgb|png|jpe?g|small|large|horiz\w*|vert\w*|stacked|primary|copy|new|old|updated|\d+x\d+|v?\d+)$/i.test(w))
+          .join(" ").trim();
+        if (/[a-z]{3,}/i.test(cleaned)) name = cleaned;
+      }
+    }
+    name = name.replace(/[\s:;|,–—-]+$/, "").trim();
+    if (headingOnly(name)) name = "";
+    return { name: name.slice(0, 60), count };
+  },
   paylocity: async (t) => {
     const html = await probe(`https://recruiting.paylocity.com/recruiting/jobs/All/${t}`, true);
     const m = html?.match(/window\.pageData\s*=\s*(\{[\s\S]*?\})\s*;?\s*<\/script>/);
@@ -252,8 +336,11 @@ const verifiers = {
   },
 };
 
-const CONCURRENCY = { greenhouse: 14, ashby: 14, smartrecruiters: 8, workable: 8, bamboohr: 14, recruitee: 14, teamtailor: 14, breezy: 14, personio: 2, rippling: 10, lever: 14, pinpoint: 14, paylocity: 6, oracle: 6 };
-const SPACING_MS = { greenhouse: 60, ashby: 60, smartrecruiters: 150, workable: 150, bamboohr: 60, recruitee: 60, teamtailor: 60, breezy: 60, personio: 1600, rippling: 120, lever: 60, pinpoint: 60, paylocity: 250, oracle: 250 };
+// adp candidates all hit ONE shared vendor host (workforcenow.adp.com), and a
+// hit costs two requests (list + branding) — held to 5 workers at 250ms so the
+// probe stays inside the same politeness the census tooling promises.
+const CONCURRENCY = { greenhouse: 14, ashby: 14, smartrecruiters: 8, workable: 8, bamboohr: 14, recruitee: 14, teamtailor: 14, breezy: 14, personio: 2, rippling: 10, lever: 14, pinpoint: 14, paylocity: 6, adp: 5, oracle: 6 };
+const SPACING_MS = { greenhouse: 60, ashby: 60, smartrecruiters: 150, workable: 150, bamboohr: 60, recruitee: 60, teamtailor: 60, breezy: 60, personio: 1600, rippling: 120, lever: 60, pinpoint: 60, paylocity: 250, adp: 250, oracle: 250 };
 
 async function run(vendor, tokens) {
   const verified = [];

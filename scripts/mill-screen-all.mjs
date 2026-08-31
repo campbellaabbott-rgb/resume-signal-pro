@@ -76,8 +76,25 @@ async function get(url, asText = false) {
 
 async function sampleTexts(vendor, token) {
   if (vendor === "greenhouse") {
-    const d = await get(`https://boards-api.greenhouse.io/v1/boards/${token}/jobs?content=true`);
+    // EU boards carry the routing prefix and are served ONLY by the EU API
+    // host; the US host would return nothing and the thin-sample rule would
+    // HOLD every large EU board forever — safe, but a screen that can never
+    // clear what it is asked to screen.
+    const eu = token.startsWith("eu~");
+    const host = eu ? "boards.eu.greenhouse.io" : "boards-api.greenhouse.io";
+    const d = await get(`https://${host}/v1/boards/${eu ? token.slice(3) : token}/jobs?content=true`);
     return (d?.jobs ?? []).slice(0, 12).map((j) => `${j.title}\n${strip(j.content)}`);
+  }
+  if (vendor === "lever") {
+    // The list feed ships descriptionPlain in full — a real text screen, same
+    // EU routing as greenhouse. Lever predates this protocol in the catalog,
+    // so the branch arrives with the first census wave that can add lever
+    // boards (the EU wave); without it every ≥100-posting hit would HOLD.
+    const eu = token.startsWith("eu~");
+    const host = eu ? "api.eu.lever.co" : "api.lever.co";
+    const d = await get(`https://${host}/v0/postings/${eu ? token.slice(3) : token}?mode=json`);
+    return (Array.isArray(d) ? d : []).slice(0, 12)
+      .map((j) => `${j.text}\n${strip([j.descriptionPlain, j.descriptionBodyPlain, j.additionalPlain].filter(Boolean).join("\n"))}`);
   }
   if (vendor === "ashby") {
     const d = await get(`https://api.ashbyhq.com/posting-api/job-board/${token}?includeCompensation=false`);
@@ -157,6 +174,29 @@ async function sampleTexts(vendor, token) {
       // the catalog on 2026-08-30.
       if (full) out.push(`${j.JobTitle}\n${strip(full)}`);
       await sleep(150);
+    }
+    return out;
+  }
+  if (vendor === "adp") {
+    // Same two-step shape as paylocity: the list payload carries no posting
+    // text at all, so the screen walks per-requisition DETAIL calls on the
+    // same public endpoint, whose description field carries the full HTML JD
+    // (measured 2026-08-31: ~7k chars against nothing in the list row).
+    // Titles ride along as the first line for the duplicate-title check. A
+    // failed detail read contributes NOTHING, so a throttled run starves the
+    // sample and the thin-sample rule HOLDs the board rather than clearing it.
+    const [cid, ccIdRaw] = String(token).split("~");
+    const ccId = ccIdRaw || "19000101_000001";
+    const base = "https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/job-requisitions";
+    const qs = `cid=${cid}&ccId=${ccId}&timeStamp=${Date.now()}&lang=en_US&locale=en_US`;
+    const d = await get(`${base}?${qs}&$top=20&$skip=1`);
+    const reqs = Array.isArray(d?.jobRequisitions) ? d.jobRequisitions : [];
+    const out = [];
+    for (const r of reqs.slice(0, 6)) {
+      const det = r?.itemID ? await get(`${base}/${r.itemID}?${qs}`) : null;
+      const full = String(det?.requisitionDescription ?? "");
+      if (full) out.push(`${String(r?.requisitionTitle ?? "")}\n${strip(full)}`);
+      await sleep(250);
     }
     return out;
   }
