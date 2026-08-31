@@ -143,6 +143,17 @@ describe("a cap that restarts at zero is a ceiling", () => {
     expect(loop.indexOf("agedOutIds.has(id)")).toBeLessThan(loop.indexOf("if (partialRead) continue;"));
   });
 
+  it("workday giants get the same wider window, through the same chunked walk", () => {
+    // 2026-08-31: a 24-board sample measured ~276k postings living past
+    // workday's 500-per-pass window (CVS Health serves 19,265; we stored
+    // 678). The fetcher honors s.pages now and pages in 4-concurrent chunks
+    // like oracle — one POST per RTT at 220 pages would hold a slice for
+    // minutes. Absent field = proven default, same contract as everywhere.
+    expect(CODE).toMatch(/const workdayPageCap = Math\.max\(1, s\.pages \?\? WORKDAY_PAGE_CAP\);/);
+    expect(CODE).toMatch(/start < workdayPageCap; start \+= WORKDAY_CHUNK/);
+    expect(CODE).toMatch(/\{ exhausted = true; break outer; \} \/\/ last page — wrap next pass/);
+  });
+
   it("a named giant can be given a wider window, everyone else keeps the default", () => {
     // Measured 2026-08-30: Kroger advertises 12,350 postings against the
     // default 2,000-per-pass window — the deep cursor alone needs ~25 passes

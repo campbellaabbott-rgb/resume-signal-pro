@@ -28,7 +28,12 @@ const sql = MIG.split("\n").filter((l) => !l.trimStart().startsWith("--")).join(
 
 // (source, token) -> name, both registry formats.
 const registry = new Map<string, string>();
-for (const m of SRC.matchAll(/\{ name: "((?:[^"\\]|\\.)*)", source: "(\w+)", token: "([^"]+)" \}/g)) {
+// The optional pages suffix (per-board window override) must not hide an
+// entry from this registry — the same parser blindness made corrected boards
+// read as "undefined" the day the Workday giants were widened (2026-08-31),
+// and made overridden entries vanish from the catalog invariants the day
+// before. Tolerate it explicitly.
+for (const m of SRC.matchAll(/\{ name: "((?:[^"\\]|\\.)*)", source: "(\w+)", token: "([^"]+)"(?:, pages: \d+)? \}/g)) {
   registry.set(`${m[2]}:${m[3]}`, m[1]);
 }
 for (const m of SRC.matchAll(/s\("((?:[^"\\]|\\.)*)",\s*"(\w+)",\s*"([^"]+)"\)/g)) {

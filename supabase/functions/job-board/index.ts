@@ -108,7 +108,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-30.14"; // .14: THE CHARTER WIDENS — staffing agencies and government employers carry now (operator decision); 220 boards re-admitted + 352 name-resolved ADP boards + 42 prefix-sweep boards; governor 1M -> 1.2M on the re-done disk math; the mill screen informs instead of excluding, junk still blocks
+const BUILD_VERSION = "2026-08-30.15"; // .15: the Workday deep unlock — chunked pager honoring s.pages, 305 measured giants widened (Dollar Tree 24k, CVS 19k, O'Reilly 18k; ~226k postings past the old 500 window)
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -680,18 +680,34 @@ async function fetchWorkday(s: JobSource, startOffset = 0): Promise<{ jobPosting
   const all: unknown[] = [];
   let feedTotal = 0;
   let exhausted = false;
-  for (let page = 0; page < WORKDAY_PAGE_CAP; page++) {
-    const res = await fetchWithTimeout(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "Accept": "application/json" },
-      body: JSON.stringify({ limit: 20, offset: startOffset + page * 20, searchText: "", appliedFacets: {} }),
-    });
-    if (!res.ok) { if (page === 0) throw new Error(`HTTP ${res.status}`); break; }
-    const body = await res.json();
-    if (page === 0) feedTotal = Number((body as { total?: number }).total ?? 0) || 0;
-    const items = Array.isArray((body as { jobPostings?: unknown[] }).jobPostings) ? (body as { jobPostings: unknown[] }).jobPostings : [];
-    all.push(...items);
-    if (items.length < 20) { exhausted = true; break; } // last page — wrap next pass
+  // Chunked like oracle/icims, for the same wall-time reason: at one POST per
+  // RTT a 220-page giant would hold a slice for minutes. A per-board pages
+  // override (the PetSmart contract) widens named giants — a 24-board sample
+  // measured ~276k postings living past the default window, CVS Health alone
+  // serving 19,265 against 678 stored. Results consume IN ORDER; a short page
+  // or shape-drift anywhere in a chunk ends the walk.
+  const workdayPageCap = Math.max(1, s.pages ?? WORKDAY_PAGE_CAP);
+  const WORKDAY_CHUNK = 4;
+  outer: for (let start = 0; start < workdayPageCap; start += WORKDAY_CHUNK) {
+    const pages: number[] = [];
+    for (let p = start; p < Math.min(start + WORKDAY_CHUNK, workdayPageCap); p++) pages.push(p);
+    const bodies = await Promise.all(pages.map(async (page) => {
+      const res = await fetchWithTimeout(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Accept": "application/json" },
+        body: JSON.stringify({ limit: 20, offset: startOffset + page * 20, searchText: "", appliedFacets: {} }),
+      });
+      if (!res.ok) { if (page === 0) throw new Error(`HTTP ${res.status}`); return null; }
+      return await res.json();
+    }));
+    for (let i = 0; i < bodies.length; i++) {
+      const body = bodies[i];
+      if (body === null) break outer; // mid-walk HTTP failure — keep what we have
+      if (pages[i] === 0) feedTotal = Number((body as { total?: number }).total ?? 0) || 0;
+      const items = Array.isArray((body as { jobPostings?: unknown[] }).jobPostings) ? (body as { jobPostings: unknown[] }).jobPostings : [];
+      all.push(...items);
+      if (items.length < 20) { exhausted = true; break outer; } // last page — wrap next pass
+    }
   }
   // Empty page with a non-zero advertised total = the tenant refused/failed us
   // (rate-limit, transient) — NOT an empty board. Throwing marks the board

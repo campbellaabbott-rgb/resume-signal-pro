@@ -175,7 +175,7 @@ const PINNED = {
   // as a matter of course this time — the .2 bump had to be made retroactively
   // after three commits shipped undeployed behind an unchanged version string,
   // and "is it live?" cost six behavioural probes to answer.
-  sourcesHash: "004d8476a5fc718f",
+  sourcesHash: "f1473db26eb545c8",
   // 2026-08-21.4: disables the exact-word tier's company matcher, whose index
   // never built. Bumped so the mitigation is externally identifiable.
   // 2026-08-21.5: routed retrieval. index.ts + two new modules; sources.ts
@@ -503,7 +503,18 @@ const PINNED = {
   // rather than guessed) and +42 prefix-sweep custom domains. The corpus
   // governor steps 1M -> 1.2M on the SAME disk: 69% of plan, inside the 75%
   // alarm — the "needs a resize" belief was arithmetic timidity.
-  buildVersion: "2026-08-30.14",
+  //
+  // 2026-08-30.15: the Workday deep unlock. The fetcher pages in 4-concurrent
+  // chunks and honors per-board pages overrides; instead of hand-picking
+  // giants, a measured sweep probed all 3,698 carried tenants' advertised
+  // totals and widened every board past its window — 305 overrides in all
+  // (Dollar Tree 24,251 advertised vs the 500 default window; CVS Health
+  // 19,192 vs 678 stored; O'Reilly 18,283). Roughly 226k postings lived past
+  // the old cap. This fills the 1.2M governor: the next inventory beyond it
+  // waits on the 1.5M disk step. Overrides cap at 250 pages — beyond 5,000
+  // postings/pass the offset rotation still wraps, and the shed system
+  // remains the governor of wall-time.
+  buildVersion: "2026-08-30.15",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {
