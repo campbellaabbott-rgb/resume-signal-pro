@@ -31,7 +31,23 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 // model, whereas a bare "client"/"Kunde" appears in perfectly normal postings.
 const MILL_TEXT = new RegExp([
   // English
-  "\\bour client\\b", "\\bon behalf of (a|an|our|the)\\b", "\\bfor our client\\b",
+  // "our client\u2019s success" is how a CONSULTANCY describes its own jobs —
+  // the bare phrase convicted S&P Global, Publicis and Andersen on service
+  // prose (2026-08-31). Mill usage is recruitment syntax: the client DOES a
+  // hiring verb, or arrives as an appositive ("our client, a leading...").
+  "\\bour (\\w+ )?client,? (is|are|seeks|is seeking|is looking|is hiring|has engaged|wishes to)\\b",
+  "\\bour client, (a|an|the)\\b", "\\bjoin our client\\b",
+  // SINGULAR "for our client" is the placement tell (one client, one req) —
+  // CTG wrote "a position for our client. Location:" in 9/12 postings. The
+  // plural ("value for our clients") and the hyphenated ("our client-facing
+  // platforms") are how consultancies describe their own jobs; both stay out.
+  "\\bfor our client\\b(?!s)(?!-)",
+  "\\b(permanent|direct) placement\\b",
+  // "on behalf of the MD" is what an executive assistant DOES — a bare
+  // on-behalf-of match convicted Booking.com, Tufts and Principal on ordinary
+  // corporate prose (2026-08-31, 7 boards at 1/12). Mill usage has a hiring
+  // verb in front of it; require one within the same clause.
+  "\\b(recruit\\w*|hir\\w*|sourcing|vacanc\\w*)\\b[^.!?]{0,60}\\bon behalf of (a|an|our|the)\\b", 
   "\\bclient of ours\\b", "\\bour customer is (hiring|looking)\\b",
   "\\bstaffing (agency|firm|partner)\\b", "\\brecruitment agency\\b",
   "\\bwe are (a|an) (staffing|recruiting|recruitment|talent) (agency|firm|partner)\\b",
@@ -143,6 +159,19 @@ async function sampleTexts(vendor, token) {
       await sleep(150);
     }
     return out;
+  }
+  if (vendor === "icims") {
+    // Descriptions RIDE THE LIST PAYLOAD (BOARD_DESC_SOURCES) — one request
+    // yields full posting text, so this is a real text screen and icims must
+    // never join the titles-only set. Verified live 2026-08-31: sampled list
+    // items carry description + qualifications + responsibilities.
+    const d = await get(`https://${token}/api/jobs?page=1&limit=12`);
+    return (d?.jobs ?? []).slice(0, 12).map((j) => {
+      const x = j?.data ?? j ?? {};
+      const text = [x.description, x.responsibilities, x.qualifications]
+        .filter(Boolean).map((t) => strip(String(t))).join("\n");
+      return `${String(x.title ?? "")}\n${text}`;
+    });
   }
   if (vendor === "pinpoint") {
     // postings.json carries full description HTML — real text screen.

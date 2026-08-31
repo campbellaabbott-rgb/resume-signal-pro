@@ -16,7 +16,7 @@ const files = args.filter((a) => a !== "--apply");
 const SOURCES = "supabase/functions/job-board/sources.ts";
 const src = fs.readFileSync(SOURCES, "utf8");
 
-const VENDORS = ["greenhouse", "lever", "ashby", "smartrecruiters", "workable", "bamboohr", "recruitee", "teamtailor", "personio", "breezy", "rippling", "workday", "pinpoint", "paylocity"];
+const VENDORS = ["greenhouse", "lever", "ashby", "smartrecruiters", "workable", "bamboohr", "recruitee", "teamtailor", "personio", "breezy", "rippling", "workday", "pinpoint", "paylocity", "icims"];
 const verified = Object.fromEntries(VENDORS.map((v) => [v, []]));
 for (const f of files) {
   const data = JSON.parse(fs.readFileSync(f, "utf8"));
@@ -83,6 +83,9 @@ const MILL_BLOCK = new Set([
   "recruitee:techbizglobal",         // 2026-08-31: 5/12 sampled postings show mill evidence
   "paylocity:668dc5ae-50dc-451f-bc59-bdc869ac7bbe", // 2026-08-31: Wild Bill's Tobacco, 1 title x 114 postings
   "greenhouse:n2alljobs",            // 2026-08-31: duplicate all-jobs board, removed once and re-merged by a census wave
+  "icims:careers.ctg.com",           // 2026-08-31: 10/12 postings fill positions for a singular client — IT staffing
+  "icims:jobs.statefarm.com",        // 2026-08-31: corporate board hiring on behalf of independent agents' offices
+  "icims:careers.principal.com",     // 2026-08-31: hiring on behalf of affiliated representatives
 ]);
 
 // Paylocity boards self-name with a page heading the employer typed, and
