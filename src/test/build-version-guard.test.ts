@@ -175,7 +175,7 @@ const PINNED = {
   // as a matter of course this time — the .2 bump had to be made retroactively
   // after three commits shipped undeployed behind an unchanged version string,
   // and "is it live?" cost six behavioural probes to answer.
-  sourcesHash: "ca54a14320a92a4e",
+  sourcesHash: "c2c06c9f5484f648",
   // 2026-08-21.4: disables the exact-word tier's company matcher, whose index
   // never built. Bumped so the mitigation is externally identifiable.
   // 2026-08-21.5: routed retrieval. index.ts + two new modules; sources.ts
@@ -477,7 +477,17 @@ const PINNED = {
   // shared requisition pool, not employers), plus 142 EU tenants (184 EU
   // arms of carried employers deduped away). Giants round 2: Costco 208
   // pages (~18.6k standing gap), Ulta 105, JCPenney 65 -> 72.
-  buildVersion: "2026-08-30.12",
+  //
+  // 2026-08-30.13: ADP's first boards. 1,082 verified live; 463 merged with
+  // real employer names, all 20 >=100-posting boards cleared by the
+  // full-text detail screen. The 606 "blockedName" drops are NOT mills —
+  // they are boards whose welcome-text carries no employer name at all
+  // (measured: only 3 of 1,082 verified names actually match the agency
+  // regexes). They are recoverable by a per-board name resolver reading the
+  // posting payload, the same move that unlocked Oracle — until then,
+  // nameless stays unmerged, because an employer name comes from the
+  // employer.
+  buildVersion: "2026-08-30.13",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {

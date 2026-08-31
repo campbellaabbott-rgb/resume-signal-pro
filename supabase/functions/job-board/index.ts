@@ -108,7 +108,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-30.12"; // .12: EU boards fetch from EU hosts (eu~ token prefix, one seam in normalize.ts), ADP Workforce Now is the 18th source (adapter+pipeline, boards follow), +1,700 boards (waves 17/12 + 142 EU tenants), giants round 2 (Costco pages:208, Ulta 105, JCP 72)
+const BUILD_VERSION = "2026-08-30.13"; // .13: the first ADP tranche — 463 boards, every >=100p board full-text screened; ~600 verified-but-nameless ADP boards held out pending a name resolver (an employer name comes from the employer)
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
