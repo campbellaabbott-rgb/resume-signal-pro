@@ -175,7 +175,7 @@ const PINNED = {
   // as a matter of course this time — the .2 bump had to be made retroactively
   // after three commits shipped undeployed behind an unchanged version string,
   // and "is it live?" cost six behavioural probes to answer.
-  sourcesHash: "e35a83829187654d",
+  sourcesHash: "f4ade97ae3a16a70",
   // 2026-08-21.4: disables the exact-word tier's company matcher, whose index
   // never built. Bumped so the mitigation is externally identifiable.
   // 2026-08-21.5: routed retrieval. index.ts + two new modules; sources.ts
@@ -438,7 +438,17 @@ const PINNED = {
   // 12 -> 20GB; migration 20260830260000 tells the storage alarm). The
   // bootstrap lane this hash arms is about to swallow ~2,600 boards — the
   // shed system is what keeps that survivable.
-  buildVersion: "2026-08-30.9",
+  //
+  // 2026-08-30.10: the crawl-waves 25/21 harvest. Older Common Crawl waves
+  // see boards the newest wave missed: 16.5k net-new candidates verified
+  // overnight became +2,657 catalog boards (~43k postings) — 2,397 more
+  // Paylocity (the vendor's cross-wave footprint keeps growing), 81 Oracle
+  // via the same resolve-then-split pipeline as .9, and 179 across ten other
+  // vendors. Screens stayed honest: Fosad Consulting, IOTA GROUP, TechBiz
+  // Global and a tobacco chain posting one title 114 times were convicted on
+  // evidence and now live in MILL_BLOCK; an unreadable Paylocity board HOLDs
+  // out rather than riding in on a thin sample.
+  buildVersion: "2026-08-30.10",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {

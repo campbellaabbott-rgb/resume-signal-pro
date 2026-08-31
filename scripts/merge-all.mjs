@@ -78,6 +78,11 @@ const MILL_BLOCK = new Set([
   "workable:next-job-abroad",        // 2026-08-30: 4 distinct titles across 3,530 postings
   "workable:unitedplacementgroup",   // 2026-08-30: placement agency, removed once already and re-merged the same day
   "workable:schwertfels",            // 2026-08-30: 4 distinct titles across 1,001 postings
+  "smartrecruiters:fosadconsulting", // 2026-08-31: 6/6 sampled postings show mill evidence
+  "smartrecruiters:iotagroup",       // 2026-08-31: 3/6 sampled postings show mill evidence
+  "recruitee:techbizglobal",         // 2026-08-31: 5/12 sampled postings show mill evidence
+  "paylocity:668dc5ae-50dc-451f-bc59-bdc869ac7bbe", // 2026-08-31: Wild Bill's Tobacco, 1 title x 114 postings
+  "greenhouse:n2alljobs",            // 2026-08-31: duplicate all-jobs board, removed once and re-merged by a census wave
 ]);
 
 // Paylocity boards self-name with a page heading the employer typed, and

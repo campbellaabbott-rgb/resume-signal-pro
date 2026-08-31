@@ -104,7 +104,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-30.9"; // .9: +732 Oracle boards via the per-site split of multi-brand tenants, +1,858 Paylocity boards (first tranche of the 17th source), 7 windowed giants get pages overrides (oracle fetcher now honors s.pages), corpus governor 800k -> 1M for the 20GB disk
+const BUILD_VERSION = "2026-08-30.10"; // .10: the crawl-waves 25/21 harvest — +2,657 boards (~43k postings): +2,397 Paylocity, +81 Oracle (resolve+split), +179 across ten vendors; four fresh mill convictions enforced by token
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
