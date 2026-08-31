@@ -240,7 +240,7 @@ describe("published source lists name every system the board actually serves", (
     ashby: "Ashby", icims: "iCIMS", oracle: "Oracle", lever: "Lever",
     workable: "Workable", bamboohr: "BambooHR", recruitee: "Recruitee",
     teamtailor: "Teamtailor", personio: "Personio", breezy: "Breezy",
-    rippling: "Rippling", pinpoint: "Pinpoint", usajobs: "USAJOBS",
+    rippling: "Rippling", pinpoint: "Pinpoint", usajobs: "USAJOBS", paylocity: "Paylocity",
   };
 
   it("the source set is non-trivial (guard would be vacuous otherwise)", () => {

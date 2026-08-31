@@ -1328,6 +1328,110 @@ export function normalizeRippling(items: RipplingJobItem[], company: string, tok
     .filter((j) => j.applyUrl !== "" && j.title !== "" && j.id !== `rippling:${token}:`);
 }
 
+// ── Paylocity ─────────────────────────────────────────────────────────────
+// Paylocity publishes no documented list API; the public board page at
+// recruiting.paylocity.com/recruiting/jobs/All/{token} embeds the FULL job
+// list as first-party JSON in a page-global pageData assignment. A
+// Rippling-class source — the vendor's own data channel, but an
+// implementation detail that can move, so the extractor's null is a drift
+// signal and never an empty board. Live-captured shape 2026-08-30 across
+// three boards (24 + 21 + 17 postings): items carry JobId, JobTitle,
+// LocationName, a real PublishedDate (ISO with offset), HiringDepartment,
+// a structured IsRemote boolean, and a JobLocation whose Country is a
+// "USA"-style word, not ISO-2. IndeedRemoteType also rides along but its
+// enum is unmeasured (2 on every observed row, remote or not) — only
+// IsRemote is trusted, per the trinary-or-nothing work-mode contract.
+export interface PaylocityJobItem {
+  JobId?: string | number;
+  JobTitle?: string;
+  LocationName?: string;
+  PublishedDate?: string;
+  HiringDepartment?: string | null;
+  IsInternal?: boolean;
+  IsRemote?: boolean;
+  JobLocation?: {
+    City?: string | null;
+    State?: string | null;
+    Zip?: string | null;
+    Country?: string | null;
+  } | null;
+}
+
+/** Pull the embedded job list out of a Paylocity board page.
+ *  Returns null when the payload isn't recognizable (drift — the caller must
+ *  treat the board as FAILED, not empty). A parsed payload whose Jobs array
+ *  is empty is an employer not hiring: an honest zero, same distinction the
+ *  personio and rippling fixes drew. Jobs ABSENT or non-array stays null,
+ *  because that is what a real shape change looks like — a detail page
+ *  carries the same page-global assignment with entirely different keys, and
+ *  reading it as an empty board would zero a live employer. */
+export function extractPaylocityPageData(html: string): { items: PaylocityJobItem[]; moduleTitle: string | null } | null {
+  const m = html.match(/window\.pageData\s*=\s*(\{[\s\S]*?\})\s*;?\s*<\/script>/);
+  if (!m) return null;
+  try {
+    const data = JSON.parse(m[1]) as { Jobs?: unknown; ModuleTitle?: unknown };
+    if (!Array.isArray(data.Jobs)) return null;
+    return {
+      items: data.Jobs as PaylocityJobItem[],
+      // The board's self-chosen display name — census tooling reads it so a
+      // token never has to ship with a guessed employer name.
+      moduleTitle: typeof data.ModuleTitle === "string" && data.ModuleTitle.trim() ? data.ModuleTitle.trim() : null,
+    };
+  } catch {
+    return null;
+  }
+}
+
+export function normalizePaylocity(items: PaylocityJobItem[], company: string, token: string): JobPosting[] {
+  return (Array.isArray(items) ? items : [])
+    // The public payload can embed internal-only postings; their Details page
+    // sits behind a login wall, and verify-all already refuses to count them —
+    // ingest and verify must agree on what a posting is.
+    .filter((j) => j.IsInternal !== true)
+    .map((j) => {
+      const loc = j.JobLocation ?? {};
+      const location = String(j.LocationName ?? "").trim() || [loc.City, loc.State].filter(Boolean).join(", ").trim();
+      const title = String(j.JobTitle ?? "").trim();
+      const dept = typeof j.HiringDepartment === "string" && j.HiringDepartment.trim() ? j.HiringDepartment.trim() : null;
+      const externalId = String(j.JobId ?? "").trim();
+      // IsRemote is the vendor's structured field; text detection only fills
+      // in when the feed doesn't state one (never guessed from prose).
+      const workMode = j.IsRemote === true ? "remote" as const : detectWorkMode(location, title, dept);
+      const rawCountry = String(loc.Country ?? "").trim();
+      return {
+        id: `paylocity:${token}:${externalId}`,
+        source: "paylocity" as const,
+        token,
+        company,
+        title,
+        location,
+        workMode,
+        remote: workMode === "remote",
+        department: dept,
+        // The feed states a real publish date; the shared ingest window drops
+        // anything older, so no pre-filtering here.
+        postedAt: safeIso(j.PublishedDate),
+        category: categorize(title, dept),
+        // The list payload's Description is a ~110-char teaser, not the JD —
+        // storing it would hand salary mining and the fit scan a stub that
+        // looks like a document. Null is honest; the detail page carries the
+        // full text if a sweep ever wants it.
+        salary: null,
+        // Country arrives structurally but as a word ("USA"), not ISO-2 — map
+        // the stated value, and fall back to text detection over the whole
+        // location for anything unrecognized.
+        country: /^(?:usa|us|u\.s\.a?\.?|united states(?: of america)?)$/i.test(rawCountry)
+          ? "US"
+          : /^[A-Za-z]{2}$/.test(rawCountry)
+            // The one two-letter word people write that is NOT its ISO code.
+            ? (rawCountry.toUpperCase() === "UK" ? "GB" : rawCountry.toUpperCase())
+            : detectCountry([location, loc.City, loc.State, rawCountry].filter(Boolean).join(", ")),
+        applyUrl: externalId ? `https://recruiting.paylocity.com/recruiting/jobs/Details/${externalId}` : "",
+      };
+    })
+    .filter((j) => j.applyUrl !== "" && j.title !== "" && !j.id.endsWith(":"));
+}
+
 // ── Pinpoint ──────────────────────────────────────────────────────────────
 // Documented public first-party JSON: https://{token}.pinpointhq.com/postings.json
 // → { data: [...] }. Structured compensation (min/max/currency/frequency,

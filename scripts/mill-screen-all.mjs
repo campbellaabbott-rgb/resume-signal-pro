@@ -133,8 +133,13 @@ async function sampleTexts(vendor, token) {
       const det = await get(`https://recruiting.paylocity.com/recruiting/jobs/Details/${j.JobId}`, true);
       const ld = det?.match(/<script[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/);
       let full = "";
-      try { full = String(JSON.parse(ld?.[1] ?? "null")?.description ?? ""); } catch { /* preview below still screens */ }
-      out.push(`${j.JobTitle}\n${strip(full || j.Description)}`);
+      try { full = String(JSON.parse(ld?.[1] ?? "null")?.description ?? ""); } catch { /* fall through to the thin-sample HOLD */ }
+      // A 110-char preview cannot carry phrase evidence. When the detail read
+      // fails, contribute NOTHING, so a throttled run starves the sample and
+      // the thin-sample rule HOLDs the board — it must never clear it. A
+      // titles-only degradation is how two convicted mills nearly re-entered
+      // the catalog on 2026-08-30.
+      if (full) out.push(`${j.JobTitle}\n${strip(full)}`);
       await sleep(150);
     }
     return out;

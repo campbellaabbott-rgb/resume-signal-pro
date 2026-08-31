@@ -70,6 +70,22 @@ export const NON_ATS_SOURCES = [
   { key: "usajobs", label: "USAJOBS" },
 ] as const;
 
+/**
+ * ATS platforms the board serves whose application forms we have NOT measured.
+ *
+ * Not ATS_VENDORS: every entry there carries a tier backed by a sampled
+ * measurement in apply-automation.ts, and the mirror test holds the two to it.
+ * Not NON_ATS_SOURCES either: that list is for systems that are not ATS
+ * platforms at all, and Paylocity is one. An unmeasured ATS goes here, the
+ * automation table answers "unknown" for it honestly, and the source copy
+ * still names it — because "where these jobs come from" that omits a source
+ * is false by omission however true each named item is. Graduation path:
+ * sample the apply pages, write the FACTS row, move the entry up.
+ */
+export const UNMEASURED_ATS_SOURCES = [
+  { key: "paylocity", label: "Paylocity" },
+] as const;
+
 export const AUTO_VENDORS = ATS_VENDORS.filter((v) => v.tier === "auto");
 export const CLICK_VENDORS = ATS_VENDORS.filter((v) => v.tier === "click");
 
@@ -101,7 +117,7 @@ export const ATS_VENDOR_LIST = ATS_VENDORS.map((v) => v.label).join(", ");
  * how a board ends up either hiding a source or promising applications it
  * cannot send.
  */
-export const BOARD_SOURCE_LIST = [...ATS_VENDORS, ...NON_ATS_SOURCES]
+export const BOARD_SOURCE_LIST = [...ATS_VENDORS, ...UNMEASURED_ATS_SOURCES, ...NON_ATS_SOURCES]
   .map((v) => v.label)
   .join(", ");
 

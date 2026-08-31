@@ -23,7 +23,12 @@
 // posted-date backfill already calls serves description.{company,role} on
 // every probed posting; ~7-9k rows, 100% null until now. Appended LAST so it
 // queues behind breezy rather than ahead of it.
-export const DETAIL_DESC_SOURCES = ["workday", "smartrecruiters", "bamboohr", "oracle", "breezy", "rippling"] as const;
+// paylocity joined 2026-08-30, the day the vendor landed: its list payload
+// truncates every description to a ~110-char teaser, and leaving it out of
+// all three lists is the exact icims/breezy hole this file's header documents
+// (rows null forever, unswept and undecided). Appended LAST so it queues
+// behind rippling.
+export const DETAIL_DESC_SOURCES = ["workday", "smartrecruiters", "bamboohr", "oracle", "breezy", "rippling", "paylocity"] as const;
 
 /**
  * Vendors whose description rides along in the LIST payload, so ingest stores it

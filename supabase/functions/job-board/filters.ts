@@ -65,7 +65,7 @@ export const SALARIED_PERIODS = ["year", "month"] as const;
  * catalogue's 19,701 entries are typed against — but a union is a type and a
  * filter needs a runtime list. Importing JOB_SOURCES itself to derive one
  * (`[...new Set(JOB_SOURCES.map(s => s.source))]`, which index.ts's audit does)
- * would pull a 2MB module into every consumer of this file for sixteen strings,
+ * would pull a 2MB module into every consumer of this file for seventeen strings,
  * and it would also derive the CATALOGUE's vendors rather than the BOARD's:
  * `oracle` has no catalogue entry today and still has rows in the table.
  *
@@ -93,6 +93,7 @@ export const BOARD_VENDORS = [
   "oracle",
   "icims",
   "usajobs",
+  "paylocity",
 ] as const satisfies readonly JobSourceKind[];
 
 type _UnlistedKind = Exclude<JobSourceKind, (typeof BOARD_VENDORS)[number]>;

@@ -57,6 +57,12 @@ export const CANARIES: readonly Canary[] = [
   // employer's career-site host; these two are its steadiest large tenants.
   { vendor: "icims", token: "careers.accentcare.com", name: "AccentCare" },
   { vendor: "icims", token: "careers.84lumber.com", name: "84 Lumber" },
+  // Paylocity reference boards (24 + 21 postings, live-verified 2026-08-30,
+  // the day the adapter landed). Another embedded-page-payload vendor: a
+  // renamed key inside Jobs[] parses fine and normalizes to zero rows, which
+  // is exactly the "fetched OK, parsed nothing" drift this list exists for.
+  { vendor: "paylocity", token: "1c38e30f-9af2-4b93-a08f-3ea42d2f6872", name: "Wendy's" },
+  { vendor: "paylocity", token: "c47e27a2-5dd2-408a-9ef0-c799cbdd5796", name: "Forsman Farms" },
 ];
 
 // Count raw feed items in a vendor's payload (pre-normalization), matching each

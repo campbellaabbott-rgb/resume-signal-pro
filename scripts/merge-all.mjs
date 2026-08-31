@@ -48,7 +48,7 @@ for (const f of files) {
 // word on ("Uitzendbureau", "Personaldienstleistungen"), so a right-hand
 // boundary never matches. These are the industry's own regulated terms; no
 // manufacturer is called Zeitarbeit GmbH.
-const NAME_BLOCK = /\b(staffing|recruit(ing|ment|er)?s?|talents?|headhunt|personnel|manpower|workforce|employment\s+(agency|services)|temp\s|outsourc|bpo\b|int[eé]rim|travail\s+temporaire|trabajo\s+temporal|demo|test|sample|sandbox|placeholder)\b|\b(uitzend|zeitarbeit|personaldienst|jobandtalent)/i;
+const NAME_BLOCK = /\b(staffing|recruit(ing|ment|er)?s?|talents?|headhunt|personnel|manpower|workforce|employment\s+(agency|services)|placements?\b|temp\s|outsourc|bpo\b|int[eé]rim|travail\s+temporaire|trabajo\s+temporal|demo|test|sample|sandbox|placeholder)\b|\b(uitzend|zeitarbeit|personaldienst|jobandtalent)/i;
 // Corporate-only policy: public-sector entities never enter the catalog
 // (mobile audit 2026-07-18 found City of Baltimore et al. had slipped in
 // through census waves — 22 boards curated out, these patterns keep the
@@ -56,6 +56,29 @@ const NAME_BLOCK = /\b(staffing|recruit(ing|ment|er)?s?|talents?|headhunt|person
 // LLC"-style private names: require the GOVERNMENTAL phrase, not the word.
 const GOV_BLOCK = /\b(city of|county of|state of|commonwealth of|government of|unified school|school district|public schools|public library|court of appeals|county commissioners|conservation district|health district|sheriff|police department|fire department|township of|municipality)\b/i;
 const TOKEN_BLOCK = /(demo|test|sample|sandbox|staging)/i;
+
+// Boards a DESCRIPTION screen convicted as placement mills, plus recruiters
+// identified by their own self-description. The mill screen degrades to a
+// titles-only pass when a vendor throttles descriptions, and a titles-only
+// pass cleared two of these on 2026-08-30 — five days of throttling nearly
+// undid a ban that had only ever lived in a human's head. This set is the
+// memory the fallback lacks; entries name the screen that convicted them.
+const MILL_BLOCK = new Set([
+  "workable:solution-sft",           // 2026-08-10: hospital-nurse placement ads
+  "workable:gotham-enterprises",     // 2026-08-10: near-identical therapist ads, on-behalf language
+  "workable:ubteam",                 // 2026-08-10: 6/12 sampled postings recruit on behalf
+  "workable:the-symicor-group-1",    // 2026-08-30: bank-recruiting firm, self-described
+  "teamtailor:bluestorm",            // 2026-08-30: 2/12 sampled postings show mill evidence
+  "teamtailor:groupelrtechnologies", // 2026-08-30: 8/12 sampled postings show mill evidence
+  "teamtailor:jobtalentfrance",      // 2026-08-30: staffing brand
+  "teamtailor:wearediverse2",        // 2026-08-30: 1/12 sampled postings show mill evidence
+  "rippling:barrys-careers",         // 2026-08-30: 4 distinct titles across 20 sampled of 232
+  "smartrecruiters:collabera2",      // 2026-08-30: 4/6 sampled postings show mill evidence
+  "smartrecruiters:procomservices",  // 2026-08-30: 6/6 sampled postings show mill evidence
+  "workable:next-job-abroad",        // 2026-08-30: 4 distinct titles across 3,530 postings
+  "workable:unitedplacementgroup",   // 2026-08-30: placement agency, removed once already and re-merged the same day
+  "workable:schwertfels",            // 2026-08-30: 4 distinct titles across 1,001 postings
+]);
 
 // Paylocity boards self-name with a page heading the employer typed, and
 // verify-all resolves the real employer from posting structured data. This is
@@ -156,6 +179,7 @@ for (const vendor of VENDORS) {
     const tokenKey = `${vendor}:${b.token.toLowerCase()}`;
     const nameKey = name.toLowerCase();
     if (TOKEN_BLOCK.test(b.token)) { dropped.blockedToken++; continue; }
+    if (MILL_BLOCK.has(tokenKey)) { dropped.confirmedMill = (dropped.confirmedMill ?? 0) + 1; continue; }
     // Content fingerprint, small pinpoint boards only (sandboxes measured
     // 2-6 postings; 12 leaves margin without fetching real boards).
     if (vendor === "pinpoint" && b.count <= 12 && await isPinpointDemoSandbox(b.token)) {

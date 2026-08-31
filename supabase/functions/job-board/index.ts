@@ -39,6 +39,8 @@ import {
   normalizeIcims, normalizeUsajobs,
   normalizeRippling,
   normalizePinpoint,
+  normalizePaylocity,
+  extractPaylocityPageData,
   extractRipplingJobPosts,
   normalizeWorkday,
   normalizeOracle,
@@ -102,7 +104,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-30.7"; // .7: rotation hardening (hot-phase shed lever, stale-signal fails closed, mid-hot death resumes, meta errors read as timeouts, kicked stamped pre-fetch, pause read bounded+loud); ranking-core fixes (wordCount forward progress, +16 guard keys, not-claims-one-token, scoreTitle tokenizes+folds diacritics); +360 Oracle boards
+const BUILD_VERSION = "2026-08-30.8"; // .8: Paylocity is the 17th source (adapter + desc sweep + canaries; shell-is-failure, IsInternal excluded); +166 census-tail boards; a convicted mill is now blocked by token, not by memory
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -556,6 +558,27 @@ async function fetchRippling(s: JobSource, startOffset = 0): Promise<{ items: un
   };
 }
 
+// Paylocity: the board page embeds the whole job list as first-party JSON in
+// a page-global pageData assignment (a Rippling-class channel — the vendor's
+// own data, undocumented, so the canary/breaker discipline applies if it ever
+// gets reference boards). ONE page, no pagination: the payload carries every
+// posting the board serves, so a successful read is a full read and the prune
+// may run — no windowed flag, like pinpoint.
+//
+// An HTML shell WITHOUT a parseable payload is a FAILED fetch, never an empty
+// board. The extractor draws the same line personio and rippling learned the
+// hard way: a parsed payload whose job array is empty is an employer not
+// hiring (honest zero, prune runs); an unrecognizable page is drift or a
+// bot-wall, and throwing here keeps the prune away from a live board.
+async function fetchPaylocity(s: JobSource): Promise<{ items: unknown[]; raw: string }> {
+  const res = await fetchWithTimeout(`https://recruiting.paylocity.com/recruiting/jobs/All/${s.token}`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const html = await res.text();
+  const page = extractPaylocityPageData(html);
+  if (!page) throw new Error("paylocity payload shape unrecognized");
+  return { items: page.items, raw: html };
+}
+
 // Workday CXS: POST-paginated first-party list endpoint. Compound token
 // tenant~dc~site. Bounded to WORKDAY_PAGE_CAP pages (enterprise tenants can
 // hold thousands; the cap keeps one board's fetch from monopolizing a slice —
@@ -784,6 +807,10 @@ async function fetchBoard(
       const body = await res.json();
       const data = Array.isArray((body as { data?: unknown[] }).data) ? (body as { data: unknown[] }).data : [];
       return { jobs: normalizePinpoint(data as never, s.name, s.token), raw: body };
+    }
+    if (s.source === "paylocity") {
+      const { items, raw } = await fetchPaylocity(s);
+      return { jobs: normalizePaylocity(items as never, s.name, s.token), raw };
     }
     if (s.source === "workday") {
       const { jobPostings, raw, windowed, feedTotal, nextOffset } = await fetchWorkday(s, startOffset);
@@ -4246,6 +4273,15 @@ async function fetchVendorDetail(
     // as the schema.org JobPosting block Breezy emits for Google Jobs.
     const url = applyUrl || `https://${src.token}.breezy.hr/p/${externalId}`;
     const res = await fetchWithTimeout(url);
+    if (res.ok) {
+      const html = jobPostingLdDescription(await res.text());
+      text = html ? htmlToText(html).slice(0, DESC_CAP) || null : null;
+    }
+  } else if (src.source === "paylocity") {
+    // The list payload's Description is a ~110-char teaser; the Details page
+    // server-renders the full JD in its schema.org JobPosting block (read
+    // live 2026-08-30: 3,264 of 3,491 chars against the 110-char stub).
+    const res = await fetchWithTimeout(`https://recruiting.paylocity.com/recruiting/jobs/Details/${externalId}`);
     if (res.ok) {
       const html = jobPostingLdDescription(await res.text());
       text = html ? htmlToText(html).slice(0, DESC_CAP) || null : null;

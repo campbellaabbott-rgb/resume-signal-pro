@@ -109,9 +109,9 @@ export default function EntryLevelIndex() {
               2026-07-27). A sources line that leaves out the majority source
               is false by omission, however true each named item is. */}
           Counted live from employers' <b>official</b> job boards (Workday, Greenhouse, SmartRecruiters, Ashby,
-          iCIMS, Oracle, Lever, Workable, BambooHR, Recruitee, Teamtailor, Personio, Breezy, Rippling and
-          Pinpoint) and the U.S. federal government's own system (USAJOBS) — never an aggregator or a
-          scrape, and no dated posting older than 30 days.
+          iCIMS, Oracle, Lever, Workable, BambooHR, Recruitee, Teamtailor, Personio, Breezy, Rippling,
+          Pinpoint and Paylocity) and the U.S. federal government's own system (USAJOBS) — never an aggregator
+          or a scrape, and no dated posting older than 30 days.
         </p>
 
         {/* Headline stats */}

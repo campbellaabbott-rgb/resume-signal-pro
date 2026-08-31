@@ -1,68 +1,8 @@
 [
  {
-  "vendor": "smartrecruiters",
-  "token": "Collabera2",
-  "name": "Collabera",
-  "count": 1683
- },
- {
-  "vendor": "workable",
-  "token": "next-job-abroad",
-  "name": "Next Job Abroad",
-  "count": 3530
- },
- {
-  "vendor": "workable",
-  "token": "schwertfels",
-  "name": "Schwertfels Consulting GmbH",
-  "count": 1001
- },
- {
-  "vendor": "workable",
-  "token": "gotham-enterprises",
-  "name": "Gotham Enterprises Ltd",
-  "count": 737
- },
- {
-  "vendor": "workable",
-  "token": "the-symicor-group-1",
-  "name": "The Symicor Group",
-  "count": 239
- },
- {
-  "vendor": "workable",
-  "token": "ubteam",
-  "name": "Universal Business Team",
-  "count": 124
- },
- {
-  "vendor": "teamtailor",
-  "token": "bluestorm",
-  "name": "Dazzle: Commercial & Office Cleaning | London",
-  "count": 100
- },
- {
   "vendor": "teamtailor",
   "token": "districom",
   "name": "Districom Sales & Marketing",
   "count": 100
- },
- {
-  "vendor": "teamtailor",
-  "token": "groupelrtechnologies",
-  "name": "Groupe LR Technologies",
-  "count": 100
- },
- {
-  "vendor": "teamtailor",
-  "token": "wearediverse2",
-  "name": "JABARI",
-  "count": 100
- },
- {
-  "vendor": "rippling",
-  "token": "barrys-careers",
-  "name": "Barrys Careers",
-  "count": 232
  }
 ]

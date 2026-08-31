@@ -119,7 +119,7 @@ describe("jobPostingLdDescription — Breezy's only description source", () => {
 describe("vendor description classification", () => {
   it("sweeps exactly the vendors that need a per-posting fetch", () => {
     expect([...DETAIL_DESC_SOURCES].sort()).toEqual(
-      ["bamboohr", "breezy", "oracle", "rippling", "smartrecruiters", "workday"].sort(),
+      ["bamboohr", "breezy", "oracle", "paylocity", "rippling", "smartrecruiters", "workday"].sort(),
     );
   });
 
@@ -131,7 +131,12 @@ describe("vendor description classification", () => {
     // at 100% null behind a verdict about a different endpoint. Appended LAST
     // so it queues behind breezy rather than ahead of it.
     expect([...DETAIL_DESC_SOURCES]).toContain("rippling");
-    expect(DETAIL_DESC_SOURCES[DETAIL_DESC_SOURCES.length - 1]).toBe("rippling");
+    // paylocity took the tail slot 2026-08-30, the day the vendor landed —
+    // same reasoning as rippling's own append (a new vendor queues behind the
+    // established backlog, never ahead of it). Rippling keeps its place in
+    // line; only the "last" pin moves.
+    expect(DETAIL_DESC_SOURCES[DETAIL_DESC_SOURCES.length - 1]).toBe("paylocity");
+    expect(DETAIL_DESC_SOURCES[DETAIL_DESC_SOURCES.length - 2]).toBe("rippling");
     expect([...NO_DESC_SOURCES]).toHaveLength(0);
   });
 

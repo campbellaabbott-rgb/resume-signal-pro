@@ -175,7 +175,7 @@ const PINNED = {
   // as a matter of course this time — the .2 bump had to be made retroactively
   // after three commits shipped undeployed behind an unchanged version string,
   // and "is it live?" cost six behavioural probes to answer.
-  sourcesHash: "8c632ebf94a46810",
+  sourcesHash: "f01bfd8e49977c48",
   // 2026-08-21.4: disables the exact-word tier's company matcher, whose index
   // never built. Bumped so the mitigation is externally identifiable.
   // 2026-08-21.5: routed retrieval. index.ts + two new modules; sources.ts
@@ -409,7 +409,20 @@ const PINNED = {
   // one-letter scorer hang, 16 place-name/common-word alias keys guarded,
   // "not" claims exactly one token with a stopword veto, scoreTitle splits
   // query tokens the way titles are split and folds diacritics).
-  buildVersion: "2026-08-30.7",
+  //
+  // 2026-08-30.8: sources.ts CHANGED twice over. +166 boards from the round-3
+  // census tail (the >=100p candidates all went through the description
+  // screen; four staffing operations and one returning placement agency were
+  // convicted and now live in merge-all's MILL_BLOCK, so a titles-only screen
+  // degradation can never re-admit them), MINUS unitedplacementgroup (merged
+  // back in error the same day it was flagged — NAME_BLOCK now knows the word
+  // "placement"). And the union type gained "paylocity": the 17th source's
+  // adapter landed (embedded window.pageData extraction, an HTML shell is a
+  // FAILED fetch and never an empty board, IsInternal postings excluded,
+  // detail-page JSON-LD feeds the description sweep, two live-verified
+  // canaries). No paylocity boards ride this bump — the census sweep runs
+  // separately and its tranche will force the next one.
+  buildVersion: "2026-08-30.8",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {

@@ -921,12 +921,15 @@ describe("vendor schema-drift canary", () => {
   it("ships two stable canaries for every canaried vendor", () => {
     // Every vendor whose payload we parse gets exactly two reference boards —
     // one flake can't fake drift, and a real API change trips both. iCIMS
-    // joined 2026-07-26 (vendor #15).
-    const vendors = ["greenhouse", "lever", "ashby", "smartrecruiters", "workable", "bamboohr", "rippling", "workday", "pinpoint", "icims"];
+    // joined 2026-07-26 (vendor #15); paylocity 2026-08-30 (vendor #17, an
+    // embedded-page-payload vendor like rippling — the class the canary was
+    // built for — seeded the same day its adapter landed rather than after
+    // the first silent drain).
+    const vendors = ["greenhouse", "lever", "ashby", "smartrecruiters", "workable", "bamboohr", "rippling", "workday", "pinpoint", "icims", "paylocity"];
     for (const v of vendors) {
       expect(CANARIES.filter((c) => c.vendor === v).length).toBe(2);
     }
-    expect(CANARIES.length).toBe(20);
+    expect(CANARIES.length).toBe(22);
   });
 });
 
