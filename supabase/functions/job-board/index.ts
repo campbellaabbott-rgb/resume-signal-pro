@@ -108,7 +108,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-30.13"; // .13: the first ADP tranche — 463 boards, every >=100p board full-text screened; ~600 verified-but-nameless ADP boards held out pending a name resolver (an employer name comes from the employer)
+const BUILD_VERSION = "2026-08-30.14"; // .14: THE CHARTER WIDENS — staffing agencies and government employers carry now (operator decision); 220 boards re-admitted + 352 name-resolved ADP boards + 42 prefix-sweep boards; governor 1M -> 1.2M on the re-done disk math; the mill screen informs instead of excluding, junk still blocks
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -1239,8 +1239,15 @@ const CHAIN_CAP = Math.ceil(HOT_SIZE / HOT_SLICE) + COLD_SLICES_PER_PASS + 4; //
 // (plan_disk_gb meta row, updated by migration 20260830260000 in this same
 // commit) — well inside the storage alarm's 75% line, which stays the
 // tripwire that flags the true ceiling before it binds.
-const CORPUS_CEILING = 1_000_000; // arm eviction above this
-const CORPUS_TARGET = 960_000;    // evict down to this
+// 1.2M step (2026-08-31): the operator widened the BOARD's charter — staffing
+// agencies and government employers join the corpus — and the room already
+// exists: same measured row math (9.4KB all-in), 1.2M ~= 11.3GB postings +
+// ~2.5GB everything-else-grown-with-churn ~= 69% of the 20GB plan, inside the
+// storage alarm's 75% line. The earlier belief that 1.2M+ needed a disk
+// resize was arithmetic timidity, not arithmetic. Next stop (1.5M) does need
+// the wider disk.
+const CORPUS_CEILING = 1_200_000; // arm eviction above this
+const CORPUS_TARGET = 1_150_000;  // evict down to this
 
 // Freshness cap: the board shows only roles posted within this window. Dated
 // postings past it are dropped at ingestion (never stored) and swept from the

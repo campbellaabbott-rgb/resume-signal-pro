@@ -175,7 +175,7 @@ const PINNED = {
   // as a matter of course this time — the .2 bump had to be made retroactively
   // after three commits shipped undeployed behind an unchanged version string,
   // and "is it live?" cost six behavioural probes to answer.
-  sourcesHash: "c2c06c9f5484f648",
+  sourcesHash: "004d8476a5fc718f",
   // 2026-08-21.4: disables the exact-word tier's company matcher, whose index
   // never built. Bumped so the mitigation is externally identifiable.
   // 2026-08-21.5: routed retrieval. index.ts + two new modules; sources.ts
@@ -487,7 +487,23 @@ const PINNED = {
   // posting payload, the same move that unlocked Oracle — until then,
   // nameless stays unmerged, because an employer name comes from the
   // employer.
-  buildVersion: "2026-08-30.13",
+  //
+  // 2026-08-30.14: THE CHARTER WIDENS. The operator reversed the
+  // corporate-only bar: staffing agencies and government employers are
+  // carried now. The screens did not die — they changed jobs: phrase
+  // evidence prints (clear~, and rides the cleared entry for a future
+  // disclosure badge) but no longer excludes; MILL_BLOCK shrank to the junk
+  // ledger (duplicate-title spam, double-counting boards, demo tenants) —
+  // junk is junk under any charter, and Great Clips' 6,913 copies of two
+  // titles stayed out while Collabera, CTG, Quess, EXL, the health
+  // authorities and the school districts came in (220 boards re-admitted
+  // across every retained census round). +352 ADP boards named from their
+  // employers' own JD prose (City Barbeque, Jeni's, Fresh Del Monte — the
+  // resolver reads what the employer wrote, 3 contradiction flags held out
+  // rather than guessed) and +42 prefix-sweep custom domains. The corpus
+  // governor steps 1M -> 1.2M on the SAME disk: 69% of plan, inside the 75%
+  // alarm — the "needs a resize" belief was arithmetic timidity.
+  buildVersion: "2026-08-30.14",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {

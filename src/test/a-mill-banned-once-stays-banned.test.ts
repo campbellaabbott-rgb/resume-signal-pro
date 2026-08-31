@@ -35,12 +35,20 @@ describe("a mill banned once stays banned", () => {
     );
   });
 
-  it("still remembers the 2026-08-10 convictions", () => {
+  it("holds the JUNK ledger — the agency convictions were released by charter", () => {
+    // 2026-08-31: the operator widened the board to CARRY staffing agencies,
+    // so the 2026-08-10 agency convictions (solution-sft, gotham, ubteam and
+    // the rest) were deliberately released — that was a policy reversal, not
+    // a screen failure. What must never leave this set is the junk: boards
+    // whose postings are not real openings under ANY charter — duplicate-
+    // title spam and the double-counting all-jobs board. A titles-only
+    // degradation must still never re-admit those.
     const set = /const MILL_BLOCK = new Set\(\[[\s\S]*?\]\);/.exec(MERGE)?.[0] ?? "";
     expect(set, "MILL_BLOCK not found").not.toBe("");
-    expect(set).toContain('"workable:solution-sft"');
-    expect(set).toContain('"workable:gotham-enterprises"');
-    expect(set).toContain('"workable:ubteam"');
+    expect(set).toContain('"workable:next-job-abroad"');
+    expect(set).toContain('"rippling:barrys-careers"');
+    expect(set).toContain('"greenhouse:n2alljobs"');
+    expect(set, "agency convictions are RELEASED — re-adding one reverses the charter").not.toContain('"workable:ubteam"');
   });
 
   it("blocks by vendor-qualified token, never by name", () => {

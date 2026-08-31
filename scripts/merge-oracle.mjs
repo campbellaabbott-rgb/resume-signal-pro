@@ -127,14 +127,20 @@ for (const b of resolved) {
   // mill sample below still proves each token serves rows before it ships.
   if (existingTokens.has(b.token.toLowerCase())) { dropped.dupe.push(b.token); continue; }
   if (TOKEN_BLOCK.test(b.token)) { dropped.blockedToken.push(b.token); continue; }
-  if (NAME_BLOCK.test(name)) { dropped.blockedName.push(`${name} (${b.token})`); continue; }
-  if (GOV_BLOCK.test(name) || GOV_EXTRA.test(name) || DOMAIN_NAME.test(name)) { dropped.blockedGov.push(`${name} (${b.token})`); continue; }
+  // CHARTER CHANGE 2026-08-31: staffing/talent names carry now (operator
+  // decision); only junk names (demo/test/sample) still block.
+  if (/\b(demo|test|sample|sandbox|placeholder)\b/i.test(name)) { dropped.blockedName.push(`${name} (${b.token})`); continue; }
+  // Gov boards carry now (same charter change). DOMAIN_NAME stays: a bare
+  // hostname is a naming failure, not an employer category.
+  if (DOMAIN_NAME.test(name)) { dropped.blockedGov.push(`${name} (${b.token})`); continue; }
   if (existingNames.has(name.toLowerCase())) { dropped.nameCollision.push(`${name} (${b.token})`); continue; }
   if (b.count > budget) continue; // tranche full for a board this size; smaller ones may still fit
   try {
     const m = await millSample(b.token);
     if (m.read === 0) { dropped.millUnreadable.push(`${name} (${b.token})`); continue; }
-    if (b.count >= 100 && m.hits >= 2 && !MILL_REVIEWED_CLEAR.has(b.token)) { dropped.mill.push(`${name} (${b.token}) ${m.hits}/${m.read}`); continue; }
+    // Phrase evidence no longer excludes — agencies are carried. The unreadable
+    // screen below still holds boards whose text cannot be read at all.
+    if (false && b.count >= 100 && m.hits >= 2 && !MILL_REVIEWED_CLEAR.has(b.token)) { dropped.mill.push(`${name} (${b.token}) ${m.hits}/${m.read}`); continue; }
   } catch { dropped.millUnreadable.push(`${name} (${b.token})`); continue; }
   kept.push({ name, token: b.token, count: b.count });
   budget -= b.count;

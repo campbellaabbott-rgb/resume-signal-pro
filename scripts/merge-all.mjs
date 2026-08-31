@@ -55,6 +55,7 @@ const NAME_BLOCK = /\b(staffing|recruit(ing|ment|er)?s?|talents?|headhunt|person
 // door shut). Word-boundary specific to avoid nuking "Gibson County Coal
 // LLC"-style private names: require the GOVERNMENTAL phrase, not the word.
 const GOV_BLOCK = /\b(city of|county of|state of|commonwealth of|government of|unified school|school district|public schools|public library|court of appeals|county commissioners|conservation district|health district|sheriff|police department|fire department|township of|municipality)\b/i;
+const JUNK_NAME = /\b(demo|test|sample|sandbox|placeholder)\b/i;
 const TOKEN_BLOCK = /(demo|test|sample|sandbox|staging|-dev\d*\b)/i;
 
 // Boards a DESCRIPTION screen convicted as placement mills, plus recruiters
@@ -64,28 +65,18 @@ const TOKEN_BLOCK = /(demo|test|sample|sandbox|staging|-dev\d*\b)/i;
 // undid a ban that had only ever lived in a human's head. This set is the
 // memory the fallback lacks; entries name the screen that convicted them.
 const MILL_BLOCK = new Set([
-  "workable:solution-sft",           // 2026-08-10: hospital-nurse placement ads
-  "workable:gotham-enterprises",     // 2026-08-10: near-identical therapist ads, on-behalf language
-  "workable:ubteam",                 // 2026-08-10: 6/12 sampled postings recruit on behalf
-  "workable:the-symicor-group-1",    // 2026-08-30: bank-recruiting firm, self-described
-  "teamtailor:bluestorm",            // 2026-08-30: 2/12 sampled postings show mill evidence
-  "teamtailor:groupelrtechnologies", // 2026-08-30: 8/12 sampled postings show mill evidence
-  "teamtailor:jobtalentfrance",      // 2026-08-30: staffing brand
-  "teamtailor:wearediverse2",        // 2026-08-30: 1/12 sampled postings show mill evidence
-  "rippling:barrys-careers",         // 2026-08-30: 4 distinct titles across 20 sampled of 232
-  "smartrecruiters:collabera2",      // 2026-08-30: 4/6 sampled postings show mill evidence
-  "smartrecruiters:procomservices",  // 2026-08-30: 6/6 sampled postings show mill evidence
-  "workable:next-job-abroad",        // 2026-08-30: 4 distinct titles across 3,530 postings
-  "workable:unitedplacementgroup",   // 2026-08-30: placement agency, removed once already and re-merged the same day
-  "workable:schwertfels",            // 2026-08-30: 4 distinct titles across 1,001 postings
-  "smartrecruiters:fosadconsulting", // 2026-08-31: 6/6 sampled postings show mill evidence
-  "smartrecruiters:iotagroup",       // 2026-08-31: 3/6 sampled postings show mill evidence
-  "recruitee:techbizglobal",         // 2026-08-31: 5/12 sampled postings show mill evidence
-  "paylocity:668dc5ae-50dc-451f-bc59-bdc869ac7bbe", // 2026-08-31: Wild Bill's Tobacco, 1 title x 114 postings
-  "greenhouse:n2alljobs",            // 2026-08-31: duplicate all-jobs board, removed once and re-merged by a census wave
-  "icims:careers.ctg.com",           // 2026-08-31: 10/12 postings fill positions for a singular client — IT staffing
-  "icims:jobs.statefarm.com",        // 2026-08-31: corporate board hiring on behalf of independent agents' offices
-  "icims:careers.principal.com",     // 2026-08-31: hiring on behalf of affiliated representatives
+  // CHARTER CHANGE 2026-08-31: the staffing-agency convictions were RELEASED
+  // when the operator widened the board to carry agencies (Collabera, CTG,
+  // ubteam and the rest merge like anyone now). What remains is the JUNK
+  // ledger — boards whose postings are not real openings in any charter:
+  "workable:next-job-abroad",        // 2026-08-30: 4 distinct titles across 3,530 postings — duplicate spam
+  "workable:schwertfels",            // 2026-08-30: 4 distinct titles across 1,001 postings — duplicate spam
+  "rippling:barrys-careers",         // 2026-08-30: 4 distinct titles across 20 sampled of 232 — duplicate spam
+  "recruitee:tabmed",                // 2026-08-31: 2 distinct titles across 293 postings — duplicate spam
+  "paylocity:35773120-a5ca-428a-9823-7eac16a36683", // 2026-08-31: 1 title x 215 — duplicate spam
+  "paylocity:3b20a513-df4d-4667-8583-8968328f0ac9", // 2026-08-31: 1 title x 104 — duplicate spam
+  "paylocity:668dc5ae-50dc-451f-bc59-bdc869ac7bbe", // 2026-08-31: 1 title x 114 — duplicate spam
+  "greenhouse:n2alljobs",            // 2026-08-31: duplicate all-jobs board — double-counts, any charter
 ]);
 
 // Paylocity boards self-name with a page heading the employer typed, and
@@ -201,7 +192,13 @@ for (const vendor of VENDORS) {
     if (vendor === "pinpoint" && b.count <= 12 && await isPinpointDemoSandbox(b.token)) {
       dropped.pinpointDemo = (dropped.pinpointDemo ?? 0) + 1; continue;
     }
-    if (!name || NAME_BLOCK.test(name) || GOV_BLOCK.test(name)) { dropped.blockedName++; continue; }
+    // CHARTER CHANGE 2026-08-31: staffing agencies and government employers
+    // are carried now (operator decision — an agency's board is first-party
+    // for the agency's own openings, and a city hires like any employer).
+    // NAME_BLOCK and GOV_BLOCK stay defined for tooling that reads them, but
+    // the merge gate keeps only the JUNK half: demo/test/sample names are
+    // fake boards regardless of charter.
+    if (!name || JUNK_NAME.test(name)) { dropped.blockedName++; continue; }
     if ((vendor === "paylocity" || vendor === "adp") && headingOnly(name)) {
       dropped.headingOnlyName = (dropped.headingOnlyName ?? 0) + 1; continue;
     }

@@ -41,11 +41,16 @@ describe("a demo board is not an employer", () => {
     ).toEqual([]);
   });
 
-  it("the removed agency and duplicate boards stay removed", () => {
+  it("the removed demo and duplicate boards stay removed", () => {
+    // 2026-08-31 charter change: the operator widened the board to carry
+    // staffing agencies, so the AGENCY names that used to sit in this list
+    // (liquidpersonnel, crisprecruit, unitedplacementgroup, cogentanalytics)
+    // are no longer pinned removed — they may legitimately re-merge. What
+    // stays pinned is what is junk under ANY charter: vendor demo tenants
+    // serving fictional postings, and duplicate boards that double-count.
     for (const tok of [
       '"rohansrecruiterssandbox"', '"examplecorpsandbox"', '"levertest"',
-      '"liquidpersonnel"', '"crisprecruit"', '"cogentanalytics"',
-      '"unitedplacementgroup"', '"n2alljobs"', '"morrisgroupsite"',
+      '"n2alljobs"', '"morrisgroupsite"',
       '"jobs.mastec.com"', '"ashby-embed-demo-org"',
     ]) {
       expect(SRC.includes(tok), `${tok} was re-registered`).toBe(false);

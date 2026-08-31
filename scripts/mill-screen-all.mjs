@@ -279,8 +279,13 @@ for (const b of worklist) {
     excluded.push({ ...b, hits, sampled: texts.length, reason: "duplicate-titles" });
     console.log(`EXCLUDE ${b.vendor}:${b.token} "${b.name}" — ${distinct} distinct title(s) across ${firstLines.length} sampled of ${b.count} postings`);
   } else if (hits > 0) {
-    excluded.push({ ...b, hits, sampled: texts.length });
-    console.log(`EXCLUDE ${b.vendor}:${b.token} "${b.name}" — ${hits}/${texts.length} sampled postings show mill evidence`);
+    // CHARTER CHANGE 2026-08-31: phrase evidence no longer excludes — the
+    // operator decided staffing agencies are carried. The evidence still
+    // prints so the tag is available the day agency postings get a
+    // disclosure badge; only duplicate-title spam and unreadable boards
+    // still fail this screen.
+    cleared.push({ vendor: b.vendor, token: b.token });
+    console.log(`clear~  ${b.vendor}:${b.token} "${b.name}" — ${hits}/${texts.length} agency-evidence postings (carried under the 2026-08-31 charter)`);
   } else {
     cleared.push({ vendor: b.vendor, token: b.token });
     if (weak) console.log(`clear*  ${b.vendor}:${b.token} "${b.name}" (${b.count}p) — titles-only screen, review name above`);
