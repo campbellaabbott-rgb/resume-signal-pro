@@ -117,6 +117,28 @@ async function sampleTexts(vendor, token) {
       return (q?.state?.data?.items ?? []).slice(0, 20).map((j) => String(j.name ?? ""));
     } catch { return []; }
   }
+  if (vendor === "paylocity") {
+    // Same two-step shape as smartrecruiters: the board page embeds the whole
+    // posting list, but every embedded description is cut to a 110-char
+    // preview — too short for phrase evidence — so the screen walks
+    // per-posting detail pages, whose structured-data block carries the full
+    // text. Titles ride along as the first line for the duplicate-title check.
+    const html = await get(`https://recruiting.paylocity.com/recruiting/jobs/All/${token}`, true);
+    const m = html?.match(/window\.pageData\s*=\s*(\{[\s\S]*?\})\s*;?\s*<\/script>/);
+    if (!m) return [];
+    let jobs;
+    try { jobs = JSON.parse(m[1])?.Jobs ?? []; } catch { return []; }
+    const out = [];
+    for (const j of jobs.slice(0, 6)) {
+      const det = await get(`https://recruiting.paylocity.com/recruiting/jobs/Details/${j.JobId}`, true);
+      const ld = det?.match(/<script[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/);
+      let full = "";
+      try { full = String(JSON.parse(ld?.[1] ?? "null")?.description ?? ""); } catch { /* preview below still screens */ }
+      out.push(`${j.JobTitle}\n${strip(full || j.Description)}`);
+      await sleep(150);
+    }
+    return out;
+  }
   if (vendor === "pinpoint") {
     // postings.json carries full description HTML — real text screen.
     const d = await get(`https://${token}.pinpointhq.com/postings.json`);

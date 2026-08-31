@@ -77,6 +77,26 @@ function roleMixOk(titles) {
   return pro >= 0.5 && retail <= 0.2;
 }
 
+// Paylocity self-names are page headings the employer typed into a text box,
+// and many type a heading rather than their company. A heading built entirely
+// from hiring vocabulary carries no identity — the prober then resolves the
+// employer from the first posting's structured data instead of shipping the
+// heading as a display name. A word set rather than a phrase list, because
+// headings arrive in every arrangement of the same few dozen words.
+const HIRING_VOCAB = new Set([
+  "all", "and", "apply", "at", "available", "board", "career", "careers",
+  "current", "currently", "default", "employment", "external", "for", "here",
+  "hiring", "internal", "job", "jobs", "join", "listing", "listings", "new",
+  "now", "open", "opening", "openings", "opportunities", "opportunity", "our",
+  "page", "portal", "position", "positions", "posting", "postings",
+  "recruiting", "recruitment", "search", "team", "the", "us", "vacancies",
+  "vacancy", "we", "we're", "welcome", "with", "work",
+]);
+const headingOnly = (name) => {
+  const words = String(name).toLowerCase().replace(/[^a-z0-9']+/g, " ").trim().split(/\s+/).filter(Boolean);
+  return words.length === 0 || words.every((w) => HIRING_VOCAB.has(w));
+};
+
 const verifiers = {
   greenhouse: async (t) => {
     const eu = t.startsWith("eu~");
@@ -201,10 +221,39 @@ const verifiers = {
       return { name: (d?.props?.pageProps?.board?.name || prettify(t)).slice(0, 60), count: total };
     } catch { return null; }
   },
+  // Paylocity has no public list API: the board page embeds its entire posting
+  // list as one JSON assignment in a script tag, and per-posting pages carry a
+  // structured-data block naming the hiring organization. Two consequences: a
+  // response without a parseable payload is UNREADABLE — fail, never zero, or
+  // a throttled or reshaped page would read as an empty board — and a heading
+  // with no identity gets its name resolved from the first posting instead.
+  // prettify() is useless here; tokens are opaque board GUIDs.
+  paylocity: async (t) => {
+    const html = await probe(`https://recruiting.paylocity.com/recruiting/jobs/All/${t}`, true);
+    const m = html?.match(/window\.pageData\s*=\s*(\{[\s\S]*?\})\s*;?\s*<\/script>/);
+    if (!m) return null;
+    let d; try { d = JSON.parse(m[1]); } catch { return null; }
+    if (!Array.isArray(d.Jobs)) return null;
+    const jobs = d.Jobs.filter((j) => !j?.IsInternal);
+    if (jobs.length < MIN_POSTINGS) return null;
+    let name = String(d.ModuleTitle ?? "")
+      .replace(/^\s*(?:jobs?|careers?|openings?|positions?)\s+(?:at|@|with)\s+/i, "")
+      .replace(/[\s:;|,\u2013\u2014-]+$/, "").trim();
+    if (headingOnly(name)) {
+      const det = await probe(`https://recruiting.paylocity.com/recruiting/jobs/Details/${jobs[0].JobId}`, true);
+      const ld = det?.match(/<script[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/);
+      try {
+        const org = JSON.parse(ld?.[1] ?? "null")?.hiringOrganization?.name;
+        if (typeof org === "string" && org.trim()) name = org.trim();
+      } catch { /* heading stands; merge hygiene holds it */ }
+    }
+    if (!name) return null;
+    return { name: name.slice(0, 60), count: jobs.length };
+  },
 };
 
-const CONCURRENCY = { greenhouse: 14, ashby: 14, smartrecruiters: 8, workable: 8, bamboohr: 14, recruitee: 14, teamtailor: 14, breezy: 14, personio: 2, rippling: 10, lever: 14, pinpoint: 14, oracle: 6 };
-const SPACING_MS = { greenhouse: 60, ashby: 60, smartrecruiters: 150, workable: 150, bamboohr: 60, recruitee: 60, teamtailor: 60, breezy: 60, personio: 1600, rippling: 120, lever: 60, pinpoint: 60, oracle: 250 };
+const CONCURRENCY = { greenhouse: 14, ashby: 14, smartrecruiters: 8, workable: 8, bamboohr: 14, recruitee: 14, teamtailor: 14, breezy: 14, personio: 2, rippling: 10, lever: 14, pinpoint: 14, paylocity: 6, oracle: 6 };
+const SPACING_MS = { greenhouse: 60, ashby: 60, smartrecruiters: 150, workable: 150, bamboohr: 60, recruitee: 60, teamtailor: 60, breezy: 60, personio: 1600, rippling: 120, lever: 60, pinpoint: 60, paylocity: 250, oracle: 250 };
 
 async function run(vendor, tokens) {
   const verified = [];

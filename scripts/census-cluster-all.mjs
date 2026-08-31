@@ -52,6 +52,14 @@ const SURTS = [
   { vendor: "personio", kind: "subdomain", surt: "de,personio,jobs,", hostSuffix: ".jobs.personio.de", personioHost: "jobs.personio.de" },
   { vendor: "personio", kind: "subdomain", surt: "com,personio,jobs,", hostSuffix: ".jobs.personio.com", personioHost: "jobs.personio.com" },
   { vendor: "rippling", kind: "path", surt: "com,rippling,ats)/", host: "ats.rippling.com" },
+  // Paylocity boards live under one shared host and the token is an opaque
+  // board GUID, not a company slug — NOT_COMPANY can never match one, and the
+  // employer's readable name lives only in the page payload, so naming is
+  // verify-time work, not census work. The crawl's SURT keys are fully
+  // lowercased while the recorded page URLs mix path casings, so one
+  // lowercase prefix covers every variant and the extractor matches the path
+  // case-insensitively.
+  { vendor: "paylocity", kind: "paylocity", surt: "com,paylocity,recruiting)/recruiting/jobs/all/", host: "recruiting.paylocity.com" },
   { vendor: "workday", kind: "workday", surt: "com,myworkdayjobs,", hostSuffix: ".myworkdayjobs.com" },
   // Oracle Fusion recruiting. THE HIGHEST-YIELD VENDOR WE CARRY and, until
   // now, one of only two with no standing census coverage at all: 88 boards
@@ -226,6 +234,15 @@ for (const s of SURTS) {
         // board costs inventory, an unfetchable one costs a refresh slot every
         // rotation forever.
         add("oracle", `${m[1]}~${m[2]}~CX_1`); found++;
+      } else if (s.kind === "paylocity") {
+        if (host !== s.host) continue;
+        // The board id is the GUID segment right after the all-jobs listing
+        // prefix; the employer slug that often follows it is display-only.
+        // Case-insensitive on both the prefix (records keep the page's own
+        // casing) and the GUID, which compares case-insensitively anyway.
+        const m = url.pathname.match(/^\/recruiting\/jobs\/all\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(?:[\/?#]|$)/i);
+        if (!m) continue;
+        add("paylocity", m[1].toLowerCase()); found++;
       } else {
         // workday: {tenant}.{dc}.myworkdayjobs.com/(locale/)?{site}/…
         const m = host.match(/^([a-z0-9-]+)\.(wd\d+)\.myworkdayjobs\.com$/);

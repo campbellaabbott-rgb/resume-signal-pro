@@ -16,7 +16,7 @@ const files = args.filter((a) => a !== "--apply");
 const SOURCES = "supabase/functions/job-board/sources.ts";
 const src = fs.readFileSync(SOURCES, "utf8");
 
-const VENDORS = ["greenhouse", "lever", "ashby", "smartrecruiters", "workable", "bamboohr", "recruitee", "teamtailor", "personio", "breezy", "rippling", "workday", "pinpoint"];
+const VENDORS = ["greenhouse", "lever", "ashby", "smartrecruiters", "workable", "bamboohr", "recruitee", "teamtailor", "personio", "breezy", "rippling", "workday", "pinpoint", "paylocity"];
 const verified = Object.fromEntries(VENDORS.map((v) => [v, []]));
 for (const f of files) {
   const data = JSON.parse(fs.readFileSync(f, "utf8"));
@@ -56,6 +56,27 @@ const NAME_BLOCK = /\b(staffing|recruit(ing|ment|er)?s?|talents?|headhunt|person
 // LLC"-style private names: require the GOVERNMENTAL phrase, not the word.
 const GOV_BLOCK = /\b(city of|county of|state of|commonwealth of|government of|unified school|school district|public schools|public library|court of appeals|county commissioners|conservation district|health district|sheriff|police department|fire department|township of|municipality)\b/i;
 const TOKEN_BLOCK = /(demo|test|sample|sandbox|staging)/i;
+
+// Paylocity boards self-name with a page heading the employer typed, and
+// verify-all resolves the real employer from posting structured data. This is
+// the backstop for the ones that never resolved: a heading built entirely
+// from hiring vocabulary would enter the catalog as a company named like a
+// page title. Word set rather than phrase list — headings arrive in every
+// arrangement of the same few dozen words. Duplicated from verify-all by
+// hand, as the census scripts share nothing by import.
+const HIRING_VOCAB = new Set([
+  "all", "and", "apply", "at", "available", "board", "career", "careers",
+  "current", "currently", "default", "employment", "external", "for", "here",
+  "hiring", "internal", "job", "jobs", "join", "listing", "listings", "new",
+  "now", "open", "opening", "openings", "opportunities", "opportunity", "our",
+  "page", "portal", "position", "positions", "posting", "postings",
+  "recruiting", "recruitment", "search", "team", "the", "us", "vacancies",
+  "vacancy", "we", "we're", "welcome", "with", "work",
+]);
+const headingOnly = (name) => {
+  const words = String(name).toLowerCase().replace(/[^a-z0-9']+/g, " ").trim().split(/\s+/).filter(Boolean);
+  return words.length === 0 || words.every((w) => HIRING_VOCAB.has(w));
+};
 
 // Pinpoint seeds every trial tenant with the same 6 demo postings, and a
 // company that trials Pinpoint without going live serves ONLY those — under
@@ -141,6 +162,9 @@ for (const vendor of VENDORS) {
       dropped.pinpointDemo = (dropped.pinpointDemo ?? 0) + 1; continue;
     }
     if (!name || NAME_BLOCK.test(name) || GOV_BLOCK.test(name)) { dropped.blockedName++; continue; }
+    if (vendor === "paylocity" && headingOnly(name)) {
+      dropped.paylocityHeading = (dropped.paylocityHeading ?? 0) + 1; continue;
+    }
     if (seen.has(tokenKey) || existingTokens.has(tokenKey)) { dropped.dupe++; continue; }
     // COLLISION, BUT NOT ALL COLLISIONS ARE EQUAL.
     //
