@@ -110,7 +110,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-30.21"; // .21: the UKG tranche — 1,291 boards / ~74k postings, every >=100p board screened on full detail text after the sampler was caught returning nothing and holding all 193 rather than clearing them
+const BUILD_VERSION = "2026-08-30.22"; // .22: status degrades loudly instead of 500ing (deploy identity is a constant and now always answers, with the reason attached); catalog names decode hex entities and four prose-as-name entries are gone
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -5852,6 +5852,23 @@ Deno.serve(async (req) => {
     }
 
     if (action === "status") {
+      // ONE BAD READ MUST NOT COST THE WHOLE ANSWER.
+      //
+      // 2026-09-01: status began answering a bare 500 while every serving path
+      // was healthy — search, faceted list, counts and vendor filters all fine,
+      // the site rendering 819,374 openings. This endpoint's PRIMARY job is
+      // answering "did my deploy land?", and it was failing at exactly that
+      // while the board it reports on was working perfectly. Worse, the generic
+      // catch discarded the reason, so the one endpoint built for diagnosis
+      // became undiagnosable.
+      //
+      // It gathers ~30 reads plus post-processing; anything that throws takes
+      // all of it. The deploy identity is CONSTANT — baked into this bundle,
+      // needing no database at all — so it is answered first and separately.
+      // A failure below degrades to that skeleton plus the reason, at 200,
+      // because a status page that cannot say what is wrong with it is worse
+      // than one that says only a little.
+      try {
       // Deploy + health introspection. Read-only, zero-cost (meta rows only — no
       // feed fetches, no AI). BUILD_VERSION and catalogSize come from the DEPLOYED
       // bundle, so a stale/failed publish is visible in ONE call instead of being
@@ -6007,6 +6024,7 @@ Deno.serve(async (req) => {
       // one place instead of leaving it to be inferred from two percentages.
       const pbBacklogNow = await undatedBacklog(client);
       return json({
+        statusDegraded: false,
         // deployed build identity (constants baked into THIS bundle)
         version: BUILD_VERSION,
         // WHICH VENDORS THIS BUNDLE CAN HARVEST REAL QUESTIONS FOR.
@@ -6466,6 +6484,20 @@ Deno.serve(async (req) => {
           : ((dcCache.data?.v as unknown[] | undefined) ?? null),
         at: new Date().toISOString(),
       });
+      } catch (statusErr) {
+        // The skeleton always answers, because "which bundle is deployed?" is
+        // a constant in this file and needs no database. Reported at 200 with
+        // the reason attached: a 500 here tells a caller nothing except that
+        // something broke in the place built to explain what broke.
+        console.error("[JOB-BOARD] status degraded:", statusErr);
+        return json({
+          version: BUILD_VERSION,
+          catalogSize: JOB_SOURCES.length,
+          statusDegraded: true,
+          statusError: String((statusErr as { message?: unknown })?.message ?? statusErr).slice(0, 300),
+          at: new Date().toISOString(),
+        });
+      }
     }
 
     if (action === "vendor-health") {

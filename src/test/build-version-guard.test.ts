@@ -175,7 +175,7 @@ const PINNED = {
   // as a matter of course this time — the .2 bump had to be made retroactively
   // after three commits shipped undeployed behind an unchanged version string,
   // and "is it live?" cost six behavioural probes to answer.
-  sourcesHash: "23b56ca715c148b4",
+  sourcesHash: "1cc9ee61bde5c59b",
   // 2026-08-21.4: disables the exact-word tier's company matcher, whose index
   // never built. Bumped so the mitigation is externally identifiable.
   // 2026-08-21.5: routed retrieval. index.ts + two new modules; sources.ts
@@ -610,7 +610,25 @@ const PINNED = {
   // never issue a clean bill — and it is the reason 1,291 unscreened boards
   // did not merge. Re-run on real detail text: 192 cleared, one restaurant
   // chain excluded for posting a single title 124 times.
-  buildVersion: "2026-08-30.21",
+  //
+  // 2026-08-30.22: status stopped answering a bare 500 while the board was
+  // healthy. It gathers ~30 reads under one try, so anything that throws took
+  // the whole answer and the generic catch replaced the reason with a fixed
+  // string — leaving the one endpoint built for diagnosis undiagnosable, and
+  // failing at "did my deploy land?" while the site served 819,374 openings.
+  // The deploy identity is a constant in the bundle, so it answers first and
+  // separately; a failure below degrades to that skeleton plus the reason, at
+  // 200. Users were never affected — the homepage already treated the stat as
+  // optional — but Lovable's overlay reported it as a blank screen.
+  //
+  // sources.ts changed twice over. Catalog names now decode NUMERIC entities
+  // in both spellings: the decoder handled decimal (&#39;) and UKG emits hex,
+  // so 52 names carried literal "Rudy&#x27;s" onto employer cards. Decoding
+  // also exposed four entries that were never names at all — welcome prose
+  // scraped as an employer ("include a resume—but it's not required") — which
+  // are dropped, and three more where the real employer was buried in front of
+  // the prose and is now recovered.
+  buildVersion: "2026-08-30.22",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {

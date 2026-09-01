@@ -196,9 +196,23 @@ for (const m of src.matchAll(/s\("((?:[^"\\]|\\.)*)",\s*"(\w+)"/g)) noteName(m[1
 const DRIVABLE = new Set(["breezy", "oracle", "teamtailor", "personio", "pinpoint"]);
 console.log(`catalog: ${existingTokens.size} tokens, ${existingNames.size} names`);
 
-const decodeEntities = (s) => s
-  .replace(/&amp;/g, "&").replace(/&#0?39;|&apos;/g, "'").replace(/&quot;/g, '"')
-  .replace(/&lt;/g, "<").replace(/&gt;/g, ">");
+// NUMERIC ENTITIES COME IN TWO SPELLINGS AND ONLY ONE WAS HANDLED.
+//
+// The named list plus a DECIMAL apostrophe (&#39;) covered every vendor whose
+// names had been merged before, so the gap sat unnoticed until UKG, whose
+// pages emit the HEX form: 45 boards merged on 2026-09-01 carrying literal
+// "Rudy&#x27;s" and "Leslie&#x27;s Poolmart" onto employer cards. Decoding
+// both numeric forms generically means the next vendor's spelling is already
+// handled — a named-entity list is a list of the ones someone happened to
+// meet. Ampersand is decoded LAST so a double-encoded "&amp;#x27;" resolves
+// in one pass rather than leaving a bare "#x27;".
+const decodeEntities = (s) => String(s)
+  .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCodePoint(parseInt(h, 16)))
+  .replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(Number(d)))
+  .replace(/&apos;/g, "'").replace(/&quot;/g, '"')
+  .replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+  .replace(/&nbsp;/g, " ")
+  .replace(/&amp;/g, "&");
 
 const keep = {};
 const dropped = { blockedName: 0, blockedToken: 0, dupe: 0, nameCollision: 0 };
