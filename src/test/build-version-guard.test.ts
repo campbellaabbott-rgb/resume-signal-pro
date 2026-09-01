@@ -530,7 +530,20 @@ const PINNED = {
   // 20260831120000 whose malformed-patch guard is a spelling whitelist,
   // because a bad string throws before COALESCE can help. +285 ADP boards
   // named from their employers' own prose rode along.
-  buildVersion: "2026-08-30.16",
+  //
+  // 2026-08-30.17: sources.ts is UNCHANGED (the hash below still pins the
+  // .16 catalog); the bump is for the shared modules. Two search upgrades,
+  // both measured before and after. (1) excludeAgencies shipped deliberately
+  // unbound and it cost ranked retrieval to everyone who used it; migration
+  // 20260901090000 binds it in search_jobs and count_jobs_capped, adds
+  // p.agency to the ranked projection so the badge finally renders on ranked
+  // results, re-issues fuzzy_title_search in lockstep, and re-grants from the
+  // catalog — DROP discards grants, and a guard caught that before it became
+  // a total search outage. (2) rerankWindow scored only the title, so a query
+  // naming an employer tied that employer's own jobs with unrelated
+  // description matches at zero; company match is now a tiebreak BELOW title
+  // score, which lifts the real jobs without touching occupation searches.
+  buildVersion: "2026-08-30.17",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {

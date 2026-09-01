@@ -265,6 +265,11 @@ const RPC_BOUND_FILTERS = new Set<keyof AppliedFilters>([
   "sendableOnly",
   "experience",
   "salaryFloor",
+  // Bound as of 20260901090000. It shipped blind on purpose — no RPC took a
+  // parameter for it — and that cost ranked retrieval to every searcher who
+  // opted out of staffing agencies. The migration binds it in both the search
+  // and the count function, so the trade is gone.
+  "excludeAgencies",
   // Bound as of 20260826041500. Both were previously blind, which meant a
   // stated-pay search could never use the ranked path at all — it fell through
   // to recency and lost ranking, the fuzzy tier and the semantic tier with it.

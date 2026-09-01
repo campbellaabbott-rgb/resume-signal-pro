@@ -179,13 +179,19 @@ describe("the opt-out narrows, never widens, and is never silently dropped", () 
     expect(str.ignored).toContain("excludeAgencies");
   });
 
-  it("no RPC can bind it, so the blind-set gate must route it — the five-filters lesson", () => {
-    // The mechanical half: the moment the filter exists and is NOT in
-    // RPC_BOUND_FILTERS, every ranked/capped-count exit stands down and the
-    // request flows through buildQuery, the one binder. When the SQL gains a
-    // parameter for it, RPC_BOUND_FILTERS gains the key and this expectation
-    // inverts — deliberately, in that order.
-    expect(rpcBlindFilters(norm({ excludeAgencies: true }).applied)).toContain("excludeAgencies");
+  it("the RPCs bind it now, so the opt-out keeps the ranked path", () => {
+    // THE INVERSION THIS TEST WAS WRITTEN TO EXPECT, and in the order it
+    // named: 20260901090000 gave search_jobs and count_jobs_capped a
+    // p_exclude_agencies parameter, so the key joined RPC_BOUND_FILTERS and
+    // the blind-set gate stopped standing the ranked exits down.
+    //
+    // What it cost while blind, measured live 2026-09-01 with adjacent
+    // repeated controls: q="nurse" answered ranked; the same query carrying
+    // the opt-out answered UNRANKED. Both counts were honest — a disclosed
+    // 10,000 ceiling against an exact 22,467 from the other counting path —
+    // but the searcher who asked to hide staffing agencies silently lost
+    // relevance ranking, and that was the part worth paying a migration for.
+    expect(rpcBlindFilters(norm({ excludeAgencies: true }).applied)).toEqual([]);
     expect(rpcBlindFilters(norm({}).applied)).toEqual([]);
   });
 

@@ -108,7 +108,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-30.16"; // .16: search upgrades — routed deadline shape-sized (the 9.4s not-for-profit query), zero-result ladder stops paying for proven emptiness, exclusion searches get an honest labelled ceiling, agency disclosure ships (139 tagged boards, badge + opt-in filter, migration 20260831120000); +285 named ADP boards
+const BUILD_VERSION = "2026-08-30.17"; // .17: the agency opt-out keeps ranked retrieval (search_jobs/count_jobs_capped bind it; ranked rows carry the disclosure column), and an employer name lifts that employer's own jobs above unrelated ties
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -9954,6 +9954,7 @@ async function serveList(
         ...extraFilterParams(applied),
         p_work_mode: applied.workMode,
           ...(applied.employmentType ? { p_employment_type: applied.employmentType } : {}),
+          ...(applied.excludeAgencies ? { p_exclude_agencies: true } : {}),
         p_cap: COUNT_CAP,
       });
       markFrom("count_jobs_capped_settle", t_count_jobs_capped_6);
@@ -10106,6 +10107,7 @@ async function serveList(
               ...extraFilterParams(applied),
               ...(applied.workMode ? { p_work_mode: applied.workMode } : {}),
               ...(applied.employmentType ? { p_employment_type: applied.employmentType } : {}),
+              ...(applied.excludeAgencies ? { p_exclude_agencies: true } : {}),
               p_cap: COUNT_CAP,
             });
             markFrom("count_jobs_capped_settle", t_count_jobs_capped_5);
@@ -10348,6 +10350,7 @@ async function serveList(
           ...extraFilterParams(applied),
           ...(applied.workMode ? { p_work_mode: applied.workMode } : {}),
         ...(applied.employmentType ? { p_employment_type: applied.employmentType } : {}),
+        ...(applied.excludeAgencies ? { p_exclude_agencies: true } : {}),
           p_limit: 1,
           p_offset: 0,
         });
@@ -11010,6 +11013,7 @@ async function serveList(
         // every route; it is never quietly ignored again.
         ...(applied.workMode ? { p_work_mode: applied.workMode } : {}),
         ...(applied.employmentType ? { p_employment_type: applied.employmentType } : {}),
+        ...(applied.excludeAgencies ? { p_exclude_agencies: true } : {}),
         // A SORTED MODE READS A FIXED WINDOW, NOT A MOVING ONE.
         //
         // The in-memory sort permutes these rows, so a p_offset that advances in
@@ -11416,6 +11420,7 @@ async function serveList(
                     ...extraFilterParams(applied),
                     ...(applied.workMode ? { p_work_mode: applied.workMode } : {}),
         ...(applied.employmentType ? { p_employment_type: applied.employmentType } : {}),
+        ...(applied.excludeAgencies ? { p_exclude_agencies: true } : {}),
                     p_limit: Math.max(limit * 2, 40),
                     p_offset: 0,
                   }),

@@ -306,10 +306,26 @@ export function rerankWindow<T extends { title?: unknown; company?: unknown; tok
     r,
     i,
     s: Math.max(...queries.map((q) => scoreTitle(String(r.title ?? ""), q))),
+    // THE EMPLOYER'S OWN JOBS, WHEN THE TITLE SAYS NOTHING EITHER WAY.
+    //
+    // Measured 2026-09-01 by scoring served results: q="Costco" put a
+    // plumbing dispatcher and a substitute teacher in the top ten — rows the
+    // description tier had legitimately matched, tied at a title score of
+    // zero and then ordered by nothing. Meanwhile an actual Costco job
+    // titled "Cashier" scores zero too, because the query names the employer
+    // and not the work.
+    //
+    // Deliberately a TIEBREAK, never a boost: it is read only when the title
+    // scores are equal, so it cannot reorder a query the title already
+    // separates. That is what keeps it away from occupation searches, which
+    // measured ~1.00 precision@5 and had nothing to gain here — "nurse" must
+    // not start preferring a company called Nurse Staffing over nursing
+    // jobs, and under a tiebreak it cannot.
+    c: Math.max(...queries.map((q) => scoreTitle(String(r.company ?? ""), q))),
   }));
   // Index breaks ties so the order is total and identical on every call —
   // pagination over an unstable ordering is how page two repeated page one.
-  scored.sort((a, b) => (b.s - a.s) || (a.i - b.i));
+  scored.sort((a, b) => (b.s - a.s) || (b.c - a.c) || (a.i - b.i));
   const seen = new Map<string, number>();
   const keep: typeof scored = [];
   const demoted: typeof scored = [];
