@@ -1,5 +1,9 @@
 {
   "changelogEntries": {
+    "resumeDropFindsRealMatches": {
+      "title": "Soltar tu currículum ahora encuentra empleos, no solo los reordena",
+      "description": "Soltar un currículum en el tablero prometía ordenar todas las vacantes a tu alrededor. En realidad solo reordenaba las pocas docenas ya visibles en tu pantalla — y en el tablero principal esas son simplemente las más recientes, sin relación con tu carrera. Así que barajaba empleos irrelevantes y presentaba el resultado como una coincidencia. Ahora el tablero lee tu puesto en el currículum, busca ese rol entre las más de 800.000 vacantes y las ordena por afinidad. Te muestra qué palabra tomó de tu currículum, para que puedas borrarla o elegir otra de las que encontró. Medido en cuatro carreras, la afinidad media subió entre tres y diez veces; en la página de una contadora todos los resultados puntuaban cero, y ahora ninguno."
+    },
     "agenciesLabelledNotHidden": {
       "title": "Las agencias de empleo están en el tablón, y señaladas",
       "description": "El tablón solo incluía empresas que contrataban para sí mismas, lo que ocultaba una parte grande de trabajo real: las agencias y las consultoras de selección también publican empleos genuinos. Ahora están incluidas y cada una lleva la etiqueta «Agencia de empleo», para que siempre sepas quién hay detrás de un anuncio. Si prefieres no verlas, un solo interruptor las oculta. Transparencia en lugar de una decisión tomada en silencio por ti; las fábricas de anuncios que publican el mismo puesto cientos de veces siguen rechazadas."

@@ -1,5 +1,9 @@
 {
   "changelogEntries": {
+    "resumeDropFindsRealMatches": {
+      "title": "Soltar seu currículo agora encontra vagas, não apenas as reordena",
+      "description": "Soltar um currículo no painel prometia ordenar todas as vagas ao seu redor. Na prática, apenas reordenava as poucas dezenas já visíveis na tela — e no painel principal essas são simplesmente as mais recentes, sem relação com a sua carreira. Vagas irrelevantes eram embaralhadas e o resultado apresentado como correspondência. Agora o painel lê o seu cargo no currículo, busca essa função entre as mais de 800.000 vagas e as ordena por afinidade. Ele mostra qual palavra tirou do seu currículo, para você limpar ou escolher outra que encontrou. Medido em quatro carreiras, a afinidade média subiu de três a dez vezes; na página de uma contadora todos os resultados marcavam zero, e agora nenhum marca."
+    },
     "agenciesLabelledNotHidden": {
       "title": "As agências de emprego estão no quadro — e identificadas",
       "description": "O quadro só incluía empregadores que contratavam para si próprios, o que escondia uma fatia grande de trabalho real: agências e recrutadores também publicam vagas genuínas. Agora estão incluídas e cada uma exibe a etiqueta «Agência de emprego», para que saiba sempre quem está por trás de um anúncio. Se preferir não as ver, um botão esconde-as todas. Transparência em vez de uma decisão tomada em silêncio por si; as fábricas de anúncios que publicam a mesma vaga centenas de vezes continuam recusadas."

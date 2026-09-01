@@ -1,5 +1,9 @@
 {
   "changelogEntries": {
+    "resumeDropFindsRealMatches": {
+      "title": "Déposer votre CV trouve désormais des offres, au lieu de les réordonner",
+      "description": "Déposer un CV sur le tableau promettait de classer toutes les offres autour de vous. En réalité, cela ne réordonnait que les quelques dizaines déjà affichées à l'écran — et sur le tableau principal, ce sont simplement les plus récentes, sans rapport avec votre parcours. Des offres sans lien étaient donc mélangées puis présentées comme une correspondance. Le tableau lit maintenant votre intitulé de poste dans le CV, cherche ce métier parmi les 800 000 offres et les classe par adéquation. Il vous montre quel mot il a tiré de votre CV, pour que vous puissiez l'effacer ou en choisir un autre. Mesuré sur quatre métiers, l'adéquation moyenne a triplé voire décuplé ; sur la page d'une comptable, tous les résultats étaient à zéro, plus aucun ne l'est."
+    },
     "agenciesLabelledNotHidden": {
       "title": "Les agences de recrutement sont là, et signalées",
       "description": "Le tableau ne présentait que les employeurs recrutant pour eux-mêmes, ce qui masquait une grande part d'emplois bien réels : les agences et cabinets publient aussi de vraies offres. Elles sont désormais incluses et chacune porte la mention « Agence de recrutement », pour que vous sachiez toujours qui se trouve derrière une annonce. Si vous préférez ne pas les voir, un seul bouton les masque. De la transparence plutôt qu'un choix fait en silence à votre place ; les usines à annonces qui publient le même poste des centaines de fois restent refusées."

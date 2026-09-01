@@ -646,7 +646,16 @@ const PINNED = {
   //    the definitive "not hiring" on the page that ranks for "is X hiring?".
   //  * The reverted location fix (see 20260901200000) is restored in the same
   //    migration.
-  buildVersion: "2026-08-30.23",
+  //
+  // .24 — a dropped résumé RETRIEVES instead of re-sorting the loaded window.
+  //  * fitRanking only ever re-ordered the postings already on the page, and on
+  //    the default browse those are the newest 60 of 814,859 — chosen by
+  //    recency, connected to nobody's career. The board reshuffled irrelevant
+  //    rows and captioned them as a fit ranking. It now reads the role out of
+  //    the CV (new fit-terms action) and searches for it, so the scores rank a
+  //    candidate set worth ranking: mean fit 1.4-4.5 -> 11.6-17.1 across four
+  //    careers, and an accountant went from 20/20 rows scoring zero to none.
+  buildVersion: "2026-08-30.24",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {

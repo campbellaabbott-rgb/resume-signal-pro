@@ -1131,6 +1131,9 @@ export default function Jobs() {
   // strict newest-first (server bypasses the ranked path).
   const [searchNewestFirst, setSearchNewestFirst] = useState(false);
   const [fitRanking, setFitRanking] = useState(false);
+  // Role titles read out of the dropped résumé. Shown, never hidden: the board
+  // searched for something the reader did not type, so it has to say what.
+  const [fitTerms, setFitTerms] = useState<string[]>([]);
   /** Postings whose fit call failed outright, so the UI can say so instead of
    *  presenting an unscored list as a ranked one. */
   const [fitFailedCount, setFitFailedCount] = useState(0);
@@ -2718,7 +2721,44 @@ export default function Jobs() {
       setResumeAvailable(true);
       setFitRanking(true);
       setShowOrientation(false);
-      toast({ title: t("jobsPage.dropParsed", "Résumé loaded — ranking every opening around you.") });
+
+      // RANKING IS NOT FINDING, AND THIS GESTURE PROMISED FINDING.
+      //
+      // Turning fit-ranking on only re-orders the postings already loaded, and
+      // on the default browse those are the newest few dozen of eight hundred
+      // thousand — postings selected by recency, related to nobody's résumé. So
+      // the drop used to reorder rows that had nothing to do with the reader
+      // and present the result as a match. Ask the résumé what it does for a
+      // living, put that in the search box, and let the ordinary search
+      // retrieve; the fit scores then rank a candidate set worth ranking.
+      // Measured across four careers: mean fit 1.4-4.5 -> 11.6-17.1, and rows
+      // scoring zero 7-14 of 20 -> 0-1.
+      let searched = "";
+      try {
+        const { data: td } = await supabase.functions.invoke("job-board", {
+          body: { action: "fit-terms", resumeText: text },
+        });
+        const terms = ((td as { terms?: string[] } | null)?.terms ?? [])
+          .filter((s): s is string => typeof s === "string" && s.length > 0);
+        setFitTerms(terms);
+        // Never overwrite an intent the reader has already stated. A typed
+        // query or an employer lander is a narrower ask than "my résumé", and
+        // fit ranking still applies on top of whichever they chose.
+        if (terms.length > 0 && !q.trim() && !company && !landerCompany) {
+          searched = terms[0];
+          setQ(searched);
+        }
+      } catch {
+        // Retrieval is the upgrade, not the feature. A failure here leaves the
+        // reader exactly where the old code left everyone, and the toast below
+        // still describes what actually happened.
+      }
+
+      toast({
+        title: searched
+          ? t("jobsPage.dropParsedSearched", "Résumé loaded — finding {{role}} roles and ranking them by fit.", { role: searched })
+          : t("jobsPage.dropParsedNoRole", "Résumé loaded — ranking what you're browsing by fit. Search a job title to widen it."),
+      });
     } catch {
       toast({ title: t("jobsPage.dropFailed", "Couldn't parse that file. The full free scan handles trickier formats."), variant: "destructive" });
     } finally {
@@ -6009,6 +6049,32 @@ export default function Jobs() {
                     : pageTotalCount.toLocaleString(),
                   companyFeeds: (data?.companiesCount ?? companies.length).toLocaleString(),
                 })}
+                {/* THE BOARD SEARCHED FOR SOMETHING NOBODY TYPED.
+                    Dropping a résumé now puts a role in the search box, because
+                    ranking the window without retrieving anything was the bug
+                    that made this feature useless. A query the reader did not
+                    write has to be visible and reversible, so it says where the
+                    word came from and the ordinary "q" filter chip clears it.
+                    The runners-up are offered rather than merged: a career with
+                    two honest readings is common, and picking one silently
+                    would hide the other. */}
+                {fitRanking && fitTerms.length > 0 && (
+                  <span className="block text-[12px] text-muted-foreground mt-1">
+                    {fitTerms[0] === q
+                      ? t("jobsPage.fitTermsSearched", "“{{role}}” came from your résumé — clear it to browse everything.", { role: q })
+                      : t("jobsPage.fitTermsAvailable", "From your résumé:")}{" "}
+                    {fitTerms.filter((term) => term !== q).map((term) => (
+                      <button
+                        key={term}
+                        type="button"
+                        onClick={() => { setQ(term); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                        className="text-primary underline underline-offset-2 mr-2"
+                      >
+                        {term}
+                      </button>
+                    ))}
+                  </span>
+                )}
                 {/* THE REVENUE PRODUCT, ON THE SURFACE THAT CARRIES THE TRAFFIC.
                     Placed here rather than in the hero deliberately: a visitor
                     reading the results line is looking at real roles, which is

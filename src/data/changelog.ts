@@ -23,6 +23,7 @@ export interface ChangelogEntry {
 }
 
 export const changelog: ChangelogEntry[] = [
+  { id: "resumeDropFindsRealMatches", date: "2026-09-01", tags: ["fixed"] },
   { id: "agenciesLabelledNotHidden", date: "2026-09-01", tags: ["new"] },
   { id: "fourMoreHiringSystems", date: "2026-09-01", tags: ["new"] },
   { id: "employerSearchFindsTheEmployer", date: "2026-09-01", tags: ["fixed"] },

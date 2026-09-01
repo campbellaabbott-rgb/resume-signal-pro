@@ -1,5 +1,9 @@
 {
   "changelogEntries": {
+    "resumeDropFindsRealMatches": {
+      "title": "Je cv neerzetten vindt nu vacatures, in plaats van ze te herschikken",
+      "description": "Een cv op het bord slepen beloofde elke vacature om je heen te rangschikken. In werkelijkheid herschikte het alleen de paar dozijn vacatures die al op je scherm stonden — en op het hoofdbord zijn dat simpelweg de nieuwste, die niets met jouw loopbaan te maken hebben. Irrelevante vacatures werden dus geschud en als match gepresenteerd. Nu leest het bord je functietitel uit het cv, zoekt die functie tussen alle 800.000+ vacatures en rangschikt die op match. Het laat zien welk woord het uit je cv haalde, zodat je het kunt wissen of een ander kunt kiezen. Gemeten over vier loopbanen steeg de gemiddelde match drie- tot tienvoudig; op de pagina van een accountant scoorde eerst elk resultaat nul, nu geen enkel meer."
+    },
     "agenciesLabelledNotHidden": {
       "title": "Uitzenders staan op het bord — en zijn gemarkeerd",
       "description": "Het bord bevatte alleen werkgevers die voor zichzelf werven, waardoor een groot deel van echt openstaand werk onzichtbaar bleef: ook bureaus en recruiters plaatsen echte vacatures. Ze zijn nu opgenomen en elke vacature draagt het label „Uitzendbureau”, zodat u altijd weet wie erachter zit. Wilt u ze niet zien, dan verbergt één schakelaar ze allemaal. Openheid in plaats van een stille keuze namens u; vacaturefabrieken die dezelfde functie honderden keren plaatsen blijven geweigerd."

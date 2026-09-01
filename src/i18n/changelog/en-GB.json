@@ -1,5 +1,9 @@
 {
   "changelogEntries": {
+    "resumeDropFindsRealMatches": {
+      "title": "Dropping your CV now finds jobs, not just re-orders them",
+      "description": "Dropping a CV onto the board promised to rank every opening around you. It only re-ordered the few dozen postings already on your screen — and on the main board those are simply the newest ones, which have nothing to do with your career. So it reshuffled irrelevant jobs and presented the result as a match. Now the board reads your job title out of the CV, searches all 800,000+ openings for that role, and ranks those by fit. It shows you which word it took from your CV, so you can clear it or pick another one it found. Measured across four careers, average fit rose three- to tenfold; on one accountant's page every single result had been scoring zero, and now none do."
+    },
     "agenciesLabelledNotHidden": {
       "title": "Staffing agencies are on the board — and labelled",
       "description": "The board used to carry only employers hiring for themselves, which quietly hid a large slice of real, open work: agencies and recruiters post genuine jobs too. They are included now, and every one is marked with a “Staffing agency” badge so you always know who is behind a posting. If you would rather not see them, one toggle hides them all. Disclosure rather than a silent decision made for you — and job mills that post the same role hundreds of times are still refused outright, because that is not a real opening in anyone's book."

@@ -142,3 +142,130 @@ export function computeFit(jobPosting: string, resume: string | ResumeScan, maxT
 
   return { pct, matched, missing, totalRecognized: postingTerms.length, coverage, precision };
 }
+
+/**
+ * THE RÉSUMÉ COULD SCORE A POSTING BUT NEVER FIND ONE.
+ *
+ * Reported 2026-09-01: "I tried this drop resume feature and it didn't match me
+ * to applicable jobs." The scorer was not the problem — the candidates were.
+ * Dropping a résumé scored ONLY the postings already loaded in the board's
+ * window and re-sorted those. On the default browse that window is the newest
+ * 60 of 814,859 openings, chosen by recency and related to nobody's résumé, so
+ * the feature reordered sixty irrelevant rows under a header claiming fit
+ * ranking. Nothing was ever retrieved.
+ *
+ * Measured live, four résumés, mean fit over the scored window:
+ *
+ *                  loaded window    résumé-derived search
+ *   senior SWE           4.5               17.1
+ *   ICU nurse            2.9               12.5
+ *   sales AE             3.8               11.6
+ *   accountant           1.4               15.3
+ *
+ * and rows scoring zero fell from 7-14 of 20 to 0-1.
+ *
+ * THE RETRIEVAL KEY IS THE ROLE, NOT THE SKILL LIST. Searching "TypeScript"
+ * returns everything that mentions it; "software engineer" returns the job. So
+ * this reads role TITLES out of the résumé and hands them to the ordinary
+ * search — the same path a typed query takes, keeping its ranking, its filters
+ * and its disclosure rather than inventing a second retrieval engine.
+ *
+ * WHY SINGLE-WORD TITLES ARE TREATED DIFFERENTLY. "electrician", "paralegal"
+ * and "welder" are whole occupations and have to work. "manager" and "analyst"
+ * sit in the same list and appear in half of all résumés as a fragment of
+ * something else. A single word therefore counts only where the headline lives
+ * — the top of the document — while a multi-word title counts anywhere. Any
+ * term contained in a longer match is then dropped as the vaguer way to say the
+ * same thing, which is also what keeps "manager" from beating "product manager".
+ */
+const TITLE_VOCAB: string[] = (() => {
+  const set = new Set<string>();
+  for (const data of Object.values(INDUSTRY_KEYWORDS)) {
+    for (const term of data.titles) {
+      const t = term.toLowerCase().trim();
+      // A bare word needs length to be an occupation; "rep" and "aide" are not
+      // queries. A multi-word title carries its own specificity.
+      if (t.includes(" ") ? t.length >= 4 : t.length >= 6) set.add(t);
+    }
+  }
+  return [...set];
+})();
+
+/**
+ * Bare words in the title list that are a rank, a state or a fragment rather
+ * than an occupation. Each appears in ordinary résumé prose, and each as a
+ * whole-board query returns a different job than the reader does. "veteran" is
+ * the clearest case: it is in the vocabulary, it is not a job, and it sits in
+ * the header of every résumé that mentions military service.
+ *
+ * The asymmetry that decides membership: stoplisting a real occupation costs
+ * that reader the retrieval and leaves them browsing normally — the behaviour
+ * everyone had before this existed. Admitting a noise word silently searches
+ * the WRONG career and presents it as their match. An ambiguous word is
+ * therefore excluded. Multi-word titles are untouched, because "account
+ * manager" is precise even though "manager" is not.
+ */
+const GENERIC_SINGLES = new Set([
+  "manager", "analyst", "director", "associate", "specialist", "consultant",
+  "partner", "principal", "fellow", "veteran", "captain", "server", "doctor",
+  "counsel", "trading", "treasury", "litigation", "clerical", "postdoc",
+  "postdoctoral",
+]);
+
+/**
+ * Rank modifiers, which narrow the SEARCH without improving the match —
+ * seniority already reaches the score through the description terms computeFit
+ * reads. Measured against the live board, candidate pool graded vs plain:
+ *
+ *   journeyman electrician    139  vs  electrician        1,181   (8.5x)
+ *   staff accountant          453  vs  accountant       10,000+   (22x)
+ *   charge nurse              309  vs  registered nurse 10,000+   (22x)
+ *
+ * A journeyman electrician shown 139 openings instead of 1,181 has been
+ * filtered, not matched. The strip is deliberately conservative: it fires only
+ * where the remainder is ITSELF a title this résumé claimed, so it can only
+ * ever swap one real occupation for a broader real occupation.
+ */
+const GRADE_PREFIXES = [
+  "journeyman", "apprentice", "trainee", "senior", "junior", "staff", "lead",
+  "master", "entry level", "entry-level", "sr", "jr",
+];
+
+/**
+ * Role titles this résumé actually claims, best first — the search terms that
+ * turn "score what's on screen" into "find what fits". Empty when the document
+ * names no occupation the vocabulary knows, which the caller must treat as
+ * "keep browsing normally", never as "no jobs match you".
+ */
+export function resumeRoleTerms(resumeText: string, limit = 4): string[] {
+  const lower = resumeText.toLowerCase();
+  if (lower.trim().length < 100) return [];
+  // Where a headline sits, with room for a contact block above it.
+  const head = lower.slice(0, Math.max(400, Math.floor(lower.length * 0.2)));
+  const found: { term: string; first: number; score: number }[] = [];
+  for (const term of TITLE_VOCAB) {
+    if (!containsTerm(lower, term)) continue;
+    const single = !term.includes(" ");
+    if (single && GENERIC_SINGLES.has(term)) continue;
+    const inHead = containsTerm(head, term);
+    if (single && !inHead) continue; // a bare word counts only as a headline
+    const first = lower.indexOf(term);
+    const freq = lower.split(term).length - 1;
+    found.push({
+      term,
+      first,
+      score: freq * 2 + term.split(" ").length * 3 + (inHead ? 12 : 0) +
+        (first / Math.max(1, lower.length) < 0.35 ? 4 : 0),
+    });
+  }
+  // A graded title whose plain form is also claimed retrieves a fraction of the
+  // same jobs — drop the grade and keep the occupation.
+  const ungraded = found.filter((f) => {
+    const p = GRADE_PREFIXES.find((g) => f.term.startsWith(g + " "));
+    return !(p && found.some((o) => o.term === f.term.slice(p.length + 1)));
+  });
+  // "engineer" inside "software engineer" is the same claim, less precise.
+  const kept = ungraded.filter((a) => !ungraded.some((b) => b.term !== a.term && b.term.includes(a.term)));
+  kept.sort((a, b) => b.score - a.score || a.first - b.first);
+  return kept.slice(0, limit).map((c) => c.term);
+}

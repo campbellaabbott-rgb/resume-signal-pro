@@ -1,5 +1,9 @@
 {
   "changelogEntries": {
+    "resumeDropFindsRealMatches": {
+      "title": "Ang pag-drop ng resume mo ay humahanap na ng trabaho, hindi lang nag-aayos",
+      "description": "Ang pag-drop ng resume sa board ay nangako na iaayos ang bawat bakante sa paligid mo. Ang totoo, inaayos lang nito ang ilang dosenang post na nasa screen mo na — at sa pangunahing board, iyon ay ang pinakabago lamang, na walang kinalaman sa karera mo. Kaya't hinahalo nito ang mga trabahong walang kaugnayan at ipinapakita bilang tugma. Ngayon, binabasa ng board ang job title mo mula sa resume, hinahanap ang trabahong iyon sa lahat ng mahigit 800,000 bakante, at inaayos ang mga iyon ayon sa tugma. Ipinapakita nito kung aling salita ang kinuha sa resume mo, para maalis mo o makapili ng iba. Sa apat na karera na sinukat, tumaas ang katamtamang tugma nang tatlo hanggang sampung beses; sa pahina ng isang accountant, dating zero ang bawat resulta, ngayon ay wala nang ganoon."
+    },
     "agenciesLabelledNotHidden": {
       "title": "Nasa board na ang mga staffing agency — at may tatak",
       "description": "Dati ay mga employer lamang na kumukuha para sa sarili ang nasa board, kaya natatago ang malaking bahagi ng totoong bakanteng trabaho: totoong trabaho rin ang inilalathala ng mga ahensya at recruiter. Kasama na sila ngayon, at may tatak na «Staffing agency» ang bawat isa para alam mo lagi kung sino ang nasa likod ng anunsyo. Kung ayaw mong makita ang mga ito, may isang toggle na magtatago sa lahat. Pagiging bukas sa halip na tahimik na pagpapasya para sa iyo — at tinatanggihan pa rin ang mga job mill na paulit-ulit na naglalathala ng iisang posisyon nang daan-daang beses."

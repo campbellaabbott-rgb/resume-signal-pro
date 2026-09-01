@@ -1,5 +1,9 @@
 {
   "changelogEntries": {
+    "resumeDropFindsRealMatches": {
+      "title": "Ein abgelegter Lebenslauf findet jetzt Stellen, statt sie nur umzusortieren",
+      "description": "Einen Lebenslauf auf das Board zu ziehen versprach, jede Stelle um dich herum zu sortieren. Tatsächlich wurden nur die wenigen Dutzend Anzeigen umsortiert, die ohnehin auf dem Bildschirm standen — und auf dem Hauptboard sind das schlicht die neuesten, die nichts mit deinem Beruf zu tun haben. Unpassende Stellen wurden also gemischt und als Treffer ausgegeben. Jetzt liest das Board deine Berufsbezeichnung aus dem Lebenslauf, sucht diesen Beruf unter allen 800.000+ Stellen und sortiert sie nach Passung. Es zeigt dir, welches Wort es aus deinem Lebenslauf genommen hat, damit du es entfernen oder ein anderes wählen kannst. Über vier Berufe gemessen stieg die durchschnittliche Passung um das Drei- bis Zehnfache; auf der Seite einer Buchhalterin lagen zuvor alle Treffer bei null, jetzt keiner mehr."
+    },
     "agenciesLabelledNotHidden": {
       "title": "Personaldienstleister sind dabei – und gekennzeichnet",
       "description": "Bisher führte das Board nur Arbeitgeber, die für sich selbst einstellen. Damit fiel ein großer Teil echter offener Stellen unter den Tisch: Auch Agenturen und Personalvermittler schreiben reale Jobs aus. Sie sind jetzt enthalten und jede Anzeige trägt das Kennzeichen „Personaldienstleister“, damit Sie immer wissen, wer dahintersteht. Wer sie nicht sehen möchte, blendet sie mit einem Schalter aus. Offenlegung statt einer stillen Entscheidung über Ihren Kopf hinweg – Anzeigenfabriken, die dieselbe Stelle hundertfach posten, bleiben weiterhin ausgeschlossen."

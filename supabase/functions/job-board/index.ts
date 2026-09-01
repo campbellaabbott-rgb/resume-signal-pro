@@ -54,7 +54,7 @@ import {
   ukgBoardParams,
 } from "./normalize.ts";
 import { categorize, CATEGORIZE_VERSION, JOB_CATEGORIES } from "./categories.ts";
-import { computeFit, scanResume } from "../_shared/fit-score.ts";
+import { computeFit, resumeRoleTerms, scanResume } from "../_shared/fit-score.ts";
 import {
   POSTED_BACKFILL_VERSION,
   postedBackfillDue,
@@ -110,7 +110,8 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-30.23"; // .23: bug-sweep round — the agency opt-out reaches the rescue tiers (it was bound in search_jobs only, so a rescue served the rows the caller hid, undisclosed); the per-company cap stops swallowing the employer it just surfaced; a withdrawn count no longer prints "not hiring"; the reverted pipe fix is restored
+const BUILD_VERSION = "2026-08-30.24"; // .24: a dropped résumé now RETRIEVES instead of re-sorting the loaded window — it reads the role out of the CV and searches for it (measured: mean fit 1.4-4.5 -> 11.6-17.1 across four careers, and an accountant went from 20/20 rows scoring zero to none); new fit-terms action; the "ranking every opening around you" claim is deleted from all nine locales
+// .23: bug-sweep round — the agency opt-out reaches the rescue tiers (it was bound in search_jobs only, so a rescue served the rows the caller hid, undisclosed); the per-company cap stops swallowing the employer it just surfaced; a withdrawn count no longer prints "not hiring"; the reverted pipe fix is restored
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -7546,6 +7547,27 @@ Deno.serve(async (req) => {
         waitUntil(runRefresh(client)); // serve stale, refresh behind the scenes
       }
       return await serveList(client, body, meta, t_entry, preMs);
+    }
+
+    if (action === "fit-terms") {
+      // WHAT THE RÉSUMÉ IS ASKING FOR, BEFORE WE ASK THE DATABASE ANYTHING.
+      //
+      // fit-batch can only score ids it is handed, so a dropped résumé used to
+      // rank the window the board had already loaded — the newest 60 of eight
+      // hundred thousand — and never went looking. This turns the résumé into
+      // the query the reader would have typed, and the ordinary search does the
+      // retrieving from there.
+      //
+      // Pure CPU: nothing is read, written or logged, and the résumé does not
+      // outlive the isolate. That is also why it carries no rate-limit round
+      // trip — it is cheaper than the search it precedes.
+      const resumeText = typeof body.resumeText === "string" ? body.resumeText.slice(0, 50000) : "";
+      if (resumeText.trim().length < 100) {
+        return json({ error: "resumeText (100+ chars) is required" }, 400);
+      }
+      // An empty list is a real answer — "no occupation I recognise" — and the
+      // caller keeps browsing normally rather than being shown zero results.
+      return json({ terms: resumeRoleTerms(resumeText, 4) });
     }
 
     if (action === "fit-batch") {
