@@ -50,6 +50,8 @@ import {
   greenhouseApi,
   leverApi,
   type JobPosting,
+  normalizeUkg,
+  ukgBoardParams,
 } from "./normalize.ts";
 import { categorize, CATEGORIZE_VERSION, JOB_CATEGORIES } from "./categories.ts";
 import { computeFit, scanResume } from "../_shared/fit-score.ts";
@@ -108,7 +110,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-30.19"; // .19: the shed stopped reading deliberate work as distress — phase-relative thresholds (hot 95s/150s, cold 45s/70s) end a permanent hot-phase brownout that halved the deep and bootstrap lanes and blew the cold-tail freshness SLA
+const BUILD_VERSION = "2026-08-30.20"; // .20: UKG Pro Recruiting is the 19th source — unauthenticated Top/Skip list, compound pod~tenant~guid token (none of the three is derivable), full JD + structured pay on the detail page, two live canaries; boards follow via census
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -582,6 +584,55 @@ async function fetchPaylocity(s: JobSource): Promise<{ items: unknown[]; raw: st
   return { items: page.items, raw: html };
 }
 
+// UKG Pro Recruiting: the candidate portal's own list endpoint, unauthenticated
+// (verified live 2026-09-01 on Sub-Zero Group — no cookie, no CSRF token, no
+// account). POST { opportunitySearch: { Top, Skip, ... } } answers
+// { opportunities[], totalCount }, so paging is Top/Skip and the board's own
+// advertised size arrives on the first page.
+const UKG_PAGE = 50;
+const UKG_PAGE_CAP = 12; // 12 × 50 = 600 postings/board/pass
+const UKG_CHUNK = 4;     // same politeness ceiling as oracle/icims/adp
+async function fetchUkg(s: JobSource): Promise<{ items: unknown[]; raw: unknown; windowed: boolean; feedTotal: number }> {
+  const parts = ukgBoardParams(s.token);
+  if (!parts) throw new Error("bad ukg token");
+  const url = `https://${parts.pod}.ultipro.com/${parts.tenant}/JobBoard/${parts.board}/JobBoardView/LoadSearchResults`;
+  const pageCap = Math.max(1, s.pages ?? UKG_PAGE_CAP);
+  const all: unknown[] = [];
+  let feedTotal = 0;
+  let exhausted = false;
+  outer: for (let start = 0; start < pageCap; start += UKG_CHUNK) {
+    const pages: number[] = [];
+    for (let p = start; p < Math.min(start + UKG_CHUNK, pageCap); p++) pages.push(p);
+    const bodies = await Promise.all(pages.map(async (page) => {
+      const res = await fetchWithTimeout(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ opportunitySearch: { Top: UKG_PAGE, Skip: page * UKG_PAGE, QueryString: "", OrderBy: [], Filters: [] } }),
+      });
+      if (!res.ok) { if (page === 0) throw new Error(`HTTP ${res.status}`); return null; }
+      return await res.json().catch(() => undefined);
+    }));
+    for (let i = 0; i < bodies.length; i++) {
+      const body = bodies[i];
+      if (body === null) break outer; // mid-walk HTTP failure — keep what we have
+      const ops = (body as { opportunities?: unknown[] } | undefined)?.opportunities;
+      // A 200 that is not the opportunity envelope is drift or a bot-wall: a
+      // FAILED fetch, never an empty board. Only page 0 can prove the shape.
+      if (!Array.isArray(ops)) {
+        if (pages[i] === 0) throw new Error("ukg payload shape unrecognized");
+        break outer;
+      }
+      if (pages[i] === 0) feedTotal = Number((body as { totalCount?: number }).totalCount ?? 0) || 0;
+      all.push(...ops);
+      if (ops.length < UKG_PAGE) { exhausted = true; break outer; } // feed ran out
+    }
+  }
+  // Same refusal guard as every other vendor: an empty read against a non-zero
+  // advertised total is a rate-limit or a bot-wall, not an empty board.
+  if (all.length === 0 && feedTotal > 0) throw new Error(`empty page but total=${feedTotal}`);
+  return { items: all, raw: { opportunities: all }, windowed: !exhausted, feedTotal };
+}
+
 // ADP Workforce Now: the career-center SPA's own public JSON list endpoint
 // (…/careercenter/public/events/staffing/v1/job-requisitions), paginated.
 // Measured live 2026-08-31: the server caps every page at 20 rows no matter
@@ -907,7 +958,11 @@ async function fetchBoard(
       const data = Array.isArray((body as { data?: unknown[] }).data) ? (body as { data: unknown[] }).data : [];
       return { jobs: normalizePinpoint(data as never, s.name, s.token), raw: body };
     }
-    if (s.source === "paylocity") {
+    if (s.source === "ukg") {
+    const { items, raw, windowed, feedTotal } = await fetchUkg(s);
+    return { jobs: normalizeUkg(items as never, s.name, s.token), raw, windowed, feedTotal };
+  }
+  if (s.source === "paylocity") {
       const { items, raw } = await fetchPaylocity(s);
       return { jobs: normalizePaylocity(items as never, s.name, s.token), raw };
     }
@@ -4469,6 +4524,24 @@ async function fetchVendorDetail(
     if (res.ok) {
       const html = jobPostingLdDescription(await res.text());
       text = html ? htmlToText(html).slice(0, DESC_CAP) || null : null;
+    }
+  } else if (src.source === "ukg") {
+    // The detail page embeds CandidateOpportunityDetail({...}) — the full JD
+    // and the structured pay the list withholds (4,794 chars on the posting
+    // this was verified against, 2026-09-01).
+    const parts = ukgBoardParams(src.token);
+    if (parts) {
+      const res = await fetchWithTimeout(
+        `https://${parts.pod}.ultipro.com/${parts.tenant}/JobBoard/${parts.board}/OpportunityDetail?opportunityId=${externalId}`,
+      );
+      if (res.ok) {
+        const m = /CandidateOpportunityDetail\((\{[\s\S]*?\})\);/.exec(await res.text());
+        if (m) {
+          const j = JSON.parse(m[1]) as { Description?: string } | null;
+          const html = typeof j?.Description === "string" ? j.Description : "";
+          text = html ? htmlToText(html).slice(0, DESC_CAP) || null : null;
+        }
+      }
     }
   } else if (src.source === "paylocity") {
     // The list payload's Description is a ~110-char teaser; the Details page

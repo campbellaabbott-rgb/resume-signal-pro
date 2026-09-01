@@ -33,7 +33,11 @@
 // all, and the same public endpoint's per-requisition detail serves the full
 // HTML JD (6,928 chars on the sampled posting). Appended LAST so it queues
 // behind paylocity.
-export const DETAIL_DESC_SOURCES = ["workday", "smartrecruiters", "bamboohr", "oracle", "breezy", "rippling", "paylocity", "adp"] as const;
+// ukg joined 2026-09-01 with the vendor: its list ships a BriefDescription
+// summary while the detail page carries the full JD (4,794 chars on the
+// probed posting) plus structured pay, so the summary is deliberately not
+// stored and the sweep fills the real text. Appended LAST, behind paylocity.
+export const DETAIL_DESC_SOURCES = ["workday", "smartrecruiters", "bamboohr", "oracle", "breezy", "rippling", "paylocity", "adp", "ukg"] as const;
 
 /**
  * Vendors whose description rides along in the LIST payload, so ingest stores it

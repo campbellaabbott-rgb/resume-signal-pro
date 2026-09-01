@@ -84,6 +84,7 @@ export const NON_ATS_SOURCES = [
  */
 export const UNMEASURED_ATS_SOURCES = [
   { key: "paylocity", label: "Paylocity" },
+  { key: "ukg", label: "UKG Pro Recruiting" },
   // ADP Workforce Now joined 2026-08-31, same standing as Paylocity: the
   // board serves its postings, and its apply flow is unmeasured — no sampled
   // CAPTCHA measurement, no tier, so the automation table answers "unknown"

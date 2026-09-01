@@ -1628,6 +1628,103 @@ export function normalizeAdp(items: AdpJobRequisition[], company: string, token:
     .filter((j) => j.title !== "" && !j.id.endsWith(":"));
 }
 
+// ── UKG Pro Recruiting ────────────────────────────────────────────────────
+//
+// The candidate portal's own list endpoint, unauthenticated. Verified live
+// 2026-09-01 against Sub-Zero Group: POST .../JobBoardView/LoadSearchResults
+// answers { opportunities[], totalCount, locations } with real ISO PostedDate
+// values (the sampled board's newest was that morning).
+//
+// TOKEN IS COMPOUND — `pod~TENANT~boardGuid` — because none of the three parts
+// is derivable from the others. UKG runs several recruiting pods and a tenant
+// lives on exactly one of them (recruiting vs recruiting2), and the board GUID
+// is not guessable: a fabricated one answers 404, which is how this shape was
+// confirmed rather than assumed. The census reads all three from the crawled
+// URL, so nothing has to be resolved later.
+export interface UkgOpportunity {
+  Id?: string;
+  Title?: string;
+  PostedDate?: string;
+  RequisitionNumber?: string;
+  JobCategoryName?: string;
+  FullTime?: boolean;
+  BriefDescription?: string;
+  Locations?: Array<{
+    LocalizedName?: string | null;
+    Address?: {
+      City?: string | null;
+      State?: { Code?: string | null; Name?: string | null } | null;
+      Country?: { Code?: string | null; Name?: string | null } | null;
+    } | null;
+  }> | null;
+}
+
+/** `pod~TENANT~guid` -> the three parts, or null when the token is malformed. */
+export function ukgBoardParams(token: string): { pod: string; tenant: string; board: string } | null {
+  const [pod, tenant, board] = String(token ?? "").split("~");
+  if (!pod || !tenant || !board) return null;
+  // The pod is part of the hostname; anything but the known shapes is a
+  // malformed token, not a new pod to trust blindly.
+  if (!/^recruiting[0-9]*$/.test(pod)) return null;
+  return { pod, tenant, board };
+}
+
+/**
+ * Country arrives as ISO-3166 ALPHA-3 ("USA"), and the column is alpha-2.
+ * Passing it through would store a code no filter matches — the same shape as
+ * the paylocity "USA" trap, one letter longer.
+ */
+const UKG_ALPHA3: Record<string, string> = {
+  USA: "US", CAN: "CA", GBR: "GB", IRL: "IE", AUS: "AU", NZL: "NZ", IND: "IN",
+  DEU: "DE", FRA: "FR", ESP: "ES", ITA: "IT", NLD: "NL", BEL: "BE", CHE: "CH",
+  AUT: "AT", SWE: "SE", NOR: "NO", DNK: "DK", FIN: "FI", POL: "PL", PRT: "PT",
+  MEX: "MX", BRA: "BR", JPN: "JP", CHN: "CN", SGP: "SG", ZAF: "ZA", ARE: "AE",
+};
+
+export function normalizeUkg(items: UkgOpportunity[], company: string, token: string): JobPosting[] {
+  const parts = ukgBoardParams(token);
+  return (Array.isArray(items) ? items : [])
+    .map((j) => {
+      const loc = (j.Locations ?? [])[0] ?? {};
+      const addr = loc.Address ?? {};
+      const city = String(addr.City ?? "").trim();
+      const state = String(addr.State?.Code ?? "").trim();
+      const location = [city, state].filter(Boolean).join(", ") || String(loc.LocalizedName ?? "").trim();
+      const title = String(j.Title ?? "").trim();
+      const externalId = String(j.Id ?? "").trim();
+      const dept = typeof j.JobCategoryName === "string" && j.JobCategoryName.trim() ? j.JobCategoryName.trim() : null;
+      const raw3 = String(addr.Country?.Code ?? "").trim().toUpperCase();
+      const country = UKG_ALPHA3[raw3]
+        ?? (/^[A-Z]{2}$/.test(raw3) ? raw3 : detectCountry([location, city, state, String(addr.Country?.Name ?? "")].filter(Boolean).join(", ")));
+      return {
+        id: `ukg:${token}:${externalId}`,
+        source: "ukg" as const,
+        token,
+        company,
+        title,
+        location,
+        // The list states no remote flag of its own, so work mode is inferred
+        // from text exactly as it is for every other vendor that stays silent.
+        workMode: detectWorkMode(location, title, dept),
+        remote: detectWorkMode(location, title, dept) === "remote",
+        department: dept,
+        postedAt: safeIso(j.PostedDate),
+        category: categorize(title, dept),
+        // BriefDescription is a summary the list ships for free; the full JD
+        // and the structured pay live on the detail page, which the
+        // description sweep reads. Storing the summary here would leave the
+        // sweep nothing to fill, so it is deliberately not stored.
+        salary: null,
+        country,
+        employmentType: j.FullTime === true ? ("full_time" as const) : null,
+        applyUrl: parts && externalId
+          ? `https://${parts.pod}.ultipro.com/${parts.tenant}/JobBoard/${parts.board}/OpportunityDetail?opportunityId=${externalId}`
+          : "",
+      };
+    })
+    .filter((j) => j.applyUrl !== "" && j.title !== "" && !j.id.endsWith(":"));
+}
+
 // ── Pinpoint ──────────────────────────────────────────────────────────────
 // Documented public first-party JSON: https://{token}.pinpointhq.com/postings.json
 // → { data: [...] }. Structured compensation (min/max/currency/frequency,

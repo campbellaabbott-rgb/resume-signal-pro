@@ -63,8 +63,11 @@ describe("oracle is discovered and verified", () => {
   });
 
   it("has its own concurrency and spacing — it is heavier than a JSON list", () => {
-    expect(VERIFY).toMatch(/oracle: 6 \}/);
-    expect(VERIFY).toMatch(/oracle: 250 \}/);
+    // ukg was appended after oracle 2026-09-01 (vendor #19, one shared host per
+    // pod, so it takes oracle's politeness). The pin follows the tail rather
+    // than pinning oracle as terminal, which it never needed to be.
+    expect(VERIFY).toMatch(/oracle: 6, ukg: 6 \}/);
+    expect(VERIFY).toMatch(/oracle: 250, ukg: 250 \}/);
   });
 });
 

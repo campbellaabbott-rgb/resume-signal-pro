@@ -15,7 +15,7 @@
 export type JobSourceKind =
   | "greenhouse" | "lever" | "ashby" | "smartrecruiters" | "workable" | "bamboohr"
   | "recruitee" | "teamtailor" | "personio" | "breezy" | "rippling" | "workday" | "pinpoint"
-  | "oracle" | "icims" | "paylocity" | "adp" | "usajobs";
+  | "oracle" | "icims" | "paylocity" | "adp" | "ukg" | "usajobs";
 
 export interface JobSource {
   name: string; // display name

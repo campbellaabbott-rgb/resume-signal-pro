@@ -926,14 +926,17 @@ describe("vendor schema-drift canary", () => {
     // built for — seeded the same day its adapter landed rather than after
     // the first silent drain); adp 2026-08-31 (vendor #18, a SPA whose data
     // channel is an undocumented public endpoint — the same class, seeded the
-    // same day for the same reason).
-    const vendors = ["greenhouse", "lever", "ashby", "smartrecruiters", "workable", "bamboohr", "rippling", "workday", "pinpoint", "icims", "paylocity", "adp"];
+    // same day for the same reason); ukg 2026-09-01 (vendor #19, whose list
+    // is a POST with a JSON envelope — a renamed key inside opportunities[]
+    // parses cleanly and normalizes to zero rows, which is precisely the
+    // fetched-OK-parsed-nothing drift this list exists to catch).
+    const vendors = ["greenhouse", "lever", "ashby", "smartrecruiters", "workable", "bamboohr", "rippling", "workday", "pinpoint", "icims", "paylocity", "adp", "ukg"];
     for (const v of vendors) {
       expect(CANARIES.filter((c) => c.vendor === v).length).toBe(2);
     }
     // 22 → 24 on 2026-08-31 with adp's pair — the count pin exists so a
     // canary appearing or vanishing is a conscious act, not a drive-by.
-    expect(CANARIES.length).toBe(24);
+    expect(CANARIES.length).toBe(26);
   });
 });
 

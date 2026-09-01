@@ -72,6 +72,32 @@ const prettify = (t) => t.replace(/[-_]+/g, " ").replace(/\b\w/g, (c) => c.toUpp
 // curl-backed: node's fetch gets ECONNREFUSED from background contexts in
 // this environment; curl subprocesses always have network. Async execFile
 // keeps the per-vendor concurrency real (execFileSync would serialize it).
+/**
+ * POST twin of probe(), for vendors whose list is a JSON envelope rather than
+ * a GET. Same retry, same 429 backoff, same status contract — only the verb
+ * and a body differ, so a vendor cannot get quieter treatment by needing one.
+ */
+async function probePost(url, body, tries = 3) {
+  for (let i = 0; i < tries; i++) {
+    try {
+      const { stdout } = await execFileP(
+        "/usr/bin/curl",
+        ["-s", "-m", "15", "-X", "POST", "-H", `User-Agent: ${UA["User-Agent"]}`,
+         "-H", "Content-Type: application/json", "-H", "Accept: application/json",
+         "--data", JSON.stringify(body), "-w", "\n__STATUS__%{http_code}", url],
+        { maxBuffer: 32 * 1024 * 1024 },
+      );
+      const cut = stdout.lastIndexOf("\n__STATUS__");
+      if (cut < 0) return null;
+      const status = Number(stdout.slice(cut + 11));
+      if (status === 429) { await sleep(8000 * (i + 1)); continue; }
+      if (status < 200 || status >= 300) return null;
+      try { return JSON.parse(stdout.slice(0, cut)); } catch { return null; }
+    } catch { await sleep(1500); }
+  }
+  return null;
+}
+
 async function probe(url, asText = false, tries = 3) {
   for (let i = 0; i < tries; i++) {
     try {
@@ -320,6 +346,38 @@ const verifiers = {
     if (headingOnly(name)) name = "";
     return { name: name.slice(0, 60), count };
   },
+  ukg: async (t) => {
+    // Token is pod~TENANT~guid; all three come from the crawled URL, so the
+    // board is fetchable without resolving anything.
+    const [pod, tenant, board] = String(t).split("~");
+    if (!pod || !tenant || !board) return null;
+    const base = `https://${pod}.ultipro.com/${tenant}/JobBoard/${board}`;
+    const d = await probePost(`${base}/JobBoardView/LoadSearchResults`,
+      { opportunitySearch: { Top: 1, Skip: 0, QueryString: "", OrderBy: [], Filters: [] } });
+    if (!d || !Array.isArray(d.opportunities)) return null;
+    const count = Number(d.totalCount) || d.opportunities.length;
+    if (count < MIN_POSTINGS) return null;
+    // THE NAME COMES FROM THE EMPLOYER'S OWN LOGO. No payload on this vendor
+    // carries a company name — the detail JSON's board-name fields are null —
+    // but the board page renders the employer's logo with its own alt text
+    // ("Sub-Zero Group, Inc.", "AAM Brand", both verified 2026-09-01). The
+    // employer's logo appears twice and UKG's browser-support notice adds one
+    // logo per browser, so the most frequent alt that is not browser chrome is
+    // the employer. A tie or nothing but chrome means unnamed, and unnamed
+    // stays out of the catalog.
+    const html = await probe(base, true);
+    if (!html) return null;
+    const counts = new Map();
+    for (const m of html.matchAll(/alt="([^"]{2,60})"/gi)) {
+      const a = m[1].trim();
+      if (/\b(firefox|chrome|edge|safari|internet explorer|opera|browser|ukg|ultipro|logo of)\b/i.test(a)) continue;
+      counts.set(a, (counts.get(a) ?? 0) + 1);
+    }
+    const ranked = [...counts.entries()].sort((x, y) => y[1] - x[1]);
+    const name = ranked.length ? ranked[0][0].replace(/\s+(logo|brand)$/i, "").trim() : "";
+    if (!name || headingOnly(name)) return null;
+    return { name: name.slice(0, 60), count };
+  },
   paylocity: async (t) => {
     const html = await probe(`https://recruiting.paylocity.com/recruiting/jobs/All/${t}`, true);
     const m = html?.match(/window\.pageData\s*=\s*(\{[\s\S]*?\})\s*;?\s*<\/script>/);
@@ -347,8 +405,8 @@ const verifiers = {
 // adp candidates all hit ONE shared vendor host (workforcenow.adp.com), and a
 // hit costs two requests (list + branding) — held to 5 workers at 250ms so the
 // probe stays inside the same politeness the census tooling promises.
-const CONCURRENCY = { greenhouse: 14, ashby: 14, smartrecruiters: 8, workable: 8, bamboohr: 14, recruitee: 14, teamtailor: 14, breezy: 14, personio: 2, rippling: 10, lever: 14, pinpoint: 14, paylocity: 6, adp: 5, oracle: 6 };
-const SPACING_MS = { greenhouse: 60, ashby: 60, smartrecruiters: 150, workable: 150, bamboohr: 60, recruitee: 60, teamtailor: 60, breezy: 60, personio: 1600, rippling: 120, lever: 60, pinpoint: 60, paylocity: 250, adp: 250, oracle: 250 };
+const CONCURRENCY = { greenhouse: 14, ashby: 14, smartrecruiters: 8, workable: 8, bamboohr: 14, recruitee: 14, teamtailor: 14, breezy: 14, personio: 2, rippling: 10, lever: 14, pinpoint: 14, paylocity: 6, adp: 5, oracle: 6, ukg: 6 };
+const SPACING_MS = { greenhouse: 60, ashby: 60, smartrecruiters: 150, workable: 150, bamboohr: 60, recruitee: 60, teamtailor: 60, breezy: 60, personio: 1600, rippling: 120, lever: 60, pinpoint: 60, paylocity: 250, adp: 250, oracle: 250, ukg: 250 };
 
 async function run(vendor, tokens) {
   const verified = [];

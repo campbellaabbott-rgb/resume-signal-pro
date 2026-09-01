@@ -200,6 +200,31 @@ async function sampleTexts(vendor, token) {
     }
     return out;
   }
+  if (vendor === "ukg") {
+    // Two-step, same shape as paylocity and for the same reason: the list's
+    // BriefDescription is a summary, and the full JD lives on the detail page
+    // (4,794 chars on the posting this was verified against). A failed detail
+    // read contributes NOTHING rather than falling back to the summary, so a
+    // throttled run starves the sample and the thin-sample rule HOLDs the
+    // board instead of clearing it on thin evidence.
+    const [pod, tenant, board] = String(token).split("~");
+    if (!pod || !tenant || !board) return [];
+    const base = `https://${pod}.ultipro.com/${tenant}/JobBoard/${board}`;
+    const d = await postJson(`${base}/JobBoardView/LoadSearchResults`,
+      { opportunitySearch: { Top: 12, Skip: 0, QueryString: "", OrderBy: [], Filters: [] } });
+    const ops = d?.opportunities;
+    if (!Array.isArray(ops)) return [];
+    const out = [];
+    for (const o of ops.slice(0, 6)) {
+      const html = await get(`${base}/OpportunityDetail?opportunityId=${o?.Id}`, true);
+      const m = html?.match(/CandidateOpportunityDetail\((\{[\s\S]*?\})\);/);
+      let full = "";
+      try { full = String(JSON.parse(m?.[1] ?? "null")?.Description ?? ""); } catch { /* thin-sample HOLD */ }
+      if (full) out.push(`${o?.Title ?? ""}\n${strip(full)}`);
+      await sleep(250);
+    }
+    return out;
+  }
   if (vendor === "icims") {
     // Descriptions RIDE THE LIST PAYLOAD (BOARD_DESC_SOURCES) — one request
     // yields full posting text, so this is a real text screen and icims must
@@ -219,6 +244,19 @@ async function sampleTexts(vendor, token) {
     return (d?.data ?? []).slice(0, 12).map((j) => strip(String(j.description ?? j.title ?? "")));
   }
   return [];
+}
+
+// POST twin of get(), for vendors whose list is a JSON envelope. Same timeout
+// and failure contract — a vendor does not get a quieter screen for using a
+// different verb.
+async function postJson(url, body) {
+  try {
+    const { stdout } = await execFileP("/usr/bin/curl",
+      ["-s", "-m", "20", "-X", "POST", "-H", "Content-Type: application/json",
+       "-H", "Accept: application/json", "--data", JSON.stringify(body), url],
+      { maxBuffer: 32 * 1024 * 1024 });
+    return JSON.parse(stdout);
+  } catch { return null; }
 }
 
 const TITLE_ONLY = new Set(["workable", "bamboohr", "rippling"]);

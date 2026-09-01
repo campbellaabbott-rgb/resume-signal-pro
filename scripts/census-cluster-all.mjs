@@ -60,6 +60,11 @@ const SURTS = [
   // lowercase prefix covers every variant and the extractor matches the path
   // case-insensitively.
   { vendor: "paylocity", kind: "paylocity", surt: "com,paylocity,recruiting)/recruiting/jobs/all/", host: "recruiting.paylocity.com" },
+  // UKG runs several recruiting pods; a tenant lives on exactly one, and the
+  // pod is part of the token because the hostname cannot be derived from the
+  // tenant code. Both known pods are swept.
+  { vendor: "ukg", kind: "ukg", surt: "com,ultipro,recruiting)/", host: "recruiting.ultipro.com" },
+  { vendor: "ukg", kind: "ukg", surt: "com,ultipro,recruiting2)/", host: "recruiting2.ultipro.com" },
   // ADP Workforce Now career centers all live on ONE shared host and one page
   // path; the board identity rides in the query string (a cid GUID, plus a
   // ccId when the employer runs a non-default career center — the ccId
@@ -255,6 +260,17 @@ for (const s of SURTS) {
         const m = url.pathname.match(/^\/recruiting\/jobs\/all\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(?:[\/?#]|$)/i);
         if (!m) continue;
         add("paylocity", m[1].toLowerCase()); found++;
+      } else if (s.kind === "ukg") {
+        if (host !== s.host) continue;
+        // The crawled URL carries BOTH halves the fetcher needs — tenant code
+        // and board GUID — so discovery emits a directly fetchable token with
+        // nothing left to resolve. A fabricated GUID answers 404 (verified
+        // 2026-09-01), which is why it is captured rather than guessed. The
+        // pod is taken from the host so a tenant is never probed on the wrong
+        // one.
+        const m = url.pathname.match(/^\/([A-Za-z0-9_]+)\/JobBoard\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(?:[\/?#]|$)/i);
+        if (!m) continue;
+        add("ukg", `${host.split(".")[0]}~${m[1]}~${m[2].toLowerCase()}`); found++;
       } else if (s.kind === "adp") {
         if (host !== s.host) continue;
         if (!/^\/mascsr\/default\/mdf\/recruitment\/recruitment\.html$/i.test(url.pathname)) continue;

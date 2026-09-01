@@ -296,14 +296,14 @@ describe("department — a column reachable only by accident", () => {
   });
 });
 
-describe("vendor — eighteen hiring systems, and the board could only ask for five", () => {
+describe("vendor — nineteen hiring systems, and the board could only ask for five", () => {
   it("knows every hiring system the board serves, and only those", () => {
     // Pinned to JobSourceKind by the typechecker, both directions — see the
     // assertion in filters.ts. This is the runtime half of that contract.
     // 17 since paylocity landed (2026-08-30), 18 since adp (2026-08-31) — the
     // length pin exists so a vendor joining the union is a conscious act here
     // too, not a drive-by.
-    expect(BOARD_VENDORS).toHaveLength(18);
+    expect(BOARD_VENDORS).toHaveLength(19);
     expect(BOARD_VENDORS).toContain("workday");
     // usajobs is not an ATS and the agent can never apply there, and it is
     // still a source the board serves. A vendor list that omits it is false by

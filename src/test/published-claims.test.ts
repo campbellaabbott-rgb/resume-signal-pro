@@ -240,7 +240,7 @@ describe("published source lists name every system the board actually serves", (
     ashby: "Ashby", icims: "iCIMS", oracle: "Oracle", lever: "Lever",
     workable: "Workable", bamboohr: "BambooHR", recruitee: "Recruitee",
     teamtailor: "Teamtailor", personio: "Personio", breezy: "Breezy",
-    rippling: "Rippling", pinpoint: "Pinpoint", usajobs: "USAJOBS", paylocity: "Paylocity",
+    rippling: "Rippling", pinpoint: "Pinpoint", usajobs: "USAJOBS", paylocity: "Paylocity", ukg: "UKG Pro Recruiting",
     adp: "ADP Workforce Now",
   };
 

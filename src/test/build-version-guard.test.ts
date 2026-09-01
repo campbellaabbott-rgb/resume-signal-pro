@@ -175,7 +175,7 @@ const PINNED = {
   // as a matter of course this time — the .2 bump had to be made retroactively
   // after three commits shipped undeployed behind an unchanged version string,
   // and "is it live?" cost six behavioural probes to answer.
-  sourcesHash: "0612c4ff593f4e54",
+  sourcesHash: "3975cb19afbb6229",
   // 2026-08-21.4: disables the exact-word tier's company matcher, whose index
   // never built. Bumped so the mitigation is externally identifiable.
   // 2026-08-21.5: routed retrieval. index.ts + two new modules; sources.ts
@@ -576,7 +576,26 @@ const PINNED = {
   // that deliberate work as an emergency while pages served in 0.4s. The
   // thresholds are per-phase multiples of each phase's own healthy cost now,
   // both still far below the 219s the real 2026-08-30 incident measured.
-  buildVersion: "2026-08-30.19",
+  //
+  // 2026-08-30.20: UKG Pro Recruiting lands as the 19th source. sources.ts
+  // changed only in its type union — no boards ride this bump; the census
+  // sweep runs separately and its tranche will force the next one.
+  //
+  // The token is compound (pod~tenant~guid) because none of the three parts
+  // is derivable from the others: UKG runs several recruiting pods and a
+  // tenant lives on exactly one, and a fabricated board GUID against a real
+  // tenant answers 404 — established by probing rather than assumed. The
+  // crawled URL carries all three, so a discovered board is fetchable with
+  // nothing left to resolve.
+  //
+  // Verified live 2026-09-01 before any code was written: an unauthenticated
+  // POST returns { opportunities[], totalCount } with real ISO dates. The
+  // list withholds the JD and the pay, both of which sit on the detail page
+  // (4,794 chars and structured compensation on the probed posting), so the
+  // summary is deliberately not stored and ukg joins DETAIL_DESC_SOURCES at
+  // the tail. Names come from the employer's own logo alt text — no payload
+  // on this vendor carries a company name — and an unnamed board stays out.
+  buildVersion: "2026-08-30.20",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {

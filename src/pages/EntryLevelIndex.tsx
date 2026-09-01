@@ -110,7 +110,7 @@ export default function EntryLevelIndex() {
               is false by omission, however true each named item is. */}
           Counted live from employers' <b>official</b> job boards (Workday, Greenhouse, SmartRecruiters, Ashby,
           iCIMS, Oracle, Lever, Workable, BambooHR, Recruitee, Teamtailor, Personio, Breezy, Rippling,
-          Pinpoint, Paylocity and ADP Workforce Now) and the U.S. federal government's own system (USAJOBS) — never an aggregator
+          Pinpoint, Paylocity, ADP Workforce Now and UKG Pro Recruiting) and the U.S. federal government's own system (USAJOBS) — never an aggregator
           or a scrape, and no dated posting older than 30 days.
         </p>
 

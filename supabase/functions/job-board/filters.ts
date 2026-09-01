@@ -94,6 +94,7 @@ export const BOARD_VENDORS = [
   "icims",
   "usajobs",
   "paylocity",
+  "ukg",
   "adp",
 ] as const satisfies readonly JobSourceKind[];
 
