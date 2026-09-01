@@ -33,7 +33,28 @@ const FN = readFileSync(
   "utf8",
 );
 
+// SECOND OCCURRENCE, 2026-09-01, and wider: the next deploy stripped 22 files
+// rather than one — search-routing.ts lost all 281 of its comment lines,
+// vendor-canary.ts all 52, and index.ts again. Code was byte-identical in
+// every file (verified line-by-line: zero code lines differed across six of
+// them), so nothing shipped broken; what vanished was the reasoning the guard
+// suite pins. One file was never the boundary, so the guard now watches the
+// whole serving module rather than the one file that happened to be hit first.
+const MODULE_FILES = ["search-routing.ts", "vendor-canary.ts", "search-alias.ts", "normalize.ts"] as const;
+
 describe("a deploy that strips the reasoning", () => {
+  it("keeps the reasoning across the whole serving module, not just one file", () => {
+    for (const f of MODULE_FILES) {
+      const src = readFileSync(resolve(__dirname, `../../supabase/functions/job-board/${f}`), "utf8");
+      const comments = src.split("\n").filter((l) => /^\s*(\/\/|\/\*|\*)/.test(l)).length;
+      expect(
+        comments,
+        `${f} carries ${comments} comment lines. A deploy that rewrites this directory ` +
+          `without them takes the pinned contracts with it — restore from the last commit that has them.`,
+      ).toBeGreaterThan(20);
+    }
+  });
+
   it("keeps the recorded reasoning in the serving function", () => {
     const commentLines = FN.split("\n").filter((l) => /^\s*(\/\/|\/\*|\*)/.test(l)).length;
     expect(
