@@ -1,33 +1,3 @@
-/**
- * EMPLOYER NAME -> the company_token values that employer posts under.
- *
- * GENERATED from the board's own company facet on 2026-08-21: every employer
- * with 250 or more postings in the serving window, 499 of them, covering
- * 243,115 postings. Keyed on the FOLDED DISPLAY NAME, never on the token — a
- * large share of tokens are hyphen-slugs ("bayada-home-health-care") that no
- * one types, and keying on them would silently cover half the directory.
- *
- * WHY THIS TABLE EXISTS AT ALL. Employer names are unreachable by text search on
- * this board and no index fixes that. The english tsvector discards "at" and
- * "t", so AT&T retrieves nothing; the simple index finds venue jobs at the AT&T
- * Stadium whose employer is a catering company; and a company-side matcher was
- * measured returning 500 500 500 500 at four concurrent callers. The only thing
- * that reaches those 493 postings is an indexed lookup on company_token, which
- * needs a name-to-token map, which is this.
- *
- * MULTI-TOKEN EMPLOYERS ARE ONE ENTRY. PwC posts under four ATS tenants, Boeing
- * under five. An earlier attempt treated same-name rows as an AMBIGUITY and
- * refused to route them — which rejected precisely the largest employers on the
- * board, the ones most worth routing.
- *
- * THE GUARD IS NOT APPLIED HERE, ON PURPOSE. Target, Shell, Oracle and Apple are
- * all real employers and all present below. OCCUPATION_GUARD in search-routing
- * blocks them at ROUTE time, so the guard has exactly one definition and this
- * file stays a faithful record of what the board holds rather than a
- * half-filtered copy of it.
- *
- * REGENERATE, do not hand-edit: the facet moves as boards are added and pruned.
- */
 export const EMPLOYER_ALIASES: Readonly<Record<string, { name: string; tokens: string[] }>> = {
   albertsonscompanies: { name: "Albertsons Companies", tokens: ["eofd~us6~CX_1"] },
   dominos: { name: "Domino's", tokens: ["dominos"] },
