@@ -561,7 +561,22 @@ const PINNED = {
   // title match, then the employer's own job, then no signal, then
   // perks-only — and rows with a title match are untouched, which is what
   // keeps occupation searches at the precision they already had.
-  buildVersion: "2026-08-30.18",
+  //
+  // 2026-08-30.19: sources.ts UNCHANGED; the bump answers a heartbeat alert.
+  // The load shedder had been holding the hot phase at level 1 continuously —
+  // hot EMA 46.5s against a 40s line, cold 25.7s against the same line — so
+  // one phase shed forever and the other never did. Permanent L1 halves the
+  // hot slice, concurrency, the deep lane and the bootstrap lane, and the
+  // cold tail fell to a 1,595-minute wrap against a 1,392 SLA, taking the
+  // published freshness claim false with it and dropping ground-truth
+  // accuracy to 96.8%.
+  //
+  // Nothing was distressed. Hot slices became expensive BY DESIGN when 305
+  // giants were given wider fetch windows the day before, and the shed read
+  // that deliberate work as an emergency while pages served in 0.4s. The
+  // thresholds are per-phase multiples of each phase's own healthy cost now,
+  // both still far below the 219s the real 2026-08-30 incident measured.
+  buildVersion: "2026-08-30.19",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {

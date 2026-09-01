@@ -19,9 +19,24 @@ const ROTATION = readFileSync(resolve(__dirname, "../../supabase/functions/job-b
 const VAC = readFileSync(resolve(__dirname, "../../supabase/migrations/20260830200000_the_hot_table_was_left_on_default_autovacuum.sql"), "utf8");
 
 describe("the rotation reads its own pulse and stands down", () => {
-  it("derives the shed level from the EMA it already records", () => {
-    expect(BOARD).toMatch(/: shedSignal\.ms > 60_000 \? 2/);
-    expect(BOARD).toMatch(/: shedSignal\.ms > 40_000 \? 1/);
+  it("derives the shed level from the EMA it already records, per phase", () => {
+    // The thresholds went PHASE-RELATIVE on 2026-09-01, because one absolute
+    // pair stopped fitting two phases with different healthy costs. Measured
+    // that morning: hot EMA 46.5s against a 40s line, cold EMA 25.7s — so the
+    // hot phase shed continuously and the cold phase never did, halving the
+    // hot slice and the deep and bootstrap lanes with no incident behind it.
+    // The cold tail fell to a 1,595-minute wrap against a 1,392 SLA.
+    //
+    // Hot slices are expensive by design since 305 giants were given wider
+    // windows; the line has to sit above deliberate work and below real
+    // distress, which measured 219s with 27s page queries on 2026-08-30.
+    expect(BOARD).toMatch(/const l1 = hotPhase \? 95_000 : 45_000;/);
+    expect(BOARD).toMatch(/const l2 = hotPhase \? 150_000 : 70_000;/);
+    expect(BOARD).toMatch(/: shedSignal\.ms > l2 \? 2/);
+    expect(BOARD).toMatch(/: shedSignal\.ms > l1 \? 1/);
+    // Both lines must still sit under the measured catastrophe, or the shed
+    // protects nothing when it is actually needed.
+    expect(150_000).toBeLessThan(219_000);
     expect(BOARD, "the phase-appropriate EMA, not a blend").toMatch(/inHotPhase \? v\.hotEmaMs : v\.coldEmaMs/);
   });
 

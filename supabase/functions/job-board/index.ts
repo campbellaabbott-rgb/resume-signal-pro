@@ -108,7 +108,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-30.18"; // .18: the related segment stops serving perks lists as job matches — relevance classes (title, employer's-own, no-signal, perks-only) replace a tiebreak that scoreTitle's length penalty made unreachable
+const BUILD_VERSION = "2026-08-30.19"; // .19: the shed stopped reading deliberate work as distress — phase-relative thresholds (hot 95s/150s, cold 45s/70s) end a permanent hot-phase brownout that halved the deep and bootstrap lanes and blew the cold-tail freshness SLA
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -1659,12 +1659,36 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
     }
   })();
   // 0 = healthy, 1 = strained, 2 = distressed. Thresholds are multiples of the
-  // healthy slice the constants above were sized for, not round numbers.
+  // healthy slice — and the two phases stopped costing the same, so one pair
+  // of absolute numbers could no longer serve both.
+  //
+  // WHAT A SINGLE PAIR COST, measured 2026-09-01 from the heartbeat's own
+  // alert: hot EMA sat at 46.5s against a 40s L1 line while cold sat at
+  // 25.7s, so the hot phase shed CONTINUOUSLY and the cold phase never did.
+  // Permanent L1 halves the hot slice (10 -> 5), cuts concurrency (8 -> 5),
+  // the deep lane (8 -> 4) and the bootstrap lane (25 -> 10) — a brownout with
+  // no incident behind it. The cold tail fell to a 1,595-minute wrap against a
+  // 1,392 SLA and the published freshness claim went false with it.
+  //
+  // Hot slices are expensive BY DESIGN now: 305 giant boards were given wider
+  // fetch windows on 2026-08-31, which is the whole point of the deep lane, and
+  // reading that deliberate work as database distress throttles the fleet for
+  // doing what it was told. Real distress looks nothing like it — the
+  // 2026-08-30 incident ran a 219s hot EMA with 27s page queries, while today's
+  // pages serve in ~0.4s.
+  //
+  // So each phase is judged against its own healthy cost: hot ~46s, cold ~26s,
+  // L1 at roughly double and L2 at roughly triple. The fail-closed kinds above
+  // are untouched — an unreadable or frozen signal still sheds without asking
+  // what phase it is.
+  const hotPhase = inHotPhase;
+  const l1 = hotPhase ? 95_000 : 45_000;
+  const l2 = hotPhase ? 150_000 : 70_000;
   const shedLevel = shedSignal.kind === "unreadable" ? 2
     : shedSignal.kind === "absent" ? 1
     : shedSignal.kind === "stale" ? 1
-    : shedSignal.ms > 60_000 ? 2
-    : shedSignal.ms > 40_000 ? 1
+    : shedSignal.ms > l2 ? 2
+    : shedSignal.ms > l1 ? 1
     : 0;
   const shedEma = shedSignal.kind === "ema" ? shedSignal.ms : 0;
   const effColdSlice = shedLevel === 2 ? 24 : shedLevel === 1 ? 48 : COLD_SLICE;
