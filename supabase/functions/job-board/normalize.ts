@@ -30,8 +30,8 @@ export function normalizeEmploymentType(raw: unknown): EmploymentType | null {
 }
 const safeUrl = (u: unknown): string => {
   if (typeof u !== "string") return "";
-  if (/^https:\/\
-  if (/^http:\/\
+  if (/^https:\/\//i.test(u)) return u;
+  if (/^http:\/\//i.test(u)) return "https://" + u.slice(7);
   return "";
 };
 export const POSTED_AT_GARBAGE_FLOOR_MS = Date.parse("2010-01-01T00:00:00Z");
