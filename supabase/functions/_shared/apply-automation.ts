@@ -1,15 +1,72 @@
+// How much of an application the agent can complete without the candidate, per
+// vendor — and WHY, with the measurement that established it.
+//
+// MEASURED 2026-07-29 on 298 real apply URLs sampled in proportion to the live
+// board (296 reachable). Static fetch of the apply page, looking for reCAPTCHA /
+// hCaptcha / Turnstile / Arkose script tags and Cloudflare interstitials:
+//
+//   RE-MEASURED 2026-07-30, 674 pages, redirects followed. The first run is
+//   superseded — it reported 0% for greenhouse/bamboohr/workable/rippling and
+//   could not be reproduced.
+//     CLEAN : workday 0/60 · smartrecruiters 0/60 · breezy 0/54 · oracle 0/39
+//             teamtailor 0/12 · personio 0/7 · pinpoint 0/5      = 68% of board
+//     CAPTCHA: ashby 60/60 · bamboohr 60/60 · workable 60/60 · lever 57/57
+//             rippling 49/49 · recruitee 26/30 · greenhouse 61/67 · icims 17/60
+//
+// KNOWN LIMIT OF THAT MEASUREMENT, recorded so nobody later reads it as more
+// than it is: Workday renders zero visible words to a static fetch — it is a JS
+// shell — so its 0% is a NON-MEASUREMENT, not a finding. Workday is classified
+// `signup` here on its documented behaviour (a candidate account per employer
+// tenant), which is a different and larger obstacle than a CAPTCHA, and one no
+// solver service addresses. Re-measure Workday with a real browser before
+// promoting it.
+//
+// WHY THIS IS NOT A LIST OF WHERE WE CAN "AUTO-SUBMIT FROM THE SERVER"
+// No vendor exposes a public submit endpoint — measured the same day:
+//   POST boards-api.greenhouse.io/v1/boards/{t}/jobs/{id}  -> 401 HTTP Basic
+//   POST api.lever.co/v0/postings/{t}                      -> 404 Cannot POST
+//   POST api.ashbyhq.com/posting-api/job-board/{t}         -> 401 Unauthorized
+// Submission always means driving the real form in the candidate's own session.
+// The absence of a CAPTCHA does not change that; it changes how often a human
+// has to touch the form once the extension is already driving it.
+
 export type AutomationTier =
-  | "auto"
-  | "signup"
-  | "click"
-  | "unknown";
+  | "auto" // extension completes and submits with no human step
+  | "signup" // needs a candidate account with that employer, once
+  | "click" // a CAPTCHA appears; the human clears it and the run continues
+  | "unknown"; // vendor not measured — never claim more than this
+
 export type AutomationFact = {
   tier: AutomationTier;
+  /** Real application questions published by the vendor's public API? */
   realQuestions: boolean;
+  /** Sample size behind the tier, so a caller can weigh it. 0 = not measured. */
   sampled: number;
   note: string;
 };
+
+// TIER IS NOT CAPABILITY — added 2026-07-30 after recon on real forms.
+//
+// `auto` below means ONE thing: no CAPTCHA was observed in the sample. It does
+// NOT mean the worker can complete the form. Recon on three live postings
+// (worker/RECON.md) found all three CAPTCHA-free exactly as measured, and all
+// three would have defeated the generic driver — for three different reasons:
+// a form behind a link reading "I'm interested", fields with no name attributes
+// inside 1,806 shadow roots, and an apply button whose text the EMPLOYER writes.
+//
+// The worker keeps its own list, derived from which vendors have an adapter
+// written from observation, and refuses everything else — including vendors
+// marked `auto` here. Workday is the sharpest case: `auto`, the largest vendor
+// in the tier, and unservable, because it requires a per-tenant candidate
+// account nobody has built.
+//
+// Read this table as "is there a CAPTCHA in the way". Read worker/src/vendors/
+// as "can we actually do it".
 const FACTS: Record<string, AutomationFact> = {
+  // ZERO CAPTCHA — 674 pages fetched with redirects followed, 2026-07-30.
+  // These are the agent's targets. `postable` records whether the page ships a
+  // real form in HTML; 0% everywhere below means the form is built by
+  // JavaScript, so submission needs a browser engine, not an HTTP POST.
   workday: { tier: "auto", realQuestions: false, sampled: 60, note: "0/60 captcha; JS form; per-tenant account needed" },
   smartrecruiters: { tier: "auto", realQuestions: false, sampled: 60, note: "0/60 captcha; JS form" },
   breezy: { tier: "auto", realQuestions: true, sampled: 54, note: "0/54 captcha; JS form. QUESTIONS HARVESTABLE 2026-08-01: the /apply route server-renders the questionnaire as HTML-escaped JSON. Parsed by _shared/vendor-questions.ts" },
@@ -17,6 +74,14 @@ const FACTS: Record<string, AutomationFact> = {
   teamtailor: { tier: "auto", realQuestions: true, sampled: 22, note: "0 captcha, no login wall. ADAPTER SHIPPED 2026-07-31: form is inline on the posting page, names are Rails-nested (candidate[first_name] etc), screening questions carry real labels. A cookie overlay must be declined first or the form does not render, and the CV input is unnamed — located by its accept list." },
   personio: { tier: "auto", realQuestions: false, sampled: 7, note: "0/7 captcha — thin sample" },
   pinpoint: { tier: "auto", realQuestions: true, sampled: 5, note: "0/5 captcha - thin sample. QUESTIONS HARVESTABLE 2026-08-01: the /applications/new route server-renders one react-on-rails script per question carrying questionDetails{title,questionType,required}. The POSTING page does NOT - probing it and concluding JS-only was wrong. Parsed by _shared/vendor-questions.ts" },
+
+  // CAPTCHA PRESENT — excluded from unattended sending.
+  //
+  // CORRECTION: an earlier build of this table marked greenhouse, bamboohr,
+  // workable and rippling as `auto` on a sample that reported 0% captcha for
+  // all four. That sample was wrong and could not be reproduced; a clean re-run
+  // measures 91%, 100%, 100% and 100%. Shipping it would have pointed the agent
+  // at exactly the vendors it must avoid.
   ashby: { tier: "click", realQuestions: true, sampled: 60, note: "60/60 captcha" },
   bamboohr: { tier: "click", realQuestions: false, sampled: 84, note: "re-measured 2026-07-31 with a real browser: 24/24 tenants serve a VISIBLE reCAPTCHA v2 checkbox (304x78) on the application form, all sharing ONE BambooHR platform sitekey — so it is not a per-employer toggle. Not Enterprise, so it blocks honestly rather than scoring us down silently. See worker/RECON.md." },
   workable: { tier: "click", realQuestions: false, sampled: 60, note: "60/60 captcha" },
@@ -24,27 +89,58 @@ const FACTS: Record<string, AutomationFact> = {
   rippling: { tier: "click", realQuestions: false, sampled: 49, note: "49/49 captcha" },
   recruitee: { tier: "click", realQuestions: true, sampled: 30, note: "26/30 captcha. QUESTIONS HARVESTABLE, measured 2026-08-03: /api/offers/{id} returns open_questions plus the document config (options_cv/cover_letter/photo). 40/40 live postings supported, 127 real questions. The reader shipped with task #201 and this flag was never flipped, so apply-agent — which gates the harvest on it — sent four generic questions to 7,886 postings that publish their actual form" },
   icims: { tier: "click", realQuestions: false, sampled: 60, note: "17/60 captcha — mixed, treat as blocked" },
+
+  // Greenhouse is its own case and the reason `tier` alone is not enough.
+  // 94% load recaptcha/ENTERPRISE.js with NO data-sitekey and NO g-recaptcha
+  // widget — meaning no challenge is ever shown. It is invisible, score-based
+  // bot detection. A human sees nothing; a headless browser is precisely what it
+  // scores, and a low score is rejected SILENTLY. Frictionless for a real
+  // browser, unreliable for a server one, so it stays out of the auto tier until
+  // measured with actual submissions rather than page fetches.
   greenhouse: { tier: "click", realQuestions: true, sampled: 67, note: "94% invisible reCAPTCHA Enterprise — silent scoring, not a challenge" },
 };
+
 const UNKNOWN: AutomationFact = {
   tier: "unknown",
   realQuestions: false,
   sampled: 0,
   note: "vendor not measured",
 };
+
+// Object-index lookups on a plain record reach Object.prototype — "constructor"
+// and "toString" return functions, and `??` does not catch a function. That has
+// bitten this codebase three separate times (NAME_FIXES, CATEGORY_ACCENT,
+// VENDOR_MODE), so this one is a Map.
 const TABLE = new Map<string, AutomationFact>(Object.entries(FACTS));
+
+/**
+ * Every vendor whose REAL application questions this bundle can read.
+ *
+ * Derived from FACTS, never hand-listed — a separate list would be one more
+ * thing to forget to update, and its whole job is to be trustworthy about what
+ * the deployed code can actually do. Surfaced by job-board's `status` action so
+ * "did the edge functions deploy?" has an answer that changes when the code
+ * changes.
+ */
 export function realQuestionVendors(): string[] {
   return Object.entries(FACTS)
     .filter(([, f]) => f.realQuestions)
     .map(([vendor]) => vendor)
     .sort();
 }
+
 export function automationFor(source: string): AutomationFact {
   return TABLE.get(String(source ?? "").trim().toLowerCase()) ?? UNKNOWN;
 }
+
+/** Can the agent finish this one end-to-end with no human step? */
 export function isFullyAutomatable(source: string): boolean {
   return automationFor(source).tier === "auto";
 }
+
+// What the candidate is told BEFORE the run, so nobody discovers a signup wall
+// halfway through a batch. Deliberately plain: an unmeasured vendor says it is
+// unmeasured rather than borrowing the optimism of its neighbours.
 export function automationLabel(source: string): string {
   const f = automationFor(source);
   switch (f.tier) {
@@ -58,26 +154,106 @@ export function automationLabel(source: string): string {
       return "We haven't measured this employer's form yet";
   }
 }
+
+/**
+ * Vendors the WORKER can actually drive to submission today.
+ *
+ * This is a different question from the FACTS table above, and the difference
+ * is the whole point. FACTS answers "is there a CAPTCHA in the way", measured
+ * by sampling apply pages. This answers "has someone looked at a real form and
+ * written an adapter for it" — which is the only thing that makes an unattended
+ * send possible. Workday is `auto` up there and absent down here.
+ *
+ * MIRROR — this list is a COPY. The original is `ADAPTERS` in
+ * worker/src/vendors/index.ts, and it cannot be imported: that is Node, this is
+ * Deno. A copy of a fact in another runtime goes stale silently, which is how
+ * public copy ends up describing something that has moved. So
+ * `src/test/sendable-mirror.test.ts` reads both and fails when they diverge.
+ *
+ * Adding a vendor here without an adapter would point the queue at postings the
+ * worker then refuses — the queue would look productive and send nothing.
+ */
+// oracle added 2026-08-19: ~14,000 postings, the largest single expansion of
+// the agent's reach since launch. It was believed blocked by a credential wall
+// for three weeks; a live read of the apply screen disproved that ("You don't
+// need to have an account... simply using your email"). Its required terms
+// checkbox is governed by the per-candidate consentToProcessing opt-in, not by
+// membership in this list — a mandate without that opt-in still refuses every
+// Oracle posting and routes it to review.
 export const SENDABLE_VENDORS: readonly string[] = ["breezy", "oracle", "personio", "pinpoint", "teamtailor"];
+
 const SENDABLE = new Set(SENDABLE_VENDORS);
+
+/**
+ * Can the agent finish this posting without the candidate?
+ *
+ * Takes the board's posting id, whose first segment is the vendor
+ * (`breezy:acme:123`). Falling back to the raw string when there is no colon
+ * means a bare vendor name also works, and anything unrecognised is false —
+ * unknown is never treated as sendable.
+ */
 export function isSendableVendor(postingIdOrSource: string): boolean {
   const s = String(postingIdOrSource ?? "").toLowerCase();
   return SENDABLE.has(s.includes(":") ? s.split(":")[0]! : s);
 }
+
+/**
+ * A TENANT'S WALL IS NOT ITS VENDOR'S.
+ *
+ * Measured 2026-08-07 at n=30 per vendor: recruitee 24% of tenants clean,
+ * ashby 17%, bamboohr 10%, greenhouse 7% — while workable, rippling, lever and
+ * smartrecruiters were 30/30 walled. Roughly 14,100 postings sit on employers
+ * who never deployed protection, against a drivable inventory of 34,265.
+ *
+ * SENDABLE_VENDORS above stays exactly as it is and is still the primary
+ * answer: it describes which vendors we have WRITTEN AN ADAPTER for, which is
+ * a fact about our code. This is the second, narrower question — whether one
+ * particular employer on an otherwise-walled vendor left their form open —
+ * which is a fact about somebody else's configuration and can change any day.
+ *
+ * Hence the two rules below, and both matter more than they look:
+ *
+ *   ABSENCE IS NOT CLEAN. No observation means unknown, and unknown returns
+ *   false. The whole reach argument rests on having actually looked.
+ *
+ *   OBSERVATIONS EXPIRE. A tenant can turn protection on any morning, and a
+ *   six-month-old "clean" reading is a guess wearing a measurement's clothes.
+ *   Past the TTL the answer reverts to false rather than to its last value.
+ *
+ * WHAT THIS DELIBERATELY DOES NOT FEED: the board's "Agent can apply" badge and
+ * its filter. Those stay vendor-level. A public mark whose truth depends on a
+ * probe that can go stale between page view and send is a claim we cannot keep,
+ * and under-promising costs nothing here — the agent reaches the extra tenants
+ * whether or not the badge advertises them.
+ */
 export const TENANT_WALL_TTL_DAYS = 14;
+
+/** One observed row from apply_tenant_walls. */
 export interface TenantWall {
   walled: boolean;
   checked_at: string;
 }
+
+/**
+ * May the agent submit to this posting?
+ *
+ * `wall` is the observation for this posting's tenant, or null/undefined when
+ * none exists. Vendor-level sendability wins immediately; everything else needs
+ * a fresh, explicitly-clean observation.
+ */
 export function tenantSendable(
   postingIdOrSource: string,
   wall?: TenantWall | null,
   now: number = Date.now(),
 ): boolean {
+  // An adapter exists for the whole vendor — no per-tenant question to ask.
   if (isSendableVendor(postingIdOrSource)) return true;
+
   if (!wall || wall.walled !== false) return false;
+
   const seen = Date.parse(wall.checked_at ?? "");
-  if (!Number.isFinite(seen)) return false;
+  if (!Number.isFinite(seen)) return false;          // unparseable is unknown
   const ageDays = (now - seen) / 86_400_000;
+  // Future timestamps are corrupt, not fresh.
   return ageDays >= 0 && ageDays <= TENANT_WALL_TTL_DAYS;
 }

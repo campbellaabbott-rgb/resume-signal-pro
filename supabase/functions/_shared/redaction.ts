@@ -1,13 +1,29 @@
+// Proxy-variable exclusion for employer-side screening (Shortlist).
+//
+// Facially neutral scoring can still produce disparate impact through proxies
+// for protected classes (Title VII / ADEA / ADA / FEHA / LL144). This module
+// strips or masks those proxies BEFORE any text reaches the scoring model,
+// and returns an audit of exactly which exclusions fired — that audit is
+// stored with every evaluation as compliance evidence.
+//
+// The blocklist is deliberately conservative. Employers can extend it per
+// account, but cannot shrink it below this baseline.
+
 export interface RedactionResult {
   redacted: string;
   exclusionsApplied: Array<{ feature: string; count: number }>;
 }
+
 interface Rule {
   feature: string;
   pattern: RegExp;
   replacement: string;
 }
+
+// Baseline blocklist — protected-class proxies. Order matters: more specific
+// rules run before broader ones.
 const BASELINE_RULES: Rule[] = [
+  // Age proxies: birth dates, explicit age, graduation years
   { feature: "date_of_birth", pattern: /\b(date of birth|dob|born)\s*[:\-]?\s*[\w\s,\/.-]{4,20}\b/gi, replacement: "[REDACTED-DOB]" },
   { feature: "explicit_age", pattern: /\b(age|aged)\s*[:\-]?\s*\d{2}\b/gi, replacement: "[REDACTED-AGE]" },
   { feature: "graduation_year", pattern: /\b(class of|graduated|graduation)\s*[:\-]?\s*(19|20)\d{2}\b/gi, replacement: "graduated [REDACTED-YEAR]" },
@@ -30,6 +46,7 @@ const BASELINE_RULES: Rule[] = [
   // Gender-coded titles/pronouns
   { feature: "gendered_terms", pattern: /\b(mr\.|mrs\.|ms\.|miss|he\/him|she\/her|they\/them|pronouns\s*[:\-]\s*[\w/]+)\b/gi, replacement: "[REDACTED-GENDER]" },
 ];
+
 /**
  * Redact the candidate's NAME. Names are strong race/national-origin/sex
  * proxies. We take the name from the first non-empty line when it looks like
@@ -42,6 +59,7 @@ function redactName(text: string): { text: string; count: number } {
   let count = 0;
   const tokens = firstLine.split(/\s+/).filter(t => t.length > 1);
   let out = text;
+  // Full-name occurrences first, then individual tokens (e.g. "Ms. Garcia")
   const escapedFull = firstLine.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   out = out.replace(new RegExp(escapedFull, "g"), () => { count++; return "[CANDIDATE]"; });
   for (const tok of tokens) {
@@ -50,6 +68,11 @@ function redactName(text: string): { text: string; count: number } {
   }
   return { text: out, count };
 }
+
+/**
+ * Strip years attached to education entries specifically (age proxy) while
+ * leaving employment date ranges intact — tenure is job-related, age is not.
+ */
 function redactEducationYears(text: string): { text: string; count: number } {
   let count = 0;
   const lines = text.split("\n");
@@ -66,34 +89,47 @@ function redactEducationYears(text: string): { text: string; count: number } {
   }).join("\n");
   return { text: out, count };
 }
+
 export interface RedactionConfig {
+  /** Extra employer-defined blocklist patterns (feature name → regex source) */
   extraBlocklist?: Array<{ feature: string; pattern: string }>;
 }
+
 export function redactForScoring(rawText: string, config: RedactionConfig = {}): RedactionResult {
   const exclusions = new Map<string, number>();
   const bump = (feature: string, n: number) => {
     if (n > 0) exclusions.set(feature, (exclusions.get(feature) ?? 0) + n);
   };
+
+  // 1. Name
   const nameResult = redactName(rawText);
   bump("candidate_name", nameResult.count);
   let text = nameResult.text;
+
+  // 2. Education years (age proxy) — before generic rules so grad years in
+  //    education sections are handled with context
   const eduResult = redactEducationYears(text);
   bump("education_years", eduResult.count);
   text = eduResult.text;
+
+  // 3. Baseline blocklist
   for (const rule of BASELINE_RULES) {
-    if (rule.feature === "education_year_range") continue;
+    if (rule.feature === "education_year_range") continue; // handled above
     let count = 0;
     text = text.replace(rule.pattern, () => { count++; return rule.replacement; });
     bump(rule.feature, count);
   }
+
+  // 4. Employer-extended blocklist (validated: must compile, capped length)
   for (const extra of (config.extraBlocklist ?? []).slice(0, 20)) {
     try {
       const re = new RegExp(extra.pattern.slice(0, 200), "gi");
       let count = 0;
       text = text.replace(re, () => { count++; return `[REDACTED-${extra.feature.toUpperCase().slice(0, 20)}]`; });
       bump(`custom:${extra.feature}`, count);
-    } catch {  }
+    } catch { /* invalid pattern — skip, never break scoring */ }
   }
+
   return {
     redacted: text,
     exclusionsApplied: Array.from(exclusions.entries()).map(([feature, count]) => ({ feature, count })),
