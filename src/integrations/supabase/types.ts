@@ -3370,6 +3370,7 @@ export type Database = {
           p_country?: string
           p_department?: string
           p_employment_type?: string
+          p_exclude_agencies?: boolean
           p_experience?: string[]
           p_fresh_cutoff: string
           p_include_unstated?: boolean
@@ -3388,6 +3389,7 @@ export type Database = {
           p_work_mode?: string
         }
         Returns: {
+          agency: boolean
           apply_url: string
           category: string
           company: string
