@@ -110,7 +110,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-30.20"; // .20: UKG Pro Recruiting is the 19th source — unauthenticated Top/Skip list, compound pod~tenant~guid token (none of the three is derivable), full JD + structured pay on the detail page, two live canaries; boards follow via census
+const BUILD_VERSION = "2026-08-30.21"; // .21: the UKG tranche — 1,291 boards / ~74k postings, every >=100p board screened on full detail text after the sampler was caught returning nothing and holding all 193 rather than clearing them
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and

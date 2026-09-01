@@ -246,16 +246,20 @@ async function sampleTexts(vendor, token) {
   return [];
 }
 
-// POST twin of get(), for vendors whose list is a JSON envelope. Same timeout
-// and failure contract — a vendor does not get a quieter screen for using a
-// different verb.
+// POST twin of get(), for vendors whose list is a JSON envelope. Uses the
+// SAME fetch as get() — the first version reached for a helper this file does
+// not import, threw a ReferenceError into its own catch, and returned null for
+// every board. The screen then held all 193 as unreadable, which is the right
+// failure direction and exactly why nothing was cleared on a broken read.
 async function postJson(url, body) {
   try {
-    const { stdout } = await execFileP("/usr/bin/curl",
-      ["-s", "-m", "20", "-X", "POST", "-H", "Content-Type: application/json",
-       "-H", "Accept: application/json", "--data", JSON.stringify(body), url],
-      { maxBuffer: 32 * 1024 * 1024 });
-    return JSON.parse(stdout);
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { ...UA, "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) return null;
+    return await res.json();
   } catch { return null; }
 }
 

@@ -175,7 +175,7 @@ const PINNED = {
   // as a matter of course this time — the .2 bump had to be made retroactively
   // after three commits shipped undeployed behind an unchanged version string,
   // and "is it live?" cost six behavioural probes to answer.
-  sourcesHash: "3975cb19afbb6229",
+  sourcesHash: "23b56ca715c148b4",
   // 2026-08-21.4: disables the exact-word tier's company matcher, whose index
   // never built. Bumped so the mitigation is externally identifiable.
   // 2026-08-21.5: routed retrieval. index.ts + two new modules; sources.ts
@@ -595,7 +595,22 @@ const PINNED = {
   // summary is deliberately not stored and ukg joins DETAIL_DESC_SOURCES at
   // the tail. Names come from the employer's own logo alt text — no payload
   // on this vendor carries a company name — and an unnamed board stays out.
-  buildVersion: "2026-08-30.20",
+  //
+  // 2026-08-30.21: UKG's first tranche — 1,291 boards, ~74k postings visible,
+  // from 2,171 census tokens verified at a 62% live rate. These are larger
+  // boards than the vendor's two probe samples suggested (59 postings each on
+  // average, against Sub-Zero's 98 and AAM's 30), and 9 carry the agency
+  // disclosure flag.
+  //
+  // Every board over 100 postings was description-screened, and the first
+  // screening run is worth recording: it held ALL 193 as unreadable because
+  // the sampler called a helper the script does not import, throwing a
+  // ReferenceError into its own catch and returning nothing for every board.
+  // That is the thin-sample rule working — a screen that cannot read must
+  // never issue a clean bill — and it is the reason 1,291 unscreened boards
+  // did not merge. Re-run on real detail text: 192 cleared, one restaurant
+  // chain excluded for posting a single title 124 times.
+  buildVersion: "2026-08-30.21",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {
