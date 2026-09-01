@@ -17,10 +17,18 @@ import { rerankWindow } from "../../supabase/functions/job-board/search-routing"
  * Meanwhile "Costco Brand Promoter" at a marketing agency scored high, because
  * it really does have the word in its title.
  *
- * The fix is a TIEBREAK, not a boost, and the distinction is the whole point:
- * company match is consulted only where the title scores are equal, so it
- * cannot touch a query the title already separates. Occupation searches, which
- * had nothing to gain, cannot be harmed by it.
+ * The fix is a RELEVANCE CLASS, and it started life as a tiebreak that did
+ * nothing. scoreTitle penalises length, so two irrelevant rows are almost
+ * never exactly equal — measured against this very query, "Dispatcher" scores
+ * 0 while "Brand Ambassador" scores -15.2 — and a key placed after the title
+ * score is therefore unreachable in practice. Ordering by class first is what
+ * makes the company signal decide anything at all.
+ *
+ * The classes are ranked title match, then employer's-own-job, then no
+ * signal, then perks-list-only. A row whose title carries the query sits in
+ * the first class and is never reordered by anything below it, which is what
+ * keeps this away from occupation searches — they measured ~1.00 precision@5
+ * and had nothing to gain here.
  */
 describe("the employer's own jobs, when the title is silent", () => {
   const row = (title: string, company: string) => ({ title, company });
@@ -34,7 +42,7 @@ describe("the employer's own jobs, when the title is silent", () => {
     expect(out[0].company).toBe("Costco Wholesale Corporation");
   });
 
-  it("does NOT outrank a genuine title match — it is a tiebreak, not a boost", () => {
+  it("does NOT outrank a genuine title match — the title class always wins", () => {
     // A title carrying the query is a stronger signal than a company name
     // carrying it, and this ordering must not invert that.
     const out = rerankWindow(

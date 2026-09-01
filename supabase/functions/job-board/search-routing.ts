@@ -293,7 +293,54 @@ export function scoreTitle(title: string, query: string, ageDays?: number): numb
  * Still a single string at every existing call site: the extra readings are
  * optional and callers that pass none behave exactly as before.
  */
-export function rerankWindow<T extends { title?: unknown; company?: unknown; token?: unknown }>(
+/**
+ * THE QUERY MATCHED A PERKS LIST, NOT THE JOB.
+ *
+ * Measured 2026-09-01 on live results for q="Costco": positions 7, 9 and 10
+ * were a plumbing dispatcher, a CNC machinist and a project manager, and the
+ * board was right that each description contains the word —
+ *
+ *   "Company Paid Gym Membership, [[Costco]] Membership & Chiropractic Care"
+ *   "[[Costco]] membership option"
+ *   "[[Costco]] Membership Reimbursement"
+ *
+ * — every one of them an employer brand appearing in a benefits enumeration.
+ * Position 8 matched the same single word and was genuinely relevant
+ * ("regular travel to [[Costco]] Wholesale stores"), which is why the rule
+ * reads the CONTEXT of the match rather than counting occurrences: a mention
+ * is not noise because it is brief, it is noise because of the list it sits
+ * in. Perks lists are where brand names go to be irrelevant, and this pattern
+ * generalises past one warehouse club — a gift card, a free coffee and a gym
+ * discount all name a company that is not hiring.
+ *
+ * Reads ts_headline's own marked snippet, so it sees exactly the text the
+ * match was made on. A row with no snippet, or whose marked context is
+ * anything else, is NOT boilerplate — the default is to keep.
+ */
+const PERK_CONTEXT =
+  /\b(membership|reimbursement|discount(s|ed)?|perk|benefit(s)?|allowance|stipend|401\s?k|insurance|pto|gym|wellness|voucher|gift\s?card)\b/i;
+
+export function isPerkListMatch(snippet: unknown): boolean {
+  const text = String(snippet ?? "");
+  const marks = [...text.matchAll(/\[\[(.+?)\]\]/g)];
+  if (marks.length === 0) return false;
+  // EVERY marked occurrence has to be perks context. One mention in the body
+  // of the role is enough to keep the row, however many perks lists follow it.
+  return marks.every((m) => {
+    const at = m.index ?? 0;
+    // Scoped to the LINE the match sits on, not a character window. Perks are
+    // written one per line ("Costco Membership Reimbursement"), and a fixed
+    // window bleeds into whatever section follows — on a short snippet that
+    // meant a match in the body of the role inherited the benefits list below
+    // it and was buried for its neighbour's words.
+    const from = text.lastIndexOf("\n", at) + 1;
+    const toRaw = text.indexOf("\n", at);
+    const line = text.slice(from, toRaw === -1 ? text.length : toRaw);
+    return PERK_CONTEXT.test(line);
+  });
+}
+
+export function rerankWindow<T extends { title?: unknown; company?: unknown; token?: unknown; snippet?: unknown }>(
   rows: readonly T[],
   query: string | readonly string[],
   perCompany = 2,
@@ -322,10 +369,30 @@ export function rerankWindow<T extends { title?: unknown; company?: unknown; tok
     // not start preferring a company called Nurse Staffing over nursing
     // jobs, and under a tiebreak it cannot.
     c: Math.max(...queries.map((q) => scoreTitle(String(r.company ?? ""), q))),
+  })).map((x) => ({
+    ...x,
+    // RELEVANCE CLASS, because a tiebreak below scoreTitle would never fire.
+    //
+    // scoreTitle PENALISES LENGTH, so two irrelevant rows are almost never
+    // equal: measured against q="Costco", "Dispatcher" scores 0 while "Brand
+    // Ambassador" scores -15.2, and a key placed after it is unreachable in
+    // practice. Ordering by class first is what makes the two facts below
+    // actually decide anything.
+    //
+    //   0 — the title carries the query. Untouched: this is the signal that
+    //       measured ~1.00 precision@5 and nothing here may reorder it.
+    //   1 — no title signal, but the COMPANY carries the query. The
+    //       employer's own job for an employer-named search ("Cashier" at
+    //       Costco Wholesale), which used to tie with pure noise at zero.
+    //   2 — no signal either way.
+    //   3 — no signal AND the only match sits in a perks list. Last, because
+    //       "Costco Membership Reimbursement" in a benefits enumeration tells
+    //       a searcher nothing about the job.
+    cls: x.s > 0 ? 0 : x.c > 0 ? 1 : isPerkListMatch(x.r.snippet) ? 3 : 2,
   }));
   // Index breaks ties so the order is total and identical on every call —
   // pagination over an unstable ordering is how page two repeated page one.
-  scored.sort((a, b) => (b.s - a.s) || (b.c - a.c) || (a.i - b.i));
+  scored.sort((a, b) => (a.cls - b.cls) || (b.s - a.s) || (b.c - a.c) || (a.i - b.i));
   const seen = new Map<string, number>();
   const keep: typeof scored = [];
   const demoted: typeof scored = [];

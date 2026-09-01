@@ -543,7 +543,25 @@ const PINNED = {
   // naming an employer tied that employer's own jobs with unrelated
   // description matches at zero; company match is now a tiebreak BELOW title
   // score, which lifts the real jobs without touching occupation searches.
-  buildVersion: "2026-08-30.17",
+  //
+  // 2026-08-30.18: sources.ts UNCHANGED; the bump is search-routing.ts. The
+  // related segment was serving benefits boilerplate as job matches — three
+  // of the top ten for q="Costco" were a plumbing dispatcher, a CNC machinist
+  // and a project manager whose descriptions mention the brand only as a perk
+  // ("Costco Membership Reimbursement"), while the one genuinely related row
+  // ("regular travel to Costco Wholesale stores") sat among them. The rule
+  // reads ts_headline's marked snippet and scopes to the LINE the match sits
+  // on, because perks are written one per line and a character window bleeds
+  // into the next section.
+  //
+  // It also corrects .17's employer ordering, which was a tiebreak that could
+  // never fire: scoreTitle penalises length, so two irrelevant rows are almost
+  // never exactly equal (measured: "Dispatcher" 0, "Brand Ambassador" -15.2)
+  // and any key below it is unreachable. Ordering is by relevance CLASS now —
+  // title match, then the employer's own job, then no signal, then
+  // perks-only — and rows with a title match are untouched, which is what
+  // keeps occupation searches at the precision they already had.
+  buildVersion: "2026-08-30.18",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {
