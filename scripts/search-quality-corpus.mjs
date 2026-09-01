@@ -15,6 +15,27 @@
 //      mistaken for a widening filter. A filter that widens is the documented
 //      tier-escalation defect class; only a same-moment control can catch it.
 //
+// WHAT THIS SCRIPT GOT WRONG ON ITS FIRST RUN, 2026-08-31 — read before
+// trusting a finding from it. It reported four defects and ALL FOUR were
+// artifacts of the instrument:
+//   * "minSalary is ignored" — the API takes salaryFloor; minSalary was a
+//     name this script invented, so the board correctly ignored it. Same for
+//     agentReadyOnly, whose real name is sendableOnly, and companyTokens,
+//     whose real name is companies. VERIFY A PARAMETER NAME AGAINST THE
+//     SERVER before reporting that a filter does nothing.
+//   * "10,000 is served as an exact total" — the response carries
+//     countCapped:true beside it and the page renders "10,000+". The script
+//     simply did not capture the disclosure field.
+//   * "excludeAgencies widens" — comparing a capped ceiling (10,000) against
+//     an exact count (22,467) from a different counting path. Two ceilings
+//     from two paths cannot be ordered.
+//   * "employer search is broken (Costco returns no Costco jobs)" — Costco's
+//     board had merged but never been fetched; it had zero stored rows. No
+//     ranking fix can conjure absent inventory.
+// The instrument now captures the disclosure fields and refuses to call a
+// capped comparison a widening. A measurement that convicts working code is
+// worse than no measurement, because it spends real effort breaking things.
+//
 // SEQUENTIAL BY CONTRACT. Parallel probing of production has hurt real users
 // on this board; every request here waits for the last one.
 import { readFileSync, writeFileSync } from "node:fs";
@@ -40,6 +61,10 @@ async function call(body) {
   const d = await res.json();
   return {
     ms, total: d.total ?? null, totalAtLeast: d.totalAtLeast ?? null,
+    // A capped count is a CEILING the server discloses; comparing it as if it
+    // were exact manufactures phantom "the filter widened" findings — which is
+    // exactly what happened on this script's first run (2026-08-31).
+    countCapped: d.countCapped ?? null, relatedCapped: d.relatedCapped ?? null,
     totalBeforeExclusions: d.totalBeforeExclusions ?? null,
     countUnavailable: d.countUnavailable ?? null, ranked: d.ranked ?? null,
     returned: (d.jobs ?? []).length,
@@ -87,13 +112,13 @@ const FILTERS = [
   { label: "workMode remote", body: { workMode: "remote" }, expect: "narrow" },
   { label: "workMode onsite", body: { workMode: "onsite" }, expect: "narrow" },
   { label: "country US", body: { country: "US" }, expect: "narrow" },
-  { label: "minSalary 100k", body: { minSalary: 100000 }, expect: "narrow" },
+  { label: "salaryFloor 100k", body: { salaryFloor: 100000 }, expect: "narrow" },
   { label: "maxYears 2", body: { maxYears: 2 }, expect: "narrow" },
   { label: "employmentType full_time", body: { employmentType: "full_time" }, expect: "narrow" },
   { label: "category healthcare", body: { category: "healthcare" }, expect: "narrow" },
   { label: "excludeAgencies", body: { excludeAgencies: true }, expect: "narrow" },
   { label: "freshness 7d", body: { maxAgeDays: 7 }, expect: "narrow" },
-  { label: "agentOnly", body: { agentReadyOnly: true }, expect: "narrow" },
+  { label: "sendableOnly", body: { sendableOnly: true }, expect: "narrow" },
   // WIDENING by contract — these exist to include more, and must not be
   // judged against the narrowing rule (the isUnfiltered exemption pair).
   { label: "includeUncategorised", body: { includeUncategorised: true }, expect: "widen-ok" },
@@ -122,8 +147,13 @@ for (const f of FILTERS) {
   await new Promise((res) => setTimeout(res, 400));
   const composed = await call({ q: "nurse", ...f.body, limit: 5 });
   out.filters.push({ ...f, bare, alone, qControl, composed });
-  const wid = (alone.total ?? 0) > (bare.total ?? 0);
-  console.log(`  ${f.label.padEnd(26)} bare=${String(bare.total).padEnd(7)} alone=${String(alone.total).padEnd(7)} q=${String(qControl.total).padEnd(6)} q+f=${String(composed.total).padEnd(6)}${wid && f.expect === "narrow" ? "  ** WIDENED **" : ""}`);
+  // Only a comparison of two EXACT counts can prove widening. If either side
+  // is capped, the numbers are ceilings from different counting paths and
+  // their order says nothing.
+  const comparable = !alone.countCapped && !bare.countCapped;
+  const wid = comparable && (alone.total ?? 0) > (bare.total ?? 0);
+  const cap = (r) => (r.countCapped ? "+" : " ");
+  console.log(`  ${f.label.padEnd(26)} bare=${String(bare.total)+cap(bare)} alone=${String(alone.total)+cap(alone)} q=${String(qControl.total)+cap(qControl)} q+f=${String(composed.total)+cap(composed)}${wid && f.expect === "narrow" ? "  ** WIDENED (both exact) **" : ""}${qControl.ranked && !composed.ranked ? "  ** DROPS RANKED **" : ""}`);
   await new Promise((res) => setTimeout(res, 500));
 }
 
