@@ -99,6 +99,13 @@
       "when": 1788210953106,
       "tag": "0013_an_agency_is_disclosed_not_hidden",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1788272095234,
+      "tag": "0014_the_opt_out_stops_costing_the_ranking",
+      "breakpoints": true
     }
   ]
 }
