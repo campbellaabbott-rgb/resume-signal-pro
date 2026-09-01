@@ -397,6 +397,19 @@ export function rerankWindow<T extends { title?: unknown; company?: unknown; tok
   const keep: typeof scored = [];
   const demoted: typeof scored = [];
   for (const x of scored) {
+    // THE CAP EXISTS FOR TOPICAL SEARCHES, AND CLASS 1 IS NOT ONE.
+    //
+    // Two-per-company stops one hospital owning a search for "nurse". But
+    // class-1 rows are, by construction, all the SAME employer — the one the
+    // query names — so the cap demoted all but two of exactly the rows the
+    // class was added to surface, and buried them under the noise class 3
+    // exists to bury. A person typing "Costco" is asking to be flooded with
+    // Costco.
+    //
+    // Safe because class 1 is only REACHED when title matches run out: a
+    // topical query like "nurse" has thousands of class-0 rows ahead of it, so
+    // a company that merely has the word in its name never reaches the page.
+    if (x.cls === 1) { keep.push(x); continue; }
     const key = String(x.r.company ?? x.r.token ?? "").toLowerCase();
     const n = (seen.get(key) ?? 0) + 1;
     seen.set(key, n);

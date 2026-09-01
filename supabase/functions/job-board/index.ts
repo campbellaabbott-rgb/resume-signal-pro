@@ -110,7 +110,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-30.22"; // .22: status degrades loudly instead of 500ing (deploy identity is a constant and now always answers, with the reason attached); catalog names decode hex entities and four prose-as-name entries are gone
+const BUILD_VERSION = "2026-08-30.23"; // .23: bug-sweep round — the agency opt-out reaches the rescue tiers (it was bound in search_jobs only, so a rescue served the rows the caller hid, undisclosed); the per-company cap stops swallowing the employer it just surfaced; a withdrawn count no longer prints "not hiring"; the reverted pipe fix is restored
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
 // correcting a display name in sources.ts changes what NEW postings get and
@@ -11445,6 +11445,14 @@ async function serveList(
         };
 
         const rescueFilterParams = (): Record<string, unknown> => filtersActive ? {
+          // The opt-out reaches the rescue tiers as of 20260901200000. It was
+          // absent here while excludeAgencies sat in RPC_BOUND_FILTERS, which
+          // is the worst combination: the blind-set gate that used to route
+          // such a request through buildQuery no longer fired, so the rescue
+          // served the very rows the caller asked to hide — and served them
+          // with no agency column, so neither the badge nor filterViolations
+          // could see it happen.
+          ...(applied.excludeAgencies ? { p_exclude_agencies: true } : {}),
           p_location: rankedLocationParam(applied.location),
           p_remote: applied.remote ? true : null,
           p_country: applied.country,

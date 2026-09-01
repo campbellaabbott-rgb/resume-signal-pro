@@ -4302,7 +4302,8 @@ export default function Jobs() {
               a capped count renders "10,000+", never as an exact figure; zero
               open roles gets a plain honest "No … right now" instead of the
               question hanging unanswered; and counts are locale-formatted. */}
-          {landerCompany && ((data?.total ?? 0) + (data?.relatedTotal ?? 0)) > 0 && (
+          {landerCompany && data?.countUnavailable !== true
+            && ((data?.total ?? 0) + (data?.relatedTotal ?? 0)) > 0 && (
             <p className="text-sm font-semibold text-success mb-1">
               {data.countCapped
                 // Past the count cap the true figure is HIGHER — "10,000+" is
@@ -4325,7 +4326,14 @@ export default function Jobs() {
                 this branch would have printed "BAYADA has no open roles on their
                 job board at the moment" directly above 1,314 BAYADA roles, on an
                 indexed page. Both segments decide whether the board is empty. */}
-            {landerCompany && ((data?.total ?? 0) + (data?.relatedTotal ?? 0)) === 0 && !loading && !refreshing && (
+            {/* A WITHDRAWN COUNT IS NOT A ZERO. When the server cannot count a
+                filtered set honestly it sends total:null with countUnavailable,
+                and `?? 0` turned "we do not know" into the definitive negative
+                below — telling a visitor an employer is not hiring on exactly
+                the page that ranks for "is X hiring?". Unknown must leave the
+                question unanswered rather than answer it wrongly. */}
+            {landerCompany && data?.countUnavailable !== true
+              && ((data?.total ?? 0) + (data?.relatedTotal ?? 0)) === 0 && !loading && !refreshing && (
             <p className="text-sm font-semibold text-muted-foreground mb-1">
               {t("jobsPage.companyNotHiring", "Not right now — {{company}} has no open roles on their job board at the moment. Watch the company below and we'll email you when new roles appear.", { company: landerCompanyName })}
             </p>

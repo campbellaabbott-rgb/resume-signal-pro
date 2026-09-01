@@ -62,6 +62,37 @@ describe("the employer's own jobs, when the title is silent", () => {
     expect(out[0].title).toBe("Registered Nurse");
   });
 
+  it("the per-company cap does not swallow the employer it just surfaced", () => {
+    // The cap is two-per-company, and class-1 rows are all the same employer
+    // by construction — so before this exemption it demoted all but two of
+    // exactly the rows the class exists to surface, under the unrelated noise
+    // class 3 buries. Someone typing an employer name is asking to be flooded
+    // with that employer.
+    const rows = [
+      { title: "Dispatcher", company: "Blue Sky Plumbing" },
+      { title: "Cashier", company: "Costco Wholesale" },
+      { title: "Stocker", company: "Costco Wholesale" },
+      { title: "Baker", company: "Costco Wholesale" },
+      { title: "Forklift Operator", company: "Costco Wholesale" },
+    ];
+    const out = rerankWindow(rows, "Costco");
+    expect(out.slice(0, 4).every((r) => r.company === "Costco Wholesale"),
+      "all four Costco jobs must precede the unrelated row").toBe(true);
+    expect(out[4].company).toBe("Blue Sky Plumbing");
+  });
+
+  it("still caps one employer on a topical search", () => {
+    // The exemption must not reach class 0: a hospital may not own "nurse".
+    const rows = [
+      { title: "Registered Nurse", company: "Mercy" },
+      { title: "Nurse Manager", company: "Mercy" },
+      { title: "Nurse Educator", company: "Mercy" },
+      { title: "Registered Nurse", company: "Sanford" },
+    ];
+    const out = rerankWindow(rows, "nurse");
+    expect(out[out.length - 1].company, "the third Mercy row is demoted last").toBe("Mercy");
+  });
+
   it("stays a total order, so page two cannot repeat page one", () => {
     // Equal on both keys: original index still decides, as it always did.
     const rows = [row("Cashier", "Acme"), row("Greeter", "Acme"), row("Stocker", "Acme")];

@@ -25,13 +25,23 @@
 -- two files), so 20260901090000's copies of them are correct and are left
 -- alone — re-issuing them would risk exactly the error this file exists to
 -- correct.
--- SAME SIGNATURE, BODY ONLY — so this is a REPLACE, not a re-issue.
--- 20260901090000 already established the 21-argument shape; only the location
--- clause inside it is wrong. CREATE OR REPLACE keeps the existing grants and
--- adds no overload, which makes the drop-and-regrant dance not just
--- unnecessary but harmful: every DROP is a window where the function exists
--- to nobody.
-CREATE OR REPLACE FUNCTION public.fuzzy_title_search(
+-- TWO FIXES, ONE RE-ISSUE. The location revert above is a body change, but
+-- the agency opt-out needs a new PARAMETER and a new projected COLUMN, so the
+-- arity moves and CREATE OR REPLACE cannot carry it. Dropped explicitly (the
+-- legacy signatures too, so no stale overload answers PGRST203) and re-granted
+-- below, because DROP discards grants.
+DROP FUNCTION IF EXISTS public.fuzzy_title_search(text, timestamptz, integer);
+DROP FUNCTION IF EXISTS public.fuzzy_title_search(text, timestamptz, integer, text, boolean, text, text, text[], numeric, text[], timestamptz, integer, text, text[], boolean, boolean);
+DROP FUNCTION IF EXISTS public.fuzzy_title_search(text, timestamptz, integer, text, boolean, text, text, text[], numeric, text[], timestamptz, integer, text, text[], boolean, boolean, numeric, text, integer, text);
+DROP FUNCTION IF EXISTS public.fuzzy_title_search(text, timestamptz, integer, text, boolean, text, text, text[], numeric, text[], timestamptz, integer, text, text[], boolean, boolean, numeric, text, integer, text, text);
+DO $$
+DECLARE r record;
+BEGIN
+  FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc
+           WHERE pronamespace = 'public'::regnamespace AND proname = 'fuzzy_title_search'
+  LOOP EXECUTE 'DROP FUNCTION IF EXISTS ' || r.sig; END LOOP;
+END $$;
+CREATE FUNCTION public.fuzzy_title_search(
   p_q text,
   p_fresh_cutoff timestamptz,
   p_limit integer DEFAULT 40,
@@ -53,7 +63,8 @@ CREATE OR REPLACE FUNCTION public.fuzzy_title_search(
   p_pay_basis text DEFAULT NULL,
   p_max_years integer DEFAULT NULL,
   p_department text DEFAULT NULL,
-  p_employment_type text DEFAULT NULL
+  p_employment_type text DEFAULT NULL,
+  p_exclude_agencies boolean DEFAULT false
 )
 RETURNS TABLE (
   id text, source text, company_token text, company text, title text,
@@ -62,6 +73,7 @@ RETURNS TABLE (
   salary text, salary_min_annual numeric, salary_max_annual numeric,
   salary_period text, salary_currency text, experience_band text,
   min_years integer, last_seen timestamptz, missing_since timestamptz,
+  agency boolean,
   total_rows bigint
 )
 LANGUAGE sql
@@ -77,6 +89,12 @@ AS $$
       AND p.effective_posted >= p_fresh_cutoff
       AND p.missing_since IS NULL
       -- A '|'-JOINED ALIAS LIST MATCHED WHOLE CAN NEVER BE TRUE (20260829120000).
+      -- The opt-out reaches the RESCUE tier too. Binding it only in
+      -- search_jobs meant a searcher who asked to hide staffing agencies got
+      -- a page of them the moment the exact tier came back empty and the
+      -- fuzzy rescue took over — undisclosed, because these rows carried no
+      -- agency column for the badge or the integrity sensor to read.
+      AND (NOT p_exclude_agencies OR p.agency = false)
       AND (p_location IS NULL OR EXISTS (
             SELECT 1 FROM unnest(string_to_array(p_location, '|')) AS alias(x)
             WHERE p.location ILIKE '%' || alias.x || '%'))
@@ -113,7 +131,22 @@ AS $$
          m.posted_at, m.apply_url, m.salary, m.salary_min_annual,
          m.salary_max_annual, m.salary_period, m.salary_currency,
          m.experience_band, m.min_years::integer, m.last_seen, m.missing_since,
+         m.agency,
          (SELECT count(*) FROM m)::bigint AS total_rows
   FROM m
   ORDER BY m.sim DESC, m.effective_posted DESC;
 $$;
+
+-- DROP discards grants; the definer posture is restored from the catalog.
+DO $$
+DECLARE r record;
+BEGIN
+  FOR r IN
+    SELECT p.oid::regprocedure AS sig FROM pg_proc p
+      JOIN pg_namespace ns ON ns.oid = p.pronamespace
+     WHERE ns.nspname = 'public' AND p.proname IN ('fuzzy_title_search')
+  LOOP
+    EXECUTE format('REVOKE ALL ON FUNCTION %s FROM PUBLIC, anon, authenticated', r.sig);
+    EXECUTE format('GRANT EXECUTE ON FUNCTION %s TO service_role', r.sig);
+  END LOOP;
+END $$;

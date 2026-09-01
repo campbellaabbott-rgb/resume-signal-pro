@@ -27,6 +27,16 @@ const plain = await db.query(`SELECT count(*)::int n FROM public.fuzzy_title_sea
 console.log("case3 single location still works:", plain.rows[0].n, "rows");
 const miss = await db.query(`SELECT count(*)::int n FROM public.fuzzy_title_search('nurse', (now() - interval '30 days'), 10, 'Boston|Cambridge')`);
 console.log("case4 non-matching location excludes:", miss.rows[0].n, "rows  <- must be 0");
+// The agency opt-out must reach the RESCUE tier, not just search_jobs.
+await db.exec(`INSERT INTO public.job_board_postings (id, source, company, title, location, agency, effective_posted, last_seen, title_tsv)
+  VALUES ('b','workable','Nurse Staffing Co','Registered Nurse','New York, NY', true, now(), now(), to_tsvector('english','Registered Nurse'));`);
+const withAg = await db.query(`SELECT count(*)::int n FROM public.fuzzy_title_search('nurse', (now() - interval '30 days'), 10, 'New York')`);
+console.log("case7 rescue WITHOUT the opt-out:", withAg.rows[0].n, "rows (both employers)");
+const noAg = await db.query(`SELECT count(*)::int n FROM public.fuzzy_title_search('nurse', (now() - interval '30 days'), 10, 'New York', p_exclude_agencies => true)`);
+console.log("case8 rescue WITH the opt-out:", noAg.rows[0].n, "rows  <- the agency row must be gone");
+const proj = await db.query(`SELECT agency FROM public.fuzzy_title_search('nurse', (now() - interval '30 days'), 10, 'New York') ORDER BY agency`);
+console.log("case9 rescue rows project agency (badge + sensor can see it):", JSON.stringify(proj.rows));
+
 const g = await db.query(`SELECT has_function_privilege('service_role', oid, 'EXECUTE') svc, has_function_privilege('anon', oid, 'EXECUTE') anon FROM pg_proc WHERE pronamespace='public'::regnamespace AND proname='fuzzy_title_search'`);
 console.log("case5 grants:", JSON.stringify(g.rows));
 const dup = await db.query(`SELECT count(*)::int n FROM pg_proc WHERE pronamespace='public'::regnamespace AND proname='fuzzy_title_search'`);

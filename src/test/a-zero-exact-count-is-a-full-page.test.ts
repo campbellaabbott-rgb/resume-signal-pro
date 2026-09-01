@@ -82,8 +82,16 @@ describe("a zero exact count is not an empty page", () => {
 
   it("the company lander decides emptiness from BOTH segments", () => {
     // The ship-blocker. Both branches, or the page contradicts itself.
-    expect(JOBS).toMatch(/landerCompany && \(\(data\?\.total \?\? 0\) \+ \(data\?\.relatedTotal \?\? 0\)\) > 0 &&/);
-    expect(JOBS).toMatch(/landerCompany && \(\(data\?\.total \?\? 0\) \+ \(data\?\.relatedTotal \?\? 0\)\) === 0 &&/);
+    // A THIRD CONDITION JOINED BOTH BRANCHES 2026-09-01. The two segments still
+    // decide emptiness together — that rule is unchanged and still pinned below —
+    // but a WITHDRAWN count (total:null + countUnavailable) coerced through
+    // `?? 0` was reading as a real zero, so the lander printed the definitive
+    // "not hiring" on the page that ranks for "is X hiring?". Unknown now leaves
+    // the question unanswered instead of answering it wrongly.
+    expect(JOBS).toMatch(/data\?\.countUnavailable !== true\s*\n\s*&& \(\(data\?\.total \?\? 0\) \+ \(data\?\.relatedTotal \?\? 0\)\) > 0 &&/);
+    expect(JOBS).toMatch(/data\?\.countUnavailable !== true\s*\n\s*&& \(\(data\?\.total \?\? 0\) \+ \(data\?\.relatedTotal \?\? 0\)\) === 0 &&/);
+    // The countUnavailable guard joined this branch too — see the note above.
+    expect(JOBS).toMatch(/&& \(\(data\?\.total \?\? 0\) \+ \(data\?\.relatedTotal \?\? 0\)\) === 0 &&/);
     // And no branch may go back to reading the exact segment as "any results".
     expect(JOBS).not.toMatch(/landerCompany && data\?\.total === 0 &&/);
     expect(JOBS).not.toMatch(/landerCompany && typeof data\?\.total === "number" && data\.total > 0/);

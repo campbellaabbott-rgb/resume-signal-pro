@@ -628,7 +628,25 @@ const PINNED = {
   // scraped as an employer ("include a resume—but it's not required") — which
   // are dropped, and three more where the real employer was buried in front of
   // the prose and is now recovered.
-  buildVersion: "2026-08-30.22",
+  //
+  // 2026-08-30.23: a six-lens bug sweep, 29 findings, 13 surviving adversarial
+  // refutation. sources.ts is UNCHANGED. Four fixed here, and three of the four
+  // were mine from the previous two days:
+  //
+  //  * The agency opt-out leaked through both fuzzy rescue tiers. Binding it
+  //    into search_jobs put it in RPC_BOUND_FILTERS, which switched OFF the
+  //    blind-set gate that had been routing such requests through the one
+  //    binder — so a rescue page served exactly the rows the caller asked to
+  //    hide, with no agency column for the badge or filterViolations to catch
+  //    it. fuzzy now takes the parameter and projects the column.
+  //  * The per-company cap ran after the new relevance classes and swallowed
+  //    class 1, whose rows are all the same employer by construction — so the
+  //    employer fix surfaced two jobs and buried the rest under noise.
+  //  * The company lander read a WITHDRAWN count through `?? 0` and printed
+  //    the definitive "not hiring" on the page that ranks for "is X hiring?".
+  //  * The reverted location fix (see 20260901200000) is restored in the same
+  //    migration.
+  buildVersion: "2026-08-30.23",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {
