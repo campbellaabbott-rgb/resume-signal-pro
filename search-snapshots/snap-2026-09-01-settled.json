@@ -1,0 +1,1443 @@
+{
+ "at": "2026-09-01T14:55:11.653Z",
+ "results": {
+  "browse": {
+   "ms": 1521,
+   "tookMs": 1007,
+   "total": 750765,
+   "ranked": null,
+   "disclosures": {
+    "locationExpandedFrom": null,
+    "excludedTerms": null,
+    "maxAgeClamped": null
+   },
+   "top": [
+    {
+     "id": "workday:michelinhr~wd3~Michelin:R-2026027254",
+     "company": "Michelinhr",
+     "title": "IT Software Development & Digitalization Intern"
+    },
+    {
+     "id": "workday:michelinhr~wd3~Michelin:R-2026030363-1",
+     "company": "Michelinhr",
+     "title": "Site Safety Specialist"
+    },
+    {
+     "id": "workday:michelinhr~wd3~Michelin:R-2026032624-1",
+     "company": "Michelinhr",
+     "title": "Distribution Center Manager"
+    },
+    {
+     "id": "workday:michelinhr~wd3~Michelin:R-2026033145",
+     "company": "Michelinhr",
+     "title": "Trainee Procurement with German or Italian"
+    },
+    {
+     "id": "workday:michelinhr~wd3~Michelin:R-2026033518",
+     "company": "Michelinhr",
+     "title": "Distribution Program Manager (B2B+B2C)"
+    },
+    {
+     "id": "workday:miele~wd3~miele-jobs:R1906",
+     "company": "Miele",
+     "title": "Servicetechniker Haushalt - Region Oberwallis (m/w/d)"
+    },
+    {
+     "id": "workday:miele~wd3~miele-jobs:R2377",
+     "company": "Miele",
+     "title": "Chef/fe de Vente Régional/e – Domestic Appliance – Neuchâtel"
+    },
+    {
+     "id": "workday:miele~wd3~miele-jobs:R2824",
+     "company": "Miele",
+     "title": "Sachbearbeiter Beschwerdemanagement m/w/d"
+    },
+    {
+     "id": "workday:miele~wd3~miele-jobs:R3182-1",
+     "company": "Miele",
+     "title": "Web Analyst"
+    },
+    {
+     "id": "workday:miele~wd3~miele-jobs:R3882",
+     "company": "Miele",
+     "title": "Ausbildung als Industriekaufmann (m/w/d) 2027"
+    }
+   ]
+  },
+  "software engineer": {
+   "ms": 976,
+   "tookMs": 675,
+   "total": 10000,
+   "ranked": true,
+   "disclosures": {
+    "locationExpandedFrom": null,
+    "excludedTerms": null,
+    "maxAgeClamped": null
+   },
+   "top": [
+    {
+     "id": "greenhouse:janestreet:8646746002",
+     "company": "Jane Street",
+     "title": "Software Engineer"
+    },
+    {
+     "id": "oracle:efds~em5~CX_1:68981",
+     "company": "Ford Global",
+     "title": "Software Engineer"
+    },
+    {
+     "id": "oracle:fa-espx-saasfaprod1~ocs~CX_1002:2436981",
+     "company": "Cummins DEI",
+     "title": "Software Engineer"
+    },
+    {
+     "id": "oracle:fa-espx-saasfaprod1~ocs~CX_1004:2436981",
+     "company": "Cummins Apprenticeship",
+     "title": "Software Engineer"
+    },
+    {
+     "id": "oracle:fa-espx-saasfaprod1~ocs~CX_1005:2436981",
+     "company": "Cummins RePower",
+     "title": "Software Engineer"
+    },
+    {
+     "id": "oracle:fa-espx-saasfaprod1~ocs~CX_1007:2436981",
+     "company": "Cummins Veterans",
+     "title": "Software Engineer"
+    },
+    {
+     "id": "oracle:fa-espx-saasfaprod1~ocs~CX_3001:2436981",
+     "company": "Cummins Technicians",
+     "title": "Software Engineer"
+    },
+    {
+     "id": "ashby:vocca:56049107-f9dd-41f3-a091-a29838bb0d5f",
+     "company": "Vocca",
+     "title": "Software Engineer"
+    },
+    {
+     "id": "bamboohr:enghouse:2241",
+     "company": "Enghouse",
+     "title": "Software Engineer"
+    },
+    {
+     "id": "oracle:ibwujb~ocs~CX_1:9949",
+     "company": "Ralliant",
+     "title": "Software Engineer"
+    }
+   ]
+  },
+  "registered nurse": {
+   "ms": 1659,
+   "tookMs": 1204,
+   "total": 10000,
+   "ranked": true,
+   "disclosures": {
+    "locationExpandedFrom": null,
+    "excludedTerms": null,
+    "maxAgeClamped": null
+   },
+   "top": [
+    {
+     "id": "workday:davita~wd1~DKC_External:R0475112",
+     "company": "DaVita",
+     "title": "Registered Nurse"
+    },
+    {
+     "id": "icims:careers.primehealthcare.com:278205",
+     "company": "Prime Healthcare",
+     "title": "Registered Nurse"
+    },
+    {
+     "id": "workday:freseniusmedicalcare~wd3~fme:R0241058",
+     "company": "Fresenius Medical Care",
+     "title": "Registered Nurse"
+    },
+    {
+     "id": "greenhouse:bayada:8768986002",
+     "company": "BAYADA Home Health Care",
+     "title": "Registered Nurse"
+    },
+    {
+     "id": "smartrecruiters:MarieCurie1:3743990014967877",
+     "company": "Marie Curie",
+     "title": "Registered Nurse - Lincolnshire"
+    },
+    {
+     "id": "smartrecruiters:Epworth:744000146575695",
+     "company": "Epworth",
+     "title": "Registered Nurse - Orthopaedics"
+    },
+    {
+     "id": "workday:aah~wd5~External:R266098-1",
+     "company": "Advocate Health",
+     "title": "Registered Nurse - OR"
+    },
+    {
+     "id": "workday:davita~wd1~DKC_External:R0460989-1",
+     "company": "DaVita",
+     "title": "Registered Nurse Float"
+    },
+    {
+     "id": "workday:trinityhealth~wd1~Jobs:00690137",
+     "company": "Trinity Health",
+     "title": "Registered Nurse (RN)"
+    },
+    {
+     "id": "workday:trinityhealth~wd1~Jobs:00691435",
+     "company": "Trinity Health",
+     "title": "Registered Nurse ICU"
+    }
+   ]
+  },
+  "data analyst": {
+   "ms": 1743,
+   "tookMs": 1092,
+   "total": 1617,
+   "ranked": true,
+   "disclosures": {
+    "locationExpandedFrom": null,
+    "excludedTerms": null,
+    "maxAgeClamped": null
+   },
+   "top": [
+    {
+     "id": "pinpoint:onlineriver:219948",
+     "company": "Onlineriver",
+     "title": "Data Analyst"
+    },
+    {
+     "id": "oracle:fa-ewgu-saasfaprod1~ocs~CX_2001:35281",
+     "company": "Chubb External",
+     "title": "Data Analyst"
+    },
+    {
+     "id": "ashby:SKELAR:41e1b0aa-e81d-4c82-a944-3660274fbb55",
+     "company": "SKELAR",
+     "title": "Data Analyst"
+    },
+    {
+     "id": "workday:gehc~wd5~GEHC_ExternalSite:R4045167-1",
+     "company": "GE HealthCare",
+     "title": "Data Analyst"
+    },
+    {
+     "id": "workday:parsons~wd5~Search:R183740",
+     "company": "Parsons",
+     "title": "Data Analyst"
+    },
+    {
+     "id": "ashby:clarium:c55300dd-706e-40e5-a0f6-d5f76927226c",
+     "company": "Clarium",
+     "title": "Data Analyst"
+    },
+    {
+     "id": "workday:ag~wd3~Airbus:JR10437358",
+     "company": "Airbus",
+     "title": "Data Analyst"
+    },
+    {
+     "id": "workday:unilever~wd3~Unilever_Experienced_Professionals:R-1186892-1",
+     "company": "Unilever",
+     "title": "Data Analyst"
+    },
+    {
+     "id": "rippling:vertical-insure:2e9bd6b6-77e2-4b35-b5b1-3be953873ecb",
+     "company": "Vertical Insure",
+     "title": "Data Analyst"
+    },
+    {
+     "id": "greenhouse:planetlabs:8160736",
+     "company": "Planet",
+     "title": "Data Analyst"
+    }
+   ]
+  },
+  "warehouse": {
+   "ms": 1169,
+   "tookMs": 841,
+   "total": 5024,
+   "ranked": true,
+   "disclosures": {
+    "locationExpandedFrom": null,
+    "excludedTerms": null,
+    "maxAgeClamped": null
+   },
+   "top": [
+    {
+     "id": "workday:smithfieldfoods~wd1~Careers:R-2026-11950",
+     "company": "Smithfieldfoods",
+     "title": "Warehouse"
+    },
+    {
+     "id": "workable:envalior:7B2901219E",
+     "company": "Envalior",
+     "title": "Warehouse Leader"
+    },
+    {
+     "id": "icims:jobs.qxo.com:14466",
+     "company": "QXO",
+     "title": "Warehouse Associate"
+    },
+    {
+     "id": "paylocity:7e108a5b-ee5b-41c0-9e73-78eef4eeac98:4464457",
+     "company": "Geneva10",
+     "title": "Warehouse Associate"
+    },
+    {
+     "id": "rippling:swimoutlet:ab416ed3-2b33-4fdf-889f-d1d8f657781f",
+     "company": "Swimoutlet",
+     "title": "Warehouse Associate"
+    },
+    {
+     "id": "pinpoint:reconomy:557272",
+     "company": "Reconomy",
+     "title": "Warehouse Associate"
+    },
+    {
+     "id": "oracle:eewl~us6~CX:11078",
+     "company": "Sundt",
+     "title": "Warehouse Journeyperson"
+    },
+    {
+     "id": "oracle:eklm~us2~CX_1001:34205",
+     "company": "EECOL",
+     "title": "Warehouse Associate"
+    },
+    {
+     "id": "oracle:eklm~us2~CX:34160",
+     "company": "Wesco",
+     "title": "Warehouse Associate"
+    },
+    {
+     "id": "oracle:fa-ewwt-saasfaprod1~ocs~CX_1:61229",
+     "company": "Americold",
+     "title": "Warehouse Custodian"
+    }
+   ]
+  },
+  "customer service": {
+   "ms": 1888,
+   "tookMs": 1499,
+   "total": 10000,
+   "ranked": true,
+   "disclosures": {
+    "locationExpandedFrom": null,
+    "excludedTerms": null,
+    "maxAgeClamped": null
+   },
+   "top": [
+    {
+     "id": "workday:calibercollision~wd1~Caliber:R0223511-1",
+     "company": "Caliber Collision",
+     "title": "Customer Service Representative"
+    },
+    {
+     "id": "pinpoint:onlineriver:221359",
+     "company": "Onlineriver",
+     "title": "Customer Service Representative"
+    },
+    {
+     "id": "pinpoint:celnor:568847",
+     "company": "Celnor",
+     "title": "Customer Service Representative"
+    },
+    {
+     "id": "recruitee:myrunway:2728787",
+     "company": "MyRunway",
+     "title": "Customer Service Assistant"
+    },
+    {
+     "id": "smartrecruiters:QantasGroup:6000000001365776",
+     "company": "Qantas Group",
+     "title": "Customer Service Agent"
+    },
+    {
+     "id": "workday:abbott~wd5~abbottcareers:31160673",
+     "company": "Abbott",
+     "title": "Customer Service Specialist"
+    },
+    {
+     "id": "workday:circlek~wd3~CircleKStoreJobs:R569601-1",
+     "company": "Circlek",
+     "title": "Customer Service Representative"
+    },
+    {
+     "id": "workday:jj~wd5~JJ:R-095909-1",
+     "company": "Johnson & Johnson",
+     "title": "Customer Service Specialist"
+    },
+    {
+     "id": "workday:uhaul~wd1~UhaulJobs:R248065",
+     "company": "U-Haul",
+     "title": "Customer Service Representative"
+    },
+    {
+     "id": "paylocity:e89c5bb4-ce15-4077-a66d-3166d7ad5448:4463010",
+     "company": "UCFS Healthcare",
+     "title": "Customer Service Representative"
+    }
+   ]
+  },
+  "c++": {
+   "ms": 954,
+   "tookMs": 641,
+   "total": 1960,
+   "ranked": true,
+   "disclosures": {
+    "locationExpandedFrom": null,
+    "excludedTerms": null,
+    "maxAgeClamped": null
+   },
+   "top": [
+    {
+     "id": "oracle:fa-exhj-saasfaprod1~ocs~CX_1:2114",
+     "company": "Virtuos",
+     "title": "C++游戏开发培训生"
+    },
+    {
+     "id": "workable:fuku:26B81641C4",
+     "company": "Fuku",
+     "title": "C++ developer"
+    },
+    {
+     "id": "workday:ciena~wd5~Careers:R031454",
+     "company": "Ciena",
+     "title": "C++ Developer"
+    },
+    {
+     "id": "breezy:everstar:bb25dcdc9fd5-c-engineer",
+     "company": "Everstar",
+     "title": "C++ Engineer"
+    },
+    {
+     "id": "recruitee:openvpn:2703925",
+     "company": "OpenVPN",
+     "title": "C++ Developer"
+    },
+    {
+     "id": "greenhouse:wil:721903",
+     "company": "Waterfront International Ltd",
+     "title": "C++ Programmer"
+    },
+    {
+     "id": "oracle:hdow~us6~CX_1003:248182",
+     "company": "Cantor Fitzgerald/BGC",
+     "title": "C++ Developer"
+    },
+    {
+     "id": "greenhouse:ftandinternships:1304475",
+     "company": "Stevens Capital Management LP - Full Time and Internships",
+     "title": "C++ Developer"
+    },
+    {
+     "id": "workday:accenture~wd103~AccentureCareers:14709714",
+     "company": "Accenture",
+     "title": "C++ Software Engineer"
+    },
+    {
+     "id": "ashby:reactivemarkets:8662bd36-401c-4dd7-8102-7c9049c10d3d",
+     "company": "Reactivemarkets",
+     "title": "C++ Software Engineer"
+    }
+   ]
+  },
+  "rn abbreviation": {
+   "ms": 1707,
+   "tookMs": 1356,
+   "total": null,
+   "ranked": true,
+   "disclosures": {
+    "locationExpandedFrom": null,
+    "excludedTerms": null,
+    "maxAgeClamped": null
+   },
+   "top": [
+    {
+     "id": "workday:davita~wd1~DKC_External:R0475112",
+     "company": "DaVita",
+     "title": "Registered Nurse"
+    },
+    {
+     "id": "icims:careers.primehealthcare.com:278205",
+     "company": "Prime Healthcare",
+     "title": "Registered Nurse"
+    },
+    {
+     "id": "workday:freseniusmedicalcare~wd3~fme:R0241058",
+     "company": "Fresenius Medical Care",
+     "title": "Registered Nurse"
+    },
+    {
+     "id": "greenhouse:bayada:8768986002",
+     "company": "BAYADA Home Health Care",
+     "title": "Registered Nurse"
+    },
+    {
+     "id": "workday:multicare~wd1~multicare:JR81405-1",
+     "company": "Multicare",
+     "title": "RN"
+    },
+    {
+     "id": "icims:jobs.chsli.org:73053",
+     "company": "Catholic Health",
+     "title": "RN"
+    },
+    {
+     "id": "workday:spectrumhealth~wd5~CorewellHealthCareers:R204695",
+     "company": "Spectrum Health",
+     "title": "RN"
+    }
+   ]
+  },
+  "nyc metro": {
+   "ms": 1141,
+   "tookMs": 807,
+   "total": 404,
+   "ranked": true,
+   "disclosures": {
+    "locationExpandedFrom": "NYC",
+    "excludedTerms": null,
+    "maxAgeClamped": null
+   },
+   "top": [
+    {
+     "id": "icims:careers.radnet.com:20701",
+     "company": "RadNet",
+     "title": "Nurse Practitioner"
+    },
+    {
+     "id": "workday:hss~wd1~HSS_Careers:JR2025-101878-1",
+     "company": "Hss",
+     "title": "Nurse Anesthetist"
+    },
+    {
+     "id": "icims:jobs.chsli.org:73867",
+     "company": "Catholic Health",
+     "title": "Nurse Manager"
+    },
+    {
+     "id": "icims:jobs.bassett.org:16444",
+     "company": "Bassett Healthcare Network",
+     "title": "Nurse Educator"
+    },
+    {
+     "id": "icims:jobs.chsli.org:74286",
+     "company": "Catholic Health",
+     "title": "Nurse Practitioner-PD"
+    },
+    {
+     "id": "icims:careers.garnethealth.org:29348",
+     "company": "Garnet Health",
+     "title": "Nurse Manager- Obstetrics"
+    },
+    {
+     "id": "icims:maimo.jibeapply.com:11371",
+     "company": "Maimonides Medical Center",
+     "title": "Nurse Practitioner - Psychiatry"
+    },
+    {
+     "id": "workday:trinityhealth~wd1~Jobs:00655719",
+     "company": "Trinity Health",
+     "title": "Nurse - LPN - Saratoga Cardiology"
+    },
+    {
+     "id": "icims:careers.garnethealth.org:29370",
+     "company": "Garnet Health",
+     "title": "Nurse Manager-Operating Room"
+    },
+    {
+     "id": "ashby:neko-health:fb236da8-e248-4357-9544-a7612e25e8eb",
+     "company": "Neko Health",
+     "title": "Nurse Practitioner - Part Time"
+    }
+   ]
+  },
+  "sf metro": {
+   "ms": 1518,
+   "tookMs": 1140,
+   "total": 1415,
+   "ranked": true,
+   "disclosures": {
+    "locationExpandedFrom": "SF",
+    "excludedTerms": null,
+    "maxAgeClamped": null
+   },
+   "top": [
+    {
+     "id": "greenhouse:gingerlabsinc:5410136008",
+     "company": "Notability",
+     "title": "Engineer, Backend"
+    },
+    {
+     "id": "paylocity:8a5ab9e1-9406-45b2-b796-ac8606d08a6b:4451080",
+     "company": "Martin/Martin, Inc.",
+     "title": "Engineer-in-Training I - Structural"
+    },
+    {
+     "id": "ashby:vitalize:24dd24f6-df3a-4f7a-85bf-2e900f414d9a",
+     "company": "Vitalize",
+     "title": "Principal Engineer"
+    },
+    {
+     "id": "ashby:vitalize:92db2056-c01c-4f57-88b3-4513330e7bb6",
+     "company": "Vitalize",
+     "title": "Staff Engineer"
+    },
+    {
+     "id": "ashby:artie:9ed7587a-0653-4e81-ab50-5136a2516639",
+     "company": "Artie",
+     "title": "Solutions Engineer"
+    },
+    {
+     "id": "ashby:greptile:1995303e-eaed-4081-8dc4-9c59c18c8335",
+     "company": "Greptile",
+     "title": "Security Engineer"
+    },
+    {
+     "id": "ashby:Crusoe:91b8d1dd-2368-4509-bcce-d1a528dac9a2",
+     "company": "Crusoe",
+     "title": "Enablement Engineer"
+    },
+    {
+     "id": "ashby:LatchBio:2011dea7-9b08-4f6d-a2f5-ae1124607b7d",
+     "company": "LatchBio",
+     "title": "Design Engineer"
+    },
+    {
+     "id": "ashby:Serval:60e9f06a-e473-438d-b8e4-916f5dadc2f5",
+     "company": "Serval",
+     "title": "Data Engineer"
+    },
+    {
+     "id": "greenhouse:eu~nscaleoperationsukltd:4963670101",
+     "company": "Nscale",
+     "title": "Solutions Engineer"
+    }
+   ]
+  },
+  "exclusion": {
+   "ms": 2110,
+   "tookMs": 1801,
+   "total": null,
+   "ranked": true,
+   "disclosures": {
+    "locationExpandedFrom": null,
+    "excludedTerms": [
+     "manager"
+    ],
+    "maxAgeClamped": null
+   },
+   "top": [
+    {
+     "id": "oracle:fa-evax-saasfaprod1~ocs~CX_1:167984",
+     "company": "IHG",
+     "title": "Engineer"
+    },
+    {
+     "id": "workday:jll~wd1~jllcareers:REQ519448-1",
+     "company": "JLL",
+     "title": "Engineer"
+    },
+    {
+     "id": "adp:1c7fb0ee-a452-42a0-bb0d-786747fc0bb0:9201844603404_1",
+     "company": "The Hyatt Regency Denver Tech Center",
+     "title": "Engineer"
+    },
+    {
+     "id": "smartrecruiters:AECOM2:744000146616669",
+     "company": "AECOM",
+     "title": "Engineer - Civil إماراتيين (خلاصة القيد)"
+    },
+    {
+     "id": "oracle:ejwl~us2~CX:26110965",
+     "company": "Marriott",
+     "title": "Engineer II"
+    },
+    {
+     "id": "workday:alliander~wd3~alliander:JR18437-1",
+     "company": "Alliander",
+     "title": "Engineer Hoogspanningslijnen"
+    },
+    {
+     "id": "workday:aurecongroup~wd3~aurecon:R33337",
+     "company": "Aurecongroup",
+     "title": "Engineer, Electrical"
+    },
+    {
+     "id": "workday:multicare~wd1~multicare:JR80853",
+     "company": "Multicare",
+     "title": "Engineer II"
+    },
+    {
+     "id": "oracle:ibedqy~ocs~CX_1:10253",
+     "company": "ONE Gas",
+     "title": "Engineer I"
+    },
+    {
+     "id": "workday:genpt~wd1~Careers:0000028677",
+     "company": "Genuine Parts Company",
+     "title": "Engineer Regular"
+    }
+   ]
+  },
+  "not-for-profit trap": {
+   "ms": 3554,
+   "tookMs": 3215,
+   "total": null,
+   "ranked": true,
+   "disclosures": {
+    "locationExpandedFrom": null,
+    "excludedTerms": null,
+    "maxAgeClamped": null
+   },
+   "top": [
+    {
+     "id": "smartrecruiters:AHRCNYC1:744000141944414",
+     "company": "AHRC NYC",
+     "title": "Director, Facility Management - Non-Profit"
+    },
+    {
+     "id": "smartrecruiters:AHRCNYC1:744000145776557",
+     "company": "AHRC NYC",
+     "title": "Director, Contract Services (Non-Profit) - Manhattan"
+    },
+    {
+     "id": "pinpoint:celnor:543492",
+     "company": "Celnor",
+     "title": "Managing Director"
+    },
+    {
+     "id": "lever:keyloop:cc565d09-ffee-4105-a3cb-58b40a981d07",
+     "company": "Keyloop",
+     "title": "Account Director"
+    },
+    {
+     "id": "greenhouse:imc:4961681101",
+     "company": "IMC Trading",
+     "title": "Representative Director"
+    },
+    {
+     "id": "icims:www.genesiscareers.jobs:54168",
+     "company": "Genesis Administrative Services",
+     "title": "Director-Rehab Clinical"
+    },
+    {
+     "id": "oracle:ejwl~us2~CX:26082525",
+     "company": "Marriott",
+     "title": "Director Of Finance"
+    },
+    {
+     "id": "oracle:ejwl~us2~CX:26111137",
+     "company": "Marriott",
+     "title": "Director of Operation"
+    },
+    {
+     "id": "workday:cibc~wd3~search:2617945",
+     "company": "CIBC",
+     "title": "Director, Finance - Singapore"
+    },
+    {
+     "id": "greenhouse:feastables:6167608004",
+     "company": "Feastables",
+     "title": "Director of Partnerships"
+    }
+   ]
+  },
+  "remote filter": {
+   "ms": 1880,
+   "tookMs": 1437,
+   "total": 3601,
+   "ranked": true,
+   "disclosures": {
+    "locationExpandedFrom": null,
+    "excludedTerms": null,
+    "maxAgeClamped": null
+   },
+   "top": [
+    {
+     "id": "workable:pavago:9CD35C7994",
+     "company": "Pavago",
+     "title": "Accountant"
+    },
+    {
+     "id": "smartrecruiters:SGS:744000146026139",
+     "company": "SGS",
+     "title": "Accountant"
+    },
+    {
+     "id": "workable:joinremotely:B2830431EC",
+     "company": "Remotely",
+     "title": "Accountant"
+    },
+    {
+     "id": "greenhouse:sezzle:7905542003",
+     "company": "Sezzle",
+     "title": "Accountant"
+    },
+    {
+     "id": "breezy:accordus:e5d4823982f0-accountant",
+     "company": "Accordus",
+     "title": "Accountant"
+    },
+    {
+     "id": "smartrecruiters:Veremark:744000144226239",
+     "company": "Veremark",
+     "title": "Accountant"
+    },
+    {
+     "id": "breezy:bettersource:5d74172533ba-accountant",
+     "company": "Bettersource",
+     "title": "Accountant"
+    },
+    {
+     "id": "workable:getresponse:BD19056FD5",
+     "company": "GetResponse",
+     "title": "Accountant"
+    },
+    {
+     "id": "breezy:sourcefit:af3b8d8e71e1-accountant",
+     "company": "Sourcefit",
+     "title": "Accountant"
+    },
+    {
+     "id": "greenhouse:fivetran:7827799003",
+     "company": "Fivetran",
+     "title": "Accountant"
+    }
+   ]
+  },
+  "salary floor": {
+   "ms": 2372,
+   "tookMs": 2081,
+   "total": 10000,
+   "ranked": true,
+   "disclosures": {
+    "locationExpandedFrom": null,
+    "excludedTerms": null,
+    "maxAgeClamped": null
+   },
+   "top": [
+    {
+     "id": "workable:pavago:5BC9E18C75",
+     "company": "Pavago",
+     "title": "Developer"
+    },
+    {
+     "id": "workday:barclays~wd3~External_Career_Site_Barclays:JR-0000117592-1",
+     "company": "Barclays",
+     "title": "Developer"
+    },
+    {
+     "id": "paylocity:82c1b00b-b0a2-47c1-8450-f0d1f37f7e66:4447672",
+     "company": "Inadev",
+     "title": "Developer"
+    },
+    {
+     "id": "workday:firstrand~wd3~FRB:R52243",
+     "company": "Firstrand",
+     "title": "Developer"
+    },
+    {
+     "id": "workday:aveva~wd3~ETAP_Careers:R015064",
+     "company": "Aveva",
+     "title": "Developer"
+    },
+    {
+     "id": "greenhouse:map:8682275002",
+     "company": "MAP",
+     "title": "Developer"
+    },
+    {
+     "id": "workday:liverangewater~wd1~RangeWaterRealEstate:R-109407-1",
+     "company": "Liverangewater",
+     "title": "Developer"
+    },
+    {
+     "id": "workable:valsoft-corp:D1C6018791",
+     "company": "Valsoft Corporation",
+     "title": "Developer"
+    },
+    {
+     "id": "icims:careers.southglos.gov.uk:2797",
+     "company": "South Gloucestershire Council",
+     "title": "Developer"
+    },
+    {
+     "id": "ashby:ollama:f0b036e6-df77-4764-aad5-4a2122f8a648",
+     "company": "Ollama",
+     "title": "Developer Relations"
+    }
+   ]
+  },
+  "recency sort": {
+   "ms": 916,
+   "tookMs": 450,
+   "total": 750765,
+   "ranked": null,
+   "disclosures": {
+    "locationExpandedFrom": null,
+    "excludedTerms": null,
+    "maxAgeClamped": null
+   },
+   "top": [
+    {
+     "id": "workday:michelinhr~wd3~Michelin:R-2026027254",
+     "company": "Michelinhr",
+     "title": "IT Software Development & Digitalization Intern"
+    },
+    {
+     "id": "workday:michelinhr~wd3~Michelin:R-2026030363-1",
+     "company": "Michelinhr",
+     "title": "Site Safety Specialist"
+    },
+    {
+     "id": "workday:michelinhr~wd3~Michelin:R-2026032624-1",
+     "company": "Michelinhr",
+     "title": "Distribution Center Manager"
+    },
+    {
+     "id": "workday:michelinhr~wd3~Michelin:R-2026033145",
+     "company": "Michelinhr",
+     "title": "Trainee Procurement with German or Italian"
+    },
+    {
+     "id": "workday:michelinhr~wd3~Michelin:R-2026033518",
+     "company": "Michelinhr",
+     "title": "Distribution Program Manager (B2B+B2C)"
+    },
+    {
+     "id": "workday:miele~wd3~miele-jobs:R1906",
+     "company": "Miele",
+     "title": "Servicetechniker Haushalt - Region Oberwallis (m/w/d)"
+    },
+    {
+     "id": "workday:miele~wd3~miele-jobs:R2377",
+     "company": "Miele",
+     "title": "Chef/fe de Vente Régional/e – Domestic Appliance – Neuchâtel"
+    },
+    {
+     "id": "workday:miele~wd3~miele-jobs:R2824",
+     "company": "Miele",
+     "title": "Sachbearbeiter Beschwerdemanagement m/w/d"
+    },
+    {
+     "id": "workday:miele~wd3~miele-jobs:R3182-1",
+     "company": "Miele",
+     "title": "Web Analyst"
+    },
+    {
+     "id": "workday:miele~wd3~miele-jobs:R3882",
+     "company": "Miele",
+     "title": "Ausbildung als Industriekaufmann (m/w/d) 2027"
+    }
+   ]
+  },
+  "employer costco": {
+   "ms": 1850,
+   "tookMs": 1424,
+   "total": 40,
+   "ranked": true,
+   "disclosures": {
+    "locationExpandedFrom": null,
+    "excludedTerms": null,
+    "maxAgeClamped": null
+   },
+   "top": [
+    {
+     "id": "workable:next-doorand-window:4EE67A2D14",
+     "company": "Next Door & Window",
+     "title": "Costco Brand Promoter"
+    },
+    {
+     "id": "oracle:eczy~us2~CX_1:38394",
+     "company": "Acosta",
+     "title": "Senior Business Manager - Costco"
+    },
+    {
+     "id": "greenhouse:olly:4722372005",
+     "company": "OLLY",
+     "title": "Associate Customer Business Manager - Costco"
+    },
+    {
+     "id": "bamboohr:thebluebirdgrp:272",
+     "company": "The Bluebird Group",
+     "title": "Director of Sales - Costco (Hardlines)"
+    },
+    {
+     "id": "breezy:small-potato-trucking:8c9a648aa67a-regional-lane-for-costco-needs-cdl-a-driver",
+     "company": "Small Potato Trucking",
+     "title": "REGIONAL LANE FOR COSTCO NEEDS CDL-A DRIVER"
+    },
+    {
+     "id": "breezy:4th-day-trucking:0b86c20233f9-local-semi-local-cdl-driver-no-touch-freight-costco-account",
+     "company": "4th Day Trucking",
+     "title": "Local / SEMI LOCAL CDL-Driver |  No-Touch Freight COSTCO ACC"
+    },
+    {
+     "id": "workable:costco-france:D2B7FE34E8",
+     "company": "Costco France",
+     "title": "Commis Centre du pneu (H/F)"
+    },
+    {
+     "id": "workable:costco-france:6C9693E43A",
+     "company": "Costco France",
+     "title": "Commis Préparation Alimentaire Boucherie (H/F) - CDI"
+    },
+    {
+     "id": "ashby:renuity:57a8eac7-0523-46bf-856e-bd8f279d8ccc",
+     "company": "Renuity",
+     "title": "Brand Ambassador"
+    },
+    {
+     "id": "lever:blueland:db6b888b-a4e2-428d-9ee8-b8fb714d8802",
+     "company": "Blueland",
+     "title": "Demand Planner"
+    }
+   ]
+  },
+  "employer cvs": {
+   "ms": 1916,
+   "tookMs": 1402,
+   "total": 8,
+   "ranked": true,
+   "disclosures": {
+    "locationExpandedFrom": null,
+    "excludedTerms": null,
+    "maxAgeClamped": null
+   },
+   "top": [
+    {
+     "id": "workday:mars~wd3~External:R163081-2",
+     "company": "Mars",
+     "title": "Director - CVS"
+    },
+    {
+     "id": "workday:swisslife~wd3~Swiss_Life_International_Division_Career_Site:R09631",
+     "company": "Swisslife",
+     "title": "Speculative CVs - Chase de Vere"
+    },
+    {
+     "id": "workday:mars~wd3~External:R158088",
+     "company": "Mars",
+     "title": "Commissioning, Validation & Start-up Lead (CVS)"
+    },
+    {
+     "id": "workday:avera~wd5~avera-careers:2208616-EV-E",
+     "company": "Avera",
+     "title": "Registered Nurse (RN) | CVS & Pulm Unit"
+    },
+    {
+     "id": "greenhouse:revloncorporate:5382377008",
+     "company": "Revlon Corporate",
+     "title": "Senior Director, Customer Business Development (CVS)"
+    },
+    {
+     "id": "workday:cvshealth~wd1~CVS_Health_Careers:R0907966",
+     "company": "CVS Health",
+     "title": "Strategic Account Manager - CVS Media Exchange (CMX)"
+    },
+    {
+     "id": "workday:cvshealth~wd1~CVS_Health_Careers:R0929501",
+     "company": "CVS Health",
+     "title": "Sales Advertising Operations Senior Manager - CVS Media Exch"
+    },
+    {
+     "id": "workday:cvshealth~wd1~CVS_Health_Careers:R1003167",
+     "company": "CVS Health",
+     "title": "Senior Manager, Events and  Industry Marketing - CVS Media E"
+    }
+   ]
+  },
+  "agency collabera": {
+   "ms": 2460,
+   "tookMs": 2096,
+   "total": 0,
+   "ranked": true,
+   "disclosures": {
+    "locationExpandedFrom": null,
+    "excludedTerms": null,
+    "maxAgeClamped": null
+   },
+   "top": []
+  },
+  "truck driver": {
+   "ms": 1004,
+   "tookMs": 654,
+   "total": 2137,
+   "ranked": true,
+   "disclosures": {
+    "locationExpandedFrom": null,
+    "excludedTerms": null,
+    "maxAgeClamped": null
+   },
+   "top": [
+    {
+     "id": "oracle:eklm~us2~CX:34143",
+     "company": "Wesco",
+     "title": "Truck Driver"
+    },
+    {
+     "id": "icims:careers.mastec.com:68486",
+     "company": "MasTec",
+     "title": "Truck Driver"
+    },
+    {
+     "id": "oracle:egay~us6~CX_1:43794",
+     "company": "NOV",
+     "title": "Truck Driver"
+    },
+    {
+     "id": "workday:bowens~wd105~TT:JR1000545",
+     "company": "Bowens",
+     "title": "Truck Driver"
+    },
+    {
+     "id": "workday:hindscountyms~wd1~HindsCareers:JR100283",
+     "company": "Hindscountyms",
+     "title": "Truck Driver"
+    },
+    {
+     "id": "workday:lhoist~wd3~Careers:R-011023",
+     "company": "Lhoist",
+     "title": "Truck Driver"
+    },
+    {
+     "id": "workday:cambria~wd1~cambria_careers:R-103298",
+     "company": "Cambria",
+     "title": "Truck Driver"
+    },
+    {
+     "id": "workday:hyvee~wd1~HyVeeCareers:R232000",
+     "company": "Hy-Vee",
+     "title": "Truck Driver"
+    },
+    {
+     "id": "workday:fultonhogan~wd3~Fultonhogan:R24191-1",
+     "company": "Fultonhogan",
+     "title": "Truck Driver"
+    },
+    {
+     "id": "adp:f84ffd25-73af-4820-9731-0c21f84e3957:9202059850057_1",
+     "company": "United Utility Supply",
+     "title": "TRUCK DRIVER"
+    }
+   ]
+  },
+  "receptionist": {
+   "ms": 908,
+   "tookMs": 604,
+   "total": 1428,
+   "ranked": true,
+   "disclosures": {
+    "locationExpandedFrom": null,
+    "excludedTerms": null,
+    "maxAgeClamped": null
+   },
+   "top": [
+    {
+     "id": "oracle:ejwl~us2~CX:26111427",
+     "company": "Marriott",
+     "title": "Receptionist"
+    },
+    {
+     "id": "workday:jll~wd1~jllcareers:REQ531630",
+     "company": "JLL",
+     "title": "Receptionist"
+    },
+    {
+     "id": "smartrecruiters:SGS:744000146416105",
+     "company": "SGS",
+     "title": "Receptionist"
+    },
+    {
+     "id": "workday:pacs~wd108~pacs:JR180345",
+     "company": "Pacs",
+     "title": "Receptionist"
+    },
+    {
+     "id": "smartrecruiters:MattelInc:744000146293439",
+     "company": "Mattel",
+     "title": "Receptionist"
+    },
+    {
+     "id": "bamboohr:novetus:60",
+     "company": "Novetus",
+     "title": "Receptionist"
+    },
+    {
+     "id": "bamboohr:safransed:1136",
+     "company": "Safran",
+     "title": "Receptionist"
+    },
+    {
+     "id": "oracle:fa-exrr-saasfaprod1~ocs~CX_8:53895",
+     "company": "Layton",
+     "title": "Receptionist"
+    },
+    {
+     "id": "ashby:semperis:e536f847-0553-4b2d-9bc6-e2c008e4688d",
+     "company": "Semperis",
+     "title": "Receptionist"
+    },
+    {
+     "id": "icims:jobs.uhsinc.com:366409",
+     "company": "UHS",
+     "title": "RECEPTIONIST"
+    }
+   ]
+  },
+  "wisconsin guard": {
+   "ms": 1512,
+   "tookMs": 1153,
+   "total": 381,
+   "ranked": true,
+   "disclosures": {
+    "locationExpandedFrom": null,
+    "excludedTerms": null,
+    "maxAgeClamped": null
+   },
+   "top": [
+    {
+     "id": "workday:faithtechnologies~wd1~FTI_Apprentice:R8062-1",
+     "company": "Faithtechnologies",
+     "title": "Wisconsin Apprentice"
+    },
+    {
+     "id": "greenhouse:peregrinetechnologies:4723211005",
+     "company": "Peregrine Technologies",
+     "title": "Wisconsin Business Development Lead, Public Safety"
+    },
+    {
+     "id": "lever:AviveSolutions:36743e62-0296-4933-9ec8-43ad6b42ebdc",
+     "company": "Avive",
+     "title": "Account Manager (Wisconsin)"
+    },
+    {
+     "id": "workday:assuranceamerica~wd12~AssuranceAmerica:JR100396",
+     "company": "Assuranceamerica",
+     "title": "Territory Manager - Wisconsin"
+    },
+    {
+     "id": "greenhouse:atwellgroup:5217962007",
+     "company": "Atwell, LLC",
+     "title": "Distribution Designer - Wisconsin"
+    },
+    {
+     "id": "greenhouse:westernveterinarypartnersllc:4358326009",
+     "company": "Western Veterinary Partners, LLC",
+     "title": "Locum Veterinarian - Wisconsin"
+    },
+    {
+     "id": "workday:abbott~wd5~abbottcareers:31160259-1",
+     "company": "Abbott",
+     "title": "Territory Manager, CardioMEMS - Wisconsin"
+    },
+    {
+     "id": "smartrecruiters:trucordia1:3743990014859066",
+     "company": "Trucordia",
+     "title": "Personal Lines Producer - Wisconsin"
+    },
+    {
+     "id": "workday:wilburellis~wd12~WILBUR-ELLIS:R1819-1",
+     "company": "Wilburellis",
+     "title": "Principal Sales Rep - Wisconsin"
+    },
+    {
+     "id": "workday:iko~wd3~IKO_Careers:REQ-13587",
+     "company": "Iko",
+     "title": "Territory Sales Representative - Wisconsin"
+    }
+   ]
+  },
+  "niche title": {
+   "ms": 1315,
+   "tookMs": 932,
+   "total": 37,
+   "ranked": true,
+   "disclosures": {
+    "locationExpandedFrom": null,
+    "excludedTerms": null,
+    "maxAgeClamped": null
+   },
+   "top": [
+    {
+     "id": "workday:massgeneralbrigham~wd1~MGBExternal:RQ4068095",
+     "company": "Massgeneralbrigham",
+     "title": "Perfusionist"
+    },
+    {
+     "id": "workday:luriechildrens~wd1~externalportal:JR2026-2385-1",
+     "company": "Luriechildrens",
+     "title": "Perfusionist"
+    },
+    {
+     "id": "oracle:eppr~us2~CX_2:188468",
+     "company": "Northwell",
+     "title": "Perfusionist"
+    },
+    {
+     "id": "workday:sanford~wd5~SanfordHealth:R-0249683",
+     "company": "Sanford",
+     "title": "Perfusionist"
+    },
+    {
+     "id": "oracle:iazuqy~ocs~CX_1:5970",
+     "company": "UCSF",
+     "title": "Perfusionist"
+    },
+    {
+     "id": "workday:aah~wd5~External:R269645",
+     "company": "Advocate Health",
+     "title": "Perfusionist"
+    },
+    {
+     "id": "workday:albanymed~wd5~Albany_Med:59531",
+     "company": "Albany Med",
+     "title": "Perfusionist NE"
+    },
+    {
+     "id": "icims:careers.okheart.com:10954",
+     "company": "Oklahoma Heart Hospital",
+     "title": "Perfusionist/ Surgery"
+    },
+    {
+     "id": "workday:musc~wd1~MUSC:R-0000066644-1",
+     "company": "Medical University of South Carolina",
+     "title": "Perfusionist- PRN"
+    },
+    {
+     "id": "oracle:iaucqy~ocs~CX_1:129744",
+     "company": "Hoag",
+     "title": "Perfusionist Sr: CVOR"
+    }
+   ]
+  },
+  "teacher k8": {
+   "ms": 945,
+   "tookMs": 671,
+   "total": 3716,
+   "ranked": true,
+   "disclosures": {
+    "locationExpandedFrom": null,
+    "excludedTerms": null,
+    "maxAgeClamped": null
+   },
+   "top": [
+    {
+     "id": "icims:careers.newporthealthcare.com:19630",
+     "company": "Newport Healthcare",
+     "title": "Teacher"
+    },
+    {
+     "id": "oracle:ejql~us6~CX_1:219536",
+     "company": "Learning Care Group",
+     "title": "Teacher"
+    },
+    {
+     "id": "adp:16c8d95c-cfb7-4b1d-b447-9de60d46f409:9201354877846_1",
+     "company": "GPS Solutions Career Page",
+     "title": "Teacher"
+    },
+    {
+     "id": "oracle:ekmu~em3~CX_1:24276",
+     "company": "Fife Council Jobs and",
+     "title": "Teacher"
+    },
+    {
+     "id": "paylocity:3bf60b6b-39cc-40b1-95df-f75d2ee5cbd0:753314",
+     "company": "YMCA of Columbia Willamette",
+     "title": "Teacher"
+    },
+    {
+     "id": "adp:3033f4f1-fa40-4565-84ff-c439849d9a17:9201954228531_1",
+     "company": "VHBG Full Master low res2",
+     "title": "Teacher"
+    },
+    {
+     "id": "bamboohr:ebenezerchildcare:82",
+     "company": "Ebenezer Child Care Centers, Inc.",
+     "title": "Teacher"
+    },
+    {
+     "id": "paylocity:3b196b0f-c615-4c20-b12b-9c68c4c41822:4433334",
+     "company": "NurturEd",
+     "title": "Teacher- Preschool"
+    },
+    {
+     "id": "paylocity:3b196b0f-c615-4c20-b12b-9c68c4c41822:4373879",
+     "company": "NurturEd",
+     "title": "Teacher- Infant"
+    },
+    {
+     "id": "oracle:fa-euum-saasfaprod1~ocs~CX_1:1321",
+     "company": "RCSD",
+     "title": "Teacher-Technology"
+    }
+   ]
+  },
+  "government": {
+   "ms": 1114,
+   "tookMs": 799,
+   "total": 3123,
+   "ranked": true,
+   "disclosures": {
+    "locationExpandedFrom": null,
+    "excludedTerms": null,
+    "maxAgeClamped": null
+   },
+   "top": [
+    {
+     "id": "workday:jll~wd1~jllcareers:REQ522760-1",
+     "company": "JLL",
+     "title": "City Lead"
+    },
+    {
+     "id": "ashby:deliveroo:34d53986-d922-4700-baa4-fcca23d8152d",
+     "company": "Deliveroo",
+     "title": "City Manager"
+    },
+    {
+     "id": "breezy:gozem:96a4f26ccf44-city-manager",
+     "company": "Gozem",
+     "title": "City Manager"
+    },
+    {
+     "id": "icims:talent.pittohio.com:4170",
+     "company": "Dohrn",
+     "title": "City Dispatcher"
+    },
+    {
+     "id": "recruitee:kravet:2698872",
+     "company": "Kravet LLC",
+     "title": "City Seller"
+    },
+    {
+     "id": "ashby:atlys:11478af1-5fbe-4807-b264-c04d717ada72",
+     "company": "Atlys",
+     "title": "City Scout - Singapore"
+    },
+    {
+     "id": "ashby:atlys:dbdaf1a9-c0df-4fd4-b3d4-dd3fa60b8db6",
+     "company": "Atlys",
+     "title": "City Scout - Switzerland"
+    },
+    {
+     "id": "greenhouse:cssmerge:8687439002",
+     "company": "ATOMS",
+     "title": "City Operations Associate"
+    },
+    {
+     "id": "breezy:gozem:dfa97a53768c-city-manager-cotonou",
+     "company": "Gozem",
+     "title": "City Manager Cotonou"
+    },
+    {
+     "id": "breezy:reliantinternships:746745baf9b2-city-church-residency",
+     "company": "Reliant Mission",
+     "title": "City Church Residency"
+    }
+   ]
+  }
+ }
+}

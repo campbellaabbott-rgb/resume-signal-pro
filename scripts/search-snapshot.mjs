@@ -70,6 +70,11 @@ async function callBoard(body) {
     ms,
     tookMs: d.tookMs ?? null,
     total: d.total ?? null,
+    // Captured because a CAPPED total cannot move, and a comparison that reads
+    // its stillness as "the result set held still" mislabels healthy churn as
+    // a regression (2026-09-01: four such queries flagged, every one pinned at
+    // the 10,000 ceiling while 46,000 postings arrived).
+    countCapped: d.countCapped ?? null,
     ranked: d.ranked ?? null,
     disclosures: {
       locationExpandedFrom: d.locationExpandedFrom ?? null,
@@ -105,7 +110,22 @@ if (mode === "snap") {
     const churn = (y.top ?? []).filter((t) => !beforeIds.has(t.id)).length;
     const flags = [];
     if (Math.abs(dTotal) > Math.max(50, (x.total ?? 0) * 0.15)) flags.push(`TOTAL ${x.total}->${y.total}`);
-    if (churn >= 7) flags.push(`TOP10 CHURN ${churn}/10`);
+    // CHURN ONLY MEANS SOMETHING WHEN THE RESULT SET HELD STILL.
+    //
+    // The 2026-09-01 settled run flagged 10/10 churn on browse, recency sort
+    // and "registered nurse" — with 46,000 postings having arrived between the
+    // two readings. On a recency-ordered or high-volume query that is the
+    // board working, not a ranking regression, and a warning that fires on
+    // healthy behaviour is a warning people learn to scroll past. Churn is
+    // only suspicious when the total barely moved and the page changed anyway.
+    const grew = Math.abs(dTotal) > Math.max(25, (x.total ?? 0) * 0.02);
+    // A capped or absent total proves nothing about stability — it is a
+    // ceiling, not a count, and it stays put while the set beneath it moves.
+    const totalIsEvidence = typeof x.total === "number" && typeof y.total === "number"
+      && !x.countCapped && !y.countCapped;
+    if (churn >= 7 && !grew && totalIsEvidence) flags.push(`TOP10 CHURN ${churn}/10 on a stable total`);
+    else if (churn >= 7 && !totalIsEvidence) flags.push(`churn ${churn}/10 (total is a ceiling — cannot judge)`);
+    else if (churn >= 7) flags.push(`churn ${churn}/10 (total moved ${dTotal >= 0 ? "+" : ""}${dTotal} — new inventory)`);
     if ((y.ms ?? 0) > 3 * Math.max(500, x.ms ?? 0)) flags.push(`LATENCY ${x.ms}->${y.ms}ms`);
     if (x.ranked !== y.ranked) flags.push(`ranked ${x.ranked}->${y.ranked}`);
     if (y.error) flags.push(y.error);
