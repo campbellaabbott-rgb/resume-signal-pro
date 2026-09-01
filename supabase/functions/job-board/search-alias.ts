@@ -62,7 +62,6 @@ export function expandQuery(raw: string): { q: string; expansions: string[] } {
   if (!trimmed || /["']|\bOR\b|(^|\s)-\S/.test(trimmed)) return { q: raw, expansions: [] };
   const tokens = trimmed.toLowerCase().split(/\s+/);
   if (tokens.length > 6) return { q: raw, expansions: [] };
-  // Per-position alternatives: the original token plus up to 2 alias phrases.
   const alts = tokens.map((t) => [t, ...(ROLE_ALIASES[t] ?? []).slice(0, 2)]);
   if (!alts.some((a) => a.length > 1)) return { q: raw, expansions: [] };
   const MAX_BRANCHES = 4;
@@ -81,13 +80,8 @@ export function expandQuery(raw: string): { q: string; expansions: string[] } {
       if (choice[i] > 0 && !expansions.includes(alts[i][choice[i]])) expansions.push(alts[i][choice[i]]);
     }
   };
-  // 1. The original spelling.
   push(tokens.map(() => 0));
-  // 2. Everything expanded to its first alias — what a multi-abbreviation
-  //    query means ("sre k8s" → "site reliability engineer kubernetes").
   push(alts.map((a) => (a.length > 1 ? 1 : 0)));
-  // 3. Single substitutions (covers "pm" alone in "senior pm"), then second
-  //    readings ("pm" → project manager), until the branch cap.
   for (let i = 0; i < tokens.length && branches.length < MAX_BRANCHES; i++) {
     for (let v = 1; v < alts[i].length && branches.length < MAX_BRANCHES; v++) {
       const choice = tokens.map(() => 0);

@@ -198,20 +198,6 @@ export function normalizeFilters(
     .slice(0, DEPARTMENT_LIMIT)
     .trim() || null;
   if (sent(body.department) && !department) ignored.push("department");
-  // MULTI-SELECT over a CLOSED set, validated per element like country and
-  // category, and capped like both.
-  //
-  // Unknown members are NAMED, which is the opposite of how an unknown company
-  // token is treated — and the difference is the size of the space. There are
-  // 19,701 company tokens and a caller can legitimately ask about one the board
-  // does not carry, so an empty page is the true answer. There are SIXTEEN
-  // vendors; a name outside that set is a typo or a guess, never a question the
-  // board can answer, and returning an empty page for it would be answering it.
-  //
-  // EIGHT, and the cap follows the experience rule rather than the country one:
-  // a truncated list is reported. Slicing silently would mean a caller asking
-  // for nine systems gets eight and is told they got nine — the same shape as
-  // the clamp that reads as "there is nothing older".
   const VENDOR_LIMIT = 8;
   const vendorsAsked = [
     ...new Set(
@@ -227,16 +213,7 @@ export function normalizeFilters(
   const ageN = Number(body.maxAgeDays);
   const maxAgeDays = Number.isFinite(ageN) && ageN >= 1 ? Math.min(ageN, 30) : null;
   if (sent(body.maxAgeDays) && maxAgeDays === null && ageN !== 0) ignored.push("maxAgeDays");
-  // A CLAMP IS A NARROWING AND HAS TO BE SAID. maxAgeDays:90, :365 and :30 all
-  // returned identical results with nothing in the body admitting the window
-  // had been cut — the ignoredFilters line above cannot fire, because a clamped
-  // value is non-null and therefore "honoured". A caller asking for 90 days is
-  // told nothing and reasonably concludes the board has no older postings,
-  // rather than that it declined to look.
   const maxAgeClamped = Number.isFinite(ageN) && ageN > 30;
-  // An unknown company token is not invalid — it matches nothing, and a truthful
-  // empty result is the correct answer to "jobs at a company we don't carry".
-  // A non-string member IS invalid and gets named.
   const compAsked = Array.isArray(body.companies) ? body.companies : [];
   const companies = compAsked
     .filter((c): c is string => typeof c === "string")
@@ -244,17 +221,6 @@ export function normalizeFilters(
   if (compAsked.length && companies.length !== Math.min(compAsked.length, companyTokenLimit)) {
     ignored.push("companies");
   }
-  // `remote` and `companies` were the two fields that could be REQUESTED and
-  // dropped without ever being named — the exact breach this file exists to
-  // close, still open in the file that closes it.
-  //
-  //   remote:"true"  (the natural shape from a query string) -> `=== true` is
-  //     false, the filter evaporates, and the caller who asked for remote work
-  //     receives the entire 600k-row board.
-  //   companies:"tok" (a bare token instead of a one-element array) -> the
-  //     Array.isArray guard yields [], the employer scope evaporates, and the
-  //     caller receives every posting under a total they will read as that
-  //     employer's.
   if (body.remote !== undefined && body.remote !== null && typeof body.remote !== "boolean") {
     ignored.push("remote");
   }

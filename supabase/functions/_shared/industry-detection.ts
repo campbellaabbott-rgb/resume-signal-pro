@@ -3577,11 +3577,8 @@ const MULTILINGUAL_TITLE_LOCKS: Array<{ pattern: RegExp; industry: string; label
   { pattern: /\b(camionero|conductor de camión|lkw-fahrer|berufskraftfahrer|chauffeur routier|motorista de caminhão|vrachtwagenchauffeur|almacenista|lagerist|magasinier)\b/i, industry: 'logistics', label: 'driver/warehouse title (non-EN)' },
   { pattern: /\b(asistente administrativo|asistente ejecutiva|secretaria|bürokauffrau|bürokaufmann|assistante de direction|assistente administrativo|secretaresse|administratief medewerker)\b/i, industry: 'administrative', label: 'administrative title (non-EN)' },
   { pattern: /\b(limpieza|conserje|reinigungskraft|hausmeister|agent d'entretien|femme de ménage|auxiliar de limpeza|schoonmaker)\b/i, industry: 'janitorial', label: 'cleaning title (non-EN)' },
-  // Childcare
   { pattern: /\b(niñera|educadora infantil|erzieherin|kinderpfleger|assistante maternelle|éducatrice|educadora de infância|pedagogisch medewerker)\b/i, industry: 'childcare', label: 'childcare title (non-EN)' },
-  // Beauty
   { pattern: /\b(peluquera|peluquero|estilista|friseur|friseurin|coiffeur|coiffeuse|esthéticienne|cabeleireira|kapper|schoonheidsspecialiste)\b/i, industry: 'beauty', label: 'beauty title (non-EN)' },
-  // Tagalog titles
   { pattern: /\b(guro\b|titser)\b/i, industry: 'education', label: 'teaching title (TL)' },
   { pattern: /\b(nars\b|narses)\b/i, industry: 'healthcare', label: 'nursing title (TL)' },
   { pattern: /\b(abugado|manananggol)\b/i, industry: 'legal', label: 'legal title (TL)' },
@@ -3589,7 +3586,6 @@ const MULTILINGUAL_TITLE_LOCKS: Array<{ pattern: RegExp; industry: string; label
   { pattern: /\b(kusinero|kusinera|tagaluto)\b/i, industry: 'culinary', label: 'culinary title (TL)' },
   { pattern: /\b(kasambahay|tagalinis)\b/i, industry: 'janitorial', label: 'cleaning title (TL)' },
 ];
-// Hindi Devanagari titles need per-role routing (single regex above can't
 const HINDI_TITLE_LOCKS: Array<{ pattern: RegExp; industry: string; label: string }> = [
   { pattern: /(नर्स|परिचारिका)/u, industry: 'healthcare', label: 'nursing title (HI)' },
   { pattern: /(चिकित्सक|डॉक्टर)/u, industry: 'healthcare', label: 'physician title (HI)' },

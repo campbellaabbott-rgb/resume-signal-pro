@@ -42,19 +42,14 @@ const FORBIDDEN_ASSERTIONS: Array<{ re: RegExp; what: string }> = [
   { re: /\bmy\s+salary\s+(?:expectation|requirement)s?\s+(?:is|are)\b/i, what: "salary expectation" },
   { re: /\b(?:i|I)\s+can\s+start\s+(?:on|immediately|within)\b/i, what: "start date" },
 ];
-/** Placeholder text a model leaves behind when it does not know something. Any
- *  one of these reaching an employer is worse than sending nothing at all. */
 const PLACEHOLDER_PATTERNS: RegExp[] = [
-  /\[[^\]]{2,40}\]/,          // [Your Name], [Company]
-  /\{\{[^}]{1,40}\}\}/,       // {{company}}
-  /\bX{3,}\b/,                // XXXX
+  /\[[^\]]{2,40}\]/,
+  /\{\{[^}]{1,40}\}\}/,
+  /\bX{3,}\b/,
   /\b(?:TBD|TODO|FIXME|LOREM IPSUM)\b/i,
   /\binsert\s+(?:your|the)\s+\w+/i,
   /\byour\s+company\s+name\b/i,
 ];
-/** Fold to a bag of comparable words. Mirrors normalizeForMatch's intent but
- *  keeps it local: this compares NAMES, not prose, so punctuation and
- *  possessives must not defeat a match ("Acme's" ≡ "Acme"). */
 function foldForNameMatch(s: string): string {
   return ` ${s
     .toLowerCase()

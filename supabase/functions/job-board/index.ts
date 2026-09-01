@@ -2419,92 +2419,13 @@ function isoDateOnly(v: unknown): string | null {
   return new Date(t).toISOString();
 }
 const sanitizeTerm = (t: string) => t.replace(/[%_\\|"]/g, "").trim();
-/**
- * Words a person types around a job title that are not part of any job title.
- *
- * MEASURED 2026-08-20 on the live board:
- *   "electrician"                979 results, top hit a real electrician role
- *   "electrician jobs near me"    44 results, top hit "Maintenance II-ARP"
- *
- * A 95% collapse AND a wrong top result, from words that carry no information
- * about the role. Two things combine to cause it. The terms are ANDed, so each
- * extra word can only ever shrink the set — and they are matched as
- * SUBSTRINGS, so `%me%` matches "Maintenance", "Management", "Commercial".
- * Filler does not merely narrow the results, it actively poisons them with
- * whatever happens to contain those letters.
- *
- * This is the single most common way a real person phrases a job search, so
- * the board was at its worst exactly when someone typed naturally.
- *
- * WHAT IS NOT HERE, deliberately: "remote", "senior", "junior", "lead",
- * "part", "time", "contract", "intern". Every one appears in real job titles,
- * and dropping them would silently widen a search the person meant to narrow —
- * the mirror of the bug being fixed. Only words that cannot be part of a title
- * qualify.
- *
- * Dropped terms are REPORTED to the caller, never silently swallowed: the
- * board tells the visitor which words it ignored, the same way it names a
- * filter it could not honour.
- */
 const QUERY_FILLER = new Set([
-  // the search itself
   "job", "jobs", "career", "careers", "vacancy", "vacancies", "opening",
   "openings", "position", "positions", "employment", "hiring", "listing",
   "listings", "opportunity", "opportunities",
-  // proximity phrasing — the location filter is the honest home for this
   "near", "nearby", "me", "around", "close",
-  // grammatical glue
   "in", "at", "for", "the", "a", "an", "of", "and", "or", "to", "with", "my",
 ]);
-/**
- * Metro shorthand, and why a plain substring search cannot serve it.
- *
- * MEASURED on the live board 2026-08-20, typing what people actually type:
- *   "NYC"     356 hits — misses all 10,000 "New York" postings
- *   "SF"    1,427 hits — top result "Innisfil, Ontario"  (Inni-SF-il)
- *   "LA"   10,000 hits — top result "Plain City, Ohio"   (P-LA-in)
- *   "Philly"   13 hits — top result "Philly - Ontario, CA"
- *
- * Two different failures wearing one coat. The long forms are simply missing:
- * nothing connects "NYC" to "New York". The short forms are worse than
- * missing — a two-letter substring matches inside ordinary words, so "LA"
- * returns ten thousand rows of Ohio. Same root cause as the query-filler bug:
- * ILIKE %x% has no idea what a word is.
- *
- * So each alias declares whether its RAW form is safe to keep searching:
- *   keepRaw true  — the token is distinctive ("NYC", "Philly" appear in real
- *                   location strings and match little else), so search BOTH
- *                   and the visitor gets the union.
- *   keepRaw false — the token is two or three letters that occur inside
- *                   common words ("LA", "SF"), so searching it at all is
- *                   noise. The canonical name REPLACES it.
- *
- * Encoded per-alias rather than by a length rule, because the property is
- * about the specific letters, not their count: "DC" is two letters and is
- * perfectly safe, since it is how the location is actually written.
- */
-/**
- * US states and Canadian provinces — and why the abbreviation needs a comma.
- *
- * MEASURED 2026-08-20, and both directions were broken:
- *   "Texas"       7,788 rows   misses the 16,234 written "TX"
- *   "California" 10,106 rows   misses most of the state
- *   "CA"        113,223 rows   of which ~70% are NOT California — it matches
- *                              "CAnada", "3 LoCAtions", "TransCAnada"
- *
- * A bare two-letter code cannot be substring-matched. Many are ordinary
- * English: %IN% matches 129,229 rows, %OR% matches 109,393. Anchoring on the
- * comma that precedes a state in real location strings fixes it exactly —
- * %, IN% is 14,071 and %, OR% is 3,265, and "CAN - Quebec" no longer matches
- * ", CA".
- *
- * So every state maps to BOTH forms: the spelled-out name and ", ST". Typing
- * either reaches the union, which is the whole point — the data uses both
- * ("Dallas, Texas" and "Austin, TX" are the same state to a job seeker).
- *
- * keepRaw is false everywhere here: the spelled-out name is already in the
- * list, and the bare code is precisely the poison being removed.
- */
 const STATE_ALIASES: Record<string, { names: string[]; keepRaw: boolean }> = {
   "alabama": { names: ["Alabama", ", AL"], keepRaw: false },
   "al": { names: ["Alabama", ", AL"], keepRaw: false },
@@ -2640,42 +2561,6 @@ const METRO_ALIASES: Record<string, { names: string[]; keepRaw: boolean }> = {
   dfw: { names: ["Dallas", "Fort Worth"], keepRaw: false },
   nola: { names: ["New Orleans"], keepRaw: false },
   "the city": { names: ["New York"], keepRaw: false },
-  // A CITY WRITTEN IN ITS OWN LANGUAGE IS A DIFFERENT STRING, AND SUBSTRING
-  // MATCHING CANNOT BRIDGE THAT. Nothing connects "Munich" to "München" — a
-  // visitor sees whichever spelling their own vocabulary happens to share with
-  // the employer's HR system, and never learns the rest exists.
-  //
-  // MEASURED LIVE 2026-08-22 (fresh, present postings), English form vs local:
-  //   Bangalore  3,074  /  Bengaluru 3,181   — either speller misses about half
-  //   Munich       966  /  München     757
-  //   Warsaw     1,017  /  Warszawa    265
-  //   Milan        642  /  Milano      240
-  //   Lisbon       535  /  Lisboa      163
-  //   Prague       449  /  Praha       113
-  //   Florence     425  /  Firenze      17
-  //   Geneva       351  /  Genève       48
-  //   Brussels     314  /  Bruxelles   124
-  //   Vienna       294  /  Wien        193
-  //   Zurich       288  /  Zürich      178
-  //   Copenhagen   206  /  København    39
-  //   Cologne      119  /  Köln        346   — the English speller sees 26%
-  //   Krakow       398  /  Kraków      148
-  //   Gothenburg    42  /  Göteborg     18
-  //
-  // EVERY LOCAL FORM WAS CHECKED FOR SUBSTRING POISON before being listed, the
-  // same test that keeps "LA" from matching "Plain City". Each of the forms
-  // below returns only its own city.
-  //
-  // ROME IS DELIBERATELY ABSENT. "%Roma%" looked like the biggest win in the
-  // set at 1,270 hits and is almost entirely ROMANIA — Bucharest, Cluj-Napoca,
-  // Timișoara. Anchoring it as "Roma," survives Romania but still collects
-  // "Roma, QLD, Australia" and "VIA ROMA," in Talamona, for 70 hits. A filter
-  // that answers "Rome" with Bucharest is worse than one that answers with
-  // less, so Rome keeps the plain substring it already had.
-  //
-  // Mumbai/Bombay and The Hague/Den Haag are absent for the opposite reason:
-  // the alternate spelling returns ZERO postings, so the entry would be dead
-  // weight pretending to be coverage.
   munich: { names: ["Munich", "München"], keepRaw: false },
   "münchen": { names: ["Munich", "München"], keepRaw: false },
   muenchen: { names: ["Munich", "München"], keepRaw: false },
@@ -2713,48 +2598,9 @@ const METRO_ALIASES: Record<string, { names: string[]; keepRaw: boolean }> = {
   bangalore: { names: ["Bangalore", "Bengaluru"], keepRaw: false },
   bengaluru: { names: ["Bangalore", "Bengaluru"], keepRaw: false },
 };
-/**
- * Expand a typed location into the strings actually worth searching.
- *
- * Returns the alias that fired so the board can SAY it expanded the search —
- * a visitor who typed "SF" and sees San Francisco results deserves to know
- * why, and a visitor who meant something else needs to see that we guessed.
- */
-/**
- * The location for search_jobs — ONE name, not a delimited list.
- *
- * The pipe-delimited version was correct and is reverted, because the
- * migration that taught search_jobs to split on "|" created a fourteen-
- * parameter OVERLOAD of a fifteen-parameter function and broke ranked search
- * outright (PGRST203). Dropping that overload restores the real definition —
- * which matches ONE substring — so sending "Philly|Philadelphia" here would
- * now match nothing at all. Worse than the bug it fixed.
- *
- * INTERIM, and still better than before: send the first CANONICAL name rather
- * than what the visitor typed. "Philly" searches Philadelphia (1,541 rows
- * instead of 13) and "NYC" searches New York. The union across every alias
- * name is lost on this path until the split lands on the real definition —
- * the browse path keeps it, because it builds its own or() and never touches
- * this RPC.
- *
- * Prefers a canonical name over the raw token deliberately: for "NYC" the
- * names are ["NYC", "New York"], and New York is 12,168 rows against 344.
- */
 function rankedLocationParam(raw: unknown): string | null {
   const { terms } = locationTerms(raw);
   if (terms.length === 0) return null;
-  // EVERY NAME, NOT THE BEST SINGLE GUESS.
-  //
-  // This used to pick one canonical name because the RPC took a single text
-  // parameter and matched it with one ILIKE. The browse path had no such limit
-  // — it ORs every expanded name — so the two paths answered the same request
-  // differently, and the difference was invisible: measured live, "bay area"
-  // alone returned San Francisco 40 / San Jose 10 / Oakland 5, while adding
-  // q=engineer returned San Francisco 54 / Oakland 1 / San Jose ZERO. Typing a
-  // job title shrank the metro.
-  //
-  // Worse once the disclosure shipped: both paths emit the same
-  // locationSearched list, so the page printed "Searched 'bay area' as San
   const joined = terms.map((t) => sanitizeTerm(t)).filter(Boolean).join("|");
   return joined || null;
 }
@@ -2823,32 +2669,8 @@ function liftIntentFilters(
 function ftsSafe(t: string): string {
   return t.replace(/[(),."'\\:]/g, " ").replace(/\s+/g, " ").trim();
 }
-/**
- * The websearch query for the simple-config tiers, with the possessive variant.
- *
- * A possessive employer is stored as TWO tokens: to_tsvector('simple',
- * "Domino's") is 'domino':1 's':2, because the parser splits on the apostrophe.
- * Someone typing the apostrophe is fine — ftsSafe turns it into a space and the
- * phrase matches. Someone typing "dominos" produces the single token 'dominos',
- * which matches neither, and gets nothing.
- *
- * MEASURED against the company index:
- *   dominos              -> 0 rows
- *   Domino's / domino s  -> 2,002 rows
- *   dominos or domino s  -> 2,002 rows, 0.22s
- * That is Domino's, McDonald's, Macy's, Kohl's, Lowe's — a whole retail class
- * failing on one apostrophe nobody types into a search box.
- *
- * The variant is free on ordinary words: "engineers or engineer s" returns the
- * same 622 rows as "engineers", because the phrase 'engineer' <-> 's' matches
- * almost nothing that the plain token does not.
- *
- * Only single tokens are rewritten. A multi-word query containing an apostrophe
- * has already been split into the matching shape by ftsSafe.
- */
 function ftsQuery(raw: string): string {
   const safe = ftsSafe(raw);
-  // Length floor keeps it off short plurals where the split half is noise.
   if (/^[a-z0-9]+s$/i.test(safe) && safe.length >= 5) {
     return `${safe} or ${safe.slice(0, -1)} s`;
   }
@@ -2856,55 +2678,16 @@ function ftsQuery(raw: string): string {
 }
 function queryTerms(raw: unknown): { terms: string[]; dropped: string[]; liftedSalary: boolean } {
   const all = String(raw ?? "").toLowerCase().split(/\s+/).map(sanitizeTerm).filter(Boolean);
-  // The money token is lifted into the salary filter by normalizeFilters, so
-  // it must not also be ANDed against every title — that returned zero for
-  // "100k engineer".
   const money = salaryFromQueryText(raw) !== null
     ? String(raw ?? "").toLowerCase().split(/\s+/).find((t) => SALARY_IN_QUERY.test(t)) ?? null
     : null;
   const kept = all.filter((t) => !QUERY_FILLER.has(t) && t !== money);
   if (kept.length === 0) {
-    // NOTHING LEFT — and WHY it is empty decides what to do next.
-    //
-    // If a pay figure was lifted out, the figure WAS the whole query and the
-    // floor alone is the search. Returning `all` here put the money token back
-    // as a required title word, which is why the plainest possible use of the
-    // feature failed: q="120000" returned ZERO while the same floor on its own
-    // counted 13,381, and q="80k" returned 88 — literal matches on titles like
-    // "Senior Product Engineer (£80k-125k + Equity)" — while the floor counted
-    // 25,896. The board answered a text question nobody asked instead of the
-    // pay question they did.
-    //
-    // If it is empty because every word was filler ("jobs near me"), the raw
-    // string is still the best guess and the caller falls back to it. That is
-    // what liftedSalary distinguishes; without the flag the two cases are
-    // indistinguishable downstream and one of them has to be answered wrongly.
     if (money !== null) return { terms: [], dropped: all.filter((t) => QUERY_FILLER.has(t)), liftedSalary: true };
     return { terms: all, dropped: [], liftedSalary: false };
   }
   return { terms: kept, dropped: all.filter((t) => QUERY_FILLER.has(t)), liftedSalary: money !== null };
 }
-/**
- * Everything the board changed about what was asked, said out loud.
- *
- * SHARED BECAUSE IT KEPT NOT BEING. These three disclosures lived inline at the
- * recency return only, so a visitor who BROWSED was told what had been dropped,
- * expanded or lifted and a visitor who SEARCHED was told nothing — measured:
- * q="100k engineer" narrowed 10,000 results to 4,944 with no salaryFromQuery in
- * the payload, and q="engineer jobs near me" dropped three words with no
- * droppedTerms. That is the FIFTH fix in two days to land on one of the four
- * query paths and silently miss the rest. A single helper spread at every list
- * return is the only version of this that stays true.
- */
-// Curated, MEASURED did-you-mean pairs. Each entry is verified live before it
-// enters: the key's exact results are junk or near-zero while the value's
-// pool is orders of magnitude larger. This is a DISCLOSURE, not an expansion
-// — the results themselves are untouched (no re-ranking, no filter widening,
-// none of the tier-escalation traps), the client renders a one-click
-// suggestion above them. Query-side only: it never classifies or relabels a
-// posting, so the frozen classifier stays frozen.
-/** Bounded Levenshtein: true when edit distance <= 2. Early-exits on length
- *  gap; the full matrix on two short words is ~100 cells, nothing more. */
 function within2Edits(a: string, b: string): boolean {
   if (Math.abs(a.length - b.length) > 2) return false;
   const m = a.length, n = b.length;
@@ -2922,12 +2705,7 @@ function within2Edits(a: string, b: string): boolean {
   return prev[n] <= 2;
 }
 const DID_YOU_MEAN: Record<string, string> = {
-  // 2026-08-24, live: 1 literal match board-wide; the German nursing pool is
-  // pflegefachkraft 55 + krankenpfleger|pflegekraft 13. The #1 "related" row
-  // was a medical-device sales rep.
   "krankenschwester": "pflegefachkraft",
-  // 2026-08-24, live: 101 exact rows, every one an EMPLOYER's typo ("Manger
-  // Trainee") suppressing the fuzzy tier; the manager pool is ~100x larger.
   "manger": "manager",
 };
 function searchDisclosures(
@@ -3897,14 +3675,10 @@ Deno.serve(async (req) => {
                   const m = /"datePosted"\s*:\s*"([^"]+)"/.exec(html);
                   const iso = sanePostedAt(m?.[1] ?? null);
                   if (iso) dates.set(rowId, iso);
-                } catch { /* row stays NULL */ }
+                } catch {  }
               }));
             }
           } else if (phase === "bamboohr" || phase === "rippling") {
-            // Per-posting official detail endpoints (both company-stated):
-            //   bamboohr: /careers/{id}/detail → result.jobOpening.datePosted
-            //   rippling: /jobs/{uuid} → createdOn (uuid verified == board id)
-            // Small concurrent pool; a 404/parse miss leaves the row NULL.
             const pool = 5;
             for (let i = 0; i < ids.length; i += pool) {
               await Promise.all(ids.slice(i, i + pool).map(async (rowId) => {
@@ -3919,13 +3693,10 @@ Deno.serve(async (req) => {
                   const j = await res.json() as { result?: { jobOpening?: { datePosted?: string } }; createdOn?: string };
                   const iso = sanePostedAt(phase === "bamboohr" ? j.result?.jobOpening?.datePosted ?? null : j.createdOn ?? null);
                   if (iso) dates.set(rowId, iso);
-                } catch { /* row stays NULL */ }
+                } catch {  }
               }));
             }
           } else {
-            // Production fetcher + normalizer: emits dated postings from the
-            // stated relative age; stale (>30d) come back undated and are
-            // skipped here — those rows age out via the freshness cap anyway.
             const { jobPostings } = await fetchWorkday({ name: company, source: "workday", token: tk } as JobSource);
             for (const p of normalizeWorkday(jobPostings as never, company, tk)) {
               if (p.postedAt) dates.set(p.id, p.postedAt);
@@ -3935,9 +3706,6 @@ Deno.serve(async (req) => {
             const iso = dates.get(id);
             if (!iso) continue;
             const { error } = await client.from("job_board_postings").update({ posted_at: iso }).eq("id", id);
-            // The error was DISCARDED. If every update failed — a constraint, a
-            // type coercion, anything — `dated` stayed 0 and nothing anywhere
-            // recorded why, which is indistinguishable from "the vendor gave us
             if (!error) dated++;
             else if (!lastBoardError) lastBoardError = `update ${id.slice(0, 40)}: ${error.message ?? error}`.slice(0, 160);
           }
@@ -4883,17 +4651,7 @@ Deno.serve(async (req) => {
         console.warn("[JOB-BOARD] label audit failed (liveness audit unaffected):", String(e).slice(0, 150));
       }
       const prevHistory = ((prevAudit?.v as { history?: Array<Record<string, unknown>> } | null)?.history ?? []).slice(-29);
-      // COVERAGE. A stratified audit that silently drops a stratum publishes a
-      // number about a different board than the one it names. On 2026-07-27 the
-      // stored result carried 14 strata and no workday — 303,098 postings,
-      // 52.1% of the corpus — because the deep-OFFSET draw above failed and
-      // its error was discarded. The headline still read "98.8% confirmed
-      // live". Coverage is computed here so the omission travels WITH the
-      // number and the page can disclose it instead of the reader having to
-      // notice a missing table row.
       const sampledSources = new Set(Object.keys(byVendor));
-      // A vendor whose count is unknown (null) is treated as POSSIBLY having
-      // postings, so it is reported missing rather than quietly written off.
       const missingSources = Object.entries(vendorRows)
         .filter(([v, n]) => (n === null || n > 0) && !sampledSources.has(v))
         .map(([v, n]) => ({
@@ -4909,17 +4667,12 @@ Deno.serve(async (req) => {
       const countsUnavailable = Object.entries(vendorRows).filter(([, n]) => n === null).map(([v]) => v);
       const coverage = {
         coveredSharePct: corpus > 0 ? Math.round((coveredPostings / corpus) * 1000) / 10 : null,
-        // Coverage shares are planner estimates, not a census — named here so a
-        // reader is never left to assume the stronger claim.
         basis: "planner estimate" as const,
         sourcesSampled: sampledSources.size,
         sourcesWithRows: Object.values(vendorRows).filter((n) => n === null || n > 0).length,
         missingSources,
         countsUnavailable,
       };
-      // `sampled` is the EVEN draw the headline describes; `probed` is every
-      // probe including the follow-up re-draws. Publishing sampleIds.length as
-      // `sampled` would state a sample size the headline was not computed from.
       const result = { at: new Date().toISOString(), sampled: headlineSampled, probed: sampleIds.length, live, gone, unknown, accuracyPct, corpus, byVendor, coverage, deepened, labelAudit };
       await client.from("job_board_meta").upsert(
         { k: "audit", v: { ...result, history: [...prevHistory, result] }, updated_at: new Date().toISOString() },
@@ -4932,26 +4685,12 @@ Deno.serve(async (req) => {
       return json(result);
     }
     if (action === "company-suggest") {
-      // THE EMPLOYER TYPEAHEAD WAS COSTING EVERY VISITOR 99KB.
-      //
-      // The list response shipped the whole employer facet — measured
-      // 2026-08-24: 99,237 of 141,196 bytes, 70.3% of the payload, 1,433
-      // entries — so that a typeahead most visitors never open could filter
-      // it locally and show twelve rows. On mobile the control is hidden
-      // behind a "Filters" tap, and the facet is 2.6x the size of the jobs it
-      // decorates.
-      //
-      // The suggestions come from the same cached facet the list used, so
-      // this costs one indexed meta read and no table work at all. The list
-      // now ships a short head of that facet and asks here for the rest.
       const q = String(body.q ?? "").trim().toLowerCase().slice(0, 80);
       if (q.length < 2) return json({ companies: [] });
       const { data: metaRow } = await client.from("job_board_meta").select("v").eq("k", "refresh").maybeSingle();
       const facet = ((metaRow?.v as Record<string, unknown> | undefined)?.companiesFacet ?? []) as Array<{ token?: string; name?: string; count?: number }>;
       const merged = mergeCompanyFacet(facet);
       const hit = merged.filter((c) => String(c.name ?? "").toLowerCase().includes(q));
-      // A name that STARTS with what was typed is what the reader meant;
-      // count breaks ties beneath that.
       hit.sort((a, b) => {
         const ap = String(a.name ?? "").toLowerCase().startsWith(q) ? 0 : 1;
         const bp = String(b.name ?? "").toLowerCase().startsWith(q) ? 0 : 1;
@@ -4960,7 +4699,6 @@ Deno.serve(async (req) => {
       return json({ companies: hit.slice(0, 12).map((c) => ({ token: c.token, name: c.name, count: c.count })) });
     }
     if (action === "exists") {
-      // Feature 7: the tracker asks which of a user's saved/applied job ids
       const ids = Array.isArray(body.ids) ? body.ids.filter((x): x is string => typeof x === "string").slice(0, 200) : [];
       if (ids.length === 0) return json({ open: {} });
       const openMap: Record<string, boolean> = {};
@@ -5273,100 +5011,14 @@ async function serveList(
     if (/[",()\\]/.test(id)) return null;
     return { ep, id };
   })();
-  // Location-cluster collapsing is on unless a caller opts out (the lander and
-  // company views WANT every location listed). Over-fetch so there is material
-  // to fold: a page of 25 reads up to 75 rows, which is still one indexed page.
   const groupSimilar = body.groupSimilar !== false && !countOnly;
   const fetchLimit = groupSimilar ? Math.min(limit * GROUP_OVERFETCH, 200) : limit;
-  // effective_posted = coalesce(posted_at, first_seen): undated feeds
-  // (BambooHR) participate in freshness filters and recency sort. If the
-  // function deploys before its migration, the column is missing — fall
-  // back to posted_at for that window instead of 500ing the board.
-  //
-  // Freshness guarantee (read side of the 30-day cap): the board NEVER serves a
-  // posting past the window, independent of how far the bounded background sweep
-  // has drained. This decouples what users see from refresh timing — during the
-  // initial drain, or in the gap between a posting aging out and the next sweep,
-  // the list and its headline count stay ≤ the cap. effective_posted is NOT NULL
-  // (coalesces to first-seen), so undated postings are correctly included.
   const freshCutoffIso = new Date(Date.now() - FRESH_WINDOW_DAYS * 86_400_000).toISOString();
-  // The exact count over the filtered set rides the page query and DOMINATES
-  // list latency on broad queries (measured: raw page 0.4s, with exact count
-  // 1.6-2.2s warm / 5-9s cold at 186k rows). The unfiltered total is already
-  // maintained by the refresh loop in meta (the same figure the homepage
-  // shows), so the default view — the most common request — skips the count
-  // entirely. Filtered queries keep exact counts: their sets are small and
-  // the zero-state logic depends on them.
   const metaTotal = Number((meta?.v as Record<string, unknown> | undefined)?.total);
-  // Case-fold the two enum-valued filters ONCE, before anything reads them.
-  //
-  // These were normalised at every site that BINDS the predicate (:4365, :4372,
-  // :4422 via its own path, the ranked paths) but NOT at the `unfiltered` gate
-  // below. So `category=Engineering` filtered the page correctly and then took
-  // the unfiltered branch, which returns the cached board-wide total: a page of
-  // 10 engineering jobs under a headline of 587,793 — 8.8x the true 66,842, and
-  // reachable from the URL, because Jobs.tsx passes ?category= through raw.
-  // workMode=Remote did the same. A second, independent instance lived in
-  // cappedCount, which dropped the work-mode predicate entirely unless the
-  // caller happened to send lowercase (design+Remote reported 3,940 instead of
-  // 616 — exactly the count with the predicate missing).
-  //
-  // Normalising at the door instead of at each use is the only version of this
-  // fix that cannot rot: a future filter site cannot bind a value the gate
-  // never saw, because there is now one value.
-  // Reject-by-reporting. A value we cannot honour must never pass silently:
-  // country="USA" (3 letters, not ISO-3166-alpha-2) and experience="bogus" were
-  // both dropped on the floor, and the board then answered the UNFILTERED
-  // question — 3,939 results, the entire design category, presented as though
-  // the filter had applied. The fence in this codebase is that a filter is
-  // never silently ignored, so anything we drop is named back to the caller in
-  // `ignoredFilters` and the UI can tell the user which constraint did nothing.
-  // ONE normalisation, in filters.ts, feeding the gate, the row query, the count
-  // and the per-page self-check. Three hand-maintained copies of this list used
-  // to exist — the validation ifs, the `unfiltered` conjunction, and buildQuery —
-  // and every filter bug shipped so far was two of them disagreeing:
-  //   * `unfiltered` compared the RAW casing while buildQuery lower-cased, so
-  //     category=Engineering published 587,793 over a filtered page.
-  //   * the gate read `typeof experience === "string"` while buildQuery read
-  //     String(experience).split(","), so experience=["bogus"] bound no
-  //     predicate AND reported nothing — the unfiltered board dressed as a
-  //     filtered one. Verified live before this change; see filters.ts.
-  // A fourth site could not be kept in sync by discipline, so there is one.
-  // EMPLOYER-NAME ROUTING, applied to the BODY before filters are derived, so
-  // every downstream path sees one already-normalised request. Injecting it
-  // into `applied` afterwards would mean the count probe, the facet query and
-  // the list each had to remember to honour it — the four-path divergence that
-  // has caused five defects in two days.
-  //
-  // "Did the caller already pick a company?" is answered from the DERIVED
-  // filter, never from the raw request field. Reading a filter off the request is
-  // what board-filter-contract forbids, and it forbids it because the two
-  // derivations drift until the count answers a different question from the
-  // page. So the request is normalised once to ask, rewritten if it routes, and
-  // normalised again — one derivation feeds the board, and it is the last one.
   const preFilters = normalizeFilters(body, JOB_SOURCES.length);
-  // Intent phrases run AFTER employer routing, so "AT&T work from home" keeps
-  // both: the employer takes the name prefix, the phrase is lifted from what
-  // remains. Both rewrites happen HERE and nowhere else, ahead of the single
-  // filter derivation, so the count probe, the facet query and the list all see
-  // the same normalised request.
-  // EXCLUSIONS COME OUT BEFORE ANYTHING IS SEARCHED, next to the intent lift and
-  // for the same reason: one rewrite of the request, ahead of the single filter
-  // derivation, so the count probe, the facet query and the list all see the
-  // same query text.
   const exclusion = splitExclusions(String(body.q ?? ""));
   const excludedTerms = exclusion.excluded;
   if (excludedTerms.length) body = { ...body, q: exclusion.positive };
-  // EMPLOYMENT-TYPE LIFTS ARM THEMSELVES ON COVERAGE. Lifting "part time"
-  // out of the query and into the filter is only an upgrade once enough of
-  // the corpus carries a typed value — against thin coverage it would REPLACE
-  // a working literal-text search with a near-empty filter (the exact
-  // downgrade the work-mode lifts were measured NOT to be). Below the floor,
-  // a sentinel in the lift's view of the body trips the caller's-own-filter
-  // conflict rule for exactly those lifts: the words stay in the query and
-  // behaviour is byte-identical to before the lifts existed. The gate reads
-  // the same cached coverage figure the disclosure serves, so the feature
-  // switches on by itself as rotation types the corpus.
   const etCovRaw = ((meta?.v as Record<string, unknown> | undefined)?.coverage as { employmentType?: unknown } | undefined)?.employmentType;
   const etLiftArmed = typeof etCovRaw === "number" && etCovRaw >= 0.25;
   const liftView = etLiftArmed || (body.employmentType != null && body.employmentType !== "") ? body : { ...body, employmentType: "__uncovered" };
@@ -5377,24 +5029,7 @@ async function serveList(
   const { applied, ignored: ignoredFilters, maxAgeClamped } = (intentLift || excludedTerms.length)
     ? normalizeFilters(body, JOB_SOURCES.length)
     : preFilters;
-  // SEARCH TELEMETRY. One id per list response, echoed back by the client on a
-  // click, which is the only thing that makes position-aware relevance
-  // measurable at all. Without it a click can say "someone clicked something"
-  // and nothing more.
   const searchId = crypto.randomUUID();
-  /**
-   * Records this response. FIRE AND FORGET, BUT NOT SILENT.
-   *
-   * Behind waitUntil so a visitor never waits on telemetry and never loses
-   * results to it. The failure is logged rather than swallowed: this repo's
-   * most repeated defect is a telemetry table that records nothing while every
-   * dashboard reads healthy — the checkout funnel captured NOTHING for weeks
-   * because bad-visitorId 400s were caught and dropped on the floor.
-   *
-   * `total` is passed through as null when the board does not know. Coercing
-   * unknown to 0 would silently inflate the zero-result rate, which is the one
-   * number this table exists to produce.
-   */
   const logSearch = (
     route: "recency" | "ranked" | "fuzzy" | "semantic",
     results: number,
@@ -5426,12 +5061,6 @@ async function serveList(
       }),
     ));
   };
-  // ONE honesty block, attached to EVERY exit from the list action.
-  //
-  // It used to live only at the recency path's return, so the three earlier
-  // exits — ranked search, the fuzzy rescue, and semantic — returned before it
-  // and carried neither ignoredFilters nor filterIntegrity. Search is the
-  // board's primary surface, so the guarantee "a filter is never silently
   const reqStart = entryAt ?? Date.now();
   const budgetStart = Date.now();
   const phase: Record<string, number> = { ...(pre ?? {}) };
@@ -6150,7 +5779,6 @@ async function serveList(
                     p_limit: Math.max(limit * 2, 40),
                     p_offset: 0,
                   }),
-                  // Half the exact-word tier's budget. This is a bonus on a page
                   Math.min(3_500, budgetLeft()),
                 ) as Promise<{ data: unknown[] | null }>)
                   .catch(() => ({ data: null }))

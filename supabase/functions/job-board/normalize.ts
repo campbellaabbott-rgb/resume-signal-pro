@@ -984,26 +984,6 @@ export function extractRipplingJobPosts(html: string): { items: RipplingJobItem[
     };
     const dehydrated = data.props?.pageProps?.dehydratedState;
     const queries = dehydrated?.queries ?? [];
-    // A BOARD WITH NO OPEN ROLES IS NOT A BROKEN PARSER.
-    //
-    // Rippling renders a perfectly healthy page for an employer that is not
-    // hiring: dehydratedState is present and `queries` is an EMPTY ARRAY,
-    // because there was nothing to prefetch. The old code could not tell that
-    // from shape drift and returned null for both, so the caller threw
-    // "rippling payload shape unrecognized" and the board was published to the
-    // operator as a vendor failure.
-    //
-    // Measured 2026-08-25 over 198 of 1,051 rippling boards: 2 hit this (1%),
-    // matching the 6 standing failures in the live failure list. Both
-    // whistler-platinum-jobs and elevationcapital return 157KB of valid page
-    // with dehydratedState present, queries [], zero occurrences of
-    // "job-posts", and the words "No open" in the rendered text. Neither is
-    // broken; neither is hiring.
-    //
-    // The drift signal is KEPT and made sharper: queries present but carrying
-    // no job-posts key still returns null, because that is what a real shape
-    // change looks like. Only the empty array is read as an honest zero — the
-    // same distinction the personio empty-feed fix drew earlier.
     if (dehydrated && queries.length === 0) return { items: [], totalPages: 1 };
     const q = queries.find((x) => Array.isArray(x.queryKey) && x.queryKey[2] === "job-posts");
     if (!q?.state?.data || !Array.isArray(q.state.data.items)) return null;
@@ -1032,7 +1012,7 @@ export function normalizeRippling(items: RipplingJobItem[], company: string, tok
           : detectWorkMode(location, j.name),
         remote: locs.some((l) => l.workplaceType === "REMOTE") || detectWorkMode(location, j.name) === "remote",
         department: j.department?.name ?? null,
-        postedAt: null, // the board payload carries no dates — undated is honest
+        postedAt: null,
         category: categorize(j.name ?? "", j.department?.name),
         salary: null,
         country: cc,
@@ -1041,19 +1021,6 @@ export function normalizeRippling(items: RipplingJobItem[], company: string, tok
     })
     .filter((j) => j.applyUrl !== "" && j.title !== "" && j.id !== `rippling:${token}:`);
 }
-// ── Paylocity ─────────────────────────────────────────────────────────────
-// Paylocity publishes no documented list API; the public board page at
-// recruiting.paylocity.com/recruiting/jobs/All/{token} embeds the FULL job
-// list as first-party JSON in a page-global pageData assignment. A
-// Rippling-class source — the vendor's own data channel, but an
-// implementation detail that can move, so the extractor's null is a drift
-// signal and never an empty board. Live-captured shape 2026-08-30 across
-// three boards (24 + 21 + 17 postings): items carry JobId, JobTitle,
-// LocationName, a real PublishedDate (ISO with offset), HiringDepartment,
-// a structured IsRemote boolean, and a JobLocation whose Country is a
-// "USA"-style word, not ISO-2. IndeedRemoteType also rides along but its
-// enum is unmeasured (2 on every observed row, remote or not) — only
-// IsRemote is trusted, per the trinary-or-nothing work-mode contract.
 export interface PaylocityJobItem {
   JobId?: string | number;
   JobTitle?: string;
@@ -1069,14 +1036,6 @@ export interface PaylocityJobItem {
     Country?: string | null;
   } | null;
 }
-/** Pull the embedded job list out of a Paylocity board page.
- *  Returns null when the payload isn't recognizable (drift — the caller must
- *  treat the board as FAILED, not empty). A parsed payload whose Jobs array
- *  is empty is an employer not hiring: an honest zero, same distinction the
- *  personio and rippling fixes drew. Jobs ABSENT or non-array stays null,
- *  because that is what a real shape change looks like — a detail page
- *  carries the same page-global assignment with entirely different keys, and
- *  reading it as an empty board would zero a live employer. */
 export function extractPaylocityPageData(html: string): { items: PaylocityJobItem[]; moduleTitle: string | null } | null {
   const m = html.match(/window\.pageData\s*=\s*(\{[\s\S]*?\})\s*;?\s*<\/script>/);
   if (!m) return null;
@@ -1085,8 +1044,6 @@ export function extractPaylocityPageData(html: string): { items: PaylocityJobIte
     if (!Array.isArray(data.Jobs)) return null;
     return {
       items: data.Jobs as PaylocityJobItem[],
-      // The board's self-chosen display name — census tooling reads it so a
-      // token never has to ship with a guessed employer name.
       moduleTitle: typeof data.ModuleTitle === "string" && data.ModuleTitle.trim() ? data.ModuleTitle.trim() : null,
     };
   } catch {
@@ -1095,9 +1052,6 @@ export function extractPaylocityPageData(html: string): { items: PaylocityJobIte
 }
 export function normalizePaylocity(items: PaylocityJobItem[], company: string, token: string): JobPosting[] {
   return (Array.isArray(items) ? items : [])
-    // The public payload can embed internal-only postings; their Details page
-    // sits behind a login wall, and verify-all already refuses to count them —
-    // ingest and verify must agree on what a posting is.
     .filter((j) => j.IsInternal !== true)
     .map((j) => {
       const loc = j.JobLocation ?? {};
@@ -1105,8 +1059,6 @@ export function normalizePaylocity(items: PaylocityJobItem[], company: string, t
       const title = String(j.JobTitle ?? "").trim();
       const dept = typeof j.HiringDepartment === "string" && j.HiringDepartment.trim() ? j.HiringDepartment.trim() : null;
       const externalId = String(j.JobId ?? "").trim();
-      // IsRemote is the vendor's structured field; text detection only fills
-      // in when the feed doesn't state one (never guessed from prose).
       const workMode = j.IsRemote === true ? "remote" as const : detectWorkMode(location, title, dept);
       const rawCountry = String(loc.Country ?? "").trim();
       return {
@@ -1119,22 +1071,12 @@ export function normalizePaylocity(items: PaylocityJobItem[], company: string, t
         workMode,
         remote: workMode === "remote",
         department: dept,
-        // The feed states a real publish date; the shared ingest window drops
-        // anything older, so no pre-filtering here.
         postedAt: safeIso(j.PublishedDate),
         category: categorize(title, dept),
-        // The list payload's Description is a ~110-char teaser, not the JD —
-        // storing it would hand salary mining and the fit scan a stub that
-        // looks like a document. Null is honest; the detail page carries the
-        // full text if a sweep ever wants it.
         salary: null,
-        // Country arrives structurally but as a word ("USA"), not ISO-2 — map
-        // the stated value, and fall back to text detection over the whole
-        // location for anything unrecognized.
         country: /^(?:usa|us|u\.s\.a?\.?|united states(?: of america)?)$/i.test(rawCountry)
           ? "US"
           : /^[A-Za-z]{2}$/.test(rawCountry)
-            // The one two-letter word people write that is NOT its ISO code.
             ? (rawCountry.toUpperCase() === "UK" ? "GB" : rawCountry.toUpperCase())
             : detectCountry([location, loc.City, loc.State, rawCountry].filter(Boolean).join(", ")),
         applyUrl: externalId ? `https://recruiting.paylocity.com/recruiting/jobs/Details/${externalId}` : "",
@@ -1142,24 +1084,6 @@ export function normalizePaylocity(items: PaylocityJobItem[], company: string, t
     })
     .filter((j) => j.applyUrl !== "" && j.title !== "" && !j.id.endsWith(":"));
 }
-// ── ADP Workforce Now ─────────────────────────────────────────────────────
-// The career-center SPA at workforcenow.adp.com is a JS shell, but the JSON it
-// renders from is a public unauthenticated endpoint on the same host
-// (…/careercenter/public/events/staffing/v1/job-requisitions) — the page's own
-// data channel, confirmed by watching the live page's network calls
-// 2026-08-31. First-party but undocumented, so the canary/breaker discipline
-// applies, same as rippling and paylocity.
-//
-// Live-measured shape, 2026-08-31, 100 requisitions across four real boards
-// (7 + 13 + 82 + 19): every row carries the requisition id the detail
-// endpoint takes, a title and a real posting timestamp; a numeric share id
-// arrives in the string custom fields on 79/79 external rows and is the value
-// the SPA itself appends to a posting's share link; the employer's own salary
-// display string sits beside it on 65/79; department strings existed but were EMPTY on
-// all 100 (organizationalUnits: empty on all 100 as well), so department ships
-// only when a row actually states one. NOWHERE in any payload — list, detail,
-// branding config, page shell — does the employer's NAME appear; the catalog
-// entry is the only thing that names the board, exactly the oracle situation.
 export interface AdpNameCodedField {
   nameCode?: { codeValue?: string };
   stringValue?: string;
@@ -1186,27 +1110,12 @@ export interface AdpJobRequisition {
     };
   }>;
 }
-/** Every custom field arrives as {nameCode:{codeValue}, value} — one finder. */
 const adpField = (fields: AdpNameCodedField[] | undefined, code: string): AdpNameCodedField | undefined =>
   (Array.isArray(fields) ? fields : []).find((f) => f?.nameCode?.codeValue === code);
-/**
- * A board token is the career-center URL's cid GUID — plus the ccId when the
- * employer runs a non-default career center, because ccId SELECTS the board:
- * measured live 2026-08-31, one cid answered 19 postings on its default center
- * and 1 on its second (ccId 9200080780705_2). Compound form cid~ccId, same
- * separator contract as workday/oracle; a bare cid means the default center.
- */
 export function adpBoardParams(token: string): { cid: string; ccId: string } {
   const [cid, ccId] = String(token).split("~");
   return { cid: cid ?? "", ccId: ccId || "19000101_000001" };
 }
-// The vendor's own salary display string ("22.50 To 26.40 (USD) Hourly",
-// "70000.00 To 85000.00 (USD) Annually") — reshaped into the board's idiom
-// when it parses, passed through verbatim when the employer typed something
-// else. This is the string the SPA itself gates display on, so using it never
-// surfaces a range the employer chose not to render; payGradeRange also rides
-// the payload but exists on rows whose display string is absent, and mining it
-// would publish figures the career site does not show.
 const ADP_SALARY_FREQ: Record<string, string> = { hourly: "per hour", annually: "per year", monthly: "per month", weekly: "per week" };
 function adpSalary(raw: unknown): string | null {
   const s = String(raw ?? "").trim();
@@ -1216,26 +1125,11 @@ function adpSalary(raw: unknown): string | null {
   const num = (x: string) => {
     const n = Number(x.replace(/,/g, ""));
     if (!Number.isFinite(n)) return x;
-    // Whole figures group ("70,000"); fractional ones keep their cents
-    // ("22.50"), because an hourly rate with the cents lopped off reads as a
-    // different number.
     return Number.isInteger(n) ? n.toLocaleString("en-US") : n.toFixed(2);
   };
   const freq = ADP_SALARY_FREQ[m[4].toLowerCase()] ?? m[4].toLowerCase();
   return `${m[3].toUpperCase()} ${num(m[1])}–${num(m[2])} ${freq}`;
 }
-// Country never arrives as a structured field — measured 2026-08-31, zero of
-// 67 requisition locations carried a country code on the address — so it is
-// read from the tail of the location display string, which on every
-// country-bearing sample ends with a two-letter code (usually preceded by a
-// two-letter region). Two traps live here: the two-letter word people write
-// for Britain that is NOT its ISO code (normalizePaylocity paid for that one
-// already), and the tail of a countryless city-plus-state string being a US
-// state that IS some other country's ISO code — California/Canada is only the
-// loudest of a dozen such collisions. A state-shaped tail is read as a country
-// only when it follows another two-letter code (the measured three-segment
-// shape); otherwise the string falls to detectCountry, whose state patterns
-// read it as US.
 const US_STATE_TAIL = /^(AL|AK|AZ|AR|CA|CO|CT|DE|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY|DC)$/;
 function adpCountry(locationText: string): string | null {
   const segs = locationText.split(",").map((x) => x.trim()).filter(Boolean);
@@ -1250,10 +1144,6 @@ export function normalizeAdp(items: AdpJobRequisition[], company: string, token:
   const { cid, ccId } = adpBoardParams(token);
   const boardUrl = `https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=${cid}&ccId=${ccId}&lang=en_US`;
   return (Array.isArray(items) ? items : [])
-    // The public payload marks internal-only postings with an indicator; their
-    // apply flow sits behind the employee login. Same line paylocity drew:
-    // ingest and verify must agree on what a posting is, and neither counts
-    // these.
     .filter((j) => adpField(j.customFieldGroup?.indicatorFields, "InternalPostingFlag")?.indicatorValue !== true)
     .map((j) => {
       const title = String(j.requisitionTitle ?? "").trim();
@@ -1264,13 +1154,7 @@ export function normalizeAdp(items: AdpJobRequisition[], company: string, token:
         [first.address?.cityName, first.address?.countrySubdivisionLevel1?.codeValue].filter(Boolean).join(", ").trim();
       const location = [firstText, locs.length > 1 ? `+${locs.length - 1} more` : ""].filter(Boolean).join(" ");
       const dept = String(adpField(j.customFieldGroup?.stringFields, "HomeDepartment")?.stringValue ?? "").trim() || null;
-      // The numeric share id the SPA's own URL builder appends to the
-      // career-center link — confirmed against the app bundle and against
-      // Google-indexed posting URLs. Distinct from the API's requisition id,
-      // which the posting id and the detail sweep use. A row without one still
-      // links to the board page, where the posting is one click away.
       const shareId = String(adpField(j.customFieldGroup?.stringFields, "ExternalJobID")?.stringValue ?? "").trim();
-      // workLevelCode is client-authored ("Part-Time Hourly", "Full Time
       const employmentType = normalizeEmploymentType(
         String(j.workLevelCode?.shortName ?? "").toLowerCase().split("/")[0].replace(/\b(hourly|salaried|salary|employee)\b/g, " ").trim(),
       );
@@ -1425,10 +1309,7 @@ export interface WorkdayListItem {
 }
 const WD_TODAY = /\b(today|hoy|aujourd'?hui|heute|vandaag|hoje|oggi|i dag|idag|今天|本日)\b|ausgeschrieben heute/i;
 const WD_YESTERDAY = /\b(yesterday|ayer|hier|gestern|gisteren|ontem|ieri|i går|igår|昨天)\b/i;
-// Day nouns across the locales Workday serves. Chinese/Japanese carry no word
-// boundaries, so they are matched as bare characters.
 const WD_DAY_WORD = /\b(days?|d[ií]as?|jours?|tagen?|tage|dagen?|dagar?|giorni?|giorno|päivää?)\b|[天日]/i;
-// "more than N" in the same locales, plus Workday's own "N+" shorthand and
 const WD_MORE_THAN = /\+|\bm[áa]s de\b|\bplus de\b|\bmehr als\b|\bmeer dan\b|\bmais de\b|\bpi[uù] di\b|\bover\b|\bou plus\b|\boder mehr\b|\bo m[áa]s\b|\bof meer\b|\bou mais\b|超過|超过|以上/i;
 export function workdayPostedDays(postedOn: string | null | undefined): number | null {
   if (!postedOn) return null;

@@ -39,7 +39,7 @@ export function jobPostingLdDescription(html: string): string | null {
     try {
       parsed = JSON.parse(m[1].trim());
     } catch {
-      continue; // not valid JSON — keep looking
+      continue;
     }
     const nodes = Array.isArray(parsed) ? parsed : [parsed];
     for (const node of nodes) {
