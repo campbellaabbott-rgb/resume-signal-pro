@@ -1,5 +1,25 @@
 {
   "changelogEntries": {
+    "agenciesLabelledNotHidden": {
+      "title": "Uitzenders staan op het bord — en zijn gemarkeerd",
+      "description": "Het bord bevatte alleen werkgevers die voor zichzelf werven, waardoor een groot deel van echt openstaand werk onzichtbaar bleef: ook bureaus en recruiters plaatsen echte vacatures. Ze zijn nu opgenomen en elke vacature draagt het label „Uitzendbureau”, zodat u altijd weet wie erachter zit. Wilt u ze niet zien, dan verbergt één schakelaar ze allemaal. Openheid in plaats van een stille keuze namens u; vacaturefabrieken die dezelfde functie honderden keren plaatsen blijven geweigerd."
+    },
+    "fourMoreHiringSystems": {
+      "title": "Vier extra wervingssystemen en Europese vacaturesites",
+      "description": "Paylocity, ADP Workforce Now, UKG Pro Recruiting en iCIMS-werkgevers op hun eigen domeinen voeden nu het bord, samen met Europese sites van Greenhouse en Lever die eerder onbereikbaar waren. Met diepere uitlezingen van zeer grote werkgevers — die duizenden functies plaatsen en waarvan we eerder alleen de eerste honderden zagen — is het bord met ruim een derde gegroeid. De regel blijft: rechtstreeks uit het systeem van de werkgever, nooit van een zoekmachine geplukt."
+    },
+    "employerSearchFindsTheEmployer": {
+      "title": "Zoeken op een bedrijf vindt de vacatures van dat bedrijf",
+      "description": "De naam van een werkgever invoeren kon vacatures van andere bedrijven opleveren die hem alleen in de titel noemden — een „Costco Brand Promoter” van een bureau bóven echte Costco-vacatures — en verderop advertenties waarvan de enige link een arbeidsvoorwaardenlijst met de merknaam was. Treffers op de bedrijfsnaam staan nu vooraan, en een vacature die een bedrijf alleen bij de secundaire voorwaarden noemt concurreert niet meer met vacatures die er echt over gaan."
+    },
+    "searchesThatUsedToStall": {
+      "title": "De zoekopdrachten die bleven hangen zijn nu snel",
+      "description": "Sommige formuleringen duurden veel langer dan nodig. Een zoekopdracht als „director not for profit” kostte negen seconden, en zoekopdrachten zonder enig resultaat deden er zes seconden over om dat vast te stellen. Beide zijn nu een fractie daarvan, en de gangbare zoekopdrachten zijn samen ongeveer een derde sneller. Aan de resultaten verandert niets, alleen aan de wachttijd."
+    },
+    "exclusionSearchesShowACount": {
+      "title": "Een uitgesloten woord verbergt niet langer het aantal",
+      "description": "Als u een term uitsluit — „engineer not manager” — is het exacte totaal echt niet te tellen, omdat de uitsluiting ná het tellen gebeurt. In plaats van niets te tonen, noemt de pagina nu de eerlijke bovengrens: hoeveel er vóór uw uitsluitingen overeenkwamen. Een echt getal met zijn grenzen erbij, in plaats van een leegte."
+    },
     "connectYourAgent": {
       "title": "Verbind je AI-agent",
       "description": "Richt elke MCP-compatibele agent — Claude, ChatGPT, Cursor of je eigen — op het bord: hij doorzoekt 700.000+ vacatures rechtstreeks uit de wervingssystemen van werkgevers, leest volledige omschrijvingen en ziet dezelfde eerlijke aantallen als jij. Met het Agent-plan kan hij ook je sollicitatie-agent vragen om voor je te solliciteren — via exact dezelfde pijplijn als altijd: jouw uit-knop wint, antwoorden worden nooit verzonnen en elke weigering wordt benoemd. Instellen duurt twee minuten op /agents."

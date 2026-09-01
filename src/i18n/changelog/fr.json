@@ -1,5 +1,25 @@
 {
   "changelogEntries": {
+    "agenciesLabelledNotHidden": {
+      "title": "Les agences de recrutement sont là, et signalées",
+      "description": "Le tableau ne présentait que les employeurs recrutant pour eux-mêmes, ce qui masquait une grande part d'emplois bien réels : les agences et cabinets publient aussi de vraies offres. Elles sont désormais incluses et chacune porte la mention « Agence de recrutement », pour que vous sachiez toujours qui se trouve derrière une annonce. Si vous préférez ne pas les voir, un seul bouton les masque. De la transparence plutôt qu'un choix fait en silence à votre place ; les usines à annonces qui publient le même poste des centaines de fois restent refusées."
+    },
+    "fourMoreHiringSystems": {
+      "title": "Quatre systèmes de recrutement de plus, et des offres européennes",
+      "description": "Paylocity, ADP Workforce Now, UKG Pro Recruiting et les employeurs iCIMS sur leurs propres domaines alimentent désormais le tableau, avec les tableaux européens de Greenhouse et Lever jusqu'ici inaccessibles. Avec des lectures plus profondes des très grands employeurs — ceux qui publient des milliers de postes et dont nous ne voyions que les premières centaines — le tableau a grandi de plus d'un tiers. La règle ne change pas : lu directement dans le système de l'employeur, jamais extrait d'un moteur de recherche."
+    },
+    "employerSearchFindsTheEmployer": {
+      "title": "Chercher une entreprise trouve les offres de cette entreprise",
+      "description": "Saisir le nom d'un employeur pouvait renvoyer des offres d'autres sociétés qui ne faisaient que le citer dans un intitulé — un « Costco Brand Promoter » d'une agence devant de vraies offres Costco — et plus bas, des annonces dont le seul lien était une liste d'avantages citant la marque. Les correspondances sur le nom de l'entreprise passent maintenant devant, et une annonce qui ne mentionne une entreprise que dans ses avantages ne concurrence plus les offres qui la concernent vraiment."
+    },
+    "searchesThatUsedToStall": {
+      "title": "Les recherches qui traînaient sont rapides",
+      "description": "Certaines formulations prenaient bien plus de temps que nécessaire. Une recherche comme « director not for profit » prenait neuf secondes, et les recherches sans aucun résultat mettaient six secondes à le constater avant de le dire. Les deux sont désormais une fraction de cela, et l'ensemble des recherches courantes est environ un tiers plus rapide. Les résultats affichés ne changent pas, seulement l'attente."
+    },
+    "exclusionSearchesShowACount": {
+      "title": "Exclure un mot ne cache plus le nombre d'offres",
+      "description": "Lorsque vous excluez un terme — « engineer not manager » — le total exact ne peut réellement pas être compté, car l'exclusion intervient après le comptage. Plutôt que de n'afficher aucun chiffre, la page indique désormais le plafond honnête : combien correspondaient avant vos exclusions. Un vrai nombre dont les limites sont énoncées, au lieu d'un vide."
+    },
     "connectYourAgent": {
       "title": "Connectez votre agent IA",
       "description": "Pointez n'importe quel agent compatible MCP — Claude, ChatGPT, Cursor ou le vôtre — vers le tableau : il cherche parmi plus de 700 000 offres tirées des systèmes de recrutement des employeurs eux-mêmes, lit les descriptions complètes et voit les mêmes chiffres honnêtes que vous. Avec le plan Agent, il peut aussi demander à votre agent de candidature de postuler pour vous — par exactement la même chaîne que d'habitude : votre interrupteur d'arrêt gagne, les réponses ne sont jamais inventées, chaque refus est nommé. Installation en deux minutes sur /agents."

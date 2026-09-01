@@ -1,5 +1,25 @@
 {
   "changelogEntries": {
+    "agenciesLabelledNotHidden": {
+      "title": "Nasa board na ang mga staffing agency — at may tatak",
+      "description": "Dati ay mga employer lamang na kumukuha para sa sarili ang nasa board, kaya natatago ang malaking bahagi ng totoong bakanteng trabaho: totoong trabaho rin ang inilalathala ng mga ahensya at recruiter. Kasama na sila ngayon, at may tatak na «Staffing agency» ang bawat isa para alam mo lagi kung sino ang nasa likod ng anunsyo. Kung ayaw mong makita ang mga ito, may isang toggle na magtatago sa lahat. Pagiging bukas sa halip na tahimik na pagpapasya para sa iyo — at tinatanggihan pa rin ang mga job mill na paulit-ulit na naglalathala ng iisang posisyon nang daan-daang beses."
+    },
+    "fourMoreHiringSystems": {
+      "title": "Apat pang sistema ng pagkuha, at mga job board sa Europa",
+      "description": "Nagpapadala na ngayon ng trabaho sa board ang Paylocity, ADP Workforce Now, UKG Pro Recruiting at mga employer ng iCIMS sa sariling career domain nila, kasama ang mga board sa Europa mula Greenhouse at Lever na dati'y hindi maabot. Kasama ang mas malalim na pagbasa sa napakalalaking employer — ang mga naglalathala ng libu-libong posisyon na dati'y ilang daan lang ang nakikita namin — lumago ang board nang mahigit isang katlo. Pareho pa rin ang tuntunin: direkta mula sa sariling sistema ng employer, hindi kailanman kinuha sa search engine."
+    },
+    "employerSearchFindsTheEmployer": {
+      "title": "Ang paghahanap ng kumpanya ay nakakahanap ng trabaho nito",
+      "description": "Ang pag-type ng pangalan ng employer ay maaaring magbalik ng trabaho ng ibang kumpanya na binanggit lang ito sa pamagat — isang «Costco Brand Promoter» ng ahensya na mas mataas kaysa tunay na bakante sa Costco — at sa ibaba, mga anunsyong ang tanging kaugnayan ay listahan ng benepisyo na may pangalan ng brand. Nauuna na ngayon ang tugma sa pangalan ng kumpanya, at ang anunsyong bumabanggit ng kumpanya sa benepisyo lamang ay hindi na nakikipagkumpitensya sa mga trabahong talagang tungkol dito."
+    },
+    "searchesThatUsedToStall": {
+      "title": "Mabilis na ang mga paghahanap na dating natitigil",
+      "description": "May ilang pananalita na mas matagal kaysa nararapat. Ang paghahanap na «director not for profit» ay umaabot ng siyam na segundo, at ang mga paghahanap na walang resulta ay anim na segundo bago sabihin iyon. Bahagi na lamang ngayon iyon ng dating tagal, at humigit-kumulang isang katlo ang bilis ng karaniwang paghahanap sa kabuuan. Walang nagbago sa resultang nakikita mo — ang paghihintay lang."
+    },
+    "exclusionSearchesShowACount": {
+      "title": "Hindi na itinatago ng inalis na salita kung ilan ang trabaho",
+      "description": "Kapag nag-alis ka ng termino — «engineer not manager» — talagang hindi mabibilang ang eksaktong kabuuan, dahil nangyayari ang pag-aalis pagkatapos ng pagbibilang. Sa halip na walang ipakita, sinasabi na ngayon ng pahina ang tapat na hangganan: ilan ang tumugma bago mailapat ang iyong mga pagbubukod. Isang tunay na bilang na nakasaad ang limitasyon, sa halip na blangko."
+    },
     "connectYourAgent": {
       "title": "Ikonekta ang iyong AI agent",
       "description": "Ituro ang kahit anong MCP-capable na agent — Claude, ChatGPT, Cursor, o sarili mo — sa board: maghahanap ito sa 700,000+ trabahong galing mismo sa hiring systems ng mga employer, magbabasa ng buong deskripsyon, at makikita ang parehong tapat na bilang na nakikita mo. Sa Agent plan, maaari rin nitong hilingin sa iyong apply agent na mag-apply para sa iyo — sa eksaktong parehong pipeline gaya ng dati: panalo lagi ang iyong off switch, hindi kailanman iniimbento ang mga sagot, at bawat pagtanggi ay pinapangalanan. Dalawang minutong setup sa /agents."

@@ -1,5 +1,25 @@
 {
   "changelogEntries": {
+    "agenciesLabelledNotHidden": {
+      "title": "Staffing agencies are on the board — and labelled",
+      "description": "The board used to carry only employers hiring for themselves, which quietly hid a large slice of real, open work: agencies and recruiters post genuine jobs too. They are included now, and every one is marked with a “Staffing agency” badge so you always know who is behind a posting. If you would rather not see them, one toggle hides them all. Disclosure rather than a silent decision made for you — and job mills that post the same role hundreds of times are still refused outright, because that is not a real opening in anyone's book."
+    },
+    "fourMoreHiringSystems": {
+      "title": "Four more hiring systems, and European job boards",
+      "description": "Paylocity, ADP Workforce Now, UKG Pro Recruiting and iCIMS employers on their own career domains now feed the board, alongside European boards from Greenhouse and Lever that were previously unreachable. Together with wider reads of very large employers — the ones posting thousands of roles at once, where we were previously seeing only the first few hundred — the board has grown by more than a third. Same rule as always: read straight from each employer's own hiring system, never scraped from a search engine."
+    },
+    "employerSearchFindsTheEmployer": {
+      "title": "Searching a company name finds that company's jobs",
+      "description": "Typing an employer's name could return other companies' jobs that merely mentioned it in a title — a marketing agency's “Costco Brand Promoter” outranking actual Costco openings — and further down the page, roles whose only connection was a benefits list mentioning the brand. Company matches now come first, and a posting that mentions a company only in its perks no longer competes with jobs that are genuinely about it."
+    },
+    "searchesThatUsedToStall": {
+      "title": "The searches that used to stall are quick now",
+      "description": "Some phrasings took far longer than they should have. A search like “director not for profit” spent nine seconds, and searches with no matches at all spent six seconds proving it before saying so. Both are now a fraction of that, and the whole battery of common searches got roughly a third faster. Nothing about which results you see has changed — only how long you wait for them."
+    },
+    "exclusionSearchesShowACount": {
+      "title": "Excluding a word no longer hides how many jobs there are",
+      "description": "When you exclude a term — “engineer not manager” — the exact total genuinely cannot be counted, because the exclusion happens after the count. Rather than showing nothing at all, the page now tells you the honest ceiling: how many matched before your exclusions were applied. A real number with its limits stated, instead of a blank."
+    },
     "connectYourAgent": {
       "title": "Connect your AI agent",
       "description": "Point any MCP-capable agent — Claude, ChatGPT, Cursor, or your own — at the board and it can search 700,000+ postings pulled from employers' own hiring systems, read full descriptions, and see the same honest counts and disclosures you do. On the Agent plan, it can also ask your apply agent to submit applications for you — through the exact same pipeline as always: your off switch wins, answers are never invented, and every refusal is named. Setup takes two minutes at /agents."

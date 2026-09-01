@@ -1,5 +1,25 @@
 {
   "changelogEntries": {
+    "agenciesLabelledNotHidden": {
+      "title": "Personaldienstleister sind dabei – und gekennzeichnet",
+      "description": "Bisher führte das Board nur Arbeitgeber, die für sich selbst einstellen. Damit fiel ein großer Teil echter offener Stellen unter den Tisch: Auch Agenturen und Personalvermittler schreiben reale Jobs aus. Sie sind jetzt enthalten und jede Anzeige trägt das Kennzeichen „Personaldienstleister“, damit Sie immer wissen, wer dahintersteht. Wer sie nicht sehen möchte, blendet sie mit einem Schalter aus. Offenlegung statt einer stillen Entscheidung über Ihren Kopf hinweg – Anzeigenfabriken, die dieselbe Stelle hundertfach posten, bleiben weiterhin ausgeschlossen."
+    },
+    "fourMoreHiringSystems": {
+      "title": "Vier weitere Bewerbersysteme und europäische Jobboards",
+      "description": "Paylocity, ADP Workforce Now, UKG Pro Recruiting und iCIMS-Arbeitgeber auf eigenen Karriere-Domains liefern jetzt Stellen, dazu europäische Boards von Greenhouse und Lever, die bisher nicht erreichbar waren. Zusammen mit tieferen Abfragen sehr großer Arbeitgeber – jene mit Tausenden Stellen, von denen wir zuvor nur die ersten Hundert sahen – ist das Board um mehr als ein Drittel gewachsen. Unverändert gilt: direkt aus dem Bewerbersystem des Arbeitgebers, niemals aus einer Suchmaschine gescrapt."
+    },
+    "employerSearchFindsTheEmployer": {
+      "title": "Die Suche nach einem Unternehmen findet dessen Stellen",
+      "description": "Die Suche nach einem Arbeitgebernamen konnte Stellen anderer Firmen liefern, die ihn nur im Titel erwähnten – der „Costco Brand Promoter“ einer Marketingagentur stand über echten Costco-Stellen – und weiter unten Anzeigen, deren einzige Verbindung eine Zusatzleistung mit dem Markennamen war. Treffer im Firmennamen stehen jetzt vorn, und eine Anzeige, die ein Unternehmen nur unter den Benefits nennt, konkurriert nicht mehr mit Stellen, die wirklich davon handeln."
+    },
+    "searchesThatUsedToStall": {
+      "title": "Die zähen Suchen sind jetzt schnell",
+      "description": "Manche Formulierungen dauerten deutlich länger als nötig. Eine Suche wie „director not for profit“ brauchte neun Sekunden, und Suchen ganz ohne Treffer brauchten sechs Sekunden, um das festzustellen. Beides ist jetzt ein Bruchteil davon, und die gängigen Suchen insgesamt rund ein Drittel schneller. An den Ergebnissen selbst ändert sich nichts – nur an der Wartezeit."
+    },
+    "exclusionSearchesShowACount": {
+      "title": "Ein ausgeschlossenes Wort verbirgt nicht mehr die Anzahl",
+      "description": "Wenn Sie einen Begriff ausschließen – „engineer not manager“ –, lässt sich die exakte Gesamtzahl wirklich nicht ermitteln, weil der Ausschluss erst nach der Zählung greift. Statt gar nichts anzuzeigen, nennt die Seite jetzt die ehrliche Obergrenze: wie viele Treffer es vor Ihren Ausschlüssen gab. Eine echte Zahl mit benannten Grenzen statt einer Leerstelle."
+    },
     "connectYourAgent": {
       "title": "Verbinde deinen KI-Agenten",
       "description": "Richte einen MCP-fähigen Agenten — Claude, ChatGPT, Cursor oder deinen eigenen — auf das Board: Er durchsucht über 700.000 Stellen direkt aus den Bewerbungssystemen der Arbeitgeber, liest vollständige Beschreibungen und sieht dieselben ehrlichen Zahlen wie du. Mit dem Agent-Plan kann er zudem deinen Bewerbungs-Agenten losschicken — durch exakt dieselbe Pipeline wie immer: dein Aus-Schalter gewinnt, Antworten werden nie erfunden, jede Ablehnung wird benannt. Einrichtung in zwei Minuten unter /agents."

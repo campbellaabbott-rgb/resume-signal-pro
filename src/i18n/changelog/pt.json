@@ -1,5 +1,25 @@
 {
   "changelogEntries": {
+    "agenciesLabelledNotHidden": {
+      "title": "As agências de emprego estão no quadro — e identificadas",
+      "description": "O quadro só incluía empregadores que contratavam para si próprios, o que escondia uma fatia grande de trabalho real: agências e recrutadores também publicam vagas genuínas. Agora estão incluídas e cada uma exibe a etiqueta «Agência de emprego», para que saiba sempre quem está por trás de um anúncio. Se preferir não as ver, um botão esconde-as todas. Transparência em vez de uma decisão tomada em silêncio por si; as fábricas de anúncios que publicam a mesma vaga centenas de vezes continuam recusadas."
+    },
+    "fourMoreHiringSystems": {
+      "title": "Mais quatro sistemas de contratação, e quadros europeus",
+      "description": "Paylocity, ADP Workforce Now, UKG Pro Recruiting e empregadores iCIMS nos seus próprios domínios alimentam agora o quadro, juntamente com quadros europeus da Greenhouse e da Lever antes inacessíveis. Com leituras mais profundas de empregadores muito grandes — os que publicam milhares de vagas e de que víamos apenas as primeiras centenas — o quadro cresceu mais de um terço. A regra mantém-se: lido diretamente do sistema do empregador, nunca recolhido de um motor de busca."
+    },
+    "employerSearchFindsTheEmployer": {
+      "title": "Procurar uma empresa encontra as vagas dessa empresa",
+      "description": "Escrever o nome de um empregador podia devolver vagas de outras empresas que apenas o mencionavam no título — um «Costco Brand Promoter» de uma agência acima de vagas reais da Costco — e mais abaixo, anúncios cuja única ligação era uma lista de benefícios com a marca. As correspondências no nome da empresa vêm agora primeiro, e um anúncio que menciona uma empresa apenas nos benefícios já não compete com vagas que são realmente sobre ela."
+    },
+    "searchesThatUsedToStall": {
+      "title": "As pesquisas que ficavam presas estão rápidas",
+      "description": "Algumas formulações demoravam muito mais do que deviam. Uma pesquisa como «director not for profit» levava nove segundos, e pesquisas sem qualquer resultado levavam seis segundos a confirmá-lo antes de o dizer. Ambas são agora uma fração disso, e o conjunto das pesquisas comuns ficou cerca de um terço mais rápido. Os resultados não mudam — apenas a espera."
+    },
+    "exclusionSearchesShowACount": {
+      "title": "Excluir uma palavra já não esconde quantas vagas existem",
+      "description": "Quando exclui um termo — «engineer not manager» — o total exato não pode mesmo ser contado, porque a exclusão acontece depois da contagem. Em vez de não mostrar nada, a página indica agora o limite honesto: quantas correspondiam antes das suas exclusões. Um número real com os seus limites explicados, em vez de um vazio."
+    },
     "connectYourAgent": {
       "title": "Conecte seu agente de IA",
       "description": "Aponte qualquer agente compatível com MCP — Claude, ChatGPT, Cursor ou o seu próprio — para o quadro: ele busca entre mais de 700.000 vagas vindas dos sistemas de contratação dos próprios empregadores, lê descrições completas e vê as mesmas contagens honestas que você. No plano Agent, também pode pedir ao seu agente de candidaturas que aplique por você — pela mesma esteira de sempre: seu botão de desligar vence, respostas nunca são inventadas e cada recusa é nomeada. Configuração em dois minutos em /agents."
