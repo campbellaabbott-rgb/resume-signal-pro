@@ -4015,7 +4015,7 @@
     "orderNewestWoven": "newest first, spread across employers so one company can't fill the page",
     "fitFailedNote": "{{n}} postings could not be scored just now — this is usually temporary.",
     "fitRetry": "Try again",
-    "dropTitleScoped": "Drop your résumé here — we'll rank the openings on this page against it in seconds.",
+    "dropTitleScoped": "Drop your résumé here — we'll find the roles it matches and rank them by fit in seconds.",
     "agentPitchCounted": "The apply agent can fill and submit {{n}} of these for you — it reads your CV, writes each application separately, and answers the employer's own screening questions.",
     "agentPitchCta": "See how it works — 7 days free, then $99/mo",
     "agentPitchScopeLive": "It applies on {{n}} hiring systems — about {{pct}}% of the board — and never on sites that gate applications behind a CAPTCHA. Everywhere else it prepares the application and you send it.",

@@ -4015,7 +4015,7 @@
     "orderNewestWoven": "más recientes primero, repartidas entre empleadores para que ninguna empresa llene la página",
     "fitFailedNote": "{{n}} ofertas no pudieron puntuarse ahora mismo; suele ser temporal.",
     "fitRetry": "Reintentar",
-    "dropTitleScoped": "Suelta tu currículum aquí y puntuaremos las ofertas de esta página en segundos.",
+    "dropTitleScoped": "Suelta tu currículum aquí: buscaremos los puestos que encajan y los ordenaremos por afinidad en segundos.",
     "agentPitchCounted": "El agente puede rellenar y enviar {{n}} de estas por ti: lee tu CV, redacta cada solicitud por separado y responde las preguntas de cribado del empleador.",
     "agentPitchCta": "Cómo funciona — 7 días gratis, luego 99 $/mes",
     "agentPitchScopeLive": "Postula en {{n}} sistemas de contratación —alrededor del {{pct}} % del tablón— y nunca en sitios que ocultan las candidaturas tras un CAPTCHA. En el resto prepara la candidatura y tú la envías.",

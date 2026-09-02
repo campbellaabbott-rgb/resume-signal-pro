@@ -4251,7 +4251,7 @@ export default function Jobs() {
                 <p className="text-[13px] text-foreground flex-1 min-w-[200px]">
                   {parsingResume
                     ? t("jobsPage.dropParsing", "Reading your résumé…")
-                    : t("jobsPage.dropTitleScoped", "Drop your résumé here — we'll rank the openings on this page against it in seconds.")}
+                    : t("jobsPage.dropTitleScoped", "Drop your résumé here — we'll find the roles it matches and rank them by fit in seconds.")}
                 </p>
                 <label className="inline-flex">
                   <input

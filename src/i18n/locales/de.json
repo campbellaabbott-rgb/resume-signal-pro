@@ -4015,7 +4015,7 @@
     "orderNewestWoven": "neueste zuerst, über Arbeitgeber verteilt, damit kein Unternehmen die Seite füllt",
     "fitFailedNote": "{{n}} Anzeigen konnten gerade nicht bewertet werden — das ist meist vorübergehend.",
     "fitRetry": "Erneut versuchen",
-    "dropTitleScoped": "Lebenslauf hier ablegen — wir bewerten die Anzeigen auf dieser Seite in Sekunden dagegen.",
+    "dropTitleScoped": "Lebenslauf hier ablegen — wir finden passende Stellen und sortieren sie in Sekunden nach Passung.",
     "agentPitchCounted": "Der Bewerbungs-Agent kann {{n}} davon für dich ausfüllen und absenden — er liest deinen Lebenslauf, schreibt jede Bewerbung einzeln und beantwortet die Fragen des Arbeitgebers.",
     "agentPitchCta": "So funktioniert es — 7 Tage kostenlos, danach 99 $/Monat",
     "agentPitchScopeLive": "Er bewirbt sich über {{n}} Bewerbungssysteme — etwa {{pct}} % des Boards — und nie auf Seiten, die Bewerbungen hinter einem CAPTCHA verbergen. Überall sonst bereitet er die Bewerbung vor und Sie senden sie ab.",

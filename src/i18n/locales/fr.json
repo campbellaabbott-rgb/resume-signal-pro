@@ -4015,7 +4015,7 @@
     "orderNewestWoven": "les plus récentes d'abord, réparties entre employeurs pour qu'une entreprise ne remplisse pas la page",
     "fitFailedNote": "{{n}} offres n'ont pas pu être évaluées à l'instant — c'est généralement temporaire.",
     "fitRetry": "Réessayer",
-    "dropTitleScoped": "Déposez votre CV ici — nous évaluerons les offres de cette page en quelques secondes.",
+    "dropTitleScoped": "Déposez votre CV ici — nous trouverons les postes correspondants et les classerons par adéquation en quelques secondes.",
     "agentPitchCounted": "L'agent peut remplir et envoyer {{n}} de ces candidatures pour vous : il lit votre CV, rédige chaque candidature séparément et répond aux questions de présélection de l'employeur.",
     "agentPitchCta": "Voir comment ça marche — 7 jours gratuits, puis 99 $/mois",
     "agentPitchScopeLive": "Il postule sur {{n}} systèmes de recrutement — environ {{pct}} % du tableau — et jamais sur des sites qui protègent les candidatures derrière un CAPTCHA. Partout ailleurs, il prépare la candidature et vous l'envoyez.",
