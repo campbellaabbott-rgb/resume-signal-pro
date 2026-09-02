@@ -110,7 +110,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-30.25"; // .25: the shed signal is written on the AWAITED path — slice_stats fed shedSignal but was deferred inside waitUntil, so a completed slice could fail to record it; measured live frozen at 11:47:35Z for 2h+ while the fleet sat floored at L1 (cold slice 48, bootstrap 10, concurrency 5) with no way to lift itself and freshness p50 at 1312min against a 480 bound. Bounded by a 5s race so the rotation can never wedge on its own bookkeeping; a DYING slice still records nothing and still sheds.
+const BUILD_VERSION = "2026-08-30.26"; // .26: liveness and timing SPLIT. The fetch phase now stamps its own pulse (stampSliceWork) the moment the last board is in, before the cursor write, the pass-end facets and the maintenance kicks; recordSliceStats keeps the whole-slice EMA at the terminal return. .25 awaited that write and was not enough — measured post-deploy, slices stayed frozen at 2089 while the cold cursor advanced, i.e. slices die in the TAIL. A stale row was shedding FETCH capacity (cold 80->48, conc 8->5) to treat a tail failure, so L1 held 2.5h without recovering. Dying mid-fetch still touches neither writer and still sheds; works-minus-slices is now the tail-death rate.
 // .23: bug-sweep round — the agency opt-out reaches the rescue tiers (it was bound in search_jobs only, so a rescue served the rows the caller hid, undisclosed); the per-company cap stops swallowing the employer it just surfaced; a withdrawn count no longer prints "not hiring"; the reverted pipe fix is restored
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
@@ -1580,6 +1580,75 @@ function chainNextSlice(hop: number, client?: SupabaseClient) {
 // — the `slices` counter undercounts by one and the OTHER phase's EMA reverts
 // by one sample (self-correcting). Instrumentation-grade data; the wrapMin
 // stamp remains the load-bearing freshness measurement.
+const SLICE_STATS_WRITE_MS = 5_000;
+
+/**
+ * LIVENESS AND TIMING ARE TWO FACTS, AND ONE ROW WAS ANSWERING FOR BOTH.
+ *
+ * `shedSignal` asks the slice_stats row two different questions: "is the
+ * rotation alive" (row age) and "what does a slice cost" (the EMA). Only
+ * recordSliceStats wrote it, and that runs at the TERMINAL return — after
+ * chainNextSlice, after maybeKickMaintenance, after the pass-end facets and
+ * dormancy work. So a slice that fetched every board it was given, upserted
+ * every posting, and then died in the tail answered "no" to BOTH questions.
+ *
+ * MEASURED 2026-09-02 across a 37-minute window on .24, then again on .25:
+ * 12 slices STARTED (cold cursor +576, exactly 12 x the L1 take of 48) and
+ * ZERO recorded. Yet the fetching plainly worked — a 41.2h full cold cycle
+ * predicts a ~20h median and the measured p50 was 22.6h. The work was landing;
+ * only the report of it was lost.
+ *
+ * The consequence was a throttle aimed at the wrong half. A stale row floors
+ * the fleet at L1, which cuts FETCH capacity (cold slice 80 -> 48, concurrency
+ * 8 -> 5) in response to a TAIL that is dying — and cutting the fetch cannot
+ * repair the tail, which is why L1 held for over two hours without recovering
+ * while freshness climbed at 1.18x wall clock.
+ *
+ * THIS IS THE FIX THE BOARD-VERIFICATION STAMPS ALREADY GOT. That stamp moved
+ * to per-board and immediate for this exact reason — "heavy hot hops can die
+ * post-processing (WORKER_RESOURCE_LIMIT) before hop-end code runs", the
+ * 397-stale-boards incident. The slice's own pulse was still at hop end.
+ *
+ * So the fetch phase stamps its own completion here, the moment the last board
+ * is in, and the EMA stays at the terminal return where it still measures the
+ * whole slice INCLUDING the tail — the property its own guard pins. Both
+ * writers touch one row, so `updated_at` now means "a slice finished
+ * FETCHING", which is the honest liveness question. Total distress — dying
+ * mid-fetch — still touches nothing, still goes stale, still sheds.
+ *
+ * `works` counts fetch phases and `slices` counts whole slices, so the GAP
+ * between them is the tail-death rate: a number that was previously
+ * unobservable and is the thing actually worth alarming on.
+ */
+async function stampSliceWork(client: SupabaseClient, inHotPhase: boolean, sliceWallStart: number): Promise<void> {
+  const workMs = Date.now() - sliceWallStart;
+  const phase = inHotPhase ? "hot" : "cold";
+  const write = (async () => {
+    const { data: prev } = await client.from("job_board_meta").select("v").eq("k", "slice_stats").maybeSingle();
+    const pv = (prev?.v ?? {}) as { works?: number; workHotEmaMs?: number; workColdEmaMs?: number };
+    // A SEPARATE EMA, because it measures a different span. The hot/cold EMAs
+    // are whole-slice and their thresholds were calibrated against that; fetch
+    // time is a strict subset and must never be compared to those numbers.
+    // This one is collected now so a future calibration has real data instead
+    // of an estimate — no lever reads it yet.
+    const key = phase === "hot" ? "workHotEmaMs" : "workColdEmaMs";
+    const prevEma = typeof pv[key] === "number" ? pv[key]! : workMs;
+    await client.from("job_board_meta").upsert({
+      k: "slice_stats",
+      v: {
+        ...pv,
+        workAt: new Date().toISOString(),
+        workPhase: phase,
+        workMs,
+        [key]: Math.round(prevEma * 0.8 + workMs * 0.2),
+        works: (Number(pv.works) || 0) + 1,
+      },
+      updated_at: new Date().toISOString(),
+    }, { onConflict: "k" });
+  })().catch(() => { /* a lost pulse is survivable; a wedged rotation is not */ });
+  await Promise.race([write, new Promise<void>((res) => setTimeout(res, SLICE_STATS_WRITE_MS))]);
+}
+
 /**
  * THE SHED SIGNAL WAS WRITTEN ON A PATH THE RUNTIME IS ALLOWED TO DROP.
  *
@@ -1607,8 +1676,6 @@ function chainNextSlice(hop: number, client?: SupabaseClient) {
  * bookkeeping, so a write that cannot finish inside the budget is abandoned
  * exactly as the old catch abandoned it — one slice of EMA, never a hop.
  */
-const SLICE_STATS_WRITE_MS = 5_000;
-
 async function recordSliceStats(client: SupabaseClient, sliceWallStart: number, inHotPhase: boolean): Promise<void> {
   const sliceMs = Date.now() - sliceWallStart;
   const phase = inHotPhase ? "hot" : "cold";
@@ -1732,11 +1799,23 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
       const row = (res as { data?: { v?: unknown; updated_at?: string } }).data ?? null;
       const v = (row?.v ?? null) as { hotEmaMs?: number; coldEmaMs?: number } | null;
       if (v === null) return { kind: "absent" as const };
-      // A FROZEN EMA IS SURVIVOR BIAS. recordSliceStats runs only on COMPLETED
-      // slices, so when every slice dies the row stops moving and its last
-      // healthy number reads L0 at peak distress. A stats row untouched for
-      // 30+ minutes while the cursor is advancing means slices are dying, not
-      // resting — floor the shed at L1 rather than trusting the ghost.
+      // A FROZEN EMA IS SURVIVOR BIAS, and this row has TWO writers because a
+      // slice can fail in two different places. stampSliceWork stamps the
+      // moment the last board is fetched; recordSliceStats stamps the terminal
+      // return, after the tail. So row age answers "has any slice finished
+      // FETCHING recently" — a rotation dying mid-fetch touches neither writer,
+      // goes stale, and is floored at L1 exactly as before.
+      //
+      // What no longer trips it is a slice that fetched everything and then
+      // died in the tail. That was measured for hours on .24/.25 — 12 slices
+      // started, 0 recorded, while the fetching demonstrably worked — and it
+      // shed FETCH capacity (cold 80 -> 48, concurrency 8 -> 5) to treat a tail
+      // failure, which is why L1 held without ever recovering.
+      //
+      // The EMA read below can therefore be OLDER than the row, and that is
+      // deliberate: it is the last measured cost of a whole slice, which is
+      // what these thresholds are calibrated against. The `works` minus
+      // `slices` gap is how far behind it is, and is the tail-death rate.
       const rowAge = row?.updated_at ? Date.now() - new Date(row.updated_at).getTime() : 0;
       if (rowAge > 30 * 60_000) return { kind: "stale" as const };
       const n = Number(inHotPhase ? v.hotEmaMs : v.coldEmaMs);
@@ -2930,6 +3009,12 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
       }
     }),
   );
+
+  // Every board in this slice is now in. Say so BEFORE the tail — the cursor
+  // write, the pass-end facets and the maintenance kicks all sit between here
+  // and the terminal return, and a slice that dies among them has still done
+  // the work the shedder is deciding about.
+  await stampSliceWork(client, inHotPhase, sliceWallStart);
 
   // Advance cursors — SAME rule as the optimistic write above, because it is
   // literally the same function (rotation.ts). This write lands last and wins,

@@ -77,3 +77,60 @@ describe("a control input must not be best-effort", () => {
     expect(FN).toMatch(/: shedSignal\.kind === "stale" \? 1/);
   });
 });
+
+/**
+ * THE SPLIT: LIVENESS IS STAMPED WHERE THE WORK ENDS, TIMING WHERE THE SLICE DOES.
+ *
+ * One row was answering two questions — "is the rotation alive" (row age) and
+ * "what does a slice cost" (the EMA) — and only the terminal writer touched it.
+ * A slice that fetched every board and then died in the tail answered no to
+ * both, so the shedder cut FETCH capacity to treat a TAIL failure. Measured
+ * across 37 min: 12 slices started, 0 recorded, while a 41.2h cold cycle and a
+ * 22.6h median proved the fetching itself was landing.
+ */
+const WORK = (() => {
+  const i = FN.indexOf("async function stampSliceWork");
+  const j = FN.indexOf("\n/**", i + 10);
+  return i >= 0 && j > i ? FN.slice(i, j) : "";
+})();
+
+describe("the fetch phase stamps its own pulse", () => {
+  it("exists, is awaited, and is not deferred", () => {
+    expect(WORK, "stampSliceWork could not be located").not.toBe("");
+    expect(WORK, "the pulse must not ride a path the runtime may drop").not.toMatch(/waitUntil/);
+    const calls = FN.match(/await stampSliceWork\(client, inHotPhase, sliceWallStart\);/g) ?? [];
+    expect(calls.length, "exactly one pulse per slice, at the end of the fetch loop").toBe(1);
+  });
+
+  it("stamps BEFORE the tail — the cursor write, the facets and the maintenance kicks", () => {
+    // The whole point. Anything that moves this below the tail work
+    // reintroduces the defect, because everything between here and the
+    // terminal return is what the slice was dying in.
+    const pulse = FN.indexOf("await stampSliceWork(client, inHotPhase, sliceWallStart);");
+    const cursor = FN.indexOf("const { next: progressAfter, wrapped } = advanceProgress({");
+    const terminal = FN.indexOf("await recordSliceStats(client, sliceWallStart, inHotPhase);");
+    expect(pulse, "pulse not found").toBeGreaterThan(0);
+    expect(pulse, "the pulse must precede the cursor advance").toBeLessThan(cursor);
+    expect(pulse, "the pulse must precede every terminal record").toBeLessThan(terminal);
+  });
+
+  it("never writes the whole-slice EMAs, which measure a different span", () => {
+    // Fetch time is a strict subset of slice time, and the L1/L2 thresholds
+    // were calibrated against the whole slice. Writing fetch cost into those
+    // keys would silently recalibrate the shedder — the "never copy a cap
+    // without matching what it counts" rule, one field over.
+    expect(WORK).not.toMatch(/"hotEmaMs"|"coldEmaMs"/);
+    expect(WORK, "fetch cost is collected under its own key").toMatch(/workHotEmaMs|workColdEmaMs/);
+  });
+
+  it("makes the tail-death rate observable", () => {
+    // `works` counts fetch phases, `slices` counts whole slices. The gap was
+    // previously unobservable, and it is the number actually worth alarming on.
+    expect(WORK).toMatch(/works: \(Number\(pv\.works\) \|\| 0\) \+ 1,/);
+    expect(FN).toMatch(/slices: \(Number\(pv\.slices\) \|\| 0\) \+ 1,/);
+  });
+
+  it("is bounded by the same budget as the terminal write", () => {
+    expect(WORK).toMatch(/Promise\.race\(\[write, new Promise<void>\(\(res\) => setTimeout\(res, SLICE_STATS_WRITE_MS\)\)\]\)/);
+  });
+});

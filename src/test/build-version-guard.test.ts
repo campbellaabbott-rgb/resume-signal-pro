@@ -676,7 +676,30 @@ const PINNED = {
   //    than a fraction of BOOTSTRAP_PER_SLICE, so raising that constant moves
   //    nothing while L1 holds; and the bootstrap drain is optimistic, so a
   //    faster drain under dying slices burns boards without filling them.
-  buildVersion: "2026-08-30.25",
+  //
+  // .26 — liveness and timing are SPLIT across two writers.
+  //  * .25 awaited the terminal write and was measurably not enough: post-
+  //    deploy, slice_stats stayed frozen at 2089 while the cold cursor kept
+  //    advancing 48 at a time. The slices were not losing the write — they
+  //    were dying before reaching it, in the TAIL (cursor write, pass-end
+  //    facets, dormancy prune, maintenance kicks).
+  //  * So the fetch phase stamps its own pulse the moment the last board is
+  //    in (stampSliceWork), and recordSliceStats keeps the whole-slice EMA at
+  //    the terminal return where its own guard requires it to cover tail work.
+  //  * This corrects a mis-aimed throttle: a stale row shed FETCH capacity
+  //    (cold 80 -> 48, concurrency 8 -> 5) in response to a TAIL failure, and
+  //    cutting the fetch cannot repair the tail — which is why L1 held for
+  //    2.5h while freshness climbed at 1.18x wall clock. Measured: 12 slices
+  //    started, 0 recorded, over 37 min, with a 41.2h cold cycle and a 22.6h
+  //    median proving the fetching itself was landing all along.
+  //  * Dying MID-FETCH still touches neither writer, still goes stale, still
+  //    sheds — the survivor-bias protection is intact. `works` minus `slices`
+  //    is the tail-death rate, previously unobservable.
+  //  * Fetch cost is collected under its own key (workHotEmaMs/workColdEmaMs),
+  //    never the whole-slice EMAs, because the L1/L2 thresholds are calibrated
+  //    against the whole slice. No lever reads it yet — it is there so the next
+  //    calibration has data instead of an estimate.
+  buildVersion: "2026-08-30.26",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {
