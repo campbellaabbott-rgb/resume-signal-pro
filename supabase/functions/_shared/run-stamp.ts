@@ -1,21 +1,67 @@
+/**
+ * The apply-agent run stamp: what gets written, and what must NOT be.
+ *
+ * This is four lines of logic that carry the entire weight of one question —
+ * "does the hourly schedule actually fire?" — so it lives somewhere it can be
+ * tested rather than inline in a 470-line edge function.
+ *
+ * THE PROPERTY THAT MATTERS. `lastCronAt` advances ONLY on a genuine cron
+ * firing. A hand invocation records itself in `at`/`trigger` and leaves
+ * `lastCronAt` exactly as it found it.
+ *
+ * That asymmetry is the whole design. apply-agent's cron is wrapped in
+ * `WHERE EXISTS (... vault.decrypted_secrets WHERE name =
+ * 'apply_agent_maintenance_key')`, so with no key it fires NOTHING — silently,
+ * and correctly, because a cron collecting a 403 every hour looks healthy until
+ * somebody reads the logs. The cost is that "armed" and "never armed" leave
+ * identical traces: no packets, no errors, nothing.
+ *
+ * If a manual run could advance `lastCronAt`, the one field that separates
+ * those two states would answer an easier question than the one being asked —
+ * "was this function invoked" rather than "does the schedule work" — and would
+ * report a healthy schedule on the strength of somebody curling it by hand.
+ * That is worse than no field at all, because it would be believed.
+ */
+
 export type RunTrigger = "cron" | "manual";
+
 export type RunStamp = {
   at: string;
   trigger: RunTrigger;
   buildVersion: string;
+  /** Only ever set by a real cron firing. Carried forward otherwise. */
   lastCronAt: string | null;
+  /** Absent on jobs that have no sender — see RunFacts. Never defaulted. */
   senderOnline?: boolean;
   resumesBucket?: string;
+  /**
+   * Whether a wake is configured. Booleans and a shape only — never the URL,
+   * never the token. Optional for the same reason senderOnline is: agent-runner
+   * has no sender to wake.
+   */
   wakeConfig?: { url: boolean; token: boolean; body: string };
   mandates: number;
   prepared: number;
   released: number;
   ms: number;
 };
+
 export type RunFacts = {
   trigger: RunTrigger;
   now: string;
   buildVersion: string;
+  /**
+   * OPTIONAL BECAUSE NOT EVERY STAMPED JOB HAS A SENDER.
+   *
+   * These two describe apply-agent's world: whether a worker is alive to
+   * submit, and whether the résumé bucket exists. agent-runner has neither —
+   * it scores and queues, and never touches the worker or a file.
+   *
+   * Made optional rather than filled with a placeholder. `senderOnline: false`
+   * on a runner stamp would be a fact about a thing that job does not do, and
+   * a reader comparing two stamps would have no way to tell "the sender is
+   * down" from "this job has no sender". A missing field says the second.
+   */
   senderOnline?: boolean;
   wakeConfig?: { url: boolean; token: boolean; body: string };
   resumesBucket?: string;
@@ -24,19 +70,35 @@ export type RunFacts = {
   released: number;
   ms: number;
 };
+
+/** Read a previous stamp's cron timestamp defensively — the row is untyped JSON. */
 export function priorCronAt(prev: unknown): string | null {
   if (!prev || typeof prev !== "object") return null;
   const v = (prev as Record<string, unknown>).lastCronAt;
   return typeof v === "string" && v.length > 0 ? v : null;
 }
+
 export function nextRunStamp(prev: unknown, facts: RunFacts): RunStamp {
   return {
     at: facts.now,
     trigger: facts.trigger,
     buildVersion: facts.buildVersion,
+    // THE ASYMMETRY. Never `facts.now` on a manual run.
     lastCronAt: facts.trigger === "cron" ? facts.now : priorCronAt(prev),
+    // OMITTED, NOT DEFAULTED. `senderOnline: false` on a runner stamp would be
+    // a fact about something that job does not do, and a reader comparing two
+    // stamps could not tell "the sender is down" from "this job has no sender".
     ...(facts.senderOnline === undefined ? {} : { senderOnline: facts.senderOnline }),
     ...(facts.resumesBucket === undefined ? {} : { resumesBucket: facts.resumesBucket }),
+    // SHIPPED BROKEN 2026-08-06, CAUGHT THE SAME DAY. apply-agent passed
+    // `wakeConfig: wakeConfig()` and this constructor silently dropped it: the
+    // field is optional on RunStamp, so tsc had nothing to object to, and the
+    // status endpoint read `null` on every run.
+    //
+    // That null is the exact fault this field exists to remove. "Wake is not
+    // configured" and "the wake field is never written" produced the identical
+    // value, and the first was reported as fact off the back of it. A stamp
+    // that can only be wrong in the reassuring direction is worse than absent.
     ...(facts.wakeConfig === undefined ? {} : { wakeConfig: facts.wakeConfig }),
     mandates: facts.mandates,
     prepared: facts.prepared,
@@ -44,7 +106,14 @@ export function nextRunStamp(prev: unknown, facts: RunFacts): RunStamp {
     ms: facts.ms,
   };
 }
+
+/**
+ * Is the SCHEDULE proven to work? Two hours of slack on an hourly job absorbs
+ * one missed tick without crying wolf, and is still far short of the gap a
+ * genuinely dead cron produces (which is forever).
+ */
 export const SCHEDULE_PROVEN_WITHIN_MIN = 120;
+
 export function scheduleProven(lastCronAt: string | null, now: number = Date.now()): boolean {
   if (!lastCronAt) return false;
   const t = new Date(lastCronAt).getTime();
