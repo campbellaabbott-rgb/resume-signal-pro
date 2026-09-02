@@ -110,7 +110,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-30.24"; // .24: a dropped résumé now RETRIEVES instead of re-sorting the loaded window — it reads the role out of the CV and searches for it (measured: mean fit 1.4-4.5 -> 11.6-17.1 across four careers, and an accountant went from 20/20 rows scoring zero to none); new fit-terms action; the "ranking every opening around you" claim is deleted from all nine locales
+const BUILD_VERSION = "2026-08-30.25"; // .25: the shed signal is written on the AWAITED path — slice_stats fed shedSignal but was deferred inside waitUntil, so a completed slice could fail to record it; measured live frozen at 11:47:35Z for 2h+ while the fleet sat floored at L1 (cold slice 48, bootstrap 10, concurrency 5) with no way to lift itself and freshness p50 at 1312min against a 480 bound. Bounded by a 5s race so the rotation can never wedge on its own bookkeeping; a DYING slice still records nothing and still sheds.
 // .23: bug-sweep round — the agency opt-out reaches the rescue tiers (it was bound in search_jobs only, so a rescue served the rows the caller hid, undisclosed); the per-company cap stops swallowing the employer it just surfaced; a withdrawn count no longer prints "not hiring"; the reverted pipe fix is restored
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
@@ -1580,29 +1580,60 @@ function chainNextSlice(hop: number, client?: SupabaseClient) {
 // — the `slices` counter undercounts by one and the OTHER phase's EMA reverts
 // by one sample (self-correcting). Instrumentation-grade data; the wrapMin
 // stamp remains the load-bearing freshness measurement.
-function recordSliceStats(client: SupabaseClient, sliceWallStart: number, inHotPhase: boolean): void {
-  waitUntil((async () => {
-    try {
-      const sliceMs = Date.now() - sliceWallStart;
-      const phase = inHotPhase ? "hot" : "cold";
-      const { data: prevSs } = await client.from("job_board_meta").select("v").eq("k", "slice_stats").maybeSingle();
-      const pv = (prevSs?.v ?? {}) as { hotEmaMs?: number; coldEmaMs?: number; slices?: number };
-      const key = phase === "hot" ? "hotEmaMs" : "coldEmaMs";
-      const prevEma = typeof pv[key] === "number" ? pv[key]! : sliceMs;
-      await client.from("job_board_meta").upsert({
-        k: "slice_stats",
-        v: {
-          ...pv,
-          at: new Date().toISOString(),
-          lastMs: sliceMs,
-          lastPhase: phase,
-          [key]: Math.round(prevEma * 0.8 + sliceMs * 0.2),
-          slices: (Number(pv.slices) || 0) + 1,
-        },
-        updated_at: new Date().toISOString(),
-      }, { onConflict: "k" });
-    } catch { /* instrumentation is a bonus */ }
-  })());
+/**
+ * THE SHED SIGNAL WAS WRITTEN ON A PATH THE RUNTIME IS ALLOWED TO DROP.
+ *
+ * This row is not instrumentation. `shedSignal` READS it, and a row untouched
+ * for 30 minutes returns `stale`, which floors the entire fleet at L1: cold
+ * slice 80 -> 48, concurrency 8 -> 5, deep 8 -> 4, bootstrap 25 -> 10, hot
+ * 10 -> 5. It is a control input wearing a statistic's clothes — and it was
+ * being written inside waitUntil, i.e. deliberately after the response, where
+ * the isolate can be reclaimed before the write lands.
+ *
+ * MEASURED LIVE 2026-09-02 on .24. The row sat at 11:47:35Z for over two hours
+ * while the fleet ran pinned at L1 the whole time — `drained: 10` and a cold
+ * cursor advancing by exactly 48 are that level's fingerprints — with
+ * freshness p50 at 1312 min against a 480 bound. Every write that DID land in
+ * that window was an early awaited one (the optimistic cursor, the bootstrap
+ * drain); the one deferred write did not. A throttle that cannot be lifted
+ * because the evidence for lifting it is the thing being dropped.
+ *
+ * WHAT IS NOT CHANGED. A slice that dies before reaching these terminal
+ * returns still records nothing, so a genuinely dying rotation still goes
+ * stale and still sheds. That survivor-bias protection was always right; what
+ * was wrong was letting a COMPLETED slice fail to say so.
+ *
+ * The race is bounded, not removed: the rotation must never wedge on its own
+ * bookkeeping, so a write that cannot finish inside the budget is abandoned
+ * exactly as the old catch abandoned it — one slice of EMA, never a hop.
+ */
+const SLICE_STATS_WRITE_MS = 5_000;
+
+async function recordSliceStats(client: SupabaseClient, sliceWallStart: number, inHotPhase: boolean): Promise<void> {
+  const sliceMs = Date.now() - sliceWallStart;
+  const phase = inHotPhase ? "hot" : "cold";
+  // Settled, never rejecting: the timeout below may win the race, and a
+  // rejection landing after that would surface as an unhandled rejection in a
+  // hop that has already returned.
+  const write = (async () => {
+    const { data: prevSs } = await client.from("job_board_meta").select("v").eq("k", "slice_stats").maybeSingle();
+    const pv = (prevSs?.v ?? {}) as { hotEmaMs?: number; coldEmaMs?: number; slices?: number };
+    const key = phase === "hot" ? "hotEmaMs" : "coldEmaMs";
+    const prevEma = typeof pv[key] === "number" ? pv[key]! : sliceMs;
+    await client.from("job_board_meta").upsert({
+      k: "slice_stats",
+      v: {
+        ...pv,
+        at: new Date().toISOString(),
+        lastMs: sliceMs,
+        lastPhase: phase,
+        [key]: Math.round(prevEma * 0.8 + sliceMs * 0.2),
+        slices: (Number(pv.slices) || 0) + 1,
+      },
+      updated_at: new Date().toISOString(),
+    }, { onConflict: "k" });
+  })().catch(() => { /* a lost EMA sample is survivable; a wedged rotation is not */ });
+  await Promise.race([write, new Promise<void>((res) => setTimeout(res, SLICE_STATS_WRITE_MS))]);
 }
 
 async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): Promise<{ ok: boolean; detail: string }> {
@@ -3138,7 +3169,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
         // Cold database AND a failed aggregate: nothing to carry, nothing the
         // maintenance below could safely stand on. The original early return
         // is still right for exactly this corner.
-        recordSliceStats(client, sliceWallStart, inHotPhase);
+        await recordSliceStats(client, sliceWallStart, inHotPhase);
         return { ok: true, detail: `pass complete but facets RPC unavailable (${facetsErr?.message ?? "empty result"}) and no previous facets to carry` };
       }
     }
@@ -3862,7 +3893,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
     }
 
     await maybeKickMaintenance(client);
-    recordSliceStats(client, sliceWallStart, inHotPhase);
+    await recordSliceStats(client, sliceWallStart, inHotPhase);
     return { ok: true, detail: `pass complete — corpus ${f.total} postings from ${companies.length} boards; cold rotation at ${cold}/${COLD_LIST.length}${lastUpsertError ? ` — last upsert error: ${String(lastUpsertError).slice(0, 120)}` : ""}` };
   }
 
@@ -3876,7 +3907,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
   await maybeKickMaintenance(client);
   if (chainHop < CHAIN_CAP) chainNextSlice(chainHop, client);
   const phase = inHotPhase ? `hot ${Math.min(hot, HOT_LIST.length)}/${HOT_LIST.length}` : `cold slice ${coldDone}/${COLD_SLICES_PER_PASS} (rotation ${cold}/${COLD_LIST.length})`;
-  recordSliceStats(client, sliceWallStart, inHotPhase);
+  await recordSliceStats(client, sliceWallStart, inHotPhase);
   // The shed level rides the summary, because a rotation that is deliberately
   // running small must not look like a rotation that is mysteriously slow.
   return { ok: true, detail: `slice done (${sliceTotal} postings, ${failed.length} failed) — ${phase}${shedLevel > 0 ? ` [shedding L${shedLevel}]` : ""}` };

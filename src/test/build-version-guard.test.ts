@@ -655,7 +655,28 @@ const PINNED = {
   //    the CV (new fit-terms action) and searches for it, so the scores rank a
   //    candidate set worth ranking: mean fit 1.4-4.5 -> 11.6-17.1 across four
   //    careers, and an accountant went from 20/20 rows scoring zero to none.
-  buildVersion: "2026-08-30.24",
+  //
+  // .25 — the shed signal is written on the AWAITED path.
+  //  * `slice_stats` is not instrumentation: shedSignal READS it, and a row
+  //    untouched for 30 min returns `stale`, flooring the whole fleet at L1
+  //    (cold slice 80 -> 48, concurrency 8 -> 5, deep 8 -> 4, bootstrap
+  //    25 -> 10, hot 10 -> 5). Its only writer sat inside waitUntil — after
+  //    the response, where the isolate may be reclaimed first — so a completed
+  //    slice could fail to record that it completed, and the throttle could
+  //    never lift itself.
+  //  * Measured live on .24: the row froze at 11:47:35Z for 2h+ while the
+  //    fleet ran at L1 throughout (`drained: 10` and a cold cursor advancing
+  //    by exactly 48 are that level's fingerprints) and freshness p50 hit
+  //    1312 min against a 480 bound. Every write that landed in that window
+  //    was an early awaited one; the deferred one never was.
+  //  * Bounded by a 5s race so the rotation can never wedge on its own
+  //    bookkeeping, and a DYING slice still records nothing and still sheds —
+  //    that survivor-bias protection is deliberately untouched.
+  //  * NOT a lever change. At L1 effBootstrapPerSlice is a hardcoded 10 rather
+  //    than a fraction of BOOTSTRAP_PER_SLICE, so raising that constant moves
+  //    nothing while L1 holds; and the bootstrap drain is optimistic, so a
+  //    faster drain under dying slices burns boards without filling them.
+  buildVersion: "2026-08-30.25",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {
