@@ -83,7 +83,7 @@ Deno.serve(async (req) => {
         method: "POST",
         headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
         body: JSON.stringify({
-          from: "Resume Booster <onboarding@resend.dev>",
+          from: "Resume Booster <reports@resumebooster.work>",
           to: [email],
           subject: "Your Resume Booster data API key",
           html: `<div style="font-family:system-ui,-apple-system,Segoe UI,sans-serif;max-width:560px;line-height:1.5">

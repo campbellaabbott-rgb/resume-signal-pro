@@ -441,7 +441,7 @@ Deno.serve(async (req) => {
     const emoji = info?.emoji || "✨";
 
     const { data, error } = await resend.emails.send({
-      from: "Resume Booster <onboarding@resend.dev>",
+      from: "Resume Booster <reports@resumebooster.work>",
       to: [email],
       subject: `${emoji} Your ${productName} is Ready!`,
       html,

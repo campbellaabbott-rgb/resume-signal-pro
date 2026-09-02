@@ -32,6 +32,7 @@
     "https://esm.sh/@supabase/supabase-js@2.39.3": "832d7714491bd1c8a9008a332b35cb099f24b451ad79e755ecf4d71985fd6610",
     "https://esm.sh/@supabase/supabase-js@2.45.0": "36ae57c3f2dc3f94fd122a846b40a87114d29bb2f47e910cb46bee5575febf2e",
     "https://esm.sh/resend@2.0.0": "b222433340dc6655ed294a343815916b5a5ceeac999f07f627a5614a87cd9fe4",
+    "https://esm.sh/resend@4.0.0": "304b5edd6b05ffb21d29b90b4b3afb4ed6b4ca1df4f7a4c9a177866f429ed88a",
     "https://esm.sh/stripe@18.5.0": "da8bd0bec3e31938500a0f96624f2d8372a1566cd6595d2bfdbbab22d3164e04"
   },
   "workspace": {

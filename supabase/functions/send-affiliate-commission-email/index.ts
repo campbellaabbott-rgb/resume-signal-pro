@@ -71,7 +71,7 @@ serve(async (req) => {
     const formattedSale = (saleAmount / 100).toFixed(2);
 
     const { error: emailError } = await resend.emails.send({
-      from: "ATS Resume Scanner <notifications@resend.dev>",
+      from: "Resume Booster <reports@resumebooster.work>",
       to: [affiliateEmail],
       subject: `🎉 You earned $${formattedCommission} commission!`,
       html: `

@@ -252,7 +252,7 @@ Deno.serve(async (req) => {
     const safeAtsScore = Math.min(100, Math.max(0, Math.round(requestData.analysisData.atsScore?.score || 0)));
     
     const { data, error } = await resend.emails.send({
-      from: "Resume Booster <onboarding@resend.dev>",
+      from: "Resume Booster <reports@resumebooster.work>",
       to: [requestData.email],
       subject: `Your Resume Analysis is Ready! (ATS Score: ${safeAtsScore}/100)`,
       html,

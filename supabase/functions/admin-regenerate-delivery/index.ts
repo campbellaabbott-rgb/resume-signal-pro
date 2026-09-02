@@ -325,7 +325,7 @@ ${jobDescription ? `JOB REQUIREMENTS:\n${jobDescription}` : ''}`;
     const emailHtml = generatePremiumPackageEmail(email, generatedContent);
     
     const { data: emailData, error: emailError } = await resend.emails.send({
-      from: "Resume Booster <onboarding@resend.dev>",
+      from: "Resume Booster <reports@resumebooster.work>",
       to: [email],
       subject: "👑 Your Regenerated Premium Package is Ready! (GPT-5 Enhanced)",
       html: emailHtml,
