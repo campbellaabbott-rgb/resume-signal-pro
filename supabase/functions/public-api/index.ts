@@ -14,6 +14,7 @@
 // what the page promises, to people who cannot see the difference. Both
 // predicates appear in every query below and a guard test pins them.
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { SENDABLE_VENDORS } from "../_shared/apply-automation.ts";
 
 const API_VERSION = "2026-08-26.1";
 const FRESH_WINDOW_DAYS = 30;
@@ -297,6 +298,14 @@ const JOBS_PARAMS = [
   // which filters bound, the fences, the count basis, the paging mode — so an
   // integrator can see WHY a query returned what it did without guessing.
   "explain",
+  // PARITY WITH THE MCP SERVER, 2026-09-02. agent-mcp's search_jobs had
+  // accepted these for months while /v1 rejected them outright, so an AI agent
+  // could filter by city and a developer's own code could not — the same board,
+  // the same capability, two different doors. Every mapping below is copied
+  // from agent-mcp's searchBody rather than re-derived, so the two surfaces
+  // cannot answer the same request differently.
+  "location", "employment_type", "max_years", "has_stated_pay", "pay_basis",
+  "max_age_days", "agent_ready_only", "sort",
   // engine=ranked (paid) routes the query through the site's full ranked engine
   // — relevance ranking, alias/typo rescue, honest disclosures — instead of
   // /v1's default title/company websearch. Opt-in, because it is the heavier
@@ -367,6 +376,18 @@ async function listJobsRanked(url: URL, headers: Record<string, string>) {
     // ignoredFilters, so the honest mapping is literal "true" or nothing —
     // any other value stays out of the body and the fence below refuses it.
     ...(p.get("exclude_agencies") === "true" ? { excludeAgencies: true } : {}),
+    // The eight parity params. This path PROXIES the board, so it inherits the
+    // board's own semantics for each — including location alias expansion
+    // ("bay area" -> San Francisco|Oakland|San Jose) which is why location is
+    // available here and refused on the default engine below.
+    ...(p.get("location") ? { location: p.get("location") } : {}),
+    ...(p.get("employment_type") ? { employmentType: p.get("employment_type") } : {}),
+    ...(Number(p.get("max_years")) >= 0 && p.get("max_years") ? { maxYears: Number(p.get("max_years")) } : {}),
+    ...(p.get("has_stated_pay") === "true" ? { hasStatedPay: true } : {}),
+    ...(p.get("pay_basis") ? { payBasis: p.get("pay_basis") } : {}),
+    ...(Number(p.get("max_age_days")) > 0 ? { maxAgeDays: Number(p.get("max_age_days")) } : {}),
+    ...(p.get("agent_ready_only") === "true" ? { sendableOnly: true } : {}),
+    ...(p.get("sort") === "newest" || p.get("sort") === "salary" ? { sort: p.get("sort") } : {}),
   };
   const exclRaw = p.get("exclude_agencies");
   if (exclRaw !== null && exclRaw !== "true" && exclRaw !== "false") {
@@ -494,6 +515,68 @@ async function listJobs(client: SupabaseClient, url: URL, headers: Record<string
     }
   }
 
+  // ── PARITY PARAMS ON THE DEFAULT ENGINE ─────────────────────────────────
+  //
+  // Six of the eight are a single-column predicate, and each is written to
+  // match the board's own builder EXACTLY — same column, same treatment of the
+  // rows that never stated the thing being filtered on. A filter that answers a
+  // slightly different question under the same name is the defect this whole
+  // file is arranged to avoid, so where the default engine cannot ask the
+  // board's question it refuses rather than approximates.
+  //
+  // TWO ARE REFUSED HERE, and neither is an oversight:
+  //
+  //  * location — the board expands aliases before matching ("bay area" becomes
+  //    San Francisco|Oakland|San Jose, a metro, not a string). That expansion
+  //    lives inside the board. A literal ILIKE here would silently answer a
+  //    NARROWER question under the same parameter name, and the two engines
+  //    would disagree about what location= means — measured once already on the
+  //    board itself, where the same query returned San Jose 10 on one path and
+  //    ZERO on the other.
+  //
+  //  * sort — this engine's cursor IS its ordering: keyset paging seeks on
+  //    (effective_posted DESC, id ASC). Re-sorting the rows without rebuilding
+  //    the cursor from the new key produces pages that skip and repeat, which
+  //    is the exact failure the cursor block below was written to prevent.
+  const strictBool = (name: string): boolean | Response | undefined => {
+    const raw = p.get(name);
+    if (raw === null) return undefined;
+    if (raw === "true") return true;
+    if (raw === "false") return false;
+    return fail(400, "invalid_value", `${name} must be "true" or "false", got "${raw}".`, headers);
+  };
+  if (p.get("location")) {
+    return fail(400, "unsupported_param",
+      "location needs the ranked engine, which expands metro aliases (\"bay area\" -> San Francisco, Oakland, San Jose) before matching. " +
+      "Matching the string literally here would answer a narrower question under the same name. Use engine=ranked, or filter by country.",
+      headers);
+  }
+  if (p.get("sort")) {
+    return fail(400, "unsupported_param",
+      "sort needs the ranked engine. The default engine pages by keyset cursor on (effective_posted, id), and re-sorting without rebuilding " +
+      "that key would return pages that skip and repeat rows. Use engine=ranked, or take the default newest-first order.",
+      headers);
+  }
+  const employmentType = (p.get("employment_type") ?? "").trim().slice(0, 40);
+  const payBasis = (p.get("pay_basis") ?? "").trim();
+  if (payBasis && payBasis !== "hourly" && payBasis !== "salaried") {
+    return fail(400, "invalid_value", `pay_basis must be "hourly" or "salaried", got "${payBasis}".`, headers);
+  }
+  const maxYearsRaw = p.get("max_years");
+  const maxYears = maxYearsRaw === null ? null : Number(maxYearsRaw);
+  if (maxYears !== null && (!Number.isFinite(maxYears) || maxYears < 0)) {
+    return fail(400, "invalid_value", `max_years must be a number of years >= 0, got "${maxYearsRaw}".`, headers);
+  }
+  const maxAgeRaw = p.get("max_age_days");
+  const maxAgeDays = maxAgeRaw === null ? null : Number(maxAgeRaw);
+  if (maxAgeDays !== null && (!Number.isFinite(maxAgeDays) || maxAgeDays <= 0)) {
+    return fail(400, "invalid_value", `max_age_days must be a positive number of days, got "${maxAgeRaw}".`, headers);
+  }
+  const statedPay = strictBool("has_stated_pay");
+  if (statedPay instanceof Response) return statedPay;
+  const agentReady = strictBool("agent_ready_only");
+  if (agentReady instanceof Response) return agentReady;
+
   // effective_posted is selected but NOT published: it is the column the query
   // sorts by, so the cursor has to be built from it, and building one from
   // posted_at instead would produce a key that does not match the ordering —
@@ -539,6 +622,22 @@ async function listJobs(client: SupabaseClient, url: URL, headers: Record<string
     // Opt-in only, and only ever narrowing: agency is NOT NULL DEFAULT false,
     // so this equality sees every row — no unstated population to disclose.
     if (excludeAgencies) qb = qb.eq("agency", false);
+    // Each of these mirrors supabase/functions/job-board/index.ts buildQuery,
+    // including which rows fall OUT. A posting that never stated a pay period,
+    // an employment type or a years requirement cannot be shown to satisfy a
+    // filter about one, so it is excluded rather than guessed at — the same
+    // reading the board publishes coverage for.
+    if (employmentType) qb = qb.eq("employment_type", employmentType);
+    if (statedPay === true) qb = qb.not("salary_min_annual", "is", null);
+    if (payBasis === "hourly") qb = qb.eq("salary_period", "hour");
+    else if (payBasis === "salaried") qb = qb.in("salary_period", ["year", "month"]);
+    // "Does not demand more than n years": NULL <= n is not true, so an
+    // unstated requirement is excluded. 0 IS a stated requirement and passes.
+    if (maxYears !== null) qb = qb.lte("min_years", maxYears);
+    // Company-STATED date only. first_seen is our discovery time and can never
+    // make a posting fresh — the board carries this lesson twice over.
+    if (maxAgeDays !== null) qb = qb.gte("posted_at", new Date(Date.now() - maxAgeDays * 86_400_000).toISOString());
+    if (agentReady === true) qb = qb.in("source", [...SENDABLE_VENDORS]);
     if (Number.isFinite(salaryMin) && salaryMin > 0) {
       // Same semantics the board uses, and the same disclosure obligation: only
       // about a fifth of postings state pay, so this filter is a narrow slice and

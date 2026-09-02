@@ -175,6 +175,51 @@ let firstId = null;
   ok(Number.isFinite(r.body?.remaining?.today), "/v1/usage states what is left");
 }
 
+// ── the 2026-09-02 MCP-parity params ──────────────────────────────────────
+// agent-mcp accepted these for months while /v1 answered 400 to every one, so
+// an AI agent could filter by city and a developer's code could not. Six are
+// served by the default engine; location and sort are deliberately ranked-only
+// and must REFUSE here rather than approximate.
+console.log("\n[/v1] MCP-parity filters");
+{
+  for (const [q, why] of [
+    ["employment_type=full_time", "employment_type accepted"],
+    ["has_stated_pay=true", "has_stated_pay accepted"],
+    ["pay_basis=hourly", "pay_basis accepted"],
+    ["max_years=3", "max_years accepted"],
+    ["max_age_days=7", "max_age_days accepted"],
+    ["agent_ready_only=true", "agent_ready_only accepted"],
+  ]) {
+    const r = await api(`/v1/jobs?${q}&limit=3`);
+    ok(r.status === 200, why, `HTTP ${r.status}${r.status === 400 ? ` ${r.body?.error?.code}` : ""}`);
+  }
+  // Applied, not merely accepted — the board's cardinal rule.
+  const hp = await api("/v1/jobs?has_stated_pay=true&limit=10");
+  const rows = hp.body?.data ?? [];
+  ok(rows.length > 0 && rows.every((x) => x.salary_min_annual !== null),
+    "has_stated_pay is APPLIED", `${rows.length} rows, ${rows.filter((x) => x.salary_min_annual === null).length} unstated`);
+  const hr = await api("/v1/jobs?pay_basis=hourly&limit=10");
+  const hrows = hr.body?.data ?? [];
+  ok(hrows.length === 0 || hrows.every((x) => x.salary_period === "hour"),
+    "pay_basis=hourly is APPLIED", `${hrows.length} rows`);
+  const my = await api("/v1/jobs?max_years=3&limit=10");
+  const myr = my.body?.data ?? [];
+  ok(myr.length === 0 || myr.every((x) => typeof x.min_years === "number" && x.min_years <= 3),
+    "max_years is APPLIED", `${myr.length} rows`);
+  // Refused on purpose, and the refusal must say where the filter DOES work.
+  for (const p_ of ["location=London", "sort=newest"]) {
+    const r = await api(`/v1/jobs?${p_}&limit=1`);
+    ok(r.status === 400 && r.body?.error?.code === "unsupported_param",
+      `${p_.split("=")[0]} refused by the default engine`, r.body?.error?.code ?? `HTTP ${r.status}`);
+    ok(/engine=ranked/.test(r.body?.error?.message ?? ""),
+      `${p_.split("=")[0]} refusal names engine=ranked`);
+  }
+  // Still strict about everything else.
+  const bogus = await api("/v1/jobs?nonsense=1&limit=1");
+  ok(bogus.status === 400 && bogus.body?.error?.code === "unknown_parameter",
+    "unknown params are still rejected", bogus.body?.error?.code ?? `HTTP ${bogus.status}`);
+}
+
 // ── MCP ────────────────────────────────────────────────────────────────────
 console.log("\n[mcp] handshake, catalogue, and the keyed tools");
 {
