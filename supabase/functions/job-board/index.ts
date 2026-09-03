@@ -110,7 +110,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-30.28"; // .28: the bootstrap queue is taken, appended and stamped SERVER-SIDE (bootstrap_queue_take/append/stamp, migration 20260903150000) — the edge no longer loads the whole array every slice, which at 8,453 tokens after a deploy re-append was ~500KB parsed and rewritten per slice and the strongest remaining correlate of slices dying in the fetch loop once .27 had capped the giants; legacy in-process path kept as the fallback when the RPCs are not applied yet (PGRST202). iCIMS now RESUMES via startOffset/nextOffset and is therefore capped at MAX_POSTINGS_PER_VISIT like Workday/Oracle — it held the single largest per-visit fetch (20,800).
+const BUILD_VERSION = "2026-08-30.29"; // .29: two levers for the thing no lever measured. (1) SLICE_POSTING_BUDGET 12,000 — the slice stops STARTING fetches once it has accumulated that many postings; unstarted boards skip this pass (one rotation stale, exactly what a death already cost them) and the slice COMPLETES, so stats record, L0 holds, and budgetHit/budgetFetched/budgetSkipped ride on slice_stats. Deep lane moved LAST in the slice so the budget protects the cursor-bearing rotation. (2) DEEP_PER_SLICE 8 -> 2 (L1 4 -> 1), derived from DEEP_VOLUME_PER_SLICE 4,000 / MAX_POSTINGS_PER_VISIT: every deep board is exactly 2,000 now, and 8 of them was 16,000 postings — 61% of a cold slice — which is why the per-board cap redistributed the volume instead of bounding it. Deep-lane ENTRY is deliberately unchanged: gating capped boards out would drop their nextOffset and turn the cap into a truncation.
 // .23: bug-sweep round — the agency opt-out reaches the rescue tiers (it was bound in search_jobs only, so a rescue served the rows the caller hid, undisclosed); the per-company cap stops swallowing the employer it just surfaced; a withdrawn count no longer prints "not hiring"; the reverted pipe fix is restored
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
@@ -262,6 +262,30 @@ const STRUCTURED_SWEEP_PER_HOP = 24;
 // died mid-slice at HOT=30 (one upsert chunk of carvana landed, then the
 // worker hit the ceiling and the cron retried the same slice forever).
 const HOT_SLICE = 10;
+/**
+ * THE SLICE HAS A BUDGET IN POSTINGS, BECAUSE NOTHING ELSE BOUNDS THE SLICE.
+ *
+ * Every shed lever cuts how MANY boards a slice takes; .27 cut how big one
+ * VISIT can be. Neither bounds the sum. Measured 2026-09-03 at L0 post-cap: ~5
+ * capped giants among the 80 base boards (~10,300 postings) plus the deep lane
+ * (then 16,000) in one invocation — and the invocation died on
+ * WORKER_RESOURCE_LIMIT inside its fetch loop, exactly as it had on one
+ * 20,800-posting board before the cap. A death skips EVERY remaining board in
+ * the slice (the cursor already advanced), records nothing, and floors the
+ * fleet at L1 via the stale-row rule.
+ *
+ * The budget stops STARTING fetches once the slice has accumulated this many
+ * postings. Boards not started skip this pass — one rotation stale, which is
+ * precisely what a death already costs them — but the slice COMPLETES: stats
+ * record, the shed reads a live row, and `budgetHit` becomes the first signal
+ * that measures the thing actually killing slices. The slice order puts the
+ * deep lane LAST so the budget protects the cursor-bearing rotation first;
+ * the deep lane filling slowly is the .21 trade made deliberately this time.
+ *
+ * Counted from r.jobs.length — normalised postings, before the freshness
+ * filter — because that is what was held in memory, not what was stored.
+ */
+const SLICE_POSTING_BUDGET = 12_000;
 const COLD_SLICE = 80; // cold boards are small (that's why they're cold); 80/hop at CONCURRENCY=8 is 10 sequential rounds — well under the edge wall-time limit. Rotation speed comes from concurrency + hops-per-pass, never bigger slices (proven-safe size).
 const BOOTSTRAP_PER_SLICE = 25; // zero-row boards prepended per cold slice after a deploy — +31% slice load, still ~3 rounds under the wall-time margin; a 1,900-board merge drains in ~1.5 passes instead of waiting a full rotation for its FIRST ingest
 // MEASURED DOWN FROM 25 — 25 COST THE ROTATION FOUR TIMES ITS SPEED.
@@ -290,7 +314,27 @@ const BOOTSTRAP_PER_SLICE = 25; // zero-row boards prepended per cold slice afte
 // returning the per-slice cost to roughly a third of what the regression added.
 // RE-MEASURE the cursor rate after any change to this number; it is the only
 // thing that shows the cost.
-const DEEP_PER_SLICE = 8;
+/**
+ * A DEEP BOARD IS EXACTLY 2,000 POSTINGS NOW, SO THE LANE IS SIZED IN POSTINGS.
+ *
+ * Before .27 a deep board was "whatever its page budget allowed", 500 to a few
+ * thousand, and 8 per slice was tuned against that (cut from 25 in .21 after
+ * it cost 4x rotation speed). .27 capped every visit at MAX_POSTINGS_PER_VISIT
+ * and left nextOffset set for every board that hit it — which is CORRECT, the
+ * lane is the only thing that resumes a capped board, gate it out and the cap
+ * becomes a truncation — but it changed what a deep board is: every one now
+ * contributes exactly 2,000. Measured 2026-09-03: the lane went from 3 boards
+ * to 16 in ten hours, selected 8 per slice, and 8 x 2,000 = 16,000 postings was
+ * 61% of a cold slice's giant volume. Slices died inside the fetch loop on the
+ * same WORKER_RESOURCE_LIMIT as before; the per-board cap had redistributed
+ * the volume, not bounded the slice.
+ *
+ * So the count is derived from a VOLUME allowance, and the guard pins the
+ * arithmetic so the constant stays tied to what it counts — the rule .21 was
+ * paid for: never copy a cap without matching what it measures.
+ */
+const DEEP_VOLUME_PER_SLICE = 4_000;
+const DEEP_PER_SLICE = 2; // = floor(DEEP_VOLUME_PER_SLICE / MAX_POSTINGS_PER_VISIT); pinned by test
 // RETRY LANE — deliberately the smallest lane on the slice.
 //
 // A board only gets a verification stamp when its fetch SUCCEEDS, so one failed
@@ -1731,6 +1775,11 @@ async function stampSliceWork(client: SupabaseClient, inHotPhase: boolean, slice
  * bookkeeping, so a write that cannot finish inside the budget is abandoned
  * exactly as the old catch abandoned it — one slice of EMA, never a hop.
  */
+// Set by runRefresh the instant its fetch loop closes; read by the recorder
+// below in the same invocation. Module state rather than a parameter because a
+// guard counts the recorder's exact call literal at its three terminal returns.
+let sliceBudgetNote: { fetched: number; skipped: number; hit: boolean } | null = null;
+
 async function recordSliceStats(client: SupabaseClient, sliceWallStart: number, inHotPhase: boolean): Promise<void> {
   const sliceMs = Date.now() - sliceWallStart;
   const phase = inHotPhase ? "hot" : "cold";
@@ -1751,6 +1800,8 @@ async function recordSliceStats(client: SupabaseClient, sliceWallStart: number, 
         lastPhase: phase,
         [key]: Math.round(prevEma * 0.8 + sliceMs * 0.2),
         slices: (Number(pv.slices) || 0) + 1,
+        // The budget outcome rides on the row status already exposes.
+        ...(sliceBudgetNote ? { budgetFetched: sliceBudgetNote.fetched, budgetSkipped: sliceBudgetNote.skipped, budgetHit: sliceBudgetNote.hit } : {}),
       },
       updated_at: new Date().toISOString(),
     }, { onConflict: "k" });
@@ -1916,7 +1967,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
   const effConcurrency = shedLevel === 2 ? 3 : shedLevel === 1 ? 5 : CONCURRENCY;
   // The deep lane is the most expensive work a hop does and the least urgent —
   // it re-pages boards we already carry. It is the first thing to go.
-  const effDeepPerSlice = shedLevel === 2 ? 0 : shedLevel === 1 ? 4 : DEEP_PER_SLICE;
+  const effDeepPerSlice = shedLevel === 2 ? 0 : shedLevel === 1 ? 1 : DEEP_PER_SLICE;
   // THE HOT PHASE GETS A LEVER TOO. The signal reads hotEmaMs when inHotPhase,
   // but every knob above is cold-only — so the exact phase whose EMA trips the
   // shedder ran at full size regardless (measured live during the post-pause
@@ -2289,7 +2340,10 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
       };
     } catch { /* accelerator only — the rotation still reaches every board if this throws */ }
   }
-  const slice = [...demandBoards, ...bootstrapBoards, ...deepBoards, ...retryBoards, ...baseSlice];
+  // Deep lane LAST: under SLICE_POSTING_BUDGET the tail of this list is what
+  // gets skipped, and the rotation's freshness claim outranks the lane's fill
+  // rate — see SLICE_POSTING_BUDGET.
+  const slice = [...demandBoards, ...bootstrapBoards, ...retryBoards, ...baseSlice, ...deepBoards];
   const startIso = new Date().toISOString();
   const freshCutoffMs = Date.now() - FRESH_WINDOW_DAYS * 86_400_000; // roles older than this are dropped
 
@@ -2359,6 +2413,8 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
   const okTokens: string[] = [];
   const failed: string[] = [];
   let sliceTotal = 0;
+  let fetchedInSlice = 0;
+  const budgetSkipped: string[] = [];
   let lastUpsertError: string | null = null;
 
   await Promise.all(
@@ -2369,6 +2425,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
         // Dormant, not due for recheck: skip the dead fetch (no postings to gain,
         // ~20s of FETCH_TIMEOUT to lose). Not counted as attempted below.
         if (skipTokens.has(s.token)) continue;
+        if (fetchedInSlice >= SLICE_POSTING_BUDGET) { budgetSkipped.push(s.token); continue; }
         let failReason = "";
         // ROTATION PARKED AT ZERO — 2026-08-25, after one deploy.
         //
@@ -2391,6 +2448,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
         // deepCursor summary on the status action — so the next attempt can be
         // told apart from this one by a number instead of an inference.
         const r = await fetchBoard(s, (m) => { failReason = m; }, deepCursors[s.token] ?? 0);
+        if (r) fetchedInSlice += r.jobs.length;
         if (!r) {
           failed.push(`${s.name} (vendor${failReason ? `: ${failReason}` : ""})`);
           continue;
@@ -3145,6 +3203,8 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
   // write, the pass-end facets and the maintenance kicks all sit between here
   // and the terminal return, and a slice that dies among them has still done
   // the work the shedder is deciding about.
+  sliceBudgetNote = { fetched: fetchedInSlice, skipped: budgetSkipped.length, hit: budgetSkipped.length > 0 };
+  if (budgetSkipped.length) console.warn(`[JOB-BOARD] slice budget hit: ${fetchedInSlice} postings fetched, ${budgetSkipped.length} board(s) deferred to next pass`);
   await stampSliceWork(client, inHotPhase, sliceWallStart);
 
   // Advance cursors — SAME rule as the optimistic write above, because it is
@@ -4126,7 +4186,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
   await recordSliceStats(client, sliceWallStart, inHotPhase);
   // The shed level rides the summary, because a rotation that is deliberately
   // running small must not look like a rotation that is mysteriously slow.
-  return { ok: true, detail: `slice done (${sliceTotal} postings, ${failed.length} failed) — ${phase}${shedLevel > 0 ? ` [shedding L${shedLevel}]` : ""}` };
+  return { ok: true, detail: `slice done (${sliceTotal} postings, ${failed.length} failed) — ${phase}${shedLevel > 0 ? ` [shedding L${shedLevel}]` : ""}${budgetSkipped.length ? ` [budget: ${fetchedInSlice} fetched, ${budgetSkipped.length} deferred]` : ""}` };
 }
 
 // ── maintenance kicks ──────────────────────────────────────────────────────

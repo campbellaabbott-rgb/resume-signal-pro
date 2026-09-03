@@ -752,7 +752,30 @@ const PINNED = {
   //    MAX_POSTINGS_PER_VISIT like Workday and Oracle. It held the single
   //    largest per-visit fetch on the board — 20,800 postings — and was the one
   //    giant .27 could not touch.
-  buildVersion: "2026-08-30.28",
+  //
+  // .29 — two levers for the thing no lever measured.
+  //  * SLICE_POSTING_BUDGET 12,000: the slice stops STARTING fetches once it
+  //    has accumulated that many postings. Unstarted boards skip this pass —
+  //    one rotation stale, exactly what a death already cost them — and the
+  //    slice COMPLETES: stats record, L0 holds, and budgetHit/budgetFetched/
+  //    budgetSkipped ride on slice_stats. Every shed lever cut how MANY boards
+  //    a slice took and .27 cut how big one VISIT could be; nothing bounded the
+  //    sum, and the sum is what died (~10,300 from base giants + 16,000 from the
+  //    deep lane in one invocation, measured 2026-09-03).
+  //  * The deep lane moves LAST in the slice so the budget protects the
+  //    cursor-bearing rotation before the lane's fill rate — the .21 trade,
+  //    made deliberately this time.
+  //  * DEEP_PER_SLICE 8 -> 2 (L1 4 -> 1), DERIVED from DEEP_VOLUME_PER_SLICE
+  //    4,000 / MAX_POSTINGS_PER_VISIT and pinned as arithmetic: every deep
+  //    board is exactly 2,000 postings now, so 8 of them was 16,000 — 61% of a
+  //    cold slice — which is why the per-board cap redistributed the volume
+  //    instead of bounding it.
+  //  * Deep-lane ENTRY is deliberately unchanged. Gating capped boards out
+  //    would drop their nextOffset and turn .27's cap into a truncation; the
+  //    lane is the only thing that resumes them.
+  //  * .28's queue RPCs stay: correct engineering, refuted as the killer
+  //    (slices died with the RPC path provably live).
+  buildVersion: "2026-08-30.29",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {

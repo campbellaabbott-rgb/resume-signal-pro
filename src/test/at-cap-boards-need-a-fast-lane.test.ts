@@ -39,17 +39,25 @@ const CODE = FN.replace(/\/\*[\s\S]*?\*\//g, "")
   .split("\n").map((l) => (/^\s*\/\//.test(l) ? "" : l)).join("\n");
 
 describe("at-cap boards need a fast lane", () => {
-  it("the lane is a fourth source in the slice, ahead of the base rotation", () => {
+  it("the lane is a fourth source in the slice, BEHIND the base rotation", () => {
     // Composition, not a literal list: lanes have been added since (retry), and
     // a guard that pins the exact spelling fails on an addition it has no
-    // opinion about. What must hold is that deepBoards is IN the slice and
-    // PREPENDED — ahead of baseSlice, so the cold cursor still advances by
-    // baseSlice.length alone.
+    // opinion about. What must hold is that deepBoards is IN the slice.
+    //
+    // .19 pinned it PREPENDED "so the cold cursor still advances by
+    // baseSlice.length alone" — but position never carried that: the cursor
+    // rule takes baseSliceLen explicitly (pinned below). Position became
+    // load-bearing in .29, when SLICE_POSTING_BUDGET started deferring the
+    // TAIL of the slice: a deferred deep board is revisited by the lane next
+    // slice, a deferred base board waits a whole rotation (~8h at L0). That
+    // asymmetry is why deep goes LAST, and this guard now holds it there.
     const sliceLine = /const slice = \[([^\]]+)\];/.exec(CODE)?.[1] ?? "";
     expect(sliceLine, "the slice is never assembled").not.toBe("");
     expect(sliceLine, "deepBoards is not in the slice at all").toContain("...deepBoards");
-    expect(sliceLine.indexOf("...deepBoards"), "deepBoards is not prepended ahead of the base rotation")
-      .toBeLessThan(sliceLine.indexOf("...baseSlice"));
+    expect(sliceLine.indexOf("...deepBoards"), "deepBoards must come AFTER the base rotation — under the posting budget the tail is what gets deferred, and base carries the freshness claim")
+      .toBeGreaterThan(sliceLine.indexOf("...baseSlice"));
+    // The property .19 actually wanted, pinned where it actually lives.
+    expect(CODE, "the cursor must advance by the base take alone, whatever else rides in the slice").toMatch(/baseSliceLen: baseSlice\.length,/);
   });
 
   it("the cursor map is read BEFORE the slice is sealed", () => {
@@ -71,7 +79,16 @@ describe("at-cap boards need a fast lane", () => {
     expect(CODE, "the lane takes the whole map instead of a capped page")
       .toMatch(/\.slice\(0, effDeepPerSlice\)/);
     expect(CODE, "the shed ceiling must derive from the named constant")
-      .toMatch(/const effDeepPerSlice = shedLevel === 2 \? 0 : shedLevel === 1 \? 4 : DEEP_PER_SLICE;/);
+      // .29: L1 take is 1, not 4. A deep board is exactly MAX_POSTINGS_PER_VISIT
+      // now, so the lane is sized in postings and the shed halves its VOLUME.
+      .toMatch(/const effDeepPerSlice = shedLevel === 2 \? 0 : shedLevel === 1 \? 1 : DEEP_PER_SLICE;/);
+    // THE CONSTANT STAYS TIED TO WHAT IT COUNTS. DEEP_PER_SLICE is derived from
+    // a volume allowance over the per-visit cap; if either moves without the
+    // other, the lane is silently re-sized in postings — the .21 failure.
+    const num = (name: string) => Number(new RegExp(`const ${name} = ([\\d_]+);`).exec(CODE)?.[1]?.replace(/_/g, ""));
+    const deepTake = num("DEEP_PER_SLICE"), deepVolume = num("DEEP_VOLUME_PER_SLICE"), visitCap = num("MAX_POSTINGS_PER_VISIT");
+    expect([deepTake, deepVolume, visitCap].every(Number.isFinite), "one of the three constants is unparsed").toBe(true);
+    expect(deepTake, "DEEP_PER_SLICE must be floor(DEEP_VOLUME_PER_SLICE / MAX_POSTINGS_PER_VISIT)").toBe(Math.max(1, Math.floor(deepVolume / visitCap)));
     const cap = Number(/const DEEP_PER_SLICE = (\d+);/.exec(CODE)?.[1]);
     // 160 at-cap boards x 500 postings is real work. The bootstrap lane's 25
     // is the largest per-slice prepend this function has actually survived.
