@@ -110,7 +110,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-30.31"; // .31 (supersedes the undeployed .30, which it includes): fit-batch is bounded — 20 ids per call (was 60; measured live, 60 failed 2 of 4 with WORKER_RESOURCE_LIMIT, 20 succeeded 2 of 2) and each description is cut to 20,000 chars before the dictionary walk. The scorer shares the job-board worker pool with the ingest; a reader who dropped a CV and got "60 postings could not be scored just now" was hitting exactly the limit that killed slices. Plus .30: fit-terms no longer turns a founder's résumé into q=go-to-market.
+const BUILD_VERSION = "2026-08-30.32"; // .32: the slice budget counts IN-FLIGHT volume. It compared only what had landed, so with concurrency 8 and a 2,000-per-visit cap up to 16,000 more postings could be held past the check; the chain died 3x in an hour on WORKER_RESOURCE_LIMIT with budgetHit=false each time, the last completed slice at 10,402. Each started board now reserves MAX_POSTINGS_PER_VISIT until it returns. Includes .31.
 // .23: bug-sweep round — the agency opt-out reaches the rescue tiers (it was bound in search_jobs only, so a rescue served the rows the caller hid, undisclosed); the per-company cap stops swallowing the employer it just surfaced; a withdrawn count no longer prints "not hiring"; the reverted pipe fix is restored
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
@@ -2417,6 +2417,14 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
   const failed: string[] = [];
   let sliceTotal = 0;
   let fetchedInSlice = 0;
+  // IN FLIGHT COUNTS. The budget used to compare only what had LANDED, so with
+  // concurrency 8 and a 2,000-per-visit cap, up to 16,000 more postings could
+  // already be held past the check — and a slice that read 10,402 landed and
+  // "under budget" was, in memory, anything up to 26,000. Measured 2026-09-03:
+  // the chain died three times in an hour on WORKER_RESOURCE_LIMIT with
+  // budgetHit=false every time, the last completed slice at 10,402. Each
+  // started board reserves its worst case until it returns.
+  let inFlightBoards = 0;
   const budgetSkipped: string[] = [];
   let lastUpsertError: string | null = null;
 
@@ -2428,7 +2436,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
         // Dormant, not due for recheck: skip the dead fetch (no postings to gain,
         // ~20s of FETCH_TIMEOUT to lose). Not counted as attempted below.
         if (skipTokens.has(s.token)) continue;
-        if (fetchedInSlice >= SLICE_POSTING_BUDGET) { budgetSkipped.push(s.token); continue; }
+        if (fetchedInSlice + inFlightBoards * MAX_POSTINGS_PER_VISIT >= SLICE_POSTING_BUDGET) { budgetSkipped.push(s.token); continue; }
         let failReason = "";
         // ROTATION PARKED AT ZERO — 2026-08-25, after one deploy.
         //
@@ -2450,7 +2458,10 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
         // fetch behaviour. Re-arming needs the cursor readable first — a
         // deepCursor summary on the status action — so the next attempt can be
         // told apart from this one by a number instead of an inference.
-        const r = await fetchBoard(s, (m) => { failReason = m; }, deepCursors[s.token] ?? 0);
+        inFlightBoards++;
+        let r: Awaited<ReturnType<typeof fetchBoard>>;
+        try { r = await fetchBoard(s, (m) => { failReason = m; }, deepCursors[s.token] ?? 0); }
+        finally { inFlightBoards--; }
         if (r) fetchedInSlice += r.jobs.length;
         if (!r) {
           failed.push(`${s.name} (vendor${failReason ? `: ${failReason}` : ""})`);

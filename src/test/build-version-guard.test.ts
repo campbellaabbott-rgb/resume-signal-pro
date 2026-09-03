@@ -806,7 +806,17 @@ const PINNED = {
   //    effect scored the default page's sixty description-less rows (sixty
   //    nulls) before the real query loaded — a wasted call against a
   //    function that dies under load.
-  buildVersion: "2026-08-30.31",
+  //
+  // .32 — the slice budget counts IN-FLIGHT volume.
+  //  * The .29 budget compared only what had LANDED. With concurrency 8 and a
+  //    2,000-per-visit cap, up to 16,000 more postings could already be held
+  //    past the check. Measured 2026-09-03: three chain deaths in one hour on
+  //    WORKER_RESOURCE_LIMIT, budgetHit=false every time, the last completed
+  //    slice at 10,402 — "under budget" on paper, up to 26,000 in memory.
+  //  * Each started board now reserves MAX_POSTINGS_PER_VISIT until it
+  //    returns (released in a finally). The constant did not change; what it
+  //    counts did — the rule from .21, applied to the lever that replaced it.
+  buildVersion: "2026-08-30.32",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {
