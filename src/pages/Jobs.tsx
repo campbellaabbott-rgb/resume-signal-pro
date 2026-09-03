@@ -899,6 +899,16 @@ export default function Jobs() {
   // every page view is the request-amplification shape that took the board
   // down on 2026-08-17. This runs once per filter change, after the list has
   // already painted, and the page is fully usable whether or not it arrives.
+  // A CAP IS NOT A COUNT — in the rail either. The board's counters stop at
+  // COUNT_CAP and the list header already says "10,000+"; but the per-field
+  // counts beside the chips and inside the "All fields" dropdown printed the
+  // same capped value bare. Measured live 2026-09-03 23:30Z with one filter
+  // active: "Operations & Logistics 10,000" beside an unfiltered 161,294. The
+  // capped counter returns exactly the cap, so equality is the honest test
+  // (>= would relabel real unfiltered totals); a guard keeps this mirror equal
+  // to the server's constant.
+  const BOARD_COUNT_CAP = 10_000;
+  const fmtFacet = (n: number) => (n === BOARD_COUNT_CAP ? `${n.toLocaleString()}+` : n.toLocaleString());
   const [filteredCats, setFilteredCats] = useState<Record<string, number> | null>(null);
   const catFacetSeq = useRef(0);
 
@@ -4785,6 +4795,7 @@ export default function Jobs() {
                 value: c,
                 label: t(`jobsPage.categories.${c}`, c),
                 count: filteredCats?.[c] ?? data?.categories?.[c],
+                capped: (filteredCats?.[c] ?? data?.categories?.[c]) === BOARD_COUNT_CAP,
               }))}
               allLabel={t("jobsPage.allFields", "All fields")}
               ariaLabel={t("jobsPage.allFields", "All fields")}
@@ -5337,7 +5348,7 @@ export default function Jobs() {
                     >
                       <span aria-hidden="true" className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: accentFor(c) }} />
                       {t(`jobsPage.categories.${c}`, c)}
-                      <span className="opacity-70">{(data?.categories?.[c] ?? 0).toLocaleString()}</span>
+                      <span className="opacity-70">{fmtFacet(data?.categories?.[c] ?? 0)}</span>
                     </button>
                   ))}
               </div>
@@ -5592,7 +5603,7 @@ export default function Jobs() {
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-border bg-background text-sm text-foreground hover:border-primary/50 transition-colors"
                     >
                       {t(`jobsPage.categories.${c}`, c)}
-                      <span className="text-[11px] text-muted-foreground">{(n as number).toLocaleString()}</span>
+                      <span className="text-[11px] text-muted-foreground">{fmtFacet(n as number)}</span>
                     </button>
                   ))}
               </div>

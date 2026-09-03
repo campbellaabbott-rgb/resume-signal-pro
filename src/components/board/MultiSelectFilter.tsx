@@ -21,7 +21,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
  * where the visitor can see it rather than silently on the server: options past
  * the limit disable and say why, instead of being accepted and dropped.
  */
-export type MultiOption = { value: string; label: string; count?: number };
+export type MultiOption = { value: string; label: string; count?: number; capped?: boolean };
 
 export function MultiSelectFilter({
   value,
@@ -117,7 +117,7 @@ export function MultiSelectFilter({
                 </span>
                 <span className="min-w-0 flex-1 truncate">{o.label}</span>
                 {typeof o.count === "number" && o.count > 0 && (
-                  <span className="text-xs text-muted-foreground">{o.count.toLocaleString()}</span>
+                  <span className="text-xs text-muted-foreground">{o.count.toLocaleString()}{o.capped ? "+" : ""}</span>
                 )}
               </button>
             );
