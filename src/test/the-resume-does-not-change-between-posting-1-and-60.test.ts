@@ -43,8 +43,14 @@ describe("one résumé scan serves the whole batch", () => {
     expect(at, "fit-batch action is gone").toBeGreaterThan(-1);
     const block = BOARD.slice(at, at + 2200);
     expect(block, "the batch no longer hoists the résumé scan").toMatch(/const resumeScan = scanResume\(resumeText\);/);
+    // .31 bounds the POSTING side (r.description.slice(0, FIT_DESC_CHARS));
+    // the property here is about the RÉSUMÉ side — the scan is hoisted and
+    // handed in, never the raw text — so the pin tolerates the bound and
+    // asserts the actual regression directly.
     expect(block, "computeFit is back to rescanning the résumé per posting")
-      .toMatch(/computeFit\(r\.description, resumeScan, 40\)/);
+      .toMatch(/computeFit\(r\.description(?:\.slice\(0, FIT_DESC_CHARS\))?, resumeScan, 40\)/);
+    expect(block, "the raw résumé text must never be handed to computeFit inside the loop")
+      .not.toMatch(/computeFit\([^)]*,\s*resumeText\b/);
     // The scan must sit before the loop, or it is just a rename.
     expect(block.indexOf("scanResume("), "the scan happens inside the loop")
       .toBeLessThan(block.indexOf("for (const r of"));

@@ -110,7 +110,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-30.30"; // .30: fit-terms no longer turns a founder's résumé into q=go-to-market. The sales titles list carried "gtm"/"go-to-market" as occupations (they are activities; the phrase also sits in product_management.primary as a skill), uncapped repetition let three bullets outscore one headline, and the scanner knew no executive titles, so a Founder & CEO or Chief of Staff resolved to the stray skill and the board searched a strategy phrase. Now: NOT_AN_OCCUPATION deny-set at the vocab builder, GENERAL_TITLES supplement (founder, ceo, chief of staff...), repetition capped at two mentions, and the headline outranks the body outright. Reported by a user 2026-09-03; the drop itself was verified healthy in a real browser — the query it built was the bug.
+const BUILD_VERSION = "2026-08-30.31"; // .31 (supersedes the undeployed .30, which it includes): fit-batch is bounded — 20 ids per call (was 60; measured live, 60 failed 2 of 4 with WORKER_RESOURCE_LIMIT, 20 succeeded 2 of 2) and each description is cut to 20,000 chars before the dictionary walk. The scorer shares the job-board worker pool with the ingest; a reader who dropped a CV and got "60 postings could not be scored just now" was hitting exactly the limit that killed slices. Plus .30: fit-terms no longer turns a founder's résumé into q=go-to-market.
 // .23: bug-sweep round — the agency opt-out reaches the rescue tiers (it was bound in search_jobs only, so a rescue served the rows the caller hid, undisclosed); the per-company cap stops swallowing the employer it just surfaced; a withdrawn count no longer prints "not hiring"; the reverted pipe fix is restored
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
@@ -779,6 +779,9 @@ async function fetchAdp(s: JobSource): Promise<{ items: unknown[]; raw: unknown;
  * bounded, and iCIMS is the one that most needs it.
  */
 const MAX_POSTINGS_PER_VISIT = 2_000;
+/** fit-batch bounds — see the action. 20 ids survives the shared worker pool; 60 did not. */
+const FIT_BATCH_MAX = 20;
+const FIT_DESC_CHARS = 20_000;
 
 const WORKDAY_PAGE_CAP = 25; // 25 × 20 = up to 500 postings/board/pass
 // Oracle CE REST accepts a larger page than Workday; 20 × 100 = up to 2000
@@ -7879,7 +7882,12 @@ Deno.serve(async (req) => {
 
     if (action === "fit-batch") {
       const resumeText = typeof body.resumeText === "string" ? body.resumeText.slice(0, 50000) : "";
-      const ids = Array.isArray(body.ids) ? body.ids.filter((x): x is string => typeof x === "string").slice(0, 60) : [];
+      // TWENTY PER CALL. This action runs inside the same function as the
+      // ingest and shares its worker pool; at 60 ids it failed 2 of 4 live
+      // calls with WORKER_RESOURCE_LIMIT while 20 succeeded 2 of 2. The client
+      // sends 20 since the same day; the cap here keeps an older bundle from
+      // asking for a batch that dies.
+      const ids = Array.isArray(body.ids) ? body.ids.filter((x): x is string => typeof x === "string").slice(0, FIT_BATCH_MAX) : [];
       if (resumeText.trim().length < 100 || ids.length === 0) {
         return json({ error: "resumeText (100+ chars) and ids are required" }, 400);
       }
@@ -7910,7 +7918,10 @@ Deno.serve(async (req) => {
       const resumeScan = scanResume(resumeText);
       for (const r of rows ?? []) {
         if (r.description && r.description.length > 150) {
-          const f = computeFit(r.description, resumeScan, 40);
+          // Bounded input: computeFit walks the whole dictionary against the
+          // text, and a 60KB HTML-laden description costs proportionally.
+          // Everything the scorer needs is in the first FIT_DESC_CHARS.
+          const f = computeFit(r.description.slice(0, FIT_DESC_CHARS), resumeScan, 40);
           fits[r.id] = f.pct;
           if (f.missing.length > 0) missing[r.id] = f.missing.slice(0, 4);
           if (f.matched.length > 0) matched[r.id] = f.matched.slice(0, 6);

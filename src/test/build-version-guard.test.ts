@@ -791,7 +791,22 @@ const PINNED = {
   //    and the GENERAL_TITLES supplement live in fit-score.ts, where the
   //    dictionary becomes search queries. Repetition is capped at two mentions
   //    and the headline outranks the body outright.
-  buildVersion: "2026-08-30.30",
+  //
+  // .31 — "60 postings could not be scored just now." (supersedes the
+  //   undeployed .30, which it includes)
+  //  * The same reader's drop, traced with a fetch hook in a real browser:
+  //    parse 200, fit-terms 200 with the right role, search 200 — then
+  //    fit-batch 546 WORKER_RESOURCE_LIMIT. Against the API at the client's
+  //    batch of sixty: two of four calls died; at twenty, two of two lived in
+  //    ~1.7s. The scorer shares the job-board worker pool with the ingest.
+  //  * fit-batch now takes twenty ids per call on both sides (the server cap
+  //    protects against an old bundle) and cuts each description to 20,000
+  //    chars before the dictionary walk.
+  //  * Ranking is enabled AFTER retrieval sets the query. Enabled first, the
+  //    effect scored the default page's sixty description-less rows (sixty
+  //    nulls) before the real query loaded — a wasted call against a
+  //    function that dies under load.
+  buildVersion: "2026-08-30.31",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {

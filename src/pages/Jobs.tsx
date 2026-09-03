@@ -1137,6 +1137,7 @@ export default function Jobs() {
   /** Postings whose fit call failed outright, so the UI can say so instead of
    *  presenting an unscored list as a ranked one. */
   const [fitFailedCount, setFitFailedCount] = useState(0);
+  const FIT_BATCH = 20;
   const [fits, setFits] = useState<Record<string, number | null>>({});
   // Top missing keywords per posting id — the "add these to compete" signal
   // rendered inline on each card once fit-ranking is on.
@@ -2719,8 +2720,13 @@ export default function Jobs() {
       try { sessionStorage.setItem("rb_board_resume", text); } catch { /* tab-only */ }
       fitAutoChecked.current = true;
       setResumeAvailable(true);
-      setFitRanking(true);
       setShowOrientation(false);
+      // Ranking is switched on AFTER the retrieval below sets the query.
+      // Measured with a request hook 2026-09-03: switched on here, the fit
+      // effect fired immediately on the page already loaded — the newest 60
+      // of the default browse — scored 60 nulls (no descriptions yet), and
+      // only THEN did the résumé's query load and score again. A wasted call
+      // against a function that fails under load half the time.
 
       // RANKING IS NOT FINDING, AND THIS GESTURE PROMISED FINDING.
       //
@@ -2754,6 +2760,7 @@ export default function Jobs() {
         // still describes what actually happened.
       }
 
+      setFitRanking(true);
       toast({
         title: searched
           ? t("jobsPage.dropParsedSearched", "Résumé loaded — finding {{role}} roles and ranking them by fit.", { role: searched })
@@ -2870,15 +2877,22 @@ export default function Jobs() {
         // permanent limit, and silently swallowing it turns a retryable blip
         // into "the fit feature does nothing".
         let failed = 0;
-        for (let i = 0; i < unscored.length; i += 60) {
+        // TWENTY, NOT SIXTY. Measured 2026-09-03 against production: a 60-id
+        // batch failed 2 of 4 calls with WORKER_RESOURCE_LIMIT (the scorer runs
+        // inside the job-board function, co-tenant with the ingest that has
+        // been exhausting that worker pool), and the page showed "60 postings
+        // could not be scored just now" to a reader who had done everything
+        // right. Twenty succeeded 2 of 2 at ~1.7s. Three small calls beat one
+        // that dies half the time.
+        for (let i = 0; i < unscored.length; i += FIT_BATCH) {
           const { data, error } = await supabase.functions.invoke("job-board", {
-            body: { action: "fit-batch", resumeText: resume, ids: unscored.slice(i, i + 60) },
+            body: { action: "fit-batch", resumeText: resume, ids: unscored.slice(i, i + FIT_BATCH) },
           });
           const payload = data as { fits?: Record<string, number | null>; missing?: Record<string, string[]>; matched?: Record<string, string[]>; code?: string } | null;
           // No `fits` key is a failure, whether or not the transport errored —
           // the function can return 200 with an error body.
           if (error || !payload?.fits) {
-            failed += Math.min(60, unscored.length - i);
+            failed += Math.min(FIT_BATCH, unscored.length - i);
             continue;
           }
           if (payload?.fits) setFits((prev) => ({ ...prev, ...payload.fits }));
