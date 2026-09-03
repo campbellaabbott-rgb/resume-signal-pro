@@ -835,7 +835,12 @@ const PINNED = {
   //   reservation is what fills the budget the worker retires and hands the
   //   board back instead of dropping it. Deferral happens only on LANDED
   //   postings.
-  buildVersion: "2026-08-30.34",
+  //
+  // .35 — where a chain dies is a number (where-a-chain-dies-is-a-number.test.ts).
+  //   Three 546 deaths sat at hops 6/7/6 while chains reach hop 9, the last
+  //   after a small cold slice. Both slice_stats writers now stamp hop, heapMb
+  //   and rssMb so isolate accumulation can be read instead of inferred.
+  buildVersion: "2026-08-30.35",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {

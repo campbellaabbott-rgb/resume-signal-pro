@@ -111,7 +111,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-30.34"; // .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
+const BUILD_VERSION = "2026-08-30.35"; // .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
 // .23: bug-sweep round — the agency opt-out reaches the rescue tiers (it was bound in search_jobs only, so a rescue served the rows the caller hid, undisclosed); the per-company cap stops swallowing the employer it just surfaced; a withdrawn count no longer prints "not hiring"; the reverted pipe fix is restored
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
@@ -1757,6 +1757,7 @@ async function stampSliceWork(client: SupabaseClient, inHotPhase: boolean, slice
         workMs,
         [key]: Math.round(prevEma * 0.8 + workMs * 0.2),
         works: (Number(pv.works) || 0) + 1,
+        workHop: currentHop, workHeapMb: heapMb(), workRssMb: rssMb(),
       },
       updated_at: new Date().toISOString(),
     }, { onConflict: "k" });
@@ -1795,6 +1796,15 @@ async function stampSliceWork(client: SupabaseClient, inHotPhase: boolean, slice
 // below in the same invocation. Module state rather than a parameter because a
 // guard counts the recorder's exact call literal at its three terminal returns.
 let sliceBudgetNote: { fetched: number; skipped: number; hit: boolean; lastUpsertError: string | null } | null = null;
+// WHERE A CHAIN DIES IS A NUMBER, NOT A GUESS. Three 546 deaths on 2026-09-03
+// sat at hops 6, 7 and 6 while chains otherwise reach hop 9, and the slice
+// that died last was a small cold one (6,386 postings, 39s). That is the
+// shape of pressure accumulating across hops on a reused isolate, not of one
+// heavy slice — and it is a hypothesis until the row carries the hop and the
+// heap. Both writers below stamp them; no lever reads them yet.
+let currentHop = 0;
+const heapMb = () => Math.round(Deno.memoryUsage().heapUsed / 1048576);
+const rssMb = () => Math.round(Deno.memoryUsage().rss / 1048576);
 
 async function recordSliceStats(client: SupabaseClient, sliceWallStart: number, inHotPhase: boolean): Promise<void> {
   const sliceMs = Date.now() - sliceWallStart;
@@ -1816,6 +1826,7 @@ async function recordSliceStats(client: SupabaseClient, sliceWallStart: number, 
         lastPhase: phase,
         [key]: Math.round(prevEma * 0.8 + sliceMs * 0.2),
         slices: (Number(pv.slices) || 0) + 1,
+        hop: currentHop, heapMb: heapMb(), rssMb: rssMb(),
         // The budget outcome rides on the row status already exposes.
         ...(sliceBudgetNote ? { budgetFetched: sliceBudgetNote.fetched, budgetSkipped: sliceBudgetNote.skipped, budgetHit: sliceBudgetNote.hit, lastUpsertError: sliceBudgetNote.lastUpsertError ? sliceBudgetNote.lastUpsertError.slice(0, 200) : null } : {}),
       },
@@ -1826,6 +1837,7 @@ async function recordSliceStats(client: SupabaseClient, sliceWallStart: number, 
 }
 
 async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): Promise<{ ok: boolean; detail: string }> {
+  currentHop = chainHop;
   // Checked at the ENTRY too, not only at the hop: pausing must also stop a
   // fresh chain started by pg_cron, a manual refresh, or any other trigger.
   // `force` does NOT override this — force exists to bypass the slice lock, and
