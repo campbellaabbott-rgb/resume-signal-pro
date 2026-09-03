@@ -56,9 +56,16 @@ describe("the scorer in its own isolate", () => {
   });
 
   it("(5) POST /v1/fit is the one non-GET route, paid, and scored by job-fit", () => {
-    expect(API).toMatch(/const isFitPost = req\.method === "POST" && new URL\(req\.url\)\.pathname\.replace\(\/\\\/\+\$\/, ""\) === "\/v1\/fit";/);
+    expect(API).toMatch(/const isFitPost = req\.method === "POST" && path\.replace\(\/\\\/\+\$\/, ""\) === "\/v1\/fit";/);
     expect(API).toMatch(/if \(req\.method !== "GET" && !isFitPost\) return fail\(405/);
-    expect(API).toMatch(/if \(path === "\/v1\/fit"\) return await fitResume\(req, rateHeaders, d\.key_tier\);/);
+    expect(API).toMatch(/if \(path === "\/v1\/fit" \|\| path === "\/v1\/fit\/"\) \{\s*if \(req\.method !== "POST"\) return fail\(405/);
+    expect(API).toMatch(/return await fitResume\(req, rateHeaders, d\.key_tier\);/);
+    // The first deploy judged the POST exception on the RAW pathname, which in
+    // production carries /public-api — so POST /v1/fit was 405 and GET /v1/fit
+    // reached the paid gate (measured 23:07Z). The gate must read the same
+    // stripped path the router reads, i.e. be declared after it.
+    expect(API.indexOf("const isFitPost ="), "gate before the stripped path").toBeGreaterThan(API.indexOf('const path = url.pathname.replace('));
+    expect(API, "no other raw-pathname comparison may sneak in").not.toMatch(/new URL\(req\.url\)\.pathname\.replace\([^)]*\) === "\/v1\/fit"/);
     const fn = API.slice(API.indexOf("async function fitResume"), API.indexOf("async function stats("));
     expect(fn).toMatch(/fail\(402, "upgrade_required"/);
     expect(fn).toMatch(/\/functions\/v1\/job-fit`/);

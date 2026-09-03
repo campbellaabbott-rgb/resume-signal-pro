@@ -127,15 +127,17 @@ function raceCount<T>(p: PromiseLike<T>, ms: number): Promise<T | { count: null;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
-  // Read-only, with one exception: a résumé cannot ride a query string, so
-  // /v1/fit takes a POST body. Everything else stays GET.
-  const isFitPost = req.method === "POST" && new URL(req.url).pathname.replace(/\/+$/, "") === "/v1/fit";
-  if (req.method !== "GET" && !isFitPost) return fail(405, "method_not_allowed", "This API is read-only; use GET (POST is accepted only on /v1/fit).");
-
   const url = new URL(req.url);
   // Supabase serves functions at /functions/v1/<name>/<rest>. Strip both so the
   // documented path is what callers actually type.
   const path = url.pathname.replace(/^\/functions\/v1/, "").replace(/^\/public-api/, "") || "/";
+  // Read-only, with one exception: a résumé cannot ride a query string, so
+  // /v1/fit takes a POST body. Everything else stays GET. Judged on the SAME
+  // stripped path the router uses: the first deploy compared the raw pathname,
+  // which carries the function prefix in production, so POST /v1/fit was 405
+  // and GET /v1/fit fell through to the paid gate (measured 2026-09-03 23:07Z).
+  const isFitPost = req.method === "POST" && path.replace(/\/+$/, "") === "/v1/fit";
+  if (req.method !== "GET" && !isFitPost) return fail(405, "method_not_allowed", "This API is read-only; use GET (POST is accepted only on /v1/fit).");
 
   if (path === "/" || path === "/v1" || path === "/v1/") {
     return json({
@@ -232,7 +234,10 @@ Deno.serve(async (req) => {
     if (path === "/v1/changes") return await conditional(await changes(client, url, rateHeaders, d.key_tier));
     if (path === "/v1/companies") return await conditional(await companies(client, url, rateHeaders));
     if (path === "/v1/stats") return await conditional(await stats(client, rateHeaders));
-    if (path === "/v1/fit") return await fitResume(req, rateHeaders, d.key_tier);
+    if (path === "/v1/fit" || path === "/v1/fit/") {
+    if (req.method !== "POST") return fail(405, "method_not_allowed", "POST a JSON body to /v1/fit — a résumé cannot ride a query string.", rateHeaders);
+    return await fitResume(req, rateHeaders, d.key_tier);
+  }
     if (path === "/v1/usage") return await usage(client, d.api_key_id, rateHeaders);
     return fail(404, "no_such_endpoint", `Unknown path ${path}. See /v1 for the endpoint list.`, rateHeaders);
   } catch (e) {

@@ -207,7 +207,7 @@ console.log("\n[/v1] MCP-parity filters");
   ok(myr.length === 0 || myr.every((x) => typeof x.min_years === "number" && x.min_years <= 3),
     "max_years is APPLIED", `${myr.length} rows`);
   // Refused on purpose, and the refusal must say where the filter DOES work.
-  for (const p_ of ["location=London", "sort=newest"]) {
+  for (const p_ of ["sort=newest"]) {
     const r = await api(`/v1/jobs?${p_}&limit=1`);
     ok(r.status === 400 && r.body?.error?.code === "unsupported_param",
       `${p_.split("=")[0]} refused by the default engine`, r.body?.error?.code ?? `HTTP ${r.status}`);

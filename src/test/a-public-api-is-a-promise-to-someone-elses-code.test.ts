@@ -152,7 +152,7 @@ describe("a public API is a promise to someone else's code", () => {
     // 2026-09-03: POST is allowed on exactly one route, /v1/fit, because a résumé
     // cannot ride a query string. It scores; it writes nothing.
     expect(CODE).toMatch(/if \(req\.method !== "GET" && !isFitPost\) return fail\(405/);
-    expect(CODE).toMatch(/const isFitPost = req\.method === "POST" && new URL\(req\.url\)\.pathname\.replace\(\/\\\/\+\$\/, ""\) === "\/v1\/fit";/);
+    expect(CODE).toMatch(/const isFitPost = req\.method === "POST" && path\.replace\(\/\\\/\+\$\/, ""\) === "\/v1\/fit";/);
     for (const w of [".insert(", ".update(", ".delete(", ".upsert("]) {
       expect(CODE, `the API performs a ${w} write`).not.toContain(w);
     }
