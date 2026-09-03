@@ -175,7 +175,14 @@ const PINNED = {
   // as a matter of course this time — the .2 bump had to be made retroactively
   // after three commits shipped undeployed behind an unchanged version string,
   // and "is it live?" cost six behavioural probes to answer.
-  sourcesHash: "1cc9ee61bde5c59b",
+  // 2026-08-30.27: sources.ts REWRITTEN IN FORM, NOT CONTENT — the 32,158
+  // plain `{ name, source, token }` object literals were converted to the
+  // s(...) helper the census tooling already expects, shrinking the file
+  // 3.35MB -> 2.65MB because the catalog's growth had pushed the function's
+  // deploy bundle past the ~4.5MB cap and .27 could not deploy at all.
+  // Verified entry-for-entry identical (44,039 triples, sorted compare)
+  // before re-pinning; no board was added, removed, or re-keyed.
+  sourcesHash: "6f4cb83d21d7dce4",
   // 2026-08-21.4: disables the exact-word tier's company matcher, whose index
   // never built. Bumped so the mitigation is externally identifiable.
   // 2026-08-21.5: routed retrieval. index.ts + two new modules; sources.ts

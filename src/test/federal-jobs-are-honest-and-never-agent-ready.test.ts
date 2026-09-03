@@ -23,11 +23,16 @@ import { resolve } from "node:path";
 const ROOT = resolve(__dirname, "../..");
 const FN = readFileSync(resolve(ROOT, "supabase/functions/job-board/index.ts"), "utf8");
 const NORM = readFileSync(resolve(ROOT, "supabase/functions/job-board/normalize.ts"), "utf8");
+import { JOB_SOURCES } from "../../supabase/functions/job-board/sources";
 const SRC = readFileSync(resolve(ROOT, "supabase/functions/job-board/sources.ts"), "utf8");
 
 describe("federal postings are honest, attributed, and never agent-ready", () => {
   it("carries exactly one USAJOBS source — it is a single national feed", () => {
-    const hits = SRC.match(/source: "usajobs"/g) ?? [];
+    // 2026-09-03: matched `source: "usajobs"` until the compaction respelled
+    // the entry as an s(...) call — same parser trap as the other suites.
+    // Count the catalog rows themselves; a bare-text match also hits the
+    // vendor union type.
+    const hits = JOB_SOURCES.filter((s) => s.source === "usajobs");
     expect(hits.length).toBe(1);
     expect(SRC).toMatch(/\| "usajobs";/);
   });
