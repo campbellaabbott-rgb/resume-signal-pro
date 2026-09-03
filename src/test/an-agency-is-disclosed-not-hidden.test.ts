@@ -40,15 +40,20 @@ const BOARD = strip(read("supabase/functions/job-board/index.ts"));
 const MIG = read("supabase/migrations/20260831120000_an_agency_is_disclosed_not_hidden.sql");
 const norm = (b: Record<string, unknown>) => normalizeFilters(b, 40_000);
 
-// The widened entry matcher, spelled exactly as source-catalog-invariants
-// spells it: token, then the OPTIONAL pages window, then the OPTIONAL agency
-// flag, in that order and no other. tag-agencies and merge-all both emit the
-// flag last for this reason.
+// 2026-09-03: this suite's entry matcher was the same brace-anchored regex
+// source-catalog-invariants carried, and it fell to the same trap a fourth
+// time — the deploy-size compaction spelled the plain entries s(...) instead
+// of { name, source, token } and the parse silently dropped from 44,039
+// boards to the 463 that carry suffixes. The catalog is now IMPORTED, so no
+// legal change to entry spelling can ever unparse a board again. ENTRY stays
+// only for the synthetic suffix-order pin below.
+import { JOB_SOURCES } from "../../supabase/functions/job-board/sources";
 const ENTRY = /\{\s*name:\s*"((?:[^"\\]|\\.)*)",\s*source:\s*"([a-z0-9_]+)",\s*token:\s*"((?:[^"\\]|\\.)*)"(?:,\s*pages:\s*(\d+))?(?:,\s*agency:\s*(true))?\s*\}/g;
 
 describe("the catalog carries the flag", () => {
-  const entries = [...SRC.matchAll(ENTRY)].map((m) => ({
-    name: m[1], source: m[2], token: m[3], pages: m[4], agency: m[5] === "true",
+  const entries = JOB_SOURCES.map((s) => ({
+    name: s.name, source: s.source, token: s.token,
+    pages: (s as { pages?: number }).pages, agency: (s as { agency?: boolean }).agency === true,
   }));
 
   it("a real population of tagged boards exists, and none of it is workday-giant noise", () => {
