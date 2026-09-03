@@ -110,7 +110,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-30.26"; // .26: liveness and timing SPLIT. The fetch phase now stamps its own pulse (stampSliceWork) the moment the last board is in, before the cursor write, the pass-end facets and the maintenance kicks; recordSliceStats keeps the whole-slice EMA at the terminal return. .25 awaited that write and was not enough — measured post-deploy, slices stayed frozen at 2089 while the cold cursor advanced, i.e. slices die in the TAIL. A stale row was shedding FETCH capacity (cold 80->48, conc 8->5) to treat a tail failure, so L1 held 2.5h without recovering. Dying mid-fetch still touches neither writer and still sheds; works-minus-slices is now the tail-death rate.
+const BUILD_VERSION = "2026-08-30.27"; // .27: a visit is bounded by POSTINGS, not pages. Every fetcher accumulated a whole board before returning, so per-board memory was O(board) — and the 2026-08-31 pages overrides let 77 boards pull 2,000+ in one visit (iCIMS 20,800, Oracle 13,000, Workday 5,000). Slices died INSIDE the fetch loop on WORKER_RESOURCE_LIMIT and the fleet floored itself at L1, where no shed lever could help: they all cut how MANY boards a slice takes, none cut how BIG one is. Workday/Oracle now stop at 2,000 and RESUME via the nextOffset the deep cursor already persists; UKG/ADP/iCIMS/USAJOBS are left alone because they cannot resume and a cap would truncate them.
 // .23: bug-sweep round — the agency opt-out reaches the rescue tiers (it was bound in search_jobs only, so a rescue served the rows the caller hid, undisclosed); the per-company cap stops swallowing the employer it just surfaced; a withdrawn count no longer prints "not hiring"; the reverted pipe fix is restored
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
@@ -700,6 +700,42 @@ async function fetchAdp(s: JobSource): Promise<{ items: unknown[]; raw: unknown;
 // undated: the relative list age converts to a real date when <= 30 days, and
 // the CXS detail payload later supplies an exact startDate that replaces it.
 // (The "like BambooHR" that used to sit here was wrong on both counts.)
+/**
+ * A SHED LEVER CUTS HOW MANY BOARDS A SLICE TAKES. NOTHING CUT HOW BIG ONE IS.
+ *
+ * Every paginated fetcher accumulates a whole board into one array before it
+ * returns, so per-board memory is O(board), not O(page). That was harmless
+ * while the caps were small; the `pages` overrides added 2026-08-31 made 315
+ * boards deep-pageable and 77 of them able to pull 2,000+ postings in a single
+ * visit — up to 20,800 for an iCIMS giant and 13,000 for an Oracle one.
+ *
+ * MEASURED 2026-09-02, the failure that produced: slices died INSIDE the fetch
+ * loop with WORKER_RESOURCE_LIMIT, advancing the cursor and draining the
+ * bootstrap queue optimistically on the way in and never reaching
+ * stampSliceWork. The fleet then read its own stats row as stale and floored
+ * itself at L1 — where it could not recover, because every shed lever cuts the
+ * NUMBER of boards per slice (80->48, concurrency 8->5, hot 10->5) and none of
+ * them cuts the SIZE of any one board. Shedding cannot stop a single giant
+ * from exhausting an invocation, which is exactly why L1 held for hours while
+ * the cold tail fell 3,765 minutes behind its SLA.
+ *
+ * So a visit is bounded by POSTINGS now, not by pages. 2,000 is Oracle's own
+ * long-tolerated default (20 pages x 100), so no board that was already safe
+ * changes behaviour — only the overridden giants do, and they RESUME: breaking
+ * out without setting `exhausted` leaves nextOffset = startOffset + all.length,
+ * which the deep cursor already persists and hands back on the next visit.
+ * Coverage is unchanged; it arrives over more visits instead of one that dies.
+ *
+ * `windowed` stays true for a capped board, which is what keeps the closure
+ * prune off a board that is still filling — the Four Seasons rule.
+ *
+ * Only the fetchers that carry startOffset/nextOffset are capped. UKG, ADP,
+ * iCIMS and USAJOBS cannot resume, so a cap there would silently truncate a
+ * board rather than defer it; those need offset support before they can be
+ * bounded, and iCIMS is the one that most needs it.
+ */
+const MAX_POSTINGS_PER_VISIT = 2_000;
+
 const WORKDAY_PAGE_CAP = 25; // 25 × 20 = up to 500 postings/board/pass
 // Oracle CE REST accepts a larger page than Workday; 20 × 100 = up to 2000
 // postings/board/pass, which exhausts every tenant in the first tranche.
@@ -759,6 +795,10 @@ async function fetchWorkday(s: JobSource, startOffset = 0): Promise<{ jobPosting
       const items = Array.isArray((body as { jobPostings?: unknown[] }).jobPostings) ? (body as { jobPostings: unknown[] }).jobPostings : [];
       all.push(...items);
       if (items.length < 20) { exhausted = true; break outer; } // last page — wrap next pass
+      // Memory ceiling, NOT an end-of-feed signal: leave `exhausted` false so
+      // nextOffset resumes here rather than wrapping to 0 and re-reading the
+      // board from the top.
+      if (all.length >= MAX_POSTINGS_PER_VISIT) break outer;
     }
   }
   // Empty page with a non-zero advertised total = the tenant refused/failed us
@@ -838,6 +878,8 @@ async function fetchOracle(s: JobSource, startOffset = 0): Promise<{ items: unkn
       const reqs = Array.isArray(item.requisitionList) ? item.requisitionList as unknown[] : [];
       all.push(...reqs);
       if (reqs.length < ORACLE_PAGE_SIZE) { exhausted = true; break outer; } // last page
+      // Same ceiling, same reason, same resume contract as Workday above.
+      if (all.length >= MAX_POSTINGS_PER_VISIT) break outer;
     }
   }
   // Same guard as Workday: an empty read against a non-zero advertised total is

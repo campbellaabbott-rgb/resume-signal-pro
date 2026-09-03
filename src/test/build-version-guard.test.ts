@@ -699,7 +699,28 @@ const PINNED = {
   //    never the whole-slice EMAs, because the L1/L2 thresholds are calibrated
   //    against the whole slice. No lever reads it yet — it is there so the next
   //    calibration has data instead of an estimate.
-  buildVersion: "2026-08-30.26",
+  //
+  // .27 — a visit is bounded by POSTINGS, not pages.
+  //  * Every paginated fetcher accumulated a whole board into one array before
+  //    returning, so per-board memory was O(board), not O(page). Harmless until
+  //    the 2026-08-31 `pages` overrides made 315 boards deep-pageable and 77 of
+  //    them able to pull 2,000+ postings in a single visit — 20,800 for an
+  //    iCIMS giant, 13,000 for Oracle, 5,000 for Workday.
+  //  * Measured: slices died INSIDE the fetch loop on WORKER_RESOURCE_LIMIT,
+  //    having advanced the cursor and drained the bootstrap queue optimistically
+  //    on the way in, so they never reached stampSliceWork. The fleet read its
+  //    own row as stale and floored itself at L1 — and could not recover there,
+  //    because every shed lever cuts the NUMBER of boards in a slice and none
+  //    cuts the SIZE of one. The cold tail fell 3,765 min behind a 1,392 SLA.
+  //  * 2,000 is Oracle's own long-tolerated default (20 x 100), so nothing that
+  //    was already safe changes. The capped boards RESUME: the break leaves
+  //    `exhausted` false, so nextOffset = startOffset + all.length, which the
+  //    deep cursor already persists. Coverage is identical, spread over more
+  //    visits instead of one that dies.
+  //  * UKG, ADP, iCIMS and USAJOBS are deliberately NOT capped — they carry no
+  //    offset, so a cap would truncate a board rather than defer it. iCIMS is
+  //    the one that most needs offset support next.
+  buildVersion: "2026-08-30.27",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {
