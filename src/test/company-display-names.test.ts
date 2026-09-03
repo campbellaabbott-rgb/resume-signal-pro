@@ -36,12 +36,13 @@ const IDX = readFileSync(resolve(ROOT, "index.ts"), "utf8");
 const SOURCES = readFileSync(resolve(ROOT, "sources.ts"), "utf8");
 
 /** Catalog entries as {name, source, token}. */
-const entries = (() => {
-  const out: Array<{ name: string; source: string; token: string }> = [];
-  const re = /\{\s*name:\s*"((?:[^"\\]|\\.)*)"\s*,\s*source:\s*"(\w+)"\s*,\s*token:\s*"((?:[^"\\]|\\.)*)"/g;
-  for (const m of SOURCES.matchAll(re)) out.push({ name: m[1], source: m[2], token: m[3] });
-  return out;
-})();
+// 2026-09-03: parsed by regex until the deploy-size compaction respelled the
+// plain entries as s(...) calls and the parse collapsed from 44,039 boards to
+// the suffixed few hundred — the vacuous-pass trap the comment below warns
+// about, armed by a legal format change. The catalog is imported now; entry
+// spelling can never again decide what this suite sees.
+import { JOB_SOURCES } from "../../supabase/functions/job-board/sources";
+const entries = JOB_SOURCES.map(({ name, source, token }) => ({ name, source, token }));
 
 const renamedTokens = (() => {
   const block = /const RENAMED_TOKENS: readonly string\[\] = \[([\s\S]*?)\];/.exec(IDX);
