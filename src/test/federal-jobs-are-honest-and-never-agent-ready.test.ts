@@ -23,6 +23,7 @@ import { resolve } from "node:path";
 const ROOT = resolve(__dirname, "../..");
 const FN = readFileSync(resolve(ROOT, "supabase/functions/job-board/index.ts"), "utf8");
 const NORM = readFileSync(resolve(ROOT, "supabase/functions/job-board/normalize.ts"), "utf8");
+import { JOB_SOURCES } from "../../supabase/functions/job-board/sources";
 const SRC = readFileSync(resolve(ROOT, "supabase/functions/job-board/sources.ts"), "utf8");
 
 describe("federal postings are honest, attributed, and never agent-ready", () => {
