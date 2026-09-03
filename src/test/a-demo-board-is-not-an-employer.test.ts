@@ -64,8 +64,18 @@ describe("a demo board is not an employer", () => {
     // The two token strings that legitimately survive on OTHER vendors:
     // ashby's "pulse" is a real employer, and greenhouse's "example" only as
     // part of longer tokens. Assert the removed PAIRS, not the bare strings.
-    expect(/s\("Pulse Healthcare", "greenhouse", "pulse"\)/.test(SRC)).toBe(false);
+    //
+    // 2026-09-03: greenhouse:pulse ("Pulse Healthcare") is BACK and stays —
+    // live-verified against boards-api.greenhouse.io/v1/boards/pulse: 200, a
+    // first-party employer name, and real postings (permanent roles, Qatar
+    // and UK locations, NHS/private metadata). Whatever census round removed
+    // it was wrong about this one: it is a healthcare staffing board, which
+    // the 2026-08-31 charter now carries WITH disclosure. It is catalogued
+    // plainly; if it is ever tagged agency the disclosure covers it. The old
+    // assertion also only matched the s(...) spelling, so the board sat in
+    // the catalog as an object literal while this test read green.
     expect(/s\("Democorp", "greenhouse", "example"\)/.test(SRC)).toBe(false);
+    expect(/\{ name: "Democorp", source: "greenhouse", token: "example"/.test(SRC)).toBe(false);
   });
 
   it("no two boards of one vendor share a token", () => {
