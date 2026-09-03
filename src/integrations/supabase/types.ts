@@ -3241,6 +3241,20 @@ export type Database = {
         Returns: Json
       }
       board_serving_count: { Args: never; Returns: number }
+      bootstrap_queue_append: { Args: { p_tokens: string[] }; Returns: number }
+      bootstrap_queue_stamp: {
+        Args: { p_selected: number }
+        Returns: undefined
+      }
+      bootstrap_queue_take: {
+        Args: {
+          p_n: number
+          p_skip: string[]
+          p_stamp_version: boolean
+          p_version: string
+        }
+        Returns: Json
+      }
       build_missing_since_index_oneshot: { Args: never; Returns: undefined }
       build_sitemap_day_index_oneshot: { Args: never; Returns: undefined }
       build_speed_indexes_oneshot: { Args: never; Returns: undefined }
