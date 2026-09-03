@@ -19,9 +19,11 @@ import { resolve } from "node:path";
  * "Dallas, Texas" and "Austin, TX" are the same state to a job seeker.
  */
 const FN = readFileSync(
-  resolve(__dirname, "../../supabase/functions/job-board/index.ts"),
+  resolve(__dirname, "../../supabase/functions/_shared/location-terms.ts" /* the tables moved here 2026-09-03 so /v1 shares the expansion */),
   "utf8",
 );
+// The browse-path or() lives in job-board; the tables and locationTerms moved to _shared (2026-09-03).
+const BOARD = readFileSync(resolve(__dirname, "../../supabase/functions/job-board/index.ts"), "utf8");
 const STATES = (() => {
   const b = /const STATE_ALIASES: Record<string, \{ names: string\[\]; keepRaw: boolean \}> = \{([\s\S]*?)\n\};/.exec(FN)?.[1] ?? "";
   const out: Record<string, { names: string[]; keepRaw: boolean }> = {};
@@ -71,7 +73,7 @@ describe("a state reaches its own jobs, and only its own", () => {
     // PostgREST splits or() branches on commas, so an unquoted
     // `location.ilike.%, TX%` becomes two malformed branches and the filter
     // silently stops meaning what it says.
-    expect(FN).toMatch(/location\.ilike\."%\$\{t\}%"/);
+    expect(BOARD).toMatch(/location\.ilike\."%\$\{t\}%"/);
   });
 
   it("strips the quote that quoting made load-bearing", () => {

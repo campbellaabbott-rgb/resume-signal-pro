@@ -53,6 +53,21 @@ describe("a founder's résumé searched for go-to-market", () => {
     expect(t).toEqual([]);
   });
 
+  it("the board's own common titles resolve — found by harvest, not by report", () => {
+    // scripts/role-vocab-gaps.ts, 2026-09-03: 57% of newest headlines did not
+    // resolve, led by retail, grocery and branch-banking roles the industry
+    // dictionary never carried. A user report found the founder gap; this
+    // finds the rest from the board itself.
+    for (const [title, expect0] of [
+      ["Deli Clerk", "deli clerk"], ["Relationship Banker", "relationship banker"],
+      ["Store Driver", "store driver"], ["Leasing Professional", "leasing professional"],
+      ["Retail Parts Pro", "retail parts pro"], ["Mechanical Technician", "mechanical technician"],
+    ] as const) {
+      const t = resumeRoleTerms(`Jane Doe — ${title}, Acme Corp` + pad);
+      expect(t[0], `${title} should resolve to its own occupation`).toBe(expect0);
+    }
+  });
+
   it("an executive title in the BODY does not hijack the query", () => {
     // Bare-word titles count only in the headline window — the first 400
     // characters or 20% of the text, whichever is larger. The first draft of

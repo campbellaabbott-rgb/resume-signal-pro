@@ -30,7 +30,7 @@
 
 import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { SENDABLE_VENDORS } from "../_shared/apply-automation.ts";
-import { computeFit } from "../_shared/fit-score.ts";
+import { computeFit, resumeRoleTerms } from "../_shared/fit-score.ts";
 import { applyServingFences, parseCountries } from "../_shared/mandate-reach.ts";
 import {
   ENTITLEMENT_COLUMNS,
@@ -242,6 +242,24 @@ const TOOLS = [
     },
   },
   {
+    name: "fit_resume",
+    description:
+      "Do what the site's résumé drop does, for an agent holding a CV: read the occupation out of resumeText, search the board " +
+      "for it (or for `query` if given), and score up to 20 of the results against the résumé — keyword fit 0-100, plus the " +
+      "matched and missing terms per job. A null fit means the posting has no stored description to score. Returns the terms " +
+      "it read from the CV so the agent can pick a different one and call again with `query`.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        resumeText: { type: "string", description: "The candidate's résumé as plain text (100+ characters)." },
+        query: { type: "string", description: "Optional job title to search instead of the one read from the résumé." },
+        location: { type: "string" }, country: { type: "string" }, remote: { type: "boolean" },
+        limit: { type: "integer", description: "Jobs to score, 1-20 (default 20)." },
+      },
+      required: ["resumeText"],
+    },
+  },
+  {
     name: "board_stats",
     description: "Live board statistics from cache (cheap to call): posting totals, employer count, category set, freshness stamp.",
     inputSchema: { type: "object", properties: {} },
@@ -351,6 +369,43 @@ async function runGetJob(args: Record<string, unknown>): Promise<unknown> {
     // Bounded: an agent context does not want a 200KB scraped page. The cap is
     // generous enough for every honest description.
     description: desc.length > 24_000 ? desc.slice(0, 24_000) + "\n[truncated]" : desc,
+  };
+}
+
+/**
+ * The résumé drop, as a tool. Scoring goes to job-fit — its own isolate — and
+ * never to job-board, which shares a worker pool with the ingest and answered
+ * 546 to readers on 2026-09-03 for exactly that reason.
+ */
+async function runFitResume(args: Record<string, unknown>): Promise<unknown> {
+  const resumeText = typeof args.resumeText === "string" ? args.resumeText.slice(0, 50000) : "";
+  if (resumeText.trim().length < 100) throw new Error("resumeText must be at least 100 characters");
+  const terms = resumeRoleTerms(resumeText, 4);
+  const query = typeof args.query === "string" && args.query.trim() ? args.query.trim() : (terms[0] ?? "");
+  if (!query) {
+    return { terms, query: null, jobs: [], note: "No occupation the scanner recognises appears in this résumé — pass `query` with a job title." };
+  }
+  const limit = Math.max(1, Math.min(20, Number(args.limit ?? 20) || 20));
+  const r = await board(searchBody({ ...args, query, limit }));
+  const jobs = (Array.isArray(r.jobs) ? r.jobs : []) as Array<Record<string, unknown>>;
+  const ids = jobs.map((j) => String(j.id)).slice(0, 20);
+  let fits: Record<string, number | null> = {}, matched: Record<string, string[]> = {}, missing: Record<string, string[]> = {};
+  if (ids.length) {
+    const anon = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+    const res = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/job-fit`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${anon}`, apikey: anon },
+      body: JSON.stringify({ action: "fit-batch", resumeText, ids }),
+      signal: AbortSignal.timeout(30_000),
+    });
+    const f = await res.json().catch(() => ({}));
+    if (!res.ok || !f?.fits) throw new Error(String(f?.error ?? `scorer answered ${res.status}`));
+    fits = f.fits; matched = f.matched ?? {}; missing = f.missing ?? {};
+  }
+  return {
+    terms, query,
+    jobs: jobs.map((j) => ({ ...compactJob(j), fit: fits[String(j.id)] ?? null, matched: matched[String(j.id)] ?? [], missing: missing[String(j.id)] ?? [] })),
+    ...disclosures(r),
   };
 }
 
@@ -642,6 +697,7 @@ async function callTool(
     case "debug_search": return toolOk(await runDebugSearch(args));
     case "get_job": return toolOk(await runGetJob(args));
     case "board_stats": return toolOk(await runBoardStats());
+    case "fit_resume": return toolOk(await runFitResume(args));
     case "check_apply_support": return toolOk(await runCheckApplySupport(client, args));
     case "request_application": return toolOk(await runRequestApplication(client, apiKeyId, args));
     case "application_status": return toolOk(await runApplicationStatus(client, apiKeyId, args));

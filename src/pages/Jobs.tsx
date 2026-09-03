@@ -2752,7 +2752,10 @@ export default function Jobs() {
       // scoring zero 7-14 of 20 -> 0-1.
       let searched = "";
       try {
-        const { data: td } = await supabase.functions.invoke("job-board", {
+        // job-fit, not job-board: the scorer has its own isolate since
+        // 2026-09-03, because sharing job-board's worker pool with the ingest
+        // answered 546 to readers who had done everything right.
+        const { data: td } = await supabase.functions.invoke("job-fit", {
           body: { action: "fit-terms", resumeText: text },
         });
         const terms = ((td as { terms?: string[] } | null)?.terms ?? [])
@@ -2906,7 +2909,7 @@ export default function Jobs() {
         // right. Twenty succeeded 2 of 2 at ~1.7s. Three small calls beat one
         // that dies half the time.
         for (let i = 0; i < unscored.length; i += FIT_BATCH) {
-          const { data, error } = await supabase.functions.invoke("job-board", {
+          const { data, error } = await supabase.functions.invoke("job-fit", {
             body: { action: "fit-batch", resumeText: resume, ids: unscored.slice(i, i + FIT_BATCH) },
           });
           const payload = data as { fits?: Record<string, number | null>; missing?: Record<string, string[]>; matched?: Record<string, string[]>; code?: string } | null;

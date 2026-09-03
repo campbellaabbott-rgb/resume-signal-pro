@@ -463,7 +463,9 @@ describe("location is not silently rewritten, and remote precedence is decided o
   // had not asked and reported a confident total for it. "City, ST" is the
   // format the board prints on every card and the NL parser emits.
   it("sanitizeTerm strips ONLY ILIKE metacharacters", () => {
-    const m = index.match(/const sanitizeTerm = \(t: string\) => t\.replace\(([^,]+), ""\)/);
+    // The definition moved to _shared/location-terms.ts on 2026-09-03 so /v1 can share it.
+    const shared = readFileSync(resolve(__dirname, "../../supabase/functions/_shared/location-terms.ts"), "utf8");
+    const m = shared.match(/const sanitizeTerm = \(t: string\) => t\.replace\(([^,]+), ""\)/);
     expect(m, "sanitizeTerm should still exist").toBeTruthy();
     const cls = m![1];
     // A comma or paren in a bound term is a literal character, never a wildcard.

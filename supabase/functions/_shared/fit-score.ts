@@ -204,6 +204,26 @@ const GENERAL_TITLES = [
   "cfo", "chief financial officer", "chief of staff", "managing director",
   "general manager", "vice president", "executive director",
 ];
+/**
+ * FOUND FROM THE BOARD'S OWN TITLES, NOT GUESSED. scripts/role-vocab-gaps.ts
+ * (2026-09-03, 800 newest postings, 455 distinct headline titles) ran the
+ * scanner over each title as a résumé headline: only 43% resolved to a term.
+ * The industry dictionary is professional and clinical; the board is also
+ * grocery aisles, auto-parts counters and bank branches, and a reader whose
+ * headline is "Deli Clerk" or "Relationship Banker" got the silent fallback.
+ * These are the unresolved titles that name an occupation (activities and
+ * fragments the normaliser produced — "packaged", "program", "checker" — are
+ * deliberately not here). Multi-word so they cannot false-match a bullet.
+ */
+const COMMON_TITLES = [
+  "store driver", "retail parts pro", "commercial parts pro", "parts pro",
+  "relationship banker", "personal banker", "leasing professional", "leasing consultant",
+  "deli clerk", "meat clerk", "bakery clerk", "produce clerk", "grocery clerk",
+  "courtesy clerk", "pharmacy clerk", "delicatessen clerk", "market grille clerk",
+  "coffee shop barista", "facilities coordinator", "mechanical technician",
+  "application developer", "client services representative", "operating engineer",
+  "mechatronics technician", "robotics technician", "order fulfillment associate",
+];
 const TITLE_VOCAB: string[] = (() => {
   const set = new Set<string>();
   for (const data of Object.values(INDUSTRY_KEYWORDS)) {
@@ -219,6 +239,7 @@ const TITLE_VOCAB: string[] = (() => {
   // job); as bare words they still need to be in the headline to count, which
   // is what stops "reported to the CEO" in a bullet from hijacking the query.
   for (const t of GENERAL_TITLES) set.add(t);
+  for (const t of COMMON_TITLES) set.add(t);
   return [...set];
 })();
 

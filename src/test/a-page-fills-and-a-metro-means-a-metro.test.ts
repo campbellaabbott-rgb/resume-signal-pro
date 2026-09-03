@@ -37,6 +37,8 @@ const FN = readFileSync(
   resolve(__dirname, "../../supabase/functions/job-board/index.ts"),
   "utf8",
 );
+const SHARED = readFileSync(resolve(__dirname, "../../supabase/functions/_shared/location-terms.ts"), "utf8"); // definitions moved here 2026-09-03; call sites stay in index.ts
+
 
 /**
  * The top-up block, sliced to its real END rather than a guessed width.
@@ -141,7 +143,7 @@ describe("a page fills up", () => {
 
 describe("a metro abbreviation searches the metro", () => {
   const ALIASES = (() => {
-    const b = /const METRO_ALIASES: Record<string, \{ names: string\[\]; keepRaw: boolean \}> = \{([\s\S]*?)\n\};/.exec(FN)?.[1] ?? "";
+    const b = /const METRO_ALIASES: Record<string, \{ names: string\[\]; keepRaw: boolean \}> = \{([\s\S]*?)\n\};/.exec(SHARED)?.[1] ?? "";
     const out: Record<string, { names: string[]; keepRaw: boolean }> = {};
     for (const m of b.matchAll(/"?([a-z ]+)"?:\s*\{\s*names:\s*\[([^\]]*)\],\s*keepRaw:\s*(true|false)/g)) {
       out[m[1].trim()] = { names: [...m[2].matchAll(/"([^"]+)"/g)].map((x) => x[1]), keepRaw: m[3] === "true" };
@@ -177,7 +179,7 @@ describe("a metro abbreviation searches the metro", () => {
   });
 
   it("leaves a non-alias location exactly as typed", () => {
-    const fn = /function locationTerms\([\s\S]*?\n}/.exec(FN)?.[0] ?? "";
+    const fn = /function locationTerms\([\s\S]*?\n}/.exec(SHARED)?.[0] ?? "";
     expect(fn).toMatch(/if \(!hit\) return \{ terms: \[clean\], expandedFrom: null \};/);
   });
 });

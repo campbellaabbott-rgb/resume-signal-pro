@@ -27,7 +27,7 @@ import { resolve } from "node:path";
  * browse path and quietly done nothing for anyone who typed a job title.
  */
 const FN = readFileSync(
-  resolve(__dirname, "../../supabase/functions/job-board/index.ts"), "utf8");
+  resolve(__dirname, "../../supabase/functions/_shared/location-terms.ts" /* the tables moved here 2026-09-03 so /v1 shares the expansion */), "utf8");
 
 /**
  * The alias table as the function sees it, WITH COMMENTS STRIPPED.

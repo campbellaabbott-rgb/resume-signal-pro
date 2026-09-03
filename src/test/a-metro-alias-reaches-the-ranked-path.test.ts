@@ -20,6 +20,7 @@ import { resolve } from "node:path";
  */
 const ROOT = resolve(__dirname, "../..");
 const FN = readFileSync(resolve(ROOT, "supabase/functions/job-board/index.ts"), "utf8");
+const SHARED = readFileSync(resolve(ROOT, "supabase/functions/_shared/location-terms.ts"), "utf8"); // definitions moved here 2026-09-03; call sites stay in index.ts
 /**
  * The NEWEST migration that teaches the RPC to split, not the first one named
  * like it. The first attempt was reverted and its file is still on disk, so a
@@ -115,7 +116,7 @@ describe("a metro alias reaches every path, not just the one nobody types into",
     // Asserts the SET of stripped characters, not the exact literal — the
     // class grew when state aliases forced quoting. Each one changes the
     // SHAPE of a query rather than its content.
-    const strip = /const sanitizeTerm = \(t: string\) => t\.replace\(\/\[([^\]]+)\]\/g, ""\)/.exec(FN)?.[1] ?? "";
+    const strip = /const sanitizeTerm = \(t: string\) => t\.replace\(\/\[([^\]]+)\]\/g, ""\)/.exec(SHARED)?.[1] ?? "";
     expect(strip, "sanitizeTerm character class not found").not.toBe("");
     for (const ch of ["%", "_", "|"]) {
       expect(strip.includes(ch), `sanitizeTerm must strip ${ch}`).toBe(true);
@@ -134,7 +135,7 @@ describe("a metro alias reaches every path, not just the one nobody types into",
     // What it buys, measured before the change: "bay area" alone returned San
     // Francisco 40 / San Jose 10 / Oakland 5, while the same location with
     // q=engineer returned San Jose ZERO. A job title should not shrink a metro.
-    const fn = /function rankedLocationParam\([\s\S]*?\n}/.exec(FN)?.[0] ?? "";
+    const fn = /function rankedLocationParam\([\s\S]*?\n}/.exec(SHARED)?.[0] ?? "";
     expect(fn, "rankedLocationParam not found").not.toBe("");
     expect(fn).toMatch(/join\("\|"\)/);
     expect(fn).toMatch(/if \(terms\.length === 0\) return null;/);

@@ -15,8 +15,10 @@
 // predicates appear in every query below and a guard test pins them.
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { SENDABLE_VENDORS } from "../_shared/apply-automation.ts";
+import { locationTerms } from "../_shared/location-terms.ts";
+import { resumeRoleTerms } from "../_shared/fit-score.ts";
 
-const API_VERSION = "2026-08-26.1";
+const API_VERSION = "2026-09-03.1";
 const FRESH_WINDOW_DAYS = 30;
 const MAX_LIMIT = 100;
 /** How far back a PAID key may ask for closure history. The free tier gets the
@@ -125,7 +127,10 @@ function raceCount<T>(p: PromiseLike<T>, ms: number): Promise<T | { count: null;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
-  if (req.method !== "GET") return fail(405, "method_not_allowed", "This API is read-only; use GET.");
+  // Read-only, with one exception: a résumé cannot ride a query string, so
+  // /v1/fit takes a POST body. Everything else stays GET.
+  const isFitPost = req.method === "POST" && new URL(req.url).pathname.replace(/\/+$/, "") === "/v1/fit";
+  if (req.method !== "GET" && !isFitPost) return fail(405, "method_not_allowed", "This API is read-only; use GET (POST is accepted only on /v1/fit).");
 
   const url = new URL(req.url);
   // Supabase serves functions at /functions/v1/<name>/<rest>. Strip both so the
@@ -136,7 +141,7 @@ Deno.serve(async (req) => {
     return json({
       apiVersion: API_VERSION,
       docs: "https://resumebooster.work/data-api",
-      endpoints: ["/v1/jobs", "/v1/jobs/{id}", "/v1/changes", "/v1/companies", "/v1/stats", "/v1/usage"],
+      endpoints: ["/v1/jobs", "/v1/jobs/{id}", "/v1/changes", "/v1/companies", "/v1/stats", "/v1/usage", "POST /v1/fit"],
       auth: "Authorization: Bearer <your key>",
       modes: {
         explain: "/v1/jobs?explain=1 — appends a diagnostics block explaining what the query did.",
@@ -227,6 +232,7 @@ Deno.serve(async (req) => {
     if (path === "/v1/changes") return await conditional(await changes(client, url, rateHeaders, d.key_tier));
     if (path === "/v1/companies") return await conditional(await companies(client, url, rateHeaders));
     if (path === "/v1/stats") return await conditional(await stats(client, rateHeaders));
+    if (path === "/v1/fit") return await fitResume(req, rateHeaders, d.key_tier);
     if (path === "/v1/usage") return await usage(client, d.api_key_id, rateHeaders);
     return fail(404, "no_such_endpoint", `Unknown path ${path}. See /v1 for the endpoint list.`, rateHeaders);
   } catch (e) {
@@ -545,12 +551,11 @@ async function listJobs(client: SupabaseClient, url: URL, headers: Record<string
     if (raw === "false") return false;
     return fail(400, "invalid_value", `${name} must be "true" or "false", got "${raw}".`, headers);
   };
-  if (p.get("location")) {
-    return fail(400, "unsupported_param",
-      "location needs the ranked engine, which expands metro aliases (\"bay area\" -> San Francisco, Oakland, San Jose) before matching. " +
-      "Matching the string literally here would answer a narrower question under the same name. Use engine=ranked, or filter by country.",
-      headers);
-  }
+  // location: the SAME expansion the board uses, imported from _shared —
+  // "bay area" means San Francisco, Oakland and San Jose on both engines.
+  // Refused here until 2026-09-03 precisely because a literal match would have
+  // answered a narrower question under the same parameter name.
+  const locTerms = locationTerms(p.get("location")).terms;
   if (p.get("sort")) {
     return fail(400, "unsupported_param",
       "sort needs the ranked engine. The default engine pages by keyset cursor on (effective_posted, id), and re-sorting without rebuilding " +
@@ -638,6 +643,10 @@ async function listJobs(client: SupabaseClient, url: URL, headers: Record<string
     // make a posting fresh — the board carries this lesson twice over.
     if (maxAgeDays !== null) qb = qb.gte("posted_at", new Date(Date.now() - maxAgeDays * 86_400_000).toISOString());
     if (agentReady === true) qb = qb.in("source", [...SENDABLE_VENDORS]);
+    // Mirrors the board's browse path: one name is an ILIKE, a metro is an OR
+    // over every name, each quoted because state aliases contain commas.
+    if (locTerms.length === 1) qb = qb.ilike("location", `%${locTerms[0]}%`);
+    else if (locTerms.length > 1) qb = qb.or(locTerms.map((x) => `location.ilike."%${x}%"`).join(","));
     if (Number.isFinite(salaryMin) && salaryMin > 0) {
       // Same semantics the board uses, and the same disclosure obligation: only
       // about a fifth of postings state pay, so this filter is a narrow slice and
@@ -1081,6 +1090,54 @@ async function companies(client: SupabaseClient, url: URL, headers: Record<strin
     asOf: data?.updated_at ?? null,
     basis: "cached facet, refreshed at the end of each rotation pass",
   }, 200, headers);
+}
+
+/**
+ * POST /v1/fit — the résumé drop, as an endpoint. Reads the occupation out of
+ * resumeText, searches the board for it (or for `q`), scores up to 20 results
+ * against the résumé and returns them with fit, matched and missing terms.
+ * Paid, like engine=ranked: it is the site's differentiating feature. Scoring
+ * goes to job-fit, the scorer's own isolate — never to job-board, which shares
+ * a worker pool with the ingest and answered 546 to readers for that reason.
+ */
+async function fitResume(req: Request, headers: Record<string, string>, tier: string | null) {
+  const paid = tier != null && tier !== "free" && tier !== "trial";
+  if (!paid) {
+    return fail(402, "upgrade_required", "POST /v1/fit is a paid feature — résumé-to-job fit scoring. See https://resumebooster.work/data-api.", headers);
+  }
+  let body: { resumeText?: unknown; q?: unknown; limit?: unknown; country?: unknown; remote?: unknown };
+  try { body = await req.json(); } catch { return fail(400, "invalid_json", "Send a JSON body: { resumeText, q?, limit?, country?, remote? }.", headers); }
+  const resumeText = typeof body.resumeText === "string" ? body.resumeText.slice(0, 50000) : "";
+  if (resumeText.trim().length < 100) return fail(400, "invalid_value", "resumeText must be at least 100 characters.", headers);
+  const terms = resumeRoleTerms(resumeText, 4);
+  const q = typeof body.q === "string" && body.q.trim() ? body.q.trim().slice(0, 200) : (terms[0] ?? "");
+  if (!q) {
+    return new Response(JSON.stringify({ apiVersion: API_VERSION, terms, query: null, data: [],
+      note: "No occupation the scanner recognises appears in this résumé — pass q with a job title." }),
+      { status: 200, headers: { "Content-Type": "application/json", ...headers } });
+  }
+  const limit = Math.max(1, Math.min(20, Number(body.limit ?? 20) || 20));
+  const r = await board({ action: "list", limit, includeFacets: false, q,
+    ...(typeof body.country === "string" ? { country: body.country } : {}),
+    ...(body.remote === true ? { remote: true } : {}) });
+  const jobs = (Array.isArray(r.jobs) ? r.jobs : []) as Array<Record<string, unknown>>;
+  const ids = jobs.map((j) => String(j.id)).slice(0, 20);
+  let fits: Record<string, number | null> = {}, matched: Record<string, string[]> = {}, missing: Record<string, string[]> = {};
+  if (ids.length) {
+    const anon = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+    const res = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/job-fit`, {
+      method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${anon}`, apikey: anon },
+      body: JSON.stringify({ action: "fit-batch", resumeText, ids }), signal: AbortSignal.timeout(30_000),
+    });
+    const f = await res.json().catch(() => ({}));
+    if (!res.ok || !f?.fits) return fail(502, "scorer_unavailable", "The fit scorer did not respond. Retry shortly.", headers);
+    fits = f.fits; matched = f.matched ?? {}; missing = f.missing ?? {};
+  }
+  return new Response(JSON.stringify({
+    apiVersion: API_VERSION, terms, query: q,
+    data: jobs.map((j) => ({ id: j.id, title: j.title, company: j.company, company_token: j.token, location: j.location,
+      apply_url: j.applyUrl, fit: fits[String(j.id)] ?? null, matched: matched[String(j.id)] ?? [], missing: missing[String(j.id)] ?? [] })),
+  }), { status: 200, headers: { "Content-Type": "application/json", ...headers } });
 }
 
 async function stats(client: SupabaseClient, headers: Record<string, string>) {

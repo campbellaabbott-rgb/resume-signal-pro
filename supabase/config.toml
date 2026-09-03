@@ -5,6 +5,8 @@ project_id = "bwhdazbotpblihdxcmho"
     verify_jwt = false
   [functions.application-fit]
     verify_jwt = false
+  [functions.job-fit]
+    verify_jwt = false
   [functions.analyze-resume]
     verify_jwt = false
   [functions.auth-email-hook]

@@ -816,7 +816,18 @@ const PINNED = {
   //  * Each started board now reserves MAX_POSTINGS_PER_VISIT until it
   //    returns (released in a finally). The constant did not change; what it
   //    counts did — the rule from .21, applied to the lever that replaced it.
-  buildVersion: "2026-08-30.32",
+  //
+  // .33 — six upgrades in one day, each pinned to its measurement
+  //   (the-scorer-in-its-own-isolate.test.ts).
+  //  * descCoverage per vendor in status from a new desc_coverage rollup
+  //    (migration 20260903210000), and the desc sweep fills the NEWEST
+  //    postings first across vendors — the default browse was 0-30% scoreable.
+  //  * lastUpsertError rides slice_stats; chainKick exposes `at`.
+  //  * Location aliases lifted to _shared/location-terms.ts, behaviour here
+  //    unchanged, so /v1's default engine can mean the same place.
+  //  * fit-terms/fit-batch kept for older bundles; the scorer now lives in
+  //    job-fit, its own isolate, which the site and MCP call.
+  buildVersion: "2026-08-30.33",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {

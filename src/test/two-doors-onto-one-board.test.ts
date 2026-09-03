@@ -81,12 +81,17 @@ describe("two doors onto one board", () => {
   it("refuses, rather than approximates, what the default engine cannot ask honestly", () => {
     // Both refusals must NAME the ranked engine, so a caller is told where the
     // filter does work instead of being left with a bare rejection.
-    for (const p of ["location", "sort"]) {
+    // 2026-09-03: location is served by the default engine now — the alias
+    // expansion lives in _shared, so both engines mean the same place. sort
+    // is still refused: it would invalidate the keyset cursor.
+    for (const p of ["sort"]) {
       const m = new RegExp(`if \\(p\\.get\\("${p}"\\)\\) \\{[\\s\\S]{0,600}?engine=ranked`);
       expect(API, `the default engine must refuse ${p} and point at engine=ranked`).toMatch(m);
     }
-    expect(API, "a literal location match would answer a narrower question under the same name")
-      .not.toMatch(/qb\.ilike\("location"/);
+    // The default engine matches location ONLY through the shared expansion.
+    expect(API).toMatch(/import \{ locationTerms \} from "\.\.\/_shared\/location-terms\.ts";/);
+    expect(API).toMatch(/const locTerms = locationTerms\(p\.get\("location"\)\)\.terms;/);
+    expect(API, "a metro must OR every expanded name, quoted (state aliases carry commas)").toMatch(/location\.ilike\."%\$\{x\}%"/);
   });
 
   it("mirrors the board's own column semantics rather than inventing new ones", () => {

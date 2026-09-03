@@ -220,6 +220,26 @@ console.log("\n[/v1] MCP-parity filters");
     "unknown params are still rejected", bogus.body?.error?.code ?? `HTTP ${bogus.status}`);
 }
 
+// ── 2026-09-03 upgrades: location on the default engine, POST /v1/fit, apiVersion ──
+console.log("\n[/v1] 2026-09-03 upgrades");
+{
+  const root = await api("/v1");
+  ok(root.body?.apiVersion === "2026-09-03.1", "apiVersion is 2026-09-03.1", root.body?.apiVersion ?? "none");
+  ok((root.body?.endpoints ?? []).includes("POST /v1/fit"), "root advertises POST /v1/fit");
+  const loc = await api("/v1/jobs?location=London&limit=10");
+  ok(loc.status === 200, "location is ACCEPTED on the default engine now", `HTTP ${loc.status} ${loc.body?.error?.code ?? ""}`);
+  const rows = loc.body?.data ?? [];
+  ok(rows.length > 0 && rows.every((x) => /london/i.test(String(x.location ?? ""))), "location is APPLIED", `${rows.length} rows, ${rows.filter((x) => !/london/i.test(String(x.location ?? ""))).length} off`);
+  // The one POST route: refused without payment, never a 5xx, and GET stays 405.
+  const post = await fetch(BASE + "public-api/v1/fit", { method: "POST", headers: { Authorization: `Bearer ${KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ resumeText: "Jane Doe - Senior Software Engineer. ".repeat(6) }), signal: AbortSignal.timeout(45_000) });
+  const pb = await post.json().catch(() => null);
+  ok(post.status < 500, "POST /v1/fit is not a server error", `HTTP ${post.status}`);
+  ok(post.status === 402 && pb?.error?.code === "upgrade_required", "POST /v1/fit is paid: free key gets 402 upgrade_required", pb?.error?.code ?? `HTTP ${post.status}`);
+  const get = await api("/v1/fit");
+  ok(get.status === 405, "GET /v1/fit is 405 — the résumé must not ride a query string", `HTTP ${get.status}`);
+}
+
 // ── MCP ────────────────────────────────────────────────────────────────────
 console.log("\n[mcp] handshake, catalogue, and the keyed tools");
 {
@@ -230,7 +250,7 @@ console.log("\n[mcp] handshake, catalogue, and the keyed tools");
 {
   const r = await mcp("tools/list");
   const names = (r.body?.result?.tools ?? []).map((t) => t.name);
-  for (const t of ["search_jobs", "get_job", "check_apply_support", "request_application", "application_status", "board_stats", "debug_search"]) {
+  for (const t of ["search_jobs", "get_job", "check_apply_support", "request_application", "application_status", "board_stats", "debug_search", "fit_resume"]) {
     ok(names.includes(t), `tools/list advertises ${t}`);
   }
   const missingSchema = (r.body?.result?.tools ?? []).filter((t) => !t.inputSchema).map((t) => t.name);
@@ -258,6 +278,17 @@ console.log("\n[mcp] handshake, catalogue, and the keyed tools");
   ok(Array.isArray(j?.decision?.query?.terms), "trace names the parsed terms",
     JSON.stringify(j?.decision?.query?.terms ?? null));
   ok("applied" in (j?.decision?.filters ?? {}), "trace names the applied filters");
+}
+{
+  // fit_resume: the drop as a tool. A founder résumé that repeats go-to-market
+  // must resolve to a real role and come back scored through job-fit.
+  const cv = "Campbell Abbott - Founder & CEO, Resume Booster\nEXPERIENCE\nFounder & CEO 2024-2026. Ran go-to-market, hired the team.\nLed go-to-market strategy across three launches; owned roadmap and P&L.\nSKILLS: leadership, strategy, hiring, SQL\nBS, University of Washington";
+  const r = await mcp("tools/call", { name: "fit_resume", arguments: { resumeText: cv, limit: 5 } });
+  const j = toolJson(r.body);
+  ok(r.status === 200 && !!j && !j.error, "fit_resume answers", j?.error ?? `HTTP ${r.status}`);
+  ok(["founder", "ceo", "chief executive officer"].includes(j?.terms?.[0]), "fit_resume reads a real role, not a buzzword", JSON.stringify(j?.terms ?? null));
+  ok(Array.isArray(j?.jobs) && j.jobs.length > 0, "fit_resume returns jobs", `${j?.jobs?.length ?? 0}`);
+  ok((j?.jobs ?? []).some((x) => typeof x.fit === "number"), "fit_resume jobs carry a numeric fit from job-fit");
 }
 {
   // An unkeyed tool call must be refused in the MCP way — a result the agent
