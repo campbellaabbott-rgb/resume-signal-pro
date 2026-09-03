@@ -105,8 +105,10 @@ describe("the catalog carries the flag", () => {
   it("every widened parser tolerates both suffixes", () => {
     // The regexes themselves, read from the files that own them — each one
     // fell (or would have fallen) to the brace-anchor trap.
+    // source-catalog-invariants is deliberately ABSENT: since 2026-09-03 it
+    // imports JOB_SOURCES instead of parsing text, so it has no suffix
+    // tolerance left to rot — the parse cannot drop a board at all.
     for (const [file, marker] of [
-      ["src/test/source-catalog-invariants.test.ts", "agency"],
       ["src/test/an-employer-name-comes-from-the-employer.test.ts", "agency"],
       ["src/test/a-demo-board-is-not-an-employer.test.ts", "agency"],
       ["scripts/census-drivable-yield.mjs", "agency"],
