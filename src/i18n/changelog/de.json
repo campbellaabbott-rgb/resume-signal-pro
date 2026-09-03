@@ -1115,6 +1115,14 @@
     "agentPitchOnBoard": {
       "title": "Das Board zeigt jetzt, auf welche Jobs sich der Agent für Sie bewerben könnte",
       "description": "Unter der Ergebniszeile zählt das Board, bei wie vielen Jobs auf der Seite vor Ihnen der Apply Agent Bewerbungen einreichen könnte — dieselbe Zahl wie die kleinen Abzeichen auf den Karten, Sie können also selbst nachzählen. Der Hinweis erscheint nur, wenn mindestens ein Job infrage kommt, und nennt Preis und Grenzen direkt dort statt erst an der Kasse."
+    },
+    "dataApiFiltersMatchTheAgent": {
+      "title": "Die Daten-API filtert jetzt nach allem, was ein Agent konnte",
+      "description": "Über unseren MCP-Server konnte ein KI-Agent die Jobbörse nach Stadt, Beschäftigungsart, Stunden- oder Jahreslohn, geforderter Berufserfahrung, Alter der Anzeige und danach filtern, ob unser Bewerbungsagent dort einreichen kann. Die /v1-Daten-API — die, die Sie aus Ihrem eigenen Code aufrufen — lehnte all das ab. Dieselbe Börse, dieselben Möglichkeiten, zwei verschiedene Türen. Jetzt funktioniert alles. Stadt und Sortierung laufen über die Ranked-Engine, die „bay area“ in die tatsächlich gemeinten Orte auflöst, statt die Wörter wörtlich zu vergleichen — und die API sagt Ihnen das, statt stillschweigend eine engere Frage zu beantworten. Unbekannte Parameter werden weiterhin namentlich abgelehnt, ein Tippfehler bleibt also nicht unbemerkt."
+    },
+    "emailsWeSendNowArrive": {
+      "title": "E-Mails von uns kommen jetzt wirklich an",
+      "description": "Produktlieferungen, Scan-Ergebnisse, Daten-API-Schlüssel und Provisionsmitteilungen wurden von einer gemeinsam genutzten Testadresse verschickt, die ausschließlich an unser eigenes Postfach zustellt. Sie erreichten also uns und sonst niemanden — unbemerkt, weil der Versand bewusst nur ein Nebenweg ist und das, worum Sie eigentlich gebeten haben, nie blockiert. Jetzt kommen sie von unserer eigenen verifizierten Domain, derselben, die unsere Scan-Berichte immer schon genutzt haben, und wir haben den Empfang an einer externen Adresse bestätigt, bevor wir das hier schreiben. Wenn Sie etwas gekauft und die E-Mail nie erhalten haben, melden Sie sich — wir senden sie erneut."
     }
   }
 }

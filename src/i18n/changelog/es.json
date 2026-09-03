@@ -1115,6 +1115,14 @@
     "agentPitchOnBoard": {
       "title": "El tablón ahora te dice a qué empleos podría postularse el agente por ti",
       "description": "Bajo la línea de resultados, el tablón cuenta a cuántos empleos de la página que tienes delante podría enviar solicitudes el Agente — la misma cifra que las pequeñas insignias de las tarjetas, así que puedes verificar el número contándolas tú mismo. Solo aparece cuando al menos un empleo cumple, y declara el precio y los límites ahí mismo en lugar de guardarlos para el pago."
+    },
+    "dataApiFiltersMatchTheAgent": {
+      "title": "La API de datos ya filtra por todo lo que podía un agente",
+      "description": "Nuestro servidor MCP permitía a un agente de IA acotar el tablón por ciudad, tipo de contrato, pago por hora o salario anual, años de experiencia exigidos, antigüedad de la oferta y si nuestro agente de candidaturas puede inscribirse en ella. La API de datos /v1 —la que llamas desde tu propio código— rechazaba todo eso. El mismo tablón, las mismas capacidades, dos puertas distintas. Ahora funcionan todas. Ciudad y orden usan el motor ranked, que expande “bay area” a los lugares que realmente significa en vez de comparar las palabras literalmente, y la API te lo dice en lugar de responder en silencio a una pregunta más estrecha. Los parámetros desconocidos se siguen rechazando por su nombre, así que una errata te avisa."
+    },
+    "emailsWeSendNowArrive": {
+      "title": "Los correos que te enviamos ya llegan de verdad",
+      "description": "Las entregas de productos, los resultados de análisis, las claves de la API de datos y los avisos de comisión para afiliados salían desde una dirección de pruebas compartida que solo entrega a nuestro propio buzón. Llegaban a nosotros y a nadie más, en silencio, porque el envío es deliberadamente secundario y nunca bloquea lo que realmente pediste. Ahora salen de nuestro dominio verificado, el mismo que siempre han usado nuestros informes de análisis, y confirmamos que un mensaje llegaba a una dirección externa antes de decirlo aquí. Si compraste algo y nunca recibiste el correo, pídenoslo y te lo reenviamos."
     }
   }
 }

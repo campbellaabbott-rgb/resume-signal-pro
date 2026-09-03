@@ -1115,6 +1115,14 @@
     "agentPitchOnBoard": {
       "title": "O quadro agora diz-lhe a que vagas o agente poderia candidatar-se por si",
       "description": "Sob a linha de resultados, o quadro conta a quantas vagas da página à sua frente o Agente poderia submeter candidaturas — a mesma contagem dos pequenos distintivos nos cartões, por isso pode verificar o número contando-os. Só aparece quando pelo menos uma vaga se qualifica, e declara o preço e os limites ali mesmo, em vez de os guardar para o pagamento."
+    },
+    "dataApiFiltersMatchTheAgent": {
+      "title": "A API de dados já filtra por tudo o que um agente conseguia",
+      "description": "O nosso servidor MCP permitia a um agente de IA restringir o quadro por cidade, tipo de contrato, pagamento à hora ou anual, anos de experiência exigidos, há quanto tempo a vaga foi publicada e se o nosso agente de candidaturas consegue submeter nela. A API de dados /v1 — a que chamas a partir do teu próprio código — recusava tudo isso. O mesmo quadro, as mesmas capacidades, duas portas diferentes. Agora funcionam todas. Cidade e ordenação passam pelo motor ranked, que expande “bay area” para os lugares que realmente significa em vez de comparar as palavras à letra, e a API diz-to em vez de responder em silêncio a uma pergunta mais estreita. Parâmetros desconhecidos continuam a ser recusados pelo nome, por isso um erro de escrita avisa-te."
+    },
+    "emailsWeSendNowArrive": {
+      "title": "Os e-mails que te enviamos já chegam mesmo",
+      "description": "As entregas de produtos, os resultados de análise, as chaves da API de dados e os avisos de comissão de afiliados saíam de um endereço de teste partilhado que só entrega na nossa própria caixa. Chegavam a nós e a mais ninguém — em silêncio, porque o envio é deliberadamente secundário e nunca bloqueia aquilo que pediste. Agora saem do nosso domínio verificado, o mesmo que os nossos relatórios de análise sempre usaram, e confirmámos uma mensagem a chegar a um endereço externo antes de o escrevermos aqui. Se compraste algo e nunca recebeste o e-mail, diz-nos e reenviamos."
     }
   }
 }

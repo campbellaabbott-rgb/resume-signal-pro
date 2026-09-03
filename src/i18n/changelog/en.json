@@ -1115,6 +1115,14 @@
     "agentPitchOnBoard": {
       "title": "The board now tells you which jobs the agent could apply to for you",
       "description": "Under the results line, the board counts how many jobs on the page in front of you the Apply Agent could submit applications to — the same count as the small badges on the cards, so you can verify the number yourself by counting. It only appears when at least one job qualifies, and it states the price and the limits right there instead of saving them for the checkout."
+    },
+    "dataApiFiltersMatchTheAgent": {
+      "title": "The data API filters by everything an agent could",
+      "description": "Our MCP server let an AI agent narrow the board by city, employment type, hourly versus salaried, years of experience demanded, how recently a job was posted, and whether our apply agent can submit to it. The /v1 data API — the one you call from your own code — refused every one of those. Same board, same capability, two different doors. They all work now. City and sort order run on the ranked engine, which expands “bay area” into the places it actually means rather than matching the words literally, and the API tells you so instead of quietly answering a narrower question. Unknown parameters are still rejected by name, so a typo tells you rather than silently returning the whole board."
+    },
+    "emailsWeSendNowArrive": {
+      "title": "Emails we send you now actually arrive",
+      "description": "Product deliveries, scan results, data-API keys and affiliate payment notices were going out from a shared testing address that only ever delivers to our own inbox. So they reached us and nobody else — silently, because sending is deliberately best-effort and never blocks the thing you actually asked for. They now come from our own verified domain, the same one our scan reports have always used, and we confirmed a message reaching an outside address before saying so. If you bought something and never received the email, ask us and we will resend it."
     }
   }
 }

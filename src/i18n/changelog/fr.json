@@ -1115,6 +1115,14 @@
     "agentPitchOnBoard": {
       "title": "Le tableau vous dit désormais à quelles offres l’agent pourrait postuler pour vous",
       "description": "Sous la ligne de résultats, le tableau compte combien d’offres de la page devant vous l’Agent pourrait soumettre — le même compte que les petits badges sur les cartes, vous pouvez donc vérifier le chiffre vous-même en les comptant. Il n’apparaît que si au moins une offre est éligible, et il annonce le prix et les limites à cet endroit même, plutôt que de les garder pour le paiement."
+    },
+    "dataApiFiltersMatchTheAgent": {
+      "title": "L’API de données filtre enfin comme un agent",
+      "description": "Notre serveur MCP permettait à un agent IA de restreindre le tableau par ville, type de contrat, rémunération horaire ou annuelle, années d’expérience exigées, ancienneté de l’offre et capacité de notre agent de candidature à y postuler. L’API /v1 — celle que vous appelez depuis votre propre code — refusait tout cela. Même tableau, mêmes possibilités, deux portes différentes. Tout fonctionne désormais. La ville et le tri passent par le moteur ranked, qui développe « bay area » en les lieux réellement visés au lieu de comparer les mots littéralement, et l’API vous le dit plutôt que de répondre en silence à une question plus étroite. Les paramètres inconnus restent refusés nommément : une faute de frappe vous est signalée."
+    },
+    "emailsWeSendNowArrive": {
+      "title": "Les e-mails que nous vous envoyons arrivent enfin",
+      "description": "Les livraisons de produits, les résultats d’analyse, les clés de l’API de données et les avis de commission d’affiliation partaient d’une adresse de test partagée qui ne distribue qu’à notre propre boîte. Ils nous parvenaient donc, et à personne d’autre — sans bruit, car l’envoi est volontairement accessoire et ne bloque jamais ce que vous avez réellement demandé. Ils viennent désormais de notre domaine vérifié, celui-là même qu’utilisent depuis toujours nos rapports d’analyse, et nous avons vérifié qu’un message atteignait une adresse externe avant de l’écrire ici. Si vous avez acheté quelque chose sans jamais recevoir l’e-mail, demandez-nous de le renvoyer."
     }
   }
 }

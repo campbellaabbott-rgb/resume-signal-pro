@@ -1115,6 +1115,14 @@
     "agentPitchOnBoard": {
       "title": "Sinasabi na ngayon ng board kung aling mga trabaho ang maaaring aplayan ng agent para sa iyo",
       "description": "Sa ilalim ng linya ng mga resulta, binibilang ng board kung ilang trabaho sa pahinang nasa harap mo ang maaaring pagsumitehan ng Apply Agent ng aplikasyon — parehong bilang ng maliliit na badge sa mga card, kaya maaari mong beripikahin ang numero sa pamamagitan ng pagbibilang. Lumalabas lamang ito kapag may kahit isang kwalipikadong trabaho, at isinasaad nito ang presyo at mga limitasyon doon mismo, sa halip na itago ang mga ito hanggang sa checkout."
+    },
+    "dataApiFiltersMatchTheAgent": {
+      "title": "Nakakasala na ang data API sa lahat ng kayang salain ng isang agent",
+      "description": "Sa pamamagitan ng aming MCP server, kayang paliitin ng isang AI agent ang board ayon sa lungsod, uri ng trabaho, oras-oras kumpara sa taunang sahod, taon ng karanasang hinihingi, kung gaano kabago ang pagka-post, at kung kayang mag-submit doon ng aming apply agent. Ang /v1 data API — ang tinatawag mo mula sa sarili mong code — ay tumatanggi sa lahat ng iyon. Iisang board, iisang kakayahan, dalawang magkaibang pinto. Gumagana na ang lahat ngayon. Ang lungsod at pagkakasunod-sunod ay dumadaan sa ranked engine, na binubuksan ang “bay area” sa mga lugar na talagang ibig sabihin nito sa halip na ihambing nang literal ang mga salita, at sinasabi ito sa iyo ng API sa halip na tahimik na sagutin ang mas makitid na tanong. Ang hindi kilalang parameter ay tinatanggihan pa rin nang nakapangalan, kaya may babala kapag may typo."
+    },
+    "emailsWeSendNowArrive": {
+      "title": "Dumarating na talaga ang mga email na ipinapadala namin",
+      "description": "Ang mga paghahatid ng produkto, resulta ng scan, susi ng data API, at abiso ng komisyon para sa mga affiliate ay ipinapadala mula sa isang ibinabahaging pantesting na address na sa sarili lang naming inbox naghahatid. Kaya nakakarating ang mga ito sa amin at wala nang iba — tahimik, dahil sinadyang pangalawa lang ang pagpapadala at hindi nito hinaharangan ang talagang hiniling mo. Nanggagaling na ang mga ito ngayon sa sarili naming beripikadong domain, ang siya ring ginagamit ng aming mga scan report, at kinumpirma namin na nakarating ang isang mensahe sa labas bago ito isulat. Kung may binili ka at hindi mo natanggap ang email, sabihin mo lang at ipapadala namin ulit."
     }
   }
 }

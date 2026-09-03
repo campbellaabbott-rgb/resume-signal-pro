@@ -1115,6 +1115,14 @@
     "agentPitchOnBoard": {
       "title": "Het bord vertelt u nu op welke vacatures de agent voor u zou kunnen solliciteren",
       "description": "Onder de resultatenregel telt het bord bij hoeveel vacatures op de pagina voor u de Apply Agent sollicitaties zou kunnen indienen — hetzelfde aantal als de kleine badges op de kaarten, dus u kunt het getal zelf natellen. Het verschijnt alleen als minstens één vacature in aanmerking komt, en het noemt de prijs en de grenzen daar meteen, in plaats van ze te bewaren voor het afrekenen."
+    },
+    "dataApiFiltersMatchTheAgent": {
+      "title": "De data-API filtert nu op alles wat een agent al kon",
+      "description": "Via onze MCP-server kon een AI-agent het bord filteren op stad, dienstverband, uurloon versus jaarsalaris, gevraagde jaren ervaring, hoe recent een vacature is geplaatst, en of onze sollicitatie-agent er kan indienen. De /v1 data-API — die je vanuit je eigen code aanroept — weigerde dat allemaal. Hetzelfde bord, dezelfde mogelijkheden, twee verschillende deuren. Nu werkt alles. Stad en sortering lopen via de ranked engine, die “bay area” uitklapt naar de plaatsen die er echt mee bedoeld worden in plaats van de woorden letterlijk te vergelijken — en de API zegt dat, in plaats van stilletjes een smallere vraag te beantwoorden. Onbekende parameters worden nog steeds bij naam geweigerd, dus een typefout laat zich zien."
+    },
+    "emailsWeSendNowArrive": {
+      "title": "E-mails die we je sturen komen nu echt aan",
+      "description": "Productleveringen, scanresultaten, data-API-sleutels en commissiemeldingen voor affiliates gingen uit vanaf een gedeeld testadres dat alleen aan onze eigen inbox bezorgt. Ze bereikten dus ons en niemand anders — geruisloos, want verzenden is bewust bijzaak en blokkeert nooit waar je eigenlijk om vroeg. Ze komen nu van ons eigen geverifieerde domein, hetzelfde dat onze scanrapporten altijd al gebruiken, en we hebben bevestigd dat een bericht een extern adres bereikte voordat we dit schreven. Heb je iets gekocht en de e-mail nooit ontvangen? Vraag het ons, dan sturen we hem opnieuw."
     }
   }
 }
