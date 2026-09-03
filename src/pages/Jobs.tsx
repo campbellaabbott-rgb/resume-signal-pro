@@ -2856,7 +2856,16 @@ export default function Jobs() {
 
   // Score whatever's loaded whenever ranking is on.
   useEffect(() => {
-    if (!fitRanking || jobs.length === 0) return;
+    // NOT WHILE A NEW PAGE IS IN FLIGHT. Moving setFitRanking(true) after
+    // setQ (.31) did not stop the first batch scoring the OLD page — this
+    // effect keys on `jobs`, which is still the previous list when ranking
+    // flips on, and only the résumé's page arriving changes it. Measured with
+    // a request hook after .31 deployed: fit-batch fired once on the stale
+    // page (3 of 20 scored) before the founder list loaded. `refreshing` is
+    // true from the moment the offset-0 fetch starts until it lands, so this
+    // waits for the page the reader actually asked for; the arrival of that
+    // page changes `jobs`, which re-runs the effect.
+    if (!fitRanking || jobs.length === 0 || refreshing) return;
     const unscored = jobs.filter((j) => !(j.id in fits)).map((j) => j.id);
     if (unscored.length === 0) return;
     (async () => {
@@ -2905,7 +2914,7 @@ export default function Jobs() {
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fitRanking, jobs]);
+  }, [fitRanking, jobs, refreshing]);
 
   // Fit-first by default: the moment we can tell there's a resume to score
   // against (a fresh scan stashed this session, or the signed-in user's latest

@@ -63,4 +63,14 @@ describe("sixty postings could not be scored just now", () => {
     expect(on, "ranking must be enabled after the query is set, or the first batch scores the old page").toBeGreaterThan(setq);
     expect(body.indexOf("setFitRanking(true);"), "only one enable in the handler").toBe(body.lastIndexOf("setFitRanking(true);"));
   });
+
+  it("the fit effect waits for the page the reader asked for", () => {
+    // The ordering above was necessary but not sufficient: the effect keys on
+    // `jobs`, still the old page when ranking flips on. Measured with a
+    // request hook after .31 deployed — one batch scored the stale page (3 of
+    // 20) before the résumé's list arrived. `refreshing` covers exactly the
+    // window between the new fetch starting and landing.
+    expect(J).toMatch(/if \(!fitRanking \|\| jobs\.length === 0 \|\| refreshing\) return;/);
+    expect(J, "refreshing must be a dependency, or the effect reads a stale closure").toMatch(/\}, \[fitRanking, jobs, refreshing\]\);/);
+  });
 });
