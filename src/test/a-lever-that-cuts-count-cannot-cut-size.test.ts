@@ -59,15 +59,35 @@ describe("a lever that cuts count cannot cut size", () => {
   });
 
   it("never caps a fetcher that cannot resume — that would TRUNCATE a board", () => {
-    // UKG, ADP, iCIMS and USAJOBS take no startOffset and return no
-    // nextOffset, so a cap there does not defer the rest of the board, it
-    // discards it. They need offset support before they can be bounded.
+    // UKG, ADP and USAJOBS take no startOffset and return no nextOffset, so a
+    // cap there does not defer the rest of the board, it discards it. They
+    // need offset support before they can be bounded. (iCIMS gained it in
+    // .28 and moved to the capped list below.)
     for (const fn of ["fetchUkg", "fetchAdp"]) {
       const body = fnBody(fn);
       if (!body) continue;
       expect(body, `${fn} cannot resume, so capping it silently truncates the board`)
         .not.toMatch(/MAX_POSTINGS_PER_VISIT/);
     }
+    const u = FN.indexOf('s.source === "usajobs"');
+    const usajobs = FN.slice(u, FN.indexOf("return { jobs:", u));
+    expect(usajobs, "usajobs cannot resume, so capping it truncates the federal feed").not.toMatch(/MAX_POSTINGS_PER_VISIT/);
+  });
+
+  it("iCIMS resumes since .28, and is therefore capped like Workday and Oracle", () => {
+    // It held the single largest per-visit fetch on the board (20,800) and
+    // was the one giant .27 could not touch. The dispatcher already persisted
+    // nextOffset for ANY vendor; iCIMS only had to consume startOffset and
+    // report where it stopped.
+    const i = FN.indexOf('s.source === "icims"');
+    const block = FN.slice(i, FN.indexOf('s.source === "usajobs"', i));
+    expect(block, "iCIMS block not found").not.toBe("");
+    expect(block).toMatch(/const startPage = Math\.floor\(startOffset \/ ICIMS_PAGE\) \+ 1;/);
+    expect(block, "iCIMS must report where it stopped").toMatch(/startOffset \+ all\.length/);
+    expect(block, "iCIMS must return nextOffset so the deep cursor can resume it").toMatch(/feedTotal, nextOffset \}/);
+    expect(block).toMatch(/if \(all\.length >= MAX_POSTINGS_PER_VISIT\) break outer;/);
+    const capLine = /if \(all\.length >= MAX_POSTINGS_PER_VISIT\)[^\n]*/.exec(block)?.[0] ?? "";
+    expect(capLine, "iCIMS cap wraps the board instead of resuming it").not.toMatch(/exhausted/);
   });
 
   it("a capped board still reads as windowed, so the prune stays off it", () => {

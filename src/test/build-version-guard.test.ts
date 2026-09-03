@@ -727,7 +727,32 @@ const PINNED = {
   //  * UKG, ADP, iCIMS and USAJOBS are deliberately NOT capped — they carry no
   //    offset, so a cap would truncate a board rather than defer it. iCIMS is
   //    the one that most needs offset support next.
-  buildVersion: "2026-08-30.27",
+  //
+  // .28 — the bootstrap queue is taken, appended and stamped SERVER-SIDE.
+  //  * Every slice loaded the queue's ENTIRE JSON array from one meta row,
+  //    took a few tokens off the front, and wrote the entire remainder back.
+  //    After a deploy's version-change re-append that array held 8,453 tokens
+  //    — ~500KB parsed and re-serialised per slice, in the same invocation
+  //    fetching up to eighty feeds. Measured 2026-09-03: once .27 had capped
+  //    the giants, twelve slices completed in the window before that
+  //    re-append and none after; `works` froze while the cursor advanced.
+  //  * bootstrap_queue_take/append/stamp (migration 20260903150000) do the
+  //    same three things inside one row lock and return only what was asked
+  //    for. Semantics copied, not improved: take() removes the first n whether
+  //    or not they are in the slice and returns the ones that are not;
+  //    lastSlice.selected is stamped AFTER resolution so a token resolving to
+  //    no board stays visible. Status still reads pending as the array length.
+  //    Validated in pglite before shipping: dedupe, back-append, order, version
+  //    stamping, and service_role-only execution.
+  //  * The legacy in-process path is kept, wrapped in `if (!bootstrapViaRpc)`,
+  //    and runs byte-for-byte when the RPCs return PGRST202 — so the function
+  //    may deploy ahead of its migration without changing behaviour.
+  //  * iCIMS now RESUMES via startOffset/nextOffset (the dispatcher already
+  //    persisted nextOffset for any vendor), so it is capped at
+  //    MAX_POSTINGS_PER_VISIT like Workday and Oracle. It held the single
+  //    largest per-visit fetch on the board — 20,800 postings — and was the one
+  //    giant .27 could not touch.
+  buildVersion: "2026-08-30.28",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {

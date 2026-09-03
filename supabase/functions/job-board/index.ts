@@ -110,7 +110,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-30.27"; // .27: a visit is bounded by POSTINGS, not pages. Every fetcher accumulated a whole board before returning, so per-board memory was O(board) — and the 2026-08-31 pages overrides let 77 boards pull 2,000+ in one visit (iCIMS 20,800, Oracle 13,000, Workday 5,000). Slices died INSIDE the fetch loop on WORKER_RESOURCE_LIMIT and the fleet floored itself at L1, where no shed lever could help: they all cut how MANY boards a slice takes, none cut how BIG one is. Workday/Oracle now stop at 2,000 and RESUME via the nextOffset the deep cursor already persists; UKG/ADP/iCIMS/USAJOBS are left alone because they cannot resume and a cap would truncate them.
+const BUILD_VERSION = "2026-08-30.28"; // .28: the bootstrap queue is taken, appended and stamped SERVER-SIDE (bootstrap_queue_take/append/stamp, migration 20260903150000) — the edge no longer loads the whole array every slice, which at 8,453 tokens after a deploy re-append was ~500KB parsed and rewritten per slice and the strongest remaining correlate of slices dying in the fetch loop once .27 had capped the giants; legacy in-process path kept as the fallback when the RPCs are not applied yet (PGRST202). iCIMS now RESUMES via startOffset/nextOffset and is therefore capped at MAX_POSTINGS_PER_VISIT like Workday/Oracle — it held the single largest per-visit fetch (20,800).
 // .23: bug-sweep round — the agency opt-out reaches the rescue tiers (it was bound in search_jobs only, so a rescue served the rows the caller hid, undisclosed); the per-company cap stops swallowing the employer it just surfaced; a withdrawn count no longer prints "not hiring"; the reverted pipe fix is restored
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
@@ -920,6 +920,14 @@ async function fetchBoard(
       // in chunks of 5 so the giant costs ~23 sequential rounds, the same
       // order as Oracle's tolerated 20 — not 110 serial round trips.
       const ICIMS_PAGE = 100, ICIMS_MAX_PAGES = Math.max(1, s.pages ?? 12), ICIMS_CHUNK = 5;
+      // RESUMABLE SINCE .28. iCIMS pages 1-based by `page`, so the deep
+      // cursor's posting offset maps to a starting page; the visit then covers
+      // its page budget FROM there and reports nextOffset like Workday and
+      // Oracle do — which is what lets MAX_POSTINGS_PER_VISIT bound it without
+      // truncating the board. Before this, iCIMS held the single largest
+      // per-visit fetch on the board (20,800 postings) and could not be capped.
+      const startPage = Math.floor(startOffset / ICIMS_PAGE) + 1;
+      const lastPage = startPage + ICIMS_MAX_PAGES - 1;
       const all: unknown[] = [];
       let feedTotal = 0, exhausted = false;
       const fetchPage = async (page: number) => {
@@ -930,24 +938,29 @@ async function fetchBoard(
         const body = await res.json() as { jobs?: unknown[]; totalCount?: number };
         return body;
       };
-      outer: for (let start = 1; start <= ICIMS_MAX_PAGES; start += ICIMS_CHUNK) {
+      outer: for (let start = startPage; start <= lastPage; start += ICIMS_CHUNK) {
         const pages: number[] = [];
-        for (let p = start; p <= Math.min(start + ICIMS_CHUNK - 1, ICIMS_MAX_PAGES); p++) pages.push(p);
+        for (let p = start; p <= Math.min(start + ICIMS_CHUNK - 1, lastPage); p++) pages.push(p);
         const bodies = await Promise.all(pages.map(fetchPage));
         for (let i = 0; i < bodies.length; i++) {
           const batch = Array.isArray(bodies[i].jobs) ? bodies[i].jobs! : [];
-          if (pages[i] === 1) feedTotal = Number(bodies[i].totalCount) || 0;
+          if (feedTotal === 0) feedTotal = Number(bodies[i].totalCount) || 0; // first page fetched, whichever it is
           all.push(...batch);
           // A short page inside a chunk ends the walk — later chunk members
           // past the end return empty and must not be treated as data.
           if (batch.length < ICIMS_PAGE) { exhausted = true; break outer; }
+          // Memory ceiling, not end-of-feed: `exhausted` stays false so
+          // nextOffset resumes here rather than wrapping to the top.
+          if (all.length >= MAX_POSTINGS_PER_VISIT) break outer;
         }
       }
       // Same guard as the other paginated vendors: a page-1 failure that
       // returns empty while the feed claims postings must NOT read as "board
       // emptied" (the orphan prune would delete a live tenant).
       if (all.length === 0 && feedTotal > 0) throw new Error(`empty page but total=${feedTotal}`);
-      return { jobs: normalizeIcims(all as never, s.name, s.token), raw: { items: all }, windowed: !exhausted, feedTotal };
+      const advancedIc = startOffset + all.length;
+      const nextOffset = exhausted || (feedTotal > 0 && advancedIc >= feedTotal) ? 0 : advancedIc;
+      return { jobs: normalizeIcims(all as never, s.name, s.token), raw: { items: all }, windowed: !exhausted, feedTotal, nextOffset };
     }
     if (s.source === "usajobs") {
       // Single national feed, paged 500 at a time. The key lives in secrets;
@@ -1951,6 +1964,81 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
   let bootstrapBoards: JobSource[] = [];
   if (!inHotPhase) {
     try {
+      // ── THE QUEUE STAYS IN THE ROW; THE EDGE STOPS LOADING IT (20260903150000) ──
+      //
+      // Every slice used to read this row's ENTIRE queue array, take a few
+      // tokens off the front, and write the entire remainder back — half a
+      // megabyte parsed and re-serialised per slice once a deploy's re-append
+      // had refilled it to 8,453 tokens, inside the same invocation that is
+      // fetching up to eighty feeds. Measured 2026-09-03: after .27 capped
+      // per-board fetch size, twelve slices completed in the window between
+      // deploy and that re-append, then none — `works` froze while the cursor
+      // kept advancing, an invocation dying in its fetch loop.
+      //
+      // bootstrap_queue_take/append/stamp do the same three things inside one
+      // row lock and return only what was asked for. Semantics are the legacy
+      // path's, unchanged: take() removes the first n whether or not they are
+      // in this slice (that is what slice(0, n) did) and returns the ones that
+      // are not; lastSlice.selected is stamped AFTER resolution because a token
+      // that resolves to no board is the fork this lane's own comment says it
+      // needs to see. Status still reads pending as the array's length.
+      //
+      // DEPLOY-BEFORE-MIGRATION: when the RPCs do not exist yet the call fails
+      // with PGRST202 and everything falls through to the legacy block below,
+      // byte-for-byte as before. In that window a version change pays
+      // get_empty_boards once here and once again in the fallback — bounded to
+      // the gap between function deploy and migration apply, and correct.
+      let bootstrapViaRpc = false;
+      {
+        const rpcAbsent = (e: { code?: string; message?: string } | null | undefined) =>
+          !!e && (e.code === "PGRST202" || e.code === "42883" || /could not find the function|does not exist/i.test(e.message ?? ""));
+        const sliceTokens = new Set([...baseSlice, ...demandBoards].map((s) => s.token));
+        // The stored version only — one text field, never the array.
+        const { data: verRow, error: verErr } = await client.from("job_board_meta").select("v->>version").eq("k", "bootstrap").maybeSingle();
+        if (!verErr) {
+          const storedVersion = (verRow as { version?: string } | null)?.version ?? "";
+          let appendDone = true;
+          const seed = async (why: string) => {
+            const { data: empty, error: ebErr } = await client.rpc("get_empty_boards", { p_tokens: JOB_SOURCES.map((s) => s.token) });
+            if (ebErr) throw new Error(ebErr.message ?? "get_empty_boards error");
+            const { data: len, error: apErr } = await client.rpc("bootstrap_queue_append", { p_tokens: Array.isArray(empty) ? empty : [] });
+            if (apErr) throw apErr;
+            console.log(`[JOB-BOARD] bootstrap: ${why} — appended empties server-side (queue now ${len})`);
+          };
+          try {
+            if (storedVersion !== BUILD_VERSION) {
+              try { await seed("version change"); } catch (e) {
+                if (rpcAbsent(e as { code?: string; message?: string })) throw e;
+                appendDone = false;
+                console.error(`[JOB-BOARD] bootstrap version-append failed (will retry next slice): ${e instanceof Error ? e.message.slice(0, 120) : e}`);
+              }
+            }
+            const takeArgs = { p_n: effBootstrapPerSlice, p_skip: [...sliceTokens], p_version: BUILD_VERSION, p_stamp_version: appendDone };
+            let take = await client.rpc("bootstrap_queue_take", takeArgs);
+            if (take.error) throw take.error;
+            let res = take.data as { taken?: string[]; drained?: number; remaining?: number } | null;
+            if ((res?.drained ?? 0) === 0 && (res?.remaining ?? 0) === 0 && storedVersion === BUILD_VERSION) {
+              // Empty on an unchanged version: seed once, take again.
+              await seed("empty queue");
+              take = await client.rpc("bootstrap_queue_take", takeArgs);
+              if (take.error) throw take.error;
+              res = take.data as { taken?: string[]; drained?: number; remaining?: number } | null;
+            }
+            const taken = Array.isArray(res?.taken) ? (res!.taken as string[]) : [];
+            bootstrapBoards = taken
+              .map((t) => JOB_SOURCES.find((s) => s.token === t))
+              .filter((s): s is JobSource => !!s);
+            await client.rpc("bootstrap_queue_stamp", { p_selected: bootstrapBoards.length });
+            bootstrapViaRpc = true;
+          } catch (e) {
+            // Absent RPC -> legacy path below. Anything else is a real failure
+            // and belongs to the outer catch: the lane is an accelerator and
+            // must never break the rotation.
+            if (!rpcAbsent(e as { code?: string; message?: string })) throw e;
+          }
+        }
+      }
+      if (!bootstrapViaRpc) {
       const { data: bsMeta } = await client.from("job_board_meta").select("v").eq("k", "bootstrap").maybeSingle();
       const bs = (bsMeta?.v ?? {}) as { queue?: string[]; version?: string };
       let queue = Array.isArray(bs.queue) ? bs.queue : [];
@@ -2082,6 +2170,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
           { onConflict: "k" },
         );
       }
+      } // !bootstrapViaRpc
     } catch { /* bootstrap is an accelerator — on any error the rotation still reaches every board */ }
   }
   // DEEP CURSORS — where each capped board's last pass stopped.
