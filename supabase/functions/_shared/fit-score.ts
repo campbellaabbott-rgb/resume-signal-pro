@@ -178,16 +178,47 @@ export function computeFit(jobPosting: string, resume: string | ResumeScan, maxT
  * term contained in a longer match is then dropped as the vaguer way to say the
  * same thing, which is also what keeps "manager" from beating "product manager".
  */
+/**
+ * A FOUNDER'S RÉSUMÉ SEARCHED THE BOARD FOR "GO-TO-MARKET".
+ *
+ * Reported 2026-09-03 as "the drop didn't work". Reproduced against fit-terms:
+ * every résumé that mentions go-to-market got it as the FIRST term — ahead of
+ * the actual job title even on a software engineer's CV — and for a Founder &
+ * CEO or a Chief of Staff it was the ONLY term. The client searches terms[0],
+ * so the board ran q=go-to-market, a strategy phrase that names no job, and
+ * fit-ranked whatever that returned. It looked like nothing happened.
+ *
+ * Two causes. The sales `titles` list carries "gtm" and "go-to-market" as if
+ * they were occupations (the same phrase sits in product_management.primary,
+ * where it belongs: it is a skill). And the scanner has no executive titles
+ * at all, so a founder's headline resolves to nothing and a stray skill wins.
+ * The classifier's dictionary is frozen at v9 and feeds industry detection, so
+ * it is not edited; the exclusion and the supplement live here, at the one
+ * place that turns that dictionary into search queries.
+ */
+const NOT_AN_OCCUPATION = new Set(["gtm", "go-to-market"]);
+/** Roles the industry lists never carried because no industry owns them. */
+const GENERAL_TITLES = [
+  "founder", "co-founder", "cofounder", "ceo", "chief executive officer",
+  "coo", "chief operating officer", "cto", "chief technology officer",
+  "cfo", "chief financial officer", "chief of staff", "managing director",
+  "general manager", "vice president", "executive director",
+];
 const TITLE_VOCAB: string[] = (() => {
   const set = new Set<string>();
   for (const data of Object.values(INDUSTRY_KEYWORDS)) {
     for (const term of data.titles) {
       const t = term.toLowerCase().trim();
+      if (NOT_AN_OCCUPATION.has(t)) continue;
       // A bare word needs length to be an occupation; "rep" and "aide" are not
       // queries. A multi-word title carries its own specificity.
       if (t.includes(" ") ? t.length >= 4 : t.length >= 6) set.add(t);
     }
   }
+  // The supplement bypasses the length rule ("ceo" is three letters and a
+  // job); as bare words they still need to be in the headline to count, which
+  // is what stops "reported to the CEO" in a bullet from hijacking the query.
+  for (const t of GENERAL_TITLES) set.add(t);
   return [...set];
 })();
 
@@ -242,7 +273,7 @@ export function resumeRoleTerms(resumeText: string, limit = 4): string[] {
   if (lower.trim().length < 100) return [];
   // Where a headline sits, with room for a contact block above it.
   const head = lower.slice(0, Math.max(400, Math.floor(lower.length * 0.2)));
-  const found: { term: string; first: number; score: number }[] = [];
+  const found: { term: string; first: number; inHead: boolean; score: number }[] = [];
   for (const term of TITLE_VOCAB) {
     if (!containsTerm(lower, term)) continue;
     const single = !term.includes(" ");
@@ -250,10 +281,15 @@ export function resumeRoleTerms(resumeText: string, limit = 4): string[] {
     const inHead = containsTerm(head, term);
     if (single && !inHead) continue; // a bare word counts only as a headline
     const first = lower.indexOf(term);
-    const freq = lower.split(term).length - 1;
+    // REPETITION IS CAPPED. Uncapped, a phrase repeated in three bullets
+    // (go-to-market x3 = 25) outscored the headline title mentioned once
+    // (software engineer = 24), and the bullets became the search. Two
+    // mentions is all the evidence repetition gets to contribute.
+    const freq = Math.min(2, lower.split(term).length - 1);
     found.push({
       term,
       first,
+      inHead,
       score: freq * 2 + term.split(" ").length * 3 + (inHead ? 12 : 0) +
         (first / Math.max(1, lower.length) < 0.35 ? 4 : 0),
     });
@@ -266,6 +302,8 @@ export function resumeRoleTerms(resumeText: string, limit = 4): string[] {
   });
   // "engineer" inside "software engineer" is the same claim, less precise.
   const kept = ungraded.filter((a) => !ungraded.some((b) => b.term !== a.term && b.term.includes(a.term)));
-  kept.sort((a, b) => b.score - a.score || a.first - b.first);
+  // The headline outranks the body outright: what a résumé LEADS with is the
+  // role, however often something else is mentioned further down.
+  kept.sort((a, b) => Number(b.inHead) - Number(a.inHead) || b.score - a.score || a.first - b.first);
   return kept.slice(0, limit).map((c) => c.term);
 }

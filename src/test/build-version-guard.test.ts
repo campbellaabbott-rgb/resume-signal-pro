@@ -775,7 +775,23 @@ const PINNED = {
   //    lane is the only thing that resumes them.
   //  * .28's queue RPCs stay: correct engineering, refuted as the killer
   //    (slices died with the RPC path provably live).
-  buildVersion: "2026-08-30.29",
+  //
+  // .30 — a founder's résumé searched the board for "go-to-market".
+  //  * Reported as "the drop didn't work". The drop was verified healthy end to
+  //    end in a real browser with an engineer's CV; the query it BUILT was the
+  //    bug. fit-terms returned go-to-market as the FIRST term for every résumé
+  //    that mentioned it — ahead of the real title on the control — and as the
+  //    ONLY term for a Founder & CEO or a Chief of Staff. The client searches
+  //    terms[0], so the board ran a strategy phrase and fit-ranked garbage.
+  //  * Three causes, each pinned behaviourally (the scanner is imported and
+  //    run, not grepped): "gtm"/"go-to-market" mis-filed as titles in the sales
+  //    list; uncapped repetition (three bullets, 25) beating one headline (24);
+  //    and no executive titles in the vocabulary at all. The dictionary is
+  //    frozen at v9 and feeds the classifier, so it is untouched — the deny-set
+  //    and the GENERAL_TITLES supplement live in fit-score.ts, where the
+  //    dictionary becomes search queries. Repetition is capped at two mentions
+  //    and the headline outranks the body outright.
+  buildVersion: "2026-08-30.30",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {
