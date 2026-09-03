@@ -29,7 +29,9 @@ describe("federal postings are honest, attributed, and never agent-ready", () =>
   it("carries exactly one USAJOBS source — it is a single national feed", () => {
     // 2026-09-03: matched `source: "usajobs"` until the compaction respelled
     // the entry as an s(...) call — same parser trap as the other suites.
-    const hits = SRC.match(/"usajobs"/g) ?? [];
+    // Count the catalog rows themselves; a bare-text match also hits the
+    // vendor union type.
+    const hits = JOB_SOURCES.filter((s) => s.source === "usajobs");
     expect(hits.length).toBe(1);
     expect(SRC).toMatch(/\| "usajobs";/);
   });

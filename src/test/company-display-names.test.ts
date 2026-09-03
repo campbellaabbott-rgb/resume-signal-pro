@@ -33,7 +33,7 @@ import { resolve } from "node:path";
 
 const ROOT = resolve(__dirname, "../../supabase/functions/job-board");
 const IDX = readFileSync(resolve(ROOT, "index.ts"), "utf8");
-const SOURCES = readFileSync(resolve(ROOT, "sources.ts"), "utf8");
+
 
 /** Catalog entries as {name, source, token}. */
 // 2026-09-03: parsed by regex until the deploy-size compaction respelled the
