@@ -32,7 +32,7 @@ describe("nothing bounded the sum", () => {
 
   it("stops STARTING fetches at the budget, after the dormancy skip and before the fetch", () => {
     const skip = CODE.indexOf("if (skipTokens.has(s.token)) continue;");
-    const budget = CODE.indexOf("if (fetchedInSlice + inFlightBoards * MAX_POSTINGS_PER_VISIT >= SLICE_POSTING_BUDGET) { budgetSkipped.push(s.token); continue; }");
+    const budget = CODE.indexOf("if (fetchedInSlice >= SLICE_POSTING_BUDGET) { budgetSkipped.push(s.token); continue; }");
     // .32 wrapped the fetch in try/finally to release the in-flight reservation.
     const fetch = CODE.indexOf("r = await fetchBoard(s, (m) => { failReason = m; }, deepCursors[s.token] ?? 0);");
     expect(budget, "budget check missing").toBeGreaterThan(0);
@@ -44,9 +44,13 @@ describe("nothing bounded the sum", () => {
     // Concurrency 8 x a 2,000 cap = up to 16,000 postings past a check that
     // only looked at landed volume. Three chain deaths in an hour with
     // budgetHit=false, the last completed slice at 10,402, said so.
-    expect(CODE).toMatch(/let inFlightBoards = 0;/);
-    expect(CODE).toMatch(/inFlightBoards\+\+;/);
-    expect(CODE, "the reservation must be released in a finally, or a throwing fetch leaks it").toMatch(/finally \{ inFlightBoards--; \}/);
+    // .34: the reservation is per board (what THAT board can still add), and
+    // it retires a worker rather than deferring a board — see
+    // a-reservation-that-emptied-the-queue.test.ts for why.
+    expect(CODE).toMatch(/let inFlightReserve = 0;/);
+    expect(CODE).toMatch(/inFlightReserve \+= reserve;/);
+    expect(CODE, "the reservation must be released in a finally, or a throwing fetch leaks it").toMatch(/finally \{ inFlightReserve -= reserve; \}/);
+    expect(CODE).toMatch(/if \(fetchedInSlice \+ inFlightReserve >= SLICE_POSTING_BUDGET\) \{ queue\.unshift\(s\); return; \}/);
   });
 
   it("counts what was HELD, not what was stored", () => {

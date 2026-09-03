@@ -827,7 +827,15 @@ const PINNED = {
   //    unchanged, so /v1's default engine can mean the same place.
   //  * fit-terms/fit-batch kept for older bundles; the scorer now lives in
   //    job-fit, its own isolate, which the site and MCP call.
-  buildVersion: "2026-08-30.33",
+  //
+  // .34 — the .32 reservation emptied cold slices (a-reservation-that-emptied-
+  //   the-queue.test.ts). Measured 20:19Z: a cold slice fetched 178 postings
+  //   and deferred 111 boards, cursor already past them. Reserve is now per
+  //   board (500 cold, the cap for hot-phase and deep boards), and when the
+  //   reservation is what fills the budget the worker retires and hands the
+  //   board back instead of dropping it. Deferral happens only on LANDED
+  //   postings.
+  buildVersion: "2026-08-30.34",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {

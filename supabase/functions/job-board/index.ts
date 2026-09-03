@@ -111,7 +111,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-30.33"; // .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
+const BUILD_VERSION = "2026-08-30.34"; // .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
 // .23: bug-sweep round — the agency opt-out reaches the rescue tiers (it was bound in search_jobs only, so a rescue served the rows the caller hid, undisclosed); the per-company cap stops swallowing the employer it just surfaced; a withdrawn count no longer prints "not hiring"; the reverted pipe fix is restored
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
@@ -287,6 +287,18 @@ const HOT_SLICE = 10;
  * filter — because that is what was held in memory, not what was stored.
  */
 const SLICE_POSTING_BUDGET = 12_000;
+// WHAT ONE IN-FLIGHT BOARD CAN STILL ADD. Only a hot-phase board or a
+// deep-lane board can return the per-visit cap in one visit; a cold board
+// is small by definition (that is why it is cold), and reserving the cap
+// for each of them was measured on 2026-09-03 20:19Z: a cold slice fetched
+// 178 postings and deferred 111 boards, because the first worker to return
+// saw seven others reserving 2,000 each, judged the budget spent, and
+// drained the whole remaining queue — while the cursor had already moved
+// past every one of those boards. Arithmetic that a guard pins: with every
+// cold worker reserving this and both deep boards reserving the cap, the
+// reservation alone stays under the budget, so an empty-handed slice can
+// never retire a worker, let alone drop a board.
+const COLD_BOARD_RESERVE = 500;
 const COLD_SLICE = 80; // cold boards are small (that's why they're cold); 80/hop at CONCURRENCY=8 is 10 sequential rounds — well under the edge wall-time limit. Rotation speed comes from concurrency + hops-per-pass, never bigger slices (proven-safe size).
 const BOOTSTRAP_PER_SLICE = 25; // zero-row boards prepended per cold slice after a deploy — +31% slice load, still ~3 rounds under the wall-time margin; a 1,900-board merge drains in ~1.5 passes instead of waiting a full rotation for its FIRST ingest
 // MEASURED DOWN FROM 25 — 25 COST THE ROTATION FOUR TIMES ITS SPEED.
@@ -2425,7 +2437,8 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
   // the chain died three times in an hour on WORKER_RESOURCE_LIMIT with
   // budgetHit=false every time, the last completed slice at 10,402. Each
   // started board reserves its worst case until it returns.
-  let inFlightBoards = 0;
+  let inFlightReserve = 0;
+  const deepTokens = new Set(deepBoards.map((b) => b.token));
   const budgetSkipped: string[] = [];
   let lastUpsertError: string | null = null;
 
@@ -2437,7 +2450,11 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
         // Dormant, not due for recheck: skip the dead fetch (no postings to gain,
         // ~20s of FETCH_TIMEOUT to lose). Not counted as attempted below.
         if (skipTokens.has(s.token)) continue;
-        if (fetchedInSlice + inFlightBoards * MAX_POSTINGS_PER_VISIT >= SLICE_POSTING_BUDGET) { budgetSkipped.push(s.token); continue; }
+        // Deferred only on what has LANDED. When it is the reservation that
+        // fills the budget, this worker retires and hands the board back to a
+        // worker still in flight — concurrency shrinks, the queue does not.
+        if (fetchedInSlice >= SLICE_POSTING_BUDGET) { budgetSkipped.push(s.token); continue; }
+        if (fetchedInSlice + inFlightReserve >= SLICE_POSTING_BUDGET) { queue.unshift(s); return; }
         let failReason = "";
         // ROTATION PARKED AT ZERO — 2026-08-25, after one deploy.
         //
@@ -2459,10 +2476,11 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
         // fetch behaviour. Re-arming needs the cursor readable first — a
         // deepCursor summary on the status action — so the next attempt can be
         // told apart from this one by a number instead of an inference.
-        inFlightBoards++;
+        const reserve = inHotPhase || deepTokens.has(s.token) ? MAX_POSTINGS_PER_VISIT : COLD_BOARD_RESERVE;
+        inFlightReserve += reserve;
         let r: Awaited<ReturnType<typeof fetchBoard>>;
         try { r = await fetchBoard(s, (m) => { failReason = m; }, deepCursors[s.token] ?? 0); }
-        finally { inFlightBoards--; }
+        finally { inFlightReserve -= reserve; }
         if (r) fetchedInSlice += r.jobs.length;
         if (!r) {
           failed.push(`${s.name} (vendor${failReason ? `: ${failReason}` : ""})`);
