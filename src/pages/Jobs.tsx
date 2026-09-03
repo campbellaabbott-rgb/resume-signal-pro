@@ -1153,6 +1153,14 @@ export default function Jobs() {
   // The resume available for ranking: this tab's scan first, else the
   // signed-in user's latest saved version (fetched lazily on toggle).
   const fitResume = useRef<string | null>(null);
+  // THE DEBOUNCE GAP. After a drop sets the query, the list fetch runs 400ms
+  // later (the q-change effect is debounced) and only THEN flips `refreshing`.
+  // In that window ranking is on, `refreshing` is false and `jobs` is still
+  // the old page — measured with a request hook: fit-batch fired at 2.7s, the
+  // q=founder list started at 3.0s. This ref is set synchronously at the
+  // moment the drop sets the query and cleared when that fetch settles, so
+  // the fit effect waits for the page the reader asked for.
+  const fitAwaitingPage = useRef(false);
   // Inline résumé drop on the board (Batch 1): parse state + drag highlight.
   const [parsingResume, setParsingResume] = useState(false);
   const [resumeDragOver, setResumeDragOver] = useState(false);
@@ -1877,6 +1885,9 @@ export default function Jobs() {
           setLoading(false);
           setLoadingMore(false);
           setRefreshing(false);
+          // The page the drop asked for has settled (or failed honestly); the
+          // new `jobs` re-runs the fit effect, which now proceeds.
+          if (offset === 0) fitAwaitingPage.current = false;
         }
       }
     },
@@ -2752,6 +2763,7 @@ export default function Jobs() {
         // fit ranking still applies on top of whichever they chose.
         if (terms.length > 0 && !q.trim() && !company && !landerCompany) {
           searched = terms[0];
+          fitAwaitingPage.current = true; // before setQ: the gap opens the instant the query changes
           setQ(searched);
         }
       } catch {
@@ -2865,7 +2877,7 @@ export default function Jobs() {
     // true from the moment the offset-0 fetch starts until it lands, so this
     // waits for the page the reader actually asked for; the arrival of that
     // page changes `jobs`, which re-runs the effect.
-    if (!fitRanking || jobs.length === 0 || refreshing) return;
+    if (!fitRanking || jobs.length === 0 || refreshing || fitAwaitingPage.current) return;
     const unscored = jobs.filter((j) => !(j.id in fits)).map((j) => j.id);
     if (unscored.length === 0) return;
     (async () => {

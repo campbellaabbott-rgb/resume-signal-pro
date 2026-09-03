@@ -70,7 +70,25 @@ describe("sixty postings could not be scored just now", () => {
     // request hook after .31 deployed — one batch scored the stale page (3 of
     // 20) before the résumé's list arrived. `refreshing` covers exactly the
     // window between the new fetch starting and landing.
-    expect(J).toMatch(/if \(!fitRanking \|\| jobs\.length === 0 \|\| refreshing\) return;/);
+    expect(J).toMatch(/if \(!fitRanking \|\| jobs\.length === 0 \|\| refreshing \|\| fitAwaitingPage\.current\) return;/);
     expect(J, "refreshing must be a dependency, or the effect reads a stale closure").toMatch(/\}, \[fitRanking, jobs, refreshing\]\);/);
+  });
+
+  it("covers the debounce gap: the pending flag is raised at setQ and lowered when the fetch settles", () => {
+    // `refreshing` only turns true inside fetchJobs, 400ms after the query
+    // changes. Measured after the refreshing gate deployed: fit-batch at 2.7s,
+    // the q=founder list at 3.0s — one wasted batch through the gap. The ref
+    // closes it: raised synchronously before setQ, cleared in fetchJobs'
+    // finally for the offset-0 request only.
+    const start = J.indexOf("const handleBoardResumeFile = async (file: File) =>");
+    const body = J.slice(start, J.indexOf("const resolveFitResume", start));
+    const raise = body.indexOf("fitAwaitingPage.current = true;");
+    const setq = body.indexOf("setQ(searched);");
+    expect(raise, "the pending flag is never raised").toBeGreaterThan(0);
+    expect(raise, "it must be raised BEFORE setQ — the gap opens the instant the query changes").toBeLessThan(setq);
+    expect(J).toMatch(/if \(offset === 0\) fitAwaitingPage\.current = false;/);
+    // And it is cleared in the finally, so a failed fetch cannot leave ranking stuck.
+    const fin = J.indexOf("setRefreshing(false);");
+    expect(J.indexOf("if (offset === 0) fitAwaitingPage.current = false;")).toBeGreaterThan(fin);
   });
 });
