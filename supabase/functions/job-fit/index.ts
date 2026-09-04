@@ -110,7 +110,19 @@ Deno.serve(async (req) => {
         }, 429, { "Retry-After": "3600" });
       }
 
-      const { data: rows, error } = await client.from("job_board_postings").select("id, description").in("id", ids);
+      // min_years JOINS THE SELECT, AND IT IS THE ONLY NEW COLUMN.
+      //
+      // The scorer read every word of a posting except the one that decides
+      // whether the reader can have it. `min_years` is already stored, already
+      // honest — job-board/experience.ts pulls it from the posting's own text
+      // and leaves it null when the posting does not say — and costs nothing
+      // extra to fetch alongside the description we already read.
+      //
+      // Deliberately NOT experience_band. The band is partly inferred from the
+      // TITLE ("Senior…" ⇒ senior), which is a guess about the employer's
+      // wording, while min_years is a number the posting printed. A demotion
+      // has to be able to point at the sentence it came from.
+      const { data: rows, error } = await client.from("job_board_postings").select("id, description, min_years").in("id", ids);
       if (error) throw error;
       const fits: Record<string, number | null> = {};
       const missing: Record<string, string[]> = {};
@@ -119,7 +131,8 @@ Deno.serve(async (req) => {
       const resumeScan = scanResume(resumeText);
       for (const r of rows ?? []) {
         if (r.description && r.description.length > 150) {
-          const f = computeFit(r.description.slice(0, FIT_DESC_CHARS), resumeScan, 40);
+          const minYears = typeof r.min_years === "number" ? r.min_years : null;
+          const f = computeFit(r.description.slice(0, FIT_DESC_CHARS), resumeScan, 40, minYears);
           fits[r.id] = f.pct;
           if (f.missing.length > 0) missing[r.id] = f.missing.slice(0, 4);
           if (f.matched.length > 0) matched[r.id] = f.matched.slice(0, 6);

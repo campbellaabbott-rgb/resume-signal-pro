@@ -48,6 +48,10 @@ export interface FitResult {
   /** Share of the RÉSUMÉ's terms this job is about. Low for a broad CV against
    *  a narrow role — that is correct, and it is what stops padding paying. */
   precision: number;
+  /** What the reach demotion multiplied the keyword score by. 1 means the
+   *  posting states no minimum, the résumé states no history, or the reader is
+   *  within reach of it — the three cases where seniority says nothing. */
+  reach: number;
 }
 
 /**
@@ -88,6 +92,111 @@ export interface FitResult {
 export interface ResumeScan {
   lower: string;
   terms: string[];
+  /** Years of experience the document itself evidences, or null if unreadable. */
+  years: number | null;
+}
+
+/**
+ * THE SCORE READ EVERY WORD OF THE POSTING EXCEPT THE ONE THAT DECIDES.
+ *
+ * A posting that says "minimum of 8 years" is not a match for a reader with
+ * two, however many of its words they share — and the words are exactly what
+ * they DO share, because a new graduate's résumé and a staff engineer's are
+ * written about the same technologies. Measured on the offline corpus
+ * (src/test/fixtures/cv-matching-corpus.ts) before this existed: a new
+ * graduate's CV scored the Staff Software Engineer posting 37 and the
+ * Software Engineer II posting 35, so the one job that would not interview her
+ * came first. Across the corpus, in-reach postings outranked out-of-reach ones
+ * in their own occupation 76% of the time — a coin-flip dressed as a ranking.
+ *
+ * The two inputs are already honest and already stored. `min_years` on the
+ * posting is a real number pulled from the posting's own text by
+ * job-board/experience.ts — never inferred, null when the posting does not say.
+ * The reader's side is read here, from employment date ranges and from any
+ * explicit "N years of experience" claim, and is null when the document gives
+ * nothing to read. Null on EITHER side means no adjustment: a fit we cannot
+ * ground is left exactly where the keyword score put it.
+ *
+ * WHY A DEMOTION AND NOT A FILTER. A stretch is a real application, people make
+ * them every day, and the board's own copy calls the bottom tier "stretch". The
+ * posting keeps its score, its explanation and its place in the list; it stops
+ * outranking the jobs the reader can actually get.
+ *
+ * WHY NOTHING HAPPENS IN THE OTHER DIRECTION. Over-qualification is not a
+ * mismatch: a fourteen-year driver taking a local route and an eleven-year
+ * teacher taking a classroom are both ordinary. The corpus was labelled for it
+ * and the labels came out contested, so no penalty is applied — a rule nobody
+ * can label is a preference, not an accuracy fix.
+ */
+/** Years short of a stated minimum that still counts as within reach. */
+export const REACH_MARGIN_YEARS = 3;
+
+/**
+ * How far a posting's score falls when the reader misses its stated minimum.
+ * Roughly one tier at the boundary, and never below 0.4 however large the gap:
+ * a job that says fifteen years is not zero to a reader with two, it is a long
+ * shot, and zero is a claim about the match that we cannot make.
+ *
+ * THE FLOOR WAS CHOSEN BY SWEEPING IT, not by taste. The demotion trades one
+ * measure against another and the trade is real: pushing an unreachable job
+ * down its own occupation's list lets an unrelated job move up. Across the
+ * offline corpus (in-reach-beats-out-of-reach %, R-precision %):
+ *
+ *   no demotion              76.3   94.4
+ *   floor 0.30 base 0.50    100.0   86.1
+ *   floor 0.40 base 0.60    100.0   88.9   <- the knee, and what ships
+ *   floor 0.50 base 0.70     92.1   88.9
+ *   floor 0.70 base 0.85     84.2   91.7
+ *
+ * 0.40/0.60 buys the whole seniority correction for the smallest R-precision
+ * cost available; below it the cost grows and buys nothing more. The residual
+ * R-precision loss is a nurse's own Chief Nursing Officer posting falling below
+ * an unrelated clinical row, which reads worse on that metric than it does to
+ * the reader: both rows are jobs she will not get, and only one of them was
+ * ranked as though she could.
+ */
+export function reachFactor(postingMinYears: number | null, resumeYears: number | null): number {
+  if (postingMinYears == null || resumeYears == null) return 1;
+  const short = postingMinYears - resumeYears - REACH_MARGIN_YEARS;
+  if (short <= 0) return 1;
+  return Math.max(0.4, 0.6 - 0.02 * short);
+}
+
+/**
+ * Years of experience the résumé evidences. Two readings, and the LARGER wins,
+ * because every way this number can be wrong should make the reader look more
+ * senior, not less: an inflated estimate leaves a posting where the keyword
+ * score put it, while a deflated one demotes a job the reader could have had.
+ *
+ *   1. The span of the employment dates — first start to last end. A degree's
+ *      date range inflates it, which is the safe direction.
+ *   2. Any explicit "N years of experience" the document claims.
+ */
+export function resumeYears(resumeText: string): number | null {
+  const t = resumeText.toLowerCase().replace(/[\u2010-\u2015]/g, "-");
+  let minStart = Infinity;
+  let maxEnd = -Infinity;
+  const nowYear = new Date().getUTCFullYear();
+  const range = /\b(19[7-9]\d|20[0-5]\d)\s*-\s*(19[7-9]\d|20[0-5]\d|present|current|now|today)\b/g;
+  let m: RegExpExecArray | null;
+  while ((m = range.exec(t)) !== null) {
+    const start = Number(m[1]);
+    const end = /^\d/.test(m[2]) ? Number(m[2]) : nowYear;
+    if (end < start || end > nowYear + 1) continue;
+    minStart = Math.min(minStart, start);
+    maxEnd = Math.max(maxEnd, end);
+  }
+  const span = maxEnd >= minStart ? maxEnd - minStart : null;
+
+  let claimed: number | null = null;
+  const claim = /(\d{1,2})\s*\+?\s*years?\b[^.?!\n]{0,30}?(?:experience|exp\b|work|professional|industry|career)/g;
+  while ((m = claim.exec(t)) !== null) {
+    const n = Number(m[1]);
+    if (n >= 0 && n <= 45) claimed = Math.max(claimed ?? 0, n);
+  }
+
+  const best = Math.max(span ?? -1, claimed ?? -1);
+  return best < 0 ? null : Math.min(45, best);
 }
 
 /**
@@ -110,10 +219,22 @@ export function scanResume(resumeText: string): ResumeScan {
     if (terms.some((p) => p.includes(term))) continue;
     if (containsTerm(lower, term)) terms.push(term);
   }
-  return { lower, terms };
+  // Read once here for the same reason the term list is: it is a property of
+  // the résumé, not of the posting, and fit-batch asks about twenty postings.
+  return { lower, terms, years: resumeYears(resumeText) };
 }
 
-export function computeFit(jobPosting: string, resume: string | ResumeScan, maxTerms = 60): FitResult {
+/**
+ * @param postingMinYears the posting's OWN stated minimum, from `min_years`.
+ *   null (the default, and what every caller that does not read the column
+ *   passes) means no experience adjustment at all.
+ */
+export function computeFit(
+  jobPosting: string,
+  resume: string | ResumeScan,
+  maxTerms = 60,
+  postingMinYears: number | null = null,
+): FitResult {
   const postingLower = jobPosting.toLowerCase();
   const scan = typeof resume === "string" ? scanResume(resume) : resume;
 
@@ -131,16 +252,23 @@ export function computeFit(jobPosting: string, resume: string | ResumeScan, maxT
   const missing = postingTerms.filter((t) => !containsTerm(scan.lower, t));
 
   if (postingTerms.length === 0) {
-    return { pct: null, matched, missing, totalRecognized: 0, coverage: 0, precision: 0 };
+    // NOT ZERO. Zero says "you are a bad match"; this says "we could not read
+    // this posting". The reach factor is 1 here rather than 0 for the same
+    // reason — there is nothing to demote.
+    return { pct: null, matched, missing, totalRecognized: 0, coverage: 0, precision: 0, reach: 1 };
   }
 
   const coverage = matched.length / postingTerms.length;
   const precision = scan.terms.length ? matched.length / scan.terms.length : 0;
-  const pct = coverage === 0 || precision === 0
+  const reach = reachFactor(postingMinYears, scan.years);
+  const raw = coverage === 0 || precision === 0
     ? 0
-    : Math.round(((2 * coverage * precision) / (coverage + precision)) * 100);
+    : ((2 * coverage * precision) / (coverage + precision)) * 100;
+  // A demoted match is still a match. Rounding a real overlap down to 0 would
+  // print the one number this file refuses to print without meaning it.
+  const pct = raw === 0 ? 0 : Math.max(1, Math.round(raw * reach));
 
-  return { pct, matched, missing, totalRecognized: postingTerms.length, coverage, precision };
+  return { pct, matched, missing, totalRecognized: postingTerms.length, coverage, precision, reach };
 }
 
 /**
@@ -278,10 +406,158 @@ const GENERIC_SINGLES = new Set([
  * where the remainder is ITSELF a title this résumé claimed, so it can only
  * ever swap one real occupation for a broader real occupation.
  */
+/**
+ * "assistant" and "associate" join the list on the same evidence and for the
+ * same reason. A STORE MANAGER's résumé searched the board for "loss
+ * prevention": her own title never reached the ranking, because the containment
+ * rule below reads "store manager" as the vaguer way of saying "assistant store
+ * manager" — a job she held five years ago and was promoted out of. With her
+ * title gone the best remaining candidate was a department name.
+ *
+ * WHAT THE "REMAINDER IS ALSO CLAIMED" GUARD ACTUALLY BUYS, because the comment
+ * above overstated it until a test said otherwise: nothing, for a suffix. A
+ * résumé containing "assistant store manager" contains "store manager" by
+ * construction, exactly as one containing "journeyman electrician" contains
+ * "electrician" — so a graded title ALWAYS widens to its plain form, and a
+ * reader who has only ever been an assistant store manager is searched as a
+ * store manager. That is the behaviour the live pool sizes above argue for and
+ * the behaviour every existing grade already had; the guard only bites on a
+ * prefix that is not a suffix of anything ("entry level" alone).
+ */
 const GRADE_PREFIXES = [
   "journeyman", "apprentice", "trainee", "senior", "junior", "staff", "lead",
-  "master", "entry level", "entry-level", "sr", "jr",
+  "master", "entry level", "entry-level", "sr", "jr", "assistant", "associate",
 ];
+
+/**
+ * THE LINES A RÉSUMÉ WRITES ITS TITLE ON — the only place a term is allowed to
+ * be COINED rather than looked up, because a guess is only defensible where a
+ * reader is stating their occupation rather than describing their work.
+ *
+ * Two lines, because a name on one and a title on the next is as common as
+ * both on one, and capped in characters because a PDF that parses to a single
+ * blob has no lines at all — the cap is what keeps this a headline rule rather
+ * than a whole-document rule in that case.
+ *
+ * This window was also tried as a RANKING tier above the 400-character
+ * headline window and refuted; see the sort at the end of resumeRoleTerms.
+ */
+const TITLE_LINE_CHARS = 200;
+function titleLines(lower: string): string[] {
+  const out: string[] = [];
+  // The lines stay SEPARATE, and the budget is shared between them: a job title
+  // does not span a line break, so the last word of the name line must never
+  // become the modifier of the first word of the next one.
+  let budget = TITLE_LINE_CHARS;
+  for (const raw of lower.split("\n")) {
+    const line = raw.trim();
+    if (!line) continue;
+    out.push(line.slice(0, budget));
+    budget -= Math.min(line.length, budget);
+    if (out.length === 2 || budget <= 0) break;
+  }
+  return out;
+}
+
+/**
+ * HOW OFTEN THE VOCABULARY USES A WORD AS THE HEAD OF A JOB TITLE.
+ *
+ * Derived, not authored: this is the frozen dictionary counting itself, so it
+ * carries no new judgements about which words are jobs. It answers the one
+ * question the next rule needs — is this word an occupational head noun, or a
+ * standalone occupation, or neither?
+ *
+ *   manager 175   engineer 140   analyst 54   technician 47   director 32
+ *   specialist 32   officer 29   coordinator 26   consultant 19   teacher 11
+ *   ...  worker 9   agent 8   associate 7   partner 5   captain 3   fellow 2
+ *   veteran 0   server 0   doctor 0   trading 0   reporter 0   welder 0
+ *
+ * The words the stoplist above was written to refuse — veteran, server, doctor,
+ * trading, treasury, litigation, clerical, postdoc — score ZERO, every one of
+ * them, while every word that reads as a job function scores in the dozens.
+ * That agreement is why the count is trusted as a discriminator here.
+ */
+const HEAD_COUNTS: Map<string, number> = (() => {
+  const m = new Map<string, number>();
+  for (const t of TITLE_VOCAB) {
+    const i = t.lastIndexOf(" ");
+    if (i < 0) continue;
+    const head = t.slice(i + 1);
+    m.set(head, (m.get(head) ?? 0) + 1);
+  }
+  return m;
+})();
+const TITLE_SET = new Set(TITLE_VOCAB);
+/** Where the counts stop meaning "rank or state" and start meaning "job kind". */
+const HEAD_NOUN_MIN = 10;
+/** Words that join two title words without making one title out of them. */
+const CONNECTORS = new Set([
+  "and", "the", "of", "at", "for", "with", "in", "on", "to", "or", "a", "an",
+  "as", "de", "del", "la", "el", "y", "und", "der", "die", "des",
+]);
+
+/**
+ * THE COURT REPORTER SEARCHED THE BOARD FOR JOURNALISM.
+ *
+ * Measured on the offline corpus: of three résumés whose occupation the frozen
+ * dictionary does not carry, one came back with a confident wrong answer. A
+ * stenographer with twelve years of depositions got `reporter` — a real query,
+ * for a real job, in somebody else's career, captioned as her match. The other
+ * two got nothing, which is the honest outcome and costs the reader only the
+ * upgrade. A wrong occupation costs them the board.
+ *
+ * The reader had already written the answer: her headline says "Court
+ * Reporter". So this reads the two-word phrase out of the headline when the
+ * vocabulary's own counts say the bare word cannot stand for it. Two cases,
+ * and each needs its own evidence:
+ *
+ *   1. The bare word IS a vocabulary title, but the vocabulary never builds a
+ *      compound on it (count 0): reporter, welder, photographer. A modifier in
+ *      front of such a word names an occupation the dictionary does not model,
+ *      so the compound leads and the bare word follows as the runner-up chip.
+ *
+ *   2. The bare word is NO query at all — stoplisted, or not a title in the
+ *      first place — but the vocabulary builds dozens of titles on it (count
+ *      >= 10): manager, director, engineer, technician. "Project Manager" and
+ *      "Funeral Director" have nowhere else to land; before this they resolved
+ *      to nothing at all.
+ *
+ * TWO THINGS KEEP THIS FROM INVENTING QUERIES. The modifier must not itself be
+ * a title, so "Founder CEO" stays two jobs rather than becoming one; and the
+ * compound must appear at least TWICE in the document. Real résumés state their
+ * occupation in the headline and again in the employment history, while a
+ * chance adjacency in a page header appears once — which is what stops
+ * "Campbell Abbott Founder", the shape a PDF that lost its punctuation leaves
+ * behind, from becoming a query about somebody called Abbott.
+ *
+ * A THIRD RULE WAS WRITTEN AND DELETED: the two words had to be separated by a
+ * single space, so a dash or a comma could not glue a compound together.
+ * Mutation-testing it found nothing, and the reason is that it was already
+ * enforced twice over — a compound is only ever kept if the LITERAL phrase
+ * occurs in the document, which a pair spanning " — " cannot do. A rule with no
+ * effect is a rule the next reader has to disprove again.
+ */
+function headlineCompounds(lower: string, lines: string[]): string[] {
+  const out: string[] = [];
+  for (const line of lines) {
+    const words = line.match(/[a-z][a-z'’-]*/g) ?? [];
+    for (let i = 1; i < words.length; i++) {
+      const mod = words[i - 1];
+      const head = words[i];
+      if (mod.length < 3 || CONNECTORS.has(mod) || TITLE_SET.has(mod)) continue;
+      if (GRADE_PREFIXES.includes(mod)) continue;
+      const count = HEAD_COUNTS.get(head) ?? 0;
+      const standalone = TITLE_SET.has(head) && !GENERIC_SINGLES.has(head);
+      const worthCoining = standalone ? count === 0 : count >= HEAD_NOUN_MIN;
+      if (!worthCoining) continue;
+      const compound = `${mod} ${head}`;
+      if (TITLE_SET.has(compound) || out.includes(compound)) continue;
+      if (lower.split(compound).length - 1 < 2) continue; // stated once is an accident
+      out.push(compound);
+    }
+  }
+  return out;
+}
 
 /**
  * Role titles this résumé actually claims, best first — the search terms that
@@ -294,8 +570,13 @@ export function resumeRoleTerms(resumeText: string, limit = 4): string[] {
   if (lower.trim().length < 100) return [];
   // Where a headline sits, with room for a contact block above it.
   const head = lower.slice(0, Math.max(400, Math.floor(lower.length * 0.2)));
-  const found: { term: string; first: number; inHead: boolean; score: number }[] = [];
-  for (const term of TITLE_VOCAB) {
+  const lead = titleLines(lower);
+  const found: { term: string; first: number; inHead: boolean; coined: boolean; score: number }[] = [];
+  const candidates: { term: string; coined: boolean }[] = [
+    ...TITLE_VOCAB.map((term) => ({ term, coined: false })),
+    ...headlineCompounds(lower, lead).map((term) => ({ term, coined: true })),
+  ];
+  for (const { term, coined } of candidates) {
     if (!containsTerm(lower, term)) continue;
     const single = !term.includes(" ");
     if (single && GENERIC_SINGLES.has(term)) continue;
@@ -311,6 +592,7 @@ export function resumeRoleTerms(resumeText: string, limit = 4): string[] {
       term,
       first,
       inHead,
+      coined,
       score: freq * 2 + term.split(" ").length * 3 + (inHead ? 12 : 0) +
         (first / Math.max(1, lower.length) < 0.35 ? 4 : 0),
     });
@@ -322,9 +604,25 @@ export function resumeRoleTerms(resumeText: string, limit = 4): string[] {
     return !(p && found.some((o) => o.term === f.term.slice(p.length + 1)));
   });
   // "engineer" inside "software engineer" is the same claim, less precise.
-  const kept = ungraded.filter((a) => !ungraded.some((b) => b.term !== a.term && b.term.includes(a.term)));
+  // A COINED compound does not get to delete the word it was built from: it is
+  // the guess, and the vocabulary word is the fallback the reader can click if
+  // the guess is wrong. That is the whole reason coining is safe to do at all.
+  const kept = ungraded.filter((a) =>
+    !ungraded.some((b) => b.term !== a.term && !b.coined && b.term.includes(a.term))
+  );
   // The headline outranks the body outright: what a résumé LEADS with is the
   // role, however often something else is mentioned further down.
-  kept.sort((a, b) => Number(b.inHead) - Number(a.inHead) || b.score - a.score || a.first - b.first);
+  //
+  // A THIRD TIER FOR THE FIRST TWO LINES WAS TRIED HERE AND REMOVED. It is the
+  // obvious next move — inside the 400-character window a bullet competes with
+  // the name line on equal terms — and it changed NOTHING: over the sixteen
+  // labelled résumés it produced a byte-identical term list for every one of
+  // them, because the grade strip above already rescues the case it was written
+  // for. Deleting a rule that survives its own mutation test is cheaper than
+  // carrying one whose only argument is that it sounds right.
+  kept.sort((a, b) =>
+    Number(b.inHead) - Number(a.inHead) ||
+    b.score - a.score || a.first - b.first
+  );
   return kept.slice(0, limit).map((c) => c.term);
 }
