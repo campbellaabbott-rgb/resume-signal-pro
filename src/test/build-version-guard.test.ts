@@ -923,7 +923,13 @@ const PINNED = {
   //   an 8-hour promise, and freshness climbed 863 -> 997 while the rotation
   //   was healthy. Each completing hop hands the next a bigger budget; a hop
   //   that dies hands on nothing and the cron restarts at the floor.
-  buildVersion: "2026-08-30.47",
+  //
+  // .48 — the alias table reads both ways
+  //   (the-table-was-only-ever-read-one-way.test.ts). "rn" always found
+  //   "registered nurse"; spelling it out never found a title that says RN.
+  //   The reverse index is derived from the same table at module load, so the
+  //   two directions cannot drift.
+  buildVersion: "2026-08-30.48",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {
