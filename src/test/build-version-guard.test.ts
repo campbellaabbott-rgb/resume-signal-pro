@@ -903,7 +903,12 @@ const PINNED = {
   //   explains it. A slice is capped at 24 boards, the size the breadcrumbs
   //   show it reliably reaches, and the cause stays under measurement at
   //   8-board resolution.
-  buildVersion: "2026-08-30.43",
+  //
+  // .44 — bisect: cap 8. On .43 a slice died at 16 boards / 9.2s / 132MB, and
+  //   no trace in four versions has ever shown a loop-done mark, so the loop
+  //   never ends and the death is inside a board's own work. Halving twice is
+  //   an experiment that reads either way.
+  buildVersion: "2026-08-30.44",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {
