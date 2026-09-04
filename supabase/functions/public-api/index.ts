@@ -31,9 +31,7 @@ import { resumeRoleTerms } from "../_shared/fit-score.ts";
 // on this file: 1,633,223 bytes before these three imports, 1,644,580 after —
 // +11KB, and no catalogue entry in the output. Re-measure if that import ever
 // stops being type-only.
-import { BOARD_VENDORS, WORK_MODES } from "../job-board/filters.ts";
-import { JOB_CATEGORIES } from "../job-board/categories.ts";
-import { EXPERIENCE_BANDS } from "../job-board/experience.ts";
+import { BOARD_VENDORS, EXPERIENCE_BANDS, JOB_CATEGORIES, WORK_MODES } from "../_shared/board-domains.ts";
 
 const API_VERSION = "2026-09-03.1";
 const FRESH_WINDOW_DAYS = 30;
