@@ -84,10 +84,25 @@ describe("the scorer in its own isolate", () => {
   });
 
   it("(1) desc_coverage is rolled up beside date_coverage, exposed per vendor, and the sweep fills newest-first", () => {
-    const MIG = read("supabase/migrations/20260903210000_desc_coverage_next_to_date_coverage.sql").split("\n").filter((l) => !/^\s*--/.test(l)).join("\n");
+    // 2026-09-04: the predicate was re-issued once. The 09-03 form counted
+    // characters against the scorer's bar, which (a) detoasted every live
+    // description each 15-minute tick, third in a shared 4-minute budget, and
+    // (b) measured a threshold no writer selects on — every sweep lane fills
+    // `description IS NULL` only, so the stat could not be moved by the lever
+    // it was built for. `described` now means "has a stored description", the
+    // sweep's own selection complemented; total - described is its backlog.
+    const sql = (p: string) => read(p).split("\n").filter((l) => !/^\s*--/.test(l)).join("\n");
+    const MIG = sql("supabase/migrations/20260904090000_a_count_that_opened_every_description_to_say_one_number.sql");
+    const PREV = sql("supabase/migrations/20260903210000_desc_coverage_next_to_date_coverage.sql");
     expect(MIG).toMatch(/'desc_coverage'/);
-    expect(MIG, "scoreable means the exact threshold fit-batch applies").toMatch(/length\(description\) > 150/);
+    expect(MIG, "described = the sweep lanes' selection, complemented — a null test never opens the value").toMatch(/count\(\*\) FILTER \(WHERE description IS NOT NULL\) AS described/);
+    expect(MIG, "no character count anywhere in the writer: that was the detoast").not.toMatch(/length\(/);
     expect(MIG, "re-issued from the LATEST definition: freshness and date_coverage must still be there").toMatch(/'freshness'[\s\S]*'date_coverage'[\s\S]*'desc_coverage'/);
+    // The two blocks that were not the defect: byte-identical to the file
+    // this one re-issues, from the first key through date_coverage's END.
+    const untouched = (s: string) => s.slice(s.indexOf("'freshness'"), s.lastIndexOf("END;", s.indexOf("'desc_coverage'")) + 4);
+    expect(untouched(MIG).length).toBeGreaterThan(1000);
+    expect(untouched(MIG), "freshness and date_coverage re-issued byte-identical to 20260903210000").toBe(untouched(PREV));
     expect(BOARD).toMatch(/\.eq\("k", "desc_coverage"\)\.maybeSingle\(\)/);
     expect(BOARD).toMatch(/describedPct: Number\(r\.total\) \? Math\.round\(\(100 \* Number\(r\.described\)\) \/ Number\(r\.total\)\) : 0,/);
     expect(BOARD).toMatch(/\.in\("source", \[\.\.\.DETAIL_DESC_SOURCES\]\)/);
