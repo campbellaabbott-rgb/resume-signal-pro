@@ -161,6 +161,17 @@ interface BoardJob {
   salary?: string | null;
   /** Definitive employer-stated work mode; null = the posting doesn't say (no tag shown). */
   workMode?: "remote" | "hybrid" | "onsite" | null;
+  /**
+   * Employer-stated employment type — full_time | part_time | contract |
+   * temporary | internship — null when the posting states none.
+   *
+   * rowToJob has emitted this since the filter shipped, but no client type
+   * declared it and no surface rendered it: the board let you FILTER by
+   * employment type while never telling you which type any given posting was.
+   * Shown under the same rule as workMode above: employer-stated or nothing,
+   * never an inferred "Full-time".
+   */
+  employmentType?: string | null;
   /** The board is a tagged staffing agency (2026-08-31 charter: carried and
    *  DISCLOSED — a badge, never a hidden trait). Absent on ranked-RPC rows
    *  whose shape predates the column; the badge renders only on true. */
@@ -699,6 +710,61 @@ const toggleMode = (v: string, m: WorkModeKey): string =>
 // the same query, slipping past the UNIQUE(user_id, name) duplicate-save guard
 // and mailing two look-alike daily digests.
 const EMPLOYMENT_TYPE_KEYS = ["full_time", "part_time", "contract", "temporary", "internship"] as const;
+type EmploymentTypeKey = (typeof EMPLOYMENT_TYPE_KEYS)[number];
+// ONE set of English fallbacks for the five keys, read by the filter chips AND
+// by the card/detail badges. Both surfaces name the same posting, so a second
+// hand-typed label list is a way for them to disagree — the drift this file
+// keeps paying for. The localized strings live at jobsPage.employmentType.*;
+// these are only what renders if a locale is missing the key.
+const EMPLOYMENT_TYPE_FALLBACK: Record<EmploymentTypeKey, string> = {
+  full_time: "Full-time", part_time: "Part-time", contract: "Contract",
+  temporary: "Temp", internship: "Internship",
+};
+/**
+ * True only for the five values the filter offers.
+ *
+ * The badge renders nothing for anything else — including null, which is what
+ * ~most postings carry. An unstated employment type is NOT "Full-time": this
+ * board shows a field only when the employer stated it, so an unrecognised or
+ * absent value must produce no badge rather than a raw column value.
+ */
+/**
+ * The annualized equivalent of a posting's stated pay, as a "120k" or
+ * "60k-80k" fragment — or null when there is nothing honest to say.
+ *
+ * ONLY for pay the employer stated in some other period. An hourly card sat
+ * beside an annual one with no way to compare the two ("$32.00 per hour" next
+ * to "$120,000 per year"), and the detail panel already solved it and kept the
+ * solution to itself. Returns null for year-period pay because the verbatim
+ * text is already the annual figure and restating it adds noise.
+ *
+ * IT INVENTS NOTHING. salary_min_annual is parsed from the employer's own pay
+ * text and is only ever written alongside it, so a posting that states no pay
+ * has no range here either — this cannot manufacture a figure for one.
+ */
+export function annualizedPayRange(j: {
+  salaryMinAnnual?: number | null;
+  salaryMaxAnnual?: number | null;
+  salaryPeriod?: string | null;
+}): string | null {
+  const min = j.salaryMinAnnual;
+  if (min == null || !j.salaryPeriod || j.salaryPeriod === "year") return null;
+  const max = j.salaryMaxAnnual;
+  return max != null && max > min
+    ? `${Math.round(min / 1000)}k–${Math.round(max / 1000)}k`
+    : `${Math.round(min / 1000)}k`;
+}
+
+export function isEmploymentType(v: unknown): v is EmploymentTypeKey {
+  return typeof v === "string" && (EMPLOYMENT_TYPE_KEYS as readonly string[]).includes(v);
+}
+// Our five keys mapped to schema.org's JobPosting.employmentType enumeration,
+// for the detail panel's JSON-LD. Google reads these spellings and silently
+// drops anything else, so the column value cannot be emitted raw.
+const LD_EMPLOYMENT_TYPE: Record<EmploymentTypeKey, string> = {
+  full_time: "FULL_TIME", part_time: "PART_TIME", contract: "CONTRACTOR",
+  temporary: "TEMPORARY", internship: "INTERN",
+};
 
 export default function Jobs() {
   const { t } = useTranslation();
@@ -1454,6 +1520,24 @@ export default function Jobs() {
       return new Set(Array.isArray(raw) ? raw.filter((x): x is string => typeof x === "string") : []);
     } catch { return new Set(); }
   });
+  /**
+   * MY-JOBS VIEWS — the three narrowings every big board has (LinkedIn's My
+   * Jobs, Indeed's Saved) and this one kept only inside the Account tracker.
+   *
+   * All three are PURELY LOCAL, and deliberately so: savedIds/appliedIds are
+   * already in memory from the tracker read this page does on sign-in, and
+   * viewedIds is this device's own rb_viewed_jobs snapshot. No new request, no
+   * new stored field, nothing tracked that was not already tracked.
+   *
+   * That also bounds what they may honestly claim. They filter the rows
+   * ALREADY LOADED, not the board — so "Saved" can show fewer postings than
+   * the tracker holds, and the empty states below say that in words rather
+   * than letting an empty page imply an empty tracker. Same rule the
+   * Actively-hiring toggle's tooltip had to be corrected to follow.
+   */
+  const [savedOnly, setSavedOnly] = useState(false);
+  const [hideViewed, setHideViewed] = useState(false);
+  const [hideApplied, setHideApplied] = useState(false);
   const lastVisitRef = useRef<number | null>(null);
   useEffect(() => {
     try {
@@ -1804,6 +1888,25 @@ export default function Jobs() {
     return () => clearTimeout(timer);
   }, [q, filterState]);
 
+  /**
+   * A fit-ranked BROWSE is the one case where the rows on screen were chosen
+   * by recency rather than by anything to do with the reader — and the newest
+   * rows are precisely the ones whose descriptions the sweep has not reached,
+   * so they cannot be scored at all. Ask the server for rows that CAN be.
+   *
+   * ONLY on the no-query browse. `hasDescription` is bound by no search RPC,
+   * so sending it routes the request through buildQuery — on a query that
+   * would throw away the relevance ranking, which is a real loss for no gain
+   * (a role query already runs 85-95% scoreable).
+   *
+   * Safe against an older deployed function: an unknown key is not applied and
+   * is not even named in ignoredFilters (normalizeFilters only reports keys it
+   * knows and rejects), so the request behaves exactly as it does today and
+   * the ordering note below still states what is true rather than claiming a
+   * ranking that did not happen.
+   */
+  const fitBrowseNeedsDescriptions = fitRanking && !q.trim() && !company && !landerCompany;
+
   const fetchJobs = useCallback(
     async (offset: number) => {
       const seq = ++reqSeq.current;
@@ -1824,6 +1927,11 @@ export default function Jobs() {
           // from: four bodies, four chances for one of them to be missing the
           // filter the visitor can see on screen.
           ...boardFilterBody(filterState),
+          // NOT part of boardFilterBody: this is a requirement of the fit MODE,
+          // not a filter the visitor chose, and activeBoardFilterKeys derives
+          // "is this board filtered" from that body — counting it there would
+          // put a chip on screen the reader never set and cannot clear.
+          hasDescription: fitBrowseNeedsDescriptions || undefined,
           // Searches default to relevance ranking; the toggle bypasses it.
           sort: sortMode === "salary" ? "salary" : q && searchNewestFirst ? "newest" : undefined,
           limit: PAGE,
@@ -1908,7 +2016,7 @@ export default function Jobs() {
         }
       }
     },
-    [filterState, q, sortMode, searchNewestFirst],
+    [filterState, q, sortMode, searchNewestFirst, fitBrowseNeedsDescriptions],
   );
 
   // Keep the URL shareable — filters in, defaults out. A category lander
@@ -2137,6 +2245,14 @@ export default function Jobs() {
       url: `https://resumebooster.work/jobs?job=${encodeURIComponent(detailJob.id)}`,
       directApply: false,
       identifier: { "@type": "PropertyValue", name: detailJob.company, value: detailJob.id },
+      // schema.org's own enumeration, not our column values — Google reads
+      // FULL_TIME/PART_TIME/CONTRACTOR/TEMPORARY/INTERN and ignores anything
+      // else. Emitted ONLY when the employer stated a type: an omitted
+      // property means "not stated", while a guessed FULL_TIME would be a
+      // fabricated claim published in structured data.
+      ...(isEmploymentType(detailJob.employmentType)
+        ? { employmentType: LD_EMPLOYMENT_TYPE[detailJob.employmentType] }
+        : {}),
       ...(detailJob.workMode === "remote"
         ? {
             jobLocationType: "TELECOMMUTE",
@@ -2718,6 +2834,49 @@ export default function Jobs() {
   // Résumé dropped straight onto the board: parse (same server parsers the
   // scanner uses), stash for this tab, and flip the board into fit-ranked mode
   // immediately — browsing becomes personal in one gesture.
+  /**
+   * RANKING IS NOT RETRIEVAL. Ask the résumé what it does for a living and put
+   * that in the search box, so the fit scores rank a candidate set worth
+   * ranking. Returns the term it searched for, or "" when there was nothing to
+   * run — a caller has to know the difference, because "" is the case where
+   * the rows on screen are still whatever recency put there.
+   *
+   * ONE COPY, called by the résumé drop AND by the "For you" button. It lived
+   * inline in the drop handler, so the button — the control actually NAMED
+   * after personalisation — went on ranking the default browse: the newest
+   * rows of an 800k board, chosen by recency and related to nobody's résumé.
+   * Measured 2026-09-04 on a real visitor's screen: "For you" on, no query,
+   * and the board's own notice reading that nothing could be scored, because
+   * the newest rows are exactly the ones whose descriptions the sweep has not
+   * reached yet (newest 20: ~5% scoreable; a role query: 85-95%).
+   */
+  const retrieveForResume = async (text: string): Promise<string> => {
+    try {
+      // job-fit, not job-board: the scorer has its own isolate since
+      // 2026-09-03, because sharing job-board's worker pool with the ingest
+      // answered 546 to readers who had done everything right.
+      const { data: td } = await supabase.functions.invoke("job-fit", {
+        body: { action: "fit-terms", resumeText: text },
+      });
+      const terms = ((td as { terms?: string[] } | null)?.terms ?? [])
+        .filter((x): x is string => typeof x === "string" && x.length > 0);
+      setFitTerms(terms);
+      // Never overwrite an intent the reader has already stated. A typed query
+      // or an employer lander is a narrower ask than "my résumé", and fit
+      // ranking still applies on top of whichever they chose.
+      if (terms.length > 0 && !q.trim() && !company && !landerCompany) {
+        fitAwaitingPage.current = true; // before setQ: the gap opens the instant the query changes
+        setQ(terms[0]);
+        return terms[0];
+      }
+    } catch {
+      // Retrieval is the upgrade, not the feature. A failure here leaves the
+      // reader where the old code left everyone, and the caller's own copy
+      // still describes what actually happened.
+    }
+    return "";
+  };
+
   const handleBoardResumeFile = async (file: File) => {
     if (parsingResume) return;
     if (file.size > 10 * 1024 * 1024) {
@@ -2762,41 +2921,13 @@ export default function Jobs() {
       // only THEN did the résumé's query load and score again. A wasted call
       // against a function that fails under load half the time.
 
-      // RANKING IS NOT FINDING, AND THIS GESTURE PROMISED FINDING.
-      //
-      // Turning fit-ranking on only re-orders the postings already loaded, and
-      // on the default browse those are the newest few dozen of eight hundred
-      // thousand — postings selected by recency, related to nobody's résumé. So
-      // the drop used to reorder rows that had nothing to do with the reader
-      // and present the result as a match. Ask the résumé what it does for a
-      // living, put that in the search box, and let the ordinary search
-      // retrieve; the fit scores then rank a candidate set worth ranking.
+      // RANKING IS NOT FINDING, AND THIS GESTURE PROMISED FINDING — the one
+      // copy of that step now lives in retrieveForResume above, because the
+      // "For you" button needed the identical thing and had a second, weaker
+      // implementation of it (namely: none).
       // Measured across four careers: mean fit 1.4-4.5 -> 11.6-17.1, and rows
       // scoring zero 7-14 of 20 -> 0-1.
-      let searched = "";
-      try {
-        // job-fit, not job-board: the scorer has its own isolate since
-        // 2026-09-03, because sharing job-board's worker pool with the ingest
-        // answered 546 to readers who had done everything right.
-        const { data: td } = await supabase.functions.invoke("job-fit", {
-          body: { action: "fit-terms", resumeText: text },
-        });
-        const terms = ((td as { terms?: string[] } | null)?.terms ?? [])
-          .filter((s): s is string => typeof s === "string" && s.length > 0);
-        setFitTerms(terms);
-        // Never overwrite an intent the reader has already stated. A typed
-        // query or an employer lander is a narrower ask than "my résumé", and
-        // fit ranking still applies on top of whichever they chose.
-        if (terms.length > 0 && !q.trim() && !company && !landerCompany) {
-          searched = terms[0];
-          fitAwaitingPage.current = true; // before setQ: the gap opens the instant the query changes
-          setQ(searched);
-        }
-      } catch {
-        // Retrieval is the upgrade, not the feature. A failure here leaves the
-        // reader exactly where the old code left everyone, and the toast below
-        // still describes what actually happened.
-      }
+      const searched = await retrieveForResume(text);
 
       setFitRanking(true);
       toast({
@@ -2897,7 +3028,20 @@ export default function Jobs() {
       navigate("/#upload");
       return;
     }
+    // THE SAME RETRIEVAL THE RÉSUMÉ DROP DOES. Without it this button only
+    // re-ordered the recency page, which is the one page that cannot be
+    // scored — "For you" was the mode guaranteed to show nothing personal.
+    const searched = await retrieveForResume(resume);
+    // Nothing to search: the refetch this toggle triggers asks for scoreable
+    // rows instead (hasDescription, below), and the fit effect must wait for
+    // THAT page rather than spending a scoring call on the recency page still
+    // on screen — the same wasted call the drop measured and fixed.
+    if (!searched && !q.trim() && !company && !landerCompany) fitAwaitingPage.current = true;
     setFitRanking(true);
+    // The search box visibly changes under the reader's hands, so say why.
+    if (searched) {
+      toast({ title: t("jobsPage.fitSearchedRole", "Finding {{role}} roles — what your résumé is for — and ranking them by fit.", { role: searched }) });
+    }
   };
 
   // Score whatever's loaded whenever ranking is on.
@@ -3034,6 +3178,15 @@ export default function Jobs() {
   const displayJobs = useMemo(() => {
     let list = activelyHiringOnly ? jobs.filter((j) => isActivelyHiring(j.token)) : jobs;
     if (dismissedIds.size > 0) list = list.filter((j) => !dismissedIds.has(j.id));
+    // The my-jobs views, applied with the dismissals because they are the same
+    // kind of thing: a local narrowing of rows the server already sent.
+    if (savedOnly) list = list.filter((j) => savedIds.has(j.id));
+    // THE OPEN POSTING IS EXEMPT. openDetail writes the id into viewedIds (and
+    // localStorage) the instant a card is clicked, so without this the row the
+    // reader just opened disappears from the list behind the panel they are
+    // reading — and closing the panel leaves them somewhere else entirely.
+    if (hideViewed) list = list.filter((j) => !viewedIds.has(j.id) || j.id === detailJob?.id);
+    if (hideApplied) list = list.filter((j) => !appliedIds.has(j.id));
     // Instant search: from the first keystroke until the server result for the
     // typed q/location lands, the visible list filters locally on the same
     // substring semantics — typing feels immediate, the server result (which
@@ -3070,7 +3223,8 @@ export default function Jobs() {
       list = [...scored, ...unscored];
     }
     return list;
-  }, [jobs, fitRanking, fits, activelyHiringOnly, isActivelyHiring, dismissedIds, refreshing, q, location]);
+  }, [jobs, fitRanking, fits, activelyHiringOnly, isActivelyHiring, dismissedIds, refreshing, q, location,
+    savedOnly, hideViewed, hideApplied, savedIds, appliedIds, viewedIds, detailJob?.id]);
 
   // De-dupe near-identical postings: the same role cross-posted across locations
   // (same company + same title) collapses into ONE card with a "+N more locations"
@@ -3504,8 +3658,7 @@ export default function Jobs() {
     for (const et of employmentType.split(",").filter(Boolean)) {
       f.push({
         key: `etype:${et}`,
-        label: t(`jobsPage.employmentType.${et}`,
-          et === "full_time" ? "Full-time" : et === "part_time" ? "Part-time" : et === "contract" ? "Contract" : et === "temporary" ? "Temp" : "Internship"),
+        label: t(`jobsPage.employmentType.${et}`, EMPLOYMENT_TYPE_FALLBACK[et as EmploymentTypeKey] ?? et),
         clear: () => setEmploymentType((prev) => prev.split(",").filter((x) => x && x !== et).join(",")),
       });
     }
@@ -3901,6 +4054,10 @@ export default function Jobs() {
                     {detailJob.company}
                   </Link>
                   {detailJob.location ? <> · {detailJob.location}</> : null}
+                  {/* The card names the team; the panel — the surface someone
+                      actually reads before applying — did not. Employer-stated
+                      column, so absent means absent and nothing renders. */}
+                  {detailJob.department ? <> · {detailJob.department}</> : null}
                 </p>
               </div>
               {/* 40px tap target with a visible resting state — the bare 20px
@@ -3965,6 +4122,17 @@ export default function Jobs() {
                     {t(`jobsPage.workMode.${detailJob.workMode ?? "remote"}`, detailJob.workMode ?? "remote")}
                   </Badge>
                 )}
+                {/* Same badge on the panel where the decision is made — the
+                    card is skimmed, this is read. Same employer-stated rule. */}
+                {isEmploymentType(detailJob.employmentType) && (
+                  <Badge
+                    variant="secondary"
+                    className="text-[10px]"
+                    title={t("jobsPage.employmentTypeProvenance", "Employment type as the employer states it on its own careers feed. Postings whose feed states no type show no tag — never a guess.")}
+                  >
+                    {t(`jobsPage.employmentType.${detailJob.employmentType}`, EMPLOYMENT_TYPE_FALLBACK[detailJob.employmentType])}
+                  </Badge>
+                )}
                 {/* Same chip, on the panel where the decision is actually made.
                     The card is skimmed; this is read. */}
                 {isSendableVendor(detailJob.id) && (
@@ -3980,6 +4148,18 @@ export default function Jobs() {
                 {detailJob.experienceBand && detailJob.experienceBand !== "unspecified" && (
                   <span className="px-2 py-0.5 rounded-full border border-border text-muted-foreground">
                     {t(`jobsPage.experience.${detailJob.experienceBand}`, detailJob.experienceBand)}
+                  </span>
+                )}
+                {/* THE EMPLOYER'S OWN NUMBER, which the card shows and the
+                    panel dropped. Both are worth having here: the band is our
+                    bucket, the years are what the posting actually demands and
+                    the thing that decides whether someone can apply at all.
+                    `> 0` because zero is not a stated requirement — the years
+                    filter refuses it for the same reason (1..20), and "0+ yrs"
+                    would be a chip that says nothing. */}
+                {typeof detailJob.minYears === "number" && detailJob.minYears > 0 && (
+                  <span className="px-2 py-0.5 rounded-full border border-border text-muted-foreground">
+                    {t("jobsPage.minYears", "{{n}}+ yrs", { n: detailJob.minYears })}
                   </span>
                 )}
                 {daysAgo(detailJob.postedAt) !== null && (
@@ -4019,14 +4199,10 @@ export default function Jobs() {
                   <p className="text-sm font-semibold text-foreground">
                     <span title={detailJob.salary}>
                       {displaySalary(detailJob.salary)}
-                      {detailJob.salaryMinAnnual != null && detailJob.salaryPeriod && detailJob.salaryPeriod !== "year" && (
+                      {annualizedPayRange(detailJob) && (
                         <span className="text-muted-foreground font-normal">
                           {" · "}
-                          {t("jobsPage.salaryAnnualized", "≈{{range}}/year as stated", {
-                            range: detailJob.salaryMaxAnnual && detailJob.salaryMaxAnnual > detailJob.salaryMinAnnual
-                              ? `${Math.round(detailJob.salaryMinAnnual / 1000)}k–${Math.round(detailJob.salaryMaxAnnual / 1000)}k`
-                              : `${Math.round(detailJob.salaryMinAnnual / 1000)}k`,
-                          })}
+                          {t("jobsPage.salaryAnnualized", "≈{{range}}/year as stated", { range: annualizedPayRange(detailJob) })}
                         </span>
                       )}
                     </span>
@@ -5225,8 +5401,7 @@ export default function Jobs() {
                         : "text-muted-foreground hover:text-foreground"
                     }`}
                   >
-                    {t(`jobsPage.employmentType.${et}`,
-                      et === "full_time" ? "Full-time" : et === "part_time" ? "Part-time" : et === "contract" ? "Contract" : et === "temporary" ? "Temp" : "Internship")}
+                    {t(`jobsPage.employmentType.${et}`, EMPLOYMENT_TYPE_FALLBACK[et])}
                   </button>
                 );
               })}
@@ -5437,6 +5612,52 @@ export default function Jobs() {
               <Activity className="w-3 h-3" />
               {t("jobsPage.activelyHiringFilter", "Actively hiring")}
             </button>
+            {/* MY JOBS. Each control renders only when it has something to
+                act on — a signed-out visitor has no tracker, and a first
+                arrival has opened nothing — so the default board is unchanged
+                and a toggle that could never alter the list never appears.
+                No lg: gate: these are exactly the controls a phone needs, and
+                because they are conditional they cost a new visitor no fold. */}
+            {session && (
+              <button
+                type="button"
+                onClick={() => setSavedOnly((v) => !v)}
+                aria-pressed={savedOnly}
+                className={`inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                  savedOnly ? "border-primary bg-primary/10 text-primary font-semibold" : "border-border text-muted-foreground hover:text-foreground"
+                }`}
+                title={t("jobsPage.savedViewTip", "Show only the postings you've saved to your application tracker. Like the Actively-hiring toggle, it narrows the results already loaded on this page rather than re-searching the whole board.")}
+              >
+                <BookmarkCheck className="w-3 h-3" />
+                {t("jobsPage.savedView", "Saved")}
+              </button>
+            )}
+            {viewedIds.size > 0 && (
+              <button
+                type="button"
+                onClick={() => setHideViewed((v) => !v)}
+                aria-pressed={hideViewed}
+                className={`inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                  hideViewed ? "border-primary bg-primary/10 text-primary font-semibold" : "border-border text-muted-foreground hover:text-foreground"
+                }`}
+                title={t("jobsPage.hideViewedTip", "Hide postings you have already opened. Which ones those are is remembered in this browser only — it is the same record that dims a visited posting's title — so clearing site data resets it. The posting you are reading now stays put.")}
+              >
+                {t("jobsPage.hideViewed", "Hide viewed")}
+              </button>
+            )}
+            {session && appliedIds.size > 0 && (
+              <button
+                type="button"
+                onClick={() => setHideApplied((v) => !v)}
+                aria-pressed={hideApplied}
+                className={`inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                  hideApplied ? "border-primary bg-primary/10 text-primary font-semibold" : "border-border text-muted-foreground hover:text-foreground"
+                }`}
+                title={t("jobsPage.hideAppliedTip", "Hide postings your application tracker already records an application for — the same rows that wear the “Applied” check.")}
+              >
+                {t("jobsPage.hideApplied", "Hide applied")}
+              </button>
+            )}
             <button
               type="button"
               onClick={toggleDensity}
@@ -5480,7 +5701,15 @@ export default function Jobs() {
                   when nothing scored it does not claim an ordering at all. */}
               {fitRanking
                 ? (scoredCount === 0
-                    ? t("jobsPage.orderFitNone", "not ranked — no posting on this page could be scored yet")
+                    // "no posting could be scored yet" reads as "this product
+                    // is broken". The true sentence names the cause and the
+                    // way out: these rows have no stored description, and a
+                    // role query returns rows that do. The old key is DELETED
+                    // from all nine locale files rather than edited — a locale
+                    // value overrides an inline default, so nine translated
+                    // copies of the old wording would have gone on rendering
+                    // (the agentPitchScope lesson).
+                    ? t("jobsPage.orderFitNoDescriptions", "not ranked — none of these postings has a description we can score yet. Search a job title and the roles it finds can be ranked by fit.")
                     : scoredCount < jobs.length
                       ? t("jobsPage.orderFitPartial", "ordered by fit — {{n}} of {{m}} scored", { n: scoredCount, m: jobs.length })
                       : t("jobsPage.orderFit", "ordered by fit to your résumé"))
@@ -5539,6 +5768,32 @@ export default function Jobs() {
               </span>
             )}
 
+            {/* AN EMPTY SAVED VIEW IS TWO DIFFERENT FACTS, and printing the
+                wrong one is a lie about the user's own tracker. Nothing saved
+                at all is a "here is how" moment; postings saved but none of
+                them on this page is a page-scope limit, and it has to name the
+                real number and offer the place that holds them all — otherwise
+                a client-side filter silently reads as "your saved jobs are
+                gone". */}
+            {savedOnly && displayJobs.length === 0 && (
+              <span className="text-[11px] text-muted-foreground">
+                {savedIds.size === 0
+                  ? t("jobsPage.savedViewEmptyNone", "You haven't saved any postings yet. Use the bookmark on a card — saved jobs show up here and in your application tracker.")
+                  : (
+                    <>
+                      {t("jobsPage.savedViewEmptyPage", "None of your {{n}} saved postings are among the results loaded here — this narrows the page, not the whole board.", { n: savedIds.size })}{" "}
+                      <Link to="/account" className="text-primary hover:underline">
+                        {t("jobsPage.savedViewOpenTracker", "Open your tracker")}
+                      </Link>
+                    </>
+                  )}
+              </span>
+            )}
+            {!savedOnly && (hideViewed || hideApplied) && displayJobs.length === 0 && (
+              <span className="text-[11px] text-muted-foreground">
+                {t("jobsPage.hideEmpty", "Every posting loaded here is one you have already opened or applied to. Load more results, or turn these off.")}
+              </span>
+            )}
             {activelyHiringOnly && displayJobs.length === 0 && (
               <span className="text-[11px] text-muted-foreground">
                 {t("jobsPage.activelyHiringEmpty", "No proven-active companies in these results yet — hiring-health data is still accruing. Turn this off to see all verified roles.")}
@@ -6539,7 +6794,21 @@ export default function Jobs() {
                             </p>
                           )}
                           {job.salary && (
-                            <p className="text-xs text-success font-medium mt-0.5" title={job.salary}>{displaySalary(job.salary)}</p>
+                            <p className="text-xs text-success font-medium mt-0.5" title={job.salary}>
+                              {displaySalary(job.salary)}
+                              {/* An hourly or monthly rate cannot be compared
+                                  with the annual figure on the next card, and
+                                  until now only the detail panel said so — a
+                                  fact the reader needed while SKIMMING, shown
+                                  only after they had already decided to click.
+                                  Same key, same wording, one helper. */}
+                              {annualizedPayRange(job) && (
+                                <span className="text-muted-foreground font-normal">
+                                  {" · "}
+                                  {t("jobsPage.salaryAnnualized", "≈{{range}}/year as stated", { range: annualizedPayRange(job) })}
+                                </span>
+                              )}
+                            </p>
                           )}
                           {/* Niche searches match inside descriptions — without showing
                               WHERE, a title that lacks the search term reads as a broken
@@ -6719,6 +6988,28 @@ export default function Jobs() {
                           {(job.workMode || (job.remote ? "remote" : null)) && (
                             <Badge variant="secondary" className="text-[10px]">
                               {t(`jobsPage.workMode.${job.workMode ?? "remote"}`, job.workMode ?? "remote")}
+                            </Badge>
+                          )}
+                          {/* EMPLOYMENT TYPE — the fact every competing board
+                              prints on every card and this one only let you
+                              FILTER by. The server has emitted it since the
+                              filter shipped; nothing declared or rendered it,
+                              so a searcher could ask for internships and then
+                              read a page of results that never said which
+                              postings were one.
+                              Employer-stated or nothing, the workMode rule
+                              directly above: no badge is the correct render for
+                              a posting whose feed states no type, and the same
+                              locale keys the filter chips use label it, so the
+                              chip and the card can never name one posting two
+                              different ways. */}
+                          {isEmploymentType(job.employmentType) && (
+                            <Badge
+                              variant="secondary"
+                              className="text-[10px]"
+                              title={t("jobsPage.employmentTypeProvenance", "Employment type as the employer states it on its own careers feed. Postings whose feed states no type show no tag — never a guess.")}
+                            >
+                              {t(`jobsPage.employmentType.${job.employmentType}`, EMPLOYMENT_TYPE_FALLBACK[job.employmentType])}
                             </Badge>
                           )}
                           {/* AGENCY DISCLOSURE (2026-08-31 charter): agencies
@@ -7256,6 +7547,9 @@ export default function Jobs() {
                       {j.salary && <li>{j.salary}</li>}
                       {j.workMode && (
                         <li>{t(`jobsPage.workMode.${j.workMode}`, j.workMode)}</li>
+                      )}
+                      {isEmploymentType(j.employmentType) && (
+                        <li>{t(`jobsPage.employmentType.${j.employmentType}`, EMPLOYMENT_TYPE_FALLBACK[j.employmentType])}</li>
                       )}
                       {j.agency === true && (
                         <li>{t("jobsPage.agencyBadge", "Staffing agency")}</li>

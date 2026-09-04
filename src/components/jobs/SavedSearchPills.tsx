@@ -17,7 +17,7 @@ import { Bookmark } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { searchToQuery, type JobSearchParams } from "@/lib/job-search-params";
+import { searchToQuery, searchToBoardBody, type JobSearchParams } from "@/lib/job-search-params";
 
 interface SavedSearch { id: string; name: string; params: JobSearchParams; last_seen_at?: string | null }
 
@@ -45,15 +45,29 @@ export function SavedSearchPills() {
         const counts: Record<string, number> = {};
         await Promise.all((data as SavedSearch[]).filter((s) => s.last_seen_at).map(async (s) => {
           try {
-            const p = s.params ?? {};
             const { data: res } = await supabase.functions.invoke("job-board", {
               body: {
                 action: "list", countOnly: true, includeFacets: false,
-                q: p.q || undefined, location: p.location || undefined,
-                remote: p.remote || undefined, category: p.category || undefined,
-                experience: p.experience || undefined,
-                companies: p.company ? [p.company] : undefined,
-                salaryFloor: p.salaryFloor || undefined,
+                // THE SAVED FILTER SET, WHOLE — via the one mapper, never a
+                // second hand-written list.
+                //
+                // This probe used to name eight fields of its own (q, location,
+                // remote, category, experience, companies, salaryFloor) while
+                // JobSearchParams persists twenty-one. So every filter the list
+                // omitted was silently WIDENED for the count only: a search
+                // saved as "nurse · remote · GB · no agencies · full-time"
+                // advertised "+N new" from nurse-remote across every country,
+                // every employment type and every staffing agency on the board.
+                // The number on the pill described a query the user never saved
+                // and the click never runs.
+                //
+                // searchToBoardBody is the same mapper the Account card uses
+                // and the same one that knows `companies` is an array the board
+                // reads while `company` is a key it does not. A field added to
+                // JobSearchParams now reaches this probe the moment it reaches
+                // the mapper — which is the entire reason the mapper exists, and
+                // exactly the drift this file had already re-introduced.
+                ...searchToBoardBody(s.params ?? {}),
                 postedAfter: s.last_seen_at,
               },
             });
