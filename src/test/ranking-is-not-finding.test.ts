@@ -119,13 +119,21 @@ describe("ranking is not finding", () => {
   });
 
   it("THE BUG: dropping a résumé must retrieve, not just re-sort the window", () => {
+    // 2026-09-04: retrieval was EXTRACTED into `retrieveForResume` so the drop
+    // and the "For you" tab share one copy — For-you used to rank whatever
+    // recency put on screen, which on the newest-first default browse is the
+    // least scoreable page on the board. Slicing from the shared helper keeps
+    // this guard pointed at the real code, and the caller assertions below
+    // pin that BOTH entry points still go through it.
     // The whole defect in one assertion. fitRanking re-orders what is loaded;
     // without a query derived from the résumé the board never goes and gets the
     // jobs the résumé is actually about.
-    const i = JOBS.indexOf("const handleBoardResumeFile");
+    const i = JOBS.indexOf("const retrieveForResume");
     const j = JOBS.indexOf("const resolveFitResume", i);
     const handler = i >= 0 && j > i ? JOBS.slice(i, j) : "";
-    expect(handler, "handleBoardResumeFile could not be located").not.toBe("");
+    expect(handler, "retrieveForResume could not be located").not.toBe("");
+    expect(JOBS, "the drop must go through the shared retrieval").toMatch(/const searched = await retrieveForResume\(text\);/);
+    expect((JOBS.match(/await retrieveForResume\(/g) ?? []).length, "both the drop and For-you must retrieve").toBe(2);
     expect(handler, "the résumé is never turned into search terms").toMatch(/action: "fit-terms"/);
     expect(handler, "the derived role is never put in the search box — this IS the bug").toMatch(/setQ\(/);
   });
@@ -133,7 +141,7 @@ describe("ranking is not finding", () => {
   it("does not overwrite an intent the reader already stated", () => {
     // A typed query or an employer lander is a narrower ask than "my résumé".
     // Clobbering it would fix this bug by introducing a ruder one.
-    const i = JOBS.indexOf("const handleBoardResumeFile");
+    const i = JOBS.indexOf("const retrieveForResume");
     const handler = JOBS.slice(i, JOBS.indexOf("const resolveFitResume", i));
     expect(handler).toMatch(/!q\.trim\(\)/);
     expect(handler).toMatch(/!company/);

@@ -51,7 +51,12 @@ describe("the panel still describes the old feature", () => {
     expect(JOBS, "fit-terms is what reads the occupation out of the CV").toMatch(
       /action: "fit-terms", resumeText: text/,
     );
-    expect(JOBS, "and its first term becomes the query").toMatch(/setQ\(searched\);/);
+    // 2026-09-04: the retrieval moved into the shared `retrieveForResume` so
+    // "For you" performs it too; the helper sets the query and RETURNS the
+    // term, which is what the caller's copy then names.
+    expect(JOBS, "and its first term becomes the query").toMatch(/setQ\(terms\[0\]\);/);
+    expect(JOBS, "and the caller is told which term it searched, for the copy")
+      .toMatch(/const searched = await retrieveForResume\(text\);/);
   });
 
   it("no locale promises only the openings already on the page", () => {

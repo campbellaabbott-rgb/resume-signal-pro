@@ -48,14 +48,15 @@ describe("sixty postings could not be scored just now", () => {
   });
 
   it("ranking is switched on AFTER the résumé's query is set — never before", () => {
-    // Within handleBoardResumeFile: the fit-terms retrieval, then setQ, then
+    // Within retrieveForResume (extracted 2026-09-04 so "For you" shares it):
+    // the fit-terms retrieval, then setQ, then
     // setFitRanking(true). Switching on first scores the wrong page.
-    const start = J.indexOf("const handleBoardResumeFile = async (file: File) =>");
+    const start = J.indexOf("const retrieveForResume = async (text: string)");
     const end = J.indexOf("const resolveFitResume", start);
     const body = J.slice(start, end);
     expect(body, "handler not located").not.toBe("");
     const terms = body.indexOf('action: "fit-terms"');
-    const setq = body.indexOf("setQ(searched);");
+    const setq = body.indexOf("setQ(terms[0]);"); // the helper sets it and returns the term
     const on = body.indexOf("setFitRanking(true);");
     expect(terms, "retrieval missing from the handler").toBeGreaterThan(0);
     expect(setq, "the query is never set from the résumé").toBeGreaterThan(terms);
@@ -80,10 +81,10 @@ describe("sixty postings could not be scored just now", () => {
     // the q=founder list at 3.0s — one wasted batch through the gap. The ref
     // closes it: raised synchronously before setQ, cleared in fetchJobs'
     // finally for the offset-0 request only.
-    const start = J.indexOf("const handleBoardResumeFile = async (file: File) =>");
+    const start = J.indexOf("const retrieveForResume = async (text: string)");
     const body = J.slice(start, J.indexOf("const resolveFitResume", start));
     const raise = body.indexOf("fitAwaitingPage.current = true;");
-    const setq = body.indexOf("setQ(searched);");
+    const setq = body.indexOf("setQ(terms[0]);"); // the helper sets it and returns the term
     expect(raise, "the pending flag is never raised").toBeGreaterThan(0);
     expect(raise, "it must be raised BEFORE setQ — the gap opens the instant the query changes").toBeLessThan(setq);
     expect(J).toMatch(/if \(offset === 0\) fitAwaitingPage\.current = false;/);
