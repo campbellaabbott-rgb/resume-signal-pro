@@ -3798,6 +3798,7 @@
     "discShowAll": "Diese ebenfalls anzeigen",
     "discCategory": "Außerdem haben {{hidden}} Stellen im gesamten Board einen Titel, der den Bereich nie nennt – kein Bereichsfilter kann sie erreichen.",
     "sortedNewestFallback": "Sortiert nach Neuestem zuerst (Relevanz-Sortierung vorübergehend nicht verfügbar)",
+    "sortedExactWord": "Sortiert nach Neuestem zuerst — exakte Wortreffer, nicht nach Relevanz sortiert",
     "fuzzyExtraLine": "Nur wenige exakte Treffer für „{{q}}“ — {{count}} ähnliche Titel sind unten enthalten, gekennzeichnet.",
     "closeMatchChip": "ähnlicher Treffer",
     "zeroAlertHint": "Täglich kommen neue Stellen dazu. Erhalte eine E-Mail, sobald passende Stellen zu dieser Suche erscheinen:",

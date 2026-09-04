@@ -3798,6 +3798,7 @@
     "discShowAll": "Show those too",
     "discCategory": "Separately, {{hidden}} openings across the whole board have a job title that never says which field they're in, so no field filter can reach them.",
     "sortedNewestFallback": "Sorted by newest first (relevance ranking briefly unavailable)",
+    "sortedExactWord": "Sorted by newest first — exact whole-word matches, not relevance-ranked",
     "fuzzyExtraLine": "Only a few exact matches for “{{q}}” — {{count}} close-match titles are included below, labelled.",
     "closeMatchChip": "close match",
     "zeroAlertHint": "New postings land here every day. Get an email when roles matching this search appear:",

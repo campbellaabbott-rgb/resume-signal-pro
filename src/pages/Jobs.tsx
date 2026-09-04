@@ -1248,6 +1248,50 @@ export default function Jobs() {
   // The resume available for ranking: this tab's scan first, else the
   // signed-in user's latest saved version (fetched lazily on toggle).
   const fitResume = useRef<string | null>(null);
+  /**
+   * THE ONLY WAY fitResume IS ASSIGNED — because a SECOND résumé changed
+   * nothing on screen.
+   *
+   * `fits`, `misses` and `hits` are derived from ONE résumé, and nothing ever
+   * cleared them. Drop a different file and the toast said it loaded, the
+   * header went on saying "ordered by fit to your résumé", and every fit
+   * badge, matched keyword and missing keyword still described the previous
+   * one: the scoring effect only ever scores rows it considers unscored, and
+   * every row on screen already had a score. The board was answering a
+   * question the reader had replaced.
+   *
+   * LATENT, NOT LIVE, TODAY — and written here for that reason. The drop panel
+   * is the only route to handleBoardResumeFile and the only file input on the
+   * page, and it renders under `resumeAvailable === false && !fitRanking`; a
+   * successful drop sets both, so the panel closes behind the first résumé and
+   * a second one cannot currently be offered (verified in a mounted board, see
+   * a-second-resume-the-board-never-read). That door is exactly the part most
+   * likely to change, and there are three fit-enable sites plus
+   * resolveFitResume's four sources behind it — a fix at any one of them is a
+   * fix at one of them. This function is what assigns the ref, so every route
+   * is covered by construction rather than by a list someone has to maintain.
+   *
+   * A FIRST résumé invalidates nothing (there are no scores yet) and must not
+   * bump the generation, or the scoring effect re-enters and pays for a second
+   * identical round of batches.
+   */
+  const [fitResumeGen, setFitResumeGen] = useState(0);
+  const adoptFitResume = (text: string) => {
+    const prev = fitResume.current;
+    fitResume.current = text;
+    if (!prev || prev === text) return;
+    // Everything below is derived from `prev`. Clearing it makes every loaded
+    // row unscored again, which is precisely what the scoring effect needs to
+    // see; the generation bump is what re-runs that effect when the new résumé
+    // did not also change the query (a second résumé for the same role, or any
+    // résumé arriving while the reader has typed a query of their own — in
+    // both cases `jobs` never changes, and `jobs` was the only trigger).
+    setFits({});
+    setMisses({});
+    setHits({});
+    setFitFailedCount(0);
+    setFitResumeGen((n) => n + 1);
+  };
   // THE DEBOUNCE GAP. After a drop sets the query, the list fetch runs 400ms
   // later (the q-change effect is debounced) and only THEN flips `refreshing`.
   // In that window ranking is on, `refreshing` is false and `jobs` is still
@@ -1434,6 +1478,12 @@ export default function Jobs() {
   // field. That copy would go stale, which is the failure this repo keeps
   // finding. The client already holds the thing it needs: the body it sent.
   const listSig = useRef("");
+  // REFUSING A MISMATCHED PAGE IS ONLY HALF OF IT — SOMETHING HAS TO REPLACE
+  // WHAT WAS REFUSED. Bumped by the refusal below; a dependency of the fetch
+  // effect, so the recovery goes through the ONE path that starts a list
+  // rather than a second copy of it (and coalesces with any filter change
+  // already pending in the same debounce).
+  const [listResync, setListResync] = useState(0);
   const { session } = useAuth();
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
   // Postings the user has ALREADY APPLIED to (tracker status beyond saved) —
@@ -1985,9 +2035,29 @@ export default function Jobs() {
           rank: offset + i + 1,
         }));
         // A page-0 response DEFINES the current list; a later page may only
-        // extend one built from the same filters. Refusing the mismatch is the
-        // whole fix — appending it is what stranded the list.
-        if (offset > 0 && listSig.current !== sig) return;
+        // extend one built from the same filters. Appending a mismatch is what
+        // permanently mixed two filter sets — so it is still refused.
+        //
+        // BUT A SILENT `return` HERE WAS ITS OWN DEAD END. A filter change
+        // deliberately keeps the old list AND an enabled "Load more" on screen
+        // while the replacement loads. A click inside that window supersedes
+        // the page-0 request (reqSeq N+1 beats N, so the page-0 response is
+        // dropped as stale) and is then itself dropped here for describing
+        // different filters. Net effect: the visible list has no pending
+        // request for the filters it is under, no response can ever set
+        // listSig again, and every further click lands on this same line. The
+        // button is dead until the reader changes a filter — the one repair
+        // nobody would think to try, because nothing on screen said anything
+        // happened.
+        //
+        // The refusal now REPLACES what it discarded: ask for page 0 of the
+        // filters actually on screen. The finally block below clears
+        // loadingMore, and the fetch effect (listResync is one of its deps)
+        // flags the list as out of date and re-requests it.
+        if (offset > 0 && listSig.current !== sig) {
+          setListResync((n) => n + 1);
+          return;
+        }
         listSig.current = sig;
         setData(br);
         setJobs((prev) => (offset === 0 ? br.jobs : [...prev, ...br.jobs]));
@@ -2154,9 +2224,17 @@ export default function Jobs() {
       fetchJobs(0);
       return;
     }
+    // `refreshing` MEANS "the list on screen no longer matches the filters",
+    // so it has to start HERE, not 400ms later when the request goes out.
+    // During that debounce the old list sat under new filters with every
+    // control reading as settled — which is the window a "Load more" click
+    // used to fall into and strand the board (see the signature refusal in
+    // fetchJobs). It also keeps the fit scorer off a page that is about to be
+    // replaced, the same reason fitAwaitingPage exists for the no-query case.
+    setRefreshing(true);
     const h = setTimeout(() => fetchJobs(0), 400);
     return () => clearTimeout(h);
-  }, [fetchJobs]);
+  }, [fetchJobs, listResync]);
 
   // Feature 1 (verify-on-apply): confirm a posting is still live on the
   // company's own board at the moment of interaction — the refresh window
@@ -2921,7 +2999,7 @@ export default function Jobs() {
         toast({ title: t("jobsPage.dropTooShort", "We couldn't read enough text from that file — try the full scanner instead."), variant: "destructive" });
         return;
       }
-      fitResume.current = text;
+      adoptFitResume(text);
       try { sessionStorage.setItem("rb_board_resume", text); } catch { /* tab-only */ }
       fitAutoChecked.current = true;
       setResumeAvailable(true);
@@ -2969,7 +3047,7 @@ export default function Jobs() {
     try {
       const dropped = (sessionStorage.getItem("rb_board_resume") ?? "").trim();
       if (dropped.length >= 100) {
-        fitResume.current = dropped;
+        adoptFitResume(dropped);
         return dropped;
       }
     } catch { /* storage blocked — fall through */ }
@@ -2984,7 +3062,7 @@ export default function Jobs() {
           .maybeSingle();
         const pinnedText = ((prof?.matching_resume_text as string | null) ?? "").trim();
         if (pinnedText.length >= 100) {
-          fitResume.current = pinnedText;
+          adoptFitResume(pinnedText);
           return pinnedText;
         }
         if (prof?.matching_scan_id) {
@@ -2992,7 +3070,7 @@ export default function Jobs() {
             .from("user_scans").select("resume_text").eq("id", prof.matching_scan_id).maybeSingle();
           const t = ((pinned?.resume_text as string | null) ?? "").trim();
           if (t.length >= 100) {
-            fitResume.current = t;
+            adoptFitResume(t);
             return t;
           }
         }
@@ -3002,7 +3080,7 @@ export default function Jobs() {
     try {
       const stashed = sessionStorage.getItem("rb_resume_for_fit");
       if (stashed && stashed.length >= 100) {
-        fitResume.current = stashed;
+        adoptFitResume(stashed);
         return stashed;
       }
     } catch { /* ignore */ }
@@ -3016,7 +3094,7 @@ export default function Jobs() {
         .limit(1);
       const text = data?.[0]?.resume_text;
       if (typeof text === "string" && text.length >= 100) {
-        fitResume.current = text;
+        adoptFitResume(text);
         return text;
       }
     }
@@ -3096,6 +3174,13 @@ export default function Jobs() {
         // right. Twenty succeeded 2 of 2 at ~1.7s. Three small calls beat one
         // that dies half the time.
         for (let i = 0; i < unscored.length; i += FIT_BATCH) {
+          // A RÉSUMÉ CAN BE REPLACED MID-RUN. Three small calls take seconds,
+          // and a drop landing inside them clears the scores this loop is
+          // about to merge back in — repopulating the board with the OLD
+          // résumé's numbers a moment after they were correctly thrown away.
+          // Compared against the résumé itself rather than a second counter,
+          // so there is nothing to keep in step.
+          if (fitResume.current !== resume) return;
           const { data, error } = await supabase.functions.invoke("job-fit", {
             body: { action: "fit-batch", resumeText: resume, ids: unscored.slice(i, i + FIT_BATCH) },
           });
@@ -3110,13 +3195,19 @@ export default function Jobs() {
           if (payload?.missing) setMisses((prev) => ({ ...prev, ...payload.missing }));
           if (payload?.matched) setHits((prev) => ({ ...prev, ...payload.matched }));
         }
+        if (fitResume.current !== resume) return;
         setFitFailedCount(failed);
       } finally {
         setFitLoading(false);
       }
     })();
+    // fitResumeGen is what makes a SECOND résumé re-score. `jobs` used to be
+    // the only trigger, and a second résumé changes it only when it also
+    // changes the query — so dropping another file for the same role, or any
+    // file while the reader has typed a query of their own, left the whole
+    // board scored against the file they had replaced.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fitRanking, jobs, refreshing, fitRetry]);
+  }, [fitRanking, jobs, refreshing, fitRetry, fitResumeGen]);
 
   // Fit-first by default: the moment we can tell there's a resume to score
   // against (a fresh scan stashed this session, or the signed-in user's latest
@@ -5533,14 +5624,40 @@ export default function Jobs() {
               // one pill after its own click (audit 2026-09-03). The filtered
               // facet the dropdown already uses answers the same question.
               const railCounts = filteredCats ?? data?.categories ?? null;
+              // ABSENT IS NOT ZERO — AND THE SERVER RETURNS ABSENT ON PURPOSE.
+              //
+              // The facet handler counts the eighteen categories in chunks
+              // against a wall-clock budget and BREAKS OUT of the loop when it
+              // is spent (1.5s under a text query). Its own comment says what
+              // that is supposed to look like: "Categories past it keep their
+              // chip and lose their number". This rail did the opposite — it
+              // read a missing count through `?? 0` and DELETED the category.
+              //
+              // So typing anything into the search box dropped most of the
+              // rail, including fields holding thousands of matching roles,
+              // and WHICH fields vanished changed between two identical
+              // searches, because a server-side clock decided it. The
+              // dropdown beside this rail has always had it right
+              // (`typeof o.count === "number" && o.count > 0` — an option is
+              // never removed, only its number is), and now so does this.
+              //
+              // A chip is dropped only when a count actually CAME BACK as 0.
+              const railCount = (c: string): number | undefined => {
+                const n = railCounts?.[c];
+                return typeof n === "number" ? n : undefined;
+              };
               const cats = CATEGORY_IDS
-                .filter((c) => (railCounts ? (railCounts[c] ?? 0) > 0 : c !== "other"))
+                .filter((c) => (railCounts ? railCount(c) !== 0 : c !== "other"))
                 .sort((a, b) => {
                   // "Other" is the biggest bucket but the least useful pill —
                   // always last regardless of count.
                   if (a === "other") return 1;
                   if (b === "other") return -1;
-                  return (railCounts?.[b] ?? 0) - (railCounts?.[a] ?? 0);
+                  // An UNCOUNTED chip sorts below every counted one (-1, which
+                  // no real count can be) rather than tying with a zero: we do
+                  // not know its size, so it cannot claim a place among the
+                  // ones we do know.
+                  return (railCount(b) ?? -1) - (railCount(a) ?? -1);
                 });
               // Below this there is no overflow to reveal on any width worth
               // designing for, and a toggle that expands nothing is noise.
@@ -5568,7 +5685,9 @@ export default function Jobs() {
                   instead of the row. Measured, not reviewed. */}
               <div className={`min-w-0 flex-1 flex items-center gap-2 flex-nowrap overflow-x-auto pb-1 -mb-1 [mask-image:linear-gradient(to_right,black_92%,transparent)] sm:pb-0 sm:mb-0 sm:flex-wrap sm:[mask-image:none] ${industriesOpen || !worthToggling ? "sm:overflow-visible" : "sm:max-h-[44px] sm:overflow-hidden"}`}>
                 {cats
-                  .map((c) => (
+                  .map((c) => {
+                    const n = railCount(c);
+                    return (
                     <button
                       key={c}
                       type="button"
@@ -5579,9 +5698,14 @@ export default function Jobs() {
                     >
                       <span aria-hidden="true" className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: accentFor(c) }} />
                       {t(`jobsPage.categories.${c}`, c)}
-                      {railCounts && <span className="opacity-70">{fmtFacet(railCounts[c] ?? 0)}</span>}
+                      {/* No number rather than a WRONG number. A category the
+                          budget did not reach has no count, and printing "0"
+                          beside a field with thousands of matching roles is
+                          the same lie that used to delete the chip. */}
+                      {typeof n === "number" && <span className="opacity-70">{fmtFacet(n)}</span>}
                     </button>
-                  ))}
+                    );
+                  })}
               </div>
               {worthToggling && (
                 <button
@@ -6588,12 +6712,31 @@ export default function Jobs() {
                       actually served this page. If it errored, the recency
                       fallback answered — saying "sorted by relevance" over
                       recency-ordered rows would be a lie about the one thing
-                      this line exists to disclose. */}
+                      this line exists to disclose.
+
+                      A DELIBERATE FALLBACK AND AN OUTAGE MUST NEVER READ THE
+                      SAME. The exact whole-word tier concatenates two
+                      `ORDER BY effective_posted DESC` reads and scores nothing,
+                      so it stopped claiming `ranked` — and this line promptly
+                      told every reader it reached that "relevance ranking is
+                      briefly unavailable", when nothing was unavailable and a
+                      tier the page already names a few lines up had answered
+                      correctly. That sentence is the ONLY surface where a real
+                      ranked-path outage becomes visible (the failure that once
+                      left ranked search down and silent for weeks), so it has
+                      to keep meaning exactly that.
+
+                      exactWordMatch is checked BEFORE `ranked` on purpose: it
+                      names a specific tier, `ranked` is a generic flag, and if
+                      that tier ever re-acquires the flag it would go back to
+                      claiming a relevance order it does not produce. */}
                   {searchNewestFirst
                     ? t("jobsPage.sortedNewest", "Sorted by newest first")
-                    : data?.ranked
-                      ? t("jobsPage.sortedRelevance", "Sorted by relevance — title matches first")
-                      : t("jobsPage.sortedNewestFallback", "Sorted by newest first (relevance ranking briefly unavailable)")}
+                    : data?.exactWordMatch
+                      ? t("jobsPage.sortedExactWord", "Sorted by newest first — exact whole-word matches, not relevance-ranked")
+                      : data?.ranked
+                        ? t("jobsPage.sortedRelevance", "Sorted by relevance — title matches first")
+                        : t("jobsPage.sortedNewestFallback", "Sorted by newest first (relevance ranking briefly unavailable)")}
                   {" · "}
                   <button type="button" className="text-primary hover:underline" onClick={() => setSearchNewestFirst((v) => !v)}>
                     {searchNewestFirst
@@ -7280,8 +7423,18 @@ export default function Jobs() {
                       {t("jobsPage.loadMoreFailed", "Couldn't load more just now — your results are still here.")}
                     </p>
                   )}
-                  <Button variant="outline" disabled={loadingMore} onClick={() => fetchJobs(data?.nextOffset ?? jobs.length)} className="gap-2">
-                    {loadingMore && <Loader2 className="w-4 h-4 animate-spin" />}
+                  {/* YOU CANNOT EXTEND A LIST THAT IS BEING REPLACED. While a
+                      filter change is settling, the rows on screen belong to
+                      the PREVIOUS filter set: a page 2 fetched now describes
+                      the NEW one and cannot be appended to them, so fetchJobs
+                      refuses it on arrival. The button stayed enabled through
+                      that whole window, and a click in it killed both requests
+                      and left the board with no pending one — the control was
+                      then dead for good. `refreshing` now covers the debounce
+                      as well as the request in flight, so this disables for
+                      exactly as long as the offer would be false. */}
+                  <Button variant="outline" disabled={loadingMore || refreshing} onClick={() => fetchJobs(data?.nextOffset ?? jobs.length)} className="gap-2">
+                    {(loadingMore || refreshing) && <Loader2 className="w-4 h-4 animate-spin" />}
                     {loadMoreError ? t("jobsPage.loadMoreRetry", "Try again") : t("jobsPage.loadMore", "Load more")}
                   </Button>
                 </div>

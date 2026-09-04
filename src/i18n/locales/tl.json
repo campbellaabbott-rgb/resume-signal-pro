@@ -3798,6 +3798,7 @@
     "discShowAll": "Ipakita rin ang mga iyon",
     "discCategory": "Bukod pa rito, {{hidden}} trabaho sa buong board ang may pamagat na hindi sinasabi ang larangan, kaya walang filter ng larangan ang makakaabot sa kanila.",
     "sortedNewestFallback": "Nakaayos mula sa pinakabago (pansamantalang hindi available ang relevance ranking)",
+    "sortedExactWord": "Nakaayos mula sa pinakabago — eksaktong buong-salitang tugma, hindi ayon sa relevance",
     "fuzzyExtraLine": "Iilan lang ang eksaktong tugma para sa “{{q}}” — {{count}} malapit na tugmang titulo ang kasama sa ibaba, may label.",
     "closeMatchChip": "malapit na tugma",
     "zeroAlertHint": "May mga bagong posting araw-araw. Makatanggap ng email kapag may lumabas na tugmang trabaho sa paghahanap na ito:",
