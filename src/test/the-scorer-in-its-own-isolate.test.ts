@@ -47,7 +47,10 @@ describe("the scorer in its own isolate", () => {
     // site migrated while the report's LiveMatches still scored through the
     // co-tenant copy — the exact function whose 546 motivated the move. Every
     // site surface that sends a résumé to a scorer is listed here, not one.
-    expect((LIVE.match(/functions\.invoke\("job-fit"/g) ?? []).length).toBe(1);
+    // Two: fit-terms (retrieval — added 2026-09-04, so the report searches for
+    // the occupation the résumé names instead of the industry bucket's first
+    // canonical title) and fit-batch (ranking). Both in the scorer's isolate.
+    expect((LIVE.match(/functions\.invoke\("job-fit"/g) ?? []).length).toBe(2);
     expect(LIVE, "no fit call may still target the ingest function").not.toMatch(/invoke\("job-board",\s*\{\s*body:\s*\{\s*action:\s*"fit-(batch|terms)"/);
     expect(BOARD).toMatch(/action === "fit-batch"/);
     expect(BOARD).toMatch(/action === "fit-terms"/);

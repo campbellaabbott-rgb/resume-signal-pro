@@ -1649,7 +1649,11 @@
     },
     "matches": {
       "title": "Live openings matching this resume",
+      "titleSearching": "Finding live openings for this CV",
+      "titleIndustry": "Live openings in your field",
       "subtitle": "Ranked by the same deterministic fit scoring as your report — from live company job boards, continuously re-verified against each company's official feed.",
+      "subtitleSearched": "Searched live company job boards for {{role}} — the occupation this CV names — then ranked by the same deterministic fit scoring as your report.",
+      "subtitleIndustry": "We couldn't read a job title from this CV, so these are current openings in your field — scored against your CV, not found by it. Search the board yourself to narrow them.",
       "loading": "Ranking live openings against your resume…",
       "apply": "Apply",
       "seeAll": "See all matches on the job board — save searches, track applications"

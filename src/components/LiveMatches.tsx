@@ -1,8 +1,13 @@
 // Live openings inside the scan report: the board's top matches for THIS
-// resume, fit-ranked by the same deterministic scorer the report's numbers
-// come from. Zero AI cost — one list query + a few twenty-id fit-batch calls.
-// The free scan's output stops at "here's your score" for everyone else; ours
-// ends with jobs you can act on today.
+// resume — SEARCHED for by the occupation the resume names, then fit-ranked by
+// the same deterministic scorer the report's numbers come from. Zero AI cost —
+// one fit-terms call, one list query, a few twenty-id fit-batch calls. The
+// free scan's output stops at "here's your score" for everyone else; ours ends
+// with jobs you can act on today.
+//
+// The card says which of those two things happened. When the resume names no
+// occupation we can resolve, the rows are the industry bucket's and the
+// heading stops claiming they match this resume.
 
 import { useEffect, useState } from "react";
 import { displaySalary } from "@/lib/salary-display";
@@ -32,6 +37,62 @@ interface MatchJob {
 // Mirrors FIT_BATCH in src/pages/Jobs.tsx.
 const FIT_BATCH = 20;
 
+// job-fit refuses a résumé shorter than this, so a shorter one is a round trip
+// that can only 400. Mirrors the `resumeText.trim().length < 100` bound in
+// supabase/functions/job-fit/index.ts.
+const FIT_MIN_CHARS = 100;
+
+/**
+ * WHERE THE ROWS ON SCREEN CAME FROM — and therefore what the card may claim.
+ *
+ * `resume`: the board was searched for the occupation THIS résumé names, and
+ * the heading may say the openings match it. `industry`: no occupation could
+ * be read out of the résumé, so the rows are the industry bucket's — scored
+ * against the résumé, but not found by it, and the copy says exactly that.
+ */
+type Retrieval = { by: "resume"; role: string } | { by: "industry" };
+
+/**
+ * RANKING IS NOT RETRIEVAL. Ask the résumé what it does for a living and
+ * search the board for THAT, so the fit scores rank a candidate set worth
+ * ranking. Returns the term to search, or "" when the résumé names no
+ * occupation we know — the caller has to be able to tell the difference,
+ * because "" is the case where the rows are not this résumé's.
+ *
+ * THE DEFECT THIS REPLACES: the query was `rolesForIndustry(industry)[0]`, the
+ * first canonical title of a broad industry bucket. A pharmacist's report was
+ * headed "Live openings matching this resume" over five Registered Nurse
+ * openings — retrieved for a different occupation, then honestly scored as
+ * poor matches. On the free scan report, the highest-traffic conversion
+ * surface, that list is the reader's first impression of the product.
+ *
+ * Same call, same semantics as `retrieveForResume` in src/pages/Jobs.tsx: the
+ * occupation is read server-side by resumeRoleTerms, so the recorded refusals
+ * ride along for free — a strategy phrase like "go-to-market" is not an
+ * occupation, a bare rank ("veteran", "manager") is not an occupation, and a
+ * grade ("journeyman electrician") only shrinks the search. What comes back is
+ * a job title or nothing.
+ */
+async function resumeRoleQuery(resumeText: string): Promise<string> {
+  if (resumeText.trim().length < FIT_MIN_CHARS) return "";
+  try {
+    // job-fit, not job-board: the scorer has had its own isolate since
+    // 2026-09-03, because sharing the ingest function's worker pool answered
+    // 546 to readers who had done everything right.
+    const { data } = await supabase.functions.invoke("job-fit", {
+      body: { action: "fit-terms", resumeText },
+    });
+    const terms = ((data as { terms?: string[] } | null)?.terms ?? [])
+      .filter((x): x is string => typeof x === "string" && x.length > 0);
+    return terms[0] ?? "";
+  } catch {
+    // Retrieval is the upgrade, not the feature. A failure here drops to the
+    // industry fallback below — and the card's copy then stops claiming these
+    // openings match this résumé, because they were not found by it.
+    return "";
+  }
+}
+
 export function LiveMatches({ resumeText, industry }: { resumeText: string; industry: string }) {
   const { t } = useTranslation();
   // NO EXTRA REQUEST FOR THE NUMBER. This component already calls the board;
@@ -48,16 +109,35 @@ export function LiveMatches({ resumeText, industry }: { resumeText: string; indu
   // list of unscored rows under a "fit-ranked" heading.
   const [fitFailedCount, setFitFailedCount] = useState(0);
   const [attempt, setAttempt] = useState(0);
+  // null until the retrieval above has answered — the window in which the card
+  // shows a spinner and claims nothing about any posting.
+  const [retrieval, setRetrieval] = useState<Retrieval | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
+        // THE RÉSUMÉ IS ASKED FIRST, AND THE INDUSTRY IS THE FALLBACK — never
+        // the other way round. Every other door into fit ranking on this site
+        // retrieves before it ranks; this one scored whatever the industry's
+        // first canonical title happened to return.
+        const role = await resumeRoleQuery(resumeText);
+        if (cancelled) return;
         const topRole = rolesForIndustry(industry)[0]?.title;
         const category = INDUSTRY_TO_CATEGORY[industry];
-        // Role query first (most specific); category fallback; never both.
-        const body = topRole
-          ? { action: "list", q: topRole, limit: 30 }
+        // Résumé query first (this résumé's own occupation); the industry's
+        // first canonical title for a résumé whose occupation cannot be
+        // resolved; the category for an industry we carry no role pages for.
+        const q = role || topRole;
+        // THE CLAIM IS DERIVED FROM THE QUERY THAT WAS ACTUALLY SENT, not from
+        // whether an occupation happened to resolve. Written the obvious way
+        // — `role ? "resume" : "industry"` — the heading goes on saying "matching
+        // this resume" for anyone who later reorders the two candidates above,
+        // which is precisely the sentence that was false. Reading `q` back
+        // means the claim cannot outlive the retrieval it describes.
+        let by: Retrieval["by"] = q && q === role ? "resume" : "industry";
+        const body = q
+          ? { action: "list", q, limit: 30 }
           : { action: "list", category, limit: 30 };
         let { data: res } = await supabase.functions.invoke("job-board", { body });
         // Zero is a failed read, not a total: leaving it null keeps the CTAs on
@@ -65,10 +145,21 @@ export function LiveMatches({ resumeText, industry }: { resumeText: string; indu
         const t0 = (res as { total?: number } | null)?.total;
         if (!cancelled && typeof t0 === "number" && t0 > 0) setBoardTotal(t0);
         let jobs: Array<Record<string, unknown>> = (res as { jobs?: [] })?.jobs ?? [];
-        if (jobs.length < 5 && topRole && category) {
+        // WIDENING TO THE CATEGORY IS A DEMOTION, NOT A TOP-UP: it REPLACES the
+        // candidate set with another occupation's jobs. Off a résumé query that
+        // found something, three of the reader's own rows beat five of somebody
+        // else's — showing somebody else's is the whole defect this card had.
+        // Off the industry title (nothing to lose) the original "fewer than the
+        // five we show" threshold stands.
+        const thin = by === "resume" ? jobs.length === 0 : jobs.length < 5;
+        if (thin && q && category) {
           ({ data: res } = await supabase.functions.invoke("job-board", { body: { action: "list", category, limit: 30 } }));
           jobs = (res as { jobs?: [] })?.jobs ?? [];
+          by = "industry";
         }
+        // Set before the rows exist, so no row is ever on screen under a
+        // heading describing a retrieval that did not produce it.
+        if (!cancelled) setRetrieval(by === "resume" && role ? { by, role } : { by: "industry" });
         if (jobs.length === 0) {
           if (!cancelled) setMatches([]);
           return;
@@ -147,6 +238,9 @@ export function LiveMatches({ resumeText, industry }: { resumeText: string; indu
   const retry = () => {
     setMatches(null);
     setFitFailedCount(0);
+    // The retry re-runs the retrieval too, so the claim is re-earned rather
+    // than carried over from the attempt that failed.
+    setRetrieval(null);
     setAttempt((a) => a + 1);
   };
 
@@ -178,12 +272,32 @@ export function LiveMatches({ resumeText, industry }: { resumeText: string; indu
 
   return (
     <div className="rounded-2xl border border-primary/25 bg-primary/5 p-5 mb-4">
+      {/* THE HEADING IS A CLAIM ABOUT THE RETRIEVAL, NOT A CONSTANT. It read
+          "matching this resume" over rows retrieved for the industry bucket's
+          first canonical title — a pharmacist's report, headed that way, over
+          Registered Nurse openings. Three states, and only one of them says
+          the openings match this résumé:
+            · still retrieving — the card claims nothing and shows a spinner;
+            · retrieved BY the résumé — the occupation it names is quoted, so
+              the reader can see the query and disagree with it;
+            · retrieved by the industry — said plainly: scored against this
+              résumé, not found by it. */}
       <div className="flex items-center gap-2 mb-1">
         <Briefcase className="w-4 h-4 text-primary" />
-        <h3 className="font-bold text-foreground">{t("freeResults.matches.title", "Live openings matching this resume")}</h3>
+        <h3 className="font-bold text-foreground">
+          {retrieval === null
+            ? t("freeResults.matches.titleSearching", "Finding live openings for this resume")
+            : retrieval.by === "resume"
+              ? t("freeResults.matches.title", "Live openings matching this resume")
+              : t("freeResults.matches.titleIndustry", "Live openings in your field")}
+        </h3>
       </div>
       <p className="text-xs text-muted-foreground mb-3">
-        {t("freeResults.matches.subtitle", "Ranked by the same deterministic fit scoring as your report — from live company job boards, continuously re-verified against each company's official feed.")}
+        {retrieval === null
+          ? t("freeResults.matches.subtitle", "Ranked by the same deterministic fit scoring as your report — from live company job boards, continuously re-verified against each company's official feed.")
+          : retrieval.by === "resume"
+            ? t("freeResults.matches.subtitleSearched", "Searched live company job boards for {{role}} — the occupation this resume names — then ranked by the same deterministic fit scoring as your report.", { role: retrieval.role })
+            : t("freeResults.matches.subtitleIndustry", "We couldn't read a job title from this resume, so these are current openings in your field — scored against your resume, not found by it. Search the board yourself to narrow them.")}
       </p>
 
       {matches === null ? (

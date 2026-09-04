@@ -1649,7 +1649,11 @@
     },
     "matches": {
       "title": "Vagas ao vivo que combinam com este currículo",
+      "titleSearching": "Procurando vagas ao vivo para este currículo",
+      "titleIndustry": "Vagas ao vivo na sua área",
       "subtitle": "Classificadas com a mesma pontuação determinística do seu relatório — de murais de vagas reais, verificados continuamente contra o feed oficial de cada empresa.",
+      "subtitleSearched": "Pesquisamos {{role}} em murais de vagas reais — a ocupação que este currículo indica — e depois classificamos com a mesma pontuação determinística do seu relatório.",
+      "subtitleIndustry": "Não conseguimos ler um cargo neste currículo, então estas são vagas atuais da sua área — pontuadas com o seu currículo, mas não encontradas por ele. Pesquise você mesmo no mural para restringi-las.",
       "loading": "Classificando vagas ao vivo contra seu currículo…",
       "apply": "Candidatar",
       "seeAll": "Ver todas as combinações no mural — salve buscas e acompanhe candidaturas"

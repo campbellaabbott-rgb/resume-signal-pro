@@ -50,6 +50,10 @@ function boardMock(fit: (ids: string[], nth: number) => FitAnswer) {
   let nth = 0;
   invoke.mockImplementation(async (fn: string, opts: { body?: Record<string, unknown> } | undefined) => {
     const action = opts?.body?.action;
+    // Retrieval runs before ranking now — the card asks the résumé what it does
+    // for a living and searches the board for THAT. Pinned in
+    // a-pharmacists-report-listed-nursing-jobs; here it just has to answer.
+    if (fn === "job-fit" && action === "fit-terms") return { data: { terms: ["registered nurse"] } };
     if (fn === "job-board" && action === "list") return { data: { jobs: THIRTY } };
     if (fn === "job-board" && action === "verify") return { data: { live: {} } };
     if (fn === "job-fit" && action === "fit-batch") return fit(opts!.body!.ids as string[], nth++);
@@ -76,7 +80,7 @@ describe("a 546 rendered as a fit-ranked list", () => {
       expect(LIVE.slice(Math.max(0, (m.index ?? 0) - 120), m.index), "a fit action outside a job-fit invoke").toMatch(/invoke\("job-fit"/);
     }
     // And the ingest function is asked only for what it is for.
-    for (const m of LIVE.matchAll(/action:\s*"([^"]+)"/g)) expect(["list", "verify", "fit-batch"]).toContain(m[1]);
+    for (const m of LIVE.matchAll(/action:\s*"([^"]+)"/g)) expect(["list", "verify", "fit-batch", "fit-terms"]).toContain(m[1]);
   });
 
   it("batches twenty ids a call — the server's cap — never the whole candidate set", () => {
