@@ -112,7 +112,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-30.36"; // .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
+const BUILD_VERSION = "2026-08-30.37"; // .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
 // .36: JazzHR joins as vendor #20 (vendors/jazzhr.ts; a verified sample of boards enters sources.ts, so the bump is load-bearing for the bootstrap lane). .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
 // .23: bug-sweep round — the agency opt-out reaches the rescue tiers (it was bound in search_jobs only, so a rescue served the rows the caller hid, undisclosed); the per-company cap stops swallowing the employer it just surfaced; a withdrawn count no longer prints "not hiring"; the reverted pipe fix is restored
 
@@ -1754,6 +1754,7 @@ const SLICE_STATS_WRITE_MS = 5_000;
 async function stampSliceWork(client: SupabaseClient, inHotPhase: boolean, sliceWallStart: number): Promise<void> {
   const workMs = Date.now() - sliceWallStart;
   const phase = inHotPhase ? "hot" : "cold";
+  const mem = memStamp();
   const write = (async () => {
     const { data: prev } = await client.from("job_board_meta").select("v").eq("k", "slice_stats").maybeSingle();
     const pv = (prev?.v ?? {}) as { works?: number; workHotEmaMs?: number; workColdEmaMs?: number };
@@ -1773,11 +1774,13 @@ async function stampSliceWork(client: SupabaseClient, inHotPhase: boolean, slice
         workMs,
         [key]: Math.round(prevEma * 0.8 + workMs * 0.2),
         works: (Number(pv.works) || 0) + 1,
-        workHop: currentHop, workHeapMb: heapMb(), workRssMb: rssMb(),
+        workHop: currentHop,
+        ...(mem.heapMb !== undefined ? { workHeapMb: mem.heapMb } : {}),
+        ...(mem.rssMb !== undefined ? { workRssMb: mem.rssMb } : {}),
       },
       updated_at: new Date().toISOString(),
     }, { onConflict: "k" });
-  })().catch(() => { /* a lost pulse is survivable; a wedged rotation is not */ });
+  })().catch((e) => { sliceStampError = `work: ${String(e).slice(0, 160)}`; });
   await Promise.race([write, new Promise<void>((res) => setTimeout(res, SLICE_STATS_WRITE_MS))]);
 }
 
@@ -1819,12 +1822,41 @@ let sliceBudgetNote: { fetched: number; skipped: number; hit: boolean; lastUpser
 // heavy slice — and it is a hypothesis until the row carries the hop and the
 // heap. Both writers below stamp them; no lever reads them yet.
 let currentHop = 0;
-const heapMb = () => Math.round(Deno.memoryUsage().heapUsed / 1048576);
-const rssMb = () => Math.round(Deno.memoryUsage().rss / 1048576);
+// A CONTROL INPUT MUST NOT CARRY A PASSENGER THAT CAN THROW.
+//
+// .36 put `Deno.memoryUsage()` inside the payload of both slice_stats writers.
+// The Supabase edge runtime does not provide it, so every write threw while it
+// was being constructed — inside the `.catch(() => {})` each writer wraps
+// around itself, which was written for a lost EMA sample, not for a payload
+// that can never succeed. MEASURED: the row froze at 2026-09-04T10:50:48Z, the
+// deploy instant, and stayed frozen for three hours while refresh_progress in
+// the same function kept advancing and bootstrap slices kept stamping. Thirty
+// minutes in, shedSignal called the row stale and floored the fleet at L1
+// (`drained: 10` on the live status), which is how a statistic nobody reads
+// took the whole rotation down to 48 boards a slice.
+//
+// So: the probe is TOTAL — it answers {} rather than throwing, whatever the
+// runtime provides — and the fields it produces are spread in, never called
+// in place. And the writers below no longer swallow their failures silently;
+// `sliceStampError` carries the reason onto the status action, so the next
+// write that cannot land says so instead of going quiet.
+let sliceStampError: string | null = null;
+function memStamp(): { heapMb?: number; rssMb?: number } {
+  try {
+    const mu = (Deno as unknown as { memoryUsage?: () => { heapUsed?: number; rss?: number } }).memoryUsage;
+    if (typeof mu !== "function") return {};
+    const u = mu.call(Deno) ?? {};
+    const out: { heapMb?: number; rssMb?: number } = {};
+    if (typeof u.heapUsed === "number") out.heapMb = Math.round(u.heapUsed / 1048576);
+    if (typeof u.rss === "number") out.rssMb = Math.round(u.rss / 1048576);
+    return out;
+  } catch { return {}; }
+}
 
 async function recordSliceStats(client: SupabaseClient, sliceWallStart: number, inHotPhase: boolean): Promise<void> {
   const sliceMs = Date.now() - sliceWallStart;
   const phase = inHotPhase ? "hot" : "cold";
+  const mem = memStamp();
   // Settled, never rejecting: the timeout below may win the race, and a
   // rejection landing after that would surface as an unhandled rejection in a
   // hop that has already returned.
@@ -1842,13 +1874,16 @@ async function recordSliceStats(client: SupabaseClient, sliceWallStart: number, 
         lastPhase: phase,
         [key]: Math.round(prevEma * 0.8 + sliceMs * 0.2),
         slices: (Number(pv.slices) || 0) + 1,
-        hop: currentHop, heapMb: heapMb(), rssMb: rssMb(),
+        hop: currentHop,
+        ...(mem.heapMb !== undefined ? { heapMb: mem.heapMb } : {}),
+        ...(mem.rssMb !== undefined ? { rssMb: mem.rssMb } : {}),
         // The budget outcome rides on the row status already exposes.
         ...(sliceBudgetNote ? { budgetFetched: sliceBudgetNote.fetched, budgetSkipped: sliceBudgetNote.skipped, budgetHit: sliceBudgetNote.hit, lastUpsertError: sliceBudgetNote.lastUpsertError ? sliceBudgetNote.lastUpsertError.slice(0, 200) : null } : {}),
+        stampError: sliceStampError,
       },
       updated_at: new Date().toISOString(),
     }, { onConflict: "k" });
-  })().catch(() => { /* a lost EMA sample is survivable; a wedged rotation is not */ });
+  })().catch((e) => { sliceStampError = `slice: ${String(e).slice(0, 160)}`; });
   await Promise.race([write, new Promise<void>((res) => setTimeout(res, SLICE_STATS_WRITE_MS))]);
 }
 

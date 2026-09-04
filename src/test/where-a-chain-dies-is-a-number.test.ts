@@ -23,12 +23,15 @@ describe("where a chain dies is a number", () => {
   });
 
   it("heap and rss are read from the runtime, in megabytes", () => {
-    expect(CODE).toMatch(/const heapMb = \(\) => Math\.round\(Deno\.memoryUsage\(\)\.heapUsed \/ 1048576\);/);
-    expect(CODE).toMatch(/const rssMb = \(\) => Math\.round\(Deno\.memoryUsage\(\)\.rss \/ 1048576\);/);
+    // .37: this runtime has no Deno.memoryUsage, and calling it in the payload
+    // froze the row for three hours. The probe is total now and the numbers are
+    // optional (a-statistic-nobody-reads-took-the-rotation-down.test.ts).
+    expect(CODE).toMatch(/out\.heapMb = Math\.round\(u\.heapUsed \/ 1048576\);/);
+    expect(CODE).toMatch(/out\.rssMb = Math\.round\(u\.rss \/ 1048576\);/);
   });
 
   it("BOTH slice_stats writers stamp hop, heap and rss", () => {
-    expect(CODE, "liveness stamp").toMatch(/works: \(Number\(pv\.works\) \|\| 0\) \+ 1,\s*workHop: currentHop, workHeapMb: heapMb\(\), workRssMb: rssMb\(\),/);
-    expect(CODE, "terminal write").toMatch(/slices: \(Number\(pv\.slices\) \|\| 0\) \+ 1,\s*hop: currentHop, heapMb: heapMb\(\), rssMb: rssMb\(\),/);
+    expect(CODE, "liveness stamp").toMatch(/works: \(Number\(pv\.works\) \|\| 0\) \+ 1,\s*workHop: currentHop,\s*\.\.\.\(mem\.heapMb !== undefined \? \{ workHeapMb: mem\.heapMb \} : \{\}\),/);
+    expect(CODE, "terminal write").toMatch(/slices: \(Number\(pv\.slices\) \|\| 0\) \+ 1,\s*hop: currentHop,\s*\.\.\.\(mem\.heapMb !== undefined \? \{ heapMb: mem\.heapMb \} : \{\}\),/);
   });
 });

@@ -66,8 +66,11 @@ describe("a control input must not be best-effort", () => {
     expect(FN).toMatch(/const SLICE_STATS_WRITE_MS = 5_000;/);
     // The write settles rather than rejecting: the timeout may win the race,
     // and a rejection arriving afterwards would be unhandled in a hop that has
-    // already returned.
-    expect(BODY).toMatch(/\}\)\(\)\.catch\(\(\) => \{/);
+    // already returned. .37: settling is still required, but the reason is
+    // KEPT now — swallowing it is what hid a three-hour outage
+    // (a-statistic-nobody-reads-took-the-rotation-down.test.ts).
+    expect(BODY).toMatch(/\}\)\(\)\.catch\(\(e\) => \{ sliceStampError = /);
+    expect(BODY, "the handler must not rethrow, or the race is pointless").not.toMatch(/catch\(\(e\) => \{ throw/);
   });
 
   it("still lets a DYING rotation shed — the survivor-bias branch is untouched", () => {

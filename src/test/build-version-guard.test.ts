@@ -854,7 +854,15 @@ const PINNED = {
   //   pages say ranked: true.
   //   Also .36: JazzHR joins as vendor #20 (vendors/jazzhr.ts; 43 verified
   //   boards enter sources.ts, so the bump is load-bearing for the bootstrap lane).
-  buildVersion: "2026-08-30.36",
+  //
+  // .37 — .36's heap stamp took the rotation down
+  //   (a-statistic-nobody-reads-took-the-rotation-down.test.ts). Deno.memoryUsage
+  //   does not exist in this runtime, so both slice_stats writers threw while
+  //   building their payload, inside their own swallow-everything catch. The
+  //   row froze at the deploy instant; 30 minutes later shedSignal called it
+  //   stale and pinned the fleet at L1 for three hours. The probe is total now,
+  //   its fields are spread not called, and a failed stamp reaches status.
+  buildVersion: "2026-08-30.37",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {
