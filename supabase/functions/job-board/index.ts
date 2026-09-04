@@ -112,7 +112,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-30.44"; // .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
+const BUILD_VERSION = "2026-08-30.45"; // .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
 // .36: JazzHR joins as vendor #20 (vendors/jazzhr.ts; a verified sample of boards enters sources.ts, so the bump is load-bearing for the bootstrap lane). .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
 // .23: bug-sweep round — the agency opt-out reaches the rescue tiers (it was bound in search_jobs only, so a rescue served the rows the caller hid, undisclosed); the per-company cap stops swallowing the employer it just surfaced; a withdrawn count no longer prints "not hiring"; the reverted pipe fix is restored
 
@@ -5534,6 +5534,20 @@ function liftIntentFilters(
  */
 function ftsSafe(t: string): string {
   if (((t.match(/"/g) ?? []).length & 1) === 1) t = t.replace(/"/g, " ");
+  // A HYPHEN BETWEEN WORDS IS PUNCTUATION, NOT SYNTAX. Job titles are full of
+  // it — "Graduate Engineer - Civil", "Weekend LPN - Pediatric Clients",
+  // "Service Manager - INFINITI Stuart!" — and websearch_to_tsquery reads a
+  // leading "-" as NOT. Measured 2026-09-04 against the live board:
+  //   "Graduate Engineer - Civil"     347 results, the posting NOT returned
+  //   "Graduate Engineer Civil"        44 results, that posting ranked FIRST
+  //   "Weekend LPN - Pediatric Clients"     not returned at all
+  //   "Weekend LPN Pediatric Clients"  total 1, that posting ranked FIRST
+  // A findability probe over 40 sampled postings found 5 unreachable by their
+  // own title, and 4 of the 5 contained " - ". The board's deliberate
+  // exclusion syntax is an ATTACHED "-term", which splitExclusions has already
+  // consumed before this runs, so a hyphen still standing here is separator,
+  // not intent. The same goes for a lone & or / between words.
+  t = t.replace(/(^|\s)[-&/–—]+(\s|$)/g, " ");
   return t.replace(/[(),.'\\:]/g, " ").replace(/\s+/g, " ").trim();
 }
 
@@ -5594,7 +5608,11 @@ function queryTerms(raw: unknown): { terms: string[]; dropped: string[]; liftedS
     .map((t) => t.length >= 2 && t.startsWith('"') && t.endsWith('"')
       ? t.slice(1, -1).split(/\s+/).map(sanitizeTerm).filter(Boolean).join(" ")
       : sanitizeTerm(t))
-    .filter(Boolean);
+    // A TOKEN WITH NO LETTER OR DIGIT CANNOT MATCH ANYTHING, and every term
+    // here is ANDed against title/company/department — so a stray "-" or "&"
+    // from a pasted job title made the whole query unsatisfiable. See ftsSafe
+    // above for the measurement.
+    .filter((x) => /[a-z0-9]/i.test(x));
   // The money token is lifted into the salary filter by normalizeFilters, so
   // it must not also be ANDed against every title — that returned zero for
   // "100k engineer".

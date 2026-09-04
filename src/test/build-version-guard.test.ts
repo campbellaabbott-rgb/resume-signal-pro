@@ -908,7 +908,12 @@ const PINNED = {
   //   no trace in four versions has ever shown a loop-done mark, so the loop
   //   never ends and the death is inside a board's own work. Halving twice is
   //   an experiment that reads either way.
-  buildVersion: "2026-08-30.44",
+  //
+  // .45 — a hyphen between words is punctuation, not syntax
+  //   (every-job-must-be-findable.test.ts). A findability probe over 40 real
+  //   postings found 5 unreachable by their own title; 4 of the 5 contained
+  //   " - ". Removing the hyphen moved the posting from absent to rank 1.
+  buildVersion: "2026-08-30.45",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {
