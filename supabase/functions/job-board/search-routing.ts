@@ -226,7 +226,12 @@ export const wordCount = (text: string, term: string): number => {
 export function scoreTitle(title: string, query: string, ageDays?: number): number {
   const t = String(title ?? "");
   const tl = t.toLowerCase();
-  const qRaw = String(query ?? "").trim();
+  // Double quotes are the tsquery parser's phrase syntax, which the query now
+  // carries through to search_jobs; no title contains them, so left in place
+  // they would only deny a quoted phrase the prefix and adjacency bonuses it
+  // is the strongest possible claim to. Only the quote is removed — c++ and
+  // c# below still read the raw string.
+  const qRaw = String(query ?? "").replace(/"/g, "").trim();
   // Split on NON-ALPHANUMERICS — the SAME split the titles get below. The old
   // whitespace-split-then-foldName fused punctuated queries into tokens no
   // title tokenization can produce: "k-8 teacher" carried a token "k8" that
