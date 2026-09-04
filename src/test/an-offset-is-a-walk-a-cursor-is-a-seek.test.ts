@@ -43,7 +43,12 @@ describe("an offset is a walk, a cursor is a seek", () => {
   });
 
   it("selects the sort key but does not publish it", () => {
-    expect(CODE).toMatch(/\.select\(`\$\{JOB_FIELDS\},effective_posted`/);
+    // ONE NAMED SUFFIX IS ALLOWED, AND ONLY ONE. `?include=description` appends
+    // an opt-in column AFTER the sort key (2026-09-04), so the pattern admits
+    // `${extraSelect}` by name and nothing else — an arbitrary interpolation
+    // here is how a column nobody agreed to publish reaches the response, which
+    // is the same reason JOB_FIELDS is a list and not select("*").
+    expect(CODE).toMatch(/\.select\(`\$\{JOB_FIELDS\},effective_posted(\$\{extraSelect\})?`/);
     // Stripped before the response so the documented field list is the contract.
     expect(CODE).toMatch(/const \{ effective_posted: _sortKey, \.\.\.rest \} = r;/);
   });

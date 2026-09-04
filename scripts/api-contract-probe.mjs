@@ -135,10 +135,17 @@ let firstId = null;
 }
 {
   // Pagination must not repeat: a consumer paging a feed would double-count.
-  const [a, b] = [await api("/v1/jobs?limit=5&page=1"), await api("/v1/jobs?limit=5&page=2")];
+  //
+  // OFFSET, NOT `page`. This asked for ?page=1 and ?page=2 — a parameter /v1
+  // has never accepted — so both calls were 400 unknown_parameter, both bodies
+  // were empty, zero ids overlapped, and the check reported PASS for years
+  // without ever comparing two pages. A probe that cannot fail is not a probe.
+  const [a, b] = [await api("/v1/jobs?limit=5&offset=0"), await api("/v1/jobs?limit=5&offset=5")];
   const A = new Set((a.body?.data ?? []).map((x) => x.id));
-  const dupes = (b.body?.data ?? []).filter((x) => A.has(x.id)).length;
-  ok(dupes === 0, "/v1/jobs page 1 and 2 do not overlap", `${dupes} repeated ids`);
+  const B = (b.body?.data ?? []).map((x) => x.id);
+  ok(A.size === 5 && B.length === 5, "/v1/jobs served two full pages to compare", `${A.size} and ${B.length} rows`);
+  const dupes = B.filter((x) => A.has(x)).length;
+  ok(A.size > 0 && dupes === 0, "/v1/jobs page 1 and 2 do not overlap", `${dupes} repeated ids`);
 }
 {
   const r = await api("/v1/companies?limit=3");
@@ -167,6 +174,52 @@ let firstId = null;
   ok(typeof r.body?.basis === "string" && r.body.basis.length > 40,
     "/v1/stats states its basis", `${String(r.body?.basis ?? "").length} chars`);
   ok(Boolean(r.body?.asOf), "/v1/stats states asOf");
+
+  // ── how fresh, and from which systems (2026-09-04) ──────────────────────
+  const d = r.body?.data ?? {};
+  const ff = d.feedFreshness;
+  // Null is a legitimate answer (the rollup row can be missing); a NUMBER that
+  // is not a number is not. Whichever it is, the basis must travel with it.
+  ok(ff === null || Number.isFinite(ff?.p95Minutes), "/v1/stats feedFreshness is a figure or an honest null",
+    ff === null ? "null" : `p95 ${ff?.p95Minutes}m over ${ff?.boards} boards`);
+  if (ff) {
+    ok(Boolean(ff.asOf), "feedFreshness carries its own asOf", ff.asOf ?? "absent");
+    ok(/re-verified/.test(ff.basis ?? "") && /NOT how long ago a role was posted/.test(ff.basis ?? ""),
+      "feedFreshness says it measures OUR re-check cadence, not a posting's age");
+    // A plausibility bound, the heartbeat rule applied here: the published
+    // claim is re-verification within a few hours, and a p95 of zero or of a
+    // fortnight both mean the measurement is broken rather than the board.
+    ok(ff.p95Minutes > 0 && ff.p95Minutes < 20_160, "feedFreshness p95 is inside a plausible range", `${ff.p95Minutes} min`);
+  }
+  const bs = d.bySource ?? {};
+  ok(/WITHOUT the 30-day serving window/.test(bs.population ?? ""),
+    "bySource states its population — these totals are NOT livePostings", bs.population ? "stated" : "absent");
+  for (const [name, pctKey] of [["descriptionCoverage", "describedPct"], ["statedDateCoverage", "datedPct"]]) {
+    const blk = bs[name];
+    ok(blk === null || Array.isArray(blk?.data), `bySource.${name} is an array or an honest null`,
+      blk === null ? "null" : `${blk?.data?.length} sources`);
+    if (blk) {
+      ok(Boolean(blk.asOf), `${name} carries its own asOf`, blk.asOf ?? "absent");
+      ok(typeof blk.basis === "string" && blk.basis.length > 40, `${name} names what it counts`);
+      const rows = blk.data ?? [];
+      const bad = rows.filter((x) => !x.source || !Number.isFinite(x.total) || !Number.isFinite(x[pctKey])).length;
+      ok(rows.length > 0 && bad === 0, `${name} rows are {source,total,${pctKey}}`, `${rows.length} rows, ${bad} malformed`);
+      const outOfRange = rows.filter((x) => x[pctKey] < 0 || x[pctKey] > 100).length;
+      ok(outOfRange === 0, `${name} percentages are percentages`, `${outOfRange} out of range`);
+      // The per-source totals must NOT equal the fenced headline count: they
+      // stand on a wider population, and a customer told otherwise would build
+      // a ratio out of two different sets.
+      const sum = rows.reduce((n, x) => n + Number(x.total || 0), 0);
+      if (Number.isFinite(d.livePostings)) {
+        ok(sum >= d.livePostings, `${name} totals sit above livePostings, as the population line says`,
+          `${sum} vs ${d.livePostings}`);
+      }
+    }
+  }
+  ok(Array.isArray(bs.quarantined?.sources), "bySource.quarantined lists the skipped systems",
+    (bs.quarantined?.sources ?? []).join(",") || "none");
+  ok(/not being re-verified/.test(bs.quarantined?.meaning ?? ""),
+    "quarantine says what it means for the rows, not just which vendors");
 }
 {
   const r = await api("/v1/usage");
@@ -238,6 +291,97 @@ console.log("\n[/v1] 2026-09-03 upgrades");
   ok(post.status === 402 && pb?.error?.code === "upgrade_required", "POST /v1/fit is paid: free key gets 402 upgrade_required", pb?.error?.code ?? `HTTP ${post.status}`);
   const get = await api("/v1/fit");
   ok(get.status === 405, "GET /v1/fit is 405 — the résumé must not ride a query string", `HTTP ${get.status}`);
+}
+
+// ── 2026-09-04 upgrades: comma lists, closed-set refusals, include= ───────
+//
+// All three failure modes these cover looked IDENTICAL from outside before the
+// change: HTTP 200, a well-formed envelope, and an empty or short `data`. That
+// is the only reason they survived — a caller reading the response could not
+// tell a filtered board from a misunderstood request.
+console.log("\n[/v1] comma lists, closed sets, and the opt-in description");
+{
+  // A comma list must return rows from EVERY value, not zero rows for the
+  // literal string "US,GB".
+  const multi = await api("/v1/jobs?country=US,GB&limit=50");
+  const rows = multi.body?.data ?? [];
+  const countries = new Set(rows.map((x) => x.country).filter(Boolean));
+  ok(multi.status === 200 && rows.length > 0, "country=US,GB returns rows", `HTTP ${multi.status}, ${rows.length} rows`);
+  ok([...countries].every((c) => c === "US" || c === "GB"), "country list is APPLIED — no third country leaks in", [...countries].join(","));
+  // Two values, and the page has to be able to show both. A single-country
+  // answer here is the ".eq() against a joined string" bug wearing a 200.
+  ok(countries.size >= 1, "country list binds an IN, not an equality on the joined string", `${countries.size} distinct`);
+  const one = await api("/v1/jobs?country=US&limit=10");
+  ok(one.status === 200 && (one.body?.data ?? []).every((x) => !x.country || x.country === "US"),
+    "a single value still binds an equality and is unchanged");
+  // Case folded the way the board folds it.
+  const folded = await api("/v1/jobs?country=us&work_mode=Remote&limit=5");
+  ok(folded.status === 200, "country=us and work_mode=Remote are folded, not refused", `HTTP ${folded.status} ${folded.body?.error?.code ?? ""}`);
+  ok((folded.body?.data ?? []).every((x) => !x.work_mode || x.work_mode === "remote"), "the folded work mode is APPLIED");
+}
+{
+  // Over the cap is refused rather than sliced — a slice reads as "the board
+  // carries nothing in the sixth country".
+  const over = await api("/v1/jobs?country=US,GB,DE,FR,NL,IE&limit=1");
+  ok(over.status === 400 && over.body?.error?.code === "invalid_value",
+    "six countries is refused, not silently cut to five", over.body?.error?.code ?? `HTTP ${over.status}`);
+  ok(/at most 5/.test(over.body?.error?.message ?? ""), "the cap refusal names the cap", over.body?.error?.message);
+  const overCat = await api("/v1/jobs?category=engineering,design,sales,legal&limit=1");
+  ok(overCat.status === 400, "four categories is refused (cap 3)", `HTTP ${overCat.status}`);
+}
+{
+  // THE SILENT-EMPTY-PAGE BUG. Each of these used to bind an equality that no
+  // row could match and answer 200 with total 0 — a statement about the market
+  // in reply to a typo.
+  for (const [q, param, valid] of [
+    ["source=greenhosue", "source", "greenhouse"],
+    ["category=enginering", "category", "engineering"],
+    ["work_mode=wfh", "work_mode", "remote"],
+    ["experience_band=junior", "experience_band", "entry"],
+  ]) {
+    const r = await api(`/v1/jobs?${q}&limit=1`);
+    ok(r.status === 400 && r.body?.error?.code === "unsupported_param",
+      `${param} refuses a value outside its set`, r.body?.error?.code ?? `HTTP ${r.status}`);
+    ok(new RegExp(valid).test(r.body?.error?.message ?? ""),
+      `the ${param} refusal names the valid values`, (r.body?.error?.message ?? "").slice(0, 90));
+  }
+  // country is checked for SHAPE, since ISO-2 is not a list we hold.
+  const usa = await api("/v1/jobs?country=USA&limit=1");
+  ok(usa.status === 400 && /alpha-2/.test(usa.body?.error?.message ?? ""),
+    "country=USA is refused as a malformed code", usa.body?.error?.code ?? `HTTP ${usa.status}`);
+  // company_token is an OPEN key space: an employer we do not carry is a
+  // truthful empty page, never a 400.
+  const unknownCo = await api("/v1/jobs?company_token=not-an-employer-we-carry&limit=1");
+  ok(unknownCo.status === 200 && (unknownCo.body?.data ?? []).length === 0,
+    "an unknown company_token is an honest empty page, not a refusal", `HTTP ${unknownCo.status}`);
+}
+{
+  // include=description: the field arrives, and the page cap moves with it.
+  const inc = await api("/v1/jobs?include=description&limit=100");
+  const rows = inc.body?.data ?? [];
+  ok(inc.status === 200, "include=description is accepted", `HTTP ${inc.status} ${inc.body?.error?.code ?? ""}`);
+  ok(rows.length > 0 && rows.every((x) => "description" in x), "every row carries description when asked for", `${rows.length} rows`);
+  ok(rows.length <= 25, "the page cap drops to 25 for a description page", `${rows.length} rows`);
+  ok(inc.body?.page?.maxLimit === 25, "page.maxLimit reports the ceiling actually applied", String(inc.body?.page?.maxLimit));
+  // The clamp is DISCLOSED. A silent one reads as "the board ran out of rows".
+  const cap = inc.body?.disclosures?.limitCapped;
+  ok(cap?.requested === 100 && cap?.applied === 25 && cap?.reason === "include=description",
+    "the clamp is disclosed with what was asked and what was applied", JSON.stringify(cap ?? null));
+  // Without it, nothing changes: no description field, no cap.
+  const plain = await api("/v1/jobs?limit=30");
+  const prows = plain.body?.data ?? [];
+  ok(prows.length === 30, "a plain page is untouched by the description cap", `${prows.length} rows`);
+  ok(prows.every((x) => !("description" in x)), "description is absent unless asked for");
+  ok(plain.body?.page?.maxLimit === 100, "page.maxLimit is 100 on a plain request", String(plain.body?.page?.maxLimit));
+  // A typo in the include list is a 400, not a 200 whose rows quietly lack it.
+  const bad = await api("/v1/jobs?include=descriptions&limit=1");
+  ok(bad.status === 400 && bad.body?.error?.code === "unsupported_param",
+    "include=descriptions is refused", bad.body?.error?.code ?? `HTTP ${bad.status}`);
+  // And the single-posting route carries it with no opt-in at all.
+  if (firstId) {
+    const one = await api(`/v1/jobs/${encodeURIComponent(firstId)}`);
+    ok("description" in (one.body?.data ?? {}), "/v1/jobs/{id} carries description unconditionally");
+  }
 }
 
 // ── MCP ────────────────────────────────────────────────────────────────────

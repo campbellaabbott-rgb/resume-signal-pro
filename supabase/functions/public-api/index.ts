@@ -17,6 +17,23 @@ import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supa
 import { SENDABLE_VENDORS } from "../_shared/apply-automation.ts";
 import { locationTerms } from "../_shared/location-terms.ts";
 import { resumeRoleTerms } from "../_shared/fit-score.ts";
+// THE CLOSED DOMAINS, IMPORTED RATHER THAN RETYPED. A hand-copied list of
+// vendors or categories is a second list, and every filter defect this board
+// has shipped was two lists disagreeing. These are the same constants the
+// board's own normalizeFilters validates against, so /v1 cannot come to a
+// different conclusion about what `source=jazzhr` means — and vendor #21 joins
+// both surfaces on the day it joins sources.ts.
+//
+// SAFE TO IMPORT, AND MEASURED, because filters.ts reaches sources.ts — the
+// 2.6MB catalogue — and a bundle over ~4.5MB deploys "successfully" and then
+// serves the OLD version. That reference is an `import type`, which is erased
+// before bundling, and tree-shaking drops the rest of filters.ts. `deno bundle`
+// on this file: 1,633,223 bytes before these three imports, 1,644,580 after —
+// +11KB, and no catalogue entry in the output. Re-measure if that import ever
+// stops being type-only.
+import { BOARD_VENDORS, WORK_MODES } from "../job-board/filters.ts";
+import { JOB_CATEGORIES } from "../job-board/categories.ts";
+import { EXPERIENCE_BANDS } from "../job-board/experience.ts";
 
 const API_VERSION = "2026-09-03.1";
 const FRESH_WINDOW_DAYS = 30;
@@ -53,6 +70,70 @@ const JOB_FIELDS = [
   // republishing these rows inherits the disclosure duty with the data.
   "agency",
 ].join(",");
+
+// OPT-IN FIELDS ON THE LIST ROUTE, via ?include=. Everything in JOB_FIELDS is
+// unconditional; anything here costs enough per row that a caller has to ask.
+const INCLUDABLE_FIELDS = ["description"] as const;
+
+/**
+ * THE PAGE-SIZE CAP THAT APPLIES WHEN A REQUEST OPTS INTO description.
+ *
+ * The arithmetic, which is the whole reason description was refused on this
+ * route until now: a stored description averages ~5.7KB (the writer caps at
+ * 12,000 characters), against roughly 0.6KB for the rest of a row. So
+ *
+ *   100 rows without it  ~   60KB
+ *   100 rows WITH it     ~  570KB   <- ten times the page, on the endpoint
+ *                                      whose whole shape is "call me again"
+ *    25 rows WITH it     ~  143KB
+ *
+ * 25 is not a round number picked to look careful — it is DEFAULT_LIMIT, so a
+ * caller who opts in without naming a limit sees no change in page size at
+ * all, and the largest description page /v1 will build is inside the same
+ * order of magnitude as the largest page it already builds. Anyone who wants
+ * description at 100 rows a page wants four calls, and four calls is what the
+ * cursor is for.
+ */
+const MAX_LIMIT_WITH_DESCRIPTION = 25;
+
+/**
+ * COMMA LISTS ON THE CLOSED-SET FILTERS — the same lists the board takes.
+ *
+ * `country=US,GB` was a filter for the literal string "US,GB": PostgREST bound
+ * `country=eq.US,GB`, no row has ever held that value, and the caller received
+ * a 200 with an empty page and a `total` describing an empty set. The board
+ * splits every one of these, the MCP has passed comma lists through to it for
+ * months, and only /v1 answered the narrower question — the two-doors defect,
+ * one layer down from parameter NAMES into parameter VALUES.
+ *
+ * THE CAPS ARE COPIED, NOT CHOSEN. Each number below already exists on a
+ * surface that enforces it, and the reason it is that number lives there:
+ *   country          5  COUNTRY_LIMIT      (job-board/filters.ts)
+ *   category         3  CATEGORY_LIMIT     (measured: 6 big fields cost 3x one)
+ *   source           8  VENDOR_LIMIT       (job-board/filters.ts)
+ *   work_mode        3  the whole domain   (WORK_MODES)
+ *   experience_band  4  the whole domain   (EXPERIENCE_BANDS)
+ *   company_token   12  the Explore-collection cap Jobs.tsx applies, so a
+ *                       hand-edited URL cannot turn a cheap query expensive
+ *
+ * OVER THE CAP IS REFUSED HERE, where the board truncates and reports. The
+ * board can truncate because it has an `ignoredFilters` channel to say so in;
+ * the default engine's envelope has no such channel, and a silent slice reads
+ * as "the board carries nothing in the sixth country" — the maxAgeDays clamp
+ * incident. A 400 naming the cap cannot be misread.
+ */
+const LIST_FILTERS = [
+  // { param, column, cap, domain (null = open key space), case }
+  { param: "country", col: "country", cap: 5, domain: null, fold: "upper" },
+  { param: "category", col: "category", cap: 3, domain: JOB_CATEGORIES, fold: "lower" },
+  { param: "company_token", col: "company_token", cap: 12, domain: null, fold: "none" },
+  { param: "work_mode", col: "work_mode", cap: WORK_MODES.length, domain: WORK_MODES, fold: "lower" },
+  { param: "source", col: "source", cap: 8, domain: BOARD_VENDORS, fold: "lower" },
+  { param: "experience_band", col: "experience_band", cap: EXPERIENCE_BANDS.length, domain: EXPERIENCE_BANDS, fold: "lower" },
+] as const satisfies ReadonlyArray<{
+  param: string; col: string; cap: number;
+  domain: readonly string[] | null; fold: "upper" | "lower" | "none";
+}>;
 
 // EXPOSED, OR THEY MIGHT AS WELL NOT BE SENT. A browser can only read a
 // non-simple response header if it is named in Access-Control-Expose-Headers —
@@ -148,6 +229,8 @@ Deno.serve(async (req) => {
       modes: {
         explain: "/v1/jobs?explain=1 — appends a diagnostics block explaining what the query did.",
         rankedEngine: "/v1/jobs?engine=ranked (paid) — the site's full relevance/rescue engine instead of the default title match.",
+        include: `/v1/jobs?include=description — adds the posting body to every row, and caps that request at ${MAX_LIMIT_WITH_DESCRIPTION} rows a page.`,
+        multiValue: "country, category, company_token, work_mode, source and experience_band take comma lists (e.g. country=US,GB). An unknown value in a closed set is a 400, never an empty page.",
       },
     });
   }
@@ -322,6 +405,10 @@ const JOBS_PARAMS = [
   // /v1's default title/company websearch. Opt-in, because it is the heavier
   // path; the default stays cheap and flat-latency for high-volume callers.
   "engine",
+  // include=description adds the posting body to every row on this route and
+  // drops the page-size cap to MAX_LIMIT_WITH_DESCRIPTION for that request.
+  // A comma list, so a later opt-in field costs no new parameter.
+  "include",
 ] as const;
 const CHANGES_PARAMS = ["since", "limit", "opened_cursor", "closed_cursor"] as const;
 const COMPANIES_PARAMS = ["limit", "q", "cursor"] as const;
@@ -350,13 +437,22 @@ async function board(body: Record<string, unknown>): Promise<Record<string, unkn
  * rather than silently dropped. Every honesty disclosure the board emits is
  * passed through, so the ranked API is exactly as candid as the site.
  */
-async function listJobsRanked(url: URL, headers: Record<string, string>) {
+async function listJobsRanked(url: URL, headers: Record<string, string>, lists: Record<string, string[]>) {
   const p = url.searchParams;
   if ((p.get("cursor") ?? "").trim()) {
     return fail(400, "unsupported_param", "engine=ranked pages by offset, not cursor. Use ?offset= and follow page.nextOffset.", headers);
   }
   if (p.get("posted_before")) {
     return fail(400, "unsupported_param", "engine=ranked has no posted_before filter. Use posted_after and/or default-engine keyset paging.", headers);
+  }
+  // REFUSED, NOT QUIETLY DROPPED. This path proxies job-board's list, whose row
+  // shape carries no description at all — toV1 below has no such field — so
+  // honouring the parameter would mean returning rows WITHOUT the field the
+  // caller accepted a page-size cap to get, under a 200.
+  if ((p.get("include") ?? "").toLowerCase().split(",").map((x) => x.trim()).includes("description")) {
+    return fail(400, "unsupported_param",
+      "include=description needs the default engine — the ranked engine's rows carry no description. Drop engine=ranked, or fetch the posting at /v1/jobs/{id}, which always includes it.",
+      headers);
   }
   const limit = Math.min(Math.max(Number(p.get("limit")) || DEFAULT_LIMIT, 1), MAX_LIMIT);
   const offset = Math.max(Number(p.get("offset")) || 0, 0);
@@ -371,13 +467,24 @@ async function listJobsRanked(url: URL, headers: Record<string, string>) {
   const body: Record<string, unknown> = {
     action: "list", limit, offset, includeFacets: false,
     ...(p.get("q") ? { q: p.get("q") } : {}),
-    ...(p.get("country") ? { country: p.get("country") } : {}),
-    ...(p.get("category") ? { category: p.get("category") } : {}),
-    ...(p.get("company_token") ? { companies: p.get("company_token") } : {}),
-    ...(p.get("work_mode") ? { workMode: p.get("work_mode") } : {}),
-    ...(p.get("experience_band") ? { experience: p.get("experience_band") } : {}),
+    // The six closed-set filters arrive already split, deduped, case-folded and
+    // checked against the board's own domains, so both engines refuse the same
+    // junk in the same words. Comma-joined back for the five the board splits
+    // itself — its normaliser is the authority on each, and re-joining is how
+    // this path keeps holding no opinion of its own.
+    ...(lists.country.length ? { country: lists.country.join(",") } : {}),
+    ...(lists.category.length ? { category: lists.category.join(",") } : {}),
+    // AN ARRAY, AND THIS WAS A SILENT BUG. normalizeFilters reads companies as
+    // `Array.isArray(body.companies) ? body.companies : []` and reports nothing
+    // when it is not an array — so `?engine=ranked&company_token=acme` sent a
+    // STRING, bound no employer predicate, and returned the whole board under
+    // an empty ignoredFilters. The one filter shape on this path that the
+    // board's own honesty channel could not catch.
+    ...(lists.company_token.length ? { companies: lists.company_token } : {}),
+    ...(lists.work_mode.length ? { workMode: lists.work_mode.join(",") } : {}),
+    ...(lists.experience_band.length ? { experience: lists.experience_band.join(",") } : {}),
     ...(p.get("department") ? { department: p.get("department") } : {}),
-    ...(p.get("source") ? { vendor: p.get("source") } : {}),
+    ...(lists.source.length ? { vendor: lists.source.join(",") } : {}),
     ...(p.get("remote") === "true" ? { remote: true } : {}),
     ...(Number.isFinite(salaryMin) && salaryMin > 0 ? { salaryFloor: salaryMin } : {}),
     ...(Number.isFinite(salaryMax) && salaryMax > 0 ? { salaryCeiling: salaryMax } : {}),
@@ -461,6 +568,79 @@ async function listJobs(client: SupabaseClient, url: URL, headers: Record<string
   if (bad) return bad;
   const p = url.searchParams;
 
+  // ── ?include= ───────────────────────────────────────────────────────────
+  // A comma list, validated per member against INCLUDABLE_FIELDS with the same
+  // strictness rejectUnknownParams applies to parameter names: a caller who
+  // typed `include=descriptions` must not receive a normal 200 whose rows
+  // silently lack the field they asked for and then build a pipeline on it.
+  const includeFields = [...new Set(
+    (p.get("include") ?? "").split(",").map((x) => x.trim().toLowerCase()).filter(Boolean),
+  )];
+  const unknownIncludes = includeFields.filter((f) => !(INCLUDABLE_FIELDS as readonly string[]).includes(f));
+  if (unknownIncludes.length) {
+    return fail(400, "unsupported_param",
+      `include accepts: ${INCLUDABLE_FIELDS.join(", ")}. Unknown: ${unknownIncludes.map((x) => `"${x}"`).join(", ")}.`,
+      headers);
+  }
+  const wantDescription = includeFields.includes("description");
+
+  // ── THE SIX CLOSED-SET FILTERS, parsed ONCE for BOTH engines ────────────
+  //
+  // Before the engine dispatch on purpose: `source=bogus` has to be refused in
+  // the same words whichever engine answers, and the ranked path's employer
+  // filter needs the parsed array (see listJobsRanked). Every member is
+  // case-folded the way the board folds it — {workMode:"Remote"} once served
+  // the entire unfiltered board to API callers, and a capital letter must not
+  // be the difference between a filter and no filter here either.
+  //
+  // AN UNKNOWN MEMBER OF A CLOSED DOMAIN IS REFUSED. `source=greenhosue` bound
+  // `source=eq.greenhosue`, matched nothing, and came back 200 with an empty
+  // page and a total of zero — a statement about the market in answer to a
+  // typo. There are twenty vendors, eighteen categories, three work modes and
+  // four bands: a value outside those sets is never a question the board can
+  // answer, so it is named back with the set that would have worked.
+  //
+  // company_token is deliberately NOT domain-checked: there are ~23,400 of
+  // them, a caller can legitimately ask about an employer the board does not
+  // carry, and an empty page IS the true answer to that. Same split the board
+  // makes between `vendor` and `companies`.
+  const lists: Record<string, string[]> = {};
+  for (const f of LIST_FILTERS) {
+    const raw = p.get(f.param);
+    // An empty value is "not set", exactly as it was when this bound `if (v)`.
+    const asked = [...new Set(
+      (raw ?? "").split(",")
+        .map((x) => x.trim())
+        .filter(Boolean)
+        .map((x) => (f.fold === "upper" ? x.toUpperCase() : f.fold === "lower" ? x.toLowerCase() : x)),
+    )];
+    if (asked.length > f.cap) {
+      return fail(400, "invalid_value",
+        `${f.param} accepts at most ${f.cap} comma-separated values, got ${asked.length}. This is the same cap the board applies.`,
+        headers);
+    }
+    if (f.domain) {
+      const unknown = asked.filter((x) => !(f.domain as readonly string[]).includes(x));
+      if (unknown.length) {
+        return fail(400, "unsupported_param",
+          `${f.param} accepts: ${[...f.domain].join(", ")}. Unknown: ${unknown.map((x) => `"${x}"`).join(", ")}.`,
+          headers);
+      }
+    }
+    // ISO-3166-1 alpha-2, the same shape test normalizeFilters applies. "USA"
+    // is not a country code this board stores, and binding it would answer an
+    // empty page to a request that was merely misspelt.
+    if (f.param === "country") {
+      const malformed = asked.filter((x) => !/^[A-Z]{2}$/.test(x));
+      if (malformed.length) {
+        return fail(400, "invalid_value",
+          `country takes ISO-3166-1 alpha-2 codes, e.g. country=US,GB. Not a code: ${malformed.map((x) => `"${x}"`).join(", ")}.`,
+          headers);
+      }
+    }
+    lists[f.param] = asked;
+  }
+
   // OPT-IN RANKED ENGINE, paid only. The default engine below is untouched.
   const engine = (p.get("engine") ?? "").trim().toLowerCase();
   if (engine && engine !== "simple" && engine !== "ranked") {
@@ -471,9 +651,14 @@ async function listJobs(client: SupabaseClient, url: URL, headers: Record<string
     if (!paid) {
       return fail(402, "upgrade_required", "engine=ranked is a paid feature — the site's full relevance/rescue engine. The default engine stays available on your key. See https://resumebooster.work/data-api.", headers);
     }
-    return await listJobsRanked(url, headers);
+    return await listJobsRanked(url, headers, lists);
   }
-  const limit = Math.min(Math.max(Number(p.get("limit")) || DEFAULT_LIMIT, 1), MAX_LIMIT);
+  // THE CAP MOVES WITH THE PAYLOAD, and the move is SAID. Clamping silently is
+  // what makes a caller who asked for 100 rows conclude the board only had 25.
+  const askedLimit = Number(p.get("limit")) || DEFAULT_LIMIT;
+  const maxLimit = wantDescription ? MAX_LIMIT_WITH_DESCRIPTION : MAX_LIMIT;
+  const limit = Math.min(Math.max(askedLimit, 1), maxLimit);
+  const limitCappedByInclude = wantDescription && askedLimit > MAX_LIMIT_WITH_DESCRIPTION;
   const offset = Math.max(Number(p.get("offset")) || 0, 0);
   const cursorRaw = (p.get("cursor") ?? "").trim();
   const cursor = cursorRaw ? decodeCursor(cursorRaw) : null;
@@ -598,22 +783,29 @@ async function listJobs(client: SupabaseClient, url: URL, headers: Record<string
   // `.or` clause below: with it applied, count "estimated" measures only the
   // rows still AHEAD of the cursor, so total.value shrank on every page a caller
   // walked. Built here once and shared by both reads for filter parity.
+  //
+  // The opt-in columns are appended AFTER the sort key rather than beside
+  // JOB_FIELDS: PostgREST does not care about select order, and keeping
+  // `${JOB_FIELDS},effective_posted` intact keeps the one thing the cursor
+  // depends on visible as a literal to anyone reading — or grepping — this
+  // file. `description` then rides in `rest` when the row is stripped below,
+  // which is exactly where an opt-in published field belongs.
+  const extraSelect = wantDescription ? ",description" : "";
   const baseQuery = (opts: { count?: "estimated" | "planned"; head?: boolean } = {}) => {
     let qb = client
       .from("job_board_postings")
-      .select(`${JOB_FIELDS},effective_posted`, opts)
+      .select(`${JOB_FIELDS},effective_posted${extraSelect}`, opts)
       .is("missing_since", null)                       // fence: never serve a withdrawn posting
       .gte("effective_posted", freshCutoff());          // fence: never serve past the window
-    const eq = (param: string, col: string) => {
-      const v = p.get(param);
-      if (v) qb = qb.eq(col, v);
-    };
-    eq("country", "country");
-    eq("category", "category");
-    eq("company_token", "company_token");
-    eq("work_mode", "work_mode");
-    eq("source", "source");
-    eq("experience_band", "experience_band");
+    // ONE VALUE IS .eq(), SEVERAL ARE .in() — the board's own choice, and it is
+    // about the index, not about tidiness: a widened `.in()` on a large bucket
+    // loses the date index the ordering rides on, so a single-value request
+    // keeps the equality it has always had and is byte-identical to before.
+    for (const f of LIST_FILTERS) {
+      const v = lists[f.param];
+      if (v.length === 1) qb = qb.eq(f.col, v[0]);
+      else if (v.length > 1) qb = qb.in(f.col, v);
+    }
     // Substring rather than equality: department is the employer's own free text
     // ("EVOLV - CPP"), so an exact match would be unusable.
     if (dept) qb = qb.ilike("department", `%${dept}%`);
@@ -752,6 +944,10 @@ async function listJobs(client: SupabaseClient, url: URL, headers: Record<string
       const ep = last?.effective_posted ?? null;
       return {
         limit,
+        // The ceiling this request was actually held to, always — a caller
+        // reading `limit: 25` cannot otherwise tell "that is what I asked for"
+        // from "that is all you may have".
+        maxLimit,
         ...(cursor ? {} : { offset }),
         returned: rows.length,
         nextCursor: full && typeof ep === "string" && typeof last?.id === "string" ? encodeCursor(ep, last.id as string) : null,
@@ -760,6 +956,21 @@ async function listJobs(client: SupabaseClient, url: URL, headers: Record<string
         nextOffset: !cursor && full && offset + limit <= MAX_OFFSET ? offset + limit : null,
       };
     })(),
+    // A NARROWING WE PERFORMED, NAMED. The caller asked for more rows than a
+    // description page may carry; they got fewer, and the alternative to saying
+    // so is their code concluding the board ran out of postings.
+    ...(limitCappedByInclude
+      ? {
+        disclosures: {
+          limitCapped: {
+            requested: askedLimit,
+            applied: limit,
+            reason: "include=description",
+            note: `Descriptions average ~5.7KB per posting, so pages carrying them are capped at ${MAX_LIMIT_WITH_DESCRIPTION} rows. Page with cursor= to walk the same set.`,
+          },
+        },
+      }
+      : {}),
     // "estimated" is named as estimated. An exact count over this table costs
     // seconds and the board already learned not to pay it per request.
     total: { value: count, basis: countBasis },
@@ -781,12 +992,15 @@ async function listJobs(client: SupabaseClient, url: URL, headers: Record<string
           matcher: safeTerm ? "websearch(title, simple) + exact filter binding" : "exact filter binding only (no text query)",
           boundFilters: {
             ...(safeTerm ? { q: safeTerm } : {}),
-            ...(p.get("country") ? { country: p.get("country") } : {}),
-            ...(p.get("category") ? { category: p.get("category") } : {}),
-            ...(p.get("company_token") ? { company_token: p.get("company_token") } : {}),
-            ...(p.get("work_mode") ? { work_mode: p.get("work_mode") } : {}),
-            ...(p.get("source") ? { source: p.get("source") } : {}),
-            ...(p.get("experience_band") ? { experience_band: p.get("experience_band") } : {}),
+            // The PARSED lists, not the raw query string — case-folded, deduped
+            // and shown with the operator each one actually became, so a caller
+            // debugging `Country=us,US` sees ["US"] and one equality rather
+            // than guessing at what the server made of their text.
+            ...Object.fromEntries(
+              LIST_FILTERS
+                .filter((f) => lists[f.param].length > 0)
+                .map((f) => [f.param, { values: lists[f.param], operator: lists[f.param].length === 1 ? "eq" : "in", max: f.cap }]),
+            ),
             ...(dept ? { department: `ilike %${dept}%` } : {}),
             ...(remoteFilter !== undefined ? { remote: remoteFilter } : {}),
             ...(excludeAgencies ? { exclude_agencies: true } : {}),
@@ -795,6 +1009,14 @@ async function listJobs(client: SupabaseClient, url: URL, headers: Record<string
             ...(postedAfter ? { posted_after: postedAfter } : {}),
             ...(postedBefore ? { posted_before: postedBefore } : {}),
             ...(includeUnstated ? { include_unstated_pay: true } : {}),
+          },
+          fields: {
+            included: includeFields,
+            available: [...INCLUDABLE_FIELDS],
+            maxLimit,
+            ...(wantDescription
+              ? { note: `include=description caps this route at ${MAX_LIMIT_WITH_DESCRIPTION} rows per page (~5.7KB per description).` }
+              : {}),
           },
           fences: ["missing_since IS NULL", `effective_posted >= now-${FRESH_WINDOW_DAYS}d`],
           order: "effective_posted DESC, id ASC",
@@ -816,10 +1038,11 @@ async function oneJob(client: SupabaseClient, id: string, headers: Record<string
     // it is the field that turns a job feed into something a customer can build
     // on — matching, skill extraction, classification, salary mining.
     //
-    // NOT on the list route. At ~5.7KB per posting a 100-row page would be
-    // ~570KB, which is the wrong trade for a paginated endpoint; the
-    // single-posting lookup already fetches exactly one row and already carries
-    // both fences.
+    // UNCONDITIONAL HERE, OPT-IN THERE. The list route serves it only for
+    // ?include=description and drops that request's page cap to
+    // MAX_LIMIT_WITH_DESCRIPTION, because at ~5.7KB per posting a 100-row page
+    // would be ~570KB. This lookup fetches exactly one row, so it has no such
+    // trade to make and never asks the caller to opt in.
     .select(`${JOB_FIELDS},description`)
     .eq("id", id)
     .is("missing_since", null)                        // fence: withdrawn by the employer
@@ -1166,16 +1389,60 @@ async function fitResume(req: Request, headers: Record<string, string>, tier: st
   }), { status: 200, headers: { "Content-Type": "application/json", ...headers } });
 }
 
+/**
+ * "HOW FRESH, AND FROM WHICH SYSTEMS" IS THE FIRST QUESTION A BUYER ASKS.
+ *
+ * The board's own status action has answered it for months — measured
+ * re-verification age, per-source description and stated-date coverage, and
+ * which vendors are quarantined — and none of it reached the endpoint people
+ * pay for. A customer evaluating this dataset could see how MANY postings there
+ * are and nothing about how well any hiring system is actually covered.
+ *
+ * THREE READS, NOT SEVEN. Each of the three additions is a single indexed row
+ * read, and the two meta rows come back in ONE query. The expensive aggregates
+ * behind them were moved off the request path in 20260806120000 precisely
+ * because they had outgrown their timeouts; this endpoint reads the rollup they
+ * write, exactly as job-board's status does, and never recomputes anything.
+ *
+ * AND EVERY NUMBER SAYS WHAT IT MEASURES, because two of them are easy to
+ * misread in a way that flatters us:
+ *
+ *   * freshness is the age of our LAST RE-CHECK of an employer's feed. It is
+ *     not the age of a posting, and this repo has already published a discovery
+ *     stamp as a posting age once ("2.8d median") and had a reader catch it.
+ *
+ *   * the per-source totals stand on `missing_since IS NULL` and NOT on the
+ *     30-day window — that is how the rollup computes them. So they sum to
+ *     MORE than livePostings and LESS than trackedPostings, and a customer who
+ *     divided one by the other without being told would get a coverage figure
+ *     whose halves describe different populations. That exact defect (a
+ *     numerator and denominator over different populations) shipped on the
+ *     board's own coverage block and inflated every fraction by 1.5-3%.
+ */
 async function stats(client: SupabaseClient, headers: Record<string, string>) {
-  // TWO READS, because the two numbers live in two places and a customer cannot
+  // THREE READS, because the figures live in three places and a customer cannot
   // reproduce what the product publishes from only one of them. The lifecycle
   // block below is the closure log — the part of this dataset a scraper-based
   // competitor structurally cannot have — and until now it was on the website
   // and absent from the paid API.
-  const [{ data }, cacheRes] = await Promise.all([
-    client.from("job_board_meta").select("v, updated_at").eq("k", "refresh").maybeSingle(),
+  const [metaRes, cacheRes, rollupRes] = await Promise.all([
+    client.from("job_board_meta").select("k, v, updated_at").in("k", ["refresh", "vendor_breaker"]),
     client.rpc("get_stats_cache"),
+    // One row per key, world-readable, written by the 15-minute rollup cron.
+    client.from("job_board_stats_rollup").select("k, v, computed_at").in("k", ["freshness", "date_coverage", "desc_coverage"]),
   ]);
+  const metaRows = (metaRes.data ?? []) as Array<{ k: string; v: unknown; updated_at?: string }>;
+  const meta = (k: string) => metaRows.find((r) => r.k === k) ?? null;
+  const rollupRows = (rollupRes.data ?? []) as Array<{ k: string; v: unknown; computed_at?: string }>;
+  const rollup = (k: string) => rollupRows.find((r) => r.k === k) ?? null;
+  // A FAILED READ IS NOT AN EMPTY BOARD. Every block below is null when its row
+  // is missing, and the error is logged rather than served as a zero — a zero
+  // here would read as "no system carries descriptions", which is the shape of
+  // wrong number this file exists to refuse.
+  if (metaRes.error || rollupRes.error) {
+    console.warn("[PUBLIC-API] /v1/stats partial read:", (metaRes.error ?? rollupRes.error)?.message?.slice(0, 160));
+  }
+  const data = meta("refresh");
   const v = (data?.v ?? {}) as {
     total?: number;
     coverage?: { open?: number; tracked?: number; openAt?: string };
@@ -1197,6 +1464,24 @@ async function stats(client: SupabaseClient, headers: Record<string, string>) {
   const num = (x: unknown): number | null => (typeof x === "number" && Number.isFinite(x) ? x : null);
   const open = typeof v.coverage?.open === "number" ? v.coverage.open : null;
   const tracked = typeof v.coverage?.tracked === "number" ? v.coverage.tracked : null;
+
+  // ── PER-SOURCE COVERAGE, from the rollup the board reads ────────────────
+  //
+  // Both rows are jsonb arrays written by refresh_job_board_stats(), each
+  // element {source, total, dated|described}. The percentages are rounded
+  // EXACTLY as job-board's status rounds them, so a customer comparing the two
+  // surfaces never finds them a point apart over a rounding rule.
+  const cov = <T extends Record<string, unknown>>(key: string): { rows: T[]; asOf: string | null } | null => {
+    const row = rollup(key);
+    if (!row || !Array.isArray(row.v)) return null;
+    return { rows: row.v as T[], asOf: row.computed_at ?? null };
+  };
+  const descRaw = cov<{ source: string; total: number; described: number }>("desc_coverage");
+  const dateRaw = cov<{ source: string; total: number; dated: number }>("date_coverage");
+  const freshRow = rollup("freshness");
+  const freshV = (freshRow?.v ?? null) as { boards?: unknown; p50_min?: unknown; p95_min?: unknown; max_min?: unknown } | null;
+  const quarantined = (((meta("vendor_breaker")?.v ?? {}) as { quarantined?: unknown }).quarantined ?? []) as unknown[];
+
   return json({
     apiVersion: API_VERSION,
     data: {
@@ -1221,8 +1506,66 @@ async function stats(client: SupabaseClient, headers: Record<string, string>) {
             asOf: typeof ghost.computed_at === "string" ? ghost.computed_at : null,
           }
         : null,
+      // HOW FRESH — and it is OUR re-check cadence, not a posting's age.
+      // Measured across every employer feed behind a live posting: minutes
+      // since we last re-read that feed and compared it to what we hold. A
+      // posting's own age is posted_at, which the coverage block below reports
+      // per source; conflating the two is how "2.8 days" once got published as
+      // the median age of an open posting.
+      feedFreshness: freshV && typeof freshV.p95_min === "number"
+        ? {
+            boards: num(freshV.boards),
+            p50Minutes: num(freshV.p50_min),
+            p95Minutes: num(freshV.p95_min),
+            maxMinutes: num(freshV.max_min),
+            asOf: freshRow?.computed_at ?? null,
+            basis: "minutes since each employer feed behind a live posting was last re-verified against the employer's own system. This measures our re-check cadence, NOT how long ago a role was posted.",
+          }
+        : null,
+      // FROM WHICH SYSTEMS, and how complete each one is. Null, never an empty
+      // array, when the rollup row is missing: [] would read as "no sources".
+      bySource: {
+        // The population line is not decoration. These totals do NOT carry the
+        // 30-day window, so they sum above livePostings and below
+        // trackedPostings, and any ratio a customer builds from them has to
+        // stand on this denominator rather than on the headline count.
+        population: "postings the employer has not withdrawn (missing_since IS NULL), WITHOUT the 30-day serving window — so these totals sum to more than livePostings and less than trackedPostings.",
+        descriptionCoverage: descRaw
+          ? {
+              asOf: descRaw.asOf,
+              basis: "described = the posting has a stored description at all. It is the exact complement of what the description sweep selects, so total - described is that source's sweep backlog. It is NOT a claim about description length or quality.",
+              data: descRaw.rows.map((r) => ({
+                source: r.source,
+                total: Number(r.total),
+                described: Number(r.described),
+                describedPct: Number(r.total) ? Math.round((100 * Number(r.described)) / Number(r.total)) : 0,
+              })),
+            }
+          : null,
+        statedDateCoverage: dateRaw
+          ? {
+              asOf: dateRaw.asOf,
+              basis: "dated = the EMPLOYER stated a posting date (posted_at is not null). first_seen — when we discovered the posting — is never counted here, because a discovery stamp is not a posting age.",
+              data: dateRaw.rows.map((r) => ({
+                source: r.source,
+                total: Number(r.total),
+                dated: Number(r.dated),
+                datedPct: Math.round((100 * Number(r.dated)) / Math.max(Number(r.total), 1)),
+              })),
+            }
+          : null,
+        // A SOURCE NOT BEING RE-CHECKED IS THE THING A BUYER MOST NEEDS TOLD.
+        // Quarantine trips when a vendor's feeds start returning zero at a high
+        // rate: its boards are then SKIPPED rather than pruned, so its postings
+        // are neither re-verified nor withdrawn — they simply age out of the
+        // window. The rows stay honest; the cadence behind them does not.
+        quarantined: {
+          sources: quarantined.filter((x): x is string => typeof x === "string"),
+          meaning: "The board's circuit breaker has these hiring systems' feeds returning empty too often, so their boards are skipped rather than pruned. Their existing postings are not being re-verified and are not being withdrawn; they age out of the 30-day window instead.",
+        },
+      },
     },
     asOf: v.coverage?.openAt ?? v.refreshedAt ?? data?.updated_at ?? null,
-    basis: "livePostings is an exact count of postings /v1/jobs can return (live, inside the 30-day window), recounted every ~15 minutes. trackedPostings includes postings the employer has since withdrawn.",
+    basis: "livePostings is an exact count of postings /v1/jobs can return (live, inside the 30-day window), recounted every ~15 minutes. trackedPostings includes postings the employer has since withdrawn. feedFreshness and bySource come from a rollup recomputed every 15 minutes and each carries its own asOf — the per-source totals stand on a wider population than livePostings, named in bySource.population.",
   }, 200, headers);
 }
