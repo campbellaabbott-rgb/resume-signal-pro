@@ -133,7 +133,20 @@ describe("ranking is not finding", () => {
     const handler = i >= 0 && j > i ? JOBS.slice(i, j) : "";
     expect(handler, "retrieveForResume could not be located").not.toBe("");
     expect(JOBS, "the drop must go through the shared retrieval").toMatch(/const searched = await retrieveForResume\(text\);/);
-    expect((JOBS.match(/await retrieveForResume\(/g) ?? []).length, "both the drop and For-you must retrieve").toBe(2);
+    // COUNTED, NOT NAMED. This guard used to pin one entry point by name, so
+    // when a second and third appeared — the "For you" tab and the auto-enable
+    // effect that fires for anyone arriving with a résumé already saved — they
+    // were never covered, and the auto-enable door shipped ranking a page it
+    // could not score. Every site that switches ranking on must retrieve
+    // first, so the two counts are asserted equal: a new door fails this the
+    // day it is added rather than the day a visitor photographs it.
+    const CODE = JOBS.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ");
+    const enables = (CODE.match(/setFitRanking\(true\)/g) ?? []).length;
+    const retrievals = (CODE.match(/await retrieveForResume\(/g) ?? []).length;
+    expect(enables, "the drop, the For-you tab and the auto-enable effect").toBe(3);
+    expect(retrievals, "every site that switches ranking on must retrieve first").toBe(enables);
+    expect(JOBS, "the drop must go through the shared retrieval").toMatch(/const searched = await retrieveForResume\(text\);/);
+    expect(JOBS, "the auto-enable effect must go through it too").toMatch(/const searched = await retrieveForResume\(resume\);/);
     expect(handler, "the résumé is never turned into search terms").toMatch(/action: "fit-terms"/);
     expect(handler, "the derived role is never put in the search box — this IS the bug").toMatch(/setQ\(/);
   });

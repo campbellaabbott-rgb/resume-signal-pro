@@ -3134,7 +3134,24 @@ export default function Jobs() {
       setResumeAvailable(!!resume); // drives the "For you" upsell banner
       if (!resume) return; // no resume yet — stay unlocked, retry when session lands
       fitAutoChecked.current = true;
+      // THE THIRD DOOR, and the one the screenshot came through. A visitor who
+      // already has a résumé — the free-scan handoff, a returning tab, a
+      // signed-in account — never touches the drop panel or the "For you"
+      // button: this effect turns ranking on for them as they arrive. It used
+      // to do that and nothing else, so the board ranked the recency page,
+      // which is the one page that cannot be scored, and told them "not ranked
+      // — no posting on this page could be scored yet". They are also the only
+      // visitors for whom the drop panel is hidden (it renders under
+      // `resumeAvailable === false`), so the one path that retrieved was
+      // unreachable to exactly the people this effect serves.
+      const searched = await retrieveForResume(resume);
+      if (cancelled) return;
+      if (!searched && !q.trim() && !company && !landerCompany) fitAwaitingPage.current = true;
       setFitRanking(true);
+      // The search box fills itself as they land, so say why.
+      if (searched) {
+        toast({ title: t("jobsPage.fitSearchedRole", "Finding {{role}} roles — what your résumé is for — and ranking them by fit.", { role: searched }) });
+      }
     })();
     return () => { cancelled = true; };
     // session gates the DB lookup inside resolveFitResume; re-run when it lands.
