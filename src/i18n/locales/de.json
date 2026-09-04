@@ -1649,7 +1649,11 @@
     },
     "matches": {
       "title": "Live-Stellen, die zu diesem Lebenslauf passen",
+      "titleSearching": "Live-Stellen für diesen Lebenslauf werden gesucht",
+      "titleIndustry": "Live-Stellen in Ihrem Bereich",
       "subtitle": "Gerankt mit demselben deterministischen Passungswert wie Ihr Bericht — aus echten Firmen-Jobbörsen, laufend gegen den offiziellen Feed jedes Unternehmens verifiziert.",
+      "subtitleSearched": "Wir haben echte Firmen-Jobbörsen nach {{role}} durchsucht — dem Beruf, den dieser Lebenslauf nennt — und dann mit demselben deterministischen Passungswert wie Ihr Bericht gerankt.",
+      "subtitleIndustry": "Wir konnten aus diesem Lebenslauf keine Berufsbezeichnung lesen. Dies sind daher aktuelle Stellen aus Ihrem Bereich — gegen Ihren Lebenslauf bewertet, aber nicht über ihn gefunden. Suchen Sie auf der Jobbörse selbst, um sie einzugrenzen.",
       "loading": "Live-Stellen werden gegen Ihren Lebenslauf gerankt…",
       "apply": "Bewerben",
       "seeAll": "Alle Treffer auf der Jobbörse ansehen — Suchen speichern, Bewerbungen verfolgen"

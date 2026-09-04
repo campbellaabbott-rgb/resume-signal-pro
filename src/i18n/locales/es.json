@@ -1649,7 +1649,11 @@
     },
     "matches": {
       "title": "Ofertas en vivo que encajan con este currículum",
+      "titleSearching": "Buscando ofertas en vivo para este currículum",
+      "titleIndustry": "Ofertas en vivo de tu sector",
       "subtitle": "Ordenadas con la misma puntuación determinista de tu informe — desde bolsas de empleo reales, verificadas continuamente contra el feed oficial de cada empresa.",
+      "subtitleSearched": "Buscamos {{role}} en bolsas de empleo reales — la ocupación que nombra este currículum — y luego las ordenamos con la misma puntuación determinista de tu informe.",
+      "subtitleIndustry": "No pudimos leer un puesto en este currículum, así que estas son ofertas actuales de tu sector: puntuadas con tu currículum, pero no encontradas a partir de él. Busca tú mismo en la bolsa para acotarlas.",
       "loading": "Clasificando ofertas en vivo contra tu currículum…",
       "apply": "Postular",
       "seeAll": "Ver todas las coincidencias en la bolsa — guarda búsquedas y sigue candidaturas"

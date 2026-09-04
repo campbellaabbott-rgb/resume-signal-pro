@@ -1649,7 +1649,11 @@
     },
     "matches": {
       "title": "Mga live na opening na tugma sa resume na ito",
+      "titleSearching": "Naghahanap ng mga live na opening para sa resume na ito",
+      "titleIndustry": "Mga live na opening sa larangan mo",
       "subtitle": "Naka-rank gamit ang parehong deterministikong fit scoring ng report mo — mula sa totoong job boards ng mga kumpanya, patuloy na bineberipika laban sa opisyal na feed ng bawat kumpanya.",
+      "subtitleSearched": "Hinanap namin ang {{role}} sa totoong job boards ng mga kumpanya — ang trabahong nakasaad sa resume na ito — at saka nirank gamit ang parehong deterministikong fit scoring ng report mo.",
+      "subtitleIndustry": "Hindi namin nabasa ang job title sa resume na ito, kaya ito ang kasalukuyang mga opening sa larangan mo — na-score laban sa resume mo, pero hindi ito ang hinanap. Maghanap ka mismo sa job board para paliitin ang mga ito.",
       "loading": "Nira-rank ang mga live na opening laban sa resume mo…",
       "apply": "Mag-apply",
       "seeAll": "Tingnan ang lahat ng tugma sa job board — mag-save ng paghahanap, subaybayan ang aplikasyon"

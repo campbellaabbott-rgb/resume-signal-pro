@@ -12,7 +12,9 @@ vi.mock("@/integrations/supabase/client", () => ({ supabase: { functions: { invo
 import { LiveMatches } from "../components/LiveMatches";
 
 // Five jobs so the component's "<5 results -> category fallback" second
-// list call never fires and the mock sequence stays [list, fit-batch].
+// list call never fires and the mock sequence stays [fit-terms, list, fit-batch].
+// fit-terms leads because retrieval now precedes ranking: the card searches the
+// board for the occupation the résumé names before it scores anything.
 const JOBS = [
   { id: "a", company: "Oscar Health", title: "Nurse Practitioner", location: "NY", salary: null, applyUrl: "https://x/1" },
   { id: "b", company: "One Medical", title: "RN, Primary Care", location: "SF", salary: "$90k–120k", applyUrl: "https://x/2" },
@@ -26,6 +28,7 @@ beforeEach(() => invoke.mockReset());
 describe("LiveMatches", () => {
   it("ranks by fit and renders salary + apply links", async () => {
     invoke
+      .mockResolvedValueOnce({ data: { terms: ["registered nurse"] } })
       .mockResolvedValueOnce({ data: { jobs: JOBS } })
       .mockResolvedValueOnce({ data: { fits: { a: 12, b: 24, c: 3, d: 8, e: 5 } } });
     render(<MemoryRouter><LiveMatches resumeText={"nurse ".repeat(30)} industry="healthcare" /></MemoryRouter>);

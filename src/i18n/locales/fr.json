@@ -1649,7 +1649,11 @@
     },
     "matches": {
       "title": "Offres en direct correspondant à ce CV",
+      "titleSearching": "Recherche d'offres en direct pour ce CV",
+      "titleIndustry": "Offres en direct dans votre domaine",
       "subtitle": "Classées avec le même score d'adéquation déterministe que votre rapport — depuis de vrais job boards, re-vérifiés en continu auprès du flux officiel de chaque entreprise.",
+      "subtitleSearched": "Nous avons cherché {{role}} sur de vrais job boards — le métier que nomme ce CV — puis classé les offres avec le même score d'adéquation déterministe que votre rapport.",
+      "subtitleIndustry": "Nous n'avons pas pu lire d'intitulé de poste dans ce CV : voici donc des offres actuelles de votre domaine — évaluées avec votre CV, mais pas trouvées à partir de lui. Faites votre propre recherche sur le job board pour les affiner.",
       "loading": "Classement des offres en direct contre votre CV…",
       "apply": "Candidater",
       "seeAll": "Voir toutes les correspondances sur le job board — recherches enregistrées, suivi des candidatures"

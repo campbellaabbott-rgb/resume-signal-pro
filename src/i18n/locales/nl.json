@@ -1649,7 +1649,11 @@
     },
     "matches": {
       "title": "Live vacatures die bij dit cv passen",
+      "titleSearching": "Live vacatures zoeken voor dit cv",
+      "titleIndustry": "Live vacatures in jouw vakgebied",
       "subtitle": "Gerangschikt met dezelfde deterministische matchscore als je rapport — uit echte vacaturebanken, doorlopend geverifieerd tegen de officiële feed van elk bedrijf.",
+      "subtitleSearched": "We hebben echte vacaturebanken doorzocht op {{role}} — het beroep dat dit cv noemt — en daarna gerangschikt met dezelfde deterministische matchscore als je rapport.",
+      "subtitleIndustry": "We konden geen functietitel uit dit cv lezen, dus dit zijn actuele vacatures in jouw vakgebied — gescoord tegen je cv, maar niet ermee gevonden. Zoek zelf op de vacaturebank om ze te verfijnen.",
       "loading": "Live vacatures worden gerangschikt tegen je cv…",
       "apply": "Solliciteer",
       "seeAll": "Bekijk alle matches op de vacaturebank — zoekopdrachten opslaan, sollicitaties volgen"
