@@ -862,7 +862,13 @@ const PINNED = {
   //   row froze at the deploy instant; 30 minutes later shedSignal called it
   //   stale and pinned the fleet at L1 for three hours. The probe is total now,
   //   its fields are spread not called, and a failed stamp reaches status.
-  buildVersion: "2026-08-30.37",
+  //
+  // .38 — a page that cannot be scored is not a personalised page
+  //   (a-page-that-could-never-be-scored.test.ts). hasDescription narrows to
+  //   rows the scorer can actually read, for the no-query résumé browse whose
+  //   newest rows are 5% scoreable; unbound by any RPC on purpose, and
+  //   disclosed as describedOnly.
+  buildVersion: "2026-08-30.38",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {

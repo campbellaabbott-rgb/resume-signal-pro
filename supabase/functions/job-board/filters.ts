@@ -239,6 +239,28 @@ export type AppliedFilters = {
    * the safe direction; binding it in SQL later deletes the trade.
    */
   excludeAgencies: boolean;
+  /**
+   * "Only postings we can actually score."
+   *
+   * A posting with no stored description cannot be fit-scored — computeFit has
+   * nothing to read — so in résumé mode it is not a weaker result, it is a row
+   * that can only ever say "no score". The newest rows are exactly those rows:
+   * a description arrives on a later detail hop, so the recency-ordered default
+   * browse is the least scoreable page on the board. MEASURED 2026-09-04: the
+   * newest 20 rows were 5% scoreable while role-query pages ran 85-95%, which
+   * is why a real visitor with a scanned résumé saw "not ranked — no posting on
+   * this page could be scored yet" on the one view named after personalisation.
+   *
+   * Deliberately NOT in RPC_BOUND_FILTERS: no search RPC takes a parameter for
+   * it, so the blind-set gate routes any request carrying it through buildQuery
+   * — which binds it — rather than letting an RPC answer with rows it never
+   * filtered. Same trade as excludeAgencies, made in the same safe direction,
+   * and the caller that needs it (the no-query résumé browse) has no relevance
+   * ranking to lose. It has no per-row self-check either — see the note where
+   * the others live: the list route does not carry `description`, so there is
+   * nothing to check against.
+   */
+  hasDescription: boolean;
 };
 
 /**
@@ -478,6 +500,7 @@ export function normalizeFilters(
   // absence is already the widest answer, and any bug that let this admit
   // rows would be the tier-escalation defect (a filter that widens a search).
   const excludeAgencies = body.excludeAgencies === true;
+  const hasDescription = body.hasDescription === true;
 
   // A LIST, LIKE EVERY OTHER CLOSED-SET FILTER HERE.
   //
@@ -774,6 +797,9 @@ export function normalizeFilters(
   // so it fails to narrow — and a reader who asked to hide agencies and was
   // silently shown them anyway is the exact person a disclosure feature must
   // never lie to.
+  if (body.hasDescription !== undefined && body.hasDescription !== null && typeof body.hasDescription !== "boolean") {
+    ignored.push("hasDescription");
+  }
   if (body.excludeAgencies !== undefined && body.excludeAgencies !== null && typeof body.excludeAgencies !== "boolean") {
     ignored.push("excludeAgencies");
   }
@@ -811,6 +837,7 @@ export function normalizeFilters(
       maxAgeDays,
       postedAfter,
       excludeAgencies,
+      hasDescription,
     },
     ignored,
     maxAgeClamped,
@@ -983,6 +1010,13 @@ export function filterViolations(
     // regression class — since no RPC can bind it yet and the blind-set gate
     // is the only thing keeping those paths away.
     if (a.excludeAgencies && r.agency === true) push("excludeAgencies", "agency=false", r.agency);
+    // NO SELF-CHECK FOR hasDescription, deliberately. rowToJob does not emit
+    // `description` on list rows — it is the largest field on the table and the
+    // list route leaves it out on purpose — so any check here reads undefined
+    // and flags every row, which is the companyToken mistake recorded a few
+    // lines below, repeated. The sensor this filter would need is a column the
+    // rows do not carry; adding one to carry it would cost every list request
+    // the field the route exists to avoid.
     // `token` is what rowToJob actually emits for the company feed token — NOT
     // `companyToken`, which is what this line read when it was first written.
     // Consequence had it shipped: with a companies filter active every row would

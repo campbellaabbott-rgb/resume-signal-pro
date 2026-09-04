@@ -112,7 +112,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-30.37"; // .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
+const BUILD_VERSION = "2026-08-30.38"; // .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
 // .36: JazzHR joins as vendor #20 (vendors/jazzhr.ts; a verified sample of boards enters sources.ts, so the bump is load-bearing for the bootstrap lane). .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
 // .23: bug-sweep round — the agency opt-out reaches the rescue tiers (it was bound in search_jobs only, so a rescue served the rows the caller hid, undisclosed); the per-company cap stops swallowing the employer it just surfaced; a withdrawn count no longer prints "not hiring"; the reverted pipe fix is restored
 
@@ -5536,7 +5536,7 @@ const DID_YOU_MEAN: Record<string, string> = {
 
 function searchDisclosures(
   body: Record<string, unknown>,
-  applied: { salaryFloor?: number | null; postedAfter?: string | null; excludeAgencies?: boolean },
+  applied: { salaryFloor?: number | null; postedAfter?: string | null; excludeAgencies?: boolean; hasDescription?: boolean },
   maxAgeClamped = false,
 ): Record<string, unknown> {
   const out: Record<string, unknown> = {};
@@ -5570,6 +5570,13 @@ function searchDisclosures(
   // attached. Read off the DERIVED filter, so a refused non-boolean (named
   // in ignoredFilters) never claims here to have applied.
   if (applied.excludeAgencies) out.agenciesExcluded = true;
+  // NO describedOnly DISCLOSURE FLAG. A filtered page must say so — but the
+  // only caller that sets hasDescription is the client's own résumé browse, so
+  // it already knows, and a server flag telling it what it just asked for
+  // would be an emitter with no reader (the defect
+  // a-disclosure-nobody-renders-is-not-a-disclosure.test.ts exists to catch).
+  // If this filter ever gains a caller that is NOT the thing rendering the
+  // copy, it needs a real disclosure here and a reader for it.
   // A typo that exactly matches other people's typos defeats every rescue
   // tier — the exact hits are real rows, just not what the searcher meant.
   const dym = DID_YOU_MEAN[String(body.q ?? "").trim().toLowerCase()];
@@ -10205,6 +10212,10 @@ async function serveList(
     // state one we can convert. Anyone who sets salaryFloor is inside this
     // population already; this is the filter that lets them say so on purpose.
     if (applied.hasStatedPay) q = q.not("salary_min_annual", "is", null);
+    // "Only postings we can actually score." See the field's own note in
+    // filters.ts: in résumé mode an undescribed row can only ever say "no
+    // score", and the newest rows — the default browse — are exactly those.
+    if (applied.hasDescription) q = q.not("description", "is", null);
     // Hourly vs salaried. Rows with NO stated period are excluded, exactly as
     // work mode excludes rows with no stated mode — 10.6% coverage, published by
     // coverageDisclosure whenever this is set, because a scalpel that is not

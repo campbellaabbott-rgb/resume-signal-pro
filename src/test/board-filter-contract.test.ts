@@ -132,6 +132,8 @@ describe("isUnfiltered — derived, so a new filter cannot be forgotten", () => 
       // doing its job again; the loop below proves isUnfiltered counts it —
       // a request hiding disclosed inventory is NOT the bare board.
       excludeAgencies: true,
+      // Added 2026-09-04: only rows the résumé scorer can read.
+      hasDescription: true,
     };
     const empty = norm({}).applied as unknown as Record<string, unknown>;
     const keys = Object.keys(filled) as Array<keyof AppliedFilters>;

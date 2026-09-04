@@ -432,6 +432,8 @@ describe("isUnfiltered — mechanical, so all six are counted the day they exist
       // 2026-08-31: the agency opt-out — the typed-literal tripwire fired
       // here exactly as designed when AppliedFilters gained it.
       excludeAgencies: true,
+      // Added 2026-09-04: only rows the résumé scorer can read.
+      hasDescription: true,
     };
     const empty = norm({}).applied as unknown as Record<string, unknown>;
     const keys = Object.keys(filled) as Array<keyof AppliedFilters>;
