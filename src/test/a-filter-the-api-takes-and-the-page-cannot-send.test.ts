@@ -340,20 +340,41 @@ describe("one derivation, and everything downstream reads it", () => {
     expect((JOBS_CODE.match(/&& !extraFilters &&/g) ?? []).length).toBe(2);
   });
 
-  it("a natural-language search resets the filters it does not mention", () => {
+  it("a natural-language search APPLIES what it read and resets what it did not", () => {
     // nl-search maps a sentence onto the board's filters and the interpretation
     // chips list exactly what it read. A filter left on from before is a
     // constraint the interpretation does not mention and the visitor cannot see
-    // the source of.
+    // the source of — and a filter the parse DID carry, thrown away here, is
+    // the same lie from the other side: the chip says "Part-time" over a board
+    // that is not filtered to part-time.
+    //
+    // 2026-09-04: the parser's vocabulary became the board's (one NL_FILTERS
+    // table derives its prompt, schema and validator), so eight filters moved
+    // from the reset list to the applied list. The invariant that replaces the
+    // old one is APPLIED-OR-RESET: every filter the parser can emit is read
+    // from the parse, with the off value as its fallback.
     const nl = JOBS_CODE.slice(
       JOBS_CODE.indexOf("const applyNlSearch = useCallback("),
       JOBS_CODE.indexOf("const [companyQuery, setCompanyQuery]"),
     );
-    for (const reset of [
-      "setSalaryCeiling(0)", "setPayBasis(\"\")", "setStatedPayOnly(false)",
-      "setMaxYears(0)", "setDepartment(\"\")", "setVendor(\"\")",
-    ]) {
-      expect(nl, `an NL search leaves ${reset} untouched`).toContain(reset);
+    for (const [setter, read] of [
+      ["setSalaryCeiling", 'typeof f.salaryCeiling === "number" ? f.salaryCeiling : 0'],
+      ["setPayBasis", 'f.payBasis === "hourly" || f.payBasis === "salaried" ? f.payBasis : ""'],
+      ["setStatedPayOnly", "f.hasStatedPay === true"],
+      ["setMaxYears", 'typeof f.maxYears === "number" ? f.maxYears : 0'],
+      ["setDepartment", 'typeof f.department === "string" ? f.department : ""'],
+      ["setVendor", 'typeof f.vendor === "string" ? f.vendor : ""'],
+      ["setEmploymentType", 'typeof f.employmentType === "string" ? f.employmentType : ""'],
+      ["setHideAgencies", "f.excludeAgencies === true"],
+    ] as const) {
+      expect(nl, `${setter} must be APPLIED from the parse, with the off value as its fallback`)
+        .toContain(`${setter}(${read})`);
+    }
+    // The ones the parser deliberately declines (NL_DECLINED in
+    // supabase/functions/nl-search/parse.ts) still hard-reset, or a toggle left
+    // on from before constrains an interpreted search silently.
+    for (const reset of ["setIncludeUnstatedPay(false)", "setInclUncat(false)", "setAgentOnly(false)", "setRemoteOnly(false)"]) {
+      expect(nl, `a declined filter must still reset: ${reset}`).toContain(reset);
     }
   });
 });

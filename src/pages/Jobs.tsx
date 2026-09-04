@@ -1116,27 +1116,39 @@ export default function Jobs() {
       // interpretation does not mention and the visitor cannot see the source
       // of. That is the defect the company reset above records, and every
       // filter added since has to join it or repeat it.
-      setSalaryCeiling(0);
-      setPayBasis("");
-      setStatedPayOnly(false);
+      // APPLIED-OR-RESET, not reset-only. As of 2026-09-04 nl-search emits
+      // eight more of the board's own filters (its NL_FILTERS table derives the
+      // prompt, the schema and the validator from one list, so the parser's
+      // vocabulary is the board's). Until this block read them, the sentence
+      // was parsed, validated, and thrown away here — and an interpretation
+      // chip written by the model could say "Part-time" over a board that was
+      // not filtered to part-time, which is this file's founding defect with
+      // the newest filters wearing it. The rule is unchanged: a filter the
+      // parse does NOT carry is switched off, so the applied state matches the
+      // interpretation exactly.
+      setSalaryCeiling(typeof f.salaryCeiling === "number" ? f.salaryCeiling : 0);
+      setPayBasis(f.payBasis === "hourly" || f.payBasis === "salaried" ? f.payBasis : "");
+      setStatedPayOnly(f.hasStatedPay === true);
       setIncludeUnstatedPay(false);
       // The category widener nl-search never emits: a stale "+ unsorted" left on
       // silently reactivated under the interpreted search with nothing in the
       // interpretation chips naming it.
       setInclUncat(false);
-      setMaxYears(0);
-      setDepartment("");
-      setVendor("");
-      // employmentType and agentOnly had both skipped this block: nl-search
-      // emits neither, so a toggle left on from before kept constraining the
+      setMaxYears(typeof f.maxYears === "number" ? f.maxYears : 0);
+      setDepartment(typeof f.department === "string" ? f.department : "");
+      setVendor(typeof f.vendor === "string" ? f.vendor : "");
+      // employmentType is READ now (the parser emits it); agentOnly is not
+      // emitted — a paid capability gate is not a description of a job — so it
+      // still resets, or a toggle left on from before keeps constraining the
       // interpreted search with nothing in the chips saying so.
-      setEmploymentType("");
+      setEmploymentType(typeof f.employmentType === "string" ? f.employmentType : "");
       setAgentOnly(false);
-      // The agency opt-out joins the reset the day it exists — nl-search does
-      // not emit it, and a stale "hide staffing agencies" quietly excluding
-      // disclosed inventory under an interpretation that never mentions it is
-      // this block's founding defect wearing the newest filter.
-      setHideAgencies(false);
+      // The agency opt-out is READ now — "no agencies" is a thing people say,
+      // and the parser emits it. Absent from the parse it still switches OFF:
+      // a stale "hide staffing agencies" quietly excluding disclosed inventory
+      // under an interpretation that never mentions it is this block's
+      // founding defect.
+      setHideAgencies(f.excludeAgencies === true);
       // Board CONTROLS the parser can now drive too (a query is a command):
       // "companies that actually hire" → the proven-fills filter; "highest
       // paying first" → salary sort. Reset like the other fields.
