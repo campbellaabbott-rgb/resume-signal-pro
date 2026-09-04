@@ -39,6 +39,11 @@ describe("a deferred board is not a failed one", () => {
 
   it("pages served on purpose say ranked: true", () => {
     expect(CODE).toMatch(/locationSplit: \{ q: won\.head, location: won\.place \},\s*ranked: true,/);
-    expect(CODE).toMatch(/exactWordMatch: qText,\s*ranked: true,/);
+    // .39 REVERSED HALF OF THIS. The exact-word rescue tier concatenates two
+    // recency reads and scores nothing, so `ranked: true` there was a false
+    // claim that also blinded the ranked-path outage detector
+    // (four-ways-to-lose-a-board.test.ts). The location split is genuinely
+    // reranked and keeps it.
+    expect(CODE).not.toMatch(/exactWordMatch: qText,\s*ranked: true,/);
   });
 });

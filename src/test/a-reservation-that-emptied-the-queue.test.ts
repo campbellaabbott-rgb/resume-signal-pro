@@ -37,10 +37,15 @@ describe("a reservation that emptied the queue", () => {
 
   it("retires the worker and returns the board when the reservation fills the budget", () => {
     const landed = CODE.indexOf("if (fetchedInSlice >= SLICE_POSTING_BUDGET) {");
-    const retire = CODE.indexOf("if (fetchedInSlice + inFlightReserve >= SLICE_POSTING_BUDGET) { queue.unshift(s); return; }");
+    // .39: it YIELDS rather than exiting — `return` ended the worker for the
+    // whole slice, ratcheting concurrency down to 1 in the tail of every cold
+    // slice (four-ways-to-lose-a-board.test.ts). The board still goes back to
+    // the head of the queue for whoever is still in flight.
+    const retire = CODE.indexOf("if (fetchedInSlice + inFlightReserve >= SLICE_POSTING_BUDGET) {");
     expect(retire, "retire branch missing").toBeGreaterThan(0);
     expect(retire, "landed check first, so a board over budget is deferred, not bounced between workers").toBeGreaterThan(landed);
-    expect(CODE, "a retired board must go back to the HEAD, or it waits behind the whole queue").toMatch(/queue\.unshift\(s\); return;/);
+    expect(CODE, "a retired board must go back to the HEAD, or it waits behind the whole queue").toMatch(/queue\.unshift\(s\);\s*await new Promise\(\(r\) => setTimeout\(r, 250\)\);\s*continue;/);
+    expect(CODE, "and the worker must NOT exit the slice").not.toMatch(/queue\.unshift\(s\); return;/);
   });
 
   it("reserves per board — the cap for hot-phase and deep boards, a small constant for cold ones", () => {

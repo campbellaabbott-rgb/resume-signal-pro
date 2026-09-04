@@ -868,7 +868,15 @@ const PINNED = {
   //   rows the scorer can actually read, for the no-query résumé browse whose
   //   newest rows are 5% scoreable; unbound by any RPC on purpose, and
   //   disclosed as describedOnly.
-  buildVersion: "2026-08-30.38",
+  //
+  // .39 — four confirmed by the 47-agent sweep
+  //   (four-ways-to-lose-a-board.test.ts): the free-text or() is quoted, so a
+  //   title with a comma or bracket stops returning 500; a budget-retired
+  //   fetch worker yields instead of exiting, so cold-slice concurrency stops
+  //   ratcheting to 1; Oracle and iCIMS report windowed on a resumed read, so
+  //   a wrap visit cannot absence-prune a giant employer; and the exact-word
+  //   rescue tier no longer claims `ranked: true`.
+  buildVersion: "2026-08-30.39",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {

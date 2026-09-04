@@ -112,7 +112,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-30.38"; // .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
+const BUILD_VERSION = "2026-08-30.39"; // .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
 // .36: JazzHR joins as vendor #20 (vendors/jazzhr.ts; a verified sample of boards enters sources.ts, so the bump is load-bearing for the bootstrap lane). .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
 // .23: bug-sweep round — the agency opt-out reaches the rescue tiers (it was bound in search_jobs only, so a rescue served the rows the caller hid, undisclosed); the per-company cap stops swallowing the employer it just surfaced; a withdrawn count no longer prints "not hiring"; the reverted pipe fix is restored
 
@@ -958,7 +958,14 @@ async function fetchOracle(s: JobSource, startOffset = 0): Promise<{ items: unkn
   if (all.length === 0 && feedTotal > 0) throw new Error(`empty page but total=${feedTotal}`);
   const advancedOr = startOffset + all.length;
   const nextOffset = exhausted || (feedTotal > 0 && advancedOr >= feedTotal) ? 0 : advancedOr;
-  return { items: all, raw: { items: all }, windowed: !exhausted, feedTotal, nextOffset };
+  // A RESUMED READ IS WINDOWED BY DEFINITION. `windowed` tells the upsert that
+  // this visit saw only part of the board, which is what stops the absence
+  // prune deleting everything it did not see. On the deep cursor's WRAP visit
+  // a giant board reads its last page, sets exhausted, and reported
+  // windowed:false — so one partial read absence-pruned the whole employer.
+  // Kroger (12,350 postings via pages:130), Costco, AutoZone, PetSmart, Ulta
+  // and JCPenney all lose almost everything the moment their cursor wraps.
+  return { items: all, raw: { items: all }, windowed: !exhausted || startOffset > 0, feedTotal, nextOffset };
 }
 
 // onFail receives a COMPACT reason. The reason was already known here and
@@ -1030,7 +1037,8 @@ async function fetchBoard(
       if (all.length === 0 && feedTotal > 0) throw new Error(`empty page but total=${feedTotal}`);
       const advancedIc = startOffset + all.length;
       const nextOffset = exhausted || (feedTotal > 0 && advancedIc >= feedTotal) ? 0 : advancedIc;
-      return { jobs: normalizeIcims(all as never, s.name, s.token), raw: { items: all }, windowed: !exhausted, feedTotal, nextOffset };
+      // A resumed read is windowed by definition — see the note in fetchOracle.
+      return { jobs: normalizeIcims(all as never, s.name, s.token), raw: { items: all }, windowed: !exhausted || startOffset > 0, feedTotal, nextOffset };
     }
     if (s.source === "usajobs") {
       // Single national feed, paged 500 at a time. The key lives in secrets;
@@ -2517,7 +2525,19 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
         // fills the budget, this worker retires and hands the board back to a
         // worker still in flight — concurrency shrinks, the queue does not.
         if (fetchedInSlice >= SLICE_POSTING_BUDGET) { budgetSkipped.push(s.token); continue; }
-        if (fetchedInSlice + inFlightReserve >= SLICE_POSTING_BUDGET) { queue.unshift(s); return; }
+        // YIELDS, DOES NOT EXIT. `return` ended the worker for the rest of the
+        // slice, so every reservation trip permanently removed one of the eight
+        // — concurrency ratcheted monotonically down to 1 in the tail of every
+        // cold slice, and a rotation whose speed buys the published 480-minute
+        // freshness promise ran several times slower than its measured ~26s.
+        // It cannot spin: the landed check above already handles the budget
+        // being genuinely spent, so reaching here means another worker is in
+        // flight and will lower the reservation when it returns.
+        if (fetchedInSlice + inFlightReserve >= SLICE_POSTING_BUDGET) {
+          queue.unshift(s);
+          await new Promise((r) => setTimeout(r, 250));
+          continue;
+        }
         let failReason = "";
         // ROTATION PARKED AT ZERO — 2026-08-25, after one deploy.
         //
@@ -10077,7 +10097,14 @@ async function serveList(
       // index, and ~99% pass.
       .is("missing_since", null);
     const terms = queryTerms(body.q).terms.slice(0, 8);
-    if (!opts?.skipTerms) for (const t of terms) q = q.or(`title.ilike.%${t}%,company.ilike.%${t}%,department.ilike.%${t}%`);
+    // QUOTED, like the location or() below. A PostgREST or() is a
+    // comma-separated list wrapped in parentheses, so an unquoted value
+    // containing a comma or a bracket is parsed as structure: "Manager,
+    // Operations" became two broken conditions and "Engineer (Remote)" an
+    // unbalanced group — an ordinary job title returning HTTP 500 and losing
+    // every category count on the page. sanitizeTerm strips `"` (with % _ \ |),
+    // so a quoted value cannot escape its own quotes.
+    if (!opts?.skipTerms) for (const t of terms) q = q.or(`title.ilike."%${t}%",company.ilike."%${t}%",department.ilike."%${t}%"`);
     // Metro shorthand expands to the names that actually appear in the data,
     // and a noisy two-letter form is REPLACED rather than ORed in — searching
     // %LA% returns Plain City, Ohio.
@@ -12180,7 +12207,14 @@ async function serveList(
                 // tier is visible in telemetry rather than being mistaken for
                 // the ranked path.
                 exactWordMatch: qText,
-                ranked: true,
+                // NOT `ranked: true`. This tier concatenates two
+                // `ORDER BY effective_posted DESC` reads and applies no
+                // relevance scoring at all, so claiming it made the page say
+                // "Sorted by relevance — title matches first" over rows that
+                // were not. It also blinded the only detector for a ranked-path
+                // outage, which is the failure that once left ranked search
+                // fully down and silent. `exactWordMatch` is the honest marker
+                // and the client can name this tier from it.
                 ...exclusionCountsCaveat(excludedTerms),
                 totalAllCompanies: safeMetaTotal ?? 0,
           ...(trackedTotal !== null ? { trackedTotal } : {}),
