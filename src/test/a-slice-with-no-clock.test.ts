@@ -53,8 +53,19 @@ describe("a slice with no clock", () => {
 
   it("elapsed time rides the breadcrumbs and the stop rides the status row", () => {
     expect(CODE).toMatch(/breadcrumb\(client, "loop", \{ boardsDone, fetched: fetchedInSlice, inFlight: inFlightReserve, elapsedMs: Date\.now\(\) - sliceWallStart \}\)/);
-    expect(CODE).toMatch(/wallStopped, elapsedMs: Date\.now\(\) - sliceWallStart \}\)/);
+    expect(CODE, "at 8-board resolution since .43").toMatch(/\+\+boardsDone % 8 === 0/);
+    expect(CODE).toMatch(/wallStopped, sizeStopped, elapsedMs: Date\.now\(\) - sliceWallStart \}\)/);
     expect(CODE).toMatch(/wallStopped: sliceBudgetNote\.wallStopped,/);
+  });
+
+  it("is capped at a size the breadcrumbs show it reaches", () => {
+    // .43. Not a theory about the cause — an observation about what survives.
+    expect(CODE).toMatch(/if \(boardsDone >= MAX_BOARDS_PER_SLICE\) \{\s*sizeStopped = true;\s*budgetSkipped\.push\(s\.token\);\s*continue;\s*\}/);
+    expect(num("MAX_BOARDS_PER_SLICE")).toBeLessThanOrEqual(24);
+    expect(CODE).toMatch(/sizeStopped: sliceBudgetNote\.sizeStopped,/);
+    // Resolution had to improve too: one mark then silence located the death
+    // only to within a 24-board window.
+    expect(CODE).toMatch(/\+\+boardsDone % 8 === 0/);
   });
 
   it("the heap bound stays, and is honest about what it is", () => {

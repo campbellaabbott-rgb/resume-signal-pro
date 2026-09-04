@@ -48,7 +48,9 @@ describe("where the slice stopped saying anything", () => {
 
   it("the in-loop mark is periodic, not per board", () => {
     // .42 added elapsedMs — the quantity that turned out to matter.
-    expect(CODE).toMatch(/if \(\+\+boardsDone % 24 === 0\) await breadcrumb\(client, "loop", \{ boardsDone, fetched: fetchedInSlice, inFlight: inFlightReserve, elapsedMs: Date\.now\(\) - sliceWallStart \}\);/);
+    // .43 narrowed it from 24 to 8: one mark then silence located the death
+    // only to within a 24-board window.
+    expect(CODE).toMatch(/if \(\+\+boardsDone % 8 === 0\) await breadcrumb\(client, "loop", \{ boardsDone, fetched: fetchedInSlice, inFlight: inFlightReserve, elapsedMs: Date\.now\(\) - sliceWallStart \}\);/);
   });
 
   it("carries the hop and the heap, and reaches the status action", () => {

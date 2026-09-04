@@ -895,7 +895,15 @@ const PINNED = {
   //   stamp finished inside 128s; the death ran 158.3s. A slice now stops
   //   taking new boards at 90s, which lands it around 115s with the stamps and
   //   the chain kick still to come.
-  buildVersion: "2026-08-30.42",
+  //
+  // .43 — two theories, two deploys, both wrong; bound what survives instead
+  //   (a-slice-with-no-clock.test.ts). .42 caught a slice dying at 24 boards,
+  //   12.3s elapsed and 155MB — too fast for the wall budget, and lower than
+  //   the 200MB others survived, so neither duration nor a fixed heap ceiling
+  //   explains it. A slice is capped at 24 boards, the size the breadcrumbs
+  //   show it reliably reaches, and the cause stays under measurement at
+  //   8-board resolution.
+  buildVersion: "2026-08-30.43",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {

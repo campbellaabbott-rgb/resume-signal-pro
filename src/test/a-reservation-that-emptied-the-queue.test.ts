@@ -38,7 +38,7 @@ describe("a reservation that emptied the queue", () => {
     // reservation branch, which is what emptied the queue in the first place.
     // .42 added a third: elapsed wall time, the bound that actually matched
     // the deaths (a-slice-with-no-clock.test.ts).
-    expect((CODE.match(/budgetSkipped\.push\(/g) ?? []).length, "three deferral sites: landed postings, heap, wall time").toBe(3);
+    expect((CODE.match(/budgetSkipped\.push\(/g) ?? []).length, "four deferral sites: landed postings, heap, wall time, slice size").toBe(4);
     expect(CODE).toMatch(/if \(heapNow !== undefined && heapNow >= HEAP_SOFT_LIMIT_MB\) \{\s*heapStopped = true;\s*budgetSkipped\.push\(s\.token\);\s*continue;\s*\}/);
     expect(CODE, "neither deferral may sit in the reservation branch").not.toMatch(/inFlightReserve >= SLICE_POSTING_BUDGET\) \{\s*budgetSkipped/);
   });

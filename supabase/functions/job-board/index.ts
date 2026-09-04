@@ -112,7 +112,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-30.42"; // .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
+const BUILD_VERSION = "2026-08-30.43"; // .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
 // .36: JazzHR joins as vendor #20 (vendors/jazzhr.ts; a verified sample of boards enters sources.ts, so the bump is load-bearing for the bootstrap lane). .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
 // .23: bug-sweep round — the agency opt-out reaches the rescue tiers (it was bound in search_jobs only, so a rescue served the rows the caller hid, undisclosed); the per-company cap stops swallowing the employer it just surfaced; a withdrawn count no longer prints "not hiring"; the reverted pipe fix is restored
 
@@ -330,7 +330,7 @@ const COLD_BOARD_RESERVE = 500;
 // failed. That is worth more than a bigger slice, because a slice that dies
 // loses its work AND stops the chain, which is what has pinned freshness at
 // 755 minutes against a 480-minute promise.
-const HEAP_SOFT_LIMIT_MB = 150;
+const HEAP_SOFT_LIMIT_MB = 120;
 // AND THE ONE THAT ACTUALLY RUNS OUT: WALL TIME.
 //
 // .41 bounded heap because the breadcrumbs showed 200MB at the moment of
@@ -351,6 +351,27 @@ const HEAP_SOFT_LIMIT_MB = 150;
 // the chain kick that must follow. Stopping here is clean: the boards not
 // reached are deferred, not failed, and the chain continues.
 const SLICE_WALL_BUDGET_MS = 90_000;
+// AND NEITHER OF THOSE IS THE CAUSE EITHER. STOP THEORISING; BOUND WHAT IS
+// KNOWN TO SURVIVE.
+//
+// .42 measured a slice on the way down: 24 boards, elapsed 12.3s, heap 155MB,
+// one small board in flight — and it died before board 48. Twelve seconds is
+// nowhere near the wall budget, so duration is not it; and it died at 155MB
+// where earlier slices reached 200MB, so a fixed heap ceiling is not it
+// either. Two theories, two deploys, both wrong, and the honest position is
+// that I do not know what kills the isolate.
+//
+// What IS known, from the breadcrumbs rather than from reasoning: a slice
+// reliably reaches 24 boards and writes that mark, and frequently does not
+// reach 48. So the slice is bounded at a size that has been observed to
+// survive, and the cause stays under measurement.
+//
+// This is not a smaller rotation. A slice that COMPLETES chains straight into
+// the next hop — a 24-board slice takes ~12s, so the chain runs several a
+// minute — while a slice that dies stops the chain entirely and waits for the
+// ten-minute cron. Today's freshness collapse, 403 -> 804 minutes, is the cost
+// of dying slices, not of small ones.
+const MAX_BOARDS_PER_SLICE = 24;
 const CAPPED_VISIT_VENDORS = new Set(["workday", "oracle", "icims", "smartrecruiters", "rippling"]);
 const COLD_SLICE = 80; // cold boards are small (that's why they're cold); 80/hop at CONCURRENCY=8 is 10 sequential rounds — well under the edge wall-time limit. Rotation speed comes from concurrency + hops-per-pass, never bigger slices (proven-safe size).
 const BOOTSTRAP_PER_SLICE = 25; // zero-row boards prepended per cold slice after a deploy — +31% slice load, still ~3 rounds under the wall-time margin; a 1,900-board merge drains in ~1.5 passes instead of waiting a full rotation for its FIRST ingest
@@ -1865,7 +1886,7 @@ async function stampSliceWork(client: SupabaseClient, inHotPhase: boolean, slice
 // Set by runRefresh the instant its fetch loop closes; read by the recorder
 // below in the same invocation. Module state rather than a parameter because a
 // guard counts the recorder's exact call literal at its three terminal returns.
-let sliceBudgetNote: { fetched: number; skipped: number; hit: boolean; lastUpsertError: string | null; heapStopped: boolean; wallStopped: boolean } | null = null;
+let sliceBudgetNote: { fetched: number; skipped: number; hit: boolean; lastUpsertError: string | null; heapStopped: boolean; wallStopped: boolean; sizeStopped: boolean } | null = null;
 // WHERE A CHAIN DIES IS A NUMBER, NOT A GUESS. Three 546 deaths on 2026-09-03
 // sat at hops 6, 7 and 6 while chains otherwise reach hop 9, and the slice
 // that died last was a small cold one (6,386 postings, 39s). That is the
@@ -1953,7 +1974,7 @@ async function recordSliceStats(client: SupabaseClient, sliceWallStart: number, 
         ...(mem.heapMb !== undefined ? { heapMb: mem.heapMb } : {}),
         ...(mem.rssMb !== undefined ? { rssMb: mem.rssMb } : {}),
         // The budget outcome rides on the row status already exposes.
-        ...(sliceBudgetNote ? { budgetFetched: sliceBudgetNote.fetched, budgetSkipped: sliceBudgetNote.skipped, budgetHit: sliceBudgetNote.hit, heapStopped: sliceBudgetNote.heapStopped, wallStopped: sliceBudgetNote.wallStopped, lastUpsertError: sliceBudgetNote.lastUpsertError ? sliceBudgetNote.lastUpsertError.slice(0, 200) : null } : {}),
+        ...(sliceBudgetNote ? { budgetFetched: sliceBudgetNote.fetched, budgetSkipped: sliceBudgetNote.skipped, budgetHit: sliceBudgetNote.hit, heapStopped: sliceBudgetNote.heapStopped, wallStopped: sliceBudgetNote.wallStopped, sizeStopped: sliceBudgetNote.sizeStopped, lastUpsertError: sliceBudgetNote.lastUpsertError ? sliceBudgetNote.lastUpsertError.slice(0, 200) : null } : {}),
         stampError: sliceStampError,
       },
       updated_at: new Date().toISOString(),
@@ -2579,6 +2600,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
   let boardsDone = 0;
   let heapStopped = false;
   let wallStopped = false;
+  let sizeStopped = false;
   const deepTokens = new Set(deepBoards.map((b) => b.token));
   await breadcrumb(client, "slice-start", { boards: queue.length, phase: inHotPhase ? "hot" : "cold", elapsedMs: Date.now() - sliceWallStart });
   const budgetSkipped: string[] = [];
@@ -2598,6 +2620,11 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
         if (fetchedInSlice >= SLICE_POSTING_BUDGET) { budgetSkipped.push(s.token); continue; }
         // Checked before STARTING a board, so whatever is already in flight
         // has headroom to land.
+        if (boardsDone >= MAX_BOARDS_PER_SLICE) {
+          sizeStopped = true;
+          budgetSkipped.push(s.token);
+          continue;
+        }
         if (Date.now() - sliceWallStart >= SLICE_WALL_BUDGET_MS) {
           wallStopped = true;
           budgetSkipped.push(s.token);
@@ -2651,7 +2678,10 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
         if (r) fetchedInSlice += r.jobs.length;
         // Every 24th board, so the row names the neighbourhood of the death
         // rather than the exact board — two or three writes on a cold slice.
-        if (++boardsDone % 24 === 0) await breadcrumb(client, "loop", { boardsDone, fetched: fetchedInSlice, inFlight: inFlightReserve, elapsedMs: Date.now() - sliceWallStart });
+        // Every 8th now, not every 24th: the slice that died had written one
+        // mark and then nothing, which located the death within a 24-board
+        // window. Eight narrows it without making the write itself the cost.
+        if (++boardsDone % 8 === 0) await breadcrumb(client, "loop", { boardsDone, fetched: fetchedInSlice, inFlight: inFlightReserve, elapsedMs: Date.now() - sliceWallStart });
         if (!r) {
           failed.push(`${s.name} (vendor${failReason ? `: ${failReason}` : ""})`);
           continue;
@@ -3410,9 +3440,9 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
   // 2026-09-03 and nothing outside the function could say WHY: the message
   // lived in a local and reached only the pass-end detail string and the
   // console. Now it lands on the slice_stats row status already exposes.
-  sliceBudgetNote = { fetched: fetchedInSlice, skipped: budgetSkipped.length, hit: budgetSkipped.length > 0, lastUpsertError, heapStopped, wallStopped };
+  sliceBudgetNote = { fetched: fetchedInSlice, skipped: budgetSkipped.length, hit: budgetSkipped.length > 0, lastUpsertError, heapStopped, wallStopped, sizeStopped };
   if (budgetSkipped.length) console.warn(`[JOB-BOARD] slice budget hit: ${fetchedInSlice} postings fetched, ${budgetSkipped.length} board(s) deferred to next pass`);
-  await breadcrumb(client, "loop-done", { boardsDone, fetched: fetchedInSlice, skipped: budgetSkipped.length, heapStopped, wallStopped, elapsedMs: Date.now() - sliceWallStart });
+  await breadcrumb(client, "loop-done", { boardsDone, fetched: fetchedInSlice, skipped: budgetSkipped.length, heapStopped, wallStopped, sizeStopped, elapsedMs: Date.now() - sliceWallStart });
   await stampSliceWork(client, inHotPhase, sliceWallStart);
 
   // Advance cursors — SAME rule as the optimistic write above, because it is
