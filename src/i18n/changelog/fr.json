@@ -1,5 +1,17 @@
 {
   "changelogEntries": {
+    "boardControlsAudited": {
+      "title": "Chaque commande du tableau a été cliquée et vérifiée — cinq corrigées",
+      "description": "Nous avons actionné chaque filtre, puce, menu et bouton du tableau en production et rapproché chaque clic de la requête envoyée. Cinq se comportaient mal et sont corrigés : « Réessayer » après un score d’adéquation raté n’envoyait rien et effaçait les bons scores ; « Afficher aussi » ne faisait rien pour un plafond de salaire, une base de paie ou « Salaire indiqué » ; la barre des secteurs disparaissait dès qu’un autre filtre était posé ; « Toutes les sources » ne pouvait pas sélectionner Paylocity, UKG ou ADP ; et une limite d’analyses par réseau était signalée comme un fichier illisible. Les compteurs plafonnés affichent désormais « 10 000+ » partout."
+    },
+    "jazzhrJoinsTheBoard": {
+      "title": "JazzHR rejoint le tableau — système de recrutement n° 20",
+      "description": "Les employeurs qui recrutent via JazzHR apparaissent désormais, lus directement sur leurs propres pages carrières. Les premiers tableaux vérifiés sont au catalogue et le recensement qui trouve les autres tourne comme pour les dix-neuf autres."
+    },
+    "fitScoringForAgents": {
+      "title": "Score d’adéquation du CV pour les agents et l’API — avec un quota équitable par clé",
+      "description": "Les clés payantes peuvent désormais noter un CV face aux offres en cours : POST /v1/fit sur l’API de données et fit_resume sur le serveur MCP, le même moteur que le dépôt de CV du tableau. Chaque clé dispose de son propre quota quotidien au lieu d’en partager un, et un quota épuisé l’annonce avec un délai de reprise au lieu de ressembler à une panne. Les expressions entre guillemets correspondent désormais comme des expressions, comme l’astuce l’a toujours promis."
+    },
     "resumeDropFindsRealMatches": {
       "title": "Déposer votre CV trouve désormais des offres, au lieu de les réordonner",
       "description": "Déposer un CV sur le tableau promettait de classer toutes les offres autour de vous. En réalité, cela ne réordonnait que les quelques dizaines déjà affichées à l'écran — et sur le tableau principal, ce sont simplement les plus récentes, sans rapport avec votre parcours. Des offres sans lien étaient donc mélangées puis présentées comme une correspondance. Le tableau lit maintenant votre intitulé de poste dans le CV, cherche ce métier parmi les 800 000 offres et les classe par adéquation. Il vous montre quel mot il a tiré de votre CV, pour que vous puissiez l'effacer ou en choisir un autre. Mesuré sur quatre métiers, l'adéquation moyenne a triplé voire décuplé ; sur la page d'une comptable, tous les résultats étaient à zéro, plus aucun ne l'est."

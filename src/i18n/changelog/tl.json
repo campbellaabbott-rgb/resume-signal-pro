@@ -1,5 +1,17 @@
 {
   "changelogEntries": {
+    "boardControlsAudited": {
+      "title": "Bawat control ng board ay na-click at nasuri — lima ang naayos",
+      "description": "Pinaandar namin ang bawat filter, chip, menu at button sa live board at itinugma ang bawat click sa request na ipinadala nito. Lima ang mali ang ginagawa at naayos na: ang “Subukan muli” pagkatapos ng bigong fit score ay walang ipinapadala at binubura ang magagandang score; ang “Ipakita rin ang mga iyon” ay walang ginagawa sa pay ceiling, pay basis o “Nakasaad ang sahod”; nawawala ang industry rail kapag may ibang filter; hindi mapili ng “Anumang source” ang Paylocity, UKG o ADP; at ang limit sa pag-scan ng network ay iniulat bilang sirang file. Ang mga may-limit na bilang ay nagpapakita na ngayon ng “10,000+” kahit saan."
+    },
+    "jazzhrJoinsTheBoard": {
+      "title": "Sumali na ang JazzHR sa board — hiring system #20",
+      "description": "Lumalabas na ngayon ang mga employer na kumukuha sa pamamagitan ng JazzHR, binabasa mismo mula sa kanilang sariling career page. Nasa catalogue na ang mga unang na-verify na board at tumatakbo ang census na naghahanap sa iba tulad ng sa labingsiyam pa."
+    },
+    "fitScoringForAgents": {
+      "title": "Fit scoring ng résumé para sa mga agent at sa API — may patas na allowance bawat key",
+      "description": "Maaari na ngayong mag-score ng résumé laban sa mga bukas na trabaho ang mga bayad na key: POST /v1/fit sa data API at fit_resume sa MCP server, ang parehong scorer na ginagamit ng résumé drop ng board. Bawat key ay may sariling pang-araw-araw na allowance sa halip na iisa, at ang naubos na allowance ay nagsasabi na ngayon ng oras ng muling pagsubok sa halip na magmukhang outage. Ang mga pariralang naka-quote sa paghahanap ay tumutugma na ngayon bilang parirala."
+    },
     "resumeDropFindsRealMatches": {
       "title": "Ang pag-drop ng resume mo ay humahanap na ng trabaho, hindi lang nag-aayos",
       "description": "Ang pag-drop ng resume sa board ay nangako na iaayos ang bawat bakante sa paligid mo. Ang totoo, inaayos lang nito ang ilang dosenang post na nasa screen mo na — at sa pangunahing board, iyon ay ang pinakabago lamang, na walang kinalaman sa karera mo. Kaya't hinahalo nito ang mga trabahong walang kaugnayan at ipinapakita bilang tugma. Ngayon, binabasa ng board ang job title mo mula sa resume, hinahanap ang trabahong iyon sa lahat ng mahigit 800,000 bakante, at inaayos ang mga iyon ayon sa tugma. Ipinapakita nito kung aling salita ang kinuha sa resume mo, para maalis mo o makapili ng iba. Sa apat na karera na sinukat, tumaas ang katamtamang tugma nang tatlo hanggang sampung beses; sa pahina ng isang accountant, dating zero ang bawat resulta, ngayon ay wala nang ganoon."

@@ -1,5 +1,17 @@
 {
   "changelogEntries": {
+    "boardControlsAudited": {
+      "title": "Cada controlo do quadro foi clicado e verificado — cinco corrigidos",
+      "description": "Acionámos cada filtro, chip, menu e botão do quadro em produção e cruzámos cada clique com o pedido que enviava. Cinco faziam a coisa errada e estão corrigidos: “Tentar de novo” após uma pontuação falhada não enviava nada e apagava as boas; “Mostrar esses também” não fazia nada com um teto salarial, base de pagamento ou “Indica salário”; a barra de setores desaparecia ao definir qualquer outro filtro; “Qualquer fonte” não conseguia selecionar Paylocity, UKG ou ADP; e um limite de análises por rede era reportado como ficheiro danificado. As contagens com teto mostram agora “10.000+” em todo o lado."
+    },
+    "jazzhrJoinsTheBoard": {
+      "title": "JazzHR junta-se ao quadro — sistema de recrutamento n.º 20",
+      "description": "Os empregadores que recrutam através do JazzHR aparecem agora, lidos diretamente das suas próprias páginas de carreiras. Os primeiros quadros verificados estão no catálogo e o censo que encontra os restantes corre como nos outros dezanove."
+    },
+    "fitScoringForAgents": {
+      "title": "Pontuação de adequação do CV para agentes e para a API — com uma quota justa por chave",
+      "description": "As chaves pagas já podem pontuar um CV face a vagas ativas: POST /v1/fit na API de dados e fit_resume no servidor MCP, o mesmo avaliador que o quadro usa ao largar um CV. Cada chave recebe a sua própria quota diária em vez de partilhar uma, e uma quota esgotada diz-o agora com um tempo de repetição em vez de parecer uma falha. As frases entre aspas correspondem agora como frases, como a dica sempre prometeu."
+    },
     "resumeDropFindsRealMatches": {
       "title": "Soltar seu currículo agora encontra vagas, não apenas as reordena",
       "description": "Soltar um currículo no painel prometia ordenar todas as vagas ao seu redor. Na prática, apenas reordenava as poucas dezenas já visíveis na tela — e no painel principal essas são simplesmente as mais recentes, sem relação com a sua carreira. Vagas irrelevantes eram embaralhadas e o resultado apresentado como correspondência. Agora o painel lê o seu cargo no currículo, busca essa função entre as mais de 800.000 vagas e as ordena por afinidade. Ele mostra qual palavra tirou do seu currículo, para você limpar ou escolher outra que encontrou. Medido em quatro carreiras, a afinidade média subiu de três a dez vezes; na página de uma contadora todos os resultados marcavam zero, e agora nenhum marca."

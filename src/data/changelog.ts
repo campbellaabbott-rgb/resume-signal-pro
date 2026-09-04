@@ -23,6 +23,9 @@ export interface ChangelogEntry {
 }
 
 export const changelog: ChangelogEntry[] = [
+  { id: "fitScoringForAgents", date: "2026-09-04", tags: ["new"] },
+  { id: "jazzhrJoinsTheBoard", date: "2026-09-04", tags: ["new"] },
+  { id: "boardControlsAudited", date: "2026-09-04", tags: ["fixed"] },
   { id: "dataApiFiltersMatchTheAgent", date: "2026-09-02", tags: ["new", "improved"] },
   { id: "emailsWeSendNowArrive", date: "2026-09-02", tags: ["fixed"] },
   { id: "resumeDropFindsRealMatches", date: "2026-09-01", tags: ["fixed"] },

@@ -1,5 +1,17 @@
 {
   "changelogEntries": {
+    "boardControlsAudited": {
+      "title": "Every board control was clicked and checked — five were fixed",
+      "description": "We drove every filter, chip, menu and button on the live board and matched each click to the request it sent. Five did the wrong thing and are fixed: “Try again” after a failed fit score sent nothing and wiped good scores; “Show those too” did nothing for a pay ceiling, pay basis or “States pay”; the industry rail vanished once you set any other filter; “Any source” couldn’t select Paylocity, UKG or ADP; and a busy-network scan limit was reported as a broken file. Capped counts now read “10,000+” everywhere instead of a bare 10,000."
+    },
+    "jazzhrJoinsTheBoard": {
+      "title": "JazzHR joins the board — hiring system #20",
+      "description": "Employers who hire through JazzHR now appear, read straight from their own career pages. The first verified boards are live in the catalogue and the census that finds the rest runs like the other nineteen."
+    },
+    "fitScoringForAgents": {
+      "title": "Résumé fit scoring for agents and the API — with a fair allowance each",
+      "description": "Paid keys can now score a résumé against live openings: POST /v1/fit on the data API and fit_resume on the MCP server, the same scorer the board’s résumé drop uses. Every key gets its own daily allowance instead of sharing one, and a spent allowance now says so with a retry time instead of looking like an outage. Quoted phrases in search now match as phrases, as the tip always promised."
+    },
     "resumeDropFindsRealMatches": {
       "title": "Dropping your résumé now finds jobs, not just re-orders them",
       "description": "Dropping a CV onto the board promised to rank every opening around you. It only re-ordered the few dozen postings already on your screen — and on the main board those are simply the newest ones, which have nothing to do with your career. So it reshuffled irrelevant jobs and presented the result as a match. Now the board reads your job title out of the résumé, searches all 800,000+ openings for that role, and ranks those by fit. It shows you which word it took from your CV, so you can clear it or pick another one it found. Measured across four careers, average fit rose three- to tenfold; on one accountant's page every single result had been scoring zero, and now none do."

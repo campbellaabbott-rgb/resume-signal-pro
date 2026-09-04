@@ -1,5 +1,17 @@
 {
   "changelogEntries": {
+    "boardControlsAudited": {
+      "title": "Elk bedieningselement van het bord is aangeklikt en gecontroleerd — vijf gerepareerd",
+      "description": "We hebben elk filter, elke chip, elk menu en elke knop op het live bord bediend en elke klik vergeleken met het verzoek dat hij verstuurde. Vijf deden het verkeerde en zijn opgelost: “Opnieuw proberen” na een mislukte matchscore verstuurde niets en wiste goede scores; “Die ook tonen” deed niets bij een salarisplafond, loonbasis of “Salaris vermeld”; de branchebalk verdween zodra je een ander filter zette; “Elke bron” kon Paylocity, UKG of ADP niet kiezen; en een scanlimiet op het netwerk werd gemeld als een kapot bestand. Afgekapte tellingen tonen nu overal “10.000+”."
+    },
+    "jazzhrJoinsTheBoard": {
+      "title": "JazzHR sluit aan — wervingssysteem nr. 20",
+      "description": "Werkgevers die via JazzHR werven verschijnen nu, rechtstreeks gelezen van hun eigen vacaturepagina’s. De eerste geverifieerde borden staan in de catalogus en de telling die de rest vindt draait zoals bij de andere negentien."
+    },
+    "fitScoringForAgents": {
+      "title": "Cv-matchscore voor agents en de API — met een eerlijk tegoed per sleutel",
+      "description": "Betaalde sleutels kunnen nu een cv scoren tegen open vacatures: POST /v1/fit op de data-API en fit_resume op de MCP-server, dezelfde scorer als de cv-drop van het bord. Elke sleutel krijgt een eigen dagtegoed in plaats van een gedeeld tegoed, en een opgebruikt tegoed meldt dat nu met een hersteltijd in plaats van eruit te zien als een storing. Zoektermen tussen aanhalingstekens matchen nu als zinsdeel, zoals de tip altijd beloofde."
+    },
     "resumeDropFindsRealMatches": {
       "title": "Je cv neerzetten vindt nu vacatures, in plaats van ze te herschikken",
       "description": "Een cv op het bord slepen beloofde elke vacature om je heen te rangschikken. In werkelijkheid herschikte het alleen de paar dozijn vacatures die al op je scherm stonden — en op het hoofdbord zijn dat simpelweg de nieuwste, die niets met jouw loopbaan te maken hebben. Irrelevante vacatures werden dus geschud en als match gepresenteerd. Nu leest het bord je functietitel uit het cv, zoekt die functie tussen alle 800.000+ vacatures en rangschikt die op match. Het laat zien welk woord het uit je cv haalde, zodat je het kunt wissen of een ander kunt kiezen. Gemeten over vier loopbanen steeg de gemiddelde match drie- tot tienvoudig; op de pagina van een accountant scoorde eerst elk resultaat nul, nu geen enkel meer."

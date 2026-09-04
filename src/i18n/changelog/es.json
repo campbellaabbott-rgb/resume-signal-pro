@@ -1,5 +1,17 @@
 {
   "changelogEntries": {
+    "boardControlsAudited": {
+      "title": "Probamos cada control del tablero — cinco quedaron arreglados",
+      "description": "Accionamos cada filtro, chip, menú y botón del tablero en vivo y cotejamos cada clic con la petición que enviaba. Cinco hacían lo incorrecto y están corregidos: «Intentar de nuevo» tras una puntuación fallida no enviaba nada y borraba las buenas; «Mostrar esas también» no hacía nada con un tope salarial, base de pago o «Indica salario»; la barra de industrias desaparecía al fijar cualquier otro filtro; «Cualquier fuente» no podía elegir Paylocity, UKG ni ADP; y un límite de escaneos por red se reportaba como archivo dañado. Los conteos con tope ahora muestran «10.000+» en todas partes."
+    },
+    "jazzhrJoinsTheBoard": {
+      "title": "JazzHR se suma al tablero — sistema de contratación n.º 20",
+      "description": "Los empleadores que contratan con JazzHR ya aparecen, leídos directamente de sus propias páginas de empleo. Los primeros tableros verificados están en el catálogo y el censo que encuentra el resto funciona como con los otros diecinueve."
+    },
+    "fitScoringForAgents": {
+      "title": "Puntuación de ajuste del CV para agentes y la API — con cuota justa por clave",
+      "description": "Las claves de pago ya pueden puntuar un CV frente a vacantes activas: POST /v1/fit en la API de datos y fit_resume en el servidor MCP, el mismo evaluador que usa el tablero al soltar un CV. Cada clave recibe su propia cuota diaria en vez de compartir una, y una cuota agotada ahora lo dice con un tiempo de reintento en lugar de parecer una caída. Las frases entre comillas ahora coinciden como frases, como siempre prometió la pista."
+    },
     "resumeDropFindsRealMatches": {
       "title": "Soltar tu currículum ahora encuentra empleos, no solo los reordena",
       "description": "Soltar un currículum en el tablero prometía ordenar todas las vacantes a tu alrededor. En realidad solo reordenaba las pocas docenas ya visibles en tu pantalla — y en el tablero principal esas son simplemente las más recientes, sin relación con tu carrera. Así que barajaba empleos irrelevantes y presentaba el resultado como una coincidencia. Ahora el tablero lee tu puesto en el currículum, busca ese rol entre las más de 800.000 vacantes y las ordena por afinidad. Te muestra qué palabra tomó de tu currículum, para que puedas borrarla o elegir otra de las que encontró. Medido en cuatro carreras, la afinidad media subió entre tres y diez veces; en la página de una contadora todos los resultados puntuaban cero, y ahora ninguno."

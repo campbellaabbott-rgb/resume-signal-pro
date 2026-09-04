@@ -1,5 +1,17 @@
 {
   "changelogEntries": {
+    "boardControlsAudited": {
+      "title": "Jedes Bedienelement der Jobbörse wurde geklickt und geprüft – fünf wurden repariert",
+      "description": "Wir haben jeden Filter, Chip, jedes Menü und jeden Button auf der Live-Börse bedient und jeden Klick mit der gesendeten Anfrage abgeglichen. Fünf verhielten sich falsch und sind behoben: „Erneut versuchen“ nach einer fehlgeschlagenen Passungsbewertung sendete nichts und löschte gute Werte; „Diese auch zeigen“ tat bei Gehaltsobergrenze, Vergütungsbasis oder „Gehalt angegeben“ nichts; die Branchenleiste verschwand, sobald ein anderer Filter gesetzt war; „Alle Quellen“ konnte Paylocity, UKG oder ADP nicht auswählen; und ein Scan-Limit im Netzwerk wurde als kaputte Datei gemeldet. Gedeckelte Zähler zeigen jetzt überall „10.000+“ statt einer nackten 10.000."
+    },
+    "jazzhrJoinsTheBoard": {
+      "title": "JazzHR kommt an Bord – Bewerbungssystem Nr. 20",
+      "description": "Arbeitgeber, die über JazzHR einstellen, erscheinen jetzt – direkt von ihren eigenen Karriereseiten gelesen. Die ersten geprüften Boards sind im Katalog, und die Erhebung, die den Rest findet, läuft wie bei den anderen neunzehn."
+    },
+    "fitScoringForAgents": {
+      "title": "Lebenslauf-Passung für Agenten und die API – mit fairem Kontingent pro Schlüssel",
+      "description": "Bezahlte Schlüssel können jetzt einen Lebenslauf gegen offene Stellen bewerten: POST /v1/fit in der Daten-API und fit_resume auf dem MCP-Server, derselbe Bewerter wie beim Lebenslauf-Drop der Börse. Jeder Schlüssel bekommt ein eigenes Tageskontingent statt eines gemeinsamen, und ein aufgebrauchtes Kontingent meldet sich jetzt mit einer Wiederholungszeit statt wie ein Ausfall auszusehen. Suchbegriffe in Anführungszeichen treffen jetzt als Phrase, wie der Hinweis es immer versprach."
+    },
     "resumeDropFindsRealMatches": {
       "title": "Ein abgelegter Lebenslauf findet jetzt Stellen, statt sie nur umzusortieren",
       "description": "Einen Lebenslauf auf das Board zu ziehen versprach, jede Stelle um dich herum zu sortieren. Tatsächlich wurden nur die wenigen Dutzend Anzeigen umsortiert, die ohnehin auf dem Bildschirm standen — und auf dem Hauptboard sind das schlicht die neuesten, die nichts mit deinem Beruf zu tun haben. Unpassende Stellen wurden also gemischt und als Treffer ausgegeben. Jetzt liest das Board deine Berufsbezeichnung aus dem Lebenslauf, sucht diesen Beruf unter allen 800.000+ Stellen und sortiert sie nach Passung. Es zeigt dir, welches Wort es aus deinem Lebenslauf genommen hat, damit du es entfernen oder ein anderes wählen kannst. Über vier Berufe gemessen stieg die durchschnittliche Passung um das Drei- bis Zehnfache; auf der Seite einer Buchhalterin lagen zuvor alle Treffer bei null, jetzt keiner mehr."
