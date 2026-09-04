@@ -150,6 +150,17 @@ interface BoardJob {
   // 1-based ABSOLUTE rank (offset + index + 1). Position on the page would make
   // page two's first result look like a first-place click.
   rank?: number;
+  /**
+   * WHICH HIRING SYSTEM THIS POSTING WAS READ FROM — greenhouse | workday | …
+   *
+   * rowToJob has emitted `source: r.source` on every serving path since the
+   * board shipped (the browse SELECT names the column, and search_jobs returns
+   * it in its RETURNS TABLE), and no client type declared it. So the trust
+   * badge could say "Verified direct from Acme" and never the one thing that
+   * makes that checkable — the system Acme publishes on. Rendered through
+   * sourceLabel, which returns the vendor's own name or nothing.
+   */
+  source?: string | null;
   token?: string; // company_token — used to look up the company's open-role count
   company: string;
   title: string;
@@ -218,10 +229,12 @@ interface BoardJob {
   matchScope?: "title" | "description";
 }
 
-// A company with several fresh, still-open roles is demonstrably hiring — the
-// anti-ghost-job signal. Show the count at/above this bar; below it, the number
-// isn't a meaningful "actively hiring" tell, so we stay quiet.
-const HIRING_INTENT_MIN = 8;
+// The "eight or more open roles ⇒ show a hiring-intent count" bar is gone with
+// the chip it gated (2026-09-04 card redesign). It was always the weaker of the
+// board's two hiring-intent signals: an open-role COUNT says only what an
+// employer has posted, while the closure log says what it went on to DO. The
+// card now spends that slot on the second one — see the single employer
+// track-record slot in the card's evidence line.
 
 // Per-company hiring-health, from get_company_hiring_health (lifecycle data).
 interface HiringHealth {
@@ -448,6 +461,47 @@ export function boardFilterBody(s: BoardFilterState): Record<string, unknown> {
   // isUnfiltered() — so an off filter must not leave a key behind.
   for (const k of Object.keys(body)) if (body[k] === undefined) delete body[k];
   return body;
+}
+
+/**
+ * MAY THE COUNTRY PICKER STILL PRINT ITS NUMBERS?
+ *
+ * get_country_facet TAKES NO PARAMETERS. It counts job_board_postings where
+ * country is not null and missing_since is null, groups by country and returns
+ * the top 40 — the whole board, every time, whatever the reader has narrowed
+ * to. So a page filtered to category=design, or to Remote, or to a salary
+ * floor, still offered "United States 253,609" beside a few thousand rows: a
+ * real number answering a question nobody asked. That is the same defect the
+ * industry rail carried until it was fixed, and it is the one this file keeps
+ * paying for — a board-wide figure printed underneath a narrowed page.
+ *
+ * FILTERED COUNTS ARE NOT AVAILABLE CHEAPLY, and this is a decision rather
+ * than an omission. The filtered-facet branch already spends its whole
+ * FACET_DEADLINE (1.5s with a text query) on per-category count_jobs_capped
+ * calls, and its own comment records those as the single largest cost of a
+ * text search. Forty more country counts would push the category numbers into
+ * truncation — and the category numbers are the ones the rail depends on.
+ *
+ * So the rule the rail follows applies here too: ABSENT IS NOT ZERO, AND
+ * BOARD-WIDE IS NOT FILTERED. Under any other filter the picker keeps its
+ * OPTIONS — membership is still right, only the numbers are wrong — and drops
+ * the counts. MultiSelectFilter already renders nothing for an undefined
+ * count, so there is no new shape to introduce.
+ *
+ * `country` ITSELF IS EXCLUDED FROM THE TEST, and that is not a loophole. The
+ * facet is computed with no country predicate at all, so while a country
+ * selection is the only thing narrowing the board, each row's number is
+ * exactly "how many you would get if you picked this one instead" — which is
+ * the question a picker asks. It is the same move the category rail makes when
+ * it strips `category` from its own facet request so the facet can answer "how
+ * many in each field".
+ *
+ * DERIVED FROM THE REQUEST BODY, never from a hand-written list of filters.
+ * A hand-written list goes stale the first time a twelfth filter is added, and
+ * then a board-wide number quietly reappears under a narrowed page.
+ */
+export function countryCountsStillTrue(body: Record<string, unknown>): boolean {
+  return Object.keys(body).every((k) => k === "country");
 }
 
 /**
@@ -806,6 +860,227 @@ export function annualizedPayRange(j: {
 
 export function isEmploymentType(v: unknown): v is EmploymentTypeKey {
   return typeof v === "string" && (EMPLOYMENT_TYPE_KEYS as readonly string[]).includes(v);
+}
+
+// ── THE FIVE FACTS THE BOARD HELD AND NEVER SAID ────────────────────────────
+//
+// Inventoried 2026-09-04: every posting carries these, every one of them was
+// SELECTed, and not one reached a reader as a fact.
+//
+//   source           100%   the reader was told "Verified direct from X" and
+//                           never which hiring system X publishes on
+//   category          100%  rendered as an unlabelled 3px colour stripe
+//   country          ~72%   reached the JSON-LD and the filter list, nothing else
+//   salary_period    10.6%  read only as a GATE (annualizedPayRange), so a card
+//                           said "≈66k/year" and the basis had to be guessed
+//   salary_currency  ~20%   declared in the client row type, read by nothing
+//
+// Each helper below is a pure exported function so a guard can CALL it rather
+// than grep for it — nine guards in this repo have passed while the code they
+// spelled was dead.
+
+/**
+ * The vendor's own name for a posting's `source`, or null.
+ *
+ * NEVER the raw column value. A source we carry no label for renders nothing
+ * and the badge falls back to the un-named wording — a hiring system the
+ * reader can check by name is the whole point, and "adp_wfn" is not one.
+ *
+ * hasOwnProperty.call, not a bare index: `sourceLabel("constructor")` off a
+ * plain object literal returns the Object constructor FUNCTION, which `??`
+ * does not catch because a function is not nullish. That is exactly how
+ * accentFor once stringified a constructor into a CSS colour, and `source`
+ * reaches this from a server row.
+ */
+const SOURCE_LABEL_BY_KEY: Record<string, string> = Object.fromEntries(
+  [...ATS_VENDORS, ...UNMEASURED_ATS_SOURCES, ...NON_ATS_SOURCES].map((v) => [v.key, v.label]),
+);
+export function sourceLabel(source?: string | null): string | null {
+  if (typeof source !== "string") return null;
+  const key = source.trim().toLowerCase();
+  return Object.prototype.hasOwnProperty.call(SOURCE_LABEL_BY_KEY, key)
+    ? SOURCE_LABEL_BY_KEY[key]
+    : null;
+}
+
+/** The pay periods we will name. Anything else is not a basis we can state. */
+const PAY_BASIS_KEYS = ["hour", "day", "week", "month", "year"] as const;
+export type PayBasisKey = (typeof PAY_BASIS_KEYS)[number];
+/**
+ * ONE set of English fallbacks for the five periods, read by the card AND by
+ * the detail panel — the same contract EMPLOYMENT_TYPE_FALLBACK follows, for
+ * the same reason: two surfaces naming one posting's pay basis two different
+ * ways is drift waiting to happen. The localized strings live at
+ * jobsPage.payBasis.*; these are only what renders if a locale lacks the key.
+ */
+const PAY_BASIS_FALLBACK: Record<PayBasisKey, string> = {
+  hour: "hourly rate", day: "daily rate", week: "weekly rate",
+  month: "monthly rate", year: "annual rate",
+};
+/**
+ * The spellings feeds actually ship for each period, plus the ones
+ * displaySalary normalizes them into. A missed spelling costs one redundant
+ * word, never a wrong one.
+ *
+ * MODULE SCOPE, not a literal inside the function. Built per call it compiled
+ * five regular expressions every time payBasisToName was asked — twice per
+ * card, sixty cards to a page, on every render of the list.
+ */
+const PAY_BASIS_ALREADY_SAID: Record<PayBasisKey, RegExp> = {
+  hour: /\bhour|\bhourly\b|\/\s*h(r|our)\b|\bp\/h\b/,
+  day: /\bday\b|\bdaily\b|\bper diem\b|\/\s*day\b/,
+  week: /\bweek|\bweekly\b|\/\s*w(k|eek)\b/,
+  month: /\bmonth|\bmonthly\b|\/\s*mo(nth)?\b/,
+  year: /\byear|\byearly\b|\bannual|\bannum\b|\bp\.?a\.?\b|\/\s*(yr|year)\b/,
+};
+
+/**
+ * Does `text` contain `word` as a whole word, case-insensitively?
+ *
+ * Both the currency check and the country-code check need this, and both used
+ * `new RegExp(...)` — a compile per posting per render. Neither needs a regex:
+ * the needle is always two or three ASCII letters, so a scan for the substring
+ * with non-letter neighbours is the same test without the compile. This is why
+ * "US" inside "Austin" does not swallow a US posting's country.
+ */
+const isLetter = (c: string) => /[a-z]/.test(c);
+function containsWord(text: string, word: string): boolean {
+  const hay = text.toLowerCase();
+  const needle = word.toLowerCase();
+  let i = hay.indexOf(needle);
+  while (i !== -1) {
+    const before = i === 0 ? "" : hay[i - 1];
+    const after = hay[i + needle.length] ?? "";
+    if (!isLetter(before) && !isLetter(after)) return true;
+    i = hay.indexOf(needle, i + 1);
+  }
+  return false;
+}
+
+/**
+ * EVERY PAY FIGURE NAMES ITS BASIS — but only where the posting has not
+ * already named it.
+ *
+ * salary_period was read as a gate and never as a statement: the card printed
+ * "≈66k/year as stated" beside a rate whose period appeared nowhere, so the
+ * reader had to infer whether 66k came off an hourly, monthly or daily figure.
+ * The employer's own pay TEXT usually says ("$32.00 per hour"), and repeating
+ * it would be noise on the majority of rows — so this returns the period key
+ * only when the verbatim string does not already carry it.
+ *
+ * Employer-stated or nothing: a period outside the five, or none at all,
+ * returns null and no basis is shown. It is never inferred from the amount.
+ */
+export function payBasisToName(
+  salary: string | null | undefined,
+  salaryPeriod: string | null | undefined,
+): PayBasisKey | null {
+  if (typeof salaryPeriod !== "string") return null;
+  const key = salaryPeriod.trim().toLowerCase() as PayBasisKey;
+  if (!(PAY_BASIS_KEYS as readonly string[]).includes(key)) return null;
+  const text = String(salary ?? "").toLowerCase();
+  return PAY_BASIS_ALREADY_SAID[key].test(text) ? null : key;
+}
+
+/**
+ * The ISO currency code the employer stated, when the pay text does not
+ * already name it.
+ *
+ * "$120,000" is four different offers depending on whether the employer meant
+ * USD, CAD, AUD or SGD, and the board held the answer in a column nothing
+ * read. Suppressed when the verbatim already says so ("USD 105,000"), which is
+ * the same rule payBasisToName follows and for the same reason.
+ *
+ * Three letters or nothing — a junk value is not a currency.
+ */
+export function statedCurrencyCode(
+  salary: string | null | undefined,
+  salaryCurrency: string | null | undefined,
+): string | null {
+  if (typeof salaryCurrency !== "string") return null;
+  const code = salaryCurrency.trim().toUpperCase();
+  if (!/^[A-Z]{3}$/.test(code)) return null;
+  return containsWord(String(salary ?? ""), code) ? null : code;
+}
+
+/**
+ * The posting's country, named ONLY when its location text does not already
+ * name it.
+ *
+ * `country` is deterministically extracted from the feed or the location
+ * string — 72% of rows carry one — and it reached the JSON-LD and the filter
+ * picker and no human-readable surface. "Cambridge" is two countries and
+ * "London" is three; a card that does not say which is not answering the
+ * question a searcher asked.
+ *
+ * The alias table exists only to SUPPRESS a true statement that is already on
+ * screen. A code missing from it costs a redundant "United States" beside
+ * "Austin, TX, USA" — it can never produce a country the row does not carry.
+ */
+const COUNTRY_TEXT_ALIASES: Record<string, readonly string[]> = {
+  US: ["usa", "u.s.", "u.s.a", "united states", "america", "remote - us"],
+  GB: ["uk", "u.k.", "united kingdom", "england", "scotland", "wales", "britain"],
+  CA: ["canada"], AU: ["australia"], NZ: ["new zealand"], IE: ["ireland"],
+  IN: ["india"], DE: ["germany", "deutschland"], FR: ["france"],
+  NL: ["netherlands", "holland"], ES: ["spain", "españa"], IT: ["italy", "italia"],
+  PT: ["portugal"], BR: ["brazil", "brasil"], MX: ["mexico", "méxico"],
+  PH: ["philippines"], SG: ["singapore"], ZA: ["south africa"], PL: ["poland"],
+  SE: ["sweden"], CH: ["switzerland"], JP: ["japan"], AE: ["uae", "united arab emirates"],
+};
+/**
+ * The country's own name, or null for anything that is not a country code.
+ *
+ * The detail panel's labelled "Country" row wants the fact unconditionally —
+ * a labelled row cannot read as redundant the way a bare word appended to a
+ * location line can — so it does NOT go through countryToName's suppression.
+ * Junk in the column still produces no row rather than a printed column value.
+ */
+export function countryLabelOrNull(country: string | null | undefined): string | null {
+  if (typeof country !== "string" || !/^[A-Za-z]{2}$/.test(country.trim())) return null;
+  return countryLabel(country.trim().toUpperCase());
+}
+
+export function countryToName(
+  location: string | null | undefined,
+  country: string | null | undefined,
+): string | null {
+  if (typeof country !== "string" || !/^[A-Za-z]{2}$/.test(country.trim())) return null;
+  const code = country.trim().toUpperCase();
+  const name = countryLabel(code);
+  const text = String(location ?? "").toLowerCase();
+  if (!text.trim()) return name; // nothing on the line yet — the country IS the location fact
+  if (text.includes(name.toLowerCase())) return null;
+  if (containsWord(text, code)) return null;
+  const aliases = Object.prototype.hasOwnProperty.call(COUNTRY_TEXT_ALIASES, code)
+    ? COUNTRY_TEXT_ALIASES[code]
+    : [];
+  return aliases.some((a) => text.includes(a)) ? null : name;
+}
+
+/**
+ * Has THIS posting been open longer than three quarters of the roles we
+ * watched close in its field?
+ *
+ * The one comparison no job board can make, because it is not a fact about
+ * postings — it is a fact about what employers DID after posting, and it comes
+ * off the closure log. Both the card chip and the detail panel's colour read
+ * this one predicate so they can never disagree about a single posting.
+ *
+ * THE AGE MUST BE THE COMPANY'S OWN DATE. Callers pass daysAgo(postedAt) and
+ * nothing else: substituting first_seen — our discovery time — for the
+ * employer's date is the 2.8-day-median incident, recorded once and
+ * reintroduced twice since. `null` in, `false` out, silently.
+ *
+ * The field row itself carries the honesty floor: get_category_fill_speed
+ * returns NO ROW below 300 tracked closings, so an absent field is a thin
+ * sample declining to speak rather than a number nobody should trust.
+ */
+export function outstaysFieldWindow(
+  age: number | null,
+  field: { p75: number; n: number } | null | undefined,
+): boolean {
+  if (age === null || !field) return false;
+  return Number.isFinite(field.p75) && age > field.p75;
 }
 // Our five keys mapped to schema.org's JobPosting.employmentType enumeration,
 // for the detail panel's JSON-LD. Google reads these spellings and silently
@@ -3426,6 +3701,17 @@ export default function Jobs() {
     () => Array.from(new Set(jobs.map((j) => j.country).filter((c): c is string => !!c))).sort(),
     [jobs],
   );
+  // May the country picker still print get_country_facet's numbers? See
+  // countryCountsStillTrue for why the answer is "only while nothing but the
+  // country selection is narrowing the board".
+  //
+  // ONE evaluation per render, not one per option: boardFilterBody allocates
+  // and walks an object, and asking it inside the options map meant forty of
+  // those on every render of the controls row, plus two more for the tooltip.
+  const countryCountsShown = useMemo(
+    () => countryCountsStillTrue(boardFilterBody(filterState)),
+    [filterState],
+  );
 
   /**
    * Weave employers together on the DEFAULT browse only.
@@ -3665,15 +3951,14 @@ export default function Jobs() {
     return best && best.n >= 3 ? best : null;
   }, [fitRanking, jobs, fits, misses, JD_NOISE]);
 
-  // Per-company open-role counts from the (global) company facet, so each card
-  // can show a hiring-intent signal. The facet holds the top companies by count —
-  // exactly the ones where "actively hiring" is worth surfacing; smaller ones
-  // simply don't get the chip.
-  const companyCounts = useMemo(() => {
-    const m = new Map<string, number>();
-    for (const c of data?.companies ?? []) m.set(c.token, c.count);
-    return m;
-  }, [data]);
+  // The per-company open-role map that fed the card's "N open roles" chip is
+  // GONE with the chip (2026-09-04 redesign). It was the highest-frequency
+  // element on the board — every card of any employer with eight or more
+  // openings carried it, so a page of one company's roles repeated the same
+  // company-level number twenty times, in the row where a reader is trying to
+  // tell those twenty postings APART. The fact itself survives where it is
+  // actually usable: the detail panel's "N more open roles at X — see them
+  // all", which is the same number attached to the control that acts on it.
 
   // Display name for a company landing page: the real name from a loaded posting
   // (or the facet), falling back to the prettified token until data arrives.
@@ -3719,9 +4004,16 @@ export default function Jobs() {
   // request per open.
   const fillSpeedAsked = useRef(false);
   useEffect(() => {
-    // Lazy on purpose: a browse that never opens a posting and is not a field
-    // lander never pays for the call.
-    if (fillSpeedAsked.current || (!landerCategory && !detailJob)) return;
+    // Lazy on purpose: a board with no rows on screen never pays for the call.
+    //
+    // The trigger WIDENED with the card redesign. It used to be
+    // `!landerCategory && !detailJob`, i.e. the field's closure curve was
+    // fetched only for a field lander or once a posting was opened — so the
+    // one comparison no competitor can make ("this has been open longer than
+    // three quarters of the roles we watched close in its field") was
+    // unavailable on exactly the surface where people triage. One call per
+    // mount, ≤18 aggregate rows, now read by every card instead of one panel.
+    if (fillSpeedAsked.current || (!landerCategory && !detailJob && jobs.length === 0)) return;
     fillSpeedAsked.current = true;
     void (async () => {
       try {
@@ -3739,12 +4031,18 @@ export default function Jobs() {
             window: Number(r.window_days),
           };
         }
+        // AN EMPTY MAP IS THE SAME ANSWER AS `null` — every reader here treats
+        // a missing category as "the log is too thin to speak" — so storing it
+        // buys nothing and costs a render of the whole board. The RPC returns
+        // no row below 300 closings per category, so an empty result is its
+        // normal shape on a young log, not an error.
+        if (Object.keys(map).length === 0) return;
         setFillSpeedByCategory(map);
       } catch {
         // Additive — every surface that reads this stands without it.
       }
     })();
-  }, [landerCategory, detailJob]);
+  }, [landerCategory, detailJob, jobs.length]);
   // The lander's own row, derived from the same map rather than fetched twice.
   const fillSpeed = useMemo(
     () => (landerCategory ? fillSpeedByCategory?.[landerCategory] ?? null : null),
@@ -4285,10 +4583,25 @@ export default function Jobs() {
               </button>
             </div>
             <div className="px-5 py-4 space-y-4">
-              <div className="flex flex-wrap items-center gap-2 text-[11px]">
+              {/* ── THE PROVENANCE STRIP ────────────────────────────────────
+                  Where this posting came from and when we last looked. Two
+                  sentences and a share control, kept apart from the facts of
+                  the JOB below — a reader deciding whether to believe the page
+                  and a reader deciding whether to apply are asking different
+                  questions, and the old panel answered both out of one
+                  undifferentiated run of eleven 11px chips. */}
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
+                {/* IT NAMES THE HIRING SYSTEM NOW. `source` is on every row and
+                    reached no reader: the panel could say "Verified direct from
+                    Acme" but not the one detail that makes the claim checkable
+                    — the system Acme's recruiters actually post into. A source
+                    we hold no label for falls back to the un-named sentence
+                    rather than printing a raw column value. */}
                 <span className="inline-flex items-center gap-1 text-success">
                   <ShieldCheck className="w-3.5 h-3.5" />
-                  {t("jobsPage.trustBadge", "Verified direct from {{company}}", { company: companyDisplayName(detailJob.company) })}
+                  {sourceLabel(detailJob.source)
+                    ? t("jobsPage.trustBadgeAts", "Direct from {{company}} on {{ats}}", { company: companyDisplayName(detailJob.company), ats: sourceLabel(detailJob.source) })
+                    : t("jobsPage.trustBadge", "Verified direct from {{company}}", { company: companyDisplayName(detailJob.company) })}
                 </span>
                 {/* recheckedAt comes from job_board_verifications.verified_at —
                     when we last fetched THIS BOARD's feed. It replaces lastSeen,
@@ -4330,76 +4643,6 @@ export default function Jobs() {
                   <Link2 className="w-3.5 h-3.5" />
                   {t("jobsPage.share", "Share")}
                 </button>
-                {(detailJob.workMode || (detailJob.remote ? "remote" : null)) && (
-                  <Badge variant="secondary" className="text-[10px]">
-                    {t(`jobsPage.workMode.${detailJob.workMode ?? "remote"}`, detailJob.workMode ?? "remote")}
-                  </Badge>
-                )}
-                {/* Same badge on the panel where the decision is made — the
-                    card is skimmed, this is read. Same employer-stated rule. */}
-                {isEmploymentType(detailJob.employmentType) && (
-                  <Badge
-                    variant="secondary"
-                    className="text-[10px]"
-                    title={t("jobsPage.employmentTypeProvenance", "Employment type as the employer states it on its own careers feed. Postings whose feed states no type show no tag — never a guess.")}
-                  >
-                    {t(`jobsPage.employmentType.${detailJob.employmentType}`, EMPLOYMENT_TYPE_FALLBACK[detailJob.employmentType])}
-                  </Badge>
-                )}
-                {/* Same chip, on the panel where the decision is actually made.
-                    The card is skimmed; this is read. */}
-                {isSendableVendor(detailJob.id) && (
-                  <Link
-                    to="/agent"
-                    className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
-                    title={t("jobsPage.agentAppliesTip", "This employer's application form is one our apply agent can fill and submit on its own — no CAPTCHA and no account needed. It still hands the application back to you if the employer asks something we can't answer from your profile. Needs the Apply Agent subscription.")}
-                  >
-                    <Sparkles className="w-3.5 h-3.5" />
-                    {t("jobsPage.agentAppliesChip", "Agent can apply")}
-                  </Link>
-                )}
-                {detailJob.experienceBand && detailJob.experienceBand !== "unspecified" && (
-                  <span className="px-2 py-0.5 rounded-full border border-border text-muted-foreground">
-                    {t(`jobsPage.experience.${detailJob.experienceBand}`, detailJob.experienceBand)}
-                  </span>
-                )}
-                {/* THE EMPLOYER'S OWN NUMBER, which the card shows and the
-                    panel dropped. Both are worth having here: the band is our
-                    bucket, the years are what the posting actually demands and
-                    the thing that decides whether someone can apply at all.
-                    `> 0` because zero is not a stated requirement — the years
-                    filter refuses it for the same reason (1..20), and "0+ yrs"
-                    would be a chip that says nothing. */}
-                {typeof detailJob.minYears === "number" && detailJob.minYears > 0 && (
-                  <span className="px-2 py-0.5 rounded-full border border-border text-muted-foreground">
-                    {t("jobsPage.minYears", "{{n}}+ yrs", { n: detailJob.minYears })}
-                  </span>
-                )}
-                {daysAgo(detailJob.postedAt) !== null && (
-                  <span
-                    className="text-muted-foreground"
-                    title={t("jobsPage.postedProvenance", "Posting age from the date the company states on its own careers feed — undated postings show no age, never a guess")}
-                  >
-                    {daysAgo(detailJob.postedAt) === 0
-                      ? t("jobsPage.postedToday", "today")
-                      : t("jobsPage.postedDaysAgo", "{{count}}d ago", { count: daysAgo(detailJob.postedAt) })}
-                    {" · "}
-                    <span className="text-[11px]">{t("jobsPage.companyStated", "company-stated")}</span>
-                  </span>
-                )}
-                {/* Same positive form as the list card: an undated posting
-                    states its observation window instead of nothing. Muted,
-                    never fresh-styled — discovery is not freshness. */}
-                {daysAgo(detailJob.postedAt) === null && daysAgo(detailJob.lastSeen ?? null) !== null && (
-                  <span
-                    className="text-muted-foreground"
-                    title={t("jobsPage.firstSeenProvenance", "This employer states no posting date, so no age is shown. This is when the posting first appeared on our board — it caps how old the posting can be, but it is our discovery date, not the employer's.")}
-                  >
-                    {daysAgo(detailJob.lastSeen ?? null) === 0
-                      ? t("jobsPage.firstSeenToday", "first seen today")
-                      : t("jobsPage.firstSeenDaysAgo", "first seen {{count}}d ago", { count: daysAgo(detailJob.lastSeen ?? null) })}
-                  </span>
-                )}
                 {isActivelyHiring(detailJob.token) && (
                   <span className="inline-flex items-center gap-1 text-success">
                     <Activity className="w-3 h-3" />
@@ -4407,44 +4650,261 @@ export default function Jobs() {
                   </span>
                 )}
               </div>
-              {detailJob.salary && (
-                <div>
-                  <p className="text-sm font-semibold text-foreground">
-                    <span title={detailJob.salary}>
-                      {displaySalary(detailJob.salary)}
+
+              {/* ── AT A GLANCE: A LABELLED FACT LIST, NOT A CHIP CLOUD ─────
+                  The card is SKIMMED and the panel is READ, and they were
+                  built the same way: an unlabelled run of pills where the
+                  reader had to work out from the word itself whether "Remote"
+                  was the work mode, "Contract" the employment type and "senior"
+                  our bucket or the employer's word.
+
+                  A <dl> makes the house rule structural instead of editorial.
+                  A fact the employer did not state has no row — no label, no
+                  dash, no "—", no "Not specified". The absence of a row is the
+                  absence of a STATEMENT, and it cannot be misread as an
+                  absence of the fact. That distinction is the whole reason this
+                  board does not print "Salary: not disclosed" like every
+                  aggregator does.
+
+                  Every number names its basis in its own row rather than in a
+                  footnote that may or may not still be next to it. */}
+              <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 text-[13px]">
+                {detailJob.salary && (
+                  <>
+                    <dt className="text-[11px] text-muted-foreground pt-0.5">{t("jobsPage.factPay", "Pay")}</dt>
+                    <dd className="min-w-0">
+                      <span className="font-semibold text-foreground" title={detailJob.salary}>
+                        {displaySalary(detailJob.salary)}
+                        {/* The currency the employer stated, when the symbol
+                            alone does not say which dollar this is. Declared in
+                            the row type since the structured-pay columns landed
+                            and read by nothing until now. */}
+                        {statedCurrencyCode(detailJob.salary, detailJob.salaryCurrency) && (
+                          <span className="font-normal text-muted-foreground">
+                            {" "}({statedCurrencyCode(detailJob.salary, detailJob.salaryCurrency)})
+                          </span>
+                        )}
+                        {annualizedPayRange(detailJob) && (
+                          <span className="text-muted-foreground font-normal">
+                            {" · "}
+                            {t("jobsPage.salaryAnnualized", "≈{{range}}/year as stated", { range: annualizedPayRange(detailJob) })}
+                          </span>
+                        )}
+                      </span>
+                      <span className="block text-[11px] text-muted-foreground">
+                        {/* THE BASIS, STATED RATHER THAN INFERRED.
+                            salary_period was a filter input and an
+                            annualization gate and never once a sentence, so a
+                            panel could show "≈66k/year" with the period it was
+                            computed from nowhere on the page. Suppressed when
+                            the employer's own pay text already says it. */}
+                        {payBasisToName(detailJob.salary, detailJob.salaryPeriod) && (
+                          <>
+                            {t(`jobsPage.payBasis.${payBasisToName(detailJob.salary, detailJob.salaryPeriod)}`, PAY_BASIS_FALLBACK[payBasisToName(detailJob.salary, detailJob.salaryPeriod)!])}
+                            {" · "}
+                          </>
+                        )}
+                        {t("jobsPage.salaryVerbatim", "as stated in the posting")}
+                      </span>
+                      {/* THE ANNUALIZATION NAMES ITS OWN ARITHMETIC, in the
+                          panel, in full. On the card the same sentence is the
+                          tooltip — one key, so the two surfaces cannot explain
+                          the same figure two different ways. */}
                       {annualizedPayRange(detailJob) && (
-                        <span className="text-muted-foreground font-normal">
-                          {" · "}
-                          {t("jobsPage.salaryAnnualized", "≈{{range}}/year as stated", { range: annualizedPayRange(detailJob) })}
+                        <p className="text-[11px] text-muted-foreground mt-0.5">
+                          {t("jobsPage.annualizedBasisTip", "Our arithmetic, not the employer's: an hourly rate × 2,080 hours (40 hours a week, 52 weeks), a daily rate × 260 days, a monthly rate × 12. The figure to its left is what the posting actually says.")}
+                        </p>
+                      )}
+                      {detailSalaryContext && (
+                        <p className="text-[11px] text-muted-foreground mt-0.5">
+                          {t("jobsPage.salaryContext", "Field median floor: {{sym}}{{median}} ({{currency}}, from {{n}} postings that state pay)", {
+                            sym: { USD: "$", EUR: "€", GBP: "£" }[detailSalaryContext.currency] ?? "",
+                            median: Math.round(detailSalaryContext.median).toLocaleString(),
+                            currency: detailSalaryContext.currency,
+                            n: detailSalaryContext.n,
+                          })}
+                          {/* Basis suffix: the median blends hourly/monthly rates
+                              annualized (hourly ×2080) — without saying so the
+                              number reads as a pure annual-salary median. */}
+                          {" · "}{t("jobsPage.salaryContextBasis", "hourly, daily and monthly rates annualized (hourly ×2080, daily ×260); part-time and casual rates are left un-annualized")}
+                          {detailSalaryContext.pct !== 0 && (
+                            <span className={detailSalaryContext.pct > 0 ? "text-success" : "text-warning"}>
+                              {" · "}
+                              {detailSalaryContext.pct > 0
+                                ? t("jobsPage.salaryAbove", "{{pct}}% above the median floor", { pct: detailSalaryContext.pct })
+                                : t("jobsPage.salaryBelow", "{{pct}}% below the median floor", { pct: Math.abs(detailSalaryContext.pct) })}
+                            </span>
+                          )}
+                        </p>
+                      )}
+                    </dd>
+                  </>
+                )}
+                {(detailJob.workMode || (detailJob.remote ? "remote" : null)) && (
+                  <>
+                    <dt className="text-[11px] text-muted-foreground pt-0.5">{t("jobsPage.factWorkMode", "Work mode")}</dt>
+                    <dd className="text-foreground min-w-0">
+                      {t(`jobsPage.workMode.${detailJob.workMode ?? "remote"}`, detailJob.workMode ?? "remote")}
+                    </dd>
+                  </>
+                )}
+                {/* Same rule on the panel where the decision is made — the card
+                    is skimmed, this is read. Employer-stated or no row. */}
+                {isEmploymentType(detailJob.employmentType) && (
+                  <>
+                    <dt
+                      className="text-[11px] text-muted-foreground pt-0.5"
+                      title={t("jobsPage.employmentTypeProvenance", "Employment type as the employer states it on its own careers feed. Postings whose feed states no type show no tag — never a guess.")}
+                    >
+                      {t("jobsPage.factEmploymentType", "Job type")}
+                    </dt>
+                    <dd className="text-foreground min-w-0">
+                      {t(`jobsPage.employmentType.${detailJob.employmentType}`, EMPLOYMENT_TYPE_FALLBACK[detailJob.employmentType])}
+                    </dd>
+                  </>
+                )}
+                {/* THE EMPLOYER'S OWN NUMBER AND OUR BUCKET, IN ONE ROW AND
+                    NAMED AS THE TWO DIFFERENT THINGS THEY ARE. The band is
+                    ours, derived from the posting; the years are what the
+                    employer wrote and the thing that decides whether someone
+                    can apply at all. They sat as two identical outlined pills
+                    with nothing to say which was which.
+                    `> 0` because zero is not a stated requirement — the years
+                    filter refuses it for the same reason (1..20), and "0+ yrs"
+                    would be a chip that says nothing. */}
+                {((detailJob.experienceBand && detailJob.experienceBand !== "unspecified")
+                  || (typeof detailJob.minYears === "number" && detailJob.minYears > 0)) && (
+                  <>
+                    <dt className="text-[11px] text-muted-foreground pt-0.5">{t("jobsPage.factExperience", "Experience")}</dt>
+                    <dd className="text-foreground min-w-0">
+                      {detailJob.experienceBand && detailJob.experienceBand !== "unspecified" && (
+                        <span title={t("jobsPage.experienceProvenance", "Our seniority bucket for this posting, read from its title and requirements — not a label the employer chose.")}>
+                          {t(`jobsPage.experience.${detailJob.experienceBand}`, detailJob.experienceBand)}
                         </span>
                       )}
-                    </span>
-                    <span className="text-[11px] font-normal text-muted-foreground"> · {t("jobsPage.salaryVerbatim", "as stated in the posting")}</span>
-                  </p>
-                  {detailSalaryContext && (
-                    <p className="text-[11px] text-muted-foreground mt-0.5">
-                      {t("jobsPage.salaryContext", "Field median floor: {{sym}}{{median}} ({{currency}}, from {{n}} postings that state pay)", {
-                        sym: { USD: "$", EUR: "€", GBP: "£" }[detailSalaryContext.currency] ?? "",
-                        median: Math.round(detailSalaryContext.median).toLocaleString(),
-                        currency: detailSalaryContext.currency,
-                        n: detailSalaryContext.n,
-                      })}
-                      {/* Basis suffix: the median blends hourly/monthly rates
-                          annualized (hourly ×2080) — without saying so the
-                          number reads as a pure annual-salary median. */}
-                      {" · "}{t("jobsPage.salaryContextBasis", "hourly, daily and monthly rates annualized (hourly ×2080, daily ×260); part-time and casual rates are left un-annualized")}
-                      {detailSalaryContext.pct !== 0 && (
-                        <span className={detailSalaryContext.pct > 0 ? "text-success" : "text-warning"}>
-                          {" · "}
-                          {detailSalaryContext.pct > 0
-                            ? t("jobsPage.salaryAbove", "{{pct}}% above the median floor", { pct: detailSalaryContext.pct })
-                            : t("jobsPage.salaryBelow", "{{pct}}% below the median floor", { pct: Math.abs(detailSalaryContext.pct) })}
+                      {typeof detailJob.minYears === "number" && detailJob.minYears > 0 && (
+                        <span className="text-muted-foreground" title={t("jobsPage.minYearsProvenance", "The minimum years the posting itself asks for, in the employer's own words.")}>
+                          {detailJob.experienceBand && detailJob.experienceBand !== "unspecified" ? " · " : ""}
+                          {t("jobsPage.minYears", "{{n}}+ yrs", { n: detailJob.minYears })}
                         </span>
                       )}
-                    </p>
-                  )}
-                </div>
-              )}
+                    </dd>
+                  </>
+                )}
+                {/* THE COUNTRY, out of the JSON-LD and onto the page. It is on
+                    72% of rows, it decided what the country filter and the
+                    structured data said, and a human reader could not see it
+                    anywhere. Extracted rather than employer-stated, so the
+                    label says where it came from. */}
+                {countryLabelOrNull(detailJob.country) && (
+                  <>
+                    <dt className="text-[11px] text-muted-foreground pt-0.5">{t("jobsPage.factCountry", "Country")}</dt>
+                    <dd
+                      className="text-foreground min-w-0"
+                      title={t("jobsPage.countryProvenance", "Read from the employer's own feed — its country field where it publishes one, otherwise its location text. Postings we cannot place show no country rather than a guess.")}
+                    >
+                      {countryLabelOrNull(detailJob.country)}
+                    </dd>
+                  </>
+                )}
+                {/* THE CATEGORY, WHICH WAS A THREE-PIXEL COLOUR AND NOTHING
+                    ELSE. Every card carries a coloured left edge keyed to this
+                    value and no surface has ever said what the colour means.
+                    Named here, marked as OUR classification rather than the
+                    employer's (the employer's own team label is `department`,
+                    beside the company above), and made the control that acts on
+                    it — the reader's most likely next question is "more like
+                    this one". */}
+                {isBoardCategory(detailJob.category ?? undefined) && (
+                  <>
+                    <dt className="text-[11px] text-muted-foreground pt-0.5">{t("jobsPage.factField", "Field")}</dt>
+                    <dd className="min-w-0">
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-1.5 text-primary hover:underline text-left"
+                        title={t("jobsPage.categoryProvenance", "Our classification of this posting, read from its title — not a label the employer chose. The employer's own team name, where its feed states one, is beside the company at the top.")}
+                        onClick={() => { setCategory(String(detailJob.category)); closeDetail(); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                      >
+                        <span aria-hidden="true" className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: accentFor(detailJob.category) }} />
+                        {t(`jobsPage.categories.${detailJob.category}`, String(detailJob.category))}
+                      </button>
+                    </dd>
+                  </>
+                )}
+                {(daysAgo(detailJob.postedAt) !== null || daysAgo(detailJob.lastSeen ?? null) !== null) && (
+                  <>
+                    <dt className="text-[11px] text-muted-foreground pt-0.5">{t("jobsPage.factPosted", "Posted")}</dt>
+                    <dd className="text-foreground min-w-0">
+                      {daysAgo(detailJob.postedAt) !== null && (
+                        <span title={t("jobsPage.postedProvenance", "Posting age from the date the company states on its own careers feed — undated postings show no age, never a guess")}>
+                          {daysAgo(detailJob.postedAt) === 0
+                            ? t("jobsPage.postedToday", "today")
+                            : t("jobsPage.postedDaysAgo", "{{count}}d ago", { count: daysAgo(detailJob.postedAt) })}
+                          <span className="text-[11px] text-muted-foreground"> · {t("jobsPage.companyStated", "company-stated")}</span>
+                        </span>
+                      )}
+                      {/* Same positive form as the list card: an undated posting
+                          states its observation window instead of nothing. Muted,
+                          never fresh-styled — discovery is not freshness. */}
+                      {daysAgo(detailJob.postedAt) === null && daysAgo(detailJob.lastSeen ?? null) !== null && (
+                        <span
+                          className="text-muted-foreground"
+                          title={t("jobsPage.firstSeenProvenance", "This employer states no posting date, so no age is shown. This is when the posting first appeared on our board — it caps how old the posting can be, but it is our discovery date, not the employer's.")}
+                        >
+                          {daysAgo(detailJob.lastSeen ?? null) === 0
+                            ? t("jobsPage.firstSeenToday", "first seen today")
+                            : t("jobsPage.firstSeenDaysAgo", "first seen {{count}}d ago", { count: daysAgo(detailJob.lastSeen ?? null) })}
+                        </span>
+                      )}
+                    </dd>
+                  </>
+                )}
+                {/* CAN THIS ONE BE SENT FOR YOU? A row rather than a chip,
+                    because it is a fact about the FORM this employer uses and
+                    it belongs beside the other facts about the posting. Absent
+                    on most rows — four vendors have an adapter — and the
+                    absence is the honest signal.
+
+                    It describes the form, not a promise: an adapter exists and
+                    the vendor has no bot wall. Whether a given application
+                    completes still depends on the employer's own screening
+                    questions and on having the agent. */}
+                {isSendableVendor(detailJob.id) && (
+                  <>
+                    <dt className="text-[11px] text-muted-foreground pt-0.5">{t("jobsPage.factApplying", "Applying")}</dt>
+                    <dd>
+                      <Link
+                        to="/agent"
+                        className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
+                        title={t("jobsPage.agentAppliesTip", "This employer's application form is one our apply agent can fill and submit on its own — no CAPTCHA and no account needed. It still hands the application back to you if the employer asks something we can't answer from your profile. Needs the Apply Agent subscription.")}
+                      >
+                        <Sparkles className="w-3.5 h-3.5" />
+                        {t("jobsPage.agentAppliesChip", "Agent can apply")}
+                      </Link>
+                    </dd>
+                  </>
+                )}
+                {/* AGENCY DISCLOSURE (2026-08-31 charter): carried and
+                    DISCLOSED. The card badges it; the panel — where the
+                    decision is actually made — said nothing at all until now.
+                    Renders only on true: ranked-path rows omit the field
+                    rather than claim false, and no row is the right render for
+                    "not stated". */}
+                {detailJob.agency === true && (
+                  <>
+                    <dt className="text-[11px] text-muted-foreground pt-0.5">{t("jobsPage.factEmployer", "Employer")}</dt>
+                    <dd>
+                      <Badge
+                        variant="outline"
+                        className="text-[10px]"
+                        title={t("jobsPage.agencyBadgeTip", "This employer is a staffing or recruiting agency — the role may be filled on behalf of a client. Use “Hide staffing agencies” in the filters to exclude these.")}
+                      >
+                        {t("jobsPage.agencyBadge", "Staffing agency")}
+                      </Badge>
+                    </dd>
+                  </>
+                )}
+              </dl>
               {/* Sticky on the lg+ pane only. Below lg this row scrolls with
                   the content: it and the sticky title header were both pinned
                   to top-0 and painted over each other (live-walk a11y
@@ -5409,7 +5869,15 @@ export default function Jobs() {
                 only name the handful of countries on the page in front of you,
                 with no counts at all. So the facet is the source and the result
                 set is the safety net, not the other way round. Counts are an
-                enrichment; their absence must never remove the filter itself. */}
+                enrichment; their absence must never remove the filter itself.
+
+                AND THE ENRICHMENT IS BOARD-WIDE. get_country_facet takes no
+                parameters, so those 253,609 US postings are the whole board's
+                — printed, until now, beside a page the reader had narrowed to
+                a few thousand. See countryCountsStillTrue: the OPTIONS survive
+                every filter, because membership is still right; the NUMBERS
+                are dropped the moment anything other than the country
+                selection is narrowing the board. */}
             {(countryFacet.length > 0 || fallbackCountries.length > 0) && (
               <MultiSelectFilter
                 value={country}
@@ -5418,14 +5886,22 @@ export default function Jobs() {
                 options={(countryFacet.length ? countryFacet : fallbackCountries.map((c) => ({ country: c, n: 0 }))).map((c) => ({
                   value: c.country,
                   label: countryLabel(c.country),
-                  count: c.n,
+                  count: countryCountsShown ? c.n : undefined,
                 }))}
                 allLabel={t("jobsPage.allCountries", "All countries")}
                 ariaLabel={t("jobsPage.allCountries", "All countries")}
                 selectedLabel={(n) => t("jobsPage.nCountries", "{{n}} countries", { n })}
                 atMaxNote={t("jobsPage.countriesAtMax", "Five countries at a time.")}
                 clearLabel={t("jobsPage.clearCountries", "Clear countries")}
-                title={t("jobsPage.countryTip", "Country read from each posting's own location text — postings we can't place are excluded while this is on, never guessed.")}
+                /* The tooltip says which of the two states the picker is in.
+                   Dropping the numbers is the honest minimum; saying WHY they
+                   are gone is better than silently offering a shorter list —
+                   and it is the only visible place for the sentence that does
+                   not mean adding a prop to a shared control outside this
+                   page. */
+                title={countryCountsShown
+                  ? t("jobsPage.countryTipCounts", "Country read from each posting's own location text — postings we can't place are excluded while this is on, never guessed. The counts are the whole board's totals.")
+                  : t("jobsPage.countryTipNoCounts", "Country read from each posting's own location text — postings we can't place are excluded while this is on, never guessed. Counts are hidden because the only figures we hold are the whole board's, and you have narrowed the board.")}
               />
             )}
             {/* U4: at ~25k companies a dropdown is unusable — type-ahead over the
@@ -7045,7 +7521,25 @@ export default function Jobs() {
                     (job as { matchScope?: string }).matchScope === "description" &&
                     (prevJob as { matchScope?: string } | null)?.matchScope === "title";
                   const d = daysAgo(job.postedAt);
-                  const openRoles = job.token ? companyCounts.get(job.token) : undefined;
+                  // ── THE THREE FACTS THE CARD NOW STATES ────────────────────
+                  // Each is null/false on the rows that do not carry it, and a
+                  // null renders NOTHING — never a dash, never a zero, never a
+                  // guessed default. That is why they are computed here rather
+                  // than inline: one place to read what this card can honestly
+                  // claim before deciding what to draw.
+                  const ats = sourceLabel(job.source);
+                  const cardCountry = countryToName(job.location, job.country);
+                  // Computed ONCE per card, not once per JSX reference. Read
+                  // inline they ran two or three times each, sixty cards to a
+                  // page, on every render of the list.
+                  const payBasis = payBasisToName(job.salary, job.salaryPeriod);
+                  const payCurrency = statedCurrencyCode(job.salary, job.salaryCurrency);
+                  // The field's closure curve, and whether THIS posting has
+                  // outlived three quarters of it. Gated on the employer's own
+                  // posted date inside outstaysFieldWindow — an undated posting
+                  // gets silence, not a comparison built on our discovery time.
+                  const cardField = job.category ? fillSpeedByCategory?.[job.category] ?? null : null;
+                  const cardOutstays = outstaysFieldWindow(d, cardField);
                   const fit = fitRanking ? fits[job.id] : undefined;
                   const gaps = fitRanking ? (misses[job.id] ?? []) : [];
                   const strengths = fitRanking ? (hits[job.id] ?? []) : [];
@@ -7101,6 +7595,36 @@ export default function Jobs() {
                         void openDetail(job);
                       }}
                     >
+                      {/* ── THE CARD, IN THREE TIERS ────────────────────────
+                          Rebuilt 2026-09-04. What stood here was one flat run
+                          of up to fourteen 11px chips in two columns — nine of
+                          them in the left column with `mt-1 ml-2`, five more in
+                          the right — every one the same weight, the same size
+                          and the same grey. A card that shows nine chips shows
+                          nothing: there was no first thing to read.
+
+                          There are now exactly three tiers, and each answers a
+                          different question:
+
+                            1. WHAT IS THIS?    title, employer, place
+                            2. WHY CARE?        pay with its basis, work mode,
+                                                employment type, seniority, how
+                                                long it has been open
+                            3. WHY BELIEVE IT?  the hiring system we read it
+                                                from, when we last re-read it,
+                                                what this employer actually does
+                                                after posting, and whether the
+                                                application can be sent for you
+
+                          Tier 3 is the differentiator and it is deliberately
+                          the quietest: it is evidence, and evidence that
+                          shouts reads as marketing.
+
+                          The right rail now carries ONLY facts about the
+                          READER — their fit, whether they applied, whether
+                          they saved it. Everything that is a fact about the
+                          POSTING moved into the tiers, where it can be ordered
+                          against the other facts about the posting. */}
                       <div className="flex flex-wrap items-start gap-3">
                         <div
                           aria-hidden="true"
@@ -7132,7 +7656,12 @@ export default function Jobs() {
                               its history push. Modified clicks are left to the
                               browser so "open in new tab" genuinely opens the
                               posting. Still ONE tab stop per card — this
-                              replaces the button, it does not join it. */}
+                              replaces the button, it does not join it.
+
+                              A STEP LARGER THAN THE REST OF THE CARD. It was
+                              set at the same size as the employer line and the
+                              chips beneath it, so nothing on the card read
+                              first. */}
                           <Link
                             to={jobDetailHref(job.id)}
                             onClick={(e) => {
@@ -7142,15 +7671,23 @@ export default function Jobs() {
                               void openDetail(job);
                             }}
                             title={job.title}
-                            className={`block text-left font-semibold leading-snug line-clamp-2 focus-visible:outline-none focus-visible:underline ${viewedIds.has(job.id) && detailJob?.id !== job.id ? "text-muted-foreground" : "text-foreground"}`}
+                            className={`block text-left text-[15px] font-semibold leading-snug line-clamp-2 focus-visible:outline-none focus-visible:underline ${viewedIds.has(job.id) && detailJob?.id !== job.id ? "text-muted-foreground" : "text-foreground"}`}
                           >
                             {job.title}
                           </Link>
-                          <p className="text-sm text-muted-foreground mt-0.5">
+                          <p className="text-[13px] text-muted-foreground mt-0.5">
                             {job.token
                               ? <Link to={`/jobs/company/${job.token}`} className="hover:text-primary hover:underline">{job.company}</Link>
                               : job.company}
                             {job.location ? ` · ${job.location}` : ""}
+                            {/* THE COUNTRY, FINALLY SAID OUT LOUD. It is on
+                                72% of rows and reached the JSON-LD and the
+                                filter picker and no reader. "Cambridge" is two
+                                countries and "London" is three; countryToName
+                                stays silent whenever the location text already
+                                answers, so this adds a word only where the
+                                word was missing. */}
+                            {cardCountry ? ` · ${cardCountry}` : ""}
                             {job.department ? ` · ${job.department}` : ""}
                           </p>
                           {/* Same role, several locations. The siblings are real
@@ -7174,23 +7711,156 @@ export default function Jobs() {
                               {(job.otherLocations ?? []).length > 0 && `: ${(job.otherLocations ?? []).slice(0, 3).join(", ")}`}
                             </p>
                           )}
-                          {job.salary && (
-                            <p className="text-xs text-success font-medium mt-0.5" title={job.salary}>
-                              {displaySalary(job.salary)}
-                              {/* An hourly or monthly rate cannot be compared
-                                  with the annual figure on the next card, and
-                                  until now only the detail panel said so — a
-                                  fact the reader needed while SKIMMING, shown
-                                  only after they had already decided to click.
-                                  Same key, same wording, one helper. */}
-                              {annualizedPayRange(job) && (
-                                <span className="text-muted-foreground font-normal">
-                                  {" · "}
-                                  {t("jobsPage.salaryAnnualized", "≈{{range}}/year as stated", { range: annualizedPayRange(job) })}
-                                </span>
-                              )}
-                            </p>
-                          )}
+
+                          {/* ── TIER 2 · WHY SHOULD I CARE? ─────────────────
+                              One line, one rhythm, dot-separated: pay leads
+                              because it is the fact people sort on, then the
+                              three things that decide whether the role is even
+                              possible (mode, type, seniority), then how long it
+                              has been open.
+
+                              Every item here was previously a bordered pill or
+                              a Badge scattered across two columns. They are
+                              plain text now on purpose — five outlined pills in
+                              a row read as five buttons, and none of these is
+                              clickable. The ONE exception is the agency
+                              disclosure, which keeps its outline precisely
+                              because it is a different KIND of statement and
+                              must not blend into the run of facts.
+
+                              A field the employer did not state contributes
+                              nothing to this line — no dash, no "Not stated",
+                              no separator left stranded (the separators belong
+                              to the items, so an absent item takes its own
+                              divider with it). */}
+                          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 mt-1.5 text-[12px] text-muted-foreground">
+                            {job.salary && (
+                              <span className="text-success font-semibold" title={job.salary}>
+                                {displaySalary(job.salary)}
+                                {/* THE CURRENCY, when "$" alone does not say
+                                    which one. Held in a column the client type
+                                    declared and nothing read. */}
+                                {payCurrency && (
+                                  <span className="font-normal text-muted-foreground">
+                                    {" "}({payCurrency})
+                                  </span>
+                                )}
+                                {/* EVERY NUMBER NAMES ITS BASIS. salary_period
+                                    was read as a gate and never as a statement,
+                                    so "≈66k/year" sat beside a rate whose
+                                    period appeared nowhere on the card.
+                                    Suppressed when the employer's own pay text
+                                    already says it — see payBasisToName. */}
+                                {payBasis && (
+                                  <span className="font-normal text-muted-foreground">
+                                    {" · "}
+                                    {t(`jobsPage.payBasis.${payBasis}`, PAY_BASIS_FALLBACK[payBasis])}
+                                  </span>
+                                )}
+                                {/* An hourly or monthly rate cannot be compared
+                                    with the annual figure on the next card, and
+                                    until now only the detail panel said so — a
+                                    fact the reader needed while SKIMMING, shown
+                                    only after they had already decided to click.
+                                    Same key, same wording, one helper. */}
+                                {annualizedPayRange(job) && (
+                                  <span
+                                    className="text-muted-foreground font-normal"
+                                    title={t("jobsPage.annualizedBasisTip", "Our arithmetic, not the employer's: an hourly rate × 2,080 hours (40 hours a week, 52 weeks), a daily rate × 260 days, a monthly rate × 12. The figure to its left is what the posting actually says.")}
+                                  >
+                                    {" · "}
+                                    {t("jobsPage.salaryAnnualized", "≈{{range}}/year as stated", { range: annualizedPayRange(job) })}
+                                  </span>
+                                )}
+                              </span>
+                            )}
+                            {(job.workMode || (job.remote ? "remote" : null)) && (
+                              <span className="text-foreground">
+                                {t(`jobsPage.workMode.${job.workMode ?? "remote"}`, job.workMode ?? "remote")}
+                              </span>
+                            )}
+                            {/* EMPLOYMENT TYPE — the fact every competing board
+                                prints on every card and this one only let you
+                                FILTER by. The server has emitted it since the
+                                filter shipped; nothing declared or rendered it,
+                                so a searcher could ask for internships and then
+                                read a page of results that never said which
+                                postings were one.
+                                Employer-stated or nothing, the workMode rule
+                                directly above: no badge is the correct render
+                                for a posting whose feed states no type, and the
+                                same locale keys the filter chips use label it,
+                                so the chip and the card can never name one
+                                posting two different ways. */}
+                            {isEmploymentType(job.employmentType) && (
+                              <span
+                                className="text-foreground"
+                                title={t("jobsPage.employmentTypeProvenance", "Employment type as the employer states it on its own careers feed. Postings whose feed states no type show no tag — never a guess.")}
+                              >
+                                {t(`jobsPage.employmentType.${job.employmentType}`, EMPLOYMENT_TYPE_FALLBACK[job.employmentType])}
+                              </span>
+                            )}
+                            {/* Experience level: the cited minimum years when the posting
+                                states one (the precise fact), else the band's range. */}
+                            {job.experienceBand && (
+                              <span>
+                                {typeof job.minYears === "number"
+                                  ? t("jobsPage.minYears", "{{n}}+ yrs", { n: job.minYears })
+                                  : t(`jobsPage.experience.${job.experienceBand}`, job.experienceBand)}
+                              </span>
+                            )}
+                            {d !== null && (
+                              <span
+                                className={d <= 2 ? "text-success font-medium" : ""}
+                                title={t("jobsPage.postedProvenance", "Posting age from the date the company states on its own careers feed — undated postings show no age, never a guess")}
+                              >
+                                {d === 0 ? t("jobsPage.postedToday", "today") : t("jobsPage.postedDaysAgo", "{{count}}d ago", { count: d })}
+                              </span>
+                            )}
+                            {/* THE POSITIVE FORM FOR UNDATED POSTINGS. ~89k
+                                postings (14.6%) carry no employer-stated date,
+                                and until now their card said nothing — honest,
+                                but silence where a true sentence exists. lastSeen
+                                is INSERT-time (semantically first_seen), so
+                                "first seen Xd ago" states our observation window:
+                                it CAPS how old the posting can be without
+                                claiming to know its age. Deliberately never
+                                styled as fresh (no success color at d<=2 like the
+                                posted badge above) — discovery time must never
+                                read as freshness, which is the exact substitution
+                                behind the 2.8-day-median incident. */}
+                            {d === null && daysAgo(job.lastSeen ?? null) !== null && (
+                              <span
+                                title={t("jobsPage.firstSeenProvenance", "This employer states no posting date, so no age is shown. This is when the posting first appeared on our board — it caps how old the posting can be, but it is our discovery date, not the employer's.")}
+                              >
+                                {daysAgo(job.lastSeen ?? null) === 0
+                                  ? t("jobsPage.firstSeenToday", "first seen today")
+                                  : t("jobsPage.firstSeenDaysAgo", "first seen {{count}}d ago", { count: daysAgo(job.lastSeen ?? null) })}
+                              </span>
+                            )}
+                            {/* AGENCY DISCLOSURE (2026-08-31 charter): agencies
+                                are carried, so the reader is told which cards
+                                are one — a stated fact beside the work mode,
+                                never a warning color. Renders only on true;
+                                ranked-path rows omit the field rather than
+                                claim false, and no badge is the right render
+                                for "not stated".
+
+                                THE ONE OUTLINED THING IN THIS ROW, and that is
+                                the point: it is a disclosure, not another
+                                attribute, and it must not dissolve into the run
+                                of dot-separated facts around it. */}
+                            {job.agency === true && (
+                              <Badge
+                                variant="outline"
+                                className="text-[10px]"
+                                title={t("jobsPage.agencyBadgeTip", "This employer is a staffing or recruiting agency — the role may be filled on behalf of a client. Use “Hide staffing agencies” in the filters to exclude these.")}
+                              >
+                                {t("jobsPage.agencyBadge", "Staffing agency")}
+                              </Badge>
+                            )}
+                          </div>
+
                           {/* Niche searches match inside descriptions — without showing
                               WHERE, a title that lacks the search term reads as a broken
                               result. The server sends a ts_headline fragment with [[ ]]
@@ -7202,157 +7872,270 @@ export default function Jobs() {
                                 i % 2 === 1 ? <mark key={i} className="bg-primary/20 text-foreground rounded px-0.5 not-italic">{part}</mark> : part)}…
                             </p>
                           )}
-                          {/* Appended by the trigram tier onto a thin exact
-                              page — labeled so it is never mistaken for an
-                              exact match (the disclosure line above the list
-                              explains why it's here). */}
-                          {job.closeMatch && (
-                            <span className="inline-flex items-center text-[11px] text-warning mt-1 mr-1.5 border border-warning/40 rounded-full px-2 py-0.5">
-                              {t("jobsPage.closeMatchChip", "close match")}
-                            </span>
+                          {/* WHY THIS ROW IS IN THE LIST AT ALL — three
+                              different hedges about the MATCH, not about the
+                              job, kept together and kept apart from the facts
+                              above. */}
+                          {(job.closeMatch || (job as { semanticMatch?: boolean }).semanticMatch || (job as { matchScope?: string }).matchScope === "description") && (
+                            <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                              {/* Appended by the trigram tier onto a thin exact
+                                  page — labeled so it is never mistaken for an
+                                  exact match (the disclosure line above the list
+                                  explains why it's here). */}
+                              {job.closeMatch && (
+                                <span className="inline-flex items-center text-[11px] text-warning border border-warning/40 rounded-full px-2 py-0.5">
+                                  {t("jobsPage.closeMatchChip", "close match")}
+                                </span>
+                              )}
+                              {/* A DIFFERENT CLAIM FROM "close match", and it has to
+                                  read as one. A close match says the searcher may
+                                  have misspelled something; this says nothing else
+                                  matched and these are about the same THING. The
+                                  vector tier always returns something — it has no
+                                  notion of "nothing is close" — so a row it supplied
+                                  must never sit unlabelled among keyword hits.
+                                  Suppressed when the close-match chip is already
+                                  there: two hedges on one card say less than one. */}
+                              {(job as { semanticMatch?: boolean }).semanticMatch && !job.closeMatch && (
+                                <span className="inline-flex items-center text-[11px] text-muted-foreground border border-border rounded-full px-2 py-0.5">
+                                  {t("jobsPage.semanticMatchChip", "related by meaning")}
+                                </span>
+                              )}
+                              {/* WHY THIS ROW IS HERE. A description-only match is a
+                                  real answer — a skill lives in the description by
+                                  definition — but it is not the same claim as a title
+                                  match, and an unlabelled mix is how "manager" ended
+                                  up returning Data Steward. Suppressed when the row
+                                  already carries the close-match chip: two hedges on
+                                  one card say less than one. */}
+                              {(job as { matchScope?: string }).matchScope === "description" && !(job as { closeMatch?: boolean }).closeMatch && (
+                                <span className="inline-flex items-center rounded-md bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground">
+                                  {t("jobsPage.descriptionMatchChip", "in description")}
+                                </span>
+                              )}
+                            </div>
                           )}
-                          {/* A DIFFERENT CLAIM FROM "close match", and it has to
-                              read as one. A close match says the searcher may
-                              have misspelled something; this says nothing else
-                              matched and these are about the same THING. The
-                              vector tier always returns something — it has no
-                              notion of "nothing is close" — so a row it supplied
-                              must never sit unlabelled among keyword hits.
-                              Suppressed when the close-match chip is already
-                              there: two hedges on one card say less than one. */}
-                          {(job as { semanticMatch?: boolean }).semanticMatch && !job.closeMatch && (
-                            <span className="inline-flex items-center text-[11px] text-muted-foreground mt-1 mr-1.5 border border-border rounded-full px-2 py-0.5">
-                              {t("jobsPage.semanticMatchChip", "related by meaning")}
-                            </span>
-                          )}
-                          {/* WHY THIS ROW IS HERE. A description-only match is a
-                              real answer — a skill lives in the description by
-                              definition — but it is not the same claim as a title
-                              match, and an unlabelled mix is how "manager" ended
-                              up returning Data Steward. Suppressed when the row
-                              already carries the close-match chip: two hedges on
-                              one card say less than one. */}
-                          {(job as { matchScope?: string }).matchScope === "description" && !(job as { closeMatch?: boolean }).closeMatch && (
-                            <span className="inline-flex items-center rounded-md bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground">
-                              {t("jobsPage.descriptionMatchChip", "in description")}
-                            </span>
-                          )}
-                          {/* Experience level: the cited minimum years when the posting
-                              states one (the precise fact), else the band's range. */}
-                          {job.experienceBand && (
-                            <span className="inline-flex items-center text-[11px] text-muted-foreground mt-1 border border-border rounded-full px-2 py-0.5">
-                              {typeof job.minYears === "number"
-                                ? t("jobsPage.minYears", "{{n}}+ yrs", { n: job.minYears })
-                                : t(`jobsPage.experience.${job.experienceBand}`, job.experienceBand)}
-                            </span>
-                          )}
-                          {/* Trust moat: every posting is pulled straight from the
-                              company's own ATS feed (Greenhouse/Lever/Ashby/…),
-                              never an aggregator or a scrape. Always true, so it's
-                              always shown. */}
-                          <span
-                            className="inline-flex items-center gap-1 text-[11px] font-medium text-success/90 mt-1"
-                            title={t("jobsPage.trustBadgeTip", "Pulled directly from this company's official applicant-tracking feed — not an aggregator or a scraped copy. Re-checked live when you click Apply.")}
-                          >
-                            <ShieldCheck className="w-3 h-3 text-success shrink-0" />
-                            {t("jobsPage.trustBadge", "Verified direct from {{company}}", { company: companyDisplayName(job.company) })}
-                          </span>
-                          {/* Hiring-intent signal: a company with many fresh, still-open
-                              roles is demonstrably hiring — the anti-ghost-job tell. The
-                              count is that company's verified open roles on the board. */}
-                          {typeof openRoles === "number" && openRoles >= HIRING_INTENT_MIN && (
+
+                          {/* ── TIER 3 · WHY BELIEVE IT? ────────────────────
+                              The quiet line, and the one no competitor can
+                              copy. Every clause is evidence rather than a
+                              claim: the system the posting was read out of,
+                              the minute we last re-read that system, what this
+                              employer has actually DONE after posting, and
+                              whether the application is one the agent can
+                              finish.
+
+                              Deliberately 11px and muted. A trust badge that
+                              shouts is indistinguishable from an ad; a trust
+                              badge that reads like a footnote is
+                              indistinguishable from a receipt. */}
+                          {/* SURVIVES COMPACT DENSITY, deliberately. Compact
+                              already drops the action row and the fit
+                              keywords; dropping the evidence too would leave
+                              the power-scanning view indistinguishable from an
+                              aggregator's, which is the one thing this board
+                              cannot afford to look like. */}
+                          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 mt-1.5 text-[11px] text-muted-foreground">
+                            {/* Trust moat: every posting is pulled straight from the
+                                company's own ATS feed (Greenhouse/Lever/Ashby/…),
+                                never an aggregator or a scrape. Always true, so it's
+                                always shown.
+
+                                IT NOW NAMES THE SYSTEM. "Verified direct from
+                                Acme" asked the reader to take our word for it;
+                                "Verified direct from Acme on Greenhouse" is a
+                                claim they can go and check in ten seconds, and
+                                the `source` column that answers it has been on
+                                every row since the board shipped. A source we
+                                hold no label for falls back to the un-named
+                                sentence rather than printing a column value. */}
                             <span
-                              className="inline-flex items-center gap-1 text-[11px] text-muted-foreground mt-1 ml-2"
-                              title={t("jobsPage.openRolesTip", "This company has {{count}} verified openings live on the board right now — a real, active hiring signal.", { count: openRoles })}
+                              className="inline-flex items-center gap-1 font-medium text-success/90"
+                              title={ats
+                                ? t("jobsPage.trustBadgeAtsTip", "This posting was read straight out of {{company}}'s own {{ats}} job feed — the same system their recruiters post into. Not an aggregator, not a scraped copy. Re-checked live when you click Apply.", { company: companyDisplayName(job.company), ats })
+                                : t("jobsPage.trustBadgeTip", "Pulled directly from this company's official applicant-tracking feed — not an aggregator or a scraped copy. Re-checked live when you click Apply.")}
                             >
-                              <Briefcase className="w-3 h-3 shrink-0" />
-                              {t("jobsPage.openRoles", "{{count}} open roles", { count: openRoles })}
+                              <ShieldCheck className="w-3 h-3 text-success shrink-0" />
+                              {ats
+                                ? t("jobsPage.trustBadgeAts", "Direct from {{company}} on {{ats}}", { company: companyDisplayName(job.company), ats })
+                                : t("jobsPage.trustBadge", "Verified direct from {{company}}", { company: companyDisplayName(job.company) })}
                             </span>
-                          )}
-                          {/* Hiring-Health: proven-active companies (from the closure
-                              log) — the signal aggregators can't build. Self-activates
-                              as closures accrue; silent until a real pattern exists. */}
-                          {job.token && isActivelyHiring(job.token) && (
-                            <span
-                              className="inline-flex items-center gap-1 text-[11px] font-medium text-success mt-1 ml-2"
-                              title={t("jobsPage.hhBadgeTipFills", "This company has filled {{n}} roles in our tracking so far — each stayed posted at least a week before coming down. A proven, active hiring pattern, not just open listings.", { n: healthByToken[job.token].closed_90d })}
-                            >
-                              <Activity className="w-3 h-3 shrink-0" />
-                              {t("jobsPage.hhBadge", "Actively hiring")}
-                            </span>
-                          )}
-                          {/* Urgency: a proven, FAST fill pattern from the closure log —
-                              honest data-backed "apply early", not a fake scarcity badge. */}
-                          {job.token && (() => {
-                            const hh = healthByToken[job.token];
-                            if (!hh || hh.closed_90d < ACTIVELY_HIRING_MIN_CLOSED) return null;
-                            const m = hh.median_days_to_close;
-                            if (typeof m !== "number" || m > URGENT_FILL_MAX_DAYS) return null;
-                            return (
+                            {/* The receipt. The whole product rests on "every posting
+                                is real and still open", and until now the only place
+                                a user could see evidence of that was inside the
+                                detail panel — after they had already decided to
+                                click. recheckedAt is job_board_verifications
+                                .verified_at, the moment we last re-read THIS
+                                company's own feed, and it is already in the list
+                                payload (attachRecheckedAt), so this costs no extra
+                                query. Absent => render nothing; a missing stamp must
+                                never be dressed up as a weaker one. */}
+                            {job.recheckedAt && !job.missingSince && (
                               <span
-                                className="inline-flex items-center gap-1 text-[11px] font-medium text-warning mt-1 ml-2"
-                                title={t("jobsPage.urgencyTipFills", "Based on {{n}} genuine fills in our tracking (roles that stayed posted a week or more, then closed within 30 days of posting), a typical role here closes in about {{d}} days — worth applying early.", { n: hh.closed_90d, d: Math.round(m) })}
+                                className="whitespace-nowrap"
+                                title={t("jobsPage.recheckedTip", "When we last re-read this company's own feed")}
+                              >
+                                {t("jobsPage.verifiedAgo", "checked {{ago}}", { ago: agoLabel(job.recheckedAt, t) })}
+                              </span>
+                            )}
+                            {/* ── ONE SLOT FOR WHAT THIS EMPLOYER ACTUALLY DOES ──
+                                Three chips used to render side by side here —
+                                "Actively hiring", "Typically fills in ~Nd" and
+                                "Relists roles often (N×)" — and on a company
+                                that qualified for all three the card carried
+                                three overlapping statements about the same
+                                closure log.
+
+                                One slot now, and THE CAUTION TAKES IT. A card
+                                that prints praise while a warning about the
+                                same employer is also true is not compressing,
+                                it is editing. So the repost flag wins whenever
+                                it fires; only in its absence does the slot
+                                speak well of the employer.
+
+                                Not one gate moved: REPOST_FLAG_MIN,
+                                ACTIVELY_HIRING_MIN_CLOSED and
+                                URGENT_FILL_MAX_DAYS are the same numbers, read
+                                in the same order they were read before. */}
+                            {job.token && (() => {
+                              const hh = healthByToken[job.token];
+                              if (!hh) return null;
+                              const churn = hh.superseded_90d ?? 0;
+                              // Repost caution: frequent same-title relistings — shown as a
+                              // neutral fact so the seeker can weigh it, never hidden.
+                              if (churn >= REPOST_FLAG_MIN) {
+                                return (
+                                  <span
+                                    className="inline-flex items-center gap-1 whitespace-nowrap"
+                                    title={t("jobsPage.repostTipTracked", "This company relisted the same role title {{n}} times during our tracking. That can mean routine reposting or roles that keep reopening — worth knowing before you invest in an application.", { n: churn })}
+                                  >
+                                    <RefreshCw className="w-3 h-3 shrink-0" />
+                                    {t("jobsPage.repostChipTracked", "Relists roles often ({{n}}×)", { n: churn })}
+                                  </span>
+                                );
+                              }
+                              // Urgency: a proven, FAST fill pattern from the closure log —
+                              // honest data-backed "apply early", not a fake scarcity badge.
+                              const m = hh.median_days_to_close;
+                              if (hh.closed_90d >= ACTIVELY_HIRING_MIN_CLOSED && typeof m === "number" && m <= URGENT_FILL_MAX_DAYS) {
+                                return (
+                                  <span
+                                    className="inline-flex items-center gap-1 font-medium text-warning whitespace-nowrap"
+                                    title={t("jobsPage.urgencyTipFills", "Based on {{n}} genuine fills in our tracking (roles that stayed posted a week or more, then closed within 30 days of posting), a typical role here closes in about {{d}} days — worth applying early.", { n: hh.closed_90d, d: Math.round(m) })}
+                                  >
+                                    <Clock className="w-3 h-3 shrink-0" />
+                                    {t("jobsPage.urgencyChip", "Typically fills in ~{{d}}d", { d: Math.round(m) })}
+                                  </span>
+                                );
+                              }
+                              // Hiring-Health: proven-active companies (from the closure
+                              // log) — the signal aggregators can't build. Self-activates
+                              // as closures accrue; silent until a real pattern exists.
+                              if (isActivelyHiring(job.token)) {
+                                return (
+                                  <span
+                                    className="inline-flex items-center gap-1 font-medium text-success whitespace-nowrap"
+                                    title={t("jobsPage.hhBadgeTipFills", "This company has filled {{n}} roles in our tracking so far — each stayed posted at least a week before coming down. A proven, active hiring pattern, not just open listings.", { n: hh.closed_90d })}
+                                  >
+                                    <Activity className="w-3 h-3 shrink-0" />
+                                    {t("jobsPage.hhBadge", "Actively hiring")}
+                                  </span>
+                                );
+                              }
+                              return null;
+                            })()}
+                            {/* HOW LONG THIS ONE HAS BEEN UP, AGAINST WHAT
+                                ACTUALLY HAPPENS TO POSTINGS LIKE IT — and now
+                                on the surface where people triage, not only in
+                                the panel they reach after deciding to click.
+
+                                This is the sentence a job board cannot write.
+                                It is not built from what employers SAY, it is
+                                built from a log of what they DID after saying
+                                it, and the RPC behind it returns no row at all
+                                below 300 tracked closings — so a thin field is
+                                silent rather than approximate.
+
+                                outstaysFieldWindow takes the COMPANY'S OWN
+                                date and nothing else. An undated posting gets
+                                no comparison rather than one built on our
+                                discovery time. */}
+                            {cardOutstays && cardField && (
+                              <span
+                                className="inline-flex items-center gap-1 text-warning"
+                                title={t("jobsPage.pastFieldWindowTip", "Measured from our own closure log: of the {{n}} {{field}} roles we watched come down over the last {{window}} days, three quarters were gone within {{p75}} days. This one is on day {{age}} by the company's own posted date. A long-open role is not a dead one — but it is worth knowing before you spend an application.", { n: cardField.n.toLocaleString(), field: t(`jobsPage.categories.${job.category}`, job.category ?? ""), window: cardField.window, p75: cardField.p75, age: d })}
                               >
                                 <Clock className="w-3 h-3 shrink-0" />
-                                {t("jobsPage.urgencyChip", "Typically fills in ~{{d}}d", { d: Math.round(m) })}
+                                {t("jobsPage.pastFieldWindow", "Open longer than 75% of {{field}} roles", { field: t(`jobsPage.categories.${job.category}`, job.category ?? "") })}
                               </span>
-                            );
-                          })()}
-                          {/* THE AGENT CAN FINISH THIS ONE. Until now this fact
-                              existed only inside the morning queue — visible
-                              after the agent had already picked a posting, and
-                              invisible on the page where people decide what to
-                              save. Four vendors have an adapter and they are
-                              5.3% of the board, so this chip is absent on most
-                              rows, and its absence is the honest signal.
+                            )}
+                            {/* THE AGENT CAN FINISH THIS ONE. Until now this fact
+                                existed only inside the morning queue — visible
+                                after the agent had already picked a posting, and
+                                invisible on the page where people decide what to
+                                save. Four vendors have an adapter and they are
+                                5.3% of the board, so this chip is absent on most
+                                rows, and its absence is the honest signal.
 
-                              It describes the FORM, not the service: an
-                              adapter exists and the vendor has no bot wall.
-                              Whether a given application actually completes
-                              still depends on the employer's own screening
-                              questions — 7 of 8 measured forms, not 8 — and on
-                              having the agent. The tooltip says so rather than
-                              letting a green chip imply a promise. */}
-                          {isSendableVendor(job.id) && (
-                            <Link
-                              to="/agent"
-                              onClick={(e) => e.stopPropagation()}
-                              className="inline-flex items-center gap-1 text-[11px] font-medium text-primary mt-1 ml-2 hover:underline"
-                              title={t("jobsPage.agentAppliesTip", "This employer's application form is one our apply agent can fill and submit on its own — no CAPTCHA and no account needed. It still hands the application back to you if the employer asks something we can't answer from your profile. Needs the Apply Agent subscription.")}
-                            >
-                              <Sparkles className="w-3 h-3 shrink-0" />
-                              {t("jobsPage.agentAppliesChip", "Agent can apply")}
-                            </Link>
-                          )}
-                          {/* Repost caution: frequent same-title relistings — shown as a
-                              neutral fact so the seeker can weigh it, never hidden. */}
-                          {job.token && (healthByToken[job.token]?.superseded_90d ?? 0) >= REPOST_FLAG_MIN && (
-                            <span
-                              className="inline-flex items-center gap-1 text-[11px] text-muted-foreground mt-1 ml-2"
-                              title={t("jobsPage.repostTipTracked", "This company relisted the same role title {{n}} times during our tracking. That can mean routine reposting or roles that keep reopening — worth knowing before you invest in an application.", { n: healthByToken[job.token].superseded_90d })}
-                            >
-                              <RefreshCw className="w-3 h-3 shrink-0" />
-                              {t("jobsPage.repostChipTracked", "Relists roles often ({{n}}×)", { n: healthByToken[job.token].superseded_90d })}
-                            </span>
-                          )}
-                          {/* Explainable fit — the "why you match" half: the posting's
-                              own keywords already in the résumé, so the score isn't a
-                              bare number. */}
-                          {strengths.length > 0 && (
-                            <p className="text-[11px] text-muted-foreground mt-1 leading-snug">
-                              <span className="text-success font-medium">{t("jobsPage.youHave", "You already have:")}</span>{" "}
-                              {strengths.join(", ")}
-                            </p>
-                          )}
-                          {/* Missing-keyword nudge — turns the score into an action:
-                              "Strong match · add Kubernetes, gRPC". */}
-                          {gaps.length > 0 && (
-                            <p className="text-[11px] text-muted-foreground mt-1 leading-snug">
-                              <span className="text-primary font-medium">{t("jobsPage.addToCompete", "Add to compete:")}</span>{" "}
-                              {gaps.join(", ")}
+                                It describes the FORM, not the service: an
+                                adapter exists and the vendor has no bot wall.
+                                Whether a given application actually completes
+                                still depends on the employer's own screening
+                                questions — 7 of 8 measured forms, not 8 — and on
+                                having the agent. The tooltip says so rather than
+                                letting a green chip imply a promise. */}
+                            {isSendableVendor(job.id) && (
+                              <Link
+                                to="/agent"
+                                onClick={(e) => e.stopPropagation()}
+                                className="inline-flex items-center gap-1 font-medium text-primary hover:underline whitespace-nowrap"
+                                title={t("jobsPage.agentAppliesTip", "This employer's application form is one our apply agent can fill and submit on its own — no CAPTCHA and no account needed. It still hands the application back to you if the employer asks something we can't answer from your profile. Needs the Apply Agent subscription.")}
+                              >
+                                <Sparkles className="w-3 h-3 shrink-0" />
+                                {t("jobsPage.agentAppliesChip", "Agent can apply")}
+                              </Link>
+                            )}
+                          </div>
+                          {/* Explainable fit, in ONE line rather than two
+                              paragraphs. The strengths and the gaps were
+                              separate blocks, so a fit-ranked card grew two
+                              extra rows of prose exactly when the reader is
+                              scanning fastest. Same facts, same order, one
+                              line — and it folds away entirely in compact
+                              density, where the tier pill already carries the
+                              verdict. */}
+                          {(strengths.length > 0 || gaps.length > 0) && (
+                            <p className={`text-[11px] text-muted-foreground mt-1 leading-snug ${density === "compact" ? "hidden" : ""}`}>
+                              {strengths.length > 0 && (
+                                <>
+                                  <span className="text-success font-medium">{t("jobsPage.youHave", "You already have:")}</span>{" "}
+                                  {strengths.join(", ")}
+                                </>
+                              )}
+                              {strengths.length > 0 && gaps.length > 0 && " · "}
+                              {gaps.length > 0 && (
+                                <>
+                                  <span className="text-primary font-medium">{t("jobsPage.addToCompete", "Add to compete:")}</span>{" "}
+                                  {gaps.join(", ")}
+                                </>
+                              )}
                             </p>
                           )}
                         </div>
+                        {/* ── THE RIGHT RAIL IS ABOUT THE READER ─────────────
+                            It used to hold ten things: the fit pill, the
+                            not-scored pill, work mode, employment type, the
+                            agency badge, applied, saved, the posting age, the
+                            first-seen fallback and the re-check stamp. Seven of
+                            those are facts about the POSTING and belong in the
+                            tiers on the left, where they can be ordered against
+                            the other facts about the posting.
+
+                            What is left is what is true of this reader and
+                            nobody else: how their résumé scored, whether they
+                            already applied, whether they saved it. Usually
+                            none of them, which is the point — an empty rail is
+                            a card with one column and a clean right edge. */}
                         <div className="flex items-center gap-2">
                           {tier && (
                             <span
@@ -7378,49 +8161,6 @@ export default function Jobs() {
                               {t("jobsPage.notScoredChip", "Not scored")}
                             </span>
                           )}
-                          {(job.workMode || (job.remote ? "remote" : null)) && (
-                            <Badge variant="secondary" className="text-[10px]">
-                              {t(`jobsPage.workMode.${job.workMode ?? "remote"}`, job.workMode ?? "remote")}
-                            </Badge>
-                          )}
-                          {/* EMPLOYMENT TYPE — the fact every competing board
-                              prints on every card and this one only let you
-                              FILTER by. The server has emitted it since the
-                              filter shipped; nothing declared or rendered it,
-                              so a searcher could ask for internships and then
-                              read a page of results that never said which
-                              postings were one.
-                              Employer-stated or nothing, the workMode rule
-                              directly above: no badge is the correct render for
-                              a posting whose feed states no type, and the same
-                              locale keys the filter chips use label it, so the
-                              chip and the card can never name one posting two
-                              different ways. */}
-                          {isEmploymentType(job.employmentType) && (
-                            <Badge
-                              variant="secondary"
-                              className="text-[10px]"
-                              title={t("jobsPage.employmentTypeProvenance", "Employment type as the employer states it on its own careers feed. Postings whose feed states no type show no tag — never a guess.")}
-                            >
-                              {t(`jobsPage.employmentType.${job.employmentType}`, EMPLOYMENT_TYPE_FALLBACK[job.employmentType])}
-                            </Badge>
-                          )}
-                          {/* AGENCY DISCLOSURE (2026-08-31 charter): agencies
-                              are carried, so the reader is told which cards
-                              are one — a stated fact beside the work mode,
-                              never a warning color. Renders only on true;
-                              ranked-path rows omit the field rather than
-                              claim false, and no badge is the right render
-                              for "not stated". */}
-                          {job.agency === true && (
-                            <Badge
-                              variant="outline"
-                              className="text-[10px]"
-                              title={t("jobsPage.agencyBadgeTip", "This employer is a staffing or recruiting agency — the role may be filled on behalf of a client. Use “Hide staffing agencies” in the filters to exclude these.")}
-                            >
-                              {t("jobsPage.agencyBadge", "Staffing agency")}
-                            </Badge>
-                          )}
                           {appliedIds.has(job.id) && (
                             <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-success shrink-0">
                               ✓ {t("jobsPage.appliedBadge", "Applied")}
@@ -7433,55 +8173,6 @@ export default function Jobs() {
                               <BookmarkCheck className="w-3 h-3" />
                               {t("jobsPage.savedBadge", "Saved")}
                             </Link>
-                          )}
-                          {d !== null && (
-                            <span
-                              className={`text-[11px] whitespace-nowrap ${d <= 2 ? "text-success font-medium" : "text-muted-foreground"}`}
-                              title={t("jobsPage.postedProvenance", "Posting age from the date the company states on its own careers feed — undated postings show no age, never a guess")}
-                            >
-                              {d === 0 ? t("jobsPage.postedToday", "today") : t("jobsPage.postedDaysAgo", "{{count}}d ago", { count: d })}
-                            </span>
-                          )}
-                          {/* THE POSITIVE FORM FOR UNDATED POSTINGS. ~89k
-                              postings (14.6%) carry no employer-stated date,
-                              and until now their card said nothing — honest,
-                              but silence where a true sentence exists. lastSeen
-                              is INSERT-time (semantically first_seen), so
-                              "first seen Xd ago" states our observation window:
-                              it CAPS how old the posting can be without
-                              claiming to know its age. Deliberately never
-                              styled as fresh (no success color at d<=2 like the
-                              posted badge above) — discovery time must never
-                              read as freshness, which is the exact substitution
-                              behind the 2.8-day-median incident. */}
-                          {d === null && daysAgo(job.lastSeen ?? null) !== null && (
-                            <span
-                              className="text-[11px] whitespace-nowrap text-muted-foreground"
-                              title={t("jobsPage.firstSeenProvenance", "This employer states no posting date, so no age is shown. This is when the posting first appeared on our board — it caps how old the posting can be, but it is our discovery date, not the employer's.")}
-                            >
-                              {daysAgo(job.lastSeen ?? null) === 0
-                                ? t("jobsPage.firstSeenToday", "first seen today")
-                                : t("jobsPage.firstSeenDaysAgo", "first seen {{count}}d ago", { count: daysAgo(job.lastSeen ?? null) })}
-                            </span>
-                          )}
-                          {/* The receipt. The whole product rests on "every posting
-                              is real and still open", and until now the only place
-                              a user could see evidence of that was inside the
-                              detail panel — after they had already decided to
-                              click. recheckedAt is job_board_verifications
-                              .verified_at, the moment we last re-read THIS
-                              company's own feed, and it is already in the list
-                              payload (attachRecheckedAt), so this costs no extra
-                              query. Absent => render nothing; a missing stamp must
-                              never be dressed up as a weaker one. */}
-                          {job.recheckedAt && !job.missingSince && (
-                            <span
-                              className="text-[11px] whitespace-nowrap text-muted-foreground inline-flex items-center gap-1"
-                              title={t("jobsPage.recheckedTip", "When we last re-read this company's own feed")}
-                            >
-                              <ShieldCheck className="w-3 h-3 text-success" aria-hidden />
-                              {t("jobsPage.verifiedAgo", "checked {{ago}}", { ago: agoLabel(job.recheckedAt, t) })}
-                            </span>
                           )}
                         </div>
                       </div>
