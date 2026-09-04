@@ -88,7 +88,8 @@ describe("the scorer in its own isolate", () => {
 
   it("(6) lastUpsertError rides the slice note onto slice_stats; chainKick exposes at", () => {
     expect(BOARD).toMatch(/lastUpsertError: string \| null \} \| null = null;/);
-    expect(BOARD).toMatch(/hit: budgetSkipped\.length > 0, lastUpsertError \};/);
+    // .41 appended heapStopped to the note (the-budget-counted-the-wrong-thing).
+    expect(BOARD).toMatch(/hit: budgetSkipped\.length > 0, lastUpsertError, heapStopped \};/);
     expect(BOARD).toMatch(/lastUpsertError: sliceBudgetNote\.lastUpsertError \? sliceBudgetNote\.lastUpsertError\.slice\(0, 200\) : null/);
     expect(BOARD).toMatch(/at: \(v\.at as string \| undefined\) \?\? at \?\? null,/);
   });

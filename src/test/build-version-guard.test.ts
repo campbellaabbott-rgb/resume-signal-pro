@@ -882,7 +882,13 @@ const PINNED = {
   //   the fetch loop and overwrite one row as the slice proceeds, so a slice
   //   that dies still says how far it got and what it was holding. No lever
   //   reads them.
-  buildVersion: "2026-08-30.40",
+  //
+  // .41 — the budget counted postings; the isolate runs out of bytes
+  //   (the-budget-counted-the-wrong-thing.test.ts). Measured with .40's
+  //   breadcrumbs: heap tracks boards processed, not postings, and the slice
+  //   that died at 200MB had spent 4.5% of its posting budget. A slice now
+  //   stops taking new boards at 150MB and finishes cleanly instead of dying.
+  buildVersion: "2026-08-30.41",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {

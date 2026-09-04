@@ -69,11 +69,11 @@ describe("nothing bounded the sum", () => {
   });
 
   it("records the outcome where status already looks", () => {
-    const note = CODE.indexOf("sliceBudgetNote = { fetched: fetchedInSlice, skipped: budgetSkipped.length, hit: budgetSkipped.length > 0, lastUpsertError };");
+    const note = CODE.indexOf("sliceBudgetNote = { fetched: fetchedInSlice, skipped: budgetSkipped.length, hit: budgetSkipped.length > 0, lastUpsertError, heapStopped };");
     const pulse = CODE.indexOf("await stampSliceWork(client, inHotPhase, sliceWallStart);");
     expect(note, "budget note missing").toBeGreaterThan(0);
     expect(pulse, "the note must be set before the pulse that follows the loop").toBeGreaterThan(note);
-    expect(CODE).toMatch(/budgetFetched: sliceBudgetNote\.fetched, budgetSkipped: sliceBudgetNote\.skipped, budgetHit: sliceBudgetNote\.hit/);
+    expect(CODE).toMatch(/budgetFetched: sliceBudgetNote\.fetched, budgetSkipped: sliceBudgetNote\.skipped, budgetHit: sliceBudgetNote\.hit, heapStopped: sliceBudgetNote\.heapStopped/);
   });
 
   it("does not gate deep-lane ENTRY — that would turn the cap into a truncation", () => {

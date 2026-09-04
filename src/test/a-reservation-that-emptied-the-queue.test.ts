@@ -32,7 +32,13 @@ const num = (name: string) => Number(CODE.match(new RegExp(`const ${name} = ([0-
 describe("a reservation that emptied the queue", () => {
   it("defers only on LANDED postings, and never inside the reservation branch", () => {
     expect(CODE).toMatch(/if \(fetchedInSlice >= SLICE_POSTING_BUDGET\) \{ budgetSkipped\.push\(s\.token\); continue; \}/);
-    expect((CODE.match(/budgetSkipped\.push\(/g) ?? []).length, "one deferral site, and it is the landed one").toBe(1);
+    // .41 added a SECOND deferral, on heap — the quantity that actually runs
+    // out (the-budget-counted-the-wrong-thing.test.ts). Both are deferrals of
+    // a board never attempted; what must never happen is a deferral inside the
+    // reservation branch, which is what emptied the queue in the first place.
+    expect((CODE.match(/budgetSkipped\.push\(/g) ?? []).length, "two deferral sites: landed postings, and heap").toBe(2);
+    expect(CODE).toMatch(/if \(heapNow !== undefined && heapNow >= HEAP_SOFT_LIMIT_MB\) \{\s*heapStopped = true;\s*budgetSkipped\.push\(s\.token\);\s*continue;\s*\}/);
+    expect(CODE, "neither deferral may sit in the reservation branch").not.toMatch(/inFlightReserve >= SLICE_POSTING_BUDGET\) \{\s*budgetSkipped/);
   });
 
   it("retires the worker and returns the board when the reservation fills the budget", () => {
