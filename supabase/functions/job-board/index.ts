@@ -6069,9 +6069,13 @@ Deno.serve(async (req) => {
         // middle silently shifts every variable after it onto the wrong result.
         client.from("job_board_meta").select("v, updated_at").eq("k", "chain_kick").maybeSingle(),
         client.from("job_board_meta").select("v").eq("k", "slice_stats").maybeSingle(),
-        // desc_coverage: written by refresh_job_board_stats (20260903210000)
-        // beside date_coverage. The scoreable share of the board per vendor —
-        // the ceiling on every fit-quality effort, invisible until now.
+        // desc_coverage: written by refresh_job_board_stats (20260903210000,
+        // predicate re-issued in 20260904090000) beside date_coverage. Per
+        // vendor, how many live postings hold a stored description at all —
+        // the complement of what the desc sweep selects, so total - described
+        // is that vendor's sweep backlog. Not "scoreable": the scorer's own
+        // longer bar is not one any writer selects on, and counting against
+        // it opened every description on the board each tick.
         client.from("job_board_stats_rollup").select("v, computed_at").eq("k", "desc_coverage").maybeSingle(),
       ]);
       const pgV = (prog.data?.v ?? {}) as { hot?: number; cold?: number; coldDone?: number; failedAcc?: string[]; failedTotal?: number };
