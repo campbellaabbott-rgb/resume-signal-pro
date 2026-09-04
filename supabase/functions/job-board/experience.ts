@@ -10,7 +10,9 @@
 //      level.
 // Pure — no I/O — so it is unit-testable and runs at both ingestion and backfill.
 
-export const EXPERIENCE_BANDS = ["entry", "mid", "senior", "expert"] as const;
+// Shared with public-api via ../_shared/board-domains.ts — see that file.
+export { EXPERIENCE_BANDS } from "../_shared/board-domains.ts";
+import { EXPERIENCE_BANDS } from "../_shared/board-domains.ts";
 export type ExperienceBand = typeof EXPERIENCE_BANDS[number];
 
 export function isExperienceBand(x: string): x is ExperienceBand {

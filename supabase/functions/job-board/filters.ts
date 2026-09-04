@@ -36,7 +36,10 @@ import { isExperienceBand } from "./experience.ts";
 import { SENDABLE_VENDORS } from "../_shared/apply-automation.ts";
 import type { JobSourceKind } from "./sources.ts";
 
-export const WORK_MODES = ["remote", "hybrid", "onsite"] as const;
+// Defined in ../_shared/board-domains.ts so public-api's bundle can read the
+// same list; re-exported here because this file is the board's filter contract.
+export { WORK_MODES } from "../_shared/board-domains.ts";
+import { WORK_MODES } from "../_shared/board-domains.ts";
 /** Closed domain, matching the column CHECK — values come from vendors'
  *  structured fields only (nine of sixteen carry one, measured 2026-08-28). */
 export const EMPLOYMENT_TYPES = ["full_time", "part_time", "contract", "temporary", "internship"] as const;
@@ -76,28 +79,12 @@ export const SALARIED_PERIODS = ["year", "month"] as const;
  * two lists — this is the same contract src/config/ats-vendors.ts holds against
  * apply-automation.ts, enforced by the typechecker instead of a test.
  */
-export const BOARD_VENDORS = [
-  "greenhouse",
-  "lever",
-  "ashby",
-  "smartrecruiters",
-  "workable",
-  "bamboohr",
-  "recruitee",
-  "teamtailor",
-  "personio",
-  "breezy",
-  "rippling",
-  "workday",
-  "pinpoint",
-  "oracle",
-  "icims",
-  "usajobs",
-  "paylocity",
-  "ukg",
-  "adp",
-  "jazzhr",
-] as const satisfies readonly JobSourceKind[];
+export { BOARD_VENDORS } from "../_shared/board-domains.ts";
+import { BOARD_VENDORS } from "../_shared/board-domains.ts";
+// Extras are still caught here, where JobSourceKind lives: a vendor in the
+// shared list that sources.ts does not know fails this assignment.
+const _vendorsAreKinds: readonly JobSourceKind[] = BOARD_VENDORS;
+void _vendorsAreKinds;
 
 type _UnlistedKind = Exclude<JobSourceKind, (typeof BOARD_VENDORS)[number]>;
 // If sources.ts gains a vendor this list does not carry, `_UnlistedKind` stops

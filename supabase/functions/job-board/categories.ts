@@ -75,26 +75,9 @@
 // Spanish-language titles (ejecutivo 16). "Other" outnumbered engineering.
 export const CATEGORIZE_VERSION = 9;
 
-export const JOB_CATEGORIES = [
-  "engineering",
-  "data_ai",
-  "design",
-  "product",
-  "marketing",
-  "sales",
-  "customer",
-  "finance",
-  "legal",
-  "people_hr",
-  "operations",
-  "healthcare",
-  "science",
-  "education",
-  "hospitality_retail",
-  "security",
-  "admin",
-  "other",
-] as const;
+// Shared with public-api via ../_shared/board-domains.ts — see that file.
+export { JOB_CATEGORIES } from "../_shared/board-domains.ts";
+import { JOB_CATEGORIES } from "../_shared/board-domains.ts";
 
 export type JobCategory = (typeof JOB_CATEGORIES)[number];
 
