@@ -112,7 +112,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-30.48"; // .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
+const BUILD_VERSION = "2026-08-30.49"; // .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
 // .36: JazzHR joins as vendor #20 (vendors/jazzhr.ts; a verified sample of boards enters sources.ts, so the bump is load-bearing for the bootstrap lane). .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
 // .23: bug-sweep round — the agency opt-out reaches the rescue tiers (it was bound in search_jobs only, so a rescue served the rows the caller hid, undisclosed); the per-company cap stops swallowing the employer it just surfaced; a withdrawn count no longer prints "not hiring"; the reverted pipe fix is restored
 
@@ -403,7 +403,23 @@ const SLICE_WALL_BUDGET_MS = 90_000;
 // threshold is, backs off by itself when it hits it, and re-finds it after a
 // deploy or a change in board mix — without me picking a number.
 const MIN_BOARDS_PER_SLICE = 8;
-const MAX_BOARDS_PER_SLICE = 80;
+// MEASURED, AT LAST. The .47 ramp was built to find this number and it found
+// it within four minutes of deploying:
+//     budget  8  slice completes   (works 3121 -> 3123)
+//     budget 16  slice completes   (works 3123 -> 3125)
+//     budget 24  slice DIES        (chainKick http_error, trace frozen at
+//                                   "loop 24", works stops at 3125)
+// So the threshold this file has chased through five versions — the posting
+// budget, heap, wall time, and two cap guesses — sits between 16 and 24
+// boards. The cause is still unknown; the boundary is not.
+//
+// The ceiling is the last value observed to SURVIVE, not the first to die. A
+// ceiling of 80 left the ramp oscillating 8 -> 16 -> 24 -> death -> 8, and a
+// death costs the whole chain plus a wait for the next cron tick, which is
+// strictly worse than simply running at 16. So the ramp now climbs 8 -> 16 and
+// holds there, and the machinery stays: raise this to 20 and the ramp will
+// tell us within minutes whether 20 lives, without another guess.
+const MAX_BOARDS_PER_SLICE = 16;
 const BOARDS_RAMP_STEP = 8;
 const CAPPED_VISIT_VENDORS = new Set(["workday", "oracle", "icims", "smartrecruiters", "rippling"]);
 const COLD_SLICE = 80; // cold boards are small (that's why they're cold); 80/hop at CONCURRENCY=8 is 10 sequential rounds — well under the edge wall-time limit. Rotation speed comes from concurrency + hops-per-pass, never bigger slices (proven-safe size).

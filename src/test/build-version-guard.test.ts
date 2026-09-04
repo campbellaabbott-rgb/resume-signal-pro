@@ -929,7 +929,11 @@ const PINNED = {
   //   "registered nurse"; spelling it out never found a title that says RN.
   //   The reverse index is derived from the same table at module load, so the
   //   two directions cannot drift.
-  buildVersion: "2026-08-30.48",
+  //
+  // .49 — the ramp measured the threshold: 16 lives, 24 dies. The ceiling is
+  //   the last value observed to survive, because a ceiling above it leaves
+  //   the ramp oscillating into a death that costs the chain and a cron wait.
+  buildVersion: "2026-08-30.49",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {
