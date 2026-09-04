@@ -236,7 +236,7 @@ Deno.serve(async (req) => {
     if (path === "/v1/stats") return await conditional(await stats(client, rateHeaders));
     if (path === "/v1/fit" || path === "/v1/fit/") {
     if (req.method !== "POST") return fail(405, "method_not_allowed", "POST a JSON body to /v1/fit — a résumé cannot ride a query string.", rateHeaders);
-    return await fitResume(req, rateHeaders, d.key_tier);
+    return await fitResume(req, rateHeaders, d.key_tier, d.api_key_id);
   }
     if (path === "/v1/usage") return await usage(client, d.api_key_id, rateHeaders);
     return fail(404, "no_such_endpoint", `Unknown path ${path}. See /v1 for the endpoint list.`, rateHeaders);
@@ -1104,8 +1104,17 @@ async function companies(client: SupabaseClient, url: URL, headers: Record<strin
  * Paid, like engine=ranked: it is the site's differentiating feature. Scoring
  * goes to job-fit, the scorer's own isolate — never to job-board, which shares
  * a worker pool with the ingest and answered 546 to readers for that reason.
+ *
+ * THE SCORER'S DAILY BUCKET IS THIS KEY'S, NOT THE RUNTIME'S. job-fit keys its
+ * 24h allowance on x-forwarded-for, and an edge-to-edge fetch carries the
+ * runtime's egress address — so every paying customer shared one 120/day row
+ * and its exhaustion came back here as a 502 "retry shortly" that could not
+ * succeed for a day. The call now names its bucket (x-rb-bucket: key:<id>)
+ * under the service-role bearer job-fit requires before it trusts the name,
+ * and a 429 from the scorer is a 429 to the customer, with the same code and
+ * Retry-After shape their key's own limits use.
  */
-async function fitResume(req: Request, headers: Record<string, string>, tier: string | null) {
+async function fitResume(req: Request, headers: Record<string, string>, tier: string | null, apiKeyId: string | null) {
   const paid = tier != null && tier !== "free" && tier !== "trial";
   if (!paid) {
     return fail(402, "upgrade_required", "POST /v1/fit is a paid feature — résumé-to-job fit scoring. See https://resumebooster.work/data-api.", headers);
@@ -1130,11 +1139,23 @@ async function fitResume(req: Request, headers: Record<string, string>, tier: st
   let fits: Record<string, number | null> = {}, matched: Record<string, string[]> = {}, missing: Record<string, string[]> = {};
   if (ids.length) {
     const anon = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+    const service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
     const res = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/job-fit`, {
-      method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${anon}`, apikey: anon },
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json", apikey: anon,
+        // The service bearer is what lets job-fit believe the bucket name.
+        Authorization: `Bearer ${service}`,
+        ...(apiKeyId ? { "x-rb-bucket": `key:${apiKeyId}` } : {}),
+      },
       body: JSON.stringify({ action: "fit-batch", resumeText, ids }), signal: AbortSignal.timeout(30_000),
     });
     const f = await res.json().catch(() => ({}));
+    if (res.status === 429) {
+      // The scorer's bucket for THIS key is spent — a limit, not an outage.
+      const limit = typeof f?.limit === "number" ? f.limit : 1000;
+      return fail(429, "rate_limited", `This key's daily fit-scoring allowance (${limit} calls) is used; it resets 24 hours after the first scored call.`, { ...headers, "Retry-After": "3600" });
+    }
     if (!res.ok || !f?.fits) return fail(502, "scorer_unavailable", "The fit scorer did not respond. Retry shortly.", headers);
     fits = f.fits; matched = f.matched ?? {}; missing = f.missing ?? {};
   }
