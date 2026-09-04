@@ -26,6 +26,7 @@ const BOARD = strip(read("supabase/functions/job-board/index.ts"));
 const API = strip(read("supabase/functions/public-api/index.ts"));
 const MCP = strip(read("supabase/functions/agent-mcp/index.ts"));
 const JOBS = strip(read("src/pages/Jobs.tsx"));
+const LIVE = strip(read("src/components/LiveMatches.tsx"));
 
 describe("the scorer in its own isolate", () => {
   it("(4) job-fit exists, is registered, and carries both actions with the same bounds", () => {
@@ -42,6 +43,12 @@ describe("the scorer in its own isolate", () => {
   it("(4) the site calls job-fit, and job-board keeps its copies for bundles that have not reloaded", () => {
     expect((JOBS.match(/functions\.invoke\("job-fit"/g) ?? []).length).toBe(2);
     expect(JOBS, "no fit call may still target the ingest function").not.toMatch(/invoke\("job-board",\s*\{\s*body:\s*\{\s*action:\s*"fit-(batch|terms)"/);
+    // The first version of this pin counted only Jobs.tsx and declared the
+    // site migrated while the report's LiveMatches still scored through the
+    // co-tenant copy — the exact function whose 546 motivated the move. Every
+    // site surface that sends a résumé to a scorer is listed here, not one.
+    expect((LIVE.match(/functions\.invoke\("job-fit"/g) ?? []).length).toBe(1);
+    expect(LIVE, "no fit call may still target the ingest function").not.toMatch(/invoke\("job-board",\s*\{\s*body:\s*\{\s*action:\s*"fit-(batch|terms)"/);
     expect(BOARD).toMatch(/action === "fit-batch"/);
     expect(BOARD).toMatch(/action === "fit-terms"/);
   });
