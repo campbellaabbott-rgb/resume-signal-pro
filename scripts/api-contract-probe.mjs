@@ -21,8 +21,17 @@
 // metering headers a client needs to back off, and the `basis` sentence that
 // keeps a published number honest about what it counts.
 //
-// Read-only. It calls no write endpoint and requests no application. ~22 calls,
-// well inside the free tier's 60/min.
+// Read-only. It calls no write endpoint and requests no application. ~43 calls
+// as of 2026-09-04 (the "~22" this line used to claim was stale by a dozen) —
+// still inside the free tier's 60 requests/minute, but no longer comfortably:
+// another dozen checks and the run has to be split, or it will start measuring
+// its own rate limit instead of the API.
+//
+// RB_API_KEY IS A FREE KEY, and several assertions below depend on it: the
+// paid tools must REFUSE it (fit_resume in band, engine=ranked with 402) and
+// key_status must report that refusal in advance. If you point this at a paid
+// key, those three checks are the ones that will "fail" without anything being
+// wrong.
 
 import { readFileSync } from "node:fs";
 
@@ -393,12 +402,41 @@ console.log("\n[mcp] handshake, catalogue, and the keyed tools");
 }
 {
   const r = await mcp("tools/list");
-  const names = (r.body?.result?.tools ?? []).map((t) => t.name);
-  for (const t of ["search_jobs", "get_job", "check_apply_support", "request_application", "application_status", "board_stats", "debug_search", "fit_resume"]) {
+  const tools = r.body?.result?.tools ?? [];
+  const names = tools.map((t) => t.name);
+  for (const t of ["search_jobs", "get_job", "get_jobs", "check_jobs_open", "check_apply_support",
+                   "request_application", "application_status", "board_stats", "key_status",
+                   "debug_search", "fit_resume"]) {
     ok(names.includes(t), `tools/list advertises ${t}`);
   }
-  const missingSchema = (r.body?.result?.tools ?? []).filter((t) => !t.inputSchema).map((t) => t.name);
+  const missingSchema = tools.filter((t) => !t.inputSchema).map((t) => t.name);
   ok(missingSchema.length === 0, "every tool ships an inputSchema", missingSchema.join(",") || "all present");
+  // Without annotations a client must assume every tool might be destructive
+  // and interrupt its human before board_stats. The hints are only useful if
+  // they are ON THE WIRE — a client reads them from tools/list, not from source.
+  const missingAnn = tools.filter((t) => !t.annotations || typeof t.annotations.readOnlyHint !== "boolean").map((t) => t.name);
+  ok(missingAnn.length === 0, "every tool ships annotations with readOnlyHint", missingAnn.join(",") || "all present");
+  const missingTitle = tools.filter((t) => !t.title).map((t) => t.name);
+  ok(missingTitle.length === 0, "every tool ships a display title", missingTitle.join(",") || "all present");
+  const acting = tools.filter((t) => t.annotations?.readOnlyHint !== true).map((t) => t.name);
+  ok(acting.length === 1 && acting[0] === "request_application",
+    "exactly one tool is NOT read-only, and it is request_application", acting.join(",") || "none");
+  const ra = tools.find((t) => t.name === "request_application");
+  ok(ra?.annotations?.destructiveHint === true, "request_application asks the client to confirm (destructiveHint)");
+  ok(ra?.annotations?.idempotentHint === true, "request_application is idempotent — a retry does not apply twice");
+  // outputSchema is what lets a client parse rows instead of guessing at
+  // JSON-in-text; a tool that declares one must also SEND structuredContent,
+  // asserted on search_jobs below.
+  const missingOut = ["search_jobs", "get_job", "get_jobs", "check_jobs_open", "key_status", "fit_resume"]
+    .filter((n) => !tools.find((t) => t.name === n)?.outputSchema);
+  ok(missingOut.length === 0, "the row-returning tools declare an outputSchema", missingOut.join(",") || "all present");
+  const sj = tools.find((t) => t.name === "search_jobs");
+  for (const p of ["companies", "experience", "postedAfter", "includeUnstatedPay"]) {
+    ok(Boolean(sj?.inputSchema?.properties?.[p]), `search_jobs advertises ${p}`);
+  }
+  const ds = tools.find((t) => t.name === "debug_search");
+  ok(JSON.stringify(ds?.inputSchema?.properties ?? {}) === JSON.stringify(sj?.inputSchema?.properties ?? {}),
+    "debug_search takes the SAME arguments as search_jobs, as its description claims");
 }
 {
   const r = await mcp("tools/call", { name: "board_stats", arguments: {} });
@@ -406,13 +444,114 @@ console.log("\n[mcp] handshake, catalogue, and the keyed tools");
   ok(Number.isFinite(j?.servablePostings), "board_stats returns servablePostings", String(j?.servablePostings));
   ok(Number.isFinite(j?.freshnessWindowDays), "board_stats names its freshness window", String(j?.freshnessWindowDays));
 }
+let mcpIds = [];
+let mcpToken = null;
 {
   const r = await mcp("tools/call", { name: "search_jobs", arguments: { query: "registered nurse", limit: 3 } });
   const j = toolJson(r.body);
   const jobs = j?.jobs ?? [];
+  mcpIds = jobs.map((x) => x.id).filter(Boolean);
+  mcpToken = jobs[0]?.companyToken ?? null;
   ok(jobs.length > 0, "search_jobs returns rows", `${jobs.length}`);
   ok(jobs.every((x) => /nurse/i.test(x.title ?? "")), "search_jobs rows match the query");
   ok(jobs.every((x) => x.applyUrl), "search_jobs rows carry an applyUrl");
+  ok(jobs.every((x) => typeof x.companyToken === "string" && x.companyToken.length > 0),
+    "search_jobs rows carry companyToken — the handle the `companies` filter takes");
+  // A tool that declares an outputSchema must SEND the structured half, or the
+  // schema describes nothing a client can check.
+  const sc = r.body?.result?.structuredContent;
+  ok(sc && typeof sc === "object" && Array.isArray(sc.jobs),
+    "search_jobs answers with structuredContent, not only JSON-in-text", sc ? "present" : "absent");
+}
+{
+  // THE STRUCTURED PAY THE BOARD HAD ALREADY PARSED. Until 2026-09-04 the card
+  // carried the employer's prose and nothing else, so an agent that filtered on
+  // pay could not read the number it had filtered by — it had to re-parse
+  // "$120k-$140k DOE" to sort its own results.
+  const r = await mcp("tools/call", { name: "search_jobs", arguments: { query: "nurse", hasStatedPay: true, limit: 10 } });
+  const jobs = toolJson(r.body)?.jobs ?? [];
+  const priced = jobs.filter((x) => typeof x.salaryMinAnnual === "number");
+  ok(jobs.length > 0 && priced.length === jobs.length,
+    "hasStatedPay rows carry a numeric salaryMinAnnual", `${priced.length}/${jobs.length}`);
+  ok(jobs.every((x) => x.salaryMinAnnual === undefined || typeof x.salaryMinAnnual === "number"),
+    "a card never states pay it does not have — the field is ABSENT, never 0");
+}
+{
+  // The parity filters. Accepted is not enough: applied, and named in
+  // ignoredFilters if not — the board's cardinal rule, on the agent surface.
+  const r = await mcp("tools/call", { name: "search_jobs", arguments: { query: "engineer", experience: "senior", limit: 10 } });
+  const j = toolJson(r.body);
+  const jobs = j?.jobs ?? [];
+  ok(!(j?.ignoredFilters ?? []).includes("experience"), "experience is not ignored", JSON.stringify(j?.ignoredFilters ?? []));
+  ok(jobs.length === 0 || jobs.every((x) => x.experienceBand === "senior"),
+    "experience is APPLIED and the band is returned", `${jobs.length} rows`);
+  if (mcpToken) {
+    const c = await mcp("tools/call", { name: "search_jobs", arguments: { companies: mcpToken, limit: 5 } });
+    const cj = toolJson(c.body);
+    const rows = cj?.jobs ?? [];
+    ok(!(cj?.ignoredFilters ?? []).includes("companies"),
+      "companies binds — it must reach the board as an array, not a string", JSON.stringify(cj?.ignoredFilters ?? []));
+    ok(rows.length > 0 && rows.every((x) => x.companyToken === mcpToken),
+      "companies is APPLIED", `${rows.length} rows for ${mcpToken}`);
+  }
+}
+{
+  // ONE CALL FOR A WHOLE SHORTLIST. get_job is one posting per metered call
+  // against 1,000/day; re-verifying twenty spent twenty.
+  const ids = [...mcpIds, "greenhouse:not-a-real-employer:000000"];
+  const r = await mcp("tools/call", { name: "check_jobs_open", arguments: { ids } });
+  const j = toolJson(r.body);
+  ok(j?.open && typeof j.open === "object", "check_jobs_open answers a map of ids");
+  ok(Object.keys(j?.open ?? {}).length === ids.length, "every id sent gets an answer", `${Object.keys(j?.open ?? {}).length}/${ids.length}`);
+  ok(mcpIds.every((id) => j?.open?.[id] === true), "the ids search just served read open");
+  ok(j?.open?.["greenhouse:not-a-real-employer:000000"] === false, "an id this board never carried reads closed");
+  // A published claim names its basis — "open" here is the index, not a live
+  // probe of the employer's site, and the answer has to say which.
+  ok(typeof j?.basis === "string" && j.basis.length > 60, "check_jobs_open states what 'open' means", `${String(j?.basis ?? "").length} chars`);
+}
+{
+  const ids = [...mcpIds.slice(0, 2), "lever:not-a-real-employer:000000"];
+  const r = await mcp("tools/call", { name: "get_jobs", arguments: { ids } });
+  const j = toolJson(r.body);
+  ok(Array.isArray(j?.jobs) && Array.isArray(j?.unavailable), "get_jobs answers jobs + unavailable");
+  ok((j?.jobs ?? []).length === mcpIds.slice(0, 2).length, "the good ids come back", `${(j?.jobs ?? []).length}`);
+  ok((j?.jobs ?? []).every((x) => typeof x.description === "string" && x.description.length > 0),
+    "each batched job carries its description");
+  ok((j?.unavailable ?? []).some((u) => u.id === "lever:not-a-real-employer:000000" && u.reason === "notFound"),
+    "one bad id is named notFound, not thrown — the other ids survive it",
+    JSON.stringify(j?.unavailable ?? []).slice(0, 120));
+  // An id this board does not carry is a fact about the id. It used to arrive
+  // as "the get_job tool hit an internal error. Try again shortly" — a retry
+  // instruction for a call that can never succeed.
+  const one = await mcp("tools/call", { name: "get_job", arguments: { id: "lever:not-a-real-employer:000000" } });
+  const oj = toolJson(one.body);
+  ok(one.body?.result?.isError !== true && oj?.notFound === true,
+    "get_job answers an unknown id as 'no posting', never as an internal error", oj?.note ?? JSON.stringify(oj)?.slice(0, 80));
+  const bare = await mcp("tools/call", { name: "get_jobs", arguments: { ids: mcpIds.slice(0, 2), includeDescription: false } });
+  ok((toolJson(bare.body)?.jobs ?? []).every((x) => x.description === undefined),
+    "includeDescription=false returns cards only");
+}
+{
+  // THE KEY, ASKED INSTEAD OF INFERRED. Rate and quota used to travel only in
+  // HTTP headers, which an MCP client never surfaces to the model; apply
+  // readiness could only be learned by attempting an application.
+  const r = await mcp("tools/call", { name: "key_status", arguments: {} });
+  const j = toolJson(r.body);
+  ok(typeof j?.key?.tier === "string", "key_status names the tier", j?.key?.tier);
+  ok(Number.isFinite(j?.rate?.limit) && Number.isFinite(j?.rate?.remaining), "key_status states the rate limit and what is left",
+    `${j?.rate?.remaining}/${j?.rate?.limit}`);
+  ok(Number.isFinite(j?.quota?.limit) && Number.isFinite(j?.quota?.remaining), "key_status states the daily quota and what is left",
+    `${j?.quota?.remaining}/${j?.quota?.limit}`);
+  ok(Number.isFinite(j?.quota?.resetsInSeconds) && Number.isFinite(j?.rate?.resetsInSeconds), "key_status says when each window resets");
+  // The probe key is FREE, so the paid tools must read false here — and that
+  // must agree with the 402 /v1 gives and the in-band refusal fit_resume gives.
+  ok(j?.key?.paid === false, "the probe key reports as free", String(j?.key?.paid));
+  ok(j?.features?.fit_resume === false && j?.features?.rankedEngine === false,
+    "key_status refuses the paid features in ADVANCE, matching what they answer");
+  ok(typeof j?.apply?.ready === "boolean" && Array.isArray(j?.apply?.blockers),
+    "key_status states apply readiness with the blockers named");
+  ok(j.apply.ready === true || j.apply.blockers.length > 0, "a not-ready answer always names at least one blocker");
+  ok(r.body?.result?.structuredContent?.key !== undefined, "key_status answers with structuredContent too");
 }
 {
   // The reason this tool exists: turning "why did I get that?" into one call.
