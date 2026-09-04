@@ -83,10 +83,14 @@ describe("natural job-search phrasing survives", () => {
     // "Maintenance II-ARP". A typed query is served by the ranked path, and
     // that path tsquery-ises qText — which was still the raw string. The
     // browse path is the one nobody types filler into.
-    expect(FN).toMatch(/const qText = qt\.terms\.join\(" "\)/);
+    // Re-anchored 2026-09-04: the join became phraseText(qt.terms), which is
+    // the same join with each multi-word (quoted) term put back in its quotes
+    // — see a-quoted-phrase-must-reach-the-search-engine. Still qt.terms, never
+    // the raw string.
+    expect(FN).toMatch(/const qText = phraseText\(qt\.terms\)/);
     // The count probe must ask the same question, or the total disagrees with
     // the results on screen.
-    expect(FN).toMatch(/const qTextC = qtC\.terms\.join\(" "\)/);
+    expect(FN).toMatch(/const qTextC = phraseText\(qtC\.terms\)/);
     // Both keep the raw-text fallback for an all-filler query — now guarded so
     // it does not fire when the query was only a pay figure.
     expect((FN.match(/liftedSalary \? "" : String\(body\.q \?\? ""\)\.trim\(\)\.slice\(0, 200\)/g) ?? []).length)

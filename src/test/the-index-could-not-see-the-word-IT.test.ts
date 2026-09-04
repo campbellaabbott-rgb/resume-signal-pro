@@ -206,20 +206,25 @@ describe("the index can see the words people search for", () => {
     expect(fn, "ftsSafe is missing").not.toBe("");
     // A comma ends an or() branch and a parenthesis closes the filter — this
     // board already shipped that bug on a location or() splitting at ", TX".
-    // Quotes are stripped rather than escaped: websearch_to_tsquery reads them
-    // as phrase syntax, and a half-open phrase is a parse error, not a search.
+    // The DOUBLE quote left this list on 2026-09-04: a balanced pair is
+    // websearch_to_tsquery's phrase syntax — the thing the search tip promises
+    // — and ftsSafe only ever feeds a plain wfts() filter, which PostgREST
+    // reads verbatim. (The old note that a half-open phrase is a parse error
+    // was refuted in pglite: the parser silently reads a phrase to the end of
+    // the query. An ODD quote count is therefore stripped whole; that half is
+    // pinned in a-quoted-phrase-must-reach-the-search-engine.)
     // Asserted behaviourally: a character class is easy to get subtly wrong
     // and easy to assert vacuously. Reconstruct the shipped regex and run it.
     const m = /return t\.replace\((\/\[[^/]*\]\/g)/.exec(fn);
     expect(m, "could not read ftsSafe's character class").not.toBeNull();
     // eslint-disable-next-line no-eval
     const cls: RegExp = eval(m![1]);
-    for (const ch of [",", "(", ")", '"', "'", ":"]) {
+    for (const ch of [",", "(", ")", "'", ":"]) {
       expect(cls.test(ch), `ftsSafe must strip ${ch} — it would truncate the filter`).toBe(true);
       cls.lastIndex = 0;
     }
-    // and must NOT strip ordinary word characters
-    for (const ch of ["a", "1", "&", "+", "#", "-"]) {
+    // and must NOT strip ordinary word characters, nor the phrase quote
+    for (const ch of ["a", "1", "&", "+", "#", "-", '"']) {
       expect(cls.test(ch), `ftsSafe must keep ${ch}`).toBe(false);
       cls.lastIndex = 0;
     }

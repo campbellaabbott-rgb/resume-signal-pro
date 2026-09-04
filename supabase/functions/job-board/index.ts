@@ -5303,12 +5303,19 @@ function liftIntentFilters(
  * another filter — silently, producing a query nobody wrote. A location or()
  * already shipped that bug here by splitting on ", TX".
  *
- * Quotes are stripped rather than escaped because websearch_to_tsquery treats
- * them as phrase syntax, and a half-open phrase from a stray quote is a parse
- * error rather than a search.
+ * BALANCED "…" PAIRS PASS THROUGH. They are websearch_to_tsquery's phrase
+ * syntax — the one thing the search tip promises — and every caller of this
+ * function binds a plain wfts() filter, never an or() branch, so PostgREST
+ * reads the value verbatim and a quote cannot close anything early. Only an
+ * ODD quote count is stripped, and then all of them: measured in pglite,
+ * websearch_to_tsquery('simple', '"registered nurse') does NOT error — it
+ * quietly reads a phrase running to the end of the query, which is a
+ * different search from the one typed. (The old note here, that a half-open
+ * phrase is a parse error, was wrong: it is a silent one.)
  */
 function ftsSafe(t: string): string {
-  return t.replace(/[(),."'\\:]/g, " ").replace(/\s+/g, " ").trim();
+  if (((t.match(/"/g) ?? []).length & 1) === 1) t = t.replace(/"/g, " ");
+  return t.replace(/[(),.'\\:]/g, " ").replace(/\s+/g, " ").trim();
 }
 
 /**
@@ -5343,8 +5350,32 @@ function ftsQuery(raw: string): string {
   return safe;
 }
 
+/**
+ * A balanced "…" pair is ONE term: its words, in order, joined by single
+ * spaces. Everything outside the pairs tokenises exactly as before, and a
+ * stray unpaired quote is stripped by sanitizeTerm as it always was.
+ *
+ * WHY HERE AND NOT IN sanitizeTerm. The tip under the search box has promised
+ * '"quotes" match exact phrases' since 2026-07-18, and since 2026-08-20 the
+ * quote has been in sanitizeTerm's strip class — rightly, because a typed
+ * quote inside a quoted or() value closes it early (a-state-is-not-a-substring
+ * pins that). So the promise was false for six weeks: search_jobs received
+ * `product designer` and websearch_to_tsquery read it as product AND designer.
+ * Tokenising the pairs BEFORE the per-token sanitiser keeps both facts true:
+ * the phrase survives as a multi-word term, and no quote ever reaches an ILIKE.
+ *
+ * Every ILIKE consumer of `terms` — the browse or(), count_jobs_capped, the
+ * close-match title check — gets the phrase unquoted, and a contiguous
+ * substring match on "registered nurse" already IS an adjacency match. The
+ * tsquery consumers take phraseText(), which puts the quotes back so the
+ * parser emits 'regist' <-> 'nurs'. A single quoted word is just a word.
+ */
 function queryTerms(raw: unknown): { terms: string[]; dropped: string[]; liftedSalary: boolean } {
-  const all = String(raw ?? "").toLowerCase().split(/\s+/).map(sanitizeTerm).filter(Boolean);
+  const all = (String(raw ?? "").toLowerCase().match(/"[^"]*"|\S+/g) ?? [])
+    .map((t) => t.length >= 2 && t.startsWith('"') && t.endsWith('"')
+      ? t.slice(1, -1).split(/\s+/).map(sanitizeTerm).filter(Boolean).join(" ")
+      : sanitizeTerm(t))
+    .filter(Boolean);
   // The money token is lifted into the salary filter by normalizeFilters, so
   // it must not also be ANDed against every title — that returned zero for
   // "100k engineer".
@@ -5372,6 +5403,17 @@ function queryTerms(raw: unknown): { terms: string[]; dropped: string[]; liftedS
     return { terms: all, dropped: [], liftedSalary: false };
   }
   return { terms: kept, dropped: all.filter((t) => QUERY_FILLER.has(t)), liftedSalary: money !== null };
+}
+
+/**
+ * The query as the tsquery parser must see it: each multi-word term back in
+ * its quotes, so websearch_to_tsquery reads it as a phrase ('regist' <->
+ * 'nurs' & 'chicago', verified in pglite against the live search_jobs body).
+ * Single-word terms are untouched, so an unquoted query round-trips
+ * byte-for-byte and nothing about it changes.
+ */
+function phraseText(terms: readonly string[]): string {
+  return terms.map((t) => (/\s/.test(t) ? `"${t}"` : t)).join(" ");
 }
 
 /**
@@ -10263,7 +10305,9 @@ async function serveList(
   // derivation is what the filter contract forbids — two copies drift until the
   // sidebar answers a different question from the page.
   const qt = queryTerms(body.q);
-  const qText = qt.terms.join(" ").slice(0, 200) || (qt.liftedSalary ? "" : String(body.q ?? "").trim().slice(0, 200));
+  // phraseText, not a plain join: a quoted phrase is one term here and must
+  // reach the tsquery parser back inside its quotes, or the tip is a lie.
+  const qText = phraseText(qt.terms).slice(0, 200) || (qt.liftedSalary ? "" : String(body.q ?? "").trim().slice(0, 200));
 
   if (body.facetCounts === true) {
     // THE COUNTS BESIDE THE RESULTS HAVE TO BE THE SAME KIND OF NUMBER.
@@ -10351,7 +10395,11 @@ async function serveList(
             const t_count_jobs_capped_5 = Date.now();
             const { data, error } = await client.rpc("count_jobs_capped", {
               p_fresh_cutoff: freshCutoffIso,
-              p_q: qText,
+              // count_jobs_capped is a contiguous ILIKE, which already reads a
+              // phrase as adjacent words; the quotes are tsquery syntax and
+              // would be matched as literal characters here. Same text as
+              // facetQ[0] for a one-term query — the branch this gate admits.
+              p_q: qText.replace(/"/g, ""),
               ...(applied.location ? { p_location: rankedLocationParam(applied.location) } : {}),
               ...(applied.remote ? { p_remote: true } : {}),
               ...(applied.country ? { p_country: applied.country } : {}),
@@ -10575,7 +10623,7 @@ async function serveList(
     // The `|| raw` fallback must NOT fire when the query was only a pay figure —
     // it would put "120000" straight back as search text and undo the lift.
     const qtC = queryTerms(body.q);
-    const qTextC = qtC.terms.join(" ").slice(0, 200) || (qtC.liftedSalary ? "" : String(body.q ?? "").trim().slice(0, 200));
+    const qTextC = phraseText(qtC.terms).slice(0, 200) || (qtC.liftedSalary ? "" : String(body.q ?? "").trim().slice(0, 200));
     // Kept in step with the row query's guard above, which no longer excludes
     // "newest". If only one of the two had been changed, the count and the rows
     // would answer DIFFERENT questions for a newest-sorted search — the count
