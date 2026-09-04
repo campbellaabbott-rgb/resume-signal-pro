@@ -77,6 +77,12 @@ export const CANARIES: readonly Canary[] = [
   // the exact vendor class this list exists for.
   { vendor: "adp", token: "89da4960-4d45-4b46-b7aa-5959c5f71827", name: "Vince" },
   { vendor: "adp", token: "3bb79720-acce-4bc6-88ba-203255f76c74", name: "League School" },
+  // JazzHR reference boards (70 + 28 postings, live-verified 2026-09-04, the
+  // day the adapter landed). An HTML career page with no feed behind it: a
+  // renamed class on the list rows parses cleanly and normalizes to zero
+  // rows, which is the fetched-OK-parsed-nothing drift this list exists for.
+  { vendor: "jazzhr", token: "addictionrecoverycare", name: "Addiction Recovery Care" },
+  { vendor: "jazzhr", token: "analyticallc", name: "Analytica" },
 ];
 
 // Count raw feed items in a vendor's payload (pre-normalization), matching each
@@ -112,6 +118,9 @@ export function rawItemCount(vendor: VendorKind, raw: unknown): number {
       // fetchAdp re-wraps the accumulated pages under the vendor's own
       // envelope key, so raw counting reads the same shape the API serves.
       return Array.isArray(r.jobRequisitions) ? r.jobRequisitions.length : 0;
+    case "jazzhr":
+      // fetchJazzhr hands back { items } — the parsed list rows, pre-normalization.
+      return Array.isArray(r.items) ? r.items.length : 0;
     default:
       return 0;
   }

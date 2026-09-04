@@ -930,13 +930,17 @@ describe("vendor schema-drift canary", () => {
     // is a POST with a JSON envelope — a renamed key inside opportunities[]
     // parses cleanly and normalizes to zero rows, which is precisely the
     // fetched-OK-parsed-nothing drift this list exists to catch).
-    const vendors = ["greenhouse", "lever", "ashby", "smartrecruiters", "workable", "bamboohr", "rippling", "workday", "pinpoint", "icims", "paylocity", "adp", "ukg"];
+    // jazzhr 2026-09-04 (vendor #20, an HTML career page with no feed behind
+    // it — the row parser is anchored on class names, so a renamed class
+    // fetches fine and normalizes to nothing, the drift this list catches).
+    const vendors = ["greenhouse", "lever", "ashby", "smartrecruiters", "workable", "bamboohr", "rippling", "workday", "pinpoint", "icims", "paylocity", "adp", "ukg", "jazzhr"];
     for (const v of vendors) {
       expect(CANARIES.filter((c) => c.vendor === v).length).toBe(2);
     }
     // 22 → 24 on 2026-08-31 with adp's pair — the count pin exists so a
     // canary appearing or vanishing is a conscious act, not a drive-by.
-    expect(CANARIES.length).toBe(26);
+    // 26 → 28 on 2026-09-04 with jazzhr's pair.
+    expect(CANARIES.length).toBe(28);
   });
 });
 

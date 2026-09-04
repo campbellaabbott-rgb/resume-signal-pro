@@ -90,6 +90,10 @@ export const UNMEASURED_ATS_SOURCES = [
   // CAPTCHA measurement, no tier, so the automation table answers "unknown"
   // honestly until someone samples the apply pages and writes the FACTS row.
   { key: "adp", label: "ADP Workforce Now" },
+  // JazzHR joined 2026-09-04 (vendor #20) with the same standing: the board
+  // serves its postings, and its apply form has not been sampled for a
+  // CAPTCHA — no tier, so the automation table answers "unknown" honestly.
+  { key: "jazzhr", label: "JazzHR" },
 ] as const;
 
 export const AUTO_VENDORS = ATS_VENDORS.filter((v) => v.tier === "auto");

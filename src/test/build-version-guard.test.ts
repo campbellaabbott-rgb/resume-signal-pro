@@ -182,7 +182,11 @@ const PINNED = {
   // deploy bundle past the ~4.5MB cap and .27 could not deploy at all.
   // Verified entry-for-entry identical (44,039 triples, sorted compare)
   // before re-pinning; no board was added, removed, or re-keyed.
-  sourcesHash: "6f4cb83d21d7dce4",
+  // 2026-08-30.36: JazzHR joins as vendor #20 (supabase/functions/job-board/
+  // vendors/jazzhr.ts). sources.ts gains its first tranche — 43 boards from a
+  // live-verified census sample — so the bump is load-bearing: without it the
+  // new boards queue behind the full cold rotation (the 2026-08-01 lesson).
+  sourcesHash: "d1bd98b9ca3b7502",
   // 2026-08-21.4: disables the exact-word tier's company matcher, whose index
   // never built. Bumped so the mitigation is externally identifiable.
   // 2026-08-21.5: routed retrieval. index.ts + two new modules; sources.ts
@@ -840,7 +844,7 @@ const PINNED = {
   //   Three 546 deaths sat at hops 6/7/6 while chains reach hop 9, the last
   //   after a small cold slice. Both slice_stats writers now stamp hop, heapMb
   //   and rssMb so isolate accumulation can be read instead of inferred.
-  buildVersion: "2026-08-30.35",
+  buildVersion: "2026-08-30.36",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {

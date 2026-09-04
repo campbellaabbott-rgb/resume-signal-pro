@@ -9,13 +9,15 @@
 //   Personio:   https://{token}.jobs.personio.de/xml (.com fallback)
 //   Breezy:     https://{token}.breezy.hr/json
 //   Teamtailor: https://{token}.teamtailor.com/jobs.rss
+//   JazzHR:     https://{token}.applytojob.com/apply/ — the employer's own
+//               career page (HTML; no keyless feed exists, measured 2026-09-04)
 // Tokens rot when companies migrate ATSs; the fetcher tolerates failures and
 // reports failedSources so a dead token degrades, never breaks, the board.
 
 export type JobSourceKind =
   | "greenhouse" | "lever" | "ashby" | "smartrecruiters" | "workable" | "bamboohr"
   | "recruitee" | "teamtailor" | "personio" | "breezy" | "rippling" | "workday" | "pinpoint"
-  | "oracle" | "icims" | "paylocity" | "adp" | "ukg" | "usajobs";
+  | "oracle" | "icims" | "paylocity" | "adp" | "ukg" | "jazzhr" | "usajobs";
 
 export interface JobSource {
   name: string; // display name
@@ -44846,4 +44848,55 @@ export const JOB_SOURCES: JobSource[] = [
   s("Farmington Health Services dba Trinity Care Center", "ukg", "recruiting2~STF1001STFH~06ac0f68-c990-4946-b166-cd55447f8125"),
   s("Astera Health", "ukg", "recruiting2~TRI1032TICH~fe02da8a-7213-40b1-8b9a-ad7bb1ec20ae"),
   s("West Marine", "ukg", "recruiting2~WES1009WM~223e918f-3181-4162-a4ff-1f9760643a1a"),
+  // ── JazzHR, first tranche (2026-09-04): 43 boards. A 71-candidate
+  // alphabet-spanning sample of the 560 hosts CC-MAIN-2026-34 lists under
+  // com,applytojob, live-verified by scripts/census-jazzhr.mjs (/apply/ answers
+  // 200 on the board's own host, the page's JSON-LD names the employer, >=3
+  // postings, junk/public-sector/staffing screens), plus the boards the feed
+  // research probed by hand the same day. Three verified boards were HELD for
+  // merge-time decisions (a Town of …, and two placement-shaped consultancies).
+  // The full ~1k-board merge is a later census run. ──
+  s("A. Duda & Sons Inc.", "jazzhr", "adudasonsinc"),
+  s("A.S.P. Incorporated", "jazzhr", "aspincorporated"),
+  s("Academy Of Motion Picture Arts and Sciences", "jazzhr", "academyofmotionpictureartsandsciences"),
+  s("Addiction Recovery Care", "jazzhr", "addictionrecoverycare"),
+  s("AeroSpec Inc", "jazzhr", "aerospecinc"),
+  s("Aliz", "jazzhr", "aliz"),
+  s("Analytica", "jazzhr", "analyticallc"),
+  s("Applewood Centers", "jazzhr", "applewoodcenters"),
+  s("Bee Sweet Citrus", "jazzhr", "beesweetcitrus"),
+  s("Bellwether Housing", "jazzhr", "bellwetherhousing"),
+  s("Blavity Inc.", "jazzhr", "blavity"),
+  s("Child Development Institute", "jazzhr", "childdevelopmentinstitute"),
+  s("CMCC Foundation", "jazzhr", "cmccfoundation"),
+  s("Collier Simon", "jazzhr", "colliersimon"),
+  s("CTC Group", "jazzhr", "ctcgroup"),
+  s("DiClemente Siegel Design Inc.", "jazzhr", "diclementesiegeldesigninc"),
+  s("Down Home North Carolina", "jazzhr", "downhomenc"),
+  s("GliaCell Technologies", "jazzhr", "gliacelltechnologies"),
+  s("Grand Studio", "jazzhr", "grandstudio"),
+  s("Grubb Properties", "jazzhr", "grubbproperties"),
+  s("Henry Schein One", "jazzhr", "henryscheinone"),
+  s("Herbruck Poultry Ranch", "jazzhr", "herbrucks"),
+  s("IDS International", "jazzhr", "idsinternational"),
+  s("Innovapptive", "jazzhr", "innovapptive"),
+  s("IPinfo", "jazzhr", "ipinfo"),
+  s("KIPP Colorado", "jazzhr", "kippcolorado"),
+  s("Life Line Screening", "jazzhr", "lifelinescreening"),
+  s("Michigan United", "jazzhr", "michiganunited"),
+  s("Modern Exteriors", "jazzhr", "modernexterior"),
+  s("Musiversal", "jazzhr", "musiversal"),
+  s("Nova-Tech Engineering", "jazzhr", "novatechengineering"),
+  s("NowSecure", "jazzhr", "nowsecure"),
+  s("Optima Living", "jazzhr", "optimaliving"),
+  s("Optimal", "jazzhr", "winwithoptimal"),
+  s("Panorama Global", "jazzhr", "panoramaglobal"),
+  s("Pure Treats Primal Pet Foods, Inc.", "jazzhr", "puretreatsprimalpetfoodsinc"),
+  s("Red Arch Solutions", "jazzhr", "redarchsolutions"),
+  s("SMA Support Services", "jazzhr", "smasupportservices"),
+  s("Sock Club", "jazzhr", "sockclub"),
+  s("The Heritage Foundation", "jazzhr", "heritage"),
+  s("The Kidz Club", "jazzhr", "thekidzclub"),
+  s("Virginia Birth Injury Fund", "jazzhr", "virginiabirthinjuryfund"),
+  s("Yorkville University", "jazzhr", "yorkvilleuniversity"),
 ];
