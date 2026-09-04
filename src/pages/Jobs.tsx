@@ -252,6 +252,55 @@ const URGENT_FILL_MAX_DAYS = 14;
 // Repost caution: relisting the same titles this often in the tracked window is a pattern.
 const REPOST_FLAG_MIN = 3;
 
+// ── PUBLISHING A MEDIAN NEXT TO ONE POSTING'S AGE ────────────────────────────
+//
+// A median is a fact only with a sample and an observation window behind it;
+// below either bar it is noise wearing a deadline, and this repo has shipped
+// that mistake before ("a median over four dated closures"). Explore gates the
+// same statistic at dated_n >= 10 AND tracking_days >= 21, so the detail panel
+// uses the same two numbers.
+//
+// The fills floor is applied to closed_90d because that is the only count
+// get_company_hiring_health returns. It is an UPPER BOUND on the sample the
+// median was actually computed over: closed_90d counts non-superseded closures
+// that stayed posted 7+ days measured on COALESCE(posted_at, first_seen), while
+// median_days_to_close is computed only over the subset where the employer
+// stated posted_at. So it gates honestly (a thin closed_90d proves a thin
+// median) and it is never PRINTED as that median's n — see the copy below,
+// which states the two counts as the separate facts they are.
+const FILL_MEDIAN_MIN_TRACKING_DAYS = 21;
+const FILL_MEDIAN_MIN_FILLS = 10;
+
+/** One row of get_category_fill_speed: how long roles in a field actually stay
+ *  open, from the closure log. The RPC's own floor is 300 closings per
+ *  category and it returns NO ROW below it, so an absent field is silence
+ *  rather than a thin number. */
+interface FillSpeed {
+  median: number;
+  p75: number;
+  /** Closings behind the percentiles. */
+  n: number;
+  /** OBSERVED depth of the closure log, never merely the requested window. */
+  window: number;
+}
+
+/**
+ * A shared ?job= link that no longer resolves to a live posting. These are TWO
+ * DIFFERENT FACTS and the client rendered them as one shrug:
+ *
+ *   closed  — the employer's own feed dropped it and we watched that happen.
+ *   agedOut — it is past THIS BOARD's freshness cap. The employer may still be
+ *             advertising it; the rule that hid it is ours, not theirs.
+ *
+ * The detail action has answered `agedOut: { title, company, postedAt, capDays }`
+ * since it learned the cap. The client discarded the whole payload and printed
+ * "no longer live — it was filled or taken down", which for an aged-out posting
+ * is not merely vague, it is false.
+ */
+type DeadLink =
+  | { kind: "closed"; title: string | null; company: string | null }
+  | { kind: "agedOut"; title: string | null; company: string | null; postedAt: string | null; capDays: number | null };
+
 // Experience bands mirror EXPERIENCE_BANDS in the edge function's experience.ts.
 // The year range is baked into each localized label (jobsPage.experience.*).
 const EXPERIENCE_IDS = ["entry", "mid", "senior", "expert"] as const;
@@ -2552,10 +2601,11 @@ export default function Jobs() {
     return () => { window.removeEventListener("popstate", onPop); window.removeEventListener("keydown", onKey); };
   }, [closeDetail]);
   const deepLinkTried = useRef(false);
-  // A shared ?job= link whose posting has closed. null = no dead link; title
-  // present when the closure log knew the posting, so we can offer a search
-  // for live siblings instead of a shrug.
-  const [deadLink, setDeadLink] = useState<{ title: string | null; company: string | null } | null>(null);
+  // A shared ?job= link that no longer resolves. null = no dead link; `kind`
+  // separates a watched closure from a posting that merely aged past OUR cap
+  // (see the DeadLink type). Title present when we know the posting, so we can
+  // offer a search for live siblings instead of a shrug.
+  const [deadLink, setDeadLink] = useState<DeadLink | null>(null);
 
   // GSC "Soft 404" (2026-08-07): a dead ?job= deep link renders this banner
   // under a head that says index,follow — the textbook soft-404 shape, and with
@@ -2591,28 +2641,48 @@ export default function Jobs() {
         // openDetail can paint its description under this posting.
         const seq = ++detailSeq.current;
         try {
-          const { data: res } = await invokeBoard<{ job?: BoardJob | null; description?: string; closed?: { title: string; company: string | null; closedAt: string } }>({ action: "detail", id });
+          const { data: res } = await invokeBoard<{
+            job?: BoardJob | null;
+            description?: string;
+            closed?: { title: string; company: string | null; closedAt: string };
+            agedOut?: { title: string | null; company: string | null; postedAt: string | null; capDays: number };
+          }>({ action: "detail", id });
           if (seq !== detailSeq.current) return;
           if (res?.job) {
             setDetailJob(normalizeRow(res.job));
             setDetailDesc(res.description ?? null);
+          } else if (res?.agedOut) {
+            // PAST OUR CAP IS NOT "FILLED OR TAKEN DOWN". The server hands back
+            // the role, the employer, the company-stated date and the cap that
+            // hid it; every one of those was being discarded in favour of a
+            // generic dead end. A deep link from Google or a two-month-old
+            // bookmark deserves to know which posting it was and whose rule
+            // ended it — ours.
+            setDeadLink({
+              kind: "agedOut",
+              title: res.agedOut.title ? cleanJobTitle(res.agedOut.title) : null,
+              company: res.agedOut.company ? decodeNameEntities(res.agedOut.company) : null,
+              postedAt: res.agedOut.postedAt ?? null,
+              capDays: typeof res.agedOut.capDays === "number" ? res.agedOut.capDays : null,
+            });
           } else if (res?.closed) {
             // The link's posting closed and we watched it happen — say so,
             // with what it was, and offer the search for live siblings. Closure
             // rows are stored verbatim from the feed, so they need the same
             // display hygiene every live row gets.
             setDeadLink({
+              kind: "closed",
               title: res.closed.title ? cleanJobTitle(res.closed.title) : res.closed.title,
               company: res.closed.company ? decodeNameEntities(res.closed.company) : res.closed.company,
             });
           } else {
-            setDeadLink({ title: null, company: null });
+            setDeadLink({ kind: "closed", title: null, company: null });
           }
         } catch {
           // Dead link with no closure record: still tell the user their link
           // went somewhere real that is gone now, not just render the board
           // as if they never clicked anything.
-          setDeadLink({ title: null, company: null });
+          setDeadLink({ kind: "closed", title: null, company: null });
         }
       })();
     }
@@ -3632,31 +3702,54 @@ export default function Jobs() {
     return () => { cancelled = true; };
   }, [landerCompany]);
 
-  // Category-lander intel: how fast roles in THIS field actually close, from
-  // the closure log (get_category_fill_speed, n>=300 per category — the RPC
-  // returns no row below the floor, and we show nothing rather than a guess).
-  const [fillSpeed, setFillSpeed] = useState<{ median: number; p75: number; n: number; window: number } | null>(null);
+  // How fast roles in a FIELD actually close, from the closure log
+  // (get_category_fill_speed, n>=300 per category — the RPC returns no row
+  // below the floor, and we show nothing rather than a guess).
+  //
+  // THE WHOLE TABLE, NOT ONE ROW. This kept exactly one category's row — the
+  // lander's — and threw the rest of the response away, so the board's one
+  // genuinely uncopyable answer ("how long do roles in this field actually
+  // stay open?") existed on eighteen landing pages and nowhere near a posting
+  // a reader was deciding about. The RPC takes no arguments and returns every
+  // qualifying category in the same call, so keeping the map costs nothing and
+  // lets any posting be measured against its own field.
+  const [fillSpeedByCategory, setFillSpeedByCategory] = useState<Record<string, FillSpeed> | null>(null);
+  // Asked at most once per mount. `detailJob` is in the deps so a reader who
+  // opens a posting gets the data, and the ref is what stops that from being a
+  // request per open.
+  const fillSpeedAsked = useRef(false);
   useEffect(() => {
-    if (!landerCategory) { setFillSpeed(null); return; }
-    let cancelled = false;
-    (async () => {
+    // Lazy on purpose: a browse that never opens a posting and is not a field
+    // lander never pays for the call.
+    if (fillSpeedAsked.current || (!landerCategory && !detailJob)) return;
+    fillSpeedAsked.current = true;
+    void (async () => {
       try {
         const { data: rows } = await (supabase as unknown as {
           rpc: (fn: string, args?: Record<string, unknown>) => Promise<{ data: unknown }>;
         }).rpc("get_category_fill_speed");
-        const row = Array.isArray(rows)
-          ? (rows as Array<{ category: string; closures: number; median_days_open: number; p75_days_open: number; window_days: number }>)
-              .find((r) => r.category === landerCategory)
-          : undefined;
-        if (!cancelled) {
-          setFillSpeed(row ? { median: Number(row.median_days_open), p75: Number(row.p75_days_open), n: Number(row.closures), window: Number(row.window_days) } : null);
+        if (!Array.isArray(rows)) return;
+        const map: Record<string, FillSpeed> = {};
+        for (const r of rows as Array<{ category: string; closures: number; median_days_open: number; p75_days_open: number; window_days: number }>) {
+          if (!r?.category) continue;
+          map[r.category] = {
+            median: Number(r.median_days_open),
+            p75: Number(r.p75_days_open),
+            n: Number(r.closures),
+            window: Number(r.window_days),
+          };
         }
+        setFillSpeedByCategory(map);
       } catch {
-        if (!cancelled) setFillSpeed(null); // additive — the lander stands without it
+        // Additive — every surface that reads this stands without it.
       }
     })();
-    return () => { cancelled = true; };
-  }, [landerCategory]);
+  }, [landerCategory, detailJob]);
+  // The lander's own row, derived from the same map rather than fetched twice.
+  const fillSpeed = useMemo(
+    () => (landerCategory ? fillSpeedByCategory?.[landerCategory] ?? null : null),
+    [landerCategory, fillSpeedByCategory],
+  );
 
   const companies = useMemo(
     () => (data?.companies ?? []).filter((c) => c.count > 0 || c.token === company).sort((a, b) => a.name.localeCompare(b.name)),
@@ -4459,6 +4552,71 @@ export default function Jobs() {
                   </div>
                 );
               })()}
+              {/* HOW LONG THIS ONE HAS BEEN UP, AGAINST WHAT ACTUALLY HAPPENS
+                  TO POSTINGS LIKE IT. The board computes both benchmarks and
+                  rendered neither beside a posting: the field's closure curve
+                  (get_category_fill_speed) lived only on category landers, and
+                  the employer's own fill median was already batch-fetched and
+                  used for a badge. No competitor holds either, because neither
+                  can be read off a job board — only off a log of what employers
+                  DID after posting.
+
+                  THE AGE IS THE COMPANY'S OWN DATE OR THERE IS NO BLOCK. This
+                  whole section is gated on daysAgo(postedAt), so an undated
+                  posting gets silence rather than a comparison built on
+                  first_seen — which is our discovery time and has never been a
+                  posting age here (the 2.8-day-median incident, twice
+                  reintroduced). Each line then names its own basis, because the
+                  two benchmarks do not share one. */}
+              {(() => {
+                const age = daysAgo(detailJob.postedAt);
+                if (age === null) return null;
+                const field = detailJob.category ? fillSpeedByCategory?.[detailJob.category] ?? null : null;
+                const hh = detailJob.token ? healthByToken[detailJob.token] : undefined;
+                const employerMedian = hh?.median_days_to_close ?? null;
+                // Only when this posting has actually OUTLIVED the employer's
+                // own pace — and only over a sample and a window that make the
+                // median a fact (see FILL_MEDIAN_MIN_*).
+                const outlived = !!hh && employerMedian !== null
+                  && hh.tracking_days >= FILL_MEDIAN_MIN_TRACKING_DAYS
+                  && hh.closed_90d >= FILL_MEDIAN_MIN_FILLS
+                  && age > Math.round(employerMedian);
+                if (!field && !outlived) return null;
+                return (
+                  <div className="rounded-xl border border-border bg-muted/30 p-3 text-[13px] space-y-1">
+                    <p className="text-foreground font-semibold">
+                      {t("jobsPage.postingAgeLead", "Posted {{days}} days ago, by the date the company states on its own feed.", { days: age })}
+                    </p>
+                    {field && (
+                      <p
+                        className={age > field.p75 ? "text-warning" : "text-muted-foreground"}
+                        title={t("jobsPage.fieldFillBasis", "From our closure log: every tracked closing measured from the employer's stated posting date, or from when we first saw it where the employer stated none. A field with fewer than 300 tracked closings gets no figure at all.")}
+                      >
+                        {t("jobsPage.fieldFillCompare", "75% of the {{n}} {{field}} closings we tracked over the last {{window}} days came down within {{p75}} days (median {{median}}).", {
+                          n: field.n.toLocaleString(),
+                          field: t(`jobsPage.categories.${detailJob.category}`, detailJob.category ?? ""),
+                          window: field.window,
+                          p75: field.p75,
+                          median: field.median,
+                        })}
+                      </p>
+                    )}
+                    {outlived && (
+                      <p className="text-muted-foreground">
+                        {/* TWO SENTENCES BECAUSE THERE ARE TWO SAMPLES. The
+                            median is computed only over this employer's fills
+                            where the company stated a posting date;
+                            closed_90d counts every non-superseded fill that
+                            stayed posted a week or more. Printing the second as
+                            the first's n would be a fabricated sample size, and
+                            this RPC returns no dated_n to print instead. */}
+                        {t("jobsPage.employerOutlived", "That is past this employer's own pace: the roles we watched it fill came down after about {{median}} days — a median over its fills where the company stated a posting date.", { median: Math.round(employerMedian!) })}{" "}
+                        {t("jobsPage.employerOutlivedBasis", "{{n}} roles here stayed posted a week or more and then came down, across {{tracking}} days of tracking.", { n: hh!.closed_90d, tracking: hh!.tracking_days })}
+                      </p>
+                    )}
+                  </div>
+                );
+              })()}
               {/* About this employer: the sourced company facts (headcount,
                   SEC financials, declared H-1B wages) at the decision point —
                   previously lander-only. On small screens it renders after the
@@ -4486,6 +4644,23 @@ export default function Jobs() {
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Loader2 className="w-4 h-4 animate-spin" />
                   {t("jobsPage.detailFitLoading", "Scoring this posting against your resume…")}
+                </div>
+              )}
+              {/* AN HONEST NULL IS NOT A LOW SCORE, and it used to render as
+                  nothing at all. job-fit answers `fits[id] = null` for a
+                  posting it holds no stored description for; that panel was
+                  indistinguishable from one whose posting genuinely scored 4%,
+                  and the reader had no way to tell "we could not measure this"
+                  from "your résumé is a poor match". Only one of those is about
+                  them. */}
+              {fitRanking && fits[detailJob.id] === null && (
+                <div className="rounded-xl border border-dashed border-border bg-muted/20 p-3 text-sm">
+                  <p className="font-semibold mb-1">
+                    {t("jobsPage.detailNotScored", "Not scored — we hold no description for this posting")}
+                  </p>
+                  <p className="text-[12px] text-muted-foreground">
+                    {t("jobsPage.detailNotScoredBody", "The scorer had nothing to compare your resume against, so there is no percentage here. That is the absence of a measurement, not a weak one.")}
+                  </p>
                 </div>
               )}
               {typeof fits[detailJob.id] === "number" && (
@@ -6359,18 +6534,46 @@ export default function Jobs() {
             </div>
           ) : (
             <>
-              {/* Dead deep link: the shared posting closed. Say what it was
-                  (when the closure log knows) and offer live siblings — a
-                  visible answer where there used to be silence. */}
+              {/* Dead deep link. Say what it was (when we know) and offer live
+                  siblings — a visible answer where there used to be silence.
+                  The aged-out branch says something DIFFERENT from the closed
+                  branch on purpose: "filled or taken down" is a claim about the
+                  employer, and for a posting that merely passed our own cap it
+                  is a claim we have no evidence for. */}
               {deadLink && (
                 <div className="flex items-start gap-2.5 rounded-xl border border-warning/40 bg-warning/5 px-3.5 py-2.5 mb-4">
                   <Info className="w-4 h-4 text-warning shrink-0 mt-0.5" />
                   <div className="text-[13px] min-w-0">
-                    <p className="text-foreground">
-                      {deadLink.title
-                        ? t("jobsPage.deadLinkKnown", "“{{title}}”{{at}} is no longer live — it was filled or taken down.", { title: deadLink.title, at: deadLink.company ? ` ${t("jobsPage.deadLinkAt", "at")} ${deadLink.company}` : "" })
-                        : t("jobsPage.deadLinkUnknown", "The posting in that link is no longer live — it was filled or taken down.")}
-                    </p>
+                    {deadLink.kind === "agedOut" ? (
+                      <>
+                        <p className="text-foreground">
+                          {deadLink.title
+                            ? t("jobsPage.agedLinkKnown", "“{{title}}”{{at}} is no longer listed here — it aged out of this board's freshness window.", { title: deadLink.title, at: deadLink.company ? ` ${t("jobsPage.deadLinkAt", "at")} ${deadLink.company}` : "" })
+                            : t("jobsPage.agedLinkUnknown", "The posting in that link aged out of this board's freshness window, so it is no longer listed here.")}
+                        </p>
+                        {/* Each fact on its own gate, because each has its own
+                            basis. The cap comes from the server rather than a
+                            client-side constant that could drift away from it;
+                            the age is the COMPANY'S stated date and is simply
+                            absent when the company stated none — first_seen has
+                            never been a posting age on this board. */}
+                        <p className="text-muted-foreground mt-0.5">
+                          {daysAgo(deadLink.postedAt) !== null
+                            ? t("jobsPage.agedLinkPosted", "The company dated it {{days}} days ago on its own feed.", { days: daysAgo(deadLink.postedAt) })
+                            : t("jobsPage.agedLinkUndated", "This employer states no posting date, so the window ran from when we first saw it — our discovery date, not theirs.")}
+                          {typeof deadLink.capDays === "number" && (
+                            <> {t("jobsPage.agedLinkCap", "We only carry postings for {{cap}} days.", { cap: deadLink.capDays })}</>
+                          )}{" "}
+                          {t("jobsPage.agedLinkStillOpen", "Aging out is our rule, not the employer's — it may still be open on their own site.")}
+                        </p>
+                      </>
+                    ) : (
+                      <p className="text-foreground">
+                        {deadLink.title
+                          ? t("jobsPage.deadLinkKnown", "“{{title}}”{{at}} is no longer live — it was filled or taken down.", { title: deadLink.title, at: deadLink.company ? ` ${t("jobsPage.deadLinkAt", "at")} ${deadLink.company}` : "" })
+                          : t("jobsPage.deadLinkUnknown", "The posting in that link is no longer live — it was filled or taken down.")}
+                      </p>
+                    )}
                     <div className="mt-1 flex flex-wrap gap-3">
                       {deadLink.title && (
                         <button
@@ -6852,6 +7055,12 @@ export default function Jobs() {
                   // coverage in the tooltip) so a genuinely strong 22% doesn't
                   // read as a bad match to a layperson.
                   const tier = typeof fit === "number" ? (fit >= 20 ? "strong" : fit >= 10 ? "possible" : "stretch") : null;
+                  // A CARD THAT COULD NOT BE SCORED MUST SAY SO. `null` is the
+                  // scorer's honest answer for a posting with no stored
+                  // description; `undefined` is a batch still in flight. Both
+                  // fall out of `tier`, so an unscorable card rendered exactly
+                  // like a 4% one — no chip, no difference, nothing to read.
+                  const unscorable = fitRanking && fits[job.id] === null;
                   return (
                     <Fragment key={job.id}>
                     {crossesSeam && (
@@ -7155,6 +7364,18 @@ export default function Jobs() {
                                 : tier === "possible"
                                 ? t("jobsPage.matchPossible", "Possible match")
                                 : t("jobsPage.matchStretch", "Stretch")}
+                            </span>
+                          )}
+                          {/* Deliberately NOT a tier: outlined and dashed
+                              rather than filled and bold, so it cannot be
+                              mistaken for the muted "Stretch" pill that sits in
+                              the same slot for a genuinely low score. */}
+                          {!tier && unscorable && (
+                            <span
+                              className="text-[11px] px-2 py-0.5 rounded-full border border-dashed border-border text-muted-foreground"
+                              title={t("jobsPage.notScoredTip", "We hold no stored description for this posting, so there was nothing to compare your resume against. This is not a low score — it is no score.")}
+                            >
+                              {t("jobsPage.notScoredChip", "Not scored")}
                             </span>
                           )}
                           {(job.workMode || (job.remote ? "remote" : null)) && (
