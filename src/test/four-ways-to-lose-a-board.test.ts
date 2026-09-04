@@ -50,7 +50,7 @@ describe("four ways to lose a board", () => {
     // that return a nextOffset. UKG, ADP and USAJOBS read from the top every
     // visit, so `!exhausted` alone is correct for them and adding the clause
     // would pin a variable they do not have.
-    const returns = CODE.match(/return \{[^;]*windowed: !exhausted[^;]*\};/g) ?? [];
+    const returns: string[] = CODE.match(/return \{[^;]*windowed: !exhausted[^;]*\};/g) ?? [];
     const resumable = returns.filter((r) => r.includes("nextOffset"));
     expect(resumable.length, "Oracle and iCIMS").toBeGreaterThanOrEqual(2);
     for (const r of resumable) expect(r, `a resumed read must count as windowed: ${r.slice(0, 90)}`).toContain("|| startOffset > 0");
