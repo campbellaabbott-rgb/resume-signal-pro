@@ -18,7 +18,7 @@ import { isSendableVendor } from "../../supabase/functions/_shared/apply-automat
 // Two statements from one module, deliberately: ats-coverage-counts.test.tsx
 // pins the BOARD_SOURCE_LIST import line by spelling, and the vendor filter
 // below needs the tiered list the same file exports.
-import { ATS_VENDORS, NON_ATS_SOURCES } from "@/config/ats-vendors";
+import { ATS_VENDORS, NON_ATS_SOURCES, UNMEASURED_ATS_SOURCES } from "@/config/ats-vendors";
 import { BOARD_SOURCE_LIST } from "@/config/ats-vendors";
 import { MultiSelectFilter } from "@/components/board/MultiSelectFilter";
 import { markDeadForRobots, clearDeadForRobots } from "@/lib/seo-robots";
@@ -276,7 +276,7 @@ const SALARY_CEILING_STEPS = [60_000, 80_000, 100_000, 120_000, 150_000, 200_000
 // that allowed nine would hand the visitor a filter the server then names as
 // only partly applied.
 const VENDOR_LIMIT = 8;
-const VENDOR_OPTIONS = [...ATS_VENDORS, ...NON_ATS_SOURCES].map((v) => ({ value: v.key, label: v.label }));
+const VENDOR_OPTIONS = [...ATS_VENDORS, ...UNMEASURED_ATS_SOURCES, ...NON_ATS_SOURCES].map((v) => ({ value: v.key, label: v.label }));
 
 /**
  * THE ONE PLACE THIS PAGE TURNS ITS FILTER STATE INTO A REQUEST.
@@ -1147,6 +1147,13 @@ export default function Jobs() {
   /** Postings whose fit call failed outright, so the UI can say so instead of
    *  presenting an unscored list as a ranked one. */
   const [fitFailedCount, setFitFailedCount] = useState(0);
+  // "TRY AGAIN" SENT NOTHING. The only recovery control after a failed fit
+  // batch cleared the failure count and WIPED every score that had succeeded,
+  // while nothing it changed was a dependency of the scoring effect — so no
+  // request fired and the list dropped to unranked order. Dead since it was
+  // added (audit 2026-09-03). A retry is a dependency now, and it keeps the
+  // scores it already has: the effect only ever scores unscored rows.
+  const [fitRetry, setFitRetry] = useState(0);
   const FIT_BATCH = 20;
   const [fits, setFits] = useState<Record<string, number | null>>({});
   // Top missing keywords per posting id — the "add these to compete" signal
@@ -2729,7 +2736,13 @@ export default function Jobs() {
         fd.append("file", file);
         const { data: parsed, error } = await supabase.functions.invoke(fn, { body: fd });
         const p = parsed as { success?: boolean; text?: string } | null;
-        if (error || !p?.text) throw new Error("parse failed");
+        if (error || !p?.text) {
+          // A 429 is the network's daily parse budget, a 422 is a PDF with no
+          // text layer; both were reported as "couldn't parse that file" and
+          // routed to the same parser (audit 2026-09-03).
+          const status = (error as { context?: { status?: number } } | null)?.context?.status;
+          throw new Error(status === 429 ? "rate_limited" : status === 422 ? "no_text" : "parse failed");
+        }
         text = p.text;
       }
       text = text.trim();
@@ -2791,8 +2804,16 @@ export default function Jobs() {
           ? t("jobsPage.dropParsedSearched", "Résumé loaded — finding {{role}} roles and ranking them by fit.", { role: searched })
           : t("jobsPage.dropParsedNoRole", "Résumé loaded — ranking what you're browsing by fit. Search a job title to widen it."),
       });
-    } catch {
-      toast({ title: t("jobsPage.dropFailed", "Couldn't parse that file. The full free scan handles trickier formats."), variant: "destructive" });
+    } catch (e) {
+      const reason = e instanceof Error ? e.message : "";
+      toast({
+        title: reason === "rate_limited"
+          ? t("jobsPage.dropRateLimited", "Too many scans from this network for now — try again in an hour, or sign in.")
+          : reason === "no_text"
+            ? t("jobsPage.dropTooShort", "We couldn't read enough text from that file — try the full scanner instead.")
+            : t("jobsPage.dropFailed", "Couldn't parse that file. The full free scan handles trickier formats."),
+        variant: "destructive",
+      });
     } finally {
       setParsingResume(false);
     }
@@ -2939,7 +2960,7 @@ export default function Jobs() {
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fitRanking, jobs, refreshing]);
+  }, [fitRanking, jobs, refreshing, fitRetry]);
 
   // Fit-first by default: the moment we can tell there's a resume to score
   // against (a fresh scan stashed this session, or the signed-in user's latest
@@ -5083,7 +5104,7 @@ export default function Jobs() {
                   employer states no pay, and NULL fails every comparison. The
                   cut was disclosed by the coverage line; what there was no way
                   to do was decline it. */}
-              {salaryFloor > 0 && (
+              {(salaryFloor > 0 || salaryCeiling > 0) && (
                 <label
                   className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border bg-background text-sm whitespace-nowrap text-muted-foreground cursor-pointer"
                   title={t("jobsPage.inclUnstatedPayTip", "Keep postings that don't publish a salary. Only about a fifth of employers state pay, so a pay floor hides the rest — this puts them back.")}
@@ -5302,14 +5323,20 @@ export default function Jobs() {
                 "Open roles at {company}" they read as that company's
                 (scope-integrity finding). */}
             {!landerCompany && (() => {
+              // THE RAIL VANISHED UNDER ANY OTHER FILTER. The list withholds
+              // its categories facet once a filter is bound, so this read
+              // `data.categories` as empty and rendered no pills at all — and
+              // one pill after its own click (audit 2026-09-03). The filtered
+              // facet the dropdown already uses answers the same question.
+              const railCounts = filteredCats ?? data?.categories ?? null;
               const cats = CATEGORY_IDS
-                .filter((c) => (data?.categories?.[c] ?? 0) > 0)
+                .filter((c) => (railCounts ? (railCounts[c] ?? 0) > 0 : c !== "other"))
                 .sort((a, b) => {
                   // "Other" is the biggest bucket but the least useful pill —
                   // always last regardless of count.
                   if (a === "other") return 1;
                   if (b === "other") return -1;
-                  return (data?.categories?.[b] ?? 0) - (data?.categories?.[a] ?? 0);
+                  return (railCounts?.[b] ?? 0) - (railCounts?.[a] ?? 0);
                 });
               // Below this there is no overflow to reveal on any width worth
               // designing for, and a toggle that expands nothing is noise.
@@ -5348,7 +5375,7 @@ export default function Jobs() {
                     >
                       <span aria-hidden="true" className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: accentFor(c) }} />
                       {t(`jobsPage.categories.${c}`, c)}
-                      <span className="opacity-70">{fmtFacet(data?.categories?.[c] ?? 0)}</span>
+                      {railCounts && <span className="opacity-70">{fmtFacet(railCounts[c] ?? 0)}</span>}
                     </button>
                   ))}
               </div>
@@ -5533,7 +5560,7 @@ export default function Jobs() {
                 {t("jobsPage.fitFailedNote", "{{n}} postings could not be scored just now — this is usually temporary.", { n: fitFailedCount })}{" "}
                 <button
                   type="button"
-                  onClick={() => { setFitFailedCount(0); setFits({}); }}
+                  onClick={() => { setFitFailedCount(0); setFitRetry((n) => n + 1); }}
                   className="underline hover:text-foreground"
                 >
                   {t("jobsPage.fitRetry", "Try again")}
@@ -5965,7 +5992,15 @@ export default function Jobs() {
                     <button
                       type="button"
                       onClick={() => {
-                        if (disclosure.kind === "salary") setSalaryFloor(0);
+                        if (disclosure.kind === "salary") {
+                          // Whatever is hiding the unpriced rows. A ceiling, a
+                          // basis or "States pay" alone hid ~80% of the board
+                          // and this button cleared a floor that was not set
+                          // (audit 2026-09-03).
+                          if (salaryFloor > 0 || salaryCeiling > 0) setIncludeUnstatedPay(true);
+                          if (payBasis) setPayBasis("");
+                          if (statedPayOnly) setStatedPayOnly(false);
+                        }
                         else { setWorkMode(""); setRemoteOnly(false); }
                       }}
                       className="mt-1 text-[13px] font-semibold text-primary hover:underline"

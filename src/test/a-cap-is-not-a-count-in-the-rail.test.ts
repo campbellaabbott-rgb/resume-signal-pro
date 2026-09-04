@@ -36,7 +36,8 @@ describe("a cap is not a count — in the rail either", () => {
   });
 
   it("every category count the rail prints goes through fmtFacet", () => {
-    expect(JOBS).toMatch(/\{fmtFacet\(data\?\.categories\?\.\[c\] \?\? 0\)\}/);
+    // .36: the rail reads railCounts (filteredCats ?? data.categories) so it survives other filters.
+    expect(JOBS).toMatch(/\{railCounts && <span className="opacity-70">\{fmtFacet\(railCounts\[c\] \?\? 0\)\}<\/span>\}/);
     expect(JOBS).toMatch(/\{fmtFacet\(n as number\)\}/);
     expect(JOBS, "a bare category count survived").not.toMatch(/\(data\?\.categories\?\.\[c\] \?\? 0\)\.toLocaleString\(\)/);
     expect(JOBS, "a bare category count survived").not.toMatch(/\(n as number\)\.toLocaleString\(\)/);

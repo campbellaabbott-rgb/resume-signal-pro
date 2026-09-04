@@ -840,7 +840,15 @@ const PINNED = {
   //   Three 546 deaths sat at hops 6/7/6 while chains reach hop 9, the last
   //   after a small cold slice. Both slice_stats writers now stamp hop, heapMb
   //   and rssMb so isolate accumulation can be read instead of inferred.
-  buildVersion: "2026-08-30.35",
+  //
+  // .36 — five review findings on .33/.34, each confirmed by three refuters
+  //   (a-deferred-board-is-not-a-failed-one.test.ts): budget-deferred boards
+  //   no longer count as fetch failures; betterDate keys on the row's vendor;
+  //   capped-visit vendors and page-overridden giants reserve the cap in cold
+  //   slices; the desc sweep walks a first_seen cursor so permanently failing
+  //   rows stop walling off the backlog; locationSplit and exactWordMatch
+  //   pages say ranked: true.
+  buildVersion: "2026-08-30.36",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {

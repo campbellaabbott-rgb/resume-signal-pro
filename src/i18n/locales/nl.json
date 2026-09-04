@@ -3681,6 +3681,7 @@
     "fitTermsSearched": "“{{role}}” komt uit je cv — wis het om alles te bekijken.",
     "fitTermsAvailable": "Uit je cv:",
     "dropFailed": "Kon dat bestand niet lezen. De volledige scan kan lastigere formaten aan.",
+    "dropRateLimited": "Te veel scans vanaf dit netwerk voor nu — probeer het over een uur opnieuw of log in.",
     "dropTooShort": "Niet genoeg leesbare tekst in dat bestand — probeer de volledige scanner.",
     "dropTooLarge": "Dat bestand is groter dan 10 MB — exporteer een lichtere kopie en probeer opnieuw.",
     "nlHintTip": "Begrijpt salaris, remote, datums, vakgebieden en 'bedrijven die echt aannemen' — maakt van je zin echte filters.",

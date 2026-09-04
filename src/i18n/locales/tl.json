@@ -3681,6 +3681,7 @@
     "fitTermsSearched": "Ang “{{role}}” ay mula sa resume mo — alisin para makita lahat.",
     "fitTermsAvailable": "Mula sa resume mo:",
     "dropFailed": "Hindi mabasa ang file na iyon. Kaya ng buong scan ang mas mahirap na format.",
+    "dropRateLimited": "Too many scans from this network for now — try again in an hour, or sign in.",
     "dropTooShort": "Kulang ang nabasang teksto sa file — subukan ang buong scanner.",
     "dropTooLarge": "Lampas 10 MB ang file — mag-export ng mas magaan na kopya at subukang muli.",
     "nlHintTip": "Naiintindihan ang sahod, remote, petsa, larangan, at 'mga kumpanyang totoong kumukuha' — ginagawang tunay na filter ang pangungusap mo.",

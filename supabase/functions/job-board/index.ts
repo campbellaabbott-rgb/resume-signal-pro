@@ -111,7 +111,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-30.35"; // .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
+const BUILD_VERSION = "2026-08-30.36"; // .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
 // .23: bug-sweep round — the agency opt-out reaches the rescue tiers (it was bound in search_jobs only, so a rescue served the rows the caller hid, undisclosed); the per-company cap stops swallowing the employer it just surfaced; a withdrawn count no longer prints "not hiring"; the reverted pipe fix is restored
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
@@ -299,6 +299,14 @@ const SLICE_POSTING_BUDGET = 12_000;
 // reservation alone stays under the budget, so an empty-handed slice can
 // never retire a worker, let alone drop a board.
 const COLD_BOARD_RESERVE = 500;
+// "A cold board is small by definition" was false for this catalog: 1,367
+// Oracle boards page 20 x 100 by default, iCIMS and Workday page to the same
+// cap, and 315 boards carry a `pages` override — none of them hot unless in
+// the 120-slot tier. Reviewed 2026-09-03: six such boards in flight at 500
+// each let a cold slice hold ~21,000 against a 12,000 budget. A board whose
+// visit can return the cap reserves the cap; with retire-not-skip that only
+// lowers concurrency on giant-heavy slices, it never drops a board.
+const CAPPED_VISIT_VENDORS = new Set(["workday", "oracle", "icims", "smartrecruiters", "rippling"]);
 const COLD_SLICE = 80; // cold boards are small (that's why they're cold); 80/hop at CONCURRENCY=8 is 10 sequential rounds — well under the edge wall-time limit. Rotation speed comes from concurrency + hops-per-pass, never bigger slices (proven-safe size).
 const BOOTSTRAP_PER_SLICE = 25; // zero-row boards prepended per cold slice after a deploy — +31% slice load, still ~3 rounds under the wall-time margin; a 1,900-board merge drains in ~1.5 passes instead of waiting a full rotation for its FIRST ingest
 // MEASURED DOWN FROM 25 — 25 COST THE ROTATION FOUR TIMES ITS SPEED.
@@ -2488,7 +2496,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
         // fetch behaviour. Re-arming needs the cursor readable first — a
         // deepCursor summary on the status action — so the next attempt can be
         // told apart from this one by a number instead of an inference.
-        const reserve = inHotPhase || deepTokens.has(s.token) ? MAX_POSTINGS_PER_VISIT : COLD_BOARD_RESERVE;
+        const reserve = inHotPhase || deepTokens.has(s.token) || CAPPED_VISIT_VENDORS.has(s.source) || !!s.pages ? MAX_POSTINGS_PER_VISIT : COLD_BOARD_RESERVE;
         inFlightReserve += reserve;
         let r: Awaited<ReturnType<typeof fetchBoard>>;
         try { r = await fetchBoard(s, (m) => { failReason = m; }, deepCursors[s.token] ?? 0); }
@@ -3340,9 +3348,14 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
   // code is unreliable on heavy hops; see the stamp at okTokens.push.)
   {
     const okSet = new Set(okTokens);
+    // A DEFERRED BOARD WAS NEVER ATTEMPTED. Budget-deferred tokens were
+    // counted here as consecutive failures — streak, failedAt and
+    // firstFailedAt advanced for boards no fetch ever touched, feeding the
+    // retry lane and, sustained, the prune. Reviewed 2026-09-03.
+    const budgetSkippedSet = new Set(budgetSkipped);
     const failedTokens = slice
       .map((s) => s.token)
-      .filter((tk) => !skipTokens.has(tk) && !quarantineSkipped.has(tk) && !okSet.has(tk));
+      .filter((tk) => !skipTokens.has(tk) && !quarantineSkipped.has(tk) && !budgetSkippedSet.has(tk) && !okSet.has(tk));
     if (okTokens.length > 0 || failedTokens.length > 0 || recheckTokens.size > 0) {
       const { streaks, dormant, failedAt, firstFailedAt, toPrune } = updateBoardFailures({
         okTokens,
@@ -8059,6 +8072,13 @@ Deno.serve(async (req) => {
       }
       let vi = Math.max(0, Number(body.vi) || 0);
       const vstart = Math.max(0, Number(body.vstart) || 0) % DETAIL_DESC_SOURCES.length;
+      // A WATERMARK, NOT A ROTATION. Newest-first across vendors (.33) made
+      // the vendor slot meaningless as a selector: a page whose rows all fail
+      // permanently stays null and comes straight back next hop, walling off
+      // every vendor's backlog behind it (reviewed 2026-09-03). Each hop now
+      // walks first_seen downward from the cursor the previous hop handed on;
+      // failed rows are revisited on the next PASS, after the wrap.
+      const descCursor = typeof body.cursor === "string" && body.cursor ? body.cursor : null;
       if (vi >= DETAIL_DESC_SOURCES.length) {
         // ── Phase 2: board-level lane ────────────────────────────────────────
         // workable/pinpoint carry their descriptions in the LIST payload, so
@@ -8132,7 +8152,7 @@ Deno.serve(async (req) => {
       }
       const vendor = DETAIL_DESC_SOURCES[vi];
       await client.from("job_board_meta").upsert(
-        { k: "desc_sweep", v: { runningVi: vi, vendor }, updated_at: new Date().toISOString() },
+        { k: "desc_sweep", v: { runningVi: vi, vendor, cursor: descCursor }, updated_at: new Date().toISOString() },
         { onConflict: "k" },
       );
       // NEWEST FIRST ACROSS VENDORS, not one vendor at a time. The default
@@ -8142,18 +8162,20 @@ Deno.serve(async (req) => {
       // which vendor's turn it is, but it fills the rows a reader will see
       // first, whichever feed they came from. `source` rides along so each row
       // reaches its own adapter.
-      const { data: rows, error: readErr } = await client
+      let sel = client
         .from("job_board_postings")
-        .select("id, source, company_token, apply_url, title, location, country, posted_at, work_mode")
+        .select("id, source, company_token, apply_url, title, location, country, posted_at, work_mode, first_seen")
         .in("source", [...DETAIL_DESC_SOURCES])
         .is("description", null)
-        .is("missing_since", null)
+        .is("missing_since", null);
+      if (descCursor) sel = sel.lt("first_seen", descCursor);
+      const { data: rows, error: readErr } = await sel
         .order("first_seen", { ascending: false, nullsFirst: false })
         .limit(DESC_SWEEP_PER_HOP);
       if (readErr) throw readErr;
       const queue = [...(rows ?? [])] as Array<{
         id: string; source: string; company_token: string; apply_url: string | null;
-        title: string | null; location: string | null; posted_at: string | null; work_mode: string | null;
+        title: string | null; location: string | null; posted_at: string | null; work_mode: string | null; first_seen: string | null;
       }>;
       const pending = [...queue];
       let updated = 0;
@@ -8226,7 +8248,7 @@ Deno.serve(async (req) => {
             // Dates: Workday's stored value is a relative bucket floored at 30
             // days, so an absolute startDate is strictly better and replaces
             // it. For every other vendor we only fill a gap.
-            const betterDate = postedAt && (vendor === "workday" || !row.posted_at) ? postedAt : null;
+            const betterDate = postedAt && (row.source === "workday" || !row.posted_at) ? postedAt : null;
             const { error } = await client.from("job_board_postings")
               .update({
                 description: clean,
@@ -8258,7 +8280,8 @@ Deno.serve(async (req) => {
       // full page yielded nothing. Without that second condition a vendor whose
       // rows all fail permanently would re-select the same page forever: failed
       // rows stay null, so they'd come straight back on the next hop.
-      const exhausted = queue.length < DESC_SWEEP_PER_HOP || updated === 0;
+      const exhausted = queue.length < DESC_SWEEP_PER_HOP;
+      const nextCursor = exhausted ? null : (queue[queue.length - 1]?.first_seen ?? null);
       if (exhausted) {
         // Wrap: the rotation is complete when it comes back around to the
         // vendor it STARTED at, whatever that was; the length sentinel still
@@ -8270,9 +8293,9 @@ Deno.serve(async (req) => {
       waitUntil(chainKey().then((key) => fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "desc-sweep", chainKey: key, vi, vstart }),
+        body: JSON.stringify({ action: "desc-sweep", chainKey: key, vi, vstart, ...(nextCursor ? { cursor: nextCursor } : {}) }),
       })).then((rr) => rr.text()).catch(() => {}));
-      return json({ ok: true, vendor, scanned: queue.length, updated, nextVi: vi });
+      return json({ ok: true, vendor, scanned: queue.length, updated, nextVi: vi, cursor: nextCursor });
     }
 
     if (action === "structured-sweep") {
@@ -11758,6 +11781,7 @@ async function serveList(
                     // being that a filter nobody can see is a filter nobody can
                     // remove.
                     locationSplit: { q: won.head, location: won.place },
+                    ranked: true,
                     // The title count for the SPLIT query, which is the query
                     // these rows answer. Publishing the original query's zero
                     // beside a full page is the contradiction this whole tier
@@ -12037,6 +12061,7 @@ async function serveList(
                 // tier is visible in telemetry rather than being mistaken for
                 // the ranked path.
                 exactWordMatch: qText,
+                ranked: true,
                 ...exclusionCountsCaveat(excludedTerms),
                 totalAllCompanies: safeMetaTotal ?? 0,
           ...(trackedTotal !== null ? { trackedTotal } : {}),

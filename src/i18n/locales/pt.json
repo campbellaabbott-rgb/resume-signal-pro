@@ -3681,6 +3681,7 @@
     "fitTermsSearched": "«{{role}}» veio do seu currículo — limpe para ver tudo.",
     "fitTermsAvailable": "Do seu currículo:",
     "dropFailed": "Não foi possível ler esse arquivo. O escaneamento completo lida com formatos mais difíceis.",
+    "dropRateLimited": "Muitas análises desta rede por agora — tente novamente em uma hora ou faça login.",
     "dropTooShort": "Não conseguimos ler texto suficiente desse arquivo — tente o scanner completo.",
     "dropTooLarge": "Esse arquivo passa de 10 MB — exporte uma cópia mais leve e tente de novo.",
     "nlHintTip": "Entende salário, remoto, datas, áreas e 'empresas que realmente contratam' — transforma sua frase em filtros reais.",

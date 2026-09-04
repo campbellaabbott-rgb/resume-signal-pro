@@ -44,7 +44,9 @@ describe("a reservation that emptied the queue", () => {
   });
 
   it("reserves per board — the cap for hot-phase and deep boards, a small constant for cold ones", () => {
-    expect(CODE).toMatch(/const reserve = inHotPhase \|\| deepTokens\.has\(s\.token\) \? MAX_POSTINGS_PER_VISIT : COLD_BOARD_RESERVE;/);
+    // .36: capped-visit vendors and page-overridden giants reserve the cap too
+    // (a-deferred-board-is-not-a-failed-one.test.ts) — cold Oracle boards page to 2,000 by default.
+    expect(CODE).toMatch(/const reserve = inHotPhase \|\| deepTokens\.has\(s\.token\) \|\| CAPPED_VISIT_VENDORS\.has\(s\.source\) \|\| !!s\.pages \? MAX_POSTINGS_PER_VISIT : COLD_BOARD_RESERVE;/);
     expect(CODE).toMatch(/const deepTokens = new Set\(deepBoards\.map\(\(b\) => b\.token\)\);/);
     expect(CODE).toMatch(/inFlightReserve \+= reserve;/);
     expect(CODE).toMatch(/finally \{ inFlightReserve -= reserve; \}/);

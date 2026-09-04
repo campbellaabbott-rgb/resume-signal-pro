@@ -3681,6 +3681,7 @@
     "fitTermsSearched": "“{{role}}” came from your résumé — clear it to browse everything.",
     "fitTermsAvailable": "From your résumé:",
     "dropFailed": "Couldn't parse that file. The full free scan handles trickier formats.",
+    "dropRateLimited": "Too many scans from this network for now — try again in an hour, or sign in.",
     "dropTooShort": "We couldn't read enough text from that file — try the full scanner instead.",
     "dropTooLarge": "That file is over 10 MB — export a lighter copy and try again.",
     "nlHintTip": "Understands pay, remote, dates, fields, and 'companies that actually hire' — turns your sentence into real filters.",

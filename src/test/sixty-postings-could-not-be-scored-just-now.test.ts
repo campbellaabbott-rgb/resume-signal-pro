@@ -71,7 +71,7 @@ describe("sixty postings could not be scored just now", () => {
     // 20) before the résumé's list arrived. `refreshing` covers exactly the
     // window between the new fetch starting and landing.
     expect(J).toMatch(/if \(!fitRanking \|\| jobs\.length === 0 \|\| refreshing \|\| fitAwaitingPage\.current\) return;/);
-    expect(J, "refreshing must be a dependency, or the effect reads a stale closure").toMatch(/\}, \[fitRanking, jobs, refreshing\]\);/);
+    expect(J, "refreshing must be a dependency, or the effect reads a stale closure").toMatch(/\}, \[fitRanking, jobs, refreshing, fitRetry\]\);/);
   });
 
   it("covers the debounce gap: the pending flag is raised at setQ and lowered when the fetch settles", () => {
