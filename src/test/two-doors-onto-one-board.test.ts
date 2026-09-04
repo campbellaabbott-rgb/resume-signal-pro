@@ -42,10 +42,20 @@ function v1Params(): string[] {
 }
 
 const snake = (s: string) => s.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`);
-/** MCP arg name -> /v1 param name, where the two surfaces named it differently. */
+/**
+ * MCP arg name -> /v1 param name, where the two surfaces named it differently.
+ *
+ * `companies` and `experience` are the board's OWN names, which agent-mcp
+ * keeps (it proxies the board) and /v1 renamed for its own vocabulary
+ * (company_token, experience_band) before either surface exposed them. Both
+ * names reach the same board param through the same mapping, so this is a
+ * spelling difference and not a capability one — which is the only kind of
+ * difference this map is allowed to absorb.
+ */
 const RENAMED: Record<string, string> = {
   query: "q", vendor: "source", salaryMin: "salary_min", salaryMax: "salary_max",
   agentReadyOnly: "agent_ready_only", workMode: "work_mode",
+  companies: "company_token", experience: "experience_band",
 };
 /** Paging/shape, not filters. */
 const NOT_A_FILTER = new Set(["limit", "offset"]);
