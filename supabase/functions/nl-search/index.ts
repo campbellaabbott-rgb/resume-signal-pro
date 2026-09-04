@@ -4,27 +4,31 @@
 //
 // Honesty rules baked into the contract:
 // - The model may ONLY use filters the board actually has, with the exact
-//   enum values below. It cannot invent a filter.
+//   enum values in parse.ts. It cannot invent a filter, and a value the
+//   validator does not recognise is DROPPED here rather than forwarded.
 // - Concepts with no matching filter (company size, "no degree", "startup")
 //   are NOT silently dropped or faked — they go in `notMapped` so the UI can
 //   say "couldn't filter by: startups" plainly.
+// - A filter the model asked for and validation REFUSED (an unknown category,
+//   a pay band that closes below its own floor) goes in `dropped`. Those used
+//   to vanish between here and the client while the model's chip went on
+//   claiming them.
 // - Role/skill/title words become the `q` keyword search, ranked as usual.
 // The client shows exactly how the query was interpreted and lets the user
 // edit — the parse is a convenience, never an authority.
+//
+// The prompt's filter list, the tool schema and the validator are all DERIVED
+// from one table in ./parse.ts. They used to be three hand-maintained lists
+// that agreed with each other on eleven filters and with the board on none —
+// see that file's header.
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { SYSTEM_PROMPT, TOOL_PARAMETERS, validateParse } from "./parse.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
-
-const CATEGORIES = [
-  "engineering", "data_ai", "design", "product", "marketing", "sales",
-  "customer", "finance", "legal", "people_hr", "operations", "healthcare",
-  "science", "education", "hospitality_retail", "security", "admin", "other",
-] as const;
-const EXPERIENCE = ["entry", "mid", "senior", "expert"] as const;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -42,33 +46,13 @@ serve(async (req) => {
     const raw = String(query ?? "").trim().slice(0, 300);
     if (raw.length < 3) return new Response(JSON.stringify({ error: "Query too short" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
-    const systemPrompt = `You convert a job seeker's plain-language search into structured filters for a job board. Output ONLY via the tool call.
-
-The board has EXACTLY these filters — never invent others:
-- q: the role/title/skill keywords to search (e.g. "product manager", "kubernetes"). Put here anything that describes the JOB itself. Required unless the query is purely filters.
-- category: one of [${CATEGORIES.join(", ")}]. Map only when the field is unambiguous.
-- experience: one of [${EXPERIENCE.join(", ")}]. "entry"=junior/new-grad, "senior"=6-9y, "expert"=10y+/principal.
-- remote: true only if the user clearly wants remote.
-- workMode: "remote", "hybrid", or "onsite" when the user names a work mode ("hybrid roles in Berlin", "in-office jobs"). Set remote true as well when workMode is "remote".
-- salaryFloor: a number (annual, no currency symbol) when the user states a minimum pay.
-- country: a 2-letter ISO code only if a country is named (US, GB, CA, DE...).
-- location: a city/region string if a specific place is named (not a country).
-- maxAgeDays: 1 for "today", 7 for "this week"/"recent"/"new", or N for "last N days" / "past N weeks" (a whole number of days, up to 30).
-- activelyHiring: true when the user asks for companies that really hire / actually fill roles / proven hirers / no ghost jobs.
-- sort: "salary" when they ask for highest-paying/best-paid first; "newest" when they explicitly ask newest-first.
-
-RULES:
-- Only set a filter when the query clearly implies it. When unsure, leave it out and let it fall into q or notMapped.
-- Concepts the board CANNOT filter (company size, "startup", "no degree required", industry-of-company, benefits, seniority of company) must go in notMapped as short phrases — never faked into a filter.
-- interpreted: 2-6 short human-readable chips describing what you understood (e.g. "Remote", "Product", "$150k+ minimum"). This is shown to the user.`;
-
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         model: "google/gemini-3-flash-preview",
         messages: [
-          { role: "system", content: systemPrompt },
+          { role: "system", content: SYSTEM_PROMPT },
           { role: "user", content: raw },
         ],
         tools: [{
@@ -76,28 +60,7 @@ RULES:
           function: {
             name: "apply_search",
             description: "Apply the parsed job search",
-            // No `enum` in the schema (some gateways reject it in tool params);
-            // valid values are stated in the prompt and enforced by the
-            // server-side validation below, which is the real guard anyway.
-            parameters: {
-              type: "object",
-              properties: {
-                q: { type: "string", description: "Role/title/skill keywords" },
-                category: { type: "string", description: `One of: ${CATEGORIES.join(", ")}` },
-                experience: { type: "string", description: `One of: ${EXPERIENCE.join(", ")}` },
-                remote: { type: "boolean" },
-                workMode: { type: "string", description: "remote, hybrid, or onsite - only when the user names one" },
-                salaryFloor: { type: "number", description: "Annual minimum, no currency symbol" },
-                country: { type: "string", description: "2-letter ISO code" },
-                location: { type: "string", description: "City or region (not a country)" },
-                maxAgeDays: { type: "number", description: "Whole days, 1-30: 1 for today, 7 for this week/recent, or N for 'last N days'" },
-                activelyHiring: { type: "boolean", description: "true only when the user wants companies with a proven fill record" },
-                sort: { type: "string", description: "salary for highest-paying first, newest for newest first" },
-                interpreted: { type: "array", items: { type: "string" }, description: "2-6 short chips of what was understood" },
-                notMapped: { type: "array", items: { type: "string" }, description: "Concepts with no matching filter" },
-              },
-              required: ["interpreted"],
-            },
+            parameters: TOOL_PARAMETERS,
           },
         }],
         tool_choice: { type: "function", function: { name: "apply_search" } },
@@ -121,30 +84,15 @@ RULES:
 
     // Validate/sanitize against the real vocabulary — the client trusts only
     // what we return, so anything off-contract is dropped here, not there.
-    const filters: Record<string, unknown> = {};
-    if (typeof parsed.q === "string" && parsed.q.trim()) filters.q = parsed.q.trim().slice(0, 120);
-    if (typeof parsed.category === "string" && (CATEGORIES as readonly string[]).includes(parsed.category)) filters.category = parsed.category;
-    if (typeof parsed.experience === "string" && (EXPERIENCE as readonly string[]).includes(parsed.experience)) filters.experience = parsed.experience;
-    if (parsed.remote === true) filters.remote = true;
-    if (parsed.workMode === "remote" || parsed.workMode === "hybrid" || parsed.workMode === "onsite") filters.workMode = parsed.workMode;
-    if (typeof parsed.salaryFloor === "number" && parsed.salaryFloor > 0) filters.salaryFloor = Math.min(Math.round(parsed.salaryFloor), 2_000_000);
-    if (typeof parsed.country === "string" && /^[A-Za-z]{2}$/.test(parsed.country)) filters.country = parsed.country.toUpperCase();
-    if (typeof parsed.location === "string" && parsed.location.trim()) filters.location = parsed.location.trim().slice(0, 80);
-    // 1..30, the same window the board and applyNlSearch accept — NOT just 1 or
-    // 7. A "last 14 days" intent used to be dropped here while its interpreted
-    // chip still claimed it, so the chips (rendered from `filters`) now match
-    // what actually survives.
-    if (typeof parsed.maxAgeDays === "number" && Number.isFinite(parsed.maxAgeDays)) {
-      const days = Math.round(parsed.maxAgeDays);
-      if (days >= 1 && days <= 30) filters.maxAgeDays = days;
-    }
-    if (parsed.activelyHiring === true) filters.activelyHiring = true;
-    if (parsed.sort === "salary" || parsed.sort === "newest") filters.sort = parsed.sort;
+    //
+    // `applied` names every filter that survived, by the board's own wire name,
+    // so the interpretation line can be rendered from what the board will
+    // actually bind instead of from the model's prose. The chips in
+    // `interpreted` are still the model's words (they carry the reader's own
+    // language); `applied` is what makes them checkable.
+    const { filters, applied, dropped, interpreted, notMapped } = validateParse(parsed);
 
-    const interpreted = Array.isArray(parsed.interpreted) ? parsed.interpreted.filter((x): x is string => typeof x === "string").slice(0, 6) : [];
-    const notMapped = Array.isArray(parsed.notMapped) ? parsed.notMapped.filter((x): x is string => typeof x === "string").slice(0, 4) : [];
-
-    return new Response(JSON.stringify({ filters, interpreted, notMapped }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ filters, applied, dropped, interpreted, notMapped }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
     return new Response(JSON.stringify({ error: "Parse failed", detail: String(e).slice(0, 200) }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
