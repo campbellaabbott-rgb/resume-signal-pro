@@ -22,7 +22,7 @@
 // there are no longer three places to add it to.
 //
 // WHAT IS DELIBERATELY NOT HERE
-// See NL_DECLINED. Five of the board's wire params are refused on purpose, each
+// See NL_DECLINED. Six of the board's wire params are refused on purpose, each
 // with its reason; the guard test asserts that emitted + declined is EXACTLY
 // the board's param list, so a filter added to filters.ts fails this repo's
 // tests until somebody decides which pile it belongs in.
@@ -360,6 +360,14 @@ export const NL_FILTERS: readonly NlFilter[] = [
  * pile or the other. "Nobody thought about it" stops being a possible state.
  */
 export const NL_DECLINED: Readonly<Record<string, string>> = {
+  // NOT A SENTENCE ANYONE SAYS. Added to the board on 2026-09-04 for the
+  // résumé browse: "only rows the scorer can actually read" — a retrieval
+  // constraint, not a description of a job. Nobody asks for postings that have
+  // a description; they ask for nursing work in Leeds and expect the board to
+  // handle the rest. Emitting it would also cost the interpretation its
+  // ranking, since no search RPC binds it and carrying it routes the request
+  // through buildQuery. The client sets it directly where it means something.
+  hasDescription: "an internal retrieval constraint for the résumé browse, not an intent a sentence can carry; the client sets it directly",
   // A WIDENER, and the parser has never emitted it. Recorded on the board side
   // too (Jobs.tsx resets it before every interpreted search): a stale
   // "+ unsorted" reactivating under an interpretation that never mentions it is
