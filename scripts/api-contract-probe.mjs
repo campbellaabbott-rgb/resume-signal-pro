@@ -280,15 +280,21 @@ console.log("\n[mcp] handshake, catalogue, and the keyed tools");
   ok("applied" in (j?.decision?.filters ?? {}), "trace names the applied filters");
 }
 {
-  // fit_resume: the drop as a tool. A founder résumé that repeats go-to-market
-  // must resolve to a real role and come back scored through job-fit.
+  // fit_resume: the drop as a tool, and PAID — gated on the key's tier exactly
+  // as POST /v1/fit is. RB_API_KEY is a free key, so the honest answer is the
+  // in-band refusal: a tool RESULT with isError and the upgrade pointer, never
+  // a transport error, and never a silently served score (which is what a
+  // free key got until 2026-09-04, draining the paid customers' scorer
+  // bucket). Scoring itself — the founder résumé resolving to a real role —
+  // is pinned in src/test/a-founders-resume-searched-for-go-to-market.test.ts.
   const cv = "Campbell Abbott - Founder & CEO, Resume Booster\nEXPERIENCE\nFounder & CEO 2024-2026. Ran go-to-market, hired the team.\nLed go-to-market strategy across three launches; owned roadmap and P&L.\nSKILLS: leadership, strategy, hiring, SQL\nBS, University of Washington";
   const r = await mcp("tools/call", { name: "fit_resume", arguments: { resumeText: cv, limit: 5 } });
   const j = toolJson(r.body);
-  ok(r.status === 200 && !!j && !j.error, "fit_resume answers", j?.error ?? `HTTP ${r.status}`);
-  ok(["founder", "ceo", "chief executive officer"].includes(j?.terms?.[0]), "fit_resume reads a real role, not a buzzword", JSON.stringify(j?.terms ?? null));
-  ok(Array.isArray(j?.jobs) && j.jobs.length > 0, "fit_resume returns jobs", `${j?.jobs?.length ?? 0}`);
-  ok((j?.jobs ?? []).some((x) => typeof x.fit === "number"), "fit_resume jobs carry a numeric fit from job-fit");
+  ok(r.status === 200 && !!j, "fit_resume answers in-band", j ? "tool result" : `HTTP ${r.status}`);
+  ok(r.body?.result?.isError === true && typeof j?.error === "string", "fit_resume refuses a free key as a tool result, not a server error", j?.error ?? "no error line");
+  ok(/paid/i.test(j?.error ?? ""), "the refusal names it a paid feature", j?.error);
+  ok(/data-api/.test(j?.fix ?? ""), "the refusal points at the upgrade", j?.fix);
+  ok(!Array.isArray(j?.jobs), "no score is served to a free key");
 }
 {
   // An unkeyed tool call must be refused in the MCP way — a result the agent

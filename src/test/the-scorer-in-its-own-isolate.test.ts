@@ -48,7 +48,9 @@ describe("the scorer in its own isolate", () => {
 
   it("(5) MCP fit_resume scores through job-fit, never through job-board", () => {
     expect(MCP).toMatch(/name: "fit_resume"/);
-    expect(MCP).toMatch(/case "fit_resume": return toolOk\(await runFitResume\(args\)\);/);
+    // 2026-09-04: gated on tier first (a-bucket-shared-by-every-customer-is-
+    // nobodys-allowance), then scored under the key's own bucket.
+    expect(MCP).toMatch(/return toolOk\(await runFitResume\(args, apiKeyId\)\);/);
     const fn = MCP.slice(MCP.indexOf("async function runFitResume"), MCP.indexOf("async function runBoardStats"));
     expect(fn).toMatch(/\/functions\/v1\/job-fit`/);
     expect(fn, "the runner must never send a résumé to the ingest function's copy").not.toMatch(/action: "fit-batch"[\s\S]{0,200}job-board/);
@@ -59,7 +61,7 @@ describe("the scorer in its own isolate", () => {
     expect(API).toMatch(/const isFitPost = req\.method === "POST" && path\.replace\(\/\\\/\+\$\/, ""\) === "\/v1\/fit";/);
     expect(API).toMatch(/if \(req\.method !== "GET" && !isFitPost\) return fail\(405/);
     expect(API).toMatch(/if \(path === "\/v1\/fit" \|\| path === "\/v1\/fit\/"\) \{\s*if \(req\.method !== "POST"\) return fail\(405/);
-    expect(API).toMatch(/return await fitResume\(req, rateHeaders, d\.key_tier\);/);
+    expect(API).toMatch(/return await fitResume\(req, rateHeaders, d\.key_tier, d\.api_key_id\);/);
     // The first deploy judged the POST exception on the RAW pathname, which in
     // production carries /public-api — so POST /v1/fit was 405 and GET /v1/fit
     // reached the paid gate (measured 23:07Z). The gate must read the same

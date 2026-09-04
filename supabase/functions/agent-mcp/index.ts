@@ -46,7 +46,7 @@ import {
 // batching. A client that only speaks an older revision still gets a clean
 // negotiation: we answer initialize with this version and it decides.
 const MCP_PROTOCOL_VERSIONS = ["2025-06-18"];
-const SERVER_INFO = { name: "resumebooster-job-board", version: "2026-08-29.3" }; // .2: debug_search tool; .3: search filter parity (department, pay ceiling/basis/stated, maxYears, vendor)
+const SERVER_INFO = { name: "resumebooster-job-board", version: "2026-09-04.1" }; // 08-29.2: debug_search tool; .3: search filter parity (department, pay ceiling/basis/stated, maxYears, vendor); 09-04.1: fit_resume paid-gated like POST /v1/fit, per-key scorer bucket, honest scorer 429
 const DOCS_URL = "https://resumebooster.work/agents";
 
 // EXPOSED, OR THEY MIGHT AS WELL NOT BE SENT — same lesson public-api learned:
@@ -101,6 +101,18 @@ const toolErr = (message: string, fix?: string) => ({
   content: [{ type: "text", text: JSON.stringify(fix ? { error: message, fix } : { error: message }) }],
   isError: true,
 });
+
+/**
+ * The scorer refused for the day. Its own class so the dispatcher can answer
+ * with an honest limit line and a Retry-After instead of the generic
+ * "internal error, try again shortly" — which told an agent to retry a call
+ * that could not succeed for up to 24 hours.
+ */
+class ScorerLimited extends Error {
+  constructor(public readonly limit: number | null) {
+    super("scorer daily allowance reached");
+  }
+}
 
 // ── The board, called as itself ─────────────────────────────────────────────
 
@@ -244,6 +256,7 @@ const TOOLS = [
   {
     name: "fit_resume",
     description:
+      "PAID — needs a paid API key, exactly like POST /v1/fit on the data API; a free key gets an in-band refusal with the upgrade link. " +
       "Do what the site's résumé drop does, for an agent holding a CV: read the occupation out of resumeText, search the board " +
       "for it (or for `query` if given), and score up to 20 of the results against the résumé — keyword fit 0-100, plus the " +
       "matched and missing terms per job. A null fit means the posting has no stored description to score. Returns the terms " +
@@ -376,8 +389,15 @@ async function runGetJob(args: Record<string, unknown>): Promise<unknown> {
  * The résumé drop, as a tool. Scoring goes to job-fit — its own isolate — and
  * never to job-board, which shares a worker pool with the ingest and answered
  * 546 to readers on 2026-09-03 for exactly that reason.
+ *
+ * The scorer's daily bucket is THIS KEY'S. job-fit keys its allowance on
+ * x-forwarded-for, and an edge-to-edge fetch carries the runtime's own egress
+ * address, so every MCP agent (and every /v1/fit customer) drew from one
+ * 120/day row. The call names its bucket (x-rb-bucket: key:<id>) under the
+ * service-role bearer job-fit requires before trusting the name, and a 429
+ * surfaces as ScorerLimited so the dispatcher can say so honestly.
  */
-async function runFitResume(args: Record<string, unknown>): Promise<unknown> {
+async function runFitResume(args: Record<string, unknown>, apiKeyId: string): Promise<unknown> {
   const resumeText = typeof args.resumeText === "string" ? args.resumeText.slice(0, 50000) : "";
   if (resumeText.trim().length < 100) throw new Error("resumeText must be at least 100 characters");
   const terms = resumeRoleTerms(resumeText, 4);
@@ -392,13 +412,19 @@ async function runFitResume(args: Record<string, unknown>): Promise<unknown> {
   let fits: Record<string, number | null> = {}, matched: Record<string, string[]> = {}, missing: Record<string, string[]> = {};
   if (ids.length) {
     const anon = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+    const service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
     const res = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/job-fit`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${anon}`, apikey: anon },
+      headers: {
+        "Content-Type": "application/json", apikey: anon,
+        Authorization: `Bearer ${service}`,
+        ...(apiKeyId ? { "x-rb-bucket": `key:${apiKeyId}` } : {}),
+      },
       body: JSON.stringify({ action: "fit-batch", resumeText, ids }),
       signal: AbortSignal.timeout(30_000),
     });
     const f = await res.json().catch(() => ({}));
+    if (res.status === 429) throw new ScorerLimited(typeof f?.limit === "number" ? f.limit : null);
     if (!res.ok || !f?.fits) throw new Error(String(f?.error ?? `scorer answered ${res.status}`));
     fits = f.fits; matched = f.matched ?? {}; missing = f.missing ?? {};
   }
@@ -686,9 +712,13 @@ async function readApplicationStatus(client: SupabaseClient, userId: string, lim
 
 // ── Dispatch ────────────────────────────────────────────────────────────────
 
+/** The same predicate public-api applies to engine=ranked and POST /v1/fit. */
+const isPaidTier = (tier: string | null) => tier != null && tier !== "free" && tier !== "trial";
+
 async function callTool(
   client: SupabaseClient,
   apiKeyId: string,
+  tier: string | null,
   name: string,
   args: Record<string, unknown>,
 ): Promise<unknown> {
@@ -697,7 +727,18 @@ async function callTool(
     case "debug_search": return toolOk(await runDebugSearch(args));
     case "get_job": return toolOk(await runGetJob(args));
     case "board_stats": return toolOk(await runBoardStats());
-    case "fit_resume": return toolOk(await runFitResume(args));
+    case "fit_resume": {
+      // Gated exactly as POST /v1/fit is: the same feature was paid on the
+      // API and free here, and the free path drained the paid customers'
+      // shared scorer allowance. Refused in-band, before any search runs.
+      if (!isPaidTier(tier)) {
+        return toolErr(
+          "fit_resume is a paid feature — résumé-to-job fit scoring, the same feature as POST /v1/fit.",
+          "Upgrade the key at https://resumebooster.work/data-api — the search tools keep working on a free key.",
+        );
+      }
+      return toolOk(await runFitResume(args, apiKeyId));
+    }
     case "check_apply_support": return toolOk(await runCheckApplySupport(client, args));
     case "request_application": return toolOk(await runRequestApplication(client, apiKeyId, args));
     case "application_status": return toolOk(await runApplicationStatus(client, apiKeyId, args));
@@ -757,7 +798,8 @@ Deno.serve(async (req) => {
       serverInfo: SERVER_INFO,
       instructions:
         "Job search over employers' own hiring feeds. Read tools (search_jobs, get_job, board_stats, check_apply_support) " +
-        "need any free API key from https://resumebooster.work/data-api. The apply tools additionally need an " +
+        "need any free API key from https://resumebooster.work/data-api. " +
+        "fit_resume needs a paid key, like POST /v1/fit. The apply tools additionally need an " +
         "account-linked key, an Agent plan, and a standing mandate — see " + DOCS_URL + ". " +
         "Counts are honest: countUnavailable means the board refuses to guess.",
     }));
@@ -829,10 +871,18 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const result = await callTool(client, d.api_key_id ?? "", toolName, toolArgs);
+    const result = await callTool(client, d.api_key_id ?? "", d.key_tier, toolName, toolArgs);
     if (result === null) return json(rpcError(id, -32602, `unknown tool: ${toolName}`));
     return json(rpcResult(id, result), 200, rateHeaders);
   } catch (e) {
+    if (e instanceof ScorerLimited) {
+      // Not an internal error, and not retryable in a minute: the scorer's
+      // 24h bucket for this key is spent. Say which limit, and when.
+      return json(rpcResult(id, toolErr(
+        `This key's daily fit-scoring allowance (${e.limit ?? 1000} calls) is used; it resets 24 hours after the first scored call.`,
+        "Wait for the window, or keep using search_jobs meanwhile — the scorer does not meter it.",
+      )), 200, { ...rateHeaders, "Retry-After": "3600" });
+    }
     // A tool failure is a RESULT with isError, not a protocol error — agents
     // read it and adapt; a JSON-RPC error tears down some clients' sessions.
     // The DETAILED error stays server-side; the client gets a generic line, so
