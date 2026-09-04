@@ -53,6 +53,11 @@ describe("the scorer in its own isolate", () => {
     expect((LIVE.match(/functions\.invoke\("job-fit"/g) ?? []).length).toBe(2);
     expect(LIVE, "no fit call may still target the ingest function").not.toMatch(/invoke\("job-board",\s*\{\s*body:\s*\{\s*action:\s*"fit-(batch|terms)"/);
     expect(BOARD).toMatch(/action === "fit-batch"/);
+    // .46: the kept copy must not drift from job-fit. It selects min_years and
+    // passes it to computeFit exactly as job-fit does, or a reader on an old
+    // tab silently loses the seniority demotion.
+    expect(BOARD).toMatch(/\.select\("id, description, min_years"\)/);
+    expect(BOARD).toMatch(/computeFit\(r\.description\.slice\(0, FIT_DESC_CHARS\), resumeScan, 40, minYears\)/);
     expect(BOARD).toMatch(/action === "fit-terms"/);
   });
 

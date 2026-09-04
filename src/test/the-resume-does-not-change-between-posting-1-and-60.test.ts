@@ -48,7 +48,10 @@ describe("one résumé scan serves the whole batch", () => {
     // handed in, never the raw text — so the pin tolerates the bound and
     // asserts the actual regression directly.
     expect(block, "computeFit is back to rescanning the résumé per posting")
-      .toMatch(/computeFit\(r\.description(?:\.slice\(0, FIT_DESC_CHARS\))?, resumeScan, 40\)/);
+      // The point of this guard is that `resumeScan` is a value computed ONCE
+      // outside the loop — the trailing arguments are free to grow (.46 added
+      // the posting's min_years), so they are matched loosely on purpose.
+      .toMatch(/computeFit\(r\.description(?:\.slice\(0, FIT_DESC_CHARS\))?, resumeScan, 40[^)]*\)/);
     expect(block, "the raw résumé text must never be handed to computeFit inside the loop")
       .not.toMatch(/computeFit\([^)]*,\s*resumeText\b/);
     // The scan must sit before the loop, or it is just a rename.

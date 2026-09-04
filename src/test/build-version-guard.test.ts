@@ -913,7 +913,10 @@ const PINNED = {
   //   (every-job-must-be-findable.test.ts). A findability probe over 40 real
   //   postings found 5 unreachable by their own title; 4 of the 5 contained
   //   " - ". Removing the hyphen moved the posting from absent to rank 1.
-  buildVersion: "2026-08-30.45",
+  //
+  // .46 — the legacy fit-batch copy passes min_years too, so a reader on an
+  //   old tab gets the same seniority demotion as everyone else.
+  buildVersion: "2026-08-30.46",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {

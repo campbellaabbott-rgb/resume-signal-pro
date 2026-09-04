@@ -44,7 +44,9 @@ describe("sixty postings could not be scored just now", () => {
     expect(F).toMatch(/const FIT_BATCH_MAX = 20;/);
     expect(F).toMatch(/\.slice\(0, FIT_BATCH_MAX\)/);
     expect(F).toMatch(/const FIT_DESC_CHARS = 20_000;/);
-    expect(F).toMatch(/computeFit\(r\.description\.slice\(0, FIT_DESC_CHARS\), resumeScan, 40\)/);
+    // .46 added the posting's stated min_years as a fourth argument, so a job
+    // asking eight years is demoted for a reader with two.
+    expect(F).toMatch(/computeFit\(r\.description\.slice\(0, FIT_DESC_CHARS\), resumeScan, 40, minYears\)/);
   });
 
   it("ranking is switched on AFTER the résumé's query is set — never before", () => {

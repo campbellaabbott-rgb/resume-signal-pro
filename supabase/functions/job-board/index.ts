@@ -112,7 +112,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-30.45"; // .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
+const BUILD_VERSION = "2026-08-30.46"; // .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
 // .36: JazzHR joins as vendor #20 (vendors/jazzhr.ts; a verified sample of boards enters sources.ts, so the bump is load-bearing for the bootstrap lane). .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
 // .23: bug-sweep round — the agency opt-out reaches the rescue tiers (it was bound in search_jobs only, so a rescue served the rows the caller hid, undisclosed); the per-company cap stops swallowing the employer it just surfaced; a withdrawn count no longer prints "not hiring"; the reverted pipe fix is restored
 
@@ -7975,7 +7975,7 @@ Deno.serve(async (req) => {
 
       const { data: rows, error } = await client
         .from("job_board_postings")
-        .select("id, description")
+        .select("id, description, min_years")
         .in("id", ids);
       if (error) throw error;
       const fits: Record<string, number | null> = {};
@@ -7996,7 +7996,15 @@ Deno.serve(async (req) => {
           // Bounded input: computeFit walks the whole dictionary against the
           // text, and a 60KB HTML-laden description costs proportionally.
           // Everything the scorer needs is in the first FIT_DESC_CHARS.
-          const f = computeFit(r.description.slice(0, FIT_DESC_CHARS), resumeScan, 40);
+          // min_years, like job-fit. This copy exists only for bundles that
+          // have not reloaded since the scorer moved out, and it was getting
+          // the retrieval fixes for free (shared module) while silently
+          // missing the seniority demotion — a reader on an old tab would
+          // have seen a job asking eight years ranked above one asking two.
+          // The posting's PRINTED number, never experience_band, which is
+          // partly inferred from the title.
+          const minYears = typeof (r as { min_years?: unknown }).min_years === "number" ? (r as { min_years: number }).min_years : null;
+          const f = computeFit(r.description.slice(0, FIT_DESC_CHARS), resumeScan, 40, minYears);
           fits[r.id] = f.pct;
           if (f.missing.length > 0) missing[r.id] = f.missing.slice(0, 4);
           if (f.matched.length > 0) matched[r.id] = f.matched.slice(0, 6);
