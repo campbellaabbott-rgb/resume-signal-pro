@@ -112,7 +112,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-30.46"; // .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
+const BUILD_VERSION = "2026-08-30.47"; // .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
 // .36: JazzHR joins as vendor #20 (vendors/jazzhr.ts; a verified sample of boards enters sources.ts, so the bump is load-bearing for the bootstrap lane). .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
 // .23: bug-sweep round — the agency opt-out reaches the rescue tiers (it was bound in search_jobs only, so a rescue served the rows the caller hid, undisclosed); the per-company cap stops swallowing the employer it just surfaced; a withdrawn count no longer prints "not hiring"; the reverted pipe fix is restored
 
@@ -383,7 +383,28 @@ const SLICE_WALL_BUDGET_MS = 90_000;
 // minute — while a slice that dies stops the chain entirely and waits for the
 // ten-minute cron. Today's freshness collapse, 403 -> 804 minutes, is the cost
 // of dying slices, not of small ones.
-const MAX_BOARDS_PER_SLICE = 8;
+// A CAP THAT SAVED THE CHAIN IS NOW THE BOTTLENECK, SO IT FINDS ITS OWN
+// CEILING.
+//
+// .44's cap of 8 did what it was for: slices complete and the chain runs
+// again (works 2110 -> 2984 in two hours, chainKick "continued", a full cold
+// pass wrapped). But 8 boards a slice cannot hold the published promise —
+// 44,000 cold boards at 8 per slice is 5,500 slices, which at the observed 3-5
+// slices a minute is 18 to 30 hours per pass against a bound of 8. Freshness
+// went on climbing, 863 -> 997 minutes, while the rotation was healthy. Small
+// and completing beat large and dying; small and completing does not beat the
+// promise.
+//
+// I do not know where the death threshold is — 24 died at board 16, 8 lives —
+// and one constant chosen from two data points would be another guess. So the
+// budget RIDES THE CHAIN: each hop that completes hands the next hop a larger
+// one, and a hop that dies hands on nothing, so the cron's fresh chain starts
+// at the floor again. The rotation walks up to just under whatever the real
+// threshold is, backs off by itself when it hits it, and re-finds it after a
+// deploy or a change in board mix — without me picking a number.
+const MIN_BOARDS_PER_SLICE = 8;
+const MAX_BOARDS_PER_SLICE = 80;
+const BOARDS_RAMP_STEP = 8;
 const CAPPED_VISIT_VENDORS = new Set(["workday", "oracle", "icims", "smartrecruiters", "rippling"]);
 const COLD_SLICE = 80; // cold boards are small (that's why they're cold); 80/hop at CONCURRENCY=8 is 10 sequential rounds — well under the edge wall-time limit. Rotation speed comes from concurrency + hops-per-pass, never bigger slices (proven-safe size).
 const BOOTSTRAP_PER_SLICE = 25; // zero-row boards prepended per cold slice after a deploy — +31% slice load, still ~3 rounds under the wall-time margin; a 1,900-board merge drains in ~1.5 passes instead of waiting a full rotation for its FIRST ingest
@@ -1725,7 +1746,7 @@ async function isIngestPaused(client: SupabaseClient): Promise<boolean> {
  * kick, so the row can never diverge the way a meta row written from two sites
  * does (this schema lost a whole lane to that once).
  */
-function chainNextSlice(hop: number, client?: SupabaseClient) {
+function chainNextSlice(hop: number, client?: SupabaseClient, nextBoards?: number) {
   const url = `${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`;
   const stamp = async (v: Record<string, unknown>) => {
     if (!client) return;
@@ -1754,7 +1775,7 @@ function chainNextSlice(hop: number, client?: SupabaseClient) {
       const r = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "refresh", force: true, chain: hop + 1, chainKey: key }),
+        body: JSON.stringify({ action: "refresh", force: true, chain: hop + 1, chainKey: key, ...(nextBoards ? { boards: nextBoards } : {}) }),
       });
       const body = (await r.text()).slice(0, 300);
       // A 200 is not proof the chain continued. The child returns 200 for every
@@ -1898,7 +1919,7 @@ async function stampSliceWork(client: SupabaseClient, inHotPhase: boolean, slice
 // Set by runRefresh the instant its fetch loop closes; read by the recorder
 // below in the same invocation. Module state rather than a parameter because a
 // guard counts the recorder's exact call literal at its three terminal returns.
-let sliceBudgetNote: { fetched: number; skipped: number; hit: boolean; lastUpsertError: string | null; heapStopped: boolean; wallStopped: boolean; sizeStopped: boolean } | null = null;
+let sliceBudgetNote: { fetched: number; skipped: number; hit: boolean; lastUpsertError: string | null; heapStopped: boolean; wallStopped: boolean; sizeStopped: boolean; boardBudget: number } | null = null;
 // WHERE A CHAIN DIES IS A NUMBER, NOT A GUESS. Three 546 deaths on 2026-09-03
 // sat at hops 6, 7 and 6 while chains otherwise reach hop 9, and the slice
 // that died last was a small cold one (6,386 postings, 39s). That is the
@@ -1986,7 +2007,7 @@ async function recordSliceStats(client: SupabaseClient, sliceWallStart: number, 
         ...(mem.heapMb !== undefined ? { heapMb: mem.heapMb } : {}),
         ...(mem.rssMb !== undefined ? { rssMb: mem.rssMb } : {}),
         // The budget outcome rides on the row status already exposes.
-        ...(sliceBudgetNote ? { budgetFetched: sliceBudgetNote.fetched, budgetSkipped: sliceBudgetNote.skipped, budgetHit: sliceBudgetNote.hit, heapStopped: sliceBudgetNote.heapStopped, wallStopped: sliceBudgetNote.wallStopped, sizeStopped: sliceBudgetNote.sizeStopped, lastUpsertError: sliceBudgetNote.lastUpsertError ? sliceBudgetNote.lastUpsertError.slice(0, 200) : null } : {}),
+        ...(sliceBudgetNote ? { budgetFetched: sliceBudgetNote.fetched, budgetSkipped: sliceBudgetNote.skipped, budgetHit: sliceBudgetNote.hit, heapStopped: sliceBudgetNote.heapStopped, wallStopped: sliceBudgetNote.wallStopped, sizeStopped: sliceBudgetNote.sizeStopped, boardBudget: sliceBudgetNote.boardBudget, lastUpsertError: sliceBudgetNote.lastUpsertError ? sliceBudgetNote.lastUpsertError.slice(0, 200) : null } : {}),
         stampError: sliceStampError,
       },
       updated_at: new Date().toISOString(),
@@ -1995,7 +2016,7 @@ async function recordSliceStats(client: SupabaseClient, sliceWallStart: number, 
   await Promise.race([write, new Promise<void>((res) => setTimeout(res, SLICE_STATS_WRITE_MS))]);
 }
 
-async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): Promise<{ ok: boolean; detail: string }> {
+async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, boardBudget = MIN_BOARDS_PER_SLICE): Promise<{ ok: boolean; detail: string }> {
   currentHop = chainHop;
   // Checked at the ENTRY too, not only at the hop: pausing must also stop a
   // fresh chain started by pg_cron, a manual refresh, or any other trigger.
@@ -2614,7 +2635,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
   let wallStopped = false;
   let sizeStopped = false;
   const deepTokens = new Set(deepBoards.map((b) => b.token));
-  await breadcrumb(client, "slice-start", { boards: queue.length, phase: inHotPhase ? "hot" : "cold", elapsedMs: Date.now() - sliceWallStart });
+  await breadcrumb(client, "slice-start", { boards: queue.length, budget: boardBudget, phase: inHotPhase ? "hot" : "cold", elapsedMs: Date.now() - sliceWallStart });
   const budgetSkipped: string[] = [];
   let lastUpsertError: string | null = null;
 
@@ -2632,7 +2653,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
         if (fetchedInSlice >= SLICE_POSTING_BUDGET) { budgetSkipped.push(s.token); continue; }
         // Checked before STARTING a board, so whatever is already in flight
         // has headroom to land.
-        if (boardsDone >= MAX_BOARDS_PER_SLICE) {
+        if (boardsDone >= boardBudget) {
           sizeStopped = true;
           budgetSkipped.push(s.token);
           continue;
@@ -3452,7 +3473,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
   // 2026-09-03 and nothing outside the function could say WHY: the message
   // lived in a local and reached only the pass-end detail string and the
   // console. Now it lands on the slice_stats row status already exposes.
-  sliceBudgetNote = { fetched: fetchedInSlice, skipped: budgetSkipped.length, hit: budgetSkipped.length > 0, lastUpsertError, heapStopped, wallStopped, sizeStopped };
+  sliceBudgetNote = { fetched: fetchedInSlice, skipped: budgetSkipped.length, hit: budgetSkipped.length > 0, lastUpsertError, heapStopped, wallStopped, sizeStopped, boardBudget };
   if (budgetSkipped.length) console.warn(`[JOB-BOARD] slice budget hit: ${fetchedInSlice} postings fetched, ${budgetSkipped.length} board(s) deferred to next pass`);
   await breadcrumb(client, "loop-done", { boardsDone, fetched: fetchedInSlice, skipped: budgetSkipped.length, heapStopped, wallStopped, sizeStopped, elapsedMs: Date.now() - sliceWallStart });
   await stampSliceWork(client, inHotPhase, sliceWallStart);
@@ -4436,7 +4457,10 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
   // in "other" despite the work being built and deployed. maybeKickMaintenance
   // throttles itself, so a slice cadence costs one small meta read per slice.
   await maybeKickMaintenance(client);
-  if (chainHop < CHAIN_CAP) chainNextSlice(chainHop, client);
+  // Earned, not assumed: this hop reached its terminal write, so the next may
+  // try more. A hop that dies never gets here, and the cron's fresh chain
+  // carries no budget, so the ramp restarts at the floor.
+  if (chainHop < CHAIN_CAP) chainNextSlice(chainHop, client, Math.min(MAX_BOARDS_PER_SLICE, boardBudget + BOARDS_RAMP_STEP));
   const phase = inHotPhase ? `hot ${Math.min(hot, HOT_LIST.length)}/${HOT_LIST.length}` : `cold slice ${coldDone}/${COLD_SLICES_PER_PASS} (rotation ${cold}/${COLD_LIST.length})`;
   await recordSliceStats(client, sliceWallStart, inHotPhase);
   // The shed level rides the summary, because a rotation that is deliberately
@@ -7803,7 +7827,12 @@ Deno.serve(async (req) => {
         return json({ ok: true, detail: `catalog high-water reset to ${JOB_SOURCES.length}` });
       }
       const force = body.force === true && keyOk;
-      const r = await runRefresh(client, force, force ? hop : 0);
+      // Clamped on the way in: the budget arrives over the wire from a sibling
+      // isolate, and an unbounded one would undo the bound entirely.
+      const boards = Number.isFinite(Number(body.boards))
+        ? Math.min(MAX_BOARDS_PER_SLICE, Math.max(MIN_BOARDS_PER_SLICE, Math.floor(Number(body.boards))))
+        : MIN_BOARDS_PER_SLICE;
+      const r = await runRefresh(client, force, force ? hop : 0, force ? boards : MIN_BOARDS_PER_SLICE);
       return json(r, r.ok ? 200 : 502);
     }
 

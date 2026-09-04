@@ -19,7 +19,9 @@ const CODE = RAW.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ");
 describe("where a chain dies is a number", () => {
   it("the hop is captured at runRefresh entry", () => {
     expect(CODE).toMatch(/let currentHop = 0;/);
-    expect(CODE).toMatch(/chainHop = 0\): Promise<\{ ok: boolean; detail: string \}> \{\s*currentHop = chainHop;/);
+    // .47 added the ramped board budget as a fourth parameter; the hop is
+    // still captured first, which is what this guard is about.
+    expect(CODE).toMatch(/chainHop = 0, boardBudget = MIN_BOARDS_PER_SLICE\): Promise<\{ ok: boolean; detail: string \}> \{\s*currentHop = chainHop;/);
   });
 
   it("heap and rss are read from the runtime, in megabytes", () => {

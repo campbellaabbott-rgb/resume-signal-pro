@@ -916,7 +916,14 @@ const PINNED = {
   //
   // .46 — the legacy fit-batch copy passes min_years too, so a reader on an
   //   old tab gets the same seniority demotion as everyone else.
-  buildVersion: "2026-08-30.46",
+  //
+  // .47 — the slice budget rides the chain and ramps
+  //   (a-cap-that-finds-its-own-ceiling.test.ts). 8 boards saved the chain and
+  //   then became the bottleneck: 5,500 slices per pass is 18-30 hours against
+  //   an 8-hour promise, and freshness climbed 863 -> 997 while the rotation
+  //   was healthy. Each completing hop hands the next a bigger budget; a hop
+  //   that dies hands on nothing and the cron restarts at the floor.
+  buildVersion: "2026-08-30.47",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {

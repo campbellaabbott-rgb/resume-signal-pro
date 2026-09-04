@@ -60,8 +60,11 @@ describe("a slice with no clock", () => {
 
   it("is capped at a size the breadcrumbs show it reaches", () => {
     // .43. Not a theory about the cause — an observation about what survives.
-    expect(CODE).toMatch(/if \(boardsDone >= MAX_BOARDS_PER_SLICE\) \{\s*sizeStopped = true;\s*budgetSkipped\.push\(s\.token\);\s*continue;\s*\}/);
-    expect(num("MAX_BOARDS_PER_SLICE")).toBeLessThanOrEqual(24);
+    // .47: the cap is no longer a constant — it rides the chain and ramps
+    // (a-cap-that-finds-its-own-ceiling.test.ts), so the stop reads the budget
+    // this hop was handed.
+    expect(CODE).toMatch(/if \(boardsDone >= boardBudget\) \{\s*sizeStopped = true;\s*budgetSkipped\.push\(s\.token\);\s*continue;\s*\}/);
+    expect(num("MIN_BOARDS_PER_SLICE")).toBeLessThanOrEqual(8);
     expect(CODE).toMatch(/sizeStopped: sliceBudgetNote\.sizeStopped,/);
     // Resolution had to improve too: one mark then silence located the death
     // only to within a 24-board window.
