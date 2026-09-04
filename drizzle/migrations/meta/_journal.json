@@ -127,6 +127,13 @@
       "when": 1788475194732,
       "tag": "0017_desc_coverage_next_to_date_coverage",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1788521634357,
+      "tag": "0018_a_count_that_opened_every_description_to_say_one_number",
+      "breakpoints": true
     }
   ]
 }
