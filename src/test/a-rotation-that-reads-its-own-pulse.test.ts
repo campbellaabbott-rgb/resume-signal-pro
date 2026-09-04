@@ -53,7 +53,12 @@ describe("the rotation reads its own pulse and stands down", () => {
     expect(BOARD, "the shed read itself must be bounded — waiting on it is the distress it detects")
       .toMatch(/setTimeout\(\(\) => res\(SHED_READ_TIMEOUT\), 500\)/);
     expect(BOARD, "level 0 must resolve to the unshed constants")
-      .toMatch(/const effColdSlice = shedLevel === 2 \? 24 : shedLevel === 1 \? 48 : COLD_SLICE;/);
+      // .50 renamed the shed ladder to shedColdSlice: the EFFECTIVE cold take
+      // is now that value capped by the slice's board budget, because the
+      // cursor advances by the composed length and must not outrun the read
+      // (a-cursor-that-outran-the-read.test.ts). The shed ladder itself — the
+      // thing this guard is about — is unchanged.
+      .toMatch(/const shedColdSlice = shedLevel === 2 \? 24 : shedLevel === 1 \? 48 : COLD_SLICE;/);
     const stripped = BOARD.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
     expect(stripped, "the fail-open form must not return").not.toMatch(/return 0; \/\/ no measurement/);
   });
@@ -95,7 +100,7 @@ describe("the rotation reads its own pulse and stands down", () => {
     // bootstrap and a 5-board retry lane — the lanes consuming no cursor became
     // the majority of the hop while the freshness-bearing part took the cut.
     expect(BOARD).toMatch(/const effBootstrapPerSlice = shedLevel === 2 \? 0 : shedLevel === 1 \? 10 : BOOTSTRAP_PER_SLICE;/);
-    expect(BOARD).toMatch(/const effRetryPerSlice = shedLevel === 2 \? 0 : shedLevel === 1 \? 2 : RETRY_PER_SLICE;/);
+    expect(BOARD).toMatch(/const shedRetryPerSlice = shedLevel === 2 \? 0 : shedLevel === 1 \? 2 : RETRY_PER_SLICE;/);
   });
 
   it("the bootstrap DRAIN moves with the SELECT, or boards are discarded unfetched", () => {
@@ -103,9 +108,9 @@ describe("the rotation reads its own pulse and stands down", () => {
     // drain kept the constant while the selection shed, every shed hop would
     // discard boards from the queue that were never fetched — the "drained
     // without being filled" failure that block already documents.
-    expect(BOARD).toMatch(/\.slice\(0, effBootstrapPerSlice\)/);
-    expect(BOARD).toMatch(/queue: queue\.slice\(effBootstrapPerSlice\),/);
-    expect(BOARD).toMatch(/drained: Math\.min\(effBootstrapPerSlice, queue\.length\),/);
+    expect(BOARD).toMatch(/\.slice\(0, bootstrapTake\)/);
+    expect(BOARD).toMatch(/queue: queue\.slice\(bootstrapTake\),/);
+    expect(BOARD).toMatch(/drained: Math\.min\(bootstrapTake, queue\.length\),/);
     const stripped = BOARD.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
     expect(stripped, "no drain site may still use the raw constant")
       .not.toMatch(/queue\.slice\(BOOTSTRAP_PER_SLICE\)/);

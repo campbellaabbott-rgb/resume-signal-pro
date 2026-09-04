@@ -933,7 +933,14 @@ const PINNED = {
   // .49 — the ramp measured the threshold: 16 lives, 24 dies. The ceiling is
   //   the last value observed to survive, because a ceiling above it leaves
   //   the ramp oscillating into a death that costs the chain and a cron wait.
-  buildVersion: "2026-08-30.49",
+  //
+  // .50 — the cursor must not advance past a board nobody read
+  //   (a-cursor-that-outran-the-read.test.ts). The board budget stopped the
+  //   loop after N boards while the cold cursor still advanced by the full
+  //   composed slice: measured over ten minutes, the cursor passed 1,040
+  //   boards while at most ~336 could have been fetched. Every lane is now
+  //   sized to fit the budget before the slice is composed.
+  buildVersion: "2026-08-30.50",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {

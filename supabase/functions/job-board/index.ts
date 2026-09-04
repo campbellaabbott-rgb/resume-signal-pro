@@ -112,7 +112,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-30.49"; // .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
+const BUILD_VERSION = "2026-08-30.50"; // .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
 // .36: JazzHR joins as vendor #20 (vendors/jazzhr.ts; a verified sample of boards enters sources.ts, so the bump is load-bearing for the bootstrap lane). .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
 // .23: bug-sweep round — the agency opt-out reaches the rescue tiers (it was bound in search_jobs only, so a rescue served the rows the caller hid, undisclosed); the per-company cap stops swallowing the employer it just surfaced; a withdrawn count no longer prints "not hiring"; the reverted pipe fix is restored
 
@@ -2187,7 +2187,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
     : shedSignal.ms > l1 ? 1
     : 0;
   const shedEma = shedSignal.kind === "ema" ? shedSignal.ms : 0;
-  const effColdSlice = shedLevel === 2 ? 24 : shedLevel === 1 ? 48 : COLD_SLICE;
+  const shedColdSlice = shedLevel === 2 ? 24 : shedLevel === 1 ? 48 : COLD_SLICE;
   const effConcurrency = shedLevel === 2 ? 3 : shedLevel === 1 ? 5 : CONCURRENCY;
   // The deep lane is the most expensive work a hop does and the least urgent —
   // it re-pages boards we already carry. It is the first thing to go.
@@ -2207,12 +2207,42 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
   // expensive fetch there is when they fail again — a dead feed burns the full
   // FETCH_TIMEOUT — which is why they go first and completely.
   const effBootstrapPerSlice = shedLevel === 2 ? 0 : shedLevel === 1 ? 10 : BOOTSTRAP_PER_SLICE;
-  const effRetryPerSlice = shedLevel === 2 ? 0 : shedLevel === 1 ? 2 : RETRY_PER_SLICE;
+  const shedRetryPerSlice = shedLevel === 2 ? 0 : shedLevel === 1 ? 2 : RETRY_PER_SLICE;
+  const shedBootstrapPerSlice = effBootstrapPerSlice;
+  const shedDeepPerSlice = effDeepPerSlice;
+
+  // THE CURSOR MUST NOT ADVANCE PAST A BOARD NOBODY READ.
+  //
+  // The slice is [demand, bootstrap, retry, COLD ROTATION, deep] and the board
+  // budget stops the loop after N boards in that order — so with a budget of
+  // 16 and a bootstrap lane of 25, bootstrap consumed the whole budget and the
+  // cold rotation got NOTHING. Meanwhile the cursor advances by
+  // baseSlice.length, which was still the full 80. Measured over ten minutes
+  // on .47: the cold cursor moved 16,720 -> 17,760, past 1,040 boards, while
+  // at most ~336 could have been fetched. Two thirds of the rotation was being
+  // marked visited without being read, which is why freshness kept climbing
+  // while every other signal said the chain was healthy.
+  //
+  // This file already documents the same defect for load shedding, a few lines
+  // up: "advancing by 10 while shedding took 3 would skip 7 giants' freshness
+  // every shed hop". The board budget was a second way for the take to fall
+  // short of the composed slice, and the cursor never learned about it.
+  //
+  // So every lane is now sized to FIT the budget before the slice is composed,
+  // and the cold rotation — the lane the freshness promise is measured on —
+  // is served last but reserved first. A lane that gets 0 takes 0 boards and
+  // moves no cursor, which is honest; the previous behaviour was not.
+  const deepTake = Math.min(shedDeepPerSlice, boardBudget >= 12 ? shedDeepPerSlice : 0);
+  const retryTake = Math.min(shedRetryPerSlice, 2);
+  const bootstrapTake = Math.min(shedBootstrapPerSlice, Math.max(0, Math.floor((boardBudget - deepTake - retryTake) * 0.3)));
+  const coldTake = Math.max(1, boardBudget - deepTake - retryTake - bootstrapTake);
+  const effColdSlice = Math.min(shedColdSlice, coldTake);
+  const effRetryPerSlice = retryTake;
   if (shedLevel > 0) {
-    console.warn(`[JOB-BOARD] load shedding L${shedLevel}: ${inHotPhase ? "hot" : "cold"} EMA ${Math.round(shedEma / 1000)}s -> ${inHotPhase ? `hotSlice ${effHotSlice}` : `slice ${effColdSlice}, concurrency ${effConcurrency}, deep ${effDeepPerSlice}, bootstrap ${effBootstrapPerSlice}, retry ${effRetryPerSlice}`}`);
+    console.warn(`[JOB-BOARD] load shedding L${shedLevel}: ${inHotPhase ? "hot" : "cold"} EMA ${Math.round(shedEma / 1000)}s -> ${inHotPhase ? `hotSlice ${effHotSlice}` : `slice ${effColdSlice}, concurrency ${effConcurrency}, deep ${effDeepPerSlice}, bootstrap ${bootstrapTake}, retry ${effRetryPerSlice}`}`);
   }
 
-  const baseSlice = inHotPhase
+  let baseSlice = inHotPhase
     ? HOT_LIST.slice(hot, hot + effHotSlice)
     : COLD_LIST.slice(cold, cold + effColdSlice);
   // Feature 3 (demand-driven freshness): boards a user just opened/verified
@@ -2229,6 +2259,16 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
       .slice(0, 5)
       .map((x) => JOB_SOURCES.find((s) => s.token === x.t))
       .filter((s): s is JobSource => !!s));
+    // AND THE DEMAND LANE IS PAID FOR OUT OF THE SAME BUDGET. It is capped at
+    // five and sits AHEAD of the cold rotation in the slice, so without this
+    // the five it takes would come straight out of the cold lane's share while
+    // the cursor still advanced by the untrimmed length — the very gap the
+    // lane sizing above closes. Trimmed here rather than earlier because the
+    // demand count is not known until now, and `advanceArgs` reads
+    // baseSlice.length below, after this point.
+    if (demandBoards.length > 0) {
+      baseSlice = baseSlice.slice(0, Math.max(1, effColdSlice - demandBoards.length));
+    }
   }
   // Bootstrap lane: boards with ZERO rows (fresh catalog merges) jump the
   // queue instead of waiting a full rotation at the catalog tail. The queue
@@ -2288,7 +2328,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
                 console.error(`[JOB-BOARD] bootstrap version-append failed (will retry next slice): ${e instanceof Error ? e.message.slice(0, 120) : e}`);
               }
             }
-            const takeArgs = { p_n: effBootstrapPerSlice, p_skip: [...sliceTokens], p_version: BUILD_VERSION, p_stamp_version: appendDone };
+            const takeArgs = { p_n: bootstrapTake, p_skip: [...sliceTokens], p_version: BUILD_VERSION, p_stamp_version: appendDone };
             let take = await client.rpc("bootstrap_queue_take", takeArgs);
             if (take.error) throw take.error;
             let res = take.data as { taken?: string[]; drained?: number; remaining?: number } | null;
@@ -2402,7 +2442,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
       if (queue.length > 0) {
         const sliceTokens = new Set([...baseSlice, ...demandBoards].map((s) => s.token));
         bootstrapBoards = queue
-          .slice(0, effBootstrapPerSlice)
+          .slice(0, bootstrapTake)
           .filter((t) => !sliceTokens.has(t))
           .map((t) => JOB_SOURCES.find((s) => s.token === t))
           .filter((s): s is JobSource => !!s);
@@ -2427,16 +2467,16 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
           {
             k: "bootstrap",
             v: {
-              // effBootstrapPerSlice, NOT the constant: the drain must equal
+              // bootstrapTake, NOT the constant: the drain must equal
               // what was actually SELECTED above or the lane discards boards it
               // never fetched — the "drained without being filled" failure this
               // block's own comment documents, which shedding would otherwise
               // reintroduce every hop.
-              queue: queue.slice(effBootstrapPerSlice),
+              queue: queue.slice(bootstrapTake),
               version: bootstrapAppendDone ? BUILD_VERSION : (bs.version ?? ""),
               lastSlice: {
                 at: new Date().toISOString(),
-                drained: Math.min(effBootstrapPerSlice, queue.length),
+                drained: Math.min(bootstrapTake, queue.length),
                 selected: bootstrapBoards.length,
               },
             },
