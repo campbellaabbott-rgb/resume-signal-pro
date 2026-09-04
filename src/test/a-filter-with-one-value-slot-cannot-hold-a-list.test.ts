@@ -114,9 +114,23 @@ describe("a filter with one value slot cannot hold a list", () => {
   it("the closed domains are IMPORTED, never retyped", () => {
     // Two lists that can disagree is the shape of every filter defect this
     // board has shipped. Vendor #21 must join both surfaces on the same day.
-    expect(RAW).toMatch(/import \{ BOARD_VENDORS, WORK_MODES \} from "\.\.\/job-board\/filters\.ts";/);
-    expect(RAW).toMatch(/import \{ JOB_CATEGORIES \} from "\.\.\/job-board\/categories\.ts";/);
-    expect(RAW).toMatch(/import \{ EXPERIENCE_BANDS \} from "\.\.\/job-board\/experience\.ts";/);
+    // 2026-09-04: the four domains moved into _shared/board-domains.ts and
+    // job-board's modules RE-EXPORT them. Importing them from
+    // ../job-board/filters.ts pulled sources.ts — 2.6MB — into the public-api
+    // bundle, and a bundle over the size cliff deploys "successfully" while
+    // serving the previous version. One list, two readers, still no retyping;
+    // the re-export assertions below are what stop them drifting apart again.
+    expect(RAW).toMatch(/import \{ BOARD_VENDORS, EXPERIENCE_BANDS, JOB_CATEGORIES, WORK_MODES \} from "\.\.\/_shared\/board-domains\.ts";/);
+    expect(RAW, "no domain may be imported from a job-board module").not.toMatch(/import \{[^}]*(BOARD_VENDORS|JOB_CATEGORIES|EXPERIENCE_BANDS|WORK_MODES)[^}]*\} from "\.\.\/job-board\//);
+    for (const [file, name] of [
+      ["supabase/functions/job-board/categories.ts", "JOB_CATEGORIES"],
+      ["supabase/functions/job-board/experience.ts", "EXPERIENCE_BANDS"],
+      ["supabase/functions/job-board/filters.ts", "BOARD_VENDORS"],
+    ] as const) {
+      const src = readFileSync(resolve(__dirname, "../..", file), "utf8");
+      expect(src, `${name} must be re-exported from the shared module, not retyped in ${file}`)
+        .toMatch(new RegExp(`export \\{[^}]*${name}[^}]*\\} from "\\.\\./_shared/board-domains\\.ts"`));
+    }
     const t = listFilterTable();
     expect(t.category.domain).toBe("JOB_CATEGORIES");
     expect(t.source.domain).toBe("BOARD_VENDORS");

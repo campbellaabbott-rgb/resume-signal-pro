@@ -23,11 +23,14 @@ import { resolve } from "node:path";
  */
 const RAW = readFileSync(resolve(__dirname, "../../supabase/functions/job-board/index.ts"), "utf8");
 const CODE = RAW.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ");
+// Prose reads RAW, code reads CODE. Asserting a comment against stripped
+// source is this repo's oldest guard bug — seven occurrences, this one mine,
+// written into a file whose subject is instrumentation discipline.
 
 describe("where the slice stopped saying anything", () => {
   it("a breadcrumb can never break the thing it measures", () => {
     expect(CODE, "bounded, like the stamp writers").toMatch(/await Promise\.race\(\[write, new Promise<void>\(\(r\) => setTimeout\(r, 600\)\)\]\);/);
-    expect(CODE, "and swallowed — a lost breadcrumb is survivable, a wedged rotation is not").toMatch(/\}\)\(\)\.catch\(\(\) => \{ \/\* never break the thing it measures \*\/ \}\);/);
+    expect(RAW, "and swallowed — a lost breadcrumb is survivable, a wedged rotation is not").toMatch(/\}\)\(\)\.catch\(\(\) => \{ \/\* never break the thing it measures \*\/ \}\);/);
     expect(CODE, "the memory probe is the total one, never a raw runtime call").not.toMatch(/Deno\.memoryUsage\(\)/);
   });
 

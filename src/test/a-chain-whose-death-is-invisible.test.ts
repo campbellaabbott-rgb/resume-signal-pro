@@ -93,7 +93,9 @@ describe("a chain whose death is invisible", () => {
     // appended — which is the rule working, not the guard breaking (.45
     // appended sliceStatsRow and this anchor moved with it).
     // .33 appended descCov (desc_coverage) after sliceStatsRow — still appended, never inserted.
-    const arr = CODE.slice(CODE.indexOf("hwMeta, deepCur, chainKick, sliceStatsRow, descCov] = await Promise.all(["));
+    // .40 appended the slice_trace read after descCov — still appended.
+    const arr = CODE.slice(CODE.indexOf("hwMeta, deepCur, chainKick, sliceStatsRow, descCov, traceRow] = await Promise.all(["));
+    expect(arr.indexOf('eq("k", "slice_trace")'), "the trace read must trail the desc_coverage read").toBeGreaterThan(arr.indexOf('eq("k", "desc_coverage")'));
     expect(arr.indexOf('eq("k", "desc_coverage")'), "the desc_coverage read must trail the slice_stats read").toBeGreaterThan(arr.indexOf('eq("k", "slice_stats")'));
     const deep = arr.indexOf('eq("k", "deep_cursor")');
     const chain = arr.indexOf('eq("k", "chain_kick")');
