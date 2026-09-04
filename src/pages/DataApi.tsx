@@ -31,21 +31,38 @@ const CONTACT = "resumeboostersupp@gmail.com";
 // cannot drift from the project these docs are served by.
 const API_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/public-api`;
 
-const ENDPOINTS: Array<{ path: string; body: string; params?: string }> = [
+// THE PARAMS LINE IS A PROMISE, not a summary. A reader builds against it, so
+// it lists what the function actually accepts — including the ones it will
+// refuse and say where they work instead (sort, engine=ranked).
+const ENDPOINTS: Array<{ path: string; body: string; params?: string; notes?: string[] }> = [
   {
     path: "GET /v1/jobs",
     body: "Live postings, newest first. Every result is still open in the employer's own feed and posted within the last 30 days. Page with cursor= — each response carries page.nextCursor.",
-    params: "q, country, category, company_token, work_mode, source, experience_band, department, remote, salary_min, salary_max, include_unstated_pay, posted_after, posted_before, limit (max 100), cursor",
+    params: "q, country, category, company_token, work_mode, source, experience_band, department, location, remote, employment_type, pay_basis, has_stated_pay, max_years, max_age_days, agent_ready_only, exclude_agencies, salary_min, salary_max, include_unstated_pay, posted_after, posted_before, limit (max 100), offset (max 10,000), cursor, include, explain, engine, sort (engine=ranked only)",
+    notes: [
+      "country, category, company_token, work_mode, source and experience_band take a comma list — country=US,GB — capped at 5, 3, 12, 3, 8 and 4 values, the same caps the board applies. Over the cap is a 400, never a silent slice.",
+      "A value outside a closed set (an unknown source, category, work mode or experience band) is a 400 naming the valid values. It is never an empty page, which would read as a statement about the market in answer to a typo.",
+      "include=description adds the posting body to every row and caps that request at 25 rows a page — descriptions average ~5.7KB, so a 100-row page would be ~570KB. Page with cursor= to walk the rest. /v1/jobs/{id} always carries it.",
+      "engine=ranked (paid) swaps the default title match for the site's full relevance/rescue engine, and passes its disclosures through. explain=1 appends a diagnostics block naming every filter that bound and how.",
+    ],
   },
-  { path: "GET /v1/jobs/{id}", body: "One posting. Returns 404 once the employer withdraws it — never a stale 200, so you can tell 'gone' from 'we stopped looking'." },
+  { path: "GET /v1/jobs/{id}", body: "One posting, description included. Returns 404 once the employer withdraws it — never a stale 200, so you can tell 'gone' from 'we stopped looking'." },
   {
     path: "GET /v1/changes",
     body: "What opened and what closed since a timestamp — and for each close, whether the role genuinely came down or was re-listed under a new id. Almost nobody else can answer the second half.",
-    params: "since (ISO, within the last 30 days), limit (max 100)",
+    params: "since (ISO, within the last 30 days; 180 on a paid key), limit (max 100), opened_cursor, closed_cursor",
   },
-  { path: "GET /v1/companies", body: "Employers ranked by open postings, from the same cached facet the board itself renders. Carries asOf." },
-  { path: "GET /v1/stats", body: "Headline counts: live postings, companies, freshness window. Carries asOf and names its basis." },
+  { path: "GET /v1/companies", body: "Employers ranked by open postings, from the same cached facet the board itself renders. Carries asOf.", params: "q, limit (max 100), cursor" },
+  {
+    path: "GET /v1/stats",
+    body: "Headline counts, the closure log, and the two questions a buyer asks first: how fresh, and from which systems. Every figure carries its own asOf and names its basis.",
+    notes: [
+      "feedFreshness is the measured age of our last re-check of each employer feed behind a live posting — p50, p95 and max, in minutes. It is our re-check cadence, not how long ago a role was posted.",
+      "bySource gives description coverage and stated-date coverage per hiring system, plus which systems the circuit breaker currently has quarantined. Its totals stand on postings the employer has not withdrawn, WITHOUT the 30-day window — so they sum above livePostings and below trackedPostings, and the response says so.",
+    ],
+  },
   { path: "GET /v1/usage", body: "Your own consumption for the last 30 days, by day and by endpoint, plus what is left of your limits today." },
+  { path: "POST /v1/fit", body: "Paid. POST a résumé and get the board's best matches back scored, with the terms that matched and the terms that are missing. A résumé cannot ride a query string, so this is the one route that takes a body — and it stores nothing." },
 ];
 
 /** Self-serve issuance. The key is shown once — only its hash is stored. */
@@ -332,6 +349,13 @@ export default function DataApi() {
                       <p className="text-xs text-muted-foreground mt-2">
                         <span className="font-medium">Params:</span> <code className="text-xs">{e.params}</code>
                       </p>
+                    )}
+                    {e.notes && (
+                      <ul className="text-xs text-muted-foreground mt-2 space-y-1">
+                        {e.notes.map((n) => (
+                          <li key={n}>• {n}</li>
+                        ))}
+                      </ul>
                     )}
                   </div>
                 ))}
