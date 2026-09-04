@@ -72,7 +72,15 @@ describe("sixty postings could not be scored just now", () => {
     // 20) before the résumé's list arrived. `refreshing` covers exactly the
     // window between the new fetch starting and landing.
     expect(J).toMatch(/if \(!fitRanking \|\| jobs\.length === 0 \|\| refreshing \|\| fitAwaitingPage\.current\) return;/);
-    expect(J, "refreshing must be a dependency, or the effect reads a stale closure").toMatch(/\}, \[fitRanking, jobs, refreshing, fitRetry\]\);/);
+    // MEMBERSHIP, NOT THE WHOLE LIST — pinning the array by its exact contents
+    // made a test about stale pages fail when a fifth dependency was added for
+    // an unrelated reason (a replaced résumé must re-score).
+    const deps = /const unscored = jobs\.filter[\s\S]*?\n {2}\}, \[([^\]]*)\]\);/.exec(J);
+    expect(deps, "the scoring effect moved — re-point this guard").toBeTruthy();
+    expect(
+      deps![1].split(",").map((s) => s.trim()),
+      "refreshing must be a dependency, or the effect reads a stale closure",
+    ).toContain("refreshing");
   });
 
   it("covers the debounce gap: the pending flag is raised at setQ and lowered when the fetch settles", () => {

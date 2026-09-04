@@ -3802,6 +3802,7 @@
     "discShowAll": "Les afficher aussi",
     "discCategory": "Par ailleurs, {{hidden}} offres sur l'ensemble du tableau ont un intitulé qui n'indique jamais leur domaine : aucun filtre par domaine ne peut les atteindre.",
     "sortedNewestFallback": "Trié du plus récent au plus ancien (classement par pertinence momentanément indisponible)",
+    "sortedExactWord": "Trié du plus récent au plus ancien — correspondances de mots exacts, sans classement par pertinence",
     "fuzzyExtraLine": "Peu de correspondances exactes pour « {{q}} » — {{count}} intitulés proches sont inclus ci-dessous, signalés.",
     "closeMatchChip": "correspondance proche",
     "zeroAlertHint": "De nouvelles offres arrivent chaque jour. Recevez un e-mail quand des postes correspondant à cette recherche apparaissent :",

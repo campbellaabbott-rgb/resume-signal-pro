@@ -37,7 +37,9 @@ describe("a cap is not a count — in the rail either", () => {
 
   it("every category count the rail prints goes through fmtFacet", () => {
     // .36: the rail reads railCounts (filteredCats ?? data.categories) so it survives other filters.
-    expect(JOBS).toMatch(/\{railCounts && <span className="opacity-70">\{fmtFacet\(railCounts\[c\] \?\? 0\)\}<\/span>\}/);
+    // .37: and a count the server's facet deadline never produced prints NOTHING
+    // rather than a zero — see an-uncounted-industry-is-not-an-empty-one.
+    expect(JOBS).toMatch(/\{typeof n === "number" && <span className="opacity-70">\{fmtFacet\(n\)\}<\/span>\}/);
     expect(JOBS).toMatch(/\{fmtFacet\(n as number\)\}/);
     expect(JOBS, "a bare category count survived").not.toMatch(/\(data\?\.categories\?\.\[c\] \?\? 0\)\.toLocaleString\(\)/);
     expect(JOBS, "a bare category count survived").not.toMatch(/\(n as number\)\.toLocaleString\(\)/);

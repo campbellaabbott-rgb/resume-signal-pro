@@ -3802,6 +3802,7 @@
     "discShowAll": "Mostrar essas também",
     "discCategory": "Além disso, {{hidden}} vagas em todo o quadro têm um título que nunca diz a qual área pertencem, então nenhum filtro de área as alcança.",
     "sortedNewestFallback": "Ordenado por mais recentes (classificação por relevância temporariamente indisponível)",
+    "sortedExactWord": "Ordenado por mais recentes — correspondências exatas de palavra inteira, sem ordenação por relevância",
     "fuzzyExtraLine": "Poucas correspondências exatas para “{{q}}” — {{count}} títulos aproximados incluídos abaixo, identificados.",
     "closeMatchChip": "correspondência aproximada",
     "zeroAlertHint": "Novas vagas chegam todos os dias. Receba um e-mail quando surgirem vagas que correspondam a esta pesquisa:",

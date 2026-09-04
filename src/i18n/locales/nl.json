@@ -3802,6 +3802,7 @@
     "discShowAll": "Toon die ook",
     "discCategory": "Daarnaast hebben {{hidden}} vacatures op het hele bord een titel die nooit zegt in welk vakgebied ze vallen, dus geen enkel vakgebiedfilter bereikt ze.",
     "sortedNewestFallback": "Gesorteerd op nieuwste eerst (relevantiesortering tijdelijk niet beschikbaar)",
+    "sortedExactWord": "Gesorteerd op nieuwste eerst — exacte woordtreffers, niet op relevantie gesorteerd",
     "fuzzyExtraLine": "Slechts enkele exacte resultaten voor “{{q}}” — {{count}} vergelijkbare titels staan hieronder, gemarkeerd.",
     "closeMatchChip": "vergelijkbaar resultaat",
     "zeroAlertHint": "Er komen dagelijks nieuwe vacatures bij. Ontvang een e-mail zodra er vacatures verschijnen die bij deze zoekopdracht passen:",

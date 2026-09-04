@@ -3802,6 +3802,7 @@
     "discShowAll": "Mostrarlas también",
     "discCategory": "Aparte, {{hidden}} vacantes de todo el tablero tienen un título que no indica a qué área pertenecen, así que ningún filtro de área puede alcanzarlas.",
     "sortedNewestFallback": "Ordenado por más recientes (el orden por relevancia no está disponible temporalmente)",
+    "sortedExactWord": "Ordenado por más recientes — coincidencias exactas de palabra completa, sin orden por relevancia",
     "fuzzyExtraLine": "Pocas coincidencias exactas para «{{q}}»: se incluyen {{count}} títulos aproximados abajo, etiquetados.",
     "closeMatchChip": "coincidencia aproximada",
     "zeroAlertHint": "Cada día llegan nuevas ofertas. Recibe un correo cuando aparezcan puestos que coincidan con esta búsqueda:",
