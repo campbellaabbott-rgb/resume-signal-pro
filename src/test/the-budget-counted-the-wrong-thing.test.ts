@@ -54,9 +54,9 @@ describe("the budget counted the wrong thing", () => {
   });
 
   it("the stop is reported where the outage was invisible", () => {
-    expect(CODE).toMatch(/heapStopped \};/);
+    expect(CODE).toMatch(/heapStopped, wallStopped \};/);
     expect(CODE).toMatch(/heapStopped: sliceBudgetNote\.heapStopped,/);
-    expect(CODE).toMatch(/breadcrumb\(client, "loop-done", \{ boardsDone, fetched: fetchedInSlice, skipped: budgetSkipped\.length, heapStopped \}\)/);
+    expect(CODE).toMatch(/breadcrumb\(client, "loop-done", \{ boardsDone, fetched: fetchedInSlice, skipped: budgetSkipped\.length, heapStopped, wallStopped/);
   });
 
   it("the posting budget stays — it bounds a different thing, and says so", () => {

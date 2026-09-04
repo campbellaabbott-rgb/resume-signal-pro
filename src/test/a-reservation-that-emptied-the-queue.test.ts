@@ -36,7 +36,9 @@ describe("a reservation that emptied the queue", () => {
     // out (the-budget-counted-the-wrong-thing.test.ts). Both are deferrals of
     // a board never attempted; what must never happen is a deferral inside the
     // reservation branch, which is what emptied the queue in the first place.
-    expect((CODE.match(/budgetSkipped\.push\(/g) ?? []).length, "two deferral sites: landed postings, and heap").toBe(2);
+    // .42 added a third: elapsed wall time, the bound that actually matched
+    // the deaths (a-slice-with-no-clock.test.ts).
+    expect((CODE.match(/budgetSkipped\.push\(/g) ?? []).length, "three deferral sites: landed postings, heap, wall time").toBe(3);
     expect(CODE).toMatch(/if \(heapNow !== undefined && heapNow >= HEAP_SOFT_LIMIT_MB\) \{\s*heapStopped = true;\s*budgetSkipped\.push\(s\.token\);\s*continue;\s*\}/);
     expect(CODE, "neither deferral may sit in the reservation branch").not.toMatch(/inFlightReserve >= SLICE_POSTING_BUDGET\) \{\s*budgetSkipped/);
   });

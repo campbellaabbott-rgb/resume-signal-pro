@@ -69,7 +69,7 @@ describe("nothing bounded the sum", () => {
   });
 
   it("records the outcome where status already looks", () => {
-    const note = CODE.indexOf("sliceBudgetNote = { fetched: fetchedInSlice, skipped: budgetSkipped.length, hit: budgetSkipped.length > 0, lastUpsertError, heapStopped };");
+    const note = CODE.indexOf("sliceBudgetNote = { fetched: fetchedInSlice, skipped: budgetSkipped.length, hit: budgetSkipped.length > 0, lastUpsertError, heapStopped, wallStopped };");
     const pulse = CODE.indexOf("await stampSliceWork(client, inHotPhase, sliceWallStart);");
     expect(note, "budget note missing").toBeGreaterThan(0);
     expect(pulse, "the note must be set before the pulse that follows the loop").toBeGreaterThan(note);

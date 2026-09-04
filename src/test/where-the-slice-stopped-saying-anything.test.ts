@@ -47,7 +47,8 @@ describe("where the slice stopped saying anything", () => {
   });
 
   it("the in-loop mark is periodic, not per board", () => {
-    expect(CODE).toMatch(/if \(\+\+boardsDone % 24 === 0\) await breadcrumb\(client, "loop", \{ boardsDone, fetched: fetchedInSlice, inFlight: inFlightReserve \}\);/);
+    // .42 added elapsedMs — the quantity that turned out to matter.
+    expect(CODE).toMatch(/if \(\+\+boardsDone % 24 === 0\) await breadcrumb\(client, "loop", \{ boardsDone, fetched: fetchedInSlice, inFlight: inFlightReserve, elapsedMs: Date\.now\(\) - sliceWallStart \}\);/);
   });
 
   it("carries the hop and the heap, and reaches the status action", () => {

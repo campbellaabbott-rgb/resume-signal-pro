@@ -888,7 +888,14 @@ const PINNED = {
   //   breadcrumbs: heap tracks boards processed, not postings, and the slice
   //   that died at 200MB had spent 4.5% of its posting budget. A slice now
   //   stops taking new boards at 150MB and finishes cleanly instead of dying.
-  buildVersion: "2026-08-30.41",
+  //
+  // .42 — the heap theory was wrong; the slice had no clock
+  //   (a-slice-with-no-clock.test.ts). On .41 slices kept dying at heap 70 and
+  //   132, below the bound, which never fired. Every slice that ever wrote its
+  //   stamp finished inside 128s; the death ran 158.3s. A slice now stops
+  //   taking new boards at 90s, which lands it around 115s with the stamps and
+  //   the chain kick still to come.
+  buildVersion: "2026-08-30.42",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {
