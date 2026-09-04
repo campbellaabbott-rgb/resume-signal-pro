@@ -229,7 +229,10 @@ describe("published source lists name every system the board actually serves", (
   // the only file carrying all 15 (sources.ts omits oracle; index.ts has only
   // workday). Read all three so a future move between files cannot shrink the
   // expected set and quietly make this guard vacuous.
-  const fnSrc = ["normalize.ts", "sources.ts", "index.ts"]
+  // vendors/*.ts joined 2026-09-04: jazzhr's normalizer lives in its own
+  // module, and a guard reading only the three files above would never see
+  // a vendor built that way — the exact shrink-the-set hazard noted above.
+  const fnSrc = ["normalize.ts", "sources.ts", "index.ts", "vendors/jazzhr.ts"]
     .map((f) => readFileSync(resolve(root, "supabase/functions/job-board", f), "utf8"))
     .join("\n");
   const SOURCES = [...new Set([...fnSrc.matchAll(/source:\s*"([a-z]+)"/g)].map((m) => m[1]))];
@@ -241,7 +244,7 @@ describe("published source lists name every system the board actually serves", (
     workable: "Workable", bamboohr: "BambooHR", recruitee: "Recruitee",
     teamtailor: "Teamtailor", personio: "Personio", breezy: "Breezy",
     rippling: "Rippling", pinpoint: "Pinpoint", usajobs: "USAJOBS", paylocity: "Paylocity", ukg: "UKG Pro Recruiting",
-    adp: "ADP Workforce Now",
+    adp: "ADP Workforce Now", jazzhr: "JazzHR",
   };
 
   it("the source set is non-trivial (guard would be vacuous otherwise)", () => {

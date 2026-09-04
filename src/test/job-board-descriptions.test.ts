@@ -119,7 +119,7 @@ describe("jobPostingLdDescription — Breezy's only description source", () => {
 describe("vendor description classification", () => {
   it("sweeps exactly the vendors that need a per-posting fetch", () => {
     expect([...DETAIL_DESC_SOURCES].sort()).toEqual(
-      ["adp", "bamboohr", "breezy", "oracle", "paylocity", "rippling", "smartrecruiters", "ukg", "workday"].sort(),
+      ["adp", "bamboohr", "breezy", "jazzhr", "oracle", "paylocity", "rippling", "smartrecruiters", "ukg", "workday"].sort(),
     );
   });
 
@@ -138,10 +138,14 @@ describe("vendor description classification", () => {
     // line; only the "last" pins move, dated each time.
     // ukg took the tail 2026-09-01 under the same append-last rule adp and
     // paylocity followed: a new vendor queues behind the established backlog.
-    expect(DETAIL_DESC_SOURCES[DETAIL_DESC_SOURCES.length - 1]).toBe("ukg");
-    expect(DETAIL_DESC_SOURCES[DETAIL_DESC_SOURCES.length - 2]).toBe("adp");
-    expect(DETAIL_DESC_SOURCES[DETAIL_DESC_SOURCES.length - 3]).toBe("paylocity");
-    expect(DETAIL_DESC_SOURCES[DETAIL_DESC_SOURCES.length - 4]).toBe("rippling");
+    // jazzhr took the tail 2026-09-04 with its vendor: an HTML career page
+    // whose description and date live only on the posting page. Same
+    // append-last rule; everyone ahead of it keeps their place.
+    expect(DETAIL_DESC_SOURCES[DETAIL_DESC_SOURCES.length - 1]).toBe("jazzhr");
+    expect(DETAIL_DESC_SOURCES[DETAIL_DESC_SOURCES.length - 2]).toBe("ukg");
+    expect(DETAIL_DESC_SOURCES[DETAIL_DESC_SOURCES.length - 3]).toBe("adp");
+    expect(DETAIL_DESC_SOURCES[DETAIL_DESC_SOURCES.length - 4]).toBe("paylocity");
+    expect(DETAIL_DESC_SOURCES[DETAIL_DESC_SOURCES.length - 5]).toBe("rippling");
     expect([...NO_DESC_SOURCES]).toHaveLength(0);
   });
 

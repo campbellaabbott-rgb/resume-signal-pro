@@ -96,6 +96,7 @@ export const BOARD_VENDORS = [
   "paylocity",
   "ukg",
   "adp",
+  "jazzhr",
 ] as const satisfies readonly JobSourceKind[];
 
 type _UnlistedKind = Exclude<JobSourceKind, (typeof BOARD_VENDORS)[number]>;

@@ -37,7 +37,12 @@
 // summary while the detail page carries the full JD (4,794 chars on the
 // probed posting) plus structured pay, so the summary is deliberately not
 // stored and the sweep fills the real text. Appended LAST, behind paylocity.
-export const DETAIL_DESC_SOURCES = ["workday", "smartrecruiters", "bamboohr", "oracle", "breezy", "rippling", "paylocity", "adp", "ukg"] as const;
+// jazzhr joined 2026-09-04 with the vendor: its list is an HTML career page
+// carrying no description and no date, and the posting page carries both —
+// a JSON-LD JobPosting on 5 of 8 probed boards (5-17k chars of description,
+// datePosted) and a #job-description container on all 8. Appended LAST,
+// behind ukg, under the same append-last rule.
+export const DETAIL_DESC_SOURCES = ["workday", "smartrecruiters", "bamboohr", "oracle", "breezy", "rippling", "paylocity", "adp", "ukg", "jazzhr"] as const;
 
 /**
  * Vendors whose description rides along in the LIST payload, so ingest stores it

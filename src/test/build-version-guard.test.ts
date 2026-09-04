@@ -182,7 +182,11 @@ const PINNED = {
   // deploy bundle past the ~4.5MB cap and .27 could not deploy at all.
   // Verified entry-for-entry identical (44,039 triples, sorted compare)
   // before re-pinning; no board was added, removed, or re-keyed.
-  sourcesHash: "6f4cb83d21d7dce4",
+  // 2026-08-30.36: JazzHR joins as vendor #20 (supabase/functions/job-board/
+  // vendors/jazzhr.ts). sources.ts gains its first tranche — 43 boards from a
+  // live-verified census sample — so the bump is load-bearing: without it the
+  // new boards queue behind the full cold rotation (the 2026-08-01 lesson).
+  sourcesHash: "d1bd98b9ca3b7502",
   // 2026-08-21.4: disables the exact-word tier's company matcher, whose index
   // never built. Bumped so the mitigation is externally identifiable.
   // 2026-08-21.5: routed retrieval. index.ts + two new modules; sources.ts
@@ -848,6 +852,8 @@ const PINNED = {
   //   slices; the desc sweep walks a first_seen cursor so permanently failing
   //   rows stop walling off the backlog; locationSplit and exactWordMatch
   //   pages say ranked: true.
+  //   Also .36: JazzHR joins as vendor #20 (vendors/jazzhr.ts; 43 verified
+  //   boards enter sources.ts, so the bump is load-bearing for the bootstrap lane).
   buildVersion: "2026-08-30.36",
 };
 

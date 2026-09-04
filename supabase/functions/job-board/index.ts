@@ -16,6 +16,7 @@
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { HOT_TOKENS, JOB_SOURCES, LIGHT_DESC_TOKENS, type JobSource } from "./sources.ts";
 import { BOARD_DESC_SOURCES, buildEmbedInput, DETAIL_DESC_SOURCES, clusterKey, jobPostingLdDescription, workdayCxsUrl } from "./descriptions.ts";
+import { fetchJazzhr, jazzhrPostingUrl, parseJazzhrDetail } from "./vendors/jazzhr.ts";
 import {
   COUNTRY_MAP_VERSION,
   detectWorkMode,
@@ -112,6 +113,7 @@ const json = (body: unknown, status = 200) =>
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
 const BUILD_VERSION = "2026-08-30.36"; // .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
+// .36: JazzHR joins as vendor #20 (vendors/jazzhr.ts; a verified sample of boards enters sources.ts, so the bump is load-bearing for the bootstrap lane). .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
 // .23: bug-sweep round — the agency opt-out reaches the rescue tiers (it was bound in search_jobs only, so a rescue served the rows the caller hid, undisclosed); the per-company cap stops swallowing the employer it just surfaced; a withdrawn count no longer prints "not hiring"; the reverted pipe fix is restored
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
@@ -1081,6 +1083,12 @@ async function fetchBoard(
       const body = await res.json();
       const data = Array.isArray((body as { data?: unknown[] }).data) ? (body as { data: unknown[] }).data : [];
       return { jobs: normalizePinpoint(data as never, s.name, s.token), raw: body };
+    }
+    if (s.source === "jazzhr") {
+      // HTML career page, one unpaginated list. The adapter owns the parse,
+      // the row cap and the notfound-at-200 guard (vendors/jazzhr.ts).
+      const { jobs, raw, windowed, feedTotal } = await fetchJazzhr(s, fetchWithTimeout);
+      return { jobs, raw, windowed, feedTotal };
     }
     if (s.source === "ukg") {
     const { items, raw, windowed, feedTotal } = await fetchUkg(s);
@@ -4894,6 +4902,19 @@ async function fetchVendorDetail(
     if (res.ok) {
       const html = jobPostingLdDescription(await res.text());
       text = html ? htmlToText(html).slice(0, DESC_CAP) || null : null;
+    }
+  } else if (src.source === "jazzhr") {
+    // The list carries no description and no date; the posting page carries
+    // both — a schema.org JobPosting JSON-LD on most boards (datePosted +
+    // description) and a #job-description container on all of them (8/8
+    // probed 2026-09-04). TELECOMMUTE in the JSON-LD is the only structured
+    // work mode the vendor states; nothing is inferred from prose here.
+    const res = await fetchWithTimeout(applyUrl || jazzhrPostingUrl(src, externalId));
+    if (res.ok) {
+      const d = parseJazzhrDetail(await res.text());
+      text = d.description ? htmlToText(d.description).slice(0, DESC_CAP) || null : null;
+      postedAt = d.postedAt;
+      workMode = d.workMode;
     }
   } else if (src.source === "ukg") {
     // The detail page embeds CandidateOpportunityDetail({...}) — the full JD
