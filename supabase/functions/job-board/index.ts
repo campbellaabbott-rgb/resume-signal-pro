@@ -112,7 +112,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-30.39"; // .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
+const BUILD_VERSION = "2026-08-30.40"; // .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
 // .36: JazzHR joins as vendor #20 (vendors/jazzhr.ts; a verified sample of boards enters sources.ts, so the bump is load-bearing for the bootstrap lane). .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
 // .23: bug-sweep round — the agency opt-out reaches the rescue tiers (it was bound in search_jobs only, so a rescue served the rows the caller hid, undisclosed); the per-company cap stops swallowing the employer it just surfaced; a withdrawn count no longer prints "not hiring"; the reverted pipe fix is restored
 
@@ -1849,6 +1849,30 @@ let currentHop = 0;
 // `sliceStampError` carries the reason onto the status action, so the next
 // write that cannot land says so instead of going quiet.
 let sliceStampError: string | null = null;
+// WHERE THE SLICE DIES, WRITTEN WHILE IT IS STILL ALIVE.
+//
+// Three fixes have now been aimed at the chain dying with 546, and the row
+// that was supposed to explain it only lands if the slice SURVIVES — so it
+// records every death as silence and every theory as plausible. Measured
+// 2026-09-04 18:16Z: the cursor and the bootstrap stamp (both written BEFORE
+// the fetch loop) were minutes old while the terminal stamp was 163 minutes
+// old, which places the death inside the loop but says nothing about where or
+// at what cost.
+//
+// This overwrites ONE row as the slice proceeds, so whatever it last said is
+// where the isolate got to. Bounded and swallowed: a breadcrumb must never be
+// the thing that breaks what it measures.
+let traceSeq = 0;
+async function breadcrumb(client: SupabaseClient, mark: string, extra?: Record<string, unknown>): Promise<void> {
+  const write = (async () => {
+    await client.from("job_board_meta").upsert({
+      k: "slice_trace",
+      v: { at: new Date().toISOString(), hop: currentHop, seq: ++traceSeq, mark, ...memStamp(), ...(extra ?? {}) },
+      updated_at: new Date().toISOString(),
+    }, { onConflict: "k" });
+  })().catch(() => { /* never break the thing it measures */ });
+  await Promise.race([write, new Promise<void>((r) => setTimeout(r, 600))]);
+}
 function memStamp(): { heapMb?: number; rssMb?: number } {
   try {
     const mu = (Deno as unknown as { memoryUsage?: () => { heapUsed?: number; rss?: number } }).memoryUsage;
@@ -2509,7 +2533,9 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
   // budgetHit=false every time, the last completed slice at 10,402. Each
   // started board reserves its worst case until it returns.
   let inFlightReserve = 0;
+  let boardsDone = 0;
   const deepTokens = new Set(deepBoards.map((b) => b.token));
+  await breadcrumb(client, "slice-start", { boards: queue.length, phase: inHotPhase ? "hot" : "cold" });
   const budgetSkipped: string[] = [];
   let lastUpsertError: string | null = null;
 
@@ -2565,6 +2591,9 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
         try { r = await fetchBoard(s, (m) => { failReason = m; }, deepCursors[s.token] ?? 0); }
         finally { inFlightReserve -= reserve; }
         if (r) fetchedInSlice += r.jobs.length;
+        // Every 24th board, so the row names the neighbourhood of the death
+        // rather than the exact board — two or three writes on a cold slice.
+        if (++boardsDone % 24 === 0) await breadcrumb(client, "loop", { boardsDone, fetched: fetchedInSlice, inFlight: inFlightReserve });
         if (!r) {
           failed.push(`${s.name} (vendor${failReason ? `: ${failReason}` : ""})`);
           continue;
@@ -3325,6 +3354,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
   // console. Now it lands on the slice_stats row status already exposes.
   sliceBudgetNote = { fetched: fetchedInSlice, skipped: budgetSkipped.length, hit: budgetSkipped.length > 0, lastUpsertError };
   if (budgetSkipped.length) console.warn(`[JOB-BOARD] slice budget hit: ${fetchedInSlice} postings fetched, ${budgetSkipped.length} board(s) deferred to next pass`);
+  await breadcrumb(client, "loop-done", { boardsDone, fetched: fetchedInSlice, skipped: budgetSkipped.length });
   await stampSliceWork(client, inHotPhase, sliceWallStart);
 
   // Advance cursors — SAME rule as the optimistic write above, because it is
@@ -6087,7 +6117,7 @@ Deno.serve(async (req) => {
       // bundle, so a stale/failed publish is visible in ONE call instead of being
       // inferred from posting counts over hours (the rung-2 "did it deploy?" pain).
       // Also the source of truth for the heartbeat's job_board_deploy check.
-      const [prog, pbMeta, rot, refreshMeta, bf, hotMeta, fresh, breaker, dateCov, boardFlow, ingestPaused, dcCache, bsMeta, dsMeta, ssMeta, esMeta, fiOk, fiBad, faMeta, aaMeta, arMeta, rsRun, rsCron, hsMeta, rcProg, rcVer, hwMeta, deepCur, chainKick, sliceStatsRow, descCov] = await Promise.all([
+      const [prog, pbMeta, rot, refreshMeta, bf, hotMeta, fresh, breaker, dateCov, boardFlow, ingestPaused, dcCache, bsMeta, dsMeta, ssMeta, esMeta, fiOk, fiBad, faMeta, aaMeta, arMeta, rsRun, rsCron, hsMeta, rcProg, rcVer, hwMeta, deepCur, chainKick, sliceStatsRow, descCov, traceRow] = await Promise.all([
         client.from("job_board_meta").select("v, updated_at").eq("k", "refresh_progress").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "posted_backfill").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "cold_rotation").maybeSingle(),
@@ -6215,6 +6245,7 @@ Deno.serve(async (req) => {
         // longer bar is not one any writer selects on, and counting against
         // it opened every description on the board each tick.
         client.from("job_board_stats_rollup").select("v, computed_at").eq("k", "desc_coverage").maybeSingle(),
+        client.from("job_board_meta").select("v").eq("k", "slice_trace").maybeSingle(),
       ]);
       const pgV = (prog.data?.v ?? {}) as { hot?: number; cold?: number; coldDone?: number; failedAcc?: string[]; failedTotal?: number };
       const rotV = (rot.data?.v ?? {}) as { completedAt?: string; coldBoards?: number };
@@ -6694,6 +6725,8 @@ Deno.serve(async (req) => {
         dateCoverageAgeMin: Array.isArray((dateCov as { data?: unknown }).data)
           ? ageMin((((dateCov as { data: Array<{ computed_at?: string }> }).data)[0]?.computed_at) ?? null)
           : ageMin(dcCache.data?.updated_at ?? null),
+        // The last thing a slice said before it stopped saying anything.
+        sliceTrace: ((traceRow as { data?: { v?: unknown } } | null)?.data?.v ?? null) as Record<string, unknown> | null,
         descCoverageAgeMin: ageMin((descCov as { data?: { computed_at?: string } } | null)?.data?.computed_at ?? null),
         descCoverage: Array.isArray((descCov as { data?: { v?: unknown } } | null)?.data?.v)
           ? ((descCov as { data: { v: Array<{ source: string; total: number; described: number }> } }).data.v).map((r) => ({

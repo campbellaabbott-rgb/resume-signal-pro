@@ -876,7 +876,13 @@ const PINNED = {
   //   ratcheting to 1; Oracle and iCIMS report windowed on a resumed read, so
   //   a wrap visit cannot absence-prune a giant employer; and the exact-word
   //   rescue tier no longer claims `ranked: true`.
-  buildVersion: "2026-08-30.39",
+  //
+  // .40 — measure the death instead of guessing at it
+  //   (where-the-slice-stopped-saying-anything.test.ts). Breadcrumbs bracket
+  //   the fetch loop and overwrite one row as the slice proceeds, so a slice
+  //   that dies still says how far it got and what it was holding. No lever
+  //   reads them.
+  buildVersion: "2026-08-30.40",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {
