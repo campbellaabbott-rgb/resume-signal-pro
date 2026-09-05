@@ -81,7 +81,12 @@ describe("a reservation that emptied the queue", () => {
     // (.51: one board holding 2,002 postings cost 206MB), so the historical
     // arithmetic is stated with its own number rather than recomputed from a
     // constant that has since moved.
-    expect((concurrency - 1) * 2_000).toBeGreaterThanOrEqual(budget);
+    // Stated with the numbers OF THE TIME, not recomputed from constants that
+    // have since moved: 8 workers each reserving the 2,000-posting cap was
+    // 14,000 against a 12,000 budget. Concurrency is 4 now (.59: memory scales
+    // with workers, not slice size), so recomputing this from the live value
+    // would quietly stop testing the history it exists to record.
+    expect((8 - 1) * 2_000).toBeGreaterThanOrEqual(budget);
   });
 
   it("hot phase keeps the worst case: two giants reserve the cap each", () => {

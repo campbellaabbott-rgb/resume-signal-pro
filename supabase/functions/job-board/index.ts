@@ -112,7 +112,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-30.58"; // .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
+const BUILD_VERSION = "2026-08-30.59"; // .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
 // .36: JazzHR joins as vendor #20 (vendors/jazzhr.ts; a verified sample of boards enters sources.ts, so the bump is load-bearing for the bootstrap lane). .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
 // .23: bug-sweep round — the agency opt-out reaches the rescue tiers (it was bound in search_jobs only, so a rescue served the rows the caller hid, undisclosed); the per-company cap stops swallowing the employer it just surfaced; a withdrawn count no longer prints "not hiring"; the reverted pipe fix is restored
 
@@ -216,7 +216,23 @@ const FETCH_TIMEOUT_MS = 20_000;
 // halving cold hop wall-time is the honest fix's first half; the second is
 // measured, not aspirational, copy. Vendor interleaving bounds any single
 // vendor to ~1 in-flight fetch per hop at this width.
-const CONCURRENCY = 8;
+// MEMORY SCALES WITH CONCURRENCY, NOT WITH SLICE SIZE.
+//
+// This is the lever a day of slice-shrinking never touched. Measured on .58,
+// with the .34 sizing restored: a slice reached board 82 holding 2,429
+// postings across 8 workers and sat at 214MB, hard against a ~256MB ceiling —
+// then died before its terminal stamp, every time. That also settles which of
+// today's two contradictory readings was representative: 105KB a posting was
+// right, and the 37MB trace came from a slice the board budget never let grow.
+//
+// Each worker holds one board's raw payload, its parsed rows and a page of
+// existing rows. So peak memory is (workers x per-board cost) and has nothing
+// to do with how many boards the slice will eventually cover. Halving the
+// workers halves the peak and costs only wall time per slice — while a slice
+// that SURVIVES stamps and chains immediately, and a slice that dies waits for
+// the next cron tick. That trade is why 4 workers over 80 boards beats 8
+// workers over 80 boards that never finish.
+const CONCURRENCY = 4;
 const HOT_CONCURRENCY = 2; // hot boards are giants — two multi-MB parses at once is the memory ceiling
 // desc-sweep: per-posting description backfill. 8 concurrent detail fetches
 // matches CONCURRENCY for board fetches; 120/hop keeps a hop well inside the

@@ -986,7 +986,12 @@ const PINNED = {
   //   owner's call. Freshness went 403 -> 2,366 minutes across a day in which
   //   the rotation became steadily more CORRECT and steadily slower. Every
   //   correctness fix is kept; only the sizing goes back.
-  buildVersion: "2026-08-30.58",
+  //
+  // .59 — memory scales with CONCURRENCY, not slice size. On .58 a full slice
+  //   held 2,429 postings across 8 workers at 214MB and died before stamping.
+  //   Halving the workers halves the peak and keeps all 80 boards; it costs
+  //   wall time per slice and buys a slice that stamps and chains.
+  buildVersion: "2026-08-30.59",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {
