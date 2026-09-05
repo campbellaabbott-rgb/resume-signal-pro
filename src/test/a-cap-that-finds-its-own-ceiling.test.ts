@@ -69,8 +69,13 @@ describe("a cap that finds its own ceiling", () => {
     // The ceiling must sit at or below the last survivor. Raising it above a
     // known death makes the ramp oscillate into that death every cycle, and a
     // death costs the chain plus a wait for the next cron tick.
-    expect(num("MAX_BOARDS_PER_SLICE")).toBeLessThanOrEqual(16);
+    // .55: 16 was measured while the memory blowout and the never-ending
+    // yield were both live, so it described the bugs rather than the platform.
+    // The ramp re-finds the limit under fixed code; what must stay true is
+    // that the ceiling is reachable and the measurement stays written down.
+    expect(num("MAX_BOARDS_PER_SLICE")).toBeGreaterThan(num("MIN_BOARDS_PER_SLICE"));
     expect(RAW, "the measurement must stay written down beside the constant").toMatch(/budget 24  slice DIES/);
+    expect(RAW, "and so must the reason it was raised again").toMatch(/measured on broken code|taken on broken code|TAKEN ON BROKEN CODE/i);
   });
 
   it("a ramp that reached the ceiling still covers a pass inside the promise", () => {

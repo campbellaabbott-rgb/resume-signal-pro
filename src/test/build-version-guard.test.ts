@@ -964,7 +964,12 @@ const PINNED = {
   //   never appeared, so the death is inside a board's own DB work: 760 lines
   //   run between the fetch mark and the loop exit. Marks now bracket each
   //   board (board-fetched / board-stored) to name which board and which half.
-  buildVersion: "2026-08-30.54",
+  //
+  // .55 — the ceiling of 16 was measured on broken code (the memory blowout
+  //   and the never-ending yield were both live), and it throttles a cold
+  //   slice to ~9 boards: 4,889 slices a pass, freshness 403 -> 2,291. The
+  //   ramp re-finds the real limit; the posting budget is the true bound.
+  buildVersion: "2026-08-30.55",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {
