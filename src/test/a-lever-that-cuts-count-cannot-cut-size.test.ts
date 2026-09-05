@@ -36,7 +36,7 @@ describe("a lever that cuts count cannot cut size", () => {
   it("bounds a visit by postings, at Oracle's already-tolerated default", () => {
     // 2,000 is 20 pages x 100 — the Oracle default that has always been safe —
     // so no board that was already fine changes behaviour.
-    expect(FN).toMatch(/const MAX_POSTINGS_PER_VISIT = 400;/);
+    expect(FN).toMatch(/const MAX_POSTINGS_PER_VISIT = 2_000;/);
   });
 
   it("the capped fetchers RESUME rather than wrap — the whole correctness argument", () => {

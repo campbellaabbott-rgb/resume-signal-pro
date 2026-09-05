@@ -38,12 +38,18 @@ describe("the budget counted the wrong thing", () => {
   });
 
   it("the limit leaves headroom for the boards already in flight", () => {
+    // REVERTED 2026-09-05 on the product owner's call. Freshness went 403 ->
+    // 2,366 minutes across a day in which this machinery made the rotation
+    // steadily more correct and steadily slower. The measurements below stay
+    // written down because they were real; the constants went back to the
+    // values that held freshness near the promise, and these bounds are
+    // backstops now rather than active throttles.
     const limit = num("HEAP_SOFT_LIMIT_MB");
     // Measured: 48 boards reached 200MB and the isolate died shortly after,
     // so the ceiling is near 256MB. The limit must sit far enough below it
     // that the in-flight boards can still land.
     expect(limit).toBeGreaterThanOrEqual(100);
-    expect(limit).toBeLessThanOrEqual(180);
+    expect(limit, "a backstop below the ceiling, not a throttle").toBeLessThan(256);
   });
 
   it("a heap stop is a DEFERRAL, never a failure", () => {

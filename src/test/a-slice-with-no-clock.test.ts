@@ -42,7 +42,16 @@ describe("a slice with no clock", () => {
     // was 127.8s. Stopping at `budget` lands the slice near budget+fetchTimeout,
     // which must sit inside the surviving range with room for the terminal
     // write (SLICE_STATS_WRITE_MS) and the chain kick.
-    expect(budget + fetchTimeout + num("SLICE_STATS_WRITE_MS")).toBeLessThan(128_000);
+    // REVERTED 2026-09-05 on the product owner's call. Freshness went 403 ->
+    // 2,366 minutes across a day in which this machinery made the rotation
+    // steadily more correct and steadily slower. The measurements below stay
+    // written down because they were real; the constants went back to the
+    // values that held freshness near the promise, and these bounds are
+    // backstops now rather than active throttles.
+    // The longest slice that ever SURVIVED was 127.8s; the wall budget is a
+    // backstop against a hung slice, so it need only leave room for the
+    // terminal write, not sit inside the survivor range.
+    expect(budget + fetchTimeout + num("SLICE_STATS_WRITE_MS")).toBeLessThan(180_000);
     expect(budget, "and not so small that a slice does no useful work").toBeGreaterThanOrEqual(60_000);
   });
 
@@ -66,7 +75,9 @@ describe("a slice with no clock", () => {
     // (a-cap-that-finds-its-own-ceiling.test.ts), so the stop reads the budget
     // this hop was handed.
     expect(CODE).toMatch(/if \(boardsDone >= boardBudget\) \{\s*sizeStopped = true;\s*budgetSkipped\.push\(s\.token\);\s*continue;\s*\}/);
-    expect(num("MIN_BOARDS_PER_SLICE")).toBeLessThanOrEqual(8);
+    // Floor and ceiling are equal after the revert: the ramp is neutralised
+    // and a slice composes its full COLD_SLICE again.
+    expect(num("MIN_BOARDS_PER_SLICE")).toBe(num("MAX_BOARDS_PER_SLICE"));
     expect(CODE).toMatch(/sizeStopped: sliceBudgetNote\.sizeStopped,/);
     // Resolution had to improve too: one mark then silence located the death
     // only to within a 24-board window.

@@ -981,7 +981,12 @@ const PINNED = {
   //   first sample was an outlier board. 1,400 postings stops a slice at ~18
   //   boards = 40 hours a pass; 4,000 is still inside the ceiling at the
   //   observed cost, and heap rides every breadcrumb to check it.
-  buildVersion: "2026-08-30.57",
+  //
+  // .58 — REVERT of the slice-sizing work to the .34 values, on the product
+  //   owner's call. Freshness went 403 -> 2,366 minutes across a day in which
+  //   the rotation became steadily more CORRECT and steadily slower. Every
+  //   correctness fix is kept; only the sizing goes back.
+  buildVersion: "2026-08-30.58",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {

@@ -42,7 +42,10 @@ describe("a cap that finds its own ceiling", () => {
     expect(CODE).toMatch(/Math\.min\(MAX_BOARDS_PER_SLICE, Math\.max\(MIN_BOARDS_PER_SLICE, Math\.floor\(Number\(body\.boards\)\)\)\)/);
     expect(num("MIN_BOARDS_PER_SLICE")).toBeGreaterThanOrEqual(4);
     expect(num("MAX_BOARDS_PER_SLICE")).toBeLessThanOrEqual(80);
-    expect(num("MIN_BOARDS_PER_SLICE")).toBeLessThan(num("MAX_BOARDS_PER_SLICE"));
+    // REVERTED: floor equals ceiling, so the ramp holds at the composed slice
+    // size. The machinery stays — it is how the ceiling was measured, and how
+    // it would be measured again — but it no longer throttles.
+    expect(num("MIN_BOARDS_PER_SLICE")).toBe(num("MAX_BOARDS_PER_SLICE"));
   });
 
   it("the ramp is EARNED — only a hop that reaches the chain kick hands on a bigger budget", () => {
@@ -73,7 +76,7 @@ describe("a cap that finds its own ceiling", () => {
     // yield were both live, so it described the bugs rather than the platform.
     // The ramp re-finds the limit under fixed code; what must stay true is
     // that the ceiling is reachable and the measurement stays written down.
-    expect(num("MAX_BOARDS_PER_SLICE")).toBeGreaterThan(num("MIN_BOARDS_PER_SLICE"));
+    expect(num("MAX_BOARDS_PER_SLICE")).toBe(num("MIN_BOARDS_PER_SLICE"));
     expect(RAW, "the measurement must stay written down beside the constant").toMatch(/budget 24  slice DIES/);
     expect(RAW, "and so must the reason it was raised again").toMatch(/measured on broken code|taken on broken code|TAKEN ON BROKEN CODE/i);
   });
@@ -90,6 +93,6 @@ describe("a cap that finds its own ceiling", () => {
     const COLD_BOARDS = 44_000, PROMISE_HOURS = 8;
     const hoursAtFive = COLD_BOARDS / num("MAX_BOARDS_PER_SLICE") / 5 / 60;
     expect(hoursAtFive, "within striking distance at the observed upper rate").toBeLessThan(PROMISE_HOURS * 1.5);
-    expect(num("MAX_BOARDS_PER_SLICE")).toBeGreaterThan(num("MIN_BOARDS_PER_SLICE"));
+    expect(num("MAX_BOARDS_PER_SLICE")).toBe(num("MIN_BOARDS_PER_SLICE"));
   });
 });
