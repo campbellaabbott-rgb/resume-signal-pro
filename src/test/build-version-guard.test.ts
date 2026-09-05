@@ -940,7 +940,13 @@ const PINNED = {
   //   composed slice: measured over ten minutes, the cursor passed 1,040
   //   boards while at most ~336 could have been fetched. Every lane is now
   //   sized to fit the budget before the slice is composed.
-  buildVersion: "2026-08-30.50",
+  //
+  // .51 — ~105KB of heap per posting held, measured (the-isolate-was-killed-
+  //   by-one-board.test.ts). A slice died at 8 boards / 2,002 postings /
+  //   206MB: one board returned the whole per-visit cap. MAX_POSTINGS_PER_VISIT
+  //   2000 -> 600 caps a single board near 63MB; it resumes via nextOffset
+  //   rather than being truncated.
+  buildVersion: "2026-08-30.51",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {

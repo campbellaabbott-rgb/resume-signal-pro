@@ -75,8 +75,13 @@ describe("a reservation that emptied the queue", () => {
     // plus both deep boards in flight, nothing landed yet.
     const reservedAtMost = (concurrency - 1) * coldReserve + deepPerSlice * cap;
     expect(reservedAtMost, `${reservedAtMost} reserved with nothing landed would retire workers on every cold slice`).toBeLessThan(budget);
-    // And the .32 shape is gone: the old reservation DID exceed the budget.
-    expect((concurrency - 1) * cap).toBeGreaterThanOrEqual(budget);
+    // And the .32 shape is gone. That reservation — every worker holding the
+    // full per-visit cap — exceeded the budget on its own AT THE CAP OF THE
+    // TIME (2,000): 7 x 2,000 = 14,000 against 12,000. The cap is 600 now
+    // (.51: one board holding 2,002 postings cost 206MB), so the historical
+    // arithmetic is stated with its own number rather than recomputed from a
+    // constant that has since moved.
+    expect((concurrency - 1) * 2_000).toBeGreaterThanOrEqual(budget);
   });
 
   it("hot phase keeps the worst case: two giants reserve the cap each", () => {

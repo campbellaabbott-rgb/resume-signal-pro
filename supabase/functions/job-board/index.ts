@@ -112,7 +112,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-30.50"; // .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
+const BUILD_VERSION = "2026-08-30.51"; // .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
 // .36: JazzHR joins as vendor #20 (vendors/jazzhr.ts; a verified sample of boards enters sources.ts, so the bump is load-bearing for the bootstrap lane). .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
 // .23: bug-sweep round — the agency opt-out reaches the rescue tiers (it was bound in search_jobs only, so a rescue served the rows the caller hid, undisclosed); the per-company cap stops swallowing the employer it just surfaced; a withdrawn count no longer prints "not hiring"; the reverted pipe fix is restored
 
@@ -469,7 +469,20 @@ const BOOTSTRAP_PER_SLICE = 25; // zero-row boards prepended per cold slice afte
  * arithmetic so the constant stays tied to what it counts — the rule .21 was
  * paid for: never copy a cap without matching what it measures.
  */
-const DEEP_VOLUME_PER_SLICE = 4_000;
+// AND THE DEEP LANE WAS SIZED IN THE SAME WRONG UNIT. 4,000 postings is ~420MB
+// at the measured ~105KB a posting — the deep lane alone could exceed the
+// isolate's whole ceiling before the cold rotation fetched a single board.
+// 800 keeps the lane to two at-cap boards a slice, ~84MB, and the boards it
+// serves are precisely the giants that resume via nextOffset, so a smaller
+// take costs coverage speed and never coverage.
+//
+// TWO, not one. Dropping the deep take to a single board looked safer and
+// broke a fairness property an existing guard proves: the deep start derives
+// from the cold cursor, which steps 80 per slice, and 80 mod a 66-board list
+// is 14 — sharing a factor of two with 66, so a take of one visits only the
+// even positions and starves half the lane forever. The take stays at two and
+// the per-visit cap carries the memory reduction instead.
+const DEEP_VOLUME_PER_SLICE = 800;
 const DEEP_PER_SLICE = 2; // = floor(DEEP_VOLUME_PER_SLICE / MAX_POSTINGS_PER_VISIT); pinned by test
 // RETRY LANE — deliberately the smallest lane on the slice.
 //
@@ -914,7 +927,27 @@ async function fetchAdp(s: JobSource): Promise<{ items: unknown[]; raw: unknown;
  * board rather than defer it; those need offset support before they can be
  * bounded, and iCIMS is the one that most needs it.
  */
-const MAX_POSTINGS_PER_VISIT = 2_000;
+// MEASURED AT LAST: ~105KB OF HEAP PER POSTING HELD.
+//
+// The .40 breadcrumbs finally caught a slice at the moment it died, and the
+// number that matters was never the board count:
+//     hop 0 · boardsDone 8 · fetched 2,002 postings · heap 206MB · 11.2s
+// Eight boards — but one of them returned the whole per-visit cap, and 2,002
+// postings in flight cost 206MB against a ceiling near 256. The isolate was
+// killed by ONE board, not by eight.
+//
+// That reconciles every earlier reading. Board count never predicted death
+// because a slice of 24 small boards is cheap and a slice of 8 containing one
+// giant is fatal; heap at death ranged 70-206MB because it tracks postings
+// held, not boards processed; and the posting budget could never fire because
+// 12,000 postings is ~1.2GB, five times the ceiling — a bound written in the
+// right unit and set an order of magnitude too high to ever bind.
+//
+// 400 caps one board's contribution at roughly 41MB, which leaves room for the
+// others in flight. A board with more than 600 postings is not truncated: it
+// returns nextOffset and resumes exactly where it stopped on its next visit,
+// which is the mechanism the deep lane has always used.
+const MAX_POSTINGS_PER_VISIT = 400;
 /** fit-batch bounds — see the action. 20 ids survives the shared worker pool; 60 did not. */
 const FIT_BATCH_MAX = 20;
 const FIT_DESC_CHARS = 20_000;

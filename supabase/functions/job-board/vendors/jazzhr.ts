@@ -56,7 +56,7 @@ import { detectWorkMode, normalizeEmploymentType, safeIso, type EmploymentType, 
  * and `windowed` reports the truncation so the closure prune stays off the
  * board. Mirrors MAX_POSTINGS_PER_VISIT in index.ts (pinned equal by test).
  */
-export const JAZZHR_MAX_ROWS = 2_000;
+export const JAZZHR_MAX_ROWS = 400;
 
 export interface JazzhrListItem {
   /** The 10-character posting key in the URL — stable across title edits. */
