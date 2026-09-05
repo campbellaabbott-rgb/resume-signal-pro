@@ -168,7 +168,7 @@ describe("sweep-3 restart findings, pinned", () => {
     // The signal reads hotEmaMs when inHotPhase, but every lever was cold-only
     // — so the exact phase whose EMA trips the shedder ran full size (measured
     // live: 341s hot slices at shedLevel 2 while browse climbed 1s -> 3.6s).
-    expect(BOARD).toMatch(/const effHotSlice = shedLevel === 2 \? 3 : shedLevel === 1 \? 5 : HOT_SLICE;/);
+    expect(BOARD).toMatch(/const effHotSlice = Math\.min\(shedLevel === 2 \? 3 : shedLevel === 1 \? 5 : HOT_SLICE, hotByBudget\);/);
     expect(BOARD).toMatch(/HOT_LIST\.slice\(hot, hot \+ effHotSlice\)/);
     expect(BOARD, "advancing by the constant while taking fewer skips giants' freshness")
       .toMatch(/hotSlice: effHotSlice,/);

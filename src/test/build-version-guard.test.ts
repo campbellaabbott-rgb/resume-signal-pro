@@ -946,7 +946,13 @@ const PINNED = {
   //   206MB: one board returned the whole per-visit cap. MAX_POSTINGS_PER_VISIT
   //   2000 -> 600 caps a single board near 63MB; it resumes via nextOffset
   //   rather than being truncated.
-  buildVersion: "2026-08-30.51",
+  //
+  // .52 — the posting budget set from the measurement so it can bind (1,400
+  //   postings ~= 144MB at ~105KB each, against 12,000 = 1.23GB that never
+  //   fired), reserves and concurrency moved with it, and the HOT slice
+  //   bounded by budget/cap — .50 fixed the cursor-outran-the-read defect on
+  //   the cold lane only, and hot boards are the giants.
+  buildVersion: "2026-08-30.52",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {

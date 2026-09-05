@@ -61,11 +61,25 @@ describe("the isolate was killed by one board", () => {
     expect(reserved).toBeLessThan(num("SLICE_POSTING_BUDGET"));
   });
 
-  it("records that the posting budget was the right unit set too high to bind", () => {
-    // Kept as documentation, not as a working bound: at ~105KB a posting it
-    // would permit ~1.2GB. The measurement is what makes that legible.
-    expect((num("SLICE_POSTING_BUDGET") * KB_PER_POSTING) / 1024, "the old budget could never have bound anything")
-      .toBeGreaterThan(CEILING_MB);
+  it("the posting budget is now set from the measurement, so it CAN bind", () => {
+    // It was the right unit from the day it was written and never fired once:
+    // 12,000 postings is ~1.23GB at ~105KB each, five times the ceiling. .52
+    // set it from the measurement instead. A budget that cannot be reached
+    // before the isolate dies is not a safeguard, it is a comment.
+    const budgetMb = (num("SLICE_POSTING_BUDGET") * KB_PER_POSTING) / 1024;
+    expect(budgetMb, "the budget must be reachable below the ceiling").toBeLessThan(CEILING_MB);
+    expect(budgetMb, "and leave headroom for the rows and upserts that follow the fetch")
+      .toBeLessThan(CEILING_MB * 0.7);
     expect(RAW).toMatch(/an order of magnitude too high to ever bind/);
+  });
+
+  it("the HOT lane is bounded by the same arithmetic — hot boards are the giants", () => {
+    // Each hot board can return the whole per-visit cap, so the number of them
+    // a slice may take is the budget divided by the cap. .50 bounded the cold
+    // lane and left this one, which is why deaths continued in the hot phase.
+    expect(CODE).toMatch(/const hotByBudget = Math\.max\(1, Math\.floor\(SLICE_POSTING_BUDGET \/ MAX_POSTINGS_PER_VISIT\)\);/);
+    expect(CODE).toMatch(/const effHotSlice = Math\.min\([^)]*, hotByBudget\);/);
+    const hotBoards = Math.max(1, Math.floor(num("SLICE_POSTING_BUDGET") / num("MAX_POSTINGS_PER_VISIT")));
+    expect((hotBoards * num("MAX_POSTINGS_PER_VISIT") * KB_PER_POSTING) / 1024).toBeLessThan(CEILING_MB * 0.7);
   });
 });

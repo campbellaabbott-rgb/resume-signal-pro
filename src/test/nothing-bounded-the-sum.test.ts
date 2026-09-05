@@ -27,7 +27,7 @@ const CODE = FN.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ");
 
 describe("nothing bounded the sum", () => {
   it("has a per-slice budget in POSTINGS", () => {
-    expect(CODE).toMatch(/const SLICE_POSTING_BUDGET = 12_000;/);
+    expect(CODE).toMatch(/const SLICE_POSTING_BUDGET = 1_400;/);
   });
 
   it("stops STARTING fetches at the budget, after the dormancy skip and before the fetch", () => {
