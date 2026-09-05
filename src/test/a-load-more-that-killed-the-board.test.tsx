@@ -96,6 +96,15 @@ const searchBox = () => screen.getByPlaceholderText(/Title or keyword/i);
 // Every wait here sits behind a 400ms debounce; the default 1s leaves no room
 // on a loaded machine.
 const SLOW = { timeout: 4000 } as const;
+// AND THE TEST'S OWN WALL CLOCK HAS TO BE BIGGER THAN THE WAITS INSIDE IT.
+// The three behavioural cases below chain up to four SLOW waits each, so their
+// declared per-step allowance is 16s — under vitest's 5s default test budget,
+// which meant a single step using even a third of its stated room failed the
+// test on "Test timed out in 5000ms" with every assertion still passing.
+// Observed on a loaded machine at 5,607ms. Nothing here waits for a fixed
+// duration: each step still finishes the moment its condition is true, so this
+// buys tolerance, never runtime.
+const BUDGET = 30_000;
 
 describe("a load more that killed the board", () => {
   beforeEach(() => {
@@ -134,7 +143,7 @@ describe("a load more that killed the board", () => {
     // The critical negative: no page beyond the first was ever requested while
     // the board was mid-change, so nothing could be refused and stranded.
     expect(listCalls.filter((c) => c.offset > 0)).toEqual([]);
-  });
+  }, BUDGET);
 
   it("behaviour: a click inside the in-flight window cannot fire, and the board still converges", async () => {
     render(<MemoryRouter><Jobs /></MemoryRouter>);
@@ -156,7 +165,7 @@ describe("a load more that killed the board", () => {
     await waitFor(() => expect(listCalls.some((c) => c.q === "nurse" && c.offset > 0)).toBe(true), SLOW);
     await waitFor(() => expect(loadMore()).toBeEnabled(), SLOW);
     expect(document.body.textContent).toContain("nurse Role 6");
-  });
+  }, BUDGET);
 
   it("behaviour: paging a settled list still works and still appends", async () => {
     // The fix must not cost the ordinary case.
@@ -167,7 +176,7 @@ describe("a load more that killed the board", () => {
     await waitFor(() => expect(loadMore()).toBeEnabled(), SLOW);
     expect(document.body.textContent).toContain("all Role 0");
     expect(document.body.textContent).toContain("all Role 6");
-  });
+  }, BUDGET);
 
   it("the signature refusal is no longer a dead end — it re-starts a list", () => {
     // Derived, not pinned to a name: read whatever the refusal branch sets,

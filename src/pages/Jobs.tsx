@@ -15,6 +15,13 @@ import { parseSalaryStructured } from "../../supabase/functions/_shared/salary-e
 // bundle would be a third thing to forget. Pure TS with no Deno imports, the
 // same reason the salary parser above is imported straight out of _shared.
 import { isSendableVendor } from "../../supabase/functions/_shared/apply-automation";
+// THE SAME PLACE VOCABULARY THE SEARCH SIDE EXPANDS WITH, imported read-only.
+// displayLocation uses these tables for exactly one decision — whether a short
+// all-caps token that opens a location line is a province/metro/country
+// abbreviation or an internal org code — so a place the FILTER understands can
+// never be tidied off the card as junk. Pure data, no Deno imports, same
+// reason the salary parser above comes straight out of _shared.
+import { STATE_ALIASES, METRO_ALIASES } from "../../supabase/functions/_shared/location-terms";
 // Two statements from one module, deliberately: ats-coverage-counts.test.tsx
 // pins the BOARD_SOURCE_LIST import line by spelling, and the vendor filter
 // below needs the tiered list the same file exports.
@@ -25,7 +32,7 @@ import { markDeadForRobots, clearDeadForRobots } from "@/lib/seo-robots";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useAgentReach, reachPct } from "@/hooks/use-agent-reach";
 import { useTranslation } from "react-i18next";
-import { Activity, AlertTriangle, Bell, Bookmark, BookmarkCheck, Briefcase, ChevronDown, Clock, Compass, Copy, ExternalLink, FileText, Flag, Link2, Loader2, MapPin, MessageSquare, RefreshCw, Search, ShieldCheck, SlidersHorizontal, Sparkles, Target, Upload, Info} from "lucide-react";
+import { Activity, AlertTriangle, ArrowLeftRight, Bell, Bookmark, BookmarkCheck, Briefcase, ChevronDown, Clock, Compass, Copy, ExternalLink, FileText, Flag, Link2, Loader2, MapPin, MessageSquare, RefreshCw, Search, ShieldCheck, SlidersHorizontal, Sparkles, Target, Upload, Info} from "lucide-react";
 import { SEO } from "@/components/seo/SEO";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -1055,6 +1062,113 @@ export function countryToName(
     ? COUNTRY_TEXT_ALIASES[code]
     : [];
   return aliases.some((a) => text.includes(a)) ? null : name;
+}
+
+// ── THE PLACE, AS A HUMAN WOULD SAY IT ──────────────────────────────────────
+//
+// `location` is free text exactly as the employer's own HR system emits it,
+// and a meaningful slice of it is not a place at all. Workday tenants in
+// particular ship the internal facility designator, so the board printed
+//
+//     Leidos · 0250 36th CS Andersen Air Force Base Guam - Expat
+//
+// as a card's second line, and the detail panel repeated it verbatim. "0250"
+// is a cost centre and "36th CS" is a squadron; neither is a place, and
+// neither means anything to the person reading the card.
+//
+// THE THREE RULES THIS FUNCTION OBEYS, in the order they bind:
+//
+// 1. NOTHING IS INVENTED. Every code path here only ever REMOVES tokens from
+//    the employer's own string. It does not geocode, does not expand an
+//    abbreviation into a city, and never substitutes a place the employer did
+//    not write. The country fallback is the row's own `country` column — a
+//    stated field — and it is applied by the CALLER through countryToName, so
+//    one suppression rule still governs it on every surface.
+// 2. MEANING SURVIVES. Remote / hybrid / expat / "multiple locations" are the
+//    difference between a job somebody can take and one they cannot. They are
+//    ordinary words carrying no digits, so no rule below can reach them, and
+//    the segment structure keeps them BESIDE the place instead of blurring
+//    the two together.
+// 3. THE RAW STRING IS NEVER LOST. `raw` comes back from every call; the card
+//    hangs it on a title attribute and the panel prints it in full whenever
+//    `reduced` is true. A reader can always see what the employer's system
+//    actually said.
+//
+// WHAT COUNTS AS A CODE, and why each line is drawn where it is:
+//
+//   * A token mixing letters and digits ("36th", "REQ-1234", "R0000123") is an
+//     identifier. No city is spelled with a digit inside it.
+//   * A digits-only token is a code when it carries a leading zero ("0250" is
+//     never a quantity), when it runs to four digits or more (requisition
+//     numbers, ZIP codes), or when it OPENS the string ("1600 Amphitheatre
+//     Parkway"). A short digits-only token in the middle is LEFT ALONE,
+//     because "5 Locations" is a fact and dropping the 5 would be an edit.
+//   * A two-letter all-caps token that OPENS the string and is not a state,
+//     province, metro or country abbreviation is an org unit ("CS", "HQ").
+//     Opening token only, and only where two or more words survive after it,
+//     so "Sao Paulo, SP" keeps its SP and "MIT Campus" keeps its MIT.
+//
+// Everything else survives verbatim, in the employer's own order.
+const LOCATION_SEGMENT_SPLIT = /\s+[–—]\s+|\s+-\s+|\s*[|;]\s*|\s+\/\s+/;
+
+// Used ONLY to decide what NOT to drop, so a false entry here costs nothing
+// and a missing one costs at most one preserved acronym. Read straight off the
+// tables the search side expands with, so a province the filter understands is
+// a province the display line will not mistake for a cost centre.
+const KNOWN_PLACE_ABBREVIATIONS: ReadonlySet<string> = new Set<string>([
+  ...Object.keys(STATE_ALIASES),
+  ...Object.keys(METRO_ALIASES),
+  ...Object.keys(COUNTRY_TEXT_ALIASES).map((c) => c.toLowerCase()),
+  ...Object.values(COUNTRY_TEXT_ALIASES).flatMap((a) => [...a]),
+]);
+
+const stripEdgePunctuation = (s: string) =>
+  s.replace(/^[^\p{L}\p{N}]+/u, "").replace(/[^\p{L}\p{N}]+$/u, "");
+
+export function isLocationCodeToken(token: string, opensString: boolean): boolean {
+  const t = stripEdgePunctuation(token);
+  if (!t) return true; // stray punctuation left over from a dropped neighbour
+  if (/^\d+$/.test(t)) return t.length >= 4 || t.startsWith("0") || (opensString && t.length >= 2);
+  return /\d/.test(t) && /\p{L}/u.test(t);
+}
+
+export function displayLocation(
+  location: string | null | undefined,
+): { text: string | null; raw: string | null; reduced: boolean } {
+  const raw = String(location ?? "").replace(/\s+/g, " ").trim();
+  if (!raw) return { text: null, raw: null, reduced: false };
+  let seenToken = false;
+  let dropped = false;
+  const segments: string[] = [];
+  for (const segment of raw.split(LOCATION_SEGMENT_SPLIT)) {
+    const parts: string[] = [];
+    // Commas are STRUCTURE in a location line ("Austin, TX, USA"), so they are
+    // preserved around what survives and taken away with what does not — a
+    // stranded comma is the same defect as a stranded separator on the card.
+    for (const part of segment.split(",")) {
+      const kept: string[] = [];
+      for (const token of part.trim().split(" ")) {
+        if (!token) continue;
+        const opens = !seenToken;
+        seenToken = true;
+        if (isLocationCodeToken(token, opens)) { dropped = true; continue; }
+        kept.push(token);
+      }
+      if (kept.length > 0) parts.push(kept.join(" "));
+    }
+    if (parts.length > 0) segments.push(parts.join(", "));
+  }
+  let text = segments.join(" · ");
+  const acronym = /^([A-Z]{2})\s+(.+)$/.exec(text);
+  if (acronym && !KNOWN_PLACE_ABBREVIATIONS.has(acronym[1].toLowerCase())) {
+    const rest = acronym[2].split(/[\s,·]+/).filter((w) => /\p{L}{2}/u.test(w));
+    if (rest.length >= 2) { text = acronym[2]; dropped = true; }
+  }
+  // A line with no word left in it is an internal code and nothing else. The
+  // caller then has the row's own country column and nothing else to say — a
+  // mangled fragment of a requisition number is worse than silence.
+  if (!/\p{L}{2}/u.test(text)) return { text: null, raw, reduced: true };
+  return { text, raw, reduced: dropped };
 }
 
 /**
@@ -4551,6 +4665,11 @@ export default function Jobs() {
   // Detail content rendered by BOTH containers — the overlay drawer below
   // lg and the inline split-pane column on lg+. Only one is visible at a
   // time (responsive classes), so duplicate mounting is harmless.
+  // The panel reads the place through the SAME helper the card does, so the
+  // two surfaces can never disagree about what a posting's location is — and
+  // the panel, unlike the card, has the room to print the employer's raw
+  // string in full rather than parking it on a tooltip.
+  const detailLoc = displayLocation(detailJob?.location);
   const detailInner = detailJob ? (
     <>
             {/* Below lg the header sticks (the bottom bar owns actions there);
@@ -4564,7 +4683,7 @@ export default function Jobs() {
                   <Link to={`/jobs/company/${detailJob.token}`} className="text-primary hover:underline" onClick={() => closeDetail()}>
                     {detailJob.company}
                   </Link>
-                  {detailJob.location ? <> · {detailJob.location}</> : null}
+                  {detailLoc.text ? <> · {detailLoc.text}</> : null}
                   {/* The card names the team; the panel — the surface someone
                       actually reads before applying — did not. Employer-stated
                       column, so absent means absent and nothing renders. */}
@@ -4715,27 +4834,74 @@ export default function Jobs() {
                           {t("jobsPage.annualizedBasisTip", "Our arithmetic, not the employer's: an hourly rate × 2,080 hours (40 hours a week, 52 weeks), a daily rate × 260 days, a monthly rate × 12. The figure to its left is what the posting actually says.")}
                         </p>
                       )}
+                      {/* ── THE FINDING FIRST, THE METHOD UNDERNEATH ────────
+                          This comparison is the one thing on the page no
+                          competitor holds — what a field's advertised pay floor
+                          actually is, computed live from postings that state
+                          pay — and it used to arrive as the LAST CLAUSE of a
+                          methodology paragraph:
+
+                            "Field median floor: $114,000 (USD, from 17668
+                             postings that state pay) · hourly, daily and
+                             monthly rates annualized (hourly x2080, daily
+                             x260); part-time and casual rates are left
+                             un-annualized · 19% below the median floor"
+
+                          A reader had to cross fifty words of arithmetic to
+                          reach the one sentence that was about THEIR posting.
+                          The order is inverted and nothing else about it is:
+                          the finding leads, the benchmark and its sample size
+                          sit directly under it in plain sight, and the
+                          annualization caveat is one click down in a real
+                          disclosure element — present on every device and in
+                          the accessibility tree, which a title tooltip is not.
+
+                          NOT ONE CAVEAT WAS DROPPED. The sample size, the
+                          currency, "postings that state pay", the x2080/x260
+                          arithmetic and the un-annualized part-time exception
+                          are all still here, in the same words, under the same
+                          keys. The n>=30 floor and the same-currency gate still
+                          live upstream in detailSalaryContext, which returns
+                          null rather than a thin or a converted comparison.
+
+                          THE LEVEL CASE IS A FINDING TOO. pct === 0 used to
+                          render the methodology and no finding at all — the one
+                          arrangement in which the paragraph was pure basis. The
+                          percentage is rounded, so "about level" is what it can
+                          honestly say, and it now says it. */}
                       {detailSalaryContext && (
-                        <p className="text-[11px] text-muted-foreground mt-0.5">
-                          {t("jobsPage.salaryContext", "Field median floor: {{sym}}{{median}} ({{currency}}, from {{n}} postings that state pay)", {
-                            sym: { USD: "$", EUR: "€", GBP: "£" }[detailSalaryContext.currency] ?? "",
-                            median: Math.round(detailSalaryContext.median).toLocaleString(),
-                            currency: detailSalaryContext.currency,
-                            n: detailSalaryContext.n,
-                          })}
-                          {/* Basis suffix: the median blends hourly/monthly rates
-                              annualized (hourly ×2080) — without saying so the
-                              number reads as a pure annual-salary median. */}
-                          {" · "}{t("jobsPage.salaryContextBasis", "hourly, daily and monthly rates annualized (hourly ×2080, daily ×260); part-time and casual rates are left un-annualized")}
-                          {detailSalaryContext.pct !== 0 && (
-                            <span className={detailSalaryContext.pct > 0 ? "text-success" : "text-warning"}>
-                              {" · "}
-                              {detailSalaryContext.pct > 0
-                                ? t("jobsPage.salaryAbove", "{{pct}}% above the median floor", { pct: detailSalaryContext.pct })
-                                : t("jobsPage.salaryBelow", "{{pct}}% below the median floor", { pct: Math.abs(detailSalaryContext.pct) })}
-                            </span>
-                          )}
-                        </p>
+                        <div className="mt-1">
+                          <p className={`text-[12px] font-semibold ${detailSalaryContext.pct > 0 ? "text-success" : detailSalaryContext.pct < 0 ? "text-warning" : "text-foreground"}`}>
+                            {detailSalaryContext.pct > 0
+                              ? t("jobsPage.salaryAbove", "{{pct}}% above the median floor", { pct: detailSalaryContext.pct })
+                              : detailSalaryContext.pct < 0
+                                ? t("jobsPage.salaryBelow", "{{pct}}% below the median floor", { pct: Math.abs(detailSalaryContext.pct) })
+                                : t("jobsPage.salaryLevel", "About level with the median floor")}
+                          </p>
+                          <p className="text-[11px] text-muted-foreground">
+                            {t("jobsPage.salaryContext", "Field median floor: {{sym}}{{median}} ({{currency}}, from {{n}} postings that state pay)", {
+                              sym: { USD: "$", EUR: "€", GBP: "£" }[detailSalaryContext.currency] ?? "",
+                              median: Math.round(detailSalaryContext.median).toLocaleString(),
+                              currency: detailSalaryContext.currency,
+                              // GROUPED. This was the only figure in the block
+                              // printed raw, so the sentence read "from 17668
+                              // postings" beside a median written "$114,000".
+                              n: detailSalaryContext.n.toLocaleString(),
+                            })}
+                          </p>
+                          {/* The median blends hourly/daily/monthly rates
+                              annualized — without saying so the number reads as
+                              a pure annual-salary median. Same key, same words,
+                              one fold down. */}
+                          <details className="text-[11px] text-muted-foreground">
+                            <summary className="cursor-pointer hover:text-foreground focus-visible:outline-none focus-visible:underline">
+                              {t("jobsPage.salaryContextBasisSummary", "How this median is measured")}
+                            </summary>
+                            <p className="mt-0.5">
+                              {t("jobsPage.salaryContextBasis", "hourly, daily and monthly rates annualized (hourly ×2080, daily ×260); part-time and casual rates are left un-annualized")}
+                            </p>
+                          </details>
+                        </div>
                       )}
                     </dd>
                   </>
@@ -4788,6 +4954,24 @@ export default function Jobs() {
                           {t("jobsPage.minYears", "{{n}}+ yrs", { n: detailJob.minYears })}
                         </span>
                       )}
+                    </dd>
+                  </>
+                )}
+                {/* NOTHING IS HIDDEN BY TIDYING IT. The header line above shows
+                    the location with requisition and site codes removed; this
+                    row exists so the employer's untouched string is still on
+                    the page, in full, wherever the two differ. It renders on
+                    `reduced` alone — a location we did not change gets no row,
+                    because repeating an identical string is noise rather than
+                    disclosure. */}
+                {detailLoc.reduced && detailLoc.raw && (
+                  <>
+                    <dt className="text-[11px] text-muted-foreground pt-0.5">{t("jobsPage.factLocationRaw", "Location, verbatim")}</dt>
+                    <dd className="text-foreground min-w-0">
+                      {detailLoc.raw}
+                      <span className="block text-[11px] text-muted-foreground">
+                        {t("jobsPage.locationTidiedNote", "Exactly as the employer's system wrote it. The line at the top of this panel is the same text with requisition and site codes removed — nothing was added to it.")}
+                      </span>
                     </dd>
                   </>
                 )}
@@ -4940,7 +5124,17 @@ export default function Jobs() {
                     {t("jobsPage.prepAnswers", "Prep answers")}
                   </Button>
                 )}
-                <Button size="sm" variant="ghost" className="px-2" aria-label={t("jobsPage.saveJob", "Save")} onClick={() => saveJob(detailJob)}>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="px-2"
+                  aria-pressed={savedIds.has(detailJob.id)}
+                  aria-label={savedIds.has(detailJob.id) ? t("jobsPage.savedBadge", "Saved") : t("jobsPage.saveJob", "Save")}
+                  title={savedIds.has(detailJob.id)
+                    ? t("jobsPage.savedTip", "In your application tracker — click to open it")
+                    : t("jobsPage.saveTip", "Save this posting to your application tracker")}
+                  onClick={() => saveJob(detailJob)}
+                >
                   {savedIds.has(detailJob.id) ? <BookmarkCheck className="w-4 h-4 text-primary" /> : <Bookmark className="w-4 h-4" />}
                 </Button>
                 {/* Desktop-only close: this row is the part that stays pinned
@@ -7528,7 +7722,17 @@ export default function Jobs() {
                   // than inline: one place to read what this card can honestly
                   // claim before deciding what to draw.
                   const ats = sourceLabel(job.source);
-                  const cardCountry = countryToName(job.location, job.country);
+                  // THE PLACE THE CARD CAN HONESTLY NAME. Requisition and site
+                  // codes out, the employer's own words otherwise, and `null`
+                  // for a line that was only ever an internal code — see
+                  // displayLocation. The raw string rides along on `raw` and is
+                  // hung on the title attribute below, so nothing is hidden.
+                  const cardLoc = displayLocation(job.location);
+                  // Read against WHAT THE CARD SHOWS, not the raw column: a
+                  // location reduced to nothing leaves the country as the only
+                  // place fact there is, and countryToName already states it
+                  // rather than swallowing it when the text is empty.
+                  const cardCountry = countryToName(cardLoc.text, job.country);
                   // Computed ONCE per card, not once per JSX reference. Read
                   // inline they ran two or three times each, sixty cards to a
                   // page, on every render of the list.
@@ -7679,7 +7883,15 @@ export default function Jobs() {
                             {job.token
                               ? <Link to={`/jobs/company/${job.token}`} className="hover:text-primary hover:underline">{job.company}</Link>
                               : job.company}
-                            {job.location ? ` · ${job.location}` : ""}
+                            {/* The tidied place, with the employer's own string
+                                one hover away whenever the two differ. A span
+                                rather than bare text precisely so the title has
+                                somewhere to live. */}
+                            {cardLoc.text && (
+                              <span title={cardLoc.raw !== cardLoc.text ? cardLoc.raw ?? undefined : undefined}>
+                                {` · ${cardLoc.text}`}
+                              </span>
+                            )}
                             {/* THE COUNTRY, FINALLY SAID OUT LOUD. It is on
                                 72% of rows and reached the JSON-LD and the
                                 filter picker and no reader. "Cambridge" is two
@@ -8176,18 +8388,42 @@ export default function Jobs() {
                           )}
                         </div>
                       </div>
+                      {/* ── TWO DECISIONS, THEN THE UTILITIES ───────────────
+                          The card used to fill BOTH "Check my fit — free scan"
+                          and "Apply ⧉" in primary blue, side by side, competing
+                          for the same click — while the detail panel filled the
+                          fit scan and outlined Apply. One board, two opposite
+                          answers to "what should I do first?", decided by which
+                          surface the reader happened to be looking at.
+
+                          ONE HIERARCHY NOW, AND IT IS THE PANEL'S: the fit scan
+                          is filled, Apply is outlined, on the card, in the pane
+                          and in the phone's thumb bar. The argument is the
+                          board's own — a free scan that tells you whether the
+                          application is worth spending is the thing this
+                          product has and an aggregator does not, and Apply
+                          leaves the site for good. Apply has not moved, has not
+                          shrunk and has not lost its label; it has stopped
+                          shouting over the cheaper, reversible action.
+
+                          The four icon controls — save, report, hide, compare —
+                          are none of them a decision about THIS job; they are
+                          housekeeping about the list. They now sit in one
+                          right-aligned cluster after the two real actions, so a
+                          scanning reader meets the decisions first and the
+                          utilities read as a group rather than as four more
+                          things competing with them. All four already carried
+                          accessible names and keep them; the compare toggle
+                          additionally stops rendering a filled primary button
+                          when it is on — a third blue thing on a card that just
+                          had its second one removed — and stops being a bare
+                          "⇄" glyph nobody can decode. */}
                       <div className={`flex flex-wrap items-center gap-2 mt-3 ${density === "compact" ? "hidden" : ""}`}>
-                        <Button size="sm" variant="outline" className="gap-1.5" disabled={fitFetching === job.id} onClick={() => checkFit(job)}>
+                        <Button size="sm" className="gap-1.5" disabled={fitFetching === job.id} onClick={() => checkFit(job)}>
                           {fitFetching === job.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Target className="w-3.5 h-3.5" />}
                           {t("jobsPage.checkFit", "Check my fit — free scan")}
                         </Button>
-                        {REAL_QUESTION_PREFIXES.some((p) => job.id.startsWith(p)) && (
-                          <Button size="sm" variant="outline" className="gap-1.5" disabled={preparingId === job.id} onClick={() => prepareApplication(job)}>
-                            {preparingId === job.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <MessageSquare className="w-3.5 h-3.5" />}
-                            {t("jobsPage.prepAnswers", "Prep answers")}
-                          </Button>
-                        )}
-                        <Button size="sm" className="gap-1.5" asChild>
+                        <Button size="sm" variant="outline" className="gap-1.5" asChild>
                           <a
                             href={job.applyUrl}
                             target="_blank"
@@ -8199,11 +8435,25 @@ export default function Jobs() {
                             <ExternalLink className="w-3.5 h-3.5" />
                           </a>
                         </Button>
+                        {REAL_QUESTION_PREFIXES.some((p) => job.id.startsWith(p)) && (
+                          <Button size="sm" variant="outline" className="gap-1.5" disabled={preparingId === job.id} onClick={() => prepareApplication(job)}>
+                            {preparingId === job.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <MessageSquare className="w-3.5 h-3.5" />}
+                            {t("jobsPage.prepAnswers", "Prep answers")}
+                          </Button>
+                        )}
+                        {/* ml-auto, and flex-wrap on the cluster itself so the
+                            report pills have somewhere to go on a 375px card
+                            instead of pushing the row wider than the card. */}
+                        <span className="ml-auto flex flex-wrap items-center justify-end gap-1 min-w-0">
                         <Button
                           size="sm"
                           variant="ghost"
                           className="gap-1.5 px-2"
+                          aria-pressed={savedIds.has(job.id)}
                           aria-label={savedIds.has(job.id) ? t("jobsPage.savedBadge", "Saved") : t("jobsPage.saveJob", "Save")}
+                          title={savedIds.has(job.id)
+                            ? t("jobsPage.savedTip", "In your application tracker — click to open it")
+                            : t("jobsPage.saveTip", "Save this posting to your application tracker")}
                           onClick={() => saveJob(job)}
                         >
                           {savedIds.has(job.id)
@@ -8249,20 +8499,22 @@ export default function Jobs() {
                         >
                           ✕
                         </Button>
-                        {/* Compare tray toggle: pick up to 3, see them side by side. */}
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); toggleCompare(job.id); }}
-                          className={`text-[11px] px-1.5 py-0.5 rounded border transition-colors ${
-                            compareIds.includes(job.id)
-                              ? "bg-primary text-primary-foreground border-primary"
-                              : "text-muted-foreground border-border hover:border-primary/50"
-                          }`}
-                          title={t("jobsPage.compareTip", "Add to compare (up to 3)")}
+                        {/* Compare tray toggle: pick up to 3, see them side by
+                            side. A real icon and a pressed state rather than a
+                            filled primary button — "selected" is a state of a
+                            utility, not a third call to action. */}
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className={`px-2 ${compareIds.includes(job.id) ? "text-primary bg-primary/10" : "text-muted-foreground"}`}
+                          aria-pressed={compareIds.includes(job.id)}
                           aria-label={t("jobsPage.compareTip", "Add to compare (up to 3)")}
+                          title={t("jobsPage.compareTip", "Add to compare (up to 3)")}
+                          onClick={(e) => { e.stopPropagation(); toggleCompare(job.id); }}
                         >
-                          {t("jobsPage.compareToggle", "⇄")}
-                        </button>
+                          <ArrowLeftRight className="w-3.5 h-3.5" />
+                        </Button>
+                        </span>
                       </div>
                       {/* Near-identical siblings: the same role at other locations,
                           collapsed under this card — each still a real, applyable
@@ -8287,7 +8539,12 @@ export default function Jobs() {
                               {siblings.map((sib) => (
                                 <li key={sib.id} className="flex items-center gap-2 text-[12px] text-muted-foreground">
                                   <MapPin className="w-3 h-3 shrink-0" />
-                                  <span className="flex-1 min-w-0 truncate">{sib.location || t("jobsPage.locationUnlisted", "Location unlisted")}</span>
+                                  <span
+                                    className="flex-1 min-w-0 truncate"
+                                    title={displayLocation(sib.location).raw ?? undefined}
+                                  >
+                                    {displayLocation(sib.location).text || t("jobsPage.locationUnlisted", "Location unlisted")}
+                                  </span>
                                   <a
                                     href={sib.applyUrl}
                                     target="_blank"
@@ -8407,25 +8664,49 @@ export default function Jobs() {
             }}
           >
             {detailInner}
-            {/* Thumb-reach action bar: Apply and Save stay pinned while the
-                description scrolls (mobile overlay only — the desktop pane
-                keeps actions at the top where the cursor already is). */}
-            <div className="sticky bottom-0 bg-background/95 backdrop-blur border-t border-border px-4 py-3 flex gap-2">
-              <Button className="flex-1 gap-1.5" asChild>
+            {/* Thumb-reach action bar, pinned while the description scrolls
+                (mobile overlay only — the desktop pane keeps its actions at the
+                top, where the cursor already is).
+
+                IT OBEYS THE SAME HIERARCHY AS THE CARD AND THE PANE. This bar
+                filled Apply while the actions row four inches above it filled
+                the fit scan, so the drawer disagreed with ITSELF about which
+                action came first — and the pinned one, the one always on
+                screen, was the one that sends the reader off the site. The fit
+                scan leads here too; Apply keeps its own button, its icon and
+                its full name in the title, and only gives up the fill. */}
+            {/* WRAPPING, because three controls do not fit one 375px row.
+                Measured at 375: the bar has 343px of usable width and the fit
+                button alone wants ~205 of it, so a nowrap row would have had
+                to shrink the primary until its own label overflowed it.
+                `basis-full` puts the primary on its own full-width line on a
+                phone and `sm:basis-auto` collapses all three back onto one row
+                in the 560px sheet, where they genuinely fit. */}
+            <div className="sticky bottom-0 bg-background/95 backdrop-blur border-t border-border px-4 py-3 flex flex-wrap gap-2">
+              <Button className="flex-1 basis-full sm:basis-auto gap-1.5" disabled={fitFetching === detailJob.id} onClick={() => checkFit(detailJob)}>
+                {fitFetching === detailJob.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Target className="w-3.5 h-3.5" />}
+                {t("jobsPage.checkFit", "Check my fit — free scan")}
+              </Button>
+              <Button variant="outline" className="flex-1 sm:flex-none gap-1.5" asChild>
                 <a
                   href={detailJob.applyUrl}
                   target="_blank"
                   rel="noopener noreferrer"
+                  title={t("jobsPage.applyShort", "Apply on company site")}
                   onClick={() => { trackApply(detailJob); void promoteApplied(detailJob); void verifyJob(detailJob); }}
                 >
-                  {t("jobsPage.applyShort", "Apply on company site")}
+                  {t("jobsPage.applyBtn", "Apply")}
                   <ExternalLink className="w-3.5 h-3.5" />
                 </a>
               </Button>
               <Button
-                variant="outline"
-                className="px-3"
+                variant="ghost"
+                className="px-3 shrink-0"
+                aria-pressed={savedIds.has(detailJob.id)}
                 aria-label={savedIds.has(detailJob.id) ? t("jobsPage.savedBadge", "Saved") : t("jobsPage.saveJob", "Save")}
+                title={savedIds.has(detailJob.id)
+                  ? t("jobsPage.savedTip", "In your application tracker — click to open it")
+                  : t("jobsPage.saveTip", "Save this posting to your application tracker")}
                 onClick={() => saveJob(detailJob)}
               >
                 {savedIds.has(detailJob.id) ? <BookmarkCheck className="w-4 h-4 text-primary" /> : <Bookmark className="w-4 h-4" />}
@@ -8627,7 +8908,9 @@ export default function Jobs() {
                 return (
                   <div key={id} className="rounded-xl border border-border p-3 min-w-0">
                     <p className="text-sm font-semibold text-foreground leading-tight">{j.title}</p>
-                    <p className="text-[12px] text-muted-foreground mb-2">{j.company}{j.location ? ` · ${j.location}` : ""}</p>
+                    <p className="text-[12px] text-muted-foreground mb-2" title={displayLocation(j.location).raw ?? undefined}>
+                      {j.company}{displayLocation(j.location).text ? ` · ${displayLocation(j.location).text}` : ""}
+                    </p>
                     <ul className="space-y-1.5 text-[12px] text-muted-foreground">
                       {typeof f === "number" && (
                         <li><span className="text-foreground font-semibold">{f}%</span> {t("jobsPage.compareFit", "keyword fit")}</li>
