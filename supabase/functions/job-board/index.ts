@@ -112,7 +112,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-30.53"; // .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
+const BUILD_VERSION = "2026-08-30.54"; // .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
 // .36: JazzHR joins as vendor #20 (vendors/jazzhr.ts; a verified sample of boards enters sources.ts, so the bump is load-bearing for the bootstrap lane). .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
 // .23: bug-sweep round — the agency opt-out reaches the rescue tiers (it was bound in search_jobs only, so a rescue served the rows the caller hid, undisclosed); the per-company cap stops swallowing the employer it just surfaced; a withdrawn count no longer prints "not hiring"; the reverted pipe fix is restored
 
@@ -2861,7 +2861,11 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         // Every 8th now, not every 24th: the slice that died had written one
         // mark and then nothing, which located the death within a 24-board
         // window. Eight narrows it without making the write itself the cost.
-        if (++boardsDone % 8 === 0) await breadcrumb(client, "loop", { boardsDone, fetched: fetchedInSlice, inFlight: inFlightReserve, elapsedMs: Date.now() - sliceWallStart });
+        // EVERY board now, not every eighth. The budget is 8, so this is at
+        // most eight writes a slice, and "always 8" was exactly the reading
+        // that hid which board the slice was on when it died.
+        ++boardsDone;
+        await breadcrumb(client, "board-fetched", { boardsDone, token: s.token, got: r ? r.jobs.length : 0, fetched: fetchedInSlice, inFlight: inFlightReserve, elapsedMs: Date.now() - sliceWallStart });
         if (!r) {
           failed.push(`${s.name} (vendor${failReason ? `: ${failReason}` : ""})`);
           continue;
@@ -3608,6 +3612,13 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
           }
         } catch { /* never blocks the slice */ }
         sliceTotal += rows.length;
+        // THE BOARD IS FULLY STORED. The fetch mark above fires 760 lines
+        // earlier, before the existing-rows paging, the upserts and the
+        // verification stamp — so a trace that shows "board" and never
+        // "board-stored" places the death inside a board's DB work rather
+        // than in its fetch or in the loop's structure, which is the half
+        // this instrumentation could not previously tell apart.
+        await breadcrumb(client, "board-stored", { boardsDone, token: s.token, rows: rows.length, fetched: fetchedInSlice });
       }
     }),
   );

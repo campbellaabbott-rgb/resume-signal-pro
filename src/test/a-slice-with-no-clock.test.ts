@@ -52,8 +52,10 @@ describe("a slice with no clock", () => {
   });
 
   it("elapsed time rides the breadcrumbs and the stop rides the status row", () => {
-    expect(CODE).toMatch(/breadcrumb\(client, "loop", \{ boardsDone, fetched: fetchedInSlice, inFlight: inFlightReserve, elapsedMs: Date\.now\(\) - sliceWallStart \}\)/);
-    expect(CODE, "at 8-board resolution since .43").toMatch(/\+\+boardsDone % 8 === 0/);
+    // .54: the periodic mark became a per-board pair. "Always 8" was the
+    // reading that hid which board the slice died on
+    // (where-the-slice-stopped-saying-anything.test.ts).
+    expect(CODE).toMatch(/breadcrumb\(client, "board-fetched", \{ boardsDone, token: s\.token, got: r \? r\.jobs\.length : 0, fetched: fetchedInSlice, inFlight: inFlightReserve, elapsedMs: Date\.now\(\) - sliceWallStart \}\)/);
     expect(CODE).toMatch(/wallStopped, sizeStopped, elapsedMs: Date\.now\(\) - sliceWallStart \}\)/);
     expect(CODE).toMatch(/wallStopped: sliceBudgetNote\.wallStopped,/);
   });
@@ -68,7 +70,9 @@ describe("a slice with no clock", () => {
     expect(CODE).toMatch(/sizeStopped: sliceBudgetNote\.sizeStopped,/);
     // Resolution had to improve too: one mark then silence located the death
     // only to within a 24-board window.
-    expect(CODE).toMatch(/\+\+boardsDone % 8 === 0/);
+    // .54: per-board marks replaced the every-eighth one — "always 8" was the
+    // reading that hid which board the slice died on, because 8 is the budget.
+    expect(CODE).toMatch(/\+\+boardsDone;\s*await breadcrumb\(client, "board-fetched"/);
   });
 
   it("the heap bound stays, and is honest about what it is", () => {

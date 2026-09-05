@@ -959,7 +959,12 @@ const PINNED = {
   //   so workers spun until the platform killed the isolate. That is why
   //   loop-done had never appeared in ANY trace and why six memory fixes
   //   changed nothing.
-  buildVersion: "2026-08-30.53",
+  //
+  // .54 — instrumentation only. .53 fixed a real spin and loop-done still
+  //   never appeared, so the death is inside a board's own DB work: 760 lines
+  //   run between the fetch mark and the loop exit. Marks now bracket each
+  //   board (board-fetched / board-stored) to name which board and which half.
+  buildVersion: "2026-08-30.54",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {
