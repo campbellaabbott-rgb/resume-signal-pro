@@ -38,7 +38,15 @@ describe("four ways to lose a board", () => {
   });
 
   it("a budget-retired worker yields and comes back — it never exits the slice", () => {
-    expect(CODE).toMatch(/if \(fetchedInSlice \+ inFlightReserve >= SLICE_POSTING_BUDGET\) \{\s*queue\.unshift\(s\);\s*await new Promise\(\(r\) => setTimeout\(r, 250\)\);\s*continue;\s*\}/);
+    // .53: the yield now escapes when nothing is in flight, because waiting
+    // for a reservation that is already zero is waiting forever — the defect
+    // that kept the loop from ever exiting
+    // (a-wait-for-something-that-cannot-happen.test.ts). The property this
+    // guard is about — the worker comes BACK rather than retiring — is intact.
+    expect(CODE).toMatch(/if \(fetchedInSlice \+ inFlightReserve >= SLICE_POSTING_BUDGET\) \{/);
+    expect(CODE).toMatch(/queue\.unshift\(s\);\s*await new Promise\(\(r\) => setTimeout\(r, 250\)\);\s*continue;/);
+    expect(CODE, "and it must escape rather than wait when nothing can end the wait")
+      .toMatch(/if \(inFlightReserve === 0 \|\| spins > YIELD_SPIN_LIMIT\)/);
     expect(CODE, "the reservation branch must not return").not.toMatch(/queue\.unshift\(s\); return;/);
     // The landed check still exits the BOARD (not the worker) when the budget
     // is genuinely spent — that is what makes the yield above terminate.

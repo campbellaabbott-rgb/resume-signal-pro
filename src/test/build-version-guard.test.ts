@@ -952,7 +952,14 @@ const PINNED = {
   //   fired), reserves and concurrency moved with it, and the HOT slice
   //   bounded by budget/cap — .50 fixed the cursor-outran-the-read defect on
   //   the cold lane only, and hot boards are the giants.
-  buildVersion: "2026-08-30.52",
+  //
+  // .53 — the loop was never exiting (a-wait-for-something-that-cannot-happen
+  //   .test.ts). The .39 yield waits for an in-flight board to lower the
+  //   reservation, but with nothing in flight the condition can never clear,
+  //   so workers spun until the platform killed the isolate. That is why
+  //   loop-done had never appeared in ANY trace and why six memory fixes
+  //   changed nothing.
+  buildVersion: "2026-08-30.53",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {

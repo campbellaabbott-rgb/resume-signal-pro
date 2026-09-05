@@ -112,7 +112,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-30.52"; // .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
+const BUILD_VERSION = "2026-08-30.53"; // .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
 // .36: JazzHR joins as vendor #20 (vendors/jazzhr.ts; a verified sample of boards enters sources.ts, so the bump is load-bearing for the bootstrap lane). .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
 // .23: bug-sweep round — the agency opt-out reaches the rescue tiers (it was bound in search_jobs only, so a rescue served the rows the caller hid, undisclosed); the per-company cap stops swallowing the employer it just surfaced; a withdrawn count no longer prints "not hiring"; the reverted pipe fix is restored
 
@@ -314,6 +314,8 @@ const SLICE_POSTING_BUDGET = 1_400;
 // reservation alone stays under the budget, so an empty-handed slice can
 // never retire a worker, let alone drop a board.
 const COLD_BOARD_RESERVE = 100;
+// Twenty yields is five seconds of waiting for a board that is not coming.
+const YIELD_SPIN_LIMIT = 20;
 // "A cold board is small by definition" was false for this catalog: 1,367
 // Oracle boards page 20 x 100 by default, iCIMS and Workday page to the same
 // cap, and 315 boards carry a `pages` override — none of them hot unless in
@@ -2747,6 +2749,9 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
   // started board reserves its worst case until it returns.
   let inFlightReserve = 0;
   let boardsDone = 0;
+  // A yield is a wait for somebody else to finish. Counted per board so a
+  // wait that cannot end becomes a deferral instead of a spin.
+  const yieldsByToken = new Map<string, number>();
   let heapStopped = false;
   let wallStopped = false;
   let sizeStopped = false;
@@ -2794,6 +2799,32 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         // being genuinely spent, so reaching here means another worker is in
         // flight and will lower the reservation when it returns.
         if (fetchedInSlice + inFlightReserve >= SLICE_POSTING_BUDGET) {
+          // NOTHING IN FLIGHT MEANS NOTHING WILL CHANGE.
+          //
+          // This branch waits for an in-flight board to land and lower the
+          // reservation. But `inFlightReserve` only falls when a board
+          // returns, and `fetchedInSlice` only rises — so when the reservation
+          // is already zero and the sum still exceeds the budget, the worker
+          // is waiting for an event that cannot happen. Every worker reaching
+          // it spins on a 250ms timer until the platform kills the isolate,
+          // which is why `loop-done` had NEVER appeared in any trace since
+          // .39 introduced this yield, and why six versions of memory fixes
+          // changed nothing: the loop was not dying, it was never exiting.
+          //
+          // It was nearly unreachable at the old 12,000-posting budget — the
+          // window is fetchedInSlice within one board's reservation of the
+          // budget — and .52's measured budget of 1,400 made it ordinary.
+          //
+          // So: if nothing is in flight, defer the board rather than wait for
+          // it. The spin cap is the backstop for anything this reasoning has
+          // not anticipated; a deferred board is not a failed one, and the
+          // slice finishes, stamps, and chains.
+          const spins = (yieldsByToken.get(s.token) ?? 0) + 1;
+          yieldsByToken.set(s.token, spins);
+          if (inFlightReserve === 0 || spins > YIELD_SPIN_LIMIT) {
+            budgetSkipped.push(s.token);
+            continue;
+          }
           queue.unshift(s);
           await new Promise((r) => setTimeout(r, 250));
           continue;

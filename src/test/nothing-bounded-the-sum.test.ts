@@ -51,7 +51,10 @@ describe("nothing bounded the sum", () => {
     expect(CODE).toMatch(/inFlightReserve \+= reserve;/);
     expect(CODE, "the reservation must be released in a finally, or a throwing fetch leaks it").toMatch(/finally \{ inFlightReserve -= reserve; \}/);
     // .39: yields instead of exiting — see four-ways-to-lose-a-board.test.ts.
-    expect(CODE).toMatch(/if \(fetchedInSlice \+ inFlightReserve >= SLICE_POSTING_BUDGET\) \{\s*queue\.unshift\(s\);/);
+    // .53 inserted the cannot-end escape before the unshift; the reservation
+    // check itself is unchanged.
+    expect(CODE).toMatch(/if \(fetchedInSlice \+ inFlightReserve >= SLICE_POSTING_BUDGET\) \{/);
+    expect(CODE).toMatch(/queue\.unshift\(s\);/);
   });
 
   it("counts what was HELD, not what was stored", () => {
