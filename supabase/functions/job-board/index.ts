@@ -112,7 +112,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-30.55"; // .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
+const BUILD_VERSION = "2026-08-30.56"; // .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
 // .36: JazzHR joins as vendor #20 (vendors/jazzhr.ts; a verified sample of boards enters sources.ts, so the bump is load-bearing for the bootstrap lane). .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
 // .23: bug-sweep round — the agency opt-out reaches the rescue tiers (it was bound in search_jobs only, so a rescue served the rows the caller hid, undisclosed); the per-company cap stops swallowing the employer it just surfaced; a withdrawn count no longer prints "not hiring"; the reverted pipe fix is restored
 
@@ -2314,11 +2314,23 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
   // and the cold rotation — the lane the freshness promise is measured on —
   // is served last but reserved first. A lane that gets 0 takes 0 boards and
   // moves no cursor, which is honest; the previous behaviour was not.
-  const deepTake = Math.min(shedDeepPerSlice, boardBudget >= 12 ? shedDeepPerSlice : 0);
-  const retryTake = Math.min(shedRetryPerSlice, 2);
-  const bootstrapTake = Math.min(shedBootstrapPerSlice, Math.max(0, Math.floor((boardBudget - deepTake - retryTake) * 0.3)));
-  const coldTake = Math.max(1, boardBudget - deepTake - retryTake - bootstrapTake);
-  const effColdSlice = Math.min(shedColdSlice, coldTake);
+  // THE LANES GO BACK TO THEIR OWN SIZES, AND THE CURSOR IS CORRECTED INSTEAD.
+  //
+  // .50 shrank every lane to fit a board budget so the composed length would
+  // equal the length the loop could reach. It worked, and it throttled the
+  // rotation to ~9 cold boards a slice: 4,889 slices a pass, freshness 403 ->
+  // 2,320 minutes. Shrinking the slice was the wrong side of the trade.
+  //
+  // The real tension is that a MEMORY-bounded slice necessarily fetches fewer
+  // boards than it composes — the posting budget stops it partway, by design.
+  // So the fix belongs on the cursor, not the slice: compose a full-sized
+  // slice, let the posting budget stop it wherever memory says, and advance
+  // the cold cursor after the loop by the base-slice boards ACTUALLY
+  // ATTEMPTED. Nothing is skipped and nothing is throttled.
+  const deepTake = shedDeepPerSlice;
+  const retryTake = shedRetryPerSlice;
+  const bootstrapTake = shedBootstrapPerSlice;
+  const effColdSlice = shedColdSlice;
   const effRetryPerSlice = retryTake;
   if (shedLevel > 0) {
     console.warn(`[JOB-BOARD] load shedding L${shedLevel}: ${inHotPhase ? "hot" : "cold"} EMA ${Math.round(shedEma / 1000)}s -> ${inHotPhase ? `hotSlice ${effHotSlice}` : `slice ${effColdSlice}, concurrency ${effConcurrency}, deep ${effDeepPerSlice}, bootstrap ${bootstrapTake}, retry ${effRetryPerSlice}`}`);
@@ -2348,9 +2360,6 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
     // lane sizing above closes. Trimmed here rather than earlier because the
     // demand count is not known until now, and `advanceArgs` reads
     // baseSlice.length below, after this point.
-    if (demandBoards.length > 0) {
-      baseSlice = baseSlice.slice(0, Math.max(1, effColdSlice - demandBoards.length));
-    }
   }
   // Bootstrap lane: boards with ZERO rows (fresh catalog merges) jump the
   // queue instead of waiting a full rotation at the catalog tail. The queue
@@ -2769,6 +2778,11 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
   // started board reserves its worst case until it returns.
   let inFlightReserve = 0;
   let boardsDone = 0;
+  // The cold cursor advances by THIS, not by the composed length. A board the
+  // posting budget stopped us reaching was never read, and a cursor that moves
+  // past it marks it verified when nothing verified it.
+  const baseTokens = new Set(baseSlice.map((b) => b.token));
+  let baseAttempted = 0;
   // A yield is a wait for somebody else to finish. Counted per board so a
   // wait that cannot end becomes a deferral instead of a spin.
   const yieldsByToken = new Map<string, number>();
@@ -2871,6 +2885,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         // deepCursor summary on the status action — so the next attempt can be
         // told apart from this one by a number instead of an inference.
         const reserve = inHotPhase || deepTokens.has(s.token) || CAPPED_VISIT_VENDORS.has(s.source) || !!s.pages ? MAX_POSTINGS_PER_VISIT : COLD_BOARD_RESERVE;
+        if (baseTokens.has(s.token)) baseAttempted++;
         inFlightReserve += reserve;
         let r: Awaited<ReturnType<typeof fetchBoard>>;
         try { r = await fetchBoard(s, (m) => { failReason = m; }, deepCursors[s.token] ?? 0); }
@@ -3674,9 +3689,16 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
   // with it now.
   const failedAcc = [...(Array.isArray(pv.failedAcc) ? pv.failedAcc : []), ...failed].slice(-120);
   const failedTotal = (Number(pv.failedTotal) || 0) + failed.length;
+  // CORRECTED HERE. The pre-loop write advanced optimistically by the composed
+  // length, which is what stops a dying slice from wedging the rotation on the
+  // same boards forever. This write happens only when the slice SURVIVED, so
+  // it can tell the truth: the cursor moves by the boards this slice actually
+  // started, and boards the posting budget kept us from are left for the next
+  // slice rather than marked verified.
   const { next: progressAfter, wrapped } = advanceProgress({
     prev: { ...progressBefore, failedAcc, failedTotal },
     ...advanceArgs,
+    baseSliceLen: baseAttempted,
   });
   hot = progressAfter.hot;
   cold = progressAfter.cold;

@@ -969,7 +969,13 @@ const PINNED = {
   //   and the never-ending yield were both live), and it throttles a cold
   //   slice to ~9 boards: 4,889 slices a pass, freshness 403 -> 2,291. The
   //   ramp re-finds the real limit; the posting budget is the true bound.
-  buildVersion: "2026-08-30.55",
+  //
+  // .56 — stop shrinking the slice; correct the cursor instead. A
+  //   memory-bounded slice always fetches fewer boards than it composes, so
+  //   the honest place to fix that is the cursor: full-sized lanes, the
+  //   posting budget stops the loop, and the post-loop write advances by the
+  //   boards actually attempted.
+  buildVersion: "2026-08-30.56",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {
