@@ -202,7 +202,13 @@ describe("the board held five facts and said none of them", () => {
     expect(JOBS).toMatch(/statedCurrencyCode\(job\.salary, job\.salaryCurrency\)/);
     expect(JOBS).toMatch(/statedCurrencyCode\(detailJob\.salary, detailJob\.salaryCurrency\)/);
     // Country: suppressed form on the skimmed card, labelled row in the panel.
-    expect(JOBS).toMatch(/const cardCountry = countryToName\(job\.location, job\.country\);/);
+    // The card's argument is the DISPLAYED place, not the raw column — see
+    // a-requisition-number-is-not-a-place: a location that is nothing but an
+    // internal code shows no place at all, and the country is then the only
+    // place fact there is. countryToName already states it when the text is
+    // empty; feeding it the raw column would let a country name buried inside
+    // a requisition string suppress the one word left to say.
+    expect(JOBS).toMatch(/const cardCountry = countryToName\(cardLoc\.text, job\.country\);/);
     expect(JOBS).toMatch(/countryLabelOrNull\(detailJob\.country\)/);
     // The category finally has a NAME beside its colour, and the same helper
     // paints both the stripe and the dot so they cannot drift apart.
