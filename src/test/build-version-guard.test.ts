@@ -975,7 +975,13 @@ const PINNED = {
   //   the honest place to fix that is the cursor: full-sized lanes, the
   //   posting budget stops the loop, and the post-loop write advances by the
   //   boards actually attempted.
-  buildVersion: "2026-08-30.56",
+  //
+  // .57 — the live heap contradicts the model that set the budget: 41MB at
+  //   board 35, where 105KB-a-posting predicts ~144MB for a full slice. That
+  //   first sample was an outlier board. 1,400 postings stops a slice at ~18
+  //   boards = 40 hours a pass; 4,000 is still inside the ceiling at the
+  //   observed cost, and heap rides every breadcrumb to check it.
+  buildVersion: "2026-08-30.57",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {

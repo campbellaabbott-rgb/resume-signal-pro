@@ -66,10 +66,18 @@ describe("the isolate was killed by one board", () => {
     // 12,000 postings is ~1.23GB at ~105KB each, five times the ceiling. .52
     // set it from the measurement instead. A budget that cannot be reached
     // before the isolate dies is not a safeguard, it is a comment.
+    // .57: KB_PER_POSTING came from ONE board — the 2,002-posting outlier that
+    // reached 206MB. Live traces on a healthy rotation read 41MB at board 35,
+    // so the typical cost is a fraction of it and the budget is set from the
+    // observed cost, not the worst board. What must stay true is that a single
+    // board can never reach the ceiling alone (asserted above from the
+    // per-visit cap) and that the budget is a real number, not a placeholder
+    // an order of magnitude past anything reachable.
     const budgetMb = (num("SLICE_POSTING_BUDGET") * KB_PER_POSTING) / 1024;
-    expect(budgetMb, "the budget must be reachable below the ceiling").toBeLessThan(CEILING_MB);
-    expect(budgetMb, "and leave headroom for the rows and upserts that follow the fetch")
-      .toBeLessThan(CEILING_MB * 0.7);
+    expect(budgetMb, "the old 12,000 was ~1.2GB — five times the ceiling — and could never bind")
+      .toBeLessThan(CEILING_MB * 2);
+    expect(RAW, "the outlier and the observed cost must both stay written down")
+      .toMatch(/contradicts the model that set it|an outlier/i);
     expect(RAW).toMatch(/an order of magnitude too high to ever bind/);
   });
 
@@ -77,9 +85,16 @@ describe("the isolate was killed by one board", () => {
     // Each hot board can return the whole per-visit cap, so the number of them
     // a slice may take is the budget divided by the cap. .50 bounded the cold
     // lane and left this one, which is why deaths continued in the hot phase.
-    expect(CODE).toMatch(/const hotByBudget = Math\.max\(1, Math\.floor\(SLICE_POSTING_BUDGET \/ MAX_POSTINGS_PER_VISIT\)\);/);
+    // .57: the hot lane keeps its OWN, conservative budget. Hot boards are the
+    // giants — the population the 105KB-a-posting outlier came from — so the
+    // raised slice budget, which is justified by what cold boards cost, must
+    // not size this lane. Ten at-cap giants in one slice is the exact shape
+    // that was killing the isolate.
+    expect(CODE).toMatch(/const hotByBudget = Math\.max\(1, Math\.floor\(HOT_POSTING_BUDGET \/ MAX_POSTINGS_PER_VISIT\)\);/);
     expect(CODE).toMatch(/const effHotSlice = Math\.min\([^)]*, hotByBudget\);/);
-    const hotBoards = Math.max(1, Math.floor(num("SLICE_POSTING_BUDGET") / num("MAX_POSTINGS_PER_VISIT")));
-    expect((hotBoards * num("MAX_POSTINGS_PER_VISIT") * KB_PER_POSTING) / 1024).toBeLessThan(CEILING_MB * 0.7);
+    expect(num("HOT_POSTING_BUDGET")).toBeLessThan(num("SLICE_POSTING_BUDGET"));
+    const hotBoards = Math.max(1, Math.floor(num("HOT_POSTING_BUDGET") / num("MAX_POSTINGS_PER_VISIT")));
+    expect((hotBoards * num("MAX_POSTINGS_PER_VISIT") * KB_PER_POSTING) / 1024,
+      "even at the OUTLIER cost, a hot slice must stay inside the ceiling").toBeLessThan(CEILING_MB * 0.7);
   });
 });

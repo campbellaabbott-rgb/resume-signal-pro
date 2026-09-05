@@ -112,7 +112,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-30.56"; // .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
+const BUILD_VERSION = "2026-08-30.57"; // .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
 // .36: JazzHR joins as vendor #20 (vendors/jazzhr.ts; a verified sample of boards enters sources.ts, so the bump is load-bearing for the bootstrap lane). .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
 // .23: bug-sweep round — the agency opt-out reaches the rescue tiers (it was bound in search_jobs only, so a rescue served the rows the caller hid, undisclosed); the per-company cap stops swallowing the employer it just surfaced; a withdrawn count no longer prints "not hiring"; the reverted pipe fix is restored
 
@@ -301,7 +301,32 @@ const HOT_SLICE = 10;
 // trips with nothing landed, which is the .32 defect, and (CONCURRENCY-1) x
 // COLD_BOARD_RESERVE + DEEP_PER_SLICE x MAX_POSTINGS_PER_VISIT is pinned below
 // it by a guard.
-const SLICE_POSTING_BUDGET = 1_400;
+// RAISED, BECAUSE THE LIVE HEAP CONTRADICTS THE MODEL THAT SET IT.
+//
+// 1,400 came from one sample — a board that returned 2,002 postings and took
+// the isolate to 206MB, so ~105KB a posting. On .56, with the rotation finally
+// healthy, the trace reads 41MB at board 35 of a slice. The model predicts a
+// full 1,400-posting slice should sit near 144MB. It does not, which means
+// that first board was an outlier — a giant raw payload — and typical boards
+// cost a small fraction of it.
+//
+// The cost of being this conservative is the whole remaining problem: the
+// budget stops a slice at ~18 cold boards, which is 40 hours for one pass over
+// 44,000 boards against a published bound of 8, and freshness has gone on
+// climbing (2,350 minutes) even though every other signal is now healthy.
+//
+// 4,000 is ~2.9x the current budget and, at the OBSERVED cost rather than the
+// outlier's, well inside the ceiling. It is deliberately not larger: the
+// outlier is real, one board can still return the per-visit cap of 400, and
+// heap now rides every breadcrumb — so if this is too high the trace will say
+// so in numbers rather than in another silent death.
+const SLICE_POSTING_BUDGET = 4_000;
+// THE HOT LANE KEEPS THE CONSERVATIVE BUDGET, because hot boards ARE the
+// giants — the population the 105KB-a-posting outlier came from. The raised
+// budget above is justified by what COLD boards cost, and cold boards are
+// small by definition; sizing the hot lane from it would put ten at-cap
+// giants in one slice, which is the exact shape that was killing the isolate.
+const HOT_POSTING_BUDGET = 1_400;
 // WHAT ONE IN-FLIGHT BOARD CAN STILL ADD. Only a hot-phase board or a
 // deep-lane board can return the per-visit cap in one visit; a cold board
 // is small by definition (that is why it is cold), and reserving the cap
@@ -2279,7 +2304,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
   // may take is the posting budget divided by the cap. Nothing is skipped: a
   // hot board resumes at its own offset next visit like every other capped
   // board.
-  const hotByBudget = Math.max(1, Math.floor(SLICE_POSTING_BUDGET / MAX_POSTINGS_PER_VISIT));
+  const hotByBudget = Math.max(1, Math.floor(HOT_POSTING_BUDGET / MAX_POSTINGS_PER_VISIT));
   const effHotSlice = Math.min(shedLevel === 2 ? 3 : shedLevel === 1 ? 5 : HOT_SLICE, hotByBudget);
   // THE ACCELERATOR LANES SHED TOO, or shedding inverts the slice. The first
   // version cut only the cursor-bearing baseSlice: at L2 that left 24 rotation
