@@ -3555,32 +3555,6 @@ export type Database = {
         Args: { p_cache_key: string; p_function_name: string }
         Returns: Json
       }
-      // NULLABILITY IS THE ONE INVARIANT THIS FEATURE IS BUILT AROUND, so it is
-      // declared here rather than asserted away. `median_days_to_fill` is NULL
-      // by design whenever `median_censored` is true (survival had not reached
-      // one half inside the 30-day support), and `dated_coverage` divides by
-      // NULLIF(dated + undated, 0). A caller typed against a non-null
-      // `median_days_to_fill` compiles `Math.round(row.median_days_to_fill)`,
-      // which is 0 at runtime — "a typical role fills in 0 days" printed for
-      // exactly the categories whose median does not exist.
-      get_category_fill_curve: {
-        Args: { p_days?: number; p_min_n?: number }
-        Returns: {
-          category: string
-          dated_coverage: number | null
-          fill_rate_14: number
-          fill_rate_14_hi: number
-          fill_rate_14_lo: number
-          fills_le_14: number
-          median_censored: boolean
-          median_days_to_fill: number | null
-          n_at_risk_14: number
-          relist_rate_14: number
-          still_open_14: number
-          sufficient: boolean
-          window_days: number
-        }[]
-      }
       get_category_fill_speed: {
         Args: { p_days?: number; p_min_closures?: number }
         Returns: {
@@ -3604,62 +3578,15 @@ export type Database = {
         }[]
       }
       get_company_claim_status: { Args: { p_token: string }; Returns: Json }
-      // EVERY RATE HERE IS NULLABLE, and for one reason: the function selects
-      // FROM unnest(p_tokens) and LEFT JOINs the estimator onto it, so a token
-      // we hold no observations for comes back as a row of NULLs rather than
-      // not at all — deliberately, so a caller can tell "we have never tracked
-      // this employer" from "this employer filled nothing". The counts
-      // (*_90d, *_n, open_roles, n_at_risk_14, fills_le_14, tracking_days) are
-      // COALESCEd to 0 in the SQL and are genuinely non-null; the rates are
-      // not, and `median_days_to_fill` is NULL by design whenever
-      // `median_censored` is true. `median_censored` itself is a
-      // non-null boolean only because `(med IS NULL)` cannot return NULL --
-      // it reads TRUE for an untracked token, which is an assertion we do not
-      // hold; consumers must check `sufficient` (or a non-zero fills_le_14)
-      // before rendering it. See docs/hiring-health-model.md 11.
-      get_company_fill_curve: {
-        Args: { p_tokens: string[] }
-        Returns: {
-          absorption: number | null
-          ageouts_90d: number
-          churn: number | null
-          company_token: string
-          dated_coverage: number | null
-          dated_n: number
-          fill_rate_14: number | null
-          fill_rate_14_hi: number | null
-          fill_rate_14_lo: number | null
-          fill_rate_30: number | null
-          fill_rate_7: number | null
-          fill_through: number | null
-          fills_90d: number
-          fills_le_14: number
-          median_censored: boolean
-          median_days_to_fill: number | null
-          n_at_risk_14: number
-          open_roles: number
-          relist_rate_14: number | null
-          relists_90d: number
-          still_open_14: number | null
-          sufficient: boolean
-          tracking_days: number
-          undated_n: number
-        }[]
-      }
       get_company_financials: { Args: { p_token: string }; Returns: Json }
-      // median_days_to_close and median_days_open are percentile_cont over the
-      // dated subset and are NULL whenever that subset is empty -- proven live
-      // on 2026-09-06, where gici~wd5~Careers returned closed_90d 41 next to
-      // median_days_to_close null. feed_total is the vendor's own advertised
-      // count and is NULL for vendors that do not advertise one.
       get_company_hiring_health: {
         Args: { p_tokens: string[] }
         Returns: {
           closed_90d: number
           company_token: string
-          feed_total: number | null
-          median_days_open: number | null
-          median_days_to_close: number | null
+          feed_total: number
+          median_days_open: number
+          median_days_to_close: number
           open_roles: number
           superseded_90d: number
           tracking_days: number
