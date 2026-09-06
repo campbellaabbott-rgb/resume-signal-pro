@@ -34,9 +34,14 @@ const fnBody = (name: string) => {
 
 describe("a lever that cuts count cannot cut size", () => {
   it("bounds a visit by postings, at Oracle's already-tolerated default", () => {
-    // 2,000 is 20 pages x 100 — the Oracle default that has always been safe —
-    // so no board that was already fine changes behaviour.
-    expect(FN).toMatch(/const MAX_POSTINGS_PER_VISIT = 2_000;/);
+    // Was pinned at the literal 2_000 ("20 pages x 100, the Oracle default
+    // that has always been safe"). Safe for Oracle's pagination is not the
+    // same question as survivable for the isolate: at the fitted ~146KB a
+    // posting, one 2,000-posting board is ~285MB — more than the whole
+    // ceiling, on its own, before any other board lands. Pin the property.
+    expect(FN).toMatch(/const MAX_POSTINGS_PER_VISIT = [0-9_]+;/);
+    const cap = Number(FN.match(/const MAX_POSTINGS_PER_VISIT = ([0-9_]+);/)![1].replace(/_/g, ""));
+    expect(cap * 146 / 1024, "one board must never be able to reach the ceiling alone").toBeLessThan(256 / 2);
   });
 
   it("the capped fetchers RESUME rather than wrap — the whole correctness argument", () => {

@@ -112,7 +112,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-30.60"; // .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
+const BUILD_VERSION = "2026-08-30.61"; // .61: sizing set from a live fit of heap against postings fetched (heapMb ~= 0.146 x fetched - 10, five sampled slices). Budget 12,000 -> 1,200; per-visit cap 2,000 -> 250; concurrency 8 -> 4 (the reservation invariant makes 8 arithmetically impossible at this budget); cold reserve 500 -> 200; deep volume 4,000 -> 500; heap soft limit 200 -> 150 after 202/208/231MB were observed above it. Goal is a slice that COMPLETES and chains, not a bigger one.
 // .36: JazzHR joins as vendor #20 (vendors/jazzhr.ts; a verified sample of boards enters sources.ts, so the bump is load-bearing for the bootstrap lane). .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
 // .23: bug-sweep round — the agency opt-out reaches the rescue tiers (it was bound in search_jobs only, so a rescue served the rows the caller hid, undisclosed); the per-company cap stops swallowing the employer it just surfaced; a withdrawn count no longer prints "not hiring"; the reverted pipe fix is restored
 
@@ -245,7 +245,7 @@ const FETCH_TIMEOUT_MS = 20_000;
 // each been measured on both sides and each refuted. The next honest step is
 // not another constant — it is the function's own logs, which say what the
 // runtime killed and why, and which nothing in this repo can reach.
-const CONCURRENCY = 8;
+const CONCURRENCY = 4;
 const HOT_CONCURRENCY = 2; // hot boards are giants — two multi-MB parses at once is the memory ceiling
 // desc-sweep: per-posting description backfill. 8 concurrent detail fetches
 // matches CONCURRENCY for board fetches; 120/hop keeps a hop well inside the
@@ -330,32 +330,55 @@ const HOT_SLICE = 10;
 // trips with nothing landed, which is the .32 defect, and (CONCURRENCY-1) x
 // COLD_BOARD_RESERVE + DEEP_PER_SLICE x MAX_POSTINGS_PER_VISIT is pinned below
 // it by a guard.
-// RAISED, BECAUSE THE LIVE HEAP CONTRADICTS THE MODEL THAT SET IT.
+// THE 105KB-A-POSTING MODEL WAS RIGHT. THE SAMPLE THAT OVERTURNED IT WAS ONE
+// READING TAKEN AT THE WRONG MOMENT.
 //
-// 1,400 came from one sample — a board that returned 2,002 postings and took
-// the isolate to 206MB, so ~105KB a posting. On .56, with the rotation finally
-// healthy, the trace reads 41MB at board 35 of a slice. The model predicts a
-// full 1,400-posting slice should sit near 144MB. It does not, which means
-// that first board was an outlier — a giant raw payload — and typical boards
-// cost a small fraction of it.
+// .57 raised this to 4,000 (and the .34 revert then took it to 12,000) on the
+// strength of a single trace reading 41MB at board 35, concluding that the
+// 2,002-posting/206MB board had been an outlier and typical boards cost a
+// fraction of it. That inference was wrong, and the way it was wrong is worth
+// keeping: a slice's heap is not a property you can sample once. It RAMPS.
 //
-// The cost of being this conservative is the whole remaining problem: the
-// budget stops a slice at ~18 cold boards, which is 40 hours for one pass over
-// 44,000 boards against a published bound of 8, and freshness has gone on
-// climbing (2,350 minutes) even though every other signal is now healthy.
+// Measured 2026-09-06 by sampling slice_trace every 20s for nine minutes
+// against production — five distinct in-flight slices:
 //
-// 4,000 is ~2.9x the current budget and, at the OBSERVED cost rather than the
-// outlier's, well inside the ceiling. It is deliberately not larger: the
-// outlier is real, one board can still return the per-visit cap of 400, and
-// heap now rides every breadcrumb — so if this is too high the trace will say
-// so in numbers rather than in another silent death.
-const SLICE_POSTING_BUDGET = 12_000;
-// THE HOT LANE KEEPS THE CONSERVATIVE BUDGET, because hot boards ARE the
-// giants — the population the 105KB-a-posting outlier came from. The raised
-// budget above is justified by what COLD boards cost, and cold boards are
-// small by definition; sizing the hot lane from it would put ten at-cap
-// giants in one slice, which is the exact shape that was killing the isolate.
-const HOT_POSTING_BUDGET = 12_000;
+//     boards   fetched   heapMb
+//        7       357        35
+//       28      1,194      187
+//       44      1,529      202
+//       57      1,554      208
+//       51      1,641      231
+//
+//   heapMb ~= 0.146 x postings_fetched - 10        (r ~ 0.98)
+//
+// Heap per BOARD is noise (3.6-6.7, no trend); heap per POSTING is 100-160KB.
+// So the original ~105KB estimate was, if anything, generous, and the 41MB
+// reading was simply an early board in a slice that had not yet ramped — the
+// same slice would have been at 200MB forty boards later.
+//
+// This is also why five separate sizing knobs each "measured on both sides"
+// and each read as refuted: every one of them was tested at values that never
+// bound. A refutation only refutes the values you tried.
+//
+// 1,200 postings is ~165MB at the fitted cost, which leaves headroom under a
+// ceiling near 256 for the row-building and upserts that follow the fetch, plus
+// one board's worth of overshoot past the check (MAX_POSTINGS_PER_VISIT x
+// 146KB ~= 58MB). The reservation logic below is what stops all eight workers
+// overshooting at once; without it this budget would not be enough.
+//
+// The cost is real and accepted: a slice now stops at roughly 55 cold boards
+// rather than 80. That is the wrong thing to optimise. A slice that DIES loses
+// its bookkeeping AND stops the chain, so each cron tick produced exactly one
+// slice instead of a ~17-hop chain — measured at ~960 boards/hour, a 46-hour
+// lap over 44,424 cold boards, which is the 56-hour p50 freshness observed on
+// 2026-09-06 against a 6.7-hour baseline. Completing is worth more than size.
+const SLICE_POSTING_BUDGET = 1_200;
+// THE HOT LANE MATCHES THE COLD ONE, because the fit above is drawn from mixed
+// slices and does not distinguish them: heap tracks postings held, whoever held
+// them. Hot boards ARE the giants, so if anything this bound matters more here.
+// It is written as its own constant rather than an alias so the two lanes can
+// diverge again on evidence rather than by accident.
+const HOT_POSTING_BUDGET = 1_200;
 // WHAT ONE IN-FLIGHT BOARD CAN STILL ADD. Only a hot-phase board or a
 // deep-lane board can return the per-visit cap in one visit; a cold board
 // is small by definition (that is why it is cold), and reserving the cap
@@ -367,7 +390,7 @@ const HOT_POSTING_BUDGET = 12_000;
 // cold worker reserving this and both deep boards reserving the cap, the
 // reservation alone stays under the budget, so an empty-handed slice can
 // never retire a worker, let alone drop a board.
-const COLD_BOARD_RESERVE = 500;
+const COLD_BOARD_RESERVE = 200;
 // Twenty yields is five seconds of waiting for a board that is not coming.
 const YIELD_SPIN_LIMIT = 20;
 // "A cold board is small by definition" was false for this catalog: 1,367
@@ -399,7 +422,12 @@ const YIELD_SPIN_LIMIT = 20;
 // failed. That is worth more than a bigger slice, because a slice that dies
 // loses its work AND stops the chain, which is what has pinned freshness at
 // 755 minutes against a 480-minute promise.
-const HEAP_SOFT_LIMIT_MB = 200;
+// LOWERED TO 150 FROM 200 BECAUSE 200 WAS OBSERVED BEING EXCEEDED.
+// Live readings on 2026-09-06: 202, 208 and 231MB. This gate is checked before
+// STARTING a board, so with CONCURRENCY workers it can overshoot by whatever
+// the boards already in flight go on to allocate. 150 leaves that overshoot
+// somewhere to land instead of pretending the check is a ceiling.
+const HEAP_SOFT_LIMIT_MB = 150;
 // AND THE ONE THAT ACTUALLY RUNS OUT: WALL TIME.
 //
 // .41 bounded heap because the breadcrumbs showed 200MB at the moment of
@@ -571,7 +599,7 @@ const BOOTSTRAP_PER_SLICE = 25; // zero-row boards prepended per cold slice afte
 // is 14 — sharing a factor of two with 66, so a take of one visits only the
 // even positions and starves half the lane forever. The take stays at two and
 // the per-visit cap carries the memory reduction instead.
-const DEEP_VOLUME_PER_SLICE = 4_000;
+const DEEP_VOLUME_PER_SLICE = 500;
 const DEEP_PER_SLICE = 2; // = floor(DEEP_VOLUME_PER_SLICE / MAX_POSTINGS_PER_VISIT); pinned by test
 // RETRY LANE — deliberately the smallest lane on the slice.
 //
@@ -1036,7 +1064,7 @@ async function fetchAdp(s: JobSource): Promise<{ items: unknown[]; raw: unknown;
 // others in flight. A board with more than 600 postings is not truncated: it
 // returns nextOffset and resumes exactly where it stopped on its next visit,
 // which is the mechanism the deep lane has always used.
-const MAX_POSTINGS_PER_VISIT = 2_000;
+const MAX_POSTINGS_PER_VISIT = 250;
 /** fit-batch bounds — see the action. 20 ids survives the shared worker pool; 60 did not. */
 const FIT_BATCH_MAX = 20;
 const FIT_DESC_CHARS = 20_000;

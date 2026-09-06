@@ -996,7 +996,7 @@ const PINNED = {
   //   board 34 with four workers vs 214MB at board 82 with eight) and cut
   //   throughput from 1,800 boards an hour to 640. The per-worker model was
   //   wrong; this restores the best throughput measured today.
-  buildVersion: "2026-08-30.60",
+  buildVersion: "2026-08-30.61",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {
