@@ -48,6 +48,7 @@ import {
   normalizeWorkday,
   normalizeOracle,
   detectCountry,
+  detectRegion,
   greenhouseApi,
   leverApi,
   type JobPosting,
@@ -112,7 +113,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-30.60"; // .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
+const BUILD_VERSION = "2026-08-30.61"; // .61: COLLECTION PASS — the collector side of eight gaps that were being computed and thrown away every rotation. job_board_field_changes at the unfreeze site (with the salary re-parse fix that made corrected rows carry stale structured pay); closures/exits widened to department/country/work_mode/employment_type/experience_band/min_years/salary_*, plus title+company on exits; origin_basis stamped at all four exit write sites and the posted_at??first_seen coalesce removed; an append-only job_board_board_state so feed_total stops being overwritten; company_token/category/salary_present on every search click and the top-20 shown ids on every search event; a caller enum separating our own monitoring from real demand; region_code (US state / CA province) stored instead of discarded after country resolution. .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
 // .36: JazzHR joins as vendor #20 (vendors/jazzhr.ts; a verified sample of boards enters sources.ts, so the bump is load-bearing for the bootstrap lane). .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
 // .23: bug-sweep round — the agency opt-out reaches the rescue tiers (it was bound in search_jobs only, so a rescue served the rows the caller hid, undisclosed); the per-company cap stops swallowing the employer it just surfaced; a withdrawn count no longer prints "not hiring"; the reverted pipe fix is restored
 
@@ -1730,6 +1731,271 @@ function exitReasonFor(postedAt: unknown, firstSeen: unknown): "aged_out" | "bac
   return p < f - BACKDATE_SLACK_MS ? "backdated" : "aged_out";
 }
 
+/**
+ * HOW LONG THE ROLE WAS UP, AND WHICH CLOCK SAID SO.
+ *
+ * days_on_board was written at four sites as
+ * `(posted_at ?? first_seen)` — a PER-ROW MIXED CLOCK with nothing in the
+ * table to say which one a given row used. posted_at is the EMPLOYER'S OWN
+ * STATED posting date; first_seen is OUR DISCOVERY DATE and is never a
+ * posting age. Coalescing them silently turns "we found this board last
+ * Tuesday" into "this role was open for six days", and this repo has already
+ * shipped one number (the 2.8-day median) built exactly that way.
+ *
+ * It matters right now because the hiring-health estimator takes its
+ * right-censoring times from exits rows, so two of the four write sites were
+ * feeding mixed-clock durations into the censoring input of the model built
+ * to remove that error.
+ *
+ * THE CHOICE MADE HERE, applied identically at all four sites: always emit a
+ * duration when one can be computed, and always say which clock produced it.
+ *   origin_basis 'stated'     — measured from the employer's posted_at.
+ *                               Clean; this is the only population an
+ *                               estimator should use without thinking.
+ *   origin_basis 'discovered' — posted_at was null, so this is measured from
+ *                               OUR first_seen. It is a lower bound on the
+ *                               real tenure, NOT a posting age.
+ *   days null, basis null     — neither clock was readable.
+ * Writing the discovered value rather than null keeps the row usable for
+ * coverage/volume work while `WHERE origin_basis = 'stated'` recovers exactly
+ * the clean series. The reverse (null) would have destroyed information that
+ * cannot be recollected.
+ */
+function tenureDays(
+  postedAt: unknown,
+  firstSeen: unknown,
+  exitedAtIso: string,
+): { days: number | null; basis: "stated" | "discovered" | null } {
+  const end = Date.parse(exitedAtIso);
+  if (!Number.isFinite(end)) return { days: null, basis: null };
+  const stated = postedAt ? Date.parse(String(postedAt)) : NaN;
+  if (Number.isFinite(stated)) return { days: Math.round((end - stated) / 8_640_000) / 10, basis: "stated" };
+  const seen = firstSeen ? Date.parse(String(firstSeen)) : NaN;
+  if (Number.isFinite(seen)) return { days: Math.round((end - seen) / 8_640_000) / 10, basis: "discovered" };
+  return { days: null, basis: null };
+}
+
+/**
+ * The country-column rule, generalised for the lifecycle tables.
+ *
+ * These writes are the only record their events ever get — a closure, an exit,
+ * a field change — and every one of them now names columns that ship in a
+ * migration this function can be deployed AHEAD of. A PostgREST insert naming
+ * one absent column fails the WHOLE statement, so an un-tolerated new field
+ * would not degrade the row, it would delete the event.
+ *
+ * So: if the error names one of the columns we declared optional, strip those
+ * and insert again, and say so in the logs — a deploy window should be
+ * visible, not silently narrower data forever.
+ *
+ * IT KEEPS STRIPPING. PostgREST reports ONE missing column per PGRST204
+ * response ("Could not find the 'origin_basis' column of 'job_board_exits'"),
+ * and this pass added fourteen optional columns to the exit ledger and eleven
+ * to the closure log. A single strip-and-retry therefore only survives a
+ * schema that is short exactly one of them: the second missing column came
+ * back as an error nobody could act on, the call site console.warn'd it as
+ * non-fatal, and the whole 200-row chunk of closures or exits — the one asset
+ * that cannot be backfilled — was dropped instead of degraded. So it loops,
+ * accumulating the named columns, bounded by the size of the optional set.
+ *
+ * Memory: the strip allocates one extra copy of a chunk that is already capped
+ * at 200 rows, only on the error path, and it is released with the chunk.
+ *
+ * Takes the error the insert ALREADY returned (so the call site keeps its own
+ * plain `client.from(table).insert(...)` spelling, which several guards read
+ * and which is the shape everyone recognises) plus a thunk that rebuilds the
+ * rows. The thunk runs only on the failure path, so the happy path allocates
+ * nothing extra. Returns whichever error survives — the caller still checks it.
+ */
+async function settleInsertError(
+  client: SupabaseClient,
+  table: string,
+  error: { message?: string } | null | undefined,
+  rebuild: () => Array<Record<string, unknown>>,
+  optional: readonly string[],
+  where: string,
+): Promise<{ message?: string } | null> {
+  if (!error) return null;
+  const dropped = new Set<string>();
+  let err: { message?: string } | null | undefined = error;
+  // At most one iteration per optional column: every lap must name at least
+  // one column it has not already dropped, or it stops.
+  for (let attempt = 0; attempt < optional.length; attempt++) {
+    const msg = String(err?.message ?? "");
+    const named = optional.filter((c) => msg.includes(c) && !dropped.has(c));
+    if (named.length === 0) break; // not a missing-column error we can settle
+    for (const c of named) dropped.add(c);
+    const stripped = rebuild().map((r) => {
+      const out: Record<string, unknown> = {};
+      for (const k of Object.keys(r)) if (!dropped.has(k)) out[k] = r[k];
+      return out;
+    });
+    const { error: retryErr } = await client.from(table).insert(stripped);
+    if (!retryErr) {
+      console.warn(`[JOB-BOARD] ${table} wrote without ${[...dropped].join(",")} for ${where} — migration not applied yet`);
+      return null;
+    }
+    err = retryErr;
+  }
+  return err ?? null;
+}
+
+/** Every optional column the exit ledger gained in the .61 collection pass. */
+const EXIT_OPTIONAL_COLS = [
+  "origin_basis", "title", "company", "department", "country", "region_code",
+  "work_mode", "employment_type", "experience_band", "min_years",
+  "salary_min_annual", "salary_max_annual", "salary_period", "salary_currency",
+] as const;
+
+/** Same, for the closure log. */
+const CLOSURE_OPTIONAL_COLS = [
+  "department", "country", "region_code", "work_mode", "employment_type",
+  "experience_band", "min_years",
+  "salary_min_annual", "salary_max_annual", "salary_period", "salary_currency",
+] as const;
+
+/**
+ * THE COLUMNS THAT MAKE A LIFECYCLE ROW CUTTABLE.
+ *
+ * job_board_closures and job_board_exits both recorded WHICH role ended and
+ * WHEN, and nothing about what kind of role it was. That is not a reporting
+ * gap — the posting row is hard-deleted at closure, so the moment the event is
+ * logged is the last moment pay, team, geography and level exist anywhere.
+ * No fill rate, churn rate or ghost rate for any elapsed period can EVER be
+ * cut by them retroactively.
+ *
+ * The collector already SELECTs the posting before deleting it, so this is one
+ * wider row read on a query that was going to run anyway: no extra round trip,
+ * no new array, nothing retained per posting.
+ */
+function lifecycleFacets(r: Record<string, unknown>): Record<string, unknown> {
+  return {
+    department: r.department ?? null,
+    country: r.country ?? null,
+    region_code: r.region_code ?? null,
+    work_mode: r.work_mode ?? null,
+    employment_type: r.employment_type ?? null,
+    experience_band: r.experience_band ?? null,
+    min_years: r.min_years ?? null,
+    salary_min_annual: r.salary_min_annual ?? null,
+    salary_max_annual: r.salary_max_annual ?? null,
+    salary_period: r.salary_period ?? null,
+    salary_currency: r.salary_currency ?? null,
+  };
+}
+
+/**
+ * VENDORS WHOSE feedTotal IS OURS, NOT THE EMPLOYER'S.
+ *
+ * job_board_board_state.feed_total is documented as "the employer's own
+ * advertised count, verbatim from their feed, unmodified — the only figure
+ * here we did not derive", and the whole reason to keep a per-day history of
+ * it is that it is ground truth nobody derived. Two fetchers hand back a
+ * number that does not meet that bar: Rippling's is pageCount * 20 (an upper
+ * bound from the page count, so a 3-role tenant reports 20 and crossing a page
+ * boundary reads as the employer doubling their hiring), and JazzHR's is the
+ * length of the list we just fetched (which would make the coverage ratio a
+ * constant 1.0 by construction). For these the honest value is NULL — the
+ * documented "the vendor did not state one" — not a derived stand-in.
+ *
+ * The live verification stamp keeps whatever it always kept; this rule applies
+ * to the append-only history, where a number is permanent.
+ */
+const DERIVED_FEED_TOTAL_SOURCES = new Set(["rippling", "jazzhr"]);
+
+/** The widened posting select both delete paths now read before pruning. */
+const LIFECYCLE_SELECT =
+  "id, source, company_token, company, title, category, first_seen, posted_at, " +
+  "department, country, region_code, work_mode, employment_type, experience_band, min_years, " +
+  "salary_min_annual, salary_max_annual, salary_period, salary_currency";
+
+/**
+ * WHICH US STATE OR CANADIAN PROVINCE, kept instead of thrown away.
+ *
+ * normalize.ts already runs state/province patterns on every row — but only to
+ * decide `country`, after which the state itself is discarded. Pay-disclosure
+ * law is STATE-level (CO, CA, NY, WA, IL...), so without this the board can
+ * only ever score compliance per country, and the jurisdiction is recoverable
+ * only while the posting row is still live.
+ *
+ * THE PARSER IS normalize.ts's `detectRegion`, IMPORTED, NOT COPIED. This file
+ * briefly carried its own copy of the patterns, and the copy got the two hard
+ * cases wrong in the one direction that matters for a column whose whole
+ * purpose is naming a legal jurisdiction: ", CA" is California in a US string
+ * and Canada in a Canadian one, so "Toronto, ON, CA" (which detectCountry
+ * resolves to US on exactly that token) was stored as US-CA, and a bare
+ * leading code filed "DE - Berlin" as Delaware. detectRegion refuses both —
+ * it suppresses a US "CA" match when the same string also names a Canadian
+ * province, and it reads a bare leading code only from a deliberately short
+ * list, last. It also carries REGION_MAP_VERSION, so a stored region_code
+ * stays interpretable against the rules that produced it, and it is the
+ * version the tests exercise. One column, one implementation.
+ *
+ * Stored ISO 3166-2 style ("US-CO", "CA-ON") so the value names its own
+ * country and can never be read as a bare ambiguous two-letter code.
+ *
+ * Memory: pure string work returning a ≤5-char string that is stamped onto a
+ * row the ingest was already building. Nothing retained per posting.
+ */
+
+// WHOLE-BOARD PRUNES USED TO LEAVE NO TRACE AT ALL.
+/**
+ * WHO ASKED. Until now, nothing in job_board_search_events could tell a
+ * candidate apart from our own monitoring.
+ *
+ * logSearch fires unconditionally, and action:'list' is called by far more
+ * than the website: the filter audit's self-calls (~31 a day), scan-heartbeat's
+ * probe battery (including a literal {salaryFloor:100000} query that is not a
+ * person wanting a six-figure job), send-search-digest, agent-mcp, and every
+ * paying /v1 customer, because public-api proxies straight through to this
+ * action. There was no bot flag, no visitor id, no UA, no source column — so
+ * every "candidates search for X" number is contaminated in a way no filter can
+ * retroactively separate. This is a WRITE-side fix; nothing can recover the
+ * attribution of a row already written without it.
+ *
+ * THE ORDER, most trustworthy first:
+ *  1. An explicit caller the request declares — body.caller or an x-rsp-caller
+ *     header — checked against the enum. Internal callers say who they are;
+ *     this is how public-api ('api'), agent-mcp ('mcp') and send-search-digest
+ *     ('digest') attribute themselves with a one-line change on their side.
+ *  2. A service-role bearer token: only our own infrastructure holds it. That
+ *     is scan-heartbeat's battery and this function's own filter audit —
+ *     'maintenance', and the largest single contaminant.
+ *  3. A browser-shaped request (an Origin, or a Referer): 'web'.
+ *  4. Otherwise NULL — meaning "this resolver did not attribute it". The column
+ *     default takes over from there and the row lands as 'web', which is the
+ *     schema's documented and deliberately CONSERVATIVE choice: mislabelling
+ *     real demand as maintenance would delete the very signal the column exists
+ *     to protect, while the reverse only dilutes it. A stored NULL means
+ *     something else entirely — "written before this column existed" — so this
+ *     function never writes one, it omits the key.
+ *
+ * TWO HEADER SPELLINGS ARE READ ON PURPOSE. The column comment
+ * (20260906216000) documents `x-rb-caller`; _shared/search-caller.ts sends
+ * `x-rsp-caller` AND `x-rb-caller` while the two are reconciled. Reading both
+ * costs nothing and means the reconciliation cannot silently strand a whole
+ * caller class as unattributed — and unattributed days cannot be recovered.
+ *
+ * IT IS A SELF-DECLARED HINT, NOT AN AUTHENTICATED IDENTITY. The anon key is
+ * public and any client can send any header, so this answers "who says they
+ * are calling". That is exactly enough to stop our own monitoring being
+ * invisible, and nothing is authorised on the strength of it.
+ */
+const SEARCH_CALLERS = new Set(["web", "api", "mcp", "digest", "maintenance"]);
+function resolveCaller(req: Request, body: Record<string, unknown>): string | null {
+  const declared = String(
+    body.caller ?? req.headers.get("x-rsp-caller") ?? req.headers.get("x-rb-caller") ?? "",
+  ).toLowerCase();
+  if (SEARCH_CALLERS.has(declared)) return declared;
+  const auth = req.headers.get("authorization") ?? "";
+  const svc = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+  // A LABEL, not an authorisation decision — the platform already
+  // authenticated whatever this token is before the request reached us.
+  if (svc && (auth === `Bearer ${svc}` || req.headers.get("apikey") === svc)) return "maintenance";
+  if (req.headers.get("origin") || req.headers.get("referer")) return "web";
+  return null;
+}
+
 // WHOLE-BOARD PRUNES USED TO LEAVE NO TRACE AT ALL.
 //
 // Two paths delete by company_token rather than by id — a board going dormant
@@ -1756,25 +2022,48 @@ async function logWholeBoardExit(
   let logged = 0;
   try {
     for (let from = 0; ; from += 500) {
-      const { data: page, error } = await client
+      // Widened with the row's facets (see lifecycleFacets): after the delete
+      // below there is no other copy of this posting's pay, team, geography or
+      // level anywhere, and this select was already running.
+      let res = await client
         .from("job_board_postings")
-        .select("id, source, company_token, category, posted_at, first_seen")
+        .select(LIFECYCLE_SELECT)
         .eq("company_token", token)
         .range(from, from + 499);
+      // Deploy-before-migration: a select naming an absent column fails the
+      // WHOLE read, which would stop the ledger writing at all. Fall back to
+      // the pre-.61 column list — a thinner row still beats no row.
+      if (res.error) {
+        res = (await client
+          .from("job_board_postings")
+          .select("id, source, company_token, company, title, category, posted_at, first_seen")
+          .eq("company_token", token)
+          .range(from, from + 499)) as typeof res;
+      }
+      const { data: page, error } = res;
       if (error) { console.warn(`[JOB-BOARD] exit-log read failed for ${token} (non-fatal):`, error.message?.slice(0, 120)); break; }
-      const rows = (page ?? []) as Array<Record<string, unknown>>;
+      const rows = (page ?? []) as unknown as Array<Record<string, unknown>>;
       if (!rows.length) break;
-      const { error: insErr } = await client.from("job_board_exits").insert(rows.map((r) => ({
-        posting_id: String(r.id),
-        source: String(r.source ?? ""),
-        company_token: String(r.company_token ?? token),
-        category: String(r.category ?? "other"),
-        exit_reason: reason,
-        days_on_board: (r.posted_at ?? r.first_seen)
-          ? Math.round((Date.parse(exitedAt) - Date.parse(String(r.posted_at ?? r.first_seen))) / 8_640_000) / 10
-          : null,
-        exited_at: exitedAt,
-      })));
+      // origin_basis, not a coalesce: this was one of the two sites feeding
+      // mixed-clock durations into the hiring-health model's censoring input.
+      const exitRow = (r: Record<string, unknown>) => {
+        const t = tenureDays(r.posted_at, r.first_seen, exitedAt);
+        return {
+          posting_id: String(r.id),
+          source: String(r.source ?? ""),
+          company_token: String(r.company_token ?? token),
+          company: (r.company as string | null) ?? null,
+          title: (r.title as string | null) ?? null,
+          category: String(r.category ?? "other"),
+          exit_reason: reason,
+          days_on_board: t.days,
+          origin_basis: t.basis,
+          exited_at: exitedAt,
+          ...lifecycleFacets(r),
+        };
+      };
+      const { error: rawErr } = await client.from("job_board_exits").insert(rows.map(exitRow));
+      const insErr = await settleInsertError(client, "job_board_exits", rawErr, () => rows.map(exitRow), EXIT_OPTIONAL_COLS, token);
       // supabase-js RETURNS errors rather than throwing. An unchecked insert is
       // how lifecycle history goes missing without anyone noticing.
       if (insErr) { console.warn(`[JOB-BOARD] exit-log insert failed for ${token} (non-fatal):`, insErr.message?.slice(0, 120)); break; }
@@ -2957,6 +3246,35 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         await breadcrumb(client, "board-fetched", { boardsDone, token: s.token, got: r ? r.jobs.length : 0, fetched: fetchedInSlice, inFlight: inFlightReserve, elapsedMs: Date.now() - sliceWallStart });
         if (!r) {
           failed.push(`${s.name} (vendor${failReason ? `: ${failReason}` : ""})`);
+          // A BOARD THAT DIED MUST LEAVE A ROW, or `state = 'error'` — half of
+          // the ATS-migration signal the board-state ledger exists for — can
+          // never appear in it: the write below this block is only reached by
+          // boards that fetched. Boards rotate, so a plain gap in the series is
+          // normal and cannot stand in for a failure.
+          //
+          // ignoreDuplicates, NOT an overwrite: a board that succeeded earlier
+          // today already has its real counts in today's row and a later
+          // failure must not replace them with nulls. First observation of the
+          // day wins; a later success still overwrites this one, because that
+          // write is an ordinary upsert.
+          //
+          // Counts are NULL, never 0 — the column comments say zero is a
+          // measurement and null is the absence of one. One tiny fixed-size
+          // write per failed board, behind waitUntil, nothing retained.
+          waitUntil(Promise.resolve(client.from("job_board_board_state").upsert(
+            {
+              company_token: s.token,
+              source: s.source,
+              observed_at: new Date().toISOString(),
+              live_count: null,
+              stored_count: null,
+              feed_total: null,
+              state: "error",
+            },
+            { onConflict: "company_token,observed_on", ignoreDuplicates: true },
+          )).then(({ error }) => {
+            if (error) console.warn(`[JOB-BOARD] board-state error write failed for ${s.token} (non-fatal):`, String(error.message ?? error).slice(0, 150));
+          }).catch(() => {}));
           continue;
         }
         // Advance (or wrap) this board's cursor. Written only for boards that
@@ -3162,6 +3480,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
           // Experience band from the best text we have this pass (title + the
           // fetched description where the vendor provides one). null → "unspecified".
           const exp = detectExperience(j.title ?? "", lightDescs ? null : (descs.get(j.id) ?? null));
+          const rowCountry = j.country ?? detectCountry(j.location);
           rowsById.set(j.id, {
             id: j.id,
             source: j.source,
@@ -3169,7 +3488,13 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
             company: j.company,
             title: clean(j.title.trim().slice(0, 300)),
             location: clean(j.location.trim().slice(0, 300)),
-            country: j.country ?? detectCountry(j.location),
+            country: rowCountry,
+            // THE JURISDICTION, which the country patterns already found and
+            // then dropped on the floor. Pay-disclosure law is state-level, so
+            // this is the difference between a country-level compliance score
+            // and one that can name Colorado. Only recoverable while the row is
+            // live — a closed posting takes its location with it.
+            region_code: detectRegion(j.location, rowCountry),
             remote: j.remote,
             work_mode: j.workMode ?? null,
       employment_type: j.employmentType ?? null,
@@ -3223,16 +3548,39 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
           title?: string | null; location?: string | null; country?: string | null;
           apply_url?: string | null; work_mode?: string | null; remote?: boolean | null;
           salary?: string | null; agency?: boolean | null; employment_type?: string | null;
+          region_code?: string | null; first_seen?: string | null;
         };
         const existingRows: Array<ExistingRow> = [];
         let missingColUnknown = false; // pre-migration: column absent → legacy single-pass behavior
+        // pre-migration: region_code absent → never patch it, or every visited
+        // row of every board queues a no-op correction forever (below).
+        let regionColUnknown = false;
         for (let from = 0; ; from += 1000) {
+          // region_code rides the SELECT (.61) so the corrections path can tell
+          // "already stamped" from "never stamped". It costs a ≤6-char string
+          // per already-stored row of THIS board — the array is bounded by the
+          // board's stored size, not by postings fetched, and it is the same
+          // array that already carries title/location/salary. Without it, prev
+          // reads undefined on every visit and the patch re-fires forever: the
+          // write-amplification hole employment_type fell into below.
           let res = await client
             .from("job_board_postings")
-            .select("id,missing_since,title,location,country,apply_url,work_mode,employment_type,remote,salary,agency")
+            .select("id,missing_since,title,location,country,region_code,apply_url,work_mode,employment_type,remote,salary,agency,first_seen")
             .eq("company_token", s.token)
             .order("id")
             .range(from, from + 999);
+          // Same deploy-window rule as the two below, and it must come FIRST so
+          // its fallback still carries agency: a select naming an absent column
+          // fails the whole board read.
+          if (res.error?.message?.includes("region_code")) {
+            regionColUnknown = true;
+            res = (await client
+              .from("job_board_postings")
+              .select("id,missing_since,title,location,country,apply_url,work_mode,employment_type,remote,salary,agency,first_seen")
+              .eq("company_token", s.token)
+              .order("id")
+              .range(from, from + 999)) as typeof res;
+          }
           // Deploy-window tolerance for the disclosure column (20260831120000):
           // a select naming a column the migration has not created yet fails the
           // WHOLE board read, which is a full ingest outage from one optional
@@ -3241,7 +3589,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
           if (res.error?.message?.includes("agency")) {
             res = (await client
               .from("job_board_postings")
-              .select("id,missing_since,title,location,country,apply_url,work_mode,employment_type,remote,salary")
+              .select("id,missing_since,title,location,country,apply_url,work_mode,employment_type,remote,salary,first_seen")
               .eq("company_token", s.token)
               .order("id")
               .range(from, from + 999)) as typeof res;
@@ -3275,6 +3623,13 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
             // undefined and re-patched it each rotation visit. The select is
             // only half the chain; the mapping is the half nothing pinned.
             agency: r.agency ?? null, employment_type: r.employment_type ?? null,
+            region_code: r.region_code ?? null,
+            // OUR DISCOVERY DATE, and never a posting age: it rides along only
+            // so the board-state write below can apply the SAME serving fence
+            // the site applies (coalesce(posted_at, first_seen) within the
+            // window). ~24 bytes on a row already carrying title, location and
+            // salary, bounded by this board's stored size and released with it.
+            first_seen: (r as { first_seen?: string | null }).first_seen ?? null,
           })));
           if (!page || page.length < 1000) break;
         }
@@ -3413,24 +3768,189 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         // whatever enrichment already found. Overwriting with null would have
         // undone the sweep that took two weeks to get running.
         const corrections: Array<Record<string, unknown>> = [];
+        // changeMarks[k] is how long the change log was once corrections[k] was
+        // queued, so a failure at correction k can cut the log at exactly the
+        // patches that did not land. One integer per correction — capped by
+        // CORRECTIONS_PER_VISIT, never by postings fetched — and released with
+        // the board's scope.
+        const changeMarks: number[] = [];
+        // THE EDIT HISTORY WE WERE COMPUTING AND THEN DELETING.
+        //
+        // This block already knows, per field, that the employer's live value
+        // moved: it compares next against cur and writes next. The old value
+        // was then overwritten and gone — no history table existed anywhere in
+        // the repo. Every rotation we watched employers reprice live
+        // requisitions and flip live reqs remote->hybrid, and recorded none of
+        // it. Nobody else holds this: it is only visible to something that had
+        // the previous value in hand at the moment the new one arrived.
+        //
+        // observed_at below is OUR OBSERVATION TIME — the moment this pass saw
+        // the two values differ. It is NOT when the employer made the edit
+        // (we cannot know that; it happened somewhere between this fetch and
+        // the previous one) and it is NOT a posting age.
+        //
+        // MEMORY: capped hard. `corrections` is already capped per board visit,
+        // and this array is capped independently below, so neither grows with
+        // postings fetched — a churny board logs its first N changes and the
+        // remainder ride the next rotation visit, exactly like corrections.
+        //
+        // "RIDE THE NEXT ROTATION" IS ONLY TRUE IF THE PATCH RIDES WITH IT.
+        // A correction re-fires next visit because it did NOT land: prev still
+        // differs from next. A change note does not — once the patch lands,
+        // prev equals next and the diff is never computed again. So a log cut
+        // that is not matched by a patch cut does not defer the history, it
+        // destroys it, and it does so on exactly the bulk repricing and
+        // re-titling events this table exists to record. FIELD_CHANGES_PER_VISIT
+        // (500) is well below CORRECTIONS_PER_VISIT (1,000) and a single
+        // posting can note up to eight fields, so the log fills FIRST on any
+        // churny board. Both cuts below are therefore made at a POSTING
+        // BOUNDARY: whichever cap is reached first truncates the other array to
+        // the same posting, so a dropped note always means a deferred patch.
+        //
+        // WHAT IS DELIBERATELY NOT LOGGED: region_code. It is OUR derivation
+        // from the location string, not a value an employer typed, so a change
+        // in it is a change in our own parser and belongs in a deploy note, not
+        // in a table whose entire claim is "the employer edited this". It is
+        // also the one field a stalled backfill would re-queue on every
+        // rotation, which would bury the real edits under our own noise.
+        const DERIVED_NOT_EMPLOYER_EDITS = new Set(["region_code"]);
+        const FIELD_CHANGES_PER_VISIT = 500;
+        const VALUE_CAP = 1_000; // salary strings and titles both fit generously
+        const changeLog: Array<Record<string, unknown>> = [];
+        const changeAt = new Date().toISOString();
+        let changesDropped = 0;
+        // How many corrections were queued when the change log filled, and how
+        // long the log was when that POSTING started. Read as a posting
+        // boundary: everything after it is a patch we must NOT send this visit
+        // (or its history is lost for good) and a note we must NOT keep (or it
+        // claims an edit whose patch we deliberately held back). The pair
+        // matters because the cap can trip mid-posting — title noted at 499,
+        // salary dropped at 500 — and keeping that half would be the exact
+        // "logged an edit that never landed" defect in miniature.
+        let changeCapAt = -1;
+        let changeCapLogAt = -1;
+        // Corrections are capped per board visit (see CORRECTIONS_PER_VISIT
+        // below). The change log has to be cut by the SAME decision, or it
+        // records an edit that was never applied — and records it a second time
+        // next visit, when the patch finally lands. Both arrays are built in
+        // one pass in the same order, so remembering how long the log was when
+        // the thousandth correction was queued is enough to cut them together.
+        let changeCutAt = -1;
+        // CAPPED PER BOARD-VISIT, because a backfill wave is a denial of
+        // service against your own database — see the note at the truncation
+        // below. Declared here so the diff loop can mark the cut point as it
+        // goes; the truncation itself still happens after the loop.
+        const CORRECTIONS_PER_VISIT = 1_000;
         for (const [id, row] of rowsById) {
           const prev = existingById.get(id);
           if (!prev) continue; // brand new — handled by newRows below
           const patch: Record<string, unknown> = {};
+          // Where this posting's notes begin, so the cap can cut on a whole
+          // posting rather than between two of its fields.
+          const logMark = changeLog.length;
+          // A NUL byte is legal in a JS string and illegal in a Postgres text
+          // value: one would fail the entire batched insert.
+          const capped = (v: unknown): string | null =>
+            v === null || v === undefined ? null : String(v).replace(/\u0000/g, "").slice(0, VALUE_CAP);
+          const note = (field: string, oldV: unknown, newV: unknown) => {
+            if (DERIVED_NOT_EMPLOYER_EDITS.has(field)) return;
+            if (changeLog.length >= FIELD_CHANGES_PER_VISIT) {
+              // corrections.length is the count of COMPLETED postings: this
+              // posting's patch has not been pushed yet, so cutting here drops
+              // it whole rather than half-logging it.
+              if (changeCapAt < 0) { changeCapAt = corrections.length; changeCapLogAt = logMark; }
+              changesDropped++;
+              return;
+            }
+            changeLog.push({
+              posting_id: id,
+              company_token: s.token,
+              source: s.source,
+              field,
+              old_value: capped(oldV),
+              new_value: capped(newV),
+              observed_at: changeAt,
+            });
+          };
           const put = (k: string, next: unknown, cur: unknown, allowNull: boolean) => {
             if (next === null || next === undefined || next === "") { if (!allowNull) return; }
-            if (next !== cur) patch[k] = next ?? null;
+            if (next !== cur) { patch[k] = next ?? null; note(k, cur, next ?? null); }
           };
           // Vendor-authoritative on every fetch: correct these even to null.
           put("title", row.title, prev.title, false);
           put("location", row.location, prev.location, false);
           put("apply_url", row.apply_url, prev.apply_url, false);
           put("country", row.country, prev.country, false);
+          // The jurisdiction moves with the location, so it is corrected in the
+          // same breath — and this is also how the ~989k rows already stored
+          // acquire one, over a rotation, like every other correction wave.
+          //
+          // GUARDED ON THE COLUMN EXISTING, exactly as agency is below. In the
+          // window where this function is deployed ahead of its migration the
+          // board read falls back to a column list without region_code, so
+          // prev.region_code reads null for EVERY row, the patch fires on every
+          // row of every board, and the RPC executes one no-op UPDATE per row
+          // against a 12-index table on every rotation, forever. That is the
+          // employment_type write-amplification incident verbatim: cold slices
+          // 23s -> 99s, the facets cron 8 ticks behind.
+          if (!regionColUnknown) {
+            const nextRegion = ((row as Record<string, unknown>).region_code as string | null) ?? null;
+            put("region_code", nextRegion, prev.region_code, false);
+            // AND IT MUST BE CLEARABLE. Unlike country, whose null means "the
+            // vendor said nothing", region_code is OUR derivation from the
+            // location string we just re-read — so a null after that string
+            // moved is knowledge, not silence. Without this a posting that
+            // moves from "Austin, TX" to "London, United Kingdom" stores
+            // country=GB with region_code=US-TX, and item 3 copies that
+            // contradiction into closures and exits when the role ends.
+            if (nextRegion === null && prev.region_code != null && (patch.location !== undefined || patch.country !== undefined)) {
+              patch.region_code = null;
+            }
+          }
           // Stated-only: silence from the vendor must not erase enrichment.
           put("work_mode", row.work_mode, prev.work_mode, false);
           put("employment_type", (row as Record<string, unknown>).employment_type, (prev as Record<string, unknown>).employment_type, false);
           put("salary", row.salary, prev.salary, false);
-          if (typeof row.remote === "boolean" && row.remote !== prev.remote) patch.remote = row.remote;
+          // RE-PARSE WHEN THE PAY TEXT MOVES. A LIVE CORRECTNESS BUG, not just
+          // a logging concern: this path patched the `salary` TEXT and left
+          // salary_min_annual / salary_max_annual / salary_period /
+          // salary_currency frozen at whatever the FIRST-EVER text parsed to.
+          // A corrected row therefore served, filtered and benchmarked on a
+          // stale number, and the v7 re-sweep could not repair it because that
+          // sweep only targets rows where salary_currency IS NULL — a row with
+          // a currency and the wrong amount is invisible to it.
+          //
+          // It also poisons the change log this block just started writing: a
+          // logged salary change would be a comparison against a baseline the
+          // structured columns never agreed with.
+          //
+          // The parse is pure CPU over a ≤200-char string on rows that are
+          // ALREADY being patched (steady state: a handful per board), and the
+          // four values ride the patch object that was going to be sent anyway
+          // — no new array, no extra round trip.
+          if (patch.salary !== undefined) {
+            const rp = parseSalaryStructured(
+              row.salary as string | null,
+              (patch.country ?? row.country ?? prev.country) as string | null | undefined,
+              // THE SAME CONTEXT THE INGEST PARSE GETS, or the two disagree
+              // about the same pay text. description is what detectPartTime
+              // reads: without it an hourly rate on a posting whose prose says
+              // "part-time, 20 hours per week" loses the load-dependent guard
+              // and is annualized as a full-time salary — the number the ingest
+              // path deliberately refuses to write (the 2026-08-25 $44/hr
+              // incident). Same expression as the ingest site, light boards
+              // included, so a corrected row parses exactly as a new one would.
+              { title: (row.title as string | null) ?? null, description: lightDescs ? null : (descs.get(id) ?? null) },
+            );
+            patch.salary_min_annual = rp?.annualMin ?? null;
+            patch.salary_max_annual = rp?.annualMax ?? null;
+            patch.salary_period = rp?.period ?? null;
+            patch.salary_currency = rp?.currency ?? null;
+          }
+          if (typeof row.remote === "boolean" && row.remote !== prev.remote) {
+            patch.remote = row.remote;
+            note("remote", prev.remote, row.remote);
+          }
           // Catalog-authoritative on every fetch, in BOTH directions: this is
           // how the 226 boards tagged on 2026-08-31 reach their EXISTING rows
           // (one rotation, capped per visit like any correction wave), and
@@ -3441,6 +3961,12 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
             patch.agency = row.agency;
           }
           if (Object.keys(patch).length) corrections.push({ id, ...patch });
+          // Keep the marks index-aligned with the array above: one entry per
+          // queued patch, holding the log length at that moment.
+          if (changeMarks.length < corrections.length) changeMarks.push(changeLog.length);
+          // The change log's high-water mark at the moment the cap is reached.
+          // Everything after this index belongs to a patch the cap will drop.
+          if (changeCutAt < 0 && corrections.length === CORRECTIONS_PER_VISIT) changeCutAt = changeLog.length;
         }
         // ONE ROUND TRIP PER CHUNK, not per row. This loop used to issue a
         // sequentially-awaited UPDATE for every corrected posting — the only
@@ -3465,11 +3991,39 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         // rotation visit patches the remainder, so the wave completes over
         // ~a rotation instead of all at once. Steady-state (a handful of
         // genuine vendor edits per board) never hits the cap.
-        const CORRECTIONS_PER_VISIT = 1_000;
+        // The log filled before the patch cap did: hold the untold patches
+        // back to the next rotation visit, where they will be logged and
+        // applied together. Steady state never reaches this.
+        if (changeCapAt >= 0) {
+          if (corrections.length > changeCapAt) {
+            console.log(`[JOB-BOARD] field-change log filled for ${s.token}: deferring ${corrections.length - changeCapAt} correction(s) to the next rotation visit so their history is not lost`);
+            corrections.length = changeCapAt;
+            changeMarks.length = changeCapAt;
+          }
+          // Drop the partially-noted posting's rows with its patch.
+          if (changeCapLogAt >= 0 && changeLog.length > changeCapLogAt) changeLog.length = changeCapLogAt;
+        }
         if (corrections.length > CORRECTIONS_PER_VISIT) {
           console.log(`[JOB-BOARD] corrections capped for ${s.token}: applying ${CORRECTIONS_PER_VISIT} of ${corrections.length} (remainder on next rotation visit)`);
           corrections.length = CORRECTIONS_PER_VISIT;
+          changeMarks.length = CORRECTIONS_PER_VISIT;
+          // Cut the change log at the same place. A history row for a patch we
+          // did not send would claim an edit that never reached the posting,
+          // and the same edit would be logged a second time on the next visit
+          // when the patch finally goes through.
+          if (changeCutAt >= 0) changeLog.length = changeCutAt;
         }
+        // WHICH patches landed? The history below asserts "the stored value
+        // moved from A to B", which is only true of a patch whose batch
+        // succeeded. Logging a failed one records an edit that never reached
+        // the posting — and records it AGAIN on every later rotation, because
+        // prev still differs from next, so one stuck board manufactures an
+        // unbounded repeat history nothing in the table can tell apart from a
+        // real re-edit. Conservative and prefix-shaped: the index of the first
+        // correction NOT known to have been applied, which only ever moves
+        // DOWN, so a later chunk that happens to succeed after an earlier
+        // failure drops its notes rather than claiming a gap it cannot prove.
+        let appliedThrough = corrections.length;
         for (let i = 0; i < corrections.length; i += 200) {
           const chunk = corrections.slice(i, i + 200);
           const { error: cErr } = await client.rpc("apply_posting_corrections", { p_patches: chunk });
@@ -3479,18 +4033,68 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
             // silently dropping corrections — slow beats wrong, and the next
             // pass picks up the batched path once the migration lands.
             if (cErr.message?.includes("apply_posting_corrections") || (cErr as { code?: string }).code === "PGRST202") {
+              let rowsDone = 0;
               for (const c of chunk) {
                 const { id, ...patch } = c as { id: string };
                 const { error: rowErr } = await client.from("job_board_postings").update(patch).eq("id", id);
-                if (rowErr) { lastUpsertError = `${s.token} correct ${String(id).slice(0, 40)}: ${rowErr.message}`; break; }
+                if (rowErr) {
+                  lastUpsertError = `${s.token} correct ${String(id).slice(0, 40)}: ${rowErr.message}`;
+                  appliedThrough = Math.min(appliedThrough, i + rowsDone);
+                  break;
+                }
+                rowsDone++;
               }
             } else {
               lastUpsertError = `${s.token} correct batch: ${cErr.message}`;
+              appliedThrough = Math.min(appliedThrough, i);
               break;
             }
           }
         }
-        if (corrections.length) console.log(`[JOB-BOARD] ${s.token}: corrected ${corrections.length} existing rows`);
+        if (corrections.length) {
+          // Say how many actually landed, not how many were queued: the line
+          // above is the only place a failed batch is visible per board.
+          if (appliedThrough < corrections.length) console.log(`[JOB-BOARD] ${s.token}: corrected ${appliedThrough} of ${corrections.length} existing rows (batch failed partway)`);
+          else console.log(`[JOB-BOARD] ${s.token}: corrected ${corrections.length} existing rows`);
+        }
+
+        // THE HISTORY, WRITTEN AFTER THE PATCHES LANDED — AND ONLY IF THEY DID.
+        //
+        // Deliberately after: an entry claims "the stored value moved from A to
+        // B", and the patch loop above is where that becomes true. Ordering it
+        // first would log edits that a failed batch never applied — and so
+        // would running it unconditionally after a batch that errored and
+        // broke out, which is why appliedThrough trims it first. Dropping the
+        // notes of a failed patch is the correct trade: the same diff
+        // recomputes on the next visit, when it will be true.
+        //
+        // ONE INSERT PER CHUNK, never one per row, and behind waitUntil with
+        // the .then().catch() idiom — a best-effort collection write must never
+        // be able to fail the ingest pass. The array is capped at
+        // FIELD_CHANGES_PER_VISIT and released with the board's scope, so it
+        // does not scale with postings fetched.
+        if (appliedThrough < corrections.length) {
+          const keep = appliedThrough > 0 ? (changeMarks[appliedThrough - 1] ?? 0) : 0;
+          if (changeLog.length > keep) {
+            console.warn(`[JOB-BOARD] ${s.token}: ${changeLog.length - keep} field-change row(s) dropped — their corrections did not land, so the edits they describe are not true yet (they recompute next visit)`);
+            changeLog.length = keep;
+          }
+        }
+        if (changeLog.length) {
+          if (changesDropped) {
+            console.log(`[JOB-BOARD] field-change log capped for ${s.token}: kept ${changeLog.length}, deferred ${changesDropped} note(s) with their patches to the next visit`);
+          }
+          for (let i = 0; i < changeLog.length; i += 200) {
+            const chunk = changeLog.slice(i, i + 200);
+            waitUntil(Promise.resolve(client.from("job_board_field_changes").insert(chunk))
+              .then(({ error }) => {
+                // supabase-js RETURNS errors — an unchecked insert is how a
+                // history table records nothing while everything reads healthy.
+                if (error) console.warn(`[JOB-BOARD] field-change insert failed for ${s.token} (non-fatal):`, String(error.message ?? error).slice(0, 150));
+              })
+              .catch(() => {}));
+          }
+        }
 
         for (let i = 0; i < newRows.length; i += 250) {
           let { error } = await client.from("job_board_postings").upsert(newRows.slice(i, i + 250), { onConflict: "id" });
@@ -3511,6 +4115,15 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
             // original slice here would re-introduce country after its own
             // retry already removed it.
             const stripped = newRows.slice(i, i + 250).map((r) => { const { agency: _a, country: _c, ...rest } = r as Record<string, unknown>; return rest; });
+            ({ error } = await client.from("job_board_postings").upsert(stripped, { onConflict: "id" }));
+          }
+          // Same rule again for the jurisdiction column (.61). It strips ONLY
+          // region_code, unlike the pair above: PostgREST names the offending
+          // column in the message, country and agency have both been applied
+          // for weeks, and stripping them here as well would silently drop two
+          // shipped fields from every new row for the length of this window.
+          if (error?.message?.includes("region_code")) {
+            const stripped = newRows.slice(i, i + 250).map((r) => { const { region_code: _r, ...rest } = r as Record<string, unknown>; return rest; });
             ({ error } = await client.from("job_board_postings").upsert(stripped, { onConflict: "id" }));
           }
           if (error) {
@@ -3581,10 +4194,32 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
           for (let i = 0; i < vanished.length; i += 200) {
             const chunk = vanished.slice(i, i + 200);
             try {
-              const { data: toLog } = await client
+              // WIDENED, NOT ADDED (.61). This select already ran before the
+              // delete below; carrying eleven more columns off the same row
+              // read costs one wider row and no extra query. It is the last
+              // instant department, country, jurisdiction, work mode,
+              // employment type, level and pay exist anywhere — the posting is
+              // hard-deleted a few lines down — so without them no fill, churn
+              // or ghost number can EVER be cut by pay, team, geography or
+              // level for any period already elapsed.
+              let logRes = await client
                 .from("job_board_postings")
-                .select("id, source, company_token, company, title, category, first_seen, posted_at")
+                .select(LIFECYCLE_SELECT)
                 .in("id", chunk);
+              // Deploy-before-migration: a select naming an absent column fails
+              // the WHOLE read, and a failed read here means the closure log —
+              // the one asset nobody can reproduce — records nothing. Fall back
+              // to the pre-.61 columns; a thinner row beats no row.
+              if (logRes.error) {
+                logRes = (await client
+                  .from("job_board_postings")
+                  .select("id, source, company_token, company, title, category, first_seen, posted_at")
+                  .in("id", chunk)) as typeof logRes;
+              }
+              if (logRes.error) {
+                console.warn(`[JOB-BOARD] closure-log read failed for ${s.token} (non-fatal):`, String(logRes.error.message ?? "").slice(0, 150));
+              }
+              const toLog = logRes.data as unknown as Array<Record<string, unknown>> | null;
               // (b) aged out, not closed — excluded from the CLOSURE log, but
               // recorded in the EXIT ledger: "still advertised at our 30-day
               // cap" is exactly the event the ghost-rate stat counts, and it
@@ -3603,19 +4238,36 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
               };
               const agedRows = ((toLog ?? []) as Array<Record<string, unknown>>).filter(isAgedOut);
               if (agedRows.length) {
-                waitUntil(Promise.resolve(client.from("job_board_exits").insert(
-                  agedRows.map((r) => ({
+                // This was the ONE clean site of the four: it used posted_at
+                // alone and wrote null otherwise. It now says so explicitly
+                // (origin_basis 'stated') and, where posted_at is null, writes
+                // the discovered lower bound tagged as such instead of a null —
+                // the same rule as the other three, so `WHERE origin_basis =
+                // 'stated'` selects exactly the population this site used to be
+                // the only source of.
+                const agedExitRow = (r: Record<string, unknown>) => {
+                  const t = tenureDays(r.posted_at, r.first_seen, closedAt);
+                  return {
                     posting_id: String(r.id),
                     source: String(r.source ?? s.source),
                     company_token: String(r.company_token ?? s.token),
+                    company: (r.company as string | null) ?? null,
+                    title: (r.title as string | null) ?? null,
                     category: String(r.category ?? "other"),
                     exit_reason: exitReasonFor(r.posted_at, r.first_seen),
-                    days_on_board: r.posted_at
-                      ? Math.round((Date.now() - new Date(String(r.posted_at)).getTime()) / 8_640_000) / 10
-                      : null,
+                    days_on_board: t.days,
+                    origin_basis: t.basis,
                     exited_at: closedAt,
-                  })),
-                )).then(() => {}).catch(() => {}));
+                    ...lifecycleFacets(r),
+                  };
+                };
+                waitUntil(Promise.resolve(client.from("job_board_exits").insert(
+                  agedRows.map(agedExitRow),
+                )).then(({ error }) =>
+                  settleInsertError(client, "job_board_exits", error, () => agedRows.map(agedExitRow), EXIT_OPTIONAL_COLS, s.token)
+                ).then((err) => {
+                  if (err) console.warn(`[JOB-BOARD] aged-exit insert failed for ${s.token} (non-fatal):`, String(err.message ?? err).slice(0, 150));
+                }).catch(() => {}));
               }
               const rows = ((toLog ?? []) as Array<Record<string, unknown>>).filter((r) => {
                 if (isAgedOut(r)) return false; // (b) aged out, not closed
@@ -3626,38 +4278,58 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
                 // supabase-js RETURNS errors (never throws) — check it, or a
                 // failing insert silently loses lifecycle history (the same
                 // blind spot that hid the verification-stamp failures).
-                const { error: clErr } = await client.from("job_board_closures").insert(
-                  rows.map((r) => ({
+                const closureRow = (r: Record<string, unknown>) => ({
                     posting_id: r.id,
                     source: r.source,
                     company_token: r.company_token,
                     company: r.company ?? "",
                     title: r.title ?? "",
                     category: r.category ?? "other",
+                    // first_seen is OUR DISCOVERY DATE and posted_at is the
+                    // EMPLOYER'S STATED one. Both ride raw and separate, which
+                    // is why this table needs no origin_basis: a reader derives
+                    // whatever duration it wants and can always see which clock
+                    // it used. Nothing here coalesces them.
                     first_seen: r.first_seen ?? null,
                     posted_at: r.posted_at ?? null,
                     closed_at: closedAt,
                     superseded: liveTitles.has(normalizeCloseTitle(String(r.title ?? ""))), // (c)
-                  })),
-                );
+                    ...lifecycleFacets(r),
+                });
+                const { error: rawClErr } = await client.from("job_board_closures").insert(rows.map(closureRow));
+                const clErr = await settleInsertError(client, "job_board_closures", rawClErr, () => rows.map(closureRow), CLOSURE_OPTIONAL_COLS, s.token);
                 if (clErr) console.warn(`[JOB-BOARD] closure insert failed for ${s.token} (non-fatal):`, clErr.message?.slice(0, 150));
                 // Exit ledger, 'removed' side: the same events, tagged, into the
                 // table the ghost-rate stat will read once accrual clears its
                 // floor. Best-effort — the closures row above is the record of
                 // record; this must never make a prune fail.
-                waitUntil(Promise.resolve(client.from("job_board_exits").insert(
-                  rows.map((r) => ({
+                // Was `(posted_at ?? first_seen)` — a mixed clock with no flag.
+                // This is the 'removed' path, which the hiring-health estimator
+                // EXCLUDES from its censoring input, but it is the ghost/churn
+                // numerator and had exactly the same defect.
+                const removedExitRow = (r: Record<string, unknown>) => {
+                  const t = tenureDays(r.posted_at, r.first_seen, closedAt);
+                  return {
                     posting_id: r.id,
                     source: r.source,
                     company_token: r.company_token,
+                    company: r.company ?? null,
+                    title: r.title ?? null,
                     category: r.category ?? "other",
                     exit_reason: "removed",
-                    days_on_board: (r.posted_at ?? r.first_seen)
-                      ? Math.round((Date.parse(closedAt) - Date.parse(String(r.posted_at ?? r.first_seen))) / 8_640_000) / 10
-                      : null,
+                    days_on_board: t.days,
+                    origin_basis: t.basis,
                     exited_at: closedAt,
-                  })),
-                )).then(() => {}).catch(() => {}));
+                    ...lifecycleFacets(r),
+                  };
+                };
+                waitUntil(Promise.resolve(client.from("job_board_exits").insert(
+                  rows.map(removedExitRow),
+                )).then(({ error }) =>
+                  settleInsertError(client, "job_board_exits", error, () => rows.map(removedExitRow), EXIT_OPTIONAL_COLS, s.token)
+                ).then((err) => {
+                  if (err) console.warn(`[JOB-BOARD] removed-exit insert failed for ${s.token} (non-fatal):`, String(err.message ?? err).slice(0, 150));
+                }).catch(() => {}));
               }
             } catch (e) {
               console.warn(`[JOB-BOARD] closure log failed for ${s.token} (non-fatal):`, String(e).slice(0, 150));
@@ -3700,6 +4372,107 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
             );
           }
         } catch { /* never blocks the slice */ }
+
+        // THE EMPLOYER'S OWN ADVERTISED COUNT, KEPT INSTEAD OF OVERWRITTEN.
+        //
+        // job_board_verifications is PRIMARY KEY (company_token), so the stamp
+        // above REPLACES feed_total every visit and keeps zero history. That is
+        // the most valuable number this function touches — it is ground truth
+        // we did not derive, straight from the employer's own feed — and on a
+        // windowed board it is the only meaningful one: CVS Health advertises
+        // 19,265 and we store 678, so our stored count measures our page cap,
+        // not their hiring.
+        //
+        // An append-only row per board per day gives three things nothing else
+        // can: an employer-side hiring trend for boards whose stored count is
+        // meaningless, an auditable coverage ratio to publish beside every
+        // number we sell, and the ATS-migration signal (a feed that goes to
+        // zero while another token's appears).
+        //
+        // AT MOST ONE ROW PER BOARD PER DAY. The table's primary key is
+        // (company_token, observed_on), and observed_on is derived from
+        // observed_at by a BEFORE trigger — so this sends the REAL fetch time
+        // and never has to keep a day column in step with it. A board fetched
+        // five times today overwrites its own row four times; observed_at ends
+        // up naming the last of those fetches, which is what it claims to be.
+        //
+        // MEMORY: one upsert of one small object per SUCCESSFUL BOARD, behind
+        // waitUntil so it adds no latency to the board loop and cannot fail the
+        // pass. Nothing here scales with postings.
+        {
+          // Both counts come from values this pass already computed — no query.
+          // live_count: what the site would SERVE for this board — the column
+          //   claims the serving fence (missing_since IS NULL AND
+          //   effective_posted >= now() - 30 days), so it applies it. `rows`
+          //   alone is NOT that number: the ingest cannot age out an UNDATED
+          //   posting (it only drops a date it knows), so a board whose vendor
+          //   states no dates keeps serving rows in the feed whose
+          //   effective_posted is first_seen — and once that is over 30 days
+          //   old the site serves none of them. Counting `rows` there would
+          //   publish a coverage ratio wrong in the direction that flatters us,
+          //   on exactly the boards this table was added to measure.
+          //   Pure CPU over an array already in hand; no query.
+          // stored_count: what we HOLD, fenced or not — the rows we already had
+          //   plus this pass's inserts minus this pass's prune.
+          let liveCount = 0;
+          for (const row of rows) {
+            const posted = row.posted_at ? Date.parse(String(row.posted_at)) : NaN;
+            if (Number.isFinite(posted)) { if (posted >= freshCutoffMs) liveCount++; continue; }
+            // Undated: effective_posted is first_seen — ours for a row we
+            // already hold, and now for one this pass is inserting.
+            const seen = existingById.get(String(row.id))?.first_seen;
+            const fs = seen ? Date.parse(String(seen)) : NaN;
+            if (!Number.isFinite(fs) || fs >= freshCutoffMs) liveCount++;
+          }
+          const storedCount = Math.max(0, existingById.size + newRows.length - vanished.length);
+          waitUntil(Promise.resolve(client.from("job_board_board_state").upsert(
+            {
+              company_token: s.token,
+              source: s.source,
+              observed_at: new Date().toISOString(),
+              live_count: liveCount,
+              stored_count: storedCount,
+              // What the EMPLOYER says they have, verbatim. null when the
+              // vendor states no total — never coerced to our own count, which
+              // would silently make every coverage ratio a constant 1.0.
+              //
+              // AND NEVER THE NUMBER ZERO. Nine fetchers initialise feedTotal
+              // to 0 and only overwrite it from page 0, and the fetchBoard tail
+              // coerces a missing one with `?? 0` — so "the vendor stated no
+              // total" and "the vendor stated zero" arrived here identical.
+              // The column comment is explicit that NULL is the unstated case
+              // and that zero is not it; a stored 0 would make the documented
+              // feed-dark signal (feed_total = 0 while live_count > 0) fire on
+              // thousands of healthy Workday and ADP boards and divide every
+              // coverage ratio by zero. A board that genuinely advertises none
+              // is already recorded by state = 'empty'/'dark'.
+              //
+              // DERIVED TOTALS ARE NOT STATED TOTALS EITHER. Rippling's is
+              // pageCount * 20 — our arithmetic, not the employer's number —
+              // and the column's claim is "the only figure here we did not
+              // derive". A 3-role Rippling tenant would otherwise publish 15%
+              // coverage of a board we read completely, and crossing a page
+              // boundary would read as the employer doubling their hiring.
+              feed_total: DERIVED_FEED_TOTAL_SOURCES.has(s.source)
+                ? null
+                : (typeof r.feedTotal === "number" && Number.isFinite(r.feedTotal) && r.feedTotal > 0 ? r.feedTotal : null),
+              // 'truncated' is the table's word for what this file calls
+              // windowed: the fetch was cut short, so both counts understate
+              // and no closure may be inferred from this row.
+              // 'dark' is the vocabulary's word for a board that answered and
+              // served nothing while we still hold rows for it — half of the
+              // ATS-migration signal (a feed going to zero while another
+              // token's appears). Without this it was indistinguishable from
+              // an employer who genuinely advertises nothing.
+              state: r.windowed === true
+                ? "truncated"
+                : (rows.length === 0 ? (existingById.size > 0 ? "dark" : "empty") : "ok"),
+            },
+            { onConflict: "company_token,observed_on" },
+          )).then(({ error }) => {
+            if (error) console.warn(`[JOB-BOARD] board-state write failed for ${s.token} (non-fatal):`, String(error.message ?? error).slice(0, 150));
+          }).catch(() => {}));
+        }
         sliceTotal += rows.length;
         // THE BOARD IS FULLY STORED. The fetch mark above fires 760 lines
         // earlier, before the existing-rows paging, the upserts and the
@@ -4094,10 +4867,21 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         const exitedAt = new Date().toISOString();
         for (let i = 0; i < ids.length; i += 200) {
           const slice = ids.slice(i, i + 200);
-          const { data: agedRows } = await client
+          // Widened with the lifecycle facets and effective_posted (which the
+          // tombstone below needs). Same read that was already running; the
+          // posting is deleted a few lines further on, so this is the last
+          // moment its pay, team, geography and level exist.
+          let agedRes = await client
             .from("job_board_postings")
-            .select("id, source, company_token, category, posted_at, first_seen, effective_posted")
+            .select(`${LIFECYCLE_SELECT}, effective_posted`)
             .in("id", slice);
+          if (agedRes.error) {
+            agedRes = (await client
+              .from("job_board_postings")
+              .select("id, source, company_token, company, title, category, posted_at, first_seen, effective_posted")
+              .in("id", slice)) as typeof agedRes;
+          }
+          const agedRows = agedRes.data as unknown as Array<Record<string, unknown>> | null;
           if (!agedRows?.length) continue;
           // Write the tombstone for every aged row, whether or not it is new
           // to us — this is what keeps it from coming back.
@@ -4112,19 +4896,33 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
           )).then(() => {}).catch(() => {}));
           const freshlyDead = agedRows.filter((r) => !alreadyTombstoned.has(String(r.id)));
           if (freshlyDead.length === 0) continue;
-          waitUntil(Promise.resolve(client.from("job_board_exits").insert(
-            freshlyDead.map((r) => ({
+          // The other site the hiring-health estimator draws censoring times
+          // from (exit_reason <> 'removed'), and the other one that was
+          // coalescing posted_at with first_seen per row with no flag. Same
+          // rule as everywhere else now: emit the duration, name its clock.
+          const sweptExitRow = (r: Record<string, unknown>) => {
+            const t = tenureDays(r.posted_at, r.first_seen, exitedAt);
+            return {
               posting_id: r.id as string,
               source: r.source as string,
               company_token: r.company_token as string,
+              company: (r.company as string | null) ?? null,
+              title: (r.title as string | null) ?? null,
               category: (r.category as string) ?? "other",
               exit_reason: exitReasonFor(r.posted_at, r.first_seen),
-              days_on_board: (r.posted_at ?? r.first_seen)
-                ? Math.round((Date.parse(exitedAt) - Date.parse(String(r.posted_at ?? r.first_seen))) / 8_640_000) / 10
-                : null,
+              days_on_board: t.days,
+              origin_basis: t.basis,
               exited_at: exitedAt,
-            })),
-          )).then(() => {}).catch(() => {}));
+              ...lifecycleFacets(r),
+            };
+          };
+          waitUntil(Promise.resolve(client.from("job_board_exits").insert(
+            freshlyDead.map(sweptExitRow),
+          )).then(({ error }) =>
+            settleInsertError(client, "job_board_exits", error, () => freshlyDead.map(sweptExitRow), EXIT_OPTIONAL_COLS, "freshness-sweep")
+          ).then((err) => {
+            if (err) console.warn("[JOB-BOARD] freshness-sweep exit insert failed (non-fatal):", String(err.message ?? err).slice(0, 150));
+          }).catch(() => {}));
         }
       }
       let dropped = 0;
@@ -7223,7 +8021,13 @@ Deno.serve(async (req) => {
       const probe = async (payload: Record<string, unknown>) => {
         const started = Date.now();
         try {
-          const body = JSON.stringify({ action: "list", limit: 60, groupSimilar: false, ...payload });
+          // caller:'maintenance' — these ~31 daily self-calls are the audit
+          // checking the board's own filters, not people looking for work, and
+          // they used to land in job_board_search_events indistinguishable from
+          // real demand. (The service-role Authorization below would label them
+          // anyway; saying it explicitly means the attribution does not depend
+          // on which credential this probe happens to use.)
+          const body = JSON.stringify({ action: "list", limit: 60, groupSimilar: false, caller: "maintenance", ...payload });
           const send = () => fetch(self, {
             method: "POST",
             headers: { "content-type": "application/json", apikey: svc, Authorization: `Bearer ${svc}` },
@@ -8194,6 +8998,13 @@ Deno.serve(async (req) => {
       }
       const preMs: Record<string, number> = { meta_read: Date.now() - t_meta };
 
+      // ATTRIBUTE THE REQUEST ONCE, HERE, and carry it on the body serveList
+      // already receives — resolveCaller needs the REQUEST (its headers are
+      // most of the evidence) and serveList only ever sees the body. Writing
+      // the resolution back over the caller hint the client may have sent is
+      // the point: from this line on, body.caller is the answer, not a claim.
+      body.caller = resolveCaller(req, body) ?? undefined;
+
       if (!meta) {
         // A SEED ONLY WHEN WE KNOW THERE IS NOTHING TO READ.
         //
@@ -9154,17 +9965,71 @@ Deno.serve(async (req) => {
       // stored as null, which still counts the click.
       const sid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rawSid) ? rawSid : null;
       const posN = Number(body.position);
-      waitUntil(Promise.resolve(
+      // STAMP WHAT THE CLICK WAS FOR, AT INSERT.
+      //
+      // The row held search_id, posting_id, q, position and kind — nothing
+      // about the JOB. Posting rows are HARD-DELETED at closure, so the moment
+      // a role closed we permanently lost its company, category, work mode and
+      // whether it disclosed pay for every click that ever landed on it. Demand
+      // is measured against roles that end; the ones that end are exactly the
+      // ones whose attributes disappear. Stamping here is the only chance.
+      //
+      // The lookup runs INSIDE waitUntil, deliberately. This endpoint is a
+      // beacon fired as the visitor navigates away to an employer's site, so a
+      // read before the response would cost the click it exists to record. The
+      // response below is already unconditional and immediate; this just makes
+      // the write one round trip longer, after the answer is out.
+      // (job_board_posting_reports already stamps company_token the same way.)
+      // The pre-.61 row shape, so a deploy window that has not created the
+      // three columns yet still records the CLICK rather than losing it.
+      const clickCore = {
+        search_id: sid,
+        posting_id: postingId,
+        q: String(body.q ?? "").slice(0, 200),
+        position: Number.isFinite(posN) && posN > 0 ? Math.min(Math.trunc(posN), 100000) : null,
+        kind: body.kind === "apply" ? "apply" : "open",
+      };
+      // ONE lookup, and it runs INSIDE waitUntil — never before the response.
+      // It resolves to nulls on any failure, because an un-stamped click still
+      // counts and dropping it would bias every rate.
+      const clickStamps = Promise.resolve(
+        client
+          .from("job_board_postings")
+          .select("company_token, category, salary_min_annual")
+          .eq("id", postingId)
+          .maybeSingle(),
+      ).then(({ data: p }) =>
+        p
+          ? {
+            company_token: (p.company_token as string | null) ?? null,
+            category: (p.category as string | null) ?? null,
+            // "Did this listing disclose pay" — EXACTLY as the column defines
+            // it: salary_min_annual IS NOT NULL. It read `salary || min_annual`
+            // and so counted "Competitive" and "DOE" as disclosure, which is
+            // the opposite of what a pay-transparency question means and what
+            // the rollup's `count(*) FILTER (WHERE salary_present)` will freeze
+            // into an immutable summary the raw rows can no longer correct.
+            // null, not false, when the posting is already gone: we cannot
+            // observe what we no longer hold, and false would be a claim.
+            salary_present: p.salary_min_annual != null,
+          }
+          : { company_token: null, category: null, salary_present: null }
+      ).catch(() => ({ company_token: null, category: null, salary_present: null }));
+      waitUntil(clickStamps.then((stamps) =>
         client.from("job_board_search_clicks").insert({
-          search_id: sid,
-          posting_id: postingId,
-          q: String(body.q ?? "").slice(0, 200),
-          position: Number.isFinite(posN) && posN > 0 ? Math.min(Math.trunc(posN), 100000) : null,
-          kind: body.kind === "apply" ? "apply" : "open",
+          ...clickCore,
+          ...stamps,
         }).then(({ error }) => {
-          if (error) console.warn("[JOB-BOARD] click insert failed:", error.message);
-        }),
-      ));
+          if (!error) return;
+          const msg = String(error.message ?? "");
+          if (msg.includes("company_token") || msg.includes("salary_present") || msg.includes("category")) {
+            return client.from("job_board_search_clicks").insert(clickCore).then(({ error: e2 }) => {
+              if (e2) console.warn("[JOB-BOARD] click insert failed:", e2.message);
+            });
+          }
+          console.warn("[JOB-BOARD] click insert failed:", error.message);
+        })
+      ).catch(() => {}));
       // Answers immediately. The caller is a beacon fired as someone navigates
       // away to an employer's site; making it wait on a write would cost the
       // click it is trying to record.
@@ -10214,6 +11079,13 @@ async function serveList(
   // measurable at all. Without it a click can say "someone clicked something"
   // and nothing more.
   const searchId = crypto.randomUUID();
+  // WHO ASKED, resolved once by resolveCaller in the `list` dispatch and
+  // carried here on the body. Re-checked against the closed set rather than
+  // trusted: this function is also reachable with a body nobody resolved (an
+  // older bundle, a direct call), and an unrecognised value must read as "not
+  // attributed" rather than reach a CHECK constraint and lose the whole event.
+  const rawCaller = String((body as Record<string, unknown>).caller ?? "").toLowerCase();
+  const caller = SEARCH_CALLERS.has(rawCaller) ? rawCaller : null;
   /**
    * Records this response. FIRE AND FORGET, BUT NOT SILENT.
    *
@@ -10227,34 +11099,96 @@ async function serveList(
    * unknown to 0 would silently inflate the zero-result rate, which is the one
    * number this table exists to produce.
    */
+  /**
+   * WHAT WAS SHOWN, not only what was clicked.
+   *
+   * Click-through had no denominator: search_clicks records the row a visitor
+   * opened, and nothing recorded the rows they were offered and passed over. So
+   * every employer-level demand number was confounded by our own ranking —
+   * which changed materially several times last month — and there is no way to
+   * tell "nobody wants this company" from "we stopped putting it on page one".
+   *
+   * TWENTY IDS, A BARE JSON ARRAY, IN SERVED ORDER — and "served" means the
+   * array the response actually carries, which every call site therefore
+   * builds BEFORE it logs. The page handed to json() is
+   * preferMatchedLocation(await attachRecheckedAt(..., excludedTerms)): the
+   * first drops every row whose title matched a "-manager" style exclusion and
+   * the second reorders on location match. Logging the pre-filter grouping
+   * would put ids in the impression list that the visitor never saw AND shift
+   * every index out of step with the 1-based rank the click beacon reports —
+   * so the denominator would not join to its own numerator, which is the whole
+   * point of collecting it. The shape is the column's,
+   * not this function's: job_board_search_events.shown is documented as an
+   * array of up to 20 posting ids whose POSITION IS THE ARRAY INDEX — absolute
+   * rank is offset_n + index + 1, and offset_n is already its own column, so no
+   * per-row position is stored. A posting id is source:company_token:externalId,
+   * so the employer of every impression is derivable without a second column,
+   * and a trigger truncates anything longer (and NULLs anything that is not an
+   * array, which is why this returns an array or nothing at all).
+   *
+   * An EMPTY array is a real value — a search that genuinely showed nothing —
+   * and is not the same as null, which means the response predates the column.
+   *
+   * MEMORY: this runs on the SERVING path, not in the board loop, and walks at
+   * most 20 elements of an array the response already built. Bounded, retains
+   * nothing.
+   */
+  const SHOWN_N = 20;
+  const shownSet = (jobs?: Array<Record<string, unknown>>) =>
+    jobs ? jobs.slice(0, SHOWN_N).map((j) => String(j.id ?? "").slice(0, 200)) : null;
   const logSearch = (
     route: "recency" | "ranked" | "fuzzy" | "semantic",
     results: number,
     total: number | null,
     rescued: "fuzzy" | "semantic" | null = null,
+    /** The page this response is about to return, for the shown-set above.
+     *  Optional so a route that somehow has no rows still logs the event. */
+    shownJobs?: Array<Record<string, unknown>>,
   ) => {
+    const core = {
+      search_id: searchId,
+      q: String(body.q ?? "").slice(0, 200),
+      location: sanitizeTerm(String(body.location ?? "")).slice(0, 120),
+      filters: {
+        category: applied.category ?? undefined,
+        experience: applied.experience.join(",") || undefined,
+        remote: body.remote === true || undefined,
+        workMode: applied.workMode ?? undefined,
+        country: applied.country ?? undefined,
+        salaryFloor: applied.salaryFloor ?? undefined,
+        sendableOnly: applied.sendableOnly || undefined,
+      },
+      route,
+      took_ms: Date.now() - reqStart,
+      rescued,
+      results,
+      total,
+      offset_n: offset,
+    };
     waitUntil(Promise.resolve(
       client.from("job_board_search_events").insert({
-        search_id: searchId,
-        q: String(body.q ?? "").slice(0, 200),
-        location: sanitizeTerm(String(body.location ?? "")).slice(0, 120),
-        filters: {
-          category: applied.category ?? undefined,
-          experience: applied.experience.join(",") || undefined,
-          remote: body.remote === true || undefined,
-          workMode: applied.workMode ?? undefined,
-          country: applied.country ?? undefined,
-          salaryFloor: applied.salaryFloor ?? undefined,
-          sendableOnly: applied.sendableOnly || undefined,
-        },
-        route,
-        took_ms: Date.now() - reqStart,
-        rescued,
-        results,
-        total,
-        offset_n: offset,
+        ...core,
+        // Which surface asked. The key is OMITTED when the resolver could not
+        // attribute the request, so the column's own DEFAULT ('web', the
+        // schema's deliberate conservative choice) applies. Writing an explicit
+        // NULL would be a different claim entirely — the column comment reserves
+        // NULL for rows that predate it.
+        ...(caller ? { caller } : {}),
+        // The denominator: the head of the page this response returns.
+        shown: shownSet(shownJobs),
       }).then(({ error }) => {
-        if (error) console.warn("[JOB-BOARD] search-event insert failed:", error.message);
+        if (!error) return;
+        // Deploy-before-migration: an insert naming an absent column loses the
+        // EVENT itself, and this table is the search log's only record. Write
+        // the pre-.61 row rather than none; the columns resume on the next
+        // request once the migration lands.
+        const msg = String(error.message ?? "");
+        if (msg.includes("caller") || msg.includes("shown")) {
+          return client.from("job_board_search_events").insert(core).then(({ error: e2 }) => {
+            if (e2) console.warn("[JOB-BOARD] search-event insert failed:", e2.message);
+          });
+        }
+        console.warn("[JOB-BOARD] search-event insert failed:", error.message);
       }),
     ));
   };
@@ -11539,9 +12473,10 @@ async function serveList(
       const salGrouped = groupSimilar
         ? collapseClusters(salJobs, limit)
         : { jobs: salJobs.slice(0, limit), rawConsumed: Math.min(salJobs.length, limit) };
-      logSearch("ranked", salGrouped.jobs.length, null);
+      const salServed = preferMatchedLocation(await attachRecheckedAt(client, salGrouped.jobs, excludedTerms), locationTerms(body.location).terms);
+      logSearch("ranked", salGrouped.jobs.length, null, null, salServed);
       return json({
-        jobs: preferMatchedLocation(await attachRecheckedAt(client, salGrouped.jobs, excludedTerms), locationTerms(body.location).terms),
+        jobs: salServed,
         searchId,
         ...searchDisclosures(body, applied, maxAgeClamped),
         ...intentDisclosure(intentLift),
@@ -11669,9 +12604,10 @@ async function serveList(
         ? collapseClusters(page, limit)
         : { jobs: page.slice(0, limit), rawConsumed: Math.min(page.length, limit) };
       if (routedGrouped.jobs.length > 0) {
-        logSearch("ranked", routedGrouped.jobs.length, knownTotal);
+        const routedServed = preferMatchedLocation(await attachRecheckedAt(client, routedGrouped.jobs, excludedTerms), locationTerms(body.location).terms);
+        logSearch("ranked", routedGrouped.jobs.length, knownTotal, null, routedServed);
         return json({
-          jobs: preferMatchedLocation(await attachRecheckedAt(client, routedGrouped.jobs, excludedTerms), locationTerms(body.location).terms),
+          jobs: routedServed,
           searchId,
           ...searchDisclosures(body, applied, maxAgeClamped),
           ...intentDisclosure(intentLift),
@@ -12351,12 +13287,13 @@ async function serveList(
                   ? collapseClusters(splitScored, limit)
                   : { jobs: splitScored.slice(0, limit), rawConsumed: Math.min(splitScored.length, limit) };
                 if (splitGrouped.jobs.length > 0) {
-                  logSearch("ranked", splitGrouped.jobs.length, won.hits, "fuzzy");
+                  const splitServed = preferMatchedLocation(
+                    await attachRecheckedAt(client, splitGrouped.jobs, excludedTerms),
+                    locationTerms(won.place).terms,
+                  );
+                  logSearch("ranked", splitGrouped.jobs.length, won.hits, "fuzzy", splitServed);
                   return json({
-                    jobs: preferMatchedLocation(
-                      await attachRecheckedAt(client, splitGrouped.jobs, excludedTerms),
-                      locationTerms(won.place).terms,
-                    ),
+                    jobs: splitServed,
                     searchId,
                     ...searchDisclosures(body, applied, maxAgeClamped),
                     ...intentDisclosure(intentLift),
@@ -12624,9 +13561,10 @@ async function serveList(
                 ? collapseClusters(simpleJobs, limit)
                 : { jobs: simpleJobs.slice(0, limit), rawConsumed: Math.min(simpleJobs.length, limit) };
               logMiss("fuzzy");
-              logSearch("ranked", simpleGrouped.jobs.length, null, "fuzzy");
+              const simpleServed = preferMatchedLocation(await attachRecheckedAt(client, simpleGrouped.jobs, excludedTerms), locationTerms(body.location).terms);
+              logSearch("ranked", simpleGrouped.jobs.length, null, "fuzzy", simpleServed);
               return json({
-                jobs: preferMatchedLocation(await attachRecheckedAt(client, simpleGrouped.jobs, excludedTerms), locationTerms(body.location).terms),
+                jobs: simpleServed,
                 searchId,
                 ...searchDisclosures(body, applied, maxAgeClamped),
                 ...intentDisclosure(intentLift),
@@ -12745,9 +13683,10 @@ async function serveList(
               const fzCap = Math.min(limit, FUZZY_RPC_CAP);
               const fzTotal = Number((fuzzy[0] as { total_rows?: number }).total_rows);
               const fzKnown = Number.isFinite(fzTotal) && fzTotal > 0 && fzTotal < fzCap;
-              logSearch("fuzzy", fuzzyGrouped.jobs.length, fzKnown ? fzTotal : null, "fuzzy");
+              const fuzzyServed = preferMatchedLocation(await attachRecheckedAt(client, fuzzyGrouped.jobs, excludedTerms), locationTerms(body.location).terms);
+              logSearch("fuzzy", fuzzyGrouped.jobs.length, fzKnown ? fzTotal : null, "fuzzy", fuzzyServed);
               return json({
-                jobs: preferMatchedLocation(await attachRecheckedAt(client, fuzzyGrouped.jobs, excludedTerms), locationTerms(body.location).terms),
+                jobs: fuzzyServed,
                 searchId,
                 ...searchDisclosures(body, applied, maxAgeClamped),
                 ...intentDisclosure(intentLift),
@@ -12852,9 +13791,10 @@ async function serveList(
                     ? collapseClusters(semRows, limit)
                     : { jobs: semRows.slice(0, limit), rawConsumed: Math.min(semRows.length, limit) };
                   logMiss("semantic");
-                  logSearch("semantic", semGrouped.jobs.length, semGrouped.jobs.length, "semantic");
+                  const semServed = preferMatchedLocation(await attachRecheckedAt(client, semGrouped.jobs, excludedTerms), locationTerms(body.location).terms);
+                  logSearch("semantic", semGrouped.jobs.length, semGrouped.jobs.length, "semantic", semServed);
                   return json({
-                    jobs: preferMatchedLocation(await attachRecheckedAt(client, semGrouped.jobs, excludedTerms), locationTerms(body.location).terms),
+                    jobs: semServed,
                     searchId,
                     ...searchDisclosures(body, applied, maxAgeClamped),
                     ...intentDisclosure(intentLift),
@@ -13341,7 +14281,6 @@ async function serveList(
         // reports that it has no single honest total, exactly as it already
         // does for the close matches.
         const augmented = fuzzyExtraOut !== null || semanticExtraOut !== null;
-        logSearch("ranked", rankedGrouped.jobs.length, augmented ? null : total);
         // The count and the retriever do not always share a predicate — see
         // the note on `total` below. Computed once here so every field in this
         // response argues from the same row count.
@@ -13406,12 +14345,23 @@ async function serveList(
           } catch { /* a suggestion is a bonus — the thin page stands */ }
         }
 
+        // THE PAGE, BUILT BEFORE IT IS LOGGED. The impression list must be
+        // the array this response actually carries — attachRecheckedAt drops
+        // the rows a "-manager" style exclusion removed and
+        // preferMatchedLocation reorders what is left — or `shown` names rows
+        // nobody saw and its index no longer lines up with the rank the click
+        // beacon sends back. Built exactly where it used to be built (inline
+        // in the response below), so nothing runs any earlier than it did;
+        // only the telemetry call moved.
+        //
+        // attachRecheckedAt was once MISSING here entirely: the per-posting
+        // "re-checked N minutes ago" receipt reached people who browsed and
+        // not people who searched — the fourth thing that day to be wired
+        // into the recency path and skipped on the ranked one.
+        const rankedServed = preferMatchedLocation(await attachRecheckedAt(client, rankedGrouped.jobs, excludedTerms), locationTerms(body.location).terms);
+        logSearch("ranked", rankedGrouped.jobs.length, augmented ? null : total, null, rankedServed);
         return json({
-          // attachRecheckedAt was MISSING here: the per-posting "re-checked N
-          // minutes ago" receipt reached people who browsed and not people who
-          // searched — the fourth thing today to be wired into the recency
-          // path and skipped on the ranked one.
-          jobs: preferMatchedLocation(await attachRecheckedAt(client, rankedGrouped.jobs, excludedTerms), locationTerms(body.location).terms),
+          jobs: rankedServed,
           searchId,
           ...searchDisclosures(body, applied, maxAgeClamped),
           ...(earnedDym ? { didYouMean: earnedDym } : {}),
@@ -14029,9 +14979,10 @@ async function serveList(
   // shipped to one path and silently skipped the others. A telemetry table
   // missing this path would under-count every browse and quietly bias the
   // denominator toward searchers.
-  logSearch("recency", grouped.jobs.length, countUnavailable ? null : (wantCount ? (count ?? 0) : safeMetaTotal));
+  const recencyServed = preferMatchedLocation(await attachRecheckedAt(client, grouped.jobs, excludedTerms), locationTerms(body.location).terms);
+  logSearch("recency", grouped.jobs.length, countUnavailable ? null : (wantCount ? (count ?? 0) : safeMetaTotal), null, recencyServed);
   return json({
-    jobs: preferMatchedLocation(await attachRecheckedAt(client, grouped.jobs, excludedTerms), locationTerms(body.location).terms),
+    jobs: recencyServed,
     searchId,
     ...honesty(grouped.jobs),
     // Raw rows this page swallowed. The client MUST page by this rather than by

@@ -83,8 +83,35 @@ describe("search quality has a denominator and an outcome", () => {
 
   it("never blocks the visitor on telemetry", () => {
     // Both writes go through waitUntil. A logging stall must not cost a search.
-    expect(/waitUntil\(Promise\.resolve\(\s*client\.from\("job_board_search_events"\)/.test(FN)).toBe(true);
-    expect(/waitUntil\(Promise\.resolve\(\s*client\.from\("job_board_search_clicks"\)/.test(FN)).toBe(true);
+    //
+    // This used to pin the exact spelling `waitUntil(Promise.resolve(client
+    // .from("...")`. That broke the moment the click write needed to look up
+    // the posting's company before inserting, which put the insert inside a
+    // .then() — the PROPERTY was untouched and the guard failed anyway. Worse,
+    // the same pin would have PASSED a rewrite that awaited the lookup before
+    // the response, which is the thing it exists to prevent.
+    //
+    // So assert the property: the statement that writes each table is lexically
+    // inside a waitUntil(...) call, and no telemetry write is awaited on the
+    // request path.
+    const insideWaitUntil = (table: string) => {
+      const ins = FN.indexOf(`client.from("${table}").insert`);
+      expect(ins, `${table} insert not found`).toBeGreaterThan(-1);
+      // Walk back to the nearest waitUntil( and confirm its parens still
+      // enclose the insert — a write moved out of waitUntil fails here.
+      const wu = FN.lastIndexOf("waitUntil(", ins);
+      if (wu < 0) return false;
+      let depth = 0;
+      for (let i = wu + "waitUntil".length; i < FN.length; i++) {
+        if (FN[i] === "(") depth++;
+        else if (FN[i] === ")") { depth--; if (depth === 0) return i > ins; }
+      }
+      return false;
+    };
+    expect(insideWaitUntil("job_board_search_events"), "the search-event write must not block the visitor").toBe(true);
+    expect(insideWaitUntil("job_board_search_clicks"), "the click write must not block the visitor").toBe(true);
+    expect(/await\s+client\.from\("job_board_search_(events|clicks)"\)/.test(FN),
+      "no telemetry write may be awaited on the request path").toBe(false);
   });
 
   it("keeps the raw behavioural rows private and exposes only aggregates", () => {

@@ -5,6 +5,10 @@
 // market pulse. Trigger on a schedule: POST /send-search-digest {"action":"send"}.
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { computeFit } from "../_shared/fit-score.ts";
+// A saved search replayed on a cadence is OUR call on a REAL user's query —
+// neither candidate demand nor monitoring, so it gets its own caller value
+// rather than being flattened into either. See _shared/search-caller.ts.
+import { searchCallerHeader } from "../_shared/search-caller.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -143,7 +147,7 @@ Deno.serve(async (req) => {
       const callBoard = (extra: Record<string, unknown>) =>
         fetch(boardBase, {
           method: "POST",
-          headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}`, "Content-Type": "application/json" },
+          headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}`, "Content-Type": "application/json", ...searchCallerHeader("digest") },
           // EVERY field the board can filter on, or the digest mails a wider
           // search than the one saved. The seven that were hand-list-dropped
           // (ceiling, basis, stated-pay, unstated widening, years, department,
