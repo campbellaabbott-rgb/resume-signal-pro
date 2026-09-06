@@ -1135,6 +1135,14 @@
     "emailsWeSendNowArrive": {
       "title": "Les e-mails que nous vous envoyons arrivent enfin",
       "description": "Les livraisons de produits, les résultats d’analyse, les clés de l’API de données et les avis de commission d’affiliation partaient d’une adresse de test partagée qui ne distribue qu’à notre propre boîte. Ils nous parvenaient donc, et à personne d’autre — sans bruit, car l’envoi est volontairement accessoire et ne bloque jamais ce que vous avez réellement demandé. Ils viennent désormais de notre domaine vérifié, celui-là même qu’utilisent depuis toujours nos rapports d’analyse, et nous avons vérifié qu’un message atteignait une adresse externe avant de l’écrire ici. Si vous avez acheté quelque chose sans jamais recevoir l’e-mail, demandez-nous de le renvoyer."
+    },
+    "hiringHealthMeasuresTheEmployer": {
+      "title": "Les statistiques de recrutement d’un employeur mesurent enfin l’employeur, pas notre propre fenêtre de mesure",
+      "description": "Le « Délai type de pourvoi » que nous affichions sur les employeurs mesurait en réalité la durée pendant laquelle nous gardons une annonce, pas le temps que met l’employeur. Dix-huit secteurs différents — soins infirmiers, droit, commerce, informatique — tenaient tous dans un jour et demi d’écart, ce qui ne correspond pas au fonctionnement réel du recrutement. Il est remplacé par la part des postes d’un employeur qui disparaissent effectivement de son propre site carrières dans les 14 jours, assortie de sa marge d’erreur. Les postes encore ouverts, et ceux que nous avons cessé de suivre, comptent désormais comme « pas encore déterminé » au lieu d’être discrètement écartés — c’est précisément cette omission qui rendait l’ancien chiffre identique partout. Là où l’historique ne suffit pas à dire quoi que ce soit d’honnête, nous le disons désormais plutôt que d’afficher un chiffre."
+    },
+    "repostsCountedAsReposts": {
+      "title": "Un poste republié sans cesse n’est plus compté comme pourvu",
+      "description": "Certains employeurs retirent un poste et remettent aussitôt le même en ligne. Jusqu’ici, cela ressemblait exactement à un poste pourvu. Les republications sont désormais distinguées des postes réellement pourvus : un employeur qui recycle la même offre n’en tire plus aucun crédit. Le nombre de republications est précédé de la mention « au moins », parce que nous n’enregistrons volontairement pas chaque répétition d’un même intitulé dans une même journée — le compte réel ne peut donc être que supérieur à celui que vous voyez, jamais inférieur."
     }
   }
 }

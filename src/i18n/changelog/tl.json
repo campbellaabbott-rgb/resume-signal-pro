@@ -1135,6 +1135,14 @@
     "emailsWeSendNowArrive": {
       "title": "Dumarating na talaga ang mga email na ipinapadala namin",
       "description": "Ang mga paghahatid ng produkto, resulta ng scan, susi ng data API, at abiso ng komisyon para sa mga affiliate ay ipinapadala mula sa isang ibinabahaging pantesting na address na sa sarili lang naming inbox naghahatid. Kaya nakakarating ang mga ito sa amin at wala nang iba — tahimik, dahil sinadyang pangalawa lang ang pagpapadala at hindi nito hinaharangan ang talagang hiniling mo. Nanggagaling na ang mga ito ngayon sa sarili naming beripikadong domain, ang siya ring ginagamit ng aming mga scan report, at kinumpirma namin na nakarating ang isang mensahe sa labas bago ito isulat. Kung may binili ka at hindi mo natanggap ang email, sabihin mo lang at ipapadala namin ulit."
+    },
+    "hiringHealthMeasuresTheEmployer": {
+      "title": "Sinusukat na ng estadistika sa pagkuha ng employer ang employer mismo, hindi ang sarili naming window",
+      "description": "Ang “karaniwang tagal bago mapunan” na ipinapakita namin sa mga employer ay talagang sumusukat kung gaano katagal namin pinananatili ang isang posting, hindi kung gaano katagal ang employer. Labingwalong magkakaibang larangan — nursing, batas, retail, software — ang lumabas na magkakalapit sa loob lamang ng isa't kalahating araw sa isa't isa, at hindi ganoon gumagana ang pagkuha. Pinalitan ito ng bahagi ng mga posisyon ng isang employer na talagang naaalis sa sarili nilang careers page sa loob ng 14 na araw, ipinapakita kasama ang margin of error nito. Ang mga posisyong bukas pa, at ang mga posisyong tumigil kaming subaybayan, ay binibilang na ngayon bilang “hindi pa alam” sa halip na tahimik na hindi isama — ang hindi pagsasama sa kanila ang dahilan kung bakit magkakapareho ang hitsura ng lumang numero kahit saan. Kung kulang ang naitalang kasaysayan para makapagsabi ng anumang tapat, sinasabi na nito iyon sa halip na magpakita ng numero."
+    },
+    "repostsCountedAsReposts": {
+      "title": "Ang trabahong paulit-ulit na muling inilalathala ay hindi na binibilang bilang napunan",
+      "description": "May mga employer na inaalis ang isang posisyon at agad ding ibinabalik ang mismong posisyong iyon. Dati, kamukhang-kamukha ito ng pagpuno sa posisyon. Hiwalay na ngayon ang muling paglalathala sa tunay na pagpuno, kaya ang employer na paulit-ulit na ginagamit ang parehong bakante ay hindi na binibigyan ng kredito para rito. Ang bilang ng muling paglalathala ay ipinapakita bilang “hindi bababa sa” isang numero, dahil sinasadya naming huwag itala ang bawat pag-ulit ng parehong titulo ng trabaho sa loob ng isang araw — kaya ang tunay na bilang ay maaari lamang na mas mataas kaysa sa nakikita mo, hindi kailanman mas mababa."
     }
   }
 }

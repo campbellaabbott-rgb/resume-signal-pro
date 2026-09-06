@@ -1135,6 +1135,14 @@
     "emailsWeSendNowArrive": {
       "title": "Emails we send you now actually arrive",
       "description": "Product deliveries, scan results, data-API keys and affiliate payment notices were going out from a shared testing address that only ever delivers to our own inbox. So they reached us and nobody else — silently, because sending is deliberately best-effort and never blocks the thing you actually asked for. They now come from our own verified domain, the same one our scan reports have always used, and we confirmed a message reaching an outside address before saying so. If you bought something and never received the email, ask us and we will resend it."
+    },
+    "hiringHealthMeasuresTheEmployer": {
+      "title": "Employer hiring stats now measure the employer, not our own window",
+      "description": "The “typical time to fill” we showed on employers was really measuring how long we keep a posting, not how long the employer takes. Eighteen different fields — nursing, law, retail, software — all came out within a day and a half of each other, which is not how hiring works. It is replaced with the share of an employer’s roles that actually come off their own careers page within 14 days, shown with its margin of error. Roles still open, and roles we stopped following, now count as “not known yet” instead of being quietly left out — leaving them out is what made the old number look the same everywhere. Where there is not enough history to say anything honest, it now says so instead of showing a number."
+    },
+    "repostsCountedAsReposts": {
+      "title": "A role that keeps getting reposted is no longer counted as filled",
+      "description": "Some employers take a role down and put the same one straight back up. That used to look identical to filling it. Reposts are now separated from genuine fills, so an employer that recycles the same opening is not credited for it. The repost figure is shown as “at least” a number, because we deliberately do not log every repeat of the same job title in a day — so the true count can only be higher than what you see, never lower."
     }
   }
 }

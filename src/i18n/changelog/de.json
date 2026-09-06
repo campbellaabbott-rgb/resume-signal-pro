@@ -1135,6 +1135,14 @@
     "emailsWeSendNowArrive": {
       "title": "E-Mails von uns kommen jetzt wirklich an",
       "description": "Produktlieferungen, Scan-Ergebnisse, Daten-API-Schlüssel und Provisionsmitteilungen wurden von einer gemeinsam genutzten Testadresse verschickt, die ausschließlich an unser eigenes Postfach zustellt. Sie erreichten also uns und sonst niemanden — unbemerkt, weil der Versand bewusst nur ein Nebenweg ist und das, worum Sie eigentlich gebeten haben, nie blockiert. Jetzt kommen sie von unserer eigenen verifizierten Domain, derselben, die unsere Scan-Berichte immer schon genutzt haben, und wir haben den Empfang an einer externen Adresse bestätigt, bevor wir das hier schreiben. Wenn Sie etwas gekauft und die E-Mail nie erhalten haben, melden Sie sich — wir senden sie erneut."
+    },
+    "hiringHealthMeasuresTheEmployer": {
+      "title": "Arbeitgeber-Kennzahlen messen jetzt den Arbeitgeber, nicht unseren eigenen Messzeitraum",
+      "description": "Die „typische Besetzungsdauer“, die wir bei Arbeitgebern zeigten, maß in Wahrheit, wie lange wir eine Anzeige führen, und nicht, wie lange der Arbeitgeber braucht. Achtzehn verschiedene Bereiche — Pflege, Recht, Einzelhandel, Software — lagen alle innerhalb von anderthalb Tagen beieinander, und so funktioniert Einstellen nicht. An ihre Stelle tritt der Anteil der Stellen eines Arbeitgebers, die tatsächlich innerhalb von 14 Tagen von seiner eigenen Karriereseite verschwinden — angegeben mit der zugehörigen Fehlermarge. Noch offene Stellen und Stellen, die wir nicht weiter verfolgt haben, zählen jetzt als „noch nicht bekannt“, statt stillschweigend wegzufallen — genau dieses Weglassen ließ die alte Zahl überall gleich aussehen. Wo die Beobachtungsdauer nicht reicht, um etwas Ehrliches zu sagen, steht jetzt genau das da, statt einer Zahl."
+    },
+    "repostsCountedAsReposts": {
+      "title": "Eine Stelle, die immer wieder neu ausgeschrieben wird, gilt nicht mehr als besetzt",
+      "description": "Manche Arbeitgeber nehmen eine Stelle herunter und stellen dieselbe sofort wieder ein. Das sah bisher genauso aus, als hätten sie sie besetzt. Neuausschreibungen werden jetzt von echten Besetzungen getrennt: Wer dieselbe offene Stelle immer wieder recycelt, bekommt sie nicht mehr als Besetzung angerechnet. Die Zahl der Neuausschreibungen wird als „mindestens“-Wert angegeben, weil wir bewusst nicht jede Wiederholung desselben Stellentitels an einem Tag festhalten — der wahre Wert kann also nur höher liegen als der angezeigte, niemals niedriger."
     }
   }
 }

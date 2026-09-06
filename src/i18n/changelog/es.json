@@ -1135,6 +1135,14 @@
     "emailsWeSendNowArrive": {
       "title": "Los correos que te enviamos ya llegan de verdad",
       "description": "Las entregas de productos, los resultados de análisis, las claves de la API de datos y los avisos de comisión para afiliados salían desde una dirección de pruebas compartida que solo entrega a nuestro propio buzón. Llegaban a nosotros y a nadie más, en silencio, porque el envío es deliberadamente secundario y nunca bloquea lo que realmente pediste. Ahora salen de nuestro dominio verificado, el mismo que siempre han usado nuestros informes de análisis, y confirmamos que un mensaje llegaba a una dirección externa antes de decirlo aquí. Si compraste algo y nunca recibiste el correo, pídenoslo y te lo reenviamos."
+    },
+    "hiringHealthMeasuresTheEmployer": {
+      "title": "Las estadísticas de contratación ahora miden al empleador, no nuestra propia ventana de observación",
+      "description": "El “tiempo típico hasta cubrir un puesto” que mostrábamos en los empleadores medía en realidad cuánto tiempo conservamos nosotros un anuncio, no cuánto tarda el empleador. Dieciocho sectores distintos — enfermería, derecho, comercio, software — salían todos con menos de un día y medio de diferencia entre sí, y así no funciona la contratación. Lo sustituye la proporción de los puestos de un empleador que realmente desaparecen de su propia página de empleo en un plazo de 14 días, mostrada con su margen de error. Los puestos que siguen abiertos, y los que dejamos de seguir, ahora cuentan como “aún no se sabe” en lugar de quedar fuera en silencio — dejarlos fuera es lo que hacía que la cifra antigua se pareciera en todas partes. Donde no hay historial suficiente para decir algo honesto, ahora lo dice en lugar de mostrar un número."
+    },
+    "repostsCountedAsReposts": {
+      "title": "Un puesto que se republica una y otra vez ya no cuenta como cubierto",
+      "description": "Algunos empleadores retiran un puesto y vuelven a publicar el mismo de inmediato. Antes eso era indistinguible de haberlo cubierto. Ahora las republicaciones se distinguen de los puestos realmente cubiertos, así que un empleador que recicla la misma vacante no se lleva el mérito por ello. La cifra de republicaciones se muestra como “al menos” un número, porque a propósito no registramos cada repetición del mismo puesto en un mismo día — así que el conteo real solo puede ser mayor que el que ves, nunca menor."
     }
   }
 }

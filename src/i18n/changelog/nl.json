@@ -1135,6 +1135,14 @@
     "emailsWeSendNowArrive": {
       "title": "E-mails die we je sturen komen nu echt aan",
       "description": "Productleveringen, scanresultaten, data-API-sleutels en commissiemeldingen voor affiliates gingen uit vanaf een gedeeld testadres dat alleen aan onze eigen inbox bezorgt. Ze bereikten dus ons en niemand anders — geruisloos, want verzenden is bewust bijzaak en blokkeert nooit waar je eigenlijk om vroeg. Ze komen nu van ons eigen geverifieerde domein, hetzelfde dat onze scanrapporten altijd al gebruiken, en we hebben bevestigd dat een bericht een extern adres bereikte voordat we dit schreven. Heb je iets gekocht en de e-mail nooit ontvangen? Vraag het ons, dan sturen we hem opnieuw."
+    },
+    "hiringHealthMeasuresTheEmployer": {
+      "title": "Wervingscijfers van werkgevers meten nu de werkgever, niet ons eigen meetvenster",
+      "description": "De “gebruikelijke tijd tot invulling” die we bij werkgevers toonden, mat eigenlijk hoe lang wíj een vacature bewaren, niet hoe lang de werkgever erover doet. Achttien verschillende vakgebieden — verpleging, recht, retail, software — kwamen allemaal binnen anderhalve dag van elkaar uit, en zo werkt werving niet. Dat cijfer is vervangen door het aandeel vacatures van een werkgever dat binnen 14 dagen daadwerkelijk van zijn eigen vacaturepagina verdwijnt, getoond met de foutmarge erbij. Vacatures die nog openstaan, en vacatures die we niet langer zijn blijven volgen, tellen nu als “nog niet bekend” in plaats van stilletjes te worden weggelaten — juist dat weglaten maakte het oude cijfer overal hetzelfde. Waar te weinig historie is om iets eerlijks te kunnen zeggen, zegt de pagina dat nu, in plaats van een getal te tonen."
+    },
+    "repostsCountedAsReposts": {
+      "title": "Een vacature die telkens opnieuw wordt geplaatst telt niet langer als vervuld",
+      "description": "Sommige werkgevers halen een vacature offline en zetten precies dezelfde meteen weer online. Dat zag er tot nu toe hetzelfde uit als vervullen. Herplaatsingen worden nu gescheiden van echte vervullingen, zodat een werkgever die dezelfde vacature blijft recyclen daar geen krediet voor krijgt. Het aantal herplaatsingen staat erbij als “minstens” zoveel, omdat we bewust niet elke herhaling van dezelfde functietitel op één dag vastleggen — het werkelijke aantal kan dus alleen hoger zijn dan wat je ziet, nooit lager."
     }
   }
 }

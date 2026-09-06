@@ -1135,6 +1135,14 @@
     "emailsWeSendNowArrive": {
       "title": "Os e-mails que te enviamos já chegam mesmo",
       "description": "As entregas de produtos, os resultados de análise, as chaves da API de dados e os avisos de comissão de afiliados saíam de um endereço de teste partilhado que só entrega na nossa própria caixa. Chegavam a nós e a mais ninguém — em silêncio, porque o envio é deliberadamente secundário e nunca bloqueia aquilo que pediste. Agora saem do nosso domínio verificado, o mesmo que os nossos relatórios de análise sempre usaram, e confirmámos uma mensagem a chegar a um endereço externo antes de o escrevermos aqui. Se compraste algo e nunca recebeste o e-mail, diz-nos e reenviamos."
+    },
+    "hiringHealthMeasuresTheEmployer": {
+      "title": "As estatísticas de contratação medem agora o empregador, não a nossa janela de observação",
+      "description": "O “tempo típico de preenchimento” que mostrávamos nos empregadores media, na verdade, quanto tempo nós mantemos um anúncio, e não quanto tempo o empregador demora. Dezoito áreas diferentes — enfermagem, direito, retalho, software — saíam todas a menos de dia e meio umas das outras, e não é assim que a contratação funciona. Foi substituído pela percentagem das vagas de um empregador que saem efetivamente da própria página de carreiras dele no prazo de 14 dias, apresentada com a respetiva margem de erro. As vagas ainda abertas, e aquelas que deixámos de seguir, contam agora como “ainda não se sabe” em vez de ficarem de fora em silêncio — deixá-las de fora era o que fazia o número antigo parecer igual em todo o lado. Onde não há histórico suficiente para dizer algo honesto, passa a dizê-lo em vez de mostrar um número."
+    },
+    "repostsCountedAsReposts": {
+      "title": "Uma vaga que é republicada vezes sem conta já não conta como preenchida",
+      "description": "Alguns empregadores retiram uma vaga e voltam a publicar exatamente a mesma logo a seguir. Isso era indistinguível de a terem preenchido. As republicações estão agora separadas dos preenchimentos genuínos, para que um empregador que recicla a mesma vaga não seja creditado por isso. O número de republicações é apresentado como “pelo menos” um número, porque não registamos de propósito cada repetição do mesmo cargo no mesmo dia — por isso a contagem real só pode ser maior do que o que vê, nunca menor."
     }
   }
 }
