@@ -38,7 +38,12 @@ describe("a reservation that emptied the queue", () => {
     // reservation branch, which is what emptied the queue in the first place.
     // .42 added a third: elapsed wall time, the bound that actually matched
     // the deaths (a-slice-with-no-clock.test.ts).
-    expect((CODE.match(/budgetSkipped\.push\(/g) ?? []).length, "five deferral sites: landed postings, heap, wall time, slice size, and a wait that cannot end").toBe(5);
+    // .63 added a SIXTH: a list response over MAX_RESPONSE_BYTES, refused
+    // before its body is read. That is the only one of the six that acts
+    // BEFORE the allocation exists rather than after — every other bound here
+    // measures something already in memory, which is why five of them could be
+    // "measured on both sides" and still read as refuted.
+    expect((CODE.match(/budgetSkipped\.push\(/g) ?? []).length, "six deferral sites: landed postings, heap, wall time, slice size, a wait that cannot end, and the byte budget").toBe(6);
     expect(CODE).toMatch(/if \(heapNow !== undefined && heapNow >= HEAP_SOFT_LIMIT_MB\) \{\s*heapStopped = true;\s*budgetSkipped\.push\(s\.token\);\s*continue;\s*\}/);
     expect(CODE, "neither deferral may sit in the reservation branch").not.toMatch(/inFlightReserve >= SLICE_POSTING_BUDGET\) \{\s*budgetSkipped/);
   });

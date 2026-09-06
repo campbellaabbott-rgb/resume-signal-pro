@@ -113,7 +113,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-09-06.62"; // .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
+const BUILD_VERSION = "2026-09-06.63"; // .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
 // .61: A BATCH THAT WENT DARK NOW SAYS SO IN THE ROW ITSELF. `windowed` only
 // catches a TRUNCATED fetch — a feed that answers 200 with a valid, nearly
 // empty list is not windowed, so every stored posting for that board vanished
@@ -706,6 +706,102 @@ async function loadDynamicLight(client: SupabaseClient): Promise<void> {
   } catch { /* meta unreadable — static set still applies */ }
 }
 
+// LIGHT IS ONLY AN ESCAPE WHERE THE DESCRIPTIONS CAN COME BACK.
+//
+// Two vendors have a light LIST form: greenhouse drops ?content=true and
+// workable drops details=true (see listUrl). Only ONE of them has a filler
+// that works while the board is light. backfill-desc selects
+// `s.source === "greenhouse" && isLight(s.token)` and hits greenhouse's
+// per-JOB endpoint; workable is absent from DETAIL_DESC_SOURCES, so its only
+// filler is the desc-sweep BOARD lane — which calls fetchBoard(), which goes
+// through listUrl, which for an enrolled token emits details=false. The sweep
+// would re-fetch the board in the very mode that omits the descriptions it is
+// trying to recover, fill 0 rows, and report the board handled.
+//
+// So enrolling a workable board in light mode does not defer its descriptions,
+// it DELETES them: every posting ingests with description null, permanently,
+// scoring null in fit-batch and invisible to the sampled description tier,
+// with nothing in any counter saying so. A deferral is recoverable and loud;
+// that is not. Workable oversize boards take the plain deferral path with the
+// other eighteen vendors until a per-posting workable filler exists.
+const LIGHT_CAPABLE_VENDORS = new Set(["greenhouse"]);
+
+// PERMANENTLY OVERSIZE BOARDS MUST BE NAMEABLE THREE MONTHS LATER.
+//
+// A vendor with no light form (ashby, lever, recruitee, breezy, personio,
+// teamtailor, pinpoint, paylocity, bamboohr…) fetches its whole board in one
+// request, so a board past the byte budget is deferred on EVERY pass with
+// nothing about the next pass differing. Deferral deliberately keeps it out of
+// failedTokens, the failure streak, job_board_board_state and the dormancy
+// classifier — which is right (the vendor answered us; the board is not dead)
+// and is exactly what makes it invisible.
+//
+// Measured live 2026-09-06 against the production endpoints: ashby `openai`
+// 13.6MB, lever `veeva` 12.8MB, lever `paytmpayments` 11.2MB, recruitee
+// `livezoku` 15.0MB, lever `palantir` 6.0MB. A random 125-board sample across
+// the light-incapable vendors trips the budget at ~1% (p90: ashby 245KB, lever
+// 936KB, recruitee 343KB, personio 88KB, breezy 36KB) — ordinary boards are
+// nowhere near it, but the ~1% that trip are the largest employers we carry
+// and two of them are vendor-health canaries.
+//
+// This registry is the durable record of that: it ACCUMULATES (unlike
+// slice_stats, which is one row overwritten every ten minutes), it rides the
+// status payload, and the freshness sweep reads it so a live board that we are
+// simply too small to hold is never written into the lifecycle closure log as
+// an employer's closure. It is not an ingest path — these boards need
+// pagination or a streaming parse before they ingest again — it is the thing
+// that stops them leaving silently.
+const OVERSIZE_BOARDS = new Map<string, { source: string; mb: number; at: string }>();
+const OVERSIZE_CAP = 200;
+async function loadOversizeBoards(client: SupabaseClient): Promise<void> {
+  try {
+    const { data } = await client.from("job_board_meta").select("v").eq("k", "oversize_boards").maybeSingle();
+    const rec = (data?.v as { boards?: Record<string, { source?: string; mb?: number; at?: string }> } | null)?.boards;
+    OVERSIZE_BOARDS.clear();
+    if (rec && typeof rec === "object") {
+      for (const [tk, e] of Object.entries(rec)) {
+        if (typeof tk === "string" && e && typeof e === "object") {
+          OVERSIZE_BOARDS.set(tk, { source: String(e.source ?? ""), mb: Number(e.mb) || 0, at: String(e.at ?? "") });
+        }
+      }
+    }
+  } catch { /* meta unreadable — the registry is diagnostic, never a gate */ }
+}
+async function persistOversizeBoards(client: SupabaseClient): Promise<void> {
+  try {
+    // Newest last, oldest dropped: a board that stopped being oversize ages
+    // out of the registry instead of being asserted forever.
+    const entries = [...OVERSIZE_BOARDS.entries()].slice(-OVERSIZE_CAP);
+    OVERSIZE_BOARDS.clear();
+    for (const [k, v] of entries) OVERSIZE_BOARDS.set(k, v);
+    const { error } = await client.from("job_board_meta").upsert(
+      { k: "oversize_boards", v: { boards: Object.fromEntries(entries), updatedAt: new Date().toISOString() }, updated_at: new Date().toISOString() },
+      { onConflict: "k" },
+    );
+    if (error) console.warn("[JOB-BOARD] oversize registry persist failed (non-fatal):", error.message?.slice(0, 120));
+  } catch { /* diagnostic — never blocks a slice */ }
+}
+
+/**
+ * Enrol a token in DYNAMIC_LIGHT and persist it the way the auto-light
+ * measurement already does, so the NEXT pass fetches the board light.
+ *
+ * Extracted so the byte bound can reuse the machinery rather than grow a
+ * second, differently-spelled copy of it — the mistake DEEP_PER_SLICE paid
+ * for: never copy a cap without matching what it measures.
+ */
+async function enrolDynamicLight(client: SupabaseClient, token: string, why: string): Promise<void> {
+  DYNAMIC_LIGHT.add(token);
+  console.warn(`[JOB-BOARD] auto-light: ${token} ${why} — enrolled in light mode (descs via backfill)`);
+  try {
+    const { error: alErr } = await client.from("job_board_meta").upsert(
+      { k: "light_desc_dynamic", v: { tokens: [...DYNAMIC_LIGHT].slice(-AUTO_LIGHT_CAP), updatedAt: new Date().toISOString() }, updated_at: new Date().toISOString() },
+      { onConflict: "k" },
+    );
+    if (alErr) console.warn(`[JOB-BOARD] auto-light persist failed for ${token} (re-enrolls next fetch):`, alErr.message?.slice(0, 120));
+  } catch { /* re-enrolls on the next fetch — never blocks the slice */ }
+}
+
 // Greenhouse and Lever EU tenants live on separate infrastructure with its
 // own API hosts, and the routing lives in greenhouseApi/leverApi — moved to
 // normalize.ts (2026-08-31, when the routing grew a second vendor) so the
@@ -815,7 +911,249 @@ async function fetchSmartRecruiters(s: JobSource, startOffset = 0): Promise<{ co
   return { content, windowed: feedTotal > content.length, feedTotal, nextOffset };
 }
 
-async function fetchWithTimeout(url: string, init?: RequestInit): Promise<Response> {
+/**
+ * NOTHING BOUNDED A RESPONSE BODY, AND THAT IS WHAT KILLED THE ISOLATE.
+ *
+ * Five sizing knobs — posting budget, board count, concurrency, wall clock,
+ * heap ceiling — were each measured on both sides and each refuted, and a
+ * sixth model (heap linear in postings fetched) died on its own samples:
+ *
+ *     heap  41MB  fetched 1,184  boards 23   (clearwaygroup)
+ *     heap 101MB  fetched 1,088  boards 22   (mchapusa~wd5)
+ *     heap 190MB  fetched 1,010  boards 23   (medcan~wd10, 23 rows STORED)
+ *
+ * More postings at a quarter of the heap, and a board that stored twenty-three
+ * rows while heap read 190MB. None of that can be the slice's accumulation —
+ * 41MB at 1,184 postings is the floor, so there is no retention leak. What the
+ * breadcrumb records is the token of the board that just FINISHED, so a heap
+ * reading is the SUM of what all CONCURRENCY workers hold, dominated by the
+ * largest response in flight. The memory is whole HTTP response bodies, and
+ * until this constant nothing bounded them:
+ *
+ *   - MAX_POSTINGS_PER_VISIT binds only CAPPED_VISIT_VENDORS — five of twenty.
+ *     The other fifteen fetch an entire board in ONE request.
+ *   - greenhouse asks for ?content=true, which inlines every description.
+ *   - AUTO_LIGHT_THRESHOLD_CHARS measures contentChars AFTER the body is
+ *     parsed, so it can only ever protect the NEXT pass. The one volume guard
+ *     that existed fires too late BY CONSTRUCTION.
+ *
+ * A bound that acts after `await res.json()` is not a bound; the allocation it
+ * is meant to prevent already happened. So the budget is enforced BEFORE the
+ * body is read: cheaply from Content-Length when the vendor declares one, and
+ * otherwise by a counting stream that aborts mid-transfer. Chunked responses
+ * carry no Content-Length and a declared length can lie, so the streaming read
+ * is the one that actually holds; the header check just saves the transfer.
+ *
+ * THE ARITHMETIC. Ceiling ~256MB (WORKER_RESOURCE_LIMIT, HTTP 546).
+ *
+ *   baseline: runtime + module + slice accumulation      ~64MB
+ *     (measured floor: 41MB holding 1,184 postings)
+ *   reserve kept clear of the ceiling                    ~64MB
+ *   left for in-flight response bodies and their parse   ~128MB
+ *   / PEAK BOARD WORKERS x BODIES READ AT ONCE PER WORKER
+ *   / parse amplification (JSON -> JS objects, ~6x:
+ *     UTF-16 strings plus per-key object overhead)
+ *
+ * BOTH factors in that denominator are load-bearing and BOTH were wrong in the
+ * first draft of this comment, which divided by CONCURRENCY and stopped:
+ *
+ *  - PEAK WORKERS IS NOT ALWAYS `CONCURRENCY`. effConcurrency shed level 1 read
+ *    5 — a literal written when CONCURRENCY was 8, where it was a cut, and left
+ *    behind when CONCURRENCY became 4, where it was a 25% RAISE on the exact
+ *    signal that means the database is already struggling. It is clamped at the
+ *    definition now (`Math.min(CONCURRENCY, …)`), so peak workers is
+ *    max(CONCURRENCY, HOT_CONCURRENCY) = 4 and the guard re-derives that from
+ *    the expression rather than trusting this sentence.
+ *  - BODIES READ AT ONCE PER WORKER IS NOT ALWAYS 1. Five vendors page a board
+ *    in a CHUNK: ukg/adp/workday/oracle 4 wide, icims 5. They used to
+ *    `Promise.all(pages.map(… await res.json()))`, so one worker held a whole
+ *    chunk of PARSED pages at once and a per-response bound of 4MB permitted
+ *    4 x 5 x 4MB = 80MB of wire, ~480MB parsed — the isolate dies with every
+ *    individual response comfortably in budget. Measured live: one iCIMS
+ *    page-of-100 is 2.0-3.3MB (AccentCare 2.0MB, AMD 3.3MB), so five held at
+ *    once is ~16MB of wire per worker, triple its whole allotment, without any
+ *    response coming near the bound. The chunks still FETCH concurrently — the
+ *    round trips are the point — but their bodies are now read ONE AT A TIME,
+ *    in page order. Parsing was always serial (one thread); only the retention
+ *    was concurrent, and that is what is gone.
+ *
+ *   128MB / (4 workers x 1 body) = 32MB a worker
+ *   32MB / 6x parse amplification = 5.3MB of wire
+ *
+ * Round DOWN to 4MB: four workers each at the ceiling cost 4 x 4MB x 6 = 96MB
+ * against the 128MB allotment. The unread responses of a chunk sit under
+ * TransformStream backpressure (readable HWM 0) plus one transport window —
+ * order 100KB each, so 4 workers x 4 unread is under 2MB, noise against the
+ * reserve. The desc sweep runs DESC_SWEEP_CONCURRENCY wide but fetches ONE
+ * posting per response — tens of KB — so the binding case is the list path,
+ * which is where every giant lives.
+ *
+ * WHERE 4MB SITS, measured 2026-09-06 against the requests this code actually
+ * issues (not against stripe/zscaler: they are LIGHT_DESC_TOKENS, so listUrl
+ * has not sent them ?content=true in months — stripe's real list fetch is
+ * 385KB, and the 3.9MB/4.9MB figures that first justified this constant are
+ * contentChars of a request shape no longer issued):
+ *
+ *   greenhouse gitlab, heavy   3.6MB   under, ingests whole
+ *   lever palantir             6.0MB   over
+ *   lever veeva               12.8MB   over
+ *   ashby openai              13.6MB   over
+ *   recruitee livezoku        15.0MB   over
+ *
+ * Nothing measured sits AT the line: ordinary boards are an order of magnitude
+ * under it (p90 by vendor: ashby 245KB, lever 936KB, recruitee 343KB, personio
+ * 88KB, breezy 36KB) and the ~1% that cross it are 1.5-3.8x above. That gap is
+ * the honest shape of this bound — it does not trim giants, it excludes them —
+ * and because the crossers are concentrated on vendors with no light form,
+ * OVERSIZE_BOARDS exists to keep them nameable rather than silent.
+ */
+const MAX_RESPONSE_BYTES = 4_000_000;
+// Our own function answering our own chain kick / maintenance probe. Status
+// and list payloads, not vendor feeds, so the ceiling is a tenth of a board's.
+const SELF_RESPONSE_BYTES = 400_000;
+// The inbound request. The largest real body is a fit-batch (FIT_BATCH_MAX ids
+// x FIT_DESC_CHARS ~= 400KB) or a chain kick carrying a slice's tokens, so 2MB
+// is generous against anything this API legitimately receives.
+const MAX_REQUEST_BYTES = 2_000_000;
+// Carried in the thrown message because fetchBoard's classifier reads message
+// text; the worker keys the DEFERRAL on it, and a deferral is not a failure.
+const OVERSIZE_MARKER = "OVERSIZE_BODY";
+
+/**
+ * A bound of zero: a body we are never going to read. Cancelling releases the
+ * connection instead of leaving it hanging, and allocates nothing — which is
+ * strictly better than the `.text()` these call sites used to do purely to
+ * drain the socket.
+ */
+function discardBody(src: { body: ReadableStream<Uint8Array> | null } | null | undefined): void {
+  try {
+    void src?.body?.cancel().catch(() => {});
+  } catch { /* already consumed, locked, or no body — nothing to release */ }
+}
+
+/**
+ * Release the tail of a page chunk we are not going to read.
+ *
+ * A chunked fetcher issues its pages concurrently and then reads them one at a
+ * time; any walk-ending condition (short page, shape drift, posting cap, a
+ * page over the byte budget) leaves the rest unread. Unread is cheap — the
+ * counting transform is never pulled, so each holds a chunk plus a transport
+ * window — but leaving four connections open per board across a slice is not,
+ * and a cancelled body is the same "bound of zero" discardBody gives a 429.
+ */
+function discardRest(rs: Array<Response | null>, from: number): void {
+  for (let k = from; k < rs.length; k++) discardBody(rs[k]);
+}
+
+/**
+ * Read ONE page of a chunk, keeping the two failures apart.
+ *
+ * `over` means the byte bound aborted this page — a WALK-ENDING condition, not
+ * a vendor failure, and the caller must be able to see it. The three vendors
+ * that wrote `await res.json().catch(() => undefined)` here turned an oversize
+ * abort into "payload shape unrecognized", which fetchBoard's classifier reads
+ * as a vendor failure: board_state 'error', a consecutive-failure streak, and
+ * after DEAD_BOARD_THRESHOLD failures over DEAD_BOARD_MIN_FAILING_MS the
+ * dormancy prune DELETES every posting on a live employer and logs a whole-
+ * board exit into the closure log. A board being large must never be able to
+ * spell itself as a board being dead.
+ *
+ * `body: undefined` with `over: false` is the old meaning, untouched: a body
+ * that is present and unreadable, which each caller's own shape check owns.
+ *
+ * The bound is re-installed here rather than assumed from the caller. Every
+ * caller does route through fetchWithTimeout, and wrapping an already-bounded
+ * response costs one transform holding one chunk (verified: the marker
+ * propagates intact through both, header path and streamed path alike) — but
+ * a helper that reads a body handed to it is exactly where the next unbounded
+ * read gets in, and the guard proves the bound at the read, not by tracing an
+ * argument through a call graph.
+ */
+/** The byte bound refusing a body — declared length or running total. */
+const isOversize = (e: unknown) => String((e as Error)?.message ?? e).includes(OVERSIZE_MARKER);
+
+/**
+ * A page refused on its DECLARED Content-Length never reaches the read loop:
+ * boundBody throws inside the concurrent fetch, which rejects the whole chunk.
+ * So the walk-ending decision has to exist here too, and it is the same one
+ * the read loop makes — mid-walk it is a WINDOW (keep the pages that landed,
+ * resume next pass), and on the walk's first page it is the board's deferral.
+ * `null` already means exactly that to every one of these consume loops.
+ */
+function chunkPageRefusal(e: unknown, isFirstPage: boolean): null {
+  if (!isFirstPage && isOversize(e)) return null;
+  throw e;
+}
+
+async function readChunkPage(res: Response): Promise<{ body: unknown; over: boolean }> {
+  try {
+    return { body: await boundBody(res, MAX_RESPONSE_BYTES).json(), over: false };
+  } catch (e) {
+    if (isOversize(e)) return { body: undefined, over: true };
+    return { body: undefined, over: false };
+  }
+}
+
+/**
+ * Install the byte bound on a body BEFORE anything reads it.
+ *
+ * The returned Response behaves exactly like the one handed in — same status,
+ * same headers, same `.json()`/`.text()` — except that reading it past `limit`
+ * throws instead of allocating. Two layers, because either alone has a hole:
+ *
+ *  1. Content-Length, when present: refuse before a single byte is
+ *     transferred. Present on FAR less than it looks — Deno's fetch strips the
+ *     header once it decompresses a response, so every gzip/br vendor arrives
+ *     with content-length null (measured: ashby openai `br`, null; greenhouse
+ *     gitlab `gzip`, null; lever palantir uncompressed, 5,978,887). This layer
+ *     is an optimisation for the uncompressed minority, not the guard.
+ *     It is also absent on any chunked response, and a vendor can lie.
+ *  2. A counting TransformStream: the running total is checked per chunk and
+ *     the stream is errored past the budget. `pipeThrough` propagates that
+ *     error backwards and CANCELS the source body, so an aborted read does not
+ *     leave the connection hanging.
+ *
+ * Memory: the transform enqueues each chunk and hands it straight to the
+ * consumer under the default TransformStream backpressure (readable HWM 0), so
+ * it holds one chunk, never a copy of the body. What the consumer accumulates
+ * is bounded by `limit` by construction — that is the whole point, and it is
+ * why this can be added to a function that already dies on memory.
+ */
+function boundBody(src: Response | Request, limit = MAX_RESPONSE_BYTES): Response {
+  const declared = Number(src.headers.get("content-length"));
+  if (Number.isFinite(declared) && declared > limit) {
+    discardBody(src);
+    throw new Error(`${OVERSIZE_MARKER} declared ${declared} > ${limit}`);
+  }
+  const status = (src as Response).status || 200;
+  const body = src.body;
+  // 204/205/304 may not carry a body at all; constructing one with a stream
+  // throws. Nothing to bound either way.
+  if (!body || status === 204 || status === 205 || status === 304) return src as Response;
+  let seen = 0;
+  const bounded = body.pipeThrough(
+    new TransformStream<Uint8Array, Uint8Array>({
+      transform(chunk, ctrl) {
+        seen += chunk.byteLength;
+        if (seen > limit) {
+          ctrl.error(new Error(`${OVERSIZE_MARKER} streamed ${seen} > ${limit}`));
+          return;
+        }
+        ctrl.enqueue(chunk);
+      },
+    }),
+  );
+  const out = new Response(bounded, { status, statusText: (src as Response).statusText || "", headers: src.headers });
+  // `url` is a getter with no setter on a constructed Response, and the
+  // BambooHR login-page branch reads it to say WHERE a board redirected to.
+  // Shadow it so that diagnostic survives the wrap.
+  try {
+    Object.defineProperty(out, "url", { value: (src as Response).url || "", configurable: true });
+  } catch { /* diagnostics only — never worth failing a fetch over */ }
+  return out;
+}
+
+async function fetchWithTimeout(url: string, init?: RequestInit, limit = MAX_RESPONSE_BYTES): Promise<Response> {
   const once = async () => {
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
@@ -837,10 +1175,13 @@ async function fetchWithTimeout(url: string, init?: RequestInit): Promise<Respon
   if (res.status === 429) {
     const ra = Number(res.headers.get("retry-after"));
     const waitMs = Number.isFinite(ra) && ra > 0 ? Math.min(ra * 1000, 4000) : 1500;
+    // The 429's own body is never read. Release it rather than leave the
+    // connection hanging while we sleep out the Retry-After.
+    discardBody(res);
     await new Promise((r) => setTimeout(r, waitMs));
-    return await once();
+    return boundBody(await once(), limit);
   }
-  return res;
+  return boundBody(res, limit);
 }
 
 // Personio publishes the same official feed on two hosts depending on the
@@ -872,8 +1213,18 @@ async function fetchPersonio(s: JobSource): Promise<{ xml: string; host: string 
       if (res.ok) {
         const xml = await res.text();
         if (xml.includes("<workzag-jobs") || xml.includes("<position")) return { xml, host };
-      }
-    } catch { /* try the other host */ }
+      } else discardBody(res);
+    } catch (e) {
+      // OVERSIZE IS NOT "UNAVAILABLE". Swallowing it here re-transferred the
+      // same too-big feed against the other host and then reported "personio
+      // feed unavailable on .de/.com" — a message the classifier reads as a
+      // vendor failure, which is a failure streak and, at DEAD_BOARD_THRESHOLD,
+      // the dormancy prune deleting every posting on a live employer and
+      // writing a whole-board exit into the closure log. A board being large
+      // must never spell itself as a board being dead.
+      if (String((e as Error)?.message ?? e).includes(OVERSIZE_MARKER)) throw e;
+      /* otherwise: try the other host */
+    }
   }
   throw new Error("personio feed unavailable on .de/.com");
 }
@@ -962,29 +1313,40 @@ async function fetchUkg(s: JobSource): Promise<{ items: unknown[]; raw: unknown;
   outer: for (let start = 0; start < pageCap; start += UKG_CHUNK) {
     const pages: number[] = [];
     for (let p = start; p < Math.min(start + UKG_CHUNK, pageCap); p++) pages.push(p);
-    const bodies = await Promise.all(pages.map(async (page) => {
-      const res = await fetchWithTimeout(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify({ opportunitySearch: { Top: UKG_PAGE, Skip: page * UKG_PAGE, QueryString: "", OrderBy: [], Filters: [] } }),
-      });
-      if (!res.ok) { if (page === 0) throw new Error(`HTTP ${res.status}`); return null; }
-      return await res.json().catch(() => undefined);
+    // FETCH concurrently, READ one at a time — see MAX_RESPONSE_BYTES. The
+    // round trips are what chunking buys; holding four PARSED pages at once
+    // was memory the per-response bound could never see.
+    const responses = await Promise.all(pages.map(async (page) => {
+      try {
+        const res = await fetchWithTimeout(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          body: JSON.stringify({ opportunitySearch: { Top: UKG_PAGE, Skip: page * UKG_PAGE, QueryString: "", OrderBy: [], Filters: [] } }),
+        });
+        if (!res.ok) { discardBody(res); if (page === 0) throw new Error(`HTTP ${res.status}`); return null; }
+        return res;
+      } catch (e) { return chunkPageRefusal(e, page === 0); }
     }));
-    for (let i = 0; i < bodies.length; i++) {
-      const body = bodies[i];
-      if (body === null) break outer; // mid-walk HTTP failure — keep what we have
-      const ops = (body as { opportunities?: unknown[] } | undefined)?.opportunities;
-      // A 200 that is not the opportunity envelope is drift or a bot-wall: a
-      // FAILED fetch, never an empty board. Only page 0 can prove the shape.
-      if (!Array.isArray(ops)) {
-        if (pages[i] === 0) throw new Error("ukg payload shape unrecognized");
-        break outer;
+    let read = 0;
+    try {
+      for (let i = 0; i < responses.length; i++) {
+        const res = responses[i];
+        read = i + 1;
+        if (res === null) break outer; // mid-walk HTTP failure — keep what we have
+        const { body, over } = await readChunkPage(res);
+        if (over) { if (all.length === 0) throw new Error(`${OVERSIZE_MARKER} over ${MAX_RESPONSE_BYTES} on page ${pages[i]}`); break outer; }
+        const ops = (body as { opportunities?: unknown[] } | undefined)?.opportunities;
+        // A 200 that is not the opportunity envelope is drift or a bot-wall: a
+        // FAILED fetch, never an empty board. Only page 0 can prove the shape.
+        if (!Array.isArray(ops)) {
+          if (pages[i] === 0) throw new Error("ukg payload shape unrecognized");
+          break outer;
+        }
+        if (pages[i] === 0) feedTotal = Number((body as { totalCount?: number }).totalCount ?? 0) || 0;
+        all.push(...ops);
+        if (ops.length < UKG_PAGE) { exhausted = true; break outer; } // feed ran out
       }
-      if (pages[i] === 0) feedTotal = Number((body as { totalCount?: number }).totalCount ?? 0) || 0;
-      all.push(...ops);
-      if (ops.length < UKG_PAGE) { exhausted = true; break outer; } // feed ran out
-    }
+    } finally { discardRest(responses, read); }
   }
   // Same refusal guard as every other vendor: an empty read against a non-zero
   // advertised total is a rate-limit or a bot-wall, not an empty board.
@@ -1021,27 +1383,38 @@ async function fetchAdp(s: JobSource): Promise<{ items: unknown[]; raw: unknown;
   outer: for (let start = 0; start < pageCap; start += ADP_CHUNK) {
     const pages: number[] = [];
     for (let p = start; p < Math.min(start + ADP_CHUNK, pageCap); p++) pages.push(p);
-    const bodies = await Promise.all(pages.map(async (page) => {
-      const res = await fetchWithTimeout(pageUrl(page), { headers: { Accept: "application/json" } });
-      if (!res.ok) { if (page === 0) throw new Error(`HTTP ${res.status}`); return null; }
-      return await res.json().catch(() => undefined); // undefined = body unreadable, distinct from a mid-walk HTTP miss
+    // Fetch concurrently, read one at a time — see MAX_RESPONSE_BYTES.
+    const responses = await Promise.all(pages.map(async (page) => {
+      try {
+        const res = await fetchWithTimeout(pageUrl(page), { headers: { Accept: "application/json" } });
+        if (!res.ok) { discardBody(res); if (page === 0) throw new Error(`HTTP ${res.status}`); return null; }
+        return res;
+      } catch (e) { return chunkPageRefusal(e, page === 0); }
     }));
-    for (let i = 0; i < bodies.length; i++) {
-      const body = bodies[i];
-      if (body === null) break outer; // mid-walk HTTP failure — keep what we have
-      const reqs = (body as { jobRequisitions?: unknown[] } | undefined)?.jobRequisitions;
-      // A 200 whose body isn't the requisition envelope is drift or a
-      // bot-wall — the personio/rippling/paylocity line: a FAILED fetch,
-      // never an empty board. Only page 0 can prove the shape; a later page
-      // going strange ends the walk with what we already hold.
-      if (!Array.isArray(reqs)) {
-        if (pages[i] === 0) throw new Error("adp payload shape unrecognized");
-        break outer;
+    let read = 0;
+    try {
+      for (let i = 0; i < responses.length; i++) {
+        const res = responses[i];
+        read = i + 1;
+        if (res === null) break outer; // mid-walk HTTP failure — keep what we have
+        // undefined = body unreadable, distinct from a mid-walk HTTP miss; `over`
+        // = the byte bound aborted it, which ends the walk, never fails the board.
+        const { body, over } = await readChunkPage(res);
+        if (over) { if (all.length === 0) throw new Error(`${OVERSIZE_MARKER} over ${MAX_RESPONSE_BYTES} on page ${pages[i]}`); break outer; }
+        const reqs = (body as { jobRequisitions?: unknown[] } | undefined)?.jobRequisitions;
+        // A 200 whose body isn't the requisition envelope is drift or a
+        // bot-wall — the personio/rippling/paylocity line: a FAILED fetch,
+        // never an empty board. Only page 0 can prove the shape; a later page
+        // going strange ends the walk with what we already hold.
+        if (!Array.isArray(reqs)) {
+          if (pages[i] === 0) throw new Error("adp payload shape unrecognized");
+          break outer;
+        }
+        if (pages[i] === 0) feedTotal = Number((body as { meta?: { totalNumber?: number } }).meta?.totalNumber ?? 0) || 0;
+        all.push(...reqs);
+        if (reqs.length < ADP_PAGE) { exhausted = true; break outer; } // feed ran out
       }
-      if (pages[i] === 0) feedTotal = Number((body as { meta?: { totalNumber?: number } }).meta?.totalNumber ?? 0) || 0;
-      all.push(...reqs);
-      if (reqs.length < ADP_PAGE) { exhausted = true; break outer; } // feed ran out
-    }
+    } finally { discardRest(responses, read); }
   }
   // Same guard as workday/oracle/icims: an empty read against a non-zero
   // advertised total is a refusal, not an empty board — throwing keeps the
@@ -1160,27 +1533,43 @@ async function fetchWorkday(s: JobSource, startOffset = 0): Promise<{ jobPosting
   outer: for (let start = 0; start < workdayPageCap; start += WORKDAY_CHUNK) {
     const pages: number[] = [];
     for (let p = start; p < Math.min(start + WORKDAY_CHUNK, workdayPageCap); p++) pages.push(p);
-    const bodies = await Promise.all(pages.map(async (page) => {
-      const res = await fetchWithTimeout(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Accept": "application/json" },
-        body: JSON.stringify({ limit: 20, offset: startOffset + page * 20, searchText: "", appliedFacets: {} }),
-      });
-      if (!res.ok) { if (page === 0) throw new Error(`HTTP ${res.status}`); return null; }
-      return await res.json();
+    // Fetch concurrently, read one at a time — see MAX_RESPONSE_BYTES.
+    const responses = await Promise.all(pages.map(async (page) => {
+      try {
+        const res = await fetchWithTimeout(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Accept": "application/json" },
+          body: JSON.stringify({ limit: 20, offset: startOffset + page * 20, searchText: "", appliedFacets: {} }),
+        });
+        if (!res.ok) { discardBody(res); if (page === 0) throw new Error(`HTTP ${res.status}`); return null; }
+        return res;
+      } catch (e) { return chunkPageRefusal(e, page === 0); }
     }));
-    for (let i = 0; i < bodies.length; i++) {
-      const body = bodies[i];
-      if (body === null) break outer; // mid-walk HTTP failure — keep what we have
-      if (pages[i] === 0) feedTotal = Number((body as { total?: number }).total ?? 0) || 0;
-      const items = Array.isArray((body as { jobPostings?: unknown[] }).jobPostings) ? (body as { jobPostings: unknown[] }).jobPostings : [];
-      all.push(...items);
-      if (items.length < 20) { exhausted = true; break outer; } // last page — wrap next pass
-      // Memory ceiling, NOT an end-of-feed signal: leave `exhausted` false so
-      // nextOffset resumes here rather than wrapping to 0 and re-reading the
-      // board from the top.
-      if (all.length >= MAX_POSTINGS_PER_VISIT) break outer;
-    }
+    let read = 0;
+    try {
+      for (let i = 0; i < responses.length; i++) {
+        const res = responses[i];
+        read = i + 1;
+        if (res === null) break outer; // mid-walk HTTP failure — keep what we have
+        const { body, over } = await readChunkPage(res);
+        if (over) { if (all.length === 0) throw new Error(`${OVERSIZE_MARKER} over ${MAX_RESPONSE_BYTES} on page ${pages[i]}`); break outer; }
+        // An unreadable body used to reject the whole chunk and fail the
+        // board. Same verdict, kept where it belongs: page 0 proves the shape,
+        // a later page going strange ends the walk with what we hold.
+        if (body === undefined) {
+          if (pages[i] === 0) throw new Error("workday payload unreadable");
+          break outer;
+        }
+        if (pages[i] === 0) feedTotal = Number((body as { total?: number }).total ?? 0) || 0;
+        const items = Array.isArray((body as { jobPostings?: unknown[] }).jobPostings) ? (body as { jobPostings: unknown[] }).jobPostings : [];
+        all.push(...items);
+        if (items.length < 20) { exhausted = true; break outer; } // last page — wrap next pass
+        // Memory ceiling, NOT an end-of-feed signal: leave `exhausted` false so
+        // nextOffset resumes here rather than wrapping to 0 and re-reading the
+        // board from the top.
+        if (all.length >= MAX_POSTINGS_PER_VISIT) break outer;
+      }
+    } finally { discardRest(responses, read); }
   }
   // Empty page with a non-zero advertised total = the tenant refused/failed us
   // (rate-limit, transient) — NOT an empty board. Throwing marks the board
@@ -1244,24 +1633,37 @@ async function fetchOracle(s: JobSource, startOffset = 0): Promise<{ items: unkn
   outer: for (let start = 0; start < oraclePageCap; start += ORACLE_CHUNK) {
     const pages: number[] = [];
     for (let p = start; p < Math.min(start + ORACLE_CHUNK, oraclePageCap); p++) pages.push(p);
-    const bodies = await Promise.all(pages.map(async (page) => {
-      const finder = `findReqs;siteNumber=${site},limit=${ORACLE_PAGE_SIZE},offset=${startOffset + page * ORACLE_PAGE_SIZE},sortBy=POSTING_DATES_DESC`;
-      const res = await fetchWithTimeout(`${base}?onlyData=true&expand=requisitionList&finder=${encodeURIComponent(finder)}`);
-      if (!res.ok) { if (page === 0) throw new Error(`HTTP ${res.status}`); return null; }
-      return await res.json();
+    // Fetch concurrently, read one at a time — see MAX_RESPONSE_BYTES.
+    const responses = await Promise.all(pages.map(async (page) => {
+      try {
+        const finder = `findReqs;siteNumber=${site},limit=${ORACLE_PAGE_SIZE},offset=${startOffset + page * ORACLE_PAGE_SIZE},sortBy=POSTING_DATES_DESC`;
+        const res = await fetchWithTimeout(`${base}?onlyData=true&expand=requisitionList&finder=${encodeURIComponent(finder)}`);
+        if (!res.ok) { discardBody(res); if (page === 0) throw new Error(`HTTP ${res.status}`); return null; }
+        return res;
+      } catch (e) { return chunkPageRefusal(e, page === 0); }
     }));
-    for (let i = 0; i < bodies.length; i++) {
-      const body = bodies[i];
-      if (body === null) break outer; // mid-walk HTTP failure — keep what we have, same as the serial loop's break
-      const item = (Array.isArray((body as { items?: unknown[] }).items) ? (body as { items: Record<string, unknown>[] }).items[0] : null) ?? null;
-      if (!item) { exhausted = true; break outer; }
-      if (pages[i] === 0) feedTotal = Number(item.TotalJobsCount ?? 0) || 0;
-      const reqs = Array.isArray(item.requisitionList) ? item.requisitionList as unknown[] : [];
-      all.push(...reqs);
-      if (reqs.length < ORACLE_PAGE_SIZE) { exhausted = true; break outer; } // last page
-      // Same ceiling, same reason, same resume contract as Workday above.
-      if (all.length >= MAX_POSTINGS_PER_VISIT) break outer;
-    }
+    let read = 0;
+    try {
+      for (let i = 0; i < responses.length; i++) {
+        const res = responses[i];
+        read = i + 1;
+        if (res === null) break outer; // mid-walk HTTP failure — keep what we have, same as the serial loop's break
+        const { body, over } = await readChunkPage(res);
+        if (over) { if (all.length === 0) throw new Error(`${OVERSIZE_MARKER} over ${MAX_RESPONSE_BYTES} on page ${pages[i]}`); break outer; }
+        if (body === undefined) {
+          if (pages[i] === 0) throw new Error("oracle payload unreadable");
+          break outer;
+        }
+        const item = (Array.isArray((body as { items?: unknown[] }).items) ? (body as { items: Record<string, unknown>[] }).items[0] : null) ?? null;
+        if (!item) { exhausted = true; break outer; }
+        if (pages[i] === 0) feedTotal = Number(item.TotalJobsCount ?? 0) || 0;
+        const reqs = Array.isArray(item.requisitionList) ? item.requisitionList as unknown[] : [];
+        all.push(...reqs);
+        if (reqs.length < ORACLE_PAGE_SIZE) { exhausted = true; break outer; } // last page
+        // Same ceiling, same reason, same resume contract as Workday above.
+        if (all.length >= MAX_POSTINGS_PER_VISIT) break outer;
+      }
+    } finally { discardRest(responses, read); }
   }
   // Same guard as Workday: an empty read against a non-zero advertised total is
   // a refusal (rate-limit/transient), NOT an empty board. Throwing marks the
@@ -1318,29 +1720,51 @@ async function fetchBoard(
       const lastPage = startPage + ICIMS_MAX_PAGES - 1;
       const all: unknown[] = [];
       let feedTotal = 0, exhausted = false;
+      // Fetch the chunk concurrently; READ the bodies one at a time. An iCIMS
+      // page of 100 carries description, qualifications and responsibilities
+      // per item — measured 2.0MB (AccentCare) to 3.3MB (AMD) — so holding
+      // five parsed pages at once was ~16MB of wire per worker, three times a
+      // worker's whole allotment, with no single response near the bound. See
+      // MAX_RESPONSE_BYTES.
       const fetchPage = async (page: number) => {
-        const res = await fetchWithTimeout(`https://${s.token}/api/jobs?page=${page}&limit=${ICIMS_PAGE}`, {
-          headers: { Accept: "application/json" },
-        });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const body = await res.json() as { jobs?: unknown[]; totalCount?: number };
-        return body;
+        try {
+          const res = await fetchWithTimeout(`https://${s.token}/api/jobs?page=${page}&limit=${ICIMS_PAGE}`, {
+            headers: { Accept: "application/json" },
+          });
+          if (!res.ok) { discardBody(res); throw new Error(`HTTP ${res.status}`); }
+          return res;
+        } catch (e) { return chunkPageRefusal(e, page === startPage); }
       };
       outer: for (let start = startPage; start <= lastPage; start += ICIMS_CHUNK) {
         const pages: number[] = [];
         for (let p = start; p <= Math.min(start + ICIMS_CHUNK - 1, lastPage); p++) pages.push(p);
-        const bodies = await Promise.all(pages.map(fetchPage));
-        for (let i = 0; i < bodies.length; i++) {
-          const batch = Array.isArray(bodies[i].jobs) ? bodies[i].jobs! : [];
-          if (feedTotal === 0) feedTotal = Number(bodies[i].totalCount) || 0; // first page fetched, whichever it is
-          all.push(...batch);
-          // A short page inside a chunk ends the walk — later chunk members
-          // past the end return empty and must not be treated as data.
-          if (batch.length < ICIMS_PAGE) { exhausted = true; break outer; }
-          // Memory ceiling, not end-of-feed: `exhausted` stays false so
-          // nextOffset resumes here rather than wrapping to the top.
-          if (all.length >= MAX_POSTINGS_PER_VISIT) break outer;
-        }
+        const responses = await Promise.all(pages.map(fetchPage));
+        let read = 0;
+        try {
+          for (let i = 0; i < responses.length; i++) {
+            read = i + 1;
+            // null = a page refused before it could be read (see
+            // chunkPageRefusal) — end the walk with what landed.
+            if (responses[i] === null) break outer;
+            const { body, over } = await readChunkPage(responses[i]!);
+            // Over the byte budget mid-walk is a WINDOW, not a failure: keep
+            // the pages that landed and leave `exhausted` false so nextOffset
+            // resumes here. Only a first page bigger than an isolate can hold
+            // reaches the caller as a deferral.
+            if (over) { if (all.length === 0) throw new Error(`${OVERSIZE_MARKER} over ${MAX_RESPONSE_BYTES} on page ${pages[i]}`); break outer; }
+            const page = body as { jobs?: unknown[]; totalCount?: number } | undefined;
+            if (!page) { if (all.length === 0) throw new Error("icims payload unreadable"); break outer; }
+            const batch = Array.isArray(page.jobs) ? page.jobs! : [];
+            if (feedTotal === 0) feedTotal = Number(page.totalCount) || 0; // first page fetched, whichever it is
+            all.push(...batch);
+            // A short page inside a chunk ends the walk — later chunk members
+            // past the end return empty and must not be treated as data.
+            if (batch.length < ICIMS_PAGE) { exhausted = true; break outer; }
+            // Memory ceiling, not end-of-feed: `exhausted` stays false so
+            // nextOffset resumes here rather than wrapping to the top.
+            if (all.length >= MAX_POSTINGS_PER_VISIT) break outer;
+          }
+        } finally { discardRest(responses, read); }
       }
       // Same guard as the other paginated vendors: a page-1 failure that
       // returns empty while the feed claims postings must NOT read as "board
@@ -1491,7 +1915,15 @@ async function fetchBoard(
     // is gone" from "the vendor throttled us" at a glance, because those have
     // opposite remedies: one is a registry removal, the other a backoff.
     const http = raw.match(/HTTP (\d{3})/)?.[1];
-    const reason = http
+    // OVERSIZE IS ITS OWN VERDICT, not a vendor failure. The board answered
+    // us; its answer was simply bigger than an isolate can hold. The caller
+    // reads this prefix to DEFER the board (and to enrol a light-capable
+    // vendor), because a board that is too big this pass is not a board that
+    // is gone — and the catalog is the product.
+    const over = raw.match(/OVERSIZE_BODY \w+ (\d+)/);
+    const reason = over
+      ? `oversize ${(Number(over[1]) / 1e6).toFixed(1)}MB`
+      : http
       ? `HTTP ${http}`
       : /abort|timed? ?out|deadline/i.test(raw)
         ? "timeout"
@@ -2330,11 +2762,11 @@ function chainNextSlice(hop: number, client?: SupabaseClient, nextBoards?: numbe
     await stamp({ outcome: "kicked" });
     const key = await chainKey();
     try {
-      const r = await fetch(url, {
+      const r = boundBody(await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "refresh", force: true, chain: hop + 1, chainKey: key, ...(nextBoards ? { boards: nextBoards } : {}) }),
-      });
+      }), SELF_RESPONSE_BYTES);
       const body = (await r.text()).slice(0, 300);
       // A 200 is not proof the chain continued. The child returns 200 for every
       // early exit, so the DETAIL is what says whether a slice actually ran.
@@ -2595,6 +3027,10 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
   const sliceWallStart = Date.now();
   const { hotList: HOT_LIST, coldList: COLD_LIST } = await tierLists(client);
   await loadDynamicLight(client); // auto-enrolled giant boards fetch without content
+  // Loaded in the same invocation that runs the freshness sweep, because the
+  // sweep reads it: a board we are too small to hold must not have its live
+  // postings written into the closure log as an employer's closures.
+  await loadOversizeBoards(client);
   const pv = (prog?.v ?? {}) as { hot?: number; cold?: number; coldDone?: number; failedAcc?: string[]; failedTotal?: number };
   let hot = Math.max(0, Number(pv.hot) || 0);
   let cold = Math.max(0, Number(pv.cold) || 0) % Math.max(1, COLD_LIST.length);
@@ -2730,7 +3166,25 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
     : 0;
   const shedEma = shedSignal.kind === "ema" ? shedSignal.ms : 0;
   const shedColdSlice = shedLevel === 2 ? 24 : shedLevel === 1 ? 48 : COLD_SLICE;
-  const effConcurrency = shedLevel === 2 ? 3 : shedLevel === 1 ? 5 : CONCURRENCY;
+  // SHEDDING MUST NEVER RAISE CONCURRENCY — and the byte budget is derived
+  // from the number this expression can produce.
+  //
+  // These literals were written when CONCURRENCY was 8, where 5 was a cut.
+  // After the cut to 4 the same literal silently RAISED the worker count by
+  // 25% on the exact signals that mean the database is already struggling
+  // (shed 1 = the cold-page EMA past 45s, or a signal that is absent/stale) —
+  // load shedding that adds load. It also put five workers, not four, at the
+  // per-response ceiling MAX_RESPONSE_BYTES is divided by, spending the
+  // headroom that arithmetic reserves. Clamped, so level 1 can only ever hold
+  // or reduce, and so peak board workers is provably max(CONCURRENCY,
+  // HOT_CONCURRENCY).
+  //
+  // Level 1 now HOLDS the worker count — its cuts are the cold slice size, the
+  // deep lane, the bootstrap take and the retry lane, which is a coherent
+  // ladder — and level 2 still cuts to 3. The clamp stays even though the
+  // literals no longer need it: it is what makes the byte budget's denominator
+  // a property of this line rather than a number a later edit can invalidate.
+  const effConcurrency = Math.min(CONCURRENCY, shedLevel === 2 ? 3 : CONCURRENCY);
   // The deep lane is the most expensive work a hop does and the least urgent —
   // it re-pages boards we already carry. It is the first thing to go.
   const effDeepPerSlice = shedLevel === 2 ? 0 : shedLevel === 1 ? 1 : DEEP_PER_SLICE;
@@ -3266,6 +3720,16 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
   const deepTokens = new Set(deepBoards.map((b) => b.token));
   await breadcrumb(client, "slice-start", { boards: queue.length, budget: boardBudget, phase: inHotPhase ? "hot" : "cold", elapsedMs: Date.now() - sliceWallStart });
   const budgetSkipped: string[] = [];
+  // Boards whose response exceeded MAX_RESPONSE_BYTES this pass — this
+  // slice's names, for the log line at the end of the loop. The DURABLE record
+  // is OVERSIZE_BOARDS: slice_stats is one row overwritten every ten minutes,
+  // which cannot answer "which boards have been too big for a month?", and a
+  // truncated list on a row like that was the only trace a permanently
+  // oversize board left.
+  const oversized: string[] = [];
+  // Written once per slice, and only when the registry actually changed — a
+  // permanently oversize board must not cost a meta write every ten minutes.
+  let oversizeDirty = false;
   let lastUpsertError: string | null = null;
 
   await Promise.all(
@@ -3376,6 +3840,55 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         ++boardsDone;
         await breadcrumb(client, "board-fetched", { boardsDone, token: s.token, got: r ? r.jobs.length : 0, fetched: fetchedInSlice, inFlight: inFlightReserve, elapsedMs: Date.now() - sliceWallStart });
         if (!r) {
+          // AN OVERSIZE BODY IS A DEFERRAL, NOT A FAILURE.
+          //
+          // The byte bound aborted this board's response before the allocation
+          // existed, which is the whole point — but the board must still come
+          // back, so this must not reach `failed` (a failed board feeds the
+          // failure streak, the dormancy prune and the operator's list, and
+          // none of those is true here: the vendor answered us).
+          //
+          // A light-capable vendor ENROLS: greenhouse's next visit omits
+          // ?content=true and the board ingests light, its descriptions
+          // arriving through backfill-desc's per-JOB endpoint — the same
+          // landing the auto-light measurement gives a giant, reached one pass
+          // earlier because the bound fires before the parse instead of after
+          // it. That is greenhouse ONLY; see LIGHT_CAPABLE_VENDORS for why
+          // workable's light form would delete descriptions rather than defer
+          // them.
+          //
+          // ENROLMENT ALSO GIVES THE BOARD ITS SLOT BACK. The other budget
+          // deferrals `continue` before `baseAttempted++`, so their board is
+          // re-offered on the very next slice; this branch is past that line,
+          // and leaving it there would make an enrolled board wait a full cold
+          // rotation (6.7h at baseline, ~59h at today's measured p50) for a
+          // light re-fetch that would have succeeded immediately. So the slot
+          // is returned exactly when the next attempt would DIFFER. A board
+          // with no light form is left to the ordinary rotation instead: it
+          // would abort identically, and re-offering it every slice would burn
+          // a board slot and a 4MB transfer per pass forever.
+          if (failReason.startsWith("oversize")) {
+            oversized.push(s.token);
+            const mb = Number(failReason.match(/([\d.]+)MB/)?.[1]) || 0;
+            // The durable record. slice_stats is one row overwritten every ten
+            // minutes; a board that is permanently past the budget has to be
+            // nameable long after that.
+            const prev = OVERSIZE_BOARDS.get(s.token);
+            // Dirty on a new board, a materially different size, or a stamp
+            // that has gone stale — so `at` keeps meaning "last seen oversize"
+            // without costing a meta write every ten minutes for a board that
+            // is simply always too big.
+            const prevAge = prev ? Date.now() - new Date(prev.at).getTime() : Infinity;
+            if (!prev || Math.abs(prev.mb - mb) >= 0.1 || !(prevAge < 12 * 3_600_000)) oversizeDirty = true;
+            OVERSIZE_BOARDS.delete(s.token); // re-insert so the cap keeps the most RECENT
+            OVERSIZE_BOARDS.set(s.token, { source: s.source, mb, at: new Date().toISOString() });
+            if (LIGHT_CAPABLE_VENDORS.has(s.source) && !isLight(s.token)) {
+              await enrolDynamicLight(client, s.token, `list response ${failReason} — over the byte budget`);
+              if (baseTokens.has(s.token) && baseAttempted > 0) baseAttempted--;
+            }
+            budgetSkipped.push(s.token);
+            continue;
+          }
           failed.push(`${s.name} (vendor${failReason ? `: ${failReason}` : ""})`);
           // A BOARD THAT DIED MUST LEAVE A ROW, or `state = 'error'` — half of
           // the ATS-migration signal the board-state ledger exists for — can
@@ -4635,6 +5148,13 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
           }
         }
         okTokens.push(s.token);
+        // A BOARD THAT READ IS NOT AN OVERSIZE BOARD ANY MORE. An enrolled
+        // greenhouse giant reads fine on its very next visit, and a vendor
+        // trimming its payload heals the same way. Left in the registry the
+        // token would keep this board's genuinely aged-out postings out of the
+        // closure log forever — the suppression that protects a live board
+        // would start hiding real exits.
+        if (OVERSIZE_BOARDS.delete(s.token)) oversizeDirty = true;
         // Stamp verification IMMEDIATELY, per board — not at hop end. Heavy hot
         // hops can die post-processing (WORKER_RESOURCE_LIMIT) before hop-end
         // code runs, which silently starved every hot board of stamps while the
@@ -4786,6 +5306,8 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
   // console. Now it lands on the slice_stats row status already exposes.
   sliceBudgetNote = { fetched: fetchedInSlice, skipped: budgetSkipped.length, hit: budgetSkipped.length > 0, lastUpsertError, heapStopped, wallStopped, sizeStopped, boardBudget };
   if (budgetSkipped.length) console.warn(`[JOB-BOARD] slice budget hit: ${fetchedInSlice} postings fetched, ${budgetSkipped.length} board(s) deferred to next pass`);
+  if (oversized.length) console.warn(`[JOB-BOARD] byte budget: ${oversized.length} board(s) over ${MAX_RESPONSE_BYTES} bytes and deferred — ${oversized.slice(0, 10).join(", ")}`);
+  if (oversizeDirty) await persistOversizeBoards(client);
   await breadcrumb(client, "loop-done", { boardsDone, fetched: fetchedInSlice, skipped: budgetSkipped.length, heapStopped, wallStopped, sizeStopped, elapsedMs: Date.now() - sliceWallStart });
   await stampSliceWork(client, inHotPhase, sliceWallStart);
 
@@ -5185,6 +5707,30 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
             })),
             { onConflict: "id" },
           )).then(() => {}).catch(() => {}));
+          // A BOARD WE CANNOT READ IS NOT A BOARD THAT CLOSED.
+          //
+          // An oversize board on a vendor with no light form is deferred every
+          // pass, so its postings are never re-verified and age past this
+          // 30-day window while the roles themselves may be perfectly open.
+          // Deleting them is right — a posting nobody has verified in a month
+          // is not servable — but LEDGERING them is a lie of exactly the kind
+          // the closure log cannot take: it is the one asset here nobody else
+          // can copy, and its value is that every row in it is a real exit.
+          // ~90 boards' worth of live postings recorded as ordinary
+          // expirations would be indistinguishable from real ones forever
+          // after. So they are dropped from the ledger and counted out loud.
+          //
+          // Into `alreadyTombstoned` rather than a second filter, because that
+          // set has exactly one consumer — the `freshlyDead` line below — and
+          // in it both memberships mean the same single thing: this id must
+          // not be written to the exit ledger as news. It is also literally
+          // true by this point: the upsert immediately above has just
+          // tombstoned every one of these ids.
+          const oversizeHeld = agedRows.filter((r) => OVERSIZE_BOARDS.has(String(r.company_token)) && !alreadyTombstoned.has(String(r.id)));
+          for (const r of oversizeHeld) alreadyTombstoned.add(String(r.id));
+          if (oversizeHeld.length > 0) {
+            console.warn(`[JOB-BOARD] freshness sweep: ${oversizeHeld.length} aged posting(s) on ${new Set(oversizeHeld.map((r) => String(r.company_token))).size} OVERSIZE board(s) dropped without a closure-log entry — the board is deferred by the byte budget, not closed`);
+          }
           const freshlyDead = agedRows.filter((r) => !alreadyTombstoned.has(String(r.id)));
           if (freshlyDead.length === 0) continue;
           // The other site the hiring-health estimator draws censoring times
@@ -5622,7 +6168,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "backfill-experience", chainKey: key }),
-      })).then((r) => r.text()).catch(() => {}));
+      })).then((r) => discardBody(r)).catch(() => {}));
     }
     // Country not yet backfilled (fresh column on existing rows)? Same
     // self-chaining sweep pattern; new rows carry country from ingestion.
@@ -5633,7 +6179,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "backfill-country", chainKey: key }),
-      })).then((r) => r.text()).catch(() => {}));
+      })).then((r) => discardBody(r)).catch(() => {}));
     }
     // FILTER AUDIT KICK — the scheduled half of the filter contract.
     //
@@ -5661,7 +6207,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ action: "filter-audit", chainKey: key }),
         })
-      ).then((r) => r.text()).then(() => {}).catch(() => {}));
+      ).then((r) => discardBody(r)).catch(() => {}));
     }
 
     // Undated rows whose vendor feed DOES carry dates? Date them once.
@@ -5697,7 +6243,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "backfill-posted", chainKey: key, ...resume }),
-      })).then((r) => r.text()).catch(() => {}));
+      })).then((r) => discardBody(r)).catch(() => {}));
     }
     // One-time name sync: ~48 rung-3 census names shipped HTML-escaped
     // ("Bob's Main Street Auto &amp; Towing") and were decoded in the catalog —
@@ -5783,7 +6329,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "backfill-salary", chainKey: key }),
-      })).then((r) => r.text()).catch(() => {}));
+      })).then((r) => discardBody(r)).catch(() => {}));
     }
 
     await maybeKickMaintenance(client);
@@ -5854,7 +6400,7 @@ async function maybeKickMaintenance(client: SupabaseClient): Promise<void> {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action, chainKey: key, ...extra }),
-      })).then((r) => r.text()).catch(() => {}));
+      })).then((r) => discardBody(r)).catch(() => {}));
     };
 
     // HEADLINE COUNT — the cheapest independent track there is.
@@ -7402,8 +7948,17 @@ Deno.serve(async (req) => {
 
   let body: Record<string, unknown>;
   try {
-    body = await req.json();
-  } catch {
+    // Bounded like every other body this function reads. The inbound request
+    // is the one allocation a caller controls directly, so it gets the same
+    // treatment as a vendor feed rather than an exemption.
+    body = await boundBody(req, MAX_REQUEST_BYTES).json();
+  } catch (e) {
+    // TOO BIG IS NOT MALFORMED. Answering 400 "Invalid JSON" to a well-formed
+    // 3MB body tells the caller to go looking at their serializer, and nothing
+    // anywhere records that a size limit was the reason.
+    if (String((e as Error)?.message ?? e).includes(OVERSIZE_MARKER)) {
+      return json({ error: `Request body too large (limit ${MAX_REQUEST_BYTES} bytes)` }, 413);
+    }
     return json({ error: "Invalid JSON" }, 400);
   }
   const action = String(body.action ?? "list");
@@ -7601,7 +8156,7 @@ Deno.serve(async (req) => {
       // bundle, so a stale/failed publish is visible in ONE call instead of being
       // inferred from posting counts over hours (the rung-2 "did it deploy?" pain).
       // Also the source of truth for the heartbeat's job_board_deploy check.
-      const [prog, pbMeta, rot, refreshMeta, bf, hotMeta, fresh, breaker, dateCov, boardFlow, ingestPaused, dcCache, bsMeta, dsMeta, ssMeta, esMeta, fiOk, fiBad, faMeta, aaMeta, arMeta, rsRun, rsCron, hsMeta, rcProg, rcVer, hwMeta, deepCur, chainKick, sliceStatsRow, descCov, traceRow] = await Promise.all([
+      const [prog, pbMeta, rot, refreshMeta, bf, hotMeta, fresh, breaker, dateCov, boardFlow, ingestPaused, dcCache, bsMeta, dsMeta, ssMeta, esMeta, fiOk, fiBad, faMeta, aaMeta, arMeta, rsRun, rsCron, hsMeta, rcProg, rcVer, hwMeta, deepCur, chainKick, sliceStatsRow, descCov, traceRow, overMeta] = await Promise.all([
         client.from("job_board_meta").select("v, updated_at").eq("k", "refresh_progress").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "posted_backfill").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "cold_rotation").maybeSingle(),
@@ -7730,6 +8285,12 @@ Deno.serve(async (req) => {
         // it opened every description on the board each tick.
         client.from("job_board_stats_rollup").select("v, computed_at").eq("k", "desc_coverage").maybeSingle(),
         client.from("job_board_meta").select("v").eq("k", "slice_trace").maybeSingle(),
+        // Boards the byte budget defers. On a light-capable vendor that is one
+        // pass; on the fifteen with no light form it is every pass until the
+        // vendor grows pagination here, and this is the only place an operator
+        // can see it — the board never enters failedSources, board_failures or
+        // job_board_board_state, by design (it did not fail).
+        client.from("job_board_meta").select("v, updated_at").eq("k", "oversize_boards").maybeSingle(),
       ]);
       const pgV = (prog.data?.v ?? {}) as { hot?: number; cold?: number; coldDone?: number; failedAcc?: string[]; failedTotal?: number };
       const rotV = (rot.data?.v ?? {}) as { completedAt?: string; coldBoards?: number };
@@ -8211,6 +8772,17 @@ Deno.serve(async (req) => {
           : ageMin(dcCache.data?.updated_at ?? null),
         // The last thing a slice said before it stopped saying anything.
         sliceTrace: ((traceRow as { data?: { v?: unknown } } | null)?.data?.v ?? null) as Record<string, unknown> | null,
+        // Boards past MAX_RESPONSE_BYTES: named, sized and dated, largest
+        // first. A deferral is not a failure, so nothing else on this page
+        // would ever mention them.
+        oversizeBoards: (() => {
+          const rec = ((overMeta as { data?: { v?: { boards?: Record<string, { source?: string; mb?: number; at?: string }> } } } | null)?.data?.v?.boards) ?? {};
+          return Object.entries(rec)
+            .map(([token, e]) => ({ token, source: String(e?.source ?? ""), mb: Number(e?.mb) || 0, at: String(e?.at ?? "") }))
+            .sort((a, b) => b.mb - a.mb)
+            .slice(0, 50);
+        })(),
+        oversizeBoardCount: Object.keys(((overMeta as { data?: { v?: { boards?: Record<string, unknown> } } } | null)?.data?.v?.boards) ?? {}).length,
         descCoverageAgeMin: ageMin((descCov as { data?: { computed_at?: string } } | null)?.data?.computed_at ?? null),
         descCoverage: Array.isArray((descCov as { data?: { v?: unknown } } | null)?.data?.v)
           ? ((descCov as { data: { v: Array<{ source: string; total: number; described: number }> } }).data.v).map((r) => ({
@@ -8329,7 +8901,7 @@ Deno.serve(async (req) => {
             await new Promise((r) => setTimeout(r, Math.min(Number.isFinite(ra) && ra > 0 ? ra * 1000 : 2_000, 5_000)));
             res = await send();
           }
-          const j = await res.json().catch(() => ({}));
+          const j = await boundBody(res, SELF_RESPONSE_BYTES).json().catch(() => ({}));
           return { ok: res.ok, throttled: res.status === 429, ms: Date.now() - started, body: j as Record<string, unknown> };
         } catch (e) {
           return { ok: false, throttled: false, ms: Date.now() - started, body: { error: String(e).slice(0, 80) } };
@@ -8619,7 +9191,7 @@ Deno.serve(async (req) => {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ action: "recategorize", chainKey: key, cursor, rulesVersion: CATEGORIZE_VERSION }),
-        })).then((r) => r.text()).catch(() => {}));
+        })).then((r) => discardBody(r)).catch(() => {}));
         return json({ ok: true, scanned, updated, nextCursor: cursor });
       }
       await client.from("job_board_meta").upsert(
@@ -8681,7 +9253,7 @@ Deno.serve(async (req) => {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ action: "backfill-experience", chainKey: key, cursor }),
-        })).then((r) => r.text()).catch(() => {}));
+        })).then((r) => discardBody(r)).catch(() => {}));
         return json({ ok: true, scanned, updated, nextCursor: cursor });
       }
       await client.from("job_board_meta").upsert(
@@ -9029,7 +9601,7 @@ Deno.serve(async (req) => {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ action: "backfill-posted", chainKey: key, ...nextBody }),
-          })).then((r) => r.text()).catch(() => {}));
+          })).then((r) => discardBody(r)).catch(() => {}));
       };
       if (!exhausted) {
         chain({ phase, cursor, datedTotal, scannedTotal, note: lastBoardError ? `board ${lastBoardError}` : `hop ok: ${dated}/${scanned}` });
@@ -9149,7 +9721,7 @@ Deno.serve(async (req) => {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ action: "backfill-salary", chainKey: key, cursor }),
-        })).then((r) => r.text()).catch(() => {}));
+        })).then((r) => discardBody(r)).catch(() => {}));
         return json({ ok: true, scanned, updated, nextCursor: cursor });
       }
       await client.from("job_board_meta").upsert(
@@ -9500,7 +10072,7 @@ Deno.serve(async (req) => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "backfill-desc", chainKey: key, ti }),
-      })).then((rr) => rr.text()).catch(() => {}));
+      })).then((rr) => discardBody(rr)).catch(() => {}));
       return json({ ok: true, board: s.token, updated, remaining: (rows ?? []).length === PER_HOP ? "more" : "board-done", nextTi: ti });
     }
 
@@ -9586,7 +10158,7 @@ Deno.serve(async (req) => {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ action: "embed-sweep", chainKey: key }),
-            })).then((rr) => rr.text()).catch(() => {}));
+            })).then((rr) => discardBody(rr)).catch(() => {}));
           return json({ ok: true, seeding: true, seeded });
         }
         await client.from("job_board_meta").upsert(
@@ -9607,7 +10179,7 @@ Deno.serve(async (req) => {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ action: "embed-sweep", chainKey: key }),
-            })).then((rr) => rr.text()).catch(() => {}));
+            })).then((rr) => discardBody(rr)).catch(() => {}));
           return json({ ok: true, seeding: true, seeded });
         }
         await client.from("job_board_meta").upsert(
@@ -9653,7 +10225,7 @@ Deno.serve(async (req) => {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ action: "embed-sweep", chainKey: key }),
-        })).then((rr) => rr.text()).catch(() => {}));
+        })).then((rr) => discardBody(rr)).catch(() => {}));
       return json({ ok: true, embedded, batch: rows.length });
     }
 
@@ -9707,7 +10279,7 @@ Deno.serve(async (req) => {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ action: "backfill-country", chainKey: key, cursor }),
-        })).then((rr) => rr.text()).catch(() => {}));
+        })).then((rr) => discardBody(rr)).catch(() => {}));
         return json({ ok: true, scanned, updated, nextCursor: cursor });
       }
       await client.from("job_board_meta").upsert(
@@ -9819,7 +10391,7 @@ Deno.serve(async (req) => {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ action: "desc-sweep", chainKey: key, vi, bi, vstart }),
-        })).then((rr) => rr.text()).catch(() => {}));
+        })).then((rr) => discardBody(rr)).catch(() => {}));
         return json({ ok: true, phase: "boards", token: b.token, filled, nextBi: bi });
       }
       const vendor = DETAIL_DESC_SOURCES[vi];
@@ -9966,7 +10538,7 @@ Deno.serve(async (req) => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "desc-sweep", chainKey: key, vi, vstart, ...(nextCursor ? { cursor: nextCursor } : {}) }),
-      })).then((rr) => rr.text()).catch(() => {}));
+      })).then((rr) => discardBody(rr)).catch(() => {}));
       return json({ ok: true, vendor, scanned: queue.length, updated, nextVi: vi, cursor: nextCursor });
     }
 
@@ -10208,7 +10780,7 @@ Deno.serve(async (req) => {
           cursor: sDone ? "" : nextCursor,
           passScanned: cumScanned, passFilled: cumFilled,
         }),
-      })).then((rr) => rr.text()).catch(() => {}));
+      })).then((rr) => discardBody(rr)).catch(() => {}));
       return json({ ok: true, vendor: sVendor, scanned: cumScanned, filled: cumFilled, nextCursor: sDone ? "" : nextCursor, nextVi: vi });
     }
 

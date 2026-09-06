@@ -17,6 +17,7 @@ import { BOARD_DESC_SOURCES, DETAIL_DESC_SOURCES } from "../../supabase/function
 import { BOARD_VENDORS } from "../../supabase/functions/job-board/filters";
 import { CANARIES, rawItemCount } from "../../supabase/functions/job-board/vendor-canary";
 import { ATS_VENDORS, BOARD_SOURCE_LIST, UNMEASURED_ATS_SOURCES } from "../config/ats-vendors";
+import { CATALOG } from "./helpers/catalog";
 
 /**
  * JAZZHR JOINED AS THE TWENTIETH VENDOR, AND ITS PUBLIC FEED IS A WEB PAGE.
@@ -214,17 +215,24 @@ describe("a career page with no feed behind it", () => {
   it("ships two canaries that are catalogue boards, and a first tranche of verified employers", () => {
     const canaries = CANARIES.filter((c) => c.vendor === "jazzhr");
     expect(canaries).toHaveLength(2);
-    const entries = [...SOURCES.matchAll(/s\("((?:[^"\\]|\\.)*)",\s*"jazzhr",\s*"([^"]+)"\)/g)].map((m) => ({ name: m[1], token: m[2] }));
+    // Read through the shared catalog reader, never by matching entry SYNTAX.
+    // This check used to scan sources.ts for `s("name", "jazzhr", "token")`
+    // lines; on 2026-09-06 the catalog was repacked into packed string literals
+    // to get the bundle under the deploy cap and that scan started returning
+    // ZERO jazzhr boards. It failed loudly here, but the same blindness in a
+    // uniqueness or junk-name check is a silent pass over an empty set.
+    const entries = CATALOG.filter((e) => e.source === "jazzhr");
     expect(entries.length).toBeGreaterThanOrEqual(25);
     const tokens = new Set(entries.map((e) => e.token));
     expect(tokens.size, "duplicate jazzhr token").toBe(entries.length);
     for (const c of canaries) expect(tokens.has(c.token), `canary ${c.token} must be a catalogue board`).toBe(true);
     for (const e of entries) {
+      const where = `${e.name} (${e.form} entry, catalog index ${e.index})`;
       // The vendor's internal customer-id alias of a board is not an identity.
-      expect(e.token).not.toMatch(/^\d{14}_[a-z0-9]{16}$/);
-      expect(e.token).toMatch(/^[a-z0-9][a-z0-9-]{1,60}$/);
-      expect(e.name).not.toMatch(/Career Page/i);
-      expect(e.name.trim().length).toBeGreaterThan(1);
+      expect(e.token, where).not.toMatch(/^\d{14}_[a-z0-9]{16}$/);
+      expect(e.token, where).toMatch(/^[a-z0-9][a-z0-9-]{1,60}$/);
+      expect(e.name, where).not.toMatch(/Career Page/i);
+      expect(e.name.trim().length, where).toBeGreaterThan(1);
     }
   });
 

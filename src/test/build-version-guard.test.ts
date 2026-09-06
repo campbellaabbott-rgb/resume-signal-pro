@@ -2,6 +2,12 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { resolve } from "node:path";
+import {
+  CATALOG,
+  MIN_EXPECTED_BOARDS,
+  SOURCES_PATH,
+  stripTsComments,
+} from "./helpers/catalog";
 
 /**
  * sources.ts and BUILD_VERSION must change together.
@@ -27,6 +33,30 @@ import { resolve } from "node:path";
  * supabase/functions/job-board/index.ts, then paste the new hash it prints
  * below. Two deliberate edits, which is the point — the second is the receipt
  * for the first.
+ *
+ * TWO PINS, BECAUSE THE FILE AND THE CATALOG ARE NOT THE SAME THING (added
+ * 2026-09-06 under .62). `sourcesHash` pins the BYTES of sources.ts. That is
+ * the right net for "somebody touched the catalog file", but it cannot tell a
+ * board being added from the file being re-formatted — and this repo has now
+ * re-formatted that file wholesale TWICE (.27 s()-helper conversion, .62
+ * repack) with zero catalog change both times. On each occasion the byte hash
+ * fired and the entry-for-entry proof that nothing moved was done BY HAND, in
+ * a script, and recorded in prose. Prose is not a guard.
+ *
+ * So `catalogHash`/`catalogSize` pin what the bootstrap-lane hazard is actually
+ * about: the parsed catalog — name, vendor, token, page budget, agency flag,
+ * and POSITION, because the refresh cursor is positional and a reordered
+ * catalog is a re-crawled catalog. Parsed through src/test/helpers/catalog.ts,
+ * the one reader, so a syntax change to sources.ts can never quietly shrink
+ * what this guard compares.
+ *
+ * The two pins fail with different meanings, and the messages say which:
+ *   - both move  -> boards changed. BUILD_VERSION must be bumped or the new
+ *                   ones queue behind ~28,000 cold-rotation boards.
+ *   - bytes only -> a re-format or a comment edit. Re-pin sourcesHash; no
+ *                   board is waiting on anything.
+ *   - catalog only (bytes unchanged) -> impossible, and if it ever happens the
+ *                   reader changed under the pin, not the data.
  */
 const ROOT = resolve(__dirname, "../../supabase/functions/job-board");
 
@@ -186,7 +216,52 @@ const PINNED = {
   // vendors/jazzhr.ts). sources.ts gains its first tranche — 43 boards from a
   // live-verified census sample — so the bump is load-bearing: without it the
   // new boards queue behind the full cold rotation (the 2026-08-01 lesson).
-  sourcesHash: "d1bd98b9ca3b7502",
+  // 2026-09-06.62: sources.ts REPACKED — form only, no catalog change. 44,081
+  // of the s(...) call lines became 406 packed string literals expanded at
+  // module load (records \n-separated, fields \v-separated, the vendor a
+  // numeric INDEX into `V`); the 463 object-literal entries carrying `pages`
+  // or `agency` were left as they were.
+  //
+  // WHY, and this is the second time the same cost has been paid (see the .27
+  // entry above): the job-board bundle sits against a ~4.5MB deploy cap, and a
+  // bundle over that cap deploys SUCCESSFULLY and then keeps serving the OLD
+  // version. Nothing errors, nothing warns, and the deployed code simply does
+  // not change. .60 failed that way FOUR TIMES in one day before size was
+  // suspected — four "successful" deploys, four unchanged behaviours, an
+  // afternoon spent reasoning about code that was never running. The repack is
+  // the reason .62 finally landed.
+  //
+  // The catalog is unchanged in MEANING: 44,544 entries, same order (the
+  // refresh cursor is positional), same name/vendor/token on every one; the
+  // deployed function reports catalogSize: 44544 as before. Last time that
+  // claim was made it was made by hand, in a throwaway script, and recorded
+  // here as prose. This time catalogHash below pins it.
+  //
+  // NOT a bootstrap-lane event: no board was added, so nothing is queued
+  // behind the cold rotation waiting on a bump. .62 was already minted for the
+  // slice-sizing measurement and the collection pass; the repack rides it.
+  sourcesHash: "72d52359f9c767ec",
+  // The PARSED catalog behind that hash — 44,081 packed + 463 object-literal
+  // entries — pinned separately so a re-format is distinguishable from a real
+  // catalog change (see the two-pins note at the top of this file). Read
+  // through src/test/helpers/catalog.ts, never grepped. catalogSize is also
+  // the figure the deployed function publishes, so this pin is checkable
+  // against production without reading a line of source.
+  //
+  // 44,542 SINCE 2026-09-06.63, DOWN TWO ON PURPOSE. Two of Lever's OWN demo
+  // tenants were registered as employers and both sat in HOT_TOKENS, the
+  // ~10-minute lane: lever:leverdemo ("Lever Demo 2", 12 postings) and
+  // lever:leverdemo-8 ("Lever Implementation Training Environment", 429 —
+  // "[TEMPLATE] Customer Experience Specialist", "King of Rohan"). 441
+  // fictional postings on a board whose header promises none. They were
+  // invisible twice over: the demo screen anchors on (^|[-_])(demo|test|…)
+  // to protect real employers called Sandboxx and Testlio, and "leverdemo"
+  // welds the words together — and the scanner could only see 1% of the
+  // catalog until it learned the packed form. Removing them shifts every
+  // later index by two and the refresh cursor is positional, so this costs
+  // one transient partial rotation, the same as a census merge.
+  catalogSize: 44_542,
+  catalogHash: "492c4095fc875e8b",
   // 2026-08-21.4: disables the exact-word tier's company matcher, whose index
   // never built. Bumped so the mitigation is externally identifiable.
   // 2026-08-21.5: routed retrieval. index.ts + two new modules; sources.ts
@@ -1020,7 +1095,31 @@ const PINNED = {
   //   carries origin_basis, so a stored duration says which clock produced it
   //   instead of coalescing the employer's date with our first sighting. One
   //   version line covers both: .61 never shipped on its own.
-  buildVersion: "2026-09-06.62",
+  buildVersion: "2026-09-06.63",
+};
+
+/**
+ * The catalog as one string, in file order, from the shared reader.
+ *
+ * Every field a board is fetched by (vendor, token), rendered by (name), or
+ * budgeted by (pages, agency) is in here, and so is POSITION — the index leads
+ * each record because the refresh cursor is positional, so a reordered catalog
+ * is a re-crawled catalog even when the membership is identical.
+ *
+ * JSON-encoded per entry rather than joined on a separator, because separator
+ * joins are how a fingerprint goes blind: real catalog names carry escaped
+ * quotes and trailing tabs, and one name containing whatever byte was chosen
+ * as the separator would let two different catalogs hash the same.
+ */
+const catalogFingerprint = (): string => {
+  const h = createHash("sha256");
+  for (const e of CATALOG) {
+    h.update(
+      JSON.stringify([e.index, e.name, e.source, e.token, e.pages ?? null, e.agency ?? false]),
+    );
+    h.update("\n");
+  }
+  return h.digest("hex").slice(0, 16);
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {
@@ -1033,18 +1132,32 @@ describe("sources.ts and BUILD_VERSION move together", () => {
     // real constant and this guard would pass against prose while the shipped
     // constant was stale — the trap this repo has now hit seven times.
     //
-    // LINE comments are stripped BEFORE block comments here, and the order is
-    // load-bearing: index.ts has a line comment naming `../_shared/*`, whose
-    // `/*` opens a block comment the naive block-first strip then runs to the
-    // next `*/` hundreds of lines away — taking the real constant with it and
-    // turning this guard into "BUILD_VERSION not found".
-    const CODE = idx
-      .replace(/^\s*\/\/.*$/gm, "")
-      .replace(/\/\*[\s\S]*?\*\//g, "");
-    const m = /BUILD_VERSION = "([^"]+)"/.exec(CODE);
-    expect(m, "BUILD_VERSION not found in index.ts").toBeTruthy();
+    // This used to strip comments with two regexes here, line-comments first,
+    // and the ORDER was load-bearing: index.ts has a line comment naming
+    // `../_shared/*`, whose `/*` opens a block comment that a block-first strip
+    // runs to the next `*/` hundreds of lines away, taking the real constant
+    // with it. stripTsComments is a single left-to-right pass that is also
+    // string-aware, so the ordering trap cannot exist and a `//` inside a
+    // string literal no longer eats the rest of its line. One stripper, shared
+    // with every other catalog guard.
+    const CODE = stripTsComments(idx);
+    // Both quote styles, and EXACTLY ONE match. Matching only `"` was the
+    // house bug that made a single-quoted `.from('table')` invisible; and
+    // taking the FIRST match of several would pin one declaration while the
+    // bundle shipped another — the guard would be green about the wrong
+    // constant. Two declarations is a defect in itself: the deploy identity
+    // has to be a single fact.
+    const found = [...CODE.matchAll(/BUILD_VERSION\s*=\s*["']([^"']+)["']/g)];
     expect(
-      m![1],
+      found.length,
+      found.length === 0
+        ? "no BUILD_VERSION constant found in job-board/index.ts (it is the key the bootstrap lane recomputes on)"
+        : `job-board/index.ts declares BUILD_VERSION ${found.length} times (${found
+            .map((f) => f[1])
+            .join(", ")}) — the deploy identity must be one constant, not several`,
+    ).toBe(1);
+    expect(
+      found[0][1],
       "BUILD_VERSION changed but PINNED.buildVersion in this test did not — update it",
     ).toBe(PINNED.buildVersion);
   });
@@ -1054,13 +1167,68 @@ describe("sources.ts and BUILD_VERSION move together", () => {
       .update(readFileSync(resolve(ROOT, "sources.ts")))
       .digest("hex")
       .slice(0, 16);
+    // Deliberately still the raw bytes, comments and all. This pin is not
+    // asking "did the catalog change" — catalogHash below asks that. It asks
+    // "did anyone touch the file at all", which includes the packing code (`u`,
+    // `V`) that turns 406 string literals into 44,081 boards and is now as
+    // load-bearing as the data.
     expect(
       hash,
-      `sources.ts changed. New boards will NOT enter the bootstrap lane until ` +
-        `BUILD_VERSION is bumped — they queue behind ~28,000 boards instead.\n` +
-        `  1. bump BUILD_VERSION in supabase/functions/job-board/index.ts\n` +
-        `  2. set PINNED.sourcesHash here to: ${hash}\n` +
-        `  3. set PINNED.buildVersion to the new version`,
+      `sources.ts changed. If any BOARD changed, new boards will NOT enter the ` +
+        `bootstrap lane until BUILD_VERSION is bumped — they queue behind ` +
+        `~28,000 boards instead.\n` +
+        `  1. read the catalog-content result below: if it also failed, boards ` +
+        `changed and step 2 is required; if it PASSED, this was a re-format or ` +
+        `a comment edit and no board is waiting on anything.\n` +
+        `  2. bump BUILD_VERSION in supabase/functions/job-board/index.ts\n` +
+        `  3. set PINNED.sourcesHash here to: ${hash}\n` +
+        `  4. set PINNED.buildVersion to the new version`,
     ).toBe(PINNED.sourcesHash);
+  });
+
+  /**
+   * The content pin is worthless if the reader can go blind, so this runs
+   * first and separately. On 2026-09-06 four catalog guards read the catalog by
+   * running their own /s\("..."/ over the file; the repack left every one of
+   * them seeing 465 boards out of 44,544 and cheerfully reporting no
+   * duplicates and no demo tenants about the 1% they could still parse.
+   *
+   * A short parse must never be able to look like a small catalog.
+   */
+  it("reads the whole catalog, not a fraction of it", () => {
+    expect(
+      CATALOG.length,
+      `the shared catalog reader returned ${CATALOG.length} boards, below the ` +
+        `${MIN_EXPECTED_BOARDS} floor. Every assertion below this line is then ` +
+        `being made about a fraction of the catalog. Fix the reader; do not ` +
+        `lower the floor.\n  source: ${SOURCES_PATH}`,
+    ).toBeGreaterThanOrEqual(MIN_EXPECTED_BOARDS);
+  });
+
+  it("fails when the CATALOG changes, not merely the file holding it", () => {
+    const size = CATALOG.length;
+    const hash = catalogFingerprint();
+    // Size first: it is the figure the deployed function publishes as
+    // catalogSize, so this line is the one that can be checked against
+    // production, and a count is a far more readable failure than a hash.
+    expect(
+      size,
+      `the catalog holds ${size} boards; this test pins ${PINNED.catalogSize} ` +
+        `(the live deployed catalogSize). ${
+          size > PINNED.catalogSize
+            ? `${size - PINNED.catalogSize} added — they need a BUILD_VERSION bump or they queue behind the cold rotation`
+            : `${PINNED.catalogSize - size} lost — boards do not leave the catalog by accident`
+        }.`,
+    ).toBe(PINNED.catalogSize);
+    expect(
+      hash,
+      `the catalog CONTENT moved while its size held at ${size}: a board was ` +
+        `renamed, re-keyed, re-vendored, given a pages budget or an agency ` +
+        `flag, or MOVED — the refresh cursor is positional, so a reorder ` +
+        `re-crawls the catalog.\n` +
+        `  1. bump BUILD_VERSION in supabase/functions/job-board/index.ts\n` +
+        `  2. set PINNED.catalogHash here to: ${hash}\n` +
+        `  3. set PINNED.buildVersion to the new version`,
+    ).toBe(PINNED.catalogHash);
   });
 });

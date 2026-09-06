@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
+import {
+  CATALOG,
+  CATALOG_TUPLES,
+  CODE_SOURCE,
+  MIN_EXPECTED_BOARDS,
+  VENDOR_KINDS,
+  stripTsComments,
+} from "./helpers/catalog";
 
 /**
  * "KING OF ROHAN" WAS A LIVE, SERVABLE JOB.
@@ -16,34 +24,92 @@ import { resolve } from "node:path";
  *
  * The census merges add boards mechanically, which is exactly how these got
  * in. This file is the door they came through, closed.
+ *
+ * 2026-09-06 — HOW THIS FILE READS THE CATALOG NOW. Every check here used to
+ * rebuild the catalog from its own regex over sources.ts. When the catalog was
+ * repacked into 406 packed string literals (to get the bundle back under the
+ * ~4.5MB deploy cap), those regexes did not fail — they went BLIND, seeing 465
+ * boards out of 44,544 and cheerfully reporting "no demo tenants" and "no
+ * duplicates" about 1% of the registry. The catalog is now read through the one
+ * shared parser in ./helpers/catalog, which knows all three entry forms and
+ * refuses to hand back a short list. Nothing below may re-derive the catalog
+ * from source text: a screen that can only see the boards written in one syntax
+ * is the failure this whole file exists to prevent.
  */
-const SRC = readFileSync(resolve(__dirname, "../../supabase/functions/job-board/sources.ts"), "utf8");
-
-const BOARDS: Array<[string, string, string]> = [
-  ...[...SRC.matchAll(/s\("([^"]+)",\s*"(\w+)",\s*"([^"]+)"\)/g)].map((m) => [m[1], m[2], m[3]] as [string, string, string]),
-  // Tolerates the two optional entry suffixes (the per-board window override
-  // and the agency disclosure flag, both 2026-08-31). This matcher anchored
-  // straight onto the closing brace, so a suffixed entry fell OUT of the demo
-  // screen — the exact parser blindness that unmoored PetSmart from the
-  // catalog invariants, here pointed at the screen that keeps fictional
-  // postings off the board.
-  ...[...SRC.matchAll(/\{ name: "([^"]+)", source: "(\w+)", token: "([^"]+)"(?:, pages: \d+)?(?:, agency: true)? \}/g)].map((m) => [m[1], m[2], m[3]] as [string, string, string]),
-];
 
 describe("a demo board is not an employer", () => {
   it("found the registry at all", () => {
-    expect(BOARDS.length, "the source-entry matchers have rotted").toBeGreaterThan(20_000);
+    // The property is COVERAGE, not syntax: this fails when the reader has gone
+    // blind to part of the catalog, and does NOT fail when the catalog is
+    // rewritten into a new entry form (the reader is taught the form, and a form
+    // it does not know throws out of the helper rather than being skipped).
+    expect(
+      CATALOG.length,
+      "the catalog reader has gone blind — every screen below is now judging a fraction of the registry",
+    ).toBeGreaterThanOrEqual(MIN_EXPECTED_BOARDS);
+
+    // A parse can also be long and junk: 44k half-read records would satisfy a
+    // count floor while every screen below matched on garbage.
+    const malformed = CATALOG.filter(
+      (e) => !e.name.trim() || !e.token.trim() || !VENDOR_KINDS.includes(e.source),
+    );
+    expect(
+      malformed.slice(0, 10).map((e) => `#${e.index} (${e.form}) ${JSON.stringify(e)}`),
+      "entries parsed with a blank field or an unknown vendor — the reader is mis-splitting records",
+    ).toEqual([]);
   });
 
   it("no registered token looks like a vendor demo or test tenant", () => {
     // Validated against the full registry before adoption: exactly the five
     // known demo boards matched and zero real employers did — the boundary
     // anchors are what keep "testronic" and "sandboxx" safe.
+    //
+    // 2026-09-06: that validation was done when the scanner could see the whole
+    // registry in s() form, and it holds again now — re-run over all 44,544
+    // boards, this pattern still matches zero. Note what it CANNOT see, and see
+    // the vendor-own-tenant check below: the anchors that protect "Sandboxx" and
+    // "SandboxAQ" also let "leverdemo" and "krakensandbox" through.
     const pat = /(^|[-_])(example|demo|sandbox|test)([-_]|$)/i;
-    const hits = BOARDS.filter(([, , t]) => pat.test(t));
+    const hits = CATALOG.filter((e) => pat.test(e.token));
     expect(
-      hits.map(([n, s, t]) => `${n} (${s}:${t})`),
+      hits.map((e) => `${e.name} (${e.source}:${e.token}) #${e.index} ${e.form}`),
       "vendor demo tenants serve fictional postings; delete the row and its stored postings",
+    ).toEqual([]);
+  });
+
+  it("no board is a vendor's own demo or training tenant", () => {
+    // NEW 2026-09-06, and it is red on arrival — this is a live defect the old
+    // scanner could not see, not a test problem.
+    //
+    // The anchored screen above is anchored on purpose (real employers are named
+    // Sandboxx, SandboxAQ, Testlio, Brinqa), which means it cannot match a token
+    // that welds the vendor's name to "demo". Over the full catalog exactly two
+    // boards are a VENDOR's own tenant, and both were live-verified today
+    // against api.lever.co/v0/postings:
+    //
+    //   lever:leverdemo    "Lever Demo 2"  — 12 postings, e.g. "Approved
+    //                      Professional 3", "Customer Success Manager AH Test"
+    //   lever:leverdemo-8  "Lever Implementation Training Environment" — 429
+    //                      postings, including "[TEMPLATE] Customer Experience
+    //                      Specialist" and "***POSTING TEMPLATE - ENGINEERING"
+    //
+    // Both also sit in HOT_TOKENS, so 441 fictional postings are re-crawled
+    // every ~10 minutes in the fastest lane. This is "King of Rohan" again and
+    // "Lever Test 23" again, in one entry.
+    //
+    // The screen is deliberately narrow — the vendor's OWN name welded to a
+    // demo/test word — so it needs no judgement call about whether an employer
+    // is real, and it returns zero false positives across all 44,544 boards.
+    const vendorOwn = CATALOG.filter((e) => {
+      const token = e.token.toLowerCase();
+      return VENDOR_KINDS.some((vendor) =>
+        new RegExp(`(^|[.\\-_])${vendor}(demo|test|sandbox|sample|example)`).test(token) ||
+        new RegExp(`(demo|test|sandbox|sample|example)[.\\-_]?${vendor}([.\\-_]|$)`).test(token),
+      );
+    });
+    expect(
+      vendorOwn.map((e) => `${e.name} (${e.source}:${e.token}) #${e.index} ${e.form}`),
+      "a vendor's own demo/training tenant is not an employer; delete the row, its stored postings and its HOT_TOKENS entry",
     ).toEqual([]);
   });
 
@@ -54,12 +120,20 @@ describe("a demo board is not an employer", () => {
     // are no longer pinned removed — they may legitimately re-merge. What
     // stays pinned is what is junk under ANY charter: vendor demo tenants
     // serving fictional postings, and duplicate boards that double-count.
-    for (const tok of [
-      '"rohansrecruiterssandbox"', '"examplecorpsandbox"', '"levertest"',
-      '"n2alljobs"', '"morrisgroupsite"',
-      '"jobs.mastec.com"', '"ashby-embed-demo-org"',
+    //
+    // 2026-09-06: this used to ask whether the byte sequence `"levertest"`
+    // appeared in the file. After the repack a packed token is written bare
+    // between separators, with no quotes anywhere near it, so every one of these
+    // seven pins had become unfalsifiable — they could not have failed if the
+    // board came back. The property was never "the string is absent from the
+    // file"; it is "the board is not REGISTERED", so ask the registry.
+    const registeredTokens = new Set(CATALOG.map((e) => e.token));
+    for (const token of [
+      "rohansrecruiterssandbox", "examplecorpsandbox", "levertest",
+      "n2alljobs", "morrisgroupsite",
+      "jobs.mastec.com", "ashby-embed-demo-org",
     ]) {
-      expect(SRC.includes(tok), `${tok} was re-registered`).toBe(false);
+      expect(registeredTokens.has(token), `${token} was re-registered`).toBe(false);
     }
     // The two token strings that legitimately survive on OTHER vendors:
     // ashby's "pulse" is a real employer, and greenhouse's "example" only as
@@ -73,18 +147,28 @@ describe("a demo board is not an employer", () => {
     // the 2026-08-31 charter now carries WITH disclosure. It is catalogued
     // plainly; if it is ever tagged agency the disclosure covers it. The old
     // assertion also only matched the s(...) spelling, so the board sat in
-    // the catalog as an object literal while this test read green.
-    expect(/s\("Democorp", "greenhouse", "example"\)/.test(SRC)).toBe(false);
-    expect(/\{ name: "Democorp", source: "greenhouse", token: "example"/.test(SRC)).toBe(false);
+    // the catalog as an object literal while this test read green — and after
+    // the repack it matched no spelling at all. Both pins are now pair
+    // lookups against the parsed registry, which is syntax-independent.
+    expect(
+      CATALOG.filter((e) => e.source === "greenhouse" && e.token === "example")
+        .map((e) => `${e.name} #${e.index} ${e.form}`),
+      "the greenhouse demo tenant is back on the board",
+    ).toEqual([]);
+    expect(
+      CATALOG.filter((e) => e.name === "Democorp").map((e) => `${e.source}:${e.token} #${e.index}`),
+      "Democorp is back on the board",
+    ).toEqual([]);
   });
 
   it("no two boards of one vendor share a token", () => {
     const seen = new Map<string, string>();
     const dups: string[] = [];
-    for (const [name, src, tok] of BOARDS) {
-      const k = `${src}:${tok}`;
-      if (seen.has(k)) dups.push(`${k} as both "${seen.get(k)}" and "${name}"`);
-      else seen.set(k, name);
+    for (const entry of CATALOG) {
+      const k = `${entry.source}:${entry.token}`;
+      const first = seen.get(k);
+      if (first !== undefined) dups.push(`${k} as both ${first} and "${entry.name}" (#${entry.index})`);
+      else seen.set(k, `"${entry.name}" (#${entry.index})`);
     }
     expect(dups, "one feed registered twice makes every posting a double").toEqual([]);
   });
@@ -92,10 +176,17 @@ describe("a demo board is not an employer", () => {
   it("every hot token is a registered board", () => {
     // "Lever Test 23" sat in the 10-minute re-crawl set with ZERO postings —
     // a hot slot spent on a test tenant. Heat must not outlive registration.
-    const hotBlock = /HOT_TOKENS: Set<string> = new Set\(\[([\s\S]*?)\]\)/.exec(SRC)?.[1] ?? "";
+    //
+    // Read from the comment-stripped source: a HOT_TOKENS block quoted in a
+    // comment (this repo has been bitten seven times by exactly that) would
+    // otherwise be matched instead of the live one.
+    const hotBlock = /HOT_TOKENS: Set<string> = new Set\(\[([\s\S]*?)\]\)/.exec(CODE_SOURCE)?.[1] ?? "";
     expect(hotBlock, "HOT_TOKENS not found").not.toBe("");
     const hot = [...hotBlock.matchAll(/"([^"]+)"/g)].map((m) => m[1]);
-    const registered = new Set(BOARDS.map(([, , t]) => t));
+    // An empty or near-empty hot list means the matcher rotted, and a rotted
+    // matcher passes this test vacuously — the same blindness, one file over.
+    expect(hot.length, "the HOT_TOKENS matcher has rotted").toBeGreaterThan(20);
+    const registered = new Set(CATALOG_TUPLES.map(([, , t]) => t));
     const orphans = hot.filter((t) => !registered.has(t));
     expect(orphans, "hot tokens with no board burn the fastest crawl slots on nothing").toEqual([]);
   });
@@ -116,8 +207,16 @@ describe("a demo sandbox is not an employer, even when a real company owns it", 
   const migTokens = [...MIG.matchAll(/^\s*'([a-z0-9.-]+)',?$/gm)].map((m) => m[1]);
 
   it("all 111 removed tokens are out of the registry", () => {
-    const registered = new Set(BOARDS.filter(([src]) => src === "pinpoint").map(([, , t]) => t));
+    // 2026-09-06: the pinpoint side of this had gone blind too — the old
+    // scanner could see a handful of pinpoint boards, so "none of the 111 are
+    // registered" was a statement about a sliver. All 481 pinpoint boards are
+    // visible through the shared reader now, and none of the 111 is among them.
+    const registered = new Set(CATALOG.filter((e) => e.source === "pinpoint").map((e) => e.token));
     expect(migTokens.length).toBe(111);
+    expect(
+      registered.size,
+      "zero pinpoint boards parsed — the reader cannot see the vendor this test screens",
+    ).toBeGreaterThan(0);
     const still = migTokens.filter((t) => registered.has(t));
     expect(still, "a deleted board still registered re-ingests its fake postings next pass").toEqual([]);
   });
@@ -150,6 +249,11 @@ describe("a high-water mark above the real catalog turns the prune off", () => {
   // literal never exceeds the catalog the bundle actually carries. It keeps
   // holding as the catalog GROWS, because the guard re-stamps upward on its
   // own; only a literal above the catalog is a defect.
+  //
+  // 2026-09-06: the comparison is against the TRUE catalog size from the shared
+  // reader. Under the old scanner this test read the catalog as 465 boards, so
+  // it demanded that the clamp be at most 465 — it had inverted into a demand to
+  // turn the prune off. A size this test gets wrong is worse than no test.
   const MIG_DIR = resolve(__dirname, "../../supabase/migrations");
   const highWaterMigs = readdirSync(MIG_DIR)
     .filter((f) => f.endsWith(".sql"))
@@ -165,8 +269,13 @@ describe("a high-water mark above the real catalog turns the prune off", () => {
     // job_board_meta is service-role-only, so the only evidence that the
     // prune had stopped was a log line. status now carries the mark and a
     // derived boolean, which is what made this verifiable.
-    const FN = readFileSync(resolve(__dirname, "../../supabase/functions/job-board/index.ts"), "utf8");
-    const code = FN.replace(/\/\*[\s\S]*?\*\//g, "").split("\n").map((l) => l.replace(/\/\/.*$/, "")).join("\n");
+    //
+    // Comment-stripped through the shared blanker (the local `//.*$` strip this
+    // used to do cuts a line in half at any `//` inside a string — a URL, a
+    // regex — and can blank live code out of the text being asserted on).
+    const code = stripTsComments(
+      readFileSync(resolve(__dirname, "../../supabase/functions/job-board/index.ts"), "utf8"),
+    );
     expect(code).toMatch(/catalogHighwater:/);
     expect(code).toMatch(/orphanPruneBlocked: JOB_SOURCES\.length < /);
     expect(code).toMatch(/eq\("k", "catalog_highwater"\)/);
@@ -187,8 +296,8 @@ describe("a high-water mark above the real catalog turns the prune off", () => {
     for (const literal of literals) {
       expect(
         literal,
-        `${last.f} clamps the high-water to ${literal}, but the catalog carries ${BOARDS.length} boards — a mark above the catalog disables the orphan prune outright (strict <)`,
-      ).toBeLessThanOrEqual(BOARDS.length);
+        `${last.f} clamps the high-water to ${literal}, but the catalog carries ${CATALOG.length} boards — a mark above the catalog disables the orphan prune outright (strict <)`,
+      ).toBeLessThanOrEqual(CATALOG.length);
     }
   });
 });

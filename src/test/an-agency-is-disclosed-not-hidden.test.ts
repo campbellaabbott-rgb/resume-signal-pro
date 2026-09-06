@@ -20,6 +20,7 @@
  *     cannot bind it away from answering a request that carries it.
  */
 import { describe, expect, it } from "vitest";
+import { CATALOG } from "./helpers/catalog";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import {
@@ -108,9 +109,24 @@ describe("the catalog carries the flag", () => {
     // source-catalog-invariants is deliberately ABSENT: since 2026-09-03 it
     // imports JOB_SOURCES instead of parsing text, so it has no suffix
     // tolerance left to rot — the parse cannot drop a board at all.
+    // THE SHARED READER IS CHECKED BY BEHAVIOUR, NOT BY SPELLING.
+    //
+    // The catalog guards stopped parsing text of their own and now read
+    // src/test/helpers/catalog.ts, so the suffix tolerance moved there with
+    // the parsing. Text-matching it would pin one regex's spelling — and the
+    // helper writes the same rule differently (\bagency\s*:\s*(true|false)\b),
+    // which is not a defect. What must hold is that a real entry carrying the
+    // disclosure suffix survives the parse. That is checkable directly, so
+    // check it: a spelling pin here would pass a reader that matched the
+    // regex and dropped the flag.
+    const flagged = CATALOG.filter((b) => b.agency === true);
+    expect(flagged.length, "the shared catalog reader dropped the agency flag").toBeGreaterThan(0);
+    expect(
+      flagged.every((b) => !!b.name && !!b.token && !!b.source),
+      "an agency-flagged entry lost a field to the suffix",
+    ).toBe(true);
+
     for (const [file, marker] of [
-      ["src/test/an-employer-name-comes-from-the-employer.test.ts", "agency"],
-      ["src/test/a-demo-board-is-not-an-employer.test.ts", "agency"],
       ["scripts/census-drivable-yield.mjs", "agency"],
     ] as const) {
       const text = strip(read(file));

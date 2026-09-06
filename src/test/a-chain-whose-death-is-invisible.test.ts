@@ -94,7 +94,16 @@ describe("a chain whose death is invisible", () => {
     // appended sliceStatsRow and this anchor moved with it).
     // .33 appended descCov (desc_coverage) after sliceStatsRow — still appended, never inserted.
     // .40 appended the slice_trace read after descCov — still appended.
-    const arr = CODE.slice(CODE.indexOf("hwMeta, deepCur, chainKick, sliceStatsRow, descCov, traceRow] = await Promise.all(["));
+    // .63 appended overMeta (oversize_boards) after traceRow — still appended.
+    //
+    // The anchor pinned the CLOSING bracket of the destructure, so appending
+    // one more binding made indexOf return -1 and every ordering comparison
+    // below compared -1 to -1, which passes. A guard that silently stops
+    // looking is worse than one that fails. Anchor on the stable PREFIX and
+    // assert the slice was actually found.
+    const at = CODE.indexOf("hwMeta, deepCur, chainKick, sliceStatsRow, descCov, traceRow");
+    expect(at, "the status destructure was not found — this guard cannot read what it protects").toBeGreaterThan(-1);
+    const arr = CODE.slice(at);
     expect(arr.indexOf('eq("k", "slice_trace")'), "the trace read must trail the desc_coverage read").toBeGreaterThan(arr.indexOf('eq("k", "desc_coverage")'));
     expect(arr.indexOf('eq("k", "desc_coverage")'), "the desc_coverage read must trail the slice_stats read").toBeGreaterThan(arr.indexOf('eq("k", "slice_stats")'));
     const deep = arr.indexOf('eq("k", "deep_cursor")');
