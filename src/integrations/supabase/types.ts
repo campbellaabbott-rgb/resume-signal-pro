@@ -1495,11 +1495,81 @@ export type Database = {
         }
         Relationships: []
       }
+      job_board_board_state: {
+        Row: {
+          company_token: string
+          feed_total: number | null
+          live_count: number | null
+          observed_at: string
+          observed_on: string
+          source: string
+          state: string
+          stored_count: number | null
+        }
+        Insert: {
+          company_token: string
+          feed_total?: number | null
+          live_count?: number | null
+          observed_at?: string
+          observed_on?: string
+          source?: string
+          state?: string
+          stored_count?: number | null
+        }
+        Update: {
+          company_token?: string
+          feed_total?: number | null
+          live_count?: number | null
+          observed_at?: string
+          observed_on?: string
+          source?: string
+          state?: string
+          stored_count?: number | null
+        }
+        Relationships: []
+      }
+      job_board_click_rollup: {
+        Row: {
+          apply_clicks: number
+          category: string
+          clicks: number
+          company_token: string
+          day: string
+          p50_position: number | null
+          rolled_at: string
+          salary_known_clicks: number
+          salary_present_clicks: number
+        }
+        Insert: {
+          apply_clicks?: number
+          category: string
+          clicks?: number
+          company_token: string
+          day: string
+          p50_position?: number | null
+          rolled_at?: string
+          salary_known_clicks?: number
+          salary_present_clicks?: number
+        }
+        Update: {
+          apply_clicks?: number
+          category?: string
+          clicks?: number
+          company_token?: string
+          day?: string
+          p50_position?: number | null
+          rolled_at?: string
+          salary_known_clicks?: number
+          salary_present_clicks?: number
+        }
+        Relationships: []
+      }
       job_board_closure_rollup: {
         Row: {
           category: string
           company: string
           company_token: string
+          dated_n: number | null
           fills: number
           first_closed_at: string | null
           last_closed_at: string | null
@@ -1513,6 +1583,7 @@ export type Database = {
           category?: string
           company?: string
           company_token: string
+          dated_n?: number | null
           fills?: number
           first_closed_at?: string | null
           last_closed_at?: string | null
@@ -1526,6 +1597,7 @@ export type Database = {
           category?: string
           company?: string
           company_token?: string
+          dated_n?: number | null
           fills?: number
           first_closed_at?: string | null
           last_closed_at?: string | null
@@ -1539,43 +1611,112 @@ export type Database = {
       }
       job_board_closures: {
         Row: {
+          batch_live_before: number | null
+          batch_removed: number | null
           category: string
           closed_at: string
           company: string
           company_token: string
+          country: string | null
+          department: string | null
+          employment_type: string | null
           event_id: number
+          experience_band: string | null
           first_seen: string | null
+          min_years: number | null
           posted_at: string | null
           posting_id: string
+          region_code: string | null
+          salary_currency: string | null
+          salary_max_annual: number | null
+          salary_min_annual: number | null
+          salary_period: string | null
           source: string
           superseded: boolean
+          suspect: boolean
           title: string
+          work_mode: string | null
         }
         Insert: {
+          batch_live_before?: number | null
+          batch_removed?: number | null
           category?: string
           closed_at?: string
           company?: string
           company_token: string
+          country?: string | null
+          department?: string | null
+          employment_type?: string | null
           event_id?: never
+          experience_band?: string | null
           first_seen?: string | null
+          min_years?: number | null
           posted_at?: string | null
           posting_id: string
+          region_code?: string | null
+          salary_currency?: string | null
+          salary_max_annual?: number | null
+          salary_min_annual?: number | null
+          salary_period?: string | null
           source: string
           superseded?: boolean
+          suspect?: boolean
           title?: string
+          work_mode?: string | null
         }
         Update: {
+          batch_live_before?: number | null
+          batch_removed?: number | null
           category?: string
           closed_at?: string
           company?: string
           company_token?: string
+          country?: string | null
+          department?: string | null
+          employment_type?: string | null
           event_id?: never
+          experience_band?: string | null
           first_seen?: string | null
+          min_years?: number | null
           posted_at?: string | null
           posting_id?: string
+          region_code?: string | null
+          salary_currency?: string | null
+          salary_max_annual?: number | null
+          salary_min_annual?: number | null
+          salary_period?: string | null
           source?: string
           superseded?: boolean
+          suspect?: boolean
           title?: string
+          work_mode?: string | null
+        }
+        Relationships: []
+      }
+      job_board_company_dim_snapshots: {
+        Row: {
+          company_token: string
+          dimension: string
+          roles_served: number
+          roles_stored: number
+          snapshot_date: string
+          value: string
+        }
+        Insert: {
+          company_token: string
+          dimension: string
+          roles_served?: number
+          roles_stored?: number
+          snapshot_date: string
+          value: string
+        }
+        Update: {
+          company_token?: string
+          dimension?: string
+          roles_served?: number
+          roles_stored?: number
+          snapshot_date?: string
+          value?: string
         }
         Relationships: []
       }
@@ -1584,18 +1725,21 @@ export type Database = {
           company: string
           company_token: string
           open_roles: number
+          open_roles_served: number | null
           snapshot_date: string
         }
         Insert: {
           company?: string
           company_token: string
           open_roles?: number
+          open_roles_served?: number | null
           snapshot_date: string
         }
         Update: {
           company?: string
           company_token?: string
           open_roles?: number
+          open_roles_served?: number | null
           snapshot_date?: string
         }
         Relationships: []
@@ -1629,34 +1773,178 @@ export type Database = {
           },
         ]
       }
-      job_board_exits: {
+      job_board_exit_rollup: {
         Row: {
           category: string
           company_token: string
-          days_on_board: number | null
-          event_id: number
+          country: string
+          dim_counts: Json
           exit_reason: string
-          exited_at: string
-          posting_id: string
-          source: string
+          exits: number
+          first_exited_at: string | null
+          last_exited_at: string | null
+          month: string
+          n_basis_unrecorded: number
+          n_discovered: number
+          n_salary_disclosed: number
+          n_stated: number
+          p50_days_discovered: number | null
+          p50_days_stated: number | null
+          p50_salary_min_annual: number | null
+          p75_days_discovered: number | null
+          p75_days_stated: number | null
+          rolled_at: string
         }
         Insert: {
           category?: string
           company_token: string
-          days_on_board?: number | null
-          event_id?: never
+          country?: string
+          dim_counts?: Json
           exit_reason: string
-          exited_at?: string
-          posting_id: string
-          source: string
+          exits?: number
+          first_exited_at?: string | null
+          last_exited_at?: string | null
+          month: string
+          n_basis_unrecorded?: number
+          n_discovered?: number
+          n_salary_disclosed?: number
+          n_stated?: number
+          p50_days_discovered?: number | null
+          p50_days_stated?: number | null
+          p50_salary_min_annual?: number | null
+          p75_days_discovered?: number | null
+          p75_days_stated?: number | null
+          rolled_at?: string
         }
         Update: {
           category?: string
           company_token?: string
+          country?: string
+          dim_counts?: Json
+          exit_reason?: string
+          exits?: number
+          first_exited_at?: string | null
+          last_exited_at?: string | null
+          month?: string
+          n_basis_unrecorded?: number
+          n_discovered?: number
+          n_salary_disclosed?: number
+          n_stated?: number
+          p50_days_discovered?: number | null
+          p50_days_stated?: number | null
+          p50_salary_min_annual?: number | null
+          p75_days_discovered?: number | null
+          p75_days_stated?: number | null
+          rolled_at?: string
+        }
+        Relationships: []
+      }
+      job_board_exits: {
+        Row: {
+          category: string
+          company: string | null
+          company_token: string
+          country: string | null
+          days_on_board: number | null
+          department: string | null
+          employment_type: string | null
+          event_id: number
+          exit_reason: string
+          exited_at: string
+          experience_band: string | null
+          min_years: number | null
+          origin_basis: string | null
+          posted_at: string | null
+          posting_id: string
+          region_code: string | null
+          salary_currency: string | null
+          salary_max_annual: number | null
+          salary_min_annual: number | null
+          salary_period: string | null
+          source: string
+          title: string | null
+          work_mode: string | null
+        }
+        Insert: {
+          category?: string
+          company?: string | null
+          company_token: string
+          country?: string | null
           days_on_board?: number | null
+          department?: string | null
+          employment_type?: string | null
+          event_id?: never
+          exit_reason: string
+          exited_at?: string
+          experience_band?: string | null
+          min_years?: number | null
+          origin_basis?: string | null
+          posted_at?: string | null
+          posting_id: string
+          region_code?: string | null
+          salary_currency?: string | null
+          salary_max_annual?: number | null
+          salary_min_annual?: number | null
+          salary_period?: string | null
+          source: string
+          title?: string | null
+          work_mode?: string | null
+        }
+        Update: {
+          category?: string
+          company?: string | null
+          company_token?: string
+          country?: string | null
+          days_on_board?: number | null
+          department?: string | null
+          employment_type?: string | null
           event_id?: never
           exit_reason?: string
           exited_at?: string
+          experience_band?: string | null
+          min_years?: number | null
+          origin_basis?: string | null
+          posted_at?: string | null
+          posting_id?: string
+          region_code?: string | null
+          salary_currency?: string | null
+          salary_max_annual?: number | null
+          salary_min_annual?: number | null
+          salary_period?: string | null
+          source?: string
+          title?: string | null
+          work_mode?: string | null
+        }
+        Relationships: []
+      }
+      job_board_field_changes: {
+        Row: {
+          company_token: string
+          field: string
+          id: number
+          new_value: string | null
+          observed_at: string
+          old_value: string | null
+          posting_id: string
+          source: string
+        }
+        Insert: {
+          company_token?: string
+          field: string
+          id?: never
+          new_value?: string | null
+          observed_at?: string
+          old_value?: string | null
+          posting_id: string
+          source?: string
+        }
+        Update: {
+          company_token?: string
+          field?: string
+          id?: never
+          new_value?: string | null
+          observed_at?: string
+          old_value?: string | null
           posting_id?: string
           source?: string
         }
@@ -1745,6 +2033,7 @@ export type Database = {
           min_years: number | null
           missing_since: string | null
           posted_at: string | null
+          region_code: string | null
           remote: boolean
           salary: string | null
           salary_currency: string | null
@@ -1777,6 +2066,7 @@ export type Database = {
           min_years?: number | null
           missing_since?: string | null
           posted_at?: string | null
+          region_code?: string | null
           remote?: boolean
           salary?: string | null
           salary_currency?: string | null
@@ -1809,6 +2099,7 @@ export type Database = {
           min_years?: number | null
           missing_since?: string | null
           posted_at?: string | null
+          region_code?: string | null
           remote?: boolean
           salary?: string | null
           salary_currency?: string | null
@@ -1827,29 +2118,38 @@ export type Database = {
       job_board_search_clicks: {
         Row: {
           at: string
+          category: string | null
+          company_token: string | null
           id: number
           kind: string
           position: number | null
           posting_id: string
           q: string
+          salary_present: boolean | null
           search_id: string | null
         }
         Insert: {
           at?: string
+          category?: string | null
+          company_token?: string | null
           id?: never
           kind?: string
           position?: number | null
           posting_id: string
           q?: string
+          salary_present?: boolean | null
           search_id?: string | null
         }
         Update: {
           at?: string
+          category?: string | null
+          company_token?: string | null
           id?: never
           kind?: string
           position?: number | null
           posting_id?: string
           q?: string
+          salary_present?: boolean | null
           search_id?: string | null
         }
         Relationships: []
@@ -1857,6 +2157,7 @@ export type Database = {
       job_board_search_events: {
         Row: {
           at: string
+          caller: string | null
           filters: Json
           id: number
           location: string
@@ -1866,11 +2167,13 @@ export type Database = {
           results: number
           route: string
           search_id: string
+          shown: Json | null
           took_ms: number | null
           total: number | null
         }
         Insert: {
           at?: string
+          caller?: string | null
           filters?: Json
           id?: never
           location?: string
@@ -1880,11 +2183,13 @@ export type Database = {
           results?: number
           route?: string
           search_id: string
+          shown?: Json | null
           took_ms?: number | null
           total?: number | null
         }
         Update: {
           at?: string
+          caller?: string | null
           filters?: Json
           id?: never
           location?: string
@@ -1894,6 +2199,7 @@ export type Database = {
           results?: number
           route?: string
           search_id?: string
+          shown?: Json | null
           took_ms?: number | null
           total?: number | null
         }
@@ -1923,6 +2229,51 @@ export type Database = {
           location?: string
           q?: string
           src?: string
+        }
+        Relationships: []
+      }
+      job_board_search_rollup: {
+        Row: {
+          caller: string
+          clicked_searches: number
+          day: string
+          distinct_queries: number
+          p50_took_ms: number | null
+          p90_took_ms: number | null
+          paged_requests: number
+          rescued: number
+          rolled_at: string
+          route: string
+          searches: number
+          zero_results: number
+        }
+        Insert: {
+          caller: string
+          clicked_searches?: number
+          day: string
+          distinct_queries?: number
+          p50_took_ms?: number | null
+          p90_took_ms?: number | null
+          paged_requests?: number
+          rescued?: number
+          rolled_at?: string
+          route: string
+          searches?: number
+          zero_results?: number
+        }
+        Update: {
+          caller?: string
+          clicked_searches?: number
+          day?: string
+          distinct_queries?: number
+          p50_took_ms?: number | null
+          p90_took_ms?: number | null
+          paged_requests?: number
+          rescued?: number
+          rolled_at?: string
+          route?: string
+          searches?: number
+          zero_results?: number
         }
         Relationships: []
       }
@@ -3555,6 +3906,24 @@ export type Database = {
         Args: { p_cache_key: string; p_function_name: string }
         Returns: Json
       }
+      get_category_fill_curve: {
+        Args: { p_days?: number; p_min_n?: number }
+        Returns: {
+          category: string
+          dated_coverage: number
+          fill_rate_14: number
+          fill_rate_14_hi: number
+          fill_rate_14_lo: number
+          fills_le_14: number
+          median_censored: boolean
+          median_days_to_fill: number
+          n_at_risk_14: number
+          relist_rate_14: number
+          still_open_14: number
+          sufficient: boolean
+          window_days: number
+        }[]
+      }
       get_category_fill_speed: {
         Args: { p_days?: number; p_min_closures?: number }
         Returns: {
@@ -3578,6 +3947,35 @@ export type Database = {
         }[]
       }
       get_company_claim_status: { Args: { p_token: string }; Returns: Json }
+      get_company_fill_curve: {
+        Args: { p_tokens: string[] }
+        Returns: {
+          absorption: number
+          ageouts_90d: number
+          churn: number
+          company_token: string
+          dated_coverage: number
+          dated_n: number
+          fill_rate_14: number
+          fill_rate_14_hi: number
+          fill_rate_14_lo: number
+          fill_rate_30: number
+          fill_rate_7: number
+          fill_through: number
+          fills_90d: number
+          fills_le_14: number
+          median_censored: boolean
+          median_days_to_fill: number
+          n_at_risk_14: number
+          open_roles: number
+          relist_rate_14: number
+          relists_90d: number
+          still_open_14: number
+          sufficient: boolean
+          tracking_days: number
+          undated_n: number
+        }[]
+      }
       get_company_financials: { Args: { p_token: string }; Returns: Json }
       get_company_hiring_health: {
         Args: { p_tokens: string[] }
@@ -4367,6 +4765,21 @@ export type Database = {
           rows_pruned: number
         }[]
       }
+      roll_up_and_prune_exits: {
+        Args: { p_keep_days?: number }
+        Returns: {
+          months_rolled: number
+          rows_pruned: number
+        }[]
+      }
+      roll_up_and_prune_search_demand: {
+        Args: { p_keep_days?: number }
+        Returns: {
+          clicks_pruned: number
+          events_pruned: number
+          rows_rolled: number
+        }[]
+      }
       save_free_scan_lead: {
         Args: { p_ats_score?: number; p_email: string; p_industry?: string }
         Returns: boolean
@@ -4476,6 +4889,7 @@ export type Database = {
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
       snapshot_company_counts: { Args: never; Returns: undefined }
+      snapshot_company_dim_counts: { Args: never; Returns: undefined }
       store_cached_response: {
         Args: {
           p_cache_key: string
