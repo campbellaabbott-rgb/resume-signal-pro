@@ -28,6 +28,22 @@ const locales = readdirSync(localeDir).filter((f) => f.endsWith(".json"));
 
 const readJson = (p: string) => JSON.parse(readFileSync(p, "utf8"));
 
+// CODE assertions read this; PROSE assertions read the raw file. Seven times
+// now a guard in this repo has passed because the spelling it pinned survived
+// in a comment while the code that made the claim was gone, and the estimator
+// change quotes every sentence it deleted inside the block comment that
+// replaced it — so a claim guard run against raw source here is checking an
+// obituary.
+//
+// LINE comments come off FIRST. A line comment containing `/*` — a path glob
+// such as `../_shared/*` — otherwise opens a block comment that the naive
+// block-first strip runs to the next `*/`, deleting thousands of characters of
+// real code along the way and quietly turning any assertion over that span
+// vacuous. Measured: that exact glob eats 5,287 characters of the job-board
+// function, the BUILD_VERSION constant among them.
+const strip = (src: string) =>
+  src.replace(/^\s*\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
+
 function allStrings(o: unknown, path = ""): Array<[string, string]> {
   if (typeof o === "string") return [[path, o]];
   if (Array.isArray(o)) return o.flatMap((v, i) => allStrings(v, `${path}[${i}]`));
@@ -893,14 +909,46 @@ describe("Ghost Job Index age stats use the company's date, not our discovery ti
     // posting it", which reads as a fact about hiring when it is a fact about
     // roles that close inside a month. Same class as the first_seen-vs-posted_at
     // incident: the number was right and the sentence around it was not.
-    const page = readFileSync(resolve(root, "src/pages/GhostJobIndex.tsx"), "utf8");
-    const claim = page.slice(page.indexOf("median_days_to_close != null"));
-    const sentence = claim.slice(0, claim.indexOf("Postings that never close"));
-    expect(sentence, "the rendered claim must state the 30-day window").toMatch(/within 30 days/);
-    // …and the methodology entry must explain WHY the bound exists, or the
-    // number reads as a fact about hiring speed rather than about this board.
-    const method = page.slice(page.indexOf('term: "Typical time to close"'));
-    expect(method.slice(0, 1400)).toMatch(/drops any posting older than 30 days|structural/);
+    // 2026-09-06: THE CLAIM WAS NOT MOVED, IT WAS DELETED. The censored median
+    // is gone from this page — the estimator replaced it with R(14), a share at
+    // a fixed horizon, which has no median to censor. So the specific failure
+    // mode this guard was written for is now impossible BY CONSTRUCTION, and
+    // the guard pins the construction. The CLASS is very much alive: the page
+    // still publishes a fill share, a relist floor, an interval and a censored
+    // count, and any of those could ship without the bound beside them.
+    //
+    // Everything below reads CODE, never the raw file. This page is the repo's
+    // seven-time trap live: the deleted sentence is quoted verbatim inside the
+    // new block comment, so "30-day cap" occurs three times in the raw source
+    // and once in the code, and a guard rewritten against raw source would pass
+    // on an explanation of a claim the page no longer makes.
+    //
+    // Line comments come off BEFORE block comments — a line comment containing
+    // `/*` (a path glob, say) otherwise opens a block the strip runs to the
+    // next `*/`, silently deleting real code and turning a guard vacuous.
+    const raw = readFileSync(resolve(root, "src/pages/GhostJobIndex.tsx"), "utf8");
+    const page = raw.replace(/^\s*\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
+    // (1) The construction: the retired censored median must not be rendered.
+    expect(page, "the censored median is back on the page").not.toMatch(/stats\??\.median_days_to_close/);
+    // (2) The replacement claim names its horizon AND the cap that bounds what
+    //     we can observe. The horizon in the copy is the pinned constant, not a
+    //     re-typed literal that can drift away from the number the table uses.
+    expect(page).toMatch(/const FILL_HORIZON_DAYS = 14/);
+    const caption = page.slice(page.indexOf("Share of a field's roles"));
+    expect(caption, "the field-table caption moved — re-anchor, do not delete").not.toBe("");
+    const head = caption.slice(0, 2000);
+    expect(head, "the caption must interpolate the pinned horizon, not a literal")
+      .toMatch(/\{FILL_HORIZON_DAYS\} days/);
+    expect(head, "the caption must say what happens to roles that outlive the cap")
+      .toMatch(/roles that passed our 30-day cap,\s+are\s+counted as unfinished rather than left out/);
+    expect(head, "a censored median must be reported as a finding, not omitted")
+      .toMatch(/still up at 30 days/);
+    // (3) …and the methodology entry must explain WHY the bound exists, or the
+    //     number reads as a fact about hiring speed rather than about this
+    //     board. The term was renamed with the statistic it describes.
+    const method = page.slice(page.indexOf('term: "How often roles are actually filled"'));
+    expect(method, "the methodology term was renamed again — re-anchor it").not.toBe("");
+    expect(method.slice(0, 1800)).toMatch(/drops any posting older than 30 days|structural/);
   });
 
   it("every surface quoting time-to-close states the 30-day window", () => {
@@ -914,27 +962,155 @@ describe("Ghost Job Index age stats use the company's date, not our discovery ti
     // the sources note had — and worse here, because these live in nine
     // locales, where the translated value overrides the English default and
     // the qualifier has to exist in all of them or it simply is not shown.
-    const KEYS: Array<[string, string]> = [
-      ["accountPage", "replyWindow"],
-      ["accountPage", "replyWindowPast"],
-      ["jobsPage", "urgencyTipFills"],
+    // 2026-09-06: THIS GUARD HAD GONE DEAD AND STILL SHOWED GREEN. Its key
+    // list named accountPage.replyWindow, accountPage.replyWindowPast and
+    // jobsPage.urgencyTipFills. All three are retired — Account.tsx renders
+    // replyWindowFill*, Jobs.tsx renders urgencyTipRateDated — but the keys
+    // stay in all nine locale files by this repo's deliberate convention (a
+    // locale VALUE overrides an inline default, so deleting one mid-flight
+    // leaves nine translations rendering the retired sentence). So the loop
+    // was checking three strings no user can see, and `if (!v) continue` meant
+    // it would have kept doing that silently through any future rename.
+    //
+    // The skip is gone. A key named here must EXIST in every locale: a guard
+    // that shrugs at an absent key cannot tell a retired string from a lost
+    // one, which is precisely how this one died.
+    //
+    // Each key also states its OWN bound rather than passing a bare /30/. The
+    // horizon is interpolated ({{h}} or {{d}}) so the sentence follows the
+    // constant instead of freezing a number beside it; the cap is literal 30
+    // where the copy names the edge of our record.
+    const KEYS: Array<[string, string, RegExp[]]> = [
+      ["accountPage", "replyWindowFill", [/\{\{h\}\}/]],
+      ["accountPage", "replyWindowFillPast", [/\{\{h\}\}/]],
+      ["accountPage", "replyWindowFillCensored", [/30/]],
+      ["jobsPage", "urgencyTipRateDated", [/\{\{d\}\}/, /30/]],
+      ["jobsPage", "fieldCurveCompareBounded", [/\{\{d\}\}/, /\{\{window\}\}/]],
+      ["jobsPage", "fillCurveLineBounded", [/\{\{d\}\}/, /\{\{window\}\}/]],
+      ["jobsPage", "fieldMedianCensored", [/\{\{d\}\}/]],
     ];
     for (const file of readdirSync(localeDir).filter((f) => f.endsWith(".json"))) {
       const d = readJson(resolve(localeDir, file)) as Record<string, Record<string, string>>;
-      for (const [sec, key] of KEYS) {
+      for (const [sec, key, needles] of KEYS) {
         const v = d[sec]?.[key];
-        if (!v) continue;
-        expect(v, `${file} ${sec}.${key} quotes the median with no 30-day bound`).toMatch(/30/);
+        expect(v, `${file} is missing ${sec}.${key} — eight of nine audiences read the locale value, not the default`).toBeTruthy();
+        for (const n of needles) {
+          expect(v, `${file} ${sec}.${key} quotes a fill claim without the bound it was measured inside`).toMatch(n);
+        }
       }
     }
+    // The constants those placeholders are filled from, so the property is
+    // pinned rather than the spelling: a copy string carrying {{h}} says
+    // nothing if the number handed to it stops being the published horizon.
+    const accountCODE = strip(readFileSync(resolve(root, "src/pages/Account.tsx"), "utf8"));
+    const jobsCODE = strip(readFileSync(resolve(root, "src/pages/Jobs.tsx"), "utf8"));
+    const ghostCODE = strip(readFileSync(resolve(root, "src/pages/GhostJobIndex.tsx"), "utf8"));
+    const exploreCODE = strip(readFileSync(resolve(root, "src/pages/Explore.tsx"), "utf8"));
+    expect(jobsCODE).toMatch(/const URGENT_FILL_MAX_DAYS = 14/);
+    expect(jobsCODE).toMatch(/const FILL_SUPPORT_MAX_DAYS = 30/);
+    // Every surface that prints the horizon must interpolate a NAMED constant
+    // worth 14, never a re-typed number: a literal beside a sentence is how a
+    // page keeps saying "within 14 days" after the horizon moves. Explore
+    // imports /jobs' own; Account and the Ghost Job Index still declare theirs,
+    // which is allowed here only because the value is asserted — the "one bar,
+    // one declaration" topology is owned by
+    // a-posting-age-with-nothing-to-measure-it-against.test.ts and must not be
+    // legislated twice, in two spellings, in two files.
+    const horizonIsNamedAndFourteen = (code: string) =>
+      /const FILL_HORIZON_DAYS = 14/.test(code)
+      || /import \{[^}]*URGENT_FILL_MAX_DAYS[^}]*\} from "@\/pages\/Jobs"/.test(code);
+    for (const [name, code] of [["Account", accountCODE], ["GhostJobIndex", ghostCODE], ["Explore", exploreCODE]] as const) {
+      expect(horizonIsNamedAndFourteen(code), `${name} must publish the same 14-day horizon by name, not a literal of its own`).toBe(true);
+    }
+    expect(accountCODE, "the reply-window copy must be handed the constant, not a number")
+      .toMatch(/h: FILL_HORIZON_DAYS/);
+    expect(ghostCODE).toMatch(/\{FILL_HORIZON_DAYS\} days/);
+    expect(exploreCODE).toMatch(/h: URGENT_FILL_MAX_DAYS/);
     // The inline English defaults too: a missing translation must not fall back
-    // to the unqualified sentence.
-    const account = readFileSync(resolve(root, "src/pages/Account.tsx"), "utf8");
-    const jobs = readFileSync(resolve(root, "src/pages/Jobs.tsx"), "utf8");
-    expect(account).not.toMatch(/\(from \{\{n\}\} tracked fills\)/);
-    expect(jobs).not.toMatch(/then closed\), a typical role/);
-    expect(account).toMatch(/fills tracked within 30 days of posting/);
-    expect(jobs).toMatch(/then closed within 30 days of posting/);
+    // to an unqualified sentence. Asserted against COMMENT-STRIPPED source —
+    // Jobs.tsx carries "30 days" twelve times raw and four times in code, and
+    // Account.tsx's new block comment quotes the deleted sentence verbatim, so
+    // a raw-source assertion here would pass on prose alone.
+    expect(accountCODE).not.toMatch(/\(from \{\{n\}\} tracked fills\)/);
+    expect(jobsCODE).not.toMatch(/then closed\), a typical role/);
+    expect(accountCODE).toMatch(/within \{\{h\}\} days of being posted/);
+    expect(jobsCODE).toMatch(/roles that passed our 30-day cap, are counted as unfinished rather than left out/);
+  });
+
+  it("a median names what it is the median of — filled, not merely off the board", () => {
+    // median_days_to_fill IS THE MEDIAN OF THE FILL CUMULATIVE INCIDENCE:
+    // min{t <= 30 : R(t) >= 0.5}, computed in both migrations as
+    // `min(c.tt) FILTER (WHERE c.tt <= 30 AND c.r_cif >= 0.5)`. It is NOT read
+    // off event-free survival, so it is not "the day half the roles left the
+    // board" — leaving the board includes same-title re-listings, which the
+    // estimator deliberately holds out as a competing event. The two numbers
+    // differ by exactly the relist rate, and the off-the-board one is always
+    // the larger.
+    //
+    // Both migrations' COMMENT ON blocks state the rule outright:
+    // 20260906091000:138 — "Every renderer of median_days_to_fill must say
+    // 'half of the roles are FILLED by day N', not 'half are off the board by
+    // day N', and any API field that mirrors it must move with it."
+    //
+    // The inline English defaults in Jobs.tsx already say "filled". The LOCALE
+    // VALUES do not, in any of the nine — and a locale value overrides an
+    // inline default, so what users actually read is the forbidden sentence.
+    // That is this repo's trap in its other direction: the code is right and
+    // the shipped string is wrong. Note "off the board" IS the correct phrase
+    // for the adjacent 1 − still_open_14 figure, so the forbidden phrasing is
+    // scoped to these two keys and nothing else.
+    const jobsCODE = strip(readFileSync(resolve(root, "src/pages/Jobs.tsx"), "utf8"));
+    expect(jobsCODE, "the inline default must name the fill").toMatch(/Half of these roles are filled by day \{\{d\}\}\./);
+    expect(jobsCODE, "the survival phrasing is back in the median's default")
+      .not.toMatch(/Half are off the board by day/);
+
+    // Per locale, a FORBIDDEN token rather than a required one: the guard says
+    // what the median may not be called and leaves the translator free to
+    // choose how to say "filled".
+    const OFF_BOARD: Record<string, RegExp> = {
+      "en.json": /off the board/i,
+      "en-GB.json": /off the board/i,
+      "de.json": /vom Board/i,
+      "es.json": /del tabl[oó]n/i,
+      "fr.json": /quitt[ée] le tableau/i,
+      "hi.json": /बोर्ड से हट/,
+      "nl.json": /van het bord/i,
+      "pt.json": /saiu do quadro/i,
+      "tl.json": /wala na sa board/i,
+    };
+    for (const file of readdirSync(localeDir).filter((f) => f.endsWith(".json"))) {
+      const jp = (readJson(resolve(localeDir, file)) as Record<string, Record<string, string>>).jobsPage ?? {};
+      const forbidden = OFF_BOARD[file];
+      expect(forbidden, `${file} has no off-the-board token listed — add one or this locale goes unchecked`).toBeTruthy();
+      for (const key of ["fieldMedian", "hhMedian"]) {
+        const v = jp[key];
+        expect(v, `${file} is missing jobsPage.${key}`).toBeTruthy();
+        expect(v, `${file} jobsPage.${key} carries no horizon`).toMatch(/\{\{d\}\}/);
+        expect(
+          v,
+          `${file} jobsPage.${key} calls the FILL median a time off the board — off-the-board includes re-listings, which this median excludes`,
+        ).not.toMatch(forbidden);
+      }
+    }
+
+    // The construction, so the copy cannot be "fixed" by moving the definition
+    // back to event-free survival instead. Both migrations discuss the rejected
+    // S-form at length in prose, so strip SQL comments first.
+    const migDir = resolve(root, "supabase/migrations");
+    for (const needle of ["censoring_is_not_truncation", "a_median_from_a_window_that_cannot_hold_one"]) {
+      const f = readdirSync(migDir).find((n) => n.includes(needle));
+      expect(f, `migration ${needle} is missing`).toBeTruthy();
+      const sql = readFileSync(resolve(migDir, f!), "utf8").replace(/^\s*--.*$/gm, "");
+      expect(sql, `${needle}: the median must be read off the fill CIF`).toMatch(/c\.r_cif >= 0\.5/);
+      expect(sql, `${needle}: the median must not be read off event-free survival`).not.toMatch(/c\.s <= 0\.5/);
+    }
+
+    // …and the API field that mirrors it moves with it.
+    const api = strip(readFileSync(resolve(root, "supabase/functions/public-api/index.ts"), "utf8"));
+    expect(api, "the /v1 field still names the survival quantity").not.toMatch(/medianDaysOffBoard/);
+    expect(api).toMatch(/medianDaysToFill: num\(r\.median_days_to_fill\)/);
+    expect(api, "the basis string still claims a derivation the SQL does not perform")
+      .not.toMatch(/read off the event-free survival/);
   });
 
   it("an EMPTY answer is not published as a good one", () => {

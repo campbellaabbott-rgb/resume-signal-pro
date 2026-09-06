@@ -40,6 +40,17 @@ const migration = (needle: string) => {
 // would pin a shape this test exists to say was wrong.
 const MIG = migration("flow_must_be_observed_not_inferred");
 const FN = readFileSync(resolve(ROOT, "supabase/functions/job-board/index.ts"), "utf8");
+// Code assertions read CODE, prose assertions read FN. The block comment
+// directly above logWholeBoardExit names BOTH job_board_closures and
+// job_board_exits while explaining why the prune must not use the first — so a
+// negative assertion run against raw source is one edit away from tripping on
+// an explanation, or passing on one.
+//
+// LINE comments come off BEFORE block comments, and the order is load-bearing:
+// this file has a line comment naming `../_shared/*`, whose `/*` opens a block
+// comment that the naive block-first strip then runs to the next `*/` five
+// thousand characters later, deleting real code (BUILD_VERSION among it).
+const CODE = FN.replace(/^\s*\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
 
 describe("the board's growth number is observed, not inferred", () => {
   it("ships the migration", () => {
@@ -240,12 +251,29 @@ describe("every delete path leaves a trace", () => {
     // both cases the employer may still be hiring. job_board_closures means "the
     // company took the role down" and logging these there would corrupt the one
     // table that cannot be re-derived.
-    const fn = /async function logWholeBoardExit[\s\S]*?\n}\n/.exec(FN)?.[0] ?? "";
-    expect(fn, "logWholeBoardExit not found").not.toBe("");
-    expect(fn).not.toMatch(/job_board_closures/);
-    expect(fn).toMatch(/from\("job_board_exits"\)/);
+    const bodyOf = (n: string) =>
+      new RegExp(`async function ${n}\\([\\s\\S]*?\\n}\\n`).exec(CODE)?.[0] ?? "";
+    const prune = bodyOf("logWholeBoardExit");
+    expect(prune, "logWholeBoardExit not found").not.toBe("");
+    // The insert moved behind a shared helper (insertExits) when every exit
+    // site was given a posted_at column. A guard that reads only the prune's
+    // own body would keep passing if that helper were repointed at the closure
+    // log tomorrow — the closure name would live outside the slice. So resolve
+    // one level of indirection: every same-file function the prune hands the
+    // client to counts as part of the prune's write path, and the assertion is
+    // on the resolved SET of insert targets rather than on the spelling of a
+    // call chain.
+    const helpers = [...prune.matchAll(/\b([A-Za-z_$][\w$]*)\s*\(\s*client\b/g)]
+      .map((m) => m[1])
+      .filter((n) => n !== "logWholeBoardExit" && new RegExp(`function ${n}\\(`).test(CODE));
+    const reachable = prune + "\n" + helpers.map(bodyOf).join("\n");
+    expect(reachable).not.toMatch(/job_board_closures/);
+    const targets = [...reachable.matchAll(/\.from\("([a-z_]+)"\)[\s\S]{0,300}?\.insert\(/g)].map((m) => m[1]);
+    expect(targets.length, "the prune path inserts nowhere at all").toBeGreaterThan(0);
+    expect([...new Set(targets)]).toEqual(["job_board_exits"]);
     // supabase-js RETURNS errors rather than throwing; an unchecked insert is
-    // how lifecycle history goes missing without anyone noticing.
-    expect(fn).toMatch(/if \(insErr\)/);
+    // how lifecycle history goes missing without anyone noticing. insertExits
+    // returns { error } too, so the CALL SITE's check is the whole guard.
+    expect(prune).toMatch(/if \(insErr\)/);
   });
 });

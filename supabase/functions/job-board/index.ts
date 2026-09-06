@@ -112,7 +112,27 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-30.60"; // .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
+const BUILD_VERSION = "2026-09-06.61"; // .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
+// .61: A BATCH THAT WENT DARK NOW SAYS SO IN THE ROW ITSELF. `windowed` only
+// catches a TRUNCATED fetch — a feed that answers 200 with a valid, nearly
+// empty list is not windowed, so every stored posting for that board vanished
+// in one pass and was logged as an employer takedown. A collection failure
+// recorded as 400 fills, indistinguishable at read time from 400 real ones.
+// Each closure row now carries the batch that produced it (suspect,
+// batch_removed, batch_live_before) so the estimator can exclude it and a
+// human can recompute the decision. The rows are still INSERTED: the closure
+// log is the one asset here nobody can re-derive, so a doubt is marked, never
+// dropped. The mark needs TWO signals, because a wrong mark is worse than a
+// missed one: the closure row is excluded by every reader and the posting is
+// already hard-deleted, so a false positive removes the cohort from the risk
+// set instead of censoring it. So it fires only when an implausible share of
+// the removable board went absent THIS pass (raw absence, not the grace-
+// confirmed subset, or a widening outage never trips it) AND the feed itself
+// came back short. Share alone marks an ATS rotating requisition ids, an
+// employer filling a hiring class, and any small board on the cold lane.
+// Also stamps posted_at on every job_board_exits write, so a censored
+// observation's origin is the employer's own date instead of days_on_board's
+// COALESCE(posted_at, first_seen) — the coalesce that made time-to-fill flat.
 // .36: JazzHR joins as vendor #20 (vendors/jazzhr.ts; a verified sample of boards enters sources.ts, so the bump is load-bearing for the bootstrap lane). .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
 // .23: bug-sweep round — the agency opt-out reaches the rescue tiers (it was bound in search_jobs only, so a rescue served the rows the caller hid, undisclosed); the per-company cap stops swallowing the employer it just surfaced; a withdrawn count no longer prints "not hiring"; the reverted pipe fix is restored
 
@@ -1730,6 +1750,37 @@ function exitReasonFor(postedAt: unknown, firstSeen: unknown): "aged_out" | "bac
   return p < f - BACKDATE_SLACK_MS ? "backdated" : "aged_out";
 }
 
+// THE EXIT LEDGER NOW CARRIES THE EMPLOYER'S OWN DATE.
+//
+// days_on_board is defined off COALESCE(posted_at, first_seen) at three of the
+// four write sites, and the ledger has no column saying which basis a given row
+// used. A censoring time built on our first sighting is not the employer's
+// tenure, and mixing the two is exactly the substitution that flattened
+// time-to-fill to ~15 days for every category. So every exit row now also
+// stamps posted_at verbatim: NULL where the employer published no date, which
+// is the honest answer and drops that row out of the dated cohort instead of
+// inventing an origin for it. days_on_board is left untouched — the ghost-rate
+// surfaces read it and this is not the change that reinterprets them.
+//
+// DEPLOY-WINDOW TOLERANCE (the country-column rule): a statement naming a
+// column whose migration has not applied yet fails the WHOLE insert, and these
+// are best-effort writes that swallow their errors — the ledger would go
+// silently empty for the length of the deploy window. On a posted_at complaint,
+// retry once without it. Costs an extra round trip only on the failing path.
+async function insertExits(
+  client: SupabaseClient,
+  rows: Array<Record<string, unknown>>,
+): Promise<{ error: { message?: string } | null }> {
+  const { error } = await client.from("job_board_exits").insert(rows);
+  if (error?.message?.includes("posted_at")) {
+    const { error: retryErr } = await client.from("job_board_exits").insert(
+      rows.map(({ posted_at: _postedAt, ...rest }) => rest),
+    );
+    return { error: retryErr };
+  }
+  return { error };
+}
+
 // WHOLE-BOARD PRUNES USED TO LEAVE NO TRACE AT ALL.
 //
 // Two paths delete by company_token rather than by id — a board going dormant
@@ -1764,12 +1815,13 @@ async function logWholeBoardExit(
       if (error) { console.warn(`[JOB-BOARD] exit-log read failed for ${token} (non-fatal):`, error.message?.slice(0, 120)); break; }
       const rows = (page ?? []) as Array<Record<string, unknown>>;
       if (!rows.length) break;
-      const { error: insErr } = await client.from("job_board_exits").insert(rows.map((r) => ({
+      const { error: insErr } = await insertExits(client, rows.map((r) => ({
         posting_id: String(r.id),
         source: String(r.source ?? ""),
         company_token: String(r.company_token ?? token),
         category: String(r.category ?? "other"),
         exit_reason: reason,
+        posted_at: r.posted_at ?? null,
         days_on_board: (r.posted_at ?? r.first_seen)
           ? Math.round((Date.parse(exitedAt) - Date.parse(String(r.posted_at ?? r.first_seen))) / 8_640_000) / 10
           : null,
@@ -3540,7 +3592,14 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         //      filled it;
         //  (c) a closure whose exact title is still live at the same company is
         //      marked superseded (repost/relisting churn, not a fill) and excluded
-        //      from hiring-health stats.
+        //      from hiring-health stats;
+        //  (d) a pass in which an implausible share of the board went absent AND
+        //      the feed itself came back short is stamped suspect with the counts
+        //      that decided it — logged either way, and excluded by the readers
+        //      rather than by never being written. Both conditions are required:
+        //      a share alone cannot tell a dark feed from an employer filling a
+        //      hiring class or an ATS rotating requisition ids, and a wrong mark
+        //      deletes the cohort from the estimator instead of censoring it.
         // `r.windowed` alone now — the SmartRecruiters row-count proxy is gone.
         //
         // It read `rowsById.size >= SR_CAP`, which cannot tell a board holding
@@ -3556,6 +3615,130 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         // for Workday and Oracle. A partial fetch — cap hit, or a mid-loop page
         // failure — still reports windowed and still suppresses closures.
         const truncatedFetch = r.windowed === true;
+        // ── FEED-DARK GUARD ──────────────────────────────────────────────────
+        // THE HOLE truncatedFetch LEAVES IS THE WHOLE POINT. `windowed` is the
+        // vendor's own advertised total against what we fetched, so it catches
+        // a PARTIAL read. It cannot catch the other failure: a feed that
+        // answers 200 with a valid, nearly empty list. feedTotal then equals
+        // what we got, windowed is false, and every stored posting for that
+        // board falls through this branch and is logged as an employer
+        // takedown in a single second — a collection failure written into the
+        // one table that means "the company took the role down", where nothing
+        // downstream can tell it from 400 real fills.
+        //
+        // Marked, never suppressed. The closure log is the asset that cannot be
+        // re-derived; a batch we doubt is still INSERTED, carrying the numbers
+        // that produced the doubt so a reader can recompute the decision or
+        // overturn it. Exclusion happens at READ time, in the estimator.
+        //
+        // A FALSE POSITIVE HERE COSTS MORE THAN A FALSE NEGATIVE, and the two
+        // are not symmetric. A missed dark feed writes closures we later doubt.
+        // A wrongly-marked batch is DELETED FROM THE ESTIMATOR — the closure
+        // row is excluded by every reader and the posting itself is already
+        // hard-deleted, so the cohort does not fall back to being censored: it
+        // leaves the risk set entirely. That is truncation, the exact defect
+        // this whole change exists to remove, and there is no promotion path
+        // (nothing ever clears `suspect`). So the guard fires only when TWO
+        // independent things are true at once.
+        //
+        // (1) THE SHARE THAT WENT ABSENT IS IMPLAUSIBLE. Measured on the pass's
+        // RAW absence, not on the grace-confirmed subset. `vanished` only holds
+        // ids stamped on an EARLIER pass and still missing now, so an outage
+        // that widens across passes never trips a threshold read off it: 400
+        // stored, 100 absent on pass 1 (all newly stamped, `vanished` empty,
+        // ratio 0), 200 absent on pass 2 of which only the first 100 are
+        // confirmed — 100 against a 120 threshold, no fire, and 100 false
+        // closures land clean. `vanishedAll` is what actually measures this
+        // pass's darkness, and it is the same variable the 6h shrink ratchet
+        // one screen up already reads.
+        //
+        // Both terms of the ratio exclude agedOutIds, because they must count
+        // the SAME population. A freshness-cap wave inflates absence while
+        // producing ZERO closures (those route to the exit ledger). Excluding
+        // them from the numerator alone is not "merely cautious" — it is
+        // one-sided the wrong way: a 1,000-posting board that ages out 600 and
+        // simultaneously loses 250 others to a dark feed scores 250/1000 = 25%
+        // and stays clean, where against the 400 that could actually be removed
+        // it is 62%. Both counts now run over the removable population.
+        // (The per-row isAgedOut fallback below still catches rows whose STORED
+        // posted_at is stale, which this pre-loop count cannot see without
+        // reading them; that residual makes the guard more cautious, and it
+        // applies to numerator and denominator alike.)
+        //
+        // (2) THE FEED ITSELF CAME BACK SHORT. This is the term that separates
+        // a collection failure from an employer, and it is the one the first
+        // cut of this guard was missing. A dark feed serves nothing; a board
+        // doing something dramatic serves a full list. Without it, three
+        // ordinary events are silently deleted from the estimator:
+        //   - an ATS recycling requisition ids: 100 served against 100 stored,
+        //     35 ids rotated. 35 > 0.30 x 100 — and the rows deleted are the
+        //     RELIST arm the competing-risk estimator depends on, so the board
+        //     that churns hardest reports churn = NULL;
+        //   - an employer filling a hiring class: 60 stored, 19 filled, the
+        //     feed still serving the other 41. 19 > max(5, 18) — and those are
+        //     precisely the fastest fills, the same cohort the deleted 7-day
+        //     floor removed, pushing R(14) the same way;
+        //   - a small board on the cold lane, where one "pass" is a rotation
+        //     visit hours to days apart: 16 stored, 6 genuinely closed.
+        //     6 > max(5, 4.8) fires on the absolute floor alone.
+        // Served count is `r.jobs.length` — the vendor's normalised postings
+        // BEFORE our freshness cap, so a dating sweep cannot fake it (rowsById
+        // would, since the cap removes rows from it). At 0.6 the three cases
+        // above all serve too much to qualify (100/100, 41/60, 10/16) while the
+        // incident this exists for (400 stored, a near-empty list) and the
+        // widening half-board outage (200 served of 400) both do.
+        //
+        // No small-board exemption, deliberately, though the shrink ratchet has
+        // one. The ratchet exempts boards under 20 because a share alone is
+        // noisy at small n and it has no second signal; term (2) IS that second
+        // signal, and a 16-posting board whose feed truly returns nothing is a
+        // dark feed that should be marked.
+        //
+        // Marked, never suppressed. The closure log is the asset that cannot be
+        // re-derived; a batch we doubt is still INSERTED, carrying the numbers
+        // that produced the doubt so a reader can recompute the decision or
+        // overturn it. Exclusion happens at READ time, in the estimator.
+        // Term (1)'s two numbers are stamped on every row; term (2)'s served
+        // count has no column yet (20260906090000 added three), so a reader can
+        // recompute the share but must take the feed-health half on the log
+        // line below. Adding batch_served is the follow-up.
+        //
+        // Denominators are prefix-filtered to this source, exactly like
+        // `vanished`, so a multi-source token compares like with like;
+        // existingRows.length would silently deflate the ratio.
+        //
+        // Computed ONCE per board pass, before the 200-id chunk loop: chunks
+        // are smaller than the threshold on any board over ~667 stored rows, so
+        // a per-chunk guard would never fire on exactly the large boards a dark
+        // feed hurts most, and would split one 400-removal event into two 200s.
+        //
+        // Composition with what is already here: this branch is only reached
+        // when !truncatedFetch, so a windowed board never gets stamped at all;
+        // the two-pass grace and the 6h shrink ratchet DELAY rather than
+        // suppress, so during a hold nothing is written while the absence count
+        // keeps its full value; and the 24h superseded dedupe decides whether a
+        // row EXISTS, where this decides whether an existing row is ADMISSIBLE.
+        // Three orthogonal protections, none substituting for another. The 0.30
+        // share intentionally fires inside the 30-60% band the ratchet's 0.6
+        // lets through.
+        const FEED_SHORT_RATIO = 0.6;
+        let removableBefore = 0; // = existing.size minus this pass's freshness-cap age-outs
+        for (const id of existing) if (!agedOutIds.has(id)) removableBefore += 1;
+        const absentInPass = vanishedAll.reduce((n, id) => n + (agedOutIds.has(id) ? 0 : 1), 0);
+        const removedInBatch = vanished.reduce((n, id) => n + (agedOutIds.has(id) ? 0 : 1), 0);
+        const servedInPass = r.jobs.length;
+        const shareImplausible = absentInPass > Math.max(5, 0.30 * removableBefore);
+        const feedCameBackShort = servedInPass < FEED_SHORT_RATIO * removableBefore;
+        const batchSuspect = shareImplausible && feedCameBackShort;
+        if (!truncatedFetch && (batchSuspect || (shareImplausible && vanished.length))) {
+          console.warn(
+            `[JOB-BOARD] ${s.token}: ${absentInPass}/${removableBefore} absent this pass ` +
+            `(${removedInBatch} confirmed, feed served ${servedInPass}) — ` +
+            (batchSuspect
+              ? "closures logged but marked suspect (possible dark feed)"
+              : "feed served a full list, so this reads as a real takedown — logged unmarked"),
+          );
+        }
         if (vanished.length && !truncatedFetch) {
           const closedAt = new Date().toISOString();
           const liveTitles = new Set(
@@ -3603,13 +3786,14 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
               };
               const agedRows = ((toLog ?? []) as Array<Record<string, unknown>>).filter(isAgedOut);
               if (agedRows.length) {
-                waitUntil(Promise.resolve(client.from("job_board_exits").insert(
+                waitUntil(Promise.resolve(insertExits(client,
                   agedRows.map((r) => ({
                     posting_id: String(r.id),
                     source: String(r.source ?? s.source),
                     company_token: String(r.company_token ?? s.token),
                     category: String(r.category ?? "other"),
                     exit_reason: exitReasonFor(r.posted_at, r.first_seen),
+                    posted_at: r.posted_at ?? null,
                     days_on_board: r.posted_at
                       ? Math.round((Date.now() - new Date(String(r.posted_at)).getTime()) / 8_640_000) / 10
                       : null,
@@ -3626,32 +3810,58 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
                 // supabase-js RETURNS errors (never throws) — check it, or a
                 // failing insert silently loses lifecycle history (the same
                 // blind spot that hid the verification-stamp failures).
-                const { error: clErr } = await client.from("job_board_closures").insert(
-                  rows.map((r) => ({
-                    posting_id: r.id,
-                    source: r.source,
-                    company_token: r.company_token,
-                    company: r.company ?? "",
-                    title: r.title ?? "",
-                    category: r.category ?? "other",
-                    first_seen: r.first_seen ?? null,
-                    posted_at: r.posted_at ?? null,
-                    closed_at: closedAt,
-                    superseded: liveTitles.has(normalizeCloseTitle(String(r.title ?? ""))), // (c)
-                  })),
-                );
+                const closureRows = rows.map((r) => ({
+                  posting_id: r.id,
+                  source: r.source,
+                  company_token: r.company_token,
+                  company: r.company ?? "",
+                  title: r.title ?? "",
+                  category: r.category ?? "other",
+                  first_seen: r.first_seen ?? null,
+                  posted_at: r.posted_at ?? null,
+                  closed_at: closedAt,
+                  superseded: liveTitles.has(normalizeCloseTitle(String(r.title ?? ""))), // (c)
+                  // (d) the batch's own alibi — see the feed-dark guard above.
+                  // Stamped on every row of the pass, suspect or not, so the
+                  // ratio is auditable after the fact and not just the verdict.
+                  // These are the numbers that DECIDED, which is why the
+                  // numerator is the pass's raw absence (absentInPass) and not
+                  // the smaller confirmed-and-written count: stamping the
+                  // written count would make the stored ratio disagree with the
+                  // verdict on any pass where the two-pass grace held some ids
+                  // back. The written count is recoverable by counting the rows
+                  // of the batch — (company_token, closed_at) is the batch key.
+                  // Both counts exclude ids the freshness cap aged out in this
+                  // same pass, so numerator and denominator span one population.
+                  suspect: batchSuspect,
+                  batch_removed: absentInPass,
+                  batch_live_before: removableBefore,
+                }));
+                // Deploy-before-migration tolerance (the country-column rule):
+                // naming a column the migration has not created yet fails the
+                // WHOLE insert, and losing a pass of closures to bookkeeping is
+                // a worse outcome than losing the bookkeeping. Retry once
+                // without the three new fields; the extra round trip only
+                // happens on the failing path.
+                let { error: clErr } = await client.from("job_board_closures").insert(closureRows);
+                if (clErr && /suspect|batch_removed|batch_live_before/.test(String(clErr.message ?? ""))) {
+                  ({ error: clErr } = await client.from("job_board_closures").insert(
+                    closureRows.map(({ suspect: _s, batch_removed: _br, batch_live_before: _lb, ...rest }) => rest),
+                  ));
+                }
                 if (clErr) console.warn(`[JOB-BOARD] closure insert failed for ${s.token} (non-fatal):`, clErr.message?.slice(0, 150));
                 // Exit ledger, 'removed' side: the same events, tagged, into the
                 // table the ghost-rate stat will read once accrual clears its
                 // floor. Best-effort — the closures row above is the record of
                 // record; this must never make a prune fail.
-                waitUntil(Promise.resolve(client.from("job_board_exits").insert(
+                waitUntil(Promise.resolve(insertExits(client,
                   rows.map((r) => ({
                     posting_id: r.id,
                     source: r.source,
                     company_token: r.company_token,
                     category: r.category ?? "other",
                     exit_reason: "removed",
+                    posted_at: r.posted_at ?? null,
                     days_on_board: (r.posted_at ?? r.first_seen)
                       ? Math.round((Date.parse(closedAt) - Date.parse(String(r.posted_at ?? r.first_seen))) / 8_640_000) / 10
                       : null,
@@ -4112,13 +4322,14 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
           )).then(() => {}).catch(() => {}));
           const freshlyDead = agedRows.filter((r) => !alreadyTombstoned.has(String(r.id)));
           if (freshlyDead.length === 0) continue;
-          waitUntil(Promise.resolve(client.from("job_board_exits").insert(
+          waitUntil(Promise.resolve(insertExits(client,
             freshlyDead.map((r) => ({
               posting_id: r.id as string,
               source: r.source as string,
               company_token: r.company_token as string,
               category: (r.category as string) ?? "other",
               exit_reason: exitReasonFor(r.posted_at, r.first_seen),
+              posted_at: (r.posted_at as string | null) ?? null,
               days_on_board: (r.posted_at ?? r.first_seen)
                 ? Math.round((Date.parse(exitedAt) - Date.parse(String(r.posted_at ?? r.first_seen))) / 8_640_000) / 10
                 : null,

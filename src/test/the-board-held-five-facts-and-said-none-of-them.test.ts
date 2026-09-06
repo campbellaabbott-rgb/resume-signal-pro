@@ -53,7 +53,7 @@ import {
   statedCurrencyCode,
   countryToName,
   countryLabelOrNull,
-  outstaysFieldWindow,
+  outstaysFieldHorizon,
 } from "../pages/Jobs";
 import { ATS_VENDORS, NON_ATS_SOURCES, UNMEASURED_ATS_SOURCES } from "@/config/ats-vendors";
 
@@ -172,21 +172,40 @@ describe("the board held five facts and said none of them", () => {
     expect(countryLabelOrNull(null)).toBeNull();
   });
 
-  it("the field-window comparison is refused unless the EMPLOYER dated the posting", () => {
-    const field = { p75: 30, n: 4_000 };
-    expect(outstaysFieldWindow(31, field)).toBe(true);
-    expect(outstaysFieldWindow(30, field), "at the boundary is not past it").toBe(false);
-    expect(outstaysFieldWindow(2, field)).toBe(false);
+  it("the field-horizon comparison is refused unless the EMPLOYER dated the posting", () => {
+    // WHAT THIS USED TO PIN, AND WHY IT COULD NOT STAY. The fixture was
+    // { p75: 30, n: 4_000 } — the 75th percentile of days-to-close over a
+    // sample that could only ever contain roles lasting 7 to 30 days, because
+    // the ingest ages postings out at 30 and every fill surface filtered
+    // "closed_at - origin >= interval '7 days'". Every posting outside that
+    // band was absent from the percentile it was being compared against, and a
+    // median drawn from [7,30] lands near 15 whatever employers do — which is
+    // why all eighteen categories published 14.9-16.3 days. The curve carries
+    // no percentile at all now. The claim is a SHARE at a fixed horizon:
+    // most of the field resolved inside 14 days, and this posting did not.
+    const field = { still_open_14: 0.4, sufficient: true, dated_coverage: 0.8 };
+    expect(outstaysFieldHorizon(15, field)).toBe(true);
+    expect(outstaysFieldHorizon(14, field), "at the boundary is not past it").toBe(false);
+    expect(outstaysFieldHorizon(2, field)).toBe(false);
     // THE 2.8-DAY-MEDIAN INCIDENT, recorded once and reintroduced twice since:
     // an undated posting must get silence, never a comparison built on our own
     // discovery time. Callers pass daysAgo(postedAt); null means undated.
-    expect(outstaysFieldWindow(null, field)).toBe(false);
-    // A field the closure log is too thin to speak about returns NO ROW from
-    // get_category_fill_speed (its own 300-closing floor), so an absent field
-    // is a thin sample declining rather than a number to be trusted.
-    expect(outstaysFieldWindow(400, null)).toBe(false);
-    expect(outstaysFieldWindow(400, undefined)).toBe(false);
-    expect(outstaysFieldWindow(400, { p75: Number.NaN, n: 4_000 })).toBe(false);
+    expect(outstaysFieldHorizon(null, field)).toBe(false);
+    // A field the lifecycle log is too thin to speak about returns NO ROW from
+    // get_category_fill_curve (its own honesty floor), so an absent field is a
+    // thin sample declining rather than a number to be trusted.
+    expect(outstaysFieldHorizon(400, null)).toBe(false);
+    expect(outstaysFieldHorizon(400, undefined)).toBe(false);
+    expect(outstaysFieldHorizon(400, { ...field, still_open_14: Number.NaN })).toBe(false);
+    // Most of the field is STILL OPEN at the horizon, so being past it says
+    // nothing about this one. The comparison is refused rather than inverted.
+    expect(outstaysFieldHorizon(400, { ...field, still_open_14: 0.6 })).toBe(false);
+    // The RPC's own sufficiency gate, and the coverage floor, are separate
+    // refusals: a rate the estimator will not certify, and a rate built on too
+    // few employer-stated dates, are both silence rather than a weaker claim.
+    expect(outstaysFieldHorizon(400, { ...field, sufficient: false })).toBe(false);
+    expect(outstaysFieldHorizon(400, { ...field, dated_coverage: 0.29 })).toBe(false);
+    expect(outstaysFieldHorizon(400, { ...field, dated_coverage: 0.3 }), "the qualified band still speaks").toBe(true);
   });
 
   it("both surfaces render each fact, and both fall back rather than guess", () => {

@@ -938,10 +938,84 @@ describe("the hiring answer ranks by odds, not by size", () => {
       .not.toMatch(/FROM public\.job_board_closures\s*\n\s*\),/);
   });
 
-  it("the card shows the clock only on a real sample", () => {
-    // A median over four dated closures is noise dressed as a deadline.
-    expect(CODE).toMatch(/\(r\.dated_n \?\? 0\) >= 10 && r\.tracking_days >= 21/);
-    expect(CODE).toMatch(/explore\.hiringSpeed/);
+  it("the card shows the fill rate only on a real sample", () => {
+    // A number over four dated closures is noise dressed as a deadline. The
+    // PROPERTY has not moved; the statistic and the gate's address have.
+    //
+    // The old p50 clock was a median drawn from an observable support of
+    // [7, 30] — a 30-day serving cap at the top, a 7-day floor in every fill
+    // query at the bottom — so eighteen categories spanning nursing, law,
+    // retail and ML research agreed to within 1.4 days over ~600k closures.
+    // That is not a fact about hiring, it is our own retention window. R(14)
+    // from the Aalen-Johansen curve replaced it, and the sample gate moved
+    // SERVER-SIDE into get_company_fill_curve's own `sufficient`: n_at_risk_14
+    // >= 25 AND fills_le_14 >= 5 AND CI half-width <= 0.15 AND relists <=
+    // fills. Every term is strictly stronger than the old dated_n >= 10, and
+    // the half-width term measures directly what the count floor was a proxy
+    // for — at the boundary (n=25, fills=5) it lands near 0.17 and REFUSES, so
+    // the gate binds rather than decorates. The three SQL thresholds are
+    // pinned with their boundary proofs in
+    // src/test/the-estimator-that-must-agree-with-arithmetic.test.ts:604-620
+    // and :760-771; this guard owns the client half, so the two are one
+    // property split across two layers rather than a client gate with nothing
+    // behind it.
+    //
+    // The old second clause, tracking_days >= 21, has no literal successor in
+    // `sufficient`. It survives here as DISCLOSURE — the badge's core clause
+    // always prints the tracking span beside the rate, which is what
+    // docs/hiring-health-model.md §5 prescribes — so it is asserted below on
+    // the locale VALUE, not merely on the inline default — and it is ALSO
+    // enforced, because `sufficient` never looks at the observation span and
+    // lifetimes run from the employer's stated posted_at rather than from our
+    // first sighting: a ten-day-deep record can put 25 roles at risk at day 14
+    // and pass every term of the server gate. So the client re-applies /jobs'
+    // FILL_RATE_MIN_TRACKING_DAYS, and reads it off the CURVE's span, which is
+    // the record the rate was estimated over.
+    //
+    // ONE BAR, ONE DECLARATION. Explore used to re-type this bar as its own
+    // FILL_COVERAGE_QUALIFY / FILL_HORIZON_DAYS, which is how two surfaces end
+    // up publishing and refusing the same employer: editing one file was
+    // silent on the other. The constants are imported now, and a second
+    // declaration here is the drift — so the guard forbids one.
+    const badge = CODE.slice(CODE.indexOf('intent="hiring"'), CODE.indexOf('intent="pay"'));
+    expect(badge, "the hiring badge moved — re-anchor, do not delete").not.toBe("");
+    expect(badge).toMatch(/r\.sufficient === true/);
+    expect(badge).toMatch(/typeof r\.fill_rate_14 === "number"/);
+    expect(badge).toMatch(/typeof r\.dated_coverage === "number"/);
+    expect(badge).toMatch(/r\.dated_coverage >= FILL_COVERAGE_MIN/);
+    expect(badge, "the observation-window floor is the one `sufficient` cannot supply")
+      .toMatch(/r\.curve_tracking_days >= FILL_RATE_MIN_TRACKING_DAYS/);
+    expect(CODE, "the bar must be imported from /jobs, not re-typed here")
+      .toMatch(/import \{[^}]*FILL_COVERAGE_MIN[^}]*FILL_RATE_MIN_TRACKING_DAYS[^}]*\} from "@\/pages\/Jobs"/);
+    expect(CODE, "a second declaration of the bar is the drift this guard exists to stop")
+      .not.toMatch(/const FILL_(?:COVERAGE|HORIZON|RATE)_[A-Z_]+ =/);
+    expect(badge, "a row without the fields must degrade to the plain badge, never to a number")
+      .toMatch(/: core/);
+    expect(badge).toMatch(/explore\.hiringFillRate/);
+    // The span is disclosed rather than gated, so pin that it is actually
+    // rendered — and pin the locale VALUE, because a locale value overrides
+    // the inline English default and eight of nine audiences read the value.
+    expect(badge).toMatch(/explore\.hiringBadge/);
+    const en = JSON.parse(readFileSync(resolve(LOCALES, "en.json"), "utf8")).explore as Record<string, string>;
+    expect(en.hiringBadge, "the tracking span must stay beside the rate").toMatch(/\{\{d\}\}d tracked/);
+  });
+
+  it("sufficient/fill_rate_14/dated_coverage are merged in from the curve, not read off the row", () => {
+    // The recorded failure of this exact clause: the four gate fields were
+    // read straight off the hiring row, which does not carry them. `sufficient
+    // === true` was therefore false for every row on every deploy — the badge
+    // could not render once, and nine locales were translated for a string
+    // with no call path. Assert both halves, so neither can drift back.
+    expect(CODE).toMatch(/rpc\("get_company_fill_curve", \{ p_tokens: tokens \}\)/);
+    const sql = latestWith("CREATE OR REPLACE FUNCTION public.get_actively_hiring_companies")
+      .replace(/^\s*--.*$/gm, "");
+    const at = sql.indexOf("CREATE OR REPLACE FUNCTION public.get_actively_hiring_companies");
+    expect(at, "get_actively_hiring_companies not found").toBeGreaterThan(-1);
+    const returns = sql.slice(at, sql.indexOf("LANGUAGE", at));
+    expect(
+      returns,
+      "if the hiring RPC ever does return the curve fields, drop the merge instead of keeping both",
+    ).not.toMatch(/fill_rate_14|dated_coverage|sufficient/);
   });
 });
 

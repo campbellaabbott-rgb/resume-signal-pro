@@ -1457,8 +1457,35 @@ async function stats(client: SupabaseClient, headers: Record<string, string>) {
   // Both figures are now published under names that say which is which, the
   // same split the jobs page makes: livePostings is what /v1/jobs can return,
   // trackedPostings is the corpus including postings since withdrawn.
-  const cache = (cacheRes.data ?? null) as { ghost_stats?: Record<string, unknown> } | null;
+  const cache = (cacheRes.data ?? null) as { ghost_stats?: Record<string, unknown>; fill_curve?: unknown; computed_at?: unknown } | null;
   const ghost = cache?.ghost_stats ?? null;
+  // WHEN THE CACHE WAS BUILT LIVES AT THE ROOT, NOT INSIDE ghost_stats.
+  // refresh_stats_cache writes `ghost_stats` as row_to_json(get_ghost_job_index_stats())
+  // — that function's RETURNS TABLE columns and nothing else — and stamps
+  // `computed_at` one level up, beside it. Reading `ghost.computed_at` is
+  // therefore undefined on every request, and `asOf` serialised as null every
+  // time: a cache that was 4.3 days stale on 2026-08-07 published with no date
+  // on it at all, which is the exact failure the surrounding basis strings
+  // exist to prevent. The website reads the root key correctly; this endpoint
+  // did not.
+  const cacheAsOf = typeof cache?.computed_at === "string" ? cache.computed_at : null;
+  // FROM THE CACHE, NOT FROM A LIVE CALL. get_category_fill_curve is a windowed
+  // scan over closures, exits and live postings across every category; running
+  // it inside a paid request would put a multi-second aggregate on the hot path
+  // of an endpoint that is otherwise three cheap reads. It rides the same
+  // hourly refresh as ghost_stats, and is absent — not empty — until that
+  // refresh publishes the key.
+  const fillCurveRows = Array.isArray(cache?.fill_curve) ? cache.fill_curve : null;
+  // NOTHING WRITES THIS KEY YET, AND THE COPY BELOW MUST NOT PRETEND OTHERWISE.
+  // refresh_stats_cache builds a fixed key set (ghost_stats, trending_categories,
+  // date_coverage, entry_stats, …); `fill_curve` is not among them, so until a
+  // migration adds that arm this is null on every request. A deprecation notice
+  // that redirects a paying caller to a field which does not exist is strictly
+  // worse than no notice: it labels the one lifecycle figure we do serve as
+  // untrustworthy and then sends the reader nowhere. So the basis string is
+  // written twice — once naming the replacement, once not — and which one ships
+  // is decided by whether the replacement is actually in the payload.
+  const hasFillCurve = fillCurveRows !== null;
   const num = (x: unknown): number | null => (typeof x === "number" && Number.isFinite(x) ? x : null);
   const open = typeof v.coverage?.open === "number" ? v.coverage.open : null;
   const tracked = typeof v.coverage?.tracked === "number" ? v.coverage.tracked : null;
@@ -1496,12 +1523,122 @@ async function stats(client: SupabaseClient, headers: Record<string, string>) {
       lifecycle: ghost
         ? {
             closuresLogged90d: num(ghost.closed_90d),
+            // WHICH CLOSURES, NAMED. This figure carried neither a
+            // `superseded` test nor a `suspect` test until 20260906094000 put
+            // both into the cache arm that builds it, so it was the one closure
+            // count in the system that published a dark feed's several hundred
+            // logged removals as takedowns while every other surface dropped
+            // them. It now excludes both. It still cannot apply the retroactive
+            // proxy the curve RPCs use on unstamped history — that needs a
+            // per-employer open-roles denominator and this is one board-wide
+            // count — so it remains the loosest of our closure figures by
+            // exactly that much, and says so rather than leaving a caller to
+            // discover it by subtraction.
+            closuresLogged90dBasis:
+              "Roles an employer took down, over the window: same-title re-listings are excluded, and so are batches the collector flagged as a suspect feed when it wrote them. It is still looser than the per-employer and per-field fill figures, which additionally drop batches identifiable as collection failures only in hindsight (the history written before batch stamping shipped). Where the two disagree, this number is the larger. It is a count, not a rate, and not a time-to-fill.",
             medianDaysOpen: num(ghost.median_days_open),
+            // A PUBLISHED FIELD IS NOT SILENTLY DROPPED — IT IS QUALIFIED.
+            //
+            // medianDaysToClose is a censored median and has never been a
+            // time-to-fill. The board drops a posting once its stated date
+            // passes 30 days, so a role that stays up longer leaves the corpus
+            // instead of being recorded as closed, and the median is taken over
+            // whatever survives that cut. Measured 2026-09-06, eighteen
+            // categories spanning nursing, law, retail and ML research agreed
+            // to within 1.4 days across ~600k closures — the number describes
+            // our retention cap, not the labour market.
+            //
+            // Removing the key outright would break every existing integration
+            // reading it, so it stays, with a basis string that says what it
+            // is, exactly as feedFreshness does for its own easily-misread
+            // number. The replacement is fillCurve below.
             medianDaysToClose: num(ghost.median_days_to_close),
+            medianDaysToCloseBasis:
+              "DEPRECATED, and censored by construction. Median days from the company's stated post date to the posting leaving the feed, taken over closures only. Postings that outlive the board's 30-day freshness cap leave the corpus rather than being recorded as closed, and postings still open are absent entirely, so the slowest outcomes are dropped from the sample rather than censored within it. The support is bounded above at 30 days, which pins this figure near 15 regardless of how an employer hires. Do not read it as time-to-fill."
+              + (hasFillCurve
+                ? " Use fillCurve below instead."
+                : " Its replacement is the Aalen-Johansen fill curve published on the site's field table; this endpoint does not serve it yet, and fillCurve is null until it does. Do not build on this number in the meantime."),
+            // THE HONEST REPLACEMENT — Aalen-Johansen cumulative incidence by
+            // category (docs/hiring-health-model.md §4): the share of a field's
+            // roles off the board by day 14, with re-listings held out as a
+            // competing event and with roles still open, plus roles that passed
+            // the cap, counted as censored observations rather than deleted.
+            //
+            // Served from the same hourly cache the website reads, so an API
+            // customer and a reader of the page arrive at the same numbers.
+            // Null — never [] and never a zero — until that cache carries the
+            // key: an empty array here would read as "no field has a measurable
+            // fill rate", which is a different and false claim.
+            fillCurve: Array.isArray(fillCurveRows)
+              ? {
+                  horizonDays: 14,
+                  windowDays: num((fillCurveRows[0] ?? {}).window_days),
+                  basis:
+                    "Aalen-Johansen cumulative incidence of a genuine fill by day 14, measured from the employer's own stated post date and from no other date. Postings still open, and postings that passed the 30-day freshness cap, are right-censored rather than excluded; same-title re-listings are a competing event, not a fill. fillRate14Lo/Hi is a 95% interval from Greenwood's formula on the event-free survival, carried across by the observed fill share — an APPROXIMATION, exact only where that share is constant over the window. relistRate14 and any churn figure are FLOORS: the collector logs at most one re-list per role title per company per 24h. sufficient is the render gate (at least 25 roles at risk at day 14, at least 5 observed fills, CI half-width at most 0.15); datedCoverage is reported separately and says what share of that field's roles carry a company-stated date, so a caller can decide what the figure speaks for. medianDaysToFill is min{t <= 30 : R(t) >= 0.5}, read off the FILL cumulative incidence and not off the event-free survival: it is the day half of a field's roles have been genuinely filled, and re-listings do not move it. It is null whenever medianCensored is true, meaning the fill incidence never reached one half inside the 30 days we can observe and no median exists inside our record — a bound, never a number. medianCensored is a finding, not an absence, on every row of this endpoint: the category estimator returns a row only where at least p_min_n observations back it.",
+                  asOf: cacheAsOf,
+                  data: (fillCurveRows as Array<Record<string, unknown>>).map((r) => ({
+                    category: String(r.category),
+                    nAtRisk14: num(r.n_at_risk_14),
+                    fills14: num(r.fills_le_14),
+                    fillRate14: num(r.fill_rate_14),
+                    fillRate14Lo: num(r.fill_rate_14_lo),
+                    fillRate14Hi: num(r.fill_rate_14_hi),
+                    relistRate14: num(r.relist_rate_14),
+                    stillOpen14: num(r.still_open_14),
+                    // medianDaysToFill, AND IT IS NOW WHAT IT MEASURES.
+                    //
+                    // This shipped as medianDaysOffBoard against the frozen
+                    // contract's min{ t <= 30 : S(t) <= 0.5 }: S is the
+                    // survival free of BOTH competing events, so the day it
+                    // crosses one half is the day half the roles have LEFT the
+                    // board — filled or re-listed. A field with R(8) = 0.28 and
+                    // X(8) = 0.24 crosses at t = 8 while only 28% has filled,
+                    // and calling that a time-to-fill sells churn plus fills as
+                    // one number. The renaming was the honest response while
+                    // the SQL still computed the S-form.
+                    //
+                    // BOTH MIGRATIONS THEN CHANGED THE ARITHMETIC, deliberately
+                    // departing from that contract so the column's name could
+                    // be true: min(tt) FILTER (WHERE tt <= 30 AND r_cif >= 0.5)
+                    // — the median of the FILL cumulative incidence
+                    // (20260906091000:490, 20260906092000:377). Relists no
+                    // longer move it. 20260906091000:138 makes the wording a
+                    // rule rather than a preference: every renderer says half
+                    // the roles are FILLED by day N, and any API field that
+                    // mirrors the column moves with it. This is that field.
+                    //
+                    // Renaming an API field is normally a breaking change; it
+                    // is safe exactly here because fillCurve has never served a
+                    // value — it is read from stats_cache.fill_curve, a key
+                    // nothing writes yet (docs §11 defect 6), so this object is
+                    // null on every request and no integration can be reading
+                    // the old spelling. If that cache arm lands before this
+                    // does, serve both keys for a release instead.
+                    medianDaysToFill: num(r.median_days_to_fill),
+                    // TRUE means "survival had not reached one half inside 30
+                    // days". Read straight through, and that is safe HERE and
+                    // only here: get_category_fill_curve is an inner join with
+                    // `obs_n >= max(p_min_n, 25)`, so every row it returns is
+                    // backed by hundreds of observations and `median_censored`
+                    // is always a finding rather than an absence. The
+                    // per-company RPC is the one where this is unsafe — it
+                    // selects from unnest(p_tokens) and LEFT JOINs, so a token
+                    // we have never tracked comes back with `(med IS NULL)`
+                    // TRUE, publishing "more than half its roles were still up
+                    // at 30 days" about an employer we hold zero rows for. No
+                    // endpoint here serves that function; any that ever does
+                    // must gate on `sufficient` first. See
+                    // docs/hiring-health-model.md 11.5.
+                    medianCensored: r.median_censored === true,
+                    datedCoverage: num(r.dated_coverage),
+                    sufficient: r.sufficient === true,
+                  })),
+                }
+              : null,
             observedDays: num(ghost.observed_days),
             statedPostDateCoveragePct: num(ghost.posted_coverage_pct),
             companiesTracked: num(ghost.total_companies),
-            asOf: typeof ghost.computed_at === "string" ? ghost.computed_at : null,
+            asOf: cacheAsOf,
           }
         : null,
       // HOW FRESH — and it is OUR re-check cadence, not a posting's age.

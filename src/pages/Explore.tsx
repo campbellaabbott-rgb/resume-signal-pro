@@ -16,11 +16,38 @@ import { SEO } from "@/components/seo/SEO";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { supabase } from "@/integrations/supabase/client";
+// ONE BAR, ONE DECLARATION. These three numbers decide whether an employer's
+// fill rate may be published at all, and /jobs declares them. They were re-typed
+// here as FILL_COVERAGE_QUALIFY and FILL_HORIZON_DAYS, which is how two surfaces
+// end up publishing and refusing the same employer: editing one file was silent
+// on the other, and the observation-window floor existed in neither. Importing
+// them is the point — a second literal is the drift.
+import { FILL_COVERAGE_MIN, FILL_RATE_MIN_TRACKING_DAYS, URGENT_FILL_MAX_DAYS } from "@/pages/Jobs";
 
 const rpc = (fn: string, args?: Record<string, unknown>) =>
   (supabase as unknown as { rpc: (f: string, a?: Record<string, unknown>) => Promise<{ data: unknown }> }).rpc(fn, args);
 
-interface CompanyRow { company: string; company_token: string; open_roles?: number; p50_days_open?: number | null; dated_n?: number; pay_pct?: number; median_usd_floor?: number | null; recent?: number; closed_90d?: number; entry_roles?: number; tracking_days?: number; repost_events?: number; reposted_roles?: number; worst_title?: string; worst_count?: number; feed_total?: number | null; on_board?: number; company_total?: number | null }
+interface CompanyRow { company: string; company_token: string; open_roles?: number; p50_days_open?: number | null; dated_n?: number; pay_pct?: number; median_usd_floor?: number | null; recent?: number; closed_90d?: number; entry_roles?: number; tracking_days?: number; repost_events?: number; reposted_roles?: number; worst_title?: string; worst_count?: number; feed_total?: number | null; on_board?: number; company_total?: number | null;
+  // ── MERGED IN FROM get_company_fill_curve, NOT CARRIED BY THE ROW ─────────
+  // These five are never returned by get_actively_hiring_companies, and were
+  // never going to be: its signature is (company, company_token, closed_90d,
+  // open_roles, tracking_days, p50_days_open, dated_n) and the migration that
+  // rebuilt it kept that signature deliberately, so the explore cache cannot
+  // carry them either. Reading them off the row meant `sufficient === true` was
+  // false for every row on every deploy and the badge could not render once —
+  // the p50 clock was deleted and nothing took its place, with nine locales
+  // translated for a string that had no call path. They are merged in below
+  // from a second call to the curve, keyed by token, and every reader stays
+  // gated so a failed or undeployed curve degrades to the plain badge.
+  fill_rate_14?: number | null; fill_rate_14_lo?: number | null; fill_rate_14_hi?: number | null;
+  dated_coverage?: number | null; sufficient?: boolean;
+  // The curve's own guarded 90-day counts, when it answered. Distinct names
+  // from closed_90d/tracking_days because they are a DIFFERENT population: the
+  // curve applies the retroactive feed-dark proxy to unstamped history, the
+  // hiring RPC applies only the stamped `suspect` column, which is false on
+  // every row written before the collector guard shipped.
+  curve_fills_90d?: number; curve_tracking_days?: number }
+
 interface SalaryRow { category: string; currency: string; n: number; median_annual_min: number }
 interface Segment { companies: number; with_headcount?: number; open_roles: number; remote_pct: number | null; disclosed_pct?: number | null; disclosed_n?: number | null; entry_pct: number; median_usd_floor: number | null; usd_n: number | null; top: CompanyRow[] }
 
@@ -370,6 +397,59 @@ export default function Explore() {
       setLoading(false);
     })();
   }, []);
+
+  // THE FILL RATE, FETCHED RATHER THAN HOPED FOR.
+  //
+  // The badge below needs R(14), its interval, the stated-date coverage and the
+  // RPC's own sufficiency flag. None of the four is returned by
+  // get_actively_hiring_companies — live or through the hourly cache, which
+  // serialises that function's rows with to_jsonb() and so cannot invent
+  // columns it does not have. Reading them off the row was the whole reason the
+  // clause was dead. They come from get_company_fill_curve, for exactly the
+  // twelve tokens on screen, in a second request that runs after first paint
+  // and costs the page nothing when it fails.
+  //
+  // The counts are re-read here too, and they are the curve's, because the two
+  // functions apply different feed-dark rules: the curve drops any
+  // (company_token, closed_at) batch that removed more than max(5, 0.30 × the
+  // board's open roles) for the ~54 days of history the collector never
+  // stamped, and the hiring RPC drops nothing there. Publishing a fill count on
+  // this page that /jobs/company/{token} contradicts is the failure this whole
+  // change exists to stop.
+  useEffect(() => {
+    if (hiring.length === 0) return;
+    // Already merged (a re-render, not a new list) — nothing to fetch.
+    if (hiring.some((r) => typeof r.fill_rate_14 === "number" || typeof r.curve_fills_90d === "number")) return;
+    const tokens = [...new Set(hiring.map((r) => r.company_token).filter(Boolean))];
+    if (tokens.length === 0) return;
+    let live = true;
+    void (async () => {
+      const { data } = await Promise.resolve(rpc("get_company_fill_curve", { p_tokens: tokens }))
+        .catch(() => ({ data: null }));
+      if (!live || !Array.isArray(data)) return;
+      const by = new Map<string, Record<string, unknown>>();
+      for (const r of data as Array<Record<string, unknown>>) {
+        if (r && typeof r.company_token === "string") by.set(r.company_token, r);
+      }
+      if (by.size === 0) return;
+      const numOrNull = (x: unknown) => (typeof x === "number" && Number.isFinite(x) ? x : null);
+      setHiring((prev) => prev.map((r) => {
+        const c = by.get(r.company_token);
+        if (!c) return r;
+        return {
+          ...r,
+          fill_rate_14: numOrNull(c.fill_rate_14),
+          fill_rate_14_lo: numOrNull(c.fill_rate_14_lo),
+          fill_rate_14_hi: numOrNull(c.fill_rate_14_hi),
+          dated_coverage: numOrNull(c.dated_coverage),
+          sufficient: c.sufficient === true,
+          curve_fills_90d: typeof c.fills_90d === "number" ? c.fills_90d : undefined,
+          curve_tracking_days: typeof c.tracking_days === "number" ? c.tracking_days : undefined,
+        };
+      }));
+    })();
+    return () => { live = false; };
+  }, [hiring]);
 
   // The chosen answer lives in the URL, so it is shareable, survives the back
   // button, and a crawler following ?i=pay sees the pay answer rather than
@@ -784,22 +864,32 @@ export default function Explore() {
             sees. Rendered under the real heading and blurb, which are static —
             only the cards are unknown, so only the cards are placeholders. */}
         {loading && hiring.length === 0 && (
-          <Section icon={Activity} title={t("explore.hiringTitle", "Companies that actually fill roles")} blurb={t("explore.hiringBlurb", "Roles that stayed posted at least a week and then came down — a real fill signal from our own tracking. Companies whose takedowns are mostly re-listings are disqualified (they appear under Serial re-posters instead).")}>
+          <Section icon={Activity} title={t("explore.hiringTitle", "Companies that actually fill roles")} blurb={t("explore.hiringBlurbCurve", "Companies whose roles come down and stay down — a real fill signal from our own lifecycle tracking, counted over the days we have actually watched each board. Companies whose takedowns are mostly re-listings are disqualified (they appear under Serial re-posters instead).")}>
             <GridSkeleton />
           </Section>
         )}
         {hiring.length > 0 && (
-          <Section icon={Activity} note={NOTE.hiring} title={t("explore.hiringTitle", "Companies that actually fill roles")} blurb={t("explore.hiringBlurb", "Roles that stayed posted at least a week and then came down — a real fill signal from our own tracking. Companies whose takedowns are mostly re-listings are disqualified (they appear under Serial re-posters instead).")}>
+          <Section icon={Activity} note={NOTE.hiring} title={t("explore.hiringTitle", "Companies that actually fill roles")} blurb={t("explore.hiringBlurbCurve", "Companies whose roles come down and stay down — a real fill signal from our own lifecycle tracking, counted over the days we have actually watched each board. Companies whose takedowns are mostly re-listings are disqualified (they appear under Serial re-posters instead).")}>
             {/* tracking_days ships with the rebuilt RPC; rows from the old cache
                 lack it — show only the open count then, never an unbacked claim. */}
-            {/* THE CLOCK, when the sample supports it.
-                p50_days_open answers "how long until this employer decides",
-                which is the most decision-changing thing on the page — but a
-                median over four dated closures is noise dressed as a deadline.
-                Gated on dated_n >= 10 AND tracking_days >= 21, and it degrades
-                to today's badge rather than to a number with no confidence
-                behind it. Absent fields (a cache row written before the
-                migration) take the same path. */}
+            {/* THE CLOCK, REBUILT — and it is no longer a clock.
+                It used to print p50_days_open as "half came down within Nd".
+                That median could only ever be drawn from a window of [7, 30]
+                days: the ingest ages a posting out at 30, and every fill
+                surface then required 7 before it would count a closure. A
+                median from that support lands near 15 for every employer and
+                every field on the board — eighteen categories agreed to within
+                1.4 days over ~600k closures, which is not a fact about hiring,
+                it is our own retention cap halved. Worse, the roles that
+                stayed up longest were not censored, they were simply ABSENT
+                from the sample, which is what turned censoring into truncation.
+                What replaces it is R(14) from the fill curve: the share of an
+                employer's dated roles off the board within 14 days, with roles
+                still up and roles that passed the cap counted as unfinished
+                rather than deleted. Gated on the RPC's own `sufficient` and on
+                stated-date coverage, and — like every other optional field on
+                this page — absent fields degrade to the plain badge, never to
+                a number with nothing behind it. */}
             {/* The churn warning reaches here too, and this is the answer where
                 it matters most: an employer can hold a genuine fill record and
                 still re-list the same role forty times, and the fill record is
@@ -808,12 +898,50 @@ export default function Explore() {
                 MOSTLY re-listings; one that fills plenty and churns plenty
                 passes it and says nothing. */}
             <CompanyGrid rows={hiring} intent="hiring" warn={(r) => repostWarn(r.company_token, "hiring")} badge={(r) => {
-              if (!r.tracking_days) return t("explore.openRoles", "{{n}} open roles", { n: (r.open_roles ?? 0).toLocaleString() });
+              // The count prefers the curve's, which is the same population the
+              // company page publishes; the row's own count is the fallback for
+              // as long as the curve has not answered.
+              const filled = r.curve_fills_90d ?? r.closed_90d;
+              const days = r.curve_tracking_days ?? r.tracking_days;
+              if (!days || filled == null) return t("explore.openRoles", "{{n}} open roles", { n: (r.open_roles ?? 0).toLocaleString() });
               const core = t("explore.hiringBadge", "{{filled}} filled in {{d}}d tracked · {{open}} open now",
-                { filled: r.closed_90d ?? 0, d: r.tracking_days, open: (r.open_roles ?? 0).toLocaleString() });
-              const showClock = r.p50_days_open != null && (r.dated_n ?? 0) >= 10 && r.tracking_days >= 21;
-              return showClock
-                ? `${core} · ${t("explore.hiringSpeed", "half came down within {{d}}d", { d: Math.round(r.p50_days_open as number) })}`
+                { filled, d: days, open: (r.open_roles ?? 0).toLocaleString() });
+              // R(14) IS THE FILL SHARE, NOT THE OFF-THE-BOARD SHARE. It holds
+              // same-title re-listings out as a competing event, so it is
+              // smaller than 1 − still_open_14 by exactly the relist rate. The
+              // copy says "taken down for good", which is what the number is.
+              //
+              // AND IT IS A CEILING, so the copy says "up to". The collector
+              // logs one superseded closure per title per company per 24h and
+              // drops the rest, so the re-listings it never sees leave the risk
+              // set entirely and the fills that remain take a larger share of a
+              // smaller cohort — get_company_fill_curve's own COMMENT ON says
+              // fill_rate_14 is an upper bound on any employer that re-lists.
+              // This shipped bare here while /jobs said "up to" for the same
+              // number, and the employers the bound is loosest on are exactly
+              // the ones this badge renders: the RPC's disqualifier only drops
+              // employers whose takedowns are MOSTLY re-listings, so one that
+              // fills plenty and churns plenty passes it. Same rule as the
+              // relist counts, opposite direction — a deduped count is a floor,
+              // a share computed against it is a ceiling.
+              // THE THIRD GATE IS THE ONE THAT WENT MISSING. `sufficient`
+              // counts roles at risk, observed fills and interval width — all
+              // statements about the sample, none about how long we watched.
+              // Lifetimes run from the employer's stated posted_at rather than
+              // from our first sighting, so a ten-day-deep log can satisfy it
+              // and this badge would print a fourteen-day rate beside "10d
+              // tracked". The floor is /jobs' own FILL_RATE_MIN_TRACKING_DAYS,
+              // read off the CURVE's tracking span because that is the record
+              // the rate was estimated over — the hiring row's own count is a
+              // different population and is only ever the display fallback.
+              const showRate = r.sufficient === true
+                && typeof r.fill_rate_14 === "number"
+                && typeof r.dated_coverage === "number"
+                && r.dated_coverage >= FILL_COVERAGE_MIN
+                && typeof r.curve_tracking_days === "number"
+                && r.curve_tracking_days >= FILL_RATE_MIN_TRACKING_DAYS;
+              return showRate
+                ? `${core} · ${t("explore.hiringFillRate", "up to {{pct}}% taken down for good within {{h}}d", { pct: Math.round((r.fill_rate_14 as number) * 100), h: URGENT_FILL_MAX_DAYS })}`
                 : core;
             }} />
           </Section>

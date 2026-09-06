@@ -25,6 +25,14 @@ import { resolve } from "node:path";
  * both stable, so remembering that an id aged out is enough for ingest to
  * refuse it. These assertions run on comment-stripped code, because the
  * explanations above name the very things the negative assertions forbid.
+ *
+ * 2026-09-06: the ledger write moved behind insertExits(), a shared helper
+ * added so every exit row could stamp the employer's own posted_at (with a
+ * retry that drops the column while its migration is mid-deploy). Nothing
+ * about the dedupe moved — freshlyDead is still what the sweep hands the
+ * ledger — so the guard follows the indirection instead of pinning the old
+ * call-chain spelling, and checks that the helper really does write the table
+ * it is named for.
  */
 const ROOT = resolve(__dirname, "../..");
 const FN = readFileSync(resolve(ROOT, "supabase/functions/job-board/index.ts"), "utf8");
@@ -64,14 +72,26 @@ describe("a posting that aged out must not walk back in", () => {
   it("an exit is ledgered ONCE — a posting dying on a loop is not news", () => {
     expect(CODE).toMatch(/const freshlyDead = agedRows\.filter\(\(r\) => !alreadyTombstoned\.has\(String\(r\.id\)\)\)/);
     expect(CODE).toMatch(/if \(freshlyDead\.length === 0\) continue;/);
-    // The ledger write must read the filtered list, not the raw page. Anchor
-    // to the sweep's own call: logWholeBoardExit has a legitimate earlier
-    // insert of its own, and matching the first occurrence tested that one.
+    // The ledger write must read the FILTERED list, not the raw page. It now
+    // goes through insertExits() — added when every exit row started stamping
+    // the employer's own posted_at, with a retry that drops the column during
+    // the deploy window — so both spellings of the ledger write live BEFORE
+    // this anchor and a forward search for the inline `.from(...).insert(`
+    // finds nothing. Match either form, scoped to the sweep block, and forbid
+    // the raw aged page reaching it: that is the actual property. Anchoring on
+    // a call-chain spelling is what turned a live guard into "the caution
+    // branch is missing" — pin the property, not the punctuation.
     const freshAt = CODE.indexOf("const freshlyDead");
     expect(freshAt).toBeGreaterThan(-1);
-    const insertAt = CODE.indexOf('from("job_board_exits").insert(', freshAt);
-    expect(insertAt, "the freshness sweep no longer ledgers exits at all").toBeGreaterThan(-1);
-    expect(CODE.slice(insertAt, insertAt + 120)).toMatch(/freshlyDead\.map/);
+    const sweep = CODE.slice(freshAt, CODE.indexOf("let dropped = 0", freshAt));
+    const m = sweep.match(/(?:insertExits\(\s*client,|from\("job_board_exits"\)\.insert\()/);
+    expect(m, "the freshness sweep no longer ledgers exits at all").not.toBeNull();
+    const call = sweep.slice(m!.index!, m!.index! + 140);
+    expect(call, "the sweep ledgers the tombstone-filtered list").toMatch(/freshlyDead\.map/);
+    expect(call, "the raw aged page must never feed the exit ledger").not.toMatch(/agedRows\.map/);
+    // Indirection must not hollow the guard out: a helper NAME can survive
+    // while the helper stops writing the table it is named for. Follow it.
+    expect(CODE).toMatch(/async function insertExits[\s\S]{0,400}?from\("job_board_exits"\)\.insert\(/);
   });
 
   it("tombstones expire, so the table is bounded and id recycling self-heals", () => {

@@ -29,6 +29,11 @@ import { PendingQuestionsPanel } from "@/components/account/PendingQuestionsPane
 import { ApplyQueuePanel } from "@/components/account/ApplyQueuePanel";
 import { ClosedReplacementsPanel } from "@/components/account/ClosedReplacementsPanel";
 import { AccountNav } from "@/components/account/AccountNav";
+// The observation-window floor, imported rather than re-typed: /jobs declares
+// it, every surface that publishes a fourteen-day fill claim reads the same
+// number. A second literal here is how one page starts publishing what another
+// refuses about the same employer.
+import { FILL_RATE_MIN_TRACKING_DAYS } from "@/pages/Jobs";
 import { GapReport } from "@/components/account/GapReport";
 import { InterviewsHub } from "@/components/account/InterviewsHub";
 import { SetupChecklist } from "@/components/account/SetupChecklist";
@@ -104,6 +109,37 @@ const QUIET_NUDGE_DAYS = 7;
 // honest prompt is "apply or archive".
 const SAVED_STALE_DAYS = 5;
 
+/** The subset of get_company_fill_curve this page reads. Every field is
+ *  optional: a row from an older deploy, or a token the curve has no history
+ *  for, must degrade to showing nothing rather than to a zero. */
+interface CompanyFillCurve {
+  fills_90d?: number;
+  relists_90d?: number;
+  /** R(14) — cumulative incidence of a genuine fill by day 14, 0..1. */
+  fill_rate_14?: number | null;
+  /** Board-level relist share, a FLOOR: the collector logs one re-list per
+   *  title per company per 24h, so the true share is at least this. */
+  churn?: number | null;
+  /** True => S(30) > 0.5, i.e. more than half the roles were still open at 30
+   *  days and there IS no median inside our window. Never render a number. */
+  median_censored?: boolean;
+  /** dated / (dated + undated) for this employer. NOT part of `sufficient` —
+   *  it says what population the rate speaks for, not whether it is stable. */
+  dated_coverage?: number | null;
+  /** The RPC's own gate: n_at_risk_14 >= 25, fills_le_14 >= 5, CI half-width
+   *  <= 0.15. Below it we say "not enough history", never a number. */
+  sufficient?: boolean;
+  tracking_days?: number;
+}
+/** Coverage bands from docs/hiring-health-model.md §5. Above PLAIN the rate
+ *  speaks for the board; between the two it must name its population; below
+ *  QUALIFY the duration claim is suppressed entirely. */
+const FILL_COVERAGE_PLAIN = 0.6;
+const FILL_COVERAGE_QUALIFY = 0.3;
+/** The published horizon. R(14) sits strictly inside the observable window for
+ *  every dated posting, so it needs no extrapolation. */
+const FILL_HORIZON_DAYS = 14;
+
 // Display name for a saved scan acting as a resume version.
 const versionName = (s: UserScan) =>
   s.label ?? `${(s.industry ?? "resume").replace(/_/g, " ")} · ${new Date(s.created_at).toLocaleDateString()}`;
@@ -160,7 +196,20 @@ export default function Account() {
   // Employer lifecycle facts (fills vs re-listing churn) for tracked rows —
   // most actionable exactly where you're waiting to hear back. Token comes
   // from the board posting id embedded in job_id (source:token:externalId).
-  const [appHealth, setAppHealth] = useState<Record<string, { closed_90d?: number; superseded_90d?: number; median_days_to_close?: number | null; tracking_days?: number }>>({});
+  //
+  // FROM THE FILL CURVE, NOT FROM A MEDIAN. This used to read
+  // get_company_hiring_health.median_days_to_close and print it as "this
+  // employer typically fills in ~12d". That median could only ever be drawn
+  // from a window of [7, 30] days — the ingest ages a posting out at 30 and
+  // every fill surface then required 7 — so it landed near 15 for every
+  // employer on the board regardless of how they hire. It was our own
+  // retention cap, halved, with an employer's name on it.
+  //
+  // get_company_fill_curve answers the question the chip was actually asking:
+  // of the roles this employer posted, what share was filled within 14 days,
+  // with roles still open and roles that aged off the board counted as not yet
+  // filled rather than deleted from the sample.
+  const [appHealth, setAppHealth] = useState<Record<string, CompanyFillCurve>>({});
   // The account's MATCHING RÉSUMÉ: an explicit, durable choice of which résumé
   // every matcher uses (board fit ranking, threshold digests, apply-agent
   // grounding). Either a pinned scan or pasted text; null/null = the default
@@ -394,14 +443,24 @@ export default function Account() {
     const tokens = [...new Set(apps.map((a) => (a.job_id ?? "").split(":")[1]).filter(Boolean))].slice(0, 50);
     if (tokens.length) {
       void Promise.resolve((supabase as unknown as { rpc: (f: string, a?: Record<string, unknown>) => Promise<{ data: unknown }> })
-        .rpc("get_company_hiring_health", { p_tokens: tokens }))
+        .rpc("get_company_fill_curve", { p_tokens: tokens }))
         .then(({ data }) => {
           if (!Array.isArray(data)) return;
-          const map: Record<string, { closed_90d?: number; superseded_90d?: number; median_days_to_close?: number | null; tracking_days?: number }> = {};
-          for (const r of data as Array<{ company_token: string; closed_90d?: number; superseded_90d?: number; median_days_to_close?: number | null; tracking_days?: number }>) {
-            // median_days_to_close/tracking_days were fetched and DISCARDED —
-            // they power the reply-window chip below at zero extra backend.
-            map[r.company_token] = { closed_90d: r.closed_90d, superseded_90d: r.superseded_90d, median_days_to_close: r.median_days_to_close, tracking_days: r.tracking_days };
+          const map: Record<string, CompanyFillCurve> = {};
+          for (const r of data as Array<CompanyFillCurve & { company_token: string }>) {
+            // The gate fields ride along with the rate at zero extra backend —
+            // and they are the whole point. A rate without `sufficient` and
+            // `dated_coverage` beside it is the old chip with a new number.
+            map[r.company_token] = {
+              fills_90d: r.fills_90d,
+              relists_90d: r.relists_90d,
+              fill_rate_14: r.fill_rate_14,
+              churn: r.churn,
+              median_censored: r.median_censored,
+              dated_coverage: r.dated_coverage,
+              sufficient: r.sufficient,
+              tracking_days: r.tracking_days,
+            };
           }
           setAppHealth(map);
         })
@@ -1347,13 +1406,31 @@ export default function Account() {
                         inventing a date. */}
                     {a.job_id && (() => {
                       const outcome = a.lifecycle_outcome;
+                      // DAYS_STANDING IS A LOWER BOUND, AND IT IS WORDED AS ONE.
+                      //
+                      // get_application_lifecycle computes it as
+                      // closed_at − COALESCE(posted_at, first_seen) (and
+                      // now() − COALESCE(...) for a live row), so on an undated
+                      // ATS the origin is OUR first sighting, not the
+                      // employer's post date. A role published on 1 June, first
+                      // seen by our crawler on 25 August and taken down on 28
+                      // August read as "after 3 days posted" — our discovery
+                      // time published as the employer's date, per role, which
+                      // is the 2.8-day-median incident at row granularity.
+                      //
+                      // first_seen can only ever be at or after the true post
+                      // date, so the number is always a floor on the true
+                      // tenure and never an overstatement. Until the RPC
+                      // returns the origin basis (it needs a `dated` column
+                      // before this page can distinguish the two cases), the
+                      // honest rendering is the floor, said as a floor.
                       const days = typeof a.days_standing === "number" ? Math.round(a.days_standing) : null;
                       const when = a.posting_closed_at ? new Date(a.posting_closed_at).toLocaleDateString() : null;
                       if (outcome === "came_down_relisted" && when) {
                         return (
                           <p className="text-[11px] text-warning/90 mt-0.5">
                             {t("accountPage.lifecycleRelisted", "⟳ Came down {{when}}{{stood}} — and the same role went back up since.", {
-                              when, stood: days != null ? `, after ${days} days posted` : "",
+                              when, stood: days != null ? t("accountPage.lifecycleStood", ", after at least {{d}} days posted", { d: days }) : "",
                             })}
                           </p>
                         );
@@ -1362,7 +1439,7 @@ export default function Account() {
                         return (
                           <p className="text-[11px] text-muted-foreground/80 mt-0.5">
                             {t("accountPage.lifecycleCameDown", "⚠ Came down on {{when}}{{stood}}. It has not reappeared.", {
-                              when, stood: days != null ? `, after ${days} days posted` : "",
+                              when, stood: days != null ? t("accountPage.lifecycleStood", ", after at least {{d}} days posted", { d: days }) : "",
                             })}
                           </p>
                         );
@@ -1378,7 +1455,7 @@ export default function Account() {
                         return (
                           <p className="text-[11px] text-success/80 mt-0.5">
                             {days != null
-                              ? t("accountPage.lifecycleStanding", "● Still posted — day {{d}}", { d: days })
+                              ? t("accountPage.lifecycleStanding", "● Still posted — {{d}}+ days", { d: days })
                               : t("accountPage.postingOpen", "● Posting still open")}
                           </p>
                         );
@@ -1393,37 +1470,83 @@ export default function Account() {
                       const hhToken = (a.job_id ?? "").split(":")[1];
                       const hh = hhToken ? appHealth[hhToken] : undefined;
                       if (!hh) return null;
-                      const fills = hh.closed_90d ?? 0;
-                      const churn = hh.superseded_90d ?? 0;
-                      if (churn > fills && churn >= 10) {
-                        return <p className="text-[11px] text-warning/90 mt-0.5">{t("jobsPage.verdictChurn", "re-lists roles often ({{n}}×) — responses may be slow", { n: churn })}</p>;
+                      const fills = hh.fills_90d ?? 0;
+                      const relists = hh.relists_90d ?? 0;
+                      // CHURN IS RENDERED WITH A ">=", ALWAYS. The collector
+                      // logs at most one superseded closure per role title per
+                      // company per 24h, so `churn` is a floor on the recycling
+                      // share and never a measurement of it. Printing it as an
+                      // exact percentage would be the same overstated precision
+                      // the old superseded_90d count carried.
+                      if (hh.churn != null && hh.churn > 0.5 && relists >= 10) {
+                        return <p className="text-[11px] text-warning/90 mt-0.5">{t("jobsPage.verdictChurnFloor", "re-lists roles often (at least {{n}}×) — responses may be slow", { n: relists })}</p>;
                       }
-                      if (fills >= 3 && churn <= fills) {
+                      if (fills >= 3 && relists <= fills) {
                         return <p className="text-[11px] text-success/80 mt-0.5">{t("jobsPage.verdictFills", "this company genuinely fills roles ({{n}} in our tracking)", { n: fills })}</p>;
                       }
                       return null;
                     })()}
-                    {/* Reply-window chip: the checkable clock. "Applied 9d ago
-                        — this employer typically fills in ~12d" comes straight
-                        from OUR closure log via the medians this page already
-                        fetches. Same publish floors the Ghost Index uses
-                        (21 tracked days, 5 genuine fills) — below them, the
-                        median is one anecdote and we show nothing. */}
+                    {/* Reply-window chip: the checkable clock, rebuilt on the
+                        fill curve.
+                        It used to read "this employer typically fills in ~12d"
+                        off median_days_to_close. That median was drawn from a
+                        window of [7, 30] days by construction and therefore
+                        landed near 15 for every employer on the board — a
+                        restatement of our own 30-day retention cap wearing a
+                        company's name. It also gated on closed_90d, a count
+                        computed over a STRICTLY LARGER population than the
+                        median it was gating, so the chip could quote a sample
+                        that never fed the number.
+                        The gate is now the RPC's own `sufficient` — n at risk
+                        >= 25, observed fills >= 5, CI half-width <= 0.15 — and
+                        the claim is R(14): the share of this employer's dated
+                        roles filled within 14 days, with still-open roles and
+                        roles that aged off the board counted as not yet filled
+                        instead of deleted. Coverage bands the render; it is
+                        deliberately NOT part of the gate. */}
                     {(() => {
                       if (a.status !== "applied" || !a.applied_at) return null;
                       const hhToken = (a.job_id ?? "").split(":")[1];
                       const hh = hhToken ? appHealth[hhToken] : undefined;
-                      const median = hh?.median_days_to_close;
-                      if (typeof median !== "number" || median <= 0) return null;
-                      if ((hh?.tracking_days ?? 0) < 21 || (hh?.closed_90d ?? 0) < 5) return null;
+                      if (!hh?.sufficient) return null;
+                      // AND THE OBSERVATION WINDOW, WHICH `sufficient` DOES NOT
+                      // IMPLY. It counts roles at risk, observed fills and
+                      // interval width — the sample, never the depth of the
+                      // log. Lifetimes run from the employer's own stated
+                      // posted_at rather than from our first sighting, so a
+                      // role dated 30 days ago that we have watched for 8 is a
+                      // live censored observation at t=30 and counts in the
+                      // day-14 risk set: a ten-day-deep record can pass every
+                      // term of the server gate and this chip would answer a
+                      // fourteen-day question out of it. Same floor as /jobs
+                      // and /explore, imported from the one declaration.
+                      if (typeof hh.tracking_days !== "number"
+                        || hh.tracking_days < FILL_RATE_MIN_TRACKING_DAYS) return null;
+                      const rate = hh.fill_rate_14;
+                      if (typeof rate !== "number") return null;
+                      const coverage = hh.dated_coverage;
+                      // Below the floor the duration claim is suppressed
+                      // outright: a rate computed on under a third of the
+                      // employer's roles is not a fact about the employer.
+                      if (typeof coverage !== "number" || coverage < FILL_COVERAGE_QUALIFY) return null;
                       const daysIn = Math.floor((Date.now() - new Date(a.applied_at).getTime()) / 86_400_000);
                       if (daysIn < 1) return null;
-                      const past = daysIn > Math.ceil(median);
+                      const pct = Math.round(rate * 100);
+                      const past = daysIn > FILL_HORIZON_DAYS;
+                      // Past 30 days with a censored median, the honest thing
+                      // to say is the censoring itself, not a rate the reader
+                      // has already outlived.
+                      const line = daysIn > 30 && hh.median_censored
+                        ? t("accountPage.replyWindowFillCensored", "applied {{d}}d ago — more than half of this employer's roles were still up 30 days after being posted", { d: daysIn })
+                        : past
+                          ? t("accountPage.replyWindowFillPast", "applied {{d}}d ago — past the {{h}}-day mark by which {{pct}}% of this employer's roles had been taken down for good; a follow-up is reasonable", { d: daysIn, h: FILL_HORIZON_DAYS, pct })
+                          : t("accountPage.replyWindowFill", "applied {{d}}d ago — {{pct}}% of this employer's roles are taken down for good, not re-listed, within {{h}} days of being posted", { d: daysIn, h: FILL_HORIZON_DAYS, pct });
+                      const qualifier = coverage < FILL_COVERAGE_PLAIN
+                        ? ` — ${t("accountPage.replyWindowFillCoverage", "across the {{pct}}% of its roles that carry a posting date from the company itself", { pct: Math.round(coverage * 100) })}`
+                        : "";
                       return (
                         <p className={`text-[11px] mt-0.5 ${past ? "text-warning/90" : "text-muted-foreground/80"}`}>
-                          {past
-                            ? t("accountPage.replyWindowPast", "applied {{d}}d ago — past this employer's typical ~{{m}}d fill window (from {{n}} fills tracked within 30 days of posting); a follow-up is reasonable", { d: daysIn, m: Math.round(median), n: hh?.closed_90d ?? 0 })
-                            : t("accountPage.replyWindow", "applied {{d}}d ago — this employer typically fills in ~{{m}}d (from {{n}} fills tracked within 30 days of posting)", { d: daysIn, m: Math.round(median), n: hh?.closed_90d ?? 0 })}
+                          {line}{qualifier}
                         </p>
                       );
                     })()}

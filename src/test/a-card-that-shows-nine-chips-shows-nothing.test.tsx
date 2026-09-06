@@ -8,6 +8,10 @@
 //                 experience band · "Verified direct from X" · "N open roles" ·
 //                 "Actively hiring" · "Typically fills in ~9d" ·
 //                 "Relists roles often (5×)" · "Agent can apply"
+//
+// (Those last three chips no longer read that way — see the note at the foot
+// of this block. The list above is the board as it was, kept verbatim because
+// it is the evidence for the compression.)
 //   right column  fit tier · work mode · employment type · staffing agency ·
 //                 applied · saved · posting age · first seen · checked 4m ago
 //
@@ -40,8 +44,32 @@
 //
 // So the precedence is fixed and asserted below: the repost caution takes the
 // slot whenever it fires, and only in its absence does the slot speak well of
-// the employer. Not one GATE moved — REPOST_FLAG_MIN,
-// ACTIVELY_HIRING_MIN_CLOSED and URGENT_FILL_MAX_DAYS are the same numbers.
+// the employer.
+//
+// ── WHAT THE 2026-09-06 ESTIMATOR CHANGE DID TO THIS FILE ───────────────────
+//
+// The PRECEDENCE did not move. The GATES got stricter, and the copy moved with
+// the statistic underneath it.
+//
+//   • The praise branch used to fire on a median days-to-close under 14 — a
+//     number that could only ever land near 15 for any employer on this board,
+//     because the observable support was [7, 30] by construction. It now needs
+//     URGENT_FILL_RATE_MIN (a fourth gate, 0.5), the RPC's own `sufficient`
+//     flag, a dated-coverage band above "none", and an observation window at
+//     least FILL_RATE_MIN_TRACKING_DAYS deep. Four new refusals stand in front
+//     of "apply early" where there used to be one coin toss.
+//   • The caution chip is a FLOOR now: "Re-lists roles often (7×+)". The old
+//     "(7×)" printed an exact count over a collector that logs at most one
+//     relist per title per day, which was itself a live breach of this repo's
+//     ">=N, never =N" rule. The guard below REQUIRES the floor marker.
+//   • The field comparison dropped "75%". The Aalen-Johansen curve does not
+//     produce that quantile, and reconstructing one client-side would be
+//     inventing it. The chip states the comparison; its title states the
+//     observation window and the horizon the share was read at.
+//
+// The three original constants are untouched: REPOST_FLAG_MIN,
+// ACTIVELY_HIRING_MIN_CLOSED and URGENT_FILL_MAX_DAYS are the same numbers,
+// read in the same order.
 //
 // Behavioural, with the board mocked, because a grep for a class name proves
 // nothing about what a reader sees.
@@ -132,26 +160,71 @@ const ROWS = [
   },
 ];
 
-// acme: fills fast AND relists often — qualifies for BOTH old chips, which is
-// the case the single slot has to get right.
-// beta: fills fast, no churn.
-// gamma: fills, but slowly.
-const HEALTH = [
-  { company_token: "acme", open_roles: 12, closed_90d: 20, superseded_90d: 7, median_days_open: 12, median_days_to_close: 9, tracking_days: 90 },
-  { company_token: "beta", open_roles: 4, closed_90d: 11, superseded_90d: 0, median_days_open: 10, median_days_to_close: 8, tracking_days: 90 },
-  { company_token: "gamma", open_roles: 3, closed_90d: 6, superseded_90d: 1, median_days_open: 40, median_days_to_close: 45, tracking_days: 90 },
+// get_company_fill_curve rows. Every field the gates read must be present: the
+// three branches consult relists_90d, fills_90d, sufficient, dated_coverage,
+// fill_rate_14 and tracking_days, and a row missing one of them is refused for
+// the wrong reason — which would make this guard pass on a broken fixture.
+//
+// acme: fills fast AND relists often — it qualifies for BOTH the caution and
+//       the praise, which is the one case the single slot has to get right.
+// beta: the same fast-fill record with no churn, so the slot speaks well of it
+//       — which is how we know the caution won on merit rather than because
+//       the praise branch is dead.
+// gamma: a real takedown record, but a fill rate BELOW URGENT_FILL_RATE_MIN.
+//       It falls through to the count-only branch, and it is there to prove
+//       the new 0.5 rate gate is live. Refusing gamma via `sufficient: false`
+//       instead would have proved only that a thin row is silent, which was
+//       already true before the change.
+// delta: no closure record at all — the slot is simply empty.
+const CURVE = [
+  {
+    company_token: "acme", open_roles: 12, fills_90d: 20, relists_90d: 7, ageouts_90d: 2,
+    n_at_risk_14: 60, fills_le_14: 14,
+    fill_rate_14: 0.62, fill_rate_14_lo: 0.55, fill_rate_14_hi: 0.69,
+    relist_rate_14: 0.10, still_open_14: 0.28, fill_rate_7: 0.30, fill_rate_30: 0.80,
+    median_days_to_fill: 11, median_censored: false,
+    dated_coverage: 0.80, dated_n: 40, undated_n: 10,
+    fill_through: 0.70, churn: 0.26, absorption: 0.10, tracking_days: 90, sufficient: true,
+  },
+  {
+    company_token: "beta", open_roles: 4, fills_90d: 11, relists_90d: 0, ageouts_90d: 1,
+    n_at_risk_14: 45, fills_le_14: 12,
+    fill_rate_14: 0.58, fill_rate_14_lo: 0.52, fill_rate_14_hi: 0.64,
+    relist_rate_14: 0.02, still_open_14: 0.40, fill_rate_7: 0.25, fill_rate_30: 0.75,
+    median_days_to_fill: 12, median_censored: false,
+    dated_coverage: 0.80, dated_n: 33, undated_n: 8,
+    fill_through: 0.90, churn: 0, absorption: 0.05, tracking_days: 90, sufficient: true,
+  },
+  {
+    company_token: "gamma", open_roles: 3, fills_90d: 6, relists_90d: 1, ageouts_90d: 4,
+    n_at_risk_14: 38, fills_le_14: 6,
+    fill_rate_14: 0.18, fill_rate_14_lo: 0.12, fill_rate_14_hi: 0.25,
+    relist_rate_14: 0.04, still_open_14: 0.78, fill_rate_7: 0.05, fill_rate_30: 0.35,
+    median_days_to_fill: null, median_censored: true,
+    dated_coverage: 0.80, dated_n: 29, undated_n: 7,
+    fill_through: 0.50, churn: 0.14, absorption: 0.20, tracking_days: 90, sufficient: true,
+  },
 ];
 
-const FILL_SPEED = [
-  { category: "engineering", closures: 4200, median_days_open: 18, p75_days_open: 34, window_days: 60 },
+// get_category_fill_curve rows. still_open_14 must be <= 0.5 or
+// outstaysFieldHorizon refuses by design — most of the field has to resolve
+// inside the horizon before "up longer than most" means anything.
+const FIELD_CURVE = [
+  {
+    category: "engineering", n_at_risk_14: 900, fills_le_14: 400,
+    fill_rate_14: 0.44, fill_rate_14_lo: 0.40, fill_rate_14_hi: 0.48,
+    relist_rate_14: 0.12, still_open_14: 0.44,
+    median_days_to_fill: 16, median_censored: false,
+    dated_coverage: 0.70, window_days: 60, sufficient: true,
+  },
 ];
 
-function mount(path = "/jobs") {
+function mount(path = "/jobs", field: unknown[] = FIELD_CURVE) {
   window.history.replaceState({}, "", path);
   rpc.mockImplementation(async (fn: string) => {
-    if (fn === "get_company_hiring_health") return { data: HEALTH };
-    if (fn === "get_category_fill_speed") return { data: FILL_SPEED };
-    return { data: [] };
+    if (fn === "get_company_fill_curve") return { data: CURVE, error: null };
+    if (fn === "get_category_fill_curve") return { data: field, error: null };
+    return { data: [], error: null };
   });
   invoke.mockImplementation(async (fn: string, o: { body?: Record<string, unknown> } | undefined) => {
     const b = o?.body ?? {};
@@ -239,38 +312,84 @@ describe("a card that shows nine chips shows nothing", () => {
     // The closure-log lookup is a SECOND async hop after the list lands, so
     // every assertion here waits for the chip itself rather than for a card
     // that has not been told about its employer yet.
-    await waitFor(() => expect(text()).toContain("Relists roles often (7×)"), SLOW);
-    await waitFor(() => expect(text()).toContain("Typically fills in ~8d"), SLOW);
+    // THE COUNT IS A FLOOR. The collector logs at most one re-list per title
+    // per company per day, so the true number can only be higher — "(7×)" was
+    // an equality claim over a deduped count and the "×+" is the correction,
+    // not decoration. If the marker ever goes away this must fail.
+    await waitFor(() => expect(text()).toContain("Re-lists roles often (7×+)"), SLOW);
+    await waitFor(() => expect(text()).toContain("Fills fast — 58% within 14d"), SLOW);
     await waitFor(() => expect(text()).toContain("Actively hiring"), SLOW);
-    // Acme fills in ~9 days AND relists 7 times. It qualified for both the
-    // urgency chip and the repost chip; the caution is what a reader needs.
-    expect(text(), "praise must not sit beside the caution about the same employer")
-      .not.toContain("Typically fills in ~9d");
+    // Acme fills 62% of its roles inside the horizon AND re-lists at least 7
+    // times. It qualifies for both branches; the caution is what a reader
+    // needs. Asserted on ACME'S OWN CARD rather than document-wide: "Actively
+    // hiring" is also a filter control on this page, so a document-wide
+    // negative could be satisfied by the wrong element entirely.
+    const acme = cards().find((c) => (c.textContent ?? "").includes("Acme"));
+    expect(acme, "Acme's card is not on the page").toBeTruthy();
+    const acmeText = acme!.textContent ?? "";
+    expect(acmeText, "the caution must take the slot").toContain("Re-lists roles often");
+    expect(acmeText, "praise must not sit beside the caution about the same employer")
+      .not.toContain("Fills fast");
+    expect(acmeText, "praise must not sit beside the caution about the same employer")
+      .not.toContain("Actively hiring");
     // Beta has the same fast-fill record and no churn, so the slot speaks well
     // of it — proving the caution won on merit and not because the positive
-    // branch is dead. Gamma fills, but not fast: the weakest true statement,
-    // and the only one left for that slot. Both waited for above.
-    // Delta has no closure record at all — the slot is simply empty. One
-    // statement per card, four cards, three statements. Counted over the CARDS
-    // only: "Actively hiring" is also a filter control on this page.
-    expect(listHits("Relists roles often") + listHits("Typically fills in") + listHits("Actively hiring")).toBe(3);
+    // branch is dead. Gamma has a real takedown record but a fill rate under
+    // URGENT_FILL_RATE_MIN, so it falls through to the count-only branch: the
+    // weakest true statement, and the only one left for that slot. Both waited
+    // for above. Delta has no closure record at all — the slot is simply
+    // empty. One statement per card, four cards, three statements. Counted
+    // over the CARDS only, for the reason above.
+    expect(listHits("Re-lists roles often") + listHits("Fills fast") + listHits("Actively hiring")).toBe(3);
     // And no card carries two of them.
     for (const c of cards()) {
       const t = c.textContent ?? "";
-      const said = ["Relists roles often", "Typically fills in", "Actively hiring"].filter((x) => t.includes(x));
+      const said = ["Re-lists roles often", "Fills fast", "Actively hiring"].filter((x) => t.includes(x));
       expect(said.length, `two employer statements on one card: ${said.join(" + ")}`).toBeLessThanOrEqual(1);
     }
   });
 
   it("behaviour: the field-window comparison appears only on a posting the EMPLOYER dated", async () => {
-    mount();
+    const { unmount } = mount();
     await waitFor(() => expect(text()).toContain("Quiet Role"), SLOW);
-    // Gamma is 400 days past its own stated date, against a field whose p75 is
-    // 34 days over 4,200 tracked closings.
-    await waitFor(() => expect(text()).toContain("Open longer than 75% of Engineering & IT roles"), SLOW);
-    // Acme is 3 days old in the same field, and Delta is undated — an undated
-    // posting must get silence, not a comparison built on our discovery time.
-    expect(listHits("Open longer than 75%")).toBe(1);
+    // Gamma is 400 days past its own stated date, in a field where 56% of
+    // roles are off the board inside the 14-day horizon.
+    //
+    // The claim no longer names a percentile. "Open longer than 75% of X" was
+    // a quantile the Aalen-Johansen curve does not produce, and the old
+    // p75_days_open it came from was computed over a sample that could only
+    // contain roles lasting 7–30 days.
+    await waitFor(() => expect(text()).toContain("Up longer than most Engineering & IT roles last"), SLOW);
+    // A COUNT OF 1 CAN BE SATISFIED BY THE WRONG CARD. Name both sides: the
+    // posting the employer dated gets the comparison, and the undated one gets
+    // silence rather than a comparison built on our discovery time.
+    const chip = "Up longer than most";
+    const cardFor = (title: string) => (cards().find((c) => (c.textContent ?? "").includes(title))?.textContent ?? "");
+    expect(cardFor("Quiet Role"), "a dated posting past its field's horizon must be told so").toContain(chip);
+    expect(cardFor("Undated Role"), "first_seen is our discovery date and is never a posting age")
+      .not.toContain(chip);
+    // Acme is 3 days old in the same field and must also stay silent.
+    expect(listHits(chip)).toBe(1);
+    // A PUBLISHED DURATION NAMES THE WINDOW IT WAS MEASURED INSIDE. The chip's
+    // visible text names neither — dropping "75%" was right, but it took the
+    // basis with it — so the standing honesty rule now rests entirely on the
+    // title, and the title is therefore load-bearing rather than a courtesy.
+    const chipEl = Array.from(document.querySelectorAll("[title]"))
+      .find((e) => (e.textContent ?? "").includes(chip));
+    expect(chipEl, "the comparison chip carries no tooltip at all").toBeTruthy();
+    const tip = chipEl!.getAttribute("title") ?? "";
+    expect(tip, "the tooltip must name the observation window").toContain("last 60 days");
+    expect(tip, "the tooltip must name the horizon the share was read at").toContain("within 14 days");
+    expect(tip, "the tooltip must state the share it is comparing against").toContain("56%");
+    unmount();
+
+    // AND THE HONESTY FLOOR IS LIVE, not merely absent-by-accident. Without
+    // this second render the guard cannot tell a working gate from a deleted
+    // one: every assertion above would still pass if `sufficient` were ignored.
+    invoke.mockReset(); rpc.mockReset();
+    mount("/jobs", [{ ...FIELD_CURVE[0], sufficient: false }]);
+    await waitFor(() => expect(text()).toContain("Quiet Role"), SLOW);
+    expect(listHits(chip), "a field the estimator cannot stand behind must say nothing").toBe(0);
   });
 
   it("behaviour: the company-level open-role count is gone from the card", async () => {
@@ -339,17 +458,50 @@ describe("a card that shows nine chips shows nothing", () => {
   it("the precedence that keeps a caution from losing its slot is code, not a comment", () => {
     // The repost branch must be read BEFORE either positive branch, or the
     // compression silently becomes an edit.
-    const slot = JOBS.slice(JOBS.indexOf("const churn = hh.superseded_90d ?? 0;"));
+    //
+    // NEVER SLICE ON AN UNCHECKED indexOf HERE. This guard was anchored to
+    // `const churn = hh.superseded_90d ?? 0;`, which the estimator change
+    // rewrote to read relists_90d. indexOf returned -1, `slice(-1)` silently
+    // reduced the search space to the file's LAST CHARACTER, and the guard
+    // then truthfully reported "the caution branch is missing" about a branch
+    // sitting four lines below its own anchor. A precedence guard that can
+    // become vacuous by a rename is worse than no guard: it reports a lost
+    // behaviour that was never lost, and next time it will report nothing.
+    const anchor = JOBS.indexOf("const churn = hh.relists_90d;");
+    expect(anchor, "the one-slot IIFE moved — RE-ANCHOR this guard, do not delete it").toBeGreaterThan(-1);
+    const slot = JOBS.slice(anchor);
     const iChurn = slot.indexOf("churn >= REPOST_FLAG_MIN");
-    const iFast = slot.indexOf("URGENT_FILL_MAX_DAYS");
+    // Anchored on the BRANCH CONDITION, not on a constant name: the praise
+    // branch's tooltip interpolates URGENT_FILL_MAX_DAYS too, so the old
+    // anchor found the copy rather than the gate and an ordering assertion
+    // against it was measuring the wrong thing.
+    const iFast = slot.indexOf("hh.fills_90d >= ACTIVELY_HIRING_MIN_CLOSED");
     const iActive = slot.indexOf("isActivelyHiring(job.token)");
     expect(iChurn, "the caution branch is missing").toBeGreaterThan(-1);
+    // A vanished PRAISE branch must be reported as itself. Without these the
+    // ordering assertions below would fail with "0 is not less than -1", which
+    // reads as a precedence bug and sends the next reader to the wrong place.
+    expect(iFast, "the fills-fast branch is missing").toBeGreaterThan(-1);
+    expect(iActive, "the actively-hiring branch is missing").toBeGreaterThan(-1);
     expect(iChurn, "praise is read before the caution").toBeLessThan(iFast);
     expect(iChurn).toBeLessThan(iActive);
     // And every gate is still the shared constant, not a number typed again.
+    // NOTE these read JOBS (comment-stripped) and not RAW: the block comment
+    // directly above the slot spells `churn >= REPOST_FLAG_MIN` out in prose,
+    // so a raw-source assertion would pass over a deleted branch.
     expect(JOBS).toMatch(/const REPOST_FLAG_MIN = 3;/);
     expect(JOBS).toMatch(/const ACTIVELY_HIRING_MIN_CLOSED = 3;/);
     expect(JOBS).toMatch(/const URGENT_FILL_MAX_DAYS = 14;/);
+    // THE GATE THE CHANGE ADDED IN FRONT OF THE PRAISE BRANCH. The old chip
+    // fired on a median that could only ever land near 15 for anyone; the rate
+    // floor and the shared sufficiency predicate are what now stand between a
+    // thin record and an "apply early" nudge, so they are pinned here with the
+    // three that were already load-bearing.
+    expect(JOBS).toMatch(/const URGENT_FILL_RATE_MIN = 0\.5;/);
+    expect(
+      slot.slice(iFast, iFast + 200),
+      "the fills-fast branch must go through the shared sufficiency predicate and the rate floor",
+    ).toMatch(/canStateFillRate\(hh, hh\.tracking_days\)[\s\S]*hh\.fill_rate_14 >= URGENT_FILL_RATE_MIN/);
   });
 
   it("the reason the tiers exist is written down where the next tidy-up will read it", () => {

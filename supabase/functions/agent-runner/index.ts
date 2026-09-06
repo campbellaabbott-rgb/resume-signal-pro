@@ -53,6 +53,12 @@ const CANDIDATES_PER_MANDATE = 400;
 // Deliberately modest: it exists to guarantee representation in the pool, not
 // to flood the queue with them at the expense of better-fitting jobs.
 const SENDABLE_CANDIDATES = 120;
+// Tokens per get_company_fill_curve call. The RPC's own budget note puts 200
+// inside its 25s statement timeout (its per-employer window is clamped to 32
+// rows), and Jobs.tsx batches at exactly that; this stays under it because a
+// run here is a background job that can afford a second round trip and cannot
+// afford a timeout that silently retires the churn disqualifier.
+const HEALTH_TOKENS_PER_CALL = 100;
 const LOOKBACK_HOURS = 36;         // overlap across runs; dedupe is the unique key
 const MIN_FIT_PCT = 30;            // below this a pick would waste the user's morning
 
@@ -99,7 +105,27 @@ interface PostingRow {
   apply_url: string; salary: string | null; category: string; posted_at: string | null;
   first_seen: string; remote: boolean; description: string | null; salary_min_annual: number | null;
 }
-interface HealthRow { company_token: string; closed_90d: number; superseded_90d: number }
+// FROM THE FILL CURVE, NOT FROM A MEDIAN OR A FLOORED COUNT.
+//
+// This read get_company_hiring_health, whose closed_90d counted only closures
+// that had stood at least seven days — a floor added to suppress relist churn
+// that in fact deleted exactly the fastest fills, i.e. the employers this
+// triage most wants to find. get_company_fill_curve counts every genuine
+// closure and reports the recycling share separately.
+//
+// `churn` is a FLOOR, not a measurement: the collector logs at most one
+// superseded closure per role title per company per 24h, so the true recycling
+// share is at least this. That is fine for a disqualifier — a floor above the
+// threshold is still above it — and it must never be published as an exact
+// share anywhere downstream.
+interface HealthRow {
+  company_token: string;
+  fills_90d: number | null;
+  relists_90d: number | null;
+  churn: number | null;
+  fill_rate_14: number | null;
+  sufficient: boolean | null;
+}
 
 serve(async (req) => {
   if (req.method !== "POST") return new Response("method not allowed", { status: 405 });
@@ -449,20 +475,54 @@ serve(async (req) => {
       continue;
     }
 
-    // Company intelligence for triage — one batched RPC.
-    const tokens = [...new Set((cands as PostingRow[]).map((c) => c.company_token))];
+    // Company intelligence for triage — batched, and its failure is recorded.
+    //
+    // TWO THINGS WERE WRONG HERE AND BOTH WERE SILENT.
+    //
+    // First, supabase-js RESOLVES with { data, error }; it does not throw. The
+    // surrounding try/catch therefore never fired, and the destructure dropped
+    // `error` on the floor, so a failed call was indistinguishable from an
+    // employer with a clean record: `healthByToken` stayed empty, `h` was
+    // undefined for every candidate, the churn disqualifier never fired (every
+    // serial re-poster passed triage) and the fills boost never applied. The
+    // run was then stamped `skipped_churn: 0`, which reads as "no churny
+    // employers among the candidates" rather than "the check did not run".
+    //
+    // Second, the call is no longer cheap. It used to hit three grouped
+    // aggregates; it now hits a per-token Aalen-Johansen window over closures
+    // UNION exits UNION live postings under a 25s statement timeout, against an
+    // UNBOUNDED token list (the candidate window plus the whole sendable pool —
+    // up to 520 postings). Account.tsx slices to 50 and Jobs.tsx batches at
+    // 200; this site sliced nothing, so the first symptom of the new cost would
+    // have been a 57014 that looked like good news.
+    const tokens = [...new Set((cands as PostingRow[]).map((c) => c.company_token))].filter(Boolean);
     const healthByToken = new Map<string, HealthRow>();
-    try {
-      const { data: health } = await client.rpc("get_company_hiring_health", { p_tokens: tokens });
-      for (const h of (health ?? []) as HealthRow[]) healthByToken.set(h.company_token, h);
-    } catch (_) { /* triage still works on fit alone */ }
+    let healthFailed = false;
+    for (let i = 0; i < tokens.length; i += HEALTH_TOKENS_PER_CALL) {
+      const batch = tokens.slice(i, i + HEALTH_TOKENS_PER_CALL);
+      try {
+        const { data: health, error: healthErr } = await client.rpc("get_company_fill_curve", { p_tokens: batch });
+        if (healthErr) {
+          healthFailed = true;
+          console.warn(`[AGENT-RUNNER] fill curve failed for ${batch.length} tokens:`, healthErr.message?.slice(0, 200));
+          continue;
+        }
+        for (const h of (health ?? []) as HealthRow[]) healthByToken.set(h.company_token, h);
+      } catch (e) {
+        healthFailed = true;
+        console.warn("[AGENT-RUNNER] fill curve threw:", String((e as Error)?.message ?? e).slice(0, 200));
+      }
+    }
 
     let skippedChurn = 0, skippedLowfit = 0;
     const scored: Array<{ c: PostingRow; fit: number; reasons: unknown[] }> = [];
     for (const c of cands as PostingRow[]) {
       const h = healthByToken.get(c.company_token);
-      // Churn disqualifier — the same rule Explore and the lander badge use.
-      if (h && (h.superseded_90d ?? 0) > (h.closed_90d ?? 0) && (h.superseded_90d ?? 0) >= 10) {
+      // Churn disqualifier — the same rule Explore and the lander badge use,
+      // now on the curve's own share. churn = R / (F + R) over 90 days, so
+      // "> 0.5" is exactly the old "relists outnumber fills", and it stays a
+      // floor: a company past it is past it by at least that much.
+      if (h && (h.churn ?? 0) > 0.5 && (h.relists_90d ?? 0) >= 10) {
         skippedChurn++;
         continue;
       }
@@ -471,7 +531,7 @@ serve(async (req) => {
       if (fit.pct == null || fit.pct < MIN_FIT_PCT) { skippedLowfit++; continue; }
 
       const reasons: unknown[] = [{ k: "fit", pct: fit.pct, top: fit.matched.slice(0, 3) }];
-      if (h && (h.closed_90d ?? 0) >= 3) reasons.push({ k: "fills", n: h.closed_90d });
+      if (h && (h.fills_90d ?? 0) >= 3) reasons.push({ k: "fills", n: h.fills_90d });
       if (c.posted_at) {
         const days = Math.max(0, Math.floor((Date.now() - new Date(c.posted_at).getTime()) / 86400_000));
         if (days <= 7) reasons.push({ k: "fresh", days });
@@ -499,7 +559,7 @@ serve(async (req) => {
       // reason that does not apply to them.
       const SENDABLE_BOOST = 6;
       const rank = fit.pct
-        + ((h && (h.closed_90d ?? 0) >= 3) ? 8 : 0)
+        + ((h && (h.fills_90d ?? 0) >= 3) ? 8 : 0)
         + (sendable && m.apply_mode === "auto" ? SENDABLE_BOOST : 0);
       scored.push({ c, fit: fit.pct, reasons: [...reasons, { k: "_rank", v: rank }] });
     }
@@ -545,6 +605,11 @@ serve(async (req) => {
       picked: picks.length,
       skipped_churn: skippedChurn,
       skipped_lowfit: skippedLowfit,
+      // 1 when any batch of the health call failed. Without it a run where the
+      // estimator timed out is written to the same shape as a run where every
+      // employer passed triage cleanly, and `skipped_churn: 0` is read as a
+      // finding about employers instead of an outage in the check.
+      health_unavailable: healthFailed ? 1 : 0,
     });
   }
 

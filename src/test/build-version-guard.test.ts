@@ -996,13 +996,40 @@ const PINNED = {
   //   board 34 with four workers vs 214MB at board 82 with eight) and cut
   //   throughput from 1,800 boards an hour to 640. The per-worker model was
   //   wrong; this restores the best throughput measured today.
-  buildVersion: "2026-08-30.60",
+  //
+  // .61 — a batch that went dark now says so in the row itself. `windowed`
+  //   only catches a TRUNCATED fetch, so a feed that answers 200 with a valid
+  //   but nearly empty list is not windowed: every stored posting for that
+  //   board vanished in one pass and was ledgered as an employer takedown — a
+  //   collection failure recorded as 400 fills, indistinguishable at read time
+  //   from 400 real ones. Each closure row now carries its batch (suspect,
+  //   batch_removed, batch_live_before) so the cumulative-incidence estimator
+  //   can exclude a doubted cohort, and job_board_exits stamps the employer's
+  //   own posted_at so a censored observation starts from the employer's date
+  //   rather than our first sighting. Rows are still INSERTED, never dropped:
+  //   the closure log is the one asset nobody can re-derive.
+  buildVersion: "2026-09-06.61",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {
   it("has a BUILD_VERSION matching the one pinned here", () => {
     const idx = readFileSync(resolve(ROOT, "index.ts"), "utf8");
-    const m = /BUILD_VERSION = "([^"]+)"/.exec(idx);
+    // Read the CONSTANT, not the changelog. index.ts carries a dense block of
+    // version-history comments immediately above the declaration, and every
+    // entry is free to quote a version string. A note that ever wrote
+    // `BUILD_VERSION = "..."` inside a comment would be matched ahead of the
+    // real constant and this guard would pass against prose while the shipped
+    // constant was stale — the trap this repo has now hit seven times.
+    //
+    // LINE comments are stripped BEFORE block comments here, and the order is
+    // load-bearing: index.ts has a line comment naming `../_shared/*`, whose
+    // `/*` opens a block comment the naive block-first strip then runs to the
+    // next `*/` hundreds of lines away — taking the real constant with it and
+    // turning this guard into "BUILD_VERSION not found".
+    const CODE = idx
+      .replace(/^\s*\/\/.*$/gm, "")
+      .replace(/\/\*[\s\S]*?\*\//g, "");
+    const m = /BUILD_VERSION = "([^"]+)"/.exec(CODE);
     expect(m, "BUILD_VERSION not found in index.ts").toBeTruthy();
     expect(
       m![1],
