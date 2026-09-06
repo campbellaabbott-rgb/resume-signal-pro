@@ -166,8 +166,28 @@ const DURATION_AGGREGATE = /\b(?:percentile_cont|percentile_disc|avg|sum|min|max
 
 /** A restriction to exactly ONE clock. `origin_basis` names which of the two a
  *  stored days_on_board was measured from; an aggregate that does not pin it to
- *  a single value is averaging the employer's calendar with our crawler's. */
-const SINGLE_BASIS = /origin_basis\s*=\s*'(?:stated|discovered)'/i;
+ *  a single value is averaging the employer's calendar with our crawler's.
+ *
+ *  THIS USED TO TEST FOR THE PRESENCE OF ONE BASIS LITERAL, WHICH IS NOT THE
+ *  SAME QUESTION. A span reading
+ *      FILTER (WHERE (s.origin_basis = 'stated' OR s.origin_basis = 'discovered'))
+ *  contains a basis literal and was waved through — publishing exactly the
+ *  mixed-clock percentile this guard exists to prevent, and doing it into an
+ *  IMMUTABLE monthly summary whose raw rows are then pruned, so the two series
+ *  can never afterwards be separated. Found by mutation, not by reading.
+ *
+ *  So: count the DISTINCT basis values a span pins, and require exactly one.
+ *  A span that mentions origin_basis without an equality (IS NOT NULL, IN (...),
+ *  a join, a GROUP BY) pins nothing and is not a restriction either. */
+function pinnedBases(span: string): Set<string> {
+  return new Set([...span.matchAll(/origin_basis\s*=\s*'(\w+)'/gi)].map((m) => m[1].toLowerCase()));
+}
+function pinsExactlyOneClock(span: string): boolean {
+  if (!/origin_basis/i.test(span)) return false;
+  // An unpinned mention (IS NOT NULL / IN / bare column) is not a restriction.
+  if (/origin_basis\s*(?:IS\b|IN\b|<>|!=)/i.test(span)) return false;
+  return pinnedBases(span).size === 1;
+}
 
 /**
  * The full span of ONE aggregate call: its own parentheses plus the
@@ -224,7 +244,7 @@ function unsegmentedDurationReads(code: string): string[] {
     const span = aggregateSpan(code, m.index!);
     spans.push([m.index!, m.index! + span.length]);
     if (!/days_on_board/i.test(span)) continue;
-    if (SINGLE_BASIS.test(span)) continue;
+    if (pinsExactlyOneClock(span)) continue;
     out.push(`aggregates days_on_board over both clocks at once: ${flat(span)}`);
   }
   for (const m of code.matchAll(/days_on_board/gi)) {

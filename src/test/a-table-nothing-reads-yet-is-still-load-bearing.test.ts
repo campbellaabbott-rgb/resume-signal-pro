@@ -255,8 +255,17 @@ const NEW_TABLES = [
  */
 function writeSites(src: string, table: string): Site[] {
   const sites: Site[] = [];
-  const from = `.from("${table}")`;
-  for (let i = src.indexOf(from); i >= 0; i = src.indexOf(from, i + 1)) {
+  // QUOTE-AGNOSTIC. This keyed on the double-quoted spelling alone, so an insert
+  // written .from('job_board_exits') was not a write path AT ALL — invisible to
+  // the origin_basis check, the column check and the error check simultaneously.
+  // Proved by mutation: a single-quoted bypass insert with no origin_basis, no
+  // helper and no strip-and-retry left this suite fully green. There is no
+  // formatter gate in package.json or CI to make the double quote inevitable,
+  // so the quote style is a convention, and a guard must not depend on one.
+  const fromRe = new RegExp(`\\.from\\(\\s*["'\`]${table.replace(/[.*+?^$\\{}()|[\]]/g, "\\$&")}["'\`]\\s*\\)`, "g");
+  for (const fm of src.matchAll(fromRe)) {
+    const i = fm.index!;
+    const from = fm[0];
     const after = src.slice(i + from.length, i + from.length + 40);
     const m = /^\s*\.(insert|upsert)\s*\(/.exec(after);
     if (!m) continue;
