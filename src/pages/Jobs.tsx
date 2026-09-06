@@ -2633,12 +2633,18 @@ export default function Jobs() {
     (async () => {
       // Promise.resolve assimilates the PostgREST builder (a thenable WITHOUT
       // .catch — calling .catch on it throws) into a real Promise.
-      const call = () => Promise.resolve((supabase as unknown as { rpc: (fn: string) => Promise<{ data: unknown }> }).rpc("get_salary_benchmarks"));
-      let { data: rows } = await call().catch(() => ({ data: null }));
+      // .catch() only covers a REJECTION. A client that RESOLVES with undefined
+      // — a stub, a mocked module, a transport that returns nothing — reaches
+      // the destructure and throws "Cannot destructure property 'data'", as an
+      // unhandled rejection inside a mounted effect. Coalesce the resolved
+      // value too, so call() always hands back a shape.
+      const call = async (): Promise<{ data: unknown }> =>
+        (await Promise.resolve((supabase as unknown as { rpc: (fn: string) => Promise<{ data: unknown } | undefined> }).rpc("get_salary_benchmarks")).catch(() => null)) ?? { data: null };
+      let { data: rows } = await call();
       // Cold-cache RPCs can time out once and succeed warm — one spaced retry.
       if (!Array.isArray(rows) || rows.length === 0) {
         await new Promise((r) => setTimeout(r, 1500));
-        ({ data: rows } = await call().catch(() => ({ data: null })));
+        ({ data: rows } = await call());
       }
       if (!Array.isArray(rows)) return;
       const map: Record<string, { n: number; median: number; currency: string }> = {};
